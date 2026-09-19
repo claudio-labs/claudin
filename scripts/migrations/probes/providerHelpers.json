@@ -1,0 +1,278 @@
+{
+  "test": "src/providers/ui",
+  "source": "src/providers/ui/ProviderManager.tsx",
+  "probes": [
+    {
+      "name": "toDraft carries the profile name",
+      "find": "    name: profile.name,\n    baseUrl: profile.baseUrl,",
+      "replace": "    name: 'x',\n    baseUrl: profile.baseUrl,"
+    },
+    {
+      "name": "toDraft carries the base URL",
+      "find": "    baseUrl: profile.baseUrl,\n    model: profile.model,",
+      "replace": "    baseUrl: 'x',\n    model: profile.model,"
+    },
+    {
+      "name": "toDraft carries the model",
+      "find": "    model: profile.model,\n    apiKey: profile.apiKey ?? '',",
+      "replace": "    model: 'x',\n    apiKey: profile.apiKey ?? '',"
+    },
+    {
+      "name": "toDraft defaults a missing key to the empty string",
+      "find": "    apiKey: profile.apiKey ?? '',",
+      "replace": "    apiKey: profile.apiKey as string,"
+    },
+    {
+      "name": "presetToDraft reads the preset name",
+      "find": "\n    name: defaults.name,",
+      "replace": "\n    name: defaults.baseUrl,",
+      "//": "the leading newline pins the 4-space indent; startCreateFromPreset clones this block at 6"
+    },
+    {
+      "name": "presetToDraft reads the preset base URL",
+      "find": "\n    baseUrl: defaults.baseUrl,",
+      "replace": "\n    baseUrl: defaults.name,"
+    },
+    {
+      "name": "presetToDraft reads the preset model",
+      "find": "\n    model: defaults.model,",
+      "replace": "\n    model: defaults.name,"
+    },
+    {
+      "name": "presetToDraft never seeds an API key",
+      "find": "\n    apiKey: defaults.apiKey ?? '',",
+      "replace": "\n    apiKey: 'leaked-key',"
+    },
+    {
+      "name": "customHeadersToText renders undefined headers as empty text",
+      "find": "  if (!headers) return ''",
+      "replace": "  if (!headers) return 'undefined'"
+    },
+    {
+      "name": "customHeadersToText uses a colon-space separator",
+      "find": "    .map(([k, v]) => `${k}: ${v}`)",
+      "replace": "    .map(([k, v]) => `${k}=${v}`)"
+    },
+    {
+      "name": "customHeadersToText joins entries with newlines",
+      "find": "    .map(([k, v]) => `${k}: ${v}`)\n    .join('\\n')",
+      "replace": "    .map(([k, v]) => `${k}: ${v}`)\n    .join(', ')"
+    },
+    {
+      "name": "buildExtrasFromDrafts trims awsRegion",
+      "find": "  const awsRegion = cloudExtras.awsRegion?.trim()",
+      "replace": "  const awsRegion = cloudExtras.awsRegion"
+    },
+    {
+      "name": "buildExtrasFromDrafts trims gcpProject",
+      "find": "  const gcpProject = cloudExtras.gcpProject?.trim()",
+      "replace": "  const gcpProject = cloudExtras.gcpProject"
+    },
+    {
+      "name": "buildExtrasFromDrafts trims gcpRegion",
+      "find": "  const gcpRegion = cloudExtras.gcpRegion?.trim()",
+      "replace": "  const gcpRegion = cloudExtras.gcpRegion"
+    },
+    {
+      "name": "buildExtrasFromDrafts trims azureResource",
+      "find": "  const azureResource = cloudExtras.azureResource?.trim()",
+      "replace": "  const azureResource = cloudExtras.azureResource"
+    },
+    {
+      "name": "awsRegion lands on extras.awsRegion",
+      "find": "  if (awsRegion) extras.awsRegion = awsRegion",
+      "replace": "  if (awsRegion) extras.gcpProject = awsRegion"
+    },
+    {
+      "name": "gcpProject lands on extras.gcpProject",
+      "find": "  if (gcpProject) extras.gcpProject = gcpProject",
+      "replace": "  if (gcpProject) extras.gcpRegion = gcpProject"
+    },
+    {
+      "name": "gcpRegion lands on extras.gcpRegion",
+      "find": "  if (gcpRegion) extras.gcpRegion = gcpRegion",
+      "replace": "  if (gcpRegion) extras.azureResource = gcpRegion"
+    },
+    {
+      "name": "azureResource lands on extras.azureResource",
+      "find": "  if (azureResource) extras.azureResource = azureResource",
+      "replace": "  if (azureResource) extras.awsRegion = azureResource"
+    },
+    {
+      "name": "empty header text adds no customHeaders key",
+      "find": "  if (Object.keys(headers).length > 0) {",
+      "replace": "  if (true as boolean) {"
+    },
+    {
+      "name": "parsed headers land under extras.customHeaders",
+      "find": "    extras.customHeaders = headers",
+      "replace": "    extras.customHeaders = {}"
+    },
+    {
+      "name": "an empty extras object collapses to undefined",
+      "find": "  return Object.keys(extras).length > 0 ? extras : undefined",
+      "replace": "  return extras"
+    },
+    {
+      "name": "profileSummary marks the active profile",
+      "find": "  const activeSuffix = isActive ? ' (active)' : ''",
+      "replace": "  const activeSuffix = ''"
+    },
+    {
+      "name": "profileSummary reports whether a key is set",
+      "find": "  const keyInfo = profile.apiKey ? 'key set' : 'no key'",
+      "replace": "  const keyInfo = 'no key'"
+    },
+    {
+      "name": "only the anthropic tag reads as anthropic",
+      "find": "    profile.provider === 'anthropic' ? 'anthropic' : 'openai-compatible'",
+      "replace": "    profile.provider !== 'openai' ? 'anthropic' : 'openai-compatible'"
+    },
+    {
+      "name": "profileSummary splits the model list",
+      "find": "  const models = parseModelList(profile.model)",
+      "replace": "  const models = [profile.model]"
+    },
+    {
+      "name": "three models are listed in full",
+      "find": "    models.length <= 3",
+      "replace": "    models.length <= 2"
+    },
+    {
+      "name": "listed models are comma-separated",
+      "find": "      ? models.join(', ')",
+      "replace": "      ? models.join(' ')"
+    },
+    {
+      "name": "the collapsed tail counts the models it hid",
+      "find": "      : `${models[0]}, ${models[1]} + ${models.length - 2} more`",
+      "replace": "      : `${models[0]}, ${models[1]} + ${models.length - 1} more`"
+    },
+    {
+      "name": "profileSummary composes the fields in order",
+      "find": "  return `${providerKind} · ${profile.baseUrl} · ${modelDisplay} · ${keyInfo}${activeSuffix}`",
+      "replace": "  return `${providerKind} - ${profile.baseUrl} · ${modelDisplay} · ${keyInfo}${activeSuffix}`"
+    },
+    {
+      "name": "the Atomic Chat endpoint is redacted before display",
+      "find": "Could not reach Atomic Chat at ${redactUrlForDisplay(baseUrl)}",
+      "replace": "Could not reach Atomic Chat at ${baseUrl}"
+    },
+    {
+      "name": "a loaded-but-empty Atomic Chat gets its own message",
+      "find": "    return 'Atomic Chat is running, but no models are loaded.",
+      "replace": "    return 'Atomic Chat is running, but nothing at all.",
+      "//": "the rest of the literal stays on the line"
+    },
+    {
+      "name": "a ready Atomic Chat reports no issue",
+      "find": "  if (readiness.state === 'no_models') {\n    return 'Atomic Chat",
+      "replace": "  if (true as boolean) {\n    return 'Atomic Chat"
+    },
+    {
+      "name": "the Ollama endpoint is redacted before display",
+      "find": "Could not reach Ollama at ${redactUrlForDisplay(baseUrl)}",
+      "replace": "Could not reach Ollama at ${baseUrl}"
+    },
+    {
+      "name": "a running-but-empty Ollama gets its own message",
+      "find": "    return 'Ollama is running, but no installed models were found.",
+      "replace": "    return 'Ollama is running, but nothing at all."
+    },
+    {
+      "name": "a probe failure with no model named falls back to a phrase",
+      "find": "    const modelHint = readiness.probeModel ?? 'the selected model'",
+      "replace": "    const modelHint = readiness.probeModel as string"
+    },
+    {
+      "name": "the probe detail is appended when present",
+      "find": "      ? ` Details: ${readiness.detail}.`",
+      "replace": "      ? ''"
+    },
+    {
+      "name": "no detail means no Details sentence",
+      "find": "      ? ` Details: ${readiness.detail}.`\n      : ''",
+      "replace": "      ? ` Details: ${readiness.detail}.`\n      : ' Details: none.'"
+    },
+    {
+      "name": "a ready Ollama reports no issue",
+      "find": "  if (readiness.state === 'generation_failed') {",
+      "replace": "  if (true as boolean) {"
+    },
+    {
+      "name": "findCodexOAuthProfile refuses to guess without a stored id",
+      "find": "  if (!profileId) {\n    return undefined\n  }",
+      "replace": "  if (!profileId) {\n    return profiles[0]\n  }"
+    },
+    {
+      "name": "findCodexOAuthProfile matches the id exactly",
+      "find": "  return profiles.find(profile => profile.id === profileId)",
+      "replace": "  return profiles.find(profile => profile.id !== profileId)"
+    },
+    {
+      "name": "isCodexOAuthProfile compares the ids",
+      "find": "  return Boolean(profile && profileId && profile.id === profileId)",
+      "replace": "  return Boolean(profile && profileId)"
+    },
+    {
+      "name": "isCodexOAuthProfile returns a real boolean",
+      "find": "  return Boolean(profile && profileId && profile.id === profileId)",
+      "replace": "  return (profile && profileId && profile.id === profileId) as boolean"
+    },
+    {
+      "name": "Kimi: the stored id wins over the signature",
+      "find": "    if (byId) return byId\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&",
+      "replace": "    if (byId) return undefined\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&"
+    },
+    {
+      "name": "Kimi: the provider tag must be openai",
+      "find": "      profile.provider === 'openai' &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&",
+      "replace": "      Boolean(profile.provider) &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&"
+    },
+    {
+      "name": "Kimi: the host must be the coding endpoint",
+      "find": "      profile.baseUrl === KIMI_OAUTH_BASE_URL &&\n      !profile.apiKey,",
+      "replace": "      profile.baseUrl !== '' &&\n      !profile.apiKey,"
+    },
+    {
+      "name": "Kimi: a key-bearing profile is left alone",
+      "find": "      profile.baseUrl === KIMI_OAUTH_BASE_URL &&\n      !profile.apiKey,\n  )",
+      "replace": "      profile.baseUrl === KIMI_OAUTH_BASE_URL &&\n      Boolean(profile.id),\n  )"
+    },
+    {
+      "name": "xAI: the stored id wins over the signature",
+      "find": "    if (byId) return byId\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&",
+      "replace": "    if (byId) return undefined\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&"
+    },
+    {
+      "name": "xAI: the provider tag must be openai",
+      "find": "      profile.provider === 'openai' &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&",
+      "replace": "      Boolean(profile.provider) &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&"
+    },
+    {
+      "name": "xAI: the host must be the xAI endpoint",
+      "find": "      profile.baseUrl === DEFAULT_XAI_BASE_URL &&\n      !profile.apiKey,",
+      "replace": "      profile.baseUrl !== '' &&\n      !profile.apiKey,"
+    },
+    {
+      "name": "xAI: a key-bearing profile is left alone",
+      "find": "      profile.baseUrl === DEFAULT_XAI_BASE_URL &&\n      !profile.apiKey,\n  )",
+      "replace": "      profile.baseUrl === DEFAULT_XAI_BASE_URL &&\n      Boolean(profile.id),\n  )"
+    },
+    {
+      "name": "Anthropic: the provider tag must be anthropic",
+      "find": "      profile.provider === 'anthropic' &&\n      profile.baseUrl === baseUrl &&",
+      "replace": "      Boolean(profile.provider) &&\n      profile.baseUrl === baseUrl &&"
+    },
+    {
+      "name": "Anthropic: the host must match the one asked for",
+      "find": "      profile.baseUrl === baseUrl &&\n      !profile.apiKey,",
+      "replace": "      profile.baseUrl !== '' &&\n      !profile.apiKey,"
+    },
+    {
+      "name": "Anthropic: a key-bearing profile is left alone",
+      "find": "      profile.baseUrl === baseUrl &&\n      !profile.apiKey,\n  )",
+      "replace": "      profile.baseUrl === baseUrl &&\n      Boolean(profile.id),\n  )"
+    }
+  ]
+}

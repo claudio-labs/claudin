@@ -110,19 +110,19 @@ type Screen =
   | 'select-edit'
   | 'select-delete'
 
-type DraftField = 'name' | 'baseUrl' | 'model' | 'apiKey'
+export type DraftField = 'name' | 'baseUrl' | 'model' | 'apiKey'
 
-type ProviderDraft = Record<DraftField, string>
+export type ProviderDraft = Record<DraftField, string>
 
-type CloudExtrasField =
+export type CloudExtrasField =
   | 'awsRegion'
   | 'gcpProject'
   | 'gcpRegion'
   | 'azureResource'
 
-type CloudExtrasDraft = Partial<Record<CloudExtrasField, string>>
+export type CloudExtrasDraft = Partial<Record<CloudExtrasField, string>>
 
-type OllamaSelectionState =
+export type OllamaSelectionState =
   | { state: 'idle' }
   | { state: 'loading' }
   | {
@@ -132,7 +132,7 @@ type OllamaSelectionState =
     }
   | { state: 'unavailable'; message: string }
 
-type AtomicChatSelectionState =
+export type AtomicChatSelectionState =
   | { state: 'idle' }
   | { state: 'loading' }
   | {
@@ -142,7 +142,7 @@ type AtomicChatSelectionState =
     }
   | { state: 'unavailable'; message: string }
 
-type OpenAiModelSelectionState =
+export type OpenAiModelSelectionState =
   | { state: 'idle' }
   | { state: 'loading' }
   | {
@@ -152,7 +152,7 @@ type OpenAiModelSelectionState =
     }
   | { state: 'unavailable'; message: string }
 
-const FORM_STEPS: Array<{
+export const FORM_STEPS: Array<{
   key: DraftField
   label: string
   placeholder: string
@@ -189,42 +189,42 @@ const FORM_STEPS: Array<{
 // Sentinel row appended to the discovered-model list so the user can always
 // fall back to typing an id the provider's /models endpoint didn't return.
 // The NUL prefix guarantees it can't collide with a real model id.
-const MANUAL_MODEL_OPTION_VALUE = '\u0000__manual__'
+export const MANUAL_MODEL_OPTION_VALUE = '\u0000__manual__'
 
 // Providers whose model step must NOT auto-discover from a `/models` endpoint:
 // `anthropic` is the native API, and `bedrock`/`vertex`/`foundry` run Claude via
 // cloud SDKs (no OpenAI-style model list). Everything else that reaches the
 // manual form (openai, mistral, gemini, and the many presets collapsed to
 // `openai`) is OpenAI-compatible over HTTP and supports discovery.
-const MODEL_DISCOVERY_EXCLUDED_PROVIDERS = new Set<ProviderProfile['provider']>([
+export const MODEL_DISCOVERY_EXCLUDED_PROVIDERS = new Set<ProviderProfile['provider']>([
   'anthropic',
   'bedrock',
   'vertex',
   'foundry',
 ])
 
-const CODEX_OAUTH_PROVIDER_NAME = 'Codex OAuth'
-const CODEX_OAUTH_PROVIDER_MODEL = 'codexplan'
+export const CODEX_OAUTH_PROVIDER_NAME = 'Codex OAuth'
+export const CODEX_OAUTH_PROVIDER_MODEL = 'codexplan'
 
-const XAI_OAUTH_PROVIDER_NAME = 'xAI / Grok (OAuth)'
+export const XAI_OAUTH_PROVIDER_NAME = 'xAI / Grok (OAuth)'
 // Default model after sign-in; user can swap via /model. grok-4 is the
 // current flagship — see plan ~/.claudin/plans/luminous-popping-clarke.md.
-const XAI_OAUTH_PROVIDER_MODEL = 'grok-4'
+export const XAI_OAUTH_PROVIDER_MODEL = 'grok-4'
 
 // Kimi Code OAuth device-flow: openai_compat transport, tokens in secure
 // storage (see docs/tech/kimi-code/wire-format.md). Defaults mirror the
 // OAuth branch of the unified Moonshot AI preset.
-const KIMI_OAUTH_PROVIDER_NAME = 'Moonshot AI'
-const KIMI_OAUTH_PROVIDER_MODEL = KIMI_CODE_MODEL_LIST
-const KIMI_OAUTH_BASE_URL = 'https://api.kimi.com/coding/v1'
+export const KIMI_OAUTH_PROVIDER_NAME = 'Moonshot AI'
+export const KIMI_OAUTH_PROVIDER_MODEL = KIMI_CODE_MODEL_LIST
+export const KIMI_OAUTH_BASE_URL = 'https://api.kimi.com/coding/v1'
 
 /** A profile id is already the favorites key, so every row can be starred. */
-const PROFILE_FAVORITES = makeFavoritesAdapter<string>(
+export const PROFILE_FAVORITES = makeFavoritesAdapter<string>(
   'providerProfile',
   value => value,
 )
 
-function toDraft(profile: ProviderProfile): ProviderDraft {
+export function toDraft(profile: ProviderProfile): ProviderDraft {
   return {
     name: profile.name,
     baseUrl: profile.baseUrl,
@@ -233,7 +233,7 @@ function toDraft(profile: ProviderProfile): ProviderDraft {
   }
 }
 
-function presetToDraft(preset: ProviderPreset): ProviderDraft {
+export function presetToDraft(preset: ProviderPreset): ProviderDraft {
   const defaults = getProviderPresetDefaults(preset)
   return {
     name: defaults.name,
@@ -259,7 +259,7 @@ export function parseCustomHeaders(text: string): Record<string, string> {
   return out
 }
 
-function customHeadersToText(
+export function customHeadersToText(
   headers: Record<string, string> | undefined,
 ): string {
   if (!headers) return ''
@@ -268,7 +268,7 @@ function customHeadersToText(
     .join('\n')
 }
 
-function buildExtrasFromDrafts(
+export function buildExtrasFromDrafts(
   cloudExtras: CloudExtrasDraft,
   customHeadersText: string,
 ): ProviderProfile['extras'] | undefined {
@@ -288,7 +288,7 @@ function buildExtrasFromDrafts(
   return Object.keys(extras).length > 0 ? extras : undefined
 }
 
-const CLOUD_EXTRAS_STEPS: Record<
+export const CLOUD_EXTRAS_STEPS: Record<
   'bedrock' | 'vertex' | 'foundry',
   ReadonlyArray<{
     key: CloudExtrasField
@@ -332,7 +332,7 @@ const CLOUD_EXTRAS_STEPS: Record<
   ],
 }
 
-function profileSummary(profile: ProviderProfile, isActive: boolean): string {
+export function profileSummary(profile: ProviderProfile, isActive: boolean): string {
   const activeSuffix = isActive ? ' (active)' : ''
   const keyInfo = profile.apiKey ? 'key set' : 'no key'
   const providerKind =
@@ -345,7 +345,7 @@ function profileSummary(profile: ProviderProfile, isActive: boolean): string {
   return `${providerKind} · ${profile.baseUrl} · ${modelDisplay} · ${keyInfo}${activeSuffix}`
 }
 
-function describeAtomicChatSelectionIssue(
+export function describeAtomicChatSelectionIssue(
   readiness: AtomicChatReadiness,
   baseUrl: string,
 ): string {
@@ -360,7 +360,7 @@ function describeAtomicChatSelectionIssue(
   return ''
 }
 
-function describeOllamaSelectionIssue(
+export function describeOllamaSelectionIssue(
   readiness: OllamaGenerationReadiness,
   baseUrl: string,
 ): string {
@@ -383,7 +383,7 @@ function describeOllamaSelectionIssue(
   return ''
 }
 
-function findCodexOAuthProfile(
+export function findCodexOAuthProfile(
   profiles: ProviderProfile[],
   profileId?: string,
 ): ProviderProfile | undefined {
@@ -394,7 +394,7 @@ function findCodexOAuthProfile(
   return profiles.find(profile => profile.id === profileId)
 }
 
-function isCodexOAuthProfile(
+export function isCodexOAuthProfile(
   profile: ProviderProfile | null | undefined,
   profileId?: string,
 ): boolean {
@@ -407,7 +407,7 @@ function isCodexOAuthProfile(
  * stored with the credentials; falls back to the OAuth-profile signature (coding
  * host + no static key), mirroring the deletion heuristic below.
  */
-function findKimiOAuthProfile(
+export function findKimiOAuthProfile(
   profiles: ProviderProfile[],
   profileId?: string,
 ): ProviderProfile | undefined {
@@ -428,7 +428,7 @@ function findKimiOAuthProfile(
  * of appending a duplicate. Prefers the profileId stored with the credentials;
  * falls back to the OAuth-profile signature (xAI base URL + no static key).
  */
-function findXaiOAuthProfile(
+export function findXaiOAuthProfile(
   profiles: ProviderProfile[],
   profileId?: string,
 ): ProviderProfile | undefined {
@@ -449,7 +449,7 @@ function findXaiOAuthProfile(
  * appending a duplicate. Anthropic OAuth stores its tokens in the credentials file
  * (no per-profile id), so match the keyless anthropic profile by signature.
  */
-function findAnthropicOAuthProfile(
+export function findAnthropicOAuthProfile(
   profiles: ProviderProfile[],
   baseUrl: string,
 ): ProviderProfile | undefined {
