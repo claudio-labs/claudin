@@ -1,7 +1,7 @@
 /**
  * Where a session's memory lives on disk.
  *
- * These paths moved here from `src/permissions/filesystem.ts`: the permissions
+ * These paths moved here from `src/permissions/filePermissions.ts`: the permissions
  * slice consumed them (to recognize a write to the session memory file) but did
  * not own them — session memory is this slice's domain.
  */

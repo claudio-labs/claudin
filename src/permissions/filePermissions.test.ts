@@ -28,7 +28,7 @@ import {
   normalizePatternsToPath,
   pathInAllowedWorkingPath,
   pathInWorkingPath,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 
 type Decision = ReturnType<typeof checkReadPermissionForTool>
@@ -442,7 +442,9 @@ describe('checkReadPermissionForTool', () => {
       getEmptyToolPermissionContext(),
     )
     expect(decision.behavior).toBe('ask')
-    expect(decision.message).toContain('Thinking')
+    if (decision.behavior === 'ask') {
+      expect(decision.message).toContain('Thinking')
+    }
   })
 
   test('denies a path covered by a Read deny rule', () => {

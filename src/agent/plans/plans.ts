@@ -124,7 +124,7 @@ export const getPlansDirectory = memoize(function getPlansDirectory(): string {
   // SECURITY: the plans directory now lives inside the project tree, whose
   // contents an attacker controls if the user opens/clones a hostile repo.
   // mkdirSync above follows existing symlink components lexically, and
-  // isSessionPlanFile() (permissions/filesystem.ts) auto-approves reads/writes
+  // isSessionPlanFile() (permissions/filePermissions.ts) auto-approves reads/writes
   // under this path with no prompt — so a `.claudin` (or custom
   // plansDirectory) symlink planted in the repo could otherwise turn plan
   // mode into an unprompted read/write primitive against an arbitrary

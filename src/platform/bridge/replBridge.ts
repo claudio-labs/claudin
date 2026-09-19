@@ -151,7 +151,7 @@ export type BridgeCoreParams = {
    * OAuth 401 refresh handler passed to createBridgeApiClient. REPL wrapper
    * passes handleOAuth401Error; daemon passes its AuthManager's handler.
    * Injected because utils/auth.ts transitively pulls in the command
-   * registry via config.ts → file.ts → permissions/filesystem.ts →
+   * registry via config.ts → file.ts → permissions/filePermissions.ts →
    * sessionStorage.ts → commands.ts.
    */
   onAuth401?: (staleAccessToken: string) => Promise<boolean>

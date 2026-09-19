@@ -23,7 +23,7 @@ import {
   checkReadableInternalPath,
   matchingRuleForInput,
   pathInAllowedWorkingPath,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'

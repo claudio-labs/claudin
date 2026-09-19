@@ -1,7 +1,7 @@
 /**
  * The per-user Claudin temp directory, and the per-project tree under it.
  *
- * These moved here from `src/permissions/filesystem.ts`: choosing a temp
+ * These moved here from `src/permissions/filePermissions.ts`: choosing a temp
  * directory is OS integration, which the host slice owns. Permission checking
  * is one of seven consumers, not the owner.
  */

@@ -39,7 +39,7 @@ import { expandPath } from 'src/shared/fs/path.js'
 import {
   checkWritePermissionForTool,
   matchingRuleForInput,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constants.js'

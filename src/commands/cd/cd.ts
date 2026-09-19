@@ -7,7 +7,7 @@ import {
 } from 'src/commands/add-dir/validation.js'
 import type { LocalJSXCommandContext } from 'src/commands/commands.js'
 import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
-import { pathInWorkingPath } from 'src/permissions/filesystem.js'
+import { pathInWorkingPath } from 'src/permissions/filePermissions.js'
 import {
   getAdditionalDirectoriesForClaudeMd,
   getPendingSessionWakeup,

@@ -12,10 +12,12 @@ import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
-// Checks the same gate as isScratchpadEnabled() in
-// utils/permissions/filesystem.ts. Duplicated here because importing
-// filesystem.ts creates a circular dependency (filesystem -> permissions
-// -> ... -> coordinatorMode). The actual scratchpad path is passed in via
+// Checks the same gate as isScratchpadEnabled(), which now lives in
+// src/agent/scratchpad.ts. The duplication dates from when that function sat
+// in the permissions module and importing it meant a cycle (filePermissions ->
+// permissions -> ... -> coordinatorMode); the leaf module it moved to does not
+// reach back here, so this copy is a removal candidate once someone verifies
+// the graph. The actual scratchpad path is passed in via
 // getCoordinatorUserContext's scratchpadDir parameter (dependency injection
 // from QueryEngine.ts, which lives higher in the dep graph).
 function isScratchpadGateEnabled(): boolean {

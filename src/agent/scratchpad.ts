@@ -1,7 +1,7 @@
 /**
  * The per-session scratchpad directory the agent writes temporary files to.
  *
- * Moved here from `src/permissions/filesystem.ts`: three of the four callers
+ * Moved here from `src/permissions/filePermissions.ts`: three of the four callers
  * are in this slice (the system prompt, the query engine and the REPL's query
  * controller), and the fourth only creates the directory at boot. Permission
  * checking consumes the path to allowlist writes into it; it does not own it.

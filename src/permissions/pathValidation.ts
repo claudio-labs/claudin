@@ -18,7 +18,7 @@ import {
   matchingRuleForInput,
   pathInAllowedWorkingPath,
   pathInWorkingPath,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
 
 const MAX_DIRS_TO_LIST = 5

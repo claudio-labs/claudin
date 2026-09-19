@@ -5,7 +5,7 @@
  * the permissions slice (which allowlists reads from there) need this path,
  * and routing the permission check through the full bundledSkills module
  * would drag `src/tools/Tool.js` into it. Moved here from
- * `src/permissions/filesystem.ts` — the skills slice owns the location of its
+ * `src/permissions/filePermissions.ts` — the skills slice owns the location of its
  * own extraction tree.
  */
 import { randomBytes } from 'crypto'

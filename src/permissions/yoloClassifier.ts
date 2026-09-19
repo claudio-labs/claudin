@@ -561,7 +561,7 @@ export function buildTranscriptForClassifier(
  * stable cache prefix across classifier calls.
  *
  * Reads from bootstrap/state.ts cache (populated by context.ts) instead of
- * importing claudemd.ts directly — claudemd → permissions/filesystem →
+ * importing claudemd.ts directly — claudemd → permissions/filePermissions →
  * permissions → yoloClassifier is a cycle. context.ts already gates on
  * CLAUDIN_DISABLE_CLAUDE_MDS and normalizes '' to null before caching.
  * If the cache is unpopulated (tests, or an entrypoint that never calls

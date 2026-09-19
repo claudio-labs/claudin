@@ -10,7 +10,7 @@ import type { StructuredPatchHunk } from 'diff'
 
 import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { checkBatchWritePermission } from 'src/permissions/filesystem.js'
+import { checkBatchWritePermission } from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import {
   BATCH_CONFIRM_THRESHOLD,

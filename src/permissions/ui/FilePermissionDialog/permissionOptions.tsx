@@ -6,7 +6,7 @@ import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js';
 import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import { expandPath, getDirectoryForPath } from 'src/shared/fs/path.js';
-import { normalizeCaseForComparison, pathInAllowedWorkingPath } from 'src/permissions/filesystem.js';
+import { normalizeCaseForComparison, pathInAllowedWorkingPath } from 'src/permissions/filePermissions.js';
 import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
 /**
  * Check if a path is within the project's .claudin/ folder.

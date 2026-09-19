@@ -5,7 +5,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import {
   checkReadPermissionForTool,
   matchingRuleForInput,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import {

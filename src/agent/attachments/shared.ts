@@ -3,7 +3,7 @@ import type { AttachmentMessage } from 'src/shared/types/message.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { logError } from 'src/shared/log.js'
 import { logAntError } from 'src/shared/debug.js'
-import { matchingRuleForInput } from 'src/permissions/filesystem.js'
+import { matchingRuleForInput } from 'src/permissions/filePermissions.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 
