@@ -50,6 +50,7 @@
 - [Seed that round 3 consumed](dead-code-round-3-plan-seed.md) — SPENT for groups A/D/E; its group B (bashParser, SDK, hookChains, conversationArc, magicDocs) is the remaining ~9k
 - [What is still dead after rounds 1-3 — round 4 seed](dead-code-round-4-seed.md) — SPENT; re-verified 2026-09-18: ~6.3k product-decision lines, the always-false bash-filter debug gate, 15 off-map flags, 1,337 ungated exports/types
 - [Dead-code round 4 (2026-09-18)](dead-code-round-4-2026-09-18.md) — 17 commits, −18.5k; the throw-probe method, the exports ratchet now in CI, 2 user-visible fixes, 28 findings left for round 5
+- [Dead-code round 5 — PR #214 (2026-09-19)](dead-code-round-5-2026-09-19.md) — −4.5k; first transitive symbol fixpoint; JSX-as-regex fakes dead components; 2 real defects; 143-symbol tail left
 - [Dead-code round 2 — PR #211 (2026-09-18)](dead-code-round-2-2026-09-18.md) — 12 commits, −9370 lines; off-map flags 38→15 with each survivor's reason recorded; the single-quote scanner hole
 - [The TS bash parser ships and cannot run](bash-parser-unreachable-behind-tree-sitter-flag.md) — ~4.5k lines behind the off-map TREE_SITTER_BASH flags; enable/delete/leave is a security-path decision, not rot
 - [~8k more lines that ship and cannot run — ranked inventory](unreachable-clusters-inventory-2026-09-18.md) — 12 PRE-EXISTING clusters (hookChains, the SDK surface, terminal/logo, conversationArc…) + the 6 false-positive classes
