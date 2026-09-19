@@ -43,7 +43,7 @@ import {
   extractToolUseBlock,
   parseClassifierResponse,
 } from 'src/permissions/classifierShared.js'
-import { getClaudeTempDir } from 'src/permissions/filesystem.js'
+import { getClaudeTempDir } from 'src/platform/tmpdir.js'
 
 // Dead code elimination: conditional imports for auto mode classifier prompts.
 // At build time, the bundler inlines .txt files as string literals. At test

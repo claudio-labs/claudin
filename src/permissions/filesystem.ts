@@ -1,10 +1,11 @@
 import { randomBytes } from 'crypto'
 import ignore from 'ignore'
 import memoize from 'lodash-es/memoize.js'
-import { homedir, tmpdir } from 'os'
+import { homedir } from 'os'
 import { join, normalize, posix, sep } from 'path'
 import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memory/memdir/paths.js'
 import { getSessionMemoryDir } from 'src/memory/session/paths.js'
+import { getClaudeTempDir, getProjectTempDir } from 'src/platform/tmpdir.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import {
   CLAUDE_FOLDER_PERMISSION_PATTERN,
@@ -26,7 +27,6 @@ import {
   containsPathTraversal,
   expandPath,
   getDirectoryForPath,
-  sanitizePath,
 } from 'src/shared/fs/path.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
@@ -304,53 +304,6 @@ export function isScratchpadEnabled(): boolean {
 }
 
 /**
- * Returns the user-specific Claude temp directory name.
- * On Unix: 'claude-{uid}' to prevent multi-user permission conflicts
- * On Windows: 'claude' (tmpdir() is already per-user)
- */
-export function getClaudeTempDirName(): string {
-  if (getPlatform() === 'windows') {
-    return 'claude'
-  }
-  // Use UID to create per-user directories, preventing permission conflicts
-  // when multiple users share the same /tmp directory
-  const uid = process.getuid?.() ?? 0
-  return `claude-${uid}`
-}
-
-/**
- * Returns the Claude temp directory path with symlinks resolved.
- * Uses TMPDIR env var if set, otherwise:
- * - On Unix: /tmp/claude-{uid}/ (resolved to /private/tmp/claude-{uid}/ on macOS)
- * - On Windows: {tmpdir}/claude/ (e.g., C:\Users\{user}\AppData\Local\Temp\claude\)
- * This is a per-user temporary directory used by Claude Code for all temp files.
- *
- * NOTE: We resolve symlinks to ensure this path matches the resolved paths used
- * in permission checks. On macOS, /tmp is a symlink to /private/tmp, so without
- * resolution, paths like /tmp/claude-{uid}/... wouldn't match /private/tmp/claude-{uid}/...
- */
-// Memoized: called per-tool from permission checks (yoloClassifier, sandbox-adapter)
-// and per-turn from BashTool prompt. Inputs (CLAUDIN_TMPDIR env + platform) are
-// fixed at startup, and the realpath of the system tmp dir does not change mid-session.
-export const getClaudeTempDir = memoize(function getClaudeTempDir(): string {
-  const baseTmpDir =
-    process.env.CLAUDIN_TMPDIR ||
-    (getPlatform() === 'windows' ? tmpdir() : '/tmp')
-
-  // Resolve symlinks in the base temp directory (e.g., /tmp -> /private/tmp on macOS)
-  // This ensures the path matches resolved paths in permission checks
-  const fs = getFsImplementation()
-  let resolvedBaseTmpDir = baseTmpDir
-  try {
-    resolvedBaseTmpDir = fs.realpathSync(baseTmpDir)
-  } catch {
-    // If resolution fails, use the original path
-  }
-
-  return join(resolvedBaseTmpDir, getClaudeTempDirName()) + sep
-})
-
-/**
  * Root for bundled-skill file extraction (see bundledSkills.ts).
  *
  * SECURITY: The per-process random nonce is the load-bearing defense here.
@@ -372,14 +325,6 @@ export const getBundledSkillsRoot = memoize(
     return join(getClaudeTempDir(), 'bundled-skills', MACRO.VERSION, nonce)
   },
 )
-
-/**
- * Returns the project temp directory path with trailing separator.
- * Path format: /tmp/claude-{uid}/{sanitized-cwd}/
- */
-export function getProjectTempDir(): string {
-  return join(getClaudeTempDir(), sanitizePath(getOriginalCwd())) + sep
-}
 
 /**
  * Returns the scratchpad directory path for the current session.
