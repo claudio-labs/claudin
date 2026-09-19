@@ -1,8 +1,20 @@
 ---
 name: deadcode-gate-include-allowlist-hole
-description: deadcode:ci checks nothing about exports because --include is an allowlist, and the proposed deadcode:prod is a NO-OP as specified — knip production mode needs a `!` suffix that knip.json has nowhere
+description: How the three dead-code gates came to be and what none of them can see — :ci/:prod/:exports all run in CI now, but knip only ever answers "is it imported", never "can it be reached"
 type: project
 ---
+
+> **Both holes below are CLOSED.** `deadcode:prod` got its `!` suffixes and its
+> four test-infra `ignore` entries in round 3; `deadcode:exports`
+> (`scripts/verify/deadcode-ci.ts`, a ratchet over `knip-baseline.json`) closed
+> the exports dimension in round 4. All three run in `pr-checks.yml`. Kept for
+> the mechanics, which still explain why a green run proves very little.
+>
+> **The limit that remains, and it is the important one:** knip answers "does
+> anything IMPORT this", never "can any execution path REACH this". Round 5
+> found 202 callerless symbols / 2,129 lines that every gate was green over —
+> see [[dead-code-round-5-2026-09-19]] for the transitive fixpoint that finds
+> them and the traps in writing one.
 
 Measured 2026-09-18 while validating [[dead-code-round-2-2026-09-18]]. Corrects
 two things that were believed about this repo's dead-code gate.

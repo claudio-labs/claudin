@@ -1,60 +1,39 @@
 ---
 name: bash-parser-unreachable-behind-tree-sitter-flag
-description: src/platform/bash/bashParser/ is a complete hand-written TS bash parser (~4.5k lines + a 717-line test) that no code path can reach, because its only entry points were gated on the off-map TREE_SITTER_BASH flags; deleting or enabling it is a security-path product decision, NOT dead-code removal
+description: RESOLVED 2026-09-18 in PR #213 — option 2 was taken and the hand-written TS bash parser plus the whole AST layer is deleted; kept for the two things that outlived it, the EVAL_LIKE_BUILTINS gap and the one live import that dragged 4.5k lines into the bundle
 type: project
 ---
 
-Found 2026-09-18 while removing the folded-false flag clusters
-([[dead-code-round-2-2026-09-18]]). **Not taken, deliberately** — recording it so
-the next removal pass does not either delete it on a knip signal or re-discover
-it from scratch.
+**This is closed. Do not go looking for `src/platform/bash/bashParser/` or
+`bash/ast.ts` — neither exists.** Round 4 ([[dead-code-round-4-2026-09-18]], PR
+#213) removed them, and the real size was more than double the estimate here:
+the whole AST layer went, **16,957 lines in one commit**.
 
-The sizes, measured:
+What this memory used to say, and what was wrong with it: it recorded the parser
+as ~4.5k lines that "no code path can reach" and framed enable/delete/leave as a
+product decision needing a human. The reachability half was right. The size was
+an undercount, and one specific claim was **false** — `bashParser/tokens.ts` was
+listed as *live* because `ast.ts` imported `SHELL_KEYWORDS` from it, but
+`ast.ts` was itself dead, so the keywords' only consumers were `checkSemantics`
+and the parser itself.
 
-| file | lines |
-|---|---|
-| `bashParser/commands.ts` | 1838 |
-| `bashParser/words.ts` | 1192 |
-| `bashParser/expressions.ts` | 772 |
-| `bashParser/lexer.ts` | 511 |
-| `bashParser/parserContext.ts` | 125 |
-| `bashParser.ts` | 127 |
-| `bashParser/tokens.ts` | 62 — **live** |
-| `bashParser.test.ts` (+ snapshot) | 717 |
+Three things worth keeping:
 
-**Why nothing can reach it.** `parseCommand` and `parseCommandRaw`
-(`src/platform/bash/parser.ts`) were the only callers of
-`ensureParserInitialized`/`getParserModule`, and both bodies sat inside
-`feature('TREE_SITTER_BASH')` / `feature('TREE_SITTER_BASH_SHADOW')`. Neither
-flag is in `featureFlags` (`scripts/build/build.ts`), so the build folded both to
-`false` and those functions have always returned `null` in every shipped bundle —
-which every caller routes to the legacy regex/shell-quote path. Commit 275c7558
-removed the gated bodies, so the two functions now return `null` unconditionally
-and the parser has no entry point at all.
+- **The shape.** A complete, tested implementation that no shipped path can
+  reach stays green forever, because its tests import it directly. knip cannot
+  see it either: a module imported by its own test counts as used. Same class as
+  [[growthbook-source-dead-stub-is-real]], reached from the flag side rather
+  than the stub side.
+- **A single live-looking import can drag a whole subsystem into the bundle.**
+  One `SHELL_KEYWORDS` import was the entire reason 16.9k lines shipped. When a
+  removal is blocked by "but X imports it", check whether X is reachable before
+  believing the block.
+- **The security consequence that was NOT theoretical.** The parser was a bash
+  security walker, and `EVAL_LIKE_BUILTINS` coverage lived only inside it. Round
+  4 ported that to a live validator (`bashSecurity/validators/evalLike.ts`)
+  **before** deleting the layer — which is why `source`, `.`, `exec` and
+  `command` now prompt where a broad allow rule used to cover them. If that
+  friction ever needs narrowing, it is a one-line change at `decide.ts:525`.
 
-**Why it still ships.** `src/platform/bash/ast.ts:21` imports `SHELL_KEYWORDS`
-from `bashParser.js`, and `bashParser.ts:35` imports `parseStatements` from
-`bashParser/commands.js`. One live type-ish import therefore drags the whole
-parser into the bundle. `deadcode:ci` cannot see any of this: knip treats a
-module imported by its own test as used, which is exactly the gap
-`deadcode:prod` (`knip --production`) was proposed to close.
-
-**Why it is a product decision, not rot.** The old gate comment read
-*"internal-only until pentest"*, and `PARSE_ABORTED` exists specifically because
-collapsing a parse timeout into `null` once routed adversarial input to the
-legacy path, which lacks `EVAL_LIKE_BUILTINS` — `trap`, `enable` and `hash`
-leaked. So this is a **bash security walker**. Three outcomes, all needing a
-human:
-
-1. **Enable it** — put `TREE_SITTER_BASH` in the map. Changes the Bash
-   permission path for every user; needs the pentest the comment defers to.
-2. **Delete it** — ~4.5k source lines plus the test. Discards a TS port written
-   to avoid the NAPI addon.
-3. **Leave it** — the status quo: it ships, cannot run, and costs bundle size.
-
-If option 2 is taken: keep `bashParser/tokens.ts` (`SHELL_KEYWORDS` is live via
-`ast.ts`) and have `ast.ts` import it directly instead of through `bashParser.ts`.
-
-Same class as [[growthbook-source-dead-stub-is-real]]: a complete, tested
-implementation that no shipped path can reach, kept green by tests that import
-it directly.
+`TREE_SITTER_BASH` / `TREE_SITTER_BASH_SHADOW` are gone from the source; the
+only surviving mentions are in docs and older memories.

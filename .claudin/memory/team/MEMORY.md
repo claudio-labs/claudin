@@ -31,7 +31,7 @@
 - [tsc --noEmit reached ZERO on 2026-08-13](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap; "cannot be hand-fixed" and "never reaches zero" both disproven
 - [/upgrade, /extra-usage, /rate-limit-options — REMOVED 2026-09-15](upsell-commands-missing-login.md) — all three hung on the absent Login stub; the third auto-opened itself on a rate limit
 - [The missing-module stub's default is TRUTHY](missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent)` registered a phantom `noop`; `claudin install` + `mcp serve tools/list` broken
-- [growthbook.ts never runs — the build stub is the real one](growthbook-source-dead-stub-is-real.md) — 986 dead lines vs a ~200-line stub with different resolution order; `bun test` exercises the dead one
+- [growthbook.ts IS the live flag reader — RESOLVED 2026-09-18](growthbook-source-dead-stub-is-real.md) — a module-wide build stub leaves the source dead but fully test-covered
 - [CLAUDIN_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test telling a real TS2307 from the fork's ~107 expected
 - [systemPrompt.main.txt regen captured harness-injected text](systemprompt-snapshot-harness-drift.md) — snapshot covers "Notes for this model" etc., injected by the harness; diff regen vs source before committing
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — means nothing IMPORTS it; needs local-reference + grep guards, `bun run build` as the gate
@@ -45,16 +45,11 @@
 
 ## Roadmap & major features
 - [Dead-code + tengu cleanup — MERGED as PR #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines on main; analytics/telemetry GONE; tengu 1654→326; left: gate-key audit, growthbook collapse, rules sweep
-- [Dead-code round 2 (2026-09-18, branch chore/dead-code-round-2)](dead-code-round-2-2026-09-18.md) — 8 commits, −9324 lines; off-map flags 38→15 with each survivor's reason recorded; the single-quote scanner hole
-- [Dead-code round 3 (2026-09-18)](dead-code-round-3-2026-09-18.md) — 14 commits, −7.7k lines; knip production gate now in CI; 3 inventory claims were WRONG; concluded A/B instrumentation is a new axis
-- [Seed that round 3 consumed](dead-code-round-3-plan-seed.md) — SPENT for groups A/D/E; its group B (bashParser, SDK, hookChains, conversationArc, magicDocs) is the remaining ~9k
-- [What is still dead after rounds 1-3 — round 4 seed](dead-code-round-4-seed.md) — SPENT; re-verified 2026-09-18: ~6.3k product-decision lines, the always-false bash-filter debug gate, 15 off-map flags, 1,337 ungated exports/types
-- [Dead-code round 4 (2026-09-18)](dead-code-round-4-2026-09-18.md) — 17 commits, −18.5k; the throw-probe method, the exports ratchet now in CI, 2 user-visible fixes, 28 findings left for round 5
-- [Dead-code round 5 — PR #214 (2026-09-19)](dead-code-round-5-2026-09-19.md) — −4.5k; first transitive symbol fixpoint; JSX-as-regex fakes dead components; 2 real defects; 143-symbol tail left
 - [Dead-code round 2 — PR #211 (2026-09-18)](dead-code-round-2-2026-09-18.md) — 12 commits, −9370 lines; off-map flags 38→15 with each survivor's reason recorded; the single-quote scanner hole
-- [The TS bash parser ships and cannot run](bash-parser-unreachable-behind-tree-sitter-flag.md) — ~4.5k lines behind the off-map TREE_SITTER_BASH flags; enable/delete/leave is a security-path decision, not rot
-- [~8k more lines that ship and cannot run — ranked inventory](unreachable-clusters-inventory-2026-09-18.md) — 12 PRE-EXISTING clusters (hookChains, the SDK surface, terminal/logo, conversationArc…) + the 6 false-positive classes
-- [deadcode:ci has never checked an export, and deadcode:prod is a no-op](deadcode-gate-include-allowlist-hole.md) — --include is an allowlist; knip production mode needs `!` suffixes knip.json lacks; what it takes to be useful
+- [Dead-code round 3 (2026-09-18)](dead-code-round-3-2026-09-18.md) — 14 commits, −7.7k lines; knip production gate now in CI; 3 inventory claims were WRONG; A/B instrumentation is a new axis
+- [Dead-code round 4 — PR #213 (2026-09-18)](dead-code-round-4-2026-09-18.md) — 17 commits, −18.5k; the throw-probe method, the exports ratchet now in CI, 2 user-visible fixes
+- [Dead-code round 5 — PR #214 (2026-09-19)](dead-code-round-5-2026-09-19.md) — −4.5k; first transitive symbol fixpoint; JSX-as-regex fakes dead components; 2 real defects; 143-symbol tail left
+- [The three dead-code gates and what none of them sees](deadcode-gate-include-allowlist-hole.md) — :ci/:prod/:exports all run in CI now; knip answers "is it imported", never "can it be reached"
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; six barrels live; the fold gate, the re-measured offender list, the 4 split traps
 - [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%; a Read-only "re-reads" column lied — count every lookup tool
