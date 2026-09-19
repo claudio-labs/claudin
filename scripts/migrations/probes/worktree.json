@@ -1,0 +1,131 @@
+{
+  "test": "src/vcs",
+  "source": "src/vcs/git/worktree.ts",
+  "probes": [
+    {
+      "name": "the slug allowlist is what rejects a separator, a space and an empty segment",
+      "find": "const VALID_WORKTREE_SLUG_SEGMENT = /^[a-zA-Z0-9._-]+$/",
+      "replace": "const VALID_WORKTREE_SLUG_SEGMENT = /^[\\s\\S]*$/"
+    },
+    {
+      "name": "the dot-segment check is what rejects `..`",
+      "find": "    if (segment === '.' || segment === '..') {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "the length cap is 64, measured before the allowlist",
+      "find": "  if (slug.length > MAX_WORKTREE_SLUG_LENGTH) {",
+      "replace": "  if (slug.length > MAX_WORKTREE_SLUG_LENGTH * 100) {"
+    },
+    {
+      "name": "the slug is validated per `/`-separated segment, so nesting is legal",
+      "find": "  for (const segment of slug.split('/')) {",
+      "replace": "  for (const segment of [slug]) {"
+    },
+    {
+      "name": "nesting is flattened with `+`, which the slug allowlist excludes",
+      "find": "  return slug.replaceAll('/', '+')",
+      "replace": "  return slug.replaceAll('/', '-')"
+    },
+    {
+      "name": "the worktree branch prefix is `worktree-`",
+      "find": "  return `worktree-${flattenSlug(slug)}`",
+      "replace": "  return `wt-${flattenSlug(slug)}`"
+    },
+    {
+      "name": "the tmux session name uses the repo BASENAME, not the whole path",
+      "find": "  const repoName = basename(repoPath)",
+      "replace": "  const repoName = repoPath"
+    },
+    {
+      "name": "the tmux session name joins repo and branch with `_`",
+      "find": "  const combined = `${repoName}_${branch}`",
+      "replace": "  const combined = `${repoName}-${branch}`"
+    },
+    {
+      "name": "the tmux session name sanitizes `.` as well as `/`",
+      "find": "  return combined.replace(/[/.]/g, '_')",
+      "replace": "  return combined.replace(/[/]/g, '_')"
+    },
+    {
+      "name": "the `#N` PR form is anchored at both ends",
+      "find": "  const hashMatch = input.match(/^#(\\d+)$/)",
+      "replace": "  const hashMatch = input.match(/^#(\\d+)/)"
+    },
+    {
+      "name": "the PR URL shape is /pull/N on any host",
+      "find": "    /^https?:\\/\\/[^/]+\\/[^/]+\\/[^/]+\\/pull\\/(\\d+)\\/?(?:[?#].*)?$/i,",
+      "replace": "    /^https?:\\/\\/[^/]+\\/[^/]+\\/[^/]+\\/pulls\\/(\\d+)\\/?(?:[?#].*)?$/i,"
+    },
+    {
+      "name": "an unrecognized reference falls through to null, not to a number",
+      "find": "  return null\n}\n\nexport async function isTmuxAvailable(): Promise<boolean> {",
+      "replace": "  return 0\n}\n\nexport async function isTmuxAvailable(): Promise<boolean> {"
+    },
+    {
+      "name": "the macOS tmux hint names Homebrew",
+      "find": "    case 'macos':\n      return 'Install tmux with: brew install tmux'",
+      "replace": "    case 'macos':\n      return 'Install tmux with: port install tmux'"
+    },
+    {
+      "name": "linux shares the tmux hint arm with wsl",
+      "find": "    case 'linux':\n    case 'wsl':",
+      "replace": "    case 'wsl':"
+    },
+    {
+      "name": "the Windows tmux arm offers no install command",
+      "find": "      return 'tmux is not natively available on Windows. Consider using WSL or Cygwin.'",
+      "replace": "      return 'tmux is not natively available on Windows.'"
+    },
+    {
+      "name": "an unrecognized platform falls through to the generic tmux hint",
+      "find": "      return 'Install tmux using your system package manager.'",
+      "replace": "      return 'Install tmux with your package manager.'"
+    },
+    {
+      "name": "the mutation lock waits on the previous holder of the same key",
+      "find": "  await previous.catch(() => {})\n\n  try {",
+      "replace": "  await Promise.resolve()\n\n  try {"
+    },
+    {
+      "name": "the lock's release is what lets the next same-key holder run",
+      "find": "    releaseCurrent()",
+      "replace": "    if (false as boolean) releaseCurrent()"
+    },
+    {
+      "name": "a throwing critical section still runs the whole release/evict finally",
+      "find": "  } finally {\n    releaseCurrent()\n    if (gitWorktreeMutationLocks.get(repoRoot) === next) {\n      gitWorktreeMutationLocks.delete(repoRoot)\n    }\n  }",
+      "replace": "  } finally {\n    if (false as boolean) {\n      releaseCurrent()\n      if (gitWorktreeMutationLocks.get(repoRoot) === next) {\n        gitWorktreeMutationLocks.delete(repoRoot)\n      }\n    }\n  }"
+    },
+    {
+      "name": "the critical section's return value is what the lock resolves to",
+      "find": "    return await fn()",
+      "replace": "    await fn()\n    return undefined as T"
+    },
+    {
+      "name": "_resetGitWorktreeMutationLocksForTesting actually clears the map",
+      "find": "  gitWorktreeMutationLocks.clear()",
+      "replace": "  void gitWorktreeMutationLocks"
+    },
+    {
+      "name": "getCurrentWorktreeSession reads the live binding",
+      "find": "export function getCurrentWorktreeSession(): WorktreeSession | null {\n  return currentWorktreeSession\n}",
+      "replace": "export function getCurrentWorktreeSession(): WorktreeSession | null {\n  return null\n}"
+    },
+    {
+      "name": "restoreWorktreeSession writes the live binding",
+      "find": "export function restoreWorktreeSession(session: WorktreeSession | null): void {\n  currentWorktreeSession = session\n}",
+      "replace": "export function restoreWorktreeSession(session: WorktreeSession | null): void {\n  void session\n}"
+    },
+    {
+      "name": "SURFACE PIN: a name dropped from the public surface is caught",
+      "find": "export async function killTmuxSession(sessionName: string): Promise<boolean> {",
+      "replace": "async function killTmuxSession(sessionName: string): Promise<boolean> {"
+    },
+    {
+      "name": "SURFACE PIN: a changed call signature is caught",
+      "find": "export async function hasWorktreeChanges(\n  worktreePath: string,\n  headCommit: string,\n): Promise<boolean> {",
+      "replace": "export async function hasWorktreeChanges(\n  worktreePath: string,\n  headCommit: string | undefined = undefined,\n): Promise<boolean> {"
+    }
+  ]
+}
