@@ -18,11 +18,6 @@ import type {
 // cloud-credential steps that precede it for Bedrock/Vertex/Foundry, and the
 // optional custom-headers step that follows it. Each one edits a slice of the
 // draft ProviderManager owns; none of them saves anything itself.
-//
-// The bodies below carry the indentation they had as nested `render*`
-// functions inside ProviderManager: the move is checked mechanically by
-// scripts/migrations/verify-relocation.ts, which compares line multisets, and
-// re-indenting would turn a provable relocation into an unreviewable rewrite.
 
 export type FormScreenProps = {
   formStepIndex: number
@@ -47,54 +42,54 @@ export function FormScreen({
   errorMessage,
   handleFormSubmit,
 }: FormScreenProps): React.ReactNode {
-  // Derived from the two roots rather than passed: ProviderManager computes the
-  // same three for `handleFormSubmit`, and threading them as props would make
-  // a step change reach this screen through four values instead of one.
-  const currentStep = FORM_STEPS[formStepIndex] ?? FORM_STEPS[0]
-  const currentStepKey = currentStep.key
-  const currentValue = draft[currentStepKey]
+// Derived from the two roots rather than passed: ProviderManager computes the
+// same three for `handleFormSubmit`, and threading them as props would make
+// a step change reach this screen through four values instead of one.
+const currentStep = FORM_STEPS[formStepIndex] ?? FORM_STEPS[0]
+const currentStepKey = currentStep.key
+const currentValue = draft[currentStepKey]
 
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          {editingProfileId ? 'Edit provider profile' : 'Create provider profile'}
-        </Text>
-        <Text dimColor>{currentStep.helpText}</Text>
-        <Text dimColor>
-          Provider type:{' '}
-          {draftProvider === 'anthropic'
-            ? 'Anthropic native API'
-            : 'OpenAI-compatible API'}
-        </Text>
-        <Text dimColor>
-          Step {formStepIndex + 1} of {FORM_STEPS.length}: {currentStep.label}
-        </Text>
-        <Box flexDirection="row" gap={1}>
-          <Text>{figures.pointer}</Text>
-          <TextInput
-            value={currentValue}
-            onChange={value =>
-              setDraft(prev => ({
-                ...prev,
-                [currentStepKey]: value,
-              }))
-            }
-            onSubmit={handleFormSubmit}
-            focus={true}
-            showCursor={true}
-            placeholder={`${currentStep.placeholder}${figures.ellipsis}`}
-            mask={currentStepKey === 'apiKey' ? '*' : undefined}
-            columns={80}
-            cursorOffset={cursorOffset}
-            onChangeCursorOffset={setCursorOffset}
-          />
-        </Box>
-        {errorMessage && <Text color="error">{errorMessage}</Text>}
-        <Text dimColor>
-          Press Enter to continue. Press Esc to go back.
-        </Text>
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text color="remember" bold>
+        {editingProfileId ? 'Edit provider profile' : 'Create provider profile'}
+      </Text>
+      <Text dimColor>{currentStep.helpText}</Text>
+      <Text dimColor>
+        Provider type:{' '}
+        {draftProvider === 'anthropic'
+          ? 'Anthropic native API'
+          : 'OpenAI-compatible API'}
+      </Text>
+      <Text dimColor>
+        Step {formStepIndex + 1} of {FORM_STEPS.length}: {currentStep.label}
+      </Text>
+      <Box flexDirection="row" gap={1}>
+        <Text>{figures.pointer}</Text>
+        <TextInput
+          value={currentValue}
+          onChange={value =>
+            setDraft(prev => ({
+              ...prev,
+              [currentStepKey]: value,
+            }))
+          }
+          onSubmit={handleFormSubmit}
+          focus={true}
+          showCursor={true}
+          placeholder={`${currentStep.placeholder}${figures.ellipsis}`}
+          mask={currentStepKey === 'apiKey' ? '*' : undefined}
+          columns={80}
+          cursorOffset={cursorOffset}
+          onChangeCursorOffset={setCursorOffset}
+        />
       </Box>
-    )
+      {errorMessage && <Text color="error">{errorMessage}</Text>}
+      <Text dimColor>
+        Press Enter to continue. Press Esc to go back.
+      </Text>
+    </Box>
+  )
 }
 
 export type CloudExtrasScreenProps = {
@@ -122,62 +117,62 @@ export function CloudExtrasScreen({
   setErrorMessage,
   setScreen,
 }: CloudExtrasScreenProps): React.ReactNode {
-    const preset = pendingPreset
-    if (preset !== 'bedrock' && preset !== 'vertex' && preset !== 'foundry') {
-      return null
-    }
-    const steps = CLOUD_EXTRAS_STEPS[preset]
-    const step = steps[cloudExtrasStepIndex] ?? steps[0]
-    const value = draftExtras[step.key] ?? ''
+  const preset = pendingPreset
+  if (preset !== 'bedrock' && preset !== 'vertex' && preset !== 'foundry') {
+    return null
+  }
+  const steps = CLOUD_EXTRAS_STEPS[preset]
+  const step = steps[cloudExtrasStepIndex] ?? steps[0]
+  const value = draftExtras[step.key] ?? ''
 
-    function onSubmit(submitted: string): void {
-      const trimmed = submitted.trim()
-      if (trimmed.length === 0) {
-        setErrorMessage(`${step.label} is required.`)
-        return
-      }
-      const nextExtras = { ...draftExtras, [step.key]: trimmed }
-      setDraftExtras(nextExtras)
-      setErrorMessage(undefined)
-      if (cloudExtrasStepIndex < steps.length - 1) {
-        setCloudExtrasStepIndex(cloudExtrasStepIndex + 1)
-        return
-      }
-      // After cloud extras: jump straight to the form for name/baseUrl/model
-      // confirmation. Users still see the full review before saving.
-      setCloudExtrasStepIndex(0)
-      setScreen('form')
+  function onSubmit(submitted: string): void {
+    const trimmed = submitted.trim()
+    if (trimmed.length === 0) {
+      setErrorMessage(`${step.label} is required.`)
+      return
     }
+    const nextExtras = { ...draftExtras, [step.key]: trimmed }
+    setDraftExtras(nextExtras)
+    setErrorMessage(undefined)
+    if (cloudExtrasStepIndex < steps.length - 1) {
+      setCloudExtrasStepIndex(cloudExtrasStepIndex + 1)
+      return
+    }
+    // After cloud extras: jump straight to the form for name/baseUrl/model
+    // confirmation. Users still see the full review before saving.
+    setCloudExtrasStepIndex(0)
+    setScreen('form')
+  }
 
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          {`${preset === 'bedrock' ? 'AWS Bedrock' : preset === 'vertex' ? 'Google Vertex AI' : 'Azure AI Foundry'} setup`}
-        </Text>
-        <Text dimColor>{step.helpText}</Text>
-        <Text dimColor>
-          Step {cloudExtrasStepIndex + 1} of {steps.length}: {step.label}
-        </Text>
-        <Box flexDirection="row" gap={1}>
-          <Text>{figures.pointer}</Text>
-          <TextInput
-            value={value}
-            onChange={v =>
-              setDraftExtras(prev => ({ ...prev, [step.key]: v }))
-            }
-            onSubmit={onSubmit}
-            focus
-            showCursor
-            placeholder={`${step.placeholder}${figures.ellipsis}`}
-            columns={80}
-            cursorOffset={cloudExtrasCursor}
-            onChangeCursorOffset={setCloudExtrasCursor}
-          />
-        </Box>
-        {errorMessage && <Text color="error">{errorMessage}</Text>}
-        <Text dimColor>Press Enter to continue. Press Esc to go back.</Text>
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text color="remember" bold>
+        {`${preset === 'bedrock' ? 'AWS Bedrock' : preset === 'vertex' ? 'Google Vertex AI' : 'Azure AI Foundry'} setup`}
+      </Text>
+      <Text dimColor>{step.helpText}</Text>
+      <Text dimColor>
+        Step {cloudExtrasStepIndex + 1} of {steps.length}: {step.label}
+      </Text>
+      <Box flexDirection="row" gap={1}>
+        <Text>{figures.pointer}</Text>
+        <TextInput
+          value={value}
+          onChange={v =>
+            setDraftExtras(prev => ({ ...prev, [step.key]: v }))
+          }
+          onSubmit={onSubmit}
+          focus
+          showCursor
+          placeholder={`${step.placeholder}${figures.ellipsis}`}
+          columns={80}
+          cursorOffset={cloudExtrasCursor}
+          onChangeCursorOffset={setCloudExtrasCursor}
+        />
       </Box>
-    )
+      {errorMessage && <Text color="error">{errorMessage}</Text>}
+      <Text dimColor>Press Enter to continue. Press Esc to go back.</Text>
+    </Box>
+  )
 }
 
 export type CustomHeadersScreenProps = {
@@ -199,35 +194,35 @@ export function CustomHeadersScreen({
   setCustomHeadersCursor,
   persistDraft,
 }: CustomHeadersScreenProps): React.ReactNode {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          Custom headers (optional)
-        </Text>
-        <Text dimColor>
-          Add HTTP headers sent on every request. One header per line as
-          {' '}
-          <Text>{`Header: Value`}</Text>. Leave empty to skip.
-        </Text>
-        <Box flexDirection="row" gap={1}>
-          <Text>{figures.pointer}</Text>
-          <TextInput
-            value={draftCustomHeaders}
-            onChange={setDraftCustomHeaders}
-            onSubmit={() => persistDraft(draft)}
-            focus
-            showCursor
-            placeholder={'X-Header: value'}
-            columns={80}
-            multiline
-            cursorOffset={customHeadersCursor}
-            onChangeCursorOffset={setCustomHeadersCursor}
-          />
-        </Box>
-        {errorMessage && <Text color="error">{errorMessage}</Text>}
-        <Text dimColor>
-          Press Enter on a blank line to save. Press Esc to go back.
-        </Text>
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text color="remember" bold>
+        Custom headers (optional)
+      </Text>
+      <Text dimColor>
+        Add HTTP headers sent on every request. One header per line as
+        {' '}
+        <Text>{`Header: Value`}</Text>. Leave empty to skip.
+      </Text>
+      <Box flexDirection="row" gap={1}>
+        <Text>{figures.pointer}</Text>
+        <TextInput
+          value={draftCustomHeaders}
+          onChange={setDraftCustomHeaders}
+          onSubmit={() => persistDraft(draft)}
+          focus
+          showCursor
+          placeholder={'X-Header: value'}
+          columns={80}
+          multiline
+          cursorOffset={customHeadersCursor}
+          onChangeCursorOffset={setCustomHeadersCursor}
+        />
       </Box>
-    )
+      {errorMessage && <Text color="error">{errorMessage}</Text>}
+      <Text dimColor>
+        Press Enter on a blank line to save. Press Esc to go back.
+      </Text>
+    </Box>
+  )
 }
