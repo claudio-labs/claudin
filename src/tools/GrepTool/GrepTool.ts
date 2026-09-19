@@ -15,7 +15,7 @@ import {
   checkReadPermissionForTool,
   getFileReadIgnorePatterns,
   normalizePatternsToPath,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import { getGlobExclusionsForPluginCache } from 'src/plugins/orphanedPluginFilter.js'

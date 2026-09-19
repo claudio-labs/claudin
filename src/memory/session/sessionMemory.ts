@@ -33,7 +33,7 @@ import {
 import {
   getSessionMemoryDir,
   getSessionMemoryPath,
-} from 'src/permissions/filesystem.js'
+} from 'src/memory/session/paths.js'
 import { sequential } from 'src/shared/sequential.js'
 import { getTokenUsage, tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js'

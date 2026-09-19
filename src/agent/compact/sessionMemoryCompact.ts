@@ -11,7 +11,7 @@ import {
   isCompactBoundaryMessage,
 } from 'src/agent/messages/messages.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
-import { getSessionMemoryPath } from 'src/permissions/filesystem.js'
+import { getSessionMemoryPath } from 'src/memory/session/paths.js'
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import { getTranscriptPath } from 'src/sessions/sessionStorage.js'
 import { tokenCountFromLastAPIResponse } from 'src/agent/context/tokens.js'

@@ -23,8 +23,13 @@ In this order, before the first edit:
    (`src/tools/shared/codeOutline/`, `src/platform/headless/print/`,
    `src/providers/shims/claude/`, `src/platform/config/config/`,
    `src/platform/bootstrap/state/`, `src/commands/insights/`,
-   `src/tools/BashTool/bashPermissions/` and `bashSecurity/`). Editing the
-   barrel is almost always wrong.
+   `src/tools/BashTool/bashPermissions/` and `bashSecurity/`,
+   `src/agent/compact/stableStubState/`, `src/permissions/filePermissions/`
+   and `src/permissions/yoloClassifier/`). Editing the barrel is almost
+   always wrong. One of them is deliberately NOT a pure barrel:
+   `src/permissions/permissions.ts` re-exports its `permissions/` siblings but
+   keeps `hasPermissionsToUseTool` and the decision core in the file, because
+   that is the security hot path.
 3. **Grep the callers before changing a signature.** Cross-slice imports use the
    `src/…` alias, so `Grep` on the symbol name finds every call site; there is no
    hidden dynamic wiring except MCP and plugins.

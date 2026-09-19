@@ -226,7 +226,7 @@ src/
 │   ├── query.ts + query/ (8)    ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
 │   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
 │   │                              context blocks (git status, dir structure)
-│   ├── context/ (16)            ← token accounting + context-window math. Three things carry
+│   ├── context/ (12)            ← token accounting + context-window math. Three things carry
 │   │                              this name: agent/context.ts (prompt blocks), agent/context/
 │   │                              (accounting), terminal/contexts/ (React providers)
 │   ├── prompts/ (25)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
@@ -235,11 +235,14 @@ src/
 │   ├── tools/ (29)              ← toolExecution, toolResultCache, toolResultSummarizer (→ cache.md)
 │   ├── tasks/ (37)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
-│   ├── compact/ (23)            ← compaction: autoCompact, microCompact, stableStubState
+│   ├── compact/ (29)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
+│   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
+│   │                              per-key state, pinRegistry, clipStubText, clipFrontier)
 │   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
 │   ├── messages/ attachments/   ← message normalization, attachment rendering
 │   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
-│   └── plans/ goal/ autoFix/           ← planning + self-correction
+│   ├── plans/ goal/ autoFix/           ← planning + self-correction
+│   └── scratchpad.ts            ← the per-session scratchpad dir (permissions only consumes it)
 ├── providers/ (256)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
@@ -292,7 +295,7 @@ src/
 │   ├── settings/ (33)           ← settings.json layers, precedence, remote-managed
 │   ├── lifecycleHooks/ (43)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
 │   │                              each slice's own hooks/ — these are the harness's
-│   ├── bash/ (32)               ← bash parsing, command splitting, shell snapshots
+│   ├── bash/ (24)               ← bash parsing, command splitting, shell snapshots
 │   ├── analytics/ (2)           ← feature-flag resolution ONLY, over
 │   │                              ~/.claudin/feature-flags.json. The analytics and
 │   │                              telemetry this was named for is deleted, not stubbed
@@ -322,8 +325,16 @@ src/
 │                                  plugin/ (19) and install-github-app/ (17) are the big ones;
 │                                  insights.ts is a BARREL over insights/ and must keep re-exporting
 │                                  `default` — commands.ts reaches it through a dynamic import
-├── permissions/ (116)           ← rules, classifiers, always-allow, and every permission dialog
-│   ├── yoloClassifier.ts        ← the auto-mode classifier (prompts in yolo-classifier-prompts/)
+├── permissions/ (135)           ← rules, classifiers, always-allow, and every permission dialog
+│   ├── permissions.ts           ← hasPermissionsToUseTool, the decision core, over a
+│   │                              permissions/ dir (ruleLookup, ruleMutation, requestMessage,
+│   │                              denial). Re-exports but is NOT a pure barrel
+│   ├── filePermissions.ts       ← a BARREL over filePermissions/ (dangerousPaths, internalPaths,
+│   │                              rulePatterns, workingDirs, readWriteChecks, pathCase). Was
+│   │                              filesystem.ts until 2026-09-19; `git log --follow` crosses it
+│   ├── yoloClassifier.ts        ← a BARREL over yoloClassifier/ (prompts, transcript, xmlResponse,
+│   │                              classifierConfig, autoModeDumps, classify). The .txt templates
+│   │                              stay in yolo-classifier-prompts/ — build.ts hardcodes that path
 │   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)
 │   └── ui/                      ← one request component per tool + rules/ editor
 ├── mcp/ (65)                    ← client/ (10: connection, transport, callTool, authCache),

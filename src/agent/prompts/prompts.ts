@@ -34,7 +34,7 @@ import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/promp
 import {
   isScratchpadEnabled,
   getScratchpadDir,
-} from 'src/permissions/filesystem.js'
+} from 'src/agent/scratchpad.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import { shouldUseGlobalCacheScope } from 'src/providers/transport/betas.js'

@@ -7,7 +7,7 @@ import { expandPath } from 'src/shared/fs/path.js'
 import {
   allWorkingDirectories,
   pathInWorkingPath,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 
 export type ResolveDirectoryResult =
   | {

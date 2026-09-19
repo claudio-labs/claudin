@@ -25,7 +25,7 @@ export type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 
 import { accessSync } from 'fs'
 import { onCwdChangedForHooks } from 'src/platform/lifecycleHooks/fileChangedWatcher.js'
-import { getClaudeTempDirName } from 'src/permissions/filesystem.js'
+import { getClaudeTempDirName } from 'src/platform/tmpdir.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import { invalidateSessionEnvCache } from 'src/sessions/sessionEnvironment.js'

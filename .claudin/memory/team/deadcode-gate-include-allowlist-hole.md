@@ -77,4 +77,5 @@ the [/pre-pr](../../skills/pre-pr/SKILL.md) skill.
 And when counting occurrences to apply guard (a), **count raw occurrences rather
 than stripping comments**: a comment-stripping pass produced a false "dead"
 verdict for `getClaudeSkillScope`, which is live at
-`src/permissions/filesystem.ts:1336`.
+`src/permissions/filePermissions/internalPaths.ts` (it was
+`src/permissions/filesystem.ts:1336` before the 2026-09-19 barrel split).

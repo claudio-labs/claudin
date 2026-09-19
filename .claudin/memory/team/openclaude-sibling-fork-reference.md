@@ -173,9 +173,11 @@ The original ranked list follows, kept for its citations. Ranked:
    discovery-over-*table*, which is right; discovery-over-*user pin* is the bug.
    Their `3451187a`.
 6. `src/permissions/filesystem.ts:1242` — write-permission check matches rules
-   against the raw `tool.getPath(input)`; the read path already calls
-   `expandPath` (`:1066`). Misfires when session cwd ≠ process cwd (worktree
-   agents). Their `4f971a13`.
+6. `src/permissions/filePermissions/readWriteChecks.ts` (was
+   `src/permissions/filesystem.ts:1242` before the 2026-09-19 split) —
+   `checkWritePermissionForTool` matches rules against the raw
+   `tool.getPath(input)`; the read path already calls `expandPath`. Misfires
+   when session cwd ≠ process cwd (worktree agents). Their `4f971a13`.
 7. `src/vcs/git/worktree.ts:322` — `worktree.baseRef` defaults to `'fresh'` =
    `origin/<default>`, so `isolation:"worktree"` sub-agents audit a stale base.
    This is the ROOT CAUSE of the hazard `.claudin/rules/agent-safety.md` §2

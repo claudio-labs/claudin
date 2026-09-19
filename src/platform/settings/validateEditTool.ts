@@ -1,5 +1,5 @@
 import type { ValidationResult } from 'src/tools/Tool.js'
-import { isClaudeSettingsPath } from 'src/permissions/filesystem.js'
+import { isClaudeSettingsPath } from 'src/permissions/filePermissions.js'
 import { validateSettingsFileContent } from 'src/platform/settings/validation.js'
 
 /**

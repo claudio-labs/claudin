@@ -33,7 +33,7 @@ import { configureGlobalMTLS } from 'src/providers/transport/mtls.js'
 import {
   ensureScratchpadDir,
   isScratchpadEnabled,
-} from 'src/permissions/filesystem.js'
+} from 'src/agent/scratchpad.js'
 import { configureGlobalAgents } from 'src/providers/transport/proxy.js'
 import { setShellIfWindows } from 'src/shared/fs/windowsPaths.js'
 

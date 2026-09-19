@@ -11,7 +11,7 @@ import {
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { getPlansDirectory, setPlanSlug } from 'src/agent/plans/plans.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { checkEditableInternalPath } from 'src/permissions/filesystem.js'
+import { checkEditableInternalPath } from 'src/permissions/filePermissions.js'
 
 // Regression coverage for the plan-mode "Only the plan file may be edited"
 // denial: a plan-file write must be recognized (behavior 'allow') even when

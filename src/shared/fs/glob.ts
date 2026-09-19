@@ -5,7 +5,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getFileReadIgnorePatterns,
   normalizePatternsToPath,
-} from 'src/permissions/filesystem.js'
+} from 'src/permissions/filePermissions.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { getGlobExclusionsForPluginCache } from 'src/plugins/orphanedPluginFilter.js'
 import type { RipgrepIncompleteReason } from 'src/shared/fs/ripgrep.js'

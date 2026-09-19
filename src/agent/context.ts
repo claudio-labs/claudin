@@ -147,7 +147,7 @@ export const getUserContext = memoize(
       : getClaudeMds(filterInjectedMemoryFiles(await getMemoryFiles()))
     // Cache for the auto-mode classifier (yoloClassifier.ts reads this
     // instead of importing claudemd.ts directly, which would create a
-    // cycle through permissions/filesystem → permissions → yoloClassifier).
+    // cycle through permissions/filePermissions → permissions → yoloClassifier).
     setCachedClaudeMdContent(claudeMd || null)
 
     logForDiagnosticsNoPII('info', 'user_context_completed', {

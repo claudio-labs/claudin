@@ -4,7 +4,7 @@ import {
   FILE_EDIT_TOOL_NAME,
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
-import { generateSuggestions } from 'src/permissions/filesystem.js'
+import { generateSuggestions } from 'src/permissions/filePermissions.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import type { CompletionType } from 'src/providers/transport/unaryLogging.js'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'

@@ -8,7 +8,7 @@ import {
 } from 'src/platform/bash/commands.js'
 import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { getDirectoryForPath } from 'src/shared/fs/path.js'
-import { allWorkingDirectories } from 'src/permissions/filesystem.js'
+import { allWorkingDirectories } from 'src/permissions/filePermissions.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
