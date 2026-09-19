@@ -1,0 +1,186 @@
+{
+  "test": "src/mcp/auth.test.ts",
+  "source": "src/mcp/auth.ts",
+  "probes": [
+    {
+      "name": "state is compared before any error parameter is honoured",
+      "find": "  if (state !== oauthState) {\n    return { type: 'state_mismatch' }\n  }",
+      "replace": "  if (false as boolean) {\n    return { type: 'state_mismatch' }\n  }"
+    },
+    {
+      "name": "a repeated parameter takes the first NON-EMPTY value, not index 0",
+      "find": "    return value.find(item => item.length > 0)",
+      "replace": "    return value[0]"
+    },
+    {
+      "name": "an empty parameter value is undefined, not the empty string",
+      "find": "  return value && value.length > 0 ? value : undefined",
+      "replace": "  return value ?? undefined"
+    },
+    {
+      "name": "a sensitive parameter's value is replaced, not just rewritten",
+      "find": "        parsedUrl.searchParams.set(param, '[REDACTED]')",
+      "replace": "        parsedUrl.searchParams.set(param, parsedUrl.searchParams.get(param) ?? '')"
+    },
+    {
+      "name": "redaction only touches parameters the URL actually carried",
+      "find": "      if (parsedUrl.searchParams.has(param)) {",
+      "replace": "      if (true as boolean) {"
+    },
+    {
+      "name": "a string that is not a URL comes back unchanged",
+      "find": "  } catch {\n    // Return as-is if not a valid URL\n    return url\n  }",
+      "replace": "  } catch {\n    // Return as-is if not a valid URL\n    return ''\n  }"
+    },
+    {
+      "name": "'code' is in the sensitive-parameter list",
+      "find": "  'code_verifier',\n  'code',\n]",
+      "replace": "  'code_verifier',\n]"
+    },
+    {
+      "name": "'state' is in the sensitive-parameter list",
+      "find": "const SENSITIVE_OAUTH_PARAMS = [\n  'state',",
+      "replace": "const SENSITIVE_OAUTH_PARAMS = ["
+    },
+    {
+      "name": "a non-2xx response is returned untouched, by identity",
+      "find": "  if (!response.ok) {\n    return response\n  }",
+      "replace": "  if (false as boolean) {\n    return response\n  }"
+    },
+    {
+      "name": "a body parsing as tokens wins over a body parsing as an error",
+      "find": "  if (OAuthTokensSchema.safeParse(parsed).success) {\n    return new Response(text, response)\n  }",
+      "replace": "  if (false as boolean) {\n    return new Response(text, response)\n  }"
+    },
+    {
+      "name": "a body that is not JSON does not throw out of the normalizer",
+      "find": "  try {\n    parsed = jsonParse(text)\n  } catch {\n    return new Response(text, response)\n  }",
+      "replace": "  parsed = jsonParse(text)"
+    },
+    {
+      "name": "a JSON body of an unrelated shape is left alone",
+      "find": "  const result = OAuthErrorResponseSchema.safeParse(parsed)\n  if (!result.success) {\n    return new Response(text, response)\n  }",
+      "replace": "  const result = OAuthErrorResponseSchema.safeParse(parsed)\n  if (false as boolean) {\n    return new Response(text, response)\n  }"
+    },
+    {
+      "name": "the non-standard alias set is consulted at all",
+      "find": "  const normalized = NONSTANDARD_INVALID_GRANT_ALIASES.has(result.data.error)",
+      "replace": "  const normalized = (false as boolean)"
+    },
+    {
+      "name": "'invalid_refresh_token' is one of the aliases",
+      "find": "  'invalid_refresh_token',\n  'expired_refresh_token',",
+      "replace": "  'expired_refresh_token',"
+    },
+    {
+      "name": "'expired_refresh_token' is one of the aliases",
+      "find": "  'expired_refresh_token',\n  'token_expired',",
+      "replace": "  'token_expired',"
+    },
+    {
+      "name": "'token_expired' is one of the aliases",
+      "find": "  'token_expired',\n])",
+      "replace": "])"
+    },
+    {
+      "name": "an error code outside the alias set keeps its own code",
+      "find": "    : result.data\n  return new Response(jsonStringify(normalized), {",
+      "replace": "    : { error: 'invalid_grant' }\n  return new Response(jsonStringify(normalized), {"
+    },
+    {
+      "name": "a normalized alias carries a description naming the original code",
+      "find": "          `Server returned non-standard error code: ${result.data.error}`,",
+      "replace": "          '',"
+    },
+    {
+      "name": "the server's own error_description survives normalization",
+      "find": "          result.data.error_description ??\n          `Server returned non-standard error code: ${result.data.error}`,",
+      "replace": "          `Server returned non-standard error code: ${result.data.error}`,"
+    },
+    {
+      "name": "a normalized error body is rewritten to a 400",
+      "find": "    status: 400,\n    statusText: 'Bad Request',",
+      "replace": "    status: 200,\n    statusText: 'Bad Request',"
+    },
+    {
+      "name": "the server URL is part of the credential key",
+      "find": "    url: serverConfig.url,\n    headers: serverConfig.headers || {},",
+      "replace": "    headers: serverConfig.headers || {},"
+    },
+    {
+      "name": "the configured headers are part of the credential key",
+      "find": "    headers: serverConfig.headers || {},\n  })\n",
+      "replace": "  })\n"
+    },
+    {
+      "name": "absent headers are normalized to {} before hashing",
+      "find": "    headers: serverConfig.headers || {},",
+      "replace": "    headers: serverConfig.headers,"
+    },
+    {
+      "name": "the transport type is part of the credential key",
+      "find": "    type: serverConfig.type,\n    url: serverConfig.url,",
+      "replace": "    url: serverConfig.url,"
+    },
+    {
+      "name": "the server name is part of the credential key",
+      "find": "  return `${serverName}|${hash}`",
+      "replace": "  return hash"
+    },
+    {
+      "name": "the config digest is 16 hex characters",
+      "find": "    .substring(0, 16)",
+      "replace": "    .substring(0, 8)"
+    },
+    {
+      "name": "'scope' outranks the other two metadata fields",
+      "find": "  if ('scope' in metadata && typeof metadata.scope === 'string') {\n    return metadata.scope\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "a non-string 'scope' falls through instead of being returned",
+      "find": "typeof metadata.scope === 'string'",
+      "replace": "typeof metadata.scope !== 'undefined'"
+    },
+    {
+      "name": "'default_scope' is read when 'scope' is absent",
+      "find": "  if (\n    'default_scope' in metadata &&\n    typeof metadata.default_scope === 'string'\n  ) {\n    return metadata.default_scope\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "scopes_supported is joined with spaces",
+      "find": "    return metadata.scopes_supported.join(' ')",
+      "replace": "    return metadata.scopes_supported.join(',')"
+    },
+    {
+      "name": "a scopes_supported that is not an array is ignored",
+      "find": "  if (metadata.scopes_supported && Array.isArray(metadata.scopes_supported)) {",
+      "replace": "  if (metadata.scopes_supported) {"
+    },
+    {
+      "name": "AuthenticationCancelledError carries its own .name",
+      "find": "    this.name = 'AuthenticationCancelledError'",
+      "replace": "    this.name = 'Error'"
+    },
+    {
+      "name": "AuthenticationCancelledError carries its own message",
+      "find": "    super('Authentication was cancelled')",
+      "replace": "    super('cancelled')"
+    },
+    {
+      "name": "SURFACE PIN: a dropped export is caught",
+      "find": "export function clearMcpClientConfig(",
+      "replace": "function clearMcpClientConfig("
+    },
+    {
+      "name": "SURFACE PIN: a dropped ClaudeAuthProvider method is caught",
+      "find": "  setMetadata(\n    metadata: Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>,\n  ): void {",
+      "replace": "  setMetadataRenamed(\n    metadata: Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>,\n  ): void {"
+    },
+    {
+      "name": "SURFACE PIN: a changed call signature is caught",
+      "find": "  abortSignal?: AbortSignal,",
+      "replace": "  abortSignal: AbortSignal | undefined = undefined,"
+    }
+  ]
+}

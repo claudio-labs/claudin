@@ -85,7 +85,7 @@ const SENSITIVE_OAUTH_PARAMS = [
  * Redacts sensitive OAuth query parameters from a URL for safe logging.
  * Prevents exposure of state, nonce, code_challenge, code_verifier, and authorization codes.
  */
-function redactSensitiveUrlParams(url: string): string {
+export function redactSensitiveUrlParams(url: string): string {
   try {
     const parsedUrl = new URL(url)
     for (const param of SENSITIVE_OAUTH_PARAMS) {
@@ -114,7 +114,7 @@ type OAuthCallbackValidationResult =
   | { type: 'missing_result' }
   | { type: 'state_mismatch' }
 
-function getFirstOAuthCallbackParam(
+export function getFirstOAuthCallbackParam(
   value: OAuthCallbackParamValue,
 ): string | undefined {
   if (Array.isArray(value)) {
@@ -1948,7 +1948,7 @@ export function clearMcpClientConfig(
  * The metadata can be either OAuthMetadata or OpenIdProviderDiscoveryMetadata,
  * and different providers use different fields for scope information.
  */
-function getScopeFromMetadata(
+export function getScopeFromMetadata(
   metadata: AuthorizationServerMetadata | undefined,
 ): string | undefined {
   if (!metadata) return undefined
