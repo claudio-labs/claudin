@@ -1,9 +1,20 @@
 import { homedir } from 'os'
-import { dirname, isAbsolute, join, normalize, relative, resolve } from 'path'
+import {
+  dirname,
+  isAbsolute,
+  join,
+  normalize,
+  posix,
+  relative,
+  resolve,
+} from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { posixPathToWindowsPath } from 'src/shared/fs/windowsPaths.js'
+import {
+  posixPathToWindowsPath,
+  windowsPathToPosixPath,
+} from 'src/shared/fs/windowsPaths.js'
 
 /**
  * Expands a path that may contain tilde notation (~) to an absolute path.
@@ -93,9 +104,48 @@ export function expandPath(path: string, baseDir?: string): string {
  * @returns Relative path if under cwd, otherwise the original absolute path
  */
 export function toRelativePath(absolutePath: string): string {
-  const relativePath = relative(getCwd(), absolutePath)
+  const rel = relative(getCwd(), absolutePath)
   // If the relative path would go outside cwd (starts with ..), keep absolute
-  return relativePath.startsWith('..') ? absolutePath : relativePath
+  return rel.startsWith('..') ? absolutePath : rel
+}
+
+/**
+ * Cross-platform relative path calculation that returns POSIX-style paths.
+ * Handles Windows path conversion internally.
+ *
+ * Not to be confused with `toRelativePath` above: that one takes a single
+ * path and relativizes it against the current working directory to shorten
+ * tool output, and falls back to the absolute path when the target is
+ * outside. This one takes both ends explicitly and always returns what
+ * `posix.relative` returns, `..` segments included — callers compare against
+ * those to decide containment.
+ *
+ * @param from The base path
+ * @param to The target path
+ * @returns A POSIX-style relative path
+ */
+export function relativePath(from: string, to: string): string {
+  if (getPlatform() === 'windows') {
+    // Convert Windows paths to POSIX for consistent comparison
+    const posixFrom = windowsPathToPosixPath(from)
+    const posixTo = windowsPathToPosixPath(to)
+    return posix.relative(posixFrom, posixTo)
+  }
+  // Use POSIX paths directly
+  return posix.relative(from, to)
+}
+
+/**
+ * Converts a path to POSIX format for pattern matching.
+ * Handles Windows path conversion internally.
+ * @param path The path to convert
+ * @returns A POSIX-style path
+ */
+export function toPosixPath(path: string): string {
+  if (getPlatform() === 'windows') {
+    return windowsPathToPosixPath(path)
+  }
+  return path
 }
 
 /**

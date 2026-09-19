@@ -23,6 +23,7 @@ import {
   containsPathTraversal,
   expandPath,
   getDirectoryForPath,
+  relativePath,
 } from 'src/shared/fs/path.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js'
@@ -155,37 +156,6 @@ export function getClaudeSkillScope(
 // Always use / as the path separator per gitignore spec
 // https://git-scm.com/docs/gitignore
 const DIR_SEP = posix.sep
-
-/**
- * Cross-platform relative path calculation that returns POSIX-style paths.
- * Handles Windows path conversion internally.
- * @param from The base path
- * @param to The target path
- * @returns A POSIX-style relative path
- */
-export function relativePath(from: string, to: string): string {
-  if (getPlatform() === 'windows') {
-    // Convert Windows paths to POSIX for consistent comparison
-    const posixFrom = windowsPathToPosixPath(from)
-    const posixTo = windowsPathToPosixPath(to)
-    return posix.relative(posixFrom, posixTo)
-  }
-  // Use POSIX paths directly
-  return posix.relative(from, to)
-}
-
-/**
- * Converts a path to POSIX format for pattern matching.
- * Handles Windows path conversion internally.
- * @param path The path to convert
- * @returns A POSIX-style path
- */
-export function toPosixPath(path: string): string {
-  if (getPlatform() === 'windows') {
-    return windowsPathToPosixPath(path)
-  }
-  return path
-}
 
 function getSettingsPaths(): string[] {
   return SETTING_SOURCES.map(source =>

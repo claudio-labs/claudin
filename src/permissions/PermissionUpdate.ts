@@ -13,7 +13,7 @@ import {
   updateSettingsForSource,
 } from 'src/platform/settings/settings.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { toPosixPath } from 'src/permissions/filesystem.js'
+import { toPosixPath } from 'src/shared/fs/path.js'
 import type { PermissionRuleValue } from 'src/permissions/PermissionRule.js'
 import type {
   PermissionUpdate,
