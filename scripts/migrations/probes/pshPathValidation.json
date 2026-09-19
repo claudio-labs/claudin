@@ -1,0 +1,261 @@
+{
+  "test": "src/tools/PowerShellTool",
+  "source": "src/tools/PowerShellTool/pathValidation.ts",
+  "probes": [
+    {
+      "name": "the cmdlet table names which parameters carry paths",
+      "find": "  'get-content': {\n    operationType: 'read',\n    pathParams: ['-path', '-literalpath', '-pspath', '-lp'],",
+      "replace": "  'get-content': {\n    operationType: 'read',\n    pathParams: [],"
+    },
+    {
+      "name": "an unknown cmdlet gets no fallback config",
+      "find": "  const config = CMDLET_PATH_CONFIG[canonical]",
+      "replace": "  const config = CMDLET_PATH_CONFIG[canonical] ?? CMDLET_PATH_CONFIG['get-content']"
+    },
+    {
+      "name": "the table has a null prototype",
+      "find": "  Object.create(null) as Record<string, CmdletPathConfig>,",
+      "replace": "  {} as Record<string, CmdletPathConfig>,"
+    },
+    {
+      "name": "-Value is a known value parameter, not a path",
+      "find": "      '-value',\n      '-filter',\n      '-include',\n      '-exclude',\n      '-credential',\n      '-encoding',\n      '-stream',\n    ],\n  },\n  'add-content': {",
+      "replace": "      '-notvalue',\n      '-filter',\n      '-include',\n      '-exclude',\n      '-credential',\n      '-encoding',\n      '-stream',\n    ],\n  },\n  'add-content': {"
+    },
+    {
+      "name": "parameter abbreviation is matched in the safe direction",
+      "find": "      p === paramLower ||\n      (paramLower.length > 1 && p.startsWith(paramLower))",
+      "replace": "      p === paramLower ||\n      (paramLower.length > 1 && paramLower.startsWith(p))"
+    },
+    {
+      "name": "parameter abbreviation is honoured at all",
+      "find": "      p === paramLower ||\n      (paramLower.length > 1 && p.startsWith(paramLower))",
+      "replace": "      p === paramLower"
+    },
+    {
+      "name": "~ is expanded to the home directory",
+      "find": "    return homedir() + filePath.slice(1)",
+      "replace": "    return filePath"
+    },
+    {
+      "name": "backslashes are normalized before the path is resolved",
+      "find": "  const normalizedPath = cleanPath.replace(/\\\\/g, '/')",
+      "replace": "  const normalizedPath = cleanPath"
+    },
+    {
+      "name": "a relative path is resolved against the cwd before it is checked",
+      "find": "  const absolutePath = isAbsolute(normalizedPath)\n    ? normalizedPath\n    : resolve(cwd, normalizedPath)\n  const { resolvedPath, isCanonical } = safeResolvePath(",
+      "replace": "  const absolutePath = isAbsolute(normalizedPath)\n    ? normalizedPath\n    : resolve(cwd, normalizedPath.replace(/\\.\\./g, '.'))\n  const { resolvedPath, isCanonical } = safeResolvePath("
+    },
+    {
+      "name": "a deny rule is reported as a rule decision",
+      "find": "  if (denyRule !== null) {\n    return {\n      allowed: false,\n      decisionReason: { type: 'rule', rule: denyRule },\n    }\n  }",
+      "replace": "  if (denyRule !== null) {\n    return {\n      allowed: false,\n      decisionReason: { type: 'other', reason: 'denied' },\n    }\n  }"
+    },
+    {
+      "name": "the working-directory allowlist is consulted",
+      "find": "  const isInWorkingDir = pathInAllowedWorkingPath(\n    resolvedPath,\n    context,\n    precomputedPathsToCheck,\n  )",
+      "replace": "  const isInWorkingDir = true"
+    },
+    {
+      "name": "a write inside the working directory still needs acceptEdits",
+      "find": "    if (operationType === 'read' || context.mode === 'acceptEdits') {\n      return { allowed: true }\n    }",
+      "replace": "    if (true as boolean) {\n      return { allowed: true }\n    }"
+    },
+    {
+      "name": "an allow rule can open a path outside the working directories",
+      "find": "  if (allowRule !== null) {\n    return {\n      allowed: true,\n      decisionReason: { type: 'rule', rule: allowRule },\n    }\n  }",
+      "replace": "  if (false as boolean) {\n    return {\n      allowed: true,\n      decisionReason: { type: 'rule', rule: allowRule },\n    }\n  }"
+    },
+    {
+      "name": "a backtick escape is unvalidatable",
+      "find": "  if (normalizedPath.includes('`')) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "a backtick path is still guessed for deny matching",
+      "find": "    const backtickStripped = normalizedPath.replace(/`/g, '')",
+      "replace": "    const backtickStripped = 'no-such-path'"
+    },
+    {
+      "name": "a module-qualified provider path is unvalidatable",
+      "find": "  if (normalizedPath.includes('::')) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "the part after :: is still guessed for deny matching",
+      "find": "    const afterProvider = normalizedPath.slice(normalizedPath.indexOf('::') + 2)",
+      "replace": "    const afterProvider = 'no-such-path'"
+    },
+    {
+      "name": "UNC paths are blocked",
+      "find": "    normalizedPath.startsWith('//') ||\n    /DavWWWRoot/i.test(normalizedPath) ||\n    /@SSL@/i.test(normalizedPath)",
+      "replace": "    false as boolean"
+    },
+    {
+      "name": "shell expansion syntax in a path is blocked",
+      "find": "  if (normalizedPath.includes('$') || normalizedPath.includes('%')) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "a non-filesystem provider prefix is blocked",
+      "find": "    getPlatform() === 'windows' ? /^[a-z0-9]{2,}:/i : /^[a-z0-9]+:/i",
+      "replace": "    getPlatform() === 'windows' ? /^[a-z0-9]{2,}:/i : /^[a-z0-9]{99,}:/i"
+    },
+    {
+      "name": "* is a glob character",
+      "find": "const GLOB_PATTERN_REGEX = /[*?[\\]]/",
+      "replace": "const GLOB_PATTERN_REGEX = /[?[\\]]/"
+    },
+    {
+      "name": "braces are NOT glob characters in PowerShell",
+      "find": "const GLOB_PATTERN_REGEX = /[*?[\\]]/",
+      "replace": "const GLOB_PATTERN_REGEX = /[*?[\\]{}]/"
+    },
+    {
+      "name": "a glob is refused for write and create operations",
+      "find": "    if (operationType === 'write' || operationType === 'create') {\n      return {\n        allowed: false,\n        resolvedPath: normalizedPath,",
+      "replace": "    if (false as boolean) {\n      return {\n        allowed: false,\n        resolvedPath: normalizedPath,"
+    },
+    {
+      "name": "a glob carrying a traversal is resolved in full",
+      "find": "    if (containsPathTraversal(normalizedPath)) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "a glob is matched against its base directory",
+      "find": "  return beforeGlob.substring(0, lastSepIndex + 1) || '/'",
+      "replace": "  return '.'"
+    },
+    {
+      "name": "only statically-known element types may contribute a path",
+      "find": "const SAFE_PATH_ELEMENT_TYPES = new Set<string>(['StringConstant', 'Parameter'])",
+      "replace": "const SAFE_PATH_ELEMENT_TYPES = new Set<string>(['StringConstant', 'Parameter', 'SubExpression', 'Variable', 'ExpandableString'])"
+    },
+    {
+      "name": "a positional argument's element type is checked",
+      "find": "    positionalsSeen++\n    checkArgElementType(i)\n    paths.push(arg)",
+      "replace": "    positionalsSeen++\n    paths.push(arg)"
+    },
+    {
+      "name": "the AST element type decides what is a parameter, not the dash",
+      "find": "    const argElementType = elementTypes ? elementTypes[i + 1] : undefined\n    if (isPowerShellParameter(arg, argElementType)) {",
+      "replace": "    const argElementType = undefined\n    if (isPowerShellParameter(arg, argElementType)) {"
+    },
+    {
+      "name": "a comma in a colon-bound value hides an array literal",
+      "find": "    rawValue.includes(',') ||",
+      "replace": "    rawValue.includes('@@never@@') ||"
+    },
+    {
+      "name": "a $ in a colon-bound value hides a runtime expression",
+      "find": "    rawValue.includes('$')\n  )",
+      "replace": "    false\n  )"
+    },
+    {
+      "name": "an unrecognised parameter makes the whole command unvalidatable",
+      "find": "        // The caller will force an ask.\n        hasUnvalidatablePathArg = true",
+      "replace": "        // The caller will force an ask.\n        hasUnvalidatablePathArg = false"
+    },
+    {
+      "name": "an unrecognised parameter still surrenders its colon-bound path",
+      "find": "        if (colonIdx > 0) {\n          const rawValue = arg.substring(colonIdx + 1)\n          if (!hasComplexColonValue(rawValue)) {\n            paths.push(rawValue)\n          }\n        }",
+      "replace": "        if (colonIdx > 0) {\n          const rawValue = arg.substring(colonIdx + 1)\n          void rawValue\n        }"
+    },
+    {
+      "name": "a leaf-only parameter rejects anything path-shaped",
+      "find": "          if (\n            value.includes('/') ||\n            value.includes('\\\\') ||\n            value === '.' ||\n            value === '..'\n          ) {",
+      "replace": "          if (\n            false as boolean\n          ) {"
+    },
+    {
+      "name": "positionalSkip keeps a non-path positional out of the path set",
+      "find": "  const positionalSkip = config.positionalSkip ?? 0",
+      "replace": "  const positionalSkip = 0"
+    },
+    {
+      "name": "a write cmdlet with no determinable target asks",
+      "find": "      paths.length === 0 &&\n      CMDLET_PATH_CONFIG[resolveToCanonical(cmd.name)]\n    ) {\n      const canonical = resolveToCanonical(cmd.name)\n      firstAsk ??= {\n        behavior: 'ask',\n        message: `${canonical} is a write operation but no target path could be determined; requires manual approval`,\n      }\n      continue\n    }\n\n    // SECURITY: bash-parity hard-deny for removal cmdlets on",
+      "replace": "      paths.length === -1 &&\n      CMDLET_PATH_CONFIG[resolveToCanonical(cmd.name)]\n    ) {\n      const canonical = resolveToCanonical(cmd.name)\n      firstAsk ??= {\n        behavior: 'ask',\n        message: `${canonical} is a write operation but no target path could be determined; requires manual approval`,\n      }\n      continue\n    }\n\n    // SECURITY: bash-parity hard-deny for removal cmdlets on"
+    },
+    {
+      "name": "removal on a dangerous RAW path is hard-denied",
+      "find": "    const isRemoval = resolveToCanonical(cmd.name) === 'remove-item'\n\n    for (const filePath of paths) {\n      // Hard-deny removal of dangerous system paths (/, ~, /etc, etc.).",
+      "replace": "    const isRemoval = false\n\n    for (const filePath of paths) {\n      // Hard-deny removal of dangerous system paths (/, ~, /etc, etc.)."
+    },
+    {
+      "name": "removal on a path that RESOLVES to a dangerous one is hard-denied",
+      "find": "      if (isRemoval && isDangerousRemovalPath(resolvedPath)) {\n        return dangerousRemovalDeny(resolvedPath)\n      }\n\n      if (!allowed) {",
+      "replace": "      if (false as boolean) {\n        return dangerousRemovalDeny(resolvedPath)\n      }\n\n      if (!allowed) {"
+    },
+    {
+      "name": "removal nested in control flow is hard-denied too",
+      "find": "      const isRemoval = resolveToCanonical(cmd.name) === 'remove-item'\n\n      for (const filePath of paths) {\n        // Check the RAW path first (pre-realpath); see main-loop comment.",
+      "replace": "      const isRemoval = false\n\n      for (const filePath of paths) {\n        // Check the RAW path first (pre-realpath); see main-loop comment."
+    },
+    {
+      "name": "quotes are stripped from a raw removal path",
+      "find": "  const expanded = expandTilde(filePath.replace(/^['\"]|['\"]$/g, '')).replace(",
+      "replace": "  const expanded = expandTilde(filePath).replace("
+    },
+    {
+      "name": "the dangerous-removal deny names the path",
+      "find": "    message: `Remove-Item on system path '${path}' is blocked. This path is protected from removal.`,",
+      "replace": "    message: `blocked`,"
+    },
+    {
+      "name": "the dangerous-removal deny carries its reason",
+      "find": "      reason: 'Removal targets a protected system path',",
+      "replace": "      reason: 'some other reason',"
+    },
+    {
+      "name": "an unparsed command is not validated",
+      "find": "  if (!parsed.valid) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "every statement is checked, not just the first",
+      "find": "  for (const statement of parsed.statements) {",
+      "replace": "  for (const statement of parsed.statements.slice(0, 1)) {"
+    },
+    {
+      "name": "a later deny outranks an earlier ask",
+      "find": "    if (result.behavior === 'ask' && !firstAsk) {\n      firstAsk = result\n    }",
+      "replace": "    if (result.behavior === 'ask') {\n      return result\n    }"
+    },
+    {
+      "name": "a compound command containing a cd cannot trust relative paths",
+      "find": "  if (compoundCommandHasCd) {\n    firstAsk = {",
+      "replace": "  if (false as boolean) {\n    firstAsk = {"
+    },
+    {
+      "name": "a non-command pipeline element is an unvalidatable path source",
+      "find": "    if (cmd.elementType !== 'CommandAst') {\n      hasExpressionPipelineSource = true",
+      "replace": "    if (cmd.elementType !== 'CommandAst') {\n      hasExpressionPipelineSource = false"
+    },
+    {
+      "name": "the piped literal is still guessed for deny matching",
+      "find": "        const stripped = pipelineSourceText.replace(/^['\"]|['\"]$/g, '')",
+      "replace": "        const stripped = 'no-such-path'"
+    },
+    {
+      "name": "a merging redirection is not treated as a file write (both guards)",
+      "find": "      if (redir.isMerging) continue\n      if (!redir.target) continue\n      if (isNullRedirectionTarget(redir.target)) continue",
+      "replace": "      if (isNullRedirectionTarget(redir.target)) continue"
+    },
+    {
+      "name": "a redirection to $null is not a filesystem write",
+      "find": "      if (isNullRedirectionTarget(redir.target)) continue\n\n      const { allowed, resolvedPath, decisionReason } = validatePath(",
+      "replace": "      if (false as boolean) continue\n\n      const { allowed, resolvedPath, decisionReason } = validatePath("
+    },
+    {
+      "name": "statement-level redirections are validated",
+      "find": "  if (statement.redirections) {\n    for (const redir of statement.redirections) {",
+      "replace": "  if (false as boolean) {\n    for (const redir of statement.redirections) {"
+    },
+    {
+      "name": "redirections on nested commands are validated",
+      "find": "      if (cmd.redirections) {\n        for (const redir of cmd.redirections) {",
+      "replace": "      if (false as boolean) {\n        for (const redir of cmd.redirections) {"
+    }
+  ]
+}
