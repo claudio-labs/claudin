@@ -12,5 +12,3 @@ export function getModelCapability(
 ): ModelCapability | undefined {
   return undefined
 }
-
-export async function refreshModelCapabilities(): Promise<void> {}

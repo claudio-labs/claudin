@@ -16,8 +16,6 @@ import {
 } from 'src/providers/auth/auth.js';
 import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
-import { prefetchOfficialMcpUrls } from 'src/mcp/officialRegistry.js';
-import { refreshModelCapabilities } from 'src/providers/model/modelCapabilities.js';
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js';
 import { skillChangeDetector } from 'src/skills/skillChangeDetector.js';
 import { prefetchSystemContextIfSafe } from 'src/platform/main/lifecycle.js';
@@ -58,9 +56,6 @@ export function startDeferredPrefetches(): void {
     void prefetchGcpCredentialsIfSafe();
   }
   void countFilesRoundedRg(getCwd(), AbortSignal.timeout(3000), []);
-
-  void prefetchOfficialMcpUrls();
-  void refreshModelCapabilities();
 
   // File change detectors deferred from init() to unblock first render
   void settingsChangeDetector.initialize();
