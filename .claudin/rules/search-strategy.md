@@ -243,10 +243,10 @@ src/
 │   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
 │   ├── plans/ goal/ autoFix/           ← planning + self-correction
 │   └── scratchpad.ts            ← the per-session scratchpad dir (permissions only consumes it)
-├── providers/ (256)             ← provider abstraction (start here for provider issues)
+├── providers/ (289)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
-│   ├── shims/ (48)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
+│   ├── shims/ (61)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
 │   │                              Completions renderer is openaiShim/ (~4.9k lines). Also
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
 │   ├── transport/ (37)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
@@ -259,7 +259,7 @@ src/
 │   ├── usage/ (18)              ← cost, billing, quota, per-provider usage endpoints
 │   ├── cache/ (8)               ← cache METRICS: hit stats, break detection. The cache policy
 │   │                              itself is agent/cache/ (→ cache.md)
-│   ├── ui/ (21)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
+│   ├── ui/ (38)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
 │   └── (adding a preset? use the /add-provider-preset skill)
 ├── tools/ (656)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
 │   ├── Tool.ts                  ← central type system: Tool, Tools, ToolUseContext, buildTool()

@@ -157,7 +157,7 @@ export function isSearchOrReadBashCommand(command: string): {
  * Checks if a bash command is expected to produce no stdout on success.
  * Used to show "Done" instead of "(No output)" in the UI.
  */
-function isSilentBashCommand(command: string): boolean {
+export function isSilentBashCommand(command: string): boolean {
   let partsWithOperators: string[];
   try {
     partsWithOperators = splitCommandWithOperators(command);
@@ -300,7 +300,7 @@ import type { BashProgress } from 'src/shared/types/tools.js';
  * @param command The command to check
  * @returns false for commands that should not be auto-backgrounded (like sleep)
  */
-function isAutobackgroundingAllowed(command: string): boolean {
+export function isAutobackgroundingAllowed(command: string): boolean {
   const parts = splitCommand_DEPRECATED(command);
   if (parts.length === 0) return true;
 
@@ -353,7 +353,7 @@ type SimulatedSedEditContext = Pick<ToolUseContext, 'readFileState' | 'updateFil
  * This is used by the permission dialog to ensure what the user previews
  * is exactly what gets written to the file.
  */
-async function applySedEdit(simulatedEdit: {
+export async function applySedEdit(simulatedEdit: {
   filePath: string;
   newContent: string;
 }, toolUseContext: SimulatedSedEditContext, parentMessage?: AssistantMessage): Promise<SimulatedSedEditResult> {

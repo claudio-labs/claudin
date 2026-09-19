@@ -1,0 +1,91 @@
+{
+  "test": "src/tools/BashTool",
+  "source": "src/tools/BashTool/BashTool.tsx",
+  "probes": [
+    {
+      "name": "one non-read segment disqualifies the whole command",
+      "find": "    if (!isPartSearch && !isPartRead && !isPartList) {\n      return NOT_COLLAPSIBLE;\n    }",
+      "replace": "    if (!isPartSearch && !isPartRead && !isPartList) {\n      continue;\n    }"
+    },
+    {
+      "name": "neutral segments are skipped",
+      "find": "    if (segment.isNeutral) {\n      continue;\n    }",
+      "replace": "    if (false as boolean) {\n      continue;\n    }"
+    },
+    {
+      "name": "the list set is separate from the read set",
+      "find": "const BASH_LIST_COMMANDS = new Set(['ls', 'tree', 'du']);",
+      "replace": "const BASH_LIST_COMMANDS = new Set<string>([]);"
+    },
+    {
+      "name": "a redirect target is skipped, not read as a command",
+      "find": "    if (part === '>' || part === '>>' || part === '>&') {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "the neutral-fallback exemption applies only after ||",
+      "find": "    if (lastOperator === '||' && SEMANTIC_NEUTRAL_COMMANDS.has(baseCommand)) {",
+      "replace": "    if (SEMANTIC_NEUTRAL_COMMANDS.has(baseCommand)) {"
+    },
+    {
+      "name": "silence is decided on the whole command name",
+      "find": "    const baseCommand = part.trim().split(/\\s+/)[0];",
+      "replace": "    const baseCommand = part.trim().slice(0, 2);"
+    },
+    {
+      "name": "a command with no non-fallback part is not silent",
+      "find": "  return hasNonFallbackCommand;",
+      "replace": "  return true;"
+    },
+    {
+      "name": "the sleep pattern requires a duration",
+      "find": "  const m = /^sleep\\s+(\\d+)\\s*$/.exec(first);",
+      "replace": "  const m = /^sleep/.exec(first);"
+    },
+    {
+      "name": "only a LEADING sleep is blocked",
+      "find": "  const first = parts[0]?.trim() ?? '';",
+      "replace": "  const first = parts[parts.length - 1]?.trim() ?? '';"
+    },
+    {
+      "name": "sub-2s sleeps are allowed",
+      "find": "  if (secs < 2) return null; // sub-2s sleeps are fine (rate limiting, pacing)",
+      "replace": "  if (secs < 1) return null; // sub-2s sleeps are fine (rate limiting, pacing)"
+    },
+    {
+      "name": "the blocked message names what followed the sleep",
+      "find": "  return rest ? `sleep ${secs} followed by: ${rest}` : `standalone sleep ${secs}`;",
+      "replace": "  return `standalone sleep ${secs}`;"
+    },
+    {
+      "name": "autobackgrounding consults the disallowed list",
+      "find": "  return !DISALLOWED_AUTO_BACKGROUND_COMMANDS.includes(baseCommand);",
+      "replace": "  return true;"
+    },
+    {
+      "name": "a missing file answers like sed instead of throwing",
+      "find": "    if (isENOENT(e)) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "the refreshed cache entry carries the new mtime",
+      "find": "    timestamp: getFileModificationTime(absoluteFilePath),",
+      "replace": "    timestamp: 1,"
+    },
+    {
+      "name": "a whole-file write clears the pinned range",
+      "find": "    offset: undefined,\n    limit: undefined",
+      "replace": "    offset: 3,\n    limit: 7"
+    },
+    {
+      "name": "the file's own line endings are restored",
+      "find": "  const endings = detectLineEndings(absoluteFilePath);",
+      "replace": "  const endings = 'LF' as ReturnType<typeof detectLineEndings>;"
+    },
+    {
+      "name": "the previewed content is actually written",
+      "find": "  writeTextContent(absoluteFilePath, newContent, encoding, endings);",
+      "replace": "  void [absoluteFilePath, newContent, encoding, endings];"
+    }
+  ]
+}
