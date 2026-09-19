@@ -1,0 +1,392 @@
+{
+  "test": "src/providers/ui/screens",
+  "source": "src/providers/ui/screens/ModelSelection.tsx",
+  "probes": [
+    {
+      "name": "ModelSelection: the atomic idle arm renders the probe",
+      "find": "      atomicChatSelection.state === 'idle'\n    ) {",
+      "replace": "      (false as boolean)\n    ) {"
+    },
+    {
+      "name": "ModelSelection: the atomic unavailable arm shows the probe's own message",
+      "find": "          <Text dimColor>{atomicChatSelection.message}</Text>",
+      "replace": "          <Text dimColor>{''}</Text>"
+    },
+    {
+      "name": "ModelSelection: the atomic manual escape puts the cursor past the name",
+      "find": "          <Text dimColor>{atomicChatSelection.message}</Text>\n          <Select\n            options={[\n              {\n                value: 'manual',\n                label: 'Enter manually',\n                description: 'Fill in the base URL and model yourself',\n              },\n              {\n                value: 'back',\n                label: 'Back',\n                description: 'Choose another provider preset',\n              },\n            ]}\n            onChange={(value: string) => {\n              if (value === 'manual') {\n                setFormStepIndex(0)\n                setCursorOffset(draft.name.length)",
+      "replace": "          <Text dimColor>{atomicChatSelection.message}</Text>\n          <Select\n            options={[\n              {\n                value: 'manual',\n                label: 'Enter manually',\n                description: 'Fill in the base URL and model yourself',\n              },\n              {\n                value: 'back',\n                label: 'Back',\n                description: 'Choose another provider preset',\n              },\n            ]}\n            onChange={(value: string) => {\n              if (value === 'manual') {\n                setFormStepIndex(0)\n                setCursorOffset(0)"
+    },
+    {
+      "name": "ModelSelection: the atomic ready list opens on defaultValue",
+      "find": "          defaultFocusValue={atomicChatSelection.defaultValue}",
+      "replace": "          defaultFocusValue={undefined}"
+    },
+    {
+      "name": "ModelSelection: the atomic choice persists nextDraft, not the stale draft",
+      "find": "            setDraft(nextDraft)\n            persistDraft(nextDraft)\n          }}\n          onCancel={() => setScreen('select-preset')}\n        />\n      </Box>\n    )\n}\n\nexport function OllamaSelectionScreen",
+      "replace": "            setDraft(nextDraft)\n            persistDraft(draft)\n          }}\n          onCancel={() => setScreen('select-preset')}\n        />\n      </Box>\n    )\n}\n\nexport function OllamaSelectionScreen"
+    },
+    {
+      "name": "ModelSelection: Esc on the atomic ready list returns to the presets",
+      "find": "          onCancel={() => setScreen('select-preset')}\n        />\n      </Box>\n    )\n}\n\nexport function OllamaSelectionScreen",
+      "replace": "          onCancel={() => setScreen('menu')}\n        />\n      </Box>\n    )\n}\n\nexport function OllamaSelectionScreen"
+    },
+    {
+      "name": "ModelSelection: the ollama loading arm renders the probe",
+      "find": "    if (ollamaSelection.state === 'loading' || ollamaSelection.state === 'idle') {",
+      "replace": "    if ((false as boolean) || ollamaSelection.state === 'idle') {"
+    },
+    {
+      "name": "ModelSelection: the ollama screen keeps its own copy",
+      "find": "          <Text dimColor>Looking for installed Ollama models...</Text>",
+      "replace": "          <Text dimColor>Looking for loaded Atomic Chat models...</Text>"
+    },
+    {
+      "name": "ModelSelection: the ollama unavailable arm shows the probe's own message",
+      "find": "          <Text dimColor>{ollamaSelection.message}</Text>",
+      "replace": "          <Text dimColor>{''}</Text>"
+    },
+    {
+      "name": "ModelSelection: the ollama choice persists the chosen model",
+      "find": "          options={ollamaSelection.options}",
+      "replace": "          options={[{ value: 'wrong-model', label: 'wrong-model' }]}"
+    },
+    {
+      "name": "ModelSelection: the openai loading arm points at Esc",
+      "find": "          <Text dimColor>Press Esc to enter the model manually.</Text>",
+      "replace": "          <Text dimColor>Waiting.</Text>"
+    },
+    {
+      "name": "ModelSelection: the openai unavailable manual row types an id",
+      "find": "              if (value === 'manual') {\n                goToManualModelStep()\n                return\n              }\n              goToFormStep('apiKey')",
+      "replace": "              if (false as boolean) {\n                goToManualModelStep()\n                return\n              }\n              goToFormStep('apiKey')"
+    },
+    {
+      "name": "ModelSelection: the openai unavailable back row returns to the key step",
+      "find": "              goToFormStep('apiKey')\n            }}",
+      "replace": "              goToFormStep('name')\n            }}"
+    },
+    {
+      "name": "ModelSelection: Esc on the failed openai list returns to the key step",
+      "find": "            onCancel={() => goToFormStep('apiKey')}\n            visibleOptionCount={2}",
+      "replace": "            onCancel={() => goToFormStep('name')}\n            visibleOptionCount={2}"
+    },
+    {
+      "name": "ModelSelection: Esc on the ready openai list returns to the key step",
+      "find": "          onCancel={() => goToFormStep('apiKey')}\n        />\n        <Text dimColor>Enter to select",
+      "replace": "          onCancel={() => goToFormStep('name')}\n        />\n        <Text dimColor>Enter to select"
+    },
+    {
+      "name": "ModelSelection: the manual sentinel is appended after the discovered ids",
+      "find": "    const options: OptionWithDescription<string>[] = [\n      ...openAiModelSelection.options,\n      {\n        value: MANUAL_MODEL_OPTION_VALUE,",
+      "replace": "    const options: OptionWithDescription<string>[] = [\n      {\n        value: MANUAL_MODEL_OPTION_VALUE,"
+    },
+    {
+      "name": "ModelSelection: focus falls back to the sentinel with no defaultValue",
+      "find": "      openAiModelSelection.defaultValue ?? MANUAL_MODEL_OPTION_VALUE",
+      "replace": "      openAiModelSelection.defaultValue ?? openAiModelSelection.options[0]?.value"
+    },
+    {
+      "name": "ModelSelection: the sentinel row types an id instead of finishing the step",
+      "find": "            if (value === MANUAL_MODEL_OPTION_VALUE) {\n              goToManualModelStep()\n              return\n            }",
+      "replace": "            if (false as boolean) {\n              goToManualModelStep()\n              return\n            }"
+    },
+    {
+      "name": "ModelSelection: a discovered id finishes the step with the updated draft",
+      "find": "            const nextDraft = { ...draft, model: value }\n            setDraft(nextDraft)\n            finishAfterModelStep(nextDraft)",
+      "replace": "            const nextDraft = { ...draft, model: value }\n            setDraft(nextDraft)\n            finishAfterModelStep(draft)"
+    },
+
+    {
+      "name": "AuthChoice: the anthropic OAuth row opens the OAuth screen",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "              setScreen('anthropic-oauth')",
+      "replace": "              setScreen('form')"
+    },
+    {
+      "name": "AuthChoice: the anthropic key row goes straight to the form",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "            if (value === 'apiKey') {\n              setScreen('form')\n              return\n            }",
+      "replace": "            if (false as boolean) {\n              setScreen('form')\n              return\n            }"
+    },
+    {
+      "name": "AuthChoice: Esc on the anthropic picker returns to the presets",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "          onCancel={() => setScreen('select-preset')}\n          visibleOptionCount={3}\n        />\n      </Box>\n    )\n}\n\nexport type KimiAuthChoiceScreenProps",
+      "replace": "          onCancel={() => setScreen('menu')}\n          visibleOptionCount={3}\n        />\n      </Box>\n    )\n}\n\nexport type KimiAuthChoiceScreenProps"
+    },
+    {
+      "name": "AuthChoice: the kimi OAuth row opens the device flow",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "              setScreen('kimi-oauth')",
+      "replace": "              setScreen('select-preset')"
+    },
+    {
+      "name": "AuthChoice: the kimi key row seeds the preset draft",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "              startCreateFromPreset('moonshotai')",
+      "replace": "              setScreen('form')"
+    },
+    {
+      "name": "AuthChoice: the kimi back row returns to the presets",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "              startCreateFromPreset('moonshotai')\n              return\n            }\n            setScreen('select-preset')",
+      "replace": "              startCreateFromPreset('moonshotai')\n              return\n            }\n            setScreen('kimi-oauth')"
+    },
+    {
+      "name": "AuthChoice: manage mode does not activate what OAuth saves",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "          const activateOnSave = mode === 'first-run'",
+      "replace": "          const activateOnSave = true"
+    },
+    {
+      "name": "AuthChoice: an existing keyless profile is updated, not duplicated",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "            const existing = findAnthropicOAuthProfile(\n              getProviderProfiles(),\n              defaults.baseUrl,\n            )",
+      "replace": "            const existing = undefined"
+    },
+    {
+      "name": "AuthChoice: an already-active profile is not re-activated",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "            activateOnSave && existing && activeProfileId !== saved.id",
+      "replace": "            activateOnSave && existing"
+    },
+    {
+      "name": "AuthChoice: a refused save is reported and not treated as success",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "          if (!saved) {",
+      "replace": "          if (false as boolean) {"
+    },
+    {
+      "name": "AuthChoice: a refused activation has its own message",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "          if (!active) {",
+      "replace": "          if (false as boolean) {"
+    },
+    {
+      "name": "AuthChoice: first-run reports through onDone instead of the menu",
+      "source": "src/providers/ui/screens/AuthChoice.tsx",
+      "find": "            if (mode === 'first-run') {\n              onDone({\n                action: 'saved',\n                activeProfileId: active.id,\n                message,",
+      "replace": "            if (false as boolean) {\n              onDone({\n                action: 'saved',\n                activeProfileId: active.id,\n                message,"
+    },
+
+    {
+      "name": "PresetSelection: bare mode drops the browser-OAuth presets",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "    const canUseCodexOAuth = !isBareMode()",
+      "replace": "    const canUseCodexOAuth = true"
+    },
+    {
+      "name": "PresetSelection: the legacy-import row is gated on the prop",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "      ...(canImportLegacyClaude\n        ? [",
+      "replace": "      ...(true\n        ? ["
+    },
+    {
+      "name": "PresetSelection: only first-run offers the skip row",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "      ...(mode === 'first-run'\n        ? [\n            {\n              value: 'skip',",
+      "replace": "      ...(true\n        ? [\n            {\n              value: 'skip',"
+    },
+    {
+      "name": "PresetSelection: the heading follows the mode",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "          {mode === 'first-run' ? 'Set up provider' : 'Choose provider preset'}",
+      "replace": "          {'Set up provider'}"
+    },
+    {
+      "name": "PresetSelection: Custom is pinned after the alphabetical tail",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "      {\n        value: 'custom',\n        label: 'Custom',\n        description: 'Any OpenAI-compatible provider',\n      },",
+      "replace": "      {\n        value: 'custom',\n        label: 'Z.AI Custom',\n        description: 'Any OpenAI-compatible provider',\n      },"
+    },
+    {
+      "name": "PresetSelection: codex-oauth opens a screen instead of a draft",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "            if (value === 'codex-oauth') {\n              setScreen('codex-oauth')\n              return\n            }",
+      "replace": "            if (false as boolean) {\n              setScreen('codex-oauth')\n              return\n            }"
+    },
+    {
+      "name": "PresetSelection: moonshotai opens the auth-choice screen",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "              setScreen('kimi-auth-choice')",
+      "replace": "              setScreen('codex-oauth')"
+    },
+    {
+      "name": "PresetSelection: an ordinary preset forwards the row value",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "            startCreateFromPreset(value as ProviderPreset)",
+      "replace": "            startCreateFromPreset('custom')"
+    },
+    {
+      "name": "PresetSelection: skip closes the wizard as cancelled",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "            if (value === 'skip') {\n              closeWithCancelled('Provider setup skipped')\n              return\n            }",
+      "replace": "            if (false as boolean) {\n              closeWithCancelled('Provider setup skipped')\n              return\n            }"
+    },
+    {
+      "name": "PresetSelection: Esc closes first-run but only returns in manage",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "          onCancel={() => {\n            if (mode === 'first-run') {",
+      "replace": "          onCancel={() => {\n            if (false as boolean) {"
+    },
+    {
+      "name": "PresetSelection: a failed import stops before announcing success",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "                if (report.errors.length > 0) {\n                  setErrorMessage(summary)\n                  return\n                }",
+      "replace": "                if (report.errors.length > 0) {\n                  setErrorMessage(summary)\n                }"
+    },
+    {
+      "name": "PresetSelection: the import re-checks whether ~/.claude is still there",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "                setCanImportLegacyClaude(legacyClaudeDirExists())",
+      "replace": "                setCanImportLegacyClaude(false)"
+    },
+    {
+      "name": "PresetSelection: first-run finishes the import through onDone",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "                if (mode === 'first-run' && active) {",
+      "replace": "                if (false as boolean) {"
+    },
+    {
+      "name": "PresetSelection: an import with nothing active falls through to the status",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "                const active = getActiveProviderProfile()",
+      "replace": "                const active = { id: 'x', name: 'x', model: 'x' } as ReturnType<typeof getActiveProviderProfile>"
+    },
+    {
+      "name": "PresetSelection: only manage mode returns to the menu after an import",
+      "source": "src/providers/ui/screens/PresetSelection.tsx",
+      "find": "                if (mode === 'manage') returnToMenu()",
+      "replace": "                if (false as boolean) returnToMenu()"
+    },
+
+    {
+      "name": "FormScreens: the heading tells a create apart from an edit",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "          {editingProfileId ? 'Edit provider profile' : 'Create provider profile'}",
+      "replace": "          {'Create provider profile'}"
+    },
+    {
+      "name": "FormScreens: the provider-type line follows the transport",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "          {draftProvider === 'anthropic'",
+      "replace": "          {(false as boolean)"
+    },
+    {
+      "name": "FormScreens: the step is derived from formStepIndex",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "  const currentStep = FORM_STEPS[formStepIndex] ?? FORM_STEPS[0]",
+      "replace": "  const currentStep = FORM_STEPS[0]"
+    },
+    {
+      "name": "FormScreens: the step counter is 1-based",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "          Step {formStepIndex + 1} of {FORM_STEPS.length}: {currentStep.label}",
+      "replace": "          Step {formStepIndex} of {FORM_STEPS.length}: {currentStep.label}"
+    },
+    {
+      "name": "FormScreens: the API key step masks its value",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "            mask={currentStepKey === 'apiKey' ? '*' : undefined}",
+      "replace": "            mask={undefined}"
+    },
+    {
+      "name": "FormScreens: the form renders the current step's value",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "  const currentValue = draft[currentStepKey]",
+      "replace": "  const currentValue = ''"
+    },
+    {
+      "name": "FormScreens: the form renders an error message when it has one",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "        {errorMessage && <Text color=\"error\">{errorMessage}</Text>}\n        <Text dimColor>\n          Press Enter to continue. Press Esc to go back.",
+      "replace": "        {false && <Text color=\"error\">{errorMessage}</Text>}\n        <Text dimColor>\n          Press Enter to continue. Press Esc to go back."
+    },
+    {
+      "name": "FormScreens: Enter submits the typed value",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "            onSubmit={handleFormSubmit}",
+      "replace": "            onSubmit={() => {}}"
+    },
+    {
+      "name": "FormScreens: typing updates the field the step names",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "                [currentStepKey]: value,",
+      "replace": "                name: value,"
+    },
+    {
+      "name": "FormScreens: a non-cloud preset renders nothing",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "    if (preset !== 'bedrock' && preset !== 'vertex' && preset !== 'foundry') {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "FormScreens: each cloud preset gets its own title",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "          {`${preset === 'bedrock' ? 'AWS Bedrock' : preset === 'vertex' ? 'Google Vertex AI' : 'Azure AI Foundry'} setup`}",
+      "replace": "          {`AWS Bedrock setup`}"
+    },
+    {
+      "name": "FormScreens: the cloud step is derived from cloudExtrasStepIndex",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "    const step = steps[cloudExtrasStepIndex] ?? steps[0]",
+      "replace": "    const step = steps[cloudExtrasStepIndex] as (typeof steps)[number]"
+    },
+    {
+      "name": "FormScreens: a blank cloud submit is refused by step name",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "      if (trimmed.length === 0) {\n        setErrorMessage(`${step.label} is required.`)\n        return\n      }",
+      "replace": "      if (false as boolean) {\n        setErrorMessage(`${step.label} is required.`)\n        return\n      }"
+    },
+    {
+      "name": "FormScreens: the cloud value is trimmed before it is stored",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "      const trimmed = submitted.trim()",
+      "replace": "      const trimmed = submitted"
+    },
+    {
+      "name": "FormScreens: the cloud step merges into the existing extras",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "      const nextExtras = { ...draftExtras, [step.key]: trimmed }",
+      "replace": "      const nextExtras = { [step.key]: trimmed }"
+    },
+    {
+      "name": "FormScreens: a non-final cloud step advances instead of leaving",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "      if (cloudExtrasStepIndex < steps.length - 1) {\n        setCloudExtrasStepIndex(cloudExtrasStepIndex + 1)\n        return\n      }",
+      "replace": "      if (false as boolean) {\n        setCloudExtrasStepIndex(cloudExtrasStepIndex + 1)\n        return\n      }"
+    },
+    {
+      "name": "FormScreens: the last cloud step rewinds the counter",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "      setCloudExtrasStepIndex(0)\n      setScreen('form')",
+      "replace": "      setCloudExtrasStepIndex(1)\n      setScreen('form')"
+    },
+    {
+      "name": "FormScreens: cloud extras renders an error message when it has one",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "        {errorMessage && <Text color=\"error\">{errorMessage}</Text>}\n        <Text dimColor>Press Enter to continue. Press Esc to go back.</Text>",
+      "replace": "        {false && <Text color=\"error\">{errorMessage}</Text>}\n        <Text dimColor>Press Enter to continue. Press Esc to go back.</Text>"
+    },
+    {
+      "name": "FormScreens: custom headers saves the draft it was handed",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "            onSubmit={() => persistDraft(draft)}",
+      "replace": "            onSubmit={() => {}}"
+    },
+    {
+      "name": "FormScreens: custom headers reports the raw text",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "            onChange={setDraftCustomHeaders}",
+      "replace": "            onChange={() => {}}"
+    },
+    {
+      "name": "FormScreens: custom headers renders an error message when it has one",
+      "source": "src/providers/ui/screens/FormScreens.tsx",
+      "find": "        {errorMessage && <Text color=\"error\">{errorMessage}</Text>}\n        <Text dimColor>\n          Press Enter on a blank line to save. Press Esc to go back.",
+      "replace": "        {false && <Text color=\"error\">{errorMessage}</Text>}\n        <Text dimColor>\n          Press Enter on a blank line to save. Press Esc to go back."
+    }
+  ]
+}

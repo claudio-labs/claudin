@@ -16,6 +16,7 @@
 import { PassThrough } from 'node:stream'
 
 import type * as React from 'react'
+import stripAnsi from 'strip-ansi'
 
 import { createRoot } from 'src/terminal/ink.js'
 
@@ -47,6 +48,45 @@ export function createTestStreams(columns = 120): TestStreams {
   })
 
   return { stdout, stdin, getOutput: () => output }
+}
+
+// DEC synchronized-update markers. Ink brackets every frame with them, so the
+// accumulated stdout of a mounted root is a concatenation of frames rather
+// than one screen.
+const SYNC_START = '\x1B[?2026h'
+const SYNC_END = '\x1B[?2026l'
+
+/**
+ * The last non-empty frame in an accumulated `getOutput()`, ANSI stripped.
+ *
+ * Asserting on the raw output matches text from an earlier frame — the
+ * loading state of a screen that has since rendered its list, say — so a
+ * `not.toContain` guarding a branch passes for the wrong reason.
+ *
+ * A component that renders nothing still emits frames, so "frames were seen
+ * but all of them were blank" answers `''` rather than falling back to the
+ * raw stream — whose cursor and device-attribute sequences survive
+ * `stripAnsi` as stray characters and read as content.
+ */
+export function lastFrame(output: string): string {
+  let frame: string | null = null
+  let sawFrame = false
+  let cursor = 0
+
+  while (cursor < output.length) {
+    const start = output.indexOf(SYNC_START, cursor)
+    if (start === -1) break
+    const contentStart = start + SYNC_START.length
+    const end = output.indexOf(SYNC_END, contentStart)
+    if (end === -1) break
+    sawFrame = true
+    const candidate = output.slice(contentStart, end)
+    if (candidate.trim().length > 0) frame = candidate
+    cursor = end + SYNC_END.length
+  }
+
+  if (frame !== null) return stripAnsi(frame)
+  return sawFrame ? '' : stripAnsi(output)
 }
 
 /**
@@ -87,9 +127,16 @@ export type MountedHook = {
  * effects running, and a flow hook that is still polling a device endpoint
  * keeps a timer alive past the end of the file — which, per testing.md, kills
  * the run somewhere else entirely with no failing test to point at.
+ *
+ * `columns` sets the width of the throwaway stdout, which is the only way to
+ * sweep a frame across terminal widths — the shape bugs that matter in the
+ * forked renderer only appear once a row is forced to wrap.
  */
-export async function mountHook(node: React.ReactNode): Promise<MountedHook> {
-  const streams = createTestStreams()
+export async function mountHook(
+  node: React.ReactNode,
+  options?: { columns?: number },
+): Promise<MountedHook> {
+  const streams = createTestStreams(options?.columns)
   const root = await createRoot({
     stdout: streams.stdout as unknown as NodeJS.WriteStream,
     stdin: streams.stdin as unknown as NodeJS.ReadStream,
