@@ -1,6 +1,6 @@
 {
   "test": "src/mcp/auth.test.ts",
-  "source": "src/mcp/auth.ts",
+  "source": "src/mcp/auth/callbackParams.ts",
   "probes": [
     {
       "name": "state is compared before any error parameter is honoured",
@@ -44,141 +44,169 @@
     },
     {
       "name": "a non-2xx response is returned untouched, by identity",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  if (!response.ok) {\n    return response\n  }",
       "replace": "  if (false as boolean) {\n    return response\n  }"
     },
     {
       "name": "a body parsing as tokens wins over a body parsing as an error",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  if (OAuthTokensSchema.safeParse(parsed).success) {\n    return new Response(text, response)\n  }",
       "replace": "  if (false as boolean) {\n    return new Response(text, response)\n  }"
     },
     {
       "name": "a body that is not JSON does not throw out of the normalizer",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  try {\n    parsed = jsonParse(text)\n  } catch {\n    return new Response(text, response)\n  }",
       "replace": "  parsed = jsonParse(text)"
     },
     {
       "name": "a JSON body of an unrelated shape is left alone",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  const result = OAuthErrorResponseSchema.safeParse(parsed)\n  if (!result.success) {\n    return new Response(text, response)\n  }",
       "replace": "  const result = OAuthErrorResponseSchema.safeParse(parsed)\n  if (false as boolean) {\n    return new Response(text, response)\n  }"
     },
     {
       "name": "the non-standard alias set is consulted at all",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  const normalized = NONSTANDARD_INVALID_GRANT_ALIASES.has(result.data.error)",
       "replace": "  const normalized = (false as boolean)"
     },
     {
       "name": "'invalid_refresh_token' is one of the aliases",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  'invalid_refresh_token',\n  'expired_refresh_token',",
       "replace": "  'expired_refresh_token',"
     },
     {
       "name": "'expired_refresh_token' is one of the aliases",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  'expired_refresh_token',\n  'token_expired',",
       "replace": "  'token_expired',"
     },
     {
       "name": "'token_expired' is one of the aliases",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "  'token_expired',\n])",
       "replace": "])"
     },
     {
       "name": "an error code outside the alias set keeps its own code",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "    : result.data\n  return new Response(jsonStringify(normalized), {",
       "replace": "    : { error: 'invalid_grant' }\n  return new Response(jsonStringify(normalized), {"
     },
     {
       "name": "a normalized alias carries a description naming the original code",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "          `Server returned non-standard error code: ${result.data.error}`,",
       "replace": "          '',"
     },
     {
       "name": "the server's own error_description survives normalization",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "          result.data.error_description ??\n          `Server returned non-standard error code: ${result.data.error}`,",
       "replace": "          `Server returned non-standard error code: ${result.data.error}`,"
     },
     {
       "name": "a normalized error body is rewritten to a 400",
+      "source": "src/mcp/auth/oauthErrors.ts",
       "find": "    status: 400,\n    statusText: 'Bad Request',",
       "replace": "    status: 200,\n    statusText: 'Bad Request',"
     },
     {
       "name": "the server URL is part of the credential key",
+      "source": "src/mcp/auth/serverKey.ts",
       "find": "    url: serverConfig.url,\n    headers: serverConfig.headers || {},",
       "replace": "    headers: serverConfig.headers || {},"
     },
     {
       "name": "the configured headers are part of the credential key",
+      "source": "src/mcp/auth/serverKey.ts",
       "find": "    headers: serverConfig.headers || {},\n  })\n",
       "replace": "  })\n"
     },
     {
       "name": "absent headers are normalized to {} before hashing",
+      "source": "src/mcp/auth/serverKey.ts",
       "find": "    headers: serverConfig.headers || {},",
       "replace": "    headers: serverConfig.headers,"
     },
     {
       "name": "the transport type is part of the credential key",
+      "source": "src/mcp/auth/serverKey.ts",
       "find": "    type: serverConfig.type,\n    url: serverConfig.url,",
       "replace": "    url: serverConfig.url,"
     },
     {
       "name": "the server name is part of the credential key",
+      "source": "src/mcp/auth/serverKey.ts",
       "find": "  return `${serverName}|${hash}`",
       "replace": "  return hash"
     },
     {
       "name": "the config digest is 16 hex characters",
+      "source": "src/mcp/auth/serverKey.ts",
       "find": "    .substring(0, 16)",
       "replace": "    .substring(0, 8)"
     },
     {
       "name": "'scope' outranks the other two metadata fields",
+      "source": "src/mcp/auth/claudeAuthProvider.ts",
       "find": "  if ('scope' in metadata && typeof metadata.scope === 'string') {\n    return metadata.scope\n  }\n",
       "replace": ""
     },
     {
       "name": "a non-string 'scope' falls through instead of being returned",
+      "source": "src/mcp/auth/claudeAuthProvider.ts",
       "find": "typeof metadata.scope === 'string'",
       "replace": "typeof metadata.scope !== 'undefined'"
     },
     {
       "name": "'default_scope' is read when 'scope' is absent",
+      "source": "src/mcp/auth/claudeAuthProvider.ts",
       "find": "  if (\n    'default_scope' in metadata &&\n    typeof metadata.default_scope === 'string'\n  ) {\n    return metadata.default_scope\n  }\n",
       "replace": ""
     },
     {
       "name": "scopes_supported is joined with spaces",
+      "source": "src/mcp/auth/claudeAuthProvider.ts",
       "find": "    return metadata.scopes_supported.join(' ')",
       "replace": "    return metadata.scopes_supported.join(',')"
     },
     {
       "name": "a scopes_supported that is not an array is ignored",
+      "source": "src/mcp/auth/claudeAuthProvider.ts",
       "find": "  if (metadata.scopes_supported && Array.isArray(metadata.scopes_supported)) {",
       "replace": "  if (metadata.scopes_supported) {"
     },
     {
       "name": "AuthenticationCancelledError carries its own .name",
+      "source": "src/mcp/auth/oauthFlow.ts",
       "find": "    this.name = 'AuthenticationCancelledError'",
       "replace": "    this.name = 'Error'"
     },
     {
       "name": "AuthenticationCancelledError carries its own message",
+      "source": "src/mcp/auth/oauthFlow.ts",
       "find": "    super('Authentication was cancelled')",
       "replace": "    super('cancelled')"
     },
     {
-      "name": "SURFACE PIN: a dropped export is caught",
-      "find": "export function clearMcpClientConfig(",
-      "replace": "function clearMcpClientConfig("
+      "name": "SURFACE PIN: a re-export missing from the barrel is caught",
+      "source": "src/mcp/auth.ts",
+      "find": "  clearMcpClientConfig,\n",
+      "replace": ""
     },
     {
       "name": "SURFACE PIN: a dropped ClaudeAuthProvider method is caught",
+      "source": "src/mcp/auth/claudeAuthProvider.ts",
       "find": "  setMetadata(\n    metadata: Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>,\n  ): void {",
       "replace": "  setMetadataRenamed(\n    metadata: Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>,\n  ): void {"
     },
     {
       "name": "SURFACE PIN: a changed call signature is caught",
+      "source": "src/mcp/auth/oauthFlow.ts",
       "find": "  abortSignal?: AbortSignal,",
       "replace": "  abortSignal: AbortSignal | undefined = undefined,"
     }
