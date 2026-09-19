@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto'
 import ignore from 'ignore'
 import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
@@ -6,6 +5,7 @@ import { join, normalize, posix, sep } from 'path'
 import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memory/memdir/paths.js'
 import { getSessionMemoryDir } from 'src/memory/session/paths.js'
 import { getClaudeTempDir, getProjectTempDir } from 'src/platform/tmpdir.js'
+import { getBundledSkillsRoot } from 'src/skills/bundledSkillsRoot.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import {
   CLAUDE_FOLDER_PERMISSION_PATTERN,
@@ -47,8 +47,6 @@ import type { PermissionRule, PermissionRuleSource } from 'src/permissions/Permi
 import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import { getRuleByContentsForToolName } from 'src/permissions/permissions.js'
-
-declare const MACRO: { VERSION: string }
 
 /**
  * Dangerous files that should be protected from auto-editing.
@@ -302,29 +300,6 @@ function isProjectDirPath(absolutePath: string): boolean {
 export function isScratchpadEnabled(): boolean {
   return checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_scratch')
 }
-
-/**
- * Root for bundled-skill file extraction (see bundledSkills.ts).
- *
- * SECURITY: The per-process random nonce is the load-bearing defense here.
- * Every other path component (uid, VERSION, skill name, file keys) is public
- * knowledge, so without it a local attacker can pre-create the tree on a
- * shared /tmp — sticky bit prevents deletion, not creation — and either
- * symlink an intermediate directory (O_NOFOLLOW only checks the final
- * component) or own a parent dir and swap file contents post-write for prompt
- * injection via the read allowlist. diskOutput.ts gets the same property from
- * the session-ID UUID in its path.
- *
- * Memoized so the extraction writes and the permission check agree on the
- * path for the life of the process. Version-scoped so stale extractions from
- * other binaries don't fall under the allowlist.
- */
-export const getBundledSkillsRoot = memoize(
-  function getBundledSkillsRoot(): string {
-    const nonce = randomBytes(16).toString('hex')
-    return join(getClaudeTempDir(), 'bundled-skills', MACRO.VERSION, nonce)
-  },
-)
 
 /**
  * Returns the scratchpad directory path for the current session.
