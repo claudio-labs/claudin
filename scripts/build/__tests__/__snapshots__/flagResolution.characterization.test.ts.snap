@@ -204,14 +204,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": 0,
   },
-  "tengu_cobalt_lantern": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_cobalt_raccoon": {
     "defaults": [
       "false",
@@ -381,14 +373,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "stockValue": false,
   },
   "tengu_lapis_finch": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_marble_fox": {
     "defaults": [
       "false",
     ],

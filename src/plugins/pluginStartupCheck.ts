@@ -4,7 +4,6 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
 import {
-  getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
 } from 'src/platform/settings/settings.js'
@@ -21,51 +20,6 @@ import {
   registerPluginInstallation,
 } from 'src/plugins/pluginInstallationHelpers.js'
 import { isLocalPluginSource, type PluginScope } from 'src/plugins/schemas.js'
-
-/**
- * Checks for enabled plugins across all settings sources, including --add-dir.
- *
- * Uses getInitialSettings() which merges all sources with policy as
- * highest priority, then layers --add-dir plugins underneath. This is the
- * authoritative "is this plugin enabled?" check — don't delegate to
- * getPluginEditableScopes() which serves a different purpose (scope tracking).
- *
- * @returns Array of plugin IDs (plugin@marketplace format) that are enabled
- */
-export async function checkEnabledPlugins(): Promise<string[]> {
-  const settings = getInitialSettings()
-  const enabledPlugins: string[] = []
-
-  // Start with --add-dir plugins (lowest priority)
-  const addDirPlugins = getAddDirEnabledPlugins()
-  for (const [pluginId, value] of Object.entries(addDirPlugins)) {
-    if (pluginId.includes('@') && value) {
-      enabledPlugins.push(pluginId)
-    }
-  }
-
-  // Merged settings (policy > local > project > user) override --add-dir
-  if (settings.enabledPlugins) {
-    for (const [pluginId, value] of Object.entries(settings.enabledPlugins)) {
-      if (!pluginId.includes('@')) {
-        continue
-      }
-      const idx = enabledPlugins.indexOf(pluginId)
-      if (value) {
-        if (idx === -1) {
-          enabledPlugins.push(pluginId)
-        }
-      } else {
-        // Explicitly disabled — remove even if --add-dir enabled it
-        if (idx !== -1) {
-          enabledPlugins.splice(idx, 1)
-        }
-      }
-    }
-  }
-
-  return enabledPlugins
-}
 
 /**
  * Gets the user-editable scope that "owns" each enabled plugin.

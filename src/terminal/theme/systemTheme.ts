@@ -40,40 +40,6 @@ export function resolveThemeSetting(setting: ThemeSetting): ThemeName {
 }
 
 
-type Rgb = { r: number; g: number; b: number }
-
-function parseOscRgb(data: string): Rgb | undefined {
-  // rgb:RRRR/GGGG/BBBB — each component is 1–4 hex digits.
-  // Some terminals append an alpha component (rgba:…/…/…/…); ignore it.
-  const rgbMatch =
-    /^rgba?:([0-9a-f]{1,4})\/([0-9a-f]{1,4})\/([0-9a-f]{1,4})/i.exec(data)
-  if (rgbMatch) {
-    return {
-      r: hexComponent(rgbMatch[1]!),
-      g: hexComponent(rgbMatch[2]!),
-      b: hexComponent(rgbMatch[3]!),
-    }
-  }
-  // #RRGGBB or #RRRRGGGGBBBB — split into three equal hex runs.
-  const hashMatch = /^#([0-9a-f]+)$/i.exec(data)
-  if (hashMatch && hashMatch[1]!.length % 3 === 0) {
-    const hex = hashMatch[1]!
-    const n = hex.length / 3
-    return {
-      r: hexComponent(hex.slice(0, n)),
-      g: hexComponent(hex.slice(n, 2 * n)),
-      b: hexComponent(hex.slice(2 * n)),
-    }
-  }
-  return undefined
-}
-
-/** Normalize a 1–4 digit hex component to [0, 1]. */
-function hexComponent(hex: string): number {
-  const max = 16 ** hex.length - 1
-  return parseInt(hex, 16) / max
-}
-
 /**
  * Read $COLORFGBG for a synchronous initial guess before the OSC 11
  * round-trip completes. Format is `fg;bg` (or `fg;other;bg`) where values

@@ -68,6 +68,5 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "todo_reminder_delta",
   "token_usage",
   "ultrathink_effort",
-  "verify_plan_reminder",
 ]
 `;

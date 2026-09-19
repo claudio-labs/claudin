@@ -8,13 +8,6 @@ type CacheEntry<T> = {
   refreshing: boolean
 }
 
-type MemoizedFunction<Args extends unknown[], Result> = {
-  (...args: Args): Result
-  cache: {
-    clear: () => void
-  }
-}
-
 type LRUMemoizedFunction<Args extends unknown[], Result> = {
   (...args: Args): Result
   cache: {
@@ -24,86 +17,6 @@ type LRUMemoizedFunction<Args extends unknown[], Result> = {
     get: (key: string) => Result | undefined
     has: (key: string) => boolean
   }
-}
-
-/**
- * Creates a memoized function that returns cached values while refreshing in parallel.
- * This implements a write-through cache pattern:
- * - If cache is fresh, return immediately
- * - If cache is stale, return the stale value but refresh it in the background
- * - If no cache exists, block and compute the value
- *
- * @param f The function to memoize
- * @param cacheLifetimeMs The lifetime of cached values in milliseconds
- * @returns A memoized version of the function
- */
-export function memoizeWithTTL<Args extends unknown[], Result>(
-  f: (...args: Args) => Result,
-  cacheLifetimeMs: number = 5 * 60 * 1000, // Default 5 minutes
-): MemoizedFunction<Args, Result> {
-  const cache = new Map<string, CacheEntry<Result>>()
-
-  const memoized = (...args: Args): Result => {
-    const key = jsonStringify(args)
-    const cached = cache.get(key)
-    const now = Date.now()
-
-    // Populate cache
-    if (!cached) {
-      const value = f(...args)
-      cache.set(key, {
-        value,
-        timestamp: now,
-        refreshing: false,
-      })
-      return value
-    }
-
-    // If we have a stale cache entry and it's not already refreshing
-    if (
-      cached &&
-      now - cached.timestamp > cacheLifetimeMs &&
-      !cached.refreshing
-    ) {
-      // Mark as refreshing to prevent multiple parallel refreshes
-      cached.refreshing = true
-
-      // Schedule async refresh (non-blocking). Both .then and .catch are
-      // identity-guarded: a concurrent cache.clear() + cold-miss stores a
-      // newer entry while this microtask is queued. .then overwriting with
-      // the stale refresh's result is worse than .catch deleting (persists
-      // wrong data for full TTL vs. self-correcting on next call).
-      Promise.resolve()
-        .then(() => {
-          const newValue = f(...args)
-          if (cache.get(key) === cached) {
-            cache.set(key, {
-              value: newValue,
-              timestamp: Date.now(),
-              refreshing: false,
-            })
-          }
-        })
-        .catch(e => {
-          logError(e)
-          if (cache.get(key) === cached) {
-            cache.delete(key)
-          }
-        })
-
-      // Return the stale value immediately
-      return cached.value
-    }
-
-    return cache.get(key)!.value
-  }
-
-  // Add cache clear method
-  memoized.cache = {
-    clear: () => cache.clear(),
-  }
-
-  return memoized
 }
 
 /**

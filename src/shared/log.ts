@@ -1,9 +1,6 @@
 import { feature } from 'bun:bundle'
 import type { BetaMessageStreamParams } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { readdir, readFile, stat } from 'fs/promises'
-import type { Dirent } from 'fs'
 import memoize from 'lodash-es/memoize.js'
-import { join } from 'path'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import {
   setLastAPIRequest,
@@ -13,15 +10,11 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { TICK_TAG } from 'src/shared/constants/xml.js'
 import {
   type LogOption,
-  type SerializedMessage,
-  sortLogs,
 } from 'src/shared/types/logs.js'
-import { CACHE_PATHS } from 'src/shared/fs/cachePaths.js'
 import { stripDisplayTags, stripDisplayTagsAllowEmpty } from 'src/shared/text/displayTags.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
-import { jsonParse } from 'src/platform/slowOperations.js'
 
 /**
  * Gets the display title for a log/session with fallback logic.
@@ -205,101 +198,6 @@ export function getInMemoryErrors(): { error: string; timestamp: string }[] {
   return [...inMemoryErrorLog]
 }
 
-/**
- * Loads the list of error logs
- * @returns List of error logs sorted by date
- */
-export function loadErrorLogs(): Promise<LogOption[]> {
-  return loadLogList(CACHE_PATHS.errors())
-}
-
-/**
- * Gets an error log by its index
- * @param index Index in the sorted list of logs (0-based)
- * @returns Log data or null if not found
- */
-export async function getErrorLogByIndex(
-  index: number,
-): Promise<LogOption | null> {
-  const logs = await loadErrorLogs()
-  return logs[index] || null
-}
-
-/**
- * Internal function to load and process logs from a specified path
- * @param path Directory containing logs
- * @returns Array of logs sorted by date
- * @private
- */
-async function loadLogList(path: string): Promise<LogOption[]> {
-  let files: Dirent[]
-  try {
-    files = await readdir(path, { withFileTypes: true })
-  } catch {
-    logError(new Error(`No logs found at ${path}`))
-    return []
-  }
-  const logData = await Promise.all(
-    files.map(async (file, i) => {
-      const fullPath = join(path, file.name)
-      const content = await readFile(fullPath, { encoding: 'utf8' })
-      const messages = jsonParse(content) as SerializedMessage[]
-      const firstMessage = messages[0]
-      const lastMessage = messages[messages.length - 1]
-      const firstPrompt =
-        firstMessage?.type === 'user' &&
-        typeof firstMessage?.message?.content === 'string'
-          ? firstMessage?.message?.content
-          : 'No prompt'
-
-      // For new random filenames, we'll get stats from the file itself
-      const fileStats = await stat(fullPath)
-
-      // Check if it's a sidechain by looking at filename
-      const isSidechain = fullPath.includes('sidechain')
-
-      // For new files, use the file modified time as date
-      const date = dateToFilename(fileStats.mtime)
-
-      return {
-        date,
-        fullPath,
-        messages,
-        value: i, // hack: overwritten after sorting, right below this
-        created: parseISOString(firstMessage?.timestamp || date),
-        modified: lastMessage?.timestamp
-          ? parseISOString(lastMessage.timestamp)
-          : parseISOString(date),
-        firstPrompt:
-          firstPrompt.split('\n')[0]?.slice(0, 50) +
-            (firstPrompt.length > 50 ? '…' : '') || 'No prompt',
-        messageCount: messages.length,
-        isSidechain,
-      }
-    }),
-  )
-
-  return sortLogs(logData.filter(_ => _ !== null)).map((_, i) => ({
-    ..._,
-    value: i,
-  }))
-}
-
-function parseISOString(s: string): Date {
-  const b = s.split(/\D+/)
-  return new Date(
-    Date.UTC(
-      parseInt(b[0]!, 10),
-      parseInt(b[1]!, 10) - 1,
-      parseInt(b[2]!, 10),
-      parseInt(b[3]!, 10),
-      parseInt(b[4]!, 10),
-      parseInt(b[5]!, 10),
-      parseInt(b[6]!, 10),
-    ),
-  )
-}
-
 export function logMCPError(serverName: string, error: unknown): void {
   try {
     // If sink not attached, queue the event
@@ -347,14 +245,4 @@ export function captureAPIRequest(
   const { messages, ...paramsWithoutMessages } = params
   setLastAPIRequest(paramsWithoutMessages)
   setLastAPIRequestMessages(null)
-}
-
-/**
- * Reset error log state for testing purposes only.
- * @internal
- */
-export function _resetErrorLogForTesting(): void {
-  errorLogSink = null
-  errorQueue.length = 0
-  inMemoryErrorLog = []
 }

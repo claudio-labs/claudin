@@ -1,5 +1,5 @@
 import type { Key } from 'src/terminal/ink.js'
-import type { ParsedBinding, ParsedKeystroke } from 'src/terminal/keybindings/types.js'
+import type { ParsedKeystroke } from 'src/terminal/keybindings/types.js'
 
 /**
  * Modifier keys from Ink's Key type that we care about for matching.
@@ -102,19 +102,4 @@ export function matchesKeystroke(
   }
 
   return modifiersMatch(inkMods, target)
-}
-
-/**
- * Check if Ink's Key + input matches a parsed binding's first keystroke.
- * For single-keystroke bindings only (Phase 1).
- */
-export function matchesBinding(
-  input: string,
-  key: Key,
-  binding: ParsedBinding,
-): boolean {
-  if (binding.chord.length !== 1) return false
-  const keystroke = binding.chord[0]
-  if (!keystroke) return false
-  return matchesKeystroke(input, key, keystroke)
 }

@@ -72,6 +72,18 @@ function scanRegisteredBindings(): string[] {
 }
 
 /** Flags the build map declares, with the value it folds them to. */
+/**
+ * Default imports of a module under `src/commands/`. Every one of these is a
+ * command module, so every one has to end up in COMMANDS() — the registry is
+ * the only table, there is no dynamic registration.
+ */
+function scanCommandModuleImports(): { binding: string; specifier: string }[] {
+  const source = readFileSync(COMMANDS_SOURCE, 'utf8')
+  return [
+    ...source.matchAll(/^import\s+(\w+)\s+from\s+'(src\/commands\/[^']+)'/gm),
+  ].map(m => ({ binding: m[1]!, specifier: m[2]! }))
+}
+
 function shippedFlags(): Record<string, boolean> {
   const source = readFileSync(BUILD_SOURCE, 'utf8')
   const body = source.slice(
@@ -144,5 +156,25 @@ describe('slash-command registry — characterization', () => {
       .map(c => `${c.binding} → ${c.specifier} (flags: ${c.flags.join(', ')})`)
 
     expect(phantoms).toEqual([])
+  })
+
+  test('every command module imported by commands.ts is registered', () => {
+    // The gap this closes: an import whose binding never reaches COMMANDS() is
+    // a complete, working command that no user can reach, and nothing else in
+    // the tree notices — tsc does not flag the unused import, the build inlines
+    // it, and knip counts the module as used because commands.ts imports it.
+    //
+    // Three had accumulated that way: `/commit-push-pr` (145 lines),
+    // `/init-verifiers` (262) and `/version` (22).
+    const registered = new Set(scanRegisteredBindings())
+    const imported = scanCommandModuleImports()
+    // Same anti-vacuity guard as the scan floor above: a regex matching nothing
+    // would make the filter below trivially empty.
+    expect(imported.length).toBeGreaterThan(50)
+
+    const unregistered = imported
+      .filter(c => !registered.has(c.binding))
+      .map(c => `${c.binding} → ${c.specifier}`)
+    expect(unregistered).toEqual([])
   })
 })

@@ -37,7 +37,7 @@ function toComparable(p: string): string {
  * Detects if a file path is a session-related file under ~/.claudin.
  * Returns the type of session file or null if not a session file.
  */
-export function detectSessionFileType(
+function detectSessionFileType(
   filePath: string,
 ): 'session_memory' | 'session_transcript' | null {
   const configDir = getClaudinConfigHomeDir()
@@ -62,7 +62,7 @@ export function detectSessionFileType(
  * Checks if a glob/pattern string indicates session file access intent.
  * Used for Grep/Glob tools where we check patterns, not actual file paths.
  */
-export function detectSessionPatternType(
+function detectSessionPatternType(
   pattern: string,
 ): 'session_memory' | 'session_transcript' | null {
   const normalized = pattern.split(win32.sep).join(posix.sep)

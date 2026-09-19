@@ -46,7 +46,6 @@ const NULL_RENDERING_TYPES = [
   // 'bagel_console' has no case in AttachmentMessage's switch and no pre-switch
   // block, so it reaches `default:` and renders null like the rest of this list.
   'bagel_console',
-  'verify_plan_reminder',
   'current_session_memory',
   'compaction_reminder',
   'date_change',

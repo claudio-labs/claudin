@@ -543,7 +543,6 @@ export function runInteractiveStartupBlock(
       queue: [],
     },
     todos: {},
-    remoteAgentTaskSuggestions: [],
     fileHistory: {
       snapshots: [],
       trackedFiles: new Set(),
@@ -571,7 +570,6 @@ export function runInteractiveStartupBlock(
     },
     pendingWorkerRequest: null,
     pendingSandboxRequest: null,
-    authVersion: 0,
     initialMessage: inputPrompt
       ? {
           message: createUserMessage({

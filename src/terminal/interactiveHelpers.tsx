@@ -1,5 +1,4 @@
 import { feature } from 'bun:bundle';
-import { appendFileSync } from 'fs';
 import React from 'react';
 import { gracefulShutdown, gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { type ChannelEntry, setSessionTrustAccepted, setStatsStore } from 'src/platform/bootstrap/state.js';
@@ -103,7 +102,7 @@ export async function renderAndRun(root: Root, element: React.ReactNode): Promis
   await gracefulShutdown(0);
 }
 export async function showSetupScreens(root: Root, permissionMode: PermissionMode, allowDangerouslySkipPermissions: boolean, commands?: Command[], devChannels?: ChannelEntry[]): Promise<boolean> {
-  if (process.env.NODE_ENV === 'test' || isEnvTruthy(false) || process.env.IS_DEMO // Skip onboarding in demo mode
+  if (process.env.NODE_ENV === 'test' || process.env.IS_DEMO // Skip onboarding in demo mode
   ) {
     return false;
   }
@@ -267,12 +266,6 @@ export function getRenderContext(exitOnCtrlC: boolean): {
   const fpsTracker = new FpsTracker();
   const stats = createStatsStore();
   setStatsStore(stats);
-
-  // Bench mode: when set, append per-frame phase timings as JSONL for
-  // offline analysis by bench/repl-scroll.ts. Captures the full TUI
-  // render pipeline (yoga → screen buffer → diff → optimize → stdout)
-  // so perf work on any phase can be validated against real user flows.
-  const frameTimingLogPath = process.env.CLAUDIN_FRAME_TIMING_LOG;
   return {
     getFpsMetrics: () => fpsTracker.getMetrics(),
     stats,
@@ -281,21 +274,6 @@ export function getRenderContext(exitOnCtrlC: boolean): {
       onFrame: event => {
         fpsTracker.record(event.durationMs);
         stats.observe('frame_duration_ms', event.durationMs);
-        if (frameTimingLogPath && event.phases) {
-          // Bench-only env-var-gated path: sync write so no frames dropped
-          // on abrupt exit. ~100 bytes at ≤60fps is negligible. rss/cpu are
-          // single syscalls; cpu is cumulative — bench side computes delta.
-          const line =
-          // eslint-disable-next-line custom-rules/no-direct-json-operations -- tiny object, hot bench path
-          JSON.stringify({
-            total: event.durationMs,
-            ...event.phases,
-            rss: process.memoryUsage.rss(),
-            cpu: process.cpuUsage()
-          }) + '\n';
-          // eslint-disable-next-line custom-rules/no-sync-fs -- bench-only, sync so no frames dropped on exit
-          appendFileSync(frameTimingLogPath, line);
-        }
         // Skip flicker reporting for terminals with synchronized output —
         // DEC 2026 buffers between BSU/ESU so clear+redraw is atomic.
         if (isSynchronizedOutputSupported()) {

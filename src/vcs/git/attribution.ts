@@ -1,6 +1,5 @@
 import { getClientType } from 'src/platform/bootstrap/state.js'
 import { getRemoteSessionUrl, isRemoteSessionLocal } from 'src/shared/constants/product.js'
-import type { AppState } from 'src/terminal/state/AppState.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 export type AttributionTexts = {
@@ -34,30 +33,4 @@ export function getAttributionTexts(): AttributionTexts {
     commit: settings.attribution?.commit ?? '',
     pr: settings.attribution?.pr ?? '',
   }
-}
-
-/**
- * Get PR attribution text.
- *
- * Returns the user's custom `attribution.pr` when set, otherwise an empty
- * string — Claudin appends no PR footer by default.
- *
- * @param _getAppState unused; kept for call-site compatibility.
- */
-export async function getEnhancedPRAttribution(
-  _getAppState: () => AppState,
-): Promise<string> {
-  if (getClientType() === 'remote') {
-    const remoteSessionId = process.env.CLAUDE_CODE_REMOTE_SESSION_ID
-    if (remoteSessionId) {
-      const ingressUrl = process.env.SESSION_INGRESS_URL
-      // Skip for local dev - URLs won't persist
-      if (!isRemoteSessionLocal(remoteSessionId, ingressUrl)) {
-        return getRemoteSessionUrl(remoteSessionId, ingressUrl)
-      }
-    }
-    return ''
-  }
-
-  return getInitialSettings().attribution?.pr ?? ''
 }

@@ -592,3 +592,20 @@ test('cleanMessagesForLogging: filters progress and returns the rest in original
 test('cleanMessagesForLogging: empty input yields empty output', () => {
   expect(cleanMessagesForLogging([])).toEqual([])
 })
+
+test('cleanMessagesForLogging: promotes a virtual message to a real one', () => {
+  // The transform that does this used to be described as REPL-specific, and
+  // the REPL wrapper it stripped is gone. The promotion is NOT: `isVirtual` is
+  // a parameter of the message factories (src/agent/messages/factories.ts), so
+  // virtual messages outlive REPL, and a persisted transcript must not carry
+  // the flag — a resumed session would otherwise re-render them as synthetic.
+  const virtualAssistant = {
+    ...mkAssistantText(det(2), det(1), 'hello'),
+    isVirtual: true,
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = cleanMessagesForLogging([virtualAssistant] as any)
+  expect(result).toHaveLength(1)
+  expect('isVirtual' in result[0]!).toBe(false)
+  expect(result[0]!.type).toBe('assistant')
+})

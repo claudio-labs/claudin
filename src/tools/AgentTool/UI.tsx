@@ -76,8 +76,8 @@ function hasProgressMessage(data: Progress): data is AgentToolProgress {
 }
 
 /**
- * Check if a progress message is a search/read/REPL operation (tool use or result).
- * Returns { isSearch, isRead, isREPL } if it's a collapsible operation, null otherwise.
+ * Check if a progress message is a search/read operation (tool use or result).
+ * Returns { isSearch, isRead, … } if it's a collapsible operation, null otherwise.
  *
  * For tool_result messages, uses the provided `toolUseByID` map to find the
  * corresponding tool_use block instead of relying on `normalizedMessages`.
@@ -85,7 +85,6 @@ function hasProgressMessage(data: Progress): data is AgentToolProgress {
 function getSearchOrReadInfo(progressMessage: ProgressMessage<Progress>, tools: Tools, toolUseByID: Map<string, ToolUseBlockParam>): {
   isSearch: boolean;
   isRead: boolean;
-  isREPL: boolean;
   isWrite: boolean;
 } | null {
   if (!hasProgressMessage(progressMessage.data)) {

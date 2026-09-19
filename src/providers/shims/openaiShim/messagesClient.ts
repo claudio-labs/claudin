@@ -25,7 +25,6 @@ import {
 import { logForDebugging } from 'src/shared/debug.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { resolveGeminiCredential } from 'src/providers/oauth/geminiAuth.js'
-import { hydrateGeminiAccessTokenFromSecureStorage } from 'src/providers/oauth/geminiCredentials.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from 'src/providers/oauth/githubModelsCredentials.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
@@ -1182,7 +1181,6 @@ export function createOpenAIShimClient(options: {
   timeout?: number
   reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
 }): unknown {
-  hydrateGeminiAccessTokenFromSecureStorage()
   hydrateGithubModelsTokenFromSecureStorage()
 
   const beta = new OpenAIShimBeta({

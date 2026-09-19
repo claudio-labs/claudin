@@ -125,7 +125,7 @@ export async function assertAutofixPreconditions(): Promise<AutofixPreconditions
       return { prNumber: pr.number, prUrl: pr.url, branch, defaultBranch }
     case 'none':
       throw new AutofixPreconditionError(
-        'no open PR found for this branch. Create one first via /commit-push-pr.',
+        'no open PR found for this branch. Create one first with `gh pr create`.',
       )
     case 'merged':
       throw new AutofixPreconditionError(

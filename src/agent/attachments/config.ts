@@ -54,7 +54,3 @@ export const RELEVANT_MEMORIES_CONFIG = {
   // re-surfacing is valid.
   MAX_SESSION_BYTES: 60 * 1024,
 } as const
-
-export const VERIFY_PLAN_REMINDER_CONFIG = {
-  TURNS_BETWEEN_REMINDERS: 10,
-} as const

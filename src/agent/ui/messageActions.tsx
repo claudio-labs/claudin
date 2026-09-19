@@ -43,7 +43,6 @@ export function isNavigableMessage(msg: NavigableMessage): boolean {
         case 'memory_saved':
         case 'agents_killed':
         case 'away_summary':
-        case 'thinking':
           return false;
       }
       return true;

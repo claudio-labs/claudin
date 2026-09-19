@@ -12,7 +12,6 @@ import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import { isReplModeEnabled } from 'src/tools/REPLTool/constants.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -341,10 +340,7 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
   const projectDir = getProjectDir(getOriginalCwd())
   // Ant-native builds alias grep to embedded ugrep and remove the dedicated
   // Grep tool, so give the model a real shell invocation there.
-  // In REPL mode, both Grep and Bash are hidden from direct use — the model
-  // calls them from inside REPL scripts, so the grep shell form is what it
-  // will write in the script anyway.
-  const embedded = hasEmbeddedSearchTools() || isReplModeEnabled()
+  const embedded = hasEmbeddedSearchTools()
   const memSearch = embedded
     ? `grep -rn "<search term>" ${autoMemDir} --include="*.md"`
     : `${GREP_TOOL_NAME} with pattern="<search term>" path="${autoMemDir}" glob="*.md"`

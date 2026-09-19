@@ -118,39 +118,3 @@ export function hasBinaryExtension(filePath: string): boolean {
   const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase()
   return BINARY_EXTENSIONS.has(ext)
 }
-
-/**
- * Number of bytes to read for binary content detection.
- */
-const BINARY_CHECK_SIZE = 8192
-
-/**
- * Check if a buffer contains binary content by looking for null bytes
- * or a high proportion of non-printable characters.
- */
-export function isBinaryContent(buffer: Buffer): boolean {
-  // Check first BINARY_CHECK_SIZE bytes (or full buffer if smaller)
-  const checkSize = Math.min(buffer.length, BINARY_CHECK_SIZE)
-
-  let nonPrintable = 0
-  for (let i = 0; i < checkSize; i++) {
-    const byte = buffer[i]!
-    // Null byte is a strong indicator of binary
-    if (byte === 0) {
-      return true
-    }
-    // Count non-printable, non-whitespace bytes
-    // Printable ASCII is 32-126, plus common whitespace (9, 10, 13)
-    if (
-      byte < 32 &&
-      byte !== 9 && // tab
-      byte !== 10 && // newline
-      byte !== 13 // carriage return
-    ) {
-      nonPrintable++
-    }
-  }
-
-  // If more than 10% non-printable, likely binary
-  return nonPrintable / checkSize > 0.1
-}

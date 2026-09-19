@@ -137,5 +137,5 @@ function _temp2(e: PluginError) {
   return `${e.type}:${e.source}`;
 }
 function _temp() {
-  return isEnvTruthy("true");
+  return true;
 }

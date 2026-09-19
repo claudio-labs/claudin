@@ -1,27 +1,12 @@
-import { createHash, randomUUID, type UUID } from 'crypto'
+import { randomUUID, type UUID } from 'crypto'
 import { stat } from 'fs/promises'
-import { isAbsolute, relative, sep } from 'path'
-import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type {
   AttributionSnapshotMessage,
   FileAttributionState,
 } from 'src/shared/types/logs.js'
-import { getCwd } from 'src/shared/fs/cwd.js'
-import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { resolveGitDir } from 'src/vcs/git/gitFilesystem.js'
-import { findGitRoot } from 'src/vcs/git/git.js'
 import { getCanonicalName, type ModelName } from 'src/providers/model/model.js'
-
-/**
- * Get the repo root for attribution operations.
- * Uses getCwd() which respects agent worktree overrides (AsyncLocalStorage),
- * then resolves to git root to handle `cd subdir` case.
- * Falls back to getOriginalCwd() if git root can't be determined.
- */
-export function getAttributionRepoRoot(): string {
-  const cwd = getCwd()
-  return findGitRoot(cwd) ?? getOriginalCwd()
-}
 
 // @[MODEL LAUNCH]: Add a mapping for the new model ID so git commit trailers show the public name.
 /**
@@ -102,59 +87,6 @@ export type AttributionState = {
  */
 export function getClientSurface(): string {
   return process.env.CLAUDE_CODE_ENTRYPOINT ?? 'cli'
-}
-
-
-/**
- * Compute SHA-256 hash of content.
- */
-export function computeContentHash(content: string): string {
-  return createHash('sha256').update(content).digest('hex')
-}
-
-/**
- * Normalize file path to relative path from cwd for consistent tracking.
- * Resolves symlinks to handle /tmp vs /private/tmp on macOS.
- */
-export function normalizeFilePath(filePath: string): string {
-  const fs = getFsImplementation()
-  const cwd = getAttributionRepoRoot()
-
-  if (!isAbsolute(filePath)) {
-    return filePath
-  }
-
-  // Resolve symlinks in both paths for consistent comparison
-  // (e.g., /tmp -> /private/tmp on macOS)
-  let resolvedPath = filePath
-  let resolvedCwd = cwd
-
-  try {
-    resolvedPath = fs.realpathSync(filePath)
-  } catch {
-    // File may not exist yet, use original path
-  }
-
-  try {
-    resolvedCwd = fs.realpathSync(cwd)
-  } catch {
-    // Keep original cwd
-  }
-
-  if (
-    resolvedPath.startsWith(resolvedCwd + sep) ||
-    resolvedPath === resolvedCwd
-  ) {
-    // Normalize to forward slashes so keys match git diff output on Windows
-    return relative(resolvedCwd, resolvedPath).replaceAll(sep, '/')
-  }
-
-  // Fallback: try original comparison
-  if (filePath.startsWith(cwd + sep) || filePath === cwd) {
-    return relative(cwd, filePath).replaceAll(sep, '/')
-  }
-
-  return filePath
 }
 
 /**

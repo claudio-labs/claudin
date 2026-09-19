@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getOrganizationUUID } from 'src/providers/oauth/client.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
@@ -9,7 +8,6 @@ import {
 } from 'src/providers/auth/auth.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { detectCurrentRepository } from 'src/vcs/git/detectRepository.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { findGitRoot, getIsClean } from 'src/vcs/git/git.js'
 import { getOAuthHeaders } from 'src/platform/teleport/api.js'
@@ -58,15 +56,6 @@ export async function checkHasRemoteEnvironment(): Promise<boolean> {
  */
 export function checkIsInGitRepo(): boolean {
   return findGitRoot(getCwd()) !== null
-}
-
-/**
- * Checks if current repository has a GitHub remote configured.
- * Returns false for local-only repos (git init with no `origin`).
- */
-export async function checkHasGitRemote(): Promise<boolean> {
-  const repository = await detectCurrentRepository()
-  return repository !== null
 }
 
 /**
@@ -155,81 +144,4 @@ export async function checkGithubAppInstalled(
     logForDebugging(`checkGithubAppInstalled error: ${errorMessage(error)}`)
     return false
   }
-}
-
-/**
- * Checks if the user has synced their GitHub credentials via /web-setup
- * @returns true if GitHub token is synced, false otherwise
- */
-export async function checkGithubTokenSynced(): Promise<boolean> {
-  try {
-    const accessToken = getClaudeAIOAuthTokens()?.accessToken
-    if (!accessToken) {
-      logForDebugging('checkGithubTokenSynced: No access token found')
-      return false
-    }
-
-    const orgUUID = await getOrganizationUUID()
-    if (!orgUUID) {
-      logForDebugging('checkGithubTokenSynced: No org UUID found')
-      return false
-    }
-
-    const url = `${getOauthConfig().BASE_API_URL}/api/oauth/organizations/${orgUUID}/sync/github/auth`
-    const headers = {
-      ...getOAuthHeaders(accessToken),
-      'x-organization-uuid': orgUUID,
-    }
-
-    logForDebugging('Checking if GitHub token is synced via web-setup')
-
-    const response = await axios.get(url, {
-      headers,
-      timeout: 15000,
-    })
-
-    const synced =
-      response.status === 200 && response.data?.is_authenticated === true
-    logForDebugging(
-      `GitHub token synced: ${synced} (status=${response.status}, data=${JSON.stringify(response.data)})`,
-    )
-    return synced
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-      if (status && status >= 400 && status < 500) {
-        logForDebugging(
-          `checkGithubTokenSynced: Got ${status}, token not synced`,
-        )
-        return false
-      }
-    }
-
-    logForDebugging(`checkGithubTokenSynced error: ${errorMessage(error)}`)
-    return false
-  }
-}
-
-type RepoAccessMethod = 'github-app' | 'token-sync' | 'none'
-
-/**
- * Tiered check for whether a GitHub repo is accessible for remote operations.
- * 1. GitHub App installed on the repo
- * 2. GitHub token synced via /web-setup
- * 3. Neither — caller should prompt user to set up access
- */
-export async function checkRepoForRemoteAccess(
-  owner: string,
-  repo: string,
-): Promise<{ hasAccess: boolean; method: RepoAccessMethod }> {
-  if (await checkGithubAppInstalled(owner, repo)) {
-    return { hasAccess: true, method: 'github-app' }
-  }
-  if (
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_cobalt_lantern', false) &&
-    (await checkGithubTokenSynced())
-  ) {
-    return { hasAccess: true, method: 'token-sync' }
-  }
-  return { hasAccess: false, method: 'none' }
 }

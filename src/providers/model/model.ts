@@ -29,7 +29,6 @@ import { getAPIProvider } from 'src/providers/model/providers.js'
 import { LIGHTNING_BOLT } from 'src/shared/constants/figures.js'
 import { isModelAllowed } from 'src/providers/model/modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from 'src/providers/model/aliases.js'
-import { capitalize } from 'src/shared/text/stringUtils.js'
 import { COPILOT_DISPLAY_NAMES } from 'src/providers/model/copilotModels.js'
 
 export type ModelShortName = string
@@ -573,23 +572,6 @@ export function isOpus1mMergeEnabled(): boolean {
   return true
 }
 
-export function renderModelSetting(setting: ModelName | ModelAlias): string {
-  if (setting === 'opusplan') {
-    return 'Opus Plan'
-  }
-  // Handle Codex models - show actual model name + resolved model
-  if (setting === 'codexplan') {
-    return 'codexplan (gpt-5.5)'
-  }
-  if (setting === 'codexspark') {
-    return 'codexspark (gpt-5.3-codex-spark)'
-  }
-  if (isModelAlias(setting)) {
-    return capitalize(setting)
-  }
-  return renderModelName(setting)
-}
-
 // @[MODEL LAUNCH]: Add display name cases for the new model (base + [1m] variant if applicable).
 /**
  * Returns a human-readable display name for known public models, or null
@@ -672,15 +654,6 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
   }
 }
 
-function maskModelCodename(baseName: string): string {
-  // Mask only the first dash-separated segment (the codename), preserve the rest
-  // e.g. capybara-v2-fast → cap*****-v2-fast
-  const [codename = '', ...rest] = baseName.split('-')
-  const masked =
-    codename.slice(0, 3) + '*'.repeat(Math.max(0, codename.length - 3))
-  return [masked, ...rest].join('-')
-}
-
 export function renderModelName(model: ModelName): string {
   const publicName = getPublicModelDisplayName(model)
   if (publicName) {
@@ -691,22 +664,6 @@ export function renderModelName(model: ModelName): string {
     return 'GPT-4o'
   }
   return model
-}
-
-/**
- * Returns a safe author name for public display (e.g., in git commit trailers).
- * Returns "Claude {ModelName}" for publicly known models, or "Claude ({model})"
- * for unknown/internal models so the exact model name is preserved.
- *
- * @param model The full model name
- * @returns "Claude {ModelName}" for public models, or "Claude ({model})" for non-public models
- */
-export function getPublicModelName(model: ModelName): string {
-  const publicName = getPublicModelDisplayName(model)
-  if (publicName) {
-    return `Claude ${publicName}`
-  }
-  return `Claude (${model})`
 }
 
 /**

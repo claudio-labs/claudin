@@ -88,21 +88,6 @@ export function getInstalledPluginsV2FilePath(): string {
 }
 
 /**
- * Clear the installed plugins cache
- * Call this when the file is modified to force a reload
- *
- * Note: This also clears the in-memory session state (inMemoryInstalledPlugins).
- * In most cases, this is only called during initialization or testing.
- * For background updates, use updateInstallationPathOnDisk() which preserves
- * the in-memory state.
- */
-export function clearInstalledPluginsCache(): void {
-  installedPluginsCacheV2 = null
-  inMemoryInstalledPlugins = null
-  logForDebugging('Cleared installed plugins cache')
-}
-
-/**
  * Migrate to single plugin file format.
  *
  * This consolidates the V1/V2 dual-file system into a single file:
@@ -817,48 +802,9 @@ export function addInstalledPlugin(
 }
 
 /**
- * Delete a plugin's cache directory
- * This physically removes the plugin files from disk
- *
- * @param installPath - Absolute path to the plugin's cache directory
- */
-/**
  * Export getGitCommitSha for use by pluginInstallationHelpers
  */
 export { getGitCommitSha }
-
-export function deletePluginCache(installPath: string): void {
-  const fs = getFsImplementation()
-
-  try {
-    fs.rmSync(installPath, { recursive: true, force: true })
-    logForDebugging(`Deleted plugin cache at ${installPath}`)
-
-    // Clean up empty parent plugin directory (cache/{marketplace}/{plugin})
-    // Versioned paths have structure: cache/{marketplace}/{plugin}/{version}
-    const cachePath = getPluginCachePath()
-    if (installPath.includes('/cache/') && installPath.startsWith(cachePath)) {
-      const pluginDir = dirname(installPath) // e.g., cache/{marketplace}/{plugin}
-      if (pluginDir !== cachePath && pluginDir.startsWith(cachePath)) {
-        try {
-          const contents = fs.readdirSync(pluginDir)
-          if (contents.length === 0) {
-            fs.rmdirSync(pluginDir)
-            logForDebugging(`Deleted empty plugin directory at ${pluginDir}`)
-          }
-        } catch {
-          // Parent dir doesn't exist or isn't readable — skip cleanup
-        }
-      }
-    }
-  } catch (error) {
-    const errorMsg = errorMessage(error)
-    logError(toError(error))
-    throw new Error(
-      `Failed to delete plugin cache at ${installPath}: ${errorMsg}`,
-    )
-  }
-}
 
 /**
  * Get the git commit SHA from a git repository directory

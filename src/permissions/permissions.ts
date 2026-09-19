@@ -10,7 +10,6 @@ import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
-import { REPL_TOOL_NAME } from 'src/tools/REPLTool/constants.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import { extractOutputRedirections } from 'src/platform/bash/commands.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -588,15 +587,9 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       // Before running the auto mode classifier, check if acceptEdits mode would
       // allow this action. This avoids expensive classifier API calls for safe
       // operations like file edits in the working directory.
-      // Skip for Agent and REPL — their checkPermissions returns 'allow' for
-      // acceptEdits mode, which would silently bypass the classifier. REPL
-      // code can contain VM escapes between inner tool calls; the classifier
-      // must see the glue JavaScript, not just the inner tool calls.
-      if (
-        result.behavior === 'ask' &&
-        tool.name !== AGENT_TOOL_NAME &&
-        tool.name !== REPL_TOOL_NAME
-      ) {
+      // Skip for Agent — its checkPermissions returns 'allow' for acceptEdits
+      // mode, which would silently bypass the classifier.
+      if (result.behavior === 'ask' && tool.name !== AGENT_TOOL_NAME) {
         try {
           const parsedInput = tool.inputSchema.parse(input)
           const acceptEditsResult = await tool.checkPermissions(parsedInput, {

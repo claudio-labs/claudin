@@ -73,7 +73,6 @@ import {
   getUnifiedTaskAttachments,
   getActiveBackgroundTaskReminders,
   getContainerTransitionAttachments,
-  getVerifyPlanReminderAttachment,
 } from 'src/agent/attachments/lifecycle.js'
 import { getNestedMemoryAttachments } from 'src/agent/attachments/memory.js'
 import {
@@ -332,9 +331,6 @@ export async function getAttachments(
         ),
         maybe('output_token_usage', async () =>
           Promise.resolve(getOutputTokenUsageAttachment()),
-        ),
-        maybe('verify_plan_reminder', async () =>
-          getVerifyPlanReminderAttachment(messages, toolUseContext),
         ),
       ]
     : []

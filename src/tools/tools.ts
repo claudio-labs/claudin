@@ -1,5 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { toolMatchesName, type Tool, type Tools } from 'src/tools/Tool.js'
+import { type Tool, type Tools } from 'src/tools/Tool.js'
 // All tool modules are loaded lazily to avoid evaluating ~50 tool schemas,
 // prompts, and dependency chains at module load time. This shaves significant
 // time off startup (the tools aren't needed until the action handler runs,
@@ -46,9 +46,6 @@ const getWaitForTool = () =>
   require('src/tools/WaitForTool/WaitForTool.js').WaitForTool as typeof import('src/tools/WaitForTool/WaitForTool.js').WaitForTool
 const getRenameTool = () =>
   require('src/tools/RenameTool/RenameTool.js').RenameTool as typeof import('src/tools/RenameTool/RenameTool.js').RenameTool
-// Dead code elimination: conditional import for internal-only tools
-const REPLTool = null
-const SuggestBackgroundPRTool = null
 const getCronTools = () => [
   require('src/tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
   require('src/tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
@@ -104,12 +101,6 @@ const getTaskUpdateTool = () =>
   require('src/tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool as typeof import('src/tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool
 const getTaskListTool = () =>
   require('src/tools/TaskListTool/TaskListTool.js').TaskListTool as typeof import('src/tools/TaskListTool/TaskListTool.js').TaskListTool
-// Dead code elimination: conditional import for CLAUDIN_VERIFY_PLAN
-const VerifyPlanExecutionTool =
-  process.env.CLAUDIN_VERIFY_PLAN === 'true'
-    ? require('src/tools/VerifyPlanExecutionTool/VerifyPlanExecutionTool.js')
-        .VerifyPlanExecutionTool
-    : null
 const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
 const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
@@ -140,18 +131,12 @@ import { isWorktreeModeEnabled } from 'src/vcs/git/worktreeModeEnabled.js'
 import { onGlobalConfigChange } from 'src/platform/config/config.js'
 import { onRuntimeStateChange } from 'src/platform/bootstrap/state.js'
 import { onGrowthBookRefresh } from 'src/platform/analytics/growthbook.js'
-import {
-  REPL_TOOL_NAME,
-  REPL_ONLY_TOOLS,
-  isReplModeEnabled,
-} from 'src/tools/REPLTool/constants.js'
 export {
   ALL_AGENT_DISALLOWED_TOOLS,
   CUSTOM_AGENT_DISALLOWED_TOOLS,
   ASYNC_AGENT_ALLOWED_TOOLS,
   COORDINATOR_MODE_ALLOWED_TOOLS,
 } from 'src/tools/constants/tools.js'
-export { REPL_ONLY_TOOLS }
 
 // Cache for isEnabled() results. Keyed by tool name; invalidated on every
 // global config change or runtime state transition (LSP connect/disconnect,
@@ -251,7 +236,6 @@ export function getAllBaseTools(): Tools {
       ? []
       : [getContainerTool()]),
     getEnterPlanModeTool(),
-    ...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : []),
     ...(isTodoV2Enabled()
       ? [getTaskCreateTool(), getTaskGetTool(), getTaskUpdateTool(), getTaskListTool()]
       : []),
@@ -260,8 +244,6 @@ export function getAllBaseTools(): Tools {
     ...(isAgentSwarmsEnabled()
       ? [getTeamCreateTool(), getTeamDeleteTool()]
       : []),
-    ...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : []),
-    ...(REPLTool ? [REPLTool] : []),
     ...(agentWorkflowTools ?? []),
     ...getCronTools(),
     ...(MonitorTool ? [MonitorTool] : []),
@@ -301,19 +283,6 @@ export function filterToolsByDenyRules<
 export const getTools = (permissionContext: ToolPermissionContext): Tools => {
   // Simple mode: only Bash, Read, and Edit tools
   if (isEnvTruthy(process.env.CLAUDIN_SIMPLE)) {
-    // --bare + REPL mode: REPL wraps Bash/Read/Edit/etc inside the VM, so
-    // return REPL instead of the raw primitives. Matches the non-bare path
-    // below which also hides REPL_ONLY_TOOLS when REPL is enabled.
-    if (isReplModeEnabled() && REPLTool) {
-      const replSimple: Tool[] = [REPLTool]
-      if (
-        feature('COORDINATOR_MODE') &&
-        coordinatorModeModule?.isCoordinatorMode()
-      ) {
-        replSimple.push(getTaskStopTool(), getSendMessageTool())
-      }
-      return filterToolsByDenyRules(replSimple, permissionContext)
-    }
     const simpleTools: Tool[] = [getBashTool(), getFileReadTool(), getFileEditTool()]
     // When coordinator mode is also active, include AgentTool and TaskStopTool
     // so the coordinator gets Task+TaskStop (via useMergedTools filtering) and
@@ -341,20 +310,7 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
   )
 
   // Filter out tools that are denied by the deny rules
-  let allowedTools = filterToolsByDenyRules(tools, permissionContext)
-
-  // When REPL mode is enabled, hide primitive tools from direct use.
-  // They're still accessible inside REPL via the VM context.
-  if (isReplModeEnabled()) {
-    const replEnabled = allowedTools.some(tool =>
-      toolMatchesName(tool, REPL_TOOL_NAME),
-    )
-    if (replEnabled) {
-      allowedTools = allowedTools.filter(
-        tool => !REPL_ONLY_TOOLS.has(tool.name),
-      )
-    }
-  }
+  const allowedTools = filterToolsByDenyRules(tools, permissionContext)
 
   return allowedTools.filter(tool => cachedIsEnabled(tool))
 }

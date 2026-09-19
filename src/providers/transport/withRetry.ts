@@ -42,7 +42,6 @@ import { disableKeepAlive } from 'src/providers/transport/proxy.js'
 import { sleep } from 'src/shared/sleep.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { isMockRateLimitError } from 'src/providers/rateLimitMocking.js'
 import { REPEATED_529_ERROR_MESSAGE } from 'src/providers/transport/errors.js'
 import { extractConnectionErrorDetails } from 'src/providers/transport/errorUtils.js'
 import {
@@ -707,11 +706,6 @@ export function shouldRetry(
   attempt = 1,
   account: RetryAccountDeps = DEFAULT_RETRY_ACCOUNT_DEPS,
 ): boolean {
-  // Never retry mock errors - they're from /mock-limits command for testing
-  if (isMockRateLimitError(error)) {
-    return false
-  }
-
   // A rate limit whose reset is minutes or hours out is not worth retrying —
   // ten attempts of exponential backoff top out around a minute of waiting and
   // then fail anyway. This sits above the x-should-retry handling below on

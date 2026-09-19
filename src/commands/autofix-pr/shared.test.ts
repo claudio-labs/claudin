@@ -123,7 +123,7 @@ describe('assertAutofixPreconditions', () => {
     setup({ gh: { prView: null } })
     const { assertAutofixPreconditions } = await importFreshShared()
     await expect(assertAutofixPreconditions()).rejects.toThrow(
-      'no open PR found for this branch. Create one first via /commit-push-pr.',
+      'no open PR found for this branch. Create one first with `gh pr create`.',
     )
   })
 

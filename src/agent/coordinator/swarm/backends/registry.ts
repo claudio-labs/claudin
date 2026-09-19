@@ -8,15 +8,12 @@ import {
   isIt2CliAvailable,
   isTmuxAvailable,
 } from 'src/agent/coordinator/swarm/backends/detection.js'
-import { createInProcessBackend } from 'src/agent/coordinator/swarm/backends/InProcessBackend.js'
 import { getPreferTmuxOverIterm2 } from 'src/agent/coordinator/swarm/backends/it2Setup.js'
-import { createPaneBackendExecutor } from 'src/agent/coordinator/swarm/backends/PaneBackendExecutor.js'
 import { getTeammateModeFromSnapshot } from 'src/agent/coordinator/swarm/backends/teammateModeSnapshot.js'
 import type {
   BackendDetectionResult,
   PaneBackend,
   PaneBackendType,
-  TeammateExecutor,
 } from 'src/agent/coordinator/swarm/backends/types.js'
 
 /**
@@ -34,17 +31,6 @@ let cachedDetectionResult: BackendDetectionResult | null = null
  * Flag to track if backends have been registered.
  */
 let backendsRegistered = false
-
-/**
- * Cached in-process backend instance.
- */
-let cachedInProcessBackend: TeammateExecutor | null = null
-
-/**
- * Cached pane backend executor instance.
- * Wraps the detected PaneBackend to provide TeammateExecutor interface.
- */
-let cachedPaneBackendExecutor: TeammateExecutor | null = null
 
 /**
  * Tracks whether spawn fell back to in-process mode because no pane backend
@@ -398,67 +384,12 @@ export function getResolvedTeammateMode(): 'in-process' | 'tmux' {
 }
 
 /**
- * Gets the InProcessBackend instance.
- * Creates and caches the instance on first call.
- */
-export function getInProcessBackend(): TeammateExecutor {
-  if (!cachedInProcessBackend) {
-    cachedInProcessBackend = createInProcessBackend()
-  }
-  return cachedInProcessBackend
-}
-
-/**
- * Gets a TeammateExecutor for spawning teammates.
- *
- * Returns either:
- * - InProcessBackend when preferInProcess is true and in-process mode is enabled
- * - PaneBackendExecutor wrapping the detected pane backend otherwise
- *
- * This provides a unified TeammateExecutor interface regardless of execution mode,
- * allowing callers to spawn and manage teammates without knowing the backend details.
- *
- * @param preferInProcess - If true and in-process is enabled, returns InProcessBackend.
- *                          Otherwise returns PaneBackendExecutor.
- * @returns TeammateExecutor instance
- */
-export async function getTeammateExecutor(
-  preferInProcess: boolean = false,
-): Promise<TeammateExecutor> {
-  if (preferInProcess && isInProcessEnabled()) {
-    logForDebugging('[BackendRegistry] Using in-process executor')
-    return getInProcessBackend()
-  }
-
-  // Return pane backend executor
-  logForDebugging('[BackendRegistry] Using pane backend executor')
-  return getPaneBackendExecutor()
-}
-
-/**
- * Gets the PaneBackendExecutor instance.
- * Creates and caches the instance on first call, detecting the appropriate pane backend.
- */
-async function getPaneBackendExecutor(): Promise<TeammateExecutor> {
-  if (!cachedPaneBackendExecutor) {
-    const detection = await detectAndGetBackend()
-    cachedPaneBackendExecutor = createPaneBackendExecutor(detection.backend)
-    logForDebugging(
-      `[BackendRegistry] Created PaneBackendExecutor wrapping ${detection.backend.type}`,
-    )
-  }
-  return cachedPaneBackendExecutor
-}
-
-/**
  * Resets the backend detection cache.
  * Used for testing to allow re-detection.
  */
 export function resetBackendDetection(): void {
   cachedBackend = null
   cachedDetectionResult = null
-  cachedInProcessBackend = null
-  cachedPaneBackendExecutor = null
   backendsRegistered = false
   inProcessFallbackActive = false
 }

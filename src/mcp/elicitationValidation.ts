@@ -18,25 +18,6 @@ export type ValidationResult = {
   error?: string
 }
 
-const STRING_FORMATS = {
-  email: {
-    description: 'email address',
-    example: 'user@example.com',
-  },
-  uri: {
-    description: 'URI',
-    example: 'https://example.com',
-  },
-  date: {
-    description: 'date',
-    example: '2024-03-15',
-  },
-  'date-time': {
-    description: 'date-time',
-    example: '2024-03-15T14:30:00Z',
-  },
-}
-
 /**
  * Check if schema is a single-select enum (either legacy `enum` format or new `oneOf` format)
  */
@@ -241,17 +222,6 @@ export function validateElicitationInput(
     error: parseResult.error.issues.map(e => e.message).join('; '),
   }
 }
-
-const hasStringFormat = (
-  schema: PrimitiveSchemaDefinition,
-): schema is StringSchema & { format: string } => {
-  return (
-    schema.type === 'string' &&
-    'format' in schema &&
-    typeof schema.format === 'string'
-  )
-}
-
 
 /**
  * Check if a schema is a date or date-time format that supports NL parsing

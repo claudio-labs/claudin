@@ -321,16 +321,6 @@ export type SystemFileSnapshotMessage = SystemMessageBase & {
   snapshotFiles: { key: string; path: string; content: string }[]
 }
 
-/**
- * Reconstructed from a consumer only: `SystemTextMessage.tsx` handles
- * `subtype === 'thinking'` by returning `null`, and nothing in this fork
- * constructs one. Kept so the renderer's branch stays reachable.
- */
-export type SystemThinkingMessage = SystemMessageBase & {
-  subtype: 'thinking'
-  content: string
-}
-
 export type SystemMessage =
   | SystemInformationalMessage
   | SystemLocalCommandMessage
@@ -346,7 +336,6 @@ export type SystemMessage =
   | SystemCompactBoundaryMessage
   | SystemAPIErrorMessage
   | SystemFileSnapshotMessage
-  | SystemThinkingMessage
 
 // ---------------------------------------------------------------------------
 // The union itself

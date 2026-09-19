@@ -38,6 +38,19 @@
  * `.claudin/memory/team/knip-unused-export-is-not-unused.md`: knip's "unused
  * export" means only that nothing IMPORTS it, the declaring module usually uses
  * its own export, and a code generator reading a file as TEXT is invisible here.
+ *
+ * Two baselined entries are known FALSE and cannot be removed from the file —
+ * it is generated, so deleting a line knip still reports would make the next run
+ * call it newly introduced:
+ *
+ *   exports src/agent/coordinator/teammate.ts#setDynamicTeamContext
+ *   exports src/agent/coordinator/teammateMailbox.ts#formatTeammateMessages
+ *
+ * Both are live, reached through a `require()` namespace followed by member
+ * access (`getTeammateUtils().setDynamicTeamContext` at
+ * platform/main/action/parseOptions.ts, `getTeammateMailbox()` at
+ * agent/messages/attachments.ts) — a shape knip does not trace. Do not "clean
+ * them up" on the strength of this baseline.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'

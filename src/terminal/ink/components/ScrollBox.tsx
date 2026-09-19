@@ -3,7 +3,6 @@ import type { Except } from 'type-fest';
 import { markScrollActivity } from 'src/platform/bootstrap/state.js';
 import type { DOMElement } from 'src/terminal/ink/dom.js';
 import { markDirty, scheduleRenderFrom } from 'src/terminal/ink/dom.js';
-import { markCommitStart } from 'src/terminal/ink/reconciler.js';
 import type { Styles } from 'src/terminal/ink/styles.js';
 import 'src/terminal/ink/global.d.ts';
 import Box from 'src/terminal/ink/components/Box.js';
@@ -124,7 +123,6 @@ function ScrollBox({
     // contributed to 1402ms max frame gaps during scroll drain.
     markScrollActivity();
     markDirty(el);
-    markCommitStart();
     notify();
     if (renderQueuedRef.current) return;
     renderQueuedRef.current = true;

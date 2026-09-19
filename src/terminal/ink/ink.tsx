@@ -7,7 +7,6 @@ import type { FiberRoot } from 'react-reconciler';
 import { LegacyRoot } from 'react-reconciler/constants.js';
 import { onExit } from 'signal-exit';
 import { flushInteractionTime } from 'src/platform/bootstrap/state.js';
-import { getYogaCounters } from 'src/native-ts/yoga-layout/index.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { logError } from 'src/shared/log.js';
 import { format } from 'util';
@@ -26,7 +25,7 @@ import { nodeCache } from 'src/terminal/ink/node-cache.js';
 import { optimize } from 'src/terminal/ink/optimizer.js';
 import Output from 'src/terminal/ink/output.js';
 import type { ParsedKey } from 'src/terminal/ink/parse-keypress.js';
-import reconciler, { dispatcher, getLastCommitMs, getLastYogaMs, isDebugRepaintsEnabled, recordYogaMs, resetProfileCounters } from 'src/terminal/ink/reconciler.js';
+import reconciler, { dispatcher, isDebugRepaintsEnabled } from 'src/terminal/ink/reconciler.js';
 import renderNodeToOutput, { consumeFollowScroll, didLayoutShift } from 'src/terminal/ink/render-node-to-output.js';
 import { applyPositionedHighlight, type MatchPosition, scanPositions } from 'src/terminal/ink/render-to-screen.js';
 import createRenderer, { type Renderer } from 'src/terminal/ink/renderer.js';
@@ -101,19 +100,6 @@ export default class Ink {
   private backFrame: Frame;
   private lastPoolResetTime = performance.now();
   private drainTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastYogaCounters: {
-    ms: number;
-    visited: number;
-    measured: number;
-    cacheHits: number;
-    live: number;
-  } = {
-    ms: 0,
-    visited: 0,
-    measured: 0,
-    cacheHits: 0,
-    live: 0
-  };
   private altScreenParkPatch: Readonly<{
     type: 'stdout';
     content: string;
@@ -258,16 +244,8 @@ export default class Ink {
         return;
       }
       if (this.rootNode.yogaNode) {
-        const t0 = performance.now();
         this.rootNode.yogaNode.setWidth(this.terminalColumns);
         this.rootNode.yogaNode.calculateLayout(this.terminalColumns);
-        const ms = performance.now() - t0;
-        recordYogaMs(ms);
-        const c = getYogaCounters();
-        this.lastYogaCounters = {
-          ms,
-          ...c
-        };
       }
     };
 
@@ -477,7 +455,6 @@ export default class Ink {
       altScreen: this.altScreenActive,
       prevFrameContaminated: this.prevFrameContaminated
     });
-    const rendererMs = performance.now() - renderStart;
 
     // Sticky/auto-follow scrolled the ScrollBox this frame. Translate the
     // selection by the same delta so the highlight stays anchored to the
@@ -613,7 +590,6 @@ export default class Ink {
         cursor: ALT_SCREEN_ANCHOR_CURSOR
       };
     }
-    const tDiff = performance.now();
     const rewriteMainScreen = !this.altScreenActive && shouldUseMainScreenRewrite();
     const diff = this.log.render(prevFrame, frame, this.altScreenActive,
     // DECSTBM needs BSU/ESU atomicity — without it the outer terminal
@@ -621,7 +597,6 @@ export default class Ink {
     // tmux is the main case (re-emits DECSTBM with its own timing and
     // doesn't implement DEC 2026, so SYNC_OUTPUT_SUPPORTED is false).
     SYNC_OUTPUT_SUPPORTED, rewriteMainScreen);
-    const diffMs = performance.now() - tDiff;
     // Diagnostic for the "banner repeats mid-scrollback" reports: the banner
     // is frame row 0, so only a paint that starts there can re-emit it —
     // either a full reset of a frame that fits the viewport, or the growing
@@ -679,9 +654,7 @@ export default class Ink {
         }
       }
     }
-    const tOptimize = performance.now();
     const optimized = optimize(diff);
-    const optimizeMs = performance.now() - tOptimize;
     const hasDiff = optimized.length > 0;
     if (this.altScreenActive && hasDiff) {
       // Prepend CSI H to anchor the physical cursor to (0,0) so
@@ -794,10 +767,8 @@ export default class Ink {
         this.displayCursor = null;
       }
     }
-    const tWrite = performance.now();
     const skipSyncMarkers = this.altScreenActive ? !SYNC_OUTPUT_SUPPORTED : rewriteMainScreen || shouldSkipMainScreenSyncMarkers();
     writeDiffToTerminal(this.terminal, optimized, skipSyncMarkers);
-    const writeMs = performance.now() - tWrite;
 
     // Update blit safety for the NEXT frame. The frame just rendered
     // becomes frontFrame (= next frame's prevScreen). If we applied the
@@ -821,33 +792,8 @@ export default class Ink {
     if (frame.scrollDrainPending) {
       this.drainTimer = setTimeout(() => this.onRender(), scrollDrainIntervalMs());
     }
-    const yogaMs = getLastYogaMs();
-    const commitMs = getLastCommitMs();
-    const yc = this.lastYogaCounters;
-    // Reset so drain-only frames (no React commit) don't repeat stale values.
-    resetProfileCounters();
-    this.lastYogaCounters = {
-      ms: 0,
-      visited: 0,
-      measured: 0,
-      cacheHits: 0,
-      live: 0
-    };
     this.options.onFrame?.({
       durationMs: performance.now() - renderStart,
-      phases: {
-        renderer: rendererMs,
-        diff: diffMs,
-        optimize: optimizeMs,
-        write: writeMs,
-        patches: diff.length,
-        yoga: yogaMs,
-        commit: commitMs,
-        yogaVisited: yc.visited,
-        yogaMeasured: yc.measured,
-        yogaCacheHits: yc.cacheHits,
-        yogaLive: yc.live
-      },
       flickers
     });
   }
