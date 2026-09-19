@@ -28,10 +28,6 @@ const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
 
 import {
   addToTurnClassifierDuration,
-  getTotalCacheCreationInputTokens,
-  getTotalCacheReadInputTokens,
-  getTotalInputTokens,
-  getTotalOutputTokens,
 } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/platform/analytics/growthbook.js'
 import {
