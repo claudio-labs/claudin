@@ -56,7 +56,7 @@ const ALL_FILES = [
   'src/providers/shims/claude/streaming.ts',
   'src/providers/shims/claude/paramBuilders.ts',
   'src/agent/messages/normalize.ts',
-  'src/agent/compact/stableStubState.ts',
+  'src/plugins/marketplaceManager.ts',
   'src/agent/compact/microCompact.ts',
   'src/agent/cache/cacheProfile.ts',
   'src/agent/cost-tracker.ts',
