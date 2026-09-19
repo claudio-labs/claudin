@@ -203,30 +203,6 @@ let _createCount = 0
 let _prepareAt = 0
 // --- END ---
 
-// --- SCROLL PROFILING (bench/scroll-e2e.sh reads via getLastYogaMs) ---
-// Set by onComputeLayout wrapper in ink.tsx; read by onRender for phases.
-let _lastYogaMs = 0
-let _lastCommitMs = 0
-let _commitStart = 0
-export function recordYogaMs(ms: number): void {
-  _lastYogaMs = ms
-}
-export function getLastYogaMs(): number {
-  return _lastYogaMs
-}
-export function markCommitStart(): void {
-  _commitStart = performance.now()
-}
-export function getLastCommitMs(): number {
-  return _lastCommitMs
-}
-export function resetProfileCounters(): void {
-  _lastYogaMs = 0
-  _lastCommitMs = 0
-  _commitStart = 0
-}
-// --- END ---
-
 // react-reconciler 0.34 BINDS the ViewTransition half of the host config that
 // 0.33 only read and threw away, and calls this one from `completeRootWhenReady`
 // on every commit whose lanes are all transition/retry/deferred — no
@@ -268,8 +244,6 @@ const reconciler = createReconciler<
   preparePortalMount: () => null,
   clearContainer: () => false,
   resetAfterCommit(rootNode) {
-    _lastCommitMs = _commitStart > 0 ? performance.now() - _commitStart : 0
-    _commitStart = 0
     if (COMMIT_LOG) {
       const now = performance.now()
       _commits++

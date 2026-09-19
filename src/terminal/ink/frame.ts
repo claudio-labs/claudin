@@ -37,32 +37,6 @@ export type FlickerReason = 'resize' | 'offscreen' | 'clear'
 
 export type FrameEvent = {
   durationMs: number
-  /** Phase breakdown in ms + patch count. Populated when the ink instance
-   *  has frame-timing instrumentation enabled (via onFrame wiring). */
-  phases?: {
-    /** createRenderer output: DOM → yoga layout → screen buffer */
-    renderer: number
-    /** LogUpdate.render(): screen diff → Patch[] (the hot path this PR optimizes) */
-    diff: number
-    /** optimize(): patch merge/dedupe */
-    optimize: number
-    /** writeDiffToTerminal(): serialize patches → ANSI → stdout */
-    write: number
-    /** Pre-optimize patch count (proxy for how much changed this frame) */
-    patches: number
-    /** yoga calculateLayout() time (runs in resetAfterCommit, before onRender) */
-    yoga: number
-    /** React reconcile time: scrollMutated → resetAfterCommit. 0 if no commit. */
-    commit: number
-    /** layoutNode() calls this frame (recursive, includes cache-hit returns) */
-    yogaVisited: number
-    /** measureFunc (text wrap/width) calls — the expensive part */
-    yogaMeasured: number
-    /** early returns via _hasL single-slot cache */
-    yogaCacheHits: number
-    /** total yoga Node instances alive (create - free). Growth = leak. */
-    yogaLive: number
-  }
   flickers: Array<{
     desiredHeight: number
     availableHeight: number

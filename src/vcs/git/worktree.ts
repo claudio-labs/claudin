@@ -1454,41 +1454,6 @@ export async function execIntoTmuxWorktree(args: string[]): Promise<{
     newArgs.push(arg)
   }
 
-  // Get tmux prefix for user guidance
-  let tmuxPrefix = 'C-b' // default
-  const prefixResult = spawnSync('tmux', ['show-options', '-g', 'prefix'], {
-    encoding: 'utf-8',
-  })
-  if (prefixResult.status === 0 && prefixResult.stdout) {
-    const match = prefixResult.stdout.match(/prefix\s+(\S+)/)
-    if (match?.[1]) {
-      tmuxPrefix = match[1]
-    }
-  }
-
-  // Check if tmux prefix conflicts with Claude keybindings
-  // Claude binds: ctrl+b (task:background), ctrl+c, ctrl+d, ctrl+t, ctrl+o, ctrl+r, ctrl+s, ctrl+g, ctrl+e
-  const claudeBindings = [
-    'C-b',
-    'C-c',
-    'C-d',
-    'C-t',
-    'C-o',
-    'C-r',
-    'C-s',
-    'C-g',
-    'C-e',
-  ]
-  const prefixConflicts = claudeBindings.includes(tmuxPrefix)
-
-  // Set env vars for the inner Claude to display tmux info in welcome message
-  const tmuxEnv = {
-    ...process.env,
-    CLAUDIN_TMUX_SESSION: tmuxSessionName,
-    CLAUDIN_TMUX_PREFIX: tmuxPrefix,
-    CLAUDIN_TMUX_PREFIX_CONFLICTS: prefixConflicts ? '1' : '',
-  }
-
   // Check if session already exists
   const hasSessionResult = spawnSync(
     'tmux',
@@ -1544,7 +1509,7 @@ export async function execIntoTmuxWorktree(args: string[]): Promise<{
             process.execPath,
             ...newArgs,
           ],
-          { cwd: worktreeDir, env: tmuxEnv },
+          { cwd: worktreeDir, env: process.env },
         )
 
         // Switch to the new session
@@ -1570,7 +1535,7 @@ export async function execIntoTmuxWorktree(args: string[]): Promise<{
       spawnSync('tmux', tmuxArgs, {
         stdio: 'inherit',
         cwd: worktreeDir,
-        env: tmuxEnv,
+        env: process.env,
       })
     }
   }
