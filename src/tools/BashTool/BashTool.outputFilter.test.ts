@@ -24,7 +24,7 @@ import {
   applyBashOutputFilter,
   planBashFilterForExecution,
   shouldFilterOutput,
-} from 'src/tools/BashTool/BashTool.js'
+} from 'src/tools/BashTool/runShellCommand.js'
 import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 import { getBytesSaved, resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 

@@ -19,7 +19,7 @@ import {
   applyBashOutputFilter,
   planBashFilterForExecution,
   runShellCommand,
-} from 'src/tools/BashTool/BashTool.js'
+} from 'src/tools/BashTool/runShellCommand.js'
 import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 
 type SetAppStateFn = (f: (prev: AppState) => AppState) => void
