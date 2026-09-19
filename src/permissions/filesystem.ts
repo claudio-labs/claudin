@@ -4,6 +4,7 @@ import memoize from 'lodash-es/memoize.js'
 import { homedir, tmpdir } from 'os'
 import { join, normalize, posix, sep } from 'path'
 import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getSessionMemoryDir } from 'src/memory/session/paths.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import {
   CLAUDE_FOLDER_PERMISSION_PATTERN,
@@ -271,22 +272,6 @@ function isSessionPlanFile(absolutePath: string): boolean {
   }
   const basename = normalizedPath.slice(prefix.length)
   return basename.length > 0 && !basename.includes(sep)
-}
-
-/**
- * Returns the session memory directory path for the current session with trailing separator.
- * Path format: {projectDir}/{sessionId}/session-memory/
- */
-export function getSessionMemoryDir(): string {
-  return join(getProjectDir(getCwd()), getSessionId(), 'session-memory') + sep
-}
-
-/**
- * Returns the session memory file path for the current session.
- * Path format: {projectDir}/{sessionId}/session-memory/summary.md
- */
-export function getSessionMemoryPath(): string {
-  return join(getSessionMemoryDir(), 'summary.md')
 }
 
 // Check if file is within the session memory directory
