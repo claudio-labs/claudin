@@ -4,35 +4,23 @@ import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promi
 import * as React from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
-import { z } from 'zod/v4';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import { logError } from 'src/shared/log.js';
-import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
 import { buildTool, findToolByName, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
 import type { AgentId } from 'src/shared/types/ids.js';
 import type { AssistantMessage } from 'src/shared/types/message.js';
-import { splitCommand_DEPRECATED, splitCommandWithOperators } from 'src/platform/bash/commands.js';
-import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from 'src/platform/bash/segments.js';
 import { extractClaudeCodeHints } from 'src/platform/claudeCodeHints.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { detectCodeIndexingFromCommand } from 'src/shared/fs/codeIndexing.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import { isENOENT, ShellError } from 'src/shared/errors.js';
-import { detectFileEncoding, detectLineEndings, getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js';
-import { fileHistoryEnabled, fileHistoryTrackEdit } from 'src/shared/fs/fileHistory.js';
+import { ShellError } from 'src/shared/errors.js';
 import { truncate } from 'src/shared/text/format.js';
-import { getFsImplementation } from 'src/shared/fs/fsOperations.js';
-import { lazySchema } from 'src/shared/data/lazySchema.js';
-import { expandPath } from 'src/shared/fs/path.js';
 import type { PermissionResult } from 'src/permissions/PermissionResult.js';
 import { maybeRecordPluginHint } from 'src/plugins/hintRecommendation.js';
 import { exec } from 'src/shared/proc/Shell.js';
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
-import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
-import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
-import { semanticNumber } from 'src/shared/data/semanticNumber.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
@@ -57,9 +45,12 @@ import {
 } from 'src/tools/shared/outputFilter/Bash/index.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js';
+import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
+import { detectBlockedSleepPattern, isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
+import { inputSchema, isBackgroundTasksDisabled, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
 import { interpretCommandResult } from 'src/tools/BashTool/commandSemantics.js';
-import { getDefaultTimeoutMs, getMaxTimeoutMs, getSimplePrompt } from 'src/tools/BashTool/prompt.js';
+import { getDefaultTimeoutMs, getSimplePrompt } from 'src/tools/BashTool/prompt.js';
 import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js';
 import { parseSedEditCommand } from 'src/tools/BashTool/sedEditParser.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
@@ -76,261 +67,9 @@ const PROGRESS_THRESHOLD_MS = 2000; // Show progress after 2 seconds
 // main agent. Shared with PowerShellTool via shellToolResultMappers, because the
 // backgrounding note quotes the budget.
 
-// Search commands for collapsible display (grep, find, etc.)
-const BASH_SEARCH_COMMANDS = new Set(['find', 'grep', 'rg', 'ag', 'ack', 'locate', 'which', 'whereis']);
-
-// Read/view commands for collapsible display (cat, head, etc.)
-const BASH_READ_COMMANDS = new Set(['cat', 'head', 'tail', 'less', 'more',
-// Analysis commands
-'wc', 'stat', 'file', 'strings',
-// Data processing — commonly used to parse/transform file content in pipes
-'jq', 'awk', 'cut', 'sort', 'uniq', 'tr']);
-
-// Directory-listing commands for collapsible display (ls, tree, du).
-// Split from BASH_READ_COMMANDS so the summary says "Listed N directories"
-// instead of the misleading "Read N files".
-const BASH_LIST_COMMANDS = new Set(['ls', 'tree', 'du']);
-
-// Commands that typically produce no stdout on success
-const BASH_SILENT_COMMANDS = new Set(['mv', 'cp', 'rm', 'mkdir', 'rmdir', 'chmod', 'chown', 'chgrp', 'touch', 'ln', 'cd', 'export', 'unset', 'wait']);
-
-/**
- * Checks if a bash command is a search or read operation.
- * Used to determine if the command should be collapsed in the UI.
- * Returns an object indicating whether it's a search or read operation.
- *
- * For pipelines (e.g., `cat file | bq`), ALL parts must be search/read commands
- * for the whole command to be considered collapsible.
- *
- * Semantic-neutral commands (echo, printf, true, false, :) are skipped in any
- * position, as they're pure output/status commands that don't affect the read/search
- * nature of the pipeline (e.g. `ls dir && echo "---" && ls dir2` is still a read).
- */
-export function isSearchOrReadBashCommand(command: string): {
-  isSearch: boolean;
-  isRead: boolean;
-  isList: boolean;
-} {
-  const NOT_COLLAPSIBLE = {
-    isSearch: false,
-    isRead: false,
-    isList: false
-  };
-  const walked = walkCommandSegments(command);
-  // null covers malformed syntax, an empty command, and a command that is only
-  // operators — none of them collapsible.
-  if (!walked) {
-    return NOT_COLLAPSIBLE;
-  }
-  let hasSearch = false;
-  let hasRead = false;
-  let hasList = false;
-  let hasNonNeutralCommand = false;
-  for (const segment of walked.segments) {
-    if (segment.isNeutral) {
-      continue;
-    }
-    hasNonNeutralCommand = true;
-    const isPartSearch = BASH_SEARCH_COMMANDS.has(segment.name);
-    const isPartRead = BASH_READ_COMMANDS.has(segment.name);
-    const isPartList = BASH_LIST_COMMANDS.has(segment.name);
-    if (!isPartSearch && !isPartRead && !isPartList) {
-      return NOT_COLLAPSIBLE;
-    }
-    if (isPartSearch) hasSearch = true;
-    if (isPartRead) hasRead = true;
-    if (isPartList) hasList = true;
-  }
-
-  // Only neutral commands (e.g., just "echo foo") -- not collapsible
-  if (!hasNonNeutralCommand) {
-    return NOT_COLLAPSIBLE;
-  }
-  return {
-    isSearch: hasSearch,
-    isRead: hasRead,
-    isList: hasList
-  };
-}
-
-/**
- * Checks if a bash command is expected to produce no stdout on success.
- * Used to show "Done" instead of "(No output)" in the UI.
- */
-export function isSilentBashCommand(command: string): boolean {
-  let partsWithOperators: string[];
-  try {
-    partsWithOperators = splitCommandWithOperators(command);
-  } catch {
-    return false;
-  }
-  if (partsWithOperators.length === 0) {
-    return false;
-  }
-  let hasNonFallbackCommand = false;
-  let lastOperator: string | null = null;
-  let skipNextAsRedirectTarget = false;
-  for (const part of partsWithOperators) {
-    if (skipNextAsRedirectTarget) {
-      skipNextAsRedirectTarget = false;
-      continue;
-    }
-    if (part === '>' || part === '>>' || part === '>&') {
-      skipNextAsRedirectTarget = true;
-      continue;
-    }
-    if (part === '||' || part === '&&' || part === '|' || part === ';') {
-      lastOperator = part;
-      continue;
-    }
-    const baseCommand = part.trim().split(/\s+/)[0];
-    if (!baseCommand) {
-      continue;
-    }
-    if (lastOperator === '||' && SEMANTIC_NEUTRAL_COMMANDS.has(baseCommand)) {
-      continue;
-    }
-    hasNonFallbackCommand = true;
-    if (!BASH_SILENT_COMMANDS.has(baseCommand)) {
-      return false;
-    }
-  }
-  return hasNonFallbackCommand;
-}
-
-// Commands that should not be auto-backgrounded
-const DISALLOWED_AUTO_BACKGROUND_COMMANDS = ['sleep' // Sleep should run in foreground unless explicitly backgrounded by user
-];
-
-// Check if background tasks are disabled at module load time
-const isBackgroundTasksDisabled =
-// eslint-disable-next-line custom-rules/no-process-env-top-level -- Intentional: env vars are immutable after process start
-isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS);
-// Captured at module load so the filter decision is consistent for the entire
-// process lifetime — a child cannot silently re-enable filtering after the
-// operator sets the kill switch before starting the agent.
-// eslint-disable-next-line custom-rules/no-process-env-top-level -- Intentional: env vars are immutable after process start
-const isBashOutputFilterDisabled = isEnvTruthy(process.env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER);
-const fullInputSchema = lazySchema(() => z.strictObject({
-  command: z.string().describe('The command to execute'),
-  timeout: semanticNumber(z.number().optional()).describe(`Optional timeout in milliseconds (max ${getMaxTimeoutMs()})`),
-  description: z.string().optional().describe(`Clear, concise description of what this command does in active voice. Never use words like "complex" or "risk" in the description - just describe what it does.
-
-For simple commands (git, npm, standard CLI tools), keep it brief (5-10 words):
-- ls → "List files in current directory"
-- git status → "Show working tree status"
-- npm install → "Install package dependencies"
-
-For commands that are harder to parse at a glance (piped commands, obscure flags, etc.), add enough context to clarify what it does:
-- find . -name "*.tmp" -exec rm {} \\; → "Find and delete all .tmp files recursively"
-- git reset --hard origin/main → "Discard all local changes and match remote main"
-- curl -s url | jq '.data[]' → "Fetch JSON from URL and extract data array elements"`),
-  run_in_background: semanticBoolean(z.boolean().optional()).describe(`Set to true to run this command in the background. Use Read to read the output later.`),
-  dangerouslyDisableSandbox: semanticBoolean(z.boolean().optional()).describe('Set this to true to dangerously override sandbox mode and run commands without sandboxing.'),
-  _dangerouslyDisableSandboxApproved: z.boolean().optional().describe('Internal: user-approved sandbox override'),
-  _simulatedSedEdit: z.object({
-    filePath: z.string(),
-    newContent: z.string()
-  }).optional().describe('Internal: pre-computed sed edit result from preview')
-}));
-
-// Always omit internal-only fields from the model-facing schema.
-// _simulatedSedEdit is set by SedEditPermissionRequest after the user approves a
-// sed edit preview; exposing it would let the model bypass permission checks and
-// the sandbox by pairing an innocuous command with an arbitrary file write.
-// dangerouslyDisableSandbox is also omitted because sandbox escape must be tied
-// to trusted user/internal provenance, not model-controlled tool input.
-// Also conditionally remove run_in_background when background tasks are disabled.
-const inputSchema = lazySchema(() => isBackgroundTasksDisabled ? fullInputSchema().omit({
-  run_in_background: true,
-  dangerouslyDisableSandbox: true,
-  _dangerouslyDisableSandboxApproved: true,
-  _simulatedSedEdit: true
-}) : fullInputSchema().omit({
-  dangerouslyDisableSandbox: true,
-  _dangerouslyDisableSandboxApproved: true,
-  _simulatedSedEdit: true
-}));
-type InputSchema = ReturnType<typeof inputSchema>;
-
-// Use fullInputSchema for the type to always include run_in_background
-// (even when it's omitted from the schema, the code needs to handle it)
-export type BashToolInput = z.infer<ReturnType<typeof fullInputSchema>>;
-
-/**
- * Wrap SandboxManager.annotateStderrWithSandboxFailures so a non-string return
- * value (notably the `() => null` no-op from the open build's sandbox stub)
- * falls back to the raw output. Without this, exit≠0 commands lose all stdout/
- * stderr in the resulting ShellError: only "Exit code N" reaches the model.
- *
- * Exported for unit testing — keep the body in sync with the call site below.
- */
-export function safeAnnotateStderrWithSandboxFailures(
-  command: string,
-  rawOutput: string,
-): string {
-  const annotated = SandboxManager.annotateStderrWithSandboxFailures(command, rawOutput);
-  return typeof annotated === 'string' ? annotated : rawOutput;
-}
-const outputSchema = lazySchema(() => z.object({
-  stdout: z.string().describe('The standard output of the command'),
-  stderr: z.string().describe('The standard error output of the command'),
-  rawOutputPath: z.string().optional().describe('Path to raw output file for large MCP tool outputs'),
-  interrupted: z.boolean().describe('Whether the command was interrupted'),
-  isImage: z.boolean().optional().describe('Flag to indicate if stdout contains image data'),
-  backgroundTaskId: z.string().optional().describe('ID of the background task if command is running in background'),
-  backgroundedByUser: z.boolean().optional().describe('True if the user manually backgrounded the command with Ctrl+B'),
-  assistantAutoBackgrounded: z.boolean().optional().describe('True if assistant-mode auto-backgrounded a long-running blocking command'),
-  dangerouslyDisableSandbox: z.boolean().optional().describe('Flag to indicate if sandbox mode was overridden'),
-  returnCodeInterpretation: z.string().optional().describe('Semantic interpretation for non-error exit codes with special meaning'),
-  noOutputExpected: z.boolean().optional().describe('Whether the command is expected to produce no output on success'),
-  structuredContent: z.array(z.any()).optional().describe('Structured content blocks'),
-  persistedOutputPath: z.string().optional().describe('Path to the persisted full output in tool-results dir (set when output is too large for inline)'),
-  persistedOutputSize: z.number().optional().describe('Total size of the output in bytes (set when output is too large for inline)')
-}));
-type OutputSchema = ReturnType<typeof outputSchema>;
-export type Out = z.infer<OutputSchema>;
-
 // Re-export BashProgress from centralized types to break import cycles
 export type { BashProgress } from 'src/shared/types/tools.js';
 import type { BashProgress } from 'src/shared/types/tools.js';
-
-/**
- * Checks if a command is allowed to be automatically backgrounded
- * @param command The command to check
- * @returns false for commands that should not be auto-backgrounded (like sleep)
- */
-export function isAutobackgroundingAllowed(command: string): boolean {
-  const parts = splitCommand_DEPRECATED(command);
-  if (parts.length === 0) return true;
-
-  // Get the first part which should be the base command
-  const baseCommand = parts[0]?.trim();
-  if (!baseCommand) return true;
-  return !DISALLOWED_AUTO_BACKGROUND_COMMANDS.includes(baseCommand);
-}
-
-/**
- * Detect standalone or leading `sleep N` patterns that should use Monitor
- * instead. Catches `sleep 5`, `sleep 5 && check`, `sleep 5; check` — but
- * not sleep inside pipelines, subshells, or scripts (those are fine).
- */
-export function detectBlockedSleepPattern(command: string): string | null {
-  const parts = splitCommand_DEPRECATED(command);
-  if (parts.length === 0) return null;
-  const first = parts[0]?.trim() ?? '';
-  // Bare `sleep N` or `sleep N.N` as the first subcommand.
-  // Float durations (sleep 0.5) are allowed — those are legit pacing, not polls.
-  const m = /^sleep\s+(\d+)\s*$/.exec(first);
-  if (!m) return null;
-  const secs = parseInt(m[1]!, 10);
-  if (secs < 2) return null; // sub-2s sleeps are fine (rate limiting, pacing)
-
-  // `sleep N` alone → "what are you waiting for?"
-  // `sleep N && check` → "use Monitor { command: check }"
-  const rest = parts.slice(1).join(' ').trim();
-  return rest ? `sleep ${secs} followed by: ${rest}` : `standalone sleep ${secs}`;
-}
 
 /**
  * Checks if a command contains tools that shouldn't run in sandbox
@@ -343,76 +82,6 @@ export function detectBlockedSleepPattern(command: string): string | null {
  * - Prefix patterns: "npm run test:*"
  */
 
-type SimulatedSedEditResult = {
-  data: Out;
-};
-type SimulatedSedEditContext = Pick<ToolUseContext, 'readFileState' | 'updateFileHistoryState'>;
-
-/**
- * Applies a simulated sed edit directly instead of running sed.
- * This is used by the permission dialog to ensure what the user previews
- * is exactly what gets written to the file.
- */
-export async function applySedEdit(simulatedEdit: {
-  filePath: string;
-  newContent: string;
-}, toolUseContext: SimulatedSedEditContext, parentMessage?: AssistantMessage): Promise<SimulatedSedEditResult> {
-  const {
-    filePath,
-    newContent
-  } = simulatedEdit;
-  const absoluteFilePath = expandPath(filePath);
-  const fs = getFsImplementation();
-
-  // Read original content for VS Code notification
-  const encoding = detectFileEncoding(absoluteFilePath);
-  let originalContent: string;
-  try {
-    originalContent = await fs.readFile(absoluteFilePath, {
-      encoding
-    });
-  } catch (e) {
-    if (isENOENT(e)) {
-      return {
-        data: {
-          stdout: '',
-          stderr: `sed: ${filePath}: No such file or directory\nExit code 1`,
-          interrupted: false
-        }
-      };
-    }
-    throw e;
-  }
-
-  // Track file history before making changes (for undo support)
-  if (fileHistoryEnabled() && parentMessage) {
-    await fileHistoryTrackEdit(toolUseContext.updateFileHistoryState, absoluteFilePath, parentMessage.uuid);
-  }
-
-  // Detect line endings and write new content
-  const endings = detectLineEndings(absoluteFilePath);
-  writeTextContent(absoluteFilePath, newContent, encoding, endings);
-
-  // Notify VS Code about the file change
-  notifyVscodeFileUpdated(absoluteFilePath, originalContent, newContent);
-
-  // Update read timestamp to invalidate stale writes
-  toolUseContext.readFileState.set(absoluteFilePath, {
-    content: newContent,
-    timestamp: getFileModificationTime(absoluteFilePath),
-    offset: undefined,
-    limit: undefined
-  });
-
-  // Return success result matching sed output format (sed produces no output on success)
-  return {
-    data: {
-      stdout: '',
-      stderr: '',
-      interrupted: false
-    }
-  };
-}
 export const BashTool = buildTool({
   name: BASH_TOOL_NAME,
   searchHint: 'execute shell commands',

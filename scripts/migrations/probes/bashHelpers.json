@@ -1,6 +1,6 @@
 {
   "test": "src/tools/BashTool",
-  "source": "src/tools/BashTool/BashTool.tsx",
+  "source": "src/tools/BashTool/bashCommandClassification.ts",
   "probes": [
     {
       "name": "one non-read segment disqualifies the whole command",
@@ -64,26 +64,31 @@
     },
     {
       "name": "a missing file answers like sed instead of throwing",
+      "source": "src/tools/BashTool/applySedEdit.ts",
       "find": "    if (isENOENT(e)) {",
       "replace": "    if (false as boolean) {"
     },
     {
       "name": "the refreshed cache entry carries the new mtime",
+      "source": "src/tools/BashTool/applySedEdit.ts",
       "find": "    timestamp: getFileModificationTime(absoluteFilePath),",
       "replace": "    timestamp: 1,"
     },
     {
       "name": "a whole-file write clears the pinned range",
+      "source": "src/tools/BashTool/applySedEdit.ts",
       "find": "    offset: undefined,\n    limit: undefined",
       "replace": "    offset: 3,\n    limit: 7"
     },
     {
       "name": "the file's own line endings are restored",
+      "source": "src/tools/BashTool/applySedEdit.ts",
       "find": "  const endings = detectLineEndings(absoluteFilePath);",
       "replace": "  const endings = 'LF' as ReturnType<typeof detectLineEndings>;"
     },
     {
       "name": "the previewed content is actually written",
+      "source": "src/tools/BashTool/applySedEdit.ts",
       "find": "  writeTextContent(absoluteFilePath, newContent, encoding, endings);",
       "replace": "  void [absoluteFilePath, newContent, encoding, endings];"
     }

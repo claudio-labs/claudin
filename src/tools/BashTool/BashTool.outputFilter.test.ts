@@ -22,10 +22,10 @@ import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'sr
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 import {
   applyBashOutputFilter,
-  type BashToolInput,
   planBashFilterForExecution,
   shouldFilterOutput,
 } from 'src/tools/BashTool/BashTool.js'
+import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 import { getBytesSaved, resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 
 // ---------------------------------------------------------------------------

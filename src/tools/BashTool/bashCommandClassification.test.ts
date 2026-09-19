@@ -21,7 +21,7 @@ import {
   isAutobackgroundingAllowed,
   isSearchOrReadBashCommand,
   isSilentBashCommand,
-} from 'src/tools/BashTool/BashTool.js'
+} from 'src/tools/BashTool/bashCommandClassification.js'
 
 const NOT_COLLAPSIBLE = { isSearch: false, isRead: false, isList: false }
 

@@ -19,7 +19,7 @@ import { join } from 'node:path'
 import { READ_FILE_STATE_CACHE_SIZE } from 'src/shared/fs/fileStateCache.js'
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import { applySedEdit } from 'src/tools/BashTool/BashTool.js'
+import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js'
 
 type SedContext = Pick<ToolUseContext, 'readFileState' | 'updateFileHistoryState'>
 

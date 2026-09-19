@@ -18,7 +18,7 @@
 
 import { afterEach, describe, expect, test } from 'bun:test'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
-import { safeAnnotateStderrWithSandboxFailures } from 'src/tools/BashTool/BashTool.js'
+import { safeAnnotateStderrWithSandboxFailures } from 'src/tools/BashTool/bashSchemas.js'
 
 const original = SandboxManager.annotateStderrWithSandboxFailures
 

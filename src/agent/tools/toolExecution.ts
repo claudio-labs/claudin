@@ -16,7 +16,7 @@ import {
   type ToolProgressData,
   type ToolUseContext,
 } from 'src/tools/Tool.js'
-import type { BashToolInput } from 'src/tools/BashTool/BashTool.js'
+import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 import { startSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
