@@ -50,7 +50,7 @@ import { getRuleByContentsForToolName } from 'src/permissions/permissions.js'
  * Dangerous files that should be protected from auto-editing.
  * These files can be used for code execution or data exfiltration.
  */
-export const DANGEROUS_FILES = [
+const DANGEROUS_FILES = [
   '.gitconfig',
   '.gitmodules',
   '.bashrc',
@@ -67,7 +67,7 @@ export const DANGEROUS_FILES = [
  * Dangerous directories that should be protected from auto-editing.
  * These directories contain sensitive configuration or executable files.
  */
-export const DANGEROUS_DIRECTORIES = [
+const DANGEROUS_DIRECTORIES = [
   '.git',
   '.vscode',
   '.idea',
@@ -95,7 +95,7 @@ export function normalizeCaseForComparison(path: string): string {
  * permission dialog and SDK suggestions, so iterating on one skill doesn't
  * require granting session access to all of .claudin/ (settings.json, hooks/, etc.).
  */
-export function getClaudeSkillScope(
+function getClaudeSkillScope(
   filePath: string,
 ): { skillName: string; pattern: string } | null {
   const absolutePath = expandPath(filePath)
@@ -530,8 +530,7 @@ export function allWorkingDirectories(
 // avoid repeated existsSync/lstatSync/realpathSync syscalls on every
 // permission check. Keyed by path string — getPathsForPermissionCheck is
 // deterministic for existing directories within a session.
-// Exported for test/preload.ts cache clearing (shard-isolation).
-export const getResolvedWorkingDirPaths = memoize(getPathsForPermissionCheck)
+const getResolvedWorkingDirPaths = memoize(getPathsForPermissionCheck)
 
 export function pathInAllowedWorkingPath(
   path: string,
