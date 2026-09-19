@@ -3,8 +3,8 @@
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
   "capturedAt": "2026-09-19",
-  "capturedFrom": "80210b3d78b5413cea5d3c50e819d3a9b74f25f7",
-  "count": 1244,
+  "capturedFrom": "359d4a2be8ba3fe7aa1b67c36b891aff3393b0c7",
+  "count": 1241,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
     "exports src/agent/attachments/attachments.ts#isFileReadDenied",
@@ -219,6 +219,7 @@
     "exports src/permissions/ui/FilePermissionDialog/permissionOptions.tsx#isInGlobalClaudeFolder",
     "exports src/permissions/yoloClassifier.ts#buildYoloSystemPrompt",
     "exports src/permissions/yoloClassifier.ts#getAutoModeClassifierErrorDumpPath",
+    "exports src/permissions/yoloClassifier/autoModeDumps.ts#getAutoModeClassifierErrorDumpPath",
     "exports src/platform/Feedback.tsx#redactSensitiveInfo",
     "exports src/platform/Onboarding.tsx#SkippableStep",
     "exports src/platform/bash/ShellSnapshot.ts#createFindGrepShellIntegration",

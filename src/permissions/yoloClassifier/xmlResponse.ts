@@ -1,3 +1,10 @@
+/**
+ * 2-Stage XML Classifier: the prompt suffixes that select a stage, and the
+ * parsers for what comes back.
+ *
+ * (This module's name is what the `// 2-Stage XML Classifier` section divider
+ * in the pre-split yoloClassifier.ts used to mark.)
+ */
 import type Anthropic from '@anthropic-ai/sdk'
 import type { ClassifierUsage } from 'src/shared/types/permissions.js'
 
