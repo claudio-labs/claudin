@@ -181,7 +181,11 @@ async function fire(key: string, generation: number): Promise<void> {
   }
 }
 
-/** Drop every chain — process exit, /clear, tests. */
+/**
+ * Drop every chain. Called only by the tests today: the experiment is off by
+ * default, so nothing on the process-exit or /clear path reaches here. Wiring
+ * those two is part of promoting the experiment, not of running it.
+ */
 export function cancelAllKeepAlives(): void {
   for (const key of [...chains.keys()]) cancel(key)
 }
