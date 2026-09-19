@@ -19,7 +19,7 @@ import {
   presetToDraft,
   profileSummary,
   toDraft,
-} from 'src/providers/ui/ProviderManager.js'
+} from 'src/providers/ui/providerDrafts.js'
 
 function profile(overrides: Partial<ProviderProfile> = {}): ProviderProfile {
   return {

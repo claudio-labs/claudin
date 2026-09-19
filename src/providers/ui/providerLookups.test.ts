@@ -25,8 +25,8 @@ import {
   findKimiOAuthProfile,
   findXaiOAuthProfile,
   isCodexOAuthProfile,
-  KIMI_OAUTH_BASE_URL,
-} from 'src/providers/ui/ProviderManager.js'
+} from 'src/providers/ui/providerLookups.js'
+import { KIMI_OAUTH_BASE_URL } from 'src/providers/ui/providerManagerConstants.js'
 
 function profile(overrides: Partial<ProviderProfile> = {}): ProviderProfile {
   return {

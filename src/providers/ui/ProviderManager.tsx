@@ -15,7 +15,7 @@ import {
   readCodexCredentialsAsync,
 } from 'src/providers/oauth/codexCredentials.js'
 import { isBareMode } from 'src/shared/envUtils.js'
-import { getPrimaryModel, parseModelList } from 'src/providers/presets/providerModels.js'
+import { getPrimaryModel } from 'src/providers/presets/providerModels.js'
 import { getDefaultMainLoopModel } from 'src/providers/model/model.js'
 import { deleteProfileFile } from 'src/providers/presets/providerProfile.js'
 import {
@@ -40,20 +40,16 @@ import {
   listOpenAICompatibleModelsDetailed,
   probeAtomicChatReadiness,
   probeOllamaGenerationReadiness,
-  type AtomicChatReadiness,
-  type OllamaGenerationReadiness,
 } from 'src/providers/presets/providerDiscovery.js'
 import {
   rankOllamaModels,
   recommendOllamaModel,
 } from 'src/providers/presets/providerRecommendation.js'
-import { redactUrlForDisplay } from 'src/shared/urlRedaction.js'
 import {
   type OptionWithDescription,
   SearchableSelect,
   Select,
 } from 'src/terminal/custom-select/index.js'
-import { makeFavoritesAdapter } from 'src/providers/favorites/favorites.js'
 import { Pane } from 'src/terminal/design-system/Pane.js'
 import { MigrationBanner } from 'src/platform/MigrationBanner.js'
 import TextInput from 'src/terminal/text-input/TextInput.js'
@@ -68,13 +64,53 @@ import {
   clearKimiCredentials,
   readKimiCredentials,
 } from 'src/providers/oauth/kimiCredentials.js'
-import { KIMI_CODE_MODEL_LIST } from 'src/providers/oauth/kimiOAuthShared.js'
 import {
   formatMigrationReport,
   legacyClaudeDirExists,
   migrateLegacyClaudeDir,
   shouldShowMigrationBanner,
 } from 'src/platform/config/claudinMigration.js'
+import type {
+  AtomicChatSelectionState,
+  CloudExtrasDraft,
+  DraftField,
+  OllamaSelectionState,
+  OpenAiModelSelectionState,
+  ProviderDraft,
+} from 'src/providers/ui/ProviderManager.types.js'
+import {
+  CLOUD_EXTRAS_STEPS,
+  CODEX_OAUTH_PROVIDER_MODEL,
+  CODEX_OAUTH_PROVIDER_NAME,
+  FORM_STEPS,
+  KIMI_OAUTH_BASE_URL,
+  KIMI_OAUTH_PROVIDER_MODEL,
+  KIMI_OAUTH_PROVIDER_NAME,
+  MANUAL_MODEL_OPTION_VALUE,
+  MODEL_DISCOVERY_EXCLUDED_PROVIDERS,
+  PROFILE_FAVORITES,
+  XAI_OAUTH_PROVIDER_MODEL,
+  XAI_OAUTH_PROVIDER_NAME,
+} from 'src/providers/ui/providerManagerConstants.js'
+import {
+  buildExtrasFromDrafts,
+  customHeadersToText,
+  presetToDraft,
+  profileSummary,
+  toDraft,
+} from 'src/providers/ui/providerDrafts.js'
+import {
+  describeAtomicChatSelectionIssue,
+  describeOllamaSelectionIssue,
+  findAnthropicOAuthProfile,
+  findCodexOAuthProfile,
+  findKimiOAuthProfile,
+  findXaiOAuthProfile,
+  isCodexOAuthProfile,
+} from 'src/providers/ui/providerLookups.js'
+
+/** Re-exported for ProviderManager.test.tsx, which imports it from this path. */
+export { parseCustomHeaders } from 'src/providers/ui/providerDrafts.js'
 
 export type ProviderManagerResult = {
   action: 'saved' | 'cancelled' | 'activated'
@@ -109,357 +145,6 @@ type Screen =
   | 'select-active-project'
   | 'select-edit'
   | 'select-delete'
-
-export type DraftField = 'name' | 'baseUrl' | 'model' | 'apiKey'
-
-export type ProviderDraft = Record<DraftField, string>
-
-export type CloudExtrasField =
-  | 'awsRegion'
-  | 'gcpProject'
-  | 'gcpRegion'
-  | 'azureResource'
-
-export type CloudExtrasDraft = Partial<Record<CloudExtrasField, string>>
-
-export type OllamaSelectionState =
-  | { state: 'idle' }
-  | { state: 'loading' }
-  | {
-      state: 'ready'
-      options: OptionWithDescription<string>[]
-      defaultValue?: string
-    }
-  | { state: 'unavailable'; message: string }
-
-export type AtomicChatSelectionState =
-  | { state: 'idle' }
-  | { state: 'loading' }
-  | {
-      state: 'ready'
-      options: OptionWithDescription<string>[]
-      defaultValue?: string
-    }
-  | { state: 'unavailable'; message: string }
-
-export type OpenAiModelSelectionState =
-  | { state: 'idle' }
-  | { state: 'loading' }
-  | {
-      state: 'ready'
-      options: OptionWithDescription<string>[]
-      defaultValue?: string
-    }
-  | { state: 'unavailable'; message: string }
-
-export const FORM_STEPS: Array<{
-  key: DraftField
-  label: string
-  placeholder: string
-  helpText: string
-  optional?: boolean
-}> = [
-  {
-    key: 'name',
-    label: 'Provider name',
-    placeholder: 'e.g. Ollama Home, OpenAI Work',
-    helpText: 'A short label shown in /provider and startup setup.',
-  },
-  {
-    key: 'baseUrl',
-    label: 'Base URL',
-    placeholder: 'e.g. http://localhost:11434/v1',
-    helpText: 'API base URL used for this provider profile.',
-  },
-  {
-    key: 'apiKey',
-    label: 'API key',
-    placeholder: 'Leave empty if your provider does not require one',
-    helpText: 'Optional. Press Enter with empty value to skip.',
-    optional: true,
-  },
-  {
-    key: 'model',
-    label: 'Default model',
-    placeholder: 'e.g. llama3.1:8b or glm-4.7; glm-4.7-flash',
-    helpText: 'Model name(s) to use. Separate multiple with ";" or ","; first is default.',
-  },
-]
-
-// Sentinel row appended to the discovered-model list so the user can always
-// fall back to typing an id the provider's /models endpoint didn't return.
-// The NUL prefix guarantees it can't collide with a real model id.
-export const MANUAL_MODEL_OPTION_VALUE = '\u0000__manual__'
-
-// Providers whose model step must NOT auto-discover from a `/models` endpoint:
-// `anthropic` is the native API, and `bedrock`/`vertex`/`foundry` run Claude via
-// cloud SDKs (no OpenAI-style model list). Everything else that reaches the
-// manual form (openai, mistral, gemini, and the many presets collapsed to
-// `openai`) is OpenAI-compatible over HTTP and supports discovery.
-export const MODEL_DISCOVERY_EXCLUDED_PROVIDERS = new Set<ProviderProfile['provider']>([
-  'anthropic',
-  'bedrock',
-  'vertex',
-  'foundry',
-])
-
-export const CODEX_OAUTH_PROVIDER_NAME = 'Codex OAuth'
-export const CODEX_OAUTH_PROVIDER_MODEL = 'codexplan'
-
-export const XAI_OAUTH_PROVIDER_NAME = 'xAI / Grok (OAuth)'
-// Default model after sign-in; user can swap via /model. grok-4 is the
-// current flagship — see plan ~/.claudin/plans/luminous-popping-clarke.md.
-export const XAI_OAUTH_PROVIDER_MODEL = 'grok-4'
-
-// Kimi Code OAuth device-flow: openai_compat transport, tokens in secure
-// storage (see docs/tech/kimi-code/wire-format.md). Defaults mirror the
-// OAuth branch of the unified Moonshot AI preset.
-export const KIMI_OAUTH_PROVIDER_NAME = 'Moonshot AI'
-export const KIMI_OAUTH_PROVIDER_MODEL = KIMI_CODE_MODEL_LIST
-export const KIMI_OAUTH_BASE_URL = 'https://api.kimi.com/coding/v1'
-
-/** A profile id is already the favorites key, so every row can be starred. */
-export const PROFILE_FAVORITES = makeFavoritesAdapter<string>(
-  'providerProfile',
-  value => value,
-)
-
-export function toDraft(profile: ProviderProfile): ProviderDraft {
-  return {
-    name: profile.name,
-    baseUrl: profile.baseUrl,
-    model: profile.model,
-    apiKey: profile.apiKey ?? '',
-  }
-}
-
-export function presetToDraft(preset: ProviderPreset): ProviderDraft {
-  const defaults = getProviderPresetDefaults(preset)
-  return {
-    name: defaults.name,
-    baseUrl: defaults.baseUrl,
-    model: defaults.model,
-    apiKey: defaults.apiKey ?? '',
-  }
-}
-
-export function parseCustomHeaders(text: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (!line) continue
-    const colon = line.indexOf(':')
-    if (colon <= 0) continue
-    const key = line.slice(0, colon).trim()
-    const value = line.slice(colon + 1).trim()
-    if (key && value) {
-      out[key] = value
-    }
-  }
-  return out
-}
-
-export function customHeadersToText(
-  headers: Record<string, string> | undefined,
-): string {
-  if (!headers) return ''
-  return Object.entries(headers)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('\n')
-}
-
-export function buildExtrasFromDrafts(
-  cloudExtras: CloudExtrasDraft,
-  customHeadersText: string,
-): ProviderProfile['extras'] | undefined {
-  const extras: NonNullable<ProviderProfile['extras']> = {}
-  const awsRegion = cloudExtras.awsRegion?.trim()
-  if (awsRegion) extras.awsRegion = awsRegion
-  const gcpProject = cloudExtras.gcpProject?.trim()
-  if (gcpProject) extras.gcpProject = gcpProject
-  const gcpRegion = cloudExtras.gcpRegion?.trim()
-  if (gcpRegion) extras.gcpRegion = gcpRegion
-  const azureResource = cloudExtras.azureResource?.trim()
-  if (azureResource) extras.azureResource = azureResource
-  const headers = parseCustomHeaders(customHeadersText)
-  if (Object.keys(headers).length > 0) {
-    extras.customHeaders = headers
-  }
-  return Object.keys(extras).length > 0 ? extras : undefined
-}
-
-export const CLOUD_EXTRAS_STEPS: Record<
-  'bedrock' | 'vertex' | 'foundry',
-  ReadonlyArray<{
-    key: CloudExtrasField
-    label: string
-    placeholder: string
-    helpText: string
-  }>
-> = {
-  bedrock: [
-    {
-      key: 'awsRegion',
-      label: 'AWS region',
-      placeholder: 'e.g. us-east-1',
-      helpText:
-        'Region of your Bedrock-enabled AWS account. Credentials are picked up from the AWS SDK chain.',
-    },
-  ],
-  vertex: [
-    {
-      key: 'gcpProject',
-      label: 'GCP project ID',
-      placeholder: 'e.g. my-project-123456',
-      helpText:
-        'Google Cloud project where Vertex AI is enabled. Credentials are picked up from ADC.',
-    },
-    {
-      key: 'gcpRegion',
-      label: 'GCP region',
-      placeholder: 'e.g. us-central1',
-      helpText: 'Vertex AI region for the model.',
-    },
-  ],
-  foundry: [
-    {
-      key: 'azureResource',
-      label: 'Azure resource',
-      placeholder: 'e.g. my-foundry-resource',
-      helpText:
-        'Name of your Azure AI Foundry resource. Credentials are picked up from DefaultAzureCredential.',
-    },
-  ],
-}
-
-export function profileSummary(profile: ProviderProfile, isActive: boolean): string {
-  const activeSuffix = isActive ? ' (active)' : ''
-  const keyInfo = profile.apiKey ? 'key set' : 'no key'
-  const providerKind =
-    profile.provider === 'anthropic' ? 'anthropic' : 'openai-compatible'
-  const models = parseModelList(profile.model)
-  const modelDisplay =
-    models.length <= 3
-      ? models.join(', ')
-      : `${models[0]}, ${models[1]} + ${models.length - 2} more`
-  return `${providerKind} · ${profile.baseUrl} · ${modelDisplay} · ${keyInfo}${activeSuffix}`
-}
-
-export function describeAtomicChatSelectionIssue(
-  readiness: AtomicChatReadiness,
-  baseUrl: string,
-): string {
-  if (readiness.state === 'unreachable') {
-    return `Could not reach Atomic Chat at ${redactUrlForDisplay(baseUrl)}. Start the Atomic Chat app first, or enter the endpoint manually.`
-  }
-
-  if (readiness.state === 'no_models') {
-    return 'Atomic Chat is running, but no models are loaded. Download and load a model inside the Atomic Chat app first, or enter details manually.'
-  }
-
-  return ''
-}
-
-export function describeOllamaSelectionIssue(
-  readiness: OllamaGenerationReadiness,
-  baseUrl: string,
-): string {
-  if (readiness.state === 'unreachable') {
-    return `Could not reach Ollama at ${redactUrlForDisplay(baseUrl)}. Start Ollama first, or enter the endpoint manually.`
-  }
-
-  if (readiness.state === 'no_models') {
-    return 'Ollama is running, but no installed models were found. Pull a chat model such as qwen2.5-coder:7b or llama3.1:8b first, or enter details manually.'
-  }
-
-  if (readiness.state === 'generation_failed') {
-    const modelHint = readiness.probeModel ?? 'the selected model'
-    const detailSuffix = readiness.detail
-      ? ` Details: ${readiness.detail}.`
-      : ''
-    return `Ollama is reachable and models are installed, but a generation probe failed for ${modelHint}.${detailSuffix} Run "ollama run ${modelHint}" once and retry, or enter details manually.`
-  }
-
-  return ''
-}
-
-export function findCodexOAuthProfile(
-  profiles: ProviderProfile[],
-  profileId?: string,
-): ProviderProfile | undefined {
-  if (!profileId) {
-    return undefined
-  }
-
-  return profiles.find(profile => profile.id === profileId)
-}
-
-export function isCodexOAuthProfile(
-  profile: ProviderProfile | null | undefined,
-  profileId?: string,
-): boolean {
-  return Boolean(profile && profileId && profile.id === profileId)
-}
-
-/**
- * Locate the existing Kimi Code OAuth profile so a re-login UPDATES it (refreshing
- * the model list, etc.) instead of appending a duplicate. Prefers the profileId
- * stored with the credentials; falls back to the OAuth-profile signature (coding
- * host + no static key), mirroring the deletion heuristic below.
- */
-export function findKimiOAuthProfile(
-  profiles: ProviderProfile[],
-  profileId?: string,
-): ProviderProfile | undefined {
-  if (profileId) {
-    const byId = profiles.find(profile => profile.id === profileId)
-    if (byId) return byId
-  }
-  return profiles.find(
-    profile =>
-      profile.provider === 'openai' &&
-      profile.baseUrl === KIMI_OAUTH_BASE_URL &&
-      !profile.apiKey,
-  )
-}
-
-/**
- * Locate the existing xAI / Grok OAuth profile so a re-login UPDATES it instead
- * of appending a duplicate. Prefers the profileId stored with the credentials;
- * falls back to the OAuth-profile signature (xAI base URL + no static key).
- */
-export function findXaiOAuthProfile(
-  profiles: ProviderProfile[],
-  profileId?: string,
-): ProviderProfile | undefined {
-  if (profileId) {
-    const byId = profiles.find(profile => profile.id === profileId)
-    if (byId) return byId
-  }
-  return profiles.find(
-    profile =>
-      profile.provider === 'openai' &&
-      profile.baseUrl === DEFAULT_XAI_BASE_URL &&
-      !profile.apiKey,
-  )
-}
-
-/**
- * Locate the existing Anthropic OAuth profile so a re-login UPDATES it instead of
- * appending a duplicate. Anthropic OAuth stores its tokens in the credentials file
- * (no per-profile id), so match the keyless anthropic profile by signature.
- */
-export function findAnthropicOAuthProfile(
-  profiles: ProviderProfile[],
-  baseUrl: string,
-): ProviderProfile | undefined {
-  return profiles.find(
-    profile =>
-      profile.provider === 'anthropic' &&
-      profile.baseUrl === baseUrl &&
-      !profile.apiKey,
-  )
-}
 
 function CodexOAuthSetup({
   onBack,

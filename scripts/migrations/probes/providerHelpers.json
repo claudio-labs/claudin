@@ -1,6 +1,6 @@
 {
   "test": "src/providers/ui",
-  "source": "src/providers/ui/ProviderManager.tsx",
+  "source": "src/providers/ui/providerDrafts.ts",
   "probes": [
     {
       "name": "toDraft carries the profile name",
@@ -26,7 +26,7 @@
       "name": "presetToDraft reads the preset name",
       "find": "\n    name: defaults.name,",
       "replace": "\n    name: defaults.baseUrl,",
-      "//": "the leading newline pins the 4-space indent; startCreateFromPreset clones this block at 6"
+      "//": "the leading newline pins the 4-space indent; before the split, startCreateFromPreset cloned this block at 6 in the same file"
     },
     {
       "name": "presetToDraft reads the preset base URL",
@@ -155,122 +155,146 @@
     },
     {
       "name": "the Atomic Chat endpoint is redacted before display",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "Could not reach Atomic Chat at ${redactUrlForDisplay(baseUrl)}",
       "replace": "Could not reach Atomic Chat at ${baseUrl}"
     },
     {
       "name": "a loaded-but-empty Atomic Chat gets its own message",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "    return 'Atomic Chat is running, but no models are loaded.",
       "replace": "    return 'Atomic Chat is running, but nothing at all.",
       "//": "the rest of the literal stays on the line"
     },
     {
       "name": "a ready Atomic Chat reports no issue",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "  if (readiness.state === 'no_models') {\n    return 'Atomic Chat",
       "replace": "  if (true as boolean) {\n    return 'Atomic Chat"
     },
     {
       "name": "the Ollama endpoint is redacted before display",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "Could not reach Ollama at ${redactUrlForDisplay(baseUrl)}",
       "replace": "Could not reach Ollama at ${baseUrl}"
     },
     {
       "name": "a running-but-empty Ollama gets its own message",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "    return 'Ollama is running, but no installed models were found.",
       "replace": "    return 'Ollama is running, but nothing at all."
     },
     {
       "name": "a probe failure with no model named falls back to a phrase",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "    const modelHint = readiness.probeModel ?? 'the selected model'",
       "replace": "    const modelHint = readiness.probeModel as string"
     },
     {
       "name": "the probe detail is appended when present",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      ? ` Details: ${readiness.detail}.`",
       "replace": "      ? ''"
     },
     {
       "name": "no detail means no Details sentence",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      ? ` Details: ${readiness.detail}.`\n      : ''",
       "replace": "      ? ` Details: ${readiness.detail}.`\n      : ' Details: none.'"
     },
     {
       "name": "a ready Ollama reports no issue",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "  if (readiness.state === 'generation_failed') {",
       "replace": "  if (true as boolean) {"
     },
     {
       "name": "findCodexOAuthProfile refuses to guess without a stored id",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "  if (!profileId) {\n    return undefined\n  }",
       "replace": "  if (!profileId) {\n    return profiles[0]\n  }"
     },
     {
       "name": "findCodexOAuthProfile matches the id exactly",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "  return profiles.find(profile => profile.id === profileId)",
       "replace": "  return profiles.find(profile => profile.id !== profileId)"
     },
     {
       "name": "isCodexOAuthProfile compares the ids",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "  return Boolean(profile && profileId && profile.id === profileId)",
       "replace": "  return Boolean(profile && profileId)"
     },
     {
       "name": "isCodexOAuthProfile returns a real boolean",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "  return Boolean(profile && profileId && profile.id === profileId)",
       "replace": "  return (profile && profileId && profile.id === profileId) as boolean"
     },
     {
       "name": "Kimi: the stored id wins over the signature",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "    if (byId) return byId\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&",
       "replace": "    if (byId) return undefined\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&"
     },
     {
       "name": "Kimi: the provider tag must be openai",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.provider === 'openai' &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&",
       "replace": "      Boolean(profile.provider) &&\n      profile.baseUrl === KIMI_OAUTH_BASE_URL &&"
     },
     {
       "name": "Kimi: the host must be the coding endpoint",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.baseUrl === KIMI_OAUTH_BASE_URL &&\n      !profile.apiKey,",
       "replace": "      profile.baseUrl !== '' &&\n      !profile.apiKey,"
     },
     {
       "name": "Kimi: a key-bearing profile is left alone",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.baseUrl === KIMI_OAUTH_BASE_URL &&\n      !profile.apiKey,\n  )",
       "replace": "      profile.baseUrl === KIMI_OAUTH_BASE_URL &&\n      Boolean(profile.id),\n  )"
     },
     {
       "name": "xAI: the stored id wins over the signature",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "    if (byId) return byId\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&",
       "replace": "    if (byId) return undefined\n  }\n  return profiles.find(\n    profile =>\n      profile.provider === 'openai' &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&"
     },
     {
       "name": "xAI: the provider tag must be openai",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.provider === 'openai' &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&",
       "replace": "      Boolean(profile.provider) &&\n      profile.baseUrl === DEFAULT_XAI_BASE_URL &&"
     },
     {
       "name": "xAI: the host must be the xAI endpoint",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.baseUrl === DEFAULT_XAI_BASE_URL &&\n      !profile.apiKey,",
       "replace": "      profile.baseUrl !== '' &&\n      !profile.apiKey,"
     },
     {
       "name": "xAI: a key-bearing profile is left alone",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.baseUrl === DEFAULT_XAI_BASE_URL &&\n      !profile.apiKey,\n  )",
       "replace": "      profile.baseUrl === DEFAULT_XAI_BASE_URL &&\n      Boolean(profile.id),\n  )"
     },
     {
       "name": "Anthropic: the provider tag must be anthropic",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.provider === 'anthropic' &&\n      profile.baseUrl === baseUrl &&",
       "replace": "      Boolean(profile.provider) &&\n      profile.baseUrl === baseUrl &&"
     },
     {
       "name": "Anthropic: the host must match the one asked for",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.baseUrl === baseUrl &&\n      !profile.apiKey,",
       "replace": "      profile.baseUrl !== '' &&\n      !profile.apiKey,"
     },
     {
       "name": "Anthropic: a key-bearing profile is left alone",
+      "source": "src/providers/ui/providerLookups.ts",
       "find": "      profile.baseUrl === baseUrl &&\n      !profile.apiKey,\n  )",
       "replace": "      profile.baseUrl === baseUrl &&\n      Boolean(profile.id),\n  )"
     }
