@@ -4,7 +4,7 @@ import { homedir } from 'os'
 import { join, normalize, posix, sep } from 'path'
 import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memory/memdir/paths.js'
 import { getSessionMemoryDir } from 'src/memory/session/paths.js'
-import { getClaudeTempDir, getProjectTempDir } from 'src/platform/tmpdir.js'
+import { getProjectTempDir } from 'src/platform/tmpdir.js'
 import { getBundledSkillsRoot } from 'src/skills/bundledSkillsRoot.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import {
@@ -13,22 +13,19 @@ import {
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
 import type { z } from 'zod/v4'
-import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import type { AnyObject, Tool, ToolPermissionContext } from 'src/tools/Tool.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
-import {
-  getFsImplementation,
-  getPathsForPermissionCheck,
-} from 'src/shared/fs/fsOperations.js'
+import { getPathsForPermissionCheck } from 'src/shared/fs/fsOperations.js'
 import {
   containsPathTraversal,
   expandPath,
   getDirectoryForPath,
 } from 'src/shared/fs/path.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
+import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { SETTING_SOURCES } from 'src/platform/settings/constants.js'
@@ -290,44 +287,6 @@ function isProjectDirPath(absolutePath: string): boolean {
   return (
     normalizedPath === projectDir || normalizedPath.startsWith(projectDir + sep)
   )
-}
-
-/**
- * Checks if the scratchpad directory feature is enabled.
- * The scratchpad is a per-session directory for Claude to write temporary files.
- * Controlled by the tengu_scratch Statsig gate.
- */
-export function isScratchpadEnabled(): boolean {
-  return checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_scratch')
-}
-
-/**
- * Returns the scratchpad directory path for the current session.
- * Path format: /tmp/claude-{uid}/{sanitized-cwd}/{sessionId}/scratchpad/
- */
-export function getScratchpadDir(): string {
-  return join(getProjectTempDir(), getSessionId(), 'scratchpad')
-}
-
-/**
- * Ensures the scratchpad directory exists for the current session.
- * Creates the directory with secure permissions (0o700) if it doesn't exist.
- * Returns the path to the scratchpad directory.
- * @throws If scratchpad feature is not enabled
- */
-export async function ensureScratchpadDir(): Promise<string> {
-  if (!isScratchpadEnabled()) {
-    throw new Error('Scratchpad directory feature is not enabled')
-  }
-
-  const fs = getFsImplementation()
-  const scratchpadDir = getScratchpadDir()
-
-  // Create directory recursively with secure permissions (owner-only access)
-  // FsOperations.mkdir handles recursive: true internally and is a no-op if dir exists
-  await fs.mkdir(scratchpadDir, { mode: 0o700 })
-
-  return scratchpadDir
 }
 
 // Check if file is within the scratchpad directory

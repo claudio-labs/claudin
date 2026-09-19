@@ -106,7 +106,7 @@ import {
 import {
   getScratchpadDir,
   isScratchpadEnabled,
-} from 'src/permissions/filesystem.js'
+} from 'src/agent/scratchpad.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   handleOrphanedPermission,

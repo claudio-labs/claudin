@@ -48,7 +48,7 @@ import { getSystemPrompt } from 'src/agent/prompts/prompts.js';
 import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js';
 import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { removeLastFromHistory } from 'src/agent/history.js';
-import { getScratchpadDir, isScratchpadEnabled } from 'src/permissions/filesystem.js';
+import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
 import { getCurrentTurnCacheBreaks, getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
