@@ -1,4 +1,3 @@
-import figures from 'figures'
 import * as React from 'react'
 import { GithubDeviceFlowStep } from 'src/commands/provider/GithubDeviceFlowStep.js'
 import {
@@ -46,13 +45,11 @@ import {
   recommendOllamaModel,
 } from 'src/providers/presets/providerRecommendation.js'
 import {
-  type OptionWithDescription,
   SearchableSelect,
   Select,
 } from 'src/terminal/custom-select/index.js'
 import { Pane } from 'src/terminal/design-system/Pane.js'
 import { MigrationBanner } from 'src/platform/MigrationBanner.js'
-import TextInput from 'src/terminal/text-input/TextInput.js'
 import {
   CodexOAuthSetup,
   KimiOAuthSetup,
@@ -67,9 +64,7 @@ import {
   readKimiCredentials,
 } from 'src/providers/oauth/kimiCredentials.js'
 import {
-  formatMigrationReport,
   legacyClaudeDirExists,
-  migrateLegacyClaudeDir,
   shouldShowMigrationBanner,
 } from 'src/platform/config/claudinMigration.js'
 import type {
@@ -79,16 +74,16 @@ import type {
   OllamaSelectionState,
   OpenAiModelSelectionState,
   ProviderDraft,
+  ProviderManagerResult,
+  Screen,
 } from 'src/providers/ui/ProviderManager.types.js'
 import {
-  CLOUD_EXTRAS_STEPS,
   CODEX_OAUTH_PROVIDER_MODEL,
   CODEX_OAUTH_PROVIDER_NAME,
   FORM_STEPS,
   KIMI_OAUTH_BASE_URL,
   KIMI_OAUTH_PROVIDER_MODEL,
   KIMI_OAUTH_PROVIDER_NAME,
-  MANUAL_MODEL_OPTION_VALUE,
   MODEL_DISCOVERY_EXCLUDED_PROVIDERS,
   PROFILE_FAVORITES,
   XAI_OAUTH_PROVIDER_MODEL,
@@ -104,49 +99,37 @@ import {
 import {
   describeAtomicChatSelectionIssue,
   describeOllamaSelectionIssue,
-  findAnthropicOAuthProfile,
   findCodexOAuthProfile,
   findKimiOAuthProfile,
   findXaiOAuthProfile,
   isCodexOAuthProfile,
 } from 'src/providers/ui/providerLookups.js'
+import {
+  AnthropicAuthChoiceScreen,
+  AnthropicOAuthScreen,
+  KimiAuthChoiceScreen,
+} from 'src/providers/ui/screens/AuthChoice.js'
+import {
+  CloudExtrasScreen,
+  CustomHeadersScreen,
+  FormScreen,
+} from 'src/providers/ui/screens/FormScreens.js'
+import {
+  AtomicChatSelectionScreen,
+  OllamaSelectionScreen,
+  OpenAiModelSelectionScreen,
+} from 'src/providers/ui/screens/ModelSelection.js'
+import { PresetSelectionScreen } from 'src/providers/ui/screens/PresetSelection.js'
 
 /** Re-exported for ProviderManager.test.tsx, which imports it from this path. */
 export { parseCustomHeaders } from 'src/providers/ui/providerDrafts.js'
-
-export type ProviderManagerResult = {
-  action: 'saved' | 'cancelled' | 'activated'
-  activeProfileId?: string
-  activeProviderName?: string
-  activeProviderModel?: string
-  message?: string
-}
+/** Re-exported for src/commands/provider/provider.tsx, its only consumer. */
+export type { ProviderManagerResult }
 
 type Props = {
   mode: 'first-run' | 'manage'
   onDone: (result?: ProviderManagerResult) => void
 }
-
-type Screen =
-  | 'menu'
-  | 'select-preset'
-  | 'select-ollama-model'
-  | 'select-atomic-chat-model'
-  | 'select-openai-model'
-  | 'codex-oauth'
-  | 'xai-oauth'
-  | 'kimi-oauth'
-  | 'kimi-auth-choice'
-  | 'github-onboard'
-  | 'anthropic-auth-choice'
-  | 'anthropic-oauth'
-  | 'cloud-extras'
-  | 'custom-headers'
-  | 'form'
-  | 'select-active'
-  | 'select-active-project'
-  | 'select-edit'
-  | 'select-delete'
 
 export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   const setAppState = useSetAppState()
@@ -245,7 +228,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
 
   const currentStep = FORM_STEPS[formStepIndex] ?? FORM_STEPS[0]
   const currentStepKey = currentStep.key
-  const currentValue = draft[currentStepKey]
 
   // Memoize menu options to prevent unnecessary re-renders when navigating
   // the select menu. Without this, each arrow key press creates a new options
@@ -964,163 +946,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     returnToMenu()
   }
 
-  function renderAtomicChatSelection(): React.ReactNode {
-    if (
-      atomicChatSelection.state === 'loading' ||
-      atomicChatSelection.state === 'idle'
-    ) {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>
-            Checking Atomic Chat
-          </Text>
-          <Text dimColor>Looking for loaded Atomic Chat models...</Text>
-        </Box>
-      )
-    }
-
-    if (atomicChatSelection.state === 'unavailable') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>
-            Atomic Chat setup
-          </Text>
-          <Text dimColor>{atomicChatSelection.message}</Text>
-          <Select
-            options={[
-              {
-                value: 'manual',
-                label: 'Enter manually',
-                description: 'Fill in the base URL and model yourself',
-              },
-              {
-                value: 'back',
-                label: 'Back',
-                description: 'Choose another provider preset',
-              },
-            ]}
-            onChange={(value: string) => {
-              if (value === 'manual') {
-                setFormStepIndex(0)
-                setCursorOffset(draft.name.length)
-                setScreen('form')
-                return
-              }
-              setScreen('select-preset')
-            }}
-            onCancel={() => setScreen('select-preset')}
-            visibleOptionCount={2}
-          />
-        </Box>
-      )
-    }
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          Choose an Atomic Chat model
-        </Text>
-        <Text dimColor>
-          Pick one of the models loaded in Atomic Chat to save into a local
-          provider profile.
-        </Text>
-        <Select
-          options={atomicChatSelection.options}
-          defaultValue={atomicChatSelection.defaultValue}
-          defaultFocusValue={atomicChatSelection.defaultValue}
-          inlineDescriptions
-          visibleOptionCount={Math.min(8, atomicChatSelection.options.length)}
-          onChange={(value: string) => {
-            const nextDraft = {
-              ...draft,
-              model: value,
-            }
-            setDraft(nextDraft)
-            persistDraft(nextDraft)
-          }}
-          onCancel={() => setScreen('select-preset')}
-        />
-      </Box>
-    )
-  }
-
-  function renderOllamaSelection(): React.ReactNode {
-    if (ollamaSelection.state === 'loading' || ollamaSelection.state === 'idle') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>
-            Checking Ollama
-          </Text>
-          <Text dimColor>Looking for installed Ollama models...</Text>
-        </Box>
-      )
-    }
-
-    if (ollamaSelection.state === 'unavailable') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>
-            Ollama setup
-          </Text>
-          <Text dimColor>{ollamaSelection.message}</Text>
-          <Select
-            options={[
-              {
-                value: 'manual',
-                label: 'Enter manually',
-                description: 'Fill in the base URL and model yourself',
-              },
-              {
-                value: 'back',
-                label: 'Back',
-                description: 'Choose another provider preset',
-              },
-            ]}
-            onChange={(value: string) => {
-              if (value === 'manual') {
-                setFormStepIndex(0)
-                setCursorOffset(draft.name.length)
-                setScreen('form')
-                return
-              }
-              setScreen('select-preset')
-            }}
-            onCancel={() => setScreen('select-preset')}
-            visibleOptionCount={2}
-          />
-        </Box>
-      )
-    }
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          Choose an Ollama model
-        </Text>
-        <Text dimColor>
-          Pick one of the installed Ollama models to save into a local provider
-          profile.
-        </Text>
-        <Select
-          options={ollamaSelection.options}
-          defaultValue={ollamaSelection.defaultValue}
-          defaultFocusValue={ollamaSelection.defaultValue}
-          inlineDescriptions
-          visibleOptionCount={Math.min(8, ollamaSelection.options.length)}
-          onChange={(value: string) => {
-            const nextDraft = {
-              ...draft,
-              model: value,
-            }
-            setDraft(nextDraft)
-            persistDraft(nextDraft)
-          }}
-          onCancel={() => setScreen('select-preset')}
-        />
-      </Box>
-    )
-  }
-
   function goToFormStep(key: DraftField): void {
     const index = FORM_STEPS.findIndex(step => step.key === key)
     setFormStepIndex(index < 0 ? 0 : index)
@@ -1147,97 +972,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       return
     }
     goToFormStep('model')
-  }
-
-  function renderOpenAiModelSelection(): React.ReactNode {
-    if (
-      openAiModelSelection.state === 'loading' ||
-      openAiModelSelection.state === 'idle'
-    ) {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>
-            Fetching models
-          </Text>
-          <Text dimColor>
-            Looking for models on your OpenAI-compatible provider…
-          </Text>
-          <Text dimColor>Press Esc to enter the model manually.</Text>
-        </Box>
-      )
-    }
-
-    if (openAiModelSelection.state === 'unavailable') {
-      return (
-        <Box flexDirection="column" gap={1}>
-          <Text color="remember" bold>
-            Choose a model
-          </Text>
-          <Text dimColor>{openAiModelSelection.message}</Text>
-          <Select
-            options={[
-              {
-                value: 'manual',
-                label: 'Enter manually',
-                description: 'Type the model id yourself',
-              },
-              {
-                value: 'back',
-                label: 'Back',
-                description: 'Return to the API key step',
-              },
-            ]}
-            onChange={(value: string) => {
-              if (value === 'manual') {
-                goToManualModelStep()
-                return
-              }
-              goToFormStep('apiKey')
-            }}
-            onCancel={() => goToFormStep('apiKey')}
-            visibleOptionCount={2}
-          />
-        </Box>
-      )
-    }
-
-    const options: OptionWithDescription<string>[] = [
-      ...openAiModelSelection.options,
-      {
-        value: MANUAL_MODEL_OPTION_VALUE,
-        label: 'Enter a model id manually',
-        description: 'Type an id the provider did not list',
-      },
-    ]
-    const focusValue =
-      openAiModelSelection.defaultValue ?? MANUAL_MODEL_OPTION_VALUE
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          Choose a model
-        </Text>
-        <Text dimColor>Models from your OpenAI-compatible provider.</Text>
-        <Select
-          options={options}
-          defaultValue={focusValue}
-          defaultFocusValue={focusValue}
-          inlineDescriptions
-          visibleOptionCount={Math.min(8, options.length)}
-          onChange={(value: string) => {
-            if (value === MANUAL_MODEL_OPTION_VALUE) {
-              goToManualModelStep()
-              return
-            }
-            const nextDraft = { ...draft, model: value }
-            setDraft(nextDraft)
-            finishAfterModelStep(nextDraft)
-          }}
-          onCancel={() => goToFormStep('apiKey')}
-        />
-        <Text dimColor>Enter to select · Esc to go back</Text>
-      </Box>
-    )
   }
 
   function finishAfterModelStep(nextDraft: ProviderDraft): void {
@@ -1357,573 +1091,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     context: 'Settings',
     isActive: screen === 'kimi-oauth',
   })
-
-  function renderPresetSelection(): React.ReactNode {
-    const canUseCodexOAuth = !isBareMode()
-    // Providers sorted alphabetically by label. `Custom` is pinned to the end
-    // because it's the catch-all / escape hatch — users scanning the list
-    // should always find known providers first. `Skip for now` (first-run
-    // only) comes last, after Custom.
-    const options = [
-      ...(canImportLegacyClaude
-        ? [
-            {
-              value: 'import-legacy',
-              label: 'Reuse Claude Code sign-in',
-              description:
-                'Copy ~/.claude/ API tokens and provider profiles. /import brings the rest.',
-            },
-          ]
-        : []),
-      {
-        value: 'dashscope-intl',
-        label: 'Alibaba Coding Plan',
-        description: 'Alibaba DashScope International endpoint',
-      },
-      {
-        value: 'dashscope-cn',
-        label: 'Alibaba Coding Plan (China)',
-        description: 'Alibaba DashScope China endpoint',
-      },
-      {
-        value: 'anthropic',
-        label: 'Anthropic',
-        description: 'Native Claude API (x-api-key auth)',
-      },
-      {
-        value: 'atomic-chat',
-        label: 'Atomic Chat',
-        description: 'Local Model Provider',
-      },
-      {
-        value: 'azure-openai',
-        label: 'Azure OpenAI',
-        description: 'Azure OpenAI endpoint (model=deployment name)',
-      },
-      {
-        value: 'foundry',
-        label: 'Azure AI Foundry',
-        description: 'Anthropic models hosted on Azure AI Foundry (resource-scoped)',
-      },
-      {
-        value: 'bedrock',
-        label: 'AWS Bedrock',
-        description: 'Anthropic models on AWS Bedrock (region-scoped, AWS creds)',
-      },
-      {
-        value: 'bankr',
-        label: 'Bankr',
-        description: 'Bankr LLM Gateway (OpenAI-compatible)',
-      },
-      {
-        value: 'cloudflare-workers-ai',
-        label: 'Cloudflare Workers AI',
-        description:
-          'Cloudflare Workers AI (OpenAI-compatible); set your account ID in the base URL',
-      },
-      {
-        value: 'cloudflare-ai-gateway',
-        label: 'Cloudflare AI Gateway',
-        description:
-          'Cloudflare AI Gateway unified endpoint; set your account ID in the base URL',
-      },
-      ...(canUseCodexOAuth
-        ? [
-            {
-              value: 'codex-oauth',
-              label: 'Codex OAuth',
-              description:
-                'Sign in with ChatGPT in your browser and store Codex credentials securely',
-            },
-            {
-              value: 'xai-oauth',
-              label: 'xAI / Grok (OAuth)',
-              description:
-                'Sign in with xAI in your browser and store Grok credentials securely',
-            },
-          ]
-        : []),
-      {
-        value: 'github-onboard',
-        label: 'GitHub Copilot',
-        description: 'Sign in with GitHub in your browser to use Copilot models',
-      },
-      {
-        value: 'deepseek',
-        label: 'DeepSeek',
-        description: 'DeepSeek OpenAI-compatible endpoint',
-      },
-      {
-        value: 'gemini',
-        label: 'Google Gemini',
-        description: 'Gemini OpenAI-compatible endpoint',
-      },
-      {
-        value: 'vertex',
-        label: 'Google Vertex AI',
-        description: 'Anthropic models on Vertex AI (project + region, ADC)',
-      },
-      {
-        value: 'groq',
-        label: 'Groq',
-        description: 'Groq OpenAI-compatible endpoint',
-      },
-      {
-        value: 'lmstudio',
-        label: 'LM Studio',
-        description: 'Local LM Studio endpoint',
-      },
-      {
-        value: 'minimax',
-        label: 'MiniMax',
-        description: 'MiniMax API endpoint',
-      },
-      {
-        value: 'mistral',
-        label: 'Mistral',
-        description: 'Mistral OpenAI-compatible endpoint',
-      },
-      {
-        value: 'moonshotai',
-        label: 'Moonshot AI',
-        description: 'API key or Kimi Code OAuth sign-in',
-      },
-      {
-        value: 'nvidia-nim',
-        label: 'NVIDIA NIM',
-        description: 'NVIDIA NIM endpoint',
-      },
-      {
-        value: 'opencode-go',
-        label: 'OpenCode GO',
-        description: 'OpenCode GO OpenAI-compatible endpoint',
-      },
-      {
-        value: 'opencode-zen',
-        label: 'OpenCode Zen',
-        description: 'OpenCode Zen OpenAI-compatible endpoint',
-      },
-      {
-        value: 'ollama',
-        label: 'Ollama',
-        description: 'Local or remote Ollama endpoint',
-      },
-      {
-        value: 'openai',
-        label: 'OpenAI',
-        description: 'OpenAI API with API key',
-      },
-      {
-        value: 'openrouter',
-        label: 'OpenRouter',
-        description: 'OpenRouter OpenAI-compatible endpoint',
-      },
-      {
-        value: 'together',
-        label: 'Together AI',
-        description: 'Together chat/completions endpoint',
-      },
-      {
-        value: 'zai',
-        label: 'Z.AI (GLM Coding Plan)',
-        description: 'Z.AI GLM Coding Plan (OpenAI-compatible)',
-      },
-      {
-        value: 'custom',
-        label: 'Custom',
-        description: 'Any OpenAI-compatible provider',
-      },
-      ...(mode === 'first-run'
-        ? [
-            {
-              value: 'skip',
-              label: 'Skip for now',
-              description: 'Continue with current defaults',
-            },
-          ]
-        : []),
-    ]
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          {mode === 'first-run' ? 'Set up provider' : 'Choose provider preset'}
-        </Text>
-        <Text dimColor>
-          Pick a preset, then confirm base URL, model, and API key.
-        </Text>
-        <SearchableSelect
-          options={options}
-          searchPlaceholder="Search presets…"
-          onChange={(value: string) => {
-            if (value === 'skip') {
-              closeWithCancelled('Provider setup skipped')
-              return
-            }
-            if (value === 'codex-oauth') {
-              setScreen('codex-oauth')
-              return
-            }
-            if (value === 'xai-oauth') {
-              setScreen('xai-oauth')
-              return
-            }
-            if (value === 'moonshotai') {
-              setScreen('kimi-auth-choice')
-              return
-            }
-            if (value === 'github-onboard') {
-              setScreen('github-onboard')
-              return
-            }
-            if (value === 'import-legacy') {
-              void (async () => {
-                const report = await migrateLegacyClaudeDir({ force: true })
-                setCanImportLegacyClaude(legacyClaudeDirExists())
-                refreshProfiles()
-                const summary = formatMigrationReport(report)
-                if (report.errors.length > 0) {
-                  setErrorMessage(summary)
-                  return
-                }
-                const active = getActiveProviderProfile()
-                if (mode === 'first-run' && active) {
-                  onDone({
-                    action: 'saved',
-                    activeProfileId: active.id,
-                    activeProviderName: active.name,
-                    activeProviderModel: active.model,
-                    message: summary,
-                  })
-                  return
-                }
-                setStatusMessage(summary)
-                setErrorMessage(undefined)
-                if (mode === 'manage') returnToMenu()
-              })()
-              return
-            }
-            startCreateFromPreset(value as ProviderPreset)
-          }}
-          onCancel={() => {
-            if (mode === 'first-run') {
-              closeWithCancelled('Provider setup skipped')
-              return
-            }
-            returnToMenu()
-          }}
-          visibleOptionCount={Math.min(13, options.length)}
-        />
-      </Box>
-    )
-  }
-
-  function renderAnthropicAuthChoice(): React.ReactNode {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          Anthropic — choose authentication
-        </Text>
-        <Text dimColor>
-          Sign in with your Anthropic account in the browser, or paste an API key.
-        </Text>
-        <Select
-          options={[
-            {
-              value: 'oauth',
-              label: 'Sign in with web (OAuth)',
-              description:
-                'Open a browser, sign in to Claude, and store tokens in ~/.claudin/.credentials.json',
-            },
-            {
-              value: 'apiKey',
-              label: 'Use API key',
-              description: 'Paste an x-api-key value (sk-ant-…)',
-            },
-            {
-              value: 'back',
-              label: 'Back',
-              description: 'Choose a different provider',
-            },
-          ]}
-          onChange={(value: string) => {
-            if (value === 'oauth') {
-              setScreen('anthropic-oauth')
-              return
-            }
-            if (value === 'apiKey') {
-              setScreen('form')
-              return
-            }
-            setScreen('select-preset')
-          }}
-          onCancel={() => setScreen('select-preset')}
-          visibleOptionCount={3}
-        />
-      </Box>
-    )
-  }
-
-  function renderKimiAuthChoice(): React.ReactNode {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          Moonshot AI — choose authentication
-        </Text>
-        <Text dimColor>
-          Sign in with your Kimi Code subscription in the browser, or paste a Moonshot AI API key.
-        </Text>
-        <Select
-          options={[
-            {
-              value: 'oauth',
-              label: 'Sign in with web (OAuth)',
-              description:
-                'Open a browser, sign in to Kimi Code, and store tokens in ~/.claudin/.credentials.json',
-            },
-            {
-              value: 'apiKey',
-              label: 'Use API key',
-              description: 'Paste a Moonshot AI API key (sk-…)',
-            },
-            {
-              value: 'back',
-              label: 'Back',
-              description: 'Choose a different provider',
-            },
-          ]}
-          onChange={(value: string) => {
-            if (value === 'oauth') {
-              setScreen('kimi-oauth')
-              return
-            }
-            if (value === 'apiKey') {
-              startCreateFromPreset('moonshotai')
-              return
-            }
-            setScreen('select-preset')
-          }}
-          onCancel={() => setScreen('select-preset')}
-          visibleOptionCount={3}
-        />
-      </Box>
-    )
-  }
-
-  function renderAnthropicOAuth(): React.ReactNode {
-    // Lazy require to avoid circular import: ConsoleOAuthFlow imports
-    // ProviderManager for its `platform_setup` fallback. Resolving the module
-    // at render-time breaks the cycle without restructuring either side.
-    const ConsoleOAuthFlow = require('src/providers/ui/ConsoleOAuthFlow.js')
-      .ConsoleOAuthFlow as React.ComponentType<{
-      onDone: () => void
-      mode?: 'login' | 'setup-token'
-    }>
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <ConsoleOAuthFlow
-          mode="login"
-          onDone={() => {
-            // OAuth tokens are persisted by ConsoleOAuthFlow / installOAuthTokens.
-            // We still want a profile entry so /provider can reference Anthropic
-            // explicitly. apiKey stays undefined — the client reads tokens from
-            // the credentials file when transport === 'anthropic'.
-            const defaults = getProviderPresetDefaults('anthropic')
-            const payload: ProviderProfileInput = {
-              provider: 'anthropic',
-              name: defaults.name,
-              baseUrl: defaults.baseUrl,
-              model: defaults.model,
-            }
-            // Update the existing keyless Anthropic profile on re-login instead of
-            // appending a duplicate.
-            const existing = findAnthropicOAuthProfile(
-              getProviderProfiles(),
-              defaults.baseUrl,
-            )
-            // Adding from the /provider menu must not hijack the global active
-            // pointer — only the first-run wizard activates what it creates.
-            const activateOnSave = mode === 'first-run'
-            const saved = existing
-              ? updateProviderProfile(existing.id, payload)
-              : addProviderProfile(payload, { makeActive: activateOnSave })
-            if (!saved) {
-              setErrorMessage(
-                'OAuth completed, but the Anthropic profile could not be saved.',
-              )
-              setScreen('select-preset')
-              return
-            }
-            // updateProviderProfile keeps the current active pointer, so make the
-            // (re-)configured Anthropic profile active explicitly when it isn't —
-            // but only when this flow is allowed to activate.
-            const active =
-              activateOnSave && existing && activeProfileId !== saved.id
-                ? setActiveProviderProfile(saved.id)
-                : saved
-            if (!active) {
-              setErrorMessage(
-                'OAuth completed, but the Anthropic profile could not be set as the startup provider.',
-              )
-              setScreen('select-preset')
-              return
-            }
-            const message = `Anthropic OAuth configured: ${active.name}`
-            refreshProfiles()
-            if (mode === 'first-run') {
-              onDone({
-                action: 'saved',
-                activeProfileId: active.id,
-                message,
-              })
-              return
-            }
-            setStatusMessage(message)
-            setErrorMessage(undefined)
-            returnToMenu()
-          }}
-        />
-      </Box>
-    )
-  }
-
-  function renderCloudExtras(): React.ReactNode {
-    const preset = pendingPreset
-    if (preset !== 'bedrock' && preset !== 'vertex' && preset !== 'foundry') {
-      return null
-    }
-    const steps = CLOUD_EXTRAS_STEPS[preset]
-    const step = steps[cloudExtrasStepIndex] ?? steps[0]
-    const value = draftExtras[step.key] ?? ''
-
-    function onSubmit(submitted: string): void {
-      const trimmed = submitted.trim()
-      if (trimmed.length === 0) {
-        setErrorMessage(`${step.label} is required.`)
-        return
-      }
-      const nextExtras = { ...draftExtras, [step.key]: trimmed }
-      setDraftExtras(nextExtras)
-      setErrorMessage(undefined)
-      if (cloudExtrasStepIndex < steps.length - 1) {
-        setCloudExtrasStepIndex(cloudExtrasStepIndex + 1)
-        return
-      }
-      // After cloud extras: jump straight to the form for name/baseUrl/model
-      // confirmation. Users still see the full review before saving.
-      setCloudExtrasStepIndex(0)
-      setScreen('form')
-    }
-
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          {`${preset === 'bedrock' ? 'AWS Bedrock' : preset === 'vertex' ? 'Google Vertex AI' : 'Azure AI Foundry'} setup`}
-        </Text>
-        <Text dimColor>{step.helpText}</Text>
-        <Text dimColor>
-          Step {cloudExtrasStepIndex + 1} of {steps.length}: {step.label}
-        </Text>
-        <Box flexDirection="row" gap={1}>
-          <Text>{figures.pointer}</Text>
-          <TextInput
-            value={value}
-            onChange={v =>
-              setDraftExtras(prev => ({ ...prev, [step.key]: v }))
-            }
-            onSubmit={onSubmit}
-            focus
-            showCursor
-            placeholder={`${step.placeholder}${figures.ellipsis}`}
-            columns={80}
-            cursorOffset={cloudExtrasCursor}
-            onChangeCursorOffset={setCloudExtrasCursor}
-          />
-        </Box>
-        {errorMessage && <Text color="error">{errorMessage}</Text>}
-        <Text dimColor>Press Enter to continue. Press Esc to go back.</Text>
-      </Box>
-    )
-  }
-
-  function renderCustomHeaders(): React.ReactNode {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          Custom headers (optional)
-        </Text>
-        <Text dimColor>
-          Add HTTP headers sent on every request. One header per line as
-          {' '}
-          <Text>{`Header: Value`}</Text>. Leave empty to skip.
-        </Text>
-        <Box flexDirection="row" gap={1}>
-          <Text>{figures.pointer}</Text>
-          <TextInput
-            value={draftCustomHeaders}
-            onChange={setDraftCustomHeaders}
-            onSubmit={() => persistDraft(draft)}
-            focus
-            showCursor
-            placeholder={'X-Header: value'}
-            columns={80}
-            multiline
-            cursorOffset={customHeadersCursor}
-            onChangeCursorOffset={setCustomHeadersCursor}
-          />
-        </Box>
-        {errorMessage && <Text color="error">{errorMessage}</Text>}
-        <Text dimColor>
-          Press Enter on a blank line to save. Press Esc to go back.
-        </Text>
-      </Box>
-    )
-  }
-
-  function renderForm(): React.ReactNode {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="remember" bold>
-          {editingProfileId ? 'Edit provider profile' : 'Create provider profile'}
-        </Text>
-        <Text dimColor>{currentStep.helpText}</Text>
-        <Text dimColor>
-          Provider type:{' '}
-          {draftProvider === 'anthropic'
-            ? 'Anthropic native API'
-            : 'OpenAI-compatible API'}
-        </Text>
-        <Text dimColor>
-          Step {formStepIndex + 1} of {FORM_STEPS.length}: {currentStep.label}
-        </Text>
-        <Box flexDirection="row" gap={1}>
-          <Text>{figures.pointer}</Text>
-          <TextInput
-            value={currentValue}
-            onChange={value =>
-              setDraft(prev => ({
-                ...prev,
-                [currentStepKey]: value,
-              }))
-            }
-            onSubmit={handleFormSubmit}
-            focus={true}
-            showCursor={true}
-            placeholder={`${currentStep.placeholder}${figures.ellipsis}`}
-            mask={currentStepKey === 'apiKey' ? '*' : undefined}
-            columns={80}
-            cursorOffset={cursorOffset}
-            onChangeCursorOffset={setCursorOffset}
-          />
-        </Box>
-        {errorMessage && <Text color="error">{errorMessage}</Text>}
-        <Text dimColor>
-          Press Enter to continue. Press Esc to go back.
-        </Text>
-      </Box>
-    )
-  }
 
   function renderMenu(): React.ReactNode {
     // Use memoized menuOptions from component scope
@@ -2103,16 +1270,59 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
 
   switch (screen) {
     case 'select-preset':
-      content = renderPresetSelection()
+      content = (
+        <PresetSelectionScreen
+          mode={mode}
+          onDone={onDone}
+          canImportLegacyClaude={canImportLegacyClaude}
+          setScreen={setScreen}
+          setCanImportLegacyClaude={setCanImportLegacyClaude}
+          setErrorMessage={setErrorMessage}
+          setStatusMessage={setStatusMessage}
+          closeWithCancelled={closeWithCancelled}
+          refreshProfiles={refreshProfiles}
+          returnToMenu={returnToMenu}
+          startCreateFromPreset={startCreateFromPreset}
+        />
+      )
       break
     case 'select-ollama-model':
-      content = renderOllamaSelection()
+      content = (
+        <OllamaSelectionScreen
+          selection={ollamaSelection}
+          draft={draft}
+          setDraft={setDraft}
+          setScreen={setScreen}
+          setFormStepIndex={setFormStepIndex}
+          setCursorOffset={setCursorOffset}
+          persistDraft={persistDraft}
+        />
+      )
       break
     case 'select-openai-model':
-      content = renderOpenAiModelSelection()
+      content = (
+        <OpenAiModelSelectionScreen
+          openAiModelSelection={openAiModelSelection}
+          draft={draft}
+          setDraft={setDraft}
+          goToFormStep={goToFormStep}
+          goToManualModelStep={goToManualModelStep}
+          finishAfterModelStep={finishAfterModelStep}
+        />
+      )
       break
     case 'select-atomic-chat-model':
-      content = renderAtomicChatSelection()
+      content = (
+        <AtomicChatSelectionScreen
+          selection={atomicChatSelection}
+          draft={draft}
+          setDraft={setDraft}
+          setScreen={setScreen}
+          setFormStepIndex={setFormStepIndex}
+          setCursorOffset={setCursorOffset}
+          persistDraft={persistDraft}
+        />
+      )
       break
     case 'codex-oauth':
       content = (
@@ -2283,7 +1493,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       )
       break
     case 'kimi-auth-choice':
-      content = renderKimiAuthChoice()
+      content = (
+        <KimiAuthChoiceScreen
+          setScreen={setScreen}
+          startCreateFromPreset={startCreateFromPreset}
+        />
+      )
       break
     case 'kimi-oauth':
       content = (
@@ -2383,19 +1598,65 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       )
       break
     case 'anthropic-auth-choice':
-      content = renderAnthropicAuthChoice()
+      content = <AnthropicAuthChoiceScreen setScreen={setScreen} />
       break
     case 'anthropic-oauth':
-      content = renderAnthropicOAuth()
+      content = (
+        <AnthropicOAuthScreen
+          mode={mode}
+          onDone={onDone}
+          activeProfileId={activeProfileId}
+          setErrorMessage={setErrorMessage}
+          setScreen={setScreen}
+          setStatusMessage={setStatusMessage}
+          refreshProfiles={refreshProfiles}
+          returnToMenu={returnToMenu}
+        />
+      )
       break
     case 'cloud-extras':
-      content = renderCloudExtras()
+      content = (
+        <CloudExtrasScreen
+          pendingPreset={pendingPreset}
+          cloudExtrasStepIndex={cloudExtrasStepIndex}
+          draftExtras={draftExtras}
+          cloudExtrasCursor={cloudExtrasCursor}
+          errorMessage={errorMessage}
+          setDraftExtras={setDraftExtras}
+          setCloudExtrasStepIndex={setCloudExtrasStepIndex}
+          setCloudExtrasCursor={setCloudExtrasCursor}
+          setErrorMessage={setErrorMessage}
+          setScreen={setScreen}
+        />
+      )
       break
     case 'custom-headers':
-      content = renderCustomHeaders()
+      content = (
+        <CustomHeadersScreen
+          draftCustomHeaders={draftCustomHeaders}
+          draft={draft}
+          customHeadersCursor={customHeadersCursor}
+          errorMessage={errorMessage}
+          setDraftCustomHeaders={setDraftCustomHeaders}
+          setCustomHeadersCursor={setCustomHeadersCursor}
+          persistDraft={persistDraft}
+        />
+      )
       break
     case 'form':
-      content = renderForm()
+      content = (
+        <FormScreen
+          formStepIndex={formStepIndex}
+          draft={draft}
+          setDraft={setDraft}
+          setCursorOffset={setCursorOffset}
+          cursorOffset={cursorOffset}
+          editingProfileId={editingProfileId}
+          draftProvider={draftProvider}
+          errorMessage={errorMessage}
+          handleFormSubmit={handleFormSubmit}
+        />
+      )
       break
     case 'select-active':
       content = renderProfileSelection(
