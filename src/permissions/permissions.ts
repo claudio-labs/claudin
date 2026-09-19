@@ -1,47 +1,22 @@
 import { feature } from 'bun:bundle'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import type { Tool, ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
+import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
-import type { AssistantMessage } from 'src/shared/types/message.js'
-import { extractOutputRedirections } from 'src/platform/bash/commands.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { AbortError, isSdkApiUserAbortError, toError } from 'src/shared/errors.js'
+import { AbortError, isSdkApiUserAbortError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { getPlanFilePath } from 'src/agent/plans/plans.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
-import { plural } from 'src/shared/text/stringUtils.js'
-import { permissionModeTitle } from 'src/permissions/PermissionMode.js'
 import type {
   PermissionAskDecision,
   PermissionDecision,
-  PermissionDecisionReason,
   PermissionDenyDecision,
   PermissionResult,
 } from 'src/permissions/PermissionResult.js'
-import type {
-  PermissionBehavior,
-  PermissionRule,
-  PermissionRuleValue,
-} from 'src/permissions/PermissionRule.js'
-import {
-  applyPermissionUpdate,
-  applyPermissionUpdates,
-  persistPermissionUpdates,
-} from 'src/permissions/PermissionUpdate.js'
-import type {
-  PermissionUpdate,
-  PermissionUpdateDestination,
-} from 'src/permissions/PermissionUpdateSchema.js'
-import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js'
-import {
-  deletePermissionRuleFromSettings,
-  type PermissionRuleFromEditableSettings,
-  shouldAllowManagedPermissionRulesOnly,
-} from 'src/permissions/permissionsLoader.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const classifierDecisionModule = feature('TRANSCRIPT_CLASSIFIER')
@@ -63,7 +38,6 @@ import {
   clearClassifierChecking,
   setClassifierChecking,
 } from 'src/permissions/classifierApprovals.js'
-import { executePermissionRequestHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import {
   AUTO_REJECT_MESSAGE,
   buildClassifierUnavailableMessage,
@@ -75,11 +49,8 @@ import { calculateCostFromTokens } from 'src/providers/usage/modelCost.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   createDenialTrackingState,
-  DENIAL_LIMITS,
-  type DenialTrackingState,
   recordDenial,
   recordSuccess,
-  shouldFallbackToPrompting,
 } from 'src/permissions/denialTracking.js'
 import {
   classifyYoloAction,
@@ -88,9 +59,18 @@ import {
 import {
   getAskRuleForTool,
   getDenyRuleForTool,
-  permissionRuleSourceDisplayString,
   toolAlwaysAllowedRule,
 } from 'src/permissions/permissions/ruleLookup.js'
+import {
+  CLASSIFIER_FAIL_CLOSED_REFRESH_MS,
+  handleDenialLimitExceeded,
+  persistDenialState,
+} from 'src/permissions/permissions/denial.js'
+import {
+  createPermissionRequestMessage,
+  getUpdatedInputOrFallback,
+  runPermissionRequestHooksForHeadlessAgent,
+} from 'src/permissions/permissions/requestMessage.js'
 
 export {
   filterDeniedAgents,
@@ -105,168 +85,12 @@ export {
   permissionRuleSourceDisplayString,
   toolAlwaysAllowedRule,
 } from 'src/permissions/permissions/ruleLookup.js'
-
-const CLASSIFIER_FAIL_CLOSED_REFRESH_MS = 30 * 60 * 1000 // 30 minutes
-
-/**
- * Creates a permission request message that explain the permission request
- */
-export function createPermissionRequestMessage(
-  toolName: string,
-  decisionReason?: PermissionDecisionReason,
-): string {
-  // Handle different decision reason types
-  if (decisionReason) {
-    if (
-      (feature('BASH_CLASSIFIER') || feature('TRANSCRIPT_CLASSIFIER')) &&
-      decisionReason.type === 'classifier'
-    ) {
-      return `Classifier '${decisionReason.classifier}' requires approval for this ${toolName} command: ${decisionReason.reason}`
-    }
-    switch (decisionReason.type) {
-      case 'hook': {
-        const hookMessage = decisionReason.reason
-          ? `Hook '${decisionReason.hookName}' blocked this action: ${decisionReason.reason}`
-          : `Hook '${decisionReason.hookName}' requires approval for this ${toolName} command`
-        return hookMessage
-      }
-      case 'rule': {
-        const ruleString = permissionRuleValueToString(
-          decisionReason.rule.ruleValue,
-        )
-        const sourceString = permissionRuleSourceDisplayString(
-          decisionReason.rule.source,
-        )
-        return `Permission rule '${ruleString}' from ${sourceString} requires approval for this ${toolName} command`
-      }
-      case 'subcommandResults': {
-        const needsApproval: string[] = []
-        for (const [cmd, result] of decisionReason.reasons) {
-          if (result.behavior === 'ask' || result.behavior === 'passthrough') {
-            // Strip output redirections for display to avoid showing filenames as commands
-            // Only do this for Bash tool to avoid affecting other tools
-            if (toolName === 'Bash') {
-              const { commandWithoutRedirections, redirections } =
-                extractOutputRedirections(cmd)
-              // Only use stripped version if there were actual redirections
-              const displayCmd =
-                redirections.length > 0 ? commandWithoutRedirections : cmd
-              needsApproval.push(displayCmd)
-            } else {
-              needsApproval.push(cmd)
-            }
-          }
-        }
-        if (needsApproval.length > 0) {
-          const n = needsApproval.length
-          return `This ${toolName} command contains multiple operations. The following ${plural(n, 'part')} ${plural(n, 'requires', 'require')} approval: ${needsApproval.join(', ')}`
-        }
-        return `This ${toolName} command contains multiple operations that require approval`
-      }
-      case 'permissionPromptTool':
-        return `Tool '${decisionReason.permissionPromptToolName}' requires approval for this ${toolName} command`
-      case 'sandboxOverride':
-        return 'Run outside of the sandbox'
-      case 'workingDir':
-        return decisionReason.reason
-      case 'safetyCheck':
-      case 'other':
-        return decisionReason.reason
-      case 'mode': {
-        const modeTitle = permissionModeTitle(decisionReason.mode)
-        return `Current permission mode (${modeTitle}) requires approval for this ${toolName} command`
-      }
-      case 'asyncAgent':
-        return decisionReason.reason
-    }
-  }
-
-  // Default message without listing allowed commands
-  const message = `Claude requested permissions to use ${toolName}, but you haven't granted it yet.`
-
-  return message
-}
-
-/**
- * Runs PermissionRequest hooks for headless/async agents that cannot show
- * permission prompts. This gives hooks an opportunity to allow or deny
- * tool use before the fallback auto-deny kicks in.
- *
- * Returns a PermissionDecision if a hook made a decision, or null if no
- * hook provided a decision (caller should proceed to auto-deny).
- */
-async function runPermissionRequestHooksForHeadlessAgent(
-  tool: Tool,
-  input: { [key: string]: unknown },
-  toolUseID: string,
-  context: ToolUseContext,
-  permissionMode: string | undefined,
-  suggestions: PermissionUpdate[] | undefined,
-): Promise<PermissionDecision | null> {
-  try {
-    for await (const hookResult of executePermissionRequestHooks(
-      tool.name,
-      toolUseID,
-      input,
-      context,
-      permissionMode,
-      suggestions,
-      context.abortController.signal,
-    )) {
-      if (!hookResult.permissionRequestResult) {
-        continue
-      }
-      const decision = hookResult.permissionRequestResult
-      if (decision.behavior === 'allow') {
-        const finalInput = decision.updatedInput ?? input
-        // Persist permission updates if provided
-        if (decision.updatedPermissions?.length) {
-          persistPermissionUpdates(decision.updatedPermissions)
-          context.setAppState(prev => ({
-            ...prev,
-            toolPermissionContext: applyPermissionUpdates(
-              prev.toolPermissionContext,
-              decision.updatedPermissions!,
-            ),
-          }))
-        }
-        return {
-          behavior: 'allow',
-          updatedInput: finalInput,
-          decisionReason: {
-            type: 'hook',
-            hookName: 'PermissionRequest',
-          },
-        }
-      }
-      if (decision.behavior === 'deny') {
-        if (decision.interrupt) {
-          logForDebugging(
-            `Hook interrupt: tool=${tool.name} hookMessage=${decision.message}`,
-          )
-          context.abortController.abort()
-        }
-        return {
-          behavior: 'deny',
-          message: decision.message || 'Permission denied by hook',
-          decisionReason: {
-            type: 'hook',
-            hookName: 'PermissionRequest',
-            reason: decision.message,
-          },
-        }
-      }
-    }
-  } catch (error) {
-    // If hooks fail, fall through to auto-deny rather than crashing
-    logError(
-      new Error('PermissionRequest hook failed for headless agent', {
-        cause: toError(error),
-      }),
-    )
-  }
-  return null
-}
+export { createPermissionRequestMessage } from 'src/permissions/permissions/requestMessage.js'
+export {
+  applyPermissionRulesToPermissionContext,
+  deletePermissionRule,
+  syncPermissionRulesFromDisk,
+} from 'src/permissions/permissions/ruleMutation.js'
 
 export const hasPermissionsToUseTool: CanUseToolFn = async (
   tool,
@@ -658,95 +482,6 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
 }
 
 /**
- * Persist denial tracking state. For async subagents with localDenialTracking,
- * mutate the local state in place (since setAppState is a no-op). Otherwise,
- * write to appState as usual.
- */
-function persistDenialState(
-  context: ToolUseContext,
-  newState: DenialTrackingState,
-): void {
-  if (context.localDenialTracking) {
-    Object.assign(context.localDenialTracking, newState)
-  } else {
-    context.setAppState(prev => {
-      // recordSuccess returns the same reference when state is
-      // unchanged. Returning prev here lets store.setState's Object.is check
-      // skip the listener loop entirely.
-      if (prev.denialTracking === newState) return prev
-      return { ...prev, denialTracking: newState }
-    })
-  }
-}
-
-/**
- * Check if a denial limit was exceeded and return an 'ask' result
- * so the user can review. Returns null if no limit was hit.
- */
-function handleDenialLimitExceeded(
-  denialState: DenialTrackingState,
-  appState: {
-    toolPermissionContext: { shouldAvoidPermissionPrompts?: boolean }
-  },
-  classifierReason: string,
-  assistantMessage: AssistantMessage,
-  tool: Tool,
-  result: PermissionDecision,
-  context: ToolUseContext,
-): PermissionDecision | null {
-  if (!shouldFallbackToPrompting(denialState)) {
-    return null
-  }
-
-  const hitTotalLimit = denialState.totalDenials >= DENIAL_LIMITS.maxTotal
-  const isHeadless = appState.toolPermissionContext.shouldAvoidPermissionPrompts
-  // Capture counts before persistDenialState, which may mutate denialState
-  // in-place via Object.assign for subagents with localDenialTracking.
-  const totalCount = denialState.totalDenials
-  const consecutiveCount = denialState.consecutiveDenials
-  const warning = hitTotalLimit
-    ? `${totalCount} actions were blocked this session. Please review the transcript before continuing.`
-    : `${consecutiveCount} consecutive actions were blocked. Please review the transcript before continuing.`
-
-
-  if (isHeadless) {
-    throw new AbortError(
-      'Agent aborted: too many classifier denials in headless mode',
-    )
-  }
-
-  logForDebugging(
-    `Classifier denial limit exceeded, falling back to prompting: ${warning}`,
-    { level: 'warn' },
-  )
-
-  if (hitTotalLimit) {
-    persistDenialState(context, {
-      ...denialState,
-      totalDenials: 0,
-      consecutiveDenials: 0,
-    })
-  }
-
-  // Preserve the original classifier value (e.g. 'dangerous-agent-action')
-  // so downstream analytics in interactiveHandler can log the correct
-  // user override event.
-  const originalClassifier =
-    result.decisionReason?.type === 'classifier'
-      ? result.decisionReason.classifier
-      : 'auto-mode'
-
-  return {
-    ...result,
-    decisionReason: {
-      type: 'classifier',
-      classifier: originalClassifier,
-      reason: `${warning}\n\nLatest blocked action: ${classifierReason}`,
-    },
-  }
-}
-
-/**
  * Plan mode hard gate. Returns a deny decision when the active permission
  * mode is `plan` AND the tool is non-readonly AND none of the escape hatches
  * apply (allow from tool.checkPermissions, inherited bypass, or ExitPlanMode).
@@ -1084,171 +819,4 @@ async function hasPermissionsToUseToolInner(
   }
 
   return result
-}
-
-type EditPermissionRuleArgs = {
-  initialContext: ToolPermissionContext
-  setToolPermissionContext: (updatedContext: ToolPermissionContext) => void
-}
-
-/**
- * Delete a permission rule from the appropriate destination
- */
-export async function deletePermissionRule({
-  rule,
-  initialContext,
-  setToolPermissionContext,
-}: EditPermissionRuleArgs & { rule: PermissionRule }): Promise<void> {
-  if (
-    rule.source === 'policySettings' ||
-    rule.source === 'flagSettings' ||
-    rule.source === 'command'
-  ) {
-    throw new Error('Cannot delete permission rules from read-only settings')
-  }
-
-  const updatedContext = applyPermissionUpdate(initialContext, {
-    type: 'removeRules',
-    rules: [rule.ruleValue],
-    behavior: rule.ruleBehavior,
-    destination: rule.source as PermissionUpdateDestination,
-  })
-
-  // Per-destination logic to delete the rule from settings
-  const destination = rule.source
-  switch (destination) {
-    case 'localSettings':
-    case 'userSettings':
-    case 'projectSettings': {
-      // Note: Typescript doesn't know that rule conforms to `PermissionRuleFromEditableSettings` even when we switch on `rule.source`
-      deletePermissionRuleFromSettings(
-        rule as PermissionRuleFromEditableSettings,
-      )
-      break
-    }
-    case 'cliArg':
-    case 'session': {
-      // No action needed for in-memory sources - not persisted to disk
-      break
-    }
-  }
-
-  // Update React state with updated context
-  setToolPermissionContext(updatedContext)
-}
-
-/**
- * Helper to convert PermissionRule array to PermissionUpdate array
- */
-function convertRulesToUpdates(
-  rules: PermissionRule[],
-  updateType: 'addRules' | 'replaceRules',
-): PermissionUpdate[] {
-  // Group rules by source and behavior
-  const grouped = new Map<string, PermissionRuleValue[]>()
-
-  for (const rule of rules) {
-    const key = `${rule.source}:${rule.ruleBehavior}`
-    if (!grouped.has(key)) {
-      grouped.set(key, [])
-    }
-    grouped.get(key)!.push(rule.ruleValue)
-  }
-
-  // Convert to PermissionUpdate array
-  const updates: PermissionUpdate[] = []
-  for (const [key, ruleValues] of grouped) {
-    const [source, behavior] = key.split(':')
-    updates.push({
-      type: updateType,
-      rules: ruleValues,
-      behavior: behavior as PermissionBehavior,
-      destination: source as PermissionUpdateDestination,
-    })
-  }
-
-  return updates
-}
-
-/**
- * Apply permission rules to context (additive - for initial setup)
- */
-export function applyPermissionRulesToPermissionContext(
-  toolPermissionContext: ToolPermissionContext,
-  rules: PermissionRule[],
-): ToolPermissionContext {
-  const updates = convertRulesToUpdates(rules, 'addRules')
-  return applyPermissionUpdates(toolPermissionContext, updates)
-}
-
-/**
- * Sync permission rules from disk (replacement - for settings changes)
- */
-export function syncPermissionRulesFromDisk(
-  toolPermissionContext: ToolPermissionContext,
-  rules: PermissionRule[],
-): ToolPermissionContext {
-  let context = toolPermissionContext
-
-  // When allowManagedPermissionRulesOnly is enabled, clear all non-policy sources
-  if (shouldAllowManagedPermissionRulesOnly()) {
-    const sourcesToClear: PermissionUpdateDestination[] = [
-      'userSettings',
-      'projectSettings',
-      'localSettings',
-      'cliArg',
-      'session',
-    ]
-    const behaviors: PermissionBehavior[] = ['allow', 'deny', 'ask']
-
-    for (const source of sourcesToClear) {
-      for (const behavior of behaviors) {
-        context = applyPermissionUpdate(context, {
-          type: 'replaceRules',
-          rules: [],
-          behavior,
-          destination: source,
-        })
-      }
-    }
-  }
-
-  // Clear all disk-based source:behavior combos before applying new rules.
-  // Without this, removing a rule from settings (e.g. deleting a deny entry)
-  // would leave the old rule in the context because convertRulesToUpdates
-  // only generates replaceRules for source:behavior pairs that have rules —
-  // an empty group produces no update, so stale rules persist.
-  const diskSources: PermissionUpdateDestination[] = [
-    'userSettings',
-    'projectSettings',
-    'localSettings',
-  ]
-  for (const diskSource of diskSources) {
-    for (const behavior of ['allow', 'deny', 'ask'] as PermissionBehavior[]) {
-      context = applyPermissionUpdate(context, {
-        type: 'replaceRules',
-        rules: [],
-        behavior,
-        destination: diskSource,
-      })
-    }
-  }
-
-  const updates = convertRulesToUpdates(rules, 'replaceRules')
-  return applyPermissionUpdates(context, updates)
-}
-
-/**
- * Extract updatedInput from a permission result, falling back to the original input.
- * Handles the case where some PermissionResult variants don't have updatedInput.
- */
-function getUpdatedInputOrFallback(
-  permissionResult: PermissionResult,
-  fallback: Record<string, unknown>,
-): Record<string, unknown> {
-  return (
-    ('updatedInput' in permissionResult
-      ? permissionResult.updatedInput
-      : undefined) ?? fallback
-  )
 }
