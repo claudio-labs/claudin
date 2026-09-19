@@ -7,11 +7,10 @@ import {
   getSessionId,
   setLastClassifierRequests,
 } from 'src/platform/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getCacheControl } from 'src/providers/shims/claude.js'
 import { parsePromptTooLongTokenCounts } from 'src/providers/transport/errors.js'
 import { getDefaultMaxRetries } from 'src/providers/transport/withRetry.js'
-import type { Tool, ToolPermissionContext, Tools } from 'src/tools/Tool.js'
+import type { ToolPermissionContext, Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
 import type {
   ClassifierUsage,
@@ -21,9 +20,7 @@ import { isDebugMode, logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, isSdkApiError } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
-import { getMainLoopModel } from 'src/providers/model/model.js'
 import { sideQuery } from 'src/agent/sideQuery.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
 import { modelRequiresAdaptiveThinking } from 'src/agent/context/thinking.js'
 import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import {
@@ -37,6 +34,21 @@ import {
   isClassifierBundled,
   warnClassifierDisabledOnce,
 } from 'src/permissions/yoloClassifier/prompts.js'
+import type { TranscriptEntry } from 'src/permissions/yoloClassifier/transcript.js'
+import {
+  MAX_CLASSIFIER_TRANSCRIPT_CHARS,
+  buildToolLookup,
+  serializeTranscriptForClassifier,
+  toCompact,
+} from 'src/permissions/yoloClassifier/transcript.js'
+import type { TwoStageMode } from 'src/permissions/yoloClassifier/classifierConfig.js'
+import {
+  getClassifierModel,
+  getClassifierThinkingConfig,
+  getClassifierTimeoutMs,
+  getTwoStageMode,
+  isTwoStageClassifierEnabled,
+} from 'src/permissions/yoloClassifier/classifierConfig.js'
 
 export type { AutoModeRules } from 'src/permissions/yoloClassifier/prompts.js'
 export {
@@ -46,9 +58,11 @@ export {
   getDefaultExternalAutoModeRules,
   isClassifierBundled,
 } from 'src/permissions/yoloClassifier/prompts.js'
-
-const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000
-const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
+export type { TranscriptEntry } from 'src/permissions/yoloClassifier/transcript.js'
+export {
+  buildTranscriptForClassifier,
+  formatActionForClassifier,
+} from 'src/permissions/yoloClassifier/transcript.js'
 
 function getAutoModeDumpDir(): string {
   return join(getClaudeTempDir(), 'auto-mode')
@@ -158,260 +172,6 @@ export const YOLO_CLASSIFIER_TOOL_SCHEMA: BetaToolUnion = {
     },
     required: ['thinking', 'shouldBlock', 'reason'],
   },
-}
-
-type TranscriptBlock =
-  | { type: 'text'; text: string }
-  | { type: 'tool_use'; name: string; input: unknown }
-
-export type TranscriptEntry = {
-  role: 'user' | 'assistant'
-  content: TranscriptBlock[]
-}
-
-function messageToTranscriptEntry(msg: Message): TranscriptEntry | null {
-  if (msg.type === 'attachment' && msg.attachment.type === 'queued_command') {
-    const prompt = msg.attachment.prompt
-    let text: string | null = null
-    if (typeof prompt === 'string') {
-      text = prompt
-    } else if (Array.isArray(prompt)) {
-      text =
-        prompt
-          .filter(
-            (block): block is { type: 'text'; text: string } =>
-              block.type === 'text',
-          )
-          .map(block => block.text)
-          .join('\n') || null
-    }
-    return text === null
-      ? null
-      : {
-          role: 'user',
-          content: [{ type: 'text', text }],
-        }
-  }
-
-  if (msg.type === 'user') {
-    const content = msg.message.content
-    const textBlocks: TranscriptBlock[] = []
-    if (typeof content === 'string') {
-      textBlocks.push({ type: 'text', text: content })
-    } else if (Array.isArray(content)) {
-      for (const block of content) {
-        if (block.type === 'text') {
-          textBlocks.push({ type: 'text', text: block.text })
-        }
-      }
-    }
-    return textBlocks.length > 0 ? { role: 'user', content: textBlocks } : null
-  }
-
-  if (msg.type === 'assistant') {
-    const blocks: TranscriptBlock[] = []
-    for (const block of msg.message.content) {
-      // Only include tool_use blocks — assistant text is model-authored
-      // and could be crafted to influence the classifier's decision.
-      if (block.type === 'tool_use') {
-        blocks.push({
-          type: 'tool_use',
-          name: block.name,
-          input: block.input,
-        })
-      }
-    }
-    return blocks.length > 0 ? { role: 'assistant', content: blocks } : null
-  }
-
-  return null
-}
-
-
-type ToolLookup = ReadonlyMap<string, Tool>
-
-function buildToolLookup(tools: Tools): ToolLookup {
-  const map = new Map<string, Tool>()
-  for (const tool of tools) {
-    map.set(tool.name, tool)
-    for (const alias of tool.aliases ?? []) {
-      map.set(alias, tool)
-    }
-  }
-  return map
-}
-
-function truncateClassifierValue(value: string): string {
-  if (value.length <= MAX_CLASSIFIER_BLOCK_VALUE_CHARS) {
-    return value
-  }
-  const omitted = value.length - MAX_CLASSIFIER_BLOCK_VALUE_CHARS
-  return (
-    value.slice(0, MAX_CLASSIFIER_BLOCK_VALUE_CHARS) +
-    `… [truncated ${omitted} chars]`
-  )
-}
-
-/**
- * Serialize a single transcript block as a JSONL dict line: `{"Bash":"ls"}`
- * for tool calls, `{"user":"text"}` for user text. The tool value is the
- * per-tool `toAutoClassifierInput` projection. JSON escaping means hostile
- * content can't break out of its string context to forge a `{"user":...}`
- * line — newlines become `\n` inside the value.
- *
- * Returns '' for tool_use blocks whose tool encodes to ''.
- */
-function toCompactBlock(
-  block: TranscriptBlock,
-  role: TranscriptEntry['role'],
-  lookup: ToolLookup,
-): string {
-  if (block.type === 'tool_use') {
-    const tool = lookup.get(block.name)
-    if (!tool) return ''
-    const input = (block.input ?? {}) as Record<string, unknown>
-    // block.input is unvalidated model output from history — a tool_use rejected
-    // for bad params (e.g. array emitted as JSON string) still lands in the
-    // transcript and would crash toAutoClassifierInput when it assumes z.infer<Input>.
-    // On throw or undefined, fall back to the raw input object — it gets
-    // single-encoded in the jsonStringify wrap below (no double-encode).
-    let encoded: unknown
-    try {
-      encoded = tool.toAutoClassifierInput(input) ?? input
-    } catch (e) {
-      logForDebugging(
-        `toAutoClassifierInput failed for ${block.name}: ${errorMessage(e)}`,
-      )
-      encoded = input
-    }
-    if (encoded === '') return ''
-    if (isJsonlTranscriptEnabled()) {
-      const jsonlValue =
-        typeof encoded === 'string'
-          ? truncateClassifierValue(encoded)
-          : encoded
-      return jsonStringify({ [block.name]: jsonlValue }) + '\n'
-    }
-    const s =
-      typeof encoded === 'string'
-        ? truncateClassifierValue(encoded)
-        : jsonStringify(encoded)
-    return `${block.name} ${s}\n`
-  }
-  if (block.type === 'text' && role === 'user') {
-    return isJsonlTranscriptEnabled()
-      ? jsonStringify({ user: truncateClassifierValue(block.text) }) + '\n'
-      : `User: ${truncateClassifierValue(block.text)}\n`
-  }
-  return ''
-}
-
-function toCompact(entry: TranscriptEntry, lookup: ToolLookup): string {
-  return entry.content.map(b => toCompactBlock(b, entry.role, lookup)).join('')
-}
-
-function serializeTranscriptForClassifier(
-  messages: Message[],
-  tools: Tools,
-  maxChars: number,
-): {
-  userContentBlocks: Anthropic.TextBlockParam[]
-  promptLengths: {
-    toolCalls: number
-    userPrompts: number
-  }
-  transcriptEntries: number
-  truncated: boolean
-} {
-  const lookup = buildToolLookup(tools)
-  const keptEntries: Array<Array<{ role: TranscriptEntry['role']; text: string }>> =
-    []
-  let totalChars = 0
-  let truncated = false
-
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const entry = messageToTranscriptEntry(messages[i]!)
-    if (!entry) continue
-
-    const serializedBlocks: Array<{
-      role: TranscriptEntry['role']
-      text: string
-    }> = []
-    let entryChars = 0
-
-    for (const block of entry.content) {
-      const serialized = toCompactBlock(block, entry.role, lookup)
-      if (serialized === '') continue
-      serializedBlocks.push({ role: entry.role, text: serialized })
-      entryChars += serialized.length
-    }
-    if (serializedBlocks.length === 0) continue
-
-    if (totalChars + entryChars > maxChars) {
-      if (totalChars === 0) {
-        const partialEntry: typeof serializedBlocks = []
-        let partialChars = 0
-        for (let j = serializedBlocks.length - 1; j >= 0; j--) {
-          const serialized = serializedBlocks[j]!
-          if (partialChars + serialized.text.length > maxChars) continue
-          partialEntry.unshift(serialized)
-          partialChars += serialized.text.length
-        }
-        if (partialEntry.length > 0) {
-          keptEntries.push(partialEntry)
-          totalChars += partialChars
-        }
-      }
-      truncated = true
-      break
-    }
-
-    keptEntries.push(serializedBlocks)
-    totalChars += entryChars
-    if (totalChars >= maxChars) {
-      truncated = i > 0
-      break
-    }
-  }
-
-  const userContentBlocks: Anthropic.TextBlockParam[] = []
-  let userPromptsLength = 0
-  let toolCallsLength = 0
-
-  for (let i = keptEntries.length - 1; i >= 0; i--) {
-    for (const block of keptEntries[i]!) {
-      userContentBlocks.push({ type: 'text' as const, text: block.text })
-      if (block.role === 'user') {
-        userPromptsLength += block.text.length
-      } else {
-        toolCallsLength += block.text.length
-      }
-    }
-  }
-
-  return {
-    userContentBlocks,
-    promptLengths: {
-      toolCalls: toolCallsLength,
-      userPrompts: userPromptsLength,
-    },
-    transcriptEntries: keptEntries.length,
-    truncated,
-  }
-}
-
-/**
- * Build a compact transcript string including user messages and assistant tool_use blocks.
- * Used by AgentTool for handoff classification.
- */
-export function buildTranscriptForClassifier(
-  messages: Message[],
-  tools: Tools,
-  maxChars: number = MAX_CLASSIFIER_TRANSCRIPT_CHARS,
-): string {
-  return serializeTranscriptForClassifier(messages, tools, maxChars)
-    .userContentBlocks.map(block => block.text)
-    .join('')
 }
 
 // ============================================================================
@@ -537,35 +297,6 @@ function replaceOutputFormatWithXml(systemPrompt: string): string {
     'Your ENTIRE response MUST begin with <block>. Do NOT output any analysis, reasoning, or commentary before <block>. No "Looking at..." or similar preamble.',
   ].join('\n')
   return systemPrompt.replace(toolUseLine, xmlFormat)
-}
-
-/**
- * Thinking config for classifier calls. The classifier wants short text-only
- * responses — API thinking blocks are ignored by extractTextContent() and waste tokens.
- *
- * For most models: send { type: 'disabled' } via sideQuery's `thinking: false`.
- *
- * Models with alwaysOnThinking (declared in tengu_ant_model_override) default
- * to adaptive thinking server-side and reject `disabled` with a 400. For those:
- * don't pass `thinking: false`, instead pad max_tokens so adaptive thinking
- * (observed 0–1114 tokens replaying go/ccshare/shawnm-20260310-202833) doesn't
- * exhaust the budget before <block> is emitted. Without headroom,
- * stop_reason=max_tokens yields an empty text response → parseXmlBlock('')
- * → null → "unparseable" → safe commands blocked.
- *
- * Returns [disableThinking, headroom] — tuple instead of named object so
- * property-name strings don't survive minification into external builds.
- */
-function getClassifierThinkingConfig(
-  model: string,
-): [false | undefined, number] {
-  if (modelRequiresAdaptiveThinking(model)) {
-    // `thinking: false` is omitted by sideQuery for these models (an explicit
-    // `disabled` 400s), so adaptive thinking stays on server-side — pad
-    // max_tokens so the visible <block> verdict still fits after thinking.
-    return [false, 2048]
-  }
-  return [false, 0]
 }
 
 /**
@@ -876,30 +607,6 @@ async function classifyYoloActionXml(
       promptLengths,
     }
   }
-}
-
-/**
- * Wall-clock budget for one classifier decision, retries included.
- *
- * Without it a classifier call inherits the main loop's per-request timeout
- * (API_TIMEOUT_MS, 600s) multiplied by the SDK retry count
- * (CLAUDIN_MAX_RETRIES, 10 → 11 attempts), so a stalled or rate-limited
- * upstream can hold a single Bash call for ~110 minutes with nothing on
- * screen but the spinner — permissions.ts awaits this decision before it
- * queues any dialog, and the "checking permissions" row is disabled in auto
- * mode. Set CLAUDIN_AUTO_MODE_CLASSIFIER_TIMEOUT_MS=0 for the old behavior.
- */
-const DEFAULT_CLASSIFIER_TIMEOUT_MS = 60_000
-
-function getClassifierTimeoutMs(): number {
-  const raw = process.env.CLAUDIN_AUTO_MODE_CLASSIFIER_TIMEOUT_MS
-  if (raw === undefined || raw === '') {
-    return DEFAULT_CLASSIFIER_TIMEOUT_MS
-  }
-  const parsed = Number.parseInt(raw, 10)
-  return Number.isFinite(parsed) && parsed >= 0
-    ? parsed
-    : DEFAULT_CLASSIFIER_TIMEOUT_MS
 }
 
 /**
@@ -1301,75 +1008,6 @@ async function classifyYoloActionUnbounded(
   }
 }
 
-type TwoStageMode = 'both' | 'fast' | 'thinking'
-
-type AutoModeConfig = {
-  model?: string
-  /**
-   * Enable XML classifier. `true` runs both stages; `'fast'` and `'thinking'`
-   * run only that stage; `false`/undefined uses the tool_use classifier.
-   */
-  twoStageClassifier?: boolean | 'fast' | 'thinking'
-  /**
-   * Ant builds normally use permissions_anthropic.txt; when true, use
-   * permissions_external.txt instead (dogfood the external template).
-   */
-  forceExternalPermissions?: boolean
-  /**
-   * Gate the JSONL transcript format ({"Bash":"ls"} vs `Bash ls`).
-   * Default false (old text-prefix format) for slow rollout / quick rollback.
-   */
-  jsonlTranscript?: boolean
-}
-
-/**
- * Get the model for the classifier.
- * Ant-only env var takes precedence, then GrowthBook JSON config override,
- * then the main loop model.
- */
-function getClassifierModel(): string {
-  const config = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_auto_mode_config',
-    {} as AutoModeConfig,
-  )
-  if (config?.model) {
-    return config.model
-  }
-  return getMainLoopModel()
-}
-
-/**
- * Resolve the XML classifier setting: internal-only env var takes precedence,
- * then GrowthBook. Returns undefined when unset (caller decides default).
- */
-function resolveTwoStageClassifier():
-  | boolean
-  | 'fast'
-  | 'thinking'
-  | undefined {
-  const config = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_auto_mode_config',
-    {} as AutoModeConfig,
-  )
-  return config?.twoStageClassifier
-}
-
-/**
- * Check if the XML classifier is enabled (any truthy value including 'fast'/'thinking').
- */
-function isTwoStageClassifierEnabled(): boolean {
-  const v = resolveTwoStageClassifier()
-  return v === true || v === 'fast' || v === 'thinking'
-}
-
-function isJsonlTranscriptEnabled(): boolean {
-  const config = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_auto_mode_config',
-    {} as AutoModeConfig,
-  )
-  return config?.jsonlTranscript === true
-}
-
 type AutoModeOutcome =
   | 'success'
   | 'parse_failure'
@@ -1435,28 +1073,4 @@ function detectDeterministicApiError(error: unknown): boolean {
     status < 500 &&
     !TRANSIENT_4XX_STATUSES.has(status)
   )
-}
-
-/**
- * Get which stage(s) the XML classifier should run.
- * Only meaningful when isTwoStageClassifierEnabled() is true.
- */
-function getTwoStageMode(): TwoStageMode {
-  const v = resolveTwoStageClassifier()
-  return v === 'fast' || v === 'thinking' ? v : 'both'
-}
-
-/**
- * Format an action for the classifier from tool name and input.
- * Returns a TranscriptEntry with the tool_use block. Each tool controls which
- * fields get exposed via its `toAutoClassifierInput` implementation.
- */
-export function formatActionForClassifier(
-  toolName: string,
-  toolInput: unknown,
-): TranscriptEntry {
-  return {
-    role: 'assistant',
-    content: [{ type: 'tool_use', name: toolName, input: toolInput }],
-  }
 }
