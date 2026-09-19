@@ -9,8 +9,8 @@ import type { SymbolKind } from 'src/tools/shared/codeOutline/scanSymbols.js'
 // ---------------------------------------------------------------------------
 // Smoke: every NEW language from the plan produces ≥1 symbol on a realistic
 // file, end-to-end (file read → detectOutlineLang → scanSymbols). This
-// complements the in-memory scanSymbols.test.ts cases by exercising the full
-// pipeline that the Read/Grep tools use.
+// complements the in-memory cases in src/tools/shared/codeOutline/ (clike/,
+// langs/, mask/) by exercising the full pipeline that the Read/Grep tools use.
 // ---------------------------------------------------------------------------
 
 describe('outline — every plan language yields symbols on a real file', () => {
