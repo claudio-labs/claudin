@@ -168,3 +168,169 @@ describe("findFilterForCommand — chained commands", () => {
     if (direct) expect(chained === direct || chained === null).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — Regression: batch-1 specs unaffected
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — Regression: all batch-1 + 6.1.4 specs still match
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.5 — batch-1 specs still match after batch-2 added", () => {
+  const cases: [string, string][] = [
+    ["pytest",          "pytest src/"],
+    ["rspec",           "rspec spec/"],
+    ["go-test",         "go test ./..."],
+    ["bundle-install",  "bundle install"],
+    ["ps-aux",          "ps aux"],
+    ["top",             "top -bn1"],
+    ["rubocop",         "rubocop app/"],
+    ["ruff-check",      "ruff check src/"],
+    ["ls-la",           "ls -la"],
+    ["grep-rg",         "rg foo src/"],
+    ["cargo-test",      "cargo test"],
+    ["cargo-clippy",    "cargo clippy"],
+    ["cargo-check",     "cargo check"],
+    ["cargo-build",     "cargo build"],
+    ["git-log",         "git log"],
+    ["git-status",      "git status"],
+    ["gh-pr-list",      "gh pr list"],
+    ["gh-issue-list",   "gh issue list"],
+    ["gh-run-list",     "gh run list"],
+  ];
+  for (const [name, cmd] of cases) {
+    test(`${name} still matches '${cmd}'`, () => {
+      expect(findFilterForCommand(cmd)?.name).toBe(name);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — Regression: reject guards for new specs
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.5 — reject guards for batch-2 specs", () => {
+  // gitBlame rejects
+  test("git blame --porcelain → no match", () => expect(findFilterForCommand("git blame --porcelain")).toBeNull());
+  test("git blame -p → no match",           () => expect(findFilterForCommand("git blame -p README.md")).toBeNull());
+  // gitPull rejects
+  test("git pull --dry-run → no match",    () => expect(findFilterForCommand("git pull --dry-run")).toBeNull());
+  test("git pull --no-ff → no match",      () => expect(findFilterForCommand("git pull --no-ff")).toBeNull());
+  // gitAdd rejects
+  test("git add -i → no match",            () => expect(findFilterForCommand("git add -i")).toBeNull());
+  test("git add --patch → no match",       () => expect(findFilterForCommand("git add --patch")).toBeNull());
+  // gitCommit rejects
+  test("git commit --dry-run → no match",  () => expect(findFilterForCommand("git commit --dry-run")).toBeNull());
+  // gitPush rejects
+  test("git push --dry-run → no match",    () => expect(findFilterForCommand("git push --dry-run")).toBeNull());
+  // dockerPs rejects
+  test("docker ps --format → no match",    () => expect(findFilterForCommand("docker ps --format '{{.Names}}'")).toBeNull());
+  test("docker ps -q → no match",          () => expect(findFilterForCommand("docker ps -q")).toBeNull());
+  test("docker ps --no-trunc → no match",  () => expect(findFilterForCommand("docker ps --no-trunc")).toBeNull());
+  // dockerImages rejects
+  test("docker images --format → no match", () => expect(findFilterForCommand("docker images --format '{{.ID}}'")).toBeNull());
+  test("docker images -q → no match",       () => expect(findFilterForCommand("docker images -q")).toBeNull());
+  // dockerLogs rejects
+  test("docker logs -f → no match",         () => expect(findFilterForCommand("docker logs -f myapp")).toBeNull());
+  test("docker logs --follow → no match",   () => expect(findFilterForCommand("docker logs --follow myapp")).toBeNull());
+  test("docker logs --timestamps=false → no match", () => expect(findFilterForCommand("docker logs --timestamps=false myapp")).toBeNull());
+  // curlV rejects
+  test("curl -s → no match",                () => expect(findFilterForCommand("curl -s https://api.example.com")).toBeNull());
+  test("curl --silent → no match",          () => expect(findFilterForCommand("curl --silent https://api.example.com")).toBeNull());
+  test("curl -I → no match",                () => expect(findFilterForCommand("curl -I https://example.com")).toBeNull());
+  test("curl --head → no match",            () => expect(findFilterForCommand("curl --head https://example.com")).toBeNull());
+  // dig rejects
+  test("dig +short → no match",             () => expect(findFilterForCommand("dig +short example.com")).toBeNull());
+  test("dig +nocomments → no match",        () => expect(findFilterForCommand("dig +nocomments example.com")).toBeNull());
+  // journalctl rejects
+  test("journalctl --output=json → no match", () => expect(findFilterForCommand("journalctl --output=json")).toBeNull());
+  test("journalctl -o json → no match",       () => expect(findFilterForCommand("journalctl -o json")).toBeNull());
+  test("journalctl -f → no match",            () => expect(findFilterForCommand("journalctl -f")).toBeNull());
+  test("journalctl --machine=host1 → no match", () => expect(findFilterForCommand("journalctl --machine=host1")).toBeNull());
+});
+
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.4 — batch-1 specs still match after new specs added", () => {
+  const cases: [string, string][] = [
+    ["pytest",          "pytest src/"],
+    ["rspec",           "rspec spec/"],
+    ["go-test",         "go test ./..."],
+    ["bundle-install",  "bundle install"],
+    ["ps-aux",          "ps aux"],
+    ["top",             "top -bn1"],
+    ["rubocop",         "rubocop app/"],
+    ["ruff-check",      "ruff check src/"],
+    ["ls-la",           "ls -la"],
+    ["grep-rg",         "rg foo src/"],
+    ["cargo-test",      "cargo test"],
+    ["cargo-clippy",    "cargo clippy"],
+    ["cargo-check",     "cargo check"],
+    ["cargo-build",     "cargo build"],
+  ];
+  for (const [name, cmd] of cases) {
+    test(`${name} still matches '${cmd}'`, () => {
+      expect(findFilterForCommand(cmd)?.name).toBe(name);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — Regression: reject guards
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.4 — reject guards", () => {
+  // gitLog rejects
+  test("git log --oneline → no match",      () => expect(findFilterForCommand("git log --oneline")).toBeNull());
+  test('git log --format="%H" → no match',  () => expect(findFilterForCommand('git log --format="%H"')).toBeNull());
+  test("git log -p → no match",             () => expect(findFilterForCommand("git log -p")).toBeNull());
+  test("git log --patch → no match",        () => expect(findFilterForCommand("git log --patch")).toBeNull());
+  test("git log -5 → no match (single-digit)", () => expect(findFilterForCommand("git log -5")).toBeNull());
+  // gitStatus rejects
+  test("git status --porcelain → no match", () => expect(findFilterForCommand("git status --porcelain")).toBeNull());
+  test("git status --short → no match",     () => expect(findFilterForCommand("git status --short")).toBeNull());
+  test("git status -s → no match",           () => expect(findFilterForCommand("git status -s")).toBeNull());
+  test("git status -sb → no match",          () => expect(findFilterForCommand("git status -sb")).toBeNull());
+  test("git log --pretty oneline → no match",() => expect(findFilterForCommand("git log --pretty oneline")).toBeNull());
+  // gh rejects
+  test("gh pr list --json → no match",      () => expect(findFilterForCommand("gh pr list --json number")).toBeNull());
+  test("gh issue list --json → no match",   () => expect(findFilterForCommand("gh issue list --json number")).toBeNull());
+  test("gh run list --json → no match",     () => expect(findFilterForCommand("gh run list --json status")).toBeNull());
+  test("gh pr list --format → no match",    () => expect(findFilterForCommand("gh pr list --format '{{.number}}'")).toBeNull());
+  test("gh pr list --template → no match",  () => expect(findFilterForCommand("gh pr list --template '{{.number}}'")).toBeNull());
+  test("gh issue list --format → no match", () => expect(findFilterForCommand("gh issue list --format '{{.number}}'")).toBeNull());
+  test("gh run list --format → no match",   () => expect(findFilterForCommand("gh run list --format '{{.name}}'")).toBeNull());
+  // compound: bypass when filters disagree, resolve when only one segment matches
+  test("git log && echo done → resolves to git-log (echo has no filter)", () => expect(findFilterForCommand("git log && echo done")?.name).toBe("git-log"));
+  test("git status || true → resolves to git-status (only matching segment)", () => expect(findFilterForCommand("git status || true")?.name).toBe("git-status"));
+  test("gh pr list && echo done → resolves to gh-pr-list (echo has no filter)", () => expect(findFilterForCommand("gh pr list && echo done")?.name).toBe("gh-pr-list"));
+  test("git log | head → no match (pipe — cannot split)", () => expect(findFilterForCommand("git log | head")).toBeNull());
+  test("cd src && git status → resolves to git-status", () => expect(findFilterForCommand("cd src && git status")?.name).toBe("git-status"));
+  // P3: --format with space (not only --format=)
+  test("git log --format '%H' → no match (space form)", () => expect(findFilterForCommand("git log --format '%H'")).toBeNull());
+  test("git log --format=%H → no match (= form)",    () => expect(findFilterForCommand("git log --format=%H")).toBeNull());
+  // P4: --web flag opens browser, must not be rewritten
+  test("gh pr list --web → no match",                () => expect(findFilterForCommand("gh pr list --web")).toBeNull());
+  test("gh issue list --web → no match",             () => expect(findFilterForCommand("gh issue list --web")).toBeNull());
+  test("gh run list --web → no match",               () => expect(findFilterForCommand("gh run list --web")).toBeNull());
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.4 — Regression: -[1-9]\b boundary
+// ---------------------------------------------------------------------------
+
+describe("regression 6.1.4 — -N boundary for git log", () => {
+  test("git log -10 is NOT rejected (multi-digit safe)", () => {
+    expect(findFilterForCommand("git log -10")?.name).toBe("git-log");
+  });
+  test("git log -1 IS rejected (single-digit)", () => {
+    expect(findFilterForCommand("git log -1")).toBeNull();
+  });
+  test("git log -9 IS rejected (single-digit)", () => {
+    expect(findFilterForCommand("git log -9")).toBeNull();
+  });
+  test("git log -20 is NOT rejected (multi-digit)", () => {
+    expect(findFilterForCommand("git log -20")?.name).toBe("git-log");
+  });
+});

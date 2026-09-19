@@ -86,7 +86,7 @@ export interface PreExecPlan {
    * paths apart, and none pretends to. What it buys is that the property stops
    * depending on that coincidence — the next renderer added to a git spec does
    * not have to be idempotent for the delta lane to keep its baseline. The
-   * mechanism itself IS pinned, on the filter side, in `bashFilter.test.ts`. */
+   * mechanism itself IS pinned, on the filter side, in `structural.test.ts`. */
   readonly callerBudgets?: boolean;
 }
 

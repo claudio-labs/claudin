@@ -1,12 +1,15 @@
 // Shared test harness for the per-family filter tests.
 //
-// The oldest specs keep their helpers inline in `bashFilter.test.ts`; this
-// module re-exports the same behavior so each `filters/<family>.test.ts` can
-// drive a single FilterSpec against real captured output without duplicating
-// the marker-stripping / reduction-measuring boilerplate.
+// These helpers used to be inline at the top of `bashFilter.test.ts`, which is
+// why several of them exist in two spellings; that file is now split into the
+// per-family siblings and they all import from here, so each
+// `filters/<family>.test.ts` drives a single FilterSpec against real captured
+// output without duplicating the marker-stripping / reduction-measuring
+// boilerplate.
 //
 // NOT a `.test` file — it exports helpers, it does not register tests.
 
+import { expect } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -18,12 +21,25 @@ import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registr
 import { builtInFilters } from "src/tools/shared/outputFilter/Bash/filters/index.js";
 import type { FilterSpec } from "src/tools/shared/outputFilter/Bash/types.js";
 
-const SAMPLES_DIR = path.resolve(import.meta.dir, "../../__fixtures__/samples");
+/** Absolute path of the capture corpus. Exported because a handful of specs
+ * read their fixture by hand — `readFileSync(resolve(SAMPLES_DIR, "x.txt"))` —
+ * rather than through the two readers below. */
+export const SAMPLES_DIR = path.resolve(
+  import.meta.dir,
+  "../../__fixtures__/samples",
+);
 
 /** Read one capture out of `__fixtures__/samples/`. Captures big enough to be
  * unreadable inline live on disk, where the ROI bench reads the same file. */
 export function readSample(name: string): string {
   return readFileSync(path.join(SAMPLES_DIR, name), "utf8");
+}
+
+/** Read a capture by BASE NAME, appending `.txt`. `readSample` above takes the
+ * full filename; the sample-driven specs name their fixture without the
+ * extension, so both spellings exist on purpose. */
+export function loadSample(name: string): string {
+  return readFileSync(path.join(SAMPLES_DIR, `${name}.txt`), "utf8");
 }
 
 /** Locate a registered built-in spec by its `name`. Throws if absent so a
@@ -97,8 +113,26 @@ export function reductionPct(raw: string, body: string): number {
   return 100 * (1 - body.length / Math.max(1, raw.length));
 }
 
+/** Assert a filter hits its predicted byte-reduction on a real capture, with a
+ * 5-point tolerance. The message names filter, sample, predicted and actual so
+ * a drifting fixture says which one moved. */
+export function assertReduction(
+  filterName: string,
+  command: string,
+  sampleName: string,
+  predictedPct: number,
+): void {
+  const raw = loadSample(sampleName);
+  const body = runFilterBody(filterName, command, raw);
+  const pct = reductionPct(raw, body);
+  expect(
+    pct,
+    `filter=${filterName} sample=${sampleName} predicted=${predictedPct}% actual=${pct.toFixed(1)}%`,
+  ).toBeGreaterThanOrEqual(predictedPct - 5);
+}
+
 /** Assert that `command` routes to the spec named `expected` (and to nothing
- * else). Mirrors the routing tests in bashFilter.test.ts. */
+ * else). Mirrors the routing tests in registry.test.ts. */
 export function routesTo(command: string): string | undefined {
   return findFilterForCommand(command)?.name;
 }

@@ -38,7 +38,8 @@ type Scenario = {
   postSample?: string
 }
 
-// Source of truth: bashFilter.test.ts assertReduction(...) calls + rewrite tests.
+// Source of truth: the assertReduction(...) calls in the per-family suites under
+// src/tools/shared/outputFilter/Bash/filters/, plus the rewrite tests.
 const SCENARIOS: Scenario[] = [
   // pipeline filters with documented predicted %
   { filter: 'bundle-install', command: 'bundle install', sample: 'bundle-install', predicted: 91 },
@@ -265,7 +266,7 @@ describe('bash-filter-gain', () => {
     }
     showTable(rows)
     console.log(
-      '\nLegend: PRED% = target from bashFilter.test.ts assertions.',
+      '\nLegend: PRED% = target from the per-family assertReduction assertions.',
     )
     console.log('        ✓ = meets target (within −5pp); ✗ = misses target.')
     console.log(

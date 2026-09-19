@@ -7,8 +7,9 @@
 // guard.
 //
 // The outputFilter internals (pipeline stages, individual filters, markers)
-// are covered by src/tools/shared/outputFilter/Bash/bashFilter.test.ts. This suite tests
-// only the BashTool integration boundary.
+// are covered under src/tools/shared/outputFilter/Bash/ — structural.test.ts for
+// the planner/applier contract, registry.test.ts for routing, and one suite per
+// family in filters/. This suite tests only the BashTool integration boundary.
 //
 // Mocking strategy — follows the project convention (no mock.module()):
 //   • Config  → saveGlobalConfig() mutates TEST_GLOBAL_CONFIG_FOR_TESTING

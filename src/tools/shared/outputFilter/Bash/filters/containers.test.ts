@@ -8,7 +8,9 @@ import {
   runFilterBody,
   runCompoundBody,
   reductionPct,
+  assertReduction,
   routesTo,
+  findFilterForCommand,
 } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   COMPOSE_UP,
@@ -217,5 +219,124 @@ describe("docker compose — through the production plan, not a hand-built one",
     const body = runCompoundBody(`timeout 600 ${UP}`, COMPOSE_UP);
     expect(body).not.toContain("DONE 0.0s");
     expect(body).toContain("Container legendarr-legendarr-1 Started");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6.1.5 — container specs
+// ---------------------------------------------------------------------------
+
+describe("phase 6.1.5 — dockerPs", () => {
+  test("ROI: docker-ps sample ≥20% reduction", () => {
+    assertReduction("docker-ps", "docker ps -a", "docker-ps", 20);
+  });
+
+  test("match: docker ps", () => {
+    expect(findFilterForCommand("docker ps")?.name).toBe("docker-ps");
+  });
+
+  test("match: docker ps -a", () => {
+    expect(findFilterForCommand("docker ps -a")?.name).toBe("docker-ps");
+  });
+
+  test("reject: docker ps --format", () => {
+    expect(findFilterForCommand("docker ps --format '{{.Names}}'")).toBeNull();
+  });
+
+  test("reject: docker ps -q", () => {
+    expect(findFilterForCommand("docker ps -q")).toBeNull();
+  });
+
+  test("reject: docker ps --quiet", () => {
+    expect(findFilterForCommand("docker ps --quiet")).toBeNull();
+  });
+
+  test("reject: docker ps --no-trunc", () => {
+    expect(findFilterForCommand("docker ps --no-trunc")).toBeNull();
+  });
+
+  test("strips CONTAINER ID column from data rows", () => {
+    const raw = "CONTAINER ID   IMAGE             STATUS\na3f8c9d2e1b7   postgres:16       Up 2 hours\n";
+    const body = runFilterBody("docker-ps", "docker ps -a", raw);
+    expect(body).not.toMatch(/^[0-9a-f]{12}\s/m);
+    expect(body).toContain("postgres:16");
+  });
+
+  test("onEmpty: no containers returns message", () => {
+    const raw = "CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES\n";
+    const body = runFilterBody("docker-ps", "docker ps", raw);
+    expect(body).toContain("No matching containers.");
+  });
+});
+
+describe("phase 6.1.5 — dockerImages", () => {
+  test("ROI: docker-images sample ≥30% reduction", () => {
+    assertReduction("docker-images", "docker images", "docker-images", 30);
+  });
+
+  test("match: docker images", () => {
+    expect(findFilterForCommand("docker images")?.name).toBe("docker-images");
+  });
+
+  test("reject: docker images --format", () => {
+    expect(findFilterForCommand("docker images --format '{{.Repository}}'")).toBeNull();
+  });
+
+  test("reject: docker images -q", () => {
+    expect(findFilterForCommand("docker images -q")).toBeNull();
+  });
+
+  test("strips WARNING line", () => {
+    const raw = "WARNING: This output is designed for human readability. For machine-readable output, please use --format.\nIMAGE   ID   DISK USAGE\npostgres:16   108b27c919e6   276MB\n";
+    const body = runFilterBody("docker-images", "docker images", raw);
+    expect(body).not.toContain("WARNING:");
+    expect(body).toContain("postgres:16");
+  });
+
+  test("strips 12-char hex ID column", () => {
+    const raw = "IMAGE   ID             DISK USAGE\npostgres:16   108b27c919e6   276MB\n";
+    const body = runFilterBody("docker-images", "docker images", raw);
+    expect(body).not.toMatch(/\b[0-9a-f]{12}\b/);
+  });
+});
+
+describe("phase 6.1.5 — dockerLogs", () => {
+  test("ROI: docker-logs sample ≥15% reduction", () => {
+    assertReduction("docker-logs", "docker logs postgres", "docker-logs", 15);
+  });
+
+  test("match: docker logs myapp", () => {
+    expect(findFilterForCommand("docker logs myapp")?.name).toBe("docker-logs");
+  });
+
+  test("match: docker logs --tail 50 myapp", () => {
+    expect(findFilterForCommand("docker logs --tail 50 myapp")?.name).toBe("docker-logs");
+  });
+
+  test("reject: docker logs -f myapp", () => {
+    expect(findFilterForCommand("docker logs -f myapp")).toBeNull();
+  });
+
+  test("reject: docker logs --follow myapp", () => {
+    expect(findFilterForCommand("docker logs --follow myapp")).toBeNull();
+  });
+
+  test("reject: docker logs --timestamps=false myapp", () => {
+    expect(findFilterForCommand("docker logs --timestamps=false myapp")).toBeNull();
+  });
+
+  test("strips postgres-style timestamp prefix to HH:MM:SS", () => {
+    const raw = "2026-05-05 14:35:40.337 UTC [27] LOG:  checkpoint complete\n2026-05-05 14:35:40.405 UTC [1] LOG:  database shut down\n";
+    const body = runFilterBody("docker-logs", "docker logs postgres", raw);
+    expect(body).toContain("14:35:40 LOG:");
+    expect(body).not.toContain("2026-05-05");
+    expect(body).not.toContain("[27]");
+  });
+
+  test("strips Docker ISO timestamp prefix", () => {
+    const raw = "2026-05-05T14:35:40.337Z INFO Starting server\n2026-05-05T14:35:41.001Z INFO Ready\n";
+    const body = runFilterBody("docker-logs", "docker logs myapp", raw);
+    expect(body).toContain("INFO Starting server");
+    expect(body).not.toContain("2026-05-05T");
   });
 });
