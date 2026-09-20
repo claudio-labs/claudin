@@ -170,6 +170,45 @@ const externalTips: Tip[] = [
     },
   },
   {
+    id: 'diff-source-cycle',
+    content: async () =>
+      `In /diff, ${getShortcutDisplay('diff:previousSource', 'DiffDialog', '[')} and ${getShortcutDisplay('diff:nextSource', 'DiffDialog', ']')} cycle what you are reviewing: the working tree, one diff per agent turn, then every stash.`,
+    cooldownSessions: 15,
+    isRelevant: async () => {
+      try {
+        return await getIsGit()
+      } catch (_) {
+        return false
+      }
+    },
+  },
+  {
+    id: 'diff-line-selection',
+    content: async () =>
+      `Press ${getShortcutDisplay('diff:select', 'DiffDialog', 'v')} in the /diff pane to select lines, then Enter to drop them into your prompt as @file#L12-L30 — dragging the mouse over them does the same.`,
+    cooldownSessions: 15,
+    isRelevant: async () => {
+      try {
+        return await getIsGit()
+      } catch (_) {
+        return false
+      }
+    },
+  },
+  {
+    id: 'diff-expand-context',
+    content: async () =>
+      `Need more context in /diff? Hit Enter on a "··· N lines" gap to reveal more around it, or ${getShortcutDisplay('diff:expandAll', 'DiffDialog', 'a')} to expand the whole file.`,
+    cooldownSessions: 20,
+    isRelevant: async () => {
+      try {
+        return await getIsGit()
+      } catch (_) {
+        return false
+      }
+    },
+  },
+  {
     id: 'file-explorer',
     content: async () =>
       `Browse and edit files without leaving the REPL — run /explorer or hit ${getShortcutDisplay('chat:openExplorer', 'Chat', 'ctrl+e')} for a file tree with a built-in nvim-style editor.`,
@@ -188,6 +227,33 @@ const externalTips: Tip[] = [
     content: async () =>
       'Inside /explorer, press a to create, r to rename, or d to delete the selected file.',
     cooldownSessions: 15,
+    isRelevant: async () => true,
+  },
+  {
+    id: 'explorer-changed-files',
+    content: async () =>
+      'The /explorer tree opens with a Changed group — every file git sees as modified, in one flat list at the top.',
+    cooldownSessions: 15,
+    isRelevant: async () => {
+      try {
+        return await getIsGit()
+      } catch (_) {
+        return false
+      }
+    },
+  },
+  {
+    id: 'explorer-editor-ex-commands',
+    content: async () =>
+      'In the /explorer editor, :w saves, :q quits, :wq does both, and :42 jumps to line 42.',
+    cooldownSessions: 15,
+    isRelevant: async () => true,
+  },
+  {
+    id: 'explorer-editor-motions',
+    content: async () =>
+      'The /explorer editor speaks vim: dd cuts a line, yy copies, p pastes, u undoes and ctrl+r redoes.',
+    cooldownSessions: 20,
     isRelevant: async () => true,
   },
   {
