@@ -47,6 +47,7 @@
     "typecheck:ci": "bun run scripts/verify/typecheck-ci.ts",
     "typecheck:baseline": "bun run scripts/verify/typecheck-ci.ts --update",
     "generate:sdk-types": "bun run scripts/codegen/generate-sdk-types.ts",
+    "codegen:reasoning-catalog": "bun run scripts/codegen/reasoning-catalog.ts",
     "verify:sdk-types": "bun run scripts/codegen/generate-sdk-types.ts --check",
     "verify:rules": "bun run scripts/verify/rules-check.ts",
     "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",

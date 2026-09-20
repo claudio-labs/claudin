@@ -3,9 +3,12 @@ import { isUltrathinkEnabled } from 'src/agent/context/thinking.js'
 import { getInitialSettings, getSettingsForSource } from 'src/platform/settings/settings.js'
 import { isProSubscriber, isMaxSubscriber, isTeamSubscriber } from 'src/providers/auth/auth.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { getAPIProvider } from 'src/providers/model/providers.js'
+import { activeTransportUsesOpenAiShim, getAPIProvider } from 'src/providers/model/providers.js'
 import { get3PModelCapabilityOverride } from 'src/providers/model/modelSupportOverrides.js'
-import { supportsCodexReasoningEffort } from 'src/providers/presets/providerConfig.js'
+import {
+  pickerEffortLevels,
+  resolveActiveShimEffortValues,
+} from 'src/providers/model/reasoningCatalog.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { EffortLevel } from 'src/platform/entrypoints/sdk/runtimeTypes.js'
 import { getCurrentProjectConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js'
@@ -58,6 +61,15 @@ export function isAdaptiveEffort(value: unknown): value is AdaptiveEffort {
  * OpenAI-compatible `/coding/v1/chat/completions` endpoint:
  * `thinking: { type: 'enabled', effort: 'low' | 'high' | 'max', keep: 'all' }`.
  * Other Kimi models (kimi-for-coding, etc.) expose thinking as on/off only.
+ *
+ * The match stays on the bare `k3` alias ON PURPOSE, even though the same
+ * model is called `kimi-k3` on Moonshot's own API and on the OpenCode gateway.
+ * Broadening it would hand those ids to this lane, whose wire write is gated on
+ * a Moonshot host (`messagesClient.ts`, the `isMoonshot` branch) — so a gateway
+ * model would light up the picker and send nothing, which is the exact defect
+ * the reasoning catalog exists to remove. `kimi-k3` on the gateway gets its
+ * levels from the catalog instead; on Moonshot's public API it gets none,
+ * because that endpoint's field is not documented anywhere we could verify.
  */
 function isKimiEffortModel(model: string): boolean {
   const m = model.toLowerCase()
@@ -83,8 +95,14 @@ export function modelSupportsEffort(model: string): boolean {
   if (isKimiEffortModel(model)) {
     return true
   }
-  if (modelUsesOpenAIEffort(model) && supportsCodexReasoningEffort(model)) {
-    return true
+  // Everything that leaves through the OpenAI shim answers from the reasoning
+  // catalog — the same resolver `messagesClient` writes the field from. Asking
+  // one source is the point: this used to be an independent name allowlist, so
+  // a gateway model could show "Xhigh effort" while the request body carried no
+  // effort field at all. Native transports (anthropic/bedrock/vertex/foundry)
+  // fall through to the Claude rules below, which have their own wire path.
+  if (activeTransportUsesOpenAiShim(model)) {
+    return resolveActiveShimEffortValues(model) !== undefined
   }
   // Supported by a subset of Claude 4 models
   if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
@@ -113,6 +131,14 @@ export function modelSupportsMaxEffort(model: string): boolean {
   if (supported3P !== undefined) {
     return supported3P
   }
+  // Same catalog the picker and the shim read. It has to be consulted here too:
+  // `resolveAppliedEffort` downgrades an unsupported `max` to `high` BEFORE the
+  // wire clamp runs, so leaving this on the Claude name list alone would offer
+  // `max` on a glm-5.3-flash and then quietly send `high`.
+  const fromCatalog = resolveActiveShimEffortValues(model)
+  if (fromCatalog) {
+    return fromCatalog.includes('max')
+  }
   const m = model.toLowerCase()
   if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
     return true
@@ -128,6 +154,11 @@ export function modelSupportsMaxEffort(model: string): boolean {
 // Per API docs, 'xhigh' is available on Opus 4.7/4.8, Opus 5, Fable 5, and
 // Sonnet 5 only.
 export function modelSupportsXhighEffort(model: string): boolean {
+  // See modelSupportsMaxEffort: the same pre-wire downgrade applies to xhigh.
+  const fromCatalog = resolveActiveShimEffortValues(model)
+  if (fromCatalog) {
+    return fromCatalog.includes('xhigh')
+  }
   const m = model.toLowerCase()
   return m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('opus-4-8') || m.includes('opus-4-7')
 }
@@ -151,6 +182,12 @@ export function getAvailableEffortLevels(model: string): EffortLevel[] | OpenAIE
   }
   if (modelUsesKimiEffort(model)) {
     return [...KIMI_EFFORT_LEVELS] as KimiEffortLevel[]
+  }
+  // Per-model, from the catalog: `glm-5.3-flash` takes low/high/max and 400s on
+  // `medium`, which no provider-wide list can express.
+  const fromCatalog = resolveActiveShimEffortValues(model)
+  if (fromCatalog) {
+    return pickerEffortLevels(fromCatalog) as EffortLevel[]
   }
   if (modelUsesOpenAIEffort(model)) {
     return [...OPENAI_EFFORT_LEVELS] as OpenAIEffortLevel[]

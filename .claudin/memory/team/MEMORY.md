@@ -87,6 +87,7 @@
 ## Providers & models
 - [Effort is project-scoped like provider and model](effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; 'auto' sentinel shadows the global, /effort inherit clears it
 - [Runtime /models discovery only parses `context_length`](context-window-discovery-field-names.md) — in-memory per-session; Groq/vLLM/Mistral names mapped but unshipped; strict OpenAI/Azure return nothing
+- [Reasoning effort on OpenAI-compat was inert — FIXED via models.dev catalog](opencode-gateway-effort-dead-on-arrival.md) — 3 surfaces disagreed; levels now come from reasoning_options, one resolver for picker+wire
 - [provider !== 'anthropic' wrongly includes bedrock/vertex/foundry](provider-tag-not-anthropic-includes-cloud.md) — gate OpenAI-only form behavior with an exclusion set, not != 'anthropic'
 - [Native-1M models need an explicit getContextWindowForModel branch](native-1m-context-window.md) — modelSupports1M=true does NOT set the runtime window; add beside the `fable-5` check
 - [Adaptive thinking is now the default (was opt-in)](adaptive-thinking-default-on.md) — 2026-07-13 flip: Claude sends {type:'adaptive'} by default; CLAUDIN_ENABLE_ADAPTIVE_THINKING=0 opts out

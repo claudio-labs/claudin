@@ -611,3 +611,145 @@ test('Kimi Code non-K3 models do not send thinking.effort', async () => {
   expect(requestBody?.thinking).toBeUndefined()
   expect(requestBody?.reasoning_effort).toBeUndefined()
 })
+
+// ── The reasoning catalog lane ────────────────────────────────────────────
+//
+// Every OpenAI-compatible endpoint that is neither DeepSeek nor Moonshot. The
+// levels come from src/providers/model/reasoningCatalog.ts, which the picker
+// reads too — so a "no field" expectation below is also an assertion that the
+// picker offers nothing for that pair.
+
+/** Drive one request and hand back the body the shim put on the wire. */
+async function captureBody(options: {
+  baseUrl: string
+  model: string
+  effortValue?: string
+}): Promise<Record<string, unknown> | undefined> {
+  process.env.OPENAI_BASE_URL = options.baseUrl
+  process.env.OPENAI_API_KEY = 'sk-catalog-test'
+
+  let requestBody: Record<string, unknown> | undefined
+  globalThis.fetch = (async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body))
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: options.model,
+        choices: [
+          { message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+  await client.beta.messages.create({
+    model: options.model,
+    system: 'test',
+    messages: [{ role: 'user', content: 'hi' }],
+    max_tokens: 64,
+    stream: false,
+    ...(options.effortValue ? { effortValue: options.effortValue } : {}),
+  })
+  return requestBody
+}
+
+const OPENCODE_GO = 'https://opencode.ai/zen/go/v1'
+
+test('OpenCode GO sends reasoning_effort for a model the catalog knows', async () => {
+  const body = await captureBody({
+    baseUrl: OPENCODE_GO,
+    model: 'glm-5.3-flash',
+    effortValue: 'high',
+  })
+
+  expect(body?.reasoning_effort).toBe('high')
+  expect(body?.reasoning).toBeUndefined()
+})
+
+test('OpenCode GO clamps an effort the model does not accept', async () => {
+  // glm-5.3-flash takes low/high/max. A session sitting on `medium` — carried
+  // over from another model — would 400 if it went out unchanged.
+  const body = await captureBody({
+    baseUrl: OPENCODE_GO,
+    model: 'glm-5.3-flash',
+    effortValue: 'medium',
+  })
+
+  expect(body?.reasoning_effort).toBe('low')
+})
+
+test('OpenCode GO sends nothing for a model with no effort option', async () => {
+  // glm-5.1 declares an empty reasoning_options upstream; minimax-m3 declares
+  // only a toggle. Neither is an effort control.
+  for (const model of ['glm-5.1', 'minimax-m3']) {
+    const body = await captureBody({
+      baseUrl: OPENCODE_GO,
+      model,
+      effortValue: 'high',
+    })
+    expect(body?.reasoning_effort).toBeUndefined()
+    expect(body?.reasoning).toBeUndefined()
+  }
+})
+
+test('OpenRouter sends the nested canonical reasoning.effort', async () => {
+  const body = await captureBody({
+    baseUrl: 'https://openrouter.ai/api/v1',
+    model: 'z-ai/glm-5.2',
+    effortValue: 'xhigh',
+  })
+
+  expect(body?.reasoning).toEqual({ effort: 'xhigh' })
+  expect(body?.reasoning_effort).toBeUndefined()
+})
+
+test("Gemini's OpenAI-compatibility layer sends reasoning_effort", async () => {
+  const body = await captureBody({
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    model: 'gemini-3-flash-preview',
+    effortValue: 'high',
+  })
+
+  expect(body?.reasoning_effort).toBe('high')
+})
+
+test('official OpenAI sends nothing for a non-reasoning model', async () => {
+  // Sending reasoning_effort to a gpt-4o is a 400 on OpenAI's own API, and the
+  // catalog has no row for it.
+  const body = await captureBody({
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-4o',
+    effortValue: 'high',
+  })
+
+  expect(body?.reasoning_effort).toBeUndefined()
+})
+
+test('an endpoint outside the catalog sends nothing', async () => {
+  // No vendor documentation and no catalog row means no guess — the manual
+  // ?reasoning= / extras.reasoningEffort escape hatches stay the way in.
+  const body = await captureBody({
+    baseUrl: 'https://llm.example.test/v1',
+    model: 'glm-5.3-flash',
+    effortValue: 'high',
+  })
+
+  expect(body?.reasoning_effort).toBeUndefined()
+})
+
+test('the killswitch removes the field everywhere', async () => {
+  process.env.CLAUDIN_DISABLE_REASONING_EFFORT_WIRE = '1'
+  try {
+    const body = await captureBody({
+      baseUrl: OPENCODE_GO,
+      model: 'glm-5.3-flash',
+      effortValue: 'high',
+    })
+    expect(body?.reasoning_effort).toBeUndefined()
+  } finally {
+    delete process.env.CLAUDIN_DISABLE_REASONING_EFFORT_WIRE
+  }
+})

@@ -7,7 +7,8 @@ import { FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeCooldown, isFas
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
-import { convertEffortValueToLevel, type EffortLevel, getDefaultEffortForModel, getPriorPersistedEffort, modelSupportsEffort, modelSupportsMaxEffort, persistEffortForProject, resolvePickerEffortPersistence } from 'src/providers/effort/effort.js';
+import { convertEffortValueToLevel, cycleEffortForModel, type EffortLevel, getAvailableEffortLevels, getDefaultEffortForModel, getPriorPersistedEffort, modelSupportsEffort, persistEffortForProject, resolvePickerEffortPersistence } from 'src/providers/effort/effort.js';
+import { clampEffortToValues } from 'src/providers/model/reasoningCatalog.js';
 import { getCanonicalName, getDefaultMainLoopModel, type ModelSetting, modelDisplayString, parseUserSpecifiedModel } from 'src/providers/model/model.js';
 import { getModelOptions, type ModelOption } from 'src/providers/model/modelOptions.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
@@ -174,7 +175,7 @@ export function ModelPicker(t0: Props) {
   if ($[20] !== focusedValue) {
     const focusedModel = resolveOptionModel(focusedValue);
     focusedSupportsEffort = focusedModel ? modelSupportsEffort(focusedModel) : false;
-    t8 = focusedModel ? modelSupportsMaxEffort(focusedModel) : false;
+    t8 = focusedModel ? (getAvailableEffortLevels(focusedModel) as EffortLevel[]) : [];
     $[20] = focusedValue;
     $[21] = focusedSupportsEffort;
     $[22] = t8;
@@ -182,7 +183,9 @@ export function ModelPicker(t0: Props) {
     focusedSupportsEffort = $[21];
     t8 = $[22];
   }
-  const focusedSupportsMax = t8;
+  // The levels THIS model accepts, not a provider-wide ladder: glm-5.3-flash
+  // takes low/high/max and 400s on medium.
+  const focusedLevels = t8;
   let t9;
   if ($[23] !== focusedValue) {
     t9 = getDefaultEffortLevelForOption(focusedValue);
@@ -192,7 +195,7 @@ export function ModelPicker(t0: Props) {
     t9 = $[24];
   }
   const focusedDefaultEffort = t9;
-  const displayEffort = effort === "max" && !focusedSupportsMax ? "high" : effort;
+  const displayEffort = (clampEffortToValues(effort, focusedLevels) as EffortLevel | undefined) ?? effort;
   let t10;
   if ($[25] !== effortValue || $[26] !== hasToggledEffort) {
     t10 = (value: string) => {
@@ -209,17 +212,24 @@ export function ModelPicker(t0: Props) {
   }
   const handleFocus = t10;
   let t11;
-  if ($[28] !== focusedDefaultEffort || $[29] !== focusedSupportsEffort || $[30] !== focusedSupportsMax) {
+  if ($[28] !== focusedDefaultEffort || $[29] !== focusedSupportsEffort || $[30] !== focusedValue) {
     t11 = (direction: 'left' | 'right') => {
       if (!focusedSupportsEffort) {
         return;
       }
-      setEffort((prev: EffortLevel | undefined) => cycleEffortLevel(prev ?? focusedDefaultEffort, direction, focusedSupportsMax));
+      const focusedModel_0 = resolveOptionModel(focusedValue);
+      setEffort((prev: EffortLevel | undefined) => {
+        const from = prev ?? focusedDefaultEffort;
+        if (!focusedModel_0) {
+          return from;
+        }
+        return (cycleEffortForModel(from, focusedModel_0, direction) as EffortLevel | undefined) ?? from;
+      });
       setHasToggledEffort(true);
     };
     $[28] = focusedDefaultEffort;
     $[29] = focusedSupportsEffort;
-    $[30] = focusedSupportsMax;
+    $[30] = focusedValue;
     $[31] = t11;
   } else {
     t11 = $[31];
@@ -447,18 +457,12 @@ function EffortLevelIndicator(t0: EffortLevelIndicatorProps) {
   }
   return t4;
 }
-function cycleEffortLevel(current: EffortLevel, direction: 'left' | 'right', includeMax: boolean): EffortLevel {
-  const levels: EffortLevel[] = includeMax ? ['low', 'medium', 'high', 'max'] : ['low', 'medium', 'high'];
-  // If the current level isn't in the cycle (e.g. 'max' after switching to a
-  // non-Opus model), clamp to 'high'.
-  const idx = levels.indexOf(current);
-  const currentIndex = idx !== -1 ? idx : levels.indexOf('high');
-  if (direction === 'right') {
-    return levels[(currentIndex + 1) % levels.length]!;
-  } else {
-    return levels[(currentIndex - 1 + levels.length) % levels.length]!;
-  }
-}
+// A second, model-blind effort ladder used to live here, cycling
+// low/medium/high(/max) from `modelSupportsMaxEffort` alone. It put `medium` on
+// screen for a glm-5.3-flash, which the endpoint rejects — the picker offering
+// a level the request cannot carry is the same defect the reasoning catalog
+// exists to close, one surface over. `cycleEffortForModel` is the shared,
+// per-model cycler; do not reintroduce a local one.
 function getDefaultEffortLevelForOption(value?: string): EffortLevel {
   const resolved = resolveOptionModel(value) ?? getDefaultMainLoopModel();
   const defaultValue = getDefaultEffortForModel(resolved);
