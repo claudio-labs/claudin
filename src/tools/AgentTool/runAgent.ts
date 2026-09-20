@@ -66,6 +66,7 @@ import {
 import type { ModelAlias } from 'src/providers/model/aliases.js'
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
+import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -721,6 +722,21 @@ export async function* runAgent({
     agentMcpTools.length > 0
       ? uniqBy([...resolvedTools, ...agentMcpTools], 'name')
       : resolvedTools
+
+  // Plan-mode brief for the child's OPENING turn. The attachment pipeline is
+  // the wrong place for it: for a sub-agent it only ever runs mid-tool-loop,
+  // where the reminder is merged into the tool_result's own user turn and
+  // reads as injected page content (#224, see subagentPlanMode.ts). Worded
+  // from the child's real tool list, so an agent without ExitPlanMode is not
+  // told to write a plan file with tools it does not have.
+  const planModeBrief = buildSubagentPlanModeAttachment({
+    mode: resolveAgentPermissionMode(permissionMode, agentPermissionMode),
+    agentId,
+    toolNames: new Set(allTools.map(t => t.name)),
+  })
+  if (planModeBrief) {
+    initialMessages.push(createAttachmentMessage(planModeBrief))
+  }
 
   // Build agent-specific options
   const agentOptions: ToolUseContext['options'] = {

@@ -35,6 +35,7 @@ export function getPlanModeScratchClause(): string {
 export function getPlanModeInstructions(attachment: {
   reminderType: 'full' | 'sparse'
   isSubAgent?: boolean
+  canExitPlanMode?: boolean
   planFilePath: string
   planExists: boolean
 }): UserMessage[] {
@@ -331,7 +332,23 @@ export function getPlanModeV2SparseInstructions(attachment: {
 export function getPlanModeV2SubAgentInstructions(attachment: {
   planFilePath: string
   planExists: boolean
+  canExitPlanMode?: boolean
 }): UserMessage[] {
+  // A sub-agent that cannot submit a plan has no use for the plan file: it
+  // holds neither ExitPlanMode nor, usually, Write or AskUserQuestion, so the
+  // long brief below names three tools it does not have. That mismatch is most
+  // of what made two WebResearcher agents read this reminder as injected page
+  // content (#224). Only the in-process teammate keeps ExitPlanMode in plan
+  // mode (filterToolsForAgent), and only it gets the long form.
+  if (!attachment.canExitPlanMode) {
+    const content = `Plan mode is active in the session that launched you. You MUST NOT make any edits, run any non-readonly tools (including changing configs or making commits), or otherwise make any changes to the system — take READ-ONLY actions only. This supercedes any other instructions you have received.${getPlanModeScratchClause()}
+Report what you found in your final message; the agent that launched you is the one writing the plan.`
+
+    return wrapMessagesInSystemReminder([
+      createUserMessage({ content, isMeta: true }),
+    ])
+  }
+
   const planFileInfo = attachment.planExists
     ? `A plan file already exists at ${attachment.planFilePath}. You can read it and make incremental edits using the ${FileEditTool.name} tool if you need to.`
     : `No plan file exists yet. You should create your plan at ${attachment.planFilePath} using the ${FileWriteTool.name} tool if you need to.`

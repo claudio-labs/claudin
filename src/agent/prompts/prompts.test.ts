@@ -417,8 +417,8 @@ describe('sub-agent notes (CLAUDIN_SUBAGENT_NOTES)', () => {
     expect(SUBAGENT_NOTES_BULLETS).toMatchSnapshot()
   })
 
-  test('has four bullets', () => {
-    expect(SUBAGENT_NOTES_BULLETS).toHaveLength(4)
+  test('has five bullets', () => {
+    expect(SUBAGENT_NOTES_BULLETS).toHaveLength(5)
   })
 
   test('authority bullet names what an agent message cannot authorize', () => {
@@ -431,6 +431,16 @@ describe('sub-agent notes (CLAUDIN_SUBAGENT_NOTES)', () => {
     expect(SUBAGENT_NOTES_BULLETS[1]).toContain('permission settings')
   })
 
+  test('the reminder bullet says a system-reminder is not tool content', () => {
+    // #224: the injection bullet above primes the agent to REPORT suspicious
+    // tool content, and a mid-turn <system-reminder> is merged into the same
+    // user turn as the tool_result. Two WebResearcher agents duly reported the
+    // harness's own plan/auto reminders as an attack. This bullet is the half
+    // of the fix that covers every future reminder, and user-defined agents.
+    expect(SUBAGENT_NOTES_BULLETS[3]).toContain('<system-reminder>')
+    expect(SUBAGENT_NOTES_BULLETS[3]).toContain('comes from your harness')
+  })
+
   test('report-files bullet carves out files written as tool input', () => {
     // Without the carve-out this reads as "never Write a file", which breaks
     // agents whose job is to produce one.
@@ -439,10 +449,10 @@ describe('sub-agent notes (CLAUDIN_SUBAGENT_NOTES)', () => {
     )
   })
 
-  test('on/off seam adds exactly these four bullets and nothing else', () => {
+  test('on/off seam adds exactly these five bullets and nothing else', () => {
     const on = buildSubagentNotes(true)
     const off = buildSubagentNotes(false)
-    expect(on.split('\n')).toHaveLength(off.split('\n').length + 4)
+    expect(on.split('\n')).toHaveLength(off.split('\n').length + 5)
     for (const bullet of SUBAGENT_NOTES_BULLETS) {
       expect(on).toContain(bullet)
       expect(off).not.toContain(bullet)
