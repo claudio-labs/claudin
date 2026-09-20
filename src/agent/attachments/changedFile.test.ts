@@ -378,11 +378,12 @@ describe('refreshChangedFile', () => {
     expect(ctx.readFileState.get(p)).toBe(entry)
   })
 
-  test('a file that grew past the read cap is evicted, and stays evicted', async () => {
+  test('a file that grew past the read cap becomes a dated marker, and the pass stops retrying', async () => {
     // `view: 'full'` rethrows where a vanilla Read served an outline, and the
     // outline at least refreshed the timestamp. Doing nothing here would leave
-    // mtime > timestamp true and retry this read on every single turn. Evicting
-    // ends it: no entry, nothing for the watcher to walk.
+    // mtime > timestamp true and retry this read on every single turn. The
+    // marker ends it like the eviction it replaced — dated to the new mtime —
+    // and keeps the reason for the refusal that follows.
     const p = join(dir, 'overcap.ts')
     const before = bigSource('BEFORE')
     writeFileSync(p, before)
@@ -398,7 +399,33 @@ describe('refreshChangedFile', () => {
     )
 
     expect(attachment).toBeNull()
-    expect(ctx.readFileState.has(p)).toBe(false)
+    const entry = ctx.readFileState.get(p)!
+    expect(entry).toMatchObject({
+      content: '',
+      isPartialView: true,
+      refreshFailed: 'too-large',
+      timestamp: getFileModificationTime(p),
+    })
+    // Dated to the new mtime: the next pass is a no-op, not another re-read.
+    expect(await refreshChangedFile(p, p, entry, ctx)).toBeNull()
+    expect(ctx.readFileState.get(p)).toBe(entry)
+  })
+
+  test('a range entry of a file past the refresh cap becomes the same marker', async () => {
+    const p = join(dir, 'range-overcap.txt')
+    writeFileSync(p, numbered(60))
+    const ctx = makeContext()
+    ctx.readFileState.set(p, rangeEntry(p, 1, 10))
+
+    // RANGE_REFRESH_MAX_BYTES is 10 MB: one line of 11 MB crosses it.
+    writeAhead(p, `${'x'.repeat(11 * 1024 * 1024)}\n${numbered(59)}`)
+    expect(
+      await refreshChangedFile(p, p, ctx.readFileState.get(p)!, ctx),
+    ).toBeNull()
+    expect(ctx.readFileState.get(p)).toMatchObject({
+      refreshFailed: 'too-large',
+      isPartialView: true,
+    })
   })
 
   test('a deleted file is evicted', async () => {

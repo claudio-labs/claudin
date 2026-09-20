@@ -279,12 +279,12 @@ describe('S3 — an out-of-band rewrite of a file the model had read in full', (
 })
 
 describe('S4 — the rewritten file can no longer be re-read', () => {
-  test('the stale entry is dropped, and the next patch is refused', async () => {
+  test('the stale entry stops vouching for the file, and the next patch is refused', async () => {
     // The blind-write guard for the case the fix could have opened: when the
     // re-read cannot produce the new bytes, the entry must stop vouching for
-    // the file rather than keep describing a version that is gone. Refusing
-    // with "has not been read yet" is true here, and it terminates — a stale
-    // entry with a refreshed timestamp would have been the silent version.
+    // the file rather than keep describing a version that is gone. It used to
+    // be evicted and refused as "has not been read yet"; S12 below pins the
+    // marker that replaced the eviction and the message it carries.
     const p = join(dir, 's4.ts')
     const before = Array.from(
       { length: 40 },
@@ -304,10 +304,7 @@ describe('S4 — the rewritten file can no longer be re-read', () => {
       await refreshChangedFile(p, p, ctx.readFileState.get(p)!, ctx),
     ).toBeNull()
 
-    expect(ctx.readFileState.has(p)).toBe(false)
-    expect(refusal(patch(p, '@@\n-  return 1\n+  return 2'))).toContain(
-      'has not been read yet',
-    )
+    expect(patch(p, '@@\n-  return 1\n+  return 2').result).toBe(false)
   })
 })
 

@@ -208,19 +208,50 @@ export async function refreshChangedFile(
     // Over the byte or token cap. `view: 'full'` rethrows here where a vanilla
     // Read would have served an outline, and an outline at least refreshed the
     // timestamp — so doing nothing would leave `mtime > timestamp` true and
-    // retry this read every single turn, forever. Evicting ends it: the entry
-    // no longer describes the file, the next write is refused with "has not
-    // been read yet", which is true, and the loop cannot restart because
-    // `getChangedFiles` only walks entries that exist.
+    // retry this read every single turn, forever. The marker ends it the same
+    // way an eviction did (its timestamp IS the new mtime) while keeping the
+    // reason: the next write is refused with "changed on disk and too large
+    // to re-read whole", which sends the model to a range read — where
+    // "has not been read yet" sent it to `view='full'`, which fails on the
+    // same cap (5 such errors in the 2026-09-14..20 corpus).
     if (
       err instanceof FileTooLargeError ||
       err instanceof MaxFileReadTokenExceededError
     ) {
-      readFileState.delete(cacheKey)
+      await markTooLargeToRefresh(cacheKey, normalizedPath, readFileState)
       return null
     }
     return null
   }
+}
+
+/**
+ * The entry a too-large refresh leaves behind: dated to the new mtime so the
+ * watcher stops retrying, partial so every write tool refuses it, and marked
+ * so the refusal can say why (`readGateReasonFor`, readBeforeEditMessages.ts).
+ * Content and carried slices are dropped — they describe bytes that are gone.
+ * If even the stat fails now, fall back to the eviction this replaced.
+ */
+async function markTooLargeToRefresh(
+  cacheKey: string,
+  normalizedPath: string,
+  readFileState: FileStateCache,
+): Promise<void> {
+  let timestamp: number
+  try {
+    timestamp = await getFileModificationTimeAsync(normalizedPath)
+  } catch {
+    readFileState.delete(cacheKey)
+    return
+  }
+  readFileState.set(cacheKey, {
+    content: '',
+    timestamp,
+    offset: undefined,
+    limit: undefined,
+    isPartialView: true,
+    refreshFailed: 'too-large',
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -287,8 +318,12 @@ async function refreshRangeEntry(
       RANGE_REFRESH_MAX_BYTES,
     ))
   } catch (err) {
-    if (isENOENT(err) || err instanceof FileTooLargeError) {
+    if (isENOENT(err)) {
       readFileState.delete(cacheKey)
+      return null
+    }
+    if (err instanceof FileTooLargeError) {
+      await markTooLargeToRefresh(cacheKey, normalizedPath, readFileState)
       return null
     }
     // Transient (EACCES churn, an atomic-save gap): leave the entry, the next

@@ -28,7 +28,11 @@
 
 import type { FileState, SeenRange } from 'src/shared/fs/fileStateCache.js'
 
-export type ReadGateReason = 'never-read' | 'partial-view' | 'clipped'
+export type ReadGateReason =
+  | 'never-read'
+  | 'partial-view'
+  | 'clipped'
+  | 'changed-too-large'
 
 /**
  * The gate itself — the condition `.claudin/rules/cache.md` binds all four
@@ -66,6 +70,7 @@ export function readGateReasonFor(
   state: FileState | undefined,
 ): ReadGateReason {
   if (!state) return 'never-read'
+  if (state.refreshFailed === 'too-large') return 'changed-too-large'
   return state.standDownOutline ? 'clipped' : 'partial-view'
 }
 
@@ -85,6 +90,8 @@ export function readGateMessage(
       return `${subject} has only been seen as an outline or a partial view, not its body. Read it again with view='full' before ${action}.`
     case 'clipped':
       return `${subject} was read, but that Read was clipped out of the transcript, so its body is no longer in context. Read it again with view='full' before ${action} — a plain re-Read can replay the outline instead of the body.`
+    case 'changed-too-large':
+      return `${subject} changed on disk after you read it and is too large to re-read whole. Read the lines you are changing (offset/limit, or symbol=) before ${action}.`
   }
 }
 
@@ -106,6 +113,11 @@ export const FILE_CLIPPED_VIEW_ERROR = readGateMessage(
   'File',
   'writing to it',
 )
+export const FILE_CHANGED_TOO_LARGE_ERROR = readGateMessage(
+  'changed-too-large',
+  'File',
+  'writing to it',
+)
 
 /** Refusal text for a write-family tool whose gate already failed. */
 export function writeFamilyReadGateError(state: FileState | undefined): string {
@@ -114,6 +126,8 @@ export function writeFamilyReadGateError(state: FileState | undefined): string {
       return FILE_NOT_READ_ERROR
     case 'clipped':
       return FILE_CLIPPED_VIEW_ERROR
+    case 'changed-too-large':
+      return FILE_CHANGED_TOO_LARGE_ERROR
     case 'partial-view':
       return FILE_PARTIAL_VIEW_ERROR
   }

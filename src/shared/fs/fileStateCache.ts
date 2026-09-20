@@ -120,6 +120,14 @@ export type FileState = {
   // the flag with it. Post-write entries need no flag: they carry
   // `offset: undefined`, which the gate already excludes.
   dedupExempt?: true
+  // The changed-files watcher saw this file change on disk and could not
+  // re-read it whole (over the byte or token cap). Always written with
+  // `isPartialView: true` and `content: ''`, dated to the NEW mtime so the
+  // watcher does not retry every pass. The write tools refuse it — the model's
+  // copy is stale — and `readGateReasonFor` names the reason, because the
+  // generic "has not been read yet" sends the model to `view='full'`, which
+  // fails on the same cap. A Read of any range replaces this entry.
+  refreshFailed?: 'too-large'
 }
 
 /**

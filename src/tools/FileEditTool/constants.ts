@@ -15,6 +15,7 @@ export const FILE_UNEXPECTEDLY_MODIFIED_ERROR =
 // disagreeing about the same file state. Re-exported here so UI.tsx and the
 // existing importers keep their import path.
 export {
+  FILE_CHANGED_TOO_LARGE_ERROR,
   FILE_CLIPPED_VIEW_ERROR,
   FILE_NOT_READ_ERROR,
   FILE_PARTIAL_VIEW_ERROR,
