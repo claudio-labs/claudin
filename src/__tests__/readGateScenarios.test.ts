@@ -52,6 +52,7 @@ import {
 //   S12 a whole-file entry over the cap changes on disk          (evicted as "not read yet")
 //   S13 Read(range) then a patch on the import block             (52 of 102 coverage refusals)
 //   S14 after a refresh, a re-Read returns the body, not a stub  (the "re-read that breaks")
+//   S15 outline, then Read(range), then a patch outside the range (a blind-write hole)
 // ---------------------------------------------------------------------------
 
 /**
@@ -556,5 +557,27 @@ describe('S14 — after a refresh, a re-Read returns the body', () => {
       ctx,
     )
     expect(result.data.type).toBe('text')
+  })
+})
+
+describe('S15 — outline, then Read(range), then a patch outside the range', () => {
+  test('the outline does not count as having seen the whole file', async () => {
+    // Found while building the served-region refusal: `carrySeenRanges` took
+    // the outline entry's `content` (the raw source, no offset) as a slice at
+    // line 1, so after outline → Read(range) the coverage lane treated every
+    // line as read and a patch anywhere passed. Presence is not coverage.
+    const p = join(dir, 's15.ts')
+    writeFileSync(
+      p,
+      Array.from({ length: 40 }, (_, i) => `export const v${i} = ${i}`).join('\n') + '\n',
+    )
+    await read(p, { view: 'outline' })
+    await read(p, { offset: 30, limit: 5 })
+
+    expect(patch(p, '@@\n-export const v31 = 31\n+export const v31 = 0')).toEqual({
+      result: true,
+    })
+    const message = refusal(patch(p, '@@\n-export const v3 = 3\n+export const v3 = 0'))
+    expect(message).toContain('only read in part (lines 30-34)')
   })
 })

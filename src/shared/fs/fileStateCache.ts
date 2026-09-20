@@ -184,21 +184,28 @@ export const SEEN_RANGES_MAX_COUNT = 32
  * What `next` carries forward from the entry it replaces. Pure — it returns
  * the list and writes nothing; `set` is what stores it.
  *
- * `undefined` means "carry nothing", which is the answer in three cases:
+ * `undefined` means "carry nothing", which is the answer in four cases:
  *
  * 1. there is no predecessor;
  * 2. `timestamp` moved — a different mtime means different bytes, so every
  *    earlier slice describes a file that no longer exists. This is also what
  *    makes Edit/Write/apply_patch drop the history for free: they write the
  *    post-write mtime;
- * 3. `next` stands for the whole file, where `seenRegionCovers` short-circuits
+ * 3. the predecessor is a partial view — an outline, a stripped injection, a
+ *    clip-pin marker. Its `content` is the raw file (or a body the model lost),
+ *    not text the model saw, and carrying it as a slice at offset 1 made the
+ *    coverage lane treat the WHOLE file as read after outline → Read(range):
+ *    a patch anywhere passed. Found while serving regions (2026-09-20);
+ * 4. `next` stands for the whole file, where `seenRegionCovers` short-circuits
  *    anyway — holding slices there would be pure memory.
  */
 export function carrySeenRanges(
   prev: FileState | undefined,
   next: FileState,
 ): SeenRange[] | undefined {
-  if (!prev || prev.timestamp !== next.timestamp) return undefined
+  if (!prev || prev.isPartialView || prev.timestamp !== next.timestamp) {
+    return undefined
+  }
   // Same predicate as isWholeFileView (readBeforeEditMessages.ts), inlined to
   // keep this module a leaf — see the note on setPinReleaseHandler. Keep the
   // two in step.
