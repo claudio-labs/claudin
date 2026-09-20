@@ -4,21 +4,11 @@ import uniqBy from 'lodash-es/uniqBy.js'
 
 import { APIUserAbortError } from '@anthropic-ai/sdk'
 import { markPostCompaction } from 'src/platform/bootstrap/state.js'
-import {
-  getInvokedSkillsForAgent,
-  getOriginalCwd,
-} from 'src/platform/bootstrap/state.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
-import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
-import {
-  FILE_READ_TOOL_NAME,
-  FILE_UNCHANGED_STUB,
-} from 'src/tools/FileReadTool/prompt.js'
 import { ToolSearchTool } from 'src/tools/ToolSearchTool/ToolSearchTool.js'
-import type { AgentId } from 'src/shared/types/ids.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -31,12 +21,10 @@ import type {
 } from 'src/shared/types/message.js'
 import {
   createAttachmentMessage,
-  generateFileAttachment,
   getAgentListingDeltaAttachment,
   getDeferredToolsDeltaAttachment,
   getMcpInstructionsDeltaAttachment,
 } from 'src/agent/attachments/attachments.js'
-import { getMemoryPath } from 'src/platform/config/config.js'
 import { COMPACT_MAX_OUTPUT_TOKENS } from 'src/agent/context/context.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hasExactErrorMessage } from 'src/shared/errors.js'
@@ -50,7 +38,6 @@ import {
   executePreCompactHooks,
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
-import { MEMORY_TYPE_VALUES } from 'src/memory/memdir/types.js'
 import {
   createCompactBoundaryMessage,
   createUserMessage,
@@ -60,9 +47,6 @@ import {
   isCompactBoundaryMessage,
   normalizeMessagesForAPI,
 } from 'src/agent/messages/messages.js'
-import { expandPath } from 'src/shared/fs/path.js'
-import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js'
-import { getProjectInstructionFilePaths } from 'src/memory/instructions/projectInstructions.js'
 import {
   isSessionActivityTrackingActive,
   sendSessionActivitySignal,
@@ -75,7 +59,6 @@ import {
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
-import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
   getTokenUsage,
   tokenCountFromLastAPIResponse,
@@ -91,191 +74,30 @@ import {
   queryModelWithStreaming,
 } from 'src/providers/shims/claude.js'
 import {
-  getPromptTooLongTokenGap,
   PROMPT_TOO_LONG_ERROR_MESSAGE,
   startsWithApiErrorPrefix,
 } from 'src/providers/transport/errors.js'
 import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import {
-  roughTokenCountEstimation,
   roughTokenCountEstimationForMessages,
 } from 'src/shared/tokenEstimation.js'
-import { groupMessagesByApiRound } from 'src/agent/compact/grouping.js'
 import {
   getCompactPrompt,
   getCompactUserSummaryMessage,
   getPartialCompactPrompt,
 } from 'src/agent/compact/prompt.js'
+import { POST_COMPACT_MAX_FILES_TO_RESTORE, createAsyncAgentAttachmentsIfNeeded, createPlanAttachmentIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
+import { MAX_PTL_RETRIES, stripImagesFromMessages, stripReinjectedAttachments, truncateHeadForPTLRetry } from 'src/agent/compact/messagePreparation.js'
 
-export const POST_COMPACT_MAX_FILES_TO_RESTORE = 5
-export const POST_COMPACT_TOKEN_BUDGET = 50_000
-export const POST_COMPACT_MAX_TOKENS_PER_FILE = 5_000
-// Skills can be large (verify=18.7KB, claude-api=20.1KB). Previously re-injected
-// unbounded on every compact → 5-10K tok/compact. Per-skill truncation beats
-// dropping — instructions at the top of a skill file are usually the critical
-// part. Budget sized to hold ~5 skills at the per-skill cap.
-export const POST_COMPACT_MAX_TOKENS_PER_SKILL = 5_000
-export const POST_COMPACT_SKILLS_TOKEN_BUDGET = 25_000
+export { createAsyncAgentAttachmentsIfNeeded, createPlanAttachmentIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
+export { POST_COMPACT_MAX_FILES_TO_RESTORE, POST_COMPACT_MAX_TOKENS_PER_FILE, POST_COMPACT_MAX_TOKENS_PER_SKILL, POST_COMPACT_SKILLS_TOKEN_BUDGET, POST_COMPACT_TOKEN_BUDGET } from 'src/agent/compact/postCompactAttachments.js'
+export { stripImagesFromMessages, stripReinjectedAttachments, truncateHeadForPTLRetry } from 'src/agent/compact/messagePreparation.js'
+
 const MAX_COMPACT_STREAMING_RETRIES = 2
-
-/**
- * Strip image blocks from user messages before sending for compaction.
- * Images are not needed for generating a conversation summary and can
- * cause the compaction API call itself to hit the prompt-too-long limit,
- * especially in CCD sessions where users frequently attach images.
- * Replaces image blocks with a text marker so the summary still notes
- * that an image was shared.
- *
- * Note: Only user messages contain images (either directly attached or within
- * tool_result content from tools). Assistant messages contain text, tool_use,
- * and thinking blocks but not images.
- */
-export function stripImagesFromMessages(messages: Message[]): Message[] {
-  return messages.map(message => {
-    if (message.type !== 'user') {
-      return message
-    }
-
-    const content = message.message.content
-    if (!Array.isArray(content)) {
-      return message
-    }
-
-    let hasMediaBlock = false
-    const newContent = content.flatMap(block => {
-      if (block.type === 'image') {
-        hasMediaBlock = true
-        return [{ type: 'text' as const, text: '[image]' }]
-      }
-      if (block.type === 'document') {
-        hasMediaBlock = true
-        return [{ type: 'text' as const, text: '[document]' }]
-      }
-      // Also strip images/documents nested inside tool_result content arrays
-      if (block.type === 'tool_result' && Array.isArray(block.content)) {
-        let toolHasMedia = false
-        const newToolContent = block.content.map(item => {
-          if (item.type === 'image') {
-            toolHasMedia = true
-            return { type: 'text' as const, text: '[image]' }
-          }
-          if (item.type === 'document') {
-            toolHasMedia = true
-            return { type: 'text' as const, text: '[document]' }
-          }
-          return item
-        })
-        if (toolHasMedia) {
-          hasMediaBlock = true
-          return [{ ...block, content: newToolContent }]
-        }
-      }
-      return [block]
-    })
-
-    if (!hasMediaBlock) {
-      return message
-    }
-
-    return {
-      ...message,
-      message: {
-        ...message.message,
-        content: newContent,
-      },
-    } as typeof message
-  })
-}
-
-/**
- * Strip attachment types that are re-injected post-compaction anyway.
- * skill_discovery/skill_listing are re-surfaced by resetSentSkillNames()
- * + the next turn's discovery signal, so feeding them to the summarizer
- * wastes tokens and pollutes the summary with stale skill suggestions.
- *
- * bash_git_instructions follows the same pattern: re-emitted fresh on the
- * next turn after resetSentBashGitInstructions() runs in
- * runPostCompactCleanup. Always-on (no feature gate) since the attachment
- * type exists in every build.
- */
-export function stripReinjectedAttachments(messages: Message[]): Message[] {
-  return messages.filter(
-    m =>
-      !(
-        m.type === 'attachment' &&
-        m.attachment.type === 'bash_git_instructions'
-      ),
-  )
-}
 
 export const ERROR_MESSAGE_NOT_ENOUGH_MESSAGES =
   'Not enough messages to compact.'
-const MAX_PTL_RETRIES = 3
-const PTL_RETRY_MARKER = '[earlier conversation truncated for compaction retry]'
-
-/**
- * Drops the oldest API-round groups from messages until tokenGap is covered.
- * Falls back to dropping 20% of groups when the gap is unparseable (some
- * Vertex/Bedrock error formats). Returns null when nothing can be dropped
- * without leaving an empty summarize set.
- *
- * This is the last-resort escape hatch for CC-1180 — when the compact request
- * itself hits prompt-too-long, the user is otherwise stuck. Dropping the
- * oldest context is lossy but unblocks them. The reactive-compact path
- * (compactMessages.ts) has the proper retry loop that peels from the tail;
- * this helper is the dumb-but-safe fallback for the proactive/manual path
- * that wasn't migrated in bfdb472f's unification.
- */
-export function truncateHeadForPTLRetry(
-  messages: Message[],
-  ptlResponse: AssistantMessage,
-): Message[] | null {
-  // Strip our own synthetic marker from a previous retry before grouping.
-  // Otherwise it becomes its own group 0 and the 20% fallback stalls
-  // (drops only the marker, re-adds it, zero progress on retry 2+).
-  const input =
-    messages[0]?.type === 'user' &&
-    messages[0].isMeta &&
-    messages[0].message.content === PTL_RETRY_MARKER
-      ? messages.slice(1)
-      : messages
-
-  const groups = groupMessagesByApiRound(input)
-  if (groups.length < 2) return null
-
-  const tokenGap = getPromptTooLongTokenGap(ptlResponse)
-  let dropCount: number
-  if (tokenGap !== undefined) {
-    let acc = 0
-    dropCount = 0
-    for (const g of groups) {
-      acc += roughTokenCountEstimationForMessages(g)
-      dropCount++
-      if (acc >= tokenGap) break
-    }
-  } else {
-    dropCount = Math.max(1, Math.floor(groups.length * 0.2))
-  }
-
-  // Keep at least one group so there's something to summarize.
-  dropCount = Math.min(dropCount, groups.length - 1)
-  if (dropCount < 1) return null
-
-  const sliced = groups.slice(dropCount).flat()
-  // groupMessagesByApiRound puts the preamble in group 0 and starts every
-  // subsequent group with an assistant message. Dropping group 0 leaves an
-  // assistant-first sequence which the API rejects (first message must be
-  // role=user). Prepend a synthetic user marker — ensureToolResultPairing
-  // already handles any orphaned tool_results this creates.
-  if (sliced[0]?.type === 'assistant') {
-    return [
-      createUserMessage({ content: PTL_RETRY_MARKER, isMeta: true }),
-      ...sliced,
-    ]
-  }
-  return sliced
-}
 
 export const ERROR_MESSAGE_PROMPT_TOO_LONG =
   'Conversation too long. Press esc twice to go up a few messages and try again.'
@@ -1225,316 +1047,4 @@ async function streamCompactSummary({
   } finally {
     clearInterval(activityInterval)
   }
-}
-
-/**
- * Creates attachment messages for recently accessed files to restore them after compaction.
- * This prevents the model from having to re-read files that were recently accessed.
- * Re-reads files using FileReadTool to get fresh content with proper validation.
- * Files are selected based on recency, but constrained by both file count and token budget limits.
- *
- * Files already present as Read tool results in preservedMessages are skipped —
- * re-injecting identical content the model can already see in the preserved tail
- * is pure waste (up to 25K tok/compact). Mirrors the diff-against-preserved
- * pattern that getDeferredToolsDeltaAttachment uses at the same call sites.
- *
- * @param readFileState The current file state tracking recently read files
- * @param toolUseContext The tool use context for calling FileReadTool
- * @param maxFiles Maximum number of files to restore (default: 5)
- * @param preservedMessages Messages kept post-compact; Read results here are skipped
- * @returns Array of attachment messages for the most recently accessed files that fit within token budget
- */
-export async function createPostCompactFileAttachments(
-  readFileState: Record<string, { content: string; timestamp: number }>,
-  toolUseContext: ToolUseContext,
-  maxFiles: number,
-  preservedMessages: Message[] = [],
-): Promise<AttachmentMessage[]> {
-  const preservedReadPaths = collectReadToolFilePaths(preservedMessages)
-  const recentFiles = Object.entries(readFileState)
-    .map(([filename, state]) => ({ filename, ...state }))
-    .filter(
-      file =>
-        !shouldExcludeFromPostCompactRestore(
-          file.filename,
-          toolUseContext.agentId,
-        ) && !preservedReadPaths.has(expandPath(file.filename)),
-    )
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, maxFiles)
-
-  const results = await Promise.all(
-    recentFiles.map(async file => {
-      const attachment = await generateFileAttachment(
-        file.filename,
-        {
-          ...toolUseContext,
-          fileReadingLimits: {
-            maxTokens: POST_COMPACT_MAX_TOKENS_PER_FILE,
-          },
-        },
-        'compact',
-      )
-      return attachment ? createAttachmentMessage(attachment) : null
-    }),
-  )
-
-  let usedTokens = 0
-  return results.filter((result): result is AttachmentMessage => {
-    if (result === null) {
-      return false
-    }
-    const attachmentTokens = roughTokenCountEstimation(jsonStringify(result))
-    if (usedTokens + attachmentTokens <= POST_COMPACT_TOKEN_BUDGET) {
-      usedTokens += attachmentTokens
-      return true
-    }
-    return false
-  })
-}
-
-/**
- * Creates a plan file attachment if a plan file exists for the current session.
- * This ensures the plan is preserved after compaction.
- */
-export function createPlanAttachmentIfNeeded(
-  agentId?: AgentId,
-): AttachmentMessage | null {
-  const planContent = getPlan(agentId)
-
-  if (!planContent) {
-    return null
-  }
-
-  const planFilePath = getPlanFilePath(agentId)
-
-  return createAttachmentMessage({
-    type: 'plan_file_reference',
-    planFilePath,
-    planContent,
-  })
-}
-
-/**
- * Creates an attachment for invoked skills to preserve their content across compaction.
- * Only includes skills scoped to the given agent (or main session when agentId is null/undefined).
- * This ensures skill guidelines remain available after the conversation is summarized
- * without leaking skills from other agent contexts.
- */
-export function createSkillAttachmentIfNeeded(
-  agentId?: string,
-): AttachmentMessage | null {
-  const invokedSkills = getInvokedSkillsForAgent(agentId)
-
-  if (invokedSkills.size === 0) {
-    return null
-  }
-
-  // Sorted most-recent-first so budget pressure drops the least-relevant skills.
-  // Per-skill truncation keeps the head of each file (where setup/usage
-  // instructions typically live) rather than dropping whole skills.
-  let usedTokens = 0
-  const skills = Array.from(invokedSkills.values())
-    .sort((a, b) => b.invokedAt - a.invokedAt)
-    .map(skill => ({
-      name: skill.skillName,
-      path: skill.skillPath,
-      content: truncateToTokens(
-        skill.content,
-        POST_COMPACT_MAX_TOKENS_PER_SKILL,
-      ),
-    }))
-    .filter(skill => {
-      const tokens = roughTokenCountEstimation(skill.content)
-      if (usedTokens + tokens > POST_COMPACT_SKILLS_TOKEN_BUDGET) {
-        return false
-      }
-      usedTokens += tokens
-      return true
-    })
-
-  if (skills.length === 0) {
-    return null
-  }
-
-  return createAttachmentMessage({
-    type: 'invoked_skills',
-    skills,
-  })
-}
-
-/**
- * Creates a plan_mode attachment if the user is currently in plan mode.
- * This ensures the model continues to operate in plan mode after compaction
- * (otherwise it would lose the plan mode instructions since those are
- * normally only injected on tool-use turns via getAttachmentMessages).
- */
-export async function createPlanModeAttachmentIfNeeded(
-  context: ToolUseContext,
-): Promise<AttachmentMessage | null> {
-  const appState = context.getAppState()
-  if (appState.toolPermissionContext.mode !== 'plan') {
-    return null
-  }
-
-  const planFilePath = getPlanFilePath(context.agentId)
-  const planExists = getPlan(context.agentId) !== null
-
-  return createAttachmentMessage({
-    type: 'plan_mode',
-    reminderType: 'full',
-    isSubAgent: !!context.agentId,
-    planFilePath,
-    planExists,
-  })
-}
-
-/**
- * Creates attachments for async agents so the model knows about them after
- * compaction. Covers both agents still running in the background (so the model
- * doesn't spawn a duplicate) and agents that have finished but whose results
- * haven't been retrieved yet.
- */
-export async function createAsyncAgentAttachmentsIfNeeded(
-  context: ToolUseContext,
-): Promise<AttachmentMessage[]> {
-  const appState = context.getAppState()
-  const asyncAgents = Object.values(appState.tasks).filter(
-    (task): task is LocalAgentTaskState => task.type === 'local_agent',
-  )
-
-  return asyncAgents.flatMap(agent => {
-    if (
-      agent.retrieved ||
-      agent.status === 'pending' ||
-      agent.agentId === context.agentId
-    ) {
-      return []
-    }
-    return [
-      createAttachmentMessage({
-        type: 'task_status',
-        taskId: agent.agentId,
-        taskType: 'local_agent',
-        description: agent.description,
-        status: agent.status,
-        deltaSummary:
-          agent.status === 'running'
-            ? (agent.progress?.summary ?? null)
-            : (agent.error ?? null),
-        outputFilePath: getTaskOutputPath(agent.agentId),
-      }),
-    ]
-  })
-}
-
-/**
- * Scan messages for Read tool_use blocks and collect their file_path inputs
- * (normalized via expandPath). Used to dedup post-compact file restoration
- * against what's already visible in the preserved tail.
- *
- * Skips Reads whose tool_result is a dedup stub — the stub points at an
- * earlier full Read that may have been compacted away, so we want
- * createPostCompactFileAttachments to re-inject the real content.
- */
-function collectReadToolFilePaths(messages: Message[]): Set<string> {
-  const stubIds = new Set<string>()
-  for (const message of messages) {
-    if (message.type !== 'user' || !Array.isArray(message.message.content)) {
-      continue
-    }
-    for (const block of message.message.content) {
-      if (
-        block.type === 'tool_result' &&
-        typeof block.content === 'string' &&
-        block.content.startsWith(FILE_UNCHANGED_STUB)
-      ) {
-        stubIds.add(block.tool_use_id)
-      }
-    }
-  }
-
-  const paths = new Set<string>()
-  for (const message of messages) {
-    if (
-      message.type !== 'assistant' ||
-      !Array.isArray(message.message.content)
-    ) {
-      continue
-    }
-    for (const block of message.message.content) {
-      if (
-        block.type !== 'tool_use' ||
-        block.name !== FILE_READ_TOOL_NAME ||
-        stubIds.has(block.id)
-      ) {
-        continue
-      }
-      const input = block.input
-      if (
-        input &&
-        typeof input === 'object' &&
-        'file_path' in input &&
-        typeof input.file_path === 'string'
-      ) {
-        paths.add(expandPath(input.file_path))
-      }
-    }
-  }
-  return paths
-}
-
-const SKILL_TRUNCATION_MARKER =
-  '\n\n[... skill content truncated for compaction; use Read on the skill path if you need the full text]'
-
-/**
- * Truncate content to roughly maxTokens, keeping the head. roughTokenCountEstimation
- * uses ~4 chars/token (its default bytesPerToken), so char budget = maxTokens * 4
- * minus the marker so the result stays within budget. Marker tells the model it
- * can Read the full file if needed.
- */
-function truncateToTokens(content: string, maxTokens: number): string {
-  if (roughTokenCountEstimation(content) <= maxTokens) {
-    return content
-  }
-  const charBudget = maxTokens * 4 - SKILL_TRUNCATION_MARKER.length
-  return content.slice(0, charBudget) + SKILL_TRUNCATION_MARKER
-}
-
-function shouldExcludeFromPostCompactRestore(
-  filename: string,
-  agentId?: AgentId,
-): boolean {
-  const normalizedFilename = expandPath(filename)
-  // Exclude plan files
-  try {
-    const planFilePath = expandPath(getPlanFilePath(agentId))
-    if (normalizedFilename === planFilePath) {
-      return true
-    }
-  } catch {
-    // If we can't get plan file path, continue with other checks
-  }
-
-  // Exclude all types of claude.md files
-  // TODO: Refactor to use isMemoryFilePath() from claudemd.ts for consistency
-  // and to also match child directory memory files (.claudin/rules/*.md, etc.)
-  try {
-    const normalizedMemoryPaths = new Set(
-      MEMORY_TYPE_VALUES.filter(type => type !== 'Project').map(type =>
-        expandPath(getMemoryPath(type)),
-      ),
-    )
-    for (const path of getProjectInstructionFilePaths(getOriginalCwd())) {
-      normalizedMemoryPaths.add(expandPath(path))
-    }
-
-    if (normalizedMemoryPaths.has(normalizedFilename)) {
-      return true
-    }
-  } catch {
-    // If we can't get memory paths, continue
-  }
-
-  return false
 }
