@@ -37,7 +37,8 @@
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — means nothing IMPORTS it; needs local-reference + grep guards, `bun run build` as the gate
 - [Token census 2026-09-09..10 — the transcript is blind to rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context is non-persisted attachments; keep-alive $3 vs $15
 - [Weekly token census 2026-09-04..08 + what it fixed](weekly-token-census-2026-09-08.md) — $170/1,044 calls, reads 45%; fork-clip LOST the A/B (+11%); sleep redirect stays opt-in
-- [Feature-usage validation 2026-09-14..16](feature-usage-census-2026-09-16.md) — outline+symbol 100% success (161 calls, 13.1% of Reads, symbol= up 10x); bash filter 62% line savings
+- [Weekly token census 2026-09-14..20](weekly-token-census-2026-09-20.md) — Opus $2,081, reads 68%; ZERO compactions on a 1M window = $355-580/wk; retain relief thrashes >700k and its big clips ARE the rewrites
+- [Feature-usage validation 2026-09-14..16](feature-usage-census-2026-09-16.md) — outline 100% success, bash filter 62% line savings; its "79 symbol= calls" is WRONG (whole week: 25)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — CORRECTED: scanMemoryFiles is gated OFF per-turn at 0.014 ms/file; worktree-exit dialog leaks rule caches
 - [memory_delta deleted 2026-08-07 — a second full copy, not a delta](memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta
 - [Three mask desyncs blanked whole files from the symbol table — FIXED 2026-08-25](outline-mask-desync-zero-symbols.md) — 220→198 zero-symbol files; also broke Read(symbol=), Grep symbols, Rename
@@ -45,19 +46,16 @@
 
 ## Roadmap & major features
 - [Dead-code + tengu cleanup — MERGED as PR #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines on main; analytics/telemetry GONE; tengu 1654→326; left: gate-key audit, growthbook collapse, rules sweep
-- [Dead-code round 2 — PR #211 (2026-09-18)](dead-code-round-2-2026-09-18.md) — 12 commits, −9370 lines; off-map flags 38→15 with each survivor's reason recorded; the single-quote scanner hole
-- [Dead-code round 3 (2026-09-18)](dead-code-round-3-2026-09-18.md) — 14 commits, −7.7k lines; knip production gate now in CI; 3 inventory claims were WRONG; A/B instrumentation is a new axis
-- [Dead-code round 4 — PR #213 (2026-09-18)](dead-code-round-4-2026-09-18.md) — 17 commits, −18.5k; the throw-probe method, the exports ratchet now in CI, 2 user-visible fixes
+- Dead-code rounds 2–4 (2026-09-18, PRs #211/#213, −35k lines): [r2](dead-code-round-2-2026-09-18.md) flags 38→15 · [r3](dead-code-round-3-2026-09-18.md) knip gate in CI, 3 inventory claims WRONG · [r4](dead-code-round-4-2026-09-18.md) throw-probe method, exports ratchet
 - [Dead-code round 5 — PR #214 (2026-09-19)](dead-code-round-5-2026-09-19.md) — −4.5k; first transitive symbol fixpoint; JSX-as-regex fakes dead components; 2 real defects; 143-symbol tail left
 - [The three dead-code gates and what none of them sees](deadcode-gate-include-allowlist-hole.md) — :ci/:prod/:exports all run in CI now; knip answers "is it imported", never "can it be reached"
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — round 2 DONE 09-20; the md5 split gate, the back-edge trap, and why verify:rules does NOT catch stale prose attributions
 - [Two latent bugs pinned, not fixed (2026-09-20)](latent-bugs-pinned-not-fixed.md) — isAutobackgroundingAllowed misses `sleep N`; restoreDangerousPermissions resurrects deleted rules; both guarded by a test asserting today's answer
 - [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
-- [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%; a Read-only "re-reads" column lied — count every lookup tool
+- [Unified context-relief policy (PR #156, merged)](context-relief-unified-policy-ab.md) — A/B cost −25%; count every lookup tool, not one; on a 1M window the retain profile's floor sits ABOVE its band (09-20)
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept only for its three bench traps
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 sandbox → R3 background agent ✅ → R4 record&replay eval → R5 MCP Apps
-- [Repo map / generated project index — REJECTED on data 2026-08-07](repo-map-rejected-orientation-measured.md) — 59.5% of read paths are one-offs, no task→location signal; Read (D3) is the real target
-- [No repo index of ANY shape works here — CLOSED 2026-08-17](repo-map-graph-topology-degenerate.md) — fwd d2 recalls 0% median over 96 sessions, loses to one `ls`; what works is Glob + Grep
+- Repo map / code index — REJECTED twice on data, CLOSED: [flat index 08-07](repo-map-rejected-orientation-measured.md) · [graph 08-17](repo-map-graph-topology-degenerate.md) — recalls 0% median, loses to one `ls`; Glob + Grep win
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts in a fence, a map drifting under green verify:rules
 - [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — Read is 59.7% of tool-result chars but D3's ceiling is 9.5% of ALL; D1 ✅ D2 ✅ → **D3** → D4 redirects → D5 build wrapper
 - [A grep census over the session corpus overcounts ~3x](session-corpus-census-inflation.md) — subagent mirroring inflates hits; pair tool_use↔tool_result, report calls/blocked/ran
@@ -130,7 +128,7 @@
 - [Bash filter: shape blindness CLOSED, specs cap at 6.8% of chars](bash-filter-shape-wontfix.md) — 2026-08-29 census over 18.3k calls; the prefix round moved this corpus by +4 calls
 - [Bash filter samples live in ONE dir since 2026-08-06](bash-filter-sample-corpus-unified.md) — docs/discovery copy merged into __fixtures__/samples/; 87 of 142 unmapped in FIXTURE_MAP
 - [Live-verifying TUI mouse click/hover under tmux](tmux-mouse-click-verification.md) — mouse only in fullscreen (CLAUDIN_NO_FLICKER=1); SGR clicks via `send-keys`; ctrl+o render, SGR click
-- [apply_patch fails 11.9% vs Edit 4.6% — measured taxonomy](apply-patch-failure-taxonomy.md) — 53% read gates, 31% context mismatch, 11% parser; replay the 1,870-payload corpus first
+- [apply_patch fails 11.9% vs Edit 4.6% — measured taxonomy](apply-patch-failure-taxonomy.md) — 53% read gates, 31% context mismatch, 11% parser; re-measured 09-20: 14.7%, ~87% read gates ($38/wk)
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; echo the real input on allow
 
 ## References (sibling repos, wire formats, archives)
