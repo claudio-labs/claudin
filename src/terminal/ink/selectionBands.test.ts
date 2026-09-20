@@ -15,11 +15,11 @@ import { selectionBands } from 'src/terminal/sidePanelLayout.js'
 const WIDTH = 200
 // The split stops above the full-width prompt; rows past this belong to no band.
 const SPLIT_LAST_ROW = 39
-// What ModalSlot publishes for a 200-column split: chat 0-99, and the panel's
-// CONTENT rectangle 103-197 (divider + two paddings inset on the left, the two
-// paddings on the right). Verified against a live capture: the Diff box's ╭
-// sits at column 103 and its ╮ at 197.
-const BANDS = selectionBands(WIDTH, SPLIT_LAST_ROW)
+// What ModalSlot publishes for a 200-column split on a tinted theme: chat
+// 0-99, and the panel's CONTENT rectangle 102-197 (two paddings inset on each
+// side, no divider — the tint is the separator). A theme with no
+// `sidePanelBackground` draws a rule instead and shifts the left edge by one.
+const BANDS = selectionBands(WIDTH, SPLIT_LAST_ROW, false)
 
 // Module singleton — leaving bands set would follow the process into every
 // later test file.
@@ -41,24 +41,32 @@ describe('bandForColumn', () => {
     // Overhanging the box on both sides is what this is here to prevent.
     expect(BANDS).toEqual([
       { lo: 0, hi: 99, rowHi: SPLIT_LAST_ROW },
-      { lo: 103, hi: 197, rowHi: SPLIT_LAST_ROW },
+      { lo: 102, hi: 197, rowHi: SPLIT_LAST_ROW },
     ])
+  })
+
+  test('an untinted theme keeps its divider column out of the band', () => {
+    expect(selectionBands(WIDTH, SPLIT_LAST_ROW, true)[1]).toEqual({
+      lo: 103,
+      hi: 197,
+      rowHi: SPLIT_LAST_ROW,
+    })
   })
 
   test('resolves the band a column falls in', () => {
     setSelectionColumnBands(BANDS)
     expect(bandForColumn(0, 5)?.hi).toBe(99)
     expect(bandForColumn(99, 5)?.hi).toBe(99)
-    expect(bandForColumn(103, 5)?.lo).toBe(103)
-    // The divider and the padding around the dialog belong to no band, so a
-    // press there is left unconstrained rather than snapped to a side.
+    expect(bandForColumn(102, 5)?.lo).toBe(102)
+    // The padding around the dialog belongs to no band, so a press there is
+    // left unconstrained rather than snapped to a side.
     expect(bandForColumn(100, 5)).toBeNull()
     expect(bandForColumn(198, 5)).toBeNull()
   })
 
   test('below the split the prompt is full width, so no band applies', () => {
     setSelectionColumnBands(BANDS)
-    expect(bandForColumn(150, SPLIT_LAST_ROW)?.lo).toBe(103)
+    expect(bandForColumn(150, SPLIT_LAST_ROW)?.lo).toBe(102)
     expect(bandForColumn(150, SPLIT_LAST_ROW + 1)).toBeNull()
     expect(bandForColumn(10, SPLIT_LAST_ROW + 1)).toBeNull()
   })
@@ -88,7 +96,7 @@ describe('rowColBounds', () => {
     const s = selection(120)
     // The middle row is the one that used to bleed: it takes 0..width-1.
     expect(rowColBounds(s, start, end, 6, WIDTH)).toEqual({
-      colStart: 103,
+      colStart: 102,
       colEnd: 197,
     })
   })
@@ -101,7 +109,7 @@ describe('rowColBounds', () => {
       colEnd: 197,
     })
     expect(rowColBounds(s, start, end, 8, WIDTH)).toEqual({
-      colStart: 103,
+      colStart: 102,
       colEnd: 140,
     })
   })
@@ -121,7 +129,7 @@ describe('rowColBounds', () => {
     const s = selection(120)
     expect(
       rowColBounds(s, { col: 10, row: 5 }, { col: 120, row: 8 }, 5, WIDTH),
-    ).toEqual({ colStart: 103, colEnd: 197 })
+    ).toEqual({ colStart: 102, colEnd: 197 })
   })
 
   test('the band is clamped to the screen when the terminal shrank', () => {
@@ -145,7 +153,7 @@ describe('selectLineAt', () => {
     setSelectionColumnBands(BANDS)
     const s = selection(120)
     selectLineAt(s, screen, 5)
-    expect(s.anchor).toEqual({ col: 103, row: 5 })
+    expect(s.anchor).toEqual({ col: 102, row: 5 })
     expect(s.focus).toEqual({ col: 197, row: 5 })
   })
 })
@@ -154,7 +162,7 @@ describe('startSelection', () => {
   test('clears a stale band so a new drag is not constrained by the old one', () => {
     setSelectionColumnBands(BANDS)
     const s = selection(120)
-    expect(s.colBand).toEqual({ lo: 103, hi: 197, rowHi: SPLIT_LAST_ROW })
+    expect(s.colBand).toEqual({ lo: 102, hi: 197, rowHi: SPLIT_LAST_ROW })
     setSelectionColumnBands(null)
     startSelection(s, 120, 5)
     expect(s.colBand).toBeNull()
