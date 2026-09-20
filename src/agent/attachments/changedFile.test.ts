@@ -8,6 +8,7 @@ import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import {
   createFileStateCacheWithSizeLimit,
+  FileStateCache,
   READ_FILE_STATE_CACHE_SIZE,
   type FileState,
 } from 'src/shared/fs/fileStateCache.js'
@@ -16,7 +17,10 @@ import {
   READ_AUTO_OUTLINE_THRESHOLD_CHARS,
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
 } from 'src/tools/FileReadTool/outlineView.js'
-import { refreshChangedFile } from 'src/agent/attachments/changedFile.js'
+import {
+  changedFileCandidates,
+  refreshChangedFile,
+} from 'src/agent/attachments/changedFile.js'
 
 // ---------------------------------------------------------------------------
 // The changed-files watcher used to hand its re-read to FileReadTool with no
@@ -125,6 +129,27 @@ function writeAhead(path: string, content: string, secondsAhead = 10): void {
 function postWriteEntry(content: string, timestamp: number): FileState {
   return { content, timestamp, offset: undefined, limit: undefined }
 }
+
+describe('changedFileCandidates', () => {
+  test('a pass does not change which entry the cache evicts next', () => {
+    // lru-cache counts `get()` as a use and `keys()` yields MRU → LRU, so a
+    // pass built on the two reversed the recency order every time it ran: the
+    // entry the model had just written became the least recent, and the next
+    // Read of a new file evicted it. 16 "has not been read yet" refusals on a
+    // just-written file in one week (tool-error-census-2026-09-20.md).
+    const cache = new FileStateCache(3, 1024 * 1024)
+    cache.set('/a', postWriteEntry('a', 1))
+    cache.set('/b', postWriteEntry('b', 2))
+    cache.set('/c', postWriteEntry('c', 3))
+
+    const visited = changedFileCandidates(cache).map(([key]) => key)
+    expect(visited).toEqual(['/c', '/b', '/a'])
+
+    cache.set('/d', postWriteEntry('d', 4))
+    expect(cache.has('/c')).toBe(true)
+    expect(cache.has('/a')).toBe(false)
+  })
+})
 
 describe('refreshChangedFile', () => {
   test('a large code file that changed produces a snippet, not silence', () => {

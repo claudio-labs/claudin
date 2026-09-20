@@ -35,12 +35,30 @@ import {
 import { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
 import { FileTooLargeError } from 'src/shared/fs/readFileInRange.js'
 import { getFileModificationTimeAsync } from 'src/shared/fs/file.js'
-import { cacheKeys, type FileState } from 'src/shared/fs/fileStateCache.js'
+import type { FileState, FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { isFileReadDenied } from 'src/agent/attachments/shared.js'
+
+/**
+ * The entries one pass visits, snapshotted WITHOUT touching their recency.
+ *
+ * The previous loop took `cacheKeys()` (MRU → LRU) and called `get()` on each,
+ * and lru-cache counts a `get` as a use — so every pass moved every entry to
+ * the head in reverse order and the most recently written file became the
+ * next eviction victim. It only bites past 100 distinct files, which is why
+ * it read as "the model forgot to Read" for so long: 16 "has not been read
+ * yet" refusals in the 2026-09-14..20 corpus were on a file the model had
+ * just written, in the 4 sessions that crossed the cap (one held 249).
+ * `entries()` walks the same list without the side effect.
+ */
+export function changedFileCandidates(
+  readFileState: FileStateCache,
+): Array<[string, FileState]> {
+  return Array.from(readFileState.entries())
+}
 
 /**
  * The changed-files pass: one `refreshChangedFile` per entry the watcher
@@ -52,15 +70,12 @@ import { isFileReadDenied } from 'src/agent/attachments/shared.js'
 export async function getChangedFileAttachments(
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
-  const filePaths = cacheKeys(toolUseContext.readFileState)
-  if (filePaths.length === 0) return []
+  const candidates = changedFileCandidates(toolUseContext.readFileState)
+  if (candidates.length === 0) return []
 
   const appState = toolUseContext.getAppState()
   const results = await Promise.all(
-    filePaths.map(async filePath => {
-      const fileState = toolUseContext.readFileState.get(filePath)
-      if (!fileState) return null
-
+    candidates.map(async ([filePath, fileState]) => {
       // TODO: Implement offset/limit support for changed files
       if (fileState.offset !== undefined || fileState.limit !== undefined) {
         return null
