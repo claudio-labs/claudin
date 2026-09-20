@@ -19,6 +19,7 @@ import { getLogDisplayTitle } from 'src/shared/log.js';
 import { getFirstMeaningfulUserMessageTextContent, getSessionIdFromLog, isCustomTitleEnabled, saveCustomTitle } from 'src/sessions/sessionStorage.js';
 import { getTheme } from 'src/terminal/theme/theme.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { useIsInsideModal, useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
@@ -81,6 +82,23 @@ function normalizeAndTruncateToWidth(text: string, maxWidth: number): string {
 // Width of prefixes that TreeSelect will add
 const PARENT_PREFIX_WIDTH = 2; // '▼ ' or '▶ '
 const CHILD_PREFIX_WIDTH = 4; // '  ▸ '
+
+/** Fixed rows above the list: divider, spacer, header, 3-row search box, spacer. */
+const CHROME_ROWS = 8;
+// Inside the modal slot FullscreenLayout already draws the ▔ rule above the
+// pane, so the divider and its spacer are skipped — the `Pane` convention.
+const MODAL_CHROME_ROWS = 6;
+/** Rows one entry occupies: its title, its metadata, and the blank after it. */
+const ROWS_PER_SESSION = 3;
+
+/**
+ * The `maxHeight` this selector needs to show `sessions` entries inside the
+ * modal slot — the inverse of the `visibleCount` math, so a caller can ask for
+ * a number of sessions instead of guessing at rows.
+ */
+export function modalHeightForSessions(sessions: number): number {
+  return MODAL_CHROME_ROWS + sessions * ROWS_PER_SESSION + 2;
+}
 
 // Deep search constants
 const DEEP_SEARCH_MAX_MESSAGES = 2000;
@@ -185,7 +203,13 @@ export function LogSelector(t0: Props) {
   const maxHeight = t1 === undefined ? Infinity : t1;
   const showAllProjects = t2 === undefined ? false : t2;
   const terminalSize = useTerminalSize();
-  const columns = forceWidth === undefined ? terminalSize.columns : forceWidth;
+  const insideModal = useIsInsideModal();
+  // Inside the fullscreen modal slot the pane is inset by ModalSlot's paddingX,
+  // so the terminal width overflows it: a full-width divider wrapped four cells
+  // onto a row of their own. Everything sized from `columns` uses the width the
+  // pane actually has.
+  const usableSize = useModalOrTerminalSize(terminalSize);
+  const columns = forceWidth === undefined ? usableSize.columns : forceWidth;
   const exitState = useExitOnCtrlCDWithKeybindings(onCancel);
   const isTerminalFocused = useTerminalFocus();
   let t3;
@@ -1180,8 +1204,8 @@ export function LogSelector(t0: Props) {
     filterIndicators = $[153];
   }
   const showAdditionalFilterLine = filterIndicators.length > 0 && viewMode !== "search";
-  const headerLines = 8 + (showAdditionalFilterLine ? 1 : 0) + tagTabsLines;
-  const visibleCount = Math.max(1, Math.floor((maxHeight - headerLines - 2) / 3));
+  const headerLines = (insideModal ? MODAL_CHROME_ROWS : CHROME_ROWS) + (showAdditionalFilterLine ? 1 : 0) + tagTabsLines;
+  const visibleCount = Math.max(1, Math.floor((maxHeight - headerLines - 2) / ROWS_PER_SESSION));
   let t55;
   let t56;
   if ($[154] !== displayedLogs.length || $[155] !== focusedIndex || $[156] !== onLoadMore || $[157] !== visibleCount) {
@@ -1234,14 +1258,14 @@ export function LogSelector(t0: Props) {
   const t57 = maxHeight - 1;
   let t58;
   if ($[164] === Symbol.for("react.memo_cache_sentinel")) {
-    t58 = <Box flexShrink={0}><Divider color="suggestion" /></Box>;
+    t58 = insideModal ? null : <Box flexShrink={0}><Divider color="suggestion" /></Box>;
     $[164] = t58;
   } else {
     t58 = $[164];
   }
   let t59;
   if ($[165] === Symbol.for("react.memo_cache_sentinel")) {
-    t59 = <Box flexShrink={0}><Text> </Text></Box>;
+    t59 = insideModal ? null : <Box flexShrink={0}><Text> </Text></Box>;
     $[165] = t59;
   } else {
     t59 = $[165];
