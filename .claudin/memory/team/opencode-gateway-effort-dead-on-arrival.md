@@ -53,14 +53,19 @@ Facts worth keeping:
   DeepSeek's picker is still *narrower* than its wire — a known, pinned asymmetry.
 - **CI's CodeQL check gates on new alerts and it caught a real one here.** A host
   test written as `h.endsWith('aiplatform.googleapis.com')` trips
-  `js/incomplete-url-substring-sanitization` (high) — the suffix has no
-  separator, so any host merely ending in those characters matches. Vertex is
-  regional, so the fix is `h === 'aiplatform.googleapis.com' ||
-  h.endsWith('-aiplatform.googleapis.com')`. Every other host predicate in the
-  tree already carries a leading dot; a new one must too. The check reports as
-  `CodeQL … fail` in 2s while the two `Analyze` jobs pass, which reads like a
-  flake and is not one — `gh api .../check-runs` has the alert in
-  `output.summary`.
+  `js/incomplete-url-substring-sanitization` (high). **Adding the separator is
+  NOT enough** — `endsWith('-aiplatform.googleapis.com')` was rejected the same
+  way, because any suffix test still accepts an arbitrary host in front of it.
+  What passes is an **anchored module-level regex**,
+  `/^(?:[a-z0-9-]+-)?aiplatform\.googleapis\.com$/`, which is the repo's regex
+  convention anyway. A leading dot (`.openai.azure.com`) satisfies the rule;
+  anything else needs the anchors. Two round trips of CI to learn that — write
+  the regex first.
+  The check reports as `CodeQL … fail` in 2-3s while the two `Analyze` jobs
+  pass, which reads like a flake and is not one: the alert is in
+  `output.summary` of `gh api repos/<o>/<r>/commits/<sha>/check-runs`, and
+  `gh api repos/<o>/<r>/code-scanning/alerts -f pr=<n> -f state=open` gives the
+  file, line and message.
 
 See [[context-window-discovery-field-names]] and
 [[shim-only-body-fields-model-aware-gate]].
