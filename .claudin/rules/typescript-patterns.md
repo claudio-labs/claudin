@@ -215,8 +215,8 @@ Two rules for new code:
 - **Do not reintroduce a sink.** To see what the agent did, use `logForDebugging`
   (`src/shared/debug.js`) — local, and only under `--debug`. When a *test* needs
   to see an internal decision, give the code a decision record instead of an
-  event: `getLastSummaryDecision()` in `toolResultSummarizer.ts` is the worked
-  example. A test observing through telemetry is reading a channel that exists
+  event: `getLastSummaryDecision()` in `toolResultSummarizer/decisionRecord.ts`
+  is the worked example. A test observing through telemetry is reading a channel that exists
   only because the test itself mocked it.
 - **Run `bun run verify:privacy`** before pushing. It scans `dist/cli.mjs` for
   banned phone-home patterns, so run it after `rm -rf dist/chunks && bun run

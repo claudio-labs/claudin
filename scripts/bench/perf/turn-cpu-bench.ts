@@ -189,11 +189,14 @@ async function timed<T>(fn: () => Promise<T> | T): Promise<[T, Sample]> {
 
 // Files read back per turn for the Read auto-outline path. Picked for size
 // spread rather than for content: one large barrel, one mid-sized module, one
-// small leaf, so the outline bucket is not dominated by a single shape.
+// small leaf, so the outline bucket is not dominated by a single shape. The
+// sizes are the point, so they are named here — toolResultSummarizer.ts used to
+// hold the middle slot and dropped to 259 lines when it became a barrel, which
+// no error would have reported.
 const OUTLINE_TARGETS = [
-  'src/providers/shims/openaiShim/streamParser.ts',
-  'src/agent/tools/toolResultSummarizer.ts',
-  'src/tools/GrepTool/symbolsOutput.ts',
+  'src/providers/shims/openaiShim/streamParser.ts', // ~716 lines
+  'src/agent/tools/toolExecution.ts', // ~1300 lines
+  'src/tools/GrepTool/symbolsOutput.ts', // ~125 lines
 ]
 
 // The pattern a real symbols-mode Grep runs: broad enough to cross hundreds of
