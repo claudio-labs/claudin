@@ -41,21 +41,46 @@
  * Note on `feature()` flags: they all resolve `false` under `bun test`, so no
  * flag-gated branch in this file is asserted on.
  */
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import * as auth from 'src/providers/auth/auth.js'
-import {
-  getOriginalCwd,
-  setFlagSettingsInline,
-  setOriginalCwd,
-} from 'src/platform/bootstrap/state.js'
-import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import type { ProviderProfile } from 'src/platform/config/config.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
-import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
+
+// auth.ts reads the active provider through this module, and about ten sibling
+// suites `mock.module` it — several pinning `getAPIProvider` or
+// `tryGetActiveProvider` to a constant ('bedrock', 'firstParty'). A leaked stub
+// decides four of the assertions below, which is exactly how this file passed
+// locally and failed in CI: whether the stub is installed when these tests run
+// depends on the order bun happened to discover the files in.
+//
+// The usual repo fix — snapshot the namespace and re-install it — is NOT enough
+// here: if a mocker loaded first, the snapshot IS the stub and re-installing it
+// changes nothing. A query suffix resolves to the same file but a different
+// registry key, so it bypasses any override and yields the genuine module
+// (verified: the canonical specifier returned the pinned stub while this one
+// returned the real `null`). Non-literal so tsc does not try to resolve it.
+const REAL_ACTIVE_PROVIDER = 'src/providers/presets/activeProvider.js?real'
+const realActiveProvider = (await import(
+  REAL_ACTIVE_PROVIDER
+)) as typeof import('src/providers/presets/activeProvider.js')
+const { invalidateActiveProviderCache } = realActiveProvider
+
+// Install the real module BEFORE auth.ts is loaded, and load auth.ts
+// dynamically so that ordering holds. A static `import * as auth` is hoisted
+// above these statements, so auth.ts would bind to whatever stub was already
+// installed and a later re-install would not move that binding — which is the
+// difference between this file passing and failing next to a mocker. Every
+// other src/ import is dynamic for the same reason: a static one anywhere in
+// this file hoists, and several of them reach auth.ts transitively.
+mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
+const { getOriginalCwd, setFlagSettingsInline, setOriginalCwd } = await import(
+  'src/platform/bootstrap/state.js'
+)
+const { resetSettingsCache } = await import('src/platform/settings/settingsCache.js')
+const { getGlobalConfig, saveGlobalConfig } = await import('src/platform/config/config.js')
+const auth = await import('src/providers/auth/auth.js')
 
 // Every process-global env var this module reads. Snapshotted once, cleared
 // before each test so no test inherits the developer's real shell, and put back
@@ -128,6 +153,29 @@ beforeAll(() => {
   configDir = join(tmpRoot, 'config')
   mkdirSync(join(projectDir, '.claudin'), { recursive: true })
   mkdirSync(configDir, { recursive: true })
+
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
+  // Self-check that what we installed really does read the config — the point
+  // is that it RESPONDS, not what it returns: a stub pinned to a constant gives
+  // the same answer to both probes. One named failure here beats four
+  // assertion diffs further down that look like auth bugs.
+  setActiveProvider({
+    id: 'p_probe',
+    name: 'Probe',
+    provider: 'openai',
+    baseUrl: 'https://example.invalid',
+    model: 'probe',
+  })
+  const configured = realActiveProvider.tryGetActiveProvider()
+  setActiveProvider(null)
+  const unconfigured = realActiveProvider.tryGetActiveProvider()
+  if (configured == null || unconfigured != null) {
+    throw new Error(
+      'auth.test.ts: activeProvider.js is being served from another suite\'s ' +
+        'mock.module stub, so these tests would read that stub instead of the ' +
+        'config this file writes. See the mocking policy in .claudin/rules/testing.md.',
+    )
+  }
 })
 
 beforeEach(() => {
@@ -141,6 +189,11 @@ beforeEach(() => {
   writeLocalSettings({})
   writeUserSettings({})
   setFlagSettingsInline(null)
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
+  // Not just the provider keys: `getOauthAccountInfo withholds a PRESENT
+  // account` writes an oauthAccount into the shared NODE_ENV=test config
+  // singleton, and every subscriber predicate below reads it.
+  saveGlobalConfig(cfg => ({ ...cfg, oauthAccount: undefined }))
   setActiveProvider(null)
   auth.clearOAuthTokenCache()
   auth.clearApiKeyHelperCache()
@@ -157,6 +210,7 @@ afterAll(() => {
   for (const key of MANAGED_ENV) setEnv(key, savedEnv.get(key))
   setOriginalCwd(savedOriginalCwd)
   saveGlobalConfig(() => savedGlobalConfig as never)
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
   invalidateActiveProviderCache()
   resetSettingsCache()
   auth.clearOAuthTokenCache()
