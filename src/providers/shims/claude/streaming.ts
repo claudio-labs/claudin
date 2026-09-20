@@ -78,6 +78,7 @@ import {
   getAPIContextManagement,
 } from "src/agent/cache/anthropic/apiMicrocompact.js";
 import {
+  applyStableInputStubs,
   applyStableStubs,
   getClipFrontierIndex,
   isClipFrontierEnabled,
@@ -585,6 +586,10 @@ export async function* queryModel(
   // the cache_control marker. The stable bytes need to live inside the
   // cached prefix.
   messagesForAPI = applyStableStubs(messagesForAPI);
+  // Same contract for the tool_use INPUT side (apply_patch bodies, Write
+  // content, Agent briefs the relief policy clipped): wire-only, byte-stable,
+  // and before the frontier for the same reason.
+  messagesForAPI = applyStableInputStubs(messagesForAPI);
 
   // Strip advisor blocks — the API rejects them without the beta header.
   if (!betas.includes(ADVISOR_BETA_HEADER)) {

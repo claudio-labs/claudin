@@ -41,6 +41,30 @@ export function buildClipStub(toolName: string, originalTokens: number): string 
 }
 
 /**
+ * Deterministic stub for one clipped tool_use INPUT field — the client-side
+ * twin of `clear_tool_inputs`. Same byte-stability contract as buildClipStub.
+ *
+ * Format: `[clipped: ~N tokens of <field> from <toolName>]`
+ */
+export function buildInputClipStub(
+  toolName: string,
+  field: string,
+  originalTokens: number,
+): string {
+  return `[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens of ${field} from ${toolName}]`
+}
+
+// Matches only the input form — the result-side CLIP_STUB_PATTERN must not
+// accept it, or a stubbed input field pasted back as a result would read as
+// already final. Anchored on ` of `, which the result form never carries.
+const INPUT_CLIP_STUB_PATTERN = /^\[clipped: ~\d+ tokens of \S+ from .+\]$/
+
+/** An input field value that already is the byte-stable input stub. */
+export function isInputClipStubContent(value: string): boolean {
+  return INPUT_CLIP_STUB_PATTERN.test(value)
+}
+
+/**
  * Immediately stub large tool_result content for the display array.
  *
  * When a tool_result arrives during streaming, its full content is stored

@@ -1,0 +1,57 @@
+{
+  "test": "src/agent/compact",
+  "source": "src/agent/compact/stableStubState/applyInputStubs.ts",
+  "probes": [
+    {
+      "name": "input stub: the declared field is actually replaced",
+      "find": "    next[field] = stub\n",
+      "replace": "    next[field] = value\n"
+    },
+    {
+      "name": "input stub: first-write-wins replay is what keeps the bytes stable",
+      "find": "      if (use.id) recordStubText(key, stub)\n",
+      "replace": "      // probe: bytes never recorded\n"
+    },
+    {
+      "name": "input stub: the MIN_STUB_TOKENS floor",
+      "find": "      if (tokens < MIN_STUB_TOKENS) continue\n",
+      "replace": "      // probe: no floor\n"
+    },
+    {
+      "name": "relief walk: the input side produces candidates at all",
+      "source": "src/agent/compact/stableStubState/clipFrontier.ts",
+      "find": "        byId.set(block.id, candidate)\n        candidates.push(candidate)\n",
+      "replace": "        byId.set(block.id, candidate)\n"
+    },
+    {
+      "name": "relief walk: a both-sides call is one candidate, not two",
+      "source": "src/agent/compact/stableStubState/clipFrontier.ts",
+      "find": "        withInput.savings += savings\n        delete withInput.inputOnly\n",
+      "replace": "        withInput.savings += savings\n"
+    },
+    {
+      "name": "relief: input-only ids stay out of the result set",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "  const resultIds = selected.filter(c => !c.inputOnly).map(c => c.toolUseId)\n",
+      "replace": "  const resultIds = selected.map(c => c.toolUseId)\n"
+    },
+    {
+      "name": "relief: the starved floor adds no ids",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "  if (savings < RELIEF_MIN_EVENT_TOKENS) {\n",
+      "replace": "  if (savings < 0) {\n"
+    },
+    {
+      "name": "relief: the band grows with the trigger",
+      "source": "src/agent/compact/reliefPolicy.ts",
+      "find": "          trigger * RELIEF_BAND_TRIGGER_FRACTION,\n",
+      "replace": "          0,\n"
+    },
+    {
+      "name": "idle gap: inputs are clipped on the time-based path",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "  const inputsClipped = addClippedInputsFor(inputsToClip)\n",
+      "replace": "  const inputsClipped = 0\n"
+    }
+  ]
+}

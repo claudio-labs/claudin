@@ -10,7 +10,11 @@ import {
   getInner,
   indexToolUses,
 } from 'src/agent/compact/stableStubState/types.js'
-import { getClippedIds } from 'src/agent/compact/stableStubState/clippedIdRegistry.js'
+import {
+  getClippedIds,
+  getClippedInputFields,
+} from 'src/agent/compact/stableStubState/clippedIdRegistry.js'
+import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import {
   agePinsForCurrent,
   pinShieldsBlock,
@@ -21,6 +25,7 @@ import {
   arrayContainsMedia,
   headStubApplies,
   isClipStubContent,
+  isInputClipStubContent,
   isMediaBlockType,
   shouldAgeStub,
   stubOneBlock,
@@ -307,6 +312,24 @@ export function pruneOldToolResults<T extends AnyMessage>(
   return anyTouched ? out : messages
 }
 
+const EMPTY_FIELDS: ReadonlyMap<string, readonly string[]> = new Map()
+
+/** Tokens applyStableInputStubs would remove from this input: every declared
+ * field still holding a string at or above MIN_STUB_TOKENS. */
+function clearableInputTokens(
+  input: Record<string, unknown>,
+  fields: readonly string[],
+): number {
+  let total = 0
+  for (const field of fields) {
+    const value = input[field]
+    if (typeof value !== 'string' || isInputClipStubContent(value)) continue
+    const tokens = roughTokenCountEstimation(value)
+    if (tokens >= MIN_STUB_TOKENS) total += tokens
+  }
+  return total
+}
+
 /**
  * The clearable-candidate walk shared by the relief policy's two lanes
  * (`reliefPolicy.ts`). Returns every full, stubable tool_result older than
@@ -331,12 +354,21 @@ export function pruneOldToolResults<T extends AnyMessage>(
  * ~stubKeepHeadChars worth of tokens, but only for string content long
  * enough to take the head form — array content and shorter strings get the
  * pure stub (full savings).
+ *
+ * `inputFieldsByTool` (tool name → its `clearableInputFields`) adds the
+ * tool_use INPUT side: an assistant call whose tool declares clearable
+ * fields is a candidate too, its savings being the fields still holding a
+ * string at or above MIN_STUB_TOKENS (mirrors applyStableInputStubs). A
+ * call that is clearable on both sides — Write, Edit — is ONE candidate
+ * with the two savings summed, so one clip event covers both; ids whose
+ * inputs were already clipped contribute only their result side.
  */
 export function collectClearableCandidates(
   messages: readonly AnyMessage[],
   keepRecentTurns: number,
   stubKeepHeadChars: number,
   isClearableTool: (toolName: string) => boolean = () => true,
+  inputFieldsByTool: ReadonlyMap<string, readonly string[]> = EMPTY_FIELDS,
 ): { candidates: ReliefCandidate[]; clearableTokens: number } {
   const none = { candidates: [], clearableTokens: 0 }
   if (messages.length === 0) return none
@@ -358,17 +390,42 @@ export function collectClearableCandidates(
   agePinsForCurrent()
 
   const clipped = getClippedIds()
+  const clippedInputs = getClippedInputFields()
   const toolNames = indexToolUses(messages)
   const headTokensEstimate =
     stubKeepHeadChars > 0 ? Math.ceil(stubKeepHeadChars / 4) : 0
   const candidates: ReliefCandidate[] = []
+  const byId = new Map<string, ReliefCandidate>()
   let clearableTokens = 0
   for (let i = 0; i < cutoffIdx; i++) {
     const inner = getInner(messages[i]!)
     const role = inner.role ?? (messages[i] as AnyMessage).role
-    if (role !== 'user') continue
     const content = inner.content
     if (!Array.isArray(content)) continue
+    if (role === 'assistant') {
+      if (inputFieldsByTool.size === 0) continue
+      for (const block of content as ToolUseBlock[]) {
+        if (block?.type !== 'tool_use' || !block.id) continue
+        if (clippedInputs.has(block.id)) continue
+        const fields = inputFieldsByTool.get(block.name ?? '')
+        if (!fields || !block.input || typeof block.input !== 'object') continue
+        const savings = clearableInputTokens(
+          block.input as Record<string, unknown>,
+          fields,
+        )
+        if (savings <= 0) continue
+        const candidate: ReliefCandidate = {
+          toolUseId: block.id,
+          savings,
+          inputFields: fields,
+          inputOnly: true,
+        }
+        byId.set(block.id, candidate)
+        candidates.push(candidate)
+      }
+      continue
+    }
+    if (role !== 'user') continue
     for (const block of content as AnyContentBlock[]) {
       if (block?.type !== 'tool_result') continue
       const existing = (block as unknown as ToolResultBlockParam).content
@@ -387,7 +444,13 @@ export function collectClearableCandidates(
         ? Math.max(0, tokens - headTokensEstimate)
         : tokens
       clearableTokens += tokens
-      candidates.push({ toolUseId, savings })
+      const withInput = byId.get(toolUseId)
+      if (withInput) {
+        withInput.savings += savings
+        delete withInput.inputOnly
+      } else {
+        candidates.push({ toolUseId, savings })
+      }
     }
   }
   return { candidates, clearableTokens }

@@ -53,6 +53,7 @@ mock.module('src/providers/model/model.js', () => ({
 const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
 const {
   _resetAllClippedIdsForTesting,
+  applyStableInputStubs,
   applyStableStubs,
   getClipFrontierIndex,
 } = await import('src/agent/compact/stableStubState.js')
@@ -86,9 +87,10 @@ function exchange(
   id: string,
   body: string,
   ageMinutes: number,
+  call: { name: string; input: Record<string, unknown> } = { name: 'Read', input: {} },
 ): Message[] {
   const a = createAssistantMessage({
-    content: [{ type: 'tool_use' as const, id, name: 'Read', input: {} }],
+    content: [{ type: 'tool_use' as const, id, name: call.name, input: call.input }],
   })
   const u = createUserMessage({
     content: [{ type: 'tool_result' as const, tool_use_id: id, content: body }],
@@ -110,7 +112,12 @@ function wireBytes(params: unknown[]): string[] {
   )
 }
 
-/** The full per-request render pipeline as the wire sees it. */
+// The pool the claude renderer's ToolUseContext would carry: apply_patch
+// opts its patchText in for the input-side clip.
+const POOL = [{ name: 'apply_patch', clearableInputFields: ['patchText'] }]
+
+/** The full per-request render pipeline as the wire sees it — the same
+ * order as claude/streaming.ts: stubs, input stubs, frontier, marker. */
 async function renderTurn(
   messages: Message[],
   state: ReturnType<typeof createContentReplacementState>,
@@ -118,10 +125,10 @@ async function renderTurn(
   const budget = await enforceToolResultBudget(messages, state)
   const mc = await microcompactMessages(
     budget.messages,
-    { contentReplacementState: state } as unknown as ToolUseContext,
+    { contentReplacementState: state, options: { tools: POOL } } as unknown as ToolUseContext,
     MAIN_THREAD,
   )
-  const stubbed = applyStableStubs(mc.messages)
+  const stubbed = applyStableInputStubs(applyStableStubs(mc.messages))
   const params = addCacheBreakpoints(
     stubbed as unknown as Parameters<typeof addCacheBreakpoints>[0],
     true,
@@ -200,6 +207,36 @@ describe('request determinism — message prefix', () => {
     ]
     const turnN1 = await renderTurn(nextHistory, state)
 
+    expectPrefixStable(turnN.bytes, turnN1.bytes)
+  })
+
+  test('idle gap clips old apply_patch INPUTS: the patch body leaves the wire and the next turn is prefix-stable', async () => {
+    const state = createContentReplacementState()
+    const history: Message[] = []
+    for (let i = 0; i < 9; i++) {
+      history.push(
+        ...exchange(`toolu_${i}`, 'Success. Applied the patch.', 90, {
+          name: 'apply_patch',
+          input: { patchText: `PATCH_${i}_` + 'p'.repeat(2_000) },
+        }),
+      )
+    }
+
+    const turnN = await renderTurn(history, state)
+    // The oldest calls' bodies are gone from the wire, replaced by the
+    // input stub; the kept tail still carries its patch.
+    expect(turnN.bytes[0]).not.toContain('PATCH_0_')
+    expect(turnN.bytes[0]).toContain('tokens of patchText from apply_patch')
+    expect(turnN.bytes.join('\n')).toContain('PATCH_8_')
+    // The one-line results were never stubbed — input-only ids stay out of
+    // the result set.
+    expect(turnN.bytes[1]).toContain('Success. Applied the patch.')
+
+    const nextHistory = [
+      ...applyStableStubs(history),
+      ...exchange('toolu_next', 'fresh result', 0),
+    ]
+    const turnN1 = await renderTurn(nextHistory, state)
     expectPrefixStable(turnN.bytes, turnN1.bytes)
   })
 })

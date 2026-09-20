@@ -39,7 +39,10 @@ import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForContent,
 } from 'src/shared/tokenEstimation.js'
-import { applyStableStubs } from 'src/agent/compact/stableStubState.js'
+import {
+  applyStableInputStubs,
+  applyStableStubs,
+} from 'src/agent/compact/stableStubState.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { buildAnthropicUsageFromRawUsage } from 'src/providers/cache/cacheMetrics.js'
 import {
@@ -344,12 +347,14 @@ class OpenAIShimMessages {
     // applyStableStubs runs at the API boundary so the stable bytes are
     // what goes on the wire. No ensureToolResultPairing analogue exists
     // here — convertMessages handles orphan tool_results downstream.
-    const compressedMessages = applyStableStubs(
-      params.messages as Array<{
-        role: string
-        message?: { role?: string; content?: unknown }
-        content?: unknown
-      }>,
+    const compressedMessages = applyStableInputStubs(
+      applyStableStubs(
+        params.messages as Array<{
+          role: string
+          message?: { role?: string; content?: unknown }
+          content?: unknown
+        }>,
+      ),
     )
     const openaiMessages = convertMessages(compressedMessages, params.system, {
       // Moonshot/Kimi Code requires every assistant tool-call message to carry

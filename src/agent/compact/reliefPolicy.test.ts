@@ -82,7 +82,7 @@ describe('decideRelief — window lane', () => {
     })
   })
 
-  test('1M retain: trigger at 0.75 × window, band stays 60k', () => {
+  test('1M retain: trigger at 0.75 × window, band grows to 15% of the trigger', () => {
     const d = decideRelief(
       input({
         usedTokens: 800_000,
@@ -90,7 +90,22 @@ describe('decideRelief — window lane', () => {
         autocompactThreshold: AUTOCOMPACT_1M,
       }),
     )
-    expect(d).toMatchObject({ lane: 'window', trigger: 735_000, target: 675_000 })
+    // 60k under a 735k trigger spaced full-prefix rewrites one request
+    // apart on a session at its floor (88f03ef5, 2026-09-15); 0.15 × 735k.
+    expect(d).toMatchObject({ lane: 'window', trigger: 735_000, target: 624_750 })
+  })
+
+  test('the band only grows past the fixed 60k: unchanged at 200k', () => {
+    // 180k trigger × 0.15 = 27k < 60k → the profile band still applies
+    const d = decideRelief(
+      input({
+        usedTokens: 190_000,
+        effectiveWindow: 240_000,
+        autocompactThreshold: 227_000,
+        profile: { ...retain, sizeStubThresholdFraction: 0.75 },
+      }),
+    )
+    expect(d).toMatchObject({ lane: 'window', trigger: 180_000, target: 126_000 })
   })
 
   test('band is clamped to 30% of the trigger on small windows', () => {
@@ -163,20 +178,28 @@ describe('selectReliefIds', () => {
   ]
 
   test('oldest first, stops once the request is covered', () => {
-    expect(selectReliefIds(cands, 30)).toEqual({ ids: ['a', 'c'], savings: 35 })
+    expect(selectReliefIds(cands, 30)).toMatchObject({ ids: ['a', 'c'], savings: 35 })
   })
 
   test('skips candidates that free nothing', () => {
-    expect(selectReliefIds(cands, 12)).toEqual({ ids: ['a', 'c'], savings: 35 })
+    expect(selectReliefIds(cands, 12)).toMatchObject({ ids: ['a', 'c'], savings: 35 })
   })
 
   test('takes everything when the request exceeds what is available', () => {
-    expect(selectReliefIds(cands, 1_000)).toEqual({ ids: ['a', 'c', 'd'], savings: 75 })
+    expect(selectReliefIds(cands, 1_000)).toMatchObject({ ids: ['a', 'c', 'd'], savings: 75 })
   })
 
   test('nothing to free → empty', () => {
-    expect(selectReliefIds([], 10)).toEqual({ ids: [], savings: 0 })
-    expect(selectReliefIds(cands, 0)).toEqual({ ids: [], savings: 0 })
+    expect(selectReliefIds([], 10)).toEqual({ ids: [], savings: 0, selected: [] })
+    expect(selectReliefIds(cands, 0)).toEqual({ ids: [], savings: 0, selected: [] })
+  })
+
+  test('selected carries the candidates themselves, input fields included', () => {
+    const withInput = [
+      { toolUseId: 'p', savings: 500, inputFields: ['patchText'], inputOnly: true as const },
+      { toolUseId: 'r', savings: 300 },
+    ]
+    expect(selectReliefIds(withInput, 600).selected).toEqual(withInput)
   })
 })
 

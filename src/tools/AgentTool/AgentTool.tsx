@@ -244,6 +244,7 @@ export const AgentTool = buildTool({
   searchHint: 'delegate work to a subagent',
   aliases: [LEGACY_AGENT_TOOL_NAME],
   maxResultSizeChars: 100_000,
+  clearableInputFields: ['prompt'],
   async description() {
     return 'Launch a new agent';
   },

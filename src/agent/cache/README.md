@@ -92,15 +92,35 @@ audit; integrated regression:
 
 - `src/agent/compact/reliefPolicy.ts` — the pure decision: `decideRelief`
   (window lane: usage > `min(fraction × window, autocompact − margin)`,
-  target a band below; rss lane: retained full results > the profile's high
+  target a band below — the profile's 60k, growing to 15% of the trigger on
+  windows past ~400k; rss lane: retained full results > the profile's high
   water) and `selectReliefIds` (oldest-first until the request is covered).
+  An event whose selectable savings fall under `RELIEF_MIN_EVENT_TOKENS`
+  (4k) adds no ids: `microCompact.ts` logs `[RELIEF] starved` and puts one
+  `relief starved (~Nk short, window lane)` on the turn's `[Cache:]` line.
+  On a 1M window the retain profile's floor — 2000-char result heads plus
+  the tool_use INPUTS nothing used to clip — sat above the 690k target
+  (session 88f03ef5, 2026-09-15: 149 clip events, 140 of them one result
+  for ~0k, the 4 real ones each a 600-700k rewrite); the band, the floor and
+  the input side below are the answer.
   `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window lane only.
 - `src/agent/compact/stableStubState.ts` — stable stubs (`clippedIds`),
   first-write-wins stub byte registry (`perKeyStubText`), age prune
   (`pruneOldToolResults`, aggressive only), the relief candidate walk
   (`collectClearableCandidates`: cutoff window, pins, errors, images,
-  `MIN_STUB_TOKENS`, already-clipped ids), display stub,
-  **`getClipFrontierIndex`**.
+  `MIN_STUB_TOKENS`, already-clipped ids — and, given the pool's
+  `clearableInputFields`, the tool_use INPUT side as candidates too), display
+  stub, **`getClipFrontierIndex`**.
+- `src/agent/compact/stableStubState/applyInputStubs.ts` — the client-side
+  twin of `clear_tool_inputs`: a clipped call's declared input fields
+  (`Tool.clearableInputFields` — apply_patch.patchText, Write.content,
+  Edit.old_string/new_string, NotebookEdit.new_source, Agent.prompt) are
+  rewritten to `[clipped: ~N tokens of <field> from <tool>]`, byte-stable
+  under `${id}#${field}` in the same registry. WIRE-ONLY: the three shim
+  request paths call it right after `applyStableStubs`; it is never
+  substituted into QueryEngine's messages, so the TUI, the plan dossier and
+  persistence keep the full call. An input-only id (apply_patch) never
+  enters the result set — that set stubs whatever it is given.
 - `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048
   walk + frontier cap (`min(defer, frontier)`), head-pin fallback,
   skipCacheWrite fork handling.

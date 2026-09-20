@@ -533,6 +533,18 @@ export type Tool<
    */
   readonly clearableResult?: boolean
   /**
+   * Input fields whose bytes may be replaced by a stub once the call has aged
+   * out of the working set — the client-side twin of `clear_tool_inputs`,
+   * applied at the wire by `applyStableInputStubs`
+   * (`src/agent/compact/stableStubState/applyInputStubs.ts`) when the relief
+   * policy clips the call. Name the fields that carry a BODY the model wrote
+   * and never needs to re-read (a patch, a file's content, a sub-agent brief):
+   * the file the edit produced is on disk, and the result block stays intact.
+   * Leave it unset when the input is a small parameter set — a stub would not
+   * save anything and only replaces real bytes.
+   */
+  readonly clearableInputFields?: readonly string[]
+  /**
    * For MCP tools: the server and tool names as received from the MCP server (unnormalized).
    * Present on all MCP tools regardless of whether `name` is prefixed (mcp__server__tool)
    * or unprefixed (CLAUDE_AGENT_SDK_MCP_NO_PREFIX mode).

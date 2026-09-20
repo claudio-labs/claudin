@@ -1,7 +1,10 @@
 import * as os from 'node:os'
 import { APIError } from '@anthropic-ai/sdk'
 import { buildAnthropicUsageFromRawUsage } from 'src/providers/cache/cacheMetrics.js'
-import { applyStableStubs } from 'src/agent/compact/stableStubState.js'
+import {
+  applyStableInputStubs,
+  applyStableStubs,
+} from 'src/agent/compact/stableStubState.js'
 import { fetchWithProxyRetry } from 'src/providers/transport/fetchWithProxyRetry.js'
 import { stableStringify } from 'src/shared/data/stableStringify.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
@@ -492,12 +495,14 @@ export async function performCodexRequest(options: {
   // what goes on the wire. No ensureToolResultPairing analogue exists
   // here — convertAnthropicMessagesToResponsesInput handles orphan
   // tool_results downstream.
-  const compressedMessages = applyStableStubs(
-    options.params.messages as Array<{
-      role?: string
-      message?: { role?: string; content?: unknown }
-      content?: unknown
-    }>,
+  const compressedMessages = applyStableInputStubs(
+    applyStableStubs(
+      options.params.messages as Array<{
+        role?: string
+        message?: { role?: string; content?: unknown }
+        content?: unknown
+      }>,
+    ),
   )
   const input = convertAnthropicMessagesToResponsesInput(compressedMessages)
   const body: Record<string, unknown> = {
