@@ -99,7 +99,7 @@ You have been invoked in the following environment:
 # Scratchpad Directory
 
 IMPORTANT: Always use this scratchpad directory for temporary files instead of `/tmp` or other system temp directories:
-`<CLAUDE_TMP>/<PROJECT_SLUG>/<SESSION_ID>/scratchpad`
+`<SESSION_TMP>/<PROJECT_SLUG>/<SESSION_ID>/scratchpad`
 
 Use this directory for ALL temporary file needs:
 - Storing intermediate results or data during multi-step tasks

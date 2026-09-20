@@ -50,8 +50,10 @@ const PROJECT_SLUG = REPO_ROOT.replace(/[^a-zA-Z0-9]/g, '-')
 // with /tmp realpath-resolved (macOS: /private/tmp). The uid and the realpath
 // are this machine's own values, substituted like the paths above; the
 // session id is a fresh UUID per dump, so that one segment is matched by
-// shape, anchored between the two placeholders.
-const CLAUDE_TMP =
+// shape, anchored between the two placeholders. (Not named after the dir's
+// `claude-` prefix: envNaming.test.ts treats any CLAUDE_* token as an env
+// var name.)
+const SESSION_TMP =
   process.platform === 'win32'
     ? join(tmpdir(), 'claude')
     : join(realpathSync('/tmp'), `claude-${process.getuid?.() ?? 0}`)
@@ -66,7 +68,7 @@ const ENV_VALUE_RES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^( - )?(Is a git repository: ).*$/gm, '$1$2<IS_GIT_REPO>'],
   [/^(Is directory a git repo: ).*$/gm, '$1<IS_GIT_REPO>'],
   [
-    /^(`<CLAUDE_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad`)$/gm,
+    /^(`<SESSION_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad`)$/gm,
     '$1<SESSION_ID>$2',
   ],
 ]
@@ -94,8 +96,8 @@ function normalize(prompt: string): string {
     .join('<HOME>')
     .split(PROJECT_SLUG)
     .join('<PROJECT_SLUG>')
-    .split(CLAUDE_TMP)
-    .join('<CLAUDE_TMP>')
+    .split(SESSION_TMP)
+    .join('<SESSION_TMP>')
   for (const [re, replacement] of ENV_VALUE_RES) {
     out = out.replace(re, replacement)
   }
