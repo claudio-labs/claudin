@@ -86,7 +86,15 @@ const HOST_PROVIDER_IDS: ReadonlyArray<{
       h.endsWith('.services.ai.azure.com'),
   },
   { id: 'google', matches: h => h === 'generativelanguage.googleapis.com' },
-  { id: 'google-vertex', matches: h => h.endsWith('aiplatform.googleapis.com') },
+  {
+    id: 'google-vertex',
+    // Vertex is regional — `us-central1-aiplatform.googleapis.com`. The
+    // separator has to be part of the test: a bare
+    // `endsWith('aiplatform.googleapis.com')` also accepts any host that merely
+    // ends in those characters.
+    matches: h =>
+      h === 'aiplatform.googleapis.com' || h.endsWith('-aiplatform.googleapis.com'),
+  },
   { id: 'groq', matches: h => h === 'api.groq.com' },
   { id: 'togetherai', matches: h => h === 'api.together.xyz' },
   { id: 'mistral', matches: h => h === 'api.mistral.ai' },

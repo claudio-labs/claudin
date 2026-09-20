@@ -39,6 +39,20 @@ describe('resolveCatalogProviderId', () => {
     expect(resolveCatalogProviderId('https://api.groq.com/openai/v1')).toBe('groq')
   })
 
+  test('matches Vertex on the region separator, not a bare suffix', () => {
+    expect(
+      resolveCatalogProviderId('https://us-central1-aiplatform.googleapis.com'),
+    ).toBe('google-vertex')
+    expect(resolveCatalogProviderId('https://aiplatform.googleapis.com')).toBe(
+      'google-vertex',
+    )
+    // Without the separator in the test, any host ending in those characters
+    // would claim the row.
+    expect(
+      resolveCatalogProviderId('https://evilaiplatform.googleapis.com'),
+    ).toBeUndefined()
+  })
+
   test('treats an upstream placeholder segment as a wildcard', () => {
     // The catalog publishes .../accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1.
     expect(
