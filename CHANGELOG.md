@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.1.32 — 2026-09-20
+
+### ✨ Features
+
+- feat(providers): make reasoning effort reach OpenAI-compatible APIs (#225) (675efb54)
+- feat(tui): show the MEMORY.md indexes loading, like the rules line (#223) (b86e30c0)
+- feat(tips): advertise the /diff and /explorer keys the tips missed (#222) (47e6a46a)
+
+### 🐛 Bug Fixes
+
+- fix(agent): stop parent mode reminders leaking into sub-agents (#226) (9a5a04f9)
+- fix(tui): size the fullscreen resume picker to the pane it lives in (#221) (927c469b)
+- fix(tui): drop the side-panel divider where the theme tints the panel (#220) (8f637b23)
+- fix(tools): keep readFileState in sync and serve the region a refusal needs (#219) (cf7cc097)
+- fix(providers): name the discovery failure and stop pre-filling the preset default (#209) (f0026037)
+
+### ⚡ Performance
+
+- perf(cache): clip tool_use inputs, fix 1M relief, cut two refusal lanes (#218) (a7f3d91c)
+
+### ♻️ Refactoring
+
+- refactor(tools): split four more giants into barrels and siblings (#217) (49647f0a)
+- refactor: split the ten remaining giant files, tests first (#216) (a72074a2)
+- refactor(permissions): correct slice ownership, split four giants (#215) (0347e54d)
+
+### 🔧 Miscellaneous
+
+- chore(dead-code): remove 4.2k unreachable lines and fix two defects (#214) (aa6f2aaf)
+- chore(dead-code): remove the inert bash AST layer and gate unused exports (#213) (d7e8e54b)
+- chore(dead-code): remove 7.7k unreachable lines and gate the class in CI (#212) (76a61870)
+- chore(dead-code): remove 9.4k provably unreachable lines (#211) (fe50dd2d)
+- chore(dead-code): remove the unreachable ULTRAPLAN cluster (#210) (2dedbdab)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.31 — 2026-09-17
 
 ### ✨ Features
