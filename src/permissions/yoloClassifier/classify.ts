@@ -52,6 +52,7 @@ import {
   parseXmlReason,
   parseXmlThinking,
   replaceOutputFormatWithXml,
+  stage2Verdict,
 } from 'src/permissions/yoloClassifier/xmlResponse.js'
 import {
   detectDeterministicApiError,
@@ -70,6 +71,9 @@ const yoloClassifierResponseSchema = lazySchema(() =>
 )
 
 export const YOLO_CLASSIFIER_TOOL_NAME = 'classify_result'
+
+/** Stage 2's output budget; the one retry on a truncated response doubles it. */
+const STAGE2_MAX_TOKENS = 4096
 
 export const YOLO_CLASSIFIER_TOOL_SCHEMA: BetaToolUnion = {
   type: 'custom',
@@ -260,48 +264,71 @@ async function classifyYoloActionXml(
       }
     }
 
-    // Stage 2: thinking (suffix asks for chain-of-thought)
-    const stage2Start = Date.now()
+    // Stage 2: thinking (suffix asks for chain-of-thought). Run at most twice:
+    // a response that ran out of budget before `<block>` gets one more call
+    // with the budget doubled (stage2Verdict); anything else is final.
     const stage2Content = [
       ...wrappedContent,
       { type: 'text' as const, text: XML_S2_SUFFIX },
     ]
-    const stage2Opts = {
-      model,
-      max_tokens: 4096 + thinkingPadding,
-      system: systemBlocks,
-      temperature: 0,
-      thinking: disableThinking,
-      messages: [
-        ...prefixMessages,
-        { role: 'user' as const, content: stage2Content },
-      ],
-      maxRetries: getDefaultMaxRetries(),
-      signal,
-      querySource: 'auto_mode' as const,
+    let stage2Usage: ClassifierUsage | undefined
+    let stage2DurationMs = 0
+    let stage2RequestId: string | undefined
+    let stage2MsgId: string | undefined
+    let stage2Text = ''
+    let verdict = stage2Verdict('', undefined, 0)
+    for (const attempt of [1, 2] as const) {
+      const stage2Start = Date.now()
+      const stage2Opts = {
+        model,
+        max_tokens: STAGE2_MAX_TOKENS * attempt + thinkingPadding,
+        system: systemBlocks,
+        temperature: 0,
+        thinking: disableThinking,
+        messages: [
+          ...prefixMessages,
+          { role: 'user' as const, content: stage2Content },
+        ],
+        maxRetries: getDefaultMaxRetries(),
+        signal,
+        querySource: 'auto_mode' as const,
+      }
+      const stage2Raw = await sideQuery(stage2Opts)
+      stage2DurationMs += Date.now() - stage2Start
+      const attemptUsage = extractUsage(stage2Raw)
+      stage2Usage = stage2Usage
+        ? combineUsage(stage2Usage, attemptUsage)
+        : attemptUsage
+      stage2RequestId = extractRequestId(stage2Raw)
+      stage2MsgId = stage2Raw.id
+      stage2Text = extractTextContent(stage2Raw.content)
+      verdict = stage2Verdict(
+        stage2Text,
+        stage2Raw.stop_reason,
+        attemptUsage.outputTokens,
+      )
+
+      void maybeDumpAutoMode(stage2Opts, stage2Raw, stage2Start, 'stage2')
+      setLastClassifierRequests(
+        stage1Opts ? [stage1Opts, stage2Opts] : [stage2Opts],
+      )
+      if (verdict.kind === 'verdict') break
+      logForDebugging(
+        `Auto mode classifier (XML) stage 2 attempt ${attempt} unparseable (${verdict.detail}): ${stage2Text.slice(0, 500)}`,
+        { level: 'warn' },
+      )
+      if (!verdict.retry) break
     }
-    const stage2Raw = await sideQuery(stage2Opts)
-    const stage2DurationMs = Date.now() - stage2Start
-    const stage2Usage = extractUsage(stage2Raw)
-    const stage2RequestId = extractRequestId(stage2Raw)
-    const stage2MsgId = stage2Raw.id
-    const stage2Text = extractTextContent(stage2Raw.content)
-    const stage2Block = parseXmlBlock(stage2Text)
     const totalDurationMs = (stage1DurationMs ?? 0) + stage2DurationMs
     const totalUsage = stage1Usage
-      ? combineUsage(stage1Usage, stage2Usage)
-      : stage2Usage
+      ? combineUsage(stage1Usage, stage2Usage!)
+      : stage2Usage!
 
-    void maybeDumpAutoMode(stage2Opts, stage2Raw, stage2Start, 'stage2')
-    setLastClassifierRequests(
-      stage1Opts ? [stage1Opts, stage2Opts] : [stage2Opts],
-    )
-
-    if (stage2Block === null) {
+    if (verdict.kind === 'unparseable') {
       logAutoModeOutcome('parse_failure', model, { classifierType })
       return {
         shouldBlock: true,
-        reason: 'Classifier stage 2 unparseable - blocking for safety',
+        reason: `Classifier stage 2 unparseable (${verdict.detail}) - blocking for safety`,
         model,
         usage: totalUsage,
         durationMs: totalDurationMs,
@@ -324,7 +351,7 @@ async function classifyYoloActionXml(
     })
     return {
       thinking: parseXmlThinking(stage2Text) ?? undefined,
-      shouldBlock: stage2Block,
+      shouldBlock: verdict.block,
       reason: parseXmlReason(stage2Text) ?? 'No reason provided',
       model,
       usage: totalUsage,

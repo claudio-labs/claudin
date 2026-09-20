@@ -110,6 +110,24 @@ export type FileState = {
   // dropped the moment `timestamp` changes, so bytes from a previous version
   // of the file can never authorize a write.
   seenRanges?: SeenRange[]
+  // This entry's bytes were never delivered to the model as a Read
+  // tool_result: the changed-files watcher rewrote a range entry after an
+  // out-of-band change (`attachments/changedFile.ts`), or a refused write
+  // served the region it needed (`tools/shared/servedRegion.ts`). FileReadTool's
+  // dedup gate must not stand on such an entry — its `file_unchanged` stub
+  // says "unchanged since your last read", and the last Read in the
+  // transcript shows the OLD bytes. The next real Read replaces the entry and
+  // the flag with it. Post-write entries need no flag: they carry
+  // `offset: undefined`, which the gate already excludes.
+  dedupExempt?: true
+  // The changed-files watcher saw this file change on disk and could not
+  // re-read it whole (over the byte or token cap). Always written with
+  // `isPartialView: true` and `content: ''`, dated to the NEW mtime so the
+  // watcher does not retry every pass. The write tools refuse it — the model's
+  // copy is stale — and `readGateReasonFor` names the reason, because the
+  // generic "has not been read yet" sends the model to `view='full'`, which
+  // fails on the same cap. A Read of any range replaces this entry.
+  refreshFailed?: 'too-large'
 }
 
 /**
@@ -166,21 +184,28 @@ export const SEEN_RANGES_MAX_COUNT = 32
  * What `next` carries forward from the entry it replaces. Pure — it returns
  * the list and writes nothing; `set` is what stores it.
  *
- * `undefined` means "carry nothing", which is the answer in three cases:
+ * `undefined` means "carry nothing", which is the answer in four cases:
  *
  * 1. there is no predecessor;
  * 2. `timestamp` moved — a different mtime means different bytes, so every
  *    earlier slice describes a file that no longer exists. This is also what
  *    makes Edit/Write/apply_patch drop the history for free: they write the
  *    post-write mtime;
- * 3. `next` stands for the whole file, where `seenRegionCovers` short-circuits
+ * 3. the predecessor is a partial view — an outline, a stripped injection, a
+ *    clip-pin marker. Its `content` is the raw file (or a body the model lost),
+ *    not text the model saw, and carrying it as a slice at offset 1 made the
+ *    coverage lane treat the WHOLE file as read after outline → Read(range):
+ *    a patch anywhere passed. Found while serving regions (2026-09-20);
+ * 4. `next` stands for the whole file, where `seenRegionCovers` short-circuits
  *    anyway — holding slices there would be pure memory.
  */
 export function carrySeenRanges(
   prev: FileState | undefined,
   next: FileState,
 ): SeenRange[] | undefined {
-  if (!prev || prev.timestamp !== next.timestamp) return undefined
+  if (!prev || prev.isPartialView || prev.timestamp !== next.timestamp) {
+    return undefined
+  }
   // Same predicate as isWholeFileView (readBeforeEditMessages.ts), inlined to
   // keep this module a leaf — see the note on setPinReleaseHandler. Keep the
   // two in step.

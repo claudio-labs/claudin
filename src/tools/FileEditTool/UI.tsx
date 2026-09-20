@@ -20,7 +20,7 @@ import { getPlansDirectory } from 'src/agent/plans/plans.js';
 import { readEditContext } from 'src/shared/fs/readEditContext.js';
 import { firstLineOf } from 'src/shared/text/stringUtils.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
-import { FILE_CLIPPED_VIEW_ERROR, FILE_NOT_READ_ERROR, FILE_PARTIAL_VIEW_ERROR } from 'src/tools/FileEditTool/constants.js';
+import { FILE_CHANGED_TOO_LARGE_ERROR, FILE_CLIPPED_VIEW_ERROR, FILE_NOT_READ_ERROR, FILE_PARTIAL_VIEW_ERROR } from 'src/tools/FileEditTool/constants.js';
 import { inputSchema } from 'src/tools/FileEditTool/types.js';
 import type { FileEditInput, FileEditOutput } from 'src/tools/FileEditTool/types.js';
 import { findActualString, getPatchForEdit, groupEditsByFile, preserveQuoteStyle } from 'src/tools/FileEditTool/utils.js';
@@ -147,6 +147,11 @@ export function renderToolUseErrorMessage(result: ToolResultBlockParam['content'
     if (errorMessage?.includes(FILE_PARTIAL_VIEW_ERROR) || errorMessage?.includes(FILE_CLIPPED_VIEW_ERROR)) {
       return <MessageResponse>
           <Text dimColor>File must be re-read in full</Text>
+        </MessageResponse>;
+    }
+    if (errorMessage?.includes(FILE_CHANGED_TOO_LARGE_ERROR)) {
+      return <MessageResponse>
+          <Text dimColor>File changed on disk; the lines being edited must be re-read</Text>
         </MessageResponse>;
     }
     if (errorMessage?.includes(FILE_NOT_FOUND_CWD_NOTE)) {

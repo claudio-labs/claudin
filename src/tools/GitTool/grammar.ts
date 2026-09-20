@@ -30,6 +30,7 @@ import {
   hasShellQuoteSingleQuoteBug,
   tryParseShellCommand,
 } from 'src/platform/bash/shellQuote.js'
+import { createOutputTrimTailStripper } from 'src/tools/shared/redirect.js'
 import { oneLineCommand } from 'src/tools/GitTool/display.js'
 
 export const GIT_BINARIES = ['git', 'gh'] as const
@@ -38,6 +39,18 @@ export type GitBinary = (typeof GIT_BINARIES)[number]
 const BINARY_SET: ReadonlySet<string> = new Set(GIT_BINARIES)
 
 const LEADING_WORD_RE = /^(\S+)/
+
+/**
+ * The one composition this tool accepts: a trailing `| head -N` / `| tail -N`
+ * (optionally behind `2>&1`). 13 refusals in the 2026-09-14..20 corpus were
+ * exactly this — the Bash → Git redirect strips such a tail before suggesting
+ * the command, the model sends it with the tail anyway, and the tool refused
+ * the pipe it had been sent. The element runs through bash (`run.ts`), so the
+ * trim is bash's to apply; the grammar only has to scan and classify the core
+ * in front of it. `grep` is deliberately NOT in the set: a filtered diff or
+ * log is a different shape from the one the renderers parse.
+ */
+const stripHeadTailTail = createOutputTrimTailStripper(['head', 'tail'])
 
 /**
  * Only for `gitSubcommandOf`, which needs the subcommand and nothing else: it
@@ -655,7 +668,10 @@ export type GitCommandRefusal = {
 
 export type GitCommandAccepted = {
   ok: true
+  /** The element as sent — what runs. */
   command: string
+  /** `command` without its trailing `| head`/`| tail` trim, if it had one. */
+  core: string
   binary: GitBinary
   /** Tokens after the binary, with quoting resolved: `-m "a b"` is one token. */
   args: readonly string[]
@@ -692,12 +708,13 @@ export function parseGitCommand(raw: string): ParsedGitCommand {
     }
   }
 
-  const hazard = scanShellHazards(command)
+  const core = stripHeadTailTail(command)
+  const hazard = scanShellHazards(core)
   if (hazard !== null) {
     return { ok: false, reason: hazard }
   }
 
-  const args = resolveArgs(command)
+  const args = resolveArgs(core)
   if (args === null) {
     return {
       ok: false,
@@ -714,13 +731,26 @@ export function parseGitCommand(raw: string): ParsedGitCommand {
     return { ok: false, reason: refusal }
   }
 
+  const watch = classifyWatch(typedBinary, args)
+  // A watch is followed live and its idle watchdog reads the stream; `tail`
+  // buffers everything until the command ends, so the watch would look silent
+  // and be stopped as a stall. The result is already collapsed to the final
+  // refresh, which is what the tail was after.
+  if (watch && core !== command) {
+    return {
+      ok: false,
+      reason: `\`${oneLineCommand(command)}\` is a watch, which the tool follows live and collapses to its final refresh — drop the \`| head\`/\`| tail\` and send it plain.`,
+    }
+  }
+
   return {
     ok: true,
     command,
+    core,
     binary: typedBinary,
     args,
     readOnly: classifyReadOnly(typedBinary, args),
-    watch: classifyWatch(typedBinary, args),
+    watch,
   }
 }
 

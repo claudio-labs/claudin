@@ -341,7 +341,10 @@ export async function compactConversation(
       ...fileAttachments,
       ...asyncAgentAttachments,
     ]
-    const planAttachment = createPlanAttachmentIfNeeded(context.agentId)
+    const planAttachment = createPlanAttachmentIfNeeded(
+      context.agentId,
+      context.readFileState,
+    )
     if (planAttachment) {
       postCompactFileAttachments.push(planAttachment)
     }
@@ -654,7 +657,10 @@ export async function partialCompactConversation(
       ...fileAttachments,
       ...asyncAgentAttachments,
     ]
-    const planAttachment = createPlanAttachmentIfNeeded(context.agentId)
+    const planAttachment = createPlanAttachmentIfNeeded(
+      context.agentId,
+      context.readFileState,
+    )
     if (planAttachment) {
       postCompactFileAttachments.push(planAttachment)
     }

@@ -41,7 +41,7 @@ describe('GitTool.isReadOnly — the plan-mode gate', () => {
 
 describe('GitTool.validateInput — refusals land before anything runs', () => {
   test('declines a shell operator', async () => {
-    const result = await GitTool.validateInput?.({ commands: ['git diff | head -5'] })
+    const result = await GitTool.validateInput?.({ commands: ['git diff | grep "^+"'] })
     expect(result?.result).toBe(false)
   })
 

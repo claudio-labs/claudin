@@ -480,6 +480,25 @@ describe('FileStateCache — carrySeenRanges', () => {
     expect(next.seenRanges).toBeUndefined()
   })
 
+  test('a partial view is never carried as a seen slice', () => {
+    // An outline entry holds the whole source as `content` with no offset;
+    // carried, it became a slice at offset 1 covering the entire file, and
+    // outline → Read(range) → patch anywhere passed the coverage lane.
+    const outline: FileState = {
+      content: 'l1\nl2\nl3\nl4\nl5\n',
+      timestamp: 1000,
+      offset: undefined,
+      limit: undefined,
+      isPartialView: true,
+    }
+    expect(carrySeenRanges(outline, range(4, 1, 1000))).toBeUndefined()
+
+    const cache = makeCache()
+    cache.set('/a.ts', outline)
+    cache.set('/a.ts', range(4, 1, 1000))
+    expect(cache.get('/a.ts')!.seenRanges).toBeUndefined()
+  })
+
   test('an entry merged in from another cache keeps its own list', () => {
     // mergeFileStateCaches only writes an entry whose timestamp is NEWER, which
     // is the "carry nothing" case — so `set` must leave the incoming list

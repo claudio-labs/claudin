@@ -28,6 +28,13 @@ import {
   wholeFileRequiredMessage,
 } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
+  fileLinesOf,
+  type LineRegion,
+  locateExactLines,
+  mergeServedRegions,
+  serveRegions,
+} from 'src/tools/shared/servedRegion.js'
+import {
   BATCH_CONFIRM_THRESHOLD,
   commitStagedChanges,
   countAddDel,
@@ -81,6 +88,45 @@ function hunkTargets(hunk: Hunk): { absPath: string; movePath?: string } {
 
 function fail(message: string, errorCode = 1): ValidationResult {
   return { result: false, message, errorCode }
+}
+
+/**
+ * The refusal's second half, when the hunk can be served (servedRegion.ts):
+ * every chunk's old side sits in the current file exactly and uniquely, and
+ * the regions fit the cap. Registers the slices and returns the numbered
+ * text; `null` means the plain refusal stands.
+ */
+function serveUpdateHunk(
+  hunk: Extract<Hunk, { type: 'update' }>,
+  absPath: string,
+  context: ToolUseContext,
+): string | null {
+  const current = readFileForStaging(absPath)
+  if (!current.fileExists) return null
+  const fileLines = fileLinesOf(current.content)
+  const regions: LineRegion[] = []
+  for (const chunk of hunk.chunks) {
+    // A pure insertion with no context localizes nothing and is not what the
+    // gate refused; the chunks that carry an old side must each match.
+    if (chunk.oldLines.every(line => line.trim() === '')) continue
+    const region = locateExactLines(fileLines, chunk.oldLines)
+    if (!region) return null
+    regions.push(region)
+  }
+  if (regions.length === 0) return null
+  const merged = mergeServedRegions(regions, fileLines.length)
+  if (!merged) return null
+  return serveRegions(
+    context.readFileState,
+    absPath,
+    fileLines,
+    getFileModificationTime(absPath),
+    merged,
+  )
+}
+
+function servedSuffix(served: string): string {
+  return ` The lines it needs are shown below and now count as read — resubmit the same patch:\n${served}`
 }
 
 /**
@@ -179,19 +225,32 @@ export function validateApplyPatchInput(
       !satisfiesLineScopedReadGate(readTimestamp) ||
       (hunk.type === 'delete' && !satisfiesReadGate(readTimestamp))
     ) {
-      note(
-        `apply_patch: ${readGateMessage(readGateReasonFor(readTimestamp), rel, 'patching it')}`,
-        2,
-      )
-      readRemedyFailures++
+      const reason = readGateReasonFor(readTimestamp)
+      const message = `apply_patch: ${readGateMessage(reason, rel, 'patching it')}`
+      // A clip-pin stand-down has its own replay budget; serving over it would
+      // reopen a gate that marker deliberately holds shut.
+      const served =
+        hunk.type === 'update' && reason !== 'clipped'
+          ? serveUpdateHunk(hunk, absPath, context)
+          : null
+      if (served) {
+        note(message + servedSuffix(served), 2)
+      } else {
+        note(message, 2)
+        readRemedyFailures++
+      }
       continue
     }
     if (getFileModificationTime(absPath) > readTimestamp.timestamp) {
-      note(
-        `apply_patch: ${rel} has been modified since it was read. Read it again before patching it.`,
-        3,
-      )
-      readRemedyFailures++
+      const message = `apply_patch: ${rel} has been modified since it was read. Read it again before patching it.`
+      const served =
+        hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null
+      if (served) {
+        note(message + servedSuffix(served), 3)
+      } else {
+        note(message, 3)
+        readRemedyFailures++
+      }
       continue
     }
 
@@ -210,11 +269,14 @@ export function validateApplyPatchInput(
     if (
       hunk.chunks.some(chunk => !seenRegionCovers(readTimestamp, chunk.oldLines))
     ) {
-      note(
-        `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`,
-        4,
-      )
-      readRemedyFailures++
+      const message = `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`
+      const served = serveUpdateHunk(hunk, absPath, context)
+      if (served) {
+        note(message + servedSuffix(served), 4)
+      } else {
+        note(message, 4)
+        readRemedyFailures++
+      }
       continue
     }
 

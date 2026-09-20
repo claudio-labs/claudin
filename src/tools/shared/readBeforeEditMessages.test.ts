@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import { describe, expect, test } from 'bun:test'
 import type { FileState } from 'src/shared/fs/fileStateCache.js'
 import {
+  FILE_CHANGED_TOO_LARGE_ERROR,
   FILE_CLIPPED_VIEW_ERROR,
   FILE_NOT_READ_ERROR,
   FILE_PARTIAL_VIEW_ERROR,
@@ -40,6 +41,13 @@ const CLIPPED = state({
   },
 } as Partial<FileState>)
 
+/** What the changed-files watcher leaves when it cannot re-read a changed file whole. */
+const CHANGED_TOO_LARGE = state({
+  content: '',
+  isPartialView: true,
+  refreshFailed: 'too-large',
+} as Partial<FileState>)
+
 describe('satisfiesReadGate', () => {
   test('a full read passes', () => {
     expect(satisfiesReadGate(state())).toBe(true)
@@ -57,6 +65,11 @@ describe('satisfiesReadGate', () => {
 
   test('a clipped entry fails', () => {
     expect(satisfiesReadGate(CLIPPED)).toBe(false)
+  })
+
+  test('a too-large marker fails, on both gates', () => {
+    expect(satisfiesReadGate(CHANGED_TOO_LARGE)).toBe(false)
+    expect(satisfiesLineScopedReadGate(CHANGED_TOO_LARGE)).toBe(false)
   })
 })
 
@@ -95,12 +108,13 @@ describe('satisfiesLineScopedReadGate', () => {
 })
 
 describe('readGateReasonFor', () => {
-  test('distinguishes the three failure causes', () => {
+  test('distinguishes the four failure causes', () => {
     expect(readGateReasonFor(undefined)).toBe('never-read')
     expect(readGateReasonFor(state({ isPartialView: true }))).toBe(
       'partial-view',
     )
     expect(readGateReasonFor(CLIPPED)).toBe('clipped')
+    expect(readGateReasonFor(CHANGED_TOO_LARGE)).toBe('changed-too-large')
   })
 })
 
@@ -128,8 +142,25 @@ describe('readGateMessage', () => {
     expect(m).toContain('clipped out of the transcript')
   })
 
+  test('changed-too-large sends the model to a range read, never to view=full', () => {
+    // view='full' is what "has not been read yet" led to, and it fails on the
+    // same cap that stopped the watcher: 5 "exceeds maximum allowed tokens"
+    // errors in the 2026-09-14..20 corpus.
+    const m = readGateMessage('changed-too-large', 'src/a.ts', 'patching it')
+    expect(m).toContain('changed on disk')
+    expect(m).toContain('too large to re-read whole')
+    expect(m).toContain('offset/limit')
+    expect(m).not.toContain("view='full'")
+    expect(m).not.toContain('has not been read yet')
+  })
+
   test('every reason threads the caller subject and action', () => {
-    for (const reason of ['never-read', 'partial-view', 'clipped'] as const) {
+    for (const reason of [
+      'never-read',
+      'partial-view',
+      'clipped',
+      'changed-too-large',
+    ] as const) {
       const m = readGateMessage(reason, 'SUBJ', 'ACTING')
       expect(m.startsWith('SUBJ')).toBe(true)
       expect(m).toContain('ACTING')
@@ -144,15 +175,19 @@ describe('writeFamilyReadGateError', () => {
       FILE_PARTIAL_VIEW_ERROR,
     )
     expect(writeFamilyReadGateError(CLIPPED)).toBe(FILE_CLIPPED_VIEW_ERROR)
+    expect(writeFamilyReadGateError(CHANGED_TOO_LARGE)).toBe(
+      FILE_CHANGED_TOO_LARGE_ERROR,
+    )
   })
 
-  test('the three constants are mutually non-substring', () => {
+  test('the four constants are mutually non-substring', () => {
     // FileEditTool/UI.tsx picks its one-liner with `includes` on these, so an
     // overlap would silently route two states to the same label.
     const all = [
       FILE_NOT_READ_ERROR,
       FILE_PARTIAL_VIEW_ERROR,
       FILE_CLIPPED_VIEW_ERROR,
+      FILE_CHANGED_TOO_LARGE_ERROR,
     ]
     for (const a of all) {
       for (const b of all) {

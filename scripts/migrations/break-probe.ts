@@ -16,9 +16,10 @@
 // Usage:
 //   bun run scripts/migrations/break-probe.ts <spec.json>
 //
-// Spec: { "test": "<path or dir>", "source": "<path>", "probes": [
+// Spec: { "test": "<path or dir>" | ["<path>", …], "source": "<path>", "probes": [
 //          { "name": "...", "find": "...", "replace": "..." } ] }
-// `source` may be overridden per probe.
+// `source` may be overridden per probe; `test` may list several suites when
+// the probes span more than one area.
 //
 // Written for the giant-file split, kept afterwards: agent-safety.md requires
 // break-and-restore for every new test, and doing that by hand is what let
@@ -38,7 +39,7 @@ type Probe = {
   replace: string
   source?: string
 }
-type Spec = { test: string; source: string; probes: Probe[] }
+type Spec = { test: string | string[]; source: string; probes: Probe[] }
 
 const specPath = process.argv[2]
 if (!specPath) {
@@ -51,7 +52,8 @@ const COUNTS_RE = /(\d+) pass/
 const FAIL_RE = /(\d+) fail/
 
 function runSuite(): { pass: number; fail: number; names: string[] } {
-  const proc = Bun.spawnSync(['bun', 'test', spec.test], {
+  const suites = Array.isArray(spec.test) ? spec.test : [spec.test]
+  const proc = Bun.spawnSync(['bun', 'test', ...suites], {
     stdout: 'pipe',
     stderr: 'pipe',
   })
