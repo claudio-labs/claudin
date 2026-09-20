@@ -25,7 +25,7 @@ describe('accept / refuse', () => {
   test('refuses shell operators and names the list as the alternative', () => {
     for (const cmd of [
       'git add -A && git commit -m x',
-      'git diff | head -50',
+      'git diff | grep "^+++"',
       'git status; git diff',
       'git log > out.txt',
     ]) {
@@ -33,6 +33,59 @@ describe('accept / refuse', () => {
       expect(parsed.ok).toBe(false)
       if (!parsed.ok) expect(parsed.reason).toContain('shell operator')
     }
+  })
+
+  describe('a trailing head/tail trim', () => {
+    // 13 refusals in the 2026-09-14..20 corpus: the Bash → Git redirect
+    // strips the trim before suggesting the command, the model sends it with
+    // the trim anyway, and the tool refused the very pipe it had been sent.
+    test('is accepted, classified on the core, and runs as sent', () => {
+      for (const [cmd, core] of [
+        ['git log --oneline main..HEAD | head -8', 'git log --oneline main..HEAD'],
+        ['git diff main...HEAD --stat | tail -5', 'git diff main...HEAD --stat'],
+        ['gh run view 35182561024 --log-failed 2>&1 | tail -n 120', 'gh run view 35182561024 --log-failed'],
+        ['git ls-files .claudin/memory/team | head -5', 'git ls-files .claudin/memory/team'],
+      ] as const) {
+        const parsed = parseGitCommand(cmd)
+        expect(parsed.ok).toBe(true)
+        if (parsed.ok) {
+          expect(parsed.command).toBe(cmd)
+          expect(parsed.core).toBe(core)
+          expect(parsed.readOnly).toBe(true)
+        }
+      }
+      expect(isReadOnlyGitBatch(['git status', 'git log --oneline | head -3'])).toBe(true)
+    })
+
+    test('does not turn a mutating command read-only', () => {
+      expect(isReadOnlyGitCommand('git push origin main 2>&1 | tail -3')).toBe(false)
+    })
+
+    test('stops at head and tail — grep changes the shape the renderers parse', () => {
+      expect(acceptsGitCommand('git diff | grep -c "^+"')).toBe(false)
+      expect(acceptsGitCommand('git log | head -5 | grep fix')).toBe(false)
+    })
+
+    test('a tail that carries more than a trim is still a shell hazard', () => {
+      for (const cmd of [
+        'git log --oneline | head -5; rm -rf x',
+        'git log --oneline | head -5 > out.txt',
+        'git log --oneline | head -5 && git push',
+      ]) {
+        const parsed = parseGitCommand(cmd)
+        expect(parsed.ok).toBe(false)
+        if (!parsed.ok) expect(parsed.reason).toContain('shell operator')
+      }
+    })
+
+    test('a pipe inside a quoted message is not a trim', () => {
+      const parsed = parseGitCommand('git commit -m "docs: see | head -5 for the shape"')
+      expect(parsed.ok).toBe(true)
+      if (parsed.ok) {
+        expect(parsed.core).toBe(parsed.command)
+        expect(parsed.args).toEqual(['commit', '-m', 'docs: see | head -5 for the shape'])
+      }
+    })
   })
 
   test('refuses an unquoted newline, which shell-quote does not see as an operator', () => {
@@ -460,7 +513,7 @@ describe('read-only classification (fail-closed)', () => {
 
   test('a refused command is never read-only', () => {
     // Otherwise a refusal would still open the plan-mode door.
-    expect(isReadOnlyGitCommand('git diff | head -5')).toBe(false)
+    expect(isReadOnlyGitCommand('git diff | grep "^+"')).toBe(false)
     expect(isReadOnlyGitCommand('git add -p')).toBe(false)
   })
 
@@ -484,6 +537,15 @@ describe('watch classification', () => {
     expect(isWatchGitCommand('gh run rerun 31442753617')).toBe(false)
     expect(isWatchGitCommand('git status')).toBe(false)
     // Fail-closed: a refused command is not a watch either.
+    expect(isWatchGitCommand('gh pr checks --watch; echo done')).toBe(false)
+  })
+
+  test('a watch with a trailing trim is refused, and told why', () => {
+    // `tail` buffers until the command ends, so the idle watchdog would read
+    // the watch as silent and stop it as a stall.
+    const parsed = parseGitCommand('gh pr checks --watch | tail -5')
+    expect(parsed.ok).toBe(false)
+    if (!parsed.ok) expect(parsed.reason).toContain('is a watch')
     expect(isWatchGitCommand('gh pr checks --watch | tail -5')).toBe(false)
   })
 
