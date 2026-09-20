@@ -37,13 +37,17 @@ MODEL="${MODEL:-claude-opus-4-8}"
 READ_TURNS="${READ_TURNS:-6}"
 EDIT_TURNS="${EDIT_TURNS:-3}"
 TIMEOUT="${TIMEOUT:-180}"
-READ_FILE="${READ_FILE:-src/screens/REPL.tsx}"
-EDIT_SRC="${EDIT_SRC:-src/bridge/bridgeEnabled.ts}"
+READ_FILE="${READ_FILE:-src/agent/repl/REPL.tsx}"
+EDIT_SRC="${EDIT_SRC:-src/platform/bridge/bridgeEnabled.ts}"
 STRICT_MCP="${STRICT_MCP:-1}"   # 1 = ignore user MCP config for a deterministic prefix
 READ_PROMPT="Read the file %s and give a 3-sentence summary of what it does."
 EDIT_PROMPT='Add a single-line comment "// bench touch" at the very top of %s and save the file.'
 
 command -v jq >/dev/null || { echo "error: jq required" >&2; exit 1; }
+# Both defaults rotted silently through the 2026-08 reorg: the run stayed green
+# while asking the model to read a path that no longer existed.
+[ -f "$READ_FILE" ] || { echo "error: READ_FILE not found: $READ_FILE" >&2; exit 1; }
+[ -f "$EDIT_SRC" ] || { echo "error: EDIT_SRC not found: $EDIT_SRC" >&2; exit 1; }
 RAW_DIR="$(mktemp -d)"; trap 'rm -rf "$RAW_DIR"' EXIT
 RESULTS_DIR="$REPO_ROOT/scripts/bench/results"
 mkdir -p "$RESULTS_DIR"
