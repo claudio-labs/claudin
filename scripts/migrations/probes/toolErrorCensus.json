@@ -1,0 +1,160 @@
+{
+  "test": [
+    "src/__tests__/readGateScenarios.test.ts",
+    "src/agent/attachments/changedFile.test.ts",
+    "src/agent/compact/postCompactAttachments.test.ts",
+    "src/shared/fs/fileStateCache.test.ts",
+    "src/tools/shared/readBeforeEditMessages.test.ts",
+    "src/tools/shared/servedRegion.test.ts",
+    "src/tools/ApplyPatchTool/applyPatch.test.ts",
+    "src/tools/FileEditTool/FileEditTool.readGate.test.ts",
+    "src/tools/FileReadTool/dedup.test.ts",
+    "src/tools/GitTool/grammar.test.ts",
+    "src/permissions/yoloClassifier/xmlResponse.test.ts"
+  ],
+  "source": "src/agent/attachments/changedFile.ts",
+  "probes": [
+    {
+      "name": "item 1: the pass snapshots entries() instead of keys()+get()",
+      "find": "  return Array.from(readFileState.entries())\n",
+      "replace": "  return Array.from(readFileState.keys()).map(key => [key, readFileState.get(key)!] as [string, FileState])\n"
+    },
+    {
+      "name": "item 2: range entries take the range lane, not the whole-file re-read",
+      "find": "    if (isRangeEntry(fileState)) {\n",
+      "replace": "    if (false && isRangeEntry(fileState)) {\n"
+    },
+    {
+      "name": "item 2: a carried slice that no longer matches is dropped",
+      "find": "    return sameTrimmed(was, now)\n",
+      "replace": "    return true\n"
+    },
+    {
+      "name": "item 2: the snippet is numbered in file lines",
+      "find": "    newOwn.length === 0 ? '' : `${newOwn.join('\\n')}\\n`,\n    offset,\n",
+      "replace": "    newOwn.length === 0 ? '' : `${newOwn.join('\\n')}\\n`,\n    1,\n"
+    },
+    {
+      "name": "item 2: an unchanged slice yields no attachment",
+      "find": "  if (!ownChanged) return null\n",
+      "replace": "  if (ownChanged) return null\n"
+    },
+    {
+      "name": "item 2: the refreshed entry is exempt from dedup",
+      "find": "    seenRanges: survivors.length > 0 ? survivors : undefined,\n    dedupExempt: true,\n",
+      "replace": "    seenRanges: survivors.length > 0 ? survivors : undefined,\n"
+    },
+    {
+      "name": "item 2: the dedup gate honours dedupExempt",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "      !existingState.dedupExempt &&\n",
+      "replace": "      true &&\n"
+    },
+    {
+      "name": "item 3a: the plan attachment seeds the cache",
+      "source": "src/agent/compact/postCompactAttachments.ts",
+      "find": "  if (readFileState) {\n    seedPlanFileState(readFileState, planFilePath, planContent)\n  }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "item 3a: the seed is a whole-file entry",
+      "source": "src/agent/compact/postCompactAttachments.ts",
+      "find": "    timestamp,\n    offset: undefined,\n    limit: undefined,\n  })\n}\n",
+      "replace": "    timestamp,\n    offset: 1,\n    limit: 1,\n  })\n}\n"
+    },
+    {
+      "name": "item 3b: the too-large refresh leaves a marker, not an eviction",
+      "find": "      await markTooLargeToRefresh(cacheKey, normalizedPath, readFileState)\n      return null\n    }\n    return null\n",
+      "replace": "      readFileState.delete(cacheKey)\n      return null\n    }\n    return null\n"
+    },
+    {
+      "name": "item 3b: the marker is dated to the new mtime",
+      "find": "  readFileState.set(cacheKey, {\n    content: '',\n    timestamp,\n",
+      "replace": "  readFileState.set(cacheKey, {\n    content: '',\n    timestamp: 0,\n"
+    },
+    {
+      "name": "item 3b: the gate names the reason",
+      "source": "src/tools/shared/readBeforeEditMessages.ts",
+      "find": "  if (state.refreshFailed === 'too-large') return 'changed-too-large'\n",
+      "replace": "\n"
+    },
+    {
+      "name": "item 4: an ambiguous block is not served",
+      "source": "src/tools/shared/servedRegion.ts",
+      "find": "    if (found) return null\n    found = { start: i + 1, end: i + wanted.length }\n",
+      "replace": "    found = { start: i + 1, end: i + wanted.length }\n"
+    },
+    {
+      "name": "item 4: served slices are registered as read",
+      "source": "src/tools/shared/servedRegion.ts",
+      "find": "    readFileState.set(absPath, {\n      content,\n      timestamp: mtime,\n      offset: region.start,\n      limit: region.end - region.start + 1,\n      dedupExempt: true,\n    })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "item 4: the cap",
+      "source": "src/tools/shared/servedRegion.ts",
+      "find": "  return total > MAX_SERVED_LINES ? null : merged\n",
+      "replace": "  return merged\n"
+    },
+    {
+      "name": "item 4: apply_patch serves the coverage refusal",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "      const message = `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`\n      const served = serveUpdateHunk(hunk, absPath, context)\n",
+      "replace": "      const message = `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`\n      const served = null\n"
+    },
+    {
+      "name": "item 4: apply_patch never serves over a clip-pin marker",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "        hunk.type === 'update' && reason !== 'clipped'\n",
+      "replace": "        hunk.type === 'update'\n"
+    },
+    {
+      "name": "item 4: a served section does not count toward the batched-read hint",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "      if (served) {\n        note(message + servedSuffix(served), 4)\n      } else {\n        note(message, 4)\n        readRemedyFailures++\n      }\n",
+      "replace": "      if (served) {\n        note(message + servedSuffix(served), 4)\n        readRemedyFailures++\n      } else {\n        note(message, 4)\n        readRemedyFailures++\n      }\n"
+    },
+    {
+      "name": "item 4: Edit serves the coverage refusal",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "        message: withServedRegion(\n          unseenRegionMessage('File', 'editing it', readTimestamp),\n          served,\n        ),\n",
+      "replace": "        message: withServedRegion(\n          unseenRegionMessage('File', 'editing it', readTimestamp),\n          null,\n        ),\n"
+    },
+    {
+      "name": "item 4: Edit never serves over a clip-pin marker",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "        readGateReasonFor(readTimestamp) === 'clipped'\n          ? null\n          : serveEditRegion(fullFilePath, fileContent, old_string, toolUseContext)\n",
+      "replace": "        serveEditRegion(fullFilePath, fileContent, old_string, toolUseContext)\n"
+    },
+    {
+      "name": "carry: a partial view is never carried as a seen slice",
+      "source": "src/shared/fs/fileStateCache.ts",
+      "find": "  if (!prev || prev.isPartialView || prev.timestamp !== next.timestamp) {\n",
+      "replace": "  if (!prev || prev.timestamp !== next.timestamp) {\n"
+    },
+    {
+      "name": "item 5: a truncated chain-of-thought asks for the retry",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "    retry: truncated || empty,\n",
+      "replace": "    retry: false,\n"
+    },
+    {
+      "name": "item 5: the detail names the stop reason",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "    detail: `stop_reason=${stopReason ?? 'unknown'}, ${outputTokens} output tokens, ${why}`,\n",
+      "replace": "    detail: `${why}`,\n"
+    },
+    {
+      "name": "item 6: the trim is stripped before the hazard scan",
+      "source": "src/tools/GitTool/grammar.ts",
+      "find": "  const core = stripHeadTailTail(command)\n",
+      "replace": "  const core = command\n"
+    },
+    {
+      "name": "item 6: a watch refuses the trim",
+      "source": "src/tools/GitTool/grammar.ts",
+      "find": "  if (watch && core !== command) {\n",
+      "replace": "  if (false) {\n"
+    }
+  ]
+}

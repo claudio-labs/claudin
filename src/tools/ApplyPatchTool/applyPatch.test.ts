@@ -887,6 +887,34 @@ describe('validateApplyPatchInput — read coverage', () => {
       }
       cleanup()
     })
+
+    test('served coverage sections do not count toward the batched-read hint either', () => {
+      // Both files were range-read and both hunks sit outside the range but
+      // match exactly: two coverage refusals, both served, and no Read is
+      // owed for either — so the "do them all in ONE message" hint, which is
+      // advice to batch Reads, must stay out of the message.
+      const a = join(dir, 'serve-cov-a.txt')
+      const b = join(dir, 'serve-cov-b.txt')
+      writeNumbered(a)
+      writeNumbered(b)
+      markRange(a, 1, 3)
+      markRange(b, 1, 3)
+      const body =
+        `*** Update File: ${a}\n@@\n-line8\n+LINE8\n` +
+        `*** Update File: ${b}\n@@\n-line9\n+LINE9`
+      const r = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
+      expect(r).toMatchObject({ result: false })
+      if (!r.result) {
+        expect(r.message).toContain('found 2 problems')
+        expect(r.message).toContain('8→line8')
+        expect(r.message).toContain('9→line9')
+        expect(r.message).not.toContain('do them all in ONE message')
+      }
+      expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual({
+        result: true,
+      })
+      cleanup()
+    })
   })
 
   test('CLAUDIN_DISABLE_READ_COVERAGE_GATE=1 restores the old behavior', () => {
