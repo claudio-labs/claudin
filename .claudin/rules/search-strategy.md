@@ -239,7 +239,7 @@ src/
 │   │                              the sole owner of the lastDecision mutable
 │   ├── tasks/ (37)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
-│   ├── compact/ (29)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
+│   ├── compact/ (34)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
 │   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
 │   │                              per-key state, pinRegistry, clipStubText, clipFrontier).
 │   │                              compact.ts is NOT a barrel: it keeps compactConversation and
