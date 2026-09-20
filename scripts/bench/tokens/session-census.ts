@@ -57,6 +57,16 @@ const PRICES: ReadonlyArray<{ pattern: RegExp; price: Price }> = [
   { pattern: /sonnet/, price: { input: 3, write5m: 3.75, write1h: 6, read: 0.3, output: 15 } },
   { pattern: /haiku-4-5/, price: { input: 1, write5m: 1.25, write1h: 2, read: 0.1, output: 5 } },
   { pattern: /haiku/, price: { input: 0.8, write5m: 1, write1h: 1.6, read: 0.08, output: 4 } },
+  // Non-Anthropic lanes, mirrored from modelCost.ts's family rows (one write
+  // price there, so 5m and 1h are the same). Before these rows the census
+  // priced every glm/qwen/kimi call at the Opus tier: the 2026-09-14..20
+  // report showed $920 for ~$110 of OpenCode GO + OpenRouter traffic.
+  { pattern: /deepseek/i, price: { input: 0.14, write5m: 0.14, write1h: 0.14, read: 0.0028, output: 0.28 } },
+  { pattern: /kimi-for-coding/i, price: { input: 1, write5m: 1, write1h: 1, read: 0.1, output: 2 } },
+  { pattern: /kimi|moonshot/i, price: { input: 0.6, write5m: 0.6, write1h: 0.6, read: 0.06, output: 2.5 } },
+  { pattern: /qwen/i, price: { input: 0.5, write5m: 0.5, write1h: 0.5, read: 0.5, output: 1.5 } },
+  { pattern: /minimax/i, price: { input: 0.2, write5m: 0.2, write1h: 0.2, read: 0.2, output: 1.1 } },
+  { pattern: /\bglm/i, price: { input: 0.5, write5m: 0.5, write1h: 0.5, read: 0.5, output: 1.5 } },
 ]
 const DEFAULT_PRICE: Price = { input: 5, write5m: 6.25, write1h: 10, read: 0.5, output: 25 }
 const unpricedModels = new Set<string>()

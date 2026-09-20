@@ -1,5 +1,6 @@
 import { expect, test, describe } from 'bun:test'
 import {
+  collapsePrefixRewrites,
   extractCacheMetrics,
   extractCacheReadFromRawUsage,
   resolveCacheProvider,
@@ -681,6 +682,35 @@ describe('formatCacheMetricsCompact — snapshot-stable output', () => {
     )
     expect(formatCacheMetricsCompact(metrics, undefined, undefined, [])).toBe(
       '[Cache: 27.5m read • hit 96%]',
+    )
+  })
+
+  test('repeated relief-clip rewrites collapse into one entry per lane, other labels stay verbatim', () => {
+    const metrics = {
+      read: 68_400_000,
+      created: 12_000,
+      total: 68_500_000,
+      hitRate: 1,
+      supported: true,
+    }
+    const rewrites = [
+      'relief clip (1 tool results, ~1k tokens, window lane)',
+      'idle-gap clip (4 tool results after 90min)',
+      'relief clip (1 tool results, ~0k tokens, window lane)',
+      'relief clip (3 tool results + 2 inputs, ~12k tokens, window lane)',
+      'relief clip (2 tool results, ~5k tokens, rss lane)',
+    ]
+    expect(collapsePrefixRewrites(rewrites)).toEqual([
+      'relief clip ×3 (5 tool results + 2 inputs, ~13k tokens, window lane)',
+      'idle-gap clip (4 tool results after 90min)',
+      'relief clip (2 tool results, ~5k tokens, rss lane)',
+    ])
+    expect(formatCacheMetricsCompact(metrics, undefined, rewrites)).toBe(
+      '[Cache: 68.4m read • hit 100% • prefix rewritten: relief clip ×3 (5 tool results + 2 inputs, ~13k tokens, window lane), idle-gap clip (4 tool results after 90min), relief clip (2 tool results, ~5k tokens, rss lane)]',
+    )
+    // A single event is printed as it came.
+    expect(formatCacheMetricsFull(metrics, undefined, [rewrites[1]!, rewrites[4]!])).toBe(
+      '[Cache: read=68.4m created=12k hit=100% rewrite=idle-gap clip (4 tool results after 90min)+relief clip (2 tool results, ~5k tokens, rss lane)]',
     )
   })
 })
