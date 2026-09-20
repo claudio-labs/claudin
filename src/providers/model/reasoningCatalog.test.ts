@@ -51,6 +51,11 @@ describe('resolveCatalogProviderId', () => {
     expect(
       resolveCatalogProviderId('https://evilaiplatform.googleapis.com'),
     ).toBeUndefined()
+    // And a suffix test alone, separator or not, accepts an arbitrary host in
+    // front of it — the match has to be anchored at both ends.
+    expect(
+      resolveCatalogProviderId('https://attacker.com-aiplatform.googleapis.com'),
+    ).toBeUndefined()
   })
 
   test('treats an upstream placeholder segment as a wildcard', () => {

@@ -86,15 +86,7 @@ const HOST_PROVIDER_IDS: ReadonlyArray<{
       h.endsWith('.services.ai.azure.com'),
   },
   { id: 'google', matches: h => h === 'generativelanguage.googleapis.com' },
-  {
-    id: 'google-vertex',
-    // Vertex is regional — `us-central1-aiplatform.googleapis.com`. The
-    // separator has to be part of the test: a bare
-    // `endsWith('aiplatform.googleapis.com')` also accepts any host that merely
-    // ends in those characters.
-    matches: h =>
-      h === 'aiplatform.googleapis.com' || h.endsWith('-aiplatform.googleapis.com'),
-  },
+  { id: 'google-vertex', matches: h => VERTEX_HOST_RE.test(h) },
   { id: 'groq', matches: h => h === 'api.groq.com' },
   { id: 'togetherai', matches: h => h === 'api.together.xyz' },
   { id: 'mistral', matches: h => h === 'api.mistral.ai' },
@@ -117,6 +109,17 @@ const SHIM_OWNED_PROVIDER_IDS: ReadonlySet<string> = new Set([
 const NESTED_REASONING_PROVIDER_IDS: ReadonlySet<string> = new Set(['openrouter'])
 
 export type ReasoningEffortWire = 'reasoning_effort' | 'reasoning.effort'
+
+/**
+ * Vertex is regional — `us-central1-aiplatform.googleapis.com` — with a bare
+ * `aiplatform.googleapis.com` for the global endpoint. Anchored at both ends on
+ * purpose: `endsWith('aiplatform.googleapis.com')`, and even
+ * `endsWith('-aiplatform.googleapis.com')`, accept an arbitrary host in front
+ * (CodeQL js/incomplete-url-substring-sanitization). Every other host test in
+ * the table above carries a leading dot, which is the same boundary by other
+ * means.
+ */
+const VERTEX_HOST_RE = /^(?:[a-z0-9-]+-)?aiplatform\.googleapis\.com$/
 
 function isDisabled(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_DISABLE_REASONING_EFFORT_WIRE)
