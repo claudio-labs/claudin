@@ -51,6 +51,16 @@ Facts worth keeping:
   send nothing — the exact defect. The catalog handles it.
 - DeepSeek and Moonshot stay excluded from the generic lane (their own dialects).
   DeepSeek's picker is still *narrower* than its wire — a known, pinned asymmetry.
+- **CI's CodeQL check gates on new alerts and it caught a real one here.** A host
+  test written as `h.endsWith('aiplatform.googleapis.com')` trips
+  `js/incomplete-url-substring-sanitization` (high) — the suffix has no
+  separator, so any host merely ending in those characters matches. Vertex is
+  regional, so the fix is `h === 'aiplatform.googleapis.com' ||
+  h.endsWith('-aiplatform.googleapis.com')`. Every other host predicate in the
+  tree already carries a leading dot; a new one must too. The check reports as
+  `CodeQL … fail` in 2s while the two `Analyze` jobs pass, which reads like a
+  flake and is not one — `gh api .../check-runs` has the alert in
+  `output.summary`.
 
 See [[context-window-discovery-field-names]] and
 [[shim-only-body-fields-model-aware-gate]].
