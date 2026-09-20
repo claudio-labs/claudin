@@ -270,7 +270,7 @@ describe('tengu gate keys — resolution in a stock install', () => {
     expect(resolveTable()).toMatchSnapshot()
   })
 
-  test('the five open-build overrides beat their call-site defaults', () => {
+  test('the open-build overrides beat their call-site defaults', () => {
     // The control for the method: these are the keys the fork deliberately
     // flips in `_openBuildDefaults`, so a table that reported the call-site
     // default for them would prove the resolution path was not exercised.
@@ -279,6 +279,7 @@ describe('tengu gate keys — resolution in a stock install', () => {
     expect(table['tengu_coral_fern']?.stockValue).toBe(true)
     expect(table['tengu_bramble_lintel']?.stockValue).toBe(15)
     expect(table['tengu_glacier_2xr']?.stockValue).toBe(true)
+    expect(table['tengu_scratch']?.stockValue).toBe(true)
   })
 
   test('a user flags file overrides everything in the table', () => {

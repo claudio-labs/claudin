@@ -28,8 +28,10 @@ export {
   _getClippedIdsTotalCountForTesting,
   _resetAllClippedIdsForTesting,
   addClippedIds,
+  addClippedInputs,
   bumpStandDownEpoch,
   getClippedIds,
+  getClippedInputFields,
   getStandDownEpoch,
   pruneOrphanClippedIds,
   pruneStaleClippedIds,
@@ -64,3 +66,4 @@ export {
   pruneOldToolResults,
 } from 'src/agent/compact/stableStubState/clipFrontier.js'
 export { applyStableStubs } from 'src/agent/compact/stableStubState/applyStubs.js'
+export { applyStableInputStubs } from 'src/agent/compact/stableStubState/applyInputStubs.js'

@@ -26,6 +26,13 @@ export const perKeyClippedIds = new Map<string, Set<string>>()
 // reset together.
 const perKeyStubText = new Map<string, Map<string, string>>()
 
+// tool_use id → the input fields the relief policy clipped for that call
+// (the tool's `clearableInputFields`, recorded at clip time so the wire
+// rewriter needs no tool pool). Same key scheme, cap and lifecycle as
+// perKeyClippedIds. Stub bytes for a field live in perKeyStubText under
+// `${id}#${field}` — see inputStubKey.
+const perKeyClippedInputFields = new Map<string, Map<string, readonly string[]>>()
+
 // Composite key isolates sub-agents (same sessionId, different agentId) from
 // the parent. Standalone sessions key on sessionId alone.
 export function currentKey(): string {
@@ -67,6 +74,32 @@ export function addClippedIds(ids: Iterable<string>): void {
   for (const id of ids) {
     set.add(id)
   }
+}
+
+const EMPTY_INPUT_FIELDS: ReadonlyMap<string, readonly string[]> = new Map()
+
+export function getClippedInputFields(): ReadonlyMap<string, readonly string[]> {
+  return perKeyClippedInputFields.get(currentKey()) ?? EMPTY_INPUT_FIELDS
+}
+
+// First-write-wins like the stub text: the field list a call was clipped
+// with is the one every later render must reproduce.
+export function addClippedInputs(toolUseId: string, fields: readonly string[]): void {
+  if (fields.length === 0) return
+  const map = ensureKey(perKeyClippedInputFields, currentKey(), () => new Map())
+  if (!map.has(toolUseId)) map.set(toolUseId, fields)
+}
+
+/** Registry key for one clipped input field's stub bytes. */
+export function inputStubKey(toolUseId: string, field: string): string {
+  return `${toolUseId}#${field}`
+}
+
+// The tool_use id a stub-text key belongs to: input-field keys carry a
+// `#field` suffix, result keys are the bare id.
+function stubTextOwnerId(key: string): string {
+  const hash = key.indexOf('#')
+  return hash === -1 ? key : key.slice(0, hash)
 }
 
 // Read-only lookup — never allocates a map for the key.
@@ -141,6 +174,7 @@ export function resetClippedIds(): void {
   // touches its OWN key. Adding it stops a swarm teammate from resetting the
   // set it legitimately owns, which the isolation test catches immediately.
   perKeyClippedIds.delete(currentKey())
+  perKeyClippedInputFields.delete(currentKey())
   perKeyStubText.delete(currentKey())
   perKeyPinnedIds.delete(currentKey())
   perKeySpentPinIds.delete(currentKey())
@@ -171,6 +205,9 @@ export function pruneStaleClippedIds(): void {
   for (const k of perKeyClippedIds.keys()) {
     if (k !== key) perKeyClippedIds.delete(k)
   }
+  for (const k of perKeyClippedInputFields.keys()) {
+    if (k !== key) perKeyClippedInputFields.delete(k)
+  }
   for (const k of perKeyStubText.keys()) {
     if (k !== key) perKeyStubText.delete(k)
   }
@@ -197,6 +234,7 @@ export function pruneStaleClippedIds(): void {
  */
 export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
   const ids = perKeyClippedIds.get(currentKey())
+  const inputFields = perKeyClippedInputFields.get(currentKey())
   // The stub-text registry can hold ids the clipped set doesn't (age-prune
   // stubs record bytes too), so prune it independently.
   const stubText = perKeyStubText.get(currentKey())
@@ -206,6 +244,7 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
   const spent = perKeySpentPinIds.get(currentKey())
   if (
     (!ids || ids.size === 0) &&
+    (!inputFields || inputFields.size === 0) &&
     (!stubText || stubText.size === 0) &&
     (!pins || pins.size === 0) &&
     (!spent || spent.size === 0)
@@ -241,9 +280,14 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
       if (!liveIds.has(id)) ids.delete(id)
     }
   }
+  if (inputFields) {
+    for (const id of inputFields.keys()) {
+      if (!liveIds.has(id)) inputFields.delete(id)
+    }
+  }
   if (stubText) {
-    for (const id of stubText.keys()) {
-      if (!liveIds.has(id)) stubText.delete(id)
+    for (const key of stubText.keys()) {
+      if (!liveIds.has(stubTextOwnerId(key))) stubText.delete(key)
     }
   }
   if (pins) {
@@ -271,6 +315,7 @@ export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
 // getSessionId across a single test run.
 export function _resetAllClippedIdsForTesting(): void {
   perKeyClippedIds.clear()
+  perKeyClippedInputFields.clear()
   perKeyStubText.clear()
   perKeyPinnedIds.clear()
   perKeySpentPinIds.clear()
@@ -314,6 +359,11 @@ onSessionSwitch(newId => {
   for (const k of perKeyClippedIds.keys()) {
     if (k === old || k.startsWith(`${old}:`)) {
       perKeyClippedIds.delete(k)
+    }
+  }
+  for (const k of perKeyClippedInputFields.keys()) {
+    if (k === old || k.startsWith(`${old}:`)) {
+      perKeyClippedInputFields.delete(k)
     }
   }
   for (const k of perKeyStubText.keys()) {

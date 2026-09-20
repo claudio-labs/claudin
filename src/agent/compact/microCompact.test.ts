@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 import type { Message } from 'src/shared/types/message.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
 
 // We test the exported collectCompactableToolIds behavior indirectly via
@@ -290,6 +291,85 @@ describe('relief policy — window lane via microcompactMessages', () => {
     expect(getClippedIds().size).toBe(2)
     resetMicrocompactState()
     expect(getClippedIds().size).toBe(0)
+  })
+
+  // A context whose pool declares apply_patch's input clearable — what the
+  // real ToolUseContext carries via options.tools.
+  function contextWithPool(): ToolUseContext {
+    return {
+      options: { tools: [{ name: 'apply_patch', clearableInputFields: ['patchText'] }] },
+    } as unknown as ToolUseContext
+  }
+
+  function applyPatchExchange(id: string, patchChars: number): Message[] {
+    return [
+      createAssistantMessage({
+        content: [
+          { type: 'tool_use' as const, id, name: 'apply_patch', input: { patchText: 'p'.repeat(patchChars) } },
+        ],
+      }),
+      userWithToolResult(id, 'Success. Applied the patch.'),
+    ]
+  }
+
+  test('above the trigger: clips the INPUT side of old apply_patch calls, never their one-line result', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, getClippedInputFields } = await import('src/agent/compact/stableStubState.js')
+    const { getCurrentTurnPrefixRewrites, resetCurrentTurn } = await import('src/providers/cache/cacheStatsTracker.js')
+    resetCurrentTurn()
+    // 12 patches × 20k chars ≈ 60k tokens against a 40k window (trigger 30k).
+    mockSizeState.effectiveWindow = 40_000
+    const messages: Message[] = []
+    for (let i = 0; i < 12; i++) messages.push(...applyPatchExchange(`toolu_${i}`, 20_000))
+    messages.push(userWithToolResult('toolu_tail', 'tail'))
+    await microcompactMessages(messages, contextWithPool(), MAIN)
+    const inputs = getClippedInputFields()
+    expect(inputs.size).toBeGreaterThan(0)
+    expect(inputs.get('toolu_0')).toEqual(['patchText'])
+    // Input-only ids never enter the result set: that set stubs regardless
+    // of size and would trade "Success." for a stub of the same length.
+    expect(getClippedIds().size).toBe(0)
+    expect(getCurrentTurnPrefixRewrites()).toEqual([
+      expect.stringMatching(/^relief clip \(0 tool results \+ \d+ inputs, ~\d+k tokens, window lane\)$/),
+    ])
+  })
+
+  test('without the pool in the context the same history clips nothing (no field map, results are tiny)', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, getClippedInputFields } = await import('src/agent/compact/stableStubState.js')
+    const messages: Message[] = []
+    for (let i = 0; i < 12; i++) messages.push(...applyPatchExchange(`toolu_${i}`, 20_000))
+    messages.push(userWithToolResult('toolu_tail', 'tail'))
+    await microcompactMessages(messages, undefined, MAIN)
+    expect(getClippedInputFields().size).toBe(0)
+    expect(getClippedIds().size).toBe(0)
+  })
+
+  test('starved: candidates that free under RELIEF_MIN_EVENT_TOKENS add no ids and are reported once', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const { getCurrentTurnPrefixRewrites, resetCurrentTurn } = await import('src/providers/cache/cacheStatsTracker.js')
+    resetCurrentTurn()
+    // One old clearable result worth ~200 tokens, then a huge protected
+    // tail: usage is far over the 3k trigger (0.75 × 4k) but the only
+    // candidate frees ~200 — below the 4k event floor.
+    const messages: Message[] = [
+      assistantWithToolUse('Read', 'toolu_old'),
+      userWithToolResult('toolu_old', 'A'.repeat(800)),
+      assistantWithToolUse('Read', 'toolu_big1'),
+      userWithToolResult('toolu_big1', 'B'.repeat(40_000)),
+      assistantWithToolUse('Read', 'toolu_big2'),
+      userWithToolResult('toolu_big2', 'C'.repeat(40_000)),
+    ]
+    mockSizeState.effectiveWindow = 4_000
+    await microcompactMessages(messages, undefined, MAIN)
+    await microcompactMessages(messages, undefined, MAIN)
+    expect(getClippedIds().size).toBe(0)
+    // Two passes, two turns: one label per pass, never one per candidate.
+    expect(getCurrentTurnPrefixRewrites()).toEqual([
+      expect.stringMatching(/^relief starved \(~\d+k short, window lane\)$/),
+      expect.stringMatching(/^relief starved \(~\d+k short, window lane\)$/),
+    ])
   })
 })
 

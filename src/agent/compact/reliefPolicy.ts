@@ -75,6 +75,14 @@ export type ReliefDecision =
 export type ReliefCandidate = {
   toolUseId: string
   savings: number
+  /** The tool_use's `clearableInputFields`, when clipping this id also
+   * stubs its input (Tool.ts). Absent for a result-only candidate. */
+  inputFields?: readonly string[]
+  /** Set when the candidate has NO clearable result side (apply_patch: a
+   * 4k patch and a one-line "Success"). Such an id goes into the clipped
+   * INPUTS registry only — never into the result set, whose explicit-clip
+   * contract stubs regardless of size. */
+  inputOnly?: true
 }
 
 // The window trigger sits below the autocompact threshold by a margin that
@@ -88,6 +96,23 @@ const RELIEF_MARGIN_FRACTION = 0.1
 // The band never eats more than this fraction of the trigger, so a small
 // window still keeps most of its context after a clip.
 const RELIEF_BAND_MAX_FRACTION = 0.3
+
+// Below this fraction of the trigger the profile's fixed band is used; above
+// it the band grows with the window. 60k was sized for a 200k window (B* ≈
+// sqrt(2·w·R·g/r) in the design doc); on a 1M window the same 60k under a
+// 750k trigger spaced clip events so closely that a session at its floor
+// fired one every request, and each event is a full-prefix rewrite (~$7 at
+// 730k). 0.15 leaves windows up to ~400k on the fixed band and gives the
+// 1M window a 112k band.
+const RELIEF_BAND_TRIGGER_FRACTION = 0.15
+
+// An event that can free less than this is not worth a prefix rewrite. When
+// the clearable candidates are exhausted (every old result already a stub,
+// the rest inside the protected window) the policy would otherwise clip one
+// tiny result per request for ~0k each — 140 such events in one session —
+// and report each as a rewrite. Below the floor the caller records the
+// session as starved instead of clipping.
+export const RELIEF_MIN_EVENT_TOKENS = 4_000
 
 export function reliefMargin(effectiveWindow: number): number {
   return Math.min(
@@ -125,7 +150,10 @@ export function decideRelief(input: ReliefInput): ReliefDecision {
     )
     if (trigger > 0 && input.usedTokens > trigger) {
       const band = Math.min(
-        profile.reliefBandTokens,
+        Math.max(
+          profile.reliefBandTokens,
+          trigger * RELIEF_BAND_TRIGGER_FRACTION,
+        ),
         trigger * RELIEF_BAND_MAX_FRACTION,
       )
       const target = trigger - band
@@ -168,16 +196,18 @@ export function decideRelief(input: ReliefInput): ReliefDecision {
 export function selectReliefIds(
   candidates: readonly ReliefCandidate[],
   tokensToFree: number,
-): { ids: string[]; savings: number } {
+): { ids: string[]; savings: number; selected: ReliefCandidate[] } {
   const ids: string[] = []
+  const selected: ReliefCandidate[] = []
   let savings = 0
   for (const c of candidates) {
     if (savings >= tokensToFree) break
     if (c.savings <= 0) continue
     ids.push(c.toolUseId)
+    selected.push(c)
     savings += c.savings
   }
-  return { ids, savings }
+  return { ids, savings, selected }
 }
 
 export function isReliefWindowLaneEnabled(): boolean {

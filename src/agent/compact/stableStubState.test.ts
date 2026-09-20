@@ -5,6 +5,7 @@ import {
   _getSpentPinIdsForTesting,
   _resetAllClippedIdsForTesting,
   addClippedIds,
+  addClippedInputs,
   applyStableStubs,
   buildClipStub,
   collectClearableCandidates,
@@ -1456,6 +1457,78 @@ describe('relief rss lane (collectClearableCandidates → clipped set)', () => {
     const once = rssClip(msgs, 3_000, 1_500)
     expect(once).not.toBe(msgs)
     expect(rssClip(once, 3_000, 1_500)).toBe(once)
+  })
+})
+
+describe('collectClearableCandidates — tool_use input side', () => {
+  const FIELDS = new Map<string, readonly string[]>([
+    ['apply_patch', ['patchText']],
+    ['Write', ['content']],
+  ])
+
+  test('a clearable input is a candidate of its own, flagged input-only when the result is not clearable', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('p', 'apply_patch', { patchText: bigText(2_000) }),
+      userToolResult('p', 'Success. Applied the patch.'),
+      userText('tail 1'),
+      userText('tail 2'),
+    ]
+    const { candidates } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
+    expect(candidates).toHaveLength(1)
+    expect(candidates[0]).toMatchObject({
+      toolUseId: 'p',
+      inputFields: ['patchText'],
+      inputOnly: true,
+    })
+    expect(candidates[0]!.savings).toBeGreaterThan(1_500)
+  })
+
+  test('a call clearable on both sides is ONE candidate with the savings summed', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('w', 'Write', { content: bigText(2_000), file_path: '/f' }),
+      userToolResult('w', bigText(1_000)),
+      userText('tail 1'),
+      userText('tail 2'),
+    ]
+    const { candidates, clearableTokens } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
+    expect(candidates).toHaveLength(1)
+    const c = candidates[0]!
+    expect(c.toolUseId).toBe('w')
+    expect(c.inputFields).toEqual(['content'])
+    expect(c.inputOnly).toBeUndefined()
+    // ~2000 (input) + ~1000 (result); the rss pressure counts results only.
+    expect(c.savings).toBeGreaterThan(2_500)
+    expect(clearableTokens).toBeLessThan(1_500)
+  })
+
+  test('without a field map the walk is exactly what it was (results only)', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('p', 'apply_patch', { patchText: bigText(2_000) }),
+      userToolResult('p', 'Success. Applied the patch.'),
+      userText('tail 1'),
+      userText('tail 2'),
+    ]
+    expect(collectClearableCandidates(msgs, 2, 0).candidates).toEqual([])
+  })
+
+  test('inputs already clipped, small fields and the protected window are skipped', () => {
+    const msgs: Msg[] = [
+      userText('prompt'),
+      assistantToolUse('done', 'apply_patch', { patchText: bigText(2_000) }),
+      userToolResult('done', 'ok'),
+      assistantToolUse('small', 'apply_patch', { patchText: 'tiny' }),
+      userToolResult('small', 'ok'),
+      assistantToolUse('recent', 'apply_patch', { patchText: bigText(2_000) }),
+      userToolResult('recent', 'ok'),
+    ]
+    addClippedInputs('done', ['patchText'])
+    const { candidates } = collectClearableCandidates(msgs, 2, 0, () => true, FIELDS)
+    // 'done' is clipped, 'small' frees nothing, 'recent' sits in the last 2
+    // user turns.
+    expect(candidates).toEqual([])
   })
 })
 

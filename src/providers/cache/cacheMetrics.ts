@@ -489,6 +489,62 @@ export function extractCacheMetrics(
   }
 }
 
+// The relief policy's label (`maybeReliefClip`): results, optional inputs,
+// tokens, lane. Kept in one place with the collapse below; the lookback census
+// parses the same shape.
+const RELIEF_CLIP_LABEL_RE =
+  /^relief clip \((\d+) tool results(?: \+ (\d+) inputs)?, ~(\d+)k tokens, (\w+) lane\)$/
+
+/**
+ * Fold a turn's repeated relief-clip labels into one entry per lane.
+ *
+ * One 1M-window session put 26 `relief clip (1 tool results, ~0k tokens,
+ * window lane)` on a single `[Cache:]` line — a starved clipper firing once
+ * per request (that mode is now reported as `relief starved` instead, but a
+ * legitimate run of small events reads the same way). Identical-shape labels
+ * in the same lane become `relief clip ×K (N tool results, ~Mk tokens, window
+ * lane)` with the counts summed; every other label is kept verbatim, in
+ * order, at the position of its first occurrence.
+ */
+export function collapsePrefixRewrites(labels: readonly string[]): string[] {
+  const out: string[] = []
+  const byLane = new Map<
+    string,
+    { index: number; events: number; results: number; inputs: number; tokensK: number }
+  >()
+  for (const label of labels) {
+    const m = RELIEF_CLIP_LABEL_RE.exec(label)
+    if (!m) {
+      out.push(label)
+      continue
+    }
+    const lane = m[4]!
+    const acc = byLane.get(lane)
+    if (acc) {
+      acc.events++
+      acc.results += Number(m[1])
+      acc.inputs += Number(m[2] ?? 0)
+      acc.tokensK += Number(m[3])
+      continue
+    }
+    byLane.set(lane, {
+      index: out.length,
+      events: 1,
+      results: Number(m[1]),
+      inputs: Number(m[2] ?? 0),
+      tokensK: Number(m[3]),
+    })
+    out.push(label)
+  }
+  for (const [lane, acc] of byLane) {
+    if (acc.events === 1) continue
+    const inputs = acc.inputs > 0 ? ` + ${acc.inputs} inputs` : ''
+    out[acc.index] =
+      `relief clip ×${acc.events} (${acc.results} tool results${inputs}, ~${acc.tokensK}k tokens, ${lane} lane)`
+  }
+  return out
+}
+
 /**
  * Format a CacheMetrics value into a human-facing one-liner used by
  * `showCacheStats: 'compact'`. Stable format — snapshot-tested.
@@ -519,7 +575,7 @@ export function formatCacheMetricsCompact(
   const clears = formatServerClears(serverClears)
   if (clears) parts.push(clears)
   if (prefixRewrites && prefixRewrites.length > 0) {
-    parts.push(`prefix rewritten: ${prefixRewrites.join(', ')}`)
+    parts.push(`prefix rewritten: ${collapsePrefixRewrites(prefixRewrites).join(', ')}`)
   }
   if (cacheBreaks && cacheBreaks.length > 0) {
     parts.push(`cache break: ${cacheBreaks.join('; ')}`)
@@ -560,7 +616,7 @@ export function formatCacheMetricsFull(
     )
   }
   if (prefixRewrites && prefixRewrites.length > 0) {
-    parts.push(`rewrite=${prefixRewrites.join('+')}`)
+    parts.push(`rewrite=${collapsePrefixRewrites(prefixRewrites).join('+')}`)
   }
   if (cacheBreaks && cacheBreaks.length > 0) {
     parts.push(`break=${cacheBreaks.join('+')}`)

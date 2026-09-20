@@ -62,6 +62,13 @@ const OPEN_BUILD_DEFAULTS: Record<string, FlagValue> = {
   // discovery — rewrites messages[0] and invalidates the whole cached prefix.
   // On, pool changes become appended, cache-safe attachments instead.
   tengu_glacier_2xr: true,
+  // SCRATCHPAD — the per-session temp dir the system prompt names and
+  // `checkEditableInternalPath` lets Write reach without a prompt (upstream:
+  // false). With it off, plan-mode research had no writable place at all for
+  // a throwaway script: `/tmp` is outside the working tree, so a Write there
+  // is an 'ask' and plan mode hard-denies it. 108 plan-mode Bash denials in
+  // 2026-09-14..20 were the visible half of that.
+  tengu_scratch: true,
 }
 
 /**

@@ -24,6 +24,8 @@ export { MEMO_LIMIT }
  *
  *  - Single command only. `bun run build && bun test` is a build step RunTests
  *    cannot run, so any shell composition or redirection opts out.
+ *  - A `| head/tail/grep/rg` tail opts out too, as raw-output intent (see
+ *    below): only the BARE run is refused.
  *  - The runner must be what the command STARTS with. Without that anchor
  *    `grep -rn "bun test" src` reads as a test run and gets refused, which is
  *    the worst possible false positive: a search blocked by the test tool.
@@ -52,19 +54,37 @@ export { MEMO_LIMIT }
 
 /**
  * The output-trimming tail the model habitually appends to a verbose runner:
- * `2>&1 | tail -40`, `| head -20`, `| grep -E "^test "`. Counting it as shell
- * composition is what kept the redirect from EVER firing on Rust — of 33 real
- * `cargo test` calls measured in one project, all 33 carried such a tail and
- * not one was eligible. The intent it expresses is "give me LESS output",
- * which is exactly what RunTests returns, so it must not read as a second
- * command RunTests cannot run. Only output *reducers* qualify: `tee` and `>`
- * persist the output somewhere else and stay composition, and `--nocapture`
- * (want MORE output) still opts out below, tail or no tail.
+ * `2>&1 | tail -40`, `| head -20`, `| grep -E "^test "`. This used to be
+ * stripped BEFORE the decision so the tail could not hide a bare run (on
+ * Rust every real `cargo test` carried one and the redirect never fired).
+ * The week of 2026-09-14 measured the other side: 66 of 72 `bun test`
+ * refusals carried such a tail and 39 were re-sent identically — the model
+ * had RunTests in its toolset (866 calls that week) and wanted the raw lines
+ * a grep or a tail selects. A refusal there costs a round-trip and changes
+ * nothing, so a tail now OPTS OUT: it is raw-output intent, like
+ * `--nocapture`. The stripper stays for the two places that need the bare
+ * form — a trailing `2>&1` alone is still a bare run, and
+ * `noteRunTestsExecution` keys its pass on the suite without the tail.
+ * Only output *reducers* count as a tail: `tee` and `>` persist the output
+ * somewhere else and stay composition.
  *
  * The default filter set deliberately excludes `wc`: `bun test | wc -l` wants a
  * number, and a failures-first summary is not that.
  */
 export const stripOutputTrimTail = createOutputTrimTailStripper()
+
+/** A trailing stderr merge is not a filter; stripping it yields the bare run. */
+const TRAILING_STDERR_MERGE_RE = /\s2>&1$/
+
+/** Whether the command ends in a `| head/tail/grep/rg` filter — the stripper
+ * removed more than a trailing `2>&1`. */
+function hasOutputFilterTail(command: string): boolean {
+  const trimmed = command.trim()
+  return (
+    stripOutputTrimTail(trimmed) !==
+    trimmed.replace(TRAILING_STDERR_MERGE_RE, '').trim()
+  )
+}
 
 /**
  * The command must OPEN with a runner (optionally behind `FOO=bar` env
@@ -90,6 +110,7 @@ const TEST_GOAL_RE = /\btest\b/
 export function isRedirectableTestCommand(command: string): boolean {
   const cmd = stripOutputTrimTail(command.trim())
   if (!cmd) return false
+  if (hasOutputFilterTail(command)) return false
   if (hasShellComposition(cmd)) return false
   if (!TEST_COMMAND_HEAD_RE.test(cmd)) return false
   if (OPT_OUT_FLAG_RE.test(cmd)) return false
@@ -175,11 +196,6 @@ export function renderRunTestsRedirect(command: string): string {
     `Blocked: \`${cmd}\` runs tests, and ${RUN_TESTS_TOOL_NAME} is available.`,
     `Call ${RUN_TESTS_TOOL_NAME} instead — it runs the same suite and returns a failures-first summary (counts, then each failure's name, file:line and source excerpt), so you get the failing location without a follow-up Read.`,
     `With no arguments it runs the suite it detects here; pass command: ${JSON.stringify(core)} to run this exact one, plus path/pattern to scope it.`,
-    ...(core === cmd
-      ? []
-      : [
-          `The output filter is dropped on purpose — ${RUN_TESTS_TOOL_NAME} already trims to what failed, and a Bash result carries stderr without \`2>&1\`.`,
-        ]),
-    `If you specifically need raw runner output (print debugging, a crash trace), re-send this exact Bash command and it will run.`,
+    `If you specifically need raw runner output (print debugging, a crash trace), re-send this exact Bash command and it will run — a \`| tail\`, \`| head\` or \`| grep\` on it runs on the first send.`,
   ].join(' ')
 }

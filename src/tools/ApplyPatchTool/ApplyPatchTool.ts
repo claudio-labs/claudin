@@ -27,6 +27,7 @@ export const ApplyPatchTool = buildTool({
   userFacingName: () => 'Patch',
   searchHint: 'multi-file patch add update delete rename atomic',
   maxResultSizeChars: 100_000,
+  clearableInputFields: ['patchText'],
   async description() {
     return 'Apply a multi-file patch (Codex apply_patch envelope).'
   },

@@ -1,0 +1,16 @@
+{
+  "test": "src/tools/RunTestsTool/redirect.test.ts",
+  "source": "src/tools/RunTestsTool/redirect.ts",
+  "probes": [
+    {
+      "name": "a filter tail opts the command out of the redirect",
+      "find": "  if (hasOutputFilterTail(command)) return false\n",
+      "replace": "  // probe: tails are not an opt-out\n"
+    },
+    {
+      "name": "a trailing 2>&1 alone is still a bare run",
+      "find": "    trimmed.replace(TRAILING_STDERR_MERGE_RE, '').trim()\n",
+      "replace": "    trimmed\n"
+    }
+  ]
+}

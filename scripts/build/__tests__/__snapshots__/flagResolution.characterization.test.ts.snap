@@ -562,7 +562,7 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     ],
     "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
     "sites": 2,
-    "stockValue": false,
+    "stockValue": true,
   },
   "tengu_sedge_lantern": {
     "defaults": [

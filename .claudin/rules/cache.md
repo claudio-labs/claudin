@@ -303,6 +303,15 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   `clearableResult: true` on the Tool; `clear_tool_inputs` is derived from the
   pool (`clearableToolNamesFromPool`). Don't add names to the fallback
   constant `TOOLS_CLEARABLE_RESULTS` — the flag is the source of truth.
+- A tool whose INPUT carries a body the model never re-reads (a patch, a
+  file's content, a sub-agent brief) sets `clearableInputFields: ['…']`;
+  `applyStableInputStubs` (`stableStubState/applyInputStubs.ts`) rewrites
+  those fields at the wire, byte-stable under `${id}#${field}` in the same
+  first-write-wins registry. It is WIRE-ONLY — never substitute it into
+  `QueryEngine.mutableMessages` (the TUI, the plan dossier and persistence
+  keep the full call), and an input-only id never enters the result set,
+  which stubs whatever it is given. Added 2026-09-20 after a 958k session
+  whose transcript was 40% tool_use inputs no clip could reach.
 - Anything that removes or rewrites messages behind the marker must call
   `notifyCacheDeletion(source, agentId, reason)` **with a reason** and
   `recordPrefixRewrite(reason)` (the relief clip in `microCompact.ts` does),
@@ -312,7 +321,8 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   `src/agent/compact/reliefPolicy.ts` (`decideRelief`, window + rss lanes)
   is the only thing that decides to clip; it runs pre-request from
   `microcompactMessages` on REAL usage (`tokenCountWithEstimation` over the
-  stubbed view), and the only action is `addClippedIds`. Do not add a new
+  stubbed view), and the only action is `addClippedIds` (plus
+  `addClippedInputs` for the input side; both ride one clip event). Do not add a new
   post-turn pass that rewrites or evicts from the REPL's message array —
   that array seeds the next request, so every such pass was a prefix
   rewrite (`evictToMaxSize`, `evictOldStubbedMessages` and the post-turn
@@ -320,9 +330,14 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   slice in `REPL.tsx`). A new bound belongs as a lane in `decideRelief`, and
   a new clearable-result rule belongs in `collectClearableCandidates`.
   `docs/tech/cache/context-relief-policy.md` has the measurements and the
-  cost model (`B* ≈ 60k`; tuning the band buys nothing, dropping content
-  costs re-reads). `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window
-  lane only.
+  cost model (`B* ≈ 60k` on a 200k window; the band grows to 15% of the
+  trigger past ~400k because on 1M the fixed 60k spaced full-prefix
+  rewrites one request apart; dropping content costs re-reads). An event
+  that would free under `RELIEF_MIN_EVENT_TOKENS` (4k) adds no ids and lands
+  as `relief starved (~Nk short, window lane)` on the `[Cache:]` line — a
+  session whose floor (stub heads + protected turns) sits above the target,
+  which is what compaction is for. `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns
+  off the window lane only.
 - `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` silently turns off the retain
   profile's server-side `clear_tool_uses` (no `context-management` beta
   header → no `context_management` body). Check the env before attributing a

@@ -29,6 +29,13 @@ Reads, up from ~8%** in the 09-14..15 census
 fired. Most-filtered shapes unchanged: `bun run smoke|build|test:floor |
 tail`, `verify:rules`, `deadcode:ci`.
 
+**CORRECTION 2026-09-20:** a raw grep over deduped `Read` tool_use blocks for
+the whole 09-14..20 window finds only **25** calls with `symbol:` (and 426
+with `view:"outline"`); `feature-usage-census.ts` agrees (23). The "79/79
+symbols resolved" above cannot be right — the ad-hoc script most likely
+counted mirrored sub-agent copies or Grep `symbols` output. Treat symbol=
+adoption as ~0.4% of Reads, not 6.4%. See [[weekly-token-census-2026-09-20]].
+
 **Verdict.** All three features are healthy and paying: outline/symbol at 100%
 success over 161 calls, filter cutting ~62% of lines where it acts. None of
 the known failure modes (empty outline, symbol miss, negative reduction,

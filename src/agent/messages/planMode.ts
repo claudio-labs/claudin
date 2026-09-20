@@ -16,6 +16,21 @@ import {
 } from 'src/agent/plans/planModeV2.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
 import { wrapMessagesInSystemReminder } from 'src/agent/messages/text.js'
+import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js'
+
+/**
+ * Where plan-mode research may write. The plan file is the only PROJECT file
+ * a plan-mode turn may edit; the session scratchpad is the place for the
+ * throwaway scripts that research needs (a census over transcripts, a probe),
+ * which `checkEditableInternalPath` already lets Write reach. Bash that only
+ * reads is read-only by construction; a Bash write is refused unless auto
+ * mode is on, where the classifier judges it against the plan-mode rules
+ * (`planModeDefersToClassifier`). Empty when the scratchpad gate is off.
+ */
+export function getPlanModeScratchClause(): string {
+  if (!isScratchpadEnabled()) return ''
+  return ` Scratch files and throwaway scripts go under the session scratchpad, ${getScratchpadDir()} — writing there is allowed in plan mode, and a Bash command that only reads, or only writes there, is judged rather than refused when auto mode is on.`
+}
 
 export function getPlanModeInstructions(attachment: {
   reminderType: 'full' | 'sparse'
@@ -118,7 +133,7 @@ export function getPlanModeV2Instructions(attachment: {
 
 ## Plan File Info:
 ${planFileInfo}
-You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.
+You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.${getPlanModeScratchClause()}
 
 ## Plan Workflow
 
@@ -221,7 +236,7 @@ export function getPlanModeInterviewInstructions(attachment: {
   const content = `Plan mode is active. The user indicated that they do not want you to execute yet -- you MUST NOT make any edits (with the exception of the plan file mentioned below), run any non-readonly tools (including changing configs or making commits), or otherwise make any changes to the system. This supercedes any other instructions you have received.
 
 ## Plan File Info:
-${planFileInfo}
+${planFileInfo}${getPlanModeScratchClause()}
 
 ## Collaborative Planning Workflow
 
@@ -306,7 +321,7 @@ export function getPlanModeV2SparseInstructions(attachment: {
     ? 'Co-design with the user: explore, bring up the points you see (don\'t just quiz), track Agreed Decisions + Open Questions in the plan, and keep Open Questions empty before you exit.'
     : 'Follow 5-phase workflow.'
 
-  const content = `Plan mode still active (see full instructions earlier in conversation). Read-only except plan file (${attachment.planFilePath}). ${workflowDescription} End turns with ${ASK_USER_QUESTION_TOOL_NAME} (for clarifications) or ${ExitPlanModeV2Tool.name} (for plan approval). Never ask about plan approval via text or AskUserQuestion.`
+  const content = `Plan mode still active (see full instructions earlier in conversation). Read-only except plan file (${attachment.planFilePath})${isScratchpadEnabled() ? ` and the scratchpad (${getScratchpadDir()})` : ''}. ${workflowDescription} End turns with ${ASK_USER_QUESTION_TOOL_NAME} (for clarifications) or ${ExitPlanModeV2Tool.name} (for plan approval). Never ask about plan approval via text or AskUserQuestion.`
 
   return wrapMessagesInSystemReminder([
     createUserMessage({ content, isMeta: true }),
@@ -325,7 +340,7 @@ export function getPlanModeV2SubAgentInstructions(attachment: {
 
 ## Plan File Info:
 ${planFileInfo}
-You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.
+You should build your plan incrementally by writing to or editing this file. NOTE that this is the only file you are allowed to edit - other than this you are only allowed to take READ-ONLY actions.${getPlanModeScratchClause()}
 Answer the user's query comprehensively, using the ${ASK_USER_QUESTION_TOOL_NAME} tool to proactively surface decisions the user hasn't addressed (defaults, naming, scope, error behavior, tradeoffs) — don't silently pre-decide them. Pair each question with your recommended default so the user can approve with one click. Filter by criticality: only ask what actually changes the plan.`
 
   return wrapMessagesInSystemReminder([

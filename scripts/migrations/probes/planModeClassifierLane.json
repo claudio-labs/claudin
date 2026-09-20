@@ -1,0 +1,16 @@
+{
+  "test": "src/permissions/permissions.test.ts",
+  "source": "src/permissions/permissions.ts",
+  "probes": [
+    {
+      "name": "the predicate is Bash-only",
+      "find": "  return autoModeActive && toolName === BASH_TOOL_NAME\n",
+      "replace": "  return autoModeActive\n"
+    },
+    {
+      "name": "the predicate needs auto mode",
+      "find": "  return autoModeActive && toolName === BASH_TOOL_NAME\n",
+      "replace": "  return toolName === BASH_TOOL_NAME\n"
+    }
+  ]
+}

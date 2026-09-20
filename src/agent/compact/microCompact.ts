@@ -27,6 +27,8 @@ import {
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   addClippedIds,
+  addClippedInputs,
+  applyStableInputStubs,
   applyStableStubs,
   collectClearableCandidates,
   getClippedIds,
@@ -34,9 +36,11 @@ import {
 } from 'src/agent/compact/stableStubState.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import {
+  RELIEF_MIN_EVENT_TOKENS,
   decideRelief,
   isReliefWindowLaneEnabled,
   selectReliefIds,
+  type ReliefCandidate,
 } from 'src/agent/compact/reliefPolicy.js'
 import {
   getTimeBasedMCConfig,
@@ -64,6 +68,36 @@ const MCP_TOOL_PREFIX = 'mcp__'
 
 export function isCompactableTool(name: string): boolean {
   return COMPACTABLE_TOOLS.has(name) || name.startsWith(MCP_TOOL_PREFIX)
+}
+
+/**
+ * tool name → `clearableInputFields`, derived from the tools actually in the
+ * pool (the same way apiMicrocompact derives `clear_tool_inputs`), so a tool
+ * opts in on its own definition rather than in a constant kept here. Empty
+ * when the caller has no pool — the analysis paths (/context, /compact).
+ */
+function clearableInputFieldsFromPool(
+  tools: ReadonlyArray<{ name: string; clearableInputFields?: readonly string[] }> | undefined,
+): ReadonlyMap<string, readonly string[]> {
+  const out = new Map<string, readonly string[]>()
+  for (const tool of tools ?? []) {
+    if (tool.clearableInputFields && tool.clearableInputFields.length > 0) {
+      out.set(tool.name, tool.clearableInputFields)
+    }
+  }
+  return out
+}
+
+/** Record the input side of a clip: every selected candidate carrying
+ * fields goes into the clipped-inputs registry beside its id. */
+function addClippedInputsFor(selected: readonly ReliefCandidate[]): number {
+  let n = 0
+  for (const c of selected) {
+    if (!c.inputFields) continue
+    addClippedInputs(c.toolUseId, c.inputFields)
+    n++
+  }
+  return n
 }
 
 export function resetMicrocompactState(): void {
@@ -192,6 +226,10 @@ function isMainThreadSource(querySource: QuerySource | undefined): boolean {
 // marker placement.
 const RELIEF_KEEP_RECENT_TURNS = 2
 
+// One `relief starved` entry per microcompact pass on the `[Cache:]` line;
+// the debug log still gets every occurrence.
+let starvedReportedThisTurn = false
+
 export async function microcompactMessages(
   messages: Message[],
   toolUseContext?: ToolUseContext,
@@ -199,6 +237,7 @@ export async function microcompactMessages(
 ): Promise<MicrocompactResult> {
   // Clear suppression flag at start of new microcompact attempt
   clearCompactWarningSuppression()
+  starvedReportedThisTurn = false
 
   // Time-based trigger: if the gap since the last assistant message exceeds
   // the threshold, the server cache has expired and the full prefix will be
@@ -246,6 +285,7 @@ function maybeReliefClip(
     RELIEF_KEEP_RECENT_TURNS,
     profile.stubKeepHeadChars,
     isCompactableTool,
+    clearableInputFieldsFromPool(toolUseContext?.options?.tools),
   )
   // Nothing clearable: the decision would be moot, and deciding anyway
   // would only log a clip that frees nothing.
@@ -261,7 +301,9 @@ function maybeReliefClip(
     // history before any response has usage) also reflects the clipped
     // set — otherwise a request between a clip and its response would
     // count content the wire no longer sends and clip again.
-    usedTokens: tokenCountWithEstimation(applyStableStubs(messages)),
+    usedTokens: tokenCountWithEstimation(
+      applyStableInputStubs(applyStableStubs(messages)),
+    ),
     effectiveWindow: getEffectiveContextWindowSize(model),
     autocompactThreshold: isAutoCompactEnabled()
       ? getAutoCompactThreshold(model)
@@ -272,21 +314,49 @@ function maybeReliefClip(
   })
   if (decision.kind === 'none') return
 
-  const { ids, savings } = selectReliefIds(candidates, decision.tokensToFree)
+  const { ids, savings, selected } = selectReliefIds(
+    candidates,
+    decision.tokensToFree,
+  )
   if (ids.length === 0) return
 
-  addClippedIds(ids)
+  // Starved: the candidates left cannot free enough to be worth a prefix
+  // rewrite — the session's floor (stub heads, protected turns, results
+  // under MIN_STUB_TOKENS) sits above the target and no clip changes that.
+  // Record it once per turn instead of clipping one tiny result per request;
+  // the `[Cache:]` line is where the next census sees it.
+  if (savings < RELIEF_MIN_EVENT_TOKENS) {
+    const short = Math.round((decision.tokensToFree - savings) / 1000)
+    logForDebugging(
+      `[RELIEF] starved: ${ids.length} candidates free ~${savings} tokens, ~${short}k short of target ${Math.round(decision.target)} (${decision.lane} lane)`,
+    )
+    if (isMainThreadSource(querySource) && !starvedReportedThisTurn) {
+      starvedReportedThisTurn = true
+      recordPrefixRewrite(`relief starved (~${short}k short, ${decision.lane} lane)`)
+    }
+    return
+  }
+
+  // Result side: only ids with a clearable result enter the stub set — its
+  // explicit-clip contract stubs whatever it is given, and an input-only id
+  // (apply_patch) would trade a one-line "Success" for a stub of the same
+  // size. Input side: every selected id that carries fields.
+  const resultIds = selected.filter(c => !c.inputOnly).map(c => c.toolUseId)
+  if (resultIds.length > 0) addClippedIds(resultIds)
+  const inputsClipped = addClippedInputsFor(selected)
   // Release preview strings from ContentReplacementState.replacements for
   // ids that are now clipped. The stable stub supersedes the preview; keep
   // seenIds intact to prevent re-processing in enforceToolResultBudget.
   const crs = toolUseContext?.contentReplacementState
   if (crs) {
-    for (const id of ids) {
+    for (const id of resultIds) {
       crs.replacements.delete(id)
     }
   }
 
-  const reason = `relief clip (${ids.length} tool results, ~${Math.round(savings / 1000)}k tokens, ${decision.lane} lane)`
+  // Label format is parsed by collapsePrefixRewrites (cacheMetrics.ts) and
+  // by the lookback census — keep the shape when changing the words.
+  const reason = `relief clip (${resultIds.length} tool results${inputsClipped > 0 ? ` + ${inputsClipped} inputs` : ''}, ~${Math.round(savings / 1000)}k tokens, ${decision.lane} lane)`
   logForDebugging(
     `[RELIEF] ${reason}: trigger ${Math.round(decision.trigger)} → target ${Math.round(decision.target)}`,
   )
@@ -385,10 +455,6 @@ function maybeTimeBasedMicrocompact(
   const keepSet = new Set(compactableIds.slice(-keepRecent))
   const clearSet = new Set(compactableIds.filter(id => !keepSet.has(id)))
 
-  if (clearSet.size === 0) {
-    return null
-  }
-
   // Persist the clear through the stable-stub mechanism instead of
   // rewriting the per-request view: ids added to the clipped set are
   // stubbed by applyStableStubs at the wire boundary with deterministic
@@ -398,9 +464,6 @@ function maybeTimeBasedMicrocompact(
   // paying a second full prefix write for the same idle gap.
   const clipped = getClippedIds()
   const newOnes = [...clearSet].filter(id => !clipped.has(id))
-  if (newOnes.length === 0) {
-    return null
-  }
 
   // Measure what the clear saves on the content as it stands in this view.
   // Zero means every candidate is already empty/cleared — nothing to do.
@@ -416,25 +479,46 @@ function maybeTimeBasedMicrocompact(
       }
     }
   }
-  if (tokensSaved === 0) {
+  const resultsToClip = tokensSaved > 0 ? newOnes : []
+
+  // The prefix is being rewritten regardless, so clipping the INPUTS of the
+  // calls older than the kept tail costs nothing here — same registry, same
+  // wire rewriter as the relief path. Independent of the result side: a
+  // stretch of apply_patch calls has nothing compactable and still carries
+  // the patches.
+  const inputFieldsByTool = clearableInputFieldsFromPool(
+    toolUseContext?.options?.tools,
+  )
+  const inputsToClip =
+    inputFieldsByTool.size > 0
+      ? collectClearableCandidates(
+          messages,
+          keepRecent,
+          getCacheProfile().stubKeepHeadChars,
+          isCompactableTool,
+          inputFieldsByTool,
+        ).candidates.filter(c => c.inputFields !== undefined)
+      : []
+
+  if (resultsToClip.length === 0 && inputsToClip.length === 0) {
     return null
   }
 
-  addClippedIds(newOnes)
+  if (resultsToClip.length > 0) addClippedIds(resultsToClip)
+  const inputsClipped = addClippedInputsFor(inputsToClip)
   // Release preview strings from ContentReplacementState.replacements for
   // IDs that are now clipped, mirroring the size-based path: the stable
   // stub supersedes the preview, and keeping seenIds intact prevents
   // re-processing in enforceToolResultBudget.
   const crs = toolUseContext?.contentReplacementState
   if (crs) {
-    for (const id of newOnes) {
+    for (const id of resultsToClip) {
       crs.replacements.delete(id)
     }
   }
 
-
   logForDebugging(
-    `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${newOnes.length} tool results (~${tokensSaved} tokens), kept last ${keepSet.size}`,
+    `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${resultsToClip.length} tool results (~${tokensSaved} tokens) and ${inputsClipped} inputs, kept last ${keepSet.size}`,
   )
 
   suppressCompactWarning()
@@ -456,7 +540,7 @@ function maybeTimeBasedMicrocompact(
     notifyCacheDeletion(
       querySource,
       undefined,
-      `idle-gap clip (${newOnes.length} tool results after ${Math.round(gapMinutes)}min)`,
+      `idle-gap clip (${resultsToClip.length} tool results${inputsClipped > 0 ? ` + ${inputsClipped} inputs` : ''} after ${Math.round(gapMinutes)}min)`,
     )
   }
 
