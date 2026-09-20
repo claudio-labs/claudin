@@ -9,8 +9,9 @@ import {
  *
  * ## Why this lane needs its own call
  *
- * A foreground Bash run is filtered inside `BashTool.applyBashOutputFilter`. A
- * backgrounded one is not: `shouldFilterOutput` (`BashTool.tsx`) returns false
+ * A foreground Bash run is filtered inside `applyBashOutputFilter`. A
+ * backgrounded one is not: `shouldFilterOutput` (both in
+ * `BashTool/runShellCommand.tsx`) returns false
  * as soon as there is a `backgroundTaskId`, because the output goes to disk
  * where the user may inspect it and the command they asked for should be the
  * command that ran. That reasoning covers the WRITE. It does not cover the

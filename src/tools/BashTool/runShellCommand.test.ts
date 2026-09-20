@@ -19,8 +19,8 @@ import {
   applyBashOutputFilter,
   planBashFilterForExecution,
   runShellCommand,
-  type BashToolInput,
-} from 'src/tools/BashTool/BashTool.js'
+} from 'src/tools/BashTool/runShellCommand.js'
+import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 
 type SetAppStateFn = (f: (prev: AppState) => AppState) => void
 
@@ -77,8 +77,8 @@ afterEach(() => {
 const FOREGROUND_REGISTRATION_DELAY_MS = 3_500
 const TEST_TIMEOUT_MS = 30_000
 
-// `isBackgroundTasksDisabled` in BashTool is captured at module load time:
-//   const isBackgroundTasksDisabled = isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)
+// `isBackgroundTasksDisabled` (bashSchemas.ts) is captured at module load time:
+//   export const isBackgroundTasksDisabled = isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)
 // We can't flip it at runtime — so we honestly skip the kill-fallback test
 // unless the runner was launched with the env var pre-set, instead of pretending
 // to test it.
@@ -323,10 +323,11 @@ describe('runShellCommand — interrupt-backgrounding (regression for shells-stu
     'interrupt-backgrounding surfaces the partial output captured while the command was running',
     async () => {
       // sleep 8 alone produces nothing — `fullOutput` would be '' and the
-      // assertion at BashTool.tsx:1092 (stdout: interruptBackgroundingStarted
-      // ? fullOutput : '') would silently mask a regression. Emit a marker
-      // BEFORE the wait so the polling tick at ~3s captures it into
-      // fullOutput; then interrupt and verify it lands on result.stdout.
+      // `stdout: interruptBackgroundingStarted ? fullOutput : ''` arm of
+      // runShellCommand's backgroundShellId return would silently mask a
+      // regression. Emit a marker BEFORE the wait so the polling tick at ~3s
+      // captures it into fullOutput; then interrupt and verify it lands on
+      // result.stdout.
       const harness = makeStateHarness()
       const ac = new AbortController()
       const input: BashToolInput = {
@@ -474,11 +475,11 @@ describe('runShellCommand — interrupt-backgrounding (regression for shells-stu
     'interrupt arriving AFTER run_in_background:true returned is a no-op',
     async () => {
       // run_in_background commands return from runShellCommand BEFORE the
-      // polling loop ever opens (BashTool.tsx:998-1010). So a later interrupt
-      // on the same controller must not affect the already-returned result
-      // or spawn an extra task. The underlying process is owned by
-      // spawnShellTask now, not runShellCommand — its abort wiring lives
-      // elsewhere.
+      // polling loop ever opens — the `run_in_background === true` early
+      // return. So a later interrupt on the same controller must not affect
+      // the already-returned result or spawn an extra task. The underlying
+      // process is owned by spawnShellTask now, not runShellCommand — its
+      // abort wiring lives elsewhere.
       const harness = makeStateHarness()
       const ac = new AbortController()
       const input: BashToolInput = {
@@ -529,14 +530,15 @@ describe('runShellCommand — interrupt-backgrounding (regression for shells-stu
     'interrupt with CLAUDIN_DISABLE_BACKGROUND_TASKS=1 falls back to killing the process',
     async () => {
       // Honest skip: isBackgroundTasksDisabled is a module-load constant in
-      // BashTool.tsx:226. The previous version of this test pretended to
+      // bashSchemas.ts. The previous version of this test pretended to
       // exercise the kill branch by doing an early-return when the env var
       // wasn't set in advance — which silently re-tested the enabled path.
       // This version only runs when the runner was actually launched with
       // CLAUDIN_DISABLE_BACKGROUND_TASKS=1, e.g.:
       //   CLAUDIN_DISABLE_BACKGROUND_TASKS=1 bun test runShellCommand
-      // Otherwise the kill fallback at BashTool.tsx:1119 stays uncovered by
-      // CI but at least we're not hiding that.
+      // Otherwise the `shellCommand.kill()` fallback in runShellCommand's
+      // interrupt branch stays uncovered by CI but at least we're not hiding
+      // that.
       const harness = makeStateHarness()
       const ac = new AbortController()
       const gen = runShellCommand({

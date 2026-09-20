@@ -18,9 +18,10 @@ The common case. `provider: 'openai'`, `requiresApiKey: true`. Recurring touch-s
    AND a `getProviderPresetDefaults` switch case. ⚠️ The switch `default` falls
    through to `ollama`, so a union member with **no case silently becomes Ollama**
    (no compile error). This fn reads NO env — defaults are deterministic.
-2. **`src/providers/ui/ProviderManager.tsx`** — add a `{ value, label, description }`
-   menu entry; the value flows straight into `getProviderPresetDefaults(preset)`,
-   no extra wiring.
+2. **`src/providers/ui/screens/PresetSelection.tsx`** — add a `{ value, label, description }`
+   menu entry (the preset screen moved out of `ProviderManager.tsx`); the value flows
+   straight into the `getProviderPresetDefaults(preset)` handler still on the root
+   component, no extra wiring.
 3. **`src/providers/presets/providerProfiles.test.ts`** — mirror the `opencode-zen` defaults test.
 4. **`src/providers/ui/ProviderManager.test.tsx`** — add the preset to **`PRESET_ORDER`**.
    ⚠️ This is a TEST-ONLY ordering registry (not a source constant), so the menu
@@ -71,7 +72,8 @@ Recurring touch-set (rename `<vendor>` per provider):
 - **Schema:** `src/providers/presets/providerConfig.ts` (+`providerConfig.test.ts`) — profile
   + credential schema.
 - **UI:** `src/providers/ui/use<Vendor>OAuthFlow.ts` (+`.test.tsx`) and the
-  `<XxxOAuthSetup>` clone in `src/providers/ui/ProviderManager.tsx`;
+  `<XxxOAuthSetup>` clone in `src/providers/ui/OAuthSetup.tsx` (all three OAuth setup
+  screens live there; `ProviderManager.tsx` only mounts them);
   `src/commands/provider/doctor.tsx` (doctor check); `src/platform/config/config.ts`;
   `README.md`.
 - **Models (if the provider exposes a catalog):** a catalog like

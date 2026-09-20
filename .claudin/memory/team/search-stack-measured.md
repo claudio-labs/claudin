@@ -57,4 +57,6 @@ indistinguishable from "no symbols"): nested declarations dropped **by design**
 `/<.*$/`, TS overload signatures survive as duplicates, Elixir and PowerShell return
 `[]`. The `export const fn = () =>` blind spot that
 [[code-review-graph-evaluated-rejected]] found in *their* parser is **not** present
-here — `RE_CONST` handles it and `scanSymbols.test.ts:157-172` pins it.
+here — `RE_CONST` handles it, pinned by the `arrow const at top level` test in
+`codeOutline/clike/typescript.test.ts` (it was `scanSymbols.test.ts` until that
+3322-line file became 15 siblings on 2026-09-19).

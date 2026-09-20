@@ -11,7 +11,7 @@ import { invalidateAll } from 'src/agent/tools/toolResultCache.js'
  * from the tool's own tests.
  *
  * 'Glob' rather than 'Read': both are on the cache whitelist, and using the one
- * FileReadTool.test.ts exercises would couple the two suites through the
+ * the FileReadTool suites exercise would couple them to this one through the
  * process-global cache.
  */
 describe('buildTool — result cache + bypassResultCache', () => {

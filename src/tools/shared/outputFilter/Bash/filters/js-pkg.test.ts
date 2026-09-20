@@ -1,6 +1,15 @@
 // JS package-runner family — next / biome / oxlint / turbo / nx / bun run.
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, reductionPct, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  runFilterBody,
+  reductionPct,
+  assertReduction,
+  routesTo,
+  findFilterForCommand,
+  SAMPLES_DIR,
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   BUN_RUN_SMOKE,
   BUN_RUN_ECHOING_SCRIPT,
@@ -190,5 +199,256 @@ describe("bun run", () => {
     expect(routesTo("bun run build --silent")).not.toBe("bun-run");
     expect(routesTo("bun install")).not.toBe("bun-run");
     expect(routesTo("bunx prettier --write .")).not.toBe("bun-run");
+  });
+});
+
+// ===========================================================================
+// Phase 12 — JS package managers (rtk gap-fill).
+//
+// Measurements taken on real samples captured from npm 10.x / pnpm 9.x /
+// yarn 1.x / prisma 7.x. Reduction targets reflect realistic per-sample
+// signal-to-noise ratios — small clean samples (npm-install / prettier)
+// have low absolute reduction because most of the bytes ARE the signal.
+// ===========================================================================
+
+describe("phase 12 — npm-install", () => {
+  test("ROI: npm-install clean sample reduces ≥ 40%", () => {
+    assertReduction("npm-install", "npm install express", "npm-install", 40);
+  });
+
+  test("safety: deprecation warnings are preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "npm-install-warn.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("npm-install", "npm install request", raw);
+    expect(body).toContain("npm warn deprecated");
+    expect(body).toContain("vulnerabilities");
+  });
+
+  test("match: install/i/ci/add ✓; --json rejects", () => {
+    expect(findFilterForCommand("npm install")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm i express")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm ci")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm add lodash")?.name).toBe("npm-install");
+    expect(findFilterForCommand("npm install --json")?.name).not.toBe(
+      "npm-install",
+    );
+  });
+});
+
+describe("phase 12 — npm-run", () => {
+  test("ROI: npm-test sample reduces ≥ 75%", () => {
+    assertReduction("npm-run", "npm test", "npm-test", 75);
+  });
+
+  test("safety: script body errors are preserved", () => {
+    const raw = [
+      "> myapp@1.0.0 test",
+      "> jest --coverage",
+      "",
+      "FAIL src/foo.test.ts",
+      "  ✕ does the thing",
+      "    Error: AssertionError: expected 1 to equal 2",
+    ].join("\n");
+    const body = runFilterBody("npm-run", "npm test", raw);
+    expect(body).toContain("FAIL src/foo.test.ts");
+    expect(body).toContain("AssertionError");
+  });
+
+  test("match: test/t/run/start ✓; --silent rejects", () => {
+    expect(findFilterForCommand("npm test")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm t")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm run build")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm start")?.name).toBe("npm-run");
+    expect(findFilterForCommand("npm test --silent")?.name).not.toBe("npm-run");
+  });
+});
+
+describe("phase 12 — pnpm-install", () => {
+  test("ROI: pnpm-install sample reduces ≥ 85%", () => {
+    assertReduction("pnpm-install", "pnpm add express", "pnpm-install", 85);
+  });
+
+  test("safety: dependencies section is preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "pnpm-install.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("pnpm-install", "pnpm add express", raw);
+    expect(body).toContain("dependencies:");
+    expect(body).toContain("express");
+    expect(body).toContain("Done in");
+  });
+
+  test("match: install/i/add ✓; --json rejects", () => {
+    expect(findFilterForCommand("pnpm install")?.name).toBe("pnpm-install");
+    expect(findFilterForCommand("pnpm add lodash")?.name).toBe("pnpm-install");
+    expect(findFilterForCommand("pnpm install --json")?.name).not.toBe(
+      "pnpm-install",
+    );
+  });
+});
+
+describe("phase 12 — pnpm-run", () => {
+  test("ROI: pnpm-run sample reduces ≥ 70%", () => {
+    assertReduction("pnpm-run", "pnpm run lint", "pnpm-run", 70);
+  });
+
+  test("match: run ✓; exec resolves to the inner tool's filter", () => {
+    expect(findFilterForCommand("pnpm run build")?.name).toBe("pnpm-run");
+    // `pnpm exec <tool>` runs the bin directly (no pnpm script ceremony) —
+    // runner-prefix canonicalization hands it to the tool's own filter.
+    expect(findFilterForCommand("pnpm exec eslint .")?.name).toBe("eslint");
+  });
+});
+
+describe("phase 12 — yarn-install", () => {
+  test("ROI: yarn-install sample reduces ≥ 85%", () => {
+    assertReduction(
+      "yarn-install",
+      "yarn add express body-parser cors morgan",
+      "yarn-install",
+      85,
+    );
+  });
+
+  test("safety: error lines are preserved", () => {
+    const raw = [
+      "yarn add v1.22.22",
+      "[1/4] Resolving packages...",
+      "error An unexpected error occurred: \"https://registry.yarnpkg.com/foo: not found\".",
+      "info Visit https://yarnpkg.com/en/docs/cli/add for documentation.",
+    ].join("\n");
+    const body = runFilterBody("yarn-install", "yarn add foo", raw);
+    expect(body).toContain("error An unexpected error");
+  });
+
+  test("match: bare yarn / add / install / upgrade / remove ✓", () => {
+    expect(findFilterForCommand("yarn")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn install")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn add lodash")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn upgrade")?.name).toBe("yarn-install");
+    expect(findFilterForCommand("yarn remove foo")?.name).toBe("yarn-install");
+  });
+});
+
+describe("phase 12 — eslint", () => {
+  // ROI test omitted: a real error sample is *all* signal (diagnostics
+  // are what the user asked for). The filter is here for the dirty-run
+  // case where eslint prints summary + collapse-friendly blank lines.
+  test("safety: diagnostics and ✖ summary are preserved", () => {
+    const raw = readFileSync(resolve(SAMPLES_DIR, "eslint-errors.txt"), "utf8");
+    const body = runFilterBody("eslint", "npx eslint sample.js", raw);
+    expect(body).toContain("no-unused-vars");
+    expect(body).toContain("no-undef");
+    expect(body).toContain("✖ 2 problems");
+  });
+
+  test("match: eslint / npx eslint ✓; --format=json rejects", () => {
+    expect(findFilterForCommand("eslint src/")?.name).toBe("eslint");
+    expect(findFilterForCommand("npx eslint src/")?.name).toBe("eslint");
+    expect(findFilterForCommand("eslint --format=json src/")?.name).not.toBe(
+      "eslint",
+    );
+  });
+});
+
+describe("phase 12 — prettier", () => {
+  // ROI test omitted: dirty sample is all signal (file list is the diagnostic).
+  test("safety: warn diagnostics preserved on --check failure", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "prettier-check.txt"),
+      "utf8",
+    );
+    const body = runFilterBody("prettier", "npx prettier --check src/", raw);
+    expect(body).toContain("[warn]");
+    expect(body).toContain("Code style issues found");
+  });
+
+  test("preamble strip: 'Checking formatting...' line is removed", () => {
+    const raw = "Checking formatting...\n[warn] foo.ts\n";
+    const body = runFilterBody("prettier", "prettier --check .", raw);
+    expect(body).not.toContain("Checking formatting...");
+    expect(body).toContain("[warn] foo.ts");
+  });
+
+  test("match: prettier / npx prettier ✓; --loglevel=silent rejects", () => {
+    expect(findFilterForCommand("prettier --check .")?.name).toBe("prettier");
+    expect(findFilterForCommand("npx prettier --write src/")?.name).toBe(
+      "prettier",
+    );
+    expect(
+      findFilterForCommand("prettier --loglevel=silent --check .")?.name,
+    ).not.toBe("prettier");
+  });
+});
+
+describe("phase 12 — prisma-generate", () => {
+  test("ROI: prisma-generate sample reduces ≥ 60%", () => {
+    assertReduction(
+      "prisma-generate",
+      "npx prisma generate",
+      "prisma-generate",
+      60,
+    );
+  });
+
+  test("safety: Generated Prisma Client line is preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "prisma-generate.txt"),
+      "utf8",
+    );
+    const body = runFilterBody(
+      "prisma-generate",
+      "npx prisma generate",
+      raw,
+    );
+    expect(body).toContain("Generated Prisma Client");
+  });
+
+  test("match: prisma generate / npx prisma generate ✓", () => {
+    expect(findFilterForCommand("prisma generate")?.name).toBe(
+      "prisma-generate",
+    );
+    expect(findFilterForCommand("npx prisma generate")?.name).toBe(
+      "prisma-generate",
+    );
+  });
+});
+
+describe("phase 12 — prisma-migrate", () => {
+  test("ROI: prisma-migrate sample reduces ≥ 35%", () => {
+    assertReduction(
+      "prisma-migrate",
+      "npx prisma migrate dev --name init",
+      "prisma-migrate",
+      35,
+    );
+  });
+
+  test("safety: 'created the following migration' line is preserved", () => {
+    const raw = readFileSync(
+      resolve(SAMPLES_DIR, "prisma-migrate.txt"),
+      "utf8",
+    );
+    const body = runFilterBody(
+      "prisma-migrate",
+      "npx prisma migrate dev",
+      raw,
+    );
+    expect(body).toContain("created the following migration");
+  });
+
+  test("match: prisma migrate ✓; not generate", () => {
+    expect(findFilterForCommand("prisma migrate dev")?.name).toBe(
+      "prisma-migrate",
+    );
+    expect(findFilterForCommand("npx prisma migrate deploy")?.name).toBe(
+      "prisma-migrate",
+    );
+    expect(findFilterForCommand("prisma generate")?.name).not.toBe(
+      "prisma-migrate",
+    );
   });
 });

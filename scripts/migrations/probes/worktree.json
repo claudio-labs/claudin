@@ -1,0 +1,150 @@
+{
+  "test": "src/vcs",
+  "source": "src/vcs/git/worktree/slugNaming.ts",
+  "probes": [
+    {
+      "name": "the slug allowlist is what rejects a separator, a space and an empty segment",
+      "find": "const VALID_WORKTREE_SLUG_SEGMENT = /^[a-zA-Z0-9._-]+$/",
+      "replace": "const VALID_WORKTREE_SLUG_SEGMENT = /^[\\s\\S]*$/"
+    },
+    {
+      "name": "the dot-segment check is what rejects `..`",
+      "find": "    if (segment === '.' || segment === '..') {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "the length cap is 64, measured before the allowlist",
+      "find": "  if (slug.length > MAX_WORKTREE_SLUG_LENGTH) {",
+      "replace": "  if (slug.length > MAX_WORKTREE_SLUG_LENGTH * 100) {"
+    },
+    {
+      "name": "the slug is validated per `/`-separated segment, so nesting is legal",
+      "find": "  for (const segment of slug.split('/')) {",
+      "replace": "  for (const segment of [slug]) {"
+    },
+    {
+      "name": "nesting is flattened with `+`, which the slug allowlist excludes",
+      "find": "  return slug.replaceAll('/', '+')",
+      "replace": "  return slug.replaceAll('/', '-')"
+    },
+    {
+      "name": "the worktree branch prefix is `worktree-`",
+      "find": "  return `worktree-${flattenSlug(slug)}`",
+      "replace": "  return `wt-${flattenSlug(slug)}`"
+    },
+    {
+      "name": "the tmux session name uses the repo BASENAME, not the whole path",
+      "find": "  const repoName = basename(repoPath)",
+      "replace": "  const repoName = repoPath",
+      "source": "src/vcs/git/worktree/tmuxSession.ts"
+    },
+    {
+      "name": "the tmux session name joins repo and branch with `_`",
+      "find": "  const combined = `${repoName}_${branch}`",
+      "replace": "  const combined = `${repoName}-${branch}`",
+      "source": "src/vcs/git/worktree/tmuxSession.ts"
+    },
+    {
+      "name": "the tmux session name sanitizes `.` as well as `/`",
+      "find": "  return combined.replace(/[/.]/g, '_')",
+      "replace": "  return combined.replace(/[/]/g, '_')",
+      "source": "src/vcs/git/worktree/tmuxSession.ts"
+    },
+    {
+      "name": "the `#N` PR form is anchored at both ends",
+      "find": "  const hashMatch = input.match(/^#(\\d+)$/)",
+      "replace": "  const hashMatch = input.match(/^#(\\d+)/)",
+      "source": "src/vcs/git/worktree/createWorktree.ts"
+    },
+    {
+      "name": "the PR URL shape is /pull/N on any host",
+      "find": "    /^https?:\\/\\/[^/]+\\/[^/]+\\/[^/]+\\/pull\\/(\\d+)\\/?(?:[?#].*)?$/i,",
+      "replace": "    /^https?:\\/\\/[^/]+\\/[^/]+\\/[^/]+\\/pulls\\/(\\d+)\\/?(?:[?#].*)?$/i,",
+      "source": "src/vcs/git/worktree/createWorktree.ts"
+    },
+    {
+      "name": "an unrecognized reference falls through to null, not to a number",
+      "find": "  return null\n}\n\nexport async function createWorktreeForSession(",
+      "replace": "  return 0\n}\n\nexport async function createWorktreeForSession(",
+      "source": "src/vcs/git/worktree/createWorktree.ts"
+    },
+    {
+      "name": "the macOS tmux hint names Homebrew",
+      "find": "    case 'macos':\n      return 'Install tmux with: brew install tmux'",
+      "replace": "    case 'macos':\n      return 'Install tmux with: port install tmux'",
+      "source": "src/vcs/git/worktree/tmuxSession.ts"
+    },
+    {
+      "name": "linux shares the tmux hint arm with wsl",
+      "find": "    case 'linux':\n    case 'wsl':",
+      "replace": "    case 'wsl':",
+      "source": "src/vcs/git/worktree/tmuxSession.ts"
+    },
+    {
+      "name": "the Windows tmux arm offers no install command",
+      "find": "      return 'tmux is not natively available on Windows. Consider using WSL or Cygwin.'",
+      "replace": "      return 'tmux is not natively available on Windows.'",
+      "source": "src/vcs/git/worktree/tmuxSession.ts"
+    },
+    {
+      "name": "an unrecognized platform falls through to the generic tmux hint",
+      "find": "      return 'Install tmux using your system package manager.'",
+      "replace": "      return 'Install tmux with your package manager.'",
+      "source": "src/vcs/git/worktree/tmuxSession.ts"
+    },
+    {
+      "name": "the mutation lock waits on the previous holder of the same key",
+      "find": "  await previous.catch(() => {})\n\n  try {",
+      "replace": "  await Promise.resolve()\n\n  try {",
+      "source": "src/vcs/git/worktree/mutationLock.ts"
+    },
+    {
+      "name": "the lock's release is what lets the next same-key holder run",
+      "find": "    releaseCurrent()",
+      "replace": "    if (false as boolean) releaseCurrent()",
+      "source": "src/vcs/git/worktree/mutationLock.ts"
+    },
+    {
+      "name": "a throwing critical section still runs the whole release/evict finally",
+      "find": "  } finally {\n    releaseCurrent()\n    if (gitWorktreeMutationLocks.get(repoRoot) === next) {\n      gitWorktreeMutationLocks.delete(repoRoot)\n    }\n  }",
+      "replace": "  } finally {\n    if (false as boolean) {\n      releaseCurrent()\n      if (gitWorktreeMutationLocks.get(repoRoot) === next) {\n        gitWorktreeMutationLocks.delete(repoRoot)\n      }\n    }\n  }",
+      "source": "src/vcs/git/worktree/mutationLock.ts"
+    },
+    {
+      "name": "the critical section's return value is what the lock resolves to",
+      "find": "    return await fn()",
+      "replace": "    await fn()\n    return undefined as T",
+      "source": "src/vcs/git/worktree/mutationLock.ts"
+    },
+    {
+      "name": "_resetGitWorktreeMutationLocksForTesting actually clears the map",
+      "find": "  gitWorktreeMutationLocks.clear()",
+      "replace": "  void gitWorktreeMutationLocks",
+      "source": "src/vcs/git/worktree/mutationLock.ts"
+    },
+    {
+      "name": "getCurrentWorktreeSession reads the live binding",
+      "find": "export function getCurrentWorktreeSession(): WorktreeSession | null {\n  return currentWorktreeSession\n}",
+      "replace": "export function getCurrentWorktreeSession(): WorktreeSession | null {\n  return null\n}",
+      "source": "src/vcs/git/worktree/session.ts"
+    },
+    {
+      "name": "restoreWorktreeSession writes the live binding",
+      "find": "export function restoreWorktreeSession(session: WorktreeSession | null): void {\n  currentWorktreeSession = session\n}",
+      "replace": "export function restoreWorktreeSession(session: WorktreeSession | null): void {\n  void session\n}",
+      "source": "src/vcs/git/worktree/session.ts"
+    },
+    {
+      "name": "SURFACE PIN: a name dropped from the barrel is caught",
+      "find": "  killTmuxSession,\n} from 'src/vcs/git/worktree/tmuxSession.js'",
+      "replace": "} from 'src/vcs/git/worktree/tmuxSession.js'",
+      "source": "src/vcs/git/worktree.ts"
+    },
+    {
+      "name": "SURFACE PIN: a changed call signature is caught",
+      "find": "export async function hasWorktreeChanges(\n  worktreePath: string,\n  headCommit: string,\n): Promise<boolean> {",
+      "replace": "export async function hasWorktreeChanges(\n  worktreePath: string,\n  headCommit: string | undefined = undefined,\n): Promise<boolean> {",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts"
+    }
+  ]
+}

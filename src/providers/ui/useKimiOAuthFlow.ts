@@ -30,6 +30,7 @@ type KimiOAuthFlowDependencies = {
   createOAuthService?: () => KimiOAuthServiceLike
   saveKimiCredentials?: typeof saveKimiCredentials
   isBareMode?: typeof isBareMode
+  openBrowser?: typeof openBrowser
 }
 
 function createDefaultOAuthService(): KimiOAuthServiceLike {
@@ -49,6 +50,7 @@ export function useKimiOAuthFlow(options: {
   const saveCredentials =
     options.deps?.saveKimiCredentials ?? saveKimiCredentials
   const isBareModeFn = options.deps?.isBareMode ?? isBareMode
+  const openBrowserFn = options.deps?.openBrowser ?? openBrowser
   const [status, setStatus] = React.useState<KimiOAuthFlowStatus>({
     state: 'starting',
   })
@@ -120,10 +122,10 @@ export function useKimiOAuthFlow(options: {
     const url = status.verificationUriComplete ?? status.verificationUri
     if (!url) return
     openedBrowserRef.current = true
-    void openBrowser(url).catch(() => {
+    void openBrowserFn(url).catch(() => {
       // Silent: the rendered URL/code is the fallback for headless/SSH/WSL.
     })
-  }, [status])
+  }, [openBrowserFn, status])
 
   return status
 }

@@ -1,6 +1,6 @@
 ---
 name: tier3-file-split-roadmap
-description: The giant-file split programme — re-measured 2026-09-18 into groups A/B/C (relocatable+churning / monolithic / frozen); carries the six live barrels, the feature() fold gate, and the four traps a split hits here
+description: The giant-file split programme — re-measured 2026-09-18 into groups A/B/C (relocatable+churning / monolithic / frozen); Groups A and the remaining giants are DONE (2026-09-19); carries the live barrels, the feature() fold gate, and the four traps a split hits here
 type: project
 ---
 
@@ -10,7 +10,7 @@ deleted in `367058c2`. Recover it with `git show cbf3325d:ROADMAP.md` if you
 ever need the original grades. **The ROADMAP-11 list is exhausted — measure the
 tree, do not work from it.**
 
-## What is a barrel today (2026-09-14)
+## What is a barrel today (2026-09-19)
 
 | barrel | was | now | siblings |
 |---|---|---|---|
@@ -24,8 +24,13 @@ tree, do not work from it.**
 | `src/platform/config/config.ts` | 2276 | 101 | 7 |
 | `src/platform/bootstrap/state.ts` | 1896 | 278 | 11 |
 | `src/commands/insights.ts` | 2832 | 47 | 9 |
+| `src/tools/PowerShellTool/pathValidation.ts` | 2055 | 19 | 6 |
+| `src/mcp/auth.ts` | 1971 | 40 | 8 |
+| `src/permissions/permissionSetup.ts` | 1454 | 60 | 10 |
+| `src/vcs/git/worktree.ts` | 1544 | 54 | 8 |
 
-The bottom four landed on branch `refactor/split-giant-modules`, 2026-09-14.
+The last four landed on branch `refactor/split-remaining-giants`, 2026-09-19;
+the four above them on `refactor/split-giant-modules`, 2026-09-14.
 **The BashTool pair is a RE-land, not a first one** — PR #129 merged in August
 and its code was then dropped from `main` by a non-fast-forward push; see
 [[pr-129-lost-to-force-push]] for the detection recipe and the
@@ -130,15 +135,28 @@ templates read `''` anyway because `feature()` is always false there.
 `REPL.tsx` 3082×**54** (`REPL` = 89%), `PromptInput.tsx` 2603×41 (91%, and it has
 **no test of its own**), `claude/streaming.ts` 2279×39 (`queryModel` 80%),
 `Config.tsx` 1929×29 (91%, React-Compiler output), `AgentTool.tsx` 1412×22
-(84%), `ProviderManager.tsx` 3156×19 (77%, but a 1835-line test and eight
-`render*()` that are subcomponents waiting to come out — best of this group),
-`query.ts` 1480×15 (`queryLoop` 85%), `QueryEngine.ts` 1384×12 (`submitMessage`
-74%), `ManagePlugins.tsx` 2218×8 (82%, **no test at all**).
+(84%), `query.ts` 1480×15 (`queryLoop` 85%), `QueryEngine.ts` 1384×12
+(`submitMessage` 74%), `ManagePlugins.tsx` 2218×8 (82%, **no test at all**).
 The path for these is hook/subcomponent extraction (`repl/controllers/`,
 `repl/hooks/` already are that), never a barrel.
 
-`BashTool.tsx` 1366×26 is the exception in this size class: two peaks (~32% +
-~31%) and ~350 lines of helpers come out cleanly, with 17 sibling tests.
+Two members of this class came out on `refactor/split-remaining-giants`
+(2026-09-19), both as **composition root + siblings** — their export surface is
+far too narrow for a barrel:
+
+- `ProviderManager.tsx` 3156 → **1851**. The three OAuth setup screens went to
+  `OAuthSetup.tsx`, four screens to `screens/`, and the pure helpers to
+  `providerDrafts.ts` / `providerLookups.ts` / `providerManagerConstants.ts` /
+  `ProviderManager.types.ts` — `.ts`, not `.tsx`, deliberately, so they stay
+  importable under `bun test` instead of dragging in `src/terminal/ink.js`. The
+  ~40 useState and every handler stayed on the root; the real cost was passing
+  props, not moving lines. `renderMenu` **deliberately stayed**: it closes over
+  16 members of the component's state, so extracting it would have bought a
+  16-prop interface that is just the component turned inside out.
+- `BashTool.tsx` 1366 → **507** (`bashCommandClassification.ts`,
+  `bashSchemas.ts`, `applySedEdit.ts`, `runShellCommand.tsx`). The
+  `buildTool({…})` object, `validateInput` included, stays in the root file
+  because two suites read it as TEXT (trap 1 below).
 
 ### Group C — big but frozen; do NOT start here
 
@@ -157,15 +175,68 @@ binaries vs cmdlets) and different tokenizers. Much of the bulk is data
 literals (`COMMAND_ALLOWLIST` is 52% of one file), which split trivially but buy
 little at 5 commits.
 
-### The three biggest files in the repo are orphaned TESTS
+### The three biggest files in the repo were orphaned TESTS — DONE
 
+Split on `refactor/split-remaining-giants`, 2026-09-19, together with
+`FileReadTool.test.ts` (2177, and the highest churn of the four at 18 commits).
 Best effort-to-risk ratio available, because splitting a test cannot break
-runtime. In all three the production side was already split and the test never
-followed:
+runtime; in all four the production side was already split and the test never
+followed.
 
-- `providers/shims/openaiShim.test.ts` **4756** — prod is a 51-line barrel + 8 siblings.
-- `tools/shared/outputFilter/Bash/bashFilter.test.ts` **4233** (21 commits) — the dir already has 12 modules and 10 sibling tests.
-- `tools/shared/codeOutline/scanSymbols.test.ts` **3322** — prod went 3911 → 193 + 18 siblings.
+- `providers/shims/openaiShim.test.ts` 4756 → **ten topic suites** under
+  `shims/openaiShim/`, over `__testutils__/shimHarness.ts`.
+- `outputFilter/Bash/bashFilter.test.ts` 4233 → **per-family suites** under
+  `Bash/filters/`, plus `Bash/structural.test.ts` and appends to
+  `registry`/`pipeline`/`compoundBody`.
+- `codeOutline/scanSymbols.test.ts` 3322 → **15 siblings** under `codeOutline/`
+  (`clike/`, `langs/`, `mask/`, `detectLang`, `renderOutline`).
+- `FileReadTool/FileReadTool.test.ts` 2177 → **eight suites** over
+  `__testutils__/fileReadHarness.ts`.
+
+The one part of this that is NOT relocation is **process-global state**. Two of
+the four set it at module scope and restored it in a module-scope `afterAll` —
+correct in one file, wrong in eight, because the first shard to finish restores
+on behalf of all the others (openaiShim's `mock.module` of `activeProvider`,
+FileReadTool's `CLAUDIN_SIMPLE` + `CLAUDIN_DISABLE_TOOL_RESULT_CACHE`, which
+un-disables the very cache that masks the dedup paths). Both now arm and restore
+through a harness function each shard calls at its OWN top level
+(`useShimHarness()`, `useFileReadEnv()`); for the shim's module mock the
+override is installed once and the factory reads a module flag, so restoration
+is order-independent and the module graph is not re-evaluated per test. The only
+proof is empirical: run the shards in different orders, then alongside a file
+that uses the real resolver.
+
+### Four more production barrels — DONE, same branch
+
+| file | was | barrel | siblings | what the split had to respect |
+|---|---|---|---|---|
+| `src/tools/PowerShellTool/pathValidation.ts` | 2055 | **19** | 6 | had **zero** tests — written from scratch first |
+| `src/mcp/auth.ts` | 1971 | **40** | 8 | 1 of 8 groups covered; state is per-instance, no module mutable |
+| `src/permissions/permissionSetup.ts` | 1454 | **60** | 10 | 1 of 9 groups covered; one gated require read by five groups |
+| `src/vcs/git/worktree.ts` | 1544 | **54** | 8 | the only one with a module mutable AND two `mock.module` consumers |
+
+Four decisions worth keeping:
+
+- **`pathValidation` carried a private copy of `formatDirectoryList`**,
+  duplicating `src/permissions/pathValidation.ts:38`. A split is the moment that
+  surfaces: it was **deleted**, not moved. Relocating a duplicate into a tidy
+  sibling makes it look intentional.
+- **`permissionSetup`'s `feature('TRANSCRIPT_CLASSIFIER')` require is read by
+  five groups.** It lives once, in `autoModeStateBridge`; no sibling repeats the
+  `feature()` block, because repeating it would fold five copies. The fold gate
+  at the bottom of this file is the only thing that can check that — under
+  `bun test` every flag reads `false`.
+- **`worktree`'s siblings import each other by SIBLING path, never through the
+  barrel.** `resumeSession.test.ts` and `useReplExit.test.tsx` `mock.module` only
+  `getCurrentWorktreeSession` on the barrel path, so routing an internal call
+  back through the barrel would have made those mocks miss.
+- **Coverage goes in a SEPARATE, EARLIER commit than the split**, written
+  against the pre-split file and kept byte-identical across every extraction. A
+  test born with the divided version proves the divided version is consistent
+  with itself, not that behavior was preserved. Where the surface is OAuth I/O
+  (`ClaudeAuthProvider`, `performMCPOAuthFlow`, `startupContext`) the honest
+  answer is a **pin of the exported surface** plus unit tests for the separable
+  pure parts — and saying which is which, rather than calling it all verified.
 
 ### Two files that must not become barrels
 
@@ -183,8 +254,9 @@ that is what to continue. On top of that, `src/agent/repl/REPL.hooksOrder.test.t
   `REPL.hooksOrder.test.ts` → `REPL.tsx`; `configGroups.test.ts:167` →
   `Config.tsx`; `lspDeferLatch.test.ts:53` and `deferredToolsDelta.test.ts:284`
   → `streaming.ts`; `autoBackground.test.ts:65,83`, `prompts.test.ts:529` and
-  `__tests__/bugfixes.test.ts:286` → `AgentTool.tsx`; `toolRedirect.test.ts:1111`
-  and `RunTestsTool/redirect.test.ts:265` → `BashTool.tsx`;
+  `__tests__/bugfixes.test.ts:286` → `AgentTool.tsx`; `toolRedirect.test.ts` and
+  `RunTestsTool/redirect.test.ts` (both `readFileSync` the BashTool root — line
+  pins deliberately omitted, they rotted twice in one branch) → `BashTool.tsx`;
   `__tests__/bugfixes.test.ts:101,114,122,310` → `agent/query.ts`;
   `security-hardening.test.ts:72,82,91` → `marketplaceManager.ts`;
   `deferredToolsDelta.test.ts:291` → `compact.ts`;

@@ -1,0 +1,66 @@
+{
+  "test": "src/providers/ui/useKimiOAuthFlow.test.tsx",
+  "source": "src/providers/ui/useKimiOAuthFlow.ts",
+  "probes": [
+    {
+      "name": "bare-mode guard stops the flow",
+      "find": "    if (isBareModeFn()) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "waiting status carries the user code",
+      "find": "          userCode: device.user_code,",
+      "replace": "          userCode: '',"
+    },
+    {
+      "name": "waiting status carries the pre-filled URL",
+      "find": "          verificationUriComplete: device.verification_uri_complete,",
+      "replace": "          verificationUriComplete: undefined,"
+    },
+    {
+      "name": "pre-filled URL is preferred over the bare one",
+      "find": "    const url = status.verificationUriComplete ?? status.verificationUri",
+      "replace": "    const url = status.verificationUri"
+    },
+    {
+      "name": "the browser is opened at most once",
+      "find": "    if (openedBrowserRef.current) return",
+      "replace": "    if (false as boolean) return"
+    },
+    {
+      "name": "a failed browser launch is swallowed",
+      "find": "    void openBrowserFn(url).catch(() => {",
+      "replace": "    void openBrowserFn(url).then(() => {"
+    },
+    {
+      "name": "a non-Error rejection is stringified",
+      "find": "          message: error instanceof Error ? error.message : String(error),",
+      "replace": "          message: error instanceof Error ? error.message : 'unknown',"
+    },
+    {
+      "name": "persist forwards the profile id",
+      "find": "            profileId: options?.profileId,",
+      "replace": "            profileId: undefined,"
+    },
+    {
+      "name": "a refused save throws",
+      "find": "          if (!saved.success) {",
+      "replace": "          if (false as boolean) {"
+    },
+    {
+      "name": "the storage warning is preferred over the fallback message",
+      "find": "              saved.warning ??",
+      "replace": "              undefined ??"
+    },
+    {
+      "name": "onAuthenticated is awaited so its failure reaches the catch",
+      "find": "        await onAuthenticated(tokens, persistCredentials)",
+      "replace": "        void onAuthenticated(tokens, persistCredentials)"
+    },
+    {
+      "name": "unmount cleans up the poller",
+      "find": "      oauthService.cleanup()",
+      "replace": "      void 0"
+    }
+  ]
+}

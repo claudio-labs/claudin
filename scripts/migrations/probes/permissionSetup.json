@@ -1,0 +1,475 @@
+{
+  "test": "src/permissions",
+  "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+  "probes": [
+    {
+      "name": "a Bash rule for another tool is not judged as Bash",
+      "find": "  // Only check Bash rules\n  if (toolName !== BASH_TOOL_NAME) {\n    return false\n  }",
+      "replace": "  // Only check Bash rules\n  if (false as boolean) {\n    return false\n  }"
+    },
+    {
+      "name": "a Bash tool-level allow with no content is dangerous",
+      "find": "  // Tool-level allow (Bash with no content, or Bash(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return true\n  }",
+      "replace": "  // Tool-level allow (Bash with no content, or Bash(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return false\n  }"
+    },
+    {
+      "name": "a standalone Bash wildcard is dangerous",
+      "find": "  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax (e.g., \"python:*\")",
+      "replace": "  // Standalone wildcard (*) matches everything\n  if (false as boolean) {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax (e.g., \"python:*\")"
+    },
+    {
+      "name": "Bash rule content is lowercased before matching",
+      "find": "  const content = ruleContent.trim().toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax",
+      "replace": "  const content = ruleContent.trim()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax"
+    },
+    {
+      "name": "Bash rule content is trimmed before matching",
+      "find": "  const content = ruleContent.trim().toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix",
+      "replace": "  const content = ruleContent.toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix"
+    },
+    {
+      "name": "the bare interpreter name is a dangerous Bash rule",
+      "find": "    // Exact match to the pattern itself (e.g., \"python\" as a rule)\n    if (content === lowerPattern) {\n      return true\n    }",
+      "replace": "    // Exact match to the pattern itself (e.g., \"python\" as a rule)\n    if (false as boolean) {\n      return true\n    }"
+    },
+    {
+      "name": "the `python:*` prefix shape is a dangerous Bash rule",
+      "find": "    // Prefix syntax: \"python:*\" allows any python command\n    if (content === `${lowerPattern}:*`) {\n      return true\n    }",
+      "replace": "    // Prefix syntax: \"python:*\" allows any python command\n    if (false as boolean) {\n      return true\n    }"
+    },
+    {
+      "name": "the `python*` shape is a dangerous Bash rule",
+      "find": "    // Wildcard at end: \"python*\" matches python, python3, etc.\n    if (content === `${lowerPattern}*`) {\n      return true\n    }",
+      "replace": "    // Wildcard at end: \"python*\" matches python, python3, etc.\n    if (false as boolean) {\n      return true\n    }"
+    },
+    {
+      "name": "the `python *` shape is a dangerous Bash rule",
+      "find": "    // Wildcard with space: \"python *\" would match \"python script.py\"\n    if (content === `${lowerPattern} *`) {\n      return true\n    }",
+      "replace": "    // Wildcard with space: \"python *\" would match \"python script.py\"\n    if (false as boolean) {\n      return true\n    }"
+    },
+    {
+      "name": "the `python -*` flag shape is a dangerous Bash rule",
+      "find": "    // Check for patterns like \"python -*\" which would match \"python -c 'code'\"\n    if (content.startsWith(`${lowerPattern} -`) && content.endsWith('*')) {\n      return true\n    }",
+      "replace": "    // Check for patterns like \"python -*\" which would match \"python -c 'code'\"\n    if (false as boolean) {\n      return true\n    }"
+    },
+    {
+      "name": "a PowerShell rule for another tool is not judged as PowerShell",
+      "find": "  if (toolName !== POWERSHELL_TOOL_NAME) {\n    return false\n  }",
+      "replace": "  if (false as boolean) {\n    return false\n  }"
+    },
+    {
+      "name": "a PowerShell tool-level allow with no content is dangerous",
+      "find": "  // Tool-level allow (PowerShell with no content, or PowerShell(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return true\n  }",
+      "replace": "  // Tool-level allow (PowerShell with no content, or PowerShell(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return false\n  }"
+    },
+    {
+      "name": "a standalone PowerShell wildcard is dangerous",
+      "find": "  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // PS-specific cmdlet names.",
+      "replace": "  // Standalone wildcard (*) matches everything\n  if (false as boolean) {\n    return true\n  }\n\n  // PS-specific cmdlet names."
+    },
+    {
+      "name": "PowerShell rule content is lowercased before matching",
+      "find": "  const content = ruleContent.trim().toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // PS-specific cmdlet names.",
+      "replace": "  const content = ruleContent.trim()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // PS-specific cmdlet names."
+    },
+    {
+      "name": "the cross-platform interpreter list is shared with PowerShell",
+      "find": "    ...CROSS_PLATFORM_CODE_EXEC,\n    // Nested PS + shells launchable from PS",
+      "replace": "    // Nested PS + shells launchable from PS"
+    },
+    {
+      "name": "`iex` is in the PowerShell code-exec list",
+      "find": "    'iex',\n    'invoke-expression',",
+      "replace": "    'invoke-expression',"
+    },
+    {
+      "name": "`start-job` is in the PowerShell code-exec list",
+      "find": "    'start-job',\n    'sajb',",
+      "replace": "    'sajb',"
+    },
+    {
+      "name": "`register-objectevent` is in the PowerShell code-exec list",
+      "find": "    'register-objectevent',\n    'register-engineevent',",
+      "replace": "    'register-engineevent',"
+    },
+    {
+      "name": "`enter-pssession` is in the PowerShell code-exec list",
+      "find": "    'enter-pssession',\n    'etsn', // alias",
+      "replace": "    'etsn', // alias"
+    },
+    {
+      "name": "`add-type` is in the PowerShell code-exec list",
+      "find": "    'add-type', // Add-Type -TypeDefinition '<C#>' → P/Invoke\n",
+      "replace": ""
+    },
+    {
+      "name": "`new-object` is in the PowerShell code-exec list",
+      "find": "    'new-object', // New-Object -ComObject WScript.Shell → .Run()\n",
+      "replace": ""
+    },
+    {
+      "name": "the `iex:*` prefix shape is a dangerous PowerShell rule",
+      "find": "    if (content === `${pattern}:*`) return true\n    if (content === `${pattern}*`) return true",
+      "replace": "    if (content === `${pattern}*`) return true"
+    },
+    {
+      "name": "the `iex*` shape is a dangerous PowerShell rule",
+      "find": "    if (content === `${pattern}*`) return true\n    if (content === `${pattern} *`) return true",
+      "replace": "    if (content === `${pattern} *`) return true"
+    },
+    {
+      "name": ".exe goes on the FIRST word of a multi-word runner",
+      "find": "    const sp = pattern.indexOf(' ')\n    const exe =\n      sp === -1\n        ? `${pattern}.exe`\n        : `${pattern.slice(0, sp)}.exe${pattern.slice(sp)}`",
+      "replace": "    const exe = `${pattern}.exe`"
+    },
+    {
+      "name": "the bare .exe spelling is a dangerous PowerShell rule",
+      "find": "    if (content === exe) return true\n    if (content === `${exe}:*`) return true",
+      "replace": "    if (content === `${exe}:*`) return true"
+    },
+    {
+      "name": "the `python.exe:*` shape is a dangerous PowerShell rule",
+      "find": "    if (content === `${exe}:*`) return true\n    if (content === `${exe}*`) return true",
+      "replace": "    if (content === `${exe}*`) return true"
+    },
+    {
+      "name": "the `python.exe -*` flag shape is a dangerous PowerShell rule",
+      "find": "    if (content.startsWith(`${exe} -`) && content.endsWith('*')) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "the legacy Task spelling normalizes to Agent",
+      "find": "  return normalizeLegacyToolName(toolName) === AGENT_TOOL_NAME",
+      "replace": "  return toolName === AGENT_TOOL_NAME"
+    },
+    {
+      "name": "any Agent allow rule is dangerous, whatever its content",
+      "find": "  _ruleContent: string | undefined,\n): boolean {\n  return normalizeLegacyToolName(toolName) === AGENT_TOOL_NAME",
+      "replace": "  _ruleContent: string | undefined,\n): boolean {\n  return false"
+    },
+    {
+      "name": "only ALLOW rules are dangerous — deny and ask are not",
+      "find": "      rule.ruleBehavior === 'allow' &&\n      isDangerousClassifierPermission(",
+      "replace": "      isDangerousClassifierPermission("
+    },
+    {
+      "name": "a rule with no content is displayed as Tool(*)",
+      "find": "        : `${rule.ruleValue.toolName}(*)`",
+      "replace": "        : rule.ruleValue.toolName"
+    },
+    {
+      "name": "a CLI --allowed-tools entry is tagged with the cliArg source",
+      "find": "          source: 'cliArg',",
+      "replace": "          source: 'localSettings',"
+    },
+    {
+      "name": "a CLI entry's source is displayed as --allowed-tools",
+      "find": "          sourceDisplay: '--allowed-tools',",
+      "replace": "          sourceDisplay: 'cliArg',"
+    },
+    {
+      "name": "a CLI spec is trimmed on both the tool name and the content",
+      "find": "      const toolName = match[1]!.trim()\n      const ruleContent = match[2]?.trim()",
+      "replace": "      const toolName = match[1]!\n      const ruleContent = match[2]"
+    },
+    {
+      "name": "a CLI spec must match end-to-end — trailing garbage is not honoured",
+      "find": "    const match = toolSpec.match(/^([^(]+)(?:\\(([^)]*)\\))?$/)",
+      "replace": "    const match = toolSpec.match(/^([^(]+)(?:\\(([^)]*)\\))?/)"
+    },
+    {
+      "name": "an unwritable source is skipped by removeDangerousPermissions",
+      "find": "    if (!isPermissionUpdateDestination(perm.source)) {\n      continue\n    }",
+      "replace": "    if (false as boolean) {\n      continue\n    }",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "localSettings and session are valid update destinations",
+      "find": "  return [\n    'userSettings',\n    'projectSettings',\n    'localSettings',\n    'session',\n    'cliArg',\n  ].includes(source)",
+      "replace": "  return ['userSettings', 'projectSettings', 'cliArg'].includes(source)",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "removal is applied against the allow rules, not another behavior",
+      "find": "      type: 'removeRules' as const,\n      rules,\n      behavior: 'allow' as const,",
+      "replace": "      type: 'removeRules' as const,\n      rules,\n      behavior: 'deny' as const,",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "a context with nothing dangerous still gets an empty stash",
+      "find": "      strippedDangerousRules: context.strippedDangerousRules ?? {},",
+      "replace": "      strippedDangerousRules: context.strippedDangerousRules,",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "the stash mirrors removeDangerousPermissions' source filter",
+      "find": "    if (!isPermissionUpdateDestination(perm.source)) continue",
+      "replace": "    if (false as boolean) continue",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "the stash records the canonical rule string, not the display string",
+      "find": "    ;(stripped[perm.source] ??= []).push(\n      permissionRuleValueToString(perm.ruleValue),\n    )",
+      "replace": "    ;(stripped[perm.source] ??= []).push(perm.ruleDisplay)",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "stripping actually removes the rule from the context",
+      "find": "  return {\n    ...removeDangerousPermissions(context, dangerousPermissions),\n    strippedDangerousRules: stripped,\n  }",
+      "replace": "  return {\n    ...context,\n    strippedDangerousRules: stripped,\n  }",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "a context that was never stripped is returned by identity",
+      "find": "  const stash = context.strippedDangerousRules\n  if (!stash) {\n    return context\n  }",
+      "replace": "  const stash = context.strippedDangerousRules\n  if (!stash) {\n    return { ...context }\n  }",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "an empty per-source stash list does not create a rule key",
+      "find": "    if (!ruleStrings || ruleStrings.length === 0) continue",
+      "replace": "    if (!ruleStrings) continue",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "a stashed rule is restored as an ALLOW rule",
+      "find": "      rules: ruleStrings.map(permissionRuleValueFromString),\n      behavior: 'allow',",
+      "replace": "      rules: ruleStrings.map(permissionRuleValueFromString),\n      behavior: 'deny',",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "a stashed rule is restored to its own source, not to the session",
+      "find": "      destination: source as PermissionUpdateDestination,",
+      "replace": "      destination: 'session' as PermissionUpdateDestination,",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "restoring clears the stash so a second exit is a no-op",
+      "find": "  return { ...result, strippedDangerousRules: undefined }",
+      "replace": "  return result",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
+    },
+    {
+      "name": "a comma inside parentheses belongs to the rule content",
+      "find": "        case ',':\n          if (isInParens) {\n            current += char\n          } else {",
+      "replace": "        case ',':\n          if (false as boolean) {\n            current += char\n          } else {",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts"
+    },
+    {
+      "name": "a space inside parentheses belongs to the rule content",
+      "find": "        case ' ':\n          if (isInParens) {\n            current += char\n          } else if (current.trim()) {",
+      "replace": "        case ' ':\n          if (false as boolean) {\n            current += char\n          } else if (current.trim()) {",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts"
+    },
+    {
+      "name": "an empty entry between two separators is dropped",
+      "find": "            if (current.trim()) {\n              result.push(current.trim())\n            }\n            current = ''",
+      "replace": "            result.push(current.trim())\n            current = ''",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts"
+    },
+    {
+      "name": "the last tool in a string is pushed",
+      "find": "    // Push any remaining tool\n    if (current.trim()) {\n      result.push(current.trim())\n    }",
+      "replace": "    // Push any remaining tool\n    if (false as boolean) {\n      result.push(current.trim())\n    }",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts"
+    },
+    {
+      "name": "a base-tools preset expands to the default tool set",
+      "find": "  if (preset) {\n    return getToolsForDefaultPreset()\n  }",
+      "replace": "  if (false as boolean) {\n    return getToolsForDefaultPreset()\n  }",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts"
+    },
+    {
+      "name": "base-tools elements are joined with a space before the preset check",
+      "find": "  const joinedInput = baseTools.join(' ').trim()",
+      "replace": "  const joinedInput = baseTools.join(',').trim()",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts"
+    },
+    {
+      "name": "preset matching is case-insensitive",
+      "source": "src/tools/tools.ts",
+      "find": "  const presetString = preset.toLowerCase()",
+      "replace": "  const presetString = preset"
+    },
+    {
+      "name": "a non-preset base-tools value is parsed as a tool list",
+      "find": "  const parsedTools = parseToolListFromCLI(baseTools)\n\n  return parsedTools",
+      "replace": "  return baseTools",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts"
+    },
+    {
+      "name": "plan-mode bookkeeping runs on every mode transition",
+      "find": "  handlePlanModeTransition(fromMode, toMode)\n  handleAutoModeTransition(fromMode, toMode)",
+      "replace": "  handleAutoModeTransition(fromMode, toMode)",
+      "source": "src/permissions/permissionSetup/modeTransition.ts"
+    },
+    {
+      "name": "auto-mode bookkeeping runs on every mode transition",
+      "find": "  handleAutoModeTransition(fromMode, toMode)\n\n  if (fromMode === 'plan' && toMode !== 'plan') {\n    setHasExitedPlanMode(true)\n  }",
+      "replace": "  if (fromMode === 'plan' && toMode !== 'plan') {\n    setHasExitedPlanMode(true)\n  }",
+      "source": "src/permissions/permissionSetup/modeTransition.ts"
+    },
+    {
+      "name": "leaving plan mode is recorded for the session",
+      "find": "  if (fromMode === 'plan' && toMode !== 'plan') {\n    setHasExitedPlanMode(true)\n  }",
+      "replace": "  if (false as boolean) {\n    setHasExitedPlanMode(true)\n  }",
+      "source": "src/permissions/permissionSetup/modeTransition.ts"
+    },
+    {
+      "name": "leaving plan mode clears the stashed pre-plan mode",
+      "find": "  if (fromMode === 'plan' && toMode !== 'plan' && context.prePlanMode) {\n    return { ...context, prePlanMode: undefined }\n  }",
+      "replace": "  if (false as boolean) {\n    return { ...context, prePlanMode: undefined }\n  }",
+      "source": "src/permissions/permissionSetup/modeTransition.ts"
+    },
+    {
+      "name": "a transition with nothing to change preserves reference equality",
+      "find": "    return { ...context, prePlanMode: undefined }\n  }\n\n  return context\n}",
+      "replace": "    return { ...context, prePlanMode: undefined }\n  }\n\n  return { ...context }\n}",
+      "source": "src/permissions/permissionSetup/modeTransition.ts"
+    },
+    {
+      "name": "re-entering plan mode does not overwrite the stashed pre-plan mode",
+      "find": "  const currentMode = context.mode\n  if (currentMode === 'plan') return context",
+      "replace": "  const currentMode = context.mode\n  if (false as boolean) return context",
+      "source": "src/permissions/permissionSetup/planAutoMode.ts"
+    },
+    {
+      "name": "plan entry stashes the mode it came from",
+      "find": "  return { ...context, prePlanMode: currentMode }\n}",
+      "replace": "  return { ...context, prePlanMode: 'default' as typeof currentMode }\n}",
+      "source": "src/permissions/permissionSetup/planAutoMode.ts"
+    },
+    {
+      "name": "the bypass killswitch is read through the security-restriction gate",
+      "find": "  return checkSecurityRestrictionGate('tengu_disable_bypass_permissions_mode')",
+      "replace": "  return Promise.resolve(true)",
+      "source": "src/permissions/permissionSetup/bypassPermissions.ts"
+    },
+    {
+      "name": "a session already in bypass mode is dropped out of it",
+      "find": "  if (currentContext.mode === 'bypassPermissions') {",
+      "replace": "  if (false as boolean) {",
+      "source": "src/permissions/permissionSetup/bypassPermissions.ts"
+    },
+    {
+      "name": "a session in another mode is not dropped to default",
+      "find": "  let updatedContext = currentContext\n  if (currentContext.mode === 'bypassPermissions') {",
+      "replace": "  let updatedContext = currentContext\n  if (true as boolean) {",
+      "source": "src/permissions/permissionSetup/bypassPermissions.ts"
+    },
+    {
+      "name": "the disabled context revokes bypass availability",
+      "find": "    isBypassPermissionsModeAvailable: false,\n  }\n}",
+      "replace": "    isBypassPermissionsModeAvailable: true,\n  }\n}",
+      "source": "src/permissions/permissionSetup/bypassPermissions.ts"
+    },
+    {
+      "name": "the auto-mode enabled default is 'enabled' in this fork",
+      "find": "const AUTO_MODE_ENABLED_DEFAULT: AutoModeEnabledState = 'enabled'",
+      "replace": "const AUTO_MODE_ENABLED_DEFAULT: AutoModeEnabledState = 'opt-in'",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "'disabled' is an accepted auto-mode spelling",
+      "find": "  if (value === 'enabled' || value === 'disabled' || value === 'opt-in') {",
+      "replace": "  if (value === 'enabled' || value === 'opt-in') {",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "'opt-in' is an accepted auto-mode spelling",
+      "find": "  if (value === 'enabled' || value === 'disabled' || value === 'opt-in') {\n    return value\n  }",
+      "replace": "  if (value === 'enabled' || value === 'disabled') {\n    return value\n  }",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "getAutoModeEnabledState reads tengu_auto_mode_config",
+      "find": "  }>('tengu_auto_mode_config', {})\n  return parseAutoModeEnabledState(config?.enabled)",
+      "replace": "  }>('tengu_auto_mode_config_absent', {})\n  return parseAutoModeEnabledState(config?.enabled)",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "the uncached sentinel is what gets passed as the default",
+      "find": "  >('tengu_auto_mode_config', NO_CACHED_AUTO_MODE_CONFIG)",
+      "replace": "  >('tengu_auto_mode_config', {})",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "'not yet fetched' is reported as undefined, not as a state",
+      "find": "  if (config === NO_CACHED_AUTO_MODE_CONFIG) return undefined",
+      "replace": "  if (false as boolean) return undefined",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "the settings reason has its own message",
+      "find": "      base = 'auto mode disabled by settings'",
+      "replace": "      base = 'auto mode unavailable'",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts"
+    },
+    {
+      "name": "the circuit-breaker reason has its own message",
+      "find": "      base = 'auto mode is unavailable for your plan'",
+      "replace": "      base = 'auto mode unavailable'",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts"
+    },
+    {
+      "name": "the model reason has its own message",
+      "find": "      base = 'auto mode unavailable for this model'",
+      "replace": "      base = 'auto mode unavailable'",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts"
+    },
+    {
+      "name": "auto-mode opt-in fails closed when no source opted in",
+      "find": "  if (autoModeStateModule?.getAutoModeFlagCli() ?? false) return true\n  return hasAutoModeOptIn()",
+      "replace": "  return true",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "the gate consults the model check",
+      "find": "  if (!autoModeAllowedForModel(getMainLoopModel())) return false\n  return true",
+      "replace": "  return true",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "the unavailable reason consults the model check",
+      "find": "  if (!autoModeAllowedForModel(getMainLoopModel())) return 'model'\n  return null",
+      "replace": "  return null",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "a Claude auto-mode model passes by name, without a probe",
+      "find": "  if (modelSupportsAutoMode(model)) return true",
+      "replace": "  if (false as boolean) return true",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "no active provider denies a non-Claude model",
+      "find": "  const provider = tryGetActiveProvider()\n  if (!provider) return false",
+      "replace": "  const provider = tryGetActiveProvider()\n  if (!provider) return true",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "the classifier probe key includes the model",
+      "find": "  const key = getClassifierProbeKey({\n    provider: provider.transport,\n    baseUrl: provider.baseUrl,\n    model,\n  })",
+      "replace": "  const key = getClassifierProbeKey({\n    provider: provider.transport,\n    baseUrl: provider.baseUrl,\n    model: 'fixed',\n  })",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "a cached probe result is what opens the gate for a non-Claude model",
+      "find": "  return getCachedClassifierProbe(key)?.ok === true",
+      "replace": "  return false",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
+    },
+    {
+      "name": "SURFACE PIN: a name dropped from the public surface is caught",
+      "find": "  shouldDisableBypassPermissions,\n} from 'src/permissions/permissionSetup/bypassPermissions.js'",
+      "replace": "} from 'src/permissions/permissionSetup/bypassPermissions.js'",
+      "source": "src/permissions/permissionSetup.ts"
+    },
+    {
+      "name": "SURFACE PIN: a changed call signature is caught",
+      "find": "  fastMode?: boolean,",
+      "replace": "  fastMode: boolean | undefined = undefined,",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts"
+    }
+  ]
+}

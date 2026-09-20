@@ -6,10 +6,10 @@ import { splitCommandWithOperators } from 'src/platform/bash/commands.js'
  * Several call sites need the same traversal: split a command on its control
  * operators, drop the target of an output redirection, and look at each
  * remaining segment's head token. It lived inline in `isSearchOrReadBashCommand`
- * (BashTool.tsx), which is a `.tsx` and therefore unimportable under `bun test`
- * (the Ink import chain reaches the build-time growthbook stub). Pulling it here
- * gives it a test home and one implementation of the two subtleties that would
- * otherwise drift between copies — the redirect-target skip and the neutral set.
+ * (now `src/tools/BashTool/bashCommandClassification.ts`). Pulling it here gives
+ * it a test home of its own and one implementation of the two subtleties that
+ * would otherwise drift between copies — the redirect-target skip and the
+ * neutral set.
  *
  * This is a shape-only walk. It says what the segments ARE, never what they
  * mean; classification belongs to the caller, because "read command" means

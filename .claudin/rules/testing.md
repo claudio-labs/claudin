@@ -464,6 +464,45 @@ In a **git worktree with symlinked `node_modules`** (e.g. `/tmp/...` review
   `deserializeMessagesWithInterruptDetection strips thinking blocks…`, and the
   `main.tsx — boot characterization (Fase 0)` --help snapshots.
 
+**Genuinely flaky, confirmed 2026-09-20:** `ProviderManager manual model step
+starts empty from a preset, keeps the value when editing`. It failed four times
+running and then passed thirteen, in isolation and under concurrent load, on an
+unchanged tree. What settles it as pre-existing rather than a regression is that
+it also went red under a break-probe mutation that provably cannot reach it —
+an `azureResource` trim on a path that never sets `azureResource`. Re-run it;
+do not bisect it.
+
+### Break-and-restore, run as a batch
+
+`agent-safety.md` requires proving a new test fails when the line it guards is
+broken. `bun run scripts/migrations/break-probe.ts <spec.json>` does that in
+one pass: each probe is a `{name, find, replace}` that mutates ONE exact string,
+runs the suite, records which tests went red, and restores in a `finally`. It
+refuses a `find` matching more than once (mutating a same-looking line elsewhere
+is the classic way to certify an untested line), and it FAILS the run if any
+probe turned nothing red — that is the finding, not a pass.
+
+The specs in `scripts/migrations/probes/` are committed as the evidence for the
+suites they name, and stay re-runnable: after moving code, repoint each probe's
+`source` and they must all still go red. That is what proves a relocation
+preserved behaviour, and it is stronger than any diff of the move.
+
+**An interrupted run leaves the mutation in the working tree.** The restore is a
+`finally`, and a killed process never reaches it — so a sub-agent stopped
+mid-probe leaves a production line reading `return true`. That happened on
+`refactor/split-remaining-giants` and was caught only because the coverage
+written one commit earlier went red on the next scoped run. After interrupting
+any agent that ran probes, `git diff` the files it named before doing anything
+else, and do not resume until the tree matches HEAD.
+
+Three outcomes it produced on `refactor/split-remaining-giants` that hand-checking
+had missed, all of them a green test guarding nothing: a fixture that could not
+reach the branch it claimed (an empty string exits on an earlier guard), a guard
+whose deletion changes no observable value (two `return`s producing the same
+three fields), and a branch gated on config that is off under `bun test`. The
+first was fixed, the second documented in place, the third deleted rather than
+left as false coverage.
+
 So before blaming your change: run the same full suite on **main in the same
 directory** and compare failure NAMES. Only a name not in main's set is a
 regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
@@ -502,7 +541,16 @@ Two of these went red on main in 2026-09 (#153) after #152 added one file:
   to `{success:false}` *before* it reaches the storage a test mocked — 11 kimi
   assertions failed on `undefined` while the mock was working perfectly — and
   ProviderManager's OAuth/preset flows never render, which is what the "TTY
-  timeout" above actually was.
+  timeout" above actually was. That file is now the worked example of the fix:
+  it was split into eight topic suites, and the pair it owned (`CLAUDIN_SIMPLE`
+  plus `CLAUDIN_DISABLE_TOOL_RESULT_CACHE`) moved behind `useFileReadEnv()` in
+  `src/tools/FileReadTool/__testutils__/fileReadHarness.ts`, which each suite
+  calls at its own top level so the hooks register in THAT file's scope.
+  Splitting a file that sets a global makes this mandatory rather than merely
+  tidy: left at module scope in eight files, the first suite to finish runs the
+  one `afterAll` and hands the tool-result cache back to the other seven, which
+  then short-circuit `call()` on identical inputs and silently stop exercising
+  the dedup paths they exist to test.
 
 **How to apply:** snapshot in `beforeAll` (or at module load, beside the
 assignment) and restore in `afterAll`, restoring *before* any `rmSync` of a dir

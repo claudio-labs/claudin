@@ -243,11 +243,13 @@ src/
 │   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
 │   ├── plans/ goal/ autoFix/           ← planning + self-correction
 │   └── scratchpad.ts            ← the per-session scratchpad dir (permissions only consumes it)
-├── providers/ (256)             ← provider abstraction (start here for provider issues)
+├── providers/ (289)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
-│   ├── shims/ (48)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
-│   │                              Completions renderer is openaiShim/ (~4.9k lines). Also
+│   ├── shims/ (61)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
+│   │                              Completions renderer is openaiShim/ (~4.9k lines), which also
+│   │                              holds the ten end-to-end suites that drive the barrel with a
+│   │                              stubbed fetch over __testutils__/shimHarness.ts. Also
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
 │   ├── transport/ (37)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
 │   ├── oauth/ (39)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
@@ -259,7 +261,7 @@ src/
 │   ├── usage/ (18)              ← cost, billing, quota, per-provider usage endpoints
 │   ├── cache/ (8)               ← cache METRICS: hit stats, break detection. The cache policy
 │   │                              itself is agent/cache/ (→ cache.md)
-│   ├── ui/ (21)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
+│   ├── ui/ (38)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
 │   └── (adding a preset? use the /add-provider-preset skill)
 ├── tools/ (656)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
 │   ├── Tool.ts                  ← central type system: Tool, Tools, ToolUseContext, buildTool()
@@ -273,7 +275,10 @@ src/
 │   ├── BuildTool/ RunTestsTool/ TypecheckTool/  ← build, test and typecheck runners
 │   ├── ContainerTool/ (14)      ← docker/compose ops; the domain logic is src/containers/
 │   ├── RenameTool/              ← project-wide identifier rename (findSites.ts is the matcher)
-│   ├── PowerShellTool/ (14)     ← the Windows shell, with its own permission and safety gates
+│   ├── PowerShellTool/ (21)     ← the Windows shell, with its own permission and safety gates;
+│   │                              pathValidation.ts is a BARREL over pathValidation/
+│   │                              (cmdletPathConfig, paramMatching, pathAllowlist,
+│   │                              dangerousRemoval, extractPaths, statementConstraints)
 │   ├── WebFetchTool/ WebSearchTool/  ← Firecrawl or DuckDuckGo/raw
 │   ├── LSPTool/                 ← read-only LSP ops (plugin-only; backend in platform/lsp/)
 │   ├── EnterPlanModeTool/ ExitPlanModeTool/  ← planning
@@ -325,7 +330,7 @@ src/
 │                                  plugin/ (19) and install-github-app/ (17) are the big ones;
 │                                  insights.ts is a BARREL over insights/ and must keep re-exporting
 │                                  `default` — commands.ts reaches it through a dynamic import
-├── permissions/ (135)           ← rules, classifiers, always-allow, and every permission dialog
+├── permissions/ (151)           ← rules, classifiers, always-allow, and every permission dialog
 │   ├── permissions.ts           ← hasPermissionsToUseTool, the decision core, over a
 │   │                              permissions/ dir (ruleLookup, ruleMutation, requestMessage,
 │   │                              denial). Re-exports but is NOT a pure barrel
@@ -335,10 +340,19 @@ src/
 │   ├── yoloClassifier.ts        ← a BARREL over yoloClassifier/ (prompts, transcript, xmlResponse,
 │   │                              classifierConfig, autoModeDumps, classify). The .txt templates
 │   │                              stay in yolo-classifier-prompts/ — build.ts hardcodes that path
+│   ├── permissionSetup.ts       ← a BARREL over permissionSetup/ (dangerousRuleDetection,
+│   │                              dangerousRuleStash, cliToolParsing, startupContext,
+│   │                              autoModeGate, autoModeAvailability, bypassPermissions,
+│   │                              planAutoMode, modeTransition). The feature()-gated require of
+│   │                              the auto-mode state lives once, in autoModeStateBridge — five
+│   │                              groups read it through there, none repeats the feature() block
 │   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)
 │   └── ui/                      ← one request component per tool + rules/ editor
-├── mcp/ (65)                    ← client/ (10: connection, transport, callTool, authCache),
-│                                  mcpServerApproval trust dialog, ui/
+├── mcp/ (72)                    ← client/ (10: connection, transport, callTool, authCache),
+│                                  mcpServerApproval trust dialog, ui/. auth.ts is a BARREL over
+│                                  auth/ (serverKey, oauthErrors, authFetch, callbackParams,
+│                                  tokenRevocation, oauthFlow, claudeAuthProvider,
+│                                  clientSecretStore)
 ├── containers/ (18)             ← docker/compose domain: project discovery, state, diagnostics.
 │                                  The TOOL is tools/ContainerTool/ and the task backend is
 │                                  agent/tasks/ContainerTask/ — this slice is neither
@@ -346,7 +360,10 @@ src/
 │   ├── docker/ (6)              ← CLI wrappers: ps/inspect, the `docker events` watcher
 │   └── build/ (2)               ← compose build parsing and progress
 ├── sessions/ (61)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
-├── vcs/ (69)                    ← git/ (wrapper, worktree, gh PR status) + diff/ (the /diff reviewer)
+├── vcs/ (77)                    ← git/ (wrapper, gh PR status) + diff/ (the /diff reviewer).
+│                                  git/worktree.ts is a BARREL over worktree/ (slugNaming,
+│                                  session, mutationLock, tmuxSession, createWorktree,
+│                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/
 ├── memory/ (56)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, session/, teamSync/, ui/, and instructions/ —

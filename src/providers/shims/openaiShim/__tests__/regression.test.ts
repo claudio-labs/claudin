@@ -2,11 +2,12 @@
  * Regression pins for the 11k openaiShim split.
  *
  * The historical monolith (~2.2k LoC) was split across 10 leaf modules in
- * refactor 11k. The existing openaiShim.test.ts has thorough coverage of
- * top-level behavior but several leaf helpers were not directly asserted —
- * they only worked transitively through end-to-end tests. This file pins
- * those helpers behaviorally so a future internal re-shuffle of the shim
- * cannot silently change them.
+ * refactor 11k. The end-to-end suites one directory up (clientHeaders,
+ * requestShaping, toolArguments, …) have thorough coverage of top-level
+ * behavior but several leaf helpers were not directly asserted — they only
+ * worked transitively through those tests. This file pins those helpers
+ * behaviorally so a future internal re-shuffle of the shim cannot silently
+ * change them.
  *
  * Add a test here when:
  *   - You extract a new pure helper out of the monolith.
@@ -15,7 +16,8 @@
  *     end-to-end tests would not have caught on regression.
  *
  * Do NOT add tests here for: streaming, request building, retry — those
- * belong in openaiShim.test.ts where the full client is wired up.
+ * belong in the end-to-end suites one directory up, where the full client is
+ * wired up through the shared shimHarness.
  */
 
 import { describe, expect, test } from 'bun:test'

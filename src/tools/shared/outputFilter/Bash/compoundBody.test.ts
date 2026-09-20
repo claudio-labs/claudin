@@ -31,6 +31,10 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  applyBashFilterToStdout,
+  planBashFilter,
+} from "src/tools/shared/outputFilter/Bash/index.js";
 import { runCompoundBody } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 
@@ -362,5 +366,282 @@ describe("the floor declines where a stage would corrupt rather than shorten", (
 
     expect(body.length).toBeLessThan(raw.length / 2);
     expect(body).toContain("BUILD-OK");
+  });
+});
+
+describe("compound commands — matchOutput short-circuit is disabled", () => {
+  test("plan marks compound vs atomic vs reducer-stripped commands", () => {
+    expect(planBashFilter("cd /tmp && git pull").isCompound).toBe(true);
+    expect(planBashFilter("git pull").isCompound).toBe(false);
+    // Reducer-stripped pipe resolves to an atomic base.
+    expect(planBashFilter("git status | tail -40").isCompound).toBe(false);
+  });
+
+  test("sentinel from one segment does not swallow the other segment's output", () => {
+    // Before the fix, `cd /tmp && git pull` with an up-to-date pull replaced the
+    // ENTIRE combined output with "✓ git pull: already up to date".
+    const plan = planBashFilter("cd /tmp && git pull");
+    expect(plan.filter?.name).toBe("git-pull");
+    const raw = "Already up to date.\nbuild artifacts written to dist/\n";
+    const result = applyBashFilterToStdout(raw, false, plan);
+    expect(result).toContain("build artifacts written to dist/");
+    expect(result).not.toContain("✓ git pull: already up to date");
+  });
+
+  test("atomic command keeps the matchOutput short-circuit", () => {
+    const plan = planBashFilter("git pull");
+    const result = applyBashFilterToStdout("Already up to date.\n", false, plan);
+    expect(result).toContain("✓ git pull: already up to date");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration harness — 67 cases (skipped until Phase 2)
+// ---------------------------------------------------------------------------
+
+describe.skip("integration harness", () => {
+  // --- git ---
+  test("git-status (clean state)", () => {
+    /* Phase 2 */
+  });
+  test("git-log (default)", () => {
+    /* Phase 2 */
+  });
+  test("git-log (oneline) — passthrough", () => {
+    /* Phase 2 */
+  });
+  test("git-diff (empty / no changes)", () => {
+    /* Phase 2 */
+  });
+  test("git-add (--dry-run)", () => {
+    /* Phase 2 */
+  });
+  test("git-push (--dry-run = up-to-date)", () => {
+    /* Phase 2 */
+  });
+  test("git blame (author + date dominate)", () => {
+    /* Phase 2 */
+  });
+  test("git branch -a (already compact)", () => {
+    /* Phase 2 */
+  });
+  test("git show HEAD --stat", () => {
+    /* Phase 2 */
+  });
+  test("git tag --list", () => {
+    /* Phase 2 */
+  });
+  test("git remote -v", () => {
+    /* Phase 2 */
+  });
+  test("git worktree list", () => {
+    /* Phase 2 */
+  });
+  test("git config --list", () => {
+    /* Phase 2 */
+  });
+  test("git reflog", () => {
+    /* Phase 2 */
+  });
+  test("git show HEAD (full with diff)", () => {
+    /* Phase 2 */
+  });
+  test("git fetch --dry-run", () => {
+    /* Phase 2 */
+  });
+  test("git clean -nd (dry run)", () => {
+    /* Phase 2 */
+  });
+  test("git pull (fast-forward 3 files)", () => {
+    /* Phase 2 */
+  });
+
+  // --- ls / find / grep ---
+  test("ls -la", () => {
+    /* Phase 2 */
+  });
+  test("ls (plain)", () => {
+    /* Phase 2 */
+  });
+  test("find (user-filtered)", () => {
+    /* Phase 2 */
+  });
+  test("grep -rn (absolute paths)", () => {
+    /* Phase 2 */
+  });
+  test("rg (absolute path — unexpected finding)", () => {
+    /* Phase 2 */
+  });
+  test("rg (relative path — compact case)", () => {
+    /* Phase 2 */
+  });
+
+  // --- cargo ---
+  test("cargo build (warm cache, warnings)", () => {
+    /* Phase 2 */
+  });
+  test("cargo build + dedup (repeated warning headers)", () => {
+    /* Phase 2 */
+  });
+  test("cargo check (cold cache)", () => {
+    /* Phase 2 */
+  });
+  test("cargo test --no-run", () => {
+    /* Phase 2 */
+  });
+  test("cargo clippy (40 warnings)", () => {
+    /* Phase 2 */
+  });
+
+  // --- dedup-specific ---
+  test("ps aux + dedup (kthreads nearly identical)", () => {
+    /* Phase 2 */
+  });
+  test("dedup: connection retry alternating (collapseRuns fails)", () => {
+    /* Phase 2 */
+  });
+  test("dedup: connection retry alternating (dedupGlobal resolves)", () => {
+    /* Phase 2 */
+  });
+  test("dedup: progress bar (collapseDigitTemplates)", () => {
+    /* Phase 2 */
+  });
+  test("dedup: progress bar (collapseRuns insufficient)", () => {
+    /* Phase 2 */
+  });
+  test("dedup: cargo warnings repeated (dedupGlobal)", () => {
+    /* Phase 2 */
+  });
+  test("dedup: cargo warning header repeated (dedupGlobal real)", () => {
+    /* Phase 2 */
+  });
+
+  // --- build / test tools ---
+  test("tsc --noEmit (truncated 50KB)", () => {
+    /* Phase 2 */
+  });
+  test("bun install (no changes)", () => {
+    /* Phase 2 */
+  });
+  test("npm ls --depth=0", () => {
+    /* Phase 2 */
+  });
+  test("pytest (clean — all pass)", () => {
+    /* Phase 2 */
+  });
+  test("ruff check (errors in project)", () => {
+    /* Phase 2 */
+  });
+  test("ruff check (clean — match_output)", () => {
+    /* Phase 2 */
+  });
+  test("bun test (already compact)", () => {
+    /* Phase 2 */
+  });
+  test("prettier --check", () => {
+    /* Phase 2 */
+  });
+  test("rubocop (preamble dominate)", () => {
+    /* Phase 2 */
+  });
+  test("rspec (clean — all pass)", () => {
+    /* Phase 2 */
+  });
+  test("go test -v (clean — all pass)", () => {
+    /* Phase 2 */
+  });
+  test("golangci-lint (1 issue)", () => {
+    /* Phase 2 */
+  });
+
+  // --- docker / process ---
+  test("docker ps -a", () => {
+    /* Phase 2 */
+  });
+  test("docker images", () => {
+    /* Phase 2 */
+  });
+  test("docker logs (postgres tail 50)", () => {
+    /* Phase 2 */
+  });
+  test("ps aux", () => {
+    /* Phase 2 */
+  });
+
+  // --- system ---
+  test("journalctl -u systemd-logind", () => {
+    /* Phase 2 */
+  });
+  test("df -h", () => {
+    /* Phase 2 */
+  });
+  test("du -h --max-depth=1", () => {
+    /* Phase 2 */
+  });
+  test("top -bn1", () => {
+    /* Phase 2 */
+  });
+  test("ss -tln (already minimal)", () => {
+    /* Phase 2 */
+  });
+  test("dig (DNS query)", () => {
+    /* Phase 2 */
+  });
+
+  // --- network ---
+  test("curl -v (TLS noise dominates)", () => {
+    /* Phase 2 */
+  });
+  test("wget", () => {
+    /* Phase 2 */
+  });
+
+  // --- misc ---
+  test("jq pretty-print (already compact)", () => {
+    /* Phase 2 */
+  });
+  test("env (filtered grep)", () => {
+    /* Phase 2 */
+  });
+  test("json structure (small json)", () => {
+    /* Phase 2 */
+  });
+  test("pip list", () => {
+    /* Phase 2 */
+  });
+  test("pip list --outdated", () => {
+    /* Phase 2 */
+  });
+  test("bundle install", () => {
+    /* Phase 2 */
+  });
+  test("tail (pacman log)", () => {
+    /* Phase 2 */
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Safety tests (skipped until Phase 2)
+// ---------------------------------------------------------------------------
+
+describe.skip("safety", () => {
+  test("cargo-build: warning preserves output (unless `warning`)", () => {
+    /* Phase 2 */
+  });
+  test("cargo-build: error preserves output", () => {
+    /* Phase 2 */
+  });
+  test("git-status: Unmerged path NOT collapsed by match_output", () => {
+    /* Phase 2 */
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rewrite tests (skipped until Phase 2)
+// ---------------------------------------------------------------------------
+
+describe.skip("rewrite", () => {
+  test("git-log: rewrite default → --oneline", () => {
+    /* Phase 2 */
   });
 });
