@@ -55,6 +55,7 @@ import {
   getAgentListingDeltaAttachment,
   getMcpInstructionsDeltaAttachment,
   getClaudeMdDeltaAttachment,
+  getMemoryIndexAttachment,
   getGitStatusDeltaAttachment,
   getCriticalSystemReminderAttachment,
   getOutputStyleAttachment,
@@ -201,6 +202,12 @@ export async function getAttachments(
             getClaudeMdDeltaAttachment(messages, { omitMemoryIndexes }),
           ),
         ]),
+    // Render-only sibling of claude_md_delta: the line that says the MEMORY.md
+    // indexes loaded. Same two gates, since it describes exactly the content
+    // those gates strip from the delta above.
+    ...(omitClaudeMd || omitMemoryIndexes
+      ? []
+      : [maybe('memory_index', () => getMemoryIndexAttachment(messages))]),
     ...(omitGitStatus
       ? []
       : [

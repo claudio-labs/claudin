@@ -24,6 +24,7 @@ import { TeammateMessageContent } from 'src/agent/ui/messages/UserTeammateMessag
 import { isShutdownApproved } from 'src/agent/coordinator/teammateMailbox.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { nestedMemoryBatchNoun } from 'src/tools/shared/collapseNestedMemory.js';
+import { formatMemoryIndexCounts, hasTruncatedMemoryIndex } from 'src/agent/ui/messages/memoryIndexLine.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
@@ -180,6 +181,27 @@ export function AttachmentMessage({
           </Line>
           {(verbose || isTranscriptMode) && files.map(file => <Line key={file.path}>
                 Loaded <Text bold>{file.displayPath}</Text>
+              </Line>)}
+        </Box>;
+      }
+    case 'memory_index':
+      {
+        // The MEMORY.md indexes entering context. Their content rides in
+        // claude_md_delta, which renders null (nullRenderingAttachments.ts) —
+        // this is the only place the user sees memory load. Same shape as the
+        // rules batch above: one count line, per-index paths under ctrl+o.
+        const indexes = attachment.indexes;
+        return <Box flexDirection="column" backgroundColor={bg}>
+          <Line>
+            Loaded <Text bold>{formatMemoryIndexCounts(indexes)}</Text>
+            {hasTruncatedMemoryIndex(indexes) && ' — index truncated'}
+            {!isTranscriptMode && <>
+                {' '}
+                <CtrlOToExpand />
+              </>}
+          </Line>
+          {(verbose || isTranscriptMode) && indexes.map(index => <Line key={index.path}>
+                Loaded <Text bold>{index.displayPath}</Text>
               </Line>)}
         </Box>;
       }

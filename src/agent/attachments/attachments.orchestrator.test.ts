@@ -3,9 +3,11 @@ import {
   getAttachments,
   getAttachmentMessages,
   getQueuedCommandAttachments,
+  createAttachmentMessage,
 } from 'src/agent/attachments/attachments.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
+import type { Message } from 'src/shared/types/message.js'
 
 // The claude_md_delta attachment reads getUserContext().claudeMd, which is
 // discovered from the cwd's CLAUDE.md/AGENTS.md. That doc is present in a dev
@@ -18,7 +20,11 @@ const realClaudemd = { ...(await import('src/memory/instructions/claudemd.js')) 
 const HERMETIC_CLAUDE_MD = '# Test project doc\nHermetic claude_md content.\n'
 // The family a slim sub-agent filters: one project doc, one team index.
 const PROJECT_DOC = 'PROJECT-DOC-BODY keep me'
-const TEAM_INDEX = 'TEAM-INDEX-BODY drop me'
+// The indexes carry real pointer lines so the memory_index counts below are
+// exercised rather than always landing on zero.
+const AUTO_INDEX = 'AUTO-INDEX-BODY\n- [One](one.md) — hook'
+const TEAM_INDEX =
+  'TEAM-INDEX-BODY drop me\n- [Two](two.md) — hook\n- [Three](three.md) — hook'
 
 // Minimal context skeleton — the disabled path uses none of these fields,
 // they exist to satisfy the type at the call site.
@@ -108,6 +114,7 @@ describe('getAttachments — subagent context-omission gates', () => {
       ...realClaudemd,
       getMemoryFiles: async () => [
         { path: '/repo/AGENTS.md', type: 'Project', content: PROJECT_DOC },
+        { path: '/repo/.claudin/memory/MEMORY.md', type: 'AutoMem', content: AUTO_INDEX },
         { path: '/repo/.claudin/memory/team/MEMORY.md', type: 'TeamMem', content: TEAM_INDEX },
       ],
     }))
@@ -184,6 +191,80 @@ describe('getAttachments — subagent context-omission gates', () => {
     const fullDelta = full.find(a => a.type === 'claude_md_delta')
     if (fullDelta?.type !== 'claude_md_delta') throw new Error('expected delta')
     expect(fullDelta.addedContent).toContain(HERMETIC_CLAUDE_MD.trim())
+  })
+
+  // The memory_index attachment is the render-only sibling of claude_md_delta:
+  // it carries no content (normalizeAttachmentForAPI returns []) and exists so
+  // the MEMORY.md indexes entering context are visible in the transcript.
+  test('memory_index counts the two indexes separately', async () => {
+    const out = await getAttachments(null, makeSubagentContext(false), null, [])
+    const attachment = out.find(a => a.type === 'memory_index')
+    if (attachment?.type !== 'memory_index') {
+      throw new Error('expected a memory_index attachment')
+    }
+    expect(
+      attachment.indexes.map(i => [i.kind, i.entryCount]),
+    ).toEqual([
+      ['auto', 1],
+      ['team', 2],
+    ])
+  })
+
+  test('omitClaudeMd suppresses memory_index with the family it describes', async () => {
+    const out = await getAttachments(null, makeSubagentContext(true), null, [])
+    expect(out.map(a => a.type)).not.toContain('memory_index')
+  })
+
+  test('omitMemoryIndexes alone suppresses memory_index but not the delta', async () => {
+    // The slim Code agent keeps the family and loses only the indexes, so the
+    // line that announces them has to go with them — while claude_md_delta,
+    // which still carries the project doc, stays.
+    const out = await getAttachments(
+      null,
+      makeSubagentContext(false, true, true),
+      null,
+      [],
+    )
+    const types = out.map(a => a.type)
+    expect(types).not.toContain('memory_index')
+    expect(types).toContain('claude_md_delta')
+  })
+
+  test('memory_index is announced once: an unchanged second turn is silent', async () => {
+    const ctx = makeSubagentContext(false)
+    const first = await getAttachments(null, ctx, null, [])
+    expect(first.map(a => a.type)).toContain('memory_index')
+
+    const history = first.map(a => createAttachmentMessage(a)) as Message[]
+    const second = await getAttachments(null, ctx, null, [], history)
+    expect(second.map(a => a.type)).not.toContain('memory_index')
+  })
+
+  test('a history whose signature differs re-announces the indexes', async () => {
+    // Guards the scanner against degenerating into "emit once, ever": an index
+    // that gained entries (or got cut) has to be re-announced.
+    const stale = [
+      createAttachmentMessage({
+        type: 'memory_index',
+        indexes: [
+          {
+            path: '/repo/.claudin/memory/MEMORY.md',
+            displayPath: '.claudin/memory/MEMORY.md',
+            kind: 'auto',
+            entryCount: 0,
+            totalEntryCount: 0,
+          },
+        ],
+      }),
+    ] as Message[]
+    const out = await getAttachments(
+      null,
+      makeSubagentContext(false),
+      null,
+      [],
+      stale,
+    )
+    expect(out.map(a => a.type)).toContain('memory_index')
   })
 })
 

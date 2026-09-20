@@ -52,7 +52,10 @@ import {
   filterInjectedMemoryFiles,
   getClaudeMds,
   getMemoryFiles,
+  type MemoryFileInfo,
 } from 'src/memory/instructions/claudemd.js'
+import { countIndexEntries } from 'src/memory/memdir/memdir.js'
+import { getDisplayPath } from 'src/shared/fs/file.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
@@ -68,7 +71,10 @@ import { getEffectiveContextWindowSize } from 'src/agent/compact/autoCompact.js'
 import { isEnvTruthy, getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/shared/types/message.js'
-import type { Attachment } from 'src/agent/attachments/types.js'
+import type {
+  Attachment,
+  MemoryIndexSummary,
+} from 'src/agent/attachments/types.js'
 
 /**
  * Detects when the local date has changed since the last turn (user coding
@@ -280,6 +286,71 @@ export async function getClaudeMdDeltaAttachment(
       isInitial: delta.isInitial,
     },
   ]
+}
+
+const isMemoryIndex = (file: MemoryFileInfo): boolean =>
+  file.type === 'AutoMem' || file.type === 'TeamMem'
+
+/** Exported for tests: pure, so it needs no module mock. */
+export function toMemoryIndexSummary(file: MemoryFileInfo): MemoryIndexSummary {
+  const entryCount = countIndexEntries(file.content)
+  // parsing.ts keeps the untruncated body in rawContent whenever the loaded
+  // content differs from disk, so the pre-truncation total is recoverable
+  // without a second read. When they match, nothing was cut.
+  const totalEntryCount = file.rawContent
+    ? countIndexEntries(file.rawContent)
+    : entryCount
+  return {
+    path: file.path,
+    displayPath: getDisplayPath(file.path),
+    kind: file.type === 'TeamMem' ? 'team' : 'auto',
+    entryCount,
+    totalEntryCount: Math.max(entryCount, totalEntryCount),
+  }
+}
+
+const memoryIndexSignature = (
+  indexes: readonly MemoryIndexSummary[],
+): string =>
+  indexes
+    .map(i => `${i.path}:${i.entryCount}/${i.totalEntryCount}`)
+    .join('|')
+
+/**
+ * Memory-index attachment — the one visible trace of the two MEMORY.md
+ * indexes entering context.
+ *
+ * Their CONTENT ships inside `claude_md_delta` (above), which renders null
+ * because it carries the whole CLAUDE.md family and no single line could name
+ * it. This attachment carries no content at all — `normalizeAttachmentForAPI`
+ * returns [] — so it costs nothing on the wire and exists purely so the user
+ * sees the indexes load, the way `nested_memory_batch` shows loaded rules.
+ *
+ * Re-emits only when the signature changes (paths, entry counts, truncation),
+ * so an unchanged turn announces nothing. Compaction drops the prior
+ * attachment along with the rest of the history, which re-announces the
+ * indexes exactly on the turn they are re-injected.
+ */
+export async function getMemoryIndexAttachment(
+  messages: Message[] | undefined,
+): Promise<Attachment[]> {
+  // filterInjectedMemoryFiles drops both indexes when the per-turn recall gate
+  // is on — precisely the case where they are NOT in the system prompt, so the
+  // line has to disappear with them.
+  const indexes = filterInjectedMemoryFiles(await getMemoryFiles())
+    .filter(isMemoryIndex)
+    .map(toMemoryIndexSummary)
+  if (indexes.length === 0) return []
+
+  let lastSignature: string | null = null
+  for (const msg of messages ?? []) {
+    if (msg.type !== 'attachment') continue
+    if (msg.attachment.type !== 'memory_index') continue
+    lastSignature = memoryIndexSignature(msg.attachment.indexes)
+  }
+  if (lastSignature === memoryIndexSignature(indexes)) return []
+
+  return [{ type: 'memory_index', indexes }]
 }
 
 /**
