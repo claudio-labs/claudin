@@ -544,6 +544,9 @@ export const FileReadTool = buildTool({
       existingState &&
       !existingState.isPartialView &&
       existingState.offset !== undefined &&
+      // Written by the watcher or a refusal, never delivered as a Read
+      // tool_result — a stub would point at the OLD bytes (fileStateCache.ts).
+      !existingState.dedupExempt &&
       view === undefined &&
       symbol === undefined &&
       // An encoding override asks for different characters out of the same

@@ -494,11 +494,16 @@ const DIFF_SNIPPET_MAX_BYTES = 8192
 /**
  * Used for attachments, to show snippets when files change.
  *
+ * `firstLine` is the file line the two contents start at, so a diff of one
+ * slice of the file (the changed-files watcher on a range entry) is numbered
+ * in file lines rather than slice lines.
+ *
  * TODO: Unify this with the other snippet logic.
  */
 export function getSnippetForTwoFileDiff(
   fileAContents: string,
   fileBContents: string,
+  firstLine = 1,
 ): string {
   const patch = structuredPatch(
     'file.txt',
@@ -519,7 +524,7 @@ export function getSnippetForTwoFileDiff(
 
   const full = patch.hunks
     .map(_ => ({
-      startLine: _.oldStart,
+      startLine: _.oldStart + firstLine - 1,
       content: _.lines
         // Filter out deleted lines AND diff metadata lines
         .filter(_ => !_.startsWith('-') && !_.startsWith('\\'))

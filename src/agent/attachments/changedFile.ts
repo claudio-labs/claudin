@@ -33,9 +33,16 @@ import {
   readImageWithTokenBudget,
 } from 'src/tools/FileReadTool/FileReadTool.js'
 import { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
-import { FileTooLargeError } from 'src/shared/fs/readFileInRange.js'
+import {
+  FileTooLargeError,
+  readFileInRange,
+} from 'src/shared/fs/readFileInRange.js'
 import { getFileModificationTimeAsync } from 'src/shared/fs/file.js'
-import type { FileState, FileStateCache } from 'src/shared/fs/fileStateCache.js'
+import type {
+  FileState,
+  FileStateCache,
+  SeenRange,
+} from 'src/shared/fs/fileStateCache.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
@@ -76,11 +83,6 @@ export async function getChangedFileAttachments(
   const appState = toolUseContext.getAppState()
   const results = await Promise.all(
     candidates.map(async ([filePath, fileState]) => {
-      // TODO: Implement offset/limit support for changed files
-      if (fileState.offset !== undefined || fileState.limit !== undefined) {
-        return null
-      }
-
       const normalizedPath = expandPath(filePath)
 
       // Check if file has a deny rule configured
@@ -116,6 +118,16 @@ export async function refreshChangedFile(
     const mtime = await getFileModificationTimeAsync(normalizedPath)
     if (mtime <= fileState.timestamp) {
       return null
+    }
+
+    if (isRangeEntry(fileState)) {
+      return refreshRangeEntry(
+        cacheKey,
+        normalizedPath,
+        fileState,
+        mtime,
+        readFileState,
+      )
     }
 
     // `view: 'full'` is load-bearing, not a default made explicit — see the
@@ -209,4 +221,111 @@ export async function refreshChangedFile(
     }
     return null
   }
+}
+
+// ---------------------------------------------------------------------------
+// RANGE ENTRIES
+//
+// Until 2026-09-20 the pass skipped every entry with an offset or a limit — and
+// a plain Read stores `offset: 1` — so the watcher only ever covered files the
+// model had WRITTEN with a tool. A file it had only read, then changed by a
+// `sed -i`, a build's in-place feature() pass, a sub-agent or a formatter, was
+// never refreshed: all 30 "modified since read" refusals in the 2026-09-14..20
+// corpus, 24 of them recovered by re-reading a slice the model was holding.
+//
+// A range entry is refreshed WITHOUT FileReadTool: nothing here is sent to the
+// model except the diff of its own slice, so the token cap that protects a
+// Read result has no business refusing the refresh, and a whole-file re-read
+// would turn "you saw lines 40-60" into "you saw the file". The file is read
+// once, and each slice the entry stands for — its own plus the earlier ones
+// `carrySeenRanges` kept — is compared at its offset, line by trimmed line
+// (the coverage lane's own tolerance, readBeforeEditMessages.ts). Slices that
+// still match keep authorizing writes; the rest are dropped, since they now
+// describe bytes that are gone. Same bytes under a new mtime (the build touch)
+// therefore cost nothing but a timestamp.
+// ---------------------------------------------------------------------------
+
+/** Read this much of a file to re-verify its slices; past it the entry is evicted like a too-large whole-file one. */
+const RANGE_REFRESH_MAX_BYTES = 10 * 1024 * 1024
+
+/** A Read-written slice. A full Read (`offset === 1`, no limit) is a whole-file view and takes the lane above. */
+function isRangeEntry(state: FileState): boolean {
+  if (state.isPartialView) return false
+  return (
+    (state.offset !== undefined && state.offset !== 1) ||
+    state.limit !== undefined
+  )
+}
+
+/** Lines of a slice, with the trailing newline's phantom line dropped — the reading the coverage lane uses. */
+function sliceLines(content: string): string[] {
+  const body = content.endsWith('\n') ? content.slice(0, -1) : content
+  return body === '' ? [] : body.split('\n')
+}
+
+function sameTrimmed(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]!.trim() !== b[i]!.trim()) return false
+  }
+  return true
+}
+
+async function refreshRangeEntry(
+  cacheKey: string,
+  normalizedPath: string,
+  fileState: FileState,
+  mtime: number,
+  readFileState: FileStateCache,
+): Promise<Attachment | null> {
+  let text: string
+  try {
+    ;({ content: text } = await readFileInRange(
+      normalizedPath,
+      0,
+      undefined,
+      RANGE_REFRESH_MAX_BYTES,
+    ))
+  } catch (err) {
+    if (isENOENT(err) || err instanceof FileTooLargeError) {
+      readFileState.delete(cacheKey)
+      return null
+    }
+    // Transient (EACCES churn, an atomic-save gap): leave the entry, the next
+    // pass retries — the same policy as the whole-file lane.
+    logError(err)
+    return null
+  }
+
+  const lines = sliceLines(text)
+  const offset = fileState.offset ?? 1
+  const oldOwn = sliceLines(fileState.content)
+  const newOwn = lines.slice(
+    offset - 1,
+    fileState.limit === undefined ? undefined : offset - 1 + fileState.limit,
+  )
+  const survivors: SeenRange[] = (fileState.seenRanges ?? []).filter(range => {
+    const was = sliceLines(range.content)
+    const now = lines.slice(range.offset - 1, range.offset - 1 + was.length)
+    return sameTrimmed(was, now)
+  })
+
+  const ownChanged = !sameTrimmed(oldOwn, newOwn)
+  readFileState.set(cacheKey, {
+    content: newOwn.length === 0 ? '' : `${newOwn.join('\n')}\n`,
+    timestamp: mtime,
+    offset: fileState.offset,
+    limit: fileState.limit,
+    seenRanges: survivors.length > 0 ? survivors : undefined,
+    dedupExempt: true,
+  })
+
+  if (!ownChanged) return null
+  const snippet = getSnippetForTwoFileDiff(
+    fileState.content,
+    newOwn.length === 0 ? '' : `${newOwn.join('\n')}\n`,
+    offset,
+  )
+  if (snippet === '') return null
+  return { type: 'edited_text_file' as const, filename: normalizedPath, snippet }
 }

@@ -110,6 +110,16 @@ export type FileState = {
   // dropped the moment `timestamp` changes, so bytes from a previous version
   // of the file can never authorize a write.
   seenRanges?: SeenRange[]
+  // This entry's bytes were never delivered to the model as a Read
+  // tool_result: the changed-files watcher rewrote a range entry after an
+  // out-of-band change (`attachments/changedFile.ts`), or a refused write
+  // served the region it needed (`tools/shared/servedRegion.ts`). FileReadTool's
+  // dedup gate must not stand on such an entry — its `file_unchanged` stub
+  // says "unchanged since your last read", and the last Read in the
+  // transcript shows the OLD bytes. The next real Read replaces the entry and
+  // the flag with it. Post-write entries need no flag: they carry
+  // `offset: undefined`, which the gate already excludes.
+  dedupExempt?: true
 }
 
 /**

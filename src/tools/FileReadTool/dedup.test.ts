@@ -88,6 +88,28 @@ describe('FileReadTool — dedup vs server-side tool clearing', () => {
     const second = (await read(p, {}, ctx)).data
     expect(second.type).toBe('file_unchanged')
   })
+
+  test('an entry the watcher or a refusal wrote never answers with the stub', async () => {
+    // Such an entry carries bytes the model never received as a Read result
+    // (fileStateCache.ts `dedupExempt`): the changed-files watcher rewrote a
+    // range after an out-of-band edit, or a refused write served the region.
+    // Its timestamp IS the current mtime, which is exactly what the gate
+    // compares, so without the flag the re-read would be a `file_unchanged`
+    // stub pointing at the OLD slice in the transcript.
+    const p = writeFixture('dedup-exempt.txt', 'alpha\nbeta')
+    const ctx = makeContext()
+
+    const first = (await read(p, {}, ctx)).data
+    expect(first.type).toBe('text')
+
+    const entry = ctx.readFileState.get(p)!
+    ctx.readFileState.set(p, { ...entry, dedupExempt: true })
+
+    const second = (await read(p, {}, ctx)).data
+    expect(second.type).toBe('text')
+    // And the real Read replaces the entry, flag included.
+    expect(ctx.readFileState.get(p)!.dedupExempt).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------

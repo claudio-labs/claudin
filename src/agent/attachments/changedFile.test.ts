@@ -1,6 +1,13 @@
 // The auto-outline pivot is behind a build-time flag that the test preload
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, unlinkSync, utimesSync, writeFileSync } from 'fs'
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  unlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -130,6 +137,32 @@ function postWriteEntry(content: string, timestamp: number): FileState {
   return { content, timestamp, offset: undefined, limit: undefined }
 }
 
+/** `count` lines `l1..lN`, with the given ones replaced. */
+function numbered(count: number, replace: Record<number, string> = {}): string {
+  return (
+    Array.from({ length: count }, (_, i) => replace[i + 1] ?? `l${i + 1}`).join(
+      '\n',
+    ) + '\n'
+  )
+}
+
+/** The entry a Read(offset, limit) leaves behind. */
+function rangeEntry(
+  path: string,
+  offset: number,
+  limit: number,
+  seenRanges?: FileState['seenRanges'],
+): FileState {
+  const lines = readFileSync(path, 'utf8').split('\n')
+  return {
+    content: `${lines.slice(offset - 1, offset - 1 + limit).join('\n')}\n`,
+    timestamp: getFileModificationTime(path),
+    offset,
+    limit,
+    seenRanges,
+  }
+}
+
 describe('changedFileCandidates', () => {
   test('a pass does not change which entry the cache evicts next', () => {
     // lru-cache counts `get()` as a use and `keys()` yields MRU → LRU, so a
@@ -152,6 +185,106 @@ describe('changedFileCandidates', () => {
 })
 
 describe('refreshChangedFile', () => {
+  describe('a range entry', () => {
+    test('is refreshed in place when the file changes outside the slice', async () => {
+      // The watcher used to skip every entry with an offset, so a file the
+      // model had only READ was never refreshed after a `sed -i`, a build
+      // touch or a sub-agent edit — 30 "modified since read" refusals in the
+      // 2026-09-14..20 corpus, all on such entries.
+      const p = join(dir, 'range-outside.txt')
+      writeFileSync(p, numbered(60))
+      const ctx = makeContext()
+      ctx.readFileState.set(p, rangeEntry(p, 1, 10))
+
+      writeAhead(p, numbered(60, { 40: 'L40' }))
+      const attachment = await refreshChangedFile(
+        p,
+        p,
+        ctx.readFileState.get(p)!,
+        ctx,
+      )
+
+      expect(attachment).toBeNull()
+      const entry = ctx.readFileState.get(p)!
+      expect(entry.timestamp).toBe(getFileModificationTime(p))
+      expect(entry.offset).toBe(1)
+      expect(entry.limit).toBe(10)
+      expect(entry.content).toBe(numbered(10))
+      expect(entry.dedupExempt).toBe(true)
+    })
+
+    test('reports the change with FILE line numbers when the slice itself changed', async () => {
+      const p = join(dir, 'range-inside.txt')
+      writeFileSync(p, numbered(60))
+      const ctx = makeContext()
+      ctx.readFileState.set(p, rangeEntry(p, 40, 6))
+
+      writeAhead(p, numbered(60, { 42: 'L42' }))
+      const attachment = await refreshChangedFile(
+        p,
+        p,
+        ctx.readFileState.get(p)!,
+        ctx,
+      )
+
+      expect(attachment).toMatchObject({ type: 'edited_text_file' })
+      expect((attachment as { snippet: string }).snippet).toContain('42→L42')
+      expect(ctx.readFileState.get(p)!.content).toBe(
+        'l40\nl41\nL42\nl43\nl44\nl45\n',
+      )
+    })
+
+    test('a touch with identical bytes moves the timestamp and nothing else', async () => {
+      const p = join(dir, 'range-touch.txt')
+      writeFileSync(p, numbered(60))
+      const ctx = makeContext()
+      const before = rangeEntry(p, 1, 10, [{ offset: 40, content: 'l40\nl41\n' }])
+      ctx.readFileState.set(p, before)
+
+      const when = new Date(Date.now() + 10_000)
+      utimesSync(p, when, when)
+      expect(
+        await refreshChangedFile(p, p, ctx.readFileState.get(p)!, ctx),
+      ).toBeNull()
+
+      const entry = ctx.readFileState.get(p)!
+      expect(entry.timestamp).toBeGreaterThan(before.timestamp)
+      expect(entry.seenRanges).toEqual([{ offset: 40, content: 'l40\nl41\n' }])
+    })
+
+    test('keeps the carried slices that still match and drops the ones that do not', async () => {
+      const p = join(dir, 'range-carried.txt')
+      writeFileSync(p, numbered(60))
+      const ctx = makeContext()
+      ctx.readFileState.set(
+        p,
+        rangeEntry(p, 50, 5, [
+          { offset: 1, content: 'l1\nl2\nl3\n' },
+          { offset: 20, content: 'l20\nl21\n' },
+        ]),
+      )
+
+      writeAhead(p, numbered(60, { 21: 'L21' }))
+      await refreshChangedFile(p, p, ctx.readFileState.get(p)!, ctx)
+
+      expect(ctx.readFileState.get(p)!.seenRanges).toEqual([
+        { offset: 1, content: 'l1\nl2\nl3\n' },
+      ])
+    })
+
+    test('a deleted file is evicted', async () => {
+      const p = join(dir, 'range-gone.txt')
+      writeFileSync(p, numbered(10))
+      const ctx = makeContext()
+      const entry = rangeEntry(p, 2, 3)
+      ctx.readFileState.set(p, entry)
+      unlinkSync(p)
+
+      expect(await refreshChangedFile(p, p, entry, ctx)).toBeNull()
+      expect(ctx.readFileState.has(p)).toBe(false)
+    })
+  })
+
   test('a large code file that changed produces a snippet, not silence', () => {
     // With the vanilla Read this returned null: the pivot answered with an
     // outline, which is neither 'text' nor 'image'.
