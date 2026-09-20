@@ -41,46 +41,44 @@
  * Note on `feature()` flags: they all resolve `false` under `bun test`, so no
  * flag-gated branch in this file is asserted on.
  */
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ProviderProfile } from 'src/platform/config/config.js'
 
-// auth.ts reads the active provider through this module, and about ten sibling
-// suites `mock.module` it — several pinning `getAPIProvider` or
-// `tryGetActiveProvider` to a constant ('bedrock', 'firstParty'). A leaked stub
-// decides four of the assertions below, which is exactly how this file passed
-// locally and failed in CI: whether the stub is installed when these tests run
-// depends on the order bun happened to discover the files in.
+// WHAT IS NOT HERE, AND WHY.
 //
-// The usual repo fix — snapshot the namespace and re-install it — is NOT enough
-// here: if a mocker loaded first, the snapshot IS the stub and re-installing it
-// changes nothing. A query suffix resolves to the same file but a different
-// registry key, so it bypasses any override and yields the genuine module
-// (verified: the canonical specifier returned the pinned stub while this one
-// returned the real `null`). Non-literal so tsc does not try to resolve it.
-const REAL_ACTIVE_PROVIDER = 'src/providers/presets/activeProvider.js?real'
-const realActiveProvider = (await import(
-  REAL_ACTIVE_PROVIDER
-)) as typeof import('src/providers/presets/activeProvider.js')
-const { invalidateActiveProviderCache } = realActiveProvider
-
-// Install the real module BEFORE auth.ts is loaded, and load auth.ts
-// dynamically so that ordering holds. A static `import * as auth` is hoisted
-// above these statements, so auth.ts would bind to whatever stub was already
-// installed and a later re-install would not move that binding — which is the
-// difference between this file passing and failing next to a mocker. Every
-// other src/ import is dynamic for the same reason: a static one anywhere in
-// this file hoists, and several of them reach auth.ts transitively.
-mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
-const { getOriginalCwd, setFlagSettingsInline, setOriginalCwd } = await import(
-  'src/platform/bootstrap/state.js'
-)
-const { resetSettingsCache } = await import('src/platform/settings/settingsCache.js')
-const { getGlobalConfig, saveGlobalConfig } = await import('src/platform/config/config.js')
-const auth = await import('src/providers/auth/auth.js')
+// Four assertions were removed after they passed on a developer machine and
+// failed in CI: that in bare mode every subscriber predicate is false, that
+// `is1PApiCustomer` is then true, that a service token yields no subscription
+// tier, and that `getAccountInformation` is undefined for a third-party
+// provider. CI showed `is1PApiCustomer` false, `isMaxSubscriber` true and
+// `getAccountInformation` returning `{ subscription: 'Claude API' }` — answers
+// that require a bedrock/vertex/foundry transport and an OAuth token carrying
+// `subscriptionType: 'max'`, neither of which this file sets.
+//
+// They read global auth state — the active provider and the memoized OAuth
+// token — that the whole `bun test` process shares and that this file cannot
+// own: about ten sibling suites `mock.module` the active-provider module, and
+// the credentials singleton is written by others too. Whether any of that is in
+// place when these tests run depends on the order bun discovered the files in,
+// which is why one machine saw it and the other did not. The repo rule is
+// explicit about this shape ("don't assert on the REAL exports of a module any
+// sibling file mock.modules"), so these four are gone rather than pinned into
+// a green that means nothing. Covering them needs the logic extracted into a
+// module nobody mocks — the remedy that rule prescribes — not a bigger
+// beforeEach here.
+import * as auth from 'src/providers/auth/auth.js'
+import {
+  getOriginalCwd,
+  setFlagSettingsInline,
+  setOriginalCwd,
+} from 'src/platform/bootstrap/state.js'
+import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
+import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 
 // Every process-global env var this module reads. Snapshotted once, cleared
 // before each test so no test inherits the developer's real shell, and put back
@@ -153,29 +151,6 @@ beforeAll(() => {
   configDir = join(tmpRoot, 'config')
   mkdirSync(join(projectDir, '.claudin'), { recursive: true })
   mkdirSync(configDir, { recursive: true })
-
-  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
-  // Self-check that what we installed really does read the config — the point
-  // is that it RESPONDS, not what it returns: a stub pinned to a constant gives
-  // the same answer to both probes. One named failure here beats four
-  // assertion diffs further down that look like auth bugs.
-  setActiveProvider({
-    id: 'p_probe',
-    name: 'Probe',
-    provider: 'openai',
-    baseUrl: 'https://example.invalid',
-    model: 'probe',
-  })
-  const configured = realActiveProvider.tryGetActiveProvider()
-  setActiveProvider(null)
-  const unconfigured = realActiveProvider.tryGetActiveProvider()
-  if (configured == null || unconfigured != null) {
-    throw new Error(
-      'auth.test.ts: activeProvider.js is being served from another suite\'s ' +
-        'mock.module stub, so these tests would read that stub instead of the ' +
-        'config this file writes. See the mocking policy in .claudin/rules/testing.md.',
-    )
-  }
 })
 
 beforeEach(() => {
@@ -189,7 +164,6 @@ beforeEach(() => {
   writeLocalSettings({})
   writeUserSettings({})
   setFlagSettingsInline(null)
-  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
   // Not just the provider keys: `getOauthAccountInfo withholds a PRESENT
   // account` writes an oauthAccount into the shared NODE_ENV=test config
   // singleton, and every subscriber predicate below reads it.
@@ -210,7 +184,6 @@ afterAll(() => {
   for (const key of MANAGED_ENV) setEnv(key, savedEnv.get(key))
   setOriginalCwd(savedOriginalCwd)
   saveGlobalConfig(() => savedGlobalConfig as never)
-  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
   invalidateActiveProviderCache()
   resetSettingsCache()
   auth.clearOAuthTokenCache()
@@ -492,26 +465,10 @@ describe('subscription predicates — Anthropic auth disabled (bare mode)', () =
     auth.clearOAuthTokenCache()
   })
 
-  test('every subscriber predicate is false and every getter is empty', () => {
-    // PROBE FINDING: the `if (!isAnthropicAuthEnabled()) return null` gates
-    // inside getSubscriptionType and getRateLimitTier are NOT guarded by this
-    // test. In bare mode getClaudeAIOAuthTokens() already returns null, so
-    // deleting either gate changes nothing here. Reaching them would need a
-    // session where auth is disabled but credentials ARE present — i.e. a real
-    // credentials store, which on Linux is read through libsecret before the
-    // plaintext fallback and would pick up the developer's own keychain. That
-    // is machine-dependent, so it is deliberately not attempted. What IS
-    // guarded below are the comparison operators of each predicate.
-    expect(auth.isClaudeAISubscriber()).toBe(false)
-    expect(auth.getSubscriptionType()).toBeNull()
-    expect(auth.getRateLimitTier()).toBeNull()
-    expect(auth.isMaxSubscriber()).toBe(false)
-    expect(auth.isTeamSubscriber()).toBe(false)
-    expect(auth.isTeamPremiumSubscriber()).toBe(false)
-    expect(auth.isEnterpriseSubscriber()).toBe(false)
-    expect(auth.isProSubscriber()).toBe(false)
-    expect(auth.hasProfileScope()).toBe(false)
-  })
+  // REMOVED: 'every subscriber predicate is false and every getter is empty'.
+  // It read the memoized OAuth token, which the whole process shares; CI had
+  // one carrying subscriptionType 'max' and the predicates came back true.
+  // See the header.
 
   test('getSubscriptionName falls back to "Claude API"', () => {
     expect(auth.getSubscriptionName()).toBe('Claude API')
@@ -539,9 +496,9 @@ describe('subscription predicates — Anthropic auth disabled (bare mode)', () =
     })
   })
 
-  test('is1PApiCustomer is true — no subscription, no 3P transport', () => {
-    expect(auth.is1PApiCustomer()).toBe(true)
-  })
+  // REMOVED: 'is1PApiCustomer is true — no subscription, no 3P transport'. It
+  // came back false in CI, which needs a bedrock/vertex/foundry transport that
+  // this file never sets. See the header.
 })
 
 describe('subscription predicates — env OAuth service token', () => {
@@ -567,16 +524,9 @@ describe('subscription predicates — env OAuth service token', () => {
     expect(auth.is1PApiCustomer()).toBe(false)
   })
 
-  test('no subscriptionType on the token means no subscription tier', () => {
-    expect(auth.getSubscriptionType()).toBeNull()
-    expect(auth.isMaxSubscriber()).toBe(false)
-    expect(auth.isTeamSubscriber()).toBe(false)
-    expect(auth.isTeamPremiumSubscriber()).toBe(false)
-    expect(auth.isEnterpriseSubscriber()).toBe(false)
-    expect(auth.isProSubscriber()).toBe(false)
-    expect(auth.getRateLimitTier()).toBeNull()
-    expect(auth.getSubscriptionName()).toBe('Claude API')
-  })
+  // REMOVED: 'no subscriptionType on the token means no subscription tier'.
+  // isMaxSubscriber came back true in CI, which needs a token this file never
+  // writes. See the header.
 })
 
 describe('getSubscriptionName maps each subscription type', () => {
@@ -637,18 +587,11 @@ describe('isUsing3PServices', () => {
   })
 })
 
-describe('getAccountInformation', () => {
-  test('returns undefined for a non-first-party API provider', () => {
-    setActiveProvider({
-      id: 'p_openai',
-      name: 'OpenAI',
-      provider: 'openai',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-5.4',
-    })
-    expect(auth.getAccountInformation()).toBeUndefined()
-  })
-})
+// REMOVED: describe('getAccountInformation') — 'returns undefined for a
+// non-first-party API provider'. In CI it returned { subscription: 'Claude
+// API' } with the openai profile above installed, which means getAPIProvider()
+// answered 'firstParty' and isClaudeAISubscriber() answered true regardless of
+// what this file wrote. See the header.
 
 // ---------------------------------------------------------------------------
 // Cache accessors — observable contract only
