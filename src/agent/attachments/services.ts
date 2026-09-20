@@ -21,7 +21,6 @@ import { getViewedTeammateTask } from 'src/terminal/state/selectors.js'
 import { logError } from 'src/shared/log.js'
 import { toError } from 'src/shared/errors.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
-import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   checkForAsyncHookResponses,
@@ -60,7 +59,7 @@ import {
 } from 'src/agent/attachments/mentions.js'
 import { generateFileAttachment } from 'src/agent/attachments/file-pipeline.js'
 import { getNestedMemoryAttachmentsForFile } from 'src/agent/attachments/memory.js'
-import { refreshChangedFile } from 'src/agent/attachments/changedFile.js'
+import { getChangedFileAttachments } from 'src/agent/attachments/changedFile.js'
 
 void _unusedGetFs
 
@@ -291,38 +290,9 @@ export async function processMcpResourceAttachments(
 export async function getChangedFiles(
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
-  const filePaths = cacheKeys(toolUseContext.readFileState)
-  if (filePaths.length === 0) return []
-
-  const appState = toolUseContext.getAppState()
-  const results = await Promise.all(
-    filePaths.map(async filePath => {
-      const fileState = toolUseContext.readFileState.get(filePath)
-      if (!fileState) return null
-
-      // TODO: Implement offset/limit support for changed files
-      if (fileState.offset !== undefined || fileState.limit !== undefined) {
-        return null
-      }
-
-      const normalizedPath = expandPath(filePath)
-
-      // Check if file has a deny rule configured
-      if (isFileReadDenied(normalizedPath, appState.toolPermissionContext)) {
-        return null
-      }
-
-      // The re-read, the write-back and the eviction rules live in
-      // changedFile.ts, where a test can reach them.
-      return refreshChangedFile(
-        filePath,
-        normalizedPath,
-        fileState,
-        toolUseContext,
-      )
-    }),
-  )
-  return results.filter(result => result != null) as Attachment[]
+  // The loop, the re-read, the write-back and the eviction rules all live in
+  // changedFile.ts, where a test can reach them.
+  return getChangedFileAttachments(toolUseContext)
 }
 
 /**

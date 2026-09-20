@@ -35,10 +35,54 @@ import {
 import { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
 import { FileTooLargeError } from 'src/shared/fs/readFileInRange.js'
 import { getFileModificationTimeAsync } from 'src/shared/fs/file.js'
-import type { FileState } from 'src/shared/fs/fileStateCache.js'
+import { cacheKeys, type FileState } from 'src/shared/fs/fileStateCache.js'
+import { expandPath } from 'src/shared/fs/path.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
+import { isFileReadDenied } from 'src/agent/attachments/shared.js'
+
+/**
+ * The changed-files pass: one `refreshChangedFile` per entry the watcher
+ * covers. Lives here rather than in `services.ts` so the end-to-end scenarios
+ * (`src/__tests__/readGateScenarios.test.ts`) can drive the real selection —
+ * which entries are visited, and in what order — instead of a hand-rolled
+ * copy of the loop; `services.ts` only delegates.
+ */
+export async function getChangedFileAttachments(
+  toolUseContext: ToolUseContext,
+): Promise<Attachment[]> {
+  const filePaths = cacheKeys(toolUseContext.readFileState)
+  if (filePaths.length === 0) return []
+
+  const appState = toolUseContext.getAppState()
+  const results = await Promise.all(
+    filePaths.map(async filePath => {
+      const fileState = toolUseContext.readFileState.get(filePath)
+      if (!fileState) return null
+
+      // TODO: Implement offset/limit support for changed files
+      if (fileState.offset !== undefined || fileState.limit !== undefined) {
+        return null
+      }
+
+      const normalizedPath = expandPath(filePath)
+
+      // Check if file has a deny rule configured
+      if (isFileReadDenied(normalizedPath, appState.toolPermissionContext)) {
+        return null
+      }
+
+      return refreshChangedFile(
+        filePath,
+        normalizedPath,
+        fileState,
+        toolUseContext,
+      )
+    }),
+  )
+  return results.filter(result => result != null) as Attachment[]
+}
 
 /**
  * `cacheKey` is the key the entry is stored under and `normalizedPath` its

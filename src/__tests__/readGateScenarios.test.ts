@@ -10,6 +10,7 @@ import {
 } from 'src/tools/Tool.js'
 import {
   createFileStateCacheWithSizeLimit,
+  FileStateCache,
   READ_FILE_STATE_CACHE_SIZE,
 } from 'src/shared/fs/fileStateCache.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
@@ -20,7 +21,10 @@ import {
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
 } from 'src/tools/FileReadTool/outlineView.js'
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
-import { refreshChangedFile } from 'src/agent/attachments/changedFile.js'
+import {
+  getChangedFileAttachments,
+  refreshChangedFile,
+} from 'src/agent/attachments/changedFile.js'
 
 // ---------------------------------------------------------------------------
 // End-to-end read-gate scenarios: the real Read tool writes the cache entry,
@@ -34,6 +38,17 @@ import { refreshChangedFile } from 'src/agent/attachments/changedFile.js'
 //   S3  an out-of-band rewrite downgrading the entry to outline  (38/50 refusals)
 //   S4  the same when the file cannot be re-read                 (blind-write guard)
 //   S5  accumulated coverage must not survive a changed file     (blind-write guard)
+//
+// And from the 2026-09-14..20 census (tool-error-census-2026-09-20.md), where a
+// third of the read-gate refusals were the harness losing state it had:
+//   S6  Read(range), then the file changes OUTSIDE the range     (19 `sed -i` stale refusals)
+//   S7  Read(range), then the file changes INSIDE the range      (the model is told)
+//   S8  Read(range), then a touch with identical bytes           (4 `bun run build` refusals)
+//   S9  two ranges, one of them rewritten                        (coverage survives per slice)
+//   S10 a write, a watcher pass, then a new Read                 (16 "wrote-then-lost")
+//   S12 a whole-file entry over the cap changes on disk          (evicted as "not read yet")
+//   S13 Read(range) then a patch on the import block             (52 of 102 coverage refusals)
+//   S14 after a refresh, a re-Read returns the body, not a stub  (the "re-read that breaks")
 // ---------------------------------------------------------------------------
 
 /**
@@ -133,6 +148,24 @@ function patch(path: string, body: string) {
 function refusal(result: ReturnType<typeof patch>): string {
   if (result.result) throw new Error('expected a refusal, got a pass')
   return result.message
+}
+
+/** One watcher pass, exactly as the attachment pipeline runs it after every tool iteration. */
+function watcherPass() {
+  return getChangedFileAttachments(ctx)
+}
+
+/** Bump the mtime without changing a byte — what `bun run build`'s in-place feature() pass leaves behind. */
+function touchAhead(path: string, secondsAhead = 10): void {
+  const when = new Date(Date.now() + secondsAhead * 1000)
+  utimesSync(path, when, when)
+}
+
+function linesWith(count: number, replace: Record<number, string>): string {
+  return (
+    Array.from({ length: count }, (_, i) => replace[i + 1] ?? `l${i + 1}`).join('\n') +
+    '\n'
+  )
 }
 
 describe('S1 — a file walked in two ranges', () => {
@@ -295,5 +328,204 @@ describe('S5 — accumulated coverage does not survive a changed file', () => {
     expect(patch(p, '@@\n-l3\n+X3').result).toBe(false)
     // And the refusal describes only what is still true.
     expect(refusal(patch(p, '@@\n-l3\n+X3'))).toContain('lines 40-45')
+  })
+})
+
+describe('S6 — Read(range), then the file changes outside the range', () => {
+  test('the watcher refreshes the entry and the patch inside the range passes', async () => {
+    // 19 of the 30 "modified since read" refusals this week: the model read a
+    // slice, deleted a line range elsewhere with `sed -i`, and its next patch
+    // inside the slice was refused — the watcher skipped every Read entry, so
+    // the change was never absorbed and the model had to re-read what it was
+    // already holding.
+    const p = join(dir, 's6.txt')
+    writeLines(p, 60)
+    await read(p, { offset: 1, limit: 10 })
+
+    rewriteAhead(p, linesWith(60, { 40: 'L40' }))
+    const attachments = await watcherPass()
+
+    // The slice the model holds is unchanged, so there is nothing to tell it.
+    expect(attachments).toEqual([])
+    expect(patch(p, '@@\n-l3\n+L3')).toEqual({ result: true })
+  })
+})
+
+describe('S7 — Read(range), then the file changes inside the range', () => {
+  test('the model is told what changed and can patch the new text', async () => {
+    const p = join(dir, 's7.txt')
+    writeLines(p, 60)
+    await read(p, { offset: 1, limit: 10 })
+
+    rewriteAhead(p, linesWith(60, { 3: 'L3' }))
+    const attachments = await watcherPass()
+
+    expect(attachments).toHaveLength(1)
+    const [attachment] = attachments
+    expect(attachment).toMatchObject({ type: 'edited_text_file', filename: p })
+    // The snippet is numbered in FILE lines, not slice lines.
+    expect((attachment as { snippet: string }).snippet).toContain('3→L3')
+
+    expect(patch(p, '@@\n-L3\n+X3')).toEqual({ result: true })
+    // The old text is gone from what the model has been shown.
+    expect(patch(p, '@@\n-l3\n+X3').result).toBe(false)
+  })
+})
+
+describe('S8 — Read(range), then a touch with identical bytes', () => {
+  test('no attachment, no refusal, and the coverage survives', async () => {
+    // `bun run build` preprocesses ~250 source files in place and restores
+    // them: same bytes, new mtime. 4 refusals this week were this.
+    const p = join(dir, 's8.txt')
+    writeLines(p, 60)
+    await read(p, { offset: 1, limit: 10 })
+    const before = ctx.readFileState.get(p)!.timestamp
+
+    touchAhead(p)
+    expect(await watcherPass()).toEqual([])
+
+    expect(ctx.readFileState.get(p)!.timestamp).toBeGreaterThan(before)
+    expect(patch(p, '@@\n-l3\n+L3')).toEqual({ result: true })
+  })
+})
+
+describe('S9 — two ranges, one of them rewritten', () => {
+  test('the untouched slice keeps its coverage, the changed one is replaced', async () => {
+    const p = join(dir, 's9.txt')
+    writeLines(p, 60)
+    await read(p, { offset: 1, limit: 10 })
+    await read(p, { offset: 40, limit: 6 })
+
+    rewriteAhead(p, linesWith(60, { 42: 'L42' }))
+    const attachments = await watcherPass()
+    expect(attachments).toHaveLength(1)
+    expect((attachments[0] as { snippet: string }).snippet).toContain('42→L42')
+
+    // l1-l10 still describe the file, so they still authorize a write there.
+    expect(patch(p, '@@\n-l3\n+L3')).toEqual({ result: true })
+    // The rewritten slice is what the model now holds for 40-45.
+    expect(patch(p, '@@\n-L42\n+X42')).toEqual({ result: true })
+    // And the refusal for the gap still names both slices.
+    expect(refusal(patch(p, '@@\n-l20\n+L20'))).toContain('lines 1-10, 40-45')
+  })
+})
+
+describe('S10 — a write, a watcher pass, then a new Read', () => {
+  test('the file the model just wrote is not the one the cache evicts', async () => {
+    // 16 "has not been read yet" refusals this week were on a file the model
+    // had just written. The watcher iterated `keys()` (MRU → LRU) and called
+    // `get()` on each, which lru-cache treats as a use — so every pass
+    // reversed the recency order, and the most recent write became the next
+    // eviction victim. Past 100 distinct files (4 sessions this week; one had
+    // 249) that fired on the next Read of a new file.
+    ctx.readFileState = new FileStateCache(3, 10_000_000)
+    const older = join(dir, 's10-older.txt')
+    const old = join(dir, 's10-old.txt')
+    const written = join(dir, 's10-written.txt')
+    const fresh = join(dir, 's10-fresh.txt')
+    for (const p of [older, old, written, fresh]) writeLines(p, 20)
+    await read(older, { offset: 1, limit: 5 })
+    await read(old, { offset: 1, limit: 5 })
+    // The shape Edit/Write/apply_patch leave behind, and the most recent use.
+    ctx.readFileState.set(written, {
+      content: linesWith(20, {}),
+      timestamp: getFileModificationTime(written),
+      offset: undefined,
+      limit: undefined,
+    })
+
+    await watcherPass()
+    await read(fresh, { offset: 1, limit: 5 })
+
+    expect(ctx.readFileState.has(older)).toBe(false)
+    expect(patch(written, '@@\n-l3\n+L3')).toEqual({ result: true })
+  })
+})
+
+describe('S12 — a whole-file entry over the cap changes on disk', () => {
+  test('the refusal says the file changed and is too large, not that it was never read', async () => {
+    // The successor to S4. Evicting is still right — the entry no longer
+    // describes the file — but "has not been read yet" sends the model to
+    // `view='full'`, which fails on the same cap (5 such errors this week).
+    const p = join(dir, 's12.ts')
+    const before = Array.from(
+      { length: 40 },
+      (_, i) => `export function fn${i}(): number {\n  return ${i}\n}\n`,
+    ).join('\n')
+    writeFileSync(p, before)
+    ctx = makeContext({ maxSizeBytes: 512, maxTokens: 25_000 })
+    ctx.readFileState.set(p, {
+      content: before,
+      timestamp: getFileModificationTime(p),
+      offset: undefined,
+      limit: undefined,
+    })
+
+    rewriteAhead(p, before.replace(/return 0/, 'return 999'))
+    expect(await watcherPass()).toEqual([])
+    // The pass terminates: a second one does not try to re-read.
+    expect(await watcherPass()).toEqual([])
+
+    const message = refusal(patch(p, '@@\n-  return 1\n+  return 2'))
+    expect(message).toContain('too large to re-read whole')
+    expect(message).not.toContain('has not been read yet')
+  })
+})
+
+describe('S13 — Read(range) then a patch on the import block', () => {
+  test('the refusal carries the lines, and the identical resubmit applies', async () => {
+    // 52 of the 102 coverage refusals this week: Grep → Read(range) of the
+    // function being changed → one patch touching the body AND the imports.
+    // In 50% of them the resubmit after the forced Read was byte-identical.
+    // The refusal now serves the region when the hunk's old side matches the
+    // file exactly and uniquely, and counts it as read.
+    const p = join(dir, 's13.ts')
+    const source =
+      "import { a } from './a.js'\n" +
+      "import { b } from './b.js'\n" +
+      '\n' +
+      Array.from({ length: 30 }, (_, i) => `export const v${i} = ${i}`).join('\n') +
+      '\n'
+    writeFileSync(p, source)
+    await read(p, { offset: 20, limit: 5 })
+
+    const body = "@@\n import { a } from './a.js'\n+import { c } from './c.js'\n import { b } from './b.js'"
+    const message = refusal(patch(p, body))
+    expect(message).toContain("1→import { a } from './a.js'")
+    expect(message).toContain("2→import { b } from './b.js'")
+
+    expect(patch(p, body)).toEqual({ result: true })
+  })
+
+  test('a hunk whose old side is not in the file is refused without lines', async () => {
+    const p = join(dir, 's13-miss.ts')
+    writeLines(p, 30)
+    await read(p, { offset: 20, limit: 5 })
+
+    const message = refusal(patch(p, '@@\n-nowhere\n+L1'))
+    expect(message).toContain('only read in part')
+    expect(message).not.toContain('→')
+  })
+})
+
+describe('S14 — after a refresh, a re-Read returns the body', () => {
+  test('the dedup stub does not point the model at content it never received', async () => {
+    // Green before item 2 (a skipped entry keeps its old mtime, so the
+    // re-Read is a plain read) and load-bearing after it: a refreshed range
+    // entry carries the NEW mtime, which is exactly what the dedup gate
+    // compares, and the `file_unchanged` stub would point at the OLD slice in
+    // the transcript.
+    const p = join(dir, 's14.txt')
+    writeLines(p, 60)
+    await read(p, { offset: 1, limit: 10 })
+
+    rewriteAhead(p, linesWith(60, { 3: 'L3' }))
+    await watcherPass()
+
+    const result = await FileReadTool.call(
+      { file_path: p, offset: 1, limit: 10 } as never,
+      ctx,
+    )
+    expect(result.data.type).toBe('text')
   })
 })
