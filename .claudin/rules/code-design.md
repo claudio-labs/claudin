@@ -27,11 +27,18 @@ In this order, before the first edit:
    `src/agent/compact/stableStubState/`, `src/permissions/filePermissions/`,
    `src/permissions/yoloClassifier/`, `src/permissions/permissionSetup/`,
    `src/tools/PowerShellTool/pathValidation/`, `src/mcp/auth/` and
-   `src/vcs/git/worktree/`). Editing the barrel is almost
-   always wrong. One of them is deliberately NOT a pure barrel:
-   `src/permissions/permissions.ts` re-exports its `permissions/` siblings but
-   keeps `hasPermissionsToUseTool` and the decision core in the file, because
-   that is the security hot path.
+   `src/vcs/git/worktree/`, `src/agent/tools/toolResultSummarizer/`). Editing the
+   barrel is almost always wrong.
+
+   Four are deliberately NOT pure barrels, and each keeps what it keeps for a
+   stated reason — do not "finish" them. `src/permissions/permissions.ts` keeps
+   `hasPermissionsToUseTool` and the decision core, the security hot path.
+   `src/memory/instructions/claudemd.ts` keeps the memoized `getMemoryFiles` and
+   the `feature('TEAMMEM')` require, which has to exist in exactly one module
+   because the build folds `feature()` with a regex over source text.
+   `src/terminal/theme/theme.ts` keeps `getTheme` and `themeColorToAnsi` over a
+   `themes/` directory of palettes. `src/agent/compact/compact.ts` keeps both
+   compaction paths, one of which a test reads as literal TEXT.
 3. **Grep the callers before changing a signature.** Cross-slice imports use the
    `src/…` alias, so `Grep` on the symbol name finds every call site; there is no
    hidden dynamic wiring except MCP and plugins.

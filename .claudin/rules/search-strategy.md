@@ -232,12 +232,19 @@ src/
 │   ├── prompts/ (25)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
 │   ├── repl/ (35)               ← REPL.tsx (main loop), controllers/, replLauncher
 │   ├── ui/ (152)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
-│   ├── tools/ (29)              ← toolExecution, toolResultCache, toolResultSummarizer (→ cache.md)
+│   ├── tools/ (40)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
+│   │                              is a BARREL over toolResultSummarizer/ — one module per strategy
+│   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
+│   │                              thresholds, markers, contentShape, and decisionRecord, which is
+│   │                              the sole owner of the lastDecision mutable
 │   ├── tasks/ (37)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (29)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
 │   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
-│   │                              per-key state, pinRegistry, clipStubText, clipFrontier)
+│   │                              per-key state, pinRegistry, clipStubText, clipFrontier).
+│   │                              compact.ts is NOT a barrel: it keeps compactConversation and
+│   │                              partialCompactConversation over postCompactAttachments.ts and
+│   │                              messagePreparation.ts
 │   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
 │   ├── messages/ attachments/   ← message normalization, attachment rendering
 │   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
@@ -318,6 +325,8 @@ src/
 │   ├── prompt-input/ (23)       ← the input box, its modes and suggestions. `input/` (8) is a
 │   │                              different thing: Cursor, keyboardShortcuts, pasteStore
 │   ├── hooks/ (24)              ← terminal-level React hooks (useTextInput …)
+│   ├── theme/ (17)              ← theme.ts keeps getTheme and themeColorToAnsi over themes/,
+│   │                              one module per palette plus types.ts (Theme, THEME_NAMES)
 │   ├── design-system/ (17)      ← shared primitives; logo/ spinner/ image/ theme/ markdown/
 │   ├── keybindings/ (15)        ← keybinding parser, defaultBindings, loadUserBindings, match
 │   ├── contexts/ (9) state/ (8) ← React context providers + AppState store (getState/selectors).
@@ -365,9 +374,12 @@ src/
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/
-├── memory/ (56)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+├── memory/ (69)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, session/, teamSync/, ui/, and instructions/ —
-│                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md,
+│                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md
+│                                  over claudemd/ (parsing, includes, exclusions, processing,
+│                                  predicates, nestedDirectories, externalIncludes); the memoized
+│                                  getMemoryFiles and the TEAMMEM-gated require stay in the root,
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at session start
 ├── skills/ (27)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
