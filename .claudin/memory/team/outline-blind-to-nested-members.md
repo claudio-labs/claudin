@@ -17,8 +17,10 @@ Its report is committed at `scripts/bench/results/outline-symbols-ab.txt`; the
 Variant A landed: `TS_METHOD_CONTAINERS` is `{class, const}`, so
 `export const XTool = buildTool({…})` emits its members. `GrepTool.ts` went
 13 → 33 symbols. **Variant B (emit all nested declarations) stayed rejected** —
-it fails `scanSymbols.test.ts:213`, which pins "inner/local/LocalClass are body
-noise".
+it fails the `a function nested in another body is not emitted as a symbol` test
+in `clike/typescript.test.ts`, which pins "inner/local/LocalClass are body
+noise". (That assertion lived in `scanSymbols.test.ts` until the 2026-09-19
+split; the 3322-line test is now 15 siblings under `codeOutline/`.)
 
 Two claims from round 1 that the census killed are still dead: a `scanSymbols`
 cache (the tool-result cache already covers it — only 5.5% of scans fall outside

@@ -502,7 +502,16 @@ Two of these went red on main in 2026-09 (#153) after #152 added one file:
   to `{success:false}` *before* it reaches the storage a test mocked — 11 kimi
   assertions failed on `undefined` while the mock was working perfectly — and
   ProviderManager's OAuth/preset flows never render, which is what the "TTY
-  timeout" above actually was.
+  timeout" above actually was. That file is now the worked example of the fix:
+  it was split into eight topic suites, and the pair it owned (`CLAUDIN_SIMPLE`
+  plus `CLAUDIN_DISABLE_TOOL_RESULT_CACHE`) moved behind `useFileReadEnv()` in
+  `src/tools/FileReadTool/__testutils__/fileReadHarness.ts`, which each suite
+  calls at its own top level so the hooks register in THAT file's scope.
+  Splitting a file that sets a global makes this mandatory rather than merely
+  tidy: left at module scope in eight files, the first suite to finish runs the
+  one `afterAll` and hands the tool-result cache back to the other seven, which
+  then short-circuit `call()` on identical inputs and silently stop exercising
+  the dedup paths they exist to test.
 
 **How to apply:** snapshot in `beforeAll` (or at module load, beside the
 assignment) and restore in `afterAll`, restoring *before* any `rmSync` of a dir

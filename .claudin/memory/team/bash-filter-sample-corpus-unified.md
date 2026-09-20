@@ -16,7 +16,10 @@ load-bearing in both directions — which is why neither copy could just be
 deleted:
 
 - `bashFilter.test.ts` (602 assertions) and `phase12Report.test.ts` (31) read
-  `docs/discovery/bash-output-filter/validation/samples/`
+  `docs/discovery/bash-output-filter/validation/samples/`. That single test file
+  is gone as of 2026-09-19 — it is now the per-family `filters/*.test.ts` plus
+  `structural.test.ts`, all loading the corpus through
+  `filters/__testutils__/harness.ts`
 - `scripts/bench/tokens/measure-bash-filter-roi.test.ts` and
   `scripts/bench/perf/bash-filter-gain.test.ts` read `__fixtures__/samples/`
 

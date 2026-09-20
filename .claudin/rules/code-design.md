@@ -24,8 +24,10 @@ In this order, before the first edit:
    `src/providers/shims/claude/`, `src/platform/config/config/`,
    `src/platform/bootstrap/state/`, `src/commands/insights/`,
    `src/tools/BashTool/bashPermissions/` and `bashSecurity/`,
-   `src/agent/compact/stableStubState/`, `src/permissions/filePermissions/`
-   and `src/permissions/yoloClassifier/`). Editing the barrel is almost
+   `src/agent/compact/stableStubState/`, `src/permissions/filePermissions/`,
+   `src/permissions/yoloClassifier/`, `src/permissions/permissionSetup/`,
+   `src/tools/PowerShellTool/pathValidation/`, `src/mcp/auth/` and
+   `src/vcs/git/worktree/`). Editing the barrel is almost
    always wrong. One of them is deliberately NOT a pure barrel:
    `src/permissions/permissions.ts` re-exports its `permissions/` siblings but
    keeps `hasPermissionsToUseTool` and the decision core in the file, because

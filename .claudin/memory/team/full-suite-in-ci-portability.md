@@ -95,6 +95,10 @@ names of innocent suites.
   fails, all reading `undefined`), and hides ProviderManager's OAuth/preset
   flows so they time out (3 fails). Fixed at the source, plus the two victims
   now clear it in setup the way `oauthProviderAuth`/`geminiCredentials` do.
+  `FileReadTool.test.ts` no longer exists: the 2026-09-19 split made it eight
+  suites, and the env pair now arms and restores through `useFileReadEnv()` in
+  `src/tools/FileReadTool/__testutils__/fileReadHarness.ts` — each suite calls
+  it at its own top level, so no shard can restore on another's behalf.
 
 **A plain local full-suite run is NOT a gate for this class.** `bun test` on the
 dev machine reproduced ZERO of the 16, before or after the fix — the local file

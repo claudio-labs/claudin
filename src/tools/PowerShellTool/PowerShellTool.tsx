@@ -438,7 +438,8 @@ export const PowerShellTool = buildTool({
       // git/gh/glab/curl as external binaries with identical syntax, so the
       // shell-agnostic regex detection in trackGitOperations works as-is.
       // Called before the backgroundTaskId early-return so backgrounded
-      // commands are counted too (matches BashTool.tsx:912).
+      // commands are counted too (matches the `trackGitOperations` call in
+      // BashTool's `execute`).
       //
       // Pre-flight sentinel guard: the two PS pre-flight paths (pwsh-not-found,
       // exec-spawn-catch) return code: 0 + empty stdout + stderr so call() can
@@ -524,7 +525,8 @@ export const PowerShellTool = buildTool({
       // preSpawnError means exec() succeeded but the inner shell failed before
       // the command ran (e.g. CWD deleted). createFailedCommand sets code=1,
       // which interpretCommandResult can mistake for grep-no-match / findstr
-      // string-not-found. Throw it directly. Matches BashTool.tsx:957.
+      // string-not-found. Throw it directly. Matches BashTool's
+      // `preSpawnError` throw in `execute`.
       if (result.preSpawnError) {
         throw new Error(result.preSpawnError);
       }
@@ -535,7 +537,8 @@ export const PowerShellTool = buildTool({
       // Large output: file on disk has more than getMaxOutputLength() bytes.
       // stdout already contains the first chunk. Copy the output file to the
       // tool-results dir so the model can read it via FileRead. If > 64 MB,
-      // truncate after copying. Matches BashTool.tsx:983-1005.
+      // truncate after copying. Matches BashTool's MAX_PERSISTED_SIZE block in
+      // `execute`.
       //
       // Placed AFTER the preSpawnError/ShellError throws (matches BashTool's
       // ordering, where persistence is post-try/finally): a failing command
@@ -880,7 +883,9 @@ async function* runPowerShellCommand({
           // Command completed — cleanup stream listeners here. The finally
           // block's guard (!backgroundShellId && status !== 'backgrounded')
           // correctly skips cleanup for *running* backgrounded tasks, but
-          // in this race the process is done. Matches BashTool.tsx:1399.
+          // in this race the process is done. Matches the
+          // `result.backgroundTaskId !== undefined` arm of the polling loop in
+          // BashTool's runShellCommand.tsx.
           shellCommand.cleanup();
           return fixedResult;
         }

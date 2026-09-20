@@ -1101,10 +1101,13 @@ describe('renderToolRedirect', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Wiring. BashTool.tsx reaches src/terminal/ink.js through its import chain, so it
-// cannot be imported under `bun test` (see .claudin/rules/testing.md). Without
-// this block, deleting the call from validateInput leaves every test above
-// green while the redirect never fires in production.
+// Wiring. The redirect's call site is `validateInput` on the BashTool object,
+// which no test drives — the tests above exercise the redirect's own functions
+// directly. So without this block, deleting the call from validateInput leaves
+// every test above green while the redirect never fires in production. Reading
+// the file as text is what catches that; it is not a statement about
+// importability (BashTool.tsx does load under `bun test` — see
+// BashTool/runShellCommand.test.ts, which imports from it).
 // ---------------------------------------------------------------------------
 
 describe('BashTool wiring', () => {
