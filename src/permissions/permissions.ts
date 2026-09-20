@@ -213,7 +213,15 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       // operations like file edits in the working directory.
       // Skip for Agent — its checkPermissions returns 'allow' for acceptEdits
       // mode, which would silently bypass the classifier.
-      if (result.behavior === 'ask' && tool.name !== AGENT_TOOL_NAME) {
+      // Skip in plan mode too: the only tool that reaches this branch there is
+      // Bash (planModeHardDenyIfApplicable), and acceptEdits auto-allows
+      // `rm`/`mv`/`sed` — the classifier, with its plan-mode rules, is the
+      // whole point of letting the call get this far.
+      if (
+        result.behavior === 'ask' &&
+        tool.name !== AGENT_TOOL_NAME &&
+        appState.toolPermissionContext.mode !== 'plan'
+      ) {
         try {
           const parsedInput = tool.inputSchema.parse(input)
           const acceptEditsResult = await tool.checkPermissions(parsedInput, {
@@ -478,6 +486,27 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
 }
 
 /**
+ * Whether plan mode hands a non-read-only call to the auto-mode classifier
+ * instead of the hard deny. Only Bash, and only while auto mode is active.
+ *
+ * The read-only allowlist is a syntactic gate — an unquoted glob, a brace in
+ * a quoted pattern or `sort | uniq -c` all fail it — and plan-mode research
+ * paid for that a hundred times a week (108 denials in 2026-09-14..20, most
+ * inside plan-mode sub-agents), while `bun scripts/…` and a throwaway script
+ * in the scratchpad have no read-only form at all. The classifier already
+ * decides every Bash write in auto mode; under plan mode it does so with the
+ * plan-mode rules (`buildYoloSystemPrompt`) on top. Write/Edit keep the hard
+ * deny: the plan file and the scratchpad are their only targets, and both
+ * pass through `checkEditableInternalPath` as an allow.
+ */
+export function planModeDefersToClassifier(
+  toolName: string,
+  autoModeActive: boolean,
+): boolean {
+  return autoModeActive && toolName === BASH_TOOL_NAME
+}
+
+/**
  * Plan mode hard gate. Returns a deny decision when the active permission
  * mode is `plan` AND the tool is non-readonly AND none of the escape hatches
  * apply (allow from tool.checkPermissions, inherited bypass, or ExitPlanMode).
@@ -510,6 +539,21 @@ function planModeHardDenyIfApplicable(
     readOnly = false
   }
   if (readOnly) return null
+
+  // Returning null lets the normal flow run — tool deny, ask rules, safety
+  // checks, always-allow rules — and end in the 'ask' the outer function
+  // routes to the classifier (its acceptEdits fast path stands down in plan
+  // mode). `feature('TRANSCRIPT_CLASSIFIER')` is false under `bun test`, so
+  // the module is null there and this branch is exercised through the pure
+  // predicate plus the live build.
+  if (
+    planModeDefersToClassifier(
+      tool.name,
+      autoModeStateModule?.isAutoModeActive() ?? false,
+    )
+  ) {
+    return null
+  }
 
   // Name the one file that IS editable. A write the model believes targets the
   // plan file but that resolves elsewhere (a path it remembered from before the

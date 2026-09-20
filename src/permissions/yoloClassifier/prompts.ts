@@ -94,6 +94,26 @@ function isUsingExternalPermissions(): boolean {
 }
 
 /**
+ * Plan-mode rules, appended to the allow/deny sections when the classifier
+ * decides a Bash call under plan mode (`planModeHardDenyIfApplicable` lets
+ * Bash through to it when auto mode is active). Appended AFTER the section
+ * is rendered, on purpose: `renderRuleSection` replaces the shipped defaults
+ * with the user's entries when those carry no `$defaults` sentinel, and
+ * these must ride along in either case. Exported for the prompt test.
+ */
+export const PLAN_MODE_DENY_RULES: readonly string[] = [
+  'Plan mode is active: block any command that changes the project or the machine — writing, moving or deleting a file inside the working directory (a redirect into it counts), editing configuration, installing or removing software, or changing git state (commit, checkout, stash, reset, branch, rebase, push)',
+]
+export const PLAN_MODE_ALLOW_RULES: readonly string[] = [
+  'Plan mode is active: allow commands that only read, including pipelines over files with globs, `sort`, `uniq`, `awk`, `cut`, `wc`, `diff`, `jq`',
+  'Plan mode is active: allow creating or editing files under the OS temp directory or the session scratchpad, and running `bun`, `node`, `python3` or `deno` on a script that lives there or under the repository\'s `scripts/` directory when the script only reads the tree',
+]
+
+function appendRules(section: string, rules: readonly string[]): string {
+  return section + rules.map(rule => `- ${rule}\n`).join('')
+}
+
+/**
  * Shape of the settings.autoMode config — the three classifier prompt
  * sections a user can customize. Required-field variant (empty arrays when
  * absent) for JSON output; settings.ts uses the optional-field variant.
@@ -225,15 +245,22 @@ export async function buildYoloSystemPrompt(
   // is what `/auto-mode-setup` writes so a generated config extends the
   // shipped rules instead of overwriting them.
   const environmentDescriptions = autoMode?.environment ?? []
+  const planMode = context.mode === 'plan'
 
   return systemPrompt
     .replace(
       /<user_allow_rules_to_replace>([\s\S]*?)<\/user_allow_rules_to_replace>/,
-      (_m, defaults: string) => renderRuleSection(allowDescriptions, defaults),
+      (_m, defaults: string) => {
+        const section = renderRuleSection(allowDescriptions, defaults)
+        return planMode ? appendRules(section, PLAN_MODE_ALLOW_RULES) : section
+      },
     )
     .replace(
       /<user_deny_rules_to_replace>([\s\S]*?)<\/user_deny_rules_to_replace>/,
-      (_m, defaults: string) => renderRuleSection(denyDescriptions, defaults),
+      (_m, defaults: string) => {
+        const section = renderRuleSection(denyDescriptions, defaults)
+        return planMode ? appendRules(section, PLAN_MODE_DENY_RULES) : section
+      },
     )
     .replace(
       /<user_environment_to_replace>([\s\S]*?)<\/user_environment_to_replace>/,

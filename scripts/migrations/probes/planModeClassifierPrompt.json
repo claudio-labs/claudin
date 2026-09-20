@@ -1,0 +1,21 @@
+{
+  "test": "src/permissions/yoloClassifier.planMode.test.ts",
+  "source": "src/permissions/yoloClassifier/prompts.ts",
+  "probes": [
+    {
+      "name": "plan-mode deny bullets are appended",
+      "find": "        return planMode ? appendRules(section, PLAN_MODE_DENY_RULES) : section\n",
+      "replace": "        return section\n"
+    },
+    {
+      "name": "plan-mode allow bullets are appended",
+      "find": "        return planMode ? appendRules(section, PLAN_MODE_ALLOW_RULES) : section\n",
+      "replace": "        return section\n"
+    },
+    {
+      "name": "bullets go only to plan mode",
+      "find": "  const planMode = context.mode === 'plan'\n",
+      "replace": "  const planMode = true\n"
+    }
+  ]
+}

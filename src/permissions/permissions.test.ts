@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'fs'
 import { z } from 'zod/v4'
 
 import {
@@ -11,6 +12,7 @@ import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constant
 import {
   checkRuleBasedPermissions,
   hasPermissionsToUseTool,
+  planModeDefersToClassifier,
 } from 'src/permissions/permissions.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 
@@ -291,5 +293,57 @@ describe('plan mode hard gate — checkRuleBasedPermissions (PreToolUse hook pat
       makeContext({ mode: 'default' }),
     )
     expect(result).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Plan mode → classifier lane for Bash. `feature('TRANSCRIPT_CLASSIFIER')` is
+// false under `bun test`, so neither autoModeStateModule nor the classifier
+// branch exists here and the gate above cannot be driven end to end. What CAN
+// be pinned: the decision table the gate consults, and — as text, the way
+// redirect.test.ts pins BashTool's wiring — that the gate consults it and
+// that the acceptEdits fast path stands down in plan mode.
+// ---------------------------------------------------------------------------
+
+describe('plan mode → classifier lane (planModeDefersToClassifier)', () => {
+  test('Bash with auto mode active defers to the classifier', () => {
+    expect(planModeDefersToClassifier('Bash', true)).toBe(true)
+  })
+
+  test('Bash without auto mode keeps the hard deny', () => {
+    expect(planModeDefersToClassifier('Bash', false)).toBe(false)
+  })
+
+  test('Write, Edit, apply_patch and MCP tools keep the hard deny even under auto mode', () => {
+    for (const name of ['Write', 'Edit', 'apply_patch', 'NotebookEdit', 'mcp__srv__tool']) {
+      expect(planModeDefersToClassifier(name, true)).toBe(false)
+    }
+  })
+
+  test('without auto mode the gate still denies a non-readonly Bash in plan mode', async () => {
+    // autoModeStateModule is null under bun test, so this IS the "auto mode
+    // off" arm of the gate as production runs it.
+    const tool = fakeTool({ name: 'Bash', isReadOnly: false })
+    const result = await callGate(tool, makeContext({ mode: 'plan' }))
+    expect(result.behavior).toBe('deny')
+    expect(result.decisionReason).toEqual({ type: 'mode', mode: 'plan' })
+  })
+
+  describe('wiring (text)', () => {
+    const src = readFileSync(new URL('./permissions.ts', import.meta.url), 'utf8')
+
+    test('the hard gate consults the predicate with the live auto-mode signal', () => {
+      expect(src).toContain(
+        'planModeDefersToClassifier(\n      tool.name,\n      autoModeStateModule?.isAutoModeActive() ?? false,\n    )',
+      )
+    })
+
+    test('the acceptEdits fast path stands down in plan mode', () => {
+      // Without this, `rm`/`mv`/`sed` would be auto-allowed in plan mode
+      // before the classifier ever saw them.
+      expect(src).toContain(
+        "tool.name !== AGENT_TOOL_NAME &&\n        appState.toolPermissionContext.mode !== 'plan'",
+      )
+    })
   })
 })
