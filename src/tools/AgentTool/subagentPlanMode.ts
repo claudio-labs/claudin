@@ -18,13 +18,25 @@ import type { AgentId } from 'src/shared/types/ids.js'
 import type { PermissionMode } from 'src/shared/types/permissions.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 
-export function buildSubagentPlanModeAttachment(args: {
-  /** The mode the CHILD resolved to (resolveAgentPermissionMode), not the parent's raw mode. */
-  mode: PermissionMode
-  agentId: AgentId
-  /** The child's own tool names — what decides which wording it gets. */
-  toolNames: ReadonlySet<string>
-}): Attachment | null {
+type PlanFileDeps = {
+  getPlan: typeof getPlan
+  getPlanFilePath: typeof getPlanFilePath
+}
+
+export function buildSubagentPlanModeAttachment(
+  args: {
+    /** The mode the CHILD resolved to (resolveAgentPermissionMode), not the parent's raw mode. */
+    mode: PermissionMode
+    agentId: AgentId
+    /** The child's own tool names — what decides which wording it gets. */
+    toolNames: ReadonlySet<string>
+  },
+  // Injected rather than reached for directly: planDossier.test.ts mock.modules
+  // src/agent/plans/plans.js, and Bun applies that override for the WHOLE test
+  // run, so a test asserting on the real plan path passes alone and fails in
+  // the suite (it did). Same shape as postCompactAttachments.ts.
+  deps: PlanFileDeps = { getPlan, getPlanFilePath },
+): Attachment | null {
   if (args.mode !== 'plan') return null
 
   return {
@@ -35,7 +47,7 @@ export function buildSubagentPlanModeAttachment(args: {
     // ExitPlanMode survives the sub-agent tool filter exclusively in plan mode
     // (filterToolsForAgent in agentToolUtils.ts), for in-process teammates.
     canExitPlanMode: args.toolNames.has(EXIT_PLAN_MODE_V2_TOOL_NAME),
-    planFilePath: getPlanFilePath(args.agentId),
-    planExists: getPlan(args.agentId) !== null,
+    planFilePath: deps.getPlanFilePath(args.agentId),
+    planExists: deps.getPlan(args.agentId) !== null,
   }
 }
