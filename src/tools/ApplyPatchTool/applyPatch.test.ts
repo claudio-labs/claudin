@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from 'fs'
 import { tmpdir } from 'os'
@@ -426,10 +427,12 @@ describe('validateApplyPatchInput', () => {
     writeFileSync(a, 'a\n')
     writeFileSync(b, 'a\n')
     markPartial(b)
+    // Old sides that are NOT in either file: nothing can be served, so both
+    // refusals still need a Read (the served case has its own suite below).
     const r = validateApplyPatchInput(
       {
         patchText: envelope(
-          `*** Update File: ${a}\n@@\n-a\n+b\n*** Update File: ${b}\n@@\n-a\n+b`,
+          `*** Update File: ${a}\n@@\n-zz\n+b\n*** Update File: ${b}\n@@\n-zz\n+b`,
         ),
       },
       ctx,
@@ -717,8 +720,8 @@ describe('validateApplyPatchInput — read coverage', () => {
     const r = validateApplyPatchInput(
       {
         patchText: envelope(
-          `*** Update File: ${a}\n@@\n-line8\n+LINE8\n` +
-            `*** Update File: ${b}\n@@\n-line9\n+LINE9`,
+          `*** Update File: ${a}\n@@\n-nowhere8\n+LINE8\n` +
+            `*** Update File: ${b}\n@@\n-nowhere9\n+LINE9`,
         ),
       },
       ctx,
@@ -726,6 +729,164 @@ describe('validateApplyPatchInput — read coverage', () => {
     expect(r).toMatchObject({ result: false })
     if (!r.result) expect(r.message).toContain('do them all in ONE message')
     cleanup()
+  })
+
+  describe('the refusal serves the region when the old side matches exactly', () => {
+    // tool-error-census-2026-09-20.md: 86 of 102 coverage refusals were for
+    // lines the model never Read, and half the resubmits were byte-identical.
+    // When the hunk's old side is in the file exactly once, the refusal
+    // carries it and registers it, so the identical resubmit passes.
+    test('a coverage refusal carries the lines and the same patch then applies', () => {
+      const p = join(dir, 'serve-coverage.txt')
+      writeNumbered(p)
+      markRange(p, 1, 3)
+      const body = `*** Update File: ${p}\n@@\n line7\n-line8\n+LINE8\n line9`
+      const first = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
+      expect(first).toMatchObject({ result: false })
+      if (!first.result) {
+        expect(first.message).toContain('only read in part (lines 1-3)')
+        expect(first.message).toContain('now count as read')
+        // Two lines of context on each side of the matched block.
+        expect(first.message).toContain('5→line5')
+        expect(first.message).toContain('8→line8')
+        expect(first.message).toContain('10→line10')
+        expect(first.message).not.toContain('4→line4')
+        expect(first.message).not.toContain('do them all in ONE message')
+      }
+      expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual(
+        { result: true },
+      )
+      // The earlier slice is still there: the served region was carried onto it.
+      expect(
+        validateApplyPatchInput(
+          { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) },
+          ctx,
+        ),
+      ).toEqual({ result: true })
+      cleanup()
+    })
+
+    test('a never-read refusal is served the same way', () => {
+      const p = join(dir, 'serve-never.txt')
+      writeNumbered(p)
+      const body = `*** Update File: ${p}\n@@\n-line5\n+LINE5`
+      const first = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
+      expect(first).toMatchObject({ result: false })
+      if (!first.result) {
+        expect(first.message).toContain('has not been read yet')
+        expect(first.message).toContain('5→line5')
+      }
+      expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual(
+        { result: true },
+      )
+      cleanup()
+    })
+
+    test('a stale refusal serves the CURRENT lines and drops the old coverage', () => {
+      const p = join(dir, 'serve-stale.txt')
+      writeNumbered(p)
+      markRange(p, 1, 3)
+      writeFileSync(p, readFileSync(p, 'utf8').replace('line8', 'LINE8'))
+      const when = new Date(Date.now() + 10_000)
+      utimesSync(p, when, when)
+
+      const body = `*** Update File: ${p}\n@@\n-LINE8\n+line8`
+      const first = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
+      expect(first).toMatchObject({ result: false })
+      if (!first.result) {
+        expect(first.message).toContain('modified since it was read')
+        expect(first.message).toContain('8→LINE8')
+      }
+      expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual(
+        { result: true },
+      )
+      // Lines 1-3 described the previous version; they no longer authorize.
+      expect(
+        validateApplyPatchInput(
+          { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) },
+          ctx,
+        ).result,
+      ).toBe(false)
+      cleanup()
+    })
+
+    test('an ambiguous old side is not served', () => {
+      const p = join(dir, 'serve-ambiguous.txt')
+      writeFileSync(p, 'same\nother\nsame\nend\n')
+      markRange(p, 4, 1)
+      const r = validateApplyPatchInput(
+        { patchText: envelope(`*** Update File: ${p}\n@@\n-same\n+SAME`) },
+        ctx,
+      )
+      expect(r).toMatchObject({ result: false })
+      if (!r.result) expect(r.message).not.toContain('→')
+      cleanup()
+    })
+
+    test('an old side that is not in the file is not served', () => {
+      const p = join(dir, 'serve-miss.txt')
+      writeNumbered(p)
+      markRange(p, 1, 3)
+      const r = validateApplyPatchInput(
+        { patchText: envelope(`*** Update File: ${p}\n@@\n-nowhere\n+x`) },
+        ctx,
+      )
+      expect(r).toMatchObject({ result: false })
+      if (!r.result) expect(r.message).not.toContain('→')
+      cleanup()
+    })
+
+    test('a clip-pin stand-down marker is never served over', () => {
+      const p = join(dir, 'serve-clipped.txt')
+      writeNumbered(p)
+      markClipped(p)
+      const r = validateApplyPatchInput(
+        { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) },
+        ctx,
+      )
+      expect(r).toMatchObject({ result: false })
+      if (!r.result) {
+        expect(r.message).toContain('clipped out of the transcript')
+        expect(r.message).not.toContain('→')
+      }
+      cleanup()
+    })
+
+    test('a Delete File is never served — it needs the whole file', () => {
+      const p = join(dir, 'serve-delete.txt')
+      writeNumbered(p)
+      const r = validateApplyPatchInput(
+        { patchText: envelope(`*** Delete File: ${p}`) },
+        ctx,
+      )
+      expect(r).toMatchObject({ result: false })
+      if (!r.result) expect(r.message).not.toContain('→')
+      cleanup()
+    })
+
+    test('in a multi-file patch, served and unserved sections are told apart', () => {
+      const a = join(dir, 'serve-multi-a.txt')
+      const b = join(dir, 'serve-multi-b.txt')
+      writeNumbered(a)
+      writeNumbered(b)
+      const r = validateApplyPatchInput(
+        {
+          patchText: envelope(
+            `*** Update File: ${a}\n@@\n-line5\n+LINE5\n` +
+              `*** Update File: ${b}\n@@\n-nowhere\n+x`,
+          ),
+        },
+        ctx,
+      )
+      expect(r).toMatchObject({ result: false })
+      if (!r.result) {
+        expect(r.message).toContain('found 2 problems')
+        expect(r.message).toContain('5→line5')
+        // Only ONE section still needs a Read, so no batched-read instruction.
+        expect(r.message).not.toContain('do them all in ONE message')
+      }
+      cleanup()
+    })
   })
 
   test('CLAUDIN_DISABLE_READ_COVERAGE_GATE=1 restores the old behavior', () => {
