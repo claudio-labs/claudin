@@ -230,6 +230,56 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     rather than leaving a stale entry to retry every turn. **How to apply:**
     anything that re-reads a file on the model's behalf must pass `view:
     'full'` — a vanilla Read there is a cache write, not a read.
+  - **The watcher covers range entries too, and the pass must not touch
+    recency** (2026-09-20, tool-error-census-2026-09-20.md). Two defects sat
+    in the same loop. It skipped every entry with an `offset` or `limit` — and
+    a plain Read stores `offset: 1` — so it only ever watched files the model
+    had WRITTEN with a tool; a file only read and then changed by a `sed -i`,
+    a build's in-place feature() pass, a sub-agent or a formatter was never
+    refreshed, which was every "modified since read" refusal that week (30).
+    And it walked `cacheKeys()` calling `get()` on each: lru-cache counts a
+    `get` as a use, so each pass reversed the recency order and the file the
+    model had just written became the next eviction victim past 100 distinct
+    files (16 "has not been read yet" refusals on a just-written file).
+    `changedFileCandidates` snapshots `entries()`; a range entry is refreshed
+    WITHOUT FileReadTool — the file is read once, its own slice and every
+    carried `seenRanges` are compared at their offsets line-by-trimmed-line,
+    matching slices keep authorizing, the rest are dropped, and the model gets
+    an `edited_text_file` diff of its own slice numbered in file lines (same
+    bytes under a new mtime cost only a timestamp). A file over the cap leaves
+    a `refreshFailed: 'too-large'` marker (partial, dated to the new mtime) so
+    the gate can say "changed on disk, read the lines you are changing" instead
+    of "has not been read yet", which sent the model to a `view='full'` that
+    fails on the same cap.
+  - **`dedupExempt` marks an entry whose bytes were never a Read tool_result**
+    (2026-09-20): the watcher's range refresh and a refusal's served region
+    both write one. FileReadTool's dedup gate (`FileReadTool.ts`, the
+    `rangeMatch` arm) requires `!dedupExempt`, because its `file_unchanged`
+    stub says "unchanged since your last read" and the last Read in the
+    transcript shows the OLD bytes. Post-write entries need no flag — their
+    `offset: undefined` already excludes them. Any new producer that writes a
+    range-shaped entry from bytes the model did not receive as a Read result
+    must set it.
+  - **A refusal may serve the region it refuses over** (`shared/servedRegion.ts`,
+    2026-09-20). When every chunk's old side (or Edit's `old_string`) sits in
+    the current file exactly and uniquely, the never-read, partial-view, stale
+    and coverage refusals of Edit and `apply_patch` Update append the lines
+    (Read-numbered, ±2 context, merged, ≤200 lines) and register each block via
+    `readFileState.set` with `offset`/`limit` — the same shape a Read of it
+    leaves, so `carrySeenRanges` keeps the earlier slices and the IDENTICAL
+    resubmit passes the coverage lane. 86 of 102 coverage refusals in the
+    2026-09-14..20 corpus were for lines the model never Read (52 the import
+    block) and half the resubmits were byte-identical; the invariant holds —
+    the model sees the lines before the write lands — one call sooner. Never
+    served: an ambiguous or absent old side, `Delete File`, Write, and a
+    `standDownOutline` marker (its replay budget must not be reopened).
+  - **A partial view is never carried as a seen slice** (2026-09-20).
+    `carrySeenRanges` took any predecessor with the same mtime, including an
+    outline entry whose `content` is the raw source with no offset — carried
+    at offset 1 it covered the whole file, and outline → Read(range) → patch
+    anywhere passed. `prev.isPartialView` now returns "carry nothing".
+    Scenario S15 in `src/__tests__/readGateScenarios.test.ts` pins it, and
+    S6–S14 pin the rest of this bullet group end to end.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 

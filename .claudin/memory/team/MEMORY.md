@@ -43,6 +43,7 @@
 - [memory_delta deleted 2026-08-07 — a second full copy, not a delta](memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta
 - [Three mask desyncs blanked whole files from the symbol table — FIXED 2026-08-25](outline-mask-desync-zero-symbols.md) — 220→198 zero-symbol files; also broke Read(symbol=), Grep symbols, Rename
 - ["Read it first" gate census 2026-09-04 — 3 false causes FIXED in PR #157](read-gate-false-refusals-census-2026-09.md) — 65 refusals/23 sessions; Edit mid-line, injected MEMORY.md, /resume ranges
+- [Tool error census 2026-09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs FIXED (LRU inversion, watcher skipped Read entries, plan unseeded); served-region refusal; dedupExempt; S6–S15
 
 ## Roadmap & major features
 - [Dead-code + tengu cleanup — MERGED as PR #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines on main; analytics/telemetry GONE; tengu 1654→326; left: gate-key audit, growthbook collapse, rules sweep
