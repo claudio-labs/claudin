@@ -1,0 +1,70 @@
+{
+  "test": [
+    "src/providers/model/reasoningCatalog.test.ts",
+    "src/providers/shims/openaiShim/providerQuirks.test.ts",
+    "src/providers/shims/openaiShim/reasoningEffortInvariant.test.ts",
+    "src/providers/effort"
+  ],
+  "source": "src/providers/model/reasoningCatalog.ts",
+  "probes": [
+    {
+      "name": "the wire write itself",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "          body.reasoning_effort = clamped",
+      "replace": "          body.reasoning_effort = undefined",
+      "//": "the defect this whole change exists to fix — a picker that offers a level the body never carries"
+    },
+    {
+      "name": "OpenRouter's nested reasoning.effort shape",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "          body.reasoning = { effort: clamped }",
+      "replace": "          body.reasoning_effort = clamped"
+    },
+    {
+      "name": "the clamp onto levels the model accepts",
+      "source": "src/providers/shims/openaiShim/messagesClient.ts",
+      "find": "      const clamped = effort ? clampEffortToValues(effort, shimEffortValues) : undefined",
+      "replace": "      const clamped = effort"
+    },
+    {
+      "name": "DeepSeek and Moonshot stay out of the generic lane",
+      "find": "  if (providerId && SHIM_OWNED_PROVIDER_IDS.has(providerId)) return undefined",
+      "replace": "  if (false) return undefined",
+      "//": "without it both hosts get two writers and the Kimi/DeepSeek dialect tests go red"
+    },
+    {
+      "name": "a row with no showable level is not a control",
+      "find": "  if (!values || pickerEffortLevels(values).length === 0) return undefined",
+      "replace": "  if (!values) return undefined"
+    },
+    {
+      "name": "endpoint path segments are matched, not just the host",
+      "find": "    if (actual[i] !== want) return false",
+      "replace": "    if (false) return false",
+      "//": "api.z.ai serves the coding plan and the general endpoint from one host"
+    },
+    {
+      "name": "the ?reasoning= descriptor suffix is stripped before lookup",
+      "find": "  return queryIndex === -1 ? trimmed : trimmed.slice(0, queryIndex).trim()",
+      "replace": "  return trimmed"
+    },
+    {
+      "name": "the case-insensitive model fallback",
+      "find": "  return models[id] ?? lowercaseIndexFor(models).get(id.toLowerCase())",
+      "replace": "  return models[id]"
+    },
+    {
+      "name": "the catalog gates the picker for shim transports",
+      "source": "src/providers/effort/effort.ts",
+      "find": "    return resolveActiveShimEffortValues(model) !== undefined",
+      "replace": "    return true"
+    },
+    {
+      "name": "max effort follows the catalog, not the Claude name list",
+      "source": "src/providers/effort/effort.ts",
+      "find": "    return fromCatalog.includes('max')",
+      "replace": "    return false",
+      "//": "resolveAppliedEffort downgrades an unsupported max BEFORE the wire clamp, so this is what keeps the picker's `max` from silently sending `high`"
+    }
+  ]
+}

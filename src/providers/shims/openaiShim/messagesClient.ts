@@ -70,6 +70,11 @@ import {
   shouldAttemptLocalToollessRetry,
   type ReasoningEffort,
 } from 'src/providers/presets/providerConfig.js'
+import {
+  clampEffortToValues,
+  reasoningEffortWireFor,
+  resolveShimEffortValues,
+} from 'src/providers/model/reasoningCatalog.js'
 import { resolveOAuthProviderAuth } from 'src/providers/shims/openaiShim/oauthProviderAuth.js'
 import { stripThinkTags } from 'src/providers/shims/thinkTagSanitizer.js'
 import { normalizeToolArguments } from 'src/providers/shims/toolArgumentNormalization.js'
@@ -464,6 +469,32 @@ class OpenAIShimMessages {
           type: 'enabled',
           effort,
           keep: 'all',
+        }
+      }
+    }
+
+    // Every other OpenAI-compatible endpoint. The levels come from the same
+    // resolver `modelSupportsEffort` asks, so the picker cannot offer a level
+    // this request would drop — the defect that let a gateway model advertise
+    // "Xhigh effort" while the body carried no effort field at all. An endpoint
+    // the catalog does not know returns undefined here and nothing is written;
+    // DeepSeek and Moonshot are excluded by the resolver itself, so their
+    // branches above stay the only writers for those hosts.
+    const shimEffortValues = resolveShimEffortValues(
+      request.baseUrl,
+      request.resolvedModel,
+    )
+    if (shimEffortValues) {
+      const effort = request.reasoning?.effort
+      // Clamped, not passed through: a session effort carried over from another
+      // model can be a level this one rejects (`medium` on a glm-5.3-flash,
+      // which takes low/high/max and 400s on anything else).
+      const clamped = effort ? clampEffortToValues(effort, shimEffortValues) : undefined
+      if (clamped) {
+        if (reasoningEffortWireFor(request.baseUrl) === 'reasoning.effort') {
+          body.reasoning = { effort: clamped }
+        } else {
+          body.reasoning_effort = clamped
         }
       }
     }
