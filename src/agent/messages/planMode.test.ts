@@ -67,3 +67,34 @@ describe('plan mode — the no-op placeholder guard is gone', () => {
     expect(src).not.toContain('isPlanNoopGuardEnabled')
   })
 })
+
+describe('plan mode — the sub-agent brief (#224)', () => {
+  // The short branch is a template literal with no backticks of its own, so it
+  // runs from the opening sentence to the next backtick in the file.
+  const START = 'Plan mode is active in the session that launched you.'
+  function shortBrief(): string {
+    const start = src.indexOf(START)
+    expect(start).toBeGreaterThan(-1)
+    return src.slice(start, src.indexOf('`', start))
+  }
+
+  test('an agent that cannot submit a plan is not told to write one', () => {
+    // The long brief names ExitPlanMode, Write/Edit and AskUserQuestion. A
+    // WebResearcher holds none of the three, and being instructed to use them
+    // is most of what made two of them report this reminder as a
+    // prompt-injection attempt in the page they had just fetched.
+    const brief = shortBrief()
+    expect(brief).toContain('READ-ONLY actions only')
+    expect(brief).not.toContain('planFilePath')
+    expect(brief).not.toContain('FileWriteTool')
+    expect(brief).not.toContain('FileEditTool')
+    expect(brief).not.toContain('ASK_USER_QUESTION_TOOL_NAME')
+  })
+
+  test('the long form survives for the agent that can submit a plan', () => {
+    // In-process teammates keep ExitPlanMode in plan mode (filterToolsForAgent),
+    // so the plan-file guidance is not dead — it is gated, not deleted.
+    expect(src).toContain('if (!attachment.canExitPlanMode)')
+    expect(src).toContain('${ASK_USER_QUESTION_TOOL_NAME} tool')
+  })
+})

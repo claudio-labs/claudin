@@ -129,6 +129,15 @@ export async function getPlanModeAttachments(
   messages: Message[] | undefined,
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
+  // Sub-agents get their plan-mode brief seeded into their opening turn by
+  // runAgent (buildSubagentPlanModeAttachment). This pipeline only ever runs
+  // for a child mid-tool-loop — query.ts calls it with input === null — so
+  // anything emitted here is merged into the same user turn as the tool_result
+  // before it and reads to the child as text injected by whatever it just
+  // fetched. Two WebResearcher agents reported exactly that as an attack
+  // (#224). Same reasoning as the task_reconcile gate in pipeline.ts.
+  if (toolUseContext.agentId) return []
+
   const appState = toolUseContext.getAppState()
   const permissionContext = appState.toolPermissionContext
   if (permissionContext.mode !== 'plan') {
@@ -190,6 +199,11 @@ export async function getPlanModeAttachments(
 export async function getPlanModeExitAttachment(
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
+  // Before the flag read, not after: needsPlanModeExitAttachment is a
+  // process-global one-shot that this producer CLEARS, so a child reaching it
+  // first would swallow the parent's notice (#224).
+  if (toolUseContext.agentId) return []
+
   // Only trigger if the flag is set (we just exited plan mode)
   if (!needsPlanModeExitAttachment()) {
     return []
@@ -278,6 +292,13 @@ export async function getAutoModeAttachments(
   messages: Message[] | undefined,
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
+  // Auto mode is a main-thread concept: the text addresses "the user" and
+  // tells the reader to call EnterPlanMode, a tool most sub-agents do not
+  // have, and a child can neither enter nor leave the mode. It reached
+  // sub-agents verbatim until #224 — see getPlanModeAttachments above for why
+  // a mid-tool-loop reminder reads as injected page content.
+  if (toolUseContext.agentId) return []
+
   const appState = toolUseContext.getAppState()
   const permissionContext = appState.toolPermissionContext
   const inAuto = permissionContext.mode === 'auto'
@@ -322,6 +343,9 @@ export async function getAutoModeAttachments(
 export async function getAutoModeExitAttachment(
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
+  // Before the flag read — same one-shot ownership as the plan-mode exit above.
+  if (toolUseContext.agentId) return []
+
   if (!needsAutoModeExitAttachment()) {
     return []
   }

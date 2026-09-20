@@ -324,6 +324,12 @@ export type Attachment =
       type: 'plan_mode'
       reminderType: 'full' | 'sparse'
       isSubAgent?: boolean
+      /**
+       * Sub-agents only: whether the child holds ExitPlanMode, i.e. whether it
+       * can submit a plan at all. Decides between the full plan-file brief and
+       * the short read-only notice (#224).
+       */
+      canExitPlanMode?: boolean
       planFilePath: string
       planExists: boolean
     }
