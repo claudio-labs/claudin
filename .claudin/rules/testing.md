@@ -21,12 +21,16 @@ returns a failures-first summary (per failure: name, `file:line`, source
 excerpt) instead of raw runner output, so a failure lands with its location and
 no follow-up Read. BashTool refuses a bare test command once and points there;
 re-send the identical command when you genuinely need the raw output (print
-debugging, a crash trace). Once RunTests has actually run a suite, the next Bash
-call on that same suite is **not** refused at all — that escalation is the case
-the refusal text itself blesses, so it costs no round-trip. The pass is spent on
-use and re-armed by the next RunTests run, so a habitual `bun test` later in the
-session is still redirected. The invocations below are the underlying commands —
-pass one as RunTests' `command` when auto-detection picks the wrong suite.
+debugging, a crash trace). A test command carrying a `| head`, `| tail` or
+`| grep` tail is never refused — since 2026-09-20 that tail reads as raw-output
+intent (66 of 72 `bun test` refusals in one week carried one, half re-sent
+identically), so it runs on the first send. Once RunTests has actually run a
+suite, the next bare Bash call on that same suite is **not** refused either —
+that escalation is the case the refusal text itself blesses, so it costs no
+round-trip. The pass is spent on use and re-armed by the next RunTests run, so a
+habitual `bun test` later in the session is still redirected. The invocations
+below are the underlying commands — pass one as RunTests' `command` when
+auto-detection picks the wrong suite.
 
 Type-check through the **Typecheck tool**, for the same reason and with a bigger
 payoff here: it reports only the diagnostics missing from the project's recorded

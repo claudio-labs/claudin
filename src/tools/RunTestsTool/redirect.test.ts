@@ -43,15 +43,9 @@ describe('isRedirectableTestCommand — fires on a bare test run', () => {
     'deno test',
     'node --test',
     'CI=true bun test',
-    // The output-trimming tail the model habitually appends to a verbose
-    // runner. It asks for LESS output, which is what RunTests returns — and in
-    // Rust it is on virtually every real invocation, so treating it as
-    // composition meant the redirect never fired there at all.
-    'cargo test -p ferrous-dns-infrastructure --test cache_bloom_rotation_test 2>&1 | tail -25',
+    // A trailing stderr merge is not a filter: still a bare run.
     'bun test 2>&1',
-    'pytest tests/unit | head -20',
-    'cargo test --test doq_test 2>&1 | grep -E "^test |test result"',
-    'go test ./... 2>&1 | tail -40 | head -5',
+    'cargo test -p ferrous-dns-infrastructure --test cache_bloom_rotation_test 2>&1',
   ]
   for (const cmd of REDIRECTED) {
     test(cmd, () => expect(isRedirectableTestCommand(cmd)).toBe(true))
@@ -75,6 +69,12 @@ describe('isRedirectableTestCommand — stands down', () => {
     ['bun test | wc -l', 'pipes to something that is not an output filter'],
     ['pytest 2>&1 > /tmp/out', 'redirected, the 2>&1 is not the tail'],
     ['bun run build && bun test 2>&1 | tail -20', 'still chained with a build'],
+    // An output-filter tail is raw-output intent (2026-09-14..20: 66 of 72
+    // `bun test` refusals carried one, 39 were re-sent identically).
+    ['bun test src/tools/RunTestsTool/redirect.test.ts 2>&1 | tail -25', 'tail: raw-output intent'],
+    ['pytest tests/unit | head -20', 'head: raw-output intent'],
+    ['cargo test --test doq_test 2>&1 | grep -E "^test |test result"', 'grep: raw-output intent'],
+    ['go test ./... 2>&1 | tail -40 | head -5', 'stacked filters: raw-output intent'],
     // Deliberate raw-output / non-run intent.
     ['pytest -s', 'capture disabled'],
     ['cargo test -- --nocapture', 'capture disabled'],
@@ -160,22 +160,18 @@ describe('shouldRedirectToRunTests — one-shot escape hatch', () => {
 describe('noteRunTestsExecution — the escalation after a RunTests run', () => {
   beforeEach(() => resetRunTestsRedirectMemoForTesting())
 
-  test('the observed case: RunTests ran the suite, the raw-output follow-up is not refused', () => {
+  test('the observed case: RunTests ran the suite, the bare follow-up on it is not refused', () => {
     noteRunTestsExecution('bun test src/tools/GitTool')
-    expect(
-      shouldRedirectToRunTests(
-        'bun test src/tools/GitTool 2>&1 | grep -A 12 "watch that runs out of time" | head -40',
-      ),
-    ).toBe(false)
+    expect(shouldRedirectToRunTests('bun test src/tools/GitTool 2>&1')).toBe(false)
   })
 
   test('the pass is one-shot — a second escalation on the same suite is refused again', () => {
     noteRunTestsExecution('bun test src/tools/GitTool')
-    expect(shouldRedirectToRunTests('bun test src/tools/GitTool | tail -40')).toBe(false)
+    expect(shouldRedirectToRunTests('bun test src/tools/GitTool')).toBe(false)
     // A differently shaped Bash call on the same suite has no pass left, so the
     // redirect is back: one RunTests run buys one escalation, not a session-long
     // whitelist for the project's main suite.
-    expect(shouldRedirectToRunTests('bun test src/tools/GitTool | head -20')).toBe(true)
+    expect(shouldRedirectToRunTests('bun test src/tools/GitTool --bail')).toBe(true)
   })
 
   test('a granted command is not refused later as if it were a first attempt', () => {
@@ -186,10 +182,10 @@ describe('noteRunTestsExecution — the escalation after a RunTests run', () => 
 
   test('the next RunTests run re-arms the pass', () => {
     noteRunTestsExecution('pytest tests/unit')
-    expect(shouldRedirectToRunTests('pytest tests/unit | tail -30')).toBe(false)
-    expect(shouldRedirectToRunTests('pytest tests/unit | head -30')).toBe(true)
+    expect(shouldRedirectToRunTests('pytest tests/unit')).toBe(false)
+    expect(shouldRedirectToRunTests('pytest tests/unit -x')).toBe(true)
     noteRunTestsExecution('pytest tests/unit')
-    expect(shouldRedirectToRunTests('pytest tests/unit | tail -10')).toBe(false)
+    expect(shouldRedirectToRunTests('pytest tests/unit 2>&1')).toBe(false)
   })
 
   test('the pass covers that suite only', () => {
@@ -205,7 +201,7 @@ describe('noteRunTestsExecution — the escalation after a RunTests run', () => 
     // guard these MEMO_LIMIT entries evict the pass armed first.
     noteRunTestsExecution('bun test src/first.test.ts')
     for (let i = 0; i < MEMO_LIMIT; i++) noteRunTestsExecution(`bun run test:scope${i}`)
-    expect(shouldRedirectToRunTests('bun test src/first.test.ts | tail -20')).toBe(false)
+    expect(shouldRedirectToRunTests('bun test src/first.test.ts')).toBe(false)
   })
 })
 
@@ -217,14 +213,14 @@ describe('renderRunTestsRedirect', () => {
     expect(msg).toContain('re-send this exact Bash command')
   })
 
-  test('suggests the command WITHOUT the output filter', () => {
-    // A piped command handed to RunTests' `command` would have its summary
-    // truncated away before the parser saw it, so the suggestion must be the
-    // bare run — while the escape hatch still points at the command as typed.
-    const msg = renderRunTestsRedirect('cargo test --test doq 2>&1 | tail -40')
+  test('suggests the command WITHOUT the trailing 2>&1, and names the tail escape', () => {
+    // RunTests carries stderr itself; the suggestion is the bare run while
+    // the escape hatch still points at the command as typed.
+    const msg = renderRunTestsRedirect('cargo test --test doq 2>&1')
     expect(msg).toContain('command: "cargo test --test doq"')
-    expect(msg).not.toContain('command: "cargo test --test doq 2>&1 | tail -40"')
-    expect(msg).toContain('`cargo test --test doq 2>&1 | tail -40`')
+    expect(msg).not.toContain('command: "cargo test --test doq 2>&1"')
+    expect(msg).toContain('`cargo test --test doq 2>&1`')
+    expect(msg).toContain('runs on the first send')
   })
 })
 
