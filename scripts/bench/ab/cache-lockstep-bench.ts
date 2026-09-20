@@ -16,6 +16,7 @@
 //   bun run scripts/bench/ab/cache-lockstep-bench.ts --bin=claude --files=10
 
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
@@ -45,12 +46,12 @@ const ALL_FILES = [
   'src/shared/constants/keys.ts',
   'src/terminal/ink/constants.ts',
   'src/shared/data/array.ts',
-  'src/shared/withResolvers.ts',
+  'src/shared/data/xml.ts',
   'src/shared/data/lazySchema.ts',
   'src/shared/data/yaml.ts',
   'src/agent/compact/snipCompact.ts',
   'src/shared/data/objectGroupBy.ts',
-  'src/providers/shims/openaiShim.ts',
+  'src/providers/shims/openaiShim/messagesClient.ts',
   'src/providers/shims/codexShim.ts',
   'src/agent/repl/REPL.tsx',
   'src/providers/shims/claude/streaming.ts',
@@ -101,6 +102,17 @@ type Row = { in: number; out: number; cR: number; cW: number }
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   const workload = [...ALL_FILES.slice(0, args.files), ...REVISITS.slice(0, args.revisits)]
+
+  // Each entry becomes one user turn asking the model to Read it. A dead path
+  // costs a turn and measures nothing, with no error anywhere in the output —
+  // the failure `cache-progression.sh` carried for a year. Fail loudly.
+  const missingFixtures = [...new Set(workload)].filter(
+    f => !existsSync(resolve(REPO_ROOT, f)),
+  )
+  if (missingFixtures.length > 0) {
+    console.error(`error: fixture file(s) not found:\n  ${missingFixtures.join('\n  ')}`)
+    process.exit(1)
+  }
 
   const child = spawn(
     args.bin,

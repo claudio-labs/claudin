@@ -28,7 +28,7 @@ Never use Bash `find`/`grep` for code search — use dedicated Grep/Glob tools.
 
 A content-mode Grep result over ~6 KB is regrouped by file before it reaches the
 model, and its `-A/-B/-C` context is clamped to ±3 lines around each match
-(`summarizeGrepOutput` in `src/agent/tools/toolResultSummarizer.ts`). So asking for
+(`summarizeGrepOutput` in `src/agent/tools/toolResultSummarizer/grep.ts`). So asking for
 `-C 30` on a wide search does not buy 30 lines of context — scope the search
 instead, or re-run against the one file you care about. Between ~3 KB and ~6 KB
 the same regrouping applies, but only when it costs no match line: a result
@@ -51,7 +51,7 @@ first (`--sortr=modified` in `src/shared/fs/glob.ts`), so what the cap drops is 
 files nobody has touched. That ranking is the same one Grep's
 `files_with_matches` mode applies, and it is load-bearing twice over: the
 summarizer trims the result again to the first 50 paths
-(`GLOB_MAX_PATHS` in `src/agent/tools/toolResultSummarizer.ts`), so on a wide pattern
+(`GLOB_MAX_PATHS` in `src/agent/tools/toolResultSummarizer/glob.ts`), so on a wide pattern
 the model sees the 50 newest matches and nothing else. A truncated result names
 the `offset` to pass for the next page — that is the way to reach the rest,
 narrowing the pattern being the other. Ordering is by mtime, not relevance: a
@@ -232,12 +232,19 @@ src/
 │   ├── prompts/ (25)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
 │   ├── repl/ (35)               ← REPL.tsx (main loop), controllers/, replLauncher
 │   ├── ui/ (152)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
-│   ├── tools/ (29)              ← toolExecution, toolResultCache, toolResultSummarizer (→ cache.md)
+│   ├── tools/ (40)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
+│   │                              is a BARREL over toolResultSummarizer/ — one module per strategy
+│   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
+│   │                              thresholds, markers, contentShape, and decisionRecord, which is
+│   │                              the sole owner of the lastDecision mutable
 │   ├── tasks/ (37)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (29)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
 │   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
-│   │                              per-key state, pinRegistry, clipStubText, clipFrontier)
+│   │                              per-key state, pinRegistry, clipStubText, clipFrontier).
+│   │                              compact.ts is NOT a barrel: it keeps compactConversation and
+│   │                              partialCompactConversation over postCompactAttachments.ts and
+│   │                              messagePreparation.ts
 │   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
 │   ├── messages/ attachments/   ← message normalization, attachment rendering
 │   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
@@ -318,6 +325,8 @@ src/
 │   ├── prompt-input/ (23)       ← the input box, its modes and suggestions. `input/` (8) is a
 │   │                              different thing: Cursor, keyboardShortcuts, pasteStore
 │   ├── hooks/ (24)              ← terminal-level React hooks (useTextInput …)
+│   ├── theme/ (17)              ← theme.ts keeps getTheme and themeColorToAnsi over themes/,
+│   │                              one module per palette plus types.ts (Theme, THEME_NAMES)
 │   ├── design-system/ (17)      ← shared primitives; logo/ spinner/ image/ theme/ markdown/
 │   ├── keybindings/ (15)        ← keybinding parser, defaultBindings, loadUserBindings, match
 │   ├── contexts/ (9) state/ (8) ← React context providers + AppState store (getState/selectors).
@@ -365,9 +374,12 @@ src/
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/
-├── memory/ (56)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+├── memory/ (69)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, session/, teamSync/, ui/, and instructions/ —
-│                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md,
+│                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md
+│                                  over claudemd/ (parsing, includes, exclusions, processing,
+│                                  predicates, nestedDirectories, externalIncludes); the memoized
+│                                  getMemoryFiles and the TEAMMEM-gated require stay in the root,
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at session start
 ├── skills/ (27)                 ← user-invocable skills (/<name>); bundled/ + /create authoring

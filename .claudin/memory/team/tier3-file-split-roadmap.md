@@ -1,6 +1,6 @@
 ---
 name: tier3-file-split-roadmap
-description: The giant-file split programme — re-measured 2026-09-18 into groups A/B/C (relocatable+churning / monolithic / frozen); Groups A and the remaining giants are DONE (2026-09-19); carries the live barrels, the feature() fold gate, and the four traps a split hits here
+description: The giant-file split programme — round 2 landed 2026-09-20 (summarizer, claudemd, theme, a narrow compact cut, plus auth/claudemd characterization suites); carries the live barrels, the md5 split gate, the feature() fold gate, and the traps a split hits here, including that verify:rules does NOT check prose symbol attributions
 type: project
 ---
 
@@ -28,13 +28,134 @@ tree, do not work from it.**
 | `src/mcp/auth.ts` | 1971 | 40 | 8 |
 | `src/permissions/permissionSetup.ts` | 1454 | 60 | 10 |
 | `src/vcs/git/worktree.ts` | 1544 | 54 | 8 |
+| `src/agent/tools/toolResultSummarizer.ts` | 1396 | 259 | 11 |
+| `src/memory/instructions/claudemd.ts` † | 1405 | 482 | 8 |
+| `src/terminal/theme/theme.ts` † | 1282 | 82 | 14 |
+| `src/agent/compact/compact.ts` † | 1540 | 1050 | 2 |
 
+† not a pure barrel — see below. The last four landed on
+`refactor/split-group-a-round-2`, 2026-09-20.
 The last four landed on branch `refactor/split-remaining-giants`, 2026-09-19;
 the four above them on `refactor/split-giant-modules`, 2026-09-14.
 **The BashTool pair is a RE-land, not a first one** — PR #129 merged in August
 and its code was then dropped from `main` by a non-fast-forward push; see
 [[pr-129-lost-to-force-push]] for the detection recipe and the
 `refs/pull/N/head` recovery.
+
+## Re-measurement 2026-09-19 — Group A is not empty, it moved down the list
+
+Re-ranked the 45 largest non-test files after `refactor/split-remaining-giants`
+landed. The finding that matters: **size no longer predicts anything.** The four
+biggest files in the tree are all Group C (frozen) — `pluginLoader.ts` 3274×**6**,
+`marketplaceManager.ts` 2610×7, `normalize.ts` 2455×8, `bridgeMain.ts` 2411×8 —
+while every remaining cheap target sits in the 1.2–1.8k band. Rank by shape ×
+churn or you will split the wrong file.
+
+The six that are still relocatable AND churning:
+
+**Four of the six are DONE** on `refactor/split-group-a-round-2` (2026-09-20),
+`auth.ts` got a characterization suite instead of a split, and `errors.ts` was
+dropped — its table row is misleading, see the footnote.
+
+| file | lines | commits | syms | largest | coverage |
+|---|---|---|---|---|---|
+| `agent/tools/toolResultSummarizer.ts` | 1396 | 20 | 87 | 13% | 1377 + 982-line tests |
+| `providers/auth/auth.ts` | 1775 | 11 | 78 | 8% | **none** (8 tests mock it away) |
+| `agent/compact/compact.ts` | 1540 | 10 | 36 | 19% | yes |
+| `memory/instructions/claudemd.ts` | 1405 | 11 | 39 | 20% | yes |
+| `providers/transport/errors.ts` | 1295 | 15 | 36 | 40%¹ | yes |
+| `terminal/theme/theme.ts` | 1282 | 11 | 22 | 8% | yes |
+
+¹ 35 of 36 symbols are small message constants; the 40% is one dispatcher.
+
+The "coverage: yes" column was **wrong for two of them** and that is the lesson
+of the round: a file is not covered because some test mentions it.
+`claudemd.ts` had **no colocated test at all** — the suites that name it import
+`MemoryFileInfo` as a type or `mock.module` it away — and `compact.ts`'s 101-line
+suite covered 2 of its 36 symbols, none of them in the blocks a split would
+move. Check for a colocated `*.test.ts` that imports the module's FUNCTIONS
+before costing a split.
+
+## What round 2 cost, and the five things it taught
+
+`toolResultSummarizer.ts` 1396 → **259** (11 siblings), `claudemd.ts` 1405 →
+**482** (8), `theme.ts` 1282 → **82** (14), `compact.ts` 1540 → **1050** (2, a
+deliberately narrow cut). Plus two characterization suites written from scratch:
+26 tests for `claudemd.ts`, 54 for `auth.ts`.
+
+**1. `verify:rules` does NOT check symbol attributions in prose.** An earlier
+draft of this memory claimed it did, on the strength of `SymbolAttributionClaim`
+in `rulesClaims.ts:34`. Measured: that parser only fires on the parenthesised
+module-map form, `file.ts (symA, symB)`. A prose claim —
+`` `summarizeGrepOutput` in `src/agent/tools/toolResultSummarizer.ts` `` — passes
+the check for as long as the *path* exists, so it goes stale silently. Four such
+lines across three rules needed hand-editing. What `--fix` heals is directory
+counts, nothing else — the original wording of this memory was right.
+
+**2. Normalized-content md5 is the split gate, and it is cheap.** For each side:
+strip a leading `export `, drop every line containing `" from '"`, drop blanks,
+sort, `md5sum`. `theme.ts` and `toolResultSummarizer.ts` came back byte-identical
+on the first try. `compact.ts` and `claudemd.ts` left a residue of *import member
+lines* (`  basename,`) and block openers, which the filter cannot see because
+they are continuation lines — diff those by eye and confirm every one is an
+import member. Anything else is a real edit.
+
+**3. Keeping a constant "up top" creates a back-edge.** The first cut of
+`compact.ts` left the `POST_COMPACT_*` budgets in the root because one of their
+readers stayed, so the sibling imported them back and the two files imported each
+other. Build, typecheck and the full suite all passed — which is exactly why it
+would have survived review. The fix is always to move the constant DOWN into the
+sibling and re-export it from the root. Same rule caught
+`MAX_MEMORY_CHARACTER_COUNT` in the claudemd split.
+
+**4. The `mock.module` whole-run leak does not reproduce under Bun 1.3.11** for a
+namespace import. `testing.md` says Bun pre-applies every `mock.module()`
+specifier for the whole run, which is why nobody had ever tested `auth.ts` — it
+is mocked by eight suites. Measured 16 pairings (each of the eight before and
+after a new real-exports suite, both orders): all green. Seven of the eight
+re-install the real module in `afterAll` anyway. **The real blocker was ambient
+machine state**: run alone, `isMaxSubscriber()` returned `true` from the
+developer's own `~/.claudin` credentials. Pin `CLAUDIN_CONFIG_DIR` and the
+original cwd to temp dirs.
+
+**5. A break-probe pass finds unguarded lines, not just untested ones.** Three
+came out of this round and none is a test defect: the `code`/`codespan` skip in
+`extractIncludePathsFromTokens` is unreachable (a `code` token has no text-typed
+child); the `isAnthropicAuthEnabled` gates inside `getSubscriptionType` and
+`getRateLimitTier` cannot be reached machine-independently; and
+`!Number.isNaN(parsed)` in `calculateApiKeyHelperTTL` is redundant because
+`NaN >= 0` is already false. Document them in the test rather than writing an
+assertion that pretends to cover them.
+
+`toolResultSummarizer.ts` is the best target left — per-tool strategies
+(`summarizeBashOutput` / `summarizeGrepOutput` + ~14 grep helpers /
+`summarizeWebFetch` / `summarizeGlob` / head-tail) each with private constants,
+`dispatch` as the barrel, and the only A candidate with real characterization
+coverage already written. `auth.ts` has the best shape and is the worst
+risk-adjusted pick: nothing exercises it.
+
+**The Read outline understates the largest symbol** when a function has a long
+multi-line parameter list — it reports only the signature range. Three files
+were materially wrong before correcting by hand: `errors.ts` 15%→40%,
+`toolExecution.ts` 11%→**56%**, `render-node-to-output.ts` 8%→58%. Verify the
+body extent of the top symbol before calling a file relocatable.
+
+**Two bench defaults are already dead paths**, both victims of the 2026-08
+reorg, so this bench had been measuring nothing since — **FIXED 2026-09-20**,
+with an existence guard beside the `jq` check so the next move fails loudly:
+`scripts/bench/tokens/cache-progression.sh:40` reads `src/screens/REPL.tsx`
+(now `src/agent/repl/REPL.tsx`) and `:41` edits `src/bridge/bridgeEnabled.ts`
+(now `src/platform/bridge/bridgeEnabled.ts`).
+
+Nine giants have **zero** characterization, which is a standalone risk, not just
+a split blocker — `marketplaceManager.ts` (2610, and it runs `gitClone`/`gitPull`,
+pinned only as TEXT by `security-hardening.test.ts`),
+`PowerShellTool/readOnlyValidation.ts` (1818, a security surface),
+`Config.tsx`, `coreSchemas.ts`, `bridgeMain.ts`, `replBridge.ts`,
+`ManagePlugins.tsx`, `PromptInput.tsx`. `auth.ts` came off this list on
+2026-09-20; the other eight are still open, and `marketplaceManager.ts` and
+`PowerShellTool/readOnlyValidation.ts` are the two worth doing next — both are
+security surfaces, and neither needs a split to be worth covering.
 
 ## Re-measurement 2026-09-18 — the cheap splits are DONE
 

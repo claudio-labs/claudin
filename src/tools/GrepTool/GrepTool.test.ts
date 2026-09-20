@@ -762,7 +762,8 @@ describe('GrepTool relativizeRgLine', () => {
       makeContext(),
     )
     const content = (data as GrepData).content ?? ''
-    expect(content).toContain('toolResultSummarizer.ts-')
+    // GREP_MAX_FILES lives in the summarizer's grep sibling, not in the barrel.
+    expect(content).toContain('toolResultSummarizer/grep.ts-')
     expect(content).not.toContain(root)
   })
 })

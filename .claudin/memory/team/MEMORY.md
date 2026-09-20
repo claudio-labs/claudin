@@ -50,7 +50,7 @@
 - [Dead-code round 4 — PR #213 (2026-09-18)](dead-code-round-4-2026-09-18.md) — 17 commits, −18.5k; the throw-probe method, the exports ratchet now in CI, 2 user-visible fixes
 - [Dead-code round 5 — PR #214 (2026-09-19)](dead-code-round-5-2026-09-19.md) — −4.5k; first transitive symbol fixpoint; JSX-as-regex fakes dead components; 2 real defects; 143-symbol tail left
 - [The three dead-code gates and what none of them sees](deadcode-gate-include-allowlist-hole.md) — :ci/:prod/:exports all run in CI now; knip answers "is it imported", never "can it be reached"
-- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — Group A DONE 09-20: 4 orphaned giant tests + 4 production barrels; the fold gate, the 4 traps, and what must NOT become a barrel
+- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — round 2 DONE 09-20; the md5 split gate, the back-edge trap, and why verify:rules does NOT catch stale prose attributions
 - [Two latent bugs pinned, not fixed (2026-09-20)](latent-bugs-pinned-not-fixed.md) — isAutobackgroundingAllowed misses `sleep N`; restoreDangerousPermissions resurrects deleted rules; both guarded by a test asserting today's answer
 - [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%; a Read-only "re-reads" column lied — count every lookup tool

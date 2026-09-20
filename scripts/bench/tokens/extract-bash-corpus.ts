@@ -3,7 +3,7 @@
  * Extracts the real Bash calls out of the recorded session transcripts so the
  * output filter can be replayed against them.
  *
- * The 142 fixtures in `src/tools/shared/outputFilter/Bash/__fixtures__/samples/`
+ * The 144 fixtures in `src/tools/shared/outputFilter/Bash/__fixtures__/samples/`
  * answer "how well does filter X do on output shaped like X". They cannot answer
  * "what fraction of what the agent actually ran gets filtered at all" — the
  * fixtures are one command each, and the traffic is 66.5% piped and chained.

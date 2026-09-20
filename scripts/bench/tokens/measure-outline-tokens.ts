@@ -25,12 +25,12 @@ import { REPO_ROOT } from '../../repoRoot'
 // Representative files spanning size + density. All TS (codebase is TS-only).
 const FILES = [
   'src/shared/fs/fileRead.ts', // ~102 LoC, tiny
-  'src/tools/GrepTool/GrepTool.ts', // ~828 LoC, medium
-  'src/tools/FileReadTool/FileReadTool.ts', // ~1045 LoC, large
-  'src/platform/bash/ast.ts', // ~2679 LoC, very large
-  'src/plugins/pluginLoader.ts', // ~3307 LoC, huge
-  'src/providers/auth/auth.ts', // ~2020 LoC, large dense
-  'src/platform/bridge/bridgeMain.ts', // ~2974 LoC, large dense
+  'src/tools/GrepTool/GrepTool.ts', // ~844 LoC, medium
+  'src/tools/FileReadTool/FileReadTool.ts', // ~977 LoC, large
+  'src/plugins/marketplaceManager.ts', // ~2610 LoC, very large
+  'src/plugins/pluginLoader.ts', // ~3274 LoC, huge
+  'src/providers/auth/auth.ts', // ~1775 LoC, large dense
+  'src/platform/bridge/bridgeMain.ts', // ~2411 LoC, large dense
 ]
 
 function tokens(text: string): number {

@@ -214,7 +214,8 @@ when A executes first, regardless of `--max-concurrency=1`.
   binary that call reached an empty function. Delete the event and the assertion
   does not go red, it goes vacuous. When a test needs to see an internal
   decision, give the code a decision record and read that:
-  `getLastSummaryDecision()` in `toolResultSummarizer.ts` is the worked example,
+  `getLastSummaryDecision()` in `toolResultSummarizer/decisionRecord.ts` is the
+  worked example,
   and converting it kept two facts the event had flattened (a field stays
   *absent* rather than false where the concept does not apply; a count stays a
   count).

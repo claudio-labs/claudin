@@ -72,7 +72,7 @@ const SENTINEL = 'BENCH_DONE'
 const MODEL = 'claude-sonnet-5'
 const ALLOWED_TOOLS = 'Read,Glob'
 
-/** Real files, all 20-22 KB and > 250 lines: both pivot triggers fire in A. */
+/** Real files, all 19-23 KB and > 250 lines: both pivot triggers fire in A. */
 const FIXTURES = [
   'src/providers/usage/modelCost.ts',
   'src/tools/BashTool/sedValidation.ts',

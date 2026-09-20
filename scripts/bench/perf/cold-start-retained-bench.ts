@@ -170,7 +170,10 @@ const PROBES: Probe[] = [
   {
     name: 'openaiShim',
     importExpr: `await import('./src/providers/shims/openaiShim.ts')`,
-    description: 'OpenAI-compatible translator (~2.2k LoC).',
+    // The barrel is the right import here even though it is 51 lines: this
+    // measures RETAINED HEAP, and importing it pulls in the whole openaiShim/
+    // subtree, which is what a real session loads.
+    description: 'OpenAI-compatible translator (barrel over ~8.7k LoC).',
   },
   {
     name: 'Markdown',
