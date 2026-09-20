@@ -57,11 +57,18 @@ import {
   FILE_UNEXPECTEDLY_MODIFIED_ERROR,
 } from 'src/tools/FileEditTool/constants.js'
 import {
+  readGateReasonFor,
   satisfiesLineScopedReadGate,
   seenRegionCoversText,
   unseenRegionMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
+import {
+  fileLinesOf,
+  locateExactText,
+  mergeServedRegions,
+  serveRegions,
+} from 'src/tools/shared/servedRegion.js'
 import { getEditToolDescription } from 'src/tools/FileEditTool/prompt.js'
 import {
   type FileEditInput,
@@ -92,6 +99,36 @@ import {
 // can be larger on disk per character, but 1 GiB is a safe byte-level guard
 // that prevents OOM without being unnecessarily restrictive.
 const MAX_EDIT_FILE_SIZE = 1024 * 1024 * 1024 // 1 GiB (stat bytes)
+
+/**
+ * The refusal's second half, when `old_string` sits in the file exactly once
+ * (servedRegion.ts): the region is registered as read and rendered, so the
+ * identical resubmit passes. `null` means the plain refusal stands.
+ */
+function serveEditRegion(
+  fullFilePath: string,
+  fileContent: string,
+  oldString: string,
+  toolUseContext: ToolUseContext,
+): string | null {
+  const region = locateExactText(fileContent, oldString)
+  if (!region) return null
+  const fileLines = fileLinesOf(fileContent)
+  const merged = mergeServedRegions([region], fileLines.length)
+  if (!merged) return null
+  return serveRegions(
+    toolUseContext.readFileState,
+    fullFilePath,
+    fileLines,
+    getFileModificationTime(fullFilePath),
+    merged,
+  )
+}
+
+function withServedRegion(message: string, served: string | null): string {
+  if (served === null) return message
+  return `${message} The lines you are changing are shown below and now count as read — resubmit the same edit:\n${served}`
+}
 
 export const FileEditTool = buildTool({
   name: FILE_EDIT_TOOL_NAME,
@@ -288,10 +325,16 @@ export const FileEditTool = buildTool({
     // Line-scoped: an injected CLAUDE.md/MEMORY.md passes here and is held to
     // the text the model saw by the coverage check below.
     if (!satisfiesLineScopedReadGate(readTimestamp)) {
+      // A clip-pin stand-down has its own replay budget; serving over it
+      // would reopen a gate that marker deliberately holds shut.
+      const served =
+        readGateReasonFor(readTimestamp) === 'clipped'
+          ? null
+          : serveEditRegion(fullFilePath, fileContent, old_string, toolUseContext)
       return {
         result: false,
         behavior: 'ask',
-        message: writeFamilyReadGateError(readTimestamp),
+        message: withServedRegion(writeFamilyReadGateError(readTimestamp), served),
         meta: {
           isFilePathAbsolute: String(isAbsolute(file_path)),
         },
@@ -312,11 +355,19 @@ export const FileEditTool = buildTool({
         if (isFullRead && fileContent === readTimestamp.content) {
           // Content unchanged, safe to proceed
         } else {
+          const served = serveEditRegion(
+            fullFilePath,
+            fileContent,
+            old_string,
+            toolUseContext,
+          )
           return {
             result: false,
             behavior: 'ask',
-            message:
+            message: withServedRegion(
               'File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.',
+              served,
+            ),
             errorCode: 7,
           }
         }
@@ -329,10 +380,19 @@ export const FileEditTool = buildTool({
     // the text it is replacing (readBeforeEditMessages.ts, coverage lane).
     // The substring predicate: `old_string` may start and end mid-line.
     if (!seenRegionCoversText(readTimestamp, old_string)) {
+      const served = serveEditRegion(
+        fullFilePath,
+        fileContent,
+        old_string,
+        toolUseContext,
+      )
       return {
         result: false,
         behavior: 'ask',
-        message: unseenRegionMessage('File', 'editing it', readTimestamp),
+        message: withServedRegion(
+          unseenRegionMessage('File', 'editing it', readTimestamp),
+          served,
+        ),
         errorCode: 11,
       }
     }
