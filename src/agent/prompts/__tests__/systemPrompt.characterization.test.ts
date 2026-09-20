@@ -19,7 +19,14 @@
 
 import { afterAll, describe, expect, test } from 'bun:test'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -38,6 +45,17 @@ const MODEL = 'claude-opus-5'
 // absolute path it was generated from.
 const PROJECT_SLUG = REPO_ROOT.replace(/[^a-zA-Z0-9]/g, '-')
 
+// The Scratchpad section (on by default since tengu_scratch flipped) names
+// `/tmp/claude-<uid>/<slug>/<sessionId>/scratchpad` — src/platform/tmpdir.ts,
+// with /tmp realpath-resolved (macOS: /private/tmp). The uid and the realpath
+// are this machine's own values, substituted like the paths above; the
+// session id is a fresh UUID per dump, so that one segment is matched by
+// shape, anchored between the two placeholders.
+const CLAUDE_TMP =
+  process.platform === 'win32'
+    ? join(tmpdir(), 'claude')
+    : join(realpathSync('/tmp'), `claude-${process.getuid?.() ?? 0}`)
+
 // The main prompt's Environment block prefixes every line with " - "; the
 // sub-agent's <env> block does not, and words two of the keys differently.
 // Both render the same machine-specific values, so both need blanking.
@@ -47,6 +65,10 @@ const ENV_VALUE_RES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^( - )?(OS Version: ).*$/gm, '$1$2<OS_VERSION>'],
   [/^( - )?(Is a git repository: ).*$/gm, '$1$2<IS_GIT_REPO>'],
   [/^(Is directory a git repo: ).*$/gm, '$1<IS_GIT_REPO>'],
+  [
+    /^(`<CLAUDE_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad`)$/gm,
+    '$1<SESSION_ID>$2',
+  ],
 ]
 
 /**
@@ -72,6 +94,8 @@ function normalize(prompt: string): string {
     .join('<HOME>')
     .split(PROJECT_SLUG)
     .join('<PROJECT_SLUG>')
+    .split(CLAUDE_TMP)
+    .join('<CLAUDE_TMP>')
   for (const [re, replacement] of ENV_VALUE_RES) {
     out = out.replace(re, replacement)
   }

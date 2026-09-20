@@ -76,7 +76,7 @@ export function addClippedIds(ids: Iterable<string>): void {
   }
 }
 
-export const EMPTY_INPUT_FIELDS: ReadonlyMap<string, readonly string[]> = new Map()
+const EMPTY_INPUT_FIELDS: ReadonlyMap<string, readonly string[]> = new Map()
 
 export function getClippedInputFields(): ReadonlyMap<string, readonly string[]> {
   return perKeyClippedInputFields.get(currentKey()) ?? EMPTY_INPUT_FIELDS
