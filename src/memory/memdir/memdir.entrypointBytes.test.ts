@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
+  countIndexEntries,
   truncateEntrypointContent,
 } from 'src/memory/memdir/memdir.js'
 
@@ -85,6 +86,53 @@ describe('truncateEntrypointContent byte cap', () => {
     const body = bodyOf(result.content)
     expect(body.endsWith(line)).toBe(true)
     expect(Buffer.byteLength(body)).toBeLessThanOrEqual(MAX_ENTRYPOINT_BYTES)
+  })
+})
+
+// countIndexEntries is what the transcript's "Loaded N memories" line counts,
+// and it is read on both sides of truncateEntrypointContent — the loaded body
+// and the raw one — so the gap between the two is the truncation signal.
+describe('countIndexEntries', () => {
+  test('counts top-level bullets, not headings or blank lines', () => {
+    const index = [
+      '# Memory',
+      '',
+      '- [One](one.md) — hook',
+      '- [Two](two.md) — hook',
+      '',
+      '## Section',
+      '- [Three](three.md) — hook',
+    ].join('\n')
+    expect(countIndexEntries(index)).toBe(3)
+  })
+
+  test('counts an entry that groups several memories behind prose', () => {
+    // Real shape in this repo's team index: three entries open with text
+    // instead of `[`, and a bracket-only regex silently drops them.
+    const index = [
+      '- [One](one.md) — hook',
+      '- Dead-code rounds 2–4: [r2](r2.md) · [r3](r3.md) · [r4](r4.md)',
+    ].join('\n')
+    expect(countIndexEntries(index)).toBe(2)
+  })
+
+  test('a nested sub-bullet is not an entry', () => {
+    const index = '- [One](one.md) — hook\n  - a detail under it'
+    expect(countIndexEntries(index)).toBe(1)
+  })
+
+  test('the WARNING line truncation appends is not an entry', () => {
+    const truncated = truncateEntrypointContent(
+      Array.from({ length: 250 }, (_, i) => `- [M${i}](m${i}.md) — hook`).join('\n'),
+    )
+    expect(truncated.wasLineTruncated).toBe(true)
+    expect(truncated.content).toContain('> WARNING:')
+    expect(countIndexEntries(truncated.content)).toBe(MAX_ENTRYPOINT_LINES)
+  })
+
+  test('an index with no entries counts zero rather than throwing', () => {
+    expect(countIndexEntries('')).toBe(0)
+    expect(countIndexEntries('# Memory\n\nNothing here yet.')).toBe(0)
   })
 })
 

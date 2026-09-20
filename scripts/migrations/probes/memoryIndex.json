@@ -1,0 +1,76 @@
+{
+  "test": [
+    "src/agent/ui/messages/memoryIndexLine.test.ts",
+    "src/agent/ui/messages/AttachmentMessage.memoryIndex.test.tsx",
+    "src/agent/attachments/injections.memoryIndex.test.ts",
+    "src/agent/attachments/attachments.orchestrator.test.ts",
+    "src/agent/messages/attachments.test.ts",
+    "src/memory/memdir/memdir.entrypointBytes.test.ts"
+  ],
+  "source": "src/agent/ui/messages/memoryIndexLine.ts",
+  "probes": [
+    {
+      "name": "the team index is labelled team, not folded into the private count",
+      "find": "  const label = index.kind === 'team' ? `team ${noun}` : noun\n",
+      "replace": "  const label = noun\n"
+    },
+    {
+      "name": "private leads whatever order getMemoryFiles returned",
+      "find": "    .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind])\n",
+      "replace": ""
+    },
+    {
+      "name": "a cut index reports both halves instead of only what arrived",
+      "find": "    ? `${index.entryCount} of ${index.totalEntryCount} ${label}`\n",
+      "replace": "    ? `${index.entryCount} ${label}`\n"
+    },
+    {
+      "name": "hasTruncatedMemoryIndex compares the two counts",
+      "find": "  return indexes.some(i => i.totalEntryCount > i.entryCount)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "totalEntryCount comes from rawContent, the only truncation signal",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "  const totalEntryCount = file.rawContent\n    ? countIndexEntries(file.rawContent)\n    : entryCount\n",
+      "replace": "  const totalEntryCount = entryCount\n"
+    },
+    {
+      "name": "the clamp keeps a shorter rawContent from reporting a negative cut",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "    totalEntryCount: Math.max(entryCount, totalEntryCount),\n",
+      "replace": "    totalEntryCount,\n"
+    },
+    {
+      "name": "only the two indexes are counted, not the whole CLAUDE.md family",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "    .filter(isMemoryIndex)\n",
+      "replace": ""
+    },
+    {
+      "name": "an unchanged signature announces nothing on the next turn",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "  if (lastSignature === memoryIndexSignature(indexes)) return []\n",
+      "replace": ""
+    },
+    {
+      "name": "the omit gates suppress the line with the family it describes",
+      "source": "src/agent/attachments/pipeline.ts",
+      "find": "    ...(omitClaudeMd || omitMemoryIndexes\n",
+      "replace": "    ...(false\n"
+    },
+    {
+      "name": "countIndexEntries counts bullets, so a grouped entry still counts",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "const INDEX_ENTRY_RE = /^-[ \\t]+\\S/gm\n",
+      "replace": "const INDEX_ENTRY_RE = /^-[ \\t]+\\[/gm\n"
+    },
+    {
+      "name": "memory_index is render-only on the wire",
+      "source": "src/agent/messages/attachments.ts",
+      "comment": "Renaming the case label turns NOTHING red: the switch falls through to a fail-open tail that logs an unknown type and returns [] regardless (agent-safety.md §4). So the probe mutates what the test can actually see — the case emitting content.",
+      "find": "      // announcing them a second time here would duplicate the whole body.\n      return []\n",
+      "replace": "      return [createUserMessage({ content: 'probe', isMeta: true })]\n"
+    }
+  ]
+}

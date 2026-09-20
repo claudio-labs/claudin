@@ -29,6 +29,24 @@ export const MAX_ENTRYPOINT_LINES = 200
 // slip past the line cap (p100 observed: 197KB under 200 lines).
 export const MAX_ENTRYPOINT_BYTES = 25_000
 
+// A MEMORY.md index entry is a top-level bullet: `- [Title](file.md) — hook`.
+// Matched on the bullet rather than on the link because a few entries group
+// several memories behind one line and open with prose instead of `[` — those
+// are entries too. Anchored at column 0 so a nested sub-bullet is not one.
+const INDEX_ENTRY_RE = /^-[ \t]+\S/gm
+
+/**
+ * Count the pointer lines in a MEMORY.md index body.
+ *
+ * Pass the post-truncateEntrypointContent `content` for what actually entered
+ * context, and `rawContent` for what the file holds on disk; the gap between
+ * the two is what a cap cut off. The `> WARNING:` line truncation appends is
+ * not a bullet, so it never skews the count.
+ */
+export function countIndexEntries(indexContent: string): number {
+  return indexContent.match(INDEX_ENTRY_RE)?.length ?? 0
+}
+
 // UTF-8 byte constants for the byte-space cut below.
 const NEWLINE_BYTE = 0x0a
 const CONTINUATION_MASK = 0xc0

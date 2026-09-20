@@ -322,6 +322,11 @@ Read the team config to discover your teammates' names. Check the task list peri
       // are loaded separately and available via the Skill tool
       return []
     }
+    case 'memory_index': {
+      // Render-only. The indexes themselves ride inside claude_md_delta;
+      // announcing them a second time here would duplicate the whole body.
+      return []
+    }
     case 'skill_listing': {
       if (!attachment.content) {
         return []

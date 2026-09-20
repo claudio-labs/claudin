@@ -43,6 +43,28 @@ describe('normalizeAttachmentForAPI', () => {
     expect(out).toEqual([])
   })
 
+  test('memory_index costs nothing on the wire', () => {
+    // Pins the contract, not the case: this switch falls through to a
+    // fail-open tail that logs an unknown type and returns [] anyway, so
+    // deleting the case changes nothing observable here (agent-safety.md §4).
+    // What it does catch is the case ever starting to emit content — the
+    // indexes already ship inside claude_md_delta, and announcing them here
+    // would send the whole body a second time.
+    const out = normalizeAttachmentForAPI({
+      type: 'memory_index',
+      indexes: [
+        {
+          path: '/repo/.claudin/memory/MEMORY.md',
+          displayPath: '.claudin/memory/MEMORY.md',
+          kind: 'auto',
+          entryCount: 16,
+          totalEntryCount: 16,
+        },
+      ],
+    } as any)
+    expect(out).toEqual([])
+  })
+
   test('skill_listing without content returns no messages', () => {
     const out = normalizeAttachmentForAPI({
       type: 'skill_listing',

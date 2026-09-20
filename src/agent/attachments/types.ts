@@ -41,6 +41,21 @@ export type CompactFileReferenceAttachment = {
   displayPath: string
 }
 
+/**
+ * One MEMORY.md index as it entered context. `entryCount` counts the pointer
+ * lines the model actually received; `totalEntryCount` counts what the file
+ * holds on disk. They differ only when truncateEntrypointContent cut the
+ * index at its line or byte cap — a failure that is otherwise silent.
+ */
+export type MemoryIndexSummary = {
+  path: string
+  /** Path relative to CWD (or ~) at creation time, for stable display */
+  displayPath: string
+  kind: 'auto' | 'team'
+  entryCount: number
+  totalEntryCount: number
+}
+
 export type PDFReferenceAttachment = {
   type: 'pdf_reference'
   filename: string
@@ -480,6 +495,17 @@ export type Attachment =
       addedContent: string
       contentHash: string
       isInitial: boolean
+    }
+  | {
+      // Render-only counterpart of `claude_md_delta`: the two MEMORY.md
+      // indexes ship inside that attachment's body, which renders null
+      // because it carries the whole CLAUDE.md family. This one carries no
+      // content — `normalizeAttachmentForAPI` returns [] — and exists so the
+      // indexes entering context are visible in the transcript, the way
+      // `nested_memory_batch` makes loaded rules visible. Producer:
+      // getMemoryIndexAttachment in src/agent/attachments/injections.ts.
+      type: 'memory_index'
+      indexes: MemoryIndexSummary[]
     }
   | {
       // Phase 2 static-dedup: emit gitStatus on turn 1 only. The
