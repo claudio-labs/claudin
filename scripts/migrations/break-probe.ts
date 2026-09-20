@@ -20,7 +20,15 @@
 //          { "name": "...", "find": "...", "replace": "..." } ] }
 // `source` may be overridden per probe.
 //
-// Deleted with the rest of the split scaffolding.
+// Written for the giant-file split, kept afterwards: agent-safety.md requires
+// break-and-restore for every new test, and doing that by hand is what let
+// three tests that guarded nothing ship on this branch's first pass. The specs
+// under probes/ are committed beside it — each one is the evidence for the
+// suite it names, and re-runnable after any later refactor of that code.
+//
+// Its relocation-checking sibling was deleted once the splits landed: it only
+// answered "did every line survive this move", which is not a question a
+// settled tree has.
 
 import { readFileSync, writeFileSync } from 'node:fs'
 

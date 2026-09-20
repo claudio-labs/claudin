@@ -1,9 +1,9 @@
 {
   "//": "Written by `bun run test:floor:update`. The ratio is a ratchet against loss, not a target — see scripts/verify/test-floor.ts.",
-  "ratioPct": 24.04,
-  "testLoc": 158024,
-  "sourceLoc": 657465,
-  "testFiles": 759,
+  "ratioPct": 26.03,
+  "testLoc": 163211,
+  "sourceLoc": 627054,
+  "testFiles": 810,
   "requiredSuites": [
     "src/agent/compact/requestDeterminism.invariant.test.ts",
     "src/agent/compact/stableStubState.stub-byte-stability.test.ts",
@@ -13,5 +13,5 @@
     "src/platform/analytics/growthbook.test.ts",
     "scripts/verify/pr-intent-scan.test.ts"
   ],
-  "capturedAt": "2026-09-15"
+  "capturedAt": "2026-09-20"
 }
