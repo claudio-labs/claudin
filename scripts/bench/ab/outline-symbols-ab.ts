@@ -138,9 +138,24 @@ type Witness = {
 
 const PHANTOM_WITNESSES: readonly Witness[] = [
   {
-    // 565 `getCwd(),` is a call argument; 617 is the last condition of a
-    // multi-line `if (`; 655 `relativizeRgLine(line, absolutePath),` is another
-    // argument. Each is emitted with the range of the next unrelated block.
+    // `getCwd(),` is a call argument; the second is the last condition of a
+    // multi-line `if (`; `relativizeRgLine(line, absolutePath),` is another
+    // argument. Each was emitted with the range of the next unrelated block.
+    //
+    // STALE, AND VACUOUS — do NOT just bump the numbers. The three constructs
+    // have drifted to 566/618/656, but the committed scanner emits NO phantom
+    // at either the old or the new line: `Read(GrepTool.ts, view:'outline')`
+    // returns 30 symbols and none of these three names appears as one. The
+    // defect was fixed in PR #141.
+    //
+    // `mustVanish` is only ever checked for ABSENCE in the candidate (see
+    // `stillThere` below) — it never asserts the phantom was present in the
+    // baseline — so for this witness criterion 1 now passes by construction,
+    // which is precisely what the header above says this bench must not do.
+    // Re-deriving witnesses the CURRENT scanner still gets wrong is research,
+    // not a rename; until someone does it, treat this row as a regression pin
+    // on the fixed state and NOT as evidence a candidate beats the baseline.
+    // `mustSurvive` below is unaffected and still does real work.
     label: 'src/tools/GrepTool/GrepTool.ts',
     lang: 'typescript',
     root: 'repo',

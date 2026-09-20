@@ -50,9 +50,15 @@ import { performance } from 'node:perf_hooks'
 import { join, resolve } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
 
-// 50 files, mixed sizes (small <500B, medium 5-30KB, large 50KB+) to exercise
-// both small-pair walk-back and fat-tail short-circuit branches. NOTE: with
-// --revisits>0 the FULL list is used and --turns is ignored.
+// 50 files spanning ~300 B to ~50 KB, to exercise both the small-pair walk-back
+// and the fat-tail short-circuit branches. NOTE: with --revisits>0 the FULL
+// list is used and --turns is ignored.
+//
+// The band labels below are approximate and drift as the tree changes — two
+// entries in the medium group (mcp/client.ts, providerModels.ts) have since
+// become barrels and are now ~1-2 KB. They are deliberately NOT re-picked:
+// changing the pool changes what the bench measures and breaks comparison with
+// every recorded run. Re-pick the whole pool, or leave it alone.
 const TWELVE_FILES = [
   // large (provider/runtime guts)
   'src/providers/transport/client.ts',
@@ -81,13 +87,13 @@ const TWELVE_FILES = [
   'src/shared/constants/keys.ts',
   'src/terminal/ink/constants.ts',
   'src/shared/data/array.ts',
-  'src/shared/withResolvers.ts',
+  'src/shared/data/xml.ts',
   'src/shared/data/lazySchema.ts',
   'src/shared/data/yaml.ts',
   'src/agent/compact/snipCompact.ts',
   'src/shared/data/objectGroupBy.ts',
   // 50-file extension (mixed sizes) for longer-session workloads
-  'src/providers/shims/openaiShim.ts',
+  'src/providers/shims/openaiShim/messagesClient.ts',
   'src/providers/shims/codexShim.ts',
   'src/agent/repl/REPL.tsx',
   'src/providers/shims/claude/streaming.ts',
@@ -693,6 +699,18 @@ async function main() {
     console.log('  e.g. --a=claudindev --b=claudindev --workload=prose --runs=3 \\')
     console.log('         --a-env=CLAUDIN_VERBOSITY_STEERING=0 --b-env=CLAUDIN_VERBOSITY_STEERING=1')
     return
+  }
+
+  // Every fixture below is read by the MODEL through a prompt, so a path that
+  // no longer exists yields one failed Read the run swallows and a cache table
+  // that silently measured one file fewer. Same rot `cache-progression.sh`
+  // was found in; fail loudly instead.
+  const missingFixtures = [...new Set([...TWELVE_FILES, ...REVISIT_FILES])].filter(
+    f => !existsSync(resolve(REPO_ROOT, f)),
+  )
+  if (missingFixtures.length > 0) {
+    console.error(`error: fixture file(s) not found:\n  ${missingFixtures.join('\n  ')}`)
+    process.exit(1)
   }
 
   const isJson = args.workload === 'json'

@@ -34,7 +34,9 @@ import { REPO_ROOT } from '../../repoRoot'
 // The Read token cap (DEFAULT_MAX_OUTPUT_TOKENS in FileReadTool/limits.ts).
 const READ_TOKEN_CAP = 25_000
 // Always include this anchor file even if discovery order changes.
-const ANCHOR = 'src/providers/shims/openaiShim.ts'
+// It must have real bulk to outline: openaiShim.ts itself is now a 51-line
+// barrel, so the anchor points at the biggest of its siblings instead.
+const ANCHOR = 'src/providers/shims/openaiShim/messagesClient.ts'
 
 const jsonMode = process.argv.includes('--json')
 

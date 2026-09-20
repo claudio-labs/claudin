@@ -70,7 +70,9 @@ const QUESTIONS: readonly { file: string; ask: string }[] = [
     ask: 'o que dessa contagem de contexto e memoizado e o que recalcula por turno',
   },
   {
-    file: 'src/providers/shims/openaiShim.ts',
+    // The conversion lives in this sibling; openaiShim.ts is now a 51-line
+    // barrel and cannot answer the question at any read strategy.
+    file: 'src/providers/shims/openaiShim/messageConverter.ts',
     ask: 'como uma tool call do formato Anthropic vira o formato OpenAI',
   },
   {
