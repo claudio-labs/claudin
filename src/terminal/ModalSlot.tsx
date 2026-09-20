@@ -58,8 +58,8 @@ type Props = {
  * - **split** — the panel sits *beside* the chat instead of over it, so it is
  *   NOT absolute: the transcript is re-parented into a narrower column and
  *   re-provided a smaller `TerminalSizeContext`, which is what makes it reflow
- *   rather than being clipped at the divider. Only the TRANSCRIPT is narrowed —
- *   the prompt keeps the full width below both columns, so the divider stops at
+ *   rather than being clipped at the seam. Only the TRANSCRIPT is narrowed —
+ *   the prompt keeps the full width below both columns, so the panel stops at
  *   the top of the input rather than running to the bottom of the screen.
  *
  * `ModalContext` is provided in all three so `Pane`/`Dialog` inside skip their
@@ -76,10 +76,13 @@ export function ModalSlot({
   scrollRef,
 }: Props): React.ReactNode {
   const split = panel != null && mode === 'split'
-  // A tint that separates the panel from the chat beside it. Empty on the
-  // terminal/ansi themes, which inherit the user's own palette.
+  // The tint IS what separates the panel from the chat beside it, so no rule
+  // is drawn between them. It is empty on the terminal/ansi themes, which
+  // inherit the user's own palette — those fall back to a one-column border,
+  // the only case where the two halves would otherwise run together.
   const [themeName] = useTheme()
   const panelBackground = getTheme(themeName).sidePanelBackground
+  const divider = !panelBackground
 
   // The panel stretches to whatever the row above the prompt is worth, and the
   // dialog inside needs that number for its own fixed-height panes. Yoga knows
@@ -99,7 +102,7 @@ export function ModalSlot({
   })
 
   // Mouse text selection is row-wide by default, which would drag a highlight
-  // (and a copy) straight across the divider into the chat. Publishing the two
+  // (and a copy) straight across the seam into the chat. Publishing the two
   // regions pins a drag to whichever one it started in; anything but the split
   // clears them back to one full-width region. The bands stop at the prompt,
   // which is full width again and must not be clamped to either side.
@@ -108,9 +111,9 @@ export function ModalSlot({
       setSelectionColumnBands(null)
       return
     }
-    setSelectionColumnBands(selectionBands(columns, splitRows - 1))
+    setSelectionColumnBands(selectionBands(columns, splitRows - 1, divider))
     return () => setSelectionColumnBands(null)
-  }, [split, columns, splitRows])
+  }, [split, columns, splitRows, divider])
 
   if (modal == null && panel == null) {
     return (
@@ -194,10 +197,10 @@ export function ModalSlot({
             value={{
               // The rows this column is actually worth, and the usable width
               // before `Pane`'s own paddingX — the same convention the anchored
-              // arrangement uses (`columns - 4` there): panelCols minus the
-              // left border and our paddingX={1}.
+              // arrangement uses (`columns - 4` there): panelCols minus our
+              // paddingX={1}, and minus the left border when one is drawn.
               rows: splitRows,
-              columns: panelCols - 3,
+              columns: panelCols - (divider ? 3 : 2),
               scrollRef,
             }}
           >
@@ -206,12 +209,13 @@ export function ModalSlot({
               width={panelCols}
               flexShrink={0}
               overflow="hidden"
-              borderStyle="single"
+              // Only a theme with no tint of its own needs a rule here.
+              // Structure, not state: it stays neutral either way. Which side
+              // holds the keyboard is said by the dialog's own section rules.
+              borderStyle={divider ? 'single' : undefined}
               borderTop={false}
               borderBottom={false}
               borderRight={false}
-              // Structure, not state: the divider stays neutral. Which side
-              // holds the keyboard is said by the dialog's own section rules.
               borderColor="subtle"
               backgroundColor={panelBackground ? (panelBackground as Color) : undefined}
             >

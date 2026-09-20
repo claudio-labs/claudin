@@ -16,7 +16,7 @@ export const SIDE_PANEL_MIN_COLUMNS = 120
 export type SplitWidths = {
   /** Columns for the chat (transcript + prompt + footer). */
   leftCols: number
-  /** Columns for the panel, including the one-column divider border. */
+  /** Columns for the panel, including the divider border when one is drawn. */
   panelCols: number
 }
 
@@ -28,17 +28,18 @@ export function splitWidths(columns: number): SplitWidths {
 
 /**
  * Columns between the panel's left edge and where its dialog actually draws:
- * the divider border (1), ModalSlot's own `paddingX` (1), and `Pane`'s
- * `paddingX` inside the modal (1). There is no border on the right, so that
- * side is inset by the two paddings only.
+ * the divider border when one is drawn (1), ModalSlot's own `paddingX` (1),
+ * and `Pane`'s `paddingX` inside the modal (1). There is no border on the
+ * right, so that side is inset by the two paddings only.
  */
 const PANEL_BORDER = 1
 const PANEL_PADDING = 2
 
 /**
  * The two regions a mouse text selection may not cross, measured at each
- * side's CONTENT rectangle. The panel's is inset past its border and padding
- * so a highlight lines up with the dialog's boxes instead of overhanging them.
+ * side's CONTENT rectangle. The panel's is inset past its padding — and past
+ * its divider border when the theme draws one — so a highlight lines up with
+ * the dialog's boxes instead of overhanging them.
  *
  * `rowHi` is the last row the split covers: below it the prompt spans the full
  * width again, so a drag there belongs to neither side.
@@ -46,6 +47,7 @@ const PANEL_PADDING = 2
 export function selectionBands(
   columns: number,
   rowHi: number,
+  divider: boolean,
 ): readonly {
   lo: number
   hi: number
@@ -55,7 +57,7 @@ export function selectionBands(
   return [
     { lo: 0, hi: leftCols - 1, rowHi },
     {
-      lo: leftCols + PANEL_BORDER + PANEL_PADDING,
+      lo: leftCols + (divider ? PANEL_BORDER : 0) + PANEL_PADDING,
       hi: columns - 1 - PANEL_PADDING,
       rowHi,
     },
