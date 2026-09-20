@@ -6,6 +6,9 @@ import type { AgentId } from 'src/shared/types/ids.js'
 import type { AttachmentMessage, Message } from 'src/shared/types/message.js'
 import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
+import { getFileModificationTime } from 'src/shared/fs/file.js'
+import { logError } from 'src/shared/log.js'
 import {
   FILE_READ_TOOL_NAME,
   FILE_UNCHANGED_STUB,
@@ -99,22 +102,64 @@ export async function createPostCompactFileAttachments(
 /**
  * Creates a plan file attachment if a plan file exists for the current session.
  * This ensures the plan is preserved after compaction.
+ *
+ * The attachment carries the plan verbatim, so when the caller has just
+ * cleared `readFileState` (both compaction paths do) the plan is seeded back
+ * as a whole-file entry: the model IS holding the file, and without the entry
+ * its next Edit of the plan was refused with "has not been read yet" — five
+ * Edits in a row right after one compaction (session 8db7ab9b, 2026-09-17),
+ * because the plan is deliberately excluded from `createPostCompactFileAttachments`
+ * (`shouldExcludeFromPostCompactRestore`) and nothing else re-seeded it.
+ *
+ * `deps` exists for the test: the plan path is session- and cwd-derived.
  */
 export function createPlanAttachmentIfNeeded(
   agentId?: AgentId,
+  readFileState?: FileStateCache,
+  deps: { getPlan: typeof getPlan; getPlanFilePath: typeof getPlanFilePath } = {
+    getPlan,
+    getPlanFilePath,
+  },
 ): AttachmentMessage | null {
-  const planContent = getPlan(agentId)
+  const planContent = deps.getPlan(agentId)
 
   if (!planContent) {
     return null
   }
 
-  const planFilePath = getPlanFilePath(agentId)
+  const planFilePath = deps.getPlanFilePath(agentId)
+  if (readFileState) {
+    seedPlanFileState(readFileState, planFilePath, planContent)
+  }
 
   return createAttachmentMessage({
     type: 'plan_file_reference',
     planFilePath,
     planContent,
+  })
+}
+
+/** The entry a Read of the whole plan would have left, under the path Edit/apply_patch look up. */
+export function seedPlanFileState(
+  readFileState: FileStateCache,
+  planFilePath: string,
+  planContent: string,
+): void {
+  const key = expandPath(planFilePath)
+  let timestamp: number
+  try {
+    timestamp = getFileModificationTime(key)
+  } catch (e) {
+    // The plan was read a moment ago; a stat failure now is transient. Leave
+    // the cache alone rather than seed an entry that cannot be dated.
+    logError(e)
+    return
+  }
+  readFileState.set(key, {
+    content: planContent,
+    timestamp,
+    offset: undefined,
+    limit: undefined,
   })
 }
 

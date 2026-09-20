@@ -21,6 +21,8 @@ import {
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
 } from 'src/tools/FileReadTool/outlineView.js'
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
+import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
+import { createPlanAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 import {
   getChangedFileAttachments,
   refreshChangedFile,
@@ -46,6 +48,7 @@ import {
 //   S8  Read(range), then a touch with identical bytes           (4 `bun run build` refusals)
 //   S9  two ranges, one of them rewritten                        (coverage survives per slice)
 //   S10 a write, a watcher pass, then a new Read                 (16 "wrote-then-lost")
+//   S11 compaction clears the cache, the plan comes back as an attachment (5 refusals in a row)
 //   S12 a whole-file entry over the cap changes on disk          (evicted as "not read yet")
 //   S13 Read(range) then a patch on the import block             (52 of 102 coverage refusals)
 //   S14 after a refresh, a re-Read returns the body, not a stub  (the "re-read that breaks")
@@ -439,6 +442,35 @@ describe('S10 — a write, a watcher pass, then a new Read', () => {
 
     expect(ctx.readFileState.has(older)).toBe(false)
     expect(patch(written, '@@\n-l3\n+L3')).toEqual({ result: true })
+  })
+})
+
+describe('S11 — compaction clears the cache, the plan comes back as an attachment', () => {
+  test('the plan file counts as read for both write tools', async () => {
+    // The plan is excluded from the post-compact file restore on purpose and
+    // re-injected verbatim as `plan_file_reference` — but that attachment
+    // seeded no readFileState entry, so the model, holding the whole plan in
+    // context, had five consecutive Edits of it refused with "has not been
+    // read yet" (session 8db7ab9b, right after an auto-compact).
+    const p = join(dir, 's11-plan.md')
+    const plan = '# Plan\n\n- [ ] step one\n- [ ] step two\n'
+    writeFileSync(p, plan)
+    await read(p)
+    ctx.readFileState.clear()
+
+    const attachment = createPlanAttachmentIfNeeded(undefined, ctx.readFileState, {
+      getPlan: () => plan,
+      getPlanFilePath: () => p,
+    })
+    expect(attachment?.attachment).toMatchObject({ type: 'plan_file_reference' })
+
+    expect(patch(p, '@@\n-- [ ] step one\n+- [x] step one')).toEqual({ result: true })
+    expect(
+      await FileEditTool.validateInput(
+        { file_path: p, old_string: '- [ ] step two', new_string: '- [x] step two' },
+        ctx,
+      ),
+    ).toMatchObject({ result: true })
   })
 })
 
