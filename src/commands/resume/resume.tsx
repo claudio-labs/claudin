@@ -5,10 +5,10 @@ import figures from 'figures';
 import * as React from 'react';
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js';
 import type { CommandResultDisplay, ResumeEntrypoint } from 'src/commands/commands.js';
-import { LogSelector } from 'src/platform/LogSelector.js';
+import { LogSelector, modalHeightForSessions } from 'src/platform/LogSelector.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
-import { useIsInsideModal } from 'src/terminal/contexts/modalContext.js';
+import { useIsInsideModal, useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { Box, Text } from 'src/terminal/ink.js';
@@ -28,6 +28,9 @@ type ResumeResult = {
   arg: string;
   count: number;
 };
+
+/** Sessions the fullscreen picker shows before the list starts scrolling. */
+const MODAL_VISIBLE_SESSIONS = 6;
 function resumeHelpMessage(result: ResumeResult): string {
   switch (result.resultType) {
     case 'sessionNotFound':
@@ -100,10 +103,13 @@ function ResumeCommand({
   const [loading, setLoading] = React.useState(true);
   const [resuming, setResuming] = React.useState(false);
   const [showAllProjects, setShowAllProjects] = React.useState(false);
+  const insideModal = useIsInsideModal();
+  // In fullscreen the picker lives in the bottom-anchored modal pane, so size it
+  // from the rows that pane actually has. Half the terminal was a
+  // pre-ModalContext guess and left room for only four sessions on 46 rows.
   const {
     rows
-  } = useTerminalSize();
-  const insideModal = useIsInsideModal();
+  } = useModalOrTerminalSize(useTerminalSize());
   const loadLogs = React.useCallback(async (allProjects: boolean, paths: string[]) => {
     setLoading(true);
     try {
@@ -186,7 +192,7 @@ function ResumeCommand({
         <Text> Resuming conversation…</Text>
       </Box>;
   }
-  return <LogSelector logs={logs} maxHeight={insideModal ? Math.floor(rows / 2) : rows - 2} onCancel={handleCancel} onSelect={handleSelect} onLogsChanged={() => loadLogs(showAllProjects, worktreePaths)} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} onAgenticSearch={agenticSessionSearch} />;
+  return <LogSelector logs={logs} maxHeight={insideModal ? Math.min(rows, modalHeightForSessions(MODAL_VISIBLE_SESSIONS)) : rows - 2} onCancel={handleCancel} onSelect={handleSelect} onLogsChanged={() => loadLogs(showAllProjects, worktreePaths)} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} onAgenticSearch={agenticSessionSearch} />;
 }
 export function filterResumableSessions(logs: LogOption[], currentSessionId: string): LogOption[] {
   return logs.filter(l => !l.isSidechain && getSessionIdFromLog(l) !== currentSessionId);
