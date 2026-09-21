@@ -4,7 +4,7 @@ description: Ranked roadmap of 5 opportunities from the 2026-07-17 market resear
 type: project
 ---
 
-Roadmap decided 2026-07-17. Method: 3 web-research passes (coding-CLI tool landscape, LLM dev-infra stack, trends/opportunity gaps) crossed with a 10-point codebase capability audit. Supersedes `token-efficiency-roadmap.md` (deleted — its entire BUILD list #1–#7 shipped to main by 2026-06-29; SKIP verdicts condensed below).
+Roadmap decided 2026-07-17. Method: 3 web-research passes (coding-CLI tool landscape, LLM dev-infra stack, trends/opportunity gaps) crossed with a 10-point codebase capability audit. Supersedes [[token-efficiency-roadmap]] — its entire BUILD list #1–#7 shipped to main by 2026-06-29, and the SKIP verdicts are condensed below. (That file was **not** deleted, despite what this line said until 2026-09-21; it is still in team memory and holds the full reasoning behind each SKIP.)
 
 **Why:** picks what to build next based on where market gaps intersect code that is already half-present in this repo, and records why the rest was skipped.
 
@@ -51,4 +51,4 @@ We are already MCP client AND server (`mcp serve` in `src/platform/main/lifecycl
 Project-aggregate persistence of tokens-saved (/usage), runs=3 median A/B for verbosity steering magnitude, 50KB threshold tuning for tool-result persistence, SmartCrusher lossless-first compaction renderer (defer), `scanSymbols` cheap code-outline side-bet: PR #95 was open as of 2026-06-29.
 
 ## Cross-cutting invariant
-Any new marker/stub/injection MUST sit behind the clip-frontier or it breaks prompt-cache work (`cache-break-audit-2026-06`).
+Any new marker/stub/injection MUST sit behind the clip-frontier or it breaks prompt-cache work (`.claudin/rules/cache.md` §1 — the invariant that the 2026-06-11 break audit produced).

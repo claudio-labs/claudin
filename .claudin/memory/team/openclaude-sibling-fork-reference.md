@@ -1,5 +1,5 @@
 ---
-name: openclaude is a sibling fork to mine for features
+name: openclaude is a sibling fork to mine for BUGS, not features
 description: openclaude (sibling Claude Code fork) at ../openclaude; the value is their fix( stream over inherited code — 28 claims re-verified empirically 2026-09-10, 17 real / 11 falsified — not their feature list
 type: reference
 ---
@@ -172,7 +172,6 @@ The original ranked list follows, kept for its citations. Ranked:
    `lookupByModel` AFTER the discovery return. The comment at `:476-481` argues
    discovery-over-*table*, which is right; discovery-over-*user pin* is the bug.
    Their `3451187a`.
-6. `src/permissions/filesystem.ts:1242` — write-permission check matches rules
 6. `src/permissions/filePermissions/readWriteChecks.ts` (was
    `src/permissions/filesystem.ts:1242` before the 2026-09-19 split) —
    `checkWritePermissionForTool` matches rules against the raw

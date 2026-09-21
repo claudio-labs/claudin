@@ -39,5 +39,5 @@ marker index (free — already cached; system emits ≤2, so main+lag fits the
 4-breakpoint cap; mutually exclusive with `CLAUDIN_TRAIL_CACHE_MARKER` /
 `CLAUDIN_ANCHOR_CACHE_HEAD`), or cap the per-request marker advance below 20
 positions. Teach `buildCacheBreakReason` the jump so it stops saying
-"server-side" for this. Related: [[clip-frontier-invariant]],
-[[context-relief-unified-policy-ab]].
+"server-side" for this. Related: the clip-frontier invariant in
+`.claudin/rules/cache.md`, and [[context-relief-unified-policy-ab]].

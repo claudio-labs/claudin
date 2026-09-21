@@ -16,7 +16,7 @@ After xAI lands, opencode still has these OAuth providers claudin lacks. Source 
 
 **Cloudflare — DONE (2026-06-21, commit c6b2d20a):** shipped as two plain API-key presets `cloudflare-workers-ai` + `cloudflare-ai-gateway`, NOT the OAuth path this memory assumed. Cloudflare uses API tokens (`Authorization: Bearer`), not OAuth, so no web-login flow was needed; see openai-compat-preset-recipe.md. Also shipped same day: `zai` (Z.AI GLM Coding Plan, commit 980aabd7).
 
-Reusable opencode plumbing (already mirrored in claudin, do NOT re-port): token store, callback server, PKCE helpers (`src/services/oauth/`, `src/utils/browser.ts`).
+Reusable opencode plumbing (already mirrored in claudin, do NOT re-port): token store, callback server, PKCE helpers (`src/providers/oauth/`, `src/shared/browser.ts`).
 
 Each new port currently requires cloning the Codex-style `<XxxOAuthSetup>` component in `ProviderManager.tsx`. The longer-term cleanup is to port opencode's `Method`/`Authorization`/`prompts` two-step from `packages/opencode/src/provider/auth.ts` so future providers register declaratively — explicitly deferred per user decision in plan luminous-popping-clarke.md.
 

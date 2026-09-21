@@ -1,6 +1,6 @@
 ---
 name: Devin wire A/B procedure — capture official chisel + Claudin side-by-side via mitmproxy
-description: Exact reproducible steps to MITM-capture the official `devin` CLI and Claudin's GetChatMessage requests at the same time and proto-diff them. Use this whenever re-checking what the official client sends vs Claudin (f31, headers, model UID, metadata fields). Scripts live in scripts/profile/devin-re/.
+description: Exact reproducible steps to MITM-capture the official `devin` CLI and Claudin's GetChatMessage requests at the same time and proto-diff them. Use this whenever re-checking what the official client sends vs Claudin (f31, headers, model UID, metadata fields). The scripts it names are GONE as of 2026-09-21 — the method survives, the harness does not.
 type: reference
 ---
 
@@ -9,6 +9,14 @@ the SWE-1.6 UI label maps to `swe-1-6-fast`. Repeat this when the official
 client version bumps or to re-verify a wire diff. Tools confirmed present on
 this box: `/usr/bin/mitmdump`, official CLI `~/.local/bin/devin`
 (v2026.5.26-8), `claudindev`, repo scripts.
+
+> **The scripts below are GONE (verified 2026-09-21).** Nothing matching
+> `devin*` survives under `scripts/`; the port was archived to
+> `docs/tech/devin-provider/README.md` and the harness went with it. Treat this
+> as a description of the METHOD — the mitmproxy setup, the connect-frame
+> unframing, the metadata sub-field walk — and expect to rewrite the four
+> scripts before running any of it. The generic MITM recipe is
+> [[mitmproxy-rust-binary-recipe]].
 
 ## Files
 - `scripts/profile/devin-repro.ts` — Claudin-side sender (drives the exact

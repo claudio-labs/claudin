@@ -18,7 +18,7 @@ previous frame under blank areas, and a drifting pane border. Established with a
 
 **The fix** — in the useInput handler, BEFORE the setState that changes the layout:
 ```ts
-instances.get(process.stdout)?.prepareFullRepaint()  // src/ink/instances.js
+instances.get(process.stdout)?.prepareFullRepaint()  // src/terminal/ink/instances.ts
 ```
 `prepareFullRepaint()` (added to ink.tsx next to invalidatePrevFrame) picks the mode-appropriate
 reset: alt-screen → `resetFramesForAltScreen()` + `needsEraseBeforePaint`; main-screen →
@@ -51,7 +51,7 @@ shortcut closes the whole dialog. Use context 'Settings' (escape-only) like the 
 Layout recipe that renders clean (mirrors /diff's DiffPane):
 - Tall bordered pane (`height={rows-6}`, `overflow="hidden"`, `paddingX={1}`, title via `borderText`)
   filled with ONE `<RawAnsi lines width={inner}/>`: ANSI strings truncated (`truncateToWidth`) and
-  padded with real spaces to exactly the inner width (track plain width via src/ink/stringWidth.js),
+  padded with real spaces to exactly the inner width (track plain width via src/terminal/ink/stringWidth.ts),
   plus `' '.repeat(inner)` blank lines to the interior height. RawAnsi paints the full rectangle
   (a blank-padding `<Text>` does NOT — trailing whitespace is trimmed). inner = outer − 4.
 - Exact column control comes free (right-aligned duration columns, no flex drift).
