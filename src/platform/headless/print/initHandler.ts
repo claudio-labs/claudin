@@ -37,7 +37,7 @@ import { getInitialSettings } from 'src/platform/settings/settings.js'
 import {
   DEFAULT_OUTPUT_STYLE_NAME,
   getAllOutputStyles,
-} from 'src/shared/constants/outputStyles.js'
+} from 'src/agent/outputStyles/outputStyles.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getAccountInformation } from 'src/providers/auth/auth.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'

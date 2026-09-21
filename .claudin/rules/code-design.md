@@ -68,8 +68,8 @@ In this order, before the first edit:
   active transport, never appended unconditionally to the wire body.
 - **I — Interface segregation**: pass a **narrow `…Deps` type**, not the world.
   Live examples: `FocusedInputDialogDeps`
-  (`src/agent/repl/utils/getFocusedInputDialog.ts:42`), `ResumeSessionDeps`
-  (`src/agent/repl/services/resumeSession.ts:76`). Both have a `makeDeps()` in
+  (`src/agent/repl/getFocusedInputDialog.ts:42`), `ResumeSessionDeps`
+  (`src/agent/repl/resumeSession.ts:76`). Both have a `makeDeps()` in
   their test — that is the payoff.
 - **D — Dependency inversion**: depend on the injected `Deps` param or on the
   accessors (`tryGetActiveProvider()`, `getPrimaryModel()`), never on a concrete
@@ -86,8 +86,19 @@ In this order, before the first edit:
   I/O wrapper dumb. This is the single highest-leverage habit here: it is what
   makes a test possible without mocks, and it is how every recent split was done.
 - **No bucket names.** `utils/`, `helpers/`, `services/`, `components/` were
-  retired; `src/__tests__/moduleBoundaries.test.ts` fails if they return. When no
+  retired; `src/__tests__/moduleBoundaries.test.ts` fails if one returns at the
+  TOP level of `src/`. Below that the test says nothing, so the judgment is
+  yours and it is about catch-all *semantics*, not the word: `<slice>/ui/` and
+  `<slice>/hooks/` are the documented convention, while an `agent/repl/utils/`
+  holding `math.ts` next to `getFocusedInputDialog.ts` was two unrelated things
+  under a name that invites a third (both moved up into `agent/repl/` on
+  2026-09-21, and `agent/repl/components/` became `agent/repl/ui/`). When no
   slice fits, the answer is a new slice.
+- **`src/shared/` may not grow new imports into a slice.** A primitive that
+  reaches up into `providers/` or `platform/` is a misfiled subsystem, and
+  `moduleBoundaries.test.ts` pins the count at 131 as a ceiling that only goes
+  down. `tokenEstimation.ts` (13) and `proc/Shell.ts` (12) are the two worth
+  moving next; their importer counts (44 and 41) are why they were left.
 - **Prefer relocation over rewrite when splitting.** Move code unchanged and leave
   the existing test file untouched — an untouched suite passing is the only cheap
   proof that a 3900-line move was behavior-preserving.
@@ -107,6 +118,7 @@ In this order, before the first edit:
 | Reading a 3k-line file end to end to change one function | Burns context, still misses the invariants | Outline → expand one symbol → read the rule for that path |
 | New `if (provider === …)` branch | Breaks the next provider; the tag is not a capability | Table/registry, or an explicit provider set |
 | Function only testable via `mock.module` | Mocks leak across files in this suite | Inject a narrow `…Deps` param |
+| `mock.module` on a path that does not resolve | Registers against a module id nobody imports — the call is a silent no-op and the test guards nothing | `src/__tests__/mockModuleTargets.test.ts` resolves every target; delete the dead call rather than repointing it, since a live one stubs that module for the whole run |
 | Splitting a file "because it is big" | Frozen files cost nothing; splits break text-reading tests and the typecheck fingerprints | Rank by size × churn; grep the filename repo-wide first |
 | Renaming an export with hand-written edits | Misses call sites among 17k aliased imports | Project-wide rename, then build |
 | New `utils.ts` / `helpers.ts` | Reintroduces a retired bucket; boundary test fails | Put it in the slice that owns the behavior |

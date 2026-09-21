@@ -8,7 +8,7 @@ import { c as _c } from "react-compiler-runtime";
 import { cwd } from 'process';
 import React from 'react';
 import { WelcomeV2 } from 'src/terminal/logo/WelcomeV2.js';
-import { useManagePlugins } from 'src/platform/useManagePlugins.js';
+import { useManagePlugins } from 'src/plugins/hooks/useManagePlugins.js';
 import type { Root } from 'src/terminal/ink.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';

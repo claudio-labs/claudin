@@ -18,7 +18,7 @@ import {
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getSkillToolCommands } from 'src/commands/commands.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
-import { getOutputStyleConfig } from 'src/shared/constants/outputStyles.js'
+import { getOutputStyleConfig } from 'src/agent/outputStyles/outputStyles.js'
 import {
   getFamilyAddendum,
   getFamilyForLogging,
@@ -53,7 +53,7 @@ import {
   isWorkContractEnabled,
 } from 'src/agent/prompts/steeringToggles.js'
 import { WORKTREE_STASH_WARNING } from 'src/shared/constants/worktreeSafety.js'
-import type { OutputStyleConfig } from 'src/shared/constants/outputStyles.js'
+import type { OutputStyleConfig } from 'src/agent/outputStyles/outputStyles.js'
 import { CYBER_RISK_INSTRUCTION } from 'src/agent/prompts/cyberRiskInstruction.js'
 
 export const CLAUDE_CODE_DOCS_MAP_URL =

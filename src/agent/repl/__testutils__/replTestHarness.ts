@@ -211,26 +211,6 @@ export function setupReplMocks(): void {
     useScheduledTasks: noop,
   }))
 
-  // Feedback surveys — read/write survey state on disk.
-  mock.module(
-    'src/platform/feedback/useFeedbackSurvey.js',
-    () => ({
-      useFeedbackSurvey: () => ({ state: 'closed' }),
-    }),
-  )
-  mock.module(
-    'src/platform/feedback/useMemorySurvey.js',
-    () => ({
-      useMemorySurvey: () => ({ state: 'closed' }),
-    }),
-  )
-  mock.module(
-    'src/platform/feedback/usePostCompactSurvey.js',
-    () => ({
-      usePostCompactSurvey: () => ({ state: 'closed' }),
-    }),
-  )
-
   // IDE integration — opens a websocket to the IDE plugin.
   mock.module('src/platform/ide/useIDEIntegration.js', () => ({
     useIDEIntegration: () => ({
@@ -244,10 +224,12 @@ export function setupReplMocks(): void {
     useFileHistorySnapshotInit: noop,
   }))
 
-  // Inbox poller — interval that reads the inbox dir.
-  mock.module('src/terminal/voice/useInboxPoller.js', () => ({
-    useInboxPoller: noop,
-  }))
+  // The inbox poller is NOT stubbed. A mock.module naming
+  // `src/terminal/voice/useInboxPoller.js` sat here and had been inert since
+  // the hook moved to `src/agent/coordinator/useInboxPoller.ts`, so the real
+  // interval has been running under these mounts all along. Removing the dead
+  // call changes nothing; repointing it would stub the hook for every file in
+  // the run, so make that a deliberate change if a test ever needs it.
 
   // Background housekeeping — interval that GCs caches.
   mock.module('src/platform/backgroundHousekeeping.js', () => ({
@@ -284,7 +266,7 @@ export function setupReplMocks(): void {
     () => ({ useAwaySummary: noopHook }),
   )
   mock.module(
-    'src/platform/useOfficialMarketplaceNotification.js',
+    'src/plugins/hooks/useOfficialMarketplaceNotification.js',
     () => ({ useOfficialMarketplaceNotification: noopHook }),
   )
   mock.module(
@@ -304,7 +286,7 @@ export function setupReplMocks(): void {
     () => ({ useLspInitializationNotification: noopHook }),
   )
   mock.module(
-    'src/platform/useClaudeCodeHintRecommendation.js',
+    'src/plugins/hooks/useClaudeCodeHintRecommendation.js',
     () => ({
       useClaudeCodeHintRecommendation: () => ({
         recommendation: null,

@@ -14,17 +14,17 @@ import { closeSidePanel, getSidePanelSnapshot, subscribeSidePanel } from 'src/te
 import { applyMention, type TrackedMention } from 'src/terminal/promptMention.js';
 import { useSearchHighlight } from 'src/terminal/ink/hooks/use-search-highlight.js';
 import type { JumpHandle } from 'src/terminal/VirtualMessageList.js';
-import { median } from 'src/agent/repl/utils/math.js';
-import { TranscriptModeFooter } from 'src/agent/repl/components/TranscriptModeFooter.js';
-import { TranscriptSearchBar } from 'src/agent/repl/components/TranscriptSearchBar.js';
-import { AnimatedTerminalTitle } from 'src/agent/repl/components/AnimatedTerminalTitle.js';
-import { REPLStatus } from 'src/agent/repl/components/REPLStatus.js';
-import { REPLTranscriptView } from 'src/agent/repl/components/REPLTranscriptView.js';
-import { renderREPLDialogs } from 'src/agent/repl/components/REPLDialogs.js';
-import { getFocusedInputDialog } from 'src/agent/repl/utils/getFocusedInputDialog.js';
+import { median } from 'src/agent/repl/math.js';
+import { TranscriptModeFooter } from 'src/agent/repl/ui/TranscriptModeFooter.js';
+import { TranscriptSearchBar } from 'src/agent/repl/ui/TranscriptSearchBar.js';
+import { AnimatedTerminalTitle } from 'src/agent/repl/ui/AnimatedTerminalTitle.js';
+import { REPLStatus } from 'src/agent/repl/ui/REPLStatus.js';
+import { REPLTranscriptView } from 'src/agent/repl/ui/REPLTranscriptView.js';
+import { renderREPLDialogs } from 'src/agent/repl/ui/REPLDialogs.js';
+import { getFocusedInputDialog } from 'src/agent/repl/getFocusedInputDialog.js';
 import { useReplExit } from 'src/agent/repl/hooks/useReplExit.js';
 import { useReplLifecycle } from 'src/agent/repl/hooks/useReplLifecycle.js';
-import { resumeSession } from 'src/agent/repl/services/resumeSession.js';
+import { resumeSession } from 'src/agent/repl/resumeSession.js';
 import { useSandboxAsk } from 'src/agent/repl/controllers/useSandboxAsk.js';
 import { useMessageActionsController } from 'src/agent/repl/controllers/useMessageActionsController.js';
 import { useToolUseContext } from 'src/agent/repl/controllers/useToolUseContext.js';
@@ -145,7 +145,7 @@ import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
 import { useMergedTools } from 'src/agent/hooks/useMergedTools.js';
 import { useMergedCommands } from 'src/agent/hooks/useMergedCommands.js';
 import { useSkillsChange } from 'src/platform/useSkillsChange.js';
-import { useManagePlugins } from 'src/platform/useManagePlugins.js';
+import { useManagePlugins } from 'src/plugins/hooks/useManagePlugins.js';
 import { Messages } from 'src/agent/ui/Messages.js';
 import { TaskListV2 } from 'src/agent/ui/TaskListV2.js';
 import { TeammateViewHeader } from 'src/agent/ui/TeammateViewHeader.js';
@@ -208,7 +208,7 @@ import { createAbortController } from 'src/shared/abortController.js';
 import { MCPConnectionManager } from 'src/mcp/MCPConnectionManager.js';
 import { useInstallMessages } from 'src/platform/notifications/useInstallMessages.js';
 import { useAwaySummary } from 'src/agent/hooks/useAwaySummary.js';
-import { useOfficialMarketplaceNotification } from 'src/platform/useOfficialMarketplaceNotification.js';
+import { useOfficialMarketplaceNotification } from 'src/plugins/hooks/useOfficialMarketplaceNotification.js';
 import { getTipToShowOnSpinner, recordShownTip } from 'src/terminal/tips/tipScheduler.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { isPromptTypingSuppressionActive } from 'src/agent/repl/replInputSuppression.js';
@@ -223,7 +223,7 @@ import { useMcpConnectivityStatus } from 'src/platform/notifications/useMcpConne
 import { useAutoModeUnavailableNotification } from 'src/platform/notifications/useAutoModeUnavailableNotification.js';
 import { AUTO_MODE_DESCRIPTION } from 'src/permissions/ui/AutoModeOptInDialog.js';
 import { useLspInitializationNotification } from 'src/platform/notifications/useLspInitializationNotification.js';
-import { useClaudeCodeHintRecommendation } from 'src/platform/useClaudeCodeHintRecommendation.js';
+import { useClaudeCodeHintRecommendation } from 'src/plugins/hooks/useClaudeCodeHintRecommendation.js';
 import { PluginHintMenu } from 'src/platform/hints/PluginHintMenu.js';
 import { usePluginInstallationStatus } from 'src/platform/notifications/usePluginInstallationStatus.js';
 import { usePluginAutoupdateNotification } from 'src/platform/notifications/usePluginAutoupdateNotification.js';
@@ -269,10 +269,10 @@ const RECENT_SCROLL_REPIN_WINDOW_MS = 3000;
 // `median`, `TranscriptModeFooter`, `TranscriptSearchBar`,
 // `AnimatedTerminalTitle` and the `TITLE_*` constants were extracted
 // in Etapa 1 of ROADMAP 11e. See:
-//   src/agent/repl/utils/math.ts
-//   src/agent/repl/components/TranscriptModeFooter.tsx
-//   src/agent/repl/components/TranscriptSearchBar.tsx
-//   src/agent/repl/components/AnimatedTerminalTitle.tsx
+//   src/agent/repl/math.ts
+//   src/agent/repl/ui/TranscriptModeFooter.tsx
+//   src/agent/repl/ui/TranscriptSearchBar.tsx
+//   src/agent/repl/ui/AnimatedTerminalTitle.tsx
 //
 // The controllers ROADMAP 11e deferred ("REPL.tsx mantém controllers
 // (`onSubmit`/`onQuery*`) e composição") now live in
@@ -1625,7 +1625,7 @@ export function REPL({
   const showingCostDialog = !isLoading && showCostDialog;
 
   // Determine which dialog should have focus (if any). Pure arbitration
-  // extracted to src/agent/repl/utils/getFocusedInputDialog.ts so the
+  // extracted to src/agent/repl/getFocusedInputDialog.ts so the
   // priority order is documented in one place and independently testable.
   // Permission and interactive dialogs can show even when toolJSX is set,
   // as long as shouldContinueAnimation is true. This prevents deadlocks when

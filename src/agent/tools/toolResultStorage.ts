@@ -139,7 +139,7 @@ export async function ensureToolResultsDir(): Promise<void> {
  *
  * Called by `/clear` right after `regenerateSessionId` so the outgoing
  * session's on-disk tool_result files are unlinked instead of waiting for
- * the 30-day time-based cleanup in `src/shared/cleanup.ts`. The session ID
+ * the 30-day time-based cleanup in `src/platform/cleanup.ts`. The session ID
  * is captured by the caller before regeneration; by definition no live
  * code path can still reference these files (the session no longer exists).
  *

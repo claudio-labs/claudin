@@ -5,7 +5,7 @@ import {
   installGlobalPackage,
   repairBunGlobalBinary,
 } from 'src/platform/install/autoUpdater.js'
-import { regenerateCompletionCache } from 'src/shared/completionCache.js'
+import { regenerateCompletionCache } from 'src/platform/completionCache.js'
 import {
   getGlobalConfig,
   type InstallMethod,

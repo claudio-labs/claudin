@@ -16,7 +16,7 @@ import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcu
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import { CapabilitiesSection } from 'src/mcp/ui/CapabilitiesSection.js';
 import type { StdioServerInfo } from 'src/mcp/ui/types.js';
-import { handleReconnectError, handleReconnectResult } from 'src/mcp/ui/utils/reconnectHelpers.js';
+import { handleReconnectError, handleReconnectResult } from 'src/mcp/ui/reconnectHelpers.js';
 type Props = {
   server: StdioServerInfo;
   serverToolsCount: number;
