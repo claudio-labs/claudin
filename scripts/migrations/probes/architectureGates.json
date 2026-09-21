@@ -1,0 +1,20 @@
+{
+  "test": [
+    "src/__tests__/mockModuleTargets.test.ts",
+    "src/__tests__/moduleBoundaries.test.ts"
+  ],
+  "source": "src/agent/cacheBoundsInvariants.test.ts",
+  "probes": [
+    {
+      "name": "a mock.module target that resolves to nothing is caught",
+      "find": "  test('deliveredDiagnostics LRU cap = 500', async () => {\n",
+      "replace": "  test('deliveredDiagnostics LRU cap = 500', async () => {\n    mock.module('../../utils/debug.js', () => ({ logForDebugging: () => {} }))\n"
+    },
+    {
+      "name": "a new import reaching up out of src/shared is caught",
+      "source": "src/shared/browser.ts",
+      "find": "import { logForDebugging } from 'src/shared/debug.js'\n",
+      "replace": "import { logForDebugging } from 'src/shared/debug.js'\nimport type { Theme } from 'src/terminal/theme/theme.js'\n"
+    }
+  ]
+}

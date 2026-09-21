@@ -111,3 +111,41 @@ test('a cross-slice import that CAN be aliased is aliased', () => {
 
   expect(violations).toEqual([])
 })
+
+// `src/shared/` is for primitives with no owner. An import from there INTO a
+// slice inverts that — the primitive starts depending on the subsystem, and
+// every later reader has to guess which way the dependency was meant to run.
+// The tree has 131 of them, so a hard zero would fail on arrival; several are
+// genuine misplacements waiting for a move (`tokenEstimation.ts` reaches into
+// `providers/model/bedrock`, `proc/Shell.ts` into `platform/shell/`), and the
+// four cheapest were moved out when this ratchet was added.
+//
+// So this is a ceiling, not a target: the number only goes down. If you are
+// here because it failed, the file you just added to `src/shared/` belongs in
+// the slice it imports from. To see the current breakdown:
+//
+//   rg -c "from 'src/(?!shared/)[a-z-]+/" src/shared --pcre2
+
+const SHARED_ROOT = join(SRC_ROOT, 'shared')
+const SLICE_IMPORT = /from\s*['"]src\/([^/'"]+)\//g
+const MAX_UPWARD_IMPORTS_FROM_SHARED = 131
+
+test('src/shared does not grow new imports into the slices', () => {
+  let upward = 0
+
+  for (const file of sourceFiles(SHARED_ROOT)) {
+    // A test may legitimately reach for a slice's fixture; the layering claim
+    // is about what ships.
+    if (/\.test\.tsx?$/.test(file)) continue
+    const code = readFileSync(file, 'utf8')
+    for (const match of code.matchAll(SLICE_IMPORT)) {
+      if (match[1] === 'shared') continue
+      upward++
+    }
+  }
+
+  expect({
+    upwardImportsFromShared: upward,
+    atOrUnderCeiling: upward <= MAX_UPWARD_IMPORTS_FROM_SHARED,
+  }).toEqual({ upwardImportsFromShared: upward, atOrUnderCeiling: true })
+})
