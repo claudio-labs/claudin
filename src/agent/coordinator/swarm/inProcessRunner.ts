@@ -1177,6 +1177,7 @@ export async function runInProcessTeammate(
             override: { abortController: currentWorkAbortController },
             model: model as ModelAlias | undefined,
             preserveToolUseResults: true,
+            isTeammateOwnLoop: true,
             availableTools: toolUseContext.options.tools,
             allowedTools,
             contentReplacementState: teammateReplacementState,

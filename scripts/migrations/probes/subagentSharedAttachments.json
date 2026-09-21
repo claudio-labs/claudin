@@ -1,0 +1,60 @@
+{
+  "test": [
+    "src/agent/attachments/subagentSharedGates.test.ts",
+    "src/agent/compact/postCompactAttachments.test.ts",
+    "src/agent/attachments/lifecycle.taskReminderArchived.test.ts",
+    "src/agent/attachments/lifecycle.subagentModeGates.test.ts"
+  ],
+  "source": "src/agent/attachments/threadOwnership.ts",
+  "probes": [
+    {
+      "name": "ownsSessionScopedState lets a teammate's own loop through",
+      "comment": "Drop the teammate clause and the two session-owned producers go silent for a teammate — the regression the field exists to prevent.",
+      "find": "  return !context.agentId || context.isTeammateOwnLoop === true\n",
+      "replace": "  return !context.agentId\n"
+    },
+    {
+      "name": "ownsSessionScopedState keeps sub-agents out",
+      "find": "  return !context.agentId || context.isTeammateOwnLoop === true\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "date_change gate sits BEFORE the one-shot read",
+      "comment": "Removing it is the only mutation that shows the ordering: a gate placed after the read would return [] for the child and still have recorded today's date, so the parent would never be told the day changed.",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "  if (toolUseContext.agentId) return []\n\n  const currentDate = getLocalISODate()\n",
+      "replace": "  const currentDate = getLocalISODate()\n"
+    },
+    {
+      "name": "the v2 task reminder is gated on session-state ownership",
+      "source": "src/agent/attachments/lifecycle.ts",
+      "find": "  if (!ownsSessionScopedState(toolUseContext)) {\n    return []\n  }\n\n  if (!isTodoV2Enabled()) {\n",
+      "replace": "  if (!isTodoV2Enabled()) {\n"
+    },
+    {
+      "name": "teammate_mailbox gate sits BEFORE the mark-as-read",
+      "comment": "The observable is the mutation, not the attachment: without this the child marks the lead's DMs read and they are gone.",
+      "source": "src/agent/attachments/services.ts",
+      "find": "  if (!ownsSessionScopedState(toolUseContext)) {\n    return []\n  }\n\n  // Get AppState early to check for team lead status\n",
+      "replace": "  // Get AppState early to check for team lead status\n"
+    },
+    {
+      "name": "companion_intro emits nothing for a sub-agent",
+      "source": "src/terminal/buddy/prompt.ts",
+      "find": "  if (agentId) return []\n  if (!isBuddyEnabled()) return []\n",
+      "replace": "  if (!isBuddyEnabled()) return []\n"
+    },
+    {
+      "name": "compaction rebuilds the CHILD's plan-mode brief",
+      "source": "src/agent/compact/postCompactAttachments.ts",
+      "find": "      toolNames: new Set(context.options.tools.map(t => t.name)),\n",
+      "replace": "      toolNames: new Set<string>(),\n"
+    },
+    {
+      "name": "compaction does not fall through to the main-thread wording for a child",
+      "source": "src/agent/compact/postCompactAttachments.ts",
+      "find": "  const agentId = context.agentId\n  if (agentId) {\n",
+      "replace": "  const agentId = context.agentId\n  if (false && agentId) {\n"
+    }
+  ]
+}

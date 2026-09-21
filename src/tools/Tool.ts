@@ -300,6 +300,18 @@ export type ToolUseContext = {
   /** When true, preserve toolUseResult on messages even for subagents.
    * Used by in-process teammates whose transcripts are viewable by the user. */
   preserveToolUseResults?: boolean
+  /** True only on an in-process teammate's OWN agent loop — not on any
+   * sub-agent that loop spawns. Set post-hoc by runAgent (never through
+   * SubagentContextOverrides, whose fields ARE inherited by nested forks), so
+   * createSubagentContext cannot copy it forward.
+   *
+   * A teammate reaches runAgent like any sub-agent and therefore has an
+   * agentId, but it owns the session-scoped state a sub-agent must not touch:
+   * the file-backed mailbox and the shared task list. AsyncLocalStorage
+   * propagates into the agents it spawns, so identity cannot tell the two
+   * apart — this field is the discriminator. See ownsSessionScopedState in
+   * src/agent/attachments/threadOwnership.ts. */
+  isTeammateOwnLoop?: boolean
   /** Local denial tracking state for async subagents whose setAppState is a
    *  no-op. Without this, the denial counter never accumulates and the
    *  fallback-to-prompting threshold is never reached. Mutable — the

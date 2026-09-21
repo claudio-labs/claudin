@@ -60,6 +60,7 @@ import {
 import { generateFileAttachment } from 'src/agent/attachments/file-pipeline.js'
 import { getNestedMemoryAttachmentsForFile } from 'src/agent/attachments/memory.js'
 import { getChangedFileAttachments } from 'src/agent/attachments/changedFile.js'
+import { ownsSessionScopedState } from 'src/agent/attachments/threadOwnership.js'
 
 void _unusedGetFs
 
@@ -513,6 +514,17 @@ export async function getTeammateMailboxAttachments(
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
   if (!isAgentSwarmsEnabled()) {
+    return []
+  }
+
+  // Ahead of every read and every mark-as-read below. A sub-agent inherits the
+  // parent's teamContext through the wrapped getAppState and has no agentId of
+  // its own in the teammate registry, so isTeamLead falls through to `true`
+  // and agentName resolves to the lead's — it would read the lead's DMs into
+  // an ephemeral attachment and mark them read, destroying them (#227). An
+  // in-process teammate's own loop is the only mid-turn mail path there is,
+  // so it must still pass.
+  if (!ownsSessionScopedState(toolUseContext)) {
     return []
   }
 

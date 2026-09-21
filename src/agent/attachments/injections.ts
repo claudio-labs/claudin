@@ -89,7 +89,17 @@ import type {
  *
  * Exported for testing — regression guard for the cache-clear removal.
  */
-export function getDateChangeAttachments(): Attachment[] {
+export function getDateChangeAttachments(
+  toolUseContext: Pick<ToolUseContext, 'agentId'>,
+): Attachment[] {
+  // Main thread only, and the gate sits ahead of the one-shot read on
+  // purpose. lastEmittedDate is a single process-global slot: a sub-agent
+  // reaching this first would emit the notice into its own throwaway context
+  // AND record the new date, so the parent — whose transcript the
+  // date-sensitive work actually lives in — would never be told (#227). Same
+  // swallow the plan/auto exit notices had (#224).
+  if (toolUseContext.agentId) return []
+
   const currentDate = getLocalISODate()
   const lastDate = getLastEmittedDate()
 

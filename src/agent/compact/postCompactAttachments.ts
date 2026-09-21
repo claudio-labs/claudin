@@ -18,6 +18,7 @@ import { getMemoryPath } from 'src/platform/config/config.js'
 import { MEMORY_TYPE_VALUES } from 'src/memory/memdir/types.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js'
+import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
 import { getProjectInstructionFilePaths } from 'src/memory/instructions/projectInstructions.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
@@ -216,11 +217,29 @@ export function createSkillAttachmentIfNeeded(
  * This ensures the model continues to operate in plan mode after compaction
  * (otherwise it would lose the plan mode instructions since those are
  * normally only injected on tool-use turns via getAttachmentMessages).
+ *
+ * This is the second plan_mode emitter, and #224 only reached the first one:
+ * the pipeline producer is now main-thread only and a child gets its brief
+ * from runAgent instead (subagentPlanMode.ts). Compacting here used to hand
+ * the child a hand-rolled attachment with no canExitPlanMode, which
+ * contradicted the brief it opened with — so for a child this delegates to the
+ * same builder runAgent uses. The mode read is already the CHILD's: runAgent's
+ * agentGetAppState applies resolveAgentPermissionMode before returning it.
  */
 export async function createPlanModeAttachmentIfNeeded(
   context: ToolUseContext,
 ): Promise<AttachmentMessage | null> {
   const appState = context.getAppState()
+  const agentId = context.agentId
+  if (agentId) {
+    const attachment = buildSubagentPlanModeAttachment({
+      mode: appState.toolPermissionContext.mode,
+      agentId,
+      toolNames: new Set(context.options.tools.map(t => t.name)),
+    })
+    return attachment ? createAttachmentMessage(attachment) : null
+  }
+
   if (appState.toolPermissionContext.mode !== 'plan') {
     return null
   }
@@ -231,7 +250,7 @@ export async function createPlanModeAttachmentIfNeeded(
   return createAttachmentMessage({
     type: 'plan_mode',
     reminderType: 'full',
-    isSubAgent: !!context.agentId,
+    isSubAgent: false,
     planFilePath,
     planExists,
   })
