@@ -104,7 +104,7 @@
     "cross-spawn": "7.0.6",
     "diff": "9.0.0",
     "duck-duck-scrape": "^2.2.7",
-    "emoji-regex": "10.6.0",
+    "emoji-regex": "11.0.0",
     "env-paths": "4",
     "execa": "10.0.1",
     "fflate": "0.8.3",
