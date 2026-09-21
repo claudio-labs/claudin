@@ -13,6 +13,45 @@ export const TAKEOVER_LIST_MAX_ROWS = 10
 /** Fewest rows the diff body keeps, however long the file list is. */
 const MIN_DIFF_ROWS = 3
 
+/**
+ * Rows the Dialog column spends around ANY body: the tab bar, the footer, and
+ * the `gap={1}` it lays between each of its children. The fifth is a bottom
+ * margin the stacked layout keeps too, so the footer never lands on the
+ * panel's very last line.
+ */
+const DIALOG_CHROME_ROWS = 5
+
+/** What a source / project line above the body costs: the line, plus its gap. */
+const HEADER_LINE_ROWS = 2
+
+/**
+ * Rows the body may take inside the panel.
+ *
+ * `contentHeight` cannot stand in for this on the Log tab: it is sized for the
+ * stacked Local layout, which always draws a source line and two section
+ * rules. Reusing it there left the inline arrangement three rows short and the
+ * side-by-side one two, and parked the hints under them three or four rows
+ * above the bottom of the panel.
+ *
+ * @param dialogRows    Rows the dialog is worth (`ModalContext.rows`).
+ * @param hasHeaderLine Whether a source / project line sits above the body.
+ * @param ownChromeRows Rows the body element spends on itself — the inline
+ *   layout's `marginTop` (1), or a bordered pane's two edges (2).
+ */
+export function computeDialogBodyRows(
+  dialogRows: number,
+  hasHeaderLine: boolean,
+  ownChromeRows: number,
+): number {
+  return Math.max(
+    MIN_DIFF_ROWS,
+    dialogRows -
+      DIALOG_CHROME_ROWS -
+      ownChromeRows -
+      (hasHeaderLine ? HEADER_LINE_ROWS : 0),
+  )
+}
+
 export type TakeoverLayout = {
   /** Interior height of the Files pane (border excluded). */
   listInner: number

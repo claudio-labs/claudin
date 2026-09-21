@@ -32,7 +32,10 @@ import {
   useModalOrTerminalSize,
 } from 'src/terminal/contexts/modalContext.js'
 import { useSidePanel } from 'src/terminal/contexts/sidePanelContext.js'
-import { computeTakeoverLayout } from 'src/vcs/diff/ui/layout.js'
+import {
+  computeDialogBodyRows,
+  computeTakeoverLayout,
+} from 'src/vcs/diff/ui/layout.js'
 import { buildDiffRenderModel } from 'src/vcs/diff/ui/collapse.js'
 import { CommitFileList } from 'src/vcs/diff/ui/CommitFileList.js'
 import { CommitGraph } from 'src/vcs/diff/ui/CommitGraph.js'
@@ -308,10 +311,26 @@ export function DiffDialog({
   // Under the takeover that margin is unnecessary (the pane is exactly `rows`
   // tall and clipped) and the peek + divider are gone, so 3 rows come back.
   const contentHeight = Math.max(6, usableSize.rows - (takeover ? 9 : 12))
+  // …but the Log tab draws no source line, so two of those rows are never
+  // spent there. Inside the panel it gets its own budget instead, counted from
+  // what the Dialog column actually lays out — otherwise the Log arrangements
+  // came up two or three rows short and the hints under them sat three or four
+  // rows above the bottom of the panel. Outside a modal the Pane still draws
+  // its own divider and the prompt sits below it, which is what
+  // `contentHeight` reserves for, so those paths keep the old budget.
+  const logHeaderLine = logRepos.length > 1
+  /** Inline body: it pays for its own `marginTop`. */
+  const inlineBodyRows = takeover
+    ? computeDialogBodyRows(usableSize.rows, logHeaderLine, 1)
+    : contentHeight
+  /** Interior of each side-by-side pane: they pay for two borders. */
+  const splitPaneInner = takeover
+    ? computeDialogBodyRows(usableSize.rows, logHeaderLine, 2)
+    : contentHeight
   // Both panes are pinned to this height so the dialog frame is CONSTANT
   // regardless of the selected file's diff length (a short diff must not
   // shrink the frame, a long one must not grow it).
-  const paneHeight = contentHeight + 2
+  const paneHeight = splitPaneInner + 2
 
   // ── sources ─────────────────────────────────────────────────────────────
   const sources = useMemo<DiffSource[]>(
@@ -492,22 +511,22 @@ export function DiffDialog({
     : stacked
       ? Math.max(20, usableColumns - 4)
       : Math.max(20, usableColumns)
-  // Reserve 2 rows for the file list's ↑/↓ "more" indicators so the list never
-  // overflows its (contentHeight-tall) inner area.
-  // Inline (no side pane) the list stands in for the diff body, which already
-  // uses the same budget — so it gets the same height instead of a fixed 15,
-  // which both wasted a tall terminal and overflowed a short one.
+  // Reserve 2 rows for the list's ↑/↓ "more" indicators, which both
+  // DiffFileList and CommitGraph render IN ADDITION to `maxVisible`, so the
+  // list never overflows the area it was given.
   const listMaxVisible = stacked
     ? takeoverLayout.listMaxVisible
-    : Math.max(3, contentHeight - 2)
+    : split
+      ? Math.max(3, splitPaneInner - 2)
+      : Math.max(3, inlineBodyRows - 2)
   // Viewport height for the scrollable body. Stacked-inline there is no pane
   // border to carry the file name and scroll position, so a header row does —
   // and that row comes out of the body's budget.
   const bodyHeight = split
-    ? contentHeight
+    ? splitPaneInner
     : stacked
       ? takeoverLayout.diffInner
-      : Math.max(3, contentHeight - 1)
+      : Math.max(3, inlineBodyRows - 1)
 
   const toggleDir = (key: string): void =>
     setCollapsedDirs(prev => {
@@ -1453,7 +1472,19 @@ export function DiffDialog({
         </Box>
       </Box>
     ) : (
-      <Box flexDirection="column" marginTop={1}>
+      // Pinned to the budget inside the panel, the way the stacked sections
+      // are: CommitGraph draws nought, one or two `more` indicators depending
+      // on where the window sits, so an auto-height body would slide the
+      // footer up a row or two as you scroll. Inline outside a modal the
+      // dialog sits in the transcript, where a fixed height would only add
+      // trailing blank rows.
+      <Box
+        flexDirection="column"
+        marginTop={1}
+        height={takeover ? inlineBodyRows : undefined}
+        flexShrink={0}
+        overflow="hidden"
+      >
         {focus === 'list' ? (
           graphEl
         ) : (
