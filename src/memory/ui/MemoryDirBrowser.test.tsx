@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { PassThrough } from 'node:stream'
@@ -170,6 +170,31 @@ describe('MemoryDirBrowser', () => {
       expect(ui.frame).not.toContain('Search memories')
     } finally {
       await ui.dispose()
+    }
+  })
+
+  test('the team browser lists memories filed under a category subdirectory', async () => {
+    await mkdir(join(dir, 'bugs'), { recursive: true })
+    await writeFile(
+      join(dir, 'bugs', 'sleep-gap.md'),
+      '---\nname: sleep-gap\ndescription: sleep N slips past the classifier\ntype: project\n---\n\nbody\n',
+      'utf8',
+    )
+
+    const team = await render(dir, 100, { isTeamDir: true })
+    try {
+      expectInOrder(team.frame, ['[project]', 'bugs/sleep-gap'])
+    } finally {
+      await team.dispose()
+    }
+
+    // The private browser keeps hiding nested entries: its only subdirectory
+    // is team/, which has a browser of its own.
+    const priv = await render(dir, 100, { isTeamDir: false })
+    try {
+      expect(priv.frame).not.toContain('sleep-gap')
+    } finally {
+      await priv.dispose()
     }
   })
 

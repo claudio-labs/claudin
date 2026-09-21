@@ -1,0 +1,37 @@
+{
+  "test": ["src/memory/memdir/pathScopedMemories.test.ts"],
+  "source": "src/memory/memdir/pathScopedMemories.ts",
+  "probes": [
+    {
+      "name": "a scan that walked nothing is not memoized",
+      "comment": "An empty mtime map is vacuously fresh; caching it pins 'no memories' for the process.",
+      "find": "  cache = dirMtimes.size === 0 ? null : { memoryDir, dirMtimes, entries }\n",
+      "replace": "  cache = { memoryDir, dirMtimes, entries }\n"
+    },
+    {
+      "name": "MEMORY.md is skipped by name even when it carries paths",
+      "find": "      dirent.name === ENTRYPOINT_NAME\n",
+      "replace": "      false\n"
+    },
+    {
+      "name": "the walk stops at MAX_DEPTH",
+      "find": "      if (depth + 1 < MAX_DEPTH) {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "a changed directory mtime invalidates the memo",
+      "find": "      if ((await fs.dirMtimeMs(dir)) !== mtimeMs) return false\n",
+      "replace": "      await fs.dirMtimeMs(dir)\n"
+    },
+    {
+      "name": "a project-local memdir anchors at the directory containing .claudin",
+      "find": "  return basename(parent) === CLAUDIN_DIR_NAME ? dirname(parent) : originalCwd\n",
+      "replace": "  return originalCwd\n"
+    },
+    {
+      "name": "a target that escapes the base dir never matches",
+      "find": "    relativePath.startsWith('..') ||\n",
+      "replace": ""
+    }
+  ]
+}

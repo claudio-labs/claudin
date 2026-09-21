@@ -46,7 +46,7 @@ import type {
   UserMessage,
 } from 'src/shared/types/message.js'
 import { toolToAPISchema } from 'src/providers/transport/api.js'
-import { filterInjectedMemoryFiles, getMemoryFiles } from 'src/memory/instructions/claudemd.js'
+import { getMemoryFiles } from 'src/memory/instructions/claudemd.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -332,7 +332,7 @@ async function countMemoryFileTokens(): Promise<{
     return { memoryFileDetails: [], claudeMdTokens: 0 }
   }
 
-  const memoryFilesData = filterInjectedMemoryFiles(await getMemoryFiles())
+  const memoryFilesData = await getMemoryFiles()
   const memoryFileDetails: MemoryFile[] = []
   let claudeMdTokens = 0
 

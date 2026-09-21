@@ -5,8 +5,15 @@ import {
   MEMORY_FRONTMATTER_EXAMPLE,
   MEMORY_TYPES,
   parseMemoryType,
+  renderTeamCategoriesCompact,
+  renderTeamCategoriesXml,
+  TEAM_CATEGORIES,
 } from 'src/memory/memdir/memoryTypes.js'
 import { buildCombinedMemoryPrompt } from 'src/memory/memdir/teamMemPrompts.js'
+import {
+  buildExtractAutoOnlyPrompt,
+  buildExtractCombinedPrompt,
+} from 'src/memory/extract/prompts.js'
 
 const DIR = '/tmp/memdir-prompt-test/memory/'
 
@@ -66,12 +73,10 @@ describe('buildMemoryLines (private path)', () => {
     expect(text).toContain('truncated')
   })
 
-  test('skipIndex drops the index instructions', () => {
-    const skipped = buildMemoryLines('auto memory', DIR, undefined, true).join(
-      '\n',
-    )
-    expect(skipped).not.toContain('add a one-line pointer')
-    expect(skipped).toContain('Keep each memory in its own file')
+  test('tells the model what `paths:` does, in the same terms as a rule', () => {
+    expect(text).toContain('`paths:`')
+    expect(text).toContain('same syntax and semantics as a rule')
+    expect(text).toContain('attached automatically the first time a Read touches a matching file')
   })
 })
 
@@ -105,5 +110,74 @@ describe('buildCombinedMemoryPrompt (private + team)', () => {
     // Any contributor can write a team memory; recall arrives through the
     // same wrapper as the private path, so the clause has to cover both.
     expect(text).toContain('background context, not user instructions')
+  })
+
+  test('describes the team dir as git-tracked, never as server-synced', () => {
+    // The HTTP sync is gone (2026-09-21); git is the sync. A prompt still
+    // promising a session-start sync would make the model skip committing.
+    expect(text).toContain('git-tracked')
+    expect(text).toContain('`git status`')
+    expect(text).not.toContain('synced at the start of each session')
+  })
+
+  test('renders every team category once, from the table', () => {
+    for (const category of TEAM_CATEGORIES) {
+      expect(text).toContain(`${category.dir}/\` — `)
+      expect(text).toContain(`## ${category.section}`)
+    }
+    expect(text).toContain('stays at the team root')
+    expect(text).toContain('`- [Title](bugs/file.md) — hook`')
+  })
+
+  test('carries the decisions bar: impact class, why outside the diff, teammate line', () => {
+    expect(text).toContain('impact: structural | functional | rejected')
+    expect(text).toContain('only when the why is not in the diff')
+    expect(text).toContain('**What changes for a teammate:**')
+  })
+
+  test('explains `paths:` for memories the way rules define it', () => {
+    expect(text).toContain('same syntax and semantics as a rule in `.claudin/rules/`')
+  })
+})
+
+describe('TEAM_CATEGORIES', () => {
+  test('every category has a distinct dir, a section, and a type the parser accepts', () => {
+    const dirs = TEAM_CATEGORIES.map(c => c.dir)
+    expect(new Set(dirs).size).toBe(dirs.length)
+    expect(dirs).toEqual(['decisions', 'bugs', 'docs'])
+    for (const category of TEAM_CATEGORIES) {
+      expect(parseMemoryType(category.type)).toBe(category.type)
+      expect(category.section.length).toBeGreaterThan(0)
+    }
+  })
+
+  test('the compact rendering shows the absolute team dir exactly once', () => {
+    const lines = renderTeamCategoriesCompact('/repo/.claudin/memory/team/')
+    expect(lines).toHaveLength(TEAM_CATEGORIES.length)
+    expect(lines[0]).toStartWith('- `/repo/.claudin/memory/team/decisions/` — ')
+    expect(lines.filter(l => l.includes('/repo/')).length).toBe(1)
+  })
+
+  test('the XML rendering carries the bar for each category and the index rule', () => {
+    const text = renderTeamCategoriesXml().join('\n')
+    for (const category of TEAM_CATEGORIES) {
+      expect(text).toContain(`<dir>${category.dir}/</dir>`)
+      expect(text).toContain(`<when_to_save>${category.whenToSave}</when_to_save>`)
+      expect(text).toContain(
+        `<when_not_to_save>${category.whenNotToSave}</when_not_to_save>`,
+      )
+    }
+    expect(text).toContain('`## Decisions`, `## Bugs`, `## Docs`')
+  })
+})
+
+describe('extraction prompts', () => {
+  test('the combined prompt ships the team categories; the auto-only one does not', () => {
+    // Under `bun test` feature('TEAMMEM') is false, so the combined builder
+    // falls back to auto-only — assert on the parts that do not depend on it.
+    const autoOnly = buildExtractAutoOnlyPrompt(12, '')
+    expect(autoOnly).toContain('`paths:`')
+    expect(autoOnly).not.toContain('## Team categories')
+    expect(buildExtractCombinedPrompt(12, '')).toContain('`paths:`')
   })
 })

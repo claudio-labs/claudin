@@ -183,16 +183,6 @@ function fixtures(profile: Profile): Attachment[] {
   })
 
   result.push({
-    type: 'relevant_memories',
-    memories: Array.from({ length: fileN }, (_, i) => ({
-      path: `/home/u/.claudin/projects/x/memory/m${i}.md`,
-      content: bodyOfSize(small),
-      mtimeMs: Date.now() - i * 86400_000,
-      header: `Saved ${i}d ago — m${i}.md`,
-    })),
-  })
-
-  result.push({
     type: 'skill_listing',
     skillCount: fileN,
     isInitial: true,

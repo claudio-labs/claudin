@@ -20,26 +20,30 @@ function index(
 }
 
 describe('formatMemoryIndexCounts', () => {
-  test('names the two directories separately', () => {
+  test('names the two indexes separately', () => {
     expect(formatMemoryIndexCounts([index('auto', 16), index('team', 121)])).toBe(
-      '16 memories, 121 team memories',
+      'private memories index (16 entries), team memories index (121 entries)',
     )
   })
 
   test('private always leads, whatever order getMemoryFiles returned', () => {
     expect(formatMemoryIndexCounts([index('team', 121), index('auto', 16)])).toBe(
-      '16 memories, 121 team memories',
+      'private memories index (16 entries), team memories index (121 entries)',
     )
   })
 
   test('one index alone is the whole clause', () => {
-    expect(formatMemoryIndexCounts([index('auto', 4)])).toBe('4 memories')
-    expect(formatMemoryIndexCounts([index('team', 9)])).toBe('9 team memories')
+    expect(formatMemoryIndexCounts([index('auto', 4)])).toBe(
+      'private memories index (4 entries)',
+    )
+    expect(formatMemoryIndexCounts([index('team', 9)])).toBe(
+      'team memories index (9 entries)',
+    )
   })
 
-  test('singular is "memory", not "memorys"', () => {
+  test('singular is "entry", not "entrys"', () => {
     expect(formatMemoryIndexCounts([index('auto', 1), index('team', 1)])).toBe(
-      '1 memory, 1 team memory',
+      'private memories index (1 entry), team memories index (1 entry)',
     )
   })
 
@@ -48,12 +52,23 @@ describe('formatMemoryIndexCounts', () => {
     // silence, because the warning truncateEntrypointContent appends goes to
     // the model and claude_md_delta renders null.
     expect(formatMemoryIndexCounts([index('auto', 16), index('team', 96, 121)])).toBe(
-      '16 memories, 96 of 121 team memories',
+      'private memories index (16 entries), team memories index (96 of 121 entries)',
     )
   })
 
   test('an empty index still reports its zero rather than vanishing', () => {
-    expect(formatMemoryIndexCounts([index('team', 0)])).toBe('0 team memories')
+    expect(formatMemoryIndexCounts([index('team', 0)])).toBe(
+      'team memories index (0 entries)',
+    )
+  })
+
+  test('the number counts index entries, never memories — the files did not load', () => {
+    // The line used to read "Loaded 16 memories, 121 team memories", which
+    // a user took as 137 memory files entering context. Only the pointers do,
+    // so no count may sit directly in front of the word "memories".
+    const out = formatMemoryIndexCounts([index('auto', 16), index('team', 121)])
+    expect(out).not.toMatch(/\d+ (team )?memories/)
+    expect(out).toMatch(/\(\d+ entries\)/)
   })
 })
 

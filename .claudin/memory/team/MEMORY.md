@@ -8,6 +8,7 @@
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Decisions
+- [Team memory: git IS the sync — HTTP sync + LLM recall deleted 2026-09-21](decisions/team-memory-git-is-the-sync.md) — `paths:` is the on-demand loader; decisions/bugs/docs categories; secret guard blocks
 - [Rewriting the shouted emphasis out of tool prompts — DROPPED on data 2026-09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls; empty thinking blocks make it unmeasurable from logs
 - [The seven catch-all dirs are retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts keeps them gone; `src/shared/` upward imports now ratcheted at 131, `vendor/` is gone
 - [memory_delta deleted 2026-08-07 — a second full copy, not a delta](decisions/memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta
@@ -39,6 +40,7 @@
 - [memory-turn-by-turn RSS bench flakes only under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — a negative first-half slope makes the threshold unsatisfiable; re-run in isolation before calling it a regression
 
 ## Docs
+- [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md: layout, categories, secret guard, `paths:` loading, dream digest, transcript lines
 - [/diff reviewer has a living design doc (feature 8.1)](docs/diff-reviewer-living-spec.md) — canonical spec at docs/features/8.1-diff-reviewer.md, kept in sync as features land
 - [Public docs site claudiolabs.ai lives outside this repo](docs/claudiolabs-docs-site.md) — no site/ dir tracked; URLs are extensionless; README links pages instead of duplicating features
 
@@ -50,7 +52,7 @@
 - [ANTI_NARRATION was written for Opus 4.7/4.8, never benched on Claude 5](anti-narration-never-benched-on-claude-5.md) — ModelFamily can't express "Claude 5"; reuse work-contract-ab.ts (one build + env killswitch), not cache-ab-bench
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
-- [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 18 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
+- [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 21 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn from a throwaway cwd, never `-c` in the repo
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — the 2026-08 reorg disarmed a telemetry stub and broke verify:sdk-types; grep generators after a move
 - [Pre-reorg paths in team memory — swept 2026-09-21](memory-cites-pre-reorg-paths.md) — resolution table; live cites fixed, historical left; read the sentence first

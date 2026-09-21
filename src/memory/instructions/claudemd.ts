@@ -75,7 +75,6 @@ export {
 } from 'src/memory/instructions/claudemd/processing.js'
 export {
   MAX_MEMORY_CHARACTER_COUNT,
-  filterInjectedMemoryFiles,
   getLargeMemoryFiles,
   isMemoryFilePath,
 } from 'src/memory/instructions/claudemd/predicates.js'
@@ -446,7 +445,7 @@ export const getClaudeMds = (
           : file.type === 'Local'
             ? " (user's private project instructions, not checked in)"
             : feature('TEAMMEM') && file.type === 'TeamMem'
-              ? ' (shared team memory, synced across the organization)'
+              ? ' (shared team memory, git-tracked in the project)'
               : file.type === 'AutoMem'
                 ? " (user's auto-memory, persists across conversations)"
                 : " (user's private global instructions for all projects)"

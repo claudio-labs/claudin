@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 // Memory-scan profile harness.
 //
-// Measures `scanMemoryFiles(memoryDir, signal)` — called on every turn that
-// invokes findRelevantMemories AND every ~15 turns for extractMemories. The
-// cost scales linearly with the number of `.md` files in
+// Measures `scanMemoryFiles(memoryDir, signal)` — called every ~15 turns by
+// extractMemories to build the manifest it pre-injects. The cost scales
+// linearly with the number of `.md` files in
 // `~/.claudin/projects/<dir>/memory/`. Heavy users accumulate 30–100+ files.
 //
 // Builds a synthetic memory dir under os.tmpdir() with N files, runs the
@@ -189,10 +189,10 @@ async function main(): Promise<void> {
   }
   console.log('')
   console.log(
-    'Note: scanMemoryFiles is called once per turn (findRelevantMemories) and',
+    'Note: scanMemoryFiles is called every ~15 turns (extractMemories) and',
   )
   console.log(
-    '      every ~15 turns (extractMemories). Per-file cost should be flat;',
+    '      never on the per-turn path. Per-file cost should be flat;',
   )
   console.log(
     '      sublinear scaling means the dominant cost is fixed (readdir).',

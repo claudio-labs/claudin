@@ -1,0 +1,51 @@
+{
+  "test": [
+    "src/agent/ui/collapseNestedMemory.test.ts",
+    "src/agent/ui/messages/AttachmentMessage.nestedMemoryBatch.test.tsx"
+  ],
+  "source": "src/agent/ui/collapseNestedMemory.ts",
+  "probes": [
+    {
+      "name": "a private memory-dir file counts as a memory, not a memory file",
+      "find": "  if (file.type === 'AutoMem') {\n    return { rank: 2, one: 'memory', many: 'memories' }\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "a team-root file is a team memory, distinct from a private one",
+      "find": "      return { rank: 3, one: 'team memory', many: 'team memories' }\n",
+      "replace": "      return { rank: 2, one: 'memory', many: 'memories' }\n"
+    },
+    {
+      "name": "a category subdirectory names the category on the line",
+      "find": "      one: `team ${category.noun} memory`,\n      many: `team ${category.noun} memories`,\n",
+      "replace": "      one: 'team memory',\n      many: 'team memories',\n"
+    },
+    {
+      "name": "the category is the file's PARENT directory, nothing higher",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "  const dir = basename(dirname(filePath))\n",
+      "replace": "  const dir = basename(dirname(dirname(filePath)))\n"
+    },
+    {
+      "name": "clauses come out in rank order, not arrival order",
+      "find": "    .sort((a, b) => a.rank - b.rank)\n",
+      "replace": ""
+    },
+    {
+      "name": "a count of one is singular",
+      "find": "    .map(group => `${group.count} ${plural(group.count, group.one, group.many)}`)\n",
+      "replace": "    .map(group => `${group.count} ${group.many}`)\n"
+    },
+    {
+      "name": "the collapse carries each file's memory type into the batch",
+      "find": "    type: attachment.content.type,\n",
+      "replace": "    type: 'Project',\n"
+    },
+    {
+      "name": "the batch arm renders the label, not a bare file count",
+      "source": "src/agent/ui/messages/AttachmentMessage.tsx",
+      "find": "            <Text bold>{nestedMemoryBatchLabel(files)}</Text>\n",
+      "replace": "            <Text bold>{files.length} memory files</Text>\n"
+    }
+  ]
+}

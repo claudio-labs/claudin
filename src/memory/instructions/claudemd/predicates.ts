@@ -1,5 +1,4 @@
 import { basename, sep } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { InstructionsMemoryType } from 'src/platform/lifecycleHooks/hooks.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import { isProjectInstructionFileName } from 'src/memory/instructions/projectInstructions.js'
@@ -21,23 +20,6 @@ export function isInstructionsMemoryType(
 
 export function getLargeMemoryFiles(files: MemoryFileInfo[]): MemoryFileInfo[] {
   return files.filter(f => f.content.length > MAX_MEMORY_CHARACTER_COUNT)
-}
-
-/**
- * When tengu_moth_copse is on, the findRelevantMemories prefetch surfaces
- * memory files via attachments, so the MEMORY.md index is no longer injected
- * into the system prompt. Callsites that care about "what's actually in
- * context" (context builder, /context viz) should filter through this.
- */
-export function filterInjectedMemoryFiles(
-  files: MemoryFileInfo[],
-): MemoryFileInfo[] {
-  const skipMemoryIndex = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_moth_copse',
-    false,
-  )
-  if (!skipMemoryIndex) return files
-  return files.filter(f => f.type !== 'AutoMem' && f.type !== 'TeamMem')
 }
 
 /**

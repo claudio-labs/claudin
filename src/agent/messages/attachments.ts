@@ -30,10 +30,7 @@ import type {
   UserMessage,
 } from 'src/shared/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
-import {
-  type Attachment,
-  memoryHeader,
-} from 'src/agent/attachments/attachments.js'
+import type { Attachment } from 'src/agent/attachments/attachments.js'
 import { quote } from 'src/platform/bash/shellQuote.js'
 import { logAntError } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -297,24 +294,6 @@ Read the team config to discover your teammates' names. Check the task list peri
           content: `Contents of ${attachment.content.path}:\n\n${attachment.content.content}`,
           isMeta: true,
         }),
-      ])
-    }
-    case 'relevant_memories': {
-      if (attachment.memories.length === 0) return []
-      // Collapse N memories into a single <system-reminder>-wrapped
-      // UserMessage. Each memory previously got its own message + wrapper
-      // shell, costing ~10 tokens of pure chrome per file. Concatenation
-      // order matches the array (selector-stable), and each memory's
-      // `header` is pre-computed at attachment-creation time so rendered
-      // bytes stay byte-stable across turns (prompt-cache hit).
-      const body = attachment.memories
-        .map(m => {
-          const header = m.header ?? memoryHeader(m.path, m.mtimeMs)
-          return `${header}\n\n${m.content}`
-        })
-        .join('\n\n---\n\n')
-      return wrapMessagesInSystemReminder([
-        createUserMessage({ content: body, isMeta: true }),
       ])
     }
     case 'dynamic_skill': {
@@ -984,6 +963,9 @@ You have exited auto mode. The user may now want to interact more directly. You 
     'todo',
     'task_progress', // removed in PR #19337
     'ultramemory', // removed in PR #23596
+    // The per-turn relevance recall (findRelevantMemories) is gone; sessions
+    // recorded while it was on still carry its attachment on --resume.
+    'relevant_memories',
   ]
   if (LEGACY_ATTACHMENT_TYPES.includes((attachment as { type: string }).type)) {
     return []

@@ -1,5 +1,6 @@
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
+import { buildMemorySortPrompt } from 'src/commands/memory/sortPrompt.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
 import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js'
 
@@ -9,14 +10,20 @@ import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js'
  * src/terminal/ink.js, which cannot load under `bun test`.
  */
 
-export type MemorySubcommand = 'tidy' | 'private' | 'team'
+export type MemorySubcommand = 'tidy' | 'sort' | 'private' | 'team'
 
-const SUBCOMMANDS: readonly MemorySubcommand[] = ['tidy', 'private', 'team']
+const SUBCOMMANDS: readonly MemorySubcommand[] = [
+  'tidy',
+  'sort',
+  'private',
+  'team',
+]
 
 /**
  * `private` and `team` open the dialog straight into that directory's browser;
- * `tidy` skips the dialog entirely. Anything else falls through to the normal
- * dialog rather than erroring — a typo should not cost the user their `/memory`.
+ * `tidy` and `sort` skip the dialog entirely. Anything else falls through to
+ * the normal dialog rather than erroring — a typo should not cost the user
+ * their `/memory`.
  */
 export function parseMemorySubcommand(args: string): MemorySubcommand | null {
   const trimmed = args.trim()
@@ -50,5 +57,40 @@ export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
       buildMemoryTidyPrompt(getAutoMemPath(), resolveTidyTeamRoot()),
     ],
   })
+  return null
+}
+
+/**
+ * Runs `/memory sort`: the same shape as tidy, over the team dir only — files
+ * team memories into `decisions/`, `bugs/`, `docs/`. The Bash permission
+ * prompt on each `git mv` is the human veto per file. Team memory off (or the
+ * whole feature off) means there is nothing to sort, so it says so and does
+ * not query.
+ */
+export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
+  if (!isAutoMemoryEnabled()) {
+    onDone(
+      'Memory sort unavailable: auto memory is disabled (autoMemoryEnabled is false, or CLAUDIN_DISABLE_AUTO_MEMORY is set).',
+      { display: 'system' },
+    )
+    return null
+  }
+  const teamRoot = resolveTidyTeamRoot()
+  if (teamRoot === null) {
+    onDone(
+      'Memory sort unavailable: team memory is not active for this project.',
+      { display: 'system' },
+    )
+    return null
+  }
+
+  onDone(
+    'Running memory sort — filing team memories into decisions/, bugs/ and docs/…',
+    {
+      display: 'system',
+      shouldQuery: true,
+      metaMessages: [buildMemorySortPrompt(teamRoot)],
+    },
+  )
   return null
 }

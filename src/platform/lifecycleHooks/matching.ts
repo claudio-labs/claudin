@@ -363,8 +363,8 @@ export async function getMatchingHooks(
 
     // Fast-path: callback/function hooks don't need dedup (each is unique).
     // Skip the 6-pass filter + 4×Map + 4×Array.from below when all hooks are
-    // callback/function — the common case for internal hooks like
-    // sessionFileAccessHooks/attributionHooks (44x faster in microbench).
+    // callback/function — the common case for in-process callback hooks
+    // (44x faster in microbench).
     if (
       matchedHooks.every(
         m => m.hook.type === 'callback' || m.hook.type === 'function',

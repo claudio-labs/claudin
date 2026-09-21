@@ -9,7 +9,7 @@ import {
 import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
-import { checkTeamMemSecrets } from 'src/memory/teamSync/teamMemSecretGuard.js'
+import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,

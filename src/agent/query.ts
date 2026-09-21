@@ -48,9 +48,7 @@ import { generateToolUseSummary } from 'src/agent/toolUseSummary/toolUseSummaryG
 import { prependUserContext, appendSystemContext } from 'src/providers/transport/api.js'
 import {
   createAttachmentMessage,
-  filterDuplicateMemoryAttachments,
   getAttachmentMessages,
-  startRelevantMemoryPrefetch,
 } from 'src/agent/attachments/attachments.js'
 import {
   awaitLateDiagnosticsForTurn,
@@ -290,15 +288,6 @@ async function* queryLoop(
   // Snapshot immutable env/statsig/session state once at entry. See QueryConfig
   // for what's included and why feature() gates are intentionally excluded.
   const config = buildQueryConfig()
-
-  // Fired once per user turn — the prompt is invariant across loop iterations,
-  // so per-iteration firing would ask sideQuery the same question N times.
-  // Consume point polls settledAt (never blocks). `using` disposes on all
-  // generator exit paths — see MemoryPrefetch for dispose/telemetry semantics.
-  using pendingMemoryPrefetch = startRelevantMemoryPrefetch(
-    state.messages,
-    state.toolUseContext,
-  )
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -1381,30 +1370,6 @@ async function* queryLoop(
     )) {
       yield attachment
       toolResults.push(attachment)
-    }
-
-    // Memory prefetch consume: only if settled and not already consumed on
-    // an earlier iteration. If not settled yet, skip (zero-wait) and retry
-    // next iteration — the prefetch gets as many chances as there are loop
-    // iterations before the turn ends. readFileState (cumulative across
-    // iterations) filters out memories the model already Read/Wrote/Edited
-    // — including in earlier iterations, which the per-iteration
-    // toolUseBlocks array would miss.
-    if (
-      pendingMemoryPrefetch &&
-      pendingMemoryPrefetch.settledAt !== null &&
-      pendingMemoryPrefetch.consumedOnIteration === -1
-    ) {
-      const memoryAttachments = filterDuplicateMemoryAttachments(
-        await pendingMemoryPrefetch.promise,
-        toolUseContext.readFileState,
-      )
-      for (const memAttachment of memoryAttachments) {
-        const msg = createAttachmentMessage(memAttachment)
-        yield msg
-        toolResults.push(msg)
-      }
-      pendingMemoryPrefetch.consumedOnIteration = turnCount - 1
     }
 
     // Remove only commands that were actually consumed as attachments.

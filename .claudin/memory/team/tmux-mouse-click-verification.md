@@ -66,3 +66,28 @@ dialog, `/status` and its Config/Usage tabs, `tmux resize-window` at 60/100/140
 columns (footer pills and separators reflow), and one real tool-using prompt.
 **The Session tab renders empty for a fresh session** — that is baseline
 behavior, not a break.
+
+## Driving a fixture repo for memory/attachment behavior (2026-09-21)
+
+Anything that depends on a `feature('TEAMMEM')` fold or on the real memdir
+resolution (`getAutoMemPath` needs a git root for the project-local path) is
+unreachable under `bun test`; the cheap end-to-end check is a throwaway repo:
+
+1. In the session scratchpad, write `src/foo.ts`, `.claudin/memory/MEMORY.md`
+   + one private memory with `paths: ["src/**"]`, and
+   `.claudin/memory/team/MEMORY.md` + two files under `team/bugs/` with the
+   same `paths:`. Run `git init` there (no commit needed).
+2. `bun run build`, then
+   `tmux new-session -d -s memv2 -x 120 -y 50 -c <fixture> <repo>/bin/claudin`
+   — `bin/claudin` is the dev bundle; the released `claudin` on PATH is not.
+3. `WaitFor` the trust dialog, `send-keys Enter`, wait for `Try "`; then
+   `send-keys -l "Read src/foo.ts with the Read tool, then reply with only the
+   word done."` and `send-keys Enter`.
+4. `capture-pane -p` shows the two lines under the prompt; `send-keys C-o`
+   expands them to per-file `Loaded <path>` rows. `/exit` + Enter ends it.
+
+What it proved on 2026-09-21: `Loaded private memories index (1 entry), team
+memories index (2 entries)` then `Loaded 1 memory, 2 team bug memories`, with
+the three paths under ctrl+o — the producer → `TeamMem` → category → label
+path, which no unit test can drive. The whole round trip is ~20 s and costs
+one short model turn.

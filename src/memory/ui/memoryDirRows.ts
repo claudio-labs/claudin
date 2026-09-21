@@ -156,13 +156,21 @@ export function removeIndexPointer(
 
 /**
  * How many memories a directory holds, for the selector row's `· N`. Counts
- * `.md` files at the top level only — no frontmatter read, since the main list
- * needs the number and nothing else — so the private dir's count excludes the
- * team subdirectory for free. Returns 0 for a directory that does not exist yet.
+ * `.md` files with no frontmatter read, since the main list needs the number
+ * and nothing else. Top level only by default, so the private dir's count
+ * excludes the team subdirectory for free; `recursive` is for the team dir,
+ * whose category subdirectories (`decisions/`, `bugs/`, `docs/`) hold
+ * memories too. Returns 0 for a directory that does not exist yet.
  */
-export async function countMemoryFiles(dir: string): Promise<number> {
+export async function countMemoryFiles(
+  dir: string,
+  options: { recursive?: boolean } = {},
+): Promise<number> {
   try {
-    const entries = await readdir(dir, { withFileTypes: true })
+    const entries = await readdir(dir, {
+      withFileTypes: true,
+      recursive: options.recursive === true,
+    })
     return entries.filter(
       e => e.isFile() && e.name.endsWith('.md') && e.name !== ENTRYPOINT_NAME,
     ).length

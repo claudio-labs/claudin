@@ -22,7 +22,7 @@ import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import { getErrnoCode } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
 import { editFileInEditor } from 'src/terminal/input/promptEditor.js';
-import { parseMemorySubcommand, runMemoryTidy } from 'src/commands/memory/tidy.js';
+import { parseMemorySubcommand, runMemorySort, runMemoryTidy } from 'src/commands/memory/tidy.js';
 import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js';
 type DirCounts = {
   private: number;
@@ -42,7 +42,9 @@ async function readDirCounts(): Promise<DirCounts> {
     };
   }
   const teamRoot = resolveTidyTeamRoot();
-  const [privateCount, teamCount] = await Promise.all([countMemoryFiles(getAutoMemPath()), teamRoot === null ? Promise.resolve(0) : countMemoryFiles(teamRoot)]);
+  const [privateCount, teamCount] = await Promise.all([countMemoryFiles(getAutoMemPath()), teamRoot === null ? Promise.resolve(0) : countMemoryFiles(teamRoot, {
+    recursive: true
+  })]);
   return {
     private: privateCount,
     team: teamCount
@@ -170,6 +172,9 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
   const subcommand = parseMemorySubcommand(args);
   if (subcommand === 'tidy') {
     return runMemoryTidy(onDone);
+  }
+  if (subcommand === 'sort') {
+    return runMemorySort(onDone);
   }
   // Clear + prime before rendering — Suspense handles the unprimed case,
   // but awaiting here avoids a fallback flash on initial open.

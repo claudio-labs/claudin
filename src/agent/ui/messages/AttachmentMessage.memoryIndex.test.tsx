@@ -65,10 +65,10 @@ function expectInOrder(haystack: string, needles: string[]): void {
 const flatten = (out: string): string => out.replace(/\s+/g, ' ').trim()
 
 describe('AttachmentMessage — memory_index', () => {
-  test('one line naming both directories, with the expand hint', async () => {
+  test('one line naming both indexes, with the expand hint', async () => {
     const out = await render([index('auto', 16), index('team', 121)])
     expectInOrder(flatten(out), [
-      'Loaded 16 memories, 121 team memories',
+      'Loaded private memories index (16 entries), team memories index (121 entries)',
       'ctrl+o to expand',
     ])
   })
@@ -81,14 +81,17 @@ describe('AttachmentMessage — memory_index', () => {
       const out = await render([index('auto', 16), index('team', 121)], {
         columns,
       })
-      expectInOrder(flatten(out), ['Loaded 16 memories,', '121 team memories'])
+      expectInOrder(flatten(out), [
+        'Loaded private memories index (16 entries),',
+        'team memories index (121 entries)',
+      ])
     }
   })
 
   test('a cut index says so on the same line', async () => {
     const out = await render([index('auto', 16), index('team', 96, 121)])
     expectInOrder(flatten(out), [
-      'Loaded 16 memories, 96 of 121 team memories',
+      'Loaded private memories index (16 entries), team memories index (96 of 121 entries)',
       '— index truncated',
     ])
   })

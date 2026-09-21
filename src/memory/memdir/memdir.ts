@@ -190,7 +190,6 @@ export function buildMemoryLines(
   displayName: string,
   memoryDir: string,
   extraGuidelines?: string[],
-  skipIndex = false,
 ): string[] {
   // Compact, dense prose (upstream shape). The verbose XML taxonomy in
   // memoryTypes.ts (TYPES_SECTION_INDIVIDUAL etc.) is ~3.7K tokens and ships
@@ -212,9 +211,7 @@ export function buildMemoryLines(
   // notes in exactly those tags. Two claudin-only rules are preserved
   // because upstream has no counterpart: the explicit forget path, and
   // "memory is for future conversations, use Plan/tasks for this one".
-  const indexGuidance = skipIndex
-    ? 'Keep each memory in its own file; keep its `name`, `description`, and `type` accurate as the content changes. Organize by topic, not chronologically.'
-    : `After writing the file, add a one-line pointer in \`${ENTRYPOINT_NAME}\` (\`- [Title](file.md) — hook\`). \`${ENTRYPOINT_NAME}\` is the index loaded into context each session — one line per memory, no frontmatter, never put memory content there (lines past ${MAX_ENTRYPOINT_LINES} are truncated).`
+  const indexGuidance = `After writing the file, add a one-line pointer in \`${ENTRYPOINT_NAME}\` (\`- [Title](file.md) — hook\`). \`${ENTRYPOINT_NAME}\` is the index loaded into context each session — one line per memory, no frontmatter, never put memory content there (lines past ${MAX_ENTRYPOINT_LINES} are truncated). A memory file itself is read when you follow its index line; one whose frontmatter has \`paths:\` (same syntax and semantics as a rule in \`.claudin/rules/\`, relative to the project root) is also attached automatically the first time a Read touches a matching file.`
 
   const lines: string[] = [
     `# ${displayName}`,
@@ -282,11 +279,8 @@ export function buildMemoryStubLines(
   displayName: string,
   memoryDir: string,
   extraGuidelines?: string[],
-  skipIndex = false,
 ): string[] {
-  const indexStep = skipIndex
-    ? ''
-    : ` Then add a one-line pointer in \`${ENTRYPOINT_NAME}\` (the index: \`- [Title](file.md) — hook\`, no frontmatter, never memory content).`
+  const indexStep = ` Then add a one-line pointer in \`${ENTRYPOINT_NAME}\` (the index: \`- [Title](file.md) — hook\`, no frontmatter, never memory content).`
   return [
     `# ${displayName}`,
     '',
@@ -395,11 +389,6 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
 export async function loadMemoryPrompt(): Promise<string | null> {
   const autoEnabled = isAutoMemoryEnabled()
 
-  const skipIndex = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_moth_copse',
-    false,
-  )
-
   // Cowork injects memory-policy text via env var; thread into all builders.
   const coworkExtraGuidelines =
     process.env.CLAUDE_COWORK_MEMORY_EXTRA_GUIDELINES
@@ -419,10 +408,7 @@ export async function loadMemoryPrompt(): Promise<string | null> {
       // out from under the auto dir, add a second ensureMemoryDirExists call
       // for autoDir here.
       await ensureMemoryDirExists(teamDir)
-      return teamMemPrompts!.buildCombinedMemoryPrompt(
-        extraGuidelines,
-        skipIndex,
-      )
+      return teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines)
     }
   }
 
@@ -436,7 +422,7 @@ export async function loadMemoryPrompt(): Promise<string | null> {
     const build = hasExistingMemories(autoDir)
       ? buildMemoryLines
       : buildMemoryStubLines
-    return build('auto memory', autoDir, extraGuidelines, skipIndex).join('\n')
+    return build('auto memory', autoDir, extraGuidelines).join('\n')
   }
 
   return null
