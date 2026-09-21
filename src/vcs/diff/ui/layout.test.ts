@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  computeDialogBodyRows,
   computeTakeoverLayout,
   TAKEOVER_LIST_MAX_ROWS,
 } from 'src/vcs/diff/ui/layout.js'
@@ -68,5 +69,47 @@ describe('computeTakeoverLayout', () => {
     // would leave nothing to render.
     const { listMaxVisible } = computeTakeoverLayout(7, 40)
     expect(listMaxVisible).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('computeDialogBodyRows', () => {
+  // What the panel measured in the screenshot this was fixed from.
+  const PANEL_ROWS = 41
+  // The inline body pays for its own marginTop; a bordered pane, two edges.
+  const INLINE = 1
+  const PANE = 2
+
+  test('the body plus the column chrome leaves one row at the bottom', () => {
+    const body = computeDialogBodyRows(PANEL_ROWS, false, INLINE)
+    // 1 tab bar + 1 gap + 1 marginTop + body + 1 gap + 1 footer.
+    expect(body + 5).toBe(PANEL_ROWS - 1)
+  })
+
+  test('a bordered pane keeps the same outer height as the inline body', () => {
+    const pane = computeDialogBodyRows(PANEL_ROWS, false, PANE)
+    // The pane spends its extra row on borders, not on a marginTop, so the
+    // footer lands on the same line either way.
+    expect(pane + 2).toBe(computeDialogBodyRows(PANEL_ROWS, false, INLINE) + 1)
+  })
+
+  test('it beats the stacked budget, which is what stranded the footer', () => {
+    // The inline body used to run on the stacked layout's `contentHeight`
+    // (`rows - 9`), which pays for a source line and two section rules that
+    // are not on screen here: three rows the column had and never used.
+    expect(computeDialogBodyRows(PANEL_ROWS, false, INLINE)).toBe(
+      PANEL_ROWS - 9 + 3,
+    )
+  })
+
+  test('a project line above the body costs it the line and the gap', () => {
+    expect(computeDialogBodyRows(PANEL_ROWS, true, INLINE)).toBe(
+      computeDialogBodyRows(PANEL_ROWS, false, INLINE) - 2,
+    )
+  })
+
+  test('a short panel still leaves three rows to render into', () => {
+    for (const rows of [0, 1, 6, 8]) {
+      expect(computeDialogBodyRows(rows, true, PANE)).toBeGreaterThanOrEqual(3)
+    }
   })
 })

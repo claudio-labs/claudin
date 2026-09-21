@@ -197,10 +197,11 @@ export function ModalSlot({
             value={{
               // The rows this column is actually worth, and the usable width
               // before `Pane`'s own paddingX — the same convention the anchored
-              // arrangement uses (`columns - 4` there): panelCols minus our
-              // paddingX={1}, and minus the left border when one is drawn.
+              // arrangement uses (`columns - 4` there). The panel adds no
+              // padding of its own, so only the left border comes off, and only
+              // when one is drawn.
               rows: splitRows,
-              columns: panelCols - (divider ? 3 : 2),
+              columns: panelCols - (divider ? 1 : 0),
               scrollRef,
             }}
           >
@@ -219,7 +220,7 @@ export function ModalSlot({
               borderColor="subtle"
               backgroundColor={panelBackground ? (panelBackground as Color) : undefined}
             >
-              <Box flexDirection="column" paddingX={1} flexShrink={0} overflow="hidden">
+              <Box flexDirection="column" flexShrink={0} overflow="hidden">
                 {panel}
               </Box>
             </Box>

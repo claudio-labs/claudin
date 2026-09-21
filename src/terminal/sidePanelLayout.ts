@@ -28,12 +28,13 @@ export function splitWidths(columns: number): SplitWidths {
 
 /**
  * Columns between the panel's left edge and where its dialog actually draws:
- * the divider border when one is drawn (1), ModalSlot's own `paddingX` (1),
- * and `Pane`'s `paddingX` inside the modal (1). There is no border on the
- * right, so that side is inset by the two paddings only.
+ * the divider border when one is drawn (1) and `Pane`'s `paddingX` inside the
+ * modal (1). ModalSlot adds none of its own — at half width the panel cannot
+ * afford two columns a side, and the seam already separates it from the chat.
+ * There is no border on the right, so that side is inset by the padding alone.
  */
 const PANEL_BORDER = 1
-const PANEL_PADDING = 2
+const PANEL_PADDING = 1
 
 /**
  * The two regions a mouse text selection may not cross, measured at each
