@@ -63,6 +63,7 @@ import {
   TODO_REMINDER_CONFIG,
 } from 'src/agent/attachments/config.js'
 import { hasToolResultContent } from 'src/agent/attachments/shared.js'
+import { ownsSessionScopedState } from 'src/agent/attachments/threadOwnership.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
@@ -561,6 +562,17 @@ export async function getTaskReminderAttachments(
   messages: Message[] | undefined,
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
+  // The list this reads is session-scoped (getTaskListId resolves to the team
+  // name or the session id), and the reminder ends with "Keep this list
+  // current as you work". A sub-agent holding TaskUpdate — which survives the
+  // sub-agent tool filter for a sync child — would be handed the parent's
+  // whole checklist mid-tool-loop and invited to mutate it (#227). An
+  // in-process teammate is a genuine owner of that list, hence the predicate
+  // rather than a bare agentId check.
+  if (!ownsSessionScopedState(toolUseContext)) {
+    return []
+  }
+
   if (!isTodoV2Enabled()) {
     return []
   }

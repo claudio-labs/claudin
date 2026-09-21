@@ -11,8 +11,11 @@ import {
 } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   createPlanAttachmentIfNeeded,
+  createPlanModeAttachmentIfNeeded,
   seedPlanFileState,
 } from 'src/agent/compact/postCompactAttachments.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 
 let dir: string
 
@@ -78,5 +81,78 @@ describe('seedPlanFileState', () => {
     const cache = new FileStateCache(10, 1024 * 1024)
     seedPlanFileState(cache, join(dir, 'never-written.md'), '# Plan\n')
     expect(cache.size).toBe(0)
+  })
+})
+
+// #227: this is the SECOND plan_mode emitter, and #224 only reached the first.
+// The pipeline producer is main-thread only now and a child gets its brief from
+// runAgent (subagentPlanMode.ts), so compaction has to rebuild the CHILD's
+// brief rather than a hand-rolled one — otherwise a compacting child is handed
+// an attachment that contradicts the one it opened with.
+describe('createPlanModeAttachmentIfNeeded', () => {
+  function makeContext(args: {
+    agentId?: AgentId
+    mode: string
+    toolNames: string[]
+  }): ToolUseContext {
+    return {
+      agentId: args.agentId,
+      options: { tools: args.toolNames.map(name => ({ name })) },
+      getAppState: () => ({
+        toolPermissionContext: { mode: args.mode },
+      }),
+      setAppState: () => {},
+    } as unknown as ToolUseContext
+  }
+
+  const CHILD = 'agent_227' as AgentId
+
+  test('a child that can submit a plan is told about the plan file', async () => {
+    const out = await createPlanModeAttachmentIfNeeded(
+      makeContext({
+        agentId: CHILD,
+        mode: 'plan',
+        toolNames: ['Read', 'ExitPlanMode'],
+      }),
+    )
+
+    expect(out?.attachment).toMatchObject({
+      type: 'plan_mode',
+      isSubAgent: true,
+      canExitPlanMode: true,
+    })
+  })
+
+  test('a child without ExitPlanMode is not told to submit one', async () => {
+    // The hand-rolled attachment set no canExitPlanMode at all, so a
+    // WebResearcher was told to write a plan file with tools it does not have.
+    const out = await createPlanModeAttachmentIfNeeded(
+      makeContext({ agentId: CHILD, mode: 'plan', toolNames: ['WebFetch'] }),
+    )
+
+    expect(out?.attachment).toMatchObject({
+      type: 'plan_mode',
+      isSubAgent: true,
+      canExitPlanMode: false,
+    })
+  })
+
+  test('a child outside plan mode gets nothing', async () => {
+    expect(
+      await createPlanModeAttachmentIfNeeded(
+        makeContext({ agentId: CHILD, mode: 'default', toolNames: ['Read'] }),
+      ),
+    ).toBeNull()
+  })
+
+  test('the main thread keeps its own wording', async () => {
+    const out = await createPlanModeAttachmentIfNeeded(
+      makeContext({ mode: 'plan', toolNames: ['Read'] }),
+    )
+
+    expect(out?.attachment).toMatchObject({
+      type: 'plan_mode',
+      isSubAgent: false,
+    })
   })
 })

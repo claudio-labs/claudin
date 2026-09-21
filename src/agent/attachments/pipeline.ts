@@ -150,6 +150,47 @@ export async function getAttachments(
   // Thread-safe attachments available in sub-agents
   // NOTE: These must be created AFTER userInputAttachments completes to ensure
   // nestedMemoryAttachmentTriggers is populated before getNestedMemoryAttachments runs
+  //
+  // Every producer below runs for sub-agents too, and for a sub-agent this
+  // pipeline ONLY ever runs mid-tool-loop — query.ts calls it with
+  // `input === null` after each batch of tool results, so whatever it emits is
+  // merged into the same user turn as the tool_result before it. That is what
+  // made the parent's mode reminders read as text injected by the page a
+  // WebResearcher had just fetched (#224). So before adding one here, decide
+  // which of these three it is (#227 classified the rest):
+  //
+  //  1. PER-CHILD — its input arrives on the ToolUseContext or in `messages`.
+  //     queued_commands, changed_files (readFileState is cloned per child),
+  //     nested_memory + dynamic_skill (Sets created fresh in
+  //     createSubagentContext), agent_pending_messages and task_reconcile
+  //     (both already gated on agentId), critical_system_reminder (comes from
+  //     the agent definition, never the parent), mcp_instructions_delta and
+  //     agent_listing_delta (pure over the child's own messages). Nothing to do.
+  //
+  //  2. SESSION-OWNED — reads state the session owns, not the conversation.
+  //     Gate it with ownsSessionScopedState (threadOwnership.ts), which lets a
+  //     teammate's own loop through and a sub-agent it spawned not:
+  //     teammate_mailbox and the TodoV2 branch of todo_reminders. A plain
+  //     agentId gate is right only where the resource has exactly one owner —
+  //     date_change (one process-global date slot) and companion_intro (a REPL
+  //     sprite), like the four mode producers #224 fixed. Put the gate AHEAD
+  //     of the read whenever the producer consumes a one-shot or marks
+  //     something read, or the child returns [] having already destroyed what
+  //     the parent was owed.
+  //
+  //  3. GLOBAL BUT LOAD-BEARING — claude_md_delta, memory_index and
+  //     git_status_delta read process-global context, and must NOT be gated:
+  //     filterStaticDedupKeys (providers/transport/api.ts) strips claudeMd and
+  //     gitStatus from prependUserContext on every request, sub-agents
+  //     included, so for a child that sets no omit flag these attachments are
+  //     the only delivery path there is.
+  //
+  // Two below are safe only by accident, so check them if you change their
+  // callers: ultrathink_effort takes `input`, which is always null for a
+  // child, and team_context bails on hasAssistantMessage, which a child's
+  // mid-loop messages always have. skill_listing and bash_git_instructions
+  // key their "already sent" latches by agent, but their --resume suppress
+  // flags are process-global one-shots either thread could consume.
   const allThreadAttachments = [
     // queuedCommands is already agent-scoped by the drain gate in query.ts —
     // main thread gets agentId===undefined, subagents get their own agentId.
@@ -157,7 +198,7 @@ export async function getAttachments(
     // (removed from queue by removeFromQueue but never attached).
     maybe('queued_commands', () => getQueuedCommandAttachments(queuedCommands)),
     maybe('date_change', () =>
-      Promise.resolve(getDateChangeAttachments()),
+      Promise.resolve(getDateChangeAttachments(toolUseContext)),
     ),
     maybe('ultrathink_effort', () =>
       Promise.resolve(getUltrathinkEffortAttachment(input)),
@@ -218,7 +259,9 @@ export async function getAttachments(
     ...(isBuddyEnabled()
       ? [
           maybe('companion_intro', () =>
-            Promise.resolve(getCompanionIntroAttachment(messages)),
+            Promise.resolve(
+              getCompanionIntroAttachment(messages, toolUseContext.agentId),
+            ),
           ),
         ]
       : []),

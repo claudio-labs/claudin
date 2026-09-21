@@ -266,6 +266,7 @@ export async function* runAgent({
   model,
   maxTurns,
   preserveToolUseResults,
+  isTeammateOwnLoop,
   availableTools,
   allowedTools,
   onCacheSafeParams,
@@ -299,6 +300,10 @@ export async function* runAgent({
   maxTurns?: number
   /** Preserve toolUseResult on messages for subagents with viewable transcripts */
   preserveToolUseResults?: boolean
+  /** Set by inProcessRunner for a teammate's own loop, so the attachment
+   * producers that read session-scoped state (mailbox, shared task list) can
+   * tell it apart from a sub-agent it spawns. */
+  isTeammateOwnLoop?: boolean
   /** Precomputed tool pool for the worker agent. Computed by the caller
    * (AgentTool.tsx) to avoid a circular dependency between runAgent and tools.ts.
    * Always contains the full tool pool assembled with the worker's own permission
@@ -804,6 +809,14 @@ export async function* runAgent({
   // Preserve tool use results for subagents with viewable transcripts (in-process teammates)
   if (preserveToolUseResults) {
     agentToolUseContext.preserveToolUseResults = true
+  }
+
+  // Assigned here rather than passed through createSubagentContext's overrides
+  // on purpose: those fields are copied into every nested fork, and a
+  // sub-agent spawned BY a teammate must not inherit the teammate's claim on
+  // the mailbox and the shared task list.
+  if (isTeammateOwnLoop) {
+    agentToolUseContext.isTeammateOwnLoop = true
   }
 
   // Expose cache-safe params for background summarization (prompt cache sharing)

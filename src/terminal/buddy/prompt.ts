@@ -1,5 +1,6 @@
 import type { Message } from 'src/shared/types/message.js'
 import type { Attachment } from 'src/agent/attachments/attachments.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCompanion } from 'src/terminal/buddy/companion.js'
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js'
@@ -14,7 +15,14 @@ When the user addresses ${name} directly (by name), its bubble will answer. Your
 
 export function getCompanionIntroAttachment(
   messages: Message[] | undefined,
+  agentId: AgentId | undefined,
 ): Attachment[] {
+  // Main thread only. Every line of this text is addressed to the REPL — a
+  // sprite beside the user's input box, a bubble that answers when the user
+  // says the name, and a cap of ONE line on the reply. A sub-agent has no
+  // input box and its reply is a report to its parent, so for a child this is
+  // a response-length instruction merged into a tool_result turn (#227).
+  if (agentId) return []
   if (!isBuddyEnabled()) return []
   const companion = getCompanion()
   if (!companion || getGlobalConfig().companionMuted) return []
