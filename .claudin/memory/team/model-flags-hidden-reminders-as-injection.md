@@ -25,3 +25,27 @@ origin and never add a secrecy instruction. Gate new attachment producers in
 `src/agent/attachments/pipeline.ts` on `input !== null` so they ride with a real
 user prompt. Verify by running a real turn and reading the reply — a unit test
 cannot catch either failure.
+
+## For a sub-agent, `input !== null` is not available (#224, 2026-09-20)
+
+Prediction confirmed, at scale: two `WebResearcher` agents reported the parent's
+plan-mode and auto-mode reminders as a prompt-injection attempt in the page they
+had just fetched. Same placement failure — but the mitigation above does not
+transfer, because a child **only ever** reaches the pipeline mid-tool-loop
+(`runAgent` builds its opening turn itself), so `input` is always null and
+gating on it silences the producer entirely.
+
+The usable axis for a child is **who owns the state the producer reads**:
+main-thread-only, session-owned (teammates count as owners), or per-child. Six
+producers were wrong on that axis; the classification now lives above
+`allThreadAttachments` in `pipeline.ts`. See
+[[attachment-producers-leak-parent-state]].
+
+Two things that generalise beyond attachments:
+
+- **The child's brief is the right home for anything mode-shaped.** Moving the
+  plan-mode reminder into `runAgent`'s `initialMessages` cost nothing in
+  coverage and removed the injection shape entirely.
+- **A leaked reminder is worse than noise**: the child either acts on a parent
+  mode nothing in its brief explains, or burns a turn reporting a phantom
+  security incident — and either way it learns to distrust genuine reminders.
