@@ -14,7 +14,7 @@ import {
   SCAN_MAX_BYTES,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { readNotebook } from 'src/shared/fs/notebook.js'
+import { readNotebook } from 'src/tools/shared/notebook.js'
 import { extractPDFPages, getPDFPageCount, readPDF } from 'src/shared/fs/pdf.js'
 import {
   isPDFExtension,

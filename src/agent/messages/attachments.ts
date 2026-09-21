@@ -3,7 +3,7 @@ import type {
   TextBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import { companionIntroText } from 'src/terminal/buddy/prompt.js'
-import { OUTPUT_STYLE_CONFIG } from 'src/shared/constants/outputStyles.js'
+import { OUTPUT_STYLE_CONFIG } from 'src/agent/outputStyles/outputStyles.js'
 import { DiagnosticTrackingService } from 'src/platform/diagnosticTracking.js'
 import type { AnyObject } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'

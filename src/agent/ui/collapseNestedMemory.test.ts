@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   collapseNestedMemory,
   nestedMemoryBatchNoun,
-} from 'src/tools/shared/collapseNestedMemory.js'
+} from 'src/agent/ui/collapseNestedMemory.js'
 import type { RenderableMessage } from 'src/shared/types/message.js'
 
 let counter = 0

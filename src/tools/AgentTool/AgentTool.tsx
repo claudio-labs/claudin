@@ -45,7 +45,7 @@ import { createAgentWorktree, hasWorktreeChanges, removeAgentWorktree } from 'sr
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js';
-import { spawnTeammate } from 'src/tools/shared/spawnMultiAgent.js';
+import { spawnTeammate } from 'src/tools/AgentTool/spawnMultiAgent.js';
 import { setAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js';
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';

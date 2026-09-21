@@ -2,7 +2,7 @@ import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import {
   DEFAULT_OUTPUT_STYLE_NAME,
   OUTPUT_STYLE_CONFIG,
-} from 'src/shared/constants/outputStyles.js'
+} from 'src/agent/outputStyles/outputStyles.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 /**

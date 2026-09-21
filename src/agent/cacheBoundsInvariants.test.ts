@@ -122,12 +122,6 @@ describe('cache bounds invariants', () => {
   })
 
   test('deliveredDiagnostics LRU cap = 500', async () => {
-    mock.module('../../utils/debug.js', () => ({ logForDebugging: () => {} }))
-    mock.module('../../utils/log.js', () => ({ logError: () => {} }))
-    mock.module('../../utils/slowOperations.js', () => ({
-      jsonStringify: (x: unknown) => JSON.stringify(x),
-    }))
-
     const {
       markDiagnosticsAsDelivered,
       _getDeliveredDiagnosticsCountForTesting,

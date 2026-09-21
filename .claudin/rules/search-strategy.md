@@ -212,7 +212,7 @@ the redirect.
 
 ## Module Map
 
-Approximate `.ts(x)` counts in `(N)`, measured 2026-08-17. Each top-level dir is
+Approximate `.ts(x)` counts in `(N)`, measured 2026-09-21. Each top-level dir is
 a **feature slice** that owns its own logic, UI and tests — a slice's Ink
 components sit in its `ui/`, not in a shared component dump. The four big ones
 (`platform`, `tools`, `agent`, `terminal`) are where most code lives, so always
@@ -221,7 +221,7 @@ that owns that subsystem.
 
 ```
 src/
-├── agent/ (543)                 ← the agent loop and everything that renders it
+├── agent/ (552)                 ← the agent loop and everything that renders it
 │   ├── QueryEngine.ts           ← model drive, tool dispatch, streaming, compaction
 │   ├── query.ts + query/ (8)    ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
 │   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
@@ -229,48 +229,48 @@ src/
 │   ├── context/ (12)            ← token accounting + context-window math. Three things carry
 │   │                              this name: agent/context.ts (prompt blocks), agent/context/
 │   │                              (accounting), terminal/contexts/ (React providers)
-│   ├── prompts/ (25)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
-│   ├── repl/ (35)               ← REPL.tsx (main loop), controllers/, replLauncher
-│   ├── ui/ (152)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
+│   ├── prompts/ (26)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
+│   ├── repl/ (38)               ← REPL.tsx (main loop), controllers/, ui/ (8), replLauncher
+│   ├── ui/ (166)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
 │   ├── tools/ (40)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
 │   │                              is a BARREL over toolResultSummarizer/ — one module per strategy
 │   │                              (bash, grep, webFetch, glob, headTail, structural) plus types,
 │   │                              thresholds, markers, contentShape, and decisionRecord, which is
 │   │                              the sole owner of the lastDecision mutable
 │   ├── tasks/ (37)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
-│   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
+│   ├── coordinator/ (40)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (34)            ← compaction: autoCompact, microCompact; stableStubState.ts is a
 │   │                              BARREL over stableStubState/ (clippedIdRegistry owns the
 │   │                              per-key state, pinRegistry, clipStubText, clipFrontier).
 │   │                              compact.ts is NOT a barrel: it keeps compactConversation and
 │   │                              partialCompactConversation over postCompactAttachments.ts and
 │   │                              messagePreparation.ts
-│   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
+│   ├── cache/ (6)               ← prompt-cache policy + profiles (→ cache.md)
 │   ├── messages/ attachments/   ← message normalization, attachment rendering
-│   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
+│   ├── hooks/ (18)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
 │   ├── plans/ goal/ autoFix/           ← planning + self-correction
 │   └── scratchpad.ts            ← the per-session scratchpad dir (permissions only consumes it)
-├── providers/ (289)             ← provider abstraction (start here for provider issues)
+├── providers/ (296)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
-│   ├── shims/ (61)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
+│   ├── shims/ (62)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
 │   │                              Completions renderer is openaiShim/ (~4.9k lines), which also
 │   │                              holds the ten end-to-end suites that drive the barrel with a
 │   │                              stubbed fetch over __testutils__/shimHarness.ts. Also
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
-│   ├── transport/ (37)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
-│   ├── oauth/ (39)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
-│   ├── model/ (42)              ← model.ts (getMainLoopModel, getSmallFastModel),
+│   ├── transport/ (36)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
+│   ├── oauth/ (37)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
+│   ├── model/ (46)              ← model.ts (getMainLoopModel, getSmallFastModel),
 │   │                              providers.ts (getAPIProvider), modelOptions, catalogs.
 │   │                              getPrimaryModel is presets/providerModels.ts and
 │   │                              getContextWindowForModel is agent/context/context.ts
 │   ├── effort/ (7)              ← reasoning-effort levels + cycling (project-scoped)
-│   ├── usage/ (18)              ← cost, billing, quota, per-provider usage endpoints
-│   ├── cache/ (8)               ← cache METRICS: hit stats, break detection. The cache policy
+│   ├── usage/ (15)              ← cost, billing, quota, per-provider usage endpoints
+│   ├── cache/ (10)              ← cache METRICS: hit stats, break detection. The cache policy
 │   │                              itself is agent/cache/ (→ cache.md)
 │   ├── ui/ (38)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
 │   └── (adding a preset? use the /add-provider-preset skill)
-├── tools/ (656)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
+├── tools/ (682)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
 │   ├── Tool.ts                  ← central type system: Tool, Tools, ToolUseContext, buildTool()
 │   ├── tools.ts                 ← dynamic registry (sandbox/plan/coordinator/MCP-aware)
 │   ├── BashTool/                ← shell execution, permissions, sandbox
@@ -298,14 +298,14 @@ src/
 │   ├── constants/               ← toolLimits.ts, tools.ts (names/descriptions)
 │   └── shared/                  ← outputFilter/ (Bash noise stripping), diagnostics/ (shared
 │                                  Build+Typecheck parsers), codeOutline/ (scanSymbols), stagedWrite/
-├── platform/ (564)              ← the host: process, config, OS integration, telemetry
+├── platform/ (553)              ← the host: process, config, OS integration, telemetry
 │   ├── entrypoints/ (16)        ← cli.tsx: process entry — fast-paths --version, defers heavy imports
-│   ├── main/ (41)               ← boot sequence: bootContext, action, commands, dispatch
-│   ├── headless/ (54)           ← headless -p / print mode, ndjson, exit handling
+│   ├── main/ (37)               ← boot sequence: bootContext, action, commands, dispatch
+│   ├── headless/ (51)           ← headless -p / print mode, ndjson, exit handling
 │   ├── config/ (22)             ← config.ts is a BARREL over config/ (types, defaults, fileStore,
 │   │                              globalConfig, projectConfig, trust, derived); claudinMigration
-│   ├── settings/ (33)           ← settings.json layers, precedence, remote-managed
-│   ├── lifecycleHooks/ (43)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
+│   ├── settings/ (35)           ← settings.json layers, precedence, remote-managed
+│   ├── lifecycleHooks/ (40)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
 │   │                              each slice's own hooks/ — these are the harness's
 │   ├── bash/ (24)               ← bash parsing, command splitting, shell snapshots
 │   ├── analytics/ (2)           ← feature-flag resolution ONLY, over
@@ -314,15 +314,15 @@ src/
 │   ├── bootstrap/state.ts       ← a BARREL over state/ — the STATE singleton lives in state/store.ts
 │   │                              and nowhere else; getSessionId, cwd helpers, cost, latches
 │   ├── lsp/ ide/ install/ shell/ notifications/ secureStorage/
-│   ├── migrations/ (11)         ← one-time settings/model migrations (migrateFennecToOpus …)
-│   ├── bridge/ (37)             ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
-│   ├── teleport/ (10)           ← remote environments. `server/` is down to
+│   ├── migrations/ (13)         ← one-time settings/model migrations (migrateFennecToOpus …)
+│   ├── bridge/ (40)             ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
+│   ├── teleport/ (11)           ← remote environments. `server/` is down to
 │   │                              directConnectManager.ts: DIRECT_CONNECT was folded
 │   │                              false, so its entry points and stubs are deleted
 │   └── teams/ policyLimits/ wiki/ github/  ← misc host services
-├── terminal/ (373)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
-│   ├── ink/ (114)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
-│   ├── prompt-input/ (23)       ← the input box, its modes and suggestions. `input/` (8) is a
+├── terminal/ (387)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
+│   ├── ink/ (115)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
+│   ├── prompt-input/ (21)       ← the input box, its modes and suggestions. `input/` (8) is a
 │   │                              different thing: Cursor, keyboardShortcuts, pasteStore
 │   ├── hooks/ (24)              ← terminal-level React hooks (useTextInput …)
 │   ├── theme/ (17)              ← theme.ts keeps getTheme and themeColorToAnsi over themes/,
@@ -331,15 +331,15 @@ src/
 │   ├── keybindings/ (15)        ← keybinding parser, defaultBindings, loadUserBindings, match
 │   ├── contexts/ (9) state/ (8) ← React context providers + AppState store (getState/selectors).
 │   │                              TUI state only — system-prompt context is agent/context.ts
-│   ├── render/ (12)             ← fullscreen, render cadence, fpsTracker, streamJsonStdoutGuard
+│   ├── render/ (15)             ← fullscreen, render cadence, fpsTracker, streamJsonStdoutGuard
 │   ├── prompt-suggestion/ (11)  ← ghost text, file suggestions, speculation
 │   └── explorer/ vim/ wizard/ custom-select/ buddy/  ← dialogs and input modes
-├── commands/ (248)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
+├── commands/ (238)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
 │                                  one dir or file per command; registry in commands/commands.ts.
 │                                  plugin/ (19) and install-github-app/ (17) are the big ones;
 │                                  insights.ts is a BARREL over insights/ and must keep re-exporting
 │                                  `default` — commands.ts reaches it through a dynamic import
-├── permissions/ (151)           ← rules, classifiers, always-allow, and every permission dialog
+├── permissions/ (153)           ← rules, classifiers, always-allow, and every permission dialog
 │   ├── permissions.ts           ← hasPermissionsToUseTool, the decision core, over a
 │   │                              permissions/ dir (ruleLookup, ruleMutation, requestMessage,
 │   │                              denial). Re-exports but is NOT a pure barrel
@@ -368,12 +368,12 @@ src/
 │   ├── diagnostics/ (4)         ← log-error extraction, exit-code and health diagnosis
 │   ├── docker/ (6)              ← CLI wrappers: ps/inspect, the `docker events` watcher
 │   └── build/ (2)               ← compose build parsing and progress
-├── sessions/ (61)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
+├── sessions/ (57)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
 ├── vcs/ (77)                    ← git/ (wrapper, gh PR status) + diff/ (the /diff reviewer).
 │                                  git/worktree.ts is a BARREL over worktree/ (slugNaming,
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
-├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/
+├── plugins/ (54)                ← plugin discovery, install, marketplace, dxt/, hooks/ (4)
 ├── memory/ (69)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, session/, teamSync/, ui/, and instructions/ —
 │                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md
@@ -382,16 +382,19 @@ src/
 │                                  getMemoryFiles and the TEAMMEM-gated require stay in the root,
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at session start
-├── skills/ (27)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
-├── shared/ (177)                ← cross-cutting primitives ONLY — a subsystem here is a bug
-│   ├── fs/ (35)                 ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
+├── skills/ (28)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
+├── shared/ (162)                ← cross-cutting primitives ONLY — a subsystem here is a bug.
+│   │                              moduleBoundaries.test.ts pins how many imports reach UP from
+│   │                              here into a slice (131) — a ceiling that only goes down
+│   ├── fs/ (33)                 ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
 │   ├── data/ proc/ text/        ← pure data helpers, Shell.ts/execFileNoThrow, string/format
 │   ├── constants/ types/        ← the genuinely shared ones; feature constants live in their slice
 │   ├── schemas/                 ← shared zod schemas
 │   └── errors.ts log.ts env*.ts ← ClaudeError/isAbortError/isSdk* guards, logError, env helpers
 ├── native-ts/ (5)               ← TS ports to avoid native addons: yoga-layout, color-diff, file-index
-├── stubs/ (3) vendor/ (1)       ← build-time stubs and vendored code
-└── __tests__/ (8)               ← cross-cutting tests: bugfixes, moduleBoundaries, security-hardening
+├── stubs/ (2)                   ← build-time stubs
+└── __tests__/ (10)              ← cross-cutting tests: bugfixes, moduleBoundaries,
+                                   mockModuleTargets, security-hardening
 ```
 
 The seven catch-all directories the reorg retired — `components/`, `services/`,

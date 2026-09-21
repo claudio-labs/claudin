@@ -10,7 +10,7 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 import { getPatchForDisplay } from 'src/vcs/git/diff.js';
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js';
 import { safeParseJSON } from 'src/shared/data/json.js';
-import { parseCellId } from 'src/shared/fs/notebook.js';
+import { parseCellId } from 'src/tools/shared/notebook.js';
 import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
 import { StructuredDiff } from 'src/vcs/diff/structured/StructuredDiff.js';
 type Props = {

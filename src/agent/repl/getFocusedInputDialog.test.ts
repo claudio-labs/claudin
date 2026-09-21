@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   getFocusedInputDialog,
   type FocusedInputDialogDeps,
-} from 'src/agent/repl/utils/getFocusedInputDialog.js'
+} from 'src/agent/repl/getFocusedInputDialog.js'
 
 // Baseline deps: everything off, every queue empty, nothing pending.
 // Each test overrides only the fields it cares about — this mirrors the

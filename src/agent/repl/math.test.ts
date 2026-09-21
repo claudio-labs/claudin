@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { median } from 'src/agent/repl/utils/math.js'
+import { median } from 'src/agent/repl/math.js'
 
 describe('median', () => {
   test('odd-length: returns the middle element', () => {

@@ -5,8 +5,11 @@
 import { describe, test, expect } from 'bun:test'
 import { resolve } from 'path'
 
-const SRC = resolve(import.meta.dir, '..', 'tools', 'WebSearchTool', 'providers')
-const file = (name: string) => Bun.file(resolve(SRC, name))
+// Colocated, so the providers are this file's own siblings. It used to live in
+// `src/__tests__/` and walked back down (`'..', 'tools', 'WebSearchTool',
+// 'providers'`) — a path assembled from segments, which neither tsc nor the
+// build's pre-scan can see, so the move stayed green everywhere except here.
+const file = (name: string) => Bun.file(resolve(import.meta.dir, name))
 
 describe('Provider result counts', () => {
   const providers = [

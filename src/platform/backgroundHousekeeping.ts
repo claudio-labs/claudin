@@ -10,7 +10,7 @@ const extractMemoriesModule = feature('EXTRACT_MEMORIES')
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 import { getIsInteractive, getLastInteractionTime } from 'src/platform/bootstrap/state.js'
-import { cleanupOldMessageFilesInBackground } from 'src/shared/cleanup.js'
+import { cleanupOldMessageFilesInBackground } from 'src/platform/cleanup.js'
 import { cleanupOldVersions } from 'src/platform/install/index.js'
 import { autoUpdateMarketplacesAndPluginsInBackground } from 'src/plugins/pluginAutoupdate.js'
 

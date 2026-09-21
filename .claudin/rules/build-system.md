@@ -91,7 +91,9 @@ earlier attempt measured worse than the diagnostic it was replacing. They buy
 **no** type safety (an unresolved import is already `any`), they only retire the
 error. Nor do they mean the code is unreachable: a few are imported eagerly and
 do hit the `() => null` stub at runtime. That is not harmless — `FORK_SUBAGENT`
-shipped `true` against a missing `src/commands/fork/`, and because the stub's
+shipped `true` against a src/commands/fork/ this fork never received — left
+unbackticked here because it is the absence that is the point, and a citation
+of it reads to `verify:rules` as a stale path. Because the stub's
 `default` is a truthy arrow function, a phantom command named `noop` appeared in
 the slash-command list. `src/commands/__tests__/registry.characterization.test.ts`
 fails if that shape comes back.

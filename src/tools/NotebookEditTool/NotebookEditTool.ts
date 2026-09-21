@@ -13,7 +13,7 @@ import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { parseCellId } from 'src/shared/fs/notebook.js'
+import { parseCellId } from 'src/tools/shared/notebook.js'
 import { checkWritePermissionForTool } from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'

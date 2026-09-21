@@ -3,7 +3,7 @@ import * as React from 'react'
 import { useRef } from 'react'
 import { renderToString } from 'src/terminal/render/staticRender.js'
 import type { JumpHandle } from 'src/terminal/VirtualMessageList.js'
-import { TranscriptSearchBar } from 'src/agent/repl/components/TranscriptSearchBar.js'
+import { TranscriptSearchBar } from 'src/agent/repl/ui/TranscriptSearchBar.js'
 
 // `TranscriptSearchBar` initialises `indexStatus` to `'building'`, so the
 // first rendered frame always shows the "indexing…" pill in the right slot

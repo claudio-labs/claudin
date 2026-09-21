@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useRef } from 'react';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { PermissionMode } from 'src/permissions/PermissionMode.js';
 import { getIsRemoteMode, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from 'src/platform/bootstrap/state.js';
-import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/shared/constants/outputStyles.js';
+import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/agent/outputStyles/outputStyles.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from 'src/agent/cost-tracker.js';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';

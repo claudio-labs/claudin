@@ -3,7 +3,7 @@
  *
  * The original module was not carried into this fork, so these types are
  * reconstructed from their use sites rather than from the nbformat spec:
- * `src/shared/fs/notebook.ts` (read + tool-result mapping),
+ * `src/tools/shared/notebook.ts` (read + tool-result mapping),
  * `src/tools/NotebookEditTool/NotebookEditTool.ts` (cell insert/replace/delete)
  * and `src/permissions/ui/NotebookEditPermissionRequest/NotebookEditToolDiff.tsx`
  * (diff preview). Only the fields that code actually touches are modelled —

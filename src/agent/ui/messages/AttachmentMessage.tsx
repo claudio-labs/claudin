@@ -23,7 +23,7 @@ import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { TeammateMessageContent } from 'src/agent/ui/messages/UserTeammateMessage.js';
 import { isShutdownApproved } from 'src/agent/coordinator/teammateMailbox.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
-import { nestedMemoryBatchNoun } from 'src/tools/shared/collapseNestedMemory.js';
+import { nestedMemoryBatchNoun } from 'src/agent/ui/collapseNestedMemory.js';
 import { formatMemoryIndexCounts, hasTruncatedMemoryIndex } from 'src/agent/ui/messages/memoryIndexLine.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
