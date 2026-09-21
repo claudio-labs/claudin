@@ -7,7 +7,11 @@ import {
   ENTRYPOINT_NAME,
   MAX_ENTRYPOINT_LINES,
 } from 'src/memory/memdir/memdir.js'
-import { MEMORY_FRONTMATTER_EXAMPLE } from 'src/memory/memdir/memoryTypes.js'
+import {
+  MEMORY_FRONTMATTER_EXAMPLE,
+  renderTeamCategoriesCompact,
+  TEAM_CATEGORIES,
+} from 'src/memory/memdir/memoryTypes.js'
 import { getAutoMemPath } from 'src/memory/memdir/paths.js'
 import { getTeamMemPath, isTeamMemLikelyGitIgnored } from 'src/memory/memdir/teamMemPaths.js'
 
@@ -40,12 +44,11 @@ function buildGitIgnoreGuidance(teamDir: string): string[] {
 /**
  * Build the combined prompt when both auto memory and team memory are enabled.
  * Closed four-type taxonomy (user / feedback / project / reference) with
- * per-type <scope> guidance embedded in XML-style <type> blocks.
+ * per-type scope guidance, the three team categories (rendered from
+ * TEAM_CATEGORIES so the taxonomy is written once), and the `paths:`
+ * on-demand rule shared with `.claudin/rules/`.
  */
-export function buildCombinedMemoryPrompt(
-  extraGuidelines?: string[],
-  skipIndex = false,
-): string {
+export function buildCombinedMemoryPrompt(extraGuidelines?: string[]): string {
   const autoDir = getAutoMemPath()
   const teamDir = getTeamMemPath()
 
@@ -53,14 +56,13 @@ export function buildCombinedMemoryPrompt(
   // the private/team scope distinction. The verbose XML taxonomy in
   // memoryTypes.ts (TYPES_SECTION_COMBINED etc.) is kept for the background
   // extraction agent; here it would ship in the main system prompt every turn.
-  const indexGuidance = skipIndex
-    ? '- Keep each memory in its own file (in the private or team dir per its scope); keep its `name`/`description`/`type` accurate; organize by topic, not chronologically.'
-    : `- After writing a memory file (in the private or team dir per its scope), add a one-line pointer in that directory's \`${ENTRYPOINT_NAME}\`: \`- [Title](file.md) — one-line hook\` (under ~150 chars, no frontmatter, never memory content). Each dir has its own index and both load every session, so keep them concise (lines past ${MAX_ENTRYPOINT_LINES} are truncated). Keep each file's \`name\`/\`description\`/\`type\` accurate; organize by topic, not chronologically.`
+  const sections = TEAM_CATEGORIES.map(c => `## ${c.section}`).join(' / ')
+  const indexGuidance = `- After writing a memory file (in the private or team dir per its scope), add a one-line pointer in that directory's \`${ENTRYPOINT_NAME}\`: \`- [Title](file.md) — one-line hook\` (under ~150 chars, no frontmatter, never memory content). A categorized team memory goes under its \`${sections}\` section of the team index (create the section if absent) with the subdirectory in the link: \`- [Title](bugs/file.md) — hook\`. Each dir has its own index and both load every session, so keep them concise (lines past ${MAX_ENTRYPOINT_LINES} are truncated). Keep each file's \`name\`/\`description\`/\`type\` accurate; organize by topic, not chronologically.`
 
   const lines = [
     '# Memory',
     '',
-    `You have a persistent, file-based memory with two directories: a private one at \`${autoDir}\` (just you and this user) and a shared team one at \`${teamDir}\` (contributed by everyone who works in this project, synced at the start of each session). ${DIRS_EXIST_GUIDANCE} Build it up over time so future conversations know who the user is, how they like to collaborate, and the context behind their work. If the user explicitly asks you to remember something, save it now; if they ask you to forget something, find and remove it.`,
+    `You have a persistent, file-based memory with two directories: a private one at \`${autoDir}\` (just you and this user) and a shared team one at \`${teamDir}\` (contributed by everyone who works in this project; it is git-tracked, so a file you write there shows up in \`git status\` and reaches teammates through ordinary commits). ${DIRS_EXIST_GUIDANCE} Build it up over time so future conversations know who the user is, how they like to collaborate, and the context behind their work. If the user explicitly asks you to remember something, save it now; if they ask you to forget something, find and remove it.`,
     '',
     'Each memory is one file holding one fact, with frontmatter:',
     '',
@@ -75,6 +77,12 @@ export function buildCombinedMemoryPrompt(
     '- `feedback` (default private; team only for a project-wide convention every contributor should follow — a testing policy, a build invariant — not personal style) — guidance on how to work, from corrections ("don\'t do X") AND confirmed approaches ("yes, keep doing that"). Lead with the rule, then **Why:** and **How to apply:** lines.',
     '- `project` (bias toward team) — ongoing work, decisions, bugs, or constraints not derivable from the code or git history. Convert relative dates to absolute. Include the why; project context decays fast.',
     '- `reference` (usually team) — pointers to external systems (a Linear project, a Slack channel, a dashboard) and what they hold.',
+    '',
+    'Team memory is organized by what a teammate needs to find. Three subdirectories carry the product-facing memory:',
+    ...renderTeamCategoriesCompact(teamDir),
+    'Anything else that is team-scoped — a convention, a process finding — stays at the team root.',
+    '',
+    'Only the two `MEMORY.md` indexes are in context; a memory file is read when you follow its index line. A memory whose frontmatter has `paths:` (same syntax and semantics as a rule in `.claudin/rules/`, relative to the project root) is also attached automatically the first time a Read touches a matching file — give one to a bug or doc memory tied to specific files.',
     '',
     indexGuidance,
     '- Before writing, check for an existing memory to update rather than duplicating; update or delete memories that turn out wrong or outdated.',

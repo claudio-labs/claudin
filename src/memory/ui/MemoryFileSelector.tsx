@@ -144,7 +144,7 @@ export function MemoryFileSelector(t0: Props) {
           title: "Team memory",
           isTeamDir: true
         }),
-        description: `Shared with the team, synced from ${getDisplayPath(teamMemPath)}`
+        description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`
       });
     }
     folderOptions.push({

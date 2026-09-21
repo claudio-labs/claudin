@@ -1,7 +1,7 @@
 /**
- * Memory-directory scanning primitives. Split out of findRelevantMemories.ts
- * so extractMemories can import the scan without pulling in sideQuery and
- * the API-client chain (which closed a cycle through memdir.ts — #25372).
+ * Memory-directory scanning primitives, kept free of the API-client chain so
+ * extractMemories can import the scan without closing a cycle through
+ * memdir.ts (#25372).
  */
 
 import { readdir } from 'fs/promises'
@@ -23,9 +23,9 @@ const FRONTMATTER_MAX_LINES = 30
 
 /**
  * Scan a memory directory for .md files, read their frontmatter, and return
- * a header list sorted newest-first (capped at MAX_MEMORY_FILES). Shared by
- * findRelevantMemories (query-time recall) and extractMemories (pre-injects
- * the listing so the extraction agent doesn't spend a turn on `ls`).
+ * a header list sorted newest-first (capped at MAX_MEMORY_FILES). Used by
+ * extractMemories (pre-injects the listing so the extraction agent doesn't
+ * spend a turn on `ls`) and the /memory browser.
  *
  * Single-pass: readFileInRange stats internally and returns mtimeMs, so we
  * read-then-sort rather than stat-sort-read. For the common case (N ≤ 200)

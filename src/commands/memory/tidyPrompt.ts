@@ -51,7 +51,8 @@ Also tidy the team memory directory: \`${team}\`
 - Apply the exact same orient → identify → merge → update-index steps inside \`${team}\` (its index is \`${team}/${ENTRYPOINT_NAME}\`)
 - The team index may have its own structure beyond bare index lines — a \`# Team Memory\` header, an intro blockquote, \`## Section\` groupings. **Preserve all of it**: only touch the individual index lines for files you deleted or renamed, exactly as in the private index. Never reformat, reorder, or flatten the team index's sections.
 - **Never merge across the boundary**: a private memory and a team memory about the same fact stay separate. Do not move content between \`${root}\` and \`${team}\`, do not merge a pair that spans the two, and do not "promote" a private memory into team — that is a deliberate user decision, not tidy's job.
-- Files you change or delete here propagate to the team via automatic sync — another reason to stay strictly conservative.
+- **Never move a file into \`decisions/\`, \`bugs/\` or \`docs/\`** — filing team memories by category is \`/memory sort\`'s job, not tidy's — and never descend into those subdirectories.
+- Files you change or delete here are git-tracked and reach the team on the next commit — another reason to stay strictly conservative.
 `
       : ''
 

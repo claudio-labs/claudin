@@ -387,11 +387,6 @@ export function initExtractMemories(): void {
       ? teamMemPaths!.isTeamMemoryEnabled()
       : false
 
-    const skipIndex = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_moth_copse',
-      false,
-    )
-
     const canUseTool = createAutoMemCanUseTool(memoryDir)
     const cacheSafeParams = createCacheSafeParams(context)
 
@@ -419,24 +414,25 @@ export function initExtractMemories(): void {
       )
 
       // Pre-inject the memory directory manifest so the agent doesn't spend
-      // a turn on `ls`. Reuses findRelevantMemories' frontmatter scan.
+      // a turn on `ls` (memoryScan.ts, frontmatter only).
       // Placed after the throttle gate so skipped turns don't pay the scan cost.
       const existingMemories = formatMemoryManifest(
         await scanMemoryFiles(memoryDir, createAbortController().signal),
       )
 
+      // The MEMORY.md index is always in the system prompt now that the
+      // per-turn relevance recall is gone, so the extractor is always told to
+      // keep it current.
       const userPrompt =
         feature('TEAMMEM') && teamMemoryEnabled
           ? buildExtractCombinedPrompt(
               newMessageCount,
               existingMemories,
-              skipIndex,
               loopHint,
             )
           : buildExtractAutoOnlyPrompt(
               newMessageCount,
               existingMemories,
-              skipIndex,
               loopHint,
             )
 

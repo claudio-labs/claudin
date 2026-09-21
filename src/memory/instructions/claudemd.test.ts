@@ -30,7 +30,6 @@ import * as claudemdModule from 'src/memory/instructions/claudemd.js'
 import {
   MAX_MEMORY_CHARACTER_COUNT,
   clearMemoryFileCaches,
-  filterInjectedMemoryFiles,
   getExternalClaudeMdIncludes,
   getLargeMemoryFiles,
   getMemoryFiles,
@@ -39,7 +38,6 @@ import {
   processMemoryFile,
   type MemoryFileInfo,
 } from 'src/memory/instructions/claudemd.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 
 let root: string
@@ -320,39 +318,6 @@ describe('getLargeMemoryFiles', () => {
   })
 })
 
-describe('filterInjectedMemoryFiles', () => {
-  test('drops the auto-memory index only when tengu_moth_copse is on', () => {
-    const project: MemoryFileInfo = {
-      path: '/p/AGENTS.md',
-      type: 'Project',
-      content: 'p',
-    }
-    const autoMem: MemoryFileInfo = {
-      path: '/p/MEMORY.md',
-      type: 'AutoMem',
-      content: 'm',
-    }
-    const files = [project, autoMem]
-
-    // Read the flag through the same boundary the module does rather than
-    // assuming it: it resolves from ~/.claudin/feature-flags.json, so a
-    // developer machine can legitimately have it on.
-    const skipMemoryIndex = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_moth_copse',
-      false,
-    )
-
-    const result = filterInjectedMemoryFiles(files)
-
-    if (skipMemoryIndex) {
-      expect(result).toEqual([project])
-    } else {
-      // Off: the input array is handed back untouched, same reference.
-      expect(result).toBe(files)
-    }
-  })
-})
-
 describe('getExternalClaudeMdIncludes', () => {
   const outside: MemoryFileInfo = {
     path: '/tmp/elsewhere/EXTRA.md',
@@ -406,7 +371,6 @@ describe('module surface', () => {
     expect(Object.keys(claudemdModule).sort()).toEqual([
       'MAX_MEMORY_CHARACTER_COUNT',
       'clearMemoryFileCaches',
-      'filterInjectedMemoryFiles',
       'getClaudeMds',
       'getConditionalRulesForCwdLevelDirectory',
       'getExternalClaudeMdIncludes',

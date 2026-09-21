@@ -1,9 +1,15 @@
+import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
 import type { Command } from 'src/commands/commands.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'
+import {
+  getTeamMemPath,
+  isTeamMemoryEnabled,
+} from 'src/memory/memdir/teamMemPaths.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import { buildConsolidationPrompt } from 'src/memory/autoDream/consolidationPrompt.js'
+import { collectDreamDigest } from 'src/memory/autoDream/dreamDigest.js'
 import {
   readLastConsolidatedAt,
   listSessionsTouchedSince,
@@ -49,13 +55,23 @@ const command = {
         ? `${((Date.now() - lastAt) / 3_600_000).toFixed(1)}h ago`
         : 'never'
 
+    const teamRoot =
+      feature('TEAMMEM') && isTeamMemoryEnabled() ? getTeamMemPath() : null
+    const digest = await collectDreamDigest(lastAt, sessionIds)
     const extra = `
 **Manually triggered by user via /dream.**
 
 Sessions since last consolidation (${sessionIds.length}, last run: ${hoursSince}):
-${sessionIds.map(id => `- ${id}`).join('\n')}`
+${sessionIds.map(id => `- ${id}`).join('\n')}
 
-    const prompt = buildConsolidationPrompt(memoryRoot, transcriptDir, extra)
+${digest}`
+
+    const prompt = buildConsolidationPrompt(
+      memoryRoot,
+      transcriptDir,
+      extra,
+      teamRoot,
+    )
 
     // Record consolidation timestamp programmatically so auto-dream
     // knows when the last manual run happened.

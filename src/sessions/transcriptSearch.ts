@@ -80,12 +80,7 @@ function computeSearchText(msg: RenderableMessage): string {
       break
     }
     case 'attachment': {
-      // relevant_memories renders full m.content in transcript mode
-      // (AttachmentMessage.tsx <Ansi>{m.content}</Ansi>). Visible but
-      // unsearchable without this — [ dump finds it, / doesn't.
-      if (msg.attachment.type === 'relevant_memories') {
-        raw = msg.attachment.memories.map(m => m.content).join('\n')
-      } else if (
+      if (
         // Mid-turn prompts — queued while an agent is running. Render via
         // UserTextMessage (AttachmentMessage.tsx:~348). stickyPromptText
         // (VirtualMessageList.tsx:~103) has the same guards — mirror here.
@@ -101,17 +96,8 @@ function computeSearchText(msg: RenderableMessage): string {
       }
       break
     }
-    case 'collapsed_read_search': {
-      // relevant_memories attachments are absorbed into collapse groups
-      // (collapseReadSearch.ts); their content is visible in transcript mode
-      // via CollapsedReadSearchContent, so mirror it here for / search.
-      if (msg.relevantMemories) {
-        raw = msg.relevantMemories.map(m => m.content).join('\n')
-      }
-      break
-    }
     default:
-      // grouped_tool_use, system — no text content
+      // collapsed_read_search, grouped_tool_use, system — no text content
       break
   }
   // Strip <system-reminder> anywhere — Claude context, not user-visible.

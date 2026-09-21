@@ -1,9 +1,12 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
 import {
   buildMemoryDirRows,
+  countMemoryFiles,
   encodeBrowseValue,
   parseBrowseValue,
   removeIndexPointer,
@@ -259,5 +262,32 @@ describe('removeIndexPointer', () => {
     expect(removeIndexPointer(doubled, 'dup.md')).toBe(
       '- [Other](other.md) — kept',
     )
+  })
+})
+
+describe('countMemoryFiles', () => {
+  const root = mkdtempSync(join(tmpdir(), 'count-memory-files-'))
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(join(root, 'MEMORY.md'), '- index\n')
+  writeFileSync(join(root, 'a.md'), 'a\n')
+  writeFileSync(join(root, 'notes.txt'), 'not a memory\n')
+  mkdirSync(join(root, 'team', 'bugs'), { recursive: true })
+  writeFileSync(join(root, 'team', 'MEMORY.md'), '- team index\n')
+  writeFileSync(join(root, 'team', 'b.md'), 'b\n')
+  writeFileSync(join(root, 'team', 'bugs', 'c.md'), 'c\n')
+
+  test('counts top-level .md files only by default, minus the index', async () => {
+    // The private dir's count must exclude team/ — that is the whole reason
+    // the default is non-recursive.
+    expect(await countMemoryFiles(root)).toBe(1)
+  })
+
+  test('recursive counts the category subdirectories, still minus indexes', async () => {
+    expect(await countMemoryFiles(join(root, 'team'), { recursive: true })).toBe(2)
+  })
+
+  test('a missing directory counts as empty', async () => {
+    expect(await countMemoryFiles(join(root, 'nope'), { recursive: true })).toBe(0)
   })
 })

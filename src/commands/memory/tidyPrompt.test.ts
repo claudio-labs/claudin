@@ -81,8 +81,8 @@ describe('buildMemoryTidyPrompt', () => {
     // The team index has header/sections the agent must not flatten
     expect(prompt).toContain('Preserve all of it')
     expect(prompt).toContain('Never reformat, reorder, or flatten')
-    // Warns that team edits propagate via sync
-    expect(prompt).toContain('propagate to the team via automatic sync')
+    // Warns that team edits are git-tracked and reach the team on commit
+    expect(prompt).toContain('reach the team on the next commit')
     expect(prompt).toContain('skip subdirectories other than the team dir')
   })
 

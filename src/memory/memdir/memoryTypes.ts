@@ -11,6 +11,8 @@
  * trivial without reasoning through a helper's conditional rendering.
  */
 
+import { basename, dirname } from 'path'
+
 export const MEMORY_TYPES = [
   'user',
   'feedback',
@@ -28,6 +30,153 @@ export type MemoryType = (typeof MEMORY_TYPES)[number]
 export function parseMemoryType(raw: unknown): MemoryType | undefined {
   if (typeof raw !== 'string') return undefined
   return MEMORY_TYPES.find(t => t === raw)
+}
+
+/**
+ * The three team categories — subdirectories of the team dir. The directory
+ * IS the category; `type` keeps its four values (decisions and bugs are
+ * `project`, docs are `reference`). Every prompt that describes the layout
+ * (system prompt, extraction, dream, sort) renders from this table, each at
+ * its own density, so the taxonomy is written exactly once.
+ *
+ * `decisions` carries the bar that keeps it from becoming a plan log: an
+ * impact class (structural / functional / rejected) AND a why that lives
+ * outside the diff, enforced by a body line that cannot be filled for an
+ * implementation choice ("What changes for a teammate").
+ */
+export type TeamCategory = {
+  /** Subdirectory under the team dir; also names the index section. */
+  dir: 'decisions' | 'bugs' | 'docs'
+  /** The `## Section` heading its index lines go under. */
+  section: string
+  /** One memory of this category, as the transcript counts it: "4 team bug memories". */
+  noun: string
+  type: MemoryType
+  /** The dense one-liner the system prompt ships every turn. */
+  compact: string
+  /** Verbose renderings only (extraction, dream, sort). */
+  description: string
+  whenToSave: string
+  whenNotToSave: string
+  bodyStructure: string
+  paths: string
+}
+
+export const TEAM_CATEGORIES: readonly TeamCategory[] = [
+  {
+    dir: 'decisions',
+    section: 'Decisions',
+    noun: 'decision',
+    type: 'project',
+    compact:
+      'a product, business or architecture decision that changes what the project does or how it is structured. Only an impactful one: **structural** (where things live, how the system is organized), **functional** (what a feature does for its users — a capability, a default, a policy) or **rejected** (an alternative considered and discarded, with the reason) — and only when the why is not in the diff. Frontmatter adds `scope:` (the feature or slice) and `impact: structural | functional | rejected`; the body leads with **Decision:** / **Why:** / **What changes for a teammate:** / **Rejected:** / **Evidence:** — if "what changes for a teammate" would be empty, it is not a team decision, however firmly it was decided.',
+    description:
+      'A product, business or architecture decision that changes what the project does or how it is structured: what was decided, why, when (absolute date), what it rules out. It exists so a teammate finds the reasoning before undoing it or re-litigating it.',
+    whenToSave:
+      'Only when the decision is (a) structural — it changes where things live or how the system is organized: a slice created, removed or moved, a subsystem replaced, two mechanisms unified into one; (b) functional — it changes what a feature does for its users: a capability added or removed, a default flipped, a behavior policy set; or (c) rejected — an alternative that was considered and discarded, with the reason, so nobody re-litigates it. AND both of these hold: someone reading the code in six months would be surprised by it or tempted to undo it, and the why is not in the diff — a measurement, a cost, a user preference, a compliance or incident reason.',
+    whenNotToSave:
+      'A choice inside one function or file, a name, test scaffolding, anything reversible without consequence, anything the commit message and diff explain on their own, and any decision whose scope you cannot name as a feature or slice. Most decisions in a plan are implementation choices — they do not qualify, however firmly they were agreed.',
+    bodyStructure:
+      'Frontmatter adds `scope:` (the feature or slice it changes — `memory`, `providers/oauth`, `/diff`) and `impact: structural | functional | rejected`. Body: **Decision:** one sentence · **Why:** the reason outside the diff · **What changes for a teammate:** what they build, review or avoid differently — if this line would be empty, do not write the file · **Rejected:** the alternatives and why · **Evidence:** the plan, PR or session it comes from.',
+    paths:
+      'Add `paths:` only when the decision is tied to specific files or a directory; most decisions are not.',
+  },
+  {
+    dir: 'bugs',
+    section: 'Bugs',
+    noun: 'bug',
+    type: 'project',
+    compact:
+      'a known or latent defect deliberately left in place, or a failure mode invisible from the code — with symptom, where it lives, how to reproduce it, and its status with a date.',
+    description:
+      'A known or latent defect that is deliberately not fixed yet, or a non-obvious failure mode — with how to reproduce it and its status. It exists so the next person to touch that code is warned before they trip on it.',
+    whenToSave:
+      'When a defect is confirmed but left in place (pinned by a test, out of scope, waiting on a decision), or when a failure mode is real but invisible from the code because it depends on an environment, a timing or a provider quirk. Record the symptom, the reproduction, where it lives, and the status with an absolute date.',
+    whenNotToSave:
+      'A bug that was fixed in the same session — the fix is in the code and the commit explains it. A hunch that was not reproduced.',
+    bodyStructure:
+      '**Symptom:** · **Where:** file and function · **Repro:** · **Status:** open / pinned by test X / fixed in #PR, with the date · **Why not fixed:**',
+    paths:
+      'Add `paths:` with the files the defect lives in — the memory is then attached automatically when one of them is read.',
+  },
+  {
+    dir: 'docs',
+    section: 'Docs',
+    noun: 'doc',
+    type: 'reference',
+    compact:
+      "where the documentation for a subsystem lives — a design doc, a living spec, a dashboard, a wiki page — and what it holds, so work on that subsystem starts there (`type: reference`).",
+    description:
+      'Where the documentation for a subsystem lives — a design doc, a living spec, an external dashboard, a wiki page — and what it holds. It exists so work on that subsystem starts from the document instead of rediscovering it.',
+    whenToSave:
+      'When you learn that a subsystem has a document that explains it better than the code does, in or out of the repo, and future work on that subsystem should start there.',
+    whenNotToSave:
+      'A pointer to something the code already names (a README beside the module, a comment), or to a document that is itself derivable from the code.',
+    bodyStructure:
+      '**Doc:** path or URL · **Covers:** · **Start here when:** · **Kept in sync by:** who or what',
+    paths:
+      "Add `paths:` with the subsystem's directory — reading any of its files then brings the pointer along.",
+  },
+]
+
+/**
+ * The category a team memory file sits in — the directory IS the category —
+ * or undefined for a file at the team root. Pure: it reads the parent
+ * directory's name off the path, not the disk, so a private memdir with a
+ * `bugs/` of its own would match too; callers gate on the file's TeamMem
+ * type first.
+ */
+export function teamCategoryForPath(
+  filePath: string,
+): TeamCategory | undefined {
+  const dir = basename(dirname(filePath))
+  return TEAM_CATEGORIES.find(category => category.dir === dir)
+}
+
+/**
+ * One dense line per category, for the system prompt. `teamDir` is shown on
+ * the first entry so the model sees the absolute location once.
+ */
+export function renderTeamCategoriesCompact(teamDir: string): string[] {
+  return TEAM_CATEGORIES.map(
+    (category, i) =>
+      `- \`${i === 0 ? teamDir : ''}${category.dir}/\` — ${category.compact}`,
+  )
+}
+
+/**
+ * The verbose `## Team categories` section, for the background agents
+ * (extraction, dream) and the sort pass, where prompt size matters less
+ * and the bar has to be spelled out.
+ */
+export function renderTeamCategoriesXml(): string[] {
+  const lines: string[] = [
+    '## Team categories',
+    '',
+    'Team memory is organized by what a teammate needs to find. Three subdirectories of the team dir carry the product-facing memory; anything else that is team-scoped (a convention, a process finding) stays at the team root.',
+    '',
+    '<categories>',
+  ]
+  for (const category of TEAM_CATEGORIES) {
+    lines.push(
+      '<category>',
+      `    <dir>${category.dir}/</dir>`,
+      `    <type>${category.type}</type>`,
+      `    <description>${category.description}</description>`,
+      `    <when_to_save>${category.whenToSave}</when_to_save>`,
+      `    <when_not_to_save>${category.whenNotToSave}</when_not_to_save>`,
+      `    <body_structure>${category.bodyStructure}</body_structure>`,
+      `    <paths>${category.paths}</paths>`,
+      '</category>',
+    )
+  }
+  lines.push(
+    '</categories>',
+    '',
+    `Index lines for a categorized memory go in the team \`MEMORY.md\` under \`${TEAM_CATEGORIES.map(c => `## ${c.section}`).join('`, `')}\` — create the section if it does not exist — with the subdirectory in the link: \`- [Title](bugs/file.md) — hook\`.`,
+    '',
+  )
+  return lines
 }
 
 /**
@@ -56,7 +205,7 @@ export const TYPES_SECTION_COMBINED: readonly string[] = [
   '</type>',
   '<type>',
   '    <name>feedback</name>',
-  '    <scope>default to private. Save as team only when the guidance is clearly a project-wide convention that every contributor should follow (e.g., a testing policy, a build invariant), not a personal style preference.</scope>',
+  '    <scope>default to private. Save as team only when the guidance is clearly a project-wide convention that every contributor should follow (e.g., a testing policy, a build invariant), not a personal style preference. Team feedback lives at the team root, never in a category subdirectory.</scope>',
   "    <description>Guidance the user has given you about how to approach work — both what to avoid and what to keep doing. These are a very important type of memory to read and write as they allow you to remain coherent and responsive to the way you should approach work in the project. Record from failure AND success: if you only save corrections, you will avoid past mistakes but drift away from approaches the user has already validated, and may grow overly cautious. Before saving a private feedback memory, check that it doesn't contradict a team feedback memory — if it does, either don't save it or note the override explicitly.</description>",
   '    <when_to_save>Any time the user corrects your approach ("no not that", "don\'t", "stop doing X") OR confirms a non-obvious approach worked ("yes exactly", "perfect, keep doing that", accepting an unusual choice without pushback). Corrections are easy to notice; confirmations are quieter — watch for them. In both cases, save what is applicable to future conversations, especially if surprising or not obvious from the code. Include *why* so you can judge edge cases later.</when_to_save>',
   '    <how_to_use>Let these memories guide your behavior so that the user and other users in the project do not need to offer the same guidance twice.</how_to_use>',
@@ -74,7 +223,7 @@ export const TYPES_SECTION_COMBINED: readonly string[] = [
   '</type>',
   '<type>',
   '    <name>project</name>',
-  '    <scope>private or team, but strongly bias toward team</scope>',
+  '    <scope>private or team, but strongly bias toward team. In team, an impactful decision goes to `decisions/` and a known defect to `bugs/` (see Team categories — each has a bar to clear); other project context stays at the team root.</scope>',
   '    <description>Information that you learn about ongoing work, goals, initiatives, bugs, or incidents within the project that is not otherwise derivable from the code or git history. Project memories help you understand the broader context and motivation behind the work users are working on within this working directory.</description>',
   '    <when_to_save>When you learn who is doing what, why, or by when. These states change relatively quickly so try to keep your understanding of this up to date. Always convert relative dates in user messages to absolute dates when saving (e.g., "Thursday" → "2026-03-05"), so the memory remains interpretable after time passes.</when_to_save>',
   "    <how_to_use>Use these memories to more fully understand the details and nuance behind the user's request, anticipate coordination issues across users, make better informed suggestions.</how_to_use>",
@@ -89,7 +238,7 @@ export const TYPES_SECTION_COMBINED: readonly string[] = [
   '</type>',
   '<type>',
   '    <name>reference</name>',
-  '    <scope>usually team</scope>',
+  '    <scope>usually team — in `docs/` when it points at the documentation for a subsystem (see Team categories), at the team root otherwise.</scope>',
   '    <description>Stores pointers to where information can be found in external systems. These memories allow you to remember where to look to find up-to-date information outside of the project directory.</description>',
   '    <when_to_save>When you learn about resources in external systems and their purpose. For example, that bugs are tracked in a specific project in Linear or that feedback can be found in a specific Slack channel.</when_to_save>',
   '    <how_to_use>When the user references an external system or information that may be in an external system.</how_to_use>',

@@ -140,9 +140,9 @@ export async function* executeHooks({
 
   const userHooks = matchingHooks.filter(h => !isInternalHook(h))
   if (userHooks.length === 0) {
-    // Fast-path: all hooks are internal callbacks (sessionFileAccessHooks,
-    // attributionHooks). These return {} and don't use the abort signal, so we
-    // can skip span/progress/abortSignal/processHookJSONOutput/resultLoop.
+    // Fast-path: all hooks are internal callbacks (`internal: true`). These
+    // return {} and don't use the abort signal, so we can skip
+    // span/progress/abortSignal/processHookJSONOutput/resultLoop.
     // Measured: 6.01µs → ~1.8µs per PostToolUse hit (-70%).
     const batchStartTime = Date.now()
     const context = toolUseContext

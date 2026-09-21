@@ -13,19 +13,29 @@ const KIND_ORDER: Record<MemoryIndexSummary['kind'], number> = {
 }
 
 function clause(index: MemoryIndexSummary): string {
-  const noun = plural(index.entryCount, 'memory', 'memories')
-  const label = index.kind === 'team' ? `team ${noun}` : noun
+  // "private" and "team" are what /memory calls the two directories
+  // (MemoryFileSelector.tsx); "user memory" there already means
+  // ~/.claudin/CLAUDE.md, so it is not free for the private memdir.
+  const label =
+    index.kind === 'team' ? 'team memories index' : 'private memories index'
   // A cut index reports both halves: what arrived, and what the file holds.
   // Otherwise the cap fires in silence — the warning truncateEntrypointContent
   // appends goes to the model, never to the screen.
-  return index.totalEntryCount > index.entryCount
-    ? `${index.entryCount} of ${index.totalEntryCount} ${label}`
-    : `${index.entryCount} ${label}`
+  const entries =
+    index.totalEntryCount > index.entryCount
+      ? `${index.entryCount} of ${index.totalEntryCount} ${plural(index.totalEntryCount, 'entry', 'entries')}`
+      : `${index.entryCount} ${plural(index.entryCount, 'entry', 'entries')}`
+  return `${label} (${entries})`
 }
 
 /**
- * The counts clause: "16 memories, 121 team memories", or
- * "16 memories, 96 of 121 team memories" when a cap cut one of them short.
+ * The index clause: "private memories index (16 entries), team memories
+ * index (121 entries)", or "… team memories index (96 of 121 entries)" when
+ * a cap cut one of them short. It names the INDEX on purpose: the two
+ * MEMORY.md files are what enter context every session, and "Loaded 16
+ * memories" read as if the memory files themselves had — those load on
+ * demand, when the model follows a pointer or a `paths:` match attaches one
+ * (nested_memory).
  * Private always precedes team, whatever order getMemoryFiles returned.
  */
 export function formatMemoryIndexCounts(

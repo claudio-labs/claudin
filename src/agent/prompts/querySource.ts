@@ -56,7 +56,6 @@ type InternalQuerySource =
   // differently from the main thread's.
   | 'marble_origami'
   | 'mcp_datetime_parse'
-  | 'memdir_relevance'
   | 'model_validation'
   | 'permission_explainer'
   | 'prompt_suggestion'

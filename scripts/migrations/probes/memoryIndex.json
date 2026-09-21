@@ -11,8 +11,8 @@
   "probes": [
     {
       "name": "the team index is labelled team, not folded into the private count",
-      "find": "  const label = index.kind === 'team' ? `team ${noun}` : noun\n",
-      "replace": "  const label = noun\n"
+      "find": "    index.kind === 'team' ? 'team memories index' : 'private memories index'\n",
+      "replace": "    'private memories index'\n"
     },
     {
       "name": "private leads whatever order getMemoryFiles returned",
@@ -21,8 +21,14 @@
     },
     {
       "name": "a cut index reports both halves instead of only what arrived",
-      "find": "    ? `${index.entryCount} of ${index.totalEntryCount} ${label}`\n",
-      "replace": "    ? `${index.entryCount} ${label}`\n"
+      "find": "      ? `${index.entryCount} of ${index.totalEntryCount} ${plural(index.totalEntryCount, 'entry', 'entries')}`\n",
+      "replace": "      ? `${index.entryCount} ${plural(index.entryCount, 'entry', 'entries')}`\n"
+    },
+    {
+      "name": "the line names the index, not the memories the index points at",
+      "comment": "\"Loaded 16 memories, 121 team memories\" was read as 137 files entering context; only the two MEMORY.md pointers do.",
+      "find": "  return `${label} (${entries})`\n",
+      "replace": "  return `${index.entryCount} ${index.kind === 'team' ? 'team ' : ''}memories`\n"
     },
     {
       "name": "hasTruncatedMemoryIndex compares the two counts",

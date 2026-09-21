@@ -5,10 +5,7 @@ import {
   type ToolUseContext,
   type ToolPermissionContext,
 } from 'src/tools/Tool.js'
-import type { Message } from 'src/shared/types/message.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
-import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
-import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   type MemoryFileInfo,
   getManagedAndUserConditionalRules,
@@ -22,20 +19,9 @@ import {
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { pathInAllowedWorkingPath } from 'src/permissions/filePermissions.js'
 import { logError } from 'src/shared/log.js'
-import { isAbortError } from 'src/shared/errors.js'
-import { createChildAbortController } from 'src/shared/abortController.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { findRelevantMemories } from 'src/memory/memdir/findRelevantMemories.js'
-import { memoryAge, memoryFreshnessText } from 'src/memory/memdir/memoryAge.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
-import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
-import { extractAgentMentions } from 'src/agent/attachments/mentions.js'
-import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
-import { getUserMessageText } from 'src/agent/messages/messages.js'
-import { isHumanTurn } from 'src/agent/messages/messagePredicates.js'
-import { MAX_MEMORY_LINES, MAX_MEMORY_BYTES, RELEVANT_MEMORIES_CONFIG } from 'src/agent/attachments/config.js'
-import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { getPathScopedMemoryFiles } from 'src/memory/memdir/pathScopedMemories.js'
 
 export function getDirectoriesToProcess(
   targetPath: string,
@@ -195,6 +181,18 @@ export async function getNestedMemoryAttachmentsForFile(
         ...memoryFilesToAttachments(conditionalRules, toolUseContext, filePath),
       )
     }
+
+    // Memories carrying `paths:` ride the same lane as a path-scoped rule —
+    // same trigger, same once-per-session dedupe, same reset on compaction.
+    // The rule loaders above share `processedPaths` with this call, so a file
+    // reached twice in one trigger is still attached once.
+    const pathScopedMemories = await getPathScopedMemoryFiles(
+      filePath,
+      processedPaths,
+    )
+    attachments.push(
+      ...memoryFilesToAttachments(pathScopedMemories, toolUseContext, filePath),
+    )
   } catch (error) {
     logError(error)
   }
@@ -227,254 +225,4 @@ export async function getNestedMemoryAttachments(
   toolUseContext.nestedMemoryAttachmentTriggers.clear()
 
   return attachments
-}
-
-async function getRelevantMemoryAttachments(
-  input: string,
-  agents: AgentDefinition[],
-  readFileState: FileStateCache,
-  recentTools: readonly string[],
-  signal: AbortSignal,
-  alreadySurfaced: ReadonlySet<string>,
-): Promise<Attachment[]> {
-  const memoryDirs = extractAgentMentions(input).flatMap(mention => {
-    const agentType = mention.replace('agent-', '')
-    const agentDef = agents.find(def => def.agentType === agentType)
-    return agentDef?.memory
-      ? [getAgentMemoryDir(agentType, agentDef.memory)]
-      : []
-  })
-  const dirs = memoryDirs.length > 0 ? memoryDirs : [getAutoMemPath()]
-
-  const allResults = await Promise.all(
-    dirs.map(dir =>
-      findRelevantMemories(
-        input,
-        dir,
-        signal,
-        recentTools,
-        alreadySurfaced,
-      ).catch(() => []),
-    ),
-  )
-  const selected = allResults
-    .flat()
-    .filter(m => !readFileState.has(m.path) && !alreadySurfaced.has(m.path))
-    .slice(0, 5)
-
-  const memories = await readMemoriesForSurfacing(selected, signal)
-
-  if (memories.length === 0) {
-    return []
-  }
-  return [{ type: 'relevant_memories' as const, memories }]
-}
-
-export function collectSurfacedMemories(messages: ReadonlyArray<Message>): {
-  paths: Set<string>
-  totalBytes: number
-} {
-  const paths = new Set<string>()
-  let totalBytes = 0
-  for (const m of messages) {
-    if (m.type === 'attachment' && m.attachment.type === 'relevant_memories') {
-      for (const mem of m.attachment.memories) {
-        paths.add(mem.path)
-        totalBytes += mem.content.length
-      }
-    }
-  }
-  return { paths, totalBytes }
-}
-
-export async function readMemoriesForSurfacing(
-  selected: ReadonlyArray<{ path: string; mtimeMs: number }>,
-  signal?: AbortSignal,
-): Promise<
-  Array<{
-    path: string
-    content: string
-    mtimeMs: number
-    header: string
-    limit?: number
-  }>
-> {
-  const results = await Promise.all(
-    selected.map(async ({ path: filePath, mtimeMs }) => {
-      try {
-        const result = await readFileInRange(
-          filePath,
-          0,
-          MAX_MEMORY_LINES,
-          MAX_MEMORY_BYTES,
-          signal,
-          { truncateOnByteLimit: true },
-        )
-        const truncated =
-          result.totalLines > MAX_MEMORY_LINES || result.truncatedByBytes
-        const content = truncated
-          ? result.content +
-            `\n\n> This memory file was truncated (${result.truncatedByBytes ? `${MAX_MEMORY_BYTES} byte limit` : `first ${MAX_MEMORY_LINES} lines`}). Use the ${FILE_READ_TOOL_NAME} tool to view the complete file at: ${filePath}`
-          : result.content
-        return {
-          path: filePath,
-          content,
-          mtimeMs,
-          header: memoryHeader(filePath, mtimeMs),
-          limit: truncated ? result.lineCount : undefined,
-        }
-      } catch {
-        return null
-      }
-    }),
-  )
-  return results.filter(r => r !== null)
-}
-
-export function memoryHeader(path: string, mtimeMs: number): string {
-  const staleness = memoryFreshnessText(mtimeMs)
-  return staleness
-    ? `${staleness}\n\nMemory: ${path}:`
-    : `Memory (saved ${memoryAge(mtimeMs)}): ${path}:`
-}
-
-export type MemoryPrefetch = {
-  promise: Promise<Attachment[]>
-  settledAt: number | null
-  consumedOnIteration: number
-  [Symbol.dispose](): void
-}
-
-export function startRelevantMemoryPrefetch(
-  messages: ReadonlyArray<Message>,
-  toolUseContext: ToolUseContext,
-): MemoryPrefetch | undefined {
-  if (
-    !isAutoMemoryEnabled() ||
-    !getFeatureValue_CACHED_MAY_BE_STALE('tengu_moth_copse', false)
-  ) {
-    return undefined
-  }
-
-  const lastUserMessage = messages.findLast(m => m.type === 'user' && !m.isMeta)
-  if (!lastUserMessage) {
-    return undefined
-  }
-
-  const input = getUserMessageText(lastUserMessage)
-  if (!input || !/\s/.test(input.trim())) {
-    return undefined
-  }
-
-  const surfaced = collectSurfacedMemories(messages)
-  if (surfaced.totalBytes >= RELEVANT_MEMORIES_CONFIG.MAX_SESSION_BYTES) {
-    return undefined
-  }
-
-  const controller = createChildAbortController(toolUseContext.abortController)
-  const firedAt = Date.now()
-  const promise = getRelevantMemoryAttachments(
-    input,
-    toolUseContext.options.agentDefinitions.activeAgents,
-    toolUseContext.readFileState,
-    collectRecentSuccessfulTools(messages, lastUserMessage),
-    controller.signal,
-    surfaced.paths,
-  ).catch(e => {
-    if (!isAbortError(e)) {
-      logError(e)
-    }
-    return []
-  })
-
-  const handle: MemoryPrefetch = {
-    promise,
-    settledAt: null,
-    consumedOnIteration: -1,
-    [Symbol.dispose]() {
-      controller.abort()
-    },
-  }
-  void promise.finally(() => {
-    handle.settledAt = Date.now()
-  })
-  return handle
-}
-
-type ToolResultBlock = {
-  type: 'tool_result'
-  tool_use_id: string
-  is_error?: boolean
-}
-
-function isToolResultBlock(b: unknown): b is ToolResultBlock {
-  return (
-    typeof b === 'object' &&
-    b !== null &&
-    (b as ToolResultBlock).type === 'tool_result' &&
-    typeof (b as ToolResultBlock).tool_use_id === 'string'
-  )
-}
-
-export function collectRecentSuccessfulTools(
-  messages: ReadonlyArray<Message>,
-  lastUserMessage: Message,
-): readonly string[] {
-  const useIdToName = new Map<string, string>()
-  const resultByUseId = new Map<string, boolean>()
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i]
-    if (!m) continue
-    if (isHumanTurn(m) && m !== lastUserMessage) break
-    if (m.type === 'assistant' && typeof m.message.content !== 'string') {
-      for (const block of m.message.content) {
-        if (block.type === 'tool_use') useIdToName.set(block.id, block.name)
-      }
-    } else if (
-      m.type === 'user' &&
-      'message' in m &&
-      Array.isArray(m.message.content)
-    ) {
-      for (const block of m.message.content) {
-        if (isToolResultBlock(block)) {
-          resultByUseId.set(block.tool_use_id, block.is_error === true)
-        }
-      }
-    }
-  }
-  const failed = new Set<string>()
-  const succeeded = new Set<string>()
-  for (const [id, name] of useIdToName) {
-    const errored = resultByUseId.get(id)
-    if (errored === undefined) continue
-    if (errored) {
-      failed.add(name)
-    } else {
-      succeeded.add(name)
-    }
-  }
-  return [...succeeded].filter(t => !failed.has(t))
-}
-
-export function filterDuplicateMemoryAttachments(
-  attachments: Attachment[],
-  readFileState: FileStateCache,
-): Attachment[] {
-  return attachments
-    .map(attachment => {
-      if (attachment.type !== 'relevant_memories') return attachment
-      const filtered = attachment.memories.filter(
-        m => !readFileState.has(m.path),
-      )
-      for (const m of filtered) {
-        readFileState.set(m.path, {
-          content: m.content,
-          timestamp: m.mtimeMs,
-          offset: undefined,
-          limit: m.limit,
-        })
-      }
-      return filtered.length > 0 ? { ...attachment, memories: filtered } : null
-    })
-    .filter((a): a is Attachment => a !== null)
 }

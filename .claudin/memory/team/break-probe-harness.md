@@ -1,6 +1,6 @@
 ---
 name: break-probe-harness
-description: scripts/migrations/break-probe.ts runs agent-safety.md's break-and-restore method as a batch over a committed JSON spec; 18 specs live under scripts/migrations/probes/ and are re-runnable after any later refactor
+description: scripts/migrations/break-probe.ts runs agent-safety.md's break-and-restore method as a batch over a committed JSON spec; 21 specs live under scripts/migrations/probes/ and are re-runnable after any later refactor
 type: reference
 ---
 
@@ -23,7 +23,7 @@ Spec shape (`test` may be a list; `source` may be overridden per probe):
   "probes": [{ "name": "...", "comment": "...", "find": "...", "replace": "..." }] }
 ```
 
-18 specs are committed under `scripts/migrations/probes/`. They are the evidence
+21 specs are committed under `scripts/migrations/probes/`. They are the evidence
 for the suites they name and stay re-runnable after later refactors, so add one
 rather than doing a throwaway manual pass.
 

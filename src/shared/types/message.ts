@@ -437,7 +437,6 @@ export type CollapsedReadSearchGroup = {
   hookTotalMs?: number
   hookCount?: number
   hookInfos?: StopHookInfo[]
-  relevantMemories?: { path: string; content: string; mtimeMs: number }[]
   /**
    * Files written by Write/Edit/apply_patch/Rename absorbed into this group,
    * in the order they were first touched. Only set when the group has writes.

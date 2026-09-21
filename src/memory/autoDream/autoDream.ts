@@ -10,6 +10,7 @@
 // State is closure-scoped inside initAutoDream() rather than module-level
 // (tests call initAutoDream() in beforeEach for a fresh closure).
 
+import { feature } from 'bun:bundle'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
   createCacheSafeParams,
@@ -24,6 +25,10 @@ import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'
+import {
+  getTeamMemPath,
+  isTeamMemoryEnabled,
+} from 'src/memory/memdir/teamMemPaths.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
@@ -35,6 +40,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { createAutoMemCanUseTool } from 'src/memory/extract/extractMemories.js'
 import { buildConsolidationPrompt } from 'src/memory/autoDream/consolidationPrompt.js'
+import { collectDreamDigest } from 'src/memory/autoDream/dreamDigest.js'
 import {
   readLastConsolidatedAt,
   listSessionsTouchedSince,
@@ -206,6 +212,12 @@ export function initAutoDream(): void {
     try {
       const memoryRoot = getAutoMemPath()
       const transcriptDir = getProjectDir(getOriginalCwd())
+      const teamRoot =
+        feature('TEAMMEM') && isTeamMemoryEnabled() ? getTeamMemPath() : null
+      // The decision sources (plans, session prompts, impactful commits) are
+      // read here, in the harness, so the fork judges with data instead of
+      // grepping transcripts — and never runs git itself.
+      const digest = await collectDreamDigest(lastAt, sessionIds)
       // Tool constraints note goes in `extra`, not the shared prompt body —
       // manual /dream runs in the main loop with normal permissions and this
       // would be misleading there.
@@ -214,8 +226,15 @@ export function initAutoDream(): void {
 **Tool constraints for this run:** Bash is restricted to read-only commands (\`ls\`, \`find\`, \`grep\`, \`cat\`, \`stat\`, \`wc\`, \`head\`, \`tail\`, and similar). Anything that writes, redirects to a file, or modifies state will be denied. Plan your exploration with this in mind — no need to probe.
 
 Sessions since last consolidation (${sessionIds.length}):
-${sessionIds.map(id => `- ${id}`).join('\n')}`
-      const prompt = buildConsolidationPrompt(memoryRoot, transcriptDir, extra)
+${sessionIds.map(id => `- ${id}`).join('\n')}
+
+${digest}`
+      const prompt = buildConsolidationPrompt(
+        memoryRoot,
+        transcriptDir,
+        extra,
+        teamRoot,
+      )
 
       const result = await runForkedAgent({
         promptMessages: [createUserMessage({ content: prompt })],
