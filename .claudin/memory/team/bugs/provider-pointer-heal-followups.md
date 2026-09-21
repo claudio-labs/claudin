@@ -2,6 +2,9 @@
 name: Provider pointer heal — open follow-ups
 description: febf362a fixed the saveGlobalConfig projects clobber + added startup heal for dangling provider pointers; three known gaps remain unfixed
 type: project
+paths:
+  - "**/claudinStartupMigrations.ts"
+  - "**/providerProfiles.ts"
 ---
 
 Commit febf362a (2026-06-12) fixed saveGlobalConfig discarding updater edits to `projects` (root cause of dangling project provider overrides — deleteProviderProfile's M4 cleanup never persisted) and added a startup heal in claudinStartupMigrations.ts. Known gaps deliberately left as follow-ups:

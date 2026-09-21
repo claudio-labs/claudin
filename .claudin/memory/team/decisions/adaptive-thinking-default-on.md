@@ -2,6 +2,8 @@
 name: Adaptive thinking is now the default (was opt-in)
 description: 2026-07-13 default flip — Claude models send {type:'adaptive'} thinking by default instead of {enabled,budget_tokens}; opt out with CLAUDIN_ENABLE_ADAPTIVE_THINKING=0
 type: project
+scope: providers/claude/thinking
+impact: functional
 ---
 
 Claudin now sends `thinking: {type:'adaptive'}` by default for models that support it (opus-4-8/4-7/4-6, sonnet-5, fable-5, sonnet-4-6). Previously it defaulted to `{type:'enabled', budget_tokens:<from /effort>}` and only used adaptive when `CLAUDIN_ENABLE_ADAPTIVE_THINKING` was truthy. Now the env var is opt-**out**: unset/`1` → adaptive, `0`/`false`/`no`/`off` → back to /effort budget mode.

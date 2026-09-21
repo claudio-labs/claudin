@@ -2,6 +2,8 @@
 name: repo-map-graph-topology-degenerate
 description: NO repo index of any shape works on this repo — closed 2026-08-17 after Gate 1 ran offline over 96 real sessions: forward depth 2 recalls a MEDIAN OF 0% and loses to one `ls` of the seed's directory; the signals that work are directory locality plus direct importers, i.e. Glob and Grep
 type: project
+scope: repo-map
+impact: rejected
 ---
 
 The 2026-08-07 rejection ([[repo-map-rejected-orientation-measured]]) ended with

@@ -2,6 +2,8 @@
 name: bash-filter-shape-wontfix
 description: Bash filter — shape blindness (pipes/chains) is CLOSED as wontfix with numbers; the only bucket a new spec can reach is 6.8% of chars, and the 2026-08-29 prefix round moved this corpus by +4 calls
 type: project
+scope: tools/bash/output-filter
+impact: rejected
 ---
 
 The Bash output filter's coverage ceiling is a **shape** problem, not a missing-spec

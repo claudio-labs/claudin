@@ -2,6 +2,10 @@
 name: missing-module-stub-makes-dead-things-look-alive
 description: The build's missing-module stub exports a TRUTHY default, so `feature(TRUE_FLAG) ? require(absent) : null` registers a phantom — plus the two commands that can only fail because of a neutralized constant
 type: project
+paths:
+  - "src/platform/install/download.ts"
+  - "src/platform/main/commands/install.ts"
+  - "src/platform/entrypoints/mcp.ts"
 ---
 
 Audited 2026-09-15. Three live defects share one root: something that cannot

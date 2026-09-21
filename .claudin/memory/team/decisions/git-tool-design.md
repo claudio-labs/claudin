@@ -2,6 +2,8 @@
 name: Git tool — D2, shipped 2026-08-04
 description: Design record for the Git tool (batched git+gh commands, delegated permissions, delta lane) — what to cite, what did not survive measurement, and the traps found building it
 type: project
+scope: tools/git
+impact: structural
 ---
 
 **Scope:** this file owns the Git tool itself — the design decisions, the numbers

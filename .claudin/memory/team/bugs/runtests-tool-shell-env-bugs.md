@@ -2,6 +2,8 @@
 name: RunTestsTool still carries the three shell/env bugs Typecheck fixed
 description: Shipped RunTestsTool ignores the cwd it is handed, sets FORCE_COLOR=0 (which enables colour), and uses an env-prefix that only composes with a simple command — all unfixed as of 2026-08-04
 type: project
+paths:
+  - "src/tools/RunTestsTool/run.ts"
 ---
 
 `src/tools/RunTestsTool/run.ts` builds `CI=true FORCE_COLOR=0 ${plan.command}`

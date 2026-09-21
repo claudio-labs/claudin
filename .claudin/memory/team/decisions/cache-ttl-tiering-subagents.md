@@ -2,6 +2,8 @@
 name: Cache TTL tiering for subagents (5m) + slim-subagent attachment fix
 description: c43aab2/6257f0f (2026-07-05) — agent:* and short-lived utility querySources get 5m TTL, fork keeps 1h; omitClaudeMd now honored in attachment pipeline; deferred findings list, incl. the 2026-09-20 measurement that a Bash call >5 min inside a 5m-TTL sub-agent rewrites its whole prefix
 type: project
+scope: cache/ttl
+impact: functional
 ---
 
 Shipped 2026-07-05 on main (c43aab2 + 6257f0f):

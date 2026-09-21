@@ -2,6 +2,8 @@
 name: Defer-cache-marker (prompt-cache placement) shipped 2026-06-07
 description: addCacheBreakpoints now walks back N tokens before placing the single cache marker; default 2048; head-anchor fallback is load-bearing (not a bug)
 type: project
+scope: cache/defer-marker
+impact: functional
 ---
 
 `src/providers/shims/claude/paramBuilders.ts` `addCacheBreakpoints` no longer pins the single `cache_control` marker at `messages[length-1]` every turn. It now walks backward summing `roughTokenCountEstimationForMessage` and places the marker at the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS` (= 2048). Override at runtime via `CLAUDIN_DEFER_CACHE_MARKER=<N>` (0 = baseline).

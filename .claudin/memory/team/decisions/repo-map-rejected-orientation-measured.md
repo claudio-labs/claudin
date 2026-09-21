@@ -2,6 +2,8 @@
 name: repo-map-rejected-orientation-measured
 description: Porting an aider-style repo map (and generating a navigation rule from transcripts) was rejected on transcript data 2026-08-07 — orientation is real but almost none of it is *locating*; the follow-up measurement demanded here was done 2026-08-17 and confirmed the no
 type: project
+scope: repo-map
+impact: rejected
 ---
 
 > **Follow-up done.** The "do not re-open without new measurement" clause below

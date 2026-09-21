@@ -2,6 +2,10 @@
 name: checkBatchWritePermission returns updatedInput:{} which clobbers the tool's real input
 description: Why a tool wiring checkBatchWritePermission as checkPermissions gets {} at call() in auto/bypass mode; apply_patch crash root cause + the empirical-verification lesson
 type: project
+paths:
+  - "src/permissions/filePermissions/readWriteChecks.ts"
+  - "src/agent/tools/toolExecution.ts"
+  - "src/tools/ApplyPatchTool/applyPatch.ts"
 ---
 
 `checkBatchWritePermission` (src/permissions/filePermissions/readWriteChecks.ts — was `src/permissions/filesystem.ts` until the 2026-09-19 barrel split) returns `{ behavior:'allow', updatedInput: {} }` on its allow paths (bypassPermissions, and the batch allow). It validates a SYNTHETIC per-path `{file_path}` input, so it has no single real input to echo — `{}` is a placeholder.

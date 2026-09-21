@@ -2,6 +2,8 @@
 name: explore-agent-removed
 description: The built-in Explore agent was REMOVED on 2026-08-18 — what it was measured to be worth, what replaced it, and the bench that still reproduces the old numbers
 type: project
+scope: tools/AgentTool
+impact: functional
 ---
 
 **The built-in `Explore` sub-agent no longer exists** (removed 2026-08-18, branch

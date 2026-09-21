@@ -2,6 +2,8 @@
 name: OpenTelemetry is devDep-only and fully build-stubbed — don't remove for "security"
 description: Why the @opentelemetry/* packages stay in the tree even though Claudin uses zero OTel at runtime; verdict on removing them
 type: project
+scope: build/telemetry-stubs
+impact: rejected
 ---
 
 OpenTelemetry is NOT used at runtime in Claudin. Do not spend effort removing the `@opentelemetry/*` deps to "improve security" — it yields ~zero benefit.

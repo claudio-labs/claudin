@@ -2,6 +2,8 @@
 name: LSPTool reintroduced 2026-06-17 (was empirically rejected) — cache-safe, plugin-only servers
 description: LSPTool dropped 2026-05-28 (0 usage in 36 benches) then REINTRODUCED 2026-06-17 on feat/lsp-tool-reintroduce as a deliberate openclaude-shape match; read-only 9 ops, cache-stable, servers plugin-only
 type: project
+scope: tools/LSPTool
+impact: structural
 ---
 
 LSPTool (goToDefinition/references/hover/…) was removed in `ca54574f` after 0 usage, then **reintroduced 2026-06-17** on branch `feat/lsp-tool-reintroduce` at the user's explicit request to mirror the openclaude shape. The 0-usage finding still stands as the reason it stays `shouldDefer: true` (ToolSearch-surfaced, schema not in the main prompt).

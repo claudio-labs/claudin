@@ -2,6 +2,8 @@
 name: code-review-graph-evaluated-rejected
 description: The code-review-graph tree-sitter code-graph tool was audited 2026-08-08 and its graph REJECTED on measured data (284 MB db on claudin, impact answer = 203k tokens); four graph-free ideas kept — re-checked 2026-08-17, unchanged, and TWO stated causes were wrong
 type: project
+scope: repo-map
+impact: rejected
 ---
 
 `~/projects/code-review-graph` (tirth8205, Python, ~91k LOC, MIT) builds a

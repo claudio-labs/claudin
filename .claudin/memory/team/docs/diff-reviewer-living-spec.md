@@ -2,6 +2,11 @@
 name: /diff reviewer has a living design doc (feature 8.1)
 description: The /diff diff reviewer is actively iterated; its canonical spec lives in docs/features/8.1-diff-reviewer.md and is kept in sync as features land
 type: project
+paths:
+  - "src/terminal/ModalSlot.tsx"
+  - "src/terminal/contexts/sidePanelContext.tsx"
+  - "src/terminal/ink/selectionBands.ts"
+  - "src/terminal/promptMention.ts"
 ---
 
 The `/diff` diff reviewer (feature "8.1") is an actively-developed Ink/TUI feature whose

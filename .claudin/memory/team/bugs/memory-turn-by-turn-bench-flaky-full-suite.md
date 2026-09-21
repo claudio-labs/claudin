@@ -2,6 +2,8 @@
 name: memory-turn-by-turn RSS bench is flaky only under full bun test
 description: scripts/bench/perf/memory-turn-by-turn-bench.test.ts "no late-session RSS blow-up" fails in full-suite runs but passes in isolation — not a regression signal
 type: project
+paths:
+  - "scripts/bench/perf/memory-turn-by-turn-bench.test.ts"
 ---
 
 `scripts/bench/perf/memory-turn-by-turn-bench.test.ts > no late-session RSS blow-up under compact + clear` intermittently fails during a full `bun test` run but passes 3/3 when run in isolation (`bun --expose-gc test scripts/bench/perf/memory-turn-by-turn-bench.test.ts`).

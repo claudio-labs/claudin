@@ -2,6 +2,8 @@
 name: memory-delta-removed-double-send
 description: memory_delta was deleted 2026-08-07 because it re-sent the full body of every rule/CLAUDE.md that nested_memory had already sent the turn before (~57 KB/session here); the comment justifying the coexistence cited two things that are false in this fork
 type: project
+scope: agent/attachments
+impact: structural
 ---
 
 `src/utils/memoryDelta.ts` + the `memory_delta` attachment were removed

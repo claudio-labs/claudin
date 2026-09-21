@@ -2,6 +2,8 @@
 name: Claudin defaults to essential-traffic, suppresses Anthropic startup probes
 description: As of commit b2be87b5 (2026-06-06), Claudin's privacy level defaults to 'essential-traffic' so cold start issues 0 requests to *.anthropic.com instead of 7; ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC is a new alias env var; explicit =0/false opts back in to upstream behaviour
 type: project
+scope: platform/config/privacyLevel
+impact: functional
 ---
 
 Claudin's privacy level (`src/platform/config/privacyLevel.ts`) defaults to `'essential-traffic'` when neither `CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC` nor `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC` is set. Setting either env var to `0`/`false`/`no`/`off`/empty opts back in to upstream-Claude-Code behaviour.

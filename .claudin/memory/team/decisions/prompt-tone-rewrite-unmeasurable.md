@@ -2,6 +2,8 @@
 name: prompt-tone-rewrite-unmeasurable
 description: Rewriting the shouted IMPORTANT/NEVER emphasis out of the tool prompts was measured and dropped — the corpus shows no over-compliance, and empty thinking blocks make it unmeasurable from logs at all
 type: project
+scope: agent/prompts
+impact: rejected
 ---
 
 A prompt-parity audit (2026-09-13) proposed rewriting the ~13 shouted emphasis

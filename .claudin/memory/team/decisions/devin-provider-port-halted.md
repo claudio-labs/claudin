@@ -2,6 +2,8 @@
 name: Devin provider port halted; branch feat/devin-provider pushed but not merging
 description: 2026-06-06 — feat/devin-provider closed without merge; chisel binary's metadata.f31 attestation is a hard blocker (content-bound, replay-rejected, 366B per-request from getrandom+aws-lc-rs key embedded in binary). Full writeup in docs/tech/devin-provider/README.md
 type: project
+scope: providers/devin
+impact: rejected
 ---
 
 `feat/devin-provider` (commit `ec607be` pushed to origin 2026-06-06) is **not landing**. The work is preserved as a reference for any future attempt; the wire-format fixes (OAuth at `api.devin.ai/auth/cli/token`, `devin-session-token$` Basic prefix, `swe-1-6-fast` default, tenant routing, catalog-skip for `default` sentinel, curl-transport fallback) are all correct, but Devin's tier is gated server-side by `metadata.f31`, a 366-byte per-request attestation generated locally by the closed-source `chisel` Rust binary.

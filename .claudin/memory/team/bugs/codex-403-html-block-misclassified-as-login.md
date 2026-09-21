@@ -2,6 +2,8 @@
 name: Codex 403 HTML-block page misclassified as "Please run /login"
 description: A Codex 403 with an HTML body is an OpenAI/Cloudflare edge block, not a revoked token, but Claudin's generic 401/403 handler tells the user to /login
 type: project
+paths:
+  - "src/providers/transport/errors.ts"
 ---
 
 A Codex/ChatGPT-OAuth **403 whose response body is HTML** (an OpenAI/Cloudflare

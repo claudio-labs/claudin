@@ -2,6 +2,8 @@
 name: Footer PR pill supports GitLab + Gitea (feat/pr-status-gitlab-gitea)
 description: How the prompt-input PR/MR status pill resolves host → CLI, and the accepted review-state limitations for GitLab/Gitea
 type: project
+scope: vcs/git/pr-status
+impact: functional
 ---
 
 The footer PR pill (`src/vcs/git/ghPrStatus.ts` → `usePrStatus` → `buildPrPill`)

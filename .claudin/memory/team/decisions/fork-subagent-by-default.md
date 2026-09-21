@@ -2,6 +2,8 @@
 name: Fork-subagent-by-default initiative
 description: FORK_SUBAGENT shipped 2026-06-04 — default spawn inherits main's context+cache; named spawn stays fresh; fork ungated + auto-background flipped to opt-in 2026-07-26
 type: project
+scope: tools/AgentTool
+impact: functional
 ---
 
 Decision (2026-06-04): turn on `FORK_SUBAGENT` so the default agent spawn (no `subagent_type`) **forks** — inherits the parent's full context + prompt cache — while a spawn WITH a `subagent_type` stays a fresh, zero-context, own-cache agent ("no bias"). The two types coexist; the model picks per-spawn by omitting vs naming the type.

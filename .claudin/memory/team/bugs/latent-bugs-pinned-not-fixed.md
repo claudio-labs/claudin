@@ -2,6 +2,9 @@
 name: latent-bugs-pinned-not-fixed
 description: Two defects surfaced while writing coverage for the 2026-09-20 giant-file split; both are pinned as current behaviour and deliberately NOT fixed
 type: project
+paths:
+  - "src/tools/BashTool/bashCommandClassification.ts"
+  - "src/permissions/permissionSetup/dangerousRuleStash.ts"
 ---
 
 Writing tests for code that had none — the standing bar on

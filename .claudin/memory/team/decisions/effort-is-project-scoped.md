@@ -2,6 +2,8 @@
 name: Effort is project-scoped like provider and model
 description: Every /effort surface writes projects[].activeEffortForProject; no REPL surface writes settings.effortLevel anymore, and 'auto' is a pin sentinel
 type: project
+scope: /effort
+impact: functional
 ---
 
 Since 2026-07-26, effort follows the same project scoping as provider and model:

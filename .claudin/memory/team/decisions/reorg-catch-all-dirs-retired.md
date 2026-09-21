@@ -2,6 +2,8 @@
 name: reorg-catch-all-dirs-retired
 description: The 2026-08 reorg retired the seven catch-all dirs for feature slices; moduleBoundaries.test.ts guards them, and src/shared/ leaks upward under a ratchet since 2026-09-21
 type: project
+scope: architecture
+impact: structural
 ---
 
 Branch `refactor/screaming-arch`, 2026-08-14/15, 21 commits, ~3.5k files. The
