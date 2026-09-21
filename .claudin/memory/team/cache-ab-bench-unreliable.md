@@ -1,10 +1,10 @@
 ---
 name: cache-ab-bench harness has structural bugs
-description: scripts/profile/cache-ab-bench.ts per-turn table is cumulative-replicated not delta, run-to-run variance is huge, and claude binary exits 1 in ~17s under the harness even after stdin fix
+description: scripts/bench/ab/cache-ab-bench.ts per-turn table is cumulative-replicated not delta, run-to-run variance is huge, and claude binary exits 1 in ~17s under the harness even after stdin fix
 type: project
 ---
 
-`scripts/profile/cache-ab-bench.ts` produces output that looks per-turn but isn't, and is too noisy for single-run comparisons. Discovered 2026-06-08 while validating `feat/cache-head-anchor`.
+`scripts/bench/ab/cache-ab-bench.ts` produces output that looks per-turn but isn't, and is too noisy for single-run comparisons. Discovered 2026-06-08 while validating `feat/cache-head-anchor`.
 
 **Why:** Three independent failure modes converge:
 1. `extractTimeline` parses `usage` events cumulatively but emits the same totals on every output row, so the printed "per-turn" table shows blocks of byte-identical rows (e.g. 11× `cR=26.8k cW=0`, then 11× `cR=26.8k cW=8.8k`, etc.) — these are NOT per-turn deltas, they're the running total of a single request snapshotted N times. The TOTALS line is real.

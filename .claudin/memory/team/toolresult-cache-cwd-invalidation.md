@@ -4,7 +4,7 @@ description: toolResultCache keys are tool+input with no cwd; any mid-session pr
 type: project
 ---
 
-`src/services/tools/toolResultCache.ts` keys entries as `tool::stableStringify(input)` — **no cwd component**. So a relative-path arg (`path:'src'`, `file_path:'README.md'`) maps to the SAME key before and after a `process.chdir()`, serving a stale hit that resolves against the wrong directory. The Read mtime guard is NOT a backstop (it `statSync`s the relative path against the new cwd); Glob/Grep/LSP have no guard at all.
+`src/agent/tools/toolResultCache.ts` keys entries as `tool::stableStringify(input)` — **no cwd component**. So a relative-path arg (`path:'src'`, `file_path:'README.md'`) maps to the SAME key before and after a `process.chdir()`, serving a stale hit that resolves against the wrong directory. The Read mtime guard is NOT a backstop (it `statSync`s the relative path against the new cwd); Glob/Grep/LSP have no guard at all.
 
 **Why:** worktree enter/exit and `/resume` do `process.chdir()` mid-session. Closed across THREE homes (2026-06-24/25), one per chdir surface:
 - Agent-driven tools (EnterWorktree/ExitWorktree) → `invalidateCacheForWrite` branch in `cacheInvalidation.ts` calls `invalidateAll()` (unit-tested in `cacheInvalidation.test.ts`).

@@ -8,17 +8,18 @@
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Conventions
-- [Durable coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — path-scoped rules own renderer/cache/testing/agent-safety/build gotchas; memory is for state/decisions/refs; procedures → skills
+- [Durable coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — rules own coding gotchas by path; memory is for state/decisions/refs; procedures → skills
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the friction/refusal message instead; land new nudges flag-OFF as bench instrumentation
 - [Rewriting the shouted emphasis out of tool prompts — DROPPED on data 2026-09-13](prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls; empty thinking blocks make it unmeasurable from logs
 - [Steering Read shape from the prompt is cost-neutral (2026-09-14)](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%; the Grep symbols nudge is inert in two wordings
 - [Claude Code 2.1.270's prompt, extracted 2026-09-14](claude-code-2.1.270-prompt-diff.md) — upstream MANDATES narration now; Delivering work/Corrections/turn-discipline are upstream verbatim
 - [ANTI_NARRATION was written for Opus 4.7/4.8, never benched on Claude 5](anti-narration-never-benched-on-claude-5.md) — ModelFamily can't express "Claude 5"; reuse work-contract-ab.ts (one build + env killswitch), not cache-ab-bench
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
-- [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate new producers on input !== null, never add a gag order
+- [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
+- [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 18 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn from a throwaway cwd, never `-c` in the repo
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — the 2026-08 reorg disarmed a telemetry stub and broke verify:sdk-types; grep generators after a move
-- [Team memories still cite pre-reorg paths](memory-cites-pre-reorg-paths.md) — 23 files, 55 dead src/utils|services|components refs; Glob the basename, fix in place, don't clone
+- [Pre-reorg paths in team memory — swept 2026-09-21](memory-cites-pre-reorg-paths.md) — resolution table; live cites fixed, historical left; read the sentence first
 - [Harness "file modified" reminders can be stale mid-BUILD snapshots](stale-diagnostics-notifications.md) — they can quote the folded `feature()` tree and look like a killed build; grep one line first
 - [Pin a feature from the BUNDLE before deleting it](characterization-net-before-deletion.md) — feature() is false outside the build; 2 of 4 new scanner tests were tautological
 - [Removal passes take only what the build proves unreachable](removal-pass-only-provably-dead.md) — a reachable surface needs its own approval; one commit per phase
@@ -26,6 +27,7 @@
 - [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md) — `ts.createSourceFile` fails at RUNTIME; go lexical with refusals, or pay for typescript/unstable/sync
 
 ## Repo health
+- [Attachment producers leaked parent state into sub-agents — #224/#226/#227](attachment-producers-leak-parent-state.md) — 6 producers fixed; classification lives above allThreadAttachments; agentId is NOT the gate for session-owned state
 - [De-fingerprinting round (feat/claudin-identity, 2026-08-15)](defingerprinting-branch-2026-08.md) — what shipped, the ONE lane that keeps upstream headers, and the two env clusters that move as units
 - [The seven catch-all dirs are retired — 15 slices + 3 non-slices](reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts keeps them gone; `src/shared/` upward imports now ratcheted at 131, `vendor/` is gone
 - [tsc --noEmit reached ZERO on 2026-08-13](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap; "cannot be hand-fixed" and "never reaches zero" both disproven
@@ -43,7 +45,7 @@
 - [memory_delta deleted 2026-08-07 — a second full copy, not a delta](memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta
 - [Three mask desyncs blanked whole files from the symbol table — FIXED 2026-08-25](outline-mask-desync-zero-symbols.md) — 220→198 zero-symbol files; also broke Read(symbol=), Grep symbols, Rename
 - ["Read it first" gate census 2026-09-04 — 3 false causes FIXED in PR #157](read-gate-false-refusals-census-2026-09.md) — 65 refusals/23 sessions; Edit mid-line, injected MEMORY.md, /resume ranges
-- [Tool error census 2026-09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs FIXED (LRU inversion, watcher skipped Read entries, plan unseeded); served-region refusal; dedupExempt; S6–S15
+- [Tool error census 2026-09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs FIXED (LRU inversion, watcher skipped Read entries, plan unseeded)
 
 ## Roadmap & major features
 - [Dead-code + tengu cleanup — MERGED as PR #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines on main; analytics/telemetry GONE; tengu 1654→326; left: gate-key audit, growthbook collapse, rules sweep
@@ -51,7 +53,7 @@
 - [Dead-code round 5 — PR #214 (2026-09-19)](dead-code-round-5-2026-09-19.md) — −4.5k; first transitive symbol fixpoint; JSX-as-regex fakes dead components; 2 real defects; 143-symbol tail left
 - [The three dead-code gates and what none of them sees](deadcode-gate-include-allowlist-hole.md) — :ci/:prod/:exports all run in CI now; knip answers "is it imported", never "can it be reached"
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — round 2 DONE 09-20; the md5 split gate, the back-edge trap, and why verify:rules does NOT catch stale prose attributions
-- [Two latent bugs pinned, not fixed (2026-09-20)](latent-bugs-pinned-not-fixed.md) — isAutobackgroundingAllowed misses `sleep N`; restoreDangerousPermissions resurrects deleted rules; both guarded by a test asserting today's answer
+- [Two latent bugs pinned, not fixed (2026-09-20)](latent-bugs-pinned-not-fixed.md) — isAutobackgroundingAllowed misses `sleep N`; restoreDangerousPermissions resurrects deleted rules
 - [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy (PR #156, merged)](context-relief-unified-policy-ab.md) — A/B cost −25%; count every lookup tool, not one; on a 1M window the retain profile's floor sits ABOVE its band (09-20)
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept only for its three bench traps

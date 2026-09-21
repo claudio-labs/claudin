@@ -21,7 +21,7 @@ that reaches extractMemories). Fixed by `if (!feature('FLAG')) return false`.
 
 **How to apply:** when gating with `feature()`, write
 `if (!feature('FLAG')) return false` / `const x = feature('FLAG') ? a : b`, never a
-`&&`/`||`/assignment form. Note: `src/tools.ts`, `src/query.ts`, `src/commands.ts`
+`&&`/`||`/assignment form. Note: `src/tools/tools.ts`, `src/agent/query.ts`, `src/commands/commands.ts`
 already have many `feature('X') && …` / `const X = feature('Y')` forms — those
 modules are simply never imported under bun test, so they don't surface it; if a
 new test ever pulls them in, expect this same load error. After adding a

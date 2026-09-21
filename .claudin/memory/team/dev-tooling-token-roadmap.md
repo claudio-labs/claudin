@@ -178,7 +178,7 @@ themselves were NOT unified — each tool's budget is genuinely different.
 Also unblocked along the way: profile scripts that import `src/` died on the
 missing `@growthbook/growthbook` (the build stubs analytics, so it is not a
 dependency). `scripts/bench/perf/preload-stubs.ts` is the preload —
-`bun --preload ./scripts/bench/perf/preload-stubs.ts scripts/profile/<name>.ts`.
+`bun --preload ./scripts/bench/perf/preload-stubs.ts scripts/bench/<dir>/<name>.ts`.
 The grep replay harness had been silently unrunnable for the same reason.
 
 ## Out of scope for now

@@ -4,7 +4,7 @@ description: 2026-06-08 — feat/cache-head-anchor adds default-on messages[0] c
 type: project
 ---
 
-`feat/cache-head-anchor` (not merged) extends the defer-cache-marker work in `src/services/api/claude/paramBuilders.ts:addCacheBreakpoints` with a SECOND `cache_control` marker pinned to `messages[0]`. Default ON; kill-switch `CLAUDIN_DISABLE_CACHE_HEAD_ANCHOR=1` (deprecated alias `CLAUDIN_ANCHOR_CACHE_HEAD=0`). Skipped when `skipCacheWrite=true` (preserves fork-subagent fire-and-forget invariant) and when `messages.length <= 1`. Coalesces with the trailing marker when walk-back pins to index 0. Two commits on the branch: `8f91a7fb` (bench expansion to 30 mixed-size files) and `56cf0893` (head-anchor default-on + 5 new tests + stableStub.benchmark expectation 1→2 markers).
+`feat/cache-head-anchor` (not merged) extends the defer-cache-marker work in `src/providers/shims/claude/paramBuilders.ts:addCacheBreakpoints` with a SECOND `cache_control` marker pinned to `messages[0]`. Default ON; kill-switch `CLAUDIN_DISABLE_CACHE_HEAD_ANCHOR=1` (deprecated alias `CLAUDIN_ANCHOR_CACHE_HEAD=0`). Skipped when `skipCacheWrite=true` (preserves fork-subagent fire-and-forget invariant) and when `messages.length <= 1`. Coalesces with the trailing marker when walk-back pins to index 0. Two commits on the branch: `8f91a7fb` (bench expansion to 30 mixed-size files) and `56cf0893` (head-anchor default-on + 5 new tests + stableStub.benchmark expectation 1→2 markers).
 
 This is a DIFFERENT head anchor than the `Math.max(i, 0)` fallback called out in `defer-cache-marker-shipped.md` — the latter is the trailing marker's safety net when walk-back exhausts; this one is an additional permanent prefix anchor that coexists with it. Both load-bearing, do not conflate.
 
@@ -13,5 +13,5 @@ This is a DIFFERENT head anchor than the `Math.max(i, 0)` fallback called out in
 **How to apply:**
 - Status as of 2026-06-08: NOT merged to main; evidence is **directional only**. One controlled A/B on the 30-file mixed bench (head-anchor OFF→ON, same harness, same cwd) showed `cR=821.6k→1.28m`, `cW=778k→377k`, r:w 1.06→3.39, cost $1.43→$0.71. Variance between identical reruns of the same binary is huge (r:w spread 0.73 → 3.39 → 2.57 → 3.68), so single-run A/Bs are noise; N≥3 with median needed before authoritative claim.
 - Still ~1.8× behind Claude Code's empirical r:w 6.21 on the same workload — ~10k/turn of orphan window remains in steady state. A "Plan C" is the obvious follow-up (target: the residual gap), but defer until the bench is trustworthy.
-- Head-to-head vs `claude` binary is BLOCKED by `scripts/profile/cache-ab-bench.ts` bugs (see `cache-ab-bench-unreliable.md`) — do not cite head-to-head numbers from that script until it's fixed.
+- Head-to-head vs `claude` binary is BLOCKED by `scripts/bench/ab/cache-ab-bench.ts` bugs (see `cache-ab-bench-unreliable.md`) — do not cite head-to-head numbers from that script until it's fixed.
 - The bench's `extractTimeline` output prints cumulative totals replicated across every turn, not per-turn deltas — the per-turn tables in the script's output are misleading. The TOTALS row is real; per-turn rows are not.

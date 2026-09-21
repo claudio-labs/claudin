@@ -24,7 +24,13 @@ Shipped 2026-07-05 on main (c43aab2 + 6257f0f):
   the Bash tool refusing timeout >5 min inside a sub-agent in favour of
   `run_in_background` + `WaitFor`. See [[weekly-token-census-2026-09-20]].
 - compact-inside-subagent stamps 1h on the subagent's 5m prefix (~2k-token tail, once per compaction — small).
-- SHORT_LIVED set is untyped string literals; `src/constants/querySource.ts` is absent from the repo so Set<QuerySource> can't enforce membership.
+- SHORT_LIVED set is untyped string literals, so nothing enforces membership. **The stated cause is out of date (re-checked 2026-09-21):** the type now exists at `src/agent/prompts/querySource.ts`, which exports `QuerySource` as a union of three template-literal families — so a `Set<QuerySource>` is expressible today and the set can be typed.
 - Deeper fix candidate: thread runAgent's resolvedUserContext/systemContext into the attachment producers (injections.ts reads globals) so the boolean flags become unnecessary; new global-reading producers currently bypass the gate silently.
+  **This prediction landed.** Six producers turned out to read parent-owned
+  state; two `WebResearcher` agents reported the leak as a prompt-injection
+  attempt (#224, 2026-09-20). Fixed across #226/#227, and the per-producer
+  classification now lives as a comment above `allThreadAttachments` in
+  pipeline.ts — read it before adding one. See
+  [[attachment-producers-leak-parent-state]].
 
 **How to apply:** new one-shot utility querySources must be added to SHORT_LIVED_QUERY_SOURCES or they default to the expensive 1h tier; anything that re-sends the main thread's prefix must NOT be added.
