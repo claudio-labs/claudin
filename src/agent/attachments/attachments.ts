@@ -50,13 +50,6 @@ export {
 } from 'src/agent/attachments/file-pipeline.js'
 
 export {
-  memoryHeader,
-  startRelevantMemoryPrefetch,
-  filterDuplicateMemoryAttachments,
-} from 'src/agent/attachments/memory.js'
-
-
-export {
   getDeferredToolsDeltaAttachment,
   getAgentListingDeltaAttachment,
   getMcpInstructionsDeltaAttachment,

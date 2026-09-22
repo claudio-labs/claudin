@@ -62,30 +62,3 @@ The following skills are available for use with the Skill tool:
   },
 ]
 `;
-
-exports[`normalizeAttachmentForAPI relevant_memories collapses multiple entries into single message 1`] = `
-[
-  {
-    "isMeta": true,
-    "message": {
-      "content": 
-"<system-reminder>
-Contents of memory/a.md:
-
-fact A
-
----
-
-Contents of memory/b.md:
-
-fact B
-</system-reminder>"
-,
-      "role": "user",
-    },
-    "timestamp": "<iso-ts>",
-    "type": "user",
-    "uuid": "<uuid>",
-  },
-]
-`;

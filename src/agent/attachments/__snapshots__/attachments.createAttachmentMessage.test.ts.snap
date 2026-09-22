@@ -54,7 +54,6 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "plan_mode_exit",
   "plan_mode_reentry",
   "queued_command",
-  "relevant_memories",
   "selected_lines_in_ide",
   "skill_discovery",
   "skill_listing",

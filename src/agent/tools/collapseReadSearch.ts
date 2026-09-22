@@ -986,10 +986,6 @@ type GroupAccumulator = {
   hookTotalMs: number
   hookCount: number
   hookInfos: StopHookInfo[]
-  // relevant_memories attachments absorbed into this group (auto-injected
-  // memories, not explicit Read calls). Paths mirrored into readFilePaths +
-  // memoryReadFilePaths so the inline "recalled N memories" text is accurate.
-  relevantMemories?: { path: string; content: string; mtimeMs: number }[]
 }
 
 function createEmptyGroup(): GroupAccumulator {
@@ -1044,11 +1040,7 @@ function createCollapsedGroup(
       : group.readOperationCount
   // memoryReadFilePaths ⊆ readFilePaths (both populated from Read tool calls),
   // so this count is safe to subtract from totalReadCount at readCount below.
-  // Absorbed relevant_memories attachments are NOT in readFilePaths — added
-  // separately after the subtraction so readCount stays correct.
-  const toolMemoryReadCount = group.memoryReadFilePaths.size
-  const memoryReadCount =
-    toolMemoryReadCount + (group.relevantMemories?.length ?? 0)
+  const memoryReadCount = group.memoryReadFilePaths.size
   // Non-memory read file paths: exclude memory and team memory paths
   const teamMemReadPaths = feature('TEAMMEM')
     ? group.teamMemoryReadFilePaths
@@ -1075,7 +1067,7 @@ function createCollapsedGroup(
     ),
     readCount: Math.max(
       0,
-      totalReadCount - toolMemoryReadCount - teamMemReadCount,
+      totalReadCount - memoryReadCount - teamMemReadCount,
     ),
     listCount: group.listCount,
     // REPL operations are intentionally not collapsed (see isCollapsible: false at line 32),
@@ -1116,9 +1108,6 @@ function createCollapsedGroup(
     result.hookTotalMs = group.hookTotalMs
     result.hookCount = group.hookCount
     result.hookInfos = group.hookInfos
-  }
-  if (group.relevantMemories && group.relevantMemories.length > 0) {
-    result.relevantMemories = group.relevantMemories
   }
   if (group.writeFiles.size > 0) {
     result.writeFileStats = [...group.writeFiles].map(([path, stat]) => ({
@@ -1304,20 +1293,6 @@ export function collapseReadSearchGroups(
         msg.totalDurationMs ??
         msg.hookInfos.reduce((sum, h) => sum + (h.durationMs ?? 0), 0)
       currentGroup.hookInfos.push(...msg.hookInfos)
-    } else if (
-      currentGroup.messages.length > 0 &&
-      msg.type === 'attachment' &&
-      msg.attachment.type === 'relevant_memories'
-    ) {
-      // Absorb auto-injected memory attachments so "recalled N memories"
-      // renders inline with "ran N bash commands" instead of as a separate
-      // ⏺ block. Do NOT add paths to readFilePaths/memoryReadFilePaths —
-      // that would poison the readOperationCount fallback (bash-only reads
-      // have no paths; adding memory paths makes readFilePaths.size > 0 and
-      // suppresses the fallback). createCollapsedGroup adds .length to
-      // memoryReadCount after the readCount subtraction instead.
-      currentGroup.relevantMemories ??= []
-      currentGroup.relevantMemories.push(...msg.attachment.memories)
     } else if (shouldSkipMessage(msg)) {
       // Don't flush the group for skippable messages (thinking, attachments, system)
       // If a group is in progress, defer these messages to output after the collapsed group

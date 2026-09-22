@@ -264,8 +264,8 @@ dedicated investigation with `node --cpu-prof` on a real launch.**
 ## Memory bench
 
 Builds N synthetic memory `.md` files in `/tmp`, runs the real
-`scanMemoryFiles` against them. Models the cost of `findRelevantMemories`
-(once per turn) and `extractMemories` (every ~15 turns).
+`scanMemoryFiles` against them. Models the cost of `extractMemories`
+(every ~15 turns), the one remaining caller.
 
 Baseline:
 

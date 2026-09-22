@@ -271,7 +271,6 @@ export async function getAttachments(
     ...(omitClaudeMd
       ? []
       : [maybe('nested_memory', () => getNestedMemoryAttachments(context))]),
-    // relevant_memories moved to async prefetch (startRelevantMemoryPrefetch)
     maybe('dynamic_skill', () => getDynamicSkillAttachments(context)),
     maybe('skill_listing', () => getSkillListingAttachments(context)),
     maybe('bash_git_instructions', () =>

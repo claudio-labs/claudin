@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import React from 'react';
-import { Ansi, Box, Text } from 'src/terminal/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { Attachment } from 'src/agent/attachments/attachments.js';
 import type { NullRenderingAttachmentType } from 'src/agent/ui/messages/nullRenderingAttachments.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatFileSize } from 'src/shared/text/format.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
-import { basename, sep } from 'path';
+import { sep } from 'path';
 import { UserTextMessage } from 'src/agent/ui/messages/UserTextMessage.js';
 import { DiagnosticsDisplay } from 'src/platform/DiagnosticsDisplay.js';
 import { getContentText } from 'src/agent/messages/messages.js';
@@ -23,11 +23,9 @@ import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { TeammateMessageContent } from 'src/agent/ui/messages/UserTeammateMessage.js';
 import { isShutdownApproved } from 'src/agent/coordinator/teammateMailbox.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
-import { nestedMemoryBatchNoun } from 'src/agent/ui/collapseNestedMemory.js';
+import { nestedMemoryBatchLabel } from 'src/agent/ui/collapseNestedMemory.js';
 import { formatMemoryIndexCounts, hasTruncatedMemoryIndex } from 'src/agent/ui/messages/memoryIndexLine.js';
-import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
-import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { Color } from 'src/terminal/ink/styles.js';
@@ -172,9 +170,7 @@ export function AttachmentMessage({
         return <Box flexDirection="column" backgroundColor={bg}>
           <Line>
             Loaded{' '}
-            <Text bold>
-              {files.length} {nestedMemoryBatchNoun(files)}
-            </Text>
+            <Text bold>{nestedMemoryBatchLabel(files)}</Text>
             {!isTranscriptMode && <>
                 {' '}
                 <CtrlOToExpand />
@@ -204,41 +200,6 @@ export function AttachmentMessage({
           {(verbose || isTranscriptMode) && indexes.map(index => <Line key={index.path}>
                 Loaded <Text bold>{index.displayPath}</Text>
               </Line>)}
-        </Box>;
-      }
-    case 'relevant_memories':
-      {
-        // Usually absorbed into a CollapsedReadSearchGroup
-        // (collapseReadSearch.ts), which renders the same "Loaded …" line, so
-        // this only fires when the preceding tool was non-collapsible (Edit,
-        // Write) and no group was open. Same shape as the rules batch above:
-        // one count line, the filenames/content only under ctrl+o.
-        const recalled = formatMemoryRecallCounts(attachment.memories.length, 0);
-        if (recalled === undefined) {
-          return null;
-        }
-        return <Box flexDirection="column" marginTop={addMargin ? 1 : 0} backgroundColor={bg}>
-          <Line>
-            Loaded <Text bold>{recalled}</Text>
-            {!isTranscriptMode && <>
-                {' '}
-                <CtrlOToExpand />
-              </>}
-          </Line>
-          {(verbose || isTranscriptMode) && attachment.memories.map(m => <Box key={m.path} flexDirection="column">
-                <MessageResponse>
-                  <Text dimColor>
-                    <FilePathLink filePath={m.path}>
-                      {basename(m.path)}
-                    </FilePathLink>
-                  </Text>
-                </MessageResponse>
-                {isTranscriptMode && <Box paddingLeft={5}>
-                    <Text>
-                      <Ansi>{m.content}</Ansi>
-                    </Text>
-                  </Box>}
-              </Box>)}
         </Box>;
       }
     case 'dynamic_skill':

@@ -1,7 +1,11 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 import { getAutoMemPath } from 'src/memory/memdir/paths.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
-import { parseMemorySubcommand, runMemoryTidy } from 'src/commands/memory/tidy.js'
+import {
+  parseMemorySubcommand,
+  runMemorySort,
+  runMemoryTidy,
+} from 'src/commands/memory/tidy.js'
 
 // Mock the team-root boundary so the team-on path is reachable under bun test
 // (the preload stubs bun:bundle's feature() → false, so resolveTidyTeamRoot
@@ -69,6 +73,12 @@ describe('parseMemorySubcommand', () => {
     expect(parseMemorySubcommand('  tidy  ')).toBe('tidy')
   })
 
+  test('sort keyword → sort (trimmed)', () => {
+    expect(parseMemorySubcommand('sort')).toBe('sort')
+    expect(parseMemorySubcommand('  sort  ')).toBe('sort')
+    expect(parseMemorySubcommand('sorted')).toBeNull()
+  })
+
   test('private and team open their browser directly', () => {
     expect(parseMemorySubcommand('private')).toBe('private')
     expect(parseMemorySubcommand('  team  ')).toBe('team')
@@ -112,6 +122,7 @@ describe('runMemoryTidy', () => {
     expect(prompt).toContain('## Team memory')
     expect(prompt).toContain('/repo/.claudin/memory/team/MEMORY.md')
     expect(prompt).not.toContain('//MEMORY.md')
+    expect(prompt).toContain("`/memory sort`'s job")
   })
 
   test('auto memory disabled → system warning, no query', () => {
@@ -126,5 +137,46 @@ describe('runMemoryTidy', () => {
     expect(options?.display).toBe('system')
     expect(options?.shouldQuery).toBeUndefined()
     expect(options?.metaMessages).toBeUndefined()
+  })
+})
+
+describe('runMemorySort', () => {
+  test('team root resolved → hands the sort prompt to the model', () => {
+    process.env[DISABLE_ENV] = '0'
+    tidyTeamRoot = '/repo/.claudin/memory/team/'
+    const { onDone, calls } = recordingOnDone()
+    const returned = runMemorySort(onDone)
+
+    expect(returned).toBeNull()
+    expect(calls).toHaveLength(1)
+    const [{ result, options }] = calls
+    expect(result).toContain('memory sort')
+    expect(options?.display).toBe('system')
+    expect(options?.shouldQuery).toBe(true)
+    const prompt = options?.metaMessages?.[0] ?? ''
+    expect(prompt).toContain('Memory Sort')
+    expect(prompt).toContain('/repo/.claudin/memory/team/MEMORY.md')
+  })
+
+  test('no team root → system notice, no query', () => {
+    process.env[DISABLE_ENV] = '0'
+    tidyTeamRoot = null
+    const { onDone, calls } = recordingOnDone()
+    runMemorySort(onDone)
+
+    const [{ result, options }] = calls
+    expect(result).toContain('team memory is not active')
+    expect(options?.shouldQuery).toBeUndefined()
+  })
+
+  test('auto memory disabled → system warning, no query', () => {
+    process.env[DISABLE_ENV] = '1'
+    tidyTeamRoot = '/repo/.claudin/memory/team/'
+    const { onDone, calls } = recordingOnDone()
+    runMemorySort(onDone)
+
+    const [{ result, options }] = calls
+    expect(result).toContain('auto memory is disabled')
+    expect(options?.shouldQuery).toBeUndefined()
   })
 })

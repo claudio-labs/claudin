@@ -3,9 +3,9 @@
  * See normalize.test.ts header for context (ROADMAP 11a).
  *
  * Strategy: cover a representative cross-section of `normalizeAttachmentForAPI`
- * cases — one simple text attachment, one collapsed list (memories), one
- * passthrough that returns []. The full switch has ~50 cases; this test
- * freezes only the ones most likely to break across the file split.
+ * cases — one simple text attachment, one memory file, one passthrough that
+ * returns []. The full switch has ~50 cases; this test freezes only the ones
+ * most likely to break across the file split.
  */
 import { afterAll, describe, expect, test } from 'bun:test'
 import { normalizeAttachmentForAPI } from 'src/agent/messages/messages.js'
@@ -81,8 +81,14 @@ describe('normalizeAttachmentForAPI', () => {
     expect(normalizeForSnapshot(out)).toMatchSnapshot()
   })
 
-  test('relevant_memories collapses multiple entries into single message', () => {
-    const out = normalizeAttachmentForAPI({
+  test('a legacy relevant_memories attachment from an old transcript costs nothing and does not throw', () => {
+    // The per-turn relevance recall was deleted along with its attachment
+    // type, but a session recorded while it was on still carries one on
+    // --resume. Pins the contract (nothing reaches the model, nothing
+    // throws), not the LEGACY_ATTACHMENT_TYPES entry: the fail-open tail
+    // returns [] for any unknown type, and the entry only keeps it out of
+    // the error log — which is a no-op in this build (agent-safety.md §4).
+    const legacy = {
       type: 'relevant_memories',
       memories: [
         {
@@ -91,24 +97,10 @@ describe('normalizeAttachmentForAPI', () => {
           header: 'Contents of memory/a.md:',
           content: 'fact A',
         },
-        {
-          path: 'memory/b.md',
-          mtimeMs: 1700000001000,
-          header: 'Contents of memory/b.md:',
-          content: 'fact B',
-        },
       ],
-    } as any)
-    expect(out).toHaveLength(1)
-    expect(normalizeForSnapshot(out)).toMatchSnapshot()
-  })
-
-  test('relevant_memories empty list returns []', () => {
-    const out = normalizeAttachmentForAPI({
-      type: 'relevant_memories',
-      memories: [],
-    } as any)
-    expect(out).toEqual([])
+    } as unknown as Parameters<typeof normalizeAttachmentForAPI>[0]
+    expect(() => normalizeAttachmentForAPI(legacy)).not.toThrow()
+    expect(normalizeAttachmentForAPI(legacy)).toEqual([])
   })
 
   test('task_status running local_bash includes command and TaskStop hint', () => {

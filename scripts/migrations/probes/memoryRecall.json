@@ -2,7 +2,6 @@
   "test": [
     "src/agent/ui/messages/memoryRecallLine.test.ts",
     "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
-    "src/agent/ui/messages/AttachmentMessage.relevantMemories.test.tsx",
     "src/agent/ui/messages/teamMemCollapsed.test.tsx"
   ],
   "source": "src/agent/ui/messages/memoryRecallLine.ts",
@@ -40,18 +39,6 @@
       "source": "src/agent/ui/messages/teamMemCollapsed.tsx",
       "find": "  return message.teamMemoryReadCount ?? 0;\n}\n",
       "replace": "  return 0;\n}\n"
-    },
-    {
-      "name": "the standalone attachment says Loaded, matching the collapsed group",
-      "source": "src/agent/ui/messages/AttachmentMessage.tsx",
-      "find": "            Loaded <Text bold>{recalled}</Text>\n",
-      "replace": "            Recalled <Text bold>{recalled}</Text>\n"
-    },
-    {
-      "name": "an empty memory list renders no line",
-      "source": "src/agent/ui/messages/AttachmentMessage.tsx",
-      "find": "        if (recalled === undefined) {\n          return null;\n        }\n",
-      "replace": ""
     }
   ]
 }

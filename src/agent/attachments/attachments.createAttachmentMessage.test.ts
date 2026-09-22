@@ -21,7 +21,6 @@ const ALL_ATTACHMENT_TYPES = [
   'task_reminder',
   'nested_memory',
   'nested_memory_batch',
-  'relevant_memories',
   'dynamic_skill',
   'skill_listing',
   'bash_git_instructions',

@@ -7,6 +7,8 @@ const BANNED_PATTERNS = [
   'datadoghq.com',
   'api/event_logging/batch',
   'api/claude_code/metrics',
+  // team memory sync endpoint — removed 2026-09-21, must not come back
+  'api/claude_code/team_memory',
   'getKubernetesNamespace',
   '/var/run/secrets/kubernetes',
   '/proc/self/mountinfo',

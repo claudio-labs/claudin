@@ -368,14 +368,18 @@ src/
 │   ├── diagnostics/ (4)         ← log-error extraction, exit-code and health diagnosis
 │   ├── docker/ (6)              ← CLI wrappers: ps/inspect, the `docker events` watcher
 │   └── build/ (2)               ← compose build parsing and progress
-├── sessions/ (57)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
+├── sessions/ (56)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
 ├── vcs/ (77)                    ← git/ (wrapper, gh PR status) + diff/ (the /diff reviewer).
 │                                  git/worktree.ts is a BARREL over worktree/ (slugNaming,
 │                                  session, mutationLock, tmuxSession, createWorktree,
 │                                  includeFiles, postCreationSetup, sessionLifecycle)
 ├── plugins/ (54)                ← plugin discovery, install, marketplace, dxt/, hooks/ (4)
-├── memory/ (69)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
-│                                  extract/, session/, teamSync/, ui/, and instructions/ —
+├── memory/ (70)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+│                                  extract/, autoDream/, session/, ui/, and instructions/ —
+│                                  memdir/pathScopedMemories.ts is the on-demand loader (a
+│                                  memory with `paths:` rides the rules' nested_memory lane),
+│                                  memdir/memoryTypes.ts holds TEAM_CATEGORIES (decisions/
+│                                  bugs/docs, the one source every memory prompt renders);
 │                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md
 │                                  over claudemd/ (parsing, includes, exclusions, processing,
 │                                  predicates, nestedDirectories, externalIncludes); the memoized

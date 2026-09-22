@@ -1,13 +1,22 @@
 import { describe, expect, test } from 'bun:test'
 import {
   collapseNestedMemory,
-  nestedMemoryBatchNoun,
+  nestedMemoryBatchLabel,
 } from 'src/agent/ui/collapseNestedMemory.js'
+import type { Attachment } from 'src/agent/attachments/attachments.js'
 import type { RenderableMessage } from 'src/shared/types/message.js'
+
+type BatchFile = Extract<
+  Attachment,
+  { type: 'nested_memory_batch' }
+>['files'][number]
 
 let counter = 0
 
-function nestedMemory(displayPath: string): RenderableMessage {
+function nestedMemory(
+  displayPath: string,
+  type: BatchFile['type'] = 'Project',
+): RenderableMessage {
   counter++
   return {
     type: 'attachment',
@@ -17,7 +26,7 @@ function nestedMemory(displayPath: string): RenderableMessage {
       type: 'nested_memory',
       path: `/repo/${displayPath}`,
       displayPath,
-      content: { path: `/repo/${displayPath}`, content: 'body' },
+      content: { path: `/repo/${displayPath}`, content: 'body', type },
     },
   } as RenderableMessage
 }
@@ -32,11 +41,18 @@ function assistantText(text: string): RenderableMessage {
   } as RenderableMessage
 }
 
-function batchOf(msg: RenderableMessage): { displayPath: string }[] {
+function batchOf(msg: RenderableMessage): BatchFile[] {
   if (msg.type !== 'attachment' || msg.attachment.type !== 'nested_memory_batch') {
     throw new Error(`expected a nested_memory_batch, got ${msg.type}`)
   }
   return msg.attachment.files
+}
+
+function file(
+  displayPath: string,
+  type: BatchFile['type'] = 'Project',
+): BatchFile {
+  return { path: `/repo/${displayPath}`, displayPath, type }
 }
 
 describe('collapseNestedMemory', () => {
@@ -56,6 +72,16 @@ describe('collapseNestedMemory', () => {
       '.claudin/rules/c.md',
     ])
     expect(result[0]!.uuid).toBe(messages[0]!.uuid)
+  })
+
+  test('carries each file\'s memory type into the batch', () => {
+    // The type is what the count line reads to tell "3 team bug memories"
+    // from "3 rules"; the batch entry is the only thing the renderer gets.
+    const result = collapseNestedMemory([
+      nestedMemory('.claudin/rules/a.md', 'Project'),
+      nestedMemory('.claudin/memory/team/bugs/b.md', 'TeamMem'),
+    ])
+    expect(batchOf(result[0]!).map(f => f.type)).toEqual(['Project', 'TeamMem'])
   })
 
   test('leaves a lone attachment untouched', () => {
@@ -86,30 +112,85 @@ describe('collapseNestedMemory', () => {
   })
 })
 
-describe('nestedMemoryBatchNoun', () => {
-  test('says "rules" when every file is under a rules directory', () => {
+describe('nestedMemoryBatchLabel', () => {
+  test('counts rules when every file is under a rules directory', () => {
     expect(
-      nestedMemoryBatchNoun([
-        { path: '/repo/.claudin/rules/a.md', displayPath: '.claudin/rules/a.md' },
-        { path: '/repo/.claudin/rules/b.md', displayPath: '.claudin/rules/b.md' },
+      nestedMemoryBatchLabel([
+        file('.claudin/rules/a.md'),
+        file('.claudin/rules/b.md'),
       ]),
-    ).toBe('rules')
+    ).toBe('2 rules')
   })
 
-  test('falls back to "memory files" when the run is mixed', () => {
+  test('keeps "memory file" for a nested CLAUDE.md beside the rules', () => {
     expect(
-      nestedMemoryBatchNoun([
-        { path: '/repo/.claudin/rules/a.md', displayPath: '.claudin/rules/a.md' },
-        { path: '/repo/pkg/CLAUDE.md', displayPath: 'pkg/CLAUDE.md' },
+      nestedMemoryBatchLabel([
+        file('.claudin/rules/a.md'),
+        file('pkg/CLAUDE.md'),
       ]),
-    ).toBe('memory files')
+    ).toBe('1 rule, 1 memory file')
   })
 
   test('singularizes a one-file batch', () => {
+    expect(nestedMemoryBatchLabel([file('pkg/CLAUDE.md')])).toBe('1 memory file')
+  })
+
+  test('a private memory is a "memory", by its type rather than its path', () => {
     expect(
-      nestedMemoryBatchNoun([
-        { path: '/repo/pkg/CLAUDE.md', displayPath: 'pkg/CLAUDE.md' },
+      nestedMemoryBatchLabel([
+        file('.claudin/memory/a.md', 'AutoMem'),
+        file('.claudin/memory/b.md', 'AutoMem'),
+        file('.claudin/memory/c.md', 'AutoMem'),
       ]),
-    ).toBe('memory file')
+    ).toBe('3 memories')
+    // A `bugs/` under the PRIVATE dir is not a team category.
+    expect(nestedMemoryBatchLabel([file('.claudin/memory/bugs/x.md', 'AutoMem')])).toBe(
+      '1 memory',
+    )
+  })
+
+  test('a team file at the team root is a "team memory"', () => {
+    expect(
+      nestedMemoryBatchLabel([
+        file('.claudin/memory/team/a.md', 'TeamMem'),
+        file('.claudin/memory/team/b.md', 'TeamMem'),
+      ]),
+    ).toBe('2 team memories')
+  })
+
+  test('a team file in a category subdirectory names the category', () => {
+    expect(
+      nestedMemoryBatchLabel([
+        file('.claudin/memory/team/bugs/a.md', 'TeamMem'),
+        file('.claudin/memory/team/bugs/b.md', 'TeamMem'),
+        file('.claudin/memory/team/bugs/c.md', 'TeamMem'),
+        file('.claudin/memory/team/bugs/d.md', 'TeamMem'),
+      ]),
+    ).toBe('4 team bug memories')
+    expect(nestedMemoryBatchLabel([file('.claudin/memory/team/bugs/a.md', 'TeamMem')])).toBe(
+      '1 team bug memory',
+    )
+    expect(
+      nestedMemoryBatchLabel([
+        file('.claudin/memory/team/decisions/a.md', 'TeamMem'),
+        file('.claudin/memory/team/decisions/b.md', 'TeamMem'),
+      ]),
+    ).toBe('2 team decision memories')
+    expect(nestedMemoryBatchLabel([file('.claudin/memory/team/docs/a.md', 'TeamMem')])).toBe(
+      '1 team doc memory',
+    )
+  })
+
+  test('a mixed run lists every group in a fixed order, whatever order it arrived in', () => {
+    expect(
+      nestedMemoryBatchLabel([
+        file('.claudin/memory/team/bugs/a.md', 'TeamMem'),
+        file('.claudin/rules/a.md'),
+        file('.claudin/memory/team/c.md', 'TeamMem'),
+        file('.claudin/memory/b.md', 'AutoMem'),
+        file('.claudin/rules/b.md'),
+        file('.claudin/memory/team/docs/d.md', 'TeamMem'),
+      ]),
+    ).toBe('2 rules, 1 memory, 1 team memory, 1 team bug memory, 1 team doc memory')
   })
 })

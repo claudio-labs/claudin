@@ -246,35 +246,12 @@ export type Attachment =
        * Render-only: a run of consecutive `nested_memory` attachments
        * collapsed by `collapseNestedMemory`. It never reaches
        * `normalizeAttachmentForAPI` — the individual `nested_memory`
-       * messages are what carry the file contents to the model.
+       * messages are what carry the file contents to the model. `type` is
+       * the file's MemoryFileInfo type — what tells a memory-directory file
+       * (AutoMem/TeamMem) from a rule on the count line.
        */
       type: 'nested_memory_batch'
-      files: { path: string; displayPath: string }[]
-    }
-  | {
-      type: 'relevant_memories'
-      memories: {
-        path: string
-        content: string
-        mtimeMs: number
-        /**
-         * Pre-computed header string (age + path prefix).  Computed once
-         * at attachment-creation time so the rendered bytes are stable
-         * across turns — recomputing memoryAge(mtimeMs) at render time
-         * calls Date.now(), so "saved 3 days ago" becomes "saved 4 days
-         * ago" across turns → different bytes → prompt cache bust.
-         * Optional for backward compat with resumed sessions; render
-         * path falls back to recomputing if missing.
-         */
-        header?: string
-        /**
-         * lineCount when the file was truncated by readMemoriesForSurfacing,
-         * else undefined. Threaded to the readFileState write so
-         * getChangedFiles skips truncated memories (partial content would
-         * yield a misleading diff).
-         */
-        limit?: number
-      }[]
+      files: { path: string; displayPath: string; type: MemoryFileInfo['type'] }[]
     }
   | {
       type: 'dynamic_skill'

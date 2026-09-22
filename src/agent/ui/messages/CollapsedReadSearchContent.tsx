@@ -1,9 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
-import { basename } from 'path';
 import React, { useRef } from 'react';
 import { useMinDisplayTime } from 'src/terminal/hooks/useMinDisplayTime.js';
-import { Ansi, Box, Text, useTheme } from 'src/terminal/ink.js';
+import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { findToolByName, type Tools } from 'src/tools/Tool.js';
 import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js';
 import type { CollapsedReadSearchGroup, NormalizedAssistantMessage } from 'src/shared/types/message.js';
@@ -307,16 +306,6 @@ export function CollapsedReadSearchContent({
                 {info.command} ({formatSecondsShort(info.durationMs ?? 0)})
               </Text>)}
           </>}
-        {message.relevantMemories?.map(m => <Box key={m.path} flexDirection="column" marginTop={1}>
-            <Text dimColor>
-              {'  ⎿  '}Recalled {basename(m.path)}
-            </Text>
-            <Box paddingLeft={5}>
-              <Text>
-                <Ansi>{m.content}</Ansi>
-              </Text>
-            </Box>
-          </Box>)}
       </Box>;
   }
 

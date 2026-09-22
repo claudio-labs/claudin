@@ -62,7 +62,7 @@ type Props = {
   title: string
   /** The directory's MEMORY.md, pinned as the first row when it exists. */
   indexPath: string
-  /** Team memories are synced, so their delete confirmation says so. */
+  /** Team memories are git-tracked, so their delete confirmation says so. */
   isTeamDir?: boolean
   onBack: () => void
 }
@@ -110,8 +110,15 @@ export function MemoryDirBrowser({
     () =>
       headers === null
         ? []
-        : buildMemoryDirRows(headers, { indexPath, indexExists }),
-    [headers, indexPath, indexExists],
+        : // The team dir files memories under decisions/, bugs/ and docs/;
+          // the private dir's only subdirectory is team/, which has its own
+          // browser, so nested entries are shown for the former only.
+          buildMemoryDirRows(headers, {
+            indexPath,
+            indexExists,
+            includeNested: isTeamDir,
+          }),
+    [headers, indexPath, indexExists, isTeamDir],
   )
 
   const options = useMemo(
@@ -290,7 +297,7 @@ export function MemoryDirBrowser({
           </Text>
           <Text dimColor>
             {isTeamDir
-              ? 'Shared memory — the deletion reaches the team on the next sync. Its line in MEMORY.md goes too.'
+              ? 'Shared memory — the deletion reaches the team on the next commit. Its line in MEMORY.md goes too.'
               : 'Its line in MEMORY.md goes too.'}
           </Text>
         </Box>

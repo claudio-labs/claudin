@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.1.33 — 2026-09-21
+
+### ✨ Features
+
+- feat(memory): replace the team sync with git, add categories and path-scoped on-demand loading (#235) (c246e846)
+
+### 🐛 Bug Fixes
+
+- fix(agent): stop session-owned attachment state leaking into sub-agents (#233) (0149475f)
+- fix(tui): tighten the side panel and fill the Log tab to the bottom (#228) (8fadd52e)
+
+### ♻️ Refactoring
+
+- refactor(arch): move misfiled code into its slice and gate the leaks (#232) (af151874)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group across 1 directory with 2 updates (#229) (e37686bd)
+- chore(deps): bump the production-dependencies group with 13 updates (#230) (7db56a83)
+- chore(deps): bump emoji-regex from 10.6.0 to 11.0.0 (#231) (c44ae67b)
+
+### 📚 Documentation
+
+- docs(memory): fix stale citations and retire three outdated memories (#234) (5931501a)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.32 — 2026-09-20
 
 ### ✨ Features

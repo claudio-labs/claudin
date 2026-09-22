@@ -49,7 +49,6 @@ import {
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { getClaudeMdDelta } from 'src/memory/instructions/claudeMdDelta.js'
 import {
-  filterInjectedMemoryFiles,
   getClaudeMds,
   getMemoryFiles,
   type MemoryFileInfo,
@@ -278,10 +277,7 @@ export async function getClaudeMdDeltaAttachment(
   const userContext = await getUserContext()
   let current = userContext.claudeMd ?? ''
   if (current && options.omitMemoryIndexes) {
-    current = getClaudeMds(
-      filterInjectedMemoryFiles(await getMemoryFiles()),
-      notMemoryIndex,
-    )
+    current = getClaudeMds(await getMemoryFiles(), notMemoryIndex)
   }
   const delta = getClaudeMdDelta(
     current,
@@ -344,10 +340,7 @@ const memoryIndexSignature = (
 export async function getMemoryIndexAttachment(
   messages: Message[] | undefined,
 ): Promise<Attachment[]> {
-  // filterInjectedMemoryFiles drops both indexes when the per-turn recall gate
-  // is on — precisely the case where they are NOT in the system prompt, so the
-  // line has to disappear with them.
-  const indexes = filterInjectedMemoryFiles(await getMemoryFiles())
+  const indexes = (await getMemoryFiles())
     .filter(isMemoryIndex)
     .map(toMemoryIndexSummary)
   if (indexes.length === 0) return []
