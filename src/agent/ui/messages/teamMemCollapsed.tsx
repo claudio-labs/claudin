@@ -13,7 +13,18 @@ export function checkHasTeamMemOps(message: CollapsedReadSearchGroup): boolean {
 }
 
 /**
+ * Team memories recalled into context. Read here rather than in
+ * CollapsedReadSearchContent so the `teamMemoryReadCount` property access
+ * stays inside the feature('TEAMMEM') module.
+ */
+export function getTeamMemoryReadCount(message: CollapsedReadSearchGroup): number {
+  return message.teamMemoryReadCount ?? 0;
+}
+
+/**
  * Renders team memory count parts for the collapsed read/search UI.
+ * Reads are NOT here: a recalled memory is a context load, so it renders as
+ * its own "Loaded …" line (memoryRecallLine.ts) instead of as a badge verb.
  * This module is only loaded when feature('TEAMMEM') is true,
  * so DCE removes it entirely from external builds.
  */
@@ -28,50 +39,19 @@ export function TeamMemCountParts(t0: {
     isActiveGroup,
     hasPrecedingParts
   } = t0;
+  // tmReadCount stays a memo dependency even though nothing renders it: the
+  // React-Compiler slot bookkeeping in this file must not be renumbered
+  // (.claudin/rules/ink-tui.md §6).
   const tmReadCount = message.teamMemoryReadCount ?? 0;
   const tmSearchCount = message.teamMemorySearchCount ?? 0;
   const tmWriteCount = message.teamMemoryWriteCount ?? 0;
-  if (tmReadCount === 0 && tmSearchCount === 0 && tmWriteCount === 0) {
+  if (tmSearchCount === 0 && tmWriteCount === 0) {
     return null;
   }
   let t1;
   if ($[0] !== hasPrecedingParts || $[1] !== isActiveGroup || $[2] !== tmReadCount || $[3] !== tmSearchCount || $[4] !== tmWriteCount) {
     const nodes = [];
     let count = hasPrecedingParts ? 1 : 0;
-    if (tmReadCount > 0) {
-      const verb = isActiveGroup ? count === 0 ? "Recalling" : "recalling" : count === 0 ? "Recalled" : "recalled";
-      if (count > 0) {
-        let t2;
-        if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-          t2 = <Text key="comma-tmr">, </Text>;
-          $[6] = t2;
-        } else {
-          t2 = $[6];
-        }
-        nodes.push(t2);
-      }
-      let t2;
-      if ($[7] !== tmReadCount) {
-        t2 = <Text bold={true}>{tmReadCount}</Text>;
-        $[7] = tmReadCount;
-        $[8] = t2;
-      } else {
-        t2 = $[8];
-      }
-      const t3 = tmReadCount === 1 ? "memory" : "memories";
-      let t4;
-      if ($[9] !== t2 || $[10] !== t3 || $[11] !== verb) {
-        t4 = <Text key="team-mem-read">{verb} {t2} team{" "}{t3}</Text>;
-        $[9] = t2;
-        $[10] = t3;
-        $[11] = verb;
-        $[12] = t4;
-      } else {
-        t4 = $[12];
-      }
-      nodes.push(t4);
-      count++;
-    }
     if (tmSearchCount > 0) {
       const verb_0 = isActiveGroup ? count === 0 ? "Searching" : "searching" : count === 0 ? "Searched" : "searched";
       if (count > 0) {

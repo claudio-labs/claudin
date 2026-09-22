@@ -165,6 +165,19 @@ one Read pulled in both (`nestedMemoryBatchLabel` in
 and its category directory; the paths stay under ctrl+o). A lone file shows
 its path, like a lone rule.
 
+An explicit `Read` of a memory file is the third case, and it reads the same
+way. The count leaves the collapsed read/search badge — where it used to be
+a verb, `recalling 1 memory, recalling 2 team memories…` — for its own
+`⎿  Loaded 1 memory, 2 team memories` line under it (`formatMemoryRecallCounts`
+in `src/agent/ui/messages/memoryRecallLine.ts`, private clause first, the
+same nouns `nestedMemoryBatchLabel` uses; no category breakdown, since the
+group carries counts rather than paths). What stays on the badge is what the
+group did rather than what arrived — `searched team memories`, `wrote 2 team
+memories`. Every memory read is already subtracted out of the badge's
+`readCount`, so a group of nothing but memory reads has no badge parts left
+at all: the line then stands alone and takes over the `(ctrl+o to expand)`
+hint the badge would have carried.
+
 `src/memory/memdir/pathScopedMemories.ts` keeps a `{path, globs}` index of
 the memdir, memoized per process and re-read only when the mtime of a walked
 directory changes — five or six stats per Read, not one open per memory

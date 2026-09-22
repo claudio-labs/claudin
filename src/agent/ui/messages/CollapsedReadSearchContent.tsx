@@ -19,6 +19,7 @@ import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import { PrBadge } from 'src/platform/status/PrBadge.js';
 import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
+import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemCollapsed = feature('TEAMMEM') ? require('src/agent/ui/messages/teamMemCollapsed.js') as typeof import('src/agent/ui/messages/teamMemCollapsed.js') : null;
@@ -192,6 +193,11 @@ export function CollapsedReadSearchContent({
   const anyError = toolUseIds.some(id => lookups.erroredToolUseIDs.has(id));
   const hasMemoryOps = memorySearchCount > 0 || memoryReadCount > 0 || memoryWriteCount > 0;
   const hasTeamMemoryOps = feature('TEAMMEM') ? teamMemCollapsed!.checkHasTeamMemOps(message) : false;
+  // Memories recalled into context leave the badge for their own "Loaded …"
+  // line below — the shape the rules batch and the MEMORY.md index line
+  // already use for anything that entered context on its own.
+  const teamMemoryReadCount = feature('TEAMMEM') ? teamMemCollapsed!.getTeamMemoryReadCount(message) : 0;
+  const recalledCounts = formatMemoryRecallCounts(memoryReadCount, teamMemoryReadCount);
 
   // Track the max seen counts so they only ever increase. The debounce timer
   // causes extra re-renders at arbitrary times; during a brief "invisible window"
@@ -470,19 +476,10 @@ export function CollapsedReadSearchContent({
   }
 
   // Build memory parts (auto-memory) — rendered after nonMemParts
+  // Reads are not among them: a recalled memory is a context load, so it gets
+  // its own "Loaded …" line below instead of a verb on this line.
   const hasPrecedingNonMem = nonMemParts.length > 0;
   const memParts: React.ReactNode[] = [];
-  if (memoryReadCount > 0) {
-    const isFirst_5 = !hasPrecedingNonMem && memParts.length === 0;
-    const verb_2 = isActiveGroup ? isFirst_5 ? 'Recalling' : 'recalling' : isFirst_5 ? 'Recalled' : 'recalled';
-    if (!isFirst_5) {
-      memParts.push(<Text key="comma-mr">, </Text>);
-    }
-    memParts.push(<Text key="mem-read">
-        {verb_2} <Text bold>{memoryReadCount}</Text>{' '}
-        {memoryReadCount === 1 ? 'memory' : 'memories'}
-      </Text>);
-  }
   if (memorySearchCount > 0) {
     const isFirst_6 = !hasPrecedingNonMem && memParts.length === 0;
     const verb_3 = isActiveGroup ? isFirst_6 ? 'Searching' : 'searching' : isFirst_6 ? 'Searched' : 'searched';
@@ -506,17 +503,23 @@ export function CollapsedReadSearchContent({
   const shownWriteStats = writeStats.slice(0, MAX_WRITE_ROWS);
   const writePathWidth = shownWriteStats.reduce((max, stat) => Math.max(max, getDisplayPath(stat.path).length), 0);
   const hasWriteTotals = writeAdditions > 0 || writeDeletions > 0;
+  const teamMemParts = feature('TEAMMEM') ? teamMemCollapsed!.TeamMemCountParts({
+    message,
+    isActiveGroup,
+    hasPrecedingParts: hasPrecedingNonMem || memParts.length > 0
+  }) : null;
+  // Every memory read is subtracted out of readCount (collapseReadSearch.ts),
+  // so a group of nothing but recalls has no badge left to render. The
+  // "Loaded …" line stands on its own then, exactly as a rules line does, and
+  // takes over the expand hint the badge would have carried.
+  const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0 || teamMemParts !== null;
   return <Box flexDirection="column" marginTop={1} backgroundColor={bg}>
-      <Box flexDirection="row">
+      {hasBadgeParts && <Box flexDirection="row">
         {isActiveGroup ? <ToolUseLoader shouldAnimate isUnresolved isError={anyError} /> : <Box minWidth={2} />}
         <Text dimColor={!isActiveGroup}>
           {nonMemParts}
           {memParts}
-          {feature('TEAMMEM') ? teamMemCollapsed!.TeamMemCountParts({
-          message,
-          isActiveGroup,
-          hasPrecedingParts: hasPrecedingNonMem || memParts.length > 0
-        }) : null}
+          {teamMemParts}
           {slowestShellSeconds !== undefined && <ShellGroupElapsedTime elapsedTimeSeconds={slowestShellSeconds} />}
           {isActiveGroup && <Text key="ellipsis">…</Text>}
           {/* Kept inside this Text, not as a sibling: a row Box gives each Text
@@ -532,7 +535,14 @@ export function CollapsedReadSearchContent({
               {writeDeletions > 0 && <Text color="diffRemovedWord">−{writeDeletions}</Text>}
             </Text>} <CtrlOToExpand />
         </Text>
-      </Box>
+      </Box>}
+      {recalledCounts !== undefined && <Text dimColor>
+          {'  ⎿  '}Loaded <Text bold>{recalledCounts}</Text>
+          {!hasBadgeParts && <>
+              {' '}
+              <CtrlOToExpand />
+            </>}
+        </Text>}
       {isActiveGroup && displayedHint !== undefined &&
     // Row layout: 5-wide gutter for ⎿, then a flex column for the text.
     // Ink's wrap stays inside the right column so continuation lines
