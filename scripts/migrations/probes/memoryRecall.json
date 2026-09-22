@@ -1,0 +1,57 @@
+{
+  "test": [
+    "src/agent/ui/messages/memoryRecallLine.test.ts",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
+    "src/agent/ui/messages/AttachmentMessage.relevantMemories.test.tsx",
+    "src/agent/ui/messages/teamMemCollapsed.test.tsx"
+  ],
+  "source": "src/agent/ui/messages/memoryRecallLine.ts",
+  "comment": "One thing here is NOT probe-able: CollapsedReadSearchContent reads teamMemoryReadCount through the feature('TEAMMEM') module, and feature() is false under the runner — so replacing that argument with 0 turns nothing red. Verified instead by hand-folding all four TEAMMEM gates in that file to `true` and rendering (2026-09-21): readCount 3 + memoryReadCount 1 + teamMemoryReadCount 2 gave 'Read 3 files (ctrl+o to expand)' on the badge and '⎿  Loaded 1 memory, 2 team memories' below it. The wording either side of that link is covered by memoryRecallLine.test.ts and teamMemCollapsed.test.tsx.",
+  "probes": [
+    {
+      "name": "the team count is labelled team, not folded into the private wording",
+      "find": "    parts.push(`${teamCount} team ${plural(teamCount, 'memory', 'memories')}`)\n",
+      "replace": "    parts.push(`${teamCount} ${plural(teamCount, 'memory', 'memories')}`)\n"
+    },
+    {
+      "name": "nothing recalled returns undefined, so no empty Loaded line renders",
+      "find": "  return parts.length > 0 ? parts.join(', ') : undefined\n",
+      "replace": "  return parts.join(', ')\n"
+    },
+    {
+      "name": "the private count is pluralized",
+      "find": "    parts.push(`${privateCount} ${plural(privateCount, 'memory', 'memories')}`)\n",
+      "replace": "    parts.push(`${privateCount} memory`)\n"
+    },
+    {
+      "name": "the collapsed group renders the Loaded line at all",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "      {recalledCounts !== undefined && <Text dimColor>\n          {'  ⎿  '}Loaded <Text bold>{recalledCounts}</Text>\n          {!hasBadgeParts && <>\n              {' '}\n              <CtrlOToExpand />\n            </>}\n        </Text>}\n",
+      "replace": ""
+    },
+    {
+      "name": "a recall-only group drops the empty badge row instead of printing it",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "  const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0 || teamMemParts !== null;\n",
+      "replace": "  const hasBadgeParts = true;\n"
+    },
+    {
+      "name": "getTeamMemoryReadCount reads the group's own count",
+      "source": "src/agent/ui/messages/teamMemCollapsed.tsx",
+      "find": "  return message.teamMemoryReadCount ?? 0;\n}\n",
+      "replace": "  return 0;\n}\n"
+    },
+    {
+      "name": "the standalone attachment says Loaded, matching the collapsed group",
+      "source": "src/agent/ui/messages/AttachmentMessage.tsx",
+      "find": "            Loaded <Text bold>{recalled}</Text>\n",
+      "replace": "            Recalled <Text bold>{recalled}</Text>\n"
+    },
+    {
+      "name": "an empty memory list renders no line",
+      "source": "src/agent/ui/messages/AttachmentMessage.tsx",
+      "find": "        if (recalled === undefined) {\n          return null;\n        }\n",
+      "replace": ""
+    }
+  ]
+}

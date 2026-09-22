@@ -25,6 +25,7 @@ import { isShutdownApproved } from 'src/agent/coordinator/teammateMailbox.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { nestedMemoryBatchNoun } from 'src/agent/ui/collapseNestedMemory.js';
 import { formatMemoryIndexCounts, hasTruncatedMemoryIndex } from 'src/agent/ui/messages/memoryIndexLine.js';
+import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
@@ -206,22 +207,24 @@ export function AttachmentMessage({
         </Box>;
       }
     case 'relevant_memories':
-      // Usually absorbed into a CollapsedReadSearchGroup (collapseReadSearch.ts)
-      // so this only renders when the preceding tool was non-collapsible (Edit,
-      // Write) and no group was open. Match CollapsedReadSearchContent's style:
-      // 2-space gutter, dim text, count only — filenames/content in ctrl+o.
-      return <Box flexDirection="column" marginTop={addMargin ? 1 : 0} backgroundColor={bg}>
-          <Box flexDirection="row">
-            <Box minWidth={2} />
-            <Text dimColor>
-              Recalled <Text bold>{attachment.memories.length}</Text>{' '}
-              {attachment.memories.length === 1 ? 'memory' : 'memories'}
-              {!isTranscriptMode && <>
-                  {' '}
-                  <CtrlOToExpand />
-                </>}
-            </Text>
-          </Box>
+      {
+        // Usually absorbed into a CollapsedReadSearchGroup
+        // (collapseReadSearch.ts), which renders the same "Loaded …" line, so
+        // this only fires when the preceding tool was non-collapsible (Edit,
+        // Write) and no group was open. Same shape as the rules batch above:
+        // one count line, the filenames/content only under ctrl+o.
+        const recalled = formatMemoryRecallCounts(attachment.memories.length, 0);
+        if (recalled === undefined) {
+          return null;
+        }
+        return <Box flexDirection="column" marginTop={addMargin ? 1 : 0} backgroundColor={bg}>
+          <Line>
+            Loaded <Text bold>{recalled}</Text>
+            {!isTranscriptMode && <>
+                {' '}
+                <CtrlOToExpand />
+              </>}
+          </Line>
           {(verbose || isTranscriptMode) && attachment.memories.map(m => <Box key={m.path} flexDirection="column">
                 <MessageResponse>
                   <Text dimColor>
@@ -237,6 +240,7 @@ export function AttachmentMessage({
                   </Box>}
               </Box>)}
         </Box>;
+      }
     case 'dynamic_skill':
       {
         const skillCount = attachment.skillNames.length;

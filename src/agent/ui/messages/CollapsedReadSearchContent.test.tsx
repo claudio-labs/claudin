@@ -239,3 +239,63 @@ describe('CollapsedReadSearchContent — write lane', () => {
     expect(out).toContain('Updated 1 file')
   })
 })
+
+describe('CollapsedReadSearchContent — recalled memories', () => {
+  // The team half of every case below is unreachable from here:
+  // teamMemoryReadCount is read through the feature('TEAMMEM') module, and
+  // `feature()` is false under `bun test` (src/stubs/test-preload.ts). Only
+  // formatMemoryRecallCounts and a live run cover the "team memories" wording.
+  test('a recalled memory leaves the badge for its own Loaded line', async () => {
+    const out = await render({ readCount: 3, memoryReadCount: 1 })
+    const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
+
+    expect(firstLine).toContain('Read 3 files')
+    expect(firstLine).not.toContain('memor')
+    expect(flatten(out)).toContain('⎿ Loaded 1 memory')
+  })
+
+  test('a group of nothing but recalls is one standalone Loaded line', async () => {
+    // Every memory read is subtracted out of readCount (collapseReadSearch.ts),
+    // so this group has no badge parts left at all. The line has to survive
+    // that and carry the expand hint the badge would otherwise have held.
+    const out = await render({ memoryReadCount: 2 })
+    const lines = out.split('\n').filter(l => l.trim().length > 0)
+
+    // Exactly one line: an empty badge row would still print "(ctrl+o to
+    // expand)" of its own, so a `toContain` alone passes on that shape.
+    expect(lines).toHaveLength(1)
+    expect(flatten(lines[0]!)).toContain('⎿ Loaded 2 memories')
+    expect(flatten(lines[0]!)).toContain('ctrl+o to expand')
+    expect(out).not.toContain('Recalled')
+  })
+
+  test('the Loaded line sits below the badge, and only one expand hint shows', async () => {
+    const lines = (await render({ readCount: 2, memoryReadCount: 1 }))
+      .split('\n')
+      .filter(l => l.trim().length > 0)
+
+    expect(lines[0]).toContain('Read 2 files')
+    expect(lines[1]).toContain('Loaded 1 memory')
+    expect(flatten(lines.join(' ')).match(/ctrl\+o/g)).toHaveLength(1)
+  })
+
+  test('memory writes and searches keep their verbs on the badge', async () => {
+    // Only a recall is a context load; writing or searching memory is
+    // something the group did, so it stays a badge verb.
+    const out = await render({ memoryWriteCount: 1, memorySearchCount: 1 })
+    const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
+
+    expect(firstLine).toContain('Searched memories')
+    expect(firstLine).toContain('wrote 1 memory')
+    expect(out).not.toContain('Loaded')
+  })
+
+  test('the recall line keeps its count together at narrow widths', async () => {
+    // A width that forces a wrap is the only thing that tells one <Text> from
+    // sibling <Text>s laid out as independently-wrapping columns (ink-tui.md §10).
+    for (const columns of [80, 40, 24]) {
+      const flat = flatten(await render({ memoryReadCount: 3 }, false, columns))
+      expectInOrder(flat, ['Loaded 3 memories'])
+    }
+  })
+})
