@@ -187,31 +187,24 @@ export function getPromptCachingEnabled(model: string): boolean {
 const LARGE_SYSTEM_PROMPT_TOKEN_THRESHOLD = 8000;
 
 /**
- * Defer-cache-marker threshold (in estimated tokens).
+ * Defer-cache-marker threshold (in estimated tokens). The default, 0, puts the
+ * message marker on the last message, where Claude Code puts it.
  *
- * WHY THIS EXISTS — DO NOT REMOVE WITHOUT READING:
- * Anthropic prompt-caching has an internal minimum size for registering a
- * usable cache entry (empirically ~1024 tokens of trailing content between
- * the previous marker and the new one). The baseline policy of always
- * placing the marker at messages[length-1] means tool-loop turns with small
- * tool_use/tool_result pairs (~300-800 tok each) silently fall under that
- * floor: the server bills cache_creation but stores nothing reusable, and
- * the next turn finds only the system+tools checkpoint (~13k) to read from.
+ * With a threshold N > 0 the marker walks back to the earliest message whose
+ * suffix reaches N tokens, leaving the tail uncached until it has grown. That
+ * was the default (2048) from 2026-06-07, on the premise that the API discards
+ * writes smaller than ~1024 tokens. The premise did not hold up:
+ *   - its evidence came from scripts/bench/ab/cache-ab-bench.ts, whose rows
+ *     were later found cumulative, with a ~5× run-to-run swing;
+ *   - on 2026-09-23 (scripts/bench/ab/session-cache-ab.ts, N=3 per arm) Claude
+ *     Code's 555–774-token writes were read back on the next turn, while the
+ *     deferred tail was billed as uncached input turn after turn and then
+ *     written anyway. Session cost, 0 against 2048: Opus 5.5 −4% and Sonnet 5
+ *     −15% (both with non-overlapping ranges), Opus 5.5 at 5m TTL −17%
+ *     (overlapping); cache writes moved by at most 3% in any of them.
  *
- * The fix walks backward through messages summing estimated tokens and
- * places the marker at the earliest index whose suffix sums to ≥ this
- * threshold. The marker effectively "lingers" across small turns until the
- * delta is large enough to justify the write, then advances. While it
- * lingers, the prior checkpoint stays valid and every turn reads it.
- *
- * Bench numbers (scripts/bench/perf/cache-ab-bench.ts, 13 small tool turns):
- *   threshold=0    → r:w = 0.97:1, $0.50  (baseline, broken)
- *   threshold=2048 → r:w = 7.81:1, $0.37  (this default)
- *
- * Override at runtime: CLAUDIN_DEFER_CACHE_MARKER=<N tokens>
- *   0          → disable (revert to baseline)
- *   2048       → current default (sweet spot for tool-loop workloads)
- *   higher     → checkpoint advances less often (longer tail recompute)
+ * Override at runtime: CLAUDIN_DEFER_CACHE_MARKER=<N tokens> (2048 restores
+ * the old placement).
  *
  * See addCacheBreakpoints() for the placement logic and the comment block
  * about the marker count (one deferred marker plus the lagging one that keeps
@@ -219,13 +212,12 @@ const LARGE_SYSTEM_PROMPT_TOKEN_THRESHOLD = 8000;
  *
  * Related: CLAUDIN_DEFER_HIGHLIGHT (similar runtime perf toggle precedent).
  */
-const DEFAULT_DEFER_CACHE_MARKER_TOKENS = 2048;
+const DEFAULT_DEFER_CACHE_MARKER_TOKENS = 0;
 function readDeferCacheMarkerTokens(): number {
   const raw = process.env.CLAUDIN_DEFER_CACHE_MARKER;
   if (raw === undefined) return DEFAULT_DEFER_CACHE_MARKER_TOKENS;
   const parsed = Number(raw);
-  // Garbage input (e.g. "abc" → NaN) silently falls back to default. Explicit
-  // 0 disables (baseline behavior).
+  // Garbage input (e.g. "abc" → NaN) silently falls back to the default.
   return Number.isFinite(parsed) && parsed >= 0
     ? parsed
     : DEFAULT_DEFER_CACHE_MARKER_TOKENS;
@@ -349,22 +341,17 @@ export function addCacheBreakpoints(
   const baseMarkerIndex = skipCacheWrite
     ? messages.length - 2
     : messages.length - 1;
-  // Defer the trailing marker until enough trailing tokens have accumulated
-  // to register a usable cache entry on the server. See the long comment on
-  // DEFER_CACHE_MARKER_TOKENS above for the full rationale and bench data.
+  // Deferred placement — only when CLAUDIN_DEFER_CACHE_MARKER opts in; the
+  // default of 0 skips it (see DEFAULT_DEFER_CACHE_MARKER_TOKENS above).
   //
   // Walk backward from the end summing estimated tokens; place the marker at
   // the earliest index whose suffix sums to >= the threshold. If the suffix
   // never reaches the threshold (short / early conversation), PIN the marker
-  // at messages[0] — that creates a stable head anchor so the small initial
-  // turns still get a cache hit on the next turn.
+  // at messages[0] — a stable head anchor.
   //
-  // NOTE: an earlier draft "fell back to baseline (length-1) when threshold
-  // not met" on reviewer advice — that regressed the bench all the way back
-  // to r:w=0.78. The reason: every early turn writes a marker too small to
-  // register on the server, so the next turn finds no usable checkpoint
-  // beyond system+tools. Pinning to head fixes early turns at the cost of
-  // a single tiny duplicate write per turn while the conversation is short.
+  // NOTE: an earlier draft of the deferral "fell back to baseline (length-1)
+  // when threshold not met"; on the bench of the time that regressed r:w to
+  // 0.78. Keep the head anchor for as long as the walk exists.
   let markerIndex = baseMarkerIndex;
   if (
     DEFER_CACHE_MARKER_TOKENS > 0 &&
@@ -410,10 +397,12 @@ export function addCacheBreakpoints(
   // than that from the last write, the lookup misses, and the whole history
   // is re-billed from the system breakpoint (session ab1e69e8: 7 rewrites,
   // 3.06M tokens). The lag marker is where the lookup resumes; it sits on
-  // cached bytes, so it costs nothing. Skipped for skipCacheWrite forks
-  // (own key, marker already at the shared frontier). With the system
-  // prompt's 2 blocks this is the 4-breakpoint cap: never add a third
-  // message marker.
+  // cached bytes, so it costs nothing. With the default placement the marker
+  // advances every request and the lag marker is usually redundant; it still
+  // covers the opt-in deferral and a single request that appends 20+
+  // positions. Skipped for skipCacheWrite forks (own key, marker already at
+  // the shared frontier). With the system prompt's 2 blocks this is the
+  // 4-breakpoint cap: never add a third message marker.
   let lagIndex: number | undefined;
   const trackingKey =
     enablePromptCaching &&
