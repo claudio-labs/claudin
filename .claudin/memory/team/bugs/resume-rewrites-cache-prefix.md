@@ -65,7 +65,7 @@ difference is the billing-header system block, which the API does not cache).
 (and `--bin=claude` for the reference). It prints the first diverging byte per
 message and the `messages[0]` block list before and after the resume.
 
-**Status: FIXED 2026-09-23 on branch `fix/session-cache`** — an exhaustive
+**Status: FIXED 2026-09-23 in PR #239 (`fix/session-cache`)** — an exhaustive
 per-type persistence policy (`src/sessions/pure/attachmentPersistence.ts`),
 hook attachments ignored by the interruption check, nested_memory seeded from
 history, parallel results tie-broken by write order. Same A/B re-run: resume

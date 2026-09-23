@@ -50,7 +50,7 @@ Also seen: claudin's `num_turns` counts tool-result messages
 Claude Code; `ruleMapAutoSync` + memory dirs leave `?? .claudin/` in the
 user's tree and the model spent a Bash call reading it.
 
-**After `fix/session-cache` (same A/B re-run 2026-09-23, both arms, N=3, all
+**After PR #239 (`fix/session-cache`; same A/B re-run 2026-09-23, both arms, N=3, all
 6 runs 18/18 + committed):** resume persistence and parallel-result order
 ([[resume-rewrites-cache-prefix]]), marker default 0
 ([[defer-cache-marker-shipped]]), four zero-use tools deferred
