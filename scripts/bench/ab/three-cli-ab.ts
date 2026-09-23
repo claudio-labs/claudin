@@ -52,7 +52,7 @@ import {
   type TimelineRow,
 } from './cliUsage'
 
-const SENTINEL = 'BENCH_DONE'
+export const SENTINEL = 'BENCH_DONE'
 const DEFAULT_MODEL = 'claude-sonnet-5'
 
 type Label = 'claudin' | 'claudindev' | 'claude'
@@ -320,7 +320,7 @@ const SOLUTION: Record<string, string> = {
   ),
 }
 
-function buildWorkspace(overrides: Record<string, string> = {}): string {
+export function buildWorkspace(overrides: Record<string, string> = {}): string {
   const root = mkdtempSync(join(tmpdir(), 'three-cli-ab-'))
   for (const [rel, body] of Object.entries({ ...FIXTURE, ...overrides })) {
     const file = join(root, rel)
@@ -335,7 +335,7 @@ function buildWorkspace(overrides: Record<string, string> = {}): string {
 // strategy, because the strategy is what is being measured.
 // ---------------------------------------------------------------------------
 
-function buildPrompt(): string {
+export function buildPrompt(): string {
   return [
     'This is a small JavaScript package: plain ESM .js, no TypeScript, 15 source files under src/.',
     '',
@@ -363,7 +363,7 @@ function buildPrompt(): string {
 // Grading. Run before any token number is believed.
 // ---------------------------------------------------------------------------
 
-type Verdict = {
+export type Verdict = {
   buildOk: boolean
   buildErr: string
   sitesDone: number
@@ -393,7 +393,7 @@ function runBuild(root: string, timeoutMs = 120_000): { ok: boolean; err: string
   return { ok: res.status === 0, err: err.slice(0, 240) }
 }
 
-function verify(root: string): Verdict {
+export function verify(root: string): Verdict {
   const build = runBuild(root)
 
   const sitesMissed: string[] = []
@@ -1010,4 +1010,5 @@ function main(): void {
   console.log()
 }
 
-main()
+// Imported for its fixture by narration-updates-ab.ts; only run as a script.
+if (import.meta.main) main()

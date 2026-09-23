@@ -40,6 +40,7 @@
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; echo the real input on allow
 - [memory-turn-by-turn RSS bench flakes only under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — a negative first-half slope makes the threshold unsatisfiable; re-run in isolation before calling it a regression
 - [WaitFor drops every optional param](bugs/waitfor-drops-optional-params.md) — until/settle_s/interval_s/timeout_s never reach call(); always settles at 3s, so no working wait over ~3s
+- [stream-json prints every assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — same uuid, Claude Code prints once; benches counting blocks must dedupe by uuid
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md: layout, categories, secret guard, `paths:` loading, dream digest, transcript lines
@@ -51,7 +52,7 @@
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the friction/refusal message instead; land new nudges flag-OFF as bench instrumentation
 - [Steering Read shape from the prompt is cost-neutral (2026-09-14)](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%; the Grep symbols nudge is inert in two wordings
 - [Claude Code 2.1.270's prompt, extracted 2026-09-14](claude-code-2.1.270-prompt-diff.md) — upstream MANDATES narration now; Delivering work/Corrections/turn-discipline are upstream verbatim
-- [ANTI_NARRATION was written for Opus 4.7/4.8, never benched on Claude 5](anti-narration-never-benched-on-claude-5.md) — ModelFamily can't express "Claude 5"; reuse work-contract-ab.ts (one build + env killswitch), not cache-ab-bench
+- [ANTI_NARRATION: Claude 5 A/B on progress updates only (2026-09-23)](anti-narration-never-benched-on-claude-5.md) — overlap, stays; text narration still unmeasured on Claude 5; ModelFamily can't express "Claude 5"
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 21 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses

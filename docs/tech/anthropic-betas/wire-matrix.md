@@ -260,6 +260,48 @@ the round gates each beta on its own.
   mid-conversation-system, per-turn-control, mid-conversation-tool-changes.
 - **Rejected**: `safeguards`. See `.claudin/memory/team/decisions/`.
 - **Left off**: advisor-tool, which is a product decision.
+- **Also fixed**, because the matrix showed them:
+  - Sonnet 5 fell through to the 32K `max_tokens` default. It now gets 64K,
+    up to 128K, as Claude Code sends.
+  - The experimental switch stripped `eager_input_streaming` from every tool.
+    That quietly cancelled the fine-grained tool streaming `cli.tsx` turns on.
+
+After the change, the same capture shows Claudin sending every adopted header
+on all three models, headless and interactive. The request body carries
+`display`, `context_management` with `keep:"all"` and `diagnostics`, and every
+tool carries `eager_input_streaming`. The real endpoint accepts the resulting
+default request on the three models and on Haiku 4.5, which side queries use.
+
+## Progress updates and ANTI_NARRATION
+
+Progress updates are rare, in both CLIs. Two measurements on the three-cli-ab
+fixture (15 files, 5 edits, a build), all 18 + 2 runs graded PASS:
+
+- **Claude Code 2.1.280, interactive, real API** — display `"updates"` is its
+  default there. Opus 5.5 wrote 0 progress updates in 3 tool calls. Fable 5.1
+  wrote 1 in 17.
+- **`scripts/bench/ab/narration-updates-ab.ts`** — `claudindev -p` with display
+  `"updates"`, N=3 per arm. The arms were the default prompt, the prompt with
+  `CLAUDIN_ANTI_NARRATION=0`, and an exploratory carve-out sentence. Results in
+  `scripts/bench/results/narration-updates-ab-2026-09-23T03-16-25-877Z.md`.
+
+| progress updates per run | ANTI_NARRATION on | `=0` | on + carve-out |
+|---|---|---|---|
+| Opus 5.5 | 0, 0, 0 | 0, 0, 1 | 0, 0, 0 |
+| Fable 5.1 | 0, 0, 0 | 0, 1, 0 | 0, 0, 0 |
+
+The rule was registered before the first run and reads range overlap of
+updates per tool call. The ranges overlap on both models, so **ANTI_NARRATION
+stays as it is**. The direction is worth a note: the only updates came with it
+off. But the evidence is two runs of 18, one update each, and the carve-out
+sentence did not bring them back. A claim either way needs a larger N.
+
+The TUI renders an update as a dim `∴` line above the tool call it introduces,
+in the prompt view and in ctrl+o. `isProgressUpdateBlock` classifies a block by
+its signature, as Claude Code does: field 2 → 1 → 8 of the protobuf reads
+`"narration"`, not `"thinking"`. That field was checked on the real Fable 5.1
+update above. The docs' rule would work only while display is `"updates"`, and
+it is wrong for a resumed session.
 
 ## Reproduce
 
