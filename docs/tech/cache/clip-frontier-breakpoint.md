@@ -3,6 +3,11 @@
 **Status:** Default ON (Phase 6 shipped). `CLAUDIN_CLIP_FRONTIER=0` reverts
 the marker placement; `CLAUDIN_CACHE_PROFILE=aggressive` forces the old
 clipping policy (unset resolves `auto` by provider).
+**Since 2026-09-23** the defer-walk this doc caps is off by default
+(`DEFAULT_DEFER_CACHE_MARKER_TOKENS = 0`): the marker is `min(last message,
+frontier)`. The "~1024-token floor" below did not reproduce on the graded
+session bench (`scripts/bench/ab/session-cache-ab.ts`); see `.claudin/rules/cache.md` §2.
+`CLAUDIN_DEFER_CACHE_MARKER=2048` restores the placement described here.
 **Scope:** `src/agent/compact/stableStubState.ts`, `src/providers/shims/claude/paramBuilders.ts`, `src/providers/shims/claude/streaming.ts`
 
 ## Problem
