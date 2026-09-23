@@ -206,6 +206,8 @@ type Call = {
   isError: boolean
   /** The harness answered instead of the tool: a redirect, a read-first gate, a denial. */
   refused: boolean
+  /** A read-gate refusal that also served the lines it refused over. */
+  served?: boolean
   /** Kept for Bash only: the replay corpus is rebuilt from it. */
   text?: string
 }
@@ -769,6 +771,7 @@ function analyzeSession(
         chars: result.text.length,
         isError: result.isError,
         refused: HARNESS_MESSAGE_RE.test(result.text),
+        ...(result.isError && SERVED_REFUSAL_RE.test(result.text) ? { served: true } : {}),
         ...(use.name === 'Bash' ? { text: result.text } : {}),
       })
     }
@@ -975,12 +978,19 @@ type Metrics = {
   edits: number
   errors: number
   refusals: number
+  servedRefusals: number
+  resubmits: number
+  resubmitErrors: number
   wallSec: number
   hiddenPass: number
   hiddenTotal: number
 }
 
 const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'apply_patch', 'NotebookEdit', 'Rename'])
+/** A read-gate refusal that carried the lines it refused over (servedRegion.ts). */
+const SERVED_REFUSAL_RE = /now count as read/
+/** apply_patch's reference to the patch refused one call earlier (patchFormat.ts). */
+const isResubmit = (c: Call) => c.name === 'apply_patch' && String(c.input.patchText ?? '').trim() === '*** Resubmit'
 
 /**
  * `total_cost_usd` means different things after `--resume`: claude reports the
@@ -1135,6 +1145,9 @@ function metricsOf(r: RunResult): Metrics {
     edits: r.calls.filter(c => EDIT_TOOLS.has(c.name)).length,
     errors: r.calls.filter(c => c.isError && !c.refused).length,
     refusals: r.calls.filter(c => c.refused).length,
+    servedRefusals: r.calls.filter(c => EDIT_TOOLS.has(c.name) && c.served).length,
+    resubmits: r.calls.filter(isResubmit).length,
+    resubmitErrors: r.calls.filter(c => isResubmit(c) && c.isError).length,
     wallSec: r.phases.reduce((a, p) => a + p.wallMs, 0) / 1000,
     hiddenPass: lastGrade ? lastGrade.hidden.reduce((a, h) => a + h.pass, 0) : 0,
     hiddenTotal: lastGrade ? lastGrade.hidden.reduce((a, h) => a + h.pass + h.fail, 0) : 0,
@@ -1245,6 +1258,9 @@ const METRIC_ROWS: MetricRow[] = [
   ['edit calls', 'edits', fmtInt],
   ['tool errors (incl. failing tests)', 'errors', fmtInt],
   ['harness refusals (redirects, gates)', 'refusals', fmtInt],
+  ['  edits refused with the lines served', 'servedRefusals', fmtInt],
+  ['patches resubmitted by reference', 'resubmits', fmtInt],
+  ['  of which failed', 'resubmitErrors', fmtInt],
   ['wall time (s)', 'wallSec', fmtInt],
   ['hidden acceptance passed', 'hiddenPass', fmtInt],
 ]
@@ -1639,17 +1655,16 @@ function save(runDir: string, runs: RunResult[], meta: Meta): string {
 }
 
 /**
- * A results.json written before `think`/`visibleChars` existed: rebuild turns
- * and calls from the run's archived streams and transcript, and the thinking
- * from the proxy logs when the run had them.
+ * Rebuild turns and calls from the run's archived streams and transcript, and
+ * the thinking from the proxy logs when the run had them, so a results.json
+ * written by an older version of this analysis reports every current row. A
+ * run whose streams are gone is kept as saved.
  */
 function reanalyze(r: RunResult, runDir: string): RunResult {
-  if (r.thinkSource && r.turns.every(t => typeof t.visibleChars === 'number')) return r
   const label = `${r.arm}-r${r.rep}`
-  const streams = PHASES.map(p => {
-    const file = join(runDir, `${label}.p${p}.stream.jsonl`)
-    return existsSync(file) ? (parseJsonl(readFileSync(file, 'utf8')) as Json[]) : []
-  })
+  const files = PHASES.map(p => join(runDir, `${label}.p${p}.stream.jsonl`))
+  if (!files.every(existsSync)) return r
+  const streams = files.map(file => parseJsonl(readFileSync(file, 'utf8')) as Json[])
   const transcript = r.transcript && existsSync(r.transcript) ? (parseJsonl(readFileSync(r.transcript, 'utf8')) as Json[]) : null
   const session = analyzeSession(streams, new Set(r.phases.find(p => p.phase === 2)?.messageIds ?? []), transcript)
   const phases = r.phases.map((p, i) => ({
