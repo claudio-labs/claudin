@@ -2,7 +2,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { isTeammate } from 'src/agent/coordinator/teammate.js'
 import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
@@ -41,19 +41,26 @@ function getToolsDescription(agent: AgentDefinition): string {
 let leanAgentPrompt: boolean | undefined
 
 /**
- * `CLAUDIN_LEAN_AGENT_PROMPT=1` says the delegation guidance once. The Agent
- * tool description keeps each passage (fork semantics, the fresh-agent
- * default, foreground vs background) and drops its own internal repeats; the
- * system prompt's agent section (`buildAgentToolSection` in prompts.ts) keeps
- * only what the description does not say; an agent's listing line uses its
- * `whenToUseLean` when it has one (the two WebResearchers, cut to about half).
- * Off by default until the A/B decides.
+ * Says the delegation guidance once. The Agent tool description keeps each
+ * passage (fork semantics, the fresh-agent default, foreground vs background)
+ * and drops its own internal repeats; the system prompt's agent section
+ * (`buildAgentToolSection` in prompts.ts) keeps only what the description does
+ * not say; an agent's listing line uses its `whenToUseLean` when it has one
+ * (the two WebResearchers, cut to about half).
+ *
+ * On by default since 2026-09-23: in the delegation A/B
+ * (`scripts/bench/ab/delegation-steer-ab.ts`, N=5, questions that never
+ * mention agents) every pre-registered gate held — the same delegation rate,
+ * no forks, no WebResearcher on a code question, 34 of 35 answers against 35
+ * (the miss named the flag but not the function the key asks for), cost −7%
+ * (overlap) — and the session A/B met its gate with it on.
+ * `CLAUDIN_LEAN_AGENT_PROMPT=0` restores the full text.
  *
  * Read once: this text is in the tools array, the system prompt and the agent
  * listing, all cached prefix, so it must not change while the process lives.
  */
 export function isLeanAgentPromptEnabled(): boolean {
-  leanAgentPrompt ??= isEnvTruthy(process.env.CLAUDIN_LEAN_AGENT_PROMPT)
+  leanAgentPrompt ??= !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_AGENT_PROMPT)
   return leanAgentPrompt
 }
 

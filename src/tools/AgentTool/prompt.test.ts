@@ -286,6 +286,32 @@ describe('Agent tool description — CLAUDIN_LEAN_AGENT_PROMPT says each passage
   })
 })
 
+describe('CLAUDIN_LEAN_AGENT_PROMPT is on unless set to 0', () => {
+  // Latched once per module instance (the text is cached prefix), so each case
+  // reads a FRESH instance with the variable pinned for its first read.
+  async function leanWith(value: string | undefined): Promise<boolean> {
+    const prior = process.env.CLAUDIN_LEAN_AGENT_PROMPT
+    if (value === undefined) delete process.env.CLAUDIN_LEAN_AGENT_PROMPT
+    else process.env.CLAUDIN_LEAN_AGENT_PROMPT = value
+    try {
+      const fresh: typeof import('src/tools/AgentTool/prompt.js') = await import(
+        `./prompt.js?lean=${value}-${Date.now()}-${Math.random()}`
+      )
+      return fresh.isLeanAgentPromptEnabled()
+    } finally {
+      if (prior === undefined) delete process.env.CLAUDIN_LEAN_AGENT_PROMPT
+      else process.env.CLAUDIN_LEAN_AGENT_PROMPT = prior
+    }
+  }
+
+  test('unset or truthy: lean; 0 or false: the full text', async () => {
+    expect(await leanWith(undefined)).toBe(true)
+    expect(await leanWith('1')).toBe(true)
+    expect(await leanWith('0')).toBe(false)
+    expect(await leanWith('false')).toBe(false)
+  })
+})
+
 describe('agent listing line — CLAUDIN_LEAN_AGENT_PROMPT uses whenToUseLean', () => {
   // Read through the inline list with `lean` injected, so the assertions hold
   // whatever CLAUDIN_LEAN_AGENT_PROMPT the test process was started with.
