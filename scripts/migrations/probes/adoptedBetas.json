@@ -1,0 +1,124 @@
+{
+  "test": [
+    "src/providers/transport/adoptedBetas.test.ts",
+    "src/providers/shims/claude/thinkingDisplay.test.ts",
+    "src/providers/shims/claude/messageConverters.test.ts",
+    "src/agent/cache/anthropic/apiMicrocompact.test.ts",
+    "src/providers/cache/promptCacheBreakDetection.test.ts",
+    "src/providers/transport/withRetry.test.ts",
+    "src/providers/transport/api.eagerStreaming.test.ts",
+    "src/providers/model/sonnet5.test.ts"
+  ],
+  "source": "src/providers/transport/adoptedBetas.ts",
+  "probes": [
+    {
+      "name": "a proxy base URL counts as first-party",
+      "find": "return new URL(f.envBaseUrl).host === ANTHROPIC_API_HOST",
+      "replace": "return true"
+    },
+    {
+      "name": "the harness override is ignored",
+      "find": "if (!f.envBaseUrl || f.assumeFirstParty) return true",
+      "replace": "if (!f.envBaseUrl) return true"
+    },
+    {
+      "name": "a killswitch is ignored",
+      "find": "!isEnvTruthy(process.env[ADOPTED_BETAS[beta].killswitch]) &&",
+      "replace": ""
+    },
+    {
+      "name": "the rejection latch is ignored",
+      "find": "!rejected.has(beta) &&",
+      "replace": ""
+    },
+    {
+      "name": "the diagnostics pattern goes back to a bare word",
+      "find": "const DIAGNOSTICS_FIELD_RE = /\\bdiagnostics(?:\\.[a-z_]+)*:/",
+      "replace": "const DIAGNOSTICS_FIELD_RE = /\\bdiagnostics\\b/"
+    },
+    {
+      "name": "redact-thinking goes out on the real endpoint",
+      "source": "src/providers/transport/betas.ts",
+      "find": "    getInitialSettings().showThinkingSummaries !== true &&\n    !isRealFirstPartyEndpoint()\n",
+      "replace": "    getInitialSettings().showThinkingSummaries !== true\n"
+    },
+    {
+      "name": "thinking-token-count is not adopted",
+      "source": "src/providers/transport/betas.ts",
+      "find": "isAdoptedBetaEnabled('thinkingTokenCount') &&",
+      "replace": "false &&"
+    },
+    {
+      "name": "context-management is not adopted",
+      "source": "src/providers/transport/betas.ts",
+      "find": "(includeFirstPartyOnlyBetas || isAdoptedBetaEnabled('contextManagement')) &&",
+      "replace": "includeFirstPartyOnlyBetas &&"
+    },
+    {
+      "name": "the adopted context-management edit clears thinking",
+      "source": "src/agent/cache/anthropic/apiMicrocompact.ts",
+      "find": "strategies.push({ type: 'clear_thinking_20251015', keep: 'all' })",
+      "replace": "strategies.push({ type: 'clear_thinking_20251015', keep: { type: 'thinking_turns', value: 2 } })"
+    },
+    {
+      "name": "a narration signature is not required",
+      "source": "src/providers/shims/claude/thinkingDisplay.ts",
+      "find": "  return kind === NARRATION\n}",
+      "replace": "  return true\n}"
+    },
+    {
+      "name": "a summarized-default model gets updates",
+      "source": "src/providers/shims/claude/thinkingDisplay.ts",
+      "find": "  if (!f.defaultsToOmitted) return undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "a forced updates ignores the missing beta",
+      "source": "src/providers/shims/claude/thinkingDisplay.ts",
+      "find": "if (forced === 'updates' && !f.updatesAvailable) return 'omitted'",
+      "replace": ""
+    },
+    {
+      "name": "a synthetic assistant message is named as the previous response",
+      "source": "src/providers/shims/claude/messageConverters.ts",
+      "find": "if (typeof id === 'string' && id.startsWith(API_MESSAGE_ID_PREFIX)) {",
+      "replace": "if (typeof id === 'string') {"
+    },
+    {
+      "name": "the server's diagnosis does not reach the break line",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "      ? `${describeServerCacheMissReason(serverMissReason)}; ${clientReason}`\n      : clientReason",
+      "replace": "      ? clientReason\n      : clientReason"
+    },
+    {
+      "name": "a rejected adopted beta is not retried",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "  const rejectedBeta = adoptedBetaFromRejection(error.status, error.message)\n  if (rejectedBeta && !isAdoptedBetaRejected(rejectedBeta)) {\n    return true\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "the rejection is not latched before the retry",
+      "source": "src/providers/transport/withRetry.ts",
+      "find": "        markAdoptedBetaRejected(rejectedBeta)\n        continue",
+      "replace": "        continue"
+    },
+    {
+      "name": "eager_input_streaming is stripped again",
+      "source": "src/providers/transport/api.ts",
+      "find": "    if (keepEagerStreaming) allowed.add('eager_input_streaming')\n",
+      "replace": ""
+    },
+    {
+      "name": "eager_input_streaming survives a proxy",
+      "source": "src/providers/transport/api.ts",
+      "find": "'eager_input_streaming' in schema && isRealFirstPartyEndpoint()",
+      "replace": "'eager_input_streaming' in schema"
+    },
+    {
+      "name": "Sonnet 5 falls back to the 32K default",
+      "source": "src/agent/context/context.ts",
+      "find": "    m.includes('sonnet-5') ||\n",
+      "replace": ""
+    }
+  ]
+}
