@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.1.34 — 2026-09-23
+
+### ✨ Features
+
+- feat(providers): adopt first-party betas and thinking display updates (#238) (08e06ef5)
+- feat(providers): register claude opus 5.5 as the default opus tier (#237) (e93a66cc)
+- feat(tui): report recalled memories as a Loaded line, like the rules (#236) (802a2f07)
+
+### ⚡ Performance
+
+- perf(cache): keep the cache on resume and stop deferring the marker (#239) (ba16fc2d)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.33 — 2026-09-21
 
 ### ✨ Features
