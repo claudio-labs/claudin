@@ -40,6 +40,7 @@ import { hasContentAfterIndex, MessageRow } from 'src/agent/ui/MessageRow.js';
 import { InVirtualListContext, type MessageActionsNav, MessageActionsSelectedContext, type MessageActionsState } from 'src/agent/ui/messageActions.js';
 import { AssistantThinkingMessage } from 'src/agent/ui/messages/AssistantThinkingMessage.js';
 import { isNullRenderingAttachment } from 'src/agent/ui/messages/nullRenderingAttachments.js';
+import { isProgressUpdateBlock } from 'src/providers/shims/claude/thinkingDisplay.js';
 import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 import { StatusNotices } from 'src/platform/status/StatusNotices.js';
@@ -222,9 +223,11 @@ const MessagesImpl = ({
       const msg = normalizedMessages[i];
       if (msg?.type === 'assistant') {
         const content = msg.message.content;
-        // Find the last thinking block in this message
+        // Find the last thinking block in this message. A progress update
+        // is always shown, so it must not take the "last reasoning" slot.
         for (let j = content.length - 1; j >= 0; j--) {
-          if (content[j]?.type === 'thinking') {
+          const block = content[j];
+          if (block?.type === 'thinking' && !isProgressUpdateBlock(block)) {
             return `${msg.uuid}:${j}`;
           }
         }

@@ -15,6 +15,7 @@ import { logError } from 'src/shared/log.js';
 import type { buildMessageLookups } from 'src/agent/messages/messages.js';
 import { CompactSummary } from 'src/agent/ui/CompactSummary.js';
 import { AdvisorMessage } from 'src/agent/ui/messages/AdvisorMessage.js';
+import { AssistantProgressUpdateMessage } from 'src/agent/ui/messages/AssistantProgressUpdateMessage.js';
 import { AssistantRedactedThinkingMessage } from 'src/agent/ui/messages/AssistantRedactedThinkingMessage.js';
 import { AssistantTextMessage } from 'src/agent/ui/messages/AssistantTextMessage.js';
 import { AssistantThinkingMessage } from 'src/agent/ui/messages/AssistantThinkingMessage.js';
@@ -29,6 +30,7 @@ import { UserTextMessage } from 'src/agent/ui/messages/UserTextMessage.js';
 import { UserToolResultMessage } from 'src/agent/ui/messages/UserToolResultMessage/UserToolResultMessage.js';
 import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import { ExpandShellOutputProvider } from 'src/tools/BashTool/ui/ExpandShellOutputContext.js';
+import { isProgressUpdateBlock } from 'src/providers/shims/claude/thinkingDisplay.js';
 export type Props = {
   message: NormalizedUserMessage | AssistantMessage | AttachmentMessageType | SystemMessage | GroupedToolUseMessageType | CollapsedReadSearchGroupType;
   lookups: ReturnType<typeof buildMessageLookups>;
@@ -565,6 +567,12 @@ function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
       }
     case "thinking":
       {
+        // A progress update is a status line for the user, not reasoning: it
+        // shows in every view. Left unmemoized on purpose — this file is React
+        // Compiler output and a new memo would need new `_c` slots.
+        if (isProgressUpdateBlock(param)) {
+          return <AssistantProgressUpdateMessage text={param.thinking.trim()} addMargin={addMargin} />;
+        }
         if (!isTranscriptMode && !verbose) {
           return null;
         }
