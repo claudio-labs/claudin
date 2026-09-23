@@ -45,6 +45,12 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import { REPEATED_529_ERROR_MESSAGE } from 'src/providers/transport/errors.js'
 import { extractConnectionErrorDetails } from 'src/providers/transport/errorUtils.js'
 import {
+  ADOPTED_BETAS,
+  adoptedBetaFromRejection,
+  isAdoptedBetaRejected,
+  markAdoptedBetaRejected,
+} from 'src/providers/transport/adoptedBetas.js'
+import {
   extractRateLimitInfo,
   getRateLimitResetDelayMs,
   getRetryAfterMs,
@@ -461,6 +467,22 @@ export async function* withRetry<T>(
       // and retrying once. Happens when thinking config changes mid-session
       // (adaptive ↔ budget via /effort) — the prior assistant message's
       // thinking blocks become incompatible with the new request shape.
+      //
+      // An adopted beta the API turned down (adoptedBetas.ts) goes first: it
+      // is dropped for the rest of the process and the request is sent again
+      // without it — the streaming layer filters the rejected header and the
+      // field it pairs with.
+      const rejectedBeta = isSdkApiError(error)
+        ? adoptedBetaFromRejection(error.status, error.message)
+        : null
+      if (rejectedBeta && !isAdoptedBetaRejected(rejectedBeta)) {
+        logForDebugging(
+          `[betas] ${ADOPTED_BETAS[rejectedBeta].header} rejected, retrying without it: ${errorMessage(error).slice(0, 300)}`,
+          { level: 'warn' },
+        )
+        markAdoptedBetaRejected(rejectedBeta)
+        continue
+      }
       if (
         isThinkingBlockMismatchError(error) &&
         !retryContext.stripThinkingFromHistory
@@ -741,6 +763,12 @@ export function shouldRetry(
 
   // Thinking-block mismatch: we recover by stripping thinking from history.
   if (isThinkingBlockMismatchError(error)) {
+    return true
+  }
+
+  // An adopted beta the API rejected: recovered by dropping it, once.
+  const rejectedBeta = adoptedBetaFromRejection(error.status, error.message)
+  if (rejectedBeta && !isAdoptedBetaRejected(rejectedBeta)) {
     return true
   }
 

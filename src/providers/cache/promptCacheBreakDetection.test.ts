@@ -5,6 +5,7 @@ import {
   _getPendingMessageMutationForTesting,
   buildCacheBreakReason,
   checkResponseForCacheBreak,
+  readServerCacheMissReason,
   recordMarkerAdvance,
   recordPromptState,
   recordRenderedMessages,
@@ -380,5 +381,56 @@ describe('recordMarkerAdvance', () => {
   test('an untracked source records nothing', () => {
     recordMarkerAdvance('speculation', undefined, { positions: 99, lagPlaced: false })
     expect(_getPendingMarkerAdvanceForTesting('speculation')).toBeNull()
+  })
+})
+
+// cache-diagnosis: the server names the cause itself when the request carried
+// diagnostics.previous_message_id.
+describe('the server cache-miss diagnosis', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  test('reads it from a message_start message and from a message_delta event', () => {
+    const diagnostics = {
+      cache_miss_reason: { type: 'messages_changed', cache_missed_input_tokens: 182_825 },
+    }
+    expect(readServerCacheMissReason({ id: 'msg_01', diagnostics })).toEqual({
+      type: 'messages_changed',
+      cacheMissedInputTokens: 182_825,
+    })
+    expect(readServerCacheMissReason({ type: 'message_delta', diagnostics })).toEqual({
+      type: 'messages_changed',
+      cacheMissedInputTokens: 182_825,
+    })
+  })
+
+  test('a hit, or anything malformed, reads as no diagnosis', () => {
+    for (const source of [
+      undefined,
+      'x',
+      {},
+      { diagnostics: null },
+      { diagnostics: { cache_miss_reason: null } },
+      { diagnostics: { cache_miss_reason: { type: '' } } },
+    ]) {
+      expect(readServerCacheMissReason(source)).toBeNull()
+    }
+  })
+
+  test('leads the break line when the request asked for it', async () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a')])
+    await checkResponseForCacheBreak(SOURCE, 205_000, 0, [])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
+    await checkResponseForCacheBreak(SOURCE, 25_853, 182_825, [], undefined, null, null, {
+      type: 'system_changed',
+      cacheMissedInputTokens: 182_825,
+    })
+    expect(getCurrentTurnCacheBreaks()).toEqual([
+      'server: system changed (182.8k missed); unknown cause — read 205k→25.9k, rewrote 182.8k',
+    ])
   })
 })

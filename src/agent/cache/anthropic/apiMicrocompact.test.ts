@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, test, expect } from 'bun:test'
 import {
   clearableToolNamesFromPool,
+  type ContextManagementConfig,
   getAPIContextManagement,
   TOOLS_CLEARABLE_RESULTS,
 } from 'src/agent/cache/anthropic/apiMicrocompact.js'
@@ -173,5 +174,56 @@ describe('getAPIContextManagement under retain', () => {
       type: 'input_tokens',
       value: 80_000,
     })
+  })
+})
+
+// serverEdits:false is what ships: the context-management beta goes out on the
+// real endpoint, but with the experimental switch on it may only say
+// `keep: "all"`. Claudin's own clearing — the aggressive keep window and the
+// retain profile's 140k clear_tool_uses — must stay inert until measured on a
+// 1M window.
+describe('getAPIContextManagement without serverEdits (the adopted beta alone)', () => {
+  afterAll(() => {
+    process.env.CLAUDIN_CACHE_PROFILE = 'aggressive'
+    delete process.env.USE_API_CLEAR_TOOL_RESULTS
+    _resetCacheProfileForTesting()
+  })
+
+  const keepAll: ContextManagementConfig = {
+    edits: [{ type: 'clear_thinking_20251015', keep: 'all' }],
+  }
+
+  test('aggressive: keep "all", not the two-turn window, even after an idle hour', () => {
+    process.env.CLAUDIN_CACHE_PROFILE = 'aggressive'
+    _resetCacheProfileForTesting()
+    for (const clearAllThinking of [false, true]) {
+      expect(
+        getAPIContextManagement({ hasThinking: true, clearAllThinking, serverEdits: false }),
+      ).toEqual(keepAll)
+    }
+  })
+
+  test('retain: no server clear_tool_uses', () => {
+    process.env.CLAUDIN_CACHE_PROFILE = 'retain'
+    _resetCacheProfileForTesting()
+    expect(
+      getAPIContextManagement({ hasThinking: true, clearableToolNames: ['Bash'], serverEdits: false }),
+    ).toEqual(keepAll)
+  })
+
+  test('nothing to send without thinking, or with redact-thinking', () => {
+    expect(getAPIContextManagement({ hasThinking: false, serverEdits: false })).toBeUndefined()
+    expect(
+      getAPIContextManagement({ hasThinking: true, isRedactThinkingActive: true, serverEdits: false }),
+    ).toBeUndefined()
+  })
+
+  test('an explicit env opt-in still clears', () => {
+    process.env.USE_API_CLEAR_TOOL_RESULTS = '1'
+    const edits = getAPIContextManagement({ hasThinking: true, serverEdits: false })?.edits
+    expect(edits?.map(e => e.type)).toEqual([
+      'clear_thinking_20251015',
+      'clear_tool_uses_20250919',
+    ])
   })
 })

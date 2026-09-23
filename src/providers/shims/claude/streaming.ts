@@ -98,6 +98,7 @@ import {
 import {
   getAfkModeHeaderLatched,
   getFastModeHeaderLatched,
+  getIsNonInteractiveSession,
   getLastApiCompletionTimestamp,
   getThinkingClearLatched,
   isLspDeferLatched,
@@ -109,6 +110,7 @@ import {
 } from "src/platform/bootstrap/state.js";
 import {
   AFK_MODE_BETA_HEADER,
+  CACHE_DIAGNOSIS_BETA_HEADER,
   CONTEXT_1M_BETA_HEADER,
   CONTEXT_MANAGEMENT_BETA_HEADER,
   EXTENDED_CACHE_TTL_BETA_HEADER,
@@ -117,6 +119,7 @@ import {
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
   THINKING_BINDING_CONTROLS_BETA_HEADER,
+  THINKING_DISPLAY_UPDATES_BETA_HEADER,
 } from "src/shared/constants/betas.js";
 import { addToTotalSessionCost } from "src/agent/cost-tracker.js";
 import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
@@ -136,6 +139,17 @@ import {
   shouldIncludeFirstPartyOnlyBetas,
   shouldUseGlobalCacheScope,
 } from "src/providers/transport/betas.js";
+import {
+  isAdoptedBetaEnabled,
+  isAdoptedBetaRejected,
+  isRealFirstPartyEndpoint,
+  withoutRejectedBetas,
+} from "src/providers/transport/adoptedBetas.js";
+import {
+  modelDefaultsToOmittedThinking,
+  selectThinkingDisplay,
+} from "src/providers/shims/claude/thinkingDisplay.js";
+import { getInitialSettings } from "src/platform/settings/settings.js";
 import { logForDebugging } from "src/shared/debug.js";
 import { logForDiagnosticsNoPII } from "src/shared/diagLogs.js";
 import {
@@ -200,8 +214,10 @@ import {
 import {
   CACHE_TTL_1HOUR_MS,
   checkResponseForCacheBreak,
+  readServerCacheMissReason,
   recordPromptState,
   recordRenderedMessages,
+  type ServerCacheMissReason,
   summarizeAppliedContextEdits,
 } from "src/providers/cache/promptCacheBreakDetection.js";
 import { recordServerClear } from "src/providers/cache/cacheStatsTracker.js";
@@ -230,6 +246,7 @@ import {
 } from "src/providers/shims/claude/paramBuilders.js";
 import { getAPIMetadata } from "src/providers/shims/claude/metadata.js";
 import {
+  getPreviousMessageIdFromMessages,
   getPreviousRequestIdFromMessages,
   stripExcessMediaItems,
 } from "src/providers/shims/claude/messageConverters.js";
@@ -333,6 +350,7 @@ export async function* queryModel(
   // so concurrent agents don't clobber each other's request chain tracking.
   // Also naturally handles rollback/undo since removed messages won't be in the array.
   const previousRequestId = getPreviousRequestIdFromMessages(messages);
+  const previousMessageId = getPreviousMessageIdFromMessages(messages);
 
   const resolvedModel =
     getAPIProvider() === "bedrock" &&
@@ -713,7 +731,7 @@ export async function* queryModel(
     if (
       !afkHeaderLatched &&
       isAgenticQuery &&
-      shouldIncludeFirstPartyOnlyBetas() &&
+      (shouldIncludeFirstPartyOnlyBetas() || isAdoptedBetaEnabled("afkMode")) &&
       (autoModeStateModule?.isAutoModeActive() ?? false)
     ) {
       afkHeaderLatched = true;
@@ -820,7 +838,9 @@ export async function* queryModel(
   let lastRequestBetas: string[] | undefined;
 
   const paramsFromContext = (retryContext: RetryContext) => {
-    const betasParams = [...betas];
+    // Minus any adopted beta the API rejected earlier in this process
+    // (adoptedBetas.ts) — `betas` was built before a retry could learn that.
+    const betasParams = withoutRejectedBetas(betas);
 
     // Append 1M beta from the latched experiment state (computed once before
     // the closure to avoid mid-retry GB flips changing the cache key).
@@ -894,18 +914,21 @@ export async function* queryModel(
       !isEnvTruthy(process.env.CLAUDIN_DISABLE_THINKING);
     let thinking: BetaMessageStreamParams["thinking"] | undefined = undefined;
 
-    // When redact-thinking is active the server already resolves the thinking
-    // display to "omitted"; set it explicitly so the thinking-token-count beta
-    // reliably emits per-frame `estimated_tokens` (whose precondition is an
-    // omitted display) and the live token counter keeps moving during a long
-    // redacted thinking phase. Gated strictly on redact-thinking being active,
-    // so the showThinkingSummaries / non-first-party / non-interactive paths
-    // (where the user wants the thinking text) are never affected.
-    const thinkingDisplay: "omitted" | undefined = betasParams.includes(
-      REDACT_THINKING_BETA_HEADER,
-    )
-      ? "omitted"
-      : undefined;
+    // On the real endpoint the display is chosen explicitly (thinkingDisplay.ts
+    // has the rules). Off it, the legacy redact-thinking path still resolves
+    // to "omitted" — set explicitly so the thinking-token-count beta keeps its
+    // precondition and the live counter moves during a redacted phase.
+    const thinkingDisplay =
+      selectThinkingDisplay({
+        realFirstParty: isRealFirstPartyEndpoint(),
+        defaultsToOmitted: modelDefaultsToOmittedThinking(options.model),
+        interactive: !getIsNonInteractiveSession(),
+        showThinkingSummaries:
+          getInitialSettings().showThinkingSummaries === true,
+        override: process.env.CLAUDIN_THINKING_DISPLAY,
+        updatesAvailable: isAdoptedBetaEnabled("thinkingDisplayUpdates"),
+      }) ??
+      (betasParams.includes(REDACT_THINKING_BETA_HEADER) ? "omitted" : undefined);
 
     // IMPORTANT: Do not change the adaptive-vs-budget thinking selection below
     // without notifying the model launch DRI and research. This is a sensitive
@@ -956,6 +979,14 @@ export async function* queryModel(
         } satisfies BetaMessageStreamParams["thinking"];
       }
     }
+    // "updates" is a 400 without its beta; the two go out together or not at all.
+    if (
+      thinking &&
+      thinkingDisplay === "updates" &&
+      !betasParams.includes(THINKING_DISPLAY_UPDATES_BETA_HEADER)
+    ) {
+      betasParams.push(THINKING_DISPLAY_UPDATES_BETA_HEADER);
+    }
 
     // Get API context management strategies if enabled
     const contextManagement = getAPIContextManagement({
@@ -965,6 +996,9 @@ export async function* queryModel(
       // `clear_tool_inputs` derived from the pool: tools opt in with
       // `clearableResult: true` (Tool.ts) instead of a hand-kept constant.
       clearableToolNames: clearableToolNamesFromPool(tools),
+      // Claudin's own server-side edits stay behind the experimental switch;
+      // the adopted beta alone sends only `keep: "all"`.
+      serverEdits: shouldIncludeFirstPartyOnlyBetas(),
     });
 
     const enablePromptCaching =
@@ -993,12 +1027,26 @@ export async function* queryModel(
     if (feature("TRANSCRIPT_CLASSIFIER")) {
       if (
         afkHeaderLatched &&
-        shouldIncludeFirstPartyOnlyBetas() &&
+        // Pushed after withoutRejectedBetas, so it checks the latch itself.
+        !isAdoptedBetaRejected("afkMode") &&
+        (shouldIncludeFirstPartyOnlyBetas() || isAdoptedBetaEnabled("afkMode")) &&
         isAgenticQuery &&
         !betasParams.includes(AFK_MODE_BETA_HEADER)
       ) {
         betasParams.push(AFK_MODE_BETA_HEADER);
       }
+    }
+
+    // Cache diagnosis: name the previous response so the server can say why
+    // this request missed the cache (read back from message_start and
+    // message_delta). Agentic queries only, as Claude Code sends it — a side
+    // query has no previous response of its own to name.
+    const diagnostics =
+      useBetas && isAgenticQuery && isAdoptedBetaEnabled("cacheDiagnosis")
+        ? { previous_message_id: previousMessageId ?? null }
+        : undefined;
+    if (diagnostics && !betasParams.includes(CACHE_DIAGNOSIS_BETA_HEADER)) {
+      betasParams.push(CACHE_DIAGNOSIS_BETA_HEADER);
     }
 
     // Only send temperature when thinking is disabled — the API requires
@@ -1112,6 +1160,7 @@ export async function* queryModel(
         betasParams.includes(CONTEXT_MANAGEMENT_BETA_HEADER) && {
           context_management: contextManagement,
         }),
+      ...(diagnostics && { diagnostics }),
       ...extraBodyParams,
       ...(Object.keys(outputConfig).length > 0 && {
         output_config: outputConfig,
@@ -1154,6 +1203,9 @@ export async function* queryModel(
   // delivered on message_delta). Fed to the cache-break detector so a
   // clear_tool_uses drop is labeled as such instead of "likely server-side".
   let appliedContextEdits: BetaContextManagementResponse | null | undefined;
+  // The server's cache-miss diagnosis (cache-diagnosis beta), from
+  // message_start or message_delta; handed to the break detector.
+  let serverCacheMissReason: ServerCacheMissReason | null = null;
   let didFallBackToNonStreaming = false;
   let fallbackMessage: AssistantMessage | undefined;
   let maxOutputTokens = 0;
@@ -1377,6 +1429,8 @@ export async function* queryModel(
             partialMessage = part.message;
             ttftMs = Date.now() - start;
             usage = updateUsage(usage, part.message?.usage);
+            serverCacheMissReason =
+              readServerCacheMissReason(part.message) ?? serverCacheMissReason;
             break;
           }
           case "content_block_start":
@@ -1523,6 +1577,8 @@ export async function* queryModel(
           }
           case "message_delta": {
             usage = updateUsage(usage, part.usage);
+            serverCacheMissReason =
+              readServerCacheMissReason(part) ?? serverCacheMissReason;
             // NonNullableUsage deliberately omits `fallback_credit`
             // (src/platform/entrypoints/sdk/sdkUtilityTypes.ts) but the SDK's
             // BetaUsage — what these downstream sinks are typed against —
@@ -1658,6 +1714,7 @@ export async function* queryModel(
           options.agentId,
           streamRequestId,
           appliedContextEdits,
+          serverCacheMissReason,
         );
       }
 

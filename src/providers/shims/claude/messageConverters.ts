@@ -116,6 +116,28 @@ export function getPreviousRequestIdFromMessages(
   return undefined
 }
 
+const API_MESSAGE_ID_PREFIX = 'msg_'
+
+/**
+ * The API's own id for the most recent real response in this query chain,
+ * sent as cache-diagnosis's `previous_message_id`. Scoped per message array for
+ * the same reasons as getPreviousRequestIdFromMessages. A synthetic assistant
+ * message (an API error, an interruption) has no `msg_` id and is skipped.
+ */
+export function getPreviousMessageIdFromMessages(
+  messages: Message[],
+): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]!
+    if (msg.type !== 'assistant') continue
+    const id = msg.message?.id
+    if (typeof id === 'string' && id.startsWith(API_MESSAGE_ID_PREFIX)) {
+      return id
+    }
+  }
+  return undefined
+}
+
 // Media/tool-result checks are shared between AssistantMessage content
 // (BetaContentBlock, the response shape) and UserMessage content
 // (ContentBlockParam, the non-Beta param shape) — plus the nested,

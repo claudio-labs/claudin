@@ -29,6 +29,10 @@ import { getCanonicalName } from 'src/providers/model/model.js'
 import { get3PModelCapabilityOverride } from 'src/providers/model/modelSupportOverrides.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
+import {
+  isAdoptedBetaEnabled,
+  isRealFirstPartyEndpoint,
+} from 'src/providers/transport/adoptedBetas.js'
 
 /**
  * SDK-provided betas that are allowed for API key users.
@@ -292,11 +296,16 @@ export const getAllModelBetas = memoize((model: string): string[] => {
   // renders those as a stub. SDK / print-mode keep summaries because callers
   // may iterate over thinking content. Users can opt back in via settings.json
   // showThinkingSummaries.
+  //
+  // Not on the real first-party endpoint: there the request carries an
+  // explicit `thinking.display` (streaming.ts), which is what redact-thinking
+  // approximates, and the two are never sent together.
   if (
     includeFirstPartyOnlyBetas &&
     modelSupportsISP(model) &&
     !getIsNonInteractiveSession() &&
-    getInitialSettings().showThinkingSummaries !== true
+    getInitialSettings().showThinkingSummaries !== true &&
+    !isRealFirstPartyEndpoint()
   ) {
     betaHeaders.push(REDACT_THINKING_BETA_HEADER)
     // With thinking display omitted (redact-thinking), the only signal of
@@ -305,10 +314,25 @@ export const getAllModelBetas = memoize((model: string): string[] => {
     // during a long redacted thinking phase instead of appearing frozen.
     betaHeaders.push(THINKING_TOKEN_COUNT_BETA_HEADER)
   }
+  // The same counter on the real endpoint, where every Claude 5 model already
+  // returns thinking empty by default: without it the spinner freezes for the
+  // whole reasoning phase. Any session type, as Claude Code sends it.
+  if (
+    modelSupportsISP(model) &&
+    isAdoptedBetaEnabled('thinkingTokenCount') &&
+    !betaHeaders.includes(THINKING_TOKEN_COUNT_BETA_HEADER)
+  ) {
+    betaHeaders.push(THINKING_TOKEN_COUNT_BETA_HEADER)
+  }
 
   const thinkingPreservationEnabled = modelSupportsContextManagement(model)
 
-  if (shouldIncludeFirstPartyOnlyBetas() && thinkingPreservationEnabled) {
+  // Adopted: the header goes out on the real endpoint, but only with the
+  // `keep:"all"` edit — see getAPIContextManagement's `serverEdits`.
+  if (
+    (includeFirstPartyOnlyBetas || isAdoptedBetaEnabled('contextManagement')) &&
+    thinkingPreservationEnabled
+  ) {
     betaHeaders.push(CONTEXT_MANAGEMENT_BETA_HEADER)
   }
   // Preserved thinking: the API validates each replayed thinking block's
@@ -370,8 +394,11 @@ export const getAllModelBetas = memoize((model: string): string[] => {
     betaHeaders.push(WEB_SEARCH_BETA_HEADER)
   }
 
-  // Always send the beta header for 1P. The header is a no-op without a scope field.
-  if (includeFirstPartyOnlyBetas) {
+  // The header is a no-op without a scope field, and on its own it is what
+  // the adopted round sends: `scope:"global"` itself is a 400 for Claudin's
+  // request shape (docs/tech/anthropic-betas/wire-matrix.md), so it stays
+  // behind the experimental switch in shouldUseGlobalCacheScope.
+  if (includeFirstPartyOnlyBetas || isAdoptedBetaEnabled('promptCachingScope')) {
     betaHeaders.push(PROMPT_CACHING_SCOPE_BETA_HEADER)
   }
 
