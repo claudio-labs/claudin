@@ -13,7 +13,9 @@
  *   claudin body: control · cc-system (Claude Code's system prompt) ·
  *                 no-contract (without # Delivering work and # Corrections) ·
  *                 no-memory (without # Memory and # Scratchpad Directory) ·
- *                 no-reminders (without the skills, agent-type and git reminders)
+ *                 no-reminders (without the skills, agent-type and git reminders) ·
+ *                 cc-harness (Claude Code's # Harness in place of claudin's) ·
+ *                 no-guidance (without # Session-specific guidance and # Context management)
  *   claude body:  control · claudin-system (claudin's system prompt)
  *
  * Credentials: each CLI makes one short call through the proxy (`-p` in an
@@ -22,10 +24,15 @@
  * written.
  *
  * Usage:
- *   bun scripts/bench/ab/thinking-replay.ts --run=<run dir> [--reps=8] [--concurrency=4] [--only=control,cc-system] [--dry-run]
+ *   bun scripts/bench/ab/thinking-replay.ts --run=<run dir> [--reps=8] [--concurrency=4] [--only=control,cc-system] [--tag=<name>] [--dry-run]
  *
  * `--dry-run` builds and writes every variant body and prints what changed,
- * with no API call.
+ * with no API call. `--tag` writes to `<run dir>/replay-<tag>/` so a second
+ * batch on the same run keeps the first one's results.
+ *
+ * Read the table's range verdict as the floor: a single request's thinking
+ * varies ~2x between identical replays, so the report also prints an exact
+ * permutation p-value on the mean against the control.
  */
 import { spawn } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
@@ -49,7 +56,7 @@ const blocksOf = (v: unknown): Json[] => (Array.isArray(v) ? v.filter(isRecord) 
 const textOf = (b: Json): string => (typeof b.text === 'string' ? b.text : '')
 
 function parseArgs(argv: string[]) {
-  const a = { run: '', reps: 8, concurrency: 4, only: null as string[] | null, dryRun: false }
+  const a = { run: '', reps: 8, concurrency: 4, only: null as string[] | null, dryRun: false, tag: '' }
   for (const x of argv) {
     const [k, v = ''] = x.split(/=(.*)/s, 2) as [string, string?]
     if (k === '--run') a.run = v
@@ -57,6 +64,7 @@ function parseArgs(argv: string[]) {
     else if (k === '--concurrency') a.concurrency = Number(v)
     else if (k === '--only') a.only = v.split(',').filter(Boolean)
     else if (k === '--dry-run') a.dryRun = true
+    else if (k === '--tag') a.tag = v
     else {
       console.error(`unknown argument ${x}`)
       process.exit(2)
@@ -169,12 +177,30 @@ function withoutReminders(base: Json): Json {
   return { ...base, messages }
 }
 
+/** This body's `# <title>` section replaced by the other body's section of the same name. */
+function withSectionFrom(base: Json, other: Json, title: string): Json {
+  const replacement = sectionOf(other, title)
+  if (!replacement) return base
+  const system = blocksOf(base.system).map(b => {
+    const text = textOf(b)
+    if (!text) return b
+    const parts = text.split(/\n(?=# )/)
+    const i = parts.findIndex(p => p.replace(/^\n*/, '').startsWith(`# ${title}\n`))
+    if (i < 0) return b
+    parts[i] = `${replacement}\n`
+    return { ...b, text: parts.join('\n') }
+  })
+  return { ...base, system }
+}
+
 const VARIANTS: Variant[] = [
   { side: 'claudin', name: 'control', build: b => b },
   { side: 'claudin', name: 'cc-system', build: transplantSystem },
   { side: 'claudin', name: 'no-contract', build: b => withoutSections(b, ['Delivering work', 'Corrections']) },
   { side: 'claudin', name: 'no-memory', build: b => withoutSections(b, ['Memory', 'Scratchpad Directory']) },
   { side: 'claudin', name: 'no-reminders', build: withoutReminders },
+  { side: 'claudin', name: 'cc-harness', build: (b, o) => withSectionFrom(b, o, 'Harness') },
+  { side: 'claudin', name: 'no-guidance', build: b => withoutSections(b, ['Session-specific guidance', 'Context management']) },
   { side: 'claude', name: 'control', build: b => b },
   { side: 'claude', name: 'claudin-system', build: transplantSystem },
 ]
@@ -221,12 +247,40 @@ const median = (v: number[]): number => {
   const s = [...v].sort((a, b) => a - b)
   return s.length === 0 ? 0 : s.length % 2 ? s[(s.length - 1) / 2]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2
 }
+const mean = (v: number[]): number => v.reduce((a, b) => a + b, 0) / Math.max(1, v.length)
+
+/**
+ * Two-sided permutation p-value on the difference of means, over 20k seeded
+ * shuffles: how often a random split of the pooled samples is at least as far
+ * apart as the real one.
+ */
+function permutationP(a: number[], b: number[]): number {
+  const pooled = [...a, ...b]
+  const observed = Math.abs(mean(a) - mean(b))
+  let seed = 0x9e3779b9
+  const rand = () => {
+    seed ^= seed << 13
+    seed ^= seed >>> 17
+    seed ^= seed << 5
+    return (seed >>> 0) / 0x100000000
+  }
+  const rounds = 20_000
+  let hits = 0
+  for (let r = 0; r < rounds; r++) {
+    for (let i = pooled.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1))
+      ;[pooled[i], pooled[j]] = [pooled[j]!, pooled[i]!]
+    }
+    if (Math.abs(mean(pooled.slice(0, a.length)) - mean(pooled.slice(a.length))) >= observed - 1e-9) hits++
+  }
+  return (hits + 1) / (rounds + 1)
+}
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   const proxyDir = join(args.run, 'proxy')
   const picks: Record<Side, Pick> = { claudin: heaviest(proxyDir, ARM_OF.claudin), claude: heaviest(proxyDir, ARM_OF.claude) }
-  const outDir = join(args.run, 'replay')
+  const outDir = join(args.run, args.tag ? `replay-${args.tag}` : 'replay')
   mkdirSync(outDir, { recursive: true })
   const variants = VARIANTS.filter(v => !args.only || args.only.includes(v.name))
 
@@ -291,17 +345,23 @@ async function main(): Promise<void> {
   for (const side of ['claudin', 'claude'] as const) {
     const p = picks[side]
     lines.push(`## ${side} body: ${p.label} #${p.record.n} (${p.record.response?.thinkingTokens} thinking tokens in the session)`, '')
-    lines.push('| variant | n | thinking median [min–max] | output median | vs control |', '|---|---|---|---|---|')
+    lines.push(
+      '| variant | n | thinking median [min–max] | mean | output median | vs control (median, range) | permutation p (mean) |',
+      '|---|---|---|---|---|---|---|',
+    )
     const control = samples.filter(s => s.side === side && s.variant === 'control').map(s => s.thinking)
     for (const v of variants.filter(x => x.side === side)) {
       const t = samples.filter(s => s.side === side && s.variant === v.name)
       const th = t.map(s => s.thinking)
       if (!th.length) continue
-      const verdict =
-        v.name === 'control' || !control.length
-          ? ''
-          : `${(((median(th) - median(control)) / Math.max(1, median(control))) * 100).toFixed(0)}% ${Math.max(...th) < Math.min(...control) || Math.min(...th) > Math.max(...control) ? 'SEPARATED' : '(overlap)'}`
-      lines.push(`| ${v.name} | ${t.length} | ${median(th)} [${Math.min(...th)}–${Math.max(...th)}] | ${median(t.map(s => s.output))} | ${verdict} |`)
+      const vsControl = v.name !== 'control' && control.length > 0
+      const verdict = vsControl
+        ? `${(((median(th) - median(control)) / Math.max(1, median(control))) * 100).toFixed(0)}% ${Math.max(...th) < Math.min(...control) || Math.min(...th) > Math.max(...control) ? 'SEPARATED' : '(overlap)'}`
+        : ''
+      const p = vsControl ? permutationP(control, th).toFixed(3) : ''
+      lines.push(
+        `| ${v.name} | ${t.length} | ${median(th)} [${Math.min(...th)}–${Math.max(...th)}] | ${Math.round(mean(th))} | ${median(t.map(s => s.output))} | ${verdict} | ${p} |`,
+      )
     }
     lines.push('')
     for (const v of variants.filter(x => x.side === side)) {
