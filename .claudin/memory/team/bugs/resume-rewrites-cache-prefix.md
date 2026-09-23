@@ -53,10 +53,15 @@ recorded transcripts found it in seconds — now committed as
 - A persisted trailing attachment makes `detectTurnInterruption` report an
   interrupted turn and append "Continue from where you left off."; Stop hooks
   add attachments after the final reply.
-- Still not byte-stable after persisting: `plan_mode`, `file` (@-mention) and
-  todo/task reminders render live state; `currentDate` changes across days;
-  hook attachments recorded between a tool_use and its result sit off the
-  main chain and are not recovered.
+- Still not byte-stable after persisting (#239): `plan_mode` and `file`
+  (@-mention) rendered live state; hook output around a tool call sat off the
+  main chain. All three FIXED on `perf/session-cache-round-2` (2026-09-23):
+  recovery takes hook attachments by `toolUseID` plus everything written after
+  a recovered entry, and the two renderers replay a `rendered` snapshot
+  (todo/task already rendered from their own payload — the old claim was
+  stale). Left: `currentDate` across days, and with streaming tool execution a
+  result written before a later `tool_use` of the same response comes back
+  reordered. `cache.md` §7 is the current list.
 
 Claude Code 2.1.280 re-sends every message byte-identically (its only
 difference is the billing-header system block, which the API does not cache).

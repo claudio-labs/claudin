@@ -39,3 +39,10 @@ redirect, so there is currently no working wait primitive for anything over ~3s.
 Worth a regression test that asserts `reason === 'timeout'` for the repro above —
 the existing `WaitForTool.test.ts` calls `call()` directly and therefore cannot
 see this.
+
+**Workaround that works (2026-09-23, still open):** a tiny bun script that polls
+the file and sleeps inside itself — `bun wait-for-line.ts <file> <regex>
+<seconds>`, a loop over `readFileSync` + `await Bun.sleep(10_000)` until the
+regex matches or the deadline passes — run in the foreground with a Bash
+`timeout` up to 600000. Bash accepts it (one command, no shell loop), where
+`sleep N && …` is refused. Two calls waited out a ~16-minute bench run.

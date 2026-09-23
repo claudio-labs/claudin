@@ -1,6 +1,6 @@
 ---
 name: session-cache-ab-bench-2026-09-23
-description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume, N=3) — claudindev went from +53% to +7% (overlap) after fix/session-cache: resume 40%→100% read-back, cost −27% SEPARATED
+description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume) — +53% → +7% after fix/session-cache (resume 40%→100%); round 2 found the N=5 noise floor (a placebo arm moved cost −6%) and a time-of-day drift (main +12% by afternoon), so compare only simultaneous arms
 type: project
 ---
 
@@ -44,11 +44,14 @@ chars), but what it cuts is `cat`/`for … cat` file dumps capped to 15+15 lines
 (`FLOOR_CAP_LINES` 60), which the model then re-reads with Read. Replayed over
 Claude Code's Bash, it would remove 42.5% of the chars, mostly the same dumps.
 
-Also seen: claudin's `num_turns` counts tool-result messages
-(`QueryEngine.ts` `turnCount++` per user message: 36 reported for 17 calls);
-`total_cost_usd` after `--resume` is per process in claudin but cumulative in
-Claude Code; `ruleMapAutoSync` + memory dirs leave `?? .claudin/` in the
-user's tree and the model spent a Bash call reading it.
+Also seen: `num_turns` counts every user message, tool results included
+(`QueryEngine.ts` `turnCount++`) — the same rule as Claude Code 2.1.280's
+binary; claudin's is higher because each parallel result is its own message
+(kept as is). `total_cost_usd` after `--resume` was per process in claudin but
+cumulative in Claude Code — FIXED in round 2 (a `cost-state` transcript
+entry). `ruleMapAutoSync` + memory dirs leave `?? .claudin/` in the user's tree
+and the model spends a Bash call reading it — by design (the repo map is meant
+to orient the model).
 
 **After PR #239 (`fix/session-cache`; same A/B re-run 2026-09-23, both arms, N=3, all
 6 runs 18/18 + committed):** resume persistence and parallel-result order
@@ -72,3 +75,52 @@ cache reads (+46%, more tool calls: Read ×23 vs Claude Code's `cat` batches)
 and output (+6%). The first re-run, before the parallel-order fix, still read
 back 41%/60%/100% — see the bug memory for how it was found.
 Runs: before `/tmp/session-cache-ab/20260923-042026`, after `-062408`.
+
+**Round 2 (`perf/session-cache-round-2`, run `-155324` @3a4eaa21, N=5,
+claudindev arms only, all 20 runs 18/18 + one conventional commit, no AI
+trailer):**
+
+| median | claudindev | readcat | credit | lean |
+|---|---|---|---|---|
+| turns | 23 | 19 | 19 | 23 |
+| tool calls | 43 | 36 | 38 | 41 |
+| first-turn context | 29,436 | = | = | 28,375 (SEPARATED) |
+| cost | $1.60 | $1.54 (−4%) | $1.50 (−6%) | $1.51 (−6%) |
+
+- The branch baseline opens 1.0k below #239's 30.4k: in `-p` the Agent
+  description and the system prompt stop teaching the hidden
+  `run_in_background` (unflagged).
+- **`credit` was a placebo** — its credit let no edit through in 10 runs — and
+  still moved turns −17%, cost −6%: that is this bench's noise floor at N=5.
+  `readcat` passed its median gate inside that band and was not promoted
+  ([[bash-read-passthrough-not-promoted]]).
+- `lean` (git + agent text) met its gate: first turn −1,061 (probe −1,227
+  ±300), cost ≤ baseline +3%. Both lean texts are the default since (the
+  Agent half also passed [[delegation-steer-ab-2026-09-23]]).
+- Every claudindev run's resumed process now reports the whole session's
+  `total_cost_usd`, equal to the priced cost.
+- This run's baseline paid $0.69 of output against −062408's $0.58 on the
+  same prompts: output swings ~20% between runs — compare arms within a run.
+
+**Final round + the time-of-day trap (same day).** Claude Code vs the final
+branch build (`-175528` @7c5782af, N=5): $1.25 vs $1.64, +32% (overlap), where
+the morning's `-062408` had said +7%. Claude Code stayed flat all day
+($1.28 → $1.25) while every claudindev arm cost more in the afternoon — so
+main and the branch were run SIMULTANEOUSLY (`-182338` main build via
+`--bin-claudindev`, `-182346` branch, merged with `--replay=…@main,…@branch`):
+
+| median, N=5 each | main | branch |
+|---|---|---|
+| cost | $1.53 | $1.65 (+8%, overlap) |
+| first-turn context | 30.4k | 28.4k (SEPARATED) |
+| turns | 24 | 21 (SEPARATED) |
+| output | 31.9k | 39.8k (+25%, overlap) |
+| cache read | 1.46M | 1.22M (−16%, overlap) |
+
+Main itself went $1.37 → $1.53 between morning and afternoon, so most of the
++7% → +32% is time of day, not the branch. Read a cross-CLI gap only from arms
+run at the same time; a claudin-vs-claudin question needs its own simultaneous
+arms. The branch's output (+25%: fewer turns, bigger patches) is the number to
+watch next. In 3 of 5 final-round runs an ~8k-char multi-file patch was refused
+because README.md had only been `cat`'d (and capped) — the model re-sends the
+whole patch, a recurring output cost on both builds.

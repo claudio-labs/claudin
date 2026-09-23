@@ -44,11 +44,19 @@ Candidates, ≈ tokens saved per request:
 - defer Workflow ×3 + Rename, ~1.7k — low risk, nothing eager names them; DONE
   on `fix/session-cache`, first-turn context measured 32.1k → 30.4k;
 - Agent description, ~1.3–1.8k — examples 3.7k chars, and its fork/fresh and
-  foreground/background guidance repeats the system prompt; it carries the
-  fork-vs-fresh A/B result and has never been A/B'd;
-- git instructions reminder, up to 1.4k (`CLAUDIN_DISABLE_GIT_INSTRUCTIONS`);
-  51% of sessions commit, so it needs an A/B;
-- agent listing: the user's WebResearcher* descriptions are 1.6k of its 2.3k chars;
+  foreground/background guidance repeats the system prompt. Round 2
+  (`perf/session-cache-round-2`): where `run_in_background` is hidden (`-p`,
+  background off) the description and the system prompt stop teaching it and
+  `name` — unflagged, 10.0k → 7.5k chars, first turn measured 30.4k → 29.4k;
+  the dedup with the system prompt is `CLAUDIN_LEAN_AGENT_PROMPT`, gated by
+  `delegation-steer-ab.ts`;
+- git instructions reminder, 3.9k chars: a lean body with every rule kept
+  (2.3k, ~580 tokens less) is the DEFAULT since round 2, and agents that never
+  commit (read-only brief, Plan, WebResearcher*) get none;
+  `CLAUDIN_LEAN_GIT_INSTRUCTIONS=0` restores the full text;
+- agent listing: WebResearcher* are BUILT-IN agents (`builtInAgents.ts`), not
+  user ones — 1.5k of the 2.3k chars; `whenToUseLean` halves them under
+  `CLAUDIN_LEAN_AGENT_PROMPT`;
 - defer Build/Typecheck, ~2.65k — HIGH risk: the Bash redirects name them, so a
   deferred target costs a ToolSearch round trip in 32–45% of sessions.
 
