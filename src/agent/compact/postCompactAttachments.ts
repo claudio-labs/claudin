@@ -19,6 +19,7 @@ import { MEMORY_TYPE_VALUES } from 'src/memory/memdir/types.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
+import { snapshotPlanModeReminder } from 'src/agent/messages/planMode.js'
 import { getProjectInstructionFilePaths } from 'src/memory/instructions/projectInstructions.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
@@ -91,13 +92,24 @@ export async function createPostCompactFileAttachments(
     if (result === null) {
       return false
     }
-    const attachmentTokens = roughTokenCountEstimation(jsonStringify(result))
+    const attachmentTokens = roughTokenCountEstimation(
+      jsonStringify(result, withoutRenderedSnapshot),
+    )
     if (usedTokens + attachmentTokens <= POST_COMPACT_TOKEN_BUDGET) {
       usedTokens += attachmentTokens
       return true
     }
     return false
   })
+}
+
+/**
+ * A restored file keeps its Read block as rendered, for a resumed process to
+ * re-send (FileAttachment.rendered). That block is the same file again,
+ * line-numbered, so counting it too would spend the budget twice per file.
+ */
+function withoutRenderedSnapshot(key: string, value: unknown): unknown {
+  return key === 'rendered' ? undefined : value
 }
 
 /**
@@ -247,12 +259,17 @@ export async function createPlanModeAttachmentIfNeeded(
   const planFilePath = getPlanFilePath(context.agentId)
   const planExists = getPlan(context.agentId) !== null
 
-  return createAttachmentMessage({
-    type: 'plan_mode',
-    reminderType: 'full',
+  const planMode = {
+    type: 'plan_mode' as const,
+    reminderType: 'full' as const,
     isSubAgent: false,
     planFilePath,
     planExists,
+  }
+  // The brief as it renders now, which a resumed process re-sends.
+  return createAttachmentMessage({
+    ...planMode,
+    rendered: snapshotPlanModeReminder(planMode),
   })
 }
 

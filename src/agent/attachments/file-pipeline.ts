@@ -12,6 +12,7 @@ import { isPDFExtension } from 'src/shared/fs/pdfUtils.js'
 import { PDF_AT_MENTION_INLINE_THRESHOLD } from 'src/shared/constants/apiLimits.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { countCharInString } from 'src/shared/text/stringUtils.js'
+import { snapshotReadResultText } from 'src/tools/FileReadTool/resultContent.js'
 import {
   getFileModificationTimeAsync,
   isFileWithinReadSizeLimit,
@@ -196,6 +197,7 @@ export async function generateFileAttachment(
           content: result.data,
           truncated: true,
           displayPath: relative(getCwd(), filename),
+          rendered: snapshotReadResultText(result.data),
         }
       } catch {
         return null
@@ -215,6 +217,9 @@ export async function generateFileAttachment(
         filename,
         content: result.data,
         displayPath: relative(getCwd(), filename),
+        // The Read block as it renders now, while the result still has the
+        // identity its reminder is keyed on: a resumed process re-sends it.
+        rendered: snapshotReadResultText(result.data),
       }
     } catch (error) {
       if (

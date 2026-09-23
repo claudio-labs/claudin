@@ -32,13 +32,50 @@ export function getPlanModeScratchClause(): string {
   return ` Scratch files and throwaway scripts go under the session scratchpad, ${getScratchpadDir()} — writing there is allowed in plan mode, and a Bash command that only reads, or only writes there, is judged rather than refused when auto mode is on.`
 }
 
-export function getPlanModeInstructions(attachment: {
+type PlanModeReminderFields = {
   reminderType: 'full' | 'sparse'
   isSubAgent?: boolean
   canExitPlanMode?: boolean
   planFilePath: string
   planExists: boolean
-}): UserMessage[] {
+}
+
+export function getPlanModeInstructions(
+  attachment: PlanModeReminderFields & { rendered?: string },
+): UserMessage[] {
+  // Rendered by the producer (snapshotPlanModeReminder): what the model
+  // received, whatever the live state reads now.
+  if (attachment.rendered !== undefined) {
+    return [createUserMessage({ content: attachment.rendered, isMeta: true })]
+  }
+  return renderPlanModeInstructions(attachment)
+}
+
+/**
+ * The reminder a plan_mode attachment renders to now, for its producer to
+ * keep on the attachment (`rendered`). The text reads the interview flag, the
+ * Plan-agent count, the Phase 4 variant, allowedTools and the scratchpad
+ * path, any of which can differ by the time a resumed process renders the
+ * same attachment — and one changed byte re-writes the prompt cache from
+ * there on (.claudin/rules/cache.md §7).
+ */
+export function snapshotPlanModeReminder(
+  attachment: PlanModeReminderFields,
+  // Injected only by the test of the guard below, which no renderer reaches.
+  render: (fields: PlanModeReminderFields) => UserMessage[] = renderPlanModeInstructions,
+): string | undefined {
+  const [message, ...rest] = render(attachment)
+  // One text message today. Any other shape renders live rather than keeping
+  // part of it.
+  if (rest.length > 0 || typeof message?.message.content !== 'string') {
+    return undefined
+  }
+  return message.message.content
+}
+
+function renderPlanModeInstructions(
+  attachment: PlanModeReminderFields,
+): UserMessage[] {
   if (attachment.isSubAgent) {
     return getPlanModeV2SubAgentInstructions(attachment)
   }

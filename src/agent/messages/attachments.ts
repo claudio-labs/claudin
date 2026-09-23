@@ -143,7 +143,11 @@ Read the team config to discover your teammates' names. Check the task list peri
             createToolUseMessage(FileReadTool.name, {
               file_path: attachment.filename,
             }),
-            createToolResultMessage(FileReadTool, fileContent),
+            // The block as it rendered at creation (snapshotReadResultText):
+            // rendering the result again loses what rode on its identity.
+            attachment.rendered !== undefined
+              ? createRenderedToolResultMessage(FileReadTool.name, attachment.rendered)
+              : createToolResultMessage(FileReadTool, fileContent),
             ...(attachment.truncated
               ? [
                   createUserMessage({
@@ -1004,16 +1008,23 @@ function createToolResultMessage<Output>(
       typeof result.content === 'string'
         ? result.content
         : jsonStringify(result.content)
-    return createUserMessage({
-      content: `Result of calling the ${tool.name} tool:\n${contentStr}`,
-      isMeta: true,
-    })
+    return createRenderedToolResultMessage(tool.name, contentStr)
   } catch {
     return createUserMessage({
       content: `Result of calling the ${tool.name} tool: Error`,
       isMeta: true,
     })
   }
+}
+
+function createRenderedToolResultMessage(
+  toolName: string,
+  content: string,
+): UserMessage {
+  return createUserMessage({
+    content: `Result of calling the ${toolName} tool:\n${content}`,
+    isMeta: true,
+  })
 }
 
 function createToolUseMessage(

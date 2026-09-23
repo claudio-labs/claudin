@@ -12,18 +12,30 @@
 // the API.
 
 import { describe, expect, test } from 'bun:test'
+import type { UUID } from 'crypto'
 import {
   type Attachment,
   createAttachmentMessage,
 } from 'src/agent/attachments/attachments.js'
+import { getPlanModeAttachments } from 'src/agent/attachments/lifecycle.js'
 import {
   createAssistantMessage,
   createUserMessage,
   normalizeMessagesForAPI,
 } from 'src/agent/messages/messages.js'
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js'
-import { cleanMessagesForLogging } from 'src/sessions/sessionStorage.js'
-import type { Message } from 'src/shared/types/message.js'
+import { buildConversationChain } from 'src/sessions/resume/chain.js'
+import { cleanMessagesForLogging, removeExtraFields } from 'src/sessions/sessionStorage.js'
+import type { TranscriptMessage } from 'src/shared/types/logs.js'
+import type { AssistantMessage, Message } from 'src/shared/types/message.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import {
+  _resetReadReminderStateForTesting,
+  _setMitigationModelResolverForTesting,
+  maybeFlagReadReminder,
+  snapshotReadResultText,
+} from 'src/tools/FileReadTool/resultContent.js'
+import type { Output as ReadOutput } from 'src/tools/FileReadTool/schemas.js'
 
 // Every real request starts with this block (prependUserContext), which does
 // nothing under NODE_ENV=test — so it is added here. It is load-bearing: the
@@ -48,7 +60,43 @@ function resumedFromTranscript(history: Message[]): Message[] {
   return deserializeMessages(onDisk)
 }
 
+// The same round trip through the parentUuid links insertMessageChain
+// (src/sessions/persistence/project.ts) writes: each entry hangs off the one
+// written before it, except a tool_result, which is re-parented to the
+// one-block assistant that issued its tool_use. Resume walks that graph back
+// from the leaf, and anything around a tool call can end up off the branch it
+// takes — invisible to resumedFromTranscript, which never builds the links.
+function resumedThroughChain(history: Message[]): Message[] {
+  const written = JSON.parse(JSON.stringify(cleanMessagesForLogging(history))) as TranscriptMessage[]
+  const byUuid = new Map<UUID, TranscriptMessage>()
+  let previous: UUID | null = null
+  for (const m of written) {
+    const source = m.type === 'user' ? m.sourceToolAssistantUUID : undefined
+    byUuid.set(m.uuid, { ...m, parentUuid: source ?? previous, isSidechain: false })
+    previous = m.uuid
+  }
+  const leaf = byUuid.get(written.at(-1)!.uuid)!
+  return deserializeMessages(removeExtraFields(buildConversationChain(byUuid, leaf)))
+}
+
 const attachment = (a: Attachment): Message => createAttachmentMessage(a)
+
+// Parallel tool_use blocks stream as one assistant message each, sharing the
+// API message id.
+function readCall(toolUseId: string, filePath: string, messageId?: string): AssistantMessage {
+  const m = createAssistantMessage({
+    content: [{ type: 'tool_use' as const, id: toolUseId, name: 'Read', input: { file_path: filePath } }],
+  })
+  if (messageId) m.message.id = messageId
+  return m
+}
+const readResult = (call: AssistantMessage, toolUseId: string, content: string): Message =>
+  createUserMessage({
+    content: [{ type: 'tool_result', tool_use_id: toolUseId, content }],
+    sourceToolAssistantUUID: call.uuid,
+  })
+const hookContext = (toolUseId: string, hookEvent: 'PreToolUse' | 'PostToolUse', text: string): Message =>
+  attachment({ type: 'hook_additional_context', content: [text], hookName: `${hookEvent}:Read`, toolUseID: toolUseId, hookEvent })
 
 const RULE_PATH = '/repo/.claudin/rules/typescript.md'
 
@@ -128,5 +176,115 @@ describe('resume re-sends the prefix the previous process sent', () => {
   test('a rule folded into a tool result is still there after resume', () => {
     const rendered = JSON.stringify(sentToAPI(resumedFromTranscript(finishedTurn())))
     expect(rendered).toContain(`Contents of ${RULE_PATH}`)
+  })
+})
+
+describe('hook output recorded around a tool call survives resume', () => {
+  // Live, hook output is folded into the tool_result it follows, so losing one
+  // entry changes the bytes of that block and misses the cache from there on.
+
+  test('PreToolUse output written between the tool_use and its result', () => {
+    const call = readCall('toolu_01', '/repo/src/quote.ts')
+    const live = [
+      createUserMessage({ content: 'What does quote.ts export?' }),
+      call,
+      hookContext('toolu_01', 'PreToolUse', 'quote.ts is generated; do not edit it.'),
+      readResult(call, 'toolu_01', '1→export function quote() {}'),
+      createAssistantMessage({ content: 'It exports quote().' }),
+    ]
+    expect(JSON.stringify(sentToAPI(resumedThroughChain(live)))).toBe(JSON.stringify(sentToAPI(live)))
+  })
+
+  test('PostToolUse output of each parallel tool, not only the last one written', () => {
+    const readA = readCall('toolu_A', '/repo/src/a.ts', 'msg_parallel')
+    const readB = readCall('toolu_B', '/repo/src/b.ts', 'msg_parallel')
+    const live = [
+      createUserMessage({ content: 'Compare a.ts and b.ts.' }),
+      readA,
+      readB,
+      readResult(readA, 'toolu_A', '1→export const a = 1'),
+      hookContext('toolu_A', 'PostToolUse', 'a.ts is owned by the billing team.'),
+      readResult(readB, 'toolu_B', '1→export const b = 2'),
+      hookContext('toolu_B', 'PostToolUse', 'b.ts is owned by the search team.'),
+      createAssistantMessage({ content: 'Both export one constant.' }),
+    ]
+    expect(JSON.stringify(sentToAPI(resumedThroughChain(live)))).toBe(JSON.stringify(sentToAPI(live)))
+  })
+})
+
+describe('reminders render what they were created with, not live state', () => {
+  // Render, persist, change the state the renderer reads, render the
+  // persisted copy: a resumed process may run under a different flag, model
+  // or config than the one that sent the reminder, and must still re-send it.
+  // Each also checks the snapshot against the live renderer at creation, or
+  // a snapshot that drifted would pass by being equally wrong both times.
+  const turn = (prompt: string, reminder: Attachment, reply: string): Message[] => [
+    createUserMessage({ content: prompt }),
+    attachment(reminder),
+    createAssistantMessage({ content: reply }),
+  ]
+  const withoutSnapshot = (a: Attachment): Attachment => {
+    const { rendered: _, ...rest } = a as Attachment & { rendered?: string }
+    return rest as Attachment
+  }
+
+  test('plan_mode', async () => {
+    const saved = process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE
+    try {
+      process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE = '1'
+      const inPlanMode = {
+        agentId: undefined,
+        getAppState: () => ({ toolPermissionContext: { mode: 'plan' } }),
+      } as unknown as ToolUseContext
+      const planMode = (await getPlanModeAttachments([], inPlanMode)).find(a => a.type === 'plan_mode')!
+      const live = turn('Plan the cache refactor.', planMode, 'Reading the cache policy first.')
+      const sent = JSON.stringify(sentToAPI(live))
+      expect(JSON.stringify(sentToAPI(turn('Plan the cache refactor.', withoutSnapshot(planMode), 'Reading the cache policy first.')))).toBe(sent)
+
+      const resumed = resumedFromTranscript(live)
+      // Which workflow the reminder describes is read on every render.
+      process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE = '0'
+      expect(JSON.stringify(sentToAPI(resumed))).toBe(sent)
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE
+      else process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE = saved
+    }
+  })
+
+  test('an @-mentioned file', () => {
+    // The Read block carries a once-per-agent reminder keyed on the result
+    // OBJECT, gated on the live model — a transcript round trip loses the
+    // first, and a resume under another model flips the second.
+    const FILE = '/repo/src/quote.ts'
+    _resetReadReminderStateForTesting()
+    _setMitigationModelResolverForTesting(() => 'claude-sonnet-5')
+    try {
+      const data: ReadOutput = {
+        type: 'text',
+        file: { filePath: FILE, content: 'export function quote() {}', numLines: 1, startLine: 1, totalLines: 1 },
+      }
+      // What FileReadTool.call() does for the read behind an @-mention.
+      maybeFlagReadReminder(data, { agentId: undefined })
+      // The snapshot is taken where the attachment is created, while the
+      // result still has its identity.
+      const mentioned: Attachment = {
+        type: 'file',
+        filename: FILE,
+        content: data,
+        displayPath: 'src/quote.ts',
+        rendered: snapshotReadResultText(data),
+      }
+      const live = turn('What does @src/quote.ts do?', mentioned, 'It formats a price.')
+      const sent = JSON.stringify(sentToAPI(live))
+      expect(sent).toContain('consider whether it would be considered malware')
+      expect(JSON.stringify(sentToAPI(turn('What does @src/quote.ts do?', withoutSnapshot(mentioned), 'It formats a price.')))).toBe(sent)
+
+      const resumed = resumedFromTranscript(live)
+      _setMitigationModelResolverForTesting(() => 'claude-opus-5-5')
+      expect(JSON.stringify(sentToAPI(resumed))).toBe(sent)
+    } finally {
+      _setMitigationModelResolverForTesting(undefined)
+      _resetReadReminderStateForTesting()
+    }
   })
 })

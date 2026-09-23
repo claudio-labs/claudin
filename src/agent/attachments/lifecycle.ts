@@ -29,6 +29,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { isHumanTurn } from 'src/agent/messages/messagePredicates.js'
 import { isThinkingMessage } from 'src/agent/messages/messages.js'
+import { snapshotPlanModeReminder } from 'src/agent/messages/planMode.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/shared/types/message.js'
@@ -181,14 +182,16 @@ export async function getPlanModeAttachments(
       ? 'full'
       : 'sparse'
 
-  // Always add the main plan_mode attachment
-  attachments.push({
-    type: 'plan_mode',
+  // Always add the main plan_mode attachment, carrying the text it renders
+  // now: a resumed process re-sends that instead of re-reading live state.
+  const planMode = {
+    type: 'plan_mode' as const,
     reminderType,
     isSubAgent: !!toolUseContext.agentId,
     planFilePath,
     planExists: existingPlan !== null,
-  })
+  }
+  attachments.push({ ...planMode, rendered: snapshotPlanModeReminder(planMode) })
 
   return attachments
 }

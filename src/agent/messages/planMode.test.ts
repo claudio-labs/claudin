@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
+import { createUserMessage } from 'src/agent/messages/factories.js'
+import { snapshotPlanModeReminder } from 'src/agent/messages/planMode.js'
 
-// planMode.ts reaches FileEditTool/FileWriteTool/ExitPlanModeV2Tool, whose
-// import chain hits the Ink renderer — unimportable under `bun test` (see
-// .claudin/rules/testing.md). The phase text is a template literal in the
-// file, so assert on the source.
+// The wording tests assert on the source: the phase text is a template literal
+// in planMode.ts, and a render shows only the arm the current flags select.
+// The snapshot guard at the bottom calls the module.
 const src = readFileSync(new URL('./planMode.ts', import.meta.url), 'utf8')
 
 describe('plan mode V2 — Phase 1', () => {
@@ -96,5 +97,29 @@ describe('plan mode — the sub-agent brief (#224)', () => {
     // so the plan-file guidance is not dead — it is gated, not deleted.
     expect(src).toContain('if (!attachment.canExitPlanMode)')
     expect(src).toContain('${ASK_USER_QUESTION_TOOL_NAME} tool')
+  })
+})
+
+describe('snapshotPlanModeReminder keeps a reminder whole or not at all', () => {
+  // The snapshot is what a resumed process re-sends in place of the render.
+  // Every renderer returns one text message today, so the guard is reached
+  // only through an injected render: any other shape keeps nothing, and the
+  // attachment renders live rather than re-sending part of what was sent.
+  const FIELDS = { reminderType: 'full', planFilePath: '/plans/p.md', planExists: false } as const
+  const text = (content: string) => createUserMessage({ content, isMeta: true })
+
+  test('one text message is kept as it is', () => {
+    expect(snapshotPlanModeReminder(FIELDS, () => [text('Plan mode is active.')])).toBe(
+      'Plan mode is active.',
+    )
+  })
+
+  test('any other shape is not kept', () => {
+    // Keeping the first of two would drop the second on resume.
+    expect(snapshotPlanModeReminder(FIELDS, () => [text('first'), text('second')])).toBeUndefined()
+    const blocks = createUserMessage({ content: [{ type: 'text', text: 'blocks' }], isMeta: true })
+    expect(snapshotPlanModeReminder(FIELDS, () => [blocks])).toBeUndefined()
+    // Nothing rendered is not an empty reminder.
+    expect(snapshotPlanModeReminder(FIELDS, () => [])).toBeUndefined()
   })
 })
