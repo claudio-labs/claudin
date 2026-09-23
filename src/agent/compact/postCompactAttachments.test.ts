@@ -3,7 +3,11 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
+import {
+  FileStateCache,
+  createFileStateCacheWithSizeLimit,
+  READ_FILE_STATE_CACHE_SIZE,
+} from 'src/shared/fs/fileStateCache.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
 import {
   satisfiesReadGate,
@@ -12,10 +16,13 @@ import {
 import {
   createPlanAttachmentIfNeeded,
   createPlanModeAttachmentIfNeeded,
+  createPostCompactFileAttachments,
   seedPlanFileState,
 } from 'src/agent/compact/postCompactAttachments.js'
+import { getPlanModeInstructions } from 'src/agent/messages/planMode.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentId } from 'src/shared/types/ids.js'
+import type { UserMessage } from 'src/shared/types/message.js'
 
 let dir: string
 
@@ -154,5 +161,80 @@ describe('createPlanModeAttachmentIfNeeded', () => {
       type: 'plan_mode',
       isSubAgent: false,
     })
+  })
+
+  test('both wordings carry the brief they render now, for a resume to re-send', async () => {
+    // The text reads flags, config and the scratchpad path, any of which a
+    // resumed process can see differently (.claudin/rules/cache.md §7).
+    // Checked against the live renderer, or a snapshot of the wrong wording
+    // would pass.
+    const texts = (messages: UserMessage[]) => messages.map(m => m.message.content)
+    for (const context of [
+      makeContext({ mode: 'plan', toolNames: ['Read'] }),
+      makeContext({ agentId: CHILD, mode: 'plan', toolNames: ['Read', 'ExitPlanMode'] }),
+    ]) {
+      const planMode = (await createPlanModeAttachmentIfNeeded(context))?.attachment
+      if (planMode?.type !== 'plan_mode') throw new Error('expected a plan_mode attachment')
+      const { rendered, ...live } = planMode
+
+      expect(rendered).toBeString()
+      expect(texts(getPlanModeInstructions(planMode))).toEqual(texts(getPlanModeInstructions(live)))
+    }
+  })
+})
+
+describe('createPostCompactFileAttachments', () => {
+  let priorSimpleMode: string | undefined
+  beforeAll(() => {
+    // Skill discovery on the restored paths touches the real filesystem and
+    // is irrelevant here.
+    priorSimpleMode = process.env.CLAUDIN_SIMPLE
+    process.env.CLAUDIN_SIMPLE = '1'
+  })
+  afterAll(() => {
+    if (priorSimpleMode === undefined) delete process.env.CLAUDIN_SIMPLE
+    else process.env.CLAUDIN_SIMPLE = priorSimpleMode
+  })
+
+  function makeReadContext(): ToolUseContext {
+    return {
+      abortController: new AbortController(),
+      readFileState: createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE),
+      getAppState: () => ({
+        toolPermissionContext: {
+          mode: 'default',
+          additionalWorkingDirectories: new Map(),
+          alwaysAllowRules: {},
+          alwaysDenyRules: {},
+          alwaysAskRules: {},
+          isBypassPermissionsModeAvailable: true,
+        },
+      }),
+      setAppState: () => {},
+      options: {},
+    } as unknown as ToolUseContext
+  }
+
+  test('a restored file counts once against the budget, not again for its snapshot', async () => {
+    // A restored file keeps its Read block as rendered, for a resume to
+    // re-send (FileAttachment.rendered) — the same file again, line-numbered.
+    // Thirty files of ~1k tokens fit the 50k budget counted once and do not
+    // fit it counted twice. Each stays under a quarter of the per-file cap,
+    // so no read reaches the token-count API.
+    const body = Array.from({ length: 100 }, (_, i) => `row ${i}`.padEnd(39, '.')).join('\n')
+    const readFileState: Record<string, { content: string; timestamp: number }> = {}
+    for (let i = 0; i < 30; i++) {
+      const p = join(dir, `restored-${i}.txt`)
+      writeFileSync(p, body)
+      readFileState[p] = { content: body, timestamp: i }
+    }
+
+    const restored = await createPostCompactFileAttachments(readFileState, makeReadContext(), 30)
+
+    // The snapshot is there to be counted, so it is the budget that decides.
+    expect(
+      restored.every(m => m.attachment.type === 'file' && m.attachment.rendered !== undefined),
+    ).toBe(true)
+    expect(restored).toHaveLength(30)
   })
 })

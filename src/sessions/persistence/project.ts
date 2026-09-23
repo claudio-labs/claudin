@@ -94,6 +94,7 @@ import {
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
+import { getCostStateEntryFor } from 'src/agent/cost-tracker.js'
 import {
   appendEntryToFile,
   readFileTailSync,
@@ -158,6 +159,11 @@ export function getProject(): Project {
           project?.reAppendSessionMetadata()
         } catch {
           // Best-effort — don't let metadata re-append crash the cleanup
+        }
+        try {
+          project?.reAppendCostState()
+        } catch (e) {
+          logError(e)
         }
       })
       cleanupRegistered = true
@@ -524,6 +530,21 @@ export class Project {
         timestamp: new Date().toISOString(),
       })
     }
+  }
+
+  /**
+   * Stamp the session's running cost at EOF — Claude Code's exit re-stamp of
+   * its `cost-state` entry, which --resume and -c restore (last one wins).
+   * Called by the exit cleanup below and by saveCurrentSessionCosts (/clear
+   * and /resume before they switch away, the REPL's process 'exit'), hence
+   * sync. Unlike reAppendSessionMetadata it does not run at materialize or
+   * compaction: a stamp taken there would outrank the message replay of a
+   * session that then crashed before its exit.
+   */
+  reAppendCostState(): void {
+    if (!this.sessionFile || this.shouldSkipPersistence()) return
+    const entry = getCostStateEntryFor(getSessionId())
+    if (entry) appendEntryToFile(this.sessionFile, entry)
   }
 
   async flush(): Promise<void> {
@@ -910,6 +931,9 @@ export class Project {
       // Mode entries can always be appended
       void this.enqueueWrite(sessionFile, entry)
     } else if (entry.type === 'worktree-state') {
+      void this.enqueueWrite(sessionFile, entry)
+    } else if (entry.type === 'cost-state') {
+      // Last-wins on restore; never joins the message chain.
       void this.enqueueWrite(sessionFile, entry)
     } else if (entry.type === 'content-replacement') {
       // Content replacement records can always be appended. Subagent records

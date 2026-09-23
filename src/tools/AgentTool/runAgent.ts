@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isLeanGitInstructionsEnabled } from 'src/tools/BashTool/prompt.js'
 import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands/commands.js'
 import {
@@ -471,6 +472,13 @@ export async function* runAgent({
     ? systemContextNoGit
     : baseSystemContext
 
+  // Agents that never commit or open a PR (read-only briefs, Plan, the web
+  // researchers) skip the commit/PR protocol attachment. It ships with the
+  // lean protocol text, so it waits on the same A/B flag.
+  const shouldOmitGitInstructions =
+    agentDefinition.omitGitInstructions === true &&
+    isLeanGitInstructionsEnabled()
+
   // Override permission mode if agent defines one
   // However, don't override if parent is in bypassPermissions or acceptEdits mode - those should always take precedence
   // For async agents, also set shouldAvoidPermissionPrompts since they can't show UI
@@ -804,6 +812,10 @@ export async function* runAgent({
     omitClaudeMdAttachments: shouldOmitClaudeMd,
     omitMemoryIndexAttachments: shouldOmitMemoryIndexes,
     omitGitStatusAttachments: shouldOmitGitStatus,
+    // No context-side twin: the commit/PR protocol only ever arrives as the
+    // bash_git_instructions attachment. Passed here, not assigned afterwards,
+    // so a fork of this agent (the background summary) inherits it too.
+    omitGitInstructionsAttachments: shouldOmitGitInstructions,
   })
 
   // Preserve tool use results for subagents with viewable transcripts (in-process teammates)

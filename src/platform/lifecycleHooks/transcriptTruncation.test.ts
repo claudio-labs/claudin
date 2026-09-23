@@ -100,4 +100,33 @@ describe('truncateTranscriptForHookEvaluator', () => {
     expect(result.omittedCount).toBe(0)
     expect(result.messages).toEqual([])
   })
+
+  // A file attachment keeps the Read block it rendered at creation
+  // (`rendered`, types.ts): the same file again. 250k chars is 62-78k tokens
+  // at the estimator's 3.2-4 bytes/token, inside the 100k budget; counted
+  // twice it is 125-156k, over it, and the oldest message would be dropped.
+  test('a file attachment counts once, not again for the block it rendered', () => {
+    const body = 'f'.repeat(250_000)
+    const attachment = {
+      type: 'attachment',
+      uuid: '00000000-0000-4000-8000-00000000f11e',
+      timestamp: '2026-09-23T10:00:00.000Z',
+      attachment: {
+        type: 'file',
+        filename: '/repo/big.txt',
+        displayPath: 'big.txt',
+        content: {
+          type: 'text',
+          file: { filePath: '/repo/big.txt', content: body, numLines: 1, startLine: 1, totalLines: 1 },
+        },
+        rendered: `     1\t${body}`,
+      },
+    } as unknown as Message
+    const messages = [userMessage('what does big.txt say?'), attachment]
+
+    const result = truncateTranscriptForHookEvaluator(messages, MODEL)
+
+    expect(result.omittedCount).toBe(0)
+    expect(result.messages).toBe(messages)
+  })
 })

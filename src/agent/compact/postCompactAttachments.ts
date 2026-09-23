@@ -14,11 +14,13 @@ import {
   FILE_UNCHANGED_STUB,
 } from 'src/tools/FileReadTool/prompt.js'
 import { createAttachmentMessage, generateFileAttachment } from 'src/agent/attachments/attachments.js'
+import { withoutRenderedSnapshot } from 'src/agent/attachments/renderedSnapshot.js'
 import { getMemoryPath } from 'src/platform/config/config.js'
 import { MEMORY_TYPE_VALUES } from 'src/memory/memdir/types.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
+import { snapshotPlanModeReminder } from 'src/agent/messages/planMode.js'
 import { getProjectInstructionFilePaths } from 'src/memory/instructions/projectInstructions.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
@@ -91,7 +93,12 @@ export async function createPostCompactFileAttachments(
     if (result === null) {
       return false
     }
-    const attachmentTokens = roughTokenCountEstimation(jsonStringify(result))
+    // A restored file keeps its Read block as rendered, for a resumed process
+    // to re-send (FileAttachment.rendered): the same file again, which would
+    // spend the budget twice per file.
+    const attachmentTokens = roughTokenCountEstimation(
+      jsonStringify(result, withoutRenderedSnapshot),
+    )
     if (usedTokens + attachmentTokens <= POST_COMPACT_TOKEN_BUDGET) {
       usedTokens += attachmentTokens
       return true
@@ -247,12 +254,17 @@ export async function createPlanModeAttachmentIfNeeded(
   const planFilePath = getPlanFilePath(context.agentId)
   const planExists = getPlan(context.agentId) !== null
 
-  return createAttachmentMessage({
-    type: 'plan_mode',
-    reminderType: 'full',
+  const planMode = {
+    type: 'plan_mode' as const,
+    reminderType: 'full' as const,
     isSubAgent: false,
     planFilePath,
     planExists,
+  }
+  // The brief as it renders now, which a resumed process re-sends.
+  return createAttachmentMessage({
+    ...planMode,
+    rendered: snapshotPlanModeReminder(planMode),
   })
 }
 

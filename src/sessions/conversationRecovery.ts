@@ -8,6 +8,7 @@ import type {
   AttributionSnapshotMessage,
   ContextCollapseCommitEntry,
   ContextCollapseSnapshotEntry,
+  CostStateEntry,
   LogOption,
   PersistedWorktreeSession,
   SerializedMessage,
@@ -438,8 +439,10 @@ export function restoreSkillStateFromMessages(messages: Message[]): void {
 export async function loadMessagesFromJsonlPath(path: string): Promise<{
   messages: SerializedMessage[]
   sessionId: UUID | undefined
+  costState: CostStateEntry | undefined
 }> {
-  const { messages: byUuid, leafUuids } = await loadTranscriptFile(path)
+  const { messages: byUuid, leafUuids, costStates } =
+    await loadTranscriptFile(path)
   let tip: (typeof byUuid extends Map<UUID, infer T> ? T : never) | null = null
   let tipTs = 0
   for (const m of byUuid.values()) {
@@ -450,7 +453,7 @@ export async function loadMessagesFromJsonlPath(path: string): Promise<{
       tip = m
     }
   }
-  if (!tip) return { messages: [], sessionId: undefined }
+  if (!tip) return { messages: [], sessionId: undefined, costState: undefined }
   const chain = buildConversationChain(byUuid, tip)
   return {
     messages: removeExtraFields(chain),
@@ -458,6 +461,7 @@ export async function loadMessagesFromJsonlPath(path: string): Promise<{
     // transcript, so the root retains the source session's ID. Matches
     // loadFullLog's mostRecentLeaf.sessionId.
     sessionId: tip.sessionId as UUID | undefined,
+    costState: costStates.get(tip.sessionId as UUID),
   }
 }
 
@@ -498,6 +502,9 @@ export async function loadConversationForResume(
   prNumber?: number
   prUrl?: string
   prRepository?: string
+  // The session's running cost (last-wins). Required, so a loader branch
+  // that forgets to carry it fails to compile instead of restoring $0.
+  costState: CostStateEntry | undefined
   // Full path to the session file (for cross-directory resume)
   fullPath?: string
 } | null> {
@@ -505,6 +512,7 @@ export async function loadConversationForResume(
     let log: LogOption | null = null
     let messages: Message[] | null = null
     let sessionId: UUID | undefined
+    let costState: CostStateEntry | undefined
 
     if (source === undefined) {
       // --continue: most recent session.
@@ -517,6 +525,7 @@ export async function loadConversationForResume(
       const loaded = await loadMessagesFromJsonlPath(sourceJsonlFile)
       messages = loaded.messages
       sessionId = loaded.sessionId
+      costState = loaded.costState
     } else if (typeof source === 'string') {
       // Load specific session by ID
       log = await getLastSessionLog(source as UUID)
@@ -592,6 +601,7 @@ export async function loadConversationForResume(
       prNumber: log?.prNumber,
       prUrl: log?.prUrl,
       prRepository: log?.prRepository,
+      costState: log?.costState ?? costState,
       // Include full path for cross-directory resume
       fullPath: log?.fullPath,
     }

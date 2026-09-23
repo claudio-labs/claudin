@@ -30,6 +30,7 @@ import {
   LOCAL_COMMAND_STDOUT_TAG,
 } from 'src/shared/constants/xml.js'
 import {
+  getCostSinceRestoreUSD,
   getModelUsage,
   getTotalAPIDuration,
   getTotalCost,
@@ -142,6 +143,17 @@ export function spliceMessageByUuid(messages: Message[], uuid: string): boolean 
   }
   messages.splice(idx, 1)
   return true
+}
+
+/**
+ * Whether `--max-budget-usd` stops the run. The cap is on what this process
+ * spends: a resume puts the session's cost back into the counters so
+ * `total_cost_usd` reports the session, and Claude Code compares only what
+ * was added on top of it — each resumed run gets the whole budget.
+ * Exported for tests.
+ */
+export function isMaxBudgetReached(maxBudgetUsd: number | undefined): boolean {
+  return maxBudgetUsd !== undefined && getCostSinceRestoreUSD() >= maxBudgetUsd
 }
 
 export type QueryEngineConfig = {
@@ -1065,7 +1077,7 @@ export class QueryEngine {
       }
 
       // Check if USD budget has been exceeded
-      if (maxBudgetUsd !== undefined && getTotalCost() >= maxBudgetUsd) {
+      if (isMaxBudgetReached(maxBudgetUsd)) {
         if (persistSession) {
           if (
             isEnvTruthy(process.env.CLAUDE_CODE_EAGER_FLUSH) ||

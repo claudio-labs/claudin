@@ -56,6 +56,7 @@ export function applyReadOnly<T extends AgentDefinition>(
     ...definition,
     omitClaudeMd: true,
     omitGitStatus: true,
+    omitGitInstructions: true,
     disallowedTools: merged,
   }
 }

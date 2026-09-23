@@ -38,6 +38,9 @@ You run in an isolated context: the parent sees only your final report, not your
 export const WEB_RESEARCHER_MANAGER_AGENT: BuiltInAgentDefinition = {
   agentType: WEB_RESEARCHER_MANAGER_AGENT_TYPE,
   whenToUse: WEB_RESEARCHER_MANAGER_WHEN_TO_USE,
+  // The same fit and the same exclusions at about half the length, for the
+  // agent listing under CLAUDIN_LEAN_AGENT_PROMPT.
+  whenToUseLean: `Deep, multi-angle web research that needs fact-checking: claims verified across independent sources (e.g. "compare X and Y for Z", "pros and cons of moving from A to B"). Fans out ${WEB_RESEARCHER_AGENT_TYPE} workers in parallel and returns one cited report with confidence levels. **Do NOT use for**: a straightforward multi-page lookup (${WEB_RESEARCHER_AGENT_TYPE}), a single page (${WEB_FETCH_TOOL_NAME}), link discovery (${WEB_SEARCH_TOOL_NAME}), or anything in the local repo (search it directly).`,
   // Agent is restricted to spawning WebResearcher workers (allowedAgentTypes).
   // resolveAgentTools resolves the Agent tool for sync built-in orchestrators;
   // async/custom agents stay blocked from recursion.
@@ -56,5 +59,6 @@ export const WEB_RESEARCHER_MANAGER_AGENT: BuiltInAgentDefinition = {
   // Pure web research — no local repo, so skip CLAUDE.md rules and the gitStatus blob.
   omitClaudeMd: true,
   omitGitStatus: true,
+  omitGitInstructions: true,
   getSystemPrompt: () => getWebResearcherManagerSystemPrompt(),
 }

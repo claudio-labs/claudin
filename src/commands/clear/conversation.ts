@@ -20,10 +20,7 @@ import {
 import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
 import { asAgentId } from 'src/shared/types/ids.js'
 import type { Message } from 'src/shared/types/message.js'
-import {
-  resetCostState,
-  saveCurrentSessionCosts,
-} from 'src/agent/cost-tracker.js'
+import { saveCostsAndStartNewSession } from 'src/agent/cost-tracker.js'
 import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
@@ -201,23 +198,24 @@ export async function clearConversation({
   clearPendingSessionWakeup()
   resetLoopSentinelState()
 
-  // Reset the session token/cost counters so the footer pill (ctx/wrt/rd/$)
-  // starts the new conversation at zero. Persist the old session's costs to
-  // the project rollup first (same good-citizen order as /resume) so the
-  // accumulated spend isn't silently dropped from /cost project totals, then
-  // zero the in-memory counters. resetCostState also clears the cache-stats
-  // tracker (wrt/rd) via its wrapper.
-  saveCurrentSessionCosts()
-  resetCostState()
-
   // Generate new session ID to provide fresh state
   // Set the old session as parent for analytics lineage tracking.
   // Capture the old session ID *before* regeneration so we can unlink its
   // tool-results spill directory — otherwise the 30-day time-based cleanup
   // in cleanup.ts is the only thing that reclaims that disk (measured at
   // ~50 MB per 100 tool calls in memory-leak-detector-bench.ts).
+  //
+  // Around the switch, the session token/cost counters are reset so the
+  // footer pill (ctx/wrt/rd/$) starts the new conversation at zero. The old
+  // session's costs are persisted to the project rollup first (same
+  // good-citizen order as /resume) so the accumulated spend isn't silently
+  // dropped from /cost project totals; the counters are zeroed once the new
+  // id exists, which makes them the new session's (saveCostsAndStartNewSession).
+  // resetCostState also clears the cache-stats tracker (wrt/rd) via its wrapper.
   const oldSessionId = getSessionId()
-  regenerateSessionId({ setCurrentAsParent: true })
+  saveCostsAndStartNewSession(() =>
+    regenerateSessionId({ setCurrentAsParent: true }),
+  )
   // Fire-and-log: the unlink should never block /clear, and the helper
   // already swallows errors internally.
   void unlinkSessionSpillDir(oldSessionId)

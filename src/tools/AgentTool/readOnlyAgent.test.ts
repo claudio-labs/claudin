@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
+import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   applyReadOnly,
@@ -48,5 +49,31 @@ describe('applyReadOnly', () => {
     expect(applyReadOnly(code, true, true)).toBe(code)
     process.env.CLAUDIN_DISABLE_SLIM_CODE_AGENT = '1'
     expect(applyReadOnly(code, true, false)).toBe(code)
+  })
+})
+
+describe('omitGitInstructions — no commit/PR protocol for agents that never commit', () => {
+  // The protocol is ~3.9k chars in the first request of every agent with Bash.
+  // A read-only brief and Plan cannot commit (no write tools), so it is dead
+  // weight there. runAgent honors the flag only under
+  // CLAUDIN_LEAN_GIT_INSTRUCTIONS; the definitions just declare it.
+  const code = GENERAL_PURPOSE_AGENT as AgentDefinition
+
+  test('a read-only brief omits it, like the rest of what Plan omits', () => {
+    delete process.env.CLAUDIN_DISABLE_SLIM_CODE_AGENT
+    const out = applyReadOnly(code, true, false)
+    expect(out.omitGitInstructions).toBe(true)
+    for (const key of ['omitClaudeMd', 'omitGitStatus', 'omitGitInstructions'] as const) {
+      expect({ key, value: out[key] }).toEqual({ key, value: PLAN_AGENT[key] })
+    }
+  })
+
+  test('Plan omits it', () => {
+    expect(PLAN_AGENT.omitGitInstructions).toBe(true)
+  })
+
+  test('the general-purpose Code agent keeps it — it commits when its parent asks', () => {
+    expect(code.omitGitInstructions).toBeUndefined()
+    expect(applyReadOnly(code, false, false).omitGitInstructions).toBeUndefined()
   })
 })

@@ -1,6 +1,6 @@
 // The auto-outline pivot is behind a build-time flag the test preload stubs to
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
+import { mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -53,6 +53,10 @@ import {
 //   S13 Read(range) then a patch on the import block             (52 of 102 coverage refusals)
 //   S14 after a refresh, a re-Read returns the body, not a stub  (the "re-read that breaks")
 //   S15 outline, then Read(range), then a patch outside the range (a blind-write hole)
+//
+// And from session-cache-ab (2026-09-23), where every rep read the fixture with
+// a Bash `cat` loop and then re-read each file with Read to be allowed to edit:
+//   S16 a `cat` credited as a read, then a patch                  (CLAUDIN_BASH_READ_CREDIT)
 // ---------------------------------------------------------------------------
 
 /**
@@ -579,5 +583,67 @@ describe('S15 — outline, then Read(range), then a patch outside the range', ()
     })
     const message = refusal(patch(p, '@@\n-export const v3 = 3\n+export const v3 = 0'))
     expect(message).toContain('only read in part (lines 30-34)')
+  })
+})
+
+type ReadCredit = typeof import('src/tools/BashTool/creditShownFiles.js')
+
+/**
+ * CLAUDIN_BASH_READ_CREDIT is read once at module load, so the scenario loads
+ * its own instance of the module with the variable set, and puts it back.
+ */
+async function loadReadCredit(): Promise<ReadCredit> {
+  const prior = process.env.CLAUDIN_BASH_READ_CREDIT
+  process.env.CLAUDIN_BASH_READ_CREDIT = '1'
+  try {
+    return await import(`src/tools/BashTool/creditShownFiles.js?s16=${Date.now()}`)
+  } finally {
+    if (prior === undefined) delete process.env.CLAUDIN_BASH_READ_CREDIT
+    else process.env.CLAUDIN_BASH_READ_CREDIT = prior
+  }
+}
+
+describe('S16 — a `cat` credited as a read, then a patch', () => {
+  test('the patch applies, and a change on disk after the cat still refuses it', async () => {
+    const credit = await loadReadCredit()
+    const p = join(dir, 's16.txt')
+    writeLines(p, 20)
+    // Written before the `cat` ran: the credit refuses a file dated at or
+    // after the command's start, which a write in this same millisecond is.
+    const beforeTheCat = new Date(Date.now() - 60_000)
+    utimesSync(p, beforeTheCat, beforeTheCat)
+    // No refusal first to prove the file is unread: a refused patch serves
+    // its region and registers it, which would authorize the patch below.
+    expect(ctx.readFileState.has(p)).toBe(false)
+
+    // What BashTool hands the model for `cat s16.txt`, in a session whose
+    // working directories hold the file.
+    const startedAt = Date.now()
+    const stdout = readFileSync(p, 'utf8').trimEnd()
+    expect(
+      await credit.creditShownFiles(
+        { command: 'cat s16.txt', startedAt, stdout },
+        ctx.readFileState,
+        dir,
+        {
+          ...getEmptyToolPermissionContext(),
+          additionalWorkingDirectories: new Map([[dir, { path: dir, source: 'session' }]]),
+        },
+      ),
+    ).toEqual([p])
+    // The entry a whole-file Read of the same bytes writes, plus dedupExempt:
+    // no Read tool_result carries these bytes for a dedup stub to point at.
+    const readCtx = makeContext()
+    await FileReadTool.call({ file_path: p } as never, readCtx)
+    expect(ctx.readFileState.get(p)).toEqual({
+      ...readCtx.readFileState.get(p)!,
+      dedupExempt: true,
+    })
+    expect(patch(p, '@@\n-l12\n+L12')).toEqual({ result: true })
+
+    rewriteAhead(p, linesWith(20, { 7: 'L7' }))
+    expect(refusal(patch(p, '@@\n-l12\n+L12'))).toContain(
+      'has been modified since it was read',
+    )
   })
 })

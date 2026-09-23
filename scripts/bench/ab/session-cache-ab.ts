@@ -180,7 +180,15 @@ type SubagentUsage = { files: number; turns: number; usage: Usage; costUsd: numb
 
 type TestRun = { ok: boolean; pass: number; fail: number; failed: string[] }
 
-type GitGrade = { commits: number; subject: string; conventional: boolean; clean: boolean; status: string }
+type GitGrade = {
+  commits: number
+  subject: string
+  conventional: boolean
+  /** An AI attribution footer in a commit message. Absent from a results.json written before the check: unknown, not clean. */
+  trailer?: boolean
+  clean: boolean
+  status: string
+}
 
 type Grade = { tests: TestRun; hidden: TestRun[]; git: GitGrade | null }
 
@@ -314,6 +322,14 @@ function readPrompt(phase: Phase): string {
 const TEST_RESULT_RE = /^\((pass|fail)\) (.+?)(?: \[[\d.]+m?s\])?$/gm
 const TEST_COUNT_RE = /^\s*(\d+) (pass|fail)$/gm
 const CONVENTIONAL_RE = /^(feat|fix|refactor|test|chore|docs|perf|build|ci|style)(\([^)]*\))?!?: \S/
+/**
+ * An AI attribution footer: a `Co-Authored-By:` naming a model or its maker (what
+ * Claude Code appends to every commit), a "Generated with Claude Code/Claudin"
+ * line, or the 🤖 marker. claudin's commit protocol forbids them, and the
+ * subject alone never shows one.
+ */
+const AI_TRAILER_RE =
+  /^[ \t]*co-authored-by:.*\b(?:claude|claudin|anthropic|openai|chatgpt|gpt|codex|copilot|gemini|ai)\b|generated (?:with|by) \[?(?:claude|claudin)|🤖/imu
 
 function bunTest(cwd: string, files: string[], env: Record<string, string> = {}): TestRun {
   const r = spawnSync('bun', ['test', ...files], {
@@ -345,6 +361,9 @@ function gitGrade(ws: string): GitGrade {
     commits: subjects.length,
     subject,
     conventional: subjects.length > 1 && CONVENTIONAL_RE.test(subject),
+    // Every message, the pinned import commit's too: it carries no footer, so a
+    // hit is the model's even when it amended that commit instead of adding one.
+    trailer: AI_TRAILER_RE.test(git(ws, 'log', '--format=%B').out),
     clean: status === '',
     status,
   }
@@ -513,7 +532,7 @@ async function runArm(arm: Arm, rep: number, ctx: RunContext): Promise<RunResult
       `[${label}] phase ${phase}: ${run.subtype ?? `exit ${run.exitCode}`}${run.timedOut ? ' (TIMED OUT)' : ''}, ` +
         `${run.messageIds.length} API calls, ${(run.wallMs / 1000).toFixed(0)}s, CLI $${(run.cliCostUsd ?? 0).toFixed(2)} — ` +
         `tests ${grade.tests.pass}/${grade.tests.pass + grade.tests.fail}, hidden ${hidden}` +
-        (grade.git ? `, commits ${grade.git.commits} "${grade.git.subject}"` : ''),
+        (grade.git ? `, commits ${grade.git.commits} "${grade.git.subject}"${grade.git.trailer ? ' + AI trailer' : ''}` : ''),
     )
   }
 
@@ -1076,10 +1095,31 @@ function gradeTable(runs: RunResult[]): string {
       tests(g2),
       hid(g2),
       g2?.git ? `${g2.git.commits - 1} "${g2.git.subject.slice(0, 48)}"` : '—',
+      g2?.git ? (g2.git.trailer === undefined ? '?' : g2.git.trailer ? '**yes**' : 'no') : '—',
       g2?.git ? (g2.git.clean ? 'clean' : g2.git.status.split('\n').length + ' dirty') : '—',
     ]
   })
-  return table(['run', 'P1 result', 'P1 tests', 'P1 hidden', 'P2 result', 'P2 tests', 'P2 hidden', 'new commits', 'tree'], rows)
+  return table(
+    ['run', 'P1 result', 'P1 tests', 'P1 hidden', 'P2 result', 'P2 tests', 'P2 hidden', 'new commits', 'AI trailer', 'tree'],
+    rows,
+  )
+}
+
+/** Who committed with an AI footer — and who was graded before the check, which is unknown rather than clean. */
+function trailerNotes(runs: RunResult[]): string[] {
+  const runsWhere = (trailer: boolean | undefined) =>
+    runs
+      .filter(r => {
+        const git = r.grades[1]?.git
+        return git ? git.trailer === trailer : false
+      })
+      .map(r => `${r.arm} r${r.rep}`)
+  const flagged = runsWhere(true)
+  const unknown = runsWhere(undefined)
+  return [
+    ...(flagged.length ? [`**AI attribution trailer** in the commits of ${flagged.join(', ')}.`, ''] : []),
+    ...(unknown.length ? [`AI trailer not recorded for ${unknown.join(', ')}: their results.json predates the check.`, ''] : []),
+  ]
 }
 
 function toolTable(runs: RunResult[], arm: Arm): string {
@@ -1180,6 +1220,7 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
     '',
     gradeTable(runs),
     '',
+    ...trailerNotes(runs),
     'A token delta between runs that did not do the same work compares different amounts of work.',
     '',
     '## Totals',
@@ -1269,6 +1310,14 @@ function dryRun(): void {
   const s0 = bunTest(solved, [])
   const s1 = hiddenRun(grader, solved, 1)
   const s2 = hiddenRun(grader, solved, 2)
+  // The commit grader, on the same commit twice: plain, then with the footer
+  // Claude Code writes. Only the second may be flagged.
+  const message = 'feat: bulk tiers, JSON quotes and coupon expiry'
+  git(solved, 'add', '-A')
+  git(solved, 'commit', '-q', '-m', message)
+  const plain = gitGrade(solved)
+  git(solved, 'commit', '-q', '--amend', '-m', `${message}\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`)
+  const signed = gitGrade(solved)
   // The support ticket must describe a real bug: the pristine CLI gives that
   // cart free shipping, the reference solution charges it.
   const ticket = (ws: string) =>
@@ -1287,6 +1336,8 @@ function dryRun(): void {
     ['the solution passes the phase-1 grader', s1.ok && s1.fail === 0 && s1.pass > 0, `${s1.pass}/${s1.pass + s1.fail} ${s1.failed.join('; ')}`],
     ['the solution passes the phase-2 grader', s2.ok && s2.fail === 0 && s2.pass > 0, `${s2.pass}/${s2.pass + s2.fail} ${s2.failed.join('; ')}`],
     ['both prompts exist', PHASES.every(p => readPrompt(p).length > 200), 'prompts/phase{1,2}.md'],
+    ['a plain commit grades conventional, no AI trailer', plain.conventional && plain.trailer === false, `"${plain.subject}"`],
+    ["Claude Code's co-author footer is caught", signed.conventional && signed.trailer === true, 'Co-Authored-By: Claude Opus 5.5'],
   ]
   console.log(`dry run in ${dir}\n`)
   console.log(table(['gate', 'ok', 'detail'], gates.map(([g, ok, d]) => [g, ok ? 'yes' : 'NO', d])))

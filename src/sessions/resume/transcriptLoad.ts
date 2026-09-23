@@ -21,6 +21,7 @@
 import type { UUID } from 'crypto'
 import { readFile, stat } from 'fs/promises'
 import { join } from 'path'
+import { z } from 'zod/v4'
 
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
@@ -32,12 +33,14 @@ import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
   type ContextCollapseCommitEntry,
   type ContextCollapseSnapshotEntry,
+  type CostStateEntry,
   type Entry,
   type FileHistorySnapshotMessage,
   type PersistedWorktreeSession,
   type TranscriptMessage,
 } from 'src/shared/types/logs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isCompactBoundaryMessage } from 'src/agent/messages/messages.js'
@@ -68,6 +71,47 @@ import {
   walkChainBeforeParse,
 } from 'src/sessions/indexing/boundaryScan.js'
 
+// Model names are keys a terminal prints (/cost): no control or format chars.
+const COST_STATE_MODEL_NAME_RE = /^[^\p{Cc}\p{Cf}]+$/u
+
+/**
+ * Claude Code's own check of a `cost-state` line (2.1.280). A line that
+ * fails it is skipped, so the last VALID entry wins and a corrupt or
+ * hand-edited one cannot restore a negative or absurd cost.
+ */
+const costStateEntrySchema = lazySchema(() => {
+  const amount = z.number().nonnegative()
+  return z.object({
+    type: z.literal('cost-state'),
+    sessionId: z.string(),
+    totalCostUSD: amount.max(1e9),
+    totalAPIDuration: amount,
+    totalAPIDurationWithoutRetries: amount,
+    totalToolDuration: amount,
+    totalLinesAdded: amount,
+    totalLinesRemoved: amount,
+    totalDuration: amount,
+    startTime: amount,
+    modelUsage: z.record(
+      z.string().regex(COST_STATE_MODEL_NAME_RE),
+      z.object({
+        inputTokens: amount,
+        outputTokens: amount,
+        cacheReadInputTokens: amount,
+        cacheCreationInputTokens: amount,
+        webSearchRequests: amount,
+        costUSD: amount,
+      }),
+    ),
+    hasUnknownModelCost: z.boolean().optional(),
+  })
+})
+
+function parseCostStateEntry(entry: unknown): CostStateEntry | undefined {
+  const parsed = costStateEntrySchema().safeParse(entry)
+  return parsed.success ? (parsed.data as CostStateEntry) : undefined
+}
+
 /**
  * Loads all messages, summaries, file history snapshots, and attribution snapshots from a specific session file.
  */
@@ -87,6 +131,7 @@ export async function loadTranscriptFile(
   prRepositories: Map<UUID, string>
   modes: Map<UUID, string>
   worktreeStates: Map<UUID, PersistedWorktreeSession | null>
+  costStates: Map<UUID, CostStateEntry>
   fileHistorySnapshots: Map<UUID, FileHistorySnapshotMessage>
   attributionSnapshots: Map<UUID, AttributionSnapshotMessage>
   contentReplacements: Map<UUID, ContentReplacementRecord[]>
@@ -107,6 +152,8 @@ export async function loadTranscriptFile(
   const prRepositories = new Map<UUID, string>()
   const modes = new Map<UUID, string>()
   const worktreeStates = new Map<UUID, PersistedWorktreeSession | null>()
+  // Last-wins per session.
+  const costStates = new Map<UUID, CostStateEntry>()
   const fileHistorySnapshots = new Map<UUID, FileHistorySnapshotMessage>()
   const attributionSnapshots = new Map<UUID, AttributionSnapshotMessage>()
   const contentReplacements = new Map<UUID, ContentReplacementRecord[]>()
@@ -209,6 +256,9 @@ export async function loadTranscriptFile(
           modes.set(entry.sessionId, entry.mode)
         } else if (entry.type === 'worktree-state' && entry.sessionId) {
           worktreeStates.set(entry.sessionId, entry.worktreeSession)
+        } else if (entry.type === 'cost-state' && entry.sessionId) {
+          const costState = parseCostStateEntry(entry)
+          if (costState) costStates.set(entry.sessionId, costState)
         } else if (entry.type === 'pr-link' && entry.sessionId) {
           prNumbers.set(entry.sessionId, entry.prNumber)
           prUrls.set(entry.sessionId, entry.prUrl)
@@ -273,6 +323,9 @@ export async function loadTranscriptFile(
         modes.set(entry.sessionId, entry.mode)
       } else if (entry.type === 'worktree-state' && entry.sessionId) {
         worktreeStates.set(entry.sessionId, entry.worktreeSession)
+      } else if (entry.type === 'cost-state' && entry.sessionId) {
+        const costState = parseCostStateEntry(entry)
+        if (costState) costStates.set(entry.sessionId, costState)
       } else if (entry.type === 'pr-link' && entry.sessionId) {
         prNumbers.set(entry.sessionId, entry.prNumber)
         prUrls.set(entry.sessionId, entry.prUrl)
@@ -406,6 +459,7 @@ export async function loadTranscriptFile(
     prRepositories,
     modes,
     worktreeStates,
+    costStates,
     fileHistorySnapshots,
     attributionSnapshots,
     contentReplacements,
@@ -426,6 +480,7 @@ export async function loadSessionFile(sessionId: UUID): Promise<{
   tags: Map<UUID, string>
   agentSettings: Map<UUID, string>
   worktreeStates: Map<UUID, PersistedWorktreeSession | null>
+  costStates: Map<UUID, CostStateEntry>
   fileHistorySnapshots: Map<UUID, FileHistorySnapshotMessage>
   attributionSnapshots: Map<UUID, AttributionSnapshotMessage>
   contentReplacements: Map<UUID, ContentReplacementRecord[]>

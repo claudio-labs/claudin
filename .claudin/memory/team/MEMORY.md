@@ -26,6 +26,7 @@
 - [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](decisions/code-review-graph-evaluated-rejected.md) — 284 MB db, impact answer = 203k tokens; their bench loses to reading the diff
 - [Cache TTL tiers: agent:* 5m, fork keeps 1h (2026-07-05)](decisions/cache-ttl-tiering-subagents.md) — subagent caches die with the run; new one-shot querySources go in SHORT_LIVED_QUERY_SOURCES; auto_mode reverted to 1h
 - [Defer-cache-marker — default REVERSED to 0 on 2026-09-23](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more (Opus, Sonnet, 5m); its 06-07 bench was unreliable; 2048 is opt-in
+- [Bash read pass-through + read credit — NOT promoted 2026-09-23](decisions/bash-read-passthrough-not-promoted.md) — passed its median gate, but a placebo arm moved as much; the model re-Reads anyway
 - [Devin provider port halted 2026-06-06 — f31 attestation is a hard blocker](decisions/devin-provider-port-halted.md) — feat/devin-provider not merging; don't reopen without a Ghidra/IDA budget
 - [OpenTelemetry stays devDep-only + build-stubbed — removal REJECTED 2026-07-08](decisions/opentelemetry-devdep-stubbed.md) — zero runtime footprint; the deps only satisfy tsc `import type` refs
 
@@ -41,7 +42,7 @@
 - [memory-turn-by-turn RSS bench flakes only under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — a negative first-half slope makes the threshold unsatisfiable; re-run in isolation before calling it a regression
 - [WaitFor drops every optional param](bugs/waitfor-drops-optional-params.md) — until/settle_s/interval_s/timeout_s never reach call(); always settles at 3s, so no working wait over ~3s
 - [stream-json prints every assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — same uuid, Claude Code prints once; benches counting blocks must dedupe by uuid
-- [Resume re-wrote the whole prompt cache — FIXED 2026-09-23](bugs/resume-rewrites-cache-prefix.md) — dropped attachments + parallel results reordered on a ms tie; 40%→100%; contract in cache.md §7
+- [Resume re-wrote the whole prompt cache — FIXED 2026-09-23](bugs/resume-rewrites-cache-prefix.md) — dropped attachments + ms-tie reorder, 40%→100%; round 2 fixed hook output, plan_mode, @-files; cache.md §7
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md: layout, categories, secret guard, `paths:` loading, dream digest, transcript lines
@@ -103,6 +104,7 @@
 - [R3 self-hosted background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch; TriggerSource (github/url/command + --match), headless runWorkflow, worktree+PR
 - [/create bundled skill (commit 28eacc0c)](create-skill-bundled-pr.md) — loader gotchas incl. agent frontmatter `model` (since 2026-09); `(#98)` is the OLD remote's numbering
 - [Fork vs fresh A/B 2026-09-09 + parallel-forks probe](fork-vs-fresh-ab-2026-09-09.md) — fresh Code agent −44% at equal answers; 3 parallel forks PASS 9/9; count_tokens stalls big Reads
+- [Delegation A/B 09-23 — gates steering text without naming agents](delegation-steer-ab-2026-09-23.md) — lean Agent text held every gate (N=5); --replay merges by rep number
 - [Typecheck tool — baseline design + the traps it hides](typecheck-tool-baseline-design.md) — clean-tree baseline keyed by HEAD, line-independent fingerprints; exec() caps stdout at 30k
 - [typecheck ratchet phantom "new" errors — fixed 2026-08-07](typecheck-baseline-message-fingerprint-fragile.md) — tsc's union elaboration shifted the hash on any added file; elideTruncatedUnion fixes it
 - [React Compiler's t0 param is the root of ~1400 TS7006](react-compiler-props-param-typing.md) — count sites (403) not errors (1710); the props type is already in the file
@@ -113,8 +115,8 @@
 - [Symbol-parser options researched 2026-08-12](symbol-parser-options-researched.md) — tree-sitter IS shippable under bun --compile; the blocker is the SYNC scanSymbols call, not size
 - [Outline scanner: phantoms that DELETE real declarations](outline-blind-to-nested-members.md) — PR #141; 6 scanner traps, and why the A/B gate is witness-based not rule-based
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 SUPERSEDES the cost gap: claude's prefix 70.5k→32.4k, cost now ties
-- [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — claudindev +53% vs CC → +7% (overlap) after fix/session-cache; cost −27% SEPARATED
-- [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas not billed at size; Agent desc + git reminder are next
+- [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — +53% vs CC → +7% after #239; round 2: placebo arm = −6% noise; run arms SIMULTANEOUSLY (main drifted +12% by afternoon)
+- [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 

@@ -78,8 +78,9 @@ export function buildConversationChain(
 }
 
 /**
- * Post-pass for buildConversationChain: recover sibling assistant blocks and
- * tool_results that the single-parent walk orphaned.
+ * Post-pass for buildConversationChain: recover sibling assistant blocks,
+ * tool_results and the rest of each tool call's messages that the
+ * single-parent walk orphaned.
  *
  * Streaming (claude.ts:~2024) emits one AssistantMessage per content_block_stop
  * — N parallel tool_uses → N messages, distinct uuid, same message.id. Each
@@ -88,13 +89,21 @@ export function buildConversationChain(
  * DIFFERENT assistant. The topology is a DAG; the walk above is a linked-list
  * traversal and keeps only one branch.
  *
- * Two loss modes observed in production (both fixed here):
+ * Three loss modes observed in production (all fixed here):
  *   1. Sibling assistant orphaned: walk goes prev→asstA→TR_A→next, drops asstB
  *      (same message.id, chained off asstA) and TR_B.
  *   2. Progress-fork (legacy, pre-#23537): each tool_use asst had a progress
  *      child (continued the write chain) AND a TR child. Walk followed
  *      progress; TRs were dropped. No longer written (progress removed from
  *      transcript persistence), but old transcripts still have this shape.
+ *   3. Messages written around a TR: a tool call's messages are written as
+ *      one run — PreToolUse hook output, the TR, then PostToolUse output and
+ *      the tool's own extra messages — each chained to the entry before it.
+ *      The TR jumps back to its assistant, so PreToolUse output is left a
+ *      dead-end sibling of it, and the rest of the run hangs off a TR the
+ *      walk may not take: with parallel calls only the last-written run
+ *      survived. Live, that output was folded into the tool_result the model
+ *      received, so resume re-sent the block with different bytes.
  *
  * Read-side fix: the write topology is already on disk for old transcripts;
  * this recovery pass handles them.
@@ -117,36 +126,47 @@ export function recoverOrphanedParallelToolResults(
     if (a.message.id) anchorByMsgId.set(a.message.id, a)
   }
 
-  // O(n) precompute: sibling groups and TR index.
+  // O(n) precompute: sibling groups, TR index, hook output and children.
   // TRs indexed by parentUuid — insertMessageChain:~894 already wrote that
   // as the srcUUID, and --fork-session strips srcUUID but keeps parentUuid.
+  // Hook output names the tool call it is about (toolUseID); the rest of a
+  // run is reachable only through its parent.
   const siblingsByMsgId = new Map<string, TranscriptMessage[]>()
   const toolResultsByAsst = new Map<UUID, TranscriptMessage[]>()
+  const hookOutputByToolUseId = new Map<string, TranscriptMessage[]>()
+  const childrenByParent = new Map<UUID, TranscriptMessage[]>()
+  const addTo = <K>(index: Map<K, TranscriptMessage[]>, key: K, m: TranscriptMessage) => {
+    const group = index.get(key)
+    if (group) group.push(m)
+    else index.set(key, [m])
+  }
   // The map's order is JSONL write order (loadTranscriptFile inserts as it
   // parses) — the order the live process sent these messages in.
   const writeOrder = new Map<UUID, number>()
   for (const m of messages.values()) {
     writeOrder.set(m.uuid, writeOrder.size)
+    if (m.parentUuid) addTo(childrenByParent, m.parentUuid, m)
     if (m.type === 'assistant' && m.message.id) {
-      const group = siblingsByMsgId.get(m.message.id)
-      if (group) group.push(m)
-      else siblingsByMsgId.set(m.message.id, [m])
+      addTo(siblingsByMsgId, m.message.id, m)
     } else if (
       m.type === 'user' &&
       m.parentUuid &&
       Array.isArray(m.message.content) &&
       m.message.content.some((b: { type: string }) => b.type === 'tool_result')
     ) {
-      const group = toolResultsByAsst.get(m.parentUuid)
-      if (group) group.push(m)
-      else toolResultsByAsst.set(m.parentUuid, [m])
+      addTo(toolResultsByAsst, m.parentUuid, m)
+    } else if (m.type === 'attachment' && 'toolUseID' in m.attachment) {
+      addTo(hookOutputByToolUseId, m.attachment.toolUseID, m)
     }
   }
 
   // For each message.id group touching the chain: collect off-chain siblings,
-  // then off-chain TRs for ALL members. Splice right after the last on-chain
-  // member so the group stays contiguous for normalizeMessagesForAPI's merge
-  // and every TR lands after its tool_use.
+  // then the off-chain runs of ALL members. Splice right after the last
+  // on-chain member so the group stays contiguous for normalizeMessagesForAPI's
+  // merge and every TR lands after its tool_use. When the response's blocks
+  // were all written before its first result, that is also the live order:
+  // the walk leaves the group at the last result written, so everything it
+  // took after the splice point was written after everything recovered.
   const processedGroups = new Set<string>()
   const inserts = new Map<UUID, TranscriptMessage[]>()
   let recoveredCount = 0
@@ -157,30 +177,40 @@ export function recoverOrphanedParallelToolResults(
 
     const group = siblingsByMsgId.get(msgId) ?? [asst]
     const orphanedSiblings = group.filter(s => !seen.has(s.uuid))
-    const orphanedTRs: TranscriptMessage[] = []
+    for (const s of orphanedSiblings) seen.add(s.uuid)
+    const orphanedRuns: TranscriptMessage[] = []
+    const claim = (m: TranscriptMessage) => {
+      if (seen.has(m.uuid)) return
+      seen.add(m.uuid)
+      orphanedRuns.push(m)
+    }
     for (const member of group) {
-      const trs = toolResultsByAsst.get(member.uuid)
-      if (!trs) continue
-      for (const tr of trs) {
-        if (!seen.has(tr.uuid)) orphanedTRs.push(tr)
+      for (const tr of toolResultsByAsst.get(member.uuid) ?? []) claim(tr)
+      for (const toolUseId of toolUseIdsOf(member)) {
+        for (const hook of hookOutputByToolUseId.get(toolUseId) ?? []) claim(hook)
       }
     }
-    if (orphanedSiblings.length === 0 && orphanedTRs.length === 0) continue
+    // Then whatever was written after any of those before the next TR jumped
+    // back to its assistant. An entry the walk skipped has no descendant it
+    // took (every walked entry's parent is walked), so this never pulls in
+    // the chain itself. Grows while iterated: children are claimed in turn.
+    for (let i = 0; i < orphanedRuns.length; i++) {
+      for (const child of childrenByParent.get(orphanedRuns[i]!.uuid) ?? []) claim(child)
+    }
+    if (orphanedSiblings.length === 0 && orphanedRuns.length === 0) continue
 
-    // Timestamp sort keeps content-block / completion order, and write order
-    // breaks ties. Parallel results routinely share a millisecond, and
-    // orphanedTRs is collected in tool_use order, so a stable sort alone
-    // re-sent a batch in a different order than the live process had — a
-    // prompt-cache miss from that block on (2026-09-23).
-    const byTime = (a: TranscriptMessage, b: TranscriptMessage) =>
-      a.timestamp.localeCompare(b.timestamp) ||
+    // Write order only. Timestamps say when an entry was created, not when
+    // it was sent: parallel results routinely share a millisecond (sorted by
+    // time, a batch was re-sent in a different order than the live process
+    // had — a prompt-cache miss from that block on, 2026-09-23), and a hook
+    // entry is created when its hook runs but written with its tool's run.
+    const byWriteOrder = (a: TranscriptMessage, b: TranscriptMessage) =>
       writeOrder.get(a.uuid)! - writeOrder.get(b.uuid)!
-    orphanedSiblings.sort(byTime)
-    orphanedTRs.sort(byTime)
+    orphanedSiblings.sort(byWriteOrder)
+    orphanedRuns.sort(byWriteOrder)
 
     const anchor = anchorByMsgId.get(msgId)!
-    const recovered = [...orphanedSiblings, ...orphanedTRs]
-    for (const r of recovered) seen.add(r.uuid)
+    const recovered = [...orphanedSiblings, ...orphanedRuns]
     recoveredCount += recovered.length
     inserts.set(anchor.uuid, recovered)
   }
@@ -194,6 +224,11 @@ export function recoverOrphanedParallelToolResults(
     if (toInsert) result.push(...toInsert)
   }
   return result
+}
+
+function toolUseIdsOf(m: TranscriptMessage): string[] {
+  if (m.type !== 'assistant') return []
+  return m.message.content.flatMap(b => (b.type === 'tool_use' ? [b.id] : []))
 }
 
 /**

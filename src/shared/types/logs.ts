@@ -50,6 +50,7 @@ export type LogOption = {
   mode?: 'coordinator' | 'normal' // Session mode for coordinator/normal detection
   worktreeSession?: PersistedWorktreeSession | null // Worktree state at session end (null = exited, undefined = never entered)
   contentReplacements?: ContentReplacementRecord[] // Replacement decisions for resume reconstruction
+  costState?: CostStateEntry // Last-wins — the session's running cost, restored on resume
 }
 
 export type SummaryMessage = {
@@ -191,6 +192,37 @@ export type ContentReplacementEntry = {
   replacements: ContentReplacementRecord[]
 }
 
+/** One model's share of a CostStateEntry. */
+export type CostStateModelUsage = {
+  inputTokens: number
+  outputTokens: number
+  cacheReadInputTokens: number
+  cacheCreationInputTokens: number
+  webSearchRequests: number
+  costUSD: number
+}
+
+/**
+ * The session's running cost, in Claude Code's `cost-state` shape (2.1.280):
+ * stamped at exit and before /clear or /resume switch away, restored by
+ * --resume and -c. Last-wins on load, and never a chain participant — `type`
+ * is the first key, so the line never starts with `{"parentUuid":`.
+ */
+export type CostStateEntry = {
+  type: 'cost-state'
+  sessionId: UUID
+  totalCostUSD: number
+  totalAPIDuration: number
+  totalAPIDurationWithoutRetries: number
+  totalToolDuration: number
+  totalLinesAdded: number
+  totalLinesRemoved: number
+  totalDuration: number
+  startTime: number
+  modelUsage: Record<string, CostStateModelUsage>
+  hasUnknownModelCost?: boolean
+}
+
 export type FileHistorySnapshotMessage = {
   type: 'file-history-snapshot'
   messageId: UUID
@@ -319,6 +351,7 @@ export type Entry =
   | ModeEntry
   | WorktreeStateEntry
   | ContentReplacementEntry
+  | CostStateEntry
   | ContextCollapseCommitEntry
   | ContextCollapseSnapshotEntry
 

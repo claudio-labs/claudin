@@ -32,6 +32,16 @@ export type FileAttachment = {
   truncated?: boolean
   /** Path relative to CWD at creation time, for stable display */
   displayPath: string
+  /**
+   * Text files only: the Read block's text as it rendered when the attachment
+   * was created (snapshotReadResultText). Rendering `content` again reads
+   * state a transcript does not keep — the once-per-agent reminder and the
+   * memory age are keyed on the result object, the model gate and the line
+   * format are live — and a resumed process must re-send the bytes the live
+   * one sent (.claudin/rules/cache.md §7). Absent on attachments created
+   * without it, which render live.
+   */
+  rendered?: string
 }
 
 export type CompactFileReferenceAttachment = {
@@ -309,6 +319,15 @@ export type Attachment =
       canExitPlanMode?: boolean
       planFilePath: string
       planExists: boolean
+      /**
+       * The reminder as the model received it, rendered by the producer
+       * (snapshotPlanModeReminder). The text reads live state — the interview
+       * flag, the Plan-agent count, the Phase 4 variant, allowedTools, the
+       * scratchpad path — and a resumed process must re-send the bytes the
+       * live one sent (.claudin/rules/cache.md §7). Absent on attachments
+       * created without it, which render live.
+       */
+      rendered?: string
     }
   | {
       type: 'plan_mode_reentry'

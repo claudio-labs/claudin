@@ -7,6 +7,7 @@ paths:
   - "src/sessions/pure/attachmentPersistence.ts"
   - "src/sessions/pure/logging.ts"
   - "src/sessions/resume/chain.ts"
+  - "src/agent/attachments/renderedSnapshot.ts"
 ---
 # Prompt Cache & Tool-Result Cache — Claudin Development Rules
 
@@ -309,6 +310,13 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
 - **How to apply:** a new one-shot utility querySource must be added to
   `SHORT_LIVED_QUERY_SOURCES` or it silently pays the 1h tier; anything that
   re-sends the main thread's prefix must NOT be added.
+- A fork whose one answer is read and never continued also passes
+  `skipCacheWrite`, or it writes a tail nobody reads: compact, side questions,
+  prompt suggestions and both agent-summary forks (`summaryForkParams`, since
+  2026-09-23 — the progress one runs every ~30s per background agent). Never
+  on a multi-turn fork: the flag applies to every request of its loop and
+  moves the marker back one message, so its second request would write the
+  prompt the first sent uncached.
 - The 5m tier's "reads refresh the TTL for free within a run" fails the
   moment a sub-agent WAITS: a fresh agent that spawns nested Agents and
   blocks 4–8 min rewrites its whole prefix on the next request (6× in the
@@ -449,22 +457,42 @@ transcript must be able to render again.
 - Order is part of the bytes. Parallel tool results are written in completion
   order and chained to their own one-block assistants, so the chain walk drops
   all but one and `recoverOrphanedParallelToolResults`
-  (`src/sessions/resume/chain.ts`) re-inserts them sorted by timestamp. A batch
-  of Reads lands in the same millisecond, and the tie used to fall back to
-  tool_use order: 2 of 3 resumed sessions re-sent a batch reordered and missed
-  the cache from there (2026-09-23). Ties now break by JSONL write order —
-  keep any new re-linearization keyed to write order, never to tool_use order.
+  (`src/sessions/resume/chain.ts`) re-inserts them. A batch of Reads lands in
+  the same millisecond, and sorting by timestamp fell back to tool_use order on
+  the tie: 2 of 3 resumed sessions re-sent a batch reordered and missed the
+  cache from there (2026-09-23). Recovered entries now sort by JSONL write
+  order ONLY — keep any new re-linearization keyed to it, never to timestamps
+  or tool_use order.
+- A tool's run is more than its result. PreToolUse output is written between
+  the `tool_use` and the result but chained off the walk; PostToolUse output and
+  a tool's extra messages hang off a result the walk may not take (with
+  parallel calls only the last-written run survived). Live, all of it was
+  folded into the tool_result the model received. Recovery now also takes hook
+  attachments by `toolUseID` and everything written after a recovered entry
+  through its parent links.
 - Output recorded AFTER a finished reply (Stop hooks) must not read as an
   interrupted turn — `detectTurnInterruption` skips hook attachments, or resume
   would append "Continue from where you left off." to a turn that ended.
-- Still not byte-stable, by design: `plan_mode`, `file` (@-mention) and the
-  todo/task reminders render live state; `currentDate` changes across days;
-  hook attachments recorded between a `tool_use` and its result sit off the
-  main chain and are not recovered.
+- A renderer that reads live state (env, model, config, `Date.now()`) cannot
+  re-render the bytes a finished turn sent. `plan_mode` and `file` (@-mention,
+  post-compact restore) store the text they rendered at creation in
+  `rendered` and replay it; a transcript without it renders live, as before.
+  That snapshot is the attachment's text a second time, so a size estimate
+  that stringifies attachments passes `withoutRenderedSnapshot`
+  (`src/agent/attachments/renderedSnapshot.ts`) — /context, the post-compact
+  budget and the prompt-hook transcript budget all do. `todo_reminder_delta`
+  renders from its own payload and needs nothing.
+- Still not byte-stable: `currentDate`, memoized per process, changes across
+  days (only a resume after midnight inside the TTL pays); and with streaming
+  tool execution a result can be written before a later `tool_use` block of
+  the same response, which resume re-sends in a different order (a cache miss
+  from there; the request stays valid). Known, not fixed.
 - Guards: `src/sessions/resumePrefixDeterminism.test.ts` (render, transcript
-  round trip, render again, byte-compared) and `src/sessions/resume/chain.test.ts`
-  (parallel results on a timestamp tie). End to end at zero API cost:
-  `bun scripts/bench/ab/resume-wire-probe.ts` (`--bin=claude` is the reference) —
-  it makes one tool call, so it cannot see ordering. For that, diff the
-  sessions a `session-cache-ab.ts` run recorded:
+  round trip with parents linked as `insertMessageChain` writes them, render
+  again, byte-compared — hook output, plan_mode and @-mentions included) and
+  `src/sessions/resume/chain.test.ts` (write order, hook runs). End to end at
+  zero API cost: `bun scripts/bench/ab/resume-wire-probe.ts` (`--bin=claude` is
+  the reference; `--settings=<file>` adds hooks, `--env=NAME=VALUE` a variant)
+  — its one round of four parallel Reads cannot show a streaming reorder. For
+  that, diff the sessions a `session-cache-ab.ts` run recorded:
   `RESUME_DIFF_RUN=<run dir> bun test scripts/bench/ab/resume-transcript-diff.test.ts`.

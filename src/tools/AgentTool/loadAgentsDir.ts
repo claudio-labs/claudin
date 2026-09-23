@@ -90,6 +90,10 @@ const AgentsJsonSchema = lazySchema(() =>
 export type BaseAgentDefinition = {
   agentType: string
   whenToUse: string
+  /** A shorter `whenToUse` for the model-facing agent listing, used under
+   * CLAUDIN_LEAN_AGENT_PROMPT (`formatAgentLine`). It must keep when to use
+   * the agent and every "Do NOT use for" exclusion. */
+  whenToUseLean?: string
   tools?: string[]
   disallowedTools?: string[]
   skills?: string[] // Skill names to preload (parsed from comma-separated frontmatter)
@@ -125,6 +129,12 @@ export type BaseAgentDefinition = {
    * (WebResearcher) or can run `git status` themselves for fresh data
    * (Plan). */
   omitGitStatus?: boolean
+  /** Skip the bash_git_instructions attachment — the commit/PR protocol, sent
+   * once per agent in its first request — for agents that never commit or
+   * open a PR: read-only briefs, Plan, the web researchers. Not the
+   * general-purpose `Code` agent, which commits when its parent asks.
+   * Honored only while CLAUDIN_LEAN_GIT_INSTRUCTIONS is on (runAgent). */
+  omitGitInstructions?: boolean
 }
 
 // Built-in agents - dynamic prompts only, no static systemPrompt field

@@ -227,3 +227,22 @@ export function mapReadResultToToolResultBlock(
     }
   }
 }
+
+/**
+ * The text a Read result renders to now, for a holder of the result rather
+ * than of its block: the @-mention attachment (FileAttachment.rendered),
+ * which is rendered on every request and again by a resumed process. The
+ * Read tool's own result needs none of this — its block is mapped once, at
+ * execution (see the header).
+ *
+ * Only the text arm reads state the result does not carry: the mitigation
+ * reminder and the memory-age note ride side channels keyed on the object's
+ * identity, which a transcript round trip loses, and the model gate and the
+ * line-number format are read live. The other arms render from their payload
+ * alone and return undefined.
+ */
+export function snapshotReadResultText(data: Output): string | undefined {
+  if (data.type !== 'text') return undefined
+  const { content } = mapReadResultToToolResultBlock(data, '1')
+  return typeof content === 'string' ? content : undefined
+}

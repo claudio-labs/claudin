@@ -271,6 +271,10 @@ export type ToolUseContext = {
   /** Subagent-only: honor AgentDefinition.omitGitStatus in the attachment
    * pipeline — suppresses git_status_delta for the same reason. */
   omitGitStatusAttachments?: boolean
+  /** Subagent-only: honor AgentDefinition.omitGitInstructions — suppresses
+   * bash_git_instructions for an agent that never commits. Set by runAgent
+   * only while CLAUDIN_LEAN_GIT_INSTRUCTIONS is on. */
+  omitGitInstructionsAttachments?: boolean
   /** When true, canUseTool must always be called even when hooks auto-approve.
    *  Used by speculation for overlay file path rewriting. */
   requireCanUseTool?: boolean

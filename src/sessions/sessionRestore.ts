@@ -10,7 +10,7 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
-import { recomputeCostStateFromMessages, restoreCostStateForSession } from 'src/agent/cost-tracker.js'
+import { restoreCostStateForResume } from 'src/agent/cost-tracker.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import {
@@ -25,6 +25,7 @@ import type {
   AttributionSnapshotMessage,
   ContextCollapseCommitEntry,
   ContextCollapseSnapshotEntry,
+  CostStateEntry,
   PersistedWorktreeSession,
 } from 'src/shared/types/logs.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -280,6 +281,7 @@ type ResumeLoadResult = {
   prNumber?: number
   prUrl?: string
   prRepository?: string
+  costState?: CostStateEntry
 }
 
 /**
@@ -420,14 +422,11 @@ export async function processResumedConversation(
       // getSessionRecordingPaths() can discover it during /share
       await renameRecordingForSession()
       await resetSessionFilePointer()
-      // Fast path: project config still holds totals for this session.
-      // Slow path (older sessions / config wiped): walk the .jsonl messages
-      // we just loaded and re-sum each assistant turn's usage. The first
-      // path saves CPU; the fallback ensures the indicator and /cost are
-      // honest for any session, not just the most-recent one.
-      if (!restoreCostStateForSession(sid)) {
-        recomputeCostStateFromMessages(result.messages)
-      }
+      // The transcript's cost-state entry first; then the project-config
+      // slot (the most recently saved session only); then a replay of the
+      // loaded messages, so the indicator and /cost stay honest for
+      // sessions written before the entry existed.
+      restoreCostStateForResume(sid, result)
     }
   } else if (result.contentReplacements?.length) {
     // --fork-session keeps the fresh startup session ID. useLogMessages will

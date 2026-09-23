@@ -1,7 +1,8 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { isTeammate } from 'src/agent/coordinator/teammate.js'
 import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
@@ -37,13 +38,44 @@ function getToolsDescription(agent: AgentDefinition): string {
   return 'All tools'
 }
 
+let leanAgentPrompt: boolean | undefined
+
+/**
+ * Says the delegation guidance once. The Agent tool description keeps each
+ * passage (fork semantics, the fresh-agent default, foreground vs background)
+ * and drops its own internal repeats; the system prompt's agent section
+ * (`buildAgentToolSection` in prompts.ts) keeps only what the description does
+ * not say; an agent's listing line uses its `whenToUseLean` when it has one
+ * (the two WebResearchers, cut to about half).
+ *
+ * On by default since 2026-09-23: in the delegation A/B
+ * (`scripts/bench/ab/delegation-steer-ab.ts`, N=5, questions that never
+ * mention agents) every pre-registered gate held — the same delegation rate,
+ * no forks, no WebResearcher on a code question, 34 of 35 answers against 35
+ * (the miss named the flag but not the function the key asks for), cost −7%
+ * (overlap) — and the session A/B met its gate with it on.
+ * `CLAUDIN_LEAN_AGENT_PROMPT=0` restores the full text.
+ *
+ * Read once: this text is in the tools array, the system prompt and the agent
+ * listing, all cached prefix, so it must not change while the process lives.
+ */
+export function isLeanAgentPromptEnabled(): boolean {
+  leanAgentPrompt ??= !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_AGENT_PROMPT)
+  return leanAgentPrompt
+}
+
 /**
  * Format one agent line for the agent_listing_delta attachment message:
  * `- type: whenToUse (Tools: ...)`.
  */
 export function formatAgentLine(agent: AgentDefinition): string {
+  return agentLine(agent, isLeanAgentPromptEnabled())
+}
+
+function agentLine(agent: AgentDefinition, lean: boolean): string {
   const toolsDescription = getToolsDescription(agent)
-  return `- ${agent.agentType}: ${agent.whenToUse} (Tools: ${toolsDescription})`
+  const whenToUse = (lean && agent.whenToUseLean) || agent.whenToUse
+  return `- ${agent.agentType}: ${whenToUse} (Tools: ${toolsDescription})`
 }
 
 /**
@@ -63,11 +95,71 @@ export function shouldInjectAgentListInMessages(): boolean {
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_agent_list_attach', true)
 }
 
+/**
+ * Whether the Agent tool's input schema omits `run_in_background`
+ * (AgentTool.tsx): background tasks are off, or the session is headless `-p`,
+ * where no event loop drains a background child. The description is rendered
+ * from the same predicate, so it never teaches a parameter the schema lacks.
+ * Both halves are fixed for the process lifetime.
+ *
+ * No module-level state on purpose: `buildTool` evaluates the Agent schema
+ * while AgentTool.tsx loads, and when this module is entered first (prompts.ts
+ * imports it) that happens mid-cycle, before a top-level `const` here exists.
+ */
+export function isRunInBackgroundHidden(): boolean {
+  return (
+    isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS) ||
+    getIsNonInteractiveSession()
+  )
+}
+
+/**
+ * Everything the description reads from the process, injected so the render
+ * is a pure function of it. `isForkSubagentEnabled()` folds to a build-time
+ * constant that reads false under `bun test`, so the shipping (fork-on) text
+ * is reachable from a test only through this seam.
+ */
+export type AgentPromptDeps = {
+  isForkSubagentEnabled: () => boolean
+  shouldInjectAgentListInMessages: () => boolean
+  hasEmbeddedSearchTools: () => boolean
+  getSubscriptionType: typeof getSubscriptionType
+  isRunInBackgroundHidden: () => boolean
+  isInProcessTeammate: () => boolean
+  isTeammate: () => boolean
+  isLeanAgentPromptEnabled: () => boolean
+}
+
+const LIVE_PROMPT_DEPS: AgentPromptDeps = {
+  isForkSubagentEnabled,
+  shouldInjectAgentListInMessages,
+  hasEmbeddedSearchTools,
+  getSubscriptionType,
+  isRunInBackgroundHidden,
+  isInProcessTeammate,
+  isTeammate,
+  isLeanAgentPromptEnabled,
+}
+
 export async function getPrompt(
   agentDefinitions: AgentDefinition[],
   isCoordinator?: boolean,
   allowedAgentTypes?: string[],
 ): Promise<string> {
+  return renderAgentPrompt(
+    agentDefinitions,
+    isCoordinator,
+    allowedAgentTypes,
+    LIVE_PROMPT_DEPS,
+  )
+}
+
+export function renderAgentPrompt(
+  agentDefinitions: AgentDefinition[],
+  isCoordinator: boolean | undefined,
+  allowedAgentTypes: string[] | undefined,
+  deps: AgentPromptDeps,
+): string {
   // Filter agents by allowed types when Agent(x,y) restricts which agents can be spawned
   const effectiveAgents = allowedAgentTypes
     ? agentDefinitions.filter(a => allowedAgentTypes.includes(a.agentType))
@@ -86,7 +178,26 @@ export async function getPrompt(
   // re-read at 36% of all sub-agent spend). So the default lane is now a fresh
   // agent with a complete brief, and a fork is the exception for a child that
   // needs what is in the conversation.
-  const forkEnabled = isForkSubagentEnabled()
+  const forkEnabled = deps.isForkSubagentEnabled()
+
+  // Where the schema omits `run_in_background`, so does the text: no
+  // foreground/background guidance, no background-only example, and no
+  // `name` — its local jobs are the panel label and the SendMessage routing
+  // of a background agent.
+  const backgroundHidden = deps.isRunInBackgroundHidden()
+
+  // CLAUDIN_LEAN_AGENT_PROMPT: drop what this description says twice.
+  const lean = deps.isLeanAgentPromptEnabled()
+
+  const backgroundGuidance = backgroundHidden
+    ? ''
+    : `
+
+**Foreground vs background.** By default an agent runs **inline**: you wait for its report and consume the result in the same turn — like any other tool call. Pass \`run_in_background: true\` only when you have genuinely independent work to do in parallel; then the agent returns immediately with an \`output_file\` path and you'll be notified when it completes.
+
+**When backgrounded, don't peek.** If you set \`run_in_background: true\`, do not Read or tail the \`output_file\` unless the user explicitly asks for a progress check. Trust the completion notification; reading the transcript mid-flight pulls the agent's tool noise into your context, defeating the point. After launching a background agent, you know nothing about what it found — never fabricate or predict its result. If the user asks a follow-up before the notification lands, say the agent is still running, not a guess.
+
+**The announcement is not the launch.** Saying "launched X in the background" or "I'll report back when it's done" does nothing on its own — only the \`${AGENT_TOOL_NAME}\` tool call spawns the agent. Only write such an announcement if you actually emitted the tool call(s) in this same turn. If you are about to end a turn with a launch announcement but no \`${AGENT_TOOL_NAME}\` tool_use block, you have launched nothing: emit the call instead of narrating it. This matters most when launching several agents in parallel — write the tool calls first, then announce, never the announcement alone.`
 
   const whenToForkSection = forkEnabled
     ? `
@@ -99,13 +210,7 @@ Default to a fresh agent with a complete brief \u2014 implementation with a scop
 - **Research**: write the question out for a fresh \`Code\` agent. If it splits into independent questions, launch them in one message. Fork when the question is about this conversation.
 - **Implementation**: brief a fresh \`Code\` agent with file paths, line numbers and what to change. Do research before jumping to implementation.
 
-A fork is cheap on its first call only \u2014 that one hits your prompt cache \u2014 and pays the inherited context again on each call after, so the deeper the session and the longer the child's job, the more it costs. Don't set \`model\` on a fork \u2014 a different model can't reuse the parent's cache. Pass a short \`name\` (one or two words, lowercase) so the user can see the agent in the panel and steer it mid-run.
-
-**Foreground vs background.** By default an agent runs **inline**: you wait for its report and consume the result in the same turn — like any other tool call. Pass \`run_in_background: true\` only when you have genuinely independent work to do in parallel; then the agent returns immediately with an \`output_file\` path and you'll be notified when it completes.
-
-**When backgrounded, don't peek.** If you set \`run_in_background: true\`, do not Read or tail the \`output_file\` unless the user explicitly asks for a progress check. Trust the completion notification; reading the transcript mid-flight pulls the agent's tool noise into your context, defeating the point. After launching a background agent, you know nothing about what it found — never fabricate or predict its result. If the user asks a follow-up before the notification lands, say the agent is still running, not a guess.
-
-**The announcement is not the launch.** Saying "launched X in the background" or "I'll report back when it's done" does nothing on its own — only the \`${AGENT_TOOL_NAME}\` tool call spawns the agent. Only write such an announcement if you actually emitted the tool call(s) in this same turn. If you are about to end a turn with a launch announcement but no \`${AGENT_TOOL_NAME}\` tool_use block, you have launched nothing: emit the call instead of narrating it. This matters most when launching several agents in parallel — write the tool calls first, then announce, never the announcement alone.
+A fork is cheap on its first call only \u2014 that one hits your prompt cache \u2014 and pays the inherited context again on each call after, so the deeper the session and the longer the child's job, the more it costs. Don't set \`model\` on a fork \u2014 a different model can't reuse the parent's cache.${backgroundHidden ? '' : ' Pass a short `name` (one or two words, lowercase) so the user can see the agent in the panel and steer it mid-run.'}${backgroundGuidance}
 
 **Writing a fork prompt.** Since the fork inherits your context, the prompt is a *directive* — what to do, not what the situation is. Be specific about scope: what's in, what's out, what another agent is handling. Don't re-explain background.
 `
@@ -120,36 +225,11 @@ ${forkEnabled ? 'When spawning a fresh agent (with a `subagent_type`), it starts
 **Never delegate understanding.** Don't write "based on your findings, fix the bug" — that pushes synthesis onto the agent. Include file paths, line numbers, and what specifically to change.
 `
 
-  const forkExamples = `Example usage:
-
-<example>
-user: "What's left on this branch before we can ship?"
-assistant: <thinking>Delegating this \u2014 it's a survey question and the brief is self-contained, so a fresh agent does it without re-reading my whole session on every call. I want the punch list, not the git output in my context.</thinking>
-${AGENT_TOOL_NAME}({
-  name: "ship-audit",
-  description: "Branch ship-readiness audit",
-  subagent_type: "Code",
-  prompt: "Audit what's left before this branch can ship. Check: uncommitted changes, commits ahead of main, whether tests exist, whether the GrowthBook gate is wired up, whether CI-relevant files changed. Report a punch list \u2014 done vs. missing. Under 200 words."
-})
-<commentary>
-Fresh Code agent, inline \u2014 no run_in_background. The prompt carries everything the agent needs, so nothing in the conversation was worth inheriting. The tool returns the audit report in this same turn, and the coordinator answers from it directly.
-</commentary>
-assistant: Audit's back. Three blockers: no tests for the new prompt path, GrowthBook gate wired but not in build_flags.yaml, and one uncommitted file.
-</example>
-
-<example>
-user: "Something in what we changed this session broke the footer render \u2014 find which edit."
-assistant: <thinking>The child needs the edits we made and why \u2014 a dozen files and the reasoning behind each. That is this conversation, not a paragraph I can write, so this one is a fork.</thinking>
-${AGENT_TOOL_NAME}({
-  name: "footer-bisect",
-  description: "Bisect this session's edits",
-  prompt: "Find which of the edits made in this session broke the footer render. Revert them one at a time in a scratch copy, rebuild, check the footer, restore. Report the offending edit and the line. Under 150 words."
-})
-<commentary>
-Fork \u2014 no subagent_type. The prompt is a directive, not a briefing: the fork already holds the session's edits and their intent, and re-explaining them would cost more than the inherited context does.
-</commentary>
-</example>
-
+  // The one example that needs run_in_background. Its commentary restates
+  // "The announcement is not the launch", which the lean render says once.
+  const backgroundExample = backgroundHidden
+    ? ''
+    : `
 <example>
 user: "Run the migration audit AND the perf benchmark \u2014 they're independent."
 assistant: <thinking>Two independent jobs. Background both so they run in parallel while I keep working.</thinking>
@@ -167,12 +247,45 @@ ${AGENT_TOOL_NAME}({
   run_in_background: true,
   prompt: "..."
 })
-assistant: Both running in the background.
+assistant: Both running in the background.${
+        lean
+          ? ''
+          : `
 <commentary>
 The closing line is valid only because both ${AGENT_TOOL_NAME} calls above were actually emitted in this turn \u2014 the words alone launch nothing. Turn ends here. The agent does NOT have results yet \u2014 the notifications arrive as user-role messages in a later turn. Until then, give status, not a guess.
+</commentary>`
+      }
+</example>
+`
+
+  const forkExamples = `Example usage:
+
+<example>
+user: "What's left on this branch before we can ship?"
+assistant: <thinking>Delegating this \u2014 it's a survey question and the brief is self-contained, so a fresh agent does it without re-reading my whole session on every call. I want the punch list, not the git output in my context.</thinking>
+${AGENT_TOOL_NAME}({
+${backgroundHidden ? '' : '  name: "ship-audit",\n'}  description: "Branch ship-readiness audit",
+  subagent_type: "Code",
+  prompt: "Audit what's left before this branch can ship. Check: uncommitted changes, commits ahead of main, whether tests exist, whether the GrowthBook gate is wired up, whether CI-relevant files changed. Report a punch list \u2014 done vs. missing. Under 200 words."
+})
+<commentary>
+Fresh Code agent${backgroundHidden ? '' : ', inline \u2014 no run_in_background'}. The prompt carries everything the agent needs, so nothing in the conversation was worth inheriting. The tool returns the audit report in this same turn, and the coordinator answers from it directly.
 </commentary>
+assistant: Audit's back. Three blockers: no tests for the new prompt path, GrowthBook gate wired but not in build_flags.yaml, and one uncommitted file.
 </example>
 
+<example>
+user: "Something in what we changed this session broke the footer render \u2014 find which edit."
+assistant: <thinking>The child needs the edits we made and why \u2014 a dozen files and the reasoning behind each. That is this conversation, not a paragraph I can write, so this one is a fork.</thinking>
+${AGENT_TOOL_NAME}({
+${backgroundHidden ? '' : '  name: "footer-bisect",\n'}  description: "Bisect this session's edits",
+  prompt: "Find which of the edits made in this session broke the footer render. Revert them one at a time in a scratch copy, rebuild, check the footer, restore. Report the offending edit and the line. Under 150 words."
+})
+<commentary>
+Fork \u2014 no subagent_type. The prompt is a directive, not a briefing: the fork already holds the session's edits and their intent, and re-explaining them would cost more than the inherited context does.
+</commentary>
+</example>
+${backgroundExample}
 <example>
 user: "Can you get a second opinion on whether this migration is safe?"
 assistant: <thinking>I'll ask the code-reviewer agent — it won't see my analysis, so it can give an independent read.</thinking>
@@ -180,8 +293,7 @@ assistant: <thinking>I'll ask the code-reviewer agent — it won't see my analys
 A subagent_type is specified, so the agent starts fresh. It needs full context in the prompt. The briefing explains what to assess and why.
 </commentary>
 ${AGENT_TOOL_NAME}({
-  name: "migration-review",
-  description: "Independent migration review",
+${backgroundHidden ? '' : '  name: "migration-review",\n'}  description: "Independent migration review",
   subagent_type: "code-reviewer",
   prompt: "Review migration 0042_user_schema.sql for safety. Context: we're adding a NOT NULL column to a 50M-row table. Existing rows get a backfill default. I want a second opinion on whether the backfill approach is safe under concurrent writes — I've checked locking behavior but want independent verification. Report: is this safe, and if not, what specifically breaks?"
 })
@@ -207,24 +319,28 @@ assistant: Uses the ${AGENT_TOOL_NAME} tool to launch the claudin-guide agent
   // attachment (see attachments.ts) instead of inline here. This keeps the
   // tool description static across MCP/plugin/permission changes so the
   // tools-block prompt cache doesn't bust every time an agent loads.
-  const listViaAttachment = shouldInjectAgentListInMessages()
+  const listViaAttachment = deps.shouldInjectAgentListInMessages()
 
   const agentListSection = listViaAttachment
     ? `Available agent types are listed in <system-reminder> messages in the conversation.`
     : `Available agent types and the tools they have access to:
-${effectiveAgents.map(agent => formatAgentLine(agent)).join('\n')}`
+${effectiveAgents.map(agent => agentLine(agent, lean)).join('\n')}`
 
   // Shared core prompt used by both coordinator and non-coordinator modes
   const shared = `Launch a new agent to handle complex, multi-step tasks autonomously.
 
 The ${AGENT_TOOL_NAME} tool launches specialized agents (subprocesses) that autonomously handle complex tasks. Each agent type has specific capabilities and tools available to it.
 
-${agentListSection}
-
-${
-  forkEnabled
-    ? `When using the ${AGENT_TOOL_NAME} tool, specify a subagent_type to use a specialized agent, or omit it to fork yourself — a fork inherits your full conversation context and re-reads all of it on every call it makes.`
-    : `When using the ${AGENT_TOOL_NAME} tool, specify a subagent_type parameter to select which agent type to use. If omitted, the Code agent is used.`
+${agentListSection}${
+  // Lean: the fork section opens with the same fork semantics. A coordinator
+  // gets no fork section, so this line is its only copy.
+  lean && forkEnabled && !isCoordinator
+    ? ''
+    : `\n\n${
+        forkEnabled
+          ? `When using the ${AGENT_TOOL_NAME} tool, specify a subagent_type to use a specialized agent, or omit it to fork yourself — a fork inherits your full conversation context and re-reads all of it on every call it makes.`
+          : `When using the ${AGENT_TOOL_NAME} tool, specify a subagent_type parameter to select which agent type to use. If omitted, the Code agent is used.`
+      }`
 }`
 
   // Coordinator mode gets the slim prompt -- the coordinator system prompt
@@ -235,7 +351,7 @@ ${
 
   // Ant-native builds alias find/grep to embedded bfs/ugrep and remove the
   // dedicated Glob/Grep tools, so point at find via Bash instead.
-  const embedded = hasEmbeddedSearchTools()
+  const embedded = deps.hasEmbeddedSearchTools()
   const fileSearchHint = embedded
     ? '`find` via the Bash tool'
     : `the ${GLOB_TOOL_NAME} tool`
@@ -258,7 +374,7 @@ When NOT to use the ${AGENT_TOOL_NAME} tool:
   // attachment message (conditioned on subscription there). When inline, keep
   // the existing per-call getSubscriptionType() check.
   const concurrencyNote =
-    !listViaAttachment && getSubscriptionType() !== 'pro'
+    !listViaAttachment && deps.getSubscriptionType() !== 'pro'
       ? `
 - Launch multiple agents concurrently whenever possible, to maximize performance; to do that, use a single message with multiple tool uses`
       : ''
@@ -270,26 +386,30 @@ ${whenNotToUseSection}
 Usage notes:
 - Always include a short description (3-5 words) summarizing what the agent will do${concurrencyNote}
 - When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.${
-    // eslint-disable-next-line custom-rules/no-process-env-top-level
-    !isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS) &&
-    !isInProcessTeammate() &&
-    !forkEnabled
+    !backgroundHidden && !deps.isInProcessTeammate() && !forkEnabled
       ? `
 - You can optionally run agents in the background using the run_in_background parameter. When an agent runs in the background, you will be automatically notified when it completes — do NOT sleep, poll, or proactively check on its progress. Continue with other work or respond to the user instead.
 - Announcing a launch does not perform it. Only tell the user you launched an agent (e.g. "running in the background", "I'll report back") if you actually emitted the ${AGENT_TOOL_NAME} tool call in the same turn — the announcement text spawns nothing. Never end a turn with a launch announcement but no ${AGENT_TOOL_NAME} tool_use block.
 - **Foreground vs background**: Use foreground (default) when you need the agent's results before you can proceed — e.g., research agents whose findings inform your next steps. Use background when you have genuinely independent work to do in parallel.`
       : ''
   }
-- To continue a previously spawned agent, use ${SEND_MESSAGE_TOOL_NAME} with the agent's ID or name as the \`to\` field. The agent resumes with its full context preserved. ${forkEnabled ? 'Each fresh Agent invocation with a subagent_type starts without context — provide a complete task description.' : 'Each Agent invocation starts fresh — provide a complete task description.'}
+- To continue a previously spawned agent, use ${SEND_MESSAGE_TOOL_NAME} with the agent's ID${backgroundHidden ? '' : ' or name'} as the \`to\` field. The agent resumes with its full context preserved.${
+    forkEnabled
+      ? // Lean: "Writing the prompt" already says a fresh agent starts with zero context.
+        lean
+        ? ''
+        : ' Each fresh Agent invocation with a subagent_type starts without context — provide a complete task description.'
+      : ' Each Agent invocation starts fresh — provide a complete task description.'
+  }
 - Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.)${forkEnabled ? '' : ", since it is not aware of the user's intent"}. For research, pass \`readOnly: true\` as well — it removes the write tools and the repo-convention injection a read-only brief pays for otherwise.
 - If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
 - If the user specifies that they want you to run agents "in parallel", you MUST send a single message with multiple ${AGENT_TOOL_NAME} tool use content blocks. For example, if you need to launch both a build-validator agent and a test-runner agent in parallel, send a single message with both tool calls.
 - Delegate autonomously for any "investigate across N files" intent (tracing a feature, mapping a subsystem, finding all call sites). Don't wait for the user to ask — one agent replaces a serial chain of Reads and costs less context than narrating between them.${forkEnabled ? ' Write the question out for a fresh `Code` agent; fork only when the question is about this conversation.' : ''}
 - You can optionally set \`isolation: "worktree"\` to run the agent in a temporary git worktree, giving it an isolated copy of the repository. The worktree is automatically cleaned up if the agent makes no changes; if changes are made, the worktree path and branch are returned in the result.${
-    isInProcessTeammate()
+    deps.isInProcessTeammate()
       ? `
 - The run_in_background, name, team_name, and mode parameters are not available in this context. Only synchronous subagents are supported.`
-      : isTeammate()
+      : deps.isTeammate()
         ? `
 - The name, team_name, and mode parameters are not available in this context — teammates cannot spawn other teammates. Omit them to spawn a subagent.`
         : ''

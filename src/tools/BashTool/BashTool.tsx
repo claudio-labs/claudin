@@ -38,6 +38,7 @@ import {
   type PreExecPlan,
 } from 'src/tools/shared/outputFilter/Bash/index.js';
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
+import { creditShownFiles } from 'src/tools/BashTool/creditShownFiles.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
 import { detectBlockedSleepPattern, isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
 import { inputSchema, isBackgroundTasksDisabled, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
@@ -318,6 +319,10 @@ export const BashTool = buildTool({
     let result: ExecResult;
     const isMainThread = !toolUseContext.agentId;
     const preventCwdChanges = !isMainThread;
+    // Read before anything is spawned: the read credit refuses a file whose
+    // mtime is at or after it, since it may have changed after the command
+    // printed it (creditShownFiles.ts).
+    const commandStartedAt = Date.now();
     try {
       // Pre-exec filter plan: when a filter defines a rewrite (git log →
       // git log --oneline, BASE | tail → BASE), the rewritten command is the
@@ -496,6 +501,17 @@ export const BashTool = buildTool({
       persistedOutputPath,
       persistedOutputSize
     };
+    // CLAUDIN_BASH_READ_CREDIT: a pure file read counts as a Read of each file
+    // it printed whole (creditShownFiles.ts). It runs here and not beside the
+    // filter above because `data` is what the model's tool result is built
+    // from — empty lines and hints stripped, stderr and the background note
+    // beside it — and only here is it known whether the output went to disk
+    // instead. Off, it returns before touching anything.
+    await creditShownFiles({
+      ...data,
+      command: input.command,
+      startedAt: commandStartedAt
+    }, toolUseContext.readFileState, getCwd(), getAppState().toolPermissionContext);
     return {
       data
     };

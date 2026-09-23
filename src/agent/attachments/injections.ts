@@ -27,8 +27,8 @@ import {
   getCurrentTurnTokenBudget,
   getTotalOutputTokens,
   getTurnOutputTokens,
-  getTotalCostUSD,
 } from 'src/platform/bootstrap/state.js'
+import { getCostSinceRestoreUSD } from 'src/agent/cost-tracker.js'
 import {
   hasUltrathinkKeyword,
   isUltrathinkEnabled,
@@ -477,7 +477,9 @@ export function getMaxBudgetUsdAttachment(maxBudgetUsd?: number): Attachment[] {
     return []
   }
 
-  const usedCost = getTotalCostUSD()
+  // What this process spent — the figure --max-budget-usd compares, not the
+  // session total a resume restored (Claude Code's reminder reports the same).
+  const usedCost = getCostSinceRestoreUSD()
   const remainingBudget = maxBudgetUsd - usedCost
 
   return [

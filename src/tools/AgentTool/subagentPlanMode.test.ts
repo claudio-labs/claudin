@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { getPlanModeInstructions } from 'src/agent/messages/planMode.js'
 import type { AgentId } from 'src/shared/types/ids.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
 
@@ -76,5 +77,24 @@ describe('buildSubagentPlanModeAttachment (#224)', () => {
     // a plan is what read as injected page content.
     expect(webOnly.canExitPlanMode).toBe(false)
     expect(teammate.canExitPlanMode).toBe(true)
+  })
+
+  test('it carries the brief it renders now, which a resumed child re-sends', () => {
+    // The text reads the scratchpad gate and path live (.claudin/rules/cache.md
+    // §7). Both wordings, each checked against the live renderer: a snapshot
+    // taken without canExitPlanMode would hand the teammate the short brief.
+    for (const toolNames of [WEB_ONLY, TEAMMATE]) {
+      const a = buildSubagentPlanModeAttachment(
+        { mode: 'plan', agentId: AGENT, toolNames },
+        makeDeps().deps,
+      )
+      if (a?.type !== 'plan_mode') throw new Error('expected a plan_mode attachment')
+      const { rendered, ...live } = a
+
+      expect(rendered).toBeString()
+      expect(getPlanModeInstructions(a).map(m => m.message.content)).toEqual(
+        getPlanModeInstructions(live).map(m => m.message.content),
+      )
+    }
   })
 })
