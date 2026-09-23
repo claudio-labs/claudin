@@ -189,6 +189,60 @@ it says otherwise, and each anchor is a literal to grep for.
   drops it, remembers the rejection for the conversation and retries. No beta
   is stripped on a 5xx.
 
+## Acceptance on the real API
+
+Before any code sent them, `scripts/bench/tokens/beta-acceptance-probe.ts` sent
+each candidate through `claudindev -p` to the real endpoint.
+- **Setup:** 2026-09-22, OAuth (Claude Max), 12 arms × 3 models = 36 requests.
+- **Injection:** each arm went in through `ANTHROPIC_BETAS` and
+  `CLAUDIN_EXTRA_BODY`.
+- **Wire check:** a `--dry` pass against the mock confirmed every arm's header
+  or field left the CLI.
+
+| arm | Opus 5.5 | Fable 5.1 | Sonnet 5 |
+|---|---|---|---|
+| baseline | ✓ | ✓ | ✓ |
+| control: a made-up beta name | 400 ✓ | 400 ✓ | 400 ✓ |
+| control: `display:"updates"` without its beta | 400 ✓ | 400 ✓ | 400 ✓ |
+| `display:"omitted"` | ✓ | ✓ | ✓ |
+| `display:"updates"` + `thinking-display-updates-2026-08-18` | ✓ | ✓ | ✓ |
+| `thinking-token-count-2026-05-13` | ✓ | ✓ | ✓ |
+| `context-management-2025-06-27` + `clear_thinking` `keep:"all"` | ✓ | ✓ | ✓ |
+| `cache-diagnosis-2026-04-07` + `diagnostics` | ✓ | ✓ | ✓ |
+| `prompt-caching-scope-2026-01-05` (header) | ✓ | ✓ | ✓ |
+| `afk-mode-2026-01-31` (header) | ✓ | ✓ | ✓ |
+| `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=false` | **400** | **400** | **400** |
+| the same, plus `CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE=1` | ✓ | ✓ | ✓ |
+
+Both controls were rejected, so an accepted row means the API read the header
+and the field. The rejections came back as `Unexpected value(s) … for the
+anthropic-beta header` and `thinking.adaptive.display: Input should be
+'summarized', 'omitted'`.
+
+**The "→ 500" in `cli.tsx` is not true of anything the switch guards.** The
+switch's whole set is accepted except for `scope:"global"`, and that one is a
+400 with a precise reason:
+
+> `cache_control.scope: "global"` is only valid when every preceding block is
+> also globally scoped. A block with `scope: "global"` was found after content
+> with a narrower cache scope. Note that tool definitions render before
+> `system` blocks, so `scope: "global"` on `system[0]` is not a true prefix
+> when tools are present.
+
+Claudin's layout matches Claude Code's: no `cache_control` on any tool, then
+`null, null, 1h/global, null` across the system blocks. The server still takes
+Claudin's tool definitions as narrower-scoped content. Why it accepts the same
+shape from Claude Code is not established. So this round ships the header
+without the scope. Marking the tools globally scoped would move a cache
+breakpoint onto the tool array, which is a cache-layout change and needs its
+own measurement (`.claudin/rules/cache.md` has the breakpoint budget).
+
+The same bundle also shows what flipping the switch wholesale would have done
+on this machine, whose Anthropic profile resolves to the retain cache profile.
+It sends `clear_tool_uses_20250919` with a 140k trigger, which is server-side
+clearing of tool results that no one has measured on a 1M window. That is why
+the round gates each beta on its own.
+
 ## What Claudin does about it (the 2026-09-22 round)
 
 - **Adopted**, each behind its own predicate: first-party provider,
@@ -198,7 +252,7 @@ it says otherwise, and each anchor is a literal to grep for.
     under `showThinkingSummaries`
   - thinking-token-count
   - context-management with `keep:"all"`
-  - prompt-caching-scope
+  - prompt-caching-scope, the header only (the `scope:"global"` 400 is above)
   - cache-diagnosis
   - afk-mode
 - **Deferred** to a round of their own, since they are one change —
