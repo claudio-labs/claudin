@@ -1,9 +1,13 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import type { ToolResultBlockParam } from "@anthropic-ai/sdk/resources/index.mjs";
 import { getGlobalConfig, saveGlobalConfig } from "src/platform/config/config.js";
+import { maybeSummarizeToolResult } from "src/agent/tools/toolResultSummarizer.js";
+import { BASH_TOOL_NAME } from "src/tools/BashTool/toolName.js";
 import {
   applyBashFilterToStdout,
   planBashFilter,
 } from "src/tools/shared/outputFilter/Bash/index.js";
+import { stripOutputMarkers } from "src/tools/shared/outputFilter/Bash/markers.js";
 import {
   ERROR_FLOOR,
   FLOOR_CAP_LINES,
@@ -316,5 +320,175 @@ describe("isFloorCapEnabled", () => {
     for (const i of [0, FLOOR_CAP_LINES, FLOOR_CAP_LINES * 2 - 1]) {
       expect(out).toContain(`${"abcdefghij"[i % 10]}-item-${i}`);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CLAUDIN_BASH_FILE_READ_PASSTHROUGH — see fileReadShape.ts
+// ---------------------------------------------------------------------------
+
+type BashFilter = typeof import("src/tools/shared/outputFilter/Bash/index.js");
+
+const PASSTHROUGH_FLAG = "CLAUDIN_BASH_FILE_READ_PASSTHROUGH";
+
+/**
+ * The flag is read once at module load, like the cap's kill-switch, so setting
+ * it here would reach nothing already loaded. Each arm gets its own instance of
+ * the module, loaded with the variable set the way that arm needs it — which
+ * also means the flag-off arm holds even when the developer's shell exports it.
+ */
+async function loadFilter(passthrough: boolean): Promise<BashFilter> {
+  const prior = process.env[PASSTHROUGH_FLAG];
+  if (passthrough) process.env[PASSTHROUGH_FLAG] = "1";
+  else delete process.env[PASSTHROUGH_FLAG];
+  try {
+    return await import(
+      `src/tools/shared/outputFilter/Bash/index.js?passthrough=${passthrough}-${Date.now()}`
+    );
+  } finally {
+    if (prior === undefined) delete process.env[PASSTHROUGH_FLAG];
+    else process.env[PASSTHROUGH_FLAG] = prior;
+  }
+}
+
+const WORDS = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet"];
+
+/**
+ * What `for f in …; do echo "=== $f"; cat -n $f; done` prints: a header per
+ * file, then its lines numbered the way `cat -n` numbers them. Adjacent lines
+ * differ by a word and not only by their digits, so neither collapse can fire
+ * and the only stage that could shorten this is the cap.
+ */
+function loopOutput(files: number, linesPerFile: number, padding: number): string {
+  const out: string[] = [];
+  for (let f = 0; f < files; f++) {
+    out.push(`=== src/file${f}.ts`);
+    for (let n = 1; n <= linesPerFile; n++) {
+      const word = WORDS[(n + f) % WORDS.length];
+      out.push(`${String(n).padStart(6)}\texport const ${word} = '${word}${"-".repeat(padding)}'`);
+    }
+  }
+  return `${out.join("\n")}\n`;
+}
+
+describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every line", () => {
+  // 20260923-062408 claudindev r3, verbatim: 665 lines and 27,651 chars, of
+  // which the model received 30 lines.
+  const LOOP =
+    'for f in src/*.ts package.json data/catalog.json data/carts/*.json; do echo "=== $f"; cat -n $f; done';
+  // 19 files × (header + 34 lines) = 665 lines, either side of 28k chars.
+  const UNDER = loopOutput(19, 34, 3);
+  const OVER = loopOutput(19, 34, 12);
+
+  let on: BashFilter;
+  let off: BashFilter;
+
+  beforeAll(async () => {
+    on = await loadFilter(true);
+    off = await loadFilter(false);
+  });
+
+  const planFor = (filter: BashFilter, command: string) =>
+    filter.planBashFilter(command, { allowRewrite: false });
+
+  test("the fixtures are the size they claim", () => {
+    expect(UNDER.trimEnd().split("\n")).toHaveLength(665);
+    expect(UNDER.length).toBeLessThan(28_000);
+    expect(OVER.trimEnd().split("\n")).toHaveLength(665);
+    expect(OVER.length).toBeGreaterThan(28_000);
+  });
+
+  test("under 28k chars the read comes back whole, and wrapped", () => {
+    expect(on.applyBashFilterToStdout(UNDER, false, planFor(on, LOOP))).toBe(
+      `<bash-output-filtered original="" lines="665/665" reduction="0%">${UNDER}</bash-output-filtered>`,
+    );
+  });
+
+  // Above it the whole read would cross Bash's 30k result cap and be saved to a
+  // file with a 2 KB preview, which is worse than the cut.
+  test("over 28k chars it is still cut to 30 lines", () => {
+    const out = on.applyBashFilterToStdout(OVER, false, planFor(on, LOOP));
+    expect(out).toStartWith('<bash-output-filtered original="" lines="30/665"');
+    // The same count the bench's rep 3 was shown for its 665 lines.
+    expect(out).toContain("…636 lines omitted…");
+  });
+
+  test("with the flag off, the read is cut exactly like any other output", () => {
+    const loop = off.applyBashFilterToStdout(UNDER, false, planFor(off, LOOP));
+    expect(loop).toStartWith('<bash-output-filtered original="" lines="30/665"');
+    expect(loop).toBe(
+      off.applyBashFilterToStdout(UNDER, false, planFor(off, "some-unregistered-command")),
+    );
+  });
+
+  // The wrapper only earns its bytes where the summarizer would otherwise cut
+  // the read (8k chars and up). Below that it protects nothing, so the read
+  // leaves exactly as an uncut output always has: bare.
+  test("under the summarizer's 8k the read comes back whole and bare", () => {
+    const small = loopOutput(4, 34, 3);
+    expect(small.trimEnd().split("\n").length).toBeGreaterThan(FLOOR_CAP_LINES);
+    expect(small.length).toBeLessThan(8_000);
+    expect(on.applyBashFilterToStdout(small, false, planFor(on, LOOP))).toBe(small);
+    // …which the cap would have cut, flag off.
+    expect(off.applyBashFilterToStdout(small, false, planFor(off, LOOP))).toStartWith(
+      '<bash-output-filtered original="" lines="30/140"',
+    );
+  });
+
+  test("a read the cap never reached is byte-identical with the flag on", () => {
+    const short = loopOutput(2, 20, 3);
+    expect(on.applyBashFilterToStdout(short, false, planFor(on, LOOP))).toBe(
+      off.applyBashFilterToStdout(short, false, planFor(off, LOOP)),
+    );
+  });
+
+  test("with the flag on, a command that is not a pure read does not change", () => {
+    const command = "some-unregistered-command";
+    expect(on.applyBashFilterToStdout(UNDER, false, planFor(on, command))).toBe(
+      off.applyBashFilterToStdout(UNDER, false, planFor(off, command)),
+    );
+  });
+
+  // The reason the wrapper stays when nothing was cut. Uncapping these reads
+  // WITHOUT it measured +79% tool-result chars and +19% cost in the same bench:
+  // a 11-28 KB loop crossed the 8k Bash threshold, came back as a
+  // `<tool-result-summary>` with a saved file, and the model read that again.
+  describe("the wrapper keeps the tool-result summarizer away", () => {
+    let savedEnabled: boolean;
+    let savedKillSwitch: string | undefined;
+
+    beforeEach(() => {
+      savedEnabled = getGlobalConfig().toolResultSummarizerEnabled;
+      saveGlobalConfig((c) => ({ ...c, toolResultSummarizerEnabled: true }));
+      savedKillSwitch = process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER;
+      delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER;
+    });
+
+    afterEach(() => {
+      saveGlobalConfig((c) => ({ ...c, toolResultSummarizerEnabled: savedEnabled }));
+      if (savedKillSwitch === undefined) delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER;
+      else process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = savedKillSwitch;
+    });
+
+    test("a wrapped 20k read passes through untouched", () => {
+      const raw = loopOutput(15, 34, 3);
+      expect(raw.length).toBeGreaterThan(20_000);
+      const content = on.applyBashFilterToStdout(raw, false, planFor(on, LOOP));
+      expect(stripOutputMarkers(content)).toBe(raw);
+
+      const block: ToolResultBlockParam = {
+        type: "tool_result",
+        tool_use_id: "toolu_passthrough",
+        content,
+      };
+      expect(maybeSummarizeToolResult(block, BASH_TOOL_NAME)).toBe(block);
+
+      // The control that keeps this from being a tautology: the same body
+      // without the wrapper is over the threshold, and it IS summarized.
+      const bare: ToolResultBlockParam = { ...block, content: raw.trimEnd() };
+      expect(String(maybeSummarizeToolResult(bare, BASH_TOOL_NAME).content)).toStartWith(
+        "<tool-result-summary",
+      );
+    });
   });
 });

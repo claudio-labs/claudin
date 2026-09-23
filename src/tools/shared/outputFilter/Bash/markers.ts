@@ -130,3 +130,23 @@ export function wrapStdoutWithMarkers(
   const wrapped = `<bash-output-filtered original="${original}"${lines} reduction="${reduction}%">${body}</bash-output-filtered>`;
   return wrapped.length >= rawStdout.length ? body : wrapped;
 }
+
+/** The wrapper for a pure file read the pass-through left whole
+ * (`CLAUDIN_BASH_FILE_READ_PASSTHROUGH`, fileReadShape.ts).
+ *
+ * This is the case {@link wrapStdoutWithMarkers} drops the tag for — nothing
+ * was cut, so there is nothing to disclose to the model — and it is kept here
+ * for a different reader. The tool-result summarizer stands aside for output
+ * that opens with this tag (`isAlreadyCompacted`) and cuts any other Bash
+ * result of 8k chars or more to a head and tail with a saved file, which the
+ * model then reads again. Uncapping these reads without the tag measured +79%
+ * tool-result chars and +19% cost (session-cache-ab, 2026-09-23).
+ *
+ * So it is only called for a read the summarizer would cut; a smaller one goes
+ * through the function above and leaves bare. `lines="N/N" reduction="0%"` is
+ * what says nothing was cut. A separate function rather than a flag on the one
+ * above, so no caller can keep a wrapper by accident. */
+export function wrapUncutFileRead(pipelineResult: PipelineResult): string {
+  const { body, bodyLines, originalLines, reductionPct } = pipelineResult;
+  return `<bash-output-filtered original="" lines="${bodyLines}/${originalLines}" reduction="${reductionPct}%">${body}</bash-output-filtered>`;
+}

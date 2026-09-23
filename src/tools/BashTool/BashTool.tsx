@@ -38,6 +38,7 @@ import {
   type PreExecPlan,
 } from 'src/tools/shared/outputFilter/Bash/index.js';
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
+import { creditShownFiles } from 'src/tools/BashTool/creditShownFiles.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
 import { detectBlockedSleepPattern, isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
 import { inputSchema, isBackgroundTasksDisabled, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
@@ -496,6 +497,18 @@ export const BashTool = buildTool({
       persistedOutputPath,
       persistedOutputSize
     };
+    // CLAUDIN_BASH_READ_CREDIT: a pure file read counts as a Read of each file
+    // it printed whole (creditShownFiles.ts). It runs here and not beside the
+    // filter above because this is the text the model receives — empty lines
+    // and hints stripped — and only here is it known whether the output went
+    // to disk instead. Off, it returns before touching anything.
+    if (!isImage) {
+      await creditShownFiles({
+        command: input.command,
+        stdout: compressedStdout,
+        persistedOutputPath
+      }, toolUseContext.readFileState, getCwd());
+    }
     return {
       data
     };
