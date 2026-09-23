@@ -1,6 +1,6 @@
 ---
 name: session-cost-round-3-2026-09-23
-description: Round 3 of the claudin-vs-Claude-Code session A/B (proxy-recorded, N=5, 2026-09-23) — only effort medium moves the 1.3–2× thinking gap; thinking display, ANTI_NARRATION, the rule map and removing tools do not; resubmit-by-reference and the watcher false-note fix shipped on perf/session-cost-round-3
+description: Round 3 of the claudin-vs-Claude-Code session A/B (proxy-recorded, N=5, 2026-09-23) — effort medium closes the thinking gap; display, ANTI_NARRATION, the rule map and removing tools do not; transplant replays pin the rest on the system prompt as a whole (±30–50%, Harness likeliest); resubmit + watcher fix shipped
 type: project
 ---
 
@@ -36,7 +36,27 @@ they will not survive a reboot.
   - Without apply_patch, thinking drops ~40% but the model makes 48–62 Edit calls, and visible output rises 20–30% (old_string and new_string are re-sent). Cost stays flat.
   - Dropping the six rarely-used tools takes the first request from 28.4k to 21.2k tokens (cost −11%, overlap). But Grep is in 83% of real sessions and Build in 32% ([[request-prefix-size-2026-09-23]]); only Monitor (2.6%) is a cheap deferral.
 - **Where the extra thinking sits.** It is spread over more, smaller turns (9 vs 14 turns that think at all). The planning peak, the resume turn and the rest are each about 2× Claude Code's.
-- **The untested lever is the system prompt.** In `-p` it is 19.6k chars against Claude Code's 6.2k: `# Delivering work`, `# Corrections`, and a long memory section. The memory section is why claudindev's first command is often `ls .claudin`. Next A/B: `CLAUDIN_WORK_CONTRACT=0` plus a memory-section arm.
+- **The system prompt is the cause, as a whole.** In `-p` it is 19.6k chars against Claude Code's 6.2k: a 4.8k `# Harness` (Claude Code's is 1k), `# Delivering work`, `# Corrections`, and a 6.3k memory section. The memory section is why claudindev's first command is often `ls .claudin`. See "Debugging the thinking" below.
+
+**Debugging the thinking (same day, `-223933` and its `replay/`, `replay-split/`).**
+- **Reading it.** `--proxy-display=summarized` has the proxy ask both CLIs' requests for the API's thinking summary; billing and signature are unchanged. Part 1 ran N=3, all 18/18 (claude 7.3k, claudindev 8.8k, overlap). `thinking-diff.ts` lays the summaries out per session.
+  - Both models think about the same things: the bug, the $75.98 cart, tier design, hand arithmetic for tests, date expiry, receipt width.
+  - No heavy claudin turn is about one of our instructions. The extra is more of the same, over more small turns.
+- **Replaying it.** `thinking-replay.ts` re-sends the heaviest request N=8 per variant, with each CLI's headers held in memory.
+  - The same request thinks 1.3k–3.0k tokens across identical replays. The session's 3,852 was a tail value, so the heaviest request regresses to the mean.
+  - Swapping the whole system prompt moves thinking both ways (rank test):
+    - claudin body with Claude Code's prompt: median −28%, p=0.001, 16 against 16 over two batches;
+    - Claude Code body with claudin's prompt: +48%, p=0.009.
+  - Cutting one piece at a time, of that same prompt:
+    - Claude Code's `# Harness` in place of ours: −23%, p=0.047;
+    - without Session-specific guidance and Context management: −29%, p=0.23;
+    - without the work contract: −21%, p=0.28;
+    - without memory and scratchpad: +2%, p=1.0;
+    - without the startup reminders: −19%, p=0.44.
+  - So the effect is spread over the prompt's behavioural text. The Harness is the likeliest single piece: batching, anti-narration, summary style, "check your last paragraph".
+  - The range rule (pre-registered) says overlap for every single-batch variant. The rank test was chosen after seeing the data.
+  - The summaries show our prompt's concerns entering Claude Code's reasoning, for example cleaning a `/tmp` file "outside the intended scratchpad".
+- **Next step:** a lean-Harness variant behind a flag, then a full session A/B (claudindev, lean, placebo). Only that gives net cost and quality: batching may save turns while adding thought.
 
 **Noise.** Claude Code's thinking moved from 4.8k to 7.1k between runs 26 minutes apart. Identical claudin arms differed by 17–59%. Compare only simultaneous arms, and judge a thinking arm against a placebo arm.
 
