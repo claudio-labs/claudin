@@ -4,6 +4,11 @@ description: Graded cross-CLI A/B (claudindev vs claude) on one search-edit-buil
 type: project
 ---
 
+> **The result table below is STALE as of 2026-09-22.** A three-arm re-run on a
+> 15-file fixture put claude's first-turn context at **32.4k, not 70.5k**, and
+> the cost gap at **zero** — see [[three-cli-ab-bench-2026-09-22]]. The method
+> notes here still hold; do not quote the +86%.
+
 `scripts/bench/ab/cli-search-edit-ab.ts`, built 2026-08-12. Compares the two
 CLIs on the everyday shape of agent work — find every call site of one function
 across a 10-file JS project, rewrite all five, get the build green — and
