@@ -4,6 +4,9 @@ paths:
   - "src/providers/shims/claude/**"
   - "src/agent/tools/toolResultCache.ts"
   - "src/agent/tools/cacheInvalidation.ts"
+  - "src/sessions/pure/attachmentPersistence.ts"
+  - "src/sessions/pure/logging.ts"
+  - "src/sessions/resume/chain.ts"
 ---
 # Prompt Cache & Tool-Result Cache — Claudin Development Rules
 
@@ -23,25 +26,33 @@ invalidates the whole prefix and silently rebills `cache_creation`.
 - When adding anything to the request, ask "does this change a byte before the
   marker on a later turn?" If yes, it belongs after the frontier or not at all.
 
-## 2. Defer-cache-marker — `Math.max(i, 0)` fallback is load-bearing
+## 2. The message marker goes on the last message; deferring it is opt-in
 
-`src/providers/shims/claude/paramBuilders.ts::addCacheBreakpoints` does NOT pin the
-single `cache_control` marker at `messages[length-1]` each turn — it walks
-backward summing `roughTokenCountEstimationForMessage` and places the marker at
-the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
-(2048). Runtime override: `CLAUDIN_DEFER_CACHE_MARKER=<N>` (0 = baseline).
+`src/providers/shims/claude/paramBuilders.ts::addCacheBreakpoints` puts the
+single message-level `cache_control` marker on `messages[length-1]`, capped at
+the clip frontier (§1) — where Claude Code puts it.
+`CLAUDIN_DEFER_CACHE_MARKER=<N>` opts back into the deferred placement: walk
+backward summing `roughTokenCountEstimationForMessage` and place the marker at
+the earliest index whose suffix reaches N tokens. That was the default (2048)
+from 2026-06-07 to 2026-09-23.
 
-- **Why:** Anthropic's cache silently discards writes when the trailing block
-  between markers is too small (~1024 tok). A per-turn last-message marker makes
-  every small tool-loop turn fall below the floor → billed but not stored.
-- **DO NOT "simplify" the `Math.max(i, 0)` head-anchor fallback.** Pinning to
-  `messages[0]` when the loop exhausts is intentional; an "elegant" fallback to
-  `baseMarkerIndex` (length-1) regressed the bench from r:w 10.48 → 0.78. The long
-  comment in `paramBuilders.ts` documents this — respect it.
+- **Why the default is 0:** the deferral rested on "the API discards writes
+  under ~1024 tokens", and its only evidence was `cache-ab-bench.ts` (§6). The
+  graded session bench (`scripts/bench/ab/session-cache-ab.ts`, 2026-09-23, N=3
+  per arm) found the tail billed as uncached input on every turn and then
+  written anyway, while Claude Code's 555–774-token writes were read back.
+  0 against 2048: Opus 5.5 $1.80 vs $1.88 (−4%) and Sonnet 5 $1.83 vs $2.17
+  (−15%), both with non-overlapping ranges; Opus 5.5 at 5m TTL $1.40 vs $1.67
+  (−17%, overlapping). Uncached input went to ~0 in all three and cache writes
+  moved by at most 3%. Re-measure there before bringing deferral back.
+- **With deferral on, DO NOT "simplify" the `Math.max(i, 0)` head-anchor
+  fallback.** Pinning to `messages[0]` when the loop exhausts is intentional;
+  an "elegant" fallback to `baseMarkerIndex` (length-1) regressed the old bench
+  from r:w 10.48 → 0.78. The comment in `paramBuilders.ts` records it.
 - `skipCacheWrite` bypasses the defer logic (preserved). Tests memoize the
   threshold: call `_resetDeferCacheMarkerForTesting()` after flipping the env
   (`src/providers/shims/claude/__tests__/addCacheBreakpoints.test.ts`).
-- **The deferred marker is not alone: a LAGGING marker rides with it**
+- **The message marker is not alone: a LAGGING marker rides with it**
   (`src/providers/shims/claude/lagCacheMarker.ts`, on by default,
   `CLAUDIN_DISABLE_LAG_CACHE_MARKER=1` off). The API resolves a breakpoint by
   checking at most **20 positions** behind it (a run of consecutive `tool_use`
@@ -50,18 +61,22 @@ the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
   history is billed as a write again. A deferred marker that lingers through a
   run of tiny tool calls and then jumps to the end (a pasted screenshot, a Read
   that drags a rule file in) lands further than 20 positions from the last
-  write. Session ab1e69e8 (2026-09-13) paid seven of those: 3.06M of its 3.80M
+  write. Session ab1e69e8 (2026-09-13, under the old 2048 default) paid seven
+  of those: 3.06M of its 3.80M
   cache-write tokens, every one labeled "likely server-side (prompt unchanged)"
   — which was true. The lag marker sits on the message that carried the
   PREVIOUS request's marker (found by `uuid`, so prepends, stubs and compaction
   need no reset hook; a retry keeps the same tail uuid and does not rotate), so
   the lookback resumes there. It is free — breakpoints on cached bytes cost
-  nothing. Budget: system emits ≤2, messages 2 = the API's 4. Never add a
+  nothing. With the marker on the last message it is usually redundant; it
+  still covers the opt-in deferral and a single request that appends 20+
+  positions. Budget: system emits ≤2, messages 2 = the API's 4. Never add a
   third message marker. The break detector now names
   the case (`marker advanced N positions past the last write (lookback window
   is 20) — client-side placement`, or `… with the lag marker placed —
   server-side miss`). Probe: `scripts/bench/ab/lookback-miss-probe.ts` (arm A
-  reproduces the collapse, arm B keeps the prefix, 3/3 each on Sonnet 5);
+  reproduces the collapse, arm B keeps the prefix, 3/3 each on Sonnet 5; both
+  arms pin `CLAUDIN_DEFER_CACHE_MARKER=2048`, the only placement that misses);
   census over real transcripts: `scripts/bench/tokens/lookback-miss-census.ts`.
 
 ## 3. toolResultCache keys omit cwd — invalidate on any chdir
@@ -400,9 +415,56 @@ call after ToolSearch reads fewer cached tokens than the call before it).
 ## 6. Running cache perf experiments
 
 - Prototype as a `CLAUDIN_*` env toggle → A/B with
-  `scripts/bench/ab/cache-ab-bench.ts` → promote to default only on a measured win.
-- **The bench is unreliable for head-to-head numbers**: `extractTimeline` rows are
-  cumulative not delta, run-to-run variance is ~5×, and the `claude` binary exits
-  1 under the harness. Cite the r:w direction/magnitude on the SAME harness run,
-  never cross-tool absolute cost. Long-session-with-pauses is not exercised by the
-  lockstep bench — revisit with a long-session bench before claiming parity.
+  `scripts/bench/ab/session-cache-ab.ts --variant=<label>:<ENV>=<value>` (a graded
+  two-prompt session with a `--resume`, N≥3, per-turn cache columns) → promote
+  to default only on a measured win.
+- **`scripts/bench/ab/cache-ab-bench.ts` is unreliable for head-to-head
+  numbers**: `extractTimeline` rows are cumulative not delta, run-to-run
+  variance is ~5×, and the `claude` binary exits 1 under the harness. The
+  deferred-marker default rested on it for three months (§2). Long sessions
+  with pauses are exercised by neither bench.
+
+## 7. A resumed process must re-send the same prefix — the transcript is part of it
+
+`--resume` and `-c` start a new process that rebuilds its requests from the
+transcript, and the cache only reads back what that rebuild reproduces byte for
+byte. So §1 holds ACROSS processes too: whatever a request rendered, the
+transcript must be able to render again.
+
+- Attachments are the usual break. `isLoggableMessage` keeps a type when
+  `src/sessions/pure/attachmentPersistence.ts` says `persist` — every type whose
+  renderer can produce bytes. Until 2026-09-23 only `deferred_tools_delta` was
+  kept: `messages[0]` lost its startup reminders on resume (and the `\n` that
+  `joinTextAtSeam` appends moved onto the one block that stayed), so a resume
+  read back 40% of the cached prefix (`scripts/bench/ab/session-cache-ab.ts`).
+  A new attachment type does not compile until it is classified there; `skip`
+  is only for a renderer that returns `[]` for any payload.
+- Persisting is not enough when a producer keeps its "already announced" state
+  in memory. The delta producers rebuild it from history (agent listing, git
+  status, CLAUDE.md, MCP instructions, deferred tools); `skill_listing` and
+  `bash_git_instructions` rely on `restoreSkillStateFromMessages`;
+  `nested_memory` on its dedup set being seeded from history
+  (`extractNestedMemoryPathsFromMessages`, in `QueryEngine` and in the REPL's
+  `restoreReadFileState`). A new once-per-session attachment needs one of these.
+- Order is part of the bytes. Parallel tool results are written in completion
+  order and chained to their own one-block assistants, so the chain walk drops
+  all but one and `recoverOrphanedParallelToolResults`
+  (`src/sessions/resume/chain.ts`) re-inserts them sorted by timestamp. A batch
+  of Reads lands in the same millisecond, and the tie used to fall back to
+  tool_use order: 2 of 3 resumed sessions re-sent a batch reordered and missed
+  the cache from there (2026-09-23). Ties now break by JSONL write order —
+  keep any new re-linearization keyed to write order, never to tool_use order.
+- Output recorded AFTER a finished reply (Stop hooks) must not read as an
+  interrupted turn — `detectTurnInterruption` skips hook attachments, or resume
+  would append "Continue from where you left off." to a turn that ended.
+- Still not byte-stable, by design: `plan_mode`, `file` (@-mention) and the
+  todo/task reminders render live state; `currentDate` changes across days;
+  hook attachments recorded between a `tool_use` and its result sit off the
+  main chain and are not recovered.
+- Guards: `src/sessions/resumePrefixDeterminism.test.ts` (render, transcript
+  round trip, render again, byte-compared) and `src/sessions/resume/chain.test.ts`
+  (parallel results on a timestamp tie). End to end at zero API cost:
+  `bun scripts/bench/ab/resume-wire-probe.ts` (`--bin=claude` is the reference) —
+  it makes one tool call, so it cannot see ordering. For that, diff the
+  sessions a `session-cache-ab.ts` run recorded:
+  `RESUME_DIFF_RUN=<run dir> bun test scripts/bench/ab/resume-transcript-diff.test.ts`.

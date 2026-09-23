@@ -57,6 +57,9 @@ export const WorkflowTool = buildTool({
   name: WORKFLOW_RUN_TOOL_NAME,
   searchHint: 'run a staged multi-agent workflow by name',
   maxResultSizeChars: 100_000,
+  // Deferred with its two siblings: 0 calls in 155 sessions (2026-09-09..23),
+  // ~1.9k chars of schema a ToolSearch fetches when a workflow is asked for.
+  shouldDefer: true,
   async description() {
     return DESCRIPTION
   },

@@ -30,6 +30,10 @@
 // --model), in a throwaway cwd so no rules/memory inflate the prefix, and
 // never `-c` (headless resume is keyed by project dir).
 //
+// Both arms pin CLAUDIN_DEFER_CACHE_MARKER=2048. The miss only exists under
+// the deferred placement, which stopped being the default on 2026-09-23 —
+// without the pin arm A would never collapse and the probe would exit 2.
+//
 // Usage:
 //   bun run scripts/bench/ab/lookback-miss-probe.ts --bin=claudindev --reps=3
 //   bun run scripts/bench/ab/lookback-miss-probe.ts --bin=claudindev --reps=1 --model=claude-opus-5
@@ -81,9 +85,10 @@ function callAfterSecondRead(calls: Call[]): number | undefined {
 }
 
 type Arm = { name: string; env: Record<string, string> }
+const DEFERRED = { CLAUDIN_DEFER_CACHE_MARKER: '2048' }
 const ARMS: Arm[] = [
-  { name: 'A lag-off', env: { CLAUDIN_DISABLE_LAG_CACHE_MARKER: '1' } },
-  { name: 'B lag-on ', env: {} },
+  { name: 'A lag-off', env: { ...DEFERRED, CLAUDIN_DISABLE_LAG_CACHE_MARKER: '1' } },
+  { name: 'B lag-on ', env: DEFERRED },
 ]
 
 async function main() {

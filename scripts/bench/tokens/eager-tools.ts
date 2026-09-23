@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
 // Real eager-vs-deferred split: when ToolSearch deferral is active (default on
-// genuine first-party Anthropic), only the EAGER tools carry a full schema in the
-// cached prefix; deferred tools ship as tiny defer_loading stubs. This computes the
-// ACTUAL eager prefix size using claudin's own isDeferredTool(), correcting the
-// earlier "all 29 eager" over-count.
+// genuine first-party Anthropic), only the EAGER tools are billed at their schema
+// size. Deferred tools still go over the wire with their full schema and
+// `defer_loading: true`, but the API strips it from the prompt — two of them
+// (~7.4k chars) measured +93 tokens (scripts/bench/ab/tool-search-cache-probe.ts).
+// This computes the ACTUAL eager prefix size using claudin's own isDeferredTool(),
+// correcting the earlier "all 29 eager" over-count.
 //
 //   bun --preload ./src/stubs/test-preload.ts scripts/bench/tokens/eager-tools.ts
 

@@ -189,8 +189,8 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
 
   // The format-aware check is only sound if the marker survives /resume:
   // session persistence must NOT filter deferred_tools_delta attachments
-  // out of the transcript (isLoggableMessage drops generic attachments for
-  // external users). If this regresses, resumed histories are marker-free
+  // out of the transcript (src/sessions/pure/attachmentPersistence.ts decides
+  // per type). If this regresses, resumed histories are marker-free
   // and every warm resume of a delta session latches legacy → prepend onto
   // a prepend-less warm cache → the exact break A2 fixes.
   test('persistence premise: deferred_tools_delta attachments are loggable for external users', async () => {

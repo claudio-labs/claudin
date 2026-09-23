@@ -25,7 +25,7 @@
 - [Bash filter: shape blindness CLOSED, specs cap at 6.8% of chars](decisions/bash-filter-shape-wontfix.md) — 2026-08-29 census over 18.3k calls; the prefix round moved this corpus by +4 calls
 - [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](decisions/code-review-graph-evaluated-rejected.md) — 284 MB db, impact answer = 203k tokens; their bench loses to reading the diff
 - [Cache TTL tiers: agent:* 5m, fork keeps 1h (2026-07-05)](decisions/cache-ttl-tiering-subagents.md) — subagent caches die with the run; new one-shot querySources go in SHORT_LIVED_QUERY_SOURCES; auto_mode reverted to 1h
-- [Defer-cache-marker shipped 2026-06-07 — marker walks back 2048 tokens](decisions/defer-cache-marker-shipped.md) — r:w 0.97→10.48 on the bench; the Math.max(i,0) head-anchor fallback is load-bearing, don't simplify it
+- [Defer-cache-marker — default REVERSED to 0 on 2026-09-23](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more (Opus, Sonnet, 5m); its 06-07 bench was unreliable; 2048 is opt-in
 - [Devin provider port halted 2026-06-06 — f31 attestation is a hard blocker](decisions/devin-provider-port-halted.md) — feat/devin-provider not merging; don't reopen without a Ghidra/IDA budget
 - [OpenTelemetry stays devDep-only + build-stubbed — removal REJECTED 2026-07-08](decisions/opentelemetry-devdep-stubbed.md) — zero runtime footprint; the deps only satisfy tsc `import type` refs
 
@@ -41,6 +41,7 @@
 - [memory-turn-by-turn RSS bench flakes only under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — a negative first-half slope makes the threshold unsatisfiable; re-run in isolation before calling it a regression
 - [WaitFor drops every optional param](bugs/waitfor-drops-optional-params.md) — until/settle_s/interval_s/timeout_s never reach call(); always settles at 3s, so no working wait over ~3s
 - [stream-json prints every assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — same uuid, Claude Code prints once; benches counting blocks must dedupe by uuid
+- [Resume re-wrote the whole prompt cache — FIXED 2026-09-23](bugs/resume-rewrites-cache-prefix.md) — dropped attachments + parallel results reordered on a ms tie; 40%→100%; contract in cache.md §7
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md: layout, categories, secret guard, `paths:` loading, dream digest, transcript lines
@@ -112,6 +113,8 @@
 - [Symbol-parser options researched 2026-08-12](symbol-parser-options-researched.md) — tree-sitter IS shippable under bun --compile; the blocker is the SYNC scanSymbols call, not size
 - [Outline scanner: phantoms that DELETE real declarations](outline-blind-to-nested-members.md) — PR #141; 6 scanner traps, and why the A/B gate is witness-based not rule-based
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 SUPERSEDES the cost gap: claude's prefix 70.5k→32.4k, cost now ties
+- [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — claudindev +53% vs CC → +7% (overlap) after fix/session-cache; cost −27% SEPARATED
+- [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas not billed at size; Agent desc + git reminder are next
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 

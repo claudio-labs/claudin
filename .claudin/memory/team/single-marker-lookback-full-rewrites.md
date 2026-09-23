@@ -4,6 +4,12 @@ description: FIXED 2026-09-13 (lagging marker) — the single deferred cache mar
 type: project
 ---
 
+**2026-09-23: the cause is gone from the default path.** The message marker
+now sits on the last message (`CLAUDIN_DEFER_CACHE_MARKER` defaults to 0, see
+[[defer-cache-marker-shipped]]), so it advances every request and cannot jump
+20 positions at once; the miss below needs `CLAUDIN_DEFER_CACHE_MARKER=2048`
+(the probe pins it). The lag marker stays — free, and it covers the opt-in.
+
 **Fixed on branch `fix/cache-lag-marker` (2026-09-13):** a second, lagging
 marker on the previous request's marker message
 (`src/providers/shims/claude/lagCacheMarker.ts`, `CLAUDIN_DISABLE_LAG_CACHE_MARKER=1`

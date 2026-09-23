@@ -102,7 +102,7 @@ src/agent/cache/
 Key mechanism pointers (full list in `src/agent/cache/README.md`):
 
 - `src/agent/compact/stableStubState.ts` — stable stubs, first-write-wins byte registry, age prune, RSS byte-guard, **`getClipFrontierIndex`**
-- `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048 walk capped at `min(defer, frontier)`
+- `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: marker on the last message, capped at the clip frontier
 - `src/providers/shims/claude/streaming.ts` — wiring order: pairing → stable stubs → history redactions → frontier → breakpoints
 - `src/agent/compact/microCompact.ts` — explicit clips; size trigger profile-gated (0.5 aggressive / 0.85 retain)
 
@@ -110,7 +110,7 @@ Key mechanism pointers (full list in `src/agent/cache/README.md`):
 
 - **Clipping is free when the cache is already cold.** Under `retain`, the time-based microcompact fires only after an idle gap ≥ the 1h cache TTL — the server entry has already expired, so the next request re-writes the prefix regardless; the clip costs nothing extra. Under `aggressive` it stays off (everything old is already a stub). Upstream, this path was dead code behind a remote flag.
 - **Forks don't pollute the cache.** Fire-and-forget sub-agent forks (`skipCacheWrite`) shift their marker to the last *shared-prefix* message: the write is a no-op merge on the server (the parent's entry already exists) and the fork never registers its own tail. The flip side is the fork-subagent feature: a default `Agent(...)` spawn inherits the parent's full context **and its warm prompt cache**, so sub-agents start from cache hits instead of a cold prefix.
-- **One marker, 1h TTL, on purpose.** Claudin places exactly one message-level marker (two markers pin server-side KV pages that nothing will ever resume from — see the comment in `paramBuilders.ts`) and annotates 1h TTL on first-party Anthropic, deferred until ≥2048 trailing tokens accumulate so every write registers a usable entry.
+- **One marker, 1h TTL, on purpose.** Claudin places exactly one advancing message-level marker (two markers pin server-side KV pages that nothing will ever resume from — see the comment in `paramBuilders.ts`) on the last message, never past the clip frontier, and annotates 1h TTL on first-party Anthropic. Until 2026-09-23 the marker was deferred until ≥2048 trailing tokens accumulated; the graded session bench found that deferral billed the tail as uncached input and wrote it anyway (0 against 2048: Opus 5.5 −4%, Sonnet 5 −15%, Opus 5.5 at 5m TTL −17%). `CLAUDIN_DEFER_CACHE_MARKER=2048` still opts back in.
 
 ## Observability — how to tell it's working
 
@@ -146,6 +146,9 @@ bill at 2× base and rewriting the mutating tail every turn costs more than
 re-sending it as 1× input. They also had to suppress the lag marker to stay
 inside the API's 4-breakpoint budget. Re-testing the idea on a 5m-TTL (1.25×)
 provider means writing it again, on purpose, rather than flipping a flag.
+The single marker's move to the last message (2026-09-23) is a different
+thing: it stays capped at the clip frontier, so a tail that is about to mutate
+is still never written.
 
 ## Detailed docs
 

@@ -4,14 +4,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
+  deserializeMessagesWithInterruptDetection,
   loadConversationForResume,
   ResumeTranscriptTooLargeError,
   restoreSkillStateFromMessages,
 } from 'src/sessions/conversationRecovery.js'
 import {
+  createAttachmentMessage,
   getBashGitInstructionsAttachment,
   resetSentBashGitInstructions,
 } from 'src/agent/attachments/attachments.js'
+import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
@@ -124,4 +127,45 @@ test('restoreSkillStateFromMessages arms the bash_git_instructions suppress latc
   // After the latch consumes the suppression, a fresh agent still gets the
   // body (one-shot semantics) — but we already verified that contract in
   // attachments.test.ts; here we only care that the latch armed.
+})
+
+// Stop hooks record their output AFTER the final reply. Now that the transcript
+// keeps attachments, that output is the last thing on disk — and must not make
+// resume append "Continue from where you left off." to a turn that finished.
+test('a Stop hook attachment after the final reply is not an interrupted turn', () => {
+  const result = deserializeMessagesWithInterruptDetection([
+    createUserMessage({ content: 'hi' }),
+    createAssistantMessage({ content: 'hello' }),
+    createAttachmentMessage({
+      type: 'hook_success',
+      hookName: 'Stop',
+      hookEvent: 'Stop',
+      toolUseID: 'stop-hook',
+      content: '',
+    }),
+  ])
+
+  expect(result.turnInterruptionState).toEqual({ kind: 'none' })
+  expect(result.messages.at(-1)?.type).toBe('attachment')
+})
+
+test('a hook attachment after a tool result still reads as an interrupted turn', () => {
+  const result = deserializeMessagesWithInterruptDetection([
+    createUserMessage({ content: 'hi' }),
+    createAssistantMessage({
+      content: [{ type: 'tool_use' as const, id: 'toolu_01', name: 'Read', input: { file_path: '/a' } }],
+    }),
+    createUserMessage({ content: [{ type: 'tool_result', tool_use_id: 'toolu_01', content: 'x' }] }),
+    createAttachmentMessage({
+      type: 'hook_success',
+      hookName: 'PostToolUse',
+      hookEvent: 'PostToolUse',
+      toolUseID: 'toolu_01',
+      content: '',
+    }),
+  ])
+
+  expect(result.turnInterruptionState.kind).toBe('interrupted_prompt')
+  const continuation = result.turnInterruptionState as { message: { message: { content: unknown } } }
+  expect(JSON.stringify(continuation.message.message.content)).toContain('Continue from where you left off.')
 })

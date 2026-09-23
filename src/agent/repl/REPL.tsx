@@ -169,7 +169,7 @@ import type { PastedContent } from 'src/platform/config/config.js';
 import { copyPlanForFork, copyPlanForResume, getPlanSlug, setPlanSlug } from 'src/agent/plans/plans.js';
 import { clearSessionMetadata, resetSessionFilePointer, adoptResumedSessionFile, restoreSessionMetadata, getCurrentSessionTitle, isLoggableMessage, saveWorktreeState, getAgentTranscript } from 'src/sessions/sessionStorage.js';
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js';
-import { extractReadFilesFromMessages, extractBashToolsFromMessages } from 'src/agent/queryHelpers.js';
+import { extractReadFilesFromMessages, extractBashToolsFromMessages, extractNestedMemoryPathsFromMessages } from 'src/agent/queryHelpers.js';
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js';
 import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js';
 import { partialCompactConversation } from 'src/agent/compact/compact.js';
@@ -1439,8 +1439,8 @@ export function REPL({
       swarmBudgetInfoRef.current = undefined;
       setMessages(prev => [...prev, createTurnDurationMessage(totalMs, deferredBudget,
         // Count only what recordTranscript will persist — ephemeral
-        // progress ticks and non-ant attachments are filtered by
-        // isLoggableMessage and never reach disk. Using raw prev.length
+        // progress ticks and attachments that render nothing are filtered
+        // by isLoggableMessage and never reach disk. Using raw prev.length
         // would make checkResumeConsistency report false delta<0 for
         // every turn that ran a progress-emitting tool.
         count(prev, isLoggableMessage))]);
@@ -1593,6 +1593,9 @@ export function REPL({
     readFileState.current = mergeReplacingLiveCache(readFileState.current, extracted);
     for (const tool of extractBashToolsFromMessages(messages)) {
       bashTools.current.add(tool);
+    }
+    for (const path of extractNestedMemoryPathsFromMessages(messages)) {
+      loadedNestedMemoryPathsRef.current.add(path);
     }
   }, []);
 

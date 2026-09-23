@@ -3,6 +3,12 @@
 Status: shipped 2026-09-13 (branch `fix/cache-lag-marker`). On by default;
 `CLAUDIN_DISABLE_LAG_CACHE_MARKER=1` turns it off.
 
+Since 2026-09-23 the message marker is no longer deferred by default — it sits
+on the last message, so it advances every request and the miss below needs
+`CLAUDIN_DEFER_CACHE_MARKER=2048` to happen (the probe now pins it). The lag
+marker stays on: it is free, and it still covers a single request that
+appends 20+ positions.
+
 ## The bug
 
 Session `ab1e69e8` (2026-09-13, opus-5 on the 1M window, 879 API calls, context

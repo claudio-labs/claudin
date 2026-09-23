@@ -109,6 +109,7 @@ import {
 } from 'src/agent/scratchpad.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
+  extractNestedMemoryPathsFromMessages,
   handleOrphanedPermission,
   isResultSuccessful,
   normalizeMessage,
@@ -211,11 +212,14 @@ export class QueryEngine {
   // at the start of each submitMessage to avoid unbounded growth across
   // many turns in SDK mode.
   private discoveredSkillNames = new Set<string>()
-  private loadedNestedMemoryPaths = new Set<string>()
+  private loadedNestedMemoryPaths: Set<string>
 
   constructor(config: QueryEngineConfig) {
     this.config = config
     this.mutableMessages = config.initialMessages ?? []
+    this.loadedNestedMemoryPaths = extractNestedMemoryPathsFromMessages(
+      this.mutableMessages,
+    )
     this.abortController = config.abortController ?? createAbortController()
     this.permissionDenials = []
     this.readFileState = config.readFileCache

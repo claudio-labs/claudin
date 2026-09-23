@@ -319,7 +319,10 @@ type InternalInterruptionState =
  *
  * System and progress messages are skipped when finding the last turn-relevant
  * message — they are bookkeeping artifacts that should not mask a genuine
- * interruption. Attachments are kept as part of the turn.
+ * interruption. So is hook output: it lands after the message that fired the
+ * hook — a Stop hook's after the final reply — and says nothing about whether
+ * the model still owed a response. Other attachments are kept as part of the
+ * turn.
  */
 function detectTurnInterruption(
   messages: NormalizedMessage[],
@@ -328,15 +331,16 @@ function detectTurnInterruption(
     return { kind: 'none' }
   }
 
-  // Find the last turn-relevant message, skipping system/progress and
-  // synthetic API error assistants. Error assistants are already filtered
-  // before API send (normalizeMessagesForAPI) — skipping them here lets
-  // auto-resume fire after retry exhaustion instead of reading the error as
-  // a completed turn.
+  // Find the last turn-relevant message, skipping system/progress, hook
+  // output and synthetic API error assistants. Error assistants are already
+  // filtered before API send (normalizeMessagesForAPI) — skipping them here
+  // lets auto-resume fire after retry exhaustion instead of reading the error
+  // as a completed turn.
   const lastMessageIdx = messages.findLastIndex(
     m =>
       m.type !== 'system' &&
       m.type !== 'progress' &&
+      !isHookOutput(m) &&
       !(m.type === 'assistant' && m.isApiErrorMessage),
   )
   const lastMessage =
@@ -373,6 +377,14 @@ function detectTurnInterruption(
   }
 
   return { kind: 'none' }
+}
+
+function isHookOutput(m: NormalizedMessage): boolean {
+  return (
+    m.type === 'attachment' &&
+    (m.attachment.type.startsWith('hook_') ||
+      m.attachment.type === 'async_hook_response')
+  )
 }
 
 /**

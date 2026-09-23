@@ -158,7 +158,32 @@ describe('addCacheBreakpoints — defer-cache-marker placement', () => {
       msgs as Parameters<typeof addCacheBreakpoints>[0],
       true,
     )
-    expect(markerIndices(out).length).toBe(1)
+    expect(markerIndices(out)).toEqual([msgs.length - 1])
+  })
+
+  // The default: a marker on the last message, like Claude Code. On Opus 5.5
+  // the deferred tail was billed as uncached input turn after turn and written
+  // anyway — deferral cost 4% more per session (2026-09-23).
+  test('env unset → marker on the last message', () => {
+    delete process.env.CLAUDIN_DEFER_CACHE_MARKER
+    _resetDeferCacheMarkerForTesting()
+    const msgs = [makeUser('hi'), makeAssistant('hello'), makeUser('final')]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+    )
+    expect(markerIndices(out)).toEqual([msgs.length - 1])
+  })
+
+  test('=2048 still opts back into the deferred placement', () => {
+    setThreshold('2048')
+    const msgs = [makeUser('hi'), makeAssistant('hello'), makeUser('final')]
+    const out = addCacheBreakpoints(
+      msgs as Parameters<typeof addCacheBreakpoints>[0],
+      true,
+    )
+    // A three-message suffix never reaches 2048 tokens → head anchor.
+    expect(markerIndices(out)).toEqual([0])
   })
 })
 

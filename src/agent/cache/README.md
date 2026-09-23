@@ -75,15 +75,17 @@ audit; integrated regression:
   discovery in real sessions); it survives behind
   `CLAUDIN_DEFERRED_TOOLS_DISCOVERED_ONLY=1` for pathological MCP pools.
   Probe: `scripts/bench/ab/tool-search-cache-probe.ts`.
-- **The deferred marker is followed by a lagging one**
+- **The message marker is followed by a lagging one**
   (`src/providers/shims/claude/lagCacheMarker.ts`): a second message-level
   breakpoint on the message that carried the previous request's marker. The
   API only looks 20 positions behind a breakpoint for an existing entry; a
   marker that lingers through tiny tool turns and then jumps to the tail
   lands past that, the lookup resumes at the system breakpoint, and the
   whole history is re-billed (7 events / 3.06M tokens in one session,
-  38.6% of all cache writes over 30 days of transcripts). The lag marker is
-  where the lookup resumes instead; it costs nothing. Probe:
+  38.6% of all cache writes over 30 days of transcripts, under the deferred
+  placement that was the default until 2026-09-23). The lag marker is where
+  the lookup resumes instead; it costs nothing, and with the marker now on
+  the last message it is usually redundant. Probe:
   `scripts/bench/ab/lookback-miss-probe.ts`; census:
   `scripts/bench/tokens/lookback-miss-census.ts`;
   design: `docs/tech/cache/lookback-lag-marker.md`.
@@ -121,9 +123,10 @@ audit; integrated regression:
   substituted into QueryEngine's messages, so the TUI, the plan dossier and
   persistence keep the full call. An input-only id (apply_patch) never
   enters the result set — that set stubs whatever it is given.
-- `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048
-  walk + frontier cap (`min(defer, frontier)`), head-pin fallback,
-  skipCacheWrite fork handling.
+- `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: marker
+  on the last message capped at the frontier (`min(last, frontier)`); the
+  deferred walk and its head-pin fallback only under
+  `CLAUDIN_DEFER_CACHE_MARKER=<N>`; skipCacheWrite fork handling.
 - `src/providers/shims/claude/cacheControl.ts` — ephemeral 5m/1h TTL selection.
 - `src/providers/shims/claude/streaming.ts` — wiring order:
   `ensureToolResultPairing → applyStableStubs → history redactions →

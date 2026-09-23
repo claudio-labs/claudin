@@ -122,7 +122,11 @@ export function recoverOrphanedParallelToolResults(
   // as the srcUUID, and --fork-session strips srcUUID but keeps parentUuid.
   const siblingsByMsgId = new Map<string, TranscriptMessage[]>()
   const toolResultsByAsst = new Map<UUID, TranscriptMessage[]>()
+  // The map's order is JSONL write order (loadTranscriptFile inserts as it
+  // parses) — the order the live process sent these messages in.
+  const writeOrder = new Map<UUID, number>()
   for (const m of messages.values()) {
+    writeOrder.set(m.uuid, writeOrder.size)
     if (m.type === 'assistant' && m.message.id) {
       const group = siblingsByMsgId.get(m.message.id)
       if (group) group.push(m)
@@ -163,10 +167,16 @@ export function recoverOrphanedParallelToolResults(
     }
     if (orphanedSiblings.length === 0 && orphanedTRs.length === 0) continue
 
-    // Timestamp sort keeps content-block / completion order; stable-sort
-    // preserves JSONL write order on ties.
-    orphanedSiblings.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-    orphanedTRs.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+    // Timestamp sort keeps content-block / completion order, and write order
+    // breaks ties. Parallel results routinely share a millisecond, and
+    // orphanedTRs is collected in tool_use order, so a stable sort alone
+    // re-sent a batch in a different order than the live process had — a
+    // prompt-cache miss from that block on (2026-09-23).
+    const byTime = (a: TranscriptMessage, b: TranscriptMessage) =>
+      a.timestamp.localeCompare(b.timestamp) ||
+      writeOrder.get(a.uuid)! - writeOrder.get(b.uuid)!
+    orphanedSiblings.sort(byTime)
+    orphanedTRs.sort(byTime)
 
     const anchor = anchorByMsgId.get(msgId)!
     const recovered = [...orphanedSiblings, ...orphanedTRs]

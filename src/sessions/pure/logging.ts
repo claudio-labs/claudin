@@ -9,7 +9,7 @@ import type {
   SystemMessage,
   UserMessage,
 } from 'src/shared/types/message.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { shouldPersistAttachment } from 'src/sessions/pure/attachmentPersistence.js'
 
 type Transcript = (
   | UserMessage
@@ -38,27 +38,12 @@ export function removeExtraFields(
 // without awaiting recordTranscript's return value (race-free hint tracking).
 export function isLoggableMessage(m: Message): boolean {
   if (m.type === 'progress') return false
-  // IMPORTANT: We deliberately filter out most attachments for non-ants because
-  // they have sensitive info for training that we don't want exposed to the public.
-  // When enabled, we allow hook_additional_context through since it contains
-  // user-configured hook output that is useful for session context on resume.
-  if (m.type === 'attachment' && getUserType() !== 'ant') {
-    if (
-      m.attachment.type === 'hook_additional_context' &&
-      isEnvTruthy(process.env.CLAUDIN_SAVE_HOOK_ADDITIONAL_CONTEXT)
-    ) {
-      return true
-    }
-    // deferred_tools_delta must persist (contains only tool names/lines,
-    // already public in adjacent tool_use blocks): it is the resume-visible
-    // marker maybeLatchLegacyDeferredAnnouncement uses to recognize a
-    // delta-format history, the bytes a warm-resumed prefix must reproduce
-    // to hit the server-side cache, and the announced-set source that stops
-    // getDeferredToolsDelta from re-announcing the full pool after /resume.
-    if (m.attachment.type === 'deferred_tools_delta') {
-      return true
-    }
-    return false
+  // Upstream kept attachments out of external transcripts over training
+  // exposure. Here a transcript only leaves the machine through a remote
+  // session the user sets up, and a resumed session needs its attachments to
+  // re-send the prefix it cached — see attachmentPersistence.ts.
+  if (m.type === 'attachment') {
+    return shouldPersistAttachment(m.attachment.type)
   }
   return true
 }
