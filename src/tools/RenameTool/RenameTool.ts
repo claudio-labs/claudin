@@ -46,6 +46,9 @@ export const RenameTool = buildTool({
   name: RENAME_TOOL_NAME,
   searchHint: 'rename identifier symbol across files codemod',
   maxResultSizeChars: 60_000,
+  // 4 calls in 155 sessions (2026-09-09..23): its 2.7k-char schema is cheaper
+  // behind a ToolSearch than in every request.
+  shouldDefer: true,
   async description() {
     return 'Rename an identifier across the project, whole-word and skipping strings/comments.'
   },

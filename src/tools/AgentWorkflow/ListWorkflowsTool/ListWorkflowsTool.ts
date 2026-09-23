@@ -22,6 +22,7 @@ export const ListWorkflowsTool = buildTool({
   name: LIST_WORKFLOWS_TOOL_NAME,
   searchHint: 'list the agent workflows defined in this project',
   maxResultSizeChars: 100_000,
+  shouldDefer: true,
   async description() {
     return 'List the agent workflows defined in this project (.claudin/workflows/*.md), with their phases and per-phase agents.'
   },

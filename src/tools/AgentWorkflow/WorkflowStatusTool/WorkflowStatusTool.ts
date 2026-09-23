@@ -30,6 +30,7 @@ export const WorkflowStatusTool = buildTool({
   name: WORKFLOW_STATUS_TOOL_NAME,
   searchHint: 'inspect a workflow run by id',
   maxResultSizeChars: 100_000,
+  shouldDefer: true,
   async description() {
     return 'Inspect a workflow run by id: its status, current phase, per-phase decisions, and token usage. Useful for background runs.'
   },
