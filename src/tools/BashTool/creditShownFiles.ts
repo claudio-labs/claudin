@@ -26,10 +26,14 @@
  *  - a result the model got a preview of — BashTool spilled it to disk, or it
  *    is over the size the harness persists at;
  *  - an unwrapped result of 8k chars or more, which the tool-result summarizer
- *    cuts before the model sees it (it stands aside for the filter's wrapper);
+ *    cuts before the model sees it (it stands aside for the filter's wrapper).
+ *    Both sizes are the tool result's, which carries any note after stdout;
+ *  - a run that was interrupted or carries stderr (the cwd-reset note);
  *  - a file shown only in part, which is every file the floor cap cut through;
  *  - a file of fewer than two non-blank lines: a single line can sit in the
  *    output for reasons that have nothing to do with that file;
+ *  - a file written at or after the command started (see creditIfShownWhole);
+ *  - a file outside the session's working directories (see candidatesOf);
  *  - an entry under a clip-pin stand-down marker, which keeps its own budget;
  *  - an entry that already stands for the whole file at this mtime, so a real
  *    Read keeps its clip pin and its dedup.
@@ -41,6 +45,7 @@ import { isAbsolute, join, resolve } from 'path'
 import picomatch from 'picomatch'
 import { isAlreadyCompacted } from 'src/agent/tools/toolResultSummarizer/markers.js'
 import { BASH_SUMMARIZE_THRESHOLD } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
+import { pathInAllowedWorkingPath } from 'src/permissions/filePermissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isFsInaccessible } from 'src/shared/errors.js'
@@ -48,12 +53,17 @@ import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
 import { logError } from 'src/shared/log.js'
 import {
+  mapShellResultToToolResultBlockParam,
+  type ShellToolResultData,
+} from 'src/tools/shellToolResultMappers.js'
+import {
   parsePureFileRead,
   type ReadWord,
 } from 'src/tools/shared/outputFilter/Bash/fileReadShape.js'
 import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
 import { isWholeFileView } from 'src/tools/shared/readBeforeEditMessages.js'
 import { fileLinesOf } from 'src/tools/shared/servedRegion.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 
 const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
 
@@ -75,13 +85,15 @@ const MAX_BYTES_PER_CHAR = 3
 
 const GLOB_SEGMENT_RE = /[*?[]/
 
-type ShownBashOutput = {
+/**
+ * A finished Bash call: the run as BashTool returns it — stdout as the model
+ * receives it, and whatever else the tool result will carry — and the command.
+ */
+type ShownBashOutput = ShellToolResultData & {
   /** The command the model sent. */
   readonly command: string
-  /** The stdout of the tool result, exactly as the model receives it. */
-  readonly stdout: string
-  /** Set when BashTool spilled the run to disk and sent a preview. */
-  readonly persistedOutputPath?: string
+  /** `Date.now()` read just before the command was spawned. */
+  readonly startedAt: number
 }
 
 /**
@@ -93,22 +105,33 @@ export async function creditShownFiles(
   shown: ShownBashOutput,
   readFileState: FileStateCache,
   cwd: string,
+  toolPermissionContext: ToolPermissionContext,
 ): Promise<string[]> {
   if (!READ_CREDIT) return []
   try {
-    const { stdout } = shown
-    if (shown.persistedOutputPath !== undefined) return []
-    if (stdout.length > PERSISTED_ABOVE_CHARS) return []
-    if (!isAlreadyCompacted(stdout) && stdout.length >= BASH_SUMMARIZE_THRESHOLD) {
+    if (shown.isImage || shown.persistedOutputPath) return []
+    // An interrupted run stopped wherever it was cut, and either one gives the
+    // result an `<error>` part — the abort marker, the cwd-reset note.
+    if (shown.interrupted || shown.stderr?.trim()) return []
+    const received = receivedText(shown)
+    if (received === undefined || received.length > PERSISTED_ABOVE_CHARS) {
+      return []
+    }
+    if (
+      !isAlreadyCompacted(received) &&
+      received.length >= BASH_SUMMARIZE_THRESHOLD
+    ) {
       return []
     }
     const read = parsePureFileRead(shown.command)
     if (!read) return []
 
-    const body = stripOutputMarkers(stdout)
+    const body = stripOutputMarkers(received)
     const credited: string[] = []
-    for (const path of await candidatesOf(read.reads, cwd)) {
-      if (await creditIfShownWhole(path, body, readFileState)) credited.push(path)
+    for (const path of await candidatesOf(read.reads, cwd, toolPermissionContext)) {
+      if (await creditIfShownWhole(path, body, readFileState, shown.startedAt)) {
+        credited.push(path)
+      }
     }
     if (credited.length > 0) {
       logForDebugging(`bash read credit: ${credited.join(', ')}`)
@@ -120,10 +143,28 @@ export async function creditShownFiles(
   }
 }
 
-/** The files the read names, in order, each once, at most MAX_CANDIDATES. */
+/**
+ * The text the model receives for the run: the tool_result BashTool maps it
+ * to — stdout trimmed, then any stderr part and the background note — which
+ * is what the summarizer and result persistence measure. The id only labels
+ * the block.
+ */
+function receivedText(shown: ShownBashOutput): string | undefined {
+  const { content } = mapShellResultToToolResultBlockParam(shown, '')
+  return typeof content === 'string' ? content : undefined
+}
+
+/**
+ * The files the read names, in order, each once, at most MAX_CANDIDATES, and
+ * only those inside the session's working directories — by the check the
+ * file tools make (pathInAllowedWorkingPath), symlinks followed. Those are
+ * where a Read needs no rule and no prompt; `cat ../x` or `cat /etc/hosts`
+ * must not stand in for a Read that would have asked first.
+ */
 async function candidatesOf(
   reads: readonly ReadWord[],
   cwd: string,
+  toolPermissionContext: ToolPermissionContext,
 ): Promise<string[]> {
   const seen = new Set<string>()
   for (const word of reads) {
@@ -131,6 +172,7 @@ async function candidatesOf(
       ? await expandGlob(word.text, cwd)
       : [resolve(cwd, word.text)]
     for (const path of paths) {
+      if (!pathInAllowedWorkingPath(path, toolPermissionContext)) continue
       seen.add(path)
       if (seen.size >= MAX_CANDIDATES) return [...seen]
     }
@@ -177,6 +219,7 @@ async function creditIfShownWhole(
   path: string,
   body: string,
   readFileState: FileStateCache,
+  startedAt: number,
 ): Promise<boolean> {
   const existing = readFileState.get(path)
   if (existing?.standDownOutline) return false
@@ -189,6 +232,12 @@ async function creditIfShownWhole(
     if (stats.size > body.length * MAX_BYTES_PER_CHAR) return false
     // The reader Read uses, so the entry holds what a Read would have stored.
     const file = await readFileInRange(path)
+    // The file is read here, after the command. Written since it started, it
+    // may no longer hold what `cat` printed — and a version cut down to its
+    // first lines still sits in the output line for line. Credited at that
+    // mtime, it would let a Write built from the version the model saw pass
+    // the read-before-edit gate.
+    if (file.mtimeMs >= startedAt) return false
     content = file.content
     timestamp = Math.floor(file.mtimeMs)
   } catch (e) {

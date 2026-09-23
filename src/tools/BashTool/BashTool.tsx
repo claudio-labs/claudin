@@ -319,6 +319,10 @@ export const BashTool = buildTool({
     let result: ExecResult;
     const isMainThread = !toolUseContext.agentId;
     const preventCwdChanges = !isMainThread;
+    // Read before anything is spawned: the read credit refuses a file whose
+    // mtime is at or after it, since it may have changed after the command
+    // printed it (creditShownFiles.ts).
+    const commandStartedAt = Date.now();
     try {
       // Pre-exec filter plan: when a filter defines a rewrite (git log →
       // git log --oneline, BASE | tail → BASE), the rewritten command is the
@@ -499,16 +503,15 @@ export const BashTool = buildTool({
     };
     // CLAUDIN_BASH_READ_CREDIT: a pure file read counts as a Read of each file
     // it printed whole (creditShownFiles.ts). It runs here and not beside the
-    // filter above because this is the text the model receives — empty lines
-    // and hints stripped — and only here is it known whether the output went
-    // to disk instead. Off, it returns before touching anything.
-    if (!isImage) {
-      await creditShownFiles({
-        command: input.command,
-        stdout: compressedStdout,
-        persistedOutputPath
-      }, toolUseContext.readFileState, getCwd());
-    }
+    // filter above because `data` is what the model's tool result is built
+    // from — empty lines and hints stripped, stderr and the background note
+    // beside it — and only here is it known whether the output went to disk
+    // instead. Off, it returns before touching anything.
+    await creditShownFiles({
+      ...data,
+      command: input.command,
+      startedAt: commandStartedAt
+    }, toolUseContext.readFileState, getCwd(), getAppState().toolPermissionContext);
     return {
       data
     };

@@ -608,17 +608,27 @@ describe('S16 — a `cat` credited as a read, then a patch', () => {
     const credit = await loadReadCredit()
     const p = join(dir, 's16.txt')
     writeLines(p, 20)
+    // Written before the `cat` ran: the credit refuses a file dated at or
+    // after the command's start, which a write in this same millisecond is.
+    const beforeTheCat = new Date(Date.now() - 60_000)
+    utimesSync(p, beforeTheCat, beforeTheCat)
     // No refusal first to prove the file is unread: a refused patch serves
     // its region and registers it, which would authorize the patch below.
     expect(ctx.readFileState.has(p)).toBe(false)
 
-    // What BashTool hands the model for `cat s16.txt`.
+    // What BashTool hands the model for `cat s16.txt`, in a session whose
+    // working directories hold the file.
+    const startedAt = Date.now()
     const stdout = readFileSync(p, 'utf8').trimEnd()
     expect(
       await credit.creditShownFiles(
-        { command: 'cat s16.txt', stdout },
+        { command: 'cat s16.txt', startedAt, stdout },
         ctx.readFileState,
         dir,
+        {
+          ...getEmptyToolPermissionContext(),
+          additionalWorkingDirectories: new Map([[dir, { path: dir, source: 'session' }]]),
+        },
       ),
     ).toEqual([p])
     // The entry a whole-file Read of the same bytes writes, plus dedupExempt:
