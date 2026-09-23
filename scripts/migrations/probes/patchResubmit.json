@@ -1,0 +1,86 @@
+{
+  "test": [
+    "src/agent/tools/toolExecution.resolveInput.test.ts",
+    "src/tools/ApplyPatchTool/applyPatch.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/__tests__/readGateScenarios.test.ts"
+  ],
+  "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+  "probes": [
+    {
+      "name": "the sentinel is never resolved",
+      "find": "  if (!isResubmitSentinel(input.patchText)) return { ok: true, input }",
+      "replace": "  return { ok: true, input }"
+    },
+    {
+      "name": "another apply_patch call does not drop the kept patch",
+      "find": "  pendingResubmits.delete(context.readFileState)\n  if (!isResubmitSentinel(input.patchText))",
+      "replace": "  if (!isResubmitSentinel(input.patchText))"
+    },
+    {
+      "name": "the killswitch is ignored when resolving",
+      "find": "  if (!isResubmitEnabled()) return { ok: true, input }\n",
+      "replace": ""
+    },
+    {
+      "name": "a patch with an unserved problem is kept too",
+      "find": "  const resubmit = servedFailures === failures.length && isResubmitEnabled()",
+      "replace": "  const resubmit = isResubmitEnabled()"
+    },
+    {
+      "name": "the killswitch is ignored when refusing",
+      "find": "servedFailures === failures.length && isResubmitEnabled()",
+      "replace": "servedFailures === failures.length"
+    },
+    {
+      "name": "the refusal does not say how to resubmit",
+      "find": "  const hint = resubmit ? RESUBMIT_HINT : ''",
+      "replace": "  const hint = ''"
+    },
+    {
+      "name": "a served never-read refusal is not counted",
+      "find": "        note(message + servedSuffix(served), 2)\n        servedFailures++",
+      "replace": "        note(message + servedSuffix(served), 2)"
+    },
+    {
+      "name": "a served stale refusal is not counted",
+      "find": "        note(message + servedSuffix(served), 3)\n        servedFailures++",
+      "replace": "        note(message + servedSuffix(served), 3)"
+    },
+    {
+      "name": "a served coverage refusal is not counted",
+      "find": "        note(message + servedSuffix(served), 4)\n        servedFailures++",
+      "replace": "        note(message + servedSuffix(served), 4)"
+    },
+    {
+      "name": "the tool loop never calls resolveInput",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  const resolution = tool.resolveInput\n    ? tool.resolveInput(parsedInput.data, toolUseContext)\n    : ({ ok: true, input: parsedInput.data } as const)",
+      "replace": "  const resolution = { ok: true, input: parsedInput.data } as const"
+    },
+    {
+      "name": "the tool loop ignores a refused resolution",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  if (!resolution.ok) {\n    logForDebugging(",
+      "replace": "  if (false as boolean && !resolution.ok) {\n    logForDebugging("
+    },
+    {
+      "name": "validation gets the model's input, not the resolved one",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  const isValidCall = await tool.validateInput?.(\n    resolvedInput,",
+      "replace": "  const isValidCall = await tool.validateInput?.(\n    parsedInput.data,"
+    },
+    {
+      "name": "call() and the permission check get the model's input",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  let processedInput = resolvedInput\n",
+      "replace": "  let processedInput = parsedInput.data\n"
+    },
+    {
+      "name": "resume reads the sentinel as a patch",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "            const patchText = isResubmitSentinel(input.patchText)\n              ? lastPatchText\n              : input.patchText",
+      "replace": "            const patchText = input.patchText"
+    }
+  ]
+}

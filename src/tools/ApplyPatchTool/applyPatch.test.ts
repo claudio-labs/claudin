@@ -20,11 +20,13 @@ import {
 } from 'src/shared/fs/fsOperations.js'
 import {
   applyPatchCacheInvalidationPaths,
+  resolveApplyPatchInput,
   runApplyPatch,
   summarizeApplyPatch,
   validateApplyPatchInput,
   resolveApplyPatchPaths,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
+import { RESUBMIT_SENTINEL } from 'src/tools/ApplyPatchTool/patchFormat.js'
 
 beforeAll(() => {
   // Defend against an fs mock leaked from another test file in the shard.
@@ -930,6 +932,140 @@ describe('validateApplyPatchInput — read coverage', () => {
       expect(r).toEqual({ result: true })
     } finally {
       delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
+    }
+    cleanup()
+  })
+})
+
+describe('resubmit by reference', () => {
+  // Session A/B 2026-09-23: 24 of 63 claudin sessions had a patch refused with
+  // the lines served, then re-sent the identical ~8k-char patch as output.
+  const RESUBMIT = { patchText: RESUBMIT_SENTINEL }
+
+  test('a served refusal keeps the patch, and the sentinel applies it', async () => {
+    const p = join(dir, 'resubmit.txt')
+    writeNumbered(p)
+    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
+    expect(resolveApplyPatchInput(patch, ctx)).toEqual({ ok: true, input: patch })
+    const refused = validateApplyPatchInput(patch, ctx)
+    expect(refused).toMatchObject({ result: false })
+    if (!refused.result) expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
+
+    const resolved = resolveApplyPatchInput(RESUBMIT, ctx)
+    expect(resolved).toEqual({ ok: true, input: patch })
+    if (!resolved.ok) return
+    expect(validateApplyPatchInput(resolved.input, ctx)).toEqual({ result: true })
+    await runApplyPatch(resolved.input, ctx, randomUUID())
+    expect(readFileSync(p, 'utf8')).toContain('LINE5')
+    // Spent: a second sentinel has nothing to apply.
+    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toMatchObject({ ok: false })
+    cleanup()
+  })
+
+  test('a multi-file patch whose every problem was served can be resubmitted too', () => {
+    const a = join(dir, 'resubmit-a.txt')
+    const b = join(dir, 'resubmit-b.txt')
+    writeNumbered(a)
+    writeNumbered(b)
+    markRange(b, 1, 3)
+    const patch = {
+      patchText: envelope(
+        `*** Update File: ${a}\n@@\n-line5\n+LINE5\n` + `*** Update File: ${b}\n@@\n-line9\n+LINE9`,
+      ),
+    }
+    resolveApplyPatchInput(patch, ctx)
+    const refused = validateApplyPatchInput(patch, ctx)
+    expect(refused).toMatchObject({ result: false })
+    if (!refused.result) {
+      expect(refused.message).toContain('found 2 problems')
+      expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
+    }
+    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
+    cleanup()
+  })
+
+  test('a stale refusal that served the current lines can be resubmitted too', () => {
+    const p = join(dir, 'resubmit-stale.txt')
+    writeNumbered(p)
+    markRead(p)
+    writeFileSync(p, readFileSync(p, 'utf8').replace('line8', 'LINE8'))
+    const when = new Date(Date.now() + 10_000)
+    utimesSync(p, when, when)
+    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-LINE8\n+line8`) }
+    resolveApplyPatchInput(patch, ctx)
+    const refused = validateApplyPatchInput(patch, ctx)
+    expect(refused).toMatchObject({ result: false })
+    if (!refused.result) {
+      expect(refused.message).toContain('modified since it was read')
+      expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
+    }
+    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
+    cleanup()
+  })
+
+  test('the sentinel with nothing kept is refused', () => {
+    const r = resolveApplyPatchInput(RESUBMIT, ctx)
+    expect(r).toMatchObject({ ok: false })
+    if (!r.ok) expect(r.message).toContain('send the whole patch')
+  })
+
+  test('any other apply_patch call drops the kept patch', () => {
+    const p = join(dir, 'dropped.txt')
+    writeNumbered(p)
+    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
+    resolveApplyPatchInput(patch, ctx)
+    expect(validateApplyPatchInput(patch, ctx)).toMatchObject({ result: false })
+    const other = { patchText: envelope(`*** Add File: ${join(dir, 'other.txt')}\n+x`) }
+    expect(resolveApplyPatchInput(other, ctx)).toEqual({ ok: true, input: other })
+    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toMatchObject({ ok: false })
+    cleanup()
+  })
+
+  test('a patch with a problem the refusal could not serve keeps nothing', () => {
+    const a = join(dir, 'kept-a.txt')
+    const b = join(dir, 'kept-b.txt')
+    writeNumbered(a)
+    writeNumbered(b)
+    const patch = {
+      patchText: envelope(
+        `*** Update File: ${a}\n@@\n-line5\n+LINE5\n` + `*** Update File: ${b}\n@@\n-nowhere\n+x`,
+      ),
+    }
+    resolveApplyPatchInput(patch, ctx)
+    const refused = validateApplyPatchInput(patch, ctx)
+    expect(refused).toMatchObject({ result: false })
+    if (!refused.result) expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
+    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toMatchObject({ ok: false })
+    cleanup()
+  })
+
+  test('the kept patch belongs to the agent whose call was refused', () => {
+    const p = join(dir, 'agent.txt')
+    writeNumbered(p)
+    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
+    resolveApplyPatchInput(patch, ctx)
+    validateApplyPatchInput(patch, ctx)
+    expect(resolveApplyPatchInput(RESUBMIT, makeContext())).toMatchObject({ ok: false })
+    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
+    cleanup()
+  })
+
+  test('CLAUDIN_DISABLE_PATCH_RESUBMIT=1: no hint, and the sentinel is just an unparseable patch', () => {
+    const p = join(dir, 'resubmit-off.txt')
+    writeNumbered(p)
+    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
+    process.env.CLAUDIN_DISABLE_PATCH_RESUBMIT = '1'
+    try {
+      resolveApplyPatchInput(patch, ctx)
+      const refused = validateApplyPatchInput(patch, ctx)
+      expect(refused).toMatchObject({ result: false })
+      if (!refused.result) expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
+      expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: RESUBMIT })
+      const parsed = validateApplyPatchInput(RESUBMIT, ctx)
+      expect(parsed).toMatchObject({ result: false })
+      if (!parsed.result) expect(parsed.message).toContain('failed to parse the patch')
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_PATCH_RESUBMIT
     }
     cleanup()
   })

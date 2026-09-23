@@ -4,6 +4,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   type ApplyPatchOutput,
   checkApplyPatchPermissions,
+  resolveApplyPatchInput,
   runApplyPatch,
   summarizeApplyPatch,
   validateApplyPatchInput,
@@ -45,6 +46,9 @@ export const ApplyPatchTool = buildTool({
   isConcurrencySafe: () => false,
   toAutoClassifierInput(input) {
     return input.patchText
+  },
+  resolveInput(input, context) {
+    return resolveApplyPatchInput(input, context)
   },
   async validateInput(input, context) {
     return validateApplyPatchInput(input, context)

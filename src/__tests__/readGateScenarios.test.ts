@@ -1,5 +1,6 @@
 // The auto-outline pivot is behind a build-time flag the test preload stubs to
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { randomUUID } from 'crypto'
 import { mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -21,6 +22,8 @@ import {
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
 } from 'src/tools/FileReadTool/outlineView.js'
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
+import { ApplyPatchTool } from 'src/tools/ApplyPatchTool/ApplyPatchTool.js'
+import { RESUBMIT_SENTINEL } from 'src/tools/ApplyPatchTool/patchFormat.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
 import { createPlanAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 import {
@@ -57,6 +60,10 @@ import {
 // And from session-cache-ab (2026-09-23), where every rep read the fixture with
 // a Bash `cat` loop and then re-read each file with Read to be allowed to edit:
 //   S16 a `cat` credited as a read, then a patch                  (CLAUDIN_BASH_READ_CREDIT)
+//
+// And from the same bench, where 24 of 63 sessions re-sent a whole patch after
+// a refusal that had already served the lines it needed:
+//   S17 a refused patch resubmitted by reference                  (`*** Resubmit`)
 // ---------------------------------------------------------------------------
 
 /**
@@ -645,5 +652,40 @@ describe('S16 — a `cat` credited as a read, then a patch', () => {
     expect(refusal(patch(p, '@@\n-l12\n+L12'))).toContain(
       'has been modified since it was read',
     )
+  })
+})
+
+describe('S17 — a refused patch resubmitted by reference', () => {
+  test('the tool resolves the sentinel to the kept patch, which then applies', async () => {
+    // `a` was Read; `b` was only printed by a capped `cat`, so the Read tool never saw it.
+    const a = join(dir, 's17-a.txt')
+    const b = join(dir, 's17-b.txt')
+    writeLines(a, 12)
+    writeLines(b, 12)
+    await read(a)
+    const sent = {
+      patchText:
+        `*** Begin Patch\n*** Update File: ${a}\n@@\n-l3\n+L3\n` +
+        `*** Update File: ${b}\n@@\n-l9\n+L9\n*** End Patch`,
+    }
+    // The order toolExecution runs them in: resolveInput, then validateInput.
+    expect(ApplyPatchTool.resolveInput!(sent, ctx)).toEqual({ ok: true, input: sent })
+    const refused = await ApplyPatchTool.validateInput!(sent, ctx)
+    expect(refused.result).toBe(false)
+    if (!refused.result) {
+      expect(refused.message).toContain('has not been read yet')
+      expect(refused.message).toContain('9→l9')
+      expect(refused.message).toContain(`"${RESUBMIT_SENTINEL}"`)
+    }
+
+    const resolved = ApplyPatchTool.resolveInput!({ patchText: RESUBMIT_SENTINEL }, ctx)
+    expect(resolved).toEqual({ ok: true, input: sent })
+    if (!resolved.ok) return
+    expect(await ApplyPatchTool.validateInput!(resolved.input, ctx)).toEqual({ result: true })
+    await ApplyPatchTool.call(resolved.input, ctx, (async () => ({ behavior: 'allow' })) as never, {
+      uuid: randomUUID(),
+    } as never)
+    expect(readFileSync(a, 'utf8')).toContain('L3')
+    expect(readFileSync(b, 'utf8')).toContain('L9')
   })
 })

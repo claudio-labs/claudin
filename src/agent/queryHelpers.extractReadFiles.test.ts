@@ -259,6 +259,21 @@ describe('extractReadFilesFromMessages — write tools', () => {
     expect(cache.get(p)).toBeUndefined()
   })
 
+  test('"*** Resubmit" is restored as the patch refused one call earlier', () => {
+    // The resubmitted patch wrote the file; nothing in the sentinel names it.
+    const p = join(dir, 'resubmitted.ts')
+    writeFileSync(p, 'AFTER\n')
+    const refused = toolUse('apply_patch', {
+      patchText: `*** Begin Patch\n*** Update File: ${p}\n@@\n-x\n+y\n*** End Patch`,
+    })
+    const resubmit = toolUse('apply_patch', { patchText: '*** Resubmit' })
+    const cache = extractReadFilesFromMessages(
+      [refused, toolResult(refused, 'refused', { isError: true }), resubmit, toolResult(resubmit, 'ok')],
+      dir,
+    )
+    expect(cache.get(p)).toMatchObject({ content: 'AFTER\n', offset: undefined })
+  })
+
   test('a malformed patchText is skipped, not thrown', () => {
     const use = toolUse('apply_patch', { patchText: 'not a patch' })
     expect(() =>
