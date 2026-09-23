@@ -124,3 +124,48 @@ arms. The branch's output (+25%: fewer turns, bigger patches) is the number to
 watch next. In 3 of 5 final-round runs an ~8k-char multi-file patch was refused
 because README.md had only been `cat`'d (and capped) — the model re-sends the
 whole patch, a recurring output cost on both builds.
+
+**Why Claude Code is still cheaper — `-175528` decomposed offline (no new
+runs), cross-checked on `-062408`.** With no cache breaks, a token that enters
+the context at call k costs one write plus one read per later call, so the
+priced cost splits exactly (reconstruction within $0.0002 per run). Thinking is
+the API's own count, `usage.output_tokens_details.thinking_tokens`: per message
+in claudin's stream-json, per process in Claude Code's `result` (its
+`result.usage` is per process after `--resume`, unlike `total_cost_usd`).
+Estimating it as output minus visible chars / 2.22 overshoots both arms by
+1–2k but keeps the ratio.
+
+| per session, mean | Claude Code | claudindev | Δ |
+|---|---|---|---|
+| hidden thinking | 5.6k tok, $0.17 | 10.6k, $0.32 | +$0.15 |
+| patch re-sent after the read gate | 0 | 2.6k, $0.08 | +$0.08 |
+| other visible output (code + text) | 22.5k, $0.66 | 22.3k, $0.66 | +$0.01 |
+| prefix, read on every call | 21.2k, $0.17 | 28.4k, $0.21 | +$0.05 |
+| tool results + reminders | $0.29 | $0.32 | +$0.03 |
+| total | $1.28 | $1.59 | +$0.32 |
+
+- Editing costs the same ($0.78 vs $0.76, re-sends included). The gap is the
+  non-edit steps: 13.8 turns vs 5.4, $0.74 vs $0.40 (output +$0.20, turn tax
+  +$0.10, results +$0.03). Claude Code reads the project in two `cat` calls and
+  chains `bun test` into other commands; claudindev spends ~5 turns reading
+  (an `ls .claudin` detour, a `cat` the filter caps, Read×12, Read×7), runs
+  RunTests/Typecheck alone twice, and re-orients after `--resume` in 1.4 turns
+  ($0.18) against 0.8 ($0.06). Claude Code's Bash-only shape is steered: its
+  `auto_mode` attachment carries `bashFirst:true`.
+- Thinking is 1.3–1.9× Claude Code's in every simultaneous run (7.0–10.6k vs
+  5.4–5.6k), 24–30% of claudindev's output against ~20%; Claude Code's is flat.
+- Read gate: 24 of 63 claudin sessions of the day (38%, 0–100% per run) got
+  "has not been read yet" on README.md and re-sent the whole patch, ~2.9k
+  output tokens (~$0.10) per refusal.
+- **Effort is at parity here, so it is not the thinking gap.** A mock capture of
+  a two-phase session with the bench's flags shows `output_config.effort:"high"`
+  on every request of both CLIs, after `--resume` too; Claude Code repeats it on
+  its role:system environment message, and its transcripts record
+  `effort:"high"` on every assistant entry. What else differs on the wire:
+  `thinking.display` updates vs omitted (`CLAUDIN_THINKING_DISPLAY=updates` is
+  a one-env variant arm), per-turn-control and mid-conversation system messages
+  (not in claudin), `block_binding`, a 6.3k vs 20.2k-char system prompt, 16 vs
+  38 tools. None is pinned yet. Without the flag Claude Code sends `medium` on
+  Opus 5.5 and claudin `high`, a gap this bench does not measure.
+- Not causes: the cache (100% resume read-back, 0 breaks) and tool-result
+  volume (27–29k tokens vs 25–27k).
