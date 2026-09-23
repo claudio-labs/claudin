@@ -185,9 +185,17 @@ export async function startMCPServer(
         const parsedArgs = tool.inputSchema.parse(
           stripPlaceholderOptionalFields(tool, args ?? {}),
         )
+        // The same resolution the in-process tool loop applies (Tool.resolveInput).
+        const resolved = tool.resolveInput
+          ? tool.resolveInput(parsedArgs as never, toolUseContext)
+          : ({ ok: true, input: parsedArgs } as const)
+        if (!resolved.ok) {
+          throw new Error(`Tool ${name} input is invalid: ${resolved.message}`)
+        }
+        const toolArgs = resolved.input
 
         const validationResult = await tool.validateInput?.(
-          (parsedArgs as never) ?? {},
+          (toolArgs as never) ?? {},
           toolUseContext,
         )
         if (validationResult && !validationResult.result) {
@@ -196,7 +204,7 @@ export async function startMCPServer(
           )
         }
         const finalResult = await tool.call(
-          (parsedArgs ?? {}) as never,
+          (toolArgs ?? {}) as never,
           toolUseContext,
           hasPermissionsToUseTool,
           createAssistantMessage({
