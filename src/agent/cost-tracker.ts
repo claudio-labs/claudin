@@ -86,7 +86,8 @@ let restoredCostUSD = 0
  * The session whose WHOLE cost the counters hold — Claude Code's cost-ledger
  * owner, and the only session a `cost-state` entry is stamped for.
  * `undefined` until the process's first stamp claims its session; a reset
- * scopes it to the session current at the reset; a resume through
+ * scopes it to the session current at the reset (/clear resets after its
+ * switch, saveCostsAndStartNewSession); a resume through
  * restoreCostStateForResume scopes it to the resumed one; `null` (nobody)
  * after a project-config-only restore. Nothing moves it on a bare
  * switchSession: a session reached without that restore holds only part of
@@ -517,6 +518,23 @@ export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
       cumulativeModelUsage,
     }
   })
+}
+
+/**
+ * The cost side of /clear — and of plan mode's "clear context", which runs
+ * the same clearConversation. The session being left is saved while it is
+ * still current (its project-config slot and its `cost-state` stamp), then
+ * `startNewSession` switches to a fresh id, and only then are the counters
+ * zeroed: a reset hands them to the session current at the reset, so zeroing
+ * before the switch left them owned by the session just left, and the new
+ * session's exit stamped no entry. A fresh id has spent nothing anywhere, so
+ * zero is its whole cost — unlike a /resume target, whose counters stay
+ * unowned until restoreCostStateForResume puts its cost back.
+ */
+export function saveCostsAndStartNewSession(startNewSession: () => void): void {
+  saveCurrentSessionCosts()
+  startNewSession()
+  resetCostState()
 }
 
 /**

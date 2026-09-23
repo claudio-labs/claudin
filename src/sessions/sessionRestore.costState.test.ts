@@ -38,9 +38,12 @@ import {
   resetCostStateOwnerForTesting,
   restoreCostStateForResume,
   restoreCostStateForSession,
+  saveCostsAndStartNewSession,
   saveCurrentSessionCosts,
 } from 'src/agent/cost-tracker.js'
 import {
+  getSessionId,
+  regenerateSessionId,
   resetStateForTests,
   switchSession,
 } from 'src/platform/bootstrap/state.js'
@@ -421,8 +424,9 @@ describe('restoreCostStateForResume — what every resume path calls', () => {
     restoreCostStateForResume(a.sid, { costState: stamped(a.sid, 1.5), messages: [] }, NO_PROJECT_CONFIG)
     expect(getCostStateEntryFor(a.sid)?.totalCostUSD).toBe(1.5)
 
-    // A reset, then a switchSession that no restore follows: the counters
-    // are not the target's cost.
+    // /resume's order — a reset, then a switchSession — before its restore
+    // has run (it awaits in between): the counters are not the target's
+    // cost. /clear zeroes after its switch instead (the next describe).
     resetCostState()
     const b = randomUUID()
     switchSession(asSessionId(b), tmpDir)
@@ -435,5 +439,25 @@ describe('restoreCostStateForResume — what every resume path calls', () => {
     switchSession(asSessionId(c), tmpDir)
     restoreCostStateForSession(c)
     expect(getCostStateEntryFor(c)).toBeUndefined()
+  })
+})
+
+describe('/clear — saveCostsAndStartNewSession, as clearConversation calls it', () => {
+  test('stamps the session it leaves, and the new session owns the zeroed counters', async () => {
+    const left = openSession()
+    addToTotalSessionCost(0.75, usage({ input: 12, output: 900, cacheRead: 150_000 }), MODEL)
+
+    saveCostsAndStartNewSession(() => regenerateSessionId({ setCurrentAsParent: true }))
+
+    const started = getSessionId()
+    expect(started).not.toBe(left.sid)
+    const stamps = (await readEntries(left.path)).filter(e => e.type === 'cost-state')
+    expect(stamps.at(-1)).toMatchObject({ sessionId: left.sid, totalCostUSD: 0.75 })
+    // A fresh id has spent nothing anywhere: zero is its whole cost, so its
+    // exit may stamp it — and what it spends from here on.
+    expect(getCostStateEntryFor(started)).toMatchObject({
+      sessionId: started,
+      totalCostUSD: 0,
+    })
   })
 })
