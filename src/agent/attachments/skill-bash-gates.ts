@@ -262,6 +262,13 @@ export async function getBashGitInstructionsAttachment(
     return []
   }
 
+  // Nor for agents that never commit (AgentDefinition.omitGitInstructions,
+  // mirrored by runAgent under CLAUDIN_LEAN_GIT_INSTRUCTIONS). Before the
+  // resume latch, like the check above, so the latch stays for its owner.
+  if (toolUseContext.omitGitInstructionsAttachments === true) {
+    return []
+  }
+
   // Mirror the gate the inline path used to apply in getCommitAndPRInstructions.
   if (!shouldIncludeGitInstructions()) {
     return []

@@ -90,5 +90,7 @@ export const PLAN_AGENT: BuiltInAgentDefinition = {
   // Dropping it from context saves tokens without blocking access.
   omitClaudeMd: true,
   omitGitStatus: true,
+  // Plan never commits, so the commit/PR protocol is dead weight.
+  omitGitInstructions: true,
   getSystemPrompt: () => getPlanV2SystemPrompt(),
 }

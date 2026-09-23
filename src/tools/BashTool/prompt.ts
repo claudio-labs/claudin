@@ -62,6 +62,23 @@ export function shouldInjectBashGitInstructionsInMessages(): boolean {
   return true
 }
 
+let leanGitInstructions: boolean | undefined
+
+/**
+ * `CLAUDIN_LEAN_GIT_INSTRUCTIONS=1`: the commit/PR protocol at a little over
+ * half its size with every rule kept, and none at all for agents that never
+ * commit (`AgentDefinition.omitGitInstructions`, honored in runAgent). The
+ * default block is ~3.9k chars in `messages[0]` of every agent that has Bash,
+ * sub-agents included. Off by default until the A/B decides.
+ *
+ * Read once: the body is cached prefix and must not change while the process
+ * lives.
+ */
+export function isLeanGitInstructionsEnabled(): boolean {
+  leanGitInstructions ??= isEnvTruthy(process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS)
+  return leanGitInstructions
+}
+
 /**
  * The bash git/PR instructions body, without the `shouldIncludeGitInstructions()`
  * gate. Callers must check `shouldIncludeGitInstructions()` themselves before
@@ -69,6 +86,9 @@ export function shouldInjectBashGitInstructionsInMessages(): boolean {
  */
 export function getBashGitInstructionsBody(): string {
   const { commit: commitAttribution, pr: prAttribution } = getAttributionTexts()
+  if (isLeanGitInstructionsEnabled()) {
+    return getLeanGitInstructionsBody(commitAttribution, prAttribution)
+  }
 
   return `# Committing changes with git
 
@@ -97,6 +117,41 @@ ${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Sum
 </example>
 
 A PR body is markdown and normally holds backticks, so quote it with '…' — inside single quotes a backtick and a newline are both literal. If the body also holds an apostrophe, use "…" instead and backslash-escape each backtick, \`$\`, \`"\` and \`\\\` in it.${prAttribution ? '' : `\n\nThe same goes for attribution: do not append an AI footer (e.g. "🤖 Generated with Claude Code", "Co-Authored-By: Claude") to the body.`}`
+}
+
+/**
+ * The same protocol with every rule kept — the deny list, the amend rule, the
+ * three steps, the quoting rules, both examples (each accepted by the Git
+ * tool's grammar) and the attribution handling — and the reasoning between
+ * them cut. CLAUDIN_LEAN_GIT_INSTRUCTIONS.
+ */
+function getLeanGitInstructionsBody(
+  commitAttribution: string,
+  prAttribution: string,
+): string {
+  return `# Committing changes with git
+
+Commit only when the user asks; if unclear, ask first. Never update the git config; never push unless asked. Destructive commands — \`push --force\`, \`reset --hard\`, \`checkout .\`, \`restore .\`, \`clean -f\`, \`branch -D\` — and hook skips (\`--no-verify\`, \`--no-gpg-sign\`) run only when the user asks for them by name; warn instead of force-pushing to main/master. Never amend unless asked: a failed pre-commit hook means the commit did NOT happen, so fix it, re-stage and make a NEW commit.
+
+1. Read the repo in a SINGLE ${GIT_TOOL_NAME} call: \`git status\` (never \`-uall\`), \`git diff\` (staged and unstaged), \`git log\` for the message style. Run nothing beyond these git/gh steps.
+2. Write a 1-2 sentence message in that style saying why, not what.
+3. In one more ${GIT_TOOL_NAME} call, stage files by name — never \`git add -A\` or \`git add .\`; warn about any that likely hold secrets — then commit and run \`git status\`. Nothing to commit: no empty commit.${commitAttribution ? `\n\nEvery commit message must end with this trailer, on its own line after a blank one:\n\n${commitAttribution}` : ''}
+
+<example>
+${GIT_TOOL_NAME}({commands: ["git add a.ts b.ts", "git commit -m \\"Subject.\\n\\nBody line here.${commitAttribution ? `\\n\\n${commitAttribution}` : ''}\\"", "git status"]})
+</example>
+
+Subject, blank line and body go in ONE quoted \`-m\` argument: '…' when it holds a backtick or a \`$\`, otherwise "…"; inside "…", put a backslash before every \`"\` and \`\\\` in it, and before each backtick and \`$\` too when an apostrophe rules out '…'. No commit message needs ${BASH_TOOL_NAME}. Never use \`-i\` (it needs a TTY), nor \`--no-edit\` with \`git rebase\`.${commitAttribution ? '' : ' Add no AI attribution trailer ("Generated with Claude Code", "Co-Authored-By: Claude").'}
+
+# Creating pull requests
+
+Use \`gh\` through the ${GIT_TOOL_NAME} tool for everything GitHub, a GitHub URL included (review comments: \`gh api repos/foo/bar/pulls/123/comments\`). Before opening a PR, read the whole branch in a SINGLE ${GIT_TOOL_NAME} call: status, diff, remote tracking and sync, \`git log\` and \`git diff [base-branch]...HEAD\`. Create the branch and push with \`-u\` if needed, open the PR with a title under 70 characters (details go in the body), and return its URL.
+
+<example>
+${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullets>\\n\\n## Test plan\\n[checklist]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})
+</example>
+
+Quote the body with '…', where a backtick and a newline are literal; if it holds an apostrophe, use "…" and backslash-escape each backtick, \`$\`, \`"\` and \`\\\`.${prAttribution ? '' : ' Add no AI footer to the body.'}`
 }
 
 function getCommitAndPRInstructions(): string {

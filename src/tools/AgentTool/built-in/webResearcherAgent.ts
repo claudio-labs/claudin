@@ -38,6 +38,9 @@ You are running in an isolated context. The parent agent will see only your fina
 export const WEB_RESEARCHER_AGENT: BuiltInAgentDefinition = {
   agentType: WEB_RESEARCHER_AGENT_TYPE,
   whenToUse: WEB_RESEARCHER_WHEN_TO_USE,
+  // The same fit and the same exclusions at about half the length, for the
+  // agent listing under CLAUDIN_LEAN_AGENT_PROMPT.
+  whenToUseLean: `Multi-page web research that would take 3+ ${WEB_FETCH_TOOL_NAME}/${WEB_SEARCH_TOOL_NAME} calls (e.g. "how do I configure X on Y", "what changed in Z v2"); returns one cited answer. **Do NOT use for**: a single page (${WEB_FETCH_TOOL_NAME}), link discovery (${WEB_SEARCH_TOOL_NAME}), or anything in the local repo (search it directly).`,
   tools: [WEB_SEARCH_TOOL_NAME, WEB_FETCH_TOOL_NAME],
   source: 'built-in',
   baseDir: 'built-in',
@@ -48,5 +51,6 @@ export const WEB_RESEARCHER_AGENT: BuiltInAgentDefinition = {
   // nor the parent-session gitStatus blob — it never touches the local repo.
   omitClaudeMd: true,
   omitGitStatus: true,
+  omitGitInstructions: true,
   getSystemPrompt: () => getWebResearcherSystemPrompt(),
 }

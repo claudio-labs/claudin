@@ -55,7 +55,7 @@ import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FOR
 import { forkGateVerdict } from 'src/tools/AgentTool/forkGate.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { getPrompt } from 'src/tools/AgentTool/prompt.js';
+import { getPrompt, isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js';
 import { applyReadOnly, READ_ONLY_INPUT_DESCRIPTION } from 'src/tools/AgentTool/readOnlyAgent.js';
 import { runAgent } from 'src/tools/AgentTool/runAgent.js';
 import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from 'src/tools/AgentTool/UI.js';
@@ -134,8 +134,9 @@ export const inputSchema = lazySchema(() => {
   // (see team-memory: headless-bg-agents-not-drained). Fork no longer forces
   // async — without the param, fork runs inline and stays drainable in -p.
   // getIsNonInteractiveSession() is stable for a process lifetime, so caching
-  // its value at first schema access is correct.
-  const hideRunInBackground = isBackgroundTasksDisabled || getIsNonInteractiveSession();
+  // its value at first schema access is correct. The description renders from
+  // the same predicate (prompt.ts), so it never teaches the omitted param.
+  const hideRunInBackground = isRunInBackgroundHidden();
   return hideRunInBackground ? schema.omit({
     run_in_background: true
   }) : schema;

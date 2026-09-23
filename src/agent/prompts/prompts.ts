@@ -40,6 +40,10 @@ import { feature } from 'bun:bundle'
 import { shouldUseGlobalCacheScope } from 'src/providers/transport/betas.js'
 import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
 import {
+  isLeanAgentPromptEnabled,
+  isRunInBackgroundHidden,
+} from 'src/tools/AgentTool/prompt.js'
+import {
   systemPromptSection,
   DANGEROUS_uncachedSystemPromptSection,
   resolveSystemPromptSections,
@@ -336,22 +340,49 @@ When the conversation grows long, earlier context may be summarized; the summary
 const NO_DOUBLE_WORK_RULE =
   'Once you delegate a search or an investigation, let it run — do not also perform the same searches yourself.'
 
+/** The fork lane's one sentence the Agent tool description does not carry. */
+const SUB_AGENT_RULE =
+  '**If you ARE a sub-agent** \u2014 execute directly; do not re-delegate.'
+
 /**
  * Pure seam over the two delegation lanes, in the same spirit as
  * `buildHarnessItems` and `buildWorkContractSections`: `isForkSubagentEnabled()`
  * folds to a build-time constant, so the shipping shape is unreachable through
  * `getSystemPrompt` under `bun test` and only a parameterized builder lets a
  * test assert that BOTH arms carry the no-double-work rule.
+ *
+ * `lean` is CLAUDIN_LEAN_AGENT_PROMPT (see `isLeanAgentPromptEnabled`): the
+ * fork lane repeats the Agent tool description's fork semantics, fresh-agent
+ * default and inline/background choice, so it shrinks to what that
+ * description does not say. The fork-off lane repeats nothing.
+ *
+ * `backgroundHidden` is `isRunInBackgroundHidden()`: where the Agent schema
+ * omits `run_in_background` (`-p`, background tasks off), the fork lane stops
+ * offering it — the rule the Agent tool description follows. No flag: the
+ * clause has no function where the parameter does not exist.
  */
-export function buildAgentToolSection(forkEnabled: boolean): string {
+export function buildAgentToolSection(
+  forkEnabled: boolean,
+  lean = false,
+  backgroundHidden = false,
+): string {
+  const inlineOrBackground = backgroundHidden
+    ? 'Agents run **inline**, so you consume the report in the same turn.'
+    : `Agents run **inline** by default, so you consume the report in the same turn; pass \`run_in_background: true\` when you'd rather keep working (or keep talking to the user) while it runs, and accept the report landing in a later turn.`
   const lane = forkEnabled
-    ? `Calling ${AGENT_TOOL_NAME} without a subagent_type creates a fork: the child inherits your context and re-reads all of it on every call it makes. With a subagent_type (\`Code\` or a named agent) it starts from your prompt alone. Either way its intermediate tool output stays out of your context \u2014 you get back only the report. Default to a fresh agent with a complete brief; fork only when the child needs what is in this conversation and a paragraph cannot carry it. Agents run **inline** by default, so you consume the report in the same turn; pass \`run_in_background: true\` when you'd rather keep working (or keep talking to the user) while it runs, and accept the report landing in a later turn. **If you ARE a sub-agent** \u2014 execute directly; do not re-delegate.`
+    ? lean
+      ? SUB_AGENT_RULE
+      : `Calling ${AGENT_TOOL_NAME} without a subagent_type creates a fork: the child inherits your context and re-reads all of it on every call it makes. With a subagent_type (\`Code\` or a named agent) it starts from your prompt alone. Either way its intermediate tool output stays out of your context \u2014 you get back only the report. Default to a fresh agent with a complete brief; fork only when the child needs what is in this conversation and a paragraph cannot carry it. ${inlineOrBackground} ${SUB_AGENT_RULE}`
     : `Use the ${AGENT_TOOL_NAME} tool with specialized agents when the task at hand matches the agent's description. Subagents are valuable for parallelizing independent queries or for protecting the main context window from excessive results, but they should not be used excessively when not needed.`
   return `${lane} ${NO_DOUBLE_WORK_RULE}`
 }
 
 function getAgentToolSection(): string {
-  return buildAgentToolSection(isForkSubagentEnabled())
+  return buildAgentToolSection(
+    isForkSubagentEnabled(),
+    isLeanAgentPromptEnabled(),
+    isRunInBackgroundHidden(),
+  )
 }
 
 /**
@@ -359,6 +390,18 @@ function getAgentToolSection(): string {
  * running inline. Below this a direct Grep/Glob is cheaper than the round trip.
  */
 const MULTI_HOP_SEARCH_MIN_QUERIES = 3
+
+/**
+ * The multi-hop item under CLAUDIN_LEAN_AGENT_PROMPT. The Agent tool
+ * description already says how to delegate (a fresh `Code` agent with the
+ * question written out, a fork only for a question about this conversation,
+ * only the report comes back), so this keeps what it does not say: search
+ * directly for a directed lookup, and the threshold. It names no lane, so it
+ * holds with fork off too.
+ */
+export function buildLeanMultiHopItem(searchTools: string): string {
+  return `Use ${searchTools} directly for a directed lookup (a specific file, class or function); when the question needs more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches, delegate it to the ${AGENT_TOOL_NAME} tool.`
+}
 
 /**
  * Session-variant guidance that would fragment the cacheScope:'global'
@@ -392,15 +435,17 @@ function getSessionSpecificGuidanceSection(
     // post-boundary or it fragments the static prefix.
     hasAgentTool ? getAgentToolSection() : null,
     hasAgentTool
-      ? // The delegation lane depends on isForkSubagentEnabled(): with fork off
-        // (coordinator mode) omitting subagent_type spawns a FRESH agent, so
-        // promising inherited context here would contradict the Agent tool's
-        // own description in this same prompt.
-        `Use ${searchTools} directly for a directed lookup (a specific file, class or function). When the question needs more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches — tracing a feature, mapping a subsystem, finding every call site — delegate instead (the ${AGENT_TOOL_NAME} tool)${
-          isForkSubagentEnabled()
-            ? `: a fresh \`Code\` agent with the question written out, or — only when the question is about this conversation — a fork (no subagent_type), which inherits your context and re-reads it on every call`
-            : ` — it starts fresh, so give it a self-contained task description`
-        }: the fan-out of Grep and Read stays there and you get back only its report.`
+      ? isLeanAgentPromptEnabled()
+        ? buildLeanMultiHopItem(searchTools)
+        : // The delegation lane depends on isForkSubagentEnabled(): with fork off
+          // (coordinator mode) omitting subagent_type spawns a FRESH agent, so
+          // promising inherited context here would contradict the Agent tool's
+          // own description in this same prompt.
+          `Use ${searchTools} directly for a directed lookup (a specific file, class or function). When the question needs more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches — tracing a feature, mapping a subsystem, finding every call site — delegate instead (the ${AGENT_TOOL_NAME} tool)${
+            isForkSubagentEnabled()
+              ? `: a fresh \`Code\` agent with the question written out, or — only when the question is about this conversation — a fork (no subagent_type), which inherits your context and re-reads it on every call`
+              : ` — it starts fresh, so give it a self-contained task description`
+          }: the fan-out of Grep and Read stays there and you get back only its report.`
       : null,
     hasSkills
       ? `/<skill-name> (e.g., /commit) is shorthand for users to invoke a user-invocable skill. When executed, the skill gets expanded to a full prompt. Use the ${SKILL_TOOL_NAME} tool to execute them. IMPORTANT: Only use ${SKILL_TOOL_NAME} for skills listed in its user-invocable skills section - do not guess or use built-in CLI commands.`

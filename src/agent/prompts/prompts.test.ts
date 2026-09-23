@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import {
   ACT_ON_WHAT_YOU_KNOW_SECTION,
@@ -13,11 +14,13 @@ import {
   buildWorkContractSections,
   buildHarnessItems,
   buildAgentToolSection,
+  buildLeanMultiHopItem,
   getHarnessSection,
   isVerbositySteeringEnabled,
   prependBullets,
 } from 'src/agent/prompts/prompts.js'
 import { isSubagentNotesEnabled } from 'src/agent/prompts/steeringToggles.js'
+import { renderAgentPrompt } from 'src/tools/AgentTool/prompt.js'
 import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
@@ -586,5 +589,165 @@ describe('multi-hop delegation guidance', () => {
     expect(buildAgentToolSection(false)).toContain(rule)
     // ...and says it once, not once per lane.
     expect(buildAgentToolSection(true).split(rule).length - 1).toBe(1)
+  })
+})
+
+describe('agent section under CLAUDIN_LEAN_AGENT_PROMPT', () => {
+  const sha256 = (text: string) =>
+    createHash('sha256').update(text).digest('hex')
+  const searchTools = 'the Glob or Grep'
+  const leanText = `${buildAgentToolSection(true, true)}\n${buildLeanMultiHopItem(searchTools)}`
+  // The Agent tool description in the same request: fork on, background
+  // available, lean on — the shape the lean system prompt defers to.
+  const description = renderAgentPrompt([], false, undefined, {
+    isForkSubagentEnabled: () => true,
+    shouldInjectAgentListInMessages: () => true,
+    hasEmbeddedSearchTools: () => false,
+    getSubscriptionType: () => null,
+    isRunInBackgroundHidden: () => false,
+    isInProcessTeammate: () => false,
+    isTeammate: () => false,
+    isLeanAgentPromptEnabled: () => true,
+  })
+
+  test('flag off, both lanes are byte-identical to what shipped', () => {
+    // Captured before the lean arm existed (2026-09-23). The fork lane is the
+    // one the product sends and the characterization snapshot cannot see it:
+    // `isForkSubagentEnabled()` reads false under `bun test`.
+    expect(buildAgentToolSection(true)).toBe(buildAgentToolSection(true, false))
+    expect(buildAgentToolSection(true).length).toBe(860)
+    expect(sha256(buildAgentToolSection(true))).toBe(
+      'd55e56bbb910f2226d927921df9254ce984d59cc3790e10acb8cd88d14129571',
+    )
+    expect(buildAgentToolSection(false).length).toBe(390)
+    expect(sha256(buildAgentToolSection(false))).toBe(
+      '5fefbb4dd7f4daf0dba4efc76fe08d755e544c905369d86dcba28373a18a4d72',
+    )
+  })
+
+  test('every passage it drops is still said by the Agent tool description', () => {
+    // One copy survives, in the description: the fork semantics, the
+    // fresh-agent default, inline vs background, and the multi-hop examples
+    // and lanes. A phrase gone from both places is guidance lost, not deduped.
+    for (const phrase of [
+      're-reads all of it on every call it makes',
+      'starts from your prompt alone',
+      'you get back only the report',
+      'Default to a fresh agent with a complete brief',
+      'a paragraph cannot carry it',
+      '`run_in_background: true`',
+      'tracing a feature, mapping a subsystem',
+      'when the question is about this conversation',
+    ]) {
+      expect({ phrase, inLeanSystemPrompt: leanText.includes(phrase) }).toEqual({
+        phrase,
+        inLeanSystemPrompt: false,
+      })
+      expect({ phrase, inDescription: description.includes(phrase) }).toEqual({
+        phrase,
+        inDescription: true,
+      })
+    }
+  })
+
+  test('what it keeps is what the description does not say', () => {
+    for (const phrase of [
+      'do not also perform the same searches yourself',
+      '**If you ARE a sub-agent**',
+      'directly for a directed lookup',
+      'more than 3 dependent searches',
+    ]) {
+      expect(leanText).toContain(phrase)
+      expect(description).not.toContain(phrase)
+    }
+  })
+
+  test('the no-double-work rule survives in both lanes, once', () => {
+    const rule = 'do not also perform the same searches yourself'
+    expect(buildAgentToolSection(true, true).split(rule).length - 1).toBe(1)
+    expect(buildAgentToolSection(false, true)).toContain(rule)
+  })
+
+  test('the fork-off lane has nothing to drop', () => {
+    expect(buildAgentToolSection(false, true)).toBe(buildAgentToolSection(false))
+  })
+
+  test('the lean multi-hop item promises no lane, so it is true with fork off', () => {
+    const item = buildLeanMultiHopItem(searchTools)
+    expect(item).not.toContain('fork')
+    expect(item).not.toContain('fresh')
+    expect(item).toContain(`Use ${searchTools} directly`)
+  })
+})
+
+describe('agent section where run_in_background is hidden', () => {
+  // isRunInBackgroundHidden(): headless `-p`, or background tasks off. The
+  // Agent schema omits the parameter there and its description stops teaching
+  // it, so the system prompt's fork lane stops offering it too. Neutral by
+  // construction: the clause has no function where the parameter does not
+  // exist, which is why it ships without an A/B flag.
+  const sha256 = (text: string) =>
+    createHash('sha256').update(text).digest('hex')
+  const shipped = buildAgentToolSection(true)
+  const hidden = buildAgentToolSection(true, false, true)
+
+  test('the default fork lane drops the background clause, and nothing else', () => {
+    // The Agent description rendered under the same predicate: together they
+    // are what a `-p` request carries, and neither may name the parameter.
+    const description = renderAgentPrompt([], false, undefined, {
+      isForkSubagentEnabled: () => true,
+      shouldInjectAgentListInMessages: () => true,
+      hasEmbeddedSearchTools: () => false,
+      getSubscriptionType: () => null,
+      isRunInBackgroundHidden: () => true,
+      isInProcessTeammate: () => false,
+      isTeammate: () => false,
+      isLeanAgentPromptEnabled: () => false,
+    })
+    expect(`${hidden}\n${description}`).not.toContain('run_in_background')
+    // "by default" goes with the clause: it only contrasts with the
+    // alternative the clause offered.
+    expect(hidden).toBe(
+      shipped.replace(
+        " by default, so you consume the report in the same turn; pass `run_in_background: true` when you'd rather keep working (or keep talking to the user) while it runs, and accept the report landing in a later turn.",
+        ', so you consume the report in the same turn.',
+      ),
+    )
+    expect(hidden.length).toBe(695)
+    expect(sha256(hidden)).toBe(
+      'a54ae6dd58c9e3f8c1217d6c832db7008ca94a18c83ea42aafeb87baca949de3',
+    )
+  })
+
+  test('only the lane that offered it changes; with background available none does', () => {
+    // The REPL passes an explicit `false`; its render must be the one pinned
+    // in the CLAUDIN_LEAN_AGENT_PROMPT block above.
+    for (const fork of [true, false]) {
+      for (const lean of [true, false]) {
+        expect(buildAgentToolSection(fork, lean, false)).toBe(
+          buildAgentToolSection(fork, lean),
+        )
+      }
+    }
+    expect(buildAgentToolSection(true, true, true)).toBe(
+      buildAgentToolSection(true, true),
+    )
+    expect(buildAgentToolSection(false, false, true)).toBe(
+      buildAgentToolSection(false),
+    )
+    expect(buildAgentToolSection(false, true, true)).toBe(
+      buildAgentToolSection(false, true),
+    )
+  })
+
+  test('the live section reads the predicate the Agent schema reads', () => {
+    // `isForkSubagentEnabled()` reads false under `bun test`, so the fork lane
+    // is unreachable through getSystemPrompt here; the wiring is pinned on the
+    // source instead, the way the multi-hop gate above is.
+    const src = readFileSync(new URL('./prompts.ts', import.meta.url), 'utf8')
+    const start = src.indexOf('function getAgentToolSection(')
+    expect(start).toBeGreaterThan(-1)
+    const body = src.slice(start, src.indexOf('\n}\n', start))
+    expect(body).toContain('isRunInBackgroundHidden()')
   })
 })

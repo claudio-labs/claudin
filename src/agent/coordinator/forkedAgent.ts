@@ -302,6 +302,9 @@ export type SubagentContextOverrides = {
   /** Honor AgentDefinition.omitGitStatus in the attachment pipeline
    * (suppresses git_status_delta). */
   omitGitStatusAttachments?: boolean
+  /** Honor AgentDefinition.omitGitInstructions in the attachment pipeline
+   * (suppresses bash_git_instructions). */
+  omitGitInstructionsAttachments?: boolean
   /** Override replacement state — used by resumeAgentBackground to thread
    * state reconstructed from the resumed sidechain so the same results
    * are re-replaced (prompt cache stability). */
@@ -476,6 +479,9 @@ export function createSubagentContext(
     omitGitStatusAttachments:
       overrides?.omitGitStatusAttachments ??
       parentContext.omitGitStatusAttachments,
+    omitGitInstructionsAttachments:
+      overrides?.omitGitInstructionsAttachments ??
+      parentContext.omitGitInstructionsAttachments,
   }
 }
 
