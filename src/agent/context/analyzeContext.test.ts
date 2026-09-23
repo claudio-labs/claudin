@@ -8,6 +8,7 @@ const realModel = { ...(await import('src/providers/model/model.js')) }
 
 const {
   countToolDefinitionTokens,
+  estimateAttachmentTokens,
   TOOL_TOKEN_COUNT_OVERHEAD,
 } = await import('src/agent/context/analyzeContext.js')
 
@@ -95,5 +96,31 @@ describe('countToolDefinitionTokens — local estimation fallback on shim provid
 
     // 3500 chars at 3.5 bytes/token (claude family) ≈ 1000 tokens more.
     expect(large - small).toBeGreaterThan(800)
+  })
+})
+
+describe('estimateAttachmentTokens — the attachment row of /context', () => {
+  // A file attachment keeps the Read block it rendered at creation
+  // (`rendered`, types.ts), for a resumed process to re-send: the same file
+  // again, line-numbered. The row counts the file, not the file twice.
+  it('counts a file attachment once, not again for the block it rendered', () => {
+    const body = Array.from({ length: 200 }, (_, i) => `const row${i} = ${i}`).join('\n')
+    const live = {
+      type: 'file',
+      filename: '/repo/src/rows.ts',
+      displayPath: 'src/rows.ts',
+      content: {
+        type: 'text',
+        file: { filePath: '/repo/src/rows.ts', content: body, numLines: 200, startLine: 1, totalLines: 200 },
+      },
+    } as unknown as Parameters<typeof estimateAttachmentTokens>[0]
+    const rendered = body
+      .split('\n')
+      .map((line, i) => `${String(i + 1).padStart(6)}\t${line}`)
+      .join('\n')
+
+    expect(estimateAttachmentTokens({ ...live, rendered } as typeof live)).toBe(
+      estimateAttachmentTokens(live),
+    )
   })
 })

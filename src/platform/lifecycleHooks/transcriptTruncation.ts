@@ -7,6 +7,7 @@
  * dropping the oldest messages and prepending a synthetic notice telling the
  * judge that evidence may have been omitted.
  */
+import { withoutRenderedSnapshot } from 'src/agent/attachments/renderedSnapshot.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import type { Message } from 'src/shared/types/message.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
@@ -66,8 +67,9 @@ export function truncateTranscriptForHookEvaluator(
     const budget = Math.floor(
       getContextWindowForModel(model) * TRANSCRIPT_BUDGET_FRACTION,
     )
+    // An attachment's `rendered` snapshot is its text a second time.
     const tokenCounts = messages.map(m =>
-      roughTokenCountEstimation(jsonStringify(m)),
+      roughTokenCountEstimation(jsonStringify(m, withoutRenderedSnapshot)),
     )
     let totalTokens = 0
     for (const count of tokenCounts) {

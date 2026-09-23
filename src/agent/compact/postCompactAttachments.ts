@@ -14,6 +14,7 @@ import {
   FILE_UNCHANGED_STUB,
 } from 'src/tools/FileReadTool/prompt.js'
 import { createAttachmentMessage, generateFileAttachment } from 'src/agent/attachments/attachments.js'
+import { withoutRenderedSnapshot } from 'src/agent/attachments/renderedSnapshot.js'
 import { getMemoryPath } from 'src/platform/config/config.js'
 import { MEMORY_TYPE_VALUES } from 'src/memory/memdir/types.js'
 import { expandPath } from 'src/shared/fs/path.js'
@@ -92,6 +93,9 @@ export async function createPostCompactFileAttachments(
     if (result === null) {
       return false
     }
+    // A restored file keeps its Read block as rendered, for a resumed process
+    // to re-send (FileAttachment.rendered): the same file again, which would
+    // spend the budget twice per file.
     const attachmentTokens = roughTokenCountEstimation(
       jsonStringify(result, withoutRenderedSnapshot),
     )
@@ -101,15 +105,6 @@ export async function createPostCompactFileAttachments(
     }
     return false
   })
-}
-
-/**
- * A restored file keeps its Read block as rendered, for a resumed process to
- * re-send (FileAttachment.rendered). That block is the same file again,
- * line-numbered, so counting it too would spend the budget twice per file.
- */
-function withoutRenderedSnapshot(key: string, value: unknown): unknown {
-  return key === 'rendered' ? undefined : value
 }
 
 /**

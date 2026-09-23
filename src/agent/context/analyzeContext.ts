@@ -3,6 +3,7 @@ import {
   getSystemPrompt,
   SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
 } from 'src/agent/prompts/prompts.js'
+import { withoutRenderedSnapshot } from 'src/agent/attachments/renderedSnapshot.js'
 import { microcompactMessages } from 'src/agent/compact/microCompact.js'
 import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import { getCommandName } from 'src/commands/commands.js'
@@ -822,12 +823,20 @@ function processUserMessage(
   }
 }
 
+/** One attachment's share of the /context breakdown, its snapshot left out. */
+export function estimateAttachmentTokens(
+  attachment: AttachmentMessage['attachment'],
+): number {
+  return roughTokenCountEstimation(
+    jsonStringify(attachment, withoutRenderedSnapshot),
+  )
+}
+
 function processAttachment(
   msg: AttachmentMessage,
   breakdown: MessageBreakdown,
 ): void {
-  const contentStr = jsonStringify(msg.attachment)
-  const tokens = roughTokenCountEstimation(contentStr)
+  const tokens = estimateAttachmentTokens(msg.attachment)
   breakdown.attachmentTokens += tokens
   const attachType = msg.attachment.type || 'unknown'
   breakdown.attachmentsByType.set(
