@@ -949,7 +949,12 @@ describe('resubmit by reference', () => {
     expect(resolveApplyPatchInput(patch, ctx)).toEqual({ ok: true, input: patch })
     const refused = validateApplyPatchInput(patch, ctx)
     expect(refused).toMatchObject({ result: false })
-    if (!refused.result) expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
+    if (!refused.result) {
+      expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
+      expect(refused.message).toContain('5→line5')
+      // One instruction: "resubmit the same patch" reads as "send it again".
+      expect(refused.message).not.toContain('resubmit the same patch')
+    }
 
     const resolved = resolveApplyPatchInput(RESUBMIT, ctx)
     expect(resolved).toEqual({ ok: true, input: patch })
@@ -977,8 +982,10 @@ describe('resubmit by reference', () => {
     const refused = validateApplyPatchInput(patch, ctx)
     expect(refused).toMatchObject({ result: false })
     if (!refused.result) {
-      expect(refused.message).toContain('found 2 problems')
+      expect(refused.message).toContain('found 2 problems, each shown with the lines it needs')
       expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
+      expect(refused.message).not.toContain('resubmit the same patch')
+      expect(refused.message).not.toContain('fix all of them')
     }
     expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
     cleanup()
@@ -1034,7 +1041,12 @@ describe('resubmit by reference', () => {
     resolveApplyPatchInput(patch, ctx)
     const refused = validateApplyPatchInput(patch, ctx)
     expect(refused).toMatchObject({ result: false })
-    if (!refused.result) expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
+    if (!refused.result) {
+      expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
+      // The served section keeps its own instruction when nothing is kept.
+      expect(refused.message).toContain('resubmit the same patch')
+      expect(refused.message).toContain('fix all of them')
+    }
     expect(resolveApplyPatchInput(RESUBMIT, ctx)).toMatchObject({ ok: false })
     cleanup()
   })
@@ -1059,7 +1071,10 @@ describe('resubmit by reference', () => {
       resolveApplyPatchInput(patch, ctx)
       const refused = validateApplyPatchInput(patch, ctx)
       expect(refused).toMatchObject({ result: false })
-      if (!refused.result) expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
+      if (!refused.result) {
+        expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
+        expect(refused.message).toContain('resubmit the same patch')
+      }
       expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: RESUBMIT })
       const parsed = validateApplyPatchInput(RESUBMIT, ctx)
       expect(parsed).toMatchObject({ result: false })

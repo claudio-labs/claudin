@@ -34,8 +34,18 @@
     },
     {
       "name": "the refusal does not say how to resubmit",
-      "find": "  const hint = resubmit ? RESUBMIT_HINT : ''",
-      "replace": "  const hint = ''"
+      "find": "    if (shown.length === 1) return fail(shown[0] + RESUBMIT_HINT, firstErrorCode)",
+      "replace": "    if (shown.length === 1) return fail(shown[0], firstErrorCode)"
+    },
+    {
+      "name": "a served section keeps telling the model to resend",
+      "find": "    const shown = failures.map(m => m.replace(SERVED_RESEND, ':'))",
+      "replace": "    const shown = failures"
+    },
+    {
+      "name": "a multi-file resubmit keeps the fix-all header",
+      "find": "      `apply_patch found ${shown.length} problems, each shown with the lines it needs:\\n` +",
+      "replace": "      `apply_patch found ${shown.length} problems — fix all of them, then resubmit the whole patch:\\n` +"
     },
     {
       "name": "a served never-read refusal is not counted",

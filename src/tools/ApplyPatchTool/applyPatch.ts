@@ -139,8 +139,11 @@ function serveUpdateHunk(
   )
 }
 
+/** The served refusal's own instruction; dropped when the refusal offers the resubmit instead. */
+const SERVED_RESEND = ' — resubmit the same patch:'
+
 function servedSuffix(served: string): string {
-  return ` The lines it needs are shown below and now count as read — resubmit the same patch:\n${served}`
+  return ` The lines it needs are shown below and now count as read${SERVED_RESEND}\n${served}`
 }
 
 const RESUBMIT_HINT = `\nEvery line the patch needs now counts as read, so it applies exactly as sent: call apply_patch with patchText "${RESUBMIT_SENTINEL}" instead of sending the patch again.`
@@ -343,9 +346,20 @@ export function validateApplyPatchInput(
 
   if (failures.length === 0) return { result: true }
   const resubmit = servedFailures === failures.length && isResubmitEnabled()
-  if (resubmit) pendingResubmits.set(context.readFileState, input.patchText)
-  const hint = resubmit ? RESUBMIT_HINT : ''
-  if (failures.length === 1) return fail(failures[0] + hint, firstErrorCode)
+  if (resubmit) {
+    // One instruction, not two: "resubmit the same patch" read as "send it
+    // again", the output this exists to save.
+    pendingResubmits.set(context.readFileState, input.patchText)
+    const shown = failures.map(m => m.replace(SERVED_RESEND, ':'))
+    if (shown.length === 1) return fail(shown[0] + RESUBMIT_HINT, firstErrorCode)
+    return fail(
+      `apply_patch found ${shown.length} problems, each shown with the lines it needs:\n` +
+        shown.map(m => `  • ${m.replace(/^apply_patch:?\s*/, '')}`).join('\n') +
+        RESUBMIT_HINT,
+      firstErrorCode,
+    )
+  }
+  if (failures.length === 1) return fail(failures[0], firstErrorCode)
   return fail(
     `apply_patch found ${failures.length} problems — fix all of them, then resubmit the whole patch:\n` +
       failures
@@ -353,8 +367,7 @@ export function validateApplyPatchInput(
         .join('\n') +
       (readRemedyFailures >= 2
         ? '\nAny file above that needs a read: do them all in ONE message (parallel Read calls), then resubmit the whole patch.'
-        : '') +
-      hint,
+        : ''),
     firstErrorCode,
   )
 }
