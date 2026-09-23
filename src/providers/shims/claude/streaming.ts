@@ -116,6 +116,7 @@ import {
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
+  THINKING_BINDING_CONTROLS_BETA_HEADER,
 } from "src/shared/constants/betas.js";
 import { addToTotalSessionCost } from "src/agent/cost-tracker.js";
 import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
@@ -923,6 +924,17 @@ export async function* queryModel(
         // thinking without a budget.
         thinking = {
           type: "adaptive",
+          // Preserved thinking (Opus 5.5): tell the API to DROP a thinking
+          // block whose signature no longer matches the prefix instead of
+          // failing the request. Claudin rewrites its own prefix by design —
+          // applyStableStubs restubs already-sent tool_results above, and
+          // stripOldThinkingBlocks removes thinking from the middle of the
+          // history — so the default (400) would end a long session on an
+          // error the user cannot act on. Only emitted when the paired beta
+          // header is going out, since the field is unknown without it.
+          ...(betasParams.includes(THINKING_BINDING_CONTROLS_BETA_HEADER)
+            ? { block_binding: { prefix_mismatch_behavior: "drop_block" } }
+            : {}),
           ...(thinkingDisplay ? { display: thinkingDisplay } : {}),
         } satisfies BetaMessageStreamParams["thinking"];
       } else {

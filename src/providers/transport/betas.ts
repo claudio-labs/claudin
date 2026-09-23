@@ -14,6 +14,7 @@ import {
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
+  THINKING_BINDING_CONTROLS_BETA_HEADER,
   THINKING_TOKEN_COUNT_BETA_HEADER,
   TOKEN_EFFICIENT_TOOLS_BETA_HEADER,
   TOOL_SEARCH_BETA_HEADER_1P,
@@ -167,6 +168,37 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
   )
 }
 
+/**
+ * Models that enforce "preserved thinking": every replayed thinking block
+ * carries a signature the API validates against the system prompt, tools and
+ * all preceding messages, byte for byte. A mismatch is a 400 by default for
+ * API accounts created on or after 2026-08-31.
+ *
+ * Deliberately NOT a substring match on 'opus-5' — Opus 5 does not enforce it,
+ * and sending the header where it buys nothing is one more beta to go wrong.
+ *
+ * Fable 5.1 is the other model Anthropic documents as enforcing it, and it is
+ * included on the strength of a measurement rather than the doc: under the
+ * AGGRESSIVE cache profile — what every user without a configured /provider
+ * gets — stripOldThinkingBlocks removes thinking from 3 of 4 past user turns,
+ * which is precisely the prefix mutation the check rejects. Reproduce with
+ * `CLAUDIN_CACHE_PROFILE=aggressive bun run
+ * scripts/bench/tokens/thinking-replay-capture.ts --bin=claudindev --full
+ * --user-turns=4`; see docs/tech/opus-5-5/wire-capture.md.
+ */
+export function modelSupportsThinkingBlockBinding(model: string): boolean {
+  if (getAPIProvider() !== 'firstParty') {
+    return false
+  }
+  const canonical = getCanonicalName(model)
+  // 'claude-fable-5-1' and not 'claude-fable-5': the retired Fable 5 predates
+  // preserved thinking, and its id is a prefix of 5.1's.
+  return (
+    canonical.includes('claude-opus-5-5') ||
+    canonical.includes('claude-fable-5-1')
+  )
+}
+
 // Test hatch: feature('TRANSCRIPT_CLASSIFIER') folds at build time, so under
 // bun test it reads false and modelSupportsAutoMode would always return false.
 // Same pattern as __setBashClassifierEnabledForTests in bashClassifier.ts.
@@ -278,6 +310,25 @@ export const getAllModelBetas = memoize((model: string): string[] => {
 
   if (shouldIncludeFirstPartyOnlyBetas() && thinkingPreservationEnabled) {
     betaHeaders.push(CONTEXT_MANAGEMENT_BETA_HEADER)
+  }
+  // Preserved thinking: the API validates each replayed thinking block's
+  // signature against the prefix it was produced under, and for accounts
+  // created on/after 2026-08-31 a mismatch is a hard 400. Claudin rewrites its
+  // own prefix on purpose — applyStableStubs restubs already-sent tool_results
+  // and stripOldThinkingBlocks removes thinking from the middle of the history
+  // — so without this header a long session on a preserved-thinking model dies
+  // on an error the user cannot act on. The paired block_binding lives in
+  // streaming.ts; this header is what makes the API accept it.
+  //
+  // Deliberately NOT behind includeFirstPartyOnlyBetas. cli.tsx defaults
+  // CLAUDIN_DISABLE_EXPERIMENTAL_BETAS to 'true', so anything gated on it is
+  // off for every user who has not opted in — and a guard against a hard 400
+  // that ships disabled is worse than none, because it reads as done. Same
+  // reasoning as EXTENDED_CACHE_TTL_BETA_HEADER, which is ungated for being
+  // load-bearing rather than experimental. The predicate is firstParty-only on
+  // its own.
+  if (modelSupportsThinkingBlockBinding(model)) {
+    betaHeaders.push(THINKING_BINDING_CONTROLS_BETA_HEADER)
   }
   // Add strict tool use beta if experiment is enabled.
   // Gate on includeFirstPartyOnlyBetas: CLAUDIN_DISABLE_EXPERIMENTAL_BETAS

@@ -205,6 +205,11 @@ function get3PFallbackSuggestion(model: string): string | undefined {
   if (lowerModel.includes('fable-5') || lowerModel.includes('fable_5')) {
     return getModelStrings().opus48
   }
+  // Before the opus-5 branch — 'opus-5-5' contains it. One generation back is
+  // Opus 5, not Opus 4.8.
+  if (lowerModel.includes('opus-5-5') || lowerModel.includes('opus_5_5')) {
+    return getModelStrings().opus5
+  }
   if (lowerModel.includes('opus-5') || lowerModel.includes('opus_5')) {
     return getModelStrings().opus48
   }

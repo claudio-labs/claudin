@@ -1007,6 +1007,11 @@ function get3PModelFallbackSuggestion(model: string): string | undefined {
   if (m.includes('fable-5') || m.includes('fable_5')) {
     return getModelStrings().opus48
   }
+  // Opus 5.5 falls back one generation, to Opus 5. Must precede the opus-5
+  // branch, which matches 'opus-5-5' by substring.
+  if (m.includes('opus-5-5') || m.includes('opus_5_5')) {
+    return getModelStrings().opus5
+  }
   // If the failing model looks like an Opus 5 variant, fall back to Opus 4.8
   if (m.includes('opus-5') || m.includes('opus_5')) {
     return getModelStrings().opus48

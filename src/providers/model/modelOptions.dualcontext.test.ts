@@ -61,10 +61,11 @@ afterEach(() => {
   resetModelStringsForTestingOnly()
 })
 
-// Opus 5 is the new default and is 1M-native (like Sonnet 5): it must appear as
-// a SINGLE picker entry pinned to the 'opus' alias on first party, with no
-// separate [1m] variant and no 200k duplicate.
-test('Opus 5 is a single 1M-native entry (value "opus", no [1m] pair)', async () => {
+// Opus 5.5 is the default and is 1M-native (like Sonnet 5): it must appear as a
+// SINGLE picker entry pinned to the 'opus' alias on first party, with no
+// separate [1m] variant and no 200k duplicate. Opus 5 is still listed beside it
+// as the previous generation, pinned to its explicit model string.
+test('Opus 5.5 is a single 1M-native entry (value "opus", no [1m] pair)', async () => {
   const { getModelOptions } = await importMaxPicker({
     mergeEnabled: true,
     opusAccess: true,
@@ -77,8 +78,11 @@ test('Opus 5 is a single 1M-native entry (value "opus", no [1m] pair)', async ()
   // Exactly one Opus entry, and it advertises 1M context.
   const opus = options.filter((o: { value: string | null }) => o.value === 'opus')
   expect(opus).toHaveLength(1)
-  expect(opus[0].label).toBe('Opus 5')
+  expect(opus[0].label).toBe('Opus 5.5')
   expect(opus[0].description).toContain('1M context')
+  // The previous generation stays selectable, and never as the alias.
+  expect(values).toContain('claude-opus-5')
+  expect(values).not.toContain('claude-opus-5[1m]')
   // Legacy Opus/Sonnet generations are no longer listed.
   for (const legacy of REMOVED_LEGACY) {
     expect(values).not.toContain(legacy)
@@ -107,10 +111,10 @@ test('Sonnet 5 is a single 1M-native entry (no [1m] pair, no legacy Sonnet)', as
   expect(values).not.toContain('claude-opus-4-6')
 })
 
-// Opus 5 is 1M by default (native), so unlike the old Opus 4.8 200k/[1m] pair it
-// is NOT gated by the 1M-access / merge checks — it always shows as the single
-// 'opus' entry, even when both access checks are false and merge is off.
-test('Opus 5 entry is present regardless of 1M access checks', async () => {
+// Opus 5.5 is 1M by default (native), so unlike the old Opus 4.8 200k/[1m] pair
+// it is NOT gated by the 1M-access / merge checks — it always shows as the
+// single 'opus' entry, even when both access checks are false and merge is off.
+test('Opus 5.5 entry is present regardless of 1M access checks', async () => {
   const { getModelOptions } = await importMaxPicker({
     mergeEnabled: false,
     opusAccess: false,
@@ -121,6 +125,6 @@ test('Opus 5 entry is present regardless of 1M access checks', async () => {
   expect(values).toContain('opus')
   expect(values).not.toContain('opus[1m]')
   const opus = options.find((o: { value: string | null }) => o.value === 'opus')
-  expect(opus?.label).toBe('Opus 5')
+  expect(opus?.label).toBe('Opus 5.5')
   expect(opus?.description).toContain('1M context')
 })

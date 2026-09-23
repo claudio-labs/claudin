@@ -20,9 +20,9 @@ function getAvailableUpgrade(): {
   if (
     currentModelSetting === 'opus' &&
     checkOpus1mAccess() &&
-    // Opus 5 (the 1P 'opus' default) is already 1M-native, so there is no 1M
-    // upgrade to offer. Only 3P — where 'opus' resolves to Opus 4.6 (200k) —
-    // has a real opus[1m] upgrade path.
+    // Opus 5.5 (the 1P 'opus' default) is already 1M-native, so there is no 1M
+    // upgrade to offer. The substring covers both 5 and 5.5. Only 3P — where
+    // 'opus' resolves to Opus 4.6 (200k) — has a real opus[1m] upgrade path.
     !getCanonicalName(getDefaultOpusModel()).includes('claude-opus-5')
   ) {
     return {

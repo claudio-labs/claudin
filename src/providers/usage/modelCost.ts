@@ -13,6 +13,7 @@ import {
   CLAUDE_OPUS_4_7_CONFIG,
   CLAUDE_OPUS_4_8_CONFIG,
   CLAUDE_OPUS_5_CONFIG,
+  CLAUDE_OPUS_5_5_CONFIG,
   CLAUDE_OPUS_4_CONFIG,
   CLAUDE_SONNET_4_5_CONFIG,
   CLAUDE_SONNET_4_6_CONFIG,
@@ -75,6 +76,37 @@ export const COST_TIER_5_25 = {
   promptCacheWriteTokens: 6.25,
   promptCacheWrite1hTokens: 10,
   promptCacheReadTokens: 0.5,
+  webSearchRequests: 0.01,
+} as const satisfies ModelCosts
+
+// Pricing tier for Claude Fable 5.1: $10 input / $50 output per Mtok.
+// Pricing tier for Claude Opus 5.5: $4 input / $20 output per Mtok — 20% under
+// Opus 5. The cache read is the second irregular number in this table: 0.05x
+// the base input price ($0.20), where the standard multiplier is 0.1x ($0.40)
+// and Fable 5.1 uses 0.025x. Anthropic's pricing page carries a footnote for
+// exactly this model. Do not "fix" it to $0.40 to match the pattern.
+export const COST_TIER_4_20 = {
+  inputTokens: 4,
+  outputTokens: 20,
+  promptCacheWriteTokens: 5,
+  promptCacheWrite1hTokens: 8,
+  promptCacheReadTokens: 0.2,
+  webSearchRequests: 0.01,
+} as const satisfies ModelCosts
+
+// PROVISIONAL fast-mode tier for Opus 5.5: $8 input / $40 output per Mtok.
+// That figure comes from the launch announcement, not from the docs pricing
+// table, and it is a 2x premium where every earlier Opus fast tier was 6x
+// (COST_TIER_30_150 against COST_TIER_5_25). Verify against the pricing page's
+// fast-mode section and correct this if it is published differently.
+// Not exported: getOpus55CostTier below is the only consumer, and an exported
+// constant nothing imports is what deadcode:exports flags.
+const COST_TIER_8_40 = {
+  inputTokens: 8,
+  outputTokens: 40,
+  promptCacheWriteTokens: 10,
+  promptCacheWrite1hTokens: 16,
+  promptCacheReadTokens: 0.4,
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
@@ -269,6 +301,7 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
   // the Opus 4.8 tier ($5/$25, COST_TIER_5_25). Verify and update once official
   // Opus 5 pricing lands.
   [firstPartyNameToCanonical(CLAUDE_OPUS_5_CONFIG.firstParty)]: COST_TIER_5_25,
+  [firstPartyNameToCanonical(CLAUDE_OPUS_5_5_CONFIG.firstParty)]: COST_TIER_4_20,
   [firstPartyNameToCanonical(CLAUDE_FABLE_5_1_CONFIG.firstParty)]:
     COST_TIER_10_50,
   // Retired, and deliberately not derived from a config: Fable 5 is gone from
@@ -289,6 +322,21 @@ export function getOpus5CostTier(fastMode: boolean): ModelCosts {
   return (
     MODEL_COSTS[firstPartyNameToCanonical(CLAUDE_OPUS_5_CONFIG.firstParty)] ??
     COST_TIER_5_25
+  )
+}
+
+/**
+ * Opus 5.5 is the first Opus whose fast tier is NOT the flat $30/$150 the
+ * 4.6–5 generations share, so this cannot reuse getOpus5CostTier. The standard
+ * rate still comes from MODEL_COSTS so publishing a correction there is enough.
+ */
+export function getOpus55CostTier(fastMode: boolean): ModelCosts {
+  if (isFastModeEnabled() && fastMode) {
+    return COST_TIER_8_40
+  }
+  return (
+    MODEL_COSTS[firstPartyNameToCanonical(CLAUDE_OPUS_5_5_CONFIG.firstParty)] ??
+    COST_TIER_4_20
   )
 }
 
@@ -337,6 +385,11 @@ export function getModelCosts(model: string, usage: Usage): ModelCosts {
 
   // Opus 5 is fast-mode eligible too — without this branch a fast-mode session
   // would bill at the standard tier while the picker advertises the premium one.
+  if (
+    shortName === firstPartyNameToCanonical(CLAUDE_OPUS_5_5_CONFIG.firstParty)
+  ) {
+    return getOpus55CostTier(usage.speed === 'fast')
+  }
   if (
     shortName === firstPartyNameToCanonical(CLAUDE_OPUS_5_CONFIG.firstParty)
   ) {

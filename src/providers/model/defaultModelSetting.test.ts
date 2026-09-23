@@ -58,23 +58,23 @@ afterAll(() => {
   mock.module('src/agent/context/context.js', () => realContext)
 })
 
-test('Max subscriber default is native-1M Opus 5 with no [1m] suffix (merge enabled)', async () => {
+test('Max subscriber default is native-1M Opus 5.5 with no [1m] suffix (merge enabled)', async () => {
   const { getDefaultMainLoopModelSetting, isOpus1mMergeEnabled } =
     await importSetting({ max: true, teamPremium: false })
   // Guard: the merge really is on for this mocked account, so the old code
   // would have appended [1m].
   expect(isOpus1mMergeEnabled()).toBe(true)
   const setting = getDefaultMainLoopModelSetting()
-  expect(setting).toBe('claude-opus-5')
+  expect(setting).toBe('claude-opus-5-5')
   expect(setting).not.toContain('[1m]')
 })
 
-test('Team Premium subscriber default is native-1M Opus 5 with no [1m] suffix', async () => {
+test('Team Premium subscriber default is native-1M Opus 5.5 with no [1m] suffix', async () => {
   const { getDefaultMainLoopModelSetting } = await importSetting({
     max: false,
     teamPremium: true,
   })
   const setting = getDefaultMainLoopModelSetting()
-  expect(setting).toBe('claude-opus-5')
+  expect(setting).toBe('claude-opus-5-5')
   expect(setting).not.toContain('[1m]')
 })
