@@ -222,6 +222,9 @@ export function getModelMaxOutputTokens(model: string): {
   } else if (
     m.includes('fable-5') ||
     m.includes('opus-5') ||
+    // Sonnet 5 had no case and fell through to the 32K default below; Claude
+    // Code sends 64000 (docs/tech/anthropic-betas/wire-matrix.md).
+    m.includes('sonnet-5') ||
     m.includes('opus-4-7') ||
     m.includes('opus-4-6')
   ) {
