@@ -65,17 +65,23 @@ export function shouldInjectBashGitInstructionsInMessages(): boolean {
 let leanGitInstructions: boolean | undefined
 
 /**
- * `CLAUDIN_LEAN_GIT_INSTRUCTIONS=1`: the commit/PR protocol at a little over
- * half its size with every rule kept, and none at all for agents that never
- * commit (`AgentDefinition.omitGitInstructions`, honored in runAgent). The
- * default block is ~3.9k chars in `messages[0]` of every agent that has Bash,
- * sub-agents included. Off by default until the A/B decides.
+ * The commit/PR protocol at a little over half its size with every rule kept,
+ * and none at all for agents that never commit
+ * (`AgentDefinition.omitGitInstructions`, honored in runAgent). The full block
+ * is ~3.9k chars in `messages[0]` of every agent that has Bash, sub-agents
+ * included. On by default since the session A/B of 2026-09-23 (N=5, in one arm
+ * with CLAUDIN_LEAN_AGENT_PROMPT): cost no higher, and all five sessions
+ * committed once, conventionally, with no AI trailer. This body alone takes
+ * ~580 tokens off the first request (resume-wire-probe).
+ * `CLAUDIN_LEAN_GIT_INSTRUCTIONS=0` restores the full text.
  *
  * Read once: the body is cached prefix and must not change while the process
  * lives.
  */
 export function isLeanGitInstructionsEnabled(): boolean {
-  leanGitInstructions ??= isEnvTruthy(process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS)
+  leanGitInstructions ??= !isEnvDefinedFalsy(
+    process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS,
+  )
   return leanGitInstructions
 }
 

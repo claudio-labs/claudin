@@ -162,7 +162,7 @@ const GIT_PROTOCOL_RULES: ReadonlyArray<{
 ]
 
 describe('getBashGitInstructionsBody', () => {
-  const bodies = { default: '', lean: '' }
+  const bodies = { full: '', lean: '', unset: '' }
   let attribution: ReturnType<typeof getAttributionTexts> = { commit: '', pr: '' }
 
   beforeAll(async () => {
@@ -175,10 +175,12 @@ describe('getBashGitInstructionsBody', () => {
     }
     try {
       // Sequential on purpose: the flag has to hold across each await.
-      delete process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS
-      bodies.default = (await importFreshPromptModule()).getBashGitInstructionsBody()
+      process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS = '0'
+      bodies.full = (await importFreshPromptModule()).getBashGitInstructionsBody()
       process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS = '1'
       bodies.lean = (await importFreshPromptModule()).getBashGitInstructionsBody()
+      delete process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS
+      bodies.unset = (await importFreshPromptModule()).getBashGitInstructionsBody()
       attribution = getAttributionTexts()
     } finally {
       for (const [key, value] of saved) {
@@ -188,15 +190,19 @@ describe('getBashGitInstructionsBody', () => {
     }
   })
 
-  it('CLAUDIN_LEAN_GIT_INSTRUCTIONS renders its own, shorter body', () => {
-    // Without this every lean case below could pass on the default text: a
+  it('CLAUDIN_LEAN_GIT_INSTRUCTIONS=0 restores the full, longer body', () => {
+    // Without this every lean case below could pass on the full text: a
     // render that missed the flag looks exactly like a lean body that kept
     // every rule.
-    expect(bodies.lean).not.toBe(bodies.default)
-    expect(bodies.lean.length).toBeLessThan(bodies.default.length * 0.7)
+    expect(bodies.lean).not.toBe(bodies.full)
+    expect(bodies.lean.length).toBeLessThan(bodies.full.length * 0.7)
   })
 
-  for (const variant of ['default', 'lean'] as const) {
+  it('the lean body is the default', () => {
+    expect(bodies.unset).toBe(bodies.lean)
+  })
+
+  for (const variant of ['full', 'lean'] as const) {
     describe(variant, () => {
       const body = () => bodies[variant]
 
