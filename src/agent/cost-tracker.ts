@@ -36,6 +36,10 @@ import {
   setHasUnknownModelCost,
 } from 'src/platform/bootstrap/state.js'
 import type { ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js'
+import type {
+  CostStateEntry,
+  CostStateModelUsage,
+} from 'src/shared/types/logs.js'
 import { getAdvisorUsage } from 'src/platform/doctor/advisor.js'
 import {
   getCurrentProjectConfig,
@@ -46,6 +50,7 @@ import {
   getModelMaxOutputTokens,
 } from 'src/agent/context/context.js'
 import { formatDuration, formatNumber } from 'src/shared/text/format.js'
+import { logError } from 'src/shared/log.js'
 import { resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js'
 import { getCanonicalName } from 'src/providers/model/model.js'
@@ -71,6 +76,25 @@ export {
   getUsageForModel,
 }
 
+/** When the counters' session started; a restore carries the first one over. */
+let sessionStartTime = Date.now()
+
+/** What a resume put back into the counters — the budget counts the rest. */
+let restoredCostUSD = 0
+
+/**
+ * The session whose WHOLE cost the counters hold — Claude Code's cost-ledger
+ * owner, and the only session a `cost-state` entry is stamped for.
+ * `undefined` until the process's first stamp claims its session; a reset
+ * scopes it to the session current at the reset; a resume through
+ * restoreCostStateForResume scopes it to the resumed one; `null` (nobody)
+ * after a project-config-only restore. Nothing moves it on a bare
+ * switchSession: a session reached without that restore holds only part of
+ * its cost, and stamping that part would overwrite the whole one its
+ * transcript already carries.
+ */
+let costStateOwner: string | null | undefined
+
 /**
  * Wraps bootstrap's resetCostState() so /clear, /compact and session
  * switches zero the cache-stats tracker alongside the cost counters.
@@ -81,6 +105,9 @@ export function resetCostState(): void {
   baseResetCostState()
   resetSessionCacheStats()
   resetBytesSaved()
+  sessionStartTime = Date.now()
+  restoredCostUSD = 0
+  costStateOwner = getSessionId()
 }
 
 type StoredCostState = {
@@ -109,20 +136,9 @@ export function getStoredSessionCosts(
     return undefined
   }
 
-  // Build model usage with context windows
-  let modelUsage: { [modelName: string]: ModelUsage } | undefined
-  if (projectConfig.lastModelUsage) {
-    modelUsage = Object.fromEntries(
-      Object.entries(projectConfig.lastModelUsage).map(([model, usage]) => [
-        model,
-        {
-          ...usage,
-          contextWindow: getContextWindowForModel(model, getSdkBetas()),
-          maxOutputTokens: getModelMaxOutputTokens(model).default,
-        },
-      ]),
-    )
-  }
+  const modelUsage = projectConfig.lastModelUsage
+    ? withModelLimits(projectConfig.lastModelUsage)
+    : undefined
 
   return {
     totalCostUSD: projectConfig.lastCost ?? 0,
@@ -143,6 +159,11 @@ export function getStoredSessionCosts(
  * @returns true if cost state was restored, false otherwise
  */
 export function restoreCostStateForSession(sessionId: string): boolean {
+  // restoreCostStateForResume's project-config tier. The slot cannot know
+  // whether the transcript holds a newer total (a `-p --resume` does not
+  // update it), so on its own this is no proof of the whole cost: no stamp
+  // until restoreCostStateForResume, which consults it after the entry.
+  costStateOwner = null
   const data = getStoredSessionCosts(sessionId)
   if (!data) {
     return false
@@ -163,15 +184,26 @@ export function restoreCostStateForSession(sessionId: string): boolean {
  * Tolerates messages with missing/partial usage fields (compaction zeroes
  * stale entries; older transcripts predate cache fields). Resets state
  * first so callers don't have to.
+ *
+ * One API response is written as one transcript entry PER CONTENT BLOCK,
+ * each carrying the message_start usage and the last one the final output
+ * count (content_block_stop / message_delta in
+ * src/providers/shims/claude/streaming.ts). So a `message.id` is billed
+ * once, at the max of each field over its entries — the rule `collectRows`
+ * applies in scripts/bench/ab/session-cache-ab.ts. Summing them read a
+ * 25-response session back at 2.1× its cache reads. An entry without an id
+ * stands alone, as before.
  */
 export function recomputeCostStateFromMessages(
   messages: ReadonlyArray<unknown>,
 ): void {
   resetCostState()
+  const calls: { model: string; usage: Usage }[] = []
+  const callById = new Map<string, { model: string; usage: Usage }>()
   for (const raw of messages) {
     const msg = raw as {
       type?: string
-      message?: { model?: string; usage?: Partial<Usage> }
+      message?: { id?: unknown; model?: string; usage?: Partial<Usage> }
     } | null
     if (!msg || msg.type !== 'assistant') continue
     const inner = msg.message
@@ -188,17 +220,219 @@ export function recomputeCostStateFromMessages(
       // bucket at the correct 2× rate instead of the 1.25× 5m fallback.
       cache_creation: usage.cache_creation,
     } as Usage
+    const id = typeof inner.id === 'string' ? inner.id : undefined
+    const seen = id === undefined ? undefined : callById.get(id)
+    if (seen) {
+      seen.usage = maxUsage(seen.usage, normalized)
+      continue
+    }
+    const call = { model, usage: normalized }
+    calls.push(call)
+    if (id !== undefined) callById.set(id, call)
+  }
+  for (const { model, usage } of calls) {
     if (
-      normalized.input_tokens === 0 &&
-      normalized.output_tokens === 0 &&
-      normalized.cache_creation_input_tokens === 0 &&
-      normalized.cache_read_input_tokens === 0
+      usage.input_tokens === 0 &&
+      usage.output_tokens === 0 &&
+      usage.cache_creation_input_tokens === 0 &&
+      usage.cache_read_input_tokens === 0
     ) {
       continue
     }
-    const cost = calculateUSDCost(model, normalized)
-    addToTotalSessionCost(cost, normalized, model)
+    const cost = calculateUSDCost(model, usage)
+    addToTotalSessionCost(cost, usage, model)
   }
+}
+
+/** Field-wise max of two sightings of one response's usage. */
+function maxUsage(a: Usage, b: Usage): Usage {
+  const ttl =
+    a.cache_creation || b.cache_creation
+      ? {
+          ephemeral_5m_input_tokens: Math.max(
+            a.cache_creation?.ephemeral_5m_input_tokens ?? 0,
+            b.cache_creation?.ephemeral_5m_input_tokens ?? 0,
+          ),
+          ephemeral_1h_input_tokens: Math.max(
+            a.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+            b.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+          ),
+        }
+      : a.cache_creation
+  return {
+    input_tokens: Math.max(a.input_tokens, b.input_tokens),
+    output_tokens: Math.max(a.output_tokens, b.output_tokens),
+    cache_creation_input_tokens: Math.max(
+      a.cache_creation_input_tokens ?? 0,
+      b.cache_creation_input_tokens ?? 0,
+    ),
+    cache_read_input_tokens: Math.max(
+      a.cache_read_input_tokens ?? 0,
+      b.cache_read_input_tokens ?? 0,
+    ),
+    cache_creation: ttl,
+  } as Usage
+}
+
+// --- cost-state: the session's running cost across processes -------------
+//
+// Claude Code (2.1.280) stamps a `cost-state` transcript entry at exit — an
+// exit re-stamp, print mode and REPL alike — and wherever it saves costs
+// before switching sessions (/clear, /resume). Every resume restores it and
+// keeps the restored total apart: `total_cost_usd` reports the session,
+// `--max-budget-usd` compares only what this process spent on top.
+
+/**
+ * The `cost-state` entry for `sessionId`, from the in-memory counters, or
+ * undefined when they are not that session's whole cost (costStateOwner).
+ * `type` stays the first key: loaders classify a line by its prefix.
+ */
+export function getCostStateEntryFor(
+  sessionId: string,
+): CostStateEntry | undefined {
+  if (costStateOwner === undefined) costStateOwner = sessionId
+  if (costStateOwner !== sessionId) return undefined
+  return {
+    type: 'cost-state',
+    sessionId: sessionId as CostStateEntry['sessionId'],
+    totalCostUSD: getTotalCostUSD(),
+    totalAPIDuration: getTotalAPIDuration(),
+    totalAPIDurationWithoutRetries: getTotalAPIDurationWithoutRetries(),
+    totalToolDuration: getTotalToolDuration(),
+    totalLinesAdded: getTotalLinesAdded(),
+    totalLinesRemoved: getTotalLinesRemoved(),
+    totalDuration: getTotalDuration(),
+    startTime: sessionStartTime,
+    modelUsage: persistedModelUsage(),
+    hasUnknownModelCost: hasUnknownModelCost(),
+  }
+}
+
+/**
+ * The cost this process added on top of what a resume restored — what
+ * `--max-budget-usd` compares in Claude Code, and what its `budget_usd`
+ * reminder reports as used; `total_cost_usd` stays the session's total.
+ */
+export function getCostSinceRestoreUSD(): number {
+  return getTotalCostUSD() - restoredCostUSD
+}
+
+/** Back to process start: nothing has claimed the counters yet. */
+export function resetCostStateOwnerForTesting(): void {
+  costStateOwner = undefined
+}
+
+export type CostStateSource = 'cost-state' | 'project-config' | 'messages'
+
+/** The one dependency that reads a process-global file; tests swap it. */
+export type CostRestoreDeps = {
+  /** The project-config slot — it holds only the most recently saved session. */
+  restoreFromProjectConfig: (sessionId: string) => boolean
+}
+
+const defaultCostRestoreDeps: CostRestoreDeps = {
+  restoreFromProjectConfig: restoreCostStateForSession,
+}
+
+/**
+ * Restore the counters of a session being resumed, from the best source it
+ * has: the transcript's `cost-state` entry (what Claude Code restores); else
+ * the project-config slot; else a replay of the loaded messages' usage, for
+ * transcripts written before the entry existed — the replay cannot see
+ * sub-agents. Every resume path calls it after switchSession: headless
+ * (`sessionLoad.ts`), CLI (`sessionRestore.ts`), the startup picker
+ * (`ResumeConversation.tsx`) and REPL /resume (`resumeSession.ts`, which
+ * hands in the slot as it read it before saving the session it leaves).
+ */
+export function restoreCostStateForResume(
+  sessionId: string,
+  resumed: {
+    costState?: CostStateEntry
+    messages: ReadonlyArray<unknown>
+  },
+  deps: CostRestoreDeps = defaultCostRestoreDeps,
+): CostStateSource {
+  let source: CostStateSource
+  if (resumed.costState?.sessionId === sessionId) {
+    restoreCostStateFromEntry(resumed.costState)
+    source = 'cost-state'
+  } else if (deps.restoreFromProjectConfig(sessionId)) {
+    source = 'project-config'
+  } else {
+    recomputeCostStateFromMessages(resumed.messages)
+    source = 'messages'
+  }
+  // Whichever source it was, the counters are now this session's whole cost
+  // (the config tier disowned them), and all of it predates this process.
+  costStateOwner = sessionId
+  restoredCostUSD = getTotalCostUSD()
+  return source
+}
+
+function restoreCostStateFromEntry(entry: CostStateEntry): void {
+  resetCostState()
+  setCostStateForRestore({
+    totalCostUSD: entry.totalCostUSD,
+    totalAPIDuration: entry.totalAPIDuration,
+    totalAPIDurationWithoutRetries: entry.totalAPIDurationWithoutRetries,
+    totalToolDuration: entry.totalToolDuration,
+    totalLinesAdded: entry.totalLinesAdded,
+    totalLinesRemoved: entry.totalLinesRemoved,
+    lastDuration: entry.totalDuration,
+    modelUsage: withModelLimits(entry.modelUsage),
+  })
+  if (entry.hasUnknownModelCost) setHasUnknownModelCost()
+  sessionStartTime = Math.min(entry.startTime, sessionStartTime)
+}
+
+/** Persisted per-model usage, plus the limits the live counters carry. */
+function withModelLimits(usage: Record<string, CostStateModelUsage>): {
+  [modelName: string]: ModelUsage
+} {
+  return Object.fromEntries(
+    Object.entries(usage).map(([model, u]) => [
+      model,
+      {
+        ...u,
+        contextWindow: getContextWindowForModel(model, getSdkBetas()),
+        maxOutputTokens: getModelMaxOutputTokens(model).default,
+      },
+    ]),
+  )
+}
+
+/**
+ * Stamp the current session's `cost-state`, as Claude Code's saver does
+ * beside the project-config slot. Sync: useCostSummary saves from process
+ * 'exit'. Required lazily because project.ts already reaches this module
+ * (through messages.ts); a failed stamp must not fail the /clear or /resume
+ * that is saving.
+ */
+function recordCostState(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getProject } = require('src/sessions/persistence/project.js') as typeof import('src/sessions/persistence/project.js')
+    getProject().reAppendCostState()
+  } catch (e) {
+    logError(e)
+  }
+}
+
+/** The per-model usage both persisted cost records carry (config and transcript). */
+function persistedModelUsage(): Record<string, CostStateModelUsage> {
+  return Object.fromEntries(
+    Object.entries(getModelUsage()).map(([model, usage]) => [
+      model,
+      {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cacheReadInputTokens: usage.cacheReadInputTokens,
+        cacheCreationInputTokens: usage.cacheCreationInputTokens,
+        webSearchRequests: usage.webSearchRequests,
+        costUSD: usage.costUSD,
+      },
+    ]),
+  )
 }
 
 /**
@@ -206,6 +440,7 @@ export function recomputeCostStateFromMessages(
  * Call this before switching sessions to avoid losing accumulated costs.
  */
 export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
+  recordCostState()
   saveCurrentProjectConfig(current => {
     const currentSessionId = getSessionId()
     // On a session boundary, the previously-saved `last*` belongs to a session
@@ -272,19 +507,7 @@ export function saveCurrentSessionCosts(fpsMetrics?: FpsMetrics): void {
       lastTotalWebSearchRequests: getTotalWebSearchRequests(),
       lastFpsAverage: fpsMetrics?.averageFps,
       lastFpsLow1Pct: fpsMetrics?.low1PctFps,
-      lastModelUsage: Object.fromEntries(
-        Object.entries(getModelUsage()).map(([model, usage]) => [
-          model,
-          {
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
-            cacheReadInputTokens: usage.cacheReadInputTokens,
-            cacheCreationInputTokens: usage.cacheCreationInputTokens,
-            webSearchRequests: usage.webSearchRequests,
-            costUSD: usage.costUSD,
-          },
-        ]),
-      ),
+      lastModelUsage: persistedModelUsage(),
       lastSessionId: currentSessionId,
       cumulativeCost,
       cumulativeAPIDuration,

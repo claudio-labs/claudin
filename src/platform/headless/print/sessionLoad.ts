@@ -22,6 +22,7 @@ import {
   saveMode,
 } from 'src/sessions/sessionStorage.js'
 import { restoreSessionStateFromLog } from 'src/sessions/sessionRestore.js'
+import { restoreCostStateForResume } from 'src/agent/cost-tracker.js'
 import {
   getSessionId,
   setMainLoopModelOverride,
@@ -140,6 +141,8 @@ export async function loadInitialMessages(
             if (persistSession) {
               await resetSessionFilePointer()
             }
+            // total_cost_usd reports the session, not just this process
+            restoreCostStateForResume(result.sessionId, result)
           }
         }
         restoreSessionStateFromLog(result, setAppState)
@@ -339,6 +342,8 @@ export async function loadInitialMessages(
         if (persistSession) {
           await resetSessionFilePointer()
         }
+        // total_cost_usd reports the session, not just this process
+        restoreCostStateForResume(result.sessionId, result)
       }
       restoreSessionStateFromLog(result, setAppState)
 

@@ -54,6 +54,7 @@ import {
 import {
   getStoredSessionCosts,
   resetCostState,
+  restoreCostStateForResume,
   saveCurrentSessionCosts,
 } from 'src/agent/cost-tracker.js'
 import {
@@ -314,9 +315,27 @@ export async function resumeSession(
       saveMode(isCoordinatorMode() ? 'coordinator' : 'normal')
     }
 
-    // Restore target session's costs from the data we read earlier
-    if (targetSessionCosts) {
-      setCostStateForRestore(targetSessionCosts)
+    // Restore the target session's costs from the best source it has: its
+    // cost-state entry, else the project-config slot as read above (the save
+    // has since put the session being left into it), else a replay of its
+    // messages. The counters are then the session's whole cost, so its exit
+    // may stamp them. A branch restores nothing, as in Claude Code — the
+    // messages it copied were paid for by its source — and the reset after
+    // its switch makes that zero the branch's own.
+    if (entrypoint === 'fork') {
+      resetCostState()
+    } else {
+      restoreCostStateForResume(
+        sessionId,
+        { costState: log.costState, messages },
+        {
+          restoreFromProjectConfig: () => {
+            if (!targetSessionCosts) return false
+            setCostStateForRestore(targetSessionCosts)
+            return true
+          },
+        },
+      )
     }
 
     // Reconstruct replacement state for the resumed session. Runs after
