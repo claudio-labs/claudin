@@ -68,6 +68,10 @@
  * thinking count is then taken from there, at the source.
  * `bun scripts/bench/ab/wire-proxy.ts summarize <run dir>/proxy` prints what
  * each session sent, request by request.
+ * `--proxy-display=summarized` (implies `--proxy`) has the proxy ask for the
+ * thinking summary on every request of every arm, so what each model thought
+ * about is readable (`thinking-diff.ts`). The API bills the full thinking
+ * whatever the display, and the signature does not change.
  *
  * Cost by source: with no cache break, a token entering the context at call k
  * is written once there and read by every later call, so the priced cost splits
@@ -84,7 +88,7 @@ import { dirname, join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
-import { proxyEnv, readProxyThinking, startWireProxy, type WireProxy } from './wire-proxy'
+import { proxyEnv, readProxyThinking, startWireProxy, thinkingDisplayTransform, type WireProxy } from './wire-proxy'
 
 /** 'claude', 'claudindev', or the label of a --variant. */
 type Arm = string
@@ -162,6 +166,8 @@ type Args = {
   args: Record<Arm, string[]>
   variants: Arm[]
   proxy: boolean
+  /** `thinking.display` the proxy forces on every request (--proxy-display). */
+  proxyDisplay: string | null
 }
 
 type PhaseRun = {
@@ -260,6 +266,7 @@ type Meta = {
   armEnv?: Record<Arm, Record<string, string>>
   armArgs?: Record<Arm, string[]>
   proxy?: boolean
+  proxyDisplay?: string | null
   baselineTests: number
 }
 
@@ -1437,6 +1444,7 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
       .filter(([, extra]) => extra.length > 0)
       .map(([k, extra]) => `- ${k} runs with \`${extra.join(' ')}\``),
     ...(meta.proxy ? ['- every arm went through the recording proxy (`wire-proxy.ts`, logs in `proxy/`)'] : []),
+    ...(meta.proxyDisplay ? [`- the proxy set \`thinking.display: "${meta.proxyDisplay}"\` on every request of every arm`] : []),
     `- run dir: \`${meta.runDir}\` (workspaces, streams, archived transcripts)`,
     `- pristine project: ${meta.baselineTests} tests`,
     '',
@@ -1596,6 +1604,7 @@ function parseArgs(argv: string[]): Args {
     args: {},
     variants: [],
     proxy: false,
+    proxyDisplay: null,
   }
   const variantSpecs: string[] = []
   const armArgSpecs: string[] = []
@@ -1604,6 +1613,10 @@ function parseArgs(argv: string[]): Args {
     if (k === '--dry-run') a.dryRun = true
     else if (k === '--sequential') a.sequential = true
     else if (k === '--proxy') a.proxy = true
+    else if (k === '--proxy-display') {
+      a.proxy = true
+      a.proxyDisplay = v
+    }
     else if (k === '--no-bash-replay') a.replayBash = false
     else if (k === '--reps') a.reps = Number(v)
     else if (k === '--only') a.only = v.split(',').filter(Boolean)
@@ -1773,12 +1786,17 @@ async function main(): Promise<void> {
     armEnv: Object.fromEntries(arms.map(a => [a, args.env[a] ?? {}])),
     armArgs: Object.fromEntries(arms.map(a => [a, args.args[a] ?? []])),
     proxy: args.proxy,
+    proxyDisplay: args.proxyDisplay,
     baselineTests: baseline.pass,
   }
   console.log(`session-cache-ab → ${runDir}`)
   for (const [k, v] of Object.entries(meta.versions)) console.log(`  ${k}: ${v}`)
 
-  const proxy = args.proxy ? await startWireProxy(join(runDir, 'proxy')) : null
+  const proxy = args.proxy
+    ? await startWireProxy(join(runDir, 'proxy'), {
+        transform: args.proxyDisplay ? thinkingDisplayTransform(args.proxyDisplay) : undefined,
+      })
+    : null
   if (proxy) console.log(`  recording proxy on 127.0.0.1:${proxy.port} → ${proxy.logDir}`)
   const ctx: RunContext = { args, runDir, graderDir, proxy }
   const runs: RunResult[] = []
