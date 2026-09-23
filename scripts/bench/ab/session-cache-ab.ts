@@ -57,6 +57,26 @@
  * A `--variant=<label>:<ENV>=<value>[,<ENV>=<value>]` is one more arm: this
  * checkout's binary with those variables set, which is how a killswitch is
  * priced against the default without touching the source.
+ *
+ * `--arm-args=<label>:<args>` appends CLI arguments to both invocations of one
+ * arm — how a tool is taken away without touching the source:
+ *   bun scripts/bench/ab/session-cache-ab.ts --variant=nopatch --arm-args='nopatch:--disallowedTools apply_patch'
+ *
+ * `--proxy` routes every arm through `wire-proxy.ts`, a local recording proxy
+ * in front of the real API, with each CLI's first-party override set. Every
+ * request body and every response's usage lands in `<run dir>/proxy/`, and the
+ * thinking count is then taken from there, at the source.
+ * `bun scripts/bench/ab/wire-proxy.ts summarize <run dir>/proxy` prints what
+ * each session sent, request by request.
+ *
+ * Cost by source: with no cache break, a token entering the context at call k
+ * is written once there and read by every later call, so the priced cost splits
+ * exactly into thinking, a patch re-sent after a refused edit, other visible
+ * output, the first request (prefix) and tool results plus reminders — each
+ * priced where it entered. Thinking is the API's count
+ * (`usage.output_tokens_details.thinking_tokens`), per message: both CLIs keep
+ * it in their transcripts, though Claude Code's stream-json only has the
+ * per-process total in its `result`.
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { copyFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -64,6 +84,7 @@ import { dirname, join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
+import { proxyEnv, readProxyThinking, startWireProxy, type WireProxy } from './wire-proxy'
 
 /** 'claude', 'claudindev', or the label of a --variant. */
 type Arm = string
@@ -99,8 +120,12 @@ type Usage = { in: number; out: number; cR: number; cW: number; cW5m: number; cW
 const USAGE_KEYS: ReadonlyArray<keyof Usage> = ['in', 'out', 'cR', 'cW', 'cW5m', 'cW1h']
 const zeroUsage = (): Usage => ({ in: 0, out: 0, cR: 0, cW: 0, cW5m: 0, cW1h: 0 })
 
+function priceOf(model: string): Price {
+  return PRICES.find(([re]) => re.test(model))?.[1] ?? PRICES[0]![1]
+}
+
 function costOf(model: string, u: Usage): number {
-  const price = PRICES.find(([re]) => re.test(model))?.[1] ?? PRICES[0]![1]
+  const price = priceOf(model)
   // A write the API did not split by TTL is priced at the cheaper tier.
   const unsplit = Math.max(0, u.cW - u.cW5m - u.cW1h)
   return (
@@ -133,7 +158,10 @@ type Args = {
   bins: Record<Arm, string>
   /** Extra environment per arm — set only for --variant arms. */
   env: Record<Arm, Record<string, string>>
+  /** Extra CLI arguments per arm (--arm-args), appended to both phases. */
+  args: Record<Arm, string[]>
   variants: Arm[]
+  proxy: boolean
 }
 
 type PhaseRun = {
@@ -145,6 +173,8 @@ type PhaseRun = {
   subtype: string | null
   numTurns: number | null
   cliCostUsd: number | null
+  /** `result.usage.output_tokens_details.thinking_tokens`: this process only, on both CLIs. */
+  thinkingTokens: number | null
   modelUsage: Record<string, Record<string, number>>
   initTools: number | null
   messageIds: string[]
@@ -161,6 +191,10 @@ type Turn = Usage & {
   lost: number | null
   tools: string[]
   resultChars: number
+  /** Thinking tokens of this call; null until `fillThinking` knows. */
+  think: number | null
+  /** Chars of what the call showed: text blocks plus tool_use inputs. */
+  visibleChars: number
 }
 
 type Call = {
@@ -207,6 +241,8 @@ type RunResult = {
   gitStatus: string[]
   transcript: string | null
   usageSource: string
+  /** Where `turns[].think` came from: the API per message, the proxy, one total per phase spread over its turns, or nowhere. */
+  thinkSource?: 'message' | 'proxy' | 'phase-spread' | 'none'
 }
 
 type Meta = {
@@ -220,6 +256,8 @@ type Meta = {
   arms: Arm[]
   versions: Record<string, string>
   armEnv?: Record<Arm, Record<string, string>>
+  armArgs?: Record<Arm, string[]>
+  proxy?: boolean
   baselineTests: number
 }
 
@@ -439,7 +477,7 @@ function spawnCollect(
   })
 }
 
-type RunContext = { args: Args; runDir: string; graderDir: string }
+type RunContext = { args: Args; runDir: string; graderDir: string; proxy: WireProxy | null }
 
 async function runPhase(
   arm: Arm,
@@ -465,15 +503,20 @@ async function runPhase(
     '--output-format',
     'stream-json',
     '--verbose',
+    ...(args.args[arm] ?? []),
   ]
   if (resumeId) cli.push('--resume', resumeId)
+  const extraEnv = {
+    ...(args.env[arm] ?? {}),
+    ...(ctx.proxy ? proxyEnv(ctx.proxy.url(`${label}.p${phase}`)) : {}),
+  }
   const res = await spawnCollect(
     args.bins[arm]!,
     cli,
     ws,
     join(ctx.runDir, `${label}.p${phase}`),
     args.timeoutMs,
-    args.env[arm] ?? {},
+    extraEnv,
   )
   const events = parseJsonl(res.stdout) as Json[]
   const init = events.find(e => e.type === 'system' && e.subtype === 'init')
@@ -497,6 +540,7 @@ async function runPhase(
       subtype: typeof result?.subtype === 'string' ? result.subtype : null,
       numTurns: typeof result?.num_turns === 'number' ? result.num_turns : null,
       cliCostUsd: typeof result?.total_cost_usd === 'number' ? result.total_cost_usd : null,
+      thinkingTokens: thinkingFromResult(result),
       modelUsage: isRecord(result?.modelUsage) ? (result.modelUsage as PhaseRun['modelUsage']) : {},
       initTools: Array.isArray(init?.tools) ? init.tools.length : null,
       messageIds,
@@ -546,6 +590,8 @@ async function runArm(arm: Arm, rep: number, ctx: RunContext): Promise<RunResult
   }
   const phase2Ids = new Set(phases.find(p => p.phase === 2)?.messageIds ?? [])
   const session = analyzeSession(streams, phase2Ids, transcript)
+  const proxyThinking = ctx.proxy ? readProxyThinking(ctx.proxy.logDir, PHASES.map(p => `${label}.p${p}`)) : null
+  const thinkSource = fillThinking(session.turns, phases, proxyThinking)
   const subagents = tPath && sessionId ? subagentUsage(join(dirname(tPath), sessionId), join(ctx.runDir, `${label}.subagents`)) : emptySubagents()
   const model = session.turns[0]?.model ?? null
 
@@ -564,6 +610,7 @@ async function runArm(arm: Arm, rep: number, ctx: RunContext): Promise<RunResult
     gitStatus,
     transcript: archived,
     usageSource: session.source,
+    thinkSource,
   }
 }
 
@@ -571,7 +618,12 @@ async function runArm(arm: Arm, rep: number, ctx: RunContext): Promise<RunResult
 // Session analysis
 // ---------------------------------------------------------------------------
 
-type Row = Usage & { model: string; toolUses: Map<string, { name: string; input: Json }> }
+type Row = Usage & {
+  model: string
+  toolUses: Map<string, { name: string; input: Json }>
+  think: number | null
+  texts: Set<string>
+}
 
 /**
  * One row per API call. Rows arrive once per CONTENT BLOCK, all sharing the
@@ -594,19 +646,79 @@ function collectRows(events: Json[], rows: Map<string, Row>, order: string[]): v
       cW5m: num(cc.ephemeral_5m_input_tokens),
       cW1h: num(cc.ephemeral_1h_input_tokens),
     }
+    const details = isRecord(u.output_tokens_details) ? u.output_tokens_details : null
+    const think = details && typeof details.thinking_tokens === 'number' ? details.thinking_tokens : null
     let row = rows.get(msg.id)
     if (!row) {
-      row = { ...next, model: String(msg.model ?? ''), toolUses: new Map() }
+      row = { ...next, model: String(msg.model ?? ''), toolUses: new Map(), think, texts: new Set() }
       rows.set(msg.id, row)
       order.push(msg.id)
     } else {
       for (const k of USAGE_KEYS) row[k] = Math.max(row[k], next[k])
+      if (think !== null) row.think = Math.max(row.think ?? 0, think)
     }
     for (const block of blocksOf(msg.content)) {
+      if (block.type === 'text' && typeof block.text === 'string' && block.text) row.texts.add(block.text)
       if (block.type !== 'tool_use' || typeof block.id !== 'string' || row.toolUses.has(block.id)) continue
       row.toolUses.set(block.id, { name: String(block.name ?? ''), input: isRecord(block.input) ? block.input : {} })
     }
   }
+}
+
+/**
+ * Chars of what a call showed. Claude Code's stream flushes an early snapshot
+ * of a text block that its transcript later completes, so a text that is a
+ * prefix of another one is the snapshot and not counted twice.
+ */
+function visibleCharsOf(row: Row): number {
+  const texts = [...row.texts]
+  const kept = texts.filter(t => !texts.some(o => o !== t && o.startsWith(t)))
+  let chars = kept.reduce((a, t) => a + t.length, 0)
+  for (const use of row.toolUses.values()) chars += JSON.stringify(use.input).length
+  return chars
+}
+
+function thinkingFromResult(result: Json | undefined): number | null {
+  const usage = isRecord(result?.usage) ? result.usage : null
+  const details = usage && isRecord(usage.output_tokens_details) ? usage.output_tokens_details : null
+  return details && typeof details.thinking_tokens === 'number' ? details.thinking_tokens : null
+}
+
+/** Visible chars per output token, fitted on `-175528` (R² 0.99 with the signature length, same on both CLIs). */
+const CHARS_PER_VISIBLE_TOKEN = 2.22
+
+/**
+ * Fills `think` on every turn. The proxy's count wins when it has one, then
+ * the per-message usage (both CLIs' transcripts carry it). Only when neither
+ * has it is each phase's `result` total spread over that phase's turns, by the
+ * part of each turn's output its visible content does not explain.
+ */
+function fillThinking(
+  turns: Turn[],
+  phases: PhaseRun[],
+  proxyThinking: Map<string, number> | null,
+): NonNullable<RunResult['thinkSource']> {
+  if (proxyThinking && turns.some(t => proxyThinking.has(t.id))) {
+    for (const t of turns) t.think = proxyThinking.get(t.id) ?? t.think ?? 0
+    return 'proxy'
+  }
+  if (turns.some(t => t.think !== null)) {
+    for (const t of turns) t.think ??= 0
+    return 'message'
+  }
+  let spread = false
+  for (const p of phases) {
+    const phaseTurns = turns.filter(t => t.phase === p.phase)
+    if (p.thinkingTokens === null || !phaseTurns.length) continue
+    spread = true
+    const est = phaseTurns.map(t => Math.max(0, t.out - t.visibleChars / CHARS_PER_VISIBLE_TOKEN))
+    const sum = est.reduce((a, b) => a + b, 0)
+    phaseTurns.forEach((t, i) => {
+      t.think = sum > 0 ? (p.thinkingTokens! * est[i]!) / sum : p.thinkingTokens! / phaseTurns.length
+    })
+  }
+  for (const t of turns) t.think ??= 0
+  return spread ? 'phase-spread' : 'none'
 }
 
 function collectResults(events: Json[], results: Map<string, { text: string; isError: boolean }>): void {
@@ -672,6 +784,8 @@ function analyzeSession(
       lost: prev ? Math.max(0, prev.cR + prev.cW - row.cR) : null,
       tools: [...row.toolUses.values()].map(t => t.name),
       resultChars,
+      think: row.think,
+      visibleChars: visibleCharsOf(row),
     })
   })
   return { turns, calls, source: transcript ? 'transcript+stream' : 'stream only' }
@@ -842,6 +956,14 @@ type Metrics = {
   costRead: number
   costWrite: number
   costResumeWrite: number
+  thinking: number
+  resentOut: number
+  costThinking: number
+  costResent: number
+  costVisible: number
+  costPrefix: number
+  costResults: number
+  costSplitGap: number
   cliCost: number
   resultChars: number
   bashCalls: number
@@ -873,6 +995,70 @@ function cliSessionCost(r: RunResult, estimate: number): { usd: number; cumulati
   return { usd: cumulative ? last : summed, cumulative }
 }
 
+type CostSplit = {
+  thinking: number
+  resent: number
+  visible: number
+  prefix: number
+  results: number
+  /** Priced minus the parts: 0 on an append-only session, the rewrite when a cache broke. */
+  gap: number
+  resentOut: number
+}
+
+/**
+ * The main thread's priced cost by what it paid for, each token priced where it
+ * first entered the context: its write there (or uncached input), then a read
+ * on every later call. A turn's output enters the next call's context, thinking
+ * included; the rest of that growth is tool results and reminders.
+ */
+function costSplit(r: RunResult): CostSplit {
+  const s: CostSplit = { thinking: 0, resent: 0, visible: 0, prefix: 0, results: 0, gap: 0, resentOut: 0 }
+  const turns = r.turns
+  const T = turns.length
+  if (!T) return s
+  const write = (t: Turn) => costOf(t.model, { ...zeroUsage(), in: t.in, cW: t.cW, cW5m: t.cW5m, cW1h: t.cW1h })
+  const readsAfter = (i: number) => {
+    let price = 0
+    for (let k = i + 1; k < T; k++) price += priceOf(turns[k]!.model).read
+    return price / 1e6
+  }
+  /** Per token, for what first entered at call i (i ≥ 1). */
+  const enter = (i: number): number => {
+    if (i <= 0 || i >= T) return 0
+    const grew = turns[i]!.ctx - turns[i - 1]!.ctx
+    return (grew > 0 ? write(turns[i]!) / grew : 0) + readsAfter(i)
+  }
+  const t0 = turns[0]!
+  s.prefix = (t0.cR * priceOf(t0.model).read) / 1e6 + write(t0) + t0.ctx * readsAfter(0)
+  const callsByTurn = new Map<number, Call[]>()
+  for (const c of r.calls) callsByTurn.set(c.turn, [...(callsByTurn.get(c.turn) ?? []), c])
+  const edits = (n: number) => (callsByTurn.get(n) ?? []).filter(c => EDIT_TOOLS.has(c.name))
+  for (let i = 0; i < T; i++) {
+    const t = turns[i]!
+    const next = turns[i + 1]
+    const carried = next ? Math.min(t.out, Math.max(0, next.ctx - t.ctx)) : 0
+    const carry = next && t.out > 0 ? (enter(i + 1) * carried) / t.out : 0
+    const perToken = priceOf(t.model).out / 1e6 + carry
+    const think = Math.min(t.think ?? 0, t.out)
+    const visible = t.out - think
+    s.thinking += think * perToken
+    if (edits(t.n).length > 0 && edits(t.n - 1).some(c => c.refused || c.isError)) {
+      s.resent += visible * perToken
+      s.resentOut += visible
+    } else {
+      s.visible += visible * perToken
+    }
+    if (i > 0) {
+      const grew = t.ctx - turns[i - 1]!.ctx
+      s.results += Math.max(0, grew - Math.min(turns[i - 1]!.out, Math.max(0, grew))) * enter(i)
+    }
+  }
+  const priced = turns.reduce((a, t) => a + costOf(t.model, t), 0)
+  s.gap = priced - (s.thinking + s.resent + s.visible + s.prefix + s.results)
+  return s
+}
+
 function metricsOf(r: RunResult): Metrics {
   const main = zeroUsage()
   let estCost = 0
@@ -897,6 +1083,7 @@ function metricsOf(r: RunResult): Metrics {
   const readPaths = r.calls.filter(c => c.name === 'Read').map(c => String(c.input.file_path ?? ''))
   const lastGrade = r.grades.at(-1)
   const denominator = main.cR + main.cW + main.in
+  const split = costSplit(r)
   return {
     turns: r.turns.length,
     turnsP1: p1.length,
@@ -926,6 +1113,14 @@ function metricsOf(r: RunResult): Metrics {
     costResumeWrite: resumeTurn
       ? costOf(resumeTurn.model, { ...zeroUsage(), cW: resumeTurn.cW, cW5m: resumeTurn.cW5m, cW1h: resumeTurn.cW1h })
       : 0,
+    thinking: r.turns.reduce((a, t) => a + (t.think ?? 0), 0),
+    resentOut: split.resentOut,
+    costThinking: split.thinking,
+    costResent: split.resent,
+    costVisible: split.visible,
+    costPrefix: split.prefix,
+    costResults: split.results,
+    costSplitGap: split.gap,
     cliCost: cliSessionCost(r, estCost + r.subagents.costUsd).usd,
     resultChars: r.calls.reduce((a, c) => a + c.chars, 0),
     bashCalls: bash.length,
@@ -993,12 +1188,13 @@ function turnTable(r: RunResult): string {
       fmtK(t.cW) + (t.cW && t.cW1h === t.cW ? '' : t.cW5m ? ' (5m)' : ''),
       fmtK(t.in),
       fmtK(t.out),
+      t.think === null ? '' : fmtK(t.think),
       t.lost === null ? '' : lost > BREAK_TOKENS ? `**${fmtK(lost)}**` : fmtK(lost),
       fmtK(t.resultChars),
       toolSummary(t.tools),
     ]
   })
-  return table(['#', 'ph', 'context', 'Δ', 'cache read', 'cache write', 'in', 'out', 'lost', 'result ch', 'tools'], rows)
+  return table(['#', 'ph', 'context', 'Δ', 'cache read', 'cache write', 'in', 'out', 'think', 'lost', 'result ch', 'tools'], rows)
 }
 
 type MetricRow = [label: string, key: keyof Metrics, fmt: (n: number) => string]
@@ -1013,6 +1209,7 @@ const METRIC_ROWS: MetricRow[] = [
   ['end context', 'endCtx', fmtK],
   ['input (uncached)', 'input', fmtK],
   ['output', 'output', fmtK],
+  ['  of which thinking (API)', 'thinking', fmtK],
   ['cache read', 'cacheRead', fmtK],
   ['cache write', 'cacheWrite', fmtK],
   ['  of which 1h TTL', 'cacheWrite1h', fmtK],
@@ -1030,6 +1227,13 @@ const METRIC_ROWS: MetricRow[] = [
   ['  cache write', 'costWrite', fmtUsd],
   ['    of which the resume turn', 'costResumeWrite', fmtUsd],
   ['  of which sub-agents', 'subagentCost', fmtUsd],
+  ['main thread by source: thinking', 'costThinking', fmtUsd],
+  ['  patch re-sent after a refused edit', 'costResent', fmtUsd],
+  ['  other visible output', 'costVisible', fmtUsd],
+  ['  first request (prefix), re-read every call', 'costPrefix', fmtUsd],
+  ['  tool results and reminders', 'costResults', fmtUsd],
+  ['  unattributed (a cache break)', 'costSplitGap', fmtUsd],
+  ['re-sent output tokens', 'resentOut', fmtK],
   ['CLI-reported cost (session)', 'cliCost', fmtUsd],
   ['tool result chars', 'resultChars', fmtK],
   ['Bash calls', 'bashCalls', fmtInt],
@@ -1213,6 +1417,10 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
     ...Object.entries(meta.armEnv ?? {})
       .filter(([, env]) => Object.keys(env).length > 0)
       .map(([k, env]) => `- ${k} runs with ${Object.entries(env).map(([n, v]) => `\`${n}=${v}\``).join(' ')}`),
+    ...Object.entries(meta.armArgs ?? {})
+      .filter(([, extra]) => extra.length > 0)
+      .map(([k, extra]) => `- ${k} runs with \`${extra.join(' ')}\``),
+    ...(meta.proxy ? ['- every arm went through the recording proxy (`wire-proxy.ts`, logs in `proxy/`)'] : []),
     `- run dir: \`${meta.runDir}\` (workspaces, streams, archived transcripts)`,
     `- pristine project: ${meta.baselineTests} tests`,
     '',
@@ -1229,6 +1437,10 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
     '',
     '`lost` = tokens the previous request had cached (read + written) that this request did not read back. ' +
       'On an append-only session it is ~0 every turn; a positive value is a prefix the CLI rewrote.',
+    '',
+    '`by source` prices each token where it first entered the context — generated, written once, read by every ' +
+      'later call — so the rows add up to the main thread\'s priced cost. Thinking is the API\'s count per message ' +
+      '(the per-run `thinking from` line says where it was read).',
     '',
   )
   for (const rep of [...new Set(runs.map(r => r.rep))]) {
@@ -1257,6 +1469,7 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
       `session \`${r.sessionId}\`, usage from ${r.usageSource}, model ${r.model}, ` +
         `sub-agents: ${r.subagents.files} transcript(s), ${r.subagents.turns} turns, ${fmtUsd(r.subagents.costUsd)}; ` +
         `side models: ${sideModels(r)}; tools at init: ${r.phases.map(p => p.initTools ?? '?').join(' / ')}; ` +
+        `thinking from ${r.thinkSource ?? 'none'}; ` +
         `CLI cost ${r.phases.map(p => `P${p.phase} ${fmtUsd(p.cliCostUsd ?? 0)}`).join(' / ')}` +
         (cli.cumulative ? ' (the resumed process re-reports the whole session)' : '') +
         `, priced here ${fmtUsd(m.estCost)}`,
@@ -1364,13 +1577,17 @@ function parseArgs(argv: string[]): Args {
     replayBash: true,
     bins: { claude: 'claude', claudindev: join(REPO_ROOT, 'bin', 'claudin') },
     env: {},
+    args: {},
     variants: [],
+    proxy: false,
   }
   const variantSpecs: string[] = []
+  const armArgSpecs: string[] = []
   for (const x of argv) {
     const [k, v = ''] = x.split(/=(.*)/s, 2) as [string, string?]
     if (k === '--dry-run') a.dryRun = true
     else if (k === '--sequential') a.sequential = true
+    else if (k === '--proxy') a.proxy = true
     else if (k === '--no-bash-replay') a.replayBash = false
     else if (k === '--reps') a.reps = Number(v)
     else if (k === '--only') a.only = v.split(',').filter(Boolean)
@@ -1384,6 +1601,7 @@ function parseArgs(argv: string[]): Args {
     else if (k === '--bin-claude') a.bins.claude = v
     else if (k === '--bin-claudindev') a.bins.claudindev = v
     else if (k === '--variant') variantSpecs.push(v)
+    else if (k === '--arm-args') armArgSpecs.push(v)
     else {
       console.error(`unknown argument ${x}`)
       process.exit(2)
@@ -1398,6 +1616,14 @@ function parseArgs(argv: string[]): Args {
     a.env[label] = Object.fromEntries(pairs.map(p => [p.slice(0, p.indexOf('=')), p.slice(p.indexOf('=') + 1)]))
     a.variants.push(label)
   }
+  for (const spec of armArgSpecs) {
+    const colon = spec.indexOf(':')
+    if (colon < 1) {
+      console.error(`--arm-args wants <label>:<args>, got ${spec}`)
+      process.exit(2)
+    }
+    a.args[spec.slice(0, colon)] = spec.slice(colon + 1).split(/\s+/).filter(Boolean)
+  }
   return a
 }
 
@@ -1410,6 +1636,30 @@ function save(runDir: string, runs: RunResult[], meta: Meta): string {
   const path = join(runDir, 'results.json')
   writeFileSync(path, JSON.stringify({ meta, runs }, null, 1))
   return path
+}
+
+/**
+ * A results.json written before `think`/`visibleChars` existed: rebuild turns
+ * and calls from the run's archived streams and transcript, and the thinking
+ * from the proxy logs when the run had them.
+ */
+function reanalyze(r: RunResult, runDir: string): RunResult {
+  if (r.thinkSource && r.turns.every(t => typeof t.visibleChars === 'number')) return r
+  const label = `${r.arm}-r${r.rep}`
+  const streams = PHASES.map(p => {
+    const file = join(runDir, `${label}.p${p}.stream.jsonl`)
+    return existsSync(file) ? (parseJsonl(readFileSync(file, 'utf8')) as Json[]) : []
+  })
+  const transcript = r.transcript && existsSync(r.transcript) ? (parseJsonl(readFileSync(r.transcript, 'utf8')) as Json[]) : null
+  const session = analyzeSession(streams, new Set(r.phases.find(p => p.phase === 2)?.messageIds ?? []), transcript)
+  const phases = r.phases.map((p, i) => ({
+    ...p,
+    thinkingTokens: p.thinkingTokens ?? thinkingFromResult(streams[i]?.findLast(e => e.type === 'result')),
+  }))
+  const proxyDir = join(runDir, 'proxy')
+  const proxyThinking = existsSync(proxyDir) ? readProxyThinking(proxyDir, PHASES.map(p => `${label}.p${p}`)) : null
+  const thinkSource = fillThinking(session.turns, phases, proxyThinking)
+  return { ...r, phases, turns: session.turns, calls: session.calls, thinkSource }
 }
 
 async function main(): Promise<void> {
@@ -1426,13 +1676,20 @@ async function main(): Promise<void> {
     const files = args.replay.split(',').filter(Boolean)
     const saved = files.map(spec => {
       const [, file = spec, label] = /^(.*\.json)@([^/]+)$/.exec(spec) ?? []
-      const s = JSON.parse(readFileSync(file, 'utf8')) as { meta: Meta; runs: RunResult[] }
+      const raw = JSON.parse(readFileSync(file, 'utf8')) as { meta: Meta; runs: RunResult[] }
+      const s = { meta: raw.meta, runs: raw.runs.map(r => reanalyze(r, raw.meta.runDir)) }
       if (!label) return s
       const name = (arm: string) => `${arm}@${label}`
       const rekey = <T>(o: Record<string, T> = {}) =>
         Object.fromEntries(Object.entries(o).map(([k, v]) => [name(k), v]))
       return {
-        meta: { ...s.meta, arms: s.meta.arms.map(name), versions: rekey(s.meta.versions), armEnv: rekey(s.meta.armEnv) },
+        meta: {
+          ...s.meta,
+          arms: s.meta.arms.map(name),
+          versions: rekey(s.meta.versions),
+          armEnv: rekey(s.meta.armEnv),
+          armArgs: rekey(s.meta.armArgs),
+        },
         runs: s.runs.map(r => ({ ...r, arm: name(r.arm) })),
       }
     })
@@ -1443,6 +1700,7 @@ async function main(): Promise<void> {
       arms,
       versions: selected(Object.assign({}, ...saved.map(s => s.meta.versions))),
       armEnv: selected(Object.assign({}, ...saved.map(s => s.meta.armEnv ?? {}))),
+      armArgs: selected(Object.assign({}, ...saved.map(s => s.meta.armArgs ?? {}))),
       reps: Math.max(...saved.map(s => s.meta.reps)),
     }
     if (args.only) meta.arms.sort((x, y) => args.only!.indexOf(x) - args.only!.indexOf(y))
@@ -1457,6 +1715,11 @@ async function main(): Promise<void> {
   const unknown = arms.filter(a => !args.bins[a])
   if (unknown.length) {
     console.error(`no binary for ${unknown.join(', ')} — declare a variant with --variant=<label>:<ENV>=<value>`)
+    process.exit(2)
+  }
+  const strayArgs = Object.keys(args.args).filter(label => !args.bins[label])
+  if (strayArgs.length) {
+    console.error(`--arm-args for an arm that does not exist: ${strayArgs.join(', ')} — declare it with --variant=<label>`)
     process.exit(2)
   }
   if (arms.some(a => args.bins[a] === args.bins.claudindev) && !existsSync(join(REPO_ROOT, 'dist', 'cli.mjs'))) {
@@ -1493,12 +1756,16 @@ async function main(): Promise<void> {
       ]),
     ),
     armEnv: Object.fromEntries(arms.map(a => [a, args.env[a] ?? {}])),
+    armArgs: Object.fromEntries(arms.map(a => [a, args.args[a] ?? []])),
+    proxy: args.proxy,
     baselineTests: baseline.pass,
   }
   console.log(`session-cache-ab → ${runDir}`)
   for (const [k, v] of Object.entries(meta.versions)) console.log(`  ${k}: ${v}`)
 
-  const ctx: RunContext = { args, runDir, graderDir }
+  const proxy = args.proxy ? await startWireProxy(join(runDir, 'proxy')) : null
+  if (proxy) console.log(`  recording proxy on 127.0.0.1:${proxy.port} → ${proxy.logDir}`)
+  const ctx: RunContext = { args, runDir, graderDir, proxy }
   const runs: RunResult[] = []
   for (let rep = 1; rep <= args.reps; rep++) {
     if (args.sequential) {
@@ -1510,6 +1777,7 @@ async function main(): Promise<void> {
     }
     save(runDir, runs, meta)
   }
+  await proxy?.close()
 
   const text = report(runs, meta, args.replayBash)
   writeFileSync(join(runDir, 'report.md'), text)
