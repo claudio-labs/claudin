@@ -29,6 +29,16 @@ export const REDACT_THINKING_BETA_HEADER = 'redact-thinking-2026-02-12'
 // redact-thinking: estimated_tokens is only sent when thinking display
 // resolves to "omitted", which is exactly what redact-thinking does.
 export const THINKING_TOKEN_COUNT_BETA_HEADER = 'thinking-token-count-2026-05-13'
+// Opens `thinking.block_binding`, which says what the API should do when a
+// replayed thinking block's signature no longer matches the prefix it was
+// produced under ("preserved thinking"). Claudin needs it because it rewrites
+// its own history: the clip paths restub old tool_results and
+// stripOldThinkingBlocks drops thinking from the middle of the conversation,
+// both of which invalidate that prefix. Claude Code does NOT send this header —
+// it hands thinking management to the server through context_management
+// instead. See docs/tech/opus-5-5/wire-capture.md.
+export const THINKING_BINDING_CONTROLS_BETA_HEADER =
+  'thinking-binding-controls-2026-08-01'
 export const TOKEN_EFFICIENT_TOOLS_BETA_HEADER =
   'token-efficient-tools-2026-03-28'
 export const AFK_MODE_BETA_HEADER = feature('TRANSCRIPT_CLASSIFIER')

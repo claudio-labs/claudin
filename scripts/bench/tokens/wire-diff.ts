@@ -15,21 +15,24 @@
 //   bun run scripts/bench/tokens/wire-diff.ts --a=claude --b=claudindev
 //   bun run scripts/bench/tokens/wire-diff.ts --raw                 # also dump raw bodies to /tmp
 //   bun run scripts/bench/tokens/wire-diff.ts --model=claude-sonnet-5
+//   bun run scripts/bench/tokens/wire-diff.ts --full                # keep hooks/MCP/plugins
 //
-// STATUS 2026-07-26: BROKEN against claude 2.1.220 / claudin 1.0.16 — both CLIs
-// capture 0 requests. Verified with WIRE_DIFF_TRACE=1: the mock sees NO request at
-// all (not even a non-/v1/messages one), so the CLIs hang before their first API
-// call rather than bypassing ANTHROPIC_BASE_URL. Reproduce standalone with a dead
-// port — `ANTHROPIC_BASE_URL=http://localhost:9999 ANTHROPIC_API_KEY=sk-ant-api03-…
-// claude -p hi` hangs instead of failing on ECONNREFUSED, and claudin under --bare
-// answers "Not logged in · Please run /login". So the blocker is the injected
-// ANTHROPIC_API_KEY being rejected/awaiting approval during startup, not the base
-// URL override. Fixing this means finding the headless-safe way to hand each CLI a
-// throwaway key. Until then use `-p --output-format stream-json --verbose` for
-// message-level inspection; it shows the conversation but not the system prompt.
+// STATUS 2026-09-22: FIXED and verified against claude 2.1.280. The earlier
+// "captures 0 requests" note blamed the injected ANTHROPIC_API_KEY; that was
+// wrong. The real cause was in this file: the mock server and the CLI shared one
+// process, and the CLI was launched with `spawnSync`, which blocks the event loop
+// for the child's entire lifetime. The connection sat in the accept backlog and
+// JS never serviced it, so the CLI waited for a first byte that could not arrive
+// and we SIGTERM'd it at the timeout (exit 143, zero captures). Claude Code's own
+// `--debug-file` shows both halves: `[API REQUEST] /v1/messages source=sdk`
+// followed by `Slow first byte: no stream chunk 30.0s after request sent`.
+// The fix is an async `spawn` + await exit. Two smaller things also mattered:
+// CLAUDECODE / CLAUDE_CODE_ENTRYPOINT leak into the child from whichever
+// Claude-Code-family CLI runs this script, and `--bare` (default here) keeps the
+// capture deterministic — no hooks, plugins, MCP or keychain, api-key auth only.
 
 import { createServer } from 'node:http'
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 
 const PORT = 8799
@@ -37,12 +40,13 @@ const PORT = 8799
 // has to echo back the same model id the CLIs are launched with.
 const MODEL = process.argv.slice(2).find(x => x.startsWith('--model='))?.slice('--model='.length) ?? 'claude-sonnet-4-6'
 
-type Args = { a: string; b: string; raw: boolean; help: boolean }
+type Args = { a: string; b: string; raw: boolean; help: boolean; full: boolean }
 function parseArgs(argv: string[]): Args {
-  const o: Args = { a: 'claude', b: 'claudindev', raw: false, help: false }
+  const o: Args = { a: 'claude', b: 'claudindev', raw: false, help: false, full: false }
   for (const x of argv) {
     if (x === '--help' || x === '-h') o.help = true
     else if (x === '--raw') o.raw = true
+    else if (x === '--full') o.full = true
     else if (x.startsWith('--a=')) o.a = x.slice('--a='.length)
     else if (x.startsWith('--b=')) o.b = x.slice('--b='.length)
   }
@@ -110,26 +114,92 @@ function startServer(): Promise<{ close: () => void }> {
   })
 }
 
-function runCli(bin: string, _isClaudin: boolean) {
+// Deterministic capture args. `--bare` is the important one: it drops hooks,
+// plugins, LSP, auto-memory, CLAUDE.md discovery and keychain reads, and pins
+// auth to ANTHROPIC_API_KEY — so what lands in the body is the CLI's own shape
+// rather than this machine's configuration. Both CLIs accept all of these.
+//
+// The two CLIs resolve auth DIFFERENTLY under --bare, and it is load-bearing
+// here: Claude Code reads ANTHROPIC_API_KEY from the environment, while
+// claudin's bare mode reads only the active Anthropic provider profile's
+// apiKey or an apiKeyHelper (src/providers/auth/auth.ts:228-243) and never the
+// env var. So a bare claudin run on a machine whose /provider is unconfigured
+// (the default OAuth/subscription setup) exits 1 with
+// "Not logged in · Please run /login" and captures nothing. Use --full for the
+// claudin side there: it drops both the bare flags and the injected key, so
+// each CLI authenticates exactly as it normally does.
+const BARE_ARGS = ['--bare', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}']
+
+function runCli(bin: string, full: boolean): Promise<{ code: number; stderr: string }> {
   // Use the CLI's REAL config (so its active provider/creds are intact) and only
   // redirect the DESTINATION to our localhost mock via ANTHROPIC_BASE_URL — which the
   // Anthropic SDK reads natively and claudin does not override for the anthropic
   // transport. Sandbox stays ON: if the override is ignored the request goes to the
   // real API and is BLOCKED (hangs, we kill it) — it can never actually be charged.
   const env: Record<string, string> = {
-    ...process.env,
+    ...(process.env as Record<string, string>),
     HOME: process.env.HOME ?? '',                 // REAL home → config present, no onboarding hang
     ANTHROPIC_BASE_URL: `http://localhost:${PORT}`,
-    ANTHROPIC_API_KEY: 'sk-mock-capture-key',     // force api-key transport (which honors base URL)
     ANTHROPIC_MODEL: MODEL,
   }
-  const res = spawnSync(bin, ['-p', 'hi', '--model', MODEL, '--output-format', 'text'], {
-    encoding: 'utf8',
-    timeout: 35_000,
-    maxBuffer: 32 * 1024 * 1024,
-    env,
+  if (!full) {
+    // api-key transport honors the base URL, and under --bare it is the only
+    // credential Claude Code will look at.
+    env.ANTHROPIC_API_KEY = 'sk-ant-api03-mock-capture-key'
+  } else {
+    delete env.ANTHROPIC_API_KEY
+  }
+  // Both CLIs are Claude-Code-family, so a child inherits CLAUDECODE=1 from
+  // whichever one is running this script and takes a nested-session path.
+  //
+  // The CLAUDIN_* / CLAUDE_CODE_* killswitches leak the same way and they move
+  // the very bytes being compared — a session running with
+  // CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=true hands its child a shorter
+  // anthropic-beta header and the diff reads as a fork divergence that does not
+  // exist. Strip the whole family, then re-apply only what this harness sets.
+  for (const key of Object.keys(env)) {
+    if (
+      key === 'CLAUDECODE' ||
+      key.startsWith('CLAUDIN_') ||
+      key.startsWith('CLAUDE_CODE_')
+    ) {
+      delete env[key]
+    }
+  }
+  // An OAuth token in the environment outranks the mock key and sends the run
+  // to the real API instead of the mock.
+  delete env.ANTHROPIC_AUTH_TOKEN
+  if (process.env.WIRE_DIFF_TRACE) {
+    const leaked = Object.keys(env).filter(
+      k => k.startsWith('CLAUDIN_') || k.startsWith('CLAUDE') || k.startsWith('ANTHROPIC_'),
+    )
+    console.log(`    [trace] ${bin} env: ${leaked.join(', ') || '(none of the families)'}`)
+  }
+  const argv = [
+    '-p', 'hi',
+    '--model', MODEL,
+    ...(full ? [] : BARE_ARGS),
+    '--output-format', 'text',
+  ]
+  // ASYNC spawn, not spawnSync: the mock server lives in THIS process, and a
+  // synchronous child blocks the event loop that would accept its connection.
+  // That single line is what made every earlier run capture zero requests.
+  return new Promise(resolve => {
+    const child = spawn(bin, argv, { env, stdio: ['ignore', 'pipe', 'pipe'] })
+    let stderr = ''
+    let stdout = ''
+    child.stderr.on('data', d => (stderr += String(d)))
+    // Keep stdout: a CLI that refuses the run (unknown model, missing auth)
+    // prints the reason there and exits 1 with an EMPTY stderr, which read as
+    // "did not honor ANTHROPIC_BASE_URL" for longer than it should have.
+    child.stdout.on('data', d => (stdout += String(d)))
+    const kill = setTimeout(() => child.kill('SIGTERM'), 90_000)
+    child.on('close', code => {
+      clearTimeout(kill)
+      const why = [stderr.trim(), stdout.trim()].filter(Boolean).join(' | ')
+      resolve({ code: code ?? -1, stderr: why.slice(-600) })
+    })
   })
-  return { code: res.status ?? -1, stderr: (res.stderr ?? '').slice(-400) }
 }
 
 // ---- structural summary of a request body ----
@@ -169,6 +239,17 @@ function summarize(cap: Capture) {
     model: b.model,
     beta: cap.beta,
     thinking: b.thinking ? JSON.stringify(b.thinking) : null,
+    // Top-level request fields a model launch changes. `output_config.effort`
+    // and `max_tokens` are the two that silently diverge per model, and
+    // `context_management` is how the server is asked to handle thinking
+    // instead of the client rewriting history.
+    maxTokens: b.max_tokens ?? null,
+    outputConfig: b.output_config ? JSON.stringify(b.output_config) : null,
+    contextManagement: b.context_management ? JSON.stringify(b.context_management) : null,
+    sampling: ['temperature', 'top_p', 'top_k']
+      .filter(k => b[k] !== undefined)
+      .map(k => `${k}=${JSON.stringify(b[k])}`),
+    topLevelKeys: Object.keys(b).sort(),
     sysBlocks,
     sysChars: sysBlocks.reduce((n: number, s: any) => n + s.chars, 0),
     toolCount: toolNames.length,
@@ -184,6 +265,10 @@ function printSummary(label: string, s: ReturnType<typeof summarize>) {
   console.log(`\n=== ${label} ===`)
   console.log(`  model: ${s.model}   betas: ${s.beta ?? '(none)'}`)
   if (s.thinking) console.log(`  thinking: ${s.thinking}`)
+  console.log(`  max_tokens: ${s.maxTokens}   output_config: ${s.outputConfig ?? '(none)'}`)
+  if (s.contextManagement) console.log(`  context_management: ${s.contextManagement}`)
+  console.log(`  sampling params: ${s.sampling.length ? s.sampling.join(' ') : '(none sent)'}`)
+  console.log(`  top-level keys: ${s.topLevelKeys.join(', ')}`)
   console.log(`  cache_control markers TOTAL: ${s.ccTotal}`)
   console.log(`  system: ${s.sysBlocks.length} blocks, ${s.sysChars} chars`)
   for (const blk of s.sysBlocks) {
@@ -212,6 +297,22 @@ function diff(a: ReturnType<typeof summarize>, b: ReturnType<typeof summarize>) 
   line('cc-on-tools', a.toolsWithCC.length, b.toolsWithCC.length)
   line('betas', a.beta, b.beta)
   line('thinking', a.thinking, b.thinking)
+  line('max_tokens', a.maxTokens, b.maxTokens)
+  line('output_config', a.outputConfig, b.outputConfig)
+  line('context_management', a.contextManagement, b.contextManagement)
+  line('sampling params', a.sampling.join(' ') || '(none)', b.sampling.join(' ') || '(none)')
+  const aKeys = new Set(a.topLevelKeys)
+  const bKeys = new Set(b.topLevelKeys)
+  const keyOnlyA = a.topLevelKeys.filter(k => !bKeys.has(k))
+  const keyOnlyB = b.topLevelKeys.filter(k => !aKeys.has(k))
+  if (keyOnlyA.length) console.log(`     body keys only in A(claude):  ${keyOnlyA.join(', ')}`)
+  if (keyOnlyB.length) console.log(`     body keys only in B(claudin): ${keyOnlyB.join(', ')}`)
+  const aBetas = new Set((a.beta ?? '').split(',').map(x => x.trim()).filter(Boolean))
+  const bBetas = new Set((b.beta ?? '').split(',').map(x => x.trim()).filter(Boolean))
+  const betaOnlyA = [...aBetas].filter(x => !bBetas.has(x))
+  const betaOnlyB = [...bBetas].filter(x => !aBetas.has(x))
+  if (betaOnlyA.length) console.log(`     betas only in A(claude):  ${betaOnlyA.join(', ')}`)
+  if (betaOnlyB.length) console.log(`     betas only in B(claudin): ${betaOnlyB.join(', ')}`)
   const aNames = new Set(a.toolNames), bNames = new Set(b.toolNames)
   const onlyA = a.toolNames.filter((n: string) => !bNames.has(n))
   const onlyB = b.toolNames.filter((n: string) => !aNames.has(n))
@@ -225,7 +326,8 @@ async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
     console.log('wire-diff: capture + diff the Anthropic request body of two CLIs (no real API).')
-    console.log('  --a=<bin> --b=<bin>  --raw (dump bodies to /tmp/wire-*.json)')
+    console.log('  --a=<bin> --b=<bin>  --model=<id>  --raw (dump bodies to /tmp/wire-*.json)')
+    console.log('  --full  keep hooks/plugins/MCP (default is --bare, which is deterministic)')
     return
   }
   const srv = await startServer()
@@ -240,13 +342,13 @@ async function main() {
 
   const startA = captures.length
   console.log(`▶ ${args.a} (claude) ...`)
-  const ra = runCli(args.a, false)
+  const ra = await runCli(args.a, args.full)
   const capA = captures.slice(startA)
   console.log(`  exit ${ra.code}, captured ${capA.length} request(s)${ra.code !== 0 ? `  stderr: ${ra.stderr.replace(/\n/g, ' ')}` : ''}`)
 
   const startB = captures.length
   console.log(`▶ ${args.b} (claudin) ...`)
-  const rb = runCli(args.b, true)
+  const rb = await runCli(args.b, args.full)
   const capB = captures.slice(startB)
   console.log(`  exit ${rb.code}, captured ${capB.length} request(s)${rb.code !== 0 ? `  stderr: ${rb.stderr.replace(/\n/g, ' ')}` : ''}`)
   srv.close()

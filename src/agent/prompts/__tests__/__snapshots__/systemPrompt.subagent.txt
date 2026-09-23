@@ -17,6 +17,6 @@ Platform: <PLATFORM>
 Shell: <SHELL>
 OS Version: <OS_VERSION>
 </env>
-You are powered by the model named Opus 5. The exact model ID is claude-opus-5.
+You are powered by the model named Opus 5.5. The exact model ID is claude-opus-5-5.
 
-Assistant knowledge cutoff is May 2026.
+Assistant knowledge cutoff is June 2026.

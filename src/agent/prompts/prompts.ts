@@ -74,7 +74,7 @@ export const SYSTEM_PROMPT_DYNAMIC_BOUNDARY =
 // @[MODEL LAUNCH]: Update the model family IDs below to the latest in each tier.
 const CLAUDE_LATEST_MODEL_IDS = {
   fable: 'claude-fable-5-1',
-  opus: 'claude-opus-5',
+  opus: 'claude-opus-5-5',
   sonnet: 'claude-sonnet-5',
   haiku: 'claude-haiku-4-5-20251001',
 }
@@ -631,7 +631,7 @@ export async function computeSimpleEnvInfo(
     // references. Family resolution depends on provider — hence the
     // provider-qualified section cache key at the call site.
     isAnthropicFamily
-      ? `The most recent Claude models are Fable 5.1, Opus 5, Sonnet 5, and the Claude 4.x family. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
+      ? `The most recent Claude models are Fable 5.1, Opus 5.5, Sonnet 5, and the Claude 4.x family. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
       : null,
     `Claudin is available as a CLI in the terminal and can be used across local development environments and IDE workflows.`,
     // @[MODEL LAUNCH]: Keep the fast-mode model list in sync with
@@ -639,7 +639,7 @@ export async function computeSimpleEnvInfo(
     // firstParty-only: fast mode is rejected on every other provider
     // (isFastModeEnabled bails on getAPIProvider() !== 'firstParty').
     isAnthropicFamily && getAPIProvider() === 'firstParty'
-      ? `Fast mode for Claudin uses Claude Opus with faster output (it does not downgrade to a smaller model). It can be toggled with /fast and is available on Opus 5/4.7/4.6.`
+      ? `Fast mode for Claudin uses Claude Opus with faster output (it does not downgrade to a smaller model). It can be toggled with /fast and is available on Opus 5.5/5/4.7/4.6.`
       : null,
   ].filter(item => item !== null)
 
@@ -658,6 +658,9 @@ function getKnowledgeCutoff(modelId: string): string | null {
     return 'June 2026'
   } else if (canonical.includes('claude-fable-5')) {
     return 'January 2026'
+  } else if (canonical.includes('claude-opus-5-5')) {
+    // Before the Opus 5 branch, same containment trap.
+    return 'June 2026'
   } else if (canonical.includes('claude-opus-5')) {
     return 'May 2026'
   } else if (canonical.includes('claude-sonnet-5')) {

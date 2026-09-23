@@ -209,6 +209,35 @@ export const CLAUDE_OPUS_5_CONFIG = {
   mistral: 'devstral-latest',
 } as const satisfies ModelConfig
 
+// Claude Opus 5.5 (2026-09-22) — the default Opus tier, replacing Opus 5.
+// Carries Opus 5's request shape wholesale: 1M context as both the default and
+// the maximum (no 200k variant, no opt-in header), adaptive thinking always on
+// (budget_tokens and {type:'disabled'} both 400), non-default sampling params
+// rejected, effort ladder low→max. Two things it does NOT share with Opus 5:
+// max output is 128K rather than 64K by default, and the price drops to $4/$20
+// with an irregular 0.05x cache-read multiplier (see COST_TIER_4_20 in
+// src/providers/usage/modelCost.ts). Knowledge cutoff June 2026. Dateless ID is
+// itself the pinned snapshot; Bedrock uses the Messages-API endpoint id.
+//
+// The ID CONTAINS 'claude-opus-5', so every `includes('opus-5')` predicate
+// matches it for free — which is right for the capability gates and wrong for
+// anything that RESOLVES a version. Those sites need a 5.5 branch placed
+// BEFORE the Opus 5 one; firstPartyNameToCanonical documents the same trap for
+// claude-fable-5-1.
+export const CLAUDE_OPUS_5_5_CONFIG = {
+  firstParty: 'claude-opus-5-5',
+  bedrock: 'anthropic.claude-opus-5-5',
+  vertex: 'claude-opus-5-5',
+  foundry: 'claude-opus-5-5',
+  openai: 'gpt-4o',
+  gemini: 'gemini-2.5-pro',
+  github: 'github:copilot',
+  codex: 'gpt-5.5',
+  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',
+  minimax: 'MiniMax-M2.5',
+  mistral: 'devstral-latest',
+} as const satisfies ModelConfig
+
 // Claude Fable 5.1 (2026-09-01) — frontier tier above Opus, replacing Fable 5.
 // 1M context by default, 128K max output, new tokenizer (~30% more tokens than
 // Opus-tier), thinking always on (adaptive only — budget_tokens and explicit
@@ -285,6 +314,7 @@ export const ALL_MODEL_CONFIGS = {
   opus47: CLAUDE_OPUS_4_7_CONFIG,
   opus48: CLAUDE_OPUS_4_8_CONFIG,
   opus5: CLAUDE_OPUS_5_CONFIG,
+  opus55: CLAUDE_OPUS_5_5_CONFIG,
   fable51: CLAUDE_FABLE_5_1_CONFIG,
 } as const satisfies Record<string, ModelConfig>
 

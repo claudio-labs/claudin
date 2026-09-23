@@ -141,11 +141,11 @@ export function getFastModeUnavailableReason(): string | null {
 // Names the model /fast switches you to (getFastModeModel resolves the 'opus'
 // alias), not the full supported set — call sites read "model set to X" and
 // "High-speed mode for X".
-export const FAST_MODE_MODEL_DISPLAY = 'Opus 5'
+export const FAST_MODE_MODEL_DISPLAY = 'Opus 5.5'
 
 export function getFastModeModel(): string {
-  // The [1m] merge suffix only applies to a 200k Opus. Opus 5 is native-1M, so
-  // appending it would produce a phantom 'claude-opus-5[1m]'.
+  // The [1m] merge suffix only applies to a 200k Opus. Opus 5.5 is native-1M,
+  // so appending it would produce a phantom 'claude-opus-5-5[1m]'.
   const opusIsNative1m = isNative1mModel(getDefaultOpusModel())
   return 'opus' + (isOpus1mMergeEnabled() && !opusIsNative1m ? '[1m]' : '')
 }
@@ -177,6 +177,7 @@ export function isFastModeSupportedByModel(
   const model = modelSetting ?? getDefaultMainLoopModelSetting()
   const parsedModel = parseUserSpecifiedModel(model).toLowerCase()
   return (
+    // 'opus-5' also matches 'opus-5-5' — Opus 5.5 is fast-mode eligible too.
     parsedModel.includes('opus-5') ||
     parsedModel.includes('opus-4-7') ||
     parsedModel.includes('opus-4-6')

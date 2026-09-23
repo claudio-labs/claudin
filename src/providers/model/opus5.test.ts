@@ -116,16 +116,24 @@ test('gets the 64k/128k max-output tier, not the 32k fallthrough default', () =>
   })
 })
 
-// Opus 5 is native-1M, so a [1m] tag on the alias must be dropped rather than
-// producing a phantom 'claude-opus-5[1m]' — which would push a context-1m beta
+// Opus 5 is native-1M: it has no 200k variant, so nothing should ever build a
+// 'claude-opus-5[1m]' for it — a phantom ID that pushes a context-1m beta
 // header the model never needs and has no display-name case (renders raw).
-test('strips the meaningless [1m] tag from the opus alias', () => {
+// The [1m]-stripping half of that guarantee lives on the `opus` ALIAS, which
+// resolves to Opus 5.5 since 2026-09-22, so opus55.test.ts owns it now. What
+// stays here is the property the alias path reads.
+test('is native-1M and keeps a resolvable display name', () => {
   expect(isNative1mModel('claude-opus-5')).toBe(true)
-  const parsed = parseUserSpecifiedModel('opus[1m]')
+  const parsed = parseUserSpecifiedModel('claude-opus-5')
   expect(parsed).toBe('claude-opus-5')
-  expect(parsed).not.toContain('[1m]')
-  // A resolvable display name is what keeps the raw ID out of the footer.
   expect(getPublicModelDisplayName(parsed)).toBe('Opus 5')
+})
+
+// The `opus` alias moved to Opus 5.5, and the picker entry for Opus 5 is now
+// pinned to the explicit string instead. Pin that split: if getDefaultOpusModel
+// regressed to Opus 5, the alias would silently take this model again.
+test('is no longer what the opus alias resolves to', () => {
+  expect(parseUserSpecifiedModel('opus')).not.toBe('claude-opus-5')
 })
 
 // The picker renders the lightning bolt + fast-mode pricing for Opus 5, so the

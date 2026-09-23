@@ -22,6 +22,7 @@ import {
   formatModelPricing,
   getOpus46CostTier,
   getOpus5CostTier,
+  getOpus55CostTier,
 } from 'src/providers/usage/modelCost.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
@@ -88,7 +89,8 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
     model === getModelStrings().opus46 ||
     model === getModelStrings().opus47 ||
     model === getModelStrings().opus48 ||
-    model === getModelStrings().opus5
+    model === getModelStrings().opus5 ||
+    model === getModelStrings().opus55
   )
 }
 
@@ -239,7 +241,7 @@ export function getDefaultOpusModel(): ModelName {
   if (getAPIProvider() !== 'firstParty') {
     return getModelStrings().opus46
   }
-  return getModelStrings().opus5
+  return getModelStrings().opus55
 }
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
@@ -438,6 +440,13 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   if (name.includes('claude-fable-5')) {
     return 'claude-fable-5'
   }
+  // Same trap one tier down: 'claude-opus-5-5' contains 'claude-opus-5'. The
+  // canonical name is the MODEL_COSTS key AND what every display path reads,
+  // so without this branch Opus 5.5 bills at $5/$25 with a $0.50 cache read
+  // instead of $4/$20 with $0.20, and renders as "Opus 5" in the footer.
+  if (name.includes('claude-opus-5-5')) {
+    return 'claude-opus-5-5'
+  }
   if (name.includes('claude-opus-5')) {
     return 'claude-opus-5'
   }
@@ -519,8 +528,8 @@ export function getClaudeAiUserDefaultModelDescription(
   fastMode = false,
 ): string {
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
-    // Opus 5 is native-1M — no 200k/merge distinction.
-    return `Opus 5 · Most capable for complex work${fastMode ? getOpus5PricingSuffix(true) : ''}`
+    // Opus 5.5 is native-1M — no 200k/merge distinction.
+    return `Opus 5.5 · Most capable for complex work${fastMode ? getOpus55PricingSuffix(true) : ''}`
   }
   return 'Sonnet 5 · Best for everyday tasks'
 }
@@ -529,7 +538,7 @@ export function renderDefaultModelSetting(
   setting: ModelName | ModelAlias,
 ): string {
   if (setting === 'opusplan') {
-    return 'Opus 5 in plan mode, else Sonnet 5'
+    return 'Opus 5.5 in plan mode, else Sonnet 5'
   }
   return renderModelName(parseUserSpecifiedModel(setting))
 }
@@ -548,6 +557,14 @@ export function getOpus46PricingSuffix(fastMode: boolean): string {
 export function getOpus5PricingSuffix(fastMode: boolean): string {
   if (getAPIProvider() !== 'firstParty') return ''
   const pricing = formatModelPricing(getOpus5CostTier(fastMode))
+  const fastModeIndicator = fastMode ? ` (${LIGHTNING_BOLT})` : ''
+  return ` ·${fastModeIndicator} ${pricing}`
+}
+
+/** Same shape again, reading the Opus 5.5 cost entry. */
+export function getOpus55PricingSuffix(fastMode: boolean): string {
+  if (getAPIProvider() !== 'firstParty') return ''
+  const pricing = formatModelPricing(getOpus55CostTier(fastMode))
   const fastModeIndicator = fastMode ? ` (${LIGHTNING_BOLT})` : ''
   return ` ·${fastModeIndicator} ${pricing}`
 }
@@ -601,6 +618,9 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
     case getModelStrings().fable51:
       // 1M context is the default on Fable 5.1 — no [1m] variant needed.
       return 'Fable 5.1'
+    case getModelStrings().opus55:
+      // 1M context is the default on Opus 5.5 — no [1m] variant needed.
+      return 'Opus 5.5'
     case getModelStrings().opus5:
       // 1M context is the default on Opus 5 — no [1m] variant needed.
       return 'Opus 5'
@@ -831,6 +851,11 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   }
   if (canonical.includes('claude-fable-5')) {
     return 'Fable 5'
+  }
+  // Before the Opus 5 branch — see firstPartyNameToCanonical.
+  if (canonical.includes('claude-opus-5-5')) {
+    // 1M context is the default on Opus 5.5 — no [1m] variant.
+    return 'Opus 5.5'
   }
   if (canonical.includes('claude-opus-5')) {
     // 1M context is the default on Opus 5 — no [1m] variant.

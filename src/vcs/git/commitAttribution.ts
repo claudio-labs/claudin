@@ -18,6 +18,8 @@ export function sanitizeModelName(shortName: string): string {
   // Before the fable-5 branch: 'fable-5-1' contains 'fable-5'.
   if (shortName.includes('fable-5-1')) return 'claude-fable-5-1'
   if (shortName.includes('fable-5')) return 'claude-fable-5'
+  // Same containment trap one tier down: 'opus-5-5' contains 'opus-5'.
+  if (shortName.includes('opus-5-5')) return 'claude-opus-5-5'
   if (shortName.includes('opus-5')) return 'claude-opus-5'
   if (shortName.includes('opus-4-8')) return 'claude-opus-4-8'
   if (shortName.includes('opus-4-7')) return 'claude-opus-4-7'

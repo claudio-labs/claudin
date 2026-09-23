@@ -36,7 +36,9 @@ const DATA_DIR = mkdtempSync(join(tmpdir(), 'claudin-snapshot-'))
 afterAll(() => rmSync(DATA_DIR, { recursive: true, force: true }))
 const BUNDLE = join(REPO_ROOT, 'dist', 'cli.mjs')
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
-const MODEL = 'claude-opus-5'
+// Pinned to the current first-party default so the snapshot characterizes what
+// actually ships; bump it with the default, not independently.
+const MODEL = 'claude-opus-5-5'
 
 // ~/.claudin/projects/<slug>: sanitizePath() turns every non-alphanumeric byte
 // of the cwd into a hyphen, so the checkout path is encoded a SECOND time — in
