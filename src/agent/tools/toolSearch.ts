@@ -723,12 +723,11 @@ export function maybeLatchLegacyDeferredAnnouncement(
  * (Any delta-format session with a non-empty deferred pool emits one on
  * its first request, so absence reliably means pre-flip/legacy.)
  *
- * PREMISE: this only holds because isLoggableMessage
- * (src/sessions/pure/logging.ts) whitelists
- * deferred_tools_delta attachments for persistence — resumed transcripts
- * must round-trip them, both as this marker and as the bytes the warm
- * cache prefix expects. Removing that whitelist silently re-breaks every
- * warm resume of a delta session.
+ * PREMISE: this only holds because the transcript persists
+ * deferred_tools_delta attachments (src/sessions/pure/attachmentPersistence.ts)
+ * — resumed transcripts must round-trip them, both as this marker and as the
+ * bytes the warm cache prefix expects. Marking the type `skip` silently
+ * re-breaks every warm resume of a delta session.
  */
 function historyHasDeferredToolsDelta(messages: readonly Message[]): boolean {
   return messages.some(

@@ -647,6 +647,27 @@ export function extractReadFilesFromMessages(
 }
 
 /**
+ * Paths of the rules and CLAUDE.md files already injected into this history
+ * as `nested_memory` attachments. The dedup set they are checked against lives
+ * per engine and starts empty, so a resumed session re-injects every one of
+ * them on the next matching Read unless it is seeded from here.
+ */
+export function extractNestedMemoryPathsFromMessages(
+  messages: Message[],
+): Set<string> {
+  const paths = new Set<string>()
+  for (const message of messages) {
+    if (
+      message.type === 'attachment' &&
+      message.attachment.type === 'nested_memory'
+    ) {
+      paths.add(message.attachment.path)
+    }
+  }
+  return paths
+}
+
+/**
  * Extract the top-level CLI tools used in BashTool calls from message history.
  * Returns a deduplicated set of command names (e.g. 'vercel', 'aws', 'git').
  */

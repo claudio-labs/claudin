@@ -534,14 +534,18 @@ test('isLoggableMessage: drops progress entries, keeps user/assistant', () => {
   expect(isLoggableMessage({ type: 'assistant' } as any)).toBe(true)
 })
 
-test('isLoggableMessage: external user drops generic attachments', () => {
-  // userType() === 'external' in tests (see getUserType()).
-  expect(
-    isLoggableMessage(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { type: 'attachment', attachment: { type: 'selected_lines' } } as any,
-    ),
-  ).toBe(false)
+test('isLoggableMessage: keeps attachments that reach the API, drops the ones that render nothing', () => {
+  // The per-type policy is src/sessions/pure/attachmentPersistence.ts; the
+  // resume byte-identity it buys is src/sessions/resumePrefixDeterminism.test.ts.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const att = (type: string) => ({ type: 'attachment', attachment: { type } }) as any
+  expect(isLoggableMessage(att('selected_lines_in_ide'))).toBe(true)
+  expect(isLoggableMessage(att('nested_memory'))).toBe(true)
+  expect(isLoggableMessage(att('hook_additional_context'))).toBe(true)
+  expect(isLoggableMessage(att('already_read_file'))).toBe(false)
+  expect(isLoggableMessage(att('memory_index'))).toBe(false)
+  // A type this build does not know (a legacy name) is not written again.
+  expect(isLoggableMessage(att('selected_lines'))).toBe(false)
 })
 
 test('isLoggableMessage: deferred_tools_delta attachments persist for external users', () => {
