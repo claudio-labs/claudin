@@ -570,6 +570,53 @@ export function summarizeAppliedContextEdits(
 }
 
 /**
+ * The server's own answer to "why did this request miss the cache", returned
+ * when the request carried `diagnostics.previous_message_id`
+ * (cache-diagnosis-2026-04-07). Claude Code 2.1.280 knows these `type` values:
+ * - model_changed, system_changed, tools_changed, messages_changed
+ * - previous_message_not_found, unavailable
+ *
+ * The field is kept as a string so a new value still reads.
+ */
+export type ServerCacheMissReason = {
+  type: string
+  cacheMissedInputTokens?: number
+}
+
+/**
+ * Reads `diagnostics.cache_miss_reason` from a message_start message or a
+ * message_delta event. Returns null for anything else, including a cache hit.
+ */
+export function readServerCacheMissReason(
+  source: unknown,
+): ServerCacheMissReason | null {
+  if (typeof source !== 'object' || source === null) return null
+  const diagnostics = (source as { diagnostics?: unknown }).diagnostics
+  if (typeof diagnostics !== 'object' || diagnostics === null) return null
+  const reason = (diagnostics as { cache_miss_reason?: unknown })
+    .cache_miss_reason
+  if (typeof reason !== 'object' || reason === null) return null
+  const type = (reason as { type?: unknown }).type
+  if (typeof type !== 'string' || type.length === 0) return null
+  const tokens = (reason as { cache_missed_input_tokens?: unknown })
+    .cache_missed_input_tokens
+  return typeof tokens === 'number'
+    ? { type, cacheMissedInputTokens: tokens }
+    : { type }
+}
+
+function describeServerCacheMissReason(
+  reason: ServerCacheMissReason,
+): string {
+  const tokens = reason.cacheMissedInputTokens
+  const size =
+    tokens !== undefined && tokens > 0
+      ? ` (${formatCompactNumber(tokens)} missed)`
+      : ''
+  return `server: ${reason.type.replaceAll('_', ' ')}${size}`
+}
+
+/**
  * Human-readable cause for a detected cache break. Pure — exported so the
  * labeling can be pinned without driving the whole detector.
  *
@@ -724,6 +771,7 @@ export async function checkResponseForCacheBreak(
   agentId?: AgentId,
   requestId?: string | null,
   contextManagement?: BetaContextManagementResponse | null,
+  serverMissReason?: ServerCacheMissReason | null,
 ): Promise<void> {
   try {
     const key = getTrackingKey(querySource, agentId)
@@ -731,6 +779,14 @@ export async function checkResponseForCacheBreak(
 
     const state = previousStateBySource.get(key)
     if (!state) return
+
+    // Logged whether or not the client-side threshold below calls it a
+    // break: a small miss the heuristic ignores is still the server's answer.
+    if (serverMissReason) {
+      logForDebugging(
+        `[PROMPT CACHE] ${describeServerCacheMissReason(serverMissReason)} [source=${querySource}]`,
+      )
+    }
 
     // Skip excluded models (e.g., haiku has different caching behavior)
     if (isExcludedModel(state.model)) return
@@ -789,13 +845,18 @@ export async function checkResponseForCacheBreak(
       timeSinceLastAssistantMsg > CACHE_TTL_1HOUR_MS
 
     const serverEdit = summarizeAppliedContextEdits(contextManagement)
-    const reason = buildCacheBreakReason(
+    const clientReason = buildCacheBreakReason(
       changes,
       serverEdit,
       timeSinceLastAssistantMsg,
       messageMutation,
       markerAdvance,
     )
+    // The server's own diagnosis leads when the request asked for one: it is
+    // the one cause here that is not an inference.
+    const reason = serverMissReason
+      ? `${describeServerCacheMissReason(serverMissReason)}; ${clientReason}`
+      : clientReason
     // The `[Cache: …]` line is persisted to the transcript, so this is the
     // record that survives a session without `--debug`.
     recordCacheBreak(

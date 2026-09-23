@@ -1,8 +1,19 @@
 ---
 name: anti-narration-never-benched-on-claude-5
-description: ANTI_NARRATION was written for Opus 4.7/4.8 and has no Claude 5 measurement; ModelFamily cannot express "Claude 5", and work-contract-ab.ts is the harness shape to reuse
+description: ANTI_NARRATION was written for Opus 4.7/4.8; its first Claude 5 A/B (2026-09-23, progress updates) found overlap, so it stays; ModelFamily cannot express "Claude 5"
 type: project
 ---
+
+> **Benched on Claude 5, 2026-09-23 — for one question only.** Does ANTI_NARRATION suppress
+> the progress updates Opus 5.5 / Fable 5.1 write under `display:"updates"`?
+> `scripts/bench/ab/narration-updates-ab.ts` ran 18 graded runs, N=3 per arm per model. The
+> arms were the default prompt, `CLAUDIN_ANTI_NARRATION=0`, and a carve-out sentence. The
+> pre-registered range-overlap rule says **overlap → it stays**. The only updates came with it
+> OFF, in 2 of 6 runs and one update each; the carve-out got 0 of 6. Interactive Claude Code
+> got 0 (Opus 5.5) and 1 (Fable 5.1) on the same fixture, so updates are rare in both CLIs.
+> A claim either way needs a larger N. Everything below about text narration and the
+> work-contract still has no Claude 5 measurement. Results and method:
+> `docs/tech/anthropic-betas/wire-matrix.md` ("Progress updates and ANTI_NARRATION").
 
 Audited 2026-09-14.
 

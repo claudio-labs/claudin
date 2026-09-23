@@ -388,11 +388,14 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   session whose floor (stub heads + protected turns) sits above the target,
   which is what compaction is for. `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns
   off the window lane only.
-- `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` silently turns off the retain
-  profile's server-side `clear_tool_uses` (no `context-management` beta
-  header → no `context_management` body). Check the env before attributing a
-  context drop to the server; `docs/tech/cache/context-relief-policy.md` has the
-  full map of the client mechanisms that fire instead.
+- `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` (the default) silently turns off
+  the retain profile's server-side `clear_tool_uses`. Since 2026-09-22 the
+  `context-management` header still goes out on the real first-party
+  endpoint, but its body is only `clear_thinking` with `keep: "all"`, which
+  clears nothing. `getAPIContextManagement`'s `serverEdits` is the switch's
+  inverse. Check the env before attributing a context drop to the server;
+  `docs/tech/cache/context-relief-policy.md` has the full map of the client
+  mechanisms that fire instead.
 
 ## 6. Running cache perf experiments
 

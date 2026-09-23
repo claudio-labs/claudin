@@ -1,7 +1,6 @@
-// Claudin: disable experimental API betas by default.
-// Tool search (defer_loading), global cache scope, and context management
-// require internal API support not available to external accounts → 500.
-// Users can opt-in with CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=false.
+// Claudin: the experimental-betas switch is on by default — see the matching
+// comment in cli.tsx for what it still guards and where the adopted betas went.
+// Opt in with CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=false.
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 

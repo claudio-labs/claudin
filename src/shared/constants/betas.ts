@@ -25,18 +25,27 @@ export const FAST_MODE_BETA_HEADER = 'fast-mode-2026-02-01'
 export const REDACT_THINKING_BETA_HEADER = 'redact-thinking-2026-02-12'
 // Makes the API emit per-frame thinking-token counts (BetaThinkingDelta
 // .estimated_tokens) even when the raw thinking text is omitted, plus the
-// final usage.output_tokens_details.thinking_tokens. Pairs with
-// redact-thinking: estimated_tokens is only sent when thinking display
-// resolves to "omitted", which is exactly what redact-thinking does.
+// final usage.output_tokens_details.thinking_tokens. estimated_tokens is only
+// sent when the thinking display is not "summarized" — "omitted", "updates",
+// or redact-thinking, which resolves to "omitted".
 export const THINKING_TOKEN_COUNT_BETA_HEADER = 'thinking-token-count-2026-05-13'
+// Allows `thinking.display: "updates"`: reasoning blocks come back empty, as
+// with "omitted", while the progress updates Opus 5.5 / Fable 5.1 write between
+// tool calls come back as text. Without it the value is a 400.
+export const THINKING_DISPLAY_UPDATES_BETA_HEADER =
+  'thinking-display-updates-2026-08-18'
+// Allows the `diagnostics: {previous_message_id}` body field; the response then
+// says why the prompt cache missed (`diagnostics.cache_miss_reason`).
+export const CACHE_DIAGNOSIS_BETA_HEADER = 'cache-diagnosis-2026-04-07'
 // Opens `thinking.block_binding`, which says what the API should do when a
 // replayed thinking block's signature no longer matches the prefix it was
 // produced under ("preserved thinking"). Claudin needs it because it rewrites
 // its own history: the clip paths restub old tool_results and
 // stripOldThinkingBlocks drops thinking from the middle of the conversation,
-// both of which invalidate that prefix. Claude Code does NOT send this header —
-// it hands thinking management to the server through context_management
-// instead. See docs/tech/opus-5-5/wire-capture.md.
+// both of which invalidate that prefix. Claude Code sends the header too, but
+// not the block_binding field: it does not rewrite its prefix, and hands
+// thinking management to the server through context_management instead. See
+// docs/tech/anthropic-betas/wire-matrix.md.
 export const THINKING_BINDING_CONTROLS_BETA_HEADER =
   'thinking-binding-controls-2026-08-01'
 export const TOKEN_EFFICIENT_TOOLS_BETA_HEADER =

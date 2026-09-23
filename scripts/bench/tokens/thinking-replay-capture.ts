@@ -49,6 +49,11 @@
 // no matter how the profile is set. `--user-turns=N` is the flag that reaches
 // it: the CLI is invoked N times in one throwaway cwd, runs 2..N with `-c`, so
 // earlier turns are genuinely past and eligible.
+//
+// Both CLIs are told to treat the localhost mock as the real first-party
+// endpoint (`--no-assume-1p` turns that off). Without it Claude Code drops
+// thinking-binding-controls and changes its thinking display, so the replay
+// would describe the mock — THE CONFOUND in wire-matrix.ts.
 
 import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
@@ -57,6 +62,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const PORT = 8802
+const ASSUME_1P = !process.argv.includes('--no-assume-1p')
 
 const DEFAULT_MODELS = [
   'claude-opus-5-5',
@@ -299,6 +305,11 @@ function runCli(
     }
   }
   delete env.ANTHROPIC_AUTH_TOKEN
+  delete env._CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL
+  if (ASSUME_1P) {
+    env._CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL = '1'
+    env.CLAUDIN_ASSUME_FIRST_PARTY_BASE_URL = '1'
+  }
 
   const argv = [
     '-p',
@@ -494,7 +505,7 @@ async function main(): Promise<void> {
       'thinking-replay-capture: capture the SECOND turn, where thinking blocks are replayed.',
     )
     console.log(
-      '  --bin=<claude|claudindev>  --models=a,b,c  --turns=N  --user-turns=N  --full  --raw',
+      '  --bin=<claude|claudindev>  --models=a,b,c  --turns=N  --user-turns=N  --full  --raw  --no-assume-1p',
     )
     return
   }

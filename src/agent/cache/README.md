@@ -128,8 +128,11 @@ audit; integrated regression:
 - `src/providers/shims/claude/streaming.ts` — wiring order:
   `ensureToolResultPairing → applyStableStubs → history redactions →
   frontier → addCacheBreakpoints`; also sends `context_management` when the
-  beta header is on (NOT under `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` — the
-  retain profile's server-side clear is inert there; see the relief doc).
+  beta header is on. On the real first-party endpoint that is the default
+  since 2026-09-22 (`adoptedBetas.ts`), but the body is only
+  `clear_thinking` with `keep: "all"`. The retain profile's server-side
+  clear and the aggressive keep window are `serverEdits`, which stay inert
+  unless `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=false` (see the relief doc).
   `clear_tool_inputs` is derived from the pool via `clearableResult: true`
   on each Tool (`clearableToolNamesFromPool`), not a hand-kept constant.
 - `src/agent/compact/microCompact.ts` — the shell around the policy:

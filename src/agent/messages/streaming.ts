@@ -1,4 +1,5 @@
 import type { BetaToolUseBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
+import { isProgressUpdateBlock } from 'src/providers/shims/claude/thinkingDisplay.js'
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js'
 import type {
   Message,
@@ -56,10 +57,12 @@ export function handleMessageFromStream(
     if (message.type === 'tool_use_summary') {
       return
     }
-    // Capture complete thinking blocks for real-time display in transcript mode
+    // Capture complete thinking blocks for real-time display in transcript
+    // mode. Not a progress update: that renders in the message list itself,
+    // and would otherwise show twice for the pane's 30 seconds.
     if (message.type === 'assistant') {
       const thinkingBlock = message.message.content.find(
-        block => block.type === 'thinking',
+        block => block.type === 'thinking' && !isProgressUpdateBlock(block),
       )
       if (thinkingBlock && thinkingBlock.type === 'thinking') {
         onStreamingThinking?.(() => ({

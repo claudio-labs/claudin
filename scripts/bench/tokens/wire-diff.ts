@@ -16,6 +16,13 @@
 //   bun run scripts/bench/tokens/wire-diff.ts --raw                 # also dump raw bodies to /tmp
 //   bun run scripts/bench/tokens/wire-diff.ts --model=claude-sonnet-5
 //   bun run scripts/bench/tokens/wire-diff.ts --full                # keep hooks/MCP/plugins
+//   bun run scripts/bench/tokens/wire-diff.ts --no-assume-1p        # see below
+//
+// First-party classification: a localhost ANTHROPIC_BASE_URL makes Claude Code
+// treat the session as not first-party, which changes the betas, the thinking
+// display and the cache scope it sends. Both CLIs are told to assume the real
+// endpoint unless --no-assume-1p is given; THE CONFOUND in wire-matrix.ts has
+// what it changes, and wire-matrix.ts is the harness for more than two arms.
 //
 // STATUS 2026-09-22: FIXED and verified against claude 2.1.280. The earlier
 // "captures 0 requests" note blamed the injected ANTHROPIC_API_KEY; that was
@@ -39,6 +46,7 @@ const PORT = 8799
 // Read straight off argv: the mock SSE payload below is built at module scope and
 // has to echo back the same model id the CLIs are launched with.
 const MODEL = process.argv.slice(2).find(x => x.startsWith('--model='))?.slice('--model='.length) ?? 'claude-sonnet-4-6'
+const ASSUME_1P = !process.argv.includes('--no-assume-1p')
 
 type Args = { a: string; b: string; raw: boolean; help: boolean; full: boolean }
 function parseArgs(argv: string[]): Args {
@@ -169,6 +177,11 @@ function runCli(bin: string, full: boolean): Promise<{ code: number; stderr: str
   // An OAuth token in the environment outranks the mock key and sends the run
   // to the real API instead of the mock.
   delete env.ANTHROPIC_AUTH_TOKEN
+  delete env._CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL
+  if (ASSUME_1P) {
+    env._CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL = '1'
+    env.CLAUDIN_ASSUME_FIRST_PARTY_BASE_URL = '1'
+  }
   if (process.env.WIRE_DIFF_TRACE) {
     const leaked = Object.keys(env).filter(
       k => k.startsWith('CLAUDIN_') || k.startsWith('CLAUDE') || k.startsWith('ANTHROPIC_'),
@@ -328,6 +341,7 @@ async function main() {
     console.log('wire-diff: capture + diff the Anthropic request body of two CLIs (no real API).')
     console.log('  --a=<bin> --b=<bin>  --model=<id>  --raw (dump bodies to /tmp/wire-*.json)')
     console.log('  --full  keep hooks/plugins/MCP (default is --bare, which is deterministic)')
+    console.log('  --no-assume-1p  let the CLIs classify the localhost mock as not first-party')
     return
   }
   const srv = await startServer()

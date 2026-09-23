@@ -137,6 +137,54 @@ describe('shouldRetry - thinking-block mismatch', () => {
   })
 })
 
+// --- an adopted beta the API rejects is dropped and the request sent again ---
+describe('withRetry - an adopted beta rejected by the API', () => {
+  const noopThinking = { type: 'disabled' } as never
+  const displayRejection = () =>
+    makeApiError("thinking.adaptive.display: Input should be 'summarized', 'omitted'")
+
+  afterEach(async () => {
+    const { _resetAdoptedBetaRejectionsForTesting } = await import(
+      'src/providers/transport/adoptedBetas.js'
+    )
+    _resetAdoptedBetaRejectionsForTesting()
+  })
+
+  test('latches the beta off and succeeds on the second attempt', async () => {
+    const { isAdoptedBetaRejected } = await import('src/providers/transport/adoptedBetas.js')
+    const { withRetry } = await importFreshWithRetryModule('firstParty')
+    let calls = 0
+    const generator = withRetry(
+      async () => ({}) as never,
+      async () => {
+        calls += 1
+        if (calls === 1) throw displayRejection()
+        return 'ok'
+      },
+      { model: 'claude-opus-5-5', thinkingConfig: noopThinking, maxRetries: 2 },
+    )
+    let result: unknown
+    for (;;) {
+      const next = await generator.next()
+      if (next.done) {
+        result = next.value
+        break
+      }
+    }
+    expect(result).toBe('ok')
+    expect(calls).toBe(2)
+    expect(isAdoptedBetaRejected('thinkingDisplayUpdates')).toBe(true)
+  })
+
+  test('retries a given beta once: the same rejection again ends the turn', async () => {
+    const { markAdoptedBetaRejected } = await import('src/providers/transport/adoptedBetas.js')
+    const { shouldRetry } = await importFreshWithRetryModule('firstParty')
+    expect(shouldRetry(displayRejection())).toBe(true)
+    markAdoptedBetaRejected('thinkingDisplayUpdates')
+    expect(shouldRetry(displayRejection())).toBe(false)
+  })
+})
+
 // --- parseOpenAIDuration ---
 describe('parseOpenAIDuration', () => {
   test('parses seconds: "1s" → 1000', async () => {

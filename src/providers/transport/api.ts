@@ -41,6 +41,7 @@ import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/providers/model/providers.js'
+import { isRealFirstPartyEndpoint } from 'src/providers/transport/adoptedBetas.js'
 import {
   getPlan,
   getPlanFilePath,
@@ -292,6 +293,14 @@ export async function toolToAPISchema(
     // at full token cost. It is never present on a provider that rejects it.
     const keepDeferLoading = 'defer_loading' in schema
     if (keepDeferLoading) allowed.add('defer_loading')
+    // eager_input_streaming — fine-grained tool streaming, which cli.tsx turns
+    // on by default — is set above only for first-party requests, and the
+    // real endpoint accepts it. Stripping it here quietly cancelled that
+    // default for everyone; only a proxy reached through ANTHROPIC_BASE_URL,
+    // which the profile check above cannot see, still loses it.
+    const keepEagerStreaming =
+      'eager_input_streaming' in schema && isRealFirstPartyEndpoint()
+    if (keepEagerStreaming) allowed.add('eager_input_streaming')
     const stripped = Object.keys(schema).filter(k => !allowed.has(k))
     if (stripped.length > 0) {
       logStripOnce(stripped)
@@ -303,6 +312,8 @@ export async function toolToAPISchema(
         ...(keepDeferLoading && {
           defer_loading: (schema as { defer_loading?: boolean }).defer_loading,
         }),
+        // Read back from `allowed`, so the set above is the one decision.
+        ...(allowed.has('eager_input_streaming') && { eager_input_streaming: true }),
       }
     }
   }

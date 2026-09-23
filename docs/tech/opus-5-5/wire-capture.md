@@ -12,6 +12,38 @@ one is a first-party model and the capture is reproducible from this repo.
 - **Where**: full bodies land in `/tmp/wire-A.json` (Claude Code) and
   `/tmp/wire-B.json` (Claudin).
 
+## Errata (added later on 2026-09-22)
+
+The Opus-5.5-specific findings below hold: `max_tokens` 128000, effort
+`medium`, and the block-binding guard Claudin needs because it rewrites its own
+prefix. Three other conclusions do not.
+[`../anthropic-betas/wire-matrix.md`](../anthropic-betas/wire-matrix.md) has
+the re-measured version.
+
+1. **The beta lists and the `safeguards` row describe the mock, not the
+   endpoint.** A localhost `ANTHROPIC_BASE_URL` makes Claude Code classify the
+   session as not first-party.
+   - The real endpoint does not get `safeguards` or `dangerous-tool-use`.
+   - It does get `thinking-binding-controls-2026-08-01` on all three models.
+     That is the header only; `block_binding` sits behind a flag of Claude
+     Code's own.
+   - It also gets `cache-diagnosis-2026-04-07`, tool search, and
+     `scope:"global"` on the static system block.
+   - "Claude Code does NOT send thinking-binding-controls" is wrong on the
+     real endpoint. The harnesses now set Claude Code's own override,
+     `_CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL`.
+2. **`display: "omitted"` costs nothing to leave out.** It is the server default
+   on Opus 5.5, Fable 5.1 and Sonnet 5, so Claudin already gets empty thinking,
+   and the docs say omitting "reduces latency, not cost". Interactive Claude
+   Code does not send `"omitted"` either; it sends `"updates"`.
+3. **Claudin's `context_management` is not "the same edit".**
+   - `apiMicrocompact.ts` builds `clear_thinking_20251015` with
+     `keep:{type:"thinking_turns", value:2}` under the aggressive profile, or
+     `value:1` after an idle hour, and only with redact-thinking off.
+   - Claude Code sends `keep:"all"`, which is the no-clearing default.
+   - `clear_thinking` does not need the retain profile. The retain profile
+     gates `clear_tool_uses`.
+
 ## Reviving the harness
 
 `wire-diff.ts` had carried a `STATUS 2026-07-26: BROKEN` note blaming the

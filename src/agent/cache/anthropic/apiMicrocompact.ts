@@ -93,12 +93,23 @@ export function getAPIContextManagement(options?: {
   clearAllThinking?: boolean
   /** Pool-derived `clear_tool_inputs` list; falls back to TOOLS_CLEARABLE_RESULTS. */
   clearableToolNames?: string[]
+  /**
+   * Claudin's own server-side edits: `clear_thinking` with a keep window and
+   * the retain profile's `clear_tool_uses`. The streaming layer passes the
+   * experimental switch here. With the switch on — the default — the
+   * context-management beta still goes out on the real endpoint, but only
+   * with `keep: "all"`, the no-clearing default Claude Code sends. Neither
+   * edit has been measured on a 1M window, and the retain one would start
+   * clearing tool results at 140k. Explicit env opt-ins apply either way.
+   */
+  serverEdits?: boolean
 }): ContextManagementConfig | undefined {
   const {
     hasThinking = false,
     isRedactThinkingActive = false,
     clearAllThinking = false,
     clearableToolNames,
+    serverEdits = true,
   } = options ?? {}
 
   const strategies: ContextEditStrategy[] = []
@@ -119,7 +130,13 @@ export function getAPIContextManagement(options?: {
   // byte-stable and reads at 0.1×; clearing it is a strictly losing trade.
   // Exception: clearAllThinking fires on >1h idle when the cache is already
   // expired — that clear is free, keep it even under retain.
-  if (
+  //
+  // Without serverEdits the edit is `keep: "all"`, which clears nothing.
+  if (!serverEdits) {
+    if (hasThinking && !isRedactThinkingActive) {
+      strategies.push({ type: 'clear_thinking_20251015', keep: 'all' })
+    }
+  } else if (
     hasThinking &&
     !isRedactThinkingActive &&
     (profile.historyRedactionEnabled || clearAllThinking)
@@ -144,7 +161,7 @@ export function getAPIContextManagement(options?: {
   // header is already gated by shouldIncludeFirstPartyOnlyBetas upstream).
   const useClearToolResults =
     isEnvTruthy(process.env.USE_API_CLEAR_TOOL_RESULTS) ||
-    profile.serverToolClearEnabled
+    (serverEdits && profile.serverToolClearEnabled)
   const useClearToolUses = isEnvTruthy(process.env.USE_API_CLEAR_TOOL_USES)
 
   // If no tool clearing strategy is enabled, return early
@@ -158,10 +175,10 @@ export function getAPIContextManagement(options?: {
     // (0.75 of estimated window) and autocompact (~92% of effective window)
     // both run on drift-prone estimates. 140k sits safely below both for a
     // 200k window, and keeps a 60k working set. Env overrides win.
-    const profileTrigger = profile.serverToolClearEnabled
+    const profileTrigger = serverEdits && profile.serverToolClearEnabled
       ? 140_000
       : DEFAULT_MAX_INPUT_TOKENS
-    const profileTarget = profile.serverToolClearEnabled
+    const profileTarget = serverEdits && profile.serverToolClearEnabled
       ? 60_000
       : DEFAULT_TARGET_INPUT_TOKENS
     const triggerThreshold = process.env.API_MAX_INPUT_TOKENS

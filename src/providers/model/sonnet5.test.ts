@@ -26,7 +26,10 @@ import {
   firstPartyNameToCanonical,
   getMarketingNameForModel,
 } from 'src/providers/model/model.js'
-import { modelSupports1M } from 'src/agent/context/context.js'
+import {
+  getModelMaxOutputTokens,
+  modelSupports1M,
+} from 'src/agent/context/context.js'
 import {
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
@@ -65,6 +68,15 @@ test('config uses the dateless pinned-snapshot IDs', () => {
 
 test('supports 1M context natively', () => {
   expect(modelSupports1M('claude-sonnet-5')).toBe(true)
+})
+
+// Claude Code sends max_tokens 64000 for Sonnet 5. Without a case of its own
+// it fell through to the 32K default (docs/tech/anthropic-betas/wire-matrix.md).
+test('defaults to 64K output tokens, up to 128K', () => {
+  expect(getModelMaxOutputTokens('claude-sonnet-5')).toEqual({
+    default: 64_000,
+    upperLimit: 128_000,
+  })
 })
 
 test('requires adaptive thinking (budget_tokens 400s)', () => {

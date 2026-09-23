@@ -9,6 +9,7 @@
 
 ## Decisions
 - [Team memory: git IS the sync — HTTP sync + LLM recall deleted 2026-09-21](decisions/team-memory-git-is-the-sync.md) — `paths:` is the on-demand loader; decisions/bugs/docs categories; secret guard blocks
+- [`safeguards` / dangerous-tool-use — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint; would ship rules, paths, git state, identity
 - [Rewriting the shouted emphasis out of tool prompts — DROPPED on data 2026-09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls; empty thinking blocks make it unmeasurable from logs
 - [The seven catch-all dirs are retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts keeps them gone; `src/shared/` upward imports now ratcheted at 131, `vendor/` is gone
 - [memory_delta deleted 2026-08-07 — a second full copy, not a delta](decisions/memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta
@@ -38,6 +39,8 @@
 - [Diff reviewer canonicalizes git worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — /diff groups collapse worktrees into their main checkout; fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; echo the real input on allow
 - [memory-turn-by-turn RSS bench flakes only under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — a negative first-half slope makes the threshold unsatisfiable; re-run in isolation before calling it a regression
+- [WaitFor drops every optional param](bugs/waitfor-drops-optional-params.md) — until/settle_s/interval_s/timeout_s never reach call(); always settles at 3s, so no working wait over ~3s
+- [stream-json prints every assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — same uuid, Claude Code prints once; benches counting blocks must dedupe by uuid
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md: layout, categories, secret guard, `paths:` loading, dream digest, transcript lines
@@ -49,7 +52,7 @@
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the friction/refusal message instead; land new nudges flag-OFF as bench instrumentation
 - [Steering Read shape from the prompt is cost-neutral (2026-09-14)](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%; the Grep symbols nudge is inert in two wordings
 - [Claude Code 2.1.270's prompt, extracted 2026-09-14](claude-code-2.1.270-prompt-diff.md) — upstream MANDATES narration now; Delivering work/Corrections/turn-discipline are upstream verbatim
-- [ANTI_NARRATION was written for Opus 4.7/4.8, never benched on Claude 5](anti-narration-never-benched-on-claude-5.md) — ModelFamily can't express "Claude 5"; reuse work-contract-ab.ts (one build + env killswitch), not cache-ab-bench
+- [ANTI_NARRATION: Claude 5 A/B on progress updates only (2026-09-23)](anti-narration-never-benched-on-claude-5.md) — overlap, stays; text narration still unmeasured on Claude 5; ModelFamily can't express "Claude 5"
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 21 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
@@ -64,6 +67,7 @@
 
 ## Repo health
 - [Attachment producers leaked parent state into sub-agents — #224/#226/#227](attachment-producers-leak-parent-state.md) — 6 producers fixed; classification lives above allThreadAttachments; agentId is NOT the gate for session-owned state
+- [Betas Claude Code sends and Claudin does not — re-measured 2026-09-22](claude-code-beta-gap-2026-09-22.md) — 9 headless + 1 interactive; a mock base URL fakes safeguards; display is UX, not cost
 - [De-fingerprinting round (feat/claudin-identity, 2026-08-15)](defingerprinting-branch-2026-08.md) — what shipped, the ONE lane that keeps upstream headers, and the two env clusters that move as units
 - [tsc --noEmit reached ZERO on 2026-08-13](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap; "cannot be hand-fixed" and "never reaches zero" both disproven
 - [/upgrade, /extra-usage, /rate-limit-options — REMOVED 2026-09-15](upsell-commands-missing-login.md) — all three hung on the absent Login stub; the third auto-opened itself on a rate limit
@@ -107,7 +111,7 @@
 - [Search stack measured 2026-08-12](search-stack-measured.md) — text/file search is optimal ripgrep; symbol search is the weak axis. CORRECTED same day, read the next line first
 - [Symbol-parser options researched 2026-08-12](symbol-parser-options-researched.md) — tree-sitter IS shippable under bun --compile; the blocker is the SYNC scanSymbols call, not size
 - [Outline scanner: phantoms that DELETE real declarations](outline-blind-to-nested-members.md) — PR #141; 6 scanner traps, and why the A/B gate is witness-based not rule-based
-- [Graded cross-CLI A/B: search→edit→build (2026-08-12)](cli-search-edit-ab-bench.md) — claudin vs claude 6/6 PASS, cost ranges separated; the gap is cache_read driven by turn count
+- Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 SUPERSEDES the cost gap: claude's prefix 70.5k→32.4k, cost now ties
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 
