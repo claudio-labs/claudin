@@ -36,6 +36,31 @@ const denySummaryTools = async () => ({
   decisionReason: { type: 'other' as const, reason: 'summary only' },
 })
 
+/**
+ * What both summary forks send. A summary is read once and never continued,
+ * so no later request reads a cache entry written at its tail:
+ * `skipCacheWrite` moves the marker back to the agent's own last message —
+ * which the agent's next request can read — and sends the summary prompt
+ * uncached instead of writing it.
+ */
+export function summaryForkParams(
+  prompt: string,
+  cacheSafeParams: CacheSafeParams,
+  forkLabel: 'agent_summary' | 'agent_result_summary',
+  abortController: AbortController,
+): Parameters<typeof runForkedAgent>[0] {
+  return {
+    promptMessages: [createUserMessage({ content: prompt })],
+    cacheSafeParams,
+    canUseTool: denySummaryTools,
+    querySource: 'agent_summary',
+    forkLabel,
+    overrides: { abortController },
+    skipTranscript: true,
+    skipCacheWrite: true,
+  }
+}
+
 // Return the first non-error assistant text block (trimmed), or null.
 // onSkipApiError, if given, fires for each API-error message skipped (the
 // periodic fork logs a debug breadcrumb here; the result fork never did).
@@ -95,15 +120,14 @@ export async function summarizeAgentResult(
   try {
     // DO NOT set maxOutputTokens — it would clamp budget_tokens and invalidate
     // the shared prompt cache (thinking config is part of the cache key).
-    const result = await runForkedAgent({
-      promptMessages: [createUserMessage({ content: RESULT_SUMMARY_PROMPT })],
-      cacheSafeParams: forkParams,
-      canUseTool: denySummaryTools,
-      querySource: 'agent_summary',
-      forkLabel: 'agent_result_summary',
-      overrides: { abortController: summaryAbortController },
-      skipTranscript: true,
-    })
+    const result = await runForkedAgent(
+      summaryForkParams(
+        RESULT_SUMMARY_PROMPT,
+        forkParams,
+        'agent_result_summary',
+        summaryAbortController,
+      ),
+    )
 
     if (abortSignal.aborted) return null
 
@@ -190,17 +214,14 @@ export function startAgentSummarization(
       // ContentReplacementState is cloned by default in createSubagentContext
       // from forkParams.toolUseContext (the subagent's LIVE state captured at
       // onCacheSafeParams time). No explicit override needed.
-      const result = await runForkedAgent({
-        promptMessages: [
-          createUserMessage({ content: buildSummaryPrompt(previousSummary) }),
-        ],
-        cacheSafeParams: forkParams,
-        canUseTool: denySummaryTools,
-        querySource: 'agent_summary',
-        forkLabel: 'agent_summary',
-        overrides: { abortController: summaryAbortController },
-        skipTranscript: true,
-      })
+      const result = await runForkedAgent(
+        summaryForkParams(
+          buildSummaryPrompt(previousSummary),
+          forkParams,
+          'agent_summary',
+          summaryAbortController,
+        ),
+      )
 
       if (stopped) return
 
