@@ -1,0 +1,16 @@
+{
+  "test": ["src/__tests__/readGateScenarios.test.ts", "src/agent/attachments"],
+  "source": "src/agent/attachments/changedFile.ts",
+  "probes": [
+    {
+      "name": "the entry side keeps its final newline",
+      "find": "        withoutFinalNewline(fileState.content),",
+      "replace": "        fileState.content,"
+    },
+    {
+      "name": "the helper keeps every final newline",
+      "find": "  return content.endsWith('\\n') ? content.slice(0, -1) : content",
+      "replace": "  return content"
+    }
+  ]
+}

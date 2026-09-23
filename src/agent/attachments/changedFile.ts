@@ -26,6 +26,14 @@
 // `view: 'full'` fixes both, and skips two mechanisms that have no business
 // firing on an internal re-read: the clip-pin sticky replay and the dedup stub
 // (FileReadTool.ts) both require `view === undefined`.
+//
+// The comparison drops one final newline on both sides. A write tool keeps
+// the file's bytes in its entry, final newline included, while a Read's
+// content carries none — so a file the model had written, then rewritten with
+// identical bytes (`git stash` + `pop`, a `sed -i` undone by `cp`), diffed at
+// EOF, and the model was told it was "modified by the user or a linter" with
+// the file's last lines as the change: 53 such notes in 16 of 30 claudin
+// sessions of the 2026-09-23 session A/B.
 import type { Attachment } from 'src/agent/attachments/types.js'
 import { getSnippetForTwoFileDiff } from 'src/tools/FileEditTool/utils.js'
 import {
@@ -145,8 +153,8 @@ export async function refreshChangedFile(
     // Extract only the changed section
     if (result.data.type === 'text') {
       const snippet = getSnippetForTwoFileDiff(
-        fileState.content,
-        result.data.file.content,
+        withoutFinalNewline(fileState.content),
+        withoutFinalNewline(result.data.file.content),
       )
 
       // The Read just wrote an entry for its own request shape, which for a
@@ -278,6 +286,10 @@ async function markTooLargeToRefresh(
 
 /** Read this much of a file to re-verify its slices; past it the entry is evicted like a too-large whole-file one. */
 const RANGE_REFRESH_MAX_BYTES = 10 * 1024 * 1024
+
+function withoutFinalNewline(content: string): string {
+  return content.endsWith('\n') ? content.slice(0, -1) : content
+}
 
 /** A Read-written slice. A full Read (`offset === 1`, no limit) is a whole-file view and takes the lane above. */
 function isRangeEntry(state: FileState): boolean {

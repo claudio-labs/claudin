@@ -64,6 +64,10 @@ import {
 // And from the same bench, where 24 of 63 sessions re-sent a whole patch after
 // a refusal that had already served the lines it needed:
 //   S17 a refused patch resubmitted by reference                  (`*** Resubmit`)
+//
+// And from its proxy logs, where the watcher told the model 53 times in 16 of
+// 30 sessions that a file it had just written was "modified by the user":
+//   S18 a write, then the same bytes rewritten                    (`git stash` + `pop`)
 // ---------------------------------------------------------------------------
 
 /**
@@ -687,5 +691,41 @@ describe('S17 — a refused patch resubmitted by reference', () => {
     } as never)
     expect(readFileSync(a, 'utf8')).toContain('L3')
     expect(readFileSync(b, 'utf8')).toContain('L9')
+  })
+})
+
+describe('S18 — a write, then the same bytes rewritten', () => {
+  async function patchApplied(p: string, body: string): Promise<void> {
+    const input = { patchText: `*** Begin Patch\n*** Update File: ${p}\n${body}\n*** End Patch` }
+    expect(await ApplyPatchTool.validateInput!(input, ctx)).toEqual({ result: true })
+    await ApplyPatchTool.call(input, ctx, (async () => ({ behavior: 'allow' })) as never, {
+      uuid: randomUUID(),
+    } as never)
+  }
+
+  test('no note that the user changed the file the model just wrote', async () => {
+    // `git stash && bun test …; git stash pop` — the model checking that its
+    // new test fails without the fix — puts every patched file back byte for
+    // byte with a new mtime.
+    const p = join(dir, 's18.txt')
+    writeLines(p, 30)
+    await read(p)
+    await patchApplied(p, '@@\n-l5\n+L5')
+    rewriteAhead(p, readFileSync(p, 'utf8'))
+    expect(await watcherPass()).toEqual([])
+    expect(patch(p, '@@\n-l12\n+L12')).toEqual({ result: true })
+  })
+
+  test('a real change after the write is still reported, and only that change', async () => {
+    const p = join(dir, 's18-real.txt')
+    writeLines(p, 30)
+    await read(p)
+    await patchApplied(p, '@@\n-l5\n+L5')
+    rewriteAhead(p, readFileSync(p, 'utf8').replace('l7\n', 'L7\n'))
+    const attachments = await watcherPass()
+    expect(attachments).toHaveLength(1)
+    const snippet = (attachments[0] as { snippet: string }).snippet
+    expect(snippet).toContain('7→L7')
+    expect(snippet).not.toContain('30→l30')
   })
 })
