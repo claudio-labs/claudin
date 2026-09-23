@@ -116,6 +116,7 @@
 - [Outline scanner: phantoms that DELETE real declarations](outline-blind-to-nested-members.md) — PR #141; 6 scanner traps, and why the A/B gate is witness-based not rule-based
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 SUPERSEDES the cost gap: claude's prefix 70.5k→32.4k, cost now ties
 - [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — +53% vs CC → +7% after #239; placebo = −6% noise; run arms SIMULTANEOUSLY; the rest is 2× thinking + read-gate re-sends
+- [Session cost round 3 09-23 (proxy, N=5)](session-cost-round-3-2026-09-23.md) — only effort medium moves the thinking gap; display/narration/rule map/tools don't; resubmit + watcher fix
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker

@@ -153,7 +153,9 @@ Estimating it as output minus visible chars / 2.22 overshoots both arms by
   ($0.18) against 0.8 ($0.06). Claude Code's Bash-only shape is steered: its
   `auto_mode` attachment carries `bashFirst:true`.
 - Thinking is 1.3–1.9× Claude Code's in every simultaneous run (7.0–10.6k vs
-  5.4–5.6k), 24–30% of claudindev's output against ~20%; Claude Code's is flat.
+  5.4–5.6k), 24–30% of claudindev's output against ~20%. Claude Code's is flat
+  within a run, not across runs: round 3 saw it move 4.8k → 7.1k in 26 minutes
+  ([[session-cost-round-3-2026-09-23]], which also tested every candidate below).
 - Read gate: 24 of 63 claudin sessions of the day (38%, 0–100% per run) got
   "has not been read yet" on README.md and re-sent the whole patch, ~2.9k
   output tokens (~$0.10) per refusal.
