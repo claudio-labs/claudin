@@ -26,6 +26,13 @@ export function UserPeerMessage({
   if (!view) {
     return <UserPromptMessage addMargin={addMargin} param={param} />
   }
+  if (view.kind === 'notice') {
+    return (
+      <Box marginTop={addMargin ? 1 : 0}>
+        <Text dimColor>{`  ⎿  ${view.body.trim()}`}</Text>
+      </Box>
+    )
+  }
   const [headline = '', ...rest] = view.body.trim().split('\n')
   return (
     <Box flexDirection="column" marginTop={addMargin ? 1 : 0}>

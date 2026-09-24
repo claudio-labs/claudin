@@ -249,6 +249,8 @@ export function wrapCommandText(
       return `Your background agent "${origin.name}" sent a message while you were working:\n${raw}`
     case 'peer':
       return `Another Claudin session ("${origin.name}") sent a message while you were working:\n${raw}`
+    case 'peer-notice':
+      return `A notice about another Claudin session ("${origin.name}") arrived while you were working:\n${raw}`
     case 'human':
     case undefined:
     default:

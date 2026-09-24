@@ -39,6 +39,7 @@ import {
   getOwnInbox,
 } from 'src/sessions/peers/inboxServer.js'
 import { permissionClassOf } from 'src/sessions/peers/policy.js'
+import { awaitDeliveryStatus } from 'src/sessions/peers/notices.js'
 import {
   type PeerSession,
   readSessionDirectory,
@@ -337,12 +338,13 @@ async function sendToPeer(
       : (findAgentName(appState.agentNameRegistry, context.agentId) ??
         context.agentId)
   const own = getOwnInbox()
+  const msgId = randomUUID()
   let response: ResponseFrame
   try {
     response = await sendFrame(peer.socketPath, {
       v: FRAME_VERSION,
       type: 'message',
-      msg_id: randomUUID(),
+      msg_id: msgId,
       token: peer.token,
       from: own ? formatUdsAddress(own.socketPath) : undefined,
       from_name: ownName,
@@ -364,6 +366,9 @@ async function sendToPeer(
       },
     }
   }
+  // Its outcome comes back later as a delivery_status, which is only believed
+  // for a send this session is waiting on.
+  if (response.outcome === 'held' && own) awaitDeliveryStatus(msgId, label)
   return {
     data: {
       success: true,

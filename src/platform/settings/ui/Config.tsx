@@ -435,6 +435,32 @@ export function Config({
       });
     }
   }, {
+    id: 'crossSessionInbound',
+    label: 'Messages from other sessions',
+    value: settingsData?.crossSessionInbound ?? 'default',
+    options: ['default', 'accept', 'hold', 'refuse'],
+    type: 'enum' as const,
+    onChange(value: string) {
+      // 'default' clears the key: deliver when both sessions share a
+      // permission class, hold for you when they do not.
+      const crossSessionInbound = value === 'accept' || value === 'hold' || value === 'refuse' ? value : undefined;
+      const result = updateSettingsForSource('userSettings', {
+        crossSessionInbound
+      });
+      if (result.error) {
+        logError(result.error);
+        return;
+      }
+      setSettingsData(prev_xs => ({
+        ...prev_xs,
+        crossSessionInbound
+      }));
+      setChanges(prev_xs => ({
+        ...prev_xs,
+        crossSessionInbound: value
+      }));
+    }
+  }, {
     id: 'inlineImagesMode',
     label: 'Inline terminal images',
     value: globalConfig.inlineImagesMode ?? 'auto',

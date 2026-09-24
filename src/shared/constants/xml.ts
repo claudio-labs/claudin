@@ -46,6 +46,8 @@ export const AGENT_MESSAGE_TAG = 'agent-message'
 
 // XML tag name for cross-session UDS messages (another Claude session's inbox)
 export const CROSS_SESSION_MESSAGE_TAG = 'cross-session-message'
+// The harness's own notices about a cross-session send: held, denied, idle
+export const CROSS_SESSION_NOTICE_TAG = 'cross-session-notice'
 
 // XML tag wrapping the rules/format boilerplate in a fork child's first message.
 // Lets the transcript renderer collapse the boilerplate and show only the directive.

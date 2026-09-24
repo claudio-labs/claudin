@@ -19,6 +19,7 @@ export type FocusedInputDialog =
   | 'prompt'
   | 'worker-sandbox-permission'
   | 'elicitation'
+  | 'peer-message-hold'
   | 'cost'
   | 'idle-return'
   | 'init-onboarding'
@@ -51,6 +52,8 @@ export type FocusedInputDialogDeps = {
   promptQueue: ReadonlyArray<unknown>
   workerSandboxPermissions: { queue: ReadonlyArray<unknown> }
   elicitation: { queue: ReadonlyArray<unknown> }
+  // Messages from other sessions waiting for this session's user.
+  heldPeerMessages: ReadonlyArray<unknown>
   showingCostDialog: boolean
   idleReturnPending: unknown
   isLoading: boolean
@@ -82,6 +85,7 @@ export function getFocusedInputDialog(
   // Worker sandbox permission prompts (network access) from swarm workers.
   if (allowDialogsWithAnimation && d.workerSandboxPermissions.queue[0]) return 'worker-sandbox-permission'
   if (allowDialogsWithAnimation && d.elicitation.queue[0]) return 'elicitation'
+  if (allowDialogsWithAnimation && d.heldPeerMessages[0]) return 'peer-message-hold'
   if (allowDialogsWithAnimation && d.showingCostDialog) return 'cost'
   if (allowDialogsWithAnimation && d.idleReturnPending) return 'idle-return'
 

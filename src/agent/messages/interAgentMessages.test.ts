@@ -11,6 +11,7 @@ describe('describeInterAgentMessage', () => {
   test('names a named background agent by its name', () => {
     const text = formatAgentMessage({ from: 'researcher', body: 'found it\nsee a.ts' })
     expect(describeInterAgentMessage(text)).toEqual({
+      kind: 'message',
       sender: 'researcher',
       relation: 'background agent',
       body: 'found it\nsee a.ts',
@@ -34,6 +35,8 @@ describe('describeInterAgentMessage', () => {
 
 test('only agent-written origins count as agent-authored', () => {
   expect(isAgentAuthored({ kind: 'subagent', name: 'researcher' })).toBe(true)
+  expect(isAgentAuthored({ kind: 'peer', name: 'claudin-goal' })).toBe(true)
+  expect(isAgentAuthored({ kind: 'peer-notice', name: 'claudin-goal' })).toBe(true)
   expect(isAgentAuthored(undefined)).toBe(false)
   expect(isAgentAuthored({ kind: 'human' })).toBe(false)
   expect(isAgentAuthored({ kind: 'task-notification' })).toBe(false)

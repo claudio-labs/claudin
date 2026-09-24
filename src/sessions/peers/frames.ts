@@ -40,6 +40,13 @@ export const RequestFrameSchema = lazySchema(() =>
       /** Set when one of the sender's subagents wrote it. */
       from_agent: z.string().max(400).optional(),
     }),
+    z.object({
+      /** A held message's outcome, sent back to the session that sent it. */
+      type: z.literal('delivery_status'),
+      ...common(),
+      orig_msg_id: z.string().min(1).max(100),
+      status: z.enum(['delivered', 'denied', 'expired']),
+    }),
   ]),
 )
 export type RequestFrame = z.infer<ReturnType<typeof RequestFrameSchema>>

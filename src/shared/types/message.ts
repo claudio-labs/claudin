@@ -71,6 +71,8 @@ export type MessageOrigin =
    * when a live session advertises it.
    */
   | { kind: 'peer'; name: string; from?: string }
+  /** This harness's notice about a send to another session. */
+  | { kind: 'peer-notice'; name: string }
 
 /**
  * Which side of the selected message a partial compaction summarizes.

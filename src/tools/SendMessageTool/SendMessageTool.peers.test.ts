@@ -4,8 +4,10 @@ import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import type { ResponseFrame } from 'src/sessions/peers/frames.js'
 import type { InboundFrame, PeerInbox } from 'src/sessions/peers/inboxServer.js'
 import { startPeerInbox } from 'src/sessions/peers/inboxServer.js'
+import { takePendingHold } from 'src/sessions/peers/notices.js'
 import {
   CROSS_SESSION_SENDS_PER_USER_PROMPT,
   resetCrossSessionSends,
@@ -17,6 +19,7 @@ let root: string
 let peer: PeerInbox
 let own: PeerInbox
 const received: InboundFrame[] = []
+let peerAnswer: ResponseFrame = { ok: true, outcome: 'delivered' }
 const savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
 
 beforeAll(async () => {
@@ -28,7 +31,7 @@ beforeAll(async () => {
     socketPath: join(root, 's', 'peer.sock'),
     handler: async frame => {
       received.push(frame)
-      return { ok: true, outcome: 'delivered' }
+      return peerAnswer
     },
   })
   // Started last, so it is this process's own inbox — the `from` of a send.
@@ -59,6 +62,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   received.length = 0
+  peerAnswer = { ok: true, outcome: 'delivered' }
   resetCrossSessionSends()
 })
 
@@ -107,6 +111,25 @@ describe('SendMessage to another session', () => {
     const data = await send({ to: 'claudin-goal', message: 'hi' }, 'a1')
     expect(received[0]).toMatchObject({ from_agent: 'tester' })
     expect(data.message).toContain('a reply reaches the main conversation, not this agent')
+  })
+
+  test('a held send says why, and waits for its delivery notice', async () => {
+    peerAnswer = { ok: true, outcome: 'held', detail: 'that session and yours are on different sides of bypassPermissions' }
+    const data = await send({ to: 'claudin-goal', message: 'hi' })
+    expect(data.success).toBe(true)
+    expect(data.message).toContain(
+      "held for its user's approval (that session and yours are on different sides of bypassPermissions)",
+    )
+    expect(data.message).toContain('Do not wait for a reply')
+    const label = data.message.match(/claudin-goal \[[0-9a-f]+\]/)?.[0]
+    expect(takePendingHold(received[0]!.msg_id)).toEqual({ peerName: label })
+  })
+
+  test('a refused send reports the reason and is not a success', async () => {
+    peerAnswer = { ok: false, outcome: 'refused', detail: 'that session refuses messages from other sessions' }
+    const data = await send({ to: 'claudin-goal', message: 'hi' })
+    expect(data).toMatchObject({ success: false })
+    expect(data.message).toContain('did not take the message: that session refuses messages from other sessions')
   })
 
   test('an address no session advertises is refused before anything is dialled', async () => {

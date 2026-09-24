@@ -1,12 +1,15 @@
 import {
   AGENT_MESSAGE_TAG,
   CROSS_SESSION_MESSAGE_TAG,
+  CROSS_SESSION_NOTICE_TAG,
 } from 'src/shared/constants/xml.js'
 import { parseXmlEnvelope } from 'src/shared/data/xml.js'
 import type { MessageOrigin } from 'src/shared/types/message.js'
 
 /** How the transcript shows a message one agent sent another. */
 export type InterAgentMessageView = {
+  /** A notice is the harness speaking, and is shown as one line. */
+  kind: 'message' | 'notice'
   /** Who wrote it. */
   sender: string
   /** What the sender is to this conversation, shown dimmed after the line. */
@@ -25,6 +28,7 @@ export function describeInterAgentMessage(
   const agent = parseXmlEnvelope(text, AGENT_MESSAGE_TAG)
   if (agent) {
     return {
+      kind: 'message',
       sender: agent.attrs.description ?? agent.attrs.from ?? 'agent',
       relation: 'background agent',
       body: agent.body,
@@ -34,9 +38,19 @@ export function describeInterAgentMessage(
   if (peer) {
     const via = peer.attrs['from-agent']
     return {
+      kind: 'message',
       sender: peer.attrs['from-name'] ?? 'another session',
       relation: via ? `another session, from its agent ${via}` : 'another session',
       body: peer.body,
+    }
+  }
+  const notice = parseXmlEnvelope(text, CROSS_SESSION_NOTICE_TAG)
+  if (notice) {
+    return {
+      kind: 'notice',
+      sender: notice.attrs.about ?? 'another session',
+      relation: 'notice',
+      body: notice.body,
     }
   }
   return null
@@ -48,5 +62,9 @@ export function isInterAgentMessage(text: string): boolean {
 
 /** Whether a queued command's text was written by another agent, not the user. */
 export function isAgentAuthored(origin: MessageOrigin | undefined): boolean {
-  return origin?.kind === 'subagent' || origin?.kind === 'peer'
+  return (
+    origin?.kind === 'subagent' ||
+    origin?.kind === 'peer' ||
+    origin?.kind === 'peer-notice'
+  )
 }

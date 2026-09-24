@@ -19,6 +19,7 @@ function baseDeps(): FocusedInputDialogDeps {
     promptQueue: [],
     workerSandboxPermissions: { queue: [] },
     elicitation: { queue: [] },
+    heldPeerMessages: [],
     showingCostDialog: false,
     idleReturnPending: null,
     isLoading: false,
@@ -100,12 +101,13 @@ describe('getFocusedInputDialog', () => {
     expect(getFocusedInputDialog(d)).toBe('tool-permission')
   })
 
-  test('priority: tool-permission > prompt > worker > elicitation > cost > idle', () => {
+  test('priority: tool-permission > prompt > worker > elicitation > held peer message > cost > idle', () => {
     const d = baseDeps()
     d.toolUseConfirmQueue = [{}]
     d.promptQueue = [{}]
     d.workerSandboxPermissions.queue = [{}]
     d.elicitation.queue = [{}]
+    d.heldPeerMessages = [{}]
     d.showingCostDialog = true
     d.idleReturnPending = {}
     expect(getFocusedInputDialog(d)).toBe('tool-permission')
@@ -120,6 +122,9 @@ describe('getFocusedInputDialog', () => {
     expect(getFocusedInputDialog(d)).toBe('elicitation')
 
     d.elicitation.queue = []
+    expect(getFocusedInputDialog(d)).toBe('peer-message-hold')
+
+    d.heldPeerMessages = []
     expect(getFocusedInputDialog(d)).toBe('cost')
 
     d.showingCostDialog = false

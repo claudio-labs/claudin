@@ -1,36 +1,60 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { enqueue } from 'src/agent/messageQueueManager.js'
+import { getSettingsForSource } from 'src/platform/settings/settings.js'
 import {
   updateSessionInbox,
   whenSessionRegistered,
 } from 'src/sessions/concurrentSessions.js'
-import { createInboxHandler } from 'src/sessions/peers/delivery.js'
+import { formatUdsAddress } from 'src/sessions/peers/address.js'
+import {
+  createInboundDelivery,
+  type InboundDelivery,
+} from 'src/sessions/peers/delivery.js'
 import {
   crossSessionUnavailableReason,
+  getOwnInbox,
   type PeerInbox,
   startPeerInbox,
 } from 'src/sessions/peers/inboxServer.js'
+import { resolveInboundSetting } from 'src/sessions/peers/policy.js'
 import { readSessionDirectory } from 'src/sessions/peers/registry.js'
 import { logError } from 'src/shared/log.js'
+import { useAppStateStore } from 'src/terminal/state/AppState.js'
 
 /**
  * Bind this session's peer inbox once its PID record exists, then advertise
  * it there. Only the REPL mounts this: a headless run can send to other
- * sessions but is never listed as one.
+ * sessions but is never listed as one. Returns how the held-message dialog
+ * answers.
  */
-export function usePeerInbox(): void {
+export function usePeerInbox(): {
+  settleHeld: (id: string, decision: 'deliver' | 'deny') => void
+} {
+  const store = useAppStateStore()
+  const deliveryRef = useRef<InboundDelivery | undefined>(undefined)
+
   useEffect(() => {
     if (crossSessionUnavailableReason()) return
     let inbox: PeerInbox | undefined
     let unmounted = false
     void (async () => {
       if (!(await whenSessionRegistered()) || unmounted) return
-      inbox = await startPeerInbox({
-        handler: createInboxHandler({
-          enqueue,
-          readDirectory: () => readSessionDirectory(),
-        }),
+      const delivery = createInboundDelivery({
+        enqueue,
+        readDirectory: () => readSessionDirectory(),
+        // Read when each message arrives: the mode can change mid-session.
+        permissionMode: () => store.getState().toolPermissionContext.mode,
+        inboundSetting: () =>
+          resolveInboundSetting(
+            source => getSettingsForSource(source)?.crossSessionInbound,
+          ),
+        ownAddress: () => {
+          const own = getOwnInbox()
+          return own ? formatUdsAddress(own.socketPath) : undefined
+        },
       })
+      deliveryRef.current = delivery
+      inbox = await startPeerInbox({ handler: delivery.handler })
       if (unmounted) {
         await inbox.close()
         return
@@ -46,5 +70,10 @@ export function usePeerInbox(): void {
       void updateSessionInbox({ messagingSocketPath: null, messagingToken: null })
       void inbox.close()
     }
+  }, [store])
+
+  const settleHeld = useCallback((id: string, decision: 'deliver' | 'deny') => {
+    void deliveryRef.current?.settleHeld(id, decision).catch(logError)
   }, [])
+  return { settleHeld }
 }

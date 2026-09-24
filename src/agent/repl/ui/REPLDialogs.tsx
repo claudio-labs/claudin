@@ -41,6 +41,8 @@ import { PromptDialog } from 'src/platform/lifecycleHooks/ui/PromptDialog.js'
 import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermission.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
+import type { HeldPeerMessage } from 'src/sessions/peers/heldMessages.js'
+import { HeldPeerMessageDialog } from 'src/sessions/peers/ui/HeldPeerMessageDialog.js'
 import {
   sendSandboxPermissionResponseViaMailbox,
 } from 'src/agent/coordinator/swarm/permissionSync.js'
@@ -85,6 +87,9 @@ export type REPLDialogsDeps = {
       onWaitingDismiss?: (action: unknown) => void
     }>
   }
+  // messages from other sessions held for the user
+  heldPeerMessages: readonly HeldPeerMessage[]
+  settleHeldPeerMessage: (id: string, decision: 'deliver' | 'deny') => void
   // cost
   setShowCostDialog: (v: boolean) => void
   setHaveShownCostDialog: (v: boolean) => void
@@ -274,6 +279,7 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
       }))
       currentRequest?.onWaitingDismiss?.(action)
     }} />}
+    {deps.focusedInputDialog === 'peer-message-hold' && deps.heldPeerMessages[0] && <HeldPeerMessageDialog key={deps.heldPeerMessages[0].id} message={deps.heldPeerMessages[0]} onDecision={deps.settleHeldPeerMessage} />}
     {deps.focusedInputDialog === 'cost' && <CostThresholdDialog onDone={() => {
       deps.setShowCostDialog(false)
       deps.setHaveShownCostDialog(true)
