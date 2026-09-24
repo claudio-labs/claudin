@@ -26,10 +26,11 @@ measured no cost regression for either, 3 fewer turns than refusing, and
   `=off` drops the notes, and `CLAUDIN_EAGER_DEV_TOOLS=1` puts the four tools
   back in the prompt. Each lane's `CLAUDIN_DISABLE_*_REDIRECT` works in every
   mode.
-- Deferred, RunTests/Typecheck went unused in the A/B (0 of 18 sessions loaded
-  them). The lanes skip `| tail`/`| grep` and compound commands, which is how
-  the model runs tests, so the notes rarely fire for tests. Don't read a drop
-  in RunTests usage in a census as a regression of something else.
+- Deferred, RunTests/Typecheck were almost never used in the A/B: 0 of 18
+  deferred sessions loaded them, and one called `RunTests {}` without loading
+  it. The lanes skip `| tail`/`| grep` and compound commands, which is how the
+  model runs tests, so the notes rarely fire for tests. Don't read a drop in
+  RunTests usage in a census as a regression of something else.
 - A census counting "redirect refusals" sees ~zero after 2026-09-24: count
   notes (`has a dedicated tool` / `only reads or searches files`) instead.
 
