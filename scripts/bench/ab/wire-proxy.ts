@@ -135,6 +135,9 @@ function loggedHeaders(headers: IncomingHttpHeaders): Record<string, string> {
 /** Numeric fields merged by max, nested objects recursively — usage repeats across events. */
 function mergeUsage(into: Json, next: Json): void {
   for (const [k, v] of Object.entries(next)) {
+    // JSON.parse makes `__proto__` an own key, and `into[k]` would then read
+    // and write the prototype — recursively, Object.prototype itself.
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue
     if (typeof v === 'number') into[k] = Math.max(typeof into[k] === 'number' ? (into[k] as number) : 0, v)
     else if (isRecord(v)) {
       const inner = isRecord(into[k]) ? (into[k] as Json) : {}
