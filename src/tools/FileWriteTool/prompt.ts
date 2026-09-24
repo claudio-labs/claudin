@@ -1,12 +1,19 @@
 import { feature } from 'bun:bundle'
 import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 
 export { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
 export const DESCRIPTION = 'Write a file to the local filesystem.'
 
+// CLAUDIN_BASH_READ_CREDIT (off by default): a file a Bash `cat` printed whole
+// counts as read (BashTool/creditShownFiles.ts), and the contract says so.
+// Read once at module load, like the credit itself.
+const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
+
 function getPreReadInstruction(): string {
-  return `\n- If this is an existing file, you MUST use the ${FILE_READ_TOOL_NAME} tool first to read the file's contents — all of them, since a Write replaces the whole file. It fails if you did not read the file, or only read a range of it.`
+  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''
+  return `\n- If this is an existing file, you MUST use the ${FILE_READ_TOOL_NAME} tool first to read the file's contents${catCounts} — all of them, since a Write replaces the whole file. It fails if you did not read the file, or only read a range of it.`
 }
 
 export function getWriteToolDescription(): string {

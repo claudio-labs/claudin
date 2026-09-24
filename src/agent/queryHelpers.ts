@@ -448,6 +448,7 @@ export function extractReadFilesFromMessages(
   >() // toolUseId -> { filePath, content }
   const fileEditToolUseIds = new Map<string, string>() // toolUseId -> filePath
   const applyPatchToolUseIds = new Map<string, string>() // toolUseId -> patchText
+  const bashToolUseIds = new Set<string>()
   // `*** Resubmit` applies the patch refused one Patch call earlier.
   let lastPatchText: string | undefined
 
@@ -514,6 +515,11 @@ export function extractReadFilesFromMessages(
             if (patchText) applyPatchToolUseIds.set(content.id, patchText)
             if (!isResubmitSentinel(input.patchText)) lastPatchText = input.patchText
           }
+        } else if (
+          content.type === 'tool_use' &&
+          content.name === BASH_TOOL_NAME
+        ) {
+          bashToolUseIds.add(content.id)
         }
       }
     }
@@ -543,6 +549,33 @@ export function extractReadFilesFromMessages(
         throw e
       }
       // File deleted or inaccessible since the write — skip
+    }
+  }
+
+  /**
+   * A file a Bash `cat` was credited with (creditShownFiles.ts), as the credit
+   * stored it — whole, and exempt from Read's dedup stub, since no Read showed
+   * it. Only while it is unchanged since the result came back: written after,
+   * the file on disk is not the one the model saw.
+   */
+  function cacheCreditFromDisk(filePath: string, answeredAt: number): void {
+    try {
+      const timestamp = getFileModificationTime(filePath)
+      if (timestamp > answeredAt) return
+      const { content: diskContent } = readFileSyncWithMetadata(filePath)
+      cache.set(filePath, {
+        content: diskContent,
+        timestamp,
+        offset: 1,
+        limit: undefined,
+        dedupExempt: true,
+      })
+      readAuthored.delete(filePath)
+    } catch (e: unknown) {
+      if (!isFsInaccessible(e)) {
+        throw e
+      }
+      // File deleted or inaccessible since the read — skip
     }
   }
 
@@ -644,12 +677,34 @@ export function extractReadFilesFromMessages(
               cacheFromDisk(filePath)
             }
           }
+
+          // Bash: the files the read credit counted (CLAUDIN_BASH_READ_CREDIT),
+          // named on the Out the result carries. The result text only says
+          // how many; the paths are the tool's.
+          if (
+            bashToolUseIds.has(content.tool_use_id) &&
+            content.is_error !== true &&
+            message.timestamp
+          ) {
+            const answeredAt = new Date(message.timestamp).getTime()
+            for (const filePath of creditedFilesOf(message.toolUseResult)) {
+              cacheCreditFromDisk(filePath, answeredAt)
+            }
+          }
         }
       }
     }
   }
 
   return cache
+}
+
+/** The paths a Bash result's Out names as credited reads; none when it has no such field. */
+function creditedFilesOf(toolUseResult: unknown): string[] {
+  if (typeof toolUseResult !== 'object' || toolUseResult === null) return []
+  const { creditedFiles } = toolUseResult as { creditedFiles?: unknown }
+  if (!Array.isArray(creditedFiles)) return []
+  return creditedFiles.filter((path): path is string => typeof path === 'string')
 }
 
 /**

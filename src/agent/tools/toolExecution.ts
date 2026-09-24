@@ -19,7 +19,9 @@ import {
 } from 'src/tools/Tool.js'
 import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 import { startSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
+import { isReadAdviceMoot } from 'src/tools/BashTool/redirectLanes.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from 'src/agent/tools/cacheInvalidation.js'
 import {
@@ -507,6 +509,26 @@ function withToolAdvice(block: ToolResultBlockParam, note: string | null): ToolR
     return { ...block, content: [...block.content, { type: 'text', text: note.trimStart() }] }
   }
   return { ...block, content: note.trimStart() }
+}
+
+/**
+ * The advice note a successful result carries. A Bash `cat` whose every file
+ * the read credit counted (`creditedFiles`, BashTool/creditShownFiles.ts)
+ * keeps no note sending the model to Read them: it would only read again what
+ * it holds (redirectLanes.ts, `isReadAdviceMoot`).
+ */
+export function adviceNoteAfterCall(
+  tool: Pick<Tool, 'name'>,
+  input: unknown,
+  output: unknown,
+  note: string | null,
+): string | null {
+  if (note === null || tool.name !== BASH_TOOL_NAME) return note
+  const command = (input as { command?: unknown } | null)?.command
+  const credited = (output as { creditedFiles?: unknown } | null)?.creditedFiles
+  if (typeof command !== 'string' || !Array.isArray(credited)) return note
+  const paths = credited.filter((path): path is string => typeof path === 'string')
+  return isReadAdviceMoot(command, getCwd(), paths) ? null : note
 }
 
 function streamedCheckPermissionsAndCallTool(
@@ -1088,6 +1110,7 @@ async function checkPermissionsAndCallTool(
     )
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
+    const resultAdviceNote = adviceNoteAfterCall(tool, callInput, result.data, adviceNote)
 
     // Invalidate the local tool-result cache for any successful write. Reads
     // (Read/Glob/Grep/LSP) are populated by the buildTool wrapper; this side
@@ -1144,7 +1167,7 @@ async function checkPermissionsAndCallTool(
             toolUseContext,
             processedInput,
           ),
-          adviceNote,
+          resultAdviceNote,
         ),
       ]
       // Add accept feedback if user provided feedback when approving

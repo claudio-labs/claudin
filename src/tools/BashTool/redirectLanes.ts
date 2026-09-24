@@ -1,8 +1,15 @@
 import { feature } from 'bun:bundle'
+import { resolve } from 'path'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { detectBlockedSleepPattern } from 'src/tools/BashTool/bashCommandClassification.js'
 import { isBackgroundTasksDisabled, type BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
-import { renderFileToolsAdvice, renderToolRedirect, shouldRedirectToTools } from 'src/tools/BashTool/toolRedirect.js'
+import {
+  analyzeCommandForRedirect,
+  renderFileToolsAdvice,
+  renderToolRedirect,
+  shouldRedirectToTools,
+  wholeFileReadsOf,
+} from 'src/tools/BashTool/toolRedirect.js'
 import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
 import { renderBuildAdvice, renderBuildRedirect, shouldRedirectToBuild } from 'src/tools/BuildTool/redirect.js'
 import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
@@ -52,6 +59,9 @@ import {
  * (`CLAUDIN_ENABLE_WAITFOR_REDIRECT=1`, as before) and on in advise mode
  * (`CLAUDIN_DISABLE_WAITFOR_REDIRECT=1` turns it off). The blocking-sleep lane
  * has no memo, in either mode, as before.
+ *
+ * One note is taken back after the call: the file-reads note on a `cat` whose
+ * every file the read credit counted as read (`isReadAdviceMoot`).
  */
 
 export type BashRedirectMode = 'advise' | 'refuse' | 'off'
@@ -179,4 +189,29 @@ export function pickBashRedirect(
 function renderBlockingSleepAdvice(sleepPattern: string, hasWaitFor: boolean): string {
   const waitFor = hasWaitFor ? `, and to wait until something appears use ${WAITFOR_TOOL_NAME}` : ''
   return `That ${sleepPattern} held the turn while it slept. A command that takes a while belongs in run_in_background: true — you get a notification when it finishes. To follow output as it streams use Monitor${waitFor}.`
+}
+
+/**
+ * Whether the file-reads note on `command` would only send the model to Read
+ * again what this very call counted as read: every call it names is a
+ * whole-file Read of a path in `creditedFiles`, the files the Bash read credit
+ * registered for the call (CLAUDIN_BASH_READ_CREDIT, creditShownFiles.ts).
+ * Asked by toolExecution once the call is back, which then drops the note.
+ * With the credit off there are no paths, and every note stands.
+ *
+ * The note was rendered before the call ran; this runs the lane's analysis
+ * again — pure, without its one-shot memo — rather than carry it across. No
+ * earlier lane claims a command that analysis maps to Reads alone.
+ */
+export function isReadAdviceMoot(
+  command: string,
+  cwd: string,
+  creditedFiles: readonly string[] | undefined,
+): boolean {
+  if (!creditedFiles?.length) return false
+  const analysis = analyzeCommandForRedirect(command, cwd)
+  const reads = analysis && wholeFileReadsOf(analysis)
+  if (!reads) return false
+  const credited = new Set(creditedFiles.map(path => resolve(path)))
+  return reads.every(path => credited.has(resolve(path)))
 }

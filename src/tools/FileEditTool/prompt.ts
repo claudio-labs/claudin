@@ -1,10 +1,19 @@
 import { feature } from 'bun:bundle'
 import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isCompactLinePrefixEnabled } from 'src/shared/fs/file.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 
+// CLAUDIN_BASH_READ_CREDIT (off by default): a file a Bash `cat` printed whole
+// counts as read (BashTool/creditShownFiles.ts), and the contract says so.
+// Read once at module load, like the credit itself.
+const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
+
 function getPreReadInstruction(): string {
-  return `\n- You must use your \`${FILE_READ_TOOL_NAME}\` tool at least once in the conversation before editing. This tool will error if you attempt an edit without reading the file. `
+  const mustRead = READ_CREDIT
+    ? `You must read the file first — with \`${FILE_READ_TOOL_NAME}\`, or a Bash \`cat\` that printed it whole.`
+    : `You must use your \`${FILE_READ_TOOL_NAME}\` tool at least once in the conversation before editing.`
+  return `\n- ${mustRead} This tool will error if you attempt an edit without reading the file. `
 }
 
 export function getEditToolDescription(): string {

@@ -43,6 +43,13 @@ export type ShellToolResultData = {
   assistantAutoBackgrounded?: boolean
   persistedOutputPath?: string | null
   persistedOutputSize?: number
+  /**
+   * A note on a file read, after stdout: the files a read too long to show
+   * whole left out, and the ones that count as read (BashTool's
+   * `fitOverBudgetRead` and `creditShownFiles`). For the model, never the TUI,
+   * which renders stdout.
+   */
+  readNote?: string | null
 }
 
 /**
@@ -130,7 +137,7 @@ export function mapShellResultToToolResultBlockParam(
   return {
     tool_use_id: toolUseID,
     type: 'tool_result' as const,
-    content: [processedStdout, errorMessage, backgroundInfo]
+    content: [processedStdout, data.readNote, errorMessage, backgroundInfo]
       .filter(Boolean)
       .join('\n'),
     is_error: data.interrupted,

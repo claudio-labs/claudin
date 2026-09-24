@@ -17,9 +17,15 @@
 //   • Env var → process.env mutation with save/restore in afterEach.
 //   • ExecResult → plain object literals (no shell subprocess needed here).
 
-import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { execFileSync } from 'child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
+import { BashTool, fitOverBudgetRead } from 'src/tools/BashTool/BashTool.js'
+import { renderNotShownNote } from 'src/tools/BashTool/creditShownFiles.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,
@@ -526,5 +532,123 @@ describe('bash output filter — catch path (fail-open)', () => {
     const result3 = makeResult({ stdout: LS_LA_SAMPLE })
     const returned3 = applyBashOutputFilter(result3, 'ls -la')
     expect(returned3).toBe(result3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 7 — a pure read too long to show whole (fitOverBudgetRead)
+// ---------------------------------------------------------------------------
+
+type BashFilter = typeof import('src/tools/shared/outputFilter/Bash/index.js')
+
+const PASSTHROUGH_FLAG = 'CLAUDIN_BASH_FILE_READ_PASSTHROUGH'
+
+/**
+ * The pass-through's flag is read once at module load, so each arm gets its
+ * own instance of the filter, loaded with the variable set as it needs it —
+ * whatever the developer's shell exports.
+ */
+async function loadFilter(passthrough: boolean): Promise<BashFilter> {
+  const prior = process.env[PASSTHROUGH_FLAG]
+  if (passthrough) process.env[PASSTHROUGH_FLAG] = '1'
+  else delete process.env[PASSTHROUGH_FLAG]
+  try {
+    return await import(
+      `src/tools/shared/outputFilter/Bash/index.js?fit=${passthrough}-${Date.now()}`
+    )
+  } finally {
+    if (prior === undefined) delete process.env[PASSTHROUGH_FLAG]
+    else process.env[PASSTHROUGH_FLAG] = prior
+  }
+}
+
+describe('a pure read too long to show whole — fitOverBudgetRead', () => {
+  // Twenty modules, ~59k printed: the dump session-cache-ab 20260924-170553 r1
+  // got as a saved file with a 2 KB preview, and read back whole.
+  const LOOP = 'for f in dump/*.ts; do echo "=== $f"; cat $f; done'
+  let dir: string
+  let on: BashFilter
+  let off: BashFilter
+  let printed: string
+
+  beforeAll(async () => {
+    on = await loadFilter(true)
+    off = await loadFilter(false)
+    dir = mkdtempSync(join(tmpdir(), 'bash-fit-'))
+    mkdirSync(join(dir, 'dump'))
+    for (let i = 0; i < 20; i++) {
+      const lines = Array.from({ length: 80 }, (_, n) => `export const f${i}_${n} = '${'x'.repeat(12)}'`)
+      writeFileSync(join(dir, 'dump', `f${String(i).padStart(2, '0')}.ts`), `${lines.join('\n')}\n`)
+    }
+    printed = execFileSync('bash', ['-c', LOOP], { cwd: dir, encoding: 'utf8' })
+  })
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  /** What the shell hands BashTool for a run past its 30 KB: the head, and the file it spilled to. */
+  const spilled = () =>
+    makeResult({
+      stdout: printed.slice(0, 30_000),
+      outputFilePath: join(dir, 'task.output'),
+      outputFileSize: printed.length,
+      outputTaskId: 'bfit',
+    })
+
+  test('the whole files that fit, the spill dropped, and no preview of a saved file', async () => {
+    enableFilter()
+    expect(printed.length).toBeGreaterThan(55_000)
+    const plan = on.planBashFilter(LOOP, { allowRewrite: false })
+    const fit = (await fitOverBudgetRead(spilled(), plan, dir, on.overBudgetFileRead))!
+    expect(fit).not.toBeNull()
+    expect(fit.result.outputFilePath).toBeUndefined()
+    expect(fit.result.outputTaskId).toBeUndefined()
+    expect(fit.result.stdout.length).toBeLessThanOrEqual(28_000)
+    expect(printed.startsWith(fit.result.stdout)).toBe(true)
+    expect(fit.fitted.notShown.length).toBeGreaterThan(0)
+
+    // Mapped as BashTool maps it once the filter has run: the files in the
+    // read wrapper, the line naming the rest, and nothing persisted.
+    const content = String(
+      BashTool.mapToolResultToToolResultBlockParam(
+        {
+          stdout: on.applyBashFilterToStdout(fit.result.stdout, false, plan),
+          stderr: '',
+          interrupted: false,
+          readNote: renderNotShownNote(fit.fitted, 28_000)!,
+        },
+        'toolu_fit',
+      ).content,
+    )
+    expect(content).toStartWith('<bash-output-read>=== dump/f00.ts\n')
+    expect(content).toContain(
+      `</bash-output-read>\nNot shown — over the 28k a Bash result shows whole: ${fit.fitted.notShown.join(', ')}. cat them in another call, or Read them.`,
+    )
+    expect(content).not.toContain('<persisted-output>')
+    expect(content.length).toBeLessThan(30_000)
+  })
+
+  test('a read with a listing segment keeps today: nothing fitted', async () => {
+    enableFilter()
+    const command = `ls dump; ${LOOP}`
+    const plan = on.planBashFilter(command, { allowRewrite: false })
+    expect(await fitOverBudgetRead(spilled(), plan, dir, on.overBudgetFileRead)).toBeNull()
+  })
+
+  test('with the flag off, nothing fitted', async () => {
+    enableFilter()
+    const plan = off.planBashFilter(LOOP, { allowRewrite: false })
+    expect(await fitOverBudgetRead(spilled(), plan, dir, off.overBudgetFileRead)).toBeNull()
+  })
+
+  test('where the filter does not run, nor an interrupted run: nothing fitted', async () => {
+    const plan = on.planBashFilter(LOOP, { allowRewrite: false })
+    enableFilter()
+    expect(
+      await fitOverBudgetRead({ ...spilled(), interrupted: true }, plan, dir, on.overBudgetFileRead),
+    ).toBeNull()
+    disableFilter()
+    expect(await fitOverBudgetRead(spilled(), plan, dir, on.overBudgetFileRead)).toBeNull()
   })
 })

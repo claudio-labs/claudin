@@ -148,6 +148,14 @@ lane a path-scoped rule uses:
   the directory containing `.claudin/`, like the project's rules; any other
   memdir location anchors at the original cwd, like Managed/User rules.
 
+When neither index exists yet, or both are empty, the memory section says so
+right after that sentence — "Both are empty — nothing is saved yet."
+(`teamMemPrompts.ts`). Without it a fresh project's model opened them to
+check: 2 of 5 session-cache-ab runs on 2026-09-24 did. `loadMemoryPrompt`
+(`memdir.ts`) decides it on the memoized `getMemoryFiles()` load the indexes
+reach context through, so the prompt agrees with what the model was given and
+a mid-session rebuild of the prompt sections cannot flip it.
+
 The one difference from rules is the default: a rule without `paths:` is
 always-on, a memory without `paths:` is index-only. A `paths:` that
 normalizes to nothing — `**` alone, or a malformed value — leaves a memory

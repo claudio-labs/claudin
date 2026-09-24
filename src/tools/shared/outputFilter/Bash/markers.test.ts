@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { stripOutputMarkers, wrapStdoutWithMarkers } from "src/tools/shared/outputFilter/Bash/markers.js";
+import {
+  stripOutputMarkers,
+  wrapFileRead,
+  wrapStdoutWithMarkers,
+} from "src/tools/shared/outputFilter/Bash/markers.js";
 import type { PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/Bash/types.js";
 
 const NO_FILTER_PLAN: PreExecPlan = {
@@ -254,6 +258,13 @@ describe("stripOutputMarkers", () => {
     const body = "line one\nline two\n";
     const wrapped = wrapStdoutWithMarkers(body, REWRITE_PLAN, null);
     expect(stripOutputMarkers(wrapped)).toBe(body);
+  });
+
+  // The TUI shows the read, and the read credit matches files against it.
+  test("unwraps a bash-output-read wrapper to the bytes it holds", () => {
+    const body = "=== src/a.ts\nimport os\n\n\ndef a():\n    return 1\n";
+    expect(stripOutputMarkers(wrapFileRead(body))).toBe(body);
+    expect(wrapFileRead(body)).toBe(`<bash-output-read>${body}</bash-output-read>`);
   });
 
   test("passes through output that has no wrapper", () => {

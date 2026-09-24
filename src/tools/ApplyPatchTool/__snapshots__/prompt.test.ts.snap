@@ -1,30 +1,7 @@
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-export const APPLY_PATCH_TOOL_NAME = 'Patch'
-/**
- * The wire name until 2026-09-24. Kept as the tool's alias and in
- * LEGACY_TOOL_NAME_ALIASES, so permission rules, hook matchers and the
- * tool_use blocks of an older transcript still resolve to this tool.
- */
-export const LEGACY_APPLY_PATCH_TOOL_NAME = 'apply_patch'
-
-// IMPORTANT — cache safety: this description is serialized into the `tools`
-// block, which is the head of the cached request prefix and carries no
-// cache_control marker of its own. toolToAPISchema (src/providers/transport/api.ts) freezes
-// it per session, so it MUST be a static module-level constant — never
-// interpolate dates, cwd, model id, git state, or per-turn flags. Any byte
-// change here invalidates the whole downstream prompt cache.
-// See docs/tech/cache/clip-frontier-breakpoint.md + src/agent/tools/toolSchemaCache.ts.
-//
-// The one input is CLAUDIN_BASH_READ_CREDIT (off by default), under which a
-// file a Bash `cat` printed whole counts as read (BashTool/creditShownFiles.ts)
-// and the contract below says so. It is read once at module load, like the
-// credit itself, so DESCRIPTION is still one static string per process.
-const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
-  ? ' — a Bash `cat` that printed the whole file counts too'
-  : ''
-
-export const DESCRIPTION = `Apply a patch to one or more files in a single, atomic call. Use this to create, modify, delete, or rename several files at once.
+exports[`Patch DESCRIPTION matches snapshot 1`] = `
+"Apply a patch to one or more files in a single, atomic call. Use this to create, modify, delete, or rename several files at once.
 
 The patch is a stripped-down, file-oriented diff format (the Codex "apply_patch" envelope). The whole patch goes in the single \`patchText\` parameter. Paths may be relative to the working directory or absolute.
 
@@ -69,8 +46,9 @@ Rules:
 - Batch related edits into ONE call. When a change touches several files, put every file section in a single patch instead of making one Patch call per file — it is atomic and cheaper. Only split into separate calls when a later edit genuinely depends on the result of an earlier one.
 - Typical flow for a multi-file change: map the targets with Grep/Glob, Read every one of them in ONE message (parallel Read calls), then send ONE patch. Reading them one at a time is what turns a single patch into N patches.
 - The patch is all-or-nothing, so before you send it: give each file exactly ONE section, and anchor each hunk on lines you copied from the file (not remembered) — a single unread file, duplicate section, or mismatched context rejects the entire batch. When a call is rejected it lists every problem it found at once; fix them all before resubmitting rather than one at a time.
-- Update and Delete need a prior Read of the file, and any Read counts: the whole file, an outline, a symbol, or a range${CAT_COUNTS_AS_READ}. Nothing has to be re-read, or read whole, to be allowed to patch — a hunk applies when its context and "-" lines match the file as it is on disk, so read only the lines you need to write it. Add does not require a prior read.
+- Update and Delete need a prior Read of the file, and any Read counts: the whole file, an outline, a symbol, or a range. Nothing has to be re-read, or read whole, to be allowed to patch — a hunk applies when its context and "-" lines match the file as it is on disk, so read only the lines you need to write it. Add does not require a prior read.
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - The patch is atomic: if any hunk fails to apply, no files are written.
 - For new lines, always prefix them with "+", including when creating a file.
-- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead.`
+- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead."
+`;

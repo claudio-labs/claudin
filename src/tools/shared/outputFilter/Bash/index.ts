@@ -1,12 +1,11 @@
-import { BASH_SUMMARIZE_THRESHOLD } from "src/agent/tools/toolResultSummarizer/thresholds.js";
 import { ClaudeError } from "src/shared/errors.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
 import { logError } from "src/shared/log.js";
 import {
   ALREADY_WRAPPED_RE,
   prependRewriteNote,
+  wrapFileRead,
   wrapStdoutWithMarkers,
-  wrapUncutFileRead,
 } from "src/tools/shared/outputFilter/Bash/markers.js";
 import {
   applyPipeline,
@@ -22,7 +21,11 @@ import {
   looksLikeLocationList,
   withGenericFloor,
 } from "src/tools/shared/outputFilter/Bash/floor.js";
-import { isPureFileRead } from "src/tools/shared/outputFilter/Bash/fileReadShape.js";
+import {
+  isPureFileRead,
+  parsePureFileRead,
+  type ReadWord,
+} from "src/tools/shared/outputFilter/Bash/fileReadShape.js";
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 import type { PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/Bash/types.js";
 
@@ -53,8 +56,9 @@ function keepLastLines(body: string, n: number): string {
 
 /**
  * `CLAUDIN_BASH_FILE_READ_PASSTHROUGH=1`: a pure file read (fileReadShape.ts)
- * comes back whole instead of capped. Off by default. Read once at module
- * load, like the cap's own kill-switch in floor.ts.
+ * comes back whole, byte for byte, instead of capped; one too long for that
+ * keeps the whole files that fit (`overBudgetFileRead`). Off by default. Read
+ * once at module load, like the cap's own kill-switch in floor.ts.
  */
 const FILE_READ_PASSTHROUGH = isEnvTruthy(process.env.CLAUDIN_BASH_FILE_READ_PASSTHROUGH);
 
@@ -62,9 +66,11 @@ const FILE_READ_PASSTHROUGH = isEnvTruthy(process.env.CLAUDIN_BASH_FILE_READ_PAS
  * The largest pure file read the pass-through leaves whole. Bash persists a
  * result over 30k chars (`maxResultSizeChars`, BashTool.tsx) and hands the
  * model a 2 KB preview, which is worse than the cut; the margin keeps the
- * wrapper under that line. Above it the cap runs exactly as it always has.
+ * wrapper and the notes after it under that line. Above it a read that only
+ * prints files is cut to whole files (`overBudgetFileRead`), and any other
+ * takes the cap exactly as it always has.
  */
-const FILE_READ_PASSTHROUGH_MAX_CHARS = 28_000;
+export const FILE_READ_PASSTHROUGH_MAX_CHARS = 28_000;
 
 /**
  * Whether this result is a pure file read the pass-through leaves whole.
@@ -79,6 +85,36 @@ function isUncutFileRead(rawStdout: string, plan: PreExecPlan): boolean {
     rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&
     plan.rewrite === null &&
     isPureFileRead(plan.effectiveCommand)
+  );
+}
+
+/**
+ * What a pure read prints when it is too long for the pass-through — over
+ * FILE_READ_PASSTHROUGH_MAX_CHARS, or `spilled` to disk by the shell, whose
+ * stdout then holds only the first 30 KB — and only when it prints nothing but
+ * files: BashTool then keeps the whole files that fit and names the rest
+ * (`fitWholeFiles`, BashTool/creditShownFiles.ts) before this filter runs,
+ * where the cap would keep 30 lines and a spill a 2 KB preview of a saved file
+ * the model reads back whole.
+ *
+ * Null with the flag off, and for a read with a listing segment (`ls`, `git
+ * ls-files`, `wc`): a page of names is output the cap was made for, not a run
+ * of whole files to fit.
+ */
+export function overBudgetFileRead(
+  rawStdout: string,
+  plan: PreExecPlan,
+  spilled: boolean,
+): readonly ReadWord[] | null {
+  return safeApply(
+    "overBudgetFileRead",
+    () => {
+      if (!FILE_READ_PASSTHROUGH || plan.rewrite !== null) return null;
+      if (!spilled && rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS) return null;
+      const read = parsePureFileRead(plan.effectiveCommand);
+      return read && !read.lists ? read.reads : null;
+    },
+    null,
   );
 }
 
@@ -112,19 +148,12 @@ function isUncutFileRead(rawStdout: string, plan: PreExecPlan): boolean {
  *
  * The cap alone carries a kill-switch, being the only one that can delete the
  * line that mattered.
- *
- * A pure file read the pass-through leaves whole (`uncutFileRead`) takes none
- * of the three: the cap is what it exists to stop, and the other two reshape
- * text the model is about to edit — a run of five data rows that differ only
- * in their digits is the digit collapse's template exactly.
  */
 function floorOptionsFor(
   rawStdout: string,
   plan: PreExecPlan,
-  uncutFileRead: boolean,
 ): { groupMatches: boolean; collapseTemplates: boolean; cap: boolean } {
-  const eligible =
-    !uncutFileRead && plan.callerBudgets !== true && isCappableBody(rawStdout);
+  const eligible = plan.callerBudgets !== true && isCappableBody(rawStdout);
   if (!eligible) {
     return { groupMatches: false, collapseTemplates: false, cap: false };
   }
@@ -268,10 +297,16 @@ export function applyBashFilterToStdout(
       if (ALREADY_WRAPPED_RE.test(rawStdout)) {
         return rawStdout;
       }
+      // A pure file read left whole goes back as the command printed it. No
+      // floor stage may touch it — not only the cap: `collapseRuns` folds a
+      // run of blank lines and repeats an identical line as `line (×N)`, the
+      // digit collapse folds five data rows into one, `stripAnsi` edits bytes —
+      // and a file shown one byte off is a file the model edits from a copy
+      // that is not the file, and one the read credit cannot find.
+      if (isUncutFileRead(rawStdout, plan)) return wrapFileRead(rawStdout);
 
-      const uncutFileRead = isUncutFileRead(rawStdout, plan);
       const pipelineResult: PipelineResult = applyPipeline(
-        withGenericFloor(plan.filter, floorOptionsFor(rawStdout, plan, uncutFileRead)),
+        withGenericFloor(plan.filter, floorOptionsFor(rawStdout, plan)),
         rawStdout,
         {
           allowShortCircuit: !plan.isCompound,
@@ -283,12 +318,6 @@ export function applyBashFilterToStdout(
           allowRenderBody: plan.callerBudgets !== true,
         },
       );
-      // The tag on a read left whole is for the tool-result summarizer, and
-      // only a result it would cut needs it; below that it is bytes with
-      // nothing to disclose, the trade wrapStdoutWithMarkers already refuses.
-      if (uncutFileRead && pipelineResult.body.trimEnd().length >= BASH_SUMMARIZE_THRESHOLD) {
-        return wrapUncutFileRead(pipelineResult);
-      }
       return wrapStdoutWithMarkers(rawStdout, plan, pipelineResult, exitCode);
     },
     rawStdout,

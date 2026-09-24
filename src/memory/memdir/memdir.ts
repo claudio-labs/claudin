@@ -22,6 +22,7 @@ import {
   MEMORY_FRONTMATTER_EXAMPLE,
   WHAT_NOT_TO_SAVE_SECTION,
 } from 'src/memory/memdir/memoryTypes.js'
+import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 
 export const ENTRYPOINT_NAME = 'MEMORY.md'
 export const MAX_ENTRYPOINT_LINES = 200
@@ -267,6 +268,25 @@ export function hasExistingMemories(memoryDir: string): boolean {
 }
 
 /**
+ * True when neither MEMORY.md index put anything into context: both files are
+ * absent, empty or whitespace only. `loaded` is getMemoryFiles(), the list the
+ * two indexes reach context from (getUserContext → getClaudeMds), so this is
+ * decided on what the model was given, at no second read — an index
+ * getClaudeMds skips as empty counts as empty here. The combined prompts say
+ * so when it holds (teamMemPrompts.ts); the private-only path has its own
+ * empty-state text in buildMemoryStubLines, and the two never meet.
+ */
+export function areMemoryIndexesEmpty(
+  loaded: readonly Pick<MemoryFileInfo, 'type' | 'content'>[],
+): boolean {
+  return !loaded.some(
+    file =>
+      (file.type === 'AutoMem' || file.type === 'TeamMem') &&
+      file.content.trim() !== '',
+  )
+}
+
+/**
  * Compact memory instructions for a dir with no memories yet. The full
  * ~3.7K-token taxonomy (worked examples, what-not-to-save, recall guidance) is
  * write/recall reference that's inert until memories exist — and it ships in
@@ -430,9 +450,24 @@ export async function loadMemoryPrompt(lean = false): Promise<string | null> {
       // out from under the auto dir, add a second ensureMemoryDirExists call
       // for autoDir here.
       await ensureMemoryDirExists(teamDir)
+      // The same memoized load the context injects the indexes from, so the
+      // prompt agrees with what the model was given and stays put when the
+      // system-prompt sections are rebuilt mid-session without it (/add-dir).
+      // Imported here, not at the top: claudemd/parsing.ts imports this
+      // module. A failure costs the note, never the memory section.
+      let indexesEmpty = false
+      try {
+        const { getMemoryFiles } = await import('src/memory/instructions/claudemd.js')
+        indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())
+      } catch (e) {
+        logForDebugging(
+          `memory index check failed, keeping the index line as shipped: ${String(e)}`,
+          { level: 'warn' },
+        )
+      }
       return lean
-        ? teamMemPrompts!.buildLeanCombinedMemoryPrompt(extraGuidelines)
-        : teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines)
+        ? teamMemPrompts!.buildLeanCombinedMemoryPrompt(extraGuidelines, indexesEmpty)
+        : teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines, indexesEmpty)
     }
   }
 

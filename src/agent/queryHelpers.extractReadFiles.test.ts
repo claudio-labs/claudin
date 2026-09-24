@@ -4,11 +4,11 @@
 // "has not been read yet" after a resume (2 of 65 gate refusals in the
 // 2026-08/09 corpus, both on files the model had been shown).
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
-import { addLineNumbers } from 'src/shared/fs/file.js'
+import { addLineNumbers, getFileModificationTime } from 'src/shared/fs/file.js'
 import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
 import { seenRegionCoversText } from 'src/tools/shared/readBeforeEditMessages.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -279,5 +279,111 @@ describe('extractReadFilesFromMessages — write tools', () => {
     expect(() =>
       extractReadFilesFromMessages([use, toolResult(use, 'ok')], dir),
     ).not.toThrow()
+  })
+})
+
+// CLAUDIN_BASH_READ_CREDIT: a `cat` that printed files whole counts as a Read
+// of each (creditShownFiles.ts), and the result names them in `creditedFiles`.
+// Without this the credit died with the process: in the 2026-09-23 A/B the
+// one refusal of the read-cat arm was phase 2's first Patch, on a file only
+// `cat`'d in phase 1.
+describe('extractReadFilesFromMessages — a Bash read credit', () => {
+  /** A Bash call, answered at `answeredAt` with the Out BashTool returned. */
+  function bash(
+    command: string,
+    stdout: string,
+    answeredAt: number,
+    extra: Record<string, unknown> = {},
+    opts: { isError?: boolean } = {},
+  ): Message[] {
+    const use = toolUse('Bash', { command })
+    const result = toolResult(use, stdout, opts) as unknown as Record<string, unknown>
+    result.timestamp = new Date(answeredAt).toISOString()
+    result.toolUseResult = { stdout, stderr: '', interrupted: false, ...extra }
+    return [use, result as unknown as Message]
+  }
+
+  /** `path` written with `content`, dated a minute before `answeredAt`. */
+  function writeBefore(path: string, content: string, answeredAt: number): void {
+    writeFileSync(path, content)
+    const before = new Date(answeredAt - 60_000)
+    utimesSync(path, before, before)
+  }
+
+  test('without a credit a Bash result restores nothing, as it never has', () => {
+    const p = join(dir, 'cat.ts')
+    const now = Date.now()
+    writeBefore(p, 'one\ntwo\n', now)
+    const cache = extractReadFilesFromMessages(bash(`cat ${p}`, 'one\ntwo', now), dir)
+    expect(cache.get(p)).toBeUndefined()
+    expect(cache.size).toBe(0)
+  })
+
+  test('each credited file is restored from disk, as the credit stored it', () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const now = Date.now()
+    writeBefore(a, 'A1\nA2\n', now)
+    writeBefore(b, 'B1\nB2\n', now)
+    const cache = extractReadFilesFromMessages(
+      bash(`cat ${a} ${b}`, 'A1\nA2\nB1\nB2', now, { creditedFiles: [a, b] }),
+      dir,
+    )
+    for (const [path, content] of [[a, 'A1\nA2\n'], [b, 'B1\nB2\n']] as const) {
+      expect(cache.get(path)).toEqual({
+        content,
+        timestamp: getFileModificationTime(path),
+        offset: 1,
+        limit: undefined,
+        dedupExempt: true,
+      })
+    }
+  })
+
+  // The model saw the file as it was when the result came back. Written
+  // since, what is on disk is not what it saw.
+  test('a file written after the result is not restored', () => {
+    const p = join(dir, 'later.ts')
+    const answeredAt = Date.now() - 120_000
+    writeFileSync(p, 'edited after\nthe cat\n')
+    const cache = extractReadFilesFromMessages(
+      bash(`cat ${p}`, 'old\ncontent', answeredAt, { creditedFiles: [p] }),
+      dir,
+    )
+    expect(cache.get(p)).toBeUndefined()
+  })
+
+  test('a result without creditedFiles leaves an earlier entry as it was', () => {
+    const p = join(dir, 'kept.ts')
+    const now = Date.now()
+    writeBefore(p, 'l1\nl2\n', now)
+    const cache = extractReadFilesFromMessages(
+      [...read(p, { offset: 1, limit: 1 }, 'l1'), ...bash(`cat ${p}`, 'l1\nl2', now)],
+      dir,
+    )
+    expect(cache.get(p)).toMatchObject({ content: 'l1', offset: 1, limit: 1 })
+  })
+
+  test('a credited file that is gone is skipped, not thrown', () => {
+    const p = join(dir, 'gone.ts')
+    expect(() =>
+      extractReadFilesFromMessages(
+        bash(`cat ${p}`, 'x\ny', Date.now(), { creditedFiles: [p] }),
+        dir,
+      ),
+    ).not.toThrow()
+  })
+
+  test('only a Bash result, and only one that succeeded', () => {
+    const p = join(dir, 'other.ts')
+    const now = Date.now()
+    writeBefore(p, 'o1\no2\n', now)
+    const failed = bash(`cat ${p}`, 'o1\no2', now, { creditedFiles: [p] }, { isError: true })
+    const [use, result] = bash(`cat ${p}`, 'o1\no2', now, { creditedFiles: [p] })
+    const notBash = toolUse('Grep', { pattern: 'o1' })
+    ;(result as unknown as { message: { content: Array<{ tool_use_id: string }> } })
+      .message.content[0]!.tool_use_id = idOf(notBash)
+    const cache = extractReadFilesFromMessages([...failed, use!, notBash, result!], dir)
+    expect(cache.get(p)).toBeUndefined()
   })
 })

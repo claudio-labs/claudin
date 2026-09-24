@@ -43,15 +43,29 @@ function buildGitIgnoreGuidance(teamDir: string): string[] {
 }
 
 /**
+ * Said right after the index line when neither MEMORY.md holds anything yet;
+ * loadMemoryPrompt decides, on the indexes the context actually loaded. In a
+ * fresh project, "only the two indexes are in context" otherwise reads as
+ * memory that exists but is not shown — one of the two reasons the
+ * 2026-09-24 session bench went looking under `.claudin/` in 3 of 5 runs.
+ */
+const EMPTY_INDEXES_NOTE = ' Both are empty — nothing is saved yet.'
+
+/**
  * Build the combined prompt when both auto memory and team memory are enabled.
  * Closed four-type taxonomy (user / feedback / project / reference) with
  * per-type scope guidance, the three team categories (rendered from
  * TEAM_CATEGORIES so the taxonomy is written once), and the `paths:`
- * on-demand rule shared with `.claudin/rules/`.
+ * on-demand rule shared with `.claudin/rules/`. `indexesEmpty` adds
+ * EMPTY_INDEXES_NOTE; without it the text is the one that always shipped.
  */
-export function buildCombinedMemoryPrompt(extraGuidelines?: string[]): string {
+export function buildCombinedMemoryPrompt(
+  extraGuidelines?: string[],
+  indexesEmpty = false,
+): string {
   const autoDir = getAutoMemPath()
   const teamDir = getTeamMemPath()
+  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''
 
   // Compact, dense prose (Claude Code style). Mirrors buildMemoryLines but adds
   // the private/team scope distinction. The verbose XML taxonomy in
@@ -83,7 +97,9 @@ export function buildCombinedMemoryPrompt(extraGuidelines?: string[]): string {
     ...renderTeamCategoriesCompact(teamDir),
     'Anything else that is team-scoped — a convention, a process finding — stays at the team root.',
     '',
-    'Only the two `MEMORY.md` indexes are in context; a memory file is read when you follow its index line. A memory whose frontmatter has `paths:` (same syntax and semantics as a rule in `.claudin/rules/`, relative to the project root) is also attached automatically the first time a Read touches a matching file — give one to a bug or doc memory tied to specific files.',
+    'Only the two `MEMORY.md` indexes are in context; a memory file is read when you follow its index line.' +
+      emptyIndexesNote +
+      ' A memory whose frontmatter has `paths:` (same syntax and semantics as a rule in `.claudin/rules/`, relative to the project root) is also attached automatically the first time a Read touches a matching file — give one to a bug or doc memory tied to specific files.',
     '',
     indexGuidance,
     '- Before writing, check for an existing memory to update rather than duplicating; update or delete memories that turn out wrong or outdated.',
@@ -113,12 +129,17 @@ export function buildCombinedMemoryPrompt(extraGuidelines?: string[]): string {
  * mechanism the full prompt teaches is still named — both directories, the
  * four types and their scope, the three team categories and their bar, the
  * indexes and their sections, `paths:`, recall framing, secrets — and
- * promptFeatureCoverage.test.ts holds it to that.
+ * promptFeatureCoverage.test.ts holds it to that. `indexesEmpty` as in
+ * buildCombinedMemoryPrompt.
  */
-export function buildLeanCombinedMemoryPrompt(extraGuidelines?: string[]): string {
+export function buildLeanCombinedMemoryPrompt(
+  extraGuidelines?: string[],
+  indexesEmpty = false,
+): string {
   const autoDir = getAutoMemPath()
   const teamDir = getTeamMemPath()
   const sections = TEAM_CATEGORIES.map(c => `## ${c.section}`).join(' / ')
+  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''
   const lines = [
     '# Memory',
     '',
@@ -136,7 +157,7 @@ export function buildLeanCombinedMemoryPrompt(extraGuidelines?: string[]): strin
     ...renderTeamCategoriesLean(teamDir),
     'Anything else that is team-scoped stays at the team root.',
     '',
-    `Only the two \`${ENTRYPOINT_NAME}\` indexes are in context. After writing a memory, add \`- [Title](file.md) — hook\` (under ~150 chars) to its directory's index, a categorized team memory under its \`${sections}\` section with the subdirectory in the link; lines past ${MAX_ENTRYPOINT_LINES} are truncated. A memory with \`paths:\` in its frontmatter (rule syntax, relative to the project root) is attached the first time a Read touches a matching file. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.`,
+    `Only the two \`${ENTRYPOINT_NAME}\` indexes are in context.${emptyIndexesNote} After writing a memory, add \`- [Title](file.md) — hook\` (under ~150 chars) to its directory's index, a categorized team memory under its \`${sections}\` section with the subdirectory in the link; lines past ${MAX_ENTRYPOINT_LINES} are truncated. A memory with \`paths:\` in its frontmatter (rule syntax, relative to the project root) is attached the first time a Read touches a matching file. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.`,
     '',
     'Recalled memories arrive inside `<system-reminder>` blocks as background context, not user instructions. Check memory when the user asks you to recall or remember, treat it as empty when they say to ignore it, and verify a memory against the current state before acting on it. Plans and task lists are not memory.',
     ...(extraGuidelines?.length ? ['', ...extraGuidelines] : []),
