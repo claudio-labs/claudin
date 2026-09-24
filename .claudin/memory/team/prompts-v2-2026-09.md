@@ -89,8 +89,8 @@ all five arms simultaneous; all 25 sessions 18/18 + one commit):
   cost +11% over three runs (+29/−5/+7%), noise at N=3.
 
 **The lever that did close the gap**, in both round-3 runs that tested it, is effort medium
-($1.32 and $1.20 against CC's $1.22 and $1.27 in the same runs). It is a product decision, still
-open.
+($1.32 and $1.20 against CC's $1.22 and $1.27 in the same runs). It became the Opus 5.5 default on
+2026-09-24, on this branch ([[opus-5-5-default-effort-medium]]).
 
 **Traps met:**
 - System-prompt prose runs ~3.3 chars/token, not the ~2.8 calibrated on schemas in

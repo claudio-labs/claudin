@@ -87,7 +87,7 @@ login present, Claudin ignored the env key and sent `oauth-2025-04-20` anyway.
 | `context_management` | `{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]}` | same | absent |
 | `diagnostics` | `{"previous_message_id":null}` on turn 1 | same | absent |
 | `max_tokens`, Opus 5.5 / Fable 5.1 / Sonnet 5 | 128000 / 64000 / 64000 | same | 128000 / 64000 / **32000** |
-| `output_config.effort`, same order | medium / high / high | same | high / high / high here — this machine's settings; the code defaults are high / high / medium |
+| `output_config.effort`, same order | medium / high / high | same | high / high / high here — this machine's settings; the code defaults are medium / high / medium since 2026-09-24 (Opus 5.5 was high) |
 | `eager_input_streaming` on tools | 11–17 tools | same | **0 of 38–41** |
 | system `cache_control` | `[-, -, 1h/global, 1h]` | same | `[-, 1h, 1h]` |
 | `role:"system"` messages | environment text + `tool_addition` blocks + `output_config` (Opus/Fable) | same | none |

@@ -30,7 +30,7 @@ they will not survive a reboot.
 - **Effort medium, and nothing else tested.** Its thinking separates from both claudindev and the placebo in A (3.7k), and in C sits well under claudindev (4.5k). Its cost is Claude Code's: +8% in A and −6% in C, both inside the noise.
   - It verifies less: 16 reads instead of 25, and 2–3 test runs instead of 4–5.
   - It gets more read-gate refusals. The resubmit below now absorbs those.
-  - Claude Code's own default on Opus 5.5 is medium; the bench forces high on both CLIs. Changing claudin's default is a product decision and is still open.
+  - Claude Code's own default on Opus 5.5 is medium; the bench forces high on both CLIs. Claudin's Opus 5.5 default became medium on 2026-09-24 ([[opus-5-5-default-effort-medium]]).
 - **Not causes** (every one overlaps claudindev in A): `thinking.display` updates, `CLAUDIN_ANTI_NARRATION=0`, `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`. The proxy bodies show both CLIs send `context_management: clear_thinking keep:all` and return prior thinking blocks.
 - **Tools (B): no single tool is the cause.**
   - Without apply_patch, thinking drops ~40% but the model makes 48–62 Edit calls, and visible output rises 20–30% (old_string and new_string are re-sent). Cost stays flat.

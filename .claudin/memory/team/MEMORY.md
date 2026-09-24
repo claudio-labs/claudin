@@ -19,6 +19,7 @@
 - [Fork-subagent-by-default initiative](decisions/fork-subagent-by-default.md) — default spawn forks, named agent stays fresh; 2026-07-26 ungated it, flipped auto-background to opt-in
 - [Git tool — D2, shipped 2026-08-04](decisions/git-tool-design.md) — Git({commands:[…]}) over all git+gh; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; 'auto' sentinel shadows the global, /effort inherit clears it
+- [Opus 5.5 defaults to medium effort, like Claude Code (2026-09-24)](decisions/opus-5-5-default-effort-medium.md) — was high; the only lever that closed the cost gap; pins still win
 - [Adaptive thinking is now the default (was opt-in)](decisions/adaptive-thinking-default-on.md) — 2026-07-13 flip: Claude sends {type:'adaptive'} by default; CLAUDIN_ENABLE_ADAPTIVE_THINKING=0 opts out
 - [Claudin defaults to essential-traffic privacy level](decisions/anthropic-startup-traffic-disabled-default.md) — b2be87b5 flips default; 7→0 Anthropic startup requests; ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0 opts back in
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — fetchPrStatus dispatches host→gh/glab/tea; prStatusHosts lives in config.json NOT settings.json
