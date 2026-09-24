@@ -1,0 +1,52 @@
+{
+  "test": [
+    "src/shared/fs/glob.test.ts",
+    "src/tools/GlobTool/GlobTool.test.ts",
+    "src/tools/GrepTool/GrepTool.test.ts"
+  ],
+  "source": "src/shared/fs/glob.ts",
+  "probes": [
+    {
+      "name": "ripgrep runs from the process cwd again",
+      "find": "    { cwd: searchDir },\n",
+      "replace": ""
+    },
+    {
+      "name": "ripgrep is handed the absolute search dir again",
+      "find": "  const { lines: allPaths, incomplete } = await ripGrepWithStatus(\n    args,\n    '.',\n",
+      "replace": "  const { lines: allPaths, incomplete } = await ripGrepWithStatus(\n    args,\n    searchDir,\n"
+    },
+    {
+      "name": "a leading ./ is passed through",
+      "find": "  searchPattern = searchPattern.replace(LEADING_DOT_SLASH_RE, '')\n",
+      "replace": ""
+    },
+    {
+      "name": "a leading ./ is not re-anchored",
+      "find": "  const rgPattern = rootAnchored ? `/${searchPattern}` : searchPattern\n",
+      "replace": "  const rgPattern = searchPattern\n"
+    },
+    {
+      "name": "a leading ./ dir pattern matches at any depth",
+      "find": "      anchored: rootAnchored || searchPattern.includes('/'),\n",
+      "replace": "      anchored: searchPattern.includes('/'),\n"
+    },
+    {
+      "name": "a missing base directory reaches the spawn",
+      "find": "  if (!isDirectory(searchDir)) {\n    return { files: [], truncated: false, incomplete: null }\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "the cwd never reaches spawn",
+      "source": "src/shared/fs/ripgrep.ts",
+      "find": "      timeout,\n      killSignal: process.platform === 'win32' ? undefined : 'SIGKILL',\n      cwd,\n",
+      "replace": "      timeout,\n      killSignal: process.platform === 'win32' ? undefined : 'SIGKILL',\n"
+    },
+    {
+      "name": "Grep runs ripgrep from the process cwd again",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "      abortController.signal,\n      { cwd: rgCwd },\n    )\n\n    // ripgrep refused",
+      "replace": "      abortController.signal,\n    )\n\n    // ripgrep refused"
+    }
+  ]
+}
