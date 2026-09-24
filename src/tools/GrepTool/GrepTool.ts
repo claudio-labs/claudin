@@ -24,7 +24,12 @@ import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
-import { GREP_TOOL_NAME, getDescription } from 'src/tools/GrepTool/prompt.js'
+import {
+  GREP_TOOL_NAME,
+  getCompactDescription,
+  getDescription,
+} from 'src/tools/GrepTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import {
   GREP_AUTO_PIVOT_FOOTER,
   grepAutoPivotEnabled,
@@ -304,7 +309,7 @@ export const GrepTool = buildTool({
     )
   },
   async prompt() {
-    return getDescription()
+    return isCompactToolPromptsEnabled() ? getCompactDescription() : getDescription()
   },
   renderToolUseMessage,
   renderToolUseErrorMessage,

@@ -1,6 +1,10 @@
 import { feature } from 'bun:bundle'
 import { prependBullets } from 'src/agent/prompts/prompts.js'
-import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
+import {
+  isCompactToolPromptsEnabled,
+  isLeanToolPromptFamily,
+  isLeanRemindersEnabled,
+} from 'src/agent/prompts/toolPromptTier.js'
 import { getAttributionTexts } from 'src/vcs/git/attribution.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
@@ -92,6 +96,9 @@ export function isLeanGitInstructionsEnabled(): boolean {
  */
 export function getBashGitInstructionsBody(): string {
   const { commit: commitAttribution, pr: prAttribution } = getAttributionTexts()
+  if (isLeanRemindersEnabled()) {
+    return getCompactGitInstructionsBody(commitAttribution, prAttribution)
+  }
   if (isLeanGitInstructionsEnabled()) {
     return getLeanGitInstructionsBody(commitAttribution, prAttribution)
   }
@@ -158,6 +165,35 @@ ${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Sum
 </example>
 
 Quote the body with '…', where a backtick and a newline are literal; if it holds an apostrophe, use "…" and backslash-escape each backtick, \`$\`, \`"\` and \`\\\`.${prAttribution ? '' : ' Add no AI footer to the body.'}`
+}
+
+/**
+ * The v2 reminder (isLeanRemindersEnabled): every rule of the lean body — the
+ * deny list and hook skips, the amend rule, the two Git calls, staging by
+ * name, the quoting rules, both examples in the Git tool's grammar, the
+ * attribution handling and the PR steps — with the connecting prose cut.
+ */
+function getCompactGitInstructionsBody(
+  commitAttribution: string,
+  prAttribution: string,
+): string {
+  return `# Committing changes with git
+
+Commit only when the user asks; never update the git config or push unless asked. Destructive commands (\`push --force\`, \`reset --hard\`, \`checkout .\`, \`restore .\`, \`clean -f\`, \`branch -D\`) and hook skips (\`--no-verify\`, \`--no-gpg-sign\`) run only when the user names them; warn instead of force-pushing to main/master. Never amend unless asked: after a failed pre-commit hook the commit did NOT happen, so fix it, re-stage and make a NEW commit.
+
+In ONE ${GIT_TOOL_NAME} call read \`git status\` (never \`-uall\`), \`git diff\` and \`git log\`, and nothing else; write a 1-2 sentence message in the repo's style saying why; then, in one more ${GIT_TOOL_NAME} call, stage files by name (never \`git add -A\` or \`git add .\`; warn about any that likely hold secrets), commit and run \`git status\`. No empty commits.${commitAttribution ? ` End every commit message with this trailer after a blank line: ${commitAttribution}` : ''}
+
+${GIT_TOOL_NAME}({commands: ["git add a.ts b.ts", "git commit -m \\"Subject.\\n\\nBody line here.${commitAttribution ? `\\n\\n${commitAttribution}` : ''}\\"", "git status"]})
+
+Subject, blank line and body go in ONE quoted \`-m\`: '…' when it holds a backtick or a \`$\`, otherwise "…" with each \`"\` and \`\\\` escaped (and each backtick and \`$\` when an apostrophe rules out '…'). No commit message needs ${BASH_TOOL_NAME}. Never \`-i\`, nor \`--no-edit\` with \`git rebase\`.${commitAttribution ? '' : ' Add no AI attribution trailer ("Generated with Claude Code", "Co-Authored-By: Claude").'}
+
+# Creating pull requests
+
+Use \`gh\` through ${GIT_TOOL_NAME} for everything GitHub, a GitHub URL included. Before a PR, read the whole branch in one ${GIT_TOOL_NAME} call (status, diff, remote tracking, \`git log\` and \`git diff [base-branch]...HEAD\`), push with \`-u\` if needed, open it with a title under 70 characters, and return its URL:
+
+${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullets>\\n\\n## Test plan\\n[checklist]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})
+
+Quote the body with '…'; if it holds an apostrophe, use "…" and escape each backtick, \`$\`, \`"\` and \`\\\`.${prAttribution ? '' : ' Add no AI footer to the body.'}`
 }
 
 function getCommitAndPRInstructions(): string {
@@ -250,6 +286,12 @@ function getSimpleSandboxSection(): string {
 // embedded, MONITOR_TOOL, timeouts), so a fully pure builder would be invasive.
 // Production callers pass nothing → the family tier is resolved live.
 export function getSimplePrompt(leanOverride?: boolean): string {
+  // The v2 description (isCompactToolPromptsEnabled); the ant-native embedded
+  // lane keeps the full text, whose tool list differs.
+  if (leanOverride === undefined && isCompactToolPromptsEnabled() && !hasEmbeddedSearchTools()) {
+    return getCompactPrompt()
+  }
+
   // Capable families follow the system prompt's altitude principle on their
   // own, so per-tool hand-holding (ls-first, quote-paths, sleep coaching) and
   // the parallelism block (already covered by TOOL_BATCHING_NUDGE) are dropped
@@ -368,6 +410,29 @@ export function getSimplePrompt(leanOverride?: boolean): string {
     '',
     '# Instructions',
     ...prependBullets(instructionItems),
+    getSimpleSandboxSection(),
+    ...(getCommitAndPRInstructions() ? ['', getCommitAndPRInstructions()] : []),
+  ].join('\n')
+}
+
+/**
+ * The v2 description: every rule of the lean one — the dedicated tools by
+ * name, the working-directory rule and why, the timeout bounds, the command
+ * separators — in one list. Sandbox and inline git sections are unchanged.
+ */
+export function getCompactPrompt(): string {
+  const backgroundNote = getBackgroundUsageNote()
+  const items = [
+    `Use the dedicated tools instead of their shell forms: ${GLOB_TOOL_NAME} (not find/ls), ${GREP_TOOL_NAME} (not grep/rg), ${FILE_READ_TOOL_NAME} (not cat/head/tail), ${FILE_EDIT_TOOL_NAME} (not sed/awk), ${FILE_WRITE_TOOL_NAME} (not echo >/heredocs), ${RUN_TESTS_TOOL_NAME} (not npm test/pytest/go test), ${BUILD_TOOL_NAME} (not make/cargo build/gradle), ${TYPECHECK_TOOL_NAME} (not tsc --noEmit/mypy), and ${GIT_TOOL_NAME} for git and gh, several commands per call. Write text directly rather than through echo.`,
+    'Keep the working directory: use absolute paths instead of `cd` — a `cd` elsewhere is checked as its own subcommand and can turn a compound command into a permission prompt. Use `cd` when the user asks.',
+    `timeout is in milliseconds, up to ${getMaxTimeoutMs()} (${getMaxTimeoutMs() / 60000} minutes); the default is ${getDefaultTimeoutMs()} (${getDefaultTimeoutMs() / 60000} minutes).`,
+    ...(backgroundNote !== null ? [backgroundNote] : []),
+    "Chain dependent commands with '&&', use ';' only when later commands should run anyway, and never separate commands with newlines (newlines inside quotes are fine).",
+  ]
+  return [
+    'Executes a bash command and returns its output. The working directory persists between commands; shell state (env vars, functions) does not, and the shell starts from the user\'s profile. Output is shown to you, not reliably to the user — describe what you found.',
+    '',
+    ...prependBullets(items),
     getSimpleSandboxSection(),
     ...(getCommitAndPRInstructions() ? ['', getCommitAndPRInstructions()] : []),
   ].join('\n')

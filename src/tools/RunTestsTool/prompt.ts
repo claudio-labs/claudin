@@ -14,3 +14,10 @@ Notes:
 - A non-zero exit from failing tests is expected and is not an error.
 - Watch/interactive flags (--watch, --ui) are stripped so the run terminates.
 - Use plain Bash only when you need raw output or a non-test command.`
+
+/** The v2 description (isCompactToolPromptsEnabled). */
+export const COMPACT_DESCRIPTION = `Run the project's test suite and get back a failures-first summary: counts, and for each failure the test name, file:line, a source excerpt and a one-line problem; a green run returns just the counts. Prefer it over Bash for tests. It detects the runner (vitest, jest, mocha, bun test, node --test, playwright, deno test, pytest, go test, cargo/nextest, dart/flutter test, ctest, phpunit, pest, rspec, minitest, mix test, dotnet, maven, gradle, and anything that emits JUnit XML or TAP).
+
+- \`command\` runs an exact test command, \`path\` scopes the run to a file or directory, \`pattern\` filters by test name.
+- \`framework\` overrides detection, and is required for Catch2 and doctest: give the test binary as \`command\`.
+- A non-zero exit from failing tests is expected. Watch/interactive flags are stripped. Use plain Bash only for raw output or a non-test command.`

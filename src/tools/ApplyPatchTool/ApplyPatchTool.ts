@@ -9,7 +9,12 @@ import {
   summarizeApplyPatch,
   validateApplyPatchInput,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
-import { APPLY_PATCH_TOOL_NAME, DESCRIPTION } from 'src/tools/ApplyPatchTool/prompt.js'
+import {
+  APPLY_PATCH_TOOL_NAME,
+  COMPACT_DESCRIPTION,
+  DESCRIPTION,
+} from 'src/tools/ApplyPatchTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ApplyPatchTool/UI.js'
 
 const inputSchema = lazySchema(() =>
@@ -36,7 +41,7 @@ export const ApplyPatchTool = buildTool({
     return 'Applying patch'
   },
   async prompt() {
-    return DESCRIPTION
+    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION
   },
   get inputSchema(): InputSchema {
     return inputSchema()

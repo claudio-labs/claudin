@@ -18,19 +18,30 @@
 // Markers that may move between places (a rule that travels from the system
 // prompt to a tool description) are checked on all three together; a tool's
 // own parameters and behaviors are checked on that tool alone.
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Command } from 'src/commands/commands.js'
 import {
+  getMainLoopModelOverride,
+  setMainLoopModelOverride,
+} from 'src/platform/bootstrap/state.js'
+import {
   buildAgentToolSection,
   getSessionSpecificGuidanceSection,
 } from 'src/agent/prompts/prompts.js'
+import {
+  isCompactToolPromptsEnabled,
+  isLeanRemindersEnabled,
+} from 'src/agent/prompts/toolPromptTier.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { getEmptyToolPermissionContext, type Tool } from 'src/tools/Tool.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
+import { renderCompactAgentPrompt } from 'src/tools/AgentTool/prompt.js'
 import { getBashGitInstructionsBody } from 'src/tools/BashTool/prompt.js'
+import { MonitorTool } from 'src/tools/MonitorTool/MonitorTool.js'
 import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
+import { isDeferredTool } from 'src/tools/ToolSearchTool/prompt.js'
 
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 
@@ -102,6 +113,7 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
   ],
   Grep: [
     'symbols',
+    /broad/i,
     'files_with_matches',
     'count',
     'head_limit',
@@ -214,4 +226,99 @@ describe('prompt feature coverage', () => {
       expect(missing.map(([capability]) => capability)).toEqual([])
     })
   }
+})
+
+// The v2 tool descriptions and reminders (CLAUDIN_COMPACT_TOOL_PROMPTS,
+// CLAUDIN_LEAN_REMINDERS) are rendered live: both switches are read when a
+// description or reminder is built. The Agent description's compact text is
+// only reachable with fork on, which `feature()` hides under `bun test`, so it
+// comes from its pure renderer — in the `-p` shape and the interactive one.
+describe('prompt feature coverage — v2 tools and reminders', () => {
+  const V2_VARS = ['CLAUDIN_COMPACT_TOOL_PROMPTS', 'CLAUDIN_LEAN_REMINDERS'] as const
+  const on = () => {
+    for (const name of V2_VARS) process.env[name] = '1'
+  }
+  afterEach(() => {
+    for (const name of V2_VARS) delete process.env[name]
+  })
+
+  async function v2ToolText(tool: Tool): Promise<string> {
+    if (tool.name === 'Agent') {
+      return `${renderCompactAgentPrompt(true)}\n${renderCompactAgentPrompt(false)}\n${JSON.stringify(zodToJsonSchema(tool.inputSchema))}`
+    }
+    return toolText(tool)
+  }
+
+  test('the switches resolve on in this environment (otherwise every test below is vacuous)', () => {
+    on()
+    expect(isCompactToolPromptsEnabled()).toBe(true)
+    expect(isLeanRemindersEnabled()).toBe(true)
+  })
+
+  test('the switches do not reach a model outside the Anthropic family', () => {
+    on()
+    const prior = getMainLoopModelOverride()
+    try {
+      // A first-party session on a non-Claude id resolves to the default family.
+      setMainLoopModelOverride('gpt-5')
+      expect(isCompactToolPromptsEnabled()).toBe(false)
+      expect(isLeanRemindersEnabled()).toBe(false)
+    } finally {
+      setMainLoopModelOverride(prior)
+    }
+  })
+
+  test('Monitor waits behind ToolSearch only with the v2 tool descriptions', () => {
+    expect(isDeferredTool(MonitorTool)).toBe(false)
+    on()
+    expect(isDeferredTool(MonitorTool)).toBe(true)
+  })
+
+  for (const [name, markers] of Object.entries(TOOL_MARKERS)) {
+    test(`v2: ${name} still names every capability`, async () => {
+      on()
+      const tool = getAllBaseTools().find(t => t.name === name)!
+      const text = await v2ToolText(tool)
+      const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
+      expect(missing.map(String)).toEqual([])
+    })
+  }
+
+  test('v2 prompt, tools and reminders together name every capability', async () => {
+    const v2 = systemPromptStates().find(([state]) => state === 'v2')
+    expect(v2).toBeDefined()
+    on()
+    const toolTexts = await Promise.all(getAllBaseTools().map(v2ToolText))
+    const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
+    const corpus = [v2![1], sessionGuidance(true), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
+    const missing = ANYWHERE_MARKERS.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
+    expect(missing.map(([capability]) => capability)).toEqual([])
+  })
+
+  // Per tool, so a description that stops honoring the switch is caught even
+  // while the others keep the total down. The marker tests above cannot see
+  // it: the default text names every marker too.
+  for (const name of ['Read', 'Grep', 'apply_patch', 'Bash', 'Build', 'Typecheck', 'RunTests']) {
+    test(`v2: the ${name} description is at most two thirds of the default`, async () => {
+      const tool = getAllBaseTools().find(t => t.name === name)!
+      const before = (await tool.prompt(TOOL_OPTIONS)).length
+      on()
+      expect((await tool.prompt(TOOL_OPTIONS)).length).toBeLessThan(before * (2 / 3))
+    })
+  }
+
+  test('v2: the skill listing keeps one short line per skill', () => {
+    const long = { ...FAKE_SKILL, description: 'x'.repeat(200) } as unknown as Command
+    const before = formatCommandsWithinBudget([long], 200_000)
+    on()
+    const after = formatCommandsWithinBudget([long], 200_000)
+    expect(after.length).toBeLessThan(before.length)
+    expect(after).toContain('coverage-fake-skill')
+  })
+
+  test('v2: the git reminder is shorter', () => {
+    const before = getBashGitInstructionsBody().length
+    on()
+    expect(getBashGitInstructionsBody().length).toBeLessThan(before)
+  })
 })

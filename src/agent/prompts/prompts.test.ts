@@ -532,6 +532,7 @@ describe('agent section under CLAUDIN_LEAN_AGENT_PROMPT', () => {
     isInProcessTeammate: () => false,
     isTeammate: () => false,
     isLeanAgentPromptEnabled: () => true,
+    isCompactToolPromptsEnabled: () => false,
   })
 
   test('flag off, both lanes are byte-identical to what shipped', () => {
@@ -627,6 +628,7 @@ describe('agent section where run_in_background is hidden', () => {
       isInProcessTeammate: () => false,
       isTeammate: () => false,
       isLeanAgentPromptEnabled: () => false,
+      isCompactToolPromptsEnabled: () => false,
     })
     expect(`${hidden}\n${description}`).not.toContain('run_in_background')
     // "by default" goes with the clause: it only contrasts with the

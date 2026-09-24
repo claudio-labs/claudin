@@ -15,7 +15,12 @@ import {
   detectBuildSystemFromCommand,
   detectSubprojects,
 } from 'src/tools/BuildTool/detect.js'
-import { BUILD_TOOL_NAME, DESCRIPTION } from 'src/tools/BuildTool/prompt.js'
+import {
+  BUILD_TOOL_NAME,
+  COMPACT_DESCRIPTION,
+  DESCRIPTION,
+} from 'src/tools/BuildTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { runBuild } from 'src/tools/BuildTool/run.js'
 import type { BuildProgress, BuildResult, BuildSystem } from 'src/tools/BuildTool/types.js'
 import {
@@ -229,7 +234,7 @@ export const BuildTool = buildTool({
     return DESCRIPTION
   },
   async prompt() {
-    return DESCRIPTION
+    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION
   },
   userFacingName,
   toAutoClassifierInput(input) {

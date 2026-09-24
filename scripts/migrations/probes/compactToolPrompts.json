@@ -1,0 +1,120 @@
+{
+  "test": "src/agent/prompts/__tests__/promptFeatureCoverage.test.ts",
+  "_note": "Removing a parameter's sentence from a compact description (Agent readOnly/isolation/SendMessage, Build directory, Typecheck baseline, RunTests framework, Grep's symbols mode) leaves the test green by design: the schema still names and describes the parameter, and schema text counts as something the model reads. Only behaviors the schema does not state are probed here.",
+  "source": "src/tools/FileReadTool/prompt.ts",
+  "probes": [
+    {
+      "name": "compact Read stops naming the heading outline",
+      "find": "Markdown and HTML outline by heading, a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X'",
+      "replace": "a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X'"
+    },
+    {
+      "name": "Read ignores the compact switch",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return isCompactToolPromptsEnabled()\n      ? renderCompactPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)\n      : renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)",
+      "replace": "    return renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)"
+    },
+    {
+      "name": "compact Grep stops describing the broad-search pivot",
+      "source": "src/tools/GrepTool/prompt.ts",
+      "find": " A broad \"content\" search comes back as the \"symbols\" map; pass \\`head_limit\\`, or narrow \\`path\\`/\\`glob\\`, to get the lines.",
+      "replace": ""
+    },
+    {
+      "name": "compact apply_patch drops the End of File anchor",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "; \"*** End of File\" anchors a hunk to the end of the file. The \"@@\" line is a search cursor",
+      "replace": ". The \"@@\" line is a search cursor"
+    },
+    {
+      "name": "compact Agent drops the fork semantics",
+      "source": "src/tools/AgentTool/prompt.ts",
+      "find": "- Omitting \\`subagent_type\\` forks you: the child inherits this whole conversation and re-reads it on every call it makes, so a fork costs more the deeper the session. A fresh agent (\\`subagent_type: \"Code\"\\` or a named one) starts from your prompt alone. Default to a fresh agent; fork only when the child needs what is in this conversation and a paragraph cannot carry it. Don't set \\`model\\` on a fork.\n",
+      "replace": ""
+    },
+    {
+      "name": "compact Bash drops the Typecheck redirect",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "${TYPECHECK_TOOL_NAME} (not tsc --noEmit/mypy), ",
+      "replace": ""
+    },
+    {
+      "name": "Build ignores the compact switch",
+      "source": "src/tools/BuildTool/BuildTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
+      "replace": "    return DESCRIPTION"
+    },
+    {
+      "name": "Typecheck ignores the compact switch",
+      "source": "src/tools/TypecheckTool/TypecheckTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
+      "replace": "    return DESCRIPTION"
+    },
+    {
+      "name": "RunTests ignores the compact switch",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
+      "replace": "    return DESCRIPTION"
+    },
+    {
+      "name": "Grep ignores the compact switch",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? getCompactDescription() : getDescription()",
+      "replace": "    return getDescription()"
+    },
+    {
+      "name": "apply_patch ignores the compact switch",
+      "source": "src/tools/ApplyPatchTool/ApplyPatchTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
+      "replace": "    return DESCRIPTION"
+    },
+    {
+      "name": "Bash ignores the compact switch",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  if (leanOverride === undefined && isCompactToolPromptsEnabled() && !hasEmbeddedSearchTools()) {\n    return getCompactPrompt()\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "Monitor stays eager under the compact switch",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  if (tool.name === MONITOR_TOOL_NAME && isCompactToolPromptsEnabled()) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "the lean git reminder drops the hook skips",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "and hook skips (\\`--no-verify\\`, \\`--no-gpg-sign\\`) run only when the user names them",
+      "replace": "run only when the user names them"
+    },
+    {
+      "name": "the lean git reminder drops the no-amend rule",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": " Never amend unless asked: after a failed pre-commit hook the commit did NOT happen, so fix it, re-stage and make a NEW commit.",
+      "replace": ""
+    },
+    {
+      "name": "the lean reminders switch is ignored for git",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  if (isLeanRemindersEnabled()) {\n    return getCompactGitInstructionsBody(commitAttribution, prAttribution)\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "the compact switch reads any family",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "    isEnvTruthy(process.env.CLAUDIN_COMPACT_TOOL_PROMPTS) &&\n    getFamilyForLogging(getMainLoopModel()) === 'anthropic'",
+      "replace": "    isEnvTruthy(process.env.CLAUDIN_COMPACT_TOOL_PROMPTS)"
+    },
+    {
+      "name": "the reminders switch reads any family",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "    isEnvTruthy(process.env.CLAUDIN_LEAN_REMINDERS) &&\n    getFamilyForLogging(getMainLoopModel()) === 'anthropic'",
+      "replace": "    isEnvTruthy(process.env.CLAUDIN_LEAN_REMINDERS)"
+    },
+    {
+      "name": "the skills listing ignores the lean cap",
+      "source": "src/tools/SkillTool/prompt.ts",
+      "find": "  const cap = isLeanRemindersEnabled() ? LEAN_LISTING_DESC_CHARS : MAX_LISTING_DESC_CHARS",
+      "replace": "  const cap = MAX_LISTING_DESC_CHARS"
+    }
+  ]
+}

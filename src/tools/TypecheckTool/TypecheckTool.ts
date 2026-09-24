@@ -12,7 +12,12 @@ import {
   detectCheckerFor,
   detectCheckerFromCommand,
 } from 'src/tools/TypecheckTool/detect.js'
-import { DESCRIPTION, TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
+import {
+  COMPACT_DESCRIPTION,
+  DESCRIPTION,
+  TYPECHECK_TOOL_NAME,
+} from 'src/tools/TypecheckTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { runTypecheck } from 'src/tools/TypecheckTool/run.js'
 import type { Checker, CheckProgress, CheckResult } from 'src/tools/TypecheckTool/types.js'
 import {
@@ -175,7 +180,7 @@ export const TypecheckTool = buildTool({
     return DESCRIPTION
   },
   async prompt() {
-    return DESCRIPTION
+    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION
   },
   userFacingName,
   toAutoClassifierInput(input) {

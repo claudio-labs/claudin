@@ -28,3 +28,11 @@ Notes:
 - A non-zero exit from a failing check is expected and is not an error.
 - dotnet, maven and gradle genuinely build: they write artifacts to disk and cost what a build costs. The other checkers only analyze.
 - Use plain Bash only when you need raw compiler output.`
+
+/** The v2 description (isCompactToolPromptsEnabled). Same invariance rule. */
+export const COMPACT_DESCRIPTION = `Type-check the project and get back only what your changes broke. Prefer it over Bash for type checks: it detects the checker (tsc, deno check, cargo check, pyright, mypy, go build, dart analyze, dotnet build, maven/gradle compile, phpstan, psalm), runs it, and hides the diagnostics that were already there. Each new diagnostic comes with file:line, the checker's code and a source excerpt.
+
+- The baseline: a run on a clean tree records the current commit's diagnostics as the known backlog, and later runs print only what is not in it. With uncommitted changes and no baseline for this commit, the last one from an earlier commit on the branch is used and the result says how far behind; with none, everything is reported as of unknown provenance.
+- \`path\` (a file, a directory or an array — one call for everything a change touched) filters what is reported, never what is checked. \`checker\` overrides detection, \`command\` runs an exact one.
+- \`severity: "all"\` adds warnings, \`baseline: "ignore"\` reports everything, \`baseline: "capture"\` re-records the backlog — only on a clean tree, and never to silence a check you don't understand.
+- A non-zero exit is expected. dotnet, maven and gradle really build. Use plain Bash only for raw compiler output.`
