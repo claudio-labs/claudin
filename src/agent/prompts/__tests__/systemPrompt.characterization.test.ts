@@ -73,6 +73,11 @@ const ENV_VALUE_RES: ReadonlyArray<readonly [RegExp, string]> = [
     /^(`<SESSION_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad`)$/gm,
     '$1<SESSION_ID>$2',
   ],
+  // The v2 prompt names the same directory inside an Environment bullet.
+  [
+    /(Scratchpad directory: <SESSION_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad )/g,
+    '$1<SESSION_ID>$2',
+  ],
 ]
 
 /**
@@ -106,8 +111,12 @@ function normalize(prompt: string): string {
   return out
 }
 
-function dump(extraArgs: readonly string[]): string {
-  const args = ['--dump-system-prompt', '--model', MODEL, ...extraArgs]
+function dump(
+  extraArgs: readonly string[],
+  extraEnv: Record<string, string> = {},
+  model = MODEL,
+): string {
+  const args = ['--dump-system-prompt', '--model', model, ...extraArgs]
   const res = spawnSync(process.execPath, [BUNDLE, ...args], {
     encoding: 'utf8',
     timeout: 120_000,
@@ -122,6 +131,7 @@ function dump(extraArgs: readonly string[]): string {
       // a fresh checkout produce too.
       CLAUDIN_CONFIG_DIR: join(DATA_DIR, 'claude-config'),
       NODE_DISABLE_COMPILE_CACHE: '1',
+      ...extraEnv,
     },
   })
   if (res.error) throw res.error
@@ -173,6 +183,22 @@ describe('shipped system prompt — characterization', () => {
     // main dump proves nothing about it — a parity pass that read only the
     // first has already reported sub-agent steering as missing.
     compareOrWrite('systemPrompt.subagent.txt', dump(['--subagent']))
+  }, 180_000)
+
+  // The v2 prompt (perf/prompts-v2): both opt-in switches on. Its own
+  // snapshot, so a change to the v2 text is reviewed like one to the default.
+  const V2_ENV = { CLAUDIN_LEAN_SYSTEM_PROMPT: '1', CLAUDIN_LEAN_MEMORY_PROMPT: '1' }
+
+  test('the v2 main-session prompt is byte-identical to its snapshot', () => {
+    compareOrWrite('systemPrompt.lean.txt', dump([], V2_ENV))
+  }, 180_000)
+
+  test('the v2 switches do not reach a model outside the Anthropic family', () => {
+    // getSystemPrompt applies the v2 text to the Anthropic family only. A
+    // first-party session on a non-Claude id resolves to the default family,
+    // so both switches on must render exactly the default prompt there.
+    const other = 'gpt-5'
+    expect(dump([], V2_ENV, other)).toBe(dump([], {}, other))
   }, 180_000)
 
   test('the snapshot is the flags-ON shape, not a source-side render', () => {

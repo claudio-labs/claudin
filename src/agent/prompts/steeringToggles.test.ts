@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import {
+  isLeanSystemPromptEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
 } from 'src/agent/prompts/steeringToggles.js'
@@ -8,6 +9,7 @@ import {
 const VARS = [
   'CLAUDIN_WORK_CONTRACT',
   'CLAUDIN_SUBAGENT_NOTES',
+  'CLAUDIN_LEAN_SYSTEM_PROMPT',
 ] as const
 
 afterEach(() => {
@@ -19,11 +21,9 @@ const CASES: Array<{ name: (typeof VARS)[number]; fn: () => boolean }> = [
   { name: 'CLAUDIN_SUBAGENT_NOTES', fn: isSubagentNotesEnabled },
 ]
 
-// Every toggle here is default-ON: the env can only subtract a section, never
-// add one. The one opt-IN toggle this file used to carry
-// (CLAUDIN_PLAN_NOOP_GUARD) was deleted with its clause, so the loop runs over
-// CASES directly again — if an opt-in one returns, it needs its own describe,
-// not a branch inside this loop.
+// Every toggle in CASES is default-ON: the env can only subtract a section,
+// never add one. The opt-IN one (CLAUDIN_LEAN_SYSTEM_PROMPT) has its own
+// describe below.
 for (const { name, fn } of CASES) {
   describe(name, () => {
     test('defaults ON when unset', () => {
@@ -68,6 +68,33 @@ describe('toggle independence', () => {
   })
 })
 
+describe('CLAUDIN_LEAN_SYSTEM_PROMPT (opt-in)', () => {
+  test('defaults OFF when unset', () => {
+    delete process.env.CLAUDIN_LEAN_SYSTEM_PROMPT
+    expect(isLeanSystemPromptEnabled()).toBe(false)
+  })
+
+  for (const value of ['1', 'true', 'yes', 'on']) {
+    test(`${JSON.stringify(value)} turns it on`, () => {
+      process.env.CLAUDIN_LEAN_SYSTEM_PROMPT = value
+      expect(isLeanSystemPromptEnabled()).toBe(true)
+    })
+  }
+
+  for (const value of ['0', 'false', '', 'maybe']) {
+    test(`${JSON.stringify(value)} leaves it off`, () => {
+      process.env.CLAUDIN_LEAN_SYSTEM_PROMPT = value
+      expect(isLeanSystemPromptEnabled()).toBe(false)
+    })
+  }
+
+  test('moves none of the default-ON lanes', () => {
+    for (const { name } of CASES) process.env[name] = '1'
+    process.env.CLAUDIN_LEAN_SYSTEM_PROMPT = '1'
+    for (const { fn } of CASES) expect(fn()).toBe(true)
+  })
+})
+
 describe('cache-prefix contract', () => {
   // The work-contract resolver reads at call time from inside the STATIC
   // (pre-boundary) half of the system prompt. That is only
@@ -89,7 +116,7 @@ describe('cache-prefix contract', () => {
     // toggle does not require editing a magic number — what is pinned is the
     // ratio, not the total.
     const resolvers = body.match(/^export function/gm)?.length ?? 0
-    expect(resolvers).toBe(CASES.length)
+    expect(resolvers).toBe(CASES.length + 1)
     expect(body.match(/process\.env\./g)).toHaveLength(resolvers)
   })
 })

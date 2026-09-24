@@ -35,11 +35,14 @@ import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 
 /** The shipped system prompt, one entry per state the bundle was dumped in. */
-function systemPromptStates(): Array<[string, string]> {
-  const states: Array<[string, string]> = []
-  for (const [state, file] of [['default', 'systemPrompt.main.txt']] as const) {
+function systemPromptStates(): Array<[string, string, boolean]> {
+  const states: Array<[string, string, boolean]> = []
+  for (const [state, file, lean] of [
+    ['default', 'systemPrompt.main.txt', false],
+    ['v2', 'systemPrompt.lean.txt', true],
+  ] as const) {
     const path = join(SNAPSHOT_DIR, file)
-    if (existsSync(path)) states.push([state, readFileSync(path, 'utf8')])
+    if (existsSync(path)) states.push([state, readFileSync(path, 'utf8'), lean])
   }
   return states
 }
@@ -51,12 +54,12 @@ const FAKE_SKILL = {
   source: 'bundled',
 } as unknown as Command
 
-function sessionGuidance(): string {
+function sessionGuidance(lean: boolean): string {
   const tools = new Set(['AskUserQuestion', 'Agent', 'Skill', 'Grep', 'Glob'])
   // FORK_SUBAGENT ships on, but `feature()` reads false under `bun test`, so
   // the guidance above renders the fork-off lane; the shipping lane comes from
   // its pure seam, in its default (lean, background hidden in `-p`) shape.
-  return [getSessionSpecificGuidanceSection(tools, [FAKE_SKILL]) ?? '', buildAgentToolSection(true, true, true)].join('\n')
+  return [getSessionSpecificGuidanceSection(tools, [FAKE_SKILL], lean) ?? '', buildAgentToolSection(true, true, true)].join('\n')
 }
 
 const TOOL_OPTIONS = {
@@ -188,8 +191,8 @@ const ANYWHERE_MARKERS: ReadonlyArray<[string, string | RegExp]> = [
 describe('prompt feature coverage', () => {
   const states = systemPromptStates()
 
-  test('the default system prompt snapshot is present', () => {
-    expect(states.map(([state]) => state)).toContain('default')
+  test('both system prompt snapshots are present', () => {
+    expect(states.map(([state]) => state)).toEqual(['default', 'v2'])
   })
 
   for (const [name, markers] of Object.entries(TOOL_MARKERS)) {
@@ -202,11 +205,11 @@ describe('prompt feature coverage', () => {
     })
   }
 
-  for (const [state, systemPrompt] of states) {
+  for (const [state, systemPrompt, lean] of states) {
     test(`${state}: every capability is named somewhere the model reads`, async () => {
       const toolTexts = await Promise.all(getAllBaseTools().map(toolText))
       const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
-      const corpus = [systemPrompt, sessionGuidance(), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
+      const corpus = [systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
       const missing = ANYWHERE_MARKERS.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
       expect(missing.map(([capability]) => capability)).toEqual([])
     })

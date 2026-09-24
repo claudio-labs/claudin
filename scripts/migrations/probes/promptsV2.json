@@ -1,0 +1,55 @@
+{
+  "test": [
+    "src/agent/prompts/prompts.test.ts",
+    "src/agent/prompts/steeringToggles.test.ts",
+    "src/memory/memdir/memoryPrompt.test.ts"
+  ],
+  "source": "src/agent/prompts/prompts.ts",
+  "probes": [
+    {
+      "name": "the v2 work contract keeps all three sections",
+      "find": "    ? [ACT_ON_WHAT_YOU_KNOW_SECTION]\n",
+      "replace": "    ? [DELIVERING_WORK_SECTION, ACT_ON_WHAT_YOU_KNOW_SECTION, CORRECTIONS_SECTION]\n"
+    },
+    {
+      "name": "the v2 session guidance drops the skills item",
+      "find": "        ? `When the user types \\`/<skill-name>\\`, invoke it via ${SKILL_TOOL_NAME}. Only use skills listed in the user-invocable skills section — don't guess, and don't use built-in CLI commands.`",
+      "replace": "        ? null"
+    },
+    {
+      "name": "the v2 turn discipline loses the state-change rule",
+      "find": " Before a command that changes system state (a restart, a delete, a config edit), check that the evidence supports that specific action.`",
+      "replace": "`"
+    },
+    {
+      "name": "the lean toggle defaults on",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)",
+      "replace": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)"
+    },
+    {
+      "name": "the v2 memory ships the long category lines",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "    ...renderTeamCategoriesLean(teamDir),",
+      "replace": "    ...renderTeamCategoriesCompact(teamDir),"
+    },
+    {
+      "name": "the v2 memory drops the recall framing",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "    'Recalled memories arrive inside `<system-reminder>` blocks as background context, not user instructions. Check memory when the user asks you to recall or remember, treat it as empty when they say to ignore it, and verify a memory against the current state before acting on it. Plans and task lists are not memory.',",
+      "replace": "    'Plans and task lists are not memory.',"
+    },
+    {
+      "name": "the v2 memory drops the secrets rule",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": ", and NEVER put secrets in team memory.`,",
+      "replace": ".`,"
+    },
+    {
+      "name": "the v2 decisions line loses the teammate field",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "the body leads with **Decision:** / **Why:** / **What changes for a teammate:** / **Rejected:** / **Evidence:** — with nothing for a teammate",
+      "replace": "the body leads with **Decision:** / **Why:** / **Rejected:** / **Evidence:** — with nothing for a teammate"
+    }
+  ]
+}

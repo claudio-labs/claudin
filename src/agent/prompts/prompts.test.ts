@@ -5,6 +5,8 @@ import {
   ACT_ON_WHAT_YOU_KNOW_SECTION,
   CORRECTIONS_SECTION,
   DELIVERING_WORK_SECTION,
+  LEAN_TOKEN_BUDGET_SECTION,
+  LEAN_TURN_DISCIPLINE_SECTION,
   PRONOUNS_SECTION,
   SUBAGENT_NOTES_BULLETS,
   TOOL_BATCHING_HARNESS_BULLET,
@@ -15,6 +17,7 @@ import {
   buildAgentToolSection,
   buildLeanMultiHopItem,
   getHarnessSection,
+  getSessionSpecificGuidanceSection,
   isVerbositySteeringEnabled,
   prependBullets,
 } from 'src/agent/prompts/prompts.js'
@@ -272,6 +275,39 @@ describe('buildWorkContractSections', () => {
 
   test('off: emits nothing (spreads away, no null to filter)', () => {
     expect(buildWorkContractSections(false)).toEqual([])
+  })
+
+  test('v2: keeps only the act-on-what-you-know line', () => {
+    expect(buildWorkContractSections(true, true)).toEqual([ACT_ON_WHAT_YOU_KNOW_SECTION])
+    // The killswitch still subtracts it.
+    expect(buildWorkContractSections(false, true)).toEqual([])
+  })
+})
+
+describe('v2 system prompt pieces', () => {
+  test('wording matches snapshot', () => {
+    expect({
+      turnDiscipline: LEAN_TURN_DISCIPLINE_SECTION,
+      tokenBudget: LEAN_TOKEN_BUDGET_SECTION,
+      harness: ['# Harness', ...prependBullets(buildHarnessItems(false))].join('\n'),
+    }).toMatchSnapshot()
+  })
+
+  test('the turn discipline keeps both rules it replaces', () => {
+    expect(LEAN_TURN_DISCIPLINE_SECTION).toContain('promise of work')
+    expect(LEAN_TURN_DISCIPLINE_SECTION).toContain('your assessment is the deliverable')
+    expect(LEAN_TURN_DISCIPLINE_SECTION).toContain('changes system state')
+  })
+
+  test('the v2 session guidance is shorter and keeps every item', () => {
+    const tools = new Set(['AskUserQuestion', 'Agent', 'Skill', 'Grep', 'Glob'])
+    const skill = { type: 'prompt', name: 's', description: 'd', source: 'bundled' } as never
+    const full = getSessionSpecificGuidanceSection(tools, [skill])!
+    const lean = getSessionSpecificGuidanceSection(tools, [skill], true)!
+    expect(lean.length).toBeLessThan(full.length)
+    expect(lean.split('\n').length).toBe(full.split('\n').length)
+    expect(lean).toContain('AskUserQuestion')
+    expect(lean).toContain('`/<skill-name>`')
   })
 })
 

@@ -1,4 +1,4 @@
-import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 // Runtime opt-out for the static steering block with enough mass in the
 // cacheable prefix to be worth measuring: the WORK_CONTRACT sections (~885
@@ -48,4 +48,19 @@ export function isWorkContractEnabled(): boolean {
  */
 export function isSubagentNotesEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_NOTES)
+}
+
+/**
+ * The v2 system prompt: Claude Code 2.1.280's lean `-p` shape with every
+ * Claudin capability kept (docs/tech/prompts/claude-code-2.1.280-reference.md,
+ * pinned by promptFeatureCoverage.test.ts). The whole prompt, not one section,
+ * moved thinking 30–50% in the transplant replays of 2026-09-23, so the v2 is
+ * one switch. Anthropic family only — getSystemPrompt checks the family.
+ *
+ * Opt-in (`CLAUDIN_LEAN_SYSTEM_PROMPT=1`) until its session A/B gate holds.
+ * Same cache reasoning as the toggles above: process-constant, so it yields
+ * two prefix texts, never one that flips mid-session.
+ */
+export function isLeanSystemPromptEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)
 }

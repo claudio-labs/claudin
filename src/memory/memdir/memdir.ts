@@ -344,8 +344,12 @@ export function buildMemoryPrompt(params: {
 
 /**
  * Build the "Searching past context" section if the feature gate is enabled.
+ * `lean` (the v2 prompt) says the same two steps in one line.
  */
-export function buildSearchingPastContextSection(autoMemDir: string): string[] {
+export function buildSearchingPastContextSection(
+  autoMemDir: string,
+  lean = false,
+): string[] {
   if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_coral_fern', false)) {
     return []
   }
@@ -359,6 +363,11 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
   const transcriptSearch = embedded
     ? `grep -rn "<search term>" ${projectDir}/ --include="*.jsonl"`
     : `${GREP_TOOL_NAME} with pattern="<search term>" path="${projectDir}/" glob="*.jsonl"`
+  if (lean) {
+    return [
+      `To search past context, use narrow terms (error messages, paths, function names): first your memory (\`${memSearch}\`), then, as a slow last resort, the session transcripts (\`${transcriptSearch}\`).`,
+    ]
+  }
   return [
     '## Searching past context',
     '',
@@ -377,6 +386,15 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
 }
 
 /**
+ * The v2 memory prompt (teamMemPrompts.ts `buildLeanCombinedMemoryPrompt`).
+ * Opt-in (`CLAUDIN_LEAN_MEMORY_PROMPT=1`) until its session A/B gate holds;
+ * getSystemPrompt applies it to the Anthropic family only.
+ */
+export function isLeanMemoryPromptEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_LEAN_MEMORY_PROMPT)
+}
+
+/**
  * Load the unified memory prompt for inclusion in the system prompt.
  * Dispatches based on which memory systems are enabled:
  *   - auto + team: combined prompt (both directories)
@@ -384,9 +402,11 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
  * Team memory requires auto memory (enforced by isTeamMemoryEnabled), so
  * there is no team-only branch.
  *
+ * `lean` selects the v2 text of the combined prompt.
+ *
  * Returns null when auto memory is disabled.
  */
-export async function loadMemoryPrompt(): Promise<string | null> {
+export async function loadMemoryPrompt(lean = false): Promise<string | null> {
   const autoEnabled = isAutoMemoryEnabled()
 
   // Cowork injects memory-policy text via env var; thread into all builders.
@@ -408,7 +428,9 @@ export async function loadMemoryPrompt(): Promise<string | null> {
       // out from under the auto dir, add a second ensureMemoryDirExists call
       // for autoDir here.
       await ensureMemoryDirExists(teamDir)
-      return teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines)
+      return lean
+        ? teamMemPrompts!.buildLeanCombinedMemoryPrompt(extraGuidelines)
+        : teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines)
     }
   }
 
