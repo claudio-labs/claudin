@@ -484,6 +484,64 @@ describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every li
       expect(floored).toContain("    'row', (×3)");
       expect(floored).not.toContain("\u001b[31m");
     });
+
+    // A `cd` before the cat, or a head or tail in place of it, is a pure read
+    // all the same (fileReadShape.ts).
+    const READ_SHAPES = ["cd src && cat rows.py", "head -n 40 src/rows.py", "tail -n +1 src/rows.py"];
+
+    test("flag on: after a cd, or through head or tail, the bytes stay too", () => {
+      for (const command of READ_SHAPES) {
+        expect(on.applyBashFilterToStdout(EXACT, false, planFor(on, command))).toBe(
+          `<bash-output-read>${EXACT}</bash-output-read>`,
+        );
+      }
+    });
+
+    test("flag off: after a cd, or through head or tail, the floor folds and strips as always", () => {
+      for (const command of READ_SHAPES) {
+        const floored = off.applyBashFilterToStdout(EXACT, false, planFor(off, command));
+        expect(floored).not.toContain("<bash-output-read>");
+        expect(floored).not.toContain("import os\n\n\ndef a():");
+        expect(floored).toContain("    'row', (×3)");
+        expect(floored).not.toContain("\u001b[31m");
+      }
+    });
+  });
+
+  // The two calls of the 5-arm A/B (20260924-212723) the grammar refused and
+  // the cap cut to 30 lines: a read after a `cd` (catread r5, 345 lines), and
+  // one with a `head -c` among its cats (catread r2, 568 lines, 23,977 chars).
+  describe("the A/B's two misses: a read after a cd, one with a head among its cats", () => {
+    const CD_READ =
+      "cd src && cat catalog.ts cli.ts discounts.ts errors.ts money.ts quote.ts receipt.ts";
+    const HEAD_READ =
+      'cat -n src/types.ts; head -c 1500 data/catalog.json; echo; cat data/carts/basic-us.json; for f in test/*.ts; do echo "=== $f"; cat -n $f; done';
+
+    test("flag on: under 28k each comes back whole, in the read wrapper", () => {
+      for (const command of [CD_READ, HEAD_READ]) {
+        expect(on.applyBashFilterToStdout(UNDER, false, planFor(on, command))).toBe(
+          `<bash-output-read>${UNDER}</bash-output-read>`,
+        );
+      }
+    });
+
+    test("flag off: each is cut to 30 lines, as the A/B's were", () => {
+      for (const command of [CD_READ, HEAD_READ]) {
+        expect(off.applyBashFilterToStdout(UNDER, false, planFor(off, command))).toStartWith(
+          '<bash-output-filtered original="" lines="30/665"',
+        );
+      }
+    });
+
+    // Over 28k a read that prints part of a file keeps the cap, as one with
+    // a listing does: the whole-file fit has no whole file to place for it.
+    test("flag on, over 28k: still cut to 30 lines", () => {
+      for (const command of [CD_READ, HEAD_READ]) {
+        expect(on.applyBashFilterToStdout(OVER, false, planFor(on, command))).toStartWith(
+          '<bash-output-filtered original="" lines="30/665"',
+        );
+      }
+    });
   });
 
   test("with the flag on, a chain that is not a pure read is still capped", () => {
@@ -525,6 +583,21 @@ describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every li
 
     test("a command that is not a pure read", () => {
       expect(on.overBudgetFileRead(OVER, planFor(on, `git status && ${LOOP}`), true)).toBeNull();
+    });
+
+    // Part of a file is no whole file to fit: a head or tail keeps the cap.
+    test("a read with a head or tail segment keeps the cap", () => {
+      for (const command of [`head -c 1500 data/catalog.json; echo; ${LOOP}`, `${LOOP}; tail -n 5 README.md`]) {
+        expect(on.overBudgetFileRead(OVER, planFor(on, command), true)).toBeNull();
+      }
+    });
+
+    // BashTool resolves each word from where the command started, through
+    // the directory the `cd` names.
+    test("after a cd, the files it names carry the cd's directory", () => {
+      expect(on.overBudgetFileRead(OVER, planFor(on, `cd pkg && ${LOOP}`), false)).toEqual(
+        LOOP_READS.map((word) => ({ ...word, dir: "pkg" })),
+      );
     });
 
     test("with the flag off, never", () => {

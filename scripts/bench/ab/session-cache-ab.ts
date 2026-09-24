@@ -914,6 +914,28 @@ function stripReadNotes(text: string): string {
   return READ_NOTE_TAILS.reduce((out, tail) => out.replace(tail, ''), text)
 }
 
+/**
+ * A `cat` where a command starts: first, or after `;`, `&`, `&&`, `||`, a
+ * newline, `(`, `{`, `do`, `then` or `else`. Not after a lone `|`, where it
+ * is a pipe's sink rather than a print of files.
+ */
+const CAT_COMMAND_RE = /(?:(?:^|[;&({\n]|\|\|)\s*|\b(?:do|then|else)\s+)cat(?=\s|$)/
+
+/**
+ * A successful Bash call with a `cat` in it that did not come back in
+ * `<bash-output-read>`: with the pass-through on, every pure read that
+ * succeeds does, so this is a command the pure-read grammar refused
+ * (fileReadShape.ts) — the misses a grammar change goes after. It cannot run
+ * the grammar itself (its import chain reaches a module only the build
+ * stubs), so it reads the verdict off the result, and means that only in an
+ * arm with CLAUDIN_BASH_FILE_READ_PASSTHROUGH on; elsewhere nothing wears the
+ * wrapper and it counts every such call. A pure read over 28k with a listing,
+ * a `head` or a `tail` keeps the cap, and counts here too.
+ */
+export function isCatReadMiss(info: BashInfo): boolean {
+  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)
+}
+
 export function bashInfo(call: Call): BashInfo {
   const text = call.text ?? ''
   const command = typeof call.input.command === 'string' ? call.input.command.trim() : ''
@@ -1244,6 +1266,8 @@ type Metrics = {
   bashReadMarkers: number
   bashNotShown: number
   bashCountAsRead: number
+  /** Successful Bash cats not in `<bash-output-read>`: see `isCatReadMiss`. */
+  bashCatMisses: number
   testRuns: number
   gitOps: number
   reads: number
@@ -1616,6 +1640,7 @@ function metricsOf(r: RunResult): Metrics {
     bashReadMarkers: bash.filter(b => b.marker === 'read').length,
     bashNotShown: bash.filter(b => b.notShown).length,
     bashCountAsRead: bash.filter(b => b.countsAsRead).length,
+    bashCatMisses: bash.filter(isCatReadMiss).length,
     testRuns: r.calls.filter(
       c => c.name === 'RunTests' || (c.name === 'Bash' && TEST_CMD_RE.test(String(c.input.command ?? ''))),
     ).length,
@@ -1747,6 +1772,7 @@ const METRIC_ROWS: MetricRow[] = [
   ['Bash results in `<bash-output-read>`', 'bashReadMarkers', fmtInt],
   ['  with a `Not shown` line', 'bashNotShown', fmtInt],
   ['Bash results with a count-as-read line', 'bashCountAsRead', fmtInt],
+  ['Bash cats the pure-read grammar refused (pass-through arms)', 'bashCatMisses', fmtInt],
   ['test runs (Bash or RunTests)', 'testRuns', fmtInt],
   ['git ops (Bash or Git)', 'gitOps', fmtInt],
   ['Read calls', 'reads', fmtInt],

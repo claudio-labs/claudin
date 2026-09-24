@@ -683,6 +683,9 @@ setOriginalCwd(process.env.PROBE_DIR)
 setCwd(process.env.PROBE_DIR)
 const results = []
 for (const command of JSON.parse(process.env.PROBE_COMMANDS)) {
+  // Each command starts where the session does: a cd moves the shell's cwd
+  // for whatever runs after it.
+  setCwd(process.env.PROBE_DIR)
   let appState = getDefaultAppState()
   const context = {
     abortController: new AbortController(),
@@ -710,6 +713,10 @@ type CallResult = {
 describe('call() with both flags on — what reaches the result', () => {
   const A = 'export const a = 1\nexport const aa = 2\n'
   const B = 'export const b = 1\nexport const bb = 2\n'
+  // sub/a.ts differs from a.ts, so a path resolved in the wrong directory
+  // cannot be found in the output.
+  const SUB_A = 'export const subA = 1\nexport const subAa = 2\n'
+  const ONE_LINE = 'export {}\n'
   const LOOP = 'for f in dump/*.ts; do echo "=== $f"; cat $f; done'
   const COUNT_AS_READ = 'files printed whole — they count as read: Edit, Patch and Write accept them without a Read.)'
   const dumpName = (i: number) => `dump/f${String(i).padStart(2, '0')}.ts`
@@ -718,13 +725,18 @@ describe('call() with both flags on — what reaches the result', () => {
   let fits: CallResult
   let overBudget: CallResult
   let failed: CallResult
+  let afterCd: CallResult
+  let overBudgetAfterCd: CallResult
 
   beforeAll(() => {
     dir = realpathSync(mkdtempSync(join(tmpdir(), 'bash-call-')))
     configDir = mkdtempSync(join(tmpdir(), 'bash-call-config-'))
     mkdirSync(join(dir, 'dump'))
+    mkdirSync(join(dir, 'sub'))
     writeFileSync(join(dir, 'a.ts'), A)
     writeFileSync(join(dir, 'b.ts'), B)
+    writeFileSync(join(dir, 'sub', 'a.ts'), SUB_A)
+    writeFileSync(join(dir, 'sub', 'one.txt'), ONE_LINE)
     for (let i = 0; i < 20; i++) {
       const lines = Array.from({ length: 80 }, (_, n) => `export const f${i}_${n} = '${'x'.repeat(12)}'`)
       writeFileSync(join(dir, dumpName(i)), `${lines.join('\n')}\n`)
@@ -732,7 +744,13 @@ describe('call() with both flags on — what reaches the result', () => {
     // A checked-out tree predates the commands run in it, and the credit
     // refuses a file dated at or after the command started.
     const before = new Date(Date.now() - 60_000)
-    for (const path of ['a.ts', 'b.ts', ...readdirSync(join(dir, 'dump')).map(name => join('dump', name))]) {
+    for (const path of [
+      'a.ts',
+      'b.ts',
+      join('sub', 'a.ts'),
+      join('sub', 'one.txt'),
+      ...readdirSync(join(dir, 'dump')).map(name => join('dump', name)),
+    ]) {
       utimesSync(join(dir, path), before, before)
     }
     const env: Record<string, string | undefined> = {
@@ -743,7 +761,13 @@ describe('call() with both flags on — what reaches the result', () => {
       CLAUDIN_BASH_FILE_READ_PASSTHROUGH: '1',
       CLAUDIN_BASH_READ_CREDIT: '1',
       PROBE_DIR: dir,
-      PROBE_COMMANDS: JSON.stringify(['cat a.ts b.ts', LOOP, `${LOOP}; cat missing.ts`]),
+      PROBE_COMMANDS: JSON.stringify([
+        'cat a.ts b.ts',
+        LOOP,
+        `${LOOP}; cat missing.ts`,
+        'cd sub && cat a.ts one.txt',
+        'cd dump && for f in *.ts; do echo "=== $f"; cat $f; done',
+      ]),
     }
     // The limits these results are read against, whatever the shell exports.
     delete env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER
@@ -757,7 +781,7 @@ describe('call() with both flags on — what reaches the result', () => {
     if (child.status !== 0) {
       throw new Error(`call() probe failed (exit ${child.status})\nstdout: ${child.stdout}\nstderr: ${child.stderr}`)
     }
-    ;[fits, overBudget, failed] = JSON.parse(child.stdout) as CallResult[]
+    ;[fits, overBudget, failed, afterCd, overBudgetAfterCd] = JSON.parse(child.stdout) as CallResult[]
   })
 
   afterAll(() => {
@@ -800,5 +824,33 @@ describe('call() with both flags on — what reaches the result', () => {
     expect(output).toStartWith('=== dump/f00.ts\n')
     // The spill's first 30k, cut mid-file — not the whole files within 28k.
     expect(output.length).toBeGreaterThan(28_000)
+  })
+
+  // The `cd` moves the shell's cwd, and getCwd() is sub/ once the command has
+  // run. The paths it names resolve from where it started: through sub/ once,
+  // not twice.
+  test('a read after a cd: its files found from where the command started, and named from there', () => {
+    const data = afterCd.data!
+    expect(data.stdout).toBe(`<bash-output-read>${SUB_A}${ONE_LINE}</bash-output-read>`)
+    expect(data.creditedFiles).toEqual([join(dir, 'sub', 'a.ts')])
+    expect(data.readNote).toBe(
+      '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+        'Not counted: sub/one.txt (one line).',
+    )
+    expect(afterCd.read).toEqual([join(dir, 'sub', 'a.ts')])
+  })
+
+  test('a read past 28k after a cd: fitted to the whole files, the rest named from where it started', () => {
+    const data = overBudgetAfterCd.data!
+    expect(data.persistedOutputPath).toBeUndefined()
+    expect(data.stdout).toStartWith('<bash-output-read>=== f00.ts\n')
+    const shown = data.creditedFiles?.length ?? 0
+    expect(shown).toBeGreaterThan(5)
+    expect(data.creditedFiles).toEqual(Array.from({ length: shown }, (_, i) => join(dir, dumpName(i))))
+    const notShown = Array.from({ length: 20 - shown }, (_, k) => dumpName(shown + k))
+    expect(data.readNote?.split('\n')).toEqual([
+      `Not shown — over the 28k a Bash result shows whole: ${notShown.join(', ')}. cat them in another call, or Read them.`,
+      `(${shown} ${COUNT_AS_READ}`,
+    ])
   })
 })

@@ -12,8 +12,12 @@
  *
  * With `CLAUDIN_BASH_READ_CREDIT=1`, after any command that succeeded, each
  * file its `cat` segments name (`catReadsOf`, fileReadShape.ts — `cat`
- * arguments, and a loop's word list with its globs expanded against the cwd)
- * is compared with what the model actually received. When the file's complete
+ * arguments, and a loop's word list with its globs expanded) is compared with
+ * what the model actually received. A path resolves in the directory the
+ * command started in, or in the one a `cd` before it moved to: BashTool reads
+ * the cwd before the run, since a `cd` has moved the shell's by the time this
+ * runs. The `head` and `tail` segments name their files too, and a file they
+ * printed only part of is not found whole. When the file's complete
  * current content, or its `cat -n` rendering, sits in that text verbatim from
  * the start of a line to the end of one, the file is registered as a
  * whole-file Read registers it (`offset: 1`, no limit), dated to its mtime so
@@ -39,7 +43,8 @@
  *    wrappers). Both sizes are the tool result's, which carries any note after
  *    stdout, this one's line included;
  *  - a run that was interrupted or carries stderr (the cwd-reset note);
- *  - a file shown only in part, which is every file the floor cap cut through;
+ *  - a file shown only in part, which is every file the floor cap cut through,
+ *    and every one a `head` or `tail` printed part of;
  *  - a file of fewer than two non-blank lines: a single line can sit in the
  *    output for reasons that have nothing to do with that file;
  *  - a file written at or after the command started (see judge);
@@ -167,6 +172,9 @@ type Judged = { readonly path: string; readonly verdict: Verdict }
  * with the line that tells the model so. Fail-open: a file that cannot be
  * checked is not credited, and nothing here can fail the Bash call.
  *
+ * `cwd` is the directory the command started in. The paths it names resolve
+ * from there, and the line names them relative to it.
+ *
  * Every file is judged before any is registered, because the line joins the
  * result the size gates measure: a result it would push past one of them
  * credits nothing, and says nothing.
@@ -261,9 +269,10 @@ async function candidatesOf(
   const outside = new Set<string>()
   const candidates: { path: string; inside: boolean }[] = []
   for (const word of reads) {
+    const base = baseOf(word, cwd)
     const paths = word.glob
-      ? await expandGlob(word.text, cwd, MAX_CANDIDATES)
-      : [resolve(cwd, word.text)]
+      ? await expandGlob(word.text, base, MAX_CANDIDATES)
+      : [resolve(base, word.text)]
     for (const path of paths) {
       if (inside.has(path) || outside.has(path)) continue
       if (!pathInAllowedWorkingPath(path, toolPermissionContext)) {
@@ -278,6 +287,14 @@ async function candidatesOf(
     }
   }
   return candidates
+}
+
+/**
+ * The directory `word` resolves in: the one the command started in (`cwd`),
+ * or the one a `cd` earlier in the command moved to from there.
+ */
+function baseOf(word: ReadWord, cwd: string): string {
+  return word.dir === undefined ? cwd : resolve(cwd, word.dir)
 }
 
 /**
@@ -504,6 +521,8 @@ export type FittedRead = {
  *
  * Unlike the credit, a file outside the working directories is read here too:
  * its bytes are in the output already, and reading them again only places it.
+ * `cwd` is where the command started, as for the credit: the paths resolve
+ * from it and the files left out are named relative to it.
  *
  * Null when the command names no file, when not even its first file can be
  * placed, or on any failure; the caller then goes on as before.
@@ -568,9 +587,10 @@ async function namedFiles(
   const paths: string[] = []
   let namesAll = true
   for (const word of reads) {
+    const base = baseOf(word, cwd)
     const expanded = word.glob
-      ? await expandGlob(word.text, cwd, MAX_NAMED)
-      : [resolve(cwd, word.text)]
+      ? await expandGlob(word.text, base, MAX_NAMED)
+      : [resolve(base, word.text)]
     // A glob that reached the cap may have matched more than it returned.
     if (expanded.length >= MAX_NAMED) namesAll = false
     for (const path of expanded) {

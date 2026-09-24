@@ -839,6 +839,160 @@ describe('only files inside the working directories are credited', () => {
   })
 })
 
+// A `cd` in the command moves where the paths after it resolve, from the
+// directory the command started in: the cwd BashTool passes, whatever the
+// shell's is by the time the credit runs (fileReadShape.ts).
+describe('a cd before the cat', () => {
+  // The A/B call the grammar refused (session-cache-ab 20260924-212723, catread r5).
+  test('the recorded `cd src && cat …` credits each file under src/', async () => {
+    const command =
+      'cd src && cat catalog.ts cli.ts discounts.ts errors.ts money.ts quote.ts receipt.ts'
+    expect(await credit(ran(command))).toEqual(
+      ['catalog', 'cli', 'discounts', 'errors', 'money', 'quote', 'receipt'].map(name =>
+        at(`src/${name}.ts`),
+      ),
+    )
+  })
+
+  test('`cd src && cat a.ts b.ts` credits src/a.ts and src/b.ts', async () => {
+    expect(await creditWithNote(ran('cd src && cat cart.ts types.ts'))).toEqual({
+      credited: [at('src/cart.ts'), at('src/types.ts')],
+      note: `(2 ${COUNT_AS_READ}`,
+    })
+  })
+
+  test('the names in the line stay relative to where the command started', async () => {
+    writeFixture(at('src/one-line.ts'), 'export {}\n')
+    try {
+      expect(await creditWithNote(ran('cd src && cat cart.ts one-line.ts'))).toEqual({
+        credited: [at('src/cart.ts')],
+        note:
+          '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+          'Not counted: src/one-line.ts (one line).',
+      })
+    } finally {
+      rmSync(at('src/one-line.ts'))
+    }
+  })
+
+  test('cds compose', async () => {
+    expect(await credit(ran('cd data && cd carts && cat uk-books.json'))).toEqual([
+      at('data/carts/uk-books.json'),
+    ])
+  })
+
+  test('a glob after a cd expands there', async () => {
+    expect(await credit(ran('cd data/carts && cat *.json'))).toEqual([
+      at('data/carts/basic-us.json'),
+      at('data/carts/coupons-eu.json'),
+      at('data/carts/uk-books.json'),
+    ])
+  })
+
+  test('a cd back to the start is the start', async () => {
+    expect(await credit(ran('cd src && cd .. && cat README.md'))).toEqual([at('README.md')])
+  })
+
+  // The working-directory gate applies where the paths resolve.
+  test('a cd out of the project credits nothing there', async () => {
+    for (const command of [
+      `cd .. && cat ${basename(outside)}/secret.ts`,
+      `cd ${outside} && cat secret.ts`,
+    ]) {
+      const shown = ran(command)
+      expect(shown.stdout).toContain("export const token = 'outside'")
+      expect(await credit(shown)).toEqual([])
+    }
+    expect(cache.size).toBe(0)
+  })
+
+  test('beside a file inside, the line names the one outside as such', async () => {
+    const result = await creditWithNote(
+      ran(`cat README.md && cd .. && cat ${basename(outside)}/secret.ts`),
+    )
+    expect(result).toEqual({
+      credited: [at('README.md')],
+      note:
+        '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+        `Not counted: ${join(outside, 'secret.ts')} (outside the project).`,
+    })
+  })
+})
+
+// `head` and `tail` print part of a file. It counts only when that part is
+// the whole of it — a short file — found by the same verbatim check as a cat.
+describe('a head or tail credits a file it printed whole', () => {
+  test('a head of a short file credits it', async () => {
+    expect(await creditWithNote(ran('head -n 20 README.md'))).toEqual({
+      credited: [at('README.md')],
+      note: '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.)',
+    })
+  })
+
+  test('a head of a long file does not', async () => {
+    expect(await creditWithNote(ran('head -n 5 src/types.ts'))).toEqual({ credited: [], note: null })
+    expect(cache.size).toBe(0)
+  })
+
+  test('beside a file printed whole, the line names the one a head cut', async () => {
+    expect(await creditWithNote(ran('cat README.md; head -n 5 src/types.ts'))).toEqual({
+      credited: [at('README.md')],
+      note:
+        '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+        'Not counted: src/types.ts (cut).',
+    })
+  })
+
+  // `tail -n +1` prints each file whole, under a `==> name <==` header when
+  // there are several.
+  test('tail -n +1 of several files credits each', async () => {
+    expect(await credit(ran('tail -n +1 README.md package.json'))).toEqual([
+      at('README.md'),
+      at('package.json'),
+    ])
+  })
+
+  // The A/B call the grammar refused for its `head -c` (20260924-212723,
+  // catread r2). The catalog is 1,594 bytes there, so `head -c 1500` cut it.
+  test('the recorded mixed read credits every file it printed whole', async () => {
+    const catalog =
+      '[\n' +
+      Array.from(
+        { length: 40 },
+        (_, i) => `  { "sku": "SKU-${String(i).padStart(3, '0')}", "unitCents": ${1000 + i} }`,
+      ).join(',\n') +
+      '\n]\n'
+    writeFixture(at('data/catalog.json'), catalog)
+    writeFixture(
+      at('test/cart.test.ts'),
+      "import { expect, test } from 'bun:test'\nimport { parseCart } from '../src/cart'\n\ntest('parses', () => {\n  expect(parseCart({ region: 'US' }).lines).toEqual([])\n})\n",
+    )
+    writeFixture(
+      at('test/helpers.ts'),
+      'export const cartPath = (name: string) => `data/carts/${name}.json`\nexport const cents = (n: number) => n\n',
+    )
+    try {
+      expect(catalog.length).toBeGreaterThan(1_500)
+      const shown = ran(
+        'cat -n src/types.ts; head -c 1500 data/catalog.json; echo; cat data/carts/basic-us.json; for f in test/*.ts; do echo "=== $f"; cat -n $f; done',
+      )
+      // What the pass-through hands the model for it now that it is a pure read.
+      expect(await creditWithNote({ ...shown, stdout: readWrapped(`${shown.stdout}\n`) })).toEqual({
+        credited: [
+          at('src/types.ts'),
+          at('data/carts/basic-us.json'),
+          at('test/cart.test.ts'),
+          at('test/helpers.ts'),
+        ],
+        note: `(4 ${COUNT_AS_READ} Not counted: data/catalog.json (cut).`,
+      })
+    } finally {
+      writeFixture(at('data/catalog.json'), FIXTURE['data/catalog.json']!)
+      rmSync(at('test'), { recursive: true, force: true })
+    }
+  })
+})
+
 // CLAUDIN_BASH_FILE_READ_PASSTHROUGH past the 28k it shows whole: the whole
 // files that fit, and the rest by name. The flag is the filter's
 // (`overBudgetFileRead`, floor.test.ts); this is the half that reads files.
@@ -923,6 +1077,35 @@ describe('fitWholeFiles — a read too long to show whole', () => {
     ))!
     expect(fitted.shown).toBe(dumpModule(0))
     expect(fitted.notShown).toEqual([dumpName(1), dumpName(2)])
+  })
+
+  // After a `cd` the files are found where it moved, and named from where the
+  // command started — as the credit's line names them.
+  test('a read after a cd fits the same, its names relative to where the command started', async () => {
+    const stdout = run('cd dump && for f in *.ts; do echo "=== $f"; cat $f; done')
+    expect(stdout.length).toBeGreaterThan(55_000)
+    const fitted = (await on.fitWholeFiles(
+      stdout,
+      [{ text: '*.ts', glob: true, dir: 'dump' }],
+      dir,
+      BUDGET,
+    ))!
+    const shownFiles = DUMP_FILES - fitted.notShown.length
+    expect(shownFiles).toBeGreaterThan(5)
+    expect(fitted.shown).toEndWith(dumpModule(shownFiles - 1))
+    expect(fitted.notShown).toEqual(
+      Array.from({ length: fitted.notShown.length }, (_, k) => dumpName(shownFiles + k)),
+    )
+  })
+
+  test('a named file after a cd is found there', async () => {
+    const fitted = await on.fitWholeFiles(
+      run('cd dump && cat f00.ts f01.ts'),
+      [{ text: 'f00.ts', glob: false, dir: 'dump' }, { text: 'f01.ts', glob: false, dir: 'dump' }],
+      dir,
+      4_000,
+    )
+    expect(fitted).toEqual({ shown: dumpModule(0), notShown: [dumpName(1)], namesAll: true })
   })
 
   test('a single file over the budget shows nothing, and is named', async () => {

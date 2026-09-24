@@ -15,7 +15,8 @@
     "src/tools/FileWriteTool/FileWriteTool.prompt.test.ts",
     "src/agent/prompts/prompts.test.ts",
     "src/memory/memdir/teamMemPrompts.test.ts",
-    "src/__tests__/readGateScenarios.test.ts"
+    "src/__tests__/readGateScenarios.test.ts",
+    "scripts/bench/ab/session-cache-ab.test.ts"
   ],
   "source": "src/tools/shared/outputFilter/Bash/index.ts",
   "probes": [
@@ -132,8 +133,8 @@
     {
       "name": "catReadsOf: a piped cat is named",
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
-      "find": "    if (head.text !== \"cat\" || pipedOnward(index)) continue;",
-      "replace": "    if (head.text !== \"cat\") continue;"
+      "find": "    if (!PRINTERS.has(head.text) || pipedOnward(index)) continue;",
+      "replace": "    if (!PRINTERS.has(head.text)) continue;"
     },
     {
       "name": "catReadsOf: a loop piped at its done is named",
@@ -164,6 +165,234 @@
       "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
       "find": "  if (SUBSTITUTION_RE.test(command)) return [];\n",
       "replace": "\n"
+    },
+    {
+      "name": "grammar: head and tail are not print segments of a pure read",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      case \"head\":\n      case \"tail\": {\n        const partReads",
+      "replace": "      case \"head-refused\":\n      case \"tail-refused\": {\n        const partReads"
+    },
+    {
+      "name": "grammar: a read with a head or tail is not marked as more than whole files",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return { reads, lists: lists || partial };",
+      "replace": "  return { reads, lists };"
+    },
+    {
+      "name": "grammar: a head or tail alone is not a read",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        printSeen = true;\n        partial = true;",
+      "replace": "        partial = true;"
+    },
+    {
+      "name": "grammar: head/tail paths do not carry the cd's directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        reads.push(...inDir(partReads, dir));",
+      "replace": "        reads.push(...partReads);"
+    },
+    {
+      "name": "grammar: cat paths do not carry the cd's directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        reads.push(...inDir(catReads, dir));",
+      "replace": "        reads.push(...catReads);"
+    },
+    {
+      "name": "grammar: a cd is refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      case \"cd\": {\n        // In a loop body",
+      "replace": "      case \"cd-refused\": {\n        // In a loop body"
+    },
+    {
+      "name": "grammar: a cd in a loop body is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        const target = loops.length === 0 ? cdTarget(args) : null;",
+      "replace": "        const target = cdTarget(args);"
+    },
+    {
+      "name": "grammar: a cd moves nothing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        dir = cdFrom(dir, target);\n        break;",
+      "replace": "        break;"
+    },
+    {
+      "name": "cd: a second argument is ignored",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  const target = args.length === 1 ? args[0]! : null;",
+      "replace": "  const target = args[0] ?? null;"
+    },
+    {
+      "name": "cd: a glob is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (!target || target.glob || target.text === \"\" || target.text.startsWith(\"-\")) return null;",
+      "replace": "  if (!target || target.text === \"\" || target.text.startsWith(\"-\")) return null;"
+    },
+    {
+      "name": "cd: an empty word is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (!target || target.glob || target.text === \"\" || target.text.startsWith(\"-\")) return null;",
+      "replace": "  if (!target || target.glob || target.text.startsWith(\"-\")) return null;"
+    },
+    {
+      "name": "cd: `-` (the last directory) is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (!target || target.glob || target.text === \"\" || target.text.startsWith(\"-\")) return null;",
+      "replace": "  if (!target || target.glob || target.text === \"\") return null;"
+    },
+    {
+      "name": "cd: a word the shell rewrites (~, $D) is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return EXPANDED_WORD_RE.test(target.text) ? null : target.text;",
+      "replace": "  return target.text;"
+    },
+    {
+      "name": "cd: an absolute directory is joined to the last one",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  const next = isAbsolute(target) ? normalize(target) : join(dir ?? \".\", target);",
+      "replace": "  const next = join(dir ?? \".\", target);"
+    },
+    {
+      "name": "cd: several cds do not compose",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  const next = isAbsolute(target) ? normalize(target) : join(dir ?? \".\", target);",
+      "replace": "  const next = isAbsolute(target) ? normalize(target) : join(\".\", target);"
+    },
+    {
+      "name": "cd: back at the start, the paths still carry a directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return next === \".\" ? undefined : next;",
+      "replace": "  return next;"
+    },
+    {
+      "name": "cd: the paths after a cd do not carry its directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return dir === undefined ? words : words.map((word) => ({ ...word, dir }));",
+      "replace": "  return words;"
+    },
+    {
+      "name": "head/tail: any flag is taken (tail -f)",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (!COUNT_FLAGS.has(arg.text)) return null;",
+      "replace": "      if (!COUNT_FLAGS.has(arg.text)) continue;"
+    },
+    {
+      "name": "head/tail: -N is refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (COUNT_FLAG_RE.test(arg.text)) continue;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "head/tail: a count need not be a number",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (!COUNT_RE.test(count) && !fromLine) return null;",
+      "replace": "      if (count === \"\") return null;"
+    },
+    {
+      "name": "head: counts from a line (-n +N) like tail",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      const fromLine = program === \"tail\" && arg.text === \"-n\" && FROM_LINE_RE.test(count);",
+      "replace": "      const fromLine = arg.text === \"-n\" && FROM_LINE_RE.test(count);"
+    },
+    {
+      "name": "tail: -c +N counts from a byte",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      const fromLine = program === \"tail\" && arg.text === \"-n\" && FROM_LINE_RE.test(count);",
+      "replace": "      const fromLine = program === \"tail\" && FROM_LINE_RE.test(count);"
+    },
+    {
+      "name": "tail: -n +N is refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      const fromLine = program === \"tail\" && arg.text === \"-n\" && FROM_LINE_RE.test(count);",
+      "replace": "      const fromLine = false;"
+    },
+    {
+      "name": "head/tail: `-` (stdin) is a path",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (arg.text === \"-\") return null;\n    const words",
+      "replace": "    const words"
+    },
+    {
+      "name": "head/tail: with no path (stdin) it is a print",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  // With no path it prints stdin.\n  return reads.length > 0 ? reads : null;",
+      "replace": "  return reads;"
+    },
+    {
+      "name": "head/tail: a path after -- is read as a flag",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (!afterDoubleDash && arg.text.startsWith(\"-\") && arg.text !== \"-\") {",
+      "replace": "    if (arg.text.startsWith(\"-\") && arg.text !== \"-\") {"
+    },
+    {
+      "name": "pathWords: a word the shell rewrites is a path",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return EXPANDED_WORD_RE.test(arg.text) ? null : [arg];",
+      "replace": "  return [arg];"
+    },
+    {
+      "name": "pathWords: a loop variable is not its word list",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (loop) return loop.words;",
+      "replace": "  if (loop) return [arg];"
+    },
+    {
+      "name": "printedBy: a head or tail is parsed as a cat",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return program === \"head\" || program === \"tail\" ? parsePartialPrint(program, args, loops) : null;",
+      "replace": "  return program === \"head\" || program === \"tail\" ? parseCat(args, loops) : null;"
+    },
+    {
+      "name": "catReadsOf: a cd it cannot name is skipped",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
+      "replace": "      if (target === null) continue;\n      if (open.length > 0 || !inThisShell(index)) return [];"
+    },
+    {
+      "name": "catReadsOf: a cd in a loop body is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
+      "replace": "      if (target === null || !inThisShell(index)) return [];"
+    },
+    {
+      "name": "catReadsOf: a cd in a pipeline or an or-list is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
+      "replace": "      if (target === null || open.length > 0) return [];"
+    },
+    {
+      "name": "catReadsOf: the cd's own joiner (| or ||) is not checked",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    return before !== \"|\" && before !== \"||\" && after !== \"|\" && after !== \"||\";",
+      "replace": "    return after !== \"|\" && after !== \"||\";"
+    },
+    {
+      "name": "catReadsOf: the joiner after the cd (| or ||) is not checked",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    return before !== \"|\" && before !== \"||\" && after !== \"|\" && after !== \"||\";",
+      "replace": "    return before !== \"|\" && before !== \"||\";"
+    },
+    {
+      "name": "catReadsOf: a cd moves nothing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      dir = cdFrom(dir, target);\n      continue;",
+      "replace": "      continue;"
+    },
+    {
+      "name": "catReadsOf: pushd and popd are not refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (DIRECTORY_STACK.has(head.text)) return [];\n",
+      "replace": "\n"
+    },
+    {
+      "name": "catReadsOf: head and tail name nothing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (!PRINTERS.has(head.text) || pipedOnward(index)) continue;",
+      "replace": "    if (head.text !== \"cat\" || pipedOnward(index)) continue;"
+    },
+    {
+      "name": "catReadsOf: the paths after a cd do not carry its directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (printed) (open.at(-1)?.reads ?? reads).push(...inDir(printed, dir));",
+      "replace": "    if (printed) (open.at(-1)?.reads ?? reads).push(...printed);"
     },
     {
       "name": "credit: ignores its flag",
@@ -358,6 +587,48 @@
       "replace": "  const more = ''"
     },
     {
+      "name": "credit: a word resolves where the command started, whatever cd it followed",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  return word.dir === undefined ? cwd : resolve(cwd, word.dir)",
+      "replace": "  return cwd"
+    },
+    {
+      "name": "credit: candidatesOf ignores the cd",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    const base = baseOf(word, cwd)\n    const paths = word.glob",
+      "replace": "    const base = cwd\n    const paths = word.glob"
+    },
+    {
+      "name": "credit: a glob after a cd expands where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      ? await expandGlob(word.text, base, MAX_CANDIDATES)",
+      "replace": "      ? await expandGlob(word.text, cwd, MAX_CANDIDATES)"
+    },
+    {
+      "name": "credit: a path after a cd resolves where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      : [resolve(base, word.text)]\n    for (const path of paths) {",
+      "replace": "      : [resolve(cwd, word.text)]\n    for (const path of paths) {"
+    },
+    {
+      "name": "fit: namedFiles ignores the cd",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    const base = baseOf(word, cwd)\n    const expanded = word.glob",
+      "replace": "    const base = cwd\n    const expanded = word.glob"
+    },
+    {
+      "name": "fit: a glob after a cd expands where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      ? await expandGlob(word.text, base, MAX_NAMED)",
+      "replace": "      ? await expandGlob(word.text, cwd, MAX_NAMED)"
+    },
+    {
+      "name": "fit: a path after a cd resolves where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      : [resolve(base, word.text)]\n    // A glob that reached the cap",
+      "replace": "      : [resolve(cwd, word.text)]\n    // A glob that reached the cap"
+    },
+    {
       "name": "BashTool: fitOverBudgetRead fits an interrupted run",
       "source": "src/tools/BashTool/BashTool.tsx",
       "find": "  if (result.interrupted) return null;\n  // Where the filter does not run, neither does its pass-through.\n",
@@ -378,14 +649,26 @@
     {
       "name": "BashTool: a failed command is fitted",
       "source": "src/tools/BashTool/BashTool.tsx",
-      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, getCwd());",
-      "replace": "      const fit = await fitOverBudgetRead(result, filterPlan, getCwd());"
+      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);",
+      "replace": "      const fit = await fitOverBudgetRead(result, filterPlan, commandStartCwd);"
     },
     {
       "name": "BashTool: call() never applies the fit",
       "source": "src/tools/BashTool/BashTool.tsx",
-      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, getCwd());",
+      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);",
       "replace": "      const fit = null as Awaited<ReturnType<typeof fitOverBudgetRead>>;"
+    },
+    {
+      "name": "BashTool: the fit resolves from the cwd a cd left, after the run",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);",
+      "replace": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, getCwd());"
+    },
+    {
+      "name": "BashTool: the credit resolves from the cwd a cd left, after the run",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    }, toolUseContext.readFileState, commandStartCwd, getAppState().toolPermissionContext);",
+      "replace": "    }, toolUseContext.readFileState, getCwd(), getAppState().toolPermissionContext);"
     },
     {
       "name": "BashTool: the not-shown line is not put on the result",
@@ -584,6 +867,54 @@
       "source": "src/memory/memdir/teamMemPrompts.ts",
       "find": "  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n  const lines = [",
       "replace": "  const emptyIndexesNote = EMPTY_INDEXES_NOTE\n  const lines = ["
+    },
+    {
+      "name": "bench: a cat the pass-through wrapped whole counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.isError && !info.refused && CAT_COMMAND_RE.test(info.command)"
+    },
+    {
+      "name": "bench: a failed cat counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)"
+    },
+    {
+      "name": "bench: a harness refusal counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.isError && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)"
+    },
+    {
+      "name": "bench: any command counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.isError && !info.refused && info.marker !== 'read'"
+    },
+    {
+      "name": "bench: a cat after a lone pipe (a sink) counts",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /(?:(?:^|[;&|({\\n])\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/"
+    },
+    {
+      "name": "bench: a cat anywhere, an argument included, counts",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /cat(?=\\s|$)/"
+    },
+    {
+      "name": "bench: a keyword glued to cat counts",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s*)cat(?=\\s|$)/"
+    },
+    {
+      "name": "bench: a cat after a newline is not a command",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /(?:(?:^|[;&({]|\\|\\|)[ \\t]*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/"
     }
   ]
 }

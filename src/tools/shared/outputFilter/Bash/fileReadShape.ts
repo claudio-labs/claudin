@@ -34,16 +34,27 @@
  * - `echo` and `printf`;
  * - `cat [-n] <$V | paths | globs>` — the loop variable only as a whole
  *   argument, since `src/$f.ts` is a path this module would have to evaluate;
+ * - `head` and `tail` with `-n N`, `-N` or `-c N`, and tail's `-n +N`, over
+ *   the same arguments: part of a file. A file one of them happened to print
+ *   whole counts as a `cat`'s does — the credit's verbatim check decides —
+ *   but past 28k such a read is no run of whole files to fit, so it keeps the
+ *   cap, as a listing does (`lists`);
  * - the listings: `ls` with flags and paths, `git ls-files` with flags and
- *   paths, `wc` with `-l`, `-c` or `-w` and paths.
+ *   paths, `wc` with `-l`, `-c` or `-w` and paths;
+ * - `cd <literal directory>` outside a loop body. The paths after it resolve
+ *   in that directory, which each word carries (`ReadWord.dir`): relative to
+ *   the one the command started in, or absolute, several `cd`s composing.
  *
- * joined by `;`, `&&` or newlines, with at least one `cat`: `ls -R` alone is
- * the listing the cap exists for, not a read.
+ * joined by `;`, `&&` or newlines, with at least one `cat`, `head` or `tail`:
+ * `ls -R` alone is the listing the cap exists for, not a read.
  *
  * The first call of a session-cache-ab run (2026-09-24) lists the tree and
  * prints the README in one command, `git ls-files && cat README.md
  * package.json`. Refused, it was capped in 4 of 5 runs, and the README it
- * carried was read again with Read in 3.
+ * carried was read again with Read in 3. In the A/B of both flags later that
+ * day (20260924-212723) the grammar refused two more, `cd src && cat
+ * catalog.ts cli.ts …` and a read with a `head -c 1500` among its cats; both
+ * were capped, and the model Read the files they had printed.
  *
  * Everything else refuses the whole command: a command substitution anywhere
  * (`$(`, a backtick — even quoted, where the shell would still run it), an
@@ -53,19 +64,33 @@
  * (`walkCommandSegments`), the same one the Bash→tool redirect uses, so the
  * two can never disagree about where a segment ends.
  */
+import { isAbsolute, join, normalize } from "path";
 import { walkCommandSegments } from "src/platform/bash/segments.js";
 import { tryParseShellCommand } from "src/platform/bash/shellQuote.js";
 
 /** One word a `cat` reads: a literal path, or a glob the shell expanded. */
-export type ReadWord = { readonly text: string; readonly glob: boolean };
+export type ReadWord = {
+  readonly text: string;
+  readonly glob: boolean;
+  /**
+   * The directory a `cd` earlier in the command moved to, which the word
+   * resolves in: relative to the one the command started in, or absolute.
+   * Absent, it resolves where the command started.
+   */
+  readonly dir?: string;
+};
 
 type PureFileRead = {
-  /** What the `cat` segments read, in order, a loop variable replaced by its word list. */
+  /**
+   * What the `cat`, `head` and `tail` segments print from, in order, a loop
+   * variable replaced by its word list.
+   */
   readonly reads: readonly ReadWord[];
   /**
    * A segment lists files rather than printing them (`ls`, `git ls-files`,
-   * `wc`). Past what the pass-through shows whole such a read is not a run of
-   * whole files to fit, so it keeps the cap.
+   * `wc`), or prints only part of one (`head`, `tail`). Past what the
+   * pass-through shows whole such a read is not a run of whole files to fit,
+   * so it keeps the cap.
    */
   readonly lists: boolean;
 };
@@ -83,6 +108,17 @@ const EXPANDED_WORD_RE = /[$`{}]|^~/;
 const CAT_FLAGS: ReadonlySet<string> = new Set(["-n", "--number"]);
 /** The counts `wc` may print; any other flag, or `-` for stdin, is not a listing of files. */
 const WC_FLAGS: ReadonlySet<string> = new Set(["-l", "-c", "-w"]);
+/** The segments that print files: `cat` whole, `head` and `tail` in part. */
+const PRINTERS: ReadonlySet<string> = new Set(["cat", "head", "tail"]);
+/** The `head`/`tail` flags whose count is the next argument: lines, or bytes. */
+const COUNT_FLAGS: ReadonlySet<string> = new Set(["-n", "-c"]);
+const COUNT_RE = /^\d+$/;
+/** `head -20`, `tail -20`: the line count spelled as the flag. */
+const COUNT_FLAG_RE = /^-\d+$/;
+/** `tail -n +N`: from line N to the end. */
+const FROM_LINE_RE = /^\+\d+$/;
+/** The directory stack moves the cwd where `cd`'s one argument does not say. */
+const DIRECTORY_STACK: ReadonlySet<string> = new Set(["pushd", "popd"]);
 
 /**
  * A segment the walk left as bare shell syntax: a subshell or group paren or
@@ -146,6 +182,16 @@ function parseLoopHeader(args: readonly ReadWord[]): Loop | null {
   return { variable: variable.text, words };
 }
 
+/**
+ * The words a path argument stands for: a loop's variable is its word list,
+ * any other word the shell would rewrite is null, and the rest is itself.
+ */
+function pathWords(arg: ReadWord, loops: readonly Loop[]): readonly ReadWord[] | null {
+  const loop = loops.findLast((open) => arg.text === `$${open.variable}`);
+  if (loop) return loop.words;
+  return EXPANDED_WORD_RE.test(arg.text) ? null : [arg];
+}
+
 /** What one `cat` reads, or null when it is not a plain print of files. */
 function parseCat(args: readonly ReadWord[], loops: readonly Loop[]): ReadWord[] | null {
   const reads: ReadWord[] = [];
@@ -160,15 +206,83 @@ function parseCat(args: readonly ReadWord[], loops: readonly Loop[]): ReadWord[]
       if (!CAT_FLAGS.has(arg.text)) return null;
       continue;
     }
-    const loop = loops.findLast((open) => arg.text === `$${open.variable}`);
-    if (loop) {
-      reads.push(...loop.words);
-      continue;
-    }
-    if (EXPANDED_WORD_RE.test(arg.text)) return null;
-    reads.push(arg);
+    const words = pathWords(arg, loops);
+    if (!words) return null;
+    reads.push(...words);
   }
   return reads.length > 0 ? reads : null;
+}
+
+/**
+ * What one `head` or `tail` prints part of, or null when it is not a plain
+ * print of part of files. The counts are `-n N`, `-N` and `-c N`, and tail's
+ * `-n +N`. Any other flag refuses: `-f`, `-F` and `--follow` never return,
+ * `-z` splits on NULs, `-q` and `-v` change the headers.
+ */
+function parsePartialPrint(
+  program: string,
+  args: readonly ReadWord[],
+  loops: readonly Loop[],
+): ReadWord[] | null {
+  const reads: ReadWord[] = [];
+  let afterDoubleDash = false;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if (!afterDoubleDash && arg.text === "--") {
+      afterDoubleDash = true;
+      continue;
+    }
+    if (!afterDoubleDash && arg.text.startsWith("-") && arg.text !== "-") {
+      if (COUNT_FLAG_RE.test(arg.text)) continue;
+      if (!COUNT_FLAGS.has(arg.text)) return null;
+      const count = args[++i]?.text ?? "";
+      const fromLine = program === "tail" && arg.text === "-n" && FROM_LINE_RE.test(count);
+      if (!COUNT_RE.test(count) && !fromLine) return null;
+      continue;
+    }
+    // `-` is stdin, before `--` or after it.
+    if (arg.text === "-") return null;
+    const words = pathWords(arg, loops);
+    if (!words) return null;
+    reads.push(...words);
+  }
+  // With no path it prints stdin.
+  return reads.length > 0 ? reads : null;
+}
+
+/** What a `cat`, `head` or `tail` segment prints from; null for any other, or one that is not a plain print. */
+function printedBy(
+  program: string,
+  args: readonly ReadWord[],
+  loops: readonly Loop[],
+): ReadWord[] | null {
+  if (program === "cat") return parseCat(args, loops);
+  return program === "head" || program === "tail" ? parsePartialPrint(program, args, loops) : null;
+}
+
+/**
+ * Where a `cd` goes, as written, or null when the walk cannot name it: no
+ * argument (home), `-` (the last directory) or any other flag, more than one
+ * argument, an empty one, a glob, a word the shell would rewrite (`~`, `$D`).
+ */
+function cdTarget(args: readonly ReadWord[]): string | null {
+  const target = args.length === 1 ? args[0]! : null;
+  if (!target || target.glob || target.text === "" || target.text.startsWith("-")) return null;
+  return EXPANDED_WORD_RE.test(target.text) ? null : target.text;
+}
+
+/**
+ * Where `cd target` lands from `dir`: relative to the directory the command
+ * started in, or absolute. Undefined is that start directory itself.
+ */
+function cdFrom(dir: string | undefined, target: string): string | undefined {
+  const next = isAbsolute(target) ? normalize(target) : join(dir ?? ".", target);
+  return next === "." ? undefined : next;
+}
+
+/** `words` as read in `dir`, where a `cd` moved; as they are where none did. */
+function inDir(words: readonly ReadWord[], dir: string | undefined): readonly ReadWord[] {
+  return dir === undefined ? words : words.map((word) => ({ ...word, dir }));
 }
 
 /**
@@ -205,8 +319,11 @@ export function parsePureFileRead(command: string): PureFileRead | null {
   const loops: Loop[] = [];
   const reads: ReadWord[] = [];
   let awaitingDo = false;
-  let catSeen = false;
+  let printSeen = false;
   let lists = false;
+  let partial = false;
+  /** Where the paths resolve, when a `cd` moved away from where the command started. */
+  let dir: string | undefined;
   for (const segment of walked.segments) {
     if (segment.joinedBy === "|" || segment.joinedBy === "||") return null;
     let words = wordsOf(segment.text);
@@ -239,19 +356,35 @@ export function parsePureFileRead(command: string): PureFileRead | null {
         if (!isListing(head!.text, args)) return null;
         lists = true;
         break;
+      case "cd": {
+        // In a loop body a relative `cd` moves again on every pass.
+        const target = loops.length === 0 ? cdTarget(args) : null;
+        if (target === null) return null;
+        dir = cdFrom(dir, target);
+        break;
+      }
       case "cat": {
         const catReads = parseCat(args, loops);
         if (!catReads) return null;
-        reads.push(...catReads);
-        catSeen = true;
+        reads.push(...inDir(catReads, dir));
+        printSeen = true;
+        break;
+      }
+      case "head":
+      case "tail": {
+        const partReads = parsePartialPrint(head!.text, args, loops);
+        if (!partReads) return null;
+        reads.push(...inDir(partReads, dir));
+        printSeen = true;
+        partial = true;
         break;
       }
       default:
         return null;
     }
   }
-  if (awaitingDo || loops.length > 0 || !catSeen) return null;
-  return { reads, lists };
+  if (awaitingDo || loops.length > 0 || !printSeen) return null;
+  return { reads, lists: lists || partial };
 }
 
 export function isPureFileRead(command: string): boolean {
@@ -263,21 +396,30 @@ export function isPureFileRead(command: string): boolean {
  * the read credit checks the result for (`BashTool/creditShownFiles.ts`).
  * Where `parsePureFileRead` asks whether the whole command only prints files,
  * this asks nothing of the other segments — `git status && cat a.ts` names
- * `a.ts` — only of the `cat`s:
+ * `a.ts` — only of the `cat`s, and of the `head`s and `tail`s, which print
+ * part of a file and name it all the same (the credit counts the file only
+ * when that part was all of it):
  *
- * - the arguments are what `parseCat` takes: `-n`, literal paths, globs, a
- *   `for` loop's variable;
- * - the output reaches the result as printed: the `cat` is not piped onward,
- *   nor is the `done` of a loop it sits in.
+ * - the arguments are what `parseCat` and `parsePartialPrint` take: literal
+ *   paths, globs, a `for` loop's variable;
+ * - the output reaches the result as printed: the segment is not piped
+ *   onward, nor is the `done` of a loop it sits in;
+ * - each path carries the directory a `cd` before it moved to, as
+ *   `parsePureFileRead` resolves one.
  *
  * And of the command, that the walk can follow where each `cat`'s output
  * goes: no output redirect anywhere (the walk flags one for the whole command,
  * not for its segment), no substitution (shell-quote leaves `$(` as text, so
  * `x=$(cat a)` is not a segment of its own), no subshell, group, `if` or
- * `case`. Any of those and the command names nothing.
+ * `case`. Nor where it reads: no `cd` whose directory it cannot name, none in
+ * a loop body, a pipeline or on either side of an `||` (it may move nothing,
+ * or not run), no `pushd` or `popd`. Any of those and the command names
+ * nothing.
  *
  * Naming a file is not crediting it: the credit still requires the file's
- * bytes to sit in the result whole.
+ * bytes to sit in the result whole. That is also what stands between a `cd`
+ * that failed under a `;` and the paths after it, named in a directory they
+ * were not read from.
  */
 export function catReadsOf(command: string): ReadWord[] {
   if (SUBSTITUTION_RE.test(command)) return [];
@@ -285,8 +427,16 @@ export function catReadsOf(command: string): ReadWord[] {
   if (!walked || walked.hasOutputRedirection) return [];
   const { segments } = walked;
   const pipedOnward = (index: number) => segments[index + 1]?.joinedBy === "|";
+  /** Runs in this shell whenever the command gets to it: in no pipeline, on neither side of an `||`. */
+  const inThisShell = (index: number) => {
+    const before = segments[index]!.joinedBy;
+    const after = segments[index + 1]?.joinedBy;
+    return before !== "|" && before !== "||" && after !== "|" && after !== "||";
+  };
 
   const reads: ReadWord[] = [];
+  /** Where the paths resolve, when a `cd` moved away from where the command started. */
+  let dir: string | undefined;
   /** The loops open at this segment, innermost last, each holding the reads inside it until its `done`. */
   const open: { loop: Loop | null; reads: ReadWord[] }[] = [];
   for (const [index, segment] of segments.entries()) {
@@ -308,10 +458,17 @@ export function catReadsOf(command: string): ReadWord[] {
       if (!pipedOnward(index)) (open.at(-1)?.reads ?? reads).push(...closed.reads);
       continue;
     }
-    if (head.text !== "cat" || pipedOnward(index)) continue;
+    if (head.text === "cd") {
+      const target = cdTarget(args);
+      if (target === null || open.length > 0 || !inThisShell(index)) return [];
+      dir = cdFrom(dir, target);
+      continue;
+    }
+    if (DIRECTORY_STACK.has(head.text)) return [];
+    if (!PRINTERS.has(head.text) || pipedOnward(index)) continue;
     const loops = open.flatMap(({ loop }) => (loop ? [loop] : []));
-    const catReads = parseCat(args, loops);
-    if (catReads) (open.at(-1)?.reads ?? reads).push(...catReads);
+    const printed = printedBy(head.text, args, loops);
+    if (printed) (open.at(-1)?.reads ?? reads).push(...inDir(printed, dir));
   }
   return reads;
 }

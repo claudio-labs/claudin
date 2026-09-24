@@ -63,6 +63,8 @@ import type { BashProgress } from 'src/shared/types/tools.js';
  * files instead of pointing at a saved dump, which the model read back whole
  * in session-cache-ab 20260924-170553 (r1: 56.9k chars, and two Patches
  * refused). Null when this does not apply, and the run goes on as before.
+ * `cwd` is the directory the command started in: the files resolve from it
+ * through any `cd` the command made, and are named relative to it.
  *
  * Exported for testing; `decide` is the filter's call, injectable because its
  * flag is read at module load.
@@ -281,6 +283,11 @@ export const BashTool = buildTool({
     // mtime is at or after it, since it may have changed after the command
     // printed it (creditShownFiles.ts).
     const commandStartedAt = Date.now();
+    // Where the command starts, which is where the paths it names resolve
+    // (fileReadShape.ts carries a `cd` in it from here). Once it has run,
+    // getCwd() is wherever such a `cd` left the shell — the main thread keeps
+    // it (Shell.ts) unless resetCwdIfOutsideProject puts it back.
+    const commandStartCwd = getCwd();
     // A pure read cut back to its whole files (fitOverBudgetRead).
     let fitted: FittedRead | undefined;
     try {
@@ -347,7 +354,7 @@ export const BashTool = buildTool({
       const verdictCode = exitCodeAfterRewrite(filterPlan, result.code);
       interpretationResult = interpretCommandResult(input.command, verdictCode, rawStdout, '');
       const isError = interpretationResult.isError || verdictCode !== 0;
-      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, getCwd());
+      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);
       if (fit) {
         result = fit.result;
         fitted = fit.fitted;
@@ -484,7 +491,7 @@ export const BashTool = buildTool({
       ...(fitted && {
         notShown: fitted.notShown
       })
-    }, toolUseContext.readFileState, getCwd(), getAppState().toolPermissionContext);
+    }, toolUseContext.readFileState, commandStartCwd, getAppState().toolPermissionContext);
     // The paths let `/resume` rebuild the credit (queryHelpers.ts); the line
     // is how the model learns of it.
     if (credit.credited.length > 0) data.creditedFiles = [...credit.credited];

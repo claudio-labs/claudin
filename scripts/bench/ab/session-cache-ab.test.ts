@@ -8,6 +8,7 @@ import {
   catReadsOf,
   claudinPartsOf,
   editsOnNeverRead,
+  isCatReadMiss,
   readsOfShownFiles,
   readTargetsOf,
   shownWholeFiles,
@@ -98,6 +99,35 @@ describe('bashInfo — the read markers', () => {
   test('the one-file line, with files not counted, after any output', () => {
     const text = `a\n${COUNT_AS_READ_1} Not counted: src/types.ts (cut).`
     expect(bashInfo(bash('git status && cat a', text))).toMatchObject({ marker: null, notShown: false, countsAsRead: true })
+  })
+})
+
+describe('isCatReadMiss — a cat the pure-read grammar refused', () => {
+  const capped = '<bash-output-filtered original="" lines="30/568" reduction="96%">x</bash-output-filtered>'
+  const miss = (command: string, text: string, extra: Partial<Call> = {}) =>
+    isCatReadMiss(bashInfo(bash(command, text, extra)))
+
+  test('a successful cat that did not come back in the read wrapper', () => {
+    // The two misses of 20260924-212723, capped where the pass-through was on.
+    expect(miss('cd src && cat catalog.ts cli.ts', capped)).toBe(true)
+    expect(miss('cat -n src/types.ts; head -c 1500 data/catalog.json; echo; cat b.json', capped)).toBe(true)
+    // Short enough that nothing wrapped it.
+    expect(miss('git status && cat a.ts', 'a')).toBe(true)
+    expect(miss('for f in a b; do echo $f; cat $f; done', capped)).toBe(true)
+    expect(miss('ls\ncat a.ts', 'a')).toBe(true)
+  })
+
+  test('not a read the pass-through took, a failure, a refusal, nor a command without a cat', () => {
+    expect(miss('cd src && cat a.ts', '<bash-output-read>a\n</bash-output-read>')).toBe(false)
+    expect(miss('cat missing.ts', 'Exit code 1\ncat: missing.ts: No such file or directory', { isError: true })).toBe(false)
+    // A harness message, whether or not the call was flagged as an error.
+    expect(miss('cat a.ts', 'Permission to use Bash has been denied.', { isError: true })).toBe(false)
+    expect(miss('cat a.ts', '[Request interrupted by user for tool use]')).toBe(false)
+    // A pipe's sink, a word inside another, an argument.
+    expect(miss('git diff | cat', 'diff')).toBe(false)
+    expect(miss('bun test src/concat.test.ts', 'ok')).toBe(false)
+    expect(miss('echo cat', 'cat')).toBe(false)
+    expect(miss('docat a.ts', 'a')).toBe(false)
   })
 })
 
