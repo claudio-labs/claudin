@@ -3,7 +3,8 @@
     "src/tools/WaitForTool/WaitForTool.test.ts",
     "src/tools/MonitorTool/MonitorTool.test.ts",
     "src/tools/RunTestsTool/RunTestsTool.test.ts",
-    "src/sessions/__tests__/pure.test.ts"
+    "src/sessions/__tests__/pure.test.ts",
+    "src/tools/devToolsDeferred.test.ts"
   ],
   "source": "src/tools/WaitForTool/WaitForTool.ts",
   "probes": [
@@ -47,6 +48,18 @@
       "source": "src/sessions/pure/typeGuards.ts",
       "find": "  'build_progress',\n  'test_progress',\n  'check_progress',\n",
       "replace": ""
+    },
+    {
+      "name": "the dev tools go back to the eager prefix",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  if (DEFERRED_DEV_TOOLS.has(tool.name)) {\n    return !isEnvTruthy(process.env.CLAUDIN_EAGER_DEV_TOOLS)\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "CLAUDIN_EAGER_DEV_TOOLS is ignored",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "    return !isEnvTruthy(process.env.CLAUDIN_EAGER_DEV_TOOLS)\n",
+      "replace": "    return true\n"
     }
   ]
 }

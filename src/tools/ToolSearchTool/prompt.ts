@@ -3,8 +3,13 @@ import { getDeferredDeltaLegacySession } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
+import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
+import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
+import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 export { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
@@ -13,6 +18,21 @@ import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 const PROMPT_HEAD = `Fetches full schema definitions for deferred tools so they can be called.
 
 `
+
+/**
+ * Build, RunTests, Typecheck and WaitFor wait behind ToolSearch: ~11.5k chars
+ * of schema that every request carried, for tools used in 30–45% of sessions.
+ * When a Bash command has a better home in one of them, Bash's advice names it
+ * and the ToolSearch call that loads it. `CLAUDIN_EAGER_DEV_TOOLS=1` sends them
+ * eagerly again — the A/B arm and the escape hatch. Read per call and never per
+ * project, like the Monitor rule: the tools array is a shared cache prefix.
+ */
+const DEFERRED_DEV_TOOLS: ReadonlySet<string> = new Set([
+  BUILD_TOOL_NAME,
+  RUN_TESTS_TOOL_NAME,
+  TYPECHECK_TOOL_NAME,
+  WAITFOR_TOOL_NAME,
+])
 
 // Matches isDeferredToolsDeltaActive in toolSearch.ts (not imported —
 // toolSearch.ts imports from this file; the legacy-session latch is read
@@ -74,6 +94,10 @@ export function isDeferredTool(tool: Tool): boolean {
   // The v2 tool descriptions move Monitor (in 2.6% of sessions) behind
   // ToolSearch too, like the four rarely used tools that are always deferred.
   if (tool.name === MONITOR_TOOL_NAME && isCompactToolPromptsEnabled()) return true
+
+  if (DEFERRED_DEV_TOOLS.has(tool.name)) {
+    return !isEnvTruthy(process.env.CLAUDIN_EAGER_DEV_TOOLS)
+  }
 
   return tool.shouldDefer === true
 }
