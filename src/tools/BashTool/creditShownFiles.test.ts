@@ -652,6 +652,18 @@ describe('what the model did not receive is never credited', () => {
     ).toEqual([])
   })
 
+  // Over the 30k BashTool's result is persisted at, the model gets a 2 KB
+  // preview of a saved file, whatever wrapper the output wears — the wrapper
+  // only answers the summarizer's 8k.
+  test('a wrapped result over the 30k the harness persists at', async () => {
+    const files = Array.from({ length: 11 }, (_, i) => dumpName(i))
+    const shown = ran(DUMP_LOOP.replace('dump/*.ts', files.join(' ')))
+    const stdout = readWrapped(`${shown.stdout}\n`)
+    expect(stdout.length).toBeGreaterThan(30_000)
+    expect(await creditWithNote({ ...shown, stdout })).toEqual({ credited: [], note: null })
+    expect(cache.size).toBe(0)
+  })
+
   // The tool-result summarizer cuts unwrapped Bash output from 8k chars up,
   // and stands aside for anything wearing the filter's wrapper.
   test('unwrapped output of 8k chars or more, and the same output wrapped', async () => {
@@ -897,6 +909,20 @@ describe('fitWholeFiles — a read too long to show whole', () => {
     expect(
       await on.fitWholeFiles(stdout, [{ text: 'dump/f0[0-9].ts', glob: false }], dir, BUDGET),
     ).toBeNull()
+  })
+
+  // `cat a b a` prints `a` twice, so the files past the cut can repeat one
+  // named before it, or one another.
+  test('each file left out is named once, and none it showed', async () => {
+    const names = [dumpName(0), dumpName(1), dumpName(0), dumpName(2), dumpName(1)]
+    const fitted = (await on.fitWholeFiles(
+      run(`cat ${names.join(' ')}`),
+      names.map(text => ({ text, glob: false })),
+      dir,
+      4_000,
+    ))!
+    expect(fitted.shown).toBe(dumpModule(0))
+    expect(fitted.notShown).toEqual([dumpName(1), dumpName(2)])
   })
 
   test('a single file over the budget shows nothing, and is named', async () => {

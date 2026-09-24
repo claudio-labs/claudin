@@ -84,6 +84,10 @@ describe("isPureFileRead — a listing beside the read", () => {
     "wc of stdin": "wc -l && cat a.ts",
     "wc of stdin, spelled -": "wc -l - && cat a.ts",
     "a wc flag that is not a count": "wc --files0-from=list && cat a.ts",
+    // The three wc cases above name no path, so the path check refuses them
+    // before the flags are looked at; beside a path, only the flag check does.
+    "a wc flag that is not a count, beside a path": "wc -L a.ts && cat a.ts",
+    "wc of stdin spelled -, beside a path": "wc -l - a.ts && cat a.ts",
     "a listing of an expanded word": "ls $HOME && cat a.ts",
     // A listing is not a read, whichever one it is.
     "only git ls-files": "git ls-files",

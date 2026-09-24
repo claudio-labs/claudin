@@ -134,6 +134,32 @@ describe("wrapStdoutWithMarkers", () => {
     );
   });
 
+  // The read tag is left out of the idempotency check on purpose: the filter
+  // never runs twice over its own read, so raw output that opens with the tag
+  // is a file holding it — a saved tool result the model cats — and it is cut
+  // and marked like any other output.
+  test("keeps the cut of output that merely opens with the read tag, and marks it", () => {
+    const plan: PreExecPlan = {
+      effectiveCommand: "cat saved.txt",
+      filter: { name: "cat", matchCommand: /^cat$/ },
+      rewrite: null,
+    };
+    const lines = Array.from({ length: 40 }, (_, i) => `line ${i} of a saved read`);
+    const raw = `<bash-output-read>${lines.join("\n")}</bash-output-read>`;
+    const body = raw.split("\n").slice(0, 8).join("\n");
+    const pipelineResult: PipelineResult = {
+      body,
+      applied: ["cap"],
+      shortCircuited: false,
+      reductionPct: 80,
+      originalLines: 40,
+      bodyLines: 8,
+    };
+    expect(wrapStdoutWithMarkers(raw, plan, pipelineResult)).toBe(
+      `<bash-output-filtered original="" lines="8/40" reduction="80%">${body}</bash-output-filtered>`,
+    );
+  });
+
   test("escapes XML special characters in attributes", () => {
     const plan: PreExecPlan = {
       effectiveCommand: 'cmd "arg"',

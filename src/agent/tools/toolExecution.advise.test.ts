@@ -245,6 +245,15 @@ describe('adviceNoteAfterCall — a Bash read the credit already counted', () =>
     expect(adviceNoteAfterCall(BASH, { command: `cat ${a}` }, { creditedFiles: [a] }, null)).toBeNull()
   })
 
+  // Only Bash's result carries a read credit. The same input and result that
+  // make Bash's note moot leave any other tool's note standing.
+  test('the credit drops the note of Bash only', () => {
+    const input = { command: `cat ${a} ${b}` }
+    const output = { stdout: '', creditedFiles: [a, b] }
+    expect(adviceNoteAfterCall(BASH, input, output, READ_NOTE)).toBeNull()
+    expect(adviceNoteAfterCall({ name: 'AdviceProbe' }, input, output, READ_NOTE)).toBe(READ_NOTE)
+  })
+
   /** A tool named Bash whose result carries `creditedFiles`, run through the real loop. */
   async function runBash(creditedFiles: string[]): Promise<string> {
     const tool = buildTool({
