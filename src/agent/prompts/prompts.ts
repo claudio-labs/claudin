@@ -396,8 +396,12 @@ export function buildLeanMultiHopItem(searchTools: string): string {
  *
  * outputStyleConfig intentionally NOT moved here — identity framing lives
  * in the static intro pending eval.
+ *
+ * Exported for promptFeatureCoverage.test.ts: the bundle's
+ * `--dump-system-prompt` renders with an empty tool registry, so this section
+ * never reaches the characterization snapshot.
  */
-function getSessionSpecificGuidanceSection(
+export function getSessionSpecificGuidanceSection(
   enabledTools: Set<string>,
   skillToolCommands: Command[],
 ): string | null {
