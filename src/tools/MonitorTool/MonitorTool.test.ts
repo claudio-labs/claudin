@@ -1,6 +1,14 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeAll, describe, expect, test } from 'bun:test'
 
 import { MonitorTool } from 'src/tools/MonitorTool/MonitorTool.js'
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
+
+beforeAll(() => {
+  ;(globalThis as unknown as { MACRO: { VERSION: string } }).MACRO = {
+    VERSION: 'test',
+  }
+})
 
 describe('MonitorTool', () => {
   test('isConcurrencySafe is true and userFacingName is Monitor', () => {
@@ -84,5 +92,25 @@ describe('MonitorTool', () => {
     expect(block?.content).toContain('tsk_1')
     expect(block?.content).toContain('/tmp/out.log')
     expect(block?.content).toContain('TaskStop')
+  })
+
+  // Same contract as WaitFor: Bash's `updatedInput` is `{ command }`, and the
+  // harness applies it verbatim — `description` would not survive the allow.
+  test('on allow it hands back its own input, never the Bash-shaped one', async () => {
+    const toolPermissionContext: ToolPermissionContext = {
+      ...getEmptyToolPermissionContext(),
+      alwaysAllowRules: { cliArg: ['Bash(echo:*)'] },
+    }
+    const context = {
+      abortController: new AbortController(),
+      options: { isNonInteractiveSession: false },
+      getAppState: () => ({ toolPermissionContext }),
+    } as unknown as ToolUseContext
+    const input = { command: 'echo hi', description: 'watch the greeting' }
+    const result = await MonitorTool.checkPermissions(input, context)
+    expect(result.behavior).toBe('allow')
+    if (result.behavior === 'allow') {
+      expect(result.updatedInput).toBe(input)
+    }
   })
 })

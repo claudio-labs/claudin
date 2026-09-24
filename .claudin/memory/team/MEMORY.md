@@ -44,7 +44,7 @@
 - [Diff reviewer canonicalizes git worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — /diff groups collapse worktrees into their main checkout; fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; echo the real input on allow
 - [memory-turn-by-turn RSS bench flakes only under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — a negative first-half slope makes the threshold unsatisfiable; re-run in isolation before calling it a regression
-- [WaitFor drops every optional param](bugs/waitfor-drops-optional-params.md) — until/settle_s/interval_s/timeout_s never reach call(); always settles at 3s, so no working wait over ~3s
+- [WaitFor dropped every optional param — FIXED 2026-09-24](bugs/waitfor-drops-optional-params.md) — checkPermissions passed Bash's updatedInput {command} through; Monitor too; echo your own input on allow
 - [stream-json prints every assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — same uuid, Claude Code prints once; benches counting blocks must dedupe by uuid
 - [Resume re-wrote the whole prompt cache — FIXED 2026-09-23](bugs/resume-rewrites-cache-prefix.md) — dropped attachments + ms-tie reorder, 40%→100%; round 2 fixed hook output, plan_mode, @-files; cache.md §7
 

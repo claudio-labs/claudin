@@ -1,10 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { spawn } from 'child_process'
 
-import type { ToolUseContext } from 'src/tools/Tool.js'
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
 import {
   detectSleepPoll,
@@ -21,6 +22,24 @@ function makeCtx(abortController = new AbortController()): ToolUseContext {
     options: {},
   } as unknown as ToolUseContext
 }
+
+function allowCtx(allow: string[]): ToolUseContext {
+  const toolPermissionContext: ToolPermissionContext = {
+    ...getEmptyToolPermissionContext(),
+    alwaysAllowRules: { cliArg: allow },
+  }
+  return {
+    abortController: new AbortController(),
+    options: { isNonInteractiveSession: false },
+    getAppState: () => ({ toolPermissionContext }),
+  } as unknown as ToolUseContext
+}
+
+beforeAll(() => {
+  ;(globalThis as unknown as { MACRO: { VERSION: string } }).MACRO = {
+    VERSION: 'test',
+  }
+})
 
 describe('WaitForTool', () => {
   let dir: string
@@ -161,6 +180,27 @@ describe('WaitForTool', () => {
       'u1',
     )
     expect(block.content).toBe('hi\n[WaitFor: match after 4.2s, 5 polls]')
+  })
+
+  // bashToolHasPermission answers `updatedInput: { command }` and the harness
+  // applies updatedInput verbatim, so passing it through replaced the whole
+  // input before call(): until/settle_s/interval_s/timeout_s vanished and every
+  // wait "settled after 3.1s", whatever it was asked for.
+  test('on allow it hands back its own input, never the Bash-shaped one', async () => {
+    const input = {
+      setup: 'echo go',
+      command: 'echo stable',
+      until: 'NEVER_MATCHES',
+      settle_s: 5,
+      interval_s: 0.5,
+      timeout_s: 8,
+      description: 'd',
+    }
+    const result = await WaitForTool.checkPermissions(input, allowCtx(['Bash(echo:*)']))
+    expect(result.behavior).toBe('allow')
+    if (result.behavior === 'allow') {
+      expect(result.updatedInput).toBe(input)
+    }
   })
 
   // The matcher is permissive by construction: the per-subcommand version it

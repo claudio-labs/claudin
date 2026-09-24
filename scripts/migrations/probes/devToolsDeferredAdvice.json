@@ -1,0 +1,20 @@
+{
+  "test": [
+    "src/tools/WaitForTool/WaitForTool.test.ts",
+    "src/tools/MonitorTool/MonitorTool.test.ts"
+  ],
+  "source": "src/tools/WaitForTool/WaitForTool.ts",
+  "probes": [
+    {
+      "name": "WaitFor passes Bash's { command } through on allow",
+      "find": "    if (bashDecision.behavior === 'allow') {\n      return { behavior: 'allow', updatedInput: input }\n    }\n    return bashDecision\n  },\n\n  async validateInput",
+      "replace": "    return bashDecision\n  },\n\n  async validateInput"
+    },
+    {
+      "name": "Monitor passes Bash's { command } through on allow",
+      "source": "src/tools/MonitorTool/MonitorTool.ts",
+      "find": "    if (bashDecision.behavior === 'allow') {\n      return { behavior: 'allow', updatedInput: input }\n    }\n    return bashDecision",
+      "replace": "    return bashDecision"
+    }
+  ]
+}

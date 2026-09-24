@@ -143,7 +143,14 @@ export const WaitForTool = buildTool({
     // Delegate to the bash permission system — both the setup and the poll
     // are shell commands, so the same rules apply to their conjunction.
     const command = input.setup ? `${input.setup} && ${input.command}` : input.command
-    return bashToolHasPermission({ command }, context)
+    const bashDecision = await bashToolHasPermission({ command }, context)
+    // Bash's verdict, never its `updatedInput`: that is Bash-shaped
+    // (`{ command }`) and the harness applies it verbatim, which dropped
+    // until/settle_s/interval_s/timeout_s and folded `setup` into every poll.
+    if (bashDecision.behavior === 'allow') {
+      return { behavior: 'allow', updatedInput: input }
+    }
+    return bashDecision
   },
 
   async validateInput(input): Promise<ValidationResult> {
