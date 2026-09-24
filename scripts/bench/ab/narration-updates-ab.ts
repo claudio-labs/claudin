@@ -2,6 +2,12 @@
 /**
  * ANTI_NARRATION × progress updates A/B.
  *
+ * RETIRED 2026-09-23: the anti-narration text and `CLAUDIN_ANTI_NARRATION`
+ * were removed from every system prompt, so the ON and OFF arms are the same
+ * prompt and `--dry` fails its "narration text is in the ON arm" check by
+ * construction. Kept for its method and its result file
+ * (scripts/bench/results/narration-updates-ab-2026-09-23T03-16-25-877Z.md).
+ *
  * With `thinking.display: "updates"`, Opus 5.5 and Fable 5.1 write a progress
  * update before a tool call: a sentence for the person watching, returned as
  * the text of its own `thinking` block. Claudin's ANTI_NARRATION bullets tell

@@ -1,0 +1,41 @@
+{
+  "test": "src/agent/prompts/prompts.test.ts",
+  "source": "src/agent/prompts/prompts.ts",
+  "probes": [
+    {
+      "name": "a narration bullet comes back to the harness",
+      "find": "    ...(toolBatching ? [TOOL_BATCHING_HARNESS_BULLET] : []),",
+      "replace": "    ...(toolBatching ? [TOOL_BATCHING_HARNESS_BULLET] : []),\n    `Chain tool calls silently until a real stopping point.`,"
+    },
+    {
+      "name": "the checkpoints come back to the anthropic addendum",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "  `When a change touches several files, land it as ONE apply_patch",
+      "replace": "  `Outside the failure cases above, speak only at four checkpoints. When a change touches several files, land it as ONE apply_patch"
+    },
+    {
+      "name": "glm gets its narration line back",
+      "source": "src/agent/prompts/familyAddendums/glm.ts",
+      "find": "- Do not restate the user's request before answering or acting.",
+      "replace": "- Do not narrate intentions before tool calls.\n- Do not restate the user's request before answering or acting."
+    },
+    {
+      "name": "kimi gets its narration line back",
+      "source": "src/agent/prompts/familyAddendums/kimi.ts",
+      "find": "- Code that only appears in your text response is not saved",
+      "replace": "- Do not narrate before tool calls; act, then report only what changed.\n- Code that only appears in your text response is not saved"
+    },
+    {
+      "name": "openai-reasoning gets its updates line back",
+      "source": "src/agent/prompts/familyAddendums/openaiReasoning.ts",
+      "find": "- After a tool call, continue from where you left off",
+      "replace": "- Send updates only when they add new information.\n- After a tool call, continue from where you left off"
+    },
+    {
+      "name": "gemini gets its acknowledgement line back",
+      "source": "src/agent/prompts/familyAddendums/gemini.ts",
+      "find": "- Prefer non-interactive command flags",
+      "replace": "- Do not begin responses with acknowledgements or restatements of the request.\n- Prefer non-interactive command flags"
+    }
+  ]
+}

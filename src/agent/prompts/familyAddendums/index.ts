@@ -21,11 +21,11 @@ export type ModelFamily =
   | 'codex'
   | 'default'
 
-// Thunks, not strings: the anthropic entry has to be resolved per call so the
-// CLAUDIN_ANTI_NARRATION killswitch is not frozen at module-eval time. The
-// other six are constant, but they are wrapped too so the shape is uniform —
-// a reader should not have to know which one is lazy. The Record still lists
-// every ModelFamily, keeping the exhaustiveness guard.
+// Thunks, not strings: the anthropic entry is resolved per call (it reads a
+// build flag through a function). The other six are constant, but they are
+// wrapped too so the shape is uniform — a reader should not have to know which
+// one is lazy. The Record still lists every ModelFamily, keeping the
+// exhaustiveness guard.
 const ADDENDUMS: Record<ModelFamily, () => string | null> = {
   anthropic: getAnthropicAddendum,
   'openai-reasoning': () => OPENAI_REASONING_ADDENDUM,

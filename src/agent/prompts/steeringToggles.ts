@@ -1,12 +1,11 @@
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
-// Runtime opt-outs for the two static steering blocks with enough mass in the
+// Runtime opt-out for the static steering block with enough mass in the
 // cacheable prefix to be worth measuring: the WORK_CONTRACT sections (~885
 // tokens across "# Delivering work", the act-on-what-you-know line and
-// "# Corrections") and the ANTI_NARRATION text (~440 tokens across the harness
-// bullets and the anthropic addendum). Both default ON;
-// `CLAUDIN_WORK_CONTRACT=0` / `CLAUDIN_ANTI_NARRATION=0` (also false/no/off)
-// subtract them.
+// "# Corrections"). Default ON; `CLAUDIN_WORK_CONTRACT=0` (also false/no/off)
+// subtracts them. The ANTI_NARRATION text and its `CLAUDIN_ANTI_NARRATION`
+// twin were removed from every system prompt on 2026-09-23.
 //
 // WHY THESE EXIST. The build flags of the same name already gate this text,
 // but `feature()` folds to a literal at build time, so reaching both arms of
@@ -34,10 +33,6 @@ import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 // feature()-stubbed test preload.
 export function isWorkContractEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_WORK_CONTRACT)
-}
-
-export function isAntiNarrationEnabled(): boolean {
-  return !isEnvDefinedFalsy(process.env.CLAUDIN_ANTI_NARRATION)
 }
 
 /**

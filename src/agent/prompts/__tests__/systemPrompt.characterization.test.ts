@@ -180,7 +180,7 @@ describe('shipped system prompt — characterization', () => {
     // snapshot from source instead of from the bundle, every flag reads false
     // and ~800 tokens of steering silently vanish from the baseline. These
     // three sections exist ONLY behind flags that ship true (WORK_CONTRACT,
-    // ANTI_NARRATION), so their presence proves the provenance.
+    // TOOL_BATCHING_NUDGE), so their presence proves the provenance.
     const snapshot = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.main.txt'), 'utf8')
     expect(snapshot).toContain('# Delivering work')
     expect(snapshot).toContain('# Corrections')

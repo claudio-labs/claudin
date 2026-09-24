@@ -52,7 +52,6 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
 import { isMcpInstructionsDeltaEnabled } from 'src/mcp/mcpInstructionsDelta.js'
 import {
-  isAntiNarrationEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
 } from 'src/agent/prompts/steeringToggles.js'
@@ -146,17 +145,6 @@ ${CYBER_RISK_INSTRUCTION}`
 }
 
 // Exported for snapshot testing — see prompts.test.ts.
-// Wording carries an explicit failure carve-out at the front so the "silent
-// chain" rule cannot be (mis)read as "swallow a failing test" — preserves
-// the `getActionsSection` mandate to "report outcomes faithfully".
-export const ANTI_NARRATION_HARNESS_BULLETS: readonly string[] = [
-  `Between the user's turn and your final summary, the transcript should contain tool calls and nothing else — no opening sentence stating the goal, no pre-call narration ("Let me read X", "Now I'll check Y"), no mid-task plans/TODO blocks/section headings used as commentary, no single-word reactions ("Done.", "Got it."). Chain tool calls silently until a real stopping point. Plan-mode plans written via EnterPlanMode/ExitPlanMode are the deliverable, not narration — these rules don't restrict them.`,
-  `Lead with the answer or result when you do speak. Skip preamble, recaps of steps taken, and trailing meta ("Let me know if you'd like…"). Failures and unexpected results are reported immediately and succinctly; everything else waits for the summary.`,
-  `On tool errors, retry silently with a corrected call — no apologies, no "let me try again".`,
-  `Write the final summary for a teammate who didn't watch the process: complete sentences with technical terms spelled out — no fragments, abbreviations, or arrow chains like \`A → B → fails\`, and no shorthand or codenames invented mid-task. Keep it short by selecting what changes what the reader does next, not by compressing the writing.`,
-]
-
-// Exported for snapshot testing — see prompts.test.ts.
 // Decision rule (dependency-based) is what makes this followable instead
 // of a vague "be efficient" appeal: known + independent → batch; unknown
 // → map first; dependent → serialize. This bullet is the only place the
@@ -170,10 +158,11 @@ export const TOOL_BATCHING_HARNESS_BULLET =
 // Extracted so tests can render both the flag-on and flag-off shapes without
 // depending on build-time `feature()` substitution (the test preload stubs
 // every flag to false).
-export function buildHarnessItems(
-  antiNarration: boolean,
-  toolBatching: boolean,
-): string[] {
+//
+// No anti-narration bullets: removed from every system prompt and family
+// addendum on 2026-09-23 by decision, after the session A/B's `narr` arm moved
+// neither thinking nor cost (team memory `anti-narration-never-benched-on-claude-5`).
+export function buildHarnessItems(toolBatching: boolean): string[] {
   return [
     `Text you output outside of tool use is displayed to the user as Github-flavored markdown in a terminal.`,
     `Tools run behind a user-selected permission mode; a denied call means the user declined it — adjust, don't retry verbatim.`,
@@ -193,18 +182,14 @@ export function buildHarnessItems(
       : `Prefer the dedicated file/search tools over shell commands when one fits. Independent tool calls can run in parallel in one response.`,
     ...(toolBatching ? [TOOL_BATCHING_HARNESS_BULLET] : []),
     `Reference code as \`file_path:line_number\` — it's clickable. When referencing GitHub issues or PRs, use the owner/repo#123 format.`,
-    ...(antiNarration ? ANTI_NARRATION_HARNESS_BULLETS : []),
   ]
 }
 
 export function getHarnessSection(): string {
   // `feature()` must appear directly in an `if`/ternary so the build-time
   // preprocessor (scripts/build/build.ts) can substitute it with a boolean literal.
-  // The env resolver is the A/B killswitch on a single build; it can only
-  // subtract, since with the flag off this whole branch folds to false.
-  const antiNarration = feature('ANTI_NARRATION') ? isAntiNarrationEnabled() : false
   const toolBatching = feature('TOOL_BATCHING_NUDGE') ? true : false
-  return ['# Harness', ...prependBullets(buildHarnessItems(antiNarration, toolBatching))].join(`\n`)
+  return ['# Harness', ...prependBullets(buildHarnessItems(toolBatching))].join(`\n`)
 }
 
 function getCodingStyleLine(): string {
@@ -770,9 +755,8 @@ const SUBAGENT_BASE_NOTES = [
  * what a tool result is allowed to be, and that a long session is not a reason
  * to hand back a partial result.
  *
- * Exported and rendered through `buildSubagentNotes` for the same reason as
- * ANTI_NARRATION_HARNESS_BULLETS: the production wording needs a snapshot, and
- * the on/off seam needs to be reachable from a test. ~270 tokens on every
+ * Exported and rendered through `buildSubagentNotes`: the production wording
+ * needs a snapshot, and the on/off seam needs to be reachable from a test. ~270 tokens on every
  * sub-agent request — `CLAUDIN_SUBAGENT_NOTES=0` subtracts them for an A/B
  * (src/agent/prompts/steeringToggles.ts).
  */
@@ -843,9 +827,7 @@ const SUMMARIZE_TOOL_RESULTS_SECTION = `When working with tool results, write do
 
 // Roadmap #4 (token-efficiency): a length-ceiling nudge on final prose answers,
 // aimed at the most expensive token class (output). Deliberately targets answer
-// LENGTH — the axis ANTI_NARRATION_HARNESS_BULLETS does NOT cover (those kill
-// preamble/narration, not paragraph count) — so it adds signal instead of
-// restating "skip preamble". Exported so prompts.test.ts can snapshot the
+// LENGTH, not when the model speaks. Exported so prompts.test.ts can snapshot the
 // wording (the test preload stubs feature() to false, so the integrated path
 // can't be exercised there).
 export const VERBOSITY_STEERING_SECTION = `Default to the shortest response that fully answers the question. Prefer a few sentences over multiple paragraphs, and a short list over a long one, unless the user asks for depth or the task genuinely needs it. Don't pad answers with restated context, caveats, or summaries of what the user can already see.`

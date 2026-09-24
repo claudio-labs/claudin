@@ -1,14 +1,12 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import {
-  isAntiNarrationEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
 } from 'src/agent/prompts/steeringToggles.js'
 
 const VARS = [
   'CLAUDIN_WORK_CONTRACT',
-  'CLAUDIN_ANTI_NARRATION',
   'CLAUDIN_SUBAGENT_NOTES',
 ] as const
 
@@ -18,7 +16,6 @@ afterEach(() => {
 
 const CASES: Array<{ name: (typeof VARS)[number]; fn: () => boolean }> = [
   { name: 'CLAUDIN_WORK_CONTRACT', fn: isWorkContractEnabled },
-  { name: 'CLAUDIN_ANTI_NARRATION', fn: isAntiNarrationEnabled },
   { name: 'CLAUDIN_SUBAGENT_NOTES', fn: isSubagentNotesEnabled },
 ]
 
@@ -72,10 +69,10 @@ describe('toggle independence', () => {
 })
 
 describe('cache-prefix contract', () => {
-  // The work-contract and anti-narration resolvers read at call time from
-  // inside the STATIC (pre-boundary) half of the system prompt. That is only
+  // The work-contract resolver reads at call time from inside the STATIC
+  // (pre-boundary) half of the system prompt. That is only
   // sound while the value is constant for the process. A future edit that made
-  // one of them consult settings, the active provider or any mid-session state
+  // it consult settings, the active provider or any mid-session state
   // would fragment the cacheScope:'global' prefix on a bit that flips between
   // turns — the exact failure the module header warns about — so pin the
   // shape: nothing but a process.env read. isSubagentNotesEnabled is rendered

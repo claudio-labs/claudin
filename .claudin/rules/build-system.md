@@ -280,7 +280,7 @@ natively before any mock or plugin, so `mock.module('bun:bundle', …)` in
 flags read `false`, including the 34 that ship `true`. Anything rendered from
 source is therefore the flag-off shape, not what the binary sends. The worked
 example is the system prompt: a source dump is missing ~800 tokens of steering
-(`WORK_CONTRACT`, `ANTI_NARRATION`, `LEAN_TOOL_PROMPTS`, …) and a parity pass has
+(`WORK_CONTRACT`, `TOOL_BATCHING_NUDGE`, `LEAN_TOOL_PROMPTS`, …) and a parity pass has
 already reported shipped sections as missing because of it. To see the real
 thing, ask the built bundle: `bun scripts/bench/tokens/dump-system-prompt.ts
 --flags=ship` (after `bun run build`). Same trap for any other flag-gated

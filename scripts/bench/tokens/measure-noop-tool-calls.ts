@@ -8,10 +8,11 @@
  * whole context, so its price is the `cache_read_input_tokens` of the message
  * that carried it.
  *
- * Nothing in Claudin injects it. Every cheaper alternative is closed by the
- * prompt: text between tool calls is out (ANTI_NARRATION), and in plan mode
- * ending the turn is out too — so a tool call is the only legal emission and
- * `true` is the cheapest one.
+ * Nothing in Claudin injects it. When this was written, every cheaper
+ * alternative was closed by the prompt: text between tool calls was out (the
+ * anti-narration bullets, removed 2026-09-23), and in plan mode ending the
+ * turn is out too — so a tool call was the only legal emission and `true` the
+ * cheapest one.
  *
  * The three numbers it reports:
  *

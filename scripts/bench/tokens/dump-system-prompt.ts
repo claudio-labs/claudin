@@ -21,8 +21,8 @@
 // build resolves them, by rewriting the source in place (scripts/build/build.ts), so
 // the honest way to see the shipped prompt is to ask the built bundle for it.
 //
-// The default mode is therefore missing WORK_CONTRACT, ANTI_NARRATION,
-// TOOL_BATCHING_NUDGE, LEAN_TOOL_PROMPTS and every other shipped flag — roughly
+// The default mode is therefore missing WORK_CONTRACT, TOOL_BATCHING_NUDGE,
+// LEAN_TOOL_PROMPTS and every other shipped flag — roughly
 // 800 tokens of steering. A parity pass that reads it as ground truth reports
 // shipped sections as missing; that has already happened once, on the parity
 // pass against Claude Code that this mode was added for. The header line names
