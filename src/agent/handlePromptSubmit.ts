@@ -23,6 +23,7 @@ import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
 import { fileHistoryEnabled, fileHistoryMakeSnapshot } from 'src/shared/fs/fileHistory.js'
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 import { enqueue } from 'src/agent/messageQueueManager.js'
+import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import { resolveSkillModelOverride } from 'src/providers/model/model.js'
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js'
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js'
@@ -460,6 +461,7 @@ async function executeUserInput(params: ExecuteUserInputParams): Promise<void> {
         bridgeOrigin: cmd.bridgeOrigin,
         isMeta: cmd.isMeta,
         skipAttachments: !isFirst,
+        skipInputDirectives: isAgentAuthored(cmd.origin),
       })
       // Stamp origin here rather than threading another arg through
       // processUserInput → processUserInputBase → processTextPrompt → createUserMessage.

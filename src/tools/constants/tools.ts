@@ -85,6 +85,9 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   // thousands of progress lines that a background agent would otherwise carry
   // in full for the sake of the few that name the failure.
   BUILD_TOOL_NAME,
+  // A background agent is the one agent that can usefully message: it can
+  // write to "main" while it works, and reach the other agents by name.
+  SEND_MESSAGE_TOOL_NAME,
 ])
 /**
  * Tools allowed only for in-process teammates (not general async agents).

@@ -5,6 +5,7 @@ import * as React from 'react';
 import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js';
 import { COMMAND_MESSAGE_TAG, LOCAL_COMMAND_CAVEAT_TAG, TASK_NOTIFICATION_TAG, TEAMMATE_MESSAGE_TAG, TICK_TAG } from 'src/shared/constants/xml.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
+import { isInterAgentMessage } from 'src/agent/messages/interAgentMessages.js';
 import { extractTag, INTERRUPT_MESSAGE, INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/agent/messages/messages.js';
 import { InterruptedByUser } from 'src/agent/ui/InterruptedByUser.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
@@ -14,6 +15,7 @@ import { UserBashOutputMessage } from 'src/agent/ui/messages/UserBashOutputMessa
 import { UserCommandMessage } from 'src/agent/ui/messages/UserCommandMessage.js';
 import { UserLocalCommandOutputMessage } from 'src/agent/ui/messages/UserLocalCommandOutputMessage.js';
 import { UserMemoryInputMessage } from 'src/agent/ui/messages/UserMemoryInputMessage.js';
+import { UserPeerMessage } from 'src/agent/ui/messages/UserPeerMessage.js';
 import { UserPlanMessage } from 'src/agent/ui/messages/UserPlanMessage.js';
 import { UserPromptMessage } from 'src/agent/ui/messages/UserPromptMessage.js';
 import { UserResourceUpdateMessage } from 'src/agent/ui/messages/UserResourceUpdateMessage.js';
@@ -48,6 +50,21 @@ export function UserTextMessage(t0: Props) {
       $[2] = t1;
     } else {
       t1 = $[2];
+    }
+    return t1;
+  }
+  // Checked before every `includes` branch below: the body of a message
+  // another agent sent is free text and may quote any of their tags.
+  if (isInterAgentMessage(param.text)) {
+    let t1;
+    if ($[36] !== addMargin || $[37] !== isTranscriptMode || $[38] !== param) {
+      t1 = <UserPeerMessage addMargin={addMargin} param={param} isTranscriptMode={isTranscriptMode} />;
+      $[36] = addMargin;
+      $[37] = isTranscriptMode;
+      $[38] = param;
+      $[39] = t1;
+    } else {
+      t1 = $[39];
     }
     return t1;
   }
@@ -189,10 +206,11 @@ export function UserTextMessage(t0: Props) {
       return t2;
     }
   }
-  // Slots $[36]–$[39] are deliberately left allocated but unused: they belonged
-  // to a removed flag-gated cross-session-message branch, and $[40]–$[43] to the
-  // removed KAIROS/KAIROS_CHANNELS channel-message branch. `_c(49)` and every
-  // other `$[i]` index stay exactly as the React Compiler emitted them.
+  // Slots $[36]–$[39] serve the inter-agent branch near the top (they once
+  // belonged to a removed cross-session-message branch). $[40]–$[43] are
+  // deliberately left allocated but unused: they belonged to the removed
+  // KAIROS/KAIROS_CHANNELS channel-message branch. `_c(49)` and every other
+  // `$[i]` index stay exactly as the React Compiler emitted them.
   let t1;
   if ($[44] !== addMargin || $[45] !== isTranscriptMode || $[46] !== param || $[47] !== timestamp) {
     t1 = <UserPromptMessage addMargin={addMargin} param={param} isTranscriptMode={isTranscriptMode} timestamp={timestamp} />;

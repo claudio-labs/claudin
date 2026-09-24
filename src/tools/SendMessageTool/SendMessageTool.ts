@@ -1,6 +1,16 @@
+/**
+ * SendMessage — one agent writing to another: a background agent it spawned
+ * (resumed from its transcript when it has stopped), the main conversation
+ * (`"main"`, from a background agent), and — inside an agent team — its
+ * teammates.
+ *
+ * On by default. CLAUDIN_DISABLE_SEND_MESSAGE=1 removes it again outside an
+ * agent team, where the swarm protocol still needs it.
+ */
 import { z } from 'zod/v4'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { enqueue } from 'src/agent/messageQueueManager.js'
 import { findTeammateTaskByAgentId } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import {
   isLocalAgentTask,
@@ -11,6 +21,7 @@ import { toAgentId } from 'src/shared/types/ids.js'
 import { generateRequestId } from 'src/agent/coordinator/agentId.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
@@ -35,6 +46,7 @@ import {
   writeToMailbox,
 } from 'src/agent/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
+import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/SendMessageTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
@@ -60,26 +72,58 @@ const StructuredMessage = lazySchema(() =>
   ]),
 )
 
-const inputSchema = lazySchema(() =>
+const MAIN_ADDRESS = 'main'
+const SUMMARY_MAX_CHARS = 200
+const TO_MAX_CHARS = 1024
+const SINGLE_LINE_RE = /^[^\n\r]*$/
+
+const MESSAGE_DESCRIPTION =
+  "Plain text message content. The recipient's human sees only the FIRST LINE as a one-line preview until they expand it, so make the first line a clear, self-contained sentence saying what this is about — not a greeting, preamble, or bare @-mention."
+
+function describeTo(swarm: boolean): string {
+  return swarm
+    ? 'Recipient: a background agent\'s name or agentId, a teammate name, "*" for the whole team, or "main"'
+    : 'Recipient: a background agent\'s name or agentId, or "main"'
+}
+
+function describeSummary(swarm: boolean): string {
+  return swarm
+    ? `A 5-10 word summary: your transcript row, and the preview a teammate sees. Defaults to the first line of \`message\`; truncated to ${SUMMARY_MAX_CHARS} characters rather than rejected.`
+    : `A 5-10 word label for your own transcript row, not sent — the recipient reads \`message\`. Defaults to its first line; truncated to ${SUMMARY_MAX_CHARS} characters rather than rejected.`
+}
+
+// Only here to name the widest variant's type; inputSchemaFor builds the
+// schemas, and every variant accepts a subset of what this one does.
+const widestInputSchema = () =>
   z.object({
-    to: z
-      .string()
-      .describe(
-        'Recipient: teammate name, or "*" for broadcast to all teammates',
-      ),
-    summary: z
-      .string()
-      .optional()
-      .describe(
-        'A 5-10 word summary shown as a preview in the UI (required when message is a string)',
-      ),
-    message: z.union([
-      z.string().describe('Plain text message content'),
-      StructuredMessage(),
-    ]),
-  }),
-)
-type InputSchema = ReturnType<typeof inputSchema>
+    to: z.string(),
+    summary: z.string().optional(),
+    message: z.union([z.string(), StructuredMessage()]),
+  })
+type InputSchema = ReturnType<typeof widestInputSchema>
+
+const inputSchemas = new Map<string, InputSchema>()
+
+/**
+ * Structured protocol messages and `"*"` exist only inside an agent team, so
+ * outside one the schema offers plain text alone — the model is not shown
+ * shapes it can never send. Each variant is built once, keeping the schema
+ * byte-stable across requests. buildTool spreads the tool definition, so the
+ * `inputSchema` getter below runs once, when this module loads.
+ */
+export function inputSchemaFor({ swarm }: { swarm: boolean }): InputSchema {
+  const key = `swarm=${swarm}`
+  const cached = inputSchemas.get(key)
+  if (cached) return cached
+  const text = z.string().describe(MESSAGE_DESCRIPTION)
+  const schema = z.object({
+    to: z.string().describe(describeTo(swarm)),
+    summary: z.string().optional().describe(describeSummary(swarm)),
+    message: swarm ? z.union([text, StructuredMessage()]) : text,
+  }) as unknown as InputSchema
+  inputSchemas.set(key, schema)
+  return schema
+}
 
 export type Input = z.infer<InputSchema>
 
@@ -138,6 +182,69 @@ function findTeammateColor(
     }
   }
   return undefined
+}
+
+/** The label a send is shown under: the given summary, else the first line. */
+function resolveSummary(summary: string | undefined, message: string): string {
+  const label = summary?.trim() || (message.trim().split('\n')[0] ?? '')
+  return label.length > SUMMARY_MAX_CHARS
+    ? `${label.slice(0, SUMMARY_MAX_CHARS - 1)}…`
+    : label
+}
+
+function findAgentName(
+  registry: Map<string, string>,
+  agentId: string,
+): string | undefined {
+  let found: string | undefined
+  // Latest registration wins, the same way a send by name resolves.
+  for (const [name, id] of registry) if (id === agentId) found = name
+  return found
+}
+
+/**
+ * A background agent writing to the main conversation. It lands in the main
+ * thread's queue: drained into the current turn at its next tool round, or
+ * starting a turn when the main conversation is idle — the same two paths a
+ * task notification takes.
+ */
+function handleMainMessage(
+  content: string,
+  context: ToolUseContext,
+): { data: MessageOutput } {
+  const { agentId } = context
+  if (agentId === undefined) {
+    throw new Error(
+      isTeammate()
+        ? `Teammates reach the lead as "${TEAM_LEAD_NAME}", not "${MAIN_ADDRESS}".`
+        : `You are the main conversation — "${MAIN_ADDRESS}" addresses you.`,
+    )
+  }
+  const appState = context.getAppState()
+  const task = appState.tasks[agentId]
+  if (!isLocalAgentTask(task) || isMainSessionTask(task) || !task.isBackgrounded) {
+    throw new Error(
+      `"${MAIN_ADDRESS}" is for background agents. An agent running inline hands its final message to the main conversation — put what you want to say there.`,
+    )
+  }
+  const name = findAgentName(appState.agentNameRegistry, agentId)
+  enqueue({
+    value: formatAgentMessage({
+      from: name ?? agentId,
+      description: name === undefined ? task.description : undefined,
+      body: content,
+    }),
+    mode: 'task-notification',
+    priority: 'next',
+    skipSlashCommands: true,
+    origin: { kind: 'subagent', name: name ?? task.description },
+  })
+  return {
+    data: {
+      success: true,
+      message: "Message queued for the main conversation's next turn.",
+    },
+  }
 }
 
 async function handleMessage(
@@ -522,12 +629,15 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     get inputSchema(): InputSchema {
-      return inputSchema()
+      return inputSchemaFor({ swarm: isAgentSwarmsEnabled() })
     },
     shouldDefer: true,
 
     isEnabled() {
-      return isAgentSwarmsEnabled()
+      return (
+        isAgentSwarmsEnabled() ||
+        !isEnvTruthy(process.env.CLAUDIN_DISABLE_SEND_MESSAGE)
+      )
     },
 
     isReadOnly(input) {
@@ -588,6 +698,13 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
           errorCode: 9,
         }
       }
+      if (!SINGLE_LINE_RE.test(input.to) || input.to.length > TO_MAX_CHARS) {
+        return {
+          result: false,
+          message: `to must be a single-line name or address of at most ${TO_MAX_CHARS} characters`,
+          errorCode: 9,
+        }
+      }
       const addr = parseAddress(input.to)
       if (
         (addr.scheme === 'bridge' || addr.scheme === 'uds') &&
@@ -603,19 +720,37 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         return {
           result: false,
           message:
-            'to must be a bare teammate name or "*" — there is only one team per session',
+            'to must be a bare name, "main" or an agentId — "@" is not part of any address',
           errorCode: 9,
         }
       }
+      const swarm = isAgentSwarmsEnabled()
       if (typeof input.message === 'string') {
-        if (!input.summary || input.summary.trim().length === 0) {
+        if (input.to === '*' && !swarm) {
           return {
             result: false,
-            message: 'summary is required when message is a string',
+            message:
+              '"*" broadcasts to an agent team, and this session is not in one',
+            errorCode: 9,
+          }
+        }
+        if (input.message.trim().length === 0) {
+          return {
+            result: false,
+            message: 'message must not be empty',
             errorCode: 9,
           }
         }
         return { result: true }
+      }
+
+      if (!swarm) {
+        return {
+          result: false,
+          message:
+            'structured messages belong to the agent-team protocol — send plain text',
+          errorCode: 9,
+        }
       }
 
       if (input.to === '*') {
@@ -657,7 +792,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     async prompt() {
-      return getPrompt()
+      return getPrompt({ swarm: isAgentSwarmsEnabled() })
     },
 
     mapToolResultToToolResultBlockParam(data, toolUseID) {
@@ -674,6 +809,10 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     async call(input, context, canUseTool, assistantMessage) {
+      if (typeof input.message === 'string' && input.to === MAIN_ADDRESS) {
+        return handleMainMessage(input.message, context)
+      }
+
       // Route to in-process subagent by name or raw agentId before falling
       // through to ambient-team resolution. Stopped agents are auto-resumed.
       if (typeof input.message === 'string' && input.to !== '*') {
@@ -769,10 +908,19 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
       }
 
       if (typeof input.message === 'string') {
+        const summary = resolveSummary(input.summary, input.message)
         if (input.to === '*') {
-          return handleBroadcast(input.message, input.summary, context)
+          return handleBroadcast(input.message, summary, context)
         }
-        return handleMessage(input.to, input.message, input.summary, context)
+        // A teammate send writes to a mailbox that only an agent team reads,
+        // so outside one an unknown name must fail here — reporting success
+        // would drop the message on the floor.
+        if (!isAgentSwarmsEnabled()) {
+          throw new Error(
+            `No agent named "${input.to}" in this session. Message a background agent by the name or agentId from its launch result, or "${MAIN_ADDRESS}" from inside a background agent.`,
+          )
+        }
+        return handleMessage(input.to, input.message, summary, context)
       }
 
       if (input.to === '*') {

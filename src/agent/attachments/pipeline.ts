@@ -81,6 +81,12 @@ import {
   getBashGitInstructionsAttachment,
 } from 'src/agent/attachments/skill-bash-gates.js'
 
+type AttachmentOptions = {
+  skipSkillDiscovery?: boolean
+  /** The input was written by another agent, not this session's user. */
+  skipInputDirectives?: boolean
+}
+
 /**
  * This is janky
  * TODO: Generate attachments when we create messages
@@ -92,7 +98,7 @@ export async function getAttachments(
   queuedCommands: QueuedCommand[],
   messages?: Message[],
   querySource?: QuerySource,
-  options?: { skipSkillDiscovery?: boolean },
+  options?: AttachmentOptions,
 ): Promise<Attachment[]> {
   if (
     isEnvTruthy(process.env.CLAUDIN_DISABLE_ATTACHMENTS) ||
@@ -123,19 +129,24 @@ export async function getAttachments(
   const omitMemoryIndexes = toolUseContext.omitMemoryIndexAttachments === true
   const omitGitStatus = toolUseContext.omitGitStatusAttachments === true
 
+  // Text another agent wrote reaches the model literally: an @-mention, an MCP
+  // resource reference, an agent mention or the ultrathink keyword is a
+  // directive only this session's user may issue.
+  const directiveInput = options?.skipInputDirectives ? null : input
+
   // Attachments which are added in response to on user input
-  const userInputAttachments = input
+  const userInputAttachments = directiveInput
     ? [
         maybe('at_mentioned_files', () =>
-          processAtMentionedFiles(input, context),
+          processAtMentionedFiles(directiveInput, context),
         ),
         maybe('mcp_resources', () =>
-          processMcpResourceAttachments(input, context),
+          processMcpResourceAttachments(directiveInput, context),
         ),
         maybe('agent_mentions', () =>
           Promise.resolve(
             processAgentMentions(
-              input,
+              directiveInput,
               toolUseContext.options.agentDefinitions.activeAgents,
             ),
           ),
@@ -201,7 +212,7 @@ export async function getAttachments(
       Promise.resolve(getDateChangeAttachments(toolUseContext)),
     ),
     maybe('ultrathink_effort', () =>
-      Promise.resolve(getUltrathinkEffortAttachment(input)),
+      Promise.resolve(getUltrathinkEffortAttachment(directiveInput)),
     ),
     maybe('deferred_tools_delta', () =>
       Promise.resolve(
@@ -506,7 +517,7 @@ export async function* getAttachmentMessages(
   queuedCommands: QueuedCommand[],
   messages?: Message[],
   querySource?: QuerySource,
-  options?: { skipSkillDiscovery?: boolean },
+  options?: AttachmentOptions,
 ): AsyncGenerator<AttachmentMessage, void> {
   // TODO: Compute this upstream
   const attachments = await getAttachments(

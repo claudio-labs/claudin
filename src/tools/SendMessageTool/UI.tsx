@@ -3,7 +3,18 @@ import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { Text } from 'src/terminal/ink.js';
 import { jsonParse } from 'src/platform/slowOperations.js';
 import type { Input, SendMessageToolOutput } from 'src/tools/SendMessageTool/SendMessageTool.js';
+const LABEL_MAX_CHARS = 80;
 export function renderToolUseMessage(input: Partial<Input>): React.ReactNode {
+  if (typeof input.message === 'string') {
+    if (!input.to) {
+      return null;
+    }
+    const label = input.summary?.trim() || input.message.trim().split('\n')[0] || '';
+    if (!label) {
+      return input.to;
+    }
+    return `${input.to}: ${label.length > LABEL_MAX_CHARS ? `${label.slice(0, LABEL_MAX_CHARS - 1)}…` : label}`;
+  }
   if (typeof input.message !== 'object' || input.message === null) {
     return null;
   }

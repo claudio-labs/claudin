@@ -64,6 +64,8 @@ export type MessageOrigin =
   | { kind: 'task-notification' }
   | { kind: 'coordinator' }
   | { kind: 'channel'; server: string }
+  /** A background agent's SendMessage to "main". */
+  | { kind: 'subagent'; name: string }
 
 /**
  * Which side of the selected message a partial compaction summarizes.

@@ -21,6 +21,7 @@ import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { RemoteIO } from 'src/platform/headless/remoteIO.js'
 import { ask } from 'src/agent/QueryEngine.js'
+import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 import {
   dequeue,
@@ -446,6 +447,7 @@ export async function runTurnLoop(
           prompt: input,
           promptUuid: cmd.uuid,
           isMeta: cmd.isMeta,
+          skipInputDirectives: isAgentAuthored(cmd.origin),
           cwd: cwd(),
           tools: allTools,
           verbose: options.verbose,
