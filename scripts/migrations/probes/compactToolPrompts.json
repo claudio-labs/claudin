@@ -99,16 +99,22 @@
       "replace": ""
     },
     {
-      "name": "the compact switch reads any family",
+      "name": "the v2 switch rule reads any family",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "    isEnvTruthy(process.env.CLAUDIN_COMPACT_TOOL_PROMPTS) &&\n    getFamilyForLogging(getMainLoopModel()) === 'anthropic'",
-      "replace": "    isEnvTruthy(process.env.CLAUDIN_COMPACT_TOOL_PROMPTS)"
+      "find": "  return isEnvTruthy(envValue) && family === 'anthropic'",
+      "replace": "  return isEnvTruthy(envValue)"
     },
     {
-      "name": "the reminders switch reads any family",
+      "name": "the compact switch stops passing the live family",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "    isEnvTruthy(process.env.CLAUDIN_LEAN_REMINDERS) &&\n    getFamilyForLogging(getMainLoopModel()) === 'anthropic'",
-      "replace": "    isEnvTruthy(process.env.CLAUDIN_LEAN_REMINDERS)"
+      "find": "    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,\n    getFamilyForLogging(getMainLoopModel()),",
+      "replace": "    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,\n    'anthropic',"
+    },
+    {
+      "name": "the reminders switch stops passing the live family",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "    process.env.CLAUDIN_LEAN_REMINDERS,\n    getFamilyForLogging(getMainLoopModel()),",
+      "replace": "    process.env.CLAUDIN_LEAN_REMINDERS,\n    'anthropic',"
     },
     {
       "name": "the skills listing ignores the lean cap",

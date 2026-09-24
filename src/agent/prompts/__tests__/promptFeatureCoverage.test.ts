@@ -23,16 +23,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Command } from 'src/commands/commands.js'
 import {
-  getMainLoopModelOverride,
-  setMainLoopModelOverride,
-} from 'src/platform/bootstrap/state.js'
-import {
   buildAgentToolSection,
   getSessionSpecificGuidanceSection,
 } from 'src/agent/prompts/prompts.js'
 import {
   isCompactToolPromptsEnabled,
   isLeanRemindersEnabled,
+  isV2PromptSwitchOn,
 } from 'src/agent/prompts/toolPromptTier.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { getEmptyToolPermissionContext, type Tool } from 'src/tools/Tool.js'
@@ -255,16 +252,25 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
     expect(isLeanRemindersEnabled()).toBe(true)
   })
 
+  // Through the pure rule, not the live model: under the full suite a leaked
+  // `model.js` mock makes getMainLoopModel() ignore an override, so a test that
+  // sets one passes alone and fails in the run. The wiring from each switch to
+  // that rule is pinned on the source instead.
   test('the switches do not reach a model outside the Anthropic family', () => {
-    on()
-    const prior = getMainLoopModelOverride()
-    try {
-      // A first-party session on a non-Claude id resolves to the default family.
-      setMainLoopModelOverride('gpt-5')
-      expect(isCompactToolPromptsEnabled()).toBe(false)
-      expect(isLeanRemindersEnabled()).toBe(false)
-    } finally {
-      setMainLoopModelOverride(prior)
+    expect(isV2PromptSwitchOn('1', 'anthropic')).toBe(true)
+    for (const family of ['default', 'openai-reasoning', 'gemini', 'kimi', 'glm', 'codex'] as const) {
+      expect(isV2PromptSwitchOn('1', family)).toBe(false)
+    }
+    expect(isV2PromptSwitchOn(undefined, 'anthropic')).toBe(false)
+    const src = readFileSync(new URL('../toolPromptTier.ts', import.meta.url), 'utf8')
+    for (const [fn, env] of [
+      ['isCompactToolPromptsEnabled', 'CLAUDIN_COMPACT_TOOL_PROMPTS'],
+      ['isLeanRemindersEnabled', 'CLAUDIN_LEAN_REMINDERS'],
+    ] as const) {
+      const start = src.indexOf(`export function ${fn}(`)
+      const body = src.slice(start, src.indexOf('\n}\n', start))
+      expect(body).toContain(`process.env.${env}`)
+      expect(body).toContain('getFamilyForLogging(getMainLoopModel())')
     }
   })
 

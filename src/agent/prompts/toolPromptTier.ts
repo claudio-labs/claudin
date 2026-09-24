@@ -62,6 +62,19 @@ export function isLeanToolPromptFamily(): boolean {
 }
 
 /**
+ * The rule both v2 switches below share, pure so a test can reach it without
+ * the process-global model state (a dozen suites mock `model.js`, and one that
+ * leaks makes `getMainLoopModel()` ignore an override): the env opt-in AND the
+ * Anthropic family.
+ */
+export function isV2PromptSwitchOn(
+  envValue: string | undefined,
+  family: ModelFamily,
+): boolean {
+  return isEnvTruthy(envValue) && family === 'anthropic'
+}
+
+/**
  * The v2 tool descriptions (branch perf/prompts-v2): Read, Grep, apply_patch,
  * Agent, Bash, Build, Typecheck and RunTests at Claude Code 2.1.280's density,
  * every parameter and behavior still named (promptFeatureCoverage.test.ts),
@@ -72,9 +85,9 @@ export function isLeanToolPromptFamily(): boolean {
  * like the tier above this is read when the first request is built.
  */
 export function isCompactToolPromptsEnabled(): boolean {
-  return (
-    isEnvTruthy(process.env.CLAUDIN_COMPACT_TOOL_PROMPTS) &&
-    getFamilyForLogging(getMainLoopModel()) === 'anthropic'
+  return isV2PromptSwitchOn(
+    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,
+    getFamilyForLogging(getMainLoopModel()),
   )
 }
 
@@ -85,8 +98,8 @@ export function isCompactToolPromptsEnabled(): boolean {
  * session A/B gate holds.
  */
 export function isLeanRemindersEnabled(): boolean {
-  return (
-    isEnvTruthy(process.env.CLAUDIN_LEAN_REMINDERS) &&
-    getFamilyForLogging(getMainLoopModel()) === 'anthropic'
+  return isV2PromptSwitchOn(
+    process.env.CLAUDIN_LEAN_REMINDERS,
+    getFamilyForLogging(getMainLoopModel()),
   )
 }
