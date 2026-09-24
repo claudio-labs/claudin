@@ -420,7 +420,7 @@ export function getSimplePrompt(leanOverride?: boolean): string {
  * name, the working-directory rule and why, the timeout bounds, the command
  * separators — in one list. Sandbox and inline git sections are unchanged.
  */
-export function getCompactPrompt(): string {
+function getCompactPrompt(): string {
   const backgroundNote = getBackgroundUsageNote()
   const items = [
     `Use the dedicated tools instead of their shell forms: ${GLOB_TOOL_NAME} (not find/ls), ${GREP_TOOL_NAME} (not grep/rg), ${FILE_READ_TOOL_NAME} (not cat/head/tail), ${FILE_EDIT_TOOL_NAME} (not sed/awk), ${FILE_WRITE_TOOL_NAME} (not echo >/heredocs), ${RUN_TESTS_TOOL_NAME} (not npm test/pytest/go test), ${BUILD_TOOL_NAME} (not make/cargo build/gradle), ${TYPECHECK_TOOL_NAME} (not tsc --noEmit/mypy), and ${GIT_TOOL_NAME} for git and gh, several commands per call. Write text directly rather than through echo.`,
