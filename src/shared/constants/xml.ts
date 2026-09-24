@@ -41,8 +41,13 @@ export const REMOTE_REVIEW_PROGRESS_TAG = 'remote-review-progress'
 // XML tag name for teammate messages (swarm inter-agent communication)
 export const TEAMMATE_MESSAGE_TAG = 'teammate-message'
 
-// XML tag name for cross-session UDS messages (another Claude session's inbox)
+// XML tag name for a background agent's SendMessage to "main"
+export const AGENT_MESSAGE_TAG = 'agent-message'
 
+// XML tag name for cross-session UDS messages (another Claude session's inbox)
+export const CROSS_SESSION_MESSAGE_TAG = 'cross-session-message'
+// The harness's own notices about a cross-session send: held, denied, idle
+export const CROSS_SESSION_NOTICE_TAG = 'cross-session-notice'
 
 // XML tag wrapping the rules/format boilerplate in a fork child's first message.
 // Lets the transcript renderer collapse the boilerplate and show only the directive.

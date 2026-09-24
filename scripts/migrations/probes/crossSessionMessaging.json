@@ -1,0 +1,217 @@
+{
+  "test": [
+    "src/sessions/peers",
+    "src/sessions/pidRecord.test.ts",
+    "src/tools/SendMessageTool",
+    "src/tools/ListAgentsTool",
+    "src/tools/AgentTool/agentToolUtils.test.ts",
+    "src/agent/attachments/inputDirectives.pipeline.test.ts",
+    "src/agent/input/processUserInput.directives.test.ts",
+    "src/agent/messages/interAgentMessages.test.ts",
+    "src/agent/handlePromptSubmit.test.ts",
+    "src/agent/handlePromptSubmit.agentAuthored.test.ts",
+    "src/agent/repl/getFocusedInputDialog.test.ts",
+    "src/shared/data/xml.test.ts",
+    "src/permissions/yoloClassifier.test.ts"
+  ],
+  "source": "src/sessions/peers/inboxServer.ts",
+  "probes": [
+    {
+      "name": "the inbox refuses a frame without this session's token",
+      "find": "    if (!tokensMatch(frame.token, token)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "the socket is chmod 0600 after bind",
+      "find": "  await chmod(socketPath, 0o600)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a symlink or plain file is never taken for a peer's socket",
+      "source": "src/sessions/peers/socketPath.ts",
+      "find": "    return stats.isSocket() && (uid === undefined || stats.uid === uid)\n",
+      "replace": "    return true\n"
+    },
+    {
+      "name": "a symlink in place of the socket directory is refused",
+      "source": "src/sessions/peers/socketPath.ts",
+      "find": "  if (!stats.isDirectory()) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "only a socket this user owns is listed",
+      "comment": "The directory is the allowlist a send dials from: without this a record could point a frame at any socket on the machine.",
+      "source": "src/sessions/peers/registry.ts",
+      "find": "    if (!(await deps.isOwnedSocket(socketPath))) continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a dead session is not listed",
+      "source": "src/sessions/peers/registry.ts",
+      "find": "    if (pid === deps.ownPid || !socketPath || !token || !deps.isAlive(pid)) continue\n",
+      "replace": "    if (pid === deps.ownPid || !socketPath || !token) continue\n"
+    },
+    {
+      "name": "a uds: address must be one a live session advertises",
+      "source": "src/sessions/peers/registry.ts",
+      "find": "      : { error: 'No session is listening at that address any more — ListAgents shows the ones that are.' }\n",
+      "replace": "      : { peer: { ...peers[0]!, socketPath: address.target } }\n"
+    },
+    {
+      "name": "a sender's reply address comes from the directory, never from its claim",
+      "source": "src/sessions/peers/delivery.ts",
+      "find": "    ? { address: formatUdsAddress(peer.socketPath), name: peer.name }\n    : { name: claimed }\n",
+      "replace": "    ? { address: formatUdsAddress(peer.socketPath), name: peer.name }\n    : { address: frame.from, name: claimed }\n"
+    },
+    {
+      "name": "attribute values in the envelope are escaped",
+      "source": "src/shared/data/xml.ts",
+      "find": "  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n",
+      "replace": "  return s\n"
+    },
+    {
+      "name": "the envelope body cannot close or forge its own tag",
+      "source": "src/shared/data/xml.ts",
+      "find": "  return `<${tag}${attrText}>\\n${neutralizeXmlTag(body, tag)}\\n</${tag}>`\n",
+      "replace": "  return `<${tag}${attrText}>\\n${body}\\n</${tag}>`\n"
+    },
+    {
+      "name": "the pipeline expands no @-mention in agent-written text",
+      "source": "src/agent/attachments/pipeline.ts",
+      "find": "  const directiveInput = options?.skipInputDirectives ? null : input\n",
+      "replace": "  const directiveInput = input\n"
+    },
+    {
+      "name": "processUserInput threads skipInputDirectives to the pipeline",
+      "source": "src/agent/input/processUserInput.ts",
+      "find": "          { skipInputDirectives },\n",
+      "replace": "          {},\n"
+    },
+    {
+      "name": "the REPL marks agent-written commands as such",
+      "source": "src/agent/handlePromptSubmit.ts",
+      "find": "        skipInputDirectives: isAgentAuthored(cmd.origin),\n",
+      "replace": "        skipInputDirectives: false,\n"
+    },
+    {
+      "name": "a peer origin counts as agent-authored",
+      "source": "src/agent/messages/interAgentMessages.ts",
+      "find": "    origin?.kind === 'peer' ||\n",
+      "replace": "    false ||\n"
+    },
+    {
+      "name": "the send budget stops a ping-pong",
+      "source": "src/sessions/peers/sendBudget.ts",
+      "find": "  if (sent >= CROSS_SESSION_SENDS_PER_USER_PROMPT) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "only a prompt the user typed renews the send budget",
+      "source": "src/sessions/peers/sendBudget.ts",
+      "find": "  if (commands.some(cmd => cmd.mode === 'prompt' && cmd.origin === undefined)) {\n",
+      "replace": "  if (commands.length > 0) {\n"
+    },
+    {
+      "name": "the REPL renews the budget from the commands it runs",
+      "source": "src/agent/handlePromptSubmit.ts",
+      "find": "    renewCrossSessionSendsFor(commands)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a mode mismatch is held, not delivered",
+      "source": "src/sessions/peers/policy.ts",
+      "find": "  if (sender === receiver) return { action: 'deliver' }\n",
+      "replace": "  return { action: 'deliver' }\n"
+    },
+    {
+      "name": "a repository can only make crossSessionInbound stricter",
+      "source": "src/sessions/peers/policy.ts",
+      "find": "    if (repo === undefined || repo === 'accept') continue\n",
+      "replace": "    if (repo === undefined) continue\n"
+    },
+    {
+      "name": "a denied held message is not delivered",
+      "source": "src/sessions/peers/delivery.ts",
+      "find": "    if (decision === 'deliver') deps.enqueue(message.command)\n",
+      "replace": "    deps.enqueue(message.command)\n"
+    },
+    {
+      "name": "the hold queue has a ceiling",
+      "source": "src/sessions/peers/heldMessages.ts",
+      "find": "  if (held.length >= HOLD_CAPACITY) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a delivery status is believed only for a send this session made",
+      "source": "src/sessions/peers/delivery.ts",
+      "find": "    const pending = takePendingHold(frame.orig_msg_id)\n",
+      "replace": "    const pending = takePendingHold(frame.orig_msg_id) ?? { peerName: 'forged' }\n"
+    },
+    {
+      "name": "an idle notice is believed only for a subscription this session made",
+      "source": "src/sessions/peers/delivery.ts",
+      "find": "    const awaited = takeAwaitedIdleNotice(frame.orig_msg_id)\n",
+      "replace": "    const awaited = takeAwaitedIdleNotice(frame.orig_msg_id) ?? { peerName: 'forged' }\n"
+    },
+    {
+      "name": "an idle stretch answers only subscriptions made before it began",
+      "source": "src/sessions/peers/subscriptions.ts",
+      "find": "  const taken = subscriptions.filter(s => s.createdAt < idleSince)\n  subscriptions = subscriptions.filter(s => s.createdAt >= idleSince)\n",
+      "replace": "  const taken = subscriptions\n  subscriptions = []\n"
+    },
+    {
+      "name": "a subscriber with no verified address is refused",
+      "source": "src/sessions/peers/delivery.ts",
+      "find": "    if (!address || address.scheme !== 'uds') {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "the classifier labels agent-written text",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "    if (block.agent !== undefined) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "a send to this session's own address is refused",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (address.scheme === 'uds' && address.target === getOwnInbox()?.socketPath) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "an unknown name fails outside an agent team",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "        if (!swarm) {\n          throw new Error(\n            `No agent or session named",
+      "replace": "        if (false) {\n          throw new Error(\n            `No agent or session named"
+    },
+    {
+      "name": "\"main\" is for background agents only",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (!isLocalAgentTask(task) || isMainSessionTask(task) || !task.isBackgrounded) {\n",
+      "replace": "  if (!isLocalAgentTask(task)) {\n"
+    },
+    {
+      "name": "a message over the cap is refused before it is sent",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (content !== undefined && content.length > MESSAGE_MAX_CHARS) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a background agent keeps SendMessage",
+      "source": "src/tools/constants/tools.ts",
+      "find": "  SEND_MESSAGE_TOOL_NAME,\n  LIST_AGENTS_TOOL_NAME,\n])\n",
+      "replace": "  LIST_AGENTS_TOOL_NAME,\n])\n"
+    },
+    {
+      "name": "ListAgents leaves out the agent that calls it",
+      "source": "src/tools/ListAgentsTool/ListAgentsTool.ts",
+      "find": "    if (!isPanelAgentTask(task) || task.agentId === selfAgentId) continue\n",
+      "replace": "    if (!isPanelAgentTask(task)) continue\n"
+    },
+    {
+      "name": "a held message wins focus over the cost dialog",
+      "source": "src/agent/repl/getFocusedInputDialog.ts",
+      "find": "  if (allowDialogsWithAnimation && d.heldPeerMessages[0]) return 'peer-message-hold'\n",
+      "replace": "\n"
+    }
+  ]
+}

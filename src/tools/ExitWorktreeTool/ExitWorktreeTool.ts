@@ -15,6 +15,7 @@ import { updateHooksConfigSnapshot } from 'src/platform/lifecycleHooks/hooksConf
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
+import { updateSessionCwd } from 'src/sessions/concurrentSessions.js'
 import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import {
   cleanupWorktree,
@@ -126,6 +127,7 @@ function restoreSessionToOriginalCwd(
   // EnterWorktree sets originalCwd to the *worktree* path (intentional — see
   // state.ts getProjectRoot comment). Reset to the real original.
   setOriginalCwd(originalCwd)
+  void updateSessionCwd(originalCwd)
   // --worktree startup sets projectRoot to the worktree; mid-session
   // EnterWorktreeTool does not. Only restore when it was actually changed —
   // otherwise we'd move projectRoot to wherever the user had cd'd before

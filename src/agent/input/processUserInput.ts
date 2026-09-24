@@ -94,6 +94,7 @@ export async function processUserInput({
   bridgeOrigin,
   isMeta,
   skipAttachments,
+  skipInputDirectives,
 }: {
   input: string | Array<ContentBlockParam>
   mode: PromptInputMode
@@ -125,6 +126,13 @@ export async function processUserInput({
    */
   isMeta?: boolean
   skipAttachments?: boolean
+  /**
+   * The text was written by another agent — a background agent writing to
+   * "main". Its @-mentions, MCP resource references, agent mentions and
+   * ultrathink keyword stay literal text: those are directives only this
+   * session's user may issue.
+   */
+  skipInputDirectives?: boolean
 }): Promise<ProcessUserInputBaseResult> {
   const inputString = typeof input === 'string' ? input : null
   // Immediately show the user input prompt while we are still processing the input.
@@ -155,6 +163,7 @@ export async function processUserInput({
     bridgeOrigin,
     isMeta,
     skipAttachments,
+    skipInputDirectives,
   )
   queryCheckpoint('query_process_user_input_base_end')
 
@@ -285,6 +294,7 @@ async function processUserInputBase(
   bridgeOrigin?: boolean,
   isMeta?: boolean,
   skipAttachments?: boolean,
+  skipInputDirectives?: boolean,
 ): Promise<ProcessUserInputBaseResult> {
   let inputString: string | null = null
   let precedingInputBlocks: ContentBlockParam[] = []
@@ -454,6 +464,7 @@ async function processUserInputBase(
           [], // queuedCommands - handled by query.ts for mid-turn attachments
           messages,
           querySource,
+          { skipInputDirectives },
         ),
       )
     : []

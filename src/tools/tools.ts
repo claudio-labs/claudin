@@ -81,6 +81,9 @@ const getTeamDeleteTool = () =>
 const getSendMessageTool = () =>
   require('src/tools/SendMessageTool/SendMessageTool.js')
     .SendMessageTool as typeof import('src/tools/SendMessageTool/SendMessageTool.js').SendMessageTool
+const getListAgentsTool = () =>
+  require('src/tools/ListAgentsTool/ListAgentsTool.js')
+    .ListAgentsTool as typeof import('src/tools/ListAgentsTool/ListAgentsTool.js').ListAgentsTool
 const getAskUserQuestionTool = () =>
   require('src/tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool as typeof import('src/tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool
 const getReportFindingsTool = () =>
@@ -241,6 +244,7 @@ export function getAllBaseTools(): Tools {
       : []),
     ...(isWorktreeModeEnabled() ? [getEnterWorktreeTool(), getExitWorktreeTool()] : []),
     getSendMessageTool(),
+    getListAgentsTool(),
     ...(isAgentSwarmsEnabled()
       ? [getTeamCreateTool(), getTeamDeleteTool()]
       : []),

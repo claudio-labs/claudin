@@ -181,6 +181,8 @@ import { updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { useInboxPoller } from 'src/agent/coordinator/useInboxPoller.js';
+import { usePeerInbox } from 'src/sessions/peers/hooks/usePeerInbox.js';
+import { getHeldPeerMessages, subscribeHeldPeerMessages } from 'src/sessions/peers/heldMessages.js';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const SUGGEST_BG_PR_NOOP = (_p: string, _n: string): boolean => false;
 const useScheduledTasks = require('src/agent/hooks/useScheduledTasks.js').useScheduledTasks;
@@ -687,6 +689,8 @@ export function REPL({
   // Subscribe to the guard — true during dispatching or running.
   // This is the single source of truth for "is a local query in flight".
   const isQueryActive = React.useSyncExternalStore(queryGuard.subscribe, queryGuard.getSnapshot);
+  // Messages from other sessions that policy held for the user to let through.
+  const heldPeerMessages = React.useSyncExternalStore(subscribeHeldPeerMessages, getHeldPeerMessages);
 
   // Separate loading flag for operations outside the local query guard:
   // remote sessions (useRemoteSession / useDirectConnect) and foregrounded
@@ -1644,6 +1648,7 @@ export function REPL({
     promptQueue,
     workerSandboxPermissions,
     elicitation,
+    heldPeerMessages,
     showingCostDialog,
     idleReturnPending,
     isLoading,
@@ -1655,7 +1660,7 @@ export function REPL({
   });
 
   // True when permission prompts exist but are hidden because the user is typing
-  const hasSuppressedDialogs = promptTypingSuppressionActive && (sandboxPermissionRequestQueue[0] || toolUseConfirmQueue[0] || promptQueue[0] || workerSandboxPermissions.queue[0] || elicitation.queue[0] || showingCostDialog);
+  const hasSuppressedDialogs = promptTypingSuppressionActive && (sandboxPermissionRequestQueue[0] || toolUseConfirmQueue[0] || promptQueue[0] || workerSandboxPermissions.queue[0] || elicitation.queue[0] || heldPeerMessages[0] || showingCostDialog);
 
   // Keep ref in sync so timer callbacks can read the current value
   focusedInputDialogRef.current = focusedInputDialog;
@@ -2432,6 +2437,12 @@ export function REPL({
     isLoading,
     onSubmitMessage: handleIncomingPrompt
   });
+  // Other Claudin sessions on this machine reach this one through here.
+  const {
+    settleHeld: settleHeldPeerMessage
+  } = usePeerInbox({
+    isLoading
+  });
 
   // Scheduled tasks from .claudin/scheduled_tasks.json (CronCreate/Delete/List)
   // and session-only /loop runs.
@@ -2946,6 +2957,8 @@ export function REPL({
             teamContext,
             setAppState: setAppState as unknown as (updater: (prev: unknown) => unknown) => void,
             elicitation: elicitation as unknown as Parameters<typeof renderREPLDialogs>[0]['elicitation'],
+            heldPeerMessages,
+            settleHeldPeerMessage,
             setShowCostDialog,
             setHaveShownCostDialog,
             idleReturnPending,

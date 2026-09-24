@@ -16,6 +16,7 @@ import { WEB_RESEARCHER_AGENT_TYPE } from 'src/tools/AgentTool/built-in/webResea
 import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
+import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 
 // Only `name` is read by filterToolsForAgent/resolveAgentTools.
 const tool = (name: string): Tool => ({ name }) as unknown as Tool
@@ -155,5 +156,16 @@ describe('filterToolsForAgent — RunTests available to every sub-agent', () => 
       isAsync: false,
     })
     expect(result.some(t => t.name === RUN_TESTS_TOOL_NAME)).toBe(true)
+  })
+})
+
+describe('filterToolsForAgent — a background agent can message', () => {
+  it('keeps SendMessage for an ASYNC agent, which is how it reaches "main"', () => {
+    const result = filterToolsForAgent({
+      tools: [tool(SEND_MESSAGE_TOOL_NAME), tool(AGENT_TOOL_NAME)],
+      isBuiltIn: false,
+      isAsync: true,
+    })
+    expect(result.map(t => t.name)).toEqual([SEND_MESSAGE_TOOL_NAME])
   })
 })

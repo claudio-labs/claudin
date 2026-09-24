@@ -42,6 +42,7 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
       'workflowsDefaultBackground',
       'teammateMode',
       'teammateDefaultModel',
+      'crossSessionInbound',
     ],
   },
   {

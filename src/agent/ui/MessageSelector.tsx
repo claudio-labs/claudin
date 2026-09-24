@@ -23,6 +23,7 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { FileEditOutput } from 'src/tools/FileEditTool/types.js';
 import type { Output as FileWriteToolOutput } from 'src/tools/FileWriteTool/FileWriteTool.js';
 import { BASH_STDERR_TAG, BASH_STDOUT_TAG, COMMAND_MESSAGE_TAG, LOCAL_COMMAND_STDERR_TAG, LOCAL_COMMAND_STDOUT_TAG, TASK_NOTIFICATION_TAG, TEAMMATE_MESSAGE_TAG, TICK_TAG } from 'src/shared/constants/xml.js';
+import { isInterAgentMessage } from 'src/agent/messages/interAgentMessages.js';
 import { count } from 'src/shared/data/array.js';
 import { formatRelativeTimeAgo, truncate } from 'src/shared/text/format.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
@@ -776,7 +777,7 @@ export function selectableUserMessagesFilter(message: Message): message is UserM
   const messageText = typeof content === 'string' ? content.trim() : lastBlock && isTextBlock(lastBlock) ? lastBlock.text.trim() : '';
 
   // Filter out non-user-authored messages (command outputs, task notifications, ticks).
-  if (messageText.indexOf(`<${LOCAL_COMMAND_STDOUT_TAG}>`) !== -1 || messageText.indexOf(`<${LOCAL_COMMAND_STDERR_TAG}>`) !== -1 || messageText.indexOf(`<${BASH_STDOUT_TAG}>`) !== -1 || messageText.indexOf(`<${BASH_STDERR_TAG}>`) !== -1 || messageText.indexOf(`<${TASK_NOTIFICATION_TAG}>`) !== -1 || messageText.indexOf(`<${TICK_TAG}>`) !== -1 || messageText.indexOf(`<${TEAMMATE_MESSAGE_TAG}`) !== -1) {
+  if (messageText.indexOf(`<${LOCAL_COMMAND_STDOUT_TAG}>`) !== -1 || messageText.indexOf(`<${LOCAL_COMMAND_STDERR_TAG}>`) !== -1 || messageText.indexOf(`<${BASH_STDOUT_TAG}>`) !== -1 || messageText.indexOf(`<${BASH_STDERR_TAG}>`) !== -1 || messageText.indexOf(`<${TASK_NOTIFICATION_TAG}>`) !== -1 || messageText.indexOf(`<${TICK_TAG}>`) !== -1 || messageText.indexOf(`<${TEAMMATE_MESSAGE_TAG}`) !== -1 || isInterAgentMessage(messageText)) {
     return false;
   }
   return true;

@@ -901,6 +901,16 @@ export const SettingsSchema = lazySchema(() =>
         .describe(
           'Whether the user has accepted the bypass permissions mode dialog',
         ),
+      crossSessionInbound: z
+        .enum(['accept', 'hold', 'refuse'])
+        .optional()
+        .catch(undefined)
+        .describe(
+          'What this session does with a message another Claudin session on this machine sends it: ' +
+            'accept delivers it, hold asks you first, refuse turns it away. Unset: deliver when both ' +
+            'sessions are on the same side of bypassPermissions, hold when they are not. Project and ' +
+            'local settings can only make it stricter.',
+        ),
       ...(feature('TRANSCRIPT_CLASSIFIER')
         ? {
             skipAutoPermissionPrompt: z

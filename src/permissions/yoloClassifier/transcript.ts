@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import type { Tool, Tools } from 'src/tools/Tool.js'
-import type { Message } from 'src/shared/types/message.js'
+import type { Message, MessageOrigin } from 'src/shared/types/message.js'
+import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
@@ -10,12 +11,22 @@ export const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000
 const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
 
 type TranscriptBlock =
-  | { type: 'text'; text: string }
+  /**
+   * `agent` names who wrote text that arrived in a user-role message but not
+   * from the user: another session, or one of this session's own agents.
+   */
+  | { type: 'text'; text: string; agent?: string }
   | { type: 'tool_use'; name: string; input: unknown }
 
 export type TranscriptEntry = {
   role: 'user' | 'assistant'
   content: TranscriptBlock[]
+}
+
+function authorOf(origin: MessageOrigin | undefined): { agent?: string } {
+  return isAgentAuthored(origin) && origin && 'name' in origin
+    ? { agent: origin.name }
+    : {}
 }
 
 function messageToTranscriptEntry(msg: Message): TranscriptEntry | null {
@@ -38,19 +49,20 @@ function messageToTranscriptEntry(msg: Message): TranscriptEntry | null {
       ? null
       : {
           role: 'user',
-          content: [{ type: 'text', text }],
+          content: [{ type: 'text', text, ...authorOf(msg.attachment.origin) }],
         }
   }
 
   if (msg.type === 'user') {
     const content = msg.message.content
     const textBlocks: TranscriptBlock[] = []
+    const author = authorOf(msg.origin)
     if (typeof content === 'string') {
-      textBlocks.push({ type: 'text', text: content })
+      textBlocks.push({ type: 'text', text: content, ...author })
     } else if (Array.isArray(content)) {
       for (const block of content) {
         if (block.type === 'text') {
-          textBlocks.push({ type: 'text', text: block.text })
+          textBlocks.push({ type: 'text', text: block.text, ...author })
         }
       }
     }
@@ -148,6 +160,14 @@ function toCompactBlock(
     return `${block.name} ${s}\n`
   }
   if (block.type === 'text' && role === 'user') {
+    if (block.agent !== undefined) {
+      // Encoded onto one line either way: a message another agent wrote must
+      // not be able to open a line of its own that reads as the user's.
+      const text = truncateClassifierValue(block.text)
+      return isJsonlTranscriptEnabled()
+        ? jsonStringify({ agent_message: { from: block.agent, text } }) + '\n'
+        : `Agent message (not from the user) from ${jsonStringify(block.agent)}: ${jsonStringify(text)}\n`
+    }
     return isJsonlTranscriptEnabled()
       ? jsonStringify({ user: truncateClassifierValue(block.text) }) + '\n'
       : `User: ${truncateClassifierValue(block.text)}\n`

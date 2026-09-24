@@ -64,6 +64,15 @@ export type MessageOrigin =
   | { kind: 'task-notification' }
   | { kind: 'coordinator' }
   | { kind: 'channel'; server: string }
+  /** A background agent's SendMessage to "main". */
+  | { kind: 'subagent'; name: string }
+  /**
+   * Another session's SendMessage. `from` is its inbox address, set only
+   * when a live session advertises it.
+   */
+  | { kind: 'peer'; name: string; from?: string }
+  /** This harness's notice about a send to another session. */
+  | { kind: 'peer-notice'; name: string }
 
 /**
  * Which side of the selected message a partial compaction summarizes.

@@ -240,7 +240,7 @@ export class QueryEngine {
 
   async *submitMessage(
     prompt: string | ContentBlockParam[],
-    options?: { uuid?: string; isMeta?: boolean },
+    options?: { uuid?: string; isMeta?: boolean; skipInputDirectives?: boolean },
   ): AsyncGenerator<SDKMessage, void, unknown> {
     const {
       cwd,
@@ -470,6 +470,7 @@ export class QueryEngine {
       messages: this.mutableMessages,
       uuid: options?.uuid,
       isMeta: options?.isMeta,
+      skipInputDirectives: options?.skipInputDirectives,
       querySource: 'sdk',
     })
 
@@ -1302,6 +1303,7 @@ export async function* ask({
   prompt,
   promptUuid,
   isMeta,
+  skipInputDirectives,
   cwd,
   tools,
   mcpClients,
@@ -1333,6 +1335,8 @@ export async function* ask({
   prompt: string | Array<ContentBlockParam>
   promptUuid?: string
   isMeta?: boolean
+  /** The prompt was written by another agent; see processUserInput. */
+  skipInputDirectives?: boolean
   cwd: string
   tools: Tools
   verbose?: boolean
@@ -1393,6 +1397,7 @@ export async function* ask({
     yield* engine.submitMessage(prompt, {
       uuid: promptUuid,
       isMeta,
+      skipInputDirectives,
     })
   } finally {
     setReadFileCache(engine.getReadFileState())

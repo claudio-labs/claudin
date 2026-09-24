@@ -1,4 +1,4 @@
-import { chmod, mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises'
+import { chmod, mkdir, readdir, unlink } from 'fs/promises'
 import { join } from 'path'
 import {
   getOriginalCwd,
@@ -7,17 +7,33 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { errorMessage, isFsInaccessible } from 'src/shared/errors.js'
 import { isProcessRunning } from 'src/shared/proc/genericProcessUtils.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getAgentId } from 'src/agent/coordinator/teammate.js'
+import { patchPidRecord, writePidRecord } from 'src/sessions/pidRecord.js'
+import { getSessionsDir } from 'src/sessions/sessionsDir.js'
 
 export type SessionKind = 'interactive' | 'bg' | 'daemon' | 'daemon-worker'
 
-function getSessionsDir(): string {
-  return join(getClaudinConfigHomeDir(), 'sessions')
+/**
+ * What `~/.claudin/sessions/<pid>.json` holds. Other sessions read it: the
+ * name and cwd are how ListAgents labels this session, and the messaging
+ * pair is how SendMessage reaches its inbox — the token is why the file is
+ * written owner-only.
+ */
+type SessionRecord = {
+  pid: number
+  sessionId: string
+  cwd: string
+  startedAt: number
+  kind: SessionKind
+  entrypoint?: string
+  name?: string
+  bridgeSessionId?: string | null
+  messagingSocketPath?: string | null
+  messagingToken?: string | null
+  status?: 'busy' | 'idle'
 }
 
 // registerSession() runs once per process in production but many times over a
@@ -26,6 +42,20 @@ function getSessionsDir(): string {
 // not accumulate PID-file writers. resetStateForTests() used to cover this by
 // clearing the whole signal, which took the other subscribers down with it.
 let unsubscribeSessionSwitch: (() => void) | undefined
+
+let settleRegistration: (registered: boolean) => void = () => {}
+const registration = new Promise<boolean>(resolve => {
+  settleRegistration = resolve
+})
+
+/**
+ * Resolves once registerSession() has written this process's PID file — true
+ * — or skipped it — false. Anything that patches the record waits on this,
+ * or its write would race the file into existence.
+ */
+export function whenSessionRegistered(): Promise<boolean> {
+  return registration
+}
 
 /**
  * Write a PID file for this session and register cleanup.
@@ -39,7 +69,10 @@ let unsubscribeSessionSwitch: (() => void) | undefined
  * Errors logged to debug, never thrown.
  */
 export async function registerSession(): Promise<boolean> {
-  if (getAgentId() != null) return false
+  if (getAgentId() != null) {
+    settleRegistration(false)
+    return false
+  }
 
   const kind: SessionKind = 'interactive'
   const dir = getSessionsDir()
@@ -56,17 +89,15 @@ export async function registerSession(): Promise<boolean> {
   try {
     await mkdir(dir, { recursive: true, mode: 0o700 })
     await chmod(dir, 0o700)
-    await writeFile(
-      pidFile,
-      jsonStringify({
-        pid: process.pid,
-        sessionId: getSessionId(),
-        cwd: getOriginalCwd(),
-        startedAt: Date.now(),
-        kind,
-        entrypoint: process.env.CLAUDE_CODE_ENTRYPOINT,
-      }),
-    )
+    const record: SessionRecord = {
+      pid: process.pid,
+      sessionId: getSessionId(),
+      cwd: getOriginalCwd(),
+      startedAt: Date.now(),
+      kind,
+      entrypoint: process.env.CLAUDE_CODE_ENTRYPOINT,
+    }
+    await writePidRecord(pidFile, record)
     // --resume / /resume mutates getSessionId() via switchSession. Without
     // this, the PID file's sessionId goes stale and `claude ps` sparkline
     // reads the wrong transcript.
@@ -74,9 +105,11 @@ export async function registerSession(): Promise<boolean> {
     unsubscribeSessionSwitch = onSessionSwitch(id => {
       void updatePidFile({ sessionId: id })
     })
+    settleRegistration(true)
     return true
   } catch (e) {
     logForDebugging(`[concurrentSessions] register failed: ${errorMessage(e)}`)
+    settleRegistration(false)
     return false
   }
 }
@@ -86,14 +119,10 @@ export async function registerSession(): Promise<boolean> {
  * silently no-op if name is falsy, the
  * file doesn't exist (session not registered), or read/write fails.
  */
-async function updatePidFile(patch: Record<string, unknown>): Promise<void> {
+async function updatePidFile(patch: Partial<SessionRecord>): Promise<void> {
   const pidFile = join(getSessionsDir(), `${process.pid}.json`)
   try {
-    const data = jsonParse(await readFile(pidFile, 'utf8')) as Record<
-      string,
-      unknown
-    >
-    await writeFile(pidFile, jsonStringify({ ...data, ...patch }))
+    await patchPidRecord(pidFile, patch)
   } catch (e) {
     logForDebugging(
       `[concurrentSessions] updatePidFile failed: ${errorMessage(e)}`,
@@ -118,6 +147,27 @@ export async function updateSessionBridgeId(
   bridgeSessionId: string | null,
 ): Promise<void> {
   await updatePidFile({ bridgeSessionId })
+}
+
+/** Advertise (or withdraw, with nulls) this session's peer inbox. */
+export async function updateSessionInbox(inbox: {
+  messagingSocketPath: string | null
+  messagingToken: string | null
+}): Promise<void> {
+  await updatePidFile(inbox)
+}
+
+/**
+ * Follow EnterWorktree/ExitWorktree: another session names this one after its
+ * directory, and a session that moved into a worktree should read as there.
+ */
+export async function updateSessionCwd(cwd: string): Promise<void> {
+  await updatePidFile({ cwd })
+}
+
+/** Busy or idle, for ListAgents in other sessions. */
+export async function updateSessionStatus(status: 'busy' | 'idle'): Promise<void> {
+  await updatePidFile({ status })
 }
 
 /**
