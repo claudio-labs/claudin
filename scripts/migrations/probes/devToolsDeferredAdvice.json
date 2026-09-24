@@ -2,7 +2,8 @@
   "test": [
     "src/tools/WaitForTool/WaitForTool.test.ts",
     "src/tools/MonitorTool/MonitorTool.test.ts",
-    "src/tools/RunTestsTool/RunTestsTool.test.ts"
+    "src/tools/RunTestsTool/RunTestsTool.test.ts",
+    "src/sessions/__tests__/pure.test.ts"
   ],
   "source": "src/tools/WaitForTool/WaitForTool.ts",
   "probes": [
@@ -40,6 +41,12 @@
       "source": "src/tools/RunTestsTool/run.ts",
       "find": "  const execCommand = `cd ${singleQuote(cwd)} && {\nexport CI=true NO_COLOR=1\nunset FORCE_COLOR\n${plan.command}\n}`",
       "replace": "  const execCommand = `CI=true NO_COLOR=1 ${plan.command}`"
+    },
+    {
+      "name": "build/test/check ticks append again",
+      "source": "src/sessions/pure/typeGuards.ts",
+      "find": "  'build_progress',\n  'test_progress',\n  'check_progress',\n",
+      "replace": ""
     }
   ]
 }

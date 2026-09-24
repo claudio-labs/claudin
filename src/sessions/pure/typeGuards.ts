@@ -65,12 +65,19 @@ export function isLegacyProgressEntry(
  * completes. Used by REPL.tsx to replace-in-place instead of appending, and
  * by loadTranscriptFile to skip legacy entries from old transcripts.
  *
+ * Build, RunTests and Typecheck tick once a second for as long as they run and
+ * render only the last tick, so a 20-minute build appended ~1200 dead entries
+ * to the REPL's message list before they were listed here.
+ *
  * Module-level Set per team rule (regex/buffer/set-at-module-level by extension).
  */
 export const EPHEMERAL_PROGRESS_TYPES = new Set([
   'bash_progress',
   'powershell_progress',
   'mcp_progress',
+  'build_progress',
+  'test_progress',
+  'check_progress',
 ])
 
 export function isEphemeralToolProgress(dataType: unknown): boolean {
