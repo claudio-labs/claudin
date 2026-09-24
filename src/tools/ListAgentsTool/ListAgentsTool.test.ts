@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import type { AppState } from 'src/terminal/state/AppState.js'
+import type { SessionDirectory } from 'src/sessions/peers/registry.js'
 import {
+  collectPeers,
   collectSubagents,
   collectTeammates,
+  describeSelf,
   ListAgentsTool,
 } from 'src/tools/ListAgentsTool/ListAgentsTool.js'
 import {
@@ -96,18 +99,32 @@ test('collectTeammates names the lead for a member, and skips the caller', () =>
   ])
 })
 
+const empty = { subagents: [], teammates: [], peers: [], notes: [] }
+
 describe('formatAgentListing', () => {
   test('prints one section per kind, name first', () => {
     expect(
       formatAgentListing({
+        ...empty,
         subagents: [{ name: 'researcher', details: ['running', 'Map it'] }],
-        teammates: [],
       }),
     ).toBe('Subagents (1):\n  researcher  ·  running  ·  Map it')
   })
 
+  test('leads with how this session is addressed and ends with the notes', () => {
+    const text = formatAgentListing({
+      ...empty,
+      self: 'This session is claudin [3fa9c1]',
+      peers: [{ name: 'claudin-goal [8c21d0]', details: ['idle', '~/w/claudin-goal'] }],
+      notes: ['a note'],
+    })
+    expect(text).toBe(
+      'This session is claudin [3fa9c1]\n\nPeer sessions (1):\n  claudin-goal [8c21d0]  ·  idle  ·  ~/w/claudin-goal\n\na note',
+    )
+  })
+
   test('says how to get an agent when there is none', () => {
-    expect(formatAgentListing({ subagents: [], teammates: [] })).toContain(
+    expect(formatAgentListing(empty)).toContain(
       'No agents to message yet',
     )
   })
@@ -117,10 +134,45 @@ describe('formatAgentListing', () => {
       name: `agent-${i}`,
       details: [],
     }))
-    const text = formatAgentListing({ subagents: rows, teammates: [] })
+    const text = formatAgentListing({ ...empty, subagents: rows })
     expect(text).toContain(`Subagents (${SECTION_ROW_CAP + 3}):`)
     expect(text).toContain('(… 3 more not shown)')
     expect(text).not.toContain(`agent-${SECTION_ROW_CAP}\n`)
+  })
+})
+
+describe('peer sessions', () => {
+  const directory: SessionDirectory = {
+    self: { name: 'claudin', ref: '3fa9c1' },
+    peers: [
+      {
+        pid: 2,
+        name: 'claudin-goal',
+        hash: '8c21d0ff',
+        ref: '8c21d0',
+        socketPath: '/s/2.sock',
+        token: 't',
+        cwd: '/w/claudin-goal',
+        startedAt: Date.parse('2026-09-24T10:00:00Z'),
+        status: 'idle',
+      },
+    ],
+  }
+
+  test('a peer row is its address, then status, directory and age', () => {
+    const [row] = collectPeers(directory, new Date('2026-09-24T12:00:00Z'))
+    expect(row?.name).toBe('claudin-goal [8c21d0]')
+    expect(row?.details.slice(0, 2)).toEqual(['idle', '/w/claudin-goal'])
+    expect(row?.details[2]).toStartWith('started 2')
+  })
+
+  test('the self line needs an inbox; without one a note says why nobody can write', () => {
+    expect(describeSelf(directory, true).self).toContain(
+      'This session is claudin [3fa9c1]',
+    )
+    const headless = describeSelf(directory, false)
+    expect(headless.self).toBeUndefined()
+    expect(headless.notes[0]).toContain('has no inbox')
   })
 })
 

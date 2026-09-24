@@ -9,6 +9,7 @@ import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlanSlug, getPlansDirectory } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
+import { updateSessionCwd } from 'src/sessions/concurrentSessions.js'
 import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import {
   attachExistingWorktree,
@@ -116,6 +117,7 @@ export const EnterWorktreeTool: Tool<InputSchema, Output> = buildTool({
     process.chdir(worktreeSession.worktreePath)
     setCwd(worktreeSession.worktreePath)
     setOriginalCwd(getCwd())
+    void updateSessionCwd(getCwd())
     saveWorktreeState(worktreeSession)
     // Clear cached system prompt sections so env_info_simple recomputes with worktree context
     clearSystemPromptSections()

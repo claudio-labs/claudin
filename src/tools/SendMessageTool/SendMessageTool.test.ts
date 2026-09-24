@@ -1,4 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 import {
   getCommandQueueSnapshot,
@@ -9,6 +12,22 @@ import {
   inputSchemaFor,
   SendMessageTool,
 } from 'src/tools/SendMessageTool/SendMessageTool.js'
+
+// An unknown name is looked up among the other sessions on this machine, so
+// point the session directory somewhere empty rather than at the developer's.
+let configDir: string
+const savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
+
+beforeAll(() => {
+  configDir = mkdtempSync(join(tmpdir(), 'send-message-'))
+  process.env.CLAUDIN_CONFIG_DIR = configDir
+})
+
+afterAll(() => {
+  if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+  else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
+  rmSync(configDir, { recursive: true, force: true })
+})
 
 beforeEach(() => {
   delete process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
@@ -106,14 +125,14 @@ describe('SendMessageTool', () => {
       to: 'team-lead',
       message: { type: 'shutdown_response', request_id: 'r', approve: true },
     }
-    const plain = inputSchemaFor({ swarm: false })
-    const team = inputSchemaFor({ swarm: true })
+    const plain = inputSchemaFor({ swarm: false, crossSession: true })
+    const team = inputSchemaFor({ swarm: true, crossSession: true })
     expect(plain.safeParse({}).success).toBe(false)
     expect(plain.safeParse({ to: 'alice', message: 'hi' }).success).toBe(true)
     expect(plain.safeParse(structured).success).toBe(false)
     expect(team.safeParse(structured).success).toBe(true)
     // Each variant is built once, so the schema bytes stay stable.
-    expect(inputSchemaFor({ swarm: false })).toBe(plain)
+    expect(inputSchemaFor({ swarm: false, crossSession: true })).toBe(plain)
     // Unknown structured type rejected
     expect(
       team.safeParse({
@@ -307,7 +326,7 @@ describe('SendMessageTool', () => {
 describe('SendMessageTool — routing outside an agent team', () => {
   test('an unknown name fails instead of reporting a send nobody reads', async () => {
     await expect(send({ to: 'nobody', message: 'hi' }, makeContext({}))).rejects.toThrow(
-      'No agent named "nobody" in this session — call ListAgents',
+      'No agent or session named "nobody" — call ListAgents',
     )
   })
 

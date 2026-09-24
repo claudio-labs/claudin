@@ -181,6 +181,7 @@ import { updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { useInboxPoller } from 'src/agent/coordinator/useInboxPoller.js';
+import { usePeerInbox } from 'src/sessions/peers/hooks/usePeerInbox.js';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const SUGGEST_BG_PR_NOOP = (_p: string, _n: string): boolean => false;
 const useScheduledTasks = require('src/agent/hooks/useScheduledTasks.js').useScheduledTasks;
@@ -2432,6 +2433,8 @@ export function REPL({
     isLoading,
     onSubmitMessage: handleIncomingPrompt
   });
+  // Other Claudin sessions on this machine reach this one through here.
+  usePeerInbox();
 
   // Scheduled tasks from .claudin/scheduled_tasks.json (CronCreate/Delete/List)
   // and session-only /loop runs.

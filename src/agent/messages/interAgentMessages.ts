@@ -1,4 +1,7 @@
-import { AGENT_MESSAGE_TAG } from 'src/shared/constants/xml.js'
+import {
+  AGENT_MESSAGE_TAG,
+  CROSS_SESSION_MESSAGE_TAG,
+} from 'src/shared/constants/xml.js'
 import { parseXmlEnvelope } from 'src/shared/data/xml.js'
 import type { MessageOrigin } from 'src/shared/types/message.js'
 
@@ -27,6 +30,15 @@ export function describeInterAgentMessage(
       body: agent.body,
     }
   }
+  const peer = parseXmlEnvelope(text, CROSS_SESSION_MESSAGE_TAG)
+  if (peer) {
+    const via = peer.attrs['from-agent']
+    return {
+      sender: peer.attrs['from-name'] ?? 'another session',
+      relation: via ? `another session, from its agent ${via}` : 'another session',
+      body: peer.body,
+    }
+  }
   return null
 }
 
@@ -36,5 +48,5 @@ export function isInterAgentMessage(text: string): boolean {
 
 /** Whether a queued command's text was written by another agent, not the user. */
 export function isAgentAuthored(origin: MessageOrigin | undefined): boolean {
-  return origin?.kind === 'subagent'
+  return origin?.kind === 'subagent' || origin?.kind === 'peer'
 }

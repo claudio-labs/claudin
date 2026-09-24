@@ -24,6 +24,7 @@ import { fileHistoryEnabled, fileHistoryMakeSnapshot } from 'src/shared/fs/fileH
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 import { enqueue } from 'src/agent/messageQueueManager.js'
 import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
+import { resetCrossSessionSends } from 'src/sessions/peers/sendBudget.js'
 import { resolveSkillModelOverride } from 'src/providers/model/model.js'
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js'
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js'
@@ -438,6 +439,11 @@ async function executeUserInput(params: ExecuteUserInputParams): Promise<void> {
     // ideSelection + pastedContents, rest skip attachments to avoid
     // duplicating turn-level context (IDE selection, todos, diffs).
     const commands = queuedCommands ?? []
+    // A prompt the user typed renews what this session may send to others; a
+    // turn opened by a peer's message or a notification does not.
+    if (commands.some(cmd => cmd.mode === 'prompt' && cmd.origin === undefined)) {
+      resetCrossSessionSends()
+    }
 
     for (let i = 0; i < commands.length; i++) {
       const cmd = commands[i]!

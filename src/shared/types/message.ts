@@ -66,6 +66,11 @@ export type MessageOrigin =
   | { kind: 'channel'; server: string }
   /** A background agent's SendMessage to "main". */
   | { kind: 'subagent'; name: string }
+  /**
+   * Another session's SendMessage. `from` is its inbox address, set only
+   * when a live session advertises it.
+   */
+  | { kind: 'peer'; name: string; from?: string }
 
 /**
  * Which side of the selected message a partial compaction summarizes.

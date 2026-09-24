@@ -1,12 +1,14 @@
 /**
  * SendMessage — one agent writing to another: a background agent it spawned
  * (resumed from its transcript when it has stopped), the main conversation
- * (`"main"`, from a background agent), and — inside an agent team — its
- * teammates.
+ * (`"main"`, from a background agent), another Claudin session on this machine
+ * (through its peer inbox, src/sessions/peers/), and — inside an agent team —
+ * its teammates.
  *
  * On by default. CLAUDIN_DISABLE_SEND_MESSAGE=1 removes it again outside an
  * agent team, where the swarm protocol still needs it.
  */
+import { randomUUID } from 'crypto'
 import { z } from 'zod/v4'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
@@ -25,7 +27,27 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { parseAddress } from 'src/shared/peerAddress.js'
+import { formatUdsAddress, parseAddress } from 'src/sessions/peers/address.js'
+import { PeerDeliveryError, sendFrame } from 'src/sessions/peers/client.js'
+import {
+  FRAME_VERSION,
+  MESSAGE_MAX_CHARS,
+  type ResponseFrame,
+} from 'src/sessions/peers/frames.js'
+import {
+  crossSessionUnavailableReason,
+  getOwnInbox,
+} from 'src/sessions/peers/inboxServer.js'
+import { permissionClassOf } from 'src/sessions/peers/policy.js'
+import {
+  type PeerSession,
+  readSessionDirectory,
+  resolvePeerTarget,
+} from 'src/sessions/peers/registry.js'
+import {
+  CROSS_SESSION_SENDS_PER_USER_PROMPT,
+  takeCrossSessionSend,
+} from 'src/sessions/peers/sendBudget.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { BackendType } from 'src/agent/coordinator/swarm/backends/types.js'
@@ -81,10 +103,15 @@ const SINGLE_LINE_RE = /^[^\n\r]*$/
 const MESSAGE_DESCRIPTION =
   "Plain text message content. The recipient's human sees only the FIRST LINE as a one-line preview until they expand it, so make the first line a clear, self-contained sentence saying what this is about — not a greeting, preamble, or bare @-mention."
 
-function describeTo(swarm: boolean): string {
+type SchemaVariant = { swarm: boolean; crossSession: boolean }
+
+function describeTo({ swarm, crossSession }: SchemaVariant): string {
+  const name = crossSession
+    ? `a name from ${LIST_AGENTS_TOOL_NAME} (append its " [ref]" only when a listing or an error shows one)`
+    : `a name from ${LIST_AGENTS_TOOL_NAME}`
   return swarm
-    ? `Recipient: a name from ${LIST_AGENTS_TOOL_NAME} (a background agent or a teammate), "*" for the whole team, "main", or a background agent's agentId`
-    : `Recipient: a name from ${LIST_AGENTS_TOOL_NAME}, "main", or a background agent's agentId`
+    ? `Recipient: ${name}, a teammate name, "*" for the whole team, "main", or a background agent's agentId`
+    : `Recipient: ${name}, "main", or a background agent's agentId`
 }
 
 function describeSummary(swarm: boolean): string {
@@ -112,13 +139,14 @@ const inputSchemas = new Map<string, InputSchema>()
  * byte-stable across requests. buildTool spreads the tool definition, so the
  * `inputSchema` getter below runs once, when this module loads.
  */
-export function inputSchemaFor({ swarm }: { swarm: boolean }): InputSchema {
-  const key = `swarm=${swarm}`
+export function inputSchemaFor(variant: SchemaVariant): InputSchema {
+  const { swarm } = variant
+  const key = `swarm=${swarm}:crossSession=${variant.crossSession}`
   const cached = inputSchemas.get(key)
   if (cached) return cached
   const text = z.string().describe(MESSAGE_DESCRIPTION)
   const schema = z.object({
-    to: z.string().describe(describeTo(swarm)),
+    to: z.string().describe(describeTo(variant)),
     summary: z.string().optional().describe(describeSummary(swarm)),
     message: swarm ? z.union([text, StructuredMessage()]) : text,
   }) as unknown as InputSchema
@@ -246,6 +274,130 @@ function handleMainMessage(
       message: "Message queued for the main conversation's next turn.",
     },
   }
+}
+
+function isKnownTeammate(
+  appState: ReturnType<ToolUseContext['getAppState']>,
+  name: string,
+): boolean {
+  const team = appState.teamContext
+  if (!team) return false
+  return (
+    name === TEAM_LEAD_NAME ||
+    Object.values(team.teammates).some(teammate => teammate.name === name)
+  )
+}
+
+function describePeerDelivery(
+  label: string,
+  response: ResponseFrame,
+  { hasInbox, fromAgent }: { hasInbox: boolean; fromAgent: boolean },
+): string {
+  const outcome =
+    response.outcome === 'held'
+      ? `Delivered to ${label}, but held for its user's approval (${response.detail ?? 'that session runs in a different permission mode'}). ${hasInbox ? 'A [Cross-session delivery notice] will say when it is delivered, denied or expires.' : 'This session has no inbox, so nothing will say whether it gets through.'} Do not wait for a reply.`
+      : `Delivered to ${label}: its Claude reads it at its next tool round, or starts a turn with it if the session is idle. Delivered is not read — any reply arrives here wrapped in <cross-session-message>.`
+  const notes = [
+    ...(hasInbox
+      ? []
+      : ['This session has no inbox (only an interactive session gets one), so a reply cannot reach it.']),
+    ...(fromAgent
+      ? ["It went out under this session's address: a reply reaches the main conversation, not this agent."]
+      : []),
+  ]
+  return [outcome, ...notes].join(' ')
+}
+
+/**
+ * Send to another Claudin session through its inbox. Its PID record supplies
+ * the socket and the token, and the socket is only ever one some live
+ * session advertises — resolvePeerTarget has already refused anything else.
+ */
+async function sendToPeer(
+  peer: PeerSession,
+  content: string,
+  ownName: string,
+  context: ToolUseContext,
+): Promise<{ data: MessageOutput }> {
+  const label = `${peer.name} [${peer.ref}]`
+  if (content.length > MESSAGE_MAX_CHARS) {
+    throw new Error(
+      `That message is ${content.length.toLocaleString('en-US')} characters; another session takes at most ${MESSAGE_MAX_CHARS.toLocaleString('en-US')}. It shares this machine's filesystem — write the content to a file and send the path.`,
+    )
+  }
+  if (!takeCrossSessionSend()) {
+    throw new Error(
+      `This session has sent ${CROSS_SESSION_SENDS_PER_USER_PROMPT} messages to other sessions since your user last wrote. Stop and ask your user before sending more — two sessions answering each other can loop forever.`,
+    )
+  }
+  const appState = context.getAppState()
+  const agentName =
+    context.agentId === undefined
+      ? undefined
+      : (findAgentName(appState.agentNameRegistry, context.agentId) ??
+        context.agentId)
+  const own = getOwnInbox()
+  let response: ResponseFrame
+  try {
+    response = await sendFrame(peer.socketPath, {
+      v: FRAME_VERSION,
+      type: 'message',
+      msg_id: randomUUID(),
+      token: peer.token,
+      from: own ? formatUdsAddress(own.socketPath) : undefined,
+      from_name: ownName,
+      from_mode: permissionClassOf(appState.toolPermissionContext.mode),
+      text: content,
+      from_agent: agentName,
+    })
+  } catch (e) {
+    if (e instanceof PeerDeliveryError) {
+      throw new Error(`Could not reach ${label}: ${e.message}.`)
+    }
+    throw e
+  }
+  if (!response.ok) {
+    return {
+      data: {
+        success: false,
+        message: `${label} did not take the message: ${response.detail ?? 'no reason given'}.`,
+      },
+    }
+  }
+  return {
+    data: {
+      success: true,
+      message: describePeerDelivery(label, response, {
+        hasInbox: own !== undefined,
+        fromAgent: agentName !== undefined,
+      }),
+    },
+  }
+}
+
+/**
+ * Route a send to another session when `to` names one; undefined hands the
+ * name back to the teammate and error paths.
+ */
+async function routeToPeer(
+  to: string,
+  content: string,
+  context: ToolUseContext,
+): Promise<{ data: MessageOutput } | undefined> {
+  const address = parseAddress(to)
+  const unavailable = crossSessionUnavailableReason()
+  if (unavailable) {
+    if (address.scheme === 'uds') throw new Error(unavailable)
+    return undefined
+  }
+  if (address.scheme === 'uds' && address.target === getOwnInbox()?.socketPath) {
+    throw new Error('That address is this session — a message to it would be a message to yourself.')
+  }
+  const directory = await readSessionDirectory()
+  const resolution = resolvePeerTarget(to, directory.peers)
+  if ('notAPeer' in resolution) return undefined
+  if ('error' in resolution) throw new Error(resolution.error)
+  return sendToPeer(resolution.peer, content, directory.self.name, context)
 }
 
 async function handleMessage(
@@ -630,7 +782,10 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     get inputSchema(): InputSchema {
-      return inputSchemaFor({ swarm: isAgentSwarmsEnabled() })
+      return inputSchemaFor({
+        swarm: isAgentSwarmsEnabled(),
+        crossSession: crossSessionUnavailableReason() === undefined,
+      })
     },
     shouldDefer: true,
 
@@ -717,6 +872,14 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
           errorCode: 9,
         }
       }
+      if (addr.scheme === 'bridge') {
+        return {
+          result: false,
+          message:
+            'Remote Control sessions cannot be messaged from Claudin — only sessions on this machine, by the name ListAgents prints',
+          errorCode: 9,
+        }
+      }
       if (input.to.includes('@')) {
         return {
           result: false,
@@ -793,7 +956,10 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     async prompt() {
-      return getPrompt({ swarm: isAgentSwarmsEnabled() })
+      return getPrompt({
+        swarm: isAgentSwarmsEnabled(),
+        crossSession: crossSessionUnavailableReason() === undefined,
+      })
     },
 
     mapToolResultToToolResultBlockParam(data, toolUseID) {
@@ -913,12 +1079,18 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         if (input.to === '*') {
           return handleBroadcast(input.message, summary, context)
         }
+        const swarm = isAgentSwarmsEnabled()
+        if (swarm && isKnownTeammate(context.getAppState(), input.to)) {
+          return handleMessage(input.to, input.message, summary, context)
+        }
+        const peerResult = await routeToPeer(input.to, input.message, context)
+        if (peerResult) return peerResult
         // A teammate send writes to a mailbox that only an agent team reads,
         // so outside one an unknown name must fail here — reporting success
         // would drop the message on the floor.
-        if (!isAgentSwarmsEnabled()) {
+        if (!swarm) {
           throw new Error(
-            `No agent named "${input.to}" in this session — call ${LIST_AGENTS_TOOL_NAME} to see who you can message, and copy a name exactly as it prints.`,
+            `No agent or session named "${input.to}" — call ${LIST_AGENTS_TOOL_NAME} to see who you can message, and copy a name exactly as it prints.`,
           )
         }
         return handleMessage(input.to, input.message, summary, context)

@@ -11,6 +11,7 @@ export function renderToolResultMessage(output: Output): React.ReactNode {
   const parts = [
     output.subagents.length > 0 ? count(output.subagents.length, 'subagent') : '',
     output.teammates.length > 0 ? count(output.teammates.length, 'teammate') : '',
+    output.peers.length > 0 ? count(output.peers.length, 'other session') : '',
   ].filter(Boolean)
   return (
     <MessageResponse>

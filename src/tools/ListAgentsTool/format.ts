@@ -7,8 +7,13 @@ export type AgentRow = {
 }
 
 export type AgentListing = {
+  /** How other sessions address this one, when they can. */
+  self?: string
   subagents: AgentRow[]
   teammates: AgentRow[]
+  peers: AgentRow[]
+  /** What limits the listing, said once at the end. */
+  notes: string[]
 }
 
 export const SECTION_ROW_CAP = 100
@@ -30,9 +35,12 @@ export function formatAgentListing(listing: AgentListing): string {
   const sections = [
     formatSection('Subagents', listing.subagents),
     formatSection('Teammates', listing.teammates),
+    formatSection('Peer sessions', listing.peers),
   ].filter((section): section is string => section !== undefined)
   if (sections.length === 0) {
-    return 'No agents to message yet. A background agent you spawn with Agent (run_in_background) shows up here, under the name you give it.'
+    sections.push(
+      'No agents to message yet. A background agent you spawn with Agent (run_in_background) shows up here under the name you give it, and so does any other interactive Claudin session running on this machine.',
+    )
   }
-  return sections.join('\n\n')
+  return [...(listing.self ? [listing.self] : []), ...sections, ...listing.notes].join('\n\n')
 }
