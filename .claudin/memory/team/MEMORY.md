@@ -38,7 +38,7 @@
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent)` registered a phantom `noop`; `claudin install` + `mcp serve tools/list` broken
 - [systemPrompt.main.txt regen captured harness-injected text](bugs/systemprompt-snapshot-harness-drift.md) — snapshot covers "Notes for this model" etc., injected by the harness; diff regen vs source before committing
 - [Two latent bugs pinned, not fixed (2026-09-20)](bugs/latent-bugs-pinned-not-fixed.md) — isAutobackgroundingAllowed misses `sleep N`; restoreDangerousPermissions resurrects deleted rules
-- [RunTestsTool still has the 3 shell/env bugs Typecheck fixed](bugs/runtests-tool-shell-env-bugs.md) — ignores its cwd, FORCE_COLOR=0 enables colour, env-prefix breaks compound commands
+- [RunTestsTool's 3 shell/env bugs — FIXED 2026-09-24](bugs/runtests-tool-shell-env-bugs.md) — cwd ignored, FORCE_COLOR=0, env-prefix; now Build's wrapper; two fixture traps that let tests guard nothing
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — febf362a fixed projects clobber + startup heal; mid-session reconcile, cache GC, migrate rerun pending
 - [Codex 403 HTML-block misread as "Please run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — HTML-body 403 = Cloudflare edge block, NOT a revoked token; errors.ts still suggests /login
 - [Diff reviewer canonicalizes git worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — /diff groups collapse worktrees into their main checkout; fix deferred on purpose
