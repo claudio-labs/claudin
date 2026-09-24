@@ -121,7 +121,7 @@
 - [Symbol-parser options researched 2026-08-12](symbol-parser-options-researched.md) — tree-sitter IS shippable under bun --compile; the blocker is the SYNC scanSymbols call, not size
 - [Outline scanner: phantoms that DELETE real declarations](outline-blind-to-nested-members.md) — PR #141; 6 scanner traps, and why the A/B gate is witness-based not rule-based
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 SUPERSEDES the cost gap: claude's prefix 70.5k→32.4k, cost now ties
-- [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — +53% vs CC → +7% after #239; placebo = −6% noise; run arms SIMULTANEOUSLY; the rest is 2× thinking + read-gate re-sends
+- [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — +53% vs CC → +7% after #239; 09-24 main@medium +14% (thinking + tool results); run arms SIMULTANEOUSLY
 - [Session cost round 3 09-23 (proxy, N=5)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't; replays: the system prompt adds 30–50% thinking
 - [Prompts v2 — DEFAULT since 09-24, cleanup pending](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); cost flat; 4 `=0` killswitches to delete (checklist)
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
