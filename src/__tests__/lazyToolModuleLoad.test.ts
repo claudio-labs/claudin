@@ -119,6 +119,7 @@ const CURRENT_BASELINE = [
   'GlobTool',
   'GrepTool',
   'LSPTool',
+  'ListAgentsTool',
   'ListMcpResourcesTool',
   'MCPTool',
   'McpAuthTool',

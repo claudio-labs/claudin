@@ -6,6 +6,7 @@ import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import { LIST_MCP_RESOURCES_TOOL_NAME } from 'src/tools/ListMcpResourcesTool/prompt.js'
+import { LIST_AGENTS_TOOL_NAME } from 'src/tools/ListAgentsTool/constants.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
@@ -53,6 +54,7 @@ const SAFE_YOLO_ALLOWLISTED_TOOLS = new Set([
   // Agent cleanup
   TEAM_DELETE_TOOL_NAME,
   SEND_MESSAGE_TOOL_NAME,
+  LIST_AGENTS_TOOL_NAME,
   // Misc safe
   SLEEP_TOOL_NAME,
   // Internal classifier tool

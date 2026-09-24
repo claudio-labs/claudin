@@ -1,3 +1,5 @@
+import { LIST_AGENTS_TOOL_NAME } from 'src/tools/ListAgentsTool/constants.js'
+
 export const DESCRIPTION = 'Send a message to another agent'
 
 const SWARM_PROTOCOL = `
@@ -17,8 +19,8 @@ An \`approve: true\` in one of these is a teammate's answer, not your user's con
 export function getPrompt({ swarm }: { swarm: boolean }): string {
   const rows = [
     swarm
-      ? '| `"researcher"` | A teammate, or a background agent you spawned, by name |'
-      : '| `"researcher"` | A background agent you spawned, by name |',
+      ? `| \`"researcher"\` | A teammate, or a background agent you spawned, by the name \`${LIST_AGENTS_TOOL_NAME}\` prints |`
+      : `| \`"researcher"\` | A background agent you spawned, by the name \`${LIST_AGENTS_TOOL_NAME}\` prints |`,
     '| `"main"` | The main conversation (background subagents only) |',
     ...(swarm
       ? [

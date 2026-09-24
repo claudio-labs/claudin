@@ -19,6 +19,7 @@ import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
+import { LIST_AGENTS_TOOL_NAME } from 'src/tools/ListAgentsTool/constants.js'
 import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
 import { TASK_GET_TOOL_NAME } from 'src/tools/TaskGetTool/constants.js'
 import { TASK_LIST_TOOL_NAME } from 'src/tools/TaskListTool/constants.js'
@@ -88,6 +89,7 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   // A background agent is the one agent that can usefully message: it can
   // write to "main" while it works, and reach the other agents by name.
   SEND_MESSAGE_TOOL_NAME,
+  LIST_AGENTS_TOOL_NAME,
 ])
 /**
  * Tools allowed only for in-process teammates (not general async agents).

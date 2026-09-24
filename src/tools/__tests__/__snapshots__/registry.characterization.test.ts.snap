@@ -31,6 +31,7 @@ exports[`tool registry — characterization the unconditional tool list matches 
   "EnterWorktree",
   "ExitWorktree",
   "SendMessage",
+  "ListAgents",
   "CronCreate",
   "CronDelete",
   "CronList",

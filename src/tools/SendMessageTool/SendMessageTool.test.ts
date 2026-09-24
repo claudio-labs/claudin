@@ -307,7 +307,7 @@ describe('SendMessageTool', () => {
 describe('SendMessageTool — routing outside an agent team', () => {
   test('an unknown name fails instead of reporting a send nobody reads', async () => {
     await expect(send({ to: 'nobody', message: 'hi' }, makeContext({}))).rejects.toThrow(
-      'No agent named "nobody"',
+      'No agent named "nobody" in this session — call ListAgents',
     )
   })
 

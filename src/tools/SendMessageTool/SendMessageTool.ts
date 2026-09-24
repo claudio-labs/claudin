@@ -47,6 +47,7 @@ import {
 } from 'src/agent/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
 import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
+import { LIST_AGENTS_TOOL_NAME } from 'src/tools/ListAgentsTool/constants.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/SendMessageTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
@@ -82,8 +83,8 @@ const MESSAGE_DESCRIPTION =
 
 function describeTo(swarm: boolean): string {
   return swarm
-    ? 'Recipient: a background agent\'s name or agentId, a teammate name, "*" for the whole team, or "main"'
-    : 'Recipient: a background agent\'s name or agentId, or "main"'
+    ? `Recipient: a name from ${LIST_AGENTS_TOOL_NAME} (a background agent or a teammate), "*" for the whole team, "main", or a background agent's agentId`
+    : `Recipient: a name from ${LIST_AGENTS_TOOL_NAME}, "main", or a background agent's agentId`
 }
 
 function describeSummary(swarm: boolean): string {
@@ -917,7 +918,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         // would drop the message on the floor.
         if (!isAgentSwarmsEnabled()) {
           throw new Error(
-            `No agent named "${input.to}" in this session. Message a background agent by the name or agentId from its launch result, or "${MAIN_ADDRESS}" from inside a background agent.`,
+            `No agent named "${input.to}" in this session — call ${LIST_AGENTS_TOOL_NAME} to see who you can message, and copy a name exactly as it prints.`,
           )
         }
         return handleMessage(input.to, input.message, summary, context)
