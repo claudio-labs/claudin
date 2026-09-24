@@ -125,6 +125,7 @@
 - [Prompts v2 — DEFAULT since 09-24, cleanup pending](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); cost flat; 4 `=0` killswitches to delete (checklist)
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
+- [Dev tools deferred + Bash advice A/B 09-24](dev-tools-deferred-advice-ab-2026-09-24.md) — no cost regression (noise ±16%), prefix −3.3k; deferred RunTests unused 0/9
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 
 ## Providers & models
