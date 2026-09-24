@@ -196,7 +196,7 @@ export const SEEN_RANGES_MAX_COUNT = 32
  *    not text the model saw, and carrying it as a slice at offset 1 made the
  *    coverage lane treat the WHOLE file as read after outline → Read(range):
  *    a patch anywhere passed. Found while serving regions (2026-09-20);
- * 4. `next` stands for the whole file, where `seenRegionCovers` short-circuits
+ * 4. `next` stands for the whole file, where `seenRegionCoversText` short-circuits
  *    anyway — holding slices there would be pure memory.
  */
 export function carrySeenRanges(

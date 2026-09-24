@@ -12,8 +12,10 @@
 // EXACTLY and UNIQUELY, the refusal stands but answers with the region itself,
 // numbered the way Read numbers it, and registers that slice in readFileState
 // exactly as a Read(offset, limit) would have — the identical resubmit then
-// passes the coverage lane. The invariant is intact: the model still sees the
-// lines before the write lands, it just sees them one call sooner.
+// passes the gate. The invariant is intact: the model still sees the lines
+// before the write lands, it just sees them one call sooner. Since 2026-09-24
+// apply_patch refuses only a file never read at all, so for an Update hunk this
+// serves that refusal alone; Edit still serves all four of its own.
 //
 // What is NOT served, on purpose:
 //   - a hunk that does not match exactly, or matches twice: the model's guess
@@ -21,7 +23,7 @@
 //     the fuzzy matcher's job at apply time, not the gate's;
 //   - more than MAX_SERVED_LINES in one refusal: a hunk that large is a
 //     rewrite, and the message would be the file;
-//   - whole-file writes (Write, Delete File) — the remedy there is view='full';
+//   - whole-file writes (Write, Delete File) — there is no old side to match;
 //   - an entry under a clip-pin stand-down marker, which has its own budget.
 //
 // The entry written here carries `dedupExempt` (fileStateCache.ts): its bytes

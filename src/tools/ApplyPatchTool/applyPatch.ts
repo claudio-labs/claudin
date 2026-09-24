@@ -14,6 +14,19 @@
 // model still sees the lines before the write lands. Any other apply_patch call
 // drops the kept patch. Killswitch: CLAUDIN_DISABLE_PATCH_RESUBMIT=1, which also
 // turns the sentinel back into an unparseable patch.
+//
+// Read gate. Update and Delete need the file to have been read, and any read
+// counts: the whole file, an outline, a symbol, a range, an injected CLAUDE.md,
+// a Read since clipped out of the transcript, a file changed on disk after it
+// was read. Whether a hunk applies is decided where it is applied — stageHunk
+// matches its context and "-" lines against the file as it is at that moment,
+// so a wrong hunk is refused there and nothing the patch does not name is
+// overwritten. Until 2026-09-24 this tool held Edit's gate (a full view,
+// coverage of every hunk, no change since the read), and each of those
+// refusals was answered with a Read that mostly bought nothing: half the
+// coverage refusals and 17 of the 30 stale ones in the 2026-09-14..20 census
+// came back as the identical patch (team memory tool-error-census-2026-09-20).
+// Edit, Write and NotebookEdit keep the full gate (.claudin/rules/cache.md).
 
 import type { UUID } from 'crypto'
 import { extname, relative } from 'path'
@@ -29,16 +42,7 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { checkBatchWritePermission } from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
-import {
-  needsWholeFileRead,
-  readGateMessage,
-  readGateReasonFor,
-  satisfiesLineScopedReadGate,
-  satisfiesReadGate,
-  seenRegionCovers,
-  unseenRegionMessage,
-  wholeFileRequiredMessage,
-} from 'src/tools/shared/readBeforeEditMessages.js'
+import { readGateMessage } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   fileLinesOf,
   type LineRegion,
@@ -179,8 +183,8 @@ export function resolveApplyPatchInput(
 
 /**
  * Validates the patch before any permission prompt or write: parses it,
- * rejects empty / duplicate / notebook targets, and enforces read-before-edit
- * (and staleness) for Update/Delete — mirroring FileWriteTool's guards.
+ * rejects empty / duplicate / notebook targets, and requires every Update or
+ * Delete target to have been read — in any form, see "Read gate" above.
  */
 export function validateApplyPatchInput(
   input: ApplyPatchInput,
@@ -209,8 +213,8 @@ export function validateApplyPatchInput(
   // pass. At most one problem is recorded per file (checks are sequential).
   const failures: string[] = []
   let firstErrorCode = 1
-  // Failures whose fix is "read the file again". Counted so an N-file patch can
-  // be told to batch those reads into ONE message — otherwise the cheapest path
+  // Failures whose fix is reading the file. Counted so an N-file patch can be
+  // told to batch those reads into ONE message — otherwise the cheapest path
   // the model can see is read-one/patch-one, which is the round-trip waste this
   // tool exists to avoid.
   let readRemedyFailures = 0
@@ -266,69 +270,16 @@ export function validateApplyPatchInput(
       continue
     }
 
-    const readTimestamp = context.readFileState.get(absPath)
-    // Shared with Edit / Write / NotebookEdit so all four agree about the same
-    // file state (.claudin/rules/cache.md's four-tool invariant). An Update
-    // hunk is line-scoped, so an injected CLAUDE.md/MEMORY.md passes and is
-    // held to the text the model saw by the coverage check below; a Delete
-    // replaces the file and needs the strict gate.
-    if (
-      !satisfiesLineScopedReadGate(readTimestamp) ||
-      (hunk.type === 'delete' && !satisfiesReadGate(readTimestamp))
-    ) {
-      const reason = readGateReasonFor(readTimestamp)
-      const message = `apply_patch: ${readGateMessage(reason, rel, 'patching it')}`
-      // A clip-pin stand-down has its own replay budget; serving over it would
-      // reopen a gate that marker deliberately holds shut.
+    // Any read counts — see "Read gate" in the header.
+    if (context.readFileState.get(absPath) === undefined) {
+      const message = `apply_patch: ${readGateMessage('never-read', rel, 'patching it')}`
       const served =
-        hunk.type === 'update' && reason !== 'clipped'
-          ? serveUpdateHunk(hunk, absPath, context)
-          : null
+        hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null
       if (served) {
         note(message + servedSuffix(served), 2)
         servedFailures++
       } else {
         note(message, 2)
-        readRemedyFailures++
-      }
-      continue
-    }
-    if (getFileModificationTime(absPath) > readTimestamp.timestamp) {
-      const message = `apply_patch: ${rel} has been modified since it was read. Read it again before patching it.`
-      const served =
-        hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null
-      if (served) {
-        note(message + servedSuffix(served), 3)
-        servedFailures++
-      } else {
-        note(message, 3)
-        readRemedyFailures++
-      }
-      continue
-    }
-
-    // Seeing the file is not seeing the lines being changed — see the
-    // coverage lane in readBeforeEditMessages.ts.
-    if (hunk.type === 'delete') {
-      if (needsWholeFileRead(readTimestamp)) {
-        note(
-          `apply_patch: ${wholeFileRequiredMessage(rel, 'Deleting it', readTimestamp)}`,
-          4,
-        )
-        readRemedyFailures++
-      }
-      continue
-    }
-    if (
-      hunk.chunks.some(chunk => !seenRegionCovers(readTimestamp, chunk.oldLines))
-    ) {
-      const message = `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`
-      const served = serveUpdateHunk(hunk, absPath, context)
-      if (served) {
-        note(message + servedSuffix(served), 4)
-        servedFailures++
-      } else {
-        note(message, 4)
         readRemedyFailures++
       }
       continue
@@ -590,5 +541,3 @@ export function summarizeApplyPatch(output: ApplyPatchOutput): string {
   })
   return `Success. Applied the patch to the following files:\n${lines.join('\n')}`
 }
-
-export { displayPath as applyPatchDisplayPath }

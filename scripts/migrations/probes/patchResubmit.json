@@ -53,16 +53,6 @@
       "replace": "        note(message + servedSuffix(served), 2)"
     },
     {
-      "name": "a served stale refusal is not counted",
-      "find": "        note(message + servedSuffix(served), 3)\n        servedFailures++",
-      "replace": "        note(message + servedSuffix(served), 3)"
-    },
-    {
-      "name": "a served coverage refusal is not counted",
-      "find": "        note(message + servedSuffix(served), 4)\n        servedFailures++",
-      "replace": "        note(message + servedSuffix(served), 4)"
-    },
-    {
       "name": "the tool loop never calls resolveInput",
       "source": "src/agent/tools/toolExecution.ts",
       "find": "  const resolution = tool.resolveInput\n    ? tool.resolveInput(parsedInput.data, toolUseContext)\n    : ({ ok: true, input: parsedInput.data } as const)",

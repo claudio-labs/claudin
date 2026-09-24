@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
   coveredSegments,
-  seenRegionCovers,
+  seenRegionCoversText,
 } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   fileLinesOf,
@@ -123,21 +123,21 @@ describe('serveRegions', () => {
       [2, 2],
       [9, 2],
     ])
-    expect(seenRegionCovers(entry, ['l2', 'l3'])).toBe(true)
-    expect(seenRegionCovers(entry, ['l5'])).toBe(false)
+    expect(seenRegionCoversText(entry, 'l2\nl3')).toBe(true)
+    expect(seenRegionCoversText(entry, 'l5')).toBe(false)
   })
 
   test('a previous slice of the same version survives the serve', () => {
     const cache = new FileStateCache(10, 1024 * 1024)
     cache.set('/f.txt', { content: 'l15\nl16\n', timestamp: 123, offset: 15, limit: 2 })
     serveRegions(cache, '/f.txt', LINES, 123, [{ start: 2, end: 3 }])
-    expect(seenRegionCovers(cache.get('/f.txt')!, ['l15', 'l16'])).toBe(true)
+    expect(seenRegionCoversText(cache.get('/f.txt')!, 'l15\nl16')).toBe(true)
   })
 
   test('a previous slice of an OLDER version does not', () => {
     const cache = new FileStateCache(10, 1024 * 1024)
     cache.set('/f.txt', { content: 'l15\nl16\n', timestamp: 100, offset: 15, limit: 2 })
     serveRegions(cache, '/f.txt', LINES, 123, [{ start: 2, end: 3 }])
-    expect(seenRegionCovers(cache.get('/f.txt')!, ['l15', 'l16'])).toBe(false)
+    expect(seenRegionCoversText(cache.get('/f.txt')!, 'l15\nl16')).toBe(false)
   })
 })

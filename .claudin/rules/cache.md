@@ -149,9 +149,11 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     and an LRU eviction clear it for free — the side-map was the actual defect
     of the old re-read breaker.
   - It must stay `isPartialView: true` and carry NO `toolUseId`. The first
-    keeps the edit tools demanding a real Read (the model has seen an outline,
-    not the body) and keeps the entry out of the dedup gate; the second makes
-    the blind-pointer stub unrepresentable from this state.
+    keeps Edit/Write/NotebookEdit demanding a real Read (the model has seen an
+    outline, not the body) and keeps the entry out of the dedup gate; the
+    second makes the blind-pointer stub unrepresentable from this state.
+    `apply_patch` is not refused over it since 2026-09-24 (see the invariant
+    below), but a hunk still needs the lines, which is the read this unblocks.
   - **`STICKY_REPLAY_BUDGET` is load-bearing, not belt-and-braces.** Do not
     "simplify" it away. The other exits cannot cover property (2) on their own:
     Edit/Write look like an exit but are REFUSED while the marker stands, so
@@ -163,40 +165,48 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     microCompact adds candidates without consulting the pin registry and
     `stubOneBlock` then skips the pinned ones, so `getClippedIds()` over-reports;
     `clientClippingDetection` must AND it with `isPinShielding`.
-  - **Read-before-edit is a four-tool invariant.** `FileEditTool`,
-    `FileWriteTool`, `applyPatch` and `NotebookEditTool` must all reject
+  - **Read-before-edit is a three-tool invariant.** `FileEditTool`,
+    `FileWriteTool` and `NotebookEditTool` must all reject
     `!entry || entry.isPartialView`, and `file-pipeline.ts`'s already-read
     optimization must require `!isPartialView` too. NotebookEdit and the
     attachment path each checked only presence, which the sticky marker turned
     into a blind-notebook-edit path and a suppressed `@`-mention.
+    **`apply_patch` left it on 2026-09-24, on purpose**, and rejects only
+    `!entry`: any read counts — an outline, a range, a clipped Read, an
+    injected file, a file changed on disk since — because whether a hunk
+    applies is decided at apply time, against the file as it is then
+    (`applyPatch.ts` header, scenario S19). Its partial-view, coverage and
+    stale refusals were answered with a Read and, half the time, the identical
+    patch (tool-error-census-2026-09-20). Do not bring them back without a
+    measurement that says a refusal buys something.
     One exception, and it is line-scoped only (2026-09-04): an entry the
     harness seeded for an auto-injected CLAUDE.md/rule/MEMORY.md carries
     `injectedView`, the stripped or truncated text the model was actually
-    shown, and `satisfiesLineScopedReadGate` lets Edit and an `apply_patch`
-    Update through on it — the coverage lane then checks the needle against
-    `injectedView` instead of `content`. Write, NotebookEdit and `Delete File`
-    stay on `satisfiesReadGate`: written back from a truncated view, the
-    file would lose its tail. 8 of 65 gate refusals in the 2026-08/09 corpus
-    were Edits of an injected file answered by a `view='full'` re-read of
-    MEMORY.md. A clip-pin marker never carries `injectedView`, and the
-    line-scoped gate refuses `standDownOutline` explicitly.
+    shown, and `satisfiesLineScopedReadGate` lets Edit through on it — the
+    coverage lane then checks the needle against `injectedView` instead of
+    `content`. Write and NotebookEdit stay on `satisfiesReadGate`: written
+    back from a truncated view, the file would lose its tail. 8 of 65 gate
+    refusals in the 2026-08/09 corpus were Edits of an injected file answered
+    by a `view='full'` re-read of MEMORY.md. A clip-pin marker never carries
+    `injectedView`, and the line-scoped gate refuses `standDownOutline`
+    explicitly.
   - **Presence is not coverage** (2026-08-12). The gate answers "has the model
     seen this file", never "has it seen the lines it is changing": a range Read
     and a `symbol=` Read both write an entry with NO `isPartialView`
     (`FileReadTool.ts:2268`, `:1886`), so eight lines of a 2,200-line file used
     to authorize a patch anywhere in it — measured, in session `9825fb93`, as
     three token-sized re-Reads that lifted a refusal and changed nothing else.
-    The second lane in `shared/readBeforeEditMessages.ts` closes it:
-    `seenRegionCovers` requires a line-scoped write (an `apply_patch` Update
-    chunk's `oldLines`) to sit inside the bytes the entry carries,
-    `seenRegionCoversText` asks the same of Edit's `old_string`, and
-    `needsWholeFileRead` requires a whole-file entry for a write that replaces
-    the file (`Delete File`, `FileWriteTool`). Matching is per-line trimmed
-    and — for hunks — line-anchored; Edit's predicate keeps only the INNER
-    line anchors, because an `old_string` may start and end mid-line and the
-    outer sentinels refused text the model was holding (6 refusals, one file
-    twice, 2026-08/09). Never stricter than the callers' own fuzzy matchers,
-    or it refuses writes that would have applied. Killswitch
+    The second lane in `shared/readBeforeEditMessages.ts` closes it for Edit
+    and Write: `seenRegionCoversText` requires Edit's `old_string` to sit
+    inside the bytes the entry carries, and `needsWholeFileRead` requires a
+    whole-file entry for a write that replaces the file (`FileWriteTool`).
+    `apply_patch` hunks went through a line-anchored twin of it until
+    2026-09-24 and go through nothing now (invariant above). Matching is
+    per-line trimmed and keeps only the INNER line anchors, because an
+    `old_string` may start and end mid-line and the outer sentinels refused
+    text the model was holding (6 refusals, one file twice, 2026-08/09). Never
+    stricter than Edit's own fuzzy matcher, or it refuses writes that would
+    have applied. Killswitch
     `CLAUDIN_DISABLE_READ_COVERAGE_GATE=1`. Do NOT "simplify" this into marking
     range reads `isPartialView`: a symbol read IS a range read, and
     `makeUnfoldData` (`FileReadTool.ts:1868-1873`) keeps those editable on
@@ -279,7 +289,8 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   - **A refusal may serve the region it refuses over** (`shared/servedRegion.ts`,
     2026-09-20). When every chunk's old side (or Edit's `old_string`) sits in
     the current file exactly and uniquely, the never-read, partial-view, stale
-    and coverage refusals of Edit and `apply_patch` Update append the lines
+    and coverage refusals of Edit — and the never-read refusal of an
+    `apply_patch` Update, its only one since 2026-09-24 — append the lines
     (Read-numbered, ±2 context, merged, ≤200 lines) and register each block via
     `readFileState.set` with `offset`/`limit` — the same shape a Read of it
     leaves, so `carrySeenRanges` keeps the earlier slices and the IDENTICAL
@@ -292,10 +303,11 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   - **A partial view is never carried as a seen slice** (2026-09-20).
     `carrySeenRanges` took any predecessor with the same mtime, including an
     outline entry whose `content` is the raw source with no offset — carried
-    at offset 1 it covered the whole file, and outline → Read(range) → patch
+    at offset 1 it covered the whole file, and outline → Read(range) → write
     anywhere passed. `prev.isPartialView` now returns "carry nothing".
     Scenario S15 in `src/__tests__/readGateScenarios.test.ts` pins it, and
-    S6–S14 pin the rest of this bullet group end to end.
+    S6–S14 pin the rest of this bullet group end to end — through Edit, since
+    `apply_patch` no longer looks past presence.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 

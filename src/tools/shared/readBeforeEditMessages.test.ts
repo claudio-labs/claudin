@@ -14,7 +14,6 @@ import {
   satisfiesLineScopedReadGate,
   satisfiesReadGate,
   seenRangeLabel,
-  seenRegionCovers,
   seenRegionCoversText,
   unseenRegionMessage,
   wholeFileRequiredMessage,
@@ -218,52 +217,10 @@ describe('isWholeFileView', () => {
   })
 })
 
-describe('seenRegionCovers', () => {
-  test('a whole-file entry covers anything', () => {
-    expect(seenRegionCovers(state({ content: 'a\nb' }), ['zzz'])).toBe(true)
-  })
-
-  test('a range entry covers a run inside it', () => {
-    expect(seenRegionCovers(RANGE, ['five', 'six'])).toBe(true)
-  })
-
-  test('a range entry does NOT cover a run outside it', () => {
-    expect(seenRegionCovers(RANGE, ['eight'])).toBe(false)
-  })
-
-  test('matching is line-anchored, not substring', () => {
-    // Without the newline sentinels, "ix" would "match" inside "six" and a
-    // patch anchored on a line the model never saw would sail through.
-    expect(seenRegionCovers(RANGE, ['ix'])).toBe(false)
-  })
-
-  test('indentation drift is tolerated', () => {
-    // Both callers match fuzzily on whitespace; this lane must never be the
-    // stricter of the two, or it refuses writes that would have applied.
-    expect(seenRegionCovers(RANGE, ['    six'])).toBe(true)
-  })
-
-  test('a blank-only run localizes nothing and is not refused', () => {
-    expect(seenRegionCovers(RANGE, ['', ''])).toBe(true)
-  })
-
-  test('the killswitch disables it', () => {
-    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
-    try {
-      expect(seenRegionCovers(RANGE, ['eight'])).toBe(true)
-      expect(needsWholeFileRead(RANGE)).toBe(false)
-    } finally {
-      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
-    }
-  })
-})
-
 describe('coverage against an injected view', () => {
   test('what the model saw covers; what was stripped does not', () => {
     // The entry's `content` is the raw file and would cover the frontmatter;
     // the model never saw it, so it must not.
-    expect(seenRegionCovers(INJECTED, ['Do the thing.'])).toBe(true)
-    expect(seenRegionCovers(INJECTED, ['paths: src/**'])).toBe(false)
     expect(seenRegionCoversText(INJECTED, 'the thing')).toBe(true)
     expect(seenRegionCoversText(INJECTED, 'paths:')).toBe(false)
   })
@@ -295,7 +252,8 @@ describe('seenRegionCoversText (Edit old_string)', () => {
   test('a substring inside one seen line is covered', () => {
     // The refusal this pins: effort.tsx line 220 was read (214-225) and again
     // (200-239), and an Edit of a fragment of that line was refused both
-    // times because `seenRegionCovers` demanded a whole line.
+    // times because the line-anchored predicate it went through then demanded
+    // a whole line.
     expect(seenRegionCoversText(SUBLINE, 'beta')).toBe(true)
     expect(seenRegionCoversText(SUBLINE, 'msg = "alpha')).toBe(true)
   })
@@ -345,6 +303,15 @@ describe('needsWholeFileRead', () => {
   test('true for a range entry, false for a whole-file one', () => {
     expect(needsWholeFileRead(RANGE)).toBe(true)
     expect(needsWholeFileRead(state({ offset: 1 }))).toBe(false)
+  })
+
+  test('the killswitch disables it', () => {
+    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
+    try {
+      expect(needsWholeFileRead(RANGE)).toBe(false)
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
+    }
   })
 })
 
@@ -444,40 +411,32 @@ describe('coveredSegments', () => {
   })
 })
 
-describe('seenRegionCovers — across accumulated reads', () => {
+describe('seenRegionCoversText — across accumulated reads', () => {
   test('an EARLIER read still covers, after a narrower one replaced it', () => {
     // 9 of the 37 unseen-region refusals in the session corpus were hunks
     // sitting whole inside a slice the model had read, which a later, narrower
     // Read had evicted from the entry.
     const entry = walked(slice(40, 6), slice(1, 10))
-    expect(seenRegionCovers(entry, ['l3', 'l4'])).toBe(true)
-    expect(seenRegionCovers(entry, ['l41'])).toBe(true)
+    expect(seenRegionCoversText(entry, 'l3\nl4')).toBe(true)
+    expect(seenRegionCoversText(entry, 'l41')).toBe(true)
   })
 
-  test('a hunk spanning the seam of two adjacent reads is covered', () => {
+  test('a needle spanning the seam of two adjacent reads is covered', () => {
     // The other 19: no single read contains the hunk, the union does.
     const entry = walked(slice(11, 5), slice(1, 10))
-    expect(seenRegionCovers(entry, ['l9', 'l10', 'l11', 'l12'])).toBe(true)
+    expect(seenRegionCoversText(entry, 'l9\nl10\nl11\nl12')).toBe(true)
   })
 
-  test('a hunk inside the gap is still refused', () => {
+  test('a needle inside the gap is still refused', () => {
     const entry = walked(slice(40, 6), slice(1, 10))
-    expect(seenRegionCovers(entry, ['l20'])).toBe(false)
-  })
-
-  test('a hunk spanning the gap is refused, however the slices are arranged', () => {
-    // The failure a naive concatenation would ship: l10 and l40 are both in the
-    // entry and adjacent in the concatenated text, 29 lines apart in the file.
-    // A patch anchored on that pair must not be authorized.
-    const entry = walked(slice(40, 6), slice(1, 10))
-    expect(seenRegionCovers(entry, ['l10', 'l40'])).toBe(false)
+    expect(seenRegionCoversText(entry, 'l20')).toBe(false)
   })
 
   test('the killswitch disables the accumulated lane too', () => {
     process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
     try {
       expect(
-        seenRegionCovers(walked(slice(40, 6), slice(1, 10)), ['l20']),
+        seenRegionCoversText(walked(slice(40, 6), slice(1, 10)), 'l20'),
       ).toBe(true)
     } finally {
       delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
@@ -502,13 +461,15 @@ describe('seenRangeLabel — accumulated', () => {
   })
 })
 // ---------------------------------------------------------------------------
-// Wiring. The four call sites live in tool `validateInput` bodies that cannot
+// Wiring. The three call sites live in tool `validateInput` bodies that cannot
 // be driven under `bun test` — sibling files in the shard globally mock `fs`
 // and `fs/promises` (see FileEditTool.diagnostics.test.ts's header, and
 // .claudin/rules/testing.md on cross-file mock leaks). Without this block,
 // deleting a tool's call to the shared helper and restoring its old flat
 // "has not been read yet" string breaks nothing, which is exactly the hole an
-// audit found in the first version of this change.
+// audit found in the first version of this change. apply_patch left the
+// invariant on 2026-09-24 — it asks only whether the file was read — and its
+// validator is driven for real in applyPatch.test.ts.
 // ---------------------------------------------------------------------------
 
 const CALL_SITES: Array<[string, URL]> = [
@@ -518,18 +479,17 @@ const CALL_SITES: Array<[string, URL]> = [
     'NotebookEdit',
     new URL('../NotebookEditTool/NotebookEditTool.ts', import.meta.url),
   ],
-  ['apply_patch', new URL('../ApplyPatchTool/applyPatch.ts', import.meta.url)],
 ]
 
-describe('read-before-edit gate wiring (the four-tool invariant)', () => {
+describe('read-before-edit gate wiring (the three-tool invariant)', () => {
   for (const [tool, url] of CALL_SITES) {
     test(`${tool} routes its refusal through the shared module`, () => {
       const src = readFileSync(url, 'utf8')
-      // Edit and an apply_patch Update are line-scoped and may take the
-      // injected-view exception; Write and NotebookEdit replace content the
-      // model may not have seen and must not.
+      // Edit is line-scoped and may take the injected-view exception; Write
+      // and NotebookEdit replace content the model may not have seen and
+      // must not.
       expect(src).toContain(
-        tool === 'Edit' || tool === 'apply_patch'
+        tool === 'Edit'
           ? 'satisfiesLineScopedReadGate(readTimestamp)'
           : 'satisfiesReadGate(readTimestamp)',
       )
@@ -550,9 +510,8 @@ describe('read-before-edit gate wiring (the four-tool invariant)', () => {
   }
 })
 
-// Same reasoning for the coverage lane: apply_patch's half is driven for real
-// in applyPatch.test.ts, but Edit's and Write's validateInput cannot run here,
-// so deleting their call would otherwise cost nothing.
+// Same reasoning for the coverage lane: Edit's and Write's validateInput cannot
+// run here, so deleting their call would otherwise cost nothing.
 describe('read-coverage wiring', () => {
   test('Edit checks the region its old_string lands in', () => {
     const src = readFileSync(CALL_SITES[0][1], 'utf8')

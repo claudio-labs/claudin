@@ -383,7 +383,7 @@ describe('validateApplyPatchInput', () => {
     cleanup()
   })
 
-  test('an outline-only read is told to re-read with view=full', () => {
+  test('an outline-only read authorizes the patch', () => {
     const p = join(dir, 'partial.txt')
     writeFileSync(p, 'a\n')
     markPartial(p)
@@ -391,17 +391,12 @@ describe('validateApplyPatchInput', () => {
       { patchText: envelope(`*** Update File: ${p}\n@@\n-a\n+b`) },
       ctx,
     )
-    expect(r).toMatchObject({ result: false })
-    if (!r.result) {
-      // The old shared wording claimed the file was never read, which is false
-      // here and hides the only fix that works.
-      expect(r.message).toContain("view='full'")
-      expect(r.message).not.toContain('has not been read yet')
-    }
+    // Any read counts; whether the hunk applies is decided at apply time.
+    expect(r).toEqual({ result: true })
     cleanup()
   })
 
-  test('a clipped read explains the loss AND still names view=full', () => {
+  test('a Read since clipped out of the transcript authorizes the patch', () => {
     const p = join(dir, 'clipped.txt')
     writeFileSync(p, 'a\n')
     markClipped(p)
@@ -409,17 +404,7 @@ describe('validateApplyPatchInput', () => {
       { patchText: envelope(`*** Update File: ${p}\n@@\n-a\n+b`) },
       ctx,
     )
-    expect(r).toMatchObject({ result: false })
-    if (!r.result) {
-      expect(r.message).toContain('clipped out of the transcript')
-      // This assertion used to be inverted. A review proved the old advice —
-      // "just read it again, the next Read re-arms the body" — is wrong: the
-      // sticky marker replays the SAME outline for STICKY_REPLAY_BUDGET reads,
-      // and its guard at FileReadTool.ts:456 requires `view === undefined`, so
-      // view='full' is precisely what escapes the replay.
-      expect(r.message).toContain("view='full'")
-      expect(r.message).toContain('can replay the outline')
-    }
+    expect(r).toEqual({ result: true })
     cleanup()
   })
 
@@ -428,9 +413,9 @@ describe('validateApplyPatchInput', () => {
     const b = join(dir, 'b.txt')
     writeFileSync(a, 'a\n')
     writeFileSync(b, 'a\n')
-    markPartial(b)
-    // Old sides that are NOT in either file: nothing can be served, so both
-    // refusals still need a Read (the served case has its own suite below).
+    // Neither was read, and the old sides are NOT in either file: nothing can
+    // be served, so both refusals still need a Read (the served case has its
+    // own suite below).
     const r = validateApplyPatchInput(
       {
         patchText: envelope(
@@ -440,7 +425,6 @@ describe('validateApplyPatchInput', () => {
       ctx,
     )
     expect(r).toMatchObject({ result: false })
-    // Counts across BOTH new branches — one never read, one partial.
     if (!r.result) {
       expect(r.message).toContain('do them all in ONE message')
     }
@@ -584,11 +568,12 @@ describe('validateApplyPatchInput', () => {
   })
 })
 
-// The coverage lane (readBeforeEditMessages.ts): an entry proves the model saw
-// the FILE, which is not the same as having seen the lines being changed. The
-// hole this closes was measured, not imagined — a 3-file refusal was answered
-// with three 5-to-8-line range Reads and the identical patch then applied.
-describe('validateApplyPatchInput — read coverage', () => {
+// Any read counts ("Read gate" in applyPatch.ts). Until 2026-09-24 a range read
+// only authorized hunks inside it, a Delete needed the whole file, and a file
+// changed on disk since the read was refused — each answered, half the time,
+// with a Read and the identical patch. What stops a wrong hunk now is the
+// patch itself, matched against the file when it is applied.
+describe('validateApplyPatchInput — any read counts', () => {
   test('a range read authorizes a patch INSIDE the range', () => {
     const p = join(dir, 'inside.txt')
     writeNumbered(p)
@@ -601,36 +586,16 @@ describe('validateApplyPatchInput — read coverage', () => {
     cleanup()
   })
 
-  test('a range read does NOT authorize a patch outside it', () => {
+  test('a range read authorizes a patch outside it too', async () => {
     const p = join(dir, 'outside.txt')
     writeNumbered(p)
     markRange(p, 1, 3)
-    const r = validateApplyPatchInput(
-      { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
-      ctx,
-    )
-    expect(r).toMatchObject({ result: false })
-    if (!r.result) {
-      expect(r.message).toContain('only read in part')
-      expect(r.message).toContain('lines 1-3')
-      // The old wording was the whole problem: the file WAS read, and telling
-      // the model otherwise is what bought the ritual 8-line re-read.
-      expect(r.message).not.toContain('has not been read yet')
+    const input = {
+      patchText: envelope(`*** Update File: ${p}\n@@\n line7\n-line8\n+LINE8`),
     }
-    cleanup()
-  })
-
-  test('context lines count as seen, not just removed ones', () => {
-    // The chunk's old side is context + removals; a patch anchored on context
-    // the model never saw is just as blind as one removing it.
-    const p = join(dir, 'ctx.txt')
-    writeNumbered(p)
-    markRange(p, 1, 3)
-    const r = validateApplyPatchInput(
-      { patchText: envelope(`*** Update File: ${p}\n@@\n line7\n-line8\n+LINE8`) },
-      ctx,
-    )
-    expect(r).toMatchObject({ result: false })
+    expect(validateApplyPatchInput(input, ctx)).toEqual({ result: true })
+    await runApplyPatch(input, ctx, randomUUID())
+    expect(readFileSync(p, 'utf8')).toContain('line7\nLINE8\nline9')
     cleanup()
   })
 
@@ -646,7 +611,7 @@ describe('validateApplyPatchInput — read coverage', () => {
     cleanup()
   })
 
-  test('Delete File needs the whole file, not a range', () => {
+  test('a range read authorizes a Delete File', () => {
     const p = join(dir, 'del.txt')
     writeNumbered(p)
     markRange(p, 1, 3)
@@ -654,8 +619,7 @@ describe('validateApplyPatchInput — read coverage', () => {
       { patchText: envelope(`*** Delete File: ${p}`) },
       ctx,
     )
-    expect(r).toMatchObject({ result: false })
-    if (!r.result) expect(r.message).toContain('replaces the whole file')
+    expect(r).toEqual({ result: true })
     cleanup()
   })
 
@@ -683,7 +647,7 @@ describe('validateApplyPatchInput — read coverage', () => {
     cleanup()
   })
 
-  test('an injected file does NOT authorize an Update past the truncation', () => {
+  test('an injected file authorizes an Update past the truncation too', () => {
     const p = join(dir, 'injected-out.md')
     writeNumbered(p)
     markInjected(p, 3)
@@ -691,15 +655,11 @@ describe('validateApplyPatchInput — read coverage', () => {
       { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
       ctx,
     )
-    expect(r).toMatchObject({ result: false })
-    if (!r.result) {
-      expect(r.message).toContain('injected')
-      expect(r.message).not.toContain('has not been read yet')
-    }
+    expect(r).toEqual({ result: true })
     cleanup()
   })
 
-  test('an injected file does NOT authorize a Delete', () => {
+  test('an injected file authorizes a Delete', () => {
     const p = join(dir, 'injected-del.md')
     writeNumbered(p)
     markInjected(p, 3)
@@ -707,46 +667,55 @@ describe('validateApplyPatchInput — read coverage', () => {
       { patchText: envelope(`*** Delete File: ${p}`) },
       ctx,
     )
-    expect(r).toMatchObject({ result: false })
-    if (!r.result) expect(r.message).toContain('outline or a partial view')
+    expect(r).toEqual({ result: true })
     cleanup()
   })
 
-  test('coverage failures count toward the batched-read instruction', () => {
-    const a = join(dir, 'cov-a.txt')
-    const b = join(dir, 'cov-b.txt')
-    writeNumbered(a)
-    writeNumbered(b)
-    markRange(a, 1, 3)
-    markRange(b, 1, 3)
-    const r = validateApplyPatchInput(
-      {
-        patchText: envelope(
-          `*** Update File: ${a}\n@@\n-nowhere8\n+LINE8\n` +
-            `*** Update File: ${b}\n@@\n-nowhere9\n+LINE9`,
-        ),
-      },
-      ctx,
+  test('a file changed on disk since the read is patched as it is now', async () => {
+    const p = join(dir, 'changed.txt')
+    writeNumbered(p)
+    markRead(p)
+    writeFileSync(p, readFileSync(p, 'utf8').replace('line8', 'LINE8'))
+    const when = new Date(Date.now() + 10_000)
+    utimesSync(p, when, when)
+
+    const input = { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) }
+    expect(validateApplyPatchInput(input, ctx)).toEqual({ result: true })
+    await runApplyPatch(input, ctx, randomUUID())
+    // The change made after the read survives: the hunk named line2 only.
+    const after = readFileSync(p, 'utf8')
+    expect(after).toContain('LINE2')
+    expect(after).toContain('LINE8')
+    cleanup()
+  })
+
+  test('a hunk that does not match the file passes validation and is refused when applied', async () => {
+    const p = join(dir, 'mismatch.txt')
+    writeNumbered(p)
+    markPartial(p)
+    const before = readFileSync(p, 'utf8')
+    const input = { patchText: envelope(`*** Update File: ${p}\n@@\n-nowhere\n+x`) }
+    expect(validateApplyPatchInput(input, ctx)).toEqual({ result: true })
+    await expect(runApplyPatch(input, ctx, randomUUID())).rejects.toThrow(
+      'Failed to find expected lines',
     )
-    expect(r).toMatchObject({ result: false })
-    if (!r.result) expect(r.message).toContain('do them all in ONE message')
+    expect(readFileSync(p, 'utf8')).toBe(before)
     cleanup()
   })
 
   describe('the refusal serves the region when the old side matches exactly', () => {
-    // tool-error-census-2026-09-20.md: 86 of 102 coverage refusals were for
-    // lines the model never Read, and half the resubmits were byte-identical.
-    // When the hunk's old side is in the file exactly once, the refusal
-    // carries it and registers it, so the identical resubmit passes.
-    test('a coverage refusal carries the lines and the same patch then applies', () => {
-      const p = join(dir, 'serve-coverage.txt')
+    // A file never read is still refused (tool-error-census-2026-09-20.md:
+    // half the resubmits after a forced Read were byte-identical). When the
+    // hunk's old side is in the file exactly once, the refusal carries it and
+    // registers it, so the identical resubmit passes.
+    test('a never-read refusal carries the lines and the same patch then applies', () => {
+      const p = join(dir, 'serve-never.txt')
       writeNumbered(p)
-      markRange(p, 1, 3)
       const body = `*** Update File: ${p}\n@@\n line7\n-line8\n+LINE8\n line9`
       const first = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
       expect(first).toMatchObject({ result: false })
       if (!first.result) {
-        expect(first.message).toContain('only read in part (lines 1-3)')
+        expect(first.message).toContain('has not been read yet')
         expect(first.message).toContain('now count as read')
         // Two lines of context on each side of the matched block.
         expect(first.message).toContain('5→line5')
@@ -758,64 +727,12 @@ describe('validateApplyPatchInput — read coverage', () => {
       expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual(
         { result: true },
       )
-      // The earlier slice is still there: the served region was carried onto it.
-      expect(
-        validateApplyPatchInput(
-          { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) },
-          ctx,
-        ),
-      ).toEqual({ result: true })
-      cleanup()
-    })
-
-    test('a never-read refusal is served the same way', () => {
-      const p = join(dir, 'serve-never.txt')
-      writeNumbered(p)
-      const body = `*** Update File: ${p}\n@@\n-line5\n+LINE5`
-      const first = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
-      expect(first).toMatchObject({ result: false })
-      if (!first.result) {
-        expect(first.message).toContain('has not been read yet')
-        expect(first.message).toContain('5→line5')
-      }
-      expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual(
-        { result: true },
-      )
-      cleanup()
-    })
-
-    test('a stale refusal serves the CURRENT lines and drops the old coverage', () => {
-      const p = join(dir, 'serve-stale.txt')
-      writeNumbered(p)
-      markRange(p, 1, 3)
-      writeFileSync(p, readFileSync(p, 'utf8').replace('line8', 'LINE8'))
-      const when = new Date(Date.now() + 10_000)
-      utimesSync(p, when, when)
-
-      const body = `*** Update File: ${p}\n@@\n-LINE8\n+line8`
-      const first = validateApplyPatchInput({ patchText: envelope(body) }, ctx)
-      expect(first).toMatchObject({ result: false })
-      if (!first.result) {
-        expect(first.message).toContain('modified since it was read')
-        expect(first.message).toContain('8→LINE8')
-      }
-      expect(validateApplyPatchInput({ patchText: envelope(body) }, ctx)).toEqual(
-        { result: true },
-      )
-      // Lines 1-3 described the previous version; they no longer authorize.
-      expect(
-        validateApplyPatchInput(
-          { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) },
-          ctx,
-        ).result,
-      ).toBe(false)
       cleanup()
     })
 
     test('an ambiguous old side is not served', () => {
       const p = join(dir, 'serve-ambiguous.txt')
       writeFileSync(p, 'same\nother\nsame\nend\n')
-      markRange(p, 4, 1)
       const r = validateApplyPatchInput(
         { patchText: envelope(`*** Update File: ${p}\n@@\n-same\n+SAME`) },
         ctx,
@@ -828,7 +745,6 @@ describe('validateApplyPatchInput — read coverage', () => {
     test('an old side that is not in the file is not served', () => {
       const p = join(dir, 'serve-miss.txt')
       writeNumbered(p)
-      markRange(p, 1, 3)
       const r = validateApplyPatchInput(
         { patchText: envelope(`*** Update File: ${p}\n@@\n-nowhere\n+x`) },
         ctx,
@@ -838,23 +754,7 @@ describe('validateApplyPatchInput — read coverage', () => {
       cleanup()
     })
 
-    test('a clip-pin stand-down marker is never served over', () => {
-      const p = join(dir, 'serve-clipped.txt')
-      writeNumbered(p)
-      markClipped(p)
-      const r = validateApplyPatchInput(
-        { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) },
-        ctx,
-      )
-      expect(r).toMatchObject({ result: false })
-      if (!r.result) {
-        expect(r.message).toContain('clipped out of the transcript')
-        expect(r.message).not.toContain('→')
-      }
-      cleanup()
-    })
-
-    test('a Delete File is never served — it needs the whole file', () => {
+    test('a Delete File is never served — it has no old side', () => {
       const p = join(dir, 'serve-delete.txt')
       writeNumbered(p)
       const r = validateApplyPatchInput(
@@ -890,17 +790,14 @@ describe('validateApplyPatchInput — read coverage', () => {
       cleanup()
     })
 
-    test('served coverage sections do not count toward the batched-read hint either', () => {
-      // Both files were range-read and both hunks sit outside the range but
-      // match exactly: two coverage refusals, both served, and no Read is
-      // owed for either — so the "do them all in ONE message" hint, which is
-      // advice to batch Reads, must stay out of the message.
-      const a = join(dir, 'serve-cov-a.txt')
-      const b = join(dir, 'serve-cov-b.txt')
+    test('served sections do not count toward the batched-read hint', () => {
+      // Neither file was read and both hunks match exactly: two refusals, both
+      // served, and no Read is owed for either — so the "do them all in ONE
+      // message" hint, which is advice to batch Reads, must stay out of it.
+      const a = join(dir, 'serve-two-a.txt')
+      const b = join(dir, 'serve-two-b.txt')
       writeNumbered(a)
       writeNumbered(b)
-      markRange(a, 1, 3)
-      markRange(b, 1, 3)
       const body =
         `*** Update File: ${a}\n@@\n-line8\n+LINE8\n` +
         `*** Update File: ${b}\n@@\n-line9\n+LINE9`
@@ -917,23 +814,6 @@ describe('validateApplyPatchInput — read coverage', () => {
       })
       cleanup()
     })
-  })
-
-  test('CLAUDIN_DISABLE_READ_COVERAGE_GATE=1 restores the old behavior', () => {
-    const p = join(dir, 'killswitch.txt')
-    writeNumbered(p)
-    markRange(p, 1, 3)
-    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
-    try {
-      const r = validateApplyPatchInput(
-        { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
-        ctx,
-      )
-      expect(r).toEqual({ result: true })
-    } finally {
-      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
-    }
-    cleanup()
   })
 })
 
@@ -972,7 +852,6 @@ describe('resubmit by reference', () => {
     const b = join(dir, 'resubmit-b.txt')
     writeNumbered(a)
     writeNumbered(b)
-    markRange(b, 1, 3)
     const patch = {
       patchText: envelope(
         `*** Update File: ${a}\n@@\n-line5\n+LINE5\n` + `*** Update File: ${b}\n@@\n-line9\n+LINE9`,
@@ -986,25 +865,6 @@ describe('resubmit by reference', () => {
       expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
       expect(refused.message).not.toContain('resubmit the same patch')
       expect(refused.message).not.toContain('fix all of them')
-    }
-    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
-    cleanup()
-  })
-
-  test('a stale refusal that served the current lines can be resubmitted too', () => {
-    const p = join(dir, 'resubmit-stale.txt')
-    writeNumbered(p)
-    markRead(p)
-    writeFileSync(p, readFileSync(p, 'utf8').replace('line8', 'LINE8'))
-    const when = new Date(Date.now() + 10_000)
-    utimesSync(p, when, when)
-    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-LINE8\n+line8`) }
-    resolveApplyPatchInput(patch, ctx)
-    const refused = validateApplyPatchInput(patch, ctx)
-    expect(refused).toMatchObject({ result: false })
-    if (!refused.result) {
-      expect(refused.message).toContain('modified since it was read')
-      expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
     }
     expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
     cleanup()

@@ -1,0 +1,29 @@
+{
+  "test": [
+    "src/tools/ApplyPatchTool/applyPatch.test.ts",
+    "src/__tests__/readGateScenarios.test.ts"
+  ],
+  "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+  "probes": [
+    {
+      "name": "a partial view is refused again (outline, clipped, injected)",
+      "find": "    if (context.readFileState.get(absPath) === undefined) {\n",
+      "replace": "    if (context.readFileState.get(absPath)?.isPartialView ?? true) {\n"
+    },
+    {
+      "name": "a range read is refused again (the coverage lane)",
+      "find": "    if (context.readFileState.get(absPath) === undefined) {\n",
+      "replace": "    if ((context.readFileState.get(absPath) ?? { limit: 0 }).limit !== undefined) {\n"
+    },
+    {
+      "name": "a file changed since the read is refused again",
+      "find": "    if (context.readFileState.get(absPath) === undefined) {\n",
+      "replace": "    if ((context.readFileState.get(absPath)?.timestamp ?? -1) < getFileModificationTime(absPath)) {\n"
+    },
+    {
+      "name": "a file never read is let through",
+      "find": "    if (context.readFileState.get(absPath) === undefined) {\n",
+      "replace": "    if (false as boolean) {\n"
+    }
+  ]
+}

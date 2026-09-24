@@ -8,7 +8,10 @@
  *     what sized the change before it existed;
  *   - the PRODUCTION path: every Read in the transcript is fed to a real
  *     `FileStateCache` via `set`, so `carrySeenRanges` decides what is carried,
- *     and the refusal is re-asked of the real `seenRegionCovers`.
+ *     and the refusal is re-asked of the real `seenRegionCoversText` — Edit's
+ *     predicate, the one production still has. apply_patch hunks went through
+ *     a line-anchored twin of it until 2026-09-24, so the numbers below were
+ *     measured with that one.
  * The second is the one to cite once the change has landed; the first is kept
  * because a divergence between them is a bug in one of the two.
  *
@@ -31,7 +34,7 @@ import {
 } from 'src/shared/fs/fileStateCache.js'
 import {
   coveredSegments,
-  seenRegionCovers,
+  seenRegionCoversText,
 } from 'src/tools/shared/readBeforeEditMessages.js'
 
 /** Commands that rewrite a file in place, i.e. that move its mtime. */
@@ -393,7 +396,7 @@ for (const path of files) {
           // The production answer: the real entry, the real predicate.
           const prodState = prodCache.get(key)
           err.prodCovers = prodState
-            ? needed.every(n => seenRegionCovers(prodState, n))
+            ? needed.every(n => seenRegionCoversText(prodState, n.join('\n')))
             : false
           // A model/production disagreement is a bug in one of the two; this
           // is the flag that shows which.
@@ -410,7 +413,7 @@ for (const path of files) {
               `   carried=[${(prodState?.seenRanges ?? []).map(r => `${r.offset}:${r.content.length}b`).join(', ')}] reads=[${(ranges.get(key) ?? []).join(', ')}]`,
             )
             for (const n of needed) {
-              if (prodState && seenRegionCovers(prodState, n)) continue
+              if (prodState && seenRegionCoversText(prodState, n.join('\n'))) continue
               console.error(`   uncovered chunk (${n.length} lines): ${JSON.stringify(n.slice(0, 2))}`)
             }
           }

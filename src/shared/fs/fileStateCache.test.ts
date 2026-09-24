@@ -381,7 +381,7 @@ describe('FileStateCache — carrySeenRanges', () => {
   })
 
   test('a whole-file read drops the list instead of hoarding it', () => {
-    // seenRegionCovers short-circuits on a whole-file entry, so slices there
+    // seenRegionCoversText short-circuits on a whole-file entry, so slices there
     // are pure memory. This is also the shape Edit/Write write.
     const cache = makeCache()
     cache.set('/a.ts', range(1, 3))

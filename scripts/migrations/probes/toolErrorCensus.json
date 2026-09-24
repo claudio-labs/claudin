@@ -97,22 +97,16 @@
       "replace": "  return merged\n"
     },
     {
-      "name": "item 4: apply_patch serves the coverage refusal",
+      "name": "item 4: apply_patch serves the never-read refusal",
       "source": "src/tools/ApplyPatchTool/applyPatch.ts",
-      "find": "      const message = `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`\n      const served = serveUpdateHunk(hunk, absPath, context)\n",
-      "replace": "      const message = `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`\n      const served = null\n"
-    },
-    {
-      "name": "item 4: apply_patch never serves over a clip-pin marker",
-      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
-      "find": "        hunk.type === 'update' && reason !== 'clipped'\n",
-      "replace": "        hunk.type === 'update'\n"
+      "find": "        hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null\n",
+      "replace": "        null\n"
     },
     {
       "name": "item 4: a served section does not count toward the batched-read hint",
       "source": "src/tools/ApplyPatchTool/applyPatch.ts",
-      "find": "      if (served) {\n        note(message + servedSuffix(served), 4)\n      } else {\n        note(message, 4)\n        readRemedyFailures++\n      }\n",
-      "replace": "      if (served) {\n        note(message + servedSuffix(served), 4)\n        readRemedyFailures++\n      } else {\n        note(message, 4)\n        readRemedyFailures++\n      }\n"
+      "find": "        note(message + servedSuffix(served), 2)\n        servedFailures++\n",
+      "replace": "        note(message + servedSuffix(served), 2)\n        servedFailures++\n        readRemedyFailures++\n"
     },
     {
       "name": "item 4: Edit serves the coverage refusal",
