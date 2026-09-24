@@ -44,5 +44,7 @@ say when it is idle — Claude Code 2.1.281 parity, measured from its binary
 
 **Evidence:** real-socket tests on both ends; tmux E2E on 2026-09-24 — a
 message delivered as a new turn, a held one shown in the dialog and denied, a
-pure subscription answered at once by an idle session, and a message +
-subscription answered after the turn ended.
+pure subscription answered at once by an idle session, a message +
+subscription answered after the turn ended, two live sessions finding each
+other through ListAgents and replying via `from`, and a backgrounded agent's
+`"main"` message opening a turn (an inline agent's was refused).
