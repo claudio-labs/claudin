@@ -9,12 +9,7 @@ import {
   summarizeApplyPatch,
   validateApplyPatchInput,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
-import {
-  APPLY_PATCH_TOOL_NAME,
-  COMPACT_DESCRIPTION,
-  DESCRIPTION,
-} from 'src/tools/ApplyPatchTool/prompt.js'
-import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import { APPLY_PATCH_TOOL_NAME, DESCRIPTION } from 'src/tools/ApplyPatchTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ApplyPatchTool/UI.js'
 
 const inputSchema = lazySchema(() =>
@@ -41,7 +36,11 @@ export const ApplyPatchTool = buildTool({
     return 'Applying patch'
   },
   async prompt() {
-    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION
+    // No compact variant: the one the v2 switch shipped (2026-09-24) led to
+    // 6 malformed patches in 5 sessions against 0 in 10 on this text — hunks
+    // out of order, a file in two sections, an Update with no "@@" — each one
+    // re-sent whole. Team memory `prompts-v2-2026-09`.
+    return DESCRIPTION
   },
   get inputSchema(): InputSchema {
     return inputSchema()

@@ -130,6 +130,12 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
     '*** End of File',
     '@@',
     'atomic',
+    // The format rules whose absence cost six malformed patches in the v2 A/B
+    // (team memory `prompts-v2-2026-09`): a compaction must keep them.
+    'Each hunk begins with a "@@" line',
+    'each "@@" must sit at or after the previous hunk\'s',
+    'give each file exactly ONE section',
+    'lines you copied from the file (not remembered)',
   ],
   Agent: ['subagent_type', /fork/i, 'readOnly', 'isolation', 'worktree', 'SendMessage', 'Code'],
   Bash: ['timeout', /absolute path/i, 'RunTests', 'Typecheck', 'Build', 'Git', 'Read', 'Grep', 'Glob'],
@@ -304,7 +310,7 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
   // Per tool, so a description that stops honoring the switch is caught even
   // while the others keep the total down. The marker tests above cannot see
   // it: the default text names every marker too.
-  for (const name of ['Read', 'Grep', 'apply_patch', 'Bash', 'Build', 'Typecheck', 'RunTests']) {
+  for (const name of ['Read', 'Grep', 'Bash', 'Build', 'Typecheck', 'RunTests']) {
     test(`v2: the ${name} description is at most two thirds of the default`, async () => {
       const tool = getAllBaseTools().find(t => t.name === name)!
       const before = (await tool.prompt(TOOL_OPTIONS)).length

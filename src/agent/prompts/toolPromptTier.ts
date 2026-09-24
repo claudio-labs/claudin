@@ -75,11 +75,12 @@ export function isV2PromptSwitchOn(
 }
 
 /**
- * The v2 tool descriptions (branch perf/prompts-v2): Read, Grep, apply_patch,
- * Agent, Bash, Build, Typecheck and RunTests at Claude Code 2.1.280's density,
- * every parameter and behavior still named (promptFeatureCoverage.test.ts),
- * and Monitor behind ToolSearch. Anthropic family only; opt-in
- * (`CLAUDIN_COMPACT_TOOL_PROMPTS=1`) until its session A/B gate holds.
+ * The v2 tool descriptions (branch perf/prompts-v2): Read, Grep, Agent, Bash,
+ * Build, Typecheck and RunTests at Claude Code 2.1.280's density, every
+ * parameter and behavior still named (promptFeatureCoverage.test.ts), and
+ * Monitor behind ToolSearch. apply_patch keeps its full text: its compact one
+ * produced malformed patches in the session A/B. Anthropic family only; opt-in
+ * (`CLAUDIN_COMPACT_TOOL_PROMPTS=1`) — the A/B of 2026-09-24 did not pass.
  *
  * Tool descriptions are cached once per session (toolSchemaCache.ts), so
  * like the tier above this is read when the first request is built.

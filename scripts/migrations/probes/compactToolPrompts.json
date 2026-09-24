@@ -21,12 +21,6 @@
       "replace": ""
     },
     {
-      "name": "compact apply_patch drops the End of File anchor",
-      "source": "src/tools/ApplyPatchTool/prompt.ts",
-      "find": "; \"*** End of File\" anchors a hunk to the end of the file. The \"@@\" line is a search cursor",
-      "replace": ". The \"@@\" line is a search cursor"
-    },
-    {
       "name": "compact Agent drops the fork semantics",
       "source": "src/tools/AgentTool/prompt.ts",
       "find": "- Omitting \\`subagent_type\\` forks you: the child inherits this whole conversation and re-reads it on every call it makes, so a fork costs more the deeper the session. A fresh agent (\\`subagent_type: \"Code\"\\` or a named one) starts from your prompt alone. Default to a fresh agent; fork only when the child needs what is in this conversation and a paragraph cannot carry it. Don't set \\`model\\` on a fork.\n",
@@ -61,12 +55,6 @@
       "source": "src/tools/GrepTool/GrepTool.ts",
       "find": "    return isCompactToolPromptsEnabled() ? getCompactDescription() : getDescription()",
       "replace": "    return getDescription()"
-    },
-    {
-      "name": "apply_patch ignores the compact switch",
-      "source": "src/tools/ApplyPatchTool/ApplyPatchTool.ts",
-      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
-      "replace": "    return DESCRIPTION"
     },
     {
       "name": "Bash ignores the compact switch",
@@ -121,6 +109,24 @@
       "source": "src/tools/SkillTool/prompt.ts",
       "find": "  const cap = isLeanRemindersEnabled() ? LEAN_LISTING_DESC_CHARS : MAX_LISTING_DESC_CHARS",
       "replace": "  const cap = MAX_LISTING_DESC_CHARS"
+    },
+    {
+      "name": "apply_patch loses the one-section rule",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "give each file exactly ONE section, and anchor",
+      "replace": "and anchor"
+    },
+    {
+      "name": "apply_patch loses the forward-cursor rule",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "the cursor only moves forward: each \"@@\" must sit at or after the previous hunk's, so",
+      "replace": "so"
+    },
+    {
+      "name": "apply_patch loses the hunk-header rule",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "Each hunk begins with a \"@@\" line, followed by the change lines:",
+      "replace": "The change lines are:"
     }
   ]
 }
