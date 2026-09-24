@@ -1,0 +1,126 @@
+{
+  "test": "src/agent/prompts/__tests__/promptFeatureCoverage.test.ts",
+  "_note": "Removing a parameter's sentence from a compact description (Agent readOnly/isolation/SendMessage, Build directory, Typecheck baseline, RunTests framework, Grep's symbols mode) leaves the test green by design: the schema still names and describes the parameter, and schema text counts as something the model reads. Only behaviors the schema does not state are probed here.",
+  "source": "src/tools/FileReadTool/prompt.ts",
+  "probes": [
+    {
+      "name": "compact Read stops naming the heading outline",
+      "find": "Markdown and HTML outline by heading, a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X'",
+      "replace": "a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X'"
+    },
+    {
+      "name": "Read ignores the compact switch",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return isCompactToolPromptsEnabled()\n      ? renderCompactPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)\n      : renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)",
+      "replace": "    return renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)"
+    },
+    {
+      "name": "compact Grep stops describing the broad-search pivot",
+      "source": "src/tools/GrepTool/prompt.ts",
+      "find": " A broad \"content\" search comes back as the \"symbols\" map; pass \\`head_limit\\`, or narrow \\`path\\`/\\`glob\\`, to get the lines.",
+      "replace": ""
+    },
+    {
+      "name": "compact Agent drops the fork semantics",
+      "source": "src/tools/AgentTool/prompt.ts",
+      "find": "- Omitting \\`subagent_type\\` forks you: the child inherits this whole conversation and re-reads it on every call it makes, so a fork costs more the deeper the session. A fresh agent (\\`subagent_type: \"Code\"\\` or a named one) starts from your prompt alone. Default to a fresh agent; fork only when the child needs what is in this conversation and a paragraph cannot carry it. Don't set \\`model\\` on a fork.\n",
+      "replace": ""
+    },
+    {
+      "name": "compact Bash drops the Typecheck redirect",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "${TYPECHECK_TOOL_NAME} (not tsc --noEmit/mypy), ",
+      "replace": ""
+    },
+    {
+      "name": "Build ignores the compact switch",
+      "source": "src/tools/BuildTool/BuildTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
+      "replace": "    return DESCRIPTION"
+    },
+    {
+      "name": "Typecheck ignores the compact switch",
+      "source": "src/tools/TypecheckTool/TypecheckTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
+      "replace": "    return DESCRIPTION"
+    },
+    {
+      "name": "RunTests ignores the compact switch",
+      "source": "src/tools/RunTestsTool/RunTestsTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION",
+      "replace": "    return DESCRIPTION"
+    },
+    {
+      "name": "Grep ignores the compact switch",
+      "source": "src/tools/GrepTool/GrepTool.ts",
+      "find": "    return isCompactToolPromptsEnabled() ? getCompactDescription() : getDescription()",
+      "replace": "    return getDescription()"
+    },
+    {
+      "name": "Bash ignores the compact switch",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  if (leanOverride === undefined && isCompactToolPromptsEnabled() && !hasEmbeddedSearchTools()) {\n    return getCompactPrompt()\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "Monitor stays eager under the compact switch",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  if (tool.name === MONITOR_TOOL_NAME && isCompactToolPromptsEnabled()) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "the v2 switch rule reads any family",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
+      "replace": "  return !isEnvDefinedFalsy(envValue)"
+    },
+    {
+      "name": "the v2 switch rule falls back to opt-in",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
+      "replace": "  return envValue === '1' && family === 'anthropic'"
+    },
+    {
+      "name": "the v2 switch rule ignores its killswitch",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
+      "replace": "  return family === 'anthropic'"
+    },
+    {
+      "name": "the compact switch stops passing the live family",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,\n    getFamilyForLogging(getMainLoopModel()),",
+      "replace": "    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,\n    'anthropic',"
+    },
+    {
+      "name": "the reminders switch stops passing the live family",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "    process.env.CLAUDIN_LEAN_REMINDERS,\n    getFamilyForLogging(getMainLoopModel()),",
+      "replace": "    process.env.CLAUDIN_LEAN_REMINDERS,\n    'anthropic',"
+    },
+    {
+      "name": "the skills listing ignores the lean cap",
+      "source": "src/tools/SkillTool/prompt.ts",
+      "find": "  const cap = isLeanRemindersEnabled() ? LEAN_LISTING_DESC_CHARS : MAX_LISTING_DESC_CHARS",
+      "replace": "  const cap = MAX_LISTING_DESC_CHARS"
+    },
+    {
+      "name": "apply_patch loses the one-section rule",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "give each file exactly ONE section, and anchor",
+      "replace": "and anchor"
+    },
+    {
+      "name": "apply_patch loses the forward-cursor rule",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "the cursor only moves forward: each \"@@\" must sit at or after the previous hunk's, so",
+      "replace": "so"
+    },
+    {
+      "name": "apply_patch loses the hunk-header rule",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "Each hunk begins with a \"@@\" line, followed by the change lines:",
+      "replace": "The change lines are:"
+    }
+  ]
+}

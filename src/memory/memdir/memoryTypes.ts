@@ -54,6 +54,8 @@ export type TeamCategory = {
   type: MemoryType
   /** The dense one-liner the system prompt ships every turn. */
   compact: string
+  /** The v2 prompt's one-liner (CLAUDIN_LEAN_MEMORY_PROMPT): the same bar, fewer words. */
+  lean: string
   /** Verbose renderings only (extraction, dream, sort). */
   description: string
   whenToSave: string
@@ -70,6 +72,8 @@ export const TEAM_CATEGORIES: readonly TeamCategory[] = [
     type: 'project',
     compact:
       'a product, business or architecture decision that changes what the project does or how it is structured. Only an impactful one: **structural** (where things live, how the system is organized), **functional** (what a feature does for its users — a capability, a default, a policy) or **rejected** (an alternative considered and discarded, with the reason) — and only when the why is not in the diff. Frontmatter adds `scope:` (the feature or slice) and `impact: structural | functional | rejected`; the body leads with **Decision:** / **Why:** / **What changes for a teammate:** / **Rejected:** / **Evidence:** — if "what changes for a teammate" would be empty, it is not a team decision, however firmly it was decided.',
+    lean:
+      'an impactful structural, functional or rejected decision whose why is not in the diff; frontmatter adds `scope:` and `impact: structural | functional | rejected`, the body leads with **Decision:** / **Why:** / **What changes for a teammate:** / **Rejected:** / **Evidence:** — with nothing for a teammate, it is not a team decision.',
     description:
       'A product, business or architecture decision that changes what the project does or how it is structured: what was decided, why, when (absolute date), what it rules out. It exists so a teammate finds the reasoning before undoing it or re-litigating it.',
     whenToSave:
@@ -88,6 +92,7 @@ export const TEAM_CATEGORIES: readonly TeamCategory[] = [
     type: 'project',
     compact:
       'a known or latent defect deliberately left in place, or a failure mode invisible from the code — with symptom, where it lives, how to reproduce it, and its status with a date.',
+    lean: 'a defect deliberately left in place, or a failure mode invisible from the code: symptom, where, repro, dated status.',
     description:
       'A known or latent defect that is deliberately not fixed yet, or a non-obvious failure mode — with how to reproduce it and its status. It exists so the next person to touch that code is warned before they trip on it.',
     whenToSave:
@@ -106,6 +111,7 @@ export const TEAM_CATEGORIES: readonly TeamCategory[] = [
     type: 'reference',
     compact:
       "where the documentation for a subsystem lives — a design doc, a living spec, a dashboard, a wiki page — and what it holds, so work on that subsystem starts there (`type: reference`).",
+    lean: "where a subsystem's documentation lives and what it holds (`type: reference`).",
     description:
       'Where the documentation for a subsystem lives — a design doc, a living spec, an external dashboard, a wiki page — and what it holds. It exists so work on that subsystem starts from the document instead of rediscovering it.',
     whenToSave:
@@ -141,6 +147,14 @@ export function renderTeamCategoriesCompact(teamDir: string): string[] {
   return TEAM_CATEGORIES.map(
     (category, i) =>
       `- \`${i === 0 ? teamDir : ''}${category.dir}/\` — ${category.compact}`,
+  )
+}
+
+/** The same list with the v2 prompt's one-liners. */
+export function renderTeamCategoriesLean(teamDir: string): string[] {
+  return TEAM_CATEGORIES.map(
+    (category, i) =>
+      `- \`${i === 0 ? teamDir : ''}${category.dir}/\` — ${category.lean}`,
   )
 }
 

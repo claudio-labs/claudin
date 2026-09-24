@@ -3,9 +3,10 @@ import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import {
   ACT_ON_WHAT_YOU_KNOW_SECTION,
-  ANTI_NARRATION_HARNESS_BULLETS,
   CORRECTIONS_SECTION,
   DELIVERING_WORK_SECTION,
+  LEAN_TOKEN_BUDGET_SECTION,
+  LEAN_TURN_DISCIPLINE_SECTION,
   PRONOUNS_SECTION,
   SUBAGENT_NOTES_BULLETS,
   TOOL_BATCHING_HARNESS_BULLET,
@@ -16,6 +17,7 @@ import {
   buildAgentToolSection,
   buildLeanMultiHopItem,
   getHarnessSection,
+  getSessionSpecificGuidanceSection,
   isVerbositySteeringEnabled,
   prependBullets,
 } from 'src/agent/prompts/prompts.js'
@@ -26,62 +28,34 @@ import {
   WORKTREE_WRITE_SCOPE_NOTE,
 } from 'src/shared/constants/worktreeSafety.js'
 import {
-  ANTHROPIC_ANTI_NARRATION_ADDENDUM,
   ANTHROPIC_BATCHED_EDITS_ADDENDUM,
-  composeAnthropicAddendum,
 } from 'src/agent/prompts/familyAddendums/anthropic.js'
+import { CODEX_ADDENDUM } from 'src/agent/prompts/familyAddendums/codex.js'
+import { GEMINI_ADDENDUM } from 'src/agent/prompts/familyAddendums/gemini.js'
+import { GLM_ADDENDUM } from 'src/agent/prompts/familyAddendums/glm.js'
+import { KIMI_ADDENDUM } from 'src/agent/prompts/familyAddendums/kimi.js'
+import { OPENAI_REASONING_ADDENDUM } from 'src/agent/prompts/familyAddendums/openaiReasoning.js'
 
 describe('getHarnessSection', () => {
   // The test preload (src/stubs/test-preload.ts) stubs `feature()` to false
-  // for every flag, so this snapshot covers the ANTI_NARRATION-off path —
-  // i.e. the legacy 6-bullet harness that ships when the flag is flipped
-  // for A/B benches. Regression guard: any silent reordering or word loss
-  // in the base bullets will fail this snapshot.
-  test('flag-off snapshot is stable (legacy 6-bullet harness)', () => {
+  // for every flag, so this snapshot covers the TOOL_BATCHING_NUDGE-off path.
+  // Regression guard: any silent reordering or word loss in the base bullets
+  // will fail this snapshot.
+  test('flag-off snapshot is stable (6-bullet harness)', () => {
     expect(getHarnessSection()).toMatchSnapshot()
   })
 
-  test('flag-off output contains none of the anti-narration bullets', () => {
-    const section = getHarnessSection()
-    for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
-      // Compare on a stable prefix — the bullet is long and `prependBullets`
-      // adds list-marker formatting, so substring on the leading phrase is
-      // both sufficient and resilient to bullet-marker changes.
-      const prefix = bullet.slice(0, 60)
-      expect(section).not.toContain(prefix)
-    }
-  })
-
-  // Build-time `feature('ANTI_NARRATION')` is stubbed to false in tests, so
-  // exercise the production code path through `buildHarnessItems(true)` and
-  // re-compose the section exactly like `getHarnessSection` does. Guards
-  // against accidental nesting / mis-spread of ANTI_NARRATION_HARNESS_BULLETS.
+  // Build-time `feature('TOOL_BATCHING_NUDGE')` is stubbed to false in tests,
+  // so exercise the production code path through `buildHarnessItems(true)` and
+  // re-compose the section exactly like `getHarnessSection` does.
   test('flag-on rendered section snapshot (production wording)', () => {
-    const rendered = ['# Harness', ...prependBullets(buildHarnessItems(true, true))].join(`\n`)
-    expect(rendered).toMatchSnapshot()
-  })
-
-  test('flag-on rendered section includes every anti-narration bullet', () => {
-    const items = buildHarnessItems(true, true)
-    for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
-      expect(items).toContain(bullet)
-    }
-    // 6 base + 1 batching bullet (flag-on) + ANTI_NARRATION bullets
-    expect(items).toHaveLength(7 + ANTI_NARRATION_HARNESS_BULLETS.length)
-  })
-
-  test('flag-on / batching-off rendered section snapshot (A/B kill-switch path)', () => {
-    // Guards the antiNarration=on, toolBatching=off combination — the
-    // A/B bench path when TOOL_BATCHING_NUDGE is flipped off in
-    // scripts/build/build.ts. Without this snapshot a regression that only
-    // affects the kill-switch shape ships silently.
-    const rendered = ['# Harness', ...prependBullets(buildHarnessItems(true, false))].join(`\n`)
+    const rendered = ['# Harness', ...prependBullets(buildHarnessItems(true))].join(`\n`)
     expect(rendered).toMatchSnapshot()
   })
 
   test('TOOL_BATCHING_NUDGE-on rendered section includes the batching directive', () => {
-    const onItems = buildHarnessItems(false, true)
-    const offItems = buildHarnessItems(false, false)
+    const onItems = buildHarnessItems(true)
+    const offItems = buildHarnessItems(false)
     // Flag-on adds the batching directive as its own bullet (so the rule
     // stands alone and isn't buried inside a sentence about tool choice).
     expect(onItems).toHaveLength(offItems.length + 1)
@@ -90,41 +64,50 @@ describe('getHarnessSection', () => {
   })
 })
 
-describe('ANTHROPIC_ANTI_NARRATION_ADDENDUM', () => {
-  // Production wording is snapshot-locked here because the gated
-  // ANTHROPIC_ADDENDUM resolves to null under the test preload.
-  test('matches snapshot', () => {
-    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toMatchSnapshot()
-  })
+describe('anti-narration is gone from every system prompt', () => {
+  // Removed on 2026-09-23 by decision (team memory
+  // `anti-narration-never-benched-on-claude-5`): the universal harness
+  // bullets, the anthropic checkpoints, and the narration lines of the glm,
+  // kimi and openai-reasoning addendums. Pinned by phrase, not by /narrat/:
+  // ACT_ON_WHAT_YOU_KNOW_SECTION's "narrate options you will not pursue" is
+  // upstream wording about re-litigating, not about tool-call narration.
+  const REMOVED = [
+    'transcript should contain tool calls and nothing else',
+    'Chain tool calls silently',
+    'retry silently',
+    'speak only at four checkpoints',
+    'Do not narrate',
+    'Banned openers',
+    'acknowledgement openers',
+    'do not provide explanations',
+    'not in explanations',
+    'Send updates only when they add new information',
+    'Do not begin responses with acknowledgements',
+  ]
+  const TEXTS: Array<[string, string]> = [
+    ['harness (batching on)', buildHarnessItems(true).join('\n')],
+    ['harness (batching off)', buildHarnessItems(false).join('\n')],
+    ['anthropic addendum', ANTHROPIC_BATCHED_EDITS_ADDENDUM],
+    ['codex addendum', CODEX_ADDENDUM],
+    ['gemini addendum', GEMINI_ADDENDUM],
+    ['glm addendum', GLM_ADDENDUM],
+    ['kimi addendum', KIMI_ADDENDUM],
+    ['openai-reasoning addendum', OPENAI_REASONING_ADDENDUM],
+    ['work contract', buildWorkContractSections(true).join('\n')],
+    ['sub-agent notes', buildSubagentNotes(true)],
+  ]
+  for (const [name, text] of TEXTS) {
+    test(`${name} carries none of the removed phrases`, () => {
+      for (const phrase of REMOVED) expect(text).not.toContain(phrase)
+    })
+  }
 
-  test('back-references the failures carve-out instead of restating it', () => {
-    // The carve-out sentence lives in ANTI_NARRATION_HARNESS_BULLETS, which
-    // rides the same gate and reaches every family. This addendum used to
-    // open with a verbatim copy of it, so an Anthropic-family prompt carried
-    // the identical sentence twice on the cached prefix.
-    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM.startsWith(
-      'Outside the failure cases above,',
-    )).toBe(true)
-    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).not.toContain(
-      'Failures and unexpected results are reported immediately',
-    )
-  })
-
-  test('does not restate any anti-narration harness bullet', () => {
-    for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
-      expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).not.toContain(bullet)
-    }
-  })
-
-  test('carves out plan-mode from the checkpoint summary rules', () => {
-    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toContain('Plan-mode output')
-    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toContain('do not apply there')
-  })
-
-  test('numbers four checkpoints explicitly', () => {
-    for (const marker of ['(1)', '(2)', '(3)', '(4)']) {
-      expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toContain(marker)
-    }
+  test('the addendums keep their other notes', () => {
+    // The removal took the narration lines only; what else each addendum
+    // carries is still there.
+    expect(GLM_ADDENDUM).toContain('Do not re-read files')
+    expect(KIMI_ADDENDUM).toContain('Code that only appears in your text response is not saved')
+    expect(OPENAI_REASONING_ADDENDUM).toContain('Reasoning belongs in the reasoning channel')
   })
 })
 
@@ -140,93 +123,16 @@ describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM', () => {
     expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain('in a single message')
   })
 
-  test('is gated on TOOL_BATCHING_NUDGE, not on the narration flag', () => {
-    // The two clauses ride different kill switches so an A/B on one does not
-    // move the other. Asserted against the SOURCE because the test preload
-    // stubs every feature flag to false, so the resolved value cannot tell
-    // these two gates apart. The previous version of this test only checked
-    // that the narration string lacks the substring "apply_patch" — which
-    // stays true no matter which flag guards the batching clause, i.e. it
-    // guarded nothing. An audit caught it.
+  test('is gated on TOOL_BATCHING_NUDGE', () => {
+    // Asserted against the SOURCE because the test preload stubs every
+    // feature flag to false, so the resolved value cannot show which gate
+    // guards the clause.
     const src = readFileSync(
       new URL('./familyAddendums/anthropic.ts', import.meta.url),
       'utf8',
     )
     expect(src).toContain(
-      "const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')",
-    )
-    expect(src).toContain("const antiNarrationPart = feature('ANTI_NARRATION')")
-    // The runtime killswitch must sit on the narration clause ONLY. If it
-    // ever wrapped the batching clause too, `CLAUDIN_ANTI_NARRATION=0` would
-    // silently subtract a second section and the A/B would attribute the
-    // batching text's effect to narration.
-    const narrationClause = src.slice(
-      src.indexOf("const antiNarrationPart = feature('ANTI_NARRATION')"),
-      src.indexOf("const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')"),
-    )
-    expect(narrationClause).toContain('isAntiNarrationEnabled()')
-    const batchingClause = src.slice(
-      src.indexOf("const batchedEditsPart = feature('TOOL_BATCHING_NUDGE')"),
-    )
-    expect(batchingClause).not.toContain('isAntiNarrationEnabled()')
-  })
-})
-
-describe('composeAnthropicAddendum', () => {
-  // The composition itself is unreachable through ANTHROPIC_ADDENDUM under the
-  // test preload (both flags false → always null), so it is exported and
-  // exercised directly.
-  test('returns null when every clause is gated off', () => {
-    expect(composeAnthropicAddendum([null, null])).toBeNull()
-  })
-
-  test('returns the lone surviving clause unchanged', () => {
-    expect(composeAnthropicAddendum([null, 'batching'])).toBe('batching')
-    expect(composeAnthropicAddendum(['narration', null])).toBe('narration')
-  })
-
-  test('joins both clauses with a blank line, narration first', () => {
-    expect(composeAnthropicAddendum(['narration', 'batching'])).toBe(
-      'narration\n\nbatching',
-    )
-  })
-})
-
-describe('ANTI_NARRATION_HARNESS_BULLETS', () => {
-  // Exported so the production (flag-on) wording is locked down without
-  // needing a parallel build configured for snapshot tests. If you change
-  // the bullets intentionally, update this snapshot.
-  test('matches snapshot', () => {
-    expect(ANTI_NARRATION_HARNESS_BULLETS).toMatchSnapshot()
-  })
-
-  test('has four bullets', () => {
-    expect(ANTI_NARRATION_HARNESS_BULLETS).toHaveLength(4)
-  })
-
-  test('fourth bullet carries the summary-readability contract', () => {
-    // The cap in the Anthropic addendum is a selection rule, not a length
-    // squeeze — this bullet is what keeps "short" from degrading into
-    // fragments and arrow chains. Universal on purpose: every model
-    // family writes final summaries, so it lives in the harness, not in
-    // a per-family addendum.
-    expect(ANTI_NARRATION_HARNESS_BULLETS[3]).toContain(
-      "a teammate who didn't watch the process",
-    )
-  })
-
-  test('first bullet carries the transcript-shape invariant', () => {
-    expect(ANTI_NARRATION_HARNESS_BULLETS[0]).toContain(
-      'transcript should contain tool calls and nothing else',
-    )
-  })
-
-  test('second bullet carries the failures-immediately carve-out', () => {
-    // Guards against accidental removal of the failure-reporting exception
-    // that keeps the anti-narration rule from conflicting with
-    // getActionsSection ("Report outcomes faithfully").
-    expect(ANTI_NARRATION_HARNESS_BULLETS[1]).toContain(
-      'Failures and unexpected results are reported immediately',
+      "return feature('TOOL_BATCHING_NUDGE') ? ANTHROPIC_BATCHED_EDITS_ADDENDUM : null",
     )
   })
 })
@@ -234,16 +140,15 @@ describe('ANTI_NARRATION_HARNESS_BULLETS', () => {
 describe('verbosity steering (roadmap #4)', () => {
   // Production wording is snapshot-locked here: feature() is stubbed to false
   // under the test preload, so the integrated getSystemPrompt path can't be
-  // exercised — we lock the const + the env gate directly (same approach as
-  // ANTI_NARRATION_HARNESS_BULLETS above).
+  // exercised — we lock the const + the env gate directly.
   test('section wording matches snapshot', () => {
     expect(VERBOSITY_STEERING_SECTION).toMatchSnapshot()
   })
 
-  test('targets answer LENGTH, not narration (non-redundant with ANTI_NARRATION)', () => {
-    // The whole point of #4 is a length ceiling — the axis the harness bullets
-    // do not cover. If someone rewrites this into another "skip preamble" line
-    // it stops adding signal; guard the length framing explicitly.
+  test('targets answer LENGTH', () => {
+    // The whole point of #4 is a length ceiling. If someone rewrites this
+    // into a "skip preamble" line it stops adding signal; guard the length
+    // framing explicitly.
     expect(VERBOSITY_STEERING_SECTION).toContain('shortest response that fully answers')
     expect(VERBOSITY_STEERING_SECTION).toContain('few sentences over multiple paragraphs')
   })
@@ -295,9 +200,9 @@ describe('pronoun default', () => {
 })
 
 describe('work contract sections (WORK_CONTRACT)', () => {
-  // Same shape as the ANTI_NARRATION / VERBOSITY_STEERING blocks above: the
-  // test preload stubs feature() to false, so getSystemPrompt can't render
-  // these — lock the exported constants directly.
+  // Same shape as the VERBOSITY_STEERING block above: the test preload stubs
+  // feature() to false, so getSystemPrompt can't render these — lock the
+  // exported constants directly.
   test('delivering-work wording matches snapshot', () => {
     expect(DELIVERING_WORK_SECTION).toMatchSnapshot()
   })
@@ -354,14 +259,6 @@ describe('work contract sections (WORK_CONTRACT)', () => {
     expect(ACT_ON_WHAT_YOU_KNOW_SECTION).toContain('re-derive facts already established')
     expect(ACT_ON_WHAT_YOU_KNOW_SECTION).toContain('re-litigate a decision')
   })
-
-  test('corrections does not restate the anti-narration bullets', () => {
-    // Overlap at the seams is fine, but a verbatim duplicate of a harness
-    // bullet is pure token waste on the cached prefix.
-    for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
-      expect(CORRECTIONS_SECTION).not.toContain(bullet)
-    }
-  })
 })
 
 describe('buildWorkContractSections', () => {
@@ -379,11 +276,44 @@ describe('buildWorkContractSections', () => {
   test('off: emits nothing (spreads away, no null to filter)', () => {
     expect(buildWorkContractSections(false)).toEqual([])
   })
+
+  test('v2: keeps only the act-on-what-you-know line', () => {
+    expect(buildWorkContractSections(true, true)).toEqual([ACT_ON_WHAT_YOU_KNOW_SECTION])
+    // The killswitch still subtracts it.
+    expect(buildWorkContractSections(false, true)).toEqual([])
+  })
+})
+
+describe('v2 system prompt pieces', () => {
+  test('wording matches snapshot', () => {
+    expect({
+      turnDiscipline: LEAN_TURN_DISCIPLINE_SECTION,
+      tokenBudget: LEAN_TOKEN_BUDGET_SECTION,
+      harness: ['# Harness', ...prependBullets(buildHarnessItems(false))].join('\n'),
+    }).toMatchSnapshot()
+  })
+
+  test('the turn discipline keeps both rules it replaces', () => {
+    expect(LEAN_TURN_DISCIPLINE_SECTION).toContain('promise of work')
+    expect(LEAN_TURN_DISCIPLINE_SECTION).toContain('your assessment is the deliverable')
+    expect(LEAN_TURN_DISCIPLINE_SECTION).toContain('changes system state')
+  })
+
+  test('the v2 session guidance is shorter and keeps every item', () => {
+    const tools = new Set(['AskUserQuestion', 'Agent', 'Skill', 'Grep', 'Glob'])
+    const skill = { type: 'prompt', name: 's', description: 'd', source: 'bundled' } as never
+    const full = getSessionSpecificGuidanceSection(tools, [skill])!
+    const lean = getSessionSpecificGuidanceSection(tools, [skill], true)!
+    expect(lean.length).toBeLessThan(full.length)
+    expect(lean.split('\n').length).toBe(full.split('\n').length)
+    expect(lean).toContain('AskUserQuestion')
+    expect(lean).toContain('`/<skill-name>`')
+  })
 })
 
 describe('steering killswitch wiring', () => {
-  // These two lines are where the A/B killswitches actually take effect. A
-  // revert to the old `? true : false` shape would leave both env vars inert
+  // This line is where the A/B killswitch actually takes effect. A revert to
+  // the old `? true : false` shape would leave the env var inert
   // while every other test here still passed — and the bench would report a
   // null result that means "the flag never moved", not "the text does not
   // matter". Source-asserted because `feature()` folds to a literal at build
@@ -391,23 +321,17 @@ describe('steering killswitch wiring', () => {
   // from a test.
   const src = readFileSync(new URL('./prompts.ts', import.meta.url), 'utf8')
 
-  test('anti-narration harness gate consults the env resolver', () => {
-    expect(src).toContain(
-      "feature('ANTI_NARRATION') ? isAntiNarrationEnabled() : false",
-    )
-  })
-
   test('work-contract gate consults the env resolver', () => {
     expect(src).toContain(
       "feature('WORK_CONTRACT') ? isWorkContractEnabled() : false",
     )
   })
 
-  test('both gates keep feature() directly in the ternary condition', () => {
+  test('the gate keeps feature() directly in the ternary condition', () => {
     // scripts/build/build.ts only folds `feature('X')` when it sits directly in an
     // if/ternary condition; an `&&` form throws under `bun test` and folds to
     // a literal in the build, so only a test can catch it.
-    expect(src).not.toMatch(/feature\('(ANTI_NARRATION|WORK_CONTRACT)'\)\s*&&/)
+    expect(src).not.toMatch(/feature\('WORK_CONTRACT'\)\s*&&/)
   })
 })
 
@@ -608,6 +532,7 @@ describe('agent section under CLAUDIN_LEAN_AGENT_PROMPT', () => {
     isInProcessTeammate: () => false,
     isTeammate: () => false,
     isLeanAgentPromptEnabled: () => true,
+    isCompactToolPromptsEnabled: () => false,
   })
 
   test('flag off, both lanes are byte-identical to what shipped', () => {
@@ -703,6 +628,7 @@ describe('agent section where run_in_background is hidden', () => {
       isInProcessTeammate: () => false,
       isTeammate: () => false,
       isLeanAgentPromptEnabled: () => false,
+      isCompactToolPromptsEnabled: () => false,
     })
     expect(`${hidden}\n${description}`).not.toContain('run_in_background')
     // "by default" goes with the clause: it only contrasts with the

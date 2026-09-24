@@ -9,7 +9,7 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'
 import { findToolByName, type Tool, type Tools } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
+import { isResubmitSentinel, parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import type { Input as FileReadInput } from 'src/tools/FileReadTool/FileReadTool.js'
@@ -448,6 +448,8 @@ export function extractReadFilesFromMessages(
   >() // toolUseId -> { filePath, content }
   const fileEditToolUseIds = new Map<string, string>() // toolUseId -> filePath
   const applyPatchToolUseIds = new Map<string, string>() // toolUseId -> patchText
+  // `*** Resubmit` applies the patch refused one apply_patch call earlier.
+  let lastPatchText: string | undefined
 
   for (const message of messages) {
     if (
@@ -506,7 +508,11 @@ export function extractReadFilesFromMessages(
         ) {
           const input = content.input as { patchText?: string } | undefined
           if (input?.patchText) {
-            applyPatchToolUseIds.set(content.id, input.patchText)
+            const patchText = isResubmitSentinel(input.patchText)
+              ? lastPatchText
+              : input.patchText
+            if (patchText) applyPatchToolUseIds.set(content.id, patchText)
+            if (!isResubmitSentinel(input.patchText)) lastPatchText = input.patchText
           }
         }
       }

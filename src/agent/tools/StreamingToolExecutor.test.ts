@@ -11,7 +11,11 @@ import type { AssistantMessage } from 'src/shared/types/message.js'
 // attempt — and exposes that controller so tests can drive the two abort
 // directions (discard vs permission rejection).
 let capturedToolAbortController: AbortController | undefined
-const realToolExecution = await import('src/agent/tools/toolExecution.js')
+// A plain-object copy, not the live namespace: the namespace reflects the
+// stub once `mock.module` runs, so re-pinning it in afterAll re-installed the
+// hanging runToolUse for every later file (toolExecution.resolveInput.test.ts
+// timed out behind it).
+const realToolExecution = { ...(await import('src/agent/tools/toolExecution.js')) }
 mock.module('./toolExecution.js', () => ({
   ...realToolExecution,
   runToolUse: async function* (

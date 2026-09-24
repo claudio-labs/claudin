@@ -4,29 +4,45 @@
 // of any `ink`/UI import so it can be unit-tested under `bun test` (importing
 // ink fails there — see team memory ink-modules-unimportable-in-tests). The
 // thin Tool definition + UI live in ApplyPatchTool.ts / UI.tsx.
+//
+// Resubmit. When every problem with a patch is a read-gate refusal that served
+// the lines it refused over (servedRegion.ts), the identical patch now passes —
+// and sending it again cost the model the whole patch as output a second time:
+// in the session A/B of 2026-09-23, 24 of 63 claudin sessions re-sent a patch of
+// ~8k chars that way. So such a refusal keeps the patch (one per readFileState,
+// i.e. per agent) and says `patchText: "*** Resubmit"` applies it as sent. The
+// model still sees the lines before the write lands. Any other apply_patch call
+// drops the kept patch. Killswitch: CLAUDIN_DISABLE_PATCH_RESUBMIT=1, which also
+// turns the sentinel back into an unparseable patch.
+//
+// Read gate. Update and Delete need the file to have been read, and any read
+// counts: the whole file, an outline, a symbol, a range, an injected CLAUDE.md,
+// a Read since clipped out of the transcript, a file changed on disk after it
+// was read. Whether a hunk applies is decided where it is applied — stageHunk
+// matches its context and "-" lines against the file as it is at that moment,
+// so a wrong hunk is refused there and nothing the patch does not name is
+// overwritten. Until 2026-09-24 this tool held Edit's gate (a full view,
+// coverage of every hunk, no change since the read), and each of those
+// refusals was answered with a Read that mostly bought nothing: half the
+// coverage refusals and 17 of the 30 stale ones in the 2026-09-14..20 census
+// came back as the identical patch (team memory tool-error-census-2026-09-20).
+// Edit, Write and NotebookEdit keep the full gate (.claudin/rules/cache.md).
 
 import type { UUID } from 'crypto'
 import { extname, relative } from 'path'
 import type { StructuredPatchHunk } from 'diff'
-import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
+import type { ResolvedInput, ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getPatchFromContents } from 'src/vcs/git/diff.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { checkBatchWritePermission } from 'src/permissions/filePermissions.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
-import {
-  needsWholeFileRead,
-  readGateMessage,
-  readGateReasonFor,
-  satisfiesLineScopedReadGate,
-  satisfiesReadGate,
-  seenRegionCovers,
-  unseenRegionMessage,
-  wholeFileRequiredMessage,
-} from 'src/tools/shared/readBeforeEditMessages.js'
+import { readGateMessage } from 'src/tools/shared/readBeforeEditMessages.js'
 import {
   fileLinesOf,
   type LineRegion,
@@ -46,7 +62,9 @@ import {
 import {
   deriveNewContentsFromChunks,
   type Hunk,
+  isResubmitSentinel,
   parsePatch,
+  RESUBMIT_SENTINEL,
 } from 'src/tools/ApplyPatchTool/patchFormat.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 
@@ -125,14 +143,48 @@ function serveUpdateHunk(
   )
 }
 
+/** The served refusal's own instruction; dropped when the refusal offers the resubmit instead. */
+const SERVED_RESEND = ' — resubmit the same patch:'
+
 function servedSuffix(served: string): string {
-  return ` The lines it needs are shown below and now count as read — resubmit the same patch:\n${served}`
+  return ` The lines it needs are shown below and now count as read${SERVED_RESEND}\n${served}`
+}
+
+const RESUBMIT_HINT = `\nEvery line the patch needs now counts as read, so it applies exactly as sent: call apply_patch with patchText "${RESUBMIT_SENTINEL}" instead of sending the patch again.`
+
+/** The patch a served refusal kept, per agent: a sub-agent's readFileState is its own. */
+const pendingResubmits = new WeakMap<FileStateCache, string>()
+
+function isResubmitEnabled(): boolean {
+  return !isEnvTruthy(process.env.CLAUDIN_DISABLE_PATCH_RESUBMIT)
+}
+
+/**
+ * `*** Resubmit` becomes the patch the previous call's served refusal kept;
+ * any other input passes through and drops what was kept, so the sentinel
+ * only ever means the patch refused one apply_patch call earlier.
+ */
+export function resolveApplyPatchInput(
+  input: ApplyPatchInput,
+  context: ToolUseContext,
+): ResolvedInput<ApplyPatchInput> {
+  if (!isResubmitEnabled()) return { ok: true, input }
+  const kept = pendingResubmits.get(context.readFileState)
+  pendingResubmits.delete(context.readFileState)
+  if (!isResubmitSentinel(input.patchText)) return { ok: true, input }
+  if (kept === undefined) {
+    return {
+      ok: false,
+      message: `apply_patch: "${RESUBMIT_SENTINEL}" applies the patch the previous apply_patch call was refused for, and there is none — send the whole patch.`,
+    }
+  }
+  return { ok: true, input: { ...input, patchText: kept } }
 }
 
 /**
  * Validates the patch before any permission prompt or write: parses it,
- * rejects empty / duplicate / notebook targets, and enforces read-before-edit
- * (and staleness) for Update/Delete — mirroring FileWriteTool's guards.
+ * rejects empty / duplicate / notebook targets, and requires every Update or
+ * Delete target to have been read — in any form, see "Read gate" above.
  */
 export function validateApplyPatchInput(
   input: ApplyPatchInput,
@@ -161,11 +213,14 @@ export function validateApplyPatchInput(
   // pass. At most one problem is recorded per file (checks are sequential).
   const failures: string[] = []
   let firstErrorCode = 1
-  // Failures whose fix is "read the file again". Counted so an N-file patch can
-  // be told to batch those reads into ONE message — otherwise the cheapest path
+  // Failures whose fix is reading the file. Counted so an N-file patch can be
+  // told to batch those reads into ONE message — otherwise the cheapest path
   // the model can see is read-one/patch-one, which is the round-trip waste this
   // tool exists to avoid.
   let readRemedyFailures = 0
+  // Failures whose refusal served the lines it needed: when every failure is
+  // one, the identical patch passes and can be resubmitted by reference.
+  let servedFailures = 0
   const note = (message: string, errorCode = 1): void => {
     if (failures.length === 0) firstErrorCode = errorCode
     failures.push(message)
@@ -215,66 +270,16 @@ export function validateApplyPatchInput(
       continue
     }
 
-    const readTimestamp = context.readFileState.get(absPath)
-    // Shared with Edit / Write / NotebookEdit so all four agree about the same
-    // file state (.claudin/rules/cache.md's four-tool invariant). An Update
-    // hunk is line-scoped, so an injected CLAUDE.md/MEMORY.md passes and is
-    // held to the text the model saw by the coverage check below; a Delete
-    // replaces the file and needs the strict gate.
-    if (
-      !satisfiesLineScopedReadGate(readTimestamp) ||
-      (hunk.type === 'delete' && !satisfiesReadGate(readTimestamp))
-    ) {
-      const reason = readGateReasonFor(readTimestamp)
-      const message = `apply_patch: ${readGateMessage(reason, rel, 'patching it')}`
-      // A clip-pin stand-down has its own replay budget; serving over it would
-      // reopen a gate that marker deliberately holds shut.
-      const served =
-        hunk.type === 'update' && reason !== 'clipped'
-          ? serveUpdateHunk(hunk, absPath, context)
-          : null
-      if (served) {
-        note(message + servedSuffix(served), 2)
-      } else {
-        note(message, 2)
-        readRemedyFailures++
-      }
-      continue
-    }
-    if (getFileModificationTime(absPath) > readTimestamp.timestamp) {
-      const message = `apply_patch: ${rel} has been modified since it was read. Read it again before patching it.`
+    // Any read counts — see "Read gate" in the header.
+    if (context.readFileState.get(absPath) === undefined) {
+      const message = `apply_patch: ${readGateMessage('never-read', rel, 'patching it')}`
       const served =
         hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null
       if (served) {
-        note(message + servedSuffix(served), 3)
+        note(message + servedSuffix(served), 2)
+        servedFailures++
       } else {
-        note(message, 3)
-        readRemedyFailures++
-      }
-      continue
-    }
-
-    // Seeing the file is not seeing the lines being changed — see the
-    // coverage lane in readBeforeEditMessages.ts.
-    if (hunk.type === 'delete') {
-      if (needsWholeFileRead(readTimestamp)) {
-        note(
-          `apply_patch: ${wholeFileRequiredMessage(rel, 'Deleting it', readTimestamp)}`,
-          4,
-        )
-        readRemedyFailures++
-      }
-      continue
-    }
-    if (
-      hunk.chunks.some(chunk => !seenRegionCovers(readTimestamp, chunk.oldLines))
-    ) {
-      const message = `apply_patch: ${unseenRegionMessage(rel, 'patching it', readTimestamp)}`
-      const served = serveUpdateHunk(hunk, absPath, context)
-      if (served) {
-        note(message + servedSuffix(served), 4)
-      } else {
-        note(message, 4)
+        note(message, 2)
         readRemedyFailures++
       }
       continue
@@ -291,6 +296,20 @@ export function validateApplyPatchInput(
   }
 
   if (failures.length === 0) return { result: true }
+  const resubmit = servedFailures === failures.length && isResubmitEnabled()
+  if (resubmit) {
+    // One instruction, not two: "resubmit the same patch" read as "send it
+    // again", the output this exists to save.
+    pendingResubmits.set(context.readFileState, input.patchText)
+    const shown = failures.map(m => m.replace(SERVED_RESEND, ':'))
+    if (shown.length === 1) return fail(shown[0] + RESUBMIT_HINT, firstErrorCode)
+    return fail(
+      `apply_patch found ${shown.length} problems, each shown with the lines it needs:\n` +
+        shown.map(m => `  • ${m.replace(/^apply_patch:?\s*/, '')}`).join('\n') +
+        RESUBMIT_HINT,
+      firstErrorCode,
+    )
+  }
   if (failures.length === 1) return fail(failures[0], firstErrorCode)
   return fail(
     `apply_patch found ${failures.length} problems — fix all of them, then resubmit the whole patch:\n` +
@@ -522,5 +541,3 @@ export function summarizeApplyPatch(output: ApplyPatchOutput): string {
   })
   return `Success. Applied the patch to the following files:\n${lines.join('\n')}`
 }
-
-export { displayPath as applyPatchDisplayPath }

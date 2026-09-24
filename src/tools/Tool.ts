@@ -107,6 +107,9 @@ export type ValidationResult =
       errorCode: number
     }
 
+/** What `Tool.resolveInput` hands back: the input every later step sees, or why there is none. */
+export type ResolvedInput<T> = { ok: true; input: T } | { ok: false; message: string }
+
 export type SetToolJSXFn = (
   args: {
     jsx: React.ReactNode | null
@@ -592,6 +595,20 @@ export type Tool<
    * hook/permission returns a fresh updatedInput — those own their shape.
    */
   backfillObservableInput?(input: Record<string, unknown>): void
+
+  /**
+   * Resolves a reference in the input to what will actually run, before
+   * anything else looks at it: validateInput, the PreToolUse hooks, the
+   * auto-mode classifier, the permission prompt and call() all receive the
+   * resolved input, while the transcript keeps what the model sent (the
+   * cached prefix depends on it). apply_patch's `*** Resubmit` names the
+   * patch it refused one call earlier. A refusal is reported the way a failed
+   * validateInput is.
+   */
+  resolveInput?(
+    input: z.infer<Input>,
+    context: ToolUseContext,
+  ): ResolvedInput<z.infer<Input>>
 
   /**
    * Determines if this tool is allowed to run with this input in the current context.

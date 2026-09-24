@@ -1,6 +1,9 @@
 import { feature } from 'bun:bundle'
 import { prependBullets } from 'src/agent/prompts/prompts.js'
-import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
+import {
+  isCompactToolPromptsEnabled,
+  isLeanToolPromptFamily,
+} from 'src/agent/prompts/toolPromptTier.js'
 import { getAttributionTexts } from 'src/vcs/git/attribution.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
@@ -250,6 +253,12 @@ function getSimpleSandboxSection(): string {
 // embedded, MONITOR_TOOL, timeouts), so a fully pure builder would be invasive.
 // Production callers pass nothing → the family tier is resolved live.
 export function getSimplePrompt(leanOverride?: boolean): string {
+  // The v2 description (isCompactToolPromptsEnabled); the ant-native embedded
+  // lane keeps the full text, whose tool list differs.
+  if (leanOverride === undefined && isCompactToolPromptsEnabled() && !hasEmbeddedSearchTools()) {
+    return getCompactPrompt()
+  }
+
   // Capable families follow the system prompt's altitude principle on their
   // own, so per-tool hand-holding (ls-first, quote-paths, sleep coaching) and
   // the parallelism block (already covered by TOOL_BATCHING_NUDGE) are dropped
@@ -368,6 +377,29 @@ export function getSimplePrompt(leanOverride?: boolean): string {
     '',
     '# Instructions',
     ...prependBullets(instructionItems),
+    getSimpleSandboxSection(),
+    ...(getCommitAndPRInstructions() ? ['', getCommitAndPRInstructions()] : []),
+  ].join('\n')
+}
+
+/**
+ * The v2 description: every rule of the lean one — the dedicated tools by
+ * name, the working-directory rule and why, the timeout bounds, the command
+ * separators — in one list. Sandbox and inline git sections are unchanged.
+ */
+function getCompactPrompt(): string {
+  const backgroundNote = getBackgroundUsageNote()
+  const items = [
+    `Use the dedicated tools instead of their shell forms: ${GLOB_TOOL_NAME} (not find/ls), ${GREP_TOOL_NAME} (not grep/rg), ${FILE_READ_TOOL_NAME} (not cat/head/tail), ${FILE_EDIT_TOOL_NAME} (not sed/awk), ${FILE_WRITE_TOOL_NAME} (not echo >/heredocs), ${RUN_TESTS_TOOL_NAME} (not npm test/pytest/go test), ${BUILD_TOOL_NAME} (not make/cargo build/gradle), ${TYPECHECK_TOOL_NAME} (not tsc --noEmit/mypy), and ${GIT_TOOL_NAME} for git and gh, several commands per call. Write text directly rather than through echo.`,
+    'Keep the working directory: use absolute paths instead of `cd` — a `cd` elsewhere is checked as its own subcommand and can turn a compound command into a permission prompt. Use `cd` when the user asks.',
+    `timeout is in milliseconds, up to ${getMaxTimeoutMs()} (${getMaxTimeoutMs() / 60000} minutes); the default is ${getDefaultTimeoutMs()} (${getDefaultTimeoutMs() / 60000} minutes).`,
+    ...(backgroundNote !== null ? [backgroundNote] : []),
+    "Chain dependent commands with '&&', use ';' only when later commands should run anyway, and never separate commands with newlines (newlines inside quotes are fine).",
+  ]
+  return [
+    'Executes a bash command and returns its output. The working directory persists between commands; shell state (env vars, functions) does not, and the shell starts from the user\'s profile. Output is shown to you, not reliably to the user — describe what you found.',
+    '',
+    ...prependBullets(items),
     getSimpleSandboxSection(),
     ...(getCommitAndPRInstructions() ? ['', getCommitAndPRInstructions()] : []),
   ].join('\n')

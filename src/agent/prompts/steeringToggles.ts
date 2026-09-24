@@ -1,12 +1,11 @@
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
-// Runtime opt-outs for the two static steering blocks with enough mass in the
+// Runtime opt-out for the static steering block with enough mass in the
 // cacheable prefix to be worth measuring: the WORK_CONTRACT sections (~885
 // tokens across "# Delivering work", the act-on-what-you-know line and
-// "# Corrections") and the ANTI_NARRATION text (~440 tokens across the harness
-// bullets and the anthropic addendum). Both default ON;
-// `CLAUDIN_WORK_CONTRACT=0` / `CLAUDIN_ANTI_NARRATION=0` (also false/no/off)
-// subtract them.
+// "# Corrections"). Default ON; `CLAUDIN_WORK_CONTRACT=0` (also false/no/off)
+// subtracts them. The ANTI_NARRATION text and its `CLAUDIN_ANTI_NARRATION`
+// twin were removed from every system prompt on 2026-09-23.
 //
 // WHY THESE EXIST. The build flags of the same name already gate this text,
 // but `feature()` folds to a literal at build time, so reaching both arms of
@@ -36,10 +35,6 @@ export function isWorkContractEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_WORK_CONTRACT)
 }
 
-export function isAntiNarrationEnabled(): boolean {
-  return !isEnvDefinedFalsy(process.env.CLAUDIN_ANTI_NARRATION)
-}
-
 /**
  * The four sub-agent-only notes in `SUBAGENT_NOTES_BULLETS` (where a report
  * goes, who can authorize the agent, tool-result provenance, summarization) —
@@ -53,4 +48,23 @@ export function isAntiNarrationEnabled(): boolean {
  */
 export function isSubagentNotesEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_NOTES)
+}
+
+/**
+ * The v2 system prompt: Claude Code 2.1.280's lean `-p` shape with every
+ * Claudin capability kept (docs/tech/prompts/claude-code-2.1.280-reference.md,
+ * pinned by promptFeatureCoverage.test.ts). The whole prompt, not one section,
+ * moved thinking 30–50% in the transplant replays of 2026-09-23, so the v2 is
+ * one switch. Anthropic family only — getSystemPrompt checks the family.
+ *
+ * Default ON since 2026-09-24, promoted by the user's decision: with the other
+ * three v2 switches it takes the first request from 27.8k to 19.7k tokens,
+ * and the session A/B found no cost change either way (team memory
+ * `prompts-v2-2026-09`). `CLAUDIN_LEAN_SYSTEM_PROMPT=0` restores the previous
+ * text; the killswitch is slated for removal in a cleanup pass. Same cache
+ * reasoning as the toggles above: process-constant, so it yields two prefix
+ * texts, never one that flips mid-session.
+ */
+export function isLeanSystemPromptEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)
 }

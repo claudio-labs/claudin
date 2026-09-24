@@ -106,7 +106,7 @@ describe('getModelFamily', () => {
 
 describe('addendum contents', () => {
   const named: Array<{ name: ModelFamily; value: string | null; expectString: boolean }> = [
-    // anthropic addendum is gated on feature('ANTI_NARRATION') which the
+    // anthropic addendum is gated on feature('TOOL_BATCHING_NUDGE') which the
     // test preload (src/stubs/test-preload.ts) stubs to false — so under
     // tests we expect null here. Production builds set the flag to true
     // via scripts/build/build.ts and the resolved string is exercised by the

@@ -8,6 +8,7 @@
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Decisions
+- [apply_patch takes any read since 2026-09-24](decisions/apply-patch-any-read.md) — only never-read is refused; outline/range/stale pass, the hunk match is the check; Edit keeps the gate
 - [Team memory: git IS the sync — HTTP sync + LLM recall deleted 2026-09-21](decisions/team-memory-git-is-the-sync.md) — `paths:` is the on-demand loader; decisions/bugs/docs categories; secret guard blocks
 - [`safeguards` / dangerous-tool-use — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint; would ship rules, paths, git state, identity
 - [Rewriting the shouted emphasis out of tool prompts — DROPPED on data 2026-09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls; empty thinking blocks make it unmeasurable from logs
@@ -19,6 +20,7 @@
 - [Fork-subagent-by-default initiative](decisions/fork-subagent-by-default.md) — default spawn forks, named agent stays fresh; 2026-07-26 ungated it, flipped auto-background to opt-in
 - [Git tool — D2, shipped 2026-08-04](decisions/git-tool-design.md) — Git({commands:[…]}) over all git+gh; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; 'auto' sentinel shadows the global, /effort inherit clears it
+- [Opus 5.5 defaults to medium effort, like Claude Code (2026-09-24)](decisions/opus-5-5-default-effort-medium.md) — was high; the only lever that closed the cost gap; pins still win
 - [Adaptive thinking is now the default (was opt-in)](decisions/adaptive-thinking-default-on.md) — 2026-07-13 flip: Claude sends {type:'adaptive'} by default; CLAUDIN_ENABLE_ADAPTIVE_THINKING=0 opts out
 - [Claudin defaults to essential-traffic privacy level](decisions/anthropic-startup-traffic-disabled-default.md) — b2be87b5 flips default; 7→0 Anthropic startup requests; ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0 opts back in
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — fetchPrStatus dispatches host→gh/glab/tea; prStatusHosts lives in config.json NOT settings.json
@@ -54,7 +56,7 @@
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the friction/refusal message instead; land new nudges flag-OFF as bench instrumentation
 - [Steering Read shape from the prompt is cost-neutral (2026-09-14)](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%; the Grep symbols nudge is inert in two wordings
 - [Claude Code 2.1.270's prompt, extracted 2026-09-14](claude-code-2.1.270-prompt-diff.md) — upstream MANDATES narration now; Delivering work/Corrections/turn-discipline are upstream verbatim
-- [ANTI_NARRATION: Claude 5 A/B on progress updates only (2026-09-23)](anti-narration-never-benched-on-claude-5.md) — overlap, stays; text narration still unmeasured on Claude 5; ModelFamily can't express "Claude 5"
+- [ANTI_NARRATION — REMOVED from every prompt 2026-09-24](anti-narration-never-benched-on-claude-5.md) — narr arm moved neither thinking nor cost; Agent's "don't narrate a launch" rule stays
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 21 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
@@ -115,7 +117,9 @@
 - [Symbol-parser options researched 2026-08-12](symbol-parser-options-researched.md) — tree-sitter IS shippable under bun --compile; the blocker is the SYNC scanSymbols call, not size
 - [Outline scanner: phantoms that DELETE real declarations](outline-blind-to-nested-members.md) — PR #141; 6 scanner traps, and why the A/B gate is witness-based not rule-based
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 SUPERSEDES the cost gap: claude's prefix 70.5k→32.4k, cost now ties
-- [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — +53% vs CC → +7% after #239; round 2: placebo arm = −6% noise; run arms SIMULTANEOUSLY (main drifted +12% by afternoon)
+- [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — +53% vs CC → +7% after #239; placebo = −6% noise; run arms SIMULTANEOUSLY; the rest is 2× thinking + read-gate re-sends
+- [Session cost round 3 09-23 (proxy, N=5)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't; replays: the system prompt adds 30–50% thinking
+- [Prompts v2 — DEFAULT since 09-24, cleanup pending](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); cost flat; 4 `=0` killswitches to delete (checklist)
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker

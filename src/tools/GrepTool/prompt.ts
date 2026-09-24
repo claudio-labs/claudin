@@ -20,3 +20,15 @@ export function getDescription(): string {
   - Binary files and text that is not UTF-8 are skipped. Pass \`binary: true\` to search binary files as text, or \`encoding\` (e.g. "utf-16le", "shift_jis", "windows-1252") for a known non-UTF-8 encoding.
 `
 }
+
+/** The v2 description (isCompactToolPromptsEnabled): the same rules, fewer words. */
+export function getCompactDescription(): string {
+  return `Search file contents with ripgrep. Use it instead of \`grep\` or \`rg\` in ${BASH_TOOL_NAME}.
+
+- Full regex syntax; literal braces need escaping (\`interface\\{\\}\`), and \`multiline: true\` lets a pattern span lines.
+- Filter with \`glob\` ("*.js", "**/*.tsx") or \`type\` ("js", "py", "rust").
+- output_mode: "files_with_matches" (default), "content" (matching lines), "count" (per-file counts, largest first; footer totals are search-wide), "symbols" (the function or class signature enclosing each match). A broad "content" search comes back as the "symbols" map; pass \`head_limit\`, or narrow \`path\`/\`glob\`, to get the lines.
+- smart-case: a lowercase pattern matches any case, one with an uppercase letter is case-sensitive; \`-i\` forces either.
+- Files excluded by \`.gitignore\` are searched when nothing else matches, and reported separately; \`no_ignore: true\` includes them from the start. Binary and non-UTF-8 files are skipped unless you pass \`binary: true\` or an \`encoding\` ("utf-16le", "shift_jis").
+- For an open-ended search that takes several rounds, use the ${AGENT_TOOL_NAME} tool.`
+}

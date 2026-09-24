@@ -3,6 +3,8 @@ import { getDeferredDeltaLegacySession } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 
 export { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
@@ -68,6 +70,10 @@ export function isDeferredTool(tool: Tool): boolean {
     const m = require('src/tools/AgentTool/forkSubagent.js') as ForkMod
     if (m.isForkSubagentEnabled()) return false
   }
+
+  // The v2 tool descriptions move Monitor (in 2.6% of sessions) behind
+  // ToolSearch too, like the four rarely used tools that are always deferred.
+  if (tool.name === MONITOR_TOOL_NAME && isCompactToolPromptsEnabled()) return true
 
   return tool.shouldDefer === true
 }

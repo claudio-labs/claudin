@@ -146,3 +146,24 @@ ${lineFormat}
 - This tool can read Jupyter notebooks (.ipynb files) and returns all cells with their outputs, combining code, text, and visualizations.
 - Do NOT re-read a file you just edited to verify the change — Edit/Write would have errored if it failed, and the harness tracks file state for you.`
 }
+
+/**
+ * The same instructions in the v2 tool descriptions
+ * (isCompactToolPromptsEnabled): the reading ladder in one paragraph, and the
+ * language list dropped — an outline answers for any file, and the non-code
+ * shapes are named.
+ */
+export function renderCompactPromptTemplate(
+  lineFormat: string,
+  maxSizeInstruction: string,
+): string {
+  return `Reads a file from the local filesystem. file_path must be absolute; any path the user gives you is readable, including a temporary path outside the project — read it rather than checking first.
+
+Read only what you need: view='outline' for an unknown file (signatures with line ranges; Markdown and HTML outline by heading, a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X' for one function (a large one comes back as its own outline; add view='full' for the body), offset/limit for a range, the whole file only when you need all of it. A large Read that names no view, and any file over the cap, comes back as an outline, a long plain-text file as its head and tail with the line count — pass view='full' for the body.
+
+- Reads up to ${MAX_LINES_TO_READ} lines by default${maxSizeInstruction}.
+${lineFormat}
+- A directory, a missing file or an empty file returns an error or a system reminder; list a directory with ${GLOB_TOOL_NAME}.
+- Images come back visually.${isPDFSupported() ? ' A PDF past 10 pages needs `pages` (e.g. "1-5", at most 20 per request).' : ''} A notebook (.ipynb) returns every cell with its outputs.
+- Don't re-read a file you just edited: Edit/Write would have failed if the change did not land.`
+}

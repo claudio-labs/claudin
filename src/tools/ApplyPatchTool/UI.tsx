@@ -8,7 +8,7 @@ import type {
   ApplyPatchFileResult,
   ApplyPatchOutput,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
-import { parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
+import { isResubmitSentinel, parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
 
 const LABEL: Record<ApplyPatchChangeType, string> = {
   add: 'Write',
@@ -30,6 +30,7 @@ export function renderToolUseMessage(
   _options: { verbose: boolean },
 ): React.ReactNode {
   if (!input.patchText) return null
+  if (isResubmitSentinel(input.patchText)) return 'resubmitted'
   // Parse opportunistically — patchText may still be streaming in.
   try {
     const count = parsePatch(input.patchText).hunks.length

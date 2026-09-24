@@ -17,6 +17,18 @@ import {
   seekSequence,
 } from 'src/tools/shared/fuzzyLineMatch.js'
 
+/**
+ * A patchText that is not a patch but a reference: "apply the patch refused
+ * one call ago, exactly as sent" (applyPatch.ts `resolveApplyPatchInput`).
+ * Anything reading apply_patch inputs back from a transcript meets it where a
+ * patch would be.
+ */
+export const RESUBMIT_SENTINEL = '*** Resubmit'
+
+export function isResubmitSentinel(patchText: string): boolean {
+  return patchText.trim() === RESUBMIT_SENTINEL
+}
+
 export type Hunk =
   | { type: 'add'; path: string; contents: string }
   | { type: 'delete'; path: string }

@@ -113,6 +113,7 @@ function makeDeps(overrides: Partial<AgentPromptDeps> = {}): AgentPromptDeps {
     isInProcessTeammate: () => false,
     isTeammate: () => false,
     isLeanAgentPromptEnabled: () => false,
+    isCompactToolPromptsEnabled: () => false,
     ...overrides,
   }
 }

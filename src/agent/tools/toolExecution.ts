@@ -630,9 +630,43 @@ async function checkPermissionsAndCallTool(
     ]
   }
 
+  // A tool may resolve a reference in its input to what will actually run
+  // (Tool.resolveInput). Everything below sees the resolved form; the
+  // transcript keeps what the model sent.
+  const resolution = tool.resolveInput
+    ? tool.resolveInput(parsedInput.data, toolUseContext)
+    : ({ ok: true, input: parsedInput.data } as const)
+  if (!resolution.ok) {
+    logForDebugging(
+      `${tool.name} tool input resolution error: ${resolution.message.slice(0, 200)}`,
+    )
+    return [
+      {
+        message: createUserMessage({
+          content: [
+            {
+              type: 'tool_result',
+              content: withRepeatedFailureHint(
+                `<tool_use_error>${resolution.message}</tool_use_error>`,
+                tool.name,
+                input,
+                toolUseContext,
+              ),
+              is_error: true,
+              tool_use_id: toolUseID,
+            },
+          ],
+          toolUseResult: `Error: ${resolution.message}`,
+          sourceToolAssistantUUID: assistantMessage.uuid,
+        }),
+      },
+    ]
+  }
+  const resolvedInput = resolution.input
+
   // Validate input values. Each tool has its own validation logic
   const isValidCall = await tool.validateInput?.(
-    parsedInput.data,
+    resolvedInput,
     toolUseContext,
   )
   if (isValidCall?.result === false) {
@@ -669,12 +703,12 @@ async function checkPermissionsAndCallTool(
   // for commands that auto-allow via prefix rules.
   if (
     tool.name === BASH_TOOL_NAME &&
-    parsedInput.data &&
-    'command' in parsedInput.data
+    resolvedInput &&
+    'command' in resolvedInput
   ) {
     const appState = toolUseContext.getAppState()
     startSpeculativeClassifierCheck(
-      (parsedInput.data as BashToolInput).command,
+      (resolvedInput as BashToolInput).command,
       appState.toolPermissionContext,
       toolUseContext.abortController.signal,
       toolUseContext.options.isNonInteractiveSession,
@@ -688,7 +722,7 @@ async function checkPermissionsAndCallTool(
   // system (SedEditPermissionRequest) after user approval. If the model supplies
   // it, the schema's strictObject should already reject it, but we strip here
   // as a safeguard against future regressions.
-  let processedInput = parsedInput.data
+  let processedInput = resolvedInput
   if (
     tool.name === BASH_TOOL_NAME &&
     processedInput &&

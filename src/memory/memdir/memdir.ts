@@ -14,7 +14,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
@@ -344,8 +344,12 @@ export function buildMemoryPrompt(params: {
 
 /**
  * Build the "Searching past context" section if the feature gate is enabled.
+ * `lean` (the v2 prompt) says the same two steps in one line.
  */
-export function buildSearchingPastContextSection(autoMemDir: string): string[] {
+export function buildSearchingPastContextSection(
+  autoMemDir: string,
+  lean = false,
+): string[] {
   if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_coral_fern', false)) {
     return []
   }
@@ -359,6 +363,11 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
   const transcriptSearch = embedded
     ? `grep -rn "<search term>" ${projectDir}/ --include="*.jsonl"`
     : `${GREP_TOOL_NAME} with pattern="<search term>" path="${projectDir}/" glob="*.jsonl"`
+  if (lean) {
+    return [
+      `To search past context, use narrow terms (error messages, paths, function names): first your memory (\`${memSearch}\`), then, as a slow last resort, the session transcripts (\`${transcriptSearch}\`).`,
+    ]
+  }
   return [
     '## Searching past context',
     '',
@@ -377,6 +386,17 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
 }
 
 /**
+ * The v2 memory prompt (teamMemPrompts.ts `buildLeanCombinedMemoryPrompt`).
+ * Default ON since 2026-09-24 with the rest of the v2 prompt (team memory
+ * `prompts-v2-2026-09`); getSystemPrompt applies it to the Anthropic family
+ * only. `CLAUDIN_LEAN_MEMORY_PROMPT=0` restores the previous text; the
+ * killswitch is slated for removal in a cleanup pass.
+ */
+export function isLeanMemoryPromptEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_MEMORY_PROMPT)
+}
+
+/**
  * Load the unified memory prompt for inclusion in the system prompt.
  * Dispatches based on which memory systems are enabled:
  *   - auto + team: combined prompt (both directories)
@@ -384,9 +404,11 @@ export function buildSearchingPastContextSection(autoMemDir: string): string[] {
  * Team memory requires auto memory (enforced by isTeamMemoryEnabled), so
  * there is no team-only branch.
  *
+ * `lean` selects the v2 text of the combined prompt.
+ *
  * Returns null when auto memory is disabled.
  */
-export async function loadMemoryPrompt(): Promise<string | null> {
+export async function loadMemoryPrompt(lean = false): Promise<string | null> {
   const autoEnabled = isAutoMemoryEnabled()
 
   // Cowork injects memory-policy text via env var; thread into all builders.
@@ -408,7 +430,9 @@ export async function loadMemoryPrompt(): Promise<string | null> {
       // out from under the auto dir, add a second ensureMemoryDirExists call
       // for autoDir here.
       await ensureMemoryDirExists(teamDir)
-      return teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines)
+      return lean
+        ? teamMemPrompts!.buildLeanCombinedMemoryPrompt(extraGuidelines)
+        : teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines)
     }
   }
 

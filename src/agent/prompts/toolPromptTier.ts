@@ -1,5 +1,6 @@
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { getFamilyForLogging, type ModelFamily } from 'src/agent/prompts/familyAddendums/index.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 // Tool-prompt verbosity tier by model family. Capable families follow the
 // system prompt's altitude principle ("Don't add features… beyond what was
@@ -58,4 +59,54 @@ export function isLeanToolPromptFamily(): boolean {
   const forced = getForcedToolPromptTier()
   if (forced !== null) return forced === 'lean'
   return isLeanFamily(getFamilyForLogging(getMainLoopModel()))
+}
+
+/**
+ * The rule both v2 switches below share, pure so a test can reach it without
+ * the process-global model state (a dozen suites mock `model.js`, and one that
+ * leaks makes `getMainLoopModel()` ignore an override): the Anthropic family,
+ * unless the env var turns the switch off (`=0`, `false`, `no`, `off`).
+ */
+export function isV2PromptSwitchOn(
+  envValue: string | undefined,
+  family: ModelFamily,
+): boolean {
+  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'
+}
+
+/**
+ * The v2 tool descriptions (branch perf/prompts-v2): Read, Grep, Agent, Bash,
+ * Build, Typecheck and RunTests at Claude Code 2.1.280's density, every
+ * parameter and behavior still named (promptFeatureCoverage.test.ts), and
+ * Monitor behind ToolSearch. apply_patch keeps its full text: its compact one
+ * produced malformed patches in the session A/B. Anthropic family only.
+ *
+ * Default ON since 2026-09-24 with the rest of the v2 prompt (team memory
+ * `prompts-v2-2026-09`). `CLAUDIN_COMPACT_TOOL_PROMPTS=0` restores the
+ * previous descriptions; the killswitch is slated for removal in a cleanup.
+ *
+ * Tool descriptions are cached once per session (toolSchemaCache.ts), so
+ * like the tier above this is read when the first request is built.
+ */
+export function isCompactToolPromptsEnabled(): boolean {
+  return isV2PromptSwitchOn(
+    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,
+    getFamilyForLogging(getMainLoopModel()),
+  )
+}
+
+/**
+ * The v2 startup reminder: one short line per skill in the listing. Anthropic
+ * family only. Default ON since 2026-09-24; `CLAUDIN_LEAN_REMINDERS=0`
+ * restores the previous lines, and the killswitch is slated for removal in a
+ * cleanup pass. It no longer touches the git protocol attachment: the shorter
+ * git text measured on the branch dropped rules the BashTool prompt tests pin
+ * ("if unclear, ask first", the review-comments endpoint, backslash escaping),
+ * so the round-2 lean git text stays the default.
+ */
+export function isLeanRemindersEnabled(): boolean {
+  return isV2PromptSwitchOn(
+    process.env.CLAUDIN_LEAN_REMINDERS,
+    getFamilyForLogging(getMainLoopModel()),
+  )
 }

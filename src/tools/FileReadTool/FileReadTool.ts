@@ -61,10 +61,12 @@ import {
   DESCRIPTION,
   FILE_READ_TOOL_NAME,
   LINE_FORMAT_INSTRUCTION,
+  renderCompactPromptTemplate,
   renderPromptTemplate,
   renderClipPinFallbackFooter,
   renderClipPinFallbackStub,
 } from 'src/tools/FileReadTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { callInner } from 'src/tools/FileReadTool/readDispatch.js'
 import {
   mapReadResultToToolResultBlock,
@@ -111,7 +113,9 @@ export const FileReadTool = buildTool({
     const maxSizeInstruction = limits.includeMaxSizeInPrompt
       ? `. Files larger than ${formatFileSize(limits.maxSizeBytes)} will return an error; use offset and limit for larger files`
       : ''
-    return renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)
+    return isCompactToolPromptsEnabled()
+      ? renderCompactPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)
+      : renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)
   },
   get inputSchema(): InputSchema {
     return inputSchema()

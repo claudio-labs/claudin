@@ -1,0 +1,28 @@
+{
+  "test": "src/agent/prompts/__tests__/promptFeatureCoverage.test.ts",
+  "source": "src/agent/prompts/__tests__/__snapshots__/systemPrompt.main.txt",
+  "probes": [
+    {
+      "name": "the one-patch rule leaves the system prompt",
+      "find": "When a change touches several files, land it as ONE apply_patch with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option.\n",
+      "replace": ""
+    },
+    {
+      "name": "the decision fields leave the memory section",
+      "find": " and `impact: structural | functional | rejected`",
+      "replace": ""
+    },
+    {
+      "name": "the lean git protocol stops naming the hook skips",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "and hook skips (\\`--no-verify\\`, \\`--no-gpg-sign\\`) run only when",
+      "replace": "run only when"
+    },
+    {
+      "name": "Read stops describing the head-and-tail view",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "comes back as its head and tail with the line count",
+      "replace": "comes back shortened"
+    }
+  ]
+}

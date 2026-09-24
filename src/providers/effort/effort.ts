@@ -700,10 +700,22 @@ export function getDefaultEffortForModel(
     return 'xhigh'
   }
 
+  // Claudin default: Opus 5.5 on the first-party provider defaults to medium,
+  // the default Claude Code ships for it (its model catalog's
+  // `default_effort: "medium"`, docs/tech/anthropic-betas/wire-matrix.md). In
+  // the 2026-09-23/24 session A/Bs (team memory `session-cost-round-3-2026-09-23`)
+  // medium was the only lever that brought claudin's cost to Claude Code's, with
+  // every hidden test still passing; at high it thought about twice as much.
+  // Must precede the flagship branch below, whose includes('opus-5') also
+  // matches 'opus-5-5'. A pinned or global effort still wins over this default.
+  if (lowerModel.includes('opus-5-5') && getAPIProvider() === 'firstParty') {
+    return 'medium'
+  }
+
   // Claudin default: Opus 4.8, Opus 5 and Fable 5 on the first-party Anthropic
   // provider default to high effort, overriding the upstream Pro/Max/Team
   // medium defaults and the ultrathink medium fallback below. The xhigh
-  // opt-in above still wins for Opus 4.8.
+  // opt-in above still wins for Opus 4.8, and Opus 5.5 takes medium above.
   if (
     (lowerModel.includes('opus-4-8') ||
       lowerModel.includes('opus-5') ||

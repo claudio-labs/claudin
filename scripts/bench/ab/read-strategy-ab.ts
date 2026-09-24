@@ -24,6 +24,9 @@
  *   CLAUDIN_BENCH_RUNS=1                (runs por variante)
  *   CLAUDIN_BENCH_BASELINE=dist/baseline/cli.mjs
  *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs
+ *   CLAUDIN_BENCH_FEATURE_ENV=NAME=VALUE[,NAME=VALUE]   extra env for the feature arm
+ *                                         only, so one build can be both arms
+ *                                         (point BASELINE and FEATURE at it)
  */
 
 import { spawn } from 'node:child_process'
@@ -41,6 +44,12 @@ import { REPO_ROOT } from '../../repoRoot'
 const BASELINE =
   process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist', 'baseline', 'cli.mjs')
 const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
+const FEATURE_ENV: Record<string, string> = Object.fromEntries(
+  (process.env.CLAUDIN_BENCH_FEATURE_ENV ?? '')
+    .split(',')
+    .filter(Boolean)
+    .map(pair => [pair.slice(0, pair.indexOf('=')), pair.slice(pair.indexOf('=') + 1)]),
+)
 const RUNS = Number(process.env.CLAUDIN_BENCH_RUNS ?? '1')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5'
 const TARGET_CWD = process.env.CLAUDIN_BENCH_TARGET_CWD ?? REPO_ROOT
@@ -268,7 +277,11 @@ function runOnce(
     const child = spawn(
       'node',
       [entryPath, '-p', buildPrompt(), '--model', MODEL, '--output-format', 'json'],
-      { cwd: TARGET_CWD, env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'] },
+      {
+        cwd: TARGET_CWD,
+        env: { ...process.env, ...(variant === 'B' ? FEATURE_ENV : {}) },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
     )
     let out = ''
     child.stdout.on('data', c => {
@@ -378,6 +391,7 @@ async function main(): Promise<void> {
   console.log(`Bench: ${QUESTIONS.length} perguntas x ${RUNS} runs x 2 variantes`)
   console.log(`  Baseline (A): ${BASELINE}`)
   console.log(`  Feature  (B): ${FEATURE}`)
+  if (Object.keys(FEATURE_ENV).length) console.log(`  Feature env:  ${JSON.stringify(FEATURE_ENV)}`)
   console.log(`  Model:        ${MODEL}`)
   console.log('')
 

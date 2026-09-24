@@ -724,10 +724,6 @@ function runArm(label: string, contract: '0' | '1', timeoutMs: number, keep: boo
         // default rather than on the variable, and a later default flip would
         // silently turn this into a one-armed run.
         CLAUDIN_WORK_CONTRACT: contract,
-        // The neighbouring killswitch is pinned ON in both arms so the anti-
-        // narration text cannot drift between them and land on selfCorrections
-        // or proseChars.
-        CLAUDIN_ANTI_NARRATION: '1',
         // Otherwise the second arm replays the first arm's tool results.
         CLAUDIN_DISABLE_TOOL_RESULT_CACHE: '1',
       },

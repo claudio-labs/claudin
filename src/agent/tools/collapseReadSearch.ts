@@ -3,7 +3,7 @@ import type { UUID } from 'crypto'
 import type { StructuredPatchHunk } from 'diff'
 import { isAbsolute } from 'path'
 import { findToolByName, type Tools } from 'src/tools/Tool.js'
-import { parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
+import { isResubmitSentinel, parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { extractBashCommentLabel } from 'src/tools/BashTool/commentLabel.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -167,6 +167,11 @@ function getApplyPatchTargets(toolInput: unknown): WriteTarget[] | null {
     return null
   }
   const targets: WriteTarget[] = []
+  if (isResubmitSentinel(patchText)) {
+    // A reference to the patch refused one call earlier: its result lists the files.
+    APPLY_PATCH_TARGETS.set(toolInput, targets)
+    return targets
+  }
   try {
     for (const hunk of parsePatch(patchText).hunks) {
       // Mirror applyPatch's own resolveHunkPath, so a hunk path lines up with

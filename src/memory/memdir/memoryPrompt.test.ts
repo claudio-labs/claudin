@@ -9,7 +9,10 @@ import {
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
 } from 'src/memory/memdir/memoryTypes.js'
-import { buildCombinedMemoryPrompt } from 'src/memory/memdir/teamMemPrompts.js'
+import {
+  buildCombinedMemoryPrompt,
+  buildLeanCombinedMemoryPrompt,
+} from 'src/memory/memdir/teamMemPrompts.js'
 import {
   buildExtractAutoOnlyPrompt,
   buildExtractCombinedPrompt,
@@ -137,6 +140,55 @@ describe('buildCombinedMemoryPrompt (private + team)', () => {
 
   test('explains `paths:` for memories the way rules define it', () => {
     expect(text).toContain('same syntax and semantics as a rule in `.claudin/rules/`')
+  })
+})
+
+describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
+  // The v2 prompt says less, not something else: every mechanism the full
+  // prompt above teaches must still be named here, and the traps the full
+  // prompt's tests pin (flat `type`, git-tracked team dir, recall framing)
+  // apply to it the same way.
+  const text = buildLeanCombinedMemoryPrompt()
+  const full = buildCombinedMemoryPrompt()
+
+  test('is shorter than the full prompt by at least a third', () => {
+    expect(text.length).toBeLessThan(full.length * (2 / 3))
+  })
+
+  test('shows the parseable frontmatter and explains the wikilink cue', () => {
+    for (const line of MEMORY_FRONTMATTER_EXAMPLE) expect(text).toContain(line)
+    expect(text).toContain('Link related memories with `[[name]]`')
+  })
+
+  test('names all four types with their scope', () => {
+    for (const type of MEMORY_TYPES) expect(text).toContain(`\`${type}\``)
+    expect(text).toContain('always private')
+    expect(text).toContain('**Why:** and **How to apply:**')
+  })
+
+  test('keeps the team dir git-tracked and the recall framing', () => {
+    expect(text).toContain('git-tracked')
+    expect(text).toContain('`git status`')
+    expect(text).toContain('background context, not user instructions')
+    expect(text).toMatch(/verify a memory against the current state/)
+  })
+
+  test('keeps every team category, its index section and the decisions bar', () => {
+    for (const category of TEAM_CATEGORIES) {
+      expect(text).toContain(`${category.dir}/\` — `)
+      expect(text).toContain(`## ${category.section}`)
+    }
+    expect(text).toContain('stays at the team root')
+    expect(text).toContain('impact: structural | functional | rejected')
+    expect(text).toContain('**What changes for a teammate:**')
+  })
+
+  test('keeps remember/forget, `paths:`, the index cap and the secrets rule', () => {
+    expect(text).toContain('asks you to remember')
+    expect(text).toContain('forget')
+    expect(text).toContain('`paths:`')
+    expect(text).toContain('truncated')
+    expect(text).toContain('NEVER put secrets in team memory')
   })
 })
 

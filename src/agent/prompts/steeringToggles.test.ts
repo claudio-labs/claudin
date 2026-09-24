@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import {
-  isAntiNarrationEnabled,
+  isLeanSystemPromptEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
 } from 'src/agent/prompts/steeringToggles.js'
 
 const VARS = [
   'CLAUDIN_WORK_CONTRACT',
-  'CLAUDIN_ANTI_NARRATION',
   'CLAUDIN_SUBAGENT_NOTES',
+  'CLAUDIN_LEAN_SYSTEM_PROMPT',
 ] as const
 
 afterEach(() => {
@@ -18,15 +18,12 @@ afterEach(() => {
 
 const CASES: Array<{ name: (typeof VARS)[number]; fn: () => boolean }> = [
   { name: 'CLAUDIN_WORK_CONTRACT', fn: isWorkContractEnabled },
-  { name: 'CLAUDIN_ANTI_NARRATION', fn: isAntiNarrationEnabled },
   { name: 'CLAUDIN_SUBAGENT_NOTES', fn: isSubagentNotesEnabled },
+  { name: 'CLAUDIN_LEAN_SYSTEM_PROMPT', fn: isLeanSystemPromptEnabled },
 ]
 
-// Every toggle here is default-ON: the env can only subtract a section, never
-// add one. The one opt-IN toggle this file used to carry
-// (CLAUDIN_PLAN_NOOP_GUARD) was deleted with its clause, so the loop runs over
-// CASES directly again — if an opt-in one returns, it needs its own describe,
-// not a branch inside this loop.
+// Every toggle here is default-ON: the env can only subtract a section (or,
+// for CLAUDIN_LEAN_SYSTEM_PROMPT, restore the pre-v2 text), never add one.
 for (const { name, fn } of CASES) {
   describe(name, () => {
     test('defaults ON when unset', () => {
@@ -72,10 +69,10 @@ describe('toggle independence', () => {
 })
 
 describe('cache-prefix contract', () => {
-  // The work-contract and anti-narration resolvers read at call time from
-  // inside the STATIC (pre-boundary) half of the system prompt. That is only
+  // The work-contract resolver reads at call time from inside the STATIC
+  // (pre-boundary) half of the system prompt. That is only
   // sound while the value is constant for the process. A future edit that made
-  // one of them consult settings, the active provider or any mid-session state
+  // it consult settings, the active provider or any mid-session state
   // would fragment the cacheScope:'global' prefix on a bit that flips between
   // turns — the exact failure the module header warns about — so pin the
   // shape: nothing but a process.env read. isSubagentNotesEnabled is rendered

@@ -10,7 +10,7 @@ import { join } from 'path'
 import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
 import { addLineNumbers } from 'src/shared/fs/file.js'
 import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
-import { seenRegionCovers } from 'src/tools/shared/readBeforeEditMessages.js'
+import { seenRegionCoversText } from 'src/tools/shared/readBeforeEditMessages.js'
 import type { Message } from 'src/shared/types/message.js'
 
 let dir: string
@@ -101,8 +101,8 @@ describe('extractReadFilesFromMessages — Read', () => {
     )
     const entry = cache.get(p)
     expect(entry).toMatchObject({ content: 'l5\nl6\nl7', offset: 5, limit: 3 })
-    expect(seenRegionCovers(entry!, ['l6'])).toBe(true)
-    expect(seenRegionCovers(entry!, ['l9'])).toBe(false)
+    expect(seenRegionCoversText(entry!, 'l6')).toBe(true)
+    expect(seenRegionCoversText(entry!, 'l9')).toBe(false)
   })
 
   test('a leading blank line in a slice keeps its line number', () => {
@@ -172,9 +172,9 @@ describe('extractReadFilesFromMessages — several Reads of one file', () => {
     const entry = cache.get(p)!
     expect(entry).toMatchObject({ offset: 40, limit: 2 })
     expect(entry.seenRanges).toEqual([{ offset: 1, content: 'l1\nl2\nl3' }])
-    expect(seenRegionCovers(entry, ['l2'])).toBe(true)
-    expect(seenRegionCovers(entry, ['l41'])).toBe(true)
-    expect(seenRegionCovers(entry, ['l20'])).toBe(false)
+    expect(seenRegionCoversText(entry, 'l2')).toBe(true)
+    expect(seenRegionCoversText(entry, 'l41')).toBe(true)
+    expect(seenRegionCoversText(entry, 'l20')).toBe(false)
   })
 
   test('a slice read after an Edit does not inherit the pre-edit file', () => {
@@ -257,6 +257,21 @@ describe('extractReadFilesFromMessages — write tools', () => {
       dir,
     )
     expect(cache.get(p)).toBeUndefined()
+  })
+
+  test('"*** Resubmit" is restored as the patch refused one call earlier', () => {
+    // The resubmitted patch wrote the file; nothing in the sentinel names it.
+    const p = join(dir, 'resubmitted.ts')
+    writeFileSync(p, 'AFTER\n')
+    const refused = toolUse('apply_patch', {
+      patchText: `*** Begin Patch\n*** Update File: ${p}\n@@\n-x\n+y\n*** End Patch`,
+    })
+    const resubmit = toolUse('apply_patch', { patchText: '*** Resubmit' })
+    const cache = extractReadFilesFromMessages(
+      [refused, toolResult(refused, 'refused', { isError: true }), resubmit, toolResult(resubmit, 'ok')],
+      dir,
+    )
+    expect(cache.get(p)).toMatchObject({ content: 'AFTER\n', offset: undefined })
   })
 
   test('a malformed patchText is skipped, not thrown', () => {

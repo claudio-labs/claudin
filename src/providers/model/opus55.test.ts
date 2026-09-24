@@ -110,13 +110,14 @@ test('supports the full low→max effort ladder', () => {
   ])
 })
 
-// Anthropic documents `medium` as Opus 5.5's own default; Claudin deliberately
-// overrides that to `high` for first-party flagships, and 'claude-opus-5-5'
-// reaches that branch only because it contains 'opus-5'. Pin it: a future
-// refactor that tightens the flagship branch to an exact match would drop 5.5
-// to medium with nothing else going red.
-test('keeps the first-party flagship high effort default', () => {
-  expect(getDefaultEffortForModel('claude-opus-5-5')).toBe('high')
+// Anthropic documents `medium` as Opus 5.5's own default and Claude Code ships
+// it. Claudin overrode it to `high` with the other first-party flagships until
+// 2026-09-24, when the session A/Bs showed medium matching Claude Code's cost
+// with every hidden test passing. 'claude-opus-5-5' contains 'opus-5', so a
+// refactor that drops the 5.5 branch sends it back to high with nothing else
+// going red — pin it.
+test('defaults to medium effort on first party, like Claude Code', () => {
+  expect(getDefaultEffortForModel('claude-opus-5-5')).toBe('medium')
 })
 
 // $4/$20 with a 0.05x cache read ($0.20) — the second irregular multiplier in

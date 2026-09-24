@@ -6,7 +6,12 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { formatTestResult } from 'src/tools/RunTestsTool/budget.js'
 import { detectFrameworkFromCommand, detectTestRunner } from 'src/tools/RunTestsTool/detect.js'
-import { DESCRIPTION, RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
+import {
+  COMPACT_DESCRIPTION,
+  DESCRIPTION,
+  RUN_TESTS_TOOL_NAME,
+} from 'src/tools/RunTestsTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import { noteRunTestsExecution } from 'src/tools/RunTestsTool/redirect.js'
 import { runTests } from 'src/tools/RunTestsTool/run.js'
 import type { Framework, TestProgress, TestResult } from 'src/tools/RunTestsTool/types.js'
@@ -236,7 +241,7 @@ export const RunTestsTool = buildTool({
     return DESCRIPTION
   },
   async prompt() {
-    return DESCRIPTION
+    return isCompactToolPromptsEnabled() ? COMPACT_DESCRIPTION : DESCRIPTION
   },
   userFacingName,
   toAutoClassifierInput(input) {

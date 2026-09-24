@@ -78,6 +78,14 @@ CLIs flush usage at the same point.
 citing, because only it proved the arms served different text. Before recording
 "no effect", show the manipulation landed.
 
+**A never-sent prompt pays its whole prefix as a cache WRITE on its first run.**
+Measured 2026-09-24 on the prompts v2 smoke (N=1, [[prompts-v2-2026-09]]): claudindev's
+first request read 18.3k of its prefix from the global cache (the day's earlier runs had
+written it) and wrote 9.5k; the v2 arm, whose bytes had never been sent, read 0 and wrote
+19.7k. Its "prefix" cost came out **+22% on a prefix 29% smaller**. Warm a new prompt's
+prefix before rep 1, or read prefix cost from later reps — never size a new prompt's
+saving from an N=1 smoke.
+
 **Why:** every number this bench produced before the last fix was wrong, and not
 conservatively so — 2.01× and 2.35× both looked defensible and both died to a
 direct check. The errors did not push in a consistent direction, so "it is

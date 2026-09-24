@@ -19,8 +19,8 @@ import { getCanonicalName } from 'src/providers/model/model.js'
  *
  * One value per session, whatever the query source: a fork reuses the main
  * thread's cached prefix and must not see a different thinking config.
- * CLAUDIN_THINKING_DISPLAY forces a value; the ANTI_NARRATION A/B runs headless
- * with "updates".
+ * CLAUDIN_THINKING_DISPLAY forces a value; the session A/B uses it to run
+ * headless with "updates".
  */
 export type ThinkingDisplay = 'summarized' | 'omitted' | 'updates'
 

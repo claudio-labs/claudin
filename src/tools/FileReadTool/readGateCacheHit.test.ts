@@ -25,6 +25,7 @@ import {
 } from 'src/shared/fs/fileStateCache.js'
 import { setOriginalFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
+import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import { __resetForTests } from 'src/agent/tools/toolResultCache.js'
 
@@ -130,7 +131,7 @@ describe('a Read served from the tool-result cache still opens the write gate', 
     expect(seeded?.content).toBe(fork.readFileState.get(p)?.content)
   })
 
-  test('a partial-view entry is left alone — the gate still refuses', async () => {
+  test('a partial-view entry is left alone — Edit still refuses', async () => {
     const p = join(dir, 'd.ts')
     writeFileSync(p, 'export function four(): number {\n  return 4\n}\n')
 
@@ -150,7 +151,12 @@ describe('a Read served from the tool-result cache still opens the write gate', 
     await read(main, p)
 
     expect(main.readFileState.get(p)?.isPartialView).toBe(true)
-    const res = await patch(main, p, '@@\n-  return 4\n+  return 5')
+    // Edit, not apply_patch: apply_patch takes any read since 2026-09-24, so
+    // only a gate that still refuses a partial view can show the promotion.
+    const res = await FileEditTool.validateInput(
+      { file_path: p, old_string: '  return 4\n', new_string: '  return 5\n' },
+      main,
+    )
     expect(res.result).toBe(false)
   })
 })

@@ -25,3 +25,11 @@ Notes:
 - The run is stopped after a stretch with no output at all, and the result says how long it ran, how long it had been silent, and the last line it printed. Silence is reported, not diagnosed — linking is legitimately quiet.
 - A non-zero exit from a failing build is expected and is not an error.
 - Use plain Bash when you need the raw build log, or \`run_in_background\` for a build too long to wait on.`
+
+/** The v2 description (isCompactToolPromptsEnabled). Same invariance rule. */
+export const COMPACT_DESCRIPTION = `Build the project and get back the errors, not the build log. Prefer it over Bash for builds: it detects the build system (cargo, gradle, maven, sbt, mill, dotnet/msbuild, go, cmake/make/ninja, swift, xcodebuild, zig, mix, rebar3, flutter/dart, rake, luarocks, cabal/stack, or a package.json \`build\` script), runs it, and returns diagnostics with file:line and a source excerpt — or, for a failure with no file:line (dependency resolution, a linker error, out of memory), that block of the log.
+
+- \`directory\` builds another project, such as one package of a monorepo — never \`cd\` to it in Bash. \`system\` overrides detection, \`command\` runs an exact one.
+- \`path\` (a file, a directory or an array) filters the reported diagnostics; it does not narrow what is built. \`severity: "all"\` lists warnings too.
+- \`timeout\` for a long build, \`idleTimeout\` for one that goes quiet for a long stretch (linking, a cold daemon); a silent run is stopped and reported with its last line.
+- It builds without running tests (use RunTests). "Up to date" means nothing was rebuilt, not a clean build. A non-zero exit from a failing build is expected. Use plain Bash for the raw log, or \`run_in_background\` for a very long build.`

@@ -11,6 +11,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { toError } from 'src/shared/errors.js'
 import { truncate } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
+import { isLeanRemindersEnabled } from 'src/agent/prompts/toolPromptTier.js'
 
 // Skill listing gets 1% of the context window (in characters)
 export const SKILL_BUDGET_CONTEXT_PERCENT = 0.01
@@ -22,6 +23,13 @@ export const DEFAULT_CHAR_BUDGET = 8_000 // Fallback: 1% of 200k × 4
 // tokens without improving match rate. Applies to all entries, including bundled,
 // since the cap is generous enough to preserve the core use case.
 export const MAX_LISTING_DESC_CHARS = 250
+
+/**
+ * The per-entry cap in the v2 reminders (isLeanRemindersEnabled): one short
+ * line per skill, since the listing only has to make the match — the Skill
+ * tool loads the full text on invoke.
+ */
+export const LEAN_LISTING_DESC_CHARS = 100
 
 export function getCharBudget(contextWindowTokens?: number): number {
   if (Number(process.env.SLASH_COMMAND_TOOL_CHAR_BUDGET)) {
@@ -39,8 +47,9 @@ function getCommandDescription(cmd: Command): string {
   const desc = cmd.whenToUse
     ? `${cmd.description} - ${cmd.whenToUse}`
     : cmd.description
-  return desc.length > MAX_LISTING_DESC_CHARS
-    ? desc.slice(0, MAX_LISTING_DESC_CHARS - 1) + '\u2026'
+  const cap = isLeanRemindersEnabled() ? LEAN_LISTING_DESC_CHARS : MAX_LISTING_DESC_CHARS
+  return desc.length > cap
+    ? desc.slice(0, cap - 1) + '\u2026'
     : desc
 }
 

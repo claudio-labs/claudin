@@ -4,6 +4,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   type ApplyPatchOutput,
   checkApplyPatchPermissions,
+  resolveApplyPatchInput,
   runApplyPatch,
   summarizeApplyPatch,
   validateApplyPatchInput,
@@ -35,6 +36,10 @@ export const ApplyPatchTool = buildTool({
     return 'Applying patch'
   },
   async prompt() {
+    // No compact variant: the one the v2 switch shipped (2026-09-24) led to
+    // 6 malformed patches in 5 sessions against 0 in 10 on this text — hunks
+    // out of order, a file in two sections, an Update with no "@@" — each one
+    // re-sent whole. Team memory `prompts-v2-2026-09`.
     return DESCRIPTION
   },
   get inputSchema(): InputSchema {
@@ -45,6 +50,9 @@ export const ApplyPatchTool = buildTool({
   isConcurrencySafe: () => false,
   toAutoClassifierInput(input) {
     return input.patchText
+  },
+  resolveInput(input, context) {
+    return resolveApplyPatchInput(input, context)
   },
   async validateInput(input, context) {
     return validateApplyPatchInput(input, context)
