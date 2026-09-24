@@ -29,7 +29,7 @@ export type TreeSnapshot = ReadonlyMap<number, number>
  * over the ~15 s the watchdog waits between samples. Below it sit the pollers
  * and watchers that keep a wedged build ticking without doing anything.
  */
-export const MIN_CPU_GAIN_SECONDS = 1
+const MIN_CPU_GAIN_SECONDS = 1
 
 const PS_LINE_RE = /^\s*(\d+)\s+(\d+)\s+(\S+)\s*$/
 /** procps prints `01:02:03` or `1-02:03:04`; BSD `ps` prints `1:02.03`. */
