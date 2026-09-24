@@ -18,16 +18,12 @@ export function activityOf({ isLoading, queuedForMain }: ActivityInputs): Sessio
 
 // A turn ending with a queued command behind it flips idle and back within a
 // tick; waiting this long means an idle notice goes out only for a real stop.
-export const IDLE_DEBOUNCE_MS = 750
+const IDLE_DEBOUNCE_MS = 750
 
 let current: SessionActivity = 'busy'
 let idleSince: number | undefined
 const idleListeners = new Set<(finishedAt: number) => void>()
 let pendingIdle: ReturnType<typeof setTimeout> | undefined
-
-export function getSessionActivity(): SessionActivity {
-  return current
-}
 
 /** When the current idle stretch began; undefined while busy. */
 export function getIdleSince(): number | undefined {

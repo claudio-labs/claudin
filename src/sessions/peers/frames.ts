@@ -17,7 +17,7 @@ export const MESSAGE_MAX_CHARS = 100_000
  * `bypass` for a session in bypassPermissions, `prompting` for every mode
  * that still stops for its user. Inbound policy compares the two ends.
  */
-export const PermissionClassSchema = lazySchema(() => z.enum(['bypass', 'prompting']))
+const PermissionClassSchema = lazySchema(() => z.enum(['bypass', 'prompting']))
 export type PermissionClass = z.infer<ReturnType<typeof PermissionClassSchema>>
 
 const common = () => ({
@@ -30,7 +30,7 @@ const common = () => ({
   from_mode: PermissionClassSchema().optional(),
 })
 
-export const RequestFrameSchema = lazySchema(() =>
+const RequestFrameSchema = lazySchema(() =>
   z.discriminatedUnion('type', [
     z.object({ type: z.literal('ping'), ...common() }),
     z.object({
@@ -66,7 +66,7 @@ export const RequestFrameSchema = lazySchema(() =>
 )
 export type RequestFrame = z.infer<ReturnType<typeof RequestFrameSchema>>
 
-export const ResponseFrameSchema = lazySchema(() =>
+const ResponseFrameSchema = lazySchema(() =>
   z.object({
     ok: z.boolean(),
     outcome: z.enum(['delivered', 'held', 'refused', 'subscribed', 'pong']).optional(),

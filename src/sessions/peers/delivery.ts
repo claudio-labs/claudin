@@ -75,7 +75,7 @@ export type InboundDelivery = {
  * directory when a live session advertises the claimed `from`; otherwise the
  * claim is shown as one and there is nothing to reply to.
  */
-export async function identifySender(
+async function identifySender(
   frame: InboundFrame,
   readDirectory: () => Promise<SessionDirectory>,
 ): Promise<PeerSender> {

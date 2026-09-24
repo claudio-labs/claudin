@@ -22,7 +22,7 @@ export function socketPathFor(
   return join('/tmp', `${SOCKET_DIR_NAME}-${process.getuid?.() ?? 'user'}`, `${pid}.sock`)
 }
 
-export class UnsafeSocketDirError extends Error {}
+class UnsafeSocketDirError extends Error {}
 
 /**
  * Create the socket directory owner-only, and refuse one that is not ours: in a

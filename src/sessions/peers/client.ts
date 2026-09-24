@@ -8,7 +8,7 @@ import {
   type ResponseFrame,
 } from 'src/sessions/peers/frames.js'
 
-export const SEND_TIMEOUT_MS = 5_000
+const SEND_TIMEOUT_MS = 5_000
 const PROBE_TIMEOUT_MS = 250
 
 export class PeerDeliveryError extends Error {
