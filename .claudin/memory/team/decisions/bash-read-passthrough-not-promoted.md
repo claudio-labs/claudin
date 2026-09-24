@@ -66,3 +66,9 @@ Reads of a credited file, the credit engaged in 4/5 runs. The pre-registered
 turn and tool-result-chars gates still missed —
 [[cat-read-and-batch-read-ab-2026-09-24]]. Whether to flip the defaults is the
 user's call; until then both flags stay off.
+
+**Round 3 — still off (2026-09-24, d444c515).** A leading `cd` and
+`head`/`tail` prints now count, which closed the two grammar misses the A/B
+showed. Measured on top of the batch Read, now on by default
+([[batch-read-default-on]]), the credit cost +6% and added 2 API calls. The
+model reads by batch Read and seldom by `cat`. The flags stay off.

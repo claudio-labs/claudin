@@ -23,6 +23,7 @@
 - [Git tool — D2, shipped 2026-08-04](decisions/git-tool-design.md) — Git({commands:[…]}) over all git+gh; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; 'auto' sentinel shadows the global, /effort inherit clears it
 - [Opus 5.5 defaults to medium effort, like Claude Code (2026-09-24)](decisions/opus-5-5-default-effort-medium.md) — was high; the only lever that closed the cost gap; pins still win
+- [Batch Read ON by default, hooks per file (2026-09-24)](decisions/batch-read-default-on.md) — file_paths + symbol lists; `CLAUDIN_READ_MULTI=0` kills it
 - [Adaptive thinking is now the default (was opt-in)](decisions/adaptive-thinking-default-on.md) — 2026-07-13 flip: Claude sends {type:'adaptive'} by default; CLAUDIN_ENABLE_ADAPTIVE_THINKING=0 opts out
 - [Claudin defaults to essential-traffic privacy level](decisions/anthropic-startup-traffic-disabled-default.md) — b2be87b5 flips default; 7→0 Anthropic startup requests; ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0 opts back in
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — fetchPrStatus dispatches host→gh/glab/tea; prStatusHosts lives in config.json NOT settings.json
@@ -30,7 +31,7 @@
 - [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](decisions/code-review-graph-evaluated-rejected.md) — 284 MB db, impact answer = 203k tokens; their bench loses to reading the diff
 - [Cache TTL tiers: agent:* 5m, fork keeps 1h (2026-07-05)](decisions/cache-ttl-tiering-subagents.md) — subagent caches die with the run; new one-shot querySources go in SHORT_LIVED_QUERY_SOURCES; auto_mode reverted to 1h
 - [Defer-cache-marker — default REVERSED to 0 on 2026-09-23](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more (Opus, Sonnet, 5m); its 06-07 bench was unreliable; 2048 is opt-in
-- [Bash read pass-through + read credit — NOT promoted 2026-09-23](decisions/bash-read-passthrough-not-promoted.md) — placebo matched it, model re-Read; round 2 (09-24) fixed both blockers, promotion pending
+- [Bash read pass-through + read credit — NOT promoted (09-23, 09-24)](decisions/bash-read-passthrough-not-promoted.md) — blockers fixed, engages, but +6% once the batch Read is on
 - [Devin provider port halted 2026-06-06 — f31 attestation is a hard blocker](decisions/devin-provider-port-halted.md) — feat/devin-provider not merging; don't reopen without a Ghidra/IDA budget
 - [OpenTelemetry stays devDep-only + build-stubbed — removal REJECTED 2026-07-08](decisions/opentelemetry-devdep-stubbed.md) — zero runtime footprint; the deps only satisfy tsc `import type` refs
 
@@ -128,7 +129,7 @@
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Dev tools deferred + Bash advice A/B 09-24](dev-tools-deferred-advice-ab-2026-09-24.md) — no cost regression, prefix −3.3k; deferred RunTests unused; notes = generic line = no effect
-- [cat-read + batch-Read A/B 09-24](cat-read-and-batch-read-ab-2026-09-24.md) — catread −9% cost, credit engaged 4/5, misses its turn gate; readmulti −3 API calls, cost flat
+- [cat-read + batch-Read A/Bs 09-24](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties Claude Code ($1.04 vs $1.04, one run); catread +6% on top, off
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 
 ## Providers & models

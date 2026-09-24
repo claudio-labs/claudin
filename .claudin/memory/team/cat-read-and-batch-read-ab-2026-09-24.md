@@ -1,6 +1,6 @@
 ---
 name: cat-read-and-batch-read-ab-2026-09-24
-description: 5-arm A/B (N=5, 2026-09-24) of "a whole cat counts as a read" (CLAUDIN_BASH_FILE_READ_PASSTHROUGH + CLAUDIN_BASH_READ_CREDIT) and the batch Read (CLAUDIN_READ_MULTI) on branch perf/cat-read-and-batch-read — both mechanisms engage; catread −9% cost and −41% tool calls but misses its turn gate; readmulti −3 API calls at flat cost; promotion is the user's call
+description: A/Bs (N=5, 2026-09-24) of "a whole cat counts as a read" (CLAUDIN_BASH_READ_CREDIT + PASSTHROUGH) and the batch Read (CLAUDIN_READ_MULTI) on perf/cat-read-and-batch-read — batch Read PROMOTED (per-file hooks) and ties Claude Code ($1.04 vs $1.04); catread, even with cd/head/tail, adds +6% on top of it and stays off
 type: project
 ---
 
@@ -40,4 +40,27 @@ edits without a Read.
 - Thinking stays ~2× Claude Code's in every claudin arm; nothing here touches it.
 - Proofs kept: `scripts/bench/ab/read-credit-e2e.ts` (mock model, 17 checks),
   `scripts/migrations/probes/catAsRead.json` (96) and `readMulti.json` (97).
-- Promotion of either flag: pending the user's call (2026-09-24).
+- Promotion: the user promoted the batch Read, conditioned on per-file hooks
+  ([[batch-read-default-on]]), and sent catread back for `cd` and `head`/`tail`.
+
+**Round 2 — batch Read on by default, catread with `cd` + `head`/`tail`** (run
+`/tmp/session-cache-ab/20260924-231111`, build d444c515, 4 simultaneous arms,
+20/20 sessions 18/18 + one commit):
+
+| median [min–max] | claude | claudindev (batch Read on) | catread (+ cat credit) | placebo |
+|---|---|---|---|---|
+| cost | $1.039 [0.94–1.10] | **$1.038** [0.95–1.14] | $1.105 [1.04–1.19] | $1.054 |
+| API calls | 17 | **17** | 19 | 17 |
+| turns before the 1st edit | 4 | 4 | 4 | 3 |
+| Read calls (batches) | 0 | 3 (2, 7 files each) | 4 (3) | 3 (2) |
+| cache read | 743k | 737k | 889k (+20%) | 789k |
+| tool-result chars | 44.4k | 46.7k | 50.4k | 46.6k |
+
+- **Claudin with the batch Read ties Claude Code** on cost and API calls in the
+  same run — first time on this bench. Run to run it still swings: in
+  `-212723` the readmulti arm was +20% against claude. Quote the tie only with
+  its run.
+- **catread on top of it is noise or worse**: +6% cost, +2 API calls, +20%
+  cache read. The grammar misses fell (refused cats 2 → 1), but with the batch
+  Read the model rarely reads by `cat` at all (1 count-as-read line per run).
+  It stays behind its two flags, off; the batch Read covers this case.
