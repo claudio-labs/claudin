@@ -8,6 +8,7 @@
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Decisions
+- [Bash advises instead of refusing; 4 dev tools deferred (2026-09-24)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT=refuse|off`, `CLAUDIN_EAGER_DEV_TOOLS=1`
 - [SendMessage reaches other local sessions since 2026-09-24](decisions/cross-session-messaging.md) — owner-only sockets + token; Claudin↔Claudin, REPL inbox only; mode parity holds across bypass
 - [apply_patch is called Patch on the wire since 2026-09-24](decisions/patch-tool-rename.md) — alias + legacy-name map keep rules/hooks/transcripts; a census must count both names
 - [apply_patch takes any read since 2026-09-24](decisions/apply-patch-any-read.md) — only never-read is refused; outline/range/stale pass, the hunk match is the check; Edit keeps the gate
