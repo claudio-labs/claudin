@@ -28,8 +28,10 @@ export { MEMO_LIMIT }
  *
  * An appended <system-reminder> is NOT the lever — that shape was measured in
  * this codebase at zero adoption. What moves behavior is a refusal that names the
- * alternative, so this mirrors RunTestsTool/redirect.ts: validateInput declines
- * once and hands back the exact tool calls to make instead.
+ * alternative, so this mirrors RunTestsTool/redirect.ts: Bash declined once and
+ * handed back the exact tool calls to make instead. Since 2026-09-24 the
+ * default is to run the command and append those calls to its result; the
+ * refusal is `CLAUDIN_BASH_REDIRECT=refuse` (redirectLanes.ts).
  *
  * Where this is DELIBERATELY narrower than the prompt line it enforces:
  *
@@ -49,7 +51,7 @@ export { MEMO_LIMIT }
  * escape the refusal would be a wall rather than a signpost.
  *
  * On by default; `CLAUDIN_DISABLE_TOOL_REDIRECT=1` turns the whole lane off (see
- * BashTool.tsx). Deliberately NOT documented in AGENTS.md: that file is read by
+ * redirectLanes.ts). Deliberately NOT documented in AGENTS.md: that file is read by
  * every agent harness that opens this repo, and a Claudin-only refusal listed
  * there reads as an instruction the others cannot honor.
  */
@@ -1384,6 +1386,19 @@ export function renderToolRedirect(analysis: RedirectAnalysis): string {
     'If you genuinely need the shell form, re-send this exact Bash command and it will run.',
   )
   return lines.join('\n')
+}
+
+/**
+ * The advise-mode note (BashTool/redirectLanes.ts): the command has already
+ * run, so this only names the calls that read or search without the shell.
+ */
+export function renderFileToolsAdvice(analysis: RedirectAnalysis): string {
+  const names = analysis.targets.map(target => TOOL_NAME[target]).join('/')
+  const calls = analysis.units.flatMap(unit => unit.calls.map(call => `  → ${renderCall(call)}`))
+  return [
+    `This command only reads or searches files, and ${names} ${analysis.targets.length > 1 ? 'do' : 'does'} that without the shell:`,
+    ...calls,
+  ].join('\n')
 }
 
 function renderCall(call: SuggestedCall): string {

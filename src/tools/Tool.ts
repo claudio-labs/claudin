@@ -110,6 +110,16 @@ export type ValidationResult =
 /** What `Tool.resolveInput` hands back: the input every later step sees, or why there is none. */
 export type ResolvedInput<T> = { ok: true; input: T } | { ok: false; message: string }
 
+/** What `Tool.advise` hands back: a note about this call, and the tool it points at. */
+export type ToolAdvice = {
+  message: string
+  /**
+   * The dedicated tool the note names. When it is deferred and not loaded yet,
+   * the note also says which ToolSearch call loads it.
+   */
+  suggests?: string
+}
+
 export type SetToolJSXFn = (
   args: {
     jsx: React.ReactNode | null
@@ -620,6 +630,16 @@ export type Tool<
     input: z.infer<Input>,
     context: ToolUseContext,
   ): Promise<ValidationResult>
+
+  /**
+   * A note about this call for the model, appended to its result — success or
+   * error — as a reminder. Bash uses it to name a dedicated tool that does a
+   * command's job better, where it used to refuse the command. Asked exactly
+   * once per call, after permission and just before `call()`, so an answer that
+   * spends state (a one-shot memo) is spent once; a throw is logged and reads
+   * as no advice.
+   */
+  advise?(input: z.infer<Input>, context: ToolUseContext): ToolAdvice | null
 
   /**
    * Determines if the user is asked for permission. Only called after validateInput() passes.

@@ -18,7 +18,11 @@ export { MEMO_LIMIT }
  * in its toolset. An appended <system-reminder> is NOT the lever here — that
  * shape was measured in this codebase at zero adoption (the SERIAL_READ_NUDGE
  * verdict); what moves behavior is a refusal that names the alternative. So
- * BashTool's validateInput declines a bare test command and points at RunTests.
+ * Bash declined a bare test command and pointed at RunTests. Since 2026-09-24
+ * the default is to run it and append that pointer to its result instead (a
+ * user decision, measured against the refusal as an A/B arm); the refusal
+ * described below is `CLAUDIN_BASH_REDIRECT=refuse`. Both modes share these
+ * gates — see BashTool/redirectLanes.ts.
  *
  * Deliberately narrow — it only fires where RunTests does the same job:
  *
@@ -41,8 +45,8 @@ export { MEMO_LIMIT }
  * escape there would be no way to get raw runner output at all (print
  * debugging, a crash trace), and the refusal would be a wall, not a signpost.
  *
- * On by default, with all three gates on the call site (BashTool.tsx's
- * validateInput): it is skipped when RunTests is absent from THIS agent's
+ * On by default, with all three gates on the call site
+ * (BashTool/redirectLanes.ts): it is skipped when RunTests is absent from THIS agent's
  * toolset — refusing Bash without an alternative is a dead end — never fires for
  * a backgrounded run, which RunTests cannot do, and
  * `CLAUDIN_DISABLE_RUNTESTS_REDIRECT=1` turns the lane off entirely.
@@ -198,4 +202,13 @@ export function renderRunTestsRedirect(command: string): string {
     `With no arguments it runs the suite it detects here; pass command: ${JSON.stringify(core)} to run this exact one, plus path/pattern to scope it.`,
     `If you specifically need raw runner output (print debugging, a crash trace), re-send this exact Bash command and it will run — a \`| tail\`, \`| head\` or \`| grep\` on it runs on the first send.`,
   ].join(' ')
+}
+
+/**
+ * The advise-mode note (BashTool/redirectLanes.ts): the suite has already run
+ * in Bash, so this only names the tool and the call that does it better.
+ */
+export function renderRunTestsAdvice(command: string): string {
+  const core = stripOutputTrimTail(command.trim())
+  return `\`${core}\` has a dedicated tool: ${RUN_TESTS_TOOL_NAME} runs the same suite and returns a failures-first summary — each failure's name, file:line and source excerpt — instead of the runner's log: ${RUN_TESTS_TOOL_NAME}({"command":${JSON.stringify(core)}}), plus path/pattern to scope it.`
 }

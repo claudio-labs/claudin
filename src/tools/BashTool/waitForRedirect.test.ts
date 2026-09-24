@@ -6,6 +6,7 @@ import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
 import { resetWaitForRedirectMemoForTesting } from 'src/tools/WaitForTool/redirect.js'
 
 const POLL = 'tmux send-keys -t s Enter && sleep 8 && tmux capture-pane -t s -p | tail -25'
+const CALL = 'WaitFor({"setup":"tmux send-keys -t s Enter","command":"tmux capture-pane -t s -p | tail -25"'
 
 function ctx(withWaitFor: boolean): ToolUseContext {
   return {
@@ -23,15 +24,57 @@ async function validate(
   return BashTool.validateInput?.({ command } as never, ctx(withWaitFor))
 }
 
-describe('Bash → WaitFor sleep-poll redirect gate', () => {
-  const saved = process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT
-  beforeEach(() => {
-    resetWaitForRedirectMemoForTesting()
-    delete process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT
+function advise(command: string, withWaitFor = true, runInBackground = false) {
+  return BashTool.advise?.(
+    { command, ...(runInBackground && { run_in_background: true }) } as never,
+    ctx(withWaitFor),
+  )
+}
+
+const ENV_KEYS = [
+  'CLAUDIN_BASH_REDIRECT',
+  'CLAUDIN_ENABLE_WAITFOR_REDIRECT',
+  'CLAUDIN_DISABLE_WAITFOR_REDIRECT',
+] as const
+const saved = Object.fromEntries(ENV_KEYS.map(key => [key, process.env[key]]))
+
+beforeEach(() => {
+  resetWaitForRedirectMemoForTesting()
+  for (const key of ENV_KEYS) delete process.env[key]
+})
+afterEach(() => {
+  for (const key of ENV_KEYS) {
+    const value = saved[key]
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+})
+
+describe('Bash → WaitFor sleep-poll lane, advise mode (the default)', () => {
+  test('the poll runs, and its result names the exact WaitFor call', async () => {
+    expect((await validate(POLL))?.result).toBe(true)
+    const advice = advise(POLL)
+    expect(advice?.suggests).toBe('WaitFor')
+    expect(advice?.message).toContain(CALL)
   })
-  afterEach(() => {
-    if (saved === undefined) delete process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT
-    else process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT = saved
+
+  test('CLAUDIN_DISABLE_WAITFOR_REDIRECT=1 silences it', () => {
+    process.env.CLAUDIN_DISABLE_WAITFOR_REDIRECT = '1'
+    expect(advise(POLL)?.message ?? '').not.toContain('WaitFor(')
+  })
+
+  test('WaitFor absent from the toolset: no pointer', () => {
+    expect(advise(POLL, false)?.message ?? '').not.toContain('WaitFor(')
+  })
+
+  test('a backgrounded run gets no pointer', () => {
+    expect(advise(POLL, true, true)).toBeNull()
+  })
+})
+
+describe('Bash → WaitFor sleep-poll lane, refuse mode', () => {
+  beforeEach(() => {
+    process.env.CLAUDIN_BASH_REDIRECT = 'refuse'
   })
 
   test('flag off: a mid-chain sleep is not refused by this lane', async () => {
@@ -43,9 +86,7 @@ describe('Bash → WaitFor sleep-poll redirect gate', () => {
     process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT = '1'
     const first = await validate(POLL)
     expect(first?.result).toBe(false)
-    expect(first?.message).toContain(
-      'WaitFor({"setup":"tmux send-keys -t s Enter","command":"tmux capture-pane -t s -p | tail -25"',
-    )
+    expect(first?.message).toContain(CALL)
     const second = await validate(POLL)
     expect(second?.message ?? '').not.toContain('WaitFor')
   })

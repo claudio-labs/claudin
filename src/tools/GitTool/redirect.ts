@@ -15,11 +15,13 @@ export { MEMO_LIMIT }
  * BashTool git instructions explicitly told it to. An appended
  * <system-reminder> is NOT the lever (measured at zero adoption in this
  * codebase); what moves behaviour is a refusal that names the alternative. So
- * BashTool's validateInput declines a bare git/gh READ and points here.
+ * Bash declined a bare git/gh READ and pointed here. Since 2026-09-24 the
+ * default is to run it and append that pointer to its result instead; the
+ * refusal is `CLAUDIN_BASH_REDIRECT=refuse` (BashTool/redirectLanes.ts).
  *
- * Disable with `CLAUDIN_DISABLE_GIT_REDIRECT=1` (read at the BashTool call
- * site, alongside the sibling RunTests, Typecheck and Read/Grep/Glob
- * redirects). `CLAUDIN_DISABLE_GIT_TOOL=1` removes the tool entirely, which
+ * Disable with `CLAUDIN_DISABLE_GIT_REDIRECT=1` (read in
+ * BashTool/redirectLanes.ts, alongside the sibling redirects).
+ * `CLAUDIN_DISABLE_GIT_TOOL=1` removes the tool entirely, which
  * also disarms this redirect via the toolset check.
  *
  * Narrow in the usual three ways, plus one of its own:
@@ -185,4 +187,15 @@ export function renderGitRedirect(command: string): string {
         ]),
     `If you specifically need raw git output, re-send this exact Bash command and it will run.`,
   ].join(' ')
+}
+
+/**
+ * The advise-mode note (BashTool/redirectLanes.ts): the read has already run
+ * in Bash, so this only names the tool and the call that does it better.
+ */
+export function renderGitAdvice(command: string): string {
+  const split = splitCdPrefix(command.trim())
+  const core = stripOutputTrimTail((split?.rest ?? command).trim())
+  const args = split === null ? { commands: [core] } : { cwd: split.cwd, commands: [core] }
+  return `\`${core}\` has a dedicated tool: ${GIT_TOOL_NAME} runs it and returns a budgeted result instead of the raw dump, and takes a LIST, so a burst of reads is one call: ${GIT_TOOL_NAME}(${JSON.stringify(args)}).`
 }

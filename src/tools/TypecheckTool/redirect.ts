@@ -15,11 +15,13 @@ export { MEMO_LIMIT }
  * The model reaches for `bun run typecheck` out of habit even with the tool in
  * its toolset. An appended <system-reminder> is NOT the lever — that shape was
  * measured in this codebase at zero adoption; what moves behaviour is a refusal
- * that names the alternative. So BashTool's validateInput declines a bare check
- * command and points here.
+ * that names the alternative. So Bash declined a bare check command and pointed
+ * here. Since 2026-09-24 the default is to run it and append that pointer to
+ * its result instead; the refusal is `CLAUDIN_BASH_REDIRECT=refuse`. Both modes
+ * share these gates — see BashTool/redirectLanes.ts.
  *
- * Disable with `CLAUDIN_DISABLE_TYPECHECK_REDIRECT=1` (read at the BashTool call
- * site, alongside the sibling RunTests and Read/Grep/Glob redirects).
+ * Disable with `CLAUDIN_DISABLE_TYPECHECK_REDIRECT=1` (read in
+ * BashTool/redirectLanes.ts, alongside the sibling redirects).
  *
  * Deliberately narrow, in the same three ways as the RunTests redirect:
  *
@@ -122,4 +124,13 @@ export function renderTypecheckRedirect(command: string): string {
         ]),
     `If you specifically need raw compiler output, re-send this exact Bash command and it will run.`,
   ].join(' ')
+}
+
+/**
+ * The advise-mode note (BashTool/redirectLanes.ts): the check has already run
+ * in Bash, so this only names the tool and the call that does it better.
+ */
+export function renderTypecheckAdvice(command: string): string {
+  const core = stripOutputTrimTail(command.trim())
+  return `\`${core}\` has a dedicated tool: ${TYPECHECK_TOOL_NAME} runs the same checker and reports only the diagnostics missing from the project's recorded backlog, each with file:line and a source excerpt: ${TYPECHECK_TOOL_NAME}({"command":${JSON.stringify(core)}}), plus path to filter the report.`
 }
