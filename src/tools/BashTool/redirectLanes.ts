@@ -99,7 +99,7 @@ export function pickBashRedirect(
       if (sleepPattern !== null) {
         return {
           message: advise
-            ? renderBlockingSleepAdvice(sleepPattern)
+            ? renderBlockingSleepAdvice(sleepPattern, hasTool(WAITFOR_TOOL_NAME))
             : `Blocked: ${sleepPattern}. Run blocking commands in the background with run_in_background: true — you'll get a completion notification when done. For streaming events (watching logs, polling APIs), use the Monitor tool. If you genuinely need a delay (rate limiting, deliberate pacing), keep it under 2 seconds.`,
           errorCode: 10,
           ...(hasTool(WAITFOR_TOOL_NAME) && { suggests: WAITFOR_TOOL_NAME }),
@@ -171,6 +171,7 @@ export function pickBashRedirect(
 }
 
 /** The blocking-sleep lane's note: the sleep has already held the turn. */
-function renderBlockingSleepAdvice(sleepPattern: string): string {
-  return `That ${sleepPattern} held the turn while it slept. A command that takes a while belongs in run_in_background: true — you get a notification when it finishes. To follow output as it streams use Monitor, and to wait until something appears use ${WAITFOR_TOOL_NAME}.`
+function renderBlockingSleepAdvice(sleepPattern: string, hasWaitFor: boolean): string {
+  const waitFor = hasWaitFor ? `, and to wait until something appears use ${WAITFOR_TOOL_NAME}` : ''
+  return `That ${sleepPattern} held the turn while it slept. A command that takes a while belongs in run_in_background: true — you get a notification when it finishes. To follow output as it streams use Monitor${waitFor}.`
 }
