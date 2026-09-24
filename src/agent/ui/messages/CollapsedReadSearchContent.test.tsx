@@ -112,7 +112,7 @@ describe('CollapsedReadSearchContent — write lane', () => {
   })
 
   test('a moved file gets its own verb, not "updated"', async () => {
-    // Only apply_patch's `Move to:` produces 'R', and it is the one kind no
+    // Only Patch's `Move to:` produces 'R', and it is the one kind no
     // other test reaches — the four verbs are a single array, so a wrong entry
     // would only ever show up here.
     const out = await render({

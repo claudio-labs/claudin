@@ -1,0 +1,65 @@
+{
+  "test": [
+    "src/tools/WaitForTool/WaitForTool.test.ts",
+    "src/tools/MonitorTool/MonitorTool.test.ts",
+    "src/tools/RunTestsTool/RunTestsTool.test.ts",
+    "src/sessions/__tests__/pure.test.ts",
+    "src/tools/devToolsDeferred.test.ts"
+  ],
+  "source": "src/tools/WaitForTool/WaitForTool.ts",
+  "probes": [
+    {
+      "name": "WaitFor passes Bash's { command } through on allow",
+      "find": "    if (bashDecision.behavior === 'allow') {\n      return { behavior: 'allow', updatedInput: input }\n    }\n    return bashDecision\n  },\n\n  async validateInput",
+      "replace": "    return bashDecision\n  },\n\n  async validateInput"
+    },
+    {
+      "name": "Monitor passes Bash's { command } through on allow",
+      "source": "src/tools/MonitorTool/MonitorTool.ts",
+      "find": "    if (bashDecision.behavior === 'allow') {\n      return { behavior: 'allow', updatedInput: input }\n    }\n    return bashDecision",
+      "replace": "    return bashDecision"
+    },
+    {
+      "name": "RunTests runs wherever the session shell is",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "  const execCommand = `cd ${singleQuote(cwd)} && {\n",
+      "replace": "  const execCommand = `{\n"
+    },
+    {
+      "name": "RunTests lets its cd move the session shell",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "      preventCwdChanges: true,\n",
+      "replace": ""
+    },
+    {
+      "name": "RunTests sets FORCE_COLOR=0 instead of unsetting it",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "unset FORCE_COLOR\n${plan.command}",
+      "replace": "export FORCE_COLOR=0\n${plan.command}"
+    },
+    {
+      "name": "RunTests goes back to the inline env prefix",
+      "source": "src/tools/RunTestsTool/run.ts",
+      "find": "  const execCommand = `cd ${singleQuote(cwd)} && {\nexport CI=true NO_COLOR=1\nunset FORCE_COLOR\n${plan.command}\n}`",
+      "replace": "  const execCommand = `CI=true NO_COLOR=1 ${plan.command}`"
+    },
+    {
+      "name": "build/test/check ticks append again",
+      "source": "src/sessions/pure/typeGuards.ts",
+      "find": "  'build_progress',\n  'test_progress',\n  'check_progress',\n",
+      "replace": ""
+    },
+    {
+      "name": "the dev tools go back to the eager prefix",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  if (DEFERRED_DEV_TOOLS.has(tool.name)) {\n    return !isEnvTruthy(process.env.CLAUDIN_EAGER_DEV_TOOLS)\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "CLAUDIN_EAGER_DEV_TOOLS is ignored",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "    return !isEnvTruthy(process.env.CLAUDIN_EAGER_DEV_TOOLS)\n",
+      "replace": "    return true\n"
+    }
+  ]
+}

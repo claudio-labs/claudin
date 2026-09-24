@@ -115,13 +115,13 @@ audit; integrated regression:
   stub, **`getClipFrontierIndex`**.
 - `src/agent/compact/stableStubState/applyInputStubs.ts` — the client-side
   twin of `clear_tool_inputs`: a clipped call's declared input fields
-  (`Tool.clearableInputFields` — apply_patch.patchText, Write.content,
+  (`Tool.clearableInputFields` — Patch.patchText, Write.content,
   Edit.old_string/new_string, NotebookEdit.new_source, Agent.prompt) are
   rewritten to `[clipped: ~N tokens of <field> from <tool>]`, byte-stable
   under `${id}#${field}` in the same registry. WIRE-ONLY: the three shim
   request paths call it right after `applyStableStubs`; it is never
   substituted into QueryEngine's messages, so the TUI, the plan dossier and
-  persistence keep the full call. An input-only id (apply_patch) never
+  persistence keep the full call. An input-only id (Patch) never
   enters the result set — that set stubs whatever it is given.
 - `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: marker
   on the last message capped at the frontier (`min(last, frontier)`); the

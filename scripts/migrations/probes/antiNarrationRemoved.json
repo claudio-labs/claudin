@@ -10,8 +10,8 @@
     {
       "name": "the checkpoints come back to the anthropic addendum",
       "source": "src/agent/prompts/familyAddendums/anthropic.ts",
-      "find": "  `When a change touches several files, land it as ONE apply_patch",
-      "replace": "  `Outside the failure cases above, speak only at four checkpoints. When a change touches several files, land it as ONE apply_patch"
+      "find": "  `When a change touches several files, land it as ONE Patch call",
+      "replace": "  `Outside the failure cases above, speak only at four checkpoints. When a change touches several files, land it as ONE Patch call"
     },
     {
       "name": "glm gets its narration line back",

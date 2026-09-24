@@ -86,7 +86,7 @@ the one it cannot: a rule that is *wrong* rather than broken. Concretely —
    **never read these files into context, they are large.**
 
    Only the **orientation prefix** matters: the tool calls in a session before
-   its first \`Edit\`/\`Write\`/\`apply_patch\`. That is the stretch a navigation
+   its first \`Edit\`/\`Write\`/\`Patch\`. That is the stretch a navigation
    rule could shorten. Rank files by the number of **distinct sessions** that
    read them, not by raw call count — five reads in one investigation is not a
    pattern.

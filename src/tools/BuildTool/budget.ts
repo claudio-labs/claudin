@@ -94,6 +94,9 @@ function artifactNote(result: BuildResult): string {
 function stallNote(stall: StallReport): string {
   const where = stall.lastLine ? ` Last output: ${truncate(stall.lastLine, 200)}` : ''
   if (stall.reason === 'idle') {
+    if (stall.cpuIdleMs !== undefined) {
+      return `Stopped after ${formatDuration(stall.ranMs)}: no output for the last ${formatDuration(stall.silentMs)}, and no CPU use in its processes for the last ${formatDuration(stall.cpuIdleMs)} — it was waiting on something (a lock, the network, a prompt), not compiling.${where} Raise idleTimeout to wait longer.`
+    }
     return `Stopped after ${formatDuration(stall.ranMs)} with no output for the last ${formatDuration(stall.silentMs)}. That is silence, not proof of a hang — linking and a cold daemon are both quiet for a long time.${where} Raise idleTimeout to wait longer.`
   }
   return `Stopped at the ${formatDuration(stall.ranMs)} ceiling while it was still running.${where} Raise timeout to wait longer.`

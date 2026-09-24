@@ -251,37 +251,11 @@ describe('stripOutputTrimTail', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Wiring. The redirect's call site is `validateInput` on the BashTool object,
-// which no test drives — the tests above exercise the redirect's own functions
-// directly. So without this block, deleting the call from validateInput leaves
-// every test above green while the redirect never fires in production. Reading
-// the file as text is what catches that; it is not a statement about
-// importability (BashTool.tsx does load under `bun test` — see
-// BashTool/runShellCommand.test.ts, which imports from it).
+// Wiring. The lane's gates (toolset, backgrounded run, killswitch) and its
+// call sites in both redirect modes are driven behaviourally in
+// BashTool/redirectLanes.test.ts, through `pickBashRedirect` and BashTool's own
+// `validateInput`/`advise`.
 // ---------------------------------------------------------------------------
-
-describe('BashTool wiring', () => {
-  const src = readFileSync(
-    new URL('../BashTool/BashTool.tsx', import.meta.url),
-    'utf8',
-  )
-
-  test('validateInput consults the redirect', () => {
-    expect(src).toContain('shouldRedirectToRunTests(input.command)')
-    expect(src).toContain('renderRunTestsRedirect(input.command)')
-  })
-
-  test('only when RunTests is in this agent toolset', () => {
-    expect(src).toContain(
-      'findToolByName(context?.options?.tools ?? [], RUN_TESTS_TOOL_NAME)',
-    )
-  })
-
-  test('never for a backgrounded run, and honors the killswitch', () => {
-    expect(src).toContain('CLAUDIN_DISABLE_RUNTESTS_REDIRECT')
-    expect(src).toContain('!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_RUNTESTS_REDIRECT)')
-  })
-})
 
 describe('RunTestsTool wiring', () => {
   const src = readFileSync(new URL('./RunTestsTool.ts', import.meta.url), 'utf8')

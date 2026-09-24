@@ -49,7 +49,7 @@ test('an existing Bash deny rule blocks the equivalent Container op', async () =
 test('on allow it echoes the Container input, never the synthesized Bash one', async () => {
   // bashToolHasPermission returns `updatedInput: { command }` and the harness
   // applies updatedInput verbatim. Passing it through would replace `op` with a
-  // field the schema does not have — the bug that made apply_patch dead on
+  // field the schema does not have — the bug that made Patch dead on
   // arrival in auto/bypass mode.
   const input = { op: 'ps' } as const
   const result = await checkContainerPermission(

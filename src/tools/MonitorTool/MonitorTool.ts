@@ -70,7 +70,13 @@ export const MonitorTool = buildTool({
   async checkPermissions(input, context) {
     // Delegate to the bash permission system — Monitor runs shell commands
     // just like Bash does, so the same permission rules apply.
-    return bashToolHasPermission({ command: input.command }, context)
+    const bashDecision = await bashToolHasPermission({ command: input.command }, context)
+    // Bash's verdict, never its `updatedInput`: the harness applies it
+    // verbatim, and its Bash-shaped `{ command }` would drop `description`.
+    if (bashDecision.behavior === 'allow') {
+      return { behavior: 'allow', updatedInput: input }
+    }
+    return bashDecision
   },
 
   async description(input) {

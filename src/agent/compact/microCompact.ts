@@ -339,7 +339,7 @@ function maybeReliefClip(
 
   // Result side: only ids with a clearable result enter the stub set — its
   // explicit-clip contract stubs whatever it is given, and an input-only id
-  // (apply_patch) would trade a one-line "Success" for a stub of the same
+  // (Patch) would trade a one-line "Success" for a stub of the same
   // size. Input side: every selected id that carries fields.
   const resultIds = selected.filter(c => !c.inputOnly).map(c => c.toolUseId)
   if (resultIds.length > 0) addClippedIds(resultIds)
@@ -484,7 +484,7 @@ function maybeTimeBasedMicrocompact(
   // The prefix is being rewritten regardless, so clipping the INPUTS of the
   // calls older than the kept tail costs nothing here — same registry, same
   // wire rewriter as the relief path. Independent of the result side: a
-  // stretch of apply_patch calls has nothing compactable and still carries
+  // stretch of Patch calls has nothing compactable and still carries
   // the patches.
   const inputFieldsByTool = clearableInputFieldsFromPool(
     toolUseContext?.options?.tools,

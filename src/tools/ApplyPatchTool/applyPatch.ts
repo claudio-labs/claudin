@@ -1,4 +1,4 @@
-// Orchestration for the apply_patch tool: validation, permission resolution,
+// Orchestration for the Patch tool: validation, permission resolution,
 // staging, atomic commit with best-effort rollback, and post-write wiring
 // (read-state, LSP, file history, IDE notify, diagnostics). Deliberately free
 // of any `ink`/UI import so it can be unit-tested under `bun test` (importing
@@ -11,7 +11,7 @@
 // in the session A/B of 2026-09-23, 24 of 63 claudin sessions re-sent a patch of
 // ~8k chars that way. So such a refusal keeps the patch (one per readFileState,
 // i.e. per agent) and says `patchText: "*** Resubmit"` applies it as sent. The
-// model still sees the lines before the write lands. Any other apply_patch call
+// model still sees the lines before the write lands. Any other Patch call
 // drops the kept patch. Killswitch: CLAUDIN_DISABLE_PATCH_RESUBMIT=1, which also
 // turns the sentinel back into an unparseable patch.
 //
@@ -150,7 +150,10 @@ function servedSuffix(served: string): string {
   return ` The lines it needs are shown below and now count as read${SERVED_RESEND}\n${served}`
 }
 
-const RESUBMIT_HINT = `\nEvery line the patch needs now counts as read, so it applies exactly as sent: call apply_patch with patchText "${RESUBMIT_SENTINEL}" instead of sending the patch again.`
+const RESUBMIT_HINT = `\nEvery line the patch needs now counts as read, so it applies exactly as sent: call ${APPLY_PATCH_TOOL_NAME} with patchText "${RESUBMIT_SENTINEL}" instead of sending the patch again.`
+
+/** The tool-name prefix each single-problem message carries, dropped when several are listed. */
+const MESSAGE_PREFIX_RE = new RegExp(`^${APPLY_PATCH_TOOL_NAME}:?\\s*`)
 
 /** The patch a served refusal kept, per agent: a sub-agent's readFileState is its own. */
 const pendingResubmits = new WeakMap<FileStateCache, string>()
@@ -162,7 +165,7 @@ function isResubmitEnabled(): boolean {
 /**
  * `*** Resubmit` becomes the patch the previous call's served refusal kept;
  * any other input passes through and drops what was kept, so the sentinel
- * only ever means the patch refused one apply_patch call earlier.
+ * only ever means the patch refused one Patch call earlier.
  */
 export function resolveApplyPatchInput(
   input: ApplyPatchInput,
@@ -175,7 +178,7 @@ export function resolveApplyPatchInput(
   if (kept === undefined) {
     return {
       ok: false,
-      message: `apply_patch: "${RESUBMIT_SENTINEL}" applies the patch the previous apply_patch call was refused for, and there is none — send the whole patch.`,
+      message: `${APPLY_PATCH_TOOL_NAME}: "${RESUBMIT_SENTINEL}" applies the patch the previous ${APPLY_PATCH_TOOL_NAME} call was refused for, and there is none — send the whole patch.`,
     }
   }
   return { ok: true, input: { ...input, patchText: kept } }
@@ -195,12 +198,12 @@ export function validateApplyPatchInput(
     hunks = parsePatch(input.patchText).hunks
   } catch (e) {
     return fail(
-      `apply_patch failed to parse the patch: ${e instanceof Error ? e.message : String(e)}`,
+      `${APPLY_PATCH_TOOL_NAME} failed to parse the patch: ${e instanceof Error ? e.message : String(e)}`,
     )
   }
 
   if (hunks.length === 0) {
-    return fail('apply_patch: the patch contains no file operations.')
+    return fail(`${APPLY_PATCH_TOOL_NAME}: the patch contains no file operations.`)
   }
 
   const seen = new Set<string>()
@@ -232,7 +235,7 @@ export function validateApplyPatchInput(
       absPath = resolveHunkPath(hunk.path)
     } catch (e) {
       note(
-        `apply_patch: invalid path ${JSON.stringify(hunk.path)}: ${e instanceof Error ? e.message : String(e)}`,
+        `${APPLY_PATCH_TOOL_NAME}: invalid path ${JSON.stringify(hunk.path)}: ${e instanceof Error ? e.message : String(e)}`,
       )
       continue
     }
@@ -240,7 +243,7 @@ export function validateApplyPatchInput(
 
     if (seen.has(absPath)) {
       note(
-        `apply_patch: ${rel} appears in more than one section. Combine the changes into a single section.`,
+        `${APPLY_PATCH_TOOL_NAME}: ${rel} appears in more than one section. Combine the changes into a single section.`,
       )
       continue
     }
@@ -248,7 +251,7 @@ export function validateApplyPatchInput(
 
     if (extname(absPath) === '.ipynb') {
       note(
-        `apply_patch cannot edit Jupyter notebooks. Use the NotebookEdit tool for ${rel}.`,
+        `${APPLY_PATCH_TOOL_NAME} cannot edit Jupyter notebooks. Use the NotebookEdit tool for ${rel}.`,
       )
       continue
     }
@@ -256,7 +259,7 @@ export function validateApplyPatchInput(
     if (hunk.type === 'add') {
       if (fs.existsSync(absPath)) {
         note(
-          `apply_patch: cannot Add File ${rel} — it already exists. Use "*** Update File:" to modify it.`,
+          `${APPLY_PATCH_TOOL_NAME}: cannot Add File ${rel} — it already exists. Use "*** Update File:" to modify it.`,
         )
       }
       continue
@@ -265,14 +268,14 @@ export function validateApplyPatchInput(
     // Update / Delete require the file to exist and to have been read.
     if (!fs.existsSync(absPath)) {
       note(
-        `apply_patch: cannot ${hunk.type === 'delete' ? 'Delete' : 'Update'} ${rel} — the file does not exist.`,
+        `${APPLY_PATCH_TOOL_NAME}: cannot ${hunk.type === 'delete' ? 'Delete' : 'Update'} ${rel} — the file does not exist.`,
       )
       continue
     }
 
     // Any read counts — see "Read gate" in the header.
     if (context.readFileState.get(absPath) === undefined) {
-      const message = `apply_patch: ${readGateMessage('never-read', rel, 'patching it')}`
+      const message = `${APPLY_PATCH_TOOL_NAME}: ${readGateMessage('never-read', rel, 'patching it')}`
       const served =
         hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null
       if (served) {
@@ -289,7 +292,7 @@ export function validateApplyPatchInput(
       const { movePath } = hunkTargets(hunk)
       if (movePath && fs.existsSync(movePath)) {
         note(
-          `apply_patch: cannot move ${rel} to ${displayPath(movePath)} — the destination already exists.`,
+          `${APPLY_PATCH_TOOL_NAME}: cannot move ${rel} to ${displayPath(movePath)} — the destination already exists.`,
         )
       }
     }
@@ -304,17 +307,17 @@ export function validateApplyPatchInput(
     const shown = failures.map(m => m.replace(SERVED_RESEND, ':'))
     if (shown.length === 1) return fail(shown[0] + RESUBMIT_HINT, firstErrorCode)
     return fail(
-      `apply_patch found ${shown.length} problems, each shown with the lines it needs:\n` +
-        shown.map(m => `  • ${m.replace(/^apply_patch:?\s*/, '')}`).join('\n') +
+      `${APPLY_PATCH_TOOL_NAME} found ${shown.length} problems, each shown with the lines it needs:\n` +
+        shown.map(m => `  • ${m.replace(MESSAGE_PREFIX_RE, '')}`).join('\n') +
         RESUBMIT_HINT,
       firstErrorCode,
     )
   }
   if (failures.length === 1) return fail(failures[0], firstErrorCode)
   return fail(
-    `apply_patch found ${failures.length} problems — fix all of them, then resubmit the whole patch:\n` +
+    `${APPLY_PATCH_TOOL_NAME} found ${failures.length} problems — fix all of them, then resubmit the whole patch:\n` +
       failures
-        .map(m => `  • ${m.replace(/^apply_patch:?\s*/, '')}`)
+        .map(m => `  • ${m.replace(MESSAGE_PREFIX_RE, '')}`)
         .join('\n') +
       (readRemedyFailures >= 2
         ? '\nAny file above that needs a read: do them all in ONE message (parallel Read calls), then resubmit the whole patch.'
@@ -377,8 +380,8 @@ export function checkApplyPatchPermissions(
   } catch (e) {
     return {
       behavior: 'deny',
-      message: `apply_patch could not parse the patch: ${e instanceof Error ? e.message : String(e)}`,
-      decisionReason: { type: 'other', reason: 'apply_patch parse error' },
+      message: `${APPLY_PATCH_TOOL_NAME} could not parse the patch: ${e instanceof Error ? e.message : String(e)}`,
+      decisionReason: { type: 'other', reason: `${APPLY_PATCH_TOOL_NAME} parse error` },
     }
   }
   const decision = checkBatchWritePermission(
@@ -504,7 +507,7 @@ export async function runApplyPatch(
   }
   if (stageErrors.length > 1) {
     throw new Error(
-      `apply_patch could not stage ${stageErrors.length} of ${hunks.length} file sections — fix all of them, then resubmit the whole patch:\n` +
+      `${APPLY_PATCH_TOOL_NAME} could not stage ${stageErrors.length} of ${hunks.length} file sections — fix all of them, then resubmit the whole patch:\n` +
         stageErrors.map(m => `  • ${m}`).join('\n'),
     )
   }

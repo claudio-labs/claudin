@@ -119,7 +119,7 @@ describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM', () => {
   })
 
   test('names the tool and the read-first requirement', () => {
-    expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain('ONE apply_patch')
+    expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain('ONE Patch')
     expect(ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain('in a single message')
   })
 

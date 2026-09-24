@@ -3,7 +3,7 @@
 // A cache HIT returns the stored result and never runs call() (Tool.ts
 // wrapCallWithCache), so the `readFileState.set` that call() performs is
 // skipped. The model still receives the full body — which is why this looked
-// like nothing was wrong — while Edit/apply_patch/Write see no entry and refuse
+// like nothing was wrong — while Edit/Patch/Write see no entry and refuse
 // with "has not been read yet". Reproduced from a live session where it fired
 // five times, each cleared by an identical second Read.
 //
@@ -151,7 +151,7 @@ describe('a Read served from the tool-result cache still opens the write gate', 
     await read(main, p)
 
     expect(main.readFileState.get(p)?.isPartialView).toBe(true)
-    // Edit, not apply_patch: apply_patch takes any read since 2026-09-24, so
+    // Edit, not Patch: Patch takes any read since 2026-09-24, so
     // only a gate that still refuses a partial view can show the promotion.
     const res = await FileEditTool.validateInput(
       { file_path: p, old_string: '  return 4\n', new_string: '  return 5\n' },

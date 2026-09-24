@@ -125,7 +125,7 @@ describe('clearableToolNamesFromPool', () => {
     }
     if (poolNames.has('Monitor')) expect(derived).toContain('Monitor')
     // Mutation evidence must survive a clear.
-    for (const keep of ['Edit', 'Write', 'apply_patch', 'Agent', 'ToolSearch']) {
+    for (const keep of ['Edit', 'Write', 'Patch', 'Agent', 'ToolSearch']) {
       expect(derived).not.toContain(keep)
     }
   })

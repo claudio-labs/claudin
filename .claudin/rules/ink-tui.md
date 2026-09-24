@@ -185,11 +185,8 @@ fix the right one.
   instead (that path dispatches independently of keybinding consumption, see the
   j/k carve-out in `Settings/Config.tsx`), with keys nothing else claims —
   `[`/`]` is the in-repo precedent (`diff:previousSource/nextSource`).
-- Verify keyboard wiring in a real terminal, not by reading the registration:
-  `tmux new-session -d -s probe -x 110 -y 44 -c /tmp/scratch "node dist/cli.mjs"`,
-  then one `send-keys` per key with ~0.5s between (several keys in one call get
-  coalesced/dropped) and `capture-pane -p`. `Usage.tsx:741-742` still registers
-  `scroll:page*` the dead way.
+- Verify keyboard wiring in a real terminal, not by reading the registration.
+  `Usage.tsx:741-742` still registers `scroll:page*` the dead way.
 
 ## 9. Since chalk 6, a numeric `FORCE_COLOR` pins the level instead of raising it
 
@@ -202,9 +199,9 @@ fix the right one.
 - **How to apply:** a report of a washed-out / 16-color TUI that only reproduces
   in one shell or in CI is most likely `FORCE_COLOR=1` in the environment, not a
   theme or renderer bug. Check `chalk.level` before touching `colorize.ts`.
-  Our own writes are unaffected — `RunTestsTool/run.ts` passes `FORCE_COLOR=0` to
-  the child and the profile scripts pass `3`, both of which mean the same thing in
-  either version.
+  Our own writes are unaffected — `RunTestsTool/run.ts` unsets `FORCE_COLOR` for
+  the child (and sets `NO_COLOR=1`), and the profile scripts pass `3`, which
+  means the same thing in either version.
 - Don't re-raise the level in `src/terminal/ink/colorize.ts` to restore the old behavior:
   the level-2→3 (vscode) and >2→2 (tmux) fixups there correct a *detection* miss,
   whereas a numeric `FORCE_COLOR` is an explicit user request that chalk now

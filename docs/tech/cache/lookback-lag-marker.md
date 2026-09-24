@@ -42,7 +42,7 @@ message-level `cache_control`, deferred to the earliest index whose suffix is
 ≥ 2048 estimated tokens. During a run of tiny tool calls (TaskUpdate, a short
 Grep) the marker crawls while the uncached tail grows to 3–6k real tokens over
 15–30 messages. The next big block — a pasted screenshot, a Read that drags a
-rule file in, an apply_patch — makes the walk from the end reach the threshold
+rule file in, a Patch — makes the walk from the end reach the threshold
 within one message, and the marker jumps to the tail in a single step.
 
 Anthropic's prompt-caching documentation ("lookback window"):

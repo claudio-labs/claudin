@@ -13,15 +13,17 @@ export { MEMO_LIMIT }
  *
  * Same lever as the RunTests and Typecheck redirects: an appended
  * `<system-reminder>` was measured in this codebase at zero adoption, so what
- * moves behaviour is a refusal that names the alternative. BashTool's
- * validateInput declines a bare build command once and points here.
+ * moves behaviour is a refusal that names the alternative. Bash declined a bare
+ * build command once and pointed here; since 2026-09-24 the default is to run
+ * it and append that pointer to its result instead, and the refusal is
+ * `CLAUDIN_BASH_REDIRECT=refuse` (BashTool/redirectLanes.ts).
  *
  * What the refusal says is only what to CALL. Why the tool is worth calling
  * belongs upstream of any command, in BashTool's own "Prefer:" list — a model
  * that has read the description already knows before it reaches this file.
  *
- * Disable with `CLAUDIN_DISABLE_BUILD_REDIRECT=1` (read at the BashTool call
- * site, alongside the sibling redirects).
+ * Disable with `CLAUDIN_DISABLE_BUILD_REDIRECT=1` (read in
+ * BashTool/redirectLanes.ts, alongside the sibling redirects).
  *
  * Narrow in the same three ways as its siblings — single command only, the tool
  * must be what the command STARTS with, and no flag asking for what the tool
@@ -176,4 +178,18 @@ export function renderBuildRedirect(command: string): string {
         ]),
     `If you specifically need the raw build log, re-send this exact Bash command and it will run.`,
   ].join(' ')
+}
+
+/**
+ * The advise-mode note (BashTool/redirectLanes.ts): the build has already run
+ * in Bash, so this only names the tool and the call that does it better.
+ */
+export function renderBuildAdvice(command: string): string {
+  const parsed = parseRedirectableBuild(command)
+  const core = parsed?.command ?? stripOutputTrimTail(command.trim())
+  const args =
+    parsed?.directory === undefined
+      ? { command: core }
+      : { directory: parsed.directory, command: core }
+  return `\`${core}\` has a dedicated tool: ${BUILD_TOOL_NAME} runs it and returns the diagnostics with file:line and a source excerpt, or the block that explains a failure with no position, instead of the build log: ${BUILD_TOOL_NAME}(${JSON.stringify(args)}).`
 }

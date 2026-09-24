@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { formatBuildResult } from 'src/tools/BuildTool/budget.js'
-import { BuildTool, resolveBuildCommand } from 'src/tools/BuildTool/BuildTool.js'
+import { BuildTool, resolveBuildCommand, resolveIdleTimeoutMs } from 'src/tools/BuildTool/BuildTool.js'
 import type { BuildProgress, BuildResult } from 'src/tools/BuildTool/types.js'
 
 const roots: string[] = []
@@ -49,6 +49,22 @@ describe('resolveBuildCommand', () => {
   test('an override for a system this project does not have resolves to nothing', () => {
     const root = project({ 'Cargo.toml': '[package]' })
     expect(runWithCwdOverride(root, () => resolveBuildCommand({ system: 'gradle' }))).toBeNull()
+  })
+})
+
+describe('resolveIdleTimeoutMs', () => {
+  // Every idle stop on record carried a 15–20 minute `timeout` and was killed at
+  // the 180 s default: the caller had said how long to wait.
+  test('an explicit timeout is also the idle limit', () => {
+    expect(resolveIdleTimeoutMs({ timeout: 1_200_000 })).toBe(1_200_000)
+  })
+
+  test('an explicit idleTimeout wins over the timeout', () => {
+    expect(resolveIdleTimeoutMs({ timeout: 1_200_000, idleTimeout: 60_000 })).toBe(60_000)
+  })
+
+  test('with neither, the default idle limit applies', () => {
+    expect(resolveIdleTimeoutMs({})).toBe(180_000)
   })
 })
 
@@ -258,7 +274,7 @@ describe('BuildTool.outputSchema — what survives to the renderer', () => {
     degraded: false,
     exitCode: 0,
     durationMs: 135,
-    stall: { reason: 'idle', ranMs: 180_000, silentMs: 180_000, lastLine: 'linking' },
+    stall: { reason: 'idle', ranMs: 180_000, silentMs: 180_000, cpuIdleMs: 180_000, lastLine: 'linking' },
   }
 
   test('the duration reaches the renderer', () => {
@@ -272,5 +288,10 @@ describe('BuildTool.outputSchema — what survives to the renderer', () => {
     const parsed = BuildTool.outputSchema.parse(result) as BuildResult
     expect(parsed.stall?.reason).toBe('idle')
     expect(parsed.stall?.ranMs).toBe(180_000)
+  })
+
+  test('a build stopped for an idle CPU still says so', () => {
+    const parsed = BuildTool.outputSchema.parse(result) as BuildResult
+    expect(parsed.stall?.cpuIdleMs).toBe(180_000)
   })
 })

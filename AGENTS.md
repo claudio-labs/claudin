@@ -1,34 +1,10 @@
 # AGENTS.md
 
-Orientation for agents working in this repo. Deep, path-scoped conventions live
-in `.claudin/rules/` (auto-loaded when you touch matching files) and repeatable
-procedures live in `.claudin/skills/` — this file stays high-level and points at
-them rather than repeating them.
-
-## Coding rules & skills
-
-Rules in `.claudin/rules/` (auto-loaded into context by path):
-
-- [code-design.md](.claudin/rules/code-design.md) — read-before-you-edit order, SOLID/Clean Code as this tree spells them (barrels, `…Deps` injection, split-by-churn), design anti-patterns.
-- [typescript-patterns.md](.claudin/rules/typescript-patterns.md) — TS idioms, error handling, zod schemas, provider abstraction, privacy rules, `feature()`/`--compile` coding gotchas.
-- [build-system.md](.claudin/rules/build-system.md) — `feature()` preprocessing, `MACRO.*`, stub modules, telemetry stubs, feature-flag catalog (scoped to `scripts/build/build.ts`).
-- [testing.md](.claudin/rules/testing.md) — Bun runner, snapshots, provider tests, cross-file mock leaks, known full-suite flakes, the Pre-PR checklist.
-- [ink-tui.md](.claudin/rules/ink-tui.md) — forked Ink renderer constraints: grid model, inline images, vacated-cell ghosts, ScrollBox, committed React-Compiler output (scoped to the TUI dirs).
-- [cache.md](.claudin/rules/cache.md) — prompt-cache clip-frontier invariant, defer-cache-marker, tool-result cache cwd invalidation, TTL tiers.
-- [agent-safety.md](.claudin/rules/agent-safety.md) — sub-agent/worktree hazards: no git mutation in review agents, worktree stale-base/write-leak, empirical audit method (always-on).
-- [search-strategy.md](.claudin/rules/search-strategy.md) — module map + common Grep/Glob queries (start here to navigate the codebase).
-- [git-conventions.md](.claudin/rules/git-conventions.md) — commit/PR title format, and what a title that misses it costs in the release notes (always-on).
-
-Skills in `.claudin/skills/` (invoke with `/<name>`):
-
-- [/pre-pr](.claudin/skills/pre-pr/SKILL.md) — run the pre-PR validation gate (build, smoke, typecheck, focused tests, conditional `test:provider`/`verify:privacy`).
-- [/add-provider-preset](.claudin/skills/add-provider-preset/SKILL.md) — add a `/provider` preset (OpenAI-compatible API-key recipe or OAuth web-login variant).
+Orientation for agents working in this repo
 
 ## Project Overview
 
-Claudin is an open-source coding-agent CLI, forked from Anthropic's Claude Code and retargeted to work across many model providers (Anthropic, OpenAI-compatible, Gemini, Mistral, GitHub Copilot, Codex OAuth, xAI/Grok, Ollama, Bedrock, Vertex, Foundry, etc.). The runtime is that same agent loop (tools, MCP, slash commands, streaming, sub-agents) but provider selection and credentials are managed entirely from inside the REPL via `/provider`, with profiles persisted under `~/.claudin/settings.json`.
-
-The project is **not affiliated with Anthropic**, and does not present itself as upstream. Analytics and telemetry are **deleted**, not stubbed: no `logEvent`, no tracing, no event vocabulary, and zero `tengu` tokens in the bundle — enforced by `bun run verify:privacy`. Feature-flag resolution survives under that path: a local reader over `~/.claudin/feature-flags.json` (keys: `docs/tech/tengu-census/gate-audit.md`). The wire identity sent to third-party providers is Claudin's own; upstream User-Agent and session headers survive on **one** lane — first-party Anthropic OAuth, where the backend inspects them.
+Claudin is an open-source coding-agent CLI, (Anthropic, OpenAI-compatible, Gemini, Mistral, GitHub Copilot, Codex OAuth, xAI/Grok, Ollama, Bedrock, Vertex, Foundry, etc.). The runtime is that same agent loop (tools, MCP, slash commands, streaming, sub-agents)
 
 ## Repo Etiquette
 
@@ -46,8 +22,6 @@ bun test                    # full Bun test runner suite (827 test files)
 bun test path/to/file.test.ts  # focused single-file test
 bun run verify:privacy      # scan dist/cli.mjs for banned phone-home patterns
 ```
-
-Those are the *human* invocations. An agent should run tests through the **RunTests tool**, which wraps the same command and answers failures-first; BashTool refuses a bare test command once and points there.
 
 More test targets (`test:provider`, `test:coverage`, invariant tests) are documented in [testing.md](.claudin/rules/testing.md). After install or local build, the launcher is `bin/claudin` — it requires `dist/cli.mjs` to exist. There is no dev runner that bypasses the bundle, so **always `bun run build` after a source change**.
 
@@ -75,18 +49,8 @@ Cross-slice imports use the **`src/…` alias** (`tsconfig.json` maps `src/*` �
 
 ### Finding your way in
 
-Most code lives in four slices — `platform/` (the host), `tools/`, `agent/` and `terminal/` — so Grep inside one rather than across `src/`. Two names repeat with different owners: the Claude Code lifecycle hooks (`PreToolUse`, …) are `src/platform/lifecycleHooks/` while React hooks sit in each slice's own `hooks/`; and `src/agent/context/` is token accounting, `src/terminal/contexts/` is the React providers, `src/agent/context.ts` (singular) is the memoized system-prompt blocks.
+What every directory holds — with file counts and a cross-ref to the rule that owns each subsystem — is the Module Map in [search-strategy.md](.claudin/rules/search-strategy.md).
 
-What every directory holds — with file counts and a cross-ref to the rule that owns each subsystem — is the Module Map in [search-strategy.md](.claudin/rules/search-strategy.md). Read it before a broad search; it is scoped to `src/**`, so it loads as soon as you open a source file.
-
-## Configuration & Credentials
-
-- **Config dir**: `~/.claudin/` (override with `CLAUDIN_CONFIG_DIR=/path/to/dir`).
-- **Secrets** — never commit, never paste into chat: `~/.claudin/settings.json` (plaintext API keys for active profiles) and `~/.claudin/.credentials.json` (OAuth tokens — Anthropic web sign-in, Codex/ChatGPT, Copilot device flow).
-- Provider profiles are the source of truth; env vars are mostly fallbacks. The historical `--provider` CLI flag is removed — users get redirected to `/provider`.
-- `FIRECRAWL_API_KEY` (optional) upgrades `WebSearch`/`WebFetch` from the DuckDuckGo+raw-HTTP defaults to Firecrawl.
-
-Claudin ships several behaviors that are **on by default** — the Bash output filter, the cache policy, the Read clip-pin, the Bash→RunTests and Bash→Typecheck redirects, the repeated-failure hint, fork-by-default sub-agents. Each is documented at the top of the module that implements it, where its `CLAUDIN_*` killswitch is named; `/config` is the surface users get. They are deliberately not tabulated here: every agent harness that opens this repo reads this file, and a Claudin-only behavior described here reads as an instruction the others cannot honor.
 
 ## Build & Tests
 

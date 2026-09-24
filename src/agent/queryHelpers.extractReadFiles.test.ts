@@ -215,12 +215,12 @@ describe('extractReadFilesFromMessages — write tools', () => {
     expect(cache.get(p)).toMatchObject({ content: 'on disk\n', offset: undefined })
   })
 
-  test('apply_patch is restored from disk for every file it wrote', () => {
+  test('Patch is restored from disk for every file it wrote', () => {
     const a = join(dir, 'pa.ts')
     const b = join(dir, 'pb.ts')
     writeFileSync(a, 'A\n')
     writeFileSync(b, 'B\n')
-    const use = toolUse('apply_patch', {
+    const use = toolUse('Patch', {
       patchText:
         `*** Begin Patch\n*** Update File: ${a}\n@@\n-x\n+y\n` +
         `*** Add File: ${b}\n+B\n*** End Patch`,
@@ -233,7 +233,7 @@ describe('extractReadFilesFromMessages — write tools', () => {
   test('a failed patch changes nothing', () => {
     const p = join(dir, 'failed.ts')
     writeFileSync(p, 'DISK\n')
-    const failed = toolUse('apply_patch', {
+    const failed = toolUse('Patch', {
       patchText: `*** Begin Patch\n*** Update File: ${p}\n@@\n-x\n+y\n*** End Patch`,
     })
     const cache = extractReadFilesFromMessages(
@@ -247,9 +247,9 @@ describe('extractReadFilesFromMessages — write tools', () => {
     expect(cache.get(p)).toMatchObject({ content: 'l1\nl2' })
   })
 
-  test('apply_patch Delete File evicts the entry', () => {
+  test('Patch Delete File evicts the entry', () => {
     const p = join(dir, 'del.ts')
-    const del = toolUse('apply_patch', {
+    const del = toolUse('Patch', {
       patchText: `*** Begin Patch\n*** Delete File: ${p}\n*** End Patch`,
     })
     const cache = extractReadFilesFromMessages(
@@ -263,10 +263,10 @@ describe('extractReadFilesFromMessages — write tools', () => {
     // The resubmitted patch wrote the file; nothing in the sentinel names it.
     const p = join(dir, 'resubmitted.ts')
     writeFileSync(p, 'AFTER\n')
-    const refused = toolUse('apply_patch', {
+    const refused = toolUse('Patch', {
       patchText: `*** Begin Patch\n*** Update File: ${p}\n@@\n-x\n+y\n*** End Patch`,
     })
-    const resubmit = toolUse('apply_patch', { patchText: '*** Resubmit' })
+    const resubmit = toolUse('Patch', { patchText: '*** Resubmit' })
     const cache = extractReadFilesFromMessages(
       [refused, toolResult(refused, 'refused', { isError: true }), resubmit, toolResult(resubmit, 'ok')],
       dir,
@@ -275,7 +275,7 @@ describe('extractReadFilesFromMessages — write tools', () => {
   })
 
   test('a malformed patchText is skipped, not thrown', () => {
-    const use = toolUse('apply_patch', { patchText: 'not a patch' })
+    const use = toolUse('Patch', { patchText: 'not a patch' })
     expect(() =>
       extractReadFilesFromMessages([use, toolResult(use, 'ok')], dir),
     ).not.toThrow()

@@ -61,7 +61,8 @@ function targetsOf(name: string, input: Record<string, unknown>): string[] {
     const p = normalize(input.file_path)
     return p === null ? [] : [p]
   }
-  if (name === 'apply_patch') {
+  // `apply_patch` is the patch tool's wire name before 2026-09-24.
+  if (name === 'apply_patch' || name === 'Patch') {
     const text = typeof input.patchText === 'string' ? input.patchText : ''
     const out: string[] = []
     PATCH_PATH_RE.lastIndex = 0

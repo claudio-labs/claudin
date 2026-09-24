@@ -17,6 +17,10 @@ import {
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import {
+  APPLY_PATCH_TOOL_NAME,
+  LEGACY_APPLY_PATCH_TOOL_NAME,
+} from 'src/tools/ApplyPatchTool/prompt.js'
 
 const tempDirs: string[] = []
 const originalSimple = process.env.CLAUDIN_SIMPLE
@@ -168,4 +172,30 @@ test('a hook attachment after a tool result still reads as an interrupted turn',
   expect(result.turnInterruptionState.kind).toBe('interrupted_prompt')
   const continuation = result.turnInterruptionState as { message: { message: { content: unknown } } }
   expect(JSON.stringify(continuation.message.message.content)).toContain('Continue from where you left off.')
+})
+
+// A session recorded before the rename carries `apply_patch` tool_uses. The
+// request path maps them through the tool's alias; the in-memory readers (the
+// read-state rebuild, /diff, the write collapse) compare names and need the
+// new one.
+test('a resumed transcript calls the renamed patch tool by its new name', () => {
+  const patch = { patchText: '*** Begin Patch\n*** Add File: a.txt\n+a\n*** End Patch' }
+  const result = deserializeMessagesWithInterruptDetection([
+    createUserMessage({ content: 'hi' }),
+    createAssistantMessage({
+      content: [
+        { type: 'tool_use' as const, id: 'toolu_01', name: LEGACY_APPLY_PATCH_TOOL_NAME, input: patch },
+      ],
+    }),
+    createUserMessage({ content: [{ type: 'tool_result', tool_use_id: 'toolu_01', content: 'ok' }] }),
+    createAssistantMessage({ content: 'done' }),
+  ])
+
+  const toolUses = result.messages.flatMap(m =>
+    m.type === 'assistant' && Array.isArray(m.message.content)
+      ? m.message.content.filter(b => b.type === 'tool_use')
+      : [],
+  )
+  expect(toolUses.map(b => (b as { name: string }).name)).toEqual([APPLY_PATCH_TOOL_NAME])
+  expect((toolUses[0] as { input: unknown }).input).toEqual(patch)
 })

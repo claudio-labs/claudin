@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle';
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promises';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
@@ -21,16 +20,7 @@ import { isOutputLineTruncated } from 'src/terminal/terminal.js';
 import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
 import { userFacingName as fileEditUserFacingName } from 'src/tools/FileEditTool/UI.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
-import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js';
-import { renderRunTestsRedirect, shouldRedirectToRunTests } from 'src/tools/RunTestsTool/redirect.js';
-import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js';
-import { renderTypecheckRedirect, shouldRedirectToTypecheck } from 'src/tools/TypecheckTool/redirect.js';
-import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js';
-import { renderBuildRedirect, shouldRedirectToBuild } from 'src/tools/BuildTool/redirect.js';
-import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js';
-import { renderGitRedirect, shouldRedirectToGit } from 'src/tools/GitTool/redirect.js';
-import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js';
-import { detectSleepPoll, renderWaitForRedirect, shouldRedirectSleepPoll } from 'src/tools/WaitForTool/redirect.js';
+import { getBashRedirectMode, pickBashRedirect } from 'src/tools/BashTool/redirectLanes.js';
 import {
   applyBashFilterToStdout,
   exitCodeAfterRewrite,
@@ -40,15 +30,14 @@ import {
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
 import { creditShownFiles } from 'src/tools/BashTool/creditShownFiles.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
-import { detectBlockedSleepPattern, isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
-import { inputSchema, isBackgroundTasksDisabled, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
+import { isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
+import { inputSchema, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
 import { interpretCommandResult } from 'src/tools/BashTool/commandSemantics.js';
 import { getDefaultTimeoutMs, getSimplePrompt } from 'src/tools/BashTool/prompt.js';
 import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js';
 import { parseSedEditCommand } from 'src/tools/BashTool/sedEditParser.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
-import { renderToolRedirect, shouldRedirectToTools } from 'src/tools/BashTool/toolRedirect.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
@@ -168,101 +157,31 @@ export const BashTool = buildTool({
     return `Running ${desc}`;
   },
   async validateInput(input: BashToolInput, context: ToolUseContext): Promise<ValidationResult> {
-    // A `sleep N` segment followed by a check is a poll loop, and WaitFor does
-    // the polling in one call. Gated OFF until the adoption A/B passes
-    // (`CLAUDIN_ENABLE_WAITFOR_REDIRECT=1`), on the tool being in THIS agent's
-    // toolset, and never for a backgrounded run. One-shot per command; the
-    // fall-through keeps the leading-sleep refusal below byte-identical when
-    // the lane is off. See WaitForTool/redirect.ts.
-    if (!input.run_in_background && isEnvTruthy(process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT) && findToolByName(context?.options?.tools ?? [], WAITFOR_TOOL_NAME) !== undefined) {
-      const poll = detectSleepPoll(input.command);
-      if (poll !== null && shouldRedirectSleepPoll(input.command)) {
+    // A command with a better home in a dedicated tool is refused here only in
+    // refuse mode (`CLAUDIN_BASH_REDIRECT=refuse`). By default it runs, and
+    // `advise` below appends the same pointer to its result. Lanes, gates and
+    // one-shot memos: redirectLanes.ts.
+    if (getBashRedirectMode() === 'refuse') {
+      const redirect = pickBashRedirect(input, name => findToolByName(context?.options?.tools ?? [], name) !== undefined, getCwd(), 'refuse');
+      if (redirect) {
         return {
           result: false,
-          message: renderWaitForRedirect(poll),
-          errorCode: 16
-        };
-      }
-    }
-    if (feature('MONITOR_TOOL') && !isBackgroundTasksDisabled && !input.run_in_background) {
-      const sleepPattern = detectBlockedSleepPattern(input.command);
-      if (sleepPattern !== null) {
-        return {
-          result: false,
-          message: `Blocked: ${sleepPattern}. Run blocking commands in the background with run_in_background: true — you'll get a completion notification when done. For streaming events (watching logs, polling APIs), use the Monitor tool. If you genuinely need a delay (rate limiting, deliberate pacing), keep it under 2 seconds.`,
-          errorCode: 10
-        };
-      }
-    }
-    // A bare test run has a better home: RunTests runs the same command and
-    // answers with failures first. Gated on the tool actually being in THIS
-    // agent's toolset — refusing Bash without an alternative would be a dead
-    // end — and never for a backgrounded run, which RunTests can't do.
-    // The refusal is one-shot per command; see RunTestsTool/redirect.ts.
-    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_RUNTESTS_REDIRECT) && findToolByName(context?.options?.tools ?? [], RUN_TESTS_TOOL_NAME) !== undefined && shouldRedirectToRunTests(input.command)) {
-      return {
-        result: false,
-        message: renderRunTestsRedirect(input.command),
-        errorCode: 11
-      };
-    }
-    // The same lever one step earlier in the loop: a bare type-check has a
-    // better home in Typecheck, which reports only the diagnostics missing from
-    // the project's recorded backlog. Gated identically — the tool must be in
-    // THIS agent's toolset, never for a backgrounded run — and narrowed to the
-    // pure checkers, so `go build`/`dotnet build`/`mvn` still run here.
-    // The refusal is one-shot per command; see TypecheckTool/redirect.ts.
-    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_TYPECHECK_REDIRECT) && findToolByName(context?.options?.tools ?? [], TYPECHECK_TOOL_NAME) !== undefined && shouldRedirectToTypecheck(input.command)) {
-      return {
-        result: false,
-        message: renderTypecheckRedirect(input.command),
-        errorCode: 13
-      };
-    }
-    // And the artifact-producing half of the same idea. Narrowed to the
-    // toolchains that print hundreds of progress lines — `npm run build` is
-    // deliberately absent, since a JS build's output is already short — and
-    // never for a command that also installs, publishes or runs something.
-    // The refusal is one-shot per command; see BuildTool/redirect.ts.
-    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_BUILD_REDIRECT) && findToolByName(context?.options?.tools ?? [], BUILD_TOOL_NAME) !== undefined && shouldRedirectToBuild(input.command)) {
-      return {
-        result: false,
-        message: renderBuildRedirect(input.command),
-        errorCode: 15
-      };
-    }
-    // Same lever again, aimed at the repository reads. Only the READ shapes are
-    // refused — a mutation runs fine through Git but refusing it here would put
-    // a dialog in front of a command that already had permission, for no token
-    // payoff. Gated identically: the tool must be in THIS agent's toolset,
-    // never for a backgrounded run. The refusal is one-shot per command; see
-    // GitTool/redirect.ts.
-    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_GIT_REDIRECT) && findToolByName(context?.options?.tools ?? [], GIT_TOOL_NAME) !== undefined && shouldRedirectToGit(input.command)) {
-      return {
-        result: false,
-        message: renderGitRedirect(input.command),
-        errorCode: 14
-      };
-    }
-    // Same lever, aimed at the other half of this tool's own "avoid running
-    // find/grep/cat/head/sed" advice: a command that only reads or searches
-    // files has a better home in Read/Grep/Glob, and the refusal hands back the
-    // exact calls to make instead. All-or-nothing across a compound command,
-    // one-shot per command, and gated on every target tool being in THIS
-    // agent's toolset; see toolRedirect.ts.
-    if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REDIRECT)) {
-      const toolRedirect = shouldRedirectToTools(input.command, getCwd(), name => findToolByName(context?.options?.tools ?? [], name) !== undefined);
-      if (toolRedirect) {
-        return {
-          result: false,
-          message: renderToolRedirect(toolRedirect),
-          errorCode: 12
+          message: redirect.message,
+          errorCode: redirect.errorCode
         };
       }
     }
     return {
       result: true
     };
+  },
+  advise(input: BashToolInput, context: ToolUseContext) {
+    if (getBashRedirectMode() !== 'advise') return null;
+    const redirect = pickBashRedirect(input, name => findToolByName(context?.options?.tools ?? [], name) !== undefined, getCwd(), 'advise');
+    return redirect ? {
+      message: redirect.message,
+      suggests: redirect.suggests
+    } : null;
   },
   async checkPermissions(input, context): Promise<PermissionResult> {
     return bashToolHasPermission(input, context);

@@ -110,6 +110,16 @@ export type ValidationResult =
 /** What `Tool.resolveInput` hands back: the input every later step sees, or why there is none. */
 export type ResolvedInput<T> = { ok: true; input: T } | { ok: false; message: string }
 
+/** What `Tool.advise` hands back: a note about this call, and the tool it points at. */
+export type ToolAdvice = {
+  message: string
+  /**
+   * The dedicated tool the note names. When it is deferred and not loaded yet,
+   * the note also says which ToolSearch call loads it.
+   */
+  suggests?: string
+}
+
 export type SetToolJSXFn = (
   args: {
     jsx: React.ReactNode | null
@@ -546,7 +556,7 @@ export type Tool<
    * them to relieve context. Set it on read-only, re-runnable tools whose
    * output can be regenerated (file reads, searches, builds, test runs).
    * Leave it unset on tools whose result is the only record of a mutation
-   * (Edit/Write/apply_patch) or a sub-agent's report — those must survive.
+   * (Edit/Write/Patch) or a sub-agent's report — those must survive.
    * The list sent to the API is derived from the tool pool, so a new tool
    * opts in here instead of in a hand-maintained constant.
    */
@@ -601,7 +611,7 @@ export type Tool<
    * anything else looks at it: validateInput, the PreToolUse hooks, the
    * auto-mode classifier, the permission prompt and call() all receive the
    * resolved input, while the transcript keeps what the model sent (the
-   * cached prefix depends on it). apply_patch's `*** Resubmit` names the
+   * cached prefix depends on it). Patch's `*** Resubmit` names the
    * patch it refused one call earlier. A refusal is reported the way a failed
    * validateInput is.
    */
@@ -620,6 +630,16 @@ export type Tool<
     input: z.infer<Input>,
     context: ToolUseContext,
   ): Promise<ValidationResult>
+
+  /**
+   * A note about this call for the model, appended to its result — success or
+   * error — as a reminder. Bash uses it to name a dedicated tool that does a
+   * command's job better, where it used to refuse the command. Asked exactly
+   * once per call, after permission and just before `call()`, so an answer that
+   * spends state (a one-shot memo) is spent once; a throw is logged and reads
+   * as no advice.
+   */
+  advise?(input: z.infer<Input>, context: ToolUseContext): ToolAdvice | null
 
   /**
    * Determines if the user is asked for permission. Only called after validateInput() passes.

@@ -453,7 +453,7 @@ export function verify(root: string): Verdict {
 // ---------------------------------------------------------------------------
 
 const READ_TOOLS = new Set(['Read', 'NotebookRead', 'View'])
-const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'apply_patch', 'NotebookEdit', 'Update', 'Rename'])
+const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'apply_patch', 'Patch', 'NotebookEdit', 'Update', 'Rename'])
 const BUILD_RE = /\b(npm run build|bun build|yarn build|pnpm build|npm_run_build)\b/
 const BASH_READ_RE = /\b(cat|head|tail|sed -n|less|more)\b/
 

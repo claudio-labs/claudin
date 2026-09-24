@@ -97,20 +97,20 @@ describe('measureToolSchemas', () => {
     }
   })
 
-  test('apply_patch is registered unconditionally, right after Write', () => {
+  test('Patch is registered unconditionally, right after Write', () => {
     // The tool list is part of the cross-user system-prompt cache prefix, so
-    // apply_patch must always be present and in a fixed position. Inserting it
+    // Patch must always be present and in a fixed position. Inserting it
     // immediately after Write keeps the order deterministic.
     const names = getAllBaseTools().map(t => t.name)
-    expect(names).toContain('apply_patch')
+    expect(names).toContain('Patch')
     const writeIdx = names.indexOf('Write')
     expect(writeIdx).toBeGreaterThanOrEqual(0)
-    expect(names[writeIdx + 1]).toBe('apply_patch')
+    expect(names[writeIdx + 1]).toBe('Patch')
   })
 
-  test('apply_patch tool schema bytes are stable across renders (cache-safe)', async () => {
+  test('Patch tool schema bytes are stable across renders (cache-safe)', async () => {
     // The tools block is the head of the cached request prefix and carries no
-    // cache_control of its own — any byte drift in apply_patch's schema busts
+    // cache_control of its own — any byte drift in Patch's schema busts
     // the whole downstream cache. Its description is a static constant and its
     // input schema is identity-cached via lazySchema(), so two independent
     // measurements must be byte-identical for every engine.
@@ -123,12 +123,12 @@ describe('measureToolSchemas', () => {
 
     for (const engine of ['anthropic', 'openai', 'codex'] as const) {
       const a = first.rows.find(
-        r => r.name === 'apply_patch' && r.engine === engine,
+        r => r.name === 'Patch' && r.engine === engine,
       )
       const b = second.rows.find(
-        r => r.name === 'apply_patch' && r.engine === engine,
+        r => r.name === 'Patch' && r.engine === engine,
       )
-      expect(a, `expected apply_patch row for engine ${engine}`).toBeDefined()
+      expect(a, `expected Patch row for engine ${engine}`).toBeDefined()
       expect(a!.schemaBytes).toBeGreaterThan(0)
       expect(b!.schemaBytes).toBe(a!.schemaBytes)
       expect(b!.descriptionBytes).toBe(a!.descriptionBytes)
@@ -175,7 +175,7 @@ describe('measureToolSchemas', () => {
     // characters, and at a comma where the other has a period — so neither an
     // equality check nor a prefix check would have caught them, and the list
     // shipped reading 1, 1, 2, 3, 4 in every request until a prompt audit read
-    // the file. Read, Grep, Agent and apply_patch have no snapshot to diff, so
+    // the file. Read, Grep, Agent and Patch have no snapshot to diff, so
     // nothing else was watching.
     //
     // The shape that does catch it is a shared-prefix ceiling. Among the lines
@@ -212,7 +212,7 @@ describe('measureToolSchemas', () => {
       // Exact repeats are checked at ANY length: the prefix ceiling below
       // cannot see a duplicated short line, which is the cheapest form of the
       // same bug. What legitimately repeats is *syntax*: blank lines, markup
-      // (`<example>`, `})`) and apply_patch's `*** Begin Patch` envelope, which
+      // (`<example>`, `})`) and Patch's `*** Begin Patch` envelope, which
       // appears once in its format spec and again in its example. So the check
       // is scoped to lines that read as a sentence — five words AND 24 chars,
       // both floors, which together clear the envelope markers. The char floor

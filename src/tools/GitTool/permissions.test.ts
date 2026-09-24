@@ -51,7 +51,7 @@ test('a deny anywhere in the batch refuses the whole call', async () => {
 test('on allow it echoes the Git input, never the synthesized Bash one', async () => {
   // bashToolHasPermission returns `updatedInput: { command }` and the harness
   // applies updatedInput verbatim. Passing it through would replace `commands`
-  // with a field the schema does not have — the bug that made apply_patch dead
+  // with a field the schema does not have — the bug that made Patch dead
   // on arrival in auto/bypass mode.
   const input = { commands: ['git status'] }
   const result = await checkGitBatchPermission(

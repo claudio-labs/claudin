@@ -15,13 +15,13 @@ export type FileState = {
   // True when this entry was populated by auto-injection (e.g. CLAUDE.md) and
   // the injected content did not match disk (stripped HTML comments, stripped
   // frontmatter, truncated MEMORY.md). The model has only seen a partial view;
-  // Write must require an explicit Read first, and so must Edit/apply_patch
+  // Write must require an explicit Read first, and so must Edit/Patch
   // unless `injectedView` below says what the model saw. `content` here holds
   // the RAW disk bytes (for getChangedFiles diffing), not what the model saw.
   isPartialView?: boolean
   // What the model DID see, for the auto-injected case above: the stripped or
   // truncated text that went into the system reminder. With it the line-scoped
-  // write tools (Edit, apply_patch Update) can check their needle against the
+  // write tools (Edit, Patch Update) can check their needle against the
   // text the model is holding instead of refusing the file outright — 8 of 65
   // gate refusals in the 2026-08/09 corpus were Edits of an injected
   // MEMORY.md or rule, each answered by a view='full' re-read of a file the
@@ -189,7 +189,7 @@ export const SEEN_RANGES_MAX_COUNT = 32
  * 1. there is no predecessor;
  * 2. `timestamp` moved — a different mtime means different bytes, so every
  *    earlier slice describes a file that no longer exists. This is also what
- *    makes Edit/Write/apply_patch drop the history for free: they write the
+ *    makes Edit/Write/Patch drop the history for free: they write the
  *    post-write mtime;
  * 3. the predecessor is a partial view — an outline, a stripped injection, a
  *    clip-pin marker. Its `content` is the raw file (or a body the model lost),

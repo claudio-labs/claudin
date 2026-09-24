@@ -86,7 +86,7 @@ export function clearAllPlanSlugs(): void {
 // into the session cwd (Shell.ts calls setCwd after every foreground command) and
 // plan mode allows read-only Bash, so `cd sub && ls` used to relocate the plans
 // directory mid-session. The plan file the model had been told to write then stopped
-// matching isSessionPlanFile(), so every Write/Edit/apply_patch to it was hard-denied
+// matching isSessionPlanFile(), so every Write/Edit/Patch to it was hard-denied
 // with "Only the plan file may be edited" while the plan already written read back
 // as missing.
 export const getPlansDirectory = memoize(function getPlansDirectory(): string {

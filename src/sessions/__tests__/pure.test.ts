@@ -239,6 +239,10 @@ test('isEphemeralToolProgress: true for known progress kinds, false for everythi
   expect(isEphemeralToolProgress('bash_progress')).toBe(true)
   expect(isEphemeralToolProgress('powershell_progress')).toBe(true)
   expect(isEphemeralToolProgress('mcp_progress')).toBe(true)
+  // Build, RunTests and Typecheck: one tick a second, only the last rendered.
+  expect(isEphemeralToolProgress('build_progress')).toBe(true)
+  expect(isEphemeralToolProgress('test_progress')).toBe(true)
+  expect(isEphemeralToolProgress('check_progress')).toBe(true)
 
   // Negative cases — non-string inputs return false, unknown strings return false.
   expect(isEphemeralToolProgress('unknown_progress')).toBe(false)

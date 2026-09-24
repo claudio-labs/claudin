@@ -11,7 +11,7 @@ import { feature } from 'bun:bundle'
 // flag-gated addendum resolves to null under the test preload (which stubs
 // every feature flag to false).
 export const ANTHROPIC_BATCHED_EDITS_ADDENDUM =
-  `When a change touches several files, land it as ONE apply_patch with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option.`
+  `When a change touches several files, land it as ONE Patch call with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option.`
 
 export function getAnthropicAddendum(): string | null {
   return feature('TOOL_BATCHING_NUDGE') ? ANTHROPIC_BATCHED_EDITS_ADDENDUM : null

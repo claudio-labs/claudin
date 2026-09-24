@@ -43,7 +43,7 @@ export async function checkGitBatchPermission(
 
   // NEVER Bash's `updatedInput`: it is `{ command }`-shaped and the harness
   // applies it verbatim, which would replace our `commands` list with a single
-  // `command` field the schema does not have — the bug that made apply_patch
+  // `command` field the schema does not have — the bug that made Patch
   // dead on arrival in auto/bypass mode. Echo our own input.
   return { behavior: 'allow', updatedInput: input }
 }

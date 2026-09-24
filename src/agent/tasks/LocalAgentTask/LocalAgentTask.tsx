@@ -29,7 +29,7 @@ export type ToolActivity = {
   isSearch?: boolean;
   /** Pre-computed: true if this is a read operation (Read, cat, etc.) */
   isRead?: boolean;
-  /** Pre-computed: true if this is a write (Write, Edit, apply_patch, Rename) */
+  /** Pre-computed: true if this is a write (Write, Edit, Patch, Rename) */
   isWrite?: boolean;
 };
 export type AgentProgress = {

@@ -1462,14 +1462,14 @@ describe('relief rss lane (collectClearableCandidates → clipped set)', () => {
 
 describe('collectClearableCandidates — tool_use input side', () => {
   const FIELDS = new Map<string, readonly string[]>([
-    ['apply_patch', ['patchText']],
+    ['Patch', ['patchText']],
     ['Write', ['content']],
   ])
 
   test('a clearable input is a candidate of its own, flagged input-only when the result is not clearable', () => {
     const msgs: Msg[] = [
       userText('prompt'),
-      assistantToolUse('p', 'apply_patch', { patchText: bigText(2_000) }),
+      assistantToolUse('p', 'Patch', { patchText: bigText(2_000) }),
       userToolResult('p', 'Success. Applied the patch.'),
       userText('tail 1'),
       userText('tail 2'),
@@ -1506,7 +1506,7 @@ describe('collectClearableCandidates — tool_use input side', () => {
   test('without a field map the walk is exactly what it was (results only)', () => {
     const msgs: Msg[] = [
       userText('prompt'),
-      assistantToolUse('p', 'apply_patch', { patchText: bigText(2_000) }),
+      assistantToolUse('p', 'Patch', { patchText: bigText(2_000) }),
       userToolResult('p', 'Success. Applied the patch.'),
       userText('tail 1'),
       userText('tail 2'),
@@ -1517,11 +1517,11 @@ describe('collectClearableCandidates — tool_use input side', () => {
   test('inputs already clipped, small fields and the protected window are skipped', () => {
     const msgs: Msg[] = [
       userText('prompt'),
-      assistantToolUse('done', 'apply_patch', { patchText: bigText(2_000) }),
+      assistantToolUse('done', 'Patch', { patchText: bigText(2_000) }),
       userToolResult('done', 'ok'),
-      assistantToolUse('small', 'apply_patch', { patchText: 'tiny' }),
+      assistantToolUse('small', 'Patch', { patchText: 'tiny' }),
       userToolResult('small', 'ok'),
-      assistantToolUse('recent', 'apply_patch', { patchText: bigText(2_000) }),
+      assistantToolUse('recent', 'Patch', { patchText: bigText(2_000) }),
       userToolResult('recent', 'ok'),
     ]
     addClippedInputs('done', ['patchText'])

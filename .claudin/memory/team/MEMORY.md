@@ -2,13 +2,14 @@
 
 > Durable coding gotchas now live in `.claudin/rules/` (auto-loaded by path):
 > **ink-tui.md** (renderer), **cache.md** (prompt/tool-result cache), **testing.md**
-> (mocking leaks + known flakes), **agent-safety.md** (sub-agent/worktree hazards,
-> always-on), **build-system.md** + **typescript-patterns.md** (feature()/compile),
+> (mocking leaks + known flakes), **build-system.md** + **typescript-patterns.md** (feature()/compile),
 > **git-conventions.md** (commit/PR title format, always-on).
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Decisions
+- [Bash advises instead of refusing; 4 dev tools deferred (2026-09-24)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT=refuse|off`, `CLAUDIN_EAGER_DEV_TOOLS=1`
 - [SendMessage reaches other local sessions since 2026-09-24](decisions/cross-session-messaging.md) — owner-only sockets + token; Claudin↔Claudin, REPL inbox only; mode parity holds across bypass
+- [apply_patch is called Patch on the wire since 2026-09-24](decisions/patch-tool-rename.md) — alias + legacy-name map keep rules/hooks/transcripts; a census must count both names
 - [apply_patch takes any read since 2026-09-24](decisions/apply-patch-any-read.md) — only never-read is refused; outline/range/stale pass, the hunk match is the check; Edit keeps the gate
 - [Team memory: git IS the sync — HTTP sync + LLM recall deleted 2026-09-21](decisions/team-memory-git-is-the-sync.md) — `paths:` is the on-demand loader; decisions/bugs/docs categories; secret guard blocks
 - [`safeguards` / dangerous-tool-use — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint; would ship rules, paths, git state, identity
@@ -38,13 +39,13 @@
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent)` registered a phantom `noop`; `claudin install` + `mcp serve tools/list` broken
 - [systemPrompt.main.txt regen captured harness-injected text](bugs/systemprompt-snapshot-harness-drift.md) — snapshot covers "Notes for this model" etc., injected by the harness; diff regen vs source before committing
 - [Two latent bugs pinned, not fixed (2026-09-20)](bugs/latent-bugs-pinned-not-fixed.md) — isAutobackgroundingAllowed misses `sleep N`; restoreDangerousPermissions resurrects deleted rules
-- [RunTestsTool still has the 3 shell/env bugs Typecheck fixed](bugs/runtests-tool-shell-env-bugs.md) — ignores its cwd, FORCE_COLOR=0 enables colour, env-prefix breaks compound commands
+- [RunTestsTool's 3 shell/env bugs — FIXED 2026-09-24](bugs/runtests-tool-shell-env-bugs.md) — cwd ignored, FORCE_COLOR=0, env-prefix; now Build's wrapper; two fixture traps that let tests guard nothing
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — febf362a fixed projects clobber + startup heal; mid-session reconcile, cache GC, migrate rerun pending
 - [Codex 403 HTML-block misread as "Please run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — HTML-body 403 = Cloudflare edge block, NOT a revoked token; errors.ts still suggests /login
 - [Diff reviewer canonicalizes git worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — /diff groups collapse worktrees into their main checkout; fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; echo the real input on allow
 - [memory-turn-by-turn RSS bench flakes only under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — a negative first-half slope makes the threshold unsatisfiable; re-run in isolation before calling it a regression
-- [WaitFor drops every optional param](bugs/waitfor-drops-optional-params.md) — until/settle_s/interval_s/timeout_s never reach call(); always settles at 3s, so no working wait over ~3s
+- [WaitFor dropped every optional param — FIXED 2026-09-24](bugs/waitfor-drops-optional-params.md) — checkPermissions passed Bash's updatedInput {command} through; Monitor too; echo your own input on allow
 - [stream-json prints every assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — same uuid, Claude Code prints once; benches counting blocks must dedupe by uuid
 - [Resume re-wrote the whole prompt cache — FIXED 2026-09-23](bugs/resume-rewrites-cache-prefix.md) — dropped attachments + ms-tie reorder, 40%→100%; round 2 fixed hook output, plan_mode, @-files; cache.md §7
 
@@ -60,6 +61,7 @@
 - [Claude Code 2.1.270's prompt, extracted 2026-09-14](claude-code-2.1.270-prompt-diff.md) — upstream MANDATES narration now; Delivering work/Corrections/turn-discipline are upstream verbatim
 - [ANTI_NARRATION — REMOVED from every prompt 2026-09-24](anti-narration-never-benched-on-claude-5.md) — narr arm moved neither thinking nor cost; Agent's "don't narrate a launch" rule stays
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
+- [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — it makes Claudin behave better here than elsewhere and hides bugs; verify from a throwaway cwd
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 21 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn from a throwaway cwd, never `-c` in the repo
@@ -124,6 +126,7 @@
 - [Prompts v2 — DEFAULT since 09-24, cleanup pending](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); cost flat; 4 `=0` killswitches to delete (checklist)
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
+- [Dev tools deferred + Bash advice A/B 09-24](dev-tools-deferred-advice-ab-2026-09-24.md) — no cost regression, prefix −3.3k; deferred RunTests unused; notes = generic line = no effect
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 
 ## Providers & models

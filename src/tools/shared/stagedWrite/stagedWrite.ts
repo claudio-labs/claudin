@@ -1,5 +1,5 @@
 // Transactional multi-file write, shared by every tool that rewrites a batch of
-// files in one shot (apply_patch, Rename).
+// files in one shot (Patch, Rename).
 //
 // The contract: callers stage every change in memory FIRST — so a failure to
 // build any of them writes nothing — then hand the staged list here.
@@ -101,7 +101,7 @@ export function readFileForStaging(absPath: string): FileForStaging {
   }
 }
 
-// Re-exported so apply_patch/Rename keep importing it from here; the body moved
+// Re-exported so Patch/Rename keep importing it from here; the body moved
 // to utils/diffStat.js so the TUI collapse path can count without pulling this
 // module's LSP/MCP/team-memory graph in.
 export { countAddDel }

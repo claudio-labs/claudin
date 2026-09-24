@@ -70,6 +70,11 @@ function tail(text: string, max: number): string {
   return text.length > max ? text.slice(-max) : text
 }
 
+/** POSIX single-quoting, so a path with spaces or quotes survives the shell. */
+function singleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
 export async function runTests(opts: RunOptions): Promise<TestResult> {
   const { framework, cwd, abortSignal, timeoutMs } = opts
 
@@ -79,11 +84,29 @@ export async function runTests(opts: RunOptions): Promise<TestResult> {
 
   const plan = planReporter(framework, cleaned)
 
-  // Force non-interactive mode: CI=true stops runners from watching/prompting
-  // and FORCE_COLOR=0 keeps ANSI escapes out of the text-scrape fallback. The
-  // shell provider already redirects stdin from /dev/null, so a TUI-loading
-  // suite (e.g. Ink) won't try setRawMode on a non-TTY stdin.
-  const execCommand = `CI=true FORCE_COLOR=0 ${plan.command}`
+  // The wrapper Typecheck and Build use, for the same three reasons.
+  //
+  // `cd` first: exec() has NO cwd option — it runs in the session's persistent
+  // shell, so a sub-agent under a cwd override (worktree isolation) ran the
+  // MAIN checkout's suite and filed the results under the worktree's path.
+  // `&&` so a bad path fails instead of testing wherever the shell was.
+  //
+  // The braces keep a compound `command` intact: an inline `A=1 cmd` prefix
+  // only composes with a SIMPLE command, so `(cd sub && pytest)` died on a bash
+  // syntax error. The command sits on its own line so a trailing `;` in it
+  // cannot collide with the closing brace.
+  //
+  // CI=true stops runners watching or prompting; NO_COLOR keeps ANSI escapes
+  // out of the text-scrape fallback. FORCE_COLOR is UNSET rather than set to
+  // 0: anything that tests only for its presence reads `FORCE_COLOR=0` as a
+  // request to colourise. The shell provider already redirects stdin from
+  // /dev/null, so a TUI-loading suite (e.g. Ink) won't try setRawMode on a
+  // non-TTY stdin.
+  const execCommand = `cd ${singleQuote(cwd)} && {
+export CI=true NO_COLOR=1
+unset FORCE_COLOR
+${plan.command}
+}`
 
   // Recorded before exec so a report-dir scan can reject pre-existing stale XML
   // (surefire/gradle dirs are not cleared between runs). 2s grace absorbs coarse
@@ -100,6 +123,9 @@ export async function runTests(opts: RunOptions): Promise<TestResult> {
   try {
     const shellCommand = await exec(execCommand, abortSignal, 'bash', {
       timeout: timeoutMs,
+      // The `cd` above is ours, not the user's — it must not move the session's
+      // shell out from under the next Bash call.
+      preventCwdChanges: true,
       // Purely a TUI signal, and `onProgress` rather than `onStdout`: the latter
       // pipes stdout instead of writing the file, which would break
       // `readFullShellOutput` below. Two things have to be true for a tick to

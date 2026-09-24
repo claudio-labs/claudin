@@ -11,7 +11,7 @@ export type MemoryFileInfo = {
   // the bytes on disk. When set, `rawContent` holds the unmodified disk bytes
   // so callers can cache a `isPartialView` readFileState entry, with `content`
   // beside it as `injectedView` — presence in cache provides dedup + change
-  // detection, Write still requires an explicit Read, and Edit/apply_patch
+  // detection, Write still requires an explicit Read, and Edit/Patch
   // are held to the injected text (readBeforeEditMessages.ts).
   contentDiffersFromDisk?: boolean
   rawContent?: string

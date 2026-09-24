@@ -12,7 +12,12 @@ import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
  * answer "wait until X shows up", so the model varied the pipeline and kept
  * polling. WaitFor does the polling internally and returns one result.
  *
- * OFF by default: `CLAUDIN_ENABLE_WAITFOR_REDIRECT=1` turns the lane on. The
+ * As a refusal (`CLAUDIN_BASH_REDIRECT=refuse`) the lane is OFF unless
+ * `CLAUDIN_ENABLE_WAITFOR_REDIRECT=1`. As advice — the default since
+ * 2026-09-24, where the sleep runs and its result names the WaitFor call — it
+ * is on, since a pointer after the fact walls nothing off;
+ * `CLAUDIN_DISABLE_WAITFOR_REDIRECT=1` turns it off (BashTool/redirectLanes.ts).
+ * Why the refusal stayed opt-in: the
  * 2026-09-09 A/B (`scripts/bench/ab/waitfor-adoption-ab.ts`, Sonnet 5, N=3)
  * never exercised it — Sonnet 5 reached for WaitFor unprompted in 12/12 runs,
  * so the refusal had nothing to redirect and its benefit is unmeasured. It
@@ -100,11 +105,22 @@ export function resetWaitForRedirectMemoForTesting(): void {
 }
 
 export function renderWaitForRedirect(poll: SleepPoll): string {
-  const call = JSON.stringify({
+  return `Blocked: sleep ${poll.secs} followed by a check. Use the ${WAITFOR_TOOL_NAME} tool instead: ${WAITFOR_TOOL_NAME}(${waitForCall(poll)}) — it polls internally and returns only the final output. Re-send this exact command if you genuinely need the sleep.`
+}
+
+/**
+ * The advise-mode note (BashTool/redirectLanes.ts): the sleep and the check
+ * have already run, so this only names the tool and the call that polls.
+ */
+export function renderWaitForAdvice(poll: SleepPoll): string {
+  return `sleep ${poll.secs} followed by a check has a dedicated tool: ${WAITFOR_TOOL_NAME} polls the check until its output matches and returns once, instead of a round-trip per poll: ${WAITFOR_TOOL_NAME}(${waitForCall(poll)}).`
+}
+
+function waitForCall(poll: SleepPoll): string {
+  return JSON.stringify({
     ...(poll.setup ? { setup: poll.setup } : {}),
     command: poll.command,
     until: '<regex you are waiting for>',
     timeout_s: Math.max(30, poll.secs * 6),
   })
-  return `Blocked: sleep ${poll.secs} followed by a check. Use the ${WAITFOR_TOOL_NAME} tool instead: ${WAITFOR_TOOL_NAME}(${call}) — it polls internally and returns only the final output. Re-send this exact command if you genuinely need the sleep.`
 }

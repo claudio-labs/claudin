@@ -12,6 +12,7 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   findToolByName,
   type Tool,
+  type ToolAdvice,
   type ToolProgress,
   type ToolProgressData,
   type ToolUseContext,
@@ -464,6 +465,50 @@ function withSerialEditHint(
   return { ...block, content: block.content + renderSerialEditNudge(streak) }
 }
 
+/** A tool's advice for this call, fail-open: a throwing `advise` must not cost the call. */
+function askToolAdvice(
+  tool: Tool,
+  input: unknown,
+  toolUseContext: ToolUseContext,
+): ToolAdvice | null {
+  if (!tool.advise) return null
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) return null
+  try {
+    return tool.advise(input as never, toolUseContext)
+  } catch (e) {
+    logError(e)
+    return null
+  }
+}
+
+/**
+ * The advice as the reminder appended to a result. When the tool it points at
+ * is deferred and not loaded in this conversation, the note also names the
+ * ToolSearch call that loads it — without that line a model that decides to
+ * switch would call a tool it has no schema for.
+ */
+export function renderToolAdvice(
+  advice: ToolAdvice,
+  tools: readonly Tool[],
+  messages: Message[],
+): string {
+  const target = advice.suggests ? findToolByName(tools, advice.suggests) : undefined
+  const load =
+    target && isUnloadedDeferredTool(target, tools, messages)
+      ? ` ${target.name} is deferred: load it first with ${TOOL_SEARCH_TOOL_NAME} "select:${target.name}".`
+      : ''
+  return `\n\n<system-reminder>\n${advice.message}${load}\n</system-reminder>`
+}
+
+function withToolAdvice(block: ToolResultBlockParam, note: string | null): ToolResultBlockParam {
+  if (!note) return block
+  if (typeof block.content === 'string') return { ...block, content: block.content + note }
+  if (Array.isArray(block.content)) {
+    return { ...block, content: [...block.content, { type: 'text', text: note.trimStart() }] }
+  }
+  return { ...block, content: note.trimStart() }
+}
+
 function streamedCheckPermissionsAndCallTool(
   tool: Tool,
   toolUseID: string,
@@ -528,20 +573,31 @@ export function buildSchemaNotSentHint(
   messages: Message[],
   tools: readonly { name: string }[],
 ): string | null {
-  // Optimistic gating — reconstructing claude.ts's full useToolSearch
-  // computation is fragile. These two gates prevent pointing at a ToolSearch
-  // that isn't callable; occasional misfires (Haiku, tst-auto below threshold)
-  // cost one extra round-trip on an already-failing path.
-  if (!isToolSearchEnabledOptimistic()) return null
-  if (!isToolSearchToolAvailable(tools)) return null
-  if (!isDeferredTool(tool)) return null
-  const discovered = extractDiscoveredToolNames(messages)
-  if (discovered.has(tool.name)) return null
+  if (!isUnloadedDeferredTool(tool, tools, messages)) return null
   return (
     `\n\nThis tool's schema was not sent to the API — it was not in the discovered-tool set derived from message history. ` +
     `Without the schema in your prompt, typed parameters (arrays, numbers, booleans) get emitted as strings and the client-side parser rejects them. ` +
     `Load the tool first: call ${TOOL_SEARCH_TOOL_NAME} with query "select:${tool.name}", then retry this call.`
   )
+}
+
+/**
+ * A deferred tool whose schema this conversation has not loaded yet.
+ *
+ * Optimistic gating — reconstructing claude.ts's full useToolSearch
+ * computation is fragile. The first two gates prevent pointing at a ToolSearch
+ * that isn't callable; occasional misfires (Haiku, tst-auto below threshold)
+ * cost one extra round-trip.
+ */
+function isUnloadedDeferredTool(
+  tool: Tool,
+  tools: readonly { name: string }[],
+  messages: Message[],
+): boolean {
+  if (!isToolSearchEnabledOptimistic()) return false
+  if (!isToolSearchToolAvailable(tools)) return false
+  if (!isDeferredTool(tool)) return false
+  return !extractDiscoveredToolNames(messages).has(tool.name)
 }
 
 export function getSchemaValidationErrorOverride(
@@ -1005,6 +1061,14 @@ async function checkPermissionsAndCallTool(
   } else if (processedInput !== backfilledClone) {
     callInput = processedInput
   }
+  // Asked once, after permission and before the call, so a lane's one-shot
+  // memo is spent whether the command then succeeds or fails. Rendered now:
+  // the note reads the transcript for tools already loaded, and the call does
+  // not change it.
+  const advice = askToolAdvice(tool, callInput, toolUseContext)
+  const adviceNote = advice
+    ? renderToolAdvice(advice, toolUseContext.options.tools, toolUseContext.messages ?? [])
+    : null
   try {
     const result = await tool.call(
       callInput,
@@ -1073,11 +1137,14 @@ async function checkPermissionsAndCallTool(
 
       // Build content blocks - tool result first, then optional feedback
       const contentBlocks: ContentBlockParam[] = [
-        withSerialEditHint(
-          toolResultBlock,
-          tool.name,
-          toolUseContext,
-          processedInput,
+        withToolAdvice(
+          withSerialEditHint(
+            toolResultBlock,
+            tool.name,
+            toolUseContext,
+            processedInput,
+          ),
+          adviceNote,
         ),
       ]
       // Add accept feedback if user provided feedback when approving
@@ -1310,7 +1377,7 @@ async function checkPermissionsAndCallTool(
                 input,
                 toolUseContext,
                 isInterrupt,
-              ),
+              ) + (isInterrupt || !adviceNote ? '' : adviceNote),
               is_error: true,
               tool_use_id: toolUseID,
             },

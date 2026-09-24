@@ -1,0 +1,95 @@
+{
+  "test": [
+    "src/agent/tools/toolExecution.advise.test.ts",
+    "src/tools/BashTool/redirectLanes.test.ts",
+    "src/tools/BashTool/waitForRedirect.test.ts"
+  ],
+  "source": "src/agent/tools/toolExecution.ts",
+  "probes": [
+    {
+      "name": "a successful result drops the note",
+      "find": "  if (!note) return block\n",
+      "replace": "  return block\n"
+    },
+    {
+      "name": "a failing call drops the note",
+      "find": "              ) + (isInterrupt || !adviceNote ? '' : adviceNote),\n",
+      "replace": "              ),\n"
+    },
+    {
+      "name": "a throwing advise takes the call down with it",
+      "find": "  try {\n    return tool.advise(input as never, toolUseContext)\n  } catch (e) {\n    logError(e)\n    return null\n  }\n",
+      "replace": "  return tool.advise(input as never, toolUseContext)\n"
+    },
+    {
+      "name": "the tool-reminder killswitch is ignored",
+      "find": "  if (!tool.advise) return null\n  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) return null\n",
+      "replace": "  if (!tool.advise) return null\n"
+    },
+    {
+      "name": "a deferred tool's load line is never added",
+      "find": "    target && isUnloadedDeferredTool(target, tools, messages)\n",
+      "replace": "    target && (false as boolean)\n"
+    },
+    {
+      "name": "refuse mode cannot be reached",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "  return mode === 'refuse' || mode === 'off' ? mode : 'advise'\n",
+      "replace": "  return mode === 'off' ? mode : 'advise'\n"
+    },
+    {
+      "name": "the sleep-poll lane stays opt-in when advising",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "    ? !isEnvTruthy(process.env.CLAUDIN_DISABLE_WAITFOR_REDIRECT)\n",
+      "replace": "    ? isEnvTruthy(process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT)\n"
+    },
+    {
+      "name": "a backgrounded run gets a pointer",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "  if (input.run_in_background) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "advise mode renders the refusal",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "      message: advise ? renderRunTestsAdvice(command) : renderRunTestsRedirect(command),\n",
+      "replace": "      message: renderRunTestsRedirect(command),\n"
+    },
+    {
+      "name": "Bash refuses in advise mode too",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    if (getBashRedirectMode() === 'refuse') {\n      const redirect = pickBashRedirect(",
+      "replace": "    if (true as boolean) {\n      const redirect = pickBashRedirect("
+    },
+    {
+      "name": "Bash never advises",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    return redirect ? {\n      message: redirect.message,\n      suggests: redirect.suggests\n    } : null;\n",
+      "replace": "    return null;\n"
+    },
+    {
+      "name": "off mode cannot be reached",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "  return mode === 'refuse' || mode === 'off' ? mode : 'advise'\n",
+      "replace": "  return mode === 'refuse' ? mode : 'advise'\n"
+    },
+    {
+      "name": "off mode still advises",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    if (getBashRedirectMode() !== 'advise') return null;\n",
+      "replace": "    if (getBashRedirectMode() === 'refuse') return null;\n"
+    },
+    {
+      "name": "the Build note forgets the directory",
+      "source": "src/tools/BuildTool/redirect.ts",
+      "find": "      : { directory: parsed.directory, command: core }\n",
+      "replace": "      : { command: core }\n"
+    },
+    {
+      "name": "the Git note forgets the checkout",
+      "source": "src/tools/GitTool/redirect.ts",
+      "find": "  const args = split === null ? { commands: [core] } : { cwd: split.cwd, commands: [core] }\n",
+      "replace": "  const args = { commands: [core] }\n"
+    }
+  ]
+}

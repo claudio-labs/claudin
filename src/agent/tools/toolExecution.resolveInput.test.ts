@@ -1,5 +1,5 @@
 // Tool.resolveInput, wired through the real tool loop: what every step after
-// the zod parse receives, and what reaches the transcript. apply_patch's
+// the zod parse receives, and what reaches the transcript. Patch's
 // `*** Resubmit` is the one production user; a probe tool keeps this about the
 // wiring rather than about patches.
 import { describe, expect, test } from 'bun:test'

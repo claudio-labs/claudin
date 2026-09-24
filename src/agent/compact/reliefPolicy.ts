@@ -78,7 +78,7 @@ export type ReliefCandidate = {
   /** The tool_use's `clearableInputFields`, when clipping this id also
    * stubs its input (Tool.ts). Absent for a result-only candidate. */
   inputFields?: readonly string[]
-  /** Set when the candidate has NO clearable result side (apply_patch: a
+  /** Set when the candidate has NO clearable result side (Patch: a
    * 4k patch and a one-line "Success"). Such an id goes into the clipped
    * INPUTS registry only — never into the result set, whose explicit-clip
    * contract stubs regardless of size. */

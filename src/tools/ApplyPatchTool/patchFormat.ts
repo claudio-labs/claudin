@@ -20,7 +20,7 @@ import {
 /**
  * A patchText that is not a patch but a reference: "apply the patch refused
  * one call ago, exactly as sent" (applyPatch.ts `resolveApplyPatchInput`).
- * Anything reading apply_patch inputs back from a transcript meets it where a
+ * Anything reading Patch inputs back from a transcript meets it where a
  * patch would be.
  */
 export const RESUBMIT_SENTINEL = '*** Resubmit'

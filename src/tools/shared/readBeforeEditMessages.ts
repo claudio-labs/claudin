@@ -1,6 +1,6 @@
 // Read-before-edit refusals, shared by the three tools `.claudin/rules/cache.md`
 // binds to the invariant — FileEditTool, FileWriteTool and NotebookEditTool —
-// and by apply_patch, which since 2026-09-24 only asks whether a file was read
+// and by Patch, which since 2026-09-24 only asks whether a file was read
 // at all and takes its never-read wording from here. They must agree about the
 // same file state — before this module they did not, which is how the same
 // `isPartialView` entry produced "has not been read yet" from Write while Edit
@@ -150,7 +150,7 @@ export function writeFamilyReadGateError(state: FileState | undefined): string {
 //
 // So: a line-scoped write (Edit's `old_string`) must land inside the bytes the
 // entry actually carries, and a whole-file write (Write over an existing file)
-// needs an entry that stands for the whole file. apply_patch was held to both
+// needs an entry that stands for the whole file. Patch was held to both
 // until 2026-09-24 and is held to neither now: its hunks are matched against
 // the file on disk when they are applied, and half of what this lane refused
 // it came back as the identical patch (header of applyPatch.ts).
@@ -260,7 +260,7 @@ export function coveredSegments(state: FileState): SeenSegment[] {
  * Does what the model actually read contain Edit's `old_string`? It is a
  * substring rather than a run of lines: it may begin and end mid-line ("beta"
  * inside `const msg = "alpha beta"`). Matched as whole lines — the predicate
- * apply_patch's hunks went through until 2026-09-24 — such a needle never
+ * Patch's hunks went through until 2026-09-24 — such a needle never
  * matched a range entry, because the outer sentinels demanded a whole line, and
  * Edit was refused for text the model was holding: 6 refusals across 3
  * sessions in the 2026-08/09 corpus, one file refused twice after two

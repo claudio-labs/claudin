@@ -1,6 +1,6 @@
 /**
  * Heuristic for the "serial single-file edit" anti-pattern: the model lands one
- * file per turn (`apply_patch` with a single section, or `Edit`/`Write`) instead
+ * file per turn (`Patch` with a single section, or `Edit`/`Write`) instead
  * of putting every file section into one atomic patch. When triggered,
  * toolExecution appends a <system-reminder> to the successful tool_result.
  *
@@ -93,7 +93,7 @@ type Turn =
 
 /**
  * Targets of one edit tool_use. Paths are compared as written, so an
- * `apply_patch` relative path and an `Edit` absolute path for the same file read
+ * `Patch` relative path and an `Edit` absolute path for the same file read
  * as different targets. That only ever makes the detector quieter (it counts a
  * repeat as a new file at worst), which is the right way for a nudge to fail.
  */

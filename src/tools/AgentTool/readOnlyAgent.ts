@@ -33,7 +33,7 @@ export const READ_ONLY_DISALLOWED_TOOLS: readonly string[] = [
 ]
 
 export const READ_ONLY_INPUT_DESCRIPTION =
-  'Set true for a research or audit task: the agent gets no Edit/Write/apply_patch/NotebookEdit/Agent tools and skips the CLAUDE.md, memory-index and git-status injection a read-only brief does not need. Ignored for a fork.'
+  'Set true for a research or audit task: the agent gets no Edit/Write/Patch/NotebookEdit/Agent tools and skips the CLAUDE.md, memory-index and git-status injection a read-only brief does not need. Ignored for a fork.'
 
 /**
  * The definition a named agent runs under when the caller marked the task

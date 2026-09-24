@@ -1,4 +1,8 @@
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import {
+  APPLY_PATCH_TOOL_NAME,
+  LEGACY_APPLY_PATCH_TOOL_NAME,
+} from 'src/tools/ApplyPatchTool/prompt.js'
 import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js'
 import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
 import type { PermissionRuleValue } from 'src/permissions/PermissionRule.js'
@@ -11,6 +15,7 @@ const LEGACY_TOOL_NAME_ALIASES: Record<string, string> = {
   KillShell: TASK_STOP_TOOL_NAME,
   AgentOutputTool: TASK_OUTPUT_TOOL_NAME,
   BashOutputTool: TASK_OUTPUT_TOOL_NAME,
+  [LEGACY_APPLY_PATCH_TOOL_NAME]: APPLY_PATCH_TOOL_NAME,
 }
 
 export function normalizeLegacyToolName(name: string): string {

@@ -29,6 +29,7 @@ import {
 } from 'src/shared/fs/fileHistory.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
+import { normalizeLegacyToolName } from 'src/permissions/permissionRuleParser.js'
 import {
   createAssistantMessage,
   createUserMessage,
@@ -146,6 +147,31 @@ function migrateLegacyAttachmentTypes(message: Message): Message {
   return message
 }
 
+/**
+ * Rewrites a renamed tool's old wire name (`apply_patch` → `Patch`) on the
+ * tool_use blocks of a resumed transcript. The request path already sends the
+ * canonical name — normalize.ts resolves tool aliases — but everything that
+ * reads the in-memory history compares names: the read-state rebuild on
+ * resume, the write collapse, /diff. Without this they would not see the
+ * old calls at all.
+ */
+function migrateLegacyToolNames(message: Message): Message {
+  if (message.type !== 'assistant' || !Array.isArray(message.message?.content)) {
+    return message
+  }
+  let renamed = false
+  const content = message.message.content.map(block => {
+    if (block.type !== 'tool_use') return block
+    const name = normalizeLegacyToolName(block.name)
+    if (name === block.name) return block
+    renamed = true
+    return { ...block, name }
+  })
+  return renamed
+    ? ({ ...message, message: { ...message.message, content } } as Message)
+    : message
+}
+
 export type TeleportRemoteResponse = {
   log: Message[]
   branch?: string
@@ -210,8 +236,8 @@ export function deserializeMessagesWithInterruptDetection(
 ): DeserializeResult {
   try {
     // Transform legacy attachment types before processing
-    const migratedMessages = serializedMessages.map(
-      migrateLegacyAttachmentTypes,
+    const migratedMessages = serializedMessages.map(message =>
+      migrateLegacyToolNames(migrateLegacyAttachmentTypes(message)),
     )
 
     // Strip invalid permissionMode values from deserialized user messages.

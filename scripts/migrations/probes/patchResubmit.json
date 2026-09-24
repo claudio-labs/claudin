@@ -13,7 +13,7 @@
       "replace": "  return { ok: true, input }"
     },
     {
-      "name": "another apply_patch call does not drop the kept patch",
+      "name": "another Patch call does not drop the kept patch",
       "find": "  pendingResubmits.delete(context.readFileState)\n  if (!isResubmitSentinel(input.patchText))",
       "replace": "  if (!isResubmitSentinel(input.patchText))"
     },
@@ -44,8 +44,8 @@
     },
     {
       "name": "a multi-file resubmit keeps the fix-all header",
-      "find": "      `apply_patch found ${shown.length} problems, each shown with the lines it needs:\\n` +",
-      "replace": "      `apply_patch found ${shown.length} problems — fix all of them, then resubmit the whole patch:\\n` +"
+      "find": "      `${APPLY_PATCH_TOOL_NAME} found ${shown.length} problems, each shown with the lines it needs:\\n` +",
+      "replace": "      `${APPLY_PATCH_TOOL_NAME} found ${shown.length} problems — fix all of them, then resubmit the whole patch:\\n` +"
     },
     {
       "name": "a served never-read refusal is not counted",

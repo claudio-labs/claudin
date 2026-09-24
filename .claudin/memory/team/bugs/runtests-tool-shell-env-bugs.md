@@ -1,31 +1,33 @@
 ---
-name: RunTestsTool still carries the three shell/env bugs Typecheck fixed
-description: Shipped RunTestsTool ignores the cwd it is handed, sets FORCE_COLOR=0 (which enables colour), and uses an env-prefix that only composes with a simple command — all unfixed as of 2026-08-04
+name: RunTestsTool carried the three shell/env bugs Typecheck fixed — FIXED 2026-09-24
+description: RunTestsTool ignored the cwd it was handed, set FORCE_COLOR=0 (which enables colour), and used an env-prefix that only composes with a simple command — fixed on feat/dev-tools-deferred-advice with Build/Typecheck's wrapper
 type: project
 paths:
   - "src/tools/RunTestsTool/run.ts"
 ---
 
-`src/tools/RunTestsTool/run.ts` builds `CI=true FORCE_COLOR=0 ${plan.command}`
-and hands it to `exec()`. Three defects, all of which `TypecheckTool` hit live
-and fixed; RunTests was the model it was copied from and is **still unfixed**:
+Until 2026-09-24 `src/tools/RunTestsTool/run.ts` built `CI=true FORCE_COLOR=0 ${plan.command}`
+and handed it to `exec()`. Three defects, all of which `TypecheckTool` had hit
+live and fixed:
 
-- It destructures `cwd` from its options but never `cd`s there — `cwd` is used
-  only for the report-dir scan and the dossier. `exec()` has no cwd option, so a
-  sub-agent under a worktree override runs the MAIN checkout's suite and files
+- It never `cd`'d to the `cwd` it was given — `exec()` has no cwd option — so a
+  sub-agent under a worktree override ran the MAIN checkout's suite and filed
   the results under the worktree path.
-- `FORCE_COLOR=0` does not disable colour. Runners that test only for the
-  variable's PRESENCE read it as a request to colourise and it overrides
-  `NO_COLOR`; the in-file comment claims the opposite. Unset it instead.
-- The `VAR=x VAR=y <command>` prefix form applies to a simple command only, so
-  it silently fails to cover a compound or piped test command.
+- `FORCE_COLOR=0` does not disable colour: runners that test only for the
+  variable's PRESENCE read it as a request to colourise.
+- The `VAR=x <command>` prefix form applies to a simple command only, so a
+  compound or subshell test command died on a bash syntax error.
 
-**Why:** found while auditing whether the Typecheck fixes had a sibling, after
-the user asked whether the new tool was production-ready. Nothing was changed in
-RunTests — it is a known, unaddressed defect, not a regression.
+**Fix:** the same wrapper as `BuildTool/run.ts` and `TypecheckTool/run.ts` —
+`cd '<cwd>' && {\nexport CI=true NO_COLOR=1\nunset FORCE_COLOR\n<cmd>\n}` with
+`preventCwdChanges: true`. Pinned by `runTests — the shell wrapper` in
+`RunTestsTool.test.ts`; each of the four lines goes red when reverted
+(`scripts/migrations/probes/devToolsDeferredAdvice.json`).
 
-**How to apply:** flag these if RunTests behaviour is questioned, especially any
-report of a sub-agent testing the wrong tree or a scrape defeated by ANSI. The
-fixes to copy are in `TypecheckTool/run.ts` (`cd '<cwd>' && { … }` with
-`preventCwdChanges: true`, unset FORCE_COLOR) — see
-[[typecheck-tool-baseline-design]] and [[runtests-tool-language-coverage]].
+**Two fixture traps the probes caught.** A bash syntax error quotes the command
+line back, so a sentinel written literally in the command "survives" the very
+failure the test is about — build it with `printf '%s'`. And the shell records
+its cwd (`pwd -P >| file`, joined with `&&`) only after a command that exits 0,
+so a `preventCwdChanges` test must use a succeeding command or it guards nothing.
+
+Related: [[typecheck-tool-baseline-design]], [[runtests-tool-language-coverage]].

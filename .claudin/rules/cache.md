@@ -152,7 +152,7 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     keeps Edit/Write/NotebookEdit demanding a real Read (the model has seen an
     outline, not the body) and keeps the entry out of the dedup gate; the
     second makes the blind-pointer stub unrepresentable from this state.
-    `apply_patch` is not refused over it since 2026-09-24 (see the invariant
+    `Patch` is not refused over it since 2026-09-24 (see the invariant
     below), but a hunk still needs the lines, which is the read this unblocks.
   - **`STICKY_REPLAY_BUDGET` is load-bearing, not belt-and-braces.** Do not
     "simplify" it away. The other exits cannot cover property (2) on their own:
@@ -171,7 +171,7 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     optimization must require `!isPartialView` too. NotebookEdit and the
     attachment path each checked only presence, which the sticky marker turned
     into a blind-notebook-edit path and a suppressed `@`-mention.
-    **`apply_patch` left it on 2026-09-24, on purpose**, and rejects only
+    **`Patch` left it on 2026-09-24, on purpose**, and rejects only
     `!entry`: any read counts — an outline, a range, a clipped Read, an
     injected file, a file changed on disk since — because whether a hunk
     applies is decided at apply time, against the file as it is then
@@ -200,7 +200,7 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     and Write: `seenRegionCoversText` requires Edit's `old_string` to sit
     inside the bytes the entry carries, and `needsWholeFileRead` requires a
     whole-file entry for a write that replaces the file (`FileWriteTool`).
-    `apply_patch` hunks went through a line-anchored twin of it until
+    `Patch` hunks went through a line-anchored twin of it until
     2026-09-24 and go through nothing now (invariant above). Matching is
     per-line trimmed and keeps only the INNER line anchors, because an
     `old_string` may start and end mid-line and the outer sentinels refused
@@ -290,7 +290,7 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     2026-09-20). When every chunk's old side (or Edit's `old_string`) sits in
     the current file exactly and uniquely, the never-read, partial-view, stale
     and coverage refusals of Edit — and the never-read refusal of an
-    `apply_patch` Update, its only one since 2026-09-24 — append the lines
+    `Patch` Update, its only one since 2026-09-24 — append the lines
     (Read-numbered, ±2 context, merged, ≤200 lines) and register each block via
     `readFileState.set` with `offset`/`limit` — the same shape a Read of it
     leaves, so `carrySeenRanges` keeps the earlier slices and the IDENTICAL
@@ -307,7 +307,7 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     anywhere passed. `prev.isPartialView` now returns "carry nothing".
     Scenario S15 in `src/__tests__/readGateScenarios.test.ts` pins it, and
     S6–S14 pin the rest of this bullet group end to end — through Edit, since
-    `apply_patch` no longer looks past presence.
+    `Patch` no longer looks past presence.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 

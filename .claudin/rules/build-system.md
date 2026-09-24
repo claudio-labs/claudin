@@ -300,12 +300,6 @@ construct you render in a script or a test.
    bundle file(s)" is the tell.) The build GCs `dist/chunks` down to the **3 most
    recent generations**, so a stale fold can still match for two more rebuilds:
    `rm -rf dist/chunks` before verifying a `feature()` fold.
-6. **A rebuild eventually breaks a claudin session running from this checkout.**
-   Lazily-imported chunks are resolved from disk at call time, so once the GC
-   prunes the generation a live session booted from, its next lazy import fails
-   with `Cannot find module '/…/dist/chunks/processSlashCommand-<oldgen>-….mjs'`
-   — skills and slash commands die first. It takes three rebuilds, not one, and
-   it is not a code regression: restart `claudindev`.
 
 ## Invariant tests (run when touching the build)
 

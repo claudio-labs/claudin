@@ -467,7 +467,7 @@ describe('seenRangeLabel — accumulated', () => {
 // .claudin/rules/testing.md on cross-file mock leaks). Without this block,
 // deleting a tool's call to the shared helper and restoring its old flat
 // "has not been read yet" string breaks nothing, which is exactly the hole an
-// audit found in the first version of this change. apply_patch left the
+// audit found in the first version of this change. Patch left the
 // invariant on 2026-09-24 — it asks only whether the file was read — and its
 // validator is driven for real in applyPatch.test.ts.
 // ---------------------------------------------------------------------------

@@ -24,7 +24,7 @@ const emptyTurn = (): TurnDiff => ({
 })
 
 describe('isApplyPatchResult', () => {
-  test('matches the apply_patch { files: [...] } shape', () => {
+  test('matches the Patch { files: [...] } shape', () => {
     expect(
       isApplyPatchResult({
         files: [
@@ -77,7 +77,7 @@ describe('mergeFileDiff', () => {
 })
 
 describe('applyToolResultToTurn (dispatch + wiring)', () => {
-  test('routes an apply_patch { files: [...] } result, keying a move on its dest', () => {
+  test('routes a Patch { files: [...] } result, keying a move on its dest', () => {
     const turn = emptyTurn()
     applyToolResultToTurn(turn, {
       files: [
@@ -103,7 +103,7 @@ describe('applyToolResultToTurn (dispatch + wiring)', () => {
     expect(turn.files.get('/a.ts')!.linesRemoved).toBe(1)
   })
 
-  test('ignores results that are neither FileEdit nor apply_patch', () => {
+  test('ignores results that are neither FileEdit nor Patch', () => {
     const turn = emptyTurn()
     applyToolResultToTurn(turn, { stdout: 'hello' })
     expect(turn.files.size).toBe(0)

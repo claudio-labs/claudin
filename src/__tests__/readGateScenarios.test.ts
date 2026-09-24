@@ -39,10 +39,10 @@ import {
 // bugs survived — a fabricated entry cannot show that Read wrote the wrong one.
 //
 // Most of them observe through Edit, the line-scoped write that still holds the
-// full gate. apply_patch held it too until 2026-09-24 and now only asks whether
+// full gate. Patch held it too until 2026-09-24 and now only asks whether
 // the file was read at all (S19), so a scenario about coverage, a partial view
 // or a stale entry would pass through it unobserved. The ones left on
-// apply_patch — S10, S11, S16, S17, S18 — are about the entry being there.
+// Patch — S10, S11, S16, S17, S18 — are about the entry being there.
 //
 // Reproduced here, from the 683-session corpus:
 //   S1  a file walked in two ranges, patched inside the first    (28/37 refusals)
@@ -76,7 +76,7 @@ import {
 // 30 sessions that a file it had just written was "modified by the user":
 //   S18 a write, then the same bytes rewritten                    (`git stash` + `pop`)
 //
-// And the policy that replaced apply_patch's gate on 2026-09-24:
+// And the policy that replaced Patch's gate on 2026-09-24:
 //   S19 an outline, a range, a file changed since: any read authorizes a patch
 // ---------------------------------------------------------------------------
 
@@ -284,7 +284,7 @@ describe('S3 — an out-of-band rewrite of a file the model had read in full', (
   test('the model is told, and can still edit the file', async () => {
     const p = join(dir, 's3.ts')
     writeFileSync(p, bigSource('BEFORE'))
-    // The shape Edit/Write/apply_patch leave behind: whole file, no offset.
+    // The shape Edit/Write/Patch leave behind: whole file, no offset.
     ctx.readFileState.set(p, {
       content: bigSource('BEFORE'),
       timestamp: getFileModificationTime(p),
@@ -461,7 +461,7 @@ describe('S10 — a write, a watcher pass, then a new Read', () => {
     for (const p of [older, old, written, fresh]) writeLines(p, 20)
     await read(older, { offset: 1, limit: 5 })
     await read(old, { offset: 1, limit: 5 })
-    // The shape Edit/Write/apply_patch leave behind, and the most recent use.
+    // The shape Edit/Write/Patch leave behind, and the most recent use.
     ctx.readFileState.set(written, {
       content: linesWith(20, {}),
       timestamp: getFileModificationTime(written),
@@ -545,7 +545,7 @@ describe('S13 — Read(range) then a patch on the import block', () => {
     Array.from({ length: 30 }, (_, i) => `export const v${i} = ${i}`).join('\n') +
     '\n'
 
-  test('apply_patch takes it as sent: a Read of the range is a read of the file', async () => {
+  test('Patch takes it as sent: a Read of the range is a read of the file', async () => {
     // 52 of the 102 coverage refusals in the 2026-09-14..20 census: Grep →
     // Read(range) of the function being changed → one patch touching the body
     // AND the imports. In 50% of them the resubmit after the forced Read was
@@ -614,7 +614,7 @@ describe('S15 — outline, then Read(range), then an edit outside the range', ()
     // the outline entry's `content` (the raw source, no offset) as a slice at
     // line 1, so after outline → Read(range) the coverage lane treated every
     // line as read and a write anywhere passed. Presence is not coverage —
-    // for Edit; apply_patch takes the outline alone (S19).
+    // for Edit; Patch takes the outline alone (S19).
     const p = join(dir, 's15.ts')
     writeFileSync(
       p,
@@ -689,7 +689,7 @@ describe('S16 — a `cat` credited as a read, then a patch', () => {
     expect(patch(p, '@@\n-l12\n+L12')).toEqual({ result: true })
 
     rewriteAhead(p, linesWith(20, { 7: 'L7' }))
-    // apply_patch matches the hunk at apply time (S19); the credit is dated to
+    // Patch matches the hunk at apply time (S19); the credit is dated to
     // the cat all the same, which is what Edit's staleness check reads.
     expect(refusal(await edit(p, 'l12\n', 'L12\n'))).toContain('modified since read')
   })
@@ -766,7 +766,7 @@ describe('S18 — a write, then the same bytes rewritten', () => {
   })
 })
 
-describe('S19 — apply_patch takes any read', () => {
+describe('S19 — Patch takes any read', () => {
   // applyPatch.ts, "Read gate": the entry only has to exist. What stops a wrong
   // hunk is the patch itself, matched against the file on disk when it lands.
   async function apply(p: string, body: string): Promise<void> {

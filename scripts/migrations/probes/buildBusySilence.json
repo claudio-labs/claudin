@@ -1,0 +1,84 @@
+{
+  "test": [
+    "src/tools/BuildTool/treeActivity.test.ts",
+    "src/tools/BuildTool/run.test.ts",
+    "src/tools/BuildTool/BuildTool.test.ts",
+    "src/tools/BuildTool/budget.test.ts"
+  ],
+  "source": "src/tools/BuildTool/run.ts",
+  "probes": [
+    {
+      "name": "a CPU gain is not recorded as work",
+      "find": "          if (hasActivity(lastSnapshot, snapshot)) {\n            lastCpuAt = Date.now()\n            cpuWatched = false\n          } else {",
+      "replace": "          if (hasActivity(lastSnapshot, snapshot)) {\n            cpuWatched = false\n          } else {"
+    },
+    {
+      "name": "the watchdog measures silence only",
+      "find": "      const quietMs = now - Math.max(lastChangeAt, lastCpuAt)",
+      "replace": "      const quietMs = now - lastChangeAt"
+    },
+    {
+      "name": "an idle comparison is never recorded",
+      "find": "          } else {\n            cpuWatched = true\n          }",
+      "replace": "          } else {\n          }"
+    },
+    {
+      "name": "the silent tree is never sampled",
+      "find": "        sample(rootPid)\n",
+      "replace": ""
+    },
+    {
+      "name": "the stall drops the CPU observation",
+      "find": "        ...(stopped.cpuIdleMs !== undefined && { cpuIdleMs: stopped.cpuIdleMs }),\n",
+      "replace": ""
+    },
+    {
+      "name": "ShellCommand hides the pid",
+      "source": "src/shared/proc/ShellCommand.ts",
+      "find": "    return this.#childProcess?.pid\n",
+      "replace": "    return undefined\n"
+    },
+    {
+      "name": "a new process is not work",
+      "source": "src/tools/BuildTool/treeActivity.ts",
+      "find": "    if (before === undefined) return true\n",
+      "replace": "    if (before === undefined) continue\n"
+    },
+    {
+      "name": "any CPU gain counts as work",
+      "source": "src/tools/BuildTool/treeActivity.ts",
+      "find": "  return gained >= MIN_CPU_GAIN_SECONDS\n",
+      "replace": "  return gained > 0\n"
+    },
+    {
+      "name": "the tree stops at the root's children",
+      "source": "src/tools/BuildTool/treeActivity.ts",
+      "find": "    pending.push(...(children.get(row.pid) ?? []))\n",
+      "replace": "    if (row.pid === root) pending.push(...(children.get(row.pid) ?? []))\n"
+    },
+    {
+      "name": "BSD times are not parsed",
+      "source": "src/tools/BuildTool/treeActivity.ts",
+      "find": "const CPU_TIME_RE = /^(?:(\\d+)-)?(?:(\\d+):)?(\\d+):(\\d+(?:\\.\\d+)?)$/",
+      "replace": "const CPU_TIME_RE = /^(?:(\\d+)-)?(?:(\\d+):)?(\\d+):(\\d+)$/"
+    },
+    {
+      "name": "an explicit timeout no longer lifts the idle limit",
+      "source": "src/tools/BuildTool/BuildTool.ts",
+      "find": "  return input.idleTimeout ?? input.timeout ?? DEFAULT_IDLE_TIMEOUT_MS\n",
+      "replace": "  return input.idleTimeout ?? DEFAULT_IDLE_TIMEOUT_MS\n"
+    },
+    {
+      "name": "the renderer loses cpuIdleMs",
+      "source": "src/tools/BuildTool/BuildTool.ts",
+      "find": "        cpuIdleMs: z.number().optional(),\n",
+      "replace": ""
+    },
+    {
+      "name": "an idle CPU is reported as mere silence",
+      "source": "src/tools/BuildTool/budget.ts",
+      "find": "    if (stall.cpuIdleMs !== undefined) {\n",
+      "replace": "    if (false as boolean) {\n"
+    }
+  ]
+}

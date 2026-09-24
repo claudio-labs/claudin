@@ -15,7 +15,7 @@ function readSnapshot(): SessionDiffStat {
 
 /**
  * Session-wide lines added/removed, as accumulated by `countLinesChanged` on
- * every Edit/Write/apply_patch. These are in-memory counters with no event
+ * every Edit/Write/Patch. These are in-memory counters with no event
  * API, so they are polled — but the read is two property lookups, so there is
  * no git subprocess or filesystem work behind this hook.
  *

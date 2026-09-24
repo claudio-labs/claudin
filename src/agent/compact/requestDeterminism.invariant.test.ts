@@ -112,9 +112,9 @@ function wireBytes(params: unknown[]): string[] {
   )
 }
 
-// The pool the claude renderer's ToolUseContext would carry: apply_patch
+// The pool the claude renderer's ToolUseContext would carry: Patch
 // opts its patchText in for the input-side clip.
-const POOL = [{ name: 'apply_patch', clearableInputFields: ['patchText'] }]
+const POOL = [{ name: 'Patch', clearableInputFields: ['patchText'] }]
 
 /** The full per-request render pipeline as the wire sees it — the same
  * order as claude/streaming.ts: stubs, input stubs, frontier, marker. */
@@ -210,13 +210,13 @@ describe('request determinism — message prefix', () => {
     expectPrefixStable(turnN.bytes, turnN1.bytes)
   })
 
-  test('idle gap clips old apply_patch INPUTS: the patch body leaves the wire and the next turn is prefix-stable', async () => {
+  test('idle gap clips old Patch INPUTS: the patch body leaves the wire and the next turn is prefix-stable', async () => {
     const state = createContentReplacementState()
     const history: Message[] = []
     for (let i = 0; i < 9; i++) {
       history.push(
         ...exchange(`toolu_${i}`, 'Success. Applied the patch.', 90, {
-          name: 'apply_patch',
+          name: 'Patch',
           input: { patchText: `PATCH_${i}_` + 'p'.repeat(2_000) },
         }),
       )
@@ -226,7 +226,7 @@ describe('request determinism — message prefix', () => {
     // The oldest calls' bodies are gone from the wire, replaced by the
     // input stub; the kept tail still carries its patch.
     expect(turnN.bytes[0]).not.toContain('PATCH_0_')
-    expect(turnN.bytes[0]).toContain('tokens of patchText from apply_patch')
+    expect(turnN.bytes[0]).toContain('tokens of patchText from Patch')
     expect(turnN.bytes.join('\n')).toContain('PATCH_8_')
     // The one-line results were never stubbed — input-only ids stay out of
     // the result set.

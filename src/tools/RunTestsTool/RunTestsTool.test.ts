@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { pwd } from 'src/shared/fs/cwd.js'
 import { applyFilters } from 'src/tools/RunTestsTool/RunTestsTool.js'
 import { readReportDir, runTests } from 'src/tools/RunTestsTool/run.js'
 import { buildDossier } from 'src/tools/RunTestsTool/dossier.js'
@@ -1134,5 +1135,55 @@ describe('runTests — the live progress line', () => {
     expect(seen.every(p => p.framework === 'unknown')).toBe(true)
     const lines = ['ok 1 - first', 'ok 2 - second']
     expect(seen.every(p => p.label === '' || lines.includes(p.label))).toBe(true)
+  }, 30_000)
+})
+
+describe('runTests — the shell wrapper', () => {
+  const dirs: string[] = []
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true })
+  })
+
+  // `unknown` so `planReporter` leaves each command alone; none of these
+  // outputs parses as a suite, so the raw tail is always attached.
+  function run(command: string, cwd: string): Promise<TestResult> {
+    return runTests({
+      command,
+      framework: 'unknown',
+      cwd,
+      abortSignal: new AbortController().signal,
+      timeoutMs: 30_000,
+    })
+  }
+
+  test('the suite runs in the cwd it was handed, and the session shell stays put', async () => {
+    // exec() has no cwd option: without the `cd`, a sub-agent under a worktree
+    // override ran the MAIN checkout's suite.
+    const cwd = mkdtempSync(join(tmpdir(), 'claudin-runtests-cwd-'))
+    dirs.push(cwd)
+    writeFileSync(join(cwd, 'only-here.txt'), 'sentinel: ran in the right place\n')
+    const before = pwd()
+    // Exits 0 on purpose: the shell records its cwd only after a command that
+    // succeeded, and that record is what would move the session.
+    const result = await run('cat only-here.txt', cwd)
+    expect(result.stdoutTail).toContain('sentinel: ran in the right place')
+    expect(pwd()).toBe(before)
+  }, 30_000)
+
+  test('FORCE_COLOR is unset, not set to 0, and NO_COLOR is set', async () => {
+    const result = await run(
+      'echo "FORCE_COLOR=[${FORCE_COLOR-unset}] NO_COLOR=[${NO_COLOR-unset}]"; exit 1',
+      process.cwd(),
+    )
+    expect(result.stdoutTail).toContain('FORCE_COLOR=[unset] NO_COLOR=[1]')
+  }, 30_000)
+
+  test('a compound command survives the environment', async () => {
+    // An inline `A=1 B=2 cmd` prefix only composes with a SIMPLE command; a
+    // subshell died on a bash syntax error before any test ran. The sentinel is
+    // assembled by printf so the syntax error, which quotes the command, cannot
+    // contain it.
+    const result = await run("(printf 'sentinel: from a %s\\n' subshell; exit 1)", process.cwd())
+    expect(result.stdoutTail).toContain('sentinel: from a subshell')
   }, 30_000)
 })

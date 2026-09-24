@@ -60,7 +60,7 @@
  *
  * `--arm-args=<label>:<args>` appends CLI arguments to both invocations of one
  * arm — how a tool is taken away without touching the source:
- *   bun scripts/bench/ab/session-cache-ab.ts --variant=nopatch --arm-args='nopatch:--disallowedTools apply_patch'
+ *   bun scripts/bench/ab/session-cache-ab.ts --variant=nopatch --arm-args='nopatch:--disallowedTools Patch'
  *
  * `--proxy` routes every arm through `wire-proxy.ts`, a local recording proxy
  * in front of the real API, with each CLI's first-party override set. Every
@@ -993,11 +993,13 @@ type Metrics = {
   hiddenTotal: number
 }
 
-const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'apply_patch', 'NotebookEdit', 'Rename'])
+/** `apply_patch` is the patch tool's wire name before 2026-09-24; replays span both. */
+const PATCH_TOOLS = new Set(['apply_patch', 'Patch'])
+const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', ...PATCH_TOOLS, 'NotebookEdit', 'Rename'])
 /** A read-gate refusal that carried the lines it refused over (servedRegion.ts). */
 const SERVED_REFUSAL_RE = /now count as read/
-/** apply_patch's reference to the patch refused one call earlier (patchFormat.ts). */
-const isResubmit = (c: Call) => c.name === 'apply_patch' && String(c.input.patchText ?? '').trim() === '*** Resubmit'
+/** The patch tool's reference to the patch refused one call earlier (patchFormat.ts). */
+const isResubmit = (c: Call) => PATCH_TOOLS.has(c.name) && String(c.input.patchText ?? '').trim() === '*** Resubmit'
 
 /**
  * `total_cost_usd` means different things after `--resume`: claude reports the
