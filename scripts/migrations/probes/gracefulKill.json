@@ -1,0 +1,16 @@
+{
+  "test": "src/shared/proc/ShellCommand.test.ts",
+  "source": "src/shared/proc/ShellCommand.ts",
+  "probes": [
+    {
+      "name": "a stop is a SIGKILL again",
+      "find": "      treeKill(pid, 'SIGTERM')\n",
+      "replace": "      treeKill(pid, 'SIGKILL')\n"
+    },
+    {
+      "name": "a command that ignores SIGTERM is never killed",
+      "find": "          treeKill(pid, 'SIGKILL')\n        }\n      }, killGraceMs)",
+      "replace": "        }\n      }, killGraceMs)"
+    }
+  ]
+}

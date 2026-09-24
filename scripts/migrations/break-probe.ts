@@ -11,7 +11,9 @@
 //     EXACTLY once or the probe is refused.
 //   - leaving the tree dirty on a crash: the original text is held in memory
 //     and written back in a finally, and the run re-verifies the file is
-//     byte-identical at the end.
+//     byte-identical at the end. A SIGINT/SIGTERM — Ctrl+C, or the tool that
+//     launched the run being stopped — restores it too: a killed process
+//     never reaches the finally, and the mutation used to stay in the source.
 //
 // Usage:
 //   bun run scripts/migrations/break-probe.ts <spec.json>
@@ -51,13 +53,34 @@ const spec: Spec = JSON.parse(readFileSync(specPath, 'utf8'))
 const COUNTS_RE = /(\d+) pass/
 const FAIL_RE = /(\d+) fail/
 
-function runSuite(): { pass: number; fail: number; names: string[] } {
+/** The mutation on disk right now, and the suite run judging it. */
+let inFlight: { path: string; original: string } | null = null
+let running: { kill: () => void } | null = null
+
+// The suite runs asynchronously so these can fire mid-run; a spawnSync would
+// hold them until the whole spec had finished.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    running?.kill()
+    if (inFlight) writeFileSync(inFlight.path, inFlight.original)
+    process.exit(signal === 'SIGINT' ? 130 : 143)
+  })
+}
+
+async function runSuite(): Promise<{ pass: number; fail: number; names: string[] }> {
   const suites = Array.isArray(spec.test) ? spec.test : [spec.test]
-  const proc = Bun.spawnSync(['bun', 'test', ...suites], {
+  const proc = Bun.spawn(['bun', 'test', ...suites], {
     stdout: 'pipe',
     stderr: 'pipe',
   })
-  const out = `${proc.stdout.toString()}\n${proc.stderr.toString()}`
+  running = proc
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  running = null
+  const out = `${stdout}\n${stderr}`
   const names: string[] = []
   for (const line of out.split('\n')) {
     const m = /^\(fail\)\s+(.*?)(?:\s+\[[\d.]+ms\])?$/.exec(line.trim())
@@ -70,7 +93,7 @@ function runSuite(): { pass: number; fail: number; names: string[] } {
   }
 }
 
-const baseline = runSuite()
+const baseline = await runSuite()
 console.log(`baseline: ${baseline.pass} pass, ${baseline.fail} fail\n`)
 if (baseline.fail > 0) {
   console.error('refusing to probe against a red baseline')
@@ -90,8 +113,9 @@ for (const probe of spec.probes) {
   }
 
   try {
+    inFlight = { path, original }
     writeFileSync(path, original.replace(probe.find, probe.replace))
-    const result = runSuite()
+    const result = await runSuite()
     if (result.fail === 0) {
       console.log(`✗ ${probe.name}\n    NOTHING WENT RED — this line is not guarded`)
       unguarded.push(probe.name)
@@ -101,10 +125,11 @@ for (const probe of spec.probes) {
     }
   } finally {
     writeFileSync(path, original)
+    inFlight = null
   }
 }
 
-const after = runSuite()
+const after = await runSuite()
 console.log(`\nrestored: ${after.pass} pass, ${after.fail} fail`)
 if (after.fail > 0 || after.pass !== baseline.pass) {
   console.error('RESTORE FAILED — the tree does not match the baseline')
