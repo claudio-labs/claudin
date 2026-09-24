@@ -8,12 +8,16 @@ import type { ResponseFrame } from 'src/sessions/peers/frames.js'
 import type { InboundFrame, PeerInbox } from 'src/sessions/peers/inboxServer.js'
 import { startPeerInbox } from 'src/sessions/peers/inboxServer.js'
 import { takePendingHold } from 'src/sessions/peers/notices.js'
+import { takeAwaitedIdleNotice } from 'src/sessions/peers/subscriptions.js'
 import {
   CROSS_SESSION_SENDS_PER_USER_PROMPT,
   resetCrossSessionSends,
 } from 'src/sessions/peers/sendBudget.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import { SendMessageTool } from 'src/tools/SendMessageTool/SendMessageTool.js'
+import {
+  inputSchemaFor,
+  SendMessageTool,
+} from 'src/tools/SendMessageTool/SendMessageTool.js'
 
 let root: string
 let peer: PeerInbox
@@ -121,7 +125,7 @@ describe('SendMessage to another session', () => {
       "held for its user's approval (that session and yours are on different sides of bypassPermissions)",
     )
     expect(data.message).toContain('Do not wait for a reply')
-    const label = data.message.match(/claudin-goal \[[0-9a-f]+\]/)?.[0]
+    const label = data.message.match(/claudin-goal \[[0-9a-f]+\]/)?.[0] ?? 'no label in the result'
     expect(takePendingHold(received[0]!.msg_id)).toEqual({ peerName: label })
   })
 
@@ -173,5 +177,52 @@ describe('SendMessage to another session', () => {
       'CLAUDIN_DISABLE_CROSS_SESSION',
     )
     expect(received).toEqual([])
+  })
+})
+
+describe('notify_when_idle', () => {
+  test('rides on a message, and the subscription is remembered when taken', async () => {
+    peerAnswer = { ok: true, outcome: 'delivered', subscribed: true }
+    const data = await send({ to: 'claudin-goal', message: 'run the tests', notify_when_idle: true })
+    expect(received[0]).toMatchObject({ type: 'message', notify_when_idle: true })
+    expect(data.message).toContain('One [Cross-session idle notice] will follow')
+    expect(takeAwaitedIdleNotice(received[0]!.msg_id)).toBeDefined()
+  })
+
+  test('without a message it is a pure subscription, and nothing is delivered', async () => {
+    peerAnswer = { ok: true, outcome: 'subscribed', subscribed: true }
+    const data = await send({ to: 'claudin-goal', notify_when_idle: true })
+    expect(received[0]).toMatchObject({ type: 'notify_when_idle' })
+    expect(received[0]).not.toHaveProperty('text')
+    expect(data.message).toContain('Nothing was delivered to its Claude')
+  })
+
+  test('a subscription the receiver did not take says so', async () => {
+    peerAnswer = { ok: true, outcome: 'delivered', subscribed: false, detail: 'too many subscriptions' }
+    const data = await send({ to: 'claudin-goal', message: 'hi', notify_when_idle: true })
+    expect(data.message).toContain('No idle notice will come (too many subscriptions)')
+  })
+
+  test('only a session can be subscribed to', async () => {
+    await expect(send({ to: 'researcher', notify_when_idle: true })).rejects.toThrow(
+      'notify_when_idle is for another Claudin session on this machine',
+    )
+    expect(received).toEqual([])
+  })
+
+  test('validation: no message needs the flag, and main or "*" cannot be subscribed to', async () => {
+    const validate = (input: Record<string, unknown>) =>
+      SendMessageTool.validateInput!(input as never, context())
+    expect(await validate({ to: 'claudin-goal' })).toMatchObject({ result: false })
+    expect(await validate({ to: 'claudin-goal', notify_when_idle: true })).toEqual({ result: true })
+    expect(await validate({ to: 'main', notify_when_idle: true })).toMatchObject({ result: false })
+  })
+
+  test('the schema offers the flag, and an optional message, only where a session can be reached', () => {
+    const reachable = inputSchemaFor({ swarm: false, crossSession: true })
+    const unreachable = inputSchemaFor({ swarm: false, crossSession: false })
+    expect(reachable.safeParse({ to: 'x', notify_when_idle: 'true' }).success).toBe(true)
+    expect(unreachable.safeParse({ to: 'x' }).success).toBe(false)
+    expect(Object.keys(unreachable.shape)).not.toContain('notify_when_idle')
   })
 })

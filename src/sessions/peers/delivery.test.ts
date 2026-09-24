@@ -15,6 +15,10 @@ import type { InboundFrame } from 'src/sessions/peers/inboxServer.js'
 import { awaitDeliveryStatus } from 'src/sessions/peers/notices.js'
 import type { InboundSetting } from 'src/sessions/peers/policy.js'
 import type { PeerSession, SessionDirectory } from 'src/sessions/peers/registry.js'
+import {
+  awaitIdleNotice,
+  resetIdleSubscriptionsForTests,
+} from 'src/sessions/peers/subscriptions.js'
 
 const goal: PeerSession = {
   pid: 201,
@@ -29,16 +33,21 @@ const goal: PeerSession = {
 
 afterEach(() => {
   for (const held of getHeldPeerMessages()) takeHeldPeerMessage(held.id)
+  resetIdleSubscriptionsForTests()
 })
 
 function harness({
   mode = 'default',
   setting,
   holdExpiryMs,
+  idleSince,
+  subscriptionTtlMs,
 }: {
   mode?: PermissionMode
   setting?: InboundSetting
   holdExpiryMs?: number
+  idleSince?: number
+  subscriptionTtlMs?: number
 } = {}) {
   const queued: QueuedCommand[] = []
   const sent: { socketPath: string; frame: RequestFrame }[] = []
@@ -49,13 +58,15 @@ function harness({
     permissionMode: () => mode,
     inboundSetting: () => setting,
     ownAddress: () => 'uds:/s/100.sock',
+    idleSince: () => idleSince,
     send: async (socketPath, frame) => {
       sent.push({ socketPath, frame })
       return { ok: true }
     },
     holdExpiryMs,
+    subscriptionTtlMs,
   })
-  return { queued, sent, handler: delivery.handler, settleHeld: delivery.settleHeld }
+  return { queued, sent, ...delivery }
 }
 
 function message(overrides: Partial<InboundFrame> = {}): InboundFrame {
@@ -235,5 +246,97 @@ describe('delivery notices', () => {
     const { queued, handler } = harness()
     await handler(status('never-sent'))
     expect(queued).toEqual([])
+  })
+})
+
+describe('notify_when_idle', () => {
+  const subscribe = (msgId: string): InboundFrame =>
+    ({
+      v: 1,
+      type: 'notify_when_idle',
+      msg_id: msgId,
+      token: 't0',
+      from: 'uds:/s/201.sock',
+    }) as InboundFrame
+  const noticesSent = (sent: { frame: RequestFrame }[]) =>
+    sent.filter(s => s.frame.type === 'idle_notice').map(s => s.frame)
+
+  test('a message that asks for it is delivered and subscribed; the next idle stretch answers once', async () => {
+    const { sent, handler, notifyIdle } = harness()
+    expect(await handler(message({ notify_when_idle: true } as Partial<InboundFrame>))).toEqual({
+      ok: true,
+      outcome: 'delivered',
+      subscribed: true,
+    })
+    await notifyIdle(Date.now() + 1)
+    await notifyIdle(Date.now() + 2)
+    expect(noticesSent(sent)).toMatchObject([
+      { orig_msg_id: 'm1', state: 'idle', token: 't1', from: 'uds:/s/100.sock' },
+    ])
+  })
+
+  test('an idle stretch that began before the subscription does not answer it', async () => {
+    const { sent, handler, notifyIdle } = harness()
+    const before = Date.now() - 10
+    await handler(message({ notify_when_idle: true } as Partial<InboundFrame>))
+    await notifyIdle(before)
+    expect(noticesSent(sent)).toEqual([])
+  })
+
+  test('a pure subscription to an idle session is answered at once, and costs it no turn', async () => {
+    const { queued, sent, handler } = harness({ idleSince: 1_000 })
+    expect(await handler(subscribe('s1'))).toMatchObject({ ok: true, outcome: 'subscribed' })
+    await new Promise(resolve => setTimeout(resolve, 5))
+    expect(queued).toEqual([])
+    expect(noticesSent(sent)).toMatchObject([{ orig_msg_id: 's1', state: 'idle', finished_at: 1_000 }])
+  })
+
+  test('exiting answers every subscription with exited', async () => {
+    const { sent, handler, notifyExit } = harness()
+    await handler(subscribe('s1'))
+    await handler(subscribe('s2'))
+    await notifyExit()
+    expect(noticesSent(sent).map(f => f)).toMatchObject([
+      { orig_msg_id: 's1', state: 'exited' },
+      { orig_msg_id: 's2', state: 'exited' },
+    ])
+  })
+
+  test('an unverified sender cannot subscribe — there is nowhere to send the notice', async () => {
+    const { handler } = harness()
+    const response = await handler({ ...subscribe('s1'), from: 'uds:/elsewhere.sock' } as InboundFrame)
+    expect(response).toMatchObject({ ok: false, subscribed: false })
+    expect(response.detail).toContain('could not verify where to send it')
+  })
+
+  test('a denied held message takes its subscription with it', async () => {
+    const { sent, handler, settleHeld, notifyIdle } = harness({ setting: 'hold' })
+    await handler(message({ notify_when_idle: true } as Partial<InboundFrame>))
+    await settleHeld('m1', 'deny')
+    await notifyIdle(Date.now() + 1)
+    expect(noticesSent(sent)).toEqual([])
+  })
+
+  test('a subscription that never fires expires with a notice', async () => {
+    const { sent, handler } = harness({ subscriptionTtlMs: 5 })
+    await handler(subscribe('s1'))
+    await new Promise(resolve => setTimeout(resolve, 40))
+    expect(noticesSent(sent)).toMatchObject([{ orig_msg_id: 's1', state: 'expired' }])
+  })
+
+  test('an idle notice is believed only for a subscription this session made', async () => {
+    const { queued, handler } = harness()
+    const notice = (orig: string): InboundFrame =>
+      ({ v: 1, type: 'idle_notice', msg_id: 'n', token: 't0', orig_msg_id: orig, state: 'idle', finished_at: Date.parse('2026-09-24T10:05:00') }) as InboundFrame
+    await handler(notice('unknown'))
+    expect(queued).toEqual([])
+    awaitIdleNotice('mine', 'claudin-goal [aaaaaa]')
+    await handler(notice('mine'))
+    await handler(notice('mine'))
+    expect(queued).toHaveLength(1)
+    expect(String(queued[0]!.value)).toContain(
+      '[Cross-session idle notice] claudin-goal [aaaaaa], which you asked to be notified about, is idle now — it finished a turn at 10:05.',
+    )
+    expect(queued[0]).toMatchObject({ priority: 'later', origin: { kind: 'peer-notice' } })
   })
 })

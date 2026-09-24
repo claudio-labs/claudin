@@ -2440,7 +2440,9 @@ export function REPL({
   // Other Claudin sessions on this machine reach this one through here.
   const {
     settleHeld: settleHeldPeerMessage
-  } = usePeerInbox();
+  } = usePeerInbox({
+    isLoading
+  });
 
   // Scheduled tasks from .claudin/scheduled_tasks.json (CronCreate/Delete/List)
   // and session-only /loop runs.

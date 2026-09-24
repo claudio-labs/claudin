@@ -39,6 +39,13 @@ export const RequestFrameSchema = lazySchema(() =>
       text: z.string().max(MESSAGE_MAX_CHARS),
       /** Set when one of the sender's subagents wrote it. */
       from_agent: z.string().max(400).optional(),
+      /** Also subscribe: one notice when the receiver next goes idle. */
+      notify_when_idle: z.boolean().optional(),
+    }),
+    z.object({
+      /** A pure subscription: tell me once when you next go idle or exit. */
+      type: z.literal('notify_when_idle'),
+      ...common(),
     }),
     z.object({
       /** A held message's outcome, sent back to the session that sent it. */
@@ -46,6 +53,14 @@ export const RequestFrameSchema = lazySchema(() =>
       ...common(),
       orig_msg_id: z.string().min(1).max(100),
       status: z.enum(['delivered', 'denied', 'expired']),
+    }),
+    z.object({
+      /** The answer to a notify_when_idle: the session went idle or is exiting. */
+      type: z.literal('idle_notice'),
+      ...common(),
+      orig_msg_id: z.string().min(1).max(100),
+      state: z.enum(['idle', 'exited', 'expired']),
+      finished_at: z.number().optional(),
     }),
   ]),
 )
@@ -56,6 +71,8 @@ export const ResponseFrameSchema = lazySchema(() =>
     ok: z.boolean(),
     outcome: z.enum(['delivered', 'held', 'refused', 'subscribed', 'pong']).optional(),
     detail: z.string().max(2000).optional(),
+    /** For a send that asked notify_when_idle: whether the receiver took it. */
+    subscribed: z.boolean().optional(),
   }),
 )
 export type ResponseFrame = z.infer<ReturnType<typeof ResponseFrameSchema>>

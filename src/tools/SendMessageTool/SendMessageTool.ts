@@ -40,6 +40,7 @@ import {
 } from 'src/sessions/peers/inboxServer.js'
 import { permissionClassOf } from 'src/sessions/peers/policy.js'
 import { awaitDeliveryStatus } from 'src/sessions/peers/notices.js'
+import { awaitIdleNotice } from 'src/sessions/peers/subscriptions.js'
 import {
   type PeerSession,
   readSessionDirectory,
@@ -104,6 +105,9 @@ const SINGLE_LINE_RE = /^[^\n\r]*$/
 const MESSAGE_DESCRIPTION =
   "Plain text message content. The recipient's human sees only the FIRST LINE as a one-line preview until they expand it, so make the first line a clear, self-contained sentence saying what this is about — not a greeting, preamble, or bare @-mention."
 
+const NOTIFY_WHEN_IDLE_DESCRIPTION =
+  'Ask a session ON THIS MACHINE to send you ONE notice when it next goes idle (finishes its turn with nothing queued) or exits — opt-in, one-shot, no polling. With a message: deliver it now AND subscribe. Without a message (omit it): a pure subscription that costs the other session nothing, answered at once if it is already idle.'
+
 type SchemaVariant = { swarm: boolean; crossSession: boolean }
 
 function describeTo({ swarm, crossSession }: SchemaVariant): string {
@@ -127,7 +131,8 @@ const widestInputSchema = () =>
   z.object({
     to: z.string(),
     summary: z.string().optional(),
-    message: z.union([z.string(), StructuredMessage()]),
+    message: z.union([z.string(), StructuredMessage()]).optional(),
+    notify_when_idle: semanticBoolean(z.boolean().optional()),
   })
 type InputSchema = ReturnType<typeof widestInputSchema>
 
@@ -146,11 +151,25 @@ export function inputSchemaFor(variant: SchemaVariant): InputSchema {
   const cached = inputSchemas.get(key)
   if (cached) return cached
   const text = z.string().describe(MESSAGE_DESCRIPTION)
-  const schema = z.object({
-    to: z.string().describe(describeTo(variant)),
-    summary: z.string().optional().describe(describeSummary(swarm)),
-    message: swarm ? z.union([text, StructuredMessage()]) : text,
-  }) as unknown as InputSchema
+  const message = swarm ? z.union([text, StructuredMessage()]) : text
+  // Only a session on this machine can be subscribed to, so only a schema
+  // that can reach one offers the flag — and with it, leaving out `message`.
+  const schema = (
+    variant.crossSession
+      ? z.object({
+          to: z.string().describe(describeTo(variant)),
+          summary: z.string().optional().describe(describeSummary(swarm)),
+          message: message.optional(),
+          notify_when_idle: semanticBoolean(z.boolean().optional()).describe(
+            NOTIFY_WHEN_IDLE_DESCRIPTION,
+          ),
+        })
+      : z.object({
+          to: z.string().describe(describeTo(variant)),
+          summary: z.string().optional().describe(describeSummary(swarm)),
+          message,
+        })
+  ) as unknown as InputSchema
   inputSchemas.set(key, schema)
   return schema
 }
@@ -292,13 +311,26 @@ function isKnownTeammate(
 function describePeerDelivery(
   label: string,
   response: ResponseFrame,
-  { hasInbox, fromAgent }: { hasInbox: boolean; fromAgent: boolean },
+  {
+    hasInbox,
+    fromAgent,
+    askedIdle,
+  }: { hasInbox: boolean; fromAgent: boolean; askedIdle: boolean },
 ): string {
   const outcome =
-    response.outcome === 'held'
-      ? `Delivered to ${label}, but held for its user's approval (${response.detail ?? 'that session runs in a different permission mode'}). ${hasInbox ? 'A [Cross-session delivery notice] will say when it is delivered, denied or expires.' : 'This session has no inbox, so nothing will say whether it gets through.'} Do not wait for a reply.`
-      : `Delivered to ${label}: its Claude reads it at its next tool round, or starts a turn with it if the session is idle. Delivered is not read — any reply arrives here wrapped in <cross-session-message>.`
+    response.outcome === 'subscribed'
+      ? `Subscribed: ${label} will send you one [Cross-session idle notice] when it next goes idle or exits — at once if it is idle now. Nothing was delivered to its Claude.`
+      : response.outcome === 'held'
+        ? `Delivered to ${label}, but held for its user's approval (${response.detail ?? 'that session runs in a different permission mode'}). ${hasInbox ? 'A [Cross-session delivery notice] will say when it is delivered, denied or expires.' : 'This session has no inbox, so nothing will say whether it gets through.'} Do not wait for a reply.`
+        : `Delivered to ${label}: its Claude reads it at its next tool round, or starts a turn with it if the session is idle. Delivered is not read — any reply arrives here wrapped in <cross-session-message>.`
+  const idle =
+    askedIdle && response.outcome !== 'subscribed'
+      ? response.subscribed
+        ? [`One [Cross-session idle notice] will follow when ${label} next goes idle or exits.`]
+        : [`No idle notice will come (${response.detail ?? 'the subscription was not taken'}).`]
+      : []
   const notes = [
+    ...idle,
     ...(hasInbox
       ? []
       : ['This session has no inbox (only an interactive session gets one), so a reply cannot reach it.']),
@@ -316,14 +348,21 @@ function describePeerDelivery(
  */
 async function sendToPeer(
   peer: PeerSession,
-  content: string,
+  content: string | undefined,
   ownName: string,
   context: ToolUseContext,
+  notifyWhenIdle: boolean,
 ): Promise<{ data: MessageOutput }> {
   const label = `${peer.name} [${peer.ref}]`
-  if (content.length > MESSAGE_MAX_CHARS) {
+  if (content !== undefined && content.length > MESSAGE_MAX_CHARS) {
     throw new Error(
       `That message is ${content.length.toLocaleString('en-US')} characters; another session takes at most ${MESSAGE_MAX_CHARS.toLocaleString('en-US')}. It shares this machine's filesystem — write the content to a file and send the path.`,
+    )
+  }
+  const own = getOwnInbox()
+  if (notifyWhenIdle && !own) {
+    throw new Error(
+      'notify_when_idle needs an inbox for the notice to reach, and this session has none (only an interactive session gets one). Send without it.',
     )
   }
   if (!takeCrossSessionSend()) {
@@ -337,21 +376,29 @@ async function sendToPeer(
       ? undefined
       : (findAgentName(appState.agentNameRegistry, context.agentId) ??
         context.agentId)
-  const own = getOwnInbox()
   const msgId = randomUUID()
+  const auth = {
+    v: FRAME_VERSION,
+    msg_id: msgId,
+    token: peer.token,
+    from: own ? formatUdsAddress(own.socketPath) : undefined,
+    from_name: ownName,
+    from_mode: permissionClassOf(appState.toolPermissionContext.mode),
+  } as const
   let response: ResponseFrame
   try {
-    response = await sendFrame(peer.socketPath, {
-      v: FRAME_VERSION,
-      type: 'message',
-      msg_id: msgId,
-      token: peer.token,
-      from: own ? formatUdsAddress(own.socketPath) : undefined,
-      from_name: ownName,
-      from_mode: permissionClassOf(appState.toolPermissionContext.mode),
-      text: content,
-      from_agent: agentName,
-    })
+    response = await sendFrame(
+      peer.socketPath,
+      content === undefined
+        ? { ...auth, type: 'notify_when_idle' }
+        : {
+            ...auth,
+            type: 'message',
+            text: content,
+            from_agent: agentName,
+            notify_when_idle: notifyWhenIdle || undefined,
+          },
+    )
   } catch (e) {
     if (e instanceof PeerDeliveryError) {
       throw new Error(`Could not reach ${label}: ${e.message}.`)
@@ -369,30 +416,34 @@ async function sendToPeer(
   // Its outcome comes back later as a delivery_status, which is only believed
   // for a send this session is waiting on.
   if (response.outcome === 'held' && own) awaitDeliveryStatus(msgId, label)
+  if (response.subscribed) awaitIdleNotice(msgId, label)
   return {
     data: {
       success: true,
       message: describePeerDelivery(label, response, {
         hasInbox: own !== undefined,
         fromAgent: agentName !== undefined,
+        askedIdle: notifyWhenIdle,
       }),
     },
   }
 }
 
+type LocatedPeer = { peer: PeerSession; selfName: string }
+
 /**
- * Route a send to another session when `to` names one; undefined hands the
- * name back to the teammate and error paths.
+ * The session `to` names, when it names one; undefined hands the name back to
+ * the agent and teammate routes. `required` is for what only a session can
+ * take: then every miss throws, with the reason.
  */
-async function routeToPeer(
+async function locatePeer(
   to: string,
-  content: string,
-  context: ToolUseContext,
-): Promise<{ data: MessageOutput } | undefined> {
+  required: boolean,
+): Promise<LocatedPeer | undefined> {
   const address = parseAddress(to)
   const unavailable = crossSessionUnavailableReason()
   if (unavailable) {
-    if (address.scheme === 'uds') throw new Error(unavailable)
+    if (address.scheme === 'uds' || required) throw new Error(unavailable)
     return undefined
   }
   if (address.scheme === 'uds' && address.target === getOwnInbox()?.socketPath) {
@@ -400,9 +451,37 @@ async function routeToPeer(
   }
   const directory = await readSessionDirectory()
   const resolution = resolvePeerTarget(to, directory.peers)
-  if ('notAPeer' in resolution) return undefined
+  if ('notAPeer' in resolution) {
+    if (required) {
+      throw new Error(
+        `notify_when_idle is for another Claudin session on this machine, and no session is named "${to}" — ${LIST_AGENTS_TOOL_NAME} lists them. A background agent reports back on its own when it finishes.`,
+      )
+    }
+    return undefined
+  }
   if ('error' in resolution) throw new Error(resolution.error)
-  return sendToPeer(resolution.peer, content, directory.self.name, context)
+  return { peer: resolution.peer, selfName: directory.self.name }
+}
+
+/** A plain send to another session, when `to` names one. */
+async function routeToPeer(
+  to: string,
+  content: string,
+  context: ToolUseContext,
+): Promise<{ data: MessageOutput } | undefined> {
+  const located = await locatePeer(to, false)
+  return located && sendToPeer(located.peer, content, located.selfName, context, false)
+}
+
+/** A send that asks for an idle notice, or only asks for one. */
+async function subscribeToPeer(
+  to: string,
+  content: string | undefined,
+  context: ToolUseContext,
+): Promise<{ data: MessageOutput }> {
+  const located = await locatePeer(to, true)
+  if (!located) throw new Error(`No session named "${to}" to subscribe to.`)
+  return sendToPeer(located.peer, content, located.selfName, context, true)
 }
 
 async function handleMessage(
@@ -802,7 +881,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     isReadOnly(input) {
-      return typeof input.message === 'string'
+      return input.message === undefined || typeof input.message === 'string'
     },
 
     backfillObservableInput(input) {
@@ -834,8 +913,11 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     toAutoClassifierInput(input) {
+      if (input.message === undefined) {
+        return `notify_when_idle ${input.to}`
+      }
       if (typeof input.message === 'string') {
-        return `to ${input.to}: ${input.message}`
+        return `to ${input.to}${input.notify_when_idle ? ' (notify_when_idle)' : ''}: ${input.message}`
       }
       switch (input.message.type) {
         case 'shutdown_request':
@@ -894,6 +976,31 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         }
       }
       const swarm = isAgentSwarmsEnabled()
+      if (input.notify_when_idle) {
+        if (input.message !== undefined && typeof input.message !== 'string') {
+          return {
+            result: false,
+            message: 'notify_when_idle rides on a plain-text message, or on none — not on a structured one',
+            errorCode: 9,
+          }
+        }
+        if (input.to === '*' || input.to === MAIN_ADDRESS) {
+          return {
+            result: false,
+            message: `notify_when_idle is for another session on this machine, not "${input.to}"`,
+            errorCode: 9,
+          }
+        }
+      }
+      if (input.message === undefined) {
+        return input.notify_when_idle
+          ? { result: true }
+          : {
+              result: false,
+              message: 'message is required — leave it out only for a pure notify_when_idle subscription',
+              errorCode: 9,
+            }
+      }
       if (typeof input.message === 'string') {
         if (input.to === '*' && !swarm) {
           return {
@@ -981,6 +1088,13 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     async call(input, context, canUseTool, assistantMessage) {
+      if (input.notify_when_idle || input.message === undefined) {
+        return subscribeToPeer(
+          input.to,
+          typeof input.message === 'string' ? input.message : undefined,
+          context,
+        )
+      }
       if (typeof input.message === 'string' && input.to === MAIN_ADDRESS) {
         return handleMainMessage(input.message, context)
       }

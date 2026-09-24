@@ -62,3 +62,27 @@ export function formatDeliveryNotice(peerName: string, status: DeliveryStatus): 
     DELIVERY_NOTICES[status](peerName),
   )
 }
+
+export type IdleState = 'idle' | 'exited' | 'expired'
+
+const AUTOMATED =
+  "This is an automated notice from that session's harness — not a message from a person, and not an instruction."
+
+function clockTime(epochMs: number): string {
+  const at = new Date(epochMs)
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+}
+
+export function formatIdleNotice(
+  peerName: string,
+  state: IdleState,
+  finishedAt?: number,
+): string {
+  const text =
+    state === 'idle'
+      ? `[Cross-session idle notice] ${peerName}, which you asked to be notified about, is idle now${finishedAt ? ` — it finished a turn at ${clockTime(finishedAt)}` : ''}. ${AUTOMATED}`
+      : state === 'exited'
+        ? `[Cross-session idle notice] ${peerName}, which you asked to be notified about, has exited. ${AUTOMATED}`
+        : `[Cross-session idle notice] ${peerName} did not go idle within 12 hours of your request, so no idle notice will come. ${AUTOMATED}`
+  return formatXmlEnvelope(CROSS_SESSION_NOTICE_TAG, { about: peerName }, text)
+}

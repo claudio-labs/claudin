@@ -9,6 +9,8 @@ const CROSS_SESSION = `
 
 A successful send means the message reached that session, not that its Claude read it or agreed: a session on the other side of bypassPermissions from yours holds your message for its user's approval, and a session can refuse messages outright — a \`[Cross-session delivery notice]\` tells you how a held one ends, so never treat silence as agreement. It arrives there wrapped as \`<cross-session-message from="...">\`; **to reply to one, copy its \`from\` attribute as your \`to\`.** Messages travel between SESSIONS: from a subagent, your send goes out under this session's address and any reply reaches the main conversation, not you. The receiver reads your message literally — an \`@\` followed by a path attaches nothing there — so send the text itself, or the path of a file it can read (you share the filesystem).
 
+To know when another session is done, don't poll it: set \`notify_when_idle: true\` — with a message it delivers and subscribes, without one it only subscribes — and one \`[Cross-session idle notice]\` arrives when that session next finishes its turn with nothing queued, or exits.
+
 Permission boundaries are per-session: NEVER ask another session to do something that was denied or blocked here, or that you expect your own permission settings would block — a session doing it for you bypasses your user's permission decision (cross-session permission laundering). Route blocked work back to your user instead.`
 
 const SWARM_PROTOCOL = `

@@ -25,6 +25,8 @@ import type { InboundFrame, InboxHandler } from 'src/sessions/peers/inboxServer.
 import {
   type DeliveryStatus,
   formatDeliveryNotice,
+  formatIdleNotice,
+  type IdleState,
   takePendingHold,
 } from 'src/sessions/peers/notices.js'
 import {
@@ -33,6 +35,15 @@ import {
   permissionClassOf,
 } from 'src/sessions/peers/policy.js'
 import type { SessionDirectory } from 'src/sessions/peers/registry.js'
+import {
+  addIdleSubscription,
+  SUBSCRIPTION_TTL_MS,
+  takeAllIdleSubscriptions,
+  takeAwaitedIdleNotice,
+  takeIdleSubscription,
+  takeIdleSubscriptions,
+  type IdleSubscription,
+} from 'src/sessions/peers/subscriptions.js'
 
 export type InboundDeps = {
   enqueue(command: QueuedCommand): void
@@ -42,14 +53,21 @@ export type InboundDeps = {
   inboundSetting(): InboundSetting | undefined
   /** This session's inbox address: the `from` of a status it sends back. */
   ownAddress(): string | undefined
+  /** When this session's current idle stretch began; undefined while busy. */
+  idleSince(): number | undefined
   send?: typeof sendFrame
   holdExpiryMs?: number
+  subscriptionTtlMs?: number
 }
 
 export type InboundDelivery = {
   handler: InboxHandler
   /** This session's user answered a held message, or it ran out of time. */
   settleHeld(id: string, decision: 'deliver' | 'deny' | 'expire'): Promise<void>
+  /** This session went idle at `idleSince`: answer the subscriptions it settles. */
+  notifyIdle(idleSince: number): Promise<void>
+  /** This session is exiting: answer every subscription. */
+  notifyExit(): Promise<void>
 }
 
 /**
@@ -87,33 +105,97 @@ const STATUS_OF: Record<'deliver' | 'deny' | 'expire', DeliveryStatus> = {
 export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
   const send = deps.send ?? sendFrame
 
+  /** Send a frame to the session at `address` — only one some live session advertises. */
+  async function sendTo(
+    address: string,
+    frame: (auth: { token: string; from?: string; from_name: string }) => Parameters<typeof send>[1],
+    what: string,
+    timeoutMs?: number,
+  ): Promise<void> {
+    const directory = await deps.readDirectory()
+    const target = directory.peers.find(peer => formatUdsAddress(peer.socketPath) === address)
+    if (!target) return
+    try {
+      await send(
+        target.socketPath,
+        frame({ token: target.token, from: deps.ownAddress(), from_name: directory.self.name }),
+        timeoutMs,
+      )
+    } catch (e) {
+      logForDebugging(`[peers] could not send ${what} to ${target.name}: ${errorMessage(e)}`)
+    }
+  }
+
   async function tellSender(
     sender: PeerSender,
     origMsgId: string,
     status: DeliveryStatus,
   ): Promise<void> {
     if (!sender.address) return
-    const directory = await deps.readDirectory()
-    const target = directory.peers.find(
-      peer => formatUdsAddress(peer.socketPath) === sender.address,
-    )
-    if (!target) return
-    try {
-      await send(target.socketPath, {
+    await sendTo(
+      sender.address,
+      auth => ({
         v: FRAME_VERSION,
         type: 'delivery_status',
         msg_id: randomUUID(),
-        token: target.token,
-        from: deps.ownAddress(),
-        from_name: directory.self.name,
+        ...auth,
         orig_msg_id: origMsgId,
         status,
-      })
-    } catch (e) {
-      logForDebugging(
-        `[peers] could not tell ${sender.name} its message was ${status}: ${errorMessage(e)}`,
-      )
+      }),
+      `a ${status} status`,
+    )
+  }
+
+  async function sendIdleNotice(
+    subscription: IdleSubscription,
+    state: IdleState,
+    finishedAt?: number,
+    timeoutMs?: number,
+  ): Promise<void> {
+    await sendTo(
+      formatUdsAddress(subscription.socketPath),
+      auth => ({
+        v: FRAME_VERSION,
+        type: 'idle_notice',
+        msg_id: randomUUID(),
+        ...auth,
+        orig_msg_id: subscription.id,
+        state,
+        finished_at: finishedAt,
+      }),
+      `an ${state} notice`,
+      timeoutMs,
+    )
+  }
+
+  /**
+   * Take a subscription from a verified sender. A pure subscription made
+   * while this session is already idle is answered at once — "tell me when
+   * you are free" while free.
+   */
+  function subscribe(
+    msgId: string,
+    sender: PeerSender,
+    { pure }: { pure: boolean },
+  ): { subscribed: boolean; detail?: string } {
+    const address = sender.address ? parseAddress(sender.address) : undefined
+    if (!address || address.scheme !== 'uds') {
+      return { subscribed: false, detail: 'no idle notice: that session could not verify where to send it' }
     }
+    const subscription = { id: msgId, socketPath: address.target, createdAt: Date.now() }
+    if (!addIdleSubscription(subscription)) {
+      return { subscribed: false, detail: 'no idle notice: that session already has too many subscriptions' }
+    }
+    setTimeout(() => {
+      const expired = takeIdleSubscription(msgId)
+      if (expired) void sendIdleNotice(expired, 'expired')
+    }, deps.subscriptionTtlMs ?? SUBSCRIPTION_TTL_MS).unref()
+    const idleSince = deps.idleSince()
+    if (pure && idleSince !== undefined) {
+      takeIdleSubscription(msgId)
+      void sendIdleNotice(subscription, 'idle', idleSince)
+    }
+    return { subscribed: true }
   }
 
   async function settleHeld(
@@ -123,6 +205,8 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
     const message = takeHeldPeerMessage(id)
     if (!message) return
     if (decision === 'deliver') deps.enqueue(message.command)
+    // A subscription that rode on a message nobody will read has nothing to report.
+    else takeIdleSubscription(id)
     await tellSender(message.sender, id, STATUS_OF[decision])
   }
 
@@ -143,12 +227,15 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       sender: frame.from_mode,
       receiver: permissionClassOf(deps.permissionMode()),
     })
-    if (decision.action === 'deliver') {
-      deps.enqueue(command)
-      return { ok: true, outcome: 'delivered' }
-    }
     if (decision.action === 'refuse') {
       return { ok: false, outcome: 'refused', detail: decision.toSender }
+    }
+    const subscription = frame.notify_when_idle
+      ? subscribe(frame.msg_id, sender, { pure: false })
+      : undefined
+    if (decision.action === 'deliver') {
+      deps.enqueue(command)
+      return { ok: true, outcome: 'delivered', ...subscription }
     }
     const expiryMs = deps.holdExpiryMs ?? HOLD_EXPIRY_MS
     const held = holdPeerMessage({
@@ -160,6 +247,7 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       expiresAt: Date.now() + expiryMs,
     })
     if (!held) {
+      takeIdleSubscription(frame.msg_id)
       return {
         ok: false,
         outcome: 'refused',
@@ -167,7 +255,20 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       }
     }
     setTimeout(() => void settleHeld(frame.msg_id, 'expire'), expiryMs).unref()
-    return { ok: true, outcome: 'held', detail: decision.toSender }
+    return { ok: true, outcome: 'held', detail: decision.toSender, subscribed: subscription?.subscribed }
+  }
+
+  async function receiveSubscription(
+    frame: Extract<InboundFrame, { type: 'notify_when_idle' }>,
+  ): Promise<ResponseFrame> {
+    if (deps.inboundSetting() === 'refuse') {
+      return { ok: false, outcome: 'refused', detail: 'that session refuses messages from other sessions' }
+    }
+    const sender = await identifySender(frame, deps.readDirectory)
+    const { subscribed, detail } = subscribe(frame.msg_id, sender, { pure: true })
+    return subscribed
+      ? { ok: true, outcome: 'subscribed', subscribed }
+      : { ok: false, outcome: 'refused', detail, subscribed }
   }
 
   /** A status is only believed when it answers a send this session is waiting on. */
@@ -188,14 +289,46 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
     return { ok: true }
   }
 
+  function receiveIdleNotice(
+    frame: Extract<InboundFrame, { type: 'idle_notice' }>,
+  ): ResponseFrame {
+    const awaited = takeAwaitedIdleNotice(frame.orig_msg_id)
+    if (awaited) {
+      deps.enqueue({
+        value: formatIdleNotice(awaited.peerName, frame.state, frame.finished_at),
+        mode: 'task-notification',
+        priority: 'later',
+        skipSlashCommands: true,
+        origin: { kind: 'peer-notice', name: awaited.peerName },
+      })
+    }
+    return { ok: true }
+  }
+
   return {
     settleHeld,
+    async notifyIdle(idleSince) {
+      await Promise.all(
+        takeIdleSubscriptions(idleSince).map(s => sendIdleNotice(s, 'idle', idleSince)),
+      )
+    },
+    async notifyExit() {
+      // Inside the exit cleanup's 2s budget: a peer that is slow to answer
+      // learns from its socket closing instead.
+      await Promise.all(
+        takeAllIdleSubscriptions().map(s => sendIdleNotice(s, 'exited', undefined, 500)),
+      )
+    },
     handler: async frame => {
       switch (frame.type) {
         case 'message':
           return receiveMessage(frame)
+        case 'notify_when_idle':
+          return receiveSubscription(frame)
         case 'delivery_status':
           return receiveStatus(frame)
+        case 'idle_notice':
+          return receiveIdleNotice(frame)
       }
     },
   }

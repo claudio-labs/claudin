@@ -5,6 +5,8 @@ import {
   updateSessionInbox,
   whenSessionRegistered,
 } from 'src/sessions/concurrentSessions.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { getIdleSince, onSessionIdle } from 'src/sessions/peers/activity.js'
 import { formatUdsAddress } from 'src/sessions/peers/address.js'
 import {
   createInboundDelivery,
@@ -18,6 +20,7 @@ import {
 } from 'src/sessions/peers/inboxServer.js'
 import { resolveInboundSetting } from 'src/sessions/peers/policy.js'
 import { readSessionDirectory } from 'src/sessions/peers/registry.js'
+import { useSessionActivity } from 'src/sessions/peers/hooks/useSessionActivity.js'
 import { logError } from 'src/shared/log.js'
 import { useAppStateStore } from 'src/terminal/state/AppState.js'
 
@@ -27,15 +30,19 @@ import { useAppStateStore } from 'src/terminal/state/AppState.js'
  * sessions but is never listed as one. Returns how the held-message dialog
  * answers.
  */
-export function usePeerInbox(): {
+export function usePeerInbox({ isLoading }: { isLoading: boolean }): {
   settleHeld: (id: string, decision: 'deliver' | 'deny') => void
 } {
   const store = useAppStateStore()
   const deliveryRef = useRef<InboundDelivery | undefined>(undefined)
+  const enabled = crossSessionUnavailableReason() === undefined
+  useSessionActivity(isLoading, enabled)
 
   useEffect(() => {
-    if (crossSessionUnavailableReason()) return
+    if (!enabled) return
     let inbox: PeerInbox | undefined
+    let unsubscribeIdle: (() => void) | undefined
+    let unregisterExit: (() => void) | undefined
     let unmounted = false
     void (async () => {
       if (!(await whenSessionRegistered()) || unmounted) return
@@ -52,8 +59,13 @@ export function usePeerInbox(): {
           const own = getOwnInbox()
           return own ? formatUdsAddress(own.socketPath) : undefined
         },
+        idleSince: getIdleSince,
       })
       deliveryRef.current = delivery
+      unsubscribeIdle = onSessionIdle(idleSince => {
+        void delivery.notifyIdle(idleSince).catch(logError)
+      })
+      unregisterExit = registerCleanup(() => delivery.notifyExit())
       inbox = await startPeerInbox({ handler: delivery.handler })
       if (unmounted) {
         await inbox.close()
@@ -66,11 +78,13 @@ export function usePeerInbox(): {
     })().catch(logError)
     return () => {
       unmounted = true
+      unsubscribeIdle?.()
+      unregisterExit?.()
       if (!inbox) return
       void updateSessionInbox({ messagingSocketPath: null, messagingToken: null })
       void inbox.close()
     }
-  }, [store])
+  }, [store, enabled])
 
   const settleHeld = useCallback((id: string, decision: 'deliver' | 'deny') => {
     void deliveryRef.current?.settleHeld(id, decision).catch(logError)

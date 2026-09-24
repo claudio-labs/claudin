@@ -33,6 +33,7 @@ type SessionRecord = {
   bridgeSessionId?: string | null
   messagingSocketPath?: string | null
   messagingToken?: string | null
+  status?: 'busy' | 'idle'
 }
 
 // registerSession() runs once per process in production but many times over a
@@ -162,6 +163,11 @@ export async function updateSessionInbox(inbox: {
  */
 export async function updateSessionCwd(cwd: string): Promise<void> {
   await updatePidFile({ cwd })
+}
+
+/** Busy or idle, for ListAgents in other sessions. */
+export async function updateSessionStatus(status: 'busy' | 'idle'): Promise<void> {
+  await updatePidFile({ status })
 }
 
 /**
