@@ -7,35 +7,6 @@ paths:
 
 Testing rules for Claudin's Bun-based test suite.
 
-## Core Principles
-
-- Tests are colocated: `src/path/to/module.test.ts` next to the file it tests
-- Use Bun's built-in runner — no Jest, Vitest, or Mocha
-- Real behavior over mocks: mock at the boundary (network, fs), never mock internal logic
-- `test:coverage` runs at `--max-concurrency=1` — some tests touch shared global state
-
-## Running Tests
-
-Run tests through the **RunTests tool**, not Bash: it runs the same command and
-returns a failures-first summary (per failure: name, `file:line`, source
-excerpt) instead of raw runner output, so a failure lands with its location and
-no follow-up Read. A bare test command in Bash runs, and since 2026-09-24 its
-result carries a note naming RunTests and the exact call, once per distinct
-command (`CLAUDIN_BASH_REDIRECT=refuse` restores the one-shot refusal, where
-re-sending the identical command runs it). A test command carrying a `| head`,
-`| tail` or `| grep` tail gets no note — since 2026-09-20 that tail reads as
-raw-output intent (66 of 72 `bun test` refusals in one week carried one, half
-re-sent identically). Once RunTests has actually run a suite, the next bare
-Bash call on that same suite gets none either: that is the raw-output
-escalation the note itself allows. The pass is spent on use and re-armed by the
-next RunTests run, so a habitual `bun test` later in the session is still
-pointed at the tool. The invocations
-below are the underlying commands — pass one as RunTests' `command` when
-auto-detection picks the wrong suite.
-
-Type-check through the **Typecheck tool**, for the same reason and with a bigger
-payoff here: it reports only the diagnostics missing from the project's recorded
-baseline. `bun run typecheck` in Bash runs, and its result points there.
 
 ```bash
 bun test                                   # full suite (608 files, ~9000 tests)
