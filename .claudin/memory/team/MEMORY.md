@@ -8,6 +8,7 @@
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Decisions
+- [apply_patch takes any read since 2026-09-24](decisions/apply-patch-any-read.md) — only never-read is refused; outline/range/stale pass, the hunk match is the check; Edit keeps the gate
 - [Team memory: git IS the sync — HTTP sync + LLM recall deleted 2026-09-21](decisions/team-memory-git-is-the-sync.md) — `paths:` is the on-demand loader; decisions/bugs/docs categories; secret guard blocks
 - [`safeguards` / dangerous-tool-use — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint; would ship rules, paths, git state, identity
 - [Rewriting the shouted emphasis out of tool prompts — DROPPED on data 2026-09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls; empty thinking blocks make it unmeasurable from logs

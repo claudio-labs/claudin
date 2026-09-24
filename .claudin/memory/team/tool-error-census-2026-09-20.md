@@ -85,6 +85,8 @@ its refusals are the harness losing state it had, not the model skipping a
 Read.
 
 **How to apply:** re-run `tool-error-census.ts --since=<next Monday>` and
+count apply_patch coverage/stale refusals from before 2026-09-24 only — the
+tool stopped issuing them that day ([[apply-patch-any-read]]) — and
 expect stale ≈ 0, wrote-then-lost/compacted = 0, coverage and never-read
 recovering in ONE call; if the import-block share is still high, the next
 lever is the Read shape (Grep → Read(range)), not the gate. Watch the
