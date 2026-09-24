@@ -47,7 +47,7 @@ bun test path/to/file.test.ts  # focused single-file test
 bun run verify:privacy      # scan dist/cli.mjs for banned phone-home patterns
 ```
 
-Those are the *human* invocations. An agent should run tests through the **RunTests tool**, which wraps the same command and answers failures-first; BashTool refuses a bare test command once and points there.
+Those are the *human* invocations. An agent should run tests through the **RunTests tool**, which wraps the same command and answers failures-first; a bare test command in Bash still runs, and its result points there.
 
 More test targets (`test:provider`, `test:coverage`, invariant tests) are documented in [testing.md](.claudin/rules/testing.md). After install or local build, the launcher is `bin/claudin` — it requires `dist/cli.mjs` to exist. There is no dev runner that bypasses the bundle, so **always `bun run build` after a source change**.
 

@@ -146,19 +146,29 @@ serialization, so none of this reaches the model. Diagnostic parsers are shared 
 `Typecheck` in `src/tools/shared/diagnostics/`; the chain takes a parser LIST
 and MERGES the native ones, so one Gradle run reports its Kotlin and its javac
 errors together. `CLAUDIN_DISABLE_BUILD_TOOL=1` removes the tool,
-`CLAUDIN_DISABLE_BUILD_REDIRECT=1` only the Bash refusal — which is narrowed to
-the noisy toolchains (`npm run build` is deliberately never refused, its output
-being already short) and never fires for a command that also installs,
+`CLAUDIN_DISABLE_BUILD_REDIRECT=1` only the Bash pointer — which is narrowed to
+the noisy toolchains (`npm run build` is deliberately never pointed at, its
+output being already short) and never fires for a command that also installs,
 publishes or runs something.
+
+Every one of these Bash pointers — tests, checks, builds, repository reads,
+file reads, `sleep` polls — has worked the same way since 2026-09-24: the
+command RUNS, and its result carries a reminder naming the tool and the exact
+call, plus the ToolSearch call when that tool is deferred and not loaded yet
+(`src/tools/BashTool/redirectLanes.ts`, through `Tool.advise`).
+`CLAUDIN_BASH_REDIRECT=refuse` restores the one-shot refusal each lane had
+before, where re-sending the identical command runs it — the A/B arm against
+which the switch is measured, since a pointer that does not block was measured
+here at near-zero adoption.
 
 `git` and `gh` are the fourth lane of the same idea. A Bash command that only
 READS the repository — `git diff|log|status|show|blame`, `gh pr view|list|checks|diff`,
 `gh issue view`, `gh run view`
-— is refused once with the `Git` call to make instead, and re-sending the
-identical command runs it (`src/tools/GitTool/redirect.ts`,
+— runs, and its result names the `Git` call to make instead
+(`src/tools/GitTool/redirect.ts`,
 `CLAUDIN_DISABLE_GIT_REDIRECT=1`). A trailing `| head -50`-style trim is stripped
 before that decision, so a piped read still redirects; mutations are never
-refused, since a dialog in front of a `git push` buys nothing. What counts as
+pointed at, since routing a `git push` through the tool buys nothing. What counts as
 ONE command there is the grammar's own `acceptsGitCommand` (the quoting scan
 described below), not a ban on punctuation — so `git log --format='%h %s%n%b'`
 and `gh run view … --jq '…'` redirect, their `|` being inside quotes, while an
@@ -168,9 +178,8 @@ the tool's own way of reading another checkout (a sibling repo, a worktree).
 `cwd` prefixes the batch with that `cd` and leaves the session cwd alone; it
 is never read-only, like `git -C`, so plan mode still gates it. The `gh` side is
 deliberately narrower than what the tool ACCEPTS (24 read-only command pairs,
-`grammar.ts`): only the shapes with a renderer behind them are refused, because
-a refusal costs a round-trip and the tool hands a table like `gh run list` back
-unchanged. The tool takes a
+`grammar.ts`): only the shapes with a renderer behind them get the pointer —
+the tool hands a table like `gh run list` back unchanged. The tool takes a
 **list** — `Git({commands:["git status","git diff","git log -5"]})` — so a burst
 that would have been three Bash calls is one call and one result.
 
