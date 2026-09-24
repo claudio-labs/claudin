@@ -25,7 +25,7 @@ import {
  * Read/Grep/Glob, a `sleep` poll to WaitFor, and a blocking `sleep` to
  * run_in_background.
  *
- * Two modes, one set of lanes:
+ * Three modes, one set of lanes:
  *
  *  - **advise** (the default since 2026-09-24): the command RUNS, and its result
  *    carries a note naming the tool and the call to make instead
@@ -34,15 +34,16 @@ import {
  *  - **refuse** (`CLAUDIN_BASH_REDIRECT=refuse`): the command is refused once
  *    with the same pointer and the identical re-send runs — the behaviour
  *    before 2026-09-24, byte for byte, kept as the A/B arm and the way back.
- *  - **off** (`CLAUDIN_BASH_REDIRECT=off`): no pointer at all — the arm that
- *    measures a generic line in the system prompt against the per-command
- *    notes (`CLAUDIN_GENERIC_TOOL_PREFERENCE`, prompts.ts).
+ *  - **off** (`CLAUDIN_BASH_REDIRECT=off`): no pointer at all.
  *
  * Measured before the switch: a pointer that does not block was adopted about
  * zero times in three benches here (team memory
  * `tool-result-nudges-benched-zero-adoption`), and the Read/Grep/Glob refusal
  * converted 84.7%. Advising is a user decision; the refusal arm is what
- * measures its cost.
+ * measures its cost. Measured after it (team memory
+ * `dev-tools-deferred-advice-ab-2026-09-24`): cost within noise of the
+ * refusal, 3 fewer turns, and a generic "prefer the dedicated tools" line in
+ * the system prompt instead of the notes changed nothing either.
  *
  * Each lane keeps its own gates and its own one-shot memo: a pointer is given
  * once per distinct command, never for a backgrounded run, only when the tool

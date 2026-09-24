@@ -34,8 +34,8 @@
     {
       "name": "refuse mode cannot be reached",
       "source": "src/tools/BashTool/redirectLanes.ts",
-      "find": "  return process.env.CLAUDIN_BASH_REDIRECT === 'refuse' ? 'refuse' : 'advise'\n",
-      "replace": "  return 'advise'\n"
+      "find": "  return mode === 'refuse' || mode === 'off' ? mode : 'advise'\n",
+      "replace": "  return mode === 'off' ? mode : 'advise'\n"
     },
     {
       "name": "the sleep-poll lane stays opt-in when advising",
@@ -66,6 +66,18 @@
       "source": "src/tools/BashTool/BashTool.tsx",
       "find": "    return redirect ? {\n      message: redirect.message,\n      suggests: redirect.suggests\n    } : null;\n",
       "replace": "    return null;\n"
+    },
+    {
+      "name": "off mode cannot be reached",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "  return mode === 'refuse' || mode === 'off' ? mode : 'advise'\n",
+      "replace": "  return mode === 'refuse' ? mode : 'advise'\n"
+    },
+    {
+      "name": "off mode still advises",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    if (getBashRedirectMode() !== 'advise') return null;\n",
+      "replace": "    if (getBashRedirectMode() === 'refuse') return null;\n"
     },
     {
       "name": "the Build note forgets the directory",
