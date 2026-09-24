@@ -933,7 +933,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
       return { behavior: 'allow' as const, updatedInput: input }
     },
 
-    async validateInput(input, _context) {
+    async validateInput(input, context) {
       if (input.to.trim().length === 0) {
         return {
           result: false,
@@ -988,6 +988,16 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
           return {
             result: false,
             message: `notify_when_idle is for another session on this machine, not "${input.to}"`,
+            errorCode: 9,
+          }
+        }
+        // The notice lands in the session's main conversation, which did not
+        // ask for it; the agent that did would never see it.
+        if (context.agentId !== undefined) {
+          return {
+            result: false,
+            message:
+              'notify_when_idle is for the main conversation — the notice would arrive there, not here. Send without it.',
             errorCode: 9,
           }
         }

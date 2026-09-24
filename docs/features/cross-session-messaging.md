@@ -130,7 +130,8 @@ turn is spent on the other side, and an already-idle session answers at once.
 A subscription lasts 12 hours (then an `expired` notice), a sender holds at most
 3 per session and a session at most 32; one riding on a message that is denied
 or expires is dropped with it. Only a session with an inbox can subscribe — the
-notice needs somewhere to go.
+notice needs somewhere to go — and only its main conversation, where the notice
+arrives; a subagent asking is refused.
 
 ## Guards against loops and laundering
 

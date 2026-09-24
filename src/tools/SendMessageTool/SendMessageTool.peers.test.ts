@@ -216,6 +216,11 @@ describe('notify_when_idle', () => {
     expect(await validate({ to: 'claudin-goal' })).toMatchObject({ result: false })
     expect(await validate({ to: 'claudin-goal', notify_when_idle: true })).toEqual({ result: true })
     expect(await validate({ to: 'main', notify_when_idle: true })).toMatchObject({ result: false })
+    const fromAgent = await SendMessageTool.validateInput!(
+      { to: 'claudin-goal', notify_when_idle: true } as never,
+      context('a1'),
+    )
+    expect(fromAgent).toMatchObject({ result: false })
   })
 
   test('the schema offers the flag, and an optional message, only where a session can be reached', () => {
