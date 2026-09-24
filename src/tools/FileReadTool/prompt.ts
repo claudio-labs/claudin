@@ -1,8 +1,26 @@
 import { isPDFSupported } from 'src/shared/fs/pdfUtils.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
+import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
+import {
+  MAX_BATCH_FILES,
+  readMultiEnabledAtLoad,
+} from 'src/tools/FileReadTool/readMulti.js'
 
 // Use a string constant for tool names to avoid circular dependencies
 export const FILE_READ_TOOL_NAME = 'Read'
+
+const READ_MULTI = readMultiEnabledAtLoad()
+
+/**
+ * The one line the batch Read adds to both descriptions (readMulti.ts),
+ * placed under the default-length bullet. Empty with the flag off, which is
+ * what keeps both templates byte-identical to the text before it.
+ */
+function batchReadInstruction(): string {
+  if (!READ_MULTI) return ''
+  const budgetK = Math.round(getDefaultFileReadingLimits().maxTokens / 1000)
+  return `\n- \`file_paths\` reads up to ${MAX_BATCH_FILES} files in one call — each as \`view\`/\`symbol\` say, within ${budgetK}k tokens in total.`
+}
 
 export const FILE_UNCHANGED_STUB =
   'File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.'
@@ -134,7 +152,7 @@ An outline is not always a symbol list: Markdown and HTML outline by heading, a 
 
 Usage:
 - The file_path parameter must be an absolute path, not a relative path
-- By default, it reads up to ${MAX_LINES_TO_READ} lines starting from the beginning of the file${maxSizeInstruction}
+- By default, it reads up to ${MAX_LINES_TO_READ} lines starting from the beginning of the file${maxSizeInstruction}${batchReadInstruction()}
 ${OFFSET_INSTRUCTION_TARGETED}
 ${lineFormat}
 - Reading a directory, a file that does not exist, or an empty file returns an error or a system reminder rather than content; list a directory with the ${GLOB_TOOL_NAME} tool.
@@ -161,7 +179,7 @@ export function renderCompactPromptTemplate(
 
 Read only what you need: view='outline' for an unknown file (signatures with line ranges; Markdown and HTML outline by heading, a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X' for one function (a large one comes back as its own outline; add view='full' for the body), offset/limit for a range, the whole file only when you need all of it. A large Read that names no view, and any file over the cap, comes back as an outline, a long plain-text file as its head and tail with the line count — pass view='full' for the body.
 
-- Reads up to ${MAX_LINES_TO_READ} lines by default${maxSizeInstruction}.
+- Reads up to ${MAX_LINES_TO_READ} lines by default${maxSizeInstruction}.${batchReadInstruction()}
 ${lineFormat}
 - A directory, a missing file or an empty file returns an error or a system reminder; list a directory with ${GLOB_TOOL_NAME}.
 - Images come back visually.${isPDFSupported() ? ' A PDF past 10 pages needs `pages` (e.g. "1-5", at most 20 per request).' : ''} A notebook (.ipynb) returns every cell with its outputs.

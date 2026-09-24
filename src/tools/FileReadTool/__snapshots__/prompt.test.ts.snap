@@ -1,0 +1,37 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Read tool prompt — CLAUDIN_READ_MULTI off the legacy description is pinned byte for byte 1`] = `
+"Reads a file from the local filesystem. You can access any file directly by using this tool: assume any path the user gives you is valid and readable, including a temporary path outside the project — try the read rather than verifying the path first.
+
+Reading strategy for code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform):
+Default to surgical reads: a targeted read costs a fraction of the file, and a read you did not need costs a turn on top of its bytes. Follow this order:
+1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function, class and object-literal member signature with line ranges, plus the substantial handlers nested inside a large function. The header says how much of the file the symbols actually cover.
+2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file). A symbol too large to send whole comes back as its own outline instead; add view='full' to get the body anyway.
+3. Need lines around a known location → use offset/limit (range read) instead of full file.
+4. Full file only when you genuinely need top-level imports, module-level constants, or the entire structure end-to-end.
+
+An outline is not always a symbol list: Markdown and HTML outline by heading, a unified diff (.diff/.patch) outlines by file and symbol='<path>' returns that file's hunks, and a large plain-text file (.txt, .log, no extension — outside the languages above) comes back as its head and tail with the line count. A file over the read cap outlines automatically, and so does a large Read that names no view (a large literal body in tool_result reliably induces a slice-walk re-read loop) — pass view='full' for the body, or offset/limit/symbol for one range.
+
+Usage:
+- The file_path parameter must be an absolute path, not a relative path
+- By default, it reads up to 2000 lines starting from the beginning of the file
+- When you already know which part of the file you need, only read that part. This can be important for larger files.
+- Each result line is prefixed with its 1-indexed line number followed by an arrow (e.g. \`42→content\` is line 42 of the file); numbering starts at the requested offset
+- Reading a directory, a file that does not exist, or an empty file returns an error or a system reminder rather than content; list a directory with the Glob tool.
+- This tool allows Claudin to read images (eg PNG, JPG, etc). When reading an image file the contents are presented visually as Claudin is a multimodal LLM.
+- This tool can read PDF files (.pdf). For large PDFs (more than 10 pages), you MUST provide the pages parameter to read specific page ranges (e.g., pages: "1-5"). Reading a large PDF without the pages parameter will fail. Maximum 20 pages per request.
+- This tool can read Jupyter notebooks (.ipynb files) and returns all cells with their outputs, combining code, text, and visualizations.
+- Do NOT re-read a file you just edited to verify the change — Edit/Write would have errored if it failed, and the harness tracks file state for you."
+`;
+
+exports[`Read tool prompt — CLAUDIN_READ_MULTI off the compact description is pinned byte for byte 1`] = `
+"Reads a file from the local filesystem. file_path must be absolute; any path the user gives you is readable, including a temporary path outside the project — read it rather than checking first.
+
+Read only what you need: view='outline' for an unknown file (signatures with line ranges; Markdown and HTML outline by heading, a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X' for one function (a large one comes back as its own outline; add view='full' for the body), offset/limit for a range, the whole file only when you need all of it. A large Read that names no view, and any file over the cap, comes back as an outline, a long plain-text file as its head and tail with the line count — pass view='full' for the body.
+
+- Reads up to 2000 lines by default.
+- Each result line is prefixed with its 1-indexed line number followed by an arrow (e.g. \`42→content\` is line 42 of the file); numbering starts at the requested offset
+- A directory, a missing file or an empty file returns an error or a system reminder; list a directory with Glob.
+- Images come back visually. A PDF past 10 pages needs \`pages\` (e.g. "1-5", at most 20 per request). A notebook (.ipynb) returns every cell with its outputs.
+- Don't re-read a file you just edited: Edit/Write would have failed if the change did not land."
+`;

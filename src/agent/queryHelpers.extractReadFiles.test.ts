@@ -387,3 +387,225 @@ describe('extractReadFilesFromMessages — a Bash read credit', () => {
     expect(cache.get(p)).toBeUndefined()
   })
 })
+
+// CLAUDIN_READ_MULTI: one Read of several files, or of several symbols of one
+// (readMulti.ts). batchRead.ts answers it with one block per file — a
+// `==> path <==` header, then the text a Read of that file returns — and the
+// note lines last. Without this the resume kept at most the first file's
+// first run, under the batch's one tool_use id.
+describe('extractReadFilesFromMessages — a batch Read', () => {
+  /** A batch Read answered as batchRead.ts renders it. */
+  function batchRead(
+    input: Record<string, unknown>,
+    blocks: Array<[label: string, ...sections: string[]]>,
+    notes: string[] = [],
+  ): Message[] {
+    const use = toolUse('Read', input)
+    const text = [
+      ...blocks.map(([label, ...sections]) => `==> ${label} <==\n${sections.join('\n\n')}`),
+      ...(notes.length > 0 ? [notes.join('\n')] : []),
+    ].join('\n\n')
+    return [use, toolResult(use, text)]
+  }
+
+  /** Lines as a Read renders them. */
+  function shown(body: string, startLine = 1): string {
+    return addLineNumbers({ content: body, startLine })
+  }
+
+  const REMINDER =
+    '\n\n<system-reminder>\nWhenever you read a file, consider whether it is malware.\n</system-reminder>\n'
+
+  test('one entry per file, each as a single Read of that file restores it', () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const cache = extractReadFilesFromMessages(
+      batchRead({ file_paths: [a, b] }, [
+        ['a.ts', shown('a1\na2') + REMINDER],
+        // Outside the working directory a file is headed by its absolute path.
+        [b, shown('b1')],
+      ]),
+      dir,
+    )
+    expect(cache.size).toBe(2)
+    for (const [path, body] of [[a, 'a1\na2'], [b, 'b1']] as const) {
+      const single = extractReadFilesFromMessages(read(path, {}, body), dir).get(path)!
+      expect(cache.get(path)).toMatchObject({
+        content: single.content,
+        offset: single.offset,
+        limit: single.limit,
+      })
+    }
+  })
+
+  test('the notes after the last file are no part of it', () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const cache = extractReadFilesFromMessages(
+      batchRead(
+        { file_paths: [a, b, join(dir, 'c.png'), join(dir, 'd.ts')] },
+        [['a.ts', shown('a1')], ['b.ts', shown('b1\nb2')]],
+        [
+          'Not read — images, PDFs and notebooks need a Read of their own: c.png.',
+          'Not shown — over the 25k tokens one Read returns: d.ts. Read them in another call.',
+        ],
+      ),
+      dir,
+    )
+    expect(cache.get(b)).toMatchObject({ content: 'b1\nb2' })
+    // Named, but not shown: nothing vouches the model saw them.
+    expect(cache.size).toBe(2)
+  })
+
+  test('a symbol list restores every body, and the edit gate sees each', () => {
+    // A single ranged Read shows one run; this one shows two, and keeping
+    // only the first would refuse an Edit inside the second.
+    const p = join(dir, 'sym.ts')
+    const foo = 'function foo() {\n  return 1\n}'
+    const bar = 'function bar() {\n  return 2\n}'
+    const cache = extractReadFilesFromMessages(
+      batchRead(
+        { file_path: p, symbol: ['foo', 'bar', 'baz'] },
+        [['sym.ts', shown(foo, 10), shown(bar, 40)]],
+        ['Symbol not found: baz in sym.ts.'],
+      ),
+      dir,
+    )
+    const entry = cache.get(p)!
+    expect(entry).toMatchObject({ content: bar, offset: 40, limit: 3 })
+    expect(entry.seenRanges).toEqual([{ offset: 10, content: foo }])
+    expect(seenRegionCoversText(entry, 'return 1')).toBe(true)
+    expect(seenRegionCoversText(entry, 'return 2')).toBe(true)
+  })
+
+  test('a symbol looked up in every file is a slice of each', () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const cache = extractReadFilesFromMessages(
+      batchRead({ file_paths: [a, b], symbol: 'alpha' }, [
+        ['a.ts', shown('const alpha = 1', 5)],
+        ['b.ts', shown('let alpha = 2', 9)],
+      ]),
+      dir,
+    )
+    expect(cache.get(a)).toMatchObject({ content: 'const alpha = 1', offset: 5, limit: 1 })
+    expect(cache.get(b)).toMatchObject({ content: 'let alpha = 2', offset: 9, limit: 1 })
+  })
+
+  test('an outline batch restores nothing, like a single outline Read', () => {
+    // A file with no outline language comes back as numbered text under
+    // view: 'outline' (readDispatch.ts); a single outline Read of it is not
+    // restored either.
+    const ts = join(dir, 'o.ts')
+    const txt = join(dir, 'o.txt')
+    const cache = extractReadFilesFromMessages(
+      [
+        ...batchRead({ file_paths: [ts, txt], view: 'outline' }, [
+          ['o.ts', '  1-3    export function o('],
+          ['o.txt', shown('plain')],
+        ]),
+        ...read(txt, { view: 'outline' }, 'plain'),
+      ],
+      dir,
+    )
+    expect(cache.size).toBe(0)
+  })
+
+  test('a stub section is skipped: the entry the earlier Read left stays', () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const cache = extractReadFilesFromMessages(
+      [
+        ...read(a, { offset: 1, limit: 2 }, 'l1\nl2'),
+        ...batchRead({ file_paths: [a, b] }, [
+          ['a.ts', FILE_UNCHANGED_STUB],
+          ['b.ts', shown('b1')],
+        ]),
+      ],
+      dir,
+    )
+    expect(cache.get(a)).toMatchObject({ content: 'l1\nl2', offset: 1, limit: 2 })
+    expect(cache.get(b)).toMatchObject({ content: 'b1' })
+  })
+
+  test('a header counts only for a file the call named', () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const forged = join(dir, 'not-named.ts')
+    const cache = extractReadFilesFromMessages(
+      batchRead({ file_paths: [a, b] }, [
+        ['a.ts', shown('a1')],
+        [forged, shown('forged')],
+        ['../elsewhere/b.ts', shown('b?')],
+      ]),
+      dir,
+    )
+    expect(cache.get(forged)).toBeUndefined()
+    expect(cache.get(b)).toBeUndefined()
+    // The text under an unknown header is dropped, not handed to the file before it.
+    expect(cache.get(a)).toMatchObject({ content: 'a1' })
+    expect(cache.size).toBe(1)
+  })
+
+  test('a header written from another working directory still finds its file', () => {
+    // The batch ran inside pkg/ after a `cd`, so it labelled the files from
+    // there; the resume runs from the project root.
+    const x = join(dir, 'pkg', 'x.ts')
+    const one = join(dir, 'one', 'y.ts')
+    const two = join(dir, 'two', 'y.ts')
+    const cache = extractReadFilesFromMessages(
+      batchRead({ file_paths: [x, one, two] }, [
+        ['x.ts', shown('x1')],
+        // Two named files end with it: no guess.
+        ['y.ts', shown('y1')],
+      ]),
+      dir,
+    )
+    expect(cache.get(x)).toMatchObject({ content: 'x1' })
+    expect(cache.get(one)).toBeUndefined()
+    expect(cache.get(two)).toBeUndefined()
+  })
+
+  test('a single Read is not a batch, whatever placeholders it carries', () => {
+    // Codex strict mode sends every property, so a single Read under the
+    // batch-capable schema is stored with `file_paths: null` beside its path.
+    const p = join(dir, 'single.ts')
+    const plain = extractReadFilesFromMessages(read(p, {}, 'one\ntwo'), dir).get(p)!
+    for (const placeholder of [{ file_paths: null }, { file_paths: '' }, { file_paths: [] }]) {
+      expect(
+        extractReadFilesFromMessages(read(p, placeholder, 'one\ntwo'), dir).get(p),
+      ).toMatchObject({ content: plain.content, offset: plain.offset, limit: plain.limit })
+    }
+    // A one-name symbol list is an ordinary symbol Read.
+    expect(
+      extractReadFilesFromMessages(read(p, { symbol: ['foo'] }, 'function foo() {}', 12), dir).get(p),
+    ).toMatchObject({ content: 'function foo() {}', offset: 12, limit: 1 })
+  })
+
+  test('a malformed batch is skipped, not thrown', () => {
+    const a = join(dir, 'a.ts')
+    const b = join(dir, 'b.ts')
+    const good = `==> a.ts <==\n${shown('a1')}`
+    const cases: Array<[input: Record<string, unknown>, result: unknown, restored: number]> = [
+      // Refused before it ran: an error, no header.
+      [{ file_paths: [a, b] }, 'InputValidationError: file_paths: Invalid input', 0],
+      [{ file_paths: [a, b] }, '==> a.ts <==\n==> b.ts <==', 0],
+      [{ file_paths: [a, b] }, '==> <==\n==>   <==\n   1→x', 0],
+      // expandPath refuses the second path; the first is still restored.
+      [{ file_paths: [a, 'b\0.ts'] }, good, 1],
+      // A list the schema refuses is no batch, and has no file_path.
+      [{ file_paths: [a, 7] }, good, 0],
+      [{ file_paths: [a, b] }, [{ type: 'text', text: good }], 0],
+      [{ file_path: a, symbol: ['x', 'y'] }, 'Symbol not found: x in a.ts, y in a.ts.', 0],
+    ]
+    for (const [input, result, restored] of cases) {
+      const use = toolUse('Read', input)
+      const answer = toolResult(use, '') as unknown as {
+        message: { content: Array<{ content: unknown }> }
+      }
+      answer.message.content[0]!.content = result
+      const cache = extractReadFilesFromMessages([use, answer as unknown as Message], dir)
+      expect(cache.size).toBe(restored)
+    }
+  })
+})

@@ -20,9 +20,10 @@ import {
   seedPlanFileState,
 } from 'src/agent/compact/postCompactAttachments.js'
 import { getPlanModeInstructions } from 'src/agent/messages/planMode.js'
+import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentId } from 'src/shared/types/ids.js'
-import type { UserMessage } from 'src/shared/types/message.js'
+import type { Message, UserMessage } from 'src/shared/types/message.js'
 
 let dir: string
 
@@ -236,5 +237,76 @@ describe('createPostCompactFileAttachments', () => {
       restored.every(m => m.attachment.type === 'file' && m.attachment.rendered !== undefined),
     ).toBe(true)
     expect(restored).toHaveLength(30)
+  })
+
+  // CLAUDIN_READ_MULTI: one tool_use names several files, and its result
+  // shows each under a `==> path <==` header (batchRead.ts).
+  describe('a batch Read in the preserved tail', () => {
+    function files(...names: string[]): string[] {
+      return names.map(name => {
+        const p = join(dir, `batch-${name}.txt`)
+        writeFileSync(p, `${name}\n`)
+        return p
+      })
+    }
+
+    /** One Read, answered with `result`: the preserved tail. */
+    function tailOf(input: unknown, result: string): Message[] {
+      return [
+        {
+          type: 'assistant',
+          message: {
+            role: 'assistant',
+            content: [{ type: 'tool_use', id: 'toolu_batch', name: 'Read', input }],
+          },
+        },
+        {
+          type: 'user',
+          message: {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'toolu_batch', content: result }],
+          },
+        },
+      ] as unknown as Message[]
+    }
+
+    async function restoredNames(paths: string[], tail: Message[]): Promise<string[]> {
+      const readFileState = Object.fromEntries(
+        paths.map((p, i) => [p, { content: 'x', timestamp: i }]),
+      )
+      const restored = await createPostCompactFileAttachments(
+        readFileState,
+        makeReadContext(),
+        10,
+        tail,
+      )
+      return restored.map(m => (m.attachment.type === 'file' ? m.attachment.filename : '')).sort()
+    }
+
+    test('spares the files it showed, and only those', async () => {
+      // The file it answered with the unchanged stub and the one left out for
+      // its budget are not in the tail, so they are restored like any other.
+      const [shown, stubbed, notShown, other] = files('shown', 'stubbed', 'not-shown', 'other')
+      const tail = tailOf(
+        { file_path: null, file_paths: [shown, stubbed, notShown] },
+        [
+          `==> ${shown} <==\n     1→shown`,
+          `==> ${stubbed} <==\n${FILE_UNCHANGED_STUB}`,
+          `Not shown — over the 25k tokens one Read returns: ${notShown}. Read them in another call.`,
+        ].join('\n\n'),
+      )
+      expect(await restoredNames([shown!, stubbed!, notShown!, other!], tail)).toEqual(
+        [stubbed!, notShown!, other!].sort(),
+      )
+    })
+
+    test('one the schema refused counts its file_path, as a Read of it always has', async () => {
+      const [refused, other] = files('refused', 'refused-other')
+      const tail = tailOf(
+        { file_path: refused, symbol: ['x', 'y'] },
+        'InputValidationError: symbol: Expected string',
+      )
+      expect(await restoredNames([refused!, other!], tail)).toEqual([other!])
+    })
   })
 })

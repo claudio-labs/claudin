@@ -433,3 +433,67 @@ describe('summarizeRecentActivities — write counting', () => {
     ).toBe('Editing 1 file, reading 1 file…')
   })
 })
+
+// CLAUDIN_READ_MULTI: one Read naming several files in `file_paths`
+// (readMulti.ts). Counted by its first file_path alone it read nothing, so
+// the badge fell back to counting the call.
+describe('batch Read', () => {
+  const PATHS = ['/repo/a.ts', '/repo/b.ts', '/repo/c.ts']
+
+  test('the badge counts and lists every file a batch names', () => {
+    const group = onlyGroup([
+      toolUse('rb', 'Read', { file_path: null, file_paths: PATHS }),
+      toolResult('rb', { type: 'batch', files: [], notShown: [], content: '' }),
+      // Stored as Codex sends a single Read under the batch-capable schema.
+      toolUse('rs', 'Read', { file_path: '/repo/d.ts', file_paths: null }),
+      toolResult('rs', { file: {} }),
+    ])
+    expect(group.readCount).toBe(4)
+    expect(group.readFilePaths).toEqual([...PATHS, '/repo/d.ts'])
+  })
+
+  test('a grouped Read counts every file its batch names', () => {
+    const batch = toolUse('gb1', 'Read', { file_paths: PATHS })
+    const single = toolUse('gb2', 'Read', { file_path: '/repo/d.ts' })
+    const grouped = {
+      type: 'grouped_tool_use',
+      toolName: 'Read',
+      messages: [batch, single],
+      results: [
+        toolResult('gb1', { type: 'batch', files: [], notShown: [], content: '' }),
+        toolResult('gb2', { file: {} }),
+      ],
+      displayMessage: batch,
+      uuid: uid(),
+      timestamp: '2026-08-12T00:00:00.000Z',
+      messageId: 'msg-gb',
+    } as unknown as RenderableMessage
+
+    const group = onlyGroup([grouped])
+    expect(group.readCount).toBe(4)
+    expect(group.readFilePaths).toEqual([...PATHS, '/repo/d.ts'])
+  })
+
+  test('the progress line counts its files, while the gate counts it as one use', () => {
+    const batch = {
+      toolName: 'Read',
+      input: { file_paths: PATHS },
+      isRead: true,
+      activityDescription: 'Reading 3 files: a.ts, b.ts, c.ts',
+    }
+    // One use alone does not start summarizing: its own description stands.
+    expect(summarizeRecentActivities([batch])).toBe('Reading 3 files: a.ts, b.ts, c.ts')
+    expect(
+      summarizeRecentActivities([
+        { toolName: 'Grep', input: { pattern: 'x' }, isSearch: true },
+        batch,
+      ]),
+    ).toBe('Searching for 1 pattern, reading 3 files…')
+    expect(
+      summarizeRecentActivities([
+        { toolName: 'Read', input: { file_path: '/repo/d.ts', file_paths: null }, isRead: true },
+        batch,
+      ]),
+    ).toBe('Reading 4 files…')
+  })
+})

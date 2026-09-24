@@ -6,6 +6,7 @@ import {
   checkReadPermissionForTool,
   matchingRuleForInput,
 } from 'src/permissions/filePermissions.js'
+import { checkBatchReadPermission } from 'src/permissions/filePermissions/readWriteChecks.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import {
@@ -21,7 +22,11 @@ import {
   addSkillDirectories,
   discoverSkillDirsForPaths,
 } from 'src/skills/loadSkillsDir.js'
-import type { ToolUseContext } from 'src/tools/Tool.js'
+import type {
+  ToolResult,
+  ToolUseContext,
+  ValidationResult,
+} from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
@@ -67,7 +72,23 @@ import {
   renderClipPinFallbackStub,
 } from 'src/tools/FileReadTool/prompt.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import {
+  isBatchFileContext,
+  READ_HOOK_REFUSAL,
+  readBatch,
+  readHookWouldMissBatch,
+  validateBatchPaths,
+} from 'src/tools/FileReadTool/batchRead.js'
 import { callInner } from 'src/tools/FileReadTool/readDispatch.js'
+import {
+  batchShapeRefusal,
+  isBatchReadInput,
+  READ_HOOK_ERROR_CODE,
+  readMultiEnabledAtLoad,
+  readPathsOf,
+  recordedReadTargets,
+  toSingleInput,
+} from 'src/tools/FileReadTool/readMulti.js'
 import {
   mapReadResultToToolResultBlock,
   maybeFlagReadReminder,
@@ -96,6 +117,10 @@ export { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
 export { readImageWithTokenBudget } from 'src/tools/FileReadTool/imageRead.js'
 export { STAND_DOWN_STRIKES, STICKY_REPLAY_BUDGET } from 'src/tools/FileReadTool/clipPin.js'
 export { AUTO_OUTLINE_PIVOT_FOOTER, scanFile } from 'src/tools/FileReadTool/outlineView.js'
+
+// The batch Read — `file_paths`, and `symbol` as a list (readMulti.ts). Read
+// once, at load, like the schema and the description it must agree with.
+const READ_MULTI = readMultiEnabledAtLoad()
 
 export const FileReadTool = buildTool({
   name: FILE_READ_TOOL_NAME,
@@ -136,13 +161,20 @@ export const FileReadTool = buildTool({
     return true
   },
   toAutoClassifierInput(input) {
-    return input.file_path
+    // A batch shows the classifier every file it reads, one per line — the
+    // way Git's commands are joined. The transcript hands this the model's
+    // own arguments, where Codex sets `file_paths: null` beside a single
+    // path, so they are read as recorded; one path goes out as it always has.
+    const paths = readPathsOf(recordedReadTargets(input))
+    return paths.length > 1 ? paths.join('\n') : input.file_path
   },
   isSearchOrReadCommand() {
     return { isSearch: false, isRead: true }
   },
-  getPath({ file_path }): string {
-    return file_path || getCwd()
+  getPath({ file_path, file_paths }): string {
+    // A batch's first file: the permission dialog titles itself with one path,
+    // and the ask it shows lists them all (checkBatchReadPermission).
+    return file_path || file_paths?.[0] || getCwd()
   },
   backfillObservableInput(input) {
     // hooks.mdx documents file_path as absolute; expand so hook allowlists
@@ -150,12 +182,28 @@ export const FileReadTool = buildTool({
     if (typeof input.file_path === 'string') {
       input.file_path = expandPath(input.file_path)
     }
+    if (Array.isArray(input.file_paths)) {
+      input.file_paths = input.file_paths.map(p =>
+        typeof p === 'string' ? expandPath(p) : p,
+      )
+    }
   },
-  async preparePermissionMatcher({ file_path }) {
-    return pattern => matchWildcardPattern(pattern, file_path)
+  async preparePermissionMatcher(input) {
+    // Every path of a batch, so an `if: "Read(*.env)"` condition fires for a
+    // batch that holds one. One file_path matches exactly as before.
+    const paths = readPathsOf(input)
+    return pattern => paths.some(p => matchWildcardPattern(pattern, p))
   },
   async checkPermissions(input, context): Promise<PermissionDecision> {
     const appState = context.getAppState()
+    if (READ_MULTI && input.file_paths !== undefined) {
+      return checkBatchReadPermission(
+        FileReadTool.name,
+        input.file_paths,
+        input,
+        appState.toolPermissionContext,
+      )
+    }
     return checkReadPermissionForTool(
       FileReadTool,
       input,
@@ -174,7 +222,28 @@ export const FileReadTool = buildTool({
     return ''
   },
   renderToolUseErrorMessage,
-  async validateInput({ file_path, pages }, toolUseContext: ToolUseContext) {
+  async validateInput(
+    input,
+    toolUseContext: ToolUseContext,
+  ): Promise<ValidationResult> {
+    if (READ_MULTI) {
+      const refusal = batchShapeRefusal(input)
+      if (refusal) return { result: false, ...refusal }
+      if (input.file_paths !== undefined) {
+        if (readHookWouldMissBatch(toolUseContext)) {
+          return {
+            result: false,
+            message: READ_HOOK_REFUSAL,
+            errorCode: READ_HOOK_ERROR_CODE,
+          }
+        }
+        // Every path gets the checks below, exactly as a Read of it would.
+        return validateBatchPaths(input.file_paths, filePath =>
+          FileReadTool.validateInput({ file_path: filePath }, toolUseContext),
+        )
+      }
+    }
+    const { file_path, pages } = toSingleInput(input)
     // Validate pages parameter (pure string parsing, no I/O)
     if (pages !== undefined) {
       const parsed = parsePDFPageRange(pages)
@@ -277,9 +346,17 @@ export const FileReadTool = buildTool({
    * and all of them are cheap: hasServerClearedToolUses is WeakSet-latched
    * after its first positive, and isPriorReadClippedOrMissing early-exits at
    * the matching tool_result (re-reads cluster near their original Read).
+   *
+   * A batch never uses the cache, nor does a file read inside one
+   * (batchRead.ts): the entry's freshness is checked on one path, and every
+   * file of a batch shares the tool_use id the stand-down keys on.
    */
-  bypassResultCache({ file_path }, context) {
+  bypassResultCache(input, context) {
+    if (READ_MULTI && (isBatchReadInput(input) || isBatchFileContext(context))) {
+      return true
+    }
     try {
+      const { file_path } = toSingleInput(input)
       const prior = context.readFileState?.get(expandPath(file_path))
       // First read of this path in this context: nothing to stand down from,
       // so let it cache and be served from cache like any other tool. Note this
@@ -340,9 +417,10 @@ export const FileReadTool = buildTool({
    * with a full body here would hand back precisely the content those arms
    * concluded must not be served.
    */
-  onCacheHit({ file_path, offset = 1, limit }, context, data) {
+  onCacheHit(input, context, data) {
     try {
       if (data.type !== 'text') return
+      const { file_path, offset = 1, limit } = toSingleInput(input)
       const fullFilePath = expandPath(file_path)
       if (context.readFileState.has(fullFilePath)) return
       context.readFileState.set(fullFilePath, {
@@ -365,11 +443,22 @@ export const FileReadTool = buildTool({
     }
   },
   async call(
-    { file_path, offset = 1, limit = undefined, pages, view, symbol, encoding },
+    input,
     context,
     _canUseTool?,
     parentMessage?,
-  ) {
+  ): Promise<ToolResult<Output>> {
+    // Several files, or several symbols of one (readMulti.ts): the batch runs
+    // this same call once per file and symbol, through the tool itself.
+    if (READ_MULTI && isBatchReadInput(input)) {
+      return readBatch(input, context, (one, fileContext) =>
+        FileReadTool.call(one, fileContext, _canUseTool, parentMessage),
+      )
+    }
+    const one = toSingleInput(input)
+    const { file_path, limit = undefined, pages, view, symbol, encoding } = one
+    // `let`: an offset of 0 is normalized to 1 below.
+    let offset = one.offset ?? 1
     const { readFileState, fileReadingLimits } = context
 
     // Reject an unusable label here, before any filesystem work and before the
@@ -901,8 +990,14 @@ export const FileReadTool = buildTool({
         // standDownResend from OUTSIDE the gate: the strike bound applies to
         // the killswitch path, but the killswitch must still mean "nothing
         // gets pinned".
+        //
+        // A file inside a batch is never pinned either (batchRead.ts): every
+        // file of the batch shares this id, and a pin shields — and a dispose
+        // releases — the whole block by it. Lane 2 bounds its stand-down, as
+        // it bounds the killswitch path.
         if (
           clipPinEnabled() &&
+          !isBatchFileContext(context) &&
           resendToolUseId !== undefined &&
           readFileState.get(fullFilePath)?.toolUseId === resendToolUseId
         ) {

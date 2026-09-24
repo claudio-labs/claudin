@@ -5,6 +5,10 @@ import { dirname, join } from 'path'
 import { createInterface } from 'readline'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { debugTruncate } from 'src/platform/bridge/debugUtils.js'
+import {
+  readPathsOf,
+  recordedReadTargets,
+} from 'src/tools/FileReadTool/readMulti.js'
 import type {
   SessionActivity,
   SessionDoneStatus,
@@ -151,9 +155,18 @@ const TOOL_VERBS: Record<string, string> = {
   LSP: 'LSP',
 }
 
-function toolSummary(name: string, input: Record<string, unknown>): string {
+/** A batch Read's files (readMulti.ts): the first, and how many more. */
+function batchReadTarget(input: Record<string, unknown>): string | undefined {
+  const targets = recordedReadTargets(input)
+  if (targets.file_paths === undefined) return undefined
+  const [first, ...rest] = readPathsOf(targets)
+  return rest.length > 0 ? `${first} (+${rest.length} more)` : first
+}
+
+export function toolSummary(name: string, input: Record<string, unknown>): string {
   const verb = TOOL_VERBS[name] ?? name
   const target =
+    batchReadTarget(input) ??
     (input.file_path as string) ??
     (input.filePath as string) ??
     (input.pattern as string) ??

@@ -389,3 +389,39 @@ describe('getMatchingHooks — empty / missing', () => {
     expect(result).toEqual([])
   })
 })
+
+// The batch Read's guard (FileReadTool validateInput): is any hook going to
+// see a Read at all? Same matcher test as getMatchingHooks, per event.
+describe('hasHookForTool', () => {
+  type Matching = typeof import('src/platform/lifecycleHooks/matching.js')
+  let matching: Matching
+  beforeAll(async () => {
+    matching = await import('src/platform/lifecycleHooks/matching.js')
+  })
+
+  const TOOL_EVENTS = ['PreToolUse', 'PostToolUse'] as const
+
+  function has(config: Partial<Record<HookEvent, HookMatcher[]>>): boolean {
+    snapshotConfig = config
+    return matching.hasHookForTool('Read', TOOL_EVENTS, undefined, 'sess-1')
+  }
+
+  test('a matcher that selects the tool, on any of the events', () => {
+    expect(has({ PreToolUse: [matcher('Read', 'echo r')] })).toBe(true)
+    expect(has({ PostToolUse: [matcher('Read', 'echo r')] })).toBe(true)
+    expect(has({ PreToolUse: [matcher('Bash|Read', 'echo r')] })).toBe(true)
+    expect(has({ PreToolUse: [matcher('^Rea', 'echo r')] })).toBe(true)
+  })
+
+  test('an empty or wildcard matcher selects every tool', () => {
+    expect(has({ PreToolUse: [matcher('', 'echo any')] })).toBe(true)
+    expect(has({ PostToolUse: [matcher('*', 'echo any')] })).toBe(true)
+  })
+
+  test('a matcher for other tools, or an event not asked about, does not', () => {
+    expect(has({ PreToolUse: [matcher('Bash', 'echo b')] })).toBe(false)
+    expect(has({ PreToolUse: [matcher('Write|Edit', 'echo w')] })).toBe(false)
+    expect(has({ PermissionRequest: [matcher('Read', 'echo r')] })).toBe(false)
+    expect(has({})).toBe(false)
+  })
+})

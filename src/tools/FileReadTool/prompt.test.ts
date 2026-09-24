@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'bun:test'
+import { importWithReadMulti } from 'src/tools/FileReadTool/__testutils__/readMultiFlag.js'
 import {
   LINE_FORMAT_INSTRUCTION,
   renderPromptTemplate,
 } from 'src/tools/FileReadTool/prompt.js'
+
+type PromptModule = typeof import('src/tools/FileReadTool/prompt.js')
+
+const PROMPT = 'src/tools/FileReadTool/prompt.js'
 
 const prompt = renderPromptTemplate(LINE_FORMAT_INSTRUCTION, '')
 
@@ -94,5 +99,60 @@ describe('Read tool prompt — delegation is not its subject', () => {
     expect(prompt).not.toContain('fork')
     expect(prompt).not.toContain('subagent')
     expect(prompt).not.toContain('Agent tool')
+  })
+})
+
+describe('Read tool prompt — CLAUDIN_READ_MULTI off', () => {
+  // Taken before the batch Read existed: with the flag off both descriptions
+  // must stay byte-identical, so the pinned text is the proof.
+  test('the legacy description is pinned byte for byte', async () => {
+    const mod = await importWithReadMulti<PromptModule>(PROMPT, false)
+    expect(mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')).toMatchSnapshot()
+  })
+
+  test('the compact description is pinned byte for byte', async () => {
+    const mod = await importWithReadMulti<PromptModule>(PROMPT, false)
+    expect(
+      mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, ''),
+    ).toMatchSnapshot()
+  })
+})
+
+describe('Read tool prompt — CLAUDIN_READ_MULTI on', () => {
+  const BATCH_LINE =
+    '- `file_paths` reads up to 20 files in one call — each as `view`/`symbol` say, within 25k tokens in total.'
+
+  test('both descriptions name file_paths in one line', async () => {
+    const mod = await importWithReadMulti<PromptModule>(PROMPT, true)
+    const legacy = mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
+    const compact = mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
+    for (const text of [legacy, compact]) {
+      expect(text.split('\n').filter(line => line === BATCH_LINE)).toHaveLength(1)
+    }
+  })
+
+  test('the line is the only difference from the flag-off text', async () => {
+    const off = await importWithReadMulti<PromptModule>(PROMPT, false)
+    const on = await importWithReadMulti<PromptModule>(PROMPT, true)
+    const strip = (text: string) =>
+      text
+        .split('\n')
+        .filter(line => line !== BATCH_LINE)
+        .join('\n')
+    expect(strip(on.renderPromptTemplate(on.LINE_FORMAT_INSTRUCTION, ''))).toBe(
+      off.renderPromptTemplate(off.LINE_FORMAT_INSTRUCTION, ''),
+    )
+    expect(strip(on.renderCompactPromptTemplate(on.LINE_FORMAT_INSTRUCTION, ''))).toBe(
+      off.renderCompactPromptTemplate(off.LINE_FORMAT_INSTRUCTION, ''),
+    )
+  })
+
+  test('compact stays under two thirds of legacy with the line in both', async () => {
+    // The same bound promptFeatureCoverage holds per tool, checked here for
+    // the flag-on text, which that suite only sees when the env is set.
+    const mod = await importWithReadMulti<PromptModule>(PROMPT, true)
+    const legacy = mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
+    const compact = mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
+    expect(compact.length).toBeLessThan(legacy.length * (2 / 3))
   })
 })
