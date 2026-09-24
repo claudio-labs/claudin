@@ -19,11 +19,11 @@ afterEach(() => {
 const CASES: Array<{ name: (typeof VARS)[number]; fn: () => boolean }> = [
   { name: 'CLAUDIN_WORK_CONTRACT', fn: isWorkContractEnabled },
   { name: 'CLAUDIN_SUBAGENT_NOTES', fn: isSubagentNotesEnabled },
+  { name: 'CLAUDIN_LEAN_SYSTEM_PROMPT', fn: isLeanSystemPromptEnabled },
 ]
 
-// Every toggle in CASES is default-ON: the env can only subtract a section,
-// never add one. The opt-IN one (CLAUDIN_LEAN_SYSTEM_PROMPT) has its own
-// describe below.
+// Every toggle here is default-ON: the env can only subtract a section (or,
+// for CLAUDIN_LEAN_SYSTEM_PROMPT, restore the pre-v2 text), never add one.
 for (const { name, fn } of CASES) {
   describe(name, () => {
     test('defaults ON when unset', () => {
@@ -68,33 +68,6 @@ describe('toggle independence', () => {
   })
 })
 
-describe('CLAUDIN_LEAN_SYSTEM_PROMPT (opt-in)', () => {
-  test('defaults OFF when unset', () => {
-    delete process.env.CLAUDIN_LEAN_SYSTEM_PROMPT
-    expect(isLeanSystemPromptEnabled()).toBe(false)
-  })
-
-  for (const value of ['1', 'true', 'yes', 'on']) {
-    test(`${JSON.stringify(value)} turns it on`, () => {
-      process.env.CLAUDIN_LEAN_SYSTEM_PROMPT = value
-      expect(isLeanSystemPromptEnabled()).toBe(true)
-    })
-  }
-
-  for (const value of ['0', 'false', '', 'maybe']) {
-    test(`${JSON.stringify(value)} leaves it off`, () => {
-      process.env.CLAUDIN_LEAN_SYSTEM_PROMPT = value
-      expect(isLeanSystemPromptEnabled()).toBe(false)
-    })
-  }
-
-  test('moves none of the default-ON lanes', () => {
-    for (const { name } of CASES) process.env[name] = '1'
-    process.env.CLAUDIN_LEAN_SYSTEM_PROMPT = '1'
-    for (const { fn } of CASES) expect(fn()).toBe(true)
-  })
-})
-
 describe('cache-prefix contract', () => {
   // The work-contract resolver reads at call time from inside the STATIC
   // (pre-boundary) half of the system prompt. That is only
@@ -116,7 +89,7 @@ describe('cache-prefix contract', () => {
     // toggle does not require editing a magic number — what is pinned is the
     // ratio, not the total.
     const resolvers = body.match(/^export function/gm)?.length ?? 0
-    expect(resolvers).toBe(CASES.length + 1)
+    expect(resolvers).toBe(CASES.length)
     expect(body.match(/process\.env\./g)).toHaveLength(resolvers)
   })
 })

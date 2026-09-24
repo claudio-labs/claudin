@@ -42,17 +42,29 @@ import { isDeferredTool } from 'src/tools/ToolSearchTool/prompt.js'
 
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 
-/** The shipped system prompt, one entry per state the bundle was dumped in. */
-function systemPromptStates(): Array<[string, string, boolean]> {
-  const states: Array<[string, string, boolean]> = []
-  for (const [state, file, lean] of [
-    ['default', 'systemPrompt.main.txt', false],
-    ['v2', 'systemPrompt.lean.txt', true],
-  ] as const) {
-    const path = join(SNAPSHOT_DIR, file)
-    if (existsSync(path)) states.push([state, readFileSync(path, 'utf8'), lean])
+/**
+ * The two states that ship while the v2 killswitches exist: the default (the
+ * v2 text since 2026-09-24) and every killswitch at `=0` (the text before it).
+ * The system prompt comes from the bundle's dump in that state; the tool
+ * descriptions and reminders are rendered live with `toolSwitches` set.
+ */
+const STATES = [
+  { state: 'default (v2)', file: 'systemPrompt.main.txt', lean: true, toolSwitches: undefined },
+  { state: 'killswitched', file: 'systemPrompt.legacy.txt', lean: false, toolSwitches: '0' },
+] as const
+
+const TOOL_SWITCHES = ['CLAUDIN_COMPACT_TOOL_PROMPTS', 'CLAUDIN_LEAN_REMINDERS'] as const
+
+function setToolSwitches(value: '0' | undefined): void {
+  for (const name of TOOL_SWITCHES) {
+    if (value === undefined) delete process.env[name]
+    else process.env[name] = value
   }
-  return states
+}
+
+function systemPromptOf(file: string): string | null {
+  const path = join(SNAPSHOT_DIR, file)
+  return existsSync(path) ? readFileSync(path, 'utf8') : null
 }
 
 const FAKE_SKILL = {
@@ -84,6 +96,19 @@ async function toolText(tool: Tool): Promise<string> {
       : zodToJsonSchema(tool.inputSchema),
   )
   return `${description}\n${schema}`
+}
+
+/**
+ * A tool's text in a state. The Agent description's compact text is only
+ * reachable with fork on, which `feature()` hides under `bun test`, so in the
+ * v2 state it comes from its pure renderer — the `-p` shape and the
+ * interactive one.
+ */
+async function toolTextIn(tool: Tool, lean: boolean): Promise<string> {
+  if (lean && tool.name === 'Agent') {
+    return `${renderCompactAgentPrompt(true)}\n${renderCompactAgentPrompt(false)}\n${JSON.stringify(zodToJsonSchema(tool.inputSchema))}`
+  }
+  return toolText(tool)
 }
 
 /**
@@ -204,25 +229,40 @@ const ANYWHERE_MARKERS: ReadonlyArray<[string, string | RegExp]> = [
 ]
 
 describe('prompt feature coverage', () => {
-  const states = systemPromptStates()
+  afterEach(() => setToolSwitches(undefined))
 
   test('both system prompt snapshots are present', () => {
-    expect(states.map(([state]) => state)).toEqual(['default', 'v2'])
+    expect(STATES.map(s => (systemPromptOf(s.file) === null ? `${s.file} missing` : s.state))).toEqual([
+      'default (v2)',
+      'killswitched',
+    ])
   })
 
-  for (const [name, markers] of Object.entries(TOOL_MARKERS)) {
-    test(`${name} still names every capability`, async () => {
-      const tool = getAllBaseTools().find(t => t.name === name)
-      expect(tool ? name : `${name} missing from getAllBaseTools()`).toBe(name)
-      const text = await toolText(tool!)
-      const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
-      expect(missing.map(String)).toEqual([])
-    })
-  }
+  test('the switches resolve on by default and off at `=0` in this environment (otherwise the states below are one)', () => {
+    expect(isCompactToolPromptsEnabled()).toBe(true)
+    expect(isLeanRemindersEnabled()).toBe(true)
+    setToolSwitches('0')
+    expect(isCompactToolPromptsEnabled()).toBe(false)
+    expect(isLeanRemindersEnabled()).toBe(false)
+  })
 
-  for (const [state, systemPrompt, lean] of states) {
+  for (const { state, file, lean, toolSwitches } of STATES) {
+    for (const [name, markers] of Object.entries(TOOL_MARKERS)) {
+      test(`${state}: ${name} still names every capability`, async () => {
+        setToolSwitches(toolSwitches)
+        const tool = getAllBaseTools().find(t => t.name === name)
+        expect(tool ? name : `${name} missing from getAllBaseTools()`).toBe(name)
+        const text = await toolTextIn(tool!, lean)
+        const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
+        expect(missing.map(String)).toEqual([])
+      })
+    }
+
     test(`${state}: every capability is named somewhere the model reads`, async () => {
-      const toolTexts = await Promise.all(getAllBaseTools().map(toolText))
+      setToolSwitches(toolSwitches)
+      const systemPrompt = systemPromptOf(file)
+      expect(systemPrompt === null ? `${file} missing` : 'present').toBe('present')
+      const toolTexts = await Promise.all(getAllBaseTools().map(t => toolTextIn(t, lean)))
       const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
       const corpus = [systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
       const missing = ANYWHERE_MARKERS.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
@@ -231,43 +271,23 @@ describe('prompt feature coverage', () => {
   }
 })
 
-// The v2 tool descriptions and reminders (CLAUDIN_COMPACT_TOOL_PROMPTS,
-// CLAUDIN_LEAN_REMINDERS) are rendered live: both switches are read when a
-// description or reminder is built. The Agent description's compact text is
-// only reachable with fork on, which `feature()` hides under `bun test`, so it
-// comes from its pure renderer — in the `-p` shape and the interactive one.
+// What the v2 tool switches change, against the killswitched text. Both are
+// read when a description or reminder is built.
 describe('prompt feature coverage — v2 tools and reminders', () => {
-  const V2_VARS = ['CLAUDIN_COMPACT_TOOL_PROMPTS', 'CLAUDIN_LEAN_REMINDERS'] as const
-  const on = () => {
-    for (const name of V2_VARS) process.env[name] = '1'
-  }
-  afterEach(() => {
-    for (const name of V2_VARS) delete process.env[name]
-  })
-
-  async function v2ToolText(tool: Tool): Promise<string> {
-    if (tool.name === 'Agent') {
-      return `${renderCompactAgentPrompt(true)}\n${renderCompactAgentPrompt(false)}\n${JSON.stringify(zodToJsonSchema(tool.inputSchema))}`
-    }
-    return toolText(tool)
-  }
-
-  test('the switches resolve on in this environment (otherwise every test below is vacuous)', () => {
-    on()
-    expect(isCompactToolPromptsEnabled()).toBe(true)
-    expect(isLeanRemindersEnabled()).toBe(true)
-  })
+  afterEach(() => setToolSwitches(undefined))
 
   // Through the pure rule, not the live model: under the full suite a leaked
   // `model.js` mock makes getMainLoopModel() ignore an override, so a test that
   // sets one passes alone and fails in the run. The wiring from each switch to
   // that rule is pinned on the source instead.
   test('the switches do not reach a model outside the Anthropic family', () => {
+    expect(isV2PromptSwitchOn(undefined, 'anthropic')).toBe(true)
     expect(isV2PromptSwitchOn('1', 'anthropic')).toBe(true)
+    expect(isV2PromptSwitchOn('0', 'anthropic')).toBe(false)
     for (const family of ['default', 'openai-reasoning', 'gemini', 'kimi', 'glm', 'codex'] as const) {
+      expect(isV2PromptSwitchOn(undefined, family)).toBe(false)
       expect(isV2PromptSwitchOn('1', family)).toBe(false)
     }
-    expect(isV2PromptSwitchOn(undefined, 'anthropic')).toBe(false)
     const src = readFileSync(new URL('../toolPromptTier.ts', import.meta.url), 'utf8')
     for (const [fn, env] of [
       ['isCompactToolPromptsEnabled', 'CLAUDIN_COMPACT_TOOL_PROMPTS'],
@@ -281,56 +301,40 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
   })
 
   test('Monitor waits behind ToolSearch only with the v2 tool descriptions', () => {
-    expect(isDeferredTool(MonitorTool)).toBe(false)
-    on()
     expect(isDeferredTool(MonitorTool)).toBe(true)
-  })
-
-  for (const [name, markers] of Object.entries(TOOL_MARKERS)) {
-    test(`v2: ${name} still names every capability`, async () => {
-      on()
-      const tool = getAllBaseTools().find(t => t.name === name)!
-      const text = await v2ToolText(tool)
-      const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
-      expect(missing.map(String)).toEqual([])
-    })
-  }
-
-  test('v2 prompt, tools and reminders together name every capability', async () => {
-    const v2 = systemPromptStates().find(([state]) => state === 'v2')
-    expect(v2).toBeDefined()
-    on()
-    const toolTexts = await Promise.all(getAllBaseTools().map(v2ToolText))
-    const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
-    const corpus = [v2![1], sessionGuidance(true), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
-    const missing = ANYWHERE_MARKERS.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
-    expect(missing.map(([capability]) => capability)).toEqual([])
+    setToolSwitches('0')
+    expect(isDeferredTool(MonitorTool)).toBe(false)
   })
 
   // Per tool, so a description that stops honoring the switch is caught even
   // while the others keep the total down. The marker tests above cannot see
-  // it: the default text names every marker too.
+  // it: the killswitched text names every marker too.
   for (const name of ['Read', 'Grep', 'Bash', 'Build', 'Typecheck', 'RunTests']) {
-    test(`v2: the ${name} description is at most two thirds of the default`, async () => {
+    test(`v2: the ${name} description is at most two thirds of the killswitched one`, async () => {
       const tool = getAllBaseTools().find(t => t.name === name)!
+      setToolSwitches('0')
       const before = (await tool.prompt(TOOL_OPTIONS)).length
-      on()
+      setToolSwitches(undefined)
       expect((await tool.prompt(TOOL_OPTIONS)).length).toBeLessThan(before * (2 / 3))
     })
   }
 
   test('v2: the skill listing keeps one short line per skill', () => {
     const long = { ...FAKE_SKILL, description: 'x'.repeat(200) } as unknown as Command
+    setToolSwitches('0')
     const before = formatCommandsWithinBudget([long], 200_000)
-    on()
+    setToolSwitches(undefined)
     const after = formatCommandsWithinBudget([long], 200_000)
     expect(after.length).toBeLessThan(before.length)
     expect(after).toContain('coverage-fake-skill')
   })
 
-  test('v2: the git reminder is shorter', () => {
-    const before = getBashGitInstructionsBody().length
-    on()
-    expect(getBashGitInstructionsBody().length).toBeLessThan(before)
+  // The git protocol attachment is the same text in both states: the shorter
+  // one measured on the branch dropped rules BashTool/prompt.test.ts pins.
+  test('v2: the git reminder is the same text as before', () => {
+    setToolSwitches('0')
+    const before = getBashGitInstructionsBody()
+    setToolSwitches(undefined)
+    expect(getBashGitInstructionsBody()).toBe(before)
   })
 })

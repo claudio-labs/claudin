@@ -69,28 +69,22 @@
       "replace": ""
     },
     {
-      "name": "the lean git reminder drops the hook skips",
-      "source": "src/tools/BashTool/prompt.ts",
-      "find": "and hook skips (\\`--no-verify\\`, \\`--no-gpg-sign\\`) run only when the user names them",
-      "replace": "run only when the user names them"
-    },
-    {
-      "name": "the lean git reminder drops the no-amend rule",
-      "source": "src/tools/BashTool/prompt.ts",
-      "find": " Never amend unless asked: after a failed pre-commit hook the commit did NOT happen, so fix it, re-stage and make a NEW commit.",
-      "replace": ""
-    },
-    {
-      "name": "the lean reminders switch is ignored for git",
-      "source": "src/tools/BashTool/prompt.ts",
-      "find": "  if (isLeanRemindersEnabled()) {\n    return getCompactGitInstructionsBody(commitAttribution, prAttribution)\n  }\n",
-      "replace": ""
-    },
-    {
       "name": "the v2 switch rule reads any family",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "  return isEnvTruthy(envValue) && family === 'anthropic'",
-      "replace": "  return isEnvTruthy(envValue)"
+      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
+      "replace": "  return !isEnvDefinedFalsy(envValue)"
+    },
+    {
+      "name": "the v2 switch rule falls back to opt-in",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
+      "replace": "  return envValue === '1' && family === 'anthropic'"
+    },
+    {
+      "name": "the v2 switch rule ignores its killswitch",
+      "source": "src/agent/prompts/toolPromptTier.ts",
+      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
+      "replace": "  return family === 'anthropic'"
     },
     {
       "name": "the compact switch stops passing the live family",

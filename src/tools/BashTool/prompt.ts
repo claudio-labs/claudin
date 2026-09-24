@@ -3,7 +3,6 @@ import { prependBullets } from 'src/agent/prompts/prompts.js'
 import {
   isCompactToolPromptsEnabled,
   isLeanToolPromptFamily,
-  isLeanRemindersEnabled,
 } from 'src/agent/prompts/toolPromptTier.js'
 import { getAttributionTexts } from 'src/vcs/git/attribution.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
@@ -96,9 +95,6 @@ export function isLeanGitInstructionsEnabled(): boolean {
  */
 export function getBashGitInstructionsBody(): string {
   const { commit: commitAttribution, pr: prAttribution } = getAttributionTexts()
-  if (isLeanRemindersEnabled()) {
-    return getCompactGitInstructionsBody(commitAttribution, prAttribution)
-  }
   if (isLeanGitInstructionsEnabled()) {
     return getLeanGitInstructionsBody(commitAttribution, prAttribution)
   }
@@ -165,35 +161,6 @@ ${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Sum
 </example>
 
 Quote the body with '…', where a backtick and a newline are literal; if it holds an apostrophe, use "…" and backslash-escape each backtick, \`$\`, \`"\` and \`\\\`.${prAttribution ? '' : ' Add no AI footer to the body.'}`
-}
-
-/**
- * The v2 reminder (isLeanRemindersEnabled): every rule of the lean body — the
- * deny list and hook skips, the amend rule, the two Git calls, staging by
- * name, the quoting rules, both examples in the Git tool's grammar, the
- * attribution handling and the PR steps — with the connecting prose cut.
- */
-function getCompactGitInstructionsBody(
-  commitAttribution: string,
-  prAttribution: string,
-): string {
-  return `# Committing changes with git
-
-Commit only when the user asks; never update the git config or push unless asked. Destructive commands (\`push --force\`, \`reset --hard\`, \`checkout .\`, \`restore .\`, \`clean -f\`, \`branch -D\`) and hook skips (\`--no-verify\`, \`--no-gpg-sign\`) run only when the user names them; warn instead of force-pushing to main/master. Never amend unless asked: after a failed pre-commit hook the commit did NOT happen, so fix it, re-stage and make a NEW commit.
-
-In ONE ${GIT_TOOL_NAME} call read \`git status\` (never \`-uall\`), \`git diff\` and \`git log\`, and nothing else; write a 1-2 sentence message in the repo's style saying why; then, in one more ${GIT_TOOL_NAME} call, stage files by name (never \`git add -A\` or \`git add .\`; warn about any that likely hold secrets), commit and run \`git status\`. No empty commits.${commitAttribution ? ` End every commit message with this trailer after a blank line: ${commitAttribution}` : ''}
-
-${GIT_TOOL_NAME}({commands: ["git add a.ts b.ts", "git commit -m \\"Subject.\\n\\nBody line here.${commitAttribution ? `\\n\\n${commitAttribution}` : ''}\\"", "git status"]})
-
-Subject, blank line and body go in ONE quoted \`-m\`: '…' when it holds a backtick or a \`$\`, otherwise "…" with each \`"\` and \`\\\` escaped (and each backtick and \`$\` when an apostrophe rules out '…'). No commit message needs ${BASH_TOOL_NAME}. Never \`-i\`, nor \`--no-edit\` with \`git rebase\`.${commitAttribution ? '' : ' Add no AI attribution trailer ("Generated with Claude Code", "Co-Authored-By: Claude").'}
-
-# Creating pull requests
-
-Use \`gh\` through ${GIT_TOOL_NAME} for everything GitHub, a GitHub URL included. Before a PR, read the whole branch in one ${GIT_TOOL_NAME} call (status, diff, remote tracking, \`git log\` and \`git diff [base-branch]...HEAD\`), push with \`-u\` if needed, open it with a title under 70 characters, and return its URL:
-
-${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullets>\\n\\n## Test plan\\n[checklist]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})
-
-Quote the body with '…'; if it holds an apostrophe, use "…" and escape each backtick, \`$\`, \`"\` and \`\\\`.${prAttribution ? '' : ' Add no AI footer to the body.'}`
 }
 
 function getCommitAndPRInstructions(): string {

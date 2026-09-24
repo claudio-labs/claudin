@@ -185,31 +185,35 @@ describe('shipped system prompt — characterization', () => {
     compareOrWrite('systemPrompt.subagent.txt', dump(['--subagent']))
   }, 180_000)
 
-  // The v2 prompt (perf/prompts-v2): both opt-in switches on. Its own
-  // snapshot, so a change to the v2 text is reviewed like one to the default.
-  const V2_ENV = { CLAUDIN_LEAN_SYSTEM_PROMPT: '1', CLAUDIN_LEAN_MEMORY_PROMPT: '1' }
+  // The v2 prompt is the default since 2026-09-24; its killswitches restore
+  // the text that shipped before. That text keeps its own snapshot for as long
+  // as the killswitches exist, so `=0` is reviewed like the default.
+  const V2_OFF_ENV = { CLAUDIN_LEAN_SYSTEM_PROMPT: '0', CLAUDIN_LEAN_MEMORY_PROMPT: '0' }
 
-  test('the v2 main-session prompt is byte-identical to its snapshot', () => {
-    compareOrWrite('systemPrompt.lean.txt', dump([], V2_ENV))
+  test('the killswitched (pre-v2) main-session prompt is byte-identical to its snapshot', () => {
+    compareOrWrite('systemPrompt.legacy.txt', dump([], V2_OFF_ENV))
   }, 180_000)
 
   test('the v2 switches do not reach a model outside the Anthropic family', () => {
     // getSystemPrompt applies the v2 text to the Anthropic family only. A
     // first-party session on a non-Claude id resolves to the default family,
-    // so both switches on must render exactly the default prompt there.
+    // so the killswitches must change nothing there.
     const other = 'gpt-5'
-    expect(dump([], V2_ENV, other)).toBe(dump([], {}, other))
+    expect(dump([], {}, other)).toBe(dump([], V2_OFF_ENV, other))
   }, 180_000)
 
-  test('the snapshot is the flags-ON shape, not a source-side render', () => {
+  test('the snapshots are the flags-ON shape, not a source-side render', () => {
     // The trap this whole file is built around: if someone regenerates the
     // snapshot from source instead of from the bundle, every flag reads false
-    // and ~800 tokens of steering silently vanish from the baseline. These
-    // three sections exist ONLY behind flags that ship true (WORK_CONTRACT,
-    // TOOL_BATCHING_NUDGE), so their presence proves the provenance.
-    const snapshot = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.main.txt'), 'utf8')
-    expect(snapshot).toContain('# Delivering work')
-    expect(snapshot).toContain('# Corrections')
-    expect(snapshot).toContain('Batch independent tool calls in a single message')
+    // and the steering silently vanishes from the baseline. Each marker below
+    // exists ONLY behind a flag that ships true (WORK_CONTRACT,
+    // TOOL_BATCHING_NUDGE), so its presence proves the provenance.
+    const main = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.main.txt'), 'utf8')
+    expect(main).toContain('When you have enough information to act, act.')
+    expect(main).toContain('When a change touches several files, land it as ONE apply_patch')
+    const legacy = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.legacy.txt'), 'utf8')
+    expect(legacy).toContain('# Delivering work')
+    expect(legacy).toContain('# Corrections')
+    expect(legacy).toContain('Batch independent tool calls in a single message')
   })
 })

@@ -22,10 +22,16 @@
       "replace": "`"
     },
     {
-      "name": "the lean toggle defaults on",
+      "name": "the lean toggle falls back to opt-in",
       "source": "src/agent/prompts/steeringToggles.ts",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)",
-      "replace": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)"
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)",
+      "replace": "  return isEnvTruthy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)"
+    },
+    {
+      "name": "the lean toggle ignores its killswitch",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)",
+      "replace": "  return true"
     },
     {
       "name": "the v2 memory ships the long category lines",

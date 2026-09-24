@@ -14,7 +14,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
@@ -387,11 +387,13 @@ export function buildSearchingPastContextSection(
 
 /**
  * The v2 memory prompt (teamMemPrompts.ts `buildLeanCombinedMemoryPrompt`).
- * Opt-in (`CLAUDIN_LEAN_MEMORY_PROMPT=1`) until its session A/B gate holds;
- * getSystemPrompt applies it to the Anthropic family only.
+ * Default ON since 2026-09-24 with the rest of the v2 prompt (team memory
+ * `prompts-v2-2026-09`); getSystemPrompt applies it to the Anthropic family
+ * only. `CLAUDIN_LEAN_MEMORY_PROMPT=0` restores the previous text; the
+ * killswitch is slated for removal in a cleanup pass.
  */
 export function isLeanMemoryPromptEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_LEAN_MEMORY_PROMPT)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_MEMORY_PROMPT)
 }
 
 /**
