@@ -8,11 +8,11 @@ import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 const PARAMS = { toolUseContext: { options: {} as never } }
 
 // The built-in Plan agent is contractually read-only ("you do NOT have access
-// to file editing tools"). apply_patch is a mutating tool and must be excluded
+// to file editing tools"). Patch is a mutating tool and must be excluded
 // alongside edit/write — otherwise a read-only agent could write.
 describe('read-only built-in agents exclude all write tools', () => {
   for (const agent of [PLAN_AGENT]) {
-    test(`${agent.agentType} disallows apply_patch (and edit/write)`, () => {
+    test(`${agent.agentType} disallows Patch (and edit/write)`, () => {
       const disallowed = agent.disallowedTools ?? []
       expect(disallowed).toContain(FILE_EDIT_TOOL_NAME)
       expect(disallowed).toContain(FILE_WRITE_TOOL_NAME)

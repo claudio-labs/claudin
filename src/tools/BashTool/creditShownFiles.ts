@@ -4,7 +4,7 @@
  * A `cat` never counted as a read for the read-before-edit gate: BashTool
  * wrote `readFileState` only for a simulated sed edit (applySedEdit.ts). So a
  * file the model had just been shown by `cat` was refused by Edit and
- * apply_patch as never read — they answer with its lines and a resend passes,
+ * Patch as never read — they answer with its lines and a resend passes,
  * a round-trip for text the model already holds — and by Write outright. That
  * is half of why the session-cache-ab loop (2026-09-23) was followed by a Read
  * of every file it had printed; the floor cap cutting the loop is the other

@@ -36,7 +36,7 @@ import {
  *  - On allow we echo OUR OWN input. Bash's `updatedInput` is `{command}`-shaped
  *    and the harness applies it verbatim, which would replace our `op` with a
  *    `command` field the schema does not have. That is the bug that made
- *    apply_patch dead on arrival in auto/bypass mode.
+ *    Patch dead on arrival in auto/bypass mode.
  */
 export async function checkContainerPermission(
   input: ContainerToolInput,

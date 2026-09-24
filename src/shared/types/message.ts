@@ -447,7 +447,7 @@ export type CollapsedReadSearchGroup = {
   hookCount?: number
   hookInfos?: StopHookInfo[]
   /**
-   * Files written by Write/Edit/apply_patch/Rename absorbed into this group,
+   * Files written by Write/Edit/Patch/Rename absorbed into this group,
    * in the order they were first touched. Only set when the group has writes.
    */
   writeFileStats?: WriteFileStat[]

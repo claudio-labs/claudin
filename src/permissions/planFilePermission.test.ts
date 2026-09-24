@@ -16,7 +16,7 @@ import { checkEditableInternalPath } from 'src/permissions/filePermissions.js'
 // Regression coverage for the plan-mode "Only the plan file may be edited"
 // denial: a plan-file write must be recognized (behavior 'allow') even when
 // the session's cached plan slug drifts from the slug embedded in the path
-// the model writes. Without this, FileWrite/FileEdit/apply_patch to the plan
+// the model writes. Without this, FileWrite/FileEdit/Patch to the plan
 // file all get hard-denied by the plan-mode gate and the model is locked out
 // of its own plan file.
 //

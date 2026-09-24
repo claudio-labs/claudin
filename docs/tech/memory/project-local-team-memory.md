@@ -82,7 +82,7 @@ This carves out `memory/team/` (git-tracked, reaches teammates via ordinary
 
 ### Secrets
 
-Every Edit/Write/apply_patch/staged write into the team dir runs
+Every Edit/Write/Patch/staged write into the team dir runs
 `checkTeamMemSecrets` (`src/memory/memdir/teamMemSecretGuard.ts`, ~40
 gitleaks-derived rules in `secretScanner.ts`) and is **blocked**, not warned,
 when it matches — the team dir is committed, so a leaked key would be in the

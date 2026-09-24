@@ -4,7 +4,7 @@
   "probes": [
     {
       "name": "the one-patch rule leaves the system prompt",
-      "find": "When a change touches several files, land it as ONE apply_patch with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option.\n",
+      "find": "When a change touches several files, land it as ONE Patch call with a section per file, and Read every one of those files first in a single message. One patch per file is the anti-pattern here, not the careful option.\n",
       "replace": ""
     },
     {

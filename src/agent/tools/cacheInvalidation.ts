@@ -4,7 +4,7 @@
  * Extracted from toolExecution.ts so it can be unit-tested directly: that
  * module pulls in the full tool registry (→ ink + the build-only analytics
  * stub), so it cannot be imported under `bun test`. The dispatch here depends
- * only on tool-name constants, the apply_patch path helper, and the cache —
+ * only on tool-name constants, the Patch path helper, and the cache —
  * all ink-free — so the wiring is testable in isolation.
  */
 

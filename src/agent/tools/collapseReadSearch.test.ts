@@ -143,7 +143,7 @@ describe('write collapse', () => {
     ])
   })
 
-  test('apply_patch lists every file in the envelope, by kind', () => {
+  test('Patch lists every file in the envelope, by kind', () => {
     const patchText = [
       '*** Begin Patch',
       '*** Add File: /repo/added.ts',
@@ -154,14 +154,14 @@ describe('write collapse', () => {
 
     // Envelope only, no result yet: the rows have to come from parsing the
     // patch, so this half fails if getApplyPatchTargets stops resolving hunks.
-    const pending = onlyGroup([toolUse('p0', 'apply_patch', { patchText })])
+    const pending = onlyGroup([toolUse('p0', 'Patch', { patchText })])
     expect(pending.writeFileStats).toEqual([
       { path: '/repo/added.ts', kind: 'A', additions: 0, deletions: 0 },
       { path: '/repo/gone.ts', kind: 'D', additions: 0, deletions: 0 },
     ])
 
     const group = onlyGroup([
-      toolUse('p1', 'apply_patch', { patchText }),
+      toolUse('p1', 'Patch', { patchText }),
       toolResult('p1', {
         files: [
           {
@@ -208,11 +208,11 @@ describe('write collapse', () => {
       '*** End Patch',
     ].join('\n')
 
-    const pending = onlyGroup([toolUse('p1', 'apply_patch', { patchText })])
+    const pending = onlyGroup([toolUse('p1', 'Patch', { patchText })])
     expect(pending.writeFileStats).toBeUndefined()
 
     const resolved = onlyGroup([
-      toolUse('p2', 'apply_patch', { patchText }),
+      toolUse('p2', 'Patch', { patchText }),
       toolResult('p2', {
         files: [
           { absPath: '/elsewhere/rel/added.ts', type: 'add', additions: 1, deletions: 0 },
@@ -237,7 +237,7 @@ describe('write collapse', () => {
     ].join('\n')
 
     const group = onlyGroup([
-      toolUse('p1', 'apply_patch', { patchText }),
+      toolUse('p1', 'Patch', { patchText }),
       toolResult('p1', {
         files: [
           { absPath: '/w/a.ts', type: 'add', additions: 2, deletions: 0 },
@@ -403,7 +403,7 @@ describe('summarizeRecentActivities — write counting', () => {
     ).toBe('Editing 1 file…')
   })
 
-  test('one apply_patch over three files is three files, not one', () => {
+  test('one Patch over three files is three files, not one', () => {
     const patchText = [
       '*** Begin Patch',
       '*** Add File: /w/a.ts',
@@ -417,7 +417,7 @@ describe('summarizeRecentActivities — write counting', () => {
     expect(
       summarizeRecentActivities([
         { toolName: 'Read', input: {}, isRead: true },
-        write('apply_patch', { patchText }),
+        write('Patch', { patchText }),
       ]),
     ).toBe('Editing 3 files, reading 1 file…')
   })

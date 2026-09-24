@@ -683,7 +683,8 @@ function readReport(calls: Call[]) {
   let readAfterEditChars = 0
   const editedAt = new Map<string, number[]>() // `${file}\u0000${path}` → seq of each write
   for (const c of calls) {
-    if (c.tool !== 'Edit' && c.tool !== 'Write' && c.tool !== 'apply_patch') continue
+    // `apply_patch` is the patch tool's wire name before 2026-09-24.
+    if (c.tool !== 'Edit' && c.tool !== 'Write' && c.tool !== 'apply_patch' && c.tool !== 'Patch') continue
     const paths: string[] = []
     if (typeof c.input.file_path === 'string') paths.push(c.input.file_path)
     if (typeof c.input.patchText === 'string') {

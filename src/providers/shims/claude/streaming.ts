@@ -605,7 +605,7 @@ export async function* queryModel(
   // the cache_control marker. The stable bytes need to live inside the
   // cached prefix.
   messagesForAPI = applyStableStubs(messagesForAPI);
-  // Same contract for the tool_use INPUT side (apply_patch bodies, Write
+  // Same contract for the tool_use INPUT side (Patch bodies, Write
   // content, Agent briefs the relief policy clipped): wire-only, byte-stable,
   // and before the frontier for the same reason.
   messagesForAPI = applyStableInputStubs(messagesForAPI);

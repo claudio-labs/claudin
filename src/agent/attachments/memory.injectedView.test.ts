@@ -7,7 +7,7 @@
  * the text that reached the model, and nothing else: 8 of 65 read-gate
  * refusals in the 2026-08/09 corpus were Edits of such a file, each answered
  * by a view='full' re-read of a file the model had just been shown.
- * (apply_patch takes any read since 2026-09-24, so the entry's presence is
+ * (Patch takes any read since 2026-09-24, so the entry's presence is
  * all it needs.)
  */
 import { describe, expect, test } from 'bun:test'

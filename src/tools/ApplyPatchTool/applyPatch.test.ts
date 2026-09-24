@@ -458,6 +458,9 @@ describe('validateApplyPatchInput', () => {
       expect(r.message).toContain('2 problems')
       expect(r.message).toContain('appears in more than one section')
       expect(r.message).not.toContain('ONE message')
+      // The header names the tool once; each bullet drops the prefix its
+      // single-problem message carries.
+      expect(r.message).not.toContain('• Patch:')
     }
     cleanup()
   })
@@ -865,6 +868,7 @@ describe('resubmit by reference', () => {
       expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
       expect(refused.message).not.toContain('resubmit the same patch')
       expect(refused.message).not.toContain('fix all of them')
+      expect(refused.message).not.toContain('• Patch:')
     }
     expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
     cleanup()
@@ -876,7 +880,7 @@ describe('resubmit by reference', () => {
     if (!r.ok) expect(r.message).toContain('send the whole patch')
   })
 
-  test('any other apply_patch call drops the kept patch', () => {
+  test('any other Patch call drops the kept patch', () => {
     const p = join(dir, 'dropped.txt')
     writeNumbered(p)
     const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }

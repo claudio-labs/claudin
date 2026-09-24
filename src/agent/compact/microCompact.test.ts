@@ -293,11 +293,11 @@ describe('relief policy — window lane via microcompactMessages', () => {
     expect(getClippedIds().size).toBe(0)
   })
 
-  // A context whose pool declares apply_patch's input clearable — what the
+  // A context whose pool declares Patch's input clearable — what the
   // real ToolUseContext carries via options.tools.
   function contextWithPool(): ToolUseContext {
     return {
-      options: { tools: [{ name: 'apply_patch', clearableInputFields: ['patchText'] }] },
+      options: { tools: [{ name: 'Patch', clearableInputFields: ['patchText'] }] },
     } as unknown as ToolUseContext
   }
 
@@ -305,14 +305,14 @@ describe('relief policy — window lane via microcompactMessages', () => {
     return [
       createAssistantMessage({
         content: [
-          { type: 'tool_use' as const, id, name: 'apply_patch', input: { patchText: 'p'.repeat(patchChars) } },
+          { type: 'tool_use' as const, id, name: 'Patch', input: { patchText: 'p'.repeat(patchChars) } },
         ],
       }),
       userWithToolResult(id, 'Success. Applied the patch.'),
     ]
   }
 
-  test('above the trigger: clips the INPUT side of old apply_patch calls, never their one-line result', async () => {
+  test('above the trigger: clips the INPUT side of old Patch calls, never their one-line result', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds, getClippedInputFields } = await import('src/agent/compact/stableStubState.js')
     const { getCurrentTurnPrefixRewrites, resetCurrentTurn } = await import('src/providers/cache/cacheStatsTracker.js')

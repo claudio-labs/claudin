@@ -105,19 +105,19 @@
       "replace": "  const cap = MAX_LISTING_DESC_CHARS"
     },
     {
-      "name": "apply_patch loses the one-section rule",
+      "name": "Patch loses the one-section rule",
       "source": "src/tools/ApplyPatchTool/prompt.ts",
       "find": "give each file exactly ONE section, and anchor",
       "replace": "and anchor"
     },
     {
-      "name": "apply_patch loses the forward-cursor rule",
+      "name": "Patch loses the forward-cursor rule",
       "source": "src/tools/ApplyPatchTool/prompt.ts",
       "find": "the cursor only moves forward: each \"@@\" must sit at or after the previous hunk's, so",
       "replace": "so"
     },
     {
-      "name": "apply_patch loses the hunk-header rule",
+      "name": "Patch loses the hunk-header rule",
       "source": "src/tools/ApplyPatchTool/prompt.ts",
       "find": "Each hunk begins with a \"@@\" line, followed by the change lines:",
       "replace": "The change lines are:"

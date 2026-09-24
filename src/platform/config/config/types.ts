@@ -639,7 +639,7 @@ export type GlobalConfig = {
   // behavior. undefined → true (default on).
   repeatedFailureHintEnabled?: boolean
 
-  // Collapse file writes — folds Write/Edit/apply_patch/Rename into the same
+  // Collapse file writes — folds Write/Edit/Patch/Rename into the same
   // collapsed row as reads/searches ("edited 3 files  +42 −7"), with the diffs
   // behind Ctrl+O. Off restores a full diff block per write.
   // undefined → true (default on).

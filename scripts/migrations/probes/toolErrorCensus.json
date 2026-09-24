@@ -97,7 +97,7 @@
       "replace": "  return merged\n"
     },
     {
-      "name": "item 4: apply_patch serves the never-read refusal",
+      "name": "item 4: Patch serves the never-read refusal",
       "source": "src/tools/ApplyPatchTool/applyPatch.ts",
       "find": "        hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null\n",
       "replace": "        null\n"

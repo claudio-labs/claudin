@@ -2222,7 +2222,7 @@ export function REPL({
       // stripped frontmatter, MEMORY.md truncation), cache the RAW disk bytes
       // with isPartialView so Write requires a real Read first while
       // getChangedFiles + nested_memory dedup still work, and the injected
-      // text beside it so Edit/apply_patch can work from what the model saw.
+      // text beside it so Edit/Patch can work from what the model saw.
       readFileState.current.set(file.path, {
         content: file.contentDiffersFromDisk ? file.rawContent ?? file.content : file.content,
         timestamp: Date.now(),

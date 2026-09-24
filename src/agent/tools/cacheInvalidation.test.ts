@@ -15,9 +15,9 @@ beforeEach(() => __resetForTests())
 afterEach(() => __resetForTests())
 
 describe('invalidateCacheForWrite (write → read-cache wiring)', () => {
-  test('apply_patch drops searches for every patched path (relative + absolute keyed)', () => {
+  test('Patch drops searches for every patched path (relative + absolute keyed)', () => {
     // Drives the real dispatch (NOT the helper inline), so deleting the
-    // apply_patch branch in invalidateCacheForWrite fails this test.
+    // Patch branch in invalidateCacheForWrite fails this test.
     const patchText =
       '*** Begin Patch\n*** Update File: rel/foo.ts\n@@\n-a\n+b\n*** End Patch'
     const absDir = dirname(resolveApplyPatchPaths({ patchText })[0])
@@ -30,7 +30,7 @@ describe('invalidateCacheForWrite (write → read-cache wiring)', () => {
     expect(getCached('Grep', { pattern: 'y', path: absDir })).toBeUndefined()
   })
 
-  test('apply_patch with a non-string patchText is a no-op (no throw)', () => {
+  test('Patch with a non-string patchText is a no-op (no throw)', () => {
     setCached('Grep', { pattern: 'x' }, { n: 1 })
     invalidateCacheForWrite(APPLY_PATCH_TOOL_NAME, { patchText: 123 })
     expect(getCached('Grep', { pattern: 'x' })?.data).toEqual({ n: 1 })

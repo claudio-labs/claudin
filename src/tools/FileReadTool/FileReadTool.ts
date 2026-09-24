@@ -323,7 +323,7 @@ export const FileReadTool = buildTool({
    * readDispatch's `readFileState.set`, and that entry is the read-before-edit
    * gate's whole evidence. Without this the model reads a file, gets its
    * content, and is then told the file "has not been read yet" by
-   * Edit/apply_patch/Write — which is what a live session showed five times
+   * Edit/Patch/Write — which is what a live session showed five times
    * over, each one cleared only by an identical second Read (the refused write
    * does not invalidate the entry, but any Bash does, and the re-read then
    * reaches call()).

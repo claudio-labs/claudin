@@ -66,7 +66,7 @@ export type SearchOrReadResult = {
   mcpServerName?: string
   /** Bash command that is NOT a search/read (under fullscreen mode) */
   isBash?: boolean
-  /** True for Write/Edit/apply_patch/Rename outside the memory dir */
+  /** True for Write/Edit/Patch/Rename outside the memory dir */
   isWrite: boolean
 }
 
@@ -195,7 +195,7 @@ function getApplyPatchTargets(toolInput: unknown): WriteTarget[] | null {
     // a patch the parser rejects is exactly the one whose result carries the
     // error. Never block the render on it.
     logForDebugging(
-      `collapseReadSearch: apply_patch parse failed: ${e instanceof Error ? e.message : String(e)}`,
+      `collapseReadSearch: Patch parse failed: ${e instanceof Error ? e.message : String(e)}`,
     )
   }
   APPLY_PATCH_TARGETS.set(toolInput, targets)
@@ -788,7 +788,7 @@ function recordWriteFile(
 
 /**
  * Pull the per-file line counts out of a write tool's result. Each tool reports
- * them differently: Edit/Write carry a `structuredPatch`, apply_patch and
+ * them differently: Edit/Write carry a `structuredPatch`, Patch and
  * Rename already ship `additions`/`deletions` per file.
  */
 function applyWriteResult(
@@ -883,7 +883,7 @@ function applyWriteResult(
         if (!file.absPath) continue
         // 'S', not 'R': the tool renames a symbol, so every file it touches is
         // modified in place. 'R' is for a file that changed path, which only
-        // apply_patch's `Move to:` produces. Both read as "renamed" in the
+        // Patch's `Move to:` produces. Both read as "renamed" in the
         // summary; only the ⎿ rows distinguish them.
         recordWriteFile(group, file.absPath, 'S', {
           additions: file.additions ?? 0,
@@ -973,7 +973,7 @@ type GroupAccumulator = {
   mcpServerNames?: Set<string>
   // Bash commands that aren't search/read (tracked separately for "Ran N bash commands")
   bashCount?: number
-  // Files written by Write/Edit/apply_patch/Rename, in first-touch order (Map
+  // Files written by Write/Edit/Patch/Rename, in first-touch order (Map
   // preserves insertion order, which is what the ⎿ list renders).
   writeFiles: Map<string, { kind: WriteKind; additions: number; deletions: number }>
   // Write tool_use_id → tool name, so the tool_result can be read with the
@@ -1467,7 +1467,7 @@ export function getSearchReadSummaryText(
 /**
  * How many FILES a run of write tool uses touched — not how many calls it made.
  * A sub-agent's progress line and the collapsed badge describe the same work, so
- * they have to agree: two Edits of one file are one file, and one apply_patch
+ * they have to agree: two Edits of one file are one file, and one Patch
  * over five files is five. A write whose files are not knowable from its input
  * (Rename lists them only in its result) counts as one, because it did touch
  * something and reporting zero would erase it from the line.
@@ -1533,7 +1533,7 @@ export function summarizeRecentActivities(
       break
     }
   }
-  // The gate counts tool USES, so one apply_patch over five files does not
+  // The gate counts tool USES, so one Patch over five files does not
   // start summarizing on its own — but the text it produces counts files.
   const collapsibleCount = searchCount + readCount + writeUses
   if (collapsibleCount >= 2) {

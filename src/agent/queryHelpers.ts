@@ -78,7 +78,7 @@ function parseNumberedReadResult(
   return { offset, content: lines.join('\n') }
 }
 
-/** Every path an apply_patch call wrote or removed, from its own input. */
+/** Every path a Patch call wrote or removed, from its own input. */
 function applyPatchTargets(
   patchText: string,
   cwd: string,
@@ -90,7 +90,7 @@ function applyPatchTargets(
     hunks = parsePatch(patchText).hunks
   } catch (e) {
     // A patch the tool itself rejected as malformed wrote nothing.
-    logForDebugging(`resume: skipping unparseable apply_patch input: ${e}`)
+    logForDebugging(`resume: skipping unparseable Patch input: ${e}`)
     return { written, deleted }
   }
   for (const hunk of hunks) {
@@ -434,7 +434,7 @@ export function extractReadFilesFromMessages(
 ): FileStateCache {
   const cache = createFileStateCacheWithSizeLimit(maxSize)
 
-  // First pass: find all Read/Write/Edit/apply_patch uses in assistant messages
+  // First pass: find all Read/Write/Edit/Patch uses in assistant messages
   // toolUseId -> { filePath, ranged }. A ranged Read (offset/limit/symbol)
   // is restored as the slice it showed, not skipped: a file range-read before
   // a /resume used to come back "never read" (queryHelpers used to drop these).
@@ -448,7 +448,7 @@ export function extractReadFilesFromMessages(
   >() // toolUseId -> { filePath, content }
   const fileEditToolUseIds = new Map<string, string>() // toolUseId -> filePath
   const applyPatchToolUseIds = new Map<string, string>() // toolUseId -> patchText
-  // `*** Resubmit` applies the patch refused one apply_patch call earlier.
+  // `*** Resubmit` applies the patch refused one Patch call earlier.
   let lastPatchText: string | undefined
 
   for (const message of messages) {
@@ -631,7 +631,7 @@ export function extractReadFilesFromMessages(
             cacheFromDisk(editFilePath)
           }
 
-          // apply_patch: same as Edit, for every file the patch named. Its
+          // Patch: same as Edit, for every file the patch named. Its
           // result text is a per-file summary, so disk is the only source.
           const patchText = applyPatchToolUseIds.get(content.tool_use_id)
           if (patchText && content.is_error !== true) {

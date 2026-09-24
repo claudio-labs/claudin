@@ -23,7 +23,7 @@ type Json = Record<string, unknown>
 const TOPICS: ReadonlyArray<[string, RegExp]> = [
   ['tests / verification', /\b(tests?|verif\w*|regression|failing|passes|pass(ed)?|assert\w*)\b/gi],
   ['reading / exploring', /\b(read(ing)?|look(ing)? at|inspect\w*|explor\w*|understand\w*|structure|layout)\b/gi],
-  ['tool choice', /\b(RunTests|Typecheck|apply_patch|Edit tool|Bash|Git tool|Grep|Glob|ToolSearch|heredoc|python)\b/g],
+  ['tool choice', /\b(RunTests|Typecheck|apply_patch|Patch tool|Edit tool|Bash|Git tool|Grep|Glob|ToolSearch|heredoc|python)\b/g],
   ['memory / rules / .claudin', /\b(memory|MEMORY\.md|\.claudin|rules?\b|search-strategy)/gi],
   ['git / commit', /\b(git|commit\w*|stag(e|ing)|trailer|co-author\w*)\b/gi],
   ['instructions', /\b(instruction\w*|guideline\w*|system prompt|I('m| am) (told|asked|supposed)|conventions?|the user (wants|asked|said))\b/gi],

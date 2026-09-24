@@ -147,7 +147,7 @@ export function createPlanAttachmentIfNeeded(
   })
 }
 
-/** The entry a Read of the whole plan would have left, under the path Edit/apply_patch look up. */
+/** The entry a Read of the whole plan would have left, under the path Edit/Patch look up. */
 export function seedPlanFileState(
   readFileState: FileStateCache,
   planFilePath: string,

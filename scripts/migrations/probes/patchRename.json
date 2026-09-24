@@ -1,0 +1,39 @@
+{
+  "test": [
+    "src/tools/ApplyPatchTool/rename.test.ts",
+    "src/sessions/conversationRecovery.test.ts",
+    "src/tools/ApplyPatchTool/applyPatch.test.ts"
+  ],
+  "source": "src/tools/ApplyPatchTool/ApplyPatchTool.ts",
+  "probes": [
+    {
+      "name": "the tool forgets its old name",
+      "find": "  aliases: [LEGACY_APPLY_PATCH_TOOL_NAME],\n",
+      "replace": ""
+    },
+    {
+      "name": "rules and hooks written for apply_patch stop resolving",
+      "source": "src/permissions/permissionRuleParser.ts",
+      "find": "  [LEGACY_APPLY_PATCH_TOOL_NAME]: APPLY_PATCH_TOOL_NAME,\n",
+      "replace": ""
+    },
+    {
+      "name": "a resumed transcript keeps the legacy tool name",
+      "source": "src/sessions/conversationRecovery.ts",
+      "find": "      migrateLegacyToolNames(migrateLegacyAttachmentTypes(message)),",
+      "replace": "      migrateLegacyAttachmentTypes(message),"
+    },
+    {
+      "name": "the multi-problem list keeps each message's tool prefix",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "        .map(m => `  • ${m.replace(MESSAGE_PREFIX_RE, '')}`)\n",
+      "replace": "        .map(m => `  • ${m}`)\n"
+    },
+    {
+      "name": "the served multi-problem list keeps each message's tool prefix",
+      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+      "find": "        shown.map(m => `  • ${m.replace(MESSAGE_PREFIX_RE, '')}`).join('\\n') +",
+      "replace": "        shown.map(m => `  • ${m}`).join('\\n') +"
+    }
+  ]
+}

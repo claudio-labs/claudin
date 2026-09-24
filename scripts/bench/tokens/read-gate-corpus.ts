@@ -46,7 +46,9 @@ const ROOT = `${process.env.HOME}/.claudin/projects`
 type ToolUse = { id: string; name: string; input: any }
 
 const LINE_RE = /^\s*(\d+)→(.*)$/
-const WRITE_TOOLS = new Set(['Edit', 'Write', 'apply_patch', 'NotebookEdit'])
+/** The patch tool's wire name was `apply_patch` until 2026-09-24; a corpus spans both. */
+const PATCH_TOOLS = new Set(['apply_patch', 'Patch'])
+const WRITE_TOOLS = new Set(['Edit', 'Write', ...PATCH_TOOLS, 'NotebookEdit'])
 const PATCH_PATH_RE = /^\*\*\* (?:Update|Add|Delete) File: (.+)$/gm
 
 function writtenPaths(use: ToolUse): string[] {
@@ -309,7 +311,7 @@ for (const path of files) {
 
       // A successful write rewrites the file: a real accumulating fileState
       // would have to drop every range recorded before it (mtime moved).
-      if (!b.is_error && use.name === 'apply_patch' && typeof use.input?.patchText === 'string') {
+      if (!b.is_error && PATCH_TOOLS.has(use.name) && typeof use.input?.patchText === 'string') {
         for (const pc of pendingCoverage) {
           if (pc.patchText === use.input.patchText) pc.err.resubmittedIdentical = true
           else if (pc.err.resubmittedIdentical === undefined) pc.err.resubmittedIdentical = false
@@ -345,11 +347,11 @@ for (const path of files) {
       const kinds = classify(body)
       if (kinds.length === 0) continue
 
-      // Which file(s) the refusal names (apply_patch prefixes the rel path).
+      // Which file(s) the refusal names (the patch tool prefixes the rel path).
       let file: string | undefined = use.input?.file_path
-      if (!file && use.name === 'apply_patch') {
+      if (!file && PATCH_TOOLS.has(use.name)) {
         const m =
-          /(?:•\s*|apply_patch:\s*)([^\s]+\.[A-Za-z0-9]+)\s+(?:was only read in part|has not been read yet|has only been seen|was read, but|has been modified since)/.exec(
+          /(?:•\s*|(?:apply_patch|Patch):\s*)([^\s]+\.[A-Za-z0-9]+)\s+(?:was only read in part|has not been read yet|has only been seen|was read, but|has been modified since)/.exec(
             body,
           )
         file = m?.[1]
@@ -369,7 +371,7 @@ for (const path of files) {
       if (kinds.includes('coverage:unseen-region') && key) {
         try {
           const needed: string[][] = []
-          if (use.name === 'apply_patch') {
+          if (PATCH_TOOLS.has(use.name)) {
             const parsed = parsePatch(use.input.patchText)
             for (const h of parsed.hunks) {
               if (h.type !== 'update') continue
@@ -478,7 +480,7 @@ const count = (pred: (e: Err) => boolean) => errors.filter(pred).length
 console.log(`sessions=${sessions} files=${files.length} toolCalls=${totalCalls}`)
 console.log(`window ${minTs.slice(0, 10)} → ${maxTs.slice(0, 10)}`)
 console.log('\n-- call/error rates (write family) --')
-for (const t of ['Read', 'Edit', 'Write', 'apply_patch', 'NotebookEdit']) {
+for (const t of ['Read', 'Edit', 'Write', 'apply_patch', 'Patch', 'NotebookEdit']) {
   const c = callsByTool.get(t) ?? 0
   const e = errsByTool.get(t) ?? 0
   console.log(`${t.padEnd(13)} calls=${String(c).padStart(6)} errors=${String(e).padStart(4)} ${((e / Math.max(c, 1)) * 100).toFixed(1)}%`)
@@ -527,7 +529,7 @@ for (const e of nrExact.slice(0, 14))
 console.log('\n-- coverage:unseen-region replay (accumulating vs last-read-wins) --')
 const cov = errors.filter(e => e.kinds.includes('coverage:unseen-region'))
 console.log(`unseen-region refusals=${cov.length}`)
-console.log(`  apply_patch replayed        = ${cov.filter(e => e.unionWouldCover !== undefined).length}`)
+console.log(`  patch replayed              = ${cov.filter(e => e.unionWouldCover !== undefined).length}`)
 console.log(`  union of ranges WOULD cover = ${count(e => e.unionWouldCover === true)}`)
 console.log(`  last read alone would cover = ${count(e => e.lastWouldCover === true)}`)
 console.log(`  ≥2 prior reads of that file = ${cov.filter(e => e.priorReads > 1).length}`)

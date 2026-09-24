@@ -14,7 +14,7 @@
 // exactly as a Read(offset, limit) would have — the identical resubmit then
 // passes the gate. The invariant is intact: the model still sees the lines
 // before the write lands, it just sees them one call sooner. Since 2026-09-24
-// apply_patch refuses only a file never read at all, so for an Update hunk this
+// Patch refuses only a file never read at all, so for an Update hunk this
 // serves that refusal alone; Edit still serves all four of its own.
 //
 // What is NOT served, on purpose:

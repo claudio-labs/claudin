@@ -314,8 +314,8 @@ describe('plan mode → classifier lane (planModeDefersToClassifier)', () => {
     expect(planModeDefersToClassifier('Bash', false)).toBe(false)
   })
 
-  test('Write, Edit, apply_patch and MCP tools keep the hard deny even under auto mode', () => {
-    for (const name of ['Write', 'Edit', 'apply_patch', 'NotebookEdit', 'mcp__srv__tool']) {
+  test('Write, Edit, Patch and MCP tools keep the hard deny even under auto mode', () => {
+    for (const name of ['Write', 'Edit', 'Patch', 'NotebookEdit', 'mcp__srv__tool']) {
       expect(planModeDefersToClassifier(name, true)).toBe(false)
     }
   })

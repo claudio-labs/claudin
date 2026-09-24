@@ -1,4 +1,10 @@
-export const APPLY_PATCH_TOOL_NAME = 'apply_patch'
+export const APPLY_PATCH_TOOL_NAME = 'Patch'
+/**
+ * The wire name until 2026-09-24. Kept as the tool's alias and in
+ * LEGACY_TOOL_NAME_ALIASES, so permission rules, hook matchers and the
+ * tool_use blocks of an older transcript still resolve to this tool.
+ */
+export const LEGACY_APPLY_PATCH_TOOL_NAME = 'apply_patch'
 
 // IMPORTANT — cache safety: this description is serialized into the `tools`
 // block, which is the head of the cached request prefix and carries no
@@ -49,7 +55,7 @@ Example:
 *** End Patch
 
 Rules:
-- Batch related edits into ONE call. When a change touches several files, put every file section in a single patch instead of making one apply_patch call per file — it is atomic and cheaper. Only split into separate calls when a later edit genuinely depends on the result of an earlier one.
+- Batch related edits into ONE call. When a change touches several files, put every file section in a single patch instead of making one Patch call per file — it is atomic and cheaper. Only split into separate calls when a later edit genuinely depends on the result of an earlier one.
 - Typical flow for a multi-file change: map the targets with Grep/Glob, Read every one of them in ONE message (parallel Read calls), then send ONE patch. Reading them one at a time is what turns a single patch into N patches.
 - The patch is all-or-nothing, so before you send it: give each file exactly ONE section, and anchor each hunk on lines you copied from the file (not remembered) — a single unread file, duplicate section, or mismatched context rejects the entire batch. When a call is rejected it lists every problem it found at once; fix them all before resubmitting rather than one at a time.
 - Update and Delete need a prior Read of the file, and any Read counts: the whole file, an outline, a symbol, or a range. Nothing has to be re-read, or read whole, to be allowed to patch — a hunk applies when its context and "-" lines match the file as it is on disk, so read only the lines you need to write it. Add does not require a prior read.

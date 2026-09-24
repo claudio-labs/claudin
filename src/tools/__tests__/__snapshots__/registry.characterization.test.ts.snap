@@ -11,7 +11,7 @@ exports[`tool registry — characterization the unconditional tool list matches 
   "Read",
   "Edit",
   "Write",
-  "apply_patch",
+  "Patch",
   "Rename",
   "NotebookEdit",
   "WebFetch",

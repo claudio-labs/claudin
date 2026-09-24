@@ -119,7 +119,7 @@ function VerboseToolUse(t0: VerboseToolUseProps) {
       const resultMsg = lookups.toolResultByToolUseID.get(content.id);
       const rawToolResult = resultMsg?.type === "user" ? resultMsg.toolUseResult : undefined;
       const parsedOutput = tool.outputSchema?.safeParse(rawToolResult);
-      // Mirrors UserToolSuccessMessage: a tool with no outputSchema (apply_patch,
+      // Mirrors UserToolSuccessMessage: a tool with no outputSchema (Patch,
       // Rename) still renders its result — only a FAILED parse is dropped. Without
       // this, those two render nothing at all inside a collapsed group.
       const toolResult = parsedOutput ? parsedOutput.success ? parsedOutput.data : undefined : rawToolResult;

@@ -210,7 +210,7 @@ describe('shipped system prompt — characterization', () => {
     // TOOL_BATCHING_NUDGE), so its presence proves the provenance.
     const main = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.main.txt'), 'utf8')
     expect(main).toContain('When you have enough information to act, act.')
-    expect(main).toContain('When a change touches several files, land it as ONE apply_patch')
+    expect(main).toContain('When a change touches several files, land it as ONE Patch')
     const legacy = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.legacy.txt'), 'utf8')
     expect(legacy).toContain('# Delivering work')
     expect(legacy).toContain('# Corrections')

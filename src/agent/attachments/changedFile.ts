@@ -15,7 +15,7 @@
 //
 //   1. `makeOutlineData` writes `isPartialView: true`, so the entry for a file
 //      the model had seen in full was downgraded to "outline only" and the next
-//      Edit/apply_patch was refused with a message that says the model never
+//      Edit/Patch was refused with a message that says the model never
 //      saw the body. Measured over 683 sessions: 38 of the 50 `partial-view`
 //      refusals on an already-read path had an out-of-band rewrite (a build, a
 //      `perl -i`, a `git checkout`) between the read and the refusal.

@@ -546,7 +546,7 @@ export type Tool<
    * them to relieve context. Set it on read-only, re-runnable tools whose
    * output can be regenerated (file reads, searches, builds, test runs).
    * Leave it unset on tools whose result is the only record of a mutation
-   * (Edit/Write/apply_patch) or a sub-agent's report — those must survive.
+   * (Edit/Write/Patch) or a sub-agent's report — those must survive.
    * The list sent to the API is derived from the tool pool, so a new tool
    * opts in here instead of in a hand-maintained constant.
    */
@@ -601,7 +601,7 @@ export type Tool<
    * anything else looks at it: validateInput, the PreToolUse hooks, the
    * auto-mode classifier, the permission prompt and call() all receive the
    * resolved input, while the transcript keeps what the model sent (the
-   * cached prefix depends on it). apply_patch's `*** Resubmit` names the
+   * cached prefix depends on it). Patch's `*** Resubmit` names the
    * patch it refused one call earlier. A refusal is reported the way a failed
    * validateInput is.
    */

@@ -9,7 +9,11 @@ import {
   summarizeApplyPatch,
   validateApplyPatchInput,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
-import { APPLY_PATCH_TOOL_NAME, DESCRIPTION } from 'src/tools/ApplyPatchTool/prompt.js'
+import {
+  APPLY_PATCH_TOOL_NAME,
+  DESCRIPTION,
+  LEGACY_APPLY_PATCH_TOOL_NAME,
+} from 'src/tools/ApplyPatchTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ApplyPatchTool/UI.js'
 
 const inputSchema = lazySchema(() =>
@@ -17,7 +21,7 @@ const inputSchema = lazySchema(() =>
     patchText: z
       .string()
       .describe(
-        'The full apply_patch envelope, from "*** Begin Patch" to "*** End Patch".',
+        'The full patch envelope, from "*** Begin Patch" to "*** End Patch".',
       ),
   }),
 )
@@ -25,6 +29,7 @@ type InputSchema = ReturnType<typeof inputSchema>
 
 export const ApplyPatchTool = buildTool({
   name: APPLY_PATCH_TOOL_NAME,
+  aliases: [LEGACY_APPLY_PATCH_TOOL_NAME],
   userFacingName: () => 'Patch',
   searchHint: 'multi-file patch add update delete rename atomic',
   maxResultSizeChars: 100_000,

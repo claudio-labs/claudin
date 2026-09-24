@@ -205,7 +205,7 @@ export const FileWriteTool = buildTool({
     }
 
     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
-    // Shared with Edit / apply_patch / NotebookEdit: an outline-only entry used
+    // Shared with Edit / Patch / NotebookEdit: an outline-only entry used
     // to be refused here as "has not been read yet", which is false and sends
     // the model back into a re-Read that returns another outline.
     if (!satisfiesReadGate(readTimestamp)) {

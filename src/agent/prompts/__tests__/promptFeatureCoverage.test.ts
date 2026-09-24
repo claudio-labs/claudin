@@ -146,7 +146,7 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
     'encoding',
     'smart-case',
   ],
-  apply_patch: [
+  Patch: [
     '*** Begin Patch',
     '*** Add File',
     '*** Update File',
@@ -193,7 +193,7 @@ const ANYWHERE_MARKERS: ReadonlyArray<[string, string | RegExp]> = [
   ['act on what you know', 'When you have enough information to act, act'],
   ['compaction', 'summarized'],
   ['parallel tool calls', /parallel/i],
-  ['one multi-file patch', 'ONE apply_patch'],
+  ['one multi-file patch', 'ONE Patch'],
   ['private memory', '.claudin/memory/'],
   ['team memory', '.claudin/memory/team/'],
   ['team decisions', 'decisions/'],

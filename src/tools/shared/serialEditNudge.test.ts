@@ -28,7 +28,7 @@ function patchInput(...paths: string[]): { patchText: string } {
 }
 
 function patch(...paths: string[]): Block {
-  return { type: 'tool_use', name: 'apply_patch', input: patchInput(...paths) }
+  return { type: 'tool_use', name: 'Patch', input: patchInput(...paths) }
 }
 
 function edit(path: string): Block {
@@ -141,7 +141,7 @@ describe('detectSerialEditStreak — prior turns', () => {
     expect(detectSerialEditStreak(messages)).toBe(0)
   })
 
-  test('Edit and Write count alongside apply_patch', () => {
+  test('Edit and Write count alongside Patch', () => {
     const messages = [
       assistant(edit('a.ts')),
       assistant(write('b.ts')),
@@ -201,7 +201,7 @@ describe('detectSerialEditStreak — prior turns', () => {
       assistant(patch('b.ts')),
       assistant({
         type: 'tool_use',
-        name: 'apply_patch',
+        name: 'Patch',
         input: { patchText: 'not an envelope' },
       }),
     ]
@@ -232,7 +232,7 @@ describe('detectSerialEditStreak — the current call', () => {
     expect(
       detectSerialEditStreak(priorSingles, {
         currentCall: {
-          name: 'apply_patch',
+          name: 'Patch',
           input: patchInput('d.ts', 'e.ts'),
         },
       }),
@@ -242,7 +242,7 @@ describe('detectSerialEditStreak — the current call', () => {
   test('a single-file current patch is the newest turn of the streak', () => {
     expect(
       detectSerialEditStreak([assistant(patch('a.ts')), assistant(patch('b.ts'))], {
-        currentCall: { name: 'apply_patch', input: patchInput('c.ts') },
+        currentCall: { name: 'Patch', input: patchInput('c.ts') },
       }),
     ).toBe(SERIAL_EDIT_THRESHOLD)
   })
@@ -250,7 +250,7 @@ describe('detectSerialEditStreak — the current call', () => {
   test('a current call on the same file as the last turn does not double-count', () => {
     expect(
       detectSerialEditStreak([assistant(patch('a.ts')), assistant(patch('b.ts'))], {
-        currentCall: { name: 'apply_patch', input: patchInput('b.ts') },
+        currentCall: { name: 'Patch', input: patchInput('b.ts') },
       }),
     ).toBe(2)
   })
@@ -266,7 +266,7 @@ describe('detectSerialEditStreak — the current call', () => {
   test('a current call whose target cannot be resolved scores zero', () => {
     expect(
       detectSerialEditStreak(priorSingles, {
-        currentCall: { name: 'apply_patch', input: { patchText: 'garbage' } },
+        currentCall: { name: 'Patch', input: { patchText: 'garbage' } },
       }),
     ).toBe(0)
   })
@@ -284,7 +284,7 @@ describe('renderSerialEditNudge', () => {
   test('names the count and the tool that fixes it', () => {
     const rendered = renderSerialEditNudge(3)
     expect(rendered).toContain('3 single-file edits in a row')
-    expect(rendered).toContain('apply_patch')
+    expect(rendered).toContain('Patch')
     expect(rendered).toContain('<system-reminder>')
   })
 })

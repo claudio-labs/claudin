@@ -53,7 +53,7 @@ function isFileWriteOutput(result: FileEditResult): result is FileWriteOutput {
   )
 }
 
-/** apply_patch returns `{ files: [...] }` instead of a top-level filePath. */
+/** Patch returns `{ files: [...] }` instead of a top-level filePath. */
 export function isApplyPatchResult(
   result: unknown,
 ): result is { files: ApplyPatchFileResult[] } {
@@ -69,7 +69,7 @@ export function isApplyPatchResult(
   })
 }
 
-/** Merge one file's hunks into the current turn (apply_patch fans out files). */
+/** Merge one file's hunks into the current turn (Patch fans out files). */
 export function mergeFileDiff(
   turn: TurnDiff,
   filePath: string,
@@ -135,7 +135,7 @@ function computeTurnStats(turn: TurnDiff): void {
 /**
  * Apply one tool result to the current turn, fanning out edits per file.
  * Handles both the FileEdit/FileWrite shape (a top-level filePath) and the
- * apply_patch shape (`{ files: [...] }`, where a move keys on its destination).
+ * Patch shape (`{ files: [...] }`, where a move keys on its destination).
  */
 export function applyToolResultToTurn(turn: TurnDiff, result: unknown): void {
   if (isFileEditResult(result)) {

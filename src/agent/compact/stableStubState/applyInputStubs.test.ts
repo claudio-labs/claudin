@@ -40,13 +40,13 @@ function inputOf(msg: Msg): Block {
 }
 
 test('identity when no input has been clipped', () => {
-  const messages = [assistantToolUse('toolu_a', 'apply_patch', { patchText: BIG })]
+  const messages = [assistantToolUse('toolu_a', 'Patch', { patchText: BIG })]
   expect(applyStableInputStubs(messages)).toBe(messages)
 })
 
 test('rewrites only the declared fields, keeps the rest, and the result block stays intact', () => {
   const messages = [
-    assistantToolUse('toolu_a', 'apply_patch', { patchText: BIG, dryRun: false }),
+    assistantToolUse('toolu_a', 'Patch', { patchText: BIG, dryRun: false }),
     userToolResult('toolu_a', 'Success. Applied the patch to the following files: M a.ts'),
   ]
   addClippedInputs('toolu_a', ['patchText'])
@@ -55,7 +55,7 @@ test('rewrites only the declared fields, keeps the rest, and the result block st
   const input = inputOf(out[0]!)
   // The token count rides the active model's bytes/token ratio, so only the
   // shape is pinned here; byte-stability is the next test's job.
-  expect(input.patchText).toMatch(/^\[clipped: ~\d+ tokens of patchText from apply_patch\]$/)
+  expect(input.patchText).toMatch(/^\[clipped: ~\d+ tokens of patchText from Patch\]$/)
   expect(input.dryRun).toBe(false)
   // Input-only clip: the result side is untouched by both rewriters.
   expect(out[1]).toBe(messages[1])
@@ -79,7 +79,7 @@ test('non-string and absent fields are skipped', () => {
 
 test('bytes are identical across renders, across array instances, and after re-clipping', () => {
   const build = () => [
-    assistantToolUse('toolu_a', 'apply_patch', { patchText: BIG }),
+    assistantToolUse('toolu_a', 'Patch', { patchText: BIG }),
     assistantToolUse('toolu_b', 'Agent', { prompt: BIG + 'brief', description: 'd' }),
   ]
   addClippedInputs('toolu_a', ['patchText'])
@@ -94,7 +94,7 @@ test('bytes are identical across renders, across array instances, and after re-c
 })
 
 test('an already-stubbed field is final: re-rendering the stubbed view is identity', () => {
-  const messages = [assistantToolUse('toolu_a', 'apply_patch', { patchText: BIG })]
+  const messages = [assistantToolUse('toolu_a', 'Patch', { patchText: BIG })]
   addClippedInputs('toolu_a', ['patchText'])
   const once = applyStableInputStubs(messages)
   expect(applyStableInputStubs(once)).toBe(once)
@@ -109,11 +109,11 @@ test('the first emission is replayed even when the estimate would differ later (
   // the recorded bytes win over what the second render would compute.
   addClippedInputs('toolu_a', ['patchText'])
   const first = inputOf(
-    applyStableInputStubs([assistantToolUse('toolu_a', 'apply_patch', { patchText: BIG })])[0]!,
+    applyStableInputStubs([assistantToolUse('toolu_a', 'Patch', { patchText: BIG })])[0]!,
   ).patchText
   const second = inputOf(
     applyStableInputStubs([
-      assistantToolUse('toolu_a', 'apply_patch', { patchText: BIG + BIG }),
+      assistantToolUse('toolu_a', 'Patch', { patchText: BIG + BIG }),
     ])[0]!,
   ).patchText
   expect(second).toBe(first)
@@ -122,7 +122,7 @@ test('the first emission is replayed even when the estimate would differ later (
 test('the result-side stub pattern does not accept the input form', () => {
   // A tool_result whose content happens to be an input stub must still be
   // clippable as a result (isClipStubContent must not match it).
-  const stub = '[clipped: ~1000 tokens of patchText from apply_patch]'
+  const stub = '[clipped: ~1000 tokens of patchText from Patch]'
   const messages = [
     assistantToolUse('toolu_a', 'Read', {}),
     userToolResult('toolu_a', stub + '\n' + 'z'.repeat(1_000)),
@@ -151,7 +151,7 @@ test('handles the nested message.content shape the wire uses', () => {
 })
 
 test('resetClippedIds drops the clipped inputs with the rest of the key', () => {
-  const messages = [assistantToolUse('toolu_a', 'apply_patch', { patchText: BIG })]
+  const messages = [assistantToolUse('toolu_a', 'Patch', { patchText: BIG })]
   addClippedInputs('toolu_a', ['patchText'])
   expect(applyStableInputStubs(messages)).not.toBe(messages)
   resetClippedIds()

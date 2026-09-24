@@ -93,7 +93,7 @@ export function memoryFilesToAttachments(
         offset: undefined,
         limit: undefined,
         isPartialView: memoryFile.contentDiffersFromDisk,
-        // The text the model was shown, so Edit/apply_patch can check their
+        // The text the model was shown, so Edit/Patch can check their
         // needle against it rather than demand a re-Read (fileStateCache.ts).
         injectedView: memoryFile.contentDiffersFromDisk
           ? memoryFile.content

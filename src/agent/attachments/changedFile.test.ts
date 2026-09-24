@@ -35,7 +35,7 @@ import {
 // structural outline. Two silent effects, both covered here:
 //
 //   - the outline's cache entry is `isPartialView: true`, so a file the model
-//     had seen in FULL was downgraded, and its next Edit/apply_patch refused
+//     had seen in FULL was downgraded, and its next Edit/Patch refused
 //     with "only been seen as an outline or a partial view";
 //   - an outline result matches neither the 'text' nor the 'image' arm, so the
 //     function returned null and the model was never told the file changed.
@@ -132,7 +132,7 @@ function writeAhead(path: string, content: string, secondsAhead = 10): void {
   utimesSync(path, when, when)
 }
 
-/** The entry an Edit/Write/apply_patch leaves behind: whole file, no offset. */
+/** The entry an Edit/Write/Patch leaves behind: whole file, no offset. */
 function postWriteEntry(content: string, timestamp: number): FileState {
   return { content, timestamp, offset: undefined, limit: undefined }
 }

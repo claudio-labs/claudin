@@ -58,7 +58,7 @@ export const STAND_DOWN_STRIKES = 3
  * The marker exists because re-arming on EVERY fallback oscillates (two full
  * bodies every three reads when the pin cannot protect a round, four when it
  * can, forever). But re-arming NEVER is worse: the marker is written with
- * isPartialView, so Edit/Write/apply_patch/NotebookEdit refuse with "read it
+ * isPartialView, so Edit/Write/Patch/NotebookEdit refuse with "read it
  * first", and the replay returns without rewriting the entry — the model
  * cannot read its way out and cannot edit, in a file sitting readable on disk.
  * The budget keeps both bugs closed at once: bodies cost 2 per (budget + 3)

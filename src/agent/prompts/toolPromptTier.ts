@@ -78,7 +78,7 @@ export function isV2PromptSwitchOn(
  * The v2 tool descriptions (branch perf/prompts-v2): Read, Grep, Agent, Bash,
  * Build, Typecheck and RunTests at Claude Code 2.1.280's density, every
  * parameter and behavior still named (promptFeatureCoverage.test.ts), and
- * Monitor behind ToolSearch. apply_patch keeps its full text: its compact one
+ * Monitor behind ToolSearch. Patch keeps its full text: its compact one
  * produced malformed patches in the session A/B. Anthropic family only.
  *
  * Default ON since 2026-09-24 with the rest of the v2 prompt (team memory

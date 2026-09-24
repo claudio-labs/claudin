@@ -20,7 +20,7 @@ import {
 /**
  * Walk messages and rewrite the recorded input fields of every assistant
  * `tool_use` whose id the relief policy clipped (`addClippedInputs`). The
- * client-side twin of the API's `clear_tool_inputs`: an apply_patch body, a
+ * client-side twin of the API's `clear_tool_inputs`: a Patch body, a
  * Write's content or an Agent brief is the model's own output, already on
  * disk or already acted on, and it stays in the prefix for the rest of the
  * session — 40% of one 958k transcript was tool_use inputs that no clip

@@ -134,8 +134,8 @@ describe('invalidation', () => {
     expect(getCached('Grep', { pattern: 'y' })).toBeUndefined()
   })
 
-  test('apply_patch paths invalidate both relative- and absolute-keyed searches', () => {
-    // Mirrors invalidateCacheForWrite's apply_patch branch: feeding every path
+  test('Patch paths invalidate both relative- and absolute-keyed searches', () => {
+    // Mirrors invalidateCacheForWrite's Patch branch: feeding every path
     // from applyPatchCacheInvalidationPaths through invalidateForPath must drop
     // a search cached on the relative dir the model used AND one cached on the
     // absolute resolved dir (Grep/Glob skip the Read mtime re-check).
