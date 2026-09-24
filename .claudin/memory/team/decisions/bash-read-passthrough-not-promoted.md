@@ -71,4 +71,5 @@ user's call; until then both flags stay off.
 `head`/`tail` prints now count, which closed the two grammar misses the A/B
 showed. Measured on top of the batch Read, now on by default
 ([[batch-read-default-on]]), the credit cost +6% and added 2 API calls. The
-model reads by batch Read and seldom by `cat`. The flags stay off.
+model reads by batch Read and seldom by `cat`. The flags stay off — parked,
+not dropped: the user plans to come back to it (2026-09-24).
