@@ -183,16 +183,11 @@ export function registerLSPNotificationHandlers(
             const diagnosticFiles =
               formatDiagnosticsForAttachment(diagnosticParams)
 
-            // Only send notification if there are diagnostics
+            // An empty list is registered too: it is the server saying the file
+            // is clean now, and it has to replace what it published before.
+            // Dropped here, a fixed error stayed pending and was delivered.
             const firstFile = diagnosticFiles[0]
-            if (
-              !firstFile ||
-              diagnosticFiles.length === 0 ||
-              firstFile.diagnostics.length === 0
-            ) {
-              logForDebugging(
-                `Skipping empty diagnostics from ${serverName} for ${diagnosticParams.uri}`,
-              )
+            if (!firstFile) {
               return
             }
 

@@ -73,7 +73,8 @@ describe('awaitDiagnosticsForFile', () => {
 
     expect(result).not.toBeNull()
     expect(result).toHaveLength(1)
-    expect(result![0]!.uri).toBe(fileX.uri)
+    // Returned as the path the registry keys on, whichever form was published.
+    expect(result![0]!.uri).toBe('/tmp/x.ts')
     // Fast-path is a synchronous scan, awaited via Promise.resolve. Way under timeout.
     expect(elapsed).toBeLessThan(50)
   })
@@ -89,7 +90,7 @@ describe('awaitDiagnosticsForFile', () => {
 
     expect(result).not.toBeNull()
     expect(result).toHaveLength(1)
-    expect(result![0]!.uri).toBe(fileX.uri)
+    expect(result![0]!.uri).toBe('/tmp/x.ts')
     // Should resolve shortly after the 30ms register, well under the timeout.
     expect(elapsed).toBeLessThan(200)
   })

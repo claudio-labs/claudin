@@ -1,5 +1,5 @@
-import { randomUUID } from 'crypto'
 import { LRUCache } from 'lru-cache'
+import { fileURLToPath } from 'url'
 import { logForDebugging } from 'src/shared/debug.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
@@ -45,7 +45,28 @@ const MAX_TOTAL_DIAGNOSTICS = 30
 // Max files to track for deduplication - prevents unbounded memory growth
 const MAX_DELIVERED_FILES = 500
 
-// Global registry state
+/**
+ * The one key every lookup uses: a filesystem path. passiveFeedback stores what
+ * servers publish under a path, while the edit tools asked by `file://` + path;
+ * keyed by the raw string the two never met, so the per-edit wait always timed
+ * out, the tail-wait never found its file, and an edit never reset its file.
+ */
+function toDiagnosticPath(uri: string): string {
+  if (!uri.startsWith('file://')) return uri
+  try {
+    return fileURLToPath(uri)
+  } catch {
+    return uri
+  }
+}
+
+function pendingKey(serverName: string, path: string): string {
+  return `${serverName}\u0000${path}`
+}
+
+// Global registry state: each server's LATEST publish per file, keyed by
+// pendingKey. A publish is the server's complete list for that file, so it
+// replaces the previous one rather than adding to it.
 const pendingDiagnostics = new Map<string, PendingLSPDiagnostic>()
 
 // Cross-turn deduplication: tracks diagnostics that have been delivered
@@ -63,6 +84,11 @@ const fileWaiters = new Map<string, Set<(files: DiagnosticFile[]) => void>>()
  * Register LSP diagnostics received from a server.
  * These will be delivered as attachments in the next query.
  *
+ * Each file replaces what the same server last published for it, and an empty
+ * list removes it: the server is saying the file is clean now. Stored per
+ * publish instead, an error the next edit fixed was still delivered, merged
+ * with the fix's own diagnostics, because the "all clear" never displaced it.
+ *
  * @param serverName - Name of LSP server that sent diagnostics
  * @param files - Diagnostic files to deliver
  */
@@ -73,41 +99,57 @@ export function registerPendingLSPDiagnostic({
   serverName: string
   files: DiagnosticFile[]
 }): void {
-  // Use UUID for guaranteed uniqueness (handles rapid registrations)
-  const diagnosticId = randomUUID()
-
   logForDebugging(
-    `LSP Diagnostics: Registering ${files.length} diagnostic file(s) from ${serverName} (ID: ${diagnosticId})`,
+    `LSP Diagnostics: Registering ${files.length} diagnostic file(s) from ${serverName}`,
   )
 
-  pendingDiagnostics.set(diagnosticId, {
-    serverName,
-    files,
-    timestamp: Date.now(),
-    attachmentSent: false,
-  })
-
-  // Notify any per-edit waiters watching for these file URIs. Notification is
-  // synchronous so awaitDiagnosticsForFile resolves before the LSP handler
-  // returns, but we copy + delete the waiter set first to avoid re-entry
-  // hazards if a callback synchronously triggers another registration.
   for (const file of files) {
-    const waiters = fileWaiters.get(file.uri)
+    const path = toDiagnosticPath(file.uri)
+    const published: DiagnosticFile = { uri: path, diagnostics: file.diagnostics }
+    const key = pendingKey(serverName, path)
+    if (published.diagnostics.length === 0) {
+      pendingDiagnostics.delete(key)
+    } else {
+      pendingDiagnostics.set(key, {
+        serverName,
+        files: [published],
+        timestamp: Date.now(),
+        attachmentSent: false,
+      })
+    }
+
+    // Notify any per-edit waiters watching this file — an empty publish too,
+    // which answers "anything wrong?" with no. Notification is synchronous so
+    // awaitDiagnosticsForFile resolves before the LSP handler returns, but we
+    // copy + delete the waiter set first to avoid re-entry hazards if a
+    // callback synchronously triggers another registration.
+    const waiters = fileWaiters.get(path)
     if (!waiters || waiters.size === 0) continue
-    fileWaiters.delete(file.uri)
+    fileWaiters.delete(path)
     for (const cb of waiters) {
       try {
-        cb([file])
+        cb([published])
       } catch (error: unknown) {
         const err = toError(error)
         logError(
           new Error(
-            `LSP Diagnostics: waiter callback for ${file.uri} threw: ${err.message}`,
+            `LSP Diagnostics: waiter callback for ${path} threw: ${err.message}`,
           ),
         )
       }
     }
   }
+}
+
+/** Every server's pending diagnostics for one file, as a single file entry. */
+function pendingForPath(path: string): DiagnosticFile | undefined {
+  const diagnostics: DiagnosticFile['diagnostics'] = []
+  for (const entry of pendingDiagnostics.values()) {
+    for (const file of entry.files) {
+      if (file.uri === path) diagnostics.push(...file.diagnostics)
+    }
+  }
+  return diagnostics.length > 0 ? { uri: path, diagnostics } : undefined
 }
 
 /**
@@ -127,16 +169,15 @@ export function awaitDiagnosticsForFile(
   fileUri: string,
   timeoutMs: number,
 ): Promise<DiagnosticFile[] | null> {
+  const path = toDiagnosticPath(fileUri)
   // Fast-path: if a publishDiagnostics for this URI is already pending, return
   // it immediately. We do NOT mutate pendingDiagnostics here — the turn-level
   // checkForLSPDiagnostics is the canonical drainer. Per-edit injection
   // populates the deliveredDiagnostics LRU instead, which dedups the next pull.
-  for (const pending of pendingDiagnostics.values()) {
-    const match = pending.files.filter(f => f.uri === fileUri)
-    if (match.length > 0) {
-      return Promise.resolve(match)
-    }
-  }
+  // What is pending here arrived after the edit: the edit tools drop the
+  // file's older entries (forgetDiagnosticsForEditedFile) before notifying.
+  const pending = pendingForPath(path)
+  if (pending) return Promise.resolve([pending])
 
   // Slow-path: register a waiter, race against setTimeout. Cleanup is
   // idempotent — whichever side fires first wins, the other no-ops.
@@ -146,10 +187,10 @@ export function awaitDiagnosticsForFile(
 
     const cleanup = () => {
       if (timer !== undefined) clearTimeout(timer)
-      const set = fileWaiters.get(fileUri)
+      const set = fileWaiters.get(path)
       if (set) {
         set.delete(onPublish)
-        if (set.size === 0) fileWaiters.delete(fileUri)
+        if (set.size === 0) fileWaiters.delete(path)
       }
     }
 
@@ -160,10 +201,10 @@ export function awaitDiagnosticsForFile(
       resolve(files)
     }
 
-    let waiters = fileWaiters.get(fileUri)
+    let waiters = fileWaiters.get(path)
     if (!waiters) {
       waiters = new Set()
-      fileWaiters.set(fileUri, waiters)
+      fileWaiters.set(path, waiters)
     }
     waiters.add(onPublish)
 
@@ -188,10 +229,11 @@ export function awaitDiagnosticsForFile(
  */
 export function markDiagnosticsAsDelivered(files: DiagnosticFile[]): void {
   for (const file of files) {
-    if (!deliveredDiagnostics.has(file.uri)) {
-      deliveredDiagnostics.set(file.uri, new Set())
+    const path = toDiagnosticPath(file.uri)
+    if (!deliveredDiagnostics.has(path)) {
+      deliveredDiagnostics.set(path, new Set())
     }
-    const delivered = deliveredDiagnostics.get(file.uri)!
+    const delivered = deliveredDiagnostics.get(path)!
     for (const diag of file.diagnostics) {
       try {
         delivered.add(createDiagnosticKey(diag))
@@ -226,7 +268,7 @@ export function filterUndeliveredDiagnostics(
 ): DiagnosticFile[] {
   const result: DiagnosticFile[] = []
   for (const file of files) {
-    const delivered = deliveredDiagnostics.get(file.uri)
+    const delivered = deliveredDiagnostics.get(toDiagnosticPath(file.uri))
     if (!delivered || delivered.size === 0) {
       if (file.diagnostics.length > 0) result.push(file)
       continue
@@ -277,7 +319,7 @@ export function _getFileWaiterCountForTesting(fileUri?: string): number {
     for (const set of fileWaiters.values()) total += set.size
     return total
   }
-  return fileWaiters.get(fileUri)?.size ?? 0
+  return fileWaiters.get(toDiagnosticPath(fileUri))?.size ?? 0
 }
 
 /**
@@ -560,18 +602,22 @@ export function resetAllLSPDiagnosticState(): void {
 }
 
 /**
- * Clear delivered diagnostics for a specific file.
- * Should be called when a file is edited so that new diagnostics for that file
- * will be shown even if they match previously delivered ones.
+ * Reset a file's diagnostic state when it is edited, before the server is
+ * told. Its pending diagnostics describe content that no longer exists, so
+ * they are dropped: the server republishes for the new content, and only that
+ * may reach the model. Its delivered set is cleared too, so a diagnostic that
+ * survives the edit is reported again rather than deduplicated away.
  *
- * @param fileUri - URI of the file that was edited
+ * @param fileUri - Path (or `file://` URI) of the file that was edited
  */
-export function clearDeliveredDiagnosticsForFile(fileUri: string): void {
-  if (deliveredDiagnostics.has(fileUri)) {
-    logForDebugging(
-      `LSP Diagnostics: Clearing delivered diagnostics for ${fileUri}`,
-    )
-    deliveredDiagnostics.delete(fileUri)
+export function forgetDiagnosticsForEditedFile(fileUri: string): void {
+  const path = toDiagnosticPath(fileUri)
+  for (const [key, entry] of pendingDiagnostics) {
+    if (entry.files.some(f => f.uri === path)) pendingDiagnostics.delete(key)
+  }
+  if (deliveredDiagnostics.has(path)) {
+    logForDebugging(`LSP Diagnostics: Clearing delivered diagnostics for ${path}`)
+    deliveredDiagnostics.delete(path)
   }
 }
 
@@ -579,7 +625,7 @@ export function clearDeliveredDiagnosticsForFile(fileUri: string): void {
  * Get count of pending diagnostics (for monitoring)
  */
 /**
- * Read the most recent pending diagnostics for a given file URI, without
+ * Read the pending diagnostics for a given file — each server's latest — without
  * marking them delivered or removing them from the registry.
  *
  * Returns [] if no pending entry references the URI. Note: this only
@@ -590,15 +636,7 @@ export function clearDeliveredDiagnosticsForFile(fileUri: string): void {
 export function peekPendingDiagnosticsForFile(
   fileUri: string,
 ): DiagnosticFile['diagnostics'] {
-  let latest: PendingLSPDiagnostic | undefined
-  for (const entry of pendingDiagnostics.values()) {
-    const match = entry.files.find(f => f.uri === fileUri)
-    if (!match) continue
-    if (!latest || entry.timestamp > latest.timestamp) latest = entry
-  }
-  if (!latest) return []
-  const file = latest.files.find(f => f.uri === fileUri)
-  return file ? file.diagnostics : []
+  return pendingForPath(toDiagnosticPath(fileUri))?.diagnostics ?? []
 }
 
 export function getPendingLSPDiagnosticCount(): number {

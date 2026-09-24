@@ -1,0 +1,53 @@
+{
+  "test": [
+    "src/platform/lsp/passiveFeedback.test.ts",
+    "src/platform/lsp/awaitDiagnosticsForFile.test.ts",
+    "src/platform/lsp/diagnosticsForToolResult.test.ts"
+  ],
+  "source": "src/platform/lsp/LSPDiagnosticRegistry.ts",
+  "probes": [
+    {
+      "name": "every publish is stored on its own again",
+      "find": "    const key = pendingKey(serverName, path)\n",
+      "replace": "    const key = `${pendingKey(serverName, path)}${Math.random()}`\n"
+    },
+    {
+      "name": "the handler drops an empty publish again",
+      "source": "src/platform/lsp/passiveFeedback.ts",
+      "find": "            if (!firstFile) {\n",
+      "replace": "            if (!firstFile || firstFile.diagnostics.length === 0) {\n"
+    },
+    {
+      "name": "an empty publish does not answer a wait",
+      "find": "    if (!waiters || waiters.size === 0) continue\n",
+      "replace": "    if (!waiters || waiters.size === 0 || published.diagnostics.length === 0) continue\n"
+    },
+    {
+      "name": "lookups key on the raw string again",
+      "find": "  const path = toDiagnosticPath(fileUri)\n  // Fast-path",
+      "replace": "  const path = fileUri\n  // Fast-path"
+    },
+    {
+      "name": "an edit keeps the file's pre-edit diagnostics",
+      "find": "    if (entry.files.some(f => f.uri === path)) pendingDiagnostics.delete(key)\n",
+      "replace": ""
+    },
+    {
+      "name": "an edit keeps the file's delivered set",
+      "find": "    deliveredDiagnostics.delete(path)\n  }\n}\n",
+      "replace": "  }\n}\n"
+    },
+    {
+      "name": "FileEditTool no longer resets the file",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "      forgetDiagnosticsForEditedFile(absoluteFilePath)\n",
+      "replace": ""
+    },
+    {
+      "name": "stagedWrite resets the file after notifying",
+      "source": "src/tools/shared/stagedWrite/stagedWrite.ts",
+      "find": "  forgetDiagnosticsForEditedFile(target)\n  lspManager.changeFile(target, content)",
+      "replace": "  lspManager.changeFile(target, content)"
+    }
+  ]
+}

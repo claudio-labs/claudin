@@ -20,7 +20,7 @@ import {
   armFileForLateDiagnostics,
   buildPostEditDiagnosticsMessages,
 } from 'src/platform/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { forgetDiagnosticsForEditedFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
@@ -237,7 +237,7 @@ export function rollbackChange(change: StagedChange): void {
 function notifyLsp(target: string, content: string): void {
   const lspManager = getLspServerManager()
   if (!lspManager) return
-  clearDeliveredDiagnosticsForFile(`file://${target}`)
+  forgetDiagnosticsForEditedFile(target)
   lspManager.changeFile(target, content).catch((err: Error) => {
     logForDebugging(`LSP: changeFile failed for ${target}: ${err.message}`)
     logError(err)

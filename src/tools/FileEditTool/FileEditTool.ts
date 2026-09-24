@@ -5,7 +5,7 @@ import {
   armFileForLateDiagnostics,
   buildPostEditDiagnosticsMessages,
 } from 'src/platform/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { forgetDiagnosticsForEditedFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
@@ -620,8 +620,8 @@ export const FileEditTool = buildTool({
     // Notify LSP servers about file modification (didChange) and save (didSave)
     const lspManager = getLspServerManager()
     if (lspManager) {
-      // Clear previously delivered diagnostics so new ones will be shown
-      clearDeliveredDiagnosticsForFile(`file://${absoluteFilePath}`)
+      // Drop the file's pre-edit diagnostics so only the republish is shown
+      forgetDiagnosticsForEditedFile(absoluteFilePath)
       // didChange: Content has been modified
       lspManager
         .changeFile(absoluteFilePath, updatedFile)
