@@ -2,8 +2,7 @@
 
 > Durable coding gotchas now live in `.claudin/rules/` (auto-loaded by path):
 > **ink-tui.md** (renderer), **cache.md** (prompt/tool-result cache), **testing.md**
-> (mocking leaks + known flakes), **agent-safety.md** (sub-agent/worktree hazards,
-> always-on), **build-system.md** + **typescript-patterns.md** (feature()/compile),
+> (mocking leaks + known flakes), **build-system.md** + **typescript-patterns.md** (feature()/compile),
 > **git-conventions.md** (commit/PR title format, always-on).
 > This index holds project state, decisions, and references that aren't coding rules.
 
@@ -62,6 +61,7 @@
 - [Claude Code 2.1.270's prompt, extracted 2026-09-14](claude-code-2.1.270-prompt-diff.md) — upstream MANDATES narration now; Delivering work/Corrections/turn-discipline are upstream verbatim
 - [ANTI_NARRATION — REMOVED from every prompt 2026-09-24](anti-narration-never-benched-on-claude-5.md) — narr arm moved neither thinking nor cost; Agent's "don't narrate a launch" rule stays
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
+- [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — it makes Claudin behave better here than elsewhere and hides bugs; verify from a throwaway cwd
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 21 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn from a throwaway cwd, never `-c` in the repo
