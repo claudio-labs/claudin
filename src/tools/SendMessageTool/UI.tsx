@@ -4,16 +4,25 @@ import { Text } from 'src/terminal/ink.js';
 import { jsonParse } from 'src/platform/slowOperations.js';
 import type { Input, SendMessageToolOutput } from 'src/tools/SendMessageTool/SendMessageTool.js';
 const LABEL_MAX_CHARS = 80;
+
+// A `uds:` address is copied from a message's `from` — the socket path means
+// nothing to a reader, and the result line names the session.
+function recipientLabel(to: string): string {
+  return to.startsWith('uds:') ? 'reply' : to;
+}
 export function renderToolUseMessage(input: Partial<Input>): React.ReactNode {
+  if (input.message === undefined && input.notify_when_idle && input.to) {
+    return `${recipientLabel(input.to)}: notify when idle`;
+  }
   if (typeof input.message === 'string') {
     if (!input.to) {
       return null;
     }
     const label = input.summary?.trim() || input.message.trim().split('\n')[0] || '';
     if (!label) {
-      return input.to;
+      return recipientLabel(input.to);
     }
-    return `${input.to}: ${label.length > LABEL_MAX_CHARS ? `${label.slice(0, LABEL_MAX_CHARS - 1)}…` : label}`;
+    return `${recipientLabel(input.to)}: ${label.length > LABEL_MAX_CHARS ? `${label.slice(0, LABEL_MAX_CHARS - 1)}…` : label}`;
   }
   if (typeof input.message !== 'object' || input.message === null) {
     return null;

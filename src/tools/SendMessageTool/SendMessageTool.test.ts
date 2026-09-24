@@ -12,6 +12,7 @@ import {
   inputSchemaFor,
   SendMessageTool,
 } from 'src/tools/SendMessageTool/SendMessageTool.js'
+import { renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
 
 // An unknown name is looked up among the other sessions on this machine, so
 // point the session directory somewhere empty rather than at the developer's.
@@ -206,6 +207,16 @@ describe('SendMessageTool', () => {
     if (result && result.result === false) {
       expect(result.message).toContain('single-line')
     }
+  })
+
+  test('the use line shows a reply as one, and names a pure subscription', () => {
+    expect(renderToolUseMessage({ to: 'uds:/run/user/1000/claudin-socks/42.sock', message: 'PONG' })).toBe(
+      'reply: PONG',
+    )
+    expect(renderToolUseMessage({ to: 'claudin-goal', notify_when_idle: true })).toBe(
+      'claudin-goal: notify when idle',
+    )
+    expect(renderToolUseMessage({ to: 'researcher', message: 'go\nmore' })).toBe('researcher: go')
   })
 
   test('validateInput accepts a plain-text message without a summary', async () => {

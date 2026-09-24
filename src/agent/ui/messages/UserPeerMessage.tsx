@@ -2,6 +2,7 @@ import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import figures from 'figures'
 import React from 'react'
 import { describeInterAgentMessage } from 'src/agent/messages/interAgentMessages.js'
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js'
 import { UserPromptMessage } from 'src/agent/ui/messages/UserPromptMessage.js'
 import { Ansi, Box, Text } from 'src/terminal/ink.js'
 
@@ -27,9 +28,12 @@ export function UserPeerMessage({
     return <UserPromptMessage addMargin={addMargin} param={param} />
   }
   if (view.kind === 'notice') {
+    // MessageResponse keeps a wrapped notice under its ⎿ instead of at column 0.
     return (
       <Box marginTop={addMargin ? 1 : 0}>
-        <Text dimColor>{`  ⎿  ${view.body.trim()}`}</Text>
+        <MessageResponse>
+          <Text dimColor>{view.body.trim()}</Text>
+        </MessageResponse>
       </Box>
     )
   }
