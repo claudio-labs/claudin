@@ -125,12 +125,19 @@ describe a compilation that never happened. There is no baseline here,
 deliberately: a second run prints nothing, and recording that would mark the
 whole backlog as newly introduced.
 
-The run is stopped after a stretch with **no output at all** (`idleTimeout`,
-default 180s) under a wall ceiling (`timeout`, default 600s), and the result
-says how long it ran, how long it had been silent and the last line it printed —
-as observations, since linking and a cold daemon are legitimately quiet. While
-it runs, the tool block shows the phase it is in — `cargo · Compiling syn
-v1.0.109`, `ninja · [312/847] …`, or `silent for 40s` once the output stops
+The run is stopped after a stretch with **no output AND no CPU use in its
+process tree** (`idleTimeout`; default: `timeout` when one is passed, else 180s)
+under a wall ceiling (`timeout`, default 600s). Silence alone is not idleness:
+a fat-LTO link or a javac pass prints nothing for minutes while a core runs flat
+out, so once the output stops the tree under the build's shell is sampled with
+`ps` (`treeActivity.ts`) and CPU gain or a new process counts as work, like a
+new line. Where `ps` is missing (Windows) silence alone decides, and CPU spent
+in a daemon outside the tree (the Gradle daemon) is invisible — which is why an
+explicit `timeout` also lifts the idle limit. The result says how long it ran,
+how long it had been silent, whether its CPU was idle too, and the last line it
+printed. While it runs, the tool block shows the phase it is in — `cargo ·
+Compiling syn v1.0.109`, `ninja · [312/847] …`, or `silent for 40s` /
+`no output for 40s, still working` once the output stops
 (`progressLine.ts`). That label and the idle watchdog share one tick: both ride
 `ExecOptions.onProgress`, which needs BOTH the callback passed to `exec` and a
 `TaskOutput.startPolling` call — the tool makes that call itself, so it works

@@ -39,9 +39,12 @@ import {
 const DEFAULT_TIMEOUT_MS = 600_000
 const MAX_TIMEOUT_MS = 1_800_000
 /**
- * Long enough to cover the phases that are legitimately silent — linking a
- * large binary, a cold Gradle daemon, a javac pass over a big module — and
- * short enough that a genuinely wedged build does not burn the whole ceiling.
+ * How long a build may print nothing AND use no CPU in its process tree before
+ * it is stopped. A compiler that is busy but quiet — a fat-LTO link, a javac
+ * pass over a big module — keeps using CPU and is never stopped by it; what
+ * this catches is a build waiting on a lock, the network or a prompt. CPU spent
+ * in a daemon outside the tree (a cold Gradle daemon) is not seen, which is why
+ * it stays generous.
  */
 const DEFAULT_IDLE_TIMEOUT_MS = 180_000
 
@@ -105,7 +108,9 @@ const inputSchema = lazySchema(() =>
       .positive()
       .max(MAX_TIMEOUT_MS)
       .optional()
-      .describe(`Wall-clock ceiling in ms (default ${DEFAULT_TIMEOUT_MS}).`),
+      .describe(
+        `Wall-clock ceiling in ms (default ${DEFAULT_TIMEOUT_MS}); also the idle limit when idleTimeout is not set.`,
+      ),
     idleTimeout: z
       .number()
       .int()
@@ -113,7 +118,7 @@ const inputSchema = lazySchema(() =>
       .max(MAX_TIMEOUT_MS)
       .optional()
       .describe(
-        `Stop the build after this many ms with no output at all (default ${DEFAULT_IDLE_TIMEOUT_MS}). Raise it for a build with a long silent phase.`,
+        `Stop the build after this many ms with no output and no CPU use in its processes (default: timeout when given, else ${DEFAULT_IDLE_TIMEOUT_MS}).`,
       ),
   }),
 )
@@ -143,6 +148,7 @@ const outputSchema = lazySchema(() =>
         reason: z.enum(['idle', 'ceiling']),
         ranMs: z.number(),
         silentMs: z.number(),
+        cpuIdleMs: z.number().optional(),
         lastLine: z.string().optional(),
       })
       .optional(),
@@ -168,6 +174,16 @@ export function resolveBuildCwd(directory: string | undefined): string {
   const cwd = getCwd()
   if (!directory) return cwd
   return path.isAbsolute(directory) ? directory : path.resolve(cwd, directory)
+}
+
+/**
+ * An explicit `timeout` is the caller saying how long this build may take, so
+ * going quiet inside it is not a reason to stop — unless `idleTimeout` says so.
+ * Every idle stop on record (ferrous-dns, 2026-09) carried a 15–20 minute
+ * `timeout` and was killed at the 180 s default anyway.
+ */
+export function resolveIdleTimeoutMs(input: Pick<Input, 'timeout' | 'idleTimeout'>): number {
+  return input.idleTimeout ?? input.timeout ?? DEFAULT_IDLE_TIMEOUT_MS
 }
 
 function isDirectory(candidate: string): boolean {
@@ -306,7 +322,7 @@ export const BuildTool = buildTool({
       cwd,
       abortSignal: context.abortController.signal,
       timeoutMs: input.timeout ?? DEFAULT_TIMEOUT_MS,
-      idleTimeoutMs: input.idleTimeout ?? DEFAULT_IDLE_TIMEOUT_MS,
+      idleTimeoutMs: resolveIdleTimeoutMs(input),
       severity: input.severity ?? 'errors',
       pathFilter: input.path,
       alsoDetected: detectAllBuildSystems(cwd),

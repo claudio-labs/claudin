@@ -106,6 +106,24 @@ describe('formatBuildResult', () => {
     expect(rendered).not.toContain('stuck')
   })
 
+  test('a stall whose processes were idle too says it was waiting, not compiling', () => {
+    const rendered = formatBuildResult(
+      result({
+        stall: {
+          reason: 'idle',
+          ranMs: 240_000,
+          silentMs: 185_000,
+          cpuIdleMs: 180_000,
+          lastLine: 'Blocking waiting for file lock on build directory',
+        },
+      }),
+    )
+    expect(rendered).toContain('no output for the last 3m05s')
+    expect(rendered).toContain('no CPU use in its processes for the last 3m00s')
+    expect(rendered).toContain('waiting on something')
+    expect(rendered).not.toContain('That is silence, not proof of a hang')
+  })
+
   test('a path filter that hides everything cannot read as a clean build', () => {
     const rendered = formatBuildResult(
       result({ pathFilter: ['src/other'], hiddenByPathFilter: 31 }),

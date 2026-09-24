@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { lastNonEmptyLine } from 'src/tools/BuildTool/progressLine.js'
-import { collectArtifacts, stripProgressRewrites } from 'src/tools/BuildTool/run.js'
+import { collectArtifacts, runBuild, stripProgressRewrites, type RunOptions } from 'src/tools/BuildTool/run.js'
+import type { TreeSnapshot } from 'src/tools/BuildTool/treeActivity.js'
 
 describe('collectArtifacts', () => {
   test('reads the executable cargo says it linked', () => {
@@ -71,4 +72,49 @@ describe('lastNonEmptyLine', () => {
   test('says nothing when there was no output at all', () => {
     expect(lastNonEmptyLine('\n\n')).toBeUndefined()
   })
+})
+
+/**
+ * The watchdog against a real shell, with the process-tree sampler injected:
+ * the command is a silent `sleep` either way, and the sampler decides whether
+ * the tree looks busy. The poller ticks about once a second and the first tick
+ * counts as output, so an idle limit of 3 s leaves room for a baseline sample
+ * and at least one comparison before it can fire.
+ */
+describe('runBuild — the idle watchdog', () => {
+  function options(command: string, over: Partial<RunOptions>): RunOptions {
+    return {
+      command,
+      system: 'make',
+      cwd: process.cwd(),
+      abortSignal: new AbortController().signal,
+      timeoutMs: 30_000,
+      idleTimeoutMs: 3_000,
+      severity: 'errors',
+      alsoDetected: [],
+      sampleEveryMs: 200,
+      ...over,
+    }
+  }
+
+  test('a silent build whose processes keep using CPU is not stopped', async () => {
+    let cpu = 0
+    const busy = async (pid: number): Promise<TreeSnapshot> => new Map([[pid, (cpu += 2)]])
+    const result = await runBuild(options('sleep 5', { sampleTree: busy }))
+    expect(result.stall).toBeUndefined()
+    expect(result.exitCode).toBe(0)
+  }, 30_000)
+
+  test('a silent build whose processes are idle is stopped, and the report says the CPU was idle', async () => {
+    const idle = async (pid: number): Promise<TreeSnapshot> => new Map([[pid, 5]])
+    const result = await runBuild(options('sleep 20', { sampleTree: idle }))
+    expect(result.stall?.reason).toBe('idle')
+    expect(result.stall?.cpuIdleMs).toBeGreaterThanOrEqual(3_000)
+  }, 30_000)
+
+  test('where the tree cannot be sampled, silence alone stops it, as before', async () => {
+    const result = await runBuild(options('sleep 20', { sampleTree: async () => null }))
+    expect(result.stall?.reason).toBe('idle')
+    expect(result.stall?.cpuIdleMs).toBeUndefined()
+  }, 30_000)
 })

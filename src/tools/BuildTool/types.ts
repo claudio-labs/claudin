@@ -57,6 +57,8 @@ export type BuildDiagnostic = RawDiagnostic & {
  * Reported as observations, never as a verdict: linking a large binary and
  * javac on a cold daemon are both legitimately silent for minutes, so "no
  * output for 3m" is a fact the reader weighs, not a diagnosis of a hang.
+ * `cpuIdleMs` is the stronger observation: the process tree was sampled and
+ * had used no CPU either, so the build was waiting rather than compiling.
  */
 export type StallReport = {
   reason: 'idle' | 'ceiling'
@@ -64,6 +66,11 @@ export type StallReport = {
   ranMs: number
   /** How long it had been silent when it was stopped. */
   silentMs: number
+  /**
+   * How long it had been silent AND its process tree idle. Absent when the tree
+   * could not be sampled, which leaves silence as the only observation.
+   */
+  cpuIdleMs?: number
   /** The last non-empty line it printed, which is what names the phase. */
   lastLine?: string
 }

@@ -10,6 +10,7 @@ import { extractFailureBlock } from 'src/tools/BuildTool/failureBlock.js'
 import { isUpToDate } from 'src/tools/BuildTool/noOp.js'
 import { parsersFor } from 'src/tools/BuildTool/parseChain.js'
 import { lastNonEmptyLine, progressLabel } from 'src/tools/BuildTool/progressLine.js'
+import { hasActivity, sampleProcessTree, type TreeSnapshot } from 'src/tools/BuildTool/treeActivity.js'
 import type {
   BuildDiagnostic,
   BuildProgress,
@@ -36,6 +37,13 @@ const MAX_EXCERPTS = 20
  * every build would flicker into "silent" between two ordinary lines.
  */
 const SILENT_LABEL_MS = 10_000
+/**
+ * The slowest a silent build's process tree is sampled. Four samples fit in any
+ * idle limit at or above a minute, so a compiler that is busy but quiet is seen
+ * working well before the limit; a shorter limit samples proportionally faster.
+ */
+const MAX_SAMPLE_EVERY_MS = 15_000
+const MIN_SAMPLE_EVERY_MS = 1_000
 
 export type RunOptions = {
   command: string
@@ -44,7 +52,10 @@ export type RunOptions = {
   abortSignal: AbortSignal
   /** Wall ceiling: the build is stopped at this point however busy it is. */
   timeoutMs: number
-  /** Idle threshold: the build is stopped after this long with no new output. */
+  /**
+   * Idle threshold: the build is stopped after this long with no new output
+   * AND no CPU used by its process tree (see treeActivity.ts).
+   */
   idleTimeoutMs: number
   /** Display filter only — never narrows what is built. */
   severity: 'errors' | 'all'
@@ -52,6 +63,10 @@ export type RunOptions = {
   alsoDetected: BuildSystem[]
   /** TUI only — never serialized, so it cannot affect what the model reads. */
   onProgress?: (progress: BuildProgress) => void
+  /** Injected by tests; production samples the real tree. */
+  sampleTree?: (rootPid: number) => Promise<TreeSnapshot | null>
+  /** Injected by tests; production derives it from `idleTimeoutMs`. */
+  sampleEveryMs?: number
 }
 
 function tail(text: string, max: number): string {
@@ -181,7 +196,7 @@ type ExecOutcome =
   | { ok: false; message: string; exitCode?: number }
 
 /**
- * Run the build and watch it for silence.
+ * Run the build and watch it for idleness.
  *
  * Both jobs — the idle watchdog and the live progress label — ride
  * `ExecOptions.onProgress`, which the shared `TaskOutput` poller drives once a
@@ -195,10 +210,20 @@ type ExecOutcome =
  * `onProgress` and not `onStdout` (`Shell.ts:170`): the latter pipes stdout
  * instead of writing the file, which would break `readFullShellOutput` below.
  *
+ * Idle means silent AND not working. Once the output stops, the process tree
+ * under the build's shell is sampled every `sampleEveryMs`; a sample showing
+ * CPU use or a new process counts as activity, exactly as a new line of output
+ * does. Where the tree cannot be sampled, silence alone decides — the
+ * behaviour before sampling existed.
+ *
  * The wall ceiling is left to `exec`'s own timeout, which arrives as SIGTERM.
  */
 async function execBuild(opts: RunOptions): Promise<ExecOutcome> {
   const { abortSignal, timeoutMs, idleTimeoutMs } = opts
+  const sampleTree = opts.sampleTree ?? sampleProcessTree
+  const sampleEveryMs =
+    opts.sampleEveryMs ??
+    Math.min(MAX_SAMPLE_EVERY_MS, Math.max(MIN_SAMPLE_EVERY_MS, Math.floor(idleTimeoutMs / 4)))
 
   // Three things happen in this wrapper, and each one is load-bearing.
   //
@@ -229,9 +254,39 @@ ${opts.command}
   else abortSignal.addEventListener('abort', forwardAbort, { once: true })
 
   const startedAt = Date.now()
-  let idleStall: { silentMs: number } | null = null
+  let idleStall: { silentMs: number; cpuIdleMs?: number } | null = null
   let lastBytes = -1
   let lastChangeAt = Date.now()
+  // Process-tree sampling. `cpuWatched` means a comparison made since the last
+  // sign of work (output or CPU) found the tree idle — only then can the stall
+  // report say the CPU was idle rather than merely that the output was.
+  let rootPid: number | undefined
+  let lastCpuAt = 0
+  let lastSampleAt = 0
+  let lastSnapshot: TreeSnapshot | null = null
+  let sampling = false
+  let cpuWatched = false
+  const sample = (pid: number) => {
+    sampling = true
+    lastSampleAt = Date.now()
+    void sampleTree(pid)
+      .then(snapshot => {
+        if (!snapshot) return
+        if (lastSnapshot) {
+          if (hasActivity(lastSnapshot, snapshot)) {
+            lastCpuAt = Date.now()
+            cpuWatched = false
+          } else {
+            cpuWatched = true
+          }
+        }
+        lastSnapshot = snapshot
+      })
+      .catch(e => logError(`Build: process-tree sample failed — ${String(e)}`))
+      .finally(() => {
+        sampling = false
+      })
+  }
   // Captured so the `finally` can stop the poller even when `exec` throws
   // after the task was registered.
   let taskId: string | null = null
@@ -244,12 +299,17 @@ ${opts.command}
       if (totalBytes !== lastBytes) {
         lastBytes = totalBytes
         lastChangeAt = now
+        cpuWatched = false
       }
       const silentMs = now - lastChangeAt
-      if (silentMs >= idleTimeoutMs) {
-        idleStall = { silentMs }
+      const quietMs = now - Math.max(lastChangeAt, lastCpuAt)
+      if (quietMs >= idleTimeoutMs) {
+        idleStall = cpuWatched ? { silentMs, cpuIdleMs: quietMs } : { silentMs }
         internal.abort()
         return
+      }
+      if (rootPid !== undefined && !sampling && silentMs >= sampleEveryMs && now - lastSampleAt >= sampleEveryMs) {
+        sample(rootPid)
       }
       if (!opts.onProgress) return
       const tail = stripProgressRewrites(lastLines)
@@ -258,7 +318,9 @@ ${opts.command}
         system: opts.system,
         label:
           silentMs >= SILENT_LABEL_MS
-            ? `silent for ${Math.round(silentMs / 1000)}s`
+            ? lastCpuAt > lastChangeAt
+              ? `no output for ${Math.round(silentMs / 1000)}s, still working`
+              : `silent for ${Math.round(silentMs / 1000)}s`
             : (progressLabel(opts.system, tail) ?? ''),
         elapsedMs: now - startedAt,
         silentMs,
@@ -275,6 +337,7 @@ ${opts.command}
     })
 
     taskId = shellCommand.taskOutput.taskId
+    rootPid = shellCommand.pid
     TaskOutput.startPolling(taskId)
 
     const result = await shellCommand.result
@@ -285,10 +348,12 @@ ${opts.command}
     const ranMs = Date.now() - startedAt
 
     if (idleStall) {
+      const stopped = idleStall as { silentMs: number; cpuIdleMs?: number }
       const stall: StallReport = {
         reason: 'idle',
         ranMs,
-        silentMs: (idleStall as { silentMs: number }).silentMs,
+        silentMs: stopped.silentMs,
+        ...(stopped.cpuIdleMs !== undefined && { cpuIdleMs: stopped.cpuIdleMs }),
         lastLine: lastNonEmptyLine(text),
       }
       return { ok: true, text, exitCode: result.code, stall }

@@ -44,6 +44,13 @@ export type ShellCommand = {
   ) => void
   /** The TaskOutput instance that owns all stdout/stderr data and progress. */
   taskOutput: TaskOutput
+  /**
+   * The spawned shell's pid — the root of the command's process tree, which is
+   * what a watcher samples to tell a busy silent command from an idle one.
+   * Absent when nothing was spawned (aborted, failed before spawn) and after
+   * `cleanup()`.
+   */
+  readonly pid?: number
 }
 
 const SIGKILL = 137
@@ -181,6 +188,10 @@ class ShellCommandImpl implements ShellCommand {
 
   get status(): 'running' | 'backgrounded' | 'completed' | 'killed' {
     return this.#status
+  }
+
+  get pid(): number | undefined {
+    return this.#childProcess?.pid
   }
 
   #abortHandler(): void {
