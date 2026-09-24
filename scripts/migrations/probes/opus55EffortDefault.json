@@ -1,0 +1,24 @@
+{
+  "test": [
+    "src/providers/effort/effort.xhighDefault.test.ts",
+    "src/providers/model/opus55.test.ts"
+  ],
+  "source": "src/providers/effort/effort.ts",
+  "probes": [
+    {
+      "name": "Opus 5.5 falls back to the flagship high",
+      "find": "  if (lowerModel.includes('opus-5-5') && getAPIProvider() === 'firstParty') {\n    return 'medium'\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "the 5.5 branch widens to every Opus 5",
+      "find": "  if (lowerModel.includes('opus-5-5') && getAPIProvider() === 'firstParty') {",
+      "replace": "  if (lowerModel.includes('opus-5') && getAPIProvider() === 'firstParty') {"
+    },
+    {
+      "name": "the 5.5 branch leaks off the Anthropic provider",
+      "find": "  if (lowerModel.includes('opus-5-5') && getAPIProvider() === 'firstParty') {",
+      "replace": "  if (lowerModel.includes('opus-5-5')) {"
+    }
+  ]
+}

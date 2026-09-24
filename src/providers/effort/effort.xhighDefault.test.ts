@@ -123,6 +123,35 @@ test('Fable 5 off the Anthropic provider keeps the ultrathink medium fallback', 
   expect(getDefaultEffortForModel('claude-fable-5')).toBe('medium')
 })
 
+test('Opus 5.5 defaults to medium on Anthropic, like Claude Code', async () => {
+  // Claude Code's catalog ships `default_effort: "medium"` for Opus 5.5. High
+  // subscribers included: nothing above this branch applies to 5.5.
+  const { getDefaultEffortForModel } = await importFreshEffortModule({
+    isMax: true,
+    greyStep2Enabled: true,
+  })
+  expect(getDefaultEffortForModel('claude-opus-5-5')).toBe('medium')
+})
+
+test('Opus 5 keeps high on Anthropic (the 5.5 branch does not swallow it)', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({})
+  expect(getDefaultEffortForModel('claude-opus-5')).toBe('high')
+})
+
+test('Opus 5.5 off the Anthropic provider keeps the upstream undefined', async () => {
+  const { getDefaultEffortForModel } = await importFreshEffortModule({
+    provider: 'bedrock',
+  })
+  expect(getDefaultEffortForModel('claude-opus-5-5')).toBeUndefined()
+})
+
+test('resolveAppliedEffort sends medium for Opus 5.5 when nothing is pinned', async () => {
+  const { resolveAppliedEffort } = await importFreshEffortModule({})
+  expect(resolveAppliedEffort('claude-opus-5-5', undefined)).toBe('medium')
+  // A session value (a project pin or the global effortLevel) still wins.
+  expect(resolveAppliedEffort('claude-opus-5-5', 'high')).toBe('high')
+})
+
 test('Opus 4.7 with setting on is unchanged (never xhigh)', async () => {
   const { getDefaultEffortForModel } = await importFreshEffortModule({
     codingLoopXhighDefault: true,
