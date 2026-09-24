@@ -22,7 +22,7 @@ import uniqBy from 'lodash-es/uniqBy.js'
 import { RemoteIO } from 'src/platform/headless/remoteIO.js'
 import { ask } from 'src/agent/QueryEngine.js'
 import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
-import { resetCrossSessionSends } from 'src/sessions/peers/sendBudget.js'
+import { renewCrossSessionSendsFor } from 'src/sessions/peers/sendBudget.js'
 import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 import {
   dequeue,
@@ -339,9 +339,7 @@ export async function runTurnLoop(
         }
 
         const input = command.value
-        if (command.mode === 'prompt' && command.origin === undefined) {
-          resetCrossSessionSends()
-        }
+        renewCrossSessionSendsFor([command])
 
         // Abort any in-flight suggestion generation and track acceptance
         suggestionState.abortController?.abort()
