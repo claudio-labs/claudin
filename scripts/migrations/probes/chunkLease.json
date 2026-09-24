@@ -1,0 +1,30 @@
+{
+  "test": [
+    "scripts/build/chunkGc.test.ts",
+    "src/platform/chunkLease.test.ts"
+  ],
+  "source": "scripts/build/chunkGc.ts",
+  "probes": [
+    {
+      "name": "leases are ignored",
+      "find": "  for (const generation of leasedGenerations(chunksDir)) {\n    if (buckets.has(generation)) keep.add(generation)\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "a dead process's lease still keeps its generation",
+      "find": "    if (Number.isInteger(pid) && pid > 0 && isAlive(pid)) {",
+      "replace": "    if (Number.isInteger(pid) && pid > 0) {"
+    },
+    {
+      "name": "a dead process's lease is left behind",
+      "find": "    } else {\n      rmSync(path, { force: true })\n    }\n",
+      "replace": "    }\n"
+    },
+    {
+      "name": "the lease is written for any module",
+      "source": "src/platform/chunkLease.ts",
+      "find": "  if (!generation || basename(chunksDir) !== 'chunks') return null\n",
+      "replace": "  if (!generation) return null\n"
+    }
+  ]
+}

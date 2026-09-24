@@ -10,6 +10,7 @@
 
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { pruneChunkGenerations } from './chunkGc'
 import { noTelemetryPlugin } from './no-telemetry-plugin'
 import { REPO_ROOT } from '../repoRoot'
 
@@ -783,44 +784,10 @@ if (!result.success) {
   // Without this, ~90 MB of .map files ship to every npm install.
   writeFileSync(join(distDir, '.npmignore'), '**/*.map\n')
 
-  // GC dist/chunks: keep the 3 most recent build generations. Dev builds
-  // name chunks `<Name>-<buildId>-<hash>.mjs` where buildId is a base36
-  // timestamp shared by every chunk emitted in the same `bun run build`,
-  // and hash disambiguates chunks within that build. We bucket files by
-  // buildId, sort buckets desc, and prune everything outside the top 3.
-  // Release-build chunks (`<Name>-<version>-<hash>.mjs`) don't match this
-  // pattern and are left untouched — they only exist in CI/publish flows
-  // where dist/ starts empty anyway.
-  const chunksDir = join(distDir, 'chunks')
-  if (existsSync(chunksDir)) {
-    // Dev chunk filename: <Name>-<buildId>-<hash>.mjs(.map).
-    // buildId is a base36 timestamp (≥8 chars); hash is Bun's content hash.
-    const DEV_CHUNK_RE = /-([0-9a-z]{8,})-[a-z0-9]+\.mjs(?:\.map)?$/
-    const buckets = new Map<string, string[]>()
-    for (const file of readdirSync(chunksDir)) {
-      const m = file.match(DEV_CHUNK_RE)
-      if (!m) continue
-      const id = m[1]
-      const arr = buckets.get(id) ?? []
-      arr.push(file)
-      buckets.set(id, arr)
-    }
-    const keep = new Set(
-      [...buckets.keys()]
-        .sort((a, b) => parseInt(b, 36) - parseInt(a, 36))
-        .slice(0, 3),
-    )
-    let pruned = 0
-    for (const [id, files] of buckets) {
-      if (keep.has(id)) continue
-      for (const file of files) {
-        rmSync(join(chunksDir, file), { force: true })
-        pruned++
-      }
-    }
-    if (pruned > 0) {
-      console.log(`  🧹 chunks GC: pruned ${pruned} file(s) from ${buckets.size - keep.size} old generation(s), kept ${[...keep].join(', ')}`)
-    }
+  // GC dist/chunks: the 3 newest generations, plus any a running CLI leases.
+  const gc = pruneChunkGenerations(join(distDir, 'chunks'))
+  if (gc.pruned > 0) {
+    console.log(`  🧹 chunks GC: pruned ${gc.pruned} file(s) from ${gc.prunedGenerations} old generation(s), kept ${gc.kept.join(', ')}`)
   }
 
   console.log(`✓ Built claudin v${version} → dist/cli.mjs`)

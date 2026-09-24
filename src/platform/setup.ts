@@ -42,6 +42,7 @@ import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { getPlanSlug } from 'src/agent/plans/plans.js'
 import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import { profileCheckpoint } from 'src/platform/startupProfiler.js'
+import { holdChunkLease } from 'src/platform/chunkLease.js'
 import {
   createTmuxSessionForWorktree,
   createWorktreeForSession,
@@ -60,6 +61,9 @@ export async function setup(
   worktreePRNumber?: number,
 ): Promise<void> {
   logForDiagnosticsNoPII('info', 'setup_started')
+
+  // A rebuild of this checkout must not prune the chunks this session loads.
+  holdChunkLease()
 
   // Check for Node.js version < 18
   const nodeVersion = process.version.match(/^v(\d+)\./)?.[1]
