@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.1.35 — 2026-09-24
+
+### ✨ Features
+
+- feat(tools): defer dev tools and make Bash redirects advisory (#244) (86d9a7f6)
+- feat(tools): cross-session SendMessage and ListAgents (#243) (543a01be)
+
+### 🐛 Bug Fixes
+
+- fix(cli): globs, lsp diagnostics, sigterm, chunk gc and batched keys (#245) (c5fc6051)
+
+### ⚡ Performance
+
+- perf(tools): read several files in one Read call, with per-file hooks (#246) (5cc698bb)
+- perf(session): default to v2 prompts and medium effort, cut re-reads (#242) (096dbf97)
+- perf(session): trim the prompt prefix and keep resume byte-stable (#240) (4288861a)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.34 — 2026-09-23
 
 ### ✨ Features
