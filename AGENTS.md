@@ -49,7 +49,7 @@ Cross-slice imports use the **`src/…` alias** (`tsconfig.json` maps `src/*` �
 
 ### Finding your way in
 
-What every directory holds — with file counts and a cross-ref to the rule that owns each subsystem — is the Module Map in [search-strategy.md](.claudin/rules/search-strategy.md). Read it before a broad search; it is scoped to `src/**`, so it loads as soon as you open a source file.
+What every directory holds — with file counts and a cross-ref to the rule that owns each subsystem — is the Module Map in [search-strategy.md](.claudin/rules/search-strategy.md).
 
 
 ## Build & Tests

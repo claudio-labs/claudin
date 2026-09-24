@@ -399,12 +399,11 @@ is what makes it reachable.
 
 ## Verifying attachments/system-reminders at runtime
 
-**Do not grep the session `.jsonl` to check whether an attachment fired.** For
-non-`ant` users `isLoggableMessage` (`src/sessions/pure/logging.ts`)
-drops **every** attachment from the transcript except `hook_additional_context`
-and `deferred_tools_delta`. A `todo_reminder_delta`, a memory delta, a plan-mode
-attachment — none of them are written. Absence in the log is not evidence the
-attachment was skipped, and reading it that way produces a confident false
+**The session `.jsonl` holds only the attachment types marked `persist`.**
+`isLoggableMessage` (`src/sessions/pure/logging.ts`) writes an attachment only
+when `shouldPersistAttachment` (`src/sessions/pure/attachmentPersistence.ts`)
+says so for its type. For any other type, absence in the log is not evidence
+the attachment was skipped, and reading it that way produces a confident false
 negative (it did, while verifying the task reminder on 2026-07-26).
 
 The observation channel that works is a temporary `appendFileSync` to `/tmp`,
@@ -450,9 +449,9 @@ do not bisect it.
 
 ### Break-and-restore, run as a batch
 
-`agent-safety.md` requires proving a new test fails when the line it guards is
-broken. `bun run scripts/migrations/break-probe.ts <spec.json>` does that in
-one pass: each probe is a `{name, find, replace}` that mutates ONE exact string,
+`bun run scripts/migrations/break-probe.ts <spec.json>` proves a new test fails
+when the line it guards is broken, in one pass: each probe is a
+`{name, find, replace}` that mutates ONE exact string,
 runs the suite, records which tests went red, and restores in a `finally`. It
 refuses a `find` matching more than once (mutating a same-looking line elsewhere
 is the classic way to certify an untested line), and it FAILS the run if any
@@ -463,13 +462,8 @@ suites they name, and stay re-runnable: after moving code, repoint each probe's
 `source` and they must all still go red. That is what proves a relocation
 preserved behaviour, and it is stronger than any diff of the move.
 
-**An interrupted run leaves the mutation in the working tree.** The restore is a
-`finally`, and a killed process never reaches it — so a sub-agent stopped
-mid-probe leaves a production line reading `return true`. That happened on
-`refactor/split-remaining-giants` and was caught only because the coverage
-written one commit earlier went red on the next scoped run. After interrupting
-any agent that ran probes, `git diff` the files it named before doing anything
-else, and do not resume until the tree matches HEAD.
+**A killed run leaves the mutation in the working tree:** the restore is a
+`finally`, which a killed process never reaches.
 
 Three outcomes it produced on `refactor/split-remaining-giants` that hand-checking
 had missed, all of them a green test guarding nothing: a fixture that could not
@@ -558,25 +552,20 @@ one machine, suspect the machine's config before the code.
 **Typecheck baseline:** `main` reaches **zero** `error TS` since #87, which
 retired the fork's ~107 `TS2307` by adding a `.d.ts` next to each absent module
 — see [build-system.md](build-system.md) for the import trap that creates. The
-backlog used to be thousands deep (4624 on 2026-08-03), so treat any remembered
-count as stale, and don't hand-compare: call the **Typecheck** tool, which
-records the backlog for a commit whenever it runs on a clean tree and afterwards
-reports only what is new. The pass condition is **zero new**; the absolute total
-is noise. A `⚠ … provenance unknown` result means no baseline exists for the
-current commit — read the listed diagnostics rather than assuming they are
-yours. `<new-diagnostics>` system-reminders can be STALE mid-edit snapshots —
-confirm a cited diagnostic with the tool (`path:` filters the report) first.
+backlog used to be thousands deep (4624 on 2026-08-03). The gate is
+`bun run typecheck:ci`, which fails only on errors a change adds against the
+committed `typecheck-baseline.json`.
 
 ## Pre-PR Checklist
 
 - [ ] `bun run build` passes
 - [ ] `bun run smoke` passes (version + help)
-- [ ] Focused test passes (RunTests tool, scoped with `path`)
+- [ ] Focused tests pass (`bun test <file>`)
 - [ ] `bun run test:floor` holds (7/7 invariant suites, ratio within 0.5pp)
 - [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
 - [ ] `bun run deadcode:exports` reports no NEW unused exports
 - [ ] If touching `src/providers/*`: `bun run test:provider`
 - [ ] If touching build/telemetry/network: `bun run verify:privacy`
 - [ ] If touching output format: snapshots reviewed and updated
-- [ ] Typecheck tool reports **zero new** diagnostics (the baseline is empty
-      since #87, so anything it reports is yours)
+- [ ] `bun run typecheck:ci` passes (the baseline is empty since #87, so any
+      error is yours)

@@ -14,11 +14,7 @@ rule is about structure, seams, and the order of operations.
 
 In this order, before the first edit:
 
-1. **Outline the target file, don't slurp it.** Most files you will touch are
-   500–3000 lines; read the structural outline first, then expand the one symbol
-   you are changing. A full read of `REPL.tsx` (3160 lines) to fix one handler is
-   the wrong shape.
-2. **Read the directory, not just the file.** A `<area>.ts` next to an `<area>/`
+1. **Read the directory, not just the file.** A `<area>.ts` next to an `<area>/`
    directory is a **barrel** — the logic lives in the siblings
    (`src/tools/shared/codeOutline/`, `src/platform/headless/print/`,
    `src/providers/shims/claude/`, `src/platform/config/config/`,
@@ -39,15 +35,15 @@ In this order, before the first edit:
    `src/terminal/theme/theme.ts` keeps `getTheme` and `themeColorToAnsi` over a
    `themes/` directory of palettes. `src/agent/compact/compact.ts` keeps both
    compaction paths, one of which a test reads as literal TEXT.
-3. **Grep the callers before changing a signature.** Cross-slice imports use the
+2. **Grep the callers before changing a signature.** Cross-slice imports use the
    `src/…` alias, so `Grep` on the symbol name finds every call site; there is no
    hidden dynamic wiring except MCP and plugins.
-4. **The colocated `*.test.ts` is the spec.** Read it before changing behavior —
+3. **The colocated `*.test.ts` is the spec.** Read it before changing behavior —
    it tells you which of the function's properties are load-bearing.
-5. **Check for a `README.md` in the directory** (e.g. `src/agent/cache/README.md`)
+4. **Check for a `README.md` in the directory** (e.g. `src/agent/cache/README.md`)
    and for a rule scoped to that path — cache, TUI, build and test paths all have
    invariants that no amount of reading the file will reveal.
-6. **Before MOVING code, grep the whole repo for the filename.** A few tests read
+5. **Before MOVING code, grep the whole repo for the filename.** A few tests read
    production files as *text* and assert on literal call strings; a scoped test run
    stays green while the move breaks them.
 
@@ -106,16 +102,13 @@ In this order, before the first edit:
   dangerous behavior should become a second, named function — that removes the
   argument a caller can forget, where a test only records that they can.
 - **Scope discipline.** No drive-by refactor inside a feature diff, no abstraction
-  invented for one call site, no error handling beyond what was asked. The quality
-  pass has its own entry points (`/simplify`, `/code-review`); keep it out of the
-  change under review.
+  invented for one call site.
 
 ## 4. Anti-patterns
 
 | Pattern | Problem | Fix |
 |---|---|---|
 | Editing a barrel that re-exports siblings | Change lands in the wrong module, or gets lost in the next split | Edit the sibling in `<area>/` |
-| Reading a 3k-line file end to end to change one function | Burns context, still misses the invariants | Outline → expand one symbol → read the rule for that path |
 | New `if (provider === …)` branch | Breaks the next provider; the tag is not a capability | Table/registry, or an explicit provider set |
 | Function only testable via `mock.module` | Mocks leak across files in this suite | Inject a narrow `…Deps` param |
 | `mock.module` on a path that does not resolve | Registers against a module id nobody imports — the call is a silent no-op and the test guards nothing | `src/__tests__/mockModuleTargets.test.ts` resolves every target; delete the dead call rather than repointing it, since a live one stubs that module for the whole run |

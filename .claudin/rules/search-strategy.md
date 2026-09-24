@@ -9,9 +9,8 @@ paths:
 Approximate `.ts(x)` counts in `(N)`, measured 2026-09-21. Each top-level dir is
 a **feature slice** that owns its own logic, UI and tests — a slice's Ink
 components sit in its `ui/`, not in a shared component dump. The four big ones
-(`platform`, `tools`, `agent`, `terminal`) are where most code lives, so always
-Grep/Glob inside them rather than reading broadly. Cross-refs point to the rule
-that owns that subsystem.
+(`platform`, `tools`, `agent`, `terminal`) are where most code lives. Cross-refs
+point to the rule that owns that subsystem.
 
 ```
 src/
@@ -88,7 +87,7 @@ src/
 │   │                              `tools/WorkflowTool/` is gone — it was four .d.ts
 │   │                              stubs plus a constants.ts behind WORKFLOW_SCRIPTS
 │   ├── SkillTool/ MonitorTool/ ScheduleCronTool/  ← skills, log monitors, cron
-│   ├── EnterWorktreeTool/ ExitWorktreeTool/  ← worktree (safety → agent-safety.md)
+│   ├── EnterWorktreeTool/ ExitWorktreeTool/  ← worktree
 │   ├── constants/               ← toolLimits.ts, tools.ts (names/descriptions)
 │   └── shared/                  ← outputFilter/ (Bash noise stripping), diagnostics/ (shared
 │                                  Build+Typecheck parsers), codeOutline/ (scanSymbols), stagedWrite/
@@ -215,82 +214,14 @@ Not under `src/`, but among the most-opened files in practice:
 | `AGENTS.md` | repo orientation, loaded every turn: the slice layout, where a new file goes, the import convention. On-by-default runtime behaviors are NOT here — each is documented at the top of the module that implements it |
 | `typecheck-baseline.json` | the ratchet's recorded backlog (`bun run typecheck:baseline` regenerates) |
 
-## Common Search Patterns
+## Feature flags
 
-### "Where is slash command X handled?"
-
-```
-Grep pattern="'/provider'\|createCommand\b" path="src/commands/"
-# Then: Read src/commands/provider/index.ts
-```
-
-### "Where is tool X defined?"
-
-```
-Glob pattern="src/tools/*/*Tool.ts*"   # entry file is <Name>Tool.ts(x), NOT index.ts
-Grep pattern="buildTool\(" path="src/tools/"
-```
-
-### "Where is function X defined?"
-
-```
-Grep pattern="export function myFunction\|export const myFunction" type="ts"
-```
-
-### "Where is provider Y handled?"
-
-```
-# Start at activeProvider.ts — it's the central resolver
-Read src/providers/presets/activeProvider.ts
-
-# For shim logic:
-Grep pattern="'openai_compat'\|'gemini'\|'mistral'" path="src/providers/shims/openaiShim.ts"
-```
-
-### "Which feature flags exist?"
-
-```
-Grep pattern="feature\('" path="scripts/build/build.ts"
-```
-
-### "What does feature flag X gate, and can I flip it?"
-
-```
-bun run scripts/verify/tengu-census.ts --gates   # every key with its call sites
-```
-
-`docs/tech/tengu-census/gate-audit.md` classifies all 104: which do something,
-which open a branch that is dead on arrival, which are inert. Flip one by
-writing `~/.claudin/feature-flags.json`. There is no analytics to grep for —
-`logEvent` and the modules behind it were removed.
-```
-
-### "Where is the Bash output filtered / a command rewritten?"
-
-```
-# Command-aware filters + pre-exec rewrites live here
-Glob pattern="src/tools/shared/outputFilter/Bash/*.ts"
-Grep pattern="rewrite\|canonicaliz" path="src/tools/shared/outputFilter/"
-```
-
-### "Where does a task/agent actually run (the backend behind TaskCreate)?"
-
-```
-# The tool surface is src/tools/TaskCreateTool/; the runtime backends are:
-Glob pattern="src/agent/tasks/**/*.ts"   # LocalAgentTask, MonitorMcpTask, DreamTask, …
-```
-
-### "Which files have tests?"
-
-```
-Glob pattern="src/**/*.test.ts"
-```
-
-### "Find all zod schemas"
-
-```
-Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files_with_matches"
-```
+`featureFlags` in `scripts/build/build.ts` is the build-time set.
+`bun run scripts/verify/tengu-census.ts --gates` lists every runtime gate key
+with its call sites, and `docs/tech/tengu-census/gate-audit.md` classifies all
+104: which do something, which open a branch that is dead on arrival, which are
+inert. Flip one by writing `~/.claudin/feature-flags.json`. There is no
+analytics to grep for — `logEvent` and the modules behind it were removed.
 
 ## Claudin-Specific Navigation Rules
 
@@ -345,20 +276,4 @@ and commit messages still mention both.
 
 ## Anti-Patterns
 
-❌ **Don't** read all `*.test.ts` files to find a pattern — Grep for `describe\|test\b`
-❌ **Don't** use Bash `find src -name "*.ts"` — use Glob
-❌ **Don't** read `src/agent/QueryEngine.ts` entirely — it's large; Grep for the specific method
 ❌ **Don't** look for model names as strings — they're resolved dynamically via `getPrimaryModel()`
-
-## Dependency Check
-
-```
-# Check if a package is already installed (before adding)
-Grep pattern="\"zod\"\|\"@anthropic-ai" path="package.json"
-
-# Find all places a utility is used
-Grep pattern="from 'src/shared/errors.js'" type="ts"
-
-# Find feature-gated code paths
-Grep pattern="feature\('MY_FLAG'\)" type="ts"
-```
