@@ -48,3 +48,73 @@ exports[`Read input schema — CLAUDIN_READ_MULTI off the JSON schema the API re
   "additionalProperties": false
 }"
 `;
+
+exports[`Read input schema — the default, CLAUDIN_READ_MULTI unset the JSON schema the API receives is pinned byte for byte 1`] = `
+"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "file_path": {
+      "description": "The absolute path to the file to read. Give this or file_paths, not both.",
+      "type": "string"
+    },
+    "file_paths": {
+      "description": "2-20 absolute paths to read in one call, instead of file_path. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.",
+      "minItems": 2,
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "offset": {
+      "description": "The line number to start reading from. Only provide if the file is too large to read at once",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "limit": {
+      "description": "The number of lines to read. Only provide if the file is too large to read at once.",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "pages": {
+      "description": "Page range for PDF files (e.g., \\"1-5\\", \\"3\\", \\"10-20\\"). Only applicable to PDF files. Maximum 20 pages per request.",
+      "type": "string"
+    },
+    "view": {
+      "description": "Set to 'outline' to read only the structural skeleton of a code file — every function, class and object-literal member signature with its line range — instead of the full contents. Set to 'full' to force a full-body read even on large files that would otherwise auto-pivot to an outline. Cheap way to navigate a large file before expanding one part.",
+      "type": "string",
+      "enum": [
+        "outline",
+        "full"
+      ]
+    },
+    "symbol": {
+      "description": "Expand a symbol by name — or a list of up to 10, each looked up in every file: returns just that function/class/type body with its real line numbers. Use after an outline to read one part of a large file. Takes precedence over offset/limit and view.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "minItems": 1,
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "encoding": {
+      "description": "Decode the file with this Encoding Standard label (e.g. \\"utf-16le\\", \\"shift_jis\\", \\"windows-1252\\") instead of UTF-8. Only needed for a file that is not UTF-8 and carries no BOM — those read as mojibake or as binary otherwise. Same label space as Grep's \`encoding\`, so a match Grep found with one is readable here with the same one.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}"
+`;

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Read-credit E2E — the two flag-gated read features of perf/cat-read-and-batch-read,
+ * Read-credit E2E — the two read features of perf/cat-read-and-batch-read (the Bash
+ * credit behind its flags; the batch Read on by default, `=0` its killswitch),
  * driven through the BUILT bundle (bin/claudin → dist/cli.mjs) by a scripted mock
  * model. Zero real API calls. Plan: .claudin/plans/composed-squishing-twilight.md,
  * "Verificação" → E2E.
@@ -18,9 +19,14 @@
  *   2. credit off — p1 as in 1; the Patch is refused as never read (and not resent);
  *      p2 (--resume): Patch b.ts is refused too — the control that makes 1's p2 mean
  *      "rebuilt from the transcript" rather than "a resumed process lets it through"
- *   3. batch on   — CLAUDIN_READ_MULTI=1
+ *   3. batch on   — the default: CLAUDIN_READ_MULTI unset
  *      p1: Read file_paths [a.ts, b.ts] → Patch b.ts → text; p2 (--resume): Patch a.ts → text
- *   4. batch off  — Read file_paths → the strict schema refuses it
+ *   4. batch off  — CLAUDIN_READ_MULTI=0, the killswitch: Read file_paths → the strict schema refuses it
+ *   5. hooks      — the default, with a PreToolUse hook on Read that denies any path ending
+ *      in `.secret` and a PostToolUse hook on Read that logs the tool_input.file_path it gets
+ *      (settings.json in the scenario's config dir). p1: Read [a.ts, b.secret] → denied,
+ *      naming b.secret; Read [a.ts, b.ts] → both read, and the post log holds each path once,
+ *      one per line, with no `file_paths` — hooks see a batch as one Read per file
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -133,6 +139,10 @@ type Scenario = {
   script: (ws: string) => PhaseScript[]
   expect: (run: ScenarioRun) => Expectation[]
   info?: (run: ScenarioRun) => string[]
+  /** Files this scenario adds to the shared workspace. */
+  files?: Readonly<Record<string, string>>
+  /** Writes what the scenario needs beside the workspace; returns the settings.json to seed, if any. */
+  prepare?: (run: ScenarioRun) => Json | undefined
 }
 
 const NOT_READ = 'has not been read yet'
@@ -205,8 +215,9 @@ const SCENARIOS: Scenario[] = [
   },
   {
     key: '3',
-    title: 'batch Read on',
-    env: { CLAUDIN_READ_MULTI: '1' },
+    title: 'batch Read on (the default)',
+    // Unset on purpose: the batch Read is what a session gets without asking.
+    env: {},
     script: ws => [
       { prompt: 'Read a.ts and b.ts, then rename NAME in b.ts.', steps: [BATCH_READ(ws), PATCH_B, DONE] },
       { prompt: 'Now rename NAME in a.ts.', steps: [PATCH_A, DONE] },
@@ -223,8 +234,8 @@ const SCENARIOS: Scenario[] = [
   },
   {
     key: '4',
-    title: 'batch Read off',
-    env: {},
+    title: 'batch Read off (the killswitch)',
+    env: { CLAUDIN_READ_MULTI: '0' },
     script: ws => [{ prompt: 'Read a.ts and b.ts.', steps: [BATCH_READ(ws), DONE] }],
     expect: run => [
       onResult(run, 0, 0, 'p1 Read with file_paths is refused by input validation (InputValidationError on file_paths)', r =>
@@ -232,7 +243,104 @@ const SCENARIOS: Scenario[] = [
       ),
     ],
   },
+  {
+    key: '5',
+    title: 'batch Read with Read hooks (the default)',
+    env: {},
+    files: { 'b.secret': 'TOKEN=e2e\n' },
+    prepare: hookSettings,
+    script: ws => [
+      {
+        prompt: 'Read a.ts with b.secret, then a.ts with b.ts.',
+        steps: [BATCH_READ_OF(ws, 'a.ts', 'b.secret'), BATCH_READ(ws), DONE],
+      },
+    ],
+    expect: run => {
+      const logged = postHookLog(run)
+      return [
+        onResult(run, 0, 0, 'p1 Read [a.ts, b.secret] is denied, naming b.secret and the hook\'s reason', r =>
+          r.isError && r.text.includes('b.secret') && r.text.includes(SECRET_REASON) && !r.text.includes('==> '),
+        ),
+        onResult(run, 0, 1, 'p1 Read [a.ts, b.ts] reads both files', r =>
+          !r.isError && HEADER_A_RE.test(r.text) && HEADER_B_RE.test(r.text),
+        ),
+        {
+          label: 'the PostToolUse log holds a.ts and b.ts, one per line, and never file_paths',
+          ok:
+            logged !== undefined &&
+            !logged.includes('file_paths') &&
+            JSON.stringify(logged.trimEnd().split('\n').sort()) ===
+              JSON.stringify([join(run.ws, 'a.ts'), join(run.ws, 'b.ts')].sort()),
+          ...(logged === undefined
+            ? { why: 'the PostToolUse hook never ran' }
+            : { why: `logged ${JSON.stringify(logged)}` }),
+        },
+      ]
+    },
+    info: run => [`pre-hook log: ${JSON.stringify(readIfExists(join(run.dir, 'pre-hook.log')) ?? '(none)')}`],
+  },
 ]
+
+// ---------------------------------------------------------------------------
+// Scenario 5: hooks, as a user configures them in settings.json
+// ---------------------------------------------------------------------------
+
+const SECRET_REASON = 'secret files are off limits'
+
+const BATCH_READ_OF = (ws: string, ...files: string[]): Step => ({
+  tool: 'Read',
+  input: { file_paths: files.map(f => join(ws, f)) },
+})
+
+function readIfExists(path: string): string | undefined {
+  return existsSync(path) ? readFileSync(path, 'utf8') : undefined
+}
+
+function postHookLog(run: ScenarioRun): string | undefined {
+  return readIfExists(join(run.dir, 'post-hook.log'))
+}
+
+/**
+ * Two command hooks in node, the way a user writes one: each reads the hook
+ * input on stdin. The PreToolUse one denies a path ending in `.secret`; the
+ * PostToolUse one appends the `tool_input.file_path` it got — or, were a hook
+ * ever handed the batch itself, the whole tool_input, which the check reads as
+ * a failure. Both log what they saw.
+ */
+function hookSettings(run: ScenarioRun): Json {
+  const readInput = [
+    "import { appendFileSync } from 'node:fs'",
+    'let raw = ""',
+    'for await (const chunk of process.stdin) raw += chunk',
+    'const input = JSON.parse(raw)',
+    'const path = input.tool_input?.file_path',
+    'const seen = typeof path === "string" ? path : JSON.stringify(input.tool_input)',
+  ]
+  const pre = join(run.dir, 'pre-hook.mjs')
+  writeFileSync(
+    pre,
+    [
+      ...readInput,
+      `appendFileSync(${JSON.stringify(join(run.dir, 'pre-hook.log'))}, seen + '\\n')`,
+      'if (typeof path === "string" && path.endsWith(".secret")) {',
+      `  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: ${JSON.stringify(SECRET_REASON)} } }))`,
+      '}',
+      '',
+    ].join('\n'),
+  )
+  const post = join(run.dir, 'post-hook.mjs')
+  writeFileSync(
+    post,
+    [...readInput, `appendFileSync(${JSON.stringify(join(run.dir, 'post-hook.log'))}, seen + '\\n')`, ''].join('\n'),
+  )
+  const hook = (script: string) => ({ type: 'command', command: `node ${JSON.stringify(script)}`, timeout: 30 })
+  return {
+    hooks: {
+      PreToolUse: [{ matcher: 'Read', hooks: [hook(pre)] }],
+      PostToolUse: [{ matcher: 'Read', hooks: [hook(post)] }],
+    },
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Mock model
@@ -413,17 +521,21 @@ function childEnv(configDir: string, flags: Record<string, string>): Record<stri
   }
 }
 
-function makeWorkspace(ws: string): void {
+function makeWorkspace(ws: string, extra: Readonly<Record<string, string>> = {}): void {
   mkdirSync(ws, { recursive: true })
-  for (const [name, content] of Object.entries(FILES)) writeFileSync(join(ws, name), content)
+  for (const [name, content] of Object.entries({ ...FILES, ...extra })) writeFileSync(join(ws, name), content)
 }
 
-/** The one credential claudin needs: an Anthropic profile, pointed at the mock, with a fake key. */
-function seedConfig(configDir: string): void {
+/**
+ * The one credential claudin needs: an Anthropic profile, pointed at the mock, with a fake key.
+ * A scenario's settings go beside it as the user settings file (CLAUDIN_CONFIG_DIR/settings.json).
+ */
+function seedConfig(configDir: string, settings?: Json): void {
   mkdirSync(configDir, { recursive: true })
   const profile = { id: PROFILE_ID, name: 'read-credit e2e mock', provider: 'anthropic', baseUrl: BASE_URL, model: MODEL, apiKey: MOCK_KEY }
   const config = { providerProfiles: [profile], activeProviderProfileId: PROFILE_ID, hasCompletedOnboarding: true }
   writeFileSync(join(configDir, 'config.json'), JSON.stringify(config, null, 2))
+  if (settings) writeFileSync(join(configDir, 'settings.json'), JSON.stringify(settings, null, 2))
 }
 
 function runCli(args: string[], cwd: string, env: Record<string, string>): Promise<{ code: number | null; stdout: string; stderr: string }> {
@@ -467,8 +579,8 @@ async function runScenario(s: Scenario, root: string): Promise<ScenarioRun> {
     phases: [],
     disk: [],
   }
-  makeWorkspace(run.ws)
-  seedConfig(run.configDir)
+  makeWorkspace(run.ws, s.files)
+  seedConfig(run.configDir, s.prepare?.(run))
   const env = childEnv(run.configDir, s.env)
   let sessionId: string | undefined
   for (const [phase, script] of s.script(run.ws).entries()) {

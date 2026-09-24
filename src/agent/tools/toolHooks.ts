@@ -1,6 +1,12 @@
 import type z from 'zod/v4'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import type { AnyObject, Tool, ToolUseContext } from 'src/tools/Tool.js'
+import type {
+  AnyObject,
+  HookUnitResult,
+  HookUnits,
+  Tool,
+  ToolUseContext,
+} from 'src/tools/Tool.js'
 import type { HookProgress } from 'src/shared/types/hooks.js'
 import type {
   AssistantMessage,
@@ -18,6 +24,12 @@ import {
   getPreToolHookBlockingMessage,
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
+import { all } from 'src/shared/generators.js'
+import {
+  foldPreToolUseUnits,
+  tagUnit,
+  UNIT_HOOK_CONCURRENCY,
+} from 'src/platform/lifecycleHooks/hookUnits.js'
 import {
   getRuleBehaviorDescription,
   type PermissionDecisionReason,
@@ -445,16 +457,8 @@ export async function resolveHookPermissionDecision(
   }
 }
 
-export async function* runPreToolUseHooks(
-  toolUseContext: ToolUseContext,
-  tool: Tool,
-  processedInput: Record<string, unknown>,
-  toolUseID: string,
-  messageId: string,
-  requestId: string | undefined,
-  mcpServerType: McpServerType,
-  mcpServerBaseUrl: string | undefined,
-): AsyncGenerator<
+/** One step of a call's PreToolUse outcome, as the loop in toolExecution.ts takes it. */
+type PreToolUseHookEvent =
   | {
       type: 'message'
       message: MessageUpdateLazy<
@@ -471,7 +475,17 @@ export async function* runPreToolUseHooks(
     }
   // stop execution
   | { type: 'stop' }
-> {
+
+export async function* runPreToolUseHooks(
+  toolUseContext: ToolUseContext,
+  tool: Tool,
+  processedInput: Record<string, unknown>,
+  toolUseID: string,
+  messageId: string,
+  requestId: string | undefined,
+  mcpServerType: McpServerType,
+  mcpServerBaseUrl: string | undefined,
+): AsyncGenerator<PreToolUseHookEvent> {
   const hookStartTime = Date.now()
   try {
     const appState = toolUseContext.getAppState()
@@ -637,4 +651,171 @@ export async function* runPreToolUseHooks(
     yield { type: 'stop' }
     return
   }
+}
+
+// ---------------------------------------------------------------------------
+// A call that stands for several (Tool.hookUnits — the batch Read). Each unit
+// gets the hooks a call of its own would, through the single-call dispatchers
+// above, several units at once; the call's own input never reaches a hook.
+// The folding rules are in src/platform/lifecycleHooks/hookUnits.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * PreToolUse per unit. Messages and context pass straight through; the
+ * units' permission decisions and updated inputs fold into the one pair the
+ * call gets, yielded last — the order the single loop in toolExecution.ts
+ * reads them in. A unit's stop stops the call, as a call's own would.
+ */
+export async function* runPreToolUseHooksForUnits(
+  toolUseContext: ToolUseContext,
+  tool: Tool,
+  units: HookUnits,
+  toolUseID: string,
+  messageId: string,
+  requestId: string | undefined,
+  mcpServerType: McpServerType,
+  mcpServerBaseUrl: string | undefined,
+): AsyncGenerator<PreToolUseHookEvent> {
+  const decisions: (PermissionResult | undefined)[] = []
+  const passthrough: (Record<string, unknown> | undefined)[] = []
+  const runs = units.inputs.map((input, unit) =>
+    tagUnit(
+      unit,
+      runPreToolUseHooks(
+        toolUseContext,
+        tool,
+        input,
+        toolUseID,
+        messageId,
+        requestId,
+        mcpServerType,
+        mcpServerBaseUrl,
+      ),
+    ),
+  )
+  for await (const { unit, event } of all(runs, UNIT_HOOK_CONCURRENCY)) {
+    switch (event.type) {
+      case 'hookPermissionResult':
+        decisions[unit] = event.hookPermissionResult
+        break
+      case 'hookUpdatedInput':
+        passthrough[unit] = event.updatedInput
+        break
+      case 'stop':
+        yield event
+        return
+      default:
+        yield event
+    }
+  }
+  const verdict = foldPreToolUseUnits(
+    units,
+    decisions,
+    passthrough,
+    `PreToolUse:${tool.name}`,
+  )
+  if (verdict.updatedInput) {
+    yield { type: 'hookUpdatedInput', updatedInput: verdict.updatedInput }
+  }
+  if (verdict.permission) {
+    yield { type: 'hookPermissionResult', hookPermissionResult: verdict.permission }
+  }
+}
+
+/**
+ * After the call ran, over the units it ran and showed
+ * (ToolResult.unitResults): PostToolUse for each unit that returned, with its
+ * input and what it alone returned, and PostToolUseFailure for each unit that
+ * failed, with the error a call of its own would have failed with.
+ */
+export async function* runPostToolUseHooksForUnits<
+  Input extends AnyObject,
+  Output,
+>(
+  toolUseContext: ToolUseContext,
+  tool: Tool<Input, Output>,
+  toolUseID: string,
+  messageId: string,
+  unitResults: readonly HookUnitResult[],
+  requestId: string | undefined,
+  mcpServerType: McpServerType,
+  mcpServerBaseUrl: string | undefined,
+): AsyncGenerator<PostToolUseHooksResult<Output>> {
+  const runs = unitResults.map(
+    (unit): AsyncGenerator<PostToolUseHooksResult<Output>, void> => {
+      const input = observedUnitInput(tool, unit.input)
+      return 'output' in unit
+        ? runPostToolUseHooks(
+            toolUseContext,
+            tool,
+            toolUseID,
+            messageId,
+            input,
+            unit.output as Output,
+            requestId,
+            mcpServerType,
+            mcpServerBaseUrl,
+          )
+        : runPostToolUseFailureHooks(
+            toolUseContext,
+            tool,
+            toolUseID,
+            messageId,
+            input as z.infer<Input>,
+            formatError(unit.error),
+            false,
+            requestId,
+            mcpServerType,
+            mcpServerBaseUrl,
+          )
+    },
+  )
+  yield* all(runs, UNIT_HOOK_CONCURRENCY)
+}
+
+/**
+ * PostToolUseFailure for a call that stands for several and failed as a whole
+ * — an abort, say: every unit failed with it.
+ */
+export async function* runPostToolUseFailureHooksForUnits<
+  Input extends AnyObject,
+>(
+  toolUseContext: ToolUseContext,
+  tool: Tool<Input, unknown>,
+  toolUseID: string,
+  messageId: string,
+  units: HookUnits,
+  error: string,
+  isInterrupt: boolean | undefined,
+  requestId: string | undefined,
+  mcpServerType: McpServerType,
+  mcpServerBaseUrl: string | undefined,
+): AsyncGenerator<
+  MessageUpdateLazy<AttachmentMessage | ProgressMessage<HookProgress>>
+> {
+  const runs = units.inputs.map(input =>
+    runPostToolUseFailureHooks(
+      toolUseContext,
+      tool,
+      toolUseID,
+      messageId,
+      input as z.infer<Input>,
+      error,
+      isInterrupt,
+      requestId,
+      mcpServerType,
+      mcpServerBaseUrl,
+    ),
+  )
+  yield* all(runs, UNIT_HOOK_CONCURRENCY)
+}
+
+/** A unit's input as a hook sees it: backfilled, as toolExecution.ts backfills a call's. */
+function observedUnitInput(
+  tool: Pick<Tool, 'backfillObservableInput'>,
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  const observed = { ...input }
+  tool.backfillObservableInput?.(observed)
+  return observed
 }

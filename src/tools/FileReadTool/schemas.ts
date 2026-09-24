@@ -75,9 +75,11 @@ function singleFileInputSchema() {
 }
 
 /**
- * CLAUDIN_READ_MULTI (readMulti.ts). "Exactly one of file_path and
- * file_paths" needs a combinator at the root, which strict transports reject,
- * so this schema leaves both optional and validateInput says it.
+ * The default since the batch Read was promoted (readMulti.ts;
+ * CLAUDIN_READ_MULTI=0 restores the single-file one). "Exactly one of
+ * file_path and file_paths" needs a combinator at the root, which strict
+ * transports reject, so this schema leaves both optional and validateInput
+ * says it.
  */
 function batchCapableInputSchema() {
   const { offset, limit, pages, view, encoding } = sharedFields()

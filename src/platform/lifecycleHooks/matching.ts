@@ -237,30 +237,6 @@ export function hasHookForEvent(
 }
 
 /**
- * Whether a hook configured for any of `events` would be selected for a call
- * to `toolName` — getMatchingHooks' matcher test, minus the `if` conditions,
- * which need the call's input. Over-approximates in the same direction as
- * hasHookForEvent: a hook whose `if` would decline the call still counts.
- *
- * For a tool about to accept an input shape a hook cannot match on: the batch
- * Read carries `file_paths`, and a hook's `file_path` matcher sees none of
- * them (FileReadTool validateInput).
- */
-export function hasHookForTool(
-  toolName: string,
-  events: readonly HookEvent[],
-  appState: AppState | undefined,
-  sessionId: string,
-): boolean {
-  return events.some(event =>
-    getHooksConfig(appState, sessionId, event).some(
-      hookMatcher =>
-        !hookMatcher.matcher || matchesPattern(toolName, hookMatcher.matcher),
-    ),
-  )
-}
-
-/**
  * Get hook commands that match the given query
  * @param appState The current app state (optional for backwards compatibility)
  * @param sessionId The current session ID (main session or agent ID)

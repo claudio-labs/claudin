@@ -14,7 +14,7 @@
  *   - Cache-bust the hooks.ts import per test file so the mocked snapshot
  *     module is consumed (bun caches ESM by URL).
  */
-import { describe, expect, mock, test, beforeAll } from 'bun:test'
+import { afterAll, describe, expect, mock, test, beforeAll } from 'bun:test'
 import type {
   HookEvent,
   HookInput,
@@ -390,38 +390,71 @@ describe('getMatchingHooks — empty / missing', () => {
   })
 })
 
-// The batch Read's guard (FileReadTool validateInput): is any hook going to
-// see a Read at all? Same matcher test as getMatchingHooks, per event.
-describe('hasHookForTool', () => {
-  type Matching = typeof import('src/platform/lifecycleHooks/matching.js')
-  let matching: Matching
+// A batch Read reaches its hooks one file at a time (Tool.hookUnits,
+// toolHooks.ts), so a hook's `if` is judged on the input a Read of that one
+// file carries — the same input a single Read of it would.
+describe('getMatchingHooks — an if condition on a Read, per file', () => {
+  type ReadModule = typeof import('src/tools/FileReadTool/FileReadTool.js')
+  let tools: import('src/tools/Tool.js').Tools
+
   beforeAll(async () => {
-    matching = await import('src/platform/lifecycleHooks/matching.js')
+    const { importWithReadMulti } = await import(
+      'src/tools/FileReadTool/__testutils__/readMultiFlag.js'
+    )
+    const { FileReadTool } = await importWithReadMulti<ReadModule>(
+      'src/tools/FileReadTool/FileReadTool.js',
+      true,
+    )
+    // The tool module takes its schema from the process-wide schemas.js; the
+    // `if` matcher parses the input with it, so pin the batch-capable one.
+    const { inputSchema } = await importWithReadMulti<
+      typeof import('src/tools/FileReadTool/schemas.js')
+    >('src/tools/FileReadTool/schemas.js', true)
+    tools = [{ ...FileReadTool, inputSchema: inputSchema() }] as unknown as import(
+      'src/tools/Tool.js'
+    ).Tools
   })
 
-  const TOOL_EVENTS = ['PreToolUse', 'PostToolUse'] as const
+  afterAll(() => {
+    // The snapshot mock outlives this file (testing.md): leave it empty.
+    snapshotConfig = {}
+  })
 
-  function has(config: Partial<Record<HookEvent, HookMatcher[]>>): boolean {
-    snapshotConfig = config
-    return matching.hasHookForTool('Read', TOOL_EVENTS, undefined, 'sess-1')
+  function readInput(toolInput: Record<string, unknown>): HookInput {
+    return {
+      hook_event_name: 'PreToolUse',
+      session_id: 'sess-1',
+      transcript_path: '/tmp/t.jsonl',
+      cwd: '/tmp',
+      tool_name: 'Read',
+      tool_input: toolInput,
+    } as HookInput
   }
 
-  test('a matcher that selects the tool, on any of the events', () => {
-    expect(has({ PreToolUse: [matcher('Read', 'echo r')] })).toBe(true)
-    expect(has({ PostToolUse: [matcher('Read', 'echo r')] })).toBe(true)
-    expect(has({ PreToolUse: [matcher('Bash|Read', 'echo r')] })).toBe(true)
-    expect(has({ PreToolUse: [matcher('^Rea', 'echo r')] })).toBe(true)
+  async function selects(toolInput: Record<string, unknown>): Promise<boolean> {
+    snapshotConfig = {
+      PreToolUse: [
+        { matcher: 'Read', hooks: [{ type: 'command', command: 'echo env', if: 'Read(*.env)' }] },
+      ],
+    }
+    const result = await hooks.getMatchingHooks(
+      undefined,
+      'sess-1',
+      'PreToolUse',
+      readInput(toolInput),
+      tools,
+    )
+    return result.length === 1
+  }
+
+  test("each file's own input: the hook runs for the file it names, and only for it", async () => {
+    expect(await selects({ file_path: '/repo/.env' })).toBe(true)
+    expect(await selects({ file_path: '/repo/a.ts' })).toBe(false)
+    expect(await selects({ file_path: '/repo/.env', symbol: 'KEY' })).toBe(true)
   })
 
-  test('an empty or wildcard matcher selects every tool', () => {
-    expect(has({ PreToolUse: [matcher('', 'echo any')] })).toBe(true)
-    expect(has({ PostToolUse: [matcher('*', 'echo any')] })).toBe(true)
-  })
-
-  test('a matcher for other tools, or an event not asked about, does not', () => {
-    expect(has({ PreToolUse: [matcher('Bash', 'echo b')] })).toBe(false)
-    expect(has({ PreToolUse: [matcher('Write|Edit', 'echo w')] })).toBe(false)
-    expect(has({ PermissionRequest: [matcher('Read', 'echo r')] })).toBe(false)
-    expect(has({})).toBe(false)
+  test('a batch input, should one reach it, fires on any of its paths', async () => {
+    expect(await selects({ file_paths: ['/repo/a.ts', '/repo/.env'] })).toBe(true)
+    expect(await selects({ file_paths: ['/repo/a.ts', '/repo/b.ts'] })).toBe(false)
   })
 })

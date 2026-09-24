@@ -1,8 +1,9 @@
 // recordedReadTargets: a Read input as a transcript stores it — the model's
 // own arguments, never parsed — read the way the flag-on schema reads them.
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   isBatchReadInput,
+  readMultiEnabledAtLoad,
   readPathsOf,
   recordedReadTargets,
 } from 'src/tools/FileReadTool/readMulti.js'
@@ -45,6 +46,37 @@ describe('recordedReadTargets', () => {
     expect(recordedReadTargets({ file_paths: '/r/a.ts' })).toEqual({})
     for (const input of [undefined, null, 'Read', 42]) {
       expect(recordedReadTargets(input)).toEqual({})
+    }
+  })
+})
+
+describe('readMultiEnabledAtLoad', () => {
+  // The batch Read is on by default; only an explicit falsy value is the
+  // killswitch. A value that is neither — a typo — leaves it on, as unset does.
+  const ENV = 'CLAUDIN_READ_MULTI'
+  let prior: string | undefined
+
+  beforeEach(() => {
+    prior = process.env[ENV]
+  })
+  afterEach(() => {
+    if (prior === undefined) delete process.env[ENV]
+    else process.env[ENV] = prior
+  })
+
+  test('unset, or any value that is not falsy, is on', () => {
+    delete process.env[ENV]
+    expect(readMultiEnabledAtLoad()).toBe(true)
+    for (const value of ['1', 'true', 'yes', 'on', '', 'maybe']) {
+      process.env[ENV] = value
+      expect({ value, on: readMultiEnabledAtLoad() }).toEqual({ value, on: true })
+    }
+  })
+
+  test('0, false, no and off are the killswitch', () => {
+    for (const value of ['0', 'false', 'no', 'off', ' OFF ']) {
+      process.env[ENV] = value
+      expect({ value, on: readMultiEnabledAtLoad() }).toEqual({ value, on: false })
     }
   })
 })

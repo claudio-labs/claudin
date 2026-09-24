@@ -13,8 +13,9 @@ const READ_MULTI = readMultiEnabledAtLoad()
 
 /**
  * The one line the batch Read adds to both descriptions (readMulti.ts),
- * placed under the default-length bullet. Empty with the flag off, which is
- * what keeps both templates byte-identical to the text before it.
+ * placed under the default-length bullet. Empty under the killswitch
+ * (CLAUDIN_READ_MULTI=0), which is what keeps both templates byte-identical
+ * to the text before the batch Read existed.
  */
 function batchReadInstruction(): string {
   if (!READ_MULTI) return ''

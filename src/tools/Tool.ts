@@ -405,7 +405,41 @@ export type ToolResult<T> = {
    * function of tool input + disk state are exactly what the cache exists
    * for, and a blanket opt-out silently kills its value. */
   noResultCache?: boolean
+  /**
+   * For a call its tool split into hookUnits: each unit call it ran and
+   * showed, with what that call alone returned — or the error it failed
+   * with. PostToolUse runs once per output and PostToolUseFailure once per
+   * error, in place of the one run on the call (toolHooks.ts). A unit that
+   * was not shown is not listed.
+   */
+  unitResults?: HookUnitResult[]
 }
+
+/**
+ * The unit calls a call stands for when it does the work of several calls of
+ * its tool — the batch Read, one per file (and symbol). To every hook the call
+ * IS those calls: each hook runs once per unit, with that unit's input, and
+ * never with the call's own (toolHooks.ts, replHooks.ts).
+ */
+export type HookUnits = {
+  /** The input each unit call would carry, as a hook sees it (backfilled). */
+  readonly inputs: readonly Record<string, unknown>[]
+  /** How a message names unit `index` — its file, say. */
+  label(index: number): string
+  /**
+   * The call's input with the hooks' updatedInput folded back in:
+   * `updated[i]` replaces unit i, `undefined` leaves it as it is. A change the
+   * call cannot carry for one unit alone comes back as the reason instead.
+   */
+  merge(
+    updated: readonly (Record<string, unknown> | undefined)[],
+  ): { input: Record<string, unknown> } | { refusal: string }
+}
+
+/** One unit call as its tool ran it, for the hooks that run after it. */
+export type HookUnitResult =
+  | { input: Record<string, unknown>; output: unknown }
+  | { input: Record<string, unknown>; error: unknown }
 
 export type ToolCallProgress<P extends ToolProgressData = ToolProgressData> = (
   progress: ToolProgress<P>,
@@ -664,6 +698,13 @@ export type Tool<
   preparePermissionMatcher?(
     input: z.infer<Input>,
   ): Promise<(pattern: string) => boolean>
+
+  /**
+   * The unit calls this call stands for (HookUnits), or undefined for an
+   * ordinary call, which hooks see as it is. Takes the call's input as the
+   * model sent it; the units it returns are already backfilled.
+   */
+  hookUnits?(input: z.infer<Input>): HookUnits | undefined
 
   prompt(options: {
     getToolPermissionContext: () => Promise<ToolPermissionContext>

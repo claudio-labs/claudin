@@ -73,17 +73,15 @@ import {
 } from 'src/tools/FileReadTool/prompt.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
 import {
+  batchHookUnits,
   isBatchFileContext,
-  READ_HOOK_REFUSAL,
   readBatch,
-  readHookWouldMissBatch,
   validateBatchPaths,
 } from 'src/tools/FileReadTool/batchRead.js'
 import { callInner } from 'src/tools/FileReadTool/readDispatch.js'
 import {
   batchShapeRefusal,
   isBatchReadInput,
-  READ_HOOK_ERROR_CODE,
   readMultiEnabledAtLoad,
   readPathsOf,
   recordedReadTargets,
@@ -189,10 +187,18 @@ export const FileReadTool = buildTool({
     }
   },
   async preparePermissionMatcher(input) {
-    // Every path of a batch, so an `if: "Read(*.env)"` condition fires for a
-    // batch that holds one. One file_path matches exactly as before.
+    // Hooks see a batch one file at a time (hookUnits below), so an
+    // `if: "Read(*.env)"` condition is judged on that file's own path. Should
+    // a batch input reach a matcher all the same, it fires on any of its
+    // paths — never on none. One file_path matches exactly as before.
     const paths = readPathsOf(input)
     return pattern => paths.some(p => matchWildcardPattern(pattern, p))
+  },
+  hookUnits(input) {
+    // A batch is, to every hook, the single Reads it makes — one per file
+    // and symbol (batchRead.ts) — each seen as a Read of its own would be.
+    if (!READ_MULTI || !isBatchReadInput(input)) return undefined
+    return batchHookUnits(input, unit => FileReadTool.backfillObservableInput(unit))
   },
   async checkPermissions(input, context): Promise<PermissionDecision> {
     const appState = context.getAppState()
@@ -230,13 +236,6 @@ export const FileReadTool = buildTool({
       const refusal = batchShapeRefusal(input)
       if (refusal) return { result: false, ...refusal }
       if (input.file_paths !== undefined) {
-        if (readHookWouldMissBatch(toolUseContext)) {
-          return {
-            result: false,
-            message: READ_HOOK_REFUSAL,
-            errorCode: READ_HOOK_ERROR_CODE,
-          }
-        }
         // Every path gets the checks below, exactly as a Read of it would.
         return validateBatchPaths(input.file_paths, filePath =>
           FileReadTool.validateInput({ file_path: filePath }, toolUseContext),

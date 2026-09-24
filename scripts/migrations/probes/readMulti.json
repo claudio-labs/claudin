@@ -13,7 +13,9 @@
     "src/agent/planDossier.test.ts",
     "src/agent/tools/collapseReadSearch.test.ts",
     "src/platform/bridge/sessionRunner.test.ts",
-    "src/commands/insights/extract.test.ts"
+    "src/commands/insights/extract.test.ts",
+    "src/tools/FileReadTool/batchHooks.test.ts",
+    "src/platform/lifecycleHooks/hookUnits.test.ts"
   ],
   "source": "src/tools/FileReadTool/batchRead.ts",
   "probes": [
@@ -58,16 +60,6 @@
       "replace": "  if (false) {\n"
     },
     {
-      "name": "B5: the hook guard fails open",
-      "find": "    logError(e)\n    return true\n",
-      "replace": "    logError(e)\n    return false\n"
-    },
-    {
-      "name": "B5: the guard asks about PreToolUse only",
-      "find": "const READ_HOOK_EVENTS: readonly HookEvent[] = ['PreToolUse', 'PostToolUse']\n",
-      "replace": "const READ_HOOK_EVENTS: readonly HookEvent[] = ['PreToolUse']\n"
-    },
-    {
       "name": "B6: a batch file is pinned like a single Read",
       "source": "src/tools/FileReadTool/FileReadTool.ts",
       "find": "          !isBatchFileContext(context) &&\n",
@@ -78,12 +70,6 @@
       "source": "src/tools/FileReadTool/FileReadTool.ts",
       "find": "    if (READ_MULTI && (isBatchReadInput(input) || isBatchFileContext(context))) {\n",
       "replace": "    if (READ_MULTI && isBatchReadInput(input)) {\n"
-    },
-    {
-      "name": "B5: the hook refusal is skipped",
-      "source": "src/tools/FileReadTool/FileReadTool.ts",
-      "find": "        if (readHookWouldMissBatch(toolUseContext)) {\n",
-      "replace": "        if (false) {\n"
     },
     {
       "name": "B4: a batch goes through the single-path check",
@@ -122,7 +108,7 @@
       "replace": "    Array.isArray(input.symbol)\n"
     },
     {
-      "name": "B10: the batch line renders with the flag off",
+      "name": "B10: the batch line renders under the killswitch (=0)",
       "source": "src/tools/FileReadTool/prompt.ts",
       "find": "  if (!READ_MULTI) return ''\n",
       "replace": "\n"
@@ -294,18 +280,6 @@
       "source": "src/tools/FileReadTool/FileReadTool.ts",
       "find": "    if (READ_MULTI && isBatchReadInput(input)) {\n      return readBatch(",
       "replace": "    if (false as boolean) {\n      return readBatch("
-    },
-    {
-      "name": "B5: hasHookForTool counts only an exact tool name",
-      "source": "src/platform/lifecycleHooks/matching.ts",
-      "find": "        !hookMatcher.matcher || matchesPattern(toolName, hookMatcher.matcher),\n",
-      "replace": "        hookMatcher.matcher === toolName,\n"
-    },
-    {
-      "name": "B5: hasHookForTool asks about the first event only",
-      "source": "src/platform/lifecycleHooks/matching.ts",
-      "find": "  return events.some(event =>\n",
-      "replace": "  return events.slice(0, 1).some(event =>\n"
     },
     {
       "name": "B4: a denied path lets the batch through",
@@ -578,6 +552,186 @@
       "source": "src/platform/bridge/sessionRunner.ts",
       "find": "  return rest.length > 0 ? `${first} (+${rest.length} more)` : first",
       "replace": "  return first"
+    },
+    {
+      "name": "B11 pre: a deny for one file lets the batch through",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (denied.length > 0) {\n    return {\n      permission: hookDeny(",
+      "replace": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (false as boolean) {\n    return {\n      permission: hookDeny("
+    },
+    {
+      "name": "B11 pre: the deny names only the first denied file",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  return [head, ...uniqueLines(denied.map(([i, message]) => ",
+      "replace": "  return [head, ...uniqueLines(denied.slice(0, 1).map(([i, message]) => "
+    },
+    {
+      "name": "B11 pre: an ask from the files is dropped",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  const [firstAsked] = asked\n",
+      "replace": "  const [firstAsked] = [] as number[]\n"
+    },
+    {
+      "name": "B11 pre: the one ask names only the first file that asked",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "      ...uniqueLines(asked.map(i => ",
+      "replace": "      ...uniqueLines(asked.slice(0, 1).map(i => "
+    },
+    {
+      "name": "B11 pre: an allow from some files allows the batch",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  if (allowed.length === units.inputs.length && first?.behavior === 'allow') {",
+      "replace": "  if (allowed.length > 0 && first?.behavior === 'allow') {"
+    },
+    {
+      "name": "B11 pre: an allow from every file still asks",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  if (allowed.length === units.inputs.length && first?.behavior === 'allow') {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "B11 pre: a decision's updatedInput is dropped",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "      ? decision.updatedInput\n      : passthrough[i]",
+      "replace": "      ? passthrough[i]\n      : passthrough[i]"
+    },
+    {
+      "name": "B11 pre: a merge the batch cannot carry runs anyway",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "    if ('refusal' in merged) return { permission: hookDeny(hookName, merged.refusal) }",
+      "replace": "    if ('refusal' in merged) return {}"
+    },
+    {
+      "name": "B11 permission request: a deny for one file is dropped",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (denied.length > 0) {\n    const interrupt",
+      "replace": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (false as boolean) {\n    const interrupt"
+    },
+    {
+      "name": "B11 permission request: an allow from some files allows the call",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  if (allowed.length !== units.inputs.length) return undefined\n",
+      "replace": "  if (allowed.length === 0) return undefined\n"
+    },
+    {
+      "name": "B11 pre: the folded updatedInput never reaches the call",
+      "source": "src/agent/tools/toolHooks.ts",
+      "find": "  if (verdict.updatedInput) {\n    yield { type: 'hookUpdatedInput', updatedInput: verdict.updatedInput }\n  }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 pre: a file's passthrough updatedInput is dropped",
+      "source": "src/agent/tools/toolHooks.ts",
+      "find": "        passthrough[unit] = event.updatedInput\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 no double execution: each file's PreToolUse runs twice",
+      "source": "src/agent/tools/toolHooks.ts",
+      "find": "  const runs = units.inputs.map((input, unit) =>\n    tagUnit(\n      unit,\n      runPreToolUseHooks(",
+      "replace": "  const runs = [...units.inputs, ...units.inputs].map((input, unit) =>\n    tagUnit(\n      unit,\n      runPreToolUseHooks("
+    },
+    {
+      "name": "B11 isolation: PreToolUse runs once, on the batch input",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  const preToolHooks = hookUnits\n    ? runPreToolUseHooksForUnits(",
+      "replace": "  const preToolHooks = (false as boolean)\n    ? runPreToolUseHooksForUnits("
+    },
+    {
+      "name": "B11 isolation: PostToolUse runs once, on the batch input and result",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    const postToolHooks = hookUnits\n      ? runPostToolUseHooksForUnits(",
+      "replace": "    const postToolHooks = (false as boolean)\n      ? runPostToolUseHooksForUnits("
+    },
+    {
+      "name": "B11 isolation: a failed batch runs PostToolUseFailure on the batch input",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    const failedUnits = hookUnits && (tool.hookUnits?.(callInput) ?? hookUnits)",
+      "replace": "    const failedUnits = undefined"
+    },
+    {
+      "name": "B11 isolation: PermissionRequest hooks see the batch input",
+      "source": "src/platform/lifecycleHooks/replHooks.ts",
+      "find": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (units) {\n    yield* executePermissionRequestHooksForUnits(",
+      "replace": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (false as boolean) {\n    yield* executePermissionRequestHooksForUnits("
+    },
+    {
+      "name": "B11 isolation: PermissionDenied hooks see the batch input",
+      "source": "src/platform/lifecycleHooks/replHooks.ts",
+      "find": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (units) {\n    const runs = units.inputs.map(input =>",
+      "replace": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (false as boolean) {\n    const runs = units.inputs.map(input =>"
+    },
+    {
+      "name": "B11 isolation: a batch Read has no units",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (!READ_MULTI || !isBatchReadInput(input)) return undefined\n",
+      "replace": "    return undefined\n"
+    },
+    {
+      "name": "B11 units: images and PDFs get hooks the batch never runs for them",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    if (readsAsBlocks(extensionOf(expandPath(filePath)))) continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 merge: a path handed back unchanged goes back expanded",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      ? { ...replacement, file_path: unit.file_path }\n      : replacement",
+      "replace": "      ? replacement\n      : replacement"
+    },
+    {
+      "name": "B11 merge: a change for one file alone is carried to every file",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    if (!sameUnit(derived[i], wanted[i])) return refusedFor(units, wanted, label)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 merge: the refusal names every file, not the changed one",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "  const changed = units.flatMap((unit, i) => (sameUnit(unit, wanted[i]) ? [] : [label(i)]))",
+      "replace": "  const changed = [] as string[]"
+    },
+    {
+      "name": "B11 post: a shown file gets no PostToolUse",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      shownUnits.push({ input: one, output: result.data })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 post: a dedup stub gets a PostToolUse",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    if (result.data.type !== 'file_unchanged') {\n",
+      "replace": "    if (true as boolean) {\n"
+    },
+    {
+      "name": "B11 post: a file left out for the budget gets its hooks",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    const block = `==> ${label} <==\\n${read.sections.map(s => s.text).join('\\n\\n')}`\n",
+      "replace": "    unitResults.push(...read.shownUnits)\n    const block = `==> ${label} <==\\n${read.sections.map(s => s.text).join('\\n\\n')}`\n"
+    },
+    {
+      "name": "B11 failure: a missing symbol gets no PostToolUseFailure",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    unitResults.push(...read.missingUnits)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 failure: a file that failed to read gets no PostToolUseFailure",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      shownUnits.push({ input: one, error: e })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B12 killswitch: CLAUDIN_READ_MULTI=0 leaves the batch Read on",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_READ_MULTI)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "B12 default: the batch Read is off unless CLAUDIN_READ_MULTI=1",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_READ_MULTI)\n",
+      "replace": "  return process.env.CLAUDIN_READ_MULTI === '1'\n"
     }
   ]
 }

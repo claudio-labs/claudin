@@ -39,6 +39,7 @@ import { importWithReadMulti } from 'src/tools/FileReadTool/__testutils__/readMu
 import { readBatch } from 'src/tools/FileReadTool/batchRead.js'
 import { FileReadTool as HarnessReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
+import { SymbolNotFoundError } from 'src/tools/FileReadTool/readDispatch.js'
 import {
   _resetReadReminderStateForTesting,
   _setMitigationModelResolverForTesting,
@@ -585,6 +586,8 @@ describe('batch Read — permissions', () => {
   })
 })
 
+// To hooks a batch is the single Reads it makes (hookUnits); driving the
+// hooks themselves through the agent loop is batchHooks.test.ts.
 describe('batch Read — hooks', () => {
   function hooked(event: 'PreToolUse' | 'PostToolUse', matcher: string): TestAppState {
     return appState({
@@ -601,56 +604,102 @@ describe('batch Read — hooks', () => {
     })
   }
 
-  test('a hook that would see a Read refuses the batch', async () => {
+  test('a configured Read hook no longer refuses the batch — it runs once per file', async () => {
     const a = writeFixture('hook-a.ts', OTHER_TS)
     const b = writeFixture('hook-b.ts', OTHER_TS)
     for (const state of [hooked('PreToolUse', 'Read'), hooked('PostToolUse', 'Read'), hooked('PreToolUse', '*')]) {
-      const result = await ReadOn.validateInput({ file_paths: [a, b] }, context({ state }))
-      expect(result).toEqual({
-        result: false,
-        message: 'Batch Read is off while a Read hook is configured — read one file per call.',
-        errorCode: expect.any(Number),
-      })
+      expect(await ReadOn.validateInput({ file_paths: [a, b] }, context({ state }))).toEqual({ result: true })
     }
-  })
-
-  test('a hook question that cannot be answered refuses the batch', async () => {
-    // Fails closed: an app state with no session-hook store (the shape the
-    // harness's own contexts carry) makes the lookup throw, and one file per
-    // call is what every hook can see.
-    const a = writeFixture('hook-closed-a.ts', OTHER_TS)
-    const b = writeFixture('hook-closed-b.ts', OTHER_TS)
+    // Nor does an app state with no session-hook store: there is no hook
+    // question left to fail closed on.
     const ctx = context()
     Object.assign(ctx, {
       getAppState: () => ({ toolPermissionContext: getEmptyToolPermissionContext() }),
     })
-    const result = await ReadOn.validateInput({ file_paths: [a, b] }, ctx)
-    expect(result.result).toBe(false)
-    if (result.result === false) {
-      expect(result.message).toBe(
-        'Batch Read is off while a Read hook is configured — read one file per call.',
-      )
+    expect(await ReadOn.validateInput({ file_paths: [a, b] }, ctx)).toEqual({ result: true })
+  })
+
+  test('the hooks get one input per file and symbol, as a Read of it carries, backfilled', () => {
+    const units = ReadOn.hookUnits?.({ file_paths: ['rel/a.ts', '~/b.ts'], symbol: ['x', 'y'], view: 'outline' })
+    const a = expandPath('rel/a.ts')
+    const b = expandPath('~/b.ts')
+    expect(units?.inputs).toEqual([
+      { file_path: a, view: 'outline', symbol: 'x' },
+      { file_path: a, view: 'outline', symbol: 'y' },
+      { file_path: b, view: 'outline', symbol: 'x' },
+      { file_path: b, view: 'outline', symbol: 'y' },
+    ])
+    // Named the way the batch's headers name it: relative inside the cwd.
+    expect(units?.label(1)).toBe('rel/a.ts (symbol y)')
+    // One file with several symbols is a batch too.
+    expect(ReadOn.hookUnits?.({ file_path: '/r/a.ts', symbol: ['x', 'y'] })?.inputs).toEqual([
+      { file_path: '/r/a.ts', symbol: 'x' },
+      { file_path: '/r/a.ts', symbol: 'y' },
+    ])
+  })
+
+  test('the units are the Reads the batch makes: a repeat once, media not at all', () => {
+    const units = ReadOn.hookUnits?.({ file_paths: ['/r/a.ts', '/r/a.ts', '/r/pic.png', '/r/doc.pdf', '/r/b.ts'] })
+    expect(units?.inputs).toEqual([{ file_path: '/r/a.ts' }, { file_path: '/r/b.ts' }])
+  })
+
+  test('a single Read, a one-name symbol list and the flag-off tool have no units', () => {
+    expect(ReadOn.hookUnits?.({ file_path: '/r/a.ts' })).toBeUndefined()
+    expect(ReadOn.hookUnits?.({ file_path: '/r/a.ts', symbol: ['x'] })).toBeUndefined()
+    expect(ReadOff.hookUnits?.({ file_paths: ['/r/a.ts', '/r/b.ts'] })).toBeUndefined()
+  })
+
+  describe('folding the hooks’ updatedInput back into the batch', () => {
+    function unitsOf(input: Input) {
+      const units = ReadOn.hookUnits?.(input)
+      if (!units) throw new Error('expected a batch')
+      return units
     }
+
+    test('a rewritten file is read in its place; the others keep the path the call named', () => {
+      const units = unitsOf({ file_paths: ['rel/a.ts', 'rel/b.ts'], view: 'outline' })
+      expect(units.merge([{ file_path: '/elsewhere/c.ts', view: 'outline' }, undefined])).toEqual({
+        input: { file_paths: ['/elsewhere/c.ts', 'rel/b.ts'], view: 'outline' },
+      })
+      // A hook that hands a unit back unchanged changes nothing.
+      expect(units.merge([undefined, { ...units.inputs[1] }])).toEqual({
+        input: { file_paths: ['rel/a.ts', 'rel/b.ts'], view: 'outline' },
+      })
+    })
+
+    test('a change every unit makes alike is carried', () => {
+      const units = unitsOf({ file_paths: ['/r/a.ts', '/r/b.ts'] })
+      expect(units.merge(units.inputs.map(unit => ({ ...unit, view: 'outline' })))).toEqual({
+        input: { file_paths: ['/r/a.ts', '/r/b.ts'], view: 'outline' },
+      })
+      const symbols = unitsOf({ file_path: '/r/a.ts', symbol: ['x', 'y'] })
+      expect(symbols.merge([{ file_path: '/r/moved.ts', symbol: 'x' }, { file_path: '/r/moved.ts', symbol: 'y' }])).toEqual({
+        input: { file_path: '/r/moved.ts', symbol: ['x', 'y'] },
+      })
+    })
+
+    test('a change for one unit alone is refused, naming the Read it changed', () => {
+      const units = unitsOf({ file_paths: ['/r/a.ts', '/r/b.ts'] })
+      const refusal = (label: string) => ({
+        refusal: `A hook changed the Read of ${label} in a way a batch cannot carry for one file — Read that file in a call of its own.`,
+      })
+      expect(units.merge([undefined, { file_path: '/r/b.ts', view: 'outline' }])).toEqual(refusal('/r/b.ts'))
+      expect(units.merge([{ file_path: '/r/a.ts', offset: 10 }, undefined])).toEqual(refusal('/r/a.ts'))
+      expect(units.merge([{ file_path: '' }, undefined])).toEqual(refusal('/r/a.ts'))
+      const symbols = unitsOf({ file_paths: ['/r/a.ts', '/r/b.ts'], symbol: ['x', 'y'] })
+      expect(
+        symbols.merge([undefined, undefined, { file_path: '/r/b.ts', symbol: 'z' }, undefined]),
+      ).toEqual(refusal('/r/b.ts (symbol x)'))
+      // Two rewrites into one file would collapse two Reads into one.
+      expect(units.merge([{ file_path: '/r/c.ts' }, { file_path: '/r/c.ts' }])).toEqual({
+        refusal:
+          'A hook changed the Reads of /r/a.ts, /r/b.ts in a way a batch cannot carry file by file — Read those files in calls of their own.',
+      })
+    })
   })
 
-  test('a hook for another tool leaves it alone, and so does one file with a symbol list', async () => {
-    const a = writeFixture('hook-c.ts', OTHER_TS)
-    const b = writeFixture('hook-d.ts', OTHER_TS)
-    expect(
-      await ReadOn.validateInput({ file_paths: [a, b] }, context({ state: hooked('PreToolUse', 'Bash') })),
-    ).toEqual({ result: true })
-    // The hook still receives file_path for this one.
-    expect(
-      await ReadOn.validateInput(
-        { file_path: a, symbol: ['gamma', 'delta'] },
-        context({ state: hooked('PreToolUse', 'Read') }),
-      ),
-    ).toEqual({ result: true })
-  })
-
-  // Only PreToolUse and PostToolUse hooks refuse a batch. A PermissionRequest
-  // or PostToolUseFailure hook still runs on one: it gets the backfilled
-  // tool_input, and its `if` condition goes through preparePermissionMatcher.
+  // A batch input reaches no hook any more; these two keep what an observer
+  // of the call's own input — the permission prompt, the transcript — gets.
   test('the backfilled input a hook sees holds every path of a batch expanded', () => {
     const input: Record<string, unknown> = { file_paths: ['rel/a.ts', '~/b.ts'] }
     ReadOn.backfillObservableInput?.(input)
@@ -661,6 +710,52 @@ describe('batch Read — hooks', () => {
     const matches = await ReadOn.preparePermissionMatcher?.({ file_paths: ['/repo/a.ts', '/repo/.env'] })
     expect(matches?.('*.env')).toBe(true)
     expect(matches?.('*.md')).toBe(false)
+  })
+})
+
+describe('batch Read — the single Reads the hooks after it get', () => {
+  test('each shown file and symbol, with what a Read of it returned', async () => {
+    const a = writeFixture('units-a.ts', SAMPLE_TS)
+    const b = writeFixture('units-b.ts', OTHER_TS)
+    const result = await call(ReadOn, { file_paths: [a, b], symbol: ['alpha', 'gamma'] }, context())
+    const outputs = (result.unitResults ?? []).map(unit => [
+      unit.input,
+      'output' in unit
+        ? (unit.output as Output).type
+        : unit.error instanceof SymbolNotFoundError
+          ? 'symbol not found'
+          : 'error',
+    ])
+    expect(outputs).toEqual([
+      [{ file_path: a, symbol: 'gamma' }, 'symbol not found'],
+      [{ file_path: a, symbol: 'alpha' }, 'text'],
+      [{ file_path: b, symbol: 'alpha' }, 'symbol not found'],
+      [{ file_path: b, symbol: 'gamma' }, 'text'],
+    ])
+    const [, alpha] = result.unitResults ?? []
+    // What a Read of that one file and symbol returns, byte for byte.
+    expect(alpha && 'output' in alpha ? alpha.output : undefined).toEqual(
+      (await call(ReadOn, { file_path: a, symbol: 'alpha' }, context())).data,
+    )
+  })
+
+  test('a stub, a file left out for the budget and a media file have none; a failed Read has its error', async () => {
+    const a = writeFixture('units-stub-a.ts', SAMPLE_TS)
+    const missing = join(fixtureDir(), 'units-missing.ts')
+    const ctx = context()
+    await call(ReadOn, { file_paths: [a, writeFixture('units-other.ts', OTHER_TS)] }, ctx)
+    // The same context, now with a budget the files below outgrow together.
+    Object.assign(ctx, { fileReadingLimits: { maxTokens: 1_500 } })
+    const budget = [0, 1, 2, 3, 4].map(i =>
+      writeFixture(`units-budget-${i}.txt`, textLines(30, 44, `units${i}`)),
+    )
+    const result = await call(ReadOn, { file_paths: [a, missing, '/r/pic.png', ...budget] }, ctx)
+    if (result.data.type !== 'batch') throw new Error('expected a batch')
+    const shown = new Set(result.data.files.map(file => file.filePath))
+    const shownBudget = budget.filter(file => shown.has(file))
+    expect(shownBudget.length).toBeLessThan(budget.length)
+    const listed = (result.unitResults ?? []).map(unit => [unit.input.file_path, 'error' in unit])
+    expect(listed).toEqual([[missing, true], ...shownBudget.map(file => [file, false])])
   })
 })
 

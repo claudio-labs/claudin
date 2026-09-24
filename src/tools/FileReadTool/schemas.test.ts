@@ -1,16 +1,21 @@
 import { describe, expect, test } from 'bun:test'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
-import { importWithReadMulti } from 'src/tools/FileReadTool/__testutils__/readMultiFlag.js'
+import {
+  importWithReadMulti,
+  importWithReadMultiUnset,
+} from 'src/tools/FileReadTool/__testutils__/readMultiFlag.js'
 
 type Schemas = typeof import('src/tools/FileReadTool/schemas.js')
 
 const SCHEMAS = 'src/tools/FileReadTool/schemas.js'
 
+// "off" is CLAUDIN_READ_MULTI=0, the killswitch since the batch Read became
+// the default. The describe keeps its name so its snapshot keeps its key.
 describe('Read input schema — CLAUDIN_READ_MULTI off', () => {
   test('the JSON schema the API receives is pinned byte for byte', async () => {
-    // Taken before the batch Read existed. With the flag off the model must
-    // see exactly this schema — one file_path, one symbol — so the snapshot
-    // is the proof, not a description of it.
+    // Taken before the batch Read existed. Under the killswitch the model
+    // must see exactly this schema — one file_path, one symbol — so the
+    // snapshot is the proof, not a description of it.
     const { inputSchema } = await importWithReadMulti<Schemas>(SCHEMAS, false)
     expect(JSON.stringify(zodToJsonSchema(inputSchema()), null, 2)).toMatchSnapshot()
   })
@@ -21,6 +26,23 @@ describe('Read input schema — CLAUDIN_READ_MULTI off', () => {
     expect(inputSchema().safeParse({ file_path: '/a.ts', symbol: ['x', 'y'] }).success).toBe(
       false,
     )
+  })
+})
+
+describe('Read input schema — the default, CLAUDIN_READ_MULTI unset', () => {
+  test('the JSON schema the API receives is pinned byte for byte', async () => {
+    // What every session gets since the promotion: file_paths, and symbol
+    // as a name, a list or null.
+    const { inputSchema } = await importWithReadMultiUnset<Schemas>(SCHEMAS)
+    expect(JSON.stringify(zodToJsonSchema(inputSchema()), null, 2)).toMatchSnapshot()
+  })
+
+  test('is the schema CLAUDIN_READ_MULTI=1 makes, and not the killswitch one', async () => {
+    const unset = zodToJsonSchema((await importWithReadMultiUnset<Schemas>(SCHEMAS)).inputSchema())
+    const on = zodToJsonSchema((await importWithReadMulti<Schemas>(SCHEMAS, true)).inputSchema())
+    const off = zodToJsonSchema((await importWithReadMulti<Schemas>(SCHEMAS, false)).inputSchema())
+    expect(unset).toEqual(on)
+    expect(unset).not.toEqual(off)
   })
 })
 

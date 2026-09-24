@@ -1,13 +1,14 @@
 /**
- * The batch Read — several files, or several symbols of one file, in one call
- * — behind CLAUDIN_READ_MULTI, off by default while the session-cache A/B
- * measures it (arm `readmulti`). Promotion hangs on API calls per session
- * going down; the ceiling measured over real sessions is ~1.9% of calls.
+ * The batch Read — several files, or several symbols of one file, in one call.
+ * On by default since the session-cache A/B (arm `readmulti`, 2026-09-24);
+ * CLAUDIN_READ_MULTI=0 is the killswitch, and restores the single-file schema,
+ * description and dispatch byte for byte. Hooks see a batch as the single
+ * Reads it makes, one per file and symbol (batchRead.ts, Tool.hookUnits).
  *
  * This module is the flag and the pure reading of a batch input. The loop that
  * runs a batch is batchRead.ts.
  */
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import type { Input, SingleInput } from 'src/tools/FileReadTool/schemas.js'
 
 /**
@@ -15,10 +16,11 @@ import type { Input, SingleInput } from 'src/tools/FileReadTool/schemas.js'
  * FileReadTool.ts) reads it once, at its own load, and keeps the answer: the
  * input schema, the description and the call dispatch must agree for the
  * whole session, and a schema that changed mid-session would rewrite the
- * cached tools array.
+ * cached tools array. Unset means on; only an explicit falsy value
+ * (`0`, `false`, `no`, `off`) turns it off.
  */
 export function readMultiEnabledAtLoad(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_READ_MULTI)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_READ_MULTI)
 }
 
 export const MIN_BATCH_FILES = 2
@@ -110,7 +112,6 @@ export function toSingleInput(input: Input): SingleInput {
 // The single-file validateInput codes run 1-9.
 const SHAPE_ERROR_CODE = 10
 const SINGLE_FILE_OPTION_ERROR_CODE = 11
-export const READ_HOOK_ERROR_CODE = 12
 
 const SINGLE_FILE_OPTIONS = ['offset', 'limit', 'pages', 'encoding'] as const
 
