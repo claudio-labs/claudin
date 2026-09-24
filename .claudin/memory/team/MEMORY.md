@@ -30,11 +30,12 @@
 - [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](decisions/code-review-graph-evaluated-rejected.md) — 284 MB db, impact answer = 203k tokens; their bench loses to reading the diff
 - [Cache TTL tiers: agent:* 5m, fork keeps 1h (2026-07-05)](decisions/cache-ttl-tiering-subagents.md) — subagent caches die with the run; new one-shot querySources go in SHORT_LIVED_QUERY_SOURCES; auto_mode reverted to 1h
 - [Defer-cache-marker — default REVERSED to 0 on 2026-09-23](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more (Opus, Sonnet, 5m); its 06-07 bench was unreliable; 2048 is opt-in
-- [Bash read pass-through + read credit — NOT promoted 2026-09-23](decisions/bash-read-passthrough-not-promoted.md) — passed its median gate, but a placebo arm moved as much; the model re-Reads anyway
+- [Bash read pass-through + read credit — NOT promoted 2026-09-23](decisions/bash-read-passthrough-not-promoted.md) — placebo matched it, model re-Read; round 2 (09-24) fixed both blockers, promotion pending
 - [Devin provider port halted 2026-06-06 — f31 attestation is a hard blocker](decisions/devin-provider-port-halted.md) — feat/devin-provider not merging; don't reopen without a Ghidra/IDA budget
 - [OpenTelemetry stays devDep-only + build-stubbed — removal REJECTED 2026-07-08](decisions/opentelemetry-devdep-stubbed.md) — zero runtime footprint; the deps only satisfy tsc `import type` refs
 
 ## Bugs
+- [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — Write branch of extractReadFilesFromMessages skips the is_error check
 - [Interactive Agent schema drops run_in_background and name](bugs/agent-schema-drops-run-in-background.md) — prompt teaches both, model sends strings, zod strips them, "background" agents run inline
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent)` registered a phantom `noop`; `claudin install` + `mcp serve tools/list` broken
 - [systemPrompt.main.txt regen captured harness-injected text](bugs/systemprompt-snapshot-harness-drift.md) — snapshot covers "Notes for this model" etc., injected by the harness; diff regen vs source before committing
@@ -127,6 +128,7 @@
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Dev tools deferred + Bash advice A/B 09-24](dev-tools-deferred-advice-ab-2026-09-24.md) — no cost regression, prefix −3.3k; deferred RunTests unused; notes = generic line = no effect
+- [cat-read + batch-Read A/B 09-24](cat-read-and-batch-read-ab-2026-09-24.md) — catread −9% cost, credit engaged 4/5, misses its turn gate; readmulti −3 API calls, cost flat
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 
 ## Providers & models
