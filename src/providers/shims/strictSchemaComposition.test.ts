@@ -1,7 +1,8 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeAll, describe, expect, test } from 'bun:test'
 import type { ZodType } from 'zod/v4'
 import { AgentTool } from 'src/tools/AgentTool/AgentTool.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
+import { importWithReadMulti } from 'src/tools/FileReadTool/__testutils__/readMultiFlag.js'
 import { GrepTool } from 'src/tools/GrepTool/GrepTool.js'
 import { ReportFindingsTool } from 'src/tools/ReportFindingsTool/ReportFindingsTool.js'
 import { stripPlaceholderOptionalFields } from 'src/agent/tools/toolInputPlaceholders.js'
@@ -32,6 +33,20 @@ import { convertToolsToResponsesTools } from 'src/providers/shims/codexShim.js'
 
 type SchemaRecord = Record<string, unknown>
 
+/**
+ * Read under its killswitch (CLAUDIN_READ_MULTI=0): the single-file schema,
+ * the default until the batch Read was promoted. The process-wide FileReadTool
+ * above carries the default, batch-capable one.
+ */
+let killswitchedRead: { name: string; inputSchema: unknown }
+
+beforeAll(async () => {
+  const { inputSchema } = await importWithReadMulti<
+    typeof import('src/tools/FileReadTool/schemas.js')
+  >('src/tools/FileReadTool/schemas.js', false)
+  killswitchedRead = { name: FileReadTool.name, inputSchema: inputSchema() }
+})
+
 const TOOLS = [
   // The tool from the original report: `pages: ""` answered with
   // `Invalid pages parameter: ""`, 135 times in one session.
@@ -46,35 +61,46 @@ const TOOLS = [
   { tool: ReportFindingsTool, label: 'ReportFindings' },
 ] as const
 
+function expectEveryOptionalDeclinable(
+  tool: { name: string; inputSchema: unknown },
+  label: string,
+): void {
+  const original = zodToJsonSchema(tool.inputSchema as ZodType) as SchemaRecord
+  const widened = widen(tool.name, original)
+
+  // The model's worst case: it fills in every property (it must — they are
+  // all `required` on the wire) and declines every optional one with the
+  // `null` the widened schema declares legal.
+  const declined = buildDeclinedInput(original)
+  expect(declined.optionalPaths.length).toBeGreaterThan(0)
+
+  // The generator is only faithful if the wire really does allow null
+  // there; otherwise this test would be asserting against a shape the
+  // backend never lets the model produce.
+  for (const path of declined.optionalPaths) {
+    expect({ path, allowed: allowsNull(widened, path) }).toEqual({
+      path,
+      allowed: true,
+    })
+  }
+
+  const stripped = stripPlaceholderOptionalFields(tool, declined.input)
+  const parsed = (tool.inputSchema as ZodType).safeParse(stripped)
+  expect({ tool: label, ok: parsed.success, error: parsed.error?.message }).toEqual({
+    tool: label,
+    ok: true,
+    error: undefined,
+  })
+}
+
 describe('widening and stripping compose on real tool schemas', () => {
+  test('Read under its killswitch: every optional can be declined at every depth', () => {
+    expectEveryOptionalDeclinable(killswitchedRead, 'Read (CLAUDIN_READ_MULTI=0)')
+  })
+
   for (const { tool, label } of TOOLS) {
     test(`${label}: every optional can be declined at every depth`, () => {
-      const original = zodToJsonSchema(tool.inputSchema as ZodType) as SchemaRecord
-      const widened = widen(tool.name, original)
-
-      // The model's worst case: it fills in every property (it must — they are
-      // all `required` on the wire) and declines every optional one with the
-      // `null` the widened schema declares legal.
-      const declined = buildDeclinedInput(original)
-      expect(declined.optionalPaths.length).toBeGreaterThan(0)
-
-      // The generator is only faithful if the wire really does allow null
-      // there; otherwise this test would be asserting against a shape the
-      // backend never lets the model produce.
-      for (const path of declined.optionalPaths) {
-        expect({ path, allowed: allowsNull(widened, path) }).toEqual({
-          path,
-          allowed: true,
-        })
-      }
-
-      const stripped = stripPlaceholderOptionalFields(tool, declined.input)
-      const parsed = (tool.inputSchema as ZodType).safeParse(stripped)
-      expect({ tool: label, ok: parsed.success, error: parsed.error?.message }).toEqual({
-        tool: label,
-        ok: true,
-        error: undefined,
-      })
+      expectEveryOptionalDeclinable(tool, label)
     })
 
     test(`${label}: empty-string placeholders are declined the same way`, () => {
@@ -91,20 +117,43 @@ describe('widening and stripping compose on real tool schemas', () => {
     // The strip must not become a blanket "" filter: on a REQUIRED key an empty
     // string is the model's mistake, and silently deleting it would turn a
     // clear zod error into a confusing "missing field" one turn later.
-    const stripped = stripPlaceholderOptionalFields(FileReadTool, {
+    //
+    // Written against Read's single-file schema, where file_path is required.
+    // That shape is now the killswitch's (CLAUDIN_READ_MULTI=0) — the default
+    // Read has no required key at all — so the case runs on it.
+    const stripped = stripPlaceholderOptionalFields(killswitchedRead, {
       file_path: '',
       pages: '',
     }) as Record<string, unknown>
     expect(stripped).toEqual({ file_path: '' })
-    expect((FileReadTool.inputSchema as ZodType).safeParse(stripped).success).toBe(true)
+    expect((killswitchedRead.inputSchema as ZodType).safeParse(stripped).success).toBe(true)
+  })
+
+  test('the default Read declines file_path like any optional; validateInput asks for a path', () => {
+    // file_path and file_paths are both optional on the wire: exactly one of
+    // them is required, which JSON Schema cannot say without a root
+    // combinator strict transports reject (schemas.ts). So a placeholder
+    // file_path is stripped here, and the schema's own preprocess reads it as
+    // absent too; the Read then refuses the call for naming no path.
+    const stripped = stripPlaceholderOptionalFields(FileReadTool, {
+      file_path: '',
+      file_paths: null,
+      pages: '',
+    }) as Record<string, unknown>
+    expect(stripped).toEqual({})
+    expect(
+      (FileReadTool.inputSchema as ZodType).parse({ file_path: '', file_paths: ['/a.ts', '/b.ts'] }),
+    ).toEqual({ file_paths: ['/a.ts', '/b.ts'] })
   })
 })
 
 describe('the three shapes that produced the original placeholder loop', () => {
   test('Read: the widened schema lets the model decline pages/view/symbol', () => {
+    // The single-file schema this was written against, now the killswitch's
+    // (CLAUDIN_READ_MULTI=0); the default schema has its own case below.
     const widened = widen(
-      FileReadTool.name,
-      zodToJsonSchema(FileReadTool.inputSchema as ZodType) as SchemaRecord,
+      killswitchedRead.name,
+      zodToJsonSchema(killswitchedRead.inputSchema as ZodType) as SchemaRecord,
     )
     const properties = getRecord(widened.properties) ?? {}
     for (const key of ['pages', 'view', 'symbol', 'offset', 'limit']) {
@@ -116,6 +165,34 @@ describe('the three shapes that produced the original placeholder loop', () => {
     // `file_path` is genuinely required — widening it would invite the model to
     // send a Read with no path at all.
     expect(isNullable(getRecord(properties.file_path))).toBe(false)
+  })
+
+  test('Read, the default: every field can be declined, and the batch fields keep their shape', () => {
+    const widened = widen(
+      FileReadTool.name,
+      zodToJsonSchema(FileReadTool.inputSchema as ZodType) as SchemaRecord,
+    )
+    const properties = getRecord(widened.properties) ?? {}
+    // Every key on the wire, each one declinable: the path fields too, since
+    // a Read names either file_path or file_paths (validateInput says which).
+    expect(widened.required).toEqual(Object.keys(properties))
+    for (const key of ['file_path', 'file_paths', 'pages', 'view', 'symbol', 'offset', 'limit', 'encoding']) {
+      expect({ key, nullable: isNullable(getRecord(properties[key])) }).toEqual({
+        key,
+        nullable: true,
+      })
+    }
+    // file_paths is still a bounded list of strings.
+    const paths = getRecord(properties.file_paths)
+    expect(paths?.type).toEqual(['array', 'null'])
+    expect([paths?.minItems, paths?.maxItems]).toEqual([2, 20])
+    expect(getRecord(paths?.items)?.type).toBe('string')
+    // symbol is a union the widening leaves alone: a name, a list, or the
+    // null branch the schema carries for this transport.
+    const symbol = getRecord(properties.symbol)
+    const branches = (symbol?.anyOf as SchemaRecord[] | undefined) ?? []
+    expect(branches.map(branch => branch.type)).toEqual(['string', 'array', 'null'])
+    expect([branches[1]?.minItems, branches[1]?.maxItems]).toEqual([1, 10])
   })
 
   test('Agent: the optional enum carries null in BOTH the type and the values', () => {

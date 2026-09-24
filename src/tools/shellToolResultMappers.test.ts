@@ -36,6 +36,37 @@ test('BashTool result mapper tolerates null stdout', () => {
   })
 })
 
+// The note a file read carries (BashTool's fitOverBudgetRead, creditShownFiles):
+// the model's, after stdout and before stderr and the background note.
+test('BashTool result mapper puts a read note right after stdout', () => {
+  const result = BashTool.mapToolResultToToolResultBlockParam(
+    {
+      stdout: '<bash-output-read>a\nb\n</bash-output-read>\n',
+      stderr: '',
+      interrupted: false,
+      readNote: 'Not shown — …\n(2 files printed whole — …)',
+    },
+    'tool-5',
+  )
+  expect(result.content).toBe(
+    '<bash-output-read>a\nb\n</bash-output-read>\nNot shown — …\n(2 files printed whole — …)',
+  )
+})
+
+// Every shell run with both flags off: no note, and the block as it always was.
+test('BashTool result mapper without a read note is unchanged', () => {
+  const data = { stdout: '\n\nok\n', stderr: 'warning: x', interrupted: false }
+  expect(BashTool.mapToolResultToToolResultBlockParam(data, 'tool-6')).toEqual({
+    tool_use_id: 'tool-6',
+    type: 'tool_result',
+    content: 'ok\nwarning: x',
+    is_error: false,
+  })
+  expect(
+    BashTool.mapToolResultToToolResultBlockParam({ ...data, readNote: undefined }, 'tool-6'),
+  ).toEqual(BashTool.mapToolResultToToolResultBlockParam(data, 'tool-6'))
+})
+
 test('PowerShellTool result mapper tolerates null stderr', () => {
   const result = PowerShellTool.mapToolResultToToolResultBlockParam(
     {

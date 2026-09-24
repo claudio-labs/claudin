@@ -515,6 +515,90 @@ export function checkBatchWritePermission(
   }
 }
 
+/**
+ * Aggregated read-permission check across the files of a batch Read
+ * (`file_paths`, FileReadTool). Each path goes through
+ * `checkReadPermissionForTool` exactly as a Read of that one file would, so
+ * the read deny/ask rules, edit-implies-read, the working directories and the
+ * internal paths all hold per file.
+ *
+ * - ANY path denied → deny, naming the denied paths.
+ * - Else ANY path asks → ONE ask naming every path that asked. It keeps the
+ *   first rule-backed reason when there is one: hasPermissionsToUseTool
+ *   honours an ask RULE even in bypassPermissions mode (step 1f), and a
+ *   generic batch reason would let a batch read a file a Read of it would
+ *   have asked about.
+ * - Else allow.
+ *
+ * Unlike checkBatchWritePermission there is no bypassPermissions shortcut:
+ * the verdict goes to hasPermissionsToUseTool as a single Read's does, and
+ * that is where the mode applies — after deny and ask rules, which a shortcut
+ * here would skip.
+ *
+ * `input` is the tool's real input, handed back on allow. The harness applies
+ * `updatedInput` over the call's input, so the `{}` the write variant returns
+ * would erase the batch before call() ran.
+ */
+export function checkBatchReadPermission(
+  toolName: string,
+  paths: readonly string[],
+  input: { [key: string]: unknown },
+  toolPermissionContext: ToolPermissionContext,
+): PermissionDecision {
+  type SyntheticInput = { file_path: string }
+  const syntheticTool = {
+    name: toolName,
+    getPath(syntheticInput: SyntheticInput): string {
+      return syntheticInput.file_path
+    },
+  } as unknown as Tool
+  const denied: { path: string; decision: PermissionDecision & { behavior: 'deny' } }[] = []
+  const asked: { path: string; decision: PermissionDecision & { behavior: 'ask' } }[] = []
+
+  for (const p of paths) {
+    const decision = checkReadPermissionForTool(
+      syntheticTool,
+      { file_path: p },
+      toolPermissionContext,
+    )
+    if (decision.behavior === 'deny') {
+      denied.push({ path: p, decision })
+    } else if (decision.behavior === 'ask') {
+      asked.push({ path: p, decision })
+    }
+  }
+
+  const [firstDenied] = denied
+  if (firstDenied) {
+    return {
+      behavior: 'deny',
+      message: `Permission to read the following paths has been denied:\n${denied
+        .map(d => `  - ${d.path}`)
+        .join('\n')}`,
+      decisionReason: firstDenied.decision.decisionReason,
+    }
+  }
+
+  const [firstAsked] = asked
+  if (firstAsked) {
+    const binding =
+      asked.find(a => a.decision.decisionReason?.type === 'rule') ?? firstAsked
+    return {
+      behavior: 'ask',
+      message: `Claude requested permissions to read ${asked.length} file${asked.length === 1 ? '' : 's'}:\n${asked
+        .map(a => `  - ${a.path}`)
+        .join('\n')}`,
+      decisionReason: binding.decision.decisionReason,
+    }
+  }
+
+  return {
+    behavior: 'allow',
+    updatedInput: input,
+    decisionReason: { type: 'other', reason: 'batch allow' },
+  }
+}
+
 export function generateSuggestions(
   filePath: string,
   operationType: 'read' | 'write' | 'create',

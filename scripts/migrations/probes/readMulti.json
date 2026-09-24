@@ -1,0 +1,737 @@
+{
+  "test": [
+    "src/tools/FileReadTool/batch.test.ts",
+    "src/tools/FileReadTool/schemas.test.ts",
+    "src/tools/FileReadTool/prompt.test.ts",
+    "src/tools/FileReadTool/UI.test.tsx",
+    "src/permissions/checkBatchReadPermission.test.ts",
+    "src/platform/lifecycleHooks/matching.characterization.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/tools/FileReadTool/batchResult.test.ts",
+    "src/tools/FileReadTool/readMulti.test.ts",
+    "src/agent/compact/postCompactAttachments.test.ts",
+    "src/agent/planDossier.test.ts",
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/platform/bridge/sessionRunner.test.ts",
+    "src/commands/insights/extract.test.ts",
+    "src/tools/FileReadTool/batchHooks.test.ts",
+    "src/platform/lifecycleHooks/hookUnits.test.ts"
+  ],
+  "source": "src/tools/FileReadTool/batchRead.ts",
+  "probes": [
+    {
+      "name": "B2: a file past the budget is still shown",
+      "find": "    if (spent + tokens > maxTokens) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "B2: the rolled-back file keeps the batch's entry",
+      "find": "  if (before.entry) readFileState.set(fullFilePath, before.entry)\n  if (!before.triggered) {",
+      "replace": "  if (!before.triggered) {"
+    },
+    {
+      "name": "B2: the rolled-back file keeps its nested_memory trigger",
+      "find": "    context.nestedMemoryAttachmentTriggers?.delete(fullFilePath)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B2: a dropped file keeps the agent's reminder",
+      "find": "  for (const section of sections) releaseReadReminder(section.data, context)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B2: missing symbols are dropped instead of listed",
+      "find": "    for (const symbol of read.missing) missing.push(`${symbol} in ${label}`)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B2: a path named twice is read twice",
+      "find": "    if (seen.has(key)) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B2: images reach the text loop",
+      "find": "  return ext === 'ipynb' || IMAGE_EXTENSIONS.has(ext) || isPDFExtension(ext)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "B3: a symbol outline erases the bodies around it",
+      "find": "  if (leftPartialView && shownBodies.length > 0) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "B6: a batch file is pinned like a single Read",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "          !isBatchFileContext(context) &&\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B6: a batch file reaches the result cache",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (READ_MULTI && (isBatchReadInput(input) || isBatchFileContext(context))) {\n",
+      "replace": "    if (READ_MULTI && isBatchReadInput(input)) {\n"
+    },
+    {
+      "name": "B4: a batch goes through the single-path check",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (READ_MULTI && input.file_paths !== undefined) {\n      return checkBatchReadPermission(",
+      "replace": "    if (false) {\n      return checkBatchReadPermission("
+    },
+    {
+      "name": "B4: the allow hands back a placeholder",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "    behavior: 'allow',\n    updatedInput: input,\n    decisionReason: { type: 'other', reason: 'batch allow' },",
+      "replace": "    behavior: 'allow',\n    updatedInput: {},\n    decisionReason: { type: 'other', reason: 'batch allow' },"
+    },
+    {
+      "name": "B4: a rule-backed ask loses its rule",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "      asked.find(a => a.decision.decisionReason?.type === 'rule') ?? firstAsked\n",
+      "replace": "      firstAsked\n"
+    },
+    {
+      "name": "B1: file_paths with offset is accepted",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  if (given.length === 0) return null\n",
+      "replace": "  return null\n"
+    },
+    {
+      "name": "B1: a Codex null reaches zod",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "  if (value === null || value === '') return undefined\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B1: a one-name list is a batch",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "    (Array.isArray(input.symbol) && input.symbol.length > 1)\n",
+      "replace": "    Array.isArray(input.symbol)\n"
+    },
+    {
+      "name": "B10: the batch line renders under the killswitch (=0)",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "  if (!READ_MULTI) return ''\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B9: the result line drops the not-shown count",
+      "source": "src/tools/FileReadTool/UI.tsx",
+      "find": "notShown.length > 0 ? ` of ${total}` : ''",
+      "replace": "''"
+    },
+    {
+      "name": "splitter: notes kept on the last file",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "  if (last) dropNotes(last.lines)",
+      "replace": "  if (last) void last"
+    },
+    {
+      "name": "splitter: separator kept",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "    if (previous?.at(-1) === '') previous.pop()",
+      "replace": "    void previous"
+    },
+    {
+      "name": "splitter: absolute label unmatched",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "  if (isAbsolute(label)) return named.find(f => f.absolute === label)?.path",
+      "replace": "  if (isAbsolute(label)) return undefined"
+    },
+    {
+      "name": "splitter: no cwd resolution",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "  if (exact) return exact.path",
+      "replace": "  if (exact) void exact"
+    },
+    {
+      "name": "splitter: guesses an ambiguous tail",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "  return byTail.length === 1 ? byTail[0]!.path : undefined",
+      "replace": "  return byTail[0]?.path"
+    },
+    {
+      "name": "readMulti: placeholder list kept",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "    ...(paths && { file_paths: paths }),",
+      "replace": "    ...(file_paths !== undefined && { file_paths: file_paths as string[] }),"
+    },
+    {
+      "name": "resume: raw input classified",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "          const targets = recordedReadTargets(input)",
+      "replace": "          const targets = (input ?? {}) as never"
+    },
+    {
+      "name": "resume: outline batch restored",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "            if (input?.view !== 'outline') {",
+      "replace": "            if (input !== undefined) {"
+    },
+    {
+      "name": "resume: first run only",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "                for (const run of runs) {",
+      "replace": "                for (const run of runs.slice(0, 1)) {"
+    },
+    {
+      "name": "classifier: batch paths hidden",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return paths.length > 1 ? paths.join('\\n') : input.file_path",
+      "replace": "    return paths.length > 99 ? paths.join('\\n') : input.file_path"
+    },
+    {
+      "name": "post-compact: stub counted",
+      "source": "src/agent/compact/postCompactAttachments.ts",
+      "find": "    .filter(section => !section.text.startsWith(FILE_UNCHANGED_STUB))",
+      "replace": "    .filter(section => section.text !== '')"
+    },
+    {
+      "name": "post-compact: refused batch loses its file_path",
+      "source": "src/agent/compact/postCompactAttachments.ts",
+      "find": "  if (sections.length === 0) return undefined",
+      "replace": "  if (sections.length < 0) return undefined"
+    },
+    {
+      "name": "dossier: one path for every section",
+      "source": "src/agent/planDossier.ts",
+      "find": "            { ...toolUse, input: { file_path: path } },",
+      "replace": "            { ...toolUse, input: { file_path: readPathsOf(targets)[0] } },"
+    },
+    {
+      "name": "dossier: refused batch has no entry",
+      "source": "src/agent/planDossier.ts",
+      "find": "    if (sections.length > 0) {",
+      "replace": "    if (sections.length >= 0) {"
+    },
+    {
+      "name": "collapse: batch paths dropped",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    if (content?.type === 'tool_use') {\n      paths.push(...readPathsOf(recordedReadTargets(content.input)))",
+      "replace": "    if (content?.type === 'tool_use') {\n      paths.push(...readPathsOf(recordedReadTargets(content.input)).slice(0, 1))"
+    },
+    {
+      "name": "collapse: progress counts uses",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "      readFiles += Math.max(",
+      "replace": "      readFiles += 1 || Math.max("
+    },
+    {
+      "name": "bridge: batch unnamed",
+      "source": "src/platform/bridge/sessionRunner.ts",
+      "find": "    batchReadTarget(input) ??",
+      "replace": "    undefined ??"
+    },
+    {
+      "name": "insights: batch languages dropped",
+      "source": "src/commands/insights/extract.ts",
+      "find": "                if (targets.file_paths !== undefined) {",
+      "replace": "                if (targets.file_paths === null) {"
+    },
+    {
+      "name": "B4: checkPermissions never routes a batch to checkBatchReadPermission (flag on)",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (READ_MULTI && input.file_paths !== undefined) {\n      return checkBatchReadPermission(",
+      "replace": "    if (READ_MULTI && input.file_paths === null) {\n      return checkBatchReadPermission("
+    },
+    {
+      "name": "B8: the classifier sees only the first file of a batch",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return paths.length > 1 ? paths.join('\\n') : input.file_path",
+      "replace": "    return paths[0] ?? input.file_path"
+    },
+    {
+      "name": "B6: a symbol-list batch reaches the result cache",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (READ_MULTI && (isBatchReadInput(input) || isBatchFileContext(context))) {\n",
+      "replace": "    if (READ_MULTI && isBatchFileContext(context)) {\n"
+    },
+    {
+      "name": "B4: the permission dialog path of a batch is the cwd",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return file_path || file_paths?.[0] || getCwd()",
+      "replace": "    return file_path || getCwd()"
+    },
+    {
+      "name": "B5: hooks see a batch's paths unexpanded",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (Array.isArray(input.file_paths)) {\n      input.file_paths = input.file_paths.map(p =>",
+      "replace": "    if (false as boolean) {\n      input.file_paths = input.file_paths.map(p =>"
+    },
+    {
+      "name": "B5: an if-condition matches only the first path of a batch",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return pattern => paths.some(p => matchWildcardPattern(pattern, p))",
+      "replace": "    return pattern => matchWildcardPattern(pattern, paths[0] ?? '')"
+    },
+    {
+      "name": "B1: validateInput lets a malformed shape through",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "      if (refusal) return { result: false, ...refusal }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B1: a batch path skips the single-file checks",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "        return validateBatchPaths(input.file_paths, filePath =>\n          FileReadTool.validateInput({ file_path: filePath }, toolUseContext),\n        )\n",
+      "replace": "        return { result: true }\n"
+    },
+    {
+      "name": "B2: call() never runs the batch loop",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (READ_MULTI && isBatchReadInput(input)) {\n      return readBatch(",
+      "replace": "    if (false as boolean) {\n      return readBatch("
+    },
+    {
+      "name": "B4: a denied path lets the batch through",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "    if (decision.behavior === 'deny') {\n      denied.push({ path: p, decision })\n",
+      "replace": "    if (false as boolean) {\n      denied.push({ path: p, decision })\n"
+    },
+    {
+      "name": "B4: a path that asks lets the batch through unasked",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "    } else if (decision.behavior === 'ask') {\n      asked.push({ path: p, decision })\n",
+      "replace": "    } else if (false as boolean) {\n      asked.push({ path: p, decision })\n"
+    },
+    {
+      "name": "B4: the deny loses its rule",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "      decisionReason: firstDenied.decision.decisionReason,\n",
+      "replace": "      decisionReason: { type: 'other', reason: 'batch deny' },\n"
+    },
+    {
+      "name": "B4: the deny names only the first denied path",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "      message: `Permission to read the following paths has been denied:\\n${denied\n        .map(",
+      "replace": "      message: `Permission to read the following paths has been denied:\\n${denied.slice(0, 1)\n        .map("
+    },
+    {
+      "name": "B4: the ask names only the first path that asked",
+      "source": "src/permissions/filePermissions/readWriteChecks.ts",
+      "find": "      message: `Claude requested permissions to read ${asked.length} file${asked.length === 1 ? '' : 's'}:\\n${asked\n        .map(",
+      "replace": "      message: `Claude requested permissions to read ${asked.length} file${asked.length === 1 ? '' : 's'}:\\n${asked.slice(0, 1)\n        .map("
+    },
+    {
+      "name": "B1: the flag-off schema is the batch-capable one",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "    READ_MULTI ? batchCapableInputSchema() : singleFileInputSchema(),",
+      "replace": "    batchCapableInputSchema(),"
+    },
+    {
+      "name": "B1: the flag-on schema is the single-file one",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "    READ_MULTI ? batchCapableInputSchema() : singleFileInputSchema(),",
+      "replace": "    singleFileInputSchema(),"
+    },
+    {
+      "name": "B1: the flag-off schema lets file_path go",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "    file_path: z.string().describe('The absolute path to the file to read'),",
+      "replace": "    file_path: z.string().optional().describe('The absolute path to the file to read'),"
+    },
+    {
+      "name": "B1: file_paths takes one path, or more than 20",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "        z.array(z.string()).min(MIN_BATCH_FILES).max(MAX_BATCH_FILES).optional(),",
+      "replace": "        z.array(z.string()).optional(),"
+    },
+    {
+      "name": "B1: an empty file_paths list reaches zod",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "  if (Array.isArray(value) && value.length === 0) return undefined\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B1: a symbol list takes more than 10 names",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "            z.array(z.string()).min(1).max(MAX_BATCH_SYMBOLS),",
+      "replace": "            z.array(z.string()).min(1),"
+    },
+    {
+      "name": "B9: the batch arm of the outputSchema drops notShown",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "      notShown: z\n        .array(z.string())\n",
+      "replace": "      notShownList: z\n        .array(z.string())\n"
+    },
+    {
+      "name": "B10: the batch line says nothing of the budget",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "within ${budgetK}k tokens in total.",
+      "replace": "in one call."
+    },
+    {
+      "name": "B10: the legacy prompt drops the batch line",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "the beginning of the file${maxSizeInstruction}${batchReadInstruction()}",
+      "replace": "the beginning of the file${maxSizeInstruction}"
+    },
+    {
+      "name": "B10: the compact prompt drops the batch line",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "lines by default${maxSizeInstruction}.${batchReadInstruction()}",
+      "replace": "lines by default${maxSizeInstruction}."
+    },
+    {
+      "name": "B9: the tool-use line of a batch renders nothing",
+      "source": "src/tools/FileReadTool/UI.tsx",
+      "find": "  if (file_paths !== undefined) {\n    return batchUseSummary(file_paths);\n  }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B9: the tool-use summary of a batch is empty",
+      "source": "src/tools/FileReadTool/UI.tsx",
+      "find": "  if (input?.file_paths !== undefined) {\n    return batchUseSummary(input.file_paths);\n  }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B9: the tool-use line names every path",
+      "source": "src/tools/FileReadTool/UI.tsx",
+      "find": "const BATCH_PATHS_NAMED = 3;",
+      "replace": "const BATCH_PATHS_NAMED = 20;"
+    },
+    {
+      "name": "B9: the result line drops the line count",
+      "source": "src/tools/FileReadTool/UI.tsx",
+      "find": "        const lines = files.reduce((sum, file) => sum + file.lines, 0);",
+      "replace": "        const lines = 0;"
+    },
+    {
+      "name": "B2: the batch tool_result carries no text",
+      "source": "src/tools/FileReadTool/resultContent.ts",
+      "find": "      return {\n        tool_use_id: toolUseID,\n        type: 'tool_result',\n        content: data.content,\n      }\n",
+      "replace": "      return {\n        tool_use_id: toolUseID,\n        type: 'tool_result',\n        content: '',\n      }\n"
+    },
+    {
+      "name": "B2: releaseReadReminder leaves the agent's reminder spent",
+      "source": "src/tools/FileReadTool/resultContent.ts",
+      "find": "  readReminderSeenAgents.delete(context.agentId ?? 'main')\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B3: a missing symbol is a plain Error, not SymbolNotFoundError",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "        throw new SymbolNotFoundError(\n          symbol,\n",
+      "replace": "        throw new Error(\n"
+    },
+    {
+      "name": "B1: validateBatchPaths lets a failing path through",
+      "find": "    if (result.result === false) {\n      failures.push({",
+      "replace": "    if (false as boolean) {\n      failures.push({"
+    },
+    {
+      "name": "B6: the files of a batch are not marked as batch files",
+      "find": "  batchFileContexts.add(fileContext)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B2: the header changes shape",
+      "find": "    const block = `==> ${label} <==\\n${",
+      "replace": "    const block = `--> ${label} <--\\n${"
+    },
+    {
+      "name": "B2: the not-shown note loses its shape",
+      "find": "      ? `Not shown — over the ${Math.round(maxTokens / 1000)}k tokens one Read returns: ${notShown.join(', ')}. Read them in another call.`",
+      "replace": "      ? `Left out: ${notShown.join(', ')}.`"
+    },
+    {
+      "name": "B2: a file left out for the budget is not named",
+      "find": "      notShown.push(label)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B2: the media note loses its shape",
+      "find": "      ? `Not read — images, PDFs and notebooks need a Read of their own: ${ownRead.join(', ')}.`",
+      "replace": "      ? `Skipped: ${ownRead.join(', ')}.`"
+    },
+    {
+      "name": "B6: the batch result is cacheable",
+      "find": "    noResultCache: true,\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B9: every batch file reports 0 lines",
+      "find": "    files.push({ filePath: fullFilePath, lines: shownLines(read.sections) })",
+      "replace": "    files.push({ filePath: fullFilePath, lines: 0 })"
+    },
+    {
+      "name": "B3: a body shown twice is repeated",
+      "find": "    if (sections.some(section => section.text === text)) continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B2: an abort inside a batch becomes a section",
+      "find": "      if (isAbortError(e)) throw e\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B1: file_path and file_paths together pass",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  if (input.file_path !== undefined && input.file_paths !== undefined) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "B1: neither file_path nor file_paths passes",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  if (input.file_path === undefined && input.file_paths === undefined) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "B1: a one-name symbol list loses its name",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  return name === undefined ? { ...rest, file_path } : { ...rest, file_path, symbol: name }",
+      "replace": "  return { ...rest, file_path }"
+    },
+    {
+      "name": "B8: readPathsOf ignores file_paths",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  if (input.file_paths !== undefined) return input.file_paths\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B8: a recorded placeholder file_path counts",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "    ...(isNonEmptyString(file_path) && { file_path }),",
+      "replace": "    ...(file_path !== undefined && { file_path: file_path as string }),"
+    },
+    {
+      "name": "splitter: the not-shown note is kept as file text",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "const NOTE_LINE_RE = /^(?:Symbol not found: |Not read — |Not shown — )/",
+      "replace": "const NOTE_LINE_RE = /^(?:Symbol not found: |Not read — )/"
+    },
+    {
+      "name": "splitter: a path named twice makes its tail ambiguous",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "    if (seen.has(absolute)) continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "resume: a symbol batch is restored as whole files",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "                ranged: symbolsOf(targets).length > 0,",
+      "replace": "                ranged: false,"
+    },
+    {
+      "name": "resume: a batch result restores nothing",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "          const batch = batchReadToolUseIds.get(content.tool_use_id)\n",
+      "replace": "          const batch = undefined as { paths: string[]; ranged: boolean } | undefined\n"
+    },
+    {
+      "name": "resume: numbered runs are not split at an unnumbered line",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "      current = undefined\n      continue\n",
+      "replace": "      continue\n"
+    },
+    {
+      "name": "resume: a system reminder in a batch section is taken as file text",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "              const shown = section.text.replace(SYSTEM_REMINDER_RE, '')",
+      "replace": "              const shown = section.text"
+    },
+    {
+      "name": "post-compact: a batch counts no file",
+      "source": "src/agent/compact/postCompactAttachments.ts",
+      "find": "      const shownByBatch = batchFilesShown(block.input, resultTexts.get(block.id))\n",
+      "replace": "      const shownByBatch = undefined as string[] | undefined\n"
+    },
+    {
+      "name": "dossier: a batch is one entry",
+      "source": "src/agent/planDossier.ts",
+      "find": "  if (isBatchReadInput(targets) && toolResult) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "collapse: a grouped batch keeps its first path",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "      if (content?.type === 'tool_use') {\n        paths.push(...readPathsOf(recordedReadTargets(content.input)))",
+      "replace": "      if (content?.type === 'tool_use') {\n        paths.push(...readPathsOf(recordedReadTargets(content.input)).slice(0, 1))"
+    },
+    {
+      "name": "bridge: a batch drops its count",
+      "source": "src/platform/bridge/sessionRunner.ts",
+      "find": "  return rest.length > 0 ? `${first} (+${rest.length} more)` : first",
+      "replace": "  return first"
+    },
+    {
+      "name": "B11 pre: a deny for one file lets the batch through",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (denied.length > 0) {\n    return {\n      permission: hookDeny(",
+      "replace": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (false as boolean) {\n    return {\n      permission: hookDeny("
+    },
+    {
+      "name": "B11 pre: the deny names only the first denied file",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  return [head, ...uniqueLines(denied.map(([i, message]) => ",
+      "replace": "  return [head, ...uniqueLines(denied.slice(0, 1).map(([i, message]) => "
+    },
+    {
+      "name": "B11 pre: an ask from the files is dropped",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  const [firstAsked] = asked\n",
+      "replace": "  const [firstAsked] = [] as number[]\n"
+    },
+    {
+      "name": "B11 pre: the one ask names only the first file that asked",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "      ...uniqueLines(asked.map(i => ",
+      "replace": "      ...uniqueLines(asked.slice(0, 1).map(i => "
+    },
+    {
+      "name": "B11 pre: an allow from some files allows the batch",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  if (allowed.length === units.inputs.length && first?.behavior === 'allow') {",
+      "replace": "  if (allowed.length > 0 && first?.behavior === 'allow') {"
+    },
+    {
+      "name": "B11 pre: an allow from every file still asks",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  if (allowed.length === units.inputs.length && first?.behavior === 'allow') {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "B11 pre: a decision's updatedInput is dropped",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "      ? decision.updatedInput\n      : passthrough[i]",
+      "replace": "      ? passthrough[i]\n      : passthrough[i]"
+    },
+    {
+      "name": "B11 pre: a merge the batch cannot carry runs anyway",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "    if ('refusal' in merged) return { permission: hookDeny(hookName, merged.refusal) }",
+      "replace": "    if ('refusal' in merged) return {}"
+    },
+    {
+      "name": "B11 permission request: a deny for one file is dropped",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (denied.length > 0) {\n    const interrupt",
+      "replace": "  const denied = unitsWhere(units, decisions, d => d.behavior === 'deny')\n  if (false as boolean) {\n    const interrupt"
+    },
+    {
+      "name": "B11 permission request: an allow from some files allows the call",
+      "source": "src/platform/lifecycleHooks/hookUnits.ts",
+      "find": "  if (allowed.length !== units.inputs.length) return undefined\n",
+      "replace": "  if (allowed.length === 0) return undefined\n"
+    },
+    {
+      "name": "B11 pre: the folded updatedInput never reaches the call",
+      "source": "src/agent/tools/toolHooks.ts",
+      "find": "  if (verdict.updatedInput) {\n    yield { type: 'hookUpdatedInput', updatedInput: verdict.updatedInput }\n  }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 pre: a file's passthrough updatedInput is dropped",
+      "source": "src/agent/tools/toolHooks.ts",
+      "find": "        passthrough[unit] = event.updatedInput\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 no double execution: each file's PreToolUse runs twice",
+      "source": "src/agent/tools/toolHooks.ts",
+      "find": "  const runs = units.inputs.map((input, unit) =>\n    tagUnit(\n      unit,\n      runPreToolUseHooks(",
+      "replace": "  const runs = [...units.inputs, ...units.inputs].map((input, unit) =>\n    tagUnit(\n      unit,\n      runPreToolUseHooks("
+    },
+    {
+      "name": "B11 isolation: PreToolUse runs once, on the batch input",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  const preToolHooks = hookUnits\n    ? runPreToolUseHooksForUnits(",
+      "replace": "  const preToolHooks = (false as boolean)\n    ? runPreToolUseHooksForUnits("
+    },
+    {
+      "name": "B11 isolation: PostToolUse runs once, on the batch input and result",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    const postToolHooks = hookUnits\n      ? runPostToolUseHooksForUnits(",
+      "replace": "    const postToolHooks = (false as boolean)\n      ? runPostToolUseHooksForUnits("
+    },
+    {
+      "name": "B11 isolation: a failed batch runs PostToolUseFailure on the batch input",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    const failedUnits = hookUnits && (tool.hookUnits?.(callInput) ?? hookUnits)",
+      "replace": "    const failedUnits = undefined"
+    },
+    {
+      "name": "B11 isolation: PermissionRequest hooks see the batch input",
+      "source": "src/platform/lifecycleHooks/replHooks.ts",
+      "find": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (units) {\n    yield* executePermissionRequestHooksForUnits(",
+      "replace": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (false as boolean) {\n    yield* executePermissionRequestHooksForUnits("
+    },
+    {
+      "name": "B11 isolation: PermissionDenied hooks see the batch input",
+      "source": "src/platform/lifecycleHooks/replHooks.ts",
+      "find": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (units) {\n    const runs = units.inputs.map(input =>",
+      "replace": "  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)\n  if (false as boolean) {\n    const runs = units.inputs.map(input =>"
+    },
+    {
+      "name": "B11 isolation: a batch Read has no units",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (!READ_MULTI || !isBatchReadInput(input)) return undefined\n",
+      "replace": "    return undefined\n"
+    },
+    {
+      "name": "B11 units: images and PDFs get hooks the batch never runs for them",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    if (readsAsBlocks(extensionOf(expandPath(filePath)))) continue\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 merge: a path handed back unchanged goes back expanded",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      ? { ...replacement, file_path: unit.file_path }\n      : replacement",
+      "replace": "      ? replacement\n      : replacement"
+    },
+    {
+      "name": "B11 merge: a change for one file alone is carried to every file",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    if (!sameUnit(derived[i], wanted[i])) return refusedFor(units, wanted, label)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 merge: the refusal names every file, not the changed one",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "  const changed = units.flatMap((unit, i) => (sameUnit(unit, wanted[i]) ? [] : [label(i)]))",
+      "replace": "  const changed = [] as string[]"
+    },
+    {
+      "name": "B11 post: a shown file gets no PostToolUse",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      shownUnits.push({ input: one, output: result.data })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 post: a dedup stub gets a PostToolUse",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    if (result.data.type !== 'file_unchanged') {\n",
+      "replace": "    if (true as boolean) {\n"
+    },
+    {
+      "name": "B11 post: a file left out for the budget gets its hooks",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    const block = `==> ${label} <==\\n${read.sections.map(s => s.text).join('\\n\\n')}`\n",
+      "replace": "    unitResults.push(...read.shownUnits)\n    const block = `==> ${label} <==\\n${read.sections.map(s => s.text).join('\\n\\n')}`\n"
+    },
+    {
+      "name": "B11 failure: a missing symbol gets no PostToolUseFailure",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "    unitResults.push(...read.missingUnits)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B11 failure: a file that failed to read gets no PostToolUseFailure",
+      "source": "src/tools/FileReadTool/batchRead.ts",
+      "find": "      shownUnits.push({ input: one, error: e })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "B12 killswitch: CLAUDIN_READ_MULTI=0 leaves the batch Read on",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_READ_MULTI)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "B12 default: the batch Read is off unless CLAUDIN_READ_MULTI=1",
+      "source": "src/tools/FileReadTool/readMulti.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_READ_MULTI)\n",
+      "replace": "  return process.env.CLAUDIN_READ_MULTI === '1'\n"
+    }
+  ]
+}

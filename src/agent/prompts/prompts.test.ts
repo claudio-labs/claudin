@@ -137,6 +137,45 @@ describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM', () => {
   })
 })
 
+describe('ANTHROPIC_BATCHED_EDITS_ADDENDUM under CLAUDIN_BASH_READ_CREDIT', () => {
+  const CREDIT_FLAG = 'CLAUDIN_BASH_READ_CREDIT'
+  type Anthropic = typeof import('src/agent/prompts/familyAddendums/anthropic.js')
+
+  // The flag is read once at module load, so each arm gets its own instance
+  // of the module, loaded with the variable set the way that arm needs it.
+  async function loadAnthropic(credit: boolean): Promise<Anthropic> {
+    const prior = process.env[CREDIT_FLAG]
+    if (credit) process.env[CREDIT_FLAG] = '1'
+    else delete process.env[CREDIT_FLAG]
+    try {
+      return await import(
+        `src/agent/prompts/familyAddendums/anthropic.js?credit=${credit}-${Date.now()}`
+      )
+    } finally {
+      if (prior === undefined) delete process.env[CREDIT_FLAG]
+      else process.env[CREDIT_FLAG] = prior
+    }
+  }
+
+  const READ_FIRST = 'Read every one of those files first in a single message. One patch'
+  const READ_OR_CAT_FIRST =
+    'Read every one of those files first in a single message (files a `cat` already printed whole count as read). One patch'
+
+  test('flag off: byte-identical to the snapshot above', async () => {
+    const off = await loadAnthropic(false)
+    expect(off.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toBe(ANTHROPIC_BATCHED_EDITS_ADDENDUM)
+    expect(off.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain(READ_FIRST)
+  })
+
+  test('flag on: files a cat already printed whole count as read', async () => {
+    const on = await loadAnthropic(true)
+    expect(on.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain(READ_OR_CAT_FIRST)
+    expect(on.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toBe(
+      ANTHROPIC_BATCHED_EDITS_ADDENDUM.replace(READ_FIRST, READ_OR_CAT_FIRST),
+    )
+  })
+})
+
 describe('verbosity steering (roadmap #4)', () => {
   // Production wording is snapshot-locked here: feature() is stubbed to false
   // under the test preload, so the integrated getSystemPrompt path can't be

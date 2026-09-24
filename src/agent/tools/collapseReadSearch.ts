@@ -8,6 +8,10 @@ import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { extractBashCommentLabel } from 'src/tools/BashTool/commentLabel.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import {
+  readPathsOf,
+  recordedReadTargets,
+} from 'src/tools/FileReadTool/readMulti.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { RENAME_TOOL_NAME } from 'src/tools/RenameTool/prompt.js'
 import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js'
@@ -690,6 +694,7 @@ function countToolUses(msg: RenderableMessage): number {
 /**
  * Extract file paths from read tool inputs in a message.
  * Returns an array of file paths (may have duplicates if same file is read multiple times in one grouped message).
+ * A batch Read (readMulti.ts) contributes every path it names.
  */
 function getFilePathsFromReadMessage(msg: RenderableMessage): string[] {
   const paths: string[] = []
@@ -697,19 +702,13 @@ function getFilePathsFromReadMessage(msg: RenderableMessage): string[] {
   if (msg.type === 'assistant') {
     const content = msg.message.content[0]
     if (content?.type === 'tool_use') {
-      const input = content.input as { file_path?: string } | undefined
-      if (input?.file_path) {
-        paths.push(input.file_path)
-      }
+      paths.push(...readPathsOf(recordedReadTargets(content.input)))
     }
   } else if (msg.type === 'grouped_tool_use') {
     for (const m of msg.messages) {
       const content = m.message.content[0]
       if (content?.type === 'tool_use') {
-        const input = content.input as { file_path?: string } | undefined
-        if (input?.file_path) {
-          paths.push(input.file_path)
-        }
+        paths.push(...readPathsOf(recordedReadTargets(content.input)))
       }
     }
   }
@@ -1516,6 +1515,7 @@ export function summarizeRecentActivities(
   // Count trailing search/read/write activities from the end of the list
   let searchCount = 0
   let readCount = 0
+  let readFiles = 0
   let writeUses = 0
   const writes: { toolName: string; input: unknown }[] = []
   for (let i = activities.length - 1; i >= 0; i--) {
@@ -1524,6 +1524,12 @@ export function summarizeRecentActivities(
       searchCount++
     } else if (activity.isRead) {
       readCount++
+      // A batch Read (readMulti.ts) reads every file it names; any other
+      // read counts one, as it always has.
+      readFiles += Math.max(
+        1,
+        readPathsOf(recordedReadTargets(activity.input)).length,
+      )
     } else if (activity.isWrite) {
       writeUses++
       if (activity.toolName) {
@@ -1539,7 +1545,7 @@ export function summarizeRecentActivities(
   if (collapsibleCount >= 2) {
     return getSearchReadSummaryText(
       searchCount,
-      readCount,
+      readFiles,
       true,
       0,
       undefined,

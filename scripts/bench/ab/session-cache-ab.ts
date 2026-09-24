@@ -84,8 +84,10 @@
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { copyFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { performance } from 'node:perf_hooks'
+import picomatch from 'picomatch'
+import { parse as parseShell } from 'shell-quote'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
 import { proxyEnv, readProxyThinking, startWireProxy, thinkingDisplayTransform, type WireProxy } from './wire-proxy'
@@ -216,6 +218,8 @@ type Call = {
   served?: boolean
   /** Kept for Bash only: the replay corpus is rebuilt from it. */
   text?: string
+  /** Bash only: the files the read credit counted as read (`creditedFiles` on the tool result), when it counted any. */
+  credited?: string[]
 }
 
 type SubagentUsage = { files: number; turns: number; usage: Usage; costUsd: number; models: string[] }
@@ -730,25 +734,42 @@ function fillThinking(
   return spread ? 'phase-spread' : 'none'
 }
 
-function collectResults(events: Json[], results: Map<string, { text: string; isError: boolean }>): void {
+type ToolResult = { text: string; isError: boolean; credited?: string[] }
+
+/** `creditedFiles` of a structured Bash result (BashTool/bashSchemas.ts), absent when the credit counted nothing. */
+function creditedFilesOf(result: unknown): string[] | undefined {
+  if (!isRecord(result) || !Array.isArray(result.creditedFiles)) return undefined
+  const paths = result.creditedFiles.filter((p): p is string => typeof p === 'string')
+  return paths.length ? paths : undefined
+}
+
+function collectResults(events: Json[], results: Map<string, ToolResult>): void {
   for (const e of events) {
     if (e.type !== 'user' || !isRecord(e.message)) continue
-    for (const block of blocksOf(e.message.content)) {
-      if (block.type !== 'tool_result' || typeof block.tool_use_id !== 'string') continue
-      if (results.has(block.tool_use_id)) continue
-      results.set(block.tool_use_id, { text: contentText(block.content), isError: block.is_error === true })
+    const blocks = blocksOf(e.message.content).filter(b => b.type === 'tool_result' && typeof b.tool_use_id === 'string')
+    // Both CLIs write one tool result per entry, with its structured result
+    // beside it: the transcript's `toolUseResult`, the stream's `tool_use_result`.
+    const credited = blocks.length === 1 ? creditedFilesOf(e.toolUseResult ?? e.tool_use_result) : undefined
+    for (const block of blocks) {
+      const id = block.tool_use_id as string
+      const seen = results.get(id)
+      if (seen) {
+        if (credited) seen.credited ??= credited
+        continue
+      }
+      results.set(id, { text: contentText(block.content), isError: block.is_error === true, ...(credited ? { credited } : {}) })
     }
   }
 }
 
-function analyzeSession(
+export function analyzeSession(
   streams: Json[][],
   phase2Ids: Set<string>,
   transcript: Json[] | null,
 ): { turns: Turn[]; calls: Call[]; source: string } {
   const rows = new Map<string, Row>()
   const order: string[] = []
-  const results = new Map<string, { text: string; isError: boolean }>()
+  const results = new Map<string, ToolResult>()
   // The transcript first: it is the one source that holds the whole session in
   // order, both processes included. The streams then fill in what it lacks.
   if (transcript) {
@@ -768,7 +789,7 @@ function analyzeSession(
     const phase: Phase = boundary >= 0 && i >= boundary ? 2 : 1
     let resultChars = 0
     for (const [useId, use] of row.toolUses) {
-      const result = results.get(useId) ?? { text: '', isError: false }
+      const result: ToolResult = results.get(useId) ?? { text: '', isError: false }
       resultChars += result.text.length
       calls.push({
         turn: i + 1,
@@ -780,6 +801,7 @@ function analyzeSession(
         refused: HARNESS_MESSAGE_RE.test(result.text),
         ...(result.isError && SERVED_REFUSAL_RE.test(result.text) ? { served: true } : {}),
         ...(use.name === 'Bash' ? { text: result.text } : {}),
+        ...(use.name === 'Bash' && result.credited ? { credited: result.credited } : {}),
       })
     }
     const usage: Usage = { in: row.in, out: row.out, cR: row.cR, cW: row.cW, cW5m: row.cW5m, cW1h: row.cW1h }
@@ -842,7 +864,8 @@ function subagentUsage(sessionDir: string, archiveDir: string): SubagentUsage {
 // Bash: markers, and the replay corpus
 // ---------------------------------------------------------------------------
 
-const BASH_MARKER_OPEN_RE = /^<bash-output-(filtered|rewritten)\b([^>]*)>/
+/** `read` wraps a pure file read the pass-through left whole (CLAUDIN_BASH_FILE_READ_PASSTHROUGH). */
+const BASH_MARKER_OPEN_RE = /^<bash-output-(filtered|rewritten|read)\b([^>]*)>/
 const LINES_ATTR_RE = /\blines="(\d+)\/(\d+)"/
 const REDUCTION_ATTR_RE = /\breduction="(\d+)%"/
 const UPSTREAM_WRAPPER_RE = /^<(persisted-output|tool-result-summary)[\s>]/
@@ -851,20 +874,69 @@ const EXIT_CODE_RE = /^Exit code (\d+)\n/
 /** Same set `extract-bash-corpus.ts` drops: text the command never produced. */
 const HARNESS_MESSAGE_RE =
   /^(?:<tool_use_error>|Permission (?:for this action|to use \w+) has been denied|Plan mode is active|\[Request interrupted)/
+/**
+ * The line after a pure read the pass-through cut back to the whole files
+ * that fit, naming the rest (creditShownFiles.ts `renderNotShownNote`).
+ */
+const NOT_SHOWN_RE =
+  /^Not shown — over the \d+k a Bash result shows whole: (.*?)(?: and more)?\. cat them in another call, or Read them\.$/m
+/**
+ * The read credit's line (CLAUDIN_BASH_READ_CREDIT, creditShownFiles.ts
+ * `renderCreditNote`), and the files it names as not counted.
+ */
+const COUNT_AS_READ_RE =
+  /^\(\d+ files? printed whole — (?:they count|it counts) as read: [^)\n]*\)(?: Not counted: (.*)\.)?$/m
+const NOT_COUNTED_ITEM_RE = /(.+?) \((?:cut|changed since|one line|outside the project)\)(?:, |$)/g
+/** The two lines where a result ends with them — they follow stdout (shellToolResultMappers.ts) — last one first. */
+const READ_NOTE_TAILS: readonly RegExp[] = [
+  /\n\(\d+ files? printed whole — [^\n]*$/,
+  /\nNot shown — over the \d+k a Bash result shows whole: [^\n]*$/,
+]
 
 type BashInfo = {
   command: string
   chars: number
   isError: boolean
   refused: boolean
-  marker: 'filtered' | 'rewritten' | 'tool-result-summary' | 'persisted-output' | null
+  marker: 'filtered' | 'rewritten' | 'read' | 'tool-result-summary' | 'persisted-output' | null
   lines: [number, number] | null
   reductionPct: number | null
   /** Pre-filter size recovered from `reduction=`, when the marker carries one. */
   rawChars: number
+  /** The pass-through named files it left out (`Not shown — …`). */
+  notShown: boolean
+  /** The result ends with the read credit's line (`(N files printed whole — …)`). */
+  countsAsRead: boolean
 }
 
-function bashInfo(call: Call): BashInfo {
+/** A Bash result without the read credit's lines: what the command and the filter produced. */
+function stripReadNotes(text: string): string {
+  return READ_NOTE_TAILS.reduce((out, tail) => out.replace(tail, ''), text)
+}
+
+/**
+ * A `cat` where a command starts: first, or after `;`, `&`, `&&`, `||`, a
+ * newline, `(`, `{`, `do`, `then` or `else`. Not after a lone `|`, where it
+ * is a pipe's sink rather than a print of files.
+ */
+const CAT_COMMAND_RE = /(?:(?:^|[;&({\n]|\|\|)\s*|\b(?:do|then|else)\s+)cat(?=\s|$)/
+
+/**
+ * A successful Bash call with a `cat` in it that did not come back in
+ * `<bash-output-read>`: with the pass-through on, every pure read that
+ * succeeds does, so this is a command the pure-read grammar refused
+ * (fileReadShape.ts) — the misses a grammar change goes after. It cannot run
+ * the grammar itself (its import chain reaches a module only the build
+ * stubs), so it reads the verdict off the result, and means that only in an
+ * arm with CLAUDIN_BASH_FILE_READ_PASSTHROUGH on; elsewhere nothing wears the
+ * wrapper and it counts every such call. A pure read over 28k with a listing,
+ * a `head` or a `tail` keeps the cap, and counts here too.
+ */
+export function isCatReadMiss(info: BashInfo): boolean {
+  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)
+}
+
+export function bashInfo(call: Call): BashInfo {
   const text = call.text ?? ''
   const command = typeof call.input.command === 'string' ? call.input.command.trim() : ''
   const body = text.replace(EXIT_CODE_RE, '')
@@ -878,13 +950,15 @@ function bashInfo(call: Call): BashInfo {
     chars: text.length,
     isError: call.isError,
     refused: HARNESS_MESSAGE_RE.test(text),
-    marker: open ? (open[1] as 'filtered' | 'rewritten') : upstream ? (upstream[1] as BashInfo['marker']) : null,
+    marker: open ? (open[1] as 'filtered' | 'rewritten' | 'read') : upstream ? (upstream[1] as BashInfo['marker']) : null,
     lines: lines ? [Number(lines[1]), Number(lines[2])] : null,
     reductionPct,
     rawChars:
       reductionPct !== null && reductionPct > 0 && reductionPct < 100
         ? Math.round(text.length / (1 - reductionPct / 100))
         : text.length,
+    notShown: NOT_SHOWN_RE.test(text),
+    countsAsRead: COUNT_AS_READ_RE.test(text),
   }
 }
 
@@ -897,7 +971,9 @@ function writeReplayCorpus(configDir: string, calls: Call[]): number {
       const raw = c.text ?? ''
       if (!command || raw === '' || HARNESS_MESSAGE_RE.test(raw)) return []
       const exit = EXIT_CODE_RE.exec(raw)
-      const text = exit ? raw.slice(exit[0].length) : raw
+      // The read credit's lines are the harness's, not the command's output,
+      // and a marker the replay parses has to close the text.
+      const text = stripReadNotes(exit ? raw.slice(exit[0].length) : raw)
       return [
         {
           command,
@@ -933,6 +1009,212 @@ function runBashReplay(configDir: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Bash: which files a call printed whole
+// ---------------------------------------------------------------------------
+
+/** One word a `cat` reads: a literal path, or a glob the shell expands. */
+type ReadWord = { text: string; glob: boolean }
+type Loop = { variable: string; words: ReadWord[] }
+
+const SUBSTITUTION_RE = /\$\(|`/
+const HEREDOC_RE = /<</
+const LINE_CONTINUATION_RE = /\\\n/g
+/** A newline after an operator carries the command on; any other one ends it. */
+const OPERATOR_NEWLINE_RE = /([|&;(])[ \t]*\n/g
+const NEWLINE_RE = /\n/g
+const LOOP_VARIABLE_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
+/** A word the shell would rewrite before `cat` saw it: a variable, a tilde, a brace expansion. */
+const EXPANDED_WORD_RE = /[$`{}]|^~/
+const CAT_FLAGS: ReadonlySet<string> = new Set(['-n', '--number'])
+const SEGMENT_OPS: ReadonlySet<string> = new Set(['&&', '||', ';', '|'])
+const LOOP_KEYWORDS: ReadonlySet<string> = new Set(['for', 'while', 'until', 'select'])
+/** Compound commands the walk does not follow: a `cat` inside one may be piped at its close. */
+const UNFOLLOWED_KEYWORDS: ReadonlySet<string> = new Set(['if', 'then', 'elif', 'else', 'fi', 'case', 'esac', '{', '}'])
+const GLOB_SEGMENT_RE = /[*?[]/
+
+/**
+ * What the `cat` segments of a command print as it is, in order: a port of
+ * `catReadsOf` (src/tools/shared/outputFilter/Bash/fileReadShape.ts), the
+ * files the read credit checks a result for. That module's import chain
+ * reaches one only the build stubs, so the rules are copied rather than
+ * imported: `cat [-n]` with literal paths, globs or a `for` loop's variable,
+ * not piped onward, nor is the `done` of a loop it sits in. A command with a
+ * substitution, a heredoc, a subshell or group, `if`/`case`, or an output
+ * redirect other than `2>/dev/null` — `2>&1` included, as there — names nothing.
+ */
+export function catReadsOf(command: string): ReadWord[] {
+  if (SUBSTITUTION_RE.test(command) || HEREDOC_RE.test(command)) return []
+  const flat = command.replace(LINE_CONTINUATION_RE, ' ').replace(OPERATOR_NEWLINE_RE, '$1 ').replace(NEWLINE_RE, ';')
+  let tokens: unknown[]
+  try {
+    tokens = parseShell(flat, name => `$${name}`)
+  } catch {
+    return [] // what shell-quote cannot parse names no file
+  }
+  const segments: { words: ReadWord[] | null; joinedBy: string | null }[] = []
+  let words: ReadWord[] | null = []
+  let joinedBy: string | null = null
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    if (typeof token === 'string') {
+      words?.push({ text: token, glob: false })
+      continue
+    }
+    if (!isRecord(token)) return []
+    if (typeof token.comment === 'string') {
+      words = null
+      continue
+    }
+    if (token.op === 'glob') {
+      words?.push({ text: String(token.pattern), glob: true })
+      continue
+    }
+    if (typeof token.op === 'string' && SEGMENT_OPS.has(token.op)) {
+      if (words === null || words.length > 0) segments.push({ words, joinedBy })
+      words = []
+      joinedBy = token.op
+      continue
+    }
+    // `2>/dev/null` leaves stdout alone. Any other redirect, a subshell or a
+    // background job sends a `cat`'s output where this walk cannot follow it.
+    if ((token.op === '>' || token.op === '>>') && words?.at(-1)?.text === '2' && tokens[i + 1] === '/dev/null') {
+      words.pop()
+      i++
+      continue
+    }
+    return []
+  }
+  if (words === null || words.length > 0) segments.push({ words, joinedBy })
+
+  const pipedOnward = (index: number) => segments[index + 1]?.joinedBy === '|'
+  const reads: ReadWord[] = []
+  /** The loops open at a segment, innermost last, each holding the reads inside it until its `done`. */
+  const open: { loop: Loop | null; reads: ReadWord[] }[] = []
+  for (const [index, segment] of segments.entries()) {
+    let segmentWords = segment.words
+    if (!segmentWords?.length) continue
+    if (segmentWords[0]!.text === 'do') segmentWords = segmentWords.slice(1)
+    const [head, ...args] = segmentWords
+    if (!head) continue
+    if (UNFOLLOWED_KEYWORDS.has(head.text)) return []
+    if (LOOP_KEYWORDS.has(head.text)) {
+      open.push({ loop: head.text === 'for' ? loopHeaderOf(args) : null, reads: [] })
+      continue
+    }
+    if (head.text === 'done') {
+      const closed = open.pop()
+      if (!closed) return []
+      if (!pipedOnward(index)) (open.at(-1)?.reads ?? reads).push(...closed.reads)
+      continue
+    }
+    if (head.text !== 'cat' || pipedOnward(index)) continue
+    const catReads = catArgsOf(args, open.flatMap(({ loop }) => (loop ? [loop] : [])))
+    if (catReads) (open.at(-1)?.reads ?? reads).push(...catReads)
+  }
+  return reads
+}
+
+/** `V in w1 w2 …` after a `for`. */
+function loopHeaderOf(args: readonly ReadWord[]): Loop | null {
+  const [variable, keyword, ...words] = args
+  if (!variable || !LOOP_VARIABLE_RE.test(variable.text) || keyword?.text !== 'in') return null
+  if (words.some(word => EXPANDED_WORD_RE.test(word.text))) return null
+  return { variable: variable.text, words }
+}
+
+/** What one `cat` reads, or null when it is not a plain print of files. */
+function catArgsOf(args: readonly ReadWord[], loops: readonly Loop[]): ReadWord[] | null {
+  const reads: ReadWord[] = []
+  let afterDoubleDash = false
+  for (const arg of args) {
+    if (!afterDoubleDash && arg.text === '--') {
+      afterDoubleDash = true
+      continue
+    }
+    if (!afterDoubleDash && arg.text.startsWith('-')) {
+      // `-` alone is stdin, and every other flag changes what is printed.
+      if (!CAT_FLAGS.has(arg.text)) return null
+      continue
+    }
+    const loop = loops.findLast(open => arg.text === `$${open.variable}`)
+    if (loop) {
+      reads.push(...loop.words)
+      continue
+    }
+    if (EXPANDED_WORD_RE.test(arg.text)) return null
+    reads.push(arg)
+  }
+  return reads.length ? reads : null
+}
+
+/**
+ * A glob expanded as the shell expands it — a segment at a time, `*` never
+ * matching a leading dot — against the workspace as it is now, after the
+ * session: a file the session deleted is missed, one it created is not.
+ */
+function expandGlob(pattern: string, cwd: string): string[] {
+  let bases = [isAbsolute(pattern) ? '/' : cwd]
+  for (const segment of pattern.split('/')) {
+    if (segment === '' || segment === '.') continue
+    if (!GLOB_SEGMENT_RE.test(segment)) {
+      bases = bases.map(base => join(base, segment))
+      continue
+    }
+    const isMatch = picomatch(segment)
+    bases = bases.flatMap(base => entriesOf(base).filter(name => isMatch(name)).map(name => join(base, name)))
+  }
+  return bases
+}
+
+/** A directory's entries, sorted; none when it is not one, as a glob over a file matches nothing. */
+function entriesOf(dir: string): string[] {
+  try {
+    return readdirSync(dir).sort()
+  } catch {
+    return []
+  }
+}
+
+/**
+ * The files one Bash call printed whole, absolute: the proxy behind the
+ * "Reads of files an uncut Bash cat printed" row, since a result does not say
+ * which files it held. A file counts when
+ *  - a `cat` segment of the command names it (`catReadsOf`), inside the workspace;
+ *  - the call succeeded, and its result reached the model uncut: no floor cap
+ *    (`lines="k/n"` with k < n), no rewrite, no summary, no persisted preview,
+ *    no hard cap — a `<bash-output-read>` wrapper is whole;
+ *  - the result does not name it as not shown, nor as not counted.
+ * The read credit's own list (`creditedFiles`) joins in, which makes the
+ * proxy exact on a run with the credit on. Blind spot: the file's bytes at
+ * the time — a one-line file, which the credit refuses, still counts here.
+ */
+export function shownWholeFiles(call: Call, ws: string): string[] {
+  const credited = (call.credited ?? []).map(p => resolve(ws, p))
+  if (call.refused || call.isError) return credited
+  const text = call.text ?? ''
+  const body = stripReadNotes(text)
+  if (UPSTREAM_WRAPPER_RE.test(body) || HARD_CAP_RE.test(body)) return credited
+  const marker = BASH_MARKER_OPEN_RE.exec(body)
+  if (marker && marker[1] !== 'read') {
+    const lines = LINES_ATTR_RE.exec(marker[2]!)
+    if (marker[1] === 'rewritten' || !lines || lines[1] !== lines[2]) return credited
+  }
+  const notCounted = COUNT_AS_READ_RE.exec(text)?.[1] ?? ''
+  const leftOut = new Set(
+    [...(NOT_SHOWN_RE.exec(text)?.[1]?.split(', ') ?? []), ...[...notCounted.matchAll(NOT_COUNTED_ITEM_RE)].map(m => m[1]!)].map(
+      name => resolve(ws, name),
+    ),
+  )
+  const named = catReadsOf(commandOf(call)).flatMap(word => (word.glob ? expandGlob(word.text, ws) : [resolve(ws, word.text)]))
+  const inside = named.filter(p => p.startsWith(ws + sep) && !leftOut.has(p))
+  return [...new Set([...inside, ...credited])]
+}
+
+function commandOf(call: Call): string {
+  return typeof call.input.command === 'string' ? call.input.command : ''
+}
+
+// ---------------------------------------------------------------------------
 // Metrics
 // ---------------------------------------------------------------------------
 
@@ -942,6 +1224,8 @@ const GIT_CMD_RE = /(?:^|&&|;|\|)\s*git\s/
 type Metrics = {
   turns: number
   turnsP1: number
+  /** Phase-1 API calls before the first edit: see `turnsBeforeFirstEdit`. */
+  turnsToFirstEdit: number
   turnsP2: number
   toolCalls: number
   firstCtx: number
@@ -978,16 +1262,37 @@ type Metrics = {
   resultChars: number
   bashCalls: number
   bashChars: number
+  /** Results wrapped `<bash-output-read>`, with a `Not shown` line, ending with the read credit's line. */
+  bashReadMarkers: number
+  bashNotShown: number
+  bashCountAsRead: number
+  /** Successful Bash cats not in `<bash-output-read>`: see `isCatReadMiss`. */
+  bashCatMisses: number
   testRuns: number
   gitOps: number
   reads: number
   distinctReads: number
+  /** Read calls with `file_paths`, files per Read call, Read calls whose `symbol` is a list (CLAUDIN_READ_MULTI). */
+  batchReads: number
+  filesPerRead: number
+  symbolListReads: number
+  /** Files Read after an earlier Bash call printed them whole: see `readsOfShownFiles`. */
+  readsOfShown: number
+  /** Files Read under `/tool-results/`: a persisted result read back. */
+  dumpReads: number
   edits: number
+  /** See `editsOnNeverRead`. */
+  editsNeverRead: number
   errors: number
   refusals: number
   servedRefusals: number
   resubmits: number
   resubmitErrors: number
+  /** Calls into the workspace's `.claudin/`, and those into memory/, rules/ and the rest of it (a call can be in several). */
+  claudinCalls: number
+  claudinMemory: number
+  claudinRules: number
+  claudinOther: number
   wallSec: number
   hiddenPass: number
   hiddenTotal: number
@@ -1078,6 +1383,191 @@ function costSplit(r: RunResult): CostSplit {
   return s
 }
 
+// ---------------------------------------------------------------------------
+// Mechanism rows: whether a Bash `cat` stood in for a Read
+// (CLAUDIN_BASH_FILE_READ_PASSTHROUGH + CLAUDIN_BASH_READ_CREDIT), whether the
+// batch Read was used (CLAUDIN_READ_MULTI), and the calls that went into the
+// project's `.claudin/` rather than the task.
+// ---------------------------------------------------------------------------
+
+/** The tools the read-before-edit gate guards, besides the patch tool. */
+const FILE_EDIT_TOOLS: ReadonlySet<string> = new Set(['Edit', 'MultiEdit', 'Write'])
+/** Every path a patch names, and how: `Update File`/`Delete File` change one in place, `Add File`/`Move to` create one. */
+const PATCH_PATH_RE = /^\*\*\* (Add File|Update File|Delete File|Move to): (.+?)\s*$/gm
+const PATCH_IN_PLACE: ReadonlySet<string> = new Set(['Update File', 'Delete File'])
+/**
+ * A Bash command that writes a project file, which is how Claude Code edits
+ * here: a python3 heredoc that open()s a file for writing, `sed -i`, `cat >`
+ * into a relative path. A redirect into /tmp or a variable (the scratchpad) is
+ * not an edit of the project.
+ */
+const BASH_EDIT_RE =
+  /\bsed\s+(?:-[a-zA-Z]+\s+)*(?:-[a-zA-Z]*i|--in-place)|\bperl\s+-[a-zA-Z]*i|\bopen\([^)]*,\s*['"](?:[wax]|r\+)|\.write_text\(|\bwriteFileSync\(|\bBun\.write\(|\bcat\s*>>?\s*['"]?(?![/$~&])[\w.-]/
+/** `.claudin` as a path segment, with memory/ or rules/ when one comes right under it. */
+const CLAUDIN_DIR_RE = /(?<![\w.-])\.claudin(?![\w.-])(?:\/(memory|rules)(?![\w.-]))?/g
+/** Where the path holding a `.claudin` starts, reading back from it. */
+const PATH_BOUNDARY_RE = /[\s'"`=;&|<>(){},]/
+/** The start of a path that is not the workspace's: home (`~/.claudin/projects/…/tool-results`), a variable, the parent. */
+const FOREIGN_PREFIX_RE = /^(?:~|\$|\.\.\/)/
+
+/** The files one Read call names: `file_paths` for a batch, else `file_path` (Codex strict fills the other with null or ""). */
+export function readTargetsOf(input: Json): string[] {
+  const batch = Array.isArray(input.file_paths)
+    ? input.file_paths.filter((p): p is string => typeof p === 'string' && p !== '')
+    : []
+  if (batch.length) return batch
+  return typeof input.file_path === 'string' && input.file_path !== '' ? [input.file_path] : []
+}
+
+/** What an edit call writes, absolute: the files it changes in place, and those it creates. */
+type EditTargets = { changed: string[]; created: string[] }
+
+/**
+ * What each call writes, or null for a call that is not an edit: Edit,
+ * MultiEdit and Write their `file_path`, a patch its file headers, and
+ * `*** Resubmit` those of the patch before it.
+ */
+function editTargets(calls: readonly Call[], ws: string): (EditTargets | null)[] {
+  let lastPatch: EditTargets = { changed: [], created: [] }
+  return calls.map(c => {
+    if (PATCH_TOOLS.has(c.name)) {
+      if (!isResubmit(c)) {
+        lastPatch = { changed: [], created: [] }
+        for (const m of String(c.input.patchText ?? '').matchAll(PATCH_PATH_RE)) {
+          ;(PATCH_IN_PLACE.has(m[1]!) ? lastPatch.changed : lastPatch.created).push(resolve(ws, m[2]!))
+        }
+      }
+      return lastPatch
+    }
+    return FILE_EDIT_TOOLS.has(c.name) && typeof c.input.file_path === 'string'
+      ? { changed: [resolve(ws, c.input.file_path)], created: [] }
+      : null
+  })
+}
+
+let pristineCache: ReadonlySet<string> | null = null
+
+/** The pristine project's files, relative to a workspace: the ones a session edits without having created them. */
+function pristineFiles(): ReadonlySet<string> {
+  if (pristineCache) return pristineCache
+  const files = new Set<string>()
+  const walk = (dir: string, rel: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(join(dir, entry.name), join(rel, entry.name))
+      else files.add(join(rel, entry.name.endsWith(TPL_SUFFIX) ? entry.name.slice(0, -TPL_SUFFIX.length) : entry.name))
+    }
+  }
+  walk(join(FIXTURE, 'project'), '')
+  pristineCache = files
+  return files
+}
+
+/**
+ * Edits the read-before-edit gate let through on a file no Read call had read:
+ * Edit, MultiEdit and Write calls, and each Update/Delete target of a patch,
+ * neither refused nor failed, on a file of the pristine project — one the
+ * session created needs no Read. A refusal that served the lines it refused
+ * over (`now count as read`) makes its targets read. With the read credit on,
+ * this is a `cat` standing in for a Read; Claude Code treats any `cat` as one.
+ */
+export function editsOnNeverRead(calls: readonly Call[], ws: string): number {
+  const pristine = pristineFiles()
+  const targets = editTargets(calls, ws)
+  const read = new Set<string>()
+  let count = 0
+  calls.forEach((c, i) => {
+    if (c.name === 'Read') for (const p of readTargetsOf(c.input)) read.add(resolve(ws, p))
+    const edited = targets[i]?.changed
+    if (!edited) return
+    if (c.served) for (const p of edited) read.add(p)
+    else if (!c.refused && !c.isError) count += edited.filter(p => !read.has(p) && pristine.has(relative(ws, p))).length
+  })
+  return count
+}
+
+/**
+ * Files Read that a Bash call had already printed whole (`shownWholeFiles`,
+ * the proxy) in an earlier API call — one call's tool uses go out together,
+ * so a Read beside the `cat` had not seen it — and that nothing edited since:
+ * an accepted edit, or a Bash write naming the file, makes a Read of the new
+ * content a fresh one. Creating a file clears it too, since a glob expanded
+ * after the session names files created after the `cat`. Each file of a batch
+ * Read counts.
+ */
+export function readsOfShownFiles(calls: readonly Call[], ws: string): number {
+  const targets = editTargets(calls, ws)
+  const shown = new Set<string>()
+  let count = 0
+  for (let start = 0; start < calls.length; ) {
+    let end = start
+    while (end < calls.length && calls[end]!.turn === calls[start]!.turn) end++
+    const turn = calls.slice(start, end)
+    for (const c of turn) {
+      if (c.name === 'Read') count += readTargetsOf(c.input).filter(p => shown.has(resolve(ws, p))).length
+    }
+    turn.forEach((c, k) => {
+      const edited = targets[start + k]
+      if (edited && !c.refused && !c.isError) for (const p of [...edited.changed, ...edited.created]) shown.delete(p)
+      const command = commandOf(c)
+      if (c.name === 'Bash' && BASH_EDIT_RE.test(command)) {
+        for (const p of shown) if (command.includes(relative(ws, p))) shown.delete(p)
+      }
+    })
+    for (const c of turn) if (c.name === 'Bash') for (const p of shownWholeFiles(c, ws)) shown.add(p)
+    start = end
+  }
+  return count
+}
+
+/**
+ * Phase-1 API calls spent before the first edit: an edit tool call, refused
+ * or not, or a Bash command that writes a project file (`BASH_EDIT_RE`) —
+ * Claude Code edits through python3 and `sed -i`. All of phase 1 when it
+ * never edits.
+ */
+export function turnsBeforeFirstEdit(calls: readonly Call[], phase1Turns: number): number {
+  const first = calls.find(
+    c => c.phase === 1 && (EDIT_TOOLS.has(c.name) || (c.name === 'Bash' && BASH_EDIT_RE.test(commandOf(c)))),
+  )
+  return first ? first.turn - 1 : phase1Turns
+}
+
+type ClaudinPart = 'memory' | 'rules' | 'other'
+
+/** The paths a call names: a patch's file headers, an edit tool's target, every string of any other input. */
+function pathStringsOf(c: Call): string[] {
+  if (PATCH_TOOLS.has(c.name)) return [...String(c.input.patchText ?? '').matchAll(PATCH_PATH_RE)].map(m => m[2]!)
+  if (EDIT_TOOLS.has(c.name)) return stringsOf([c.input.file_path, c.input.notebook_path])
+  return stringsOf(c.input)
+}
+
+function stringsOf(value: unknown): string[] {
+  if (typeof value === 'string') return [value]
+  if (Array.isArray(value)) return value.flatMap(stringsOf)
+  return isRecord(value) ? Object.values(value).flatMap(stringsOf) : []
+}
+
+/**
+ * Which parts of the workspace's `.claudin/` a call reaches into: memory/,
+ * rules/, or the rest (`ls .claudin`, a `.claudin/**` glob). A path under the
+ * home config dir — `~/.claudin/projects/…/tool-results`, where a persisted
+ * result is read back — is not the project's.
+ */
+export function claudinPartsOf(c: Call, ws: string): Set<ClaudinPart> {
+  const parts = new Set<ClaudinPart>()
+  for (const s of pathStringsOf(c)) {
+    for (const m of s.matchAll(CLAUDIN_DIR_RE)) {
+      const at = m.index ?? 0
+      let start = at
+      while (start > 0 && !PATH_BOUNDARY_RE.test(s[start - 1]!)) start--
+      const prefix = s.slice(start, at)
+      if (isAbsolute(prefix) ? !prefix.startsWith(ws + sep) : FOREIGN_PREFIX_RE.test(prefix)) continue
+      parts.add((m[1] as ClaudinPart | undefined) ?? 'other')
+    }
+  }
+  return parts
+}
+
 function metricsOf(r: RunResult): Metrics {
   const main = zeroUsage()
   let estCost = 0
@@ -1099,13 +1589,16 @@ function metricsOf(r: RunResult): Metrics {
   const beforeResume = p1.at(-1)
   const resumePrefix = beforeResume ? beforeResume.cR + beforeResume.cW : 0
   const bash = r.calls.filter(c => c.name === 'Bash').map(bashInfo)
-  const readPaths = r.calls.filter(c => c.name === 'Read').map(c => String(c.input.file_path ?? ''))
+  const readCalls = r.calls.filter(c => c.name === 'Read')
+  const readTargets = readCalls.flatMap(c => readTargetsOf(c.input))
+  const claudin = r.calls.map(c => claudinPartsOf(c, r.workspace))
   const lastGrade = r.grades.at(-1)
   const denominator = main.cR + main.cW + main.in
   const split = costSplit(r)
   return {
     turns: r.turns.length,
     turnsP1: p1.length,
+    turnsToFirstEdit: turnsBeforeFirstEdit(r.calls, p1.length),
     turnsP2: p2.length,
     toolCalls: r.calls.length,
     firstCtx: ctxs[0] ?? 0,
@@ -1144,19 +1637,33 @@ function metricsOf(r: RunResult): Metrics {
     resultChars: r.calls.reduce((a, c) => a + c.chars, 0),
     bashCalls: bash.length,
     bashChars: bash.reduce((a, b) => a + b.chars, 0),
+    bashReadMarkers: bash.filter(b => b.marker === 'read').length,
+    bashNotShown: bash.filter(b => b.notShown).length,
+    bashCountAsRead: bash.filter(b => b.countsAsRead).length,
+    bashCatMisses: bash.filter(isCatReadMiss).length,
     testRuns: r.calls.filter(
       c => c.name === 'RunTests' || (c.name === 'Bash' && TEST_CMD_RE.test(String(c.input.command ?? ''))),
     ).length,
     gitOps: r.calls.filter(c => c.name === 'Git' || (c.name === 'Bash' && GIT_CMD_RE.test(String(c.input.command ?? ''))))
       .length,
-    reads: readPaths.length,
-    distinctReads: new Set(readPaths).size,
+    reads: readCalls.length,
+    distinctReads: new Set(readTargets).size,
+    batchReads: readCalls.filter(c => Array.isArray(c.input.file_paths) && c.input.file_paths.length > 0).length,
+    filesPerRead: readCalls.length ? readTargets.length / readCalls.length : 0,
+    symbolListReads: readCalls.filter(c => Array.isArray(c.input.symbol) && c.input.symbol.length > 0).length,
+    readsOfShown: readsOfShownFiles(r.calls, r.workspace),
+    dumpReads: readTargets.filter(p => p.includes('/tool-results/')).length,
     edits: r.calls.filter(c => EDIT_TOOLS.has(c.name)).length,
+    editsNeverRead: editsOnNeverRead(r.calls, r.workspace),
     errors: r.calls.filter(c => c.isError && !c.refused).length,
     refusals: r.calls.filter(c => c.refused).length,
     servedRefusals: r.calls.filter(c => EDIT_TOOLS.has(c.name) && c.served).length,
     resubmits: r.calls.filter(isResubmit).length,
     resubmitErrors: r.calls.filter(c => isResubmit(c) && c.isError).length,
+    claudinCalls: claudin.filter(parts => parts.size > 0).length,
+    claudinMemory: claudin.filter(parts => parts.has('memory')).length,
+    claudinRules: claudin.filter(parts => parts.has('rules')).length,
+    claudinOther: claudin.filter(parts => parts.has('other')).length,
     wallSec: r.phases.reduce((a, p) => a + p.wallMs, 0) / 1000,
     hiddenPass: lastGrade ? lastGrade.hidden.reduce((a, h) => a + h.pass, 0) : 0,
     hiddenTotal: lastGrade ? lastGrade.hidden.reduce((a, h) => a + h.pass + h.fail, 0) : 0,
@@ -1175,6 +1682,7 @@ function fmtK(n: number): string {
 }
 
 const fmtInt = (n: number): string => String(Math.round(n))
+const fmtDec = (n: number): string => n.toFixed(1)
 const fmtUsd = (n: number): string => `$${n.toFixed(3)}`
 const fmtPct = (n: number): string => `${n.toFixed(1)}%`
 
@@ -1224,6 +1732,7 @@ type MetricRow = [label: string, key: keyof Metrics, fmt: (n: number) => string]
 const METRIC_ROWS: MetricRow[] = [
   ['turns (main thread)', 'turns', fmtInt],
   ['  phase 1', 'turnsP1', fmtInt],
+  ['    of which before the first edit', 'turnsToFirstEdit', fmtInt],
   ['  phase 2 (resumed)', 'turnsP2', fmtInt],
   ['tool calls', 'toolCalls', fmtInt],
   ['first-turn context', 'firstCtx', fmtK],
@@ -1260,16 +1769,30 @@ const METRIC_ROWS: MetricRow[] = [
   ['tool result chars', 'resultChars', fmtK],
   ['Bash calls', 'bashCalls', fmtInt],
   ['Bash result chars', 'bashChars', fmtK],
+  ['Bash results in `<bash-output-read>`', 'bashReadMarkers', fmtInt],
+  ['  with a `Not shown` line', 'bashNotShown', fmtInt],
+  ['Bash results with a count-as-read line', 'bashCountAsRead', fmtInt],
+  ['Bash cats the pure-read grammar refused (pass-through arms)', 'bashCatMisses', fmtInt],
   ['test runs (Bash or RunTests)', 'testRuns', fmtInt],
   ['git ops (Bash or Git)', 'gitOps', fmtInt],
   ['Read calls', 'reads', fmtInt],
   ['  distinct files read', 'distinctReads', fmtInt],
+  ['  batch Reads (file_paths)', 'batchReads', fmtInt],
+  ['  files per Read call (mean)', 'filesPerRead', fmtDec],
+  ['  with a symbol list', 'symbolListReads', fmtInt],
+  ['  of files an uncut Bash cat printed (proxy)', 'readsOfShown', fmtInt],
+  ['  of a persisted dump (/tool-results/)', 'dumpReads', fmtInt],
   ['edit calls', 'edits', fmtInt],
+  ['  accepted on a file never Read (per file)', 'editsNeverRead', fmtInt],
   ['tool errors (incl. failing tests)', 'errors', fmtInt],
   ['harness refusals (redirects, gates)', 'refusals', fmtInt],
   ['  edits refused with the lines served', 'servedRefusals', fmtInt],
   ['patches resubmitted by reference', 'resubmits', fmtInt],
   ['  of which failed', 'resubmitErrors', fmtInt],
+  ['calls into the project .claudin/', 'claudinCalls', fmtInt],
+  ['  .claudin/memory', 'claudinMemory', fmtInt],
+  ['  .claudin/rules', 'claudinRules', fmtInt],
+  ['  the rest of .claudin/', 'claudinOther', fmtInt],
   ['wall time (s)', 'wallSec', fmtInt],
   ['hidden acceptance passed', 'hiddenPass', fmtInt],
 ]
@@ -1379,7 +1902,8 @@ function bashSection(runs: RunResult[], arm: Arm): string {
     `${infos.length} calls, ${infos.filter(i => i.refused).length} refused by the harness, ` +
       `${infos.filter(i => i.isError && !i.refused).length} failed, ${fmtK(infos.reduce((a, i) => a + i.chars, 0))} chars returned.`,
     `Markers: ${count('filtered')} filtered, ${count('rewritten')} rewritten, ${count('tool-result-summary')} summarized, ` +
-      `${count('persisted-output')} persisted, ${infos.filter(i => !i.marker && !i.refused).length} passed through untouched.`,
+      `${count('persisted-output')} persisted, ${count('read')} read whole, ` +
+      `${infos.filter(i => !i.marker && !i.refused).length} passed through untouched.`,
   ]
   if (filtered.length) {
     const raw = filtered.reduce((a, i) => a + i.rawChars, 0)

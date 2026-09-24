@@ -60,6 +60,15 @@ import {
 import { hasHookForEvent } from 'src/platform/lifecycleHooks/matching.js'
 import { execCommandHook } from 'src/platform/lifecycleHooks/runners.js'
 import { executeHooks } from 'src/platform/lifecycleHooks/executeHooks.js'
+import {
+  foldPermissionRequestUnits,
+  hookUnitsFor,
+  tagUnit,
+  UNIT_HOOK_CONCURRENCY,
+} from 'src/platform/lifecycleHooks/hookUnits.js'
+import { all } from 'src/shared/generators.js'
+import type { PermissionRequestResult } from 'src/shared/types/hooks.js'
+import type { HookUnits } from 'src/tools/Tool.js'
 import type {
   HookBlockingError,
   AggregatedHookResult,
@@ -280,6 +289,31 @@ export async function* executePermissionDeniedHooks<ToolInput>(
   const appState = toolUseContext.getAppState()
   const sessionId = toolUseContext.agentId ?? getSessionId()
   if (!hasHookForEvent('PermissionDenied', appState, sessionId)) {
+    return
+  }
+
+  // A call that stands for several (Tool.hookUnits): each unit's hooks hear
+  // of the denial with that unit's input, and a retry from any comes back.
+  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)
+  if (units) {
+    const runs = units.inputs.map(input =>
+      executeHooks({
+        hookInput: {
+          ...createBaseHookInput(permissionMode, undefined, toolUseContext),
+          hook_event_name: 'PermissionDenied',
+          tool_name: toolName,
+          tool_input: input,
+          tool_use_id: toolUseID,
+          reason,
+        },
+        toolUseID,
+        matchQuery: toolName,
+        signal,
+        timeoutMs,
+        toolUseContext,
+      }),
+    )
+    yield* all(runs, UNIT_HOOK_CONCURRENCY)
     return
   }
 
@@ -671,6 +705,25 @@ export async function* executePermissionRequestHooks<ToolInput>(
 ): AsyncGenerator<AggregatedHookResult> {
   logForDebugging(`executePermissionRequestHooks called for tool: ${toolName}`)
 
+  // A call that stands for several (Tool.hookUnits): the hooks decide for
+  // each unit, and the call gets the fold of their decisions.
+  const units = hookUnitsFor(toolUseContext.options?.tools, toolName, toolInput)
+  if (units) {
+    yield* executePermissionRequestHooksForUnits(
+      toolName,
+      toolUseID,
+      units,
+      toolUseContext,
+      permissionMode,
+      permissionSuggestions,
+      signal,
+      timeoutMs,
+      requestPrompt,
+      toolInputSummary,
+    )
+    return
+  }
+
   const hookInput: PermissionRequestHookInput = {
     ...createBaseHookInput(permissionMode, undefined, toolUseContext),
     hook_event_name: 'PermissionRequest',
@@ -691,7 +744,63 @@ export async function* executePermissionRequestHooks<ToolInput>(
   })
 }
 
-
+/**
+ * PermissionRequest for each unit of a call that stands for several. Every
+ * consumer acts on the first allow or deny a call's hooks give, so each
+ * unit's first one is kept and the call gets their fold
+ * (foldPermissionRequestUnits) as its one decision, last. Everything else
+ * the hooks yield passes through.
+ */
+async function* executePermissionRequestHooksForUnits(
+  toolName: string,
+  toolUseID: string,
+  units: HookUnits,
+  toolUseContext: ToolUseContext,
+  permissionMode: string | undefined,
+  permissionSuggestions: PermissionUpdate[] | undefined,
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+  requestPrompt:
+    | ((
+        sourceName: string,
+        toolInputSummary?: string | null,
+      ) => (request: PromptRequest) => Promise<PromptResponse>)
+    | undefined,
+  toolInputSummary: string | null | undefined,
+): AsyncGenerator<AggregatedHookResult> {
+  const decisions: (PermissionRequestResult | undefined)[] = []
+  const runs = units.inputs.map((input, unit) =>
+    tagUnit(
+      unit,
+      executeHooks({
+        hookInput: {
+          ...createBaseHookInput(permissionMode, undefined, toolUseContext),
+          hook_event_name: 'PermissionRequest',
+          tool_name: toolName,
+          tool_input: input,
+          permission_suggestions: permissionSuggestions,
+        },
+        toolUseID,
+        matchQuery: toolName,
+        signal,
+        timeoutMs,
+        toolUseContext,
+        requestPrompt,
+        toolInputSummary,
+      }),
+    ),
+  )
+  for await (const { unit, event } of all(runs, UNIT_HOOK_CONCURRENCY)) {
+    const decision = event.permissionRequestResult
+    if (decision?.behavior === 'allow' || decision?.behavior === 'deny') {
+      decisions[unit] ??= decision
+      continue
+    }
+    yield event
+  }
+  const folded = foldPermissionRequestUnits(units, decisions)
+  if (folded) yield { permissionRequestResult: folded }
+}
 
 
 /**

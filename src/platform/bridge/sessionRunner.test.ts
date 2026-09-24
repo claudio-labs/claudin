@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { buildChildEnv } from 'src/platform/bridge/sessionRunner.ts'
+import { buildChildEnv, toolSummary } from 'src/platform/bridge/sessionRunner.ts'
 
 // Finding #42-1: sessionRunner spreads the full parent process.env into the
 // child process environment, leaking API keys, DB credentials, proxy secrets.
@@ -82,4 +82,17 @@ test('buildChildEnv sets CCR v2 vars when useCcrV2 is true', () => {
   )
   expect(env.CLAUDE_CODE_USE_CCR_V2).toBe('1')
   expect(env.CLAUDE_CODE_WORKER_EPOCH).toBe('42')
+})
+
+// CLAUDIN_READ_MULTI: a batch Read names its files in file_paths, and has no
+// file_path — the activity line used to read a bare "Reading".
+test('toolSummary names a batch Read by its first file and how many more', () => {
+  expect(toolSummary('Read', { file_paths: ['/r/a.ts', '/r/b.ts', '/r/c.ts'] })).toBe(
+    'Reading /r/a.ts (+2 more)',
+  )
+  expect(toolSummary('Read', { file_path: '/r/a.ts' })).toBe('Reading /r/a.ts')
+  // As Codex stores a single Read under the batch-capable schema.
+  expect(toolSummary('Read', { file_path: '/r/a.ts', file_paths: null })).toBe(
+    'Reading /r/a.ts',
+  )
 })

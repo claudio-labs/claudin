@@ -289,6 +289,59 @@ describe('buildDossierFromMessages', () => {
     const dossier = await buildDossierFromMessages(messages, '#', [], 's')
     expect(dossier.entries).toHaveLength(0)
   })
+
+  // CLAUDIN_READ_MULTI: one Read of several files answers with one block per
+  // file — a `==> path <==` header, then that file's text — and notes last.
+  test('a batch Read is one entry per file it showed, each with its own text', async () => {
+    const a = join(testTempDir, 'batch-a.ts')
+    const b = join(testTempDir, 'batch-b.ts')
+    const notShown = join(testTempDir, 'batch-big.ts')
+    for (const p of [a, b, notShown]) writeFileSync(p, 'x\n')
+    const messages = [
+      makeEnterPlanModeMsg(),
+      makeAssistantMessage([
+        { id: 'rb', name: 'Read', input: { file_paths: [a, b, notShown] } },
+      ]),
+      makeUserToolResult(
+        'rb',
+        [
+          `==> ${a} <==\n     1→const a = 1`,
+          `==> ${b} <==\n     1→const b = 2\n     2→export {}`,
+          `Not shown — over the 25k tokens one Read returns: ${notShown}. Read them in another call.`,
+        ].join('\n\n'),
+      ),
+    ]
+    const dossier = await buildDossierFromMessages(messages, '#', [notShown], 's')
+    const reads = new Map(
+      dossier.entries
+        .filter((e): e is ReadEntry => e.source === 'Read')
+        .map(e => [e.path, e]),
+    )
+    expect(reads.get(a)?.content).toBe('     1→const a = 1')
+    expect(reads.get(b)?.content).toBe('     1→const b = 2\n     2→export {}')
+    // Named but never shown: the dossier says so rather than handing over
+    // the note as its content.
+    expect(reads.get(notShown)).toMatchObject({ content: '', isUnread: true })
+  })
+
+  test('a batch refused before it ran is the entry a Read of its file_path was', async () => {
+    const a = join(testTempDir, 'refused.ts')
+    writeFileSync(a, 'x\n')
+    const messages = [
+      makeEnterPlanModeMsg(),
+      makeAssistantMessage([
+        { id: 'rr', name: 'Read', input: { file_path: a, symbol: ['x', 'y'] } },
+      ]),
+      makeUserToolResult('rr', 'InputValidationError: symbol: Expected string'),
+    ]
+    const dossier = await buildDossierFromMessages(messages, '#', [], 's')
+    const reads = dossier.entries.filter((e): e is ReadEntry => e.source === 'Read')
+    expect(reads).toHaveLength(1)
+    expect(reads[0]).toMatchObject({
+      path: a,
+      content: 'InputValidationError: symbol: Expected string',
+    })
+  })
 })
 
 describe('serialize / load round-trip', () => {

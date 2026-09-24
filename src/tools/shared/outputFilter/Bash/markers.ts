@@ -5,18 +5,23 @@ const MAX_ATTR_LEN = 200;
 
 /** Matches the opening tag of any previously-wrapped output — used to prevent double-wrapping.
  * `persisted-output` and `tool-result-summary` come from the upstream toolResultStorage layer,
- * which may already have wrapped large output before this filter runs. */
+ * which may already have wrapped large output before this filter runs.
+ *
+ * `bash-output-read` ({@link wrapFileRead}) is left out on purpose: raw output
+ * that opens with it is a file that holds it, a saved tool result the model
+ * cats, and that read is wrapped like any other. */
 export const ALREADY_WRAPPED_RE =
   /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered)/;
 
 /** Display-only inverse of {@link wrapStdoutWithMarkers}: strips the outer
- * `<bash-output-filtered …>` / `<bash-output-rewritten …>` wrapper and returns
- * just the body. The wrapped form is model-facing (it discloses the rewrite /
- * filter to the model); the TUI must render the bare output, not the raw XML tag.
- * Anchored to the whole string so body content that merely contains a tag-like
- * substring is untouched. Idempotent — unwrapped input passes through. */
+ * `<bash-output-filtered …>` / `<bash-output-rewritten …>` wrapper, or the
+ * `<bash-output-read>` one of {@link wrapFileRead}, and returns just the body.
+ * The wrapped form is model-facing (it discloses the rewrite / filter to the
+ * model); the TUI must render the bare output, not the raw XML tag. Anchored to
+ * the whole string so body content that merely contains a tag-like substring
+ * is untouched. Idempotent — unwrapped input passes through. */
 const WRAPPED_OUTPUT_RE =
-  /^\s*<bash-output-(?:filtered|rewritten)(?:\s[^>]*)?>([\s\S]*)<\/bash-output-(?:filtered|rewritten)>\s*$/;
+  /^\s*<bash-output-(?:filtered|rewritten|read)(?:\s[^>]*)?>([\s\S]*)<\/bash-output-(?:filtered|rewritten|read)>\s*$/;
 
 export function stripOutputMarkers(stdout: string): string {
   const match = WRAPPED_OUTPUT_RE.exec(stdout);
@@ -132,21 +137,18 @@ export function wrapStdoutWithMarkers(
 }
 
 /** The wrapper for a pure file read the pass-through left whole
- * (`CLAUDIN_BASH_FILE_READ_PASSTHROUGH`, fileReadShape.ts).
+ * (`CLAUDIN_BASH_FILE_READ_PASSTHROUGH`, fileReadShape.ts), around its bytes
+ * exactly as the command printed them.
  *
- * This is the case {@link wrapStdoutWithMarkers} drops the tag for — nothing
- * was cut, so there is nothing to disclose to the model — and it is kept here
- * for a different reader. The tool-result summarizer stands aside for output
- * that opens with this tag (`isAlreadyCompacted`) and cuts any other Bash
- * result of 8k chars or more to a head and tail with a saved file, which the
- * model then reads again. Uncapping these reads without the tag measured +79%
- * tool-result chars and +19% cost (session-cache-ab, 2026-09-23).
+ * It has two readers. The tool-result summarizer stands aside for output that
+ * opens with it (`isAlreadyCompacted`), and cuts any other Bash result of 8k
+ * chars or more to a head and tail with a saved file, which the model then
+ * reads again: uncapping these reads without a tag measured +79% tool-result
+ * chars and +19% cost (session-cache-ab, 2026-09-23). And the model, to which
+ * the `<bash-output-filtered … reduction="0%">` this replaced read as output
+ * the filter had been through. So every such read wears it, whatever its size.
  *
- * So it is only called for a read the summarizer would cut; a smaller one goes
- * through the function above and leaves bare. `lines="N/N" reduction="0%"` is
- * what says nothing was cut. A separate function rather than a flag on the one
- * above, so no caller can keep a wrapper by accident. */
-export function wrapUncutFileRead(pipelineResult: PipelineResult): string {
-  const { body, bodyLines, originalLines, reductionPct } = pipelineResult;
-  return `<bash-output-filtered original="" lines="${bodyLines}/${originalLines}" reduction="${reductionPct}%">${body}</bash-output-filtered>`;
+ * No attributes: nothing was cut, so there is nothing to count. */
+export function wrapFileRead(body: string): string {
+  return `<bash-output-read>${body}</bash-output-read>`;
 }

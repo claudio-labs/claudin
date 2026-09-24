@@ -31,6 +31,11 @@ import {
   AGENT_TOOL_NAME,
   LEGACY_AGENT_TOOL_NAME,
 } from 'src/tools/AgentTool/constants.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import {
+  readPathsOf,
+  recordedReadTargets,
+} from 'src/tools/FileReadTool/readMulti.js'
 
 // Model for facet extraction and summarization (Opus - best quality)
 function getAnalysisModel(): string {
@@ -176,6 +181,20 @@ function extractToolStats(log: LogOption): {
                 // Track files modified by Edit/Write tools
                 if (toolName === 'Edit' || toolName === 'Write') {
                   filesModified.add(filePath)
+                }
+              }
+
+              // A batch Read (readMulti.ts) names its files in file_paths:
+              // each counts toward its language, as a Read of it would.
+              if (toolName === FILE_READ_TOOL_NAME) {
+                const targets = recordedReadTargets(input)
+                if (targets.file_paths !== undefined) {
+                  for (const path of readPathsOf(targets)) {
+                    const lang = getLanguageFromPath(path)
+                    if (lang) {
+                      languages[lang] = (languages[lang] || 0) + 1
+                    }
+                  }
                 }
               }
 

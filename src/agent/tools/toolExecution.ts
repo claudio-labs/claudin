@@ -19,7 +19,9 @@ import {
 } from 'src/tools/Tool.js'
 import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 import { startSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
+import { isReadAdviceMoot } from 'src/tools/BashTool/redirectLanes.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from 'src/agent/tools/cacheInvalidation.js'
 import {
@@ -106,8 +108,11 @@ import {
 import {
   resolveHookPermissionDecision,
   runPostToolUseFailureHooks,
+  runPostToolUseFailureHooksForUnits,
   runPostToolUseHooks,
+  runPostToolUseHooksForUnits,
   runPreToolUseHooks,
+  runPreToolUseHooksForUnits,
 } from 'src/agent/tools/toolHooks.js'
 
 /** Minimum total hook duration (ms) to show inline timing summary */
@@ -509,6 +514,26 @@ function withToolAdvice(block: ToolResultBlockParam, note: string | null): ToolR
   return { ...block, content: note.trimStart() }
 }
 
+/**
+ * The advice note a successful result carries. A Bash `cat` whose every file
+ * the read credit counted (`creditedFiles`, BashTool/creditShownFiles.ts)
+ * keeps no note sending the model to Read them: it would only read again what
+ * it holds (redirectLanes.ts, `isReadAdviceMoot`).
+ */
+export function adviceNoteAfterCall(
+  tool: Pick<Tool, 'name'>,
+  input: unknown,
+  output: unknown,
+  note: string | null,
+): string | null {
+  if (note === null || tool.name !== BASH_TOOL_NAME) return note
+  const command = (input as { command?: unknown } | null)?.command
+  const credited = (output as { creditedFiles?: unknown } | null)?.creditedFiles
+  if (typeof command !== 'string' || !Array.isArray(credited)) return note
+  const paths = credited.filter((path): path is string => typeof path === 'string')
+  return isReadAdviceMoot(command, getCwd(), paths) ? null : note
+}
+
 function streamedCheckPermissionsAndCallTool(
   tool: Tool,
   toolUseID: string,
@@ -812,21 +837,38 @@ async function checkPermissionsAndCallTool(
     processedInput = backfilledClone
   }
 
+  // A call that stands for several calls of its tool — the batch Read — is
+  // those calls to every hook: each runs once per unit, with the unit's own
+  // input, and never with this call's (Tool.hookUnits, toolHooks.ts).
+  const hookUnits = tool.hookUnits?.(callInput)
+
   let shouldPreventContinuation = false
   let stopReason: string | undefined
   let hookPermissionResult: PermissionResult | undefined
   const preToolHookInfos: StopHookInfo[] = []
   const preToolHookStart = Date.now()
-  for await (const result of runPreToolUseHooks(
-    toolUseContext,
-    tool,
-    processedInput,
-    toolUseID,
-    assistantMessage.message.id,
-    requestId,
-    mcpServerType,
-    mcpServerBaseUrl,
-  )) {
+  const preToolHooks = hookUnits
+    ? runPreToolUseHooksForUnits(
+        toolUseContext,
+        tool,
+        hookUnits,
+        toolUseID,
+        assistantMessage.message.id,
+        requestId,
+        mcpServerType,
+        mcpServerBaseUrl,
+      )
+    : runPreToolUseHooks(
+        toolUseContext,
+        tool,
+        processedInput,
+        toolUseID,
+        assistantMessage.message.id,
+        requestId,
+        mcpServerType,
+        mcpServerBaseUrl,
+      )
+  for await (const result of preToolHooks) {
     switch (result.type) {
       case 'message':
         if (result.message.message.type === 'progress') {
@@ -1088,6 +1130,7 @@ async function checkPermissionsAndCallTool(
     )
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
+    const resultAdviceNote = adviceNoteAfterCall(tool, callInput, result.data, adviceNote)
 
     // Invalidate the local tool-result cache for any successful write. Reads
     // (Read/Glob/Grep/LSP) are populated by the buildTool wrapper; this side
@@ -1144,7 +1187,7 @@ async function checkPermissionsAndCallTool(
             toolUseContext,
             processedInput,
           ),
-          adviceNote,
+          resultAdviceNote,
         ),
       ]
       // Add accept feedback if user provided feedback when approving
@@ -1211,17 +1254,29 @@ async function checkPermissionsAndCallTool(
 
     const postToolHookInfos: StopHookInfo[] = []
     const postToolHookStart = Date.now()
-    for await (const hookResult of runPostToolUseHooks(
-      toolUseContext,
-      tool,
-      toolUseID,
-      assistantMessage.message.id,
-      processedInput,
-      toolOutput,
-      requestId,
-      mcpServerType,
-      mcpServerBaseUrl,
-    )) {
+    const postToolHooks = hookUnits
+      ? runPostToolUseHooksForUnits(
+          toolUseContext,
+          tool,
+          toolUseID,
+          assistantMessage.message.id,
+          result.unitResults ?? [],
+          requestId,
+          mcpServerType,
+          mcpServerBaseUrl,
+        )
+      : runPostToolUseHooks(
+          toolUseContext,
+          tool,
+          toolUseID,
+          assistantMessage.message.id,
+          processedInput,
+          toolOutput,
+          requestId,
+          mcpServerType,
+          mcpServerBaseUrl,
+        )
+    for await (const hookResult of postToolHooks) {
       if ('updatedMCPToolOutput' in hookResult) {
         if (isMcpTool(tool)) {
           toolOutput = hookResult.updatedMCPToolOutput
@@ -1350,18 +1405,34 @@ async function checkPermissionsAndCallTool(
     const hookMessages: MessageUpdateLazy<
       AttachmentMessage | ProgressMessage<HookProgress>
     >[] = []
-    for await (const hookResult of runPostToolUseFailureHooks(
-      toolUseContext,
-      tool,
-      toolUseID,
-      messageId,
-      processedInput,
-      content,
-      isInterrupt,
-      requestId,
-      mcpServerType,
-      mcpServerBaseUrl,
-    )) {
+    // The units of the input that ran — a PreToolUse hook may have rewritten one.
+    const failedUnits = hookUnits && (tool.hookUnits?.(callInput) ?? hookUnits)
+    const failureHooks = failedUnits
+      ? runPostToolUseFailureHooksForUnits(
+          toolUseContext,
+          tool,
+          toolUseID,
+          messageId,
+          failedUnits,
+          content,
+          isInterrupt,
+          requestId,
+          mcpServerType,
+          mcpServerBaseUrl,
+        )
+      : runPostToolUseFailureHooks(
+          toolUseContext,
+          tool,
+          toolUseID,
+          messageId,
+          processedInput,
+          content,
+          isInterrupt,
+          requestId,
+          mcpServerType,
+          mcpServerBaseUrl,
+        )
+    for await (const hookResult of failureHooks) {
       hookMessages.push(hookResult)
     }
 

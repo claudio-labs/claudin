@@ -107,6 +107,22 @@ export function maybeFlagReadReminder(
   readReminderFlagged.add(data)
 }
 
+/**
+ * Undo maybeFlagReadReminder for a result that will never be rendered: the
+ * batch Read reads a file, then leaves it out when it does not fit the budget
+ * (batchRead.ts), and that file must not spend the agent's one reminder.
+ */
+export function releaseReadReminder(
+  data: unknown,
+  context: Pick<ToolUseContext, 'agentId'>,
+): void {
+  if (!data || typeof data !== 'object' || !readReminderFlagged.has(data)) {
+    return
+  }
+  readReminderFlagged.delete(data)
+  readReminderSeenAgents.delete(context.agentId ?? 'main')
+}
+
 function carriesMitigationReminder(data: object): boolean {
   if (!shouldIncludeFileReadMitigation()) return false
   return readReminderFlagged.has(data)
@@ -200,6 +216,14 @@ export function mapReadResultToToolResultBlock(
         tool_use_id: toolUseID,
         type: 'tool_result',
         content: data.file.message,
+      }
+    case 'batch':
+      // Rendered in call(), per file, through this same function: the budget
+      // is measured on exactly these bytes (batchRead.ts).
+      return {
+        tool_use_id: toolUseID,
+        type: 'tool_result',
+        content: data.content,
       }
     case 'text': {
       let content: string

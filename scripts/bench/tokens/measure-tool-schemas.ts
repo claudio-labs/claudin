@@ -156,6 +156,12 @@ export type MeasureOptions = {
    * after measurement to leave the process env untouched.
    */
   gitMode?: 'on' | 'off'
+  /**
+   * The tools to measure, getAllBaseTools() by default. For a variant of one
+   * tool the process cannot load twice — Read under CLAUDIN_READ_MULTI=0,
+   * whose schema module reads the flag once per process.
+   */
+  tools?: readonly Tool[]
 }
 
 export type MeasureResult = {
@@ -217,7 +223,7 @@ export async function measureToolSchemas(
   }
 
   try {
-    const tools = getAllBaseTools()
+    const tools = options.tools ?? getAllBaseTools()
     const rows: Row[] = []
     for (const engine of engines) {
       for (const tool of tools) {

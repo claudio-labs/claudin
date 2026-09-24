@@ -13,10 +13,17 @@ import { isResubmitSentinel, parsePatch } from 'src/tools/ApplyPatchTool/patchFo
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import type { Input as FileReadInput } from 'src/tools/FileReadTool/FileReadTool.js'
+import { splitBatchReadResult } from 'src/tools/FileReadTool/batchResult.js'
 import {
   FILE_READ_TOOL_NAME,
   FILE_UNCHANGED_STUB,
 } from 'src/tools/FileReadTool/prompt.js'
+import {
+  isBatchReadInput,
+  readPathsOf,
+  recordedReadTargets,
+  symbolsOf,
+} from 'src/tools/FileReadTool/readMulti.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { OrphanedPermission } from 'src/shared/types/textInputTypes.js'
@@ -52,30 +59,41 @@ const ASK_READ_FILE_STATE_CACHE_SIZE = 10
 // Kept in step with `stripLineNumberPrefix` there.
 const NUMBERED_LINE_RE = /^\s*(\d+)[\u2192\t](.*)$/
 
+const SYSTEM_REMINDER_RE = /<system-reminder>[\s\S]*?<\/system-reminder>/g
+
+type NumberedRun = { offset: number; content: string }
+
 /**
  * The file bytes a Read tool_result put in front of the model, read back off
- * its `N→` prefixes: the first number is the offset, the run of numbered
- * lines the content. Null when there are none — an outline, the auto-outline
- * pivot, an image, a "shorter than the offset" warning — since none of those
- * showed the model any line it could edit. The run stops at the first
- * unnumbered line so trailing notes are not taken for file content.
+ * its `N→` prefixes: each run of numbered lines, in order — its first number
+ * the offset, its lines the content. A run stops at the first unnumbered
+ * line, so trailing notes are not taken for file content. A Read shows one
+ * run; a batch's symbol list shows one per body, a blank line apart. None at
+ * all for an outline, the auto-outline pivot, an image, a "shorter than the
+ * offset" warning, the dedup stub — none of those showed the model any line
+ * it could edit.
  */
-function parseNumberedReadResult(
-  text: string,
-): { offset: number; content: string } | null {
-  const lines: string[] = []
-  let offset: number | undefined
+function numberedRuns(text: string): NumberedRun[] {
+  const runs: { offset: number; lines: string[] }[] = []
+  let current: { offset: number; lines: string[] } | undefined
   for (const line of text.split('\n')) {
     const match = NUMBERED_LINE_RE.exec(line)
     if (!match) {
-      if (offset !== undefined) break
+      current = undefined
       continue
     }
-    if (offset === undefined) offset = Number(match[1])
-    lines.push(match[2]!)
+    if (!current) {
+      current = { offset: Number(match[1]), lines: [] }
+      runs.push(current)
+    }
+    current.lines.push(match[2]!)
   }
-  if (offset === undefined) return null
-  return { offset, content: lines.join('\n') }
+  return runs.map(run => ({ offset: run.offset, content: run.lines.join('\n') }))
+}
+
+/** The one run a single Read shows; null when it shows none. */
+function parseNumberedReadResult(text: string): NumberedRun | null {
+  return numberedRuns(text)[0] ?? null
 }
 
 /** Every path a Patch call wrote or removed, from its own input. */
@@ -442,12 +460,19 @@ export function extractReadFilesFromMessages(
     string,
     { filePath: string; ranged: boolean }
   >()
+  // toolUseId -> the paths a batch Read named (readMulti.ts). `ranged` is its
+  // symbol, which applies to every file, as offset/limit/symbol do to one.
+  const batchReadToolUseIds = new Map<
+    string,
+    { paths: string[]; ranged: boolean }
+  >()
   const fileWriteToolUseIds = new Map<
     string,
     { filePath: string; content: string }
   >() // toolUseId -> { filePath, content }
   const fileEditToolUseIds = new Map<string, string>() // toolUseId -> filePath
   const applyPatchToolUseIds = new Map<string, string>() // toolUseId -> patchText
+  const bashToolUseIds = new Set<string>()
   // `*** Resubmit` applies the patch refused one Patch call earlier.
   let lastPatchText: string | undefined
 
@@ -463,8 +488,21 @@ export function extractReadFilesFromMessages(
         ) {
           // Extract file_path from the tool use input
           const input = content.input as FileReadInput | undefined
-          // An outline shows structure, not bytes; nothing to restore.
-          if (input?.file_path && input.view !== 'outline') {
+          // The stored input is the model's own: read it as the tool did, so
+          // Codex's `file_paths: null` beside one path stays a single Read.
+          const targets = recordedReadTargets(input)
+          // An outline shows structure, not bytes; nothing to restore — for
+          // a batch too, whose view applies to every file.
+          if (isBatchReadInput(targets)) {
+            // Several files, or several symbols of one: each file's section
+            // of the result is restored as a Read of that file would be.
+            if (input?.view !== 'outline') {
+              batchReadToolUseIds.set(content.id, {
+                paths: readPathsOf(targets),
+                ranged: symbolsOf(targets).length > 0,
+              })
+            }
+          } else if (input?.file_path && input.view !== 'outline') {
             // Normalize to absolute path for consistent cache lookups
             const absolutePath = expandPath(input.file_path, cwd)
             fileReadToolUseIds.set(content.id, {
@@ -514,6 +552,11 @@ export function extractReadFilesFromMessages(
             if (patchText) applyPatchToolUseIds.set(content.id, patchText)
             if (!isResubmitSentinel(input.patchText)) lastPatchText = input.patchText
           }
+        } else if (
+          content.type === 'tool_use' &&
+          content.name === BASH_TOOL_NAME
+        ) {
+          bashToolUseIds.add(content.id)
         }
       }
     }
@@ -546,6 +589,74 @@ export function extractReadFilesFromMessages(
     }
   }
 
+  /**
+   * A file a Bash `cat` was credited with (creditShownFiles.ts), as the credit
+   * stored it — whole, and exempt from Read's dedup stub, since no Read showed
+   * it. Only while it is unchanged since the result came back: written after,
+   * the file on disk is not the one the model saw.
+   */
+  function cacheCreditFromDisk(filePath: string, answeredAt: number): void {
+    try {
+      const timestamp = getFileModificationTime(filePath)
+      if (timestamp > answeredAt) return
+      const { content: diskContent } = readFileSyncWithMetadata(filePath)
+      cache.set(filePath, {
+        content: diskContent,
+        timestamp,
+        offset: 1,
+        limit: undefined,
+        dedupExempt: true,
+      })
+      readAuthored.delete(filePath)
+    } catch (e: unknown) {
+      if (!isFsInaccessible(e)) {
+        throw e
+      }
+      // File deleted or inaccessible since the read — skip
+    }
+  }
+
+  /**
+   * What a Read showed of `filePath`, as its entry: the slice `run` for a
+   * ranged Read, the whole file otherwise. `shown` is the Read's text with
+   * its system-reminder blocks removed; `run` is a numbered run of it.
+   */
+  function cacheShownRead(
+    filePath: string,
+    shown: string,
+    run: NumberedRun,
+    ranged: boolean,
+    timestamp: number,
+  ): void {
+    const entry: FileState = ranged
+      ? {
+          // The slice as shown — untrimmed, or a leading blank
+          // line would shift every line number after it.
+          content: run.content,
+          timestamp,
+          offset: run.offset,
+          limit: run.content.split('\n').length,
+        }
+      : {
+          // Whole-file: the shape the write tools store, trimmed
+          // as this path always has been.
+          content: shown
+            .split('\n')
+            .map(stripLineNumberPrefix)
+            .join('\n')
+            .trim(),
+          timestamp,
+          offset: undefined,
+          limit: undefined,
+        }
+    const prev = cache.get(filePath)
+    if (prev && readAuthored.has(filePath)) {
+      prev.timestamp = timestamp
+    }
+    cache.set(filePath, entry)
+    readAuthored.add(filePath)
+  }
+
   // Second pass: find corresponding tool results and extract content
   for (const message of messages) {
     if (message.type === 'user' && Array.isArray(message.message.content)) {
@@ -564,7 +675,7 @@ export function extractReadFilesFromMessages(
           ) {
             // Remove system-reminder blocks from the content
             const processedContent = content.content.replace(
-              /<system-reminder>[\s\S]*?<\/system-reminder>/g,
+              SYSTEM_REMINDER_RE,
               '',
             )
             const parsed = parseNumberedReadResult(processedContent)
@@ -572,35 +683,45 @@ export function extractReadFilesFromMessages(
             // that text as the file would let getChangedFiles diff against
             // it and the write tools edit from it.
             if (parsed) {
-              const timestamp = new Date(message.timestamp).getTime()
-              const { filePath } = read
-              const entry: FileState = read.ranged
-                ? {
-                    // The slice as shown — untrimmed, or a leading blank
-                    // line would shift every line number after it.
-                    content: parsed.content,
-                    timestamp,
-                    offset: parsed.offset,
-                    limit: parsed.content.split('\n').length,
-                  }
-                : {
-                    // Whole-file: the shape the write tools store, trimmed
-                    // as this path always has been.
-                    content: processedContent
-                      .split('\n')
-                      .map(stripLineNumberPrefix)
-                      .join('\n')
-                      .trim(),
-                    timestamp,
-                    offset: undefined,
-                    limit: undefined,
-                  }
-              const prev = cache.get(filePath)
-              if (prev && readAuthored.has(filePath)) {
-                prev.timestamp = timestamp
+              cacheShownRead(
+                read.filePath,
+                processedContent,
+                parsed,
+                read.ranged,
+                new Date(message.timestamp).getTime(),
+              )
+            }
+          }
+
+          // A batch Read: each file's section is the text a Read of that
+          // file returns, restored by the same rule — its one numbered run
+          // as the whole file, or, under a symbol, every run as a slice
+          // (a symbol list shows one body each), which accumulate as the
+          // slices of several ranged Reads do. A section with no numbered
+          // line — the dedup stub, an outline, an error — restores nothing,
+          // and the note lines after the last file are no file's content.
+          const batch = batchReadToolUseIds.get(content.tool_use_id)
+          if (
+            batch &&
+            typeof content.content === 'string' &&
+            message.timestamp
+          ) {
+            const timestamp = new Date(message.timestamp).getTime()
+            for (const section of splitBatchReadResult(
+              content.content,
+              batch.paths,
+              cwd,
+            )) {
+              const shown = section.text.replace(SYSTEM_REMINDER_RE, '')
+              const filePath = expandPath(section.path, cwd)
+              const runs = numberedRuns(shown)
+              if (batch.ranged) {
+                for (const run of runs) {
+                  cacheShownRead(filePath, shown, run, true, timestamp)
+                }
+              } else if (runs[0]) {
+                cacheShownRead(filePath, shown, runs[0], false, timestamp)
               }
-              cache.set(filePath, entry)
-              readAuthored.add(filePath)
             }
           }
 
@@ -644,12 +765,34 @@ export function extractReadFilesFromMessages(
               cacheFromDisk(filePath)
             }
           }
+
+          // Bash: the files the read credit counted (CLAUDIN_BASH_READ_CREDIT),
+          // named on the Out the result carries. The result text only says
+          // how many; the paths are the tool's.
+          if (
+            bashToolUseIds.has(content.tool_use_id) &&
+            content.is_error !== true &&
+            message.timestamp
+          ) {
+            const answeredAt = new Date(message.timestamp).getTime()
+            for (const filePath of creditedFilesOf(message.toolUseResult)) {
+              cacheCreditFromDisk(filePath, answeredAt)
+            }
+          }
         }
       }
     }
   }
 
   return cache
+}
+
+/** The paths a Bash result's Out names as credited reads; none when it has no such field. */
+function creditedFilesOf(toolUseResult: unknown): string[] {
+  if (typeof toolUseResult !== 'object' || toolUseResult === null) return []
+  const { creditedFiles } = toolUseResult as { creditedFiles?: unknown }
+  if (!Array.isArray(creditedFiles)) return []
+  return creditedFiles.filter((path): path is string => typeof path === 'string')
 }
 
 /**

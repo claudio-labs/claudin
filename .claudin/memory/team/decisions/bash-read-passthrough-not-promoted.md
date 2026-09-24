@@ -1,6 +1,6 @@
 ---
 name: bash-read-passthrough-not-promoted
-description: CLAUDIN_BASH_FILE_READ_PASSTHROUGH + CLAUDIN_BASH_READ_CREDIT stay OFF (2026-09-23) — they passed the pre-registered median gate, but a placebo arm matched them; the model re-Reads anyway and the credit dies on --resume
+description: CLAUDIN_BASH_FILE_READ_PASSTHROUGH + CLAUDIN_BASH_READ_CREDIT stay OFF (2026-09-23) — they passed the pre-registered median gate, but a placebo arm matched them; the model re-Reads anyway and the credit dies on --resume. Round 2 (09-24) fixed both blockers and the credit engages; promotion pending
 type: project
 scope: bash/output-filter
 impact: rejected
@@ -47,3 +47,29 @@ code (kept, off, for a follow-up that fixes the two blockers).
 **Evidence:** run dir above; `credit-evidence` analysis (edits that succeeded
 with no prior Read: 0 of 10 runs); the review fixes that tightened the credit
 (dated before the run, measured as sent, inside the working directories).
+
+**Round 2 — both blockers fixed (2026-09-24, branch `perf/cat-read-and-batch-read`,
+9e8c469b).**
+- The result says it: a pure read comes back byte-exact in `<bash-output-read>`,
+  and a Bash result that printed files whole ends with
+  "(N files printed whole — they count as read: …)".
+- The Edit/Patch/Write contract and the Anthropic addendum name it, behind the
+  credit flag.
+- `creditedFiles` rides on the Bash result, and `/resume` rebuilds it
+  (`queryHelpers.ts`).
+- The `cat` segments of any command credit, not only pure reads.
+- An over-budget read keeps the whole files that fit and names the rest,
+  instead of a `<persisted-output>` preview.
+
+In the 5-arm A/B the model stopped re-Reading: 1 Read median against 19, zero
+Reads of a credited file, the credit engaged in 4/5 runs. The pre-registered
+turn and tool-result-chars gates still missed —
+[[cat-read-and-batch-read-ab-2026-09-24]]. Whether to flip the defaults is the
+user's call; until then both flags stay off.
+
+**Round 3 — still off (2026-09-24, d444c515).** A leading `cd` and
+`head`/`tail` prints now count, which closed the two grammar misses the A/B
+showed. Measured on top of the batch Read, now on by default
+([[batch-read-default-on]]), the credit cost +6% and added 2 API calls. The
+model reads by batch Read and seldom by `cat`. The flags stay off — parked,
+not dropped: the user plans to come back to it (2026-09-24).

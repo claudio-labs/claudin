@@ -18,17 +18,20 @@ import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
 import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
 import { userFacingName as fileEditUserFacingName } from 'src/tools/FileEditTool/UI.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
 import { getBashRedirectMode, pickBashRedirect } from 'src/tools/BashTool/redirectLanes.js';
 import {
   applyBashFilterToStdout,
   exitCodeAfterRewrite,
+  FILE_READ_PASSTHROUGH_MAX_CHARS,
+  overBudgetFileRead,
   planBashFilter,
   type PreExecPlan,
 } from 'src/tools/shared/outputFilter/Bash/index.js';
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
-import { creditShownFiles } from 'src/tools/BashTool/creditShownFiles.js';
+import { creditShownFiles, fitWholeFiles, renderNotShownNote, type FittedRead } from 'src/tools/BashTool/creditShownFiles.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
 import { isAutobackgroundingAllowed, isSearchOrReadBashCommand, isSilentBashCommand } from 'src/tools/BashTool/bashCommandClassification.js';
 import { inputSchema, isBashOutputFilterDisabled, outputSchema, safeAnnotateStderrWithSandboxFailures, type BashToolInput, type InputSchema, type Out, type OutputSchema } from 'src/tools/BashTool/bashSchemas.js';
@@ -41,7 +44,7 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
-import { applyBashOutputFilter, planBashFilterForExecution, runShellCommand } from 'src/tools/BashTool/runShellCommand.js';
+import { applyBashOutputFilter, planBashFilterForExecution, runShellCommand, shouldFilterOutput } from 'src/tools/BashTool/runShellCommand.js';
 const EOL = '\n';
 // Progress display constants
 // In assistant mode, blocking bash auto-backgrounds after this many ms in the
@@ -51,6 +54,44 @@ const EOL = '\n';
 // Re-export BashProgress from centralized types to break import cycles
 export type { BashProgress } from 'src/shared/types/tools.js';
 import type { BashProgress } from 'src/shared/types/tools.js';
+
+/**
+ * CLAUDIN_BASH_FILE_READ_PASSTHROUGH: a pure read too long for one result —
+ * over the 28k the filter shows whole, or spilled to disk by the shell — is
+ * cut back to the whole files that fit before the filter runs, and the rest
+ * are named (`fitWholeFiles`). The spill goes with it: the result names the
+ * files instead of pointing at a saved dump, which the model read back whole
+ * in session-cache-ab 20260924-170553 (r1: 56.9k chars, and two Patches
+ * refused). Null when this does not apply, and the run goes on as before.
+ * `cwd` is the directory the command started in: the files resolve from it
+ * through any `cd` the command made, and are named relative to it.
+ *
+ * Exported for testing; `decide` is the filter's call, injectable because its
+ * flag is read at module load.
+ */
+export async function fitOverBudgetRead(result: ExecResult, plan: PreExecPlan, cwd: string, decide: typeof overBudgetFileRead = overBudgetFileRead): Promise<{
+  result: ExecResult;
+  fitted: FittedRead;
+} | null> {
+  if (result.interrupted) return null;
+  // Where the filter does not run, neither does its pass-through.
+  if (!shouldFilterOutput(getGlobalConfig().bashOutputFilterEnabled, isBashOutputFilterDisabled, result.backgroundTaskId)) return null;
+  const stdout = result.stdout || '';
+  const reads = decide(stdout, plan, result.outputFilePath !== undefined);
+  if (!reads) return null;
+  const fitted = await fitWholeFiles(stdout, reads, cwd, FILE_READ_PASSTHROUGH_MAX_CHARS);
+  if (!fitted) return null;
+  return {
+    result: {
+      ...result,
+      stdout: fitted.shown,
+      outputFilePath: undefined,
+      outputFileSize: undefined,
+      outputTaskId: undefined
+    },
+    fitted
+  };
+}
 
 /**
  * Checks if a command contains tools that shouldn't run in sandbox
@@ -242,6 +283,13 @@ export const BashTool = buildTool({
     // mtime is at or after it, since it may have changed after the command
     // printed it (creditShownFiles.ts).
     const commandStartedAt = Date.now();
+    // Where the command starts, which is where the paths it names resolve
+    // (fileReadShape.ts carries a `cd` in it from here). Once it has run,
+    // getCwd() is wherever such a `cd` left the shell — the main thread keeps
+    // it (Shell.ts) unless resetCwdIfOutsideProject puts it back.
+    const commandStartCwd = getCwd();
+    // A pure read cut back to its whole files (fitOverBudgetRead).
+    let fitted: FittedRead | undefined;
     try {
       // Pre-exec filter plan: when a filter defines a rewrite (git log →
       // git log --oneline, BASE | tail → BASE), the rewritten command is the
@@ -305,12 +353,17 @@ export const BashTool = buildTool({
       // real code is disclosed on the marker instead (exitCodeAfterRewrite).
       const verdictCode = exitCodeAfterRewrite(filterPlan, result.code);
       interpretationResult = interpretCommandResult(input.command, verdictCode, rawStdout, '');
-
+      const isError = interpretationResult.isError || verdictCode !== 0;
+      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);
+      if (fit) {
+        result = fit.result;
+        fitted = fit.fitted;
+      }
 
       // Filter last, with the semantic verdict folded in: output that either
       // the exit code or the interpreter deems an error skips the pipeline
       // (errors are sacred).
-      result = applyBashOutputFilter(result, input.command, filterPlan, interpretationResult.isError || verdictCode !== 0);
+      result = applyBashOutputFilter(result, input.command, filterPlan, isError);
 
       stdoutAccumulator.append((result.stdout || '').trimEnd() + EOL);
       if (interpretationResult.isError && !isInterrupt) {
@@ -406,6 +459,7 @@ export const BashTool = buildTool({
         isImage = false;
       }
     }
+    const notShownNote = fitted ? renderNotShownNote(fitted, FILE_READ_PASSTHROUGH_MAX_CHARS) : null;
     const data: Out = {
       stdout: compressedStdout,
       stderr: stderrForShellReset,
@@ -418,19 +472,30 @@ export const BashTool = buildTool({
       assistantAutoBackgrounded: result.assistantAutoBackgrounded,
       dangerouslyDisableSandbox: 'dangerouslyDisableSandbox' in input ? input.dangerouslyDisableSandbox as boolean | undefined : undefined,
       persistedOutputPath,
-      persistedOutputSize
+      persistedOutputSize,
+      ...(notShownNote !== null && {
+        readNote: notShownNote
+      })
     };
-    // CLAUDIN_BASH_READ_CREDIT: a pure file read counts as a Read of each file
-    // it printed whole (creditShownFiles.ts). It runs here and not beside the
+    // CLAUDIN_BASH_READ_CREDIT: a `cat` counts as a Read of each file it
+    // printed whole (creditShownFiles.ts). It runs here and not beside the
     // filter above because `data` is what the model's tool result is built
     // from — empty lines and hints stripped, stderr and the background note
     // beside it — and only here is it known whether the output went to disk
-    // instead. Off, it returns before touching anything.
-    await creditShownFiles({
+    // instead. Off, it returns before touching anything, and `data` is as it
+    // always was.
+    const credit = await creditShownFiles({
       ...data,
       command: input.command,
-      startedAt: commandStartedAt
-    }, toolUseContext.readFileState, getCwd(), getAppState().toolPermissionContext);
+      startedAt: commandStartedAt,
+      ...(fitted && {
+        notShown: fitted.notShown
+      })
+    }, toolUseContext.readFileState, commandStartCwd, getAppState().toolPermissionContext);
+    // The paths let `/resume` rebuild the credit (queryHelpers.ts); the line
+    // is how the model learns of it.
+    if (credit.credited.length > 0) data.creditedFiles = [...credit.credited];
+    if (credit.note !== null) data.readNote = data.readNote ? `${data.readNote}\n${credit.note}` : credit.note;
     return {
       data
     };

@@ -59,6 +59,20 @@ import { markMemoryFileMtime } from 'src/tools/FileReadTool/resultContent.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**
+ * `symbol=` named nothing the file declares. Its own class so the batch Read
+ * can put every miss on one line instead of one error per file
+ * (batchRead.ts); the message is the single Read's, byte for byte.
+ */
+export class SymbolNotFoundError extends Error {
+  constructor(
+    readonly symbol: string,
+    message: string,
+  ) {
+    super(message)
+  }
+}
+
+/**
  * Inner implementation of call, separated to allow ENOENT handling in the outer call.
  */
 export async function callInner(
@@ -238,7 +252,8 @@ export async function callInner(
     if (scanned) {
       const entry = findSymbolEntry(scanned.entries, symbol)
       if (!entry) {
-        throw new Error(
+        throw new SymbolNotFoundError(
+          symbol,
           `Symbol '${symbol}' not found in ${file_path}. ` +
             `Available symbols: ${formatSymbolList(scanned.entries.map(e => e.name))}. ` +
             `Call Read(file_path, view='outline') to see the full structure.`,

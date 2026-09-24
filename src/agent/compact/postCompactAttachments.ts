@@ -9,10 +9,16 @@ import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
 import { logError } from 'src/shared/log.js'
+import { splitBatchReadResult } from 'src/tools/FileReadTool/batchResult.js'
 import {
   FILE_READ_TOOL_NAME,
   FILE_UNCHANGED_STUB,
 } from 'src/tools/FileReadTool/prompt.js'
+import {
+  isBatchReadInput,
+  readPathsOf,
+  recordedReadTargets,
+} from 'src/tools/FileReadTool/readMulti.js'
 import { createAttachmentMessage, generateFileAttachment } from 'src/agent/attachments/attachments.js'
 import { withoutRenderedSnapshot } from 'src/agent/attachments/renderedSnapshot.js'
 import { getMemoryPath } from 'src/platform/config/config.js'
@@ -315,21 +321,26 @@ export async function createAsyncAgentAttachmentsIfNeeded(
  * Skips Reads whose tool_result is a dedup stub — the stub points at an
  * earlier full Read that may have been compacted away, so we want
  * createPostCompactFileAttachments to re-inject the real content.
+ *
+ * A batch Read (readMulti.ts) counts each file its result shows under a
+ * header, by the same rule: one it answered with the stub, left out for its
+ * budget, or sent to a Read of its own is not in the tail.
  */
 function collectReadToolFilePaths(messages: Message[]): Set<string> {
   const stubIds = new Set<string>()
+  const resultTexts = new Map<string, string>()
   for (const message of messages) {
     if (message.type !== 'user' || !Array.isArray(message.message.content)) {
       continue
     }
     for (const block of message.message.content) {
-      if (
-        block.type === 'tool_result' &&
-        typeof block.content === 'string' &&
-        block.content.startsWith(FILE_UNCHANGED_STUB)
-      ) {
+      if (block.type !== 'tool_result' || typeof block.content !== 'string') {
+        continue
+      }
+      if (block.content.startsWith(FILE_UNCHANGED_STUB)) {
         stubIds.add(block.tool_use_id)
       }
+      resultTexts.set(block.tool_use_id, block.content)
     }
   }
 
@@ -349,6 +360,11 @@ function collectReadToolFilePaths(messages: Message[]): Set<string> {
       ) {
         continue
       }
+      const shownByBatch = batchFilesShown(block.input, resultTexts.get(block.id))
+      if (shownByBatch) {
+        for (const path of shownByBatch) paths.add(expandPath(path))
+        continue
+      }
       const input = block.input
       if (
         input &&
@@ -361,6 +377,25 @@ function collectReadToolFilePaths(messages: Message[]): Set<string> {
     }
   }
   return paths
+}
+
+/**
+ * The files a batch Read's result shows, less those it answered with the
+ * unchanged stub. Undefined when the Read is no batch, or when its result
+ * shows no file at all — a call refused before it ran — which the
+ * single-file rule then answers as it always has.
+ */
+function batchFilesShown(
+  input: unknown,
+  result: string | undefined,
+): string[] | undefined {
+  const targets = recordedReadTargets(input)
+  if (!isBatchReadInput(targets) || result === undefined) return undefined
+  const sections = splitBatchReadResult(result, readPathsOf(targets))
+  if (sections.length === 0) return undefined
+  return sections
+    .filter(section => !section.text.startsWith(FILE_UNCHANGED_STUB))
+    .map(section => section.path)
 }
 
 const SKILL_TRUNCATION_MARKER =

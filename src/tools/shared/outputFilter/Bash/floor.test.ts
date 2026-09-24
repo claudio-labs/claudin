@@ -398,9 +398,12 @@ describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every li
     expect(OVER.length).toBeGreaterThan(28_000);
   });
 
-  test("under 28k chars the read comes back whole, and wrapped", () => {
+  // The wrapper names what the output is. The `<bash-output-filtered
+  // reduction="0%">` it replaced said the filter had been through a read it
+  // had left alone.
+  test("under 28k chars the read comes back whole, in the read wrapper", () => {
     expect(on.applyBashFilterToStdout(UNDER, false, planFor(on, LOOP))).toBe(
-      `<bash-output-filtered original="" lines="665/665" reduction="0%">${UNDER}</bash-output-filtered>`,
+      `<bash-output-read>${UNDER}</bash-output-read>`,
     );
   });
 
@@ -421,25 +424,186 @@ describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every li
     );
   });
 
-  // The wrapper only earns its bytes where the summarizer would otherwise cut
-  // the read (8k chars and up). Below that it protects nothing, so the read
-  // leaves exactly as an uncut output always has: bare.
-  test("under the summarizer's 8k the read comes back whole and bare", () => {
+  // Under the summarizer's 8k the wrapper protects nothing from it, and it is
+  // kept anyway: it is what tells the model the output is a read.
+  test("under the summarizer's 8k the read comes back whole, wrapped all the same", () => {
     const small = loopOutput(4, 34, 3);
     expect(small.trimEnd().split("\n").length).toBeGreaterThan(FLOOR_CAP_LINES);
     expect(small.length).toBeLessThan(8_000);
-    expect(on.applyBashFilterToStdout(small, false, planFor(on, LOOP))).toBe(small);
+    expect(on.applyBashFilterToStdout(small, false, planFor(on, LOOP))).toBe(
+      `<bash-output-read>${small}</bash-output-read>`,
+    );
     // …which the cap would have cut, flag off.
     expect(off.applyBashFilterToStdout(small, false, planFor(off, LOOP))).toStartWith(
       '<bash-output-filtered original="" lines="30/140"',
     );
   });
 
-  test("a read the cap never reached is byte-identical with the flag on", () => {
+  test("a read the cap never reached keeps the same bytes, inside the wrapper", () => {
     const short = loopOutput(2, 20, 3);
+    const offOutput = off.applyBashFilterToStdout(short, false, planFor(off, LOOP));
+    // Flag off, a read this short leaves the filter untouched and bare…
+    expect(offOutput).toBe(short);
+    // …and flag on, those same bytes come back wrapped.
     expect(on.applyBashFilterToStdout(short, false, planFor(on, LOOP))).toBe(
-      off.applyBashFilterToStdout(short, false, planFor(off, LOOP)),
+      `<bash-output-read>${offOutput}</bash-output-read>`,
     );
+  });
+
+  // Python puts two blank lines between top-level definitions, a data file
+  // repeats a row, a fixture holds an escape. The floor folds and strips all
+  // three — a saving on a log, a corruption of a file the model will edit.
+  describe("the read is the file's bytes, not the floor's", () => {
+    const COMMAND = "cat src/rows.py";
+    const EXACT =
+      [
+        "import os",
+        "",
+        "",
+        "def a():",
+        "    return 1",
+        "",
+        "",
+        "ROWS = [",
+        "    'row',",
+        "    'row',",
+        "    'row',",
+        "]",
+        "RED = '\u001b[31mred\u001b[0m'",
+      ].join("\n") + "\n";
+
+    test("flag on: blank-line runs, repeated lines and escapes all stay", () => {
+      expect(on.applyBashFilterToStdout(EXACT, false, planFor(on, COMMAND))).toBe(
+        `<bash-output-read>${EXACT}</bash-output-read>`,
+      );
+    });
+
+    test("flag off: the floor folds and strips them, as it always has", () => {
+      const floored = off.applyBashFilterToStdout(EXACT, false, planFor(off, COMMAND));
+      expect(floored).not.toContain("import os\n\n\ndef a():");
+      expect(floored).toContain("    'row', (×3)");
+      expect(floored).not.toContain("\u001b[31m");
+    });
+
+    // A `cd` before the cat, or a head or tail in place of it, is a pure read
+    // all the same (fileReadShape.ts).
+    const READ_SHAPES = ["cd src && cat rows.py", "head -n 40 src/rows.py", "tail -n +1 src/rows.py"];
+
+    test("flag on: after a cd, or through head or tail, the bytes stay too", () => {
+      for (const command of READ_SHAPES) {
+        expect(on.applyBashFilterToStdout(EXACT, false, planFor(on, command))).toBe(
+          `<bash-output-read>${EXACT}</bash-output-read>`,
+        );
+      }
+    });
+
+    test("flag off: after a cd, or through head or tail, the floor folds and strips as always", () => {
+      for (const command of READ_SHAPES) {
+        const floored = off.applyBashFilterToStdout(EXACT, false, planFor(off, command));
+        expect(floored).not.toContain("<bash-output-read>");
+        expect(floored).not.toContain("import os\n\n\ndef a():");
+        expect(floored).toContain("    'row', (×3)");
+        expect(floored).not.toContain("\u001b[31m");
+      }
+    });
+  });
+
+  // The two calls of the 5-arm A/B (20260924-212723) the grammar refused and
+  // the cap cut to 30 lines: a read after a `cd` (catread r5, 345 lines), and
+  // one with a `head -c` among its cats (catread r2, 568 lines, 23,977 chars).
+  describe("the A/B's two misses: a read after a cd, one with a head among its cats", () => {
+    const CD_READ =
+      "cd src && cat catalog.ts cli.ts discounts.ts errors.ts money.ts quote.ts receipt.ts";
+    const HEAD_READ =
+      'cat -n src/types.ts; head -c 1500 data/catalog.json; echo; cat data/carts/basic-us.json; for f in test/*.ts; do echo "=== $f"; cat -n $f; done';
+
+    test("flag on: under 28k each comes back whole, in the read wrapper", () => {
+      for (const command of [CD_READ, HEAD_READ]) {
+        expect(on.applyBashFilterToStdout(UNDER, false, planFor(on, command))).toBe(
+          `<bash-output-read>${UNDER}</bash-output-read>`,
+        );
+      }
+    });
+
+    test("flag off: each is cut to 30 lines, as the A/B's were", () => {
+      for (const command of [CD_READ, HEAD_READ]) {
+        expect(off.applyBashFilterToStdout(UNDER, false, planFor(off, command))).toStartWith(
+          '<bash-output-filtered original="" lines="30/665"',
+        );
+      }
+    });
+
+    // Over 28k a read that prints part of a file keeps the cap, as one with
+    // a listing does: the whole-file fit has no whole file to place for it.
+    test("flag on, over 28k: still cut to 30 lines", () => {
+      for (const command of [CD_READ, HEAD_READ]) {
+        expect(on.applyBashFilterToStdout(OVER, false, planFor(on, command))).toStartWith(
+          '<bash-output-filtered original="" lines="30/665"',
+        );
+      }
+    });
+  });
+
+  test("with the flag on, a chain that is not a pure read is still capped", () => {
+    const chain = `git status && ${LOOP}`;
+    expect(on.applyBashFilterToStdout(UNDER, false, planFor(on, chain))).toStartWith(
+      '<bash-output-filtered original="" lines="30/665"',
+    );
+  });
+
+  // Past 28k, BashTool cuts a read that only prints files down to its whole
+  // files (fitWholeFiles, BashTool/creditShownFiles.ts) before this filter
+  // runs. This is what tells it to.
+  describe("overBudgetFileRead — what BashTool fits to whole files", () => {
+    const LOOP_READS = [
+      { text: "src/*.ts", glob: true },
+      { text: "package.json", glob: false },
+      { text: "data/catalog.json", glob: false },
+      { text: "data/carts/*.json", glob: true },
+    ];
+
+    test("a read that only prints files, over 28k: the files it names", () => {
+      expect(on.overBudgetFileRead(OVER, planFor(on, LOOP), false)).toEqual(LOOP_READS);
+    });
+
+    test("under 28k there is nothing to fit — the pass-through shows it whole", () => {
+      expect(on.overBudgetFileRead(UNDER, planFor(on, LOOP), false)).toBeNull();
+    });
+
+    // A spill leaves stdout holding the first 30 KB, whatever its length in chars.
+    test("spilled to disk, at any length", () => {
+      expect(on.overBudgetFileRead(UNDER, planFor(on, LOOP), true)).toEqual(LOOP_READS);
+    });
+
+    test("a read with a listing segment keeps the cap", () => {
+      for (const command of [`ls -R .claudin; ${LOOP}`, `git ls-files && ${LOOP}`, `wc -l src/*.ts; ${LOOP}`]) {
+        expect(on.overBudgetFileRead(OVER, planFor(on, command), true)).toBeNull();
+      }
+    });
+
+    test("a command that is not a pure read", () => {
+      expect(on.overBudgetFileRead(OVER, planFor(on, `git status && ${LOOP}`), true)).toBeNull();
+    });
+
+    // Part of a file is no whole file to fit: a head or tail keeps the cap.
+    test("a read with a head or tail segment keeps the cap", () => {
+      for (const command of [`head -c 1500 data/catalog.json; echo; ${LOOP}`, `${LOOP}; tail -n 5 README.md`]) {
+        expect(on.overBudgetFileRead(OVER, planFor(on, command), true)).toBeNull();
+      }
+    });
+
+    // BashTool resolves each word from where the command started, through
+    // the directory the `cd` names.
+    test("after a cd, the files it names carry the cd's directory", () => {
+      expect(on.overBudgetFileRead(OVER, planFor(on, `cd pkg && ${LOOP}`), false)).toEqual(
+        LOOP_READS.map((word) => ({ ...word, dir: "pkg" })),
+      );
+    });
+
+    test("with the flag off, never", () => {
+      expect(off.overBudgetFileRead(OVER, planFor(off, LOOP), false)).toBeNull();
+      expect(off.overBudgetFileRead(OVER, planFor(off, LOOP), true)).toBeNull();
+    });
   });
 
   test("with the flag on, a command that is not a pure read does not change", () => {

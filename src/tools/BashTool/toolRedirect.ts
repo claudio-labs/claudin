@@ -1389,6 +1389,22 @@ export function renderToolRedirect(analysis: RedirectAnalysis): string {
 }
 
 /**
+ * The files an analysis sends the model to Read whole, or null when it asks
+ * for anything else too — a range, a search, a listing. What the Bash read
+ * credit can have made moot, since it only ever counts whole files
+ * (redirectLanes.ts, `isReadAdviceMoot`).
+ */
+export function wholeFileReadsOf(analysis: RedirectAnalysis): string[] | null {
+  const paths: string[] = []
+  for (const call of analysis.units.flatMap(unit => unit.calls)) {
+    if (call.tool !== 'Read') return null
+    if (call.offset !== undefined || call.limit !== undefined) return null
+    paths.push(call.file_path)
+  }
+  return paths.length > 0 ? paths : null
+}
+
+/**
  * The advise-mode note (BashTool/redirectLanes.ts): the command has already
  * run, so this only names the calls that read or search without the shell.
  */

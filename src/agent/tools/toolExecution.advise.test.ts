@@ -1,9 +1,12 @@
 // Tool.advise, wired through the real tool loop: the note a tool hands back is
 // appended to its result — success or error — and asked for exactly once.
 // Bash is the one production user; a probe tool keeps this about the wiring.
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { z } from 'zod/v4'
-import { runToolUse } from 'src/agent/tools/toolExecution.js'
+import { adviceNoteAfterCall, runToolUse } from 'src/agent/tools/toolExecution.js'
 import {
   buildTool,
   getEmptyToolPermissionContext,
@@ -173,6 +176,12 @@ describe('Tool.advise in the tool loop', () => {
     expect(texts).toContain('DeferredTarget is deferred: load it first with ToolSearch \\"select:DeferredTarget\\".')
   })
 
+  test('a tool other than Bash keeps its note whatever its result says', async () => {
+    const { texts } = await run('ok', () => ({ message: NOTE }))
+    expect(texts).toContain(NOTE)
+    expect(adviceNoteAfterCall({ name: 'AdviceProbe' }, { command: 'cat a' }, { creditedFiles: ['/a'] }, NOTE)).toBe(NOTE)
+  })
+
   test('once that tool is loaded, the load line goes', async () => {
     process.env.ENABLE_TOOL_SEARCH = 'true'
     const loaded = {
@@ -191,5 +200,107 @@ describe('Tool.advise in the tool loop', () => {
     const { texts } = await run('ok', () => ({ message: NOTE, suggests: 'DeferredTarget' }), [loaded])
     expect(texts).toContain(NOTE)
     expect(texts).not.toContain('is deferred: load it first')
+  })
+})
+
+// CLAUDIN_BASH_READ_CREDIT: a Bash `cat` whose every file counted as read
+// (`creditedFiles`, BashTool/creditShownFiles.ts) keeps no note sending the
+// model to Read them again (redirectLanes.ts, isReadAdviceMoot).
+describe('adviceNoteAfterCall — a Bash read the credit already counted', () => {
+  const BASH = { name: 'Bash' }
+  const READ_NOTE = '\n\n<system-reminder>\nThis command only reads or searches files…\n</system-reminder>'
+  let dir: string
+  let a: string
+  let b: string
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'advice-credit-'))
+    a = join(dir, 'a.ts')
+    b = join(dir, 'b.ts')
+    writeFileSync(a, 'export const a = 1\nexport const aa = 2\n')
+    writeFileSync(b, 'export const b = 1\nexport const bb = 2\n')
+  })
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('every file it names was credited: the note goes', () => {
+    expect(
+      adviceNoteAfterCall(BASH, { command: `cat ${a} ${b}` }, { stdout: '', creditedFiles: [a, b] }, READ_NOTE),
+    ).toBeNull()
+  })
+
+  test('a file it names was not: the note stands', () => {
+    expect(
+      adviceNoteAfterCall(BASH, { command: `cat ${a} ${b}` }, { stdout: '', creditedFiles: [a] }, READ_NOTE),
+    ).toBe(READ_NOTE)
+  })
+
+  test('no creditedFiles — the credit is off, or showed nothing whole: the note stands', () => {
+    expect(adviceNoteAfterCall(BASH, { command: `cat ${a} ${b}` }, { stdout: '' }, READ_NOTE)).toBe(READ_NOTE)
+  })
+
+  test('no note, nothing to drop', () => {
+    expect(adviceNoteAfterCall(BASH, { command: `cat ${a}` }, { creditedFiles: [a] }, null)).toBeNull()
+  })
+
+  // Only Bash's result carries a read credit. The same input and result that
+  // make Bash's note moot leave any other tool's note standing.
+  test('the credit drops the note of Bash only', () => {
+    const input = { command: `cat ${a} ${b}` }
+    const output = { stdout: '', creditedFiles: [a, b] }
+    expect(adviceNoteAfterCall(BASH, input, output, READ_NOTE)).toBeNull()
+    expect(adviceNoteAfterCall({ name: 'AdviceProbe' }, input, output, READ_NOTE)).toBe(READ_NOTE)
+  })
+
+  /** A tool named Bash whose result carries `creditedFiles`, run through the real loop. */
+  async function runBash(creditedFiles: string[]): Promise<string> {
+    const tool = buildTool({
+      name: 'Bash',
+      maxResultSizeChars: 10_000,
+      async description() {
+        return 'bash probe'
+      },
+      async prompt() {
+        return 'bash probe'
+      },
+      get inputSchema() {
+        return z.strictObject({ command: z.string() })
+      },
+      isEnabled: () => true,
+      isReadOnly: () => true,
+      isConcurrencySafe: () => true,
+      async checkPermissions(input: { command: string }) {
+        return { behavior: 'allow' as const, updatedInput: input }
+      },
+      advise: () => ({ message: 'This command only reads or searches files, and Read does that without the shell:' }),
+      async call() {
+        return { data: { stdout: 'printed', creditedFiles } }
+      },
+      mapToolResultToToolResultBlockParam(data: { stdout: string }, toolUseID: string) {
+        return { type: 'tool_result' as const, tool_use_id: toolUseID, content: data.stdout }
+      },
+      renderToolUseMessage: () => null,
+    })
+    const toolUse = { type: 'tool_use' as const, id: 'toolu_bash', name: 'Bash', input: { command: `cat ${a} ${b}` } }
+    const assistant = {
+      type: 'assistant',
+      uuid: 'a-bash',
+      message: { id: 'msg_bash', role: 'assistant', content: [toolUse] },
+    }
+    const allow = (async (_tool: unknown, input: unknown) => ({ behavior: 'allow', updatedInput: input })) as never
+    const results: unknown[] = []
+    for await (const update of runToolUse(toolUse as never, assistant as never, allow, contextFor([tool]))) {
+      results.push(update)
+    }
+    return JSON.stringify(results)
+  }
+
+  test('in the tool loop: the result goes out without the note once every file counted', async () => {
+    const counted = await runBash([a, b])
+    expect(counted).toContain('printed')
+    expect(counted).not.toContain('only reads or searches files')
+    expect(await runBash([a])).toContain('only reads or searches files')
   })
 })

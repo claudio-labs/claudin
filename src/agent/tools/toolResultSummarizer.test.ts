@@ -1310,6 +1310,17 @@ test('bash-output: <bash-output-filtered> marker is not re-summarized', () => {
   expect(out).toBe(block)
 })
 
+// A file read the filter left whole on purpose (CLAUDIN_BASH_FILE_READ_PASSTHROUGH).
+// Cutting it to a head and a tail is what the pass-through exists to stop.
+test('bash-output: a <bash-output-read> file read is not summarized', () => {
+  const file = Array.from({ length: 600 }, (_, i) => `export const v${i} = '${bigText(30)}'`).join('\n')
+  const block = makeBlock(`<bash-output-read>${file}\n</bash-output-read>`)
+  expect(maybeSummarizeToolResult(block, 'Bash')).toBe(block)
+  // The control: the same bytes without the wrapper are cut.
+  const bare = makeBlock(file)
+  expect(String(maybeSummarizeToolResult(bare, 'Bash').content)).toStartWith(TOOL_RESULT_SUMMARY_TAG)
+})
+
 test('bash-output: marker with error-like content inside is not re-summarized', () => {
   const filtered = `<bash-output-filtered name="pytest" reduction="95%">\nerror: test failed\nFAILED test_foo.py::test_bar\n${bigText(20_000)}`
   const block = makeBlock(filtered)

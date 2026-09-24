@@ -15,6 +15,7 @@ import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 
 type Credit = typeof import('src/tools/BashTool/creditShownFiles.js')
 type Shown = Parameters<Credit['creditShownFiles']>[0]
+type ReadCredit = Awaited<ReturnType<Credit['creditShownFiles']>>
 
 const CREDIT_FLAG = 'CLAUDIN_BASH_READ_CREDIT'
 
@@ -194,6 +195,25 @@ const FIXTURE: Record<string, string> = {
   ),
 }
 
+/**
+ * Twenty modules of ~2.9k chars each: a loop over them prints ~59k, the size
+ * of the dump session-cache-ab 20260924-170553 r1 received as a saved file
+ * and read back whole. Every line names its file, so no file's lines can be
+ * found inside another's.
+ */
+const DUMP_FILES = 20
+const DUMP_LINES = 80
+const dumpName = (i: number) => `dump/f${String(i).padStart(2, '0')}.ts`
+function dumpModule(i: number): string {
+  return (
+    Array.from(
+      { length: DUMP_LINES },
+      (_, n) => `export const f${i}_${n} = '${'abcdefghij'[n % 10]!.repeat(12)}'`,
+    ).join('\n') + '\n'
+  )
+}
+const DUMP_LOOP = 'for f in dump/*.ts; do echo "=== $f"; cat $f; done'
+
 // ---------------------------------------------------------------------------
 // What two bench reps received for their loop, verbatim from the stream: the
 // floor cap kept 15 + 15 of 616 and 665 lines.
@@ -303,6 +323,11 @@ beforeAll(async () => {
   for (const [path, content] of Object.entries(FIXTURE)) {
     writeFixture(join(dir, path), content)
   }
+  for (let i = 0; i < DUMP_FILES; i++) {
+    writeFixture(join(dir, dumpName(i)), dumpModule(i))
+  }
+  // `git ls-files` needs a repository; an empty one lists nothing.
+  execFileSync('git', ['init', '-q'], { cwd: dir })
   writeFixture(
     join(outside, 'secret.ts'),
     "export const token = 'outside'\nexport const scope = 'machine'\n",
@@ -338,8 +363,13 @@ function ran(command: string): Shown & { stdout: string } {
 }
 
 /** The credit as BashTool calls it, in a session whose project is the fixture tree. */
-function credit(shown: Shown, instance: Credit = on): Promise<string[]> {
+function creditWithNote(shown: Shown, instance: Credit = on): Promise<ReadCredit> {
   return instance.creditShownFiles(shown, cache, dir, getEmptyToolPermissionContext())
+}
+
+/** The files it credited. */
+async function credit(shown: Shown, instance: Credit = on): Promise<readonly string[]> {
+  return (await creditWithNote(shown, instance)).credited
 }
 
 /** The wrapper the pass-through puts on a read it left whole. */
@@ -347,6 +377,14 @@ function wrappedWhole(body: string): string {
   const lines = body.split('\n').length
   return `<bash-output-filtered original="" lines="${lines}/${lines}" reduction="0%">${body}</bash-output-filtered>`
 }
+
+/** The wrapper the pass-through puts on a read it left whole, since it has one of its own. */
+function readWrapped(body: string): string {
+  return `<bash-output-read>${body}</bash-output-read>`
+}
+
+const COUNT_AS_READ =
+  'files printed whole — they count as read: Edit, Patch and Write accept them without a Read.)'
 
 describe('a cut body credits only what it shows whole', () => {
   test('the 30 lines bench rep 1 received for its loop credit nothing', async () => {
@@ -424,6 +462,184 @@ describe('a complete read credits every file it printed', () => {
     expect(await credit(ran('cat README.md package.json'), off)).toEqual([])
     expect(cache.size).toBe(0)
   })
+
+  test('a whole read inside the read wrapper credits, from 8k up as below it', async () => {
+    const shown = ran(DUMP_LOOP.replace('dump/*.ts', [0, 1, 2, 3].map(dumpName).join(' ')))
+    expect(shown.stdout.length).toBeGreaterThan(8_000)
+    expect(await credit({ ...shown, stdout: readWrapped(`${shown.stdout}\n`) })).toEqual(
+      [0, 1, 2, 3].map(i => at(dumpName(i))),
+    )
+  })
+})
+
+// `catReadsOf` (fileReadShape.ts): the cat segments of any command, not only
+// of a command that does nothing but print files.
+describe('a cat in any command credits what it printed whole', () => {
+  // The first call of every session-cache-ab run of 2026-09-24.
+  test('`git ls-files && cat README.md package.json` credits both', async () => {
+    expect(await credit(ran('git ls-files && cat README.md package.json'))).toEqual([
+      at('README.md'),
+      at('package.json'),
+    ])
+  })
+
+  test('another program before the cat', async () => {
+    expect(await credit(ran('git status --short && cat README.md'))).toEqual([at('README.md')])
+  })
+
+  // A short file passes `head` whole, so only the pipe itself keeps it out.
+  test('`cat f | head` credits nothing', async () => {
+    const shown = ran('cat README.md | head -20')
+    expect(shown.stdout).toBe(FIXTURE['README.md']!.trimEnd())
+    expect(await creditWithNote(shown)).toEqual({ credited: [], note: null })
+  })
+
+  // package.json's bytes reach the output through the copy; the redirect is
+  // what keeps them from crediting it.
+  test('`cat f > g` credits nothing, even when g is printed next', async () => {
+    try {
+      const shown = ran('cat package.json > copy.json && cat copy.json')
+      expect(shown.stdout).toBe(FIXTURE['package.json']!.trimEnd())
+      expect(await creditWithNote(shown)).toEqual({ credited: [], note: null })
+    } finally {
+      rmSync(at('copy.json'), { force: true })
+    }
+  })
+
+  // What the floor cap made of `git status && cat README.md src/types.ts`:
+  // the README whole in the head, types.ts cut through the middle.
+  test('a file the cap cut through is not credited, and the line says so', async () => {
+    const types = TYPES_TS.trimEnd().split('\n')
+    const readme = FIXTURE['README.md']!.trimEnd().split('\n')
+    const body = [
+      'On branch main',
+      ...readme,
+      ...types.slice(0, 26 - readme.length),
+      '…33 lines omitted…',
+      ...types.slice(-15),
+    ].join('\n')
+    const result = await creditWithNote({
+      command: 'git status && cat README.md src/types.ts',
+      startedAt: Date.now(),
+      stdout: `<bash-output-filtered original="" lines="42/75" reduction="44%">${body}</bash-output-filtered>`,
+    })
+    expect(result).toEqual({
+      credited: [at('README.md')],
+      note:
+        '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+        'Not counted: src/types.ts (cut).',
+    })
+    expect(cache.has(at('src/types.ts'))).toBe(false)
+  })
+
+  test('a file written after the chain started is not credited, and the line says so', async () => {
+    const shown = ran('git ls-files && cat README.md package.json')
+    const afterStart = new Date(shown.startedAt + 1_000)
+    utimesSync(at('package.json'), afterStart, afterStart)
+    try {
+      const result = await creditWithNote(shown)
+      expect(result.credited).toEqual([at('README.md')])
+      expect(result.note).toEndWith(' Not counted: package.json (changed since).')
+      expect(cache.has(at('package.json'))).toBe(false)
+    } finally {
+      utimesSync(at('package.json'), BEFORE_ANY_COMMAND, BEFORE_ANY_COMMAND)
+    }
+  })
+
+  test('with the flag off, a chain credits nothing either', async () => {
+    expect(await creditWithNote(ran('git ls-files && cat README.md package.json'), off)).toEqual({
+      credited: [],
+      note: null,
+    })
+    expect(cache.size).toBe(0)
+  })
+})
+
+// Untold, the credit changed nothing the model did (2026-09-23): it Read every
+// file before editing it, as the tool contract says to.
+describe('the line the result ends with', () => {
+  test('two files', async () => {
+    expect((await creditWithNote(ran('cat README.md package.json'))).note).toBe(
+      `(2 ${COUNT_AS_READ}`,
+    )
+  })
+
+  test('one file', async () => {
+    expect((await creditWithNote(ran('cat README.md'))).note).toBe(
+      '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.)',
+    )
+  })
+
+  test('the files that do not count, each with its reason', async () => {
+    writeFixture(at('one-line.txt'), 'export {}\n')
+    try {
+      const result = await creditWithNote(
+        ran(`cat README.md one-line.txt ${join(outside, 'secret.ts')} package.json`),
+      )
+      expect(result.credited).toEqual([at('README.md'), at('package.json')])
+      expect(result.note).toBe(
+        `(2 ${COUNT_AS_READ} Not counted: one-line.txt (one line), ${join(outside, 'secret.ts')} (outside the project).`,
+      )
+    } finally {
+      rmSync(at('one-line.txt'))
+    }
+  })
+
+  // Already read whole at this mtime: the entry stays the Read's, and the
+  // file counts all the same.
+  test('a file an earlier Read covers counts, without being credited again', async () => {
+    cache.set(at('README.md'), {
+      content: FIXTURE['README.md']!.replace(/\n$/, ''),
+      timestamp: getFileModificationTime(at('README.md')),
+      offset: 1,
+      limit: undefined,
+    })
+    expect(await creditWithNote(ran('cat README.md package.json'))).toEqual({
+      credited: [at('package.json')],
+      note: `(2 ${COUNT_AS_READ}`,
+    })
+  })
+
+  test('nothing counts, nothing is said', async () => {
+    writeFixture(at('one-line.txt'), 'export {}\n')
+    try {
+      expect(await creditWithNote(ran('cat one-line.txt'))).toEqual({ credited: [], note: null })
+    } finally {
+      rmSync(at('one-line.txt'))
+    }
+  })
+
+  // The line joins the result after the gates have measured it. A result it
+  // would take past the summarizer's 8k must credit nothing: the model would
+  // get a cut of it.
+  test('an unwrapped result the line would take past 8k credits nothing', async () => {
+    writeFixture(at('src/near8k.ts'), `// near 8k\n${'x'.repeat(7_950)}\n`)
+    try {
+      const shown = ran('cat src/near8k.ts')
+      expect(shown.stdout.length).toBeLessThan(8_000)
+      expect(shown.stdout.length + 120).toBeGreaterThanOrEqual(8_000)
+      expect(await creditWithNote(shown)).toEqual({ credited: [], note: null })
+      expect(cache.size).toBe(0)
+      // Wrapped, the summarizer stands aside and the same read credits.
+      expect(await credit({ ...shown, stdout: readWrapped(shown.stdout) })).toEqual([
+        at('src/near8k.ts'),
+      ])
+    } finally {
+      rmSync(at('src/near8k.ts'))
+    }
+  })
+
+  test('a file the result already names as not shown is not named again', async () => {
+    const shown = ran('cat README.md')
+    const result = await creditWithNote({
+      ...shown,
+      command: 'cat README.md src/types.ts',
+      notShown: ['src/types.ts'],
+    })
+    expect(result.note).toBe(
+      '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.)',
+    )
+  })
 })
 
 describe('what the model did not receive is never credited', () => {
@@ -434,6 +650,18 @@ describe('what the model did not receive is never credited', () => {
         persistedOutputPath: join(dir, 'tool-results', 'b1.txt'),
       }),
     ).toEqual([])
+  })
+
+  // Over the 30k BashTool's result is persisted at, the model gets a 2 KB
+  // preview of a saved file, whatever wrapper the output wears — the wrapper
+  // only answers the summarizer's 8k.
+  test('a wrapped result over the 30k the harness persists at', async () => {
+    const files = Array.from({ length: 11 }, (_, i) => dumpName(i))
+    const shown = ran(DUMP_LOOP.replace('dump/*.ts', files.join(' ')))
+    const stdout = readWrapped(`${shown.stdout}\n`)
+    expect(stdout.length).toBeGreaterThan(30_000)
+    expect(await creditWithNote({ ...shown, stdout })).toEqual({ credited: [], note: null })
+    expect(cache.size).toBe(0)
   })
 
   // The tool-result summarizer cuts unwrapped Bash output from 8k chars up,
@@ -579,7 +807,9 @@ describe('the run is judged by the tool result the model receives', () => {
   // A run a new message backgrounded keeps its partial output, and the note
   // naming the task joins it in the same tool result.
   test('stdout under 8k that the background note takes past 8k credits nothing', async () => {
-    writeFixture(at('src/near8k.ts'), `// near 8k\n${'x'.repeat(7_950)}\n`)
+    // 7,900 chars: room for the credit's own line (~90 chars), which joins the
+    // same result; the background note is what takes it past 8k.
+    writeFixture(at('src/near8k.ts'), `// near 8k\n${'x'.repeat(7_888)}\n`)
     try {
       const shown = ran('cat src/near8k.ts')
       expect(shown.stdout.length).toBeLessThan(8_000)
@@ -606,5 +836,328 @@ describe('only files inside the working directories are credited', () => {
       expect(await credit(shown)).toEqual([])
     }
     expect(cache.size).toBe(0)
+  })
+})
+
+// A `cd` in the command moves where the paths after it resolve, from the
+// directory the command started in: the cwd BashTool passes, whatever the
+// shell's is by the time the credit runs (fileReadShape.ts).
+describe('a cd before the cat', () => {
+  // The A/B call the grammar refused (session-cache-ab 20260924-212723, catread r5).
+  test('the recorded `cd src && cat …` credits each file under src/', async () => {
+    const command =
+      'cd src && cat catalog.ts cli.ts discounts.ts errors.ts money.ts quote.ts receipt.ts'
+    expect(await credit(ran(command))).toEqual(
+      ['catalog', 'cli', 'discounts', 'errors', 'money', 'quote', 'receipt'].map(name =>
+        at(`src/${name}.ts`),
+      ),
+    )
+  })
+
+  test('`cd src && cat a.ts b.ts` credits src/a.ts and src/b.ts', async () => {
+    expect(await creditWithNote(ran('cd src && cat cart.ts types.ts'))).toEqual({
+      credited: [at('src/cart.ts'), at('src/types.ts')],
+      note: `(2 ${COUNT_AS_READ}`,
+    })
+  })
+
+  test('the names in the line stay relative to where the command started', async () => {
+    writeFixture(at('src/one-line.ts'), 'export {}\n')
+    try {
+      expect(await creditWithNote(ran('cd src && cat cart.ts one-line.ts'))).toEqual({
+        credited: [at('src/cart.ts')],
+        note:
+          '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+          'Not counted: src/one-line.ts (one line).',
+      })
+    } finally {
+      rmSync(at('src/one-line.ts'))
+    }
+  })
+
+  test('cds compose', async () => {
+    expect(await credit(ran('cd data && cd carts && cat uk-books.json'))).toEqual([
+      at('data/carts/uk-books.json'),
+    ])
+  })
+
+  test('a glob after a cd expands there', async () => {
+    expect(await credit(ran('cd data/carts && cat *.json'))).toEqual([
+      at('data/carts/basic-us.json'),
+      at('data/carts/coupons-eu.json'),
+      at('data/carts/uk-books.json'),
+    ])
+  })
+
+  test('a cd back to the start is the start', async () => {
+    expect(await credit(ran('cd src && cd .. && cat README.md'))).toEqual([at('README.md')])
+  })
+
+  // The working-directory gate applies where the paths resolve.
+  test('a cd out of the project credits nothing there', async () => {
+    for (const command of [
+      `cd .. && cat ${basename(outside)}/secret.ts`,
+      `cd ${outside} && cat secret.ts`,
+    ]) {
+      const shown = ran(command)
+      expect(shown.stdout).toContain("export const token = 'outside'")
+      expect(await credit(shown)).toEqual([])
+    }
+    expect(cache.size).toBe(0)
+  })
+
+  test('beside a file inside, the line names the one outside as such', async () => {
+    const result = await creditWithNote(
+      ran(`cat README.md && cd .. && cat ${basename(outside)}/secret.ts`),
+    )
+    expect(result).toEqual({
+      credited: [at('README.md')],
+      note:
+        '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+        `Not counted: ${join(outside, 'secret.ts')} (outside the project).`,
+    })
+  })
+})
+
+// `head` and `tail` print part of a file. It counts only when that part is
+// the whole of it — a short file — found by the same verbatim check as a cat.
+describe('a head or tail credits a file it printed whole', () => {
+  test('a head of a short file credits it', async () => {
+    expect(await creditWithNote(ran('head -n 20 README.md'))).toEqual({
+      credited: [at('README.md')],
+      note: '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.)',
+    })
+  })
+
+  test('a head of a long file does not', async () => {
+    expect(await creditWithNote(ran('head -n 5 src/types.ts'))).toEqual({ credited: [], note: null })
+    expect(cache.size).toBe(0)
+  })
+
+  test('beside a file printed whole, the line names the one a head cut', async () => {
+    expect(await creditWithNote(ran('cat README.md; head -n 5 src/types.ts'))).toEqual({
+      credited: [at('README.md')],
+      note:
+        '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+        'Not counted: src/types.ts (cut).',
+    })
+  })
+
+  // `tail -n +1` prints each file whole, under a `==> name <==` header when
+  // there are several.
+  test('tail -n +1 of several files credits each', async () => {
+    expect(await credit(ran('tail -n +1 README.md package.json'))).toEqual([
+      at('README.md'),
+      at('package.json'),
+    ])
+  })
+
+  // The A/B call the grammar refused for its `head -c` (20260924-212723,
+  // catread r2). The catalog is 1,594 bytes there, so `head -c 1500` cut it.
+  test('the recorded mixed read credits every file it printed whole', async () => {
+    const catalog =
+      '[\n' +
+      Array.from(
+        { length: 40 },
+        (_, i) => `  { "sku": "SKU-${String(i).padStart(3, '0')}", "unitCents": ${1000 + i} }`,
+      ).join(',\n') +
+      '\n]\n'
+    writeFixture(at('data/catalog.json'), catalog)
+    writeFixture(
+      at('test/cart.test.ts'),
+      "import { expect, test } from 'bun:test'\nimport { parseCart } from '../src/cart'\n\ntest('parses', () => {\n  expect(parseCart({ region: 'US' }).lines).toEqual([])\n})\n",
+    )
+    writeFixture(
+      at('test/helpers.ts'),
+      'export const cartPath = (name: string) => `data/carts/${name}.json`\nexport const cents = (n: number) => n\n',
+    )
+    try {
+      expect(catalog.length).toBeGreaterThan(1_500)
+      const shown = ran(
+        'cat -n src/types.ts; head -c 1500 data/catalog.json; echo; cat data/carts/basic-us.json; for f in test/*.ts; do echo "=== $f"; cat -n $f; done',
+      )
+      // What the pass-through hands the model for it now that it is a pure read.
+      expect(await creditWithNote({ ...shown, stdout: readWrapped(`${shown.stdout}\n`) })).toEqual({
+        credited: [
+          at('src/types.ts'),
+          at('data/carts/basic-us.json'),
+          at('test/cart.test.ts'),
+          at('test/helpers.ts'),
+        ],
+        note: `(4 ${COUNT_AS_READ} Not counted: data/catalog.json (cut).`,
+      })
+    } finally {
+      writeFixture(at('data/catalog.json'), FIXTURE['data/catalog.json']!)
+      rmSync(at('test'), { recursive: true, force: true })
+    }
+  })
+})
+
+// CLAUDIN_BASH_FILE_READ_PASSTHROUGH past the 28k it shows whole: the whole
+// files that fit, and the rest by name. The flag is the filter's
+// (`overBudgetFileRead`, floor.test.ts); this is the half that reads files.
+describe('fitWholeFiles — a read too long to show whole', () => {
+  const DUMP_READS = [{ text: 'dump/*.ts', glob: true }]
+  const BUDGET = 28_000
+
+  test('the 57k dump comes back as the whole files within 28k, and the rest by name', async () => {
+    const stdout = run(DUMP_LOOP)
+    expect(stdout.length).toBeGreaterThan(55_000)
+    const fitted = (await on.fitWholeFiles(stdout, DUMP_READS, dir, BUDGET))!
+    expect(fitted.shown.length).toBeLessThanOrEqual(BUDGET)
+    expect(stdout.startsWith(fitted.shown)).toBe(true)
+
+    const shownFiles = DUMP_FILES - fitted.notShown.length
+    expect(shownFiles).toBeGreaterThan(5)
+    for (let i = 0; i < DUMP_FILES; i++) {
+      expect(fitted.shown.includes(`=== ${dumpName(i)}\n${dumpModule(i)}`)).toBe(i < shownFiles)
+    }
+    // The cut falls where the last whole file ends, header of the next one out…
+    expect(fitted.shown).toEndWith(dumpModule(shownFiles - 1))
+    // …because the next one would end past the budget.
+    const next = `=== ${dumpName(shownFiles)}\n${dumpModule(shownFiles)}`
+    expect(fitted.shown.length + next.length).toBeGreaterThan(BUDGET)
+    expect(fitted.notShown).toEqual(
+      Array.from({ length: fitted.notShown.length }, (_, k) => dumpName(shownFiles + k)),
+    )
+    expect(fitted.namesAll).toBe(true)
+  })
+
+  // A spill leaves stdout holding the first 30 KB, which holds what fits in 28k.
+  test('the first 30 KB a spill leaves fits the same', async () => {
+    const stdout = run(DUMP_LOOP)
+    expect(await on.fitWholeFiles(stdout.slice(0, 30_000), DUMP_READS, dir, BUDGET)).toEqual(
+      await on.fitWholeFiles(stdout, DUMP_READS, dir, BUDGET),
+    )
+  })
+
+  test('the cat -n form fits the same way', async () => {
+    const stdout = run(DUMP_LOOP.replace('cat $f', 'cat -n $f'))
+    const fitted = (await on.fitWholeFiles(stdout, DUMP_READS, dir, BUDGET))!
+    expect(fitted.shown.length).toBeLessThanOrEqual(BUDGET)
+    expect(fitted.notShown.length).toBeLessThan(DUMP_FILES)
+    const last = DUMP_FILES - fitted.notShown.length - 1
+    expect(fitted.shown).toEndWith(`    ${DUMP_LINES}\texport const f${last}_${DUMP_LINES - 1} = 'jjjjjjjjjjjj'\n`)
+  })
+
+  // Past a file it cannot place, it cannot say where the next one starts.
+  test('the walk stops at the first file it cannot find whole', async () => {
+    const stdout = run(DUMP_LOOP)
+    writeFileSync(at(dumpName(2)), `${dumpModule(2)}// changed since\n`)
+    try {
+      const fitted = (await on.fitWholeFiles(stdout, DUMP_READS, dir, BUDGET))!
+      expect(fitted.shown).toEndWith(dumpModule(1))
+      expect(fitted.notShown).toEqual(
+        Array.from({ length: DUMP_FILES - 2 }, (_, k) => dumpName(k + 2)),
+      )
+    } finally {
+      writeFixture(at(dumpName(2)), dumpModule(2))
+    }
+  })
+
+  // shell-quote hands a bracket-only glob back as a plain word, so the path
+  // named is one that does not exist; with nothing placed, the cap does better.
+  test('when not even the first file can be placed, it leaves the read alone', async () => {
+    const stdout = run('for f in dump/f0[0-9].ts; do echo "=== $f"; cat $f; done')
+    expect(stdout.length).toBeGreaterThan(28_000)
+    expect(
+      await on.fitWholeFiles(stdout, [{ text: 'dump/f0[0-9].ts', glob: false }], dir, BUDGET),
+    ).toBeNull()
+  })
+
+  // `cat a b a` prints `a` twice, so the files past the cut can repeat one
+  // named before it, or one another.
+  test('each file left out is named once, and none it showed', async () => {
+    const names = [dumpName(0), dumpName(1), dumpName(0), dumpName(2), dumpName(1)]
+    const fitted = (await on.fitWholeFiles(
+      run(`cat ${names.join(' ')}`),
+      names.map(text => ({ text, glob: false })),
+      dir,
+      4_000,
+    ))!
+    expect(fitted.shown).toBe(dumpModule(0))
+    expect(fitted.notShown).toEqual([dumpName(1), dumpName(2)])
+  })
+
+  // After a `cd` the files are found where it moved, and named from where the
+  // command started — as the credit's line names them.
+  test('a read after a cd fits the same, its names relative to where the command started', async () => {
+    const stdout = run('cd dump && for f in *.ts; do echo "=== $f"; cat $f; done')
+    expect(stdout.length).toBeGreaterThan(55_000)
+    const fitted = (await on.fitWholeFiles(
+      stdout,
+      [{ text: '*.ts', glob: true, dir: 'dump' }],
+      dir,
+      BUDGET,
+    ))!
+    const shownFiles = DUMP_FILES - fitted.notShown.length
+    expect(shownFiles).toBeGreaterThan(5)
+    expect(fitted.shown).toEndWith(dumpModule(shownFiles - 1))
+    expect(fitted.notShown).toEqual(
+      Array.from({ length: fitted.notShown.length }, (_, k) => dumpName(shownFiles + k)),
+    )
+  })
+
+  test('a named file after a cd is found there', async () => {
+    const fitted = await on.fitWholeFiles(
+      run('cd dump && cat f00.ts f01.ts'),
+      [{ text: 'f00.ts', glob: false, dir: 'dump' }, { text: 'f01.ts', glob: false, dir: 'dump' }],
+      dir,
+      4_000,
+    )
+    expect(fitted).toEqual({ shown: dumpModule(0), notShown: [dumpName(1)], namesAll: true })
+  })
+
+  test('a single file over the budget shows nothing, and is named', async () => {
+    const stdout = run('cat dump/f00.ts dump/f01.ts')
+    const fitted = (await on.fitWholeFiles(
+      stdout,
+      [{ text: 'dump/f00.ts', glob: false }, { text: 'dump/f01.ts', glob: false }],
+      dir,
+      2_000,
+    ))!
+    expect(fitted).toEqual({ shown: '', notShown: ['dump/f00.ts', 'dump/f01.ts'], namesAll: true })
+  })
+
+  test('the files it keeps count as read, and the line does not name the rest twice', async () => {
+    const shown = ran(DUMP_LOOP)
+    const fitted = (await on.fitWholeFiles(shown.stdout, DUMP_READS, dir, BUDGET))!
+    const result = await creditWithNote({
+      ...shown,
+      stdout: readWrapped(fitted.shown),
+      notShown: fitted.notShown,
+    })
+    const shownFiles = DUMP_FILES - fitted.notShown.length
+    expect(result.credited).toEqual(Array.from({ length: shownFiles }, (_, i) => at(dumpName(i))))
+    expect(result.note).toBe(`(${shownFiles} ${COUNT_AS_READ}`)
+  })
+
+  describe('the line that names what was left out', () => {
+    test('the names, and what to do about them', () => {
+      expect(
+        on.renderNotShownNote({ shown: '', notShown: ['dump/f18.ts', 'dump/f19.ts'], namesAll: true }, BUDGET),
+      ).toBe(
+        'Not shown — over the 28k a Bash result shows whole: dump/f18.ts, dump/f19.ts. cat them in another call, or Read them.',
+      )
+    })
+
+    // It follows up to 28k chars of files, under a 30k result.
+    test('a long list is cut short', () => {
+      const names = Array.from({ length: 100 }, (_, i) => `src/generated/module-${i}.ts`)
+      const note = on.renderNotShownNote({ shown: '', notShown: names, namesAll: true }, BUDGET)!
+      expect(note.length).toBeLessThan(1_000)
+      expect(note).toStartWith('Not shown — over the 28k a Bash result shows whole: src/generated/module-0.ts, ')
+      expect(note).toEndWith(' and more. cat them in another call, or Read them.')
+    })
+
+    test('a glob wider than was counted says there is more', () => {
+      expect(
+        on.renderNotShownNote({ shown: '', notShown: ['a.ts'], namesAll: false }, BUDGET),
+      ).toBe('Not shown — over the 28k a Bash result shows whole: a.ts and more. cat them in another call, or Read them.')
+    })
+
+    test('nothing left out, nothing said', () => {
+      expect(on.renderNotShownNote({ shown: 'x', notShown: [], namesAll: true }, BUDGET)).toBeNull()
+    })
   })
 })

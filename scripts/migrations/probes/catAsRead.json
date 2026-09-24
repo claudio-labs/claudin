@@ -1,0 +1,920 @@
+{
+  "test": [
+    "src/tools/shared/outputFilter/Bash/floor.test.ts",
+    "src/tools/shared/outputFilter/Bash/fileReadShape.test.ts",
+    "src/tools/shared/outputFilter/Bash/markers.test.ts",
+    "src/agent/tools/toolResultSummarizer.test.ts",
+    "src/tools/BashTool/creditShownFiles.test.ts",
+    "src/tools/BashTool/BashTool.outputFilter.test.ts",
+    "src/tools/shellToolResultMappers.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/agent/tools/toolExecution.advise.test.ts",
+    "src/tools/BashTool/redirectLanes.test.ts",
+    "src/tools/ApplyPatchTool/prompt.test.ts",
+    "src/tools/FileEditTool/FileEditTool.prompt.test.ts",
+    "src/tools/FileWriteTool/FileWriteTool.prompt.test.ts",
+    "src/agent/prompts/prompts.test.ts",
+    "src/memory/memdir/teamMemPrompts.test.ts",
+    "src/__tests__/readGateScenarios.test.ts",
+    "scripts/bench/ab/session-cache-ab.test.ts"
+  ],
+  "source": "src/tools/shared/outputFilter/Bash/index.ts",
+  "probes": [
+    {
+      "name": "filter: a pure read goes through the floor again instead of passing through",
+      "find": "      if (isUncutFileRead(rawStdout, plan)) return wrapFileRead(rawStdout);\n",
+      "replace": "\n"
+    },
+    {
+      "name": "filter: a pure read passes through bare, without its tag",
+      "find": "      if (isUncutFileRead(rawStdout, plan)) return wrapFileRead(rawStdout);\n",
+      "replace": "      if (isUncutFileRead(rawStdout, plan)) return rawStdout;\n"
+    },
+    {
+      "name": "filter: the pass-through ignores its flag",
+      "find": "    FILE_READ_PASSTHROUGH &&\n    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n",
+      "replace": "    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n"
+    },
+    {
+      "name": "filter: a pure read over 28k passes through whole",
+      "find": "    FILE_READ_PASSTHROUGH &&\n    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n",
+      "replace": "    FILE_READ_PASSTHROUGH &&\n"
+    },
+    {
+      "name": "filter: the flag reads on at module load",
+      "find": "const FILE_READ_PASSTHROUGH = isEnvTruthy(process.env.CLAUDIN_BASH_FILE_READ_PASSTHROUGH);",
+      "replace": "const FILE_READ_PASSTHROUGH = true;"
+    },
+    {
+      "name": "filter: the pass-through ceiling moves to the persist line",
+      "find": "export const FILE_READ_PASSTHROUGH_MAX_CHARS = 28_000;",
+      "replace": "export const FILE_READ_PASSTHROUGH_MAX_CHARS = 30_000;"
+    },
+    {
+      "name": "filter: overBudgetFileRead ignores its flag",
+      "find": "      if (!FILE_READ_PASSTHROUGH || plan.rewrite !== null) return null;\n",
+      "replace": "      if (plan.rewrite !== null) return null;\n"
+    },
+    {
+      "name": "filter: overBudgetFileRead fits a read with a listing segment",
+      "find": "      return read && !read.lists ? read.reads : null;\n",
+      "replace": "      return read ? read.reads : null;\n"
+    },
+    {
+      "name": "filter: overBudgetFileRead fits a read under 28k",
+      "find": "      if (!spilled && rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS) return null;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "filter: overBudgetFileRead leaves a spilled read under 28k to the preview",
+      "find": "      if (!spilled && rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS) return null;\n",
+      "replace": "      if (rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS) return null;\n"
+    },
+    {
+      "name": "markers: stripOutputMarkers leaves the read tag on",
+      "source": "src/tools/shared/outputFilter/Bash/markers.ts",
+      "find": "  /^\\s*<bash-output-(?:filtered|rewritten|read)(?:\\s[^>]*)?>([\\s\\S]*)<\\/bash-output-(?:filtered|rewritten|read)>\\s*$/;",
+      "replace": "  /^\\s*<bash-output-(?:filtered|rewritten)(?:\\s[^>]*)?>([\\s\\S]*)<\\/bash-output-(?:filtered|rewritten)>\\s*$/;"
+    },
+    {
+      "name": "markers: wrapFileRead wears another tag",
+      "source": "src/tools/shared/outputFilter/Bash/markers.ts",
+      "find": "  return `<bash-output-read>${body}</bash-output-read>`;",
+      "replace": "  return `<bash-output-whole>${body}</bash-output-whole>`;"
+    },
+    {
+      "name": "markers: raw output opening with the read tag counts as already wrapped",
+      "source": "src/tools/shared/outputFilter/Bash/markers.ts",
+      "find": "  /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered)/;",
+      "replace": "  /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered|bash-output-read)/;"
+    },
+    {
+      "name": "summarizer: cuts a <bash-output-read> result",
+      "source": "src/agent/tools/toolResultSummarizer/markers.ts",
+      "find": "    text.startsWith('<bash-output-filtered') ||\n    text.startsWith('<bash-output-read>')\n",
+      "replace": "    text.startsWith('<bash-output-filtered')\n"
+    },
+    {
+      "name": "grammar: git ls-files is not a listing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      return args[0]?.text === \"ls-files\";",
+      "replace": "      return false;"
+    },
+    {
+      "name": "grammar: any git command is a listing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      return args[0]?.text === \"ls-files\";",
+      "replace": "      return true;"
+    },
+    {
+      "name": "grammar: wc takes any flag",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      return paths.length > 0 && flags.every((flag) => WC_FLAGS.has(flag.text));",
+      "replace": "      return paths.length > 0;"
+    },
+    {
+      "name": "grammar: wc without a path (stdin) is a listing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      return paths.length > 0 && flags.every((flag) => WC_FLAGS.has(flag.text));",
+      "replace": "      return flags.every((flag) => WC_FLAGS.has(flag.text));"
+    },
+    {
+      "name": "grammar: a listing may take a variable",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (args.some((arg) => EXPANDED_WORD_RE.test(arg.text))) return false;\n  switch (head) {",
+      "replace": "  switch (head) {"
+    },
+    {
+      "name": "grammar: a listing segment does not mark the read",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        lists = true;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "catReadsOf: a piped cat is named",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (!PRINTERS.has(head.text) || pipedOnward(index)) continue;",
+      "replace": "    if (!PRINTERS.has(head.text)) continue;"
+    },
+    {
+      "name": "catReadsOf: a loop piped at its done is named",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (!pipedOnward(index)) (open.at(-1)?.reads ?? reads).push(...closed.reads);",
+      "replace": "      (open.at(-1)?.reads ?? reads).push(...closed.reads);"
+    },
+    {
+      "name": "catReadsOf: an output redirect is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (!walked || walked.hasOutputRedirection) return [];",
+      "replace": "  if (!walked) return [];"
+    },
+    {
+      "name": "catReadsOf: bare shell syntax (subshell, group) is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (SHELL_SYNTAX_RE.test(segment.name)) return [];\n",
+      "replace": "\n"
+    },
+    {
+      "name": "catReadsOf: an if/case body is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (UNFOLLOWED_KEYWORDS.has(head.text)) return [];\n",
+      "replace": "\n"
+    },
+    {
+      "name": "catReadsOf: a command substitution is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (SUBSTITUTION_RE.test(command)) return [];\n",
+      "replace": "\n"
+    },
+    {
+      "name": "grammar: head and tail are not print segments of a pure read",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      case \"head\":\n      case \"tail\": {\n        const partReads",
+      "replace": "      case \"head-refused\":\n      case \"tail-refused\": {\n        const partReads"
+    },
+    {
+      "name": "grammar: a read with a head or tail is not marked as more than whole files",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return { reads, lists: lists || partial };",
+      "replace": "  return { reads, lists };"
+    },
+    {
+      "name": "grammar: a head or tail alone is not a read",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        printSeen = true;\n        partial = true;",
+      "replace": "        partial = true;"
+    },
+    {
+      "name": "grammar: head/tail paths do not carry the cd's directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        reads.push(...inDir(partReads, dir));",
+      "replace": "        reads.push(...partReads);"
+    },
+    {
+      "name": "grammar: cat paths do not carry the cd's directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        reads.push(...inDir(catReads, dir));",
+      "replace": "        reads.push(...catReads);"
+    },
+    {
+      "name": "grammar: a cd is refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      case \"cd\": {\n        // In a loop body",
+      "replace": "      case \"cd-refused\": {\n        // In a loop body"
+    },
+    {
+      "name": "grammar: a cd in a loop body is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        const target = loops.length === 0 ? cdTarget(args) : null;",
+      "replace": "        const target = cdTarget(args);"
+    },
+    {
+      "name": "grammar: a cd moves nothing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "        dir = cdFrom(dir, target);\n        break;",
+      "replace": "        break;"
+    },
+    {
+      "name": "cd: a second argument is ignored",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  const target = args.length === 1 ? args[0]! : null;",
+      "replace": "  const target = args[0] ?? null;"
+    },
+    {
+      "name": "cd: a glob is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (!target || target.glob || target.text === \"\" || target.text.startsWith(\"-\")) return null;",
+      "replace": "  if (!target || target.text === \"\" || target.text.startsWith(\"-\")) return null;"
+    },
+    {
+      "name": "cd: an empty word is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (!target || target.glob || target.text === \"\" || target.text.startsWith(\"-\")) return null;",
+      "replace": "  if (!target || target.glob || target.text.startsWith(\"-\")) return null;"
+    },
+    {
+      "name": "cd: `-` (the last directory) is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (!target || target.glob || target.text === \"\" || target.text.startsWith(\"-\")) return null;",
+      "replace": "  if (!target || target.glob || target.text === \"\") return null;"
+    },
+    {
+      "name": "cd: a word the shell rewrites (~, $D) is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return EXPANDED_WORD_RE.test(target.text) ? null : target.text;",
+      "replace": "  return target.text;"
+    },
+    {
+      "name": "cd: an absolute directory is joined to the last one",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  const next = isAbsolute(target) ? normalize(target) : join(dir ?? \".\", target);",
+      "replace": "  const next = join(dir ?? \".\", target);"
+    },
+    {
+      "name": "cd: several cds do not compose",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  const next = isAbsolute(target) ? normalize(target) : join(dir ?? \".\", target);",
+      "replace": "  const next = isAbsolute(target) ? normalize(target) : join(\".\", target);"
+    },
+    {
+      "name": "cd: back at the start, the paths still carry a directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return next === \".\" ? undefined : next;",
+      "replace": "  return next;"
+    },
+    {
+      "name": "cd: the paths after a cd do not carry its directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return dir === undefined ? words : words.map((word) => ({ ...word, dir }));",
+      "replace": "  return words;"
+    },
+    {
+      "name": "head/tail: any flag is taken (tail -f)",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (!COUNT_FLAGS.has(arg.text)) return null;",
+      "replace": "      if (!COUNT_FLAGS.has(arg.text)) continue;"
+    },
+    {
+      "name": "head/tail: -N is refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (COUNT_FLAG_RE.test(arg.text)) continue;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "head/tail: a count need not be a number",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (!COUNT_RE.test(count) && !fromLine) return null;",
+      "replace": "      if (count === \"\") return null;"
+    },
+    {
+      "name": "head: counts from a line (-n +N) like tail",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      const fromLine = program === \"tail\" && arg.text === \"-n\" && FROM_LINE_RE.test(count);",
+      "replace": "      const fromLine = arg.text === \"-n\" && FROM_LINE_RE.test(count);"
+    },
+    {
+      "name": "tail: -c +N counts from a byte",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      const fromLine = program === \"tail\" && arg.text === \"-n\" && FROM_LINE_RE.test(count);",
+      "replace": "      const fromLine = program === \"tail\" && FROM_LINE_RE.test(count);"
+    },
+    {
+      "name": "tail: -n +N is refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      const fromLine = program === \"tail\" && arg.text === \"-n\" && FROM_LINE_RE.test(count);",
+      "replace": "      const fromLine = false;"
+    },
+    {
+      "name": "head/tail: `-` (stdin) is a path",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (arg.text === \"-\") return null;\n    const words",
+      "replace": "    const words"
+    },
+    {
+      "name": "head/tail: with no path (stdin) it is a print",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  // With no path it prints stdin.\n  return reads.length > 0 ? reads : null;",
+      "replace": "  return reads;"
+    },
+    {
+      "name": "head/tail: a path after -- is read as a flag",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (!afterDoubleDash && arg.text.startsWith(\"-\") && arg.text !== \"-\") {",
+      "replace": "    if (arg.text.startsWith(\"-\") && arg.text !== \"-\") {"
+    },
+    {
+      "name": "pathWords: a word the shell rewrites is a path",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return EXPANDED_WORD_RE.test(arg.text) ? null : [arg];",
+      "replace": "  return [arg];"
+    },
+    {
+      "name": "pathWords: a loop variable is not its word list",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  if (loop) return loop.words;",
+      "replace": "  if (loop) return [arg];"
+    },
+    {
+      "name": "printedBy: a head or tail is parsed as a cat",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "  return program === \"head\" || program === \"tail\" ? parsePartialPrint(program, args, loops) : null;",
+      "replace": "  return program === \"head\" || program === \"tail\" ? parseCat(args, loops) : null;"
+    },
+    {
+      "name": "catReadsOf: a cd it cannot name is skipped",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
+      "replace": "      if (target === null) continue;\n      if (open.length > 0 || !inThisShell(index)) return [];"
+    },
+    {
+      "name": "catReadsOf: a cd in a loop body is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
+      "replace": "      if (target === null || !inThisShell(index)) return [];"
+    },
+    {
+      "name": "catReadsOf: a cd in a pipeline or an or-list is followed",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      if (target === null || open.length > 0 || !inThisShell(index)) return [];",
+      "replace": "      if (target === null || open.length > 0) return [];"
+    },
+    {
+      "name": "catReadsOf: the cd's own joiner (| or ||) is not checked",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    return before !== \"|\" && before !== \"||\" && after !== \"|\" && after !== \"||\";",
+      "replace": "    return after !== \"|\" && after !== \"||\";"
+    },
+    {
+      "name": "catReadsOf: the joiner after the cd (| or ||) is not checked",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    return before !== \"|\" && before !== \"||\" && after !== \"|\" && after !== \"||\";",
+      "replace": "    return before !== \"|\" && before !== \"||\";"
+    },
+    {
+      "name": "catReadsOf: a cd moves nothing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "      dir = cdFrom(dir, target);\n      continue;",
+      "replace": "      continue;"
+    },
+    {
+      "name": "catReadsOf: pushd and popd are not refused",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (DIRECTORY_STACK.has(head.text)) return [];\n",
+      "replace": "\n"
+    },
+    {
+      "name": "catReadsOf: head and tail name nothing",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (!PRINTERS.has(head.text) || pipedOnward(index)) continue;",
+      "replace": "    if (head.text !== \"cat\" || pipedOnward(index)) continue;"
+    },
+    {
+      "name": "catReadsOf: the paths after a cd do not carry its directory",
+      "source": "src/tools/shared/outputFilter/Bash/fileReadShape.ts",
+      "find": "    if (printed) (open.at(-1)?.reads ?? reads).push(...inDir(printed, dir));",
+      "replace": "    if (printed) (open.at(-1)?.reads ?? reads).push(...printed);"
+    },
+    {
+      "name": "credit: ignores its flag",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  if (!READ_CREDIT) return NO_CREDIT\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: a persisted result credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    if (shown.isImage || shown.persistedOutputPath) return NO_CREDIT",
+      "replace": "    if (shown.isImage) return NO_CREDIT"
+    },
+    {
+      "name": "credit: an interrupted run credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    if (shown.interrupted || shown.stderr?.trim()) return NO_CREDIT",
+      "replace": "    if (shown.stderr?.trim()) return NO_CREDIT"
+    },
+    {
+      "name": "credit: a run with stderr credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    if (shown.interrupted || shown.stderr?.trim()) return NO_CREDIT",
+      "replace": "    if (shown.interrupted) return NO_CREDIT"
+    },
+    {
+      "name": "credit: a result over the 30k persist line credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  if (length > PERSISTED_ABOVE_CHARS) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: a wrapped result over 8k is treated as cut",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  return isAlreadyCompacted(received) || length < BASH_SUMMARIZE_THRESHOLD",
+      "replace": "  return length < BASH_SUMMARIZE_THRESHOLD"
+    },
+    {
+      "name": "credit: an unwrapped result over 8k (summarizer cuts it) credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  return isAlreadyCompacted(received) || length < BASH_SUMMARIZE_THRESHOLD",
+      "replace": "  return true"
+    },
+    {
+      "name": "credit: the note's own length is left out of the size gates",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      !reachesModelWhole(received, received.length + 1 + note.length)",
+      "replace": "      !reachesModelWhole(received, received.length)"
+    },
+    {
+      "name": "credit: a file outside the working dirs credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      if (!pathInAllowedWorkingPath(path, toolPermissionContext)) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "credit: a verdict is named but never registered",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      readFileState.set(path, verdict.entry)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: mtime gate — a file written after the command started credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    if (file.mtimeMs >= startedAt) return refused('changed since')\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: a clip-pin stand-down entry is overwritten",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  if (existing?.standDownOutline) return SILENT\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: a one-line file credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  if (!isDistinctive(content)) return covered ? SILENT : refused('one line')\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: a file shown only in part (cut) credits",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  if (!isShownWhole(body, content)) return covered ? SILENT : refused('cut')\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: a real Read's whole entry is overwritten",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  if (covered) return COUNTED\n",
+      "replace": "\n"
+    },
+    {
+      "name": "credit: the entry is not dedup-exempt",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    entry: { content, timestamp, offset: 1, limit: undefined, dedupExempt: true },",
+      "replace": "    entry: { content, timestamp, offset: 1, limit: undefined },"
+    },
+    {
+      "name": "credit: the note's singular text",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      ? '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.)'",
+      "replace": "      ? '(1 file printed whole.)'"
+    },
+    {
+      "name": "credit: the note's plural text",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      : `(${counted} files printed whole — they count as read: Edit, Patch and Write accept them without a Read.)`",
+      "replace": "      : `(${counted} files printed whole.)`"
+    },
+    {
+      "name": "credit: the note drops its Not counted list",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  return notCounted.length === 0 ? line : `${line} Not counted: ${notCounted.join(', ')}.`",
+      "replace": "  return line"
+    },
+    {
+      "name": "credit: the note names again a file the result already lists as not shown",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    return alreadyNamed.has(name) ? [] : [`${name} (${verdict.reason})`]",
+      "replace": "    return [`${name} (${verdict.reason})`]"
+    },
+    {
+      "name": "credit: a cat -n rendering is not recognised",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    wholeLinesEnd(body, content) !== -1 ||\n    wholeLinesEnd(body, catNumbered(content)) !== -1\n",
+      "replace": "    wholeLinesEnd(body, content) !== -1\n"
+    },
+    {
+      "name": "credit: a file matched in the middle of a line",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    if (startsLine(at) && endsLine(at + text.length)) return at + text.length\n",
+      "replace": "    return at + text.length\n"
+    },
+    {
+      "name": "credit: a file ending the trimmed output is not found",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  return trimmed !== '' && at >= from && bodyEnd.endsWith(trimmed) && startsLine(at)\n    ? bodyEnd.length\n    : -1\n",
+      "replace": "  return -1\n"
+    },
+    {
+      "name": "fit: the cut falls mid-file at the budget instead of at a file boundary",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    return { shown: stdout.slice(0, cut), notShown, namesAll }",
+      "replace": "    return { shown: stdout.slice(0, budget), notShown, namesAll }"
+    },
+    {
+      "name": "fit: a file ending past the budget is kept",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      if (end === -1 || end > budget) break",
+      "replace": "      if (end === -1) break"
+    },
+    {
+      "name": "fit: a read whose first file cannot be placed is fitted to nothing",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      if (end === -1 && fitted === 0) return null\n",
+      "replace": "\n"
+    },
+    {
+      "name": "fit: the cut drops the newline that ends the last file",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    return stdout[end] === '\\n' ? end + 1 : end",
+      "replace": "    return end"
+    },
+    {
+      "name": "fit: notShown dedupe — a file named twice is listed twice",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    const notShown = [...new Set(paths.slice(fitted))]",
+      "replace": "    const notShown = [...paths.slice(fitted)]"
+    },
+    {
+      "name": "fit: notShown dedupe — a file already shown is listed as not shown",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      .filter(path => !shownPaths.has(path))\n",
+      "replace": "\n"
+    },
+    {
+      "name": "fit: the not-shown line's text",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  return `Not shown — over the ${Math.round(budget / 1000)}k a Bash result shows whole: ${listed.join(', ')}${more}. cat them in another call, or Read them.`",
+      "replace": "  return `Not shown: ${listed.join(', ')}${more}.`"
+    },
+    {
+      "name": "fit: the not-shown line lists past its 800-char cap",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    if (listed.length > 0 && length + name.length > MAX_NOT_SHOWN_CHARS) break\n",
+      "replace": "\n"
+    },
+    {
+      "name": "fit: the not-shown line never says 'and more'",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  const more = listed.length < fitted.notShown.length || !fitted.namesAll ? ' and more' : ''",
+      "replace": "  const more = ''"
+    },
+    {
+      "name": "credit: a word resolves where the command started, whatever cd it followed",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "  return word.dir === undefined ? cwd : resolve(cwd, word.dir)",
+      "replace": "  return cwd"
+    },
+    {
+      "name": "credit: candidatesOf ignores the cd",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    const base = baseOf(word, cwd)\n    const paths = word.glob",
+      "replace": "    const base = cwd\n    const paths = word.glob"
+    },
+    {
+      "name": "credit: a glob after a cd expands where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      ? await expandGlob(word.text, base, MAX_CANDIDATES)",
+      "replace": "      ? await expandGlob(word.text, cwd, MAX_CANDIDATES)"
+    },
+    {
+      "name": "credit: a path after a cd resolves where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      : [resolve(base, word.text)]\n    for (const path of paths) {",
+      "replace": "      : [resolve(cwd, word.text)]\n    for (const path of paths) {"
+    },
+    {
+      "name": "fit: namedFiles ignores the cd",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "    const base = baseOf(word, cwd)\n    const expanded = word.glob",
+      "replace": "    const base = cwd\n    const expanded = word.glob"
+    },
+    {
+      "name": "fit: a glob after a cd expands where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      ? await expandGlob(word.text, base, MAX_NAMED)",
+      "replace": "      ? await expandGlob(word.text, cwd, MAX_NAMED)"
+    },
+    {
+      "name": "fit: a path after a cd resolves where the command started",
+      "source": "src/tools/BashTool/creditShownFiles.ts",
+      "find": "      : [resolve(base, word.text)]\n    // A glob that reached the cap",
+      "replace": "      : [resolve(cwd, word.text)]\n    // A glob that reached the cap"
+    },
+    {
+      "name": "BashTool: fitOverBudgetRead fits an interrupted run",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "  if (result.interrupted) return null;\n  // Where the filter does not run, neither does its pass-through.\n",
+      "replace": "  // Where the filter does not run, neither does its pass-through.\n"
+    },
+    {
+      "name": "BashTool: fitOverBudgetRead fits with the filter off",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "  if (!shouldFilterOutput(getGlobalConfig().bashOutputFilterEnabled, isBashOutputFilterDisabled, result.backgroundTaskId)) return null;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "BashTool: a fitted read keeps the spill fields (preview instead of files)",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "      stdout: fitted.shown,\n      outputFilePath: undefined,\n      outputFileSize: undefined,\n      outputTaskId: undefined\n",
+      "replace": "      stdout: fitted.shown\n"
+    },
+    {
+      "name": "BashTool: a failed command is fitted",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);",
+      "replace": "      const fit = await fitOverBudgetRead(result, filterPlan, commandStartCwd);"
+    },
+    {
+      "name": "BashTool: call() never applies the fit",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);",
+      "replace": "      const fit = null as Awaited<ReturnType<typeof fitOverBudgetRead>>;"
+    },
+    {
+      "name": "BashTool: the fit resolves from the cwd a cd left, after the run",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);",
+      "replace": "      const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, getCwd());"
+    },
+    {
+      "name": "BashTool: the credit resolves from the cwd a cd left, after the run",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    }, toolUseContext.readFileState, commandStartCwd, getAppState().toolPermissionContext);",
+      "replace": "    }, toolUseContext.readFileState, getCwd(), getAppState().toolPermissionContext);"
+    },
+    {
+      "name": "BashTool: the not-shown line is not put on the result",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "      ...(notShownNote !== null && {\n        readNote: notShownNote\n      })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "BashTool: the credit is not told what the result already lists as not shown",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "      ...(fitted && {\n        notShown: fitted.notShown\n      })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "BashTool: creditedFiles is not set on the Out",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    if (credit.credited.length > 0) data.creditedFiles = [...credit.credited];\n",
+      "replace": "\n"
+    },
+    {
+      "name": "BashTool: the credit note is not put on readNote",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    if (credit.note !== null) data.readNote = data.readNote ? `${data.readNote}\\n${credit.note}` : credit.note;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "BashTool: the credit note replaces the not-shown line instead of following it",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    if (credit.note !== null) data.readNote = data.readNote ? `${data.readNote}\\n${credit.note}` : credit.note;\n",
+      "replace": "    if (credit.note !== null) data.readNote = credit.note;\n"
+    },
+    {
+      "name": "mapper: readNote is left out of the tool_result content",
+      "source": "src/tools/shellToolResultMappers.ts",
+      "find": "    content: [processedStdout, data.readNote, errorMessage, backgroundInfo]",
+      "replace": "    content: [processedStdout, errorMessage, backgroundInfo]"
+    },
+    {
+      "name": "resume: a credited file written after the result is restored",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "      if (timestamp > answeredAt) return\n",
+      "replace": "\n"
+    },
+    {
+      "name": "resume: a failed Bash result restores its credit",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "            content.is_error !== true &&\n            message.timestamp\n",
+      "replace": "            message.timestamp\n"
+    },
+    {
+      "name": "resume: any tool's creditedFiles is restored, not only Bash's",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "            bashToolUseIds.has(content.tool_use_id) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "resume: creditedFilesOf names nothing",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "  return creditedFiles.filter((path): path is string => typeof path === 'string')\n}",
+      "replace": "  return []\n}"
+    },
+    {
+      "name": "resume: the restored credit is not dedup-exempt",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "        limit: undefined,\n        dedupExempt: true,\n      })\n      readAuthored.delete(filePath)\n",
+      "replace": "        limit: undefined,\n      })\n      readAuthored.delete(filePath)\n"
+    },
+    {
+      "name": "advice: adviceNoteAfterCall keeps the note on a fully credited cat",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  return isReadAdviceMoot(command, getCwd(), paths) ? null : note",
+      "replace": "  return note"
+    },
+    {
+      "name": "advice: adviceNoteAfterCall drops notes of tools other than Bash",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "  if (note === null || tool.name !== BASH_TOOL_NAME) return note",
+      "replace": "  if (note === null) return note"
+    },
+    {
+      "name": "advice: the tool loop never asks adviceNoteAfterCall",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    const resultAdviceNote = adviceNoteAfterCall(tool, callInput, result.data, adviceNote)",
+      "replace": "    const resultAdviceNote = adviceNote"
+    },
+    {
+      "name": "advice: isReadAdviceMoot when only some files were credited",
+      "source": "src/tools/BashTool/redirectLanes.ts",
+      "find": "  return reads.every(path => credited.has(resolve(path)))",
+      "replace": "  return reads.some(path => credited.has(resolve(path)))"
+    },
+    {
+      "name": "advice: wholeFileReadsOf counts a search as a read",
+      "source": "src/tools/BashTool/toolRedirect.ts",
+      "find": "    if (call.tool !== 'Read') return null\n    if (call.offset !== undefined || call.limit !== undefined) return null\n",
+      "replace": "    if (call.offset !== undefined || call.limit !== undefined) return null\n"
+    },
+    {
+      "name": "advice: wholeFileReadsOf counts a range read as whole",
+      "source": "src/tools/BashTool/toolRedirect.ts",
+      "find": "    if (call.tool !== 'Read') return null\n    if (call.offset !== undefined || call.limit !== undefined) return null\n",
+      "replace": "    if (call.tool !== 'Read') return null\n"
+    },
+    {
+      "name": "contract: Patch drops the cat clause under the credit",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "  ? ' — a Bash `cat` that printed the whole file counts too'\n",
+      "replace": "  ? ''\n"
+    },
+    {
+      "name": "contract: Patch says the cat clause with the credit off",
+      "source": "src/tools/ApplyPatchTool/prompt.ts",
+      "find": "const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)\n",
+      "replace": "const CAT_COUNTS_AS_READ = true\n"
+    },
+    {
+      "name": "contract: Edit keeps the Read-only line under the credit",
+      "source": "src/tools/FileEditTool/prompt.ts",
+      "find": "  const mustRead = READ_CREDIT\n",
+      "replace": "  const mustRead = false\n"
+    },
+    {
+      "name": "contract: Edit says the cat clause with the credit off",
+      "source": "src/tools/FileEditTool/prompt.ts",
+      "find": "  const mustRead = READ_CREDIT\n",
+      "replace": "  const mustRead = true\n"
+    },
+    {
+      "name": "contract: Write drops the cat clause under the credit",
+      "source": "src/tools/FileWriteTool/prompt.ts",
+      "find": "  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''",
+      "replace": "  const catCounts = ''"
+    },
+    {
+      "name": "contract: Write says the cat clause with the credit off",
+      "source": "src/tools/FileWriteTool/prompt.ts",
+      "find": "  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''",
+      "replace": "  const catCounts = ' (a Bash `cat` that printed it whole counts)'"
+    },
+    {
+      "name": "contract: the addendum drops the cat clause under the credit",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "  ? ' (files a `cat` already printed whole count as read)'\n",
+      "replace": "  ? ''\n"
+    },
+    {
+      "name": "contract: the addendum says the cat clause with the credit off",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)\n",
+      "replace": "const CAT_COUNTS_AS_READ = true\n"
+    },
+    {
+      "name": "memory: areMemoryIndexesEmpty counts a whitespace-only index as saved",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "      file.content.trim() !== '',\n",
+      "replace": "      file.content !== '',\n"
+    },
+    {
+      "name": "memory: areMemoryIndexesEmpty counts the project's own instructions",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "      (file.type === 'AutoMem' || file.type === 'TeamMem') &&\n",
+      "replace": ""
+    },
+    {
+      "name": "memory: loadMemoryPrompt never asks areMemoryIndexesEmpty",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "        indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())\n",
+      "replace": "        indexesEmpty = false\n"
+    },
+    {
+      "name": "memory: EMPTY_INDEXES_NOTE says nothing",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "const EMPTY_INDEXES_NOTE = ' Both are empty — nothing is saved yet.'",
+      "replace": "const EMPTY_INDEXES_NOTE = ''"
+    },
+    {
+      "name": "memory: the full prompt drops the note",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "      emptyIndexesNote +\n",
+      "replace": ""
+    },
+    {
+      "name": "memory: the lean prompt drops the note",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "indexes are in context.${emptyIndexesNote} After writing",
+      "replace": "indexes are in context. After writing"
+    },
+    {
+      "name": "memory: the full prompt says the note with an index present",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n\n  // Compact",
+      "replace": "  const emptyIndexesNote = EMPTY_INDEXES_NOTE\n\n  // Compact"
+    },
+    {
+      "name": "memory: the lean prompt says the note with an index present",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n  const lines = [",
+      "replace": "  const emptyIndexesNote = EMPTY_INDEXES_NOTE\n  const lines = ["
+    },
+    {
+      "name": "bench: a cat the pass-through wrapped whole counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.isError && !info.refused && CAT_COMMAND_RE.test(info.command)"
+    },
+    {
+      "name": "bench: a failed cat counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)"
+    },
+    {
+      "name": "bench: a harness refusal counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.isError && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)"
+    },
+    {
+      "name": "bench: any command counts as a miss",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "  return !info.isError && !info.refused && info.marker !== 'read' && CAT_COMMAND_RE.test(info.command)",
+      "replace": "  return !info.isError && !info.refused && info.marker !== 'read'"
+    },
+    {
+      "name": "bench: a cat after a lone pipe (a sink) counts",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /(?:(?:^|[;&|({\\n])\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/"
+    },
+    {
+      "name": "bench: a cat anywhere, an argument included, counts",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /cat(?=\\s|$)/"
+    },
+    {
+      "name": "bench: a keyword glued to cat counts",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s*)cat(?=\\s|$)/"
+    },
+    {
+      "name": "bench: a cat after a newline is not a command",
+      "source": "scripts/bench/ab/session-cache-ab.ts",
+      "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
+      "replace": "const CAT_COMMAND_RE = /(?:(?:^|[;&({]|\\|\\|)[ \\t]*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/"
+    }
+  ]
+}

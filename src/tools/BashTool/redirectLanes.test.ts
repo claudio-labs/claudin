@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { resolve } from 'path'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
-import { getBashRedirectMode, pickBashRedirect } from 'src/tools/BashTool/redirectLanes.js'
+import { getBashRedirectMode, isReadAdviceMoot, pickBashRedirect } from 'src/tools/BashTool/redirectLanes.js'
 import { resetToolRedirectMemoForTesting } from 'src/tools/BashTool/toolRedirect.js'
 import { resetBuildRedirectMemoForTesting } from 'src/tools/BuildTool/redirect.js'
 import { renderGitRedirect, resetGitRedirectMemoForTesting } from 'src/tools/GitTool/redirect.js'
@@ -99,6 +100,16 @@ describe('advise mode: each lane names its tool and the call to make', () => {
     expect(r?.message).toContain('Read(file_path:')
   })
 
+  test('a cat of three files → one whole Read each, the note as it reads today', () => {
+    const files = ['package.json', 'tsconfig.json', 'AGENTS.md']
+    expect(advise(`cat ${files.join(' ')}`)?.message).toBe(
+      [
+        'This command only reads or searches files, and Read does that without the shell:',
+        ...files.map(file => `  → Read(file_path: ${JSON.stringify(resolve(CWD, file))}, view: "full")`),
+      ].join('\n'),
+    )
+  })
+
   test('a sleep poll → WaitFor, on by default here', () => {
     const r = advise(POLL)
     expect(r?.suggests).toBe('WaitFor')
@@ -158,6 +169,40 @@ describe('gates, in both modes', () => {
     process.env[key] = '1'
     expect(advise(command)).toBeNull()
     expect(refuse(command)).toBeNull()
+  })
+})
+
+// CLAUDIN_BASH_READ_CREDIT: a `cat` whose files all counted as read
+// (creditShownFiles.ts) would only be told to Read them again. toolExecution
+// asks this once the call is back, and drops the note.
+describe('isReadAdviceMoot — the call already counted every file the note names', () => {
+  const at = (file: string) => resolve(CWD, file)
+  const THREE = 'cat package.json tsconfig.json AGENTS.md'
+
+  test('every file credited: moot', () => {
+    expect(isReadAdviceMoot(THREE, CWD, [at('package.json'), at('tsconfig.json'), at('AGENTS.md')])).toBe(true)
+    expect(isReadAdviceMoot('cat ./package.json', CWD, [at('package.json')])).toBe(true)
+  })
+
+  test('one of them not credited: the note stands', () => {
+    expect(isReadAdviceMoot(THREE, CWD, [at('package.json'), at('AGENTS.md')])).toBe(false)
+  })
+
+  test('nothing credited — the flag off, or nothing shown whole: the note stands', () => {
+    expect(isReadAdviceMoot(THREE, CWD, undefined)).toBe(false)
+    expect(isReadAdviceMoot(THREE, CWD, [])).toBe(false)
+  })
+
+  test('a note that asks for more than whole files stands', () => {
+    // A range Read: the credit is for whole files, and head is not a cat.
+    expect(isReadAdviceMoot('head -5 package.json', CWD, [at('package.json')])).toBe(false)
+    // A search.
+    expect(isReadAdviceMoot('grep -n name package.json', CWD, [at('package.json')])).toBe(false)
+    expect(isReadAdviceMoot('cat package.json && grep -rn foo src', CWD, [at('package.json')])).toBe(false)
+  })
+
+  test('a command this lane does not map', () => {
+    expect(isReadAdviceMoot('bun run build', CWD, [at('package.json')])).toBe(false)
   })
 })
 

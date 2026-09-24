@@ -3,7 +3,13 @@ import { rename, stat, unlink, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { getEffectiveContextWindowSize } from 'src/agent/compact/autoCompact.js'
 import { ENTER_PLAN_MODE_TOOL_NAME } from 'src/tools/EnterPlanModeTool/constants.js'
+import { splitBatchReadResult } from 'src/tools/FileReadTool/batchResult.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import {
+  isBatchReadInput,
+  readPathsOf,
+  recordedReadTargets,
+} from 'src/tools/FileReadTool/readMulti.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { isENOENT } from 'src/shared/errors.js'
@@ -263,6 +269,43 @@ async function buildReadEntry(
   }
 }
 
+/**
+ * A Read's entries. A batch (readMulti.ts) is one per file its result shows
+ * under a header, each built from that file's own text exactly as a Read of
+ * it would be; a file it did not show — past its budget, media sent to a Read
+ * of their own — has none. Any other Read, and a batch whose result shows no
+ * file at all (a call refused before it ran), is the one entry it always was.
+ */
+async function buildReadEntries(
+  toolUse: ToolUseBlock,
+  toolResult: ToolResultBlock | undefined,
+  filesToEdit: Set<string>,
+  capturedAt: string,
+): Promise<ReadEntry[]> {
+  const targets = recordedReadTargets(toolUse.input)
+  if (isBatchReadInput(targets) && toolResult) {
+    const sections = splitBatchReadResult(
+      extractTextFromToolResult(toolResult.content),
+      readPathsOf(targets),
+    )
+    if (sections.length > 0) {
+      const entries = await Promise.all(
+        sections.map(({ path, text }) =>
+          buildReadEntry(
+            { ...toolUse, input: { file_path: path } },
+            { type: 'tool_result', content: text },
+            filesToEdit,
+            capturedAt,
+          ),
+        ),
+      )
+      return entries.filter((entry): entry is ReadEntry => entry !== null)
+    }
+  }
+  const entry = await buildReadEntry(toolUse, toolResult, filesToEdit, capturedAt)
+  return entry ? [entry] : []
+}
+
 function summarizeGrepResultPaths(text: string, mode: string): string[] {
   if (mode === 'files_with_matches') {
     return text
@@ -360,13 +403,14 @@ export async function buildDossierFromMessages(
       if (block?.type !== 'tool_use') continue
       const toolResult = block.id ? resultsByToolUseId.get(block.id) : undefined
       if (block.name === FILE_READ_TOOL_NAME) {
-        const entry = await buildReadEntry(
+        for (const entry of await buildReadEntries(
           block,
           toolResult,
           filesToEditSet,
           capturedAt,
-        )
-        if (entry) reads.set(entry.path, entry)
+        )) {
+          reads.set(entry.path, entry)
+        }
       } else if (block.name === GREP_TOOL_NAME) {
         const entry = buildGrepEntry(block, toolResult, capturedAt)
         if (entry) greps.push(entry)

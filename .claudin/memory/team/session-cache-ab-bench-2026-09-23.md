@@ -1,6 +1,6 @@
 ---
 name: session-cache-ab-bench-2026-09-23
-description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume) — +53% → +7% after fix/session-cache (resume 40%→100%); round 2 found the N=5 noise floor (a placebo arm moved cost −6%) and a time-of-day drift (main +12% by afternoon), so compare only simultaneous arms
+description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume) — +53% → +7% after fix/session-cache (resume 40%→100%); round 2 found the N=5 noise floor (a placebo arm moved cost −6%) and a time-of-day drift (main +12% by afternoon), so compare only simultaneous arms; 09-24 main at effort medium: +14% (overlap), first turn 17.3k vs 21.0k, gap = thinking + tool results
 type: project
 ---
 
@@ -171,3 +171,27 @@ Estimating it as output minus visible chars / 2.22 overshoots both arms by
   Opus 5.5 and claudin `high`, a gap this bench does not measure.
 - Not causes: the cache (100% resume read-back, 0 breaks) and tool-result
   volume (27–29k tokens vs 25–27k).
+
+**Main vs Claude Code, both at their Opus 5.5 default effort (2026-09-24, run
+`-170553`: main @ c5fc6051 = v2 prompts + deferred dev tools, Claude Code
+2.1.281, `--reps=5 --effort=medium --proxy`; all 10 sessions 18/18 + one commit):**
+
+| median [min–max] | claude | claudindev |
+|---|---|---|
+| first-turn context | 21.0k | 17.3k (−18%, SEPARATED) |
+| end context | 62.4k | 67.5k (+8%, overlap) |
+| turns / tool calls | 17 / 16 | 20 / 39 |
+| cache read | 750k [642k–822k] | 898k [732k–1.26M] (+20%, overlap) |
+| cache write | 52.6k | 57.0k (+8%, overlap) |
+| thinking (API) | 2.6k | 4.6k (+76%, overlap) |
+| cost | $1.03 [0.99–1.08] | $1.17 [1.01–1.34] (+14%, overlap) |
+
+- The prefix now costs claudin less than Claude Code (−$0.03 a session); the
+  gap sits in thinking (+$0.06) and tool results + reminders (+$0.05,
+  SEPARATED). Claude Code reads the project in 2–3 `cat` batches (Bash only,
+  0 Read); claudin makes ~17 Reads over more turns, and each extra turn
+  re-reads ~50–60k — most of the +20% cache read.
+- Resume read back 100% with 0 cache breaks in both arms. Claudin's turn 1
+  reads 10.4k cross-session (cold 17.3k write in rep 1 only), Claude Code's 9.8k.
+- Claude Code added an AI trailer 5/5, claudin 0/5; claudin's tree keeps
+  `?? .claudin/` (by design, above).

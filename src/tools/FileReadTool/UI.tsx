@@ -28,8 +28,19 @@ function getAgentOutputTaskId(filePath: string): string | null {
   }
   return null;
 }
+
+/** How many paths a batch's tool-use line names before "+N more". */
+const BATCH_PATHS_NAMED = 3;
+
+/** "3 files: a.ts, b.ts, c.ts" — the tool-use line of a batch Read (batchRead.ts). */
+function batchUseSummary(paths: readonly string[]): string {
+  const named = paths.slice(0, BATCH_PATHS_NAMED).map(p => getDisplayPath(p));
+  const more = paths.length - named.length;
+  return `${paths.length} files: ${named.join(', ')}${more > 0 ? `, +${more} more` : ''}`;
+}
 export function renderToolUseMessage({
   file_path,
+  file_paths,
   offset,
   limit,
   pages
@@ -38,6 +49,9 @@ export function renderToolUseMessage({
 }: {
   verbose: boolean;
 }): React.ReactNode {
+  if (file_paths !== undefined) {
+    return batchUseSummary(file_paths);
+  }
   if (!file_path) {
     return null;
   }
@@ -174,6 +188,23 @@ export function renderToolResultMessage(output: Output): React.ReactNode {
           </Text>
         </MessageResponse>;
       }
+    case 'batch':
+      {
+        // Numbered lines only: an outline or an unchanged stub shows none, and
+        // then the count is left out rather than printed as 0.
+        const {
+          files,
+          notShown
+        } = output;
+        const lines = files.reduce((sum, file) => sum + file.lines, 0);
+        const total = files.length + notShown.length;
+        const tail = `${notShown.length > 0 ? ` of ${total}` : ''} ${total === 1 ? 'file' : 'files'}${lines > 0 ? ` (${lines} lines)` : ''}`;
+        return <MessageResponse height={1}>
+          <Text>
+            Read <Text bold>{files.length}</Text>{tail}
+          </Text>
+        </MessageResponse>;
+      }
   }
 }
 export function renderToolUseErrorMessage(result: ToolResultBlockParam['content'], {
@@ -207,6 +238,9 @@ export function userFacingName(input: Partial<Input> | undefined): string {
   return 'Read';
 }
 export function getToolUseSummary(input: Partial<Input> | undefined): string | null {
+  if (input?.file_paths !== undefined) {
+    return batchUseSummary(input.file_paths);
+  }
   if (!input?.file_path) {
     return null;
   }

@@ -90,7 +90,9 @@ export const outputSchema = lazySchema(() => z.object({
   noOutputExpected: z.boolean().optional().describe('Whether the command is expected to produce no output on success'),
   structuredContent: z.array(z.any()).optional().describe('Structured content blocks'),
   persistedOutputPath: z.string().optional().describe('Path to the persisted full output in tool-results dir (set when output is too large for inline)'),
-  persistedOutputSize: z.number().optional().describe('Total size of the output in bytes (set when output is too large for inline)')
+  persistedOutputSize: z.number().optional().describe('Total size of the output in bytes (set when output is too large for inline)'),
+  readNote: z.string().optional().describe('Model-facing note after stdout on a file read: the files it did not show, and the ones that count as read'),
+  creditedFiles: z.array(z.string()).optional().describe('Absolute paths the read credit counted as read (CLAUDIN_BASH_READ_CREDIT); /resume rebuilds them from disk')
 }));
 export type OutputSchema = ReturnType<typeof outputSchema>;
 export type Out = z.infer<OutputSchema>;

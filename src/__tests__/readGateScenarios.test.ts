@@ -668,15 +668,17 @@ describe('S16 — a `cat` credited as a read, then a patch', () => {
     const startedAt = Date.now()
     const stdout = readFileSync(p, 'utf8').trimEnd()
     expect(
-      await credit.creditShownFiles(
-        { command: 'cat s16.txt', startedAt, stdout },
-        ctx.readFileState,
-        dir,
-        {
-          ...getEmptyToolPermissionContext(),
-          additionalWorkingDirectories: new Map([[dir, { path: dir, source: 'session' }]]),
-        },
-      ),
+      (
+        await credit.creditShownFiles(
+          { command: 'cat s16.txt', startedAt, stdout },
+          ctx.readFileState,
+          dir,
+          {
+            ...getEmptyToolPermissionContext(),
+            additionalWorkingDirectories: new Map([[dir, { path: dir, source: 'session' }]]),
+          },
+        )
+      ).credited,
     ).toEqual([p])
     // The entry a whole-file Read of the same bytes writes, plus dedupExempt:
     // no Read tool_result carries these bytes for a dedup stub to point at.

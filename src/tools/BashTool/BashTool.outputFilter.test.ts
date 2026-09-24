@@ -17,9 +17,15 @@
 //   • Env var → process.env mutation with save/restore in afterEach.
 //   • ExecResult → plain object literals (no shell subprocess needed here).
 
-import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { execFileSync, spawnSync } from 'child_process'
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join, resolve } from 'path'
 import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
+import { BashTool, fitOverBudgetRead } from 'src/tools/BashTool/BashTool.js'
+import { renderNotShownNote } from 'src/tools/BashTool/creditShownFiles.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,
@@ -526,5 +532,325 @@ describe('bash output filter — catch path (fail-open)', () => {
     const result3 = makeResult({ stdout: LS_LA_SAMPLE })
     const returned3 = applyBashOutputFilter(result3, 'ls -la')
     expect(returned3).toBe(result3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 7 — a pure read too long to show whole (fitOverBudgetRead)
+// ---------------------------------------------------------------------------
+
+type BashFilter = typeof import('src/tools/shared/outputFilter/Bash/index.js')
+
+const PASSTHROUGH_FLAG = 'CLAUDIN_BASH_FILE_READ_PASSTHROUGH'
+
+/**
+ * The pass-through's flag is read once at module load, so each arm gets its
+ * own instance of the filter, loaded with the variable set as it needs it —
+ * whatever the developer's shell exports.
+ */
+async function loadFilter(passthrough: boolean): Promise<BashFilter> {
+  const prior = process.env[PASSTHROUGH_FLAG]
+  if (passthrough) process.env[PASSTHROUGH_FLAG] = '1'
+  else delete process.env[PASSTHROUGH_FLAG]
+  try {
+    return await import(
+      `src/tools/shared/outputFilter/Bash/index.js?fit=${passthrough}-${Date.now()}`
+    )
+  } finally {
+    if (prior === undefined) delete process.env[PASSTHROUGH_FLAG]
+    else process.env[PASSTHROUGH_FLAG] = prior
+  }
+}
+
+describe('a pure read too long to show whole — fitOverBudgetRead', () => {
+  // Twenty modules, ~59k printed: the dump session-cache-ab 20260924-170553 r1
+  // got as a saved file with a 2 KB preview, and read back whole.
+  const LOOP = 'for f in dump/*.ts; do echo "=== $f"; cat $f; done'
+  let dir: string
+  let on: BashFilter
+  let off: BashFilter
+  let printed: string
+
+  beforeAll(async () => {
+    on = await loadFilter(true)
+    off = await loadFilter(false)
+    dir = mkdtempSync(join(tmpdir(), 'bash-fit-'))
+    mkdirSync(join(dir, 'dump'))
+    for (let i = 0; i < 20; i++) {
+      const lines = Array.from({ length: 80 }, (_, n) => `export const f${i}_${n} = '${'x'.repeat(12)}'`)
+      writeFileSync(join(dir, 'dump', `f${String(i).padStart(2, '0')}.ts`), `${lines.join('\n')}\n`)
+    }
+    printed = execFileSync('bash', ['-c', LOOP], { cwd: dir, encoding: 'utf8' })
+  })
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  /** What the shell hands BashTool for a run past its 30 KB: the head, and the file it spilled to. */
+  const spilled = () =>
+    makeResult({
+      stdout: printed.slice(0, 30_000),
+      outputFilePath: join(dir, 'task.output'),
+      outputFileSize: printed.length,
+      outputTaskId: 'bfit',
+    })
+
+  test('the whole files that fit, the spill dropped, and no preview of a saved file', async () => {
+    enableFilter()
+    expect(printed.length).toBeGreaterThan(55_000)
+    const plan = on.planBashFilter(LOOP, { allowRewrite: false })
+    const fit = (await fitOverBudgetRead(spilled(), plan, dir, on.overBudgetFileRead))!
+    expect(fit).not.toBeNull()
+    expect(fit.result.outputFilePath).toBeUndefined()
+    expect(fit.result.outputTaskId).toBeUndefined()
+    expect(fit.result.stdout.length).toBeLessThanOrEqual(28_000)
+    expect(printed.startsWith(fit.result.stdout)).toBe(true)
+    expect(fit.fitted.notShown.length).toBeGreaterThan(0)
+
+    // Mapped as BashTool maps it once the filter has run: the files in the
+    // read wrapper, the line naming the rest, and nothing persisted.
+    const content = String(
+      BashTool.mapToolResultToToolResultBlockParam(
+        {
+          stdout: on.applyBashFilterToStdout(fit.result.stdout, false, plan),
+          stderr: '',
+          interrupted: false,
+          readNote: renderNotShownNote(fit.fitted, 28_000)!,
+        },
+        'toolu_fit',
+      ).content,
+    )
+    expect(content).toStartWith('<bash-output-read>=== dump/f00.ts\n')
+    expect(content).toContain(
+      `</bash-output-read>\nNot shown — over the 28k a Bash result shows whole: ${fit.fitted.notShown.join(', ')}. cat them in another call, or Read them.`,
+    )
+    expect(content).not.toContain('<persisted-output>')
+    expect(content.length).toBeLessThan(30_000)
+  })
+
+  test('a read with a listing segment keeps today: nothing fitted', async () => {
+    enableFilter()
+    const command = `ls dump; ${LOOP}`
+    const plan = on.planBashFilter(command, { allowRewrite: false })
+    expect(await fitOverBudgetRead(spilled(), plan, dir, on.overBudgetFileRead)).toBeNull()
+  })
+
+  test('with the flag off, nothing fitted', async () => {
+    enableFilter()
+    const plan = off.planBashFilter(LOOP, { allowRewrite: false })
+    expect(await fitOverBudgetRead(spilled(), plan, dir, off.overBudgetFileRead)).toBeNull()
+  })
+
+  test('where the filter does not run, nor an interrupted run: nothing fitted', async () => {
+    const plan = on.planBashFilter(LOOP, { allowRewrite: false })
+    enableFilter()
+    expect(
+      await fitOverBudgetRead({ ...spilled(), interrupted: true }, plan, dir, on.overBudgetFileRead),
+    ).toBeNull()
+    disableFilter()
+    expect(await fitOverBudgetRead(spilled(), plan, dir, on.overBudgetFileRead)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 8 — call() with both flags on: what reaches the result
+// ---------------------------------------------------------------------------
+
+// Suite 7 pins fitOverBudgetRead, and creditShownFiles.test.ts the credit.
+// What call() makes of them — the fitted stdout in place of the spill, the
+// not-shown line and the credit's line on `readNote`, the credited paths on
+// `creditedFiles`, a failed run left as the shell printed it — shows only in
+// what call() returns. Both flags are read at module load, by modules this
+// file has already loaded with them off, so call() runs in a child process
+// started with them on, the way lazyToolModuleLoad.test.ts runs its probe.
+
+const REPO_ROOT = resolve(import.meta.dir, '..', '..', '..')
+
+/** The child: BashTool.call() on each of PROBE_COMMANDS, in PROBE_DIR, printed as JSON. */
+const CALL_PROBE = `
+const src = path => ${JSON.stringify(join(REPO_ROOT, 'src'))} + '/' + path
+const { setOriginalCwd } = await import(src('platform/bootstrap/state.js'))
+const { setCwd } = await import(src('shared/proc/Shell.js'))
+const { getDefaultAppState } = await import(src('terminal/state/AppStateStore.js'))
+const { createFileStateCacheWithSizeLimit, READ_FILE_STATE_CACHE_SIZE } = await import(src('shared/fs/fileStateCache.js'))
+const { SandboxManager } = await import(src('platform/sandbox/sandbox-adapter.js'))
+const { BashTool } = await import(src('tools/BashTool/BashTool.js'))
+// The sandbox stub hands back its first argument, the command, where the real
+// one returns the output a failed run's ShellError carries.
+SandboxManager.annotateStderrWithSandboxFailures = (_command, output) => output
+setOriginalCwd(process.env.PROBE_DIR)
+setCwd(process.env.PROBE_DIR)
+const results = []
+for (const command of JSON.parse(process.env.PROBE_COMMANDS)) {
+  // Each command starts where the session does: a cd moves the shell's cwd
+  // for whatever runs after it.
+  setCwd(process.env.PROBE_DIR)
+  let appState = getDefaultAppState()
+  const context = {
+    abortController: new AbortController(),
+    getAppState: () => appState,
+    setAppState: update => { appState = update(appState) },
+    readFileState: createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE),
+  }
+  try {
+    const { data } = await BashTool.call({ command }, context)
+    results.push({ data, read: [...context.readFileState.keys()] })
+  } catch (e) {
+    results.push({ failed: { output: e.stderr, code: e.code } })
+  }
+}
+process.stdout.write(JSON.stringify(results))
+process.exit(0)
+`
+
+type CallResult = {
+  data?: { stdout: string; readNote?: string; creditedFiles?: string[]; persistedOutputPath?: string }
+  read?: string[]
+  failed?: { output: string; code: number }
+}
+
+describe('call() with both flags on — what reaches the result', () => {
+  const A = 'export const a = 1\nexport const aa = 2\n'
+  const B = 'export const b = 1\nexport const bb = 2\n'
+  // sub/a.ts differs from a.ts, so a path resolved in the wrong directory
+  // cannot be found in the output.
+  const SUB_A = 'export const subA = 1\nexport const subAa = 2\n'
+  const ONE_LINE = 'export {}\n'
+  const LOOP = 'for f in dump/*.ts; do echo "=== $f"; cat $f; done'
+  const COUNT_AS_READ = 'files printed whole — they count as read: Edit, Patch and Write accept them without a Read.)'
+  const dumpName = (i: number) => `dump/f${String(i).padStart(2, '0')}.ts`
+  let dir: string
+  let configDir: string
+  let fits: CallResult
+  let overBudget: CallResult
+  let failed: CallResult
+  let afterCd: CallResult
+  let overBudgetAfterCd: CallResult
+
+  beforeAll(() => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), 'bash-call-')))
+    configDir = mkdtempSync(join(tmpdir(), 'bash-call-config-'))
+    mkdirSync(join(dir, 'dump'))
+    mkdirSync(join(dir, 'sub'))
+    writeFileSync(join(dir, 'a.ts'), A)
+    writeFileSync(join(dir, 'b.ts'), B)
+    writeFileSync(join(dir, 'sub', 'a.ts'), SUB_A)
+    writeFileSync(join(dir, 'sub', 'one.txt'), ONE_LINE)
+    for (let i = 0; i < 20; i++) {
+      const lines = Array.from({ length: 80 }, (_, n) => `export const f${i}_${n} = '${'x'.repeat(12)}'`)
+      writeFileSync(join(dir, dumpName(i)), `${lines.join('\n')}\n`)
+    }
+    // A checked-out tree predates the commands run in it, and the credit
+    // refuses a file dated at or after the command started.
+    const before = new Date(Date.now() - 60_000)
+    for (const path of [
+      'a.ts',
+      'b.ts',
+      join('sub', 'a.ts'),
+      join('sub', 'one.txt'),
+      ...readdirSync(join(dir, 'dump')).map(name => join('dump', name)),
+    ]) {
+      utimesSync(join(dir, path), before, before)
+    }
+    const env: Record<string, string | undefined> = {
+      ...process.env,
+      NODE_ENV: 'test',
+      NODE_NO_WARNINGS: '1',
+      CLAUDIN_CONFIG_DIR: configDir,
+      CLAUDIN_BASH_FILE_READ_PASSTHROUGH: '1',
+      CLAUDIN_BASH_READ_CREDIT: '1',
+      PROBE_DIR: dir,
+      PROBE_COMMANDS: JSON.stringify([
+        'cat a.ts b.ts',
+        LOOP,
+        `${LOOP}; cat missing.ts`,
+        'cd sub && cat a.ts one.txt',
+        'cd dump && for f in *.ts; do echo "=== $f"; cat $f; done',
+      ]),
+    }
+    // The limits these results are read against, whatever the shell exports.
+    delete env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER
+    delete env.BASH_MAX_OUTPUT_LENGTH
+    const child = spawnSync(process.execPath, ['--preload', './src/stubs/test-preload.ts', '-e', CALL_PROBE], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env,
+      timeout: 60_000,
+    })
+    if (child.status !== 0) {
+      throw new Error(`call() probe failed (exit ${child.status})\nstdout: ${child.stdout}\nstderr: ${child.stderr}`)
+    }
+    ;[fits, overBudget, failed, afterCd, overBudgetAfterCd] = JSON.parse(child.stdout) as CallResult[]
+  })
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(configDir, { recursive: true, force: true })
+  })
+
+  test('a read that fits: its bytes in the read wrapper, its files counted as read, and the result says so', () => {
+    const data = fits.data!
+    expect(data.stdout).toBe(`<bash-output-read>${A}${B}</bash-output-read>`)
+    expect(data.creditedFiles).toEqual([join(dir, 'a.ts'), join(dir, 'b.ts')])
+    expect(data.readNote).toBe(`(2 ${COUNT_AS_READ}`)
+    // Registered in the call's read state too (an LRU, most recent first).
+    expect(fits.read?.toSorted()).toEqual([join(dir, 'a.ts'), join(dir, 'b.ts')])
+  })
+
+  test('a read past 28k: the whole files that fit, the rest named once, then the credit line', () => {
+    const data = overBudget.data!
+    expect(data.persistedOutputPath).toBeUndefined()
+    expect(data.stdout).toStartWith('<bash-output-read>=== dump/f00.ts\n')
+    expect(data.stdout).toEndWith("_79 = 'xxxxxxxxxxxx'\n</bash-output-read>")
+    const shown = data.creditedFiles?.length ?? 0
+    expect(shown).toBeGreaterThan(5)
+    expect(data.creditedFiles).toEqual(Array.from({ length: shown }, (_, i) => join(dir, dumpName(i))))
+    const notShown = Array.from({ length: 20 - shown }, (_, k) => dumpName(shown + k))
+    // The line naming what was left out comes first and the credit's after it,
+    // which does not name those files again as not counted.
+    expect(data.readNote?.split('\n')).toEqual([
+      `Not shown — over the 28k a Bash result shows whole: ${notShown.join(', ')}. cat them in another call, or Read them.`,
+      `(${shown} ${COUNT_AS_READ}`,
+    ])
+  })
+
+  // Errors are sacred: output the exit code calls a failure skips the filter,
+  // and the fit with it.
+  test('a failed read is not fitted: its error carries the output as the shell kept it', () => {
+    expect(failed.data).toBeUndefined()
+    expect(failed.failed?.code).toBe(1)
+    const output = failed.failed?.output ?? ''
+    expect(output).toStartWith('=== dump/f00.ts\n')
+    // The spill's first 30k, cut mid-file — not the whole files within 28k.
+    expect(output.length).toBeGreaterThan(28_000)
+  })
+
+  // The `cd` moves the shell's cwd, and getCwd() is sub/ once the command has
+  // run. The paths it names resolve from where it started: through sub/ once,
+  // not twice.
+  test('a read after a cd: its files found from where the command started, and named from there', () => {
+    const data = afterCd.data!
+    expect(data.stdout).toBe(`<bash-output-read>${SUB_A}${ONE_LINE}</bash-output-read>`)
+    expect(data.creditedFiles).toEqual([join(dir, 'sub', 'a.ts')])
+    expect(data.readNote).toBe(
+      '(1 file printed whole — it counts as read: Edit, Patch and Write accept it without a Read.) ' +
+        'Not counted: sub/one.txt (one line).',
+    )
+    expect(afterCd.read).toEqual([join(dir, 'sub', 'a.ts')])
+  })
+
+  test('a read past 28k after a cd: fitted to the whole files, the rest named from where it started', () => {
+    const data = overBudgetAfterCd.data!
+    expect(data.persistedOutputPath).toBeUndefined()
+    expect(data.stdout).toStartWith('<bash-output-read>=== f00.ts\n')
+    const shown = data.creditedFiles?.length ?? 0
+    expect(shown).toBeGreaterThan(5)
+    expect(data.creditedFiles).toEqual(Array.from({ length: shown }, (_, i) => join(dir, dumpName(i))))
+    const notShown = Array.from({ length: 20 - shown }, (_, k) => dumpName(shown + k))
+    expect(data.readNote?.split('\n')).toEqual([
+      `Not shown — over the 28k a Bash result shows whole: ${notShown.join(', ')}. cat them in another call, or Read them.`,
+      `(${shown} ${COUNT_AS_READ}`,
+    ])
   })
 })

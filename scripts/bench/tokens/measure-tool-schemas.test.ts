@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
 import { getAllBaseTools } from '../../../src/tools/tools.ts'
+import type { Tool } from '../../../src/tools/Tool.ts'
+import { importWithReadMulti } from '../../../src/tools/FileReadTool/__testutils__/readMultiFlag.ts'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 
 describe('measureToolSchemas', () => {
@@ -94,6 +96,29 @@ describe('measureToolSchemas', () => {
       expect(onBash, `expected Bash row for engine ${engine} (git on)`).toBeDefined()
       expect(offBash, `expected Bash row for engine ${engine} (git off)`).toBeDefined()
       expect(offBash!.schemaBytes).toBe(onBash!.schemaBytes)
+    }
+  })
+
+  test('Read renders on every engine by default and under its killswitch, which is the smaller schema', async () => {
+    // The batch Read is on by default; CLAUDIN_READ_MULTI=0 restores the
+    // single-file schema. The flag is read once per process, so the killswitch
+    // arm is the same bundle with Read's input schema swapped for the one
+    // schemas.ts builds under =0 — the description is left as it is, which
+    // makes the byte difference the schema's alone.
+    const { inputSchema } = await importWithReadMulti<
+      typeof import('../../../src/tools/FileReadTool/schemas.ts')
+    >('src/tools/FileReadTool/schemas.js', false)
+    const tools = getAllBaseTools().map(tool =>
+      tool.name === 'Read' ? ({ ...tool, inputSchema: inputSchema() } as Tool) : tool,
+    )
+    const killswitched = await measureToolSchemas({ tools })
+    const byDefault = await measureToolSchemas()
+    for (const engine of ['anthropic', 'openai', 'codex'] as const) {
+      const off = killswitched.rows.find(r => r.name === 'Read' && r.engine === engine)
+      const on = byDefault.rows.find(r => r.name === 'Read' && r.engine === engine)
+      expect({ engine, off: off?.error, on: on?.error }).toEqual({ engine, off: undefined, on: undefined })
+      expect(on!.descriptionBytes).toBe(off!.descriptionBytes)
+      expect(on!.schemaBytes).toBeGreaterThan(off!.schemaBytes)
     }
   })
 
