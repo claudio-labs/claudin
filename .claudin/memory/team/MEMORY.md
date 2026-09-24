@@ -54,7 +54,7 @@
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the friction/refusal message instead; land new nudges flag-OFF as bench instrumentation
 - [Steering Read shape from the prompt is cost-neutral (2026-09-14)](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%; the Grep symbols nudge is inert in two wordings
 - [Claude Code 2.1.270's prompt, extracted 2026-09-14](claude-code-2.1.270-prompt-diff.md) — upstream MANDATES narration now; Delivering work/Corrections/turn-discipline are upstream verbatim
-- [ANTI_NARRATION: Claude 5 A/B on progress updates only (2026-09-23)](anti-narration-never-benched-on-claude-5.md) — overlap, stays; text narration still unmeasured on Claude 5; ModelFamily can't express "Claude 5"
+- [ANTI_NARRATION — REMOVED from every prompt 2026-09-24](anti-narration-never-benched-on-claude-5.md) — narr arm moved neither thinking nor cost; Agent's "don't narrate a launch" rule stays
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read it too; redirects/killswitches go in the source module header + .claudin/rules/
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for mid-turn attachments; gate on input !== null, except a sub-agent where that gate cannot exist
 - [break-probe is the committed break-and-restore harness](break-probe-harness.md) — 21 specs under scripts/migrations/probes/; "NOTHING WENT RED" is the finding; catches fail-open preconditions hand review misses
@@ -117,6 +117,7 @@
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 SUPERSEDES the cost gap: claude's prefix 70.5k→32.4k, cost now ties
 - [Session cache A/B 09-23, Opus 5.5 + resume](session-cache-ab-bench-2026-09-23.md) — +53% vs CC → +7% after #239; placebo = −6% noise; run arms SIMULTANEOUSLY; the rest is 2× thinking + read-gate re-sends
 - [Session cost round 3 09-23 (proxy, N=5)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't; replays: the system prompt adds 30–50% thinking
+- [Prompts v2 09-24 — size won, cost gate FAILED](prompts-v2-2026-09.md) — 1st request 27.8k→19.7k (CC 21.0k) but thinking didn't drop; switches stay OFF
 - [Request prefix 32.1k vs CC 21.2k, broken down](request-prefix-size-2026-09-23.md) — eager tools ≈20k; deferred schemas unbilled; round 2 took `-p` to ~28.4k (Agent text, lean git)
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker

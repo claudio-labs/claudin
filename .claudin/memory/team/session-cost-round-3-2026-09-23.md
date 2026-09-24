@@ -56,7 +56,7 @@ they will not survive a reboot.
   - So the effect is spread over the prompt's behavioural text. The Harness is the likeliest single piece: batching, anti-narration, summary style, "check your last paragraph".
   - The range rule (pre-registered) says overlap for every single-batch variant. The rank test was chosen after seeing the data.
   - The summaries show our prompt's concerns entering Claude Code's reasoning, for example cleaning a `/tmp` file "outside the intended scratchpad".
-- **Next step:** a lean-Harness variant behind a flag, then a full session A/B (claudindev, lean, placebo). Only that gives net cost and quality: batching may save turns while adding thought.
+- **Next step, taken 2026-09-24:** not a lean Harness alone but the whole prompt in Claude Code's lean shape, behind four opt-in switches — [[prompts-v2-2026-09]]. Only a full session A/B gives net cost and quality: batching may save turns while adding thought.
 
 **Noise.** Claude Code's thinking moved from 4.8k to 7.1k between runs 26 minutes apart. Identical claudin arms differed by 17–59%. Compare only simultaneous arms, and judge a thinking arm against a placebo arm.
 
