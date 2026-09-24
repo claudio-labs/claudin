@@ -5,11 +5,40 @@
  * then interprets sequences as keypresses.
  */
 import { Buffer } from 'buffer'
+import { getGraphemeSegmenter } from 'src/shared/text/intl.js'
 import { PASTE_END, PASTE_START } from 'src/terminal/ink/termio/csi.js'
 import { createTokenizer, type Tokenizer } from 'src/terminal/ink/termio/tokenize.js'
 
 // eslint-disable-next-line no-control-regex
 const META_KEY_CODE_RE = /^(?:\x1b)([a-zA-Z0-9])$/
+
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHAR_RE = /[\x00-\x1f\x7f]/
+
+/**
+ * The longest text run still read as keys typed faster than one read, rather
+ * than as a paste the terminal did not bracket. A burst of typing or key
+ * repeat over a stalled link is a few dozen characters at most; above this a
+ * run keeps its one-key shape, which is what a paste handler expects.
+ */
+const MAX_TYPED_RUN = 32
+
+/**
+ * Keys typed faster than one read — a slow SSH link, key repeat, `tmux
+ * send-keys j j j` — arrive as one text run, and a run of several characters
+ * used to be ONE key whose input was all of them: `jj` matched no keybinding,
+ * so the transcript scrolled once and a list dialog dropped the keys. Split it
+ * into one key per grapheme, unless it can be something else: a run holding a
+ * control character (the `\r` of a multi-line paste or of a coalesced Enter,
+ * the ESC of Alt+key, DEL) or one longer than a burst of typing keeps its
+ * shape, and the handlers that already read those shapes still see them.
+ */
+function splitTypedRun(text: string): string[] {
+  if (text.length < 2 || text.length > MAX_TYPED_RUN || CONTROL_CHAR_RE.test(text)) {
+    return [text]
+  }
+  return Array.from(getGraphemeSegmenter().segment(text), s => s.segment)
+}
 
 // eslint-disable-next-line no-control-regex
 const FN_KEY_RE =
@@ -270,7 +299,9 @@ export function parseMultipleKeypresses(
         const mouse = parseMouseEvent(resynthesized)
         keys.push(mouse ?? parseKeypress(resynthesized))
       } else {
-        keys.push(parseKeypress(token.value))
+        for (const run of splitTypedRun(token.value)) {
+          keys.push(parseKeypress(run))
+        }
       }
     }
   }

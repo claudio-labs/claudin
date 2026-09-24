@@ -566,9 +566,10 @@ export const GrepTool = buildTool({
 
     // Add ignore patterns
     const appState = getAppState()
+    const sessionCwd = getCwd()
     const ignorePatterns = normalizePatternsToPath(
       getFileReadIgnorePatterns(appState.toolPermissionContext),
-      getCwd(),
+      sessionCwd,
     )
     for (const ignorePattern of ignorePatterns) {
       // Note: ripgrep only applies gitignore patterns relative to the working directory
@@ -589,6 +590,15 @@ export const GrepTool = buildTool({
       args.push('--glob', exclusion)
     }
 
+    // ripgrep anchors a `/`-anchored glob at the directory it RUNS in, and the
+    // deny patterns above are normalized to the session cwd. That is not
+    // process.cwd(): a Bash `cd` only moves the cwd state, and a worktree
+    // sub-agent runs under a cwd override. Left to process.cwd(), a Read deny
+    // rule stopped hiding files from Grep in exactly those sessions. A session
+    // cwd that no longer exists falls back to process.cwd(), since ripgrep
+    // cannot start in it.
+    const rgCwd = getFsImplementation().existsSync(sessionCwd) ? sessionCwd : undefined
+
     // WSL has severe performance penalty for file reads (3-5x slower on WSL2)
     // The timeout is handled by ripgrep itself via execFile timeout option
     // We don't use AbortController for timeout to avoid interrupting the agent loop
@@ -598,6 +608,7 @@ export const GrepTool = buildTool({
       args,
       absolutePath,
       abortController.signal,
+      { cwd: rgCwd },
     )
 
     // ripgrep refused the invocation — a bad regex, an unknown --encoding
@@ -626,6 +637,7 @@ export const GrepTool = buildTool({
         [...args, '--no-ignore'],
         absolutePath,
         abortController.signal,
+        { cwd: rgCwd },
       )
       if (fallback.lines.length > 0) {
         results = fallback.lines

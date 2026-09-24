@@ -190,7 +190,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
     if (msg.attachment.type === 'diagnostics') {
       expect(msg.attachment.isNew).toBe(true)
       expect(msg.attachment.files).toHaveLength(1)
-      expect(msg.attachment.files[0]!.uri).toBe('file:///tmp/x.ts')
+      expect(msg.attachment.files[0]!.uri).toBe('/tmp/x.ts')
       expect(msg.attachment.files[0]!.diagnostics[0]!.message).toBe('Type error')
     }
 
@@ -243,7 +243,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     })
     const out = await awaitLateDiagnosticsForTurn()
     expect(out).toHaveLength(1)
-    expect(out[0]!.uri).toBe('file:///tmp/x.ts')
+    expect(out[0]!.uri).toBe('/tmp/x.ts')
     expect(out[0]!.diagnostics).toHaveLength(1)
   })
 
@@ -290,7 +290,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     })
     const out = await awaitLateDiagnosticsForTurn()
     expect(out).toHaveLength(1)
-    expect(out[0]!.uri).toBe('file:///tmp/b.ts')
+    expect(out[0]!.uri).toBe('/tmp/b.ts')
   })
 
   test('arm + zero publish before timeout → returns []', async () => {

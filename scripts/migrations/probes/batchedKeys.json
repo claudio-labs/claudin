@@ -1,0 +1,41 @@
+{
+  "test": [
+    "src/terminal/ink/parse-keypress.test.ts",
+    "src/terminal/custom-select/SearchableSelect.test.tsx"
+  ],
+  "source": "src/terminal/ink/parse-keypress.ts",
+  "probes": [
+    {
+      "name": "a text run is one key again",
+      "find": "        for (const run of splitTypedRun(token.value)) {\n          keys.push(parseKeypress(run))\n        }\n",
+      "replace": "        keys.push(parseKeypress(token.value))\n"
+    },
+    {
+      "name": "a control character no longer keeps the run whole",
+      "find": " || CONTROL_CHAR_RE.test(text)) {",
+      "replace": ") {"
+    },
+    {
+      "name": "a long run is split too",
+      "find": " || text.length > MAX_TYPED_RUN",
+      "replace": ""
+    },
+    {
+      "name": "runs split by code unit instead of grapheme",
+      "find": "  return Array.from(getGraphemeSegmenter().segment(text), s => s.segment)\n",
+      "replace": "  return Array.from(text)\n"
+    },
+    {
+      "name": "the keys of one read share one batch again",
+      "source": "src/terminal/ink/components/App.tsx",
+      "find": "    if (keys.length === 1) {\n      reconciler.discreteUpdates(processKeysInBatch, this, keys, undefined, undefined);\n    } else if (keys.length > 1) {",
+      "replace": "    if (keys.length > 0) {\n      reconciler.discreteUpdates(processKeysInBatch, this, keys, undefined, undefined);\n    } else if (keys.length > 1) {"
+    },
+    {
+      "name": "nothing commits between keys",
+      "source": "src/terminal/ink/components/App.tsx",
+      "find": "        reconciler.flushSyncWork();\n",
+      "replace": ""
+    }
+  ]
+}

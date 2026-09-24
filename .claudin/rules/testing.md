@@ -462,8 +462,8 @@ suites they name, and stay re-runnable: after moving code, repoint each probe's
 `source` and they must all still go red. That is what proves a relocation
 preserved behaviour, and it is stronger than any diff of the move.
 
-**A killed run leaves the mutation in the working tree:** the restore is a
-`finally`, which a killed process never reaches.
+**A SIGKILLed run leaves the mutation in the working tree:** the restore is a
+`finally` plus a SIGINT/SIGTERM handler, and SIGKILL reaches neither.
 
 Three outcomes it produced on `refactor/split-remaining-giants` that hand-checking
 had missed, all of them a green test guarding nothing: a fixture that could not

@@ -56,6 +56,21 @@ export type ShellCommand = {
 const SIGKILL = 137
 const SIGTERM = 143
 
+/**
+ * How long a stopped command gets between SIGTERM and SIGKILL. A tree
+ * SIGKILLed outright never runs its cleanup: a build that restores the sources
+ * it rewrote in place, or a script that puts a file back from a signal
+ * handler, died mid-restore and left the working tree changed. Nothing waits
+ * on the grace — the tool call returns as soon as the SIGTERM is sent.
+ */
+const KILL_GRACE_MS = 5_000
+let killGraceMs = KILL_GRACE_MS
+
+/** Test-only: shorten the SIGTERM → SIGKILL grace; `null` restores it. */
+export function _setKillGraceMsForTesting(ms: number | null): void {
+  killGraceMs = ms ?? KILL_GRACE_MS
+}
+
 // Background tasks write stdout/stderr directly to a file fd (no JS involvement),
 // so a stuck append loop can fill the disk. Poll file size and kill when exceeded.
 const SIZE_WATCHDOG_INTERVAL_MS = 5_000
@@ -260,7 +275,9 @@ class ShellCommandImpl implements ShellCommand {
           ) {
             this.#killedForSize = true
             this.#clearSizeWatchdog()
-            this.#doKill(SIGKILL)
+            // A runaway writer is stopped at once: a grace period would be
+            // gigabytes more of the disk this watchdog exists to protect.
+            this.#doKill(SIGKILL, false)
           }
         },
         () => {
@@ -345,10 +362,24 @@ class ShellCommandImpl implements ShellCommand {
     }
   }
 
-  #doKill(code?: number): void {
+  #doKill(code?: number, graceful = true): void {
     this.#status = 'killed'
-    if (this.#childProcess.pid) {
-      treeKill(this.#childProcess.pid, 'SIGKILL')
+    const child = this.#childProcess
+    const pid = child.pid
+    if (pid && !graceful) {
+      treeKill(pid, 'SIGKILL')
+    } else if (pid) {
+      treeKill(pid, 'SIGTERM')
+      // Escalate only while the shell itself is still running: its pid is
+      // still ours and the tree walk starts from it. Once it has exited, every
+      // descendant already got the same SIGTERM, and a pid looked up later may
+      // belong to an unrelated process.
+      const escalate = setTimeout(() => {
+        if (child.exitCode === null && child.signalCode === null) {
+          treeKill(pid, 'SIGKILL')
+        }
+      }, killGraceMs)
+      escalate.unref()
     }
     this.#resolveExitCode(code ?? SIGKILL)
   }

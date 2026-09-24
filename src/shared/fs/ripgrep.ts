@@ -394,6 +394,7 @@ function ripGrepRaw(
     stderr: string,
   ) => void,
   singleThread = false,
+  cwd?: string,
 ): ChildProcess {
   // NB: When running interactively, ripgrep does not require a path as its last
   // argument, but when run non-interactively, it will hang unless a path or file
@@ -416,6 +417,7 @@ function ripGrepRaw(
     const child = spawn(rgPath, fullArgs, {
       argv0,
       signal: abortSignal,
+      cwd,
       // Prevent visible console window on Windows (no-op on other platforms)
       windowsHide: true,
     })
@@ -502,6 +504,7 @@ function ripGrepRaw(
       signal: abortSignal,
       timeout,
       killSignal: process.platform === 'win32' ? undefined : 'SIGKILL',
+      cwd,
     },
     callback,
   )
@@ -632,11 +635,17 @@ export async function ripGrepStream(
  *
  * Prefer this over `ripGrep` anywhere the result is shown to a user or a model,
  * where "no matches" and "I never looked" must not read the same.
+ *
+ * `cwd` is the directory ripgrep runs in, and it is not cosmetic: ripgrep
+ * anchors every `--glob` containing a `/` (and every leading-`/` exclusion) at
+ * its own working directory, not at `target`. Unset, that is this process's
+ * cwd, which is the wrong root for any search that is not rooted there.
  */
 export async function ripGrepWithStatus(
   args: string[],
   target: string,
   abortSignal: AbortSignal,
+  { cwd }: { cwd?: string } = {},
 ): Promise<RipgrepResult> {
   await codesignRipgrepIfNecessary()
 
@@ -696,6 +705,7 @@ export async function ripGrepWithStatus(
             handleResult(retryError, retryStdout, retryStderr, true)
           },
           true, // Force single-threaded mode for this retry only
+          cwd,
         )
         return
       }
@@ -753,9 +763,16 @@ export async function ripGrepWithStatus(
       resolve({ lines, incomplete, usageError })
     }
 
-    ripGrepRaw(args, target, abortSignal, (error, stdout, stderr) => {
-      handleResult(error, stdout, stderr, false)
-    })
+    ripGrepRaw(
+      args,
+      target,
+      abortSignal,
+      (error, stdout, stderr) => {
+        handleResult(error, stdout, stderr, false)
+      },
+      false,
+      cwd,
+    )
   })
 }
 

@@ -55,9 +55,10 @@ function resolveTimeoutMs(): number {
  * tool — it is already in act-on-this-file mode, and the gate's rationale
  * ("no Bash means no way to act") does not apply here.
  *
- * Note: `clearDeliveredDiagnosticsForFile` is already called by FileEditTool
- * and FileWriteTool BEFORE the write to flush stale dedup entries — we do
- * NOT call it again here, that would re-arm the LRU and break dedup.
+ * Note: `forgetDiagnosticsForEditedFile` is already called by the edit tools
+ * BEFORE they notify the server, dropping the file's stale pending entries and
+ * dedup set — we do NOT call it again here, that would re-arm the LRU and
+ * break dedup.
  */
 export async function buildPostEditDiagnosticsMessages(
   absoluteFilePath: string,
@@ -70,9 +71,8 @@ export async function buildPostEditDiagnosticsMessages(
     if (!lspManager.getServerForFile(absoluteFilePath)) return []
 
     const timeoutMs = resolveTimeoutMs()
-    const fileUri = `file://${absoluteFilePath}`
 
-    const files = await awaitDiagnosticsForFile(fileUri, timeoutMs)
+    const files = await awaitDiagnosticsForFile(absoluteFilePath, timeoutMs)
     if (!files || files.length === 0) return []
 
     // Drop empty entries — a server may publish "all clear" with diagnostics:[].
@@ -84,7 +84,7 @@ export async function buildPostEditDiagnosticsMessages(
     markDiagnosticsAsDelivered(nonEmpty)
 
     logForDebugging(
-      `LSP Diagnostics: Per-edit injection delivered ${nonEmpty.reduce((n, f) => n + f.diagnostics.length, 0)} diagnostic(s) for ${fileUri}`,
+      `LSP Diagnostics: Per-edit injection delivered ${nonEmpty.reduce((n, f) => n + f.diagnostics.length, 0)} diagnostic(s) for ${absoluteFilePath}`,
     )
 
     return [
@@ -126,10 +126,6 @@ export async function buildPostEditDiagnosticsMessages(
 
 const armedFiles = new Set<string>()
 
-function pathToFileUri(absoluteFilePath: string): string {
-  return `file://${absoluteFilePath}`
-}
-
 /**
  * Register a path for late-diagnostics tail-wait. Called by edit tools after
  * their per-edit `buildPostEditDiagnosticsMessages` returns. No-op when:
@@ -148,7 +144,7 @@ export function armFileForLateDiagnostics(
     const lspManager = getLspServerManager()
     if (!lspManager) return
     if (!lspManager.getServerForFile(absoluteFilePath)) return
-    armedFiles.add(pathToFileUri(absoluteFilePath))
+    armedFiles.add(absoluteFilePath)
   } catch (error: unknown) {
     logError(
       new Error(

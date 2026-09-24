@@ -1,3 +1,4 @@
+import { statSync } from 'fs'
 import { basename, dirname, isAbsolute, join, relative, sep } from 'path'
 import picomatch from 'picomatch'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
@@ -107,10 +108,13 @@ export type GlobOptions = {
 export function deriveDirectories(
   relativePaths: string[],
   pattern: string,
-  { caseInsensitive, maxDepth }: { caseInsensitive?: boolean; maxDepth?: number },
+  {
+    caseInsensitive,
+    maxDepth,
+    anchored = pattern.includes('/'),
+  }: { caseInsensitive?: boolean; maxDepth?: number; anchored?: boolean },
 ): string[] {
   const isMatch = picomatch(pattern, { dot: true, nocase: caseInsensitive })
-  const anchored = pattern.includes('/')
   const seen = new Set<string>()
   const directories: string[] = []
   for (const path of relativePaths) {
@@ -161,6 +165,18 @@ export async function glob(
       searchPattern = relativePattern
     }
   }
+  // ripgrep never matches a glob written with a leading `./`; its spelling of
+  // "at the search root" is a leading `/`, which the walk below uses.
+  const rootAnchored = LEADING_DOT_SLASH_RE.test(searchPattern)
+  searchPattern = searchPattern.replace(LEADING_DOT_SLASH_RE, '')
+  const rgPattern = rootAnchored ? `/${searchPattern}` : searchPattern
+
+  // ripgrep runs IN the search directory below, and cannot start in one that
+  // does not exist — the spawn would fail as if ripgrep itself were missing.
+  // An absolute pattern whose base does not exist simply matches nothing.
+  if (!isDirectory(searchDir)) {
+    return { files: [], truncated: false, incomplete: null }
+  }
 
   const ignorePatterns = normalizePatternsToPath(
     getFileReadIgnorePatterns(toolPermissionContext),
@@ -172,10 +188,10 @@ export async function glob(
   // that separates a directory from its contents.
   const walkPattern =
     type === 'dir'
-      ? searchPattern.includes('/')
-        ? `${searchPattern}/**`
-        : `**/${searchPattern}/**`
-      : searchPattern
+      ? rgPattern.includes('/')
+        ? `${rgPattern}/**`
+        : `**/${rgPattern}/**`
+      : rgPattern
   const walkDepth =
     maxDepth === undefined ? undefined : type === 'dir' ? maxDepth + 1 : maxDepth
 
@@ -229,19 +245,29 @@ export async function glob(
     args.push('--glob', exclusion)
   }
 
+  // ripgrep anchors a glob containing a `/` — the caller's pattern, an
+  // anchored exclude, the Read deny-rule patterns normalized to `searchDir`
+  // above — at its own working directory, so it has to run IN the search
+  // directory. Run from this process's cwd instead, `*/budget.ts` under
+  // `src/tools` matched nothing and a deny rule under the search root was not
+  // applied. The target is `.` rather than `searchDir`: ripgrep resolves its
+  // cwd through symlinks, so an absolute target under a symlinked root would
+  // no longer share a prefix with it.
+  //
   // `truncated` is this function's own cap; `incomplete` is ripgrep giving up
   // partway through the walk. They are different facts, and a caller that
   // conflates them pages through a list that was never fully enumerated.
   const { lines: allPaths, incomplete } = await ripGrepWithStatus(
     args,
-    searchDir,
+    '.',
     abortSignal,
+    { cwd: searchDir },
   )
 
   if (type === 'dir') {
-    // ripgrep is handed the search directory as its path argument, so it prints
-    // absolute paths; the derivation counts depth from the search root and has
-    // to see them the way the caller's pattern is written.
+    // The derivation counts depth from the search root and has to see paths
+    // the way the caller's pattern is written: relative, which is what a walk
+    // of `.` prints (`./a/b.ts`; deriveDirectories drops the `./`).
     const relativePaths = allPaths.map(p =>
       isAbsolute(p) ? relative(searchDir, p) : p,
     )
@@ -251,6 +277,7 @@ export async function glob(
     const directories = deriveDirectories(relativePaths, searchPattern, {
       caseInsensitive,
       maxDepth,
+      anchored: rootAnchored || searchPattern.includes('/'),
     })
     if (sort === 'path') directories.sort()
     const absoluteDirectories = directories.map(p =>
@@ -272,4 +299,12 @@ export async function glob(
   const files = absolutePaths.slice(offset, offset + limit)
 
   return { files, truncated, incomplete }
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
 }

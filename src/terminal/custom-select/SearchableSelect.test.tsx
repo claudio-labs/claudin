@@ -265,6 +265,60 @@ describe('SearchableSelect search mode', () => {
   })
 })
 
+describe('SearchableSelect — several keys in one read', () => {
+  // `press` writes its argument as ONE chunk, which the app reads in one go:
+  // what a slow SSH link or `tmux send-keys` produces. Before, `jj` was a single
+  // key matching no binding, and every key in a read saw the state from before
+  // the read.
+  test('jj moves two rows, and Enter then selects the row it landed on', async () => {
+    const ui = await mount()
+    try {
+      await ui.press('jj')
+      await ui.press(ENTER)
+      expect(ui.selected).toEqual(['haiku'])
+    } finally {
+      await ui.dispose()
+    }
+  })
+
+  test('Down then Enter in one read selects the row the Down moved to', async () => {
+    const ui = await mount()
+    try {
+      await ui.press(`\x1b[B${ENTER}`)
+      expect(ui.selected).toEqual(['sonnet'])
+    } finally {
+      await ui.dispose()
+    }
+  })
+
+  test('a query typed in one read filters on all of it', async () => {
+    // The search box builds each insert from the query it last rendered, so if
+    // the keys of one read do not commit one by one, `opu` becomes `u` — which
+    // Haiku matches and the full query does not.
+    const ui = await mount()
+    try {
+      await ui.press('/')
+      await ui.press('opu')
+      const frame = ui.frame()
+      expect(frame).toContain('Opus 5')
+      expect(frame).not.toContain('Haiku 4.5')
+    } finally {
+      await ui.dispose()
+    }
+  })
+
+  test('a long burst of keys renders without an update-depth error', async () => {
+    const ui = await mount()
+    try {
+      await ui.press('jk'.repeat(16))
+      await ui.press(ENTER)
+      expect(ui.selected).toEqual(['opus'])
+    } finally {
+      await ui.dispose()
+    }
+  })
+})
+
 describe('SearchableSelect favorites', () => {
   test('no ctrl+f hint and no starring when no favorites adapter is passed', async () => {
     const ui = await mount()

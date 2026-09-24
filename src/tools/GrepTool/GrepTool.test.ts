@@ -5,6 +5,7 @@ import { basename, join } from 'path'
 
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getCwdState, setCwdState } from 'src/platform/bootstrap/state.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
@@ -96,6 +97,32 @@ async function grep(
 }
 
 describe('GrepTool — baseline regression', () => {
+  test('a Read deny rule hides files when the session cwd is not the process cwd', async () => {
+    // The deny patterns are normalized to the session cwd and ripgrep anchors
+    // them where it runs; this root lives outside process.cwd(), as a worktree
+    // sub-agent's or a post-`cd` session's does.
+    const root = mkdtempSync(join(tmpdir(), 'grep-deny-'))
+    try {
+      mkdirSync(join(root, 'secret'))
+      writeFileSync(join(root, 'open.txt'), 'needle\n')
+      writeFileSync(join(root, 'secret', 'key.txt'), 'needle\n')
+      const toolPermissionContext = {
+        ...emptyPermissionContext,
+        alwaysDenyRules: { cliArg: [`Read(/${root}/secret/**)`] },
+      }
+      const context = {
+        ...makeContext(),
+        getAppState: () => ({ toolPermissionContext }),
+      } as unknown as ToolUseContext
+      const { data } = await runWithCwdOverride(root, () =>
+        GrepTool.call({ pattern: 'needle', path: root } as never, context),
+      )
+      expect((data as GrepData).filenames.map(f => basename(f))).toEqual(['open.txt'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test('files_with_matches (default) lists every matching file', async () => {
     const data = await grep()
 

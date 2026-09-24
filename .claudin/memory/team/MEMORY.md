@@ -67,7 +67,7 @@
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn from a throwaway cwd, never `-c` in the repo
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — the 2026-08 reorg disarmed a telemetry stub and broke verify:sdk-types; grep generators after a move
 - [Pre-reorg paths in team memory — swept 2026-09-21](memory-cites-pre-reorg-paths.md) — resolution table; live cites fixed, historical left; read the sentence first
-- [Harness "file modified" reminders can be stale mid-BUILD snapshots](stale-diagnostics-notifications.md) — they can quote the folded `feature()` tree and look like a killed build; grep one line first
+- [Stale <new-diagnostics> reminders — FIXED 2026-09-24](stale-diagnostics-notifications.md) — registry merged every publish and dropped "clean"; mid-build "file modified" is the in-place preprocess
 - [Pin a feature from the BUNDLE before deleting it](characterization-net-before-deletion.md) — feature() is false outside the build; 2 of 4 new scanner tests were tautological
 - [Removal passes take only what the build proves unreachable](removal-pass-only-provably-dead.md) — a reachable surface needs its own approval; one commit per phase
 - [Deleting telemetry hollows the tests that observed through it](tests-observing-through-telemetry.md) — sort into decision-record / redundant / telemetry-only; never leave an assertion proving nothing

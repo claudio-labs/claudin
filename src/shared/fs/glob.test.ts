@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, isAbsolute, join } from 'path'
 
@@ -383,5 +383,94 @@ describe('glob — the find-shaped parameters', () => {
   test('type:dir filters by the pattern, like find -type d -name', async () => {
     const { files } = await runWith('deep', dir, { type: 'dir' })
     expect(files.map(f => f.slice(dir.length + 1))).toEqual(['a/deep'])
+  })
+
+  // A pattern with a `/` is anchored at the search root. ripgrep anchors it at
+  // its own working directory, so these all matched nothing while ripgrep ran
+  // from this process's cwd — this fixture lives outside it on purpose.
+  describe('a pattern with a slash, anchored at the search root', () => {
+    const rel = (files: string[]) => files.map(f => f.slice(dir.length + 1))
+
+    test('one level of directory', async () => {
+      const { files } = await runWith('*/*.txt', dir, { sort: 'path' })
+      expect(rel(files)).toEqual(['a/keep.txt', 'b/other.txt'])
+    })
+
+    test('a wildcard in the middle', async () => {
+      const { files } = await runWith('a/*/nested.txt', dir, {})
+      expect(rel(files)).toEqual(['a/deep/nested.txt'])
+    })
+
+    test('a leading ./ is the search root itself', async () => {
+      const { files } = await runWith('./*.txt', dir, {})
+      expect(rel(files)).toEqual(['z.txt'])
+    })
+
+    test('an anchored exclude drops its subtree', async () => {
+      const { files } = await runWith('**/*.txt', dir, { exclude: ['a/**'], sort: 'path' })
+      expect(rel(files)).toEqual(['b/other.txt', 'z.txt'])
+    })
+
+    test('type:dir with an anchored pattern', async () => {
+      const { files } = await runWith('a/*', dir, { type: 'dir' })
+      expect(rel(files)).toEqual(['a/deep'])
+    })
+
+    test('type:dir with a leading ./ lists only the top-level match', async () => {
+      const { files } = await runWith('./a', dir, { type: 'dir' })
+      expect(rel(files)).toEqual(['a'])
+    })
+
+    test('type:dir with a leading ./ skips a same-named directory nested inside it', async () => {
+      // Only observable when the match holds a directory of the same name: the
+      // walk is already confined to the top-level `a`, so it is the derivation
+      // that must not re-match `a/a` by its segment name.
+      const nest = mkdtempSync(join(tmpdir(), 'glob-nest-'))
+      try {
+        mkdirSync(join(nest, 'a', 'a'), { recursive: true })
+        writeFileSync(join(nest, 'a', 'a', 'x.txt'), 'x')
+        const anchored = await runWith('./a', nest, { type: 'dir', sort: 'path' })
+        expect(anchored.files.map(f => f.slice(nest.length + 1))).toEqual(['a'])
+        const anywhere = await runWith('a', nest, { type: 'dir', sort: 'path' })
+        expect(anywhere.files.map(f => f.slice(nest.length + 1))).toEqual(['a', 'a/a'])
+      } finally {
+        rmSync(nest, { recursive: true, force: true })
+      }
+    })
+
+    test('under a symlinked root, paths keep the name it was reached by', async () => {
+      const link = `${dir}-link`
+      symlinkSync(dir, link)
+      try {
+        const { files } = await runWith('*/*.txt', link, { sort: 'path' })
+        expect(files.map(f => f.slice(link.length + 1))).toEqual(['a/keep.txt', 'b/other.txt'])
+      } finally {
+        rmSync(link, { force: true })
+      }
+    })
+
+    test('an absolute pattern under a directory that does not exist matches nothing', async () => {
+      const { files, truncated } = await runWith(join(dir, 'missing', '*', '*.txt'), dir, {})
+      expect(files).toEqual([])
+      expect(truncated).toBe(false)
+    })
+
+    test('a Read deny rule under the search root hides its files', async () => {
+      // The deny patterns are normalized to the search root with a leading `/`,
+      // which ripgrep anchors at its working directory — so they only applied
+      // when that happened to be the search root.
+      const denying = {
+        ...permissionContext,
+        alwaysDenyRules: { cliArg: [`Read(/${dir}/b/**)`] },
+      } as unknown as ToolPermissionContext
+      const { files } = await glob(
+        '**/*.txt',
+        dir,
+        { limit: 100, offset: 0, sort: 'path' },
+        new AbortController().signal,
+        denying,
+      )
+      expect(rel(files)).toEqual(['a/deep/nested.txt', 'a/keep.txt', 'z.txt'])
+    })
   })
 })

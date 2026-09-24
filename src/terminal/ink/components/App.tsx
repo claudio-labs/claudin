@@ -394,13 +394,23 @@ export default class App extends PureComponent<Props, State> {
     const [keys, newState] = parseMultipleKeypresses(this.keyParseState, input);
     this.keyParseState = newState;
 
-    // Process ALL keys in a SINGLE discreteUpdates call to prevent
-    // "Maximum update depth exceeded" error when many keys arrive at once
-    // (e.g., from paste operations or holding keys rapidly).
-    // This batches all state updates from handleInput and all useInput
-    // listeners together within one high-priority update context.
-    if (keys.length > 0) {
+    // One key: one discreteUpdates call batching handleInput and every
+    // useInput listener in one high-priority update context.
+    //
+    // Several keys from one read are several user actions, and each must see
+    // what the one before it did. In a single batch they did not — nothing
+    // commits until the batch ends — so Down then Enter selected the option
+    // focused BEFORE the Down, and a search box built each insert from the
+    // query as it stood before the read. So each key gets its own update,
+    // committed before the next one runs. A paste is still one key, and the
+    // parser leaves long runs whole, so a read never fans out unboundedly.
+    if (keys.length === 1) {
       reconciler.discreteUpdates(processKeysInBatch, this, keys, undefined, undefined);
+    } else if (keys.length > 1) {
+      for (const key of keys) {
+        reconciler.discreteUpdates(processKeysInBatch, this, [key], undefined, undefined);
+        reconciler.flushSyncWork();
+      }
     }
 
     // If we have incomplete escape sequences, set a timer to flush them

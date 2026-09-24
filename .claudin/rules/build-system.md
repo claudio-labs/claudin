@@ -298,8 +298,10 @@ construct you render in a script or a test.
    a string you just added returns 0 for code that shipped perfectly — search all
    of `dist/`, or just run the built binary. (`verify:privacy` reporting "1398
    bundle file(s)" is the tell.) The build GCs `dist/chunks` down to the **3 most
-   recent generations**, so a stale fold can still match for two more rebuilds:
-   `rm -rf dist/chunks` before verifying a `feature()` fold.
+   recent generations**, plus any generation a running session still loads
+   (`dist/chunks/.leases/`, `scripts/build/chunkGc.ts`), so a stale fold can
+   still match for two more rebuilds: `rm -rf dist/chunks` before verifying a
+   `feature()` fold.
 
 ## Invariant tests (run when touching the build)
 
