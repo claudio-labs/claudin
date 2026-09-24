@@ -34,6 +34,9 @@ import {
  *  - **refuse** (`CLAUDIN_BASH_REDIRECT=refuse`): the command is refused once
  *    with the same pointer and the identical re-send runs — the behaviour
  *    before 2026-09-24, byte for byte, kept as the A/B arm and the way back.
+ *  - **off** (`CLAUDIN_BASH_REDIRECT=off`): no pointer at all — the arm that
+ *    measures a generic line in the system prompt against the per-command
+ *    notes (`CLAUDIN_GENERIC_TOOL_PREFERENCE`, prompts.ts).
  *
  * Measured before the switch: a pointer that does not block was adopted about
  * zero times in three benches here (team memory
@@ -50,10 +53,11 @@ import {
  * has no memo, in either mode, as before.
  */
 
-export type BashRedirectMode = 'advise' | 'refuse'
+export type BashRedirectMode = 'advise' | 'refuse' | 'off'
 
 export function getBashRedirectMode(): BashRedirectMode {
-  return process.env.CLAUDIN_BASH_REDIRECT === 'refuse' ? 'refuse' : 'advise'
+  const mode = process.env.CLAUDIN_BASH_REDIRECT
+  return mode === 'refuse' || mode === 'off' ? mode : 'advise'
 }
 
 export type BashRedirect = {

@@ -176,7 +176,7 @@ export const BashTool = buildTool({
     };
   },
   advise(input: BashToolInput, context: ToolUseContext) {
-    if (getBashRedirectMode() === 'refuse') return null;
+    if (getBashRedirectMode() !== 'advise') return null;
     const redirect = pickBashRedirect(input, name => findToolByName(context?.options?.tools ?? [], name) !== undefined, getCwd(), 'advise');
     return redirect ? {
       message: redirect.message,

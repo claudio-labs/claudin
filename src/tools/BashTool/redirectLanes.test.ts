@@ -53,10 +53,14 @@ const refuse = (command: string, hasTool = ALL) =>
   pickBashRedirect({ command }, hasTool, CWD, 'refuse')
 
 describe('mode', () => {
-  test('advise unless CLAUDIN_BASH_REDIRECT=refuse', () => {
+  test('advise unless CLAUDIN_BASH_REDIRECT is refuse or off', () => {
     expect(getBashRedirectMode()).toBe('advise')
     process.env.CLAUDIN_BASH_REDIRECT = 'refuse'
     expect(getBashRedirectMode()).toBe('refuse')
+    process.env.CLAUDIN_BASH_REDIRECT = 'off'
+    expect(getBashRedirectMode()).toBe('off')
+    process.env.CLAUDIN_BASH_REDIRECT = 'anything else'
+    expect(getBashRedirectMode()).toBe('advise')
   })
 })
 
@@ -174,6 +178,13 @@ describe('BashTool wiring', () => {
     process.env.CLAUDIN_BASH_REDIRECT = 'refuse'
     const validated = await BashTool.validateInput?.({ command: 'bun test src/a.test.ts' } as never, context)
     expect(validated).toMatchObject({ result: false, errorCode: 11 })
+    expect(BashTool.advise?.({ command: 'bun test src/b.test.ts' } as never, context)).toBeNull()
+  })
+
+  test('in off mode the command runs and nothing points anywhere', async () => {
+    process.env.CLAUDIN_BASH_REDIRECT = 'off'
+    const validated = await BashTool.validateInput?.({ command: 'bun test src/a.test.ts' } as never, context)
+    expect(validated?.result).toBe(true)
     expect(BashTool.advise?.({ command: 'bun test src/b.test.ts' } as never, context)).toBeNull()
   })
 })

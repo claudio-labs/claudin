@@ -62,6 +62,19 @@ describe('getHarnessSection', () => {
     expect(onItems).toContain(TOOL_BATCHING_HARNESS_BULLET)
     expect(offItems).not.toContain(TOOL_BATCHING_HARNESS_BULLET)
   })
+
+  test('the generic tool preference drops "file/search", and only when asked', () => {
+    // A/B instrumentation (CLAUDIN_GENERIC_TOOL_PREFERENCE): the bullet covers
+    // every dedicated tool, not just the file and search ones.
+    for (const batching of [true, false]) {
+      expect(buildHarnessItems(batching, true).join('\n')).toContain(
+        'Prefer the dedicated tools over shell commands when one fits.',
+      )
+      expect(buildHarnessItems(batching).join('\n')).toContain(
+        'Prefer the dedicated file/search tools over shell commands when one fits.',
+      )
+    }
+  })
 })
 
 describe('anti-narration is gone from every system prompt', () => {
