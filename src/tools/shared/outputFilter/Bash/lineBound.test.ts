@@ -3,8 +3,9 @@ import { commandLineBound } from "src/tools/shared/outputFilter/Bash/lineBound.j
 
 // Commands the floor cap cut in the real corpus of 2026-09-14..25 (team memory
 // `cut-results-request-cost-2026-09-25`), verbatim but for absolute paths made
-// relative. Each was followed, in its thread, by a Read of the file it printed
-// or by the same read again.
+// relative and one directory renamed off the upstream codename. Each was
+// followed, in its thread, by a Read of the file it printed or by the same read
+// again.
 const RECORDED: readonly (readonly [string, number])[] = [
   ["sed -n 1,80p scripts/migrations/break-probe.ts", 80],
   ["sed -n 95,135p src/platform/main/lifecycle.ts; sed -n 279,310p src/platform/settings/settings.ts", 41 + 32],
@@ -20,7 +21,7 @@ const RECORDED: readonly (readonly [string, number])[] = [
     90,
   ],
   [
-    'head -60 docs/tech/tengu-census/gate-audit.md; echo ...; grep -c "FUNCIONA\\|QUEBRA\\|INERTE" docs/tech/tengu-census/gate-audit.md',
+    'head -60 docs/tech/upstream-census/gate-audit.md; echo ...; grep -c "FUNCIONA\\|QUEBRA\\|INERTE" docs/tech/upstream-census/gate-audit.md',
     60 + 1 + 1,
   ],
   ["cd .claudin/worktrees/audit; sed -n 130,145p src/tools/AgentTool/AgentTool.tsx", 16],
