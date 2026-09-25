@@ -68,7 +68,8 @@ let effortEnvWasSet = false
 let savedNerdFontEnv: string | undefined
 let nerdFontEnvWasSet = false
 
-// The footer/banner render the working directory, home-relativized to `~/…`.
+// The banner renders the working directory home-relativized to `~/…`, and the
+// footer names its folder.
 // Left unpinned this bakes the developer's real checkout path into the
 // snapshots (`~/projects/claudin`), which then mismatches any other checkout
 // location — e.g. CI runners at `~/work/claudin/claudin`. Pin it to a stable
