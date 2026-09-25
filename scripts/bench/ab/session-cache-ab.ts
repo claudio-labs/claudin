@@ -101,6 +101,7 @@ import { parse as parseShell } from 'shell-quote'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
 import {
+  bashCommandOf,
   proxyEnv,
   readKindedRequests,
   readProxyThinking,
@@ -273,6 +274,8 @@ type RequestCensus = {
   multiAction: number
   /** Classifier requests judging an action that an earlier judgment of the session already judged. */
   repeated: number
+  /** Classifier requests judging a read command with an unquoted glob (`isGlobReadCommand`). */
+  globReadRequests: number
 }
 
 type RunResult = {
@@ -932,7 +935,16 @@ function subagentUsage(sessionDir: string, archiveDir: string): SubagentUsage {
  * counts across the whole session.
  */
 export function requestCensus(phases: readonly (readonly KindedRequest[])[]): RequestCensus {
-  const census: RequestCensus = { main: 0, classifier: 0, other: 0, classifierCost: 0, multiRequest: 0, multiAction: 0, repeated: 0 }
+  const census: RequestCensus = {
+    main: 0,
+    classifier: 0,
+    other: 0,
+    classifierCost: 0,
+    multiRequest: 0,
+    multiAction: 0,
+    repeated: 0,
+    globReadRequests: 0,
+  }
   // Action → its first judgment. A later judgment of the same action is one a
   // verdict cache would have answered; the stages of one judgment share it.
   const firstJudgment = new Map<string, string>()
@@ -951,6 +963,8 @@ export function requestCensus(phases: readonly (readonly KindedRequest[])[]): Re
       }
       if (r.kind !== 'classifier') continue
       census.classifierCost += costOf(r.model, usageOf(r.usage))
+      const command = r.action ? bashCommandOf(r.action) : null
+      if (command !== null && isGlobReadCommand(command)) census.globReadRequests++
       if (window) {
         window.requests++
         if (r.judgment) window.judgments.add(r.judgment)
@@ -1152,14 +1166,8 @@ const GLOB_SEGMENT_RE = /[*?[]/
  * redirect other than `2>/dev/null` — `2>&1` included, as there — names nothing.
  */
 export function catReadsOf(command: string): ReadWord[] {
-  if (SUBSTITUTION_RE.test(command) || HEREDOC_RE.test(command)) return []
-  const flat = command.replace(LINE_CONTINUATION_RE, ' ').replace(OPERATOR_NEWLINE_RE, '$1 ').replace(NEWLINE_RE, ';')
-  let tokens: unknown[]
-  try {
-    tokens = parseShell(flat, name => `$${name}`)
-  } catch {
-    return [] // what shell-quote cannot parse names no file
-  }
+  const tokens = shellTokensOf(command)?.tokens
+  if (!tokens) return []
   const segments: { words: ReadWord[] | null; joinedBy: string | null }[] = []
   let words: ReadWord[] | null = []
   let joinedBy: string | null = null
@@ -1221,6 +1229,105 @@ export function catReadsOf(command: string): ReadWord[] {
     if (catReads) (open.at(-1)?.reads ?? reads).push(...catReads)
   }
   return reads
+}
+
+/**
+ * A command as one line — a newline ends a command unless it follows an
+ * operator — and its shell-quote tokens. Null for a command with a
+ * substitution or a heredoc, whose words the shell rewrites, and for what
+ * shell-quote cannot parse.
+ */
+function shellTokensOf(command: string): { line: string; tokens: unknown[] } | null {
+  if (SUBSTITUTION_RE.test(command) || HEREDOC_RE.test(command)) return null
+  const line = command.replace(LINE_CONTINUATION_RE, ' ').replace(OPERATOR_NEWLINE_RE, '$1 ').replace(NEWLINE_RE, ';')
+  try {
+    return { line, tokens: parseShell(line, name => `$${name}`) }
+  } catch {
+    return null // what shell-quote cannot parse reads as no command at all
+  }
+}
+
+const READ_COMMANDS: ReadonlySet<string> = new Set(['cat', 'head', 'tail', 'wc', 'ls', 'grep'])
+const GIT_READ_SUBCOMMANDS: ReadonlySet<string> = new Set(['ls-files', 'status', 'diff', 'log', 'show'])
+/** git's global options that take the next word as their value. */
+const GIT_VALUE_OPTIONS: ReadonlySet<string> = new Set(['-C', '-c'])
+const FD_RE = /^\d$/
+const GLOB_CHARS: ReadonlySet<string> = new Set(['*', '?', '['])
+/** What may come right before a `#` that opens a comment: a blank or an operator. */
+const COMMENT_BOUNDARY_RE = /[\s;&|()]/
+
+/**
+ * A command made only of read commands — cat, head, tail, wc, ls, grep, and
+ * git ls-files/status/diff/log/show — chained with `&&`, `||`, `;` or `|`,
+ * with an unquoted glob among its words: what CLAUDIN_READONLY_GLOBS stops
+ * sending to the auto-mode classifier. Output into /dev/null or onto another
+ * fd leaves it a read; a substitution, a heredoc, a subshell, a background
+ * job or a redirect into a file does not.
+ */
+export function isGlobReadCommand(command: string): boolean {
+  const parsed = shellTokensOf(command)
+  if (!parsed) return false
+  const { line, tokens } = parsed
+  const segments: string[][] = [[]]
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    const words = segments.at(-1)!
+    if (typeof token === 'string') {
+      words.push(token)
+      continue
+    }
+    if (!isRecord(token)) return false
+    if (typeof token.comment === 'string') break
+    if (token.op === 'glob') {
+      words.push(String(token.pattern))
+      continue
+    }
+    if (typeof token.op === 'string' && SEGMENT_OPS.has(token.op)) {
+      segments.push([])
+      continue
+    }
+    // `2>/dev/null`, `>/dev/null`, `2>&1`: output thrown away, or sent onto another fd.
+    const target = tokens[i + 1]
+    const discards = (token.op === '>' || token.op === '>>') && target === '/dev/null'
+    const joins = token.op === '>&' && typeof target === 'string' && FD_RE.test(target)
+    if (!discards && !joins) return false
+    if (FD_RE.test(words.at(-1) ?? '')) words.pop()
+    i++
+  }
+  const commands = segments.filter(words => words.length > 0)
+  return commands.length > 0 && commands.every(isReadCommand) && hasUnquotedGlob(line)
+}
+
+function isReadCommand([head, ...args]: string[]): boolean {
+  if (head !== undefined && READ_COMMANDS.has(head)) return true
+  if (head !== 'git') return false
+  let i = 0
+  while (i < args.length && args[i]!.startsWith('-')) i += GIT_VALUE_OPTIONS.has(args[i]!) ? 2 : 1
+  return GIT_READ_SUBCOMMANDS.has(args[i] ?? '')
+}
+
+/**
+ * Whether the shell would expand a glob in a one-line command: a `*`, `?` or
+ * `[` outside quotes and not escaped. `$?` and `$*` are parameters, and a `#`
+ * opening a word starts a comment that runs to the end of the line.
+ */
+function hasUnquotedGlob(line: string): boolean {
+  let quote: string | null = null
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]!
+    if (quote !== null) {
+      if (c === quote) quote = null
+      else if (quote === '"' && c === '\\') i++
+      continue
+    }
+    if (c === "'" || c === '"') quote = c
+    else if (c === '\\') i++
+    else if (c === '$') {
+      if (line[i + 1] === '?' || line[i + 1] === '*') i++
+    } else if (c === '#' && (i === 0 || COMMENT_BOUNDARY_RE.test(line[i - 1]!))) return false
+    else if (GLOB_CHARS.has(c)) return true
+  }
+  return false
 }
 
 /** `V in w1 w2 …` after a `for`. */
@@ -1908,7 +2015,7 @@ const METRIC_ROWS: MetricRow[] = [
 
 type CensusRow = [label: string, key: keyof RequestCensus, fmt: (n: number) => string]
 
-const CENSUS_ROWS: CensusRow[] = [
+export const CENSUS_ROWS: CensusRow[] = [
   ['agent-loop requests (main thread + sub-agents)', 'main', fmtInt],
   ['auto-mode classifier requests', 'classifier', fmtInt],
   ['other side requests', 'other', fmtInt],
@@ -1916,6 +2023,7 @@ const CENSUS_ROWS: CensusRow[] = [
   ['agent-loop responses followed by 2+ classifier requests', 'multiRequest', fmtInt],
   ['  of which with 2+ judged actions', 'multiAction', fmtInt],
   ['classifier requests re-judging an action', 'repeated', fmtInt],
+  ['classifier requests on read commands with a glob', 'globReadRequests', fmtInt],
 ]
 
 /** A table row: its label, each arm's values (one per run), and their format. */
@@ -2143,6 +2251,10 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
             'the responses that would change, while `2+ classifier requests` also counts one action taking two stages. ' +
             'Caching verdicts would answer the re-judged actions: requests judging an action identical to one an ' +
             'earlier judgment of the session already judged.',
+          '',
+          '`on read commands with a glob` counts the requests judging a Bash command made only of cat, head, tail, ' +
+            'wc, ls, grep and git ls-files/status/diff/log/show, chained with `&&`, `||`, `;` or `|`, with an unquoted ' +
+            'glob among its words (`isGlobReadCommand`): the judgments `CLAUDIN_READONLY_GLOBS` is meant to take away.',
           '',
         ]
       : []),

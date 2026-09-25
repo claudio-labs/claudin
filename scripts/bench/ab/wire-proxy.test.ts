@@ -3,7 +3,7 @@ import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
-import { type ProxyRecord, readKindedRequests, requestKind } from './wire-proxy.ts'
+import { bashCommandOf, type ProxyRecord, readKindedRequests, requestKind } from './wire-proxy.ts'
 
 // Synthetic bodies shaped like what each request builder puts on the wire; the
 // markers requestKind reads are cited beside it in wire-proxy.ts.
@@ -210,5 +210,20 @@ describe('readKindedRequests — the answered requests of one label, in the orde
     expect(s1!.judgment).toBe(s2!.judgment!)
     expect(later!.judgment).not.toBe(s1!.judgment!)
     expect(readKindedRequests(dir, 'no-such-label')).toEqual([])
+  })
+})
+
+describe('bashCommandOf — the command of a judged Bash action', () => {
+  test('from the default block, a multi-line command whole, and from the JSONL one', () => {
+    expect(bashCommandOf('Bash git ls-files && cat src/*.ts\n')).toBe('git ls-files && cat src/*.ts')
+    expect(bashCommandOf('Bash cat src/a.ts\ncat src/b.ts\n')).toBe('cat src/a.ts\ncat src/b.ts')
+    expect(bashCommandOf('{"Bash":"cat \\"src/*.ts\\""}\n')).toBe('cat "src/*.ts"')
+  })
+
+  test("another tool's action has none, on either path", () => {
+    expect(bashCommandOf('Read {"file_path":"/w/src/a.ts"}\n')).toBeNull()
+    expect(bashCommandOf('{"Read":{"file_path":"/w/src/a.ts"}}\n')).toBeNull()
+    expect(bashCommandOf('Bashful {"x":1}\n')).toBeNull()
+    expect(bashCommandOf('{"Bash":\n')).toBeNull()
   })
 })

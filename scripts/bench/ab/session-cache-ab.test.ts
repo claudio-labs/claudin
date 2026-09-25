@@ -6,9 +6,11 @@ import {
   analyzeSession,
   bashInfo,
   catReadsOf,
+  CENSUS_ROWS,
   claudinPartsOf,
   editsOnNeverRead,
   isCatReadMiss,
+  isGlobReadCommand,
   parseArgs,
   phaseArgs,
   readsOfShownFiles,
@@ -424,5 +426,73 @@ describe('requestCensus — the classifier requests around each agent-loop respo
     ])
     expect(census).toMatchObject({ main: 2, classifier: 2, other: 1, multiRequest: 0, multiAction: 0, repeated: 0 })
     expect(requestCensus([[request('main'), request('main')], []])).toMatchObject({ main: 2, classifier: 0, classifierCost: 0 })
+  })
+
+  test('requests judging a read command with a glob, whichever way the action is written', () => {
+    const census = requestCensus([
+      [
+        request('main'),
+        judged('Bash git ls-files && cat README.md && cat src/*.ts\n', 'j1'),
+        judged('Bash git ls-files && cat README.md && cat src/*.ts\n', 'j1'), // stage 2 of the same judgment counts too
+        judged('{"Bash":"ls test* 2>/dev/null"}\n', 'j2'), // the JSONL transcript
+        judged('Bash cat data/carts/*.json && bun test 2>&1 | tail -5\n', 'j3'), // a check beside the read
+        judged('Read {"file_path":"/w/src/*.ts"}\n', 'j4'), // not Bash
+      ],
+      [request('main'), judged('Bash wc -l src/*.ts\n', 'j5')],
+    ])
+    expect(census).toMatchObject({ classifier: 6, globReadRequests: 4 })
+  })
+
+  test('every count of the census has its row in the report', () => {
+    expect(CENSUS_ROWS.map(([, key]) => key).sort()).toEqual(Object.keys(requestCensus([])).sort())
+  })
+})
+
+describe('isGlobReadCommand — a read command the classifier judges for its glob alone', () => {
+  test('read commands, chained, with an unquoted glob among their words', () => {
+    for (const command of [
+      'git ls-files && cat README.md package.json && cat src/*.ts',
+      'ls test* tests* 2>/dev/null',
+      'wc -l src/*.ts | tail -1',
+      'grep -n coupon src/*.ts || head -20 test/?.test.ts',
+      'git diff --stat -- src/[ab].ts',
+      'git -C /w log --oneline -- "src/a.ts" src/*.ts 2>&1 | head -5',
+      'cat src/a.ts\ncat test/*.ts',
+    ]) {
+      expect([command, isGlobReadCommand(command)]).toEqual([command, true])
+    }
+  })
+
+  test('no glob: none at all, a quoted or escaped one, a parameter, a comment', () => {
+    for (const command of [
+      'git ls-files && cat README.md package.json',
+      'cat "src/*.ts"',
+      "grep -E 'a*b' src/a.ts",
+      'cat src/\\*.ts',
+      'wc -l src/a.ts $?',
+      'cat src/a.ts # and src/*.ts later',
+    ]) {
+      expect([command, isGlobReadCommand(command)]).toEqual([command, false])
+    }
+  })
+
+  test('not a plain read: another command, a substitution, a heredoc, a subshell, a job, a write', () => {
+    for (const command of [
+      'cat data/carts/*.json && bun test 2>&1 | tail -5',
+      'ls src/*.ts || true',
+      'cd src && cat *.ts',
+      'sed -n 1,5p src/*.ts',
+      'python *',
+      'git add src/*.ts',
+      'git checkout -- src/*.ts',
+      'wc -l $(git ls-files src/*.ts)',
+      'cat `ls src/*.ts`',
+      "cat <<'EOF'\nsrc/*.ts\nEOF",
+      '(cat src/*.ts)',
+      'cat src/*.ts &',
+      'cat src/*.ts > all.txt',
+    ]) {
+      expect([command, isGlobReadCommand(command)]).toEqual([command, false])
+    }
   })
 })

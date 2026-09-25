@@ -42,6 +42,16 @@
  *                       response failed: an error result, a nonzero exitCode
  *                       from RunTests/Typecheck/Build, a stripped `| tail`'s
  *                       `exit="N"` marker, or failing tests in the output
+ *   gitOnlyCalls        the commit protocol's own requests: responses whose
+ *                       every call is git — the Git tool, or a Bash whose
+ *                       every command is git or a head/tail its output is
+ *                       piped into — and that edit nothing (a git restore,
+ *                       checkout or stash is an edit); a FINAL has no call
+ *   globReads           Read calls naming a glob (an unescaped `*` `?` `[`
+ *                       `{`) in file_paths; globReadFiles counts the files
+ *                       their results showed, one `==> path <==` header each
+ *   firstEditTurn       phase 1's responses before its first edit, all of them
+ *                       when it never edits: `resume` measured on phase 1
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -1471,8 +1481,29 @@ export function classifySession(s: Session, fixtureDir = SESSION_CACHE_PROJECT):
 // Mechanism metrics: what the request-count levers change inside one response
 // ---------------------------------------------------------------------------
 
-export const MECHANISM_METRICS = ['chainResponses', 'gitReadWithCheck', 'multiKindPatch', 'multiKindPatchDoc', 'skipped', 'commitAfterFailure'] as const
+export const MECHANISM_METRICS = [
+  'chainResponses',
+  'gitReadWithCheck',
+  'multiKindPatch',
+  'multiKindPatchDoc',
+  'skipped',
+  'commitAfterFailure',
+  'gitOnlyCalls',
+  'globReads',
+  'globReadFiles',
+] as const
 export type Mechanism = Record<(typeof MECHANISM_METRICS)[number], number>
+const zeroMechanism = (): Mechanism => ({
+  chainResponses: 0,
+  gitReadWithCheck: 0,
+  multiKindPatch: 0,
+  multiKindPatchDoc: 0,
+  skipped: 0,
+  commitAfterFailure: 0,
+  gitOnlyCalls: 0,
+  globReads: 0,
+  globReadFiles: 0,
+})
 
 const GIT_READ_SUBS = new Set(['status', 'diff', 'log', 'show'])
 const SKIPPED_RE = /^<tool_use_error>Skipped:/
@@ -1483,12 +1514,36 @@ const STRIPPED_EXIT_RE = /^<bash-output-(?:filtered|rewritten)\b[^>]*\sexit="[1-
 const TEST_PATH_RE = /(^|\/)(__tests__|tests?|spec)\/|\.(test|spec)\.[cm]?[jt]sx?$/
 const SOURCE_PATH_RE = /\.[cm]?[jt]sx?$/
 const DOC_PATH_RE = /\.(md|mdx|markdown|rst)$/i
+/** The line a batch Read writes above each file it shows (FileReadTool/batchRead.ts). */
+const BATCH_HEADER_RE = /^==> .+ <==$/gm
+/** A `file_paths` entry the Read expands as a glob: an unescaped `*` `?` `[` `{` (FileReadTool/readGlobs.ts `isReadGlob`). */
+const READ_GLOB_RE = /(?<!\\)(?:\\\\)*[*?[{]/
 
 /** A Git or Bash call reading git state (status/diff/log/show) that writes and checks nothing. */
 const readsGitState = (t: ToolInfo): boolean =>
   (t.name === 'Git' || t.name === 'Bash') && !t.mutates && !t.commits && !t.verifies && t.gitSubs.length > 0 && t.gitSubs.every(s => GIT_READ_SUBS.has(s))
 
 const runsCommit = (t: ToolInfo): boolean => (t.name === 'Git' || t.name === 'Bash') && t.gitSubs.includes('commit')
+
+/** Commands that only cut down the output piped into them. */
+const OUTPUT_TRIMMERS = new Set(['head', 'tail'])
+
+/** The Git tool, or a Bash call whose every command is git or a head/tail trimming the output piped into it. */
+function isGitCall(u: ToolUse, t: ToolInfo): boolean {
+  if (t.name === 'Git') return true
+  if (t.name !== 'Bash') return false
+  const segs = parseShell(String(u.input.command ?? ''))
+  return (
+    segs.length > 0 &&
+    segs.every(seg => {
+      const head = seg.words.find(w => !LEAD_KEYWORDS.has(w) && !ASSIGNMENT_RE.test(w))
+      return head === 'git' || (head !== undefined && OUTPUT_TRIMMERS.has(head) && seg.opBefore === '|')
+    })
+  )
+}
+
+/** A Read input with a glob among its `file_paths`. */
+const readsGlob = (input: Json): boolean => list(input.file_paths).some(p => typeof p === 'string' && READ_GLOB_RE.test(p))
 
 /** Whether a commit call actually ran it: not refused by the harness, nor left behind a failed command of the same Git call. */
 function commitRan(u: ToolUse): boolean {
@@ -1514,14 +1569,19 @@ function callFailed(u: ToolUse, t: ToolInfo, revertCheck: boolean): boolean {
 
 /** The mechanism metrics of one request. */
 function requestMechanism(ci: CallInfo): Mechanism {
-  const m: Mechanism = { chainResponses: 0, gitReadWithCheck: 0, multiKindPatch: 0, multiKindPatchDoc: 0, skipped: 0, commitAfterFailure: 0 }
+  const m = zeroMechanism()
   const firstEdit = ci.tools.findIndex(t => t.kind === 'EDIT')
   if (firstEdit >= 0 && ci.tools.some((t, i) => i > firstEdit && t.kind === 'VERIFY')) m.chainResponses = 1
   if (ci.tools.some(t => t.kind === 'VERIFY') && ci.tools.some(readsGitState)) m.gitReadWithCheck = 1
+  if (ci.tools.length > 0 && !ci.mutates && ci.call.tools.every((u, i) => isGitCall(u, ci.tools[i]!))) m.gitOnlyCalls = 1
   let failedBefore = false
   ci.call.tools.forEach((u, i) => {
     const t = ci.tools[i]!
     if (SKIPPED_RE.test(u.result)) m.skipped++
+    if (u.name === 'Read' && readsGlob(u.input)) {
+      m.globReads++
+      m.globReadFiles += u.result.match(BATCH_HEADER_RE)?.length ?? 0
+    }
     if (PATCH_TOOLS.has(t.name) && !u.isError) {
       const files = t.editTargets
       if (files.some(f => TEST_PATH_RE.test(f)) && files.some(f => SOURCE_PATH_RE.test(f) && !TEST_PATH_RE.test(f))) {
@@ -1537,7 +1597,7 @@ function requestMechanism(ci: CallInfo): Mechanism {
 
 /** The mechanism metrics of a session: each summed over its requests. */
 export function mechanismOf(infos: CallInfo[]): Mechanism {
-  const total: Mechanism = { chainResponses: 0, gitReadWithCheck: 0, multiKindPatch: 0, multiKindPatchDoc: 0, skipped: 0, commitAfterFailure: 0 }
+  const total = zeroMechanism()
   for (const ci of infos) {
     const m = requestMechanism(ci)
     for (const k of MECHANISM_METRICS) total[k] += m[k]
@@ -1553,7 +1613,16 @@ function mechanismTags(ci: CallInfo): string[] {
     m.gitReadWithCheck ? 'git-read+check' : '',
     m.multiKindPatchDoc ? 'patch:src+test+doc' : m.multiKindPatch ? 'patch:src+test' : '',
     m.commitAfterFailure ? 'commit-after-failure' : '',
+    m.gitOnlyCalls ? 'git-only' : '',
+    m.globReads ? `glob-read:${m.globReadFiles}` : '',
   ].filter(Boolean)
+}
+
+/** A phase's responses before its first edit, or all of them when it never edits. */
+function responsesBeforeFirstEdit(infos: CallInfo[], phase: 1 | 2): number {
+  const inPhase = infos.filter(ci => ci.call.phase === phase)
+  const first = inPhase.findIndex(ci => ci.mutates)
+  return first < 0 ? inPhase.length : first
 }
 
 // ---------------------------------------------------------------------------
@@ -1652,9 +1721,8 @@ export function analyzeSession(s: Session, fixtureDir = SESSION_CACHE_PROJECT): 
     if (ci.revertCheck && prev?.revertCheck) bump('pattern:revert-check-redo')
     if (ci.mutates) editedInPhase = true
   })
-  const p2 = infos.filter(ci => ci.call.phase === 2)
-  const firstEdit = p2.findIndex(ci => ci.mutates)
-  r.resume = firstEdit < 0 ? p2.length : firstEdit
+  r.resume = responsesBeforeFirstEdit(infos, 2)
+  r.firstEditTurn = responsesBeforeFirstEdit(infos, 1)
   Object.assign(r, mechanismOf(infos))
   return { infos, row: r, reactCats }
 }
@@ -1690,11 +1758,14 @@ function fmt(xs: number[]): string {
 }
 
 const REPORT_METRICS = ['total', 'p1', 'p2', ...LABELS, 'mergeable', ...LEVERS, ...EXTRA_LEVERS, 'softReact', 'revertChecks', 'hardErrCalls', ...TAGS, 'resume', 'subagentCalls']
+/** The mechanism table: the per-request metrics summed per session, then phase 1's responses before its first edit. */
+const MECHANISM_ROWS = [...MECHANISM_METRICS, 'firstEditTurn']
 
 /** The per-arm report: every metric as median [min–max] over sessions, then sums, sub-kinds and REACT causes. */
 export function renderReport(run: string, arms: ArmSummary[]): string {
   const colOf = (m: string) => (a: ArmSummary) => a.rows.map(r => r[m] ?? 0)
   const sum = (xs: number[]) => xs.reduce((x, y) => x + y, 0)
+  const mean = (xs: number[]) => (xs.length ? (sum(xs) / xs.length).toFixed(1) : '-')
   const repCounts = new Set(arms.map(a => a.rows.length))
   const overReps = repCounts.size === 1 ? `${[...repCounts][0]} reps` : 'reps'
   const out: string[] = []
@@ -1711,10 +1782,11 @@ export function renderReport(run: string, arms: ArmSummary[]): string {
   for (const a of arms) {
     out.push(`  ${a.arm.padEnd(11)} ${[...LABELS, ...LEVERS, ...EXTRA_LEVERS, 'softReact', ...TAGS].map(k => `${k}=${sum(colOf(k)(a))}`).join(' ')}`)
   }
-  out.push('\nmechanism per session: median [min–max] · sessions with at least one')
-  out.push(['metric'.padEnd(22), ...arms.map(a => a.arm.padEnd(20))].join(' '))
-  const cell = (xs: number[]) => `${fmt(xs)} · ${xs.filter(x => x > 0).length}/${xs.length}`.padEnd(20)
-  for (const m of MECHANISM_METRICS) out.push([m.padEnd(22), ...arms.map(a => cell(colOf(m)(a)))].join(' '))
+  // The mean too: the request-count round's gates are pre-registered on means.
+  out.push('\nmechanism per session: median [min–max] · sessions with at least one · mean')
+  out.push(['metric'.padEnd(22), ...arms.map(a => a.arm.padEnd(24))].join(' '))
+  const cell = (xs: number[]) => `${fmt(xs)} · ${xs.filter(x => x > 0).length}/${xs.length} · ${mean(xs)}`.padEnd(24)
+  for (const m of MECHANISM_ROWS) out.push([m.padEnd(22), ...arms.map(a => cell(colOf(m)(a)))].join(' '))
   return out.join('\n')
 }
 
@@ -1722,12 +1794,14 @@ const NEWLINES_RE = /\n/g
 
 /**
  * One session request by request: label, the label before REACT, levers,
- * notes and mechanism tags, then the tools — `[ERR]` on a failed one,
- * `[SKIPPED]` on one the same-response guard refused.
+ * notes and mechanism tags — `first-edit` on each phase's first edit, where
+ * firstEditTurn and resume stop counting — then the tools: `[ERR]` on a
+ * failed one, `[SKIPPED]` on one the same-response guard refused.
  */
 export function renderListing(title: string, infos: CallInfo[]): string {
   const lines = [`\n#### ${title} (${infos.length} calls)`]
   const status = (u: ToolUse) => (SKIPPED_RE.test(u.result) ? ' [SKIPPED]' : u.isError ? ' [ERR]' : '')
+  const firstEdits = new Set(([1, 2] as const).map(phase => infos.find(ci => ci.call.phase === phase && ci.mutates)))
   for (const ci of infos) {
     const tools =
       ci.tools.map((t, i) => t.summary + status(ci.call.tools[i]!)).join(' + ') || (ci.call.texts[0] ?? '').slice(0, 60).replace(NEWLINES_RE, ' ')
@@ -1739,6 +1813,7 @@ export function renderListing(title: string, infos: CallInfo[]): string {
       ci.softFail ? 'shows-fail' : '',
       ...ci.notes.filter(n => n !== 'soft-react'),
       ...mechanismTags(ci),
+      firstEdits.has(ci) ? 'first-edit' : '',
     ].filter(Boolean)
     const base = ci.base !== ci.label ? `(${ci.base})`.padEnd(8) : ''.padEnd(8)
     lines.push(`${String(ci.call.k).padStart(2)} p${ci.call.phase} ${ci.label.padEnd(6)} ${base} ${tags.join(' ').padEnd(34)} ${tools}`)

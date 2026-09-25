@@ -18,7 +18,8 @@
  * arm from ~/.claude/projects/, and every rep found there is used.
  * --listing appends every session request by request: its label, the label
  * the REACT rule replaced, levers, notes and mechanism tags (chain-resp,
- * git-read+check, patch:src+test[+doc], commit-after-failure), then the
+ * git-read+check, patch:src+test[+doc], commit-after-failure, git-only,
+ * glob-read:<files shown>, first-edit on each phase's first edit), then the
  * tools, `[ERR]` on a failed one and `[SKIPPED]` on one the same-response
  * guard refused.
  */

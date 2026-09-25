@@ -552,6 +552,27 @@ function judgmentOf(body: Json): { action: string; judgment: string } | null {
   return { action, judgment: createHash('sha256').update(JSON.stringify(judged)).digest('hex') }
 }
 
+const BASH_ACTION_PREFIX = 'Bash '
+const ACTION_END_RE = /\n$/
+
+/**
+ * The command of a judged Bash action, or null for another tool's. The
+ * classifier writes the action as one transcript block
+ * (yoloClassifier/transcript.ts `toCompactBlock`): `Bash <command>` on the
+ * default path, `{"Bash":"<command>"}` with its JSONL transcript on.
+ */
+export function bashCommandOf(action: string): string | null {
+  const block = action.replace(ACTION_END_RE, '')
+  if (block.startsWith(BASH_ACTION_PREFIX)) return block.slice(BASH_ACTION_PREFIX.length)
+  if (!block.startsWith('{')) return null
+  try {
+    const parsed: unknown = JSON.parse(block)
+    return isRecord(parsed) && typeof parsed.Bash === 'string' ? parsed.Bash : null
+  } catch {
+    return null // not a JSONL block after all: no command to read from it
+  }
+}
+
 /** An answered request, with what the session bench's census needs of it. */
 export type KindedRequest = {
   n: number

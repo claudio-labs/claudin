@@ -10,6 +10,7 @@ import {
   loadSession,
   mechanismOf,
   parseShell,
+  renderListing,
   renderReport,
   repsOf,
   sessionFromEntries,
@@ -219,6 +220,79 @@ describe('mechanism metrics', () => {
     )
     expect(infos.map(ci => mechanismOf([ci]).commitAfterFailure)).toEqual([1, 1, 1, 1, 0, 0, 0, 0, 0, 0])
   })
+
+  test('gitOnlyCalls: responses of git calls only, a head/tail piped after git allowed, none that edits', () => {
+    const bash = (command: string): Step => ({ name: 'Bash', input: { command } })
+    const infos = classify(
+      prompt('go'),
+      ...response('r1', [{ name: 'Git', input: { commands: ['git status', 'git diff --stat', 'git log --oneline -3'] } }]),
+      ...response('r2', [bash("git add -A && git commit -q -F - <<'EOF'\nfeat: x\n\nbody | head\nEOF\ngit log --oneline | head -2; git status --short")]),
+      ...response('r3', [bash('git status'), commit('x')]),
+      // not git-only: an edit beside it, a head reading a file, a cd, a meta call
+      ...response('r4', [{ name: 'Edit', input: { file_path: `${WS}/README.md`, old_string: 'a', new_string: 'b' } }, commit('x')]),
+      ...response('r5', [bash('git status && head -3 README.md')]),
+      ...response('r6', [bash('cd /tmp && git status')]),
+      ...response('r7', [{ name: 'ToolSearch', input: { query: 'select:Git' } }, { name: 'Git', input: { commands: ['git status'] } }]),
+      // not the commit protocol: git undoing a revert check edits the tree
+      ...response('r8', [bash('git restore --staged src/a.ts && git status --short | head -3 && git stash list')]),
+      ...response('r9', [{ name: 'Git', input: { commands: ['git checkout -- src/a.ts'] } }]),
+      text('r10', 'Committed.'),
+    )
+    expect(infos.map(ci => mechanismOf([ci]).gitOnlyCalls)).toEqual([1, 1, 1, 0, 0, 0, 0, 0, 0, 0])
+  })
+
+  test('globReads: Read calls with a glob in file_paths, and the files their results showed', () => {
+    const shown = (...rels: string[]) => rels.map(rel => `==> ${rel} <==\n     1→// ${rel}\n     2→==> not a header <==`).join('\n\n')
+    const readAll = (paths: string[], result: string, extra: Partial<Step> = {}): Step => ({
+      name: 'Read',
+      input: { file_paths: paths.map(p => `${WS}/${p}`) },
+      result,
+      ...extra,
+    })
+    const infos = classify(
+      prompt('go'),
+      ...response('r1', [readAll(['src/*.ts'], shown('src/a.ts', 'src/b.ts'))]),
+      // a glob among literal paths, with a file past the budget named but not shown; a brace glob beside it
+      ...response('r2', [
+        readAll(['README.md', 'test/*.test.ts'], `${shown('README.md', 'test/a.test.ts')}\n\nNot shown — over the 25k tokens one Read returns: test/b.test.ts. Read them in another call.`),
+        readAll(['src/{a,b}.ts'], shown('src/a.ts', 'src/b.ts')),
+      ]),
+      // refused: a glob Read all the same, showing nothing
+      ...response('r3', [readAll(['src/?.ts', 'test/[ab].test.ts'], '<tool_use_error>Too many files</tool_use_error>', { isError: true })]),
+      // not a glob Read: literal paths — an escaped `[` included — a glob as file_path, the Glob tool
+      ...response('r4', [
+        readAll(['src/a.ts', 'src/b.ts', 'src/\\[id].ts'], shown('src/a.ts', 'src/b.ts')),
+        { name: 'Read', input: { file_path: `${WS}/src/*.ts` } },
+        { name: 'Glob', input: { pattern: 'src/*.ts' } },
+      ]),
+    )
+    expect(infos.map(ci => mechanismOf([ci]))).toMatchObject([
+      { globReads: 1, globReadFiles: 2 },
+      { globReads: 2, globReadFiles: 4 },
+      { globReads: 1, globReadFiles: 0 },
+      { globReads: 0, globReadFiles: 0 },
+    ])
+  })
+
+  test('firstEditTurn: phase 1 responses before its first edit, as resume counts them in phase 2', () => {
+    const s = sessionOf(
+      prompt('go'),
+      ...response('r1', [read('src/a.ts')]),
+      ...response('r2', [runTests(0)]),
+      // a refused patch is the first edit all the same
+      ...response('r3', [{ name: 'Patch', input: patch('src/a.ts'), isError: true, result: '<tool_use_error>Patch found 1 problem</tool_use_error>' }]),
+      ...response('r4', [{ name: 'Patch', input: patch('src/a.ts') }]),
+      text('r5', 'Done.'),
+      prompt('more'),
+      ...response('r6', [read('src/b.ts')]),
+      ...response('r7', [{ name: 'Bash', input: { command: "sed -i 's/a/b/' src/b.ts" } }]),
+      text('r8', 'Done.'),
+    )
+    expect(analyzeSession(s, fixture).row).toMatchObject({ firstEditTurn: 2, resume: 1 })
+    // a phase that never edits spends all its responses
+    const idle = sessionOf(prompt('go'), ...response('r1', [read('src/a.ts')]), text('r2', 'Nothing to change.'))
+    expect(analyzeSession(idle, fixture).row).toMatchObject({ firstEditTurn: 2, resume: 0 })
+  })
 })
 
 describe('parseShell', () => {
@@ -280,15 +354,47 @@ describe('the session-cache A/B layout', () => {
 })
 
 describe('renderReport', () => {
-  test('gives each mechanism metric as median [min–max] and the sessions with at least one', () => {
-    const session = (chainResponses: number, reactCats: [string, number][]) => ({ infos: [], row: { total: 1, chainResponses }, reactCats: new Map(reactCats) })
+  test('gives each mechanism metric as median [min–max], the sessions with at least one and the mean', () => {
+    const session = (chainResponses: number, reactCats: [string, number][]) => ({
+      infos: [],
+      row: { total: 1, chainResponses, gitOnlyCalls: chainResponses > 0 ? 2 : 0, firstEditTurn: chainResponses + 3 },
+      reactCats: new Map(reactCats),
+    })
     const arm = summarizeArm('x', [session(1, [['read-gate', 1]]), session(0, [['string-not-found', 2], ['read-gate', 1]]), session(3, [])])
     expect([...arm.reactCats]).toEqual([
       ['read-gate', 2],
       ['string-not-found', 2],
     ])
     const lines = renderReport('run1', [arm]).split('\n')
-    expect(lines.find(l => l.startsWith('chainResponses'))).toBe('chainResponses'.padEnd(22) + ' ' + '1 [0–3] · 2/3'.padEnd(20))
-    expect(lines.find(l => l.startsWith('commitAfterFailure'))).toBe('commitAfterFailure'.padEnd(22) + ' ' + '0 · 0/3'.padEnd(20))
+    const row = (metric: string, cell: string) => metric.padEnd(22) + ' ' + cell.padEnd(24)
+    expect(lines.find(l => l.startsWith('chainResponses'))).toBe(row('chainResponses', '1 [0–3] · 2/3 · 1.3'))
+    expect(lines.find(l => l.startsWith('commitAfterFailure'))).toBe(row('commitAfterFailure', '0 · 0/3 · 0.0'))
+    expect(lines.find(l => l.startsWith('gitOnlyCalls'))).toBe(row('gitOnlyCalls', '2 [0–2] · 2/3 · 1.3'))
+    expect(lines.find(l => l.startsWith('globReadFiles'))).toBe(row('globReadFiles', '0 · 0/3 · 0.0'))
+    expect(lines.find(l => l.startsWith('firstEditTurn'))).toBe(row('firstEditTurn', '4 [3–6] · 3/3 · 4.3'))
+  })
+})
+
+describe('renderListing', () => {
+  test('tags git-only responses, glob Reads with the files they showed, and each phase’s first edit', () => {
+    const infos = classify(
+      prompt('go'),
+      ...response('r1', [{ name: 'Read', input: { file_paths: [`${WS}/src/*.ts`] }, result: '==> src/a.ts <==\n     1→a\n\n==> src/b.ts <==\n     1→b' }]),
+      ...response('r2', [{ name: 'Patch', input: patch('src/a.ts') }]),
+      ...response('r3', [{ name: 'Patch', input: patch('src/b.ts') }]),
+      text('r4', 'Done.'),
+      prompt('commit it'),
+      ...response('r5', [{ name: 'Git', input: { commands: ['git status', 'git diff'] } }]),
+      ...response('r6', [{ name: 'Edit', input: { file_path: `${WS}/README.md`, old_string: 'a', new_string: 'b' } }]),
+      ...response('r7', [commit('x')]),
+    )
+    const tagsOf = (k: number) => renderListing('run arm r1', infos).split('\n').find(l => l.startsWith(`${String(k).padStart(2)} p`)) ?? ''
+    expect(tagsOf(1)).toContain(' glob-read:2 ')
+    expect(tagsOf(2)).toContain(' first-edit ')
+    expect(tagsOf(3)).not.toContain('first-edit')
+    expect(tagsOf(5)).toContain(' git-only ')
+    expect(tagsOf(6)).toContain(' first-edit ')
+    expect(tagsOf(7)).toContain(' git-only ')
+    expect([1, 2, 3, 6].map(k => tagsOf(k).includes('git-only'))).toEqual([false, false, false, false])
   })
 })
