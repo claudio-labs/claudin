@@ -57,6 +57,7 @@ import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentModel, type AgentModelAlias } from 'src/providers/model/agent.js'
+import { modelSupportsEffort } from 'src/providers/effort/effort.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -67,6 +68,7 @@ import {
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
+import { subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -763,12 +765,12 @@ export async function* runAgent({
     debug: toolUseContext.options.debug,
     verbose: toolUseContext.options.verbose,
     mainLoopModel: effectiveModel,
-    // For fork children (useExactTools), inherit thinking config to match the
-    // parent's API request prefix for prompt cache hits. For regular
-    // sub-agents, disable thinking to control output token costs.
-    thinkingConfig: useExactTools
-      ? toolUseContext.options.thinkingConfig
-      : { type: 'disabled' as const },
+    // Fork children (useExactTools) inherit the thinking config to match the
+    // parent's API request prefix; the rest follow subagentThinkingConfig.
+    thinkingConfig: subagentThinkingConfig(toolUseContext.options.thinkingConfig, {
+      useExactTools: useExactTools === true,
+      modelSupportsEffort: modelSupportsEffort(effectiveModel),
+    }),
     mcpClients: mergedMcpClients,
     mcpResources: toolUseContext.options.mcpResources,
     // When the spawned agent declared a spawn allowlist via `Agent(types)`,

@@ -1,0 +1,26 @@
+{
+  "test": ["src/tools/AgentTool/subagentThinking.test.ts"],
+  "source": "src/tools/AgentTool/subagentThinking.ts",
+  "probes": [
+    {
+      "name": "a sub-agent on a model with effort runs with thinking off again",
+      "find": "    modelSupportsEffort &&\n",
+      "replace": "    false &&\n"
+    },
+    {
+      "name": "a model without effort inherits the parent's thinking",
+      "find": "  return { type: 'disabled' }\n",
+      "replace": "  return parent\n"
+    },
+    {
+      "name": "a fork stops taking the parent's config",
+      "find": "  if (useExactTools) return parent\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the killswitch does nothing",
+      "find": "    !isEnvTruthy(process.env.CLAUDIN_DISABLE_SUBAGENT_THINKING)\n",
+      "replace": "    true\n"
+    }
+  ]
+}
