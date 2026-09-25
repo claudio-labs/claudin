@@ -2103,7 +2103,7 @@ function PromptInput({
   const fastModeCooldown = isFastModeEnabled() ? isFastModeCooldown() : false;
   const showFastIcon = isFastModeEnabled() ? isFastMode && (isFastModeAvailable() || fastModeCooldown) : false;
   const showFastIconHint = useShowFastIconHint(showFastIcon ?? false);
-  const { cwd: cwdSegment, branch: branchSegment, pr: prSegment } = useCwdBranchSegment({ isLoading, withPr: true });
+  const { cwd: cwdSegment, worktree: worktreeSegment, branch: branchSegment, pr: prSegment } = useCwdBranchSegment({ isLoading, withPr: true });
 
   // Effort is shown persistently below the branch segment (see bottom-right
   // status row), so users track the effort the model uses in real time.
@@ -2509,7 +2509,7 @@ function PromptInput({
                 ? ` ${getFastIconString(true, fastModeCooldown)} ${chalk.dim('/fast')} `
                 : ` ${getFastIconString(true, fastModeCooldown)} `
               : '';
-            const bottomRight = fastSeg + cwdSegment + branchSegment + prSegment;
+            const bottomRight = fastSeg + cwdSegment + worktreeSegment + branchSegment + prSegment;
             return <Box width="100%" flexDirection="row">
                 <Box flexShrink={0}>
                   <ProviderModelIndicator nextBg={effort?.bg} />

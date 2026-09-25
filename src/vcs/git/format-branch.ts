@@ -6,8 +6,11 @@ import type { Theme } from 'src/terminal/theme/theme.js'
 
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
 const BRANCH_ICON = '\uE725' // Nerd Font devicon git-branch (pairs with PR_ICON)
+const WORKTREE_ICON = '\uF1BB' // Nerd Font fa-tree — a worktree is another checkout of the tree
 const PR_ICON = ''     // Nerd Font octicon git-pull-request
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
+/** How far the worktree pill's bg moves from the branch bg toward the cwd pill's. */
+const WORKTREE_BG_MIX = 0.35
 
 export function resolveBranchBg(theme: Theme): string {
   const raw = theme.messageActionsBackground
@@ -25,6 +28,24 @@ export function resolveBranchBg(theme: Theme): string {
 export function resolvePrBg(theme: Theme): string {
   const raw = theme.userMessageBackground
   return raw === 'ansi:white' || raw === 'ansi:whiteBright' ? theme.inactive : raw
+}
+
+/**
+ * Background for the worktree pill, which sits between the vibrant cwd pill
+ * and the dark branch pill: a step from the branch bg toward the cwd bg, so the
+ * three read as one descending run. Named ansi colors can't be mixed — those
+ * themes get selectionBg, which differs from the branch bg in every ansi palette.
+ */
+export function resolveWorktreeBg(theme: Theme): string {
+  return mixRgb(resolveBranchBg(theme), theme.suggestion, WORKTREE_BG_MIX) ?? theme.selectionBg
+}
+
+function mixRgb(from: string, to: string, t: number): string | null {
+  const a = RGB_REGEX.exec(from)
+  const b = RGB_REGEX.exec(to)
+  if (!a || !b) return null
+  const channel = (i: number) => Math.round(+a[i] + (+b[i] - +a[i]) * t)
+  return `rgb(${channel(1)},${channel(2)},${channel(3)})`
 }
 
 /**
@@ -136,6 +157,27 @@ export function buildCwdPill(displayCwd: string, theme: Theme, nextBg?: string):
   // Square (flat) left edge — start the colored block directly; pointed
   // (arrow) right edge.
   return cwdChalk(` ${displayCwd} `) + capChalk(SEP)
+}
+
+/**
+ * Worktree Powerline pill: `[ <tree icon> name ►]`, placed between the cwd and branch
+ * pills when the cwd is a linked worktree.
+ */
+export function buildWorktreePill(name: string, theme: Theme, nextBg?: string): string {
+  if (!name) return ''
+  if (!hasNerdFontGlyphs()) {
+    const label = applyColor(chalk, theme.inactive, 'fg')('worktree')
+    return `[ ${label} ${applyColor(chalk, theme.suggestion, 'fg')(name)} ]`
+  }
+  const bg = resolveWorktreeBg(theme)
+  const text = applyColor(applyColor(chalk, bg, 'bg'), theme.text, 'fg')
+  // Trailing arrow: when another pill follows, paint it over the next pill's
+  // background so the two segments join seamlessly (no terminal-bg gap);
+  // otherwise render the arrow over the default terminal bg.
+  const cap = nextBg
+    ? applyColor(applyColor(chalk, nextBg, 'bg'), bg, 'fg')
+    : applyColor(chalk, bg, 'fg')
+  return text(` ${WORKTREE_ICON} ${name} `) + cap(SEP)
 }
 
 /**
