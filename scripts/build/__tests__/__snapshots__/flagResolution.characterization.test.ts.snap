@@ -124,14 +124,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 2,
     "stockValue": false,
   },
-  "tengu_chair_sermon": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
-    "sites": 4,
-    "stockValue": false,
-  },
   "tengu_cicada_nap_ms": {
     "defaults": [
       "0",
