@@ -4,8 +4,10 @@ import {
   getTerminalFocusState,
   subscribeTerminalFocus,
 } from 'src/terminal/ink/terminal-focus-state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { generateAwaySummary } from 'src/agent/awaySummary.js'
+import {
+  generateAwaySummary,
+  isAwaySummaryEnabled,
+} from 'src/agent/awaySummary.js'
 import type { Message } from 'src/shared/types/message.js'
 import { createAwaySummaryMessage } from 'src/agent/messages/messages.js'
 
@@ -44,11 +46,7 @@ export function useAwaySummary(
   messagesRef.current = messages
   isLoadingRef.current = isLoading
 
-  // 3P default: false
-  const gbEnabled = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_sedge_lantern',
-    false,
-  )
+  const gbEnabled = isAwaySummaryEnabled()
 
   useEffect(() => {
     if (!feature('AWAY_SUMMARY')) return

@@ -47,7 +47,12 @@ const {
   getAutoModeUnavailableReason,
   hasAutoModeOptInAnySource,
   isAutoModeGateEnabled,
+  verifyAutoModeGateAccess,
 } = await import('src/permissions/permissionSetup.js')
+const { getEmptyToolPermissionContext } = await import('src/tools/Tool.js')
+const { setNeedsAutoModeExitAttachment } = await import(
+  'src/platform/bootstrap/state.js'
+)
 const { getClassifierProbeKey } = await import('src/permissions/classifierProbe.js')
 const {
   __setClassifierProbeStoreDirForTests,
@@ -250,6 +255,47 @@ describe('getAutoModeEnabledStateIfCached', () => {
 describe('hasAutoModeOptInAnySource', () => {
   test('fails closed when no source has opted in', () => {
     expect(hasAutoModeOptInAnySource()).toBe(false)
+  })
+})
+
+// ── The surface that survives the gate removal ───────────────────────────
+//
+// What a stock install sees, asserted through the check the REPL runs rather
+// than through the config reader, so it holds whether the answer comes from a
+// flag or from a constant.
+
+describe('verifyAutoModeGateAccess — a stock install', () => {
+  afterEach(() => {
+    setNeedsAutoModeExitAttachment(false)
+  })
+
+  test('a supported model makes auto reachable from the carousel', async () => {
+    state.model = 'claude-sonnet-4-6'
+    const { updateContext, notification } = await verifyAutoModeGateAccess(
+      getEmptyToolPermissionContext(),
+    )
+    expect(updateContext(getEmptyToolPermissionContext()).isAutoModeAvailable).toBe(
+      true,
+    )
+    expect(notification).toBeUndefined()
+  })
+
+  test('an unsupported model kicks a session out of auto and says why', async () => {
+    writeClassifierProbe(
+      getClassifierProbeKey({
+        provider: 'openai_compat',
+        baseUrl: 'https://api.example.com/v1',
+        model: 'gpt-5.4',
+      }),
+      { ok: false, at: 't', detail: 'no tool_use' },
+    )
+    const inAuto = { ...getEmptyToolPermissionContext(), mode: 'auto' as const }
+    const { updateContext, notification } =
+      await verifyAutoModeGateAccess(inAuto)
+    expect(notification).toBe('auto mode unavailable for this model')
+    const after = updateContext(inAuto)
+    expect(after.mode).toBe('default')
+    expect(after.isAutoModeAvailable).toBe(false)
   })
 })
 

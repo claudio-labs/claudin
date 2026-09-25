@@ -81,6 +81,14 @@ export function isExtractModeActive(): boolean {
 }
 
 /**
+ * How many eligible turns pass between two background extractions. A trailing
+ * run and a repeated-error loop bypass it (extractMemories.ts).
+ */
+export function getExtractionTurnInterval(): number {
+  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_bramble_lintel', null) ?? 1
+}
+
+/**
  * Returns the base directory for persistent memory storage.
  * Resolution order:
  *   1. CLAUDE_CODE_REMOTE_MEMORY_DIR env var (explicit override, set in CCR)

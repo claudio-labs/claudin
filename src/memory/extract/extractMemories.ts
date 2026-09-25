@@ -24,6 +24,7 @@ import {
 } from 'src/memory/memdir/memoryScan.js'
 import {
   getAutoMemPath,
+  getExtractionTurnInterval,
   isAutoMemoryEnabled,
   isAutoMemPath,
 } from 'src/memory/memdir/paths.js'
@@ -390,17 +391,14 @@ export function initExtractMemories(): void {
     const canUseTool = createAutoMemCanUseTool(memoryDir)
     const cacheSafeParams = createCacheSafeParams(context)
 
-    // Only run extraction every N eligible turns (tengu_bramble_lintel, default 1).
+    // Only run extraction every N eligible turns (getExtractionTurnInterval).
     // Trailing extractions (from stashed contexts) skip this check since they
     // process already-committed work that should not be throttled. A loop-fire
     // also bypasses the throttle (we want the lesson promptly) but still resets
     // the counter below, so it doubles as the routine extraction for cadence.
     if (!isTrailingRun && loopHint === undefined) {
       turnsSinceLastExtraction++
-      if (
-        turnsSinceLastExtraction <
-        (getFeatureValue_CACHED_MAY_BE_STALE('tengu_bramble_lintel', null) ?? 1)
-      ) {
+      if (turnsSinceLastExtraction < getExtractionTurnInterval()) {
         return
       }
     }

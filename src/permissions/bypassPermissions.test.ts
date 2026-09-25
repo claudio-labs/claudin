@@ -18,6 +18,7 @@ import { resetGrowthBook } from 'src/platform/analytics/growthbook.js'
 import {
   checkAndDisableBypassPermissions,
   createDisabledBypassPermissionsContext,
+  initialPermissionModeFromCLI,
   isBypassPermissionsModeDisabled,
   shouldDisableBypassPermissions,
 } from 'src/permissions/permissionSetup.js'
@@ -124,6 +125,19 @@ describe('checkAndDisableBypassPermissions', () => {
     await expect(
       checkAndDisableBypassPermissions(ctx('default', false)),
     ).resolves.toBeUndefined()
+  })
+})
+
+describe('initialPermissionModeFromCLI — a stock install', () => {
+  test('--dangerously-skip-permissions starts in bypass mode, with no notice', () => {
+    // Asserted where the session's first mode is decided, so it holds whether
+    // a refusal could come from a flag or only from settings.
+    expect(
+      initialPermissionModeFromCLI({
+        permissionModeCli: undefined,
+        dangerouslySkipPermissions: true,
+      }),
+    ).toEqual({ mode: 'bypassPermissions', notification: undefined })
   })
 })
 

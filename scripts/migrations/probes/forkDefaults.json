@@ -1,0 +1,58 @@
+{
+  "test": [
+    "src/agent/forkDefaults.test.ts",
+    "src/memory/memdir/extractionDefaults.test.ts",
+    "src/permissions/autoModeGate.test.ts",
+    "src/permissions/bypassPermissions.test.ts"
+  ],
+  "source": "src/platform/analytics/growthbook.ts",
+  "probes": [
+    {
+      "name": "the away summary is on by default",
+      "find": "  tengu_sedge_lantern: true,\n",
+      "replace": "  tengu_sedge_lantern: false,\n"
+    },
+    {
+      "name": "memory extraction is on by default",
+      "find": "  tengu_passport_quail: true,\n",
+      "replace": "  tengu_passport_quail: false,\n"
+    },
+    {
+      "name": "the memory prompt teaches the past-context search",
+      "find": "  tengu_coral_fern: true,\n",
+      "replace": "  tengu_coral_fern: false,\n"
+    },
+    {
+      "name": "extraction fires every 15 eligible turns",
+      "find": "  tengu_bramble_lintel: 15,\n",
+      "replace": "  tengu_bramble_lintel: 14,\n"
+    },
+    {
+      "name": "deferred tools are announced by delta attachment",
+      "find": "  tengu_glacier_2xr: true,\n",
+      "replace": "  tengu_glacier_2xr: false,\n"
+    },
+    {
+      "name": "the scratchpad is on by default",
+      "find": "  tengu_scratch: true,\n",
+      "replace": "  tengu_scratch: false,\n"
+    },
+    {
+      "name": "nothing can refuse --dangerously-skip-permissions but settings",
+      "find": "  tengu_disable_bypass_permissions_mode: false,\n",
+      "replace": "  tengu_disable_bypass_permissions_mode: true,\n"
+    },
+    {
+      "name": "extraction stays off in a non-interactive session",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slate_thimble', false)\n",
+      "replace": "    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slate_thimble', true)\n"
+    },
+    {
+      "name": "auto mode is offered in the carousel without an opt-in",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts",
+      "find": "const AUTO_MODE_ENABLED_DEFAULT: AutoModeEnabledState = 'enabled'\n",
+      "replace": "const AUTO_MODE_ENABLED_DEFAULT: AutoModeEnabledState = 'opt-in'\n"
+    }
+  ]
+}
