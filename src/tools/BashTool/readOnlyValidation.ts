@@ -5,6 +5,7 @@ import {
   splitCommand_DEPRECATED,
 } from 'src/platform/bash/commands.js'
 import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isCurrentDirectoryBareGitRepo } from 'src/vcs/git/git.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
@@ -1528,14 +1529,32 @@ const READONLY_COMMAND_REGEXES = new Set([
  * `$*`, `$#`, `$?`, `$!`, `$$`, `$-`, `$0`-`$9`. Does NOT match `${` or `$(` —
  * those are caught by COMMAND_SUBSTITUTION_PATTERNS in bashSecurity.ts.
  *
+ * `allowPathGlobs` (readsPathGlobs) spares a glob in a word that begins, after
+ * quote removal, with a letter, digit, `_`, `.` or `/` and holds a `/` before
+ * the glob: every expansion of it starts with that same character and holds
+ * that `/`, so none can be a flag, a subcommand or a command name. `$` is
+ * refused either way.
+ *
  * @param command The command string to check
+ * @param allowPathGlobs Spare the path globs described above
  * @returns true if the command contains unquoted glob or expandable `$`
  */
-function containsUnquotedExpansion(command: string): boolean {
+function containsUnquotedExpansion(
+  command: string,
+  allowPathGlobs = false,
+): boolean {
   // Track quote state to avoid false positives for patterns inside quoted strings
   let inSingleQuote = false
   let inDoubleQuote = false
   let escaped = false
+  // The word being read, for allowPathGlobs: its first character after quote
+  // removal, and whether a `/` came before the character being read.
+  let wordFirst: string | undefined
+  let wordHasSlash = false
+  const noteLiteral = (c: string): void => {
+    wordFirst ??= c
+    if (c === '/') wordHasSlash = true
+  }
 
   for (let i = 0; i < command.length; i++) {
     const currentChar = command[i]
@@ -1543,6 +1562,7 @@ function containsUnquotedExpansion(command: string): boolean {
     // Handle escape sequences
     if (escaped) {
       escaped = false
+      if (currentChar !== undefined) noteLiteral(currentChar)
       continue
     }
 
@@ -1575,6 +1595,7 @@ function containsUnquotedExpansion(command: string): boolean {
 
     // Inside single quotes: everything is literal. Skip.
     if (inSingleQuote) {
+      if (currentChar !== undefined) noteLiteral(currentChar)
       continue
     }
 
@@ -1589,17 +1610,74 @@ function containsUnquotedExpansion(command: string): boolean {
 
     // Globs are literal inside double quotes too. Only check unquoted.
     if (inDoubleQuote) {
+      if (currentChar !== undefined) noteLiteral(currentChar)
       continue
     }
 
     // Check for glob characters outside all quotes.
     // These could expand to anything, including dangerous flags.
     if (currentChar && /[?*[\]]/.test(currentChar)) {
-      return true
+      if (
+        !allowPathGlobs ||
+        wordFirst === undefined ||
+        !PATH_GLOB_WORD_START_RE.test(wordFirst) ||
+        !wordHasSlash
+      ) {
+        return true
+      }
+      continue
     }
+
+    if (currentChar !== undefined && SHELL_WORD_BOUNDARY_RE.test(currentChar)) {
+      wordFirst = undefined
+      wordHasSlash = false
+      continue
+    }
+    if (currentChar !== undefined) noteLiteral(currentChar)
   }
 
   return false
+}
+
+const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./]$/
+const SHELL_WORD_BOUNDARY_RE = /[\s|&;<>()]/
+const FIRST_WORD_RE = /^\S+/
+
+/**
+ * The commands whose path globs readsPathGlobs spares. Each one only
+ * reads, whatever its arguments say: cat, head, tail and wc are allowed with
+ * any flag (READONLY_COMMANDS), ls with any argument (its regex), grep through
+ * its flag allowlist. That is the whole reason for the list. A glob can expand
+ * to several words, and where it stands as a flag's value the rest shift into
+ * later positions — `xargs -I src/* echo` runs `src/b` — so a command that
+ * executes one of its arguments (xargs, the wrappers stripSafeWrappers
+ * removes) must never be spared.
+ */
+const PATH_GLOB_READERS: ReadonlySet<string> = new Set([
+  'cat',
+  'head',
+  'tail',
+  'wc',
+  'ls',
+  'grep',
+])
+
+/**
+ * A path glob in one of PATH_GLOB_READERS no longer costs the read-only
+ * verdict, so `cat src/*.ts` is judged as the files it names would be — no
+ * auto-mode classifier request, no prompt. Which files: the path check
+ * (checkPathConstraints) runs before the read-only one and still asks for a
+ * glob outside the working directories. Read per call.
+ *
+ * On by default since 2026-09-25, promoted after the session A/B
+ * `20260925-061930` (team memory `request-count-levers-2026-09-24`).
+ * `CLAUDIN_READONLY_GLOBS=0` restores the old verdict, where any unquoted
+ * glob costs it.
+ */
+function readsPathGlobs(command: string): boolean {
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_READONLY_GLOBS)) return false
+  const name = FIRST_WORD_RE.exec(command)?.[0]
+  return name !== undefined && PATH_GLOB_READERS.has(name)
 }
 
 /**
@@ -1637,7 +1715,7 @@ function isCommandReadOnly(command: string): boolean {
   // check inside isCommandSafeViaFlagParsing only covers COMMAND_ALLOWLIST
   // commands; hand-written regexes in READONLY_COMMAND_REGEXES (uniq, jq, cd)
   // have no such guard. See containsUnquotedExpansion for full analysis.
-  if (containsUnquotedExpansion(testCommand)) {
+  if (containsUnquotedExpansion(testCommand, readsPathGlobs(testCommand))) {
     return false
   }
 
