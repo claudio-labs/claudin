@@ -31,8 +31,9 @@
  *  - Every arm gets its own workspace under /tmp/session-cache-ab/<stamp>/, a
  *    git repo with one pinned commit, so session state (keyed by project dir)
  *    never collides with this checkout's or with the other arm's.
- *  - Model and effort are pinned on both arms, and both bypass permissions, so
- *    neither pays for a permission classifier the other does not run.
+ *  - Model and effort are pinned on every arm, and every arm bypasses
+ *    permissions, so none pays for a permission classifier another does not
+ *    run — unless its --arm-args choose a --permission-mode (see below).
  *  - The two arms of a rep run CONCURRENTLY. Their prefixes differ, so neither
  *    warms the other's cache; side by side they inherit the same warmth from
  *    the previous rep instead of one of them always paying cold.
@@ -61,11 +62,20 @@
  * `--arm-args=<label>:<args>` appends CLI arguments to both invocations of one
  * arm — how a tool is taken away without touching the source:
  *   bun scripts/bench/ab/session-cache-ab.ts --variant=nopatch --arm-args='nopatch:--disallowedTools Patch'
+ * An arm whose args carry `--permission-mode` runs in that mode, in both
+ * phases, instead of with `--dangerously-skip-permissions`. That is how the
+ * auto-mode classifier is priced: an `auto` arm, a variant with no variable
+ * that differs from claudindev by the mode alone, with `--proxy` so the report
+ * counts its classifier requests:
+ *   bun scripts/bench/ab/session-cache-ab.ts --proxy --variant=auto --arm-args='auto:--permission-mode auto'
  *
  * `--proxy` routes every arm through `wire-proxy.ts`, a local recording proxy
  * in front of the real API, with each CLI's first-party override set. Every
  * request body and every response's usage lands in `<run dir>/proxy/`, and the
  * thinking count is then taken from there, at the source.
+ * The report then counts each session's requests by kind (agent loop, auto-mode
+ * classifier, other side requests — `requestKind` in `wire-proxy.ts`) and
+ * prices the classifier's.
  * `bun scripts/bench/ab/wire-proxy.ts summarize <run dir>/proxy` prints what
  * each session sent, request by request.
  * `--proxy-display=summarized` (implies `--proxy`) has the proxy ask for the
@@ -90,7 +100,15 @@ import picomatch from 'picomatch'
 import { parse as parseShell } from 'shell-quote'
 import { REPO_ROOT } from '../../repoRoot'
 import { parseJsonl, transcriptPath } from './cliUsage'
-import { proxyEnv, readProxyThinking, startWireProxy, thinkingDisplayTransform, type WireProxy } from './wire-proxy'
+import {
+  proxyEnv,
+  readKindedRequests,
+  readProxyThinking,
+  startWireProxy,
+  thinkingDisplayTransform,
+  type KindedRequest,
+  type WireProxy,
+} from './wire-proxy'
 
 /** 'claude', 'claudindev', or the label of a --variant. */
 type Arm = string
@@ -238,6 +256,25 @@ type GitGrade = {
 
 type Grade = { tests: TestRun; hidden: TestRun[]; git: GitGrade | null }
 
+/**
+ * A session's answered requests by kind, as the recording proxy saw them
+ * (`requestKind` in wire-proxy.ts), and what batching or caching the
+ * auto-mode classifier's requests would give back.
+ */
+type RequestCensus = {
+  main: number
+  classifier: number
+  other: number
+  /** The classifier's requests, priced by the one price table. */
+  classifierCost: number
+  /** Agent-loop responses followed by 2+ classifier requests before the next agent-loop request. */
+  multiRequest: number
+  /** …by 2+ judged actions. A judgment takes one request per stage; a batch would merge actions, not stages. */
+  multiAction: number
+  /** Classifier requests judging an action that an earlier judgment of the session already judged. */
+  repeated: number
+}
+
 type RunResult = {
   arm: Arm
   rep: number
@@ -255,6 +292,8 @@ type RunResult = {
   usageSource: string
   /** Where `turns[].think` came from: the API per message, the proxy, one total per phase spread over its turns, or nowhere. */
   thinkSource?: 'message' | 'proxy' | 'phase-spread' | 'none'
+  /** Set on --proxy runs only. */
+  requests?: RequestCensus
 }
 
 type Meta = {
@@ -492,6 +531,39 @@ function spawnCollect(
 
 type RunContext = { args: Args; runDir: string; graderDir: string; proxy: WireProxy | null }
 
+const PERMISSION_MODE_FLAG = '--permission-mode'
+
+function choosesPermissionMode(extra: readonly string[]): boolean {
+  return extra.some(a => a === PERMISSION_MODE_FLAG || a.startsWith(`${PERMISSION_MODE_FLAG}=`))
+}
+
+/**
+ * One phase's command line for one arm. Every arm bypasses permissions unless
+ * its --arm-args choose a --permission-mode: that arm runs in the mode it
+ * chose, in both phases.
+ */
+export function phaseArgs(args: Args, arm: Arm, phase: Phase, prompt: string, resumeId: string | null): string[] {
+  const extra = args.args[arm] ?? []
+  return [
+    '-p',
+    prompt,
+    '--model',
+    args.model,
+    '--effort',
+    args.effort,
+    '--max-turns',
+    String(args.maxTurns[phase - 1]),
+    '--max-budget-usd',
+    String(args.budgetUsd),
+    ...(choosesPermissionMode(extra) ? [] : ['--dangerously-skip-permissions']),
+    '--output-format',
+    'stream-json',
+    '--verbose',
+    ...extra,
+    ...(resumeId ? ['--resume', resumeId] : []),
+  ]
+}
+
 async function runPhase(
   arm: Arm,
   ws: string,
@@ -501,24 +573,7 @@ async function runPhase(
   label: string,
 ): Promise<{ run: PhaseRun; events: Json[] }> {
   const { args } = ctx
-  const cli = [
-    '-p',
-    readPrompt(phase),
-    '--model',
-    args.model,
-    '--effort',
-    args.effort,
-    '--max-turns',
-    String(args.maxTurns[phase - 1]),
-    '--max-budget-usd',
-    String(args.budgetUsd),
-    '--dangerously-skip-permissions',
-    '--output-format',
-    'stream-json',
-    '--verbose',
-    ...(args.args[arm] ?? []),
-  ]
-  if (resumeId) cli.push('--resume', resumeId)
+  const cli = phaseArgs(args, arm, phase, readPrompt(phase), resumeId)
   const extraEnv = {
     ...(args.env[arm] ?? {}),
     ...(ctx.proxy ? proxyEnv(ctx.proxy.url(`${label}.p${phase}`)) : {}),
@@ -607,6 +662,7 @@ async function runArm(arm: Arm, rep: number, ctx: RunContext): Promise<RunResult
   const thinkSource = fillThinking(session.turns, phases, proxyThinking)
   const subagents = tPath && sessionId ? subagentUsage(join(dirname(tPath), sessionId), join(ctx.runDir, `${label}.subagents`)) : emptySubagents()
   const model = session.turns[0]?.model ?? null
+  const requests = ctx.proxy ? proxyCensus(ctx.proxy.logDir, label) : undefined
 
   return {
     arm,
@@ -624,6 +680,7 @@ async function runArm(arm: Arm, rep: number, ctx: RunContext): Promise<RunResult
     transcript: archived,
     usageSource: session.source,
     thinkSource,
+    requests,
   }
 }
 
@@ -638,6 +695,19 @@ type Row = Usage & {
   texts: Set<string>
 }
 
+/** API usage in the report's terms; a write the API did not split by TTL stays in `cW` alone. */
+function usageOf(u: Json | null | undefined): Usage {
+  const cc = u && isRecord(u.cache_creation) ? u.cache_creation : {}
+  return {
+    in: num(u?.input_tokens),
+    out: num(u?.output_tokens),
+    cR: num(u?.cache_read_input_tokens),
+    cW: num(u?.cache_creation_input_tokens),
+    cW5m: num(cc.ephemeral_5m_input_tokens),
+    cW1h: num(cc.ephemeral_1h_input_tokens),
+  }
+}
+
 /**
  * One row per API call. Rows arrive once per CONTENT BLOCK, all sharing the
  * message id; the input and cache terms repeat while output_tokens grows, and
@@ -650,15 +720,7 @@ function collectRows(events: Json[], rows: Map<string, Row>, order: string[]): v
     const msg = e.message
     const u = msg.usage
     if (typeof msg.id !== 'string' || !isRecord(u) || msg.model === '<synthetic>') continue
-    const cc = isRecord(u.cache_creation) ? u.cache_creation : {}
-    const next: Usage = {
-      in: num(u.input_tokens),
-      out: num(u.output_tokens),
-      cR: num(u.cache_read_input_tokens),
-      cW: num(u.cache_creation_input_tokens),
-      cW5m: num(cc.ephemeral_5m_input_tokens),
-      cW1h: num(cc.ephemeral_1h_input_tokens),
-    }
+    const next = usageOf(u)
     const details = isRecord(u.output_tokens_details) ? u.output_tokens_details : null
     const think = details && typeof details.thinking_tokens === 'number' ? details.thinking_tokens : null
     let row = rows.get(msg.id)
@@ -858,6 +920,53 @@ function subagentUsage(sessionDir: string, archiveDir: string): SubagentUsage {
     copyFileSync(file, join(archiveDir, file.slice(sessionDir.length + 1).replaceAll('/', '__')))
   }
   return { ...acc, files: files.length, models: [...models] }
+}
+
+// ---------------------------------------------------------------------------
+// Requests by kind — the recording proxy's view of a session (--proxy)
+// ---------------------------------------------------------------------------
+
+/**
+ * The census of one session, its phases in order. A phase is a process of its
+ * own, so the window of an agent-loop response closes with its phase; a repeat
+ * counts across the whole session.
+ */
+export function requestCensus(phases: readonly (readonly KindedRequest[])[]): RequestCensus {
+  const census: RequestCensus = { main: 0, classifier: 0, other: 0, classifierCost: 0, multiRequest: 0, multiAction: 0, repeated: 0 }
+  // Action → its first judgment. A later judgment of the same action is one a
+  // verdict cache would have answered; the stages of one judgment share it.
+  const firstJudgment = new Map<string, string>()
+  for (const requests of phases) {
+    let window: { requests: number; judgments: Set<string> } | null = null
+    const close = (): void => {
+      if (window && window.requests > 1) census.multiRequest++
+      if (window && window.judgments.size > 1) census.multiAction++
+    }
+    for (const r of requests) {
+      census[r.kind]++
+      if (r.kind === 'main') {
+        close()
+        window = { requests: 0, judgments: new Set() }
+        continue
+      }
+      if (r.kind !== 'classifier') continue
+      census.classifierCost += costOf(r.model, usageOf(r.usage))
+      if (window) {
+        window.requests++
+        if (r.judgment) window.judgments.add(r.judgment)
+      }
+      if (!r.action || !r.judgment) continue
+      const first = firstJudgment.get(r.action)
+      if (first === undefined) firstJudgment.set(r.action, r.judgment)
+      else if (first !== r.judgment) census.repeated++
+    }
+    close()
+  }
+  return census
+}
+
+function proxyCensus(logDir: string, label: string): RequestCensus {
+  return requestCensus(PHASES.map(p => readKindedRequests(logDir, `${label}.p${p}`)))
 }
 
 // ---------------------------------------------------------------------------
@@ -1797,22 +1906,33 @@ const METRIC_ROWS: MetricRow[] = [
   ['hidden acceptance passed', 'hiddenPass', fmtInt],
 ]
 
-function comparisonTable(runs: RunResult[], arms: Arm[]): string {
-  const byArm = new Map(arms.map(a => [a, runs.filter(r => r.arm === a).map(metricsOf)]))
-  const multi = runs.length > arms.length
+type CensusRow = [label: string, key: keyof RequestCensus, fmt: (n: number) => string]
+
+const CENSUS_ROWS: CensusRow[] = [
+  ['agent-loop requests (main thread + sub-agents)', 'main', fmtInt],
+  ['auto-mode classifier requests', 'classifier', fmtInt],
+  ['other side requests', 'other', fmtInt],
+  ['classifier cost, one price table', 'classifierCost', fmtUsd],
+  ['agent-loop responses followed by 2+ classifier requests', 'multiRequest', fmtInt],
+  ['  of which with 2+ judged actions', 'multiAction', fmtInt],
+  ['classifier requests re-judging an action', 'repeated', fmtInt],
+]
+
+/** A table row: its label, each arm's values (one per run), and their format. */
+type ArmRow = [label: string, perArm: number[][], fmt: (n: number) => string]
+
+function armTable(arms: Arm[], rows: ArmRow[], multi: boolean): string {
   const [base, ...others] = arms
-  const rows = METRIC_ROWS.map(([label, key, fmt]) => {
-    const cells = arms.map(a => {
-      const values = byArm.get(a)!.map(m => m[key])
+  const body = rows.map(([label, perArm, fmt]) => {
+    const cells = perArm.map(values => {
       if (!values.length) return '—'
       const med = fmt(median(values))
       return multi ? `${med} [${fmt(Math.min(...values))}–${fmt(Math.max(...values))}]` : med
     })
     // Every other arm against the first one, with the range verdict: only a
     // SEPARATED row supports a claim at this rep count.
-    const verdicts = others.map(other => {
-      const a = byArm.get(base!)!.map(m => m[key])
-      const b = byArm.get(other)!.map(m => m[key])
+    const a = perArm[0] ?? []
+    const verdicts = perArm.slice(1).map(b => {
       if (!a.length || !b.length) return ''
       const ma = median(a)
       const mb = median(b)
@@ -1822,9 +1942,21 @@ function comparisonTable(runs: RunResult[], arms: Arm[]): string {
     })
     return [label, ...cells, ...verdicts]
   })
-  const head = ['metric (median' + (multi ? ' [min–max]' : '') + ')', ...arms]
-  for (const other of others) head.push(`Δ ${other} vs ${base}`)
-  return table(head, rows)
+  const head = ['metric (median' + (multi ? ' [min–max]' : '') + ')', ...arms, ...others.map(other => `Δ ${other} vs ${base}`)]
+  return table(head, body)
+}
+
+function comparisonTable(runs: RunResult[], arms: Arm[]): string {
+  const byArm = arms.map(a => runs.filter(r => r.arm === a).map(metricsOf))
+  const rows = METRIC_ROWS.map(([label, key, fmt]): ArmRow => [label, byArm.map(ms => ms.map(m => m[key])), fmt])
+  return armTable(arms, rows, runs.length > arms.length)
+}
+
+/** Per session: the runs of an arm without a census (no --proxy) leave its column empty. */
+function requestTable(runs: RunResult[], arms: Arm[]): string {
+  const byArm = arms.map(a => runs.flatMap(r => (r.arm === a && r.requests ? [r.requests] : [])))
+  const rows = CENSUS_ROWS.map(([label, key, fmt]): ArmRow => [label, byArm.map(cs => cs.map(c => c[key])), fmt])
+  return armTable(arms, rows, runs.length > arms.length)
 }
 
 function gradeTable(runs: RunResult[]): string {
@@ -1968,7 +2100,11 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
       .map(([k, env]) => `- ${k} runs with ${Object.entries(env).map(([n, v]) => `\`${n}=${v}\``).join(' ')}`),
     ...Object.entries(meta.armArgs ?? {})
       .filter(([, extra]) => extra.length > 0)
-      .map(([k, extra]) => `- ${k} runs with \`${extra.join(' ')}\``),
+      .map(
+        ([k, extra]) =>
+          `- ${k} runs with \`${extra.join(' ')}\`` +
+          (choosesPermissionMode(extra) ? ' instead of `--dangerously-skip-permissions`' : ''),
+      ),
     ...(meta.proxy ? ['- every arm went through the recording proxy (`wire-proxy.ts`, logs in `proxy/`)'] : []),
     ...(meta.proxyDisplay ? [`- the proxy set \`thinking.display: "${meta.proxyDisplay}"\` on every request of every arm`] : []),
     `- run dir: \`${meta.runDir}\` (workspaces, streams, archived transcripts)`,
@@ -1992,6 +2128,24 @@ function report(runs: RunResult[], meta: Meta, replayBash: boolean): string {
       'later call — so the rows add up to the main thread\'s priced cost. Thinking is the API\'s count per message ' +
       '(the per-run `thinking from` line says where it was read).',
     '',
+    ...(runs.some(r => r.requests)
+      ? [
+          '## Requests by kind (recording proxy)',
+          '',
+          requestTable(runs, arms),
+          '',
+          'Answered requests per session, both phases, told apart by `requestKind` (`wire-proxy.ts`) from each body: ' +
+            'the agent loop is the main thread and any sub-agent it spawned; the auto-mode classifier sends one request ' +
+            'per stage (stage 1, stage 2 unless stage 1 allowed, one retry of a truncated stage 2); everything else is a ' +
+            'side request — titles, summaries, the forks that append a prompt to the main thread\'s prefix.',
+          '',
+          'Batching the classifier would merge the actions of one response into one request: `2+ judged actions` counts ' +
+            'the responses that would change, while `2+ classifier requests` also counts one action taking two stages. ' +
+            'Caching verdicts would answer the re-judged actions: requests judging an action identical to one an ' +
+            'earlier judgment of the session already judged.',
+          '',
+        ]
+      : []),
   )
   for (const rep of [...new Set(runs.map(r => r.rep))]) {
     const repRuns = arms.map(a => runs.find(r => r.arm === a && r.rep === rep))
@@ -2111,7 +2265,7 @@ function dryRun(): void {
 // Main
 // ---------------------------------------------------------------------------
 
-function parseArgs(argv: string[]): Args {
+export function parseArgs(argv: string[]): Args {
   const a: Args = {
     reps: 1,
     only: null,
@@ -2195,9 +2349,9 @@ function save(runDir: string, runs: RunResult[], meta: Meta): string {
 
 /**
  * Rebuild turns and calls from the run's archived streams and transcript, and
- * the thinking from the proxy logs when the run had them, so a results.json
- * written by an older version of this analysis reports every current row. A
- * run whose streams are gone is kept as saved.
+ * the thinking and the request census from the proxy logs when the run had
+ * them, so a results.json written by an older version of this analysis reports
+ * every current row. A run whose streams are gone is kept as saved.
  */
 function reanalyze(r: RunResult, runDir: string): RunResult {
   const label = `${r.arm}-r${r.rep}`
@@ -2211,9 +2365,11 @@ function reanalyze(r: RunResult, runDir: string): RunResult {
     thinkingTokens: p.thinkingTokens ?? thinkingFromResult(streams[i]?.findLast(e => e.type === 'result')),
   }))
   const proxyDir = join(runDir, 'proxy')
-  const proxyThinking = existsSync(proxyDir) ? readProxyThinking(proxyDir, PHASES.map(p => `${label}.p${p}`)) : null
+  const proxied = existsSync(proxyDir)
+  const proxyThinking = proxied ? readProxyThinking(proxyDir, PHASES.map(p => `${label}.p${p}`)) : null
   const thinkSource = fillThinking(session.turns, phases, proxyThinking)
-  return { ...r, phases, turns: session.turns, calls: session.calls, thinkSource }
+  const requests = proxied ? proxyCensus(proxyDir, label) : r.requests
+  return { ...r, phases, turns: session.turns, calls: session.calls, thinkSource, requests }
 }
 
 async function main(): Promise<void> {
