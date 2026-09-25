@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.1.36 — 2026-09-25
+
+### ✨ Features
+
+- feat(tui): show the project name and a worktree pill in the footer (#253) (3f258fb3)
+- feat(agents): bring back the Explore search agent, on by default (#247) (40ccd2e1)
+
+### 🐛 Bug Fixes
+
+- fix(agent): draw progress updates as replies and let sub-agents think (#248) (0aa048a2)
+
+### ⚡ Performance
+
+- perf(tools): keep model-bounded Bash reads whole under the cap (#252) (3fb464ab)
+- perf(tools): run checks inside edits and keep paths in the Bash cap (#250) (24484384)
+- perf(tools): treat path globs in Bash read commands as read-only (#249) (71f12a8a)
+
+### ♻️ Refactoring
+
+- refactor(flags): remove upstream flag gates (#251) (27c85f20)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.35 — 2026-09-24
 
 ### ✨ Features
