@@ -293,6 +293,63 @@ describe('mechanism metrics', () => {
     const idle = sessionOf(prompt('go'), ...response('r1', [read('src/a.ts')]), text('r2', 'Nothing to change.'))
     expect(analyzeSession(idle, fixture).row).toMatchObject({ firstEditTurn: 2, resume: 0 })
   })
+
+  test('then: edits carrying it, those whose check came back red, and those whose then was dropped', () => {
+    const red = { files: [], then: [{ command: 'bun test', ran: true, exitCode: 1, output: '1 fail' }] }
+    const green = { files: [], then: [{ command: 'bun test', ran: true, exitCode: 0, output: '' }] }
+    const infos = classify(
+      prompt('go'),
+      ...response('r1', [{ name: 'Patch', input: { ...patch('src/a.ts'), then: ['bun test'] }, structured: red }]),
+      ...response('r2', [{ name: 'Edit', input: { file_path: `${WS}/src/a.ts`, old_string: 'a', new_string: 'b', then: ['bun test'] }, structured: green }]),
+      ...response('r3', [{ name: 'Patch', input: patch('src/b.ts'), result: 'Success.\n\n`then` did not run: `bun test` would need a permission prompt. Run the commands as their own Bash call.' }]),
+      // `then: []` is a placeholder, not a check
+      ...response('r4', [{ name: 'Patch', input: { ...patch('src/a.ts'), then: [] } }]),
+    )
+    expect(infos.map(ci => mechanismOf([ci]))).toMatchObject([
+      { thenEdits: 1, thenFailed: 1, thenDropped: 0 },
+      { thenEdits: 1, thenFailed: 0, thenDropped: 0 },
+      { thenEdits: 0, thenFailed: 0, thenDropped: 1 },
+      { thenEdits: 0, thenFailed: 0, thenDropped: 0 },
+    ])
+  })
+
+  test('bodiesGreps and pattern:grep-then-read: the read a Grep with bodies folds in', () => {
+    const grep = (bodies: boolean): Step => ({
+      name: 'Grep',
+      input: { pattern: 'x', output_mode: 'symbols', ...(bodies && { bodies: true }) },
+      result: 'Found 1 matched symbol across 1 file\n\nsrc/a.ts\n  1-3  function a()',
+    })
+    const s = sessionOf(
+      prompt('go'),
+      ...response('r1', [grep(false)]),
+      ...response('r2', [read('src/a.ts')]),
+      ...response('r3', [grep(true)]),
+      // not a read of a hit: src/b.ts is not in the Grep result
+      ...response('r4', [grep(false)]),
+      ...response('r5', [read('src/b.ts')]),
+    )
+    const { row, infos } = analyzeSession(s, fixture)
+    expect(infos.map(ci => mechanismOf([ci]).bodiesGreps)).toEqual([0, 0, 1, 0, 0])
+    expect(row['pattern:grep-then-read']).toBe(1)
+  })
+
+  test('hiddenPathReads: fixture sources the cap cut from the first listing and a request 3-6 read', () => {
+    const listing = (cut: boolean): Step => ({
+      name: 'Bash',
+      input: { command: 'git ls-files && cat README.md' },
+      result: cut ? '<bash-output-filtered lines="30/143">README.md\nsrc/a.ts\n…80 lines omitted…\ntest/a.test.ts</bash-output-filtered>' : 'README.md\nsrc/a.ts\nsrc/b.ts\ntest/a.test.ts',
+    })
+    const session = (cut: boolean) =>
+      sessionOf(
+        prompt('go'),
+        ...response('r1', [listing(cut)]),
+        ...response('r2', [read('src/a.ts')]),
+        ...response('r3', [read('src/b.ts')]),
+        text('r4', 'Done.'),
+      )
+    expect(analyzeSession(session(true), fixture).row.hiddenPathReads).toBe(1)
+    expect(analyzeSession(session(false), fixture).row.hiddenPathReads).toBe(0)
+  })
 })
 
 describe('parseShell', () => {

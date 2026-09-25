@@ -1,6 +1,6 @@
 # Bash output filter — sample corpus
 
-142 real command outputs, and the **single** copy of them in this repo.
+143 real command outputs, and the **single** copy of them in this repo.
 
 They used to exist twice: here and in
 `docs/discovery/bash-output-filter/validation/samples/`. Each consumer read one
@@ -30,7 +30,7 @@ Capture straight into this directory:
 
 Then map it in `FIXTURE_MAP` (`scripts/bench/tokens/measure-bash-filter-roi.test.ts`) if it
 should count toward the ROI table — an unmapped `.txt` is listed under "Skipped
-(no mapping)" instead of failing, and 87 of the 142 currently are.
+(no mapping)" instead of failing, and 88 of the 143 currently are.
 
 Two constraints before you edit an existing file:
 

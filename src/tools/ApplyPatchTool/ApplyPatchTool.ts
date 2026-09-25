@@ -15,6 +15,15 @@ import {
   LEGACY_APPLY_PATCH_TOOL_NAME,
 } from 'src/tools/ApplyPatchTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ApplyPatchTool/UI.js'
+import {
+  foldThenPermission,
+  formatThen,
+  resolveThen,
+  runThen,
+  takeThenSkipNote,
+  thenClassifierInput,
+} from 'src/tools/shared/editThen/editThen.js'
+import { thenCommands, thenSchemaFields } from 'src/tools/shared/editThen/editThenShape.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -23,6 +32,8 @@ const inputSchema = lazySchema(() =>
       .describe(
         'The full patch envelope, from "*** Begin Patch" to "*** End Patch".',
       ),
+    // CLAUDIN_EDIT_THEN (editThenShape.ts): absent with the flag off.
+    ...thenSchemaFields(),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -54,16 +65,20 @@ export const ApplyPatchTool = buildTool({
   isReadOnly: () => false,
   isConcurrencySafe: () => false,
   toAutoClassifierInput(input) {
-    return input.patchText
+    return thenClassifierInput(input.patchText, input)
   },
-  resolveInput(input, context) {
-    return resolveApplyPatchInput(input, context)
+  async resolveInput(input, context) {
+    const resolved = resolveApplyPatchInput(input, context)
+    if (!resolved.ok) return resolved
+    // `*** Resubmit` swaps the patch text; the rest of the input is the call's.
+    const withPatch = { ...input, patchText: resolved.input.patchText }
+    return { ok: true, input: await resolveThen(withPatch, context) }
   },
   async validateInput(input, context) {
     return validateApplyPatchInput(input, context)
   },
   async checkPermissions(input, context) {
-    return checkApplyPatchPermissions(input, context)
+    return foldThenPermission(input, checkApplyPatchPermissions(input, context), context)
   },
   async call(input, context, _canUseTool, parentMessage) {
     const { output, newMessages } = await runApplyPatch(
@@ -71,8 +86,11 @@ export const ApplyPatchTool = buildTool({
       context,
       parentMessage.uuid,
     )
+    const commands = thenCommands(input)
+    const then = commands.length > 0 ? await runThen(commands, context) : undefined
+    const thenNote = takeThenSkipNote(context)
     return {
-      data: output,
+      data: { ...output, ...(then && { then }), ...(thenNote && { thenNote }) },
       ...(newMessages.length > 0 && { newMessages }),
     }
   },
@@ -80,7 +98,7 @@ export const ApplyPatchTool = buildTool({
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: summarizeApplyPatch(output),
+      content: summarizeApplyPatch(output) + formatThen(output.then, output.thenNote),
     }
   },
   renderToolUseMessage,

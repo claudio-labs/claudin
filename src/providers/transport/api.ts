@@ -613,6 +613,8 @@ export function normalizeToolInput<T extends Tool>(
         file_path,
         old_string: edits[0]!.old_string,
         new_string: edits[0]!.new_string,
+        // CLAUDIN_EDIT_THEN (editThenShape.ts): absent unless the flag put it in the schema.
+        ...(parsedInput.then != null && { then: parsedInput.then }),
       } as z.infer<T['inputSchema']>
     }
     case FileWriteTool.name: {
