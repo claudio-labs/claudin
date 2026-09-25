@@ -159,7 +159,6 @@
     "exports src/mcp/types.ts#McpWebSocketServerConfigSchema",
     "exports src/mcp/types.ts#TransportSchema",
     "exports src/mcp/utils.ts#hashMcpConfig",
-    "exports src/mcp/vscodeSdkMcp.ts#LogEventNotificationSchema",
     "exports src/memory/extract/extractMemories.ts#drainPendingExtraction",
     "exports src/memory/extract/extractMemories.ts#executeExtractMemories",
     "exports src/memory/extract/extractMemories.ts#initExtractMemories",
