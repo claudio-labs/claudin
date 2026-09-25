@@ -77,13 +77,11 @@ test('build feature flags are not enabled without their source files', () => {
 //                live side-door (`conversationArc.ts` is reached from /knowledge
 //                as well as from behind CONVERSATION_ARC).
 //
-// The six that survived a removal pass, so the next one does not re-litigate
+// The ones that survived a removal pass, so the next one does not re-litigate
 // them: SSH_REMOTE (the gate IS `registerSshCommand`'s body, so emptying it
 // pushes the edit into the 14-registrar subcommand hub), AUTO_THEME (gates the
-// user-visible "Auto (match terminal)" row in the theme picker), TERMINAL_PANEL
-// (`app:toggleTerminal` stays bindable from the keybinding schema and the help
-// menu, so removing the handler would leave a bindable action with no handler),
-// and CONNECTOR_TEXT + HISTORY_SNIP (their last sites are
+// user-visible "Auto (match terminal)" row in the theme picker), and
+// CONNECTOR_TEXT + HISTORY_SNIP (their last sites are
 // inside committed React-Compiler output, where the `$[n]` slot bookkeeping is
 // load-bearing). HISTORY_SNIP lost fifteen of its sixteen sites; the survivor
 // is the snip-boundary/snip-marker arm of `src/agent/ui/Message.tsx`, which
@@ -111,7 +109,6 @@ const OFF_MAP_FLAGS = [
   'CONNECTOR_TEXT',
   'HISTORY_SNIP',
   'SSH_REMOTE',
-  'TERMINAL_PANEL',
 ]
 
 // Mirrors `featureCallRe` in build.ts: BOTH quote styles, optional whitespace

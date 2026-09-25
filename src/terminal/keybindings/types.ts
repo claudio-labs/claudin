@@ -91,7 +91,6 @@ export type KnownKeybindingAction =
   | 'app:toggleTodos'
   | 'app:toggleTranscript'
   | 'app:toggleTeammatePreview'
-  | 'app:toggleTerminal'
   | 'app:redraw'
   | 'app:globalSearch'
   | 'app:quickOpen'

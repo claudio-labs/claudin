@@ -4,15 +4,12 @@
  * Must be rendered inside KeybindingSetup to have access to the keybinding context.
  * This component renders nothing - it just registers the keybinding handlers.
  */
-import { feature } from 'bun:bundle';
 import { useCallback } from 'react';
 import instances from 'src/terminal/ink/instances.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import type { Screen } from 'src/agent/repl/REPL.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import { count } from 'src/shared/data/array.js';
-import { getTerminalPanel } from 'src/terminal/terminalPanel.js';
 type Props = {
   screen: Screen;
   setScreen: React.Dispatch<React.SetStateAction<Screen>>;
@@ -125,20 +122,6 @@ export function GlobalKeybindingHandlers({
       showTeammateMessagePreview: !prev_3.showTeammateMessagePreview
     }));
   }, {
-    context: 'Global'
-  });
-
-  // Toggle built-in terminal panel (meta+j).
-  // toggle() blocks in spawnSync until the user detaches from tmux.
-  const handleToggleTerminal = useCallback(() => {
-    if (feature('TERMINAL_PANEL')) {
-      if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_terminal_panel', false)) {
-        return;
-      }
-      getTerminalPanel().toggle();
-    }
-  }, []);
-  useKeybinding('app:toggleTerminal', handleToggleTerminal, {
     context: 'Global'
   });
 

@@ -699,7 +699,6 @@
     "exports src/terminal/suggestions/directoryCompletion.ts#parsePartialPath",
     "exports src/terminal/suggestions/directoryCompletion.ts#scanDirectory",
     "exports src/terminal/suggestions/directoryCompletion.ts#scanDirectoryForPaths",
-    "exports src/terminal/terminalPanel.ts#getTerminalPanelSocket",
     "exports src/terminal/theme/theme.ts#THEME_SETTINGS",
     "exports src/terminal/theme/themes/types.ts#THEME_SETTINGS",
     "exports src/terminal/tips/tipScheduler.ts#selectTipWithLongestTimeSinceShown",
