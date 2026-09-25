@@ -296,9 +296,14 @@ stays as it is**. The direction is worth a note: the only updates came with it
 off. But the evidence is two runs of 18, one update each, and the carve-out
 sentence did not bring them back. A claim either way needs a larger N.
 
-The TUI renders an update as a dim `∴` line above the tool call it introduces,
-in the prompt view and in ctrl+o. `isProgressUpdateBlock` classifies a block by
-its signature, as Claude Code does: field 2 → 1 → 8 of the protobuf reads
+The TUI renders an update the way Claude Code 2.1.281 does: as a reply, with
+the assistant dot and normal text, above the tool call it introduces, in the
+prompt view and in ctrl+o. Every model but Opus 5.5 closes it with a dim
+` · summarized`; Claude Code hides that hint where the model has the
+`quizzical_shore` capability, which its catalog grants through
+`opus_5_5_prompt_bundle`, carried by Opus 5.5 alone. An update also breaks a
+collapsed read/search group, as text does. `isProgressUpdateBlock` classifies
+a block by its signature, as Claude Code does: field 2 → 1 → 8 of the protobuf reads
 `"narration"`, not `"thinking"`. That field was checked on the real Fable 5.1
 update above. The docs' rule would work only while display is `"updates"`, and
 it is wrong for a resumed session.

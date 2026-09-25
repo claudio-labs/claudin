@@ -154,6 +154,18 @@ function readVarint(buf: Uint8Array, start: number): [number, number] {
 }
 
 /**
+ * The dim hint Claude Code 2.1.281 draws after a progress update: " ·
+ * summarized", on every model but Opus 5.5. Its catalog gives Opus 5.5 alone
+ * `opus_5_5_prompt_bundle`, which turns on the `quizzical_shore` capability
+ * that hides the hint (in its bundle:
+ * `z=new Set(["silent_turn_reminder","quizzical_shore"])`).
+ */
+export function progressUpdateHint(model: string | undefined): string | undefined {
+  if (model && getCanonicalName(model).includes('claude-opus-5-5')) return undefined
+  return 'summarized'
+}
+
+/**
  * The models the API documents with `"omitted"` as their default display: the
  * Claude 5 family (Opus, Sonnet, Fable), every Mythos including the preview,
  * and Opus 4.7 / 4.8. Everything older defaults to "summarized".

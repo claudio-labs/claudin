@@ -99,14 +99,14 @@ function MessageImpl(t0: Props) {
       {
         const t2 = containerWidth ?? "100%";
         let t3;
-        // NOTE: $[14] and $[30] below stay allocated but unused. This file is
-        // React Compiler output, so `_c(94)` and every `$[i]` are its
-        // bookkeeping — dropping a comparison and its write is safe,
-        // renumbering the slots is not.
-        if ($[5] !== addMargin || $[6] !== commands || $[7] !== inProgressToolUseIDs || $[8] !== isTranscriptMode || $[9] !== lastThinkingBlockId || $[10] !== lookups || $[11] !== message.advisorModel || $[12] !== message.message.content || $[13] !== message.uuid || $[15] !== progressMessagesForMessage || $[16] !== shouldAnimate || $[17] !== shouldShowDot || $[18] !== tools || $[19] !== verbose || $[20] !== width) {
+        // NOTE: $[14] and $[30] were freed by a dropped comparison and now
+        // track message.message.model. This file is React Compiler output, so
+        // `_c(94)` and every `$[i]` are its bookkeeping — reusing a free slot
+        // is safe, renumbering the slots is not.
+        if ($[5] !== addMargin || $[6] !== commands || $[7] !== inProgressToolUseIDs || $[8] !== isTranscriptMode || $[9] !== lastThinkingBlockId || $[10] !== lookups || $[11] !== message.advisorModel || $[12] !== message.message.content || $[13] !== message.uuid || $[14] !== message.message.model || $[15] !== progressMessagesForMessage || $[16] !== shouldAnimate || $[17] !== shouldShowDot || $[18] !== tools || $[19] !== verbose || $[20] !== width) {
           let t4;
-          if ($[22] !== addMargin || $[23] !== commands || $[24] !== inProgressToolUseIDs || $[25] !== isTranscriptMode || $[26] !== lastThinkingBlockId || $[27] !== lookups || $[28] !== message.advisorModel || $[29] !== message.uuid || $[31] !== progressMessagesForMessage || $[32] !== shouldAnimate || $[33] !== shouldShowDot || $[34] !== tools || $[35] !== verbose || $[36] !== width) {
-            t4 = (_: BetaContentBlock | ConnectorTextBlock, index_0: number) => <AssistantMessageBlock key={index_0} param={_} addMargin={addMargin} tools={tools} commands={commands} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={progressMessagesForMessage} shouldAnimate={shouldAnimate} shouldShowDot={shouldShowDot} width={width} inProgressToolCallCount={inProgressToolUseIDs.size} isTranscriptMode={isTranscriptMode} lookups={lookups} thinkingBlockId={`${message.uuid}:${index_0}`} lastThinkingBlockId={lastThinkingBlockId} advisorModel={message.advisorModel} />;
+          if ($[22] !== addMargin || $[23] !== commands || $[24] !== inProgressToolUseIDs || $[25] !== isTranscriptMode || $[26] !== lastThinkingBlockId || $[27] !== lookups || $[28] !== message.advisorModel || $[29] !== message.uuid || $[30] !== message.message.model || $[31] !== progressMessagesForMessage || $[32] !== shouldAnimate || $[33] !== shouldShowDot || $[34] !== tools || $[35] !== verbose || $[36] !== width) {
+            t4 = (_: BetaContentBlock | ConnectorTextBlock, index_0: number) => <AssistantMessageBlock key={index_0} param={_} addMargin={addMargin} tools={tools} commands={commands} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={progressMessagesForMessage} shouldAnimate={shouldAnimate} shouldShowDot={shouldShowDot} width={width} inProgressToolCallCount={inProgressToolUseIDs.size} isTranscriptMode={isTranscriptMode} lookups={lookups} thinkingBlockId={`${message.uuid}:${index_0}`} lastThinkingBlockId={lastThinkingBlockId} advisorModel={message.advisorModel} model={message.message.model} />;
             $[22] = addMargin;
             $[23] = commands;
             $[24] = inProgressToolUseIDs;
@@ -115,6 +115,7 @@ function MessageImpl(t0: Props) {
             $[27] = lookups;
             $[28] = message.advisorModel;
             $[29] = message.uuid;
+            $[30] = message.message.model;
             $[31] = progressMessagesForMessage;
             $[32] = shouldAnimate;
             $[33] = shouldShowDot;
@@ -135,6 +136,7 @@ function MessageImpl(t0: Props) {
           $[11] = message.advisorModel;
           $[12] = message.message.content;
           $[13] = message.uuid;
+          $[14] = message.message.model;
           $[15] = progressMessagesForMessage;
           $[16] = shouldAnimate;
           $[17] = shouldShowDot;
@@ -459,6 +461,8 @@ type AssistantMessageBlockProps = {
   thinkingBlockId: string;
   lastThinkingBlockId?: string | null;
   advisorModel?: string;
+  /** The model that produced the message: a progress update's hint follows it. */
+  model?: string;
 };
 function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
   const $ = _c(45);
@@ -478,7 +482,8 @@ function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
     lookups,
     thinkingBlockId,
     lastThinkingBlockId,
-    advisorModel
+    advisorModel,
+    model
   } = t0;
   if (feature("CONNECTOR_TEXT")) {
     if (isConnectorTextBlock(param)) {
@@ -567,11 +572,11 @@ function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
       }
     case "thinking":
       {
-        // A progress update is a status line for the user, not reasoning: it
-        // shows in every view. Left unmemoized on purpose — this file is React
-        // Compiler output and a new memo would need new `_c` slots.
+        // A progress update reads as a reply, not reasoning: it shows in every
+        // view. Left unmemoized on purpose — this file is React Compiler
+        // output and a new memo would need new `_c` slots.
         if (isProgressUpdateBlock(param)) {
-          return <AssistantProgressUpdateMessage text={param.thinking.trim()} addMargin={addMargin} />;
+          return <AssistantProgressUpdateMessage text={param.thinking.trim()} addMargin={addMargin} shouldShowDot={shouldShowDot} model={model} />;
         }
         if (!isTranscriptMode && !verbose) {
           return null;
