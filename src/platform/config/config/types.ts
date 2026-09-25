@@ -431,9 +431,6 @@ export type GlobalConfig = {
   desktopUpsellSeenCount?: number // Total showings (max 3)
   desktopUpsellDismissed?: boolean // "Don't ask again" picked
 
-  // Idle-return dialog tracking
-  idleReturnDismissed?: boolean // "Don't ask again" picked
-
   // Opus 4.5 Pro migration tracking
   opusProMigrationComplete?: boolean
   opusProMigrationTimestamp?: number

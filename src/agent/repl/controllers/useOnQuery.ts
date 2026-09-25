@@ -134,7 +134,6 @@ export interface UseOnQueryDeps {
   totalPausedMsRef: React.RefObject<number>;
   swarmStartTimeRef: React.RefObject<number | null>;
   swarmBudgetInfoRef: React.RefObject<{ tokens: number; limit: number; nudges: number } | undefined>;
-  skipIdleCheckRef: React.RefObject<boolean>;
   // --- setters
   setMessages: (action: React.SetStateAction<MessageType[]>) => void;
   setAppState: SetAppState;
@@ -190,7 +189,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     totalPausedMsRef,
     swarmStartTimeRef,
     swarmBudgetInfoRef,
-    skipIdleCheckRef,
     setMessages,
     setAppState,
     setAbortController,
@@ -526,7 +524,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
         // stale finally can't double-count.
         markTurnEnd();
         setLastQueryCompletionTime(Date.now());
-        skipIdleCheckRef.current = false;
         // Always reset loading state in finally - this ensures cleanup even
         // if onQueryImpl throws. onTurnComplete is called separately in
         // onQueryImpl only on successful completion.

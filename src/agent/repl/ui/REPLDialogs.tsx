@@ -35,7 +35,6 @@ import * as React from 'react'
 import { feature } from 'bun:bundle'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js'
-import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js'
 import { ElicitationDialog } from 'src/mcp/ui/ElicitationDialog.js'
 import { PromptDialog } from 'src/platform/lifecycleHooks/ui/PromptDialog.js'
 import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermission.js'
@@ -93,25 +92,6 @@ export type REPLDialogsDeps = {
   // cost
   setShowCostDialog: (v: boolean) => void
   setHaveShownCostDialog: (v: boolean) => void
-  // idle-return
-  idleReturnPending: { idleMinutes: number; input: string } | null
-  setIdleReturnPending: (v: null) => void
-  getTotalInputTokens: () => number
-  messagesRef: React.RefObject<unknown[]>
-  setInputValue: (v: string) => void
-  // clear-conversation deps
-  setMessages: (m: unknown) => void
-  readFileState: React.RefObject<unknown>
-  discoveredSkillNamesRef: React.RefObject<unknown>
-  loadedNestedMemoryPathsRef: React.RefObject<unknown>
-  store: { getState: () => unknown }
-  setConversationId: (id: string) => void
-  haikuTitleAttemptedRef: React.RefObject<boolean>
-  setHaikuTitle: (v: undefined) => void
-  bashTools: React.RefObject<{ clear: () => void }>
-  bashToolsProcessedIdx: React.RefObject<number>
-  skipIdleCheckRef: React.RefObject<boolean>
-  onSubmitRef: React.RefObject<(input: string, helpers: { setCursorOffset: () => void; clearBuffer: () => void; resetHistory: () => void }) => unknown>
   // IDE onboarding
   setShowIdeOnboarding: (v: boolean) => void
   ideInstallationStatus: unknown
@@ -287,49 +267,6 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
         ...(current as object),
         hasAcknowledgedCostThreshold: true,
       }) as never)
-    }} />}
-    {deps.focusedInputDialog === 'idle-return' && deps.idleReturnPending && <IdleReturnDialog idleMinutes={deps.idleReturnPending.idleMinutes} totalInputTokens={deps.getTotalInputTokens()} onDone={async (action: unknown) => {
-      const pending = deps.idleReturnPending!
-      deps.setIdleReturnPending(null)
-      if (action === 'dismiss') {
-        deps.setInputValue(pending.input)
-        return
-      }
-      if (action === 'never') {
-        saveGlobalConfig((current: unknown) => {
-          const c = current as { idleReturnDismissed?: boolean }
-          if (c.idleReturnDismissed) return current as never
-          return { ...c, idleReturnDismissed: true } as never
-        })
-      }
-      if (action === 'clear') {
-        const { clearConversation } = await import('src/commands/clear/conversation.js')
-        await clearConversation({
-          setMessages: deps.setMessages as never,
-          readFileState: deps.readFileState.current as never,
-          discoveredSkillNames: deps.discoveredSkillNamesRef.current as never,
-          loadedNestedMemoryPaths: deps.loadedNestedMemoryPathsRef.current as never,
-          getAppState: () => deps.store.getState() as never,
-          setAppState: deps.setAppState as never,
-          setConversationId: deps.setConversationId,
-        })
-        if (deps.haikuTitleAttemptedRef.current !== undefined) {
-          deps.haikuTitleAttemptedRef.current = false
-        }
-        deps.setHaikuTitle(undefined)
-        deps.bashTools.current?.clear()
-        if (deps.bashToolsProcessedIdx.current !== undefined) {
-          deps.bashToolsProcessedIdx.current = 0
-        }
-      }
-      if (deps.skipIdleCheckRef.current !== undefined) {
-        deps.skipIdleCheckRef.current = true
-      }
-      void deps.onSubmitRef.current?.(pending.input, {
-        setCursorOffset: () => { },
-        clearBuffer: () => { },
-        resetHistory: () => { },
-      })
     }} />}
     {deps.focusedInputDialog === 'ide-onboarding' && <IdeOnboardingDialog onDone={() => deps.setShowIdeOnboarding(false)} installationStatus={deps.ideInstallationStatus} />}
     {deps.focusedInputDialog === 'effort-callout' && <EffortCallout model={deps.mainLoopModel} onDone={(selection: string) => {

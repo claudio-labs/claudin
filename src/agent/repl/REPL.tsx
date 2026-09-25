@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
-import { snapshotOutputTokensForTurn, getTotalInputTokens } from 'src/platform/bootstrap/state.js';
+import { snapshotOutputTokensForTurn } from 'src/platform/bootstrap/state.js';
 import { count } from 'src/shared/data/array.js';
 import { dirname, join } from 'path';
 import { tmpdir } from 'os';
@@ -35,7 +35,6 @@ import { openFileInExternalEditor } from 'src/shared/editor.js';
 import { writeFile } from 'fs/promises';
 import { Box, Text, useStdin, useTheme, useTabStatus } from 'src/terminal/ink.js';
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js';
-import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js';
 import * as React from 'react';
 import { useEffect, useMemo, useRef, useState, useCallback, useDeferredValue, useLayoutEffect } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
@@ -49,7 +48,7 @@ import { asSessionId, asAgentId } from 'src/shared/types/ids.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { QueryGuard } from 'src/agent/QueryGuard.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import { formatTokens, truncateToWidth } from 'src/shared/text/format.js';
+import { truncateToWidth } from 'src/shared/text/format.js';
 import { consumeEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { sendSandboxPermissionResponseViaMailbox } from 'src/agent/coordinator/swarm/permissionSync.js';
 import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermission.js';
@@ -506,8 +505,7 @@ export function REPL({
   const editorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const editorRenderingRef = useRef(false);
   const {
-    addNotification,
-    removeNotification
+    addNotification
   } = useNotifications();
 
   // eslint-disable-next-line prefer-const
@@ -922,11 +920,6 @@ export function REPL({
   }, [setToolUseConfirmQueue]);
   const [messages, rawSetMessages] = useState<MessageType[]>(() => initialMessages ?? []);
   const messagesRef = useRef(messages);
-  // Stores the willowMode variant that was shown (or false if no hint shown).
-  // Captured at hint_shown time so hint_converted telemetry reports the same
-  // variant — the GrowthBook value shouldn't change mid-session, but reading
-  // it once guarantees consistency between the paired events.
-  const idleHintShownRef = useRef<string | false>(false);
   // Wrap setMessages so messagesRef is always current the instant the
   // call returns — not when React later processes the batch.  Apply the
   // updater eagerly against the ref, then hand React the computed value
@@ -1324,15 +1317,6 @@ export function REPL({
   const [showCostDialog, setShowCostDialog] = useState(false);
   const [conversationId, setConversationId] = useState(randomUUID());
 
-  // Idle-return dialog: shown when user submits after a long idle gap
-  const [idleReturnPending, setIdleReturnPending] = useState<{
-    input: string;
-    idleMinutes: number;
-  } | null>(null);
-  const skipIdleCheckRef = useRef(false);
-  const lastQueryCompletionTimeRef = useRef(lastQueryCompletionTime);
-  lastQueryCompletionTimeRef.current = lastQueryCompletionTime;
-
   const [haveShownCostDialog, setHaveShownCostDialog] = useState(getGlobalConfig().hasAcknowledgedCostThreshold);
   const [vimMode, setVimMode] = useState<VimMode>('INSERT');
   const [showBashesDialog, setShowBashesDialog] = useState<string | boolean>(false);
@@ -1622,7 +1606,6 @@ export function REPL({
     elicitation,
     heldPeerMessages,
     showingCostDialog,
-    idleReturnPending,
     isLoading,
     showIdeOnboarding,
     showEffortCallout,
@@ -1695,7 +1678,6 @@ export function REPL({
     // end() returns false and won't accumulate — fold the partial active time
     // in here instead (idempotent if the turn already ended).
     markTurnEnd();
-    skipIdleCheckRef.current = false;
 
     // Preserve partially-streamed text so the user can read what was
     // generated before pressing Esc. Pushed before resetLoadingState clears
@@ -1928,7 +1910,6 @@ export function REPL({
     totalPausedMsRef,
     swarmStartTimeRef,
     swarmBudgetInfoRef,
-    skipIdleCheckRef,
     setMessages,
     setAppState,
     setAbortController,
@@ -2071,9 +2052,6 @@ export function REPL({
     inputValueRef,
     readFileState,
     streamModeRef,
-    idleHintShownRef,
-    lastQueryCompletionTimeRef,
-    skipIdleCheckRef,
     tipPickedThisTurnRef,
     hasInterruptibleToolInProgressRef,
     setMessages,
@@ -2085,7 +2063,6 @@ export function REPL({
     setStashedPrompt,
     setSubmitCount,
     setIDESelection,
-    setIdleReturnPending,
     setUserInputOnProcessing,
     setToolJSX,
     addNotification,
@@ -2125,13 +2102,6 @@ export function REPL({
     helpers.setCursorOffset(0);
     helpers.clearBuffer();
   }, [setAppState, setInputValue, getToolUseContext, canUseTool, mainLoopModel, addNotification]);
-
-  // onSubmit is unstable (deps include `messages` which changes every turn).
-  // The ref is what keeps a consumer's handle stable, so old REPL render
-  // scopes (~1.8KB each) can be GC'd instead of being pinned per fiber at mount
-  // time — measured at ~35MB over a 1000-turn session.
-  const onSubmitRef = useRef(onSubmit);
-  onSubmitRef.current = onSubmit;
   // Exit state machine + failsafe live in useReplExit (called above, near the
   // other early `useState`s). The previous inline 60-line implementation was
   // moved verbatim — see src/agent/repl/hooks/useReplExit.tsx for the
@@ -2324,50 +2294,6 @@ export function REPL({
     }, getGlobalConfig().messageIdleNotifThresholdMs, lastQueryCompletionTime, isLoading, toolJSX, focusedInputDialogRef, terminal);
     return () => clearTimeout(timer);
   }, [isLoading, toolJSX, submitCount, lastQueryCompletionTime, terminal]);
-
-  // Idle-return hint: show notification when idle threshold is exceeded.
-  // Timer fires after the configured idle period; notification persists until
-  // dismissed or the user submits.
-  useEffect(() => {
-    if (lastQueryCompletionTime === 0) return;
-    if (isLoading) return;
-    const willowMode: string = getFeatureValue_CACHED_MAY_BE_STALE('tengu_willow_mode', 'off');
-    if (willowMode !== 'hint' && willowMode !== 'hint_v2') return;
-    if (getGlobalConfig().idleReturnDismissed) return;
-    const tokenThreshold = Number(process.env.CLAUDIN_IDLE_TOKEN_THRESHOLD ?? 100_000);
-    if (getTotalInputTokens() < tokenThreshold) return;
-    const idleThresholdMs = Number(process.env.CLAUDIN_IDLE_THRESHOLD_MINUTES ?? 75) * 60_000;
-    const elapsed = Date.now() - lastQueryCompletionTime;
-    const remaining = idleThresholdMs - elapsed;
-    const timer = setTimeout((lqct, addNotif, msgsRef, mode, hintRef) => {
-      if (msgsRef.current.length === 0) return;
-      const totalTokens = getTotalInputTokens();
-      const formattedTokens = formatTokens(totalTokens);
-      const idleMinutes = (Date.now() - lqct) / 60_000;
-      addNotif({
-        key: 'idle-return-hint',
-        jsx: mode === 'hint_v2' ? <>
-          <Text dimColor>new task? </Text>
-          <Text color="suggestion">/clear</Text>
-          <Text dimColor> to save </Text>
-          <Text color="suggestion">{formattedTokens} tokens</Text>
-        </> : <Text color="warning">
-          new task? /clear to save {formattedTokens} tokens
-        </Text>,
-        priority: 'medium',
-        // Persist until submit — the hint fires at T+75min idle, user may
-        // not return for hours. removeNotification in useEffect cleanup
-        // handles dismissal. 0x7FFFFFFF = setTimeout max (~24.8 days).
-        timeoutMs: 0x7fffffff
-      });
-      hintRef.current = mode;
-    }, Math.max(0, remaining), lastQueryCompletionTime, addNotification, messagesRef, willowMode, idleHintShownRef);
-    return () => {
-      clearTimeout(timer);
-      removeNotification('idle-return-hint');
-      idleHintShownRef.current = false;
-    };
-  }, [lastQueryCompletionTime, isLoading, addNotification, removeNotification]);
 
   // Submits incoming prompts from teammate messages or tasks mode as new turns
   // Returns true if submission succeeded, false if a query is already running
@@ -2930,25 +2856,6 @@ export function REPL({
             settleHeldPeerMessage,
             setShowCostDialog,
             setHaveShownCostDialog,
-            idleReturnPending,
-            setIdleReturnPending,
-            getTotalInputTokens,
-            messagesRef: messagesRef as unknown as React.RefObject<unknown[]>,
-            setInputValue,
-            setMessages: setMessages as unknown as (m: unknown) => void,
-            readFileState,
-            discoveredSkillNamesRef,
-            loadedNestedMemoryPathsRef,
-            store,
-            // renderREPLDialogs wants a plain `(id: string) => void`; the
-            // local state setter is narrowed to the crypto UUID template type.
-            setConversationId: (id: string) => setConversationId(id as UUID),
-            haikuTitleAttemptedRef,
-            setHaikuTitle,
-            bashTools: bashTools as unknown as React.RefObject<{ clear: () => void }>,
-            bashToolsProcessedIdx,
-            skipIdleCheckRef,
-            onSubmitRef: onSubmitRef as unknown as React.RefObject<(input: string, helpers: { setCursorOffset: () => void; clearBuffer: () => void; resetHistory: () => void }) => unknown>,
             setShowIdeOnboarding,
             ideInstallationStatus,
             mainLoopModel,

@@ -21,7 +21,6 @@ function baseDeps(): FocusedInputDialogDeps {
     elicitation: { queue: [] },
     heldPeerMessages: [],
     showingCostDialog: false,
-    idleReturnPending: null,
     isLoading: false,
     showIdeOnboarding: false,
     showEffortCallout: false,
@@ -101,7 +100,7 @@ describe('getFocusedInputDialog', () => {
     expect(getFocusedInputDialog(d)).toBe('tool-permission')
   })
 
-  test('priority: tool-permission > prompt > worker > elicitation > held peer message > cost > idle', () => {
+  test('priority: tool-permission > prompt > worker > elicitation > held peer message > cost', () => {
     const d = baseDeps()
     d.toolUseConfirmQueue = [{}]
     d.promptQueue = [{}]
@@ -109,7 +108,6 @@ describe('getFocusedInputDialog', () => {
     d.elicitation.queue = [{}]
     d.heldPeerMessages = [{}]
     d.showingCostDialog = true
-    d.idleReturnPending = {}
     expect(getFocusedInputDialog(d)).toBe('tool-permission')
 
     d.toolUseConfirmQueue = []
@@ -126,9 +124,6 @@ describe('getFocusedInputDialog', () => {
 
     d.heldPeerMessages = []
     expect(getFocusedInputDialog(d)).toBe('cost')
-
-    d.showingCostDialog = false
-    expect(getFocusedInputDialog(d)).toBe('idle-return')
   })
 
   test('onboarding/callout/recommendation order with startup gate', () => {

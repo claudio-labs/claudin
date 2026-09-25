@@ -373,13 +373,5 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 2,
     "stockValue": false,
   },
-  "tengu_willow_mode": {
-    "defaults": [
-      "'off'",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": "off",
-  },
 }
 `;

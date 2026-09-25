@@ -21,7 +21,6 @@ export type FocusedInputDialog =
   | 'elicitation'
   | 'peer-message-hold'
   | 'cost'
-  | 'idle-return'
   | 'init-onboarding'
   | 'ide-onboarding'
   | 'model-switch'
@@ -55,7 +54,6 @@ export type FocusedInputDialogDeps = {
   // Messages from other sessions waiting for this session's user.
   heldPeerMessages: ReadonlyArray<unknown>
   showingCostDialog: boolean
-  idleReturnPending: unknown
   isLoading: boolean
   showIdeOnboarding: boolean
   showEffortCallout: boolean
@@ -87,7 +85,6 @@ export function getFocusedInputDialog(
   if (allowDialogsWithAnimation && d.elicitation.queue[0]) return 'elicitation'
   if (allowDialogsWithAnimation && d.heldPeerMessages[0]) return 'peer-message-hold'
   if (allowDialogsWithAnimation && d.showingCostDialog) return 'cost'
-  if (allowDialogsWithAnimation && d.idleReturnPending) return 'idle-return'
 
   // Onboarding dialogs (special conditions).
   if (allowDialogsWithAnimation && d.showIdeOnboarding) return 'ide-onboarding'

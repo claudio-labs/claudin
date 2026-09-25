@@ -5,7 +5,7 @@
     "A": {
       "what": "internal knob - only this codebase reads and sets it",
       "action": "rename",
-      "count": 149
+      "count": 147
     },
     "B": {
       "what": "outbound contract - we write it into a hook/plugin/skill/MCP process env",
@@ -622,20 +622,6 @@
       "to": "CLAUDIN_IDE_SKIP_VALID_CHECK",
       "bucket": "A",
       "files": 1,
-      "managedList": null
-    },
-    {
-      "from": "CLAUDE_CODE_IDLE_THRESHOLD_MINUTES",
-      "to": "CLAUDIN_IDLE_THRESHOLD_MINUTES",
-      "bucket": "A",
-      "files": 2,
-      "managedList": null
-    },
-    {
-      "from": "CLAUDE_CODE_IDLE_TOKEN_THRESHOLD",
-      "to": "CLAUDIN_IDLE_TOKEN_THRESHOLD",
-      "bucket": "A",
-      "files": 2,
       "managedList": null
     },
     {
