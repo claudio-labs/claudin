@@ -124,8 +124,8 @@ test('a recovered result brings the rest of its run, hook or not', () => {
 })
 
 test('a sibling streamed after a result is recovered once, not twice', () => {
-  // Streaming tool execution writes a fast call's result while the model is
-  // still streaming the next tool_use, so that assistant block is both a
+  // A build that ran tools while streaming wrote a fast call's result while
+  // the model was still streaming the next tool_use, so that assistant block is both a
   // sibling (same message id) and a child of the result. Recovered twice, its
   // tool_use would reach the API twice — a 400.
   const a = toolUse(id(2), id(1), 'A')

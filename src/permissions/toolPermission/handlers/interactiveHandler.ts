@@ -363,8 +363,7 @@ function handleInteractivePermission(
             if (checkmarkTransitionTimer) {
               clearTimeout(checkmarkTransitionTimer)
               checkmarkTransitionTimer = undefined
-              // Sibling Bash error can fire this (StreamingToolExecutor
-              // cascades via siblingAbortController) — must drop the
+              // An abort during the checkmark window must drop the
               // cosmetic ✓ dialog or it blocks the next queued item.
               ctx.removeFromQueue()
             }

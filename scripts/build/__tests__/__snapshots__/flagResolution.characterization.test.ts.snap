@@ -325,14 +325,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": true,
   },
-  "tengu_streaming_tool_execution2": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_terminal_sidebar": {
     "defaults": [
       "false",

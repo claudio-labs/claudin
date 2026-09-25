@@ -1,5 +1,4 @@
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { SessionId } from 'src/shared/types/ids.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
@@ -15,11 +14,8 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 export type QueryConfig = {
   sessionId: SessionId
 
-  // Runtime gates (env/statsig). NOT feature() gates — see above.
+  // Runtime gates (env). NOT feature() gates — see above.
   gates: {
-    // Statsig — CACHED_MAY_BE_STALE already admits staleness, so snapshotting
-    // once per query() call stays within the existing contract.
-    streamingToolExecution: boolean
     emitToolUseSummaries: boolean
     isAnt: boolean
     fastModeEnabled: boolean
@@ -30,9 +26,6 @@ export function buildQueryConfig(): QueryConfig {
   return {
     sessionId: getSessionId(),
     gates: {
-      streamingToolExecution: checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-        'tengu_streaming_tool_execution2',
-      ),
       emitToolUseSummaries: isEnvTruthy(
         process.env.CLAUDIN_EMIT_TOOL_USE_SUMMARIES,
       ),

@@ -77,7 +77,6 @@ import {
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { executeStopFailureHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
-import { StreamingToolExecutor } from 'src/agent/tools/StreamingToolExecutor.js'
 import { queryCheckpoint } from 'src/agent/queryProfiler.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'
 import { handleStopHooks } from 'src/agent/query/stopHooks.js'
@@ -425,14 +424,6 @@ async function* queryLoop(
     let needsFollowUp = false
 
     queryCheckpoint('query_setup_start')
-    const useStreamingToolExecution = config.gates.streamingToolExecution
-    let streamingToolExecutor = useStreamingToolExecution
-      ? new StreamingToolExecutor(
-          toolUseContext.options.tools,
-          canUseTool,
-          toolUseContext,
-        )
-      : null
 
     const appState = toolUseContext.getAppState()
     const permissionMode = appState.toolPermissionContext.mode
@@ -597,27 +588,14 @@ async function* queryLoop(
               toolUseBlocks.length = 0
               needsFollowUp = false
 
-              // Discard pending results from the failed streaming attempt and create
-              // a fresh executor. This prevents orphan tool_results (with old tool_use_ids)
-              // from being yielded after the fallback response arrives.
-              if (streamingToolExecutor) {
-                streamingToolExecutor.discard()
-                streamingToolExecutor = new StreamingToolExecutor(
-                  toolUseContext.options.tools,
-                  canUseTool,
-                  toolUseContext,
-                )
-              }
-
               // Re-arm: cleanup must run once per fallback signal, not once
               // per subsequent message. The non-streaming fallback yields a
               // single final message so this was unobservable, but the
               // mid-stream streaming retry (streaming.ts) yields a full
               // stream after signalling — without the reset, every later
-              // message would tombstone the retry's own accumulated output
-              // and churn a fresh StreamingToolExecutor per event. A second
-              // signal (retry failed → non-streaming fallback) flips it back
-              // on and cleans up the retry's partials the same way.
+              // message would tombstone the retry's own accumulated output.
+              // A second signal (retry failed → non-streaming fallback) flips
+              // it back on and cleans up the retry's partials the same way.
               streamingFallbackOccured = false
             }
             // Backfill tool_use inputs on a cloned message before yield so
@@ -687,32 +665,6 @@ async function* queryLoop(
                 toolUseBlocks.push(...msgToolUseBlocks)
                 needsFollowUp = true
               }
-
-              if (
-                streamingToolExecutor &&
-                !toolUseContext.abortController.signal.aborted
-              ) {
-                for (const toolBlock of msgToolUseBlocks) {
-                  streamingToolExecutor.addTool(toolBlock, message)
-                }
-              }
-            }
-
-            if (
-              streamingToolExecutor &&
-              !toolUseContext.abortController.signal.aborted
-            ) {
-              for (const result of streamingToolExecutor.getCompletedResults()) {
-                if (result.message) {
-                  yield result.message
-                  toolResults.push(
-                    ...normalizeMessagesForAPI(
-                      [result.message],
-                      toolUseContext.options.tools,
-                    ).filter(_ => _.type === 'user'),
-                  )
-                }
-              }
             }
           }
           queryCheckpoint('query_api_streaming_end')
@@ -731,18 +683,6 @@ async function* queryLoop(
             toolResults.length = 0
             toolUseBlocks.length = 0
             needsFollowUp = false
-
-            // Discard pending results from the failed attempt and create a
-            // fresh executor. This prevents orphan tool_results (with old
-            // tool_use_ids) from leaking into the retry.
-            if (streamingToolExecutor) {
-              streamingToolExecutor.discard()
-              streamingToolExecutor = new StreamingToolExecutor(
-                toolUseContext.options.tools,
-                canUseTool,
-                toolUseContext,
-              )
-            }
 
             // Update tool use context with new model
             toolUseContext.options.mainLoopModel = fallbackModel
@@ -799,25 +739,13 @@ async function* queryLoop(
       return { reason: 'model_error', error }
     }
 
-    // We need to handle a streaming abort before anything else.
-    // When using streamingToolExecutor, we must consume getRemainingResults() so the
-    // executor can generate synthetic tool_result blocks for queued/in-progress tools.
-    // Without this, tool_use blocks would lack matching tool_result blocks.
+    // We need to handle a streaming abort before anything else, so every
+    // tool_use block gets a matching tool_result block.
     if (toolUseContext.abortController.signal.aborted) {
-      if (streamingToolExecutor) {
-        // Consume remaining results - executor generates synthetic tool_results for
-        // aborted tools since it checks the abort signal in executeTool()
-        for await (const update of streamingToolExecutor.getRemainingResults()) {
-          if (update.message) {
-            yield update.message
-          }
-        }
-      } else {
-        yield* yieldMissingToolResultBlocks(
-          assistantMessages,
-          'Interrupted by user',
-        )
-      }
+      yield* yieldMissingToolResultBlocks(
+        assistantMessages,
+        'Interrupted by user',
+      )
       // Skip the interruption message for submit-interrupts — the queued
       // user message that follows provides sufficient context.
       if (toolUseContext.abortController.signal.reason !== 'interrupt') {
@@ -1112,9 +1040,12 @@ async function* queryLoop(
 
 
 
-    const toolUpdates = streamingToolExecutor
-      ? streamingToolExecutor.getRemainingResults()
-      : runTools(toolUseBlocks, assistantMessages, canUseTool, toolUseContext)
+    const toolUpdates = runTools(
+      toolUseBlocks,
+      assistantMessages,
+      canUseTool,
+      toolUseContext,
+    )
 
     for await (const update of toolUpdates) {
       if (update.message) {

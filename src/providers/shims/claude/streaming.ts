@@ -1768,10 +1768,7 @@ export async function* queryModel(
       }
 
       // When the flag is enabled, skip the non-streaming fallback and let the
-      // error propagate to withRetry. The mid-stream fallback causes double tool
-      // execution when streaming tool execution is active: the partial stream
-      // starts a tool, then the non-streaming retry produces the same tool_use
-      // and runs it again. See inc-4258.
+      // error propagate to withRetry.
       const disableFallback =
         isEnvTruthy(process.env.CLAUDIN_DISABLE_NONSTREAMING_FALLBACK) ||
         getFeatureValue_CACHED_MAY_BE_STALE(

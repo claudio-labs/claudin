@@ -25,10 +25,10 @@ export function groupMessagesByApiRound(messages: Message[]): Message[][] {
   // message.id of the most recently seen assistant. This is the sole
   // boundary gate: streaming chunks from the same API response share an
   // id, so boundaries only fire at the start of a genuinely new round.
-  // normalizeMessages yields one AssistantMessage per content block, and
-  // StreamingToolExecutor interleaves tool_results between chunks live
-  // (yield order, not concat order — see query.ts:613). The id check
-  // correctly keeps `[tu_A(id=X), result_A, tu_B(id=X)]` in one group.
+  // normalizeMessages yields one AssistantMessage per content block, and a
+  // transcript from a build that ran tools while streaming interleaves
+  // tool_results between chunks (yield order, not concat order). The id
+  // check correctly keeps `[tu_A(id=X), result_A, tu_B(id=X)]` in one group.
   let lastAssistantId: string | undefined
 
   // In a well-formed conversation the API contract guarantees every
