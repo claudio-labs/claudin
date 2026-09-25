@@ -1,16 +1,17 @@
 ---
 name: explore-agent-removed
-description: The built-in Explore agent was REMOVED on 2026-08-18 and came back OPT-IN on 2026-09-25 (CLAUDIN_EXPLORE_AGENT=1, sonnet, verbatim path:start-end excerpts) — the A/B that gated it, what it was worth in 2026-08, and the bench that reproduces both
+description: The built-in Explore agent was REMOVED on 2026-08-18 and came back ON BY DEFAULT on 2026-09-25 (CLAUDIN_EXPLORE_AGENT=0 turns it off; sonnet; verbatim path:start-end excerpts) — the A/B behind the flip, what it was worth in 2026-08, and the bench that reproduces both
 type: project
 scope: tools/AgentTool
 impact: functional
 ---
 
-## Back, opt-in (2026-09-25)
+## Back, on by default (2026-09-25)
 
-**Decision:** `Explore` is a built-in again, OFF by default.
-`CLAUDIN_EXPLORE_AGENT=1` registers it (`isExploreAgentEnabled`,
-`src/tools/AgentTool/builtInAgents.ts`).
+**Decision:** `Explore` is a built-in again, ON by default;
+`CLAUDIN_EXPLORE_AGENT=0` turns it off (`isExploreAgentEnabled`,
+`src/tools/AgentTool/builtInAgents.ts`). It landed opt-in and the user flipped
+the default the same day, after the A/B below.
 - **Tools:** an allowlist of Read/Glob/Grep/Bash/WebFetch/WebSearch, not the old
   denylist.
 - **Model:** `sonnet` (user pick), which means the parent's model off a
@@ -51,9 +52,13 @@ The bench's pre-registered gates all passed for explore and for the placebo.
   as Opus (fixed since, see [[delegation-steer-ab-2026-09-23]]).
 
 **What changes for a teammate:**
-- **Flipping the default** is the user's call: the cost gain overlaps the noise,
-  wall time is +30%. The flip is `isExploreAgentEnabled` plus the expectations in
-  `builtInAgents.test.ts` and `exploreAgentGating.test.ts`.
+- **The default is on** by the user's decision, knowing the cost gain overlaps
+  the noise and wall time is +30%. `CLAUDIN_EXPLORE_AGENT=0` is the killswitch;
+  turning the default off again is `isExploreAgentEnabled` plus the
+  expectations in `builtInAgents.test.ts` and `exploreAgentGating.test.ts`.
+- **A built-in sub-agent never retries a 529**
+  ([[builtin-subagents-skip-529-retry]]), and with Explore on more searches go
+  through one.
 - **Naming Explore in a new prompt** means gating the text on the registry and
   adding the file to `ALLOWED_SITES` in `src/__tests__/exploreAgentGating.test.ts`.
   That test replaced the removal guard.

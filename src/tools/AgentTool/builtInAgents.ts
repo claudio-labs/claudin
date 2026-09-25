@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
 import {
   EXPLORE_AGENT,
@@ -24,19 +24,21 @@ export function isPlanAgentEnabled(): boolean {
 }
 
 /**
- * CLAUDIN_EXPLORE_AGENT=1 registers the read-only search agent. Opt-in until
- * the delegation A/B (`scripts/bench/ab/delegation-steer-ab.ts`, arms
- * baseline / explore / placebo) shows it earns its place against the fresh
- * `Code` + `readOnly` lane that replaced it on 2026-08-18 — the history is in
+ * The read-only search agent is registered unless CLAUDIN_EXPLORE_AGENT is 0
+ * (or false/no/off). On by default since 2026-09-25, the user's call after the
+ * delegation A/B (`scripts/bench/ab/delegation-steer-ab.ts`, arms baseline /
+ * explore / placebo, N=5): main-thread tool calls −29% (separated), CLI cost
+ * −9% (overlap), wall time +30%. It had been removed on 2026-08-18 in favor of
+ * a fresh `Code` + `readOnly` agent — the history is in
  * .claudin/memory/team/decisions/explore-agent-removed.md.
  *
- * A runtime env, not a `feature()` flag, so both arms run the same build and a
- * test can render every prompt that names the agent with the gate in either
- * state. It must not change while the process lives: the Agent tool
- * description (cached prefix) names the agent when it is registered.
+ * A runtime env, not a `feature()` flag, so an A/B arm can turn it off in the
+ * same build and a test can render every prompt that names the agent with the
+ * gate in either state. It must not change while the process lives: the Agent
+ * tool description (cached prefix) names the agent when it is registered.
  */
 export function isExploreAgentEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_EXPLORE_AGENT)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXPLORE_AGENT)
 }
 
 /**

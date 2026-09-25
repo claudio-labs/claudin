@@ -17,8 +17,13 @@
   "source": "src/tools/AgentTool/builtInAgents.ts",
   "probes": [
     {
-      "name": "the gate reads CLAUDIN_EXPLORE_AGENT, opt-in",
-      "find": "  return isEnvTruthy(process.env.CLAUDIN_EXPLORE_AGENT)\n",
+      "name": "the gate is on by default: going back to opt-in goes red",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXPLORE_AGENT)\n",
+      "replace": "  return isEnvTruthy(process.env.CLAUDIN_EXPLORE_AGENT)\n"
+    },
+    {
+      "name": "CLAUDIN_EXPLORE_AGENT=0 turns it off",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXPLORE_AGENT)\n",
       "replace": "  return true\n"
     },
     {

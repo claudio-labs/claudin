@@ -1,6 +1,7 @@
 // The read-only codebase search agent. It was removed on 2026-08-18 (#119) and
-// is back behind CLAUDIN_EXPLORE_AGENT (builtInAgents.ts), with the numbers for
-// and against it in .claudin/memory/team/decisions/explore-agent-removed.md.
+// came back on 2026-09-25, on by default (CLAUDIN_EXPLORE_AGENT=0 turns it off,
+// builtInAgents.ts), with the numbers for and against it in
+// .claudin/memory/team/decisions/explore-agent-removed.md.
 //
 // What its report is for: the parent answers from it, or edits from it. An
 // excerpt it quotes becomes the context lines of a Patch hunk or the

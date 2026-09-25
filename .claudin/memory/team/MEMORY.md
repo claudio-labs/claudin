@@ -18,7 +18,7 @@
 - [memory_delta deleted 2026-08-07 — a second full copy, not a delta](decisions/memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta
 - Repo map / code index — REJECTED twice on data, CLOSED: [flat index 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — recalls 0% median, loses to one `ls`; Glob + Grep win
 - [LSPTool reintroduced 2026-06-17 (cache-safe, plugin-only)](decisions/lsp-tool-reintroduced-plugin-only.md) — dropped (0 usage) then re-added: read-only 9 ops, always-present+fixed msg; built-in servers removed
-- [Explore agent: removed 08-18, back OPT-IN 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=1`, sonnet; A/B: tool calls −29%, cost −9% (overlap), wall +30%; flip is the user's call
+- [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=0` turns it off; sonnet; A/B: tool calls −29%, cost −9% (overlap), wall +30%
 - [Fork-subagent-by-default initiative](decisions/fork-subagent-by-default.md) — default spawn forks, named agent stays fresh; 2026-07-26 ungated it, flipped auto-background to opt-in
 - [Git tool — D2, shipped 2026-08-04](decisions/git-tool-design.md) — Git({commands:[…]}) over all git+gh; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; 'auto' sentinel shadows the global, /effort inherit clears it
@@ -38,6 +38,7 @@
 ## Bugs
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — Write branch of extractReadFilesFromMessages skips the is_error check
 - [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — query loop read the parent's app state; definitions, /agents, per-call `model` were inert
+- [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set lists `'agent:builtin'` exactly, built-ins run as `agent:builtin:<Type>`; not fixed
 - [Interactive Agent schema drops run_in_background and name](bugs/agent-schema-drops-run-in-background.md) — prompt teaches both, model sends strings, zod strips them, "background" agents run inline
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent)` registered a phantom `noop`; `claudin install` + `mcp serve tools/list` broken
 - [systemPrompt.main.txt regen captured harness-injected text](bugs/systemprompt-snapshot-harness-drift.md) — snapshot covers "Notes for this model" etc., injected by the harness; diff regen vs source before committing

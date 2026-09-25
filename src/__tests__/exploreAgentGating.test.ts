@@ -6,11 +6,12 @@ import { EXPLORE_AGENT_TYPE } from 'src/tools/AgentTool/built-in/exploreAgent.js
 import { formatAgentLine, getPrompt } from 'src/tools/AgentTool/prompt.js'
 import { getEnterPlanModeToolPrompt } from 'src/tools/EnterPlanModeTool/prompt.js'
 
-// The built-in `Explore` sub-agent was removed on 2026-08-18 and came back
-// behind CLAUDIN_EXPLORE_AGENT. The removal found it named in six kinds of
-// site — a definition, a registry push, a shared build flag, behavioral
-// branches and eight prompts — and most of the prompts were NOT gated on the
-// registry, so they advertised the agent whether or not it was registered.
+// The built-in `Explore` sub-agent was removed on 2026-08-18 and came back on
+// 2026-09-25, on by default (CLAUDIN_EXPLORE_AGENT=0 turns it off). The
+// removal found it named in six kinds of site — a definition, a registry push,
+// a shared build flag, behavioral branches and eight prompts — and most of the
+// prompts were NOT gated on the registry, so they advertised the agent whether
+// or not it was registered.
 // That is the failure mode this file guards, from both sides:
 //
 //  - every source file that names the agent type is on the list below, so a
@@ -94,7 +95,8 @@ describe('what the model is told, with the gate in each state', () => {
     else process.env.CLAUDIN_EXPLORE_AGENT = saved
   })
 
-  test('gate off: not registered, not listed, not named', async () => {
+  test('gate off (=0): not registered, not listed, not named', async () => {
+    process.env.CLAUDIN_EXPLORE_AGENT = '0'
     const agents = getBuiltInAgents()
     expect(agents.map(a => a.agentType)).not.toContain(EXPLORE_AGENT_TYPE)
     expect(agents.map(formatAgentLine).join('\n')).not.toContain('Explore')
@@ -102,8 +104,7 @@ describe('what the model is told, with the gate in each state', () => {
     expect(getEnterPlanModeToolPrompt()).not.toContain('Explore')
   })
 
-  test('gate on: registered, listed, and named where a search is delegated', async () => {
-    process.env.CLAUDIN_EXPLORE_AGENT = '1'
+  test('gate on (the default): registered, listed, and named where a search is delegated', async () => {
     const agents = getBuiltInAgents()
     expect(agents.map(a => a.agentType)).toContain(EXPLORE_AGENT_TYPE)
     expect(agents.map(formatAgentLine).join('\n')).toContain(`- ${EXPLORE_AGENT_TYPE}: `)
