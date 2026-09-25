@@ -495,16 +495,15 @@ transcript must be able to render again.
   budget and the prompt-hook transcript budget all do. `todo_reminder_delta`
   renders from its own payload and needs nothing.
 - Still not byte-stable: `currentDate`, memoized per process, changes across
-  days (only a resume after midnight inside the TTL pays); and with streaming
-  tool execution a result can be written before a later `tool_use` block of
-  the same response, which resume re-sends in a different order (a cache miss
-  from there; the request stays valid). Known, not fixed.
+  days (only a resume after midnight inside the TTL pays). Known, not fixed.
+  (Streaming tool execution, which could write a result before a later
+  `tool_use` block of the same response, was removed with its off gate.)
 - Guards: `src/sessions/resumePrefixDeterminism.test.ts` (render, transcript
   round trip with parents linked as `insertMessageChain` writes them, render
   again, byte-compared — hook output, plan_mode and @-mentions included) and
   `src/sessions/resume/chain.test.ts` (write order, hook runs). End to end at
   zero API cost: `bun scripts/bench/ab/resume-wire-probe.ts` (`--bin=claude` is
   the reference; `--settings=<file>` adds hooks, `--env=NAME=VALUE` a variant)
-  — its one round of four parallel Reads cannot show a streaming reorder. For
-  that, diff the sessions a `session-cache-ab.ts` run recorded:
+  — one round of four parallel Reads. For a longer session, diff the sessions
+  a `session-cache-ab.ts` run recorded:
   `RESUME_DIFF_RUN=<run dir> bun test scripts/bench/ab/resume-transcript-diff.test.ts`.

@@ -26,7 +26,6 @@ import {
 } from 'src/platform/bridge/workSecret.js'
 import { toCompatSessionId, toInfraSessionId } from 'src/platform/bridge/sessionIdCompat.js'
 import { updateSessionBridgeId } from 'src/sessions/concurrentSessions.js'
-import { getTrustedDeviceToken } from 'src/platform/bridge/trustedDevice.js'
 import { HybridTransport } from 'src/platform/headless/transports/HybridTransport.js'
 import {
   type ReplBridgeTransport,
@@ -39,7 +38,6 @@ import { validateBridgeId } from 'src/platform/bridge/bridgeApi.js'
 import {
   describeAxiosError,
   extractHttpStatus,
-  logBridgeSkip,
 } from 'src/platform/bridge/debugUtils.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
@@ -157,18 +155,15 @@ export type BridgeCoreParams = {
   onAuth401?: (staleAccessToken: string) => Promise<boolean>
   /**
    * Poll interval config getter for the work-poll heartbeat loop. REPL
-   * wrapper passes the GrowthBook-backed getPollIntervalConfig (allows ops
-   * to live-tune poll rates fleet-wide). Daemon passes a static config
-   * with a 60s heartbeat (5× headroom under the 300s work-lease TTL).
-   * Injected because growthbook.ts transitively pulls in the command
-   * registry via the same config.ts chain.
+   * wrapper passes getPollIntervalConfig (the defaults). Daemon passes a
+   * static config with a 60s heartbeat (5× headroom under the 300s
+   * work-lease TTL).
    */
   getPollIntervalConfig?: () => PollIntervalConfig
   /**
-   * Max initial messages to replay on connect. REPL wrapper reads from the
-   * tengu_bridge_initial_history_cap GrowthBook flag. Daemon passes no
-   * initialMessages so this is never read. Default 200 matches the flag
-   * default.
+   * Max initial messages to replay on connect. REPL wrapper passes 200.
+   * Daemon passes no initialMessages so this is never read. Default 200
+   * matches the REPL value.
    */
   initialHistoryCap?: number
   // Same REPL-flush machinery as InitBridgeOptions — daemon omits these.
@@ -196,8 +191,8 @@ export type BridgeCoreParams = {
   onStateChange?: (state: BridgeState, detail?: string) => void
   /**
    * Fires on each real user message to flow through writeMessages() until
-   * the callback returns true (done). Mirrors remoteBridgeCore.ts's
-   * onUserMessage so the REPL bridge can derive a session title from early
+   * the callback returns true (done). Lets the REPL bridge derive a
+   * session title from early
    * prompts when none was set at init time (e.g. user runs /remote-control
    * on an empty conversation, then types). Tool-result wrappers, meta
    * messages, and display-tag-only messages are skipped. Receives
@@ -334,7 +329,6 @@ export async function initBridgeCore(
     runnerVersion: MACRO.VERSION,
     onDebug: logForDebugging,
     onAuth401,
-    getTrustedDeviceToken,
   })
   const api = rawApi
 
@@ -362,8 +356,7 @@ export async function initBridgeCore(
     environmentId = reg.environment_id
     environmentSecret = reg.environment_secret
   } catch (err) {
-    logBridgeSkip(
-      'registration_failed',
+    logForDebugging(
       `[bridge:repl] Environment registration failed: ${errorMessage(err)}`,
     )
     // Stale pointer may be the cause (expired/deleted env) — clear it so
@@ -1452,7 +1445,6 @@ export async function initBridgeCore(
               // per cycle at steady state). Bridge-only — 1P keeps indefinite.
               {
                 maxConsecutiveFailures: 50,
-                isBridge: true,
                 onBatchDropped: () => {
                   onStateChange?.(
                     'reconnecting',
@@ -1504,8 +1496,8 @@ export async function initBridgeCore(
   // and the session-ingress layer don't GC an otherwise-idle remote control
   // session. The keep_alive type is filtered before reaching any client UI
   // (Query.ts drops it; web/iOS/Android never see it in their message loop).
-  // Interval comes from GrowthBook (tengu_bridge_poll_interval_config
-  // session_keepalive_interval_v2_ms, default 120s); 0 = disabled.
+  // Interval is the poll config's session_keepalive_interval_v2_ms (default
+  // 120s); 0 = disabled.
   const keepAliveIntervalMs =
     getPollIntervalConfig().session_keepalive_interval_v2_ms
   const keepAliveTimer =
@@ -1588,7 +1580,7 @@ export async function initBridgeCore(
     // stopWork/archive latency (~200-500ms) is the drain window for the
     // result POST. Closing BEFORE archive meant relying on HybridTransport's
     // void-ed 3s grace period, which nothing awaits — forceExit can kill the
-    // socket mid-POST. Same reorder as remoteBridgeCore.ts teardown (#22803).
+    // socket mid-POST.
     const teardownTransport = transport
     transport = null
     flushGate.drop()

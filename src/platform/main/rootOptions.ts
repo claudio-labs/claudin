@@ -2,7 +2,7 @@
 // (ROADMAP 11g Fase 7b).
 //
 // These are the options registered AFTER the .action() handler in the original
-// chain (worktree, advisor, kairos/proactive, brief, channels, teammate
+// chain (worktree, kairos/proactive, brief, channels, teammate
 // identity, sdk-url, teleport/remote, remote-control, hard-fail). They live
 // in a dedicated module so the option-list is easy to scan; the pre-action
 // option chain remains inline in main.tsx because @commander-js/extra-typings
@@ -10,8 +10,6 @@
 
 import { feature } from 'bun:bundle';
 import { type Command as CommanderCommand, Option } from '@commander-js/extra-typings';
-
-import { canUserConfigureAdvisor } from 'src/platform/doctor/advisor.js';
 
 /**
  * Register post-action root options on `program`. Returns the same `program`.
@@ -21,9 +19,6 @@ export function registerRootOptions(program: CommanderCommand<any, any, any>): C
   // Worktree flags
   program.option('-w, --worktree [name]', 'Create a new git worktree for this session (optionally specify a name)');
   program.option('--tmux', 'Create a tmux session for the worktree (requires --worktree). Uses iTerm2 native panes when available; use --tmux=classic for traditional tmux.');
-  if (canUserConfigureAdvisor()) {
-    program.addOption(new Option('--advisor <model>', 'Enable the server-side advisor tool with the specified model (alias or full ID).').hideHelp());
-  }
   if (feature('TRANSCRIPT_CLASSIFIER')) {
     program.addOption(new Option('--enable-auto-mode', 'Opt in to auto mode').hideHelp());
   }

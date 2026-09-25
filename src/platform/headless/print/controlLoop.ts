@@ -33,7 +33,6 @@ import {
 } from 'src/agent/messageQueueManager.js'
 import { notifySessionMetadataChanged } from 'src/sessions/sessionState.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { collectContextData } from 'src/commands/context/context-noninteractive.js'
 import {
   getDefaultMainLoopModel,
@@ -193,10 +192,7 @@ export async function runControlLoop(
           })
         }
 
-        if (
-          message.request.agentProgressSummaries &&
-          getFeatureValue_CACHED_MAY_BE_STALE('tengu_slate_prism', true)
-        ) {
+        if (message.request.agentProgressSummaries) {
           setSdkAgentProgressSummariesEnabled(true)
         }
 

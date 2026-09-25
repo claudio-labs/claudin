@@ -67,8 +67,8 @@ if (typeof (Promise as { withResolvers?: unknown }).withResolvers !== 'function'
 }
 
 // Claudin: the experimental-betas switch is on by default. The "→ 500 for
-// external accounts" this used to promise came from the openclaude fork with no
-// measurement behind it. On 2026-09-22 the real API accepted everything the
+// external accounts" this used to promise was inherited with no measurement
+// behind it. On 2026-09-22 the real API accepted everything the
 // switch guards except `scope:"global"`, which is a 400 for Claudin's request
 // shape (docs/tech/anthropic-betas/wire-matrix.md).
 // The betas measured there left it, each with its own CLAUDIN_DISABLE_*
@@ -82,8 +82,7 @@ process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 // Claudin: enable fine-grained tool streaming on Anthropic 1P by default.
 // Without it, the API buffers each tool_use input until complete before
 // emitting input_json_delta — freezes spinner counter and delays tool render.
-// GrowthBook gate (`tengu_fgts`) is stubbed in open build, so we default the
-// env opt-in. Set to '0' to disable.
+// The env is the only switch, so we default it on here. Set to '0' to disable.
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 process.env.CLAUDIN_ENABLE_FINE_GRAINED_TOOL_STREAMING ??= '1'
 
@@ -297,8 +296,7 @@ async function main(): Promise<void> {
     } = await import('src/platform/config/config.js');
     enableConfigs();
     const {
-      getBridgeDisabledReason,
-      checkBridgeMinVersion
+      getBridgeDisabledReason
     } = await import('src/platform/bridge/bridgeEnabled.js');
     const {
       BRIDGE_LOGIN_ERROR
@@ -323,10 +321,6 @@ async function main(): Promise<void> {
     const disabledReason = await getBridgeDisabledReason();
     if (disabledReason) {
       exitWithError(`Error: ${disabledReason}`);
-    }
-    const versionError = checkBridgeMinVersion();
-    if (versionError) {
-      exitWithError(versionError);
     }
 
     // Bridge is a remote control feature - check policy limits

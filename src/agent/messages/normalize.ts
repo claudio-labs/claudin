@@ -21,9 +21,6 @@ import last from 'lodash-es/last.js'
 import type { AgentId } from 'src/shared/types/ids.js'
 import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js'
 import {
-  checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
-} from 'src/platform/analytics/growthbook.js'
-import {
   getImageTooLargeErrorMessage,
   getPdfInvalidErrorMessage,
   getPdfPasswordProtectedErrorMessage,
@@ -71,7 +68,7 @@ import {
   isToolUseRequestMessage,
   type ToolUseRequestMessage,
 } from 'src/agent/messages/predicates.js'
-import { deriveUUID, wrapInSystemReminder } from 'src/agent/messages/text.js'
+import { deriveUUID } from 'src/agent/messages/text.js'
 
 const TOOL_REFERENCE_TURN_BOUNDARY = 'Tool loaded.'
 
@@ -622,97 +619,11 @@ function contentHasToolReference(
 }
 
 /**
- * Ensure all text content in attachment-origin messages carries the
- * <system-reminder> wrapper. This makes the prefix a reliable discriminator
- * for the post-pass smoosh (smooshSystemReminderSiblings) — no need for every
- * normalizeAttachmentForAPI case to remember to wrap.
- *
- * Idempotent: already-wrapped text is unchanged.
- */
-function ensureSystemReminderWrap(msg: UserMessage): UserMessage {
-  const content = msg.message.content
-  if (typeof content === 'string') {
-    if (content.startsWith('<system-reminder>')) return msg
-    return {
-      ...msg,
-      message: { ...msg.message, content: wrapInSystemReminder(content) },
-    }
-  }
-  let changed = false
-  const newContent = content.map(b => {
-    if (b.type === 'text' && !b.text.startsWith('<system-reminder>')) {
-      changed = true
-      return { ...b, text: wrapInSystemReminder(b.text) }
-    }
-    return b
-  })
-  return changed
-    ? { ...msg, message: { ...msg.message, content: newContent } }
-    : msg
-}
-
-/**
- * Final pass: smoosh any `<system-reminder>`-prefixed text siblings into the
- * last tool_result of the same user message. Catches siblings from:
- * - PreToolUse hook additionalContext (Gap F: attachment between assistant and
- *   tool_result → standalone push → mergeUserMessages → hoist → sibling)
- * - relocateToolReferenceSiblings output (Gap E)
- * - any attachment-origin text that escaped merge-time smoosh
- *
- * Non-system-reminder text (real user input, TOOL_REFERENCE_TURN_BOUNDARY,
- * context-collapse `<collapsed>` summaries) stays untouched — a Human: boundary
- * before actual user input is semantically correct. A/B (sai-20260310-161901,
- * Arm B) confirms: real user input left as sibling + 2 SR-text teachers
- * removed → 0%.
- *
- * Idempotent. Pure function of shape.
- */
-function smooshSystemReminderSiblings(
-  messages: (UserMessage | AssistantMessage)[],
-): (UserMessage | AssistantMessage)[] {
-  return messages.map(msg => {
-    if (msg.type !== 'user') return msg
-    const content = msg.message.content
-    if (!Array.isArray(content)) return msg
-
-    const hasToolResult = content.some(b => b.type === 'tool_result')
-    if (!hasToolResult) return msg
-
-    const srText: TextBlockParam[] = []
-    const kept: ContentBlockParam[] = []
-    for (const b of content) {
-      if (b.type === 'text' && b.text.startsWith('<system-reminder>')) {
-        srText.push(b)
-      } else {
-        kept.push(b)
-      }
-    }
-    if (srText.length === 0) return msg
-
-    // Smoosh into the LAST tool_result (positionally adjacent in rendered prompt)
-    const lastTrIdx = kept.findLastIndex(b => b.type === 'tool_result')
-    const lastTr = kept[lastTrIdx] as ToolResultBlockParam
-    const smooshed = smooshIntoToolResult(lastTr, srText)
-    if (smooshed === null) return msg // tool_ref constraint — leave alone
-
-    const newContent = [
-      ...kept.slice(0, lastTrIdx),
-      smooshed,
-      ...kept.slice(lastTrIdx + 1),
-    ]
-    return {
-      ...msg,
-      message: { ...msg.message, content: newContent },
-    }
-  })
-}
-
-/**
  * Strip non-text blocks from is_error tool_results — the API rejects the
  * combination with "all content must be type text if is_error is true".
  *
- * Read-side guard for transcripts persisted before smooshIntoToolResult
- * learned to filter on is_error. Without this a resumed session with one
+ * Read-side guard for transcripts persisted by an older smoosh that folded
+ * images into is_error tool_results. Without this a resumed session with one
  * of these 400s on every call and can't be recovered by /fork. Adjacent
  * text left behind by a stripped image is re-merged.
  */
@@ -739,86 +650,6 @@ function sanitizeErrorToolResultContent(
     if (!changed) return msg
     return { ...msg, message: { ...msg.message, content: newContent } }
   })
-}
-
-/**
- * Move text-block siblings off user messages that contain tool_reference.
- *
- * When a tool_result contains tool_reference, the server expands it to a
- * functions block. Any text siblings appended to that same user message
- * (auto-memory, skill reminders, etc.) create a second human-turn segment
- * right after the functions-close tag — an anomalous pattern the model
- * imprints on. At a later tool-results tail, the model completes the
- * pattern and emits the stop sequence. See #21049 for mechanism and
- * five-arm dose-response.
- *
- * The fix: find the next user message with tool_result content but NO
- * tool_reference, and move the text siblings there. Pure transformation —
- * no state, no side effects. The target message's existing siblings (if any)
- * are preserved; moved blocks append.
- *
- * If no valid target exists (tool_reference message is at/near the tail),
- * siblings stay in place. That's safe: a tail ending in a human turn (with
- * siblings) gets an Assistant: cue before generation; only a tail ending
- * in bare tool output (no siblings) lacks the cue.
- *
- * Idempotent: after moving, the source has no text siblings; second pass
- * finds nothing to move.
- */
-function relocateToolReferenceSiblings(
-  messages: (UserMessage | AssistantMessage)[],
-): (UserMessage | AssistantMessage)[] {
-  const result = [...messages]
-
-  for (let i = 0; i < result.length; i++) {
-    const msg = result[i]!
-    if (msg.type !== 'user') continue
-    const content = msg.message.content
-    if (!Array.isArray(content)) continue
-    if (!contentHasToolReference(content)) continue
-
-    const textSiblings = content.filter(b => b.type === 'text')
-    if (textSiblings.length === 0) continue
-
-    // Find the next user message with tool_result but no tool_reference.
-    // Skip tool_reference-containing targets — moving there would just
-    // recreate the problem one position later.
-    let targetIdx = -1
-    for (let j = i + 1; j < result.length; j++) {
-      const cand = result[j]!
-      if (cand.type !== 'user') continue
-      const cc = cand.message.content
-      if (!Array.isArray(cc)) continue
-      if (!cc.some(b => b.type === 'tool_result')) continue
-      if (contentHasToolReference(cc)) continue
-      targetIdx = j
-      break
-    }
-
-    if (targetIdx === -1) continue // No valid target; leave in place.
-
-    // Strip text from source, append to target.
-    result[i] = {
-      ...msg,
-      message: {
-        ...msg.message,
-        content: content.filter(b => b.type !== 'text'),
-      },
-    }
-    const target = result[targetIdx] as UserMessage
-    result[targetIdx] = {
-      ...target,
-      message: {
-        ...target.message,
-        content: [
-          ...(target.message.content as ContentBlockParam[]),
-          ...textSiblings,
-        ],
-      },
-    }
-  }
-
-  return result
 }
 
 export function normalizeMessagesForAPI(
@@ -984,38 +815,25 @@ export function normalizeMessagesForAPI(
           // back through here via claude.ts on the next API request. The first
           // pass's sibling gets a \n[id:xxx] suffix from appendMessageTag below,
           // so startsWith matches both bare and tagged forms.
-          //
-          // Gated OFF when tengu_toolref_defer_j8m is active — that gate
-          // enables relocateToolReferenceSiblings in post-processing below,
-          // which moves existing siblings to a later non-ref message instead
-          // of adding one here. This injection is itself one of the patterns
-          // that gets relocated, so skipping it saves a scan. When gate is
-          // off, this is the fallback (same as pre-#21049 main).
+          const contentAfterStrip = normalizedMessage.message.content
           if (
-            !checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-              'tengu_toolref_defer_j8m',
-            )
+            Array.isArray(contentAfterStrip) &&
+            !contentAfterStrip.some(
+              b =>
+                b.type === 'text' &&
+                b.text.startsWith(TOOL_REFERENCE_TURN_BOUNDARY),
+            ) &&
+            contentHasToolReference(contentAfterStrip)
           ) {
-            const contentAfterStrip = normalizedMessage.message.content
-            if (
-              Array.isArray(contentAfterStrip) &&
-              !contentAfterStrip.some(
-                b =>
-                  b.type === 'text' &&
-                  b.text.startsWith(TOOL_REFERENCE_TURN_BOUNDARY),
-              ) &&
-              contentHasToolReference(contentAfterStrip)
-            ) {
-              normalizedMessage = {
-                ...normalizedMessage,
-                message: {
-                  ...normalizedMessage.message,
-                  content: [
-                    ...contentAfterStrip,
-                    { type: 'text', text: TOOL_REFERENCE_TURN_BOUNDARY },
-                  ],
-                },
-              }
+            normalizedMessage = {
+              ...normalizedMessage,
+              message: {
+                ...normalizedMessage.message,
+                content: [
+                  ...contentAfterStrip,
+                  { type: 'text', text: TOOL_REFERENCE_TURN_BOUNDARY },
+                ],
+              },
             }
           }
 
@@ -1105,14 +923,9 @@ export function normalizeMessagesForAPI(
           return
         }
         case 'attachment': {
-          const rawAttachmentMessage = normalizeAttachmentForAPI(
+          const attachmentMessage = normalizeAttachmentForAPI(
             message.attachment,
           )
-          const attachmentMessage = checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-            'tengu_chair_sermon',
-          )
-            ? rawAttachmentMessage.map(ensureSystemReminderWrap)
-            : rawAttachmentMessage
 
           // If the last message is also a user message, merge them
           const lastMessage = last(result)
@@ -1130,23 +943,11 @@ export function normalizeMessagesForAPI(
       }
     })
 
-  // Relocate text siblings off tool_reference messages — prevents the
-  // anomalous two-consecutive-human-turns pattern that teaches the model
-  // to emit the stop sequence after tool results. See #21049.
-  // Runs after merge (siblings are in place) and before ID tagging (so
-  // tags reflect final positions). When gate is OFF, this is a noop and
-  // the TOOL_REFERENCE_TURN_BOUNDARY injection above serves as fallback.
-  const relocated = checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-    'tengu_toolref_defer_j8m',
-  )
-    ? relocateToolReferenceSiblings(result)
-    : result
-
   // Filter orphaned thinking-only assistant messages (likely introduced by
   // compaction slicing away intervening messages between a failed streaming
   // response and its retry). Without this, consecutive assistant messages with
   // mismatched thinking block signatures cause API 400 errors.
-  const withFilteredOrphans = filterOrphanedThinkingOnlyMessages(relocated)
+  const withFilteredOrphans = filterOrphanedThinkingOnlyMessages(result)
 
   // Order matters: strip trailing thinking first, THEN filter whitespace-only
   // messages. The reverse order has a bug: a message like [text("\n\n"), thinking("...")]
@@ -1162,23 +963,10 @@ export function normalizeMessagesForAPI(
     filterWhitespaceOnlyAssistantMessages(withFilteredThinking)
   const withNonEmpty = ensureNonEmptyAssistantContent(withFilteredWhitespace)
 
-  // filterOrphanedThinkingOnlyMessages doesn't merge adjacent users (whitespace
-  // filter does, but only when IT fires). Merge here so smoosh can fold the
-  // SR-text sibling that hoistToolResults produces. The smoosh itself folds
-  // <system-reminder>-prefixed text siblings into the adjacent tool_result.
-  // Gated together: the merge exists solely to feed the smoosh; running it
-  // ungated changes VCR fixture hashes for @-mention scenarios (adjacent
-  // [prompt, attachment] users) without any benefit when the smoosh is off.
-  const smooshed = checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-    'tengu_chair_sermon',
-  )
-    ? smooshSystemReminderSiblings(mergeAdjacentUserMessages(withNonEmpty))
-    : withNonEmpty
-
-  // Unconditional — catches transcripts persisted before smooshIntoToolResult
-  // learned to filter on is_error. Without this a resumed session with an
+  // Catches transcripts persisted by an older smoosh that folded images into
+  // is_error tool_results. Without this a resumed session with an
   // image-in-error tool_result 400s forever.
-  const sanitized = sanitizeErrorToolResultContent(smooshed)
+  const sanitized = sanitizeErrorToolResultContent(withNonEmpty)
 
   // Validate all images are within API size limits before sending
   validateImagesForAPI(sanitized)
@@ -1240,21 +1028,6 @@ export function mergeUserMessages(a: UserMessage, b: UserMessage): UserMessage {
   }
 }
 
-function mergeAdjacentUserMessages(
-  msgs: (UserMessage | AssistantMessage)[],
-): (UserMessage | AssistantMessage)[] {
-  const out: (UserMessage | AssistantMessage)[] = []
-  for (const m of msgs) {
-    const prev = out.at(-1)
-    if (m.type === 'user' && prev?.type === 'user') {
-      out[out.length - 1] = mergeUserMessages(prev, m) // lvalue — can't use .at()
-    } else {
-      out.push(m)
-    }
-  }
-  return out
-}
-
 /**
  * In thecontent[] list on a UserMessage, tool_result blocks much come first
  * to avoid "tool result must follow tool use" API errors.
@@ -1290,9 +1063,8 @@ function normalizeUserTextContent(
  * `"3 + 3"` would otherwise reach the model as `"2 + 23 + 3"`.
  *
  * Blocks stay separate; the `\n` goes on a's side so no block's startsWith
- * changes — smooshSystemReminderSiblings classifies via
- * `startsWith('<system-reminder>')`, and prepending to b would break that
- * when b is an SR-wrapped attachment.
+ * changes — prepending to b would push a `<system-reminder>` wrapper off the
+ * start of an attachment's text.
  */
 function joinTextAtSeam(
   a: ContentBlockParam[],
@@ -1306,87 +1078,21 @@ function joinTextAtSeam(
   return [...a, ...b]
 }
 
-type ToolResultContentItem = Extract<
-  ToolResultBlockParam['content'],
-  readonly unknown[]
->[number]
-
 /**
- * Fold content blocks into a tool_result's content. Returns the updated
- * tool_result, or `null` if smoosh is impossible (tool_reference constraint).
- *
- * Valid block types inside tool_result.content per SDK: text, image,
- * search_result, document. All of these smoosh. tool_reference (beta) cannot
- * mix with other types — server ValueError — so we bail with null.
- *
- * - string/undefined content + all-text blocks → string (preserve legacy shape)
- * - array content with tool_reference → null
- * - otherwise → array, with adjacent text merged (notebook.ts idiom)
+ * Fold text blocks into a tool_result whose content is the string `existing`,
+ * joined with blank lines.
  */
 function smooshIntoToolResult(
   tr: ToolResultBlockParam,
-  blocks: ContentBlockParam[],
-): ToolResultBlockParam | null {
+  existing: string,
+  blocks: TextBlockParam[],
+): ToolResultBlockParam {
   if (blocks.length === 0) return tr
 
-  const existing = tr.content
-  if (Array.isArray(existing) && existing.some(isToolReferenceBlock)) {
-    return null
-  }
-
-  // API constraint: is_error tool_results must contain only text blocks.
-  // Queued-command siblings can carry images (pasted screenshot) — smooshing
-  // those into an error result produces a transcript that 400s on every
-  // subsequent call and can't be recovered by /fork. The image isn't lost:
-  // it arrives as a proper user turn anyway.
-  if (tr.is_error) {
-    blocks = blocks.filter(b => b.type === 'text')
-    if (blocks.length === 0) return tr
-  }
-
-  const allText = blocks.every(b => b.type === 'text')
-
-  // Preserve string shape when existing was string/undefined and all incoming
-  // blocks are text — this is the common case (hook reminders into Bash/Read
-  // results) and matches the legacy smoosh output shape.
-  if (allText && (existing === undefined || typeof existing === 'string')) {
-    const joined = [
-      (existing ?? '').trim(),
-      ...blocks.map(b => (b as TextBlockParam).text.trim()),
-    ]
-      .filter(Boolean)
-      .join('\n\n')
-    return { ...tr, content: joined }
-  }
-
-  // General case: normalize to array, concat, merge adjacent text
-  const base: ToolResultContentItem[] =
-    existing === undefined
-      ? []
-      : typeof existing === 'string'
-        ? existing.trim()
-          ? [{ type: 'text', text: existing.trim() }]
-          : []
-        : [...existing]
-
-  const merged: ToolResultContentItem[] = []
-  for (const b of [...base, ...blocks]) {
-    if (b.type === 'text') {
-      const t = b.text.trim()
-      if (!t) continue
-      const prev = merged.at(-1)
-      if (prev?.type === 'text') {
-        merged[merged.length - 1] = { ...prev, text: `${prev.text}\n\n${t}` } // lvalue
-      } else {
-        merged.push({ type: 'text', text: t })
-      }
-    } else {
-      // image / search_result / document — pass through
-      merged.push(b as ToolResultContentItem)
-    }
-  }
-
-  return { ...tr, content: merged }
+  const joined = [existing.trim(), ...blocks.map(b => b.text.trim())]
+    .filter(Boolean)
+    .join('\n\n')
+  return { ...tr, content: joined }
 }
 
 export function mergeUserContentBlocks(
@@ -1404,38 +1110,18 @@ export function mergeUserContentBlocks(
     return [...a, ...b]
   }
 
-  if (!checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_chair_sermon')) {
-    // Legacy (ungated) smoosh: only string-content tool_result + all-text
-    // siblings → joined string. Matches pre-universal-smoosh behavior on main.
-    // The precondition guarantees smooshIntoToolResult hits its string path
-    // (no tool_reference bail, string output shape preserved).
-    if (
-      typeof lastBlock.content === 'string' &&
-      b.every(x => x.type === 'text')
-    ) {
-      const copy = a.slice()
-      copy[copy.length - 1] = smooshIntoToolResult(lastBlock, b)!
-      return copy
-    }
-    return [...a, ...b]
+  // Only a string-content tool_result with all-text siblings is smooshed,
+  // into one joined string; anything else stays a sibling.
+  const lastContent = lastBlock.content
+  if (
+    typeof lastContent === 'string' &&
+    b.every((x): x is TextBlockParam => x.type === 'text')
+  ) {
+    const copy = a.slice()
+    copy[copy.length - 1] = smooshIntoToolResult(lastBlock, lastContent, b)
+    return copy
   }
-
-  // Universal smoosh (gated): fold all non-tool_result block types (text,
-  // image, document, search_result) into tool_result.content. tool_result
-  // blocks stay as siblings (hoisted later by hoistToolResults).
-  const toSmoosh = b.filter(x => x.type !== 'tool_result')
-  const toolResults = b.filter(x => x.type === 'tool_result')
-  if (toSmoosh.length === 0) {
-    return [...a, ...b]
-  }
-
-  const smooshed = smooshIntoToolResult(lastBlock, toSmoosh)
-  if (smooshed === null) {
-    // tool_reference constraint — fall back to siblings
-    return [...a, ...b]
-  }
-
-  return [...a.slice(0, -1), smooshed, ...toolResults]
+  return [...a, ...b]
 }
 
 // Sometimes the API returns empty messages (eg. "\n\n"). We need to filter these out,
@@ -2130,14 +1816,7 @@ export function ensureToolResultPairing(
           },
         }
         i++
-        // Prepending synthetics to existing content can produce a
-        // [tool_result, text] sibling the smoosh inside normalize never saw
-        // (pairing runs after normalize). Re-smoosh just this one message.
-        result.push(
-          checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_chair_sermon')
-            ? smooshSystemReminderSiblings([patchedNext])[0]!
-            : patchedNext,
-        )
+        result.push(patchedNext)
       } else {
         // Content is empty after stripping orphaned tool_results. We still
         // need a user message here to maintain role alternation — otherwise

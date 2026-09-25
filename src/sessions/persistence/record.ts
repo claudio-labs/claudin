@@ -3,14 +3,10 @@
  *
  * Extracted in Wave 3 of the 11c sessionStorage split. These wrap
  * `getProject().insert*` / `appendEntry` calls so callers don't need to know
- * about the singleton. `recordContentReplacement` is part of the
- * `<persisted-output>` on-disk contract — its 3 external callers
- * (query.ts, sessionRestore.ts, ResumeConversation.tsx) keep importing via
- * the public barrel.
+ * about the singleton.
  */
 import type { UUID } from 'crypto'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import type { AgentId } from 'src/shared/types/ids.js'
 import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { QueueOperationMessage } from 'src/shared/types/messageQueueTypes.js'
@@ -22,7 +18,6 @@ import {
 import { isChainParticipant } from 'src/sessions/pure/typeGuards.js'
 import { getTranscriptPath } from 'src/sessions/pure/paths.js'
 import { getSessionMessages } from 'src/sessions/resume/cache.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 
 export type TeamInfo = {
   teamName?: string
@@ -130,13 +125,6 @@ export async function recordAttributionSnapshot(
   snapshot: AttributionSnapshotMessage,
 ) {
   await getProject().insertAttributionSnapshot(snapshot)
-}
-
-export async function recordContentReplacement(
-  replacements: ContentReplacementRecord[],
-  agentId?: AgentId,
-) {
-  await getProject().insertContentReplacement(replacements, agentId)
 }
 
 /**

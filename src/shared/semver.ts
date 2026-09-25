@@ -30,13 +30,6 @@ export function gte(a: string, b: string): boolean {
   return getNpmSemver().gte(a, b, { loose: true })
 }
 
-export function lt(a: string, b: string): boolean {
-  if (typeof Bun !== 'undefined') {
-    return Bun.semver.order(a, b) === -1
-  }
-  return getNpmSemver().lt(a, b, { loose: true })
-}
-
 
 export function satisfies(version: string, range: string): boolean {
   if (typeof Bun !== 'undefined') {

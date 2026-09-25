@@ -68,7 +68,7 @@
 880:  // vim-style `gg` opens the /diff reviewer. Routed through a ref because the
 881:  // local onSubmit is declared further down; lastGAtRef gates the chord so a
 884:  const lastGAtRef = useRef(0);
-887:      logEvent('tengu_help_toggled', {});
+887:      logEvent('event_help_toggled', {});
 896:    // Cancel any pending prompt suggestion and speculation when user types
 897:    abortPromptSuggestion();
 900:    // `gg` on an empty prompt → open the diff reviewer (only on a quick
@@ -156,7 +156,7 @@
 2231:        key: 'fast-mode-toggled',
 2247:  // Memoized callbacks for thinking toggle
 2253:    setShowThinkingToggle(false);
-2254:    logEvent('tengu_thinking_toggled_hotkey', {
+2254:    logEvent('event_thinking_toggled_hotkey', {
 2258:      key: 'thinking-toggled-hotkey',
 2259:      jsx: <Text color={enabled ? 'suggestion' : undefined} dimColor={!enabled}>
 2267:    setShowThinkingToggle(false);

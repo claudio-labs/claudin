@@ -5,7 +5,7 @@
     "A": {
       "what": "internal knob - only this codebase reads and sets it",
       "action": "rename",
-      "count": 149
+      "count": 147
     },
     "B": {
       "what": "outbound contract - we write it into a hook/plugin/skill/MCP process env",
@@ -622,20 +622,6 @@
       "to": "CLAUDIN_IDE_SKIP_VALID_CHECK",
       "bucket": "A",
       "files": 1,
-      "managedList": null
-    },
-    {
-      "from": "CLAUDE_CODE_IDLE_THRESHOLD_MINUTES",
-      "to": "CLAUDIN_IDLE_THRESHOLD_MINUTES",
-      "bucket": "A",
-      "files": 2,
-      "managedList": null
-    },
-    {
-      "from": "CLAUDE_CODE_IDLE_TOKEN_THRESHOLD",
-      "to": "CLAUDIN_IDLE_TOKEN_THRESHOLD",
-      "bucket": "A",
-      "files": 2,
       "managedList": null
     },
     {
@@ -1464,11 +1450,6 @@
     },
     {
       "name": "CLAUDE_COWORK_MEMORY_PATH_OVERRIDE",
-      "bucket": "D",
-      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
-    },
-    {
-      "name": "CLAUDE_FEATURE_FLAGS_FILE",
       "bucket": "D",
       "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
     },

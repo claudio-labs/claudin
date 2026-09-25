@@ -573,9 +573,7 @@ describe('agent section under CLAUDIN_LEAN_AGENT_PROMPT', () => {
   // available, lean on — the shape the lean system prompt defers to.
   const description = renderAgentPrompt([], false, undefined, {
     isForkSubagentEnabled: () => true,
-    shouldInjectAgentListInMessages: () => true,
     hasEmbeddedSearchTools: () => false,
-    getSubscriptionType: () => null,
     isRunInBackgroundHidden: () => false,
     isInProcessTeammate: () => false,
     isTeammate: () => false,
@@ -669,9 +667,7 @@ describe('agent section where run_in_background is hidden', () => {
     // are what a `-p` request carries, and neither may name the parameter.
     const description = renderAgentPrompt([], false, undefined, {
       isForkSubagentEnabled: () => true,
-      shouldInjectAgentListInMessages: () => true,
       hasEmbeddedSearchTools: () => false,
-      getSubscriptionType: () => null,
       isRunInBackgroundHidden: () => true,
       isInProcessTeammate: () => false,
       isTeammate: () => false,

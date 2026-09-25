@@ -21,13 +21,11 @@ export type FocusedInputDialog =
   | 'elicitation'
   | 'peer-message-hold'
   | 'cost'
-  | 'idle-return'
   | 'init-onboarding'
   | 'ide-onboarding'
   | 'model-switch'
   | 'effort-callout'
   | 'remote-callout'
-  | 'plugin-hint'
 
 // Minimal shape for `toolJSX`. Only the focus-arbitration flag matters here;
 // REPL.tsx's full type carries additional render fields we don't need.
@@ -55,14 +53,10 @@ export type FocusedInputDialogDeps = {
   // Messages from other sessions waiting for this session's user.
   heldPeerMessages: ReadonlyArray<unknown>
   showingCostDialog: boolean
-  idleReturnPending: unknown
   isLoading: boolean
   showIdeOnboarding: boolean
   showEffortCallout: boolean
   showRemoteCallout: boolean
-  hintRecommendation: unknown
-  // Startup gate for the low-priority suggestion dialogs (issue #363).
-  startupChecksStarted: boolean
 }
 
 export function getFocusedInputDialog(
@@ -87,7 +81,6 @@ export function getFocusedInputDialog(
   if (allowDialogsWithAnimation && d.elicitation.queue[0]) return 'elicitation'
   if (allowDialogsWithAnimation && d.heldPeerMessages[0]) return 'peer-message-hold'
   if (allowDialogsWithAnimation && d.showingCostDialog) return 'cost'
-  if (allowDialogsWithAnimation && d.idleReturnPending) return 'idle-return'
 
   // Onboarding dialogs (special conditions).
   if (allowDialogsWithAnimation && d.showIdeOnboarding) return 'ide-onboarding'
@@ -97,9 +90,5 @@ export function getFocusedInputDialog(
 
   // Remote callout (shown once before first bridge enable).
   if (allowDialogsWithAnimation && d.showRemoteCallout) return 'remote-callout'
-
-  // Plugin hint from CLI/SDK stderr.
-  // Suppress during startup window to prevent stealing focus from the prompt (issue #363).
-  if (allowDialogsWithAnimation && d.hintRecommendation && d.startupChecksStarted) return 'plugin-hint'
   return undefined
 }

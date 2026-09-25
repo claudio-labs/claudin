@@ -9,7 +9,6 @@
  */
 
 import { join } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -233,34 +232,7 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
       }))
       return { installed: true, skipped: false }
     }
-    // GCS failed (404 until backend writes, or network). Fall through to git
-    // ONLY if the kill-switch allows — same gate as refreshMarketplace().
-    if (
-      !getFeatureValue_CACHED_MAY_BE_STALE(
-        'tengu_plugin_official_mkt_git_fallback',
-        true,
-      )
-    ) {
-      logForDebugging(
-        'Official marketplace GCS failed; git fallback disabled by flag — skipping install',
-      )
-      // Same retry-with-backoff metadata as git_unavailable below — transient
-      // GCS failures should retry with exponential backoff, not give up.
-      const retryCount =
-        (config.officialMarketplaceAutoInstallRetryCount || 0) + 1
-      const now = Date.now()
-      const nextRetryTime = now + calculateNextRetryDelay(retryCount)
-      saveGlobalConfig(current => ({
-        ...current,
-        officialMarketplaceAutoInstallAttempted: true,
-        officialMarketplaceAutoInstalled: false,
-        officialMarketplaceAutoInstallFailReason: 'gcs_unavailable',
-        officialMarketplaceAutoInstallRetryCount: retryCount,
-        officialMarketplaceAutoInstallLastAttemptTime: now,
-        officialMarketplaceAutoInstallNextRetryTime: nextRetryTime,
-      }))
-      return { installed: false, skipped: true, reason: 'gcs_unavailable' }
-    }
+    // GCS failed (404 until backend writes, or network). Fall through to git.
 
     // Check git availability
     const gitAvailable = await checkGitAvailable()

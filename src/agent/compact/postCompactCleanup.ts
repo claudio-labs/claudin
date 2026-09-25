@@ -7,10 +7,6 @@ import { clearSpeculativeChecks } from 'src/tools/BashTool/bashPermissions.js'
 import { resetSentBashGitInstructions } from 'src/agent/attachments/attachments.js'
 import { clearClassifierApprovals } from 'src/permissions/classifierApprovals.js'
 import { resetGetMemoryFilesCache } from 'src/memory/instructions/claudemd.js'
-import {
-  type ContentReplacementState,
-  reconstructContentReplacementState,
-} from 'src/agent/tools/toolResultStorage.js'
 import { resetPromptCacheBreakDetection } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { clearAllSessions } from 'src/providers/transport/sessionIngress.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
@@ -46,7 +42,6 @@ import { hintGc } from 'src/shared/proc/gc.js'
 export function runPostCompactCleanup(
   querySource?: QuerySource,
   messages?: Message[],
-  contentReplacementState?: ContentReplacementState,
 ): void {
   // Subagents (agent:*) run in the same process and share module-level
   // state with the main thread. Only reset main-thread module-level state
@@ -84,21 +79,6 @@ export function runPostCompactCleanup(
     // that its own markers outlive its compact, bounded by mtime, Edit/Write
     // and the entry's own LRU eviction.
     bumpStandDownEpoch()
-  }
-
-  // Rebuild ContentReplacementState to release entries for compacted-away
-  // messages. Without this, seenIds and replacements grow monotonically
-  // because stubbing/compaction removes messages from the array but never
-  // removes their tracking entries. Mutating in-place preserves the
-  // reference held by contentReplacementStateRef in the REPL.
-  if (messages && contentReplacementState) {
-    const rebuilt = reconstructContentReplacementState(
-      messages,
-      [],
-      contentReplacementState.replacements,
-    )
-    contentReplacementState.seenIds = rebuilt.seenIds
-    contentReplacementState.replacements = rebuilt.replacements
   }
 
   // Remove perKeyClippedIds entries for sessions/agents whose messages

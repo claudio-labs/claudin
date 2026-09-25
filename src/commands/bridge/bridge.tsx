@@ -3,8 +3,7 @@ import { toString as qrToString } from 'qrcode';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { getBridgeAccessToken } from 'src/platform/bridge/bridgeConfig.js';
-import { checkBridgeMinVersion, getBridgeDisabledReason, isEnvLessBridgeEnabled } from 'src/platform/bridge/bridgeEnabled.js';
-import { checkEnvLessBridgeMinVersion } from 'src/platform/bridge/envLessBridgeConfig.js';
+import { getBridgeDisabledReason } from 'src/platform/bridge/bridgeEnabled.js';
 import { BRIDGE_LOGIN_INSTRUCTION, REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/platform/bridge/types.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { ListItem } from 'src/terminal/design-system/ListItem.js';
@@ -465,14 +464,6 @@ async function checkBridgePrerequisites(): Promise<string | null> {
   const disabledReason = await getBridgeDisabledReason();
   if (disabledReason) {
     return disabledReason;
-  }
-
-  // Mirror the v1/v2 branching logic in initReplBridge: env-less (v2) is used
-  // only when the flag is on AND the session is not perpetual.
-  const useV2 = isEnvLessBridgeEnabled();
-  const versionError = useV2 ? await checkEnvLessBridgeMinVersion() : checkBridgeMinVersion();
-  if (versionError) {
-    return versionError;
   }
   if (!getBridgeAccessToken()) {
     return BRIDGE_LOGIN_INSTRUCTION;

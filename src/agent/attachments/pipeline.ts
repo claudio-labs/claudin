@@ -224,7 +224,6 @@ export async function getAttachments(
             callSite: isMainThread
               ? 'attachments_main'
               : 'attachments_subagent',
-            querySource,
           },
         ),
       ),

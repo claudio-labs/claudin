@@ -20,7 +20,6 @@ import { companionReservedColumns } from 'src/terminal/buddy/CompanionSprite.js'
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { findBuddyTriggerPositions, useBuddyNotification } from 'src/terminal/buddy/useBuddyNotification.js';
 import { FastModePicker } from 'src/commands/fast/fast.js';
-import { isUltrareviewEnabled } from 'src/commands/review/ultrareviewEnabled.js';
 import { getNativeCSIuTerminalDisplayName } from 'src/commands/terminalSetup/terminalSetup.js';
 import { type Command, hasCommand } from 'src/commands/commands.js';
 import { useIsModalOverlayActive } from 'src/terminal/contexts/overlayContext.js';
@@ -103,7 +102,6 @@ import type { TextHighlight } from 'src/shared/text/textHighlighting.js';
 import { getTheme, type Theme } from 'src/terminal/theme/theme.js';
 import { findThinkingTriggerPositions, getRainbowColor, isUltrathinkEnabled } from 'src/agent/context/thinking.js';
 import { findTokenBudgetPositions } from 'src/agent/context/tokenBudget.js';
-import { findUltrareviewTriggerPositions } from 'src/agent/ultraplan/keyword.js';
 import { AutoModeOptInDialog } from 'src/permissions/ui/AutoModeOptInDialog.js';
 import { BridgeDialog } from 'src/platform/bridge/BridgeDialog.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
@@ -564,7 +562,6 @@ function PromptInput({
   });
   const displayedValue = useMemo(() => isSearchingHistory && historyMatch ? getValueFromInput(typeof historyMatch === 'string' ? historyMatch : historyMatch.display) : input, [isSearchingHistory, historyMatch, input]);
   const thinkTriggers = useMemo(() => findThinkingTriggerPositions(displayedValue), [displayedValue]);
-  const ultrareviewTriggers = useMemo(() => isUltrareviewEnabled() ? findUltrareviewTriggerPositions(displayedValue) : [], [displayedValue]);
   const btwTriggers = useMemo(() => findBtwTriggerPositions(displayedValue), [displayedValue]);
   const buddyTriggers = useMemo(() => findBuddyTriggerPositions(displayedValue), [displayedValue]);
   const slashCommandTriggers = useMemo(() => {
@@ -741,19 +738,6 @@ function PromptInput({
       }
     }
 
-    // Same rainbow treatment for the ultrareview keyword
-    for (const trigger of ultrareviewTriggers) {
-      for (let i = trigger.start; i < trigger.end; i++) {
-        highlights.push({
-          start: i,
-          end: i + 1,
-          color: getRainbowColor(i - trigger.start),
-          shimmerColor: getRainbowColor(i - trigger.start, true),
-          priority: 10
-        });
-      }
-    }
-
     // Rainbow for /buddy
     for (const trigger of buddyTriggers) {
       for (let i = trigger.start; i < trigger.end; i++) {
@@ -767,7 +751,7 @@ function PromptInput({
       }
     }
     return highlights;
-  }, [isSearchingHistory, historyQuery, historyMatch, historyFailedMatch, cursorOffset, btwTriggers, imageRefPositions, memberMentionHighlights, slashCommandTriggers, tokenBudgetTriggers, slackChannelTriggers, displayedValue, voiceInterimRange, thinkTriggers, ultrareviewTriggers, buddyTriggers]);
+  }, [isSearchingHistory, historyQuery, historyMatch, historyFailedMatch, cursorOffset, btwTriggers, imageRefPositions, memberMentionHighlights, slashCommandTriggers, tokenBudgetTriggers, slackChannelTriggers, displayedValue, voiceInterimRange, thinkTriggers, buddyTriggers]);
   const {
     addNotification,
     removeNotification
@@ -786,16 +770,6 @@ function PromptInput({
       removeNotification('ultrathink-active');
     }
   }, [addNotification, removeNotification, thinkTriggers.length]);
-  useEffect(() => {
-    if (isUltrareviewEnabled() && ultrareviewTriggers.length) {
-      addNotification({
-        key: 'ultrareview-active',
-        text: 'Run /ultrareview after Claude finishes to review these changes in the cloud',
-        priority: 'immediate',
-        timeoutMs: 5000
-      });
-    }
-  }, [addNotification, ultrareviewTriggers.length]);
 
   // Track input length for stash hint
   const prevInputLengthRef = useRef(input.length);
@@ -1527,10 +1501,9 @@ function PromptInput({
     const nextMode = getNextPermissionMode(toolPermissionContext, teamContext);
 
     // Check if user is entering auto mode for the first time. Gated on the
-    // persistent settings flag (hasAutoModeOptIn) rather than the broader
-    // hasAutoModeOptInAnySource so that --enable-auto-mode users still see
-    // the warning dialog once — the CLI flag should grant carousel access,
-    // not bypass the safety text.
+    // persistent settings flag (hasAutoModeOptIn), not the CLI flag, so that
+    // --enable-auto-mode users still see the warning dialog once — the CLI
+    // flag should not bypass the safety text.
     let isEnteringAutoModeFirstTime = false;
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       isEnteringAutoModeFirstTime = nextMode === 'auto' && toolPermissionContext.mode !== 'auto' && !hasAutoModeOptIn() && !viewingAgentTaskId; // Only show for primary agent, not subagents

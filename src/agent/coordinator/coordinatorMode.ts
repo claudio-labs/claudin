@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
+import { isScratchpadEnabled } from 'src/agent/scratchpad.js'
 import { ASYNC_AGENT_ALLOWED_TOOLS } from 'src/tools/constants/tools.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
@@ -11,18 +11,6 @@ import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-
-// Checks the same gate as isScratchpadEnabled(), which now lives in
-// src/agent/scratchpad.ts. The duplication dates from when that function sat
-// in the permissions module and importing it meant a cycle (filePermissions ->
-// permissions -> ... -> coordinatorMode); the leaf module it moved to does not
-// reach back here, so this copy is a removal candidate once someone verifies
-// the graph. The actual scratchpad path is passed in via
-// getCoordinatorUserContext's scratchpadDir parameter (dependency injection
-// from QueryEngine.ts, which lives higher in the dep graph).
-function isScratchpadGateEnabled(): boolean {
-  return checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_scratch')
-}
 
 const INTERNAL_WORKER_TOOLS = new Set([
   TEAM_CREATE_TOOL_NAME,
@@ -96,7 +84,7 @@ export function getCoordinatorUserContext(
     content += `\n\nWorkers also have access to MCP tools from connected MCP servers: ${serverNames}`
   }
 
-  if (scratchpadDir && isScratchpadGateEnabled()) {
+  if (scratchpadDir && isScratchpadEnabled()) {
     content += `\n\nScratchpad directory: ${scratchpadDir}\nWorkers can read and write here without permission prompts. Use this for durable cross-worker knowledge — structure files however fits the work.`
   }
 

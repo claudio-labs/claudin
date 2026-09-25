@@ -35,7 +35,6 @@ import * as React from 'react'
 import { feature } from 'bun:bundle'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js'
-import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js'
 import { ElicitationDialog } from 'src/mcp/ui/ElicitationDialog.js'
 import { PromptDialog } from 'src/platform/lifecycleHooks/ui/PromptDialog.js'
 import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermission.js'
@@ -93,25 +92,6 @@ export type REPLDialogsDeps = {
   // cost
   setShowCostDialog: (v: boolean) => void
   setHaveShownCostDialog: (v: boolean) => void
-  // idle-return
-  idleReturnPending: { idleMinutes: number; input: string } | null
-  setIdleReturnPending: (v: null) => void
-  getTotalInputTokens: () => number
-  messagesRef: React.RefObject<unknown[]>
-  setInputValue: (v: string) => void
-  // clear-conversation deps
-  setMessages: (m: unknown) => void
-  readFileState: React.RefObject<unknown>
-  discoveredSkillNamesRef: React.RefObject<unknown>
-  loadedNestedMemoryPathsRef: React.RefObject<unknown>
-  store: { getState: () => unknown }
-  setConversationId: (id: string) => void
-  haikuTitleAttemptedRef: React.RefObject<boolean>
-  setHaikuTitle: (v: undefined) => void
-  bashTools: React.RefObject<{ clear: () => void }>
-  bashToolsProcessedIdx: React.RefObject<number>
-  skipIdleCheckRef: React.RefObject<boolean>
-  onSubmitRef: React.RefObject<(input: string, helpers: { setCursorOffset: () => void; clearBuffer: () => void; resetHistory: () => void }) => unknown>
   // IDE onboarding
   setShowIdeOnboarding: (v: boolean) => void
   ideInstallationStatus: unknown
@@ -121,17 +101,9 @@ export type REPLDialogsDeps = {
   // remote callout — none beyond setAppState
   // exit flow
   exitFlow: React.ReactNode
-  // plugin / lsp / desktop
-  hintRecommendation: {
-    pluginName: string
-    pluginDescription: string
-    marketplaceName: string
-    sourceCommand: string
-  } | null
-  handleHintResponse: (response: unknown) => void
 }
 
-// PluginHintMenu / EffortCallout / RemoteCallout / IdeOnboardingDialog /
+// EffortCallout / RemoteCallout / IdeOnboardingDialog /
 // SandboxPermissionRequest
 // are imported lazily by REPL when feature flags require — to keep the
 // extracted block faithful we accept the rendered slot as a ReactNode
@@ -151,19 +123,12 @@ export type REPLDialogsSlots = {
   IdeOnboardingDialog: React.ComponentType<{ onDone: () => void; installationStatus: unknown }>
   EffortCallout: React.ComponentType<{ model: unknown; onDone: (selection: string) => void }>
   RemoteCallout: React.ComponentType<{ onDone: (selection: string) => void }>
-  PluginHintMenu: React.ComponentType<{
-    pluginName: string
-    pluginDescription: string
-    marketplaceName: string
-    sourceCommand: string
-    onResponse: (r: unknown) => void
-  }>
 }
 
 type NetworkHostPattern = { host: string; port?: number }
 
 export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots): React.ReactNode {
-  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout, PluginHintMenu } = slots
+  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout } = slots
   return <>
     {deps.focusedInputDialog === 'sandbox-permission' && <SandboxPermissionRequest key={deps.sandboxPermissionRequestQueue[0]!.hostPattern.host} hostPattern={deps.sandboxPermissionRequestQueue[0]!.hostPattern} onUserResponse={(response: { allow: boolean; persistToSettings: boolean }) => {
       const { allow, persistToSettings } = response
@@ -288,49 +253,6 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
         hasAcknowledgedCostThreshold: true,
       }) as never)
     }} />}
-    {deps.focusedInputDialog === 'idle-return' && deps.idleReturnPending && <IdleReturnDialog idleMinutes={deps.idleReturnPending.idleMinutes} totalInputTokens={deps.getTotalInputTokens()} onDone={async (action: unknown) => {
-      const pending = deps.idleReturnPending!
-      deps.setIdleReturnPending(null)
-      if (action === 'dismiss') {
-        deps.setInputValue(pending.input)
-        return
-      }
-      if (action === 'never') {
-        saveGlobalConfig((current: unknown) => {
-          const c = current as { idleReturnDismissed?: boolean }
-          if (c.idleReturnDismissed) return current as never
-          return { ...c, idleReturnDismissed: true } as never
-        })
-      }
-      if (action === 'clear') {
-        const { clearConversation } = await import('src/commands/clear/conversation.js')
-        await clearConversation({
-          setMessages: deps.setMessages as never,
-          readFileState: deps.readFileState.current as never,
-          discoveredSkillNames: deps.discoveredSkillNamesRef.current as never,
-          loadedNestedMemoryPaths: deps.loadedNestedMemoryPathsRef.current as never,
-          getAppState: () => deps.store.getState() as never,
-          setAppState: deps.setAppState as never,
-          setConversationId: deps.setConversationId,
-        })
-        if (deps.haikuTitleAttemptedRef.current !== undefined) {
-          deps.haikuTitleAttemptedRef.current = false
-        }
-        deps.setHaikuTitle(undefined)
-        deps.bashTools.current?.clear()
-        if (deps.bashToolsProcessedIdx.current !== undefined) {
-          deps.bashToolsProcessedIdx.current = 0
-        }
-      }
-      if (deps.skipIdleCheckRef.current !== undefined) {
-        deps.skipIdleCheckRef.current = true
-      }
-      void deps.onSubmitRef.current?.(pending.input, {
-        setCursorOffset: () => { },
-        clearBuffer: () => { },
-        resetHistory: () => { },
-      })
-    }} />}
     {deps.focusedInputDialog === 'ide-onboarding' && <IdeOnboardingDialog onDone={() => deps.setShowIdeOnboarding(false)} installationStatus={deps.ideInstallationStatus} />}
     {deps.focusedInputDialog === 'effort-callout' && <EffortCallout model={deps.mainLoopModel} onDone={(selection: string) => {
       deps.setShowEffortCallout(false)
@@ -355,7 +277,5 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
     }} />}
 
     {deps.exitFlow}
-
-    {deps.focusedInputDialog === 'plugin-hint' && deps.hintRecommendation && <PluginHintMenu pluginName={deps.hintRecommendation.pluginName} pluginDescription={deps.hintRecommendation.pluginDescription} marketplaceName={deps.hintRecommendation.marketplaceName} sourceCommand={deps.hintRecommendation.sourceCommand} onResponse={deps.handleHintResponse} />}
   </>
 }

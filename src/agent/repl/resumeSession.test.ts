@@ -8,7 +8,7 @@
 //   * happy-path `resume` entrypoint touches every dep slot in the
 //     expected order.
 //   * `fork` entrypoint takes the fork branch (copyPlanForFork +
-//     saveWorktreeState, skips worktree restore + replacement recon).
+//     saveWorktreeState, skips worktree restore).
 //   * caught errors still log a `success: false` analytic and re-throw.
 //   * the cost swap: a resume hands the target's `cost-state` entry, its
 //     messages and the project-config slot as read BEFORE the session being
@@ -20,8 +20,7 @@
 //     which is a build-time constant and false in tests; the dead branch
 //     is preserved verbatim in the source so this is safe to skip.
 //   * exact contents of the hydrated messages — the production code path
-//     just forwards `deserializeMessages(log.messages)` through optional
-//     content-replacement reconstruction; both helpers have their own
+//     just forwards `deserializeMessages(log.messages)`, which has its own
 //     tests.
 
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
@@ -70,7 +69,6 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/platform/bootstrap/state.js',
     'src/agent/cost-tracker.js',
     'src/terminal/image/asciicast.js',
-    'src/agent/tools/toolResultStorage.js',
     'src/agent/messages/messages.js',
     'src/shared/types/ids.js',
   ].map(
@@ -208,15 +206,6 @@ mock.module('src/terminal/image/asciicast.js', () => ({
   }),
 }))
 
-mock.module('src/agent/tools/toolResultStorage.js', () => ({
-  applyToolResultReplacementsToMessages: (m: unknown) => m,
-  reconstructContentReplacementState: mock((m: unknown) => {
-    calls.push('reconstructContentReplacementState')
-    return { seenIds: new Set(), replacements: new Map(), messages: m }
-  }),
-  provisionContentReplacementState: () => undefined,
-}))
-
 mock.module('src/agent/messages/messages.js', () => ({
   createSystemMessage: (text: string) => ({ type: 'system', text }),
 }))
@@ -234,9 +223,6 @@ const { resumeSession } = await import('src/agent/repl/resumeSession.js')
 
 function makeDeps(overrides: Partial<ResumeSessionDeps> = {}): ResumeSessionDeps {
   const haikuTitleAttemptedRef = { current: false }
-  const contentReplacementStateRef = {
-    current: { seenIds: new Set<string>(), replacements: new Map<string, unknown>() } as never,
-  }
   return {
     setAppState: mock(() => {}),
     store: { getState: () => ({}) } as never,
@@ -261,7 +247,6 @@ function makeDeps(overrides: Partial<ResumeSessionDeps> = {}): ResumeSessionDeps
     setHaikuTitle: mock(() => {
       calls.push('setHaikuTitle')
     }),
-    contentReplacementStateRef,
     setMessages: mock(() => {
       calls.push('setMessages')
     }),
@@ -357,7 +342,6 @@ describe('resumeSession', () => {
     expect(calls).toContain('restoreWorktreeForResume')
     expect(calls).toContain('adoptResumedSessionFile')
     expect(calls).toContain('restoreRemoteAgentTasks')
-    expect(calls).toContain('reconstructContentReplacementState')
     expect(calls).toContain('setMessages')
     expect(calls).toContain('setToolJSX')
     expect(calls).toContain('setInputValue')
@@ -369,7 +353,7 @@ describe('resumeSession', () => {
     expect(deps.haikuTitleAttemptedRef.current).toBe(true)
   })
 
-  test('fork entrypoint takes fork branch (no worktree restore, no content reconstruction)', async () => {
+  test('fork entrypoint takes fork branch (no worktree restore)', async () => {
     calls.length = 0
     const deps = makeDeps()
 
@@ -381,7 +365,6 @@ describe('resumeSession', () => {
     expect(calls).not.toContain('restoreWorktreeForResume')
     expect(calls).not.toContain('adoptResumedSessionFile')
     expect(calls).not.toContain('restoreRemoteAgentTasks')
-    expect(calls).not.toContain('reconstructContentReplacementState')
 
     // Fork branch still hydrates message state.
     expect(calls).toContain('setMessages')

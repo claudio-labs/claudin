@@ -13,7 +13,7 @@ type PromptModule = typeof import('src/tools/FileReadTool/prompt.js')
 
 const PROMPT = 'src/tools/FileReadTool/prompt.js'
 
-const prompt = renderPromptTemplate(LINE_FORMAT_INSTRUCTION, '')
+const prompt = renderPromptTemplate(LINE_FORMAT_INSTRUCTION)
 
 const ORDINAL_RE = /^(\d+)\. /
 
@@ -49,8 +49,8 @@ describe('Read tool prompt — the reading-strategy list', () => {
     // The offset/limit bullet used to end "it's recommended to read the whole
     // file by not providing these parameters", ten lines under "Default to
     // surgical reads". Both shipped, in the tool that dominates token spend.
-    // The alternative wording already existed but hung on a GrowthBook gate
-    // this fork stubs dead, so it could never render.
+    // The alternative wording already existed but hung on a runtime flag that
+    // always resolved to its default here, so it could never render.
     expect(prompt).not.toContain('recommended to read the whole file')
     expect(prompt).toContain('only read that part')
   })
@@ -113,13 +113,13 @@ describe('Read tool prompt — CLAUDIN_READ_MULTI off', () => {
   // descriptions must stay byte-identical, so the pinned text is the proof.
   test('the legacy description is pinned byte for byte', async () => {
     const mod = await importWithReadMulti<PromptModule>(PROMPT, false)
-    expect(mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')).toMatchSnapshot()
+    expect(mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION)).toMatchSnapshot()
   })
 
   test('the compact description is pinned byte for byte', async () => {
     const mod = await importWithReadMulti<PromptModule>(PROMPT, false)
     expect(
-      mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, ''),
+      mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION),
     ).toMatchSnapshot()
   })
 })
@@ -130,8 +130,8 @@ describe('Read tool prompt — CLAUDIN_READ_MULTI on', () => {
 
   test('both descriptions name file_paths in one line', async () => {
     const mod = await importWithReadMulti<PromptModule>(PROMPT, true)
-    const legacy = mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
-    const compact = mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
+    const legacy = mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION)
+    const compact = mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION)
     for (const text of [legacy, compact]) {
       expect(text.split('\n').filter(line => line === BATCH_LINE)).toHaveLength(1)
     }
@@ -145,11 +145,11 @@ describe('Read tool prompt — CLAUDIN_READ_MULTI on', () => {
         .split('\n')
         .filter(line => line !== BATCH_LINE)
         .join('\n')
-    expect(strip(on.renderPromptTemplate(on.LINE_FORMAT_INSTRUCTION, ''))).toBe(
-      off.renderPromptTemplate(off.LINE_FORMAT_INSTRUCTION, ''),
+    expect(strip(on.renderPromptTemplate(on.LINE_FORMAT_INSTRUCTION))).toBe(
+      off.renderPromptTemplate(off.LINE_FORMAT_INSTRUCTION),
     )
-    expect(strip(on.renderCompactPromptTemplate(on.LINE_FORMAT_INSTRUCTION, ''))).toBe(
-      off.renderCompactPromptTemplate(off.LINE_FORMAT_INSTRUCTION, ''),
+    expect(strip(on.renderCompactPromptTemplate(on.LINE_FORMAT_INSTRUCTION))).toBe(
+      off.renderCompactPromptTemplate(off.LINE_FORMAT_INSTRUCTION),
     )
   })
 
@@ -157,8 +157,8 @@ describe('Read tool prompt — CLAUDIN_READ_MULTI on', () => {
     // The same bound promptFeatureCoverage holds per tool, for the default
     // text it now sees; checked here against the explicit =1 as well.
     const mod = await importWithReadMulti<PromptModule>(PROMPT, true)
-    const legacy = mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
-    const compact = mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION, '')
+    const legacy = mod.renderPromptTemplate(mod.LINE_FORMAT_INSTRUCTION)
+    const compact = mod.renderCompactPromptTemplate(mod.LINE_FORMAT_INSTRUCTION)
     expect(compact.length).toBeLessThan(legacy.length * (2 / 3))
   })
 })
@@ -167,13 +167,13 @@ describe('Read tool prompt — the default, CLAUDIN_READ_MULTI unset', () => {
   test('both descriptions are the ones =1 renders, batch line included', async () => {
     const unset = await importWithReadMultiUnset<PromptModule>(PROMPT)
     const on = await importWithReadMulti<PromptModule>(PROMPT, true)
-    expect(unset.renderPromptTemplate(unset.LINE_FORMAT_INSTRUCTION, '')).toBe(
-      on.renderPromptTemplate(on.LINE_FORMAT_INSTRUCTION, ''),
+    expect(unset.renderPromptTemplate(unset.LINE_FORMAT_INSTRUCTION)).toBe(
+      on.renderPromptTemplate(on.LINE_FORMAT_INSTRUCTION),
     )
-    expect(unset.renderCompactPromptTemplate(unset.LINE_FORMAT_INSTRUCTION, '')).toBe(
-      on.renderCompactPromptTemplate(on.LINE_FORMAT_INSTRUCTION, ''),
+    expect(unset.renderCompactPromptTemplate(unset.LINE_FORMAT_INSTRUCTION)).toBe(
+      on.renderCompactPromptTemplate(on.LINE_FORMAT_INSTRUCTION),
     )
-    expect(unset.renderCompactPromptTemplate(unset.LINE_FORMAT_INSTRUCTION, '')).toContain(
+    expect(unset.renderCompactPromptTemplate(unset.LINE_FORMAT_INSTRUCTION)).toContain(
       '`file_paths` reads up to 20 files in one call',
     )
   })
@@ -191,8 +191,8 @@ describe('Read tool prompt — CLAUDIN_READ_GLOBS on', () => {
     const on = await importWithReadGlobs<PromptModule>(PROMPT, true)
     const off = await importWithReadGlobs<PromptModule>(PROMPT, false)
     for (const render of ['renderPromptTemplate', 'renderCompactPromptTemplate'] as const) {
-      const onText = on[render](on.LINE_FORMAT_INSTRUCTION, '')
-      const offText = off[render](off.LINE_FORMAT_INSTRUCTION, '')
+      const onText = on[render](on.LINE_FORMAT_INSTRUCTION)
+      const offText = off[render](off.LINE_FORMAT_INSTRUCTION)
       expect(onText.split('\n').filter(line => line === GLOB_LINE)).toHaveLength(1)
       expect(offText.split('\n').filter(line => line === BATCH_LINE)).toHaveLength(1)
       expect(onText.replace(GLOB_LINE, BATCH_LINE)).toBe(offText)

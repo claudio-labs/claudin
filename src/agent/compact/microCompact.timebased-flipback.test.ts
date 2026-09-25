@@ -19,18 +19,6 @@
  */
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 
-// Pin GrowthBook to default-returning FIRST, before anything that reads
-// flags loads: getTimeBasedMCConfig's 'tengu_slate_heron' read must fall
-// through to the cache-profile defaults regardless of what earlier test
-// files left in the module registry.
-const realGrowthbook = {
-  ...(await import('src/platform/analytics/growthbook.js')),
-}
-mock.module('src/platform/analytics/growthbook.js', () => ({
-  ...realGrowthbook,
-  getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
-}))
-
 import type { Message } from 'src/shared/types/message.js'
 const { createAssistantMessage, createUserMessage } = await import(
   'src/agent/messages/messages.js'
@@ -247,5 +235,4 @@ afterAll(() => {
   _resetCacheProfileForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
   mock.module('src/providers/model/model.js', () => realModel)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
 })

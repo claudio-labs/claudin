@@ -177,7 +177,7 @@ export type CodeSession = z.infer<ReturnType<typeof CodeSessionSchema>>
  * Validates and prepares for API requests
  * @returns Object containing access token and organization UUID
  */
-export async function prepareApiRequest(): Promise<{
+async function prepareApiRequest(): Promise<{
   accessToken: string
   orgUUID: string
 }> {

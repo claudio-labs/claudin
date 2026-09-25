@@ -272,8 +272,7 @@ describe('repeated-failure hint wiring', () => {
     // runToolUse's outer catch — the path a throwing tool takes (e.g. a
     // crashed MCP server). Wiring it is what makes AGENTS.md's "applies to
     // every tool" claim true. The two deliberate exclusions stay excluded:
-    // permission denials (user control) and the pre-call cancel path
-    // (withMemoryCorrectionHint's surface).
+    // permission denials (user control) and the pre-call cancel path.
     // …including the interrupt flag. Without it a cancelled call renders as
     // `Error calling tool (X): …`, which matches none of the
     // USER_CONTROL_SENTINELS, so the abort the user asked for both receives

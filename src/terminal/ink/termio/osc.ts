@@ -488,27 +488,3 @@ export const CLEAR_TAB_STATUS = osc(
 export function supportsTabStatus(): boolean {
   return false
 }
-
-/**
- * Emit an OSC 21337 tab-status sequence. Omitted fields are left unchanged
- * by the receiving terminal; `null` sends an empty value to clear.
- * `;` and `\` in status text are escaped per the spec.
- */
-export function tabStatus(fields: TabStatusAction): string {
-  const parts: string[] = []
-  const rgb = (c: Color) =>
-    c.type === 'rgb'
-      ? `#${[c.r, c.g, c.b].map(n => n.toString(16).padStart(2, '0')).join('')}`
-      : ''
-  if ('indicator' in fields)
-    parts.push(`indicator=${fields.indicator ? rgb(fields.indicator) : ''}`)
-  if ('status' in fields)
-    parts.push(
-      `status=${fields.status?.replaceAll('\\', '\\\\').replaceAll(';', '\\;') ?? ''}`,
-    )
-  if ('statusColor' in fields)
-    parts.push(
-      `status-color=${fields.statusColor ? rgb(fields.statusColor) : ''}`,
-    )
-  return osc(OSC.TAB_STATUS, parts.join(';'))
-}

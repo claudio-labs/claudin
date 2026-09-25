@@ -3,13 +3,12 @@
  * building the initial ToolPermissionContext.
  *
  * Everything here reads ambient state — the merged settings files, the
- * GrowthBook cache, process.env.PWD and the filesystem — which is why it is
+ * process.env.PWD and the filesystem — which is why it is
  * covered by a surface pin rather than by behavioural tests.
  */
 import { feature } from 'bun:bundle'
 import { resolve } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getInitialSettings,
   hasAllowBypassPermissionsMode,
@@ -42,10 +41,7 @@ import {
   permissionRuleValueToString,
 } from 'src/permissions/permissionRuleParser.js'
 import { autoModeStateModule } from 'src/permissions/permissionSetup/autoModeStateBridge.js'
-import {
-  getAutoModeEnabledStateIfCached,
-  isAutoModeGateEnabled,
-} from 'src/permissions/permissionSetup/autoModeAvailability.js'
+import { isAutoModeGateEnabled } from 'src/permissions/permissionSetup/autoModeAvailability.js'
 import {
   type DangerousPermissionInfo,
   findDangerousClassifierPermissions,
@@ -86,28 +82,9 @@ export function initialPermissionModeFromCLI({
 }): { mode: PermissionMode; notification?: string } {
   const settings = getInitialSettings() || {}
 
-  // Check GrowthBook gate first - highest precedence
-  const growthBookDisableBypassPermissionsMode =
-    checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-      'tengu_disable_bypass_permissions_mode',
-    )
-
-  // Then check settings - lower precedence
-  const settingsDisableBypassPermissionsMode =
-    settings.permissions?.disableBypassPermissionsMode === 'disable'
-
-  // Statsig gate takes precedence over settings
+  // Only settings can disable bypass permissions mode.
   const disableBypassPermissionsMode =
-    growthBookDisableBypassPermissionsMode ||
-    settingsDisableBypassPermissionsMode
-
-  // Sync circuit-breaker check (cached GB read). Prevents the
-  // AutoModeOptInDialog from showing in showSetupScreens() when auto can't
-  // actually be entered. autoModeFlagCli still carries intent through to
-  // verifyAutoModeGateAccess, which notifies the user why.
-  const autoModeCircuitBrokenSync = feature('TRANSCRIPT_CLASSIFIER')
-    ? getAutoModeEnabledStateIfCached() === 'disabled'
-    : false
+    settings.permissions?.disableBypassPermissionsMode === 'disable'
 
   // Modes in order of priority
   const orderedModes: PermissionMode[] = []
@@ -117,19 +94,7 @@ export function initialPermissionModeFromCLI({
     orderedModes.push('bypassPermissions')
   }
   if (permissionModeCli) {
-    const parsedMode = permissionModeFromString(permissionModeCli)
-    if (feature('TRANSCRIPT_CLASSIFIER') && parsedMode === 'auto') {
-      if (autoModeCircuitBrokenSync) {
-        logForDebugging(
-          'auto mode circuit breaker active (cached) — falling back to default',
-          { level: 'warn' },
-        )
-      } else {
-        orderedModes.push('auto')
-      }
-    } else {
-      orderedModes.push(parsedMode)
-    }
+    orderedModes.push(permissionModeFromString(permissionModeCli))
   }
   if (settings.permissions?.defaultMode) {
     const settingsMode = settings.permissions.defaultMode as PermissionMode
@@ -144,17 +109,6 @@ export function initialPermissionModeFromCLI({
         `settings defaultMode "${settingsMode}" is not supported in CLAUDE_CODE_REMOTE — only acceptEdits and plan are allowed`,
         { level: 'warn' },
       )
-    }
-    // auto from settings requires the same gate check as from CLI
-    else if (feature('TRANSCRIPT_CLASSIFIER') && settingsMode === 'auto') {
-      if (autoModeCircuitBrokenSync) {
-        logForDebugging(
-          'auto mode circuit breaker active (cached) — falling back to default',
-          { level: 'warn' },
-        )
-      } else {
-        orderedModes.push('auto')
-      }
     } else {
       orderedModes.push(settingsMode)
     }
@@ -164,18 +118,10 @@ export function initialPermissionModeFromCLI({
 
   for (const mode of orderedModes) {
     if (mode === 'bypassPermissions' && disableBypassPermissionsMode) {
-      if (growthBookDisableBypassPermissionsMode) {
-        logForDebugging('bypassPermissions mode is disabled by Statsig gate', {
-          level: 'warn',
-        })
-        notification =
-          'Bypass permissions mode was disabled by your organization policy'
-      } else {
-        logForDebugging('bypassPermissions mode is disabled by settings', {
-          level: 'warn',
-        })
-        notification = 'Bypass permissions mode was disabled by settings'
-      }
+      logForDebugging('bypassPermissions mode is disabled by settings', {
+        level: 'warn',
+      })
+      notification = 'Bypass permissions mode was disabled by settings'
       continue // Skip this mode if it's disabled
     }
 
@@ -255,12 +201,7 @@ export async function initializeToolPermissionContext({
     })
   }
 
-  // Check if bypassPermissions mode is available (not disabled by Statsig gate or settings)
-  // Use cached values to avoid blocking on startup
-  const growthBookDisableBypassPermissionsMode =
-    checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-      'tengu_disable_bypass_permissions_mode',
-    )
+  // Check if bypassPermissions mode is available (not disabled by settings)
   const settings = getInitialSettings() || {}
   const settingsDisableBypassPermissionsMode =
     settings.permissions?.disableBypassPermissionsMode === 'disable'
@@ -269,7 +210,6 @@ export async function initializeToolPermissionContext({
     (permissionMode === 'bypassPermissions' ||
       allowDangerouslySkipPermissions ||
       settingsAllowBypassPermissionsMode) &&
-    !growthBookDisableBypassPermissionsMode &&
     !settingsDisableBypassPermissionsMode
 
   // Load all permission rules from disk

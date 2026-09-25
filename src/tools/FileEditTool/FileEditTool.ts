@@ -1,5 +1,4 @@
 import { dirname, isAbsolute, sep } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,
@@ -38,10 +37,6 @@ import {
 } from 'src/shared/fs/fileRead.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import {
-  fetchSingleFileGitDiff,
-  type ToolUseDiff,
-} from 'src/vcs/git/gitDiff.js'
 import { logError } from 'src/shared/log.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import {
@@ -144,7 +139,6 @@ export const FileEditTool = buildTool({
   searchHint: 'modify file contents in place',
   maxResultSizeChars: 100_000,
   clearableInputFields: ['old_string', 'new_string'],
-  strict: true,
   async description() {
     return 'A tool for editing files'
   },
@@ -666,16 +660,6 @@ export const FileEditTool = buildTool({
 
     countLinesChanged(patch)
 
-    let gitDiff: ToolUseDiff | undefined
-    if (
-      isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) &&
-      getFeatureValue_CACHED_MAY_BE_STALE('tengu_quartz_lantern', false)
-    ) {
-      const startTime = Date.now()
-      const diff = await fetchSingleFileGitDiff(absoluteFilePath)
-      if (diff) gitDiff = diff
-    }
-
     // 8. Yield result
     const data = {
       filePath: file_path,
@@ -685,7 +669,6 @@ export const FileEditTool = buildTool({
       structuredPatch: patch,
       userModified: userModified ?? false,
       replaceAll: replace_all,
-      ...(gitDiff && { gitDiff }),
     }
 
     // Per-edit LSP diagnostic injection: wait briefly for the LSP server to

@@ -119,36 +119,6 @@ async function main(): Promise<void> {
   const N = args.iterations
   const results: Result[] = []
 
-  // Silence heavy analytics/growthbook that some retainers import
-  const { mock } = await import('bun:test')
-  mock.module('../../../src/platform/analytics/growthbook.js', () => ({
-    getFeatureValue_CACHED_MAY_BE_STALE: () => false,
-    getFeatureValue_CACHED_WITH_REFRESH: () => false,
-    getFeatureValue_DEPRECATED: async () => false,
-    checkStatsigFeatureGate_CACHED_MAY_BE_STALE: () => false,
-    checkGate_CACHED_OR_BLOCKING: async () => false,
-    checkSecurityRestrictionGate: async () => false,
-    hasGrowthBookEnvOverride: () => false,
-    getApiBaseUrlHost: () => undefined,
-    onGrowthBookRefresh: () => () => {},
-    refreshGrowthBookAfterAuthChange: () => {},
-    resetGrowthBook: () => {},
-    refreshGrowthBookFeatures: async () => {},
-    setupPeriodicGrowthBookRefresh: () => {},
-    stopPeriodicGrowthBookRefresh: () => {},
-    getDynamicConfig_BLOCKS_ON_INIT: async () => ({}),
-    getDynamicConfig_CACHED_MAY_BE_STALE: () => ({}),
-    initializeGrowthBook: async () => null,
-    getAllGrowthBookFeatures: () => ({}),
-  }))
-  mock.module('../../../src/platform/analytics/index.js', () => ({
-    logEvent: () => {},
-    logEventAsync: async () => {},
-    attachAnalyticsSink: () => {},
-    stripProtoFields: <V,>(v: V) => v,
-    _resetForTesting: () => {},
-  }))
-
   // --- #1 perKeyClippedIds -------------------------------------------------
   try {
     const mod = await import('../../../src/agent/compact/stableStubState.js')
@@ -178,43 +148,6 @@ async function main(): Promise<void> {
     )
   } catch (e) {
     console.error('#1 perKeyClippedIds: SKIP', (e as Error).message)
-  }
-
-  // --- #2 ContentReplacementState (direct manipulation) -------------------
-  try {
-    const mod = await import('../../../src/agent/tools/toolResultStorage.js')
-    const state = mod.createContentReplacementState()
-    results.push(
-      await measure(
-        '#2a ContentReplacementState.seenIds',
-        'unbounded',
-        N,
-        () => {},
-        i => {
-          state.seenIds.add(`id_${i}`)
-        },
-        () => state.seenIds.size,
-        'Per-turn reset on REPL only; SDK path grows monotonically',
-      ),
-    )
-    results.push(
-      await measure(
-        '#2b ContentReplacementState.replacements',
-        'unbounded',
-        N,
-        () => {},
-        i => {
-          state.replacements.set(
-            `id_${i}`,
-            `<persisted-output>/tmp/turn-${i}</persisted-output>`,
-          )
-        },
-        () => state.replacements.size,
-        'Stores replacement strings (~60 bytes each); without prune grows linearly',
-      ),
-    )
-  } catch (e) {
-    console.error('#2 ContentReplacementState: SKIP', (e as Error).message)
   }
 
   // --- #3 MCP connectToServer memoize cache -------------------------------

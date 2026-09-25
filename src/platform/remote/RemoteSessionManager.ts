@@ -322,22 +322,3 @@ export class RemoteSessionManager {
     this.websocket?.reconnect()
   }
 }
-
-/**
- * Create a remote session config from OAuth tokens
- */
-export function createRemoteSessionConfig(
-  sessionId: string,
-  getAccessToken: () => string,
-  orgUuid: string,
-  hasInitialPrompt = false,
-  viewerOnly = false,
-): RemoteSessionConfig {
-  return {
-    sessionId,
-    getAccessToken,
-    orgUuid,
-    hasInitialPrompt,
-    viewerOnly,
-  }
-}

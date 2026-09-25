@@ -130,7 +130,6 @@ const SURFACES: ReadonlyArray<{
       'isPinShielding',
       'pinShieldsBlock',
       'pinToolResult',
-      'pruneContentReplacementState',
       'pruneOldToolResults',
       'pruneOrphanClippedIds',
       'pruneStaleClippedIds',

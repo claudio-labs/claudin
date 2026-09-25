@@ -9,10 +9,9 @@ import {
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getTeammateContext } from 'src/agent/coordinator/teammateContext.js'
 import {
-  buildCronDeletePrompt,
   CRON_DELETE_DESCRIPTION,
+  CRON_DELETE_PROMPT,
   CRON_DELETE_TOOL_NAME,
-  isDurableCronEnabled,
   isKairosCronEnabled,
 } from 'src/tools/ScheduleCronTool/prompt.js'
 import { renderDeleteResultMessage, renderDeleteToolUseMessage } from 'src/tools/ScheduleCronTool/UI.js'
@@ -53,7 +52,7 @@ export const CronDeleteTool = buildTool({
     return CRON_DELETE_DESCRIPTION
   },
   async prompt() {
-    return buildCronDeletePrompt(isDurableCronEnabled())
+    return CRON_DELETE_PROMPT
   },
   getPath() {
     return getCronFilePath()

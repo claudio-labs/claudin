@@ -120,7 +120,7 @@ These tests in `scripts/` enforce build correctness — always run when touching
 ```bash
 bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
 bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
-bun test src/platform/analytics/growthbook.test.ts          # flag resolution
+bun test src/__tests__/upstreamCodename.test.ts              # upstream codename stays gone
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 ```
 
@@ -252,20 +252,21 @@ during the `platform/` reorg. Neither announces itself as a mocking problem.
   `clearTimeout` each one in `afterAll`. Restoring a dangerous global while a
   caller of it is still scheduled is the bug.
 
-### Ink/React components are unimportable under `bun test`
+### Ink/React components load under `bun test`
 
-Any module whose import chain reaches `src/terminal/ink.js` fails to load under `bun test`
-(or `bun -e`) with `Cannot find module '@growthbook/growthbook'` — that package is
-a build-time stub from `scripts/build/no-telemetry-plugin.ts` that never applies outside
-the bundler. So a `.tsx` component generally can't be imported by a colocated unit
-test. Put pure logic (tree building, parsing, formatting, selection math) in a
-separate module importing only libs + type-only + other pure modules, and re-export
-it from the `.tsx` (e.g. `src/vcs/diff/ui/fileTree.ts` split out of
-`DiffFileList.tsx` for `fileTree.test.ts`).
+They used not to: a chain reaching `src/terminal/ink.js` died on
+`Cannot find module '@growthbook/growthbook'`, a package that existed only as a
+build-time stub. Nothing imports it any more, and components are rendered in
+tests through `renderToString` (`src/terminal/render/staticRender.tsx`) —
+`src/agent/ui/messages/CollapsedReadSearchContent.test.tsx` is a worked example.
+Pure logic (tree building, parsing, formatting, selection math) still tests
+more cheaply in its own module re-exported from the `.tsx` (e.g.
+`src/vcs/diff/ui/fileTree.ts` split out of `DiffFileList.tsx`).
 
 > **`bun -e "import(...)"` is a FALSE NEGATIVE for importability** — it skips
-> bunfig's `[test]` aliases (the growthbook stub), so it fails on modules `bun test`
-> loads fine. Verify importability with an actual `bun test`, never `bun -e`.
+> bunfig's `[test]` preload (`src/stubs/test-preload.ts`), so it can fail on
+> modules `bun test` loads fine. Verify importability with an actual `bun test`,
+> never `bun -e`.
 
 ## Coverage Targets
 
@@ -288,7 +289,7 @@ src/agent/compact/stableStubState.stub-byte-stability.test.ts
 src/tools/shared/outputFilter/Bash/phase12Report.test.ts
 scripts/build/feature-flags-source-guard.test.ts
 scripts/bench/tokens/measure-tool-schemas.test.ts
-src/platform/analytics/growthbook.test.ts
+src/__tests__/upstreamCodename.test.ts
 scripts/verify/pr-intent-scan.test.ts
 ```
 

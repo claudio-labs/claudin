@@ -2,7 +2,6 @@
 import { isUltrathinkEnabled } from 'src/agent/context/thinking.js'
 import { getInitialSettings, getSettingsForSource } from 'src/platform/settings/settings.js'
 import { isProSubscriber, isMaxSubscriber, isTeamSubscriber } from 'src/providers/auth/auth.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { activeTransportUsesOpenAiShim, getAPIProvider } from 'src/providers/model/providers.js'
 import { get3PModelCapabilityOverride } from 'src/providers/model/modelSupportOverrides.js'
 import {
@@ -650,27 +649,18 @@ export function getEffortValueDescription(value: EffortValue): string {
 }
 
 export type OpusDefaultEffortConfig = {
-  enabled: boolean
   dialogTitle: string
   dialogDescription: string
 }
 
-const OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT: OpusDefaultEffortConfig = {
-  enabled: true,
+const OPUS_DEFAULT_EFFORT_CONFIG: OpusDefaultEffortConfig = {
   dialogTitle: 'We recommend medium effort for Opus',
   dialogDescription:
     'Effort determines how long Claude thinks for when completing your task. We recommend medium effort for most tasks to balance speed and intelligence and maximize rate limits. Use ultrathink to trigger high effort when needed.',
 }
 
 export function getOpusDefaultEffortConfig(): OpusDefaultEffortConfig {
-  const config = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_grey_step2',
-    OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT,
-  )
-  return {
-    ...OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT,
-    ...config,
-  }
+  return OPUS_DEFAULT_EFFORT_CONFIG
 }
 
 export function getDefaultEffortForModel(
@@ -680,8 +670,7 @@ export function getDefaultEffortForModel(
   // the model launch DRI and research. Default effort is a sensitive setting
   // that can greatly affect model quality and bashing.
 
-  // Default effort on Opus 4.6/4.7 to medium for Pro.
-  // Max/Team also get medium when the tengu_grey_step2 config is enabled.
+  // Default effort on Opus 4.6/4.7 to medium for Pro, Max and Team.
   const lowerModel = model.toLowerCase()
 
   // Kimi Code K3 defaults to Max thinking effort (matches the official CLI).
@@ -748,10 +737,7 @@ export function getDefaultEffortForModel(
     if (isProSubscriber()) {
       return 'medium'
     }
-    if (
-      getOpusDefaultEffortConfig().enabled &&
-      (isMaxSubscriber() || isTeamSubscriber())
-    ) {
+    if (isMaxSubscriber() || isTeamSubscriber()) {
       return 'medium'
     }
   }

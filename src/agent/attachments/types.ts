@@ -322,10 +322,10 @@ export type Attachment =
       /**
        * The reminder as the model received it, rendered by the producer
        * (snapshotPlanModeReminder). The text reads live state — the interview
-       * flag, the Plan-agent count, the Phase 4 variant, allowedTools, the
-       * scratchpad path — and a resumed process must re-send the bytes the
-       * live one sent (.claudin/rules/cache.md §7). Absent on attachments
-       * created without it, which render live.
+       * flag, the Plan-agent count, allowedTools, the scratchpad path — and a
+       * resumed process must re-send the bytes the live one sent
+       * (.claudin/rules/cache.md §7). Absent on attachments created without
+       * it, which render live.
        */
       rendered?: string
     }

@@ -42,9 +42,8 @@ export function shouldEnablePromptSuggestion(): boolean {
     return true
   }
 
-  // Upstream gates this on a GrowthBook flag ('tengu_chomp_inflection').
-  // Claudin strips GrowthBook via noTelemetryPlugin, so the flag would always
-  // return its default (false) and disable the entire feature. Skip the gate.
+  // Upstream gates this on a GrowthBook flag that defaults to off. Claudin
+  // has no flag service, so there is no gate: the feature is on.
 
   // Disable in non-interactive mode (print mode, piped input, SDK)
   if (getIsNonInteractiveSession()) {

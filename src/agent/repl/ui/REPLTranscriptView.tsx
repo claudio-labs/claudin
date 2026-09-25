@@ -66,7 +66,6 @@ export type REPLTranscriptViewProps = {
   titleIsAnimating: boolean
   terminalTitle: string
   titleDisabled: boolean
-  showStatusInTerminalTab: boolean
   globalKeybindingProps: Record<string, unknown>
   onSubmit: (...args: unknown[]) => unknown
   cancelRequestProps: Record<string, unknown>
@@ -128,7 +127,7 @@ export function REPLTranscriptView(props: REPLTranscriptViewProps): React.ReactN
   )
   const transcriptReturn = (
     <KeybindingSetup>
-      <AnimatedTerminalTitle isAnimating={props.titleIsAnimating} title={props.terminalTitle} disabled={props.titleDisabled} noPrefix={props.showStatusInTerminalTab} />
+      <AnimatedTerminalTitle isAnimating={props.titleIsAnimating} title={props.terminalTitle} disabled={props.titleDisabled} />
       <GlobalKeybindingHandlers {...(props.globalKeybindingProps as React.ComponentProps<typeof GlobalKeybindingHandlers>)} />
       <CommandKeybindingHandlers onSubmit={props.onSubmit as never} isActive={!props.toolJSX?.isLocalJSXCommand} />
       {transcriptScrollRef ?

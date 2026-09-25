@@ -12,7 +12,7 @@ const BANNED_PATTERNS = [
   'getKubernetesNamespace',
   '/var/run/secrets/kubernetes',
   '/proc/self/mountinfo',
-  'tengu_internal_record_permission_context',
+  '_internal_record_permission_context',
   'anthropic-serve',
   'infra.ant.dev',
   'claude-code-feedback',

@@ -137,7 +137,7 @@ export const loadPluginHooks = memoize(async (): Promise<void> => {
 
   // Clear-then-register as an atomic pair. Previously the clear lived in
   // clearPluginHookCache(), which meant any clearAllCaches() call (from
-  // /plugins UI, pluginInstallationHelpers, thinkback, etc.) wiped plugin
+  // /plugins UI, pluginInstallationHelpers, etc.) wiped plugin
   // hooks from STATE.registeredHooks and left them wiped until someone
   // happened to call loadPluginHooks() again. SessionStart explicitly awaits
   // loadPluginHooks() before firing so it always re-registered; Stop has no

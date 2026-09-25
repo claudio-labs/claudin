@@ -62,7 +62,6 @@ export {
   collectClearableCandidates,
   getClipFrontierIndex,
   isClipFrontierEnabled,
-  pruneContentReplacementState,
   pruneOldToolResults,
 } from 'src/agent/compact/stableStubState/clipFrontier.js'
 export { applyStableStubs } from 'src/agent/compact/stableStubState/applyStubs.js'

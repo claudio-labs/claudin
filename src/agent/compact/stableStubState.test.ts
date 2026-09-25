@@ -15,7 +15,6 @@ import {
   MAX_PINNED_RESULT_TOKENS,
   MAX_SHIELDED_PASSES,
   pinToolResult,
-  pruneContentReplacementState,
   pruneOldToolResults,
   pruneOrphanClippedIds,
   pruneStaleClippedIds,
@@ -929,147 +928,6 @@ describe('stubToolResultForDisplay', () => {
   })
 })
 
-describe('pruneContentReplacementState', () => {
-  function makeState(ids: string[], replacementIds: string[] = ids) {
-    return {
-      seenIds: new Set(ids),
-      replacements: new Map(replacementIds.map(id => [id, `[preview ${id}]`])),
-    }
-  }
-
-  test('removes seenIds for tool_use_ids no longer in messages', () => {
-    const msgs = [
-      assistantToolUse('keep-1', 'Bash'),
-      userToolResult('keep-1', 'output'),
-    ]
-    const state = makeState(['keep-1', 'gone-1', 'gone-2'])
-
-    pruneContentReplacementState(msgs, state)
-
-    expect(state.seenIds.has('keep-1')).toBe(true)
-    expect(state.seenIds.has('gone-1')).toBe(false)
-    expect(state.seenIds.has('gone-2')).toBe(false)
-  })
-
-  test('removes replacements for tool_use_ids no longer in messages', () => {
-    const msgs = [
-      assistantToolUse('keep-1', 'Bash'),
-      userToolResult('keep-1', 'output'),
-    ]
-    const state = makeState(['keep-1', 'gone-1'], ['keep-1', 'gone-1'])
-
-    pruneContentReplacementState(msgs, state)
-
-    expect(state.replacements.has('keep-1')).toBe(true)
-    expect(state.replacements.has('gone-1')).toBe(false)
-  })
-
-  test('detects live IDs from tool_result blocks (not just tool_use)', () => {
-    // Only tool_result message, no corresponding assistant tool_use
-    const msgs = [userToolResult('from-result', 'output')]
-    const state = makeState(['from-result', 'orphan'])
-
-    pruneContentReplacementState(msgs, state)
-
-    expect(state.seenIds.has('from-result')).toBe(true)
-    expect(state.seenIds.has('orphan')).toBe(false)
-  })
-
-  test('handles empty messages — removes everything', () => {
-    const state = makeState(['id-1', 'id-2'], ['id-1'])
-
-    pruneContentReplacementState([], state)
-
-    expect(state.seenIds.size).toBe(0)
-    expect(state.replacements.size).toBe(0)
-  })
-
-  test('no-op when all IDs are still present', () => {
-    const msgs = [
-      assistantToolUse('a', 'Bash'),
-      userToolResult('a', 'out'),
-      assistantToolUse('b', 'Grep'),
-      userToolResult('b', 'out'),
-    ]
-    const state = makeState(['a', 'b'], ['a', 'b'])
-    const seenBefore = state.seenIds.size
-    const replBefore = state.replacements.size
-
-    pruneContentReplacementState(msgs, state)
-
-    expect(state.seenIds.size).toBe(seenBefore)
-    expect(state.replacements.size).toBe(replBefore)
-  })
-
-  test('preserves object identity (mutates in-place)', () => {
-    const msgs = [assistantToolUse('keep', 'Bash')]
-    const state = makeState(['keep', 'gone'])
-    const originalSeenRef = state.seenIds
-    const originalReplRef = state.replacements
-
-    pruneContentReplacementState(msgs, state)
-
-    expect(state.seenIds).toBe(originalSeenRef)
-    expect(state.replacements).toBe(originalReplRef)
-  })
-
-  test('messages dropped from the array (compaction, rewind) → their state entries are pruned', () => {
-    // Build 300 tool pairs → 600 messages total
-    const msgs: Msg[] = []
-    for (let i = 0; i < 300; i++) {
-      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
-      msgs.push(userToolResult(`toolu_${i}`, 'output'))
-    }
-
-    // Simulate contentReplacementState tracking all 300 IDs
-    const state = makeState(
-      Array.from({ length: 300 }, (_, i) => `toolu_${i}`),
-      Array.from({ length: 300 }, (_, i) => `toolu_${i}`),
-    )
-    expect(state.seenIds.size).toBe(300)
-    expect(state.replacements.size).toBe(300)
-
-    // A compaction keeps only the last 200 messages (100 pairs)
-    const after = msgs.slice(-200)
-
-    // Prune orphaned state entries
-    pruneContentReplacementState(after, state)
-
-    // seenIds and replacements should only contain IDs still in the array
-    expect(state.seenIds.size).toBe(100)
-    expect(state.replacements.size).toBe(100)
-
-    // Every remaining ID should be present in the surviving messages
-    for (const id of state.seenIds) {
-      const inMessages = after.some(m => {
-        const content = (m as Msg).content as Block[] | undefined
-        return Array.isArray(content) && content.some(
-          b => (b as Block).tool_use_id === id || (b as Block).id === id,
-        )
-      })
-      expect(inMessages).toBe(true)
-    }
-  })
-
-  test('mixed messages: non-tool messages are ignored, tool IDs are pruned', () => {
-    const msgs: Msg[] = [
-      { role: 'user', content: [{ type: 'text', text: 'hello' }] },
-      assistantToolUse('a', 'Bash'),
-      userToolResult('a', 'out'),
-      { role: 'assistant', content: [{ type: 'text', text: 'done' }] },
-    ]
-    const state = makeState(['a', 'b', 'c'], ['a', 'b'])
-
-    pruneContentReplacementState(msgs, state)
-
-    expect(state.seenIds.has('a')).toBe(true)
-    expect(state.seenIds.has('b')).toBe(false)
-    expect(state.seenIds.has('c')).toBe(false)
-    expect(state.replacements.has('a')).toBe(true)
-    expect(state.replacements.has('b')).toBe(false)
-  })
-})
-
 // ---------------------------------------------------------------------------
 // Clip frontier (design doc: Clip-Frontier Cache Breakpoint, Phase 1)
 // ---------------------------------------------------------------------------
@@ -1560,7 +1418,7 @@ describe('getClipFrontierIndex — agePruneActive (retain profile)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Head-preserving stubs (openclaude mid-tier idea, single-mutation form)
+// Head-preserving stubs (mid-tier stub, single-mutation form)
 // ---------------------------------------------------------------------------
 
 describe('head-preserving stubs', () => {

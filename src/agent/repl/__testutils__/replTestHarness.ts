@@ -286,15 +286,6 @@ export function setupReplMocks(): void {
     () => ({ useLspInitializationNotification: noopHook }),
   )
   mock.module(
-    'src/plugins/hooks/useClaudeCodeHintRecommendation.js',
-    () => ({
-      useClaudeCodeHintRecommendation: () => ({
-        recommendation: null,
-        clearRecommendation: noop,
-      }),
-    }),
-  )
-  mock.module(
     'src/platform/notifications/usePluginInstallationStatus.js',
     () => ({ usePluginInstallationStatus: noopHook }),
   )

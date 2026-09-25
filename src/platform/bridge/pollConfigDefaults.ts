@@ -1,8 +1,7 @@
 /**
- * Bridge poll interval defaults. Extracted from pollConfig.ts so callers
- * that don't need live GrowthBook tuning (daemon via Agent SDK) can avoid
- * the growthbook.ts → config.ts → file.ts → sessionStorage.ts → commands.ts
- * transitive dependency chain.
+ * Bridge poll interval defaults. Kept apart from pollConfig.ts so callers
+ * (daemon via Agent SDK) can import them without anything else from the
+ * bridge.
  */
 
 /**
@@ -31,9 +30,7 @@ const POLL_INTERVAL_MS_AT_CAPACITY = 600_000
 
 /**
  * Multisession bridge (bridgeMain.ts) poll intervals. Defaults match the
- * single-session values so existing GrowthBook configs without these fields
- * preserve current behavior. Ops can tune these independently via the
- * tengu_bridge_poll_interval_config GB flag.
+ * single-session values.
  */
 const MULTISESSION_POLL_INTERVAL_MS_NOT_AT_CAPACITY =
   POLL_INTERVAL_MS_NOT_AT_CAPACITY

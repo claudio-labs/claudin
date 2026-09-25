@@ -1,11 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
-import { isKeybindingCustomizationEnabled } from 'src/terminal/keybindings/loadUserBindings.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { isFastModeAvailable, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { getNewlineInstructions } from 'src/terminal/prompt-input/utils.js';
 
@@ -107,16 +104,9 @@ export function PromptInputHelpMenu(props: Props) {
     t15 = $[15];
   }
   const externalEditorShortcut = t15;
-  const t16 = useShortcutDisplay("app:toggleTerminal", "Global", "meta+j");
-  let t17;
-  if ($[16] !== t16) {
-    t17 = formatShortcut(t16);
-    $[16] = t16;
-    $[17] = t17;
-  } else {
-    t17 = $[17];
-  }
-  const terminalShortcut = t17;
+  // Slots $[16]-$[17], $[20]-$[22] and $[60] held the TERMINAL_PANEL "for
+  // terminal" line, removed with that flag; they stay allocated so no index
+  // moves.
   const t18 = useShortcutDisplay("chat:imagePaste", "Chat", "ctrl+v");
   let t19;
   if ($[18] !== t18) {
@@ -135,16 +125,6 @@ export function PromptInputHelpMenu(props: Props) {
   // the same reason as effortShortcut above — the _c cache is a runtime no-op.
   const openDiffShortcut = formatShortcut(useShortcutDisplay("chat:openDiff", "Chat", "ctrl+g"));
   const openExplorerShortcut = formatShortcut(useShortcutDisplay("chat:openExplorer", "Chat", "ctrl+e"));
-  let t20;
-  if ($[20] !== dimColor || $[21] !== terminalShortcut) {
-    t20 = feature("TERMINAL_PANEL") ? getFeatureValue_CACHED_MAY_BE_STALE("tengu_terminal_panel", false) ? <Box><Text dimColor={dimColor}>{terminalShortcut} for terminal</Text></Box> : null : null;
-    $[20] = dimColor;
-    $[21] = terminalShortcut;
-    $[22] = t20;
-  } else {
-    t20 = $[22];
-  }
-  const terminalShortcutElement = t20;
   const t21 = fixedWidth ? 28 : undefined;
   let t22;
   if ($[23] !== dimColor) {
@@ -251,15 +231,14 @@ export function PromptInputHelpMenu(props: Props) {
     t34 = $[53];
   }
   let t35;
-  if ($[54] !== t28 || $[55] !== t29 || $[56] !== t30 || $[57] !== t31 || $[58] !== t32 || $[59] !== t34 || $[60] !== terminalShortcutElement) {
-    t35 = <Box flexDirection="column" width={t28}>{t29}{t30}{t31}{t32}{terminalShortcutElement}{t34}</Box>;
+  if ($[54] !== t28 || $[55] !== t29 || $[56] !== t30 || $[57] !== t31 || $[58] !== t32 || $[59] !== t34) {
+    t35 = <Box flexDirection="column" width={t28}>{t29}{t30}{t31}{t32}{t34}</Box>;
     $[54] = t28;
     $[55] = t29;
     $[56] = t30;
     $[57] = t31;
     $[58] = t32;
     $[59] = t34;
-    $[60] = terminalShortcutElement;
     $[61] = t35;
   } else {
     t35 = $[61];
@@ -328,7 +307,7 @@ export function PromptInputHelpMenu(props: Props) {
   }
   let t43;
   if ($[82] !== dimColor) {
-    t43 = isKeybindingCustomizationEnabled() && <Box><Text dimColor={dimColor}>/keybindings to customize</Text></Box>;
+    t43 = false;
     $[82] = dimColor;
     $[83] = t43;
   } else {

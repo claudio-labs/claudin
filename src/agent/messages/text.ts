@@ -5,8 +5,6 @@ import {
   COMMAND_ARGS_TAG,
   COMMAND_NAME_TAG,
 } from 'src/shared/constants/xml.js'
-import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type {
   Message,
   MessageOrigin,
@@ -16,23 +14,6 @@ import type {
 import type { DeepImmutable } from 'src/shared/types/utils.js'
 import { stripIdeContextTags } from 'src/shared/text/displayTags.js'
 import { escapeRegExp } from 'src/shared/text/stringUtils.js'
-
-const MEMORY_CORRECTION_HINT =
-  "\n\nNote: The user's next message may contain a correction or preference. Pay close attention — if they explain what went wrong or how they'd prefer you to work, consider saving that to memory for future sessions."
-
-/**
- * Appends a memory correction hint to a rejection/cancellation message
- * when auto-memory is enabled and the GrowthBook flag is on.
- */
-export function withMemoryCorrectionHint(message: string): string {
-  if (
-    isAutoMemoryEnabled() &&
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_prism', false)
-  ) {
-    return message + MEMORY_CORRECTION_HINT
-  }
-  return message
-}
 
 /**
  * Derive a short stable message ID (6-char base36 string) from a UUID.

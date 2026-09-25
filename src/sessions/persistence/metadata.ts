@@ -48,7 +48,6 @@ export async function saveCustomTitle(
  * - CAS semantics: VS Code's `onlyIfNoCustomTitle` check scans for the
  *   `customTitle` field only, so AI can overwrite its own previous AI
  *   title but never a user title.
- * - Metrics: `tengu_session_renamed` is not fired for AI titles.
  *
  * Because the entry is never re-appended, it scrolls out of the 64KB tail
  * window once enough messages accumulate. Readers (`readLiteMetadata` and

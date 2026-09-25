@@ -6,7 +6,7 @@ import { expect, mock, test } from 'bun:test'
  * throw — the listener must close it and drop its reference, or the browser
  * tab hangs on a request that never completes.
  *
- * These three cases used to be observed through the `tengu_oauth_*` analytics
+ * These three cases used to be observed through an OAuth analytics
  * event the method emitted. That event reached a function the build stubs to
  * an empty body, so it is gone, and the assertions now read the response and
  * the listener directly. That is the stronger observation: it pins what the

@@ -3,20 +3,13 @@
  *
  * CLIs and SDKs running under Claude Code can emit a self-closing
  * `<claude-code-hint />` tag to stderr (merged into stdout by the shell
- * tools). The harness scans tool output for these tags, strips them before
- * the output reaches the model, and surfaces an install prompt to the
- * user — no inference, no proactive execution.
- *
- * This file provides both the parser and a small module-level store for
- * the pending hint. The store is a single slot (not a queue) — we surface
- * at most one prompt per session, so there's no reason to accumulate.
- * React subscribes via useSyncExternalStore.
+ * tools). The harness scans tool output for these tags and strips them
+ * before the output reaches the model.
  *
  * See docs/claude-code-hints.md for the vendor-facing spec.
  */
 
 import { logForDebugging } from 'src/shared/debug.js'
-import { createSignal } from 'src/shared/signal.js'
 
 export type ClaudeCodeHintType = 'plugin'
 
@@ -132,55 +125,6 @@ function firstCommandToken(command: string): string {
   const spaceIdx = trimmed.search(/\s/)
   return spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx)
 }
-
-// ============================================================================
-// Pending-hint store (useSyncExternalStore interface)
-//
-// Single-slot: write wins if the slot is already full (a CLI that emits on
-// every invocation would otherwise pile up). The dialog is shown at most
-// once per session; after that, setPendingHint becomes a no-op.
-//
-// Callers should gate before writing (installed? already shown? cap hit?) —
-// see maybeRecordPluginHint in hintRecommendation.ts for the plugin-type
-// gate. This module stays plugin-agnostic so future hint types can reuse
-// the same store.
-// ============================================================================
-
-let pendingHint: ClaudeCodeHint | null = null
-let shownThisSession = false
-const pendingHintChanged = createSignal()
-const notify = pendingHintChanged.emit
-
-/** Raw store write. Callers should gate first (see module comment). */
-export function setPendingHint(hint: ClaudeCodeHint): void {
-  if (shownThisSession) return
-  pendingHint = hint
-  notify()
-}
-
-/** Clear the slot without flipping the session flag — for rejected hints. */
-export function clearPendingHint(): void {
-  if (pendingHint !== null) {
-    pendingHint = null
-    notify()
-  }
-}
-
-/** Flip the once-per-session flag. Call only when a dialog is actually shown. */
-export function markShownThisSession(): void {
-  shownThisSession = true
-}
-
-export const subscribeToPendingHint = pendingHintChanged.subscribe
-
-export function getPendingHintSnapshot(): ClaudeCodeHint | null {
-  return pendingHint
-}
-
-export function hasShownHintThisSession(): boolean {
-  return shownThisSession
-}
-
 
 export const _test = {
   parseAttrs,

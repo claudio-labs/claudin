@@ -30,7 +30,6 @@ import help from 'src/commands/help/index.js'
 import ide from 'src/commands/ide/index.js'
 import importCommand from 'src/commands/import/index.js'
 import init from 'src/commands/init.js'
-import keybindings from 'src/commands/keybindings/index.js'
 import installGitHubApp from 'src/commands/install-github-app/index.js'
 import installSlackApp from 'src/commands/install-slack-app/index.js'
 import cacheProbe from 'src/commands/cache-probe/index.js'
@@ -40,7 +39,7 @@ import mcp from 'src/commands/mcp/index.js'
 import releaseNotes from 'src/commands/release-notes/index.js'
 import rename from 'src/commands/rename/index.js'
 import resume from 'src/commands/resume/index.js'
-import review, { ultrareview } from 'src/commands/review.js'
+import review from 'src/commands/review.js'
 import session from 'src/commands/session/index.js'
 import skills from 'src/commands/skills/index.js'
 import status from 'src/commands/status/index.js'
@@ -80,8 +79,6 @@ const buddy = isBuddyEnabled()
     ).default
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
-import thinkback from 'src/commands/thinkback/index.js'
-import thinkbackPlay from 'src/commands/thinkback-play/index.js'
 import permissions from 'src/commands/permissions/index.js'
 import plan from 'src/commands/plan/index.js'
 import fast from 'src/commands/fast/index.js'
@@ -98,7 +95,6 @@ import heapDump from 'src/commands/heapdump/index.js'
 import wiki from 'src/commands/wiki/index.js'
 import sandboxToggle from 'src/commands/sandbox-toggle/index.js'
 import stickers from 'src/commands/stickers/index.js'
-import advisor from 'src/commands/advisor.js'
 import { logError } from 'src/shared/log.js'
 import { toError } from 'src/shared/errors.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -172,7 +168,6 @@ export { getCommandName, isCommandEnabled } from 'src/shared/types/command.js'
 // since underlying functions read from config, which can't be read at module initialization time
 const COMMANDS = memoize((): Command[] => [
   addDir,
-  advisor,
   agents,
   autoFix,
   autofixPr,
@@ -205,7 +200,6 @@ const COMMANDS = memoize((): Command[] => [
   ide,
   importCommand,
   init,
-  keybindings,
   installGitHubApp,
   installSlackApp,
   mcp,
@@ -227,7 +221,6 @@ const COMMANDS = memoize((): Command[] => [
   theme,
   feedback,
   review,
-  ultrareview,
   rewind,
   securityReview,
   terminalSetup,
@@ -237,8 +230,6 @@ const COMMANDS = memoize((): Command[] => [
   wiki,
   ...(buddy ? [buddy] : []),
   ...(bridge ? [bridge] : []),
-  thinkback,
-  thinkbackPlay,
   permissions,
   plan,
   hooks,
@@ -493,9 +484,8 @@ export const getSlashCommandToolSkills = memoize(
  * These only affect local TUI state and don't depend on local filesystem,
  * git, shell, IDE, MCP, or other local execution context.
  *
- * Used in two places:
- * 1. Pre-filtering commands in main.tsx before REPL renders (prevents race with CCR init)
- * 2. Preserving local-only commands in REPL's handleRemoteInit after CCR filters
+ * Used to preserve local-only commands in REPL's handleRemoteInit after CCR
+ * filters.
  */
 export const REMOTE_SAFE_COMMANDS: Set<Command> = new Set([
   session, // Shows QR code / URL for remote session
@@ -511,7 +501,6 @@ export const REMOTE_SAFE_COMMANDS: Set<Command> = new Set([
   btw, // Quick note
   feedback, // Send feedback
   plan, // Plan mode toggle
-  keybindings, // Keybinding management
   stickers, // Stickers
 ])
 
@@ -550,16 +539,6 @@ export function isBridgeSafeCommand(cmd: Command): boolean {
   if (cmd.type === 'local-jsx') return false
   if (cmd.type === 'prompt') return true
   return BRIDGE_SAFE_COMMANDS.has(cmd)
-}
-
-/**
- * Filter commands to only include those safe for remote mode.
- * Used to pre-filter commands when rendering the REPL in --remote mode,
- * preventing local-only commands from being briefly available before
- * the CCR init message arrives.
- */
-export function filterCommandsForRemoteMode(commands: Command[]): Command[] {
-  return commands.filter(cmd => REMOTE_SAFE_COMMANDS.has(cmd))
 }
 
 export function findCommand(

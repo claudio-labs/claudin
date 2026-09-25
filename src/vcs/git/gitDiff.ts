@@ -1,10 +1,8 @@
 import type { StructuredPatchHunk } from 'diff'
-import { access, readFile } from 'fs/promises'
-import { dirname, join, relative, sep } from 'path'
+import { access } from 'fs/promises'
+import { join } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { getCachedRepository } from 'src/vcs/git/detectRepository.js'
 import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
-import { isFileWithinReadSizeLimit } from 'src/shared/fs/file.js'
 import {
   findGitRoot,
   getDefaultBranch,
@@ -454,8 +452,6 @@ export function parseShortstat(stdout: string): GitDiffStats | null {
   }
 }
 
-const SINGLE_FILE_DIFF_TIMEOUT_MS = 3000
-
 /** Short leash: this runs on a footer poll, so a slow repo must not pile up. */
 const SHORTSTAT_TIMEOUT_MS = 2000
 
@@ -523,8 +519,8 @@ export async function fetchDiffStatSummary(): Promise<DiffStatSummary> {
   const gitRoot = findGitRoot(getCwd())
   if (!gitRoot) return EMPTY_DIFF_STAT_SUMMARY
 
-  // Same base resolution as the /diff reviewer (getDiffRef), so the footer and
-  // the reviewer never disagree about what "the branch" means.
+  // The branch base: CLAUDIN_BASE_REF when set externally, else the default
+  // branch.
   const base = process.env.CLAUDIN_BASE_REF || (await getDefaultBranch())
   const [head, mergeBase] = await Promise.all([
     getHead(),
@@ -555,152 +551,4 @@ export async function fetchDiffStatSummary(): Promise<DiffStatSummary> {
   return scope.kind === 'branch'
     ? { uncommitted: null, branch: stats, branchBase: scope.base }
     : { uncommitted: stats, branch: null, branchBase: null }
-}
-
-export type ToolUseDiff = {
-  filename: string
-  status: 'modified' | 'added'
-  additions: number
-  deletions: number
-  changes: number
-  patch: string
-  /** GitHub "owner/repo" when available (null for non-github.com or unknown repos) */
-  repository: string | null
-}
-
-/**
- * Fetch a structured diff for a single file against the merge base with the
- * default branch. This produces a PR-like diff showing all changes since
- * the branch diverged. Falls back to diffing against HEAD if the merge base
- * cannot be determined (e.g., on the default branch itself).
- * For untracked files, generates a synthetic diff showing all additions.
- * Returns null if not in a git repo or if git commands fail.
- */
-export async function fetchSingleFileGitDiff(
-  absoluteFilePath: string,
-): Promise<ToolUseDiff | null> {
-  const gitRoot = findGitRoot(dirname(absoluteFilePath))
-  if (!gitRoot) return null
-
-  const gitPath = relative(gitRoot, absoluteFilePath).split(sep).join('/')
-  const repository = getCachedRepository()
-
-  // Check if the file is tracked by git
-  const { code: lsFilesCode } = await execFileNoThrowWithCwd(
-    gitExe(),
-    ['--no-optional-locks', 'ls-files', '--error-unmatch', gitPath],
-    { cwd: gitRoot, timeout: SINGLE_FILE_DIFF_TIMEOUT_MS },
-  )
-
-  if (lsFilesCode === 0) {
-    // File is tracked - diff against merge base for PR-like view
-    const diffRef = await getDiffRef(gitRoot)
-    const { stdout, code } = await execFileNoThrowWithCwd(
-      gitExe(),
-      ['--no-optional-locks', 'diff', diffRef, '--', gitPath],
-      { cwd: gitRoot, timeout: SINGLE_FILE_DIFF_TIMEOUT_MS },
-    )
-    if (code !== 0) return null
-    if (!stdout) return null
-    return {
-      ...parseRawDiffToToolUseDiff(gitPath, stdout, 'modified'),
-      repository,
-    }
-  }
-
-  // File is untracked - generate synthetic diff
-  const syntheticDiff = await generateSyntheticDiff(gitPath, absoluteFilePath)
-  if (!syntheticDiff) return null
-  return { ...syntheticDiff, repository }
-}
-
-/**
- * Parse raw unified diff output into the structured ToolUseDiff format.
- * Extracts only the hunk content (starting from @@) as the patch,
- * and counts additions/deletions.
- */
-function parseRawDiffToToolUseDiff(
-  filename: string,
-  rawDiff: string,
-  status: 'modified' | 'added',
-): Omit<ToolUseDiff, 'repository'> {
-  const lines = rawDiff.split('\n')
-  const patchLines: string[] = []
-  let inHunks = false
-  let additions = 0
-  let deletions = 0
-
-  for (const line of lines) {
-    if (line.startsWith('@@')) {
-      inHunks = true
-    }
-    if (inHunks) {
-      patchLines.push(line)
-      if (line.startsWith('+') && !line.startsWith('+++')) {
-        additions++
-      } else if (line.startsWith('-') && !line.startsWith('---')) {
-        deletions++
-      }
-    }
-  }
-
-  return {
-    filename,
-    status,
-    additions,
-    deletions,
-    changes: additions + deletions,
-    patch: patchLines.join('\n'),
-  }
-}
-
-/**
- * Determine the best ref to diff against for a PR-like diff.
- * Priority:
- * 1. CLAUDIN_BASE_REF env var (set externally, e.g. by CCR managed containers)
- * 2. Merge base with the default branch (best guess)
- * 3. HEAD (fallback if merge-base fails)
- */
-async function getDiffRef(gitRoot: string): Promise<string> {
-  const baseBranch =
-    process.env.CLAUDIN_BASE_REF || (await getDefaultBranch())
-  const { stdout, code } = await execFileNoThrowWithCwd(
-    gitExe(),
-    ['--no-optional-locks', 'merge-base', 'HEAD', baseBranch],
-    { cwd: gitRoot, timeout: SINGLE_FILE_DIFF_TIMEOUT_MS },
-  )
-  if (code === 0 && stdout.trim()) {
-    return stdout.trim()
-  }
-  return 'HEAD'
-}
-
-async function generateSyntheticDiff(
-  gitPath: string,
-  absoluteFilePath: string,
-): Promise<Omit<ToolUseDiff, 'repository'> | null> {
-  try {
-    if (!isFileWithinReadSizeLimit(absoluteFilePath, MAX_DIFF_SIZE_BYTES)) {
-      return null
-    }
-    const content = await readFile(absoluteFilePath, 'utf-8')
-    const lines = content.split('\n')
-    // Remove trailing empty line from split if file ends with newline
-    if (lines.length > 0 && lines.at(-1) === '') {
-      lines.pop()
-    }
-    const lineCount = lines.length
-    const addedLines = lines.map(line => `+${line}`).join('\n')
-    const patch = `@@ -0,0 +1,${lineCount} @@\n${addedLines}`
-    return {
-      filename: gitPath,
-      status: 'added',
-      additions: lineCount,
-      deletions: 0,
-      changes: lineCount,
-      patch,
-    }
-  } catch {
-    return null
-  }
 }

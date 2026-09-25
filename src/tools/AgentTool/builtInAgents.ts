@@ -1,6 +1,5 @@
 import { feature } from 'bun:bundle'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
 import {
@@ -15,10 +14,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 export function isPlanAgentEnabled(): boolean {
   if (feature('BUILTIN_PLAN_AGENT')) {
-    // 3P default: true — Bedrock/Vertex keep the agent enabled (matches
-    // pre-experiment external behavior). A/B test treatment sets false to
-    // measure impact of removal.
-    return getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_stoat', true)
+    return true
   }
   return false
 }

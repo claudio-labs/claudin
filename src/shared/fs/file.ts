@@ -12,7 +12,6 @@ import {
   resolve,
   sep,
 } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isENOENT, isFsInaccessible } from 'src/shared/errors.js'
@@ -267,25 +266,9 @@ export async function suggestPathUnderCwd(
 }
 
 /**
- * Whether to use the compact line-number prefix format (`N→` instead of
- * `     N→`). The padded-arrow format costs 9 bytes/line overhead; at
- * 1.35B Read calls × 132 lines avg this is 2.18% of fleet uncached input
- * (bq-queries/read_line_prefix_overhead_verify.sql).
- *
- * Ant soak validated no Edit error regression (6.29% vs 6.86% baseline).
- * Killswitch pattern: GB can disable if issues surface externally.
- */
-export function isCompactLinePrefixEnabled(): boolean {
-  // 3P default: killswitch off = compact format enabled. Client-side only —
-  // no server support needed, safe for Bedrock/Vertex/Foundry.
-  return !getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_compact_line_prefix_killswitch',
-    false,
-  )
-}
-
-/**
- * Adds cat -n style line numbers to the content.
+ * Adds line numbers to the content in the compact `N→` format (not the
+ * padded `     N→`, which costs 9 bytes/line). Client-side only — no server
+ * support needed, safe for Bedrock/Vertex/Foundry.
  */
 export function addLineNumbers({
   content,
@@ -301,20 +284,8 @@ export function addLineNumbers({
 
   const lines = content.split(/\r?\n/)
 
-  if (isCompactLinePrefixEnabled()) {
-    return lines
-      .map((line, index) => `${index + startLine}→${line}`)
-      .join('\n')
-  }
-
   return lines
-    .map((line, index) => {
-      const numStr = String(index + startLine)
-      if (numStr.length >= 6) {
-        return `${numStr}→${line}`
-      }
-      return `${numStr.padStart(6, ' ')}→${line}`
-    })
+    .map((line, index) => `${index + startLine}→${line}`)
     .join('\n')
 }
 

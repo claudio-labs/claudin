@@ -80,15 +80,12 @@ export interface UseToolUseContextDeps {
   // --- refs
   messagesRef: React.RefObject<MessageType[]>;
   readFileState: React.RefObject<ReturnType<typeof import('src/shared/fs/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
-  discoveredSkillNamesRef: React.RefObject<Set<string>>;
   loadedNestedMemoryPathsRef: React.RefObject<Set<string>>;
-  contentReplacementStateRef: { current: ReturnType<typeof import('src/agent/tools/toolResultStorage.js').provisionContentReplacementState> };
   hasInterruptibleToolInProgressRef: React.RefObject<boolean>;
   // --- callbacks handed through into the context
   resume: (sessionId: `${string}-${string}-${string}-${string}-${string}`, log: LogOption, entrypoint: ResumeEntrypoint) => Promise<void>;
   reverify: () => void;
   onChangeDynamicMcpConfig: (config: Record<string, ScopedMcpServerConfig>) => void;
-  syncToolResultReplacements: (replacements: ReadonlyMap<string, string>) => void;
   addNotification: ReturnType<typeof import('src/terminal/contexts/notifications.js').useNotifications>['addNotification'];
   setToolJSX: (args: {
     jsx: React.ReactNode | null;
@@ -145,14 +142,11 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
     store,
     messagesRef,
     readFileState,
-    discoveredSkillNamesRef,
     loadedNestedMemoryPathsRef,
-    contentReplacementStateRef,
     hasInterruptibleToolInProgressRef,
     resume,
     reverify,
     onChangeDynamicMcpConfig,
-    syncToolResultReplacements,
     addNotification,
     setToolJSX,
     setAppState,
@@ -308,7 +302,6 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
       nestedMemoryAttachmentTriggers: new Set<string>(),
       loadedNestedMemoryPaths: loadedNestedMemoryPathsRef.current,
       dynamicSkillDirTriggers: new Set<string>(),
-      discoveredSkillNames: discoveredSkillNamesRef.current,
       setResponseLength,
       pushApiMetricsEntry: undefined,
       setStreamMode,
@@ -336,10 +329,8 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
       resume,
       setConversationId,
       requestPrompt: feature('HOOK_PROMPTS') ? requestPrompt : undefined,
-      contentReplacementState: contentReplacementStateRef.current,
-      syncToolResultReplacements
     };
-  }, [commands, combinedInitialTools, mainThreadAgentDefinition, debug, initialMcpClients, ideInstallationStatus, dynamicMcpConfig, theme, allowedAgentTypes, store, setAppState, reverify, addNotification, setMessages, onChangeDynamicMcpConfig, resume, requestPrompt, disabled, customSystemPrompt, appendSystemPrompt, setConversationId, syncToolResultReplacements]);
+  }, [commands, combinedInitialTools, mainThreadAgentDefinition, debug, initialMcpClients, ideInstallationStatus, dynamicMcpConfig, theme, allowedAgentTypes, store, setAppState, reverify, addNotification, setMessages, onChangeDynamicMcpConfig, resume, requestPrompt, disabled, customSystemPrompt, appendSystemPrompt, setConversationId]);
 
   // Session backgrounding (Ctrl+B to background/foreground)
   const handleBackgroundQuery = useCallback(() => {

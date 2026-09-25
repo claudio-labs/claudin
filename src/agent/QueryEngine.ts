@@ -218,12 +218,6 @@ export class QueryEngine {
   private totalUsage: NonNullableUsage
   private hasHandledOrphanedPermission = false
   private readFileState: FileStateCache
-  // Turn-scoped skill discovery tracking (feeds was_discovered on
-  // tengu_skill_tool_invocation). Must persist across the two
-  // processUserInputContext rebuilds inside submitMessage, but is cleared
-  // at the start of each submitMessage to avoid unbounded growth across
-  // many turns in SDK mode.
-  private discoveredSkillNames = new Set<string>()
   private loadedNestedMemoryPaths: Set<string>
 
   constructor(config: QueryEngineConfig) {
@@ -266,8 +260,6 @@ export class QueryEngine {
       setSDKStatus,
       orphanedPermission,
     } = this.config
-
-    this.discoveredSkillNames.clear()
 
     // Free RSS held by tool_result blocks the wire path has been emitting as
     // stubs since the size-based microcompact trigger fired. applyStableStubs
@@ -416,7 +408,6 @@ export class QueryEngine {
       nestedMemoryAttachmentTriggers: new Set<string>(),
       loadedNestedMemoryPaths: this.loadedNestedMemoryPaths,
       dynamicSkillDirTriggers: new Set<string>(),
-      discoveredSkillNames: this.discoveredSkillNames,
       setInProgressToolUseIDs: () => {},
       setResponseLength: () => {},
       updateFileHistoryState: (
@@ -565,7 +556,6 @@ export class QueryEngine {
       nestedMemoryAttachmentTriggers: new Set<string>(),
       loadedNestedMemoryPaths: this.loadedNestedMemoryPaths,
       dynamicSkillDirTriggers: new Set<string>(),
-      discoveredSkillNames: this.discoveredSkillNames,
       setInProgressToolUseIDs: () => {},
       setResponseLength: () => {},
       updateFileHistoryState: processUserInputContext.updateFileHistoryState,

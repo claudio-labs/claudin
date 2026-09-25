@@ -24,20 +24,17 @@ import {
 } from 'src/sessions/resume/chain.js'
 import { loadTranscriptFile } from 'src/sessions/resume/transcriptLoad.js'
 import { getAgentTranscriptPath, getProjectDir } from 'src/sessions/pure/paths.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 
 /**
  * Get the transcript for a specific agent
  */
 export async function getAgentTranscript(agentId: AgentId): Promise<{
   messages: Message[]
-  contentReplacements: ContentReplacementRecord[]
 } | null> {
   const agentFile = getAgentTranscriptPath(agentId)
 
   try {
-    const { messages, agentContentReplacements } =
-      await loadTranscriptFile(agentFile)
+    const { messages } = await loadTranscriptFile(agentFile)
 
     // Find messages with matching agentId
     const agentMessages = Array.from(messages.values()).filter(
@@ -70,7 +67,6 @@ export async function getAgentTranscript(agentId: AgentId): Promise<{
       messages: agentTranscript.map(
         ({ isSidechain, parentUuid, ...msg }) => msg,
       ),
-      contentReplacements: agentContentReplacements.get(agentId) ?? [],
     }
   } catch {
     return null

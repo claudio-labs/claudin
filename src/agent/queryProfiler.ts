@@ -12,7 +12,7 @@
  * - query_fn_entry: Entry to query() function
  * - query_microcompact_start/end: Microcompaction of messages
  * - query_autocompact_start/end: Autocompaction check
- * - query_setup_start/end: StreamingToolExecutor and model setup
+ * - query_setup_start/end: Model setup
  * - query_api_loop_start: Start of API retry loop
  * - query_api_streaming_start: Start of streaming API call
  * - query_tool_schema_build_start/end: Building tool schemas

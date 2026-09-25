@@ -56,7 +56,6 @@ export async function runContinueBranch(deps: ContinueBranchDeps): Promise<void>
       mainThreadAgentDefinition: (loaded.restoredAgentDef ?? mainThreadAgentDefinitionRef.current) as AgentDefinition | undefined,
       initialMessages: loaded.messages,
       initialFileHistorySnapshots: loaded.fileHistorySnapshots,
-      initialContentReplacements: loaded.contentReplacements,
       initialAgentName: loaded.agentName,
       initialAgentColor: loaded.agentColor,
     } as Parameters<typeof launchRepl>[2], renderAndRun);

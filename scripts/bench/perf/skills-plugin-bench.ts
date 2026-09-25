@@ -8,8 +8,8 @@
 // measures the per-skill memory footprint after parse + retention.
 //
 // Two modes:
-//   default   → uses the real loadSkillsFromSkillsDir path (with mock.module
-//               for heavy upstream deps) against a synthetic fixture
+//   default   → uses the real frontmatter parser (the one
+//               loadSkillsFromSkillsDir uses) against a synthetic fixture
 //               directory of N skills.
 //   raw       → just parses frontmatter + reads markdown content into a
 //               plain array, isolating the parse/retain cost from the
@@ -141,36 +141,6 @@ async function runRaw(skills: number, bodyKb: number) {
 
 // ---- Mode: default (real loader) ----
 async function runReal(skills: number, bodyKb: number) {
-  // Mock heavy deps so we don't pull analytics/growthbook/etc.
-  const { mock } = await import('bun:test')
-  mock.module('../../../src/platform/analytics/growthbook.js', () => ({
-    getFeatureValue_CACHED_MAY_BE_STALE: () => false,
-    getFeatureValue_CACHED_WITH_REFRESH: () => false,
-    getFeatureValue_DEPRECATED: async () => false,
-    checkStatsigFeatureGate_CACHED_MAY_BE_STALE: () => false,
-    checkGate_CACHED_OR_BLOCKING: async () => false,
-    checkSecurityRestrictionGate: async () => false,
-    hasGrowthBookEnvOverride: () => false,
-    getApiBaseUrlHost: () => undefined,
-    onGrowthBookRefresh: () => () => {},
-    refreshGrowthBookAfterAuthChange: () => {},
-    resetGrowthBook: () => {},
-    refreshGrowthBookFeatures: async () => {},
-    setupPeriodicGrowthBookRefresh: () => {},
-    stopPeriodicGrowthBookRefresh: () => {},
-    getDynamicConfig_BLOCKS_ON_INIT: async () => ({}),
-    getDynamicConfig_CACHED_MAY_BE_STALE: () => ({}),
-    initializeGrowthBook: async () => null,
-    getAllGrowthBookFeatures: () => ({}),
-  }))
-  mock.module('../../../src/platform/analytics/index.js', () => ({
-    logEvent: () => {},
-    logEventAsync: async () => {},
-    attachAnalyticsSink: () => {},
-    stripProtoFields: <V,>(v: V) => v,
-    _resetForTesting: () => {},
-  }))
-
   const root = join(tmpdir(), `claudin-skills-bench-real-${process.pid}`)
   makeFixture(root, skills, bodyKb)
 

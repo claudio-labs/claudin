@@ -10,7 +10,6 @@
  */
 
 import { stat, unlink } from 'fs/promises'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { type FilesApiConfig, uploadFile } from 'src/providers/transport/filesApi.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -18,7 +17,6 @@ import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { findGitRoot, gitExe } from 'src/vcs/git/git.js'
 import { generateTempFilePath } from 'src/shared/fs/tempfile.js'
 
-// Tunable via tengu_ccr_bundle_max_bytes.
 const DEFAULT_BUNDLE_MAX_BYTES = 100 * 1024 * 1024
 
 type BundleScope = 'all' | 'head' | 'squashed'
@@ -208,16 +206,10 @@ export async function createAndUploadGitBundle(
 
   // git leaves a partial file on nonzero exit (e.g. empty-repo 128).
   try {
-    const maxBytes =
-      getFeatureValue_CACHED_MAY_BE_STALE<number | null>(
-        'tengu_ccr_bundle_max_bytes',
-        null,
-      ) ?? DEFAULT_BUNDLE_MAX_BYTES
-
     const bundle = await _bundleWithFallback(
       gitRoot,
       bundlePath,
-      maxBytes,
+      DEFAULT_BUNDLE_MAX_BYTES,
       hasWip,
       opts?.signal,
     )

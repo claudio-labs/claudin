@@ -32,7 +32,6 @@ import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import type { MCPServerConnection } from 'src/mcp/types.js';
 import type { useAppStateStore } from 'src/terminal/state/AppState.js';
-import type { provisionContentReplacementState } from 'src/agent/tools/toolResultStorage.js';
 import { feature } from 'bun:bundle';
 import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount } from 'src/platform/bootstrap/state.js';
 import { parseTokenBudget } from 'src/agent/context/tokenBudget.js';
@@ -64,14 +63,14 @@ import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardi
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage } from 'src/sessions/sessionStorage.js';
-import { applyStableStubs, pruneOldToolResults, pruneContentReplacementState, stubToolResultForDisplay, type AnyMessage } from 'src/agent/compact/stableStubState.js';
+import { applyStableStubs, pruneOldToolResults, stubToolResultForDisplay, type AnyMessage } from 'src/agent/compact/stableStubState.js';
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
 import { enqueue, type SetAppState, getCommandQueueLength } from 'src/agent/messageQueueManager.js';
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js';
 import type { EffortValue } from 'src/providers/effort/effort.js';
-import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
+import { checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
 
@@ -123,7 +122,6 @@ export interface UseOnQueryDeps {
   inputValueRef: React.RefObject<string>;
   restoreMessageSyncRef: React.RefObject<(m: UserMessage) => void>;
   sendBridgeResultRef: React.RefObject<() => void>;
-  contentReplacementStateRef: { current: ReturnType<typeof provisionContentReplacementState> };
   responseLengthRef: React.RefObject<number>;
   apiMetricsRef: React.RefObject<Array<{
     ttftMs: number;
@@ -136,7 +134,6 @@ export interface UseOnQueryDeps {
   totalPausedMsRef: React.RefObject<number>;
   swarmStartTimeRef: React.RefObject<number | null>;
   swarmBudgetInfoRef: React.RefObject<{ tokens: number; limit: number; nudges: number } | undefined>;
-  skipIdleCheckRef: React.RefObject<boolean>;
   // --- setters
   setMessages: (action: React.SetStateAction<MessageType[]>) => void;
   setAppState: SetAppState;
@@ -186,14 +183,12 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     inputValueRef,
     restoreMessageSyncRef,
     sendBridgeResultRef,
-    contentReplacementStateRef,
     responseLengthRef,
     apiMetricsRef,
     loadingStartTimeRef,
     totalPausedMsRef,
     swarmStartTimeRef,
     swarmBudgetInfoRef,
-    skipIdleCheckRef,
     setMessages,
     setAppState,
     setAbortController,
@@ -301,9 +296,9 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     void maybeMarkProjectOnboardingComplete();
 
     // Extract a session title from the first real user message. One-shot
-    // via ref (was tengu_birch_mist experiment: first-message-only to save
-    // Haiku calls). The ref replaces the old `messages.length <= 1` check,
-    // which was broken by SessionStart hook messages (prepended via
+    // via ref (first message only, to save Haiku calls). The ref replaces
+    // the old `messages.length <= 1` check, which was broken by
+    // SessionStart hook messages (prepended via
     // useDeferredHookMessages) and attachment messages (appended by
     // processTextPrompt) — both pushed length past 1 on turn one, so the
     // title silently fell through to the "Claude Code" default.
@@ -380,11 +375,10 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       });
     }
     queryCheckpoint('query_context_loading_start');
-    const [, , defaultSystemPrompt, baseUserContext, systemContext] = await Promise.all([
+    const [, defaultSystemPrompt, baseUserContext, systemContext] = await Promise.all([
       // IMPORTANT: do this after setMessages() above, to avoid UI jank
-      checkAndDisableBypassPermissionsIfNeeded(toolPermissionContext, setAppState),
-      // Gated on TRANSCRIPT_CLASSIFIER so GrowthBook kill switch runs wherever auto mode is built in
-      feature('TRANSCRIPT_CLASSIFIER') ? checkAndDisableAutoModeIfNeeded(toolPermissionContext, setAppState, store.getState().fastMode) : undefined, getSystemPrompt(freshTools, mainLoopModelParam, Array.from(toolPermissionContext.additionalWorkingDirectories.keys()), freshMcpClients), getUserContext(), getSystemContext()]);
+      // Gated on TRANSCRIPT_CLASSIFIER so the auto-mode gate check runs wherever auto mode is built in
+      feature('TRANSCRIPT_CLASSIFIER') ? checkAndDisableAutoModeIfNeeded(toolPermissionContext, setAppState) : undefined, getSystemPrompt(freshTools, mainLoopModelParam, Array.from(toolPermissionContext.additionalWorkingDirectories.keys()), freshMcpClients), getUserContext(), getSystemContext()]);
     const userContext = {
       ...baseUserContext,
       ...getCoordinatorUserContext(freshMcpClients, isScratchpadEnabled() ? getScratchpadDir() : undefined),
@@ -431,19 +425,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     const after = applyStableStubs(aged)
     if (after !== before) {
       setMessages(() => after as MessageType[])
-    }
-    // Prune orphaned contentReplacementState entries for IDs no longer
-    // in the display array. Run unconditionally — orphans can accumulate
-    // even when `after === before` (text-only turns, /compact, rewind,
-    // resume). pruneContentReplacementState is idempotent and O(N) over
-    // the display array plus the state Map, so the cost is microseconds
-    // per turn. Without this, seenIds and replacements grow monotonically
-    // — dropped messages' preview strings (~2KB each) are never looked up
-    // again but never freed.
-    // provisionContentReplacementState returns undefined when the
-    // content-replacement feature flag is off — nothing to prune then.
-    if (contentReplacementStateRef.current) {
-      pruneContentReplacementState(after, contentReplacementStateRef.current)
     }
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {
@@ -542,7 +523,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
         // stale finally can't double-count.
         markTurnEnd();
         setLastQueryCompletionTime(Date.now());
-        skipIdleCheckRef.current = false;
         // Always reset loading state in finally - this ensures cleanup even
         // if onQueryImpl throws. onTurnComplete is called separately in
         // onQueryImpl only on successful completion.

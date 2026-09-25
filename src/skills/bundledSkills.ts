@@ -48,7 +48,6 @@ const bundledSkills: Command[] = []
  * Call this at module initialization or in an init function.
  *
  * Bundled skills are compiled into the CLI binary and available to all users.
- * They follow the same pattern as registerPostSamplingHook() for internal features.
  */
 export function registerBundledSkill(definition: BundledSkillDefinition): void {
   const { files } = definition

@@ -1,4 +1,3 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
@@ -25,23 +24,11 @@ export type ClientSideInstruction = {
 }
 
 /**
- * True → announce MCP server instructions via persisted delta attachments.
- * False → prompts.ts keeps its DANGEROUS_uncachedSystemPromptSection
- * (rebuilt every turn; cache-busts on late connect).
- *
- * Flip it by naming the gate key in ~/.claudin/feature-flags.json; the
- * CLAUDIN_MCP_INSTR_DELTA env override that used to shadow it was testing
- * scaffolding with no caller and is gone.
- */
-export function isMcpInstructionsDeltaEnabled(): boolean {
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_basalt_3kr', true)
-}
-
-/**
  * Diff the current set of connected MCP servers that have instructions
  * (server-authored via InitializeResult, or client-side synthesized)
- * against what's already been announced in this conversation. Null if
- * nothing changed.
+ * against what's already been announced in this conversation. MCP server
+ * instructions reach the model only this way, as persisted delta
+ * attachments, never through the system prompt. Null if nothing changed.
  *
  * Instructions are immutable for the life of a connection (set once at
  * handshake), so the scan diffs on server NAME, not on content.

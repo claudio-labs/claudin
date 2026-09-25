@@ -40,7 +40,6 @@ import { getUserMsgOptIn, setUserMsgOptIn } from 'src/platform/bootstrap/state.j
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/agent/outputStyles/outputStyles.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands/commands.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { getCliTeammateModeOverride, clearCliTeammateModeOverride } from 'src/agent/coordinator/swarm/backends/teammateModeSnapshot.js';
 import { getHardcodedTeammateModelFallback } from 'src/agent/coordinator/swarm/teammateModel.js';
@@ -614,22 +613,7 @@ export function Config({
         terminalProgressBarEnabled
       });
     }
-  }, ...(getFeatureValue_CACHED_MAY_BE_STALE('tengu_terminal_sidebar', false) ? [{
-    id: 'showStatusInTerminalTab',
-    label: 'Show status in terminal tab',
-    value: globalConfig.showStatusInTerminalTab ?? false,
-    type: 'boolean' as const,
-    onChange(showStatusInTerminalTab: boolean) {
-      saveGlobalConfig(current_4 => ({
-        ...current_4,
-        showStatusInTerminalTab
-      }));
-      setGlobalConfig({
-        ...getGlobalConfig(),
-        showStatusInTerminalTab
-      });
-    }
-  }] : []), {
+  }, {
     id: 'showTurnDuration',
     label: 'Show turn duration',
     value: globalConfig.showTurnDuration,
@@ -1264,9 +1248,6 @@ export function Config({
     }
     if (globalConfig.terminalProgressBarEnabled !== initialConfig.current.terminalProgressBarEnabled) {
       formattedChanges.push(`${globalConfig.terminalProgressBarEnabled ? 'Enabled' : 'Disabled'} terminal progress bar`);
-    }
-    if (globalConfig.showStatusInTerminalTab !== initialConfig.current.showStatusInTerminalTab) {
-      formattedChanges.push(`${globalConfig.showStatusInTerminalTab ? 'Enabled' : 'Disabled'} terminal tab status`);
     }
     if (globalConfig.showTurnDuration !== initialConfig.current.showTurnDuration) {
       formattedChanges.push(`${globalConfig.showTurnDuration ? 'Enabled' : 'Disabled'} turn duration`);

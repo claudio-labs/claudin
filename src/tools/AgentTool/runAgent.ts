@@ -15,7 +15,6 @@ import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { cleanupAgentTracking } from 'src/providers/cache/promptCacheBreakDetection.js'
 import {
   connectToServer,
@@ -83,7 +82,6 @@ import {
   asSystemPrompt,
   type SystemPrompt,
 } from 'src/agent/systemPromptType.js'
-import type { ContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import { hintGc } from 'src/shared/proc/gc.js'
 import {
@@ -272,7 +270,6 @@ export async function* runAgent({
   availableTools,
   allowedTools,
   onCacheSafeParams,
-  contentReplacementState,
   useExactTools,
   worktreePath,
   description,
@@ -319,10 +316,6 @@ export async function* runAgent({
    * system prompt, context, and tools. Used by background summarization to fork
    * the agent's conversation for periodic progress summaries. */
   onCacheSafeParams?: (params: CacheSafeParams) => void
-  /** Replacement state reconstructed from a resumed sidechain transcript so
-   * the same tool results are re-replaced (prompt cache stability). When
-   * omitted, createSubagentContext clones the parent's state. */
-  contentReplacementState?: ContentReplacementState
   /** When true, use availableTools directly without filtering through
    * resolveAgentTools(). Also inherits the parent's thinkingConfig and
    * isNonInteractiveSession instead of overriding them. Used by the fork
@@ -435,11 +428,8 @@ export async function* runAgent({
   // Read-only agents (Plan) don't act on commit/PR/lint rules from
   // CLAUDE.md — the main agent has full context and interprets their output.
   // Explicit override.userContext from callers is preserved untouched.
-  // Kill-switch defaults true; flip tengu_slim_subagent_claudemd=false to revert.
   const shouldOmitClaudeMd =
-    agentDefinition.omitClaudeMd &&
-    !override?.userContext &&
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slim_subagent_claudemd', true)
+    agentDefinition.omitClaudeMd && !override?.userContext
   const { claudeMd: _omittedClaudeMd, ...userContextNoClaudeMd } =
     baseUserContext
   const resolvedUserContext = shouldOmitClaudeMd
@@ -806,7 +796,6 @@ export async function* runAgent({
     shareSetResponseLength: true, // Both sync and async contribute to response metrics
     criticalSystemReminder_EXPERIMENTAL:
       agentDefinition.criticalSystemReminder_EXPERIMENTAL,
-    contentReplacementState,
     // Mirror the userContext/systemContext omissions into the attachment
     // pipeline — claude_md_delta / nested_memory / git_status_delta read
     // global state and would re-inject the stripped content otherwise.

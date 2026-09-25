@@ -10,7 +10,7 @@
     "src/tools/shared/outputFilter/Bash/reductionFloors.test.ts",
     "scripts/build/feature-flags-source-guard.test.ts",
     "scripts/bench/tokens/measure-tool-schemas.test.ts",
-    "src/platform/analytics/growthbook.test.ts",
+    "src/__tests__/upstreamCodename.test.ts",
     "scripts/verify/pr-intent-scan.test.ts"
   ],
   "capturedAt": "2026-09-20"

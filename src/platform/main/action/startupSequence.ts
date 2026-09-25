@@ -21,7 +21,6 @@ import { getSubscriptionType } from 'src/providers/auth/auth.js';
 import { getRemoteControlAtStartup, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { isBareMode } from 'src/shared/envUtils.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { checkQuotaStatus } from 'src/providers/claudeAiLimits.js';
 import { fetchBootstrapData } from 'src/providers/transport/bootstrap.js';
 import { isLspGloballyEnabled } from 'src/platform/lsp/userSettings.js';
@@ -29,7 +28,6 @@ import { initializeLspServerManager } from 'src/platform/lsp/manager.js';
 import { prefetchAllMcpResources } from 'src/mcp/client.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
-import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { logError } from 'src/shared/log.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/sessions/concurrentSessions.js';
@@ -125,9 +123,7 @@ export async function runPostHeadlessGuards(
   // --bare / SIMPLE: skip — these are cache-warms for the REPL's
   // first-turn responsiveness (quota, passes, fastMode, bootstrap data). Fast
   // mode doesn't apply to the Agent SDK anyway (see getFastModeUnavailableReason).
-  const bgRefreshThrottleMs = getFeatureValue_CACHED_MAY_BE_STALE('tengu_cicada_nap_ms', 0);
-  const lastPrefetched = getGlobalConfig().startupPrefetchedAt ?? 0;
-  const skipStartupPrefetches = isBareMode() || (bgRefreshThrottleMs > 0 && Date.now() - lastPrefetched < bgRefreshThrottleMs);
+  const skipStartupPrefetches = isBareMode();
   // Always prefetch Ollama models (not gated by throttle — local server, fast & cheap)
   prefetchOllamaModels();
   // Prefetch models for remote OpenAI-compat providers (OpenRouter, Groq, NovitaAI, etc.)
@@ -136,30 +132,16 @@ export async function runPostHeadlessGuards(
   prefetchCopilotModelCatalog();
 
   if (!skipStartupPrefetches) {
-    const lastPrefetchedInfo = lastPrefetched > 0 ? ` last ran ${Math.round((Date.now() - lastPrefetched) / 1000)}s ago` : '';
-    logForDebugging(`Starting background startup prefetches${lastPrefetchedInfo}`);
+    logForDebugging('Starting background startup prefetches');
     checkQuotaStatus().catch(error => logError(error));
 
     // Fetch bootstrap data from the server and update all cache values.
     void fetchBootstrapData();
 
     // TODO: Consolidate other prefetches into a single bootstrap request.
-    if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_miraculo_the_bard', false)) {
-      void prefetchFastModeStatus();
-    } else {
-      // Kill switch skips the network call, not org-policy enforcement.
-      // Resolve from cache so orgStatus doesn't stay 'pending' (which
-      // getFastModeUnavailableReason treats as permissive).
-      resolveFastModeStatusFromCache();
-    }
-    if (bgRefreshThrottleMs > 0) {
-      saveGlobalConfig(current => ({
-        ...current,
-        startupPrefetchedAt: Date.now(),
-      }));
-    }
+    void prefetchFastModeStatus();
   } else {
-    logForDebugging(`Skipping startup prefetches, last ran ${Math.round((Date.now() - lastPrefetched) / 1000)}s ago`);
+    logForDebugging('Skipping startup prefetches');
     // Resolve fast mode org status from cache (no network)
     resolveFastModeStatusFromCache();
   }
@@ -393,7 +375,6 @@ export type RunInteractiveStartupBlockInput = {
   verbose: boolean | undefined;
   remoteControl: boolean;
   remoteControlName: string | undefined;
-  advisorModel: string | undefined;
   inputPrompt: string | AsyncIterable<string>;
   thinkingEnabled: boolean;
   mcpTools: Array<unknown>;
@@ -421,7 +402,6 @@ export function runInteractiveStartupBlock(
     verbose,
     remoteControl,
     remoteControlName,
-    advisorModel,
     inputPrompt,
     thinkingEnabled,
     mcpTools,
@@ -580,9 +560,6 @@ export function runInteractiveStartupBlock(
     effortValue: parseEffortValue(options.effort) ?? getInitialEffortSetting(),
     activeOverlays: new Set<string>(),
     fastMode: getInitialFastModeSetting(resolvedInitialModel),
-    ...(isAdvisorEnabled() && advisorModel && {
-      advisorModel,
-    }),
     // Compute teamContext synchronously to avoid useEffect setState during render.
     teamContext: computeInitialTeamContext?.(),
   };

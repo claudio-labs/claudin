@@ -2,7 +2,7 @@
  * Shared bridge auth/URL resolution. Consolidates the internal-only
  * CLAUDE_BRIDGE_* dev overrides that were previously copy-pasted across
  * a dozen files — inboundAttachments, BriefTool/upload, bridgeMain,
- * initReplBridge, remoteBridgeCore, daemon workers, /rename,
+ * initReplBridge, daemon workers, /rename,
  * /remote-control.
  *
  * Two layers: *Override() returns the internal-only env var (or undefined);

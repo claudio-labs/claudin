@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import stripAnsi from 'strip-ansi';
 import { Messages } from 'src/agent/ui/Messages.js';
 import { KeybindingProvider } from 'src/terminal/keybindings/KeybindingContext.js';
-import { loadKeybindingsSyncWithWarnings } from 'src/terminal/keybindings/loadUserBindings.js';
+import { loadKeybindingsSync } from 'src/terminal/keybindings/loadUserBindings.js';
 import type { KeybindingContextName } from 'src/terminal/keybindings/types.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import type { Tools } from 'src/tools/Tool.js';
@@ -19,9 +19,7 @@ function StaticKeybindingProvider({
 }: {
   children: React.ReactNode;
 }): React.ReactNode {
-  const {
-    bindings
-  } = loadKeybindingsSyncWithWarnings();
+  const bindings = loadKeybindingsSync();
   const pendingChordRef = useRef(null);
   const handlerRegistryRef = useRef(new Map());
   const activeContexts = useRef(new Set<KeybindingContextName>()).current;

@@ -91,7 +91,7 @@ describe('AgentTool wiring', () => {
   })
 
   test('the 120s foreground timer is gated on the same carve-out', () => {
-    // getAutoBackgroundMs() is a separate gate (env / GrowthBook). Ungated, it
+    // getAutoBackgroundMs() is a separate gate (env). Ungated, it
     // flipped an inline-only spawn to async after 120s, right past the guard.
     expect(src()).toContain(
       'autoBackgroundMs: implicitBackgroundAllowed ? getAutoBackgroundMs() || undefined : undefined',

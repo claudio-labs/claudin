@@ -222,9 +222,10 @@ Two rules for new code:
   banned phone-home patterns, so run it after `rm -rf dist/chunks && bun run
   build`, never against a stale generation.
 
-What lives under the analytics path now is flag resolution alone
-(`src/platform/analytics/growthbook.ts`): a local reader over
-`~/.claudin/feature-flags.json`. It reaches no network.
+The analytics path is gone entirely: the last thing under it, a local reader
+over `~/.claudin/feature-flags.json` for the upstream remote flags, was
+deleted once no gate read it. A switch this fork needs is a `CLAUDIN_*` env
+var, documented at the top of the module that reads it.
 
 ## Build System
 

@@ -11,10 +11,7 @@ import {
   type ToolUseContext,
 } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
-import {
-  formatAgentLine,
-  shouldInjectAgentListInMessages,
-} from 'src/tools/AgentTool/prompt.js'
+import { formatAgentLine } from 'src/tools/AgentTool/prompt.js'
 import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { filterDeniedAgents } from 'src/permissions/permissions.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
@@ -42,10 +39,7 @@ import {
   modelSupportsToolReference,
   type DeferredToolsDeltaScanContext,
 } from 'src/agent/tools/toolSearch.js'
-import {
-  getMcpInstructionsDelta,
-  isMcpInstructionsDeltaEnabled,
-} from 'src/mcp/mcpInstructionsDelta.js'
+import { getMcpInstructionsDelta } from 'src/mcp/mcpInstructionsDelta.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { getClaudeMdDelta } from 'src/memory/instructions/claudeMdDelta.js'
 import {
@@ -149,14 +143,14 @@ export function getDeferredToolsDeltaAttachment(
   // These three checks mirror the sync parts of isToolSearchEnabled —
   // the attachment text says "available via ToolSearch", so ToolSearch
   // has to actually be in the request. The async auto-threshold check
-  // is not replicated (would double-fire tengu_tool_search_mode_decision);
+  // is not replicated (this path is synchronous);
   // in tst-auto below-threshold the attachment can fire while ToolSearch
   // is filtered out, but that's a narrow case and the tools announced
   // are directly callable anyway.
   if (!isToolSearchEnabledOptimistic()) return []
   if (!modelSupportsToolReference(model)) return []
   if (!isToolSearchToolAvailable(tools)) return []
-  const delta = getDeferredToolsDelta(tools, messages ?? [], scanContext)
+  const delta = getDeferredToolsDelta(tools, messages ?? [])
   if (!delta) return []
   return [{ type: 'deferred_tools_delta', ...delta }]
 }
@@ -164,7 +158,7 @@ export function getDeferredToolsDeltaAttachment(
 /**
  * Diff the current filtered agent pool against what's already been announced
  * in this conversation (reconstructed from prior agent_listing_delta
- * attachments). Returns [] if nothing changed or the gate is off.
+ * attachments). Returns [] if nothing changed.
  *
  * The agent list was embedded in AgentTool's description, causing ~10.2% of
  * fleet cache_creation: MCP async connect, /reload-plugins, or
@@ -178,8 +172,6 @@ export function getAgentListingDeltaAttachment(
   toolUseContext: ToolUseContext,
   messages: Message[] | undefined,
 ): Attachment[] {
-  if (!shouldInjectAgentListInMessages()) return []
-
   // Skip if AgentTool isn't in the pool — the listing would be unactionable.
   if (
     !toolUseContext.options.tools.some(t => toolMatchesName(t, AGENT_TOOL_NAME))
@@ -242,15 +234,13 @@ export function getAgentListingDeltaAttachment(
   ]
 }
 
-// Exported for compact.ts / reactiveCompact.ts — single source of truth for the gate.
+// Exported for compact.ts / reactiveCompact.ts.
 export function getMcpInstructionsDeltaAttachment(
   mcpClients: MCPServerConnection[],
   tools: Tools,
   model: string,
   messages: Message[] | undefined,
 ): Attachment[] {
-  if (!isMcpInstructionsDeltaEnabled()) return []
-
   const delta = getMcpInstructionsDelta(mcpClients, messages ?? [], [])
   if (!delta) return []
   return [{ type: 'mcp_instructions_delta', ...delta }]

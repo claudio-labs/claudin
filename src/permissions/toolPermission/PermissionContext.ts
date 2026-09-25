@@ -23,7 +23,6 @@ import {
   REJECT_MESSAGE_WITH_REASON_PREFIX,
   SUBAGENT_REJECT_MESSAGE,
   SUBAGENT_REJECT_MESSAGE_WITH_REASON_PREFIX,
-  withMemoryCorrectionHint,
 } from 'src/agent/messages/messages.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import {
@@ -155,12 +154,11 @@ function createPermissionContext(
       contentBlocks?: ContentBlockParam[],
     ): PermissionDecision {
       const sub = !!toolUseContext.agentId
-      const baseMessage = feedback
+      const message = feedback
         ? `${sub ? SUBAGENT_REJECT_MESSAGE_WITH_REASON_PREFIX : REJECT_MESSAGE_WITH_REASON_PREFIX}${feedback}`
         : sub
           ? SUBAGENT_REJECT_MESSAGE
           : REJECT_MESSAGE
-      const message = sub ? baseMessage : withMemoryCorrectionHint(baseMessage)
       if (isAbort || (!feedback && !contentBlocks?.length && !sub)) {
         logForDebugging(
           `Aborting: tool=${tool.name} isAbort=${isAbort} hasFeedback=${!!feedback} isSubagent=${sub}`,

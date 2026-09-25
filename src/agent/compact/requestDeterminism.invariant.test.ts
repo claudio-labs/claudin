@@ -2,7 +2,7 @@
  * Invariant: NO spontaneous prompt-cache breaks from tools or formatting.
  *
  * Integrated safety net over the whole per-request render pipeline
- * (tool-result budget → microcompact → stable stubs → cache breakpoints)
+ * (microcompact → stable stubs → cache breakpoints)
  * plus the tool-pool update rules: rendering turn N+1 after a normal turn
  * append must serialize every message of turn N's render to byte-identical
  * content (the prefix property the server-side prompt cache depends on),
@@ -21,17 +21,6 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
   VERSION: '99.0.0',
   DISPLAY_VERSION: '0.0.0-test',
 }
-
-// Pin GrowthBook to default-returning FIRST, before anything that reads
-// flags loads — flag reads must fall through to cache-profile defaults
-// regardless of what earlier test files left in the module registry.
-const realGrowthbook = {
-  ...(await import('src/platform/analytics/growthbook.js')),
-}
-mock.module('src/platform/analytics/growthbook.js', () => ({
-  ...realGrowthbook,
-  getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
-}))
 
 // Pin the retain profile (time-based trigger enabled) before anything
 // memoizes it, same scaffolding as microCompact.timebased-flipback.test.ts.
@@ -60,10 +49,6 @@ const {
 const { addCacheBreakpoints, _resetDeferCacheMarkerForTesting } = await import(
   'src/providers/shims/claude/paramBuilders.js'
 )
-const {
-  createContentReplacementState,
-  enforceToolResultBudget,
-} = await import('src/agent/tools/toolResultStorage.js')
 const { createAssistantMessage, createUserMessage } = await import(
   'src/agent/messages/messages.js'
 )
@@ -120,12 +105,10 @@ const POOL = [{ name: 'Patch', clearableInputFields: ['patchText'] }]
  * order as claude/streaming.ts: stubs, input stubs, frontier, marker. */
 async function renderTurn(
   messages: Message[],
-  state: ReturnType<typeof createContentReplacementState>,
 ): Promise<{ bytes: string[]; view: Message[] }> {
-  const budget = await enforceToolResultBudget(messages, state)
   const mc = await microcompactMessages(
-    budget.messages,
-    { contentReplacementState: state, options: { tools: POOL } } as unknown as ToolUseContext,
+    messages,
+    { options: { tools: POOL } } as unknown as ToolUseContext,
     MAIN_THREAD,
   )
   const stubbed = applyStableInputStubs(applyStableStubs(mc.messages))
@@ -160,13 +143,12 @@ beforeEach(() => {
 
 describe('request determinism — message prefix', () => {
   test('steady turns: appending a turn never rewrites prior message bytes', async () => {
-    const state = createContentReplacementState()
     const history: Message[] = []
     for (let i = 0; i < 10; i++) {
       history.push(...exchange(`toolu_${i}`, `RESULT_${i}_` + 'x'.repeat(600), 5))
     }
 
-    const turnN = await renderTurn(history, state)
+    const turnN = await renderTurn(history)
 
     // Next turn: the REPL post-turn pipeline writes the clipped set back into
     // the display array (nothing is ever evicted) and a new exchange is
@@ -176,13 +158,12 @@ describe('request determinism — message prefix', () => {
       ...postTurn,
       ...exchange('toolu_next', 'fresh result', 0),
     ]
-    const turnN1 = await renderTurn(nextHistory, state)
+    const turnN1 = await renderTurn(nextHistory)
 
     expectPrefixStable(turnN.bytes, turnN1.bytes)
   })
 
-  test('idle gap (time-based microcompact) + budget previews: clip turn and following turn serialize identical prefixes', async () => {
-    const state = createContentReplacementState()
+  test('idle gap (time-based microcompact): clip turn and following turn serialize identical prefixes', async () => {
     const history: Message[] = []
     // 9 aged exchanges (90min > 60min retain threshold) — keepRecent=5
     // leaves toolu_0..toolu_3 to be clipped on the post-idle turn.
@@ -191,27 +172,21 @@ describe('request determinism — message prefix', () => {
         ...exchange(`toolu_${i}`, `RESULT_${i}_` + 'x'.repeat(600), 90),
       )
     }
-    // One of the to-be-clipped ids is ALSO under budget replacement — the
-    // S3 preview/original divergence case.
-    state.seenIds.add('toolu_1')
-    state.replacements.set('toolu_1', '[preview] truncated body')
-
     // Turn N: post-idle — the time-based trigger clips toolu_0..3 into the
     // stable-stub set; the wire renders their deterministic stubs.
-    const turnN = await renderTurn(history, state)
+    const turnN = await renderTurn(history)
 
     // Turn N+1: gap is ~0 (fresh exchange appended); nothing re-triggers.
     const nextHistory = [
       ...applyStableStubs(history),
       ...exchange('toolu_next', 'fresh result', 0),
     ]
-    const turnN1 = await renderTurn(nextHistory, state)
+    const turnN1 = await renderTurn(nextHistory)
 
     expectPrefixStable(turnN.bytes, turnN1.bytes)
   })
 
   test('idle gap clips old Patch INPUTS: the patch body leaves the wire and the next turn is prefix-stable', async () => {
-    const state = createContentReplacementState()
     const history: Message[] = []
     for (let i = 0; i < 9; i++) {
       history.push(
@@ -222,7 +197,7 @@ describe('request determinism — message prefix', () => {
       )
     }
 
-    const turnN = await renderTurn(history, state)
+    const turnN = await renderTurn(history)
     // The oldest calls' bodies are gone from the wire, replaced by the
     // input stub; the kept tail still carries its patch.
     expect(turnN.bytes[0]).not.toContain('PATCH_0_')
@@ -236,7 +211,7 @@ describe('request determinism — message prefix', () => {
       ...applyStableStubs(history),
       ...exchange('toolu_next', 'fresh result', 0),
     ]
-    const turnN1 = await renderTurn(nextHistory, state)
+    const turnN1 = await renderTurn(nextHistory)
     expectPrefixStable(turnN.bytes, turnN1.bytes)
   })
 })
@@ -277,5 +252,4 @@ afterAll(() => {
   _resetDeferCacheMarkerForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
   mock.module('src/providers/model/model.js', () => realModel)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
 })

@@ -79,7 +79,7 @@ export const init = memoize(async (): Promise<void> => {
     void initJetBrainsDetection()
     profileCheckpoint('init_after_jetbrains_detection')
 
-    // Detect GitHub repository asynchronously (populates cache for gitDiff PR linking)
+    // Detect GitHub repository asynchronously (warms the cache later callers read)
     void detectCurrentRepository()
 
     // Initialize the loading promise early so that other systems (like plugin hooks)

@@ -11,7 +11,6 @@ import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from 'src/agent/pr
 import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js';
 import { startAgentSummarization, summarizeAgentResult } from 'src/agent/summary/agentSummary.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { clearDumpState } from 'src/providers/transport/dumpPrompts.js';
 import { completeAgentTask as completeAsyncAgent, createActivityDescriptionResolver, createProgressTracker, enqueueAgentNotification, failAgentTask as failAsyncAgent, getProgressUpdate, getTokenCountFromTracker, isLocalAgentTask, killAsyncAgent, registerAgentForeground, registerAsyncAgent, unregisterAgentForeground, updateAgentProgress as updateAsyncAgentProgress, updateProgressFromMessage } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { checkRemoteAgentEligibility, formatPreconditionError, getRemoteTaskSessionUrl, registerRemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
@@ -69,9 +68,9 @@ const isBackgroundTasksDisabled =
 isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS);
 
 // Auto-background agent tasks after this many ms (0 = disabled)
-// Enabled by env var OR GrowthBook gate (checked lazily since GB may not be ready at module load)
+// Enabled by env var
 function getAutoBackgroundMs(): number {
-  if (isEnvTruthy(process.env.CLAUDIN_AUTO_BACKGROUND_TASKS) || getFeatureValue_CACHED_MAY_BE_STALE('tengu_auto_background_agents', false)) {
+  if (isEnvTruthy(process.env.CLAUDIN_AUTO_BACKGROUND_TASKS)) {
     return 120_000;
   }
   return 0;
@@ -315,8 +314,7 @@ export const AgentTool = buildTool({
         use_splitpane: true,
         plan_mode_required: spawnMode === 'plan',
         model: model ?? agentDef?.model,
-        agent_type: subagent_type,
-        invokingRequestId: assistantMessage?.requestId
+        agent_type: subagent_type
       }, toolUseContext);
 
       // Type assertion uses TeammateSpawnedOutput (defined above) instead of any.
@@ -741,10 +739,7 @@ export const AgentTool = buildTool({
         parentSessionId: getParentSessionId(),
         agentType: 'subagent' as const,
         subagentName: selectedAgent.agentType,
-        isBuiltIn: isBuiltInAgent(selectedAgent),
-        invokingRequestId: assistantMessage?.requestId,
-        invocationKind: 'spawn' as const,
-        invocationEmitted: false
+        isBuiltIn: isBuiltInAgent(selectedAgent)
       };
 
       void runWithAgentContext(asyncAgentContext, () => wrapWithCwd(() => runAsyncAgentLifecycle({
@@ -791,10 +786,7 @@ export const AgentTool = buildTool({
         parentSessionId: getParentSessionId(),
         agentType: 'subagent' as const,
         subagentName: selectedAgent.agentType,
-        isBuiltIn: isBuiltInAgent(selectedAgent),
-        invokingRequestId: assistantMessage?.requestId,
-        invocationKind: 'spawn' as const,
-        invocationEmitted: false
+        isBuiltIn: isBuiltInAgent(selectedAgent)
       };
 
       // Wrap entire sync agent execution in context for analytics attribution
@@ -844,7 +836,7 @@ export const AgentTool = buildTool({
             // agent's id when an agent spawns another agent.
             parentAgentId: toolUseContext.agentId,
             // Same carve-out as autoBackgroundImplicit: getAutoBackgroundMs()
-            // is an independent gate (env / GrowthBook), so without this an
+            // is an independent gate (env), so without this an
             // inline-only spawn still flipped to async once the 120s timer
             // fired — see LocalAgentTask's registerAgentForeground.
             autoBackgroundMs: implicitBackgroundAllowed ? getAutoBackgroundMs() || undefined : undefined

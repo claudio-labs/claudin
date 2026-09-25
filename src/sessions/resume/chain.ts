@@ -6,17 +6,10 @@
  * `applyPreservedSegmentRelinks`, `recoverOrphanedParallelToolResults`) are
  * re-exported from `src/sessions/sessionStorage.ts` for the duration of the
  * split — see the barrel collapse plan (Wave 5).
- *
- * Telemetry (`tengu_chain_parallel_tr_recovered`, `tengu_relink_walk_broken`,
- * `tengu_snip_resume_filtered`, `tengu_chain_parent_cycle`) MUST stay intact
- * across every wave — `bun run verify:privacy` runs after each wave.
  */
 import type { UUID } from 'crypto'
 
-import type {
-  SystemCompactBoundaryMessage,
-  Message,
-} from 'src/shared/types/message.js'
+import type { SystemCompactBoundaryMessage } from 'src/shared/types/message.js'
 import type { TranscriptMessage } from 'src/shared/types/logs.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
@@ -445,13 +438,11 @@ export function applySnipRemovals(
   // link; the relink walk will stop at the gap and pick up null (chain-root
   // behavior — same as if compact truncated there, which it did).
   const deletedParent = new Map<UUID, UUID | null>()
-  let removedCount = 0
   for (const uuid of toDelete) {
     const entry = messages.get(uuid)
     if (!entry) continue
     deletedParent.set(uuid, entry.parentUuid)
     messages.delete(uuid)
-    removedCount++
   }
 
   // Relink survivors with dangling parentUuid. Walk backward through
@@ -472,41 +463,8 @@ export function applySnipRemovals(
     for (const p of path) deletedParent.set(p, cur)
     return cur
   }
-  let relinkedCount = 0
   for (const [uuid, msg] of messages) {
     if (!msg.parentUuid || !toDelete.has(msg.parentUuid)) continue
     messages.set(uuid, { ...msg, parentUuid: resolve(msg.parentUuid) })
-    relinkedCount++
-  }
-
-}
-
-/**
- * Find the latest turn_duration checkpoint in the reconstructed chain and
- * compare its recorded messageCount against the chain's position at that
- * point. Emits tengu_resume_consistency_delta for BigQuery monitoring of
- * write→load round-trip drift — the class of bugs where snip/compact/
- * parallel-TR operations mutate in-memory but the parentUuid walk on disk
- * reconstructs a different set (adamr-20260320-165831: 397K displayed →
- * 1.65M actual on resume).
- *
- * delta > 0: resume loaded MORE than in-session (the usual failure mode)
- * delta < 0: resume loaded FEWER (chain truncation — #22453 class)
- * delta = 0: round-trip consistent
- *
- * Called from loadConversationForResume — fires once per resume, not on
- * /share or log-listing chain rebuilds.
- */
-export function checkResumeConsistency(chain: Message[]): void {
-  for (let i = chain.length - 1; i >= 0; i--) {
-    const m = chain[i]!
-    if (m.type !== 'system' || m.subtype !== 'turn_duration') continue
-    const expected = m.messageCount
-    if (expected === undefined) return
-    // `i` is the 0-based index of the checkpoint in the reconstructed chain.
-    // The checkpoint was appended AFTER messageCount messages, so its own
-    // position should be messageCount (i.e., i === expected).
-    const actual = i
-    return
   }
 }

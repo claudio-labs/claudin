@@ -81,35 +81,6 @@ export async function dumpErrorPrompts(
   }
 }
 
-type AutoModeOutcome =
-  | 'success'
-  | 'parse_failure'
-  | 'interrupted'
-  | 'error'
-  | 'transcript_too_long'
-
-/**
- * Telemetry helper for tengu_auto_mode_outcome. All string fields are
- * enum-like values (outcome, model name, classifier type, failure kind) —
- * never code or file paths, so the AnalyticsMetadata casts are safe.
- */
-export function logAutoModeOutcome(
-  outcome: AutoModeOutcome,
-  model: string,
-  extra?: {
-    classifierType?: string
-    failureKind?: string
-    durationMs?: number
-    mainLoopTokens?: number
-    classifierInputTokens?: number
-    classifierTokensEst?: number
-    transcriptActualTokens?: number
-    transcriptLimitTokens?: number
-  },
-): void {
-  const { classifierType, failureKind, ...rest } = extra ?? {}
-}
-
 /**
  * Detect API 400 "prompt is too long: N tokens > M maximum" errors and
  * parse the token counts. Returns undefined for any other error.

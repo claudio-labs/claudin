@@ -1,7 +1,6 @@
 import { feature } from 'bun:bundle'
 import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { isCompactLinePrefixEnabled } from 'src/shared/fs/file.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { isEditThenEnabled } from 'src/tools/shared/editThen/editThenShape.js'
 
@@ -30,9 +29,7 @@ export function getEditToolDescription(): string {
 // reads global state via getEditToolDescription). Mirrors buildHarnessItems.
 // The verbose (lean=false) output is byte-identical to the historical prompt.
 export function buildEditToolDescription(lean: boolean): string {
-  const prefixFormat = isCompactLinePrefixEnabled()
-    ? 'line number + arrow'
-    : 'spaces + line number + arrow'
+  const prefixFormat = 'line number + arrow'
   const minimalUniquenessHint = ''
   // GATED: gold-plating guardrails redundant for capable families (covered by
   // the system prompt's altitude principle), kept for weak/unknown families.

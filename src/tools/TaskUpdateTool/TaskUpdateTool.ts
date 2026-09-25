@@ -335,8 +335,7 @@ export const TaskUpdateTool = buildTool({
     const { success, taskId, updatedFields, error, statusChange } =
       content as Output
     if (!success) {
-      // Return as non-error so it doesn't trigger sibling tool cancellation
-      // in StreamingToolExecutor. "Task not found" is a benign condition
+      // Return as non-error: "Task not found" is a benign condition
       // (e.g., task list already cleaned up) that the model can handle.
       return {
         tool_use_id: toolUseID,

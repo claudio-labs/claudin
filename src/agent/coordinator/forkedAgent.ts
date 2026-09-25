@@ -4,8 +4,7 @@
  * This utility ensures forked agents:
  * 1. Share identical cache-critical params with the parent to guarantee prompt cache hits
  * 2. Track full usage metrics across the entire query loop
- * 3. Log metrics via the tengu_fork_agent_query event when complete
- * 4. Isolate mutable state to prevent interference with the main agent loop
+ * 3. Isolate mutable state to prevent interference with the main agent loop
  */
 
 import type { UUID } from 'crypto'
@@ -33,10 +32,6 @@ import { createDenialTrackingState } from 'src/permissions/denialTracking.js'
 import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js'
 import { recordSidechainTranscript } from 'src/sessions/sessionStorage.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
-import {
-  type ContentReplacementState,
-  cloneContentReplacementState,
-} from 'src/agent/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 
 /**
@@ -305,10 +300,6 @@ export type SubagentContextOverrides = {
   /** Honor AgentDefinition.omitGitInstructions in the attachment pipeline
    * (suppresses bash_git_instructions). */
   omitGitInstructionsAttachments?: boolean
-  /** Override replacement state — used by resumeAgentBackground to thread
-   * state reconstructed from the resumed sidechain so the same results
-   * are re-replaced (prompt cache stability). */
-  contentReplacementState?: ContentReplacementState
 }
 
 /**
@@ -390,25 +381,7 @@ export function createSubagentContext(
     nestedMemoryAttachmentTriggers: new Set<string>(),
     loadedNestedMemoryPaths: new Set<string>(),
     dynamicSkillDirTriggers: new Set<string>(),
-    // Per-subagent: tracks skills surfaced by discovery for was_discovered telemetry (SkillTool.ts:116)
-    discoveredSkillNames: new Set<string>(),
     toolDecisions: undefined,
-    // Budget decisions: override > clone of parent > undefined (feature off).
-    //
-    // Clone by default (not fresh): cache-sharing forks process parent
-    // messages containing parent tool_use_ids. A fresh state would see
-    // them as unseen and make divergent replacement decisions → wire
-    // prefix differs → cache miss. A clone makes identical decisions →
-    // cache hit. For non-forking subagents the parent UUIDs never match
-    // — clone is a harmless no-op.
-    //
-    // Override: AgentTool resume (reconstructed from sidechain records)
-    // and inProcessRunner (per-teammate persistent loop state).
-    contentReplacementState:
-      overrides?.contentReplacementState ??
-      (parentContext.contentReplacementState
-        ? cloneContentReplacementState(parentContext.contentReplacementState)
-        : undefined),
 
     // AbortController
     abortController,
@@ -491,7 +464,7 @@ export function createSubagentContext(
  * This function:
  * 1. Uses identical cache-safe params from parent to enable prompt caching
  * 2. Accumulates usage across all query iterations
- * 3. Logs tengu_fork_agent_query with full usage when complete
+ * 3. Returns that usage with the output messages
  *
  * @example
  * ```typescript
@@ -523,7 +496,6 @@ export async function runForkedAgent({
   skipTranscript,
   skipCacheWrite,
 }: ForkedAgentParams): Promise<ForkedAgentResult> {
-  const startTime = Date.now()
   const outputMessages: Message[] = []
   let totalUsage: NonNullableUsage = { ...EMPTY_USAGE }
 
@@ -631,50 +603,8 @@ export async function runForkedAgent({
     `Forked agent [${forkLabel}] finished: ${outputMessages.length} messages, types=[${outputMessages.map(m => m.type).join(', ')}], totalUsage: input=${totalUsage.input_tokens} output=${totalUsage.output_tokens} cacheRead=${totalUsage.cache_read_input_tokens} cacheCreate=${totalUsage.cache_creation_input_tokens}`,
   )
 
-  const durationMs = Date.now() - startTime
-
-  // Log the fork query metrics with full NonNullableUsage
-  logForkAgentQueryEvent({
-    forkLabel,
-    querySource,
-    durationMs,
-    messageCount: outputMessages.length,
-    totalUsage,
-    queryTracking: toolUseContext.queryTracking,
-  })
-
   return {
     messages: outputMessages,
     totalUsage,
   }
-}
-
-/**
- * Logs the tengu_fork_agent_query event with full NonNullableUsage fields.
- */
-function logForkAgentQueryEvent({
-  forkLabel,
-  querySource,
-  durationMs,
-  messageCount,
-  totalUsage,
-  queryTracking,
-}: {
-  forkLabel: string
-  querySource: QuerySource
-  durationMs: number
-  messageCount: number
-  totalUsage: NonNullableUsage
-  queryTracking?: { chainId: string; depth: number }
-}): void {
-  // Calculate cache hit rate
-  const totalInputTokens =
-    totalUsage.input_tokens +
-    totalUsage.cache_creation_input_tokens +
-    totalUsage.cache_read_input_tokens
-  const cacheHitRate =
-    totalInputTokens > 0
-      ? totalUsage.cache_read_input_tokens / totalInputTokens
-      : 0
-
 }

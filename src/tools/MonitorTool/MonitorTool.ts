@@ -46,7 +46,6 @@ export const MonitorTool = buildTool({
   searchHint: 'stream shell output as notifications',
   clearableResult: true,
   maxResultSizeChars: 10_000,
-  strict: true,
 
   isConcurrencySafe() {
     return true

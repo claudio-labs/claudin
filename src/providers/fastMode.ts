@@ -1,6 +1,5 @@
 import axios from 'axios'
 import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/shared/constants/oauth.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getIsNonInteractiveSession,
   getKairosActive,
@@ -12,7 +11,6 @@ import {
   handleOAuth401Error,
   hasProfileScope,
 } from 'src/providers/auth/auth.js'
-import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -77,25 +75,6 @@ export function getFastModeUnavailableReason(): string | null {
 
   if (!isFastModeEnabled()) {
     return 'Fast mode is not available'
-  }
-
-  const statigReason = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_penguins_off',
-    null,
-  )
-  // Statsig reason has priority over other reasons.
-  if (statigReason !== null) {
-    logForDebugging(`Fast mode unavailable: ${statigReason}`)
-    return statigReason
-  }
-
-  // Previously, fast mode required the native binary (bun build). This is no
-  // longer necessary, but we keep this option behind a flag just in case.
-  if (
-    !isInBundledMode() &&
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_marble_sandcastle', false)
-  ) {
-    return 'Fast mode requires the native binary · Install from: https://claude.com/product/claude-code'
   }
 
   // Not available in the SDK unless explicitly opted in via --settings.

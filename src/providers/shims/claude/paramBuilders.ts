@@ -14,13 +14,9 @@ import {
   TASK_BUDGETS_BETA_HEADER,
 } from "src/shared/constants/betas.js";
 import type { QuerySource } from "src/agent/prompts/querySource.js";
-import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
 import { type CacheScope, splitSysPromptPrefix } from "src/providers/transport/api.js";
 import { shouldIncludeFirstPartyOnlyBetas } from "src/providers/transport/betas.js";
-import {
-  CAPPED_DEFAULT_MAX_TOKENS,
-  getModelMaxOutputTokens,
-} from "src/agent/context/context.js";
+import { getModelMaxOutputTokens } from "src/agent/context/context.js";
 import { type EffortValue, isAdaptiveEffort, modelSupportsEffort } from "src/providers/effort/effort.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
 import { validateBoundedIntEnvVar } from "src/shared/envValidation.js";
@@ -93,20 +89,6 @@ export function getExtraBodyParams(betaHeaders?: string[]): JsonObject {
         { level: "error" },
       );
     }
-  }
-
-  // Anti-distillation: send fake_tools opt-in for 1P CLI only
-  if (
-    feature("ANTI_DISTILLATION_CC")
-      ? process.env.CLAUDE_CODE_ENTRYPOINT === "cli" &&
-        shouldIncludeFirstPartyOnlyBetas() &&
-        getFeatureValue_CACHED_MAY_BE_STALE(
-          "tengu_anti_distill_fake_tool_injection",
-          false,
-        )
-      : false
-  ) {
-    result.anti_distillation = ["fake_tools"];
   }
 
   // Handle beta headers if provided
@@ -517,28 +499,13 @@ export function adjustParamsForNonStreaming<
   };
 }
 
-function isMaxTokensCapEnabled(): boolean {
-  // 3P default: false (not validated on Bedrock/Vertex)
-  return getFeatureValue_CACHED_MAY_BE_STALE("tengu_otk_slot_v1", false);
-}
-
 export function getMaxOutputTokensForModel(model: string): number {
   const maxOutputTokens = getModelMaxOutputTokens(model);
-
-  // Slot-reservation cap: drop default to 8k for all models. BQ p99 output
-  // = 4,911 tokens; 32k/64k defaults over-reserve 8-16× slot capacity.
-  // Requests hitting the cap get one clean retry at 64k (query.ts
-  // max_output_tokens_escalate). Math.min keeps models with lower native
-  // defaults (e.g. claude-3-opus at 4k) at their native value. Applied
-  // before the env-var override so CLAUDIN_MAX_OUTPUT_TOKENS still wins.
-  const defaultTokens = isMaxTokensCapEnabled()
-    ? Math.min(maxOutputTokens.default, CAPPED_DEFAULT_MAX_TOKENS)
-    : maxOutputTokens.default;
 
   const result = validateBoundedIntEnvVar(
     "CLAUDIN_MAX_OUTPUT_TOKENS",
     process.env.CLAUDIN_MAX_OUTPUT_TOKENS,
-    defaultTokens,
+    maxOutputTokens.default,
     maxOutputTokens.upperLimit,
   );
   return result.effective;

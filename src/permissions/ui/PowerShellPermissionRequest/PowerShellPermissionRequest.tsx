@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { getDestructiveCommandWarning } from 'src/tools/PowerShellTool/destructiveCommandWarning.js';
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js';
 import { isAllowlistedCommand } from 'src/tools/PowerShellTool/readOnlyValidation.js';
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js';
@@ -52,7 +50,6 @@ export function PowerShellPermissionRequest(props: PermissionRequestProps): Reac
     onReject,
     explainerVisible: explainerState.visible
   });
-  const destructiveWarning = getFeatureValue_CACHED_MAY_BE_STALE('tengu_destructive_command_warning', false) ? getDestructiveCommandWarning(command) : null;
   const [showPermissionDebug, setShowPermissionDebug] = useState(false);
 
   // Editable prefix — compute static prefix locally (no LLM call).
@@ -179,9 +176,6 @@ export function PowerShellPermissionRequest(props: PermissionRequestProps): Reac
         </> : <>
           <Box flexDirection="column">
             <PermissionRuleExplanation permissionResult={toolUseConfirm.permissionResult} toolType="command" />
-            {destructiveWarning && <Box marginBottom={1}>
-                <Text color="warning">{destructiveWarning}</Text>
-              </Box>}
             <Text>Do you want to proceed?</Text>
             <Select options={options} inlineDescriptions onChange={onSelect} onCancel={() => handleReject()} onFocus={handleFocus} onInputModeToggle={handleInputModeToggle} />
           </Box>

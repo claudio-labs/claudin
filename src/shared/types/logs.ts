@@ -1,7 +1,5 @@
 import type { UUID } from 'crypto'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
-import type { AgentId } from 'src/shared/types/ids.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { QueueOperationMessage } from 'src/shared/types/messageQueueTypes.js'
 
@@ -49,7 +47,6 @@ export type LogOption = {
   prRepository?: string // Repository in "owner/repo" format
   mode?: 'coordinator' | 'normal' // Session mode for coordinator/normal detection
   worktreeSession?: PersistedWorktreeSession | null // Worktree state at session end (null = exited, undefined = never entered)
-  contentReplacements?: ContentReplacementRecord[] // Replacement decisions for resume reconstruction
   costState?: CostStateEntry // Last-wins — the session's running cost, restored on resume
 }
 
@@ -175,21 +172,6 @@ export type WorktreeStateEntry = {
   type: 'worktree-state'
   sessionId: UUID
   worktreeSession: PersistedWorktreeSession | null
-}
-
-/**
- * Records content blocks whose in-context representation was replaced with a
- * smaller stub (the full content was persisted elsewhere). Replayed on resume
- * for prompt cache stability. Written once per enforcement pass that replaces
- * at least one block. When agentId is set, the record belongs to a subagent
- * sidechain (AgentTool resume reads these); when absent, it's main-thread
- * (/resume reads these).
- */
-export type ContentReplacementEntry = {
-  type: 'content-replacement'
-  sessionId: UUID
-  agentId?: AgentId
-  replacements: ContentReplacementRecord[]
 }
 
 /** One model's share of a CostStateEntry. */
@@ -350,7 +332,6 @@ export type Entry =
   | SpeculationAcceptMessage
   | ModeEntry
   | WorktreeStateEntry
-  | ContentReplacementEntry
   | CostStateEntry
   | ContextCollapseCommitEntry
   | ContextCollapseSnapshotEntry

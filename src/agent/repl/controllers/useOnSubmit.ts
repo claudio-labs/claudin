@@ -1,6 +1,6 @@
 // Owns `onSubmit` — the prompt-submission controller: immediate slash commands,
-// idle-return gating, history, stash restore, speculation accept, the remote
-// path, the idle-gap eviction sweep, and the handoff to handlePromptSubmit.
+// history, stash restore, speculation accept, the remote path, the idle-gap
+// eviction sweep, and the handoff to handlePromptSubmit.
 //
 // Extracted from src/agent/repl/REPL.tsx (controllers, ROADMAP 11e deferred half).
 // Before extraction this was one `useCallback` sitting between the
@@ -25,15 +25,14 @@
 
 import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
-import { getTotalInputTokens, getOriginalCwd } from 'src/platform/bootstrap/state.js';
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { type Command, type CommandResultDisplay, getCommandName, isCommandEnabled } from 'src/commands/commands.js';
 import type { PromptInputMode } from 'src/shared/types/textInputTypes.js';
 import { addToHistory, expandPastedTextRefs, parseReferences } from 'src/agent/history.js';
 import { prependModeCharacterToInput } from 'src/terminal/prompt-input/inputModes.js';
 import { prependToShellHistoryCache } from 'src/terminal/suggestions/shellHistoryCompletion.js';
-import { getGlobalConfig, type PastedContent } from 'src/platform/config/config.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
+import { type PastedContent } from 'src/platform/config/config.js';
 import { createUserMessage, createCommandInputMessage, formatCommandInputTags } from 'src/agent/messages/messages.js';
 import { LOCAL_COMMAND_STDOUT_TAG } from 'src/shared/constants/xml.js';
 import { escapeXml } from 'src/shared/data/xml.js';
@@ -113,9 +112,6 @@ export interface UseOnSubmitDeps {
   inputValueRef: React.RefObject<string>;
   readFileState: React.RefObject<ReturnType<typeof createFileStateCacheWithSizeLimit>>;
   streamModeRef: React.RefObject<SpinnerMode>;
-  idleHintShownRef: React.RefObject<string | false>;
-  lastQueryCompletionTimeRef: React.RefObject<number>;
-  skipIdleCheckRef: React.RefObject<boolean>;
   tipPickedThisTurnRef: React.RefObject<boolean>;
   hasInterruptibleToolInProgressRef: React.RefObject<boolean>;
   // --- setters
@@ -128,7 +124,6 @@ export interface UseOnSubmitDeps {
   setStashedPrompt: React.Dispatch<React.SetStateAction<StashedPrompt | undefined>>;
   setSubmitCount: React.Dispatch<React.SetStateAction<number>>;
   setIDESelection: React.Dispatch<React.SetStateAction<IDESelection | undefined>>;
-  setIdleReturnPending: React.Dispatch<React.SetStateAction<{ input: string; idleMinutes: number } | null>>;
   setUserInputOnProcessing: (input: string | undefined) => void;
   setToolJSX: (args: {
     jsx: React.ReactNode | null;
@@ -179,9 +174,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     inputValueRef,
     readFileState,
     streamModeRef,
-    idleHintShownRef,
-    lastQueryCompletionTimeRef,
-    skipIdleCheckRef,
     tipPickedThisTurnRef,
     hasInterruptibleToolInProgressRef,
     setMessages,
@@ -193,7 +185,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     setStashedPrompt,
     setSubmitCount,
     setIDESelection,
-    setIdleReturnPending,
     setUserInputOnProcessing,
     setToolJSX,
     addNotification,
@@ -233,9 +224,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
       //    so the inline arrangement (no panel surface, prompt hidden under the
       //    dialog) keeps today's route.
       const matchingCommand = commands.find(cmd => isCommandEnabled(cmd) && (cmd.name === commandName || cmd.aliases?.includes(commandName) || getCommandName(cmd) === commandName));
-      if (matchingCommand?.name === 'new' && idleHintShownRef.current) {
-        idleHintShownRef.current = false;
-      }
       const shouldTreatAsImmediate = queryGuard.isActive && (matchingCommand?.immediate || options?.fromKeybinding || (matchingCommand?.fullscreenPanel === true && isFullscreenEnvEnabled()));
       if (matchingCommand && shouldTreatAsImmediate && matchingCommand.type === 'local-jsx') {
         // Only clear input if the submitted text matches what's in the prompt.
@@ -333,29 +321,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     // Remote mode: skip empty input early before any state mutations
     if (activeRemote.isRemoteMode && !input.trim()) {
       return;
-    }
-
-    // Idle-return: prompt returning users to start fresh when the
-    // conversation is large and the cache is cold. tengu_willow_mode
-    // controls treatment: "dialog" (blocking), "hint" (notification), "off".
-    {
-      const willowMode = getFeatureValue_CACHED_MAY_BE_STALE('tengu_willow_mode', 'off');
-      const idleThresholdMin = Number(process.env.CLAUDIN_IDLE_THRESHOLD_MINUTES ?? 75);
-      const tokenThreshold = Number(process.env.CLAUDIN_IDLE_TOKEN_THRESHOLD ?? 100_000);
-      if (willowMode !== 'off' && !getGlobalConfig().idleReturnDismissed && !skipIdleCheckRef.current && !speculationAccept && !input.trim().startsWith('/') && lastQueryCompletionTimeRef.current > 0 && getTotalInputTokens() >= tokenThreshold) {
-        const idleMs = Date.now() - lastQueryCompletionTimeRef.current;
-        const idleMinutes = idleMs / 60_000;
-        if (idleMinutes >= idleThresholdMin && willowMode === 'dialog') {
-          setIdleReturnPending({
-            input,
-            idleMinutes
-          });
-          setInputValue('');
-          helpers.setCursorOffset(0);
-          helpers.clearBuffer();
-          return;
-        }
-      }
     }
 
     // Add to history for direct user submissions.

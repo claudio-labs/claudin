@@ -10,8 +10,6 @@ const realConfigForFastMode = { ...(await import('src/platform/config/config.js'
 const realAuthForFastMode = { ...(await import('src/providers/auth/auth.js')) }
 const realDebugForFastMode = { ...(await import('src/shared/debug.js')) }
 const realBootstrapStateForFastMode = { ...(await import('src/platform/bootstrap/state.js')) }
-const realGrowthbookForFastMode = { ...(await import('src/platform/analytics/growthbook.js')) }
-const realBundledModeForFastMode = { ...(await import('src/platform/install/bundledMode.js')) }
 const realModelForFastMode = { ...(await import('src/providers/model/model.js')) }
 const realProvidersForFastMode = { ...(await import('src/providers/model/providers.js')) }
 const realPrivacyLevelForFastMode = { ...(await import('src/platform/config/privacyLevel.js')) }
@@ -45,11 +43,6 @@ function installCommonMocks(options?: {
     OAUTH_BETA_HEADER: 'test-beta',
   }))
 
-  mock.module('src/platform/analytics/growthbook.js', () => ({
-    getFeatureValue_CACHED_MAY_BE_STALE: (_name: string, defaultValue: unknown) =>
-      defaultValue,
-  }))
-
   mock.module('src/platform/bootstrap/state.js', () => ({
     getIsNonInteractiveSession: () => false,
     getKairosActive: () => false,
@@ -62,10 +55,6 @@ function installCommonMocks(options?: {
       options?.oauthToken ? { accessToken: options.oauthToken } : null,
     handleOAuth401Error: async () => {},
     hasProfileScope: () => options?.hasProfileScope ?? false,
-  }))
-
-  mock.module('src/platform/install/bundledMode.js', () => ({
-    isInBundledMode: () => true,
   }))
 
   mock.module('src/platform/config/config.js', () => ({
@@ -130,8 +119,6 @@ afterAll(() => {
   mock.module('src/providers/auth/auth.js', () => realAuthForFastMode)
   mock.module('src/shared/debug.js', () => realDebugForFastMode)
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapStateForFastMode)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbookForFastMode)
-  mock.module('src/platform/install/bundledMode.js', () => realBundledModeForFastMode)
   mock.module('./model/model.js', () => realModelForFastMode)
   mock.module('./model/providers.js', () => realProvidersForFastMode)
   mock.module('src/platform/config/privacyLevel.js', () => realPrivacyLevelForFastMode)

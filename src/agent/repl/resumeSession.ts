@@ -57,15 +57,6 @@ import {
   restoreCostStateForResume,
   saveCurrentSessionCosts,
 } from 'src/agent/cost-tracker.js'
-import {
-  applyToolResultReplacementsToMessages,
-  reconstructContentReplacementState,
-  type ContentReplacementState,
-} from 'src/agent/tools/toolResultStorage.js'
-
-export type ContentReplacementStateRef = {
-  current: ContentReplacementState | undefined
-}
 
 /**
  * Dependencies required by `resumeSession`. The REPL component closes over
@@ -99,9 +90,6 @@ export interface ResumeSessionDeps {
   haikuTitleAttemptedRef: MutableRefObject<boolean>
   setHaikuTitle: (title: string | undefined) => void
 
-  // Content-replacement state (large-output stubbing across resume)
-  contentReplacementStateRef: ContentReplacementStateRef
-
   // Conversation IO
   setMessages: (action: (prev: MessageType[]) => MessageType[]) => void
   setToolJSX: (args: null) => void
@@ -114,7 +102,7 @@ export interface ResumeSessionDeps {
  * Behaviorally identical to the inline `useCallback` that lived in
  * `src/agent/repl/REPL.tsx` before Etapa 3 of the split — the order of side
  * effects (hooks, plan copy, agent restore, cost swap, session switch,
- * worktree, replacement reconstruction, message hydrate) is preserved
+ * worktree, message hydrate) is preserved
  * verbatim. Do not reorder without revalidating against the resume baseline
  * snapshot.
  */
@@ -138,7 +126,6 @@ export async function resumeSession(
     setConversationId,
     haikuTitleAttemptedRef,
     setHaikuTitle,
-    contentReplacementStateRef,
     setMessages,
     setToolJSX,
     setInputValue,
@@ -338,25 +325,9 @@ export async function resumeSession(
       )
     }
 
-    // Reconstruct replacement state for the resumed session. Runs after
-    // setSessionId so any NEW replacements post-resume write to the
-    // resumed session's tool-results dir. Gated on ref.current: the
-    // initial mount already read the feature flag, so we don't re-read
-    // it here (mid-session flag flips stay unobservable in both
-    // directions).
-    //
-    // Skipped for in-session /branch: the existing ref is already correct
-    // (branch preserves tool_use_ids), so there's no need to reconstruct.
-    // createFork() does write content-replacement entries to the forked
-    // JSONL with the fork's sessionId, so `claude -r {forkId}` also works.
-    if (contentReplacementStateRef.current && entrypoint !== 'fork') {
-      contentReplacementStateRef.current = reconstructContentReplacementState(messages, log.contentReplacements ?? [])
-    }
-    const hydratedMessages = contentReplacementStateRef.current ? applyToolResultReplacementsToMessages(messages, contentReplacementStateRef.current.replacements) : messages
-
     // Reset messages to the provided initial messages
     // Use a callback to ensure we're not dependent on stale state
-    setMessages(() => hydratedMessages)
+    setMessages(() => messages)
 
     // Clear any active tool JSX
     setToolJSX(null)

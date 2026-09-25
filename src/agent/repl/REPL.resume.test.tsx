@@ -2,8 +2,8 @@
 //
 // The resume callback (~210 lines inside REPL.tsx) is scheduled for
 // extraction in Etapa 3 of the split. This file exercises the mount-time
-// resume seed via props: initialMessages, initialFileHistorySnapshots and
-// initialContentReplacements. Coverage is structural only — the resumed
+// resume seed via props: initialMessages and initialFileHistorySnapshots.
+// Coverage is structural only — the resumed
 // session state is mostly internal; the surrounding container/footer
 // remains the regression target.
 
@@ -30,7 +30,6 @@ describe('<REPL> resume baseline', () => {
           {...mockReplProps({
             initialMessages: [],
             initialFileHistorySnapshots: [],
-            initialContentReplacements: [],
           })}
         />
       </AppStateProvider>,
@@ -46,7 +45,6 @@ describe('<REPL> resume baseline', () => {
           {...mockReplProps({
             initialMessages: [],
             initialFileHistorySnapshots: [],
-            initialContentReplacements: [],
             initialAgentName: 'resumed-agent',
             initialAgentColor: 'purple',
           })}

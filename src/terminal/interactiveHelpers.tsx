@@ -9,7 +9,6 @@ import { isSynchronizedOutputSupported } from 'src/terminal/ink/terminal.js';
 import type { RenderOptions, Root, TextProps } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
-import { initializeGrowthBook, resetGrowthBook } from 'src/platform/analytics/growthbook.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { handleMcpjsonServerApprovals } from 'src/mcp/mcpServerApproval.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
@@ -159,21 +158,14 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     }
 
     // Signal that trust has been verified for this session.
-    // GrowthBook checks this to decide whether to include auth headers.
     // Critical for third-party providers: without this, downstream config lookups
     // may fail silently, preventing the REPL from mounting (frozen terminal).
     setSessionTrustAccepted(true);
     profileCheckpoint('setupScreens_after_trust_accepted');
 
-    // Reset and reinitialize GrowthBook after trust is established.
-    // Defense for login/logout: clears any prior client so the next init
-    // picks up fresh auth headers.
-    resetGrowthBook();
-    void initializeGrowthBook();
-
     // Now that trust is established, prefetch system context if it wasn't already
     void getSystemContext();
-    profileCheckpoint('setupScreens_after_growthbook_kick');
+    profileCheckpoint('setupScreens_after_system_context_kick');
 
     // Skip MCP approval dialogs for third-party providers (no interactive auth prompts)
     if (usesAnthropicSetup) {

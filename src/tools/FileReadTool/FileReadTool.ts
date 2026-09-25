@@ -1,7 +1,6 @@
 import * as path from 'path'
 import { PDF_MAX_PAGES_PER_READ } from 'src/shared/constants/apiLimits.js'
 import { hasBinaryExtension } from 'src/shared/constants/files.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   checkReadPermissionForTool,
   matchingRuleForInput,
@@ -47,7 +46,6 @@ import { expandPath } from 'src/shared/fs/path.js'
 import { isPDFExtension, parsePDFPageRange } from 'src/shared/fs/pdfUtils.js'
 import { assertKnownEncoding } from 'src/shared/fs/textEncoding.js'
 import { logError } from 'src/shared/log.js'
-import { formatFileSize } from 'src/shared/text/format.js'
 import { isPriorReadClippedOrMissing } from 'src/tools/FileReadTool/clientClippingDetection.js'
 import {
   clipPinEnabled,
@@ -138,18 +136,13 @@ export const FileReadTool = buildTool({
   // Output is bounded by maxTokens (validateContentTokens). Persisting to a
   // file the model reads back with Read is circular — never persist.
   maxResultSizeChars: Infinity,
-  strict: true,
   async description() {
     return DESCRIPTION
   },
   async prompt() {
-    const limits = getDefaultFileReadingLimits()
-    const maxSizeInstruction = limits.includeMaxSizeInPrompt
-      ? `. Files larger than ${formatFileSize(limits.maxSizeBytes)} will return an error; use offset and limit for larger files`
-      : ''
     return isCompactToolPromptsEnabled()
-      ? renderCompactPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)
-      : renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)
+      ? renderCompactPromptTemplate(pickLineFormatInstruction())
+      : renderPromptTemplate(pickLineFormatInstruction())
   },
   get inputSchema(): InputSchema {
     return inputSchema()
@@ -510,25 +503,13 @@ export const FileReadTool = buildTool({
     // aren't cached in readFileState so won't match here.
     //
     // Ant soak: 1,734 dedup hits in 2h, no Read error regression.
-    // Killswitch pattern: GB can disable if the stub message confuses
-    // the model externally.
-    // 3P default: killswitch off = dedup enabled. Client-side only — no
-    // server support needed, safe for Bedrock/Vertex/Foundry.
-    const dedupKillswitch = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_read_dedup_killswitch',
-      false,
-    )
+    // Client-side only — no server support needed, safe for
+    // Bedrock/Vertex/Foundry.
+    //
     // `let`, not `const`: the sticky branch below can spend its budget and
     // delete the entry, and everything downstream must then see a genuine
     // first read rather than a stale local.
-    //
-    // Note the killswitch reach: `tengu_read_dedup_killswitch` nulls this out,
-    // which disables the sticky branch too. That is documented in AGENTS.md
-    // alongside CLAUDIN_DISABLE_READ_CLIP_PIN, because the two killswitches
-    // have different scopes and only this one can restore unbounded re-sends.
-    let existingState = dedupKillswitch
-      ? undefined
-      : readFileState.get(fullFilePath)
+    let existingState = readFileState.get(fullFilePath)
 
     // STICKY STAND-DOWN. This exact (path, offset, limit) already exhausted
     // the re-send lanes and was answered with a structural outline. Serve that

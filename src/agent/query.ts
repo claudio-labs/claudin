@@ -74,17 +74,11 @@ import {
   finalContextTokensFromLastResponse,
   tokenCountWithEstimation,
 } from 'src/agent/context/tokens.js'
-import { ESCALATED_MAX_TOKENS } from 'src/agent/context/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
-import { executePostSamplingHooks } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { executeStopFailureHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
-import { StreamingToolExecutor } from 'src/agent/tools/StreamingToolExecutor.js'
 import { queryCheckpoint } from 'src/agent/queryProfiler.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'
-import { applyToolResultBudget } from 'src/agent/tools/toolResultStorage.js'
-import { recordContentReplacement } from 'src/sessions/sessionStorage.js'
 import { handleStopHooks } from 'src/agent/query/stopHooks.js'
 import { buildQueryConfig } from 'src/agent/query/config.js'
 import { productionDeps, type QueryDeps } from 'src/agent/query/deps.js'
@@ -334,39 +328,6 @@ async function* queryLoop(
 
     let tracking = autoCompactTracking
 
-    // Enforce per-message budget on aggregate tool result size. Runs BEFORE
-    // microcompact — cached MC operates purely by tool_use_id (never inspects
-    // content), so content replacement is invisible to it and the two compose
-    // cleanly. No-ops when contentReplacementState is undefined (feature off).
-    // Persist only for querySources that read records back on resume: agentId
-    // routes to sidechain file (AgentTool resume) or session file (/resume).
-    // Ephemeral runForkedAgent callers (agent_summary etc.) don't persist.
-    const persistReplacements =
-      querySource.startsWith('agent:') ||
-      querySource.startsWith('repl_main_thread')
-    const toolResultBudgetResult = await applyToolResultBudget(
-      messagesForQuery,
-      toolUseContext.contentReplacementState,
-      persistReplacements
-        ? records =>
-            void recordContentReplacement(
-              records,
-              toolUseContext.agentId,
-            ).catch(logError)
-        : undefined,
-      new Set(
-        toolUseContext.options.tools
-          .filter(t => !Number.isFinite(t.maxResultSizeChars))
-          .map(t => t.name),
-      ),
-    )
-    messagesForQuery = toolResultBudgetResult.messages
-    if (toolResultBudgetResult.newlyReplaced.length > 0) {
-      toolUseContext.syncToolResultReplacements?.(
-        toolUseContext.contentReplacementState?.replacements ?? new Map(),
-      )
-    }
-
     // Apply microcompact before autocompact
     queryCheckpoint('query_microcompact_start')
     const microcompactResult = await deps.microcompact(
@@ -419,16 +380,8 @@ async function* queryLoop(
         )
       }
 
-      // Reset on every compact so turnCounter/turnId reflect the MOST RECENT
-      // compact. recompactionInfo (autoCompact.ts:190) already captured the
-      // old values for turnsSincePreviousCompact/previousCompactTurnId before
-      // the call, so this reset doesn't lose those.
-      tracking = {
-        compacted: true,
-        turnId: deps.uuid(),
-        turnCounter: 0,
-        consecutiveFailures: 0,
-      }
+      // A successful compact resets the circuit breaker's failure count.
+      tracking = { consecutiveFailures: 0 }
 
       const postCompactMessages = buildPostCompactMessages(compactionResult)
 
@@ -442,7 +395,7 @@ async function* queryLoop(
       // Autocompact failed — propagate failure count so the circuit breaker
       // can stop retrying on the next iteration.
       tracking = {
-        ...(tracking ?? { compacted: false, turnId: '', turnCounter: 0 }),
+        ...tracking,
         consecutiveFailures,
       }
     }
@@ -463,14 +416,6 @@ async function* queryLoop(
     let needsFollowUp = false
 
     queryCheckpoint('query_setup_start')
-    const useStreamingToolExecution = config.gates.streamingToolExecution
-    let streamingToolExecutor = useStreamingToolExecution
-      ? new StreamingToolExecutor(
-          toolUseContext.options.tools,
-          canUseTool,
-          toolUseContext,
-        )
-      : null
 
     const appState = toolUseContext.getAppState()
     const permissionMode = appState.toolPermissionContext.mode
@@ -605,7 +550,6 @@ async function* queryLoop(
               ),
               queryTracking,
               effortValue: appState.effortValue,
-              advisorModel: appState.advisorModel,
               skipCacheWrite,
               agentId: toolUseContext.agentId,
               addNotification: toolUseContext.addNotification,
@@ -635,27 +579,14 @@ async function* queryLoop(
               toolUseBlocks.length = 0
               needsFollowUp = false
 
-              // Discard pending results from the failed streaming attempt and create
-              // a fresh executor. This prevents orphan tool_results (with old tool_use_ids)
-              // from being yielded after the fallback response arrives.
-              if (streamingToolExecutor) {
-                streamingToolExecutor.discard()
-                streamingToolExecutor = new StreamingToolExecutor(
-                  toolUseContext.options.tools,
-                  canUseTool,
-                  toolUseContext,
-                )
-              }
-
               // Re-arm: cleanup must run once per fallback signal, not once
               // per subsequent message. The non-streaming fallback yields a
               // single final message so this was unobservable, but the
               // mid-stream streaming retry (streaming.ts) yields a full
               // stream after signalling — without the reset, every later
-              // message would tombstone the retry's own accumulated output
-              // and churn a fresh StreamingToolExecutor per event. A second
-              // signal (retry failed → non-streaming fallback) flips it back
-              // on and cleans up the retry's partials the same way.
+              // message would tombstone the retry's own accumulated output.
+              // A second signal (retry failed → non-streaming fallback) flips
+              // it back on and cleans up the retry's partials the same way.
               streamingFallbackOccured = false
             }
             // Backfill tool_use inputs on a cloned message before yield so
@@ -725,32 +656,6 @@ async function* queryLoop(
                 toolUseBlocks.push(...msgToolUseBlocks)
                 needsFollowUp = true
               }
-
-              if (
-                streamingToolExecutor &&
-                !toolUseContext.abortController.signal.aborted
-              ) {
-                for (const toolBlock of msgToolUseBlocks) {
-                  streamingToolExecutor.addTool(toolBlock, message)
-                }
-              }
-            }
-
-            if (
-              streamingToolExecutor &&
-              !toolUseContext.abortController.signal.aborted
-            ) {
-              for (const result of streamingToolExecutor.getCompletedResults()) {
-                if (result.message) {
-                  yield result.message
-                  toolResults.push(
-                    ...normalizeMessagesForAPI(
-                      [result.message],
-                      toolUseContext.options.tools,
-                    ).filter(_ => _.type === 'user'),
-                  )
-                }
-              }
             }
           }
           queryCheckpoint('query_api_streaming_end')
@@ -769,18 +674,6 @@ async function* queryLoop(
             toolResults.length = 0
             toolUseBlocks.length = 0
             needsFollowUp = false
-
-            // Discard pending results from the failed attempt and create a
-            // fresh executor. This prevents orphan tool_results (with old
-            // tool_use_ids) from leaking into the retry.
-            if (streamingToolExecutor) {
-              streamingToolExecutor.discard()
-              streamingToolExecutor = new StreamingToolExecutor(
-                toolUseContext.options.tools,
-                canUseTool,
-                toolUseContext,
-              )
-            }
 
             // Update tool use context with new model
             toolUseContext.options.mainLoopModel = fallbackModel
@@ -837,37 +730,13 @@ async function* queryLoop(
       return { reason: 'model_error', error }
     }
 
-    // Execute post-sampling hooks after model response is complete
-    if (assistantMessages.length > 0) {
-      void executePostSamplingHooks(
-        [...messagesForQuery, ...assistantMessages],
-        systemPrompt,
-        userContext,
-        systemContext,
-        toolUseContext,
-        querySource,
-      )
-    }
-
-    // We need to handle a streaming abort before anything else.
-    // When using streamingToolExecutor, we must consume getRemainingResults() so the
-    // executor can generate synthetic tool_result blocks for queued/in-progress tools.
-    // Without this, tool_use blocks would lack matching tool_result blocks.
+    // We need to handle a streaming abort before anything else, so every
+    // tool_use block gets a matching tool_result block.
     if (toolUseContext.abortController.signal.aborted) {
-      if (streamingToolExecutor) {
-        // Consume remaining results - executor generates synthetic tool_results for
-        // aborted tools since it checks the abort signal in executeTool()
-        for await (const update of streamingToolExecutor.getRemainingResults()) {
-          if (update.message) {
-            yield update.message
-          }
-        }
-      } else {
-        yield* yieldMissingToolResultBlocks(
-          assistantMessages,
-          'Interrupted by user',
-        )
-      }
+      yield* yieldMissingToolResultBlocks(
+        assistantMessages,
+        'Interrupted by user',
+      )
       // Skip the interruption message for submit-interrupts — the queued
       // user message that follows provides sufficient context.
       if (toolUseContext.abortController.signal.reason !== 'interrupt') {
@@ -893,37 +762,6 @@ async function* queryLoop(
       // was withheld from the stream above; only surface it if recovery
       // exhausts.
       if (isWithheldMaxOutputTokens(lastMessage)) {
-        // Escalating retry: if we used the capped 8k default and hit the
-        // limit, retry the SAME request at 64k — no meta message, no
-        // multi-turn dance. This fires once per turn (guarded by the
-        // override check), then falls through to multi-turn recovery if
-        // 64k also hits the cap.
-        // 3P default: false (not validated on Bedrock/Vertex)
-        const capEnabled = getFeatureValue_CACHED_MAY_BE_STALE(
-          'tengu_otk_slot_v1',
-          false,
-        )
-        if (
-          capEnabled &&
-          maxOutputTokensOverride === undefined &&
-          !process.env.CLAUDIN_MAX_OUTPUT_TOKENS
-        ) {
-          const next: State = {
-            messages: messagesForQuery,
-            toolUseContext,
-            autoCompactTracking: tracking,
-            maxOutputTokensRecoveryCount,
-            maxOutputTokensOverride: ESCALATED_MAX_TOKENS,
-            pendingToolUseSummary: undefined,
-            stopHookActive: undefined,
-            turnCount,
-            continuationNudgeCount: state.continuationNudgeCount,
-            transition: { reason: 'max_output_tokens_escalate' },
-          }
-          state = next
-          continue
-        }
-
         if (maxOutputTokensRecoveryCount < MAX_OUTPUT_TOKENS_RECOVERY_LIMIT) {
           const recoveryMessage = createUserMessage({
             content:
@@ -1193,9 +1031,12 @@ async function* queryLoop(
 
 
 
-    const toolUpdates = streamingToolExecutor
-      ? streamingToolExecutor.getRemainingResults()
-      : runTools(toolUseBlocks, assistantMessages, canUseTool, toolUseContext)
+    const toolUpdates = runTools(
+      toolUseBlocks,
+      assistantMessages,
+      canUseTool,
+      toolUseContext,
+    )
 
     for await (const update of toolUpdates) {
       if (update.message) {
@@ -1321,10 +1162,6 @@ async function* queryLoop(
     // If a hook indicated to prevent continuation, stop here
     if (shouldPreventContinuation) {
       return { reason: 'hook_stopped' }
-    }
-
-    if (tracking?.compacted) {
-      tracking.turnCounter++
     }
 
     // Be careful to do this after tool calls are done, because the API

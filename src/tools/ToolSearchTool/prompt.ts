@@ -1,6 +1,5 @@
 import { feature } from 'bun:bundle'
 import { getDeferredDeltaLegacySession } from 'src/platform/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
@@ -9,7 +8,7 @@ import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 export { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
@@ -34,6 +33,21 @@ const DEFERRED_DEV_TOOLS: ReadonlySet<string> = new Set([
   WAITFOR_TOOL_NAME,
 ])
 
+/**
+ * True → announce deferred tools via persisted delta attachments. False →
+ * claude/streaming.ts prepends an ephemeral <available-deferred-tools> block at
+ * messages[0] on every request, so any change to the deferred pool (an MCP
+ * connect, a discovery) rewrites messages[0] and invalidates the whole cached
+ * prefix. On by default in this fork since 2026-06-11; upstream shipped it
+ * off. CLAUDIN_DEFERRED_TOOLS_DELTA=0 is the killswitch. It must not change
+ * while the process lives: this hint and the announcement mechanism flip
+ * together. toolSearch.ts re-exports it — it imports this module, so the
+ * definition lives here.
+ */
+export function isDeferredToolsDeltaEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_DEFERRED_TOOLS_DELTA)
+}
+
 // Matches isDeferredToolsDeltaActive in toolSearch.ts (not imported —
 // toolSearch.ts imports from this file; the legacy-session latch is read
 // from bootstrap/state directly). When active: tools announced via
@@ -45,8 +59,7 @@ const DEFERRED_DEV_TOOLS: ReadonlySet<string> = new Set([
 // resumed session's warm cache).
 function getToolLocationHint(): string {
   const deltaActive =
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_glacier_2xr', false) &&
-    !getDeferredDeltaLegacySession()
+    isDeferredToolsDeltaEnabled() && !getDeferredDeltaLegacySession()
   return deltaActive
     ? 'Deferred tools appear by name in <system-reminder> messages.'
     : 'Deferred tools appear by name in <available-deferred-tools> messages.'

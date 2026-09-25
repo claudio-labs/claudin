@@ -9,7 +9,6 @@ const teamMemPaths = feature('TEAMMEM')
   : null
 
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -363,14 +362,17 @@ export function buildMemoryPrompt(params: {
 }
 
 /**
- * Build the "Searching past context" section if the feature gate is enabled.
+ * Build the "Searching past context" section. On by default in this fork;
+ * upstream shipped it off. CLAUDIN_MEMORY_PAST_CONTEXT=0 drops it — the
+ * section is part of the system prompt, so the value must not change while
+ * the process lives.
  * `lean` (the v2 prompt) says the same two steps in one line.
  */
 export function buildSearchingPastContextSection(
   autoMemDir: string,
   lean = false,
 ): string[] {
-  if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_coral_fern', false)) {
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_MEMORY_PAST_CONTEXT)) {
     return []
   }
   const projectDir = getProjectDir(getOriginalCwd())

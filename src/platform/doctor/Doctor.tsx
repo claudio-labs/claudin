@@ -2,7 +2,6 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import { join } from 'path';
 import React, { Suspense, use, useCallback, useEffect, useMemo, useState } from 'react';
-import { KeybindingWarnings } from 'src/platform/KeybindingWarnings.js';
 import { McpParsingWarnings } from 'src/mcp/ui/McpParsingWarnings.js';
 import { getModelMaxOutputTokens } from 'src/agent/context/context.js';
 import { getDefaultMainLoopModel } from 'src/providers/model/model.js';
@@ -432,7 +431,7 @@ export function Doctor(t0: Props) {
   if ($[61] === Symbol.for("react.memo_cache_sentinel")) {
     t31 = <SandboxDoctorSection />;
     t32 = <McpParsingWarnings />;
-    t33 = <KeybindingWarnings />;
+    t33 = null;
     t34 = envValidationErrors.length > 0 && <Box flexDirection="column"><Text bold={true}>Environment Variables</Text>{envValidationErrors.map(_temp11)}</Box>;
     $[61] = t31;
     $[62] = t32;

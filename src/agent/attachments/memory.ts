@@ -20,7 +20,6 @@ import {
 import { pathInAllowedWorkingPath } from 'src/permissions/filePermissions.js'
 import { logError } from 'src/shared/log.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getPathScopedMemoryFiles } from 'src/memory/memdir/pathScopedMemories.js'
 
 export function getDirectoriesToProcess(
@@ -151,16 +150,11 @@ export async function getNestedMemoryAttachmentsForFile(
       originalCwd,
     )
 
-    const skipProjectLevel = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_paper_halyard',
-      false,
-    )
-
     for (const dir of nestedDirs) {
-      const memoryFiles = (
-        await getMemoryFilesForNestedDirectory(dir, filePath, processedPaths)
-      ).filter(
-        f => !skipProjectLevel || (f.type !== 'Project' && f.type !== 'Local'),
+      const memoryFiles = await getMemoryFilesForNestedDirectory(
+        dir,
+        filePath,
+        processedPaths,
       )
       attachments.push(
         ...memoryFilesToAttachments(memoryFiles, toolUseContext, filePath),
@@ -168,14 +162,10 @@ export async function getNestedMemoryAttachmentsForFile(
     }
 
     for (const dir of cwdLevelDirs) {
-      const conditionalRules = (
-        await getConditionalRulesForCwdLevelDirectory(
-          dir,
-          filePath,
-          processedPaths,
-        )
-      ).filter(
-        f => !skipProjectLevel || (f.type !== 'Project' && f.type !== 'Local'),
+      const conditionalRules = await getConditionalRulesForCwdLevelDirectory(
+        dir,
+        filePath,
+        processedPaths,
       )
       attachments.push(
         ...memoryFilesToAttachments(conditionalRules, toolUseContext, filePath),

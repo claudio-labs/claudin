@@ -92,7 +92,6 @@ import {
   readMailbox,
   writeToMailbox,
 } from 'src/agent/coordinator/teammateMailbox.js'
-import { createContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
 import {
   getLeaderSetToolPermissionContext,
@@ -491,9 +490,6 @@ export type InProcessRunnerConfig = {
   allowPermissionPrompts?: boolean
   /** Short description of the task (used as summary for the initial prompt header) */
   description?: string
-  /** request_id of the API call that spawned this teammate, for lineage
-   *  tracing on tengu_api_* events. */
-  invokingRequestId?: string
 }
 
 /**
@@ -892,7 +888,6 @@ export async function runInProcessTeammate(
     systemPromptMode,
     allowedTools,
     allowPermissionPrompts,
-    invokingRequestId,
   } = config
   const { setAppState } = toolUseContext
 
@@ -910,9 +905,6 @@ export async function runInProcessTeammate(
     planModeRequired: identity.planModeRequired,
     isTeamLead: false,
     agentType: 'teammate',
-    invokingRequestId,
-    invocationKind: 'spawn',
-    invocationEmitted: false,
   }
 
   // Build system prompt based on systemPromptMode
@@ -1012,18 +1004,6 @@ export async function runInProcessTeammate(
       setAppState,
     )
 
-    // Per-teammate content replacement state. The while-loop below calls
-    // runAgent repeatedly over an accumulating `allMessages` buffer (which
-    // carries FULL original tool result content, not previews — query() yields
-    // originals, enforcement is non-mutating). Without persisting state across
-    // iterations, each call gets a fresh empty state from createSubagentContext
-    // and makes holistic replace-globally-largest decisions, diverging from
-    // earlier iterations' incremental frozen-first decisions → wire prefix
-    // differs → cache miss. Gated on parent to inherit feature-flag-off.
-    let teammateReplacementState = toolUseContext.contentReplacementState
-      ? createContentReplacementState()
-      : undefined
-
     // Main teammate loop - runs until abort or shutdown approved
     while (!abortController.signal.aborted && !shouldExit) {
       logForDebugging(
@@ -1085,12 +1065,6 @@ export async function runInProcessTeammate(
         // Reset microcompact state since full compact replaces all
         // messages — old tool IDs are no longer relevant
         resetMicrocompactState()
-        // Reset content replacement state — compact replaces all messages
-        // so old tool_use_ids are gone. Stale Map entries are harmless
-        // (UUID keys never match) but accumulate memory over long runs.
-        if (teammateReplacementState) {
-          teammateReplacementState = createContentReplacementState()
-        }
         // Update allMessages in place with compacted version
         allMessages.length = 0
         allMessages.push(...contextMessages)
@@ -1180,7 +1154,6 @@ export async function runInProcessTeammate(
             isTeammateOwnLoop: true,
             availableTools: toolUseContext.options.tools,
             allowedTools,
-            contentReplacementState: teammateReplacementState,
           })) {
             // Check lifecycle abort first (kills whole teammate)
             if (abortController.signal.aborted) {

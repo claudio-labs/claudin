@@ -5,10 +5,9 @@ import { ERROR_MESSAGE_USER_ABORT } from 'src/agent/compact/compact.js';
 import { isRateLimitErrorMessage } from 'src/providers/rateLimitMessages.js';
 import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { Box, NoSelect, Text } from 'src/terminal/ink.js';
-import { API_ERROR_MESSAGE_PREFIX, API_TIMEOUT_ERROR_MESSAGE, CREDIT_BALANCE_TOO_LOW_ERROR_MESSAGE, CUSTOM_OFF_SWITCH_MESSAGE, INVALID_API_KEY_ERROR_MESSAGE, INVALID_API_KEY_ERROR_MESSAGE_EXTERNAL, ORG_DISABLED_ERROR_MESSAGE_ENV_KEY, ORG_DISABLED_ERROR_MESSAGE_ENV_KEY_WITH_OAUTH, PROMPT_TOO_LONG_ERROR_MESSAGE, startsWithApiErrorPrefix, TOKEN_REVOKED_ERROR_MESSAGE } from 'src/providers/transport/errors.js';
+import { API_ERROR_MESSAGE_PREFIX, API_TIMEOUT_ERROR_MESSAGE, CREDIT_BALANCE_TOO_LOW_ERROR_MESSAGE, INVALID_API_KEY_ERROR_MESSAGE, INVALID_API_KEY_ERROR_MESSAGE_EXTERNAL, ORG_DISABLED_ERROR_MESSAGE_ENV_KEY, ORG_DISABLED_ERROR_MESSAGE_ENV_KEY_WITH_OAUTH, PROMPT_TOO_LONG_ERROR_MESSAGE, startsWithApiErrorPrefix, TOKEN_REVOKED_ERROR_MESSAGE } from 'src/providers/transport/errors.js';
 import { isEmptyMessageText, NO_RESPONSE_REQUESTED } from 'src/agent/messages/messages.js';
 import { getUpgradeMessage } from 'src/providers/model/contextWindowUpgradeCheck.js';
-import { getDefaultSonnetModel, renderModelName } from 'src/providers/model/model.js';
 import { isMacOsKeychainLocked } from 'src/platform/secureStorage/macOsKeychainStorage.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { InterruptedByUser } from 'src/agent/ui/InterruptedByUser.js';
@@ -163,24 +162,6 @@ export function AssistantTextMessage(t0: Props) {
           t2 = $[11];
         }
         return t2;
-      }
-    case CUSTOM_OFF_SWITCH_MESSAGE:
-      {
-        let t2;
-        if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-          t2 = <Text color="error">We are experiencing high demand for Opus 4.</Text>;
-          $[12] = t2;
-        } else {
-          t2 = $[12];
-        }
-        let t3;
-        if ($[13] === Symbol.for("react.memo_cache_sentinel")) {
-          t3 = <MessageResponse><Box flexDirection="column" gap={1}>{t2}<Text>To continue immediately, use /model to switch to{" "}{renderModelName(getDefaultSonnetModel())} and continue coding.</Text></Box></MessageResponse>;
-          $[13] = t3;
-        } else {
-          t3 = $[13];
-        }
-        return t3;
       }
     case ERROR_MESSAGE_USER_ABORT:
       {

@@ -8,7 +8,6 @@ import type {
   BetaOutputConfig,
   BetaRawMessageStreamEvent,
   BetaStopReason,
-  BetaToolUnion,
   BetaUsage,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages.mjs";
 import type { Stream } from "@anthropic-ai/sdk/streaming.mjs";
@@ -61,13 +60,11 @@ import {
   stripCallerFieldFromAssistantMessage,
   stripToolReferenceBlocksFromUserMessage,
 } from "src/agent/messages/messages.js";
-import { isNonCustomOpusModel } from "src/providers/model/model.js";
 import {
   asSystemPrompt,
   type SystemPrompt,
 } from "src/agent/systemPromptType.js";
 import { tokenCountFromLastAPIResponse } from "src/agent/context/tokens.js";
-import { getDynamicConfig_BLOCKS_ON_INIT } from "src/platform/analytics/growthbook.js";
 import {
   currentLimits,
   extractQuotaStatusFromError,
@@ -122,16 +119,7 @@ import {
   THINKING_DISPLAY_UPDATES_BETA_HEADER,
 } from "src/shared/constants/betas.js";
 import { addToTotalSessionCost } from "src/agent/cost-tracker.js";
-import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
-import {
-  ADVISOR_TOOL_INSTRUCTIONS,
-  getExperimentAdvisorModels,
-  isAdvisorEnabled,
-  isValidAdvisorModel,
-  modelSupportsAdvisor,
-} from "src/platform/doctor/advisor.js";
 import { getAgentContext } from "src/agent/coordinator/agentContext.js";
-import { isClaudeAISubscriber } from "src/providers/auth/auth.js";
 import { createCombinedAbortSignal } from "src/shared/combinedAbortSignal.js";
 import {
   getToolSearchBetaHeader,
@@ -184,10 +172,7 @@ import {
 } from "src/tools/ToolSearchTool/prompt.js";
 import { count } from "src/shared/data/array.js";
 import { getInferenceProfileBackingModel } from "src/providers/model/bedrock.js";
-import {
-  normalizeModelStringForAPI,
-  parseUserSpecifiedModel,
-} from "src/providers/model/model.js";
+import { normalizeModelStringForAPI } from "src/providers/model/model.js";
 import {
   startSessionActivity,
   stopSessionActivity,
@@ -199,7 +184,6 @@ import { CLIENT_REQUEST_ID_HEADER, getAnthropicClient } from "src/providers/tran
 import { getCachedAnthropicClient, invalidateClientCache } from "src/providers/transport/clientCache.js";
 import {
   API_ERROR_MESSAGE_PREFIX,
-  CUSTOM_OFF_SWITCH_MESSAGE,
   getAssistantMessageFromError,
   getErrorMessageIfRefusal,
 } from "src/providers/transport/errors.js";
@@ -323,28 +307,6 @@ export async function* queryModel(
   StreamEvent | AssistantMessage | SystemAPIErrorMessage,
   void
 > {
-  // Check cheap conditions first — the off-switch await blocks on GrowthBook
-  // init (~10ms). For non-Opus models (haiku, sonnet) this skips the await
-  // entirely. Subscribers don't hit this path at all.
-  if (
-    !isClaudeAISubscriber() &&
-    isNonCustomOpusModel(options.model) &&
-    (
-      await getDynamicConfig_BLOCKS_ON_INIT<{ activated: boolean }>(
-        "tengu-off-switch",
-        {
-          activated: false,
-        },
-      )
-    ).activated
-  ) {
-    yield getAssistantMessageFromError(
-      new Error(CUSTOM_OFF_SWITCH_MESSAGE),
-      options.model,
-    );
-    return;
-  }
-
   // Derive previous request ID from the last assistant message in this query chain.
   // This is scoped per message array (main thread, subagent, teammate each have their own),
   // so concurrent agents don't clobber each other's request chain tracking.
@@ -366,51 +328,6 @@ export async function* queryModel(
     options.querySource === "sdk" ||
     options.querySource === "hook_agent";
   let betas = getMergedBetas(options.model, { isAgenticQuery });
-
-  // Always send the advisor beta header when advisor is enabled, so
-  // non-agentic queries (compact, side_question, extract_memories, etc.)
-  // can parse advisor server_tool_use blocks already in the conversation history.
-  if (isAdvisorEnabled()) {
-    betas.push(ADVISOR_BETA_HEADER);
-  }
-
-  let advisorModel: string | undefined;
-  if (isAgenticQuery && isAdvisorEnabled()) {
-    let advisorOption = options.advisorModel;
-
-    const advisorExperiment = getExperimentAdvisorModels();
-    if (advisorExperiment !== undefined) {
-      if (
-        normalizeModelStringForAPI(advisorExperiment.baseModel) ===
-        normalizeModelStringForAPI(options.model)
-      ) {
-        // Override the advisor model if the base model matches. We
-        // should only have experiment models if the user cannot
-        // configure it themselves.
-        advisorOption = advisorExperiment.advisorModel;
-      }
-    }
-
-    if (advisorOption) {
-      const normalizedAdvisorModel = normalizeModelStringForAPI(
-        parseUserSpecifiedModel(advisorOption),
-      );
-      if (!modelSupportsAdvisor(options.model)) {
-        logForDebugging(
-          `[AdvisorTool] Skipping advisor - base model ${options.model} does not support advisor`,
-        );
-      } else if (!isValidAdvisorModel(normalizedAdvisorModel)) {
-        logForDebugging(
-          `[AdvisorTool] Skipping advisor - ${normalizedAdvisorModel} is not a valid advisor model`,
-        );
-      } else {
-        advisorModel = normalizedAdvisorModel;
-        logForDebugging(
-          `[AdvisorTool] Server-side tool enabled with ${advisorModel} as the advisor model`,
-        );
-      }
-    }
-  }
 
   // Settle the deferred-tools announcement format BEFORE tool schemas are
   // built: the ToolSearchTool location hint (rendered during schema build)
@@ -681,7 +598,6 @@ export async function* queryModel(
         hasAppendSystemPrompt: options.hasAppendSystemPrompt,
       }),
       ...systemPrompt,
-      ...(advisorModel ? [ADVISOR_TOOL_INSTRUCTIONS] : []),
     ].filter(Boolean),
   );
 
@@ -700,16 +616,6 @@ export async function* queryModel(
   // Note: The actual new_context message extraction is done in sessionTracing.ts using
   // hash-based tracking per querySource (agent) from the messagesForAPI array
   const extraToolSchemas = [...(options.extraToolSchemas ?? [])];
-  if (advisorModel) {
-    // Server tools must be in the tools array by API contract. Appended after
-    // toolSchemas (which carries the cache_control marker) so toggling /advisor
-    // only churns the small suffix, not the cached prefix.
-    extraToolSchemas.push({
-      type: "advisor_20260301",
-      name: "advisor",
-      model: advisorModel,
-    } as unknown as BetaToolUnion);
-  }
   let allTools = [...toolSchemas, ...extraToolSchemas];
 
   const isFastMode =
@@ -1090,9 +996,9 @@ export async function* queryModel(
     }
 
     // Single render shared by the wire request and the opt-in annotation
-    // dump below — rendering twice would double the O(n) walk and the
-    // tengu_api_cache_breakpoints event, and any drift between the two
-    // renders would make the diagnostic lie about the wire bytes.
+    // dump below — rendering twice would double the O(n) walk, and any
+    // drift between the two renders would make the diagnostic lie about the
+    // wire bytes.
     const renderedMessages = addCacheBreakpoints(
       messagesForRequest,
       enablePromptCaching,
@@ -1569,7 +1475,6 @@ export async function* queryModel(
               type: "assistant",
               uuid: randomUUID(),
               timestamp: new Date().toISOString(),
-              ...(advisorModel && { advisorModel }),
             };
             newMessages.push(m);
             yield m;
@@ -1767,17 +1672,11 @@ export async function* queryModel(
         }
       }
 
-      // When the flag is enabled, skip the non-streaming fallback and let the
-      // error propagate to withRetry. The mid-stream fallback causes double tool
-      // execution when streaming tool execution is active: the partial stream
-      // starts a tool, then the non-streaming retry produces the same tool_use
-      // and runs it again. See inc-4258.
-      const disableFallback =
-        isEnvTruthy(process.env.CLAUDIN_DISABLE_NONSTREAMING_FALLBACK) ||
-        getFeatureValue_CACHED_MAY_BE_STALE(
-          "tengu_disable_streaming_to_non_streaming_fallback",
-          false,
-        );
+      // When the env is set, skip the non-streaming fallback and let the
+      // error propagate to withRetry.
+      const disableFallback = isEnvTruthy(
+        process.env.CLAUDIN_DISABLE_NONSTREAMING_FALLBACK,
+      );
 
       if (disableFallback) {
         logForDebugging(
@@ -1855,7 +1754,6 @@ export async function* queryModel(
           maxOutputTokens = tokens;
         },
         (params) => captureAPIRequest(params, options.querySource),
-        streamRequestId,
       );
 
       const m: AssistantMessage = {
@@ -1871,9 +1769,6 @@ export async function* queryModel(
         type: "assistant",
         uuid: randomUUID(),
         timestamp: new Date().toISOString(),
-        ...(advisorModel && {
-          advisorModel,
-        }),
       };
       newMessages.push(m);
       fallbackMessage = m;
@@ -1910,10 +1805,6 @@ export async function* queryModel(
         "model_not_found";
 
     if (is404StreamCreationError) {
-      // 404 is thrown at .withResponse() before streamRequestId is assigned,
-      // and CannotRetryError means every retry failed — so grab the failed
-      // request's ID from the error header instead.
-      const failedRequestId = originalError404?.requestID ?? "unknown";
       logForDebugging(
         "Streaming endpoint returned 404, falling back to non-streaming mode",
         { level: "warn" },
@@ -1941,7 +1832,6 @@ export async function* queryModel(
             maxOutputTokens = tokens;
           },
           (params) => captureAPIRequest(params, options.querySource),
-          failedRequestId,
         );
 
         const m: AssistantMessage = {
@@ -1957,7 +1847,6 @@ export async function* queryModel(
           type: "assistant",
           uuid: randomUUID(),
           timestamp: new Date().toISOString(),
-          ...(advisorModel && { advisorModel }),
         };
         newMessages.push(m);
         fallbackMessage = m;

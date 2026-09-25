@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
-import { snapshotOutputTokensForTurn, getTotalInputTokens } from 'src/platform/bootstrap/state.js';
+import { snapshotOutputTokensForTurn } from 'src/platform/bootstrap/state.js';
 import { count } from 'src/shared/data/array.js';
 import { dirname, join } from 'path';
 import { tmpdir } from 'os';
@@ -33,9 +33,8 @@ import { useOnSubmit } from 'src/agent/repl/controllers/useOnSubmit.js';
 import { renderMessagesToPlainText } from 'src/platform/exportRenderer.js';
 import { openFileInExternalEditor } from 'src/shared/editor.js';
 import { writeFile } from 'fs/promises';
-import { Box, Text, useStdin, useTheme, useTabStatus } from 'src/terminal/ink.js';
+import { Box, Text, useStdin, useTheme } from 'src/terminal/ink.js';
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js';
-import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js';
 import * as React from 'react';
 import { useEffect, useMemo, useRef, useState, useCallback, useDeferredValue, useLayoutEffect } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
@@ -49,7 +48,7 @@ import { asSessionId, asAgentId } from 'src/shared/types/ids.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { QueryGuard } from 'src/agent/QueryGuard.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import { formatTokens, truncateToWidth } from 'src/shared/text/format.js';
+import { truncateToWidth } from 'src/shared/text/format.js';
 import { consumeEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { sendSandboxPermissionResponseViaMailbox } from 'src/agent/coordinator/swarm/permissionSync.js';
 import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermission.js';
@@ -129,7 +128,6 @@ import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js';
 import { clearSpeculativeChecks } from 'src/tools/BashTool/bashPermissions.js';
 import { getGlobalConfig, saveGlobalConfig, getGlobalConfigWriteCount } from 'src/platform/config/config.js';
 import { hasConsoleBillingAccess } from 'src/providers/usage/billing.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { textForResubmit, handleMessageFromStream, type StreamingToolUse, type StreamingThinking, getMessagesAfterCompactBoundary, createUserMessage, createAssistantMessage, createTurnDurationMessage, createAgentsKilledMessage, createApiMetricsMessage, createSystemMessage, createCommandInputMessage, formatCommandInputTags } from 'src/agent/messages/messages.js';
 import { LOCAL_COMMAND_STDOUT_TAG } from 'src/shared/constants/xml.js';
 import { escapeXml } from 'src/shared/data/xml.js';
@@ -171,7 +169,6 @@ import { clearSessionMetadata, resetSessionFilePointer, adoptResumedSessionFile,
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages, extractNestedMemoryPathsFromMessages } from 'src/agent/queryHelpers.js';
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js';
-import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js';
 import { partialCompactConversation } from 'src/agent/compact/compact.js';
 import type { LogOption } from 'src/shared/types/logs.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
@@ -215,7 +212,7 @@ import { getTipToShowOnSpinner, recordShownTip } from 'src/terminal/tips/tipSche
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { isPromptTypingSuppressionActive } from 'src/agent/repl/replInputSuppression.js';
 import { shouldRunStartupChecks } from 'src/agent/repl/replStartupGates.js';
-import { useKickOffCheckAndDisableBypassPermissionsIfNeeded, useKickOffCheckAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
+import { useKickOffCheckAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { useFileHistorySnapshotInit } from 'src/sessions/hooks/useFileHistorySnapshotInit.js';
 import { SandboxPermissionRequest } from 'src/permissions/ui/SandboxPermissionRequest.js';
@@ -225,8 +222,6 @@ import { useMcpConnectivityStatus } from 'src/platform/notifications/useMcpConne
 import { useAutoModeUnavailableNotification } from 'src/platform/notifications/useAutoModeUnavailableNotification.js';
 import { AUTO_MODE_DESCRIPTION } from 'src/permissions/ui/AutoModeOptInDialog.js';
 import { useLspInitializationNotification } from 'src/platform/notifications/useLspInitializationNotification.js';
-import { useClaudeCodeHintRecommendation } from 'src/plugins/hooks/useClaudeCodeHintRecommendation.js';
-import { PluginHintMenu } from 'src/platform/hints/PluginHintMenu.js';
 import { usePluginInstallationStatus } from 'src/platform/notifications/usePluginInstallationStatus.js';
 import { usePluginAutoupdateNotification } from 'src/platform/notifications/usePluginAutoupdateNotification.js';
 import { performStartupChecks } from 'src/plugins/performStartupChecks.js';
@@ -303,9 +298,6 @@ export type Props = {
   // hook messages when they resolve. Awaited before the first API call.
   pendingHookMessages?: Promise<HookResultMessage[]>;
   initialFileHistorySnapshots?: FileHistorySnapshot[];
-  // Content-replacement records from a resumed session's transcript — used to
-  // reconstruct contentReplacementState so the same results are re-replaced
-  initialContentReplacements?: ContentReplacementRecord[];
   // Initial agent context for session resume (name/color set via /rename or /color)
   initialAgentName?: string;
   initialAgentColor?: AgentColorName;
@@ -346,7 +338,6 @@ export function REPL({
   initialMessages,
   pendingHookMessages,
   initialFileHistorySnapshots,
-  initialContentReplacements,
   initialAgentName,
   initialAgentColor,
   mcpClients: initialMcpClients,
@@ -487,7 +478,6 @@ export function REPL({
   // the model emits plain text the brief filter hides.
   const isBriefOnly = useAppState(s => s.isBriefOnly);
   const localTools = useMemo(() => getTools(toolPermissionContext), [toolPermissionContext, isBriefOnly]);
-  useKickOffCheckAndDisableBypassPermissionsIfNeeded();
   useKickOffCheckAndDisableAutoModeIfNeeded();
   const [dynamicMcpConfig, setDynamicMcpConfig] = useState<Record<string, ScopedMcpServerConfig> | undefined>(initialDynamicMcpConfig);
   const onChangeDynamicMcpConfig = useCallback((config: Record<string, ScopedMcpServerConfig>) => {
@@ -511,8 +501,7 @@ export function REPL({
   const editorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const editorRenderingRef = useRef(false);
   const {
-    addNotification,
-    removeNotification
+    addNotification
   } = useNotifications();
 
   // eslint-disable-next-line prefer-const
@@ -550,10 +539,6 @@ export function REPL({
   useOfficialMarketplaceNotification();
   useLspInitializationNotification();
   useTeammateLifecycleNotification();
-  const {
-    recommendation: hintRecommendation,
-    handleResponse: handleHintResponse
-  } = useClaudeCodeHintRecommendation();
 
   // Memoize the combined initial tools array to prevent reference changes
   const combinedInitialTools = useMemo(() => {
@@ -901,9 +886,9 @@ export function REPL({
 
   // Boot/lifecycle effects: prevent-sleep + session-activity PID file push.
   // Both keyed on the same upstream loading/approval signals; consolidated in
-  // a single hook so the `sessionStatus`/`waitingFor` derivation lives next to
+  // a single hook so the `waitingFor` derivation lives next to
   // its only consumer. See src/agent/repl/hooks/useReplLifecycle.ts.
-  const { sessionStatus, waitingFor } = useReplLifecycle({
+  const { waitingFor } = useReplLifecycle({
     isLoading,
     isWaitingForApproval,
     isShowingLocalJSXCommand,
@@ -912,30 +897,13 @@ export function REPL({
     pendingSandboxRequest: pendingSandboxRequest !== null,
   });
 
-  // 3P default: off — OSC 21337 is internal-only while the spec stabilizes.
-  // Gated so we can roll back if the sidebar indicator conflicts with
-  // the title spinner in terminals that render both. When the flag is
-  // on, the user-facing config setting controls whether it's active.
-  const tabStatusGateEnabled = getFeatureValue_CACHED_MAY_BE_STALE('tengu_terminal_sidebar', false);
-  const showStatusInTerminalTab = tabStatusGateEnabled && (getGlobalConfig().showStatusInTerminalTab ?? false);
-  useTabStatus(titleDisabled || !showStatusInTerminalTab ? null : sessionStatus);
-
   // Register the leader's setToolUseConfirmQueue for in-process teammates
   useEffect(() => {
     registerLeaderToolUseConfirmQueue(setToolUseConfirmQueue);
     return () => unregisterLeaderToolUseConfirmQueue();
   }, [setToolUseConfirmQueue]);
-  const [messages, rawSetMessages] = useState<MessageType[]>(() => {
-    if (!initialMessages) return [];
-    const initialReplacementState = provisionContentReplacementState(initialMessages, initialContentReplacements);
-    return initialReplacementState ? applyToolResultReplacementsToMessages(initialMessages, initialReplacementState.replacements) : initialMessages;
-  });
+  const [messages, rawSetMessages] = useState<MessageType[]>(() => initialMessages ?? []);
   const messagesRef = useRef(messages);
-  // Stores the willowMode variant that was shown (or false if no hint shown).
-  // Captured at hint_shown time so hint_converted telemetry reports the same
-  // variant — the GrowthBook value shouldn't change mid-session, but reading
-  // it once guarantees consistency between the paired events.
-  const idleHintShownRef = useRef<string | false>(false);
   // Wrap setMessages so messagesRef is always current the instant the
   // call returns — not when React later processes the batch.  Apply the
   // updater eagerly against the ref, then hand React the computed value
@@ -981,10 +949,6 @@ export function REPL({
     }
     setUserInputOnProcessingRaw(input);
   }, []);
-  const syncToolResultReplacements = useCallback((replacements: ReadonlyMap<string, string>) => {
-    if (replacements.size === 0) return;
-    setMessages(current => applyToolResultReplacementsToMessages(current, replacements));
-  }, [setMessages]);
   // Fullscreen: track the unseen-divider position. dividerIndex changes
   // only ~twice/scroll-session (first scroll-away + repin). pillVisible
   // and stickyPrompt now live in FullscreenLayout — they subscribe to
@@ -1337,29 +1301,6 @@ export function REPL({
   const [showCostDialog, setShowCostDialog] = useState(false);
   const [conversationId, setConversationId] = useState(randomUUID());
 
-  // Idle-return dialog: shown when user submits after a long idle gap
-  const [idleReturnPending, setIdleReturnPending] = useState<{
-    input: string;
-    idleMinutes: number;
-  } | null>(null);
-  const skipIdleCheckRef = useRef(false);
-  const lastQueryCompletionTimeRef = useRef(lastQueryCompletionTime);
-  lastQueryCompletionTimeRef.current = lastQueryCompletionTime;
-
-  // Aggregate tool result budget: per-conversation decision tracking.
-  // When the GrowthBook flag is on, query.ts enforces the budget; when
-  // off (undefined), enforcement is skipped entirely. Stale entries after
-  // /clear, rewind, or compact are harmless (tool_use_ids are UUIDs, stale
-  // keys are never looked up). Memory is bounded by total replacement count
-  // × ~2KB preview over the REPL lifetime — negligible.
-  //
-  // Lazy init via useState initializer — useRef(expr) evaluates expr on every
-  // render (React ignores it after first, but the computation still runs).
-  // For large resumed sessions, reconstruction does O(messages × blocks)
-  // work; we only want that once.
-  const [contentReplacementStateRef] = useState(() => ({
-    current: provisionContentReplacementState(initialMessages, initialContentReplacements)
-  }));
   const [haveShownCostDialog, setHaveShownCostDialog] = useState(getGlobalConfig().hasAcknowledgedCostThreshold);
   const [vimMode, setVimMode] = useState<VimMode>('INSERT');
   const [showBashesDialog, setShowBashesDialog] = useState<string | boolean>(false);
@@ -1444,9 +1385,8 @@ export function REPL({
       setMessages(prev => [...prev, createTurnDurationMessage(totalMs, deferredBudget,
         // Count only what recordTranscript will persist — ephemeral
         // progress ticks and attachments that render nothing are filtered
-        // by isLoggableMessage and never reach disk. Using raw prev.length
-        // would make checkResumeConsistency report false delta<0 for
-        // every turn that ran a progress-emitting tool.
+        // by isLoggableMessage and never reach disk, so raw prev.length
+        // would overcount every turn that ran a progress-emitting tool.
         count(prev, isLoggableMessage))]);
     }
   }, [hasRunningTeammates, setMessages]);
@@ -1559,7 +1499,6 @@ export function REPL({
       setConversationId,
       haikuTitleAttemptedRef,
       setHaikuTitle,
-      contentReplacementStateRef,
       setMessages,
       setToolJSX,
       setInputValue,
@@ -1575,12 +1514,6 @@ export function REPL({
   const readFileState = useRef(initialReadFileState);
   const bashTools = useRef(new Set<string>());
   const bashToolsProcessedIdx = useRef(0);
-  // Session-scoped skill discovery tracking (feeds was_discovered on
-  // tengu_skill_tool_invocation). Must persist across getToolUseContext
-  // rebuilds within a session: turn-0 discovery writes via processUserInput
-  // before onQuery builds its own context, and discovery on turn N must
-  // still attribute a SkillTool call on turn N+k. Cleared in clearConversation.
-  const discoveredSkillNamesRef = useRef(new Set<string>());
   // Session-level dedup for nested_memory CLAUDE.md attachments.
   // readFileState is a 100-entry LRU; once it evicts a CLAUDE.md path,
   // the next discovery cycle re-injects it. Cleared in clearConversation.
@@ -1650,13 +1583,10 @@ export function REPL({
     elicitation,
     heldPeerMessages,
     showingCostDialog,
-    idleReturnPending,
     isLoading,
     showIdeOnboarding,
     showEffortCallout,
     showRemoteCallout,
-    hintRecommendation,
-    startupChecksStarted: startupChecksStartedRef.current,
   });
 
   // True when permission prompts exist but are hidden because the user is typing
@@ -1723,7 +1653,6 @@ export function REPL({
     // end() returns false and won't accumulate — fold the partial active time
     // in here instead (idempotent if the turn already ended).
     markTurnEnd();
-    skipIdleCheckRef.current = false;
 
     // Preserve partially-streamed text so the user can read what was
     // generated before pressing Esc. Pushed before resetLoadingState clears
@@ -1889,14 +1818,11 @@ export function REPL({
     store,
     messagesRef,
     readFileState,
-    discoveredSkillNamesRef,
     loadedNestedMemoryPathsRef,
-    contentReplacementStateRef,
     hasInterruptibleToolInProgressRef,
     resume,
     reverify,
     onChangeDynamicMcpConfig,
-    syncToolResultReplacements,
     addNotification,
     setToolJSX,
     setAppState,
@@ -1952,14 +1878,12 @@ export function REPL({
     inputValueRef,
     restoreMessageSyncRef,
     sendBridgeResultRef,
-    contentReplacementStateRef,
     responseLengthRef,
     apiMetricsRef,
     loadingStartTimeRef,
     totalPausedMsRef,
     swarmStartTimeRef,
     swarmBudgetInfoRef,
-    skipIdleCheckRef,
     setMessages,
     setAppState,
     setAbortController,
@@ -1993,7 +1917,6 @@ export function REPL({
         await clearConversation({
           setMessages,
           readFileState: readFileState.current,
-          discoveredSkillNames: discoveredSkillNamesRef.current,
           loadedNestedMemoryPaths: loadedNestedMemoryPathsRef.current,
           getAppState: () => store.getState(),
           setAppState,
@@ -2102,9 +2025,6 @@ export function REPL({
     inputValueRef,
     readFileState,
     streamModeRef,
-    idleHintShownRef,
-    lastQueryCompletionTimeRef,
-    skipIdleCheckRef,
     tipPickedThisTurnRef,
     hasInterruptibleToolInProgressRef,
     setMessages,
@@ -2116,7 +2036,6 @@ export function REPL({
     setStashedPrompt,
     setSubmitCount,
     setIDESelection,
-    setIdleReturnPending,
     setUserInputOnProcessing,
     setToolJSX,
     addNotification,
@@ -2156,13 +2075,6 @@ export function REPL({
     helpers.setCursorOffset(0);
     helpers.clearBuffer();
   }, [setAppState, setInputValue, getToolUseContext, canUseTool, mainLoopModel, addNotification]);
-
-  // onSubmit is unstable (deps include `messages` which changes every turn).
-  // The ref is what keeps a consumer's handle stable, so old REPL render
-  // scopes (~1.8KB each) can be GC'd instead of being pinned per fiber at mount
-  // time — measured at ~35MB over a 1000-turn session.
-  const onSubmitRef = useRef(onSubmit);
-  onSubmitRef.current = onSubmit;
   // Exit state machine + failsafe live in useReplExit (called above, near the
   // other early `useState`s). The previous inline 60-line implementation was
   // moved verbatim — see src/agent/repl/hooks/useReplExit.tsx for the
@@ -2249,7 +2161,7 @@ export function REPL({
   // for remote access via claude.ai. No-op in external builds or when not enabled.
   const {
     sendBridgeResult
-  } = useReplBridge(messages, setMessages, abortControllerRef, commands, mainLoopModel);
+  } = useReplBridge(messages, setMessages, abortControllerRef);
   sendBridgeResultRef.current = sendBridgeResult;
   useAfterFirstRender();
 
@@ -2355,50 +2267,6 @@ export function REPL({
     }, getGlobalConfig().messageIdleNotifThresholdMs, lastQueryCompletionTime, isLoading, toolJSX, focusedInputDialogRef, terminal);
     return () => clearTimeout(timer);
   }, [isLoading, toolJSX, submitCount, lastQueryCompletionTime, terminal]);
-
-  // Idle-return hint: show notification when idle threshold is exceeded.
-  // Timer fires after the configured idle period; notification persists until
-  // dismissed or the user submits.
-  useEffect(() => {
-    if (lastQueryCompletionTime === 0) return;
-    if (isLoading) return;
-    const willowMode: string = getFeatureValue_CACHED_MAY_BE_STALE('tengu_willow_mode', 'off');
-    if (willowMode !== 'hint' && willowMode !== 'hint_v2') return;
-    if (getGlobalConfig().idleReturnDismissed) return;
-    const tokenThreshold = Number(process.env.CLAUDIN_IDLE_TOKEN_THRESHOLD ?? 100_000);
-    if (getTotalInputTokens() < tokenThreshold) return;
-    const idleThresholdMs = Number(process.env.CLAUDIN_IDLE_THRESHOLD_MINUTES ?? 75) * 60_000;
-    const elapsed = Date.now() - lastQueryCompletionTime;
-    const remaining = idleThresholdMs - elapsed;
-    const timer = setTimeout((lqct, addNotif, msgsRef, mode, hintRef) => {
-      if (msgsRef.current.length === 0) return;
-      const totalTokens = getTotalInputTokens();
-      const formattedTokens = formatTokens(totalTokens);
-      const idleMinutes = (Date.now() - lqct) / 60_000;
-      addNotif({
-        key: 'idle-return-hint',
-        jsx: mode === 'hint_v2' ? <>
-          <Text dimColor>new task? </Text>
-          <Text color="suggestion">/clear</Text>
-          <Text dimColor> to save </Text>
-          <Text color="suggestion">{formattedTokens} tokens</Text>
-        </> : <Text color="warning">
-          new task? /clear to save {formattedTokens} tokens
-        </Text>,
-        priority: 'medium',
-        // Persist until submit — the hint fires at T+75min idle, user may
-        // not return for hours. removeNotification in useEffect cleanup
-        // handles dismissal. 0x7FFFFFFF = setTimeout max (~24.8 days).
-        timeoutMs: 0x7fffffff
-      });
-      hintRef.current = mode;
-    }, Math.max(0, remaining), lastQueryCompletionTime, addNotification, messagesRef, willowMode, idleHintShownRef);
-    return () => {
-      clearTimeout(timer);
-      removeNotification('idle-return-hint');
-      idleHintShownRef.current = false;
-    };
-  }, [lastQueryCompletionTime, isLoading, addNotification, removeNotification]);
 
   // Submits incoming prompts from teammate messages or tasks mode as new turns
   // Returns true if submission succeeded, false if a query is already running
@@ -2816,7 +2684,6 @@ export function REPL({
       titleIsAnimating={titleIsAnimating}
       terminalTitle={terminalTitle}
       titleDisabled={titleDisabled}
-      showStatusInTerminalTab={showStatusInTerminalTab}
       globalKeybindingProps={globalKeybindingProps as unknown as Record<string, unknown>}
       onSubmit={onSubmit as (...args: unknown[]) => unknown}
       cancelRequestProps={cancelRequestProps as unknown as Record<string, unknown>}
@@ -2877,7 +2744,7 @@ export function REPL({
   // early return above wraps its virtual-scroll branch the same way; only
   // the 30-cap dump branch stays unwrapped for native terminal scrollback.
   const mainReturn = <SidePanelContext value={sidePanelCtx}><KeybindingSetup>
-    <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} noPrefix={showStatusInTerminalTab} />
+    <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} />
     <GlobalKeybindingHandlers {...globalKeybindingProps} />
     <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!toolJSX?.isLocalJSXCommand} />
     {/* ScrollKeybindingHandler must mount before CancelRequestHandler so
@@ -2961,38 +2828,16 @@ export function REPL({
             settleHeldPeerMessage,
             setShowCostDialog,
             setHaveShownCostDialog,
-            idleReturnPending,
-            setIdleReturnPending,
-            getTotalInputTokens,
-            messagesRef: messagesRef as unknown as React.RefObject<unknown[]>,
-            setInputValue,
-            setMessages: setMessages as unknown as (m: unknown) => void,
-            readFileState,
-            discoveredSkillNamesRef,
-            loadedNestedMemoryPathsRef,
-            store,
-            // renderREPLDialogs wants a plain `(id: string) => void`; the
-            // local state setter is narrowed to the crypto UUID template type.
-            setConversationId: (id: string) => setConversationId(id as UUID),
-            haikuTitleAttemptedRef,
-            setHaikuTitle,
-            bashTools: bashTools as unknown as React.RefObject<{ clear: () => void }>,
-            bashToolsProcessedIdx,
-            skipIdleCheckRef,
-            onSubmitRef: onSubmitRef as unknown as React.RefObject<(input: string, helpers: { setCursorOffset: () => void; clearBuffer: () => void; resetHistory: () => void }) => unknown>,
             setShowIdeOnboarding,
             ideInstallationStatus,
             mainLoopModel,
             setShowEffortCallout,
             exitFlow,
-            hintRecommendation,
-            handleHintResponse,
           }, {
             SandboxPermissionRequest,
             IdeOnboardingDialog: IdeOnboardingDialog as unknown as Parameters<typeof renderREPLDialogs>[1]['IdeOnboardingDialog'],
             EffortCallout: EffortCallout as unknown as Parameters<typeof renderREPLDialogs>[1]['EffortCallout'],
             RemoteCallout,
-            PluginHintMenu,
           })}
 
           {mrRender()}
@@ -3063,7 +2908,7 @@ export function REPL({
               setMessages(postCompact);
             }
             setConversationId(randomUUID());
-            runPostCompactCleanup(context.options.querySource, postCompact, contentReplacementStateRef.current);
+            runPostCompactCleanup(context.options.querySource, postCompact);
             if (direction === 'from') {
               const r = textForResubmit(message);
               if (r) {

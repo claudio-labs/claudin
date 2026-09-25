@@ -118,8 +118,11 @@ describe('the module export surface', () => {
   // 199 until `addSlowOperation` and `getSlowOperations` went the same way: the
   // sink was already a no-op writing nowhere and a frozen empty array, and its
   // only caller was the timing path behind the off-map SLOW_OPERATION_LOGGING.
-  test('still exports 197 runtime symbols', () => {
-    expect(Object.keys(stateModule)).toHaveLength(197)
+  //
+  // 197 until `setIsRemoteMode` went: its only caller was the `--remote` TUI
+  // path, whose runtime flag always resolved false.
+  test('still exports 196 runtime symbols', () => {
+    expect(Object.keys(stateModule)).toHaveLength(196)
   })
 
   test('exports at least one symbol from every planned cluster', () => {

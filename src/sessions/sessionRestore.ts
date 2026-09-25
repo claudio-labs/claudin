@@ -48,7 +48,6 @@ import { invalidateAll as invalidateToolResultCache } from 'src/agent/tools/tool
 import { setCwd } from 'src/shared/proc/Shell.js'
 import {
   adoptResumedSessionFile,
-  recordContentReplacement,
   resetSessionFilePointer,
   restoreSessionMetadata,
   saveMode,
@@ -57,7 +56,6 @@ import {
 import { isTodoV2Enabled } from 'src/agent/tasks/tasks.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import { TodoListSchema } from 'src/tools/TodoWriteTool/types.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import {
   getCurrentWorktreeSession,
   restoreWorktreeSession,
@@ -245,7 +243,6 @@ export async function refreshAgentDefinitionsForModeSwitch(
 export type ProcessedResume = {
   messages: Message[]
   fileHistorySnapshots?: FileHistorySnapshot[]
-  contentReplacements?: ContentReplacementRecord[]
   agentName: string | undefined
   agentColor: AgentColorName | undefined
   restoredAgentDef: AgentDefinition | undefined
@@ -267,7 +264,6 @@ type ResumeLoadResult = {
   messages: Message[]
   fileHistorySnapshots?: FileHistorySnapshot[]
   attributionSnapshots?: AttributionSnapshotMessage[]
-  contentReplacements?: ContentReplacementRecord[]
   contextCollapseCommits?: ContextCollapseCommitEntry[]
   contextCollapseSnapshot?: ContextCollapseSnapshotEntry
   sessionId: UUID | undefined
@@ -428,17 +424,6 @@ export async function processResumedConversation(
       // sessions written before the entry existed.
       restoreCostStateForResume(sid, result)
     }
-  } else if (result.contentReplacements?.length) {
-    // --fork-session keeps the fresh startup session ID. useLogMessages will
-    // copy source messages into the new JSONL via recordTranscript, but
-    // content-replacement entries are a separate entry type only written by
-    // recordContentReplacement (which query.ts calls for newlyReplaced, never
-    // the pre-loaded records). Without this seed, `claude -r {newSessionId}`
-    // finds source tool_use_ids in messages but no matching replacement records
-    // → they're classified as FROZEN → full content sent (cache miss, permanent
-    // overage). insertContentReplacement stamps sessionId = getSessionId() =
-    // the fresh ID, so loadTranscriptFile's keyed lookup will match.
-    await recordContentReplacement(result.contentReplacements)
   }
 
   // Restore session metadata so /status shows the saved name and metadata
@@ -498,7 +483,6 @@ export async function processResumedConversation(
   return {
     messages: result.messages,
     fileHistorySnapshots: result.fileHistorySnapshots,
-    contentReplacements: result.contentReplacements,
     agentName: result.agentName,
     agentColor: (result.agentColor === 'default'
       ? undefined

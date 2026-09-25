@@ -431,9 +431,6 @@ export type GlobalConfig = {
   desktopUpsellSeenCount?: number // Total showings (max 3)
   desktopUpsellDismissed?: boolean // "Don't ask again" picked
 
-  // Idle-return dialog tracking
-  idleReturnDismissed?: boolean // "Don't ask again" picked
-
   // Opus 4.5 Pro migration tracking
   opusProMigrationComplete?: boolean
   opusProMigrationTimestamp?: number
@@ -543,10 +540,6 @@ export type GlobalConfig = {
   // Cached org-level fast mode status from the API.
   // Used to detect cross-session changes and notify users.
   penguinModeOrgEnabled?: boolean
-
-  // Epoch ms when background refreshes last ran (fast mode, quota, passes, client data).
-  // Used with tengu_cicada_nap_ms to throttle API calls
-  startupPrefetchedAt?: number
 
   // Run Remote Control at startup (requires BRIDGE_MODE)
   // undefined = use default (see getRemoteControlAtStartup() for precedence)

@@ -12,11 +12,7 @@
 
 export {
   __autoModeAllowedForModelForTests,
-  type AutoModeEnabledState,
-  getAutoModeEnabledState,
-  getAutoModeEnabledStateIfCached,
   getAutoModeUnavailableReason,
-  hasAutoModeOptInAnySource,
   isAutoModeGateEnabled,
 } from 'src/permissions/permissionSetup/autoModeAvailability.js'
 export {
@@ -26,10 +22,8 @@ export {
   verifyAutoModeGateAccess,
 } from 'src/permissions/permissionSetup/autoModeGate.js'
 export {
-  checkAndDisableBypassPermissions,
   createDisabledBypassPermissionsContext,
   isBypassPermissionsModeDisabled,
-  shouldDisableBypassPermissions,
 } from 'src/permissions/permissionSetup/bypassPermissions.js'
 export {
   parseBaseToolsFromCLI,

@@ -6,12 +6,12 @@ import {
   getIsNonInteractiveSession,
   getProjectRoot,
 } from 'src/platform/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getClaudinConfigHomeDir,
   isEnvDefinedFalsy,
   isEnvTruthy,
 } from 'src/shared/envUtils.js'
+import { validateBoundedIntEnvVar } from 'src/shared/envValidation.js'
 import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { logError } from 'src/shared/log.js'
 import { sanitizePath } from 'src/shared/fs/path.js'
@@ -59,6 +59,16 @@ export function isAutoMemoryEnabled(): boolean {
 }
 
 /**
+ * The background memory-extraction agent. On by default in this fork;
+ * upstream shipped it off. CLAUDIN_EXTRACT_MEMORIES=0 is the killswitch, and
+ * it sits under `isAutoMemoryEnabled()`, which turns the whole memory system
+ * off.
+ */
+export function isExtractMemoriesEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXTRACT_MEMORIES)
+}
+
+/**
  * Whether the extract-memories background agent will run this session.
  *
  * The main agent's prompt always has full save instructions regardless of
@@ -69,15 +79,32 @@ export function isAutoMemoryEnabled(): boolean {
  * Callers must also gate on feature('EXTRACT_MEMORIES') — that check cannot
  * live inside this helper because feature() only tree-shakes when used
  * directly in an `if` condition.
+ *
+ * Interactive sessions only: a `-p` run ends before a background fork could
+ * report back.
  */
 export function isExtractModeActive(): boolean {
-  if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_passport_quail', false)) {
-    return false
-  }
-  return (
-    !getIsNonInteractiveSession() ||
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slate_thimble', false)
-  )
+  return isExtractMemoriesEnabled() && !getIsNonInteractiveSession()
+}
+
+const DEFAULT_EXTRACTION_TURN_INTERVAL = 15
+
+/**
+ * How many eligible turns pass between two background extractions. A trailing
+ * run and a repeated-error loop bypass it (extractMemories.ts).
+ *
+ * 15 in this fork, where upstream fired every turn: a fire costs ~2-4k
+ * effective tokens, mostly cache_read at 10%, so this amortizes to
+ * ~130-270 tokens a turn. CLAUDIN_EXTRACT_MEMORIES_EVERY=<n> overrides it;
+ * a value that is not a positive integer keeps the default.
+ */
+export function getExtractionTurnInterval(): number {
+  return validateBoundedIntEnvVar(
+    'CLAUDIN_EXTRACT_MEMORIES_EVERY',
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY,
+    DEFAULT_EXTRACTION_TURN_INTERVAL,
+    1000,
+  ).effective
 }
 
 /**

@@ -1,5 +1,4 @@
 export {
-  withMemoryCorrectionHint,
   deriveShortMessageId,
   extractTag,
   deriveUUID,

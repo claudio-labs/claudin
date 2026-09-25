@@ -47,8 +47,8 @@ async function loadPluginLspServers(): Promise<Record<string, ScopedLspServerCon
 
 /**
  * Get all configured LSP servers. Servers are sourced exclusively from
- * enabled plugins (matching the openclaude model — no built-in default
- * server registry and no user/project-settings server definitions).
+ * enabled plugins — no built-in default server registry and no
+ * user/project-settings server definitions.
  *
  * @returns Object containing servers configuration keyed by scoped server name
  */

@@ -62,7 +62,6 @@ import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { initializeGrowthBook } from 'src/platform/analytics/growthbook.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { isExtractModeActive } from 'src/memory/memdir/paths.js'
 import { getCanUseToolFn } from 'src/platform/headless/print/permissionGlue.js'
@@ -146,10 +145,6 @@ export async function runHeadless(
   // Start headless profiler for first turn
   headlessProfilerStartTurn()
   headlessProfilerCheckpoint('runHeadless_entry')
-
-  // Initialize GrowthBook so feature flags take effect in headless mode.
-  // Without this, the disk cache is empty and all flags fall back to defaults.
-  void initializeGrowthBook()
 
   if (options.resumeSessionAt && !options.resume) {
     process.stderr.write(`Error: --resume-session-at requires --resume\n`)
@@ -541,8 +536,8 @@ export async function runHeadless(
   // Drain any in-flight memory extraction before shutdown. The response is
   // already flushed above, so this adds no user-visible latency — it just
   // delays process exit so gracefulShutdownSync's 5s failsafe doesn't kill
-  // the forked agent mid-flight. Gated by isExtractModeActive so the
-  // tengu_slate_thimble flag controls non-interactive extraction end-to-end.
+  // the forked agent mid-flight. Gated by isExtractModeActive, the same check
+  // that decides whether a non-interactive extraction starts at all.
   if (feature('EXTRACT_MEMORIES') && isExtractModeActive()) {
     await extractMemoriesModule!.drainPendingExtraction()
   }

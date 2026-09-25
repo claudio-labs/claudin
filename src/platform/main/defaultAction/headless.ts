@@ -14,7 +14,6 @@ import { excludeCommandsByServer, excludeResourcesByServer } from 'src/mcp/utils
 import { type AppState, getDefaultAppState } from 'src/terminal/state/AppStateStore.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { createStore } from 'src/terminal/state/store.js';
-import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { validateForceLoginOrg } from 'src/providers/auth/auth.js';
 import { filterAllowedSdkBetas } from 'src/providers/transport/betas.js';
 import { logForDebugging, setHasFormattedOutput } from 'src/shared/debug.js';
@@ -22,7 +21,7 @@ import { getInitialEffortSetting, parseEffortValue } from 'src/providers/effort/
 import { isBareMode } from 'src/shared/envUtils.js';
 import { getInitialFastModeSetting, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
-import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js';
+import { verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js';
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import type { ThinkingConfig } from 'src/agent/context/thinking.js';
@@ -64,8 +63,6 @@ export type HeadlessBranchDeps = {
   claudeaiConfigPromise: Promise<Record<string, ScopedMcpServerConfig>>;
   toolPermissionContext: ToolPermissionContext;
   effectiveModel: string | undefined;
-  advisorModel: string | undefined;
-  allowDangerouslySkipPermissions: boolean;
   betas: string[];
   jsonSchema: Record<string, unknown> | undefined;
   allowedTools: string[];
@@ -83,8 +80,8 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     ctx, options, teleport, setupTrigger, outputFormat, inputPrompt,
     commands, tools, mcpClients, mcpCommands, mcpTools,
     sdkMcpConfigs, agentDefinitions, regularMcpConfigs, claudeaiConfigPromise,
-    toolPermissionContext, effectiveModel, advisorModel,
-    allowDangerouslySkipPermissions, betas, jsonSchema, allowedTools,
+    toolPermissionContext, effectiveModel,
+    betas, jsonSchema, allowedTools,
     thinkingConfig, systemPrompt, appendSystemPrompt,
     userSpecifiedFallbackModel, effectiveReplayUserMessages, agentCli, verbose,
   } = deps;
@@ -138,24 +135,15 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     ...(isFastModeEnabled() && {
       fastMode: getInitialFastModeSetting(effectiveModel ?? null)
     }),
-    ...(isAdvisorEnabled() && advisorModel && {
-      advisorModel
-    }),
   } as AppState;
 
   // Init app state
   const headlessStore = createStore(headlessInitialState, onChangeAppState);
 
-  // Check if bypassPermissions should be disabled based on Statsig gate
-  // This runs in parallel to the code below, to avoid blocking the main loop.
-  if ((toolPermissionContext as { mode?: string }).mode === 'bypassPermissions' || allowDangerouslySkipPermissions) {
-    void checkAndDisableBypassPermissions(toolPermissionContext);
-  }
-
   // Async check of auto mode gate — corrects state and disables auto if needed.
-  // Gated on TRANSCRIPT_CLASSIFIER (not USER_TYPE) so GrowthBook kill switch runs for external builds too.
+  // Gated on TRANSCRIPT_CLASSIFIER (not USER_TYPE) so it runs for external builds too.
   if (feature('TRANSCRIPT_CLASSIFIER')) {
-    void verifyAutoModeGateAccess(toolPermissionContext, headlessStore.getState().fastMode).then(({
+    void verifyAutoModeGateAccess(toolPermissionContext).then(({
       updateContext
     }) => {
       headlessStore.setState(prev => {
@@ -236,7 +224,7 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
   // Dedup: suppress plugin MCP servers that duplicate a claude.ai
   // connector (connector wins), then connect claude.ai servers.
   // Bounded wait — #23725 made this blocking so single-turn -p sees
-  // connectors, but with 40+ slow connectors tengu_startup_perf p99
+  // connectors, but with 40+ slow connectors startup p99
   // climbed to 76s. If fetch+connect doesn't finish in time, proceed;
   // the promise keeps running and updates headlessStore in the
   // background so turn 2+ still sees connectors.

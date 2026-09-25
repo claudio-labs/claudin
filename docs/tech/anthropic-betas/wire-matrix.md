@@ -167,19 +167,19 @@ it says otherwise, and each anchor is a literal to grep for.
   without it.
 - **thinking-binding-controls.** The header goes out on every real
   first-party request. `thinking.block_binding` is only added under GrowthBook
-  `tengu_polished_dewdrop` or env `CLAUDE_CODE_POLISHED_DEWDROP`. With the
+  `polished_dewdrop` or env `CLAUDE_CODE_POLISHED_DEWDROP`. With the
   header alone the server reports dropped blocks in
   `message_start.message.input_transformations[]`, as
   `{type:"thinking_dropped", path, reason}`.
 - **`safeguards`** (the dangerous-tool-use arbiter). It only runs in auto
   mode. On a real first-party endpoint it also needs GrowthBook
-  `tengu_smooth_chipmunk`, default false, and not `tengu_iridescent_crystal`.
+  `smooth_chipmunk`, default false, and not `iridescent_crystal`.
   Its `classifier_context` carries permission mode, rules and rule roots, cwd,
   home, trusted directories, git state and user identity.
 - **afk-mode** is header-only and follows the auto-mode latch. What it changes
   server-side is unknown; a 400 naming it turns auto mode off for the session.
 - **advisor-tool.** The header goes out whenever the advisor is enabled
-  (GrowthBook `tengu_sage_compass2` or env), even with no tool attached. The
+  (GrowthBook `sage_compass2` or env), even with no tool attached. The
   tool is `{type:"advisor_20260301", name:"advisor", model}`.
 - **Effort.** The default is the catalog's `default_effort`. A top-level
   `effortLevel` in user settings is honored only for a fixed legacy model set

@@ -21,13 +21,10 @@ function baseDeps(): FocusedInputDialogDeps {
     elicitation: { queue: [] },
     heldPeerMessages: [],
     showingCostDialog: false,
-    idleReturnPending: null,
     isLoading: false,
     showIdeOnboarding: false,
     showEffortCallout: false,
     showRemoteCallout: false,
-    hintRecommendation: null,
-    startupChecksStarted: false,
   }
 }
 
@@ -101,7 +98,7 @@ describe('getFocusedInputDialog', () => {
     expect(getFocusedInputDialog(d)).toBe('tool-permission')
   })
 
-  test('priority: tool-permission > prompt > worker > elicitation > held peer message > cost > idle', () => {
+  test('priority: tool-permission > prompt > worker > elicitation > held peer message > cost', () => {
     const d = baseDeps()
     d.toolUseConfirmQueue = [{}]
     d.promptQueue = [{}]
@@ -109,7 +106,6 @@ describe('getFocusedInputDialog', () => {
     d.elicitation.queue = [{}]
     d.heldPeerMessages = [{}]
     d.showingCostDialog = true
-    d.idleReturnPending = {}
     expect(getFocusedInputDialog(d)).toBe('tool-permission')
 
     d.toolUseConfirmQueue = []
@@ -126,18 +122,13 @@ describe('getFocusedInputDialog', () => {
 
     d.heldPeerMessages = []
     expect(getFocusedInputDialog(d)).toBe('cost')
-
-    d.showingCostDialog = false
-    expect(getFocusedInputDialog(d)).toBe('idle-return')
   })
 
-  test('onboarding/callout/recommendation order with startup gate', () => {
+  test('onboarding/callout order', () => {
     const d = baseDeps()
     d.showIdeOnboarding = true
     d.showEffortCallout = true
     d.showRemoteCallout = true
-    d.hintRecommendation = {}
-    // startup gate off — low-priority dialogs suppressed
     expect(getFocusedInputDialog(d)).toBe('ide-onboarding')
 
     d.showIdeOnboarding = false
@@ -147,10 +138,6 @@ describe('getFocusedInputDialog', () => {
     expect(getFocusedInputDialog(d)).toBe('remote-callout')
 
     d.showRemoteCallout = false
-    // lsp/hint still gated by startupChecksStarted
     expect(getFocusedInputDialog(d)).toBeUndefined()
-
-    d.startupChecksStarted = true
-    expect(getFocusedInputDialog(d)).toBe('plugin-hint')
   })
 })

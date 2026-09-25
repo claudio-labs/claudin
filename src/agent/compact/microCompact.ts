@@ -344,15 +344,6 @@ function maybeReliefClip(
   const resultIds = selected.filter(c => !c.inputOnly).map(c => c.toolUseId)
   if (resultIds.length > 0) addClippedIds(resultIds)
   const inputsClipped = addClippedInputsFor(selected)
-  // Release preview strings from ContentReplacementState.replacements for
-  // ids that are now clipped. The stable stub supersedes the preview; keep
-  // seenIds intact to prevent re-processing in enforceToolResultBudget.
-  const crs = toolUseContext?.contentReplacementState
-  if (crs) {
-    for (const id of resultIds) {
-      crs.replacements.delete(id)
-    }
-  }
 
   // Label format is parsed by collapsePrefixRewrites (cacheMetrics.ts) and
   // by the lookback census — keep the shape when changing the words.
@@ -506,16 +497,6 @@ function maybeTimeBasedMicrocompact(
 
   if (resultsToClip.length > 0) addClippedIds(resultsToClip)
   const inputsClipped = addClippedInputsFor(inputsToClip)
-  // Release preview strings from ContentReplacementState.replacements for
-  // IDs that are now clipped, mirroring the size-based path: the stable
-  // stub supersedes the preview, and keeping seenIds intact prevents
-  // re-processing in enforceToolResultBudget.
-  const crs = toolUseContext?.contentReplacementState
-  if (crs) {
-    for (const id of resultsToClip) {
-      crs.replacements.delete(id)
-    }
-  }
 
   logForDebugging(
     `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${resultsToClip.length} tool results (~${tokensSaved} tokens) and ${inputsClipped} inputs, kept last ${keepSet.size}`,

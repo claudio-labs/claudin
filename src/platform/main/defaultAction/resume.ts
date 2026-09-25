@@ -5,38 +5,32 @@
 
 import chalk from 'chalk';
 import { getRemoteSessionUrl } from 'src/shared/constants/product.js';
-import { getOriginalCwd, setIsRemoteMode, setOriginalCwd, setTeleportedSessionInfo, switchSession } from 'src/platform/bootstrap/state.js';
-import { filterCommandsForRemoteMode } from 'src/commands/commands.js';
+import { getOriginalCwd, setOriginalCwd, setTeleportedSessionInfo } from 'src/platform/bootstrap/state.js';
 import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from 'src/terminal/dialogLaunchers.js';
 import type { Root } from 'src/terminal/ink.js';
 import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
-import { createRemoteSessionConfig } from 'src/platform/remote/RemoteSessionManager.js';
 import { launchRepl } from 'src/agent/repl/replLauncher.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
-import { asSessionId } from 'src/shared/types/ids.js';
 import type { LogOption } from 'src/shared/types/logs.js';
 import type { Message as MessageType } from 'src/shared/types/message.js';
 import { count } from 'src/shared/data/array.js';
 import { loadConversationForResume } from 'src/sessions/conversationRecovery.js';
-import { errorMessage, TeleportOperationError, toError } from 'src/shared/errors.js';
+import { errorMessage, TeleportOperationError } from 'src/shared/errors.js';
 import { getBranch } from 'src/vcs/git/git.js';
 import { getWorktreePaths } from 'src/vcs/git/getWorktreePaths.js';
 import { filterExistingPaths, getKnownPathsForRepo } from 'src/vcs/git/githubRepoPathMapping.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { logError } from 'src/shared/log.js';
-import { createSystemMessage, createUserMessage } from 'src/agent/messages/messages.js';
 import { type ProcessedResume, processResumedConversation } from 'src/sessions/sessionRestore.js';
 import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/sessions/sessionStorage.js';
 import { setCwd } from 'src/shared/proc/Shell.js';
-import { fetchSession, prepareApiRequest } from 'src/platform/teleport/api.js';
+import { fetchSession } from 'src/platform/teleport/api.js';
 import { checkOutTeleportedSessionBranch, processMessagesForTeleportResume, teleportToRemoteWithErrorHandling, validateGitState, validateSessionRepository } from 'src/platform/teleport/teleport.js';
 import { validateUuid } from 'src/shared/data/uuid.js';
 import { isPolicyAllowed, waitForPolicyLimitsToLoad } from 'src/platform/policyLimits/index.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
-import type { Props as REPLProps } from 'src/agent/repl/REPL.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';
@@ -51,14 +45,9 @@ export type ResumeBranchDeps = {
   };
   teleport: string | boolean | undefined;
   remote: string | null;
-  debug: boolean;
-  debugToStderr: boolean;
-  commands: Parameters<typeof filterCommandsForRemoteMode>[0];
-  ide: unknown;
   /** Mutable handle for mainThreadAgentDefinition, mutated when a resumed
    * session restores its own agent definition. */
   mainThreadAgentDefinitionRef: { current: unknown };
-  thinkingConfig: unknown;
   sessionConfig: Record<string, unknown>;
   resumeContext: Parameters<typeof processResumedConversation>[2];
   getFpsMetrics: () => FpsMetrics | undefined;
@@ -69,8 +58,7 @@ export type ResumeBranchDeps = {
 export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
   const {
     root, ctx, options, teleport, remote,
-    debug, debugToStderr, commands, ide,
-    mainThreadAgentDefinitionRef, thinkingConfig,
+    mainThreadAgentDefinitionRef,
     sessionConfig, resumeContext,
     getFpsMetrics, stats, initialState,
   } = deps;
@@ -116,70 +104,21 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     }
   }
   if (remote !== null) {
-    const hasInitialPrompt = remote.length > 0;
-    const isRemoteTuiEnabled = getFeatureValue_CACHED_MAY_BE_STALE('tengu_remote_backend', false);
-    if (!isRemoteTuiEnabled && !hasInitialPrompt) {
+    if (remote.length === 0) {
       return await exitWithError(root, 'Error: --remote requires a description.\nUsage: claudin --remote "your task description"', () => gracefulShutdown(1));
     }
 
     const currentBranch = await getBranch();
-    const createdSession = await teleportToRemoteWithErrorHandling(root, hasInitialPrompt ? remote : null, new AbortController().signal, currentBranch || undefined);
+    const createdSession = await teleportToRemoteWithErrorHandling(root, remote, new AbortController().signal, currentBranch || undefined);
     if (!createdSession) {
       return await exitWithError(root, 'Error: Unable to create remote session', () => gracefulShutdown(1));
     }
 
-    if (!isRemoteTuiEnabled) {
-      process.stdout.write(`Created remote session: ${createdSession.title}\n`);
-      process.stdout.write(`View: ${getRemoteSessionUrl(createdSession.id)}?m=0\n`);
-      process.stdout.write(`Resume with: claude --teleport ${createdSession.id}\n`);
-      await gracefulShutdown(0);
-      process.exit(0);
-    }
-
-    // New behavior: start local TUI with CCR engine
-    setIsRemoteMode(true);
-    switchSession(asSessionId(createdSession.id));
-
-    let apiCreds: { accessToken: string; orgUUID: string };
-    try {
-      apiCreds = await prepareApiRequest();
-    } catch (error) {
-      logError(toError(error));
-      return await exitWithError(root, `Error: ${errorMessage(error) || 'Failed to authenticate'}`, () => gracefulShutdown(1));
-    }
-
-    const { getClaudeAIOAuthTokens: getTokensForRemote } = await import('src/providers/auth/auth.js');
-    const getAccessTokenForRemote = (): string => getTokensForRemote()?.accessToken ?? apiCreds.accessToken;
-    const remoteSessionConfig = createRemoteSessionConfig(createdSession.id, getAccessTokenForRemote, apiCreds.orgUUID, hasInitialPrompt);
-
-    const remoteSessionUrl = `${getRemoteSessionUrl(createdSession.id)}?m=0`;
-    const remoteInfoMessage = createSystemMessage(`/remote-control is active. Code in CLI or at ${remoteSessionUrl}`, 'info');
-
-    const initialUserMessage = hasInitialPrompt ? createUserMessage({ content: remote }) : null;
-
-    const remoteInitialState = {
-      ...initialState,
-      remoteSessionUrl,
-    };
-
-    const remoteCommands = filterCommandsForRemoteMode(commands);
-    await launchRepl(root, {
-      getFpsMetrics,
-      stats,
-      initialState: remoteInitialState,
-    }, {
-      debug: debug || debugToStderr,
-      commands: remoteCommands,
-      initialTools: [],
-      initialMessages: initialUserMessage ? [remoteInfoMessage, initialUserMessage] : [remoteInfoMessage],
-      mcpClients: [],
-      autoConnectIdeFlag: ide as REPLProps['autoConnectIdeFlag'],
-      mainThreadAgentDefinition: mainThreadAgentDefinitionRef.current as REPLProps['mainThreadAgentDefinition'],
-      disableSlashCommands: ctx.disableSlashCommands,
-      remoteSessionConfig,
-      thinkingConfig: thinkingConfig as REPLProps['thinkingConfig'],
-    }, renderAndRun);
-    return;
+    process.stdout.write(`Created remote session: ${createdSession.title}\n`);
+    process.stdout.write(`View: ${getRemoteSessionUrl(createdSession.id)}?m=0\n`);
+    process.stdout.write(`Resume with: claude --teleport ${createdSession.id}\n`);
+    await gracefulShutdown(0);
+    process.exit(0);
   } else if (teleport) {
     if (teleport === true || teleport === '') {
       logForDebugging('selectAndResumeTeleportTask: Starting teleport flow...');
@@ -282,7 +221,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     agentColor: undefined as AgentColorName | undefined,
     restoredAgentDef: mainThreadAgentDefinitionRef.current,
     initialState,
-    contentReplacements: undefined,
   } : undefined);
   if (resumeData) {
     await launchRepl(root, {
@@ -294,7 +232,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       mainThreadAgentDefinition: (resumeData.restoredAgentDef ?? mainThreadAgentDefinitionRef.current) as AgentDefinition | undefined,
       initialMessages: resumeData.messages,
       initialFileHistorySnapshots: resumeData.fileHistorySnapshots,
-      initialContentReplacements: resumeData.contentReplacements,
       initialAgentName: resumeData.agentName,
       initialAgentColor: resumeData.agentColor,
     } as Parameters<typeof launchRepl>[2], renderAndRun);

@@ -429,7 +429,6 @@ async function run(): Promise<CommanderCommand> {
 
     const agentSetup = await runActionAgentSetup(
       {
-        options: options as ActionOptions,
         ctx,
         isNonInteractiveSession,
         agentCli,
@@ -449,7 +448,6 @@ async function run(): Promise<CommanderCommand> {
       effectiveModel,
       initialMainLoopModel,
       resolvedInitialModel,
-      advisorModel,
     } = agentSetup;
     let mainThreadAgentDefinition = agentSetup.mainThreadAgentDefinition;
     systemPrompt = agentSetup.systemPrompt;
@@ -631,8 +629,6 @@ async function run(): Promise<CommanderCommand> {
         claudeaiConfigPromise,
         toolPermissionContext,
         effectiveModel,
-        advisorModel,
-        allowDangerouslySkipPermissions,
         betas,
         jsonSchema,
         allowedTools,
@@ -664,7 +660,6 @@ async function run(): Promise<CommanderCommand> {
         verbose,
         remoteControl,
         remoteControlName,
-        advisorModel,
         inputPrompt,
         thinkingEnabled,
         mcpTools,
@@ -769,5 +764,4 @@ async function run(): Promise<CommanderCommand> {
   profileReport();
   return program;
 }
-// logTenguInit moved to src/platform/main/lifecycle.ts (ROADMAP 11g Fase 2)
 // resetCursor, TeammateOptions, extractTeammateOptions moved to src/platform/main/helpers.ts (ROADMAP 11g Fase 1)

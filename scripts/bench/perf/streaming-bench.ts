@@ -37,26 +37,12 @@ import { mock } from 'bun:test'
 import type { CliHighlight } from '../../../src/shared/text/cliHighlight.js'
 import { getFixture, lineSnapshots, listFixtures } from './fixtures.js'
 
-// Build-time module replacement, reproduced for a source run. `@growthbook/
-// growthbook` is a bunfig.toml `[alias]` entry that only applies under
-// `bun test`, and scripts/build/build.ts swaps it at bundle time — so a plain
-// `bun run` of this file died on the missing package before printing a line,
-// reached through src/shared/text/markdown.js → platform/analytics/growthbook.
-// The src/ imports below must stay dynamic so they resolve after this lands.
-mock.module('@growthbook/growthbook', () => ({
-  GrowthBook: class {
-    async init(): Promise<void> {}
-    setAttributes(): void {}
-    getFeatureValue<T>(_key: string, fallback: T): T {
-      return fallback
-    }
-    isOn(): boolean {
-      return false
-    }
-    destroy(): void {}
-  },
-}))
-
+// Build-time module replacement, reproduced for a source run.
+// `@anthropic-ai/sandbox-runtime` is a bunfig.toml `[alias]` entry that only
+// applies under `bun test`, and scripts/build/build.ts swaps it at bundle time
+// — so a plain `bun run` of this file would die on the missing package before
+// printing a line. The src/ imports below must stay dynamic so they resolve
+// after this lands.
 const sandboxRuntimeStub = await import(
   '../../../src/stubs/sandbox-runtime-stub.js'
 )

@@ -38,15 +38,6 @@ export const COMPACT_MAX_OUTPUT_TOKENS = 20_000
 const MAX_OUTPUT_TOKENS_DEFAULT = 32_000
 const MAX_OUTPUT_TOKENS_UPPER_LIMIT = 64_000
 
-// Capped default for slot-reservation optimization. BQ p99 output = 4,911
-// tokens, so 32k/64k defaults over-reserve 8-16× slot capacity. With the cap
-// enabled, <1% of requests hit the limit; those get one clean retry at 64k
-// (see query.ts max_output_tokens_escalate). Cap is applied in
-// claude.ts:getMaxOutputTokensForModel to avoid the growthbook→betas→context
-// import cycle.
-export const CAPPED_DEFAULT_MAX_TOKENS = 8_000
-export const ESCALATED_MAX_TOKENS = 64_000
-
 /**
  * Check if 1M context is disabled via environment variable.
  * Used by C4E admins to disable 1M context for HIPAA compliance.

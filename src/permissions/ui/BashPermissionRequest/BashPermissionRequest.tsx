@@ -4,11 +4,9 @@ import figures from 'figures';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import { getFirstWordPrefix, getSimpleCommandPrefix } from 'src/tools/BashTool/bashPermissions.js';
-import { getDestructiveCommandWarning } from 'src/tools/BashTool/destructiveCommandWarning.js';
 import { parseSedEditCommand } from 'src/tools/BashTool/sedEditParser.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { getCompoundCommandPrefixesStatic } from 'src/platform/bash/prefix.js';
@@ -262,19 +260,16 @@ function BashPermissionRequestInner({
   // prove side-effect freedom), so this useMemo still guards against any
   // re-render source (e.g. Inner state updates). Same pattern as PR#20730.
   const {
-    destructiveWarning: destructiveWarning_0,
     sandboxingEnabled: sandboxingEnabled_0,
     isSandboxed: isSandboxed_0
   } = useMemo(() => {
-    const destructiveWarning = getFeatureValue_CACHED_MAY_BE_STALE('tengu_destructive_command_warning', false) ? getDestructiveCommandWarning(command) : null;
     const sandboxingEnabled = SandboxManager.isSandboxingEnabled();
     const isSandboxed = sandboxingEnabled && shouldUseSandbox(toolUseConfirm.input);
     return {
-      destructiveWarning,
       sandboxingEnabled,
       isSandboxed
     };
-  }, [command, toolUseConfirm.input]);
+  }, [toolUseConfirm.input]);
   const unaryEvent = useMemo<UnaryEvent>(() => ({
     completion_type: 'tool_use_single',
     language_name: 'none'
@@ -409,11 +404,6 @@ function BashPermissionRequestInner({
         </> : <>
           <Box flexDirection="column">
             <PermissionRuleExplanation permissionResult={toolUseConfirm.permissionResult} toolType="command" />
-            {destructiveWarning_0 && <Box marginBottom={1}>
-                <Text color="warning" dimColor={feature('BASH_CLASSIFIER') ? toolUseConfirm.classifierAutoApproved : false}>
-                  {destructiveWarning_0}
-                </Text>
-              </Box>}
             <Text dimColor={feature('BASH_CLASSIFIER') ? toolUseConfirm.classifierAutoApproved : false}>
               Do you want to proceed?
             </Text>

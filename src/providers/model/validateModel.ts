@@ -114,7 +114,6 @@ export async function validateModel(
       model: normalizedModel,
       max_tokens: 1,
       maxRetries: 0,
-      querySource: 'model_validation',
       messages: [
         {
           role: 'user',

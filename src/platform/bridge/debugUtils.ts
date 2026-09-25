@@ -1,4 +1,3 @@
-import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
@@ -114,19 +113,4 @@ export function extractErrorDetail(data: unknown): string | undefined {
     return data.error.message
   }
   return undefined
-}
-
-/**
- * Log a bridge init skip — debug message + `tengu_bridge_repl_skipped`
- * analytics event. Centralizes the event name and the AnalyticsMetadata
- * cast so call sites don't each repeat the 5-line boilerplate.
- */
-export function logBridgeSkip(
-  reason: string,
-  debugMsg?: string,
-  v2?: boolean,
-): void {
-  if (debugMsg) {
-    logForDebugging(debugMsg)
-  }
 }

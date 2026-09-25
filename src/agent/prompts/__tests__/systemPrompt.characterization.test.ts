@@ -28,7 +28,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..')
 // Empty stand-in config dir for the spawned bundle (see dump() below).
@@ -47,7 +47,25 @@ const MODEL = 'claude-opus-5-5'
 // absolute path it was generated from.
 const PROJECT_SLUG = REPO_ROOT.replace(/[^a-zA-Z0-9]/g, '-')
 
-// The Scratchpad section (on by default since tengu_scratch flipped) names
+// Project-local memory lives under the CANONICAL git root (findCanonicalGitRoot
+// in src/memory/memdir/paths.ts), so every worktree shares the main checkout's
+// .claudin/memory/. In the main checkout that is REPO_ROOT; in a worktree it is
+// the main checkout's path, which none of the substitutions here would
+// otherwise see. It gets the same placeholder, so the snapshot reads the same
+// from either. Falls back to REPO_ROOT when git cannot answer.
+const CANONICAL_ROOT = (() => {
+  const res = spawnSync(
+    'git',
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    { cwd: REPO_ROOT, encoding: 'utf8' },
+  )
+  const commonDir = typeof res.stdout === 'string' ? res.stdout.trim() : ''
+  return res.status === 0 && commonDir.endsWith('/.git')
+    ? dirname(commonDir)
+    : REPO_ROOT
+})()
+
+// The Scratchpad section (on by default, CLAUDIN_SCRATCHPAD=0 to drop it) names
 // `/tmp/claude-<uid>/<slug>/<sessionId>/scratchpad` — src/platform/tmpdir.ts,
 // with /tmp realpath-resolved (macOS: /private/tmp). The uid and the realpath
 // are this machine's own values, substituted like the paths above; the
@@ -96,6 +114,9 @@ const ENV_VALUE_RES: ReadonlyArray<readonly [RegExp, string]> = [
 function normalize(prompt: string): string {
   let out = prompt
     .split(REPO_ROOT)
+    .join('<REPO_ROOT>')
+    // After REPO_ROOT: in a worktree the canonical root is a prefix of it.
+    .split(CANONICAL_ROOT)
     .join('<REPO_ROOT>')
     .split(DATA_DIR)
     .join('<DATA_DIR>')

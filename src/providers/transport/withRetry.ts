@@ -7,7 +7,7 @@ import { isAwsCredentialsProviderError } from 'src/providers/oauth/aws.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
 import { createSystemAPIErrorMessage } from 'src/agent/messages/messages.js'
-import { getAPIProvider, getAPIProviderForStatsig } from 'src/providers/model/providers.js'
+import { getAPIProviderForStatsig } from 'src/providers/model/providers.js'
 import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
@@ -38,10 +38,8 @@ import {
 } from 'src/providers/fastMode.js'
 import { extractOpenAICategoryMarker } from 'src/providers/shims/openaiErrorClassification.js'
 import { isNonCustomOpusModel } from 'src/providers/model/model.js'
-import { disableKeepAlive } from 'src/providers/transport/proxy.js'
 import { sleep } from 'src/shared/sleep.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { REPEATED_529_ERROR_MESSAGE } from 'src/providers/transport/errors.js'
 import { extractConnectionErrorDetails } from 'src/providers/transport/errorUtils.js'
 import {
@@ -273,20 +271,8 @@ export async function* withRetry<T>(
       // - 403 "OAuth token has been revoked" (another process refreshed the token)
       // - Bedrock-specific auth errors (403 or CredentialsProviderError)
       // - Vertex-specific auth errors (credential refresh failures, 401)
-      // - ECONNRESET/EPIPE: stale keep-alive socket; disable pooling and reconnect
+      // - ECONNRESET/EPIPE: stale keep-alive socket; reconnect
       const isStaleConnection = isStaleConnectionError(lastError)
-      if (
-        isStaleConnection &&
-        getFeatureValue_CACHED_MAY_BE_STALE(
-          'tengu_disable_keepalive_on_econnreset',
-          false,
-        )
-      ) {
-        logForDebugging(
-          'Stale connection (ECONNRESET/EPIPE) — disabling keep-alive for retry',
-        )
-        disableKeepAlive(getAPIProvider())
-      }
 
       if (
         client === null ||

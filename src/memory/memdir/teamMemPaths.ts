@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { join, resolve, sep } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 
 /**
@@ -12,10 +11,7 @@ import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
  * env var or settings.
  */
 export function isTeamMemoryEnabled(): boolean {
-  if (!isAutoMemoryEnabled()) {
-    return false
-  }
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_herring_clock', true)
+  return isAutoMemoryEnabled()
 }
 
 /**
