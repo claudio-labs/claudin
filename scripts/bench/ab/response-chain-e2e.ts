@@ -36,9 +36,11 @@
  *      the Bash comes back Skipped, is_error, and ran.txt does not exist
  *   2. chains on  — [Patch a.ts adding NEW, Bash `grep -c NEW a.ts > seen.txt`]:
  *      both run, in order: seen.txt reads 1
- *   3. chains off — 1's control: the Bash runs and ran.txt exists
+ *   3. the same response with the flags unset: `then`, on by default, arms the
+ *      guard, so the Bash is Skipped; 1's control, every guard off (chains
+ *      unset, CLAUDIN_EDIT_THEN=0): the Bash runs and ran.txt exists
  *   4. chains on  — [Bash `exit 3`, Git add a.ts + commit]: the Git is Skipped and
- *      git log is unchanged; its control, chains off, commits
+ *      git log is unchanged; its control, every guard off, commits
  *   5. chains on  — [Patch a.ts (bad hunk), Patch b.ts]: the second Patch applies
  *   6. chains on  — [Bash `bun test ./fail.test.ts | tail -5`, Git add + commit].
  *      The Bash output filter strips the trailing tail and runs the base, so the
@@ -62,7 +64,7 @@
  *  11. one-call commit on (CLAUDIN_ONE_CALL_COMMIT=1, chains unset) — [Patch a.ts
  *      with a hunk the file lacks, Git add a.ts + commit + status]: the flag arms
  *      the same guard, so the Git comes back Skipped and git log is unchanged; its
- *      control, the flag unset, commits
+ *      control, every guard off, commits
  *  12. wire, CLAUDIN_ONE_CALL_COMMIT on/off — the git protocol (the
  *      bash_git_instructions attachment) says "commit in ONE Git call", and the
  *      chains' # Harness bullet stays out
@@ -74,8 +76,10 @@
  *      `cat src/*.ts` runs and `cat /etc/*.conf` is still refused by the path
  *      check; with `=0`, `cat src/*.ts` is refused
  *
- * Scenarios 14-19 are round 4's `then` on Patch and Edit (CLAUDIN_EDIT_THEN=1,
- * src/tools/shared/editThen/; plan .claudin/plans/harmonic-wobbling-clock.md):
+ * Scenarios 14-19 are round 4's `then` on Patch and Edit (on by default since
+ * 2026-09-25, CLAUDIN_EDIT_THEN=0 turns it off; src/tools/shared/editThen/;
+ * plan .claudin/plans/harmonic-wobbling-clock.md). Its arms run with the
+ * variable unset, as a user does:
  *  14. [Patch a.ts adding NEW, then grep -c NEW a.ts → exit 3 → touch never.txt]:
  *      one tool_result holds the patch summary, the grep's `1` (it saw the
  *      patched file), `exit 3`'s exit code, and the third command as not run
@@ -86,9 +90,9 @@
  *      one runs
  *  17. a PreToolUse hook in settings.json drops `then` in bypass mode too
  *  18. Edit carries `then` the same way
- *  19. wire, the flag off/on: `then` in the Patch and Edit schemas and the
- *      Patch description only when on; off, a Patch sending it is refused by
- *      the strict schema and a.ts stays as it was
+ *  19. wire, the default and `=0`: `then` in the Patch and Edit schemas and
+ *      the Patch description by default; with `=0`, a Patch sending it is
+ *      refused by the strict schema and a.ts stays as it was
  *  20. CLAUDIN_GREP_BODIES (src/tools/GrepTool/grepBodies.ts): a symbols Grep
  *      with `bodies: true` returns add()'s body, and a Patch inside it then
  *      applies with no Read; its control, the flag off, sends the same Grep
@@ -214,7 +218,10 @@ const WRITE_RAN = `bun -e "require('fs').writeFileSync('ran.txt', 'x')"`
 const CHAINS_ON: Record<string, string> = { CLAUDIN_RESPONSE_CHAINS: '1' }
 const ONE_CALL_COMMIT_ON: Record<string, string> = { CLAUDIN_ONE_CALL_COMMIT: '1' }
 const READONLY_GLOBS_OFF: Record<string, string> = { CLAUDIN_READONLY_GLOBS: '0' }
-const THEN_ON: Record<string, string> = { CLAUDIN_EDIT_THEN: '1' }
+/** `then` is on by default: its arms leave the variable unset. */
+const THEN_ON: Record<string, string> = {}
+/** `then` off, and with it the guard it arms: what a control needs for "nothing stops the commit". */
+const THEN_OFF: Record<string, string> = { CLAUDIN_EDIT_THEN: '0' }
 /** Any PreToolUse hook: its presence is what drops `then`. */
 const BASH_HOOK_SETTINGS: Json = {
   hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'true' }] }] },
@@ -393,9 +400,15 @@ const SCENARIOS: Scenario[] = [
   },
   {
     key: '3',
-    title: 'the control for 1: chains off, the Bash runs',
-    runs: [{ label: 'chains off', env: {}, steps: ({ ws }) => [READ_BOTH(ws), { calls: [PATCH_A_BAD, TOUCH] }, DONE] }],
-    expect: ([run]) => [
+    title: 'the default arms the guard; the control for 1, every guard off, runs the Bash',
+    runs: [
+      { label: 'flags unset (then on by default)', env: {}, steps: ({ ws }) => [READ_BOTH(ws), { calls: [PATCH_A_BAD, TOUCH] }, DONE] },
+      { label: 'every guard off (chains unset, then =0)', env: THEN_OFF, steps: ({ ws }) => [READ_BOTH(ws), { calls: [PATCH_A_BAD, TOUCH] }, DONE] },
+    ],
+    expect: ([dflt, run]) => [
+      onResult(dflt, 1, 0, 'the Patch fails on its hunk (is_error)', r => failedItself(r) && !r.text.includes(NOT_READ)),
+      onResult(dflt, 1, 1, 'the Bash comes back "Skipped: Patch failed earlier… this Bash call…", is_error', r => isSkipOf(r, 'Patch', 'Bash')),
+      onDisk(dflt, 'ran.txt does not exist', () => ({ ok: !existsSync(join(dflt.ws, 'ran.txt')) })),
       onResult(run, 1, 0, 'the Patch fails on its hunk (is_error)', r => failedItself(r) && !r.text.includes(NOT_READ)),
       onResult(run, 1, 1, 'the Bash runs: no error, no Skipped text', ranClean),
       onDisk(run, 'ran.txt exists', () => ({ ok: existsSync(join(run.ws, 'ran.txt')) })),
@@ -407,7 +420,7 @@ const SCENARIOS: Scenario[] = [
     runs: [
       { label: 'chains on', env: CHAINS_ON, pending: true, steps: () => [{ calls: [EXIT_3, COMMIT] }, DONE] },
       // Shows this workspace commits when nothing stops it, so "no commit" above is the skip.
-      { label: 'chains off (control)', env: {}, pending: true, steps: () => [{ calls: [EXIT_3, COMMIT] }, DONE] },
+      { label: 'every guard off (control)', env: THEN_OFF, pending: true, steps: () => [{ calls: [EXIT_3, COMMIT] }, DONE] },
     ],
     expect: ([on, off]) => [
       onResult(on, 0, 0, 'Bash `exit 3` fails (is_error)', failedItself),
@@ -531,8 +544,8 @@ const SCENARIOS: Scenario[] = [
       },
       // Shows this workspace commits when nothing stops it, so "no commit" above is the skip.
       {
-        label: 'one-call commit off (control)',
-        env: {},
+        label: 'every guard off (control)',
+        env: THEN_OFF,
         pending: true,
         steps: ({ ws }) => [READ_BOTH(ws), { calls: [PATCH_A_BAD, COMMIT_WITH_STATUS] }, DONE],
       },
@@ -726,10 +739,10 @@ const SCENARIOS: Scenario[] = [
   },
   {
     key: '19',
-    title: 'wire: `then` only with the flag',
+    title: 'wire: `then` by default, and not with =0',
     runs: [
-      { label: 'then off', env: {}, steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_A_NEW, ['true'])] }, DONE] },
-      { label: 'then on', env: THEN_ON, steps: () => [DONE] },
+      { label: 'then off (=0)', env: THEN_OFF, steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_A_NEW, ['true'])] }, DONE] },
+      { label: 'then, the default', env: THEN_ON, steps: () => [DONE] },
     ],
     expect: ([off, on]) => [
       onWire(off, 'main', 'Patch and Edit have no `then` in their schemas, and the Patch description does not name it', b =>

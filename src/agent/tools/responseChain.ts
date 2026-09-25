@@ -22,9 +22,10 @@
  * - A skipped call gets a synthetic `is_error` result naming the failure, and
  *   never reaches permissions or hooks.
  *
- * Off, runTools builds no chain and a response runs exactly as before. The
- * StreamingToolExecutor (gated off) keeps its own, broader rule: a Bash error
- * cancels every sibling.
+ * `then` is on by default, so the guard is armed by default too. With all
+ * three off (CLAUDIN_EDIT_THEN=0 and the other two unset), runTools builds no
+ * chain and a response runs exactly as before. The StreamingToolExecutor
+ * (gated off) keeps its own, broader rule: a Bash error cancels every sibling.
  */
 import type { Message } from 'src/shared/types/message.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'

@@ -232,6 +232,7 @@ describe('runTools — the response-chain guard (CLAUDIN_RESPONSE_CHAINS=1)', ()
 
   test('off, the test after a failed edit still runs', async () => {
     delete process.env[FLAG]
+    process.env[THEN_FLAG] = '0'
     const { ran, results } = await respond([
       ['Edit', { file: 'a.ts', ok: false }],
       ['Bash', { command: 'bun test' }],
@@ -337,10 +338,11 @@ describe('runTools — the response-chain guard (CLAUDIN_RESPONSE_CHAINS=1)', ()
   })
 })
 
-describe('runTools — the guard under CLAUDIN_ONE_CALL_COMMIT=1', () => {
+describe('runTools — the guard under CLAUDIN_ONE_CALL_COMMIT=1 (then off, so it arms nothing)', () => {
   test('the one-call commit flag arms the guard on its own: a commit after a failed edit is skipped', async () => {
     delete process.env[FLAG]
     process.env[COMMIT_FLAG] = '1'
+    process.env[THEN_FLAG] = '0'
     const { ran, results } = await respond([
       ['Edit', { file: 'README.md', ok: false }],
       ['Git', { commands: ['git add README.md', 'git commit -m x', 'git status'] }],
@@ -352,6 +354,7 @@ describe('runTools — the guard under CLAUDIN_ONE_CALL_COMMIT=1', () => {
   test('after a clean edit, the commit in the same response runs', async () => {
     delete process.env[FLAG]
     process.env[COMMIT_FLAG] = '1'
+    process.env[THEN_FLAG] = '0'
     const { ran } = await respond([
       ['Edit', { file: 'README.md', ok: true }],
       ['Git', { commands: ['git add README.md', 'git commit -m x', 'git status'] }],
@@ -360,33 +363,44 @@ describe('runTools — the guard under CLAUDIN_ONE_CALL_COMMIT=1', () => {
   })
 })
 
-describe('runTools — the guard under CLAUDIN_EDIT_THEN=1', () => {
+describe('runTools — the guard `then` arms (CLAUDIN_EDIT_THEN, on by default)', () => {
   const commit = ['Git', { commands: ['git add README.md', 'git commit -m x', 'git status'] }] as [
     string,
     Record<string, unknown>,
   ]
 
-  test('the flag arms the guard: a commit after an edit whose check came back red is skipped', async () => {
+  test('the default arms the guard: a commit after an edit whose check came back red is skipped', async () => {
     delete process.env[FLAG]
     delete process.env[COMMIT_FLAG]
-    process.env[THEN_FLAG] = '1'
+    delete process.env[THEN_FLAG]
     const { ran, results } = await respond([['Edit', { file: 'README.md', ok: true, then: 'red' }], commit])
     expect(ran).toEqual(['Edit README.md'])
     expect(results.get('toolu_1')!.text).toContain('Skipped: Edit failed')
   })
 
+  test('the default arms the guard for any failure: a test after a failed edit is skipped', async () => {
+    delete process.env[FLAG]
+    delete process.env[COMMIT_FLAG]
+    delete process.env[THEN_FLAG]
+    const { ran } = await respond([
+      ['Edit', { file: 'a.ts', ok: false }],
+      ['Bash', { command: 'bun test' }],
+    ])
+    expect(ran).toEqual(['Edit a.ts'])
+  })
+
   test('after a green check, the commit in the same response runs', async () => {
     delete process.env[FLAG]
     delete process.env[COMMIT_FLAG]
-    process.env[THEN_FLAG] = '1'
+    delete process.env[THEN_FLAG]
     const { ran } = await respond([['Edit', { file: 'README.md', ok: true, then: 'green' }], commit])
     expect(ran).toEqual(['Edit README.md', 'Git git add README.md; git commit -m x; git status'])
   })
 
-  test('off, a red check stops nothing', async () => {
+  test('off (=0), a red check stops nothing', async () => {
     delete process.env[FLAG]
     delete process.env[COMMIT_FLAG]
-    delete process.env[THEN_FLAG]
+    process.env[THEN_FLAG] = '0'
     const { ran } = await respond([['Edit', { file: 'README.md', ok: true, then: 'red' }], commit])
     expect(ran).toEqual(['Edit README.md', 'Git git add README.md; git commit -m x; git status'])
   })

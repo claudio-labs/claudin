@@ -4,7 +4,8 @@
  * (`toolOrchestration.ts`, `responseChain.ts`) can read the flag and a result
  * without loading the Bash permission pipeline that `editThen.ts` imports.
  *
- * `CLAUDIN_EDIT_THEN=1`, off by default. One API request is one model
+ * On by default since 2026-09-25; `CLAUDIN_EDIT_THEN=0` turns it off, and with
+ * it the response guard it arms (toolOrchestration.ts). One API request is one model
  * response, so an edit and the test that checks it cost two requests unless
  * they share one. In the session A/B, claudin ran the check in a call of its
  * own after ~0.9 edits a session where Claude Code chains `&& bun test` into
@@ -14,19 +15,19 @@
  * the edit itself.
  *
  * Measured 2026-09-25 (session A/B, N=8): used in 8/8 sessions, calls −14%
- * against the base and the placebo, cost −7%, every session 18/18. The
- * default is the user's call.
+ * against the base and the placebo, cost −7%, every session 18/18. The user
+ * turned it on by default the same day.
  */
 import { z } from 'zod/v4'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 export const EDIT_THEN_ENV = 'CLAUDIN_EDIT_THEN'
 
 export const MAX_THEN_COMMANDS = 3
 
-/** Read per call; the schema and the prompts read it once, when they are built. */
+/** On unless `=0`. Read per call; the schema and the prompts read it once, when they are built. */
 export function isEditThenEnabled(): boolean {
-  return isEnvTruthy(process.env[EDIT_THEN_ENV])
+  return !isEnvDefinedFalsy(process.env[EDIT_THEN_ENV])
 }
 
 const THEN_DESCRIPTION = `Up to ${MAX_THEN_COMMANDS} shell commands to run once the edit has applied — the test, typecheck or build that checks it. They run in order and stop at the first that fails, and their output comes back in this result, so the check needs no call of its own. Nothing runs if the edit fails.`
@@ -35,7 +36,7 @@ const thenSchema = () =>
   z.array(z.string()).max(MAX_THEN_COMMANDS).nullish().describe(THEN_DESCRIPTION)
 
 /**
- * The `then` field for an edit tool's input schema. With the flag off it is
+ * The `then` field for an edit tool's input schema. With the flag off (`=0`) it is
  * absent at runtime, so the schema sent to the API and the strict parse are
  * what they were; the static type always carries it, as an optional field
  * nothing sets.

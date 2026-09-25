@@ -7,12 +7,17 @@
   "probes": [
     {
       "name": "cap-keep-paths: the flag reads another variable",
-      "find": "isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS)",
-      "replace": "isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATH)"
+      "find": "!isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_PATHS)",
+      "replace": "!isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_PATH)"
     },
     {
-      "name": "cap-keep-paths: on by default",
-      "find": "return isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS);",
+      "name": "cap-keep-paths: off by default again",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_PATHS);",
+      "replace": "return isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS);"
+    },
+    {
+      "name": "cap-keep-paths: =0 no longer turns it off",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_PATHS);",
       "replace": "return true;"
     },
     {

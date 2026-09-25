@@ -102,7 +102,7 @@
  * into a bare `cmd` and execute THAT — running the full command the model asked
  * to trim. The floor is a property of the output, not of the command.
  */
-import { isEnvTruthy } from "src/shared/envUtils.js";
+import { isEnvDefinedFalsy, isEnvTruthy } from "src/shared/envUtils.js";
 import { getGlobalConfig } from "src/platform/config/config.js";
 import type { FilterSpec, KeepLines } from "src/tools/shared/outputFilter/Bash/types.js";
 import { groupMatchLines } from "src/tools/shared/outputFilter/Bash/groupMatchLines.js";
@@ -134,9 +134,9 @@ export function isFloorCapEnabled(): boolean {
 }
 
 /**
- * `CLAUDIN_CAP_KEEP_PATHS=1`, off by default: the cut keeps every line of the
- * middle that is only a path — a `git ls-files`, `find` or `wc -l` listing —
- * where it stands, and cuts the rest.
+ * On by default since 2026-09-25, `CLAUDIN_CAP_KEEP_PATHS=0` turns it off: the
+ * cut keeps every line of the middle that is only a path — a `git ls-files`,
+ * `find` or `wc -l` listing — where it stands, and cuts the rest.
  *
  * The command a model opens a session with, `git ls-files && cat README.md
  * package.json && wc -l …`, prints ~143 lines on a small project, and the
@@ -150,11 +150,12 @@ export function isFloorCapEnabled(): boolean {
  *
  * Measured 2026-09-25 (session A/B, N=8): every capped listing kept its src/
  * paths, and no hidden file was read late (base: 5 of 8 sessions); cost −1%.
+ * The user turned it on by default the same day.
  *
  * Read per call, unlike CAP_DISABLED, so a test can set it.
  */
 function isCapKeepPathsEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS);
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_PATHS);
 }
 
 /** Past this many path lines — a `find` over a big tree — the plain cut. */

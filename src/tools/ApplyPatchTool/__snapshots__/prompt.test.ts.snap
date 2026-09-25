@@ -50,5 +50,6 @@ Rules:
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - The patch is atomic: if any hunk fails to apply, no files are written.
 - For new lines, always prefix them with "+", including when creating a file.
-- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead."
+- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead.
+- To check the change, put its test, typecheck or build command in \`then\`: it runs as soon as the patch applies, in this same call, and its output comes back with the result."
 `;

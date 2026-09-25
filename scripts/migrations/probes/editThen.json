@@ -19,6 +19,18 @@
       "replace": "return ({ then: thenSchema() }) as {"
     },
     {
+      "name": "edit-then: off by default again",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "return !isEnvDefinedFalsy(process.env[EDIT_THEN_ENV])",
+      "replace": "return process.env[EDIT_THEN_ENV] === '1'"
+    },
+    {
+      "name": "edit-then: =0 no longer turns it off",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "return !isEnvDefinedFalsy(process.env[EDIT_THEN_ENV])",
+      "replace": "return true"
+    },
+    {
       "name": "edit-then: blank entries count as commands",
       "source": "src/tools/shared/editThen/editThenShape.ts",
       "find": "return (input.then ?? []).map(command => command.trim()).filter(command => command.length > 0)",

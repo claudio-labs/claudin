@@ -34,11 +34,11 @@ export async function* runTools(
   toolUseContext: ToolUseContext,
 ): AsyncGenerator<MessageUpdate, void> {
   let currentContext = toolUseContext
-  // CLAUDIN_RESPONSE_CHAINS, CLAUDIN_ONE_CALL_COMMIT or CLAUDIN_EDIT_THEN: once
-  // a call fails, the calls after it that would run or ship code are skipped
-  // (responseChain.ts) — the commit put beside the last edit, or beside an
-  // edit whose `then` check came back red. Off, there is no chain and every
-  // call runs as before.
+  // CLAUDIN_RESPONSE_CHAINS, CLAUDIN_ONE_CALL_COMMIT or CLAUDIN_EDIT_THEN (on
+  // by default): once a call fails, the calls after it that would run or ship
+  // code are skipped (responseChain.ts) — the commit put beside the last edit,
+  // or beside an edit whose `then` check came back red. With all three off
+  // there is no chain and every call runs as before.
   const chain =
     isResponseChainsEnabled() || isOneCallCommitEnabled() || isEditThenEnabled()
       ? createResponseChain()

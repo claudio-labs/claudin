@@ -402,15 +402,15 @@ describe("CLAUDIN_CAP_KEEP_PATHS — the cut keeps the listing", () => {
     expect(LISTED.every(isPathLine)).toBe(true);
   });
 
-  test("off: the plain cut hides src/regions.ts, the file the bench sessions read late", () => {
-    delete process.env[FLAG];
+  test("off (=0): the plain cut hides src/regions.ts, the file the bench sessions read late", () => {
+    process.env[FLAG] = "0";
     const out = filter(ORIENTATION);
     expect(out).toContain("lines omitted");
     expect(out).not.toContain("src/regions.ts");
   });
 
-  test("on: every listed path and every wc -l line survive, and the prose is still cut", () => {
-    process.env[FLAG] = "1";
+  test("unset, the default: every listed path and every wc -l line survive, and the prose is still cut", () => {
+    delete process.env[FLAG];
     const out = filter(ORIENTATION);
     for (const path of LISTED) expect(out).toContain(path);
     expect(out).toContain("   54 src/regions.ts");
@@ -423,7 +423,7 @@ describe("CLAUDIN_CAP_KEEP_PATHS — the cut keeps the listing", () => {
   });
 
   test("on: past the path budget, the plain 15+15 cut", () => {
-    process.env[FLAG] = "1";
+    delete process.env[FLAG];
     const paths = Array.from({ length: MAX_KEPT_PATH_LINES + 50 }, (_, i) => `src/dir${i % 7}/file${i}.ts`);
     const out = filter(["intro line one", ...paths, "closing line"].join("\n"), "find src -name '*.ts'");
     expect(out).toContain("lines omitted");
@@ -431,7 +431,7 @@ describe("CLAUDIN_CAP_KEEP_PATHS — the cut keeps the listing", () => {
   });
 
   test("on: a middle made only of paths within the budget comes back whole", () => {
-    process.env[FLAG] = "1";
+    delete process.env[FLAG];
     const paths = Array.from({ length: FLOOR_CAP_LINES * 2 }, (_, i) => `lib/mod${i % 5}/part${i}.rs`);
     const out = filter(paths.join("\n"), "find lib -name '*.rs'");
     expect(out).not.toContain("lines omitted");
@@ -439,7 +439,7 @@ describe("CLAUDIN_CAP_KEEP_PATHS — the cut keeps the listing", () => {
   });
 
   test("on: one prose line between two paths stays itself — its marker would be no shorter", () => {
-    process.env[FLAG] = "1";
+    delete process.env[FLAG];
     const head = Array.from({ length: 15 }, (_, i) => `head line ${"abcdefghijklmno"[i]}`);
     const tail = Array.from({ length: 15 }, (_, i) => `tail line ${"abcdefghijklmno"[i]}`);
     const middle = [
@@ -453,11 +453,11 @@ describe("CLAUDIN_CAP_KEEP_PATHS — the cut keeps the listing", () => {
   });
 
   test("a matched spec never gets it, and the floor gets it only with the cap", () => {
-    process.env[FLAG] = "1";
+    delete process.env[FLAG];
     expect(withGenericFloor(BARE, { cap: true }).keepLines).toBeUndefined();
     expect(withGenericFloor(null, { groupMatches: true }).keepLines).toBeUndefined();
     expect(withGenericFloor(null, { cap: true }).keepLines?.max).toBe(MAX_KEPT_PATH_LINES);
-    delete process.env[FLAG];
+    process.env[FLAG] = "0";
     expect(withGenericFloor(null, { cap: true }).keepLines).toBeUndefined();
   });
 });

@@ -89,13 +89,13 @@ describe('thenCommands', () => {
 })
 
 describe('thenSchemaFields', () => {
-  test('off: no field, so the schema is what it was', () => {
-    delete process.env[EDIT_THEN_ENV]
+  test('off (=0): no field, so the schema is what it was', () => {
+    process.env[EDIT_THEN_ENV] = '0'
     expect(Object.keys(thenSchemaFields())).toEqual([])
   })
 
-  test(`on: a nullable list of at most ${MAX_THEN_COMMANDS}`, () => {
-    process.env[EDIT_THEN_ENV] = '1'
+  test(`unset, the default: a nullable list of at most ${MAX_THEN_COMMANDS}`, () => {
+    delete process.env[EDIT_THEN_ENV]
     const { then } = thenSchemaFields()
     expect(then.safeParse(['bun test']).success).toBe(true)
     expect(then.safeParse(null).success).toBe(true)
@@ -306,10 +306,11 @@ describe('formatThen', () => {
 // The schemas and the prompts read the flag once, when they are built (at
 // module load, or on the lazy schema's first use), so each arm loads its own
 // instance of the module and builds what it reads with the variable set its way.
+// On is the default, so the on arm leaves the variable unset and the off arm sets `0`.
 let loadSeq = 0
 async function withThen<T, R>(specifier: string, on: boolean, build: (module: T) => R): Promise<R> {
-  if (on) process.env[EDIT_THEN_ENV] = '1'
-  else delete process.env[EDIT_THEN_ENV]
+  if (on) delete process.env[EDIT_THEN_ENV]
+  else process.env[EDIT_THEN_ENV] = '0'
   try {
     return build((await import(`${specifier}?edit-then=${on}-${++loadSeq}`)) as T)
   } finally {

@@ -9,7 +9,7 @@ import { isEditThenEnabled } from 'src/tools/shared/editThen/editThenShape.js'
 // counts as read (BashTool/creditShownFiles.ts), and the contract says so.
 // Read once at module load, like the credit itself.
 const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
-// CLAUDIN_EDIT_THEN (editThenShape.ts), off by default, read once the same way.
+// CLAUDIN_EDIT_THEN (editThenShape.ts), on unless `=0`, read once the same way.
 const THEN_LINE = isEditThenEnabled()
   ? '\n- To check the change, put its test, typecheck or build command in `then`: it runs as soon as the edit applies, in this same call, and its output comes back with the result.'
   : ''

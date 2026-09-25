@@ -24,7 +24,7 @@ export const LEGACY_APPLY_PATCH_TOOL_NAME = 'apply_patch'
 const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
   ? ' — a Bash `cat` that printed the whole file counts too'
   : ''
-// CLAUDIN_EDIT_THEN (editThenShape.ts), off by default and read once here for
+// CLAUDIN_EDIT_THEN (editThenShape.ts), on unless `=0`, and read once here for
 // the same reason: the patch's check can ride this call.
 const THEN_RULE = isEditThenEnabled()
   ? '\n- To check the change, put its test, typecheck or build command in `then`: it runs as soon as the patch applies, in this same call, and its output comes back with the result.'
