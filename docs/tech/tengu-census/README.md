@@ -4,51 +4,55 @@
 `src/`, `scripts/`, `docs/`, `.claudin/rules/` and the root markdown files by the
 **role** the occurrence plays.
 
-The census exists because `tengu_` is not one thing, and a removal pass that
-treats it as one thing either leaves dead weight behind or silently changes
+The census exists because `tengu_` was not one thing, and a removal pass that
+treated it as one thing either left dead weight behind or silently changed
 behaviour. Upstream uses the same prefix for an analytics event name and for a
-remote feature-flag key, and in this fork those two have opposite fates: the
-event name goes nowhere, while the flag key is the thing a user writes in
-`~/.claudin/feature-flags.json`.
+remote feature-flag key. In this fork the event names were deleted first (with
+the analytics sink), and the flag keys after them, each inlined to the value it
+already resolved to — [gate-audit.md](gate-audit.md) is the ledger of where
+every key went.
+
+**`src/` now holds zero occurrences**, and `tengu-census.test.ts` fails if one
+comes back. What remains elsewhere is prose about the removal, the census's own
+test fixtures, `scripts/migrations/strip-analytics/` (the codemod that deleted
+the events, which imports this script's `scanRegions`) and recorded bench
+answers.
 
 ## Buckets
 
-| Bucket | What it is | Fate in this fork |
-|---|---|---|
-| `event` | 1st argument of `logEvent`/`logEventAsync` | **Dead.** The destination is an empty function — `scripts/build/no-telemetry-plugin.ts` stubs `src/platform/analytics/index` to `export function logEvent() {}`. `scripts/build/build.ts` already blanks the literal in the bundle for the same reason. |
-| `gate` | argument of `getFeatureValue_*`, `checkStatsigFeatureGate_*`, `checkGate_*`, `getDynamicConfig_*`, `checkSecurityRestrictionGate` | **Live as a key** — resolution is `~/.claudin/feature-flags.json` > `_openBuildDefaults` > the call site's `defaultValue`. Whether the branch it opens *works* is a separate question, answered in [gate-audit.md](gate-audit.md). |
-| `indirect` | a `tengu_` name reached another way — a const, an array element, an object key, a regex pattern | **Needs human eyes.** The build's rewrite deliberately skips these: a regex cannot tell an event constant from a gate constant, and blanking a gate key would change which default resolves. |
-| `doc` | inside a comment or a `.md` file | Prose. The largest single cluster is the ~100-key catalog in `no-telemetry-plugin.ts`, which declares itself "reference only" and has never been verified against the tree. |
-| `unclassified` | the scanner could not place it | **Must stay at zero.** A non-zero count means the scanner has a blind spot, so any removal pass driven by this census would miss whatever hid in it. |
+| Bucket | What it is |
+|---|---|
+| `event` | 1st argument of `logEvent`/`logEventAsync` |
+| `gate` | argument of `getFeatureValue_*`, `checkStatsigFeatureGate_*`, `checkGate_*`, `getDynamicConfig_*`, `checkSecurityRestrictionGate` |
+| `indirect` | a `tengu_` name reached another way — a const, an array element, an object key, a regex pattern |
+| `doc` | inside a comment or a `.md` file |
+| `unclassified` | the scanner could not place it — **must stay at zero**, or a removal pass driven by the census misses whatever hid there |
 
-Occurrences in `*.test.ts(x)` and `__fixtures__/` are counted but carry
-`fixture: true`, which keeps a test's own synthetic key out of the gate work
-list.
+Occurrences in `*.test.ts(x)` and `__fixtures__/` carry `fixture: true`, which
+keeps a test's own synthetic key out of the gate work list.
 
-## Baseline — 2026-09-15, before the cleanup
+## Counts
 
 ```
-tengu census — 1654 occurrences across 425 files
-
-  event          1018  (290 files)
-  gate            155  (98 files)
-  indirect        286  (65 files)
-  doc             195  (133 files)
-  unclassified      0  (0 files)
-
-  distinct gate keys: 91 (test fixtures excluded)
+2026-09-15, before the cleanup    1654 occurrences across 425 files
+                                  event 1018 · gate 155 · indirect 286 · doc 195
+2026-09-25, after the gate removal ~260 occurrences across 24 files, 0 in src/
+                                  event 35 · gate 7 · indirect 60 · doc ~160
 ```
 
-`--gates` prints the 91 keys with every call site, which is the work list for
-the gate audit. `--json` dumps every occurrence for scripting.
+None of the surviving `event`, `gate` and `indirect` hits is a live read: they
+are the test fixtures of this script and of `strip-analytics`, recorded answers
+in `scripts/bench/ab/read-outline-pivot-ab*.json`, this census's own suite path
+in `scripts/verify/test-floor.ts`, and a banned name in
+`scripts/verify/verify-no-phone-home.ts`. The `doc` count is mostly this
+directory and the rules describing the removal.
 
 ## How the classification is decided
 
 A regex alone cannot answer "is this inside a comment?", and that answer decides
 two of the five buckets. So the script first classifies **every character** of a
 file as code / comment / string / regex (`scanRegions`), then overlays the two
-call-shape regexes — the event one copied from `build.ts` so the two agree on
-what an event name is.
+call-shape regexes.
 
 Three cases the character scanner has to get right, each pinned by a test in
 `tengu-census.test.ts`:

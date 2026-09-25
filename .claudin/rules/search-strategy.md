@@ -101,9 +101,6 @@ src/
 │   ├── lifecycleHooks/ (40)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
 │   │                              each slice's own hooks/ — these are the harness's
 │   ├── bash/ (24)               ← bash parsing, command splitting, shell snapshots
-│   ├── analytics/ (2)           ← feature-flag resolution ONLY, over
-│   │                              ~/.claudin/feature-flags.json. The analytics and
-│   │                              telemetry this was named for is deleted, not stubbed
 │   ├── bootstrap/state.ts       ← a BARREL over state/ — the STATE singleton lives in state/store.ts
 │   │                              and nowhere else; getSessionId, cwd helpers, cost, latches
 │   ├── lsp/ ide/ install/ shell/ notifications/ secureStorage/
@@ -121,7 +118,7 @@ src/
 │   ├── theme/ (17)              ← theme.ts keeps getTheme and themeColorToAnsi over themes/,
 │   │                              one module per palette plus types.ts (Theme, THEME_NAMES)
 │   ├── design-system/ (17)      ← shared primitives; logo/ spinner/ image/ theme/ markdown/
-│   ├── keybindings/ (15)        ← keybinding parser, defaultBindings, loadUserBindings, match
+│   ├── keybindings/ (11)        ← keybinding parser, defaultBindings, loadUserBindings, match
 │   ├── contexts/ (9) state/ (8) ← React context providers + AppState store (getState/selectors).
 │   │                              TUI state only — system-prompt context is agent/context.ts
 │   ├── render/ (15)             ← fullscreen, render cadence, fpsTracker, streamJsonStdoutGuard
@@ -217,10 +214,10 @@ Not under `src/`, but among the most-opened files in practice:
 ## Feature flags
 
 `featureFlags` in `scripts/build/build.ts` is the build-time set.
-`bun run scripts/verify/tengu-census.ts --gates` lists every runtime gate key
-with its call sites, and `docs/tech/tengu-census/gate-audit.md` classifies all
-104: which do something, which open a branch that is dead on arrival, which are
-inert. Flip one by writing `~/.claudin/feature-flags.json`. There is no
+Runtime switches are `CLAUDIN_*` env vars, each documented at the top of the
+module that reads it. The upstream `tengu_*` remote-flag keys are gone —
+`docs/tech/tengu-census/gate-audit.md` records the value each one was inlined
+to — and `~/.claudin/feature-flags.json` is no longer read. There is no
 analytics to grep for — `logEvent` and the modules behind it were removed.
 
 ## Claudin-Specific Navigation Rules

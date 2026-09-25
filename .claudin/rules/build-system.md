@@ -31,24 +31,20 @@ not source.
    > intercept it.
 2. **There is no second rewrite pass any more.** One used to blank the `tengu_*`
    name passed to `logEvent`/`logEventAsync`, because ~1000 event-name literals
-   survived minification as arguments. Both the call sites and the sink are gone,
-   so no **event name** reaches the bundle any more.
+   survived minification as arguments. The events went first; the ~94 `tengu_*`
+   **gate keys** (upstream's remote GrowthBook flags) followed, each read
+   inlined to the value it already resolved to, and the local flag resolver
+   with them — `~/.claudin/feature-flags.json` is no longer read. The switches
+   this fork decided on are `CLAUDIN_*` env vars documented in the module that
+   reads them. `docs/tech/tengu-census/gate-audit.md` is the ledger of where
+   every key went.
 
-   That is not the same as "zero `tengu` tokens", which an earlier revision of
-   this file claimed and prescribed a check for that cannot see them: `dist/` is
-   code-split (rule 5 below), so grepping `dist/cli.mjs` reads 0 while ~470
-   `tengu` tokens ship in `dist/chunks/`. They are the **gate keys**, and they
-   have to ship — a key blanked in the bundle is a key the user's
-   `feature-flags.json` can no longer name. The check that means something is
-   `bun run scripts/verify/tengu-census.ts`, on the source.
-
-   The distinction that pass drew is still load-bearing, though: a `tengu_*`
-   string handed to `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a
-   feature-flag **KEY**, not an event name. Those are live — they are the
-   contract with `~/.claudin/feature-flags.json` — and
-   `docs/tech/tengu-census/gate-audit.md` says what each of the 104 gates.
-   `bun run scripts/verify/tengu-census.ts` buckets every occurrence by role and
-   fails loudly if one cannot be placed.
+   `src/` now carries zero `tengu` tokens, pinned by
+   `scripts/verify/tengu-census.test.ts`. Check `dist/` with a grep over
+   `dist/chunks/` too — the bundle is code-split (rule 5 below), so
+   `dist/cli.mjs` alone reads 0 whatever the chunks hold. A build in a
+   directory whose path contains the word will show it in absolute paths;
+   that is the path, not the code.
 3. **`MACRO.*` constants** (`MACRO.VERSION`, `MACRO.DISPLAY_VERSION`,
    `MACRO.BUILD_TIME`, …) are inlined via `define`. `MACRO.VERSION` is pinned to
    `99.0.0` to pass first-party minimum-version guards; the **real** version is
@@ -64,8 +60,8 @@ not source.
 5. **`noTelemetryPlugin`** (`scripts/build/no-telemetry-plugin.ts`) is down to
    **three** stubs, from nineteen. It used to replace analytics, GrowthBook,
    Datadog, BigQuery, OTel session tracing and transcript sharing; those modules
-   were deleted outright instead, and flag resolution was promoted from a stub
-   string to real source (`src/platform/analytics/growthbook.ts`). Two of the
+   were deleted outright instead, and flag resolution, promoted from a stub
+   string to real source, was later deleted with the last gate. Two of the
    three that remain name a module that no longer exists anywhere, which
    `no-telemetry-stubs-resolve.test.ts` reports rather than fails on.
 
@@ -308,7 +304,7 @@ construct you render in a script or a test.
 ```bash
 bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
 bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
-bun test src/platform/analytics/growthbook.test.ts          # flag resolution
+bun test scripts/verify/tengu-census.test.ts                 # no tengu token in src/
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 bun run verify:privacy                                       # scan dist/ for phone-home
 ```
