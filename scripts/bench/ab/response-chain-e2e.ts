@@ -89,6 +89,11 @@
  *  19. wire, the flag off/on: `then` in the Patch and Edit schemas and the
  *      Patch description only when on; off, a Patch sending it is refused by
  *      the strict schema and a.ts stays as it was
+ *  20. CLAUDIN_GREP_BODIES (src/tools/GrepTool/grepBodies.ts): a symbols Grep
+ *      with `bodies: true` returns add()'s body, and a Patch inside it then
+ *      applies with no Read; its control, the flag off, sends the same Grep
+ *      without `bodies` and the Patch is refused as never read. On the wire,
+ *      `bodies` is in the Grep schema only with the flag
  *
  * Isolation, as in read-credit-e2e.ts. Each run gets a fresh workspace and a
  * fresh CLAUDIN_CONFIG_DIR under one temp dir. claudin takes the Anthropic API
@@ -216,6 +221,12 @@ const BASH_HOOK_SETTINGS: Json = {
 }
 const THEN_RULE = 'put its test, typecheck or build command in `then`'
 const THEN_SKIPPED = '`then` did not run:'
+const BODIES_ON: Record<string, string> = { CLAUDIN_GREP_BODIES: '1' }
+const grepSymbols = (bodies: boolean): Call => ({
+  tool: 'Grep',
+  input: { pattern: 'return a \\+ b', output_mode: 'symbols', ...(bodies && { bodies: true }) },
+})
+const PATCH_ADD_BODY = patchCall('a.ts', '  return a + b', '  return a + b + 0')
 
 /** Scenario 13's src/, which `cat src/*.ts` prints. */
 const SRC_ONE = "export const SRC_ONE = 'globbed one'"
@@ -730,6 +741,25 @@ const SCENARIOS: Scenario[] = [
       onWire(on, 'main', `the Patch description says "${THEN_RULE}"`, b => toolDescription(b, 'Patch').includes(THEN_RULE)),
     ],
   },
+  {
+    key: '20',
+    title: 'Grep bodies: the body a symbols search shows counts as read',
+    runs: [
+      { label: 'bodies on', env: BODIES_ON, steps: () => [{ calls: [grepSymbols(true)] }, { calls: [PATCH_ADD_BODY] }, DONE] },
+      { label: 'bodies off (control)', env: {}, steps: () => [{ calls: [grepSymbols(false)] }, { calls: [PATCH_ADD_BODY] }, DONE] },
+    ],
+    expect: ([on, off]) => [
+      onResult(on, 0, 0, 'the Grep returns add() with its body, under the bodies header', r =>
+        !r.isError && r.text.includes(', with their bodies') && r.text.includes('return a + b'),
+      ),
+      onResult(on, 1, 0, 'the Patch inside add() applies with no Read', isPatchSuccess),
+      onDisk(on, 'a.ts carries the change', () => ({ ok: readFileSync(join(on.ws, 'a.ts'), 'utf8').includes('return a + b + 0') })),
+      onWire(on, 'main', 'the Grep schema carries `bodies`', b => grepHasBodies(b)),
+      onResult(off, 0, 0, 'the Grep returns the signature only', r => !r.isError && !r.text.includes('with their bodies')),
+      onResult(off, 1, 0, `the Patch is refused: "${NOT_READ}"`, r => r.isError && r.text.includes(NOT_READ)),
+      onWire(off, 'main', 'the Grep schema has no `bodies`', b => !grepHasBodies(b)),
+    ],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -779,6 +809,11 @@ function hasThenField(body: Json, name: string): boolean {
 }
 
 const toolDescription = (body: Json, name: string): string => String(toolOf(body, name)?.description ?? '')
+
+function grepHasBodies(body: Json): boolean {
+  const schema = toolOf(body, 'Grep')?.input_schema
+  return isRecord(schema) && isRecord(schema.properties) && 'bodies' in schema.properties
+}
 
 let counter = 0
 
