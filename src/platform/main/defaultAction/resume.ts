@@ -282,7 +282,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     agentColor: undefined as AgentColorName | undefined,
     restoredAgentDef: mainThreadAgentDefinitionRef.current,
     initialState,
-    contentReplacements: undefined,
   } : undefined);
   if (resumeData) {
     await launchRepl(root, {
@@ -294,7 +293,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       mainThreadAgentDefinition: (resumeData.restoredAgentDef ?? mainThreadAgentDefinitionRef.current) as AgentDefinition | undefined,
       initialMessages: resumeData.messages,
       initialFileHistorySnapshots: resumeData.fileHistorySnapshots,
-      initialContentReplacements: resumeData.contentReplacements,
       initialAgentName: resumeData.agentName,
       initialAgentColor: resumeData.agentColor,
     } as Parameters<typeof launchRepl>[2], renderAndRun);

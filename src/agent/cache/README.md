@@ -46,7 +46,7 @@ audit; integrated regression:
 - **Stub bytes are first-write-wins** (`perKeyStubText` in
   `stableStubState.ts`): the first stub emitted for a tool_use_id records
   its exact bytes and every later rewriter replays them, so views holding
-  different content for the same id (budget preview vs full original)
+  different content for the same id (a preview vs the full original)
   cannot flip the wire bytes.
 - **Nothing is ever deleted from the API view**: the REPL's display array
   seeds the next request, so every context-relief action is a stable-stub

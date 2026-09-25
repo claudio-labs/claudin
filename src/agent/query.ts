@@ -81,8 +81,6 @@ import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { StreamingToolExecutor } from 'src/agent/tools/StreamingToolExecutor.js'
 import { queryCheckpoint } from 'src/agent/queryProfiler.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'
-import { applyToolResultBudget } from 'src/agent/tools/toolResultStorage.js'
-import { recordContentReplacement } from 'src/sessions/sessionStorage.js'
 import { handleStopHooks } from 'src/agent/query/stopHooks.js'
 import { buildQueryConfig } from 'src/agent/query/config.js'
 import { productionDeps, type QueryDeps } from 'src/agent/query/deps.js'
@@ -331,39 +329,6 @@ async function* queryLoop(
     let messagesForQuery = [...getMessagesAfterCompactBoundary(messages)]
 
     let tracking = autoCompactTracking
-
-    // Enforce per-message budget on aggregate tool result size. Runs BEFORE
-    // microcompact — cached MC operates purely by tool_use_id (never inspects
-    // content), so content replacement is invisible to it and the two compose
-    // cleanly. No-ops when contentReplacementState is undefined (feature off).
-    // Persist only for querySources that read records back on resume: agentId
-    // routes to sidechain file (AgentTool resume) or session file (/resume).
-    // Ephemeral runForkedAgent callers (agent_summary etc.) don't persist.
-    const persistReplacements =
-      querySource.startsWith('agent:') ||
-      querySource.startsWith('repl_main_thread')
-    const toolResultBudgetResult = await applyToolResultBudget(
-      messagesForQuery,
-      toolUseContext.contentReplacementState,
-      persistReplacements
-        ? records =>
-            void recordContentReplacement(
-              records,
-              toolUseContext.agentId,
-            ).catch(logError)
-        : undefined,
-      new Set(
-        toolUseContext.options.tools
-          .filter(t => !Number.isFinite(t.maxResultSizeChars))
-          .map(t => t.name),
-      ),
-    )
-    messagesForQuery = toolResultBudgetResult.messages
-    if (toolResultBudgetResult.newlyReplaced.length > 0) {
-      toolUseContext.syncToolResultReplacements?.(
-        toolUseContext.contentReplacementState?.replacements ?? new Map(),
-      )
-    }
 
     // Apply microcompact before autocompact
     queryCheckpoint('query_microcompact_start')

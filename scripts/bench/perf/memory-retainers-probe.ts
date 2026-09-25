@@ -180,43 +180,6 @@ async function main(): Promise<void> {
     console.error('#1 perKeyClippedIds: SKIP', (e as Error).message)
   }
 
-  // --- #2 ContentReplacementState (direct manipulation) -------------------
-  try {
-    const mod = await import('../../../src/agent/tools/toolResultStorage.js')
-    const state = mod.createContentReplacementState()
-    results.push(
-      await measure(
-        '#2a ContentReplacementState.seenIds',
-        'unbounded',
-        N,
-        () => {},
-        i => {
-          state.seenIds.add(`id_${i}`)
-        },
-        () => state.seenIds.size,
-        'Per-turn reset on REPL only; SDK path grows monotonically',
-      ),
-    )
-    results.push(
-      await measure(
-        '#2b ContentReplacementState.replacements',
-        'unbounded',
-        N,
-        () => {},
-        i => {
-          state.replacements.set(
-            `id_${i}`,
-            `<persisted-output>/tmp/turn-${i}</persisted-output>`,
-          )
-        },
-        () => state.replacements.size,
-        'Stores replacement strings (~60 bytes each); without prune grows linearly',
-      ),
-    )
-  } catch (e) {
-    console.error('#2 ContentReplacementState: SKIP', (e as Error).message)
-  }
-
   // --- #3 MCP connectToServer memoize cache -------------------------------
   try {
     const mod = await import('../../../src/mcp/client.js')

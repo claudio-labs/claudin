@@ -28,7 +28,6 @@ import {
   getOriginalCwd,
   getSessionProjectDir,
 } from 'src/platform/bootstrap/state.js'
-import type { AgentId } from 'src/shared/types/ids.js'
 import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
   type ContextCollapseCommitEntry,
@@ -48,7 +47,6 @@ import {
   SKIP_PRECOMPACT_THRESHOLD,
   readTranscriptForLoad,
 } from 'src/sessions/sessionStoragePortable.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import { getProjectDir } from 'src/sessions/pure/paths.js'
 import {
   forEachParsedJSONLBufferEntry,
@@ -134,8 +132,6 @@ export async function loadTranscriptFile(
   costStates: Map<UUID, CostStateEntry>
   fileHistorySnapshots: Map<UUID, FileHistorySnapshotMessage>
   attributionSnapshots: Map<UUID, AttributionSnapshotMessage>
-  contentReplacements: Map<UUID, ContentReplacementRecord[]>
-  agentContentReplacements: Map<AgentId, ContentReplacementRecord[]>
   contextCollapseCommits: ContextCollapseCommitEntry[]
   contextCollapseSnapshot: ContextCollapseSnapshotEntry | undefined
   leafUuids: Set<UUID>
@@ -156,11 +152,6 @@ export async function loadTranscriptFile(
   const costStates = new Map<UUID, CostStateEntry>()
   const fileHistorySnapshots = new Map<UUID, FileHistorySnapshotMessage>()
   const attributionSnapshots = new Map<UUID, AttributionSnapshotMessage>()
-  const contentReplacements = new Map<UUID, ContentReplacementRecord[]>()
-  const agentContentReplacements = new Map<
-    AgentId,
-    ContentReplacementRecord[]
-  >()
   // Array, not Map — commit order matters (nested collapses).
   const contextCollapseCommits: ContextCollapseCommitEntry[] = []
   // Last-wins — later entries supersede.
@@ -276,6 +267,9 @@ export async function loadTranscriptFile(
     // rewrite any subsequent message whose parentUuid lands in the bridge.
     const progressBridge = new Map<UUID, UUID | null>()
 
+    // Entry types with no branch below are skipped. That includes the
+    // 'content-replacement' records an older build wrote for a tool-result
+    // budget that no longer exists, so such transcripts still load.
     forEachParsedJSONLBufferEntry<Entry>(buf, entry => {
       // Legacy progress check runs before the Entry-typed else-if chain —
       // progress is not in the Entry union, so checking it after TypeScript
@@ -334,18 +328,6 @@ export async function loadTranscriptFile(
         fileHistorySnapshots.set(entry.messageId, entry)
       } else if (entry.type === 'attribution-snapshot') {
         attributionSnapshots.set(entry.messageId, entry)
-      } else if (entry.type === 'content-replacement') {
-        // Subagent decisions key by agentId (sidechain resume); main-thread
-        // decisions key by sessionId (/resume).
-        if (entry.agentId) {
-          const existing = agentContentReplacements.get(entry.agentId) ?? []
-          agentContentReplacements.set(entry.agentId, existing)
-          existing.push(...entry.replacements)
-        } else {
-          const existing = contentReplacements.get(entry.sessionId) ?? []
-          contentReplacements.set(entry.sessionId, existing)
-          existing.push(...entry.replacements)
-        }
       } else if (entry.type === 'marble-origami-commit') {
         contextCollapseCommits.push(entry)
       } else if (entry.type === 'marble-origami-snapshot') {
@@ -462,8 +444,6 @@ export async function loadTranscriptFile(
     costStates,
     fileHistorySnapshots,
     attributionSnapshots,
-    contentReplacements,
-    agentContentReplacements,
     contextCollapseCommits,
     contextCollapseSnapshot,
     leafUuids,
@@ -483,7 +463,6 @@ export async function loadSessionFile(sessionId: UUID): Promise<{
   costStates: Map<UUID, CostStateEntry>
   fileHistorySnapshots: Map<UUID, FileHistorySnapshotMessage>
   attributionSnapshots: Map<UUID, AttributionSnapshotMessage>
-  contentReplacements: Map<UUID, ContentReplacementRecord[]>
   contextCollapseCommits: ContextCollapseCommitEntry[]
   contextCollapseSnapshot: ContextCollapseSnapshotEntry | undefined
 }> {

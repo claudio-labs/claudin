@@ -29,9 +29,8 @@ import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js';
 import { logError } from 'src/shared/log.js';
 import { createSystemMessage } from 'src/agent/messages/messages.js';
 import { computeStandaloneAgentContext, restoreAgentFromSession, restoreWorktreeForResume } from 'src/sessions/sessionRestore.js';
-import { adoptResumedSessionFile, enrichLogs, isCustomTitleEnabled, loadAllProjectsMessageLogsProgressive, loadSameRepoMessageLogsProgressive, recordContentReplacement, resetSessionFilePointer, restoreSessionMetadata, type SessionLogResult } from 'src/sessions/sessionStorage.js';
+import { adoptResumedSessionFile, enrichLogs, isCustomTitleEnabled, loadAllProjectsMessageLogsProgressive, loadSameRepoMessageLogsProgressive, resetSessionFilePointer, restoreSessionMetadata, type SessionLogResult } from 'src/sessions/sessionStorage.js';
 import type { ThinkingConfig } from 'src/agent/context/thinking.js';
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js';
 import { REPL } from 'src/agent/repl/REPL.js';
 function parsePrIdentifier(value: string): number | null {
   const directNumber = parseInt(value, 10);
@@ -96,7 +95,6 @@ export function ResumeConversation({
   const [resumeData, setResumeData] = React.useState<{
     messages: Message[];
     fileHistorySnapshots?: FileHistorySnapshot[];
-    contentReplacements?: ContentReplacementRecord[];
     agentName?: string;
     agentColor?: AgentColorName;
     mainThreadAgentDefinition?: AgentDefinition;
@@ -224,8 +222,6 @@ export function ResumeConversation({
         await renameRecordingForSession();
         await resetSessionFilePointer();
         restoreCostStateForResume(result_3.sessionId, result_3);
-      } else if (forkSession && result_3.contentReplacements?.length) {
-        await recordContentReplacement(result_3.contentReplacements);
       }
       const {
         agentDefinition: resolvedAgentDef
@@ -267,7 +263,6 @@ export function ResumeConversation({
       setResumeData({
         messages: result_3.messages,
         fileHistorySnapshots: result_3.fileHistorySnapshots,
-        contentReplacements: result_3.contentReplacements,
         agentName: result_3.agentName,
         agentColor: (result_3.agentColor === 'default' ? undefined : result_3.agentColor) as AgentColorName | undefined,
         mainThreadAgentDefinition: resolvedAgentDef
@@ -282,7 +277,7 @@ export function ResumeConversation({
     return <CrossProjectMessage command={crossProjectCommand} />;
   }
   if (resumeData) {
-    return <REPL debug={debug} commands={commands} initialTools={initialTools} initialMessages={resumeData.messages} initialFileHistorySnapshots={resumeData.fileHistorySnapshots} initialContentReplacements={resumeData.contentReplacements} initialAgentName={resumeData.agentName} initialAgentColor={resumeData.agentColor} mcpClients={mcpClients} dynamicMcpConfig={dynamicMcpConfig} strictMcpConfig={strictMcpConfig} systemPrompt={systemPrompt} appendSystemPrompt={appendSystemPrompt} mainThreadAgentDefinition={resumeData.mainThreadAgentDefinition} autoConnectIdeFlag={autoConnectIdeFlag} disableSlashCommands={disableSlashCommands} taskListId={taskListId} thinkingConfig={thinkingConfig} onTurnComplete={onTurnComplete} />;
+    return <REPL debug={debug} commands={commands} initialTools={initialTools} initialMessages={resumeData.messages} initialFileHistorySnapshots={resumeData.fileHistorySnapshots} initialAgentName={resumeData.agentName} initialAgentColor={resumeData.agentColor} mcpClients={mcpClients} dynamicMcpConfig={dynamicMcpConfig} strictMcpConfig={strictMcpConfig} systemPrompt={systemPrompt} appendSystemPrompt={appendSystemPrompt} mainThreadAgentDefinition={resumeData.mainThreadAgentDefinition} autoConnectIdeFlag={autoConnectIdeFlag} disableSlashCommands={disableSlashCommands} taskListId={taskListId} thinkingConfig={thinkingConfig} onTurnComplete={onTurnComplete} />;
   }
   if (loading) {
     return <Box>

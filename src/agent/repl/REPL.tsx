@@ -171,7 +171,6 @@ import { clearSessionMetadata, resetSessionFilePointer, adoptResumedSessionFile,
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js';
 import { extractReadFilesFromMessages, extractBashToolsFromMessages, extractNestedMemoryPathsFromMessages } from 'src/agent/queryHelpers.js';
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js';
-import { applyToolResultReplacementsToMessages, provisionContentReplacementState, reconstructContentReplacementState, type ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js';
 import { partialCompactConversation } from 'src/agent/compact/compact.js';
 import type { LogOption } from 'src/shared/types/logs.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
@@ -303,9 +302,6 @@ export type Props = {
   // hook messages when they resolve. Awaited before the first API call.
   pendingHookMessages?: Promise<HookResultMessage[]>;
   initialFileHistorySnapshots?: FileHistorySnapshot[];
-  // Content-replacement records from a resumed session's transcript — used to
-  // reconstruct contentReplacementState so the same results are re-replaced
-  initialContentReplacements?: ContentReplacementRecord[];
   // Initial agent context for session resume (name/color set via /rename or /color)
   initialAgentName?: string;
   initialAgentColor?: AgentColorName;
@@ -346,7 +342,6 @@ export function REPL({
   initialMessages,
   pendingHookMessages,
   initialFileHistorySnapshots,
-  initialContentReplacements,
   initialAgentName,
   initialAgentColor,
   mcpClients: initialMcpClients,
@@ -925,11 +920,7 @@ export function REPL({
     registerLeaderToolUseConfirmQueue(setToolUseConfirmQueue);
     return () => unregisterLeaderToolUseConfirmQueue();
   }, [setToolUseConfirmQueue]);
-  const [messages, rawSetMessages] = useState<MessageType[]>(() => {
-    if (!initialMessages) return [];
-    const initialReplacementState = provisionContentReplacementState(initialMessages, initialContentReplacements);
-    return initialReplacementState ? applyToolResultReplacementsToMessages(initialMessages, initialReplacementState.replacements) : initialMessages;
-  });
+  const [messages, rawSetMessages] = useState<MessageType[]>(() => initialMessages ?? []);
   const messagesRef = useRef(messages);
   // Stores the willowMode variant that was shown (or false if no hint shown).
   // Captured at hint_shown time so hint_converted telemetry reports the same
@@ -981,10 +972,6 @@ export function REPL({
     }
     setUserInputOnProcessingRaw(input);
   }, []);
-  const syncToolResultReplacements = useCallback((replacements: ReadonlyMap<string, string>) => {
-    if (replacements.size === 0) return;
-    setMessages(current => applyToolResultReplacementsToMessages(current, replacements));
-  }, [setMessages]);
   // Fullscreen: track the unseen-divider position. dividerIndex changes
   // only ~twice/scroll-session (first scroll-away + repin). pillVisible
   // and stickyPrompt now live in FullscreenLayout — they subscribe to
@@ -1346,20 +1333,6 @@ export function REPL({
   const lastQueryCompletionTimeRef = useRef(lastQueryCompletionTime);
   lastQueryCompletionTimeRef.current = lastQueryCompletionTime;
 
-  // Aggregate tool result budget: per-conversation decision tracking.
-  // When the GrowthBook flag is on, query.ts enforces the budget; when
-  // off (undefined), enforcement is skipped entirely. Stale entries after
-  // /clear, rewind, or compact are harmless (tool_use_ids are UUIDs, stale
-  // keys are never looked up). Memory is bounded by total replacement count
-  // × ~2KB preview over the REPL lifetime — negligible.
-  //
-  // Lazy init via useState initializer — useRef(expr) evaluates expr on every
-  // render (React ignores it after first, but the computation still runs).
-  // For large resumed sessions, reconstruction does O(messages × blocks)
-  // work; we only want that once.
-  const [contentReplacementStateRef] = useState(() => ({
-    current: provisionContentReplacementState(initialMessages, initialContentReplacements)
-  }));
   const [haveShownCostDialog, setHaveShownCostDialog] = useState(getGlobalConfig().hasAcknowledgedCostThreshold);
   const [vimMode, setVimMode] = useState<VimMode>('INSERT');
   const [showBashesDialog, setShowBashesDialog] = useState<string | boolean>(false);
@@ -1559,7 +1532,6 @@ export function REPL({
       setConversationId,
       haikuTitleAttemptedRef,
       setHaikuTitle,
-      contentReplacementStateRef,
       setMessages,
       setToolJSX,
       setInputValue,
@@ -1891,12 +1863,10 @@ export function REPL({
     readFileState,
     discoveredSkillNamesRef,
     loadedNestedMemoryPathsRef,
-    contentReplacementStateRef,
     hasInterruptibleToolInProgressRef,
     resume,
     reverify,
     onChangeDynamicMcpConfig,
-    syncToolResultReplacements,
     addNotification,
     setToolJSX,
     setAppState,
@@ -1952,7 +1922,6 @@ export function REPL({
     inputValueRef,
     restoreMessageSyncRef,
     sendBridgeResultRef,
-    contentReplacementStateRef,
     responseLengthRef,
     apiMetricsRef,
     loadingStartTimeRef,
@@ -3063,7 +3032,7 @@ export function REPL({
               setMessages(postCompact);
             }
             setConversationId(randomUUID());
-            runPostCompactCleanup(context.options.querySource, postCompact, contentReplacementStateRef.current);
+            runPostCompactCleanup(context.options.querySource, postCompact);
             if (direction === 'from') {
               const r = textForResubmit(message);
               if (r) {

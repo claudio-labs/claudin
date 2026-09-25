@@ -51,7 +51,6 @@ import {
   readHeadAndTail,
 } from 'src/sessions/sessionStoragePortable.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import { validateUuid } from 'src/shared/data/uuid.js'
 
 // exported for testing
@@ -83,7 +82,6 @@ export async function loadTranscriptFromFile(
       contextCollapseCommits,
       contextCollapseSnapshot,
       leafUuids,
-      contentReplacements,
       worktreeStates,
     } = await loadTranscriptFile(filePath)
 
@@ -117,8 +115,6 @@ export async function loadTranscriptFromFile(
         tag,
         filePath,
         buildAttributionSnapshotChain(attributionSnapshots, transcript),
-        undefined,
-        contentReplacements.get(sessionId) ?? [],
       ),
       contextCollapseCommits: contextCollapseCommits.filter(
         e => e.sessionId === sessionId,
@@ -264,7 +260,6 @@ export function convertToLogOption(
   fullPath?: string,
   attributionSnapshots?: AttributionSnapshotMessage[],
   agentSetting?: string,
-  contentReplacements?: ContentReplacementRecord[],
 ): LogOption {
   // The JSON-array transcript path (unlike the JSONL path) has no upstream
   // empty guard; an empty array would make the `!` assertions below lie and
@@ -301,7 +296,6 @@ export function convertToLogOption(
     tag,
     fileHistorySnapshots: fileHistorySnapshots,
     attributionSnapshots: attributionSnapshots,
-    contentReplacements,
     gitBranch: lastMessage.gitBranch,
     projectPath: firstMessage.cwd,
   }
@@ -398,7 +392,6 @@ export async function loadFullLog(log: LogOption): Promise<LogOption> {
       costStates,
       fileHistorySnapshots,
       attributionSnapshots,
-      contentReplacements,
       contextCollapseCommits,
       contextCollapseSnapshot,
       leafUuids,
@@ -460,9 +453,6 @@ export async function loadFullLog(log: LogOption): Promise<LogOption> {
         attributionSnapshots,
         transcript,
       ),
-      contentReplacements: sessionId
-        ? (contentReplacements.get(sessionId) ?? [])
-        : log.contentReplacements,
       // Filter to the resumed session's entries. loadTranscriptFile reads
       // the file sequentially so the array is already in commit order;
       // filter preserves that.
@@ -494,7 +484,6 @@ export async function getLastSessionLog(
     costStates,
     fileHistorySnapshots,
     attributionSnapshots,
-    contentReplacements,
     contextCollapseCommits,
     contextCollapseSnapshot,
   } = await loadSessionFile(sessionId)
@@ -533,7 +522,6 @@ export async function getLastSessionLog(
       getTranscriptPathForSession(sessionId),
       buildAttributionSnapshotChain(attributionSnapshots, transcript),
       agentSetting,
-      contentReplacements.get(sessionId) ?? [],
     ),
     worktreeSession: worktreeStates.get(sessionId),
     costState: costStates.get(sessionId),
@@ -724,7 +712,6 @@ export async function loadAllLogsFromSessionFile(
     modes,
     fileHistorySnapshots,
     attributionSnapshots,
-    contentReplacements,
     leafUuids,
   } = await loadTranscriptFile(sessionFile, { keepAllLeaves: true })
 
@@ -797,7 +784,6 @@ export async function loadAllLogsFromSessionFile(
         attributionSnapshots,
         chain,
       ),
-      contentReplacements: contentReplacements.get(sessionId) ?? [],
     })
   }
 

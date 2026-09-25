@@ -32,7 +32,6 @@ import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import type { MCPServerConnection } from 'src/mcp/types.js';
 import type { useAppStateStore } from 'src/terminal/state/AppState.js';
-import type { provisionContentReplacementState } from 'src/agent/tools/toolResultStorage.js';
 import { feature } from 'bun:bundle';
 import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount } from 'src/platform/bootstrap/state.js';
 import { parseTokenBudget } from 'src/agent/context/tokenBudget.js';
@@ -64,7 +63,7 @@ import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardi
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage } from 'src/sessions/sessionStorage.js';
-import { applyStableStubs, pruneOldToolResults, pruneContentReplacementState, stubToolResultForDisplay, type AnyMessage } from 'src/agent/compact/stableStubState.js';
+import { applyStableStubs, pruneOldToolResults, stubToolResultForDisplay, type AnyMessage } from 'src/agent/compact/stableStubState.js';
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
@@ -123,7 +122,6 @@ export interface UseOnQueryDeps {
   inputValueRef: React.RefObject<string>;
   restoreMessageSyncRef: React.RefObject<(m: UserMessage) => void>;
   sendBridgeResultRef: React.RefObject<() => void>;
-  contentReplacementStateRef: { current: ReturnType<typeof provisionContentReplacementState> };
   responseLengthRef: React.RefObject<number>;
   apiMetricsRef: React.RefObject<Array<{
     ttftMs: number;
@@ -186,7 +184,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     inputValueRef,
     restoreMessageSyncRef,
     sendBridgeResultRef,
-    contentReplacementStateRef,
     responseLengthRef,
     apiMetricsRef,
     loadingStartTimeRef,
@@ -431,19 +428,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     const after = applyStableStubs(aged)
     if (after !== before) {
       setMessages(() => after as MessageType[])
-    }
-    // Prune orphaned contentReplacementState entries for IDs no longer
-    // in the display array. Run unconditionally — orphans can accumulate
-    // even when `after === before` (text-only turns, /compact, rewind,
-    // resume). pruneContentReplacementState is idempotent and O(N) over
-    // the display array plus the state Map, so the cost is microseconds
-    // per turn. Without this, seenIds and replacements grow monotonically
-    // — dropped messages' preview strings (~2KB each) are never looked up
-    // again but never freed.
-    // provisionContentReplacementState returns undefined when the
-    // content-replacement feature flag is off — nothing to prune then.
-    if (contentReplacementStateRef.current) {
-      pruneContentReplacementState(after, contentReplacementStateRef.current)
     }
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {

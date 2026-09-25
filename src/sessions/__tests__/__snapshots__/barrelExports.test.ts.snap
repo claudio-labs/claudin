@@ -73,7 +73,6 @@ exports[`sessionStorage barrel exports a stable, known set of runtime symbols 1`
   "readAgentMetadata",
   "readRemoteAgentMetadata",
   "recordAttributionSnapshot",
-  "recordContentReplacement",
   "recordContextCollapseCommit",
   "recordContextCollapseSnapshot",
   "recordFileHistorySnapshot",

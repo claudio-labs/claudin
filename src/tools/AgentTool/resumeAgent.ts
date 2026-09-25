@@ -28,7 +28,6 @@ import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import { getParentSessionId } from 'src/agent/coordinator/teammate.js'
-import { reconstructForSubagentResume } from 'src/agent/tools/toolResultStorage.js'
 import { runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
 import { FORK_AGENT, isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
@@ -73,11 +72,6 @@ export async function resumeAgentBackground({
     filterOrphanedThinkingOnlyMessages(
       filterUnresolvedToolUses(transcript.messages),
     ),
-  )
-  const resumedReplacementState = reconstructForSubagentResume(
-    toolUseContext.contentReplacementState,
-    resumedMessages,
-    transcript.contentReplacements,
   )
   // Best-effort: if the original worktree was removed externally, fall back
   // to parent cwd rather than crashing on chdir later.
@@ -203,7 +197,6 @@ export async function resumeAgentBackground({
     // Re-persist so metadata survives runAgent's writeAgentMetadata overwrite
     worktreePath: resumedWorktreePath,
     description: meta?.description,
-    contentReplacementState: resumedReplacementState,
   }
 
   // Skip name-registry write — original entry persists from the initial spawn

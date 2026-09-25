@@ -11,7 +11,7 @@
 // persistence opt-in dance.
 
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { appendFile, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -38,7 +38,6 @@ import {
   getTranscriptPath,
   loadTranscriptFile,
   reAppendSessionMetadata,
-  recordContentReplacement,
   recordSidechainTranscript,
   recordTranscript,
   removeTranscriptMessage,
@@ -574,63 +573,31 @@ test.skip('adoptResumedSessionFile + resetSessionFilePointer: takes over an exis
 
 // --- Block #16 — stable-stub ↔ sessionStorage contract (end-to-end) ---
 
-test('recordContentReplacement + loadTranscriptFile: replacement record is recovered by sessionId', async () => {
-  // Seed at least one message so the session file materializes; otherwise
-  // appendEntry buffers and no file exists for loadTranscriptFile to read.
+test('loadTranscriptFile skips a content-replacement entry an older build wrote', async () => {
   const u1 = mkUser(dUuid(400), null, 'q')
   await recordTranscript([u1])
   await flushSessionStorage()
+  const path = getTranscriptPath()
   const sid = JSON.parse(
-    (await readFile(getTranscriptPath(), 'utf8'))
-      .split('\n')
-      .filter(l => l)[0]!,
+    (await readFile(path, 'utf8')).split('\n').filter(l => l)[0]!,
   ).sessionId as UUID
-
-  await recordContentReplacement([
-    {
-      kind: 'tool-result',
-      toolUseId: 'toolu_abc',
-      replacement: '<persisted-output>preview here</persisted-output>',
-    },
-  ])
-  await flushSessionStorage()
-
-  const loaded = await loadTranscriptFile(getTranscriptPath())
-  const records = loaded.contentReplacements.get(sid)
-  expect(records).toBeDefined()
-  expect(records!.length).toBe(1)
-  expect(records![0]!.toolUseId).toBe('toolu_abc')
-})
-
-test('recordContentReplacement(agentId): replacement is routed to the agent transcript file', async () => {
-  const u1 = mkUser(dUuid(410), null, 'q')
-  await recordTranscript([u1])
-  await flushSessionStorage()
-
-  await recordContentReplacement(
-    [
-      {
-        kind: 'tool-result',
-        toolUseId: 'toolu_xyz',
-        replacement: '<persisted-output>agent preview</persisted-output>',
-      },
-    ],
-    asAgentId('agent-Y'),
+  await appendFile(
+    path,
+    JSON.stringify({
+      type: 'content-replacement',
+      sessionId: sid,
+      replacements: [
+        {
+          kind: 'tool-result',
+          toolUseId: 'toolu_abc',
+          replacement: '<persisted-output>preview here</persisted-output>',
+        },
+      ],
+    }) + '\n',
   )
-  await flushSessionStorage()
 
-  // Main session file: no content-replacement entry
-  const mainEntries = await readJsonl()
-  expect(mainEntries.find(e => e.type === 'content-replacement')).toBeUndefined()
-
-  // Agent file holds it
-  const agentRaw = await readFile(getAgentTranscriptPath(asAgentId('agent-Y')), 'utf8')
-  const agentEntries = agentRaw
-    .split('\n')
-    .filter(l => l)
-    .map(l => JSON.parse(l) as Record<string, unknown>)
-  const rep = agentEntries.find(e => e.type === 'content-replacement')
-  expect(rep).toBeDefined()
+  const loaded = await loadTranscriptFile(path)
+  expect([...loaded.messages.keys()]).toEqual([u1.uuid])
 })
 
 test('stripPersistedToolUseResultsFromJSONLBuffer: preserves <persisted-output> preview while dropping raw toolUseResult', async () => {

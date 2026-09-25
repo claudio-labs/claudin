@@ -348,7 +348,7 @@ export async function autoCompactIfNeeded(
     // and the old message UUID will no longer exist after the REPL replaces messages
     setLastSummarizedMessageId(undefined)
     const postCompact = buildPostCompactMessages(sessionMemoryResult)
-    runPostCompactCleanup(querySource, postCompact, toolUseContext.contentReplacementState)
+    runPostCompactCleanup(querySource, postCompact)
     // Reset cache read baseline so the post-compact drop isn't flagged as a
     // break. compactConversation does this internally; SM-compact doesn't.
     // BQ 2026-03-01: missing this made 20% of tengu_prompt_cache_break events
@@ -378,7 +378,7 @@ export async function autoCompactIfNeeded(
     // and the old message UUID will no longer exist in the new messages array
     setLastSummarizedMessageId(undefined)
     const postCompact = buildPostCompactMessages(compactionResult)
-    runPostCompactCleanup(querySource, postCompact, toolUseContext.contentReplacementState)
+    runPostCompactCleanup(querySource, postCompact)
 
     return {
       wasCompacted: true,

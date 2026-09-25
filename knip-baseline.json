@@ -879,7 +879,6 @@
     "types src/agent/repl/controllers/useOnSubmit.ts#StashedPrompt",
     "types src/agent/repl/controllers/useSandboxAsk.ts#SandboxPermissionRequest",
     "types src/agent/repl/getFocusedInputDialog.ts#ToolJSXFocusInput",
-    "types src/agent/repl/resumeSession.ts#ContentReplacementStateRef",
     "types src/agent/repl/ui/TranscriptModeFooter.tsx#TranscriptSearchBadge",
     "types src/agent/tasks/DreamTask/DreamTask.ts#DreamPhase",
     "types src/agent/tasks/RemoteAgentTask/RemoteAgentTask.tsx#AutofixPrRemoteTaskMetadata",

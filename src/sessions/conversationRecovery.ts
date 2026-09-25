@@ -54,7 +54,6 @@ import {
   removeExtraFields,
 } from 'src/sessions/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 
 // Hard cap for reconstructed resume payloads before REPL boot. 8 MiB keeps
 // resume bounded well below the multi-GB failure mode we saw while leaving
@@ -513,7 +512,6 @@ export async function loadConversationForResume(
   turnInterruptionState: TurnInterruptionState
   fileHistorySnapshots?: FileHistorySnapshot[]
   attributionSnapshots?: AttributionSnapshotMessage[]
-  contentReplacements?: ContentReplacementRecord[]
   contextCollapseCommits?: ContextCollapseCommitEntry[]
   contextCollapseSnapshot?: ContextCollapseSnapshotEntry
   sessionId: UUID | undefined
@@ -612,7 +610,6 @@ export async function loadConversationForResume(
       turnInterruptionState: deserialized.turnInterruptionState,
       fileHistorySnapshots: log?.fileHistorySnapshots,
       attributionSnapshots: log?.attributionSnapshots,
-      contentReplacements: log?.contentReplacements,
       contextCollapseCommits: log?.contextCollapseCommits,
       contextCollapseSnapshot: log?.contextCollapseSnapshot,
       sessionId,

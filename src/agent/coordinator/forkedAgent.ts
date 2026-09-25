@@ -33,10 +33,6 @@ import { createDenialTrackingState } from 'src/permissions/denialTracking.js'
 import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js'
 import { recordSidechainTranscript } from 'src/sessions/sessionStorage.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
-import {
-  type ContentReplacementState,
-  cloneContentReplacementState,
-} from 'src/agent/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 
 /**
@@ -305,10 +301,6 @@ export type SubagentContextOverrides = {
   /** Honor AgentDefinition.omitGitInstructions in the attachment pipeline
    * (suppresses bash_git_instructions). */
   omitGitInstructionsAttachments?: boolean
-  /** Override replacement state — used by resumeAgentBackground to thread
-   * state reconstructed from the resumed sidechain so the same results
-   * are re-replaced (prompt cache stability). */
-  contentReplacementState?: ContentReplacementState
 }
 
 /**
@@ -393,22 +385,6 @@ export function createSubagentContext(
     // Per-subagent: tracks skills surfaced by discovery for was_discovered telemetry (SkillTool.ts:116)
     discoveredSkillNames: new Set<string>(),
     toolDecisions: undefined,
-    // Budget decisions: override > clone of parent > undefined (feature off).
-    //
-    // Clone by default (not fresh): cache-sharing forks process parent
-    // messages containing parent tool_use_ids. A fresh state would see
-    // them as unseen and make divergent replacement decisions → wire
-    // prefix differs → cache miss. A clone makes identical decisions →
-    // cache hit. For non-forking subagents the parent UUIDs never match
-    // — clone is a harmless no-op.
-    //
-    // Override: AgentTool resume (reconstructed from sidechain records)
-    // and inProcessRunner (per-teammate persistent loop state).
-    contentReplacementState:
-      overrides?.contentReplacementState ??
-      (parentContext.contentReplacementState
-        ? cloneContentReplacementState(parentContext.contentReplacementState)
-        : undefined),
 
     // AbortController
     abortController,

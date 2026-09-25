@@ -38,10 +38,9 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import * as sessionIngress from 'src/providers/transport/sessionIngress.js'
-import { asAgentId, type AgentId, asSessionId } from 'src/shared/types/ids.js'
+import { asAgentId, asSessionId } from 'src/shared/types/ids.js'
 import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
-  type ContentReplacementEntry,
   type Entry,
   type FileHistorySnapshotMessage,
   type PersistedWorktreeSession,
@@ -93,7 +92,6 @@ import {
 } from 'src/sessions/sessionStoragePortable.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import { getCostStateEntryFor } from 'src/agent/cost-tracker.js'
 import {
   appendEntryToFile,
@@ -785,10 +783,7 @@ export class Project {
           // and --resume, messages arrive as SerializedMessage (carries source
           // sessionId/cwd/etc. because removeExtraFields only strips parentUuid
           // and isSidechain). If sessionId isn't re-stamped, FRESH.jsonl ends up
-          // with messages stamped sessionId=A but content-replacement entries
-          // stamped sessionId=FRESH (from insertContentReplacement), and
-          // loadFullLog's sessionId-keyed contentReplacements lookup misses →
-          // replacement records lost → FROZEN misclassification.
+          // holding messages stamped with the source session's id.
           userType: getUserType(),
           entrypoint: getEntrypoint(),
           cwd: getCwd(),
@@ -842,21 +837,6 @@ export class Project {
   async insertAttributionSnapshot(snapshot: AttributionSnapshotMessage) {
     return this.trackWrite(async () => {
       await this.appendEntry(snapshot)
-    })
-  }
-
-  async insertContentReplacement(
-    replacements: ContentReplacementRecord[],
-    agentId?: AgentId,
-  ) {
-    return this.trackWrite(async () => {
-      const entry: ContentReplacementEntry = {
-        type: 'content-replacement',
-        sessionId: getSessionId() as UUID,
-        agentId,
-        replacements,
-      }
-      await this.appendEntry(entry)
     })
   }
 
@@ -935,14 +915,6 @@ export class Project {
     } else if (entry.type === 'cost-state') {
       // Last-wins on restore; never joins the message chain.
       void this.enqueueWrite(sessionFile, entry)
-    } else if (entry.type === 'content-replacement') {
-      // Content replacement records can always be appended. Subagent records
-      // go to the sidechain file (for AgentTool resume); main-thread
-      // records go to the session file (for /resume).
-      const targetFile = entry.agentId
-        ? getAgentTranscriptPath(entry.agentId)
-        : sessionFile
-      void this.enqueueWrite(targetFile, entry)
     } else if (entry.type === 'marble-origami-commit') {
       // Always append. Commit order matters for restore (later commits may
       // reference earlier commits' summary messages), so these must be

@@ -210,10 +210,6 @@ export function startAgentSummarization(
       // tools, model, messages prefix, thinking config). Setting maxOutputTokens
       // would clamp budget_tokens, creating a thinking config mismatch that
       // invalidates the cache.
-      //
-      // ContentReplacementState is cloned by default in createSubagentContext
-      // from forkParams.toolUseContext (the subagent's LIVE state captured at
-      // onCacheSafeParams time). No explicit override needed.
       const result = await runForkedAgent(
         summaryForkParams(
           buildSummaryPrompt(previousSummary),

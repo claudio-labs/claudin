@@ -4,7 +4,6 @@ import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import type { LocalJSXCommandContext } from 'src/commands/commands.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import type {
-  ContentReplacementEntry,
   Entry,
   LogOption,
   SerializedMessage,
@@ -62,7 +61,6 @@ async function createFork(customTitle?: string): Promise<{
   title: string | undefined
   forkPath: string
   serializedMessages: SerializedMessage[]
-  contentReplacementRecords: ContentReplacementEntry['replacements']
 }> {
   const forkSessionId = randomUUID() as UUID
   const originalSessionId = getSessionId()
@@ -85,7 +83,7 @@ async function createFork(customTitle?: string): Promise<{
     throw new Error('No conversation to branch')
   }
 
-  // Parse all transcript entries (messages + metadata entries like content-replacement)
+  // Parse all transcript entries (messages + metadata entries)
   const entries = parseJSONL<Entry>(transcriptContent)
 
   // Filter to only main conversation messages (exclude sidechains and non-message entries)
@@ -93,21 +91,6 @@ async function createFork(customTitle?: string): Promise<{
     (entry): entry is TranscriptMessage =>
       isTranscriptMessage(entry) && !entry.isSidechain,
   )
-
-  // Content-replacement entries for the original session. These record which
-  // tool_result blocks were replaced with previews by the per-message budget.
-  // Without them in the fork JSONL, `claude -r {forkId}` reconstructs state
-  // with an empty replacements Map → previously-replaced results are classified
-  // as FROZEN and sent as full content (prompt cache miss + permanent overage).
-  // sessionId must be rewritten since loadTranscriptFile keys lookup by the
-  // session's messages' sessionId.
-  const contentReplacementRecords = entries
-    .filter(
-      (entry): entry is ContentReplacementEntry =>
-        entry.type === 'content-replacement' &&
-        entry.sessionId === originalSessionId,
-    )
-    .flatMap(entry => entry.replacements)
 
   if (mainConversationEntries.length === 0) {
     throw new Error('No messages to branch')
@@ -144,18 +127,6 @@ async function createFork(customTitle?: string): Promise<{
     }
   }
 
-  // Append content-replacement entry (if any) with the fork's sessionId.
-  // Written as a SINGLE entry (same shape as insertContentReplacement) so
-  // loadTranscriptFile's content-replacement branch picks it up.
-  if (contentReplacementRecords.length > 0) {
-    const forkedReplacementEntry: ContentReplacementEntry = {
-      type: 'content-replacement',
-      sessionId: forkSessionId,
-      replacements: contentReplacementRecords,
-    }
-    lines.push(jsonStringify(forkedReplacementEntry))
-  }
-
   // Write the fork session file
   await writeFile(forkSessionPath, lines.join('\n') + '\n', {
     encoding: 'utf8',
@@ -167,7 +138,6 @@ async function createFork(customTitle?: string): Promise<{
     title: customTitle,
     forkPath: forkSessionPath,
     serializedMessages,
-    contentReplacementRecords,
   }
 }
 
@@ -233,7 +203,6 @@ export async function call(
       title,
       forkPath,
       serializedMessages,
-      contentReplacementRecords,
     } = await createFork(customTitle)
 
     // Build LogOption for resume
@@ -263,7 +232,6 @@ export async function call(
       isSidechain: false,
       sessionId,
       customTitle: effectiveTitle,
-      contentReplacements: contentReplacementRecords,
     }
 
     // Resume into the fork

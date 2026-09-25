@@ -66,7 +66,6 @@ import type {
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { DenialTrackingState } from 'src/permissions/denialTracking.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
-import type { ContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 
 // Re-export progress types for backwards compatibility
 export type {
@@ -334,23 +333,6 @@ export type ToolUseContext = {
    *  fallback-to-prompting threshold is never reached. Mutable — the
    *  permissions code updates it in place. */
   localDenialTracking?: DenialTrackingState
-  /**
-   * Per-conversation-thread content replacement state for the tool result
-   * budget. When present, query.ts applies the aggregate tool result budget.
-   * Main thread: REPL provisions once (never resets — stale UUID keys
-   * are inert). Subagents: createSubagentContext clones the parent's state
-   * by default (cache-sharing forks need identical decisions), or
-   * resumeAgentBackground threads one reconstructed from sidechain records.
-   */
-  contentReplacementState?: ContentReplacementState
-  /**
-   * Interactive REPL only: mirror persisted tool-result replacements back
-   * into the live transcript so the original oversized payloads can be
-   * released from heap once the replacement decision is known.
-   */
-  syncToolResultReplacements?: (
-    replacements: ReadonlyMap<string, string>,
-  ) => void
   /**
    * Parent's rendered system prompt bytes, frozen at turn start.
    * Used by fork subagents to share the parent's prompt cache — re-calling

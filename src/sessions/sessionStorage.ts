@@ -82,7 +82,6 @@ export {
 export {
   adoptResumedSessionFile,
   recordAttributionSnapshot,
-  recordContentReplacement,
   recordContextCollapseCommit,
   recordContextCollapseSnapshot,
   recordFileHistorySnapshot,
