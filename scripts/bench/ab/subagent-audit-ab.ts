@@ -6,11 +6,13 @@
 // .claudin/plans/harmonic-wobbling-clock.md, "Caso 3").
 //
 // The fixture and the key are in subagentAuditFixture.ts: a TypeScript project
-// generated per rep, where the callers of a function are reached through
-// aliases and through index.ts renames, so each answer takes a hop the search
-// before it reveals. The parent hands one fresh Code agent the audit of ten
-// functions and relays its report; the child's own report is graded, 30 points
-// a session (definition, exact caller set, tested — per function).
+// generated per rep (720 functions, too much to read whole) where each
+// function hides at most one call to another module among helper calls of the
+// same shape, often under an alias or an index.ts rename — so the next hop of
+// a call chain is only known once the previous body has been read. The parent
+// hands one fresh Code agent three chains of seven to trace and relays its
+// report; the child's own report is graded, 21 points a session (each chain
+// function at its position, with its definition).
 //
 // Arms, every arm of a rep at once, the reps in sequence:
 //   base      no env                          (today's production)
@@ -56,7 +58,7 @@ import { REPO_ROOT } from '../../repoRoot.ts'
 import { parseJsonl } from './cliUsage'
 import { cost, loadSession, priceFor, range, rangesOverlap, type AgentCalls, type Call, type Price } from './forkBench.ts'
 import { configDir, median, parseArgs, runHeadless, transcriptPath, type ProbeArgs } from './headlessProbe.ts'
-import { auditFixture, childPrompt, gradeAudit, observedTargets, referenceReply, TARGETS, type AuditGrade, type Target } from './subagentAuditFixture.ts'
+import { auditFixture, CHAIN_LENGTH, CHAINS, childPrompt, gradeAudit, observedChains, referenceReply, type AuditGrade, type Chain } from './subagentAuditFixture.ts'
 import { sessionFromEntries, type Session as TaxSession } from './turnTaxonomy.ts'
 
 // ---------------------------------------------------------------------------
@@ -119,8 +121,8 @@ function git(cwd: string, args: string[]): string {
 }
 
 /** Writes rep's project into `dir` as one pinned commit and returns its key. */
-export function makeFixture(dir: string, rep: number): Target[] {
-  const { files, targets } = auditFixture(rep)
+export function makeFixture(dir: string, rep: number): Chain[] {
+  const { files, chains } = auditFixture(rep)
   for (const [rel, text] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, rel)), { recursive: true })
     writeFileSync(join(dir, rel), text)
@@ -128,7 +130,7 @@ export function makeFixture(dir: string, rep: number): Target[] {
   git(dir, ['init', '-q', '-b', 'main'])
   git(dir, ['add', '-A'])
   git(dir, ['commit', '-q', '-m', 'storefront'])
-  return targets
+  return chains
 }
 
 // ---------------------------------------------------------------------------
@@ -181,7 +183,7 @@ export type RunRecord = {
   sessionId: string
   exitCode: number | null
   finalText: string
-  targets: Target[]
+  chains: Chain[]
   parent: Call[]
   children: AgentCalls[]
   shape: ChildShape | null
@@ -220,7 +222,7 @@ export function rowOf(r: RunRecord, price: Price): Row {
     bodiesGreps: r.shape?.bodiesGreps ?? 0,
     childCost: cost(calls, price).total,
     sessionCost: [r.parent, ...r.children.map(c => c.calls)].reduce((s, cs) => s + cost(cs, price).total, 0),
-    grade: gradeAudit(report, r.targets),
+    grade: gradeAudit(report, r.chains),
   }
 }
 
@@ -312,7 +314,7 @@ function armCells(arm: Arm, rows: readonly Row[]): string[] {
     spread(xs.map(r => r.bodiesGreps), 0),
     spread(xs.map(r => r.childCost), 3),
     spread(xs.map(r => r.sessionCost), 3),
-    spread(xs.map(r => r.grade.score), 0) + `/${all[0]?.grade.max ?? TARGETS * 3}`,
+    spread(xs.map(r => r.grade.score), 0) + `/${all[0]?.grade.max ?? CHAINS * CHAIN_LENGTH}`,
   ]
 }
 
@@ -337,8 +339,7 @@ export function renderReport(rows: readonly Row[], meta: Meta): string {
 }
 
 function missedItems(g: AuditGrade): string {
-  const misses = g.targets.flatMap(t => [!t.defined && `${t.name}:defined`, !t.callers && `${t.name}:callers`, !t.tested && `${t.name}:tested`].filter(Boolean))
-  return `${g.score}/${g.max} — ${misses.slice(0, 4).join(', ')}${misses.length > 4 ? `, +${misses.length - 4}` : ''}`
+  return `${g.score}/${g.max} — ${g.chains.filter(c => c.points < c.max).map(c => `${c.start} ${c.points}/${c.max}`).join(', ')}`
 }
 
 function liveLine(r: Row): string {
@@ -383,12 +384,12 @@ function scrubHostEnv(): string[] {
 type Args = ProbeArgs & { model: string; effort: string; dryRun: boolean; replay: string; arms: Arm[] }
 
 async function runArm(arm: Arm, rep: number, cwd: string, args: Args): Promise<RunRecord> {
-  const targets = makeFixture(cwd, rep)
+  const chains = makeFixture(cwd, rep)
   const run = await runHeadless({
     bin: args.bin,
     model: args.model,
     cwd,
-    prompt: parentPrompt(childPrompt(targets)),
+    prompt: parentPrompt(childPrompt(chains)),
     env: { ...COMMON_ENV, ...ARM_ENV[arm] },
     timeoutMs: args.timeoutMs,
     extraArgs: ['--effort', args.effort, '--max-turns', String(MAX_TURNS), '--max-budget-usd', String(BUDGET_USD)],
@@ -403,7 +404,7 @@ async function runArm(arm: Arm, rep: number, cwd: string, args: Args): Promise<R
     sessionId: run.sessionId,
     exitCode: run.exitCode,
     finalText: run.finalText,
-    targets,
+    chains,
     parent: session.parent,
     children: session.children,
     shape: tax ? childShape(tax, cwd) : null,
@@ -477,30 +478,42 @@ function dryRun(): number {
   const checks: Array<[string, boolean, string]> = []
   for (let rep = 1; rep <= 10; rep++) {
     const ws = join(realpathSync(dir), `r${rep}`)
-    const targets = makeFixture(ws, rep)
-    const seen = observedTargets(ws, targets.map(t => t.name))
-    const diff = targets.filter((t, i) => JSON.stringify(t) !== JSON.stringify(seen[i]))
-    checks.push([`rep ${rep}: the key = what the files say`, diff.length === 0, diff.length ? `${diff[0]!.name}: key ${JSON.stringify(diff[0])}, files ${JSON.stringify(seen[targets.indexOf(diff[0]!)])}` : `${targets.length} targets`])
+    const chains = makeFixture(ws, rep)
+    const seen = observedChains(ws, chains.map(c => c.start))
+    const diff = chains.findIndex((c, i) => JSON.stringify(c) !== JSON.stringify(seen[i]))
+    checks.push([
+      `rep ${rep}: the key = what the files say`,
+      diff < 0,
+      diff < 0 ? `${chains.length} chains of ${chains.map(c => c.nodes.length).join('/')}` : `${chains[diff]!.start}: key ${referenceReply([chains[diff]!])}, files ${referenceReply([seen[diff]!])}`,
+    ])
   }
   const ws1 = join(realpathSync(dir), 'r1')
-  const targets = auditFixture(1).targets
-  const modules = readdirSync(join(ws1, 'src')).flatMap(a => readdirSync(join(ws1, 'src', a))).length
-  const hopped = targets.filter(t => t.callers.some(c => !readFileSync(join(ws1, c.split(':')[0]!), 'utf8').split('\n')[Number(c.split(':')[1]) - 1]!.includes(`${t.name}(`)))
-  const perfect = gradeAudit(referenceReply(targets), targets)
-  const oneOff = gradeAudit(referenceReply(targets.map((t, i) => (i === 0 ? { ...t, defined: t.defined.replace(/:(\d+)$/, (_, n) => `:${Number(n) + 1}`) } : t))), targets)
-  const callerDropped = gradeAudit(referenceReply(targets.map(t => (t.callers.length ? { ...t, callers: t.callers.slice(1) } : t))), targets)
-  const empty = gradeAudit('', targets)
-  const preamble = gradeAudit(`Audited ${targets.map(t => t.name).join(', ')}.\n\n${referenceReply(targets)}`, targets)
+  const { chains, files } = auditFixture(1)
+  const srcFiles = readdirSync(join(ws1, 'src')).flatMap(a => readdirSync(join(ws1, 'src', a)))
+  const srcLines = Object.entries(files).filter(([f]) => f.startsWith('src/')).reduce((n, [, t]) => n + t.split('\n').length, 0)
+  // A hop whose call in the body uses another name than the callee's own.
+  const hops = chains.flatMap(c => c.nodes.slice(0, -1).map((n, i) => ({ from: n, to: c.nodes[i + 1]! })))
+  const renamedHops = hops.filter(({ from, to }) => {
+    const [file, line] = from.defined.split(':')
+    const body = files[file!]!.split('\n').slice(Number(line), Number(line) + 20).join('\n')
+    return !body.includes(`${to.name}(`)
+  })
+  const perfect = gradeAudit(referenceReply(chains), chains)
+  const oneOff = gradeAudit(referenceReply(chains.map((c, i) => (i === 0 ? { ...c, nodes: c.nodes.map((n, j) => (j === 2 ? { ...n, defined: n.defined.replace(/:(\d+)$/, (_, v) => `:${Number(v) + 1}`) } : n)) } : c))), chains)
+  const truncated = gradeAudit(referenceReply(chains.map(c => ({ ...c, nodes: c.nodes.slice(0, 3) }))), chains)
+  const headerForm = gradeAudit(chains.map(c => `${c.start}:\n${c.nodes.slice(1).map(n => `  ${n.name} (${n.defined})`).join('\n')}`).join('\n\n'), chains)
+  const empty = gradeAudit('', chains)
+  const preamble = gradeAudit(`Traced ${chains.map(c => c.start).join(', ')}.\n\n${referenceReply(chains)}`, chains)
   checks.push(
-    ['rep 1 has ~50 files under src/', modules >= 40, `${modules} (modules and index files)`],
-    ['targets with callers ≥ 7, some only reachable through another name', targets.filter(t => t.callers.length).length >= 7 && hopped.length >= 3, `${targets.filter(t => t.callers.length).length} with callers, ${hopped.length} via an alias or a rename`],
-    ['some targets tested, some not', targets.some(t => t.tested) && targets.some(t => !t.tested), `${targets.filter(t => t.tested).length}/${targets.length} tested`],
+    ['rep 1 is too large to read whole (> 8,000 lines under src/)', srcLines > 8000, `${srcFiles.length} files, ${srcLines} lines`],
+    [`${CHAINS} chains of ${CHAIN_LENGTH}, some hops only through another name`, chains.every(c => c.nodes.length === CHAIN_LENGTH) && renamedHops.length >= 3, `${renamedHops.length}/${hops.length} hops through an alias or a rename`],
     ['a second build of rep 1 is byte-identical', JSON.stringify(auditFixture(1)) === JSON.stringify(auditFixture(1)), 'every arm of a rep gets one project'],
-    ["rep 2's key is not rep 1's", JSON.stringify(auditFixture(2).targets) !== JSON.stringify(targets), 'drawn per rep'],
+    ["rep 2's key is not rep 1's", JSON.stringify(auditFixture(2).chains) !== JSON.stringify(chains), 'drawn per rep'],
     ['grader: the reference reply scores 100%', perfect.score === perfect.max, `${perfect.score}/${perfect.max}`],
-    ['grader: a preamble naming every target does not hide the blocks', preamble.score === preamble.max, `${preamble.score}/${preamble.max}`],
+    ['grader: a preamble naming every start does not hide the lines', preamble.score === preamble.max, `${preamble.score}/${preamble.max}`],
+    ['grader: the start as a header, the rest listed below, scores 100% but the start', headerForm.score === perfect.max - CHAINS, `${headerForm.score}/${headerForm.max}`],
     ['grader: a definition one line off loses its point', oneOff.score === perfect.max - 1, `${oneOff.score}/${oneOff.max}`],
-    ['grader: one caller dropped loses the callers point', callerDropped.score < perfect.max, `${callerDropped.score}/${callerDropped.max}`],
+    ['grader: chains cut after three functions score three each', truncated.score === 3 * CHAINS, `${truncated.score}/${truncated.max}`],
     ['grader: an empty reply scores 0', empty.score === 0, `${empty.score}/${empty.max}`],
   )
   console.log(
@@ -510,9 +523,9 @@ function dryRun(): number {
       table(['check', 'ok', 'detail'], checks.map(([c, ok, d]) => [c, ok ? 'yes' : 'NO', d])),
       '',
       'rep 1 key:',
-      referenceReply(targets),
+      referenceReply(chains),
       '',
-      `child prompt: ${childPrompt(targets)}`,
+      `child prompt: ${childPrompt(chains)}`,
     ].join('\n'),
   )
   return checks.every(([, ok]) => ok) ? 0 : 1
