@@ -6,7 +6,7 @@ import type { Theme } from 'src/terminal/theme/theme.js'
 
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
 const BRANCH_ICON = '\uE725' // Nerd Font devicon git-branch (pairs with PR_ICON)
-const WORKTREE_ICON = '\uF1BB' // Nerd Font fa-tree — a worktree is another checkout of the tree
+const WORKTREE_ICON = '\uE727' // Nerd Font devicon git-merge (same family as BRANCH_ICON)
 const PR_ICON = ''     // Nerd Font octicon git-pull-request
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
 /** How far the worktree pill's bg moves from the branch bg toward the cwd pill's. */
@@ -160,7 +160,7 @@ export function buildCwdPill(displayCwd: string, theme: Theme, nextBg?: string):
 }
 
 /**
- * Worktree Powerline pill: `[ <tree icon> name ►]`, placed between the cwd and branch
+ * Worktree Powerline pill: `[ <merge icon> name ►]`, placed between the cwd and branch
  * pills when the cwd is a linked worktree.
  */
 export function buildWorktreePill(name: string, theme: Theme, nextBg?: string): string {

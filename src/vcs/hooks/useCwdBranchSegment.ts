@@ -31,7 +31,7 @@ export interface UseCwdBranchSegmentOptions {
 export interface CwdBranchSegments {
   /** Standalone project pill `[ claudin ►]` — the repo root's folder name. */
   cwd: string
-  /** Standalone worktree pill `[ <tree icon> name ►]`. Empty outside a linked worktree. */
+  /** Standalone worktree pill `[ <merge icon> name ►]`. Empty outside a linked worktree. */
   worktree: string
   /** Standalone branch pill `[◄ ⎇ branch (↑N) ►]`. Empty if no branch. */
   branch: string

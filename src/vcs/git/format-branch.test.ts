@@ -213,9 +213,9 @@ describe('buildWorktreePill', () => {
     )
   })
 
-  test('is a tree-icon Powerline segment with a trailing arrow', () => {
+  test('is a git-merge-icon Powerline segment with a trailing arrow', () => {
     expect(withNerdFont(true, () => buildWorktreePill('footer-pills', theme))).toBe(
-      ' \uF1BB footer-pills \uE0B0',
+      ' \uE727 footer-pills \uE0B0',
     )
   })
 
