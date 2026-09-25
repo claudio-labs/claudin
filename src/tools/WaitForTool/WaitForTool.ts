@@ -119,7 +119,6 @@ export const WaitForTool = buildTool({
   searchHint: 'wait until a command output matches or settles',
   clearableResult: true,
   maxResultSizeChars: 10_000,
-  strict: true,
 
   isConcurrencySafe() {
     return true

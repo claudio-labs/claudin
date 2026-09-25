@@ -28,7 +28,6 @@ export const TodoWriteTool = buildTool({
   name: TODO_WRITE_TOOL_NAME,
   searchHint: 'manage the session task checklist',
   maxResultSizeChars: 100_000,
-  strict: true,
   async description() {
     return DESCRIPTION
   },

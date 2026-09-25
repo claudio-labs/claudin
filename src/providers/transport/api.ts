@@ -5,10 +5,6 @@ import type {
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { createHash } from 'crypto'
 import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from 'src/agent/prompts/prompts.js'
-import {
-  checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
-  getFeatureValue_CACHED_MAY_BE_STALE,
-} from 'src/platform/analytics/growthbook.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
@@ -27,10 +23,7 @@ import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constant
 import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js'
 import type { Message } from 'src/shared/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
-import {
-  modelSupportsStructuredOutputs,
-  shouldUseGlobalCacheScope,
-} from 'src/providers/transport/betas.js'
+import { shouldUseGlobalCacheScope } from 'src/providers/transport/betas.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -54,9 +47,8 @@ import { getToolSchemaCache } from 'src/agent/tools/toolSchemaCache.js'
 import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 
-// Extended BetaTool type with strict mode and defer_loading support
+// Extended BetaTool type with defer_loading support
 type BetaToolWithExtras = BetaTool & {
-  strict?: boolean
   defer_loading?: boolean
   cache_control?: {
     type: 'ephemeral'
@@ -171,17 +163,16 @@ export async function toolToAPISchema(
     }
   },
 ): Promise<BetaToolUnion> {
-  // Session-stable base schema: name, description, input_schema, strict,
+  // Session-stable base schema: name, description, input_schema,
   // eager_input_streaming. These are computed once per session and cached to
-  // prevent mid-session GrowthBook flips (tengu_tool_pear, tengu_fgts) or
-  // tool.prompt() drift from churning the serialized tool array bytes.
+  // prevent tool.prompt() drift from churning the serialized tool array bytes.
   // See toolSchemaCache.ts for rationale.
   //
   // Cache key includes inputJSONSchema when present. StructuredOutput instances
   // share the name 'StructuredOutput' but carry different schemas per workflow
   // call — name-only keying returned a stale schema (5.4% → 51% err rate, see
   // PR#25424). MCP tools also set inputJSONSchema but each has a stable schema,
-  // so including it preserves their GB-flip cache stability.
+  // so including it preserves their cache stability.
   const cacheKey =
     'inputJSONSchema' in tool && tool.inputJSONSchema
       ? `${tool.name}:${jsonStringify(tool.inputJSONSchema)}`
@@ -189,8 +180,6 @@ export async function toolToAPISchema(
   const cache = getToolSchemaCache()
   let base = cache.get(cacheKey)
   if (!base) {
-    const strictToolsEnabled =
-      checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_tool_pear')
     // Use tool's JSON schema directly if provided, otherwise convert Zod schema
     let input_schema = (
       'inputJSONSchema' in tool && tool.inputJSONSchema
@@ -215,20 +204,6 @@ export async function toolToAPISchema(
       input_schema,
     }
 
-    // Only add strict if:
-    // 1. Feature flag is enabled
-    // 2. Tool has strict: true
-    // 3. Model is provided and supports it (not all models support it right now)
-    //    (if model is not provided, assume we can't use strict tools)
-    if (
-      strictToolsEnabled &&
-      tool.strict === true &&
-      options.model &&
-      modelSupportsStructuredOutputs(options.model)
-    ) {
-      base.strict = true
-    }
-
     // Enable fine-grained tool streaming via per-tool API field.
     // Without FGTS, the API buffers entire tool input parameters before sending
     // input_json_delta events, causing multi-minute hangs on large tool inputs.
@@ -237,8 +212,7 @@ export async function toolToAPISchema(
     if (
       getAPIProvider() === 'firstParty' &&
       isFirstPartyAnthropicBaseUrl() &&
-      (getFeatureValue_CACHED_MAY_BE_STALE('tengu_fgts', false) ||
-        isEnvTruthy(process.env.CLAUDIN_ENABLE_FINE_GRAINED_TOOL_STREAMING))
+      isEnvTruthy(process.env.CLAUDIN_ENABLE_FINE_GRAINED_TOOL_STREAMING)
     ) {
       base.eager_input_streaming = true
     }
@@ -254,7 +228,6 @@ export async function toolToAPISchema(
     name: base.name,
     description: base.description,
     input_schema: base.input_schema,
-    ...(base.strict && { strict: true }),
     ...(base.eager_input_streaming && { eager_input_streaming: true }),
   }
 

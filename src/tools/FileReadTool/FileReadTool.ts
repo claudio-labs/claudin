@@ -136,7 +136,6 @@ export const FileReadTool = buildTool({
   // Output is bounded by maxTokens (validateContentTokens). Persisting to a
   // file the model reads back with Read is circular — never persist.
   maxResultSizeChars: Infinity,
-  strict: true,
   async description() {
     return DESCRIPTION
   },

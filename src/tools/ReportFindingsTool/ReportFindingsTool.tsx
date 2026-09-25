@@ -124,7 +124,6 @@ export const ReportFindingsTool: Tool<InputSchema, Output> = buildTool({
   name: REPORT_FINDINGS_TOOL_NAME,
   searchHint: 'report code-review findings as a typed, host-rendered list',
   maxResultSizeChars: 100_000,
-  strict: true,
   // Review-only: keep its schema out of every non-review request's tool list
   // (and out of casual reach). The /code-review skill loads it via ToolSearch.
   shouldDefer: true,

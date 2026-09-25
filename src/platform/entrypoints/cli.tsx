@@ -82,8 +82,7 @@ process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 // Claudin: enable fine-grained tool streaming on Anthropic 1P by default.
 // Without it, the API buffers each tool_use input until complete before
 // emitting input_json_delta — freezes spinner counter and delays tool render.
-// GrowthBook gate (`tengu_fgts`) is stubbed in open build, so we default the
-// env opt-in. Set to '0' to disable.
+// The env is the only switch, so we default it on here. Set to '0' to disable.
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 process.env.CLAUDIN_ENABLE_FINE_GRAINED_TOOL_STREAMING ??= '1'
 

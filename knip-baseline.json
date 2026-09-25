@@ -503,7 +503,6 @@
     "exports src/providers/transport/errorUtils.ts#sanitizeAPIError",
     "exports src/providers/transport/errors.ts#CCR_AUTH_ERROR_MESSAGE",
     "exports src/providers/transport/errors.ts#OAUTH_ORG_NOT_ALLOWED_ERROR_MESSAGE",
-    "exports src/providers/transport/errors.ts#getCustomOffSwitchMessage",
     "exports src/providers/transport/errors.ts#getOauthOrgNotAllowedErrorMessage",
     "exports src/providers/transport/errors.ts#getTokenRevokedErrorMessage",
     "exports src/providers/transport/errors.ts#isMediaSizeError",

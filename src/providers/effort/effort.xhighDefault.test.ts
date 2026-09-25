@@ -3,14 +3,12 @@ import { afterAll, expect, mock, test } from 'bun:test'
 const realSettings = { ...(await import('src/platform/settings/settings.js')) }
 const realAuth = { ...(await import('src/providers/auth/auth.js')) }
 const realThinking = { ...(await import('src/agent/context/thinking.js')) }
-const realGrowthbook = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realProviders = { ...(await import('src/providers/model/providers.js')) }
 
 afterAll(() => {
   mock.module('src/platform/settings/settings.js', () => realSettings)
   mock.module('src/providers/auth/auth.js', () => realAuth)
   mock.module('src/agent/context/thinking.js', () => realThinking)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/providers/model/providers.js', () => realProviders)
 })
 
@@ -19,7 +17,6 @@ async function importFreshEffortModule(options: {
   isPro?: boolean
   isMax?: boolean
   isTeam?: boolean
-  greyStep2Enabled?: boolean
   ultrathink?: boolean
   provider?: string
 }) {
@@ -35,11 +32,6 @@ async function importFreshEffortModule(options: {
   }))
   mock.module('src/agent/context/thinking.js', () => ({
     isUltrathinkEnabled: () => options.ultrathink ?? false,
-  }))
-  mock.module('src/platform/analytics/growthbook.js', () => ({
-    getFeatureValue_CACHED_MAY_BE_STALE: () => ({
-      enabled: options.greyStep2Enabled ?? false,
-    }),
   }))
   mock.module('src/providers/model/providers.js', () => ({
     getAPIProvider: () => options.provider ?? 'firstParty',
@@ -61,7 +53,6 @@ test('Opus 4.8 with setting on overrides the Max/Team medium default', async () 
   const { getDefaultEffortForModel } = await importFreshEffortModule({
     codingLoopXhighDefault: true,
     isMax: true,
-    greyStep2Enabled: true,
   })
   expect(getDefaultEffortForModel('claude-opus-4-8')).toBe('xhigh')
 })
@@ -128,7 +119,6 @@ test('Opus 5.5 defaults to medium on Anthropic, like Claude Code', async () => {
   // subscribers included: nothing above this branch applies to 5.5.
   const { getDefaultEffortForModel } = await importFreshEffortModule({
     isMax: true,
-    greyStep2Enabled: true,
   })
   expect(getDefaultEffortForModel('claude-opus-5-5')).toBe('medium')
 })

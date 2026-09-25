@@ -2,30 +2,6 @@
 
 exports[`tengu gate keys — resolution in a stock install the per-key resolution table matches the snapshot 1`] = `
 {
-  "tengu-off-switch": {
-    "defaults": [
-      "{ activated: false, }",
-    ],
-    "fn": "getDynamicConfig_BLOCKS_ON_INIT",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — { activated: false, }>",
-  },
-  "tengu_amber_json_tools": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_attribution_header": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": true,
-  },
   "tengu_auto_mode_config": {
     "defaults": [
       "NO_CACHED_AUTO_MODE_CONFIG",
@@ -164,38 +140,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 3,
     "stockValue": false,
   },
-  "tengu_disable_keepalive_on_econnreset": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_disable_streaming_to_non_streaming_fallback": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_fgts": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_grey_step2": {
-    "defaults": [
-      "OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT>",
-  },
   "tengu_immediate_model_command": {
     "defaults": [
       "false",
@@ -228,14 +172,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": false,
   },
-  "tengu_marble_sandcastle": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_miraculo_the_bard": {
     "defaults": [
       "false",
@@ -251,14 +187,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": false,
-  },
-  "tengu_penguins_off": {
-    "defaults": [
-      "null",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": null,
   },
   "tengu_pid_based_version_locking": {
     "defaults": [
@@ -364,14 +292,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 2,
     "stockValue": "off",
-  },
-  "tengu_tool_pear": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
   },
 }
 `;

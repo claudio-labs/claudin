@@ -97,7 +97,6 @@ export const FileWriteTool = buildTool({
   searchHint: 'create or overwrite files',
   maxResultSizeChars: 100_000,
   clearableInputFields: ['content'],
-  strict: true,
   async description() {
     return 'Write a file to the local filesystem.'
   },

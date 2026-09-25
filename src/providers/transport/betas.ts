@@ -1,9 +1,5 @@
 import { feature } from 'bun:bundle'
 import memoize from 'lodash-es/memoize.js'
-import {
-  checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
-  getFeatureValue_CACHED_MAY_BE_STALE,
-} from 'src/platform/analytics/growthbook.js'
 import { getIsNonInteractiveSession, getSdkBetas } from 'src/platform/bootstrap/state.js'
 import {
   BEDROCK_EXTRA_PARAMS_HEADERS,
@@ -13,7 +9,6 @@ import {
   INTERLEAVED_THINKING_BETA_HEADER,
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
-  STRUCTURED_OUTPUTS_BETA_HEADER,
   THINKING_BINDING_CONTROLS_BETA_HEADER,
   THINKING_TOKEN_COUNT_BETA_HEADER,
   TOKEN_EFFICIENT_TOOLS_BETA_HEADER,
@@ -354,34 +349,14 @@ export const getAllModelBetas = memoize((model: string): string[] => {
   if (modelSupportsThinkingBlockBinding(model)) {
     betaHeaders.push(THINKING_BINDING_CONTROLS_BETA_HEADER)
   }
-  // Add strict tool use beta if experiment is enabled.
-  // Gate on includeFirstPartyOnlyBetas: CLAUDIN_DISABLE_EXPERIMENTAL_BETAS
-  // already strips schema.strict from tool bodies at api.ts's choke point, but
-  // this header was escaping that kill switch. Proxy gateways that look like
-  // firstParty but forward to Vertex reject this header with 400.
-  // github.com/deshaw/anthropic-issues/issues/5
-  const strictToolsEnabled =
-    checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_tool_pear')
-  // API rejects strict + token-efficient-tools together (tool_use.py:139),
-  // so these are mutually exclusive — strict wins. Off by default; opt in
-  // via CLAUDIN_JSON_TOOL_USE=1 or the tengu_amber_json_tools remote
-  // flag.
-  const tokenEfficientToolsEnabled =
-    !strictToolsEnabled &&
-    (isEnvTruthy(process.env.CLAUDIN_JSON_TOOL_USE) ||
-      getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_json_tools', false))
-  if (
-    includeFirstPartyOnlyBetas &&
-    modelSupportsStructuredOutputs(model) &&
-    strictToolsEnabled
-  ) {
-    betaHeaders.push(STRUCTURED_OUTPUTS_BETA_HEADER)
-  }
   // JSON tool_use format (FC v3) — Anthropic measured ~4.5% output token
   // reduction vs ANTML. Header value is the public v2 from 2026-03-28.
-  // Anthropic-direct only because the parser pairs with the server-side
-  // beta; mutually exclusive with strict tools (handled in the gate above).
-  if (includeFirstPartyOnlyBetas && tokenEfficientToolsEnabled) {
+  // Off by default; opt in with CLAUDIN_JSON_TOOL_USE=1. Anthropic-direct
+  // only because the parser pairs with the server-side beta.
+  if (
+    includeFirstPartyOnlyBetas &&
+    isEnvTruthy(process.env.CLAUDIN_JSON_TOOL_USE)
+  ) {
     betaHeaders.push(TOKEN_EFFICIENT_TOOLS_BETA_HEADER)
   }
 

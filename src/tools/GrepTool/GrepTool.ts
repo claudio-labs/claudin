@@ -232,7 +232,6 @@ export const GrepTool = buildTool({
   clearableResult: true,
   // 20K chars - tool result persistence threshold
   maxResultSizeChars: 20_000,
-  strict: true,
   async description() {
     return getDescription()
   },

@@ -111,7 +111,6 @@ export const BashTool = buildTool({
   clearableResult: true,
   // 30K chars - tool result persistence threshold
   maxResultSizeChars: 30_000,
-  strict: true,
   async description({
     description
   }) {

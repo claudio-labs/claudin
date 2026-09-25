@@ -606,12 +606,6 @@ export type Tool<
    * already self-bounds via its own limits).
    */
   maxResultSizeChars: number
-  /**
-   * When true, enables strict mode for this tool, which causes the API to
-   * more strictly adhere to tool instructions and parameter schemas.
-   * Only applied when the tengu_tool_pear is enabled.
-   */
-  readonly strict?: boolean
 
   /**
    * Called on copies of tool_use input before observers see it (SDK stream,

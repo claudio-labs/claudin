@@ -269,7 +269,6 @@ export const PowerShellTool = buildTool({
   searchHint: 'execute Windows PowerShell commands',
   clearableResult: true,
   maxResultSizeChars: 30_000,
-  strict: true,
   async description({
     description
   }: Partial<PowerShellToolInput>): Promise<string> {

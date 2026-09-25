@@ -61,13 +61,11 @@ import {
   stripCallerFieldFromAssistantMessage,
   stripToolReferenceBlocksFromUserMessage,
 } from "src/agent/messages/messages.js";
-import { isNonCustomOpusModel } from "src/providers/model/model.js";
 import {
   asSystemPrompt,
   type SystemPrompt,
 } from "src/agent/systemPromptType.js";
 import { tokenCountFromLastAPIResponse } from "src/agent/context/tokens.js";
-import { getDynamicConfig_BLOCKS_ON_INIT } from "src/platform/analytics/growthbook.js";
 import {
   currentLimits,
   extractQuotaStatusFromError,
@@ -122,7 +120,6 @@ import {
   THINKING_DISPLAY_UPDATES_BETA_HEADER,
 } from "src/shared/constants/betas.js";
 import { addToTotalSessionCost } from "src/agent/cost-tracker.js";
-import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
 import {
   ADVISOR_TOOL_INSTRUCTIONS,
   getExperimentAdvisorModels,
@@ -131,7 +128,6 @@ import {
   modelSupportsAdvisor,
 } from "src/platform/doctor/advisor.js";
 import { getAgentContext } from "src/agent/coordinator/agentContext.js";
-import { isClaudeAISubscriber } from "src/providers/auth/auth.js";
 import { createCombinedAbortSignal } from "src/shared/combinedAbortSignal.js";
 import {
   getToolSearchBetaHeader,
@@ -199,7 +195,6 @@ import { CLIENT_REQUEST_ID_HEADER, getAnthropicClient } from "src/providers/tran
 import { getCachedAnthropicClient, invalidateClientCache } from "src/providers/transport/clientCache.js";
 import {
   API_ERROR_MESSAGE_PREFIX,
-  CUSTOM_OFF_SWITCH_MESSAGE,
   getAssistantMessageFromError,
   getErrorMessageIfRefusal,
 } from "src/providers/transport/errors.js";
@@ -323,28 +318,6 @@ export async function* queryModel(
   StreamEvent | AssistantMessage | SystemAPIErrorMessage,
   void
 > {
-  // Check cheap conditions first — the off-switch await blocks on GrowthBook
-  // init (~10ms). For non-Opus models (haiku, sonnet) this skips the await
-  // entirely. Subscribers don't hit this path at all.
-  if (
-    !isClaudeAISubscriber() &&
-    isNonCustomOpusModel(options.model) &&
-    (
-      await getDynamicConfig_BLOCKS_ON_INIT<{ activated: boolean }>(
-        "tengu-off-switch",
-        {
-          activated: false,
-        },
-      )
-    ).activated
-  ) {
-    yield getAssistantMessageFromError(
-      new Error(CUSTOM_OFF_SWITCH_MESSAGE),
-      options.model,
-    );
-    return;
-  }
-
   // Derive previous request ID from the last assistant message in this query chain.
   // This is scoped per message array (main thread, subagent, teammate each have their own),
   // so concurrent agents don't clobber each other's request chain tracking.
@@ -1767,14 +1740,11 @@ export async function* queryModel(
         }
       }
 
-      // When the flag is enabled, skip the non-streaming fallback and let the
+      // When the env is set, skip the non-streaming fallback and let the
       // error propagate to withRetry.
-      const disableFallback =
-        isEnvTruthy(process.env.CLAUDIN_DISABLE_NONSTREAMING_FALLBACK) ||
-        getFeatureValue_CACHED_MAY_BE_STALE(
-          "tengu_disable_streaming_to_non_streaming_fallback",
-          false,
-        );
+      const disableFallback = isEnvTruthy(
+        process.env.CLAUDIN_DISABLE_NONSTREAMING_FALLBACK,
+      );
 
       if (disableFallback) {
         logForDebugging(

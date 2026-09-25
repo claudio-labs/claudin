@@ -1,6 +1,5 @@
 // Critical system constants extracted to break circular dependencies
 
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import {
@@ -51,13 +50,10 @@ export function getCLISyspromptPrefix(options?: {
 
 /**
  * Check if attribution header is enabled.
- * Enabled by default, can be disabled via env var or GrowthBook killswitch.
+ * Enabled by default, can be disabled via CLAUDIN_ATTRIBUTION_HEADER=0.
  */
 function isAttributionHeaderEnabled(): boolean {
-  if (isEnvDefinedFalsy(process.env.CLAUDIN_ATTRIBUTION_HEADER)) {
-    return false
-  }
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_attribution_header', true)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_ATTRIBUTION_HEADER)
 }
 
 /**
@@ -73,7 +69,7 @@ function isFirstPartyLane(): boolean {
 /**
  * Get attribution header for API requests.
  * Returns a header string with cc_version (including fingerprint) and cc_entrypoint.
- * Enabled by default, can be disabled via env var or GrowthBook killswitch.
+ * Enabled by default, can be disabled via CLAUDIN_ATTRIBUTION_HEADER=0.
  */
 export function getAttributionHeader(
   fingerprint: string,
