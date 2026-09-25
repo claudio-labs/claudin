@@ -60,6 +60,7 @@ function importFreshPromptModule(): Promise<
 
 const BODY_ENV = [
   'CLAUDIN_LEAN_GIT_INSTRUCTIONS',
+  'CLAUDIN_RESPONSE_CHAINS',
   'USER_TYPE',
   'ANTHROPIC_API_KEY',
 ] as const
@@ -162,12 +163,13 @@ const GIT_PROTOCOL_RULES: ReadonlyArray<{
 ]
 
 describe('getBashGitInstructionsBody', () => {
-  const bodies = { full: '', lean: '', unset: '' }
+  const bodies = { full: '', lean: '', unset: '', chains: '' }
   let attribution: ReturnType<typeof getAttributionTexts> = { commit: '', pr: '' }
 
   beforeAll(async () => {
     const saved = BODY_ENV.map(key => [key, process.env[key]] as const)
     delete process.env.USER_TYPE
+    delete process.env.CLAUDIN_RESPONSE_CHAINS
     // getAttributionTexts() routes through model selection which demands an
     // API key. Non-key-shaped value avoids tripping secret-scanners on this file.
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -181,6 +183,8 @@ describe('getBashGitInstructionsBody', () => {
       bodies.lean = (await importFreshPromptModule()).getBashGitInstructionsBody()
       delete process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS
       bodies.unset = (await importFreshPromptModule()).getBashGitInstructionsBody()
+      process.env.CLAUDIN_RESPONSE_CHAINS = '1'
+      bodies.chains = (await importFreshPromptModule()).getBashGitInstructionsBody()
       attribution = getAttributionTexts()
     } finally {
       for (const [key, value] of saved) {
@@ -202,7 +206,23 @@ describe('getBashGitInstructionsBody', () => {
     expect(bodies.unset).toBe(bodies.lean)
   })
 
-  for (const variant of ['full', 'lean'] as const) {
+  // CLAUDIN_RESPONSE_CHAINS moves the read step into the last check's response
+  // and changes nothing else: the commit still waits for the check's result.
+  const LEAN_READ_STEP = `1. Read the repo in a SINGLE ${GIT_TOOL_NAME} call: `
+  const CHAINS_READ_STEP = `1. Read the repo in a SINGLE ${GIT_TOOL_NAME} call, in the same response as your last check if you run one: `
+
+  it('CLAUDIN_RESPONSE_CHAINS=1 changes only the read step', () => {
+    expect(bodies.chains).toContain(CHAINS_READ_STEP)
+    expect(bodies.chains).toContain('Run nothing beyond these git/gh steps and that check.')
+    expect(bodies.lean).not.toContain('your last check')
+    expect(
+      bodies.chains
+        .replace(CHAINS_READ_STEP, LEAN_READ_STEP)
+        .replace(' and that check.', '.'),
+    ).toBe(bodies.lean)
+  })
+
+  for (const variant of ['full', 'lean', 'chains'] as const) {
     describe(variant, () => {
       const body = () => bodies[variant]
 

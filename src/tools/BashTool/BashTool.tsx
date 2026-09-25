@@ -25,6 +25,7 @@ import { getBashRedirectMode, pickBashRedirect } from 'src/tools/BashTool/redire
 import {
   applyBashFilterToStdout,
   exitCodeAfterRewrite,
+  exitCodeHiddenByRewrite,
   FILE_READ_PASSTHROUGH_MAX_CHARS,
   overBudgetFileRead,
   planBashFilter,
@@ -290,6 +291,11 @@ export const BashTool = buildTool({
     const commandStartCwd = getCwd();
     // A pure read cut back to its whole files (fitOverBudgetRead).
     let fitted: FittedRead | undefined;
+    // The base's own exit code when the plan stripped a trailing `| tail -N`
+    // and the base failed. The verdict is 0, as the pipeline's would have been,
+    // but agent/tools/responseChain.ts must not take `bun test | tail` for a
+    // pass when it decides whether the calls after it still run.
+    let reducedExitCode: number | undefined;
     try {
       // Pre-exec filter plan: when a filter defines a rewrite (git log →
       // git log --oneline, BASE | tail → BASE), the rewritten command is the
@@ -352,6 +358,7 @@ export const BashTool = buildTool({
       // base did, so `result.code` is not the status to judge it by. The base's
       // real code is disclosed on the marker instead (exitCodeAfterRewrite).
       const verdictCode = exitCodeAfterRewrite(filterPlan, result.code);
+      reducedExitCode = exitCodeHiddenByRewrite(filterPlan, result.code);
       interpretationResult = interpretCommandResult(input.command, verdictCode, rawStdout, '');
       const isError = interpretationResult.isError || verdictCode !== 0;
       const fit = isError ? null : await fitOverBudgetRead(result, filterPlan, commandStartCwd);
@@ -473,6 +480,9 @@ export const BashTool = buildTool({
       dangerouslyDisableSandbox: 'dangerouslyDisableSandbox' in input ? input.dangerouslyDisableSandbox as boolean | undefined : undefined,
       persistedOutputPath,
       persistedOutputSize,
+      ...(reducedExitCode !== undefined && {
+        reducedExitCode
+      }),
       ...(notShownNote !== null && {
         readNote: notShownNote
       })

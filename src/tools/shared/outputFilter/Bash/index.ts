@@ -244,6 +244,14 @@ export function exitCodeAfterRewrite(plan: PreExecPlan, code: number): number {
   return plan.droppedReducer ? 0 : code;
 }
 
+/** The base's non-zero exit code that `exitCodeAfterRewrite` reported as 0,
+ * or undefined when nothing was hidden. BashTool keeps it on its result as
+ * `reducedExitCode`, so the response-chain guard (agent/tools/responseChain.ts)
+ * does not take `bun test | tail -30` for a pass. */
+export function exitCodeHiddenByRewrite(plan: PreExecPlan, code: number): number | undefined {
+  return plan.droppedReducer && code !== 0 ? code : undefined;
+}
+
 /** Applies the filter pipeline to raw stdout and wraps the result with markers. Returns raw stdout unchanged on empty output, errors, already-wrapped input, or when the pipeline applied nothing. Fail-open: any exception returns `rawStdout`. `exitCode` is the RAW status of what ran, disclosed on the marker when a reducer strip hid it from the caller.
  *
  * The pipeline runs even when NO spec matched: `withGenericFloor` supplies the

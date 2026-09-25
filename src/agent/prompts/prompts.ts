@@ -18,6 +18,8 @@ import {
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getSkillToolCommands } from 'src/commands/commands.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
+import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
+import { readMultiEnabledAtLoad } from 'src/tools/FileReadTool/readMulti.js'
 import { getOutputStyleConfig } from 'src/agent/outputStyles/outputStyles.js'
 import {
   getFamilyAddendum,
@@ -56,6 +58,8 @@ import {
 import { isMcpInstructionsDeltaEnabled } from 'src/mcp/mcpInstructionsDelta.js'
 import {
   isLeanSystemPromptEnabled,
+  isResponseChainsEnabled,
+  isSubagentBatchingEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
 } from 'src/agent/prompts/steeringToggles.js'
@@ -159,6 +163,15 @@ ${CYBER_RISK_INSTRUCTION}`
 export const TOOL_BATCHING_HARNESS_BULLET =
   `Batch independent tool calls in a single message — parallel tool_use blocks share one round-trip; one call per turn burns a full turn each. If you already know which files/searches/checks you need and none depends on another's result, issue them together. Default to batching: serializing requires an actual unread dependency you can name — caution or thoroughness is not a dependency. If you can't point to the specific prior result the next call needs, batch. When the target set is unknown, map first with glob/grep instead of opening files speculatively one by one.`
 
+// CLAUDIN_RESPONSE_CHAINS (steeringToggles.ts). The request census of
+// 2026-09-24 found the model running a test alone right after an edit that
+// succeeded, and reading the repo for a commit in a call of its own: turns
+// whose input needed nothing from the turn before. runTools already runs the
+// calls of one response in order; the skip half of this sentence is the
+// guard in agent/tools/responseChain.ts, which is what makes the chain safe.
+export const RESPONSE_CHAINS_HARNESS_BULLET =
+  `Calls in one response run in the order written, and once a call fails, the tests, builds, shell and git commands after it in that response are skipped — so an edit and the check that verifies it can share a response. Wait for a result only when the next call's input depends on it, and before a commit.`
+
 // Extracted so tests can render both the flag-on and flag-off shapes without
 // depending on build-time `feature()` substitution (the test preload stubs
 // every flag to false).
@@ -166,7 +179,10 @@ export const TOOL_BATCHING_HARNESS_BULLET =
 // No anti-narration bullets: removed from every system prompt and family
 // addendum on 2026-09-23 by decision, after the session A/B's `narr` arm moved
 // neither thinking nor cost (team memory `anti-narration-never-benched-on-claude-5`).
-export function buildHarnessItems(toolBatching: boolean): string[] {
+export function buildHarnessItems(
+  toolBatching: boolean,
+  responseChains = false,
+): string[] {
   return [
     `Text you output outside of tool use is displayed to the user as Github-flavored markdown in a terminal.`,
     `Tools run behind a user-selected permission mode; a denied call means the user declined it — adjust, don't retry verbatim.`,
@@ -185,6 +201,7 @@ export function buildHarnessItems(toolBatching: boolean): string[] {
       ? `Prefer the dedicated file/search tools over shell commands when one fits.`
       : `Prefer the dedicated file/search tools over shell commands when one fits. Independent tool calls can run in parallel in one response.`,
     ...(toolBatching ? [TOOL_BATCHING_HARNESS_BULLET] : []),
+    ...(responseChains ? [RESPONSE_CHAINS_HARNESS_BULLET] : []),
     `Reference code as \`file_path:line_number\` — it's clickable. When referencing GitHub issues or PRs, use the owner/repo#123 format.`,
   ]
 }
@@ -193,7 +210,12 @@ export function getHarnessSection(): string {
   // `feature()` must appear directly in an `if`/ternary so the build-time
   // preprocessor (scripts/build/build.ts) can substitute it with a boolean literal.
   const toolBatching = feature('TOOL_BATCHING_NUDGE') ? true : false
-  return ['# Harness', ...prependBullets(buildHarnessItems(toolBatching))].join(`\n`)
+  return [
+    '# Harness',
+    ...prependBullets(
+      buildHarnessItems(toolBatching, isResponseChainsEnabled()),
+    ),
+  ].join(`\n`)
 }
 
 function getCodingStyleLine(): string {
@@ -569,7 +591,10 @@ export async function getSystemPrompt(
     getSimpleIntroSection(outputStyleConfig),
     // v2: the batching rule shrinks to Claude Code's one sentence.
     lean
-      ? ['# Harness', ...prependBullets(buildHarnessItems(false))].join('\n')
+      ? [
+          '# Harness',
+          ...prependBullets(buildHarnessItems(false, isResponseChainsEnabled())),
+        ].join('\n')
       : getHarnessSection(),
     outputStyleConfig === null ||
     outputStyleConfig.keepCodingInstructions === true
@@ -821,10 +846,36 @@ const SUBAGENT_TAIL_NOTES = [
   `Do not use a colon before tool calls. Text like "Let me read the file:" followed by a read tool call should just be "Let me read the file." with a period.`,
 ]
 
+/**
+ * CLAUDIN_SUBAGENT_BATCHING (steeringToggles.ts). A fresh sub-agent's prompt is
+ * its own + these Notes + env, never the main thread's `# Harness`, so nothing
+ * tells it that calls can share a response — and 62% of sub-agent API calls
+ * carried a single tool call in the request census of 2026-09-24. The Read
+ * half is left out when the agent has no Read or the batch Read is off
+ * (CLAUDIN_READ_MULTI=0): it would name a parameter the agent does not have.
+ */
+export function getSubagentBatchingNote(
+  enabledToolNames?: ReadonlySet<string>,
+): string | null {
+  if (!isSubagentBatchingEnabled()) return null
+  const calls = `Independent tool calls go in ONE response: they share a single request, while one call per response costs a request each.`
+  const batchRead =
+    (enabledToolNames === undefined ||
+      enabledToolNames.has(FILE_READ_TOOL_NAME)) &&
+    readMultiEnabledAtLoad()
+  return batchRead
+    ? `${calls} Read takes several files at once with \`file_paths\`.`
+    : calls
+}
+
 /** The pure seam over the killswitch, so both shapes are testable. */
-export function buildSubagentNotes(extraNotes: boolean): string {
+export function buildSubagentNotes(
+  extraNotes: boolean,
+  batchingNote: string | null = null,
+): string {
   const bullets = [
     ...SUBAGENT_BASE_NOTES,
+    ...(batchingNote ? [batchingNote] : []),
     ...(extraNotes ? SUBAGENT_NOTES_BULLETS : []),
     ...SUBAGENT_TAIL_NOTES,
   ]
@@ -837,7 +888,10 @@ export async function enhanceSystemPromptWithEnvDetails(
   additionalWorkingDirectories?: string[],
   enabledToolNames?: ReadonlySet<string>,
 ): Promise<string[]> {
-  const notes = buildSubagentNotes(isSubagentNotesEnabled())
+  const notes = buildSubagentNotes(
+    isSubagentNotesEnabled(),
+    getSubagentBatchingNote(enabledToolNames),
+  )
   const envInfo = await computeEnvInfo(model, additionalWorkingDirectories)
   return [...existingSystemPrompt, notes, envInfo]
 }

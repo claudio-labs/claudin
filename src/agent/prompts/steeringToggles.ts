@@ -1,4 +1,4 @@
-import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 // Runtime opt-out for the static steering block with enough mass in the
 // cacheable prefix to be worth measuring: the WORK_CONTRACT sections (~885
@@ -67,4 +67,66 @@ export function isSubagentNotesEnabled(): boolean {
  */
 export function isLeanSystemPromptEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)
+}
+
+/*
+ * The three request-count levers of 2026-09-24 (team memory
+ * `request-count-levers-2026-09-24`). One request is one model response, and
+ * calls in one response already share it, so each lever merges turns the
+ * model spends in sequence. Each is an A/B arm and OFF until promoted: `=1`
+ * adds its text, unset leaves every prompt byte-identical. Process-constant,
+ * like the toggles above.
+ *
+ * All three are PARKED since 2026-09-25, off by the user's decision after the
+ * session A/B `/tmp/session-cache-ab/20260925-035538` (N=5, Opus 5.5 medium;
+ * transcripts under ~/.claudin/projects/-tmp-session-cache-ab-20260925-035538-*,
+ * re-read with scripts/bench/ab/turn-taxonomy.ts). Each note below says what
+ * it did and what would have to change before measuring it again.
+ */
+
+/**
+ * `CLAUDIN_RESPONSE_CHAINS=1`: calls in one response run in the order written,
+ * so an edit and the check that verifies it can share a response. It adds one
+ * `# Harness` bullet (`RESPONSE_CHAINS_HARNESS_BULLET`), moves the git
+ * protocol's read step into the last check's response (BashTool/prompt.ts),
+ * and arms the guard that skips the tests, builds, shell and git commands
+ * behind a failed call (agent/tools/responseChain.ts).
+ *
+ * Parked: the model barely changed — 17.2 API calls against 18.0, the same
+ * number of test runs alone after a clean edit, and no git read moved into a
+ * check's response. The guard fired once and no commit followed a failure.
+ * Prompt text did not buy the chaining, so a retry needs a capability instead
+ * of a sentence.
+ */
+export function isResponseChainsEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_RESPONSE_CHAINS)
+}
+
+/**
+ * `CLAUDIN_ONE_PATCH_CHANGE=1`: the Anthropic addendum names a change's tests
+ * and docs as part of its ONE Patch — the census found code, tests and README
+ * patched in three calls over files already read.
+ *
+ * Parked: it worked and cost more. Split edits fell from 12 to 0 and API calls
+ * 13% (15.2 against 17.5 over both arms that carried it), but the average
+ * session cost 5–12% more: ~40% more thinking, and a big Patch whose hunk
+ * missed was re-sent whole. Measure it again once a failed hunk can be fixed
+ * without re-sending the patch.
+ */
+export function isOnePatchChangeEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_ONE_PATCH_CHANGE)
+}
+
+/**
+ * `CLAUDIN_SUBAGENT_BATCHING=1`: one Notes line telling a fresh sub-agent that
+ * independent calls share a response (`getSubagentBatchingNote` in
+ * prompts.ts). Its prompt never carries the main thread's `# Harness`.
+ *
+ * Parked: inconclusive. On scripts/bench/ab/subagent-batching-ab.ts every arm
+ * answered in 2–3 calls with one Bash loop, so the note had nothing to cut.
+ * It needs a fixture whose base arm serializes, e.g. per-file facts that only
+ * a Read shows.
+ */
+export function isSubagentBatchingEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_SUBAGENT_BATCHING)
 }

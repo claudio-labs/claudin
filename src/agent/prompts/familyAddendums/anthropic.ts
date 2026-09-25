@@ -1,5 +1,6 @@
 import { feature } from 'bun:bundle'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isOnePatchChangeEnabled } from 'src/agent/prompts/steeringToggles.js'
 
 // Anthropic family addendum.
 //
@@ -20,8 +21,19 @@ const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
   ? ' (files a `cat` already printed whole count as read)'
   : ''
 
+// CLAUDIN_ONE_PATCH_CHANGE (off by default, steeringToggles.ts): the request
+// census of 2026-09-24 found the code, then its tests, then the README
+// patched in three calls over files already read, so the clause names them.
+// Read once at module load, like the credit above; off, the text is
+// byte-identical.
+const ONE_PATCH_CHANGE = isOnePatchChangeEnabled()
+const CHANGE_SCOPE = ONE_PATCH_CHANGE ? ', its tests and docs included,' : ','
+const SPLIT_PATCH_ANTI_PATTERN = ONE_PATCH_CHANGE
+  ? 'One patch per file, or code then tests then docs in separate calls,'
+  : 'One patch per file'
+
 export const ANTHROPIC_BATCHED_EDITS_ADDENDUM =
-  `When a change touches several files, land it as ONE Patch call with a section per file, and Read every one of those files first in a single message${CAT_COUNTS_AS_READ}. One patch per file is the anti-pattern here, not the careful option.`
+  `When a change touches several files${CHANGE_SCOPE} land it as ONE Patch call with a section per file, and Read every one of those files first in a single message${CAT_COUNTS_AS_READ}. ${SPLIT_PATCH_ANTI_PATTERN} is the anti-pattern here, not the careful option.`
 
 export function getAnthropicAddendum(): string | null {
   return feature('TOOL_BATCHING_NUDGE') ? ANTHROPIC_BATCHED_EDITS_ADDENDUM : null

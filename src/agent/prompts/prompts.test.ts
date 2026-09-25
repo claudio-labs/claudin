@@ -8,6 +8,7 @@ import {
   LEAN_TOKEN_BUDGET_SECTION,
   LEAN_TURN_DISCIPLINE_SECTION,
   PRONOUNS_SECTION,
+  RESPONSE_CHAINS_HARNESS_BULLET,
   SUBAGENT_NOTES_BULLETS,
   TOOL_BATCHING_HARNESS_BULLET,
   VERBOSITY_STEERING_SECTION,
@@ -18,10 +19,16 @@ import {
   buildLeanMultiHopItem,
   getHarnessSection,
   getSessionSpecificGuidanceSection,
+  getSubagentBatchingNote,
   isVerbositySteeringEnabled,
   prependBullets,
 } from 'src/agent/prompts/prompts.js'
-import { isSubagentNotesEnabled } from 'src/agent/prompts/steeringToggles.js'
+import {
+  isOnePatchChangeEnabled,
+  isResponseChainsEnabled,
+  isSubagentBatchingEnabled,
+  isSubagentNotesEnabled,
+} from 'src/agent/prompts/steeringToggles.js'
 import { renderAgentPrompt } from 'src/tools/AgentTool/prompt.js'
 import {
   WORKTREE_STASH_WARNING,
@@ -443,7 +450,9 @@ describe('sub-agent notes (CLAUDIN_SUBAGENT_NOTES)', () => {
     // it; a revert to a hardcoded `buildSubagentNotes(true)` would leave every
     // other test here green and the A/B inert.
     const src = readFileSync(new URL('./prompts.ts', import.meta.url), 'utf8')
-    expect(src).toContain('buildSubagentNotes(isSubagentNotesEnabled())')
+    expect(src).toMatch(
+      /buildSubagentNotes\(\s*isSubagentNotesEnabled\(\),\s*getSubagentBatchingNote\(enabledToolNames\),?\s*\)/,
+    )
   })
 
   describe('isSubagentNotesEnabled — default-ON, opt-out via env', () => {
@@ -714,5 +723,158 @@ describe('agent section where run_in_background is hidden', () => {
     expect(start).toBeGreaterThan(-1)
     const body = src.slice(start, src.indexOf('\n}\n', start))
     expect(body).toContain('isRunInBackgroundHidden()')
+  })
+})
+
+// The request-count levers of 2026-09-24 (team memory
+// `request-count-levers-2026-09-24`): three env flags, each OFF until the
+// user promotes its A/B arm. Off, every text is byte-identical.
+describe('request-count levers', () => {
+  const FLAGS = [
+    'CLAUDIN_RESPONSE_CHAINS',
+    'CLAUDIN_ONE_PATCH_CHANGE',
+    'CLAUDIN_SUBAGENT_BATCHING',
+    'CLAUDIN_READ_MULTI',
+  ] as const
+  const saved = FLAGS.map(key => [key, process.env[key]] as const)
+  afterEach(() => {
+    for (const [key, value] of saved) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  })
+
+  test('each flag is off unless set to a truthy value', () => {
+    const resolvers = [
+      ['CLAUDIN_RESPONSE_CHAINS', isResponseChainsEnabled],
+      ['CLAUDIN_ONE_PATCH_CHANGE', isOnePatchChangeEnabled],
+      ['CLAUDIN_SUBAGENT_BATCHING', isSubagentBatchingEnabled],
+    ] as const
+    for (const [key, enabled] of resolvers) {
+      delete process.env[key]
+      expect(enabled()).toBe(false)
+      process.env[key] = '0'
+      expect(enabled()).toBe(false)
+      process.env[key] = '1'
+      expect(enabled()).toBe(true)
+    }
+  })
+
+  describe('A — CLAUDIN_RESPONSE_CHAINS harness bullet', () => {
+    test('bullet matches snapshot', () => {
+      expect(RESPONSE_CHAINS_HARNESS_BULLET).toMatchSnapshot()
+    })
+
+    test('says the order, the skip, and when to wait', () => {
+      expect(RESPONSE_CHAINS_HARNESS_BULLET).toContain('run in the order written')
+      expect(RESPONSE_CHAINS_HARNESS_BULLET).toContain('are skipped')
+      expect(RESPONSE_CHAINS_HARNESS_BULLET).toContain('and before a commit')
+    })
+
+    test('adds exactly one bullet, in both harness shapes', () => {
+      for (const toolBatching of [true, false]) {
+        const off = buildHarnessItems(toolBatching)
+        const on = buildHarnessItems(toolBatching, true)
+        expect(on).toHaveLength(off.length + 1)
+        expect(on).toContain(RESPONSE_CHAINS_HARNESS_BULLET)
+        expect(off).not.toContain(RESPONSE_CHAINS_HARNESS_BULLET)
+        expect(on.filter(item => item !== RESPONSE_CHAINS_HARNESS_BULLET)).toEqual(off)
+      }
+    })
+
+    test('getHarnessSection reads the flag', () => {
+      delete process.env.CLAUDIN_RESPONSE_CHAINS
+      expect(getHarnessSection()).not.toContain(RESPONSE_CHAINS_HARNESS_BULLET)
+      process.env.CLAUDIN_RESPONSE_CHAINS = '1'
+      expect(getHarnessSection()).toContain(RESPONSE_CHAINS_HARNESS_BULLET)
+    })
+
+    test('the v2 harness reads the flag too', () => {
+      // The lean path is assembled inside getSystemPrompt, which a test cannot
+      // render with the v2 shape (feature() is stubbed); pin its call instead.
+      const src = readFileSync(new URL('./prompts.ts', import.meta.url), 'utf8')
+      expect(src).toContain('buildHarnessItems(false, isResponseChainsEnabled())')
+      expect(src).toContain('buildHarnessItems(toolBatching, isResponseChainsEnabled())')
+    })
+  })
+
+  describe('S — CLAUDIN_SUBAGENT_BATCHING note', () => {
+    test('off, there is no note and the Notes block is unchanged', () => {
+      delete process.env.CLAUDIN_SUBAGENT_BATCHING
+      expect(getSubagentBatchingNote(new Set(['Read']))).toBeNull()
+      expect(buildSubagentNotes(true, null)).toBe(buildSubagentNotes(true))
+    })
+
+    test('on, it names the shared request and the batch Read', () => {
+      process.env.CLAUDIN_SUBAGENT_BATCHING = '1'
+      delete process.env.CLAUDIN_READ_MULTI
+      const note = getSubagentBatchingNote(new Set(['Read', 'Grep']))
+      expect(note).toMatchSnapshot()
+      expect(note).toContain('Independent tool calls go in ONE response')
+      expect(note).toContain('`file_paths`')
+      expect(getSubagentBatchingNote(undefined)).toBe(note)
+    })
+
+    test('drops the Read half when the agent has no batch Read', () => {
+      process.env.CLAUDIN_SUBAGENT_BATCHING = '1'
+      delete process.env.CLAUDIN_READ_MULTI
+      const noRead = getSubagentBatchingNote(new Set(['Grep', 'Bash']))
+      expect(noRead).toContain('Independent tool calls go in ONE response')
+      expect(noRead).not.toContain('file_paths')
+      process.env.CLAUDIN_READ_MULTI = '0'
+      expect(getSubagentBatchingNote(new Set(['Read']))).toBe(noRead)
+    })
+
+    test('the note is one more bullet, right after the base notes', () => {
+      const note = 'NOTE'
+      const on = buildSubagentNotes(true, note).split('\n')
+      const off = buildSubagentNotes(true).split('\n')
+      expect(on).toHaveLength(off.length + 1)
+      // `Notes:` then the two base bullets, then the note.
+      expect(on[3]).toBe(`- ${note}`)
+      expect(on.filter(line => line !== `- ${note}`)).toEqual(off)
+    })
+  })
+
+  describe('B — CLAUDIN_ONE_PATCH_CHANGE addendum', () => {
+    type Anthropic = typeof import('src/agent/prompts/familyAddendums/anthropic.js')
+
+    // Read once at module load, like CLAUDIN_BASH_READ_CREDIT above: each arm
+    // gets its own instance of the module.
+    async function loadAnthropic(onePatch: boolean): Promise<Anthropic> {
+      const prior = process.env.CLAUDIN_ONE_PATCH_CHANGE
+      if (onePatch) process.env.CLAUDIN_ONE_PATCH_CHANGE = '1'
+      else delete process.env.CLAUDIN_ONE_PATCH_CHANGE
+      try {
+        return await import(
+          `src/agent/prompts/familyAddendums/anthropic.js?onePatch=${onePatch}-${Date.now()}`
+        )
+      } finally {
+        if (prior === undefined) delete process.env.CLAUDIN_ONE_PATCH_CHANGE
+        else process.env.CLAUDIN_ONE_PATCH_CHANGE = prior
+      }
+    }
+
+    test('flag off: byte-identical to the snapshot above', async () => {
+      const off = await loadAnthropic(false)
+      expect(off.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toBe(ANTHROPIC_BATCHED_EDITS_ADDENDUM)
+      expect(off.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toContain(
+        'When a change touches several files, land it as ONE Patch call',
+      )
+    })
+
+    test('flag on: the tests and docs of a change go in its ONE Patch', async () => {
+      const on = await loadAnthropic(true)
+      expect(on.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toMatchSnapshot()
+      expect(on.ANTHROPIC_BATCHED_EDITS_ADDENDUM).toBe(
+        ANTHROPIC_BATCHED_EDITS_ADDENDUM.replace(
+          'several files, land it',
+          'several files, its tests and docs included, land it',
+        ).replace(
+          'One patch per file is',
+          'One patch per file, or code then tests then docs in separate calls, is',
+        ),
+      )
+    })
   })
 })

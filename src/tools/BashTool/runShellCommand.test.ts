@@ -14,7 +14,10 @@ import { resetCommandQueue } from 'src/agent/messageQueueManager.js'
 import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
-import { exitCodeAfterRewrite } from 'src/tools/shared/outputFilter/Bash/index.js'
+import {
+  exitCodeAfterRewrite,
+  exitCodeHiddenByRewrite,
+} from 'src/tools/shared/outputFilter/Bash/index.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,
@@ -193,6 +196,11 @@ describe('bash output filter — pre-exec rewrite integration', () => {
         })
         const result = await consume(gen)
         expect(result.code).toBe(0)
+        // Nothing was stripped, so nothing is hidden for the chain guard.
+        expect(exitCodeHiddenByRewrite(plan, result.code)).toBeUndefined()
+        // Nor on a failure: without a stripped reducer the verdict already
+        // carries the code, and BashTool's own error handling reports it.
+        expect(exitCodeHiddenByRewrite(plan, 1)).toBeUndefined()
         // Real proof the rewrite executed: oneline format has no Author: header.
         expect(result.stdout).not.toContain('Author:')
         expect(result.stdout).toMatch(/^[0-9a-f]{7,}\s/m)
@@ -238,6 +246,9 @@ describe('bash output filter — pre-exec rewrite integration', () => {
         const verdictCode = exitCodeAfterRewrite(plan, result.code)
         expect(verdictCode).toBe(0)
         const realCode = result.code
+        // What BashTool keeps as `reducedExitCode` for the response-chain guard.
+        expect(exitCodeHiddenByRewrite(plan, realCode)).toBe(realCode)
+        expect(exitCodeHiddenByRewrite(plan, 0)).toBeUndefined()
         applyBashOutputFilter(result, input.command, plan, verdictCode !== 0)
         // Not an error → wrapped, not noted, and the failure is still visible.
         expect(result.stdout).toContain('<bash-output-')
