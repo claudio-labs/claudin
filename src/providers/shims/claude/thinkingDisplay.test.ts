@@ -2,40 +2,11 @@ import { describe, expect, test } from 'bun:test'
 import {
   isProgressUpdateBlock,
   modelDefaultsToOmittedThinking,
+  progressUpdateHint,
   selectThinkingDisplay,
   type ThinkingDisplayFacts,
 } from 'src/providers/shims/claude/thinkingDisplay.js'
-
-// A synthetic signature with the layout a real Fable 5.1 response had: field
-// 1 = 4, field 2 = { 1: { 1: 18, 3: 2, 7: 1, 8: <kind> }, 2..5: opaque }, and
-// field 3 = 1. Real signatures are not committed: they are account-bound
-// blobs, and the parser only needs the layout.
-const varint = (n: number): number[] => {
-  const out: number[] = []
-  while (n >= 0x80) {
-    out.push((n % 0x80) | 0x80)
-    n = Math.floor(n / 0x80)
-  }
-  out.push(n)
-  return out
-}
-const key = (field: number, wire: number) => varint(field * 8 + wire)
-const bytesField = (field: number, body: number[]) => [...key(field, 2), ...varint(body.length), ...body]
-const varintField = (field: number, n: number) => [...key(field, 0), ...varint(n)]
-const text = (s: string) => [...new TextEncoder().encode(s)]
-const opaque = (n: number) => Array.from({ length: n }, (_, i) => (i * 37 + 11) % 256)
-
-function signature(kind: string): string {
-  const header = [...varintField(1, 18), ...varintField(3, 2), ...varintField(7, 1), ...bytesField(8, text(kind))]
-  const inner = [
-    ...bytesField(1, header),
-    ...bytesField(2, opaque(12)),
-    ...bytesField(3, opaque(12)),
-    ...bytesField(4, opaque(48)),
-    ...bytesField(5, opaque(300)),
-  ]
-  return Buffer.from([...varintField(1, 4), ...bytesField(2, inner), ...varintField(3, 1)]).toString('base64')
-}
+import { thinkingSignature as signature } from 'src/providers/shims/claude/__testutils__/thinkingSignature.js'
 
 const facts = (over: Partial<ThinkingDisplayFacts>): ThinkingDisplayFacts => ({
   realFirstParty: true,
@@ -119,6 +90,20 @@ describe('isProgressUpdateBlock', () => {
       expect(isProgressUpdateBlock({ type: 'thinking', thinking: update, signature: sig })).toBe(false)
     }
     expect(isProgressUpdateBlock({ type: 'redacted_thinking', thinking: update, signature: signature('narration') })).toBe(false)
+  })
+})
+
+describe('progressUpdateHint', () => {
+  // Claude Code 2.1.281 hides the hint where the model has quizzical_shore,
+  // which its catalog grants through opus_5_5_prompt_bundle: Opus 5.5 alone.
+  test('Opus 5.5 draws no hint', () => {
+    expect(progressUpdateHint('claude-opus-5-5')).toBeUndefined()
+  })
+
+  test('every other model draws " · summarized"', () => {
+    for (const model of ['claude-fable-5-1', 'claude-fable-5', 'claude-mythos-5-1', undefined]) {
+      expect(progressUpdateHint(model)).toBe('summarized')
+    }
   })
 })
 

@@ -1,0 +1,73 @@
+{
+  "test": [
+    "src/agent/ui/messages/AssistantProgressUpdateMessage.test.tsx",
+    "src/agent/ui/Message.progressUpdate.test.tsx",
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/providers/shims/claude/thinkingDisplay.test.ts"
+  ],
+  "source": "src/agent/ui/messages/AssistantProgressUpdateMessage.tsx",
+  "probes": [
+    {
+      "name": "the update wears the thinking glyph again",
+      "find": "<Text color=\"text\">{BLACK_CIRCLE}</Text>",
+      "replace": "<Text dimColor={true}>∴</Text>"
+    },
+    {
+      "name": "the update text goes dim again",
+      "find": "<Markdown hint={progressUpdateHint(model)}>{text}</Markdown>",
+      "replace": "<Markdown dimColor={true} hint={progressUpdateHint(model)}>{text}</Markdown>"
+    },
+    {
+      "name": "the hint is never asked for",
+      "find": "<Markdown hint={progressUpdateHint(model)}>{text}</Markdown>",
+      "replace": "<Markdown>{text}</Markdown>"
+    },
+    {
+      "name": "the dot ignores shouldShowDot",
+      "find": "{shouldShowDot && (",
+      "replace": "{true && ("
+    },
+    {
+      "name": "Markdown drops the hint",
+      "source": "src/terminal/markdown/Markdown.tsx",
+      "find": "nonTableContent = nonTableContent.trim() ? `${nonTableContent.trim()} ${hintText}` : hintText;",
+      "replace": "nonTableContent = nonTableContent.trim() ? nonTableContent.trim() : hintText;"
+    },
+    {
+      "name": "Opus 5.5 draws the hint",
+      "source": "src/providers/shims/claude/thinkingDisplay.ts",
+      "find": "getCanonicalName(model).includes('claude-opus-5-5')",
+      "replace": "getCanonicalName(model).includes('claude-opus-5-6')"
+    },
+    {
+      "name": "Message drops the row's dot",
+      "source": "src/agent/ui/Message.tsx",
+      "find": "addMargin={addMargin} shouldShowDot={shouldShowDot} model={model} />;",
+      "replace": "addMargin={addMargin} shouldShowDot={false} model={model} />;"
+    },
+    {
+      "name": "Message never hands the block its model",
+      "source": "src/agent/ui/Message.tsx",
+      "find": "advisorModel={message.advisorModel} model={message.message.model} />;",
+      "replace": "advisorModel={message.advisorModel} />;"
+    },
+    {
+      "name": "the block never hands the update its model",
+      "source": "src/agent/ui/Message.tsx",
+      "find": "shouldShowDot={shouldShowDot} model={model} />;",
+      "replace": "shouldShowDot={shouldShowDot} />;"
+    },
+    {
+      "name": "a progress update waits behind the collapsed group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "(content?.type === 'thinking' && !isProgressUpdateBlock(content)) ||",
+      "replace": "content?.type === 'thinking' ||"
+    },
+    {
+      "name": "reasoning breaks the collapsed group",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "(content?.type === 'thinking' && !isProgressUpdateBlock(content)) ||",
+      "replace": "false ||"
+    }
+  ]
+}

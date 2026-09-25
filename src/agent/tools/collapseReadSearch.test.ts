@@ -9,6 +9,7 @@ import {
   summarizeRecentActivities,
 } from 'src/agent/tools/collapseReadSearch.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
+import { thinkingSignature } from 'src/providers/shims/claude/__testutils__/thinkingSignature.js'
 
 let counter = 0
 const uid = (): string => `uuid-${counter++}`
@@ -69,6 +70,20 @@ function assistantText(text: string): RenderableMessage {
   } as unknown as RenderableMessage
 }
 
+/** A thinking block whose signature marks it `kind`: "narration" or "thinking". */
+function thinking(kind: string, text: string): RenderableMessage {
+  return {
+    type: 'assistant',
+    uuid: uid(),
+    timestamp: '2026-08-12T00:00:00.000Z',
+    message: {
+      role: 'assistant',
+      id: uid(),
+      content: [{ type: 'thinking', thinking: text, signature: thinkingSignature(kind) }],
+    },
+  } as unknown as RenderableMessage
+}
+
 /** One structuredPatch hunk with `additions` +lines and `deletions` -lines. */
 function hunk(additions: number, deletions: number) {
   return {
@@ -97,6 +112,38 @@ function onlyGroup(messages: RenderableMessage[]): CollapsedReadSearchGroup {
 
 afterEach(() => {
   saveGlobalConfig(c => ({ ...c, collapseFileWritesEnabled: undefined }))
+})
+
+describe('progress updates', () => {
+  // Claude Code breaks the group on a progress update, as on text, so the
+  // sentence shows where it arrived instead of after the collapsed badge.
+  test('a progress update breaks the group where it arrived', () => {
+    const collapsed = collapse([
+      toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('r1', { file: {} }),
+      thinking('narration', 'Found it; reading the caller next.'),
+      toolUse('r2', 'Read', { file_path: '/repo/b.ts' }),
+      toolResult('r2', { file: {} }),
+    ])
+
+    expect(collapsed.map(m => m.type)).toEqual([
+      'collapsed_read_search',
+      'assistant',
+      'collapsed_read_search',
+    ])
+  })
+
+  test('reasoning still waits behind the group without breaking it', () => {
+    const collapsed = collapse([
+      toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('r1', { file: {} }),
+      thinking('thinking', ''),
+      toolUse('r2', 'Read', { file_path: '/repo/b.ts' }),
+      toolResult('r2', { file: {} }),
+    ])
+
+    expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search', 'assistant'])
+  })
 })
 
 describe('write collapse', () => {

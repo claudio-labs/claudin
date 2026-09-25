@@ -36,6 +36,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { countAddDel } from 'src/vcs/git/diffStat.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
+import { isProgressUpdateBlock } from 'src/providers/shims/claude/thinkingDisplay.js'
 import {
   isAutoManagedMemoryFile,
   isAutoManagedMemoryPattern,
@@ -515,8 +516,13 @@ function isPreToolHookSummary(
 function shouldSkipMessage(msg: RenderableMessage): boolean {
   if (msg.type === 'assistant') {
     const content = msg.message.content[0]
-    // Skip thinking blocks and other non-text, non-tool content
-    if (content?.type === 'thinking' || content?.type === 'redacted_thinking') {
+    // Skip thinking blocks and other non-text, non-tool content — but not a
+    // progress update: it reads as a reply, so it breaks the group where it
+    // arrived, as Claude Code does, instead of waiting behind the badge.
+    if (
+      (content?.type === 'thinking' && !isProgressUpdateBlock(content)) ||
+      content?.type === 'redacted_thinking'
+    ) {
       return true
     }
   }

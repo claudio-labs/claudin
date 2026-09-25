@@ -1,4 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
+import chalk from 'chalk';
 import { type Token, type Tokens } from 'marked';
 import React, { Suspense, use, useMemo, useRef } from 'react';
 import { useSettings } from 'src/platform/useSettings.js';
@@ -21,6 +22,9 @@ type Props = {
   /** Streaming-path content: unique string per frame/segment — lex without
    *  inserting into the markdown token cache (see markdownTokenCache.ts). */
   transient?: boolean;
+  /** Dim text closing the last paragraph, on its line — the " · summarized"
+   *  Claude Code draws after a progress update. */
+  hint?: string;
 };
 
 /** MarkdownBody additionally receives the resolved (or skipped) highlighter. */
@@ -79,17 +83,18 @@ function MarkdownWithHighlight(props: Props) {
   return t1;
 }
 function MarkdownBody(t0: MarkdownBodyProps) {
-  const $ = _c(8);
+  const $ = _c(9);
   const {
     children,
     dimColor,
     highlight,
-    transient
+    transient,
+    hint
   } = t0;
   const [theme] = useTheme();
   configureMarked();
   let elements;
-  if ($[0] !== children || $[1] !== dimColor || $[2] !== highlight || $[3] !== theme || $[4] !== transient) {
+  if ($[0] !== children || $[1] !== dimColor || $[2] !== highlight || $[3] !== theme || $[4] !== transient || $[8] !== hint) {
     const tokens = cachedLexer(stripPromptXMLTags(children), transient);
     elements = [];
     let nonTableContent = "";
@@ -108,6 +113,11 @@ function MarkdownBody(t0: MarkdownBodyProps) {
         nonTableContent;
       }
     }
+    // After a table there is no paragraph to close, so the hint gets its own line.
+    if (hint) {
+      const hintText = chalk.dim(`\u00B7\u00A0${hint}`);
+      nonTableContent = nonTableContent.trim() ? `${nonTableContent.trim()} ${hintText}` : hintText;
+    }
     flushNonTableContent();
     $[0] = children;
     $[1] = dimColor;
@@ -115,6 +125,7 @@ function MarkdownBody(t0: MarkdownBodyProps) {
     $[3] = theme;
     $[4] = transient;
     $[5] = elements;
+    $[8] = hint;
   } else {
     elements = $[5];
   }
