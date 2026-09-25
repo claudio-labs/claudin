@@ -1,0 +1,68 @@
+{
+  "test": [
+    "src/tools/shared/outputFilter/Bash/floor.test.ts",
+    "src/tools/shared/outputFilter/Bash/pipeline.test.ts"
+  ],
+  "source": "src/tools/shared/outputFilter/Bash/floor.ts",
+  "probes": [
+    {
+      "name": "cap-keep-paths: the flag reads another variable",
+      "find": "isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS)",
+      "replace": "isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATH)"
+    },
+    {
+      "name": "cap-keep-paths: on by default",
+      "find": "return isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS);",
+      "replace": "return true;"
+    },
+    {
+      "name": "cap-keep-paths: the floor never hands the cut its keepLines",
+      "find": "...(isCapKeepPathsEnabled() ? { keepLines: KEEP_PATH_LINES } : {}),",
+      "replace": ""
+    },
+    {
+      "name": "cap-keep-paths: the path budget is unlimited",
+      "find": "export const MAX_KEPT_PATH_LINES = 200;",
+      "replace": "export const MAX_KEPT_PATH_LINES = Infinity;"
+    },
+    {
+      "name": "cap-keep-paths: a count before the path is not accepted",
+      "find": "const token = COUNTED_PATH_RE.exec(line)?.[1] ?? line.trim();",
+      "replace": "const token = line.trim();"
+    },
+    {
+      "name": "cap-keep-paths: a lone word counts as a path",
+      "find": "&& PATH_SHAPE_RE.test(token);",
+      "replace": ";"
+    },
+    {
+      "name": "cap-keep-paths: a dotfile is not a path",
+      "find": "const PATH_SHAPE_RE = /\\/|(?:^|[\\w-])\\.[A-Za-z][\\w-]*$/;",
+      "replace": "const PATH_SHAPE_RE = /\\/|[\\w-]\\.[A-Za-z][\\w-]*$/;"
+    },
+    {
+      "name": "spare-middle: the middle is cut plainly even when keepLines spares lines",
+      "source": "src/tools/shared/outputFilter/Bash/pipeline.ts",
+      "find": "        const spared = filter.keepLines\n          ? spareMiddle(lines.slice(head, lines.length - tail), filter.keepLines)\n          : null;",
+      "replace": "        const spared = null as { lines: string[]; cut: number } | null;"
+    },
+    {
+      "name": "spare-middle: past its max it still spares",
+      "source": "src/tools/shared/outputFilter/Bash/pipeline.ts",
+      "find": "if (count === 0 || count > keep.max) return null;",
+      "replace": "if (count === 0) return null;"
+    },
+    {
+      "name": "spare-middle: a run of one line becomes a marker",
+      "source": "src/tools/shared/outputFilter/Bash/pipeline.ts",
+      "find": "    if (run.length === 1) out.push(run[0]!);\n    else if (run.length > 1) {",
+      "replace": "    if (run.length >= 1) {"
+    },
+    {
+      "name": "spare-middle: a middle spared whole is still recorded as cut",
+      "source": "src/tools/shared/outputFilter/Bash/pipeline.ts",
+      "find": "} else if (spared.cut > 0) {",
+      "replace": "} else {"
+    }
+  ]
+}

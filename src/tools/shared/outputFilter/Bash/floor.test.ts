@@ -1,4 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { ToolResultBlockParam } from "@anthropic-ai/sdk/resources/index.mjs";
 import { getGlobalConfig, saveGlobalConfig } from "src/platform/config/config.js";
 import { maybeSummarizeToolResult } from "src/agent/tools/toolResultSummarizer.js";
@@ -14,8 +16,10 @@ import {
   GENERIC_FLOOR,
   isCappableBody,
   isFloorCapEnabled,
+  isPathLine,
   looksLikeDiagnostics,
   looksLikeLocationList,
+  MAX_KEPT_PATH_LINES,
   withGenericFloor,
 } from "src/tools/shared/outputFilter/Bash/floor.js";
 import { builtInFilters } from "src/tools/shared/outputFilter/Bash/filters/index.js";
@@ -320,6 +324,141 @@ describe("isFloorCapEnabled", () => {
     for (const i of [0, FLOOR_CAP_LINES, FLOOR_CAP_LINES * 2 - 1]) {
       expect(out).toContain(`${"abcdefghij"[i % 10]}-item-${i}`);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CLAUDIN_CAP_KEEP_PATHS — the cut keeps the path lines of the middle
+// ---------------------------------------------------------------------------
+
+describe("isPathLine", () => {
+  test("accepts a bare path, and a count before one as wc -l and du print it", () => {
+    for (const line of [
+      "src/a.ts",
+      "./b/",
+      "/abs/c.json",
+      ".gitignore",
+      "README.md",
+      "data/carts/basic-us.json",
+      "   54 src/regions.ts",
+      "4.0K\tsrc/",
+    ]) {
+      expect(isPathLine(line)).toBe(true);
+    }
+  });
+
+  test("declines prose, markup, JSON, a wc total and URLs", () => {
+    for (const line of [
+      "",
+      "Prices a shopping cart for the storefront: catalog prices, then coupons, then",
+      "| `src/regions.ts` | currency, tax rates and shipping rules per region |",
+      '  "name": "pricing-engine",',
+      " 1119 total",
+      "e.g. this",
+      "https://bun.sh/docs",
+      "[1/9] Compiling",
+      "node_modules",
+    ]) {
+      expect(isPathLine(line)).toBe(false);
+    }
+  });
+});
+
+describe("CLAUDIN_CAP_KEEP_PATHS — the cut keeps the listing", () => {
+  const FLAG = "CLAUDIN_CAP_KEEP_PATHS";
+  // The command claudindev opened most bench sessions with, and what it printed
+  // on the pristine session-cache-ab project: 143 lines.
+  const COMMAND = "git ls-files && cat README.md package.json && wc -l $(git ls-files | grep -E '\\.(ts|json)$')";
+  const ORIENTATION = readFileSync(
+    resolve(import.meta.dir, "__fixtures__/samples/orientation-ls-files-cat-wc.txt"),
+    "utf8",
+  );
+  const LINES = ORIENTATION.split("\n");
+  // `git ls-files` printed everything above the README's title.
+  const LISTED = LINES.slice(0, LINES.indexOf("# pricing-engine"));
+  let savedFlag: string | undefined;
+  let savedCap: boolean | undefined;
+
+  const filter = (body: string, command = COMMAND): string =>
+    applyBashFilterToStdout(body, false, planBashFilter(command, { allowRewrite: false }));
+
+  beforeEach(() => {
+    savedFlag = process.env[FLAG];
+    savedCap = getGlobalConfig().bashOutputFilterCapEnabled;
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: true }));
+  });
+
+  afterEach(() => {
+    if (savedFlag === undefined) delete process.env[FLAG];
+    else process.env[FLAG] = savedFlag;
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: savedCap }));
+  });
+
+  test("the capture is the listing it claims to be", () => {
+    expect(LINES.length - 1).toBe(143);
+    expect(LISTED).toHaveLength(29);
+    expect(LISTED[0]).toBe(".gitignore");
+    expect(LISTED.at(-1)).toBe("test/tax.test.ts");
+    expect(LISTED.every(isPathLine)).toBe(true);
+  });
+
+  test("off: the plain cut hides src/regions.ts, the file the bench sessions read late", () => {
+    delete process.env[FLAG];
+    const out = filter(ORIENTATION);
+    expect(out).toContain("lines omitted");
+    expect(out).not.toContain("src/regions.ts");
+  });
+
+  test("on: every listed path and every wc -l line survive, and the prose is still cut", () => {
+    process.env[FLAG] = "1";
+    const out = filter(ORIENTATION);
+    for (const path of LISTED) expect(out).toContain(path);
+    expect(out).toContain("   54 src/regions.ts");
+    expect(out).toContain("lines omitted");
+    // README.md's prose and package.json sit in the middle and stay cut, so a
+    // later Patch on README.md still finds it read by the Read that follows.
+    expect(out).not.toContain("currency, tax rates and shipping rules per region");
+    expect(out).not.toContain('"name": "pricing-engine"');
+    expect(stripOutputMarkers(out).length).toBeLessThan(ORIENTATION.length);
+  });
+
+  test("on: past the path budget, the plain 15+15 cut", () => {
+    process.env[FLAG] = "1";
+    const paths = Array.from({ length: MAX_KEPT_PATH_LINES + 50 }, (_, i) => `src/dir${i % 7}/file${i}.ts`);
+    const out = filter(["intro line one", ...paths, "closing line"].join("\n"), "find src -name '*.ts'");
+    expect(out).toContain("lines omitted");
+    expect(out).not.toContain(`src/dir${100 % 7}/file100.ts`);
+  });
+
+  test("on: a middle made only of paths within the budget comes back whole", () => {
+    process.env[FLAG] = "1";
+    const paths = Array.from({ length: FLOOR_CAP_LINES * 2 }, (_, i) => `lib/mod${i % 5}/part${i}.rs`);
+    const out = filter(paths.join("\n"), "find lib -name '*.rs'");
+    expect(out).not.toContain("lines omitted");
+    for (const path of paths) expect(out).toContain(path);
+  });
+
+  test("on: one prose line between two paths stays itself — its marker would be no shorter", () => {
+    process.env[FLAG] = "1";
+    const head = Array.from({ length: 15 }, (_, i) => `head line ${"abcdefghijklmno"[i]}`);
+    const tail = Array.from({ length: 15 }, (_, i) => `tail line ${"abcdefghijklmno"[i]}`);
+    const middle = [
+      "src/a.ts",
+      "one lonely sentence",
+      "src/b.ts",
+      ...Array.from({ length: 40 }, (_, i) => `prose ${"abcdefghij"[i % 10]} number ${i}`),
+    ];
+    const out = filter([...head, ...middle, ...tail].join("\n"), "some-unregistered-command");
+    expect(out).toContain("src/a.ts\none lonely sentence\nsrc/b.ts\n…40 lines omitted…");
+  });
+
+  test("a matched spec never gets it, and the floor gets it only with the cap", () => {
+    process.env[FLAG] = "1";
+    expect(withGenericFloor(BARE, { cap: true }).keepLines).toBeUndefined();
+    expect(withGenericFloor(null, { groupMatches: true }).keepLines).toBeUndefined();
+    expect(withGenericFloor(null, { cap: true }).keepLines?.max).toBe(MAX_KEPT_PATH_LINES);
+    delete process.env[FLAG];
+    expect(withGenericFloor(null, { cap: true }).keepLines).toBeUndefined();
   });
 });
 

@@ -104,7 +104,7 @@
  */
 import { isEnvTruthy } from "src/shared/envUtils.js";
 import { getGlobalConfig } from "src/platform/config/config.js";
-import type { FilterSpec } from "src/tools/shared/outputFilter/Bash/types.js";
+import type { FilterSpec, KeepLines } from "src/tools/shared/outputFilter/Bash/types.js";
 import { groupMatchLines } from "src/tools/shared/outputFilter/Bash/groupMatchLines.js";
 
 /** Matches nothing: the floor is applied directly, never resolved by name. */
@@ -132,6 +132,46 @@ const CAP_DISABLED = isEnvTruthy(process.env.CLAUDIN_DISABLE_BASH_FILTER_CAP);
 export function isFloorCapEnabled(): boolean {
   return !CAP_DISABLED && getGlobalConfig().bashOutputFilterCapEnabled !== false;
 }
+
+/**
+ * `CLAUDIN_CAP_KEEP_PATHS=1`, off by default: the cut keeps every line of the
+ * middle that is only a path — a `git ls-files`, `find` or `wc -l` listing —
+ * where it stands, and cuts the rest.
+ *
+ * The command a model opens a session with, `git ls-files && cat README.md
+ * package.json && wc -l …`, prints ~143 lines on a small project, and the
+ * 15+15 cut drops the middle of the listing. In the session A/B it hid
+ * `src/regions.ts` in every capped session, and in 43 of 80 of them a hidden
+ * file was read later in a call of its own (team memory
+ * `request-count-levers-2026-09-24`, round 3). Turning the cap off fixed that
+ * and cost more: README.md came through whole from `cat`, was never Read, and
+ * the Patch on it hit the read gate. Keeping the paths while cutting the prose
+ * fixes the first without the second.
+ *
+ * Read per call, unlike CAP_DISABLED, so a test can set it.
+ */
+export function isCapKeepPathsEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS);
+}
+
+/** Past this many path lines — a `find` over a big tree — the plain cut. */
+export const MAX_KEPT_PATH_LINES = 200;
+
+const COUNTED_PATH_RE = /^\s*\d[\d.,]*[KMGTP]?\s+(\S+)$/;
+const PATH_CHARS_RE = /^[\w.@+~/-]+$/;
+const PATH_SHAPE_RE = /\/|(?:^|[\w-])\.[A-Za-z][\w-]*$/;
+
+/**
+ * A line that is only a path — `src/a.ts`, `./b/`, `/abs/c.json`,
+ * `.gitignore` — or a count and a path, the way `wc -l` and `du` print them.
+ * It needs a `/` or an extension, so a lone word of prose is not one.
+ */
+export function isPathLine(line: string): boolean {
+  const token = COUNTED_PATH_RE.exec(line)?.[1] ?? line.trim();
+  return token.length > 0 && PATH_CHARS_RE.test(token) && PATH_SHAPE_RE.test(token);
+}
+
+const KEEP_PATH_LINES: KeepLines = { test: isPathLine, max: MAX_KEPT_PATH_LINES };
 
 /**
  * Whether a head/tail cap may cut this body at all.
@@ -287,6 +327,11 @@ export function withGenericFloor(
     ...GENERIC_FLOOR,
     ...(collapseTemplates ? { collapseDigitTemplates: true } : {}),
     ...(groupMatches ? { renderBody: groupMatchLines } : {}),
-    ...(cap ? { maxLines: FLOOR_CAP_LINES } : {}),
+    ...(cap
+      ? {
+          maxLines: FLOOR_CAP_LINES,
+          ...(isCapKeepPathsEnabled() ? { keepLines: KEEP_PATH_LINES } : {}),
+        }
+      : {}),
   };
 }

@@ -5,7 +5,7 @@ import {
   collapseIdenticalRuns,
 } from "src/agent/tools/toolResultSummarizer.js";
 import type { RewriteContext } from "src/tools/shared/outputFilter/types.js";
-import type { DroppedReducer, FilterSpec, PipelineResult } from "src/tools/shared/outputFilter/Bash/types.js";
+import type { DroppedReducer, FilterSpec, KeepLines, PipelineResult } from "src/tools/shared/outputFilter/Bash/types.js";
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -670,6 +670,42 @@ const HEAD_TAIL_OMIT_MARKER = "…N lines omitted…";
 const DEFAULT_HEAD_LINES = 15;
 const DEFAULT_TAIL_LINES = 15;
 
+/**
+ * The middle of a head/tail cut with the lines `keep` spares left in place.
+ * Each run of cut lines becomes one marker, and a run of one line stays as it
+ * was, since the marker would be no shorter. Null when `keep` spares nothing,
+ * or more than its `max`, which leaves the plain cut.
+ */
+function spareMiddle(
+  middle: readonly string[],
+  keep: KeepLines,
+): { lines: string[]; cut: number } | null {
+  const spared = middle.map((line) => keep.test(line));
+  const count = spared.filter(Boolean).length;
+  if (count === 0 || count > keep.max) return null;
+  const out: string[] = [];
+  let run: string[] = [];
+  let cut = 0;
+  const flush = (): void => {
+    if (run.length === 1) out.push(run[0]!);
+    else if (run.length > 1) {
+      out.push(HEAD_TAIL_OMIT_MARKER.replace("N", String(run.length)));
+      cut += run.length;
+    }
+    run = [];
+  };
+  middle.forEach((line, i) => {
+    if (!spared[i]) {
+      run.push(line);
+      return;
+    }
+    flush();
+    out.push(line);
+  });
+  flush();
+  return { lines: out, cut };
+}
+
 /** Counts lines for the marker's `lines="body/original"` evidence. Empty → 0; a single
  * trailing newline is not counted as an extra line so counts match what a human would say. */
 function countLines(text: string): number {
@@ -875,12 +911,20 @@ export function applyPipeline(
       if (omitted > 0) {
         const headPart = head > 0 ? lines.slice(0, head) : [];
         const tailPart = tail > 0 ? lines.slice(-tail) : [];
-        lines = [
-          ...headPart,
-          HEAD_TAIL_OMIT_MARKER.replace("N", String(omitted)),
-          ...tailPart,
-        ];
-        applied.push("maxLines");
+        const spared = filter.keepLines
+          ? spareMiddle(lines.slice(head, lines.length - tail), filter.keepLines)
+          : null;
+        if (spared === null) {
+          lines = [
+            ...headPart,
+            HEAD_TAIL_OMIT_MARKER.replace("N", String(omitted)),
+            ...tailPart,
+          ];
+          applied.push("maxLines");
+        } else if (spared.cut > 0) {
+          lines = [...headPart, ...spared.lines, ...tailPart];
+          applied.push("maxLines", "keepLines");
+        }
       }
     } else if (filter.headLines || filter.tailLines) {
       // 11. headLines + tailLines (when no maxLines or within maxLines)
