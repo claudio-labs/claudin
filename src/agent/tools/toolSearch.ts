@@ -581,17 +581,9 @@ export type DeferredToolsDelta = {
 }
 
 /**
- * Call-site discriminator for the tengu_deferred_tools_pool_change event.
- * The scan runs from several sites with different expected-prior semantics
- * (inc-4747):
- *   - attachments_main: main-thread getAttachments → prior=0 is a BUG on fire-2+
- *   - attachments_subagent: subagent getAttachments → prior=0 is EXPECTED
- *     (fresh conversation, initialMessages has no DTD)
- *   - compact_full: compact.ts passes [] → prior=0 is EXPECTED
- *   - compact_partial: compact.ts passes messagesToKeep → depends on what survived
- *   - reactive_compact: reactiveCompact.ts passes preservedMessages → same
- * Without this the 96%-prior=0 stat is dominated by EXPECTED buckets and
- * the real main-thread cross-turn bug (if any) is invisible in BQ.
+ * Where a deferred-tools delta scan runs from. getDeferredToolsDeltaAttachment
+ * treats `attachments_subagent` like `subagent: true`: the scanned history is
+ * a subagent's, so it must not settle the legacy latch.
  */
 export type DeferredToolsDeltaScanContext = {
   callSite:
@@ -600,7 +592,6 @@ export type DeferredToolsDeltaScanContext = {
     | 'compact_full'
     | 'compact_partial'
     | 'reactive_compact'
-  querySource?: string
   /**
    * The scanned history belongs to a subagent (callers that know it from
    * context.agentId rather than callSite — the compact_* sites). Never
@@ -736,18 +727,11 @@ export function isDeferredToolsDeltaActive(): boolean {
 export function getDeferredToolsDelta(
   tools: Tools,
   messages: Message[],
-  scanContext?: DeferredToolsDeltaScanContext,
 ): DeferredToolsDelta | null {
   const announced = new Set<string>()
-  let attachmentCount = 0
-  let dtdCount = 0
-  const attachmentTypesSeen = new Set<string>()
   for (const msg of messages) {
     if (msg.type !== 'attachment') continue
-    attachmentCount++
-    attachmentTypesSeen.add(msg.attachment.type)
     if (msg.attachment.type !== 'deferred_tools_delta') continue
-    dtdCount++
     for (const n of msg.attachment.addedNames) announced.add(n)
     for (const n of msg.attachment.removedNames) announced.delete(n)
   }
@@ -765,7 +749,6 @@ export function getDeferredToolsDelta(
   }
 
   if (added.length === 0 && removed.length === 0) return null
-
 
   return {
     addedNames: added.map(t => t.name).sort(),

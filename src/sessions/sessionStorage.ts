@@ -133,7 +133,6 @@ export {
   applyPreservedSegmentRelinks,
   applySnipRemovals,
   buildConversationChain,
-  checkResumeConsistency,
   findLatestMessage,
   recoverOrphanedParallelToolResults,
 } from 'src/sessions/resume/chain.js'

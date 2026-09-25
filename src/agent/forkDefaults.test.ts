@@ -1,7 +1,7 @@
 /**
  * Features this fork runs ON where upstream shipped them off, pinned at the
  * surface that callers read, plus the `CLAUDIN_*=0` killswitch that turns each
- * one off (docs/tech/tengu-census/gate-audit.md). Each default goes red in
+ * one off (see the gate-removal ledger under docs/tech/). Each default goes red in
  * scripts/migrations/probes/forkDefaults.json when it is flipped.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'

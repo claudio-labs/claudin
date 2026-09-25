@@ -20,7 +20,6 @@ import { logError } from 'src/shared/log.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { NonNullableUsage } from 'src/platform/entrypoints/sdk/sdkUtilityTypes.js'
-import { consumeInvokingRequestId } from 'src/agent/coordinator/agentContext.js'
 import { EMPTY_USAGE } from 'src/providers/usage/emptyUsage.js'
 import { classifyAPIError } from 'src/providers/transport/errors.js'
 import { extractConnectionErrorDetails } from 'src/providers/transport/errorUtils.js'
@@ -170,8 +169,6 @@ export function logAPIError({
     )
   }
 
-  const invocation = consumeInvokingRequestId()
-
   if (clientRequestId) {
     logForDebugging(
       `API error x-client-request-id=${clientRequestId} (give this to the API team for server-log lookup)`,
@@ -251,9 +248,6 @@ function logAPISuccess({
   const lastCompletion = getLastApiCompletionTimestamp()
   const timeSinceLastApiCallMs =
     lastCompletion !== null ? now - lastCompletion : undefined
-
-  const invocation = consumeInvokingRequestId()
-
 
   setLastApiCompletionTimestamp(now)
 }

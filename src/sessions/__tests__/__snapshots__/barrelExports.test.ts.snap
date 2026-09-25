@@ -13,7 +13,6 @@ exports[`sessionStorage barrel exports a stable, known set of runtime symbols 1`
   "buildConversationChain",
   "buildFileHistorySnapshotChain",
   "cacheSessionTitle",
-  "checkResumeConsistency",
   "cleanMessagesForLogging",
   "clearAgentTranscriptSubdir",
   "clearSessionMessagesCache",

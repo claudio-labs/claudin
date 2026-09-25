@@ -764,5 +764,4 @@ async function run(): Promise<CommanderCommand> {
   profileReport();
   return program;
 }
-// logTenguInit moved to src/platform/main/lifecycle.ts (ROADMAP 11g Fase 2)
 // resetCursor, TeammateOptions, extractTeammateOptions moved to src/platform/main/helpers.ts (ROADMAP 11g Fase 1)

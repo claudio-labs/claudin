@@ -5,7 +5,6 @@ import {
   setLastApiCompletionTimestamp,
 } from 'src/platform/bootstrap/state.js'
 import { STRUCTURED_OUTPUTS_BETA_HEADER } from 'src/shared/constants/betas.js'
-import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import {
   getAttributionHeader,
   getCLISyspromptPrefix,
@@ -62,8 +61,6 @@ export type SideQueryOptions = {
   thinking?: number | false
   /** Stop sequences — generation stops when any of these strings is emitted */
   stop_sequences?: string[]
-  /** Attributes this call in tengu_api_success for COGS joining against reporting.sampling_calls. */
-  querySource: QuerySource
 }
 
 /**
@@ -97,15 +94,15 @@ function extractFirstUserMessageText(messages: MessageParam[]): string {
  *
  * @example
  * // Permission explainer
- * await sideQuery({ querySource: 'permission_explainer', model, system: SYSTEM_PROMPT, messages, tools, tool_choice })
+ * await sideQuery({ model, system: SYSTEM_PROMPT, messages, tools, tool_choice })
  *
  * @example
  * // Session search
- * await sideQuery({ querySource: 'session_search', model, system: SEARCH_PROMPT, messages })
+ * await sideQuery({ model, system: SEARCH_PROMPT, messages })
  *
  * @example
  * // Model validation
- * await sideQuery({ querySource: 'model_validation', model, max_tokens: 1, messages: [{ role: 'user', content: 'Hi' }] })
+ * await sideQuery({ model, max_tokens: 1, messages: [{ role: 'user', content: 'Hi' }] })
  */
 export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
   const {

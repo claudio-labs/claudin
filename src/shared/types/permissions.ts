@@ -393,20 +393,12 @@ export type YoloClassifierResult = {
    * legacy 1-stage (tool_use) classifier — the single request goes here.
    */
   stage1RequestId?: string
-  /**
-   * API message id (msg_xxx) for stage 1. Enables joining the
-   * tengu_auto_mode_decision analytics event to the classifier's actual
-   * prompt/completion in post-analysis.
-   */
-  stage1MsgId?: string
   /** Token usage from stage 2 (thinking) when stage 2 was run */
   stage2Usage?: ClassifierUsage
   /** Duration of stage 2 in ms when stage 2 was run */
   stage2DurationMs?: number
   /** API request_id for stage 2 (set whenever stage 2 ran) */
   stage2RequestId?: string
-  /** API message id (msg_xxx) for stage 2 (set whenever stage 2 ran) */
-  stage2MsgId?: string
 }
 
 // ============================================================================

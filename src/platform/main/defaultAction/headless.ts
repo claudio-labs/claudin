@@ -224,7 +224,7 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
   // Dedup: suppress plugin MCP servers that duplicate a claude.ai
   // connector (connector wins), then connect claude.ai servers.
   // Bounded wait — #23725 made this blocking so single-turn -p sees
-  // connectors, but with 40+ slow connectors tengu_startup_perf p99
+  // connectors, but with 40+ slow connectors startup p99
   // climbed to 76s. If fetch+connect doesn't finish in time, proceed;
   // the promise keeps running and updates headlessStore in the
   // background so turn 2+ still sees connectors.

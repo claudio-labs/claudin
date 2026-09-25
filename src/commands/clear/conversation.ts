@@ -49,7 +49,6 @@ import { clearSessionCaches } from 'src/commands/clear/caches.js'
 export async function clearConversation({
   setMessages,
   readFileState,
-  discoveredSkillNames,
   loadedNestedMemoryPaths,
   getAppState,
   setAppState,
@@ -57,7 +56,6 @@ export async function clearConversation({
 }: {
   setMessages: (updater: (prev: Message[]) => Message[]) => void
   readFileState: FileStateCache
-  discoveredSkillNames?: Set<string>
   loadedNestedMemoryPaths?: Set<string>
   getAppState?: () => AppState
   setAppState?: (f: (prev: AppState) => AppState) => void
@@ -112,7 +110,6 @@ export async function clearConversation({
 
   setCwd(getOriginalCwd())
   readFileState.clear()
-  discoveredSkillNames?.clear()
   loadedNestedMemoryPaths?.clear()
 
   // Clean out necessary items from App State

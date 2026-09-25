@@ -83,7 +83,7 @@ export async function startMCPServer(
   setCwd(cwd)
   const server = new Server(
     {
-      // Upstream sent `claude/tengu` here — the internal codename, announced to
+      // Upstream sent `claude/<codename>` here — its internal codename, announced to
       // every MCP client that connects to `claudin mcp serve`. This fork does
       // not present itself as upstream, and `serverInfo.name` is informational
       // in MCP (clients route on the transport, not on this string).

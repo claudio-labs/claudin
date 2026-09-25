@@ -49,11 +49,6 @@ export type WebSocketTransportOptions = {
    *  disconnect. Use this when the caller has its own recovery mechanism
    *  (e.g. the REPL bridge poll loop). Defaults to true. */
   autoReconnect?: boolean
-  /** Gates the tengu_ws_transport_* telemetry events. Set true at the
-   *  REPL-bridge construction site so only Remote Control sessions (the
-   *  Cloudflare-idle-timeout population) emit; print-mode workers stay
-   *  silent. Defaults to false. */
-  isBridge?: boolean
 }
 
 type WebSocketTransportState =
@@ -81,7 +76,6 @@ export class WebSocketTransport implements Transport {
   private headers: Record<string, string>
   private sessionId?: string
   private autoReconnect: boolean
-  private isBridge: boolean
 
   // Reconnection state
   private reconnectAttempts = 0
@@ -127,7 +121,6 @@ export class WebSocketTransport implements Transport {
     this.sessionId = sessionId
     this.refreshHeaders = refreshHeaders
     this.autoReconnect = options?.autoReconnect ?? true
-    this.isBridge = options?.isBridge ?? false
     this.messageBuffer = new CircularBuffer(DEFAULT_MAX_BUFFER_SIZE)
   }
 

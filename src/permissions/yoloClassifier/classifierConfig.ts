@@ -36,7 +36,7 @@ export function getClassifierModel(): string {
  *
  * For most models: send { type: 'disabled' } via sideQuery's `thinking: false`.
  *
- * Models with alwaysOnThinking (declared in tengu_ant_model_override) default
+ * Models that require adaptive thinking (modelRequiresAdaptiveThinking) default
  * to adaptive thinking server-side and reject `disabled` with a 400. For those:
  * don't pass `thinking: false`, instead pad max_tokens so adaptive thinking
  * (observed 0–1114 tokens replaying go/ccshare/shawnm-20260310-202833) doesn't

@@ -380,16 +380,8 @@ async function* queryLoop(
         )
       }
 
-      // Reset on every compact so turnCounter/turnId reflect the MOST RECENT
-      // compact. recompactionInfo (autoCompact.ts:190) already captured the
-      // old values for turnsSincePreviousCompact/previousCompactTurnId before
-      // the call, so this reset doesn't lose those.
-      tracking = {
-        compacted: true,
-        turnId: deps.uuid(),
-        turnCounter: 0,
-        consecutiveFailures: 0,
-      }
+      // A successful compact resets the circuit breaker's failure count.
+      tracking = { consecutiveFailures: 0 }
 
       const postCompactMessages = buildPostCompactMessages(compactionResult)
 
@@ -403,7 +395,7 @@ async function* queryLoop(
       // Autocompact failed — propagate failure count so the circuit breaker
       // can stop retrying on the next iteration.
       tracking = {
-        ...(tracking ?? { compacted: false, turnId: '', turnCounter: 0 }),
+        ...tracking,
         consecutiveFailures,
       }
     }
@@ -1170,10 +1162,6 @@ async function* queryLoop(
     // If a hook indicated to prevent continuation, stop here
     if (shouldPreventContinuation) {
       return { reason: 'hook_stopped' }
-    }
-
-    if (tracking?.compacted) {
-      tracking.turnCounter++
     }
 
     // Be careful to do this after tool calls are done, because the API

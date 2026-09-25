@@ -72,7 +72,6 @@ export async function probeClassifierCapability(input: {
   let result: ClassifierProbeResult
   try {
     const response = await sideQuery({
-      querySource: 'bash_classifier',
       model,
       system:
         'You are a security classifier capability probe. Respond only by calling the provided tool — never answer with plain text.',

@@ -80,7 +80,6 @@ export interface UseToolUseContextDeps {
   // --- refs
   messagesRef: React.RefObject<MessageType[]>;
   readFileState: React.RefObject<ReturnType<typeof import('src/shared/fs/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
-  discoveredSkillNamesRef: React.RefObject<Set<string>>;
   loadedNestedMemoryPathsRef: React.RefObject<Set<string>>;
   hasInterruptibleToolInProgressRef: React.RefObject<boolean>;
   // --- callbacks handed through into the context
@@ -143,7 +142,6 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
     store,
     messagesRef,
     readFileState,
-    discoveredSkillNamesRef,
     loadedNestedMemoryPathsRef,
     hasInterruptibleToolInProgressRef,
     resume,
@@ -304,7 +302,6 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
       nestedMemoryAttachmentTriggers: new Set<string>(),
       loadedNestedMemoryPaths: loadedNestedMemoryPathsRef.current,
       dynamicSkillDirTriggers: new Set<string>(),
-      discoveredSkillNames: discoveredSkillNamesRef.current,
       setResponseLength,
       pushApiMetricsEntry: undefined,
       setStreamMode,

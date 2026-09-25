@@ -9,6 +9,9 @@ import {
   scanRegions,
 } from './tengu-census'
 
+/** A census `file` is repo-relative, so this matches the src/ tree only. */
+const UNDER_SRC = /^src[\\/]/
+
 /** Region byte at the first occurrence of `needle` in `source`. */
 function regionAt(source: string, needle: string): number {
   const regions = scanRegions(source)
@@ -222,5 +225,12 @@ describe('the tree itself', () => {
     // scanner has a blind spot, so a removal pass would miss whatever hid in it.
     const unclassified = runCensus().filter(o => o.bucket === 'unclassified')
     expect(unclassified.map(o => `${o.file}:${o.line} ${o.text}`)).toEqual([])
+  })
+
+  test('nothing under src/ names it', () => {
+    // Every gate, event and comment naming one is gone from src/, fixtures and
+    // tests included. A new occurrence is a regression, whatever its bucket.
+    const offenders = runCensus().filter(o => UNDER_SRC.test(o.file))
+    expect(offenders.map(o => `${o.file}:${o.line} ${o.text}`)).toEqual([])
   })
 })

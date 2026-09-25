@@ -314,8 +314,7 @@ export const AgentTool = buildTool({
         use_splitpane: true,
         plan_mode_required: spawnMode === 'plan',
         model: model ?? agentDef?.model,
-        agent_type: subagent_type,
-        invokingRequestId: assistantMessage?.requestId
+        agent_type: subagent_type
       }, toolUseContext);
 
       // Type assertion uses TeammateSpawnedOutput (defined above) instead of any.
@@ -740,10 +739,7 @@ export const AgentTool = buildTool({
         parentSessionId: getParentSessionId(),
         agentType: 'subagent' as const,
         subagentName: selectedAgent.agentType,
-        isBuiltIn: isBuiltInAgent(selectedAgent),
-        invokingRequestId: assistantMessage?.requestId,
-        invocationKind: 'spawn' as const,
-        invocationEmitted: false
+        isBuiltIn: isBuiltInAgent(selectedAgent)
       };
 
       void runWithAgentContext(asyncAgentContext, () => wrapWithCwd(() => runAsyncAgentLifecycle({
@@ -790,10 +786,7 @@ export const AgentTool = buildTool({
         parentSessionId: getParentSessionId(),
         agentType: 'subagent' as const,
         subagentName: selectedAgent.agentType,
-        isBuiltIn: isBuiltInAgent(selectedAgent),
-        invokingRequestId: assistantMessage?.requestId,
-        invocationKind: 'spawn' as const,
-        invocationEmitted: false
+        isBuiltIn: isBuiltInAgent(selectedAgent)
       };
 
       // Wrap entire sync agent execution in context for analytics attribution

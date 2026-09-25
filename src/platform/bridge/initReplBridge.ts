@@ -58,7 +58,6 @@ import {
   createBridgeSession,
   updateBridgeSessionTitle,
 } from 'src/platform/bridge/createSession.js'
-import { logBridgeSkip } from 'src/platform/bridge/debugUtils.js'
 import { getPollIntervalConfig } from 'src/platform/bridge/pollConfig.js'
 import type { BridgeState, ReplBridgeHandle } from 'src/platform/bridge/replBridge.js'
 import { initBridgeCore } from 'src/platform/bridge/replBridge.js'
@@ -115,7 +114,7 @@ export async function initReplBridge(
 
   // 1. Runtime gate
   if (!(await isBridgeEnabledBlocking())) {
-    logBridgeSkip('not_enabled', '[bridge:repl] Skipping: bridge not enabled')
+    logForDebugging('[bridge:repl] Skipping: bridge not enabled')
     return null
   }
 
@@ -123,7 +122,7 @@ export async function initReplBridge(
   // policy check so console-auth users get the actionable "/login" hint
   // instead of a misleading policy error from a stale/wrong-org cache.
   if (!getBridgeAccessToken()) {
-    logBridgeSkip('no_oauth', '[bridge:repl] Skipping: no OAuth tokens')
+    logForDebugging('[bridge:repl] Skipping: no OAuth tokens')
     onStateChange?.('failed', '/login')
     return null
   }
@@ -131,8 +130,7 @@ export async function initReplBridge(
   // 3. Check organization policy — remote control may be disabled
   await waitForPolicyLimitsToLoad()
   if (!isPolicyAllowed('allow_remote_control')) {
-    logBridgeSkip(
-      'policy_denied',
+    logForDebugging(
       '[bridge:repl] Skipping: allow_remote_control policy not allowed',
     )
     onStateChange?.('failed', "disabled by your organization's policy")
@@ -199,8 +197,7 @@ export async function initReplBridge(
     // Check actual expiry instead: past-expiry AND refresh-failed → truly dead.
     const tokens = getClaudeAIOAuthTokens()
     if (tokens && tokens.expiresAt !== null && tokens.expiresAt <= Date.now()) {
-      logBridgeSkip(
-        'oauth_expired_unrefreshable',
+      logForDebugging(
         '[bridge:repl] Skipping: OAuth token expired and refresh failed (re-login required)',
       )
       onStateChange?.('failed', '/login')
@@ -361,7 +358,7 @@ export async function initReplBridge(
   // Fetch orgUUID — environment registration needs it.
   const orgUUID = await getOrganizationUUID()
   if (!orgUUID) {
-    logBridgeSkip('no_org_uuid', '[bridge:repl] Skipping: no org UUID')
+    logForDebugging('[bridge:repl] Skipping: no org UUID')
     onStateChange?.('failed', '/login')
     return null
   }

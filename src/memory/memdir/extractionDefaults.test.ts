@@ -1,7 +1,7 @@
 /**
  * The memory features this fork runs ON where upstream shipped them off,
  * pinned at the functions callers read, plus the `CLAUDIN_*` env that turns
- * each one off or retunes it (docs/tech/tengu-census/gate-audit.md). Each
+ * each one off or retunes it (see the gate-removal ledger under docs/tech/). Each
  * default goes red in scripts/migrations/probes/forkDefaults.json when it is
  * flipped.
  */

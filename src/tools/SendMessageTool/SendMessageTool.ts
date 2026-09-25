@@ -1097,7 +1097,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
       }
     },
 
-    async call(input, context, canUseTool, assistantMessage) {
+    async call(input, context, canUseTool) {
       if (input.notify_when_idle || input.message === undefined) {
         return subscribeToPeer(
           input.to,
@@ -1156,7 +1156,6 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
                 prompt: input.message,
                 toolUseContext: context,
                 canUseTool,
-                invokingRequestId: assistantMessage?.requestId,
               })
               return {
                 data: {
@@ -1183,7 +1182,6 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
                 prompt: input.message,
                 toolUseContext: context,
                 canUseTool,
-                invokingRequestId: assistantMessage?.requestId,
               })
               return {
                 data: {

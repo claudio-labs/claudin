@@ -996,9 +996,9 @@ export async function* queryModel(
     }
 
     // Single render shared by the wire request and the opt-in annotation
-    // dump below — rendering twice would double the O(n) walk and the
-    // tengu_api_cache_breakpoints event, and any drift between the two
-    // renders would make the diagnostic lie about the wire bytes.
+    // dump below — rendering twice would double the O(n) walk, and any
+    // drift between the two renders would make the diagnostic lie about the
+    // wire bytes.
     const renderedMessages = addCacheBreakpoints(
       messagesForRequest,
       enablePromptCaching,
@@ -1754,7 +1754,6 @@ export async function* queryModel(
           maxOutputTokens = tokens;
         },
         (params) => captureAPIRequest(params, options.querySource),
-        streamRequestId,
       );
 
       const m: AssistantMessage = {
@@ -1806,10 +1805,6 @@ export async function* queryModel(
         "model_not_found";
 
     if (is404StreamCreationError) {
-      // 404 is thrown at .withResponse() before streamRequestId is assigned,
-      // and CannotRetryError means every retry failed — so grab the failed
-      // request's ID from the error header instead.
-      const failedRequestId = originalError404?.requestID ?? "unknown";
       logForDebugging(
         "Streaming endpoint returned 404, falling back to non-streaming mode",
         { level: "warn" },
@@ -1837,7 +1832,6 @@ export async function* queryModel(
             maxOutputTokens = tokens;
           },
           (params) => captureAPIRequest(params, options.querySource),
-          failedRequestId,
         );
 
         const m: AssistantMessage = {

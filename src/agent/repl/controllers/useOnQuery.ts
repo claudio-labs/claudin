@@ -296,9 +296,9 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     void maybeMarkProjectOnboardingComplete();
 
     // Extract a session title from the first real user message. One-shot
-    // via ref (was tengu_birch_mist experiment: first-message-only to save
-    // Haiku calls). The ref replaces the old `messages.length <= 1` check,
-    // which was broken by SessionStart hook messages (prepended via
+    // via ref (first message only, to save Haiku calls). The ref replaces
+    // the old `messages.length <= 1` check, which was broken by
+    // SessionStart hook messages (prepended via
     // useDeferredHookMessages) and attachment messages (appended by
     // processTextPrompt) — both pushed length past 1 on turn one, so the
     // title silently fell through to the "Claude Code" default.

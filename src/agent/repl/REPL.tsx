@@ -1385,9 +1385,8 @@ export function REPL({
       setMessages(prev => [...prev, createTurnDurationMessage(totalMs, deferredBudget,
         // Count only what recordTranscript will persist — ephemeral
         // progress ticks and attachments that render nothing are filtered
-        // by isLoggableMessage and never reach disk. Using raw prev.length
-        // would make checkResumeConsistency report false delta<0 for
-        // every turn that ran a progress-emitting tool.
+        // by isLoggableMessage and never reach disk, so raw prev.length
+        // would overcount every turn that ran a progress-emitting tool.
         count(prev, isLoggableMessage))]);
     }
   }, [hasRunningTeammates, setMessages]);
@@ -1515,12 +1514,6 @@ export function REPL({
   const readFileState = useRef(initialReadFileState);
   const bashTools = useRef(new Set<string>());
   const bashToolsProcessedIdx = useRef(0);
-  // Session-scoped skill discovery tracking (feeds was_discovered on
-  // tengu_skill_tool_invocation). Must persist across getToolUseContext
-  // rebuilds within a session: turn-0 discovery writes via processUserInput
-  // before onQuery builds its own context, and discovery on turn N must
-  // still attribute a SkillTool call on turn N+k. Cleared in clearConversation.
-  const discoveredSkillNamesRef = useRef(new Set<string>());
   // Session-level dedup for nested_memory CLAUDE.md attachments.
   // readFileState is a 100-entry LRU; once it evicts a CLAUDE.md path,
   // the next discovery cycle re-injects it. Cleared in clearConversation.
@@ -1825,7 +1818,6 @@ export function REPL({
     store,
     messagesRef,
     readFileState,
-    discoveredSkillNamesRef,
     loadedNestedMemoryPathsRef,
     hasInterruptibleToolInProgressRef,
     resume,
@@ -1925,7 +1917,6 @@ export function REPL({
         await clearConversation({
           setMessages,
           readFileState: readFileState.current,
-          discoveredSkillNames: discoveredSkillNamesRef.current,
           loadedNestedMemoryPaths: loadedNestedMemoryPathsRef.current,
           getAppState: () => store.getState(),
           setAppState,

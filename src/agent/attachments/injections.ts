@@ -143,14 +143,14 @@ export function getDeferredToolsDeltaAttachment(
   // These three checks mirror the sync parts of isToolSearchEnabled —
   // the attachment text says "available via ToolSearch", so ToolSearch
   // has to actually be in the request. The async auto-threshold check
-  // is not replicated (would double-fire tengu_tool_search_mode_decision);
+  // is not replicated (this path is synchronous);
   // in tst-auto below-threshold the attachment can fire while ToolSearch
   // is filtered out, but that's a narrow case and the tools announced
   // are directly callable anyway.
   if (!isToolSearchEnabledOptimistic()) return []
   if (!modelSupportsToolReference(model)) return []
   if (!isToolSearchToolAvailable(tools)) return []
-  const delta = getDeferredToolsDelta(tools, messages ?? [], scanContext)
+  const delta = getDeferredToolsDelta(tools, messages ?? [])
   if (!delta) return []
   return [{ type: 'deferred_tools_delta', ...delta }]
 }

@@ -222,7 +222,6 @@ export function defaultAnalyzeRulesDeps(): AnalyzeRulesDeps {
   return {
     async runQuery(messages, system, signal) {
       const response = await sideQuery({
-        querySource: 'auto_mode_setup',
         model: getMainLoopModel(),
         system,
         max_tokens: MAX_PROPOSAL_TOKENS,

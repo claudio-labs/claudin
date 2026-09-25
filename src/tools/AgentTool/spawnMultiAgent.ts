@@ -130,10 +130,6 @@ export type SpawnTeammateConfig = {
   model?: string
   agent_type?: string
   description?: string
-  /** request_id of the API call whose response contained the tool_use that
-   *  spawned this teammate. Threaded through to TeammateAgentContext for
-   *  lineage tracing on tengu_api_* events. */
-  invokingRequestId?: string
 }
 
 // Internal input type matching TeammateTool's spawn parameters
@@ -147,7 +143,6 @@ type SpawnInput = {
   model?: string
   agent_type?: string
   description?: string
-  invokingRequestId?: string
 }
 
 // ============================================================================
@@ -984,7 +979,6 @@ async function handleSpawnInProcess(
       // teammate's lifetime, surviving /clear and auto-compact.
       toolUseContext: { ...context, messages: [] },
       abortController: result.abortController,
-      invokingRequestId: input.invokingRequestId,
     })
     logForDebugging(
       `[handleSpawnInProcess] Started agent execution for ${teammateId}`,

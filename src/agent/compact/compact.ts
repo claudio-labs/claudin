@@ -3,7 +3,6 @@ import type { UUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 
 import { markPostCompaction } from 'src/platform/bootstrap/state.js'
-import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
@@ -113,19 +112,6 @@ export interface CompactionResult {
 }
 
 /**
- * Diagnosis context passed from autoCompactIfNeeded into compactConversation.
- * Lets the tengu_compact event disambiguate same-chain loops (H2) from
- * cross-agent (H1/H5) and manual-vs-auto (H3) compactions without joins.
- */
-export type RecompactionInfo = {
-  isRecompactionInChain: boolean
-  turnsSincePreviousCompact: number
-  previousCompactTurnId?: string
-  autoCompactThreshold: number
-  querySource?: QuerySource
-}
-
-/**
  * Build the base post-compact messages array from a CompactionResult.
  * This ensures consistent ordering across all compaction paths.
  * Order: boundaryMarker, summaryMessages, messagesToKeep, attachments, hookResults
@@ -211,7 +197,6 @@ export async function compactConversation(
   suppressFollowUpQuestions: boolean,
   customInstructions?: string,
   isAutoCompact: boolean = false,
-  recompactionInfo?: RecompactionInfo,
 ): Promise<CompactionResult> {
   try {
     if (messages.length === 0) {
@@ -430,10 +415,6 @@ export async function compactConversation(
 
     // Extract compaction API usage metrics
     const compactionUsage = getTokenUsage(summaryResponse)
-
-    const querySourceForEvent =
-      recompactionInfo?.querySource ?? context.options.querySource ?? 'unknown'
-
 
     // Reset cache read baseline so the post-compact drop isn't flagged as a break
     if (feature('PROMPT_CACHE_BREAK_DETECTION')) {

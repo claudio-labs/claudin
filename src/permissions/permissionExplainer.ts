@@ -168,7 +168,6 @@ Explain this command in context.`
       tools: [EXPLAIN_COMMAND_TOOL],
       tool_choice: { type: 'tool', name: 'explain_command' },
       signal,
-      querySource: 'permission_explainer',
     })
 
     const latencyMs = Date.now() - startTime

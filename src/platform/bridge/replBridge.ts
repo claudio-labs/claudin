@@ -38,7 +38,6 @@ import { validateBridgeId } from 'src/platform/bridge/bridgeApi.js'
 import {
   describeAxiosError,
   extractHttpStatus,
-  logBridgeSkip,
 } from 'src/platform/bridge/debugUtils.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
@@ -357,8 +356,7 @@ export async function initBridgeCore(
     environmentId = reg.environment_id
     environmentSecret = reg.environment_secret
   } catch (err) {
-    logBridgeSkip(
-      'registration_failed',
+    logForDebugging(
       `[bridge:repl] Environment registration failed: ${errorMessage(err)}`,
     )
     // Stale pointer may be the cause (expired/deleted env) — clear it so
@@ -1447,7 +1445,6 @@ export async function initBridgeCore(
               // per cycle at steady state). Bridge-only — 1P keeps indefinite.
               {
                 maxConsecutiveFailures: 50,
-                isBridge: true,
                 onBatchDropped: () => {
                   onStateChange?.(
                     'reconnecting',

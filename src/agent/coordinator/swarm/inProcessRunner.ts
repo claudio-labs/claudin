@@ -490,9 +490,6 @@ export type InProcessRunnerConfig = {
   allowPermissionPrompts?: boolean
   /** Short description of the task (used as summary for the initial prompt header) */
   description?: string
-  /** request_id of the API call that spawned this teammate, for lineage
-   *  tracing on tengu_api_* events. */
-  invokingRequestId?: string
 }
 
 /**
@@ -891,7 +888,6 @@ export async function runInProcessTeammate(
     systemPromptMode,
     allowedTools,
     allowPermissionPrompts,
-    invokingRequestId,
   } = config
   const { setAppState } = toolUseContext
 
@@ -909,9 +905,6 @@ export async function runInProcessTeammate(
     planModeRequired: identity.planModeRequired,
     isTeamLead: false,
     agentType: 'teammate',
-    invokingRequestId,
-    invocationKind: 'spawn',
-    invocationEmitted: false,
   }
 
   // Build system prompt based on systemPromptMode

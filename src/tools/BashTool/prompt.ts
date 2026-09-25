@@ -58,10 +58,8 @@ function getBackgroundUsageNote(): string | null {
  * Override with CLAUDIN_BASH_GIT_IN_MESSAGES=false to revert to the
  * inline behavior. Default = true (attachment on).
  *
- * Note: the upstream `tengu_bash_git_attach` GrowthBook gate is intentionally
- * skipped here because Claudin's getFeatureValue_CACHED_MAY_BE_STALE is a
- * stub that always returns the default — adding a gate would be cargo-cult
- * without the GrowthBook server. Env var is the only toggle.
+ * Upstream gates this on a GrowthBook flag; Claudin has no flag service, so
+ * the env var is the only toggle.
  */
 export function shouldInjectBashGitInstructionsInMessages(): boolean {
   if (isEnvDefinedFalsy(process.env.CLAUDIN_BASH_GIT_IN_MESSAGES))

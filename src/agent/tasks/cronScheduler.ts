@@ -131,9 +131,9 @@ type CronSchedulerOptions = {
   /**
    * Killswitch: polled once per check() tick. When true, check() bails
    * before firing anything — existing crons stop dead mid-session. CLI
-   * callers inject `() => !isKairosCronEnabled()` so flipping the
-   * tengu_kairos_cron gate off stops already-running schedulers (not just
-   * new ones). Daemon callers omit this, same rationale as getJitterConfig.
+   * callers inject `() => !isKairosCronEnabled()` so the cron gate is
+   * re-read on every tick, not only when a scheduler starts. Daemon
+   * callers omit this, same rationale as getJitterConfig.
    */
   isKilled?: () => boolean
   /**

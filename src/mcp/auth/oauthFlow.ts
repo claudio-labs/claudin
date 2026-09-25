@@ -6,7 +6,6 @@
 import { auth as sdkAuth } from '@modelcontextprotocol/sdk/client/auth.js'
 import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js'
 import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js'
-import { randomUUID } from 'crypto'
 import { createServer, type Server } from 'http'
 import { parse } from 'url'
 import xss from 'xss'
@@ -24,21 +23,6 @@ import {
 } from 'src/mcp/auth/claudeAuthProvider.js'
 import { getServerKey } from 'src/mcp/auth/serverKey.js'
 import { clearServerTokensFromSecureStorage } from 'src/mcp/auth/tokenRevocation.js'
-
-/**
- * Failure reasons for the `tengu_mcp_oauth_flow_error` event. Values are
- * emitted to analytics for attribution in BigQuery. Keep stable (do not
- * rename; add new ones).
- */
-type MCPOAuthFlowErrorReason =
-  | 'cancelled'
-  | 'timeout'
-  | 'provider_denied'
-  | 'state_mismatch'
-  | 'port_unavailable'
-  | 'sdk_auth_failed'
-  | 'token_exchange_failed'
-  | 'unknown'
 
 export class AuthenticationCancelledError extends Error {
   constructor() {
@@ -95,13 +79,6 @@ export async function performMCPOAuthFlow(
     scope: cachedStepUpScope,
     resourceMetadataUrl,
   }
-
-  const flowAttemptId = randomUUID()
-
-
-  // Track whether we reached the token-exchange phase so the catch block can
-  // attribute the failure reason correctly.
-  let authorizationCodeObtained = false
 
   try {
     // Use configured callback port for pre-configured OAuth, otherwise find an available port
@@ -358,8 +335,6 @@ export async function performMCPOAuthFlow(
       timeoutId.unref()
     })
 
-    authorizationCodeObtained = true
-
     // Now complete the auth flow with the received code
     logMCPDebug(serverName, `Completing auth flow with authorization code`)
     const result = await sdkAuth(provider, {
@@ -391,62 +366,21 @@ export async function performMCPOAuthFlow(
   } catch (error) {
     logMCPDebug(serverName, `Error during auth completion: ${error}`)
 
-    // Determine failure reason for attribution telemetry. The try block covers
-    // port acquisition, the callback server, the redirect flow, and token
-    // exchange. Map known failure paths to stable reason codes.
-    let reason: MCPOAuthFlowErrorReason = 'unknown'
-    let oauthErrorCode: string | undefined
-    let httpStatus: number | undefined
-
-    if (error instanceof AuthenticationCancelledError) {
-      reason = 'cancelled'
-    } else if (authorizationCodeObtained) {
-      reason = 'token_exchange_failed'
-    } else {
-      const msg = errorMessage(error)
-      if (msg.includes('Authentication timeout')) {
-        reason = 'timeout'
-      } else if (msg.includes('OAuth state mismatch')) {
-        reason = 'state_mismatch'
-      } else if (msg.includes('OAuth error:')) {
-        reason = 'provider_denied'
-      } else if (
-        msg.includes('already in use') ||
-        msg.includes('EADDRINUSE') ||
-        msg.includes('callback server failed') ||
-        msg.includes('No available port')
-      ) {
-        reason = 'port_unavailable'
-      } else if (msg.includes('SDK auth failed')) {
-        reason = 'sdk_auth_failed'
-      }
-    }
-
     // sdkAuth uses native fetch and throws OAuthError subclasses (InvalidGrantError,
-    // ServerError, InvalidClientError, etc.) via parseErrorResponse. Extract the
-    // OAuth error code directly from the SDK error instance.
-    if (error instanceof OAuthError) {
-      oauthErrorCode = error.errorCode
-      // SDK does not attach HTTP status as a property, but the fallback ServerError
-      // embeds it in the message as "HTTP {status}:" when the response body was
-      // unparseable. Best-effort extraction.
-      const statusMatch = error.message.match(/^HTTP (\d{3}):/)
-      if (statusMatch) {
-        httpStatus = Number(statusMatch[1])
-      }
-      // If client not found, clear the stored client ID and suggest retry
-      if (
-        error.errorCode === 'invalid_client' &&
-        error.message.includes('Client not found')
-      ) {
-        const storage = getSecureStorage()
-        const existingData = storage.read() || {}
-        const serverKey = getServerKey(serverName, serverConfig)
-        if (existingData.mcpOAuth?.[serverKey]) {
-          delete existingData.mcpOAuth[serverKey].clientId
-          delete existingData.mcpOAuth[serverKey].clientSecret
-          storage.update(existingData)
-        }
+    // ServerError, InvalidClientError, etc.) via parseErrorResponse.
+    // If client not found, clear the stored client ID and suggest retry
+    if (
+      error instanceof OAuthError &&
+      error.errorCode === 'invalid_client' &&
+      error.message.includes('Client not found')
+    ) {
+      const storage = getSecureStorage()
+      const existingData = storage.read() || {}
+      const serverKey = getServerKey(serverName, serverConfig)
+      if (existingData.mcpOAuth?.[serverKey]) {
+        delete existingData.mcpOAuth[serverKey].clientId
+        delete existingData.mcpOAuth[serverKey].clientSecret
+        storage.update(existingData)
       }
     }
 

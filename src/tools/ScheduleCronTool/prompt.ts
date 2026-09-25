@@ -12,16 +12,6 @@ export const DEFAULT_MAX_AGE_DAYS =
  * cron tools and /loop skill are registered without the AGENT_TRIGGERS
  * build flag, so this gate is the sole runtime switch. Set the env var
  * `CLAUDIN_DISABLE_CRON=1` to turn it off locally.
- *
- * Anthropic-internal (ant) builds additionally consult the
- * `tengu_kairos_cron` GrowthBook gate on a 5-minute refresh window,
- * serving as a fleet-wide kill switch.
- *
- * Called from Tool.isEnabled() (lazy, post-init) and inside useEffect /
- * imperative setup, never at module scope — so the disk cache has had a
- * chance to populate.
- *
- * `CLAUDIN_DISABLE_CRON` is a local override that wins over GB.
  */
 export function isKairosCronEnabled(): boolean {
   if (isEnvTruthy(process.env.CLAUDIN_DISABLE_CRON)) return false
