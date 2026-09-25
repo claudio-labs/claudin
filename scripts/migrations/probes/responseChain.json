@@ -112,15 +112,16 @@
     },
     {
       "name": "runTools: the guard is off under CLAUDIN_RESPONSE_CHAINS=1",
+      "comment": "Repointed 2026-09-25: round 2 (CLAUDIN_ONE_CALL_COMMIT) turned the flag check into an `||` across two lines; requestLevers2.json probes each side of it.",
       "source": "src/agent/tools/toolOrchestration.ts",
-      "find": "const chain = isResponseChainsEnabled() ? createResponseChain() : null",
-      "replace": "const chain = false ? createResponseChain() : null"
+      "find": "    isResponseChainsEnabled() || isOneCallCommitEnabled()\n      ? createResponseChain()\n",
+      "replace": "    false\n      ? createResponseChain()\n"
     },
     {
       "name": "runTools: the guard is on with the flag unset",
       "source": "src/agent/tools/toolOrchestration.ts",
-      "find": "const chain = isResponseChainsEnabled() ? createResponseChain() : null",
-      "replace": "const chain = true ? createResponseChain() : null"
+      "find": "    isResponseChainsEnabled() || isOneCallCommitEnabled()\n      ? createResponseChain()\n",
+      "replace": "    true\n      ? createResponseChain()\n"
     },
     {
       "name": "runTools: a call the chain skips runs anyway",

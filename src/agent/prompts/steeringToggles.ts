@@ -130,3 +130,32 @@ export function isOnePatchChangeEnabled(): boolean {
 export function isSubagentBatchingEnabled(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_SUBAGENT_BATCHING)
 }
+
+/*
+ * Round 2 of the request-count levers (2026-09-25), after the analysis of run
+ * 20260925-035538 found where claudindev's extra calls against Claude Code go:
+ * the commit and the orientation. Same shape as the three above — `=1` turns
+ * it on, unset leaves every prompt byte-identical. PARKED after the session
+ * A/B `/tmp/session-cache-ab/20260925-061930` (N=5, Opus 5.5 medium), like the
+ * three above. Of its siblings, CLAUDIN_READ_GLOBS (FileReadTool/readGlobs.ts)
+ * is parked too, and CLAUDIN_READONLY_GLOBS (BashTool/readOnlyValidation.ts)
+ * was promoted.
+ */
+
+/**
+ * `CLAUDIN_ONE_CALL_COMMIT=1`: the git protocol commits the session's own
+ * changes in ONE Git call, which may share the response with the last edit or
+ * check (BashTool/prompt.ts); only changes it did not make are read first. It
+ * also arms the guard in agent/tools/responseChain.ts, which is what makes a
+ * commit in the same response as an edit safe: a failed call before it skips it.
+ *
+ * Parked: 3 of 5 sessions committed in one call, and git-only calls fell from
+ * 1.6 to 1.4 a session (Claude Code 0.4), but the arm spent 20.8 API calls
+ * against 17.0 and cost 6.8% more — in edits and orientation the flag does not
+ * touch, and the guard skipped nothing. With the two glob flags (the combo
+ * arm) the session took 15.6 calls and cost 8.2% less, which the placebo
+ * matched on calls (15.6, and 2.8% less). Measure it again at N≥10.
+ */
+export function isOneCallCommitEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_ONE_CALL_COMMIT)
+}

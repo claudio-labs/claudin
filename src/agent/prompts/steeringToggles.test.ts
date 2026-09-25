@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import {
   isLeanSystemPromptEnabled,
+  isOneCallCommitEnabled,
   isOnePatchChangeEnabled,
   isResponseChainsEnabled,
   isSubagentBatchingEnabled,
@@ -16,6 +17,7 @@ const VARS = [
   'CLAUDIN_RESPONSE_CHAINS',
   'CLAUDIN_ONE_PATCH_CHANGE',
   'CLAUDIN_SUBAGENT_BATCHING',
+  'CLAUDIN_ONE_CALL_COMMIT',
 ] as const
 
 afterEach(() => {
@@ -35,6 +37,7 @@ const OPT_IN: Array<{ name: (typeof VARS)[number]; fn: () => boolean }> = [
   { name: 'CLAUDIN_RESPONSE_CHAINS', fn: isResponseChainsEnabled },
   { name: 'CLAUDIN_ONE_PATCH_CHANGE', fn: isOnePatchChangeEnabled },
   { name: 'CLAUDIN_SUBAGENT_BATCHING', fn: isSubagentBatchingEnabled },
+  { name: 'CLAUDIN_ONE_CALL_COMMIT', fn: isOneCallCommitEnabled },
 ]
 
 // Every toggle here is default-ON: the env can only subtract a section (or,

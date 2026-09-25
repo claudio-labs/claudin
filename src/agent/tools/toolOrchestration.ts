@@ -1,6 +1,9 @@
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources/index.mjs'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { isResponseChainsEnabled } from 'src/agent/prompts/steeringToggles.js'
+import {
+  isOneCallCommitEnabled,
+  isResponseChainsEnabled,
+} from 'src/agent/prompts/steeringToggles.js'
 import {
   type ChainCall,
   createResponseChain,
@@ -30,10 +33,14 @@ export async function* runTools(
   toolUseContext: ToolUseContext,
 ): AsyncGenerator<MessageUpdate, void> {
   let currentContext = toolUseContext
-  // CLAUDIN_RESPONSE_CHAINS: once a call fails, the calls after it that would
-  // run or ship code are skipped (responseChain.ts). Off, there is no chain
-  // and every call runs as before.
-  const chain = isResponseChainsEnabled() ? createResponseChain() : null
+  // CLAUDIN_RESPONSE_CHAINS or CLAUDIN_ONE_CALL_COMMIT: once a call fails, the
+  // calls after it that would run or ship code are skipped (responseChain.ts)
+  // — the commit a one-call protocol puts beside the last edit among them.
+  // Off, there is no chain and every call runs as before.
+  const chain =
+    isResponseChainsEnabled() || isOneCallCommitEnabled()
+      ? createResponseChain()
+      : null
   for (const { isConcurrencySafe, blocks } of partitionToolCalls(
     toolUseMessages,
     currentContext,

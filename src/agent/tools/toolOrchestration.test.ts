@@ -13,11 +13,15 @@ import {
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
 
 const FLAG = 'CLAUDIN_RESPONSE_CHAINS'
+const COMMIT_FLAG = 'CLAUDIN_ONE_CALL_COMMIT'
 const priorFlag = process.env[FLAG]
+const priorCommitFlag = process.env[COMMIT_FLAG]
 
 afterEach(() => {
   if (priorFlag === undefined) delete process.env[FLAG]
   else process.env[FLAG] = priorFlag
+  if (priorCommitFlag === undefined) delete process.env[COMMIT_FLAG]
+  else process.env[COMMIT_FLAG] = priorCommitFlag
 })
 
 /** Every call that reached `call()`, in the order it ran — a failed one included. */
@@ -319,5 +323,28 @@ describe('runTools — the response-chain guard (CLAUDIN_RESPONSE_CHAINS=1)', ()
     ])
     expect(ran).toEqual(['RunTests'])
     expect(results.get('toolu_1')!.text).toContain('Skipped: Test failed')
+  })
+})
+
+describe('runTools — the guard under CLAUDIN_ONE_CALL_COMMIT=1', () => {
+  test('the one-call commit flag arms the guard on its own: a commit after a failed edit is skipped', async () => {
+    delete process.env[FLAG]
+    process.env[COMMIT_FLAG] = '1'
+    const { ran, results } = await respond([
+      ['Edit', { file: 'README.md', ok: false }],
+      ['Git', { commands: ['git add README.md', 'git commit -m x', 'git status'] }],
+    ])
+    expect(ran).toEqual(['Edit README.md'])
+    expect(results.get('toolu_1')!.text).toContain('Skipped: Edit failed')
+  })
+
+  test('after a clean edit, the commit in the same response runs', async () => {
+    delete process.env[FLAG]
+    process.env[COMMIT_FLAG] = '1'
+    const { ran } = await respond([
+      ['Edit', { file: 'README.md', ok: true }],
+      ['Git', { commands: ['git add README.md', 'git commit -m x', 'git status'] }],
+    ])
+    expect(ran).toEqual(['Edit README.md', 'Git git add README.md; git commit -m x; git status'])
   })
 })
