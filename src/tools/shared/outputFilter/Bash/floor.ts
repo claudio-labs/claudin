@@ -150,7 +150,7 @@ export function isFloorCapEnabled(): boolean {
  *
  * Read per call, unlike CAP_DISABLED, so a test can set it.
  */
-export function isCapKeepPathsEnabled(): boolean {
+function isCapKeepPathsEnabled(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_PATHS);
 }
 

@@ -78,7 +78,7 @@ async function runWithBash(
   }
 }
 
-export const DEFAULT_EDIT_THEN_DEPS: EditThenDeps = {
+const DEFAULT_EDIT_THEN_DEPS: EditThenDeps = {
   permissionFor: (command, context) => bashToolHasPermission({ command }, context),
   hooksConfigured(context) {
     const appState = context.getAppState()
