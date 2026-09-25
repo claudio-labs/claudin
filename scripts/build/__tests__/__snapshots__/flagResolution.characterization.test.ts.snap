@@ -1,3 +1,0 @@
-// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
-
-exports[`tengu gate keys — resolution in a stock install the per-key resolution table matches the snapshot 1`] = `{}`;

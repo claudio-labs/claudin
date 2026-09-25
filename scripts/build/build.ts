@@ -120,11 +120,11 @@ const featureImportRe = /import\s*\{[^}]*\bfeature\b[^}]*\}\s*from\s*['"]bun:bun
 // as arguments and were the loudest upstream fingerprint in the bundle. Both
 // the call sites and the sink are gone now, so it has nothing to match.
 //
-// What it never touched, and what is still true: a `tengu_*` string passed to
-// checkGate*/getFeatureValue*/getDynamicConfig* is a feature-flag KEY, not an
-// event name. Those are live, they are the contract with
-// ~/.claudin/feature-flags.json, and `docs/tech/tengu-census/gate-audit.md`
-// says what each one gates.
+// What it never touched: a `tengu_*` string passed to checkGate*/
+// getFeatureValue*/getDynamicConfig* was a feature-flag KEY, not an event name.
+// Runtime flag resolution has since been removed — every such gate was inlined
+// to its value or deleted, and ~/.claudin/feature-flags.json is no longer read.
+// `docs/tech/tengu-census/gate-audit.md` records where each key went.
 const modifiedFiles = new Map<string, string>() // path → original content
 
 function preProcessSources(dir: string) {

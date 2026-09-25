@@ -12,9 +12,9 @@
  * `./config.js` with their own stubs that lack `toolResultSummarizerEnabled`.
  * Re-mocking it here guarantees the summarizer always sees the flag we set.
  *
- * `../bootstrap/state.js`, `./sessionStorage.js`, and analytics/growthbook
- * are left REAL so that `setOriginalCwd` in beforeAll reaches the same
- * state instance that the storage module reads from — otherwise persisted
+ * `../bootstrap/state.js` and `./sessionStorage.js` are left REAL so that
+ * `setOriginalCwd` in beforeAll reaches the same state instance that the
+ * storage module reads from — otherwise persisted
  * files land in the real project dir instead of tempRoot.
  */
 import {

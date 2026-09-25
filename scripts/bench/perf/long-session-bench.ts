@@ -155,38 +155,8 @@ async function exerciseTokenCache(cycles: number): Promise<CacheResult> {
 }
 
 async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
-  // Mock heavy upstream deps before importing queryHelpers — it transitively
-  // pulls in tools/, sessionStorage, analytics, etc. We only need
-  // recordToolProgress + size accessor.
-  const { mock } = await import('bun:test')
-  mock.module('../../../src/platform/analytics/growthbook.js', () => ({
-    getFeatureValue_CACHED_MAY_BE_STALE: () => false,
-    getFeatureValue_CACHED_WITH_REFRESH: () => false,
-    getFeatureValue_DEPRECATED: async () => false,
-    checkStatsigFeatureGate_CACHED_MAY_BE_STALE: () => false,
-    checkGate_CACHED_OR_BLOCKING: async () => false,
-    checkSecurityRestrictionGate: async () => false,
-    hasGrowthBookEnvOverride: () => false,
-    getApiBaseUrlHost: () => undefined,
-    onGrowthBookRefresh: () => () => {},
-    refreshGrowthBookAfterAuthChange: () => {},
-    resetGrowthBook: () => {},
-    refreshGrowthBookFeatures: async () => {},
-    setupPeriodicGrowthBookRefresh: () => {},
-    stopPeriodicGrowthBookRefresh: () => {},
-    getDynamicConfig_BLOCKS_ON_INIT: async () => ({}),
-    getDynamicConfig_CACHED_MAY_BE_STALE: () => ({}),
-    initializeGrowthBook: async () => null,
-    getAllGrowthBookFeatures: () => ({}),
-  }))
-  mock.module('../../../src/platform/analytics/index.js', () => ({
-    logEvent: () => {},
-    logEventAsync: async () => {},
-    attachAnalyticsSink: () => {},
-    stripProtoFields: <V,>(v: V) => v,
-    _resetForTesting: () => {},
-  }))
-
+  // queryHelpers transitively pulls in tools/, sessionStorage, etc.; we only
+  // need recordToolProgress + size accessor.
   const {
     __TEST_ONLY_recordToolProgress,
     __TEST_ONLY_resetToolProgressMap,

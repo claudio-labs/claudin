@@ -1,6 +1,5 @@
 /* eslint-disable custom-rules/no-process-exit -- CLI subcommand handler intentionally exits */
 
-import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js'
 import { clearPolicyLimitsCache } from 'src/platform/policyLimits/index.js'
 import { clearRemoteManagedSettingsCache } from 'src/platform/remoteManagedSettings/index.js'
 import { getSSLErrorHint } from 'src/providers/transport/errorUtils.js'
@@ -79,10 +78,7 @@ export async function clearAuthRelatedCaches(): Promise<void> {
   getClaudeAIOAuthTokens.cache?.clear?.()
   clearBetasCaches()
   clearToolSchemaCache()
-
-  // Clear user data cache BEFORE GrowthBook refresh so it picks up fresh credentials
   resetUserCache()
-  refreshGrowthBookAfterAuthChange()
 
   // Clear remotely managed settings cache
   await clearRemoteManagedSettingsCache()

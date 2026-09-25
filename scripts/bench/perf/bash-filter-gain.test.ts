@@ -5,8 +5,8 @@
 // per filter — same shape as `rtk gain --history`.
 //
 // Implemented as a bun test (not a plain script) because bunfig.toml's
-// `[test]` preload is what stubs `@growthbook/growthbook` for source-mode
-// runs; `bun run` does not apply that preload.
+// `[test]` preload is what stubs `@anthropic-ai/sandbox-runtime` for
+// source-mode runs; `bun run` does not apply that preload.
 //
 // Default behaviour: skipped on `bun test`. Run explicitly with:
 //   CLAUDIN_BENCH=1 bun test scripts/bench/perf/bash-filter-gain.test.ts

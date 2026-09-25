@@ -1454,11 +1454,6 @@
       "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
     },
     {
-      "name": "CLAUDE_FEATURE_FLAGS_FILE",
-      "bucket": "D",
-      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
-    },
-    {
       "name": "CLAUDE_FORCE_DISPLAY_SURVEY",
       "bucket": "D",
       "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."

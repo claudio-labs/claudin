@@ -25,10 +25,10 @@
 //
 // The omission is a hard constraint, not a shortcut. Driving a real
 // `QueryEngine.submitMessage()` from source requires reproducing what
-// `scripts/build/build.ts` does at bundle time — the `@growthbook/growthbook`
-// and `@anthropic-ai/sandbox-runtime` aliases, the `MACRO.*` `define` map, and
-// the whole-module replacements in `scripts/build/no-telemetry-plugin.ts` (of
-// which `src/platform/telemetry/sessionTracing` is one). Each stub added
+// `scripts/build/build.ts` does at bundle time — the
+// `@anthropic-ai/sandbox-runtime` alias, the `MACRO.*` `define` map, and
+// the whole-module replacements in `scripts/build/no-telemetry-plugin.ts`.
+// Each stub added
 // uncovers the next; re-implementing that list in a preload is building a
 // second bundler, and it would drift from the real one silently.
 // `memory-e2e-bench.ts` takes that route and, as of this writing, dies during
@@ -64,24 +64,11 @@
 
 import { mock } from 'bun:test'
 
-// Build-time module replacements, reproduced for a source run. Both of these
-// are `[alias]` entries in bunfig.toml that only apply under `bun test`, and
-// `scripts/build/build.ts` swaps them at bundle time — so a plain `bun run`
+// Build-time module replacement, reproduced for a source run. This is an
+// `[alias]` entry in bunfig.toml that only applies under `bun test`, and
+// `scripts/build/build.ts` swaps it at bundle time — so a plain `bun run`
 // dies on a missing package before printing a line. Re-exporting the
 // checked-in stub keeps this from drifting into a second hand-written shape.
-mock.module('@growthbook/growthbook', () => ({
-  GrowthBook: class {
-    async init(): Promise<void> {}
-    setAttributes(): void {}
-    getFeatureValue<T>(_key: string, fallback: T): T {
-      return fallback
-    }
-    isOn(): boolean {
-      return false
-    }
-    destroy(): void {}
-  },
-}))
 const sandboxRuntimeStub = await import(
   '../../../src/stubs/sandbox-runtime-stub.js'
 )

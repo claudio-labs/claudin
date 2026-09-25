@@ -22,17 +22,6 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
   DISPLAY_VERSION: '0.0.0-test',
 }
 
-// Pin GrowthBook to default-returning FIRST, before anything that reads
-// flags loads — flag reads must fall through to cache-profile defaults
-// regardless of what earlier test files left in the module registry.
-const realGrowthbook = {
-  ...(await import('src/platform/analytics/growthbook.js')),
-}
-mock.module('src/platform/analytics/growthbook.js', () => ({
-  ...realGrowthbook,
-  getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
-}))
-
 // Pin the retain profile (time-based trigger enabled) before anything
 // memoizes it, same scaffolding as microCompact.timebased-flipback.test.ts.
 process.env.CLAUDIN_CACHE_PROFILE = 'retain'
@@ -263,5 +252,4 @@ afterAll(() => {
   _resetDeferCacheMarkerForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
   mock.module('src/providers/model/model.js', () => realModel)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
 })

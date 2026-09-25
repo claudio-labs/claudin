@@ -33,7 +33,7 @@ At the top level, on purpose:
 |---|---|
 | `ab/` | Do two or more **arms** differ? Variants, flag states, two CLIs — plus their `.json` configs and capture helpers. A bench here is normally named `*-ab.ts`. |
 | `tokens/` | What does **one** state cost, in tokens or bytes? A census, a budget, or a replay over a recorded corpus. |
-| `perf/` | Milliseconds, megabytes, heap. Also holds its own harness and instruments (`fixtures.ts`, `preload-stubs.ts`, the heap-snapshot tools). |
+| `perf/` | Milliseconds, megabytes, heap. Also holds its own harness and instruments (`fixtures.ts`, the heap-snapshot tools). |
 | `results/` | Captured runs, as markdown. Written to, not read by, the scripts above. |
 
 The distinction is worth keeping sharp because it did not survive its own first

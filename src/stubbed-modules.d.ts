@@ -103,18 +103,14 @@ declare module '@anthropic-ai/mcpb' {
 declare module 'plist'
 declare module 'cacache'
 
-// `src/stubs/` holds hand-written shims for the next two, but only so that
-// `bun test` can resolve the import when it runs source directly — they are
-// minimal, not faithful models of the real packages. Pointing tsc at them via
-// tsconfig `paths` was tried and rejected: it manufactures ~40 errors about
-// fields the shim declines to describe, in modules that
-// `scripts/build/no-telemetry-plugin.ts` and the native-stub plugin replace wholesale
-// before they ship. (Those errors are real gaps in the shims, worth fixing on
-// their own terms — they are just not typecheck findings.)
-
-declare module '@growthbook/growthbook' {
-  export const GrowthBook: any
-}
+// `src/stubs/` holds a hand-written shim for the next one, but only so that
+// `bun test` can resolve the import when it runs source directly — it is
+// minimal, not a faithful model of the real package. Pointing tsc at it via
+// tsconfig `paths` was tried and rejected: it manufactures errors about
+// fields the shim declines to describe, in modules that the native-stub plugin
+// replaces wholesale before they ship. (Those errors are real gaps in the
+// shim, worth fixing on their own terms — they are just not typecheck
+// findings.)
 
 declare module '@anthropic-ai/sandbox-runtime' {
   export type FsReadRestrictionConfig = any

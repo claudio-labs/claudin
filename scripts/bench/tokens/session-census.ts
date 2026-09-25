@@ -21,11 +21,12 @@
  * a user prompt — only aggregates and command HEADS (the first token).
  *
  * Pricing is a LOCAL mirror of `src/providers/usage/modelCost.ts` (same
- * per-Mtok numbers, same 5m/1h cache-write split): importing that module
- * pulls `src/platform/analytics/growthbook.ts`, whose dependency is stubbed
- * only by the build, so `bun scripts/…` cannot load it. Update `PRICES` when
- * the table there changes; a model missing here is priced at the Opus 4.5
- * tier and named in the output.
+ * per-Mtok numbers, same 5m/1h cache-write split). It was written when
+ * importing that module pulled in the flag resolver, whose dependency only
+ * the build stubbed, so `bun scripts/…` could not load it. The resolver is
+ * gone and the import now loads, so the mirror could be replaced; until it is,
+ * update `PRICES` when the table there changes. A model missing here is priced
+ * at the Opus 4.5 tier and named in the output.
  *
  * Run:
  *   bun scripts/bench/tokens/session-census.ts --since=2026-09-04

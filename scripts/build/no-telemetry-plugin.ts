@@ -8,13 +8,14 @@
  * Only build.ts needs a one-line import + one-line array entry.
  *
  * Kills:
- *   - GrowthBook remote feature flags (api.anthropic.com)
  *   - Internal employee logging
  *   - Prompt dumping / undercover mode
  *
  * The analytics and telemetry modules this plugin used to stub (the sink,
  * Datadog, 1P event logging, the BigQuery exporter, Perfetto/OTel session
- * tracing) were deleted from the tree outright, so they need no stub.
+ * tracing) were deleted from the tree outright, so they need no stub. So was
+ * the GrowthBook remote feature-flag client: runtime flag resolution has been
+ * removed altogether.
  */
 
 import type { BunPlugin } from 'bun'
@@ -29,9 +30,9 @@ import type { BunPlugin } from 'bun'
 // package or, worse, ships a live phone-home path.
 //
 // Feature-flag resolution used to be the biggest entry here: a ~200-line stub
-// that replaced `src/platform/analytics/growthbook.ts` wholesale. That stub is
-// now the source itself, so the flags a user sets are resolved by the file
-// under test rather than by a string in this one.
+// that replaced the GrowthBook client wholesale. It was promoted to real source
+// and later deleted with the last gate that read it, so there is no runtime
+// flag resolution left to stub.
 const stubs: Record<string, string> = {
 
 	// ─── Internal employee logging (not needed in the external build) ─────
@@ -81,7 +82,7 @@ export const noTelemetryPlugin: BunPlugin = {
 	setup(build) {
 		for (const [modulePath, contents] of Object.entries(stubs)) {
 			// Build regex that matches the resolved file path on any OS
-			// e.g. "services/analytics/growthbook" → /services[/\\]analytics[/\\]growthbook\.(ts|js)$/
+			// e.g. "src/utils/undercover" → /src[/\\]utils[/\\]undercover\.(ts|js)$/
 			const escaped = escapeForResolvedPathRegex(modulePath)
 			const filter = new RegExp(`${escaped}\\.(ts|js)$`)
 

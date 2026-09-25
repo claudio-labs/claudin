@@ -56,10 +56,10 @@ const REQUIRED_SUITES = [
   'src/tools/shared/outputFilter/Bash/reductionFloors.test.ts',
   'scripts/build/feature-flags-source-guard.test.ts',
   'scripts/bench/tokens/measure-tool-schemas.test.ts',
-  // Moved, not dropped: flag resolution stopped being a string inside
-  // no-telemetry-plugin.ts and became real source, so its suite moved next to
-  // the module. Same assertions, now run against what the binary uses.
-  'src/platform/analytics/growthbook.test.ts',
+  // Replaces the flag-resolution suite: every `tengu_*` gate was removed and
+  // the resolver deleted with them, so what is worth pinning now is that the
+  // gates stay gone — the census guard is what fails if one creeps back in.
+  'scripts/verify/tengu-census.test.ts',
   'scripts/verify/pr-intent-scan.test.ts',
 ]
 

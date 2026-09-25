@@ -133,7 +133,6 @@ import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.j
 import { isWorktreeModeEnabled } from 'src/vcs/git/worktreeModeEnabled.js'
 import { onGlobalConfigChange } from 'src/platform/config/config.js'
 import { onRuntimeStateChange } from 'src/platform/bootstrap/state.js'
-import { onGrowthBookRefresh } from 'src/platform/analytics/growthbook.js'
 export {
   ALL_AGENT_DISALLOWED_TOOLS,
   CUSTOM_AGENT_DISALLOWED_TOOLS,
@@ -150,7 +149,6 @@ let _enabledCacheVer = 0
 const _enabledCache = new Map<string, { ver: number; val: boolean }>()
 onGlobalConfigChange(() => { _enabledCacheVer++ })
 onRuntimeStateChange(() => { _enabledCacheVer++ })
-onGrowthBookRefresh(() => { _enabledCacheVer++ })
 
 function cachedIsEnabled(tool: { name: string; isEnabled(): boolean }): boolean {
   const cached = _enabledCache.get(tool.name)

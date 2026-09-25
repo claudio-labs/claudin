@@ -6,19 +6,15 @@
  * The whole point is that `tengu_` is not one thing. It plays five different
  * roles and only some of them are dead:
  *
- *   event        1st argument of logEvent/logEventAsync. The destination is an
- *                empty function (scripts/build/no-telemetry-plugin.ts stubs
- *                src/platform/analytics/index), so these are pure dead weight.
- *                `scripts/build/build.ts` blanks them in the bundle for exactly
- *                that reason.
+ *   event        1st argument of logEvent/logEventAsync. The analytics sink
+ *                those calls reached was deleted along with the calls, so an
+ *                occurrence here is a regression.
  *   gate         argument of one of the GATE_FNS below — getFeatureValue,
  *                checkStatsigFeatureGate, checkGate, getDynamicConfig and
- *                friends.
- *                This is the key a user writes in ~/.claudin/feature-flags.json,
- *                so blanking one would silently change which default a gate
- *                resolves to. LIVE — but see docs/tech/tengu-census/gate-audit.md:
- *                a key being live is not the same as the branch it opens
- *                working in this fork.
+ *                friends. The flag resolver behind those accessors was
+ *                deleted once every gate had been inlined to its value or
+ *                removed (docs/tech/tengu-census/gate-audit.md records where
+ *                each key went), so an occurrence here is a regression too.
  *   indirect     a tengu_ name reached some other way — assigned to a const, put
  *                in an array, used as an object key, written into a regex. The
  *                build's rewrite deliberately leaves these alone because it

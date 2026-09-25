@@ -62,7 +62,6 @@ import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { initializeGrowthBook } from 'src/platform/analytics/growthbook.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { isExtractModeActive } from 'src/memory/memdir/paths.js'
 import { getCanUseToolFn } from 'src/platform/headless/print/permissionGlue.js'
@@ -146,10 +145,6 @@ export async function runHeadless(
   // Start headless profiler for first turn
   headlessProfilerStartTurn()
   headlessProfilerCheckpoint('runHeadless_entry')
-
-  // Initialize GrowthBook so feature flags take effect in headless mode.
-  // Without this, the disk cache is empty and all flags fall back to defaults.
-  void initializeGrowthBook()
 
   if (options.resumeSessionAt && !options.resume) {
     process.stderr.write(`Error: --resume-session-at requires --resume\n`)

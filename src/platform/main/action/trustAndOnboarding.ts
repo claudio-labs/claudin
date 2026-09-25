@@ -14,7 +14,6 @@
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import React from 'react';
-import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js';
 import { refreshPolicyLimits } from 'src/platform/policyLimits/index.js';
 import { refreshRemoteManagedSettings } from 'src/platform/remoteManagedSettings/index.js';
 import { validateForceLoginOrg } from 'src/providers/auth/auth.js';
@@ -85,8 +84,8 @@ export async function runTrustAndOnboarding(
   );
   profileCheckpoint('trust_setup_screens_done');
 
-  // Now that trust is established and GrowthBook has auth headers,
-  // resolve the --remote-control / --rc entitlement gate.
+  // Now that trust is established, resolve the --remote-control / --rc
+  // entitlement gate.
   let remoteControl = false;
   if (feature('BRIDGE_MODE') && remoteControlOption !== undefined) {
     const { getBridgeDisabledReason } = await import('src/platform/bridge/bridgeEnabled.js');
@@ -107,10 +106,7 @@ export async function runTrustAndOnboarding(
     // only received the declaration (login.d.ts), not the implementation.
     void refreshRemoteManagedSettings();
     void refreshPolicyLimits();
-    // Clear user data cache BEFORE GrowthBook refresh so it picks up fresh credentials
     resetUserCache();
-    // Refresh GrowthBook after login to get updated feature flags (e.g., for claude.ai MCPs)
-    refreshGrowthBookAfterAuthChange();
   }
 
   // Auto-wizard when no provider profile exists and Onboarding didn't

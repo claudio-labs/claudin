@@ -2,10 +2,9 @@
 //
 // Static, not runtime: `commands.ts` pulls in a large part of the Ink tree, and
 // any module whose import chain reaches `src/terminal/ink.js` fails to load
-// under `bun test` (the `@growthbook/growthbook` stub is a bundler-only alias).
-// So the registry is recovered by scanning the source — which has the useful
-// side effect of seeing the flag-gated entries that a flag-off runtime import
-// would have resolved to null anyway.
+// under `bun test`. So the registry is recovered by scanning the source —
+// which has the useful side effect of seeing the flag-gated entries that a
+// flag-off runtime import would have resolved to null anyway.
 //
 // The scan is not just a snapshot. A command registered as
 // `const x = feature('FLAG') ? require('./x/index.js').default : null` and

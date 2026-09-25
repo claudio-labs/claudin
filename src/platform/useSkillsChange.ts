@@ -1,25 +1,12 @@
 import { useCallback, useEffect } from 'react'
 import type { Command } from 'src/commands/commands.js'
-import {
-  clearCommandMemoizationCaches,
-  clearCommandsCache,
-  getCommands,
-} from 'src/commands/commands.js'
-import { onGrowthBookRefresh } from 'src/platform/analytics/growthbook.js'
+import { clearCommandsCache, getCommands } from 'src/commands/commands.js'
 import { logError } from 'src/shared/log.js'
 import { skillChangeDetector } from 'src/skills/skillChangeDetector.js'
 
 /**
- * Keep the commands list fresh across two triggers:
- *
- * 1. Skill file changes (watcher) — full cache clear + disk re-scan, since
- *    skill content changed on disk.
- * 2. GrowthBook init/refresh — memo-only clear, since only `isEnabled()`
- *    predicates may have changed. Handles commands like /btw whose gate
- *    reads a flag that isn't in the disk cache yet on first session after
- *    a flag rename: getCommands() runs before GB init (main.tsx:2855 vs
- *    showSetupScreens at :3106), so the memoized list is baked with the
- *    default. Once init populates remoteEvalFeatureValues, re-filter.
+ * Keep the commands list fresh when skill files change on disk (watcher):
+ * full cache clear + disk re-scan, since skill content changed.
  */
 export function useSkillsChange(
   cwd: string | undefined,
@@ -41,22 +28,4 @@ export function useSkillsChange(
   }, [cwd, onCommandsChange])
 
   useEffect(() => skillChangeDetector.subscribe(handleChange), [handleChange])
-
-  const handleGrowthBookRefresh = useCallback(async () => {
-    if (!cwd) return
-    try {
-      clearCommandMemoizationCaches()
-      const commands = await getCommands(cwd)
-      onCommandsChange(commands)
-    } catch (error) {
-      if (error instanceof Error) {
-        logError(error)
-      }
-    }
-  }, [cwd, onCommandsChange])
-
-  useEffect(
-    () => onGrowthBookRefresh(handleGrowthBookRefresh),
-    [handleGrowthBookRefresh],
-  )
 }

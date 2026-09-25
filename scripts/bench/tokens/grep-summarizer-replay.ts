@@ -9,7 +9,7 @@
  *   NODE_ENV=test bun --preload ./src/stubs/test-preload.ts \
  *     scripts/bench/tokens/grep-summarizer-replay.ts [--dir <transcriptDir>] [--json]
  *
- * The preload supplies the growthbook/sandbox stubs the bundler normally
+ * The preload supplies the sandbox stub the bundler normally
  * injects; NODE_ENV=test is what lets getGlobalConfig() run outside the app
  * boot sequence (otherwise every call fails open and the run reports 0 saved).
  *

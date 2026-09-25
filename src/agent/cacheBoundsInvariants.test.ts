@@ -23,7 +23,6 @@ import { afterAll, describe, expect, mock, test } from 'bun:test'
 import { _resetAllClippedIdsForTesting } from 'src/agent/compact/stableStubState.js'
 
 // Capture real modules before mocking so afterAll can restore them
-const realGrowthbook = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realDebug = { ...(await import('src/shared/debug.js')) }
 const realBootstrapState = { ...(await import('src/platform/bootstrap/state.js')) }
 const realEnvUtils = { ...(await import('src/shared/envUtils.js')) }
@@ -31,28 +30,6 @@ const realFsOperations = { ...(await import('src/shared/fs/fsOperations.js')) }
 const realLog = { ...(await import('src/shared/log.js')) }
 const realSlowOperations = { ...(await import('src/platform/slowOperations.js')) }
 const realFile = { ...(await import('src/shared/fs/file.js')) }
-
-// ── Shared mocks: silence telemetry/analytics/growthbook used by deep imports ──
-mock.module('src/platform/analytics/growthbook.js', () => ({
-  getFeatureValue_CACHED_MAY_BE_STALE: () => false,
-  getFeatureValue_CACHED_WITH_REFRESH: () => false,
-  getFeatureValue_DEPRECATED: async () => false,
-  checkStatsigFeatureGate_CACHED_MAY_BE_STALE: () => false,
-  checkGate_CACHED_OR_BLOCKING: async () => false,
-  checkSecurityRestrictionGate: async () => false,
-  hasGrowthBookEnvOverride: () => false,
-  getApiBaseUrlHost: () => undefined,
-  onGrowthBookRefresh: () => () => {},
-  refreshGrowthBookAfterAuthChange: () => {},
-  resetGrowthBook: () => {},
-  refreshGrowthBookFeatures: async () => {},
-  setupPeriodicGrowthBookRefresh: () => {},
-  stopPeriodicGrowthBookRefresh: () => {},
-  getDynamicConfig_BLOCKS_ON_INIT: async () => ({}),
-  getDynamicConfig_CACHED_MAY_BE_STALE: () => ({}),
-  initializeGrowthBook: async () => null,
-  getAllGrowthBookFeatures: () => ({}),
-}))
 
 describe('cache bounds invariants', () => {
   test('Markdown tokenCache LRU cap = 500', async () => {
@@ -174,8 +151,6 @@ describe('cache bounds invariants', () => {
 afterAll(() => {
   // Restore modules FIRST so getSessionId() is the real function when
   // _resetAllClippedIdsForTesting() syncs lastSeenSessionId below.
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/shared/debug.js', () => realDebug)
   mock.module('src/shared/debug.js', () => realDebug)
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapState)
