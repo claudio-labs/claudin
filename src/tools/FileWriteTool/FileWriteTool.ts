@@ -1,6 +1,5 @@
 import { dirname, sep } from 'path'
 import { z } from 'zod/v4'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,
@@ -20,7 +19,6 @@ import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { countLinesChanged, getPatchForDisplay } from 'src/vcs/git/diff.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js'
 import {
@@ -29,10 +27,6 @@ import {
 } from 'src/shared/fs/fileHistory.js'
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import {
-  fetchSingleFileGitDiff,
-  type ToolUseDiff,
-} from 'src/vcs/git/gitDiff.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { expandPath } from 'src/shared/fs/path.js'
@@ -49,7 +43,7 @@ import {
   wholeFileRequiredMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
-import { gitDiffSchema, hunkSchema } from 'src/tools/FileEditTool/types.js'
+import { hunkSchema } from 'src/tools/FileEditTool/types.js'
 import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from 'src/tools/FileWriteTool/prompt.js'
 import {
   getToolUseSummary,
@@ -91,7 +85,6 @@ const outputSchema = lazySchema(() =>
       .describe(
         'The original file content before the write (null for new files)',
       ),
-    gitDiff: gitDiffSchema().optional(),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -358,17 +351,6 @@ export const FileWriteTool = buildTool({
       limit: undefined,
     })
 
-
-    let gitDiff: ToolUseDiff | undefined
-    if (
-      isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) &&
-      getFeatureValue_CACHED_MAY_BE_STALE('tengu_quartz_lantern', false)
-    ) {
-      const startTime = Date.now()
-      const diff = await fetchSingleFileGitDiff(fullFilePath)
-      if (diff) gitDiff = diff
-    }
-
     // Per-edit LSP diagnostic injection: wait briefly for the LSP server to
     // publish diagnostics for this file, then attach them so the model sees
     // errors in the same turn. Single await covers both create + update paths.
@@ -397,7 +379,6 @@ export const FileWriteTool = buildTool({
         content,
         structuredPatch: patch,
         originalFile: oldContent,
-        ...(gitDiff && { gitDiff }),
       }
       // Track lines added and removed for file updates, right before yielding result
       countLinesChanged(patch)
@@ -416,7 +397,6 @@ export const FileWriteTool = buildTool({
       content,
       structuredPatch: [],
       originalFile: null,
-      ...(gitDiff && { gitDiff }),
     }
 
     // For creation of new files, count all lines as additions, right before yielding the result

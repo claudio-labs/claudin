@@ -59,19 +59,6 @@ export async function detectCurrentRepositoryWithHost(): Promise<ParsedRepositor
 }
 
 /**
- * Synchronously returns the cached github.com repository for the current cwd
- * as "owner/name", or null if it hasn't been resolved yet or the host is not
- * github.com. Call detectCurrentRepository() first to populate the cache.
- *
- * Callers construct github.com URLs, so GHE hosts are filtered out here.
- */
-export function getCachedRepository(): string | null {
-  const parsed = repositoryWithHostCache.get(getCwd())
-  if (!parsed || parsed.host !== 'github.com') return null
-  return `${parsed.owner}/${parsed.name}`
-}
-
-/**
  * Parses a git remote URL into host, owner, and name components.
  * Accepts any host (github.com, GHE instances, etc.).
  *

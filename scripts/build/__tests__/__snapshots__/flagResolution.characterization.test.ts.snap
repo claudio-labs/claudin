@@ -292,14 +292,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 3,
     "stockValue": true,
   },
-  "tengu_quartz_lantern": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
-  },
   "tengu_remote_backend": {
     "defaults": [
       "false",
