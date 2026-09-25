@@ -14,6 +14,12 @@
  * what the model was shown: the budget keeps it under Grep's 20k persistence
  * threshold, and the tool-result summarizer passes a bodies result through
  * (`isGrepBodiesResult`).
+ *
+ * PARKED 2026-09-25: never engaged. `bodies` was sent in 0 of 8 sessions of
+ * the session A/B and 0 of 5 children of the sub-agent A/B
+ * (`scripts/bench/ab/subagent-audit-ab.ts`): the models search for a
+ * definition in `content` mode (`export function (a|b|c)\b`) and never in
+ * `symbols`. A retry should make the bodies answer the mode they use.
  */
 import { z } from 'zod/v4'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'

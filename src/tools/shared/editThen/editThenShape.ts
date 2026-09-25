@@ -12,6 +12,10 @@
  * all calls (team memory `request-count-levers-2026-09-24`). Saying so in the
  * prompt moved nothing (CLAUDIN_RESPONSE_CHAINS); this makes it a parameter of
  * the edit itself.
+ *
+ * Measured 2026-09-25 (session A/B, N=8): used in 8/8 sessions, calls −14%
+ * against the base and the placebo, cost −7%, every session 18/18. The
+ * default is the user's call.
  */
 import { z } from 'zod/v4'
 import { isEnvTruthy } from 'src/shared/envUtils.js'

@@ -148,6 +148,9 @@ export function isFloorCapEnabled(): boolean {
  * the Patch on it hit the read gate. Keeping the paths while cutting the prose
  * fixes the first without the second.
  *
+ * Measured 2026-09-25 (session A/B, N=8): every capped listing kept its src/
+ * paths, and no hidden file was read late (base: 5 of 8 sessions); cost −1%.
+ *
  * Read per call, unlike CAP_DISABLED, so a test can set it.
  */
 function isCapKeepPathsEnabled(): boolean {
