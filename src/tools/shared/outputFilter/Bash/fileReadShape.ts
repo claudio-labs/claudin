@@ -147,7 +147,7 @@ const UNFOLLOWED_KEYWORDS: ReadonlySet<string> = new Set([
  * or a glob survives the parse: an operator, a comment, a malformed segment
  * the walker could not split.
  */
-function wordsOf(segment: string): ReadWord[] | null {
+export function wordsOf(segment: string): ReadWord[] | null {
   const parsed = tryParseShellCommand(segment, (name) => `$${name}`);
   if (!parsed.success) return null;
   const words: ReadWord[] = [];
@@ -265,7 +265,7 @@ function printedBy(
  * argument (home), `-` (the last directory) or any other flag, more than one
  * argument, an empty one, a glob, a word the shell would rewrite (`~`, `$D`).
  */
-function cdTarget(args: readonly ReadWord[]): string | null {
+export function cdTarget(args: readonly ReadWord[]): string | null {
   const target = args.length === 1 ? args[0]! : null;
   if (!target || target.glob || target.text === "" || target.text.startsWith("-")) return null;
   return EXPANDED_WORD_RE.test(target.text) ? null : target.text;

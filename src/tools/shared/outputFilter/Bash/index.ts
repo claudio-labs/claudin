@@ -14,7 +14,10 @@ import {
   splitTrailingReducerPipe,
 } from "src/tools/shared/outputFilter/Bash/pipeline.js";
 import {
+  BOUNDED_READ_MAX_LINES,
   ERROR_FLOOR,
+  FLOOR_CAP_LINES,
+  isCapKeepBoundedEnabled,
   isCappableBody,
   isFloorCapEnabled,
   looksLikeDiagnostics,
@@ -26,6 +29,7 @@ import {
   parsePureFileRead,
   type ReadWord,
 } from "src/tools/shared/outputFilter/Bash/fileReadShape.js";
+import { commandLineBound } from "src/tools/shared/outputFilter/Bash/lineBound.js";
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 import type { PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/Bash/types.js";
 
@@ -163,6 +167,31 @@ function floorOptionsFor(
     collapseTemplates: !diagnostics && !looksLikeLocationList(rawStdout),
     cap: !diagnostics && isFloorCapEnabled(),
   };
+}
+
+/**
+ * Whether this result is a read whose command declared how many lines it
+ * prints (`lineBound.ts`) and which the floor cap would otherwise cut. The
+ * model sized it, so it goes back whole and as printed, inside the wrapper of a
+ * pass-through read: the tool-result summarizer stands aside for that one,
+ * where it would head-tail an untagged result past 8k chars instead, and a
+ * range the model edits from must not come back a byte off.
+ *
+ * Only where the cap would have cut: no spec matched (a spec decides its own
+ * cut, and a rewrite needs one), the floor offers the cap for this body
+ * (`floorOptionsFor`), and it is longer than the cap. And only up to
+ * BOUNDED_READ_MAX_LINES, declared and printed, and the pass-through's 28k
+ * chars, past which Bash would persist the result behind a preview.
+ */
+function isWithinCommandBound(rawStdout: string, plan: PreExecPlan): boolean {
+  if (!isCapKeepBoundedEnabled() || plan.filter !== null) return false;
+  if (rawStdout.length > FILE_READ_PASSTHROUGH_MAX_CHARS) return false;
+  if (!floorOptionsFor(rawStdout, plan).cap) return false;
+  // The cap's own measure (pipeline.ts, maxLines) below, the printed lines above.
+  if (rawStdout.split("\n").length <= FLOOR_CAP_LINES) return false;
+  if (rawStdout.trimEnd().split("\n").length > BOUNDED_READ_MAX_LINES) return false;
+  const bound = commandLineBound(plan.effectiveCommand);
+  return bound !== null && bound <= BOUNDED_READ_MAX_LINES;
 }
 
 // ---------------------------------------------------------------------------
@@ -312,6 +341,8 @@ export function applyBashFilterToStdout(
       // and a file shown one byte off is a file the model edits from a copy
       // that is not the file, and one the read credit cannot find.
       if (isUncutFileRead(rawStdout, plan)) return wrapFileRead(rawStdout);
+      // A read the model already bounded keeps every line it asked for.
+      if (isWithinCommandBound(rawStdout, plan)) return wrapFileRead(rawStdout);
 
       const pipelineResult: PipelineResult = applyPipeline(
         withGenericFloor(plan.filter, floorOptionsFor(rawStdout, plan)),
