@@ -711,7 +711,7 @@ describe('S17 — a refused patch resubmitted by reference', () => {
         `*** Update File: ${b}\n@@\n-l9\n+L9\n*** End Patch`,
     }
     // The order toolExecution runs them in: resolveInput, then validateInput.
-    expect(ApplyPatchTool.resolveInput!(sent, ctx)).toEqual({ ok: true, input: sent })
+    expect(await ApplyPatchTool.resolveInput!(sent, ctx)).toEqual({ ok: true, input: sent })
     const refused = await ApplyPatchTool.validateInput!(sent, ctx)
     expect(refused.result).toBe(false)
     if (!refused.result) {
@@ -720,7 +720,7 @@ describe('S17 — a refused patch resubmitted by reference', () => {
       expect(refused.message).toContain(`"${RESUBMIT_SENTINEL}"`)
     }
 
-    const resolved = ApplyPatchTool.resolveInput!({ patchText: RESUBMIT_SENTINEL }, ctx)
+    const resolved = await ApplyPatchTool.resolveInput!({ patchText: RESUBMIT_SENTINEL }, ctx)
     expect(resolved).toEqual({ ok: true, input: sent })
     if (!resolved.ok) return
     expect(await ApplyPatchTool.validateInput!(resolved.input, ctx)).toEqual({ result: true })

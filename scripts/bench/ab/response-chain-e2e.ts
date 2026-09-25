@@ -74,6 +74,22 @@
  *      `cat src/*.ts` runs and `cat /etc/*.conf` is still refused by the path
  *      check; with `=0`, `cat src/*.ts` is refused
  *
+ * Scenarios 14-19 are round 4's `then` on Patch and Edit (CLAUDIN_EDIT_THEN=1,
+ * src/tools/shared/editThen/; plan .claudin/plans/harmonic-wobbling-clock.md):
+ *  14. [Patch a.ts adding NEW, then grep -c NEW a.ts → exit 3 → touch never.txt]:
+ *      one tool_result holds the patch summary, the grep's `1` (it saw the
+ *      patched file), `exit 3`'s exit code, and the third command as not run
+ *  15. [Patch b.ts then `exit 3`, Git add a.ts + commit]: the flag arms the
+ *      guard, so the commit is skipped; its control, then `true`, commits
+ *  16. --permission-mode acceptEdits: a command that would open a dialog is
+ *      dropped — the patch applies and its result says why — while a read-only
+ *      one runs
+ *  17. a PreToolUse hook in settings.json drops `then` in bypass mode too
+ *  18. Edit carries `then` the same way
+ *  19. wire, the flag off/on: `then` in the Patch and Edit schemas and the
+ *      Patch description only when on; off, a Patch sending it is refused by
+ *      the strict schema and a.ts stays as it was
+ *
  * Isolation, as in read-credit-e2e.ts. Each run gets a fresh workspace and a
  * fresh CLAUDIN_CONFIG_DIR under one temp dir. claudin takes the Anthropic API
  * key from the active provider profile and never from ANTHROPIC_API_KEY, so an
@@ -184,10 +200,22 @@ const STATUS = gitCall('git status')
 const COMMIT_WITH_STATUS = gitCall('git add a.ts', 'git commit -m x', 'git status')
 const READ_BOTH = (ws: string): Step => ({ calls: [readCall(ws, 'a.ts'), readCall(ws, 'b.ts')] })
 const DONE: Step = { text: 'Done.' }
+/** A Patch with `then` commands (CLAUDIN_EDIT_THEN). */
+const withThen = (call: Call, then: string[]): Call => ({ ...call, input: { ...call.input, then } })
+const GREP_NEW_COUNT = 'grep -c NEW a.ts'
+/** Writes a file with no redirect and no read-only verdict: it asks outside bypass and auto. */
+const WRITE_RAN = `bun -e "require('fs').writeFileSync('ran.txt', 'x')"`
 
 const CHAINS_ON: Record<string, string> = { CLAUDIN_RESPONSE_CHAINS: '1' }
 const ONE_CALL_COMMIT_ON: Record<string, string> = { CLAUDIN_ONE_CALL_COMMIT: '1' }
 const READONLY_GLOBS_OFF: Record<string, string> = { CLAUDIN_READONLY_GLOBS: '0' }
+const THEN_ON: Record<string, string> = { CLAUDIN_EDIT_THEN: '1' }
+/** Any PreToolUse hook: its presence is what drops `then`. */
+const BASH_HOOK_SETTINGS: Json = {
+  hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'true' }] }] },
+}
+const THEN_RULE = 'put its test, typecheck or build command in `then`'
+const THEN_SKIPPED = '`then` did not run:'
 
 /** Scenario 13's src/, which `cat src/*.ts` prints. */
 const SRC_ONE = "export const SRC_ONE = 'globbed one'"
@@ -225,7 +253,9 @@ type RunSpec = {
   /** Leave a.ts modified after the initial commit. */
   pending?: boolean
   /** Run under `--permission-mode <mode>` instead of `--dangerously-skip-permissions`. */
-  permissionMode?: 'default'
+  permissionMode?: 'default' | 'acceptEdits'
+  /** Written to the run's config dir as settings.json. */
+  settings?: Json
 }
 type ToolResult = { step: number; index: number; tool: string; text: string; isError: boolean }
 type Capture = { route: string; body: Json }
@@ -559,6 +589,147 @@ const SCENARIOS: Scenario[] = [
       onDenials(off, 0, 0, true, '… as a permission denial: permission_denials names it'),
     ],
   },
+  {
+    key: '14',
+    title: 'then: the checks run after the patch, in order, and stop at the first that fails',
+    runs: [
+      {
+        label: 'then on',
+        env: THEN_ON,
+        steps: ({ ws }) => [
+          READ_BOTH(ws),
+          { calls: [withThen(PATCH_A_NEW, [GREP_NEW_COUNT, 'exit 3', 'touch never.txt'])] },
+          DONE,
+        ],
+      },
+    ],
+    expect: ([run]) => [
+      onResult(run, 1, 0, 'the Patch applies, and its result is not is_error though a check failed', isPatchSuccess),
+      onResult(run, 1, 0, `the grep ran after the write: "$ ${GREP_NEW_COUNT}" then 1`, r => r.text.includes(`$ ${GREP_NEW_COUNT}\n1`)),
+      onResult(run, 1, 0, '`exit 3` ran and its exit code is reported', r => r.text.includes('$ exit 3') && r.text.includes('Exit code 3')),
+      onResult(run, 1, 0, 'the third command is reported as not run', r =>
+        r.text.includes('Not run, an earlier command failed: $ touch never.txt'),
+      ),
+      onDisk(run, 'never.txt does not exist', () => ({ ok: !existsSync(join(run.ws, 'never.txt')) })),
+      onDisk(run, 'a.ts carries NEW on disk', () => ({ ok: readFileSync(join(run.ws, 'a.ts'), 'utf8').includes(A_NEW) })),
+    ],
+  },
+  {
+    key: '15',
+    title: 'then: a red check skips the commit in its response; a green one lets it land',
+    runs: [
+      {
+        label: 'then on, red check',
+        env: THEN_ON,
+        pending: true,
+        steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_B, ['exit 3']), COMMIT] }, DONE],
+      },
+      {
+        label: 'then on, green check (control)',
+        env: THEN_ON,
+        pending: true,
+        steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_B, ['true']), COMMIT] }, DONE],
+      },
+    ],
+    expect: ([red, green]) => [
+      onResult(red, 1, 0, 'the Patch applies and reports Exit code 3', r => isPatchSuccess(r) && r.text.includes('Exit code 3')),
+      onResult(red, 1, 1, 'the Git add + commit comes back "Skipped: Patch failed earlier… this Git call…", is_error', r =>
+        isSkipOf(r, 'Patch', 'Git'),
+      ),
+      commitsExpected(red, 1, 'no commit landed: git log holds the initial commit only'),
+      onResult(green, 1, 1, 'the Git add + commit runs', ranClean),
+      commitsExpected(green, 2, 'the commit landed'),
+    ],
+  },
+  {
+    key: '16',
+    title: 'then under acceptEdits: a command that would prompt is dropped, a read-only one runs',
+    runs: [
+      {
+        label: 'then on, a command that asks',
+        env: THEN_ON,
+        permissionMode: 'acceptEdits',
+        steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_A_NEW, [WRITE_RAN])] }, DONE],
+      },
+      {
+        label: 'then on, a read-only command',
+        env: THEN_ON,
+        permissionMode: 'acceptEdits',
+        steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_A_NEW, [GREP_NEW_COUNT])] }, DONE],
+      },
+    ],
+    expect: ([asks, readOnly]) => [
+      onResult(asks, 1, 0, 'the Patch applies', isPatchSuccess),
+      onResult(asks, 1, 0, `its result says "${THEN_SKIPPED} … would need a permission prompt"`, r =>
+        r.text.includes(THEN_SKIPPED) && r.text.includes('would need a permission prompt'),
+      ),
+      onDisk(asks, 'ran.txt does not exist', () => ({ ok: !existsSync(join(asks.ws, 'ran.txt')) })),
+      onDisk(asks, 'a.ts carries NEW on disk', () => ({ ok: readFileSync(join(asks.ws, 'a.ts'), 'utf8').includes(A_NEW) })),
+      onResult(readOnly, 1, 0, `the read-only check runs: "$ ${GREP_NEW_COUNT}" then 1`, r =>
+        isPatchSuccess(r) && r.text.includes(`$ ${GREP_NEW_COUNT}\n1`),
+      ),
+    ],
+  },
+  {
+    key: '17',
+    title: 'then: a configured PreToolUse hook drops it, in bypass mode too',
+    runs: [
+      {
+        label: 'then on, a Bash hook configured',
+        env: THEN_ON,
+        settings: BASH_HOOK_SETTINGS,
+        steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_A_NEW, ['touch ran.txt'])] }, DONE],
+      },
+    ],
+    expect: ([run]) => [
+      onResult(run, 1, 0, 'the Patch applies', isPatchSuccess),
+      onResult(run, 1, 0, `its result says "${THEN_SKIPPED} a PreToolUse or PostToolUse hook is configured…"`, r =>
+        r.text.includes(`${THEN_SKIPPED} a PreToolUse or PostToolUse hook is configured`),
+      ),
+      onDisk(run, 'ran.txt does not exist', () => ({ ok: !existsSync(join(run.ws, 'ran.txt')) })),
+    ],
+  },
+  {
+    key: '18',
+    title: 'then on Edit',
+    runs: [
+      {
+        label: 'then on',
+        env: THEN_ON,
+        steps: ({ ws }) => [
+          { calls: [readCall(ws, 'a.ts')] },
+          {
+            calls: [
+              { tool: 'Edit', input: { file_path: join(ws, 'a.ts'), old_string: A_NAME, new_string: A_NEW, then: [GREP_NEW_COUNT] } },
+            ],
+          },
+          DONE,
+        ],
+      },
+    ],
+    expect: ([run]) => [
+      onResult(run, 1, 0, `the Edit applies and its result carries "$ ${GREP_NEW_COUNT}" then 1`, r =>
+        !r.isError && r.text.includes('has been updated successfully') && r.text.includes(`$ ${GREP_NEW_COUNT}\n1`),
+      ),
+    ],
+  },
+  {
+    key: '19',
+    title: 'wire: `then` only with the flag',
+    runs: [
+      { label: 'then off', env: {}, steps: ({ ws }) => [READ_BOTH(ws), { calls: [withThen(PATCH_A_NEW, ['true'])] }, DONE] },
+      { label: 'then on', env: THEN_ON, steps: () => [DONE] },
+    ],
+    expect: ([off, on]) => [
+      onWire(off, 'main', 'Patch and Edit have no `then` in their schemas, and the Patch description does not name it', b =>
+        !hasThenField(b, 'Patch') && !hasThenField(b, 'Edit') && !toolDescription(b, 'Patch').includes(THEN_RULE),
+      ),
+      onResult(off, 1, 0, 'a Patch sending `then` is refused by the strict schema (is_error)', r => r.isError && r.text.includes('then')),
+      onDisk(off, 'a.ts is as committed', () => ({ ok: readFileSync(join(off.ws, 'a.ts'), 'utf8') === FILES['a.ts'] })),
+      onWire(on, 'main', 'Patch and Edit carry `then` in their schemas', b => hasThenField(b, 'Patch') && hasThenField(b, 'Edit')),
+      onWire(on, 'main', `the Patch description says "${THEN_RULE}"`, b => toolDescription(b, 'Patch').includes(THEN_RULE)),
+    ],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -597,6 +768,17 @@ function gitInstructions(body: Json): string | undefined {
 
 /** The main loop and a sub-agent send the tool pool; titles and other side queries send none. */
 const isMainLoop = (body: Json): boolean => Array.isArray(body.tools) && body.tools.length > 5
+
+function toolOf(body: Json, name: string): Json | undefined {
+  return (Array.isArray(body.tools) ? body.tools.filter(isRecord) : []).find(t => t.name === name)
+}
+
+function hasThenField(body: Json, name: string): boolean {
+  const schema = toolOf(body, name)?.input_schema
+  return isRecord(schema) && isRecord(schema.properties) && 'then' in schema.properties
+}
+
+const toolDescription = (body: Json, name: string): string => String(toolOf(body, name)?.description ?? '')
 
 let counter = 0
 
@@ -855,6 +1037,7 @@ async function runOne(s: Scenario, spec: RunSpec, n: number, root: string): Prom
   }
   makeWorkspace(run.ws, spec)
   seedConfig(run.configDir)
+  if (spec.settings) writeFileSync(join(run.configDir, 'settings.json'), JSON.stringify(spec.settings, null, 2))
   active = { run, steps: spec.steps({ ws: run.ws, subToken: run.subToken }) }
   const permission = spec.permissionMode ? ['--permission-mode', spec.permissionMode] : ['--dangerously-skip-permissions']
   const out = await runCli(['-p', `Run the scripted steps. ${run.token}`, ...COMMON, ...permission], run.ws, childEnv(run.configDir, spec.env))

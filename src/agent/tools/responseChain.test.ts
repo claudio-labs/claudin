@@ -97,6 +97,27 @@ describe('isFailedResult', () => {
     expect(isFailedResult(c, result(c.id, { data: { stdout: '' } }))).toBe(false)
   })
 
+  test('a Patch or Edit whose `then` check failed is a failure; a skipped one after it is not the cause', () => {
+    const red = { then: [{ command: 'bun test', ran: true, exitCode: 1, output: '' }] }
+    const interrupted = { then: [{ command: 'bun test', ran: true, exitCode: null, output: '' }] }
+    const green = {
+      then: [
+        { command: 'bun test', ran: true, exitCode: 0, output: '' },
+        { command: 'tsc', ran: false, exitCode: null, output: '' },
+      ],
+    }
+    for (const name of ['Patch', 'Edit']) {
+      const c = call(name)
+      expect(isFailedResult(c, result(c.id, { data: red }))).toBe(true)
+      expect(isFailedResult(c, result(c.id, { data: interrupted }))).toBe(true)
+      expect(isFailedResult(c, result(c.id, { data: green }))).toBe(false)
+      expect(isFailedResult(c, result(c.id, { data: { files: [] } }))).toBe(false)
+    }
+    // Another tool's `then` field means nothing.
+    const other = call('Write')
+    expect(isFailedResult(other, result(other.id, { data: red }))).toBe(false)
+  })
+
   test('a user message with string content is not a result', () => {
     const c = call('Edit')
     const text = { ...result(c.id), message: { role: 'user', content: 'hi' } } as Message

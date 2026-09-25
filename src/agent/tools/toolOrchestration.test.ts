@@ -14,14 +14,18 @@ import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.
 
 const FLAG = 'CLAUDIN_RESPONSE_CHAINS'
 const COMMIT_FLAG = 'CLAUDIN_ONE_CALL_COMMIT'
+const THEN_FLAG = 'CLAUDIN_EDIT_THEN'
 const priorFlag = process.env[FLAG]
 const priorCommitFlag = process.env[COMMIT_FLAG]
+const priorThenFlag = process.env[THEN_FLAG]
 
 afterEach(() => {
   if (priorFlag === undefined) delete process.env[FLAG]
   else process.env[FLAG] = priorFlag
   if (priorCommitFlag === undefined) delete process.env[COMMIT_FLAG]
   else process.env[COMMIT_FLAG] = priorCommitFlag
+  if (priorThenFlag === undefined) delete process.env[THEN_FLAG]
+  else process.env[THEN_FLAG] = priorThenFlag
 })
 
 /** Every call that reached `call()`, in the order it ran — a failed one included. */
@@ -72,11 +76,18 @@ function probe<S extends z.ZodType<Record<string, unknown>>>(opts: {
 function probeTools(ran: Ran) {
   const edit = probe({
     name: 'Edit',
-    schema: z.strictObject({ file: z.string(), ok: z.boolean() }),
+    schema: z.strictObject({
+      file: z.string(),
+      ok: z.boolean(),
+      then: z.enum(['green', 'red']).optional(),
+    }),
     readOnly: () => false,
     run: input => {
       if (!input.ok) throw new Error('String to replace not found in file.')
-      return 'edited'
+      if (input.then === undefined) return 'edited'
+      // What the real Edit returns when its `then` check ran (editThenShape.ts).
+      const exitCode = input.then === 'red' ? 1 : 0
+      return { filePath: input.file, then: [{ command: 'bun test', ran: true, exitCode, output: '' }] }
     },
     label: input => `Edit ${input.file}`,
     ran,
@@ -345,6 +356,38 @@ describe('runTools — the guard under CLAUDIN_ONE_CALL_COMMIT=1', () => {
       ['Edit', { file: 'README.md', ok: true }],
       ['Git', { commands: ['git add README.md', 'git commit -m x', 'git status'] }],
     ])
+    expect(ran).toEqual(['Edit README.md', 'Git git add README.md; git commit -m x; git status'])
+  })
+})
+
+describe('runTools — the guard under CLAUDIN_EDIT_THEN=1', () => {
+  const commit = ['Git', { commands: ['git add README.md', 'git commit -m x', 'git status'] }] as [
+    string,
+    Record<string, unknown>,
+  ]
+
+  test('the flag arms the guard: a commit after an edit whose check came back red is skipped', async () => {
+    delete process.env[FLAG]
+    delete process.env[COMMIT_FLAG]
+    process.env[THEN_FLAG] = '1'
+    const { ran, results } = await respond([['Edit', { file: 'README.md', ok: true, then: 'red' }], commit])
+    expect(ran).toEqual(['Edit README.md'])
+    expect(results.get('toolu_1')!.text).toContain('Skipped: Edit failed')
+  })
+
+  test('after a green check, the commit in the same response runs', async () => {
+    delete process.env[FLAG]
+    delete process.env[COMMIT_FLAG]
+    process.env[THEN_FLAG] = '1'
+    const { ran } = await respond([['Edit', { file: 'README.md', ok: true, then: 'green' }], commit])
+    expect(ran).toEqual(['Edit README.md', 'Git git add README.md; git commit -m x; git status'])
+  })
+
+  test('off, a red check stops nothing', async () => {
+    delete process.env[FLAG]
+    delete process.env[COMMIT_FLAG]
+    delete process.env[THEN_FLAG]
+    const { ran } = await respond([['Edit', { file: 'README.md', ok: true, then: 'red' }], commit])
     expect(ran).toEqual(['Edit README.md', 'Git git add README.md; git commit -m x; git status'])
   })
 })
