@@ -5,6 +5,8 @@ import {
   getIsNonInteractiveSession,
   setIsInteractive,
 } from 'src/platform/bootstrap/state.js'
+import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
+import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
 import { WEB_RESEARCHER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
 import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
 import {
@@ -26,9 +28,11 @@ describe('Agent tool prompt — proactive dispatch guidance', () => {
     // It used to say "Dispatch \`Explore\` autonomously", ungated — the bullet
     // shipped whether or not that agent was registered. `Code` is always
     // registered and a fork is always spawnable, so the replacement has no
-    // such gap.
+    // such gap. Explore is named again, but only through EXPLORE_AGENT_TYPE
+    // behind `exploreListed` — never as a literal (the renders below pin both
+    // states).
     expect(src).toContain('- Delegate autonomously for any "investigate across N files" intent')
-    expect(src).not.toContain('Explore')
+    expect(src).not.toMatch(/['"`]Explore['"`]/)
   })
 
   test('the fork-or-fresh tail of the bullet is gated on fork being enabled', () => {
@@ -352,5 +356,70 @@ describe('agent listing line — CLAUDIN_LEAN_AGENT_PROMPT uses whenToUseLean', 
         lineIn(agent, isLeanAgentPromptEnabled()),
       )
     }
+  })
+})
+
+// The description names Explore only when the built-in is in the list it was
+// rendered with (CLAUDIN_EXPLORE_AGENT). The pinned hashes above render with no
+// agents, so they are the proof that the off state did not move a byte.
+describe('Agent tool description — the Explore lane follows the agent list', () => {
+  const SHAPES: Array<[string, Partial<AgentPromptDeps>, boolean]> = [
+    ['compact', { isCompactToolPromptsEnabled: () => true }, false],
+    ['full, fork on', {}, false],
+    ['full, fork off', { isForkSubagentEnabled: () => false }, false],
+    ['lean', { isLeanAgentPromptEnabled: () => true }, false],
+    ['coordinator', {}, true],
+  ]
+
+  function renderWith(
+    agents: Parameters<typeof renderAgentPrompt>[0],
+    overrides: Partial<AgentPromptDeps>,
+    isCoordinator = false,
+    allowed?: string[],
+  ): string {
+    return renderAgentPrompt(agents, isCoordinator, allowed, makeDeps(overrides))
+  }
+
+  for (const [shape, overrides, isCoordinator] of SHAPES) {
+    test(`${shape}: no Explore in the list, no Explore in the text`, () => {
+      expect(renderWith([GENERAL_PURPOSE_AGENT], overrides, isCoordinator)).not.toContain('Explore')
+    })
+  }
+
+  test('compact: the research line sends a codebase search to Explore', () => {
+    const text = renderWith([GENERAL_PURPOSE_AGENT, EXPLORE_AGENT], {
+      isCompactToolPromptsEnabled: () => true,
+    })
+    expect(text).toContain(
+      '- Say whether you expect code or research. To search this codebase, use `subagent_type: "Explore"`: it is read-only and quotes what it finds verbatim, with line numbers. For other research pass `readOnly: true`',
+    )
+    // Everything else in the compact text is the off-state text.
+    const off = renderWith([GENERAL_PURPOSE_AGENT], { isCompactToolPromptsEnabled: () => true })
+    const changed = text.split('\n').filter(line => !off.split('\n').includes(line))
+    expect(changed).toHaveLength(1)
+  })
+
+  test('full text: the research bullet, the readOnly line and the dispatch bullet name it', () => {
+    const text = renderWith([GENERAL_PURPOSE_AGENT, EXPLORE_AGENT], {})
+    expect(text).toContain('- **Research**: write the question out for a fresh agent: `Explore` for a search of this codebase, `Code` for anything else.')
+    expect(text).toContain('To search this codebase, use `Explore` instead: it is read-only and quotes what it finds verbatim, with line numbers.')
+    expect(text).toContain('Write the question out for `Explore`; fork only when the question is about this conversation.')
+  })
+
+  test('fork off: the readOnly line still names it', () => {
+    const text = renderWith([GENERAL_PURPOSE_AGENT, EXPLORE_AGENT], { isForkSubagentEnabled: () => false })
+    expect(text).toContain('To search this codebase, use `Explore` instead')
+    expect(text).not.toContain('Write the question out for `Explore`')
+  })
+
+  test('a custom agent that happens to be called Explore is not the built-in', () => {
+    const custom = { ...EXPLORE_AGENT, source: 'userSettings' } as unknown as typeof EXPLORE_AGENT
+    const text = renderWith([GENERAL_PURPOSE_AGENT, custom], { isCompactToolPromptsEnabled: () => true })
+    expect(text).not.toContain('subagent_type: "Explore"')
+  })
+
+  test('an Agent(x,y) restriction that leaves Explore out leaves it unnamed', () => {
+    const text = renderWith([GENERAL_PURPOSE_AGENT, EXPLORE_AGENT], { isCompactToolPromptsEnabled: () => true }, false, ['Code'])
+    expect(text).not.toContain('Explore')
   })
 })

@@ -1,7 +1,7 @@
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { capitalize } from 'src/shared/text/stringUtils.js'
 import { logError } from 'src/shared/log.js'
-import { MODEL_ALIASES, type ModelAlias } from 'src/providers/model/aliases.js'
+import { MODEL_ALIASES } from 'src/providers/model/aliases.js'
 import { getModelOptions } from 'src/providers/model/modelOptions.js'
 import { applyBedrockRegionPrefix, getBedrockRegionPrefix } from 'src/providers/model/bedrock.js'
 import {
@@ -35,11 +35,18 @@ export function getDefaultSubagentModel(): string {
  * that prefix is inherited by subagents using alias models (e.g., "sonnet", "haiku", "opus").
  * This ensures subagents use the same region as the parent, which is necessary when
  * IAM permissions are scoped to specific cross-region inference profiles.
+ *
+ * `toolSpecifiedModel` is the Agent tool's per-call `model`: `inherit` is the
+ * parent's model, and a family alias (haiku cheaper, opus stronger) wins over
+ * the agent's own model — on a Claude-native provider only. Elsewhere a family
+ * alias names no model, so it is ignored and the agent's configured model
+ * (the /agents override, then the definition) decides, as it would with no
+ * per-call model at all.
  */
 export function getAgentModel(
   agentModel: string | undefined,
   parentModel: string,
-  toolSpecifiedModel?: ModelAlias,
+  toolSpecifiedModel?: AgentModelAlias,
   permissionMode?: PermissionMode,
 ): string {
   if (process.env.CLAUDIN_SUBAGENT_MODEL) {
@@ -68,8 +75,19 @@ export function getAgentModel(
     return resolvedModel
   }
 
-  // Prioritize tool-specified model if provided
-  if (toolSpecifiedModel) {
+  if (toolSpecifiedModel === 'inherit') {
+    return getRuntimeMainLoopModel({
+      permissionMode: permissionMode ?? 'default',
+      mainLoopModel: parentModel,
+      exceeds200kTokens: false,
+    })
+  }
+
+  // Prioritize tool-specified model if provided. This used to run before the
+  // non-Claude-native guard below, so `haiku` on an OpenAI-compatible provider
+  // became the profile's first model (or a hardcoded default), and on a custom
+  // Anthropic-compatible URL a Claude ID the endpoint may not serve.
+  if (toolSpecifiedModel && checkIsClaudeNativeProvider()) {
     if (aliasMatchesParentTier(toolSpecifiedModel, parentModel)) {
       return parentModel
     }

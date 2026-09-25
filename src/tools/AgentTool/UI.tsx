@@ -26,7 +26,7 @@ import { formatDuration, formatNumber, truncateToWidth } from 'src/shared/text/f
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { useRampedNumber } from 'src/terminal/hooks/useRampedNumber.js';
 import { buildSubagentLookups, createAssistantMessage, EMPTY_LOOKUPS } from 'src/agent/messages/messages.js';
-import type { ModelAlias } from 'src/providers/model/aliases.js';
+import { checkIsClaudeNativeProvider, type AgentModelAlias } from 'src/providers/model/agent.js';
 import { getMainLoopModel, parseUserSpecifiedModel, renderModelName } from 'src/providers/model/model.js';
 import type { Theme, ThemeName } from 'src/terminal/theme/theme.js';
 import type { outputSchema, Progress, RemoteLaunchedOutput } from 'src/tools/AgentTool/AgentTool.js';
@@ -460,10 +460,12 @@ export function renderToolUseTag(input: Partial<{
   description: string;
   prompt: string;
   subagent_type: string;
-  model?: ModelAlias;
+  model?: AgentModelAlias;
 }>): React.ReactNode {
   const tags: React.ReactNode[] = [];
-  if (input.model) {
+  // `inherit` runs on the main model, and a family alias is ignored off a
+  // Claude-native provider (getAgentModel), so neither gets a model tag.
+  if (input.model && input.model !== 'inherit' && checkIsClaudeNativeProvider()) {
     const mainModel = getMainLoopModel();
     const agentModel = parseUserSpecifiedModel(input.model);
     if (agentModel !== mainModel) {

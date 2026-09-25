@@ -524,13 +524,19 @@ describe('renderDossierForSubagent — budget basics', () => {
     // There used to be two Explore-specific suppressions here: an early return
     // on `subagentType === 'Explore'` and a `SUBAGENT_BUDGET_PCT.Explore = 0`
     // entry that tripped the `budgetTokens <= 0` branch on its own — so a test
-    // for the early return passed with that line deleted. Both are gone; every
-    // unlisted type now takes __customDefault.
+    // for the early return passed with that line deleted. The table entry is
+    // the one mechanism now; a name comparison would be a second, redundant one.
     const src = readFileSync(new URL('./planDossier.ts', import.meta.url), 'utf8')
     // Narrow on purpose: an unrelated future `subagentType === '…'` comparison
     // is not this bug, and a guard that trips on one gets deleted rather than read.
     expect(src).not.toContain("subagentType === 'Explore'")
-    expect(src).not.toMatch(/^\s*Explore\s*:/m)
+  })
+
+  test('Explore takes a zero budget and gets no dossier', () => {
+    expect(dossierBudgetTokens('Explore', 'claude-opus-4-7')).toBe(0)
+    expect(
+      renderDossierForSubagent(smallDossier(['/repo/a.ts']), 'Explore', 'claude-opus-4-7'),
+    ).toBeNull()
   })
 
   test('renders text for the Plan subagent', () => {

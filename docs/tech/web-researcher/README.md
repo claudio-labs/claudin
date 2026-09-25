@@ -27,7 +27,7 @@ A descrição (`whenToUse`) injetada no prompt do `AgentTool` deixa explícito:
 | Pesquisa em 3+ páginas, tópico amplo | `Agent(WebResearcher)` |
 | Buscar uma URL específica conhecida | `WebFetch` direto |
 | Descobrir links sobre um termo | `WebSearch` direto |
-| Algo no repo local | fork (`Agent` sem `subagent_type`) ou Grep/Glob direto |
+| Algo no repo local | Grep/Glob direto, ou um agente de busca: `Explore` com `CLAUDIN_EXPLORE_AGENT=1`, senão `Code` com `readOnly` |
 
 A escolha é do modelo pai — não há roteamento automático.
 

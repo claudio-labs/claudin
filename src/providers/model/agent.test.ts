@@ -372,3 +372,70 @@ describe('getAgentModel with provider-specific models', () => {
     expect(result).toBe('gpt-5.1')
   })
 })
+
+// The Agent tool's per-call `model` (third argument). Every case above passes
+// undefined there, which is how the non-Claude path below shipped unguarded.
+describe('getAgentModel per-call model', () => {
+  afterEach(() => {
+    mock.module('./providers.js', () => realProvidersModule)
+    mock.module('src/providers/model/providers.js', () => realProvidersModule)
+  })
+
+  function mockProvider(provider: string, officialUrl: boolean): void {
+    mock.module('./providers.js', () => ({
+      getAPIProvider: () => provider,
+      isFirstPartyAnthropicBaseUrl: () => officialUrl,
+    }))
+  }
+
+  test('inherit returns the parent model over the agent definition', async () => {
+    mockProvider('firstParty', true)
+    const { getAgentModel } = await import('src/providers/model/agent.js')
+    expect(getAgentModel('sonnet', 'claude-opus-4-7', 'inherit', 'default')).toBe(
+      'claude-opus-4-7',
+    )
+  })
+
+  test('inherit returns the parent model on a non-Claude provider too', async () => {
+    mockProvider('openai', false)
+    const { getAgentModel } = await import('src/providers/model/agent.js')
+    expect(getAgentModel('gpt-5-mini', 'gpt-5', 'inherit', 'default')).toBe('gpt-5')
+  })
+
+  test('a family alias wins over the definition on a Claude-native provider', async () => {
+    mockProvider('firstParty', true)
+    const { getAgentModel } = await import('src/providers/model/agent.js')
+    const result = getAgentModel('sonnet', 'claude-opus-4-7', 'haiku', 'default')
+    expect(result).toContain('haiku')
+  })
+
+  test('a family alias matching the parent tier keeps the parent exact model', async () => {
+    mockProvider('vertex', false)
+    const { getAgentModel } = await import('src/providers/model/agent.js')
+    expect(getAgentModel('sonnet', 'claude-opus-4-7', 'opus', 'default')).toBe(
+      'claude-opus-4-7',
+    )
+  })
+
+  test('on a non-Claude provider a family alias yields to the configured model', async () => {
+    // The /agents override lands in agentModel; `haiku` means nothing here.
+    mockProvider('openai', false)
+    const { getAgentModel } = await import('src/providers/model/agent.js')
+    expect(getAgentModel('gpt-5-mini', 'gpt-5', 'haiku', 'default')).toBe('gpt-5-mini')
+  })
+
+  test('on a non-Claude provider with no configured model it inherits', async () => {
+    mockProvider('openai', false)
+    const { getAgentModel } = await import('src/providers/model/agent.js')
+    expect(getAgentModel('sonnet', 'gpt-5', 'opus', 'default')).toBe('gpt-5')
+    expect(getAgentModel(undefined, 'gpt-5', 'haiku', 'default')).toBe('gpt-5')
+  })
+
+  test('on a custom Anthropic-compatible URL it no longer resolves to a Claude ID', async () => {
+    mockProvider('firstParty', false)
+    const { getAgentModel } = await import('src/providers/model/agent.js')
+    expect(getAgentModel(undefined, 'proxy-model', 'haiku', 'default')).toBe(
+      'proxy-model',
+    )
+  })
+})

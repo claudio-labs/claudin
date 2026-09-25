@@ -18,7 +18,7 @@
 - [memory_delta deleted 2026-08-07 — a second full copy, not a delta](decisions/memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta
 - Repo map / code index — REJECTED twice on data, CLOSED: [flat index 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — recalls 0% median, loses to one `ls`; Glob + Grep win
 - [LSPTool reintroduced 2026-06-17 (cache-safe, plugin-only)](decisions/lsp-tool-reintroduced-plugin-only.md) — dropped (0 usage) then re-added: read-only 9 ops, always-present+fixed msg; built-in servers removed
-- [The built-in Explore agent was REMOVED 2026-08-18](decisions/explore-agent-removed.md) — a fresh Code agent replaces it since #170; measured worth (93.5% multi-hop, 13.2x) + the summarizer misfire
+- [Explore agent: removed 08-18, back OPT-IN 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=1`, sonnet; A/B: tool calls −29%, cost −9% (overlap), wall +30%; flip is the user's call
 - [Fork-subagent-by-default initiative](decisions/fork-subagent-by-default.md) — default spawn forks, named agent stays fresh; 2026-07-26 ungated it, flipped auto-background to opt-in
 - [Git tool — D2, shipped 2026-08-04](decisions/git-tool-design.md) — Git({commands:[…]}) over all git+gh; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — pin lives in projects[].activeEffortForProject; 'auto' sentinel shadows the global, /effort inherit clears it

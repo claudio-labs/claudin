@@ -49,7 +49,7 @@ import { spawnTeammate } from 'src/tools/AgentTool/spawnMultiAgent.js';
 import { setAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js';
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';
-import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
+import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES, UNSUMMARIZED_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
 import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js';
 import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from 'src/tools/AgentTool/forkSubagent.js';
 import { forkGateVerdict } from 'src/tools/AgentTool/forkGate.js';
@@ -98,7 +98,7 @@ const baseInputSchema = lazySchema(() => z.object({
   description: z.string().describe('A short (3-5 word) description of the task'),
   prompt: z.string().describe('The task for the agent to perform'),
   subagent_type: z.string().optional().describe('The type of specialized agent to use for this task'),
-  model: z.enum(['sonnet', 'opus', 'haiku']).optional().describe("Optional model override for this agent. Takes precedence over the agent definition's model frontmatter. If omitted, uses the agent definition's model, or inherits from the parent."),
+  model: z.enum(['sonnet', 'opus', 'haiku', 'inherit']).optional().describe("Optional model for this agent: haiku (cheaper), sonnet, opus (stronger), or inherit (the same model as you). If omitted, uses the agent type's default model, or inherits yours."),
   run_in_background: z.boolean().optional().describe('Set to true to run this agent in the background. You will be notified when it completes.'),
   readOnly: z.boolean().optional().describe(READ_ONLY_INPUT_DESCRIPTION)
 }));
@@ -1311,6 +1311,9 @@ export const AgentTool = buildTool({
       behavior: 'allow',
       updatedInput: input
     };
+  },
+  skipsResultSummarizer(data) {
+    return data.status === 'completed' && data.agentType !== undefined && UNSUMMARIZED_AGENT_TYPES.has(data.agentType);
   },
   mapToolResultToToolResultBlockParam(data, toolUseID) {
     // Multi-agent spawn result

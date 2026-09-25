@@ -750,6 +750,13 @@ export type Tool<
     toolUseID: string,
   ): ToolResultBlockParam
   /**
+   * Optional. True when this result has to reach the model uncut: the
+   * tool-result summarizer (head/tail, JSON compression) leaves it alone and
+   * only the persistence threshold still applies. The Agent tool answers it
+   * for report types whose middle is the payload (UNSUMMARIZED_AGENT_TYPES).
+   */
+  skipsResultSummarizer?(output: Output): boolean
+  /**
    * Optional. When omitted, the tool result renders nothing (same as returning
    * null). Omit for tools whose results are surfaced elsewhere (e.g., TodoWrite
    * updates the todo panel, not the transcript).

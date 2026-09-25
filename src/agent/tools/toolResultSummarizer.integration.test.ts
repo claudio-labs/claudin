@@ -272,7 +272,7 @@ test('integration: processPreMappedToolResultBlock also summarizes', async () =>
     tool_use_id: 'toolu_pre',
     content,
   }
-  const out = await processPreMappedToolResultBlock(block, 'Bash', 50_000)
+  const out = await processPreMappedToolResultBlock(block, { name: 'Bash', maxResultSizeChars: 50_000 }, undefined)
   expect(
     (out.content as string).startsWith(summarizer.TOOL_RESULT_SUMMARY_TAG),
   ).toBe(true)
