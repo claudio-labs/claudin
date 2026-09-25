@@ -317,6 +317,8 @@ export function childPrompt(chains: readonly Chain[]): string {
 
 /** `name file:line`, the separator a few punctuation marks or a word like "at". */
 const ENTRY_RE = /([A-Za-z_$][\w$]*)(?:\W{0,4}|\s+(?:at|in|@)\s+)(src\/[\w/.-]+\.ts):(\d+)/g
+/** `file:line name`, the order a reply may write each entry in instead. */
+const SITE_FIRST_RE = /(src\/[\w/.-]+\.ts):(\d+)\W{1,4}([A-Za-z_$][\w$]*)/g
 const WORD_CHAR_RE = /[\w$]/
 
 export type ChainGrade = { start: string; points: number; max: number }
@@ -330,9 +332,18 @@ function mentions(text: string, word: string): number[] {
   return at
 }
 
-/** One point per chain function reported at its position with its definition. */
+/**
+ * One point per chain function reported at its position with its definition.
+ * Read both ways — `name file:line` and `file:line name` — and the better
+ * reading counts: a reply that follows neither order scores low in both.
+ */
 function pointsIn(stretch: string, chain: Chain): number {
-  const entries = [...stretch.matchAll(ENTRY_RE)].map(m => ({ name: m[1]!, site: `${m[2]}:${m[3]}` }))
+  const nameFirst = [...stretch.matchAll(ENTRY_RE)].map(m => ({ name: m[1]!, site: `${m[2]}:${m[3]}` }))
+  const siteFirst = [...stretch.matchAll(SITE_FIRST_RE)].map(m => ({ name: m[3]!, site: `${m[1]}:${m[2]}` }))
+  return Math.max(pointsOf(nameFirst, chain), pointsOf(siteFirst, chain))
+}
+
+function pointsOf(entries: ReadonlyArray<{ name: string; site: string }>, chain: Chain): number {
   // A reply may name the start as a header and list the rest.
   const offset = entries[0]?.name === chain.start ? 0 : 1
   let points = 0
@@ -344,9 +355,11 @@ function pointsIn(stretch: string, chain: Chain): number {
 }
 
 /**
- * A chain's stretch runs from a mention of its start to the next mention of
- * another start, and the best-scoring mention counts, so a preamble naming
- * every start does not hide the lines below it.
+ * A chain's stretch runs from the line a mention of its start is on to the
+ * next mention of another start — from the line, so a `file:line name` entry
+ * keeps the site written before the start's name — and the best-scoring
+ * mention counts, so a preamble naming every start does not hide the lines
+ * below it.
  */
 export function gradeAudit(text: string, chains: readonly Chain[]): AuditGrade {
   const starts = chains.flatMap(c => mentions(text, c.start).map(at => ({ start: c.start, at }))).sort((a, b) => a.at - b.at)
@@ -355,7 +368,8 @@ export function gradeAudit(text: string, chains: readonly Chain[]): AuditGrade {
     starts.forEach((s, i) => {
       if (s.start !== c.start) return
       const nextOther = starts.slice(i + 1).find(o => o.start !== c.start)?.at ?? text.length
-      best = Math.max(best, pointsIn(text.slice(s.at, nextOther), c))
+      const lineStart = text.lastIndexOf('\n', s.at - 1) + 1
+      best = Math.max(best, pointsIn(text.slice(lineStart, nextOther), c))
     })
     return { start: c.start, points: best, max: c.nodes.length }
   })

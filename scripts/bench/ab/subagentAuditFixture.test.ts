@@ -78,4 +78,10 @@ describe('gradeAudit', () => {
     const parens = chains.map(c => c.nodes.map(n => `${n.name} (${n.defined})`).join(' -> ')).join('\n')
     expect(gradeAudit(parens, chains).score).toBe(CHAINS * CHAIN_LENGTH)
   })
+
+  // How placebo r3 of the first paid round wrote a fully correct trace, which scored 0.
+  test('each entry written `file:line name` scores the same as `name file:line`', () => {
+    const siteFirst = `All traced.\n\n${chains.map(c => c.nodes.map(n => `${n.defined} ${n.name}`).join(' -> ')).join('\n\n')}`
+    expect(gradeAudit(siteFirst, chains).score).toBe(CHAINS * CHAIN_LENGTH)
+  })
 })
