@@ -647,12 +647,15 @@ export type Tool<
    * resolved input, while the transcript keeps what the model sent (the
    * cached prefix depends on it). Patch's `*** Resubmit` names the
    * patch it refused one call earlier. A refusal is reported the way a failed
-   * validateInput is.
+   * validateInput is. It may be async: a Read's globs are expanded on disk
+   * (FileReadTool/readGlobs.ts) so that every step after it sees real files.
    */
   resolveInput?(
     input: z.infer<Input>,
     context: ToolUseContext,
-  ): ResolvedInput<z.infer<Input>>
+  ):
+    | ResolvedInput<z.infer<Input>>
+    | Promise<ResolvedInput<z.infer<Input>>>
 
   /**
    * Determines if this tool is allowed to run with this input in the current context.

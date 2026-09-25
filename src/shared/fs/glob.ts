@@ -89,6 +89,14 @@ export type GlobOptions = {
   type?: GlobEntryType
   /** Paths to leave out, in glob form (`**\/node_modules\/**`). */
   exclude?: string[]
+  /**
+   * Honor .gitignore (and ripgrep's other ignore files) whatever
+   * CLAUDIN_GLOB_NO_IGNORE says, for files the pattern names as well as the
+   * directories it walks. The Glob tool keeps the env default; a Read's globs
+   * ask for this (FileReadTool/readGlobs.ts), where `src/**\/*.ts` means the
+   * project's own files and never node_modules. Files only.
+   */
+  respectGitignore?: boolean
 }
 
 /**
@@ -145,6 +153,7 @@ export async function glob(
     sort = 'modified',
     type = 'file',
     exclude,
+    respectGitignore = false,
   }: GlobOptions,
   abortSignal: AbortSignal,
   toolPermissionContext: ToolPermissionContext,
@@ -195,6 +204,27 @@ export async function glob(
   const walkDepth =
     maxDepth === undefined ? undefined : type === 'dir' ? maxDepth + 1 : maxDepth
 
+  // A positive --glob overrides ripgrep's ignore files for every file it
+  // matches ("this always overrides any other ignore logic"): only the
+  // directories it would skip stay skipped, so `./*.ts` still listed a
+  // .gitignore'd src/gen.ts. Honoring .gitignore therefore walks WITHOUT the
+  // caller's glob and keeps the paths it matches here, as ripgrep reads it:
+  // anchored at the search root when rooted or holding a `/`, the bare name at
+  // any depth otherwise. An anchored pattern with no `**` or braces reaches no
+  // deeper than its own segments, which bounds the walk.
+  const matchHere = respectGitignore && type === 'file'
+  const anchored = rootAnchored || searchPattern.includes('/')
+  const reach =
+    matchHere && anchored && !UNBOUNDED_DEPTH_RE.test(searchPattern)
+      ? searchPattern.split('/').length
+      : undefined
+  const depth =
+    reach === undefined
+      ? walkDepth
+      : walkDepth === undefined
+        ? reach
+        : Math.min(walkDepth, reach)
+
   // Use ripgrep for better memory performance
   // --files: list files instead of searching content
   // --glob: filter by pattern
@@ -214,16 +244,17 @@ export async function glob(
   //   `-maxdepth` for files, since the root itself is a directory and never
   //   appears in `--files` output.
   // --no-ignore: don't respect .gitignore (default true, set CLAUDIN_GLOB_NO_IGNORE=false to respect .gitignore)
+  //   — unless the caller passes respectGitignore, which overrides the default.
   // --hidden: include hidden files (default true, set CLAUDIN_GLOB_HIDDEN=false to exclude)
   // Note: use || instead of ?? to treat empty string as unset (defaulting to true)
-  const noIgnore = isEnvTruthy(process.env.CLAUDIN_GLOB_NO_IGNORE || 'true')
+  const noIgnore =
+    !respectGitignore && isEnvTruthy(process.env.CLAUDIN_GLOB_NO_IGNORE || 'true')
   const hidden = isEnvTruthy(process.env.CLAUDIN_GLOB_HIDDEN || 'true')
   const args = [
     '--files',
-    caseInsensitive ? '--iglob' : '--glob',
-    walkPattern,
+    ...(matchHere ? [] : [caseInsensitive ? '--iglob' : '--glob', walkPattern]),
     ...(sort === 'path' ? ['--sort=path'] : ['--sortr=modified']),
-    ...(walkDepth === undefined ? [] : ['--max-depth', String(walkDepth)]),
+    ...(depth === undefined ? [] : ['--max-depth', String(depth)]),
     ...(noIgnore ? ['--no-ignore'] : []),
     ...(hidden ? ['--hidden'] : []),
   ]
@@ -290,8 +321,14 @@ export async function glob(
     }
   }
 
+  const listedPaths = matchHere
+    ? allPaths.filter(
+        matchesAsRipgrep(searchPattern, anchored, caseInsensitive, searchDir),
+      )
+    : allPaths
+
   // ripgrep returns relative paths, convert to absolute
-  const absolutePaths = allPaths.map(p =>
+  const absolutePaths = listedPaths.map(p =>
     isAbsolute(p) ? p : join(searchDir, p),
   )
 
@@ -299,6 +336,29 @@ export async function glob(
   const files = absolutePaths.slice(offset, offset + limit)
 
   return { files, truncated, incomplete }
+}
+
+// `**` crosses directories and a brace can hold a `/`: either can reach any depth.
+const UNBOUNDED_DEPTH_RE = /\*\*|\{/
+
+/**
+ * The respectGitignore filter: whether a path ripgrep listed matches the
+ * caller's pattern the way `--glob` would have. Dotfiles match, since the walk
+ * lists them (`--hidden`).
+ */
+function matchesAsRipgrep(
+  pattern: string,
+  anchored: boolean,
+  caseInsensitive: boolean | undefined,
+  searchDir: string,
+): (listed: string) => boolean {
+  const isMatch = picomatch(pattern, { dot: true, nocase: caseInsensitive })
+  return listed => {
+    const path = isAbsolute(listed)
+      ? relative(searchDir, listed)
+      : listed.replace(LEADING_DOT_SLASH_RE, '')
+    return isMatch(anchored ? path : basename(path))
+  }
 }
 
 function isDirectory(path: string): boolean {

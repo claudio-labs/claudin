@@ -9,10 +9,15 @@
 // sets `0` rather than deleting the variable, which would now mean "on". The
 // default arm (importWithReadMultiUnset) is the one that deletes it.
 //
+// CLAUDIN_READ_GLOBS (readGlobs.ts) changes the same three modules, so every
+// arm pins it too: unset — off, the default — unless the arm is the globs one
+// (importWithReadGlobs).
+//
 // This is NOT a `*.test.ts` file: it declares no tests and bun does not
 // collect it.
 
 export const READ_MULTI_ENV = 'CLAUDIN_READ_MULTI'
+const READ_GLOBS_ENV = 'CLAUDIN_READ_GLOBS'
 
 let loadSeq = 0
 
@@ -25,26 +30,46 @@ export async function importWithReadMulti<T>(
   specifier: string,
   on: boolean,
 ): Promise<T> {
-  return importWith<T>(specifier, on ? '1' : '0', on ? 'on' : 'off')
+  return importWith<T>(specifier, { [READ_MULTI_ENV]: on ? '1' : '0' }, on ? 'on' : 'off')
 }
 
 /** The same, with the variable unset: the default a user gets. */
 export async function importWithReadMultiUnset<T>(specifier: string): Promise<T> {
-  return importWith<T>(specifier, undefined, 'unset')
+  return importWith<T>(specifier, {}, 'unset')
+}
+
+/**
+ * A fresh instance with the batch Read at its default and CLAUDIN_READ_GLOBS
+ * set to 1 (on) or unset (off, the default).
+ */
+export async function importWithReadGlobs<T>(specifier: string, on: boolean): Promise<T> {
+  return importWith<T>(
+    specifier,
+    { [READ_GLOBS_ENV]: on ? '1' : undefined },
+    on ? 'globs-on' : 'globs-off',
+  )
 }
 
 async function importWith<T>(
   specifier: string,
-  value: string | undefined,
+  values: Record<string, string | undefined>,
   tag: string,
 ): Promise<T> {
-  const prior = process.env[READ_MULTI_ENV]
-  if (value === undefined) delete process.env[READ_MULTI_ENV]
-  else process.env[READ_MULTI_ENV] = value
+  const env: Record<string, string | undefined> = {
+    [READ_MULTI_ENV]: undefined,
+    [READ_GLOBS_ENV]: undefined,
+    ...values,
+  }
+  const prior = Object.fromEntries(Object.keys(env).map(name => [name, process.env[name]]))
+  for (const [name, value] of Object.entries(env)) setEnv(name, value)
   try {
     return (await import(`${specifier}?readmulti=${tag}-${++loadSeq}`)) as T
   } finally {
-    if (prior === undefined) delete process.env[READ_MULTI_ENV]
-    else process.env[READ_MULTI_ENV] = prior
+    for (const [name, value] of Object.entries(prior)) setEnv(name, value)
   }
+}
+
+function setEnv(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name]
+  else process.env[name] = value
 }

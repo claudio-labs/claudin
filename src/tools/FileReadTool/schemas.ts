@@ -8,8 +8,13 @@ import {
   MIN_BATCH_FILES,
   readMultiEnabledAtLoad,
 } from 'src/tools/FileReadTool/readMulti.js'
+import {
+  MAX_GLOB_FILES,
+  readGlobsEnabledAtLoad,
+} from 'src/tools/FileReadTool/readGlobs.js'
 
 const READ_MULTI = readMultiEnabledAtLoad()
+const READ_GLOBS = readGlobsEnabledAtLoad()
 
 /** The fields both shapes share, built fresh per schema. */
 function sharedFields() {
@@ -89,14 +94,16 @@ function batchCapableInputSchema() {
       .describe(
         'The absolute path to the file to read. Give this or file_paths, not both.',
       ),
-    file_paths: z
-      .preprocess(
-        absentIfPlaceholder,
-        z.array(z.string()).min(MIN_BATCH_FILES).max(MAX_BATCH_FILES).optional(),
-      )
-      .describe(
-        `${MIN_BATCH_FILES}-${MAX_BATCH_FILES} absolute paths to read in one call, instead of file_path. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.`,
-      ),
+    file_paths: READ_GLOBS
+      ? globFilePathsField()
+      : z
+          .preprocess(
+            absentIfPlaceholder,
+            z.array(z.string()).min(MIN_BATCH_FILES).max(MAX_BATCH_FILES).optional(),
+          )
+          .describe(
+            `${MIN_BATCH_FILES}-${MAX_BATCH_FILES} absolute paths to read in one call, instead of file_path. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.`,
+          ),
     offset,
     limit,
     pages,
@@ -120,6 +127,26 @@ function batchCapableInputSchema() {
       ),
     encoding,
   })
+}
+
+/**
+ * `file_paths` under CLAUDIN_READ_GLOBS (readGlobs.ts), where an entry may be
+ * a glob. The bounds hold for the expanded input as well as the model's: the
+ * permission check parses what resolveInput handed on with this same schema
+ * (permissions.ts), and an input it refuses never reaches the tool's own
+ * check — it becomes a prompt, or a denial in plan mode. So one entry is
+ * enough — a single glob, or a glob that matched one file — and so are the
+ * MAX_GLOB_FILES files a call may read.
+ */
+function globFilePathsField() {
+  return z
+    .preprocess(
+      absentIfPlaceholder,
+      z.array(z.string()).min(1).max(MAX_GLOB_FILES).optional(),
+    )
+    .describe(
+      `Absolute paths to read in one call instead of file_path, or globs such as /repo/src/*.ts — each expanded in path order, inside the project, .gitignore respected. Up to ${MAX_GLOB_FILES} files. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.`,
+    )
 }
 
 /**

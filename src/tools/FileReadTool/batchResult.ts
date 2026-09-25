@@ -15,20 +15,35 @@
  * is never resolved into a path of its own, so nothing a result says can make
  * a reader credit a file the call did not name; a header that matches none of
  * them is dropped with its text.
+ *
+ * A glob the call named (readGlobs.ts) names every file it matches, so a
+ * header counts under it when the file's absolute path is one of those
+ * matches — the glob decides, never the header — and the file is credited by
+ * that absolute path.
  */
 import { isAbsolute, join, sep } from 'path'
+import picomatch from 'picomatch'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { expandPath } from 'src/shared/fs/path.js'
+import { isReadGlob } from 'src/tools/FileReadTool/readGlobs.js'
 
 type BatchFileText = {
-  /** The path as the tool_use named it — one of the `paths` given. */
+  /**
+   * The path as the tool_use named it — one of the `paths` given — or, for a
+   * file one of its globs matched, that file's absolute path.
+   */
   path: string
   /** What a Read of that one file returned, as the batch put it under its header. */
   text: string
 }
 
-type NamedFile = { path: string; absolute: string }
+type NamedFile = {
+  path: string
+  absolute: string
+  /** Set for a glob: whether an absolute path is one of its matches. */
+  glob?: (absolute: string) => boolean
+}
 
 const HEADER_RE = /^==> (.+) <==$/
 // The lines readBatch writes after the last file (batchRead.ts).
@@ -64,7 +79,10 @@ export function splitBatchReadResult(
   )
 }
 
-/** Each distinct file the call named: the batch reads a path named twice once. */
+/**
+ * Each distinct file the call named: the batch reads a path named twice once.
+ * A glob resolves against `cwd` as a path does, the way the Read expanded it.
+ */
 function namedFiles(paths: readonly string[], cwd: string): NamedFile[] {
   const seen = new Set<string>()
   const named: NamedFile[] = []
@@ -79,9 +97,24 @@ function namedFiles(paths: readonly string[], cwd: string): NamedFile[] {
     }
     if (seen.has(absolute)) continue
     seen.add(absolute)
-    named.push({ path, absolute })
+    named.push(
+      isReadGlob(path) ? { path, absolute, glob: globMatcher(absolute) } : { path, absolute },
+    )
   }
   return named
+}
+
+/** The glob as the Read listed it: `*` stops at a `/`, and dotfiles match. */
+function globMatcher(pattern: string): (absolute: string) => boolean {
+  try {
+    return picomatch(pattern, { dot: true })
+  } catch (e) {
+    // picomatch refuses a pattern past 65,536 characters. The Read's own
+    // listing matches with picomatch too (glob.ts, respectGitignore), so that
+    // call was refused and read nothing to credit.
+    logForDebugging(`batch Read result: skipping an unusable glob: ${e}`)
+    return () => false
+  }
 }
 
 /**
@@ -89,18 +122,21 @@ function namedFiles(paths: readonly string[], cwd: string): NamedFile[] {
  * the working directory it ran in, and absolute outside it. That directory
  * may have moved since — a `cd`, a resume from elsewhere — so a relative
  * label that does not resolve here matches by its tail, and only when a
- * single named file ends with it.
+ * single named file ends with it. A glob matches a label only where it
+ * resolves, never by its tail.
  */
 function matchHeader(
   label: string,
   named: readonly NamedFile[],
   cwd: string,
 ): string | undefined {
+  const globbed = isAbsolute(label) ? label : join(cwd, label)
+  if (named.some(f => f.glob?.(globbed))) return globbed
   if (isAbsolute(label)) return named.find(f => f.absolute === label)?.path
   const here = join(cwd, label)
   const exact = named.find(f => f.absolute === here)
   if (exact) return exact.path
-  const byTail = named.filter(f => f.absolute.endsWith(sep + label))
+  const byTail = named.filter(f => !f.glob && f.absolute.endsWith(sep + label))
   return byTail.length === 1 ? byTail[0]!.path : undefined
 }
 

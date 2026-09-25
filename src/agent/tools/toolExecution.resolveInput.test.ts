@@ -34,6 +34,13 @@ function probeTool(seen: Seen) {
     resolveInput(input: { ref: string }) {
       if (input.ref === 'KEPT') return { ok: true as const, input: { ref: 'the real thing' } }
       if (input.ref === 'NONE') return { ok: false as const, message: 'nothing was kept' }
+      // What the Read's glob expansion does: resolve after a disk lookup.
+      if (input.ref === 'LATER') {
+        return Promise.resolve({ ok: true as const, input: { ref: 'resolved later' } })
+      }
+      if (input.ref === 'NEVER') {
+        return Promise.resolve({ ok: false as const, message: 'nothing matched' })
+      }
       return { ok: true as const, input }
     },
     async validateInput(input: { ref: string }) {
@@ -114,6 +121,22 @@ describe('Tool.resolveInput in the tool loop', () => {
   test('a refused resolution is an error result, and nothing after it runs', async () => {
     const { seen, texts } = await run('NONE')
     expect(texts).toContain('nothing was kept')
+    expect(texts).toContain('"is_error":true')
+    expect(seen).toEqual({})
+  })
+
+  test('an async resolution is awaited: every later step gets what it resolved to', async () => {
+    const { seen, texts, toolUse } = await run('LATER')
+    expect(seen.validate).toEqual({ ref: 'resolved later' })
+    expect(seen.permission).toEqual({ ref: 'resolved later' })
+    expect(seen.call).toEqual({ ref: 'resolved later' })
+    expect(texts).toContain('ran resolved later')
+    expect(toolUse.input).toEqual({ ref: 'LATER' })
+  })
+
+  test('an async refusal is an error result, and nothing after it runs', async () => {
+    const { seen, texts } = await run('NEVER')
+    expect(texts).toContain('nothing matched')
     expect(texts).toContain('"is_error":true')
     expect(seen).toEqual({})
   })

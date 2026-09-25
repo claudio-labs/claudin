@@ -187,7 +187,7 @@ export async function startMCPServer(
         )
         // The same resolution the in-process tool loop applies (Tool.resolveInput).
         const resolved = tool.resolveInput
-          ? tool.resolveInput(parsedArgs as never, toolUseContext)
+          ? await tool.resolveInput(parsedArgs as never, toolUseContext)
           : ({ ok: true, input: parsedArgs } as const)
         if (!resolved.ok) {
           throw new Error(`Tool ${name} input is invalid: ${resolved.message}`)

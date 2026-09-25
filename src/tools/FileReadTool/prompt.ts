@@ -5,21 +5,30 @@ import {
   MAX_BATCH_FILES,
   readMultiEnabledAtLoad,
 } from 'src/tools/FileReadTool/readMulti.js'
+import {
+  MAX_GLOB_FILES,
+  readGlobsEnabledAtLoad,
+} from 'src/tools/FileReadTool/readGlobs.js'
 
 // Use a string constant for tool names to avoid circular dependencies
 export const FILE_READ_TOOL_NAME = 'Read'
 
 const READ_MULTI = readMultiEnabledAtLoad()
+const READ_GLOBS = readGlobsEnabledAtLoad()
 
 /**
  * The one line the batch Read adds to both descriptions (readMulti.ts),
  * placed under the default-length bullet. Empty under the killswitch
  * (CLAUDIN_READ_MULTI=0), which is what keeps both templates byte-identical
- * to the text before the batch Read existed.
+ * to the text before the batch Read existed. Under CLAUDIN_READ_GLOBS
+ * (readGlobs.ts) the same line takes globs and their cap instead.
  */
 function batchReadInstruction(): string {
   if (!READ_MULTI) return ''
   const budgetK = Math.round(getDefaultFileReadingLimits().maxTokens / 1000)
+  if (READ_GLOBS) {
+    return `\n- \`file_paths\` reads up to ${MAX_GLOB_FILES} files in one call — each as \`view\`/\`symbol\` say, within ${budgetK}k tokens in total; a glob like \`src/*.ts\` reads every match.`
+  }
   return `\n- \`file_paths\` reads up to ${MAX_BATCH_FILES} files in one call — each as \`view\`/\`symbol\` say, within ${budgetK}k tokens in total.`
 }
 

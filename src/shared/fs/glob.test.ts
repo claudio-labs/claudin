@@ -223,6 +223,150 @@ describe('glob — CLAUDIN_GLOB_NO_IGNORE', () => {
   })
 })
 
+// The Read's globs ask for this (FileReadTool/readGlobs.ts); the Glob tool
+// keeps the env default above.
+describe('glob — respectGitignore', () => {
+  let dir: string
+  const previous = process.env.CLAUDIN_GLOB_NO_IGNORE
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'glob-gitignore-'))
+    // ripgrep reads a .gitignore only inside a repository.
+    mkdirSync(join(dir, '.git'))
+    mkdirSync(join(dir, 'kept'))
+    mkdirSync(join(dir, 'skipped'))
+    writeFileSync(join(dir, 'kept', 'kept.txt'), 'x')
+    writeFileSync(join(dir, 'skipped', 'skipped.txt'), 'x')
+    writeFileSync(join(dir, '.gitignore'), 'skipped/\n')
+  })
+
+  afterAll(() => {
+    if (previous === undefined) delete process.env.CLAUDIN_GLOB_NO_IGNORE
+    else process.env.CLAUDIN_GLOB_NO_IGNORE = previous
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('the default still lists what .gitignore leaves out', async () => {
+    delete process.env.CLAUDIN_GLOB_NO_IGNORE
+    const { files } = await runWith('**/*.txt', dir, { sort: 'path' })
+    expect(files.map(f => basename(f))).toEqual(['kept.txt', 'skipped.txt'])
+  })
+
+  test('respectGitignore leaves it out, whatever CLAUDIN_GLOB_NO_IGNORE says', async () => {
+    process.env.CLAUDIN_GLOB_NO_IGNORE = 'true'
+    const { files } = await runWith('**/*.txt', dir, { sort: 'path', respectGitignore: true })
+    expect(files.map(f => basename(f))).toEqual(['kept.txt'])
+  })
+})
+
+// A positive --glob overrides ripgrep's ignore files for the FILES it matches;
+// only ignored directories stayed skipped, which is all the suite above ever
+// checked. The mock-model E2E found `src/*.ts` reading a .gitignore'd
+// src/gen.ts (scripts/bench/ab/read-credit-e2e.ts, scenario 6).
+describe('glob — respectGitignore on a file the pattern names', () => {
+  let dir: string
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'glob-gitignore-file-'))
+    mkdirSync(join(dir, '.git'))
+    mkdirSync(join(dir, 'src', 'deep'), { recursive: true })
+    for (const file of ['one.ts', 'gen.ts', 'deep/two.ts', 'notes.md']) {
+      writeFileSync(join(dir, 'src', file), 'x')
+    }
+    writeFileSync(join(dir, '.env.ts'), 'x')
+    writeFileSync(join(dir, '.gitignore'), 'src/gen.ts\n.env.ts\n')
+  })
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  const names = (files: string[]) => files.map(f => f.slice(dir.length + 1))
+  const opts = { sort: 'path', type: 'file', respectGitignore: true } as const
+
+  test('the Read\'s own call — `./*.ts` from the glob\'s base — leaves the file out', async () => {
+    const { files } = await runWith('./*.ts', join(dir, 'src'), opts)
+    expect(names(files)).toEqual(['src/one.ts'])
+  })
+
+  test('an anchored pattern stays in its own directory', async () => {
+    expect(names((await runWith('./*.ts', dir, opts)).files)).toEqual([])
+    expect(names((await runWith('src/*.ts', dir, opts)).files)).toEqual(['src/one.ts'])
+  })
+
+  test('`**` and a bare name reach every depth, still without the ignored files', async () => {
+    expect(names((await runWith('**/*.ts', dir, opts)).files)).toEqual([
+      'src/deep/two.ts',
+      'src/one.ts',
+    ])
+    expect(names((await runWith('*.ts', dir, opts)).files)).toEqual([
+      'src/deep/two.ts',
+      'src/one.ts',
+    ])
+  })
+
+  // The in-process match must read every pattern as --glob does, so parity
+  // with the default listing is the test: the same files, less the ignored.
+  test('a pattern reads as --glob reads it: the default listing, less the ignored files', async () => {
+    const previous = process.env.CLAUDIN_GLOB_NO_IGNORE
+    delete process.env.CLAUDIN_GLOB_NO_IGNORE
+    try {
+      const cases: [string, string, boolean][] = [
+        // Absolute, and no `/` after its base: the name at any depth, as always.
+        [`${dir}/src/*.TS`, dir, true],
+        ['src/**/*.ts', dir, false],
+        ['*.ts', join(dir, 'src'), false],
+        ['./deep/*.ts', join(dir, 'src'), false],
+      ]
+      for (const [pattern, root, caseInsensitive] of cases) {
+        const plain = names((await runWith(pattern, root, { sort: 'path', caseInsensitive })).files)
+        const kept = names((await runWith(pattern, root, { ...opts, caseInsensitive })).files)
+        expect([pattern, kept]).toEqual([
+          pattern,
+          plain.filter(p => p !== 'src/gen.ts' && p !== '.env.ts'),
+        ])
+        expect(kept.length).toBeGreaterThan(0)
+      }
+    } finally {
+      if (previous !== undefined) process.env.CLAUDIN_GLOB_NO_IGNORE = previous
+    }
+  })
+
+  // The walk lists dotfiles (--hidden) and ripgrep's `*` matches them, so the
+  // in-process match must too — an ignored one aside.
+  test('a dotfile the pattern matches is listed unless it is ignored', async () => {
+    const dots = mkdtempSync(join(tmpdir(), 'glob-gitignore-dots-'))
+    try {
+      mkdirSync(join(dots, '.git'))
+      writeFileSync(join(dots, '.hidden.ts'), 'x')
+      writeFileSync(join(dots, '.ignored.ts'), 'x')
+      writeFileSync(join(dots, '.gitignore'), '.ignored.ts\n')
+      const { files } = await runWith('./*.ts', dots, opts)
+      expect(files.map(f => basename(f))).toEqual(['.hidden.ts'])
+    } finally {
+      rmSync(dots, { recursive: true, force: true })
+    }
+  })
+
+  // Matching here is for files: a directory is found by the files under it,
+  // one level deeper than its pattern reaches, so it keeps ripgrep's walk.
+  test('a directory listing keeps the glob walk under respectGitignore', async () => {
+    const { files } = await runWith('./deep', join(dir, 'src'), { ...opts, type: 'dir' })
+    expect(names(files)).toEqual(['src/deep'])
+  })
+
+  test('without respectGitignore the default listing is unchanged', async () => {
+    const previous = process.env.CLAUDIN_GLOB_NO_IGNORE
+    delete process.env.CLAUDIN_GLOB_NO_IGNORE
+    try {
+      const { files } = await runWith('./*.ts', join(dir, 'src'), { sort: 'path' })
+      expect(names(files)).toEqual(['src/gen.ts', 'src/one.ts'])
+    } finally {
+      if (previous !== undefined) process.env.CLAUDIN_GLOB_NO_IGNORE = previous
+    }
+  })
+})
+
 describe('glob — case-insensitive matching', () => {
   let dir: string
 

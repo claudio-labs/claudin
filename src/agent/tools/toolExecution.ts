@@ -715,7 +715,7 @@ async function checkPermissionsAndCallTool(
   // (Tool.resolveInput). Everything below sees the resolved form; the
   // transcript keeps what the model sent.
   const resolution = tool.resolveInput
-    ? tool.resolveInput(parsedInput.data, toolUseContext)
+    ? await tool.resolveInput(parsedInput.data, toolUseContext)
     : ({ ok: true, input: parsedInput.data } as const)
   if (!resolution.ok) {
     logForDebugging(
