@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import chalk from 'chalk'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
-import { buildDiffStatSegment, type DiffStatInput } from 'src/vcs/git/format-branch.js'
-import { getTheme } from 'src/terminal/theme/theme.js'
+import {
+  buildDiffStatSegment,
+  buildWorktreePill,
+  resolveBranchBg,
+  resolveWorktreeBg,
+  type DiffStatInput,
+} from 'src/vcs/git/format-branch.js'
+import { getTheme, THEME_NAMES } from 'src/terminal/theme/theme.js'
 
 const theme = getTheme('dark')
 const ANSI_SGR = /\u001b\[[0-9;]*m/
@@ -193,5 +199,32 @@ describe('buildDiffStatSegment', () => {
       expect(withNerdFont(false, () => build(input, plain - 1))).toBeNull()
       expect(withNerdFont(true, () => build(input, withBar - 1))).toBeNull()
     })
+  })
+})
+
+describe('buildWorktreePill', () => {
+  test('renders nothing outside a worktree', () => {
+    expect(withNerdFont(true, () => buildWorktreePill('', theme))).toBe('')
+  })
+
+  test('labels the name in the bracketed fallback', () => {
+    expect(withNerdFont(false, () => buildWorktreePill('footer-pills', theme))).toBe(
+      '[ worktree footer-pills ]',
+    )
+  })
+
+  test('is a git-merge-icon Powerline segment with a trailing arrow', () => {
+    expect(withNerdFont(true, () => buildWorktreePill('footer-pills', theme))).toBe(
+      ' \uE727 footer-pills \uE0B0',
+    )
+  })
+
+  test.each([...THEME_NAMES])('%s: its bg stands apart from both neighbours', name => {
+    // It sits between the cwd pill (suggestion bg) and the branch pill; sharing
+    // either colour would erase the arrow between them.
+    const t = getTheme(name)
+    const bg = resolveWorktreeBg(t)
+    expect(bg).not.toBe(resolveBranchBg(t))
+    expect(bg).not.toBe(t.suggestion)
   })
 })
