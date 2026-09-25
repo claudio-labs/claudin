@@ -45,6 +45,16 @@
  *  10. globs off      — the flag unset: Read ["src/*.ts"] → the strict schema's min(2)
  *      refuses it, the control that makes 6 mean the flag
  *
+ * Scenarios 11-12 are the floor cap honoring a read the command already bounded
+ * (CLAUDIN_CAP_KEEP_BOUNDED, on by default; lineBound.ts, plan
+ * .claudin/plans/foamy-crafting-elephant.md). big.ts has 300 distinct lines.
+ *
+ *  11. bounded on  — the default: `sed -n 1,140p` (past the summarizer's 8k) and
+ *      `grep -n … | head -90` come back whole in <bash-output-read>; `sed -n 1,200p`
+ *      (past the 150-line ceiling) and `cat big.ts` are still cut; a Patch after the
+ *      sed read is still refused as never read — the rule is no read credit
+ *  12. bounded off — CLAUDIN_CAP_KEEP_BOUNDED=0: the same `sed -n 1,140p` is cut
+ *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
  *
@@ -157,6 +167,25 @@ const MANY_FILES: Readonly<Record<string, string>> = Object.fromEntries(
   Array.from({ length: 51 }, (_, i) => [`many/f${String(i + 1).padStart(2, '0')}.ts`, `export const F${i + 1} = ${i + 1}\n`]),
 )
 const GLOBS_ON: Record<string, string> = { CLAUDIN_READ_GLOBS: '1' }
+
+// Scenarios 11-12: the cap and a read the command bounded (CLAUDIN_CAP_KEEP_BOUNDED).
+const BIG_WORDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf']
+/** Line n of big.ts, 1-based: distinct words, so no floor collapse can shorten a print of it. */
+const bigLine = (n: number): string => `export const ${BIG_WORDS[n % BIG_WORDS.length]}${n} = '${'x'.repeat(40)}-${n}'`
+const BIG_FILES: Readonly<Record<string, string>> = {
+  'big.ts': `${Array.from({ length: 300 }, (_, i) => bigLine(i + 1)).join('\n')}\n`,
+}
+const bash = (command: string): Step => ({ tool: 'Bash', input: { command, description: 'Print part of big.ts' } })
+const BOUNDED_SED = bash('sed -n 1,140p big.ts')
+const BOUNDED_GREP = bash('grep -n "export const" big.ts | head -90')
+const PAST_CEILING = bash('sed -n 1,200p big.ts')
+const WHOLE_CAT = bash('cat big.ts')
+const PATCH_BIG = patchStep('big.ts', bigLine(70), bigLine(70).replace('export const', 'export let'))
+const CUT_TEXT = 'lines omitted'
+const READ_WRAPPER = '<bash-output-read>'
+/** Every line from..to of big.ts is in the text, in order. */
+const holdsLines = (text: string, from: number, to: number): boolean =>
+  text.includes(Array.from({ length: to - from + 1 }, (_, i) => bigLine(from + i)).join('\n'))
 
 /** A batch Read of `paths` as written: relative ones resolve against the workspace. */
 const globRead = (...paths: string[]): Step => ({ tool: 'Read', input: { file_paths: paths } })
@@ -434,6 +463,49 @@ const SCENARIOS: Scenario[] = [
     expect: run => [
       onResult(run, 0, 0, 'p1 Read ["src/*.ts"] is refused by input validation (InputValidationError on file_paths: one entry, under min(2)), and reads nothing', r =>
         r.isError && r.text.includes('InputValidationError') && r.text.includes('file_paths') && !ANY_HEADER_RE.test(r.text),
+      ),
+    ],
+  },
+  {
+    key: '11',
+    title: 'bounded reads keep every line (the default)',
+    // Unset on purpose: the rule is what a session gets without asking.
+    env: {},
+    files: BIG_FILES,
+    script: () => [
+      {
+        prompt: 'Show parts of big.ts, then change line 70.',
+        steps: [BOUNDED_SED, BOUNDED_GREP, PAST_CEILING, WHOLE_CAT, PATCH_BIG, DONE],
+      },
+    ],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 `sed -n 1,140p` (over 8k chars) comes back whole, in <bash-output-read>, not summarized', r =>
+        !r.isError && r.text.includes(READ_WRAPPER) && holdsLines(r.text, 1, 140) && !r.text.includes(CUT_TEXT) && !r.text.includes('<tool-result-summary'),
+      ),
+      onResult(run, 0, 1, 'p1 `grep -n … | head -90` comes back whole, in <bash-output-read>', r =>
+        !r.isError && r.text.includes(READ_WRAPPER) && r.text.includes(`90:${bigLine(90)}`) && r.text.includes(`45:${bigLine(45)}`) && !r.text.includes(CUT_TEXT),
+      ),
+      onResult(run, 0, 2, 'p1 `sed -n 1,200p`, past the 150-line ceiling, is cut', r =>
+        r.text.includes(CUT_TEXT) && !r.text.includes(READ_WRAPPER) && !r.text.includes(bigLine(100)),
+      ),
+      onResult(run, 0, 3, 'p1 `cat big.ts`, no bound, is cut', r =>
+        r.text.includes(CUT_TEXT) && !r.text.includes(READ_WRAPPER) && !r.text.includes(bigLine(150)),
+      ),
+      onResult(run, 0, 4, 'p1 Patch big.ts after the sed read is refused with "has not been read yet"', r =>
+        r.isError && r.text.includes(NOT_READ),
+      ),
+      onDisk(run, 0, 'big.ts', 'p1 big.ts is unchanged on disk', c => c === BIG_FILES['big.ts']),
+    ],
+  },
+  {
+    key: '12',
+    title: 'bounded reads off (the control for 11)',
+    env: { CLAUDIN_CAP_KEEP_BOUNDED: '0' },
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Show the first 140 lines of big.ts.', steps: [BOUNDED_SED, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 `sed -n 1,140p` is cut, as before the rule', r =>
+        r.text.includes(CUT_TEXT) && !r.text.includes(READ_WRAPPER) && !r.text.includes(bigLine(70)),
       ),
     ],
   },

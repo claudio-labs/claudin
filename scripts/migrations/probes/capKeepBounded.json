@@ -1,0 +1,258 @@
+{
+  "test": [
+    "src/tools/shared/outputFilter/Bash/lineBound.test.ts",
+    "src/tools/shared/outputFilter/Bash/floor.test.ts"
+  ],
+  "source": "src/tools/shared/outputFilter/Bash/index.ts",
+  "probes": [
+    {
+      "name": "cap-keep-bounded: the flag reads another variable",
+      "source": "src/tools/shared/outputFilter/Bash/floor.ts",
+      "find": "!isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_BOUNDED)",
+      "replace": "!isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_BOUNDS)"
+    },
+    {
+      "name": "cap-keep-bounded: off by default",
+      "source": "src/tools/shared/outputFilter/Bash/floor.ts",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_BOUNDED);",
+      "replace": "return isEnvTruthy(process.env.CLAUDIN_CAP_KEEP_BOUNDED);"
+    },
+    {
+      "name": "cap-keep-bounded: =0 no longer turns it off",
+      "source": "src/tools/shared/outputFilter/Bash/floor.ts",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_BOUNDED);",
+      "replace": "return true;"
+    },
+    {
+      "name": "cap-keep-bounded: no ceiling",
+      "source": "src/tools/shared/outputFilter/Bash/floor.ts",
+      "find": "export const BOUNDED_READ_MAX_LINES = 150;",
+      "replace": "export const BOUNDED_READ_MAX_LINES = Infinity;"
+    },
+    {
+      "name": "cap-keep-bounded: the ceiling is the cap itself",
+      "source": "src/tools/shared/outputFilter/Bash/floor.ts",
+      "find": "export const BOUNDED_READ_MAX_LINES = 150;",
+      "replace": "export const BOUNDED_READ_MAX_LINES = 60;"
+    },
+    {
+      "name": "cap-keep-bounded: the filter never asks",
+      "find": "      if (isWithinCommandBound(rawStdout, plan)) return wrapFileRead(rawStdout);\n",
+      "replace": ""
+    },
+    {
+      "name": "cap-keep-bounded: the read goes back bare, where the summarizer cuts it",
+      "find": "if (isWithinCommandBound(rawStdout, plan)) return wrapFileRead(rawStdout);",
+      "replace": "if (isWithinCommandBound(rawStdout, plan)) return rawStdout;"
+    },
+    {
+      "name": "cap-keep-bounded: a matched spec is overruled",
+      "find": "if (!isCapKeepBoundedEnabled() || plan.filter !== null) return false;",
+      "replace": "if (!isCapKeepBoundedEnabled()) return false;"
+    },
+    {
+      "name": "cap-keep-bounded: past 28k chars too",
+      "find": "  if (rawStdout.length > FILE_READ_PASSTHROUGH_MAX_CHARS) return false;\n",
+      "replace": ""
+    },
+    {
+      "name": "cap-keep-bounded: where the floor would not cap either",
+      "find": "  if (!floorOptionsFor(rawStdout, plan).cap) return false;\n",
+      "replace": ""
+    },
+    {
+      "name": "cap-keep-bounded: where the cap would not cut",
+      "find": "  if (rawStdout.split(\"\\n\").length <= FLOOR_CAP_LINES) return false;\n",
+      "replace": ""
+    },
+    {
+      "name": "cap-keep-bounded: the printed lines are not held to the ceiling",
+      "find": "  if (rawStdout.trimEnd().split(\"\\n\").length > BOUNDED_READ_MAX_LINES) return false;\n",
+      "replace": ""
+    },
+    {
+      "name": "cap-keep-bounded: any declared bound",
+      "find": "return bound !== null && bound <= BOUNDED_READ_MAX_LINES;",
+      "replace": "return bound !== null;"
+    },
+    {
+      "name": "cap-keep-bounded: the grammar is not asked",
+      "find": "const bound = commandLineBound(plan.effectiveCommand);",
+      "replace": "const bound = 90;"
+    },
+    {
+      "name": "line-bound: a substitution is followed",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (SUBSTITUTION_RE.test(command)) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: an output redirect is followed",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "if (!walked || walked.hasOutputRedirection) return null;",
+      "replace": "if (!walked) return null;"
+    },
+    {
+      "name": "line-bound: a command with no read counts",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "return top.read ? top.lines : null;",
+      "replace": "return top.lines;"
+    },
+    {
+      "name": "line-bound: sed without -n counts",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (!quiet) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: a pattern command in a sed script is skipped",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "    if (!match) return null;",
+      "replace": "    if (!match) continue;"
+    },
+    {
+      "name": "line-bound: sed -s ignores how many files",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "if (!separate || positional.length === 0) return { lines, files: positional };",
+      "replace": "return { lines, files: positional };"
+    },
+    {
+      "name": "line-bound: tail -n +N and head -n -N count",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "      if (!COUNT_RE.test(count)) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: a glob in head is one file",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (count === null) return null;\n  if (count === 1) return { lines, files };",
+      "replace": "  if (count === 1) return { lines, files };"
+    },
+    {
+      "name": "line-bound: head over several files prints no headers",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "return { lines: count * (lines + 2), files };",
+      "replace": "return { lines: count * lines, files };"
+    },
+    {
+      "name": "line-bound: an awk body may do anything",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (body !== undefined && (!AWK_PRINT_BODY_RE.test(body) || AWK_SIDE_EFFECT_RE.test(body))) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: a print body may call system",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": " || AWK_SIDE_EFFECT_RE.test(body)",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: a backwards awk range closes",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "    if (to < from) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: a range print alone reads stdin",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "if (at === 0 ? bound.files.length === 0 : bound.files.length > 0) return null;",
+      "replace": "if (at === 0 ? false : bound.files.length > 0) return null;"
+    },
+    {
+      "name": "line-bound: a bound past the head may read its own file",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "if (at === 0 ? bound.files.length === 0 : bound.files.length > 0) return null;",
+      "replace": "if (at === 0 ? bound.files.length === 0 : false) return null;"
+    },
+    {
+      "name": "line-bound: any producer feeds a bound",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (!stages.slice(0, at).every(isBoundedFeed)) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: anything may follow the bound",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (!stages.slice(at + 1).every(isLineFilter)) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: a grep after the bound may split lines (-o)",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "return operands.length === 1 && flags.every((flag) => GREP_FILTER_FLAGS_RE.test(flag.text));",
+      "replace": "return operands.length === 1;"
+    },
+    {
+      "name": "line-bound: a grep after the bound may read a file",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "return operands.length === 1 && flags.every((flag) => GREP_FILTER_FLAGS_RE.test(flag.text));",
+      "replace": "return flags.every((flag) => GREP_FILTER_FLAGS_RE.test(flag.text));"
+    },
+    {
+      "name": "line-bound: a cat after the bound may read a file",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "if (FILE_PRINTERS.has(head.text)) return operands.length === 0;",
+      "replace": "if (FILE_PRINTERS.has(head.text)) return true;"
+    },
+    {
+      "name": "line-bound: bare head prints nothing",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "const DEFAULT_HEAD_TAIL_LINES = 10;",
+      "replace": "const DEFAULT_HEAD_TAIL_LINES = 0;"
+    },
+    {
+      "name": "line-bound: $DIR/path is not one file",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "if (!loopVariable && !ONE_EXPANDED_PATH_RE.test(word.text)) return null;",
+      "replace": "if (!loopVariable) return null;"
+    },
+    {
+      "name": "line-bound: a loop variable is not one file",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "const loopVariable = word.text.startsWith(\"$\") && scope.loopVariables.has(word.text.slice(1));",
+      "replace": "const loopVariable = false;"
+    },
+    {
+      "name": "line-bound: a loop over a glob counts its words",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "      if (list.length === 0 || list.some((word) => word.glob || EXPANDED_WORD_RE.test(word.text))) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: a loop body counts once",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "into.lines += loop.passes * loop.lines;",
+      "replace": "into.lines += loop.lines;"
+    },
+    {
+      "name": "line-bound: an unclosed loop is ignored",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (awaitingDo || loops.length > 0) return null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: an assignment is not glue",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (words.every((word) => ASSIGNMENT_RE.test(word.text))) return 0;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: || true is not glue",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "  if (SILENT_COMMANDS.has(head.text)) return args.length === 0 ? 0 : null;\n",
+      "replace": ""
+    },
+    {
+      "name": "line-bound: git show of a commit feeds a bound",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "return head.text === \"git\" && args[0]?.text === \"show\" && args.slice(1).some((arg) => arg.text.includes(\":\"));",
+      "replace": "return head.text === \"git\" && args[0]?.text === \"show\";"
+    },
+    {
+      "name": "line-bound: grep without -c is glue",
+      "source": "src/tools/shared/outputFilter/Bash/lineBound.ts",
+      "find": "if (!pattern || !flags.some((flag) => GREP_COUNT_FLAGS_RE.test(flag.text))) return null;",
+      "replace": "if (!pattern) return null;"
+    }
+  ]
+}
