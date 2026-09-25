@@ -1418,7 +1418,7 @@ describe('getClipFrontierIndex — agePruneActive (retain profile)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Head-preserving stubs (openclaude mid-tier idea, single-mutation form)
+// Head-preserving stubs (mid-tier stub, single-mutation form)
 // ---------------------------------------------------------------------------
 
 describe('head-preserving stubs', () => {

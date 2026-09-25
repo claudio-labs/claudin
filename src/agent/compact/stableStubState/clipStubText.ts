@@ -175,7 +175,7 @@ function findToolNameById<T extends AnyMessage>(
 // drift to a smaller number and break byte-stability).
 const CLIP_STUB_PATTERN = /^\[clipped: ~\d+ tokens from .+\]$/
 
-// Head-preserving variant (openclaude's mid-tier idea, single-mutation form):
+// Head-preserving variant (a mid-tier stub, in single-mutation form):
 // the first N chars of the original output survive above a marker line. Same
 // byte-stability contract as the pure stub — built once, never recomputed.
 const CLIP_STUB_HEAD_PATTERN = /\n\[clipped: ~\d+ tokens from .+ — head preserved\]$/

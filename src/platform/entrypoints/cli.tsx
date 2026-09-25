@@ -67,8 +67,8 @@ if (typeof (Promise as { withResolvers?: unknown }).withResolvers !== 'function'
 }
 
 // Claudin: the experimental-betas switch is on by default. The "→ 500 for
-// external accounts" this used to promise came from the openclaude fork with no
-// measurement behind it. On 2026-09-22 the real API accepted everything the
+// external accounts" this used to promise was inherited with no measurement
+// behind it. On 2026-09-22 the real API accepted everything the
 // switch guards except `scope:"global"`, which is a 400 for Claudin's request
 // shape (docs/tech/anthropic-betas/wire-matrix.md).
 // The betas measured there left it, each with its own CLAUDIN_DISABLE_*
