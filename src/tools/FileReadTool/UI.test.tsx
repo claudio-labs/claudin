@@ -19,19 +19,24 @@ import {
 // MessageResponse's `⎿` gutter pads with a non-breaking space.
 const NBSP_RE = /\u00a0/g
 
-function render(node: React.ReactNode): Promise<string> {
-  return renderToString(node, 100).then(out =>
+function render(node: React.ReactNode, columns = 100): Promise<string> {
+  return renderToString(node, columns).then(out =>
     stripAnsi(out).replace(NBSP_RE, ' ').trim(),
   )
 }
 
+const IN_CWD = join(process.cwd(), 'src', 'example.ts')
+
+// The verbose tool-use line carries the absolute path, so at a fixed width it
+// wraps in a deep checkout (a worktree) and not in a shallow one. What these
+// assertions pin is the text, not the wrapping.
+const USE_LINE_COLUMNS = IN_CWD.length + 40
+
 /** AssistantToolUseMessage prints the tool-use node inside `<Text>(…)</Text>`;
  *  a bare fragment with a string child only renders the way it ships there. */
 function renderUseLine(node: React.ReactNode): Promise<string> {
-  return render(<Text>{node}</Text>)
+  return render(<Text>{node}</Text>, USE_LINE_COLUMNS)
 }
-
-const IN_CWD = join(process.cwd(), 'src', 'example.ts')
 
 describe('Read UI — single-file renderers (pinned before the batch Read)', () => {
   test('the tool-use line is the display path, plus pages or a verbose range', async () => {
