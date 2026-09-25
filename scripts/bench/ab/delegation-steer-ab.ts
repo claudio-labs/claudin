@@ -501,8 +501,14 @@ type Scan = {
   results: Map<string, { isError: boolean; text: string }>
 }
 
-/** The tool_use inputs `forkBench.loadSession` does not keep, plus each file's model. */
-function scanTranscript(path: string): Scan {
+/**
+ * The tool_use inputs `forkBench.loadSession` does not keep, plus each file's model.
+ * `sidechain` keeps the records a sub-agent transcript is made of: without it a
+ * child's models came back empty, every child was priced at the PARENT's model,
+ * and an Explore child on Sonnet 5 read as Opus 5.5 (2026-09-25 run, +$0.08 a
+ * session against the CLI's total_cost_usd).
+ */
+function scanTranscript(path: string, sidechain = false): Scan {
   const scan: Scan = { models: [], uses: [], results: new Map() }
   let raw: string
   try {
@@ -519,7 +525,7 @@ function scanTranscript(path: string): Scan {
     } catch {
       continue
     }
-    if (v.isSidechain === true || !isRecord(v.message)) continue
+    if ((v.isSidechain === true && !sidechain) || !isRecord(v.message)) continue
     const m = v.message
     if (v.type === 'assistant') {
       const model = typeof m.model === 'string' ? m.model : ''
@@ -615,7 +621,7 @@ function analyze(x: SessionInput): SessionResult {
   const model = scan.models[0] ?? x.fallbackModel
   const subagentDir = join(dirname(parentPath), sid, 'subagents')
   const children: Child[] = session.children.map(c => {
-    const childModel = scanTranscript(join(subagentDir, `agent-${c.agentId}.jsonl`)).models[0] ?? model
+    const childModel = scanTranscript(join(subagentDir, `agent-${c.agentId}.jsonl`), true).models[0] ?? model
     return {
       agentType: c.agentType,
       description: c.description,

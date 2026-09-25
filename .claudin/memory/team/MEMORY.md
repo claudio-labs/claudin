@@ -37,6 +37,7 @@
 
 ## Bugs
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — Write branch of extractReadFilesFromMessages skips the is_error check
+- [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — query loop read the parent's app state; definitions, /agents, per-call `model` were inert
 - [Interactive Agent schema drops run_in_background and name](bugs/agent-schema-drops-run-in-background.md) — prompt teaches both, model sends strings, zod strips them, "background" agents run inline
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent)` registered a phantom `noop`; `claudin install` + `mcp serve tools/list` broken
 - [systemPrompt.main.txt regen captured harness-injected text](bugs/systemprompt-snapshot-harness-drift.md) — snapshot covers "Notes for this model" etc., injected by the harness; diff regen vs source before committing

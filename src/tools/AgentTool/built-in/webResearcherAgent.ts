@@ -44,9 +44,12 @@ export const WEB_RESEARCHER_AGENT: BuiltInAgentDefinition = {
   tools: [WEB_SEARCH_TOOL_NAME, WEB_FETCH_TOOL_NAME],
   source: 'built-in',
   baseDir: 'built-in',
-  // Cheap, fast model — research is mechanical browsing. Users can override via
-  // settings.agentModelOverrides['built-in:WebResearcher'].
-  model: 'haiku',
+  // Sonnet on a Claude-native provider; elsewhere the family alias inherits
+  // the parent's model (providers/model/agent.ts). It was `haiku` but ran on
+  // the parent's model until 2026-09-25 (agent/query/turnModel.ts), so Sonnet
+  // was the user's pick when the model started to apply. Overridable in
+  // /agents (agentModelOverrides['built-in:WebResearcher'], config.json).
+  model: 'sonnet',
   // Web research does not need commit/lint/typescript rules from CLAUDE.md,
   // nor the parent-session gitStatus blob — it never touches the local repo.
   omitClaudeMd: true,
