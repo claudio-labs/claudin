@@ -318,7 +318,7 @@ Refcount em SQLite seria correto teoricamente mas:
 3. Sweep: lista `~/.claudin/projects/<dir>/blobs/**/*`, se hash não está no
    set **e** `mtime > 24h` (margem para sessions ativas que ainda não fizeram
    flush para JSONL), unlink.
-4. Logar `tengu_blob_gc_swept` com bytes liberados.
+4. Logar `blob_gc_swept` com bytes liberados.
 
 Vantagem: zero state. Desvantagem: O(N) onde N = total de blobs no projeto.
 Como o cleanup já é "rodar uma vez por sessão de claudin", não é problema.
@@ -413,7 +413,7 @@ Mitigações sugeridas:
   total ultrapassa, o sweep deleta os blobs com `mtime` mais antigo (LRU
   approximada).
 - Verificar `statfs` antes de write — se < 100MB livres, recusar e logar
-  `tengu_blob_disk_pressure`. Não bloqueia o turn (fallback para truncate).
+  `blob_disk_pressure`. Não bloqueia o turn (fallback para truncate).
 
 ### Privacy
 

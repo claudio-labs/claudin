@@ -195,7 +195,7 @@ editing the `paths:` of an existing file in place does not bump its
 directory's mtime, so that change is picked up by the next scan trigger.
 
 The LLM relevance recall (`findRelevantMemories`, a Sonnet side-query per
-turn, flag `tengu_moth_copse`) was deleted the same day: two on-demand
+turn, flag `moth_copse`) was deleted the same day: two on-demand
 mechanisms for one purpose, one of them dead by flag. Transcripts recorded
 before then may still carry a `relevant_memories` attachment; the consumers
 treat it as an unknown legacy type and render nothing.

@@ -223,7 +223,7 @@ Two rules for new code:
   build`, never against a stale generation.
 
 The analytics path is gone entirely: the last thing under it, a local reader
-over `~/.claudin/feature-flags.json` for the upstream `tengu_*` flags, was
+over `~/.claudin/feature-flags.json` for the upstream remote flags, was
 deleted once no gate read it. A switch this fork needs is a `CLAUDIN_*` env
 var, documented at the top of the module that reads it.
 

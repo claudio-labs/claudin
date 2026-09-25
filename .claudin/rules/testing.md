@@ -120,7 +120,7 @@ These tests in `scripts/` enforce build correctness — always run when touching
 ```bash
 bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
 bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
-bun test scripts/verify/tengu-census.test.ts                 # no tengu token in src/
+bun test src/__tests__/upstreamCodename.test.ts              # upstream codename stays gone
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 ```
 
@@ -289,7 +289,7 @@ src/agent/compact/stableStubState.stub-byte-stability.test.ts
 src/tools/shared/outputFilter/Bash/phase12Report.test.ts
 scripts/build/feature-flags-source-guard.test.ts
 scripts/bench/tokens/measure-tool-schemas.test.ts
-scripts/verify/tengu-census.test.ts
+src/__tests__/upstreamCodename.test.ts
 scripts/verify/pr-intent-scan.test.ts
 ```
 

@@ -140,7 +140,7 @@
 
 - Vou ler o código relevante. Como abrange três subsistemas, vou mapear a estrutura primeiro e em paralelo verificar o que a memória de equipe já registrou (extração em background supostamente inerte no
 - Vou dispachar um agente Explore para mapear o fluxo end-to-end com excertos, em paralelo com leituras diretas dos arquivos centrais de cada subsistema.
-- O agente Explore afirma algo que **contradiz a memória de equipe**: que `extractMemories` está LIVE no open build (via `tengu_passport_quail: true` em `_openBuildDefaults`), enquanto a memória diz que
+- O agente Explore afirma algo que **contradiz a memória de equipe**: que `extractMemories` está LIVE no open build (via `passport_quail: true` em `_openBuildDefaults`), enquanto a memória diz que
 - O outline de `no-telemetry-plugin.ts` **não mostra** nenhum `_openBuildDefaults` (só `stubs` e `noTelemetryPlugin`). O agente pode ter alucinado. Vou verificar onde os flags GrowthBook realmente resol
 - A memória de equipe está mesmo desatualizada. Vou confirmar lendo o bloco do resolver e o caller da extração (stopHooks).
 - Confirmado — a memória de equipe está desatualizada. Vou ler o caller (`stopHooks`) e o trecho de injeção no prompt para fechar a cadeia, e depois respondo.

@@ -215,8 +215,8 @@ Not under `src/`, but among the most-opened files in practice:
 
 `featureFlags` in `scripts/build/build.ts` is the build-time set.
 Runtime switches are `CLAUDIN_*` env vars, each documented at the top of the
-module that reads it. The upstream `tengu_*` remote-flag keys are gone —
-`docs/tech/tengu-census/gate-audit.md` records the value each one was inlined
+module that reads it. The upstream remote-flag keys are gone —
+`docs/tech/upstream-flags/README.md` records the value each one was inlined
 to — and `~/.claudin/feature-flags.json` is no longer read. There is no
 analytics to grep for — `logEvent` and the modules behind it were removed.
 

@@ -87,7 +87,7 @@ no bundle**:
 ```
 datadoghq.com, api/event_logging/batch, api/claude_code/metrics,
 getKubernetesNamespace, /var/run/secrets/kubernetes,
-/proc/self/mountinfo, tengu_internal_record_permission_context,
+/proc/self/mountinfo, internal_record_permission_context,
 anthropic-serve, infra.ant.dev, claude-code-feedback, C07VBSHV7EV
 ```
 

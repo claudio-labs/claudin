@@ -145,7 +145,7 @@ Sub‑configuração via `~/.claudin/settings.json`:
 1. **Token reduction (primária)**: em sessão sintética de 20 turnos misturando file IO, bash, search e 1 chamada explícita a uma tool gated (worktree/cron/web), `dist/cli.mjs` em modo OpenAI-compat deve enviar **≥25% menos schemaBytes** somados across requests vs baseline (hoje ~18 k tokens × N turnos). Medir via patch local em `convertTools`/`toolToAPISchema` que loga `schemaBytes` no debug log.
 2. **No-regress em tool-calling correctness**: rodar `bun run test:provider` + um eval manual de 10 prompts canônicos ("liste arquivos", "leia X e edite Y", "abra worktree", "rode git status", "cron diário") em DeepSeek-V3 e Groq Llama-4. Aceitação: ≤1 caso onde a LLM falha em achar a tool certa em 2 turnos.
 3. **Latência neutra**: `bun run smoke` + warm-start unchanged (índice BM25 é construído lazy quando primeiro `ToolSearchTool` é necessário; corpus de 30 tools é trivial — <5ms). Adicionar bench mínimo em `src/utils/bm25ToolIndex.test.ts` com `expect(buildTime).toBeLessThan(20)`.
-4. **Cache preservation (Anthropic 1P)**: como o flag não muda nada para Anthropic 1P, o `tengu_prompt_cache_hit_rate` em telemetry deve estar dentro de ±1% do baseline. Guard: adicionar test em `src/__tests__/` que afirma `BM25_TOOL_GATING` é no‑op quando `isFirstPartyAnthropicBaseUrl()` é true.
+4. **Cache preservation (Anthropic 1P)**: como o flag não muda nada para Anthropic 1P, o `prompt_cache_hit_rate` em telemetry deve estar dentro de ±1% do baseline. Guard: adicionar test em `src/__tests__/` que afirma `BM25_TOOL_GATING` é no‑op quando `isFirstPartyAnthropicBaseUrl()` é true.
 
 ## Referências de arquivos
 

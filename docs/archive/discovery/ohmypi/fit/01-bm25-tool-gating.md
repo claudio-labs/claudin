@@ -94,7 +94,7 @@ Em corpus de 30 tools com vocabulário pequeno e descrições curtas/curadas, o 
 ### 3.2 Cenário B — Anthropic 1P com `tool_reference` já ativo
 
 - Wire-size já está reduzido (defer_loading via API). BM25 substitui scorer linear na hora de selecionar quais deferred mostrar; impacto em tokens enviados ao modelo = **zero**.
-- Ganho possível: melhor recall em queries ambíguas ("cancel job" → BM25 sobe CronDelete + TaskStop juntos via IDF; scorer atual pega só por keyword overlap). Difícil quantificar sem eval — possivelmente reduz `tengu_tool_search_outcome` com `hasMatches=false`, mas é hipotético.
+- Ganho possível: melhor recall em queries ambíguas ("cancel job" → BM25 sobe CronDelete + TaskStop juntos via IDF; scorer atual pega só por keyword overlap). Difícil quantificar sem eval — possivelmente reduz `tool_search_outcome` com `hasMatches=false`, mas é hipotético.
 - Ganho real: **NÃO em tokens, talvez em UX**. Não justifica o porte por si só.
 
 ### 3.3 Cenário C — sub-agente (Code/Explore)

@@ -29,18 +29,19 @@ not source.
    > should be.** Run `git diff` after any killed build. This preprocessing
    > exists because Bun ≥1.3.9 resolves `bun:bundle` natively before plugins can
    > intercept it.
-2. **There is no second rewrite pass any more.** One used to blank the `tengu_*`
-   name passed to `logEvent`/`logEventAsync`, because ~1000 event-name literals
-   survived minification as arguments. The events went first; the ~94 `tengu_*`
-   **gate keys** (upstream's remote GrowthBook flags) followed, each read
-   inlined to the value it already resolved to, and the local flag resolver
-   with them — `~/.claudin/feature-flags.json` is no longer read. The switches
-   this fork decided on are `CLAUDIN_*` env vars documented in the module that
-   reads them. `docs/tech/tengu-census/gate-audit.md` is the ledger of where
-   every key went.
+2. **There is no second rewrite pass any more.** One used to blank the
+   upstream event name passed to `logEvent`/`logEventAsync`, because ~1000
+   event-name literals survived minification as arguments. The events went
+   first; the ~94 **gate keys** (upstream's remote GrowthBook flags, under the
+   same codename prefix) followed, each read inlined to the value it already
+   resolved to, and the local flag resolver with them —
+   `~/.claudin/feature-flags.json` is no longer read. The switches this fork
+   decided on are `CLAUDIN_*` env vars documented in the module that reads
+   them. `docs/tech/upstream-flags/README.md` is the ledger of where every key
+   went.
 
-   `src/` now carries zero `tengu` tokens, pinned by
-   `scripts/verify/tengu-census.test.ts`. Check `dist/` with a grep over
+   No tracked file outside `.claudin/memory/` carries the codename, pinned by
+   `src/__tests__/upstreamCodename.test.ts`. Check `dist/` with a grep over
    `dist/chunks/` too — the bundle is code-split (rule 5 below), so
    `dist/cli.mjs` alone reads 0 whatever the chunks hold. A build in a
    directory whose path contains the word will show it in absolute paths;
@@ -304,7 +305,7 @@ construct you render in a script or a test.
 ```bash
 bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
 bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
-bun test scripts/verify/tengu-census.test.ts                 # no tengu token in src/
+bun test src/__tests__/upstreamCodename.test.ts              # upstream codename stays gone
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 bun run verify:privacy                                       # scan dist/ for phone-home
 ```

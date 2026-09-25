@@ -526,11 +526,11 @@ Three events. All names use the privacy convention from `BashTool.tsx:766` (suff
 
 - `filter_name` is one of our enumerated filter IDs (e.g. `'git-status'`, `'cargo-build'`). Bounded set, no PII. Cast: `filter_name: filterName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS`.
 - We do **not** emit raw command strings, file paths, output content, or verb. Verb extraction for analytics is unnecessary in v1 (filter name is more specific anyway).
-- The pattern at `BashTool.tsx:765` (`logEvent('tengu_bash_command', { command_type: ..., is_in_worktree: ... })`) is the template. Events emitted inline in `applyFilterToStdout` and at the rewrite site.
+- The pattern at `BashTool.tsx:765` (`logEvent('bash_command', { command_type: ..., is_in_worktree: ... })`) is the template. Events emitted inline in `applyFilterToStdout` and at the rewrite site.
 
 No new GrowthBook flags. Future opt-out is the env var or config (§12).
 
-**Volume:** existing `tengu_bash_command` already fires on every bash call (`BashTool.tsx:765`) — ~100/session. Our 3 events add ~30-60/session in a typical workflow (filter matches happen on ~50-70% of bash calls; not every call gets a filter). No sampling needed for v1.
+**Volume:** existing `bash_command` already fires on every bash call (`BashTool.tsx:765`) — ~100/session. Our 3 events add ~30-60/session in a typical workflow (filter matches happen on ~50-70% of bash calls; not every call gets a filter). No sampling needed for v1.
 
 **Avoid no-op events:** when filter matches but yields `reductionPct === 0` AND no rewrite fired, emit `claudin_bash_filter_skipped { reason_code: 1 }` instead of `claudin_bash_filter_applied`. Keeps the `applied` event meaningful (always represents real compression). Document the routing logic in `analytics.ts` (or inline in `index.ts` orchestrator).
 
