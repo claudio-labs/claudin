@@ -1,40 +1,17 @@
 /**
  * A2 regression — deferred-tools delta default + legacy-session latch.
  *
- * With tengu_glacier_2xr resolving to false in the open build,
- * claude/streaming.ts prepended an ephemeral <available-deferred-tools>
- * block at messages[0] on every request — any change to the deferred pool
- * (MCP connect, tool discovery) rewrote messages[0] and invalidated the
- * entire cached prefix. The flag now defaults to true via
- * _openBuildDefaults, with a per-session compatibility latch so sessions
- * resumed with a warm cache written by a pre-flip binary keep the legacy
- * format (zero break from the flip itself).
+ * With the delta off, claude/streaming.ts prepended an ephemeral
+ * <available-deferred-tools> block at messages[0] on every request — any
+ * change to the deferred pool (MCP connect, tool discovery) rewrote
+ * messages[0] and invalidated the entire cached prefix. It is on by default
+ * (CLAUDIN_DEFERRED_TOOLS_DELTA=0 turns it off), with a per-session
+ * compatibility latch so sessions resumed with a warm cache written by a
+ * pre-flip binary keep the legacy format (zero break from the flip itself).
  */
 import { afterAll, afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-
-// ── Flag resolution ────────────────────────────────────────────────────
-//
-// This used to extract the resolver out of no-telemetry-plugin.ts with a regex,
-// write it to a temp .mjs and import THAT, because the open-build defaults
-// lived only inside the build script — the real module resolved false under
-// `bun test` and a `mock.module` was needed below to force the flag on.
-//
-// The resolver is source now, so the default is the same in both places and
-// neither the extraction nor the mock is needed. That equivalence is the point
-// of the collapse, so it gets an assertion rather than a comment.
-describe('open-build default for tengu_glacier_2xr', () => {
-  test('the deferred-tools delta gate resolves true without a flags file', async () => {
-    const { getFeatureValue_CACHED_MAY_BE_STALE } = await import(
-      'src/platform/analytics/growthbook.js'
-    )
-    // Mirrors toolSearch.isDeferredToolsDeltaEnabled's call shape.
-    expect(getFeatureValue_CACHED_MAY_BE_STALE('tengu_glacier_2xr', false)).toBe(
-      true,
-    )
-  })
-})
 
 const {
   isDeferredToolsDeltaActive,
@@ -88,7 +65,7 @@ afterEach(() => {
 })
 
 describe('maybeLatchLegacyDeferredAnnouncement', () => {
-  test('precondition: flag mocked on', () => {
+  test('precondition: the delta is on', () => {
     expect(isDeferredToolsDeltaEnabled()).toBe(true)
     expect(isDeferredToolsDeltaActive()).toBe(true)
   })

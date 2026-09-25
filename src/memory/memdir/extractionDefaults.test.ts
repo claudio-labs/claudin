@@ -1,11 +1,11 @@
 /**
  * The memory features this fork runs ON where upstream shipped them off,
- * pinned at the functions callers read so the pin holds while the decision
- * moves from a `tengu_*` gate to a `CLAUDIN_*` env
- * (docs/tech/tengu-census/gate-audit.md). Each line here goes red in
- * scripts/migrations/probes/forkDefaults.json when its default is flipped.
+ * pinned at the functions callers read, plus the `CLAUDIN_*` env that turns
+ * each one off or retunes it (docs/tech/tengu-census/gate-audit.md). Each
+ * default goes red in scripts/migrations/probes/forkDefaults.json when it is
+ * flipped.
  */
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { buildSearchingPastContextSection } from 'src/memory/memdir/memdir.js'
 import {
@@ -17,10 +17,24 @@ import {
   setIsInteractive,
 } from 'src/platform/bootstrap/state.js'
 
+const ENV = [
+  'CLAUDIN_EXTRACT_MEMORIES',
+  'CLAUDIN_EXTRACT_MEMORIES_EVERY',
+  'CLAUDIN_MEMORY_PAST_CONTEXT',
+] as const
+const saved = new Map(ENV.map(name => [name, process.env[name]]))
 const wasInteractive = getIsInteractive()
+
+beforeEach(() => {
+  for (const name of ENV) delete process.env[name]
+})
 
 afterEach(() => {
   setIsInteractive(wasInteractive)
+  for (const [name, value] of saved) {
+    if (value === undefined) delete process.env[name]
+    else process.env[name] = value
+  }
 })
 
 describe('memory extraction', () => {
@@ -34,9 +48,28 @@ describe('memory extraction', () => {
     expect(isExtractModeActive()).toBe(false)
   })
 
+  test('CLAUDIN_EXTRACT_MEMORIES=0 turns it off', () => {
+    setIsInteractive(true)
+    process.env.CLAUDIN_EXTRACT_MEMORIES = '0'
+    expect(isExtractModeActive()).toBe(false)
+  })
+
   test('fires every 15 eligible turns', () => {
     expect(getExtractionTurnInterval()).toBe(15)
   })
+
+  test('CLAUDIN_EXTRACT_MEMORIES_EVERY retunes the cadence', () => {
+    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = '3'
+    expect(getExtractionTurnInterval()).toBe(3)
+  })
+
+  test.each(['0', '-2', 'soon'])(
+    'CLAUDIN_EXTRACT_MEMORIES_EVERY=%s keeps the default',
+    value => {
+      process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY = value
+      expect(getExtractionTurnInterval()).toBe(15)
+    },
+  )
 })
 
 describe('the memory prompt', () => {
@@ -44,5 +77,10 @@ describe('the memory prompt', () => {
     expect(buildSearchingPastContextSection('/mem').join('\n')).toContain(
       'Searching past context',
     )
+  })
+
+  test('CLAUDIN_MEMORY_PAST_CONTEXT=0 drops the section', () => {
+    process.env.CLAUDIN_MEMORY_PAST_CONTEXT = '0'
+    expect(buildSearchingPastContextSection('/mem')).toEqual([])
   })
 })

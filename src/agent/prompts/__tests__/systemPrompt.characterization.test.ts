@@ -47,7 +47,7 @@ const MODEL = 'claude-opus-5-5'
 // absolute path it was generated from.
 const PROJECT_SLUG = REPO_ROOT.replace(/[^a-zA-Z0-9]/g, '-')
 
-// The Scratchpad section (on by default since tengu_scratch flipped) names
+// The Scratchpad section (on by default, CLAUDIN_SCRATCHPAD=0 to drop it) names
 // `/tmp/claude-<uid>/<slug>/<sessionId>/scratchpad` — src/platform/tmpdir.ts,
 // with /tmp realpath-resolved (macOS: /private/tmp). The uid and the realpath
 // are this machine's own values, substituted like the paths above; the

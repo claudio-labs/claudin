@@ -5,48 +5,89 @@
     "src/permissions/autoModeGate.test.ts",
     "src/permissions/bypassPermissions.test.ts"
   ],
-  "source": "src/platform/analytics/growthbook.ts",
+  "source": "src/agent/awaySummary.ts",
   "probes": [
     {
       "name": "the away summary is on by default",
-      "find": "  tengu_sedge_lantern: true,\n",
-      "replace": "  tengu_sedge_lantern: false,\n"
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_AWAY_SUMMARY)\n",
+      "replace": "  return process.env.CLAUDIN_AWAY_SUMMARY === '1'\n"
+    },
+    {
+      "name": "CLAUDIN_AWAY_SUMMARY=0 turns it off",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_AWAY_SUMMARY)\n",
+      "replace": "  return true\n"
     },
     {
       "name": "memory extraction is on by default",
-      "find": "  tengu_passport_quail: true,\n",
-      "replace": "  tengu_passport_quail: false,\n"
+      "source": "src/memory/memdir/paths.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXTRACT_MEMORIES)\n",
+      "replace": "  return process.env.CLAUDIN_EXTRACT_MEMORIES === '1'\n"
     },
     {
-      "name": "the memory prompt teaches the past-context search",
-      "find": "  tengu_coral_fern: true,\n",
-      "replace": "  tengu_coral_fern: false,\n"
-    },
-    {
-      "name": "extraction fires every 15 eligible turns",
-      "find": "  tengu_bramble_lintel: 15,\n",
-      "replace": "  tengu_bramble_lintel: 14,\n"
-    },
-    {
-      "name": "deferred tools are announced by delta attachment",
-      "find": "  tengu_glacier_2xr: true,\n",
-      "replace": "  tengu_glacier_2xr: false,\n"
-    },
-    {
-      "name": "the scratchpad is on by default",
-      "find": "  tengu_scratch: true,\n",
-      "replace": "  tengu_scratch: false,\n"
-    },
-    {
-      "name": "nothing can refuse --dangerously-skip-permissions but settings",
-      "find": "  tengu_disable_bypass_permissions_mode: false,\n",
-      "replace": "  tengu_disable_bypass_permissions_mode: true,\n"
+      "name": "CLAUDIN_EXTRACT_MEMORIES=0 turns it off",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXTRACT_MEMORIES)\n",
+      "replace": "  return true\n"
     },
     {
       "name": "extraction stays off in a non-interactive session",
       "source": "src/memory/memdir/paths.ts",
-      "find": "    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slate_thimble', false)\n",
-      "replace": "    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slate_thimble', true)\n"
+      "find": "  return isExtractMemoriesEnabled() && !getIsNonInteractiveSession()\n",
+      "replace": "  return isExtractMemoriesEnabled()\n"
+    },
+    {
+      "name": "extraction fires every 15 eligible turns",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 15\n",
+      "replace": "const DEFAULT_EXTRACTION_TURN_INTERVAL = 14\n"
+    },
+    {
+      "name": "CLAUDIN_EXTRACT_MEMORIES_EVERY is read",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    process.env.CLAUDIN_EXTRACT_MEMORIES_EVERY,\n",
+      "replace": "    undefined,\n"
+    },
+    {
+      "name": "the memory prompt teaches the past-context search",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_MEMORY_PAST_CONTEXT)) {\n",
+      "replace": "  if (process.env.CLAUDIN_MEMORY_PAST_CONTEXT !== '1') {\n"
+    },
+    {
+      "name": "CLAUDIN_MEMORY_PAST_CONTEXT=0 drops it",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_MEMORY_PAST_CONTEXT)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "deferred tools are announced by delta attachment",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_DEFERRED_TOOLS_DELTA)\n",
+      "replace": "  return process.env.CLAUDIN_DEFERRED_TOOLS_DELTA === '1'\n"
+    },
+    {
+      "name": "CLAUDIN_DEFERRED_TOOLS_DELTA=0 turns it off",
+      "source": "src/tools/ToolSearchTool/prompt.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_DEFERRED_TOOLS_DELTA)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "the scratchpad is on by default",
+      "source": "src/agent/scratchpad.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_SCRATCHPAD)\n",
+      "replace": "  return process.env.CLAUDIN_SCRATCHPAD === '1'\n"
+    },
+    {
+      "name": "CLAUDIN_SCRATCHPAD=0 turns it off",
+      "source": "src/agent/scratchpad.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_SCRATCHPAD)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "nothing can refuse --dangerously-skip-permissions but settings",
+      "source": "src/platform/analytics/growthbook.ts",
+      "find": "  tengu_disable_bypass_permissions_mode: false,\n",
+      "replace": "  tengu_disable_bypass_permissions_mode: true,\n"
     },
     {
       "name": "auto mode is offered in the carousel without an opt-in",

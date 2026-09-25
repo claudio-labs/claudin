@@ -11,11 +11,15 @@ import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
 import { stripThinkTags } from 'src/providers/shims/thinkTagSanitizer.js'
 import { getSessionMemoryContent } from 'src/memory/session/sessionMemoryUtils.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
-/** Whether the "while you were away" recap runs (useAwaySummary). */
+/**
+ * Whether the "while you were away" recap runs (useAwaySummary, which also
+ * sits behind `feature('AWAY_SUMMARY')`). On by default in this fork; upstream
+ * shipped it off. CLAUDIN_AWAY_SUMMARY=0 is the killswitch.
+ */
 export function isAwaySummaryEnabled(): boolean {
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_sedge_lantern', false)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_AWAY_SUMMARY)
 }
 
 // Recap only needs recent context — truncate to avoid "prompt too long" on

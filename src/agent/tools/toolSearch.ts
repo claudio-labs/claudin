@@ -24,6 +24,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   formatDeferredToolLine,
   isDeferredTool,
+  isDeferredToolsDeltaEnabled,
   TOOL_SEARCH_TOOL_NAME,
 } from 'src/tools/ToolSearchTool/prompt.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -631,14 +632,9 @@ export type DeferredToolsDeltaScanContext = {
   subagent?: boolean
 }
 
-/**
- * True → announce deferred tools via persisted delta attachments.
- * False → claude.ts keeps its per-call <available-deferred-tools>
- * header prepend (the attachment does not fire).
- */
-export function isDeferredToolsDeltaEnabled(): boolean {
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_glacier_2xr', false)
-}
+// Defined beside the ToolSearch prompt, which reads it too and cannot import
+// this module back.
+export { isDeferredToolsDeltaEnabled }
 
 // Upper bound of the server-side prompt-cache TTL (extended TTL is 1h;
 // default is 5min). A session resumed within this window of its previous

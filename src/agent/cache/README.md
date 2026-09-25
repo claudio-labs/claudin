@@ -62,7 +62,7 @@ audit; integrated regression:
   in place and keep schemas across transient failures
   (`resolveUpdatedTools`), LSP `defer_loading` latches per session, and
   deferred tools are announced via persisted delta attachments
-  (`tengu_glacier_2xr` on in the open build) instead of an ephemeral
+  (on by default, `CLAUDIN_DEFERRED_TOOLS_DELTA=0` to turn off) instead of an ephemeral
   `messages[0]` prepend — with a legacy-format latch for sessions resumed
   on a warm pre-flip cache (`maybeLatchLegacyDeferredAnnouncement`).
 - **Every deferred tool is in the `tools` array from the first request**,

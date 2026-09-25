@@ -8,18 +8,25 @@
  */
 import { join } from 'path'
 
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getProjectTempDir } from 'src/platform/tmpdir.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 
 /**
  * Checks if the scratchpad directory feature is enabled.
  * The scratchpad is a per-session directory for Claude to write temporary files.
- * Controlled by the tengu_scratch Statsig gate.
+ *
+ * On by default in this fork; upstream shipped it off. The system prompt
+ * names the directory and `checkEditableInternalPath` lets Write reach it
+ * without a prompt, so plan-mode research has somewhere to put a throwaway
+ * script: `/tmp` is outside the working tree, where a Write is an 'ask' that
+ * plan mode hard-denies (108 plan-mode Bash denials in 2026-09-14..20 were
+ * that). CLAUDIN_SCRATCHPAD=0 is the killswitch. It must not change while the
+ * process lives — the system prompt names the directory.
  */
 export function isScratchpadEnabled(): boolean {
-  return checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_scratch')
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_SCRATCHPAD)
 }
 
 /**

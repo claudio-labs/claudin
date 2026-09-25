@@ -27,6 +27,7 @@ import {
   getExtractionTurnInterval,
   isAutoMemoryEnabled,
   isAutoMemPath,
+  isExtractMemoriesEnabled,
 } from 'src/memory/memdir/paths.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -54,7 +55,6 @@ import {
   createMemorySavedMessage,
   createUserMessage,
 } from 'src/agent/messages/messages.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
 import {
@@ -541,7 +541,7 @@ export function initExtractMemories(): void {
       return
     }
 
-    if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_passport_quail', false)) {
+    if (!isExtractMemoriesEnabled()) {
       return
     }
 

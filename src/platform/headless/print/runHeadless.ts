@@ -541,8 +541,8 @@ export async function runHeadless(
   // Drain any in-flight memory extraction before shutdown. The response is
   // already flushed above, so this adds no user-visible latency — it just
   // delays process exit so gracefulShutdownSync's 5s failsafe doesn't kill
-  // the forked agent mid-flight. Gated by isExtractModeActive so the
-  // tengu_slate_thimble flag controls non-interactive extraction end-to-end.
+  // the forked agent mid-flight. Gated by isExtractModeActive, the same check
+  // that decides whether a non-interactive extraction starts at all.
   if (feature('EXTRACT_MEMORIES') && isExtractModeActive()) {
     await extractMemoriesModule!.drainPendingExtraction()
   }
