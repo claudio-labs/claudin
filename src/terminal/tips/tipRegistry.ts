@@ -1,22 +1,12 @@
 import chalk from 'chalk'
 import { logForDebugging } from 'src/shared/debug.js'
 import { fileHistoryEnabled } from 'src/shared/fs/fileHistory.js'
-import {
-  getInitialSettings,
-  getSettingsForSource,
-} from 'src/platform/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { shouldOfferTerminalSetup } from 'src/commands/terminalSetup/terminalSetup.js'
 import { color } from 'src/terminal/design-system/color.js'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
-import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
-import { is1PApiCustomer } from 'src/providers/auth/auth.js'
 import { countConcurrentSessions } from 'src/sessions/concurrentSessions.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
-import {
-  getEffortEnvOverride,
-  getInitialEffortSetting,
-  modelSupportsEffort,
-} from 'src/providers/effort/effort.js'
 import { env } from 'src/shared/env.js'
 import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
 import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js'
@@ -29,10 +19,7 @@ import {
   isVSCodeInstalled,
   isWindsurfInstalled,
 } from 'src/platform/ide/ide.js'
-import {
-  getMainLoopModel,
-  getUserSpecifiedModelSetting,
-} from 'src/providers/model/model.js'
+import { getUserSpecifiedModelSetting } from 'src/providers/model/model.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { isPluginInstalled } from 'src/plugins/installedPluginsManager.js'
 import { loadKnownMarketplacesConfigSafe } from 'src/plugins/marketplaceManager.js'
@@ -41,7 +28,6 @@ import {
   getCurrentSessionAgentColor,
   isCustomTitleEnabled,
 } from 'src/sessions/sessionStorage.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getSessionsSinceLastShown } from 'src/terminal/tips/tipHistory.js'
 import type { Tip, TipContext } from 'src/terminal/tips/types.js'
 
@@ -583,83 +569,6 @@ const externalTips: Tip[] = [
         filePath: /(?:^|[/\\])vercel\.json$/i,
         cli: ['vercel'],
       }),
-  },
-  {
-    id: 'effort-high-nudge',
-    content: async ctx => {
-      const blue = color('suggestion', ctx.theme)
-      const cmd = blue('/effort high')
-      const variant = getFeatureValue_CACHED_MAY_BE_STALE<
-        'off' | 'copy_a' | 'copy_b'
-      >('tengu_tide_elm', 'off')
-      return variant === 'copy_b'
-        ? `Use ${cmd} for better one-shot answers. Claudin thinks it through first.`
-        : `Working on something tricky? ${cmd} gives better first answers`
-    },
-    cooldownSessions: 3,
-    isRelevant: async () => {
-      if (!is1PApiCustomer()) return false
-      if (!modelSupportsEffort(getMainLoopModel())) return false
-      if (getSettingsForSource('policySettings')?.effortLevel !== undefined) {
-        return false
-      }
-      if (getEffortEnvOverride() !== undefined) return false
-      // Project pin first, then the global setting — otherwise the nudge keeps
-      // firing for someone who already pinned high in this repo.
-      const persisted = getInitialEffortSetting()
-      if (persisted === 'high' || persisted === 'max') return false
-      return (
-        getFeatureValue_CACHED_MAY_BE_STALE<'off' | 'copy_a' | 'copy_b'>(
-          'tengu_tide_elm',
-          'off',
-        ) !== 'off'
-      )
-    },
-  },
-  {
-    id: 'subagent-fanout-nudge',
-    content: async ctx => {
-      const blue = color('suggestion', ctx.theme)
-      const variant = getFeatureValue_CACHED_MAY_BE_STALE<
-        'off' | 'copy_a' | 'copy_b'
-      >('tengu_tern_alloy', 'off')
-      return variant === 'copy_b'
-        ? `For big tasks, tell Claudin to ${blue('use subagents')}. They work in parallel and keep your main thread clean.`
-        : `Say ${blue('"fan out subagents"')} and Claudin sends a team. Each one digs deep so nothing gets missed.`
-    },
-    cooldownSessions: 3,
-    isRelevant: async () => {
-      if (!is1PApiCustomer()) return false
-      return (
-        getFeatureValue_CACHED_MAY_BE_STALE<'off' | 'copy_a' | 'copy_b'>(
-          'tengu_tern_alloy',
-          'off',
-        ) !== 'off'
-      )
-    },
-  },
-  {
-    id: 'loop-command-nudge',
-    content: async ctx => {
-      const blue = color('suggestion', ctx.theme)
-      const variant = getFeatureValue_CACHED_MAY_BE_STALE<
-        'off' | 'copy_a' | 'copy_b'
-      >('tengu_timber_lark', 'off')
-      return variant === 'copy_b'
-        ? `Use ${blue('/loop 5m check the deploy')} to run any prompt on a schedule. Set it and forget it.`
-        : `${blue('/loop')} runs any prompt on a recurring schedule. Great for monitoring deploys, babysitting PRs, or polling status.`
-    },
-    cooldownSessions: 3,
-    isRelevant: async () => {
-      if (!is1PApiCustomer()) return false
-      if (!isKairosCronEnabled()) return false
-      return (
-        getFeatureValue_CACHED_MAY_BE_STALE<'off' | 'copy_a' | 'copy_b'>(
-          'tengu_timber_lark',
-          'off',
-        ) !== 'off'
-      )
-    },
   },
   {
     id: 'feedback-command',

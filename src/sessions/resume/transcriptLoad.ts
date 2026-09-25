@@ -23,7 +23,6 @@ import { readFile, stat } from 'fs/promises'
 import { join } from 'path'
 import { z } from 'zod/v4'
 
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getOriginalCwd,
   getSessionProjectDir,
@@ -370,60 +369,24 @@ export async function loadTranscriptFile(
   const leafUuids = new Set<UUID>()
   let hasCycle = false
 
-  if (getFeatureValue_CACHED_MAY_BE_STALE('tengu_pebble_leaf_prune', false)) {
-    // Build a set of UUIDs that have user/assistant children
-    // (these are mid-conversation nodes, not dead ends)
-    const hasUserAssistantChild = new Set<UUID>()
-    for (const msg of allMessages) {
-      if (msg.parentUuid && (msg.type === 'user' || msg.type === 'assistant')) {
-        hasUserAssistantChild.add(msg.parentUuid)
+  // Walk back from each terminal message to the nearest user/assistant
+  // ancestor.
+  for (const terminal of terminalMessages) {
+    const seen = new Set<UUID>()
+    let current: TranscriptMessage | undefined = terminal
+    while (current) {
+      if (seen.has(current.uuid)) {
+        hasCycle = true
+        break
       }
-    }
-
-    // For each terminal message, walk back to find the nearest user/assistant ancestor.
-    // Skip ancestors that already have user/assistant children - those are mid-conversation
-    // nodes where the conversation continued (e.g., an assistant tool_use message whose
-    // progress child is terminal, but whose tool_result child continues the conversation).
-    for (const terminal of terminalMessages) {
-      const seen = new Set<UUID>()
-      let current: TranscriptMessage | undefined = terminal
-      while (current) {
-        if (seen.has(current.uuid)) {
-          hasCycle = true
-          break
-        }
-        seen.add(current.uuid)
-        if (current.type === 'user' || current.type === 'assistant') {
-          if (!hasUserAssistantChild.has(current.uuid)) {
-            leafUuids.add(current.uuid)
-          }
-          break
-        }
-        current = current.parentUuid
-          ? messages.get(current.parentUuid)
-          : undefined
+      seen.add(current.uuid)
+      if (current.type === 'user' || current.type === 'assistant') {
+        leafUuids.add(current.uuid)
+        break
       }
-    }
-  } else {
-    // Original leaf computation: walk back from terminal messages to find
-    // the nearest user/assistant ancestor unconditionally
-    for (const terminal of terminalMessages) {
-      const seen = new Set<UUID>()
-      let current: TranscriptMessage | undefined = terminal
-      while (current) {
-        if (seen.has(current.uuid)) {
-          hasCycle = true
-          break
-        }
-        seen.add(current.uuid)
-        if (current.type === 'user' || current.type === 'assistant') {
-          leafUuids.add(current.uuid)
-          break
-        }
-        current = current.parentUuid
-          ? messages.get(current.parentUuid)
-          : undefined
-      }
+      current = current.parentUuid
+        ? messages.get(current.parentUuid)
+        : undefined
     }
   }
 

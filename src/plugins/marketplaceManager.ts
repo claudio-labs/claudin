@@ -23,7 +23,6 @@ import { writeFile } from 'fs/promises'
 import isEqual from 'lodash-es/isEqual.js'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
@@ -2287,17 +2286,6 @@ export async function refreshAllMarketplaces(): Promise<void> {
         config[name]!.lastUpdated = new Date().toISOString()
         continue
       }
-      if (
-        !getFeatureValue_CACHED_MAY_BE_STALE(
-          'tengu_plugin_official_mkt_git_fallback',
-          true,
-        )
-      ) {
-        logForDebugging(
-          `Skipping official marketplace bulk refresh: GCS failed, git fallback disabled`,
-        )
-        continue
-      }
       // fall through to git
     }
     try {
@@ -2406,24 +2394,7 @@ export async function refreshMarketplace(
         await saveKnownMarketplacesConfig(config)
         return
       }
-      // GCS failed — fall through to git ONLY if the kill-switch allows.
-      // Default true (backend write perms are pending as of inc-5046); flip
-      // to false via GrowthBook once the backend is confirmed live so new
-      // clients NEVER hit GitHub for the official marketplace.
-      if (
-        !getFeatureValue_CACHED_MAY_BE_STALE(
-          'tengu_plugin_official_mkt_git_fallback',
-          true,
-        )
-      ) {
-        // Throw, don't return — every other failure path in this function
-        // throws, and callers like ManageMarketplaces.tsx:259 increment
-        // updatedCount on any non-throwing return. A silent return would
-        // report "Updated 1 marketplace" when nothing was refreshed.
-        throw new Error(
-          'Official marketplace GCS fetch failed and git fallback is disabled',
-        )
-      }
+      // GCS failed — fall through to git.
       logForDebugging('Official marketplace GCS failed; falling back to git', {
         level: 'warn',
       })

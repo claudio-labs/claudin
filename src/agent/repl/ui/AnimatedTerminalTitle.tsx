@@ -18,30 +18,27 @@ export type AnimatedTerminalTitleProps = {
   title: string
   /** When true, suppress the title side-effect entirely. */
   disabled: boolean
-  /** When true, render the title without the leading glyph prefix. */
-  noPrefix: boolean
 }
 
 export function AnimatedTerminalTitle({
   isAnimating,
   title,
   disabled,
-  noPrefix,
 }: AnimatedTerminalTitleProps): null {
   const terminalFocused = useTerminalFocus()
   const [frame, setFrame] = useState(0)
   useEffect(() => {
-    if (disabled || noPrefix || !isAnimating || !terminalFocused) {
+    if (disabled || !isAnimating || !terminalFocused) {
       return
     }
     const interval = setInterval(() => {
       setFrame(f => (f + 1) % TITLE_ANIMATION_FRAMES.length)
     }, TITLE_ANIMATION_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [disabled, noPrefix, isAnimating, terminalFocused])
+  }, [disabled, isAnimating, terminalFocused])
   const prefix = isAnimating
     ? (TITLE_ANIMATION_FRAMES[frame] ?? TITLE_STATIC_PREFIX)
     : TITLE_STATIC_PREFIX
-  useTerminalTitle(disabled ? null : noPrefix ? title : `${prefix} ${title}`)
+  useTerminalTitle(disabled ? null : `${prefix} ${title}`)
   return null
 }

@@ -1,8 +1,7 @@
 // Owns the REPL's per-render boot/lifecycle effects.
 //
 // Extracted from src/agent/repl/REPL.tsx (Etapa 4, ROADMAP 11e). Before extraction,
-// two sibling useEffect blocks sat between the spinner/status calculations and
-// the `useTabStatus` hook call:
+// two sibling useEffect blocks sat after the spinner/status calculations:
 //
 //   1. Prevent macOS from sleeping while Claude is working (`startPreventSleep`/
 //      `stopPreventSleep`), keyed on `(isLoading, isWaitingForApproval,
@@ -11,13 +10,12 @@
 //      with the background-sessions build flag it was gated on, which never
 //      opened in this fork.
 //
-// What remains is the sleep effect plus the derivation of `sessionStatus` /
-// `waitingFor`, which the hook returns so REPL.tsx can still pass them to
-// `useTabStatus` and the spinner UI.
+// What remains is the sleep effect plus the derivation of `waitingFor`,
+// which the hook returns so REPL.tsx can still pass it to the spinner UI.
 //
 // IMPORTANT — hook order: REPL.tsx invokes `useReplLifecycle(...)` at exactly
 // the same point in the component body where the original two effects lived
-// (between `titleIsAnimating` and `useTabStatus(...)`). React's Rules of Hooks
+// (right after `titleIsAnimating`). React's Rules of Hooks
 // require a stable call order, so this single call replaces TWO effects. The
 // startup-checks gate (REPL.tsx ~line 1207) is intentionally NOT consolidated here:
 // it lives much later, after dozens of other hooks (state, refs, callbacks)
@@ -25,7 +23,6 @@
 // and violate hook order.
 
 import { useEffect } from 'react';
-import type { TabStatusKind } from 'src/terminal/ink/hooks/use-tab-status.js';
 import { startPreventSleep, stopPreventSleep } from 'src/platform/preventSleep.js';
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 
@@ -45,7 +42,6 @@ export interface UseReplLifecycleDeps {
 }
 
 export interface UseReplLifecycleResult {
-  sessionStatus: TabStatusKind;
   waitingFor: string | undefined;
 }
 
@@ -67,7 +63,7 @@ export function useReplLifecycle(deps: UseReplLifecycleDeps): UseReplLifecycleRe
     }
   }, [isLoading, isWaitingForApproval, isShowingLocalJSXCommand]);
 
-  const sessionStatus: TabStatusKind = isWaitingForApproval || isShowingLocalJSXCommand
+  const sessionStatus: 'idle' | 'busy' | 'waiting' = isWaitingForApproval || isShowingLocalJSXCommand
     ? 'waiting'
     : isLoading
       ? 'busy'
@@ -85,5 +81,5 @@ export function useReplLifecycle(deps: UseReplLifecycleDeps): UseReplLifecycleRe
             ? 'dialog open'
             : 'input needed';
 
-  return { sessionStatus, waitingFor };
+  return { waitingFor };
 }

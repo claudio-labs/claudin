@@ -33,7 +33,7 @@ import { useOnSubmit } from 'src/agent/repl/controllers/useOnSubmit.js';
 import { renderMessagesToPlainText } from 'src/platform/exportRenderer.js';
 import { openFileInExternalEditor } from 'src/shared/editor.js';
 import { writeFile } from 'fs/promises';
-import { Box, Text, useStdin, useTheme, useTabStatus } from 'src/terminal/ink.js';
+import { Box, Text, useStdin, useTheme } from 'src/terminal/ink.js';
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js';
 import * as React from 'react';
 import { useEffect, useMemo, useRef, useState, useCallback, useDeferredValue, useLayoutEffect } from 'react';
@@ -128,7 +128,6 @@ import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js';
 import { clearSpeculativeChecks } from 'src/tools/BashTool/bashPermissions.js';
 import { getGlobalConfig, saveGlobalConfig, getGlobalConfigWriteCount } from 'src/platform/config/config.js';
 import { hasConsoleBillingAccess } from 'src/providers/usage/billing.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { textForResubmit, handleMessageFromStream, type StreamingToolUse, type StreamingThinking, getMessagesAfterCompactBoundary, createUserMessage, createAssistantMessage, createTurnDurationMessage, createAgentsKilledMessage, createApiMetricsMessage, createSystemMessage, createCommandInputMessage, formatCommandInputTags } from 'src/agent/messages/messages.js';
 import { LOCAL_COMMAND_STDOUT_TAG } from 'src/shared/constants/xml.js';
 import { escapeXml } from 'src/shared/data/xml.js';
@@ -887,9 +886,9 @@ export function REPL({
 
   // Boot/lifecycle effects: prevent-sleep + session-activity PID file push.
   // Both keyed on the same upstream loading/approval signals; consolidated in
-  // a single hook so the `sessionStatus`/`waitingFor` derivation lives next to
+  // a single hook so the `waitingFor` derivation lives next to
   // its only consumer. See src/agent/repl/hooks/useReplLifecycle.ts.
-  const { sessionStatus, waitingFor } = useReplLifecycle({
+  const { waitingFor } = useReplLifecycle({
     isLoading,
     isWaitingForApproval,
     isShowingLocalJSXCommand,
@@ -897,14 +896,6 @@ export function REPL({
     pendingWorkerRequest: pendingWorkerRequest !== null,
     pendingSandboxRequest: pendingSandboxRequest !== null,
   });
-
-  // 3P default: off — OSC 21337 is internal-only while the spec stabilizes.
-  // Gated so we can roll back if the sidebar indicator conflicts with
-  // the title spinner in terminals that render both. When the flag is
-  // on, the user-facing config setting controls whether it's active.
-  const tabStatusGateEnabled = getFeatureValue_CACHED_MAY_BE_STALE('tengu_terminal_sidebar', false);
-  const showStatusInTerminalTab = tabStatusGateEnabled && (getGlobalConfig().showStatusInTerminalTab ?? false);
-  useTabStatus(titleDisabled || !showStatusInTerminalTab ? null : sessionStatus);
 
   // Register the leader's setToolUseConfirmQueue for in-process teammates
   useEffect(() => {
@@ -2702,7 +2693,6 @@ export function REPL({
       titleIsAnimating={titleIsAnimating}
       terminalTitle={terminalTitle}
       titleDisabled={titleDisabled}
-      showStatusInTerminalTab={showStatusInTerminalTab}
       globalKeybindingProps={globalKeybindingProps as unknown as Record<string, unknown>}
       onSubmit={onSubmit as (...args: unknown[]) => unknown}
       cancelRequestProps={cancelRequestProps as unknown as Record<string, unknown>}
@@ -2763,7 +2753,7 @@ export function REPL({
   // early return above wraps its virtual-scroll branch the same way; only
   // the 30-cap dump branch stays unwrapped for native terminal scrollback.
   const mainReturn = <SidePanelContext value={sidePanelCtx}><KeybindingSetup>
-    <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} noPrefix={showStatusInTerminalTab} />
+    <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} />
     <GlobalKeybindingHandlers {...globalKeybindingProps} />
     <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!toolJSX?.isLocalJSXCommand} />
     {/* ScrollKeybindingHandler must mount before CancelRequestHandler so
