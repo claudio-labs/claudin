@@ -83,7 +83,7 @@ test('build feature flags are not enabled without their source files', () => {
 // user-visible "Auto (match terminal)" row in the theme picker), TERMINAL_PANEL
 // (`app:toggleTerminal` stays bindable from the keybinding schema and the help
 // menu, so removing the handler would leave a bindable action with no handler),
-// and REACTIVE_COMPACT + CONNECTOR_TEXT + HISTORY_SNIP (their last sites are
+// and CONNECTOR_TEXT + HISTORY_SNIP (their last sites are
 // inside committed React-Compiler output, where the `$[n]` slot bookkeeping is
 // load-bearing). HISTORY_SNIP lost fifteen of its sixteen sites; the survivor
 // is the snip-boundary/snip-marker arm of `src/agent/ui/Message.tsx`, which
@@ -110,7 +110,6 @@ const OFF_MAP_FLAGS = [
   'AUTO_THEME',
   'CONNECTOR_TEXT',
   'HISTORY_SNIP',
-  'REACTIVE_COMPACT',
   'SSH_REMOTE',
   'TERMINAL_PANEL',
 ]

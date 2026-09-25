@@ -1,10 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useSyncExternalStore } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { calculateTokenWarningState, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js';
+import { calculateTokenWarningState, isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js';
 import { useCompactWarningSuppression } from 'src/agent/compact/compactWarningHook.js';
 import { getUpgradeMessage } from 'src/providers/model/contextWindowUpgradeCheck.js';
 type Props = {
@@ -52,27 +50,9 @@ export function TokenWarning(t0: Props) {
     t3 = $[4];
   }
   const upgradeMessage = t3;
-  let displayPercentLeft = percentLeft;
-  let reactiveOnlyMode = false;
-  if (feature("REACTIVE_COMPACT")) {
-    if (getFeatureValue_CACHED_MAY_BE_STALE("tengu_cobalt_raccoon", false)) {
-      reactiveOnlyMode = true;
-    }
-  }
-  if (reactiveOnlyMode) {
-    const effectiveWindow = getEffectiveContextWindowSize(model);
-    let t4;
-    if ($[5] !== effectiveWindow || $[6] !== tokenUsage) {
-      t4 = Math.round((effectiveWindow - tokenUsage) / effectiveWindow * 100);
-      $[5] = effectiveWindow;
-      $[6] = tokenUsage;
-      $[7] = t4;
-    } else {
-      t4 = $[7];
-    }
-    displayPercentLeft = Math.max(0, t4);
-  }
-  const autocompactLabel = reactiveOnlyMode ? `${100 - displayPercentLeft}% context used` : `${percentUntilAutoCompact}% until auto-compact`;
+  // Slots $[5]-$[7] held the REACTIVE_COMPACT "% context used" label, removed
+  // with that flag; they stay allocated so no index below moves.
+  const autocompactLabel = `${percentUntilAutoCompact}% until auto-compact`;
   let t4;
   if ($[9] !== autocompactLabel || $[10] !== isAboveErrorThreshold || $[11] !== percentLeft) {
     t4 = <Box flexDirection="row">{showAutoCompactWarning ? <Text dimColor={true} wrap="truncate">{upgradeMessage ? `${autocompactLabel} \u00b7 ${upgradeMessage}` : autocompactLabel}</Text> : <Text color={isAboveErrorThreshold ? "error" : "warning"} wrap="truncate">{upgradeMessage ? `Context low (${percentLeft}% remaining) \u00b7 ${upgradeMessage}` : `Context low (${percentLeft}% remaining) \u00b7 Run /compact to compact & continue`}</Text>}</Box>;

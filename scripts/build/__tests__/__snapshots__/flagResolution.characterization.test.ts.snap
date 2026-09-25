@@ -58,14 +58,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": {},
   },
-  "tengu_anti_distill_fake_tool_injection": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_attribution_header": {
     "defaults": [
       "true",
@@ -89,7 +81,7 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
       "{} as AutoModeConfig",
     ],
     "fn": "getDynamicConfig_BLOCKS_ON_INIT | getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 7,
+    "sites": 6,
     "stockValue": {},
   },
   "tengu_basalt_3kr": {
@@ -203,14 +195,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": 0,
-  },
-  "tengu_cobalt_raccoon": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
   },
   "tengu_compact_cache_prefix": {
     "defaults": [
@@ -492,14 +476,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 2,
     "stockValue": false,
   },
-  "tengu_quiet_fern": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_read_dedup_killswitch": {
     "defaults": [
       "false",
@@ -724,30 +700,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": true,
-  },
-  "tengu_vscode_cc_auth": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_vscode_onboarding": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_vscode_review_upsell": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
   },
   "tengu_willow_mode": {
     "defaults": [
