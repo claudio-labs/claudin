@@ -2,7 +2,6 @@ import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 
-import { APIUserAbortError } from '@anthropic-ai/sdk'
 import { markPostCompaction } from 'src/platform/bootstrap/state.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
@@ -56,7 +55,6 @@ import {
   getTranscriptPath,
   reAppendSessionMetadata,
 } from 'src/sessions/sessionStorage.js'
-import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import {
@@ -68,7 +66,6 @@ import {
   extractDiscoveredToolNames,
   isToolSearchEnabled,
 } from 'src/agent/tools/toolSearch.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getMaxOutputTokensForModel,
   queryModelWithStreaming,
@@ -78,7 +75,6 @@ import {
   startsWithApiErrorPrefix,
 } from 'src/providers/transport/errors.js'
 import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
-import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import {
   roughTokenCountEstimationForMessages,
 } from 'src/shared/tokenEstimation.js'
@@ -93,8 +89,6 @@ import { MAX_PTL_RETRIES, stripImagesFromMessages, stripReinjectedAttachments, t
 export { createAsyncAgentAttachmentsIfNeeded, createPlanAttachmentIfNeeded, createPlanModeAttachmentIfNeeded, createPostCompactFileAttachments, createSkillAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 export { POST_COMPACT_MAX_FILES_TO_RESTORE, POST_COMPACT_MAX_TOKENS_PER_FILE, POST_COMPACT_MAX_TOKENS_PER_SKILL, POST_COMPACT_SKILLS_TOKEN_BUDGET, POST_COMPACT_TOKEN_BUDGET } from 'src/agent/compact/postCompactAttachments.js'
 export { stripImagesFromMessages, stripReinjectedAttachments, truncateHeadForPTLRetry } from 'src/agent/compact/messagePreparation.js'
-
-const MAX_COMPACT_STREAMING_RETRIES = 2
 
 export const ERROR_MESSAGE_NOT_ENOUGH_MESSAGES =
   'Not enough messages to compact.'
@@ -252,15 +246,6 @@ export async function compactConversation(
     context.setStreamMode?.('requesting')
     context.setResponseLength?.(() => 0)
     context.onCompactProgress?.({ type: 'compact_start' })
-
-    // 3P default: true — forked-agent path reuses main conversation's prompt cache.
-    // Experiment (Jan 2026) confirmed: false path is 98% cache miss, costs ~0.76% of
-    // fleet cache_creation (~38B tok/day), concentrated in ephemeral envs (CCR/GHA/SDK)
-    // with cold GB cache and 3P providers where GB is disabled. GB gate kept as kill-switch.
-    const promptCacheSharingEnabled = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_compact_cache_prefix',
-      true,
-    )
 
     const compactPrompt = getCompactPrompt(customInstructions)
     const summaryRequest = createUserMessage({
@@ -850,14 +835,10 @@ async function streamCompactSummary({
   preCompactTokenCount: number
   cacheSafeParams: CacheSafeParams
 }): Promise<AssistantMessage> {
-  // When prompt cache sharing is enabled, use forked agent to reuse the
-  // main conversation's cached prefix (system prompt, tools, context messages).
-  // Falls back to regular streaming path on failure.
-  // 3P default: true — see comment at the other tengu_compact_cache_prefix read above.
-  const promptCacheSharingEnabled = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_compact_cache_prefix',
-    true,
-  )
+  // Use a forked agent to reuse the main conversation's cached prefix (system
+  // prompt, tools, context messages) — the streaming path below shares nothing
+  // with it and was measured upstream at a 98% cache miss. Falls back to that
+  // streaming path on failure.
   // Send keep-alive signals during compaction to prevent remote session
   // WebSocket idle timeouts from dropping bridge connections. Compaction
   // API calls can take 5-10+ seconds, during which no other messages
@@ -878,177 +859,157 @@ async function streamCompactSummary({
     : undefined
 
   try {
-    if (promptCacheSharingEnabled) {
-      try {
-        // DO NOT set maxOutputTokens here. The fork piggybacks on the main thread's
-        // prompt cache by sending identical cache-key params (system, tools, model,
-        // messages prefix, thinking config). Setting maxOutputTokens would clamp
-        // budget_tokens via Math.min(budget, maxOutputTokens-1) in claude.ts,
-        // creating a thinking config mismatch that invalidates the cache.
-        // The streaming fallback path (below) can safely set maxOutputTokensOverride
-        // since it doesn't share cache with the main thread.
-        const result = await runForkedAgent({
-          promptMessages: [summaryRequest],
-          cacheSafeParams,
-          canUseTool: createCompactCanUseTool(),
-          querySource: 'compact',
-          forkLabel: 'compact',
-          maxTurns: 1,
-          skipCacheWrite: true,
-          // Pass the compact context's abortController so user Esc aborts the
-          // fork — same signal the streaming fallback uses at
-          // `signal: context.abortController.signal` below.
-          overrides: { abortController: context.abortController },
-        })
-        const assistantMsg = getLastAssistantMessage(result.messages)
-        const assistantText = assistantMsg
-          ? getAssistantMessageText(assistantMsg)
-          : null
-        // Guard isApiErrorMessage: query() catches API errors (including
-        // APIUserAbortError on ESC) and yields them as synthetic assistant
-        // messages. Without this check, an aborted compact "succeeds" with
-        // "Request was aborted." as the summary — the text doesn't start with
-        // "API Error" so the caller's startsWithApiErrorPrefix guard misses it.
-        if (assistantMsg && assistantText && !assistantMsg.isApiErrorMessage) {
-          return assistantMsg
-        }
-        logForDebugging(
-          `Compact cache sharing: no text in response, falling back. Response: ${jsonStringify(assistantMsg)}`,
-          { level: 'warn' },
-        )
-      } catch (error) {
-        logError(error)
-      }
-    }
-
-    // Regular streaming path (fallback when cache sharing fails or is disabled)
-    const retryEnabled = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_compact_streaming_retry',
-      false,
-    )
-    const maxAttempts = retryEnabled ? MAX_COMPACT_STREAMING_RETRIES : 1
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      // Reset state for retry
-      let hasStartedStreaming = false
-      let response: AssistantMessage | undefined
-      context.setResponseLength?.(() => 0)
-
-      // Check if tool search is enabled using the main loop's tools list.
-      // context.options.tools includes MCP tools merged via useMergedTools.
-      const useToolSearch = await isToolSearchEnabled(
-        context.options.mainLoopModel,
-        context.options.tools,
-        async () => appState.toolPermissionContext,
-        context.options.agentDefinitions.activeAgents,
-        'compact',
-      )
-
-      // When tool search is enabled, include ToolSearchTool and MCP tools. They get
-      // defer_loading: true and don't count against context - the API filters them out
-      // of system_prompt_tools before token counting (see api/token_count_api/counting.py:188
-      // and api/public_api/messages/handler.py:324).
-      // Filter MCP tools from context.options.tools (not appState.mcp.tools) so we
-      // get the permission-filtered set from useMergedTools — same source used for
-      // isToolSearchEnabled above and normalizeMessagesForAPI below.
-      // Deduplicate by name to avoid API errors when MCP tools share names with built-in tools.
-      const tools: Tool[] = useToolSearch
-        ? uniqBy(
-            [
-              FileReadTool,
-              ToolSearchTool,
-              ...context.options.tools.filter(t => t.isMcp),
-            ],
-            'name',
-          )
-        : [FileReadTool]
-
-      const streamingGen = queryModelWithStreaming({
-        messages: normalizeMessagesForAPI(
-          stripImagesFromMessages(
-            stripReinjectedAttachments([
-              ...getMessagesAfterCompactBoundary(messages),
-              summaryRequest,
-            ]),
-          ),
-          context.options.tools,
-        ),
-        systemPrompt: asSystemPrompt([
-          'You are a helpful AI assistant tasked with summarizing conversations.',
-        ]),
-        thinkingConfig: { type: 'disabled' as const },
-        tools,
-        signal: context.abortController.signal,
-        options: {
-          async getToolPermissionContext() {
-            const appState = context.getAppState()
-            return appState.toolPermissionContext
-          },
-          model: context.options.mainLoopModel,
-          toolChoice: undefined,
-          isNonInteractiveSession: context.options.isNonInteractiveSession,
-          hasAppendSystemPrompt: !!context.options.appendSystemPrompt,
-          maxOutputTokensOverride: Math.min(
-            COMPACT_MAX_OUTPUT_TOKENS,
-            getMaxOutputTokensForModel(context.options.mainLoopModel),
-          ),
-          querySource: 'compact',
-          agents: context.options.agentDefinitions.activeAgents,
-          mcpTools: [],
-          effortValue: appState.effortValue,
-        },
+    try {
+      // DO NOT set maxOutputTokens here. The fork piggybacks on the main thread's
+      // prompt cache by sending identical cache-key params (system, tools, model,
+      // messages prefix, thinking config). Setting maxOutputTokens would clamp
+      // budget_tokens via Math.min(budget, maxOutputTokens-1) in claude.ts,
+      // creating a thinking config mismatch that invalidates the cache.
+      // The streaming fallback path (below) can safely set maxOutputTokensOverride
+      // since it doesn't share cache with the main thread.
+      const result = await runForkedAgent({
+        promptMessages: [summaryRequest],
+        cacheSafeParams,
+        canUseTool: createCompactCanUseTool(),
+        querySource: 'compact',
+        forkLabel: 'compact',
+        maxTurns: 1,
+        skipCacheWrite: true,
+        // Pass the compact context's abortController so user Esc aborts the
+        // fork — same signal the streaming fallback uses at
+        // `signal: context.abortController.signal` below.
+        overrides: { abortController: context.abortController },
       })
-      const streamIter = streamingGen[Symbol.asyncIterator]()
-      let next = await streamIter.next()
-
-      while (!next.done) {
-        const event = next.value
-
-        if (
-          !hasStartedStreaming &&
-          event.type === 'stream_event' &&
-          event.event.type === 'content_block_start' &&
-          event.event.content_block.type === 'text'
-        ) {
-          hasStartedStreaming = true
-          context.setStreamMode?.('responding')
-        }
-
-        if (
-          event.type === 'stream_event' &&
-          event.event.type === 'content_block_delta' &&
-          event.event.delta.type === 'text_delta'
-        ) {
-          const charactersStreamed = event.event.delta.text.length
-          context.setResponseLength?.(length => length + charactersStreamed)
-        }
-
-        if (event.type === 'assistant') {
-          response = event
-        }
-
-        next = await streamIter.next()
+      const assistantMsg = getLastAssistantMessage(result.messages)
+      const assistantText = assistantMsg
+        ? getAssistantMessageText(assistantMsg)
+        : null
+      // Guard isApiErrorMessage: query() catches API errors (including
+      // APIUserAbortError on ESC) and yields them as synthetic assistant
+      // messages. Without this check, an aborted compact "succeeds" with
+      // "Request was aborted." as the summary — the text doesn't start with
+      // "API Error" so the caller's startsWithApiErrorPrefix guard misses it.
+      if (assistantMsg && assistantText && !assistantMsg.isApiErrorMessage) {
+        return assistantMsg
       }
-
-      if (response) {
-        return response
-      }
-
-      if (attempt < maxAttempts) {
-        await sleep(getRetryDelay(attempt), context.abortController.signal, {
-          abortError: () => new APIUserAbortError(),
-        })
-        continue
-      }
-
       logForDebugging(
-        `Compact streaming failed after ${attempt} attempts. hasStartedStreaming=${hasStartedStreaming}`,
-        { level: 'error' },
+        `Compact cache sharing: no text in response, falling back. Response: ${jsonStringify(assistantMsg)}`,
+        { level: 'warn' },
       )
-      throw new Error(ERROR_MESSAGE_INCOMPLETE_RESPONSE)
+    } catch (error) {
+      logError(error)
     }
 
-    // This should never be reached due to the throw above, but TypeScript needs it
+    // Regular streaming path (fallback when the forked agent fails). One
+    // attempt: an empty stream ends the compaction with an error.
+    let hasStartedStreaming = false
+    let response: AssistantMessage | undefined
+    context.setResponseLength?.(() => 0)
+
+    // Check if tool search is enabled using the main loop's tools list.
+    // context.options.tools includes MCP tools merged via useMergedTools.
+    const useToolSearch = await isToolSearchEnabled(
+      context.options.mainLoopModel,
+      context.options.tools,
+      async () => appState.toolPermissionContext,
+      context.options.agentDefinitions.activeAgents,
+      'compact',
+    )
+
+    // When tool search is enabled, include ToolSearchTool and MCP tools. They get
+    // defer_loading: true and don't count against context - the API filters them out
+    // of system_prompt_tools before token counting (see api/token_count_api/counting.py:188
+    // and api/public_api/messages/handler.py:324).
+    // Filter MCP tools from context.options.tools (not appState.mcp.tools) so we
+    // get the permission-filtered set from useMergedTools — same source used for
+    // isToolSearchEnabled above and normalizeMessagesForAPI below.
+    // Deduplicate by name to avoid API errors when MCP tools share names with built-in tools.
+    const tools: Tool[] = useToolSearch
+      ? uniqBy(
+          [
+            FileReadTool,
+            ToolSearchTool,
+            ...context.options.tools.filter(t => t.isMcp),
+          ],
+          'name',
+        )
+      : [FileReadTool]
+
+    const streamingGen = queryModelWithStreaming({
+      messages: normalizeMessagesForAPI(
+        stripImagesFromMessages(
+          stripReinjectedAttachments([
+            ...getMessagesAfterCompactBoundary(messages),
+            summaryRequest,
+          ]),
+        ),
+        context.options.tools,
+      ),
+      systemPrompt: asSystemPrompt([
+        'You are a helpful AI assistant tasked with summarizing conversations.',
+      ]),
+      thinkingConfig: { type: 'disabled' as const },
+      tools,
+      signal: context.abortController.signal,
+      options: {
+        async getToolPermissionContext() {
+          const appState = context.getAppState()
+          return appState.toolPermissionContext
+        },
+        model: context.options.mainLoopModel,
+        toolChoice: undefined,
+        isNonInteractiveSession: context.options.isNonInteractiveSession,
+        hasAppendSystemPrompt: !!context.options.appendSystemPrompt,
+        maxOutputTokensOverride: Math.min(
+          COMPACT_MAX_OUTPUT_TOKENS,
+          getMaxOutputTokensForModel(context.options.mainLoopModel),
+        ),
+        querySource: 'compact',
+        agents: context.options.agentDefinitions.activeAgents,
+        mcpTools: [],
+        effortValue: appState.effortValue,
+      },
+    })
+    const streamIter = streamingGen[Symbol.asyncIterator]()
+    let next = await streamIter.next()
+
+    while (!next.done) {
+      const event = next.value
+
+      if (
+        !hasStartedStreaming &&
+        event.type === 'stream_event' &&
+        event.event.type === 'content_block_start' &&
+        event.event.content_block.type === 'text'
+      ) {
+        hasStartedStreaming = true
+        context.setStreamMode?.('responding')
+      }
+
+      if (
+        event.type === 'stream_event' &&
+        event.event.type === 'content_block_delta' &&
+        event.event.delta.type === 'text_delta'
+      ) {
+        const charactersStreamed = event.event.delta.text.length
+        context.setResponseLength?.(length => length + charactersStreamed)
+      }
+
+      if (event.type === 'assistant') {
+        response = event
+      }
+
+      next = await streamIter.next()
+    }
+
+    if (response) {
+      return response
+    }
+
+    logForDebugging(
+      `Compact streaming failed. hasStartedStreaming=${hasStartedStreaming}`,
+      { level: 'error' },
+    )
     throw new Error(ERROR_MESSAGE_INCOMPLETE_RESPONSE)
   } finally {
     clearInterval(activityInterval)

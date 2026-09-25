@@ -13,11 +13,10 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { getTeammateContext } from 'src/agent/coordinator/teammateContext.js'
 import {
-  buildCronCreateDescription,
   buildCronCreatePrompt,
+  CRON_CREATE_DESCRIPTION,
   CRON_CREATE_TOOL_NAME,
   DEFAULT_MAX_AGE_DAYS,
-  isDurableCronEnabled,
   isKairosCronEnabled,
 } from 'src/tools/ScheduleCronTool/prompt.js'
 import { renderCreateResultMessage, renderCreateToolUseMessage } from 'src/tools/ScheduleCronTool/UI.js'
@@ -71,10 +70,10 @@ export const CronCreateTool = buildTool({
     return `${input.cron}: ${input.prompt}`
   },
   async description() {
-    return buildCronCreateDescription(isDurableCronEnabled())
+    return CRON_CREATE_DESCRIPTION
   },
   async prompt() {
-    return buildCronCreatePrompt(isDurableCronEnabled())
+    return buildCronCreatePrompt()
   },
   getPath() {
     return getCronFilePath()
@@ -115,14 +114,11 @@ export const CronCreateTool = buildTool({
     return { result: true }
   },
   async call({ cron, prompt, recurring = true, durable = false }) {
-    // Kill switch forces session-only; schema stays stable so the model sees
-    // no validation errors when the gate flips mid-session.
-    const effectiveDurable = durable && isDurableCronEnabled()
     const id = await addCronTask(
       cron,
       prompt,
       recurring,
-      effectiveDurable,
+      durable,
       getTeammateContext()?.agentId,
     )
     // Enable the scheduler so the task fires in this session. The
@@ -136,7 +132,7 @@ export const CronCreateTool = buildTool({
         id,
         humanSchedule: cronToHuman(cron),
         recurring,
-        durable: effectiveDurable,
+        durable,
       },
     }
   },

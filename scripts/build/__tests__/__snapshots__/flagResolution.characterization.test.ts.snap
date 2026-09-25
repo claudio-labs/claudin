@@ -140,23 +140,7 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": 0,
   },
-  "tengu_compact_cache_prefix": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": true,
-  },
   "tengu_compact_line_prefix_killswitch": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_compact_streaming_retry": {
     "defaults": [
       "false",
     ],
@@ -236,14 +220,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": null,
   },
-  "tengu_herring_clock": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": true,
-  },
   "tengu_immediate_model_command": {
     "defaults": [
       "false",
@@ -253,22 +229,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "stockValue": false,
   },
   "tengu_iron_gate_closed": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
-    "sites": 1,
-    "stockValue": true,
-  },
-  "tengu_kairos_cron_config": {
-    "defaults": [
-      "DEFAULT_CRON_JITTER_CONFIG",
-    ],
-    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — DEFAULT_CRON_JITTER_CONFIG>",
-  },
-  "tengu_kairos_cron_durable": {
     "defaults": [
       "true",
     ],
@@ -306,22 +266,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     ],
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_onyx_plover": {
-    "defaults": [
-      "null",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": null,
-  },
-  "tengu_paper_halyard": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
     "stockValue": false,
   },
   "tengu_pebble_leaf_prune": {
@@ -412,14 +356,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "checkGate_CACHED_OR_BLOCKING | getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 2,
     "stockValue": false,
-  },
-  "tengu_slate_heron": {
-    "defaults": [
-      "defaults",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — defaults>",
   },
   "tengu_slate_prism": {
     "defaults": [

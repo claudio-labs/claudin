@@ -34,7 +34,6 @@ import {
   getOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
 import { getAutoMemEntrypoint, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getCurrentProjectConfig,
   getManagedClaudeRulesDir,
@@ -429,15 +428,9 @@ export const getClaudeMds = (
   filter?: (type: MemoryType) => boolean,
 ): string => {
   const memories: string[] = []
-  const skipProjectLevel = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_paper_halyard',
-    false,
-  )
 
   for (const file of memoryFiles) {
     if (filter && !filter(file.type)) continue
-    if (skipProjectLevel && (file.type === 'Project' || file.type === 'Local'))
-      continue
     if (file.content) {
       const description =
         file.type === 'Project'

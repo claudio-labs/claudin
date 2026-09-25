@@ -112,7 +112,6 @@ import type {
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
 const cronSchedulerModule = require('src/agent/tasks/cronScheduler.js') as typeof import('src/agent/tasks/cronScheduler.js')
-const cronJitterConfigModule = require('src/agent/tasks/cronJitterConfig.js') as typeof import('src/agent/tasks/cronJitterConfig.js')
 const cronGate = require('src/tools/ScheduleCronTool/prompt.js') as typeof import('src/tools/ScheduleCronTool/prompt.js')
 /* eslint-enable @typescript-eslint/no-require-imports */
 
@@ -516,7 +515,6 @@ export function runHeadlessStreaming(
         void ctx.run()
       },
       isLoading: () => ctx.running || ctx.inputClosed,
-      getJitterConfig: cronJitterConfigModule.getCronJitterConfig,
       isKilled: () => !cronGate.isKairosCronEnabled(),
     })
     ctx.cronScheduler.start()

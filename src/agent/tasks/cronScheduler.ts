@@ -124,13 +124,8 @@ type CronSchedulerOptions = {
   lockIdentity?: string
   /**
    * Returns the cron jitter config to use for this tick. Called once per
-   * check() cycle. REPL callers pass a GrowthBook-backed implementation
-   * (see cronJitterConfig.ts) for live tuning — ops can widen the jitter
-   * window mid-session during a :00 load spike without restarting clients.
-   * Agent SDK daemon callers omit this and get DEFAULT_CRON_JITTER_CONFIG,
-   * which is safe since daemons restart on config change anyway, and the
-   * growthbook.ts → config.ts → commands.ts → REPL chain stays out of
-   * sdk.mjs.
+   * check() cycle, so a host can tune the jitter window mid-session. The
+   * CLI's own callers omit it and get DEFAULT_CRON_JITTER_CONFIG.
    */
   getJitterConfig?: () => CronJitterConfig
   /**
@@ -253,10 +248,8 @@ export function createCronScheduler(
     // markCronTasksFired call after the loop so N fires = one write. Session
     // tasks excluded — they die with the process, no point persisting.
     const firedFileRecurring: string[] = []
-    // Read once per tick. REPL callers pass getJitterConfig backed by
-    // GrowthBook so a config push takes effect without restart. Daemon and
-    // SDK callers omit it and get DEFAULT_CRON_JITTER_CONFIG (safe — jitter
-    // is an ops lever for REPL fleet load-shedding, not a daemon concern).
+    // Read once per tick, so a host-supplied getJitterConfig takes effect
+    // without restart. Callers that omit it get DEFAULT_CRON_JITTER_CONFIG.
     const jitterCfg = getJitterConfig?.() ?? DEFAULT_CRON_JITTER_CONFIG
 
     // Shared loop body. `isSession` routes the one-shot cleanup path:

@@ -23,7 +23,6 @@ import {
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'
 import {
   getTeamMemPath,
@@ -66,36 +65,13 @@ type AutoDreamConfig = {
   minSessions: number
 }
 
+/**
+ * Scheduling thresholds. The enabled gate lives in config.ts
+ * (isAutoDreamEnabled); these are only the scheduling knobs.
+ */
 const DEFAULTS: AutoDreamConfig = {
   minHours: 24,
   minSessions: 5,
-}
-
-/**
- * Thresholds from tengu_onyx_plover. The enabled gate lives in config.ts
- * (isAutoDreamEnabled); this returns only the scheduling knobs. Defensive
- * per-field validation since GB cache can return stale wrong-type values.
- */
-function getConfig(): AutoDreamConfig {
-  const raw =
-    getFeatureValue_CACHED_MAY_BE_STALE<Partial<AutoDreamConfig> | null>(
-      'tengu_onyx_plover',
-      null,
-    )
-  return {
-    minHours:
-      typeof raw?.minHours === 'number' &&
-      Number.isFinite(raw.minHours) &&
-      raw.minHours > 0
-        ? raw.minHours
-        : DEFAULTS.minHours,
-    minSessions:
-      typeof raw?.minSessions === 'number' &&
-      Number.isFinite(raw.minSessions) &&
-      raw.minSessions > 0
-        ? raw.minSessions
-        : DEFAULTS.minSessions,
-  }
 }
 
 function isGateOpen(): boolean {
@@ -129,7 +105,7 @@ export function initAutoDream(): void {
   let lastSessionScanAt = 0
 
   runner = async function runAutoDream(context, appendSystemMessage) {
-    const cfg = getConfig()
+    const cfg = DEFAULTS
     const force = isForced()
     if (!force && !isGateOpen()) return
 
