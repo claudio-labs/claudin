@@ -29,7 +29,6 @@ import { initializeLspServerManager } from 'src/platform/lsp/manager.js';
 import { prefetchAllMcpResources } from 'src/mcp/client.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
-import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { logError } from 'src/shared/log.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/sessions/concurrentSessions.js';
@@ -393,7 +392,6 @@ export type RunInteractiveStartupBlockInput = {
   verbose: boolean | undefined;
   remoteControl: boolean;
   remoteControlName: string | undefined;
-  advisorModel: string | undefined;
   inputPrompt: string | AsyncIterable<string>;
   thinkingEnabled: boolean;
   mcpTools: Array<unknown>;
@@ -421,7 +419,6 @@ export function runInteractiveStartupBlock(
     verbose,
     remoteControl,
     remoteControlName,
-    advisorModel,
     inputPrompt,
     thinkingEnabled,
     mcpTools,
@@ -580,9 +577,6 @@ export function runInteractiveStartupBlock(
     effortValue: parseEffortValue(options.effort) ?? getInitialEffortSetting(),
     activeOverlays: new Set<string>(),
     fastMode: getInitialFastModeSetting(resolvedInitialModel),
-    ...(isAdvisorEnabled() && advisorModel && {
-      advisorModel,
-    }),
     // Compute teamContext synchronously to avoid useEffect setState during render.
     teamContext: computeInitialTeamContext?.(),
   };

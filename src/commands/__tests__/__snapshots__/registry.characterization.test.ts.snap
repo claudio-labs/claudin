@@ -3,7 +3,6 @@
 exports[`slash-command registry — characterization the registered bindings match the snapshot 1`] = `
 [
   "addDir",
-  "advisor",
   "agentWorkflowsCmd",
   "agents",
   "autoFix",
@@ -44,7 +43,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "init",
   "installGitHubApp",
   "installSlackApp",
-  "keybindings",
   "mcp",
   "memory",
   "model",
@@ -70,9 +68,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "tasks",
   "terminalSetup",
   "theme",
-  "thinkback",
-  "thinkbackPlay",
-  "ultrareview",
   "usage",
   "usageReport",
   "vim",

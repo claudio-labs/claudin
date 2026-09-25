@@ -429,7 +429,6 @@ async function run(): Promise<CommanderCommand> {
 
     const agentSetup = await runActionAgentSetup(
       {
-        options: options as ActionOptions,
         ctx,
         isNonInteractiveSession,
         agentCli,
@@ -449,7 +448,6 @@ async function run(): Promise<CommanderCommand> {
       effectiveModel,
       initialMainLoopModel,
       resolvedInitialModel,
-      advisorModel,
     } = agentSetup;
     let mainThreadAgentDefinition = agentSetup.mainThreadAgentDefinition;
     systemPrompt = agentSetup.systemPrompt;
@@ -631,7 +629,6 @@ async function run(): Promise<CommanderCommand> {
         claudeaiConfigPromise,
         toolPermissionContext,
         effectiveModel,
-        advisorModel,
         betas,
         jsonSchema,
         allowedTools,
@@ -663,7 +660,6 @@ async function run(): Promise<CommanderCommand> {
         verbose,
         remoteControl,
         remoteControlName,
-        advisorModel,
         inputPrompt,
         thinkingEnabled,
         mcpTools,

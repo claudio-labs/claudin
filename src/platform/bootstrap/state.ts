@@ -243,7 +243,6 @@ export {
   needsPlanModeExitAttachment,
   removeSessionCronTasks,
   setHasExitedPlanMode,
-  setIsRemoteMode,
   setMainThreadAgentType,
   setNeedsAutoModeExitAttachment,
   setNeedsPlanModeExitAttachment,

@@ -8,7 +8,6 @@ import type {
   BetaOutputConfig,
   BetaRawMessageStreamEvent,
   BetaStopReason,
-  BetaToolUnion,
   BetaUsage,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages.mjs";
 import type { Stream } from "@anthropic-ai/sdk/streaming.mjs";
@@ -120,13 +119,6 @@ import {
   THINKING_DISPLAY_UPDATES_BETA_HEADER,
 } from "src/shared/constants/betas.js";
 import { addToTotalSessionCost } from "src/agent/cost-tracker.js";
-import {
-  ADVISOR_TOOL_INSTRUCTIONS,
-  getExperimentAdvisorModels,
-  isAdvisorEnabled,
-  isValidAdvisorModel,
-  modelSupportsAdvisor,
-} from "src/platform/doctor/advisor.js";
 import { getAgentContext } from "src/agent/coordinator/agentContext.js";
 import { createCombinedAbortSignal } from "src/shared/combinedAbortSignal.js";
 import {
@@ -180,10 +172,7 @@ import {
 } from "src/tools/ToolSearchTool/prompt.js";
 import { count } from "src/shared/data/array.js";
 import { getInferenceProfileBackingModel } from "src/providers/model/bedrock.js";
-import {
-  normalizeModelStringForAPI,
-  parseUserSpecifiedModel,
-} from "src/providers/model/model.js";
+import { normalizeModelStringForAPI } from "src/providers/model/model.js";
 import {
   startSessionActivity,
   stopSessionActivity,
@@ -339,51 +328,6 @@ export async function* queryModel(
     options.querySource === "sdk" ||
     options.querySource === "hook_agent";
   let betas = getMergedBetas(options.model, { isAgenticQuery });
-
-  // Always send the advisor beta header when advisor is enabled, so
-  // non-agentic queries (compact, side_question, extract_memories, etc.)
-  // can parse advisor server_tool_use blocks already in the conversation history.
-  if (isAdvisorEnabled()) {
-    betas.push(ADVISOR_BETA_HEADER);
-  }
-
-  let advisorModel: string | undefined;
-  if (isAgenticQuery && isAdvisorEnabled()) {
-    let advisorOption = options.advisorModel;
-
-    const advisorExperiment = getExperimentAdvisorModels();
-    if (advisorExperiment !== undefined) {
-      if (
-        normalizeModelStringForAPI(advisorExperiment.baseModel) ===
-        normalizeModelStringForAPI(options.model)
-      ) {
-        // Override the advisor model if the base model matches. We
-        // should only have experiment models if the user cannot
-        // configure it themselves.
-        advisorOption = advisorExperiment.advisorModel;
-      }
-    }
-
-    if (advisorOption) {
-      const normalizedAdvisorModel = normalizeModelStringForAPI(
-        parseUserSpecifiedModel(advisorOption),
-      );
-      if (!modelSupportsAdvisor(options.model)) {
-        logForDebugging(
-          `[AdvisorTool] Skipping advisor - base model ${options.model} does not support advisor`,
-        );
-      } else if (!isValidAdvisorModel(normalizedAdvisorModel)) {
-        logForDebugging(
-          `[AdvisorTool] Skipping advisor - ${normalizedAdvisorModel} is not a valid advisor model`,
-        );
-      } else {
-        advisorModel = normalizedAdvisorModel;
-        logForDebugging(
-          `[AdvisorTool] Server-side tool enabled with ${advisorModel} as the advisor model`,
-        );
-      }
-    }
-  }
 
   // Settle the deferred-tools announcement format BEFORE tool schemas are
   // built: the ToolSearchTool location hint (rendered during schema build)
@@ -654,7 +598,6 @@ export async function* queryModel(
         hasAppendSystemPrompt: options.hasAppendSystemPrompt,
       }),
       ...systemPrompt,
-      ...(advisorModel ? [ADVISOR_TOOL_INSTRUCTIONS] : []),
     ].filter(Boolean),
   );
 
@@ -673,16 +616,6 @@ export async function* queryModel(
   // Note: The actual new_context message extraction is done in sessionTracing.ts using
   // hash-based tracking per querySource (agent) from the messagesForAPI array
   const extraToolSchemas = [...(options.extraToolSchemas ?? [])];
-  if (advisorModel) {
-    // Server tools must be in the tools array by API contract. Appended after
-    // toolSchemas (which carries the cache_control marker) so toggling /advisor
-    // only churns the small suffix, not the cached prefix.
-    extraToolSchemas.push({
-      type: "advisor_20260301",
-      name: "advisor",
-      model: advisorModel,
-    } as unknown as BetaToolUnion);
-  }
   let allTools = [...toolSchemas, ...extraToolSchemas];
 
   const isFastMode =
@@ -1542,7 +1475,6 @@ export async function* queryModel(
               type: "assistant",
               uuid: randomUUID(),
               timestamp: new Date().toISOString(),
-              ...(advisorModel && { advisorModel }),
             };
             newMessages.push(m);
             yield m;
@@ -1838,9 +1770,6 @@ export async function* queryModel(
         type: "assistant",
         uuid: randomUUID(),
         timestamp: new Date().toISOString(),
-        ...(advisorModel && {
-          advisorModel,
-        }),
       };
       newMessages.push(m);
       fallbackMessage = m;
@@ -1924,7 +1853,6 @@ export async function* queryModel(
           type: "assistant",
           uuid: randomUUID(),
           timestamp: new Date().toISOString(),
-          ...(advisorModel && { advisorModel }),
         };
         newMessages.push(m);
         fallbackMessage = m;

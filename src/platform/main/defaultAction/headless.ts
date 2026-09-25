@@ -14,7 +14,6 @@ import { excludeCommandsByServer, excludeResourcesByServer } from 'src/mcp/utils
 import { type AppState, getDefaultAppState } from 'src/terminal/state/AppStateStore.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { createStore } from 'src/terminal/state/store.js';
-import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { validateForceLoginOrg } from 'src/providers/auth/auth.js';
 import { filterAllowedSdkBetas } from 'src/providers/transport/betas.js';
 import { logForDebugging, setHasFormattedOutput } from 'src/shared/debug.js';
@@ -64,7 +63,6 @@ export type HeadlessBranchDeps = {
   claudeaiConfigPromise: Promise<Record<string, ScopedMcpServerConfig>>;
   toolPermissionContext: ToolPermissionContext;
   effectiveModel: string | undefined;
-  advisorModel: string | undefined;
   betas: string[];
   jsonSchema: Record<string, unknown> | undefined;
   allowedTools: string[];
@@ -82,7 +80,7 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     ctx, options, teleport, setupTrigger, outputFormat, inputPrompt,
     commands, tools, mcpClients, mcpCommands, mcpTools,
     sdkMcpConfigs, agentDefinitions, regularMcpConfigs, claudeaiConfigPromise,
-    toolPermissionContext, effectiveModel, advisorModel,
+    toolPermissionContext, effectiveModel,
     betas, jsonSchema, allowedTools,
     thinkingConfig, systemPrompt, appendSystemPrompt,
     userSpecifiedFallbackModel, effectiveReplayUserMessages, agentCli, verbose,
@@ -136,9 +134,6 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     effortValue: parseEffortValue(options.effort) ?? getInitialEffortSetting(),
     ...(isFastModeEnabled() && {
       fastMode: getInitialFastModeSetting(effectiveModel ?? null)
-    }),
-    ...(isAdvisorEnabled() && advisorModel && {
-      advisorModel
     }),
   } as AppState;
 

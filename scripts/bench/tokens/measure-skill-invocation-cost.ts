@@ -18,7 +18,7 @@
  *   1. Synthetic profile: small/medium/large/huge bodies → reports bytes,
  *      tokens, and the system-reminder envelope overhead.
  *   2. Real best-effort: registers the bundled skills that don't depend on
- *      build-time `.md` imports (debug, loop, keybindings, code-review) and
+ *      build-time `.md` imports (debug, loop, code-review) and
  *      asks them to produce a prompt with empty args. Reports the true
  *      bytes per skill.
  *
@@ -123,12 +123,11 @@ async function loadRealBundledSkills(): Promise<RealSkillRow[]> {
   //     to evaluate.
   //   - `claudeApi` imports per-language `.md` files via Bun text loader
   //     which only resolves during `bun run build`, not under `bun test`.
-  // The 6 we DO load here cover every interactive bundled skill that has
+  // The 5 we DO load here cover every interactive bundled skill that has
   // no .md import or network side effect. That's strictly more than the
   // 3 the previous version of this bench loaded.
   const registrars: { name: string; load: () => Promise<unknown> }[] = [
     { name: 'updateConfig', load: () => import('../../../src/skills/bundled/updateConfig.js') },
-    { name: 'keybindings', load: () => import('../../../src/skills/bundled/keybindings.js') },
     { name: 'debug', load: () => import('../../../src/skills/bundled/debug.js') },
     { name: 'code-review', load: () => import('../../../src/skills/bundled/code-review.js') },
     { name: 'batch', load: () => import('../../../src/skills/bundled/batch.js') },

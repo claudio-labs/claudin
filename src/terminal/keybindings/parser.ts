@@ -10,7 +10,7 @@ import type {
  * Supports various modifier aliases (ctrl/control, alt/opt/option/meta,
  * cmd/command/super/win).
  */
-export function parseKeystroke(input: string): ParsedKeystroke {
+function parseKeystroke(input: string): ParsedKeystroke {
   const parts = input.split('+')
   const keystroke: ParsedKeystroke = {
     key: '',
@@ -77,7 +77,7 @@ export function parseKeystroke(input: string): ParsedKeystroke {
 /**
  * Parse a chord string like "ctrl+k ctrl+s" into an array of ParsedKeystrokes.
  */
-export function parseChord(input: string): Chord {
+function parseChord(input: string): Chord {
   // A lone space character IS the space key binding, not a separator
   if (input === ' ') return [parseKeystroke('space')]
   return input.trim().split(/\s+/).map(parseKeystroke)

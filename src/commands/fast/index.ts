@@ -3,7 +3,6 @@ import {
   FAST_MODE_MODEL_DISPLAY,
   isFastModeEnabled,
 } from 'src/providers/fastMode.js'
-import { shouldInferenceConfigCommandBeImmediate } from 'src/commands/immediateCommand.js'
 
 const fast = {
   type: 'local-jsx',
@@ -17,9 +16,6 @@ const fast = {
     return !isFastModeEnabled()
   },
   argumentHint: '[on|off]',
-  get immediate() {
-    return shouldInferenceConfigCommandBeImmediate()
-  },
   load: () => import('src/commands/fast/fast.js'),
 } satisfies Command
 

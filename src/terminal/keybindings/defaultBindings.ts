@@ -6,7 +6,6 @@ import type { KeybindingBlock } from 'src/terminal/keybindings/types.js'
 
 /**
  * Default keybindings that match current Claude Code behavior.
- * These are loaded first, then user keybindings.json overrides them.
  */
 
 // Platform-specific image paste shortcut:
@@ -34,9 +33,7 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
     context: 'Global',
     bindings: {
       // ctrl+c and ctrl+d use special time-based double-press handling.
-      // They ARE defined here so the resolver can find them, but they
-      // CANNOT be rebound by users - validation in reservedShortcuts.ts
-      // will show an error if users try to override these keys.
+      // They ARE defined here so the resolver can find them.
       'ctrl+c': 'app:interrupt',
       'ctrl+d': 'app:exit',
       'ctrl+l': 'app:redraw',

@@ -223,8 +223,6 @@ import { useMcpConnectivityStatus } from 'src/platform/notifications/useMcpConne
 import { useAutoModeUnavailableNotification } from 'src/platform/notifications/useAutoModeUnavailableNotification.js';
 import { AUTO_MODE_DESCRIPTION } from 'src/permissions/ui/AutoModeOptInDialog.js';
 import { useLspInitializationNotification } from 'src/platform/notifications/useLspInitializationNotification.js';
-import { useClaudeCodeHintRecommendation } from 'src/plugins/hooks/useClaudeCodeHintRecommendation.js';
-import { PluginHintMenu } from 'src/platform/hints/PluginHintMenu.js';
 import { usePluginInstallationStatus } from 'src/platform/notifications/usePluginInstallationStatus.js';
 import { usePluginAutoupdateNotification } from 'src/platform/notifications/usePluginAutoupdateNotification.js';
 import { performStartupChecks } from 'src/plugins/performStartupChecks.js';
@@ -542,10 +540,6 @@ export function REPL({
   useOfficialMarketplaceNotification();
   useLspInitializationNotification();
   useTeammateLifecycleNotification();
-  const {
-    recommendation: hintRecommendation,
-    handleResponse: handleHintResponse
-  } = useClaudeCodeHintRecommendation();
 
   // Memoize the combined initial tools array to prevent reference changes
   const combinedInitialTools = useMemo(() => {
@@ -1609,8 +1603,6 @@ export function REPL({
     showIdeOnboarding,
     showEffortCallout,
     showRemoteCallout,
-    hintRecommendation,
-    startupChecksStarted: startupChecksStartedRef.current,
   });
 
   // True when permission prompts exist but are hidden because the user is typing
@@ -2860,14 +2852,11 @@ export function REPL({
             mainLoopModel,
             setShowEffortCallout,
             exitFlow,
-            hintRecommendation,
-            handleHintResponse,
           }, {
             SandboxPermissionRequest,
             IdeOnboardingDialog: IdeOnboardingDialog as unknown as Parameters<typeof renderREPLDialogs>[1]['IdeOnboardingDialog'],
             EffortCallout: EffortCallout as unknown as Parameters<typeof renderREPLDialogs>[1]['EffortCallout'],
             RemoteCallout,
-            PluginHintMenu,
           })}
 
           {mrRender()}

@@ -5,14 +5,6 @@
  * carried into this fork, but ~31 type-only imports across the repo reference
  * it. Every shape below is derived from code that constructs or destructures
  * these values — see the per-type notes for the anchor files.
- *
- * Runtime counterparts of the two unions live in `./schema.ts`
- * (`KEYBINDING_CONTEXTS`, `KEYBINDING_ACTIONS`) and in `./validate.ts`
- * (`VALID_CONTEXTS`). Those lists are what a user's `keybindings.json` is
- * validated against, and they are deliberately NARROWER than the unions here:
- * the `Scroll` and `MessageActions` contexts (and their actions) ship in
- * `DEFAULT_BINDINGS` but are absent from the schema, so they work as defaults
- * and cannot be rebound. Keep that in mind before "syncing" the lists.
  */
 
 /**
@@ -50,10 +42,6 @@ export type Chord = ParsedKeystroke[]
 /**
  * A UI context that scopes a binding. `Global` bindings apply everywhere;
  * more specific contexts take precedence (see `useKeybinding`).
- *
- * The first 18 mirror `KEYBINDING_CONTEXTS` in schema.ts. `Scroll` and
- * `MessageActions` are used by `DEFAULT_BINDINGS` but are not in the schema,
- * so they are default-only (see the module note above).
  */
 export type KeybindingContextName =
   | 'Global'
@@ -75,14 +63,11 @@ export type KeybindingContextName =
   | 'Select'
   | 'Plugin'
   | 'Memory'
-  // Default-only contexts, absent from schema.ts:
   | 'Scroll'
   | 'MessageActions'
 
 /**
- * Every action identifier the app dispatches on. Mirrors `KEYBINDING_ACTIONS`
- * in schema.ts, plus the `scroll:` / `selection:` / `messageActions:` families
- * that only exist in `DEFAULT_BINDINGS`.
+ * Every action identifier the app dispatches on.
  */
 export type KnownKeybindingAction =
   // App-level actions (Global context)
@@ -239,10 +224,8 @@ export type KnownKeybindingAction =
  * What a keystroke triggers.
  *
  * Deliberately open rather than a closed union of {@link KnownKeybindingAction}:
- * a user binding may name any slash command as `command:<name>`
- * (schema.ts validates the shape, not the name), and `filterReservedShortcuts`
- * in template.ts round-trips bindings through `Record<string, string | null>`.
- * The `string & {}` arm keeps plain strings assignable while editors still
+ * a binding may name any slash command as `command:<name>`. The
+ * `string & {}` arm keeps plain strings assignable while editors still
  * complete the known ids.
  *
  * `null` is not part of this type — it appears where a binding can be UNBOUND,
@@ -255,8 +238,8 @@ export type KeybindingAction =
   | (string & {})
 
 /**
- * One context's worth of bindings, as they appear in `DEFAULT_BINDINGS` and in
- * a user's `keybindings.json`. Keys are keystroke patterns (`'ctrl+k'`,
+ * One context's worth of bindings, as they appear in `DEFAULT_BINDINGS`.
+ * Keys are keystroke patterns (`'ctrl+k'`,
  * `'shift+tab'`, `'ctrl+x ctrl+e'`); a `null` value unbinds a default.
  */
 export type KeybindingBlock = {

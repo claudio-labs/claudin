@@ -51,15 +51,6 @@ import {
 } from 'src/plugins/zipCache.js'
 
 /**
- * Plugin installation metadata for installed_plugins.json
- */
-export type PluginInstallationInfo = {
-  pluginId: string
-  installPath: string
-  version?: string
-}
-
-/**
  * Get current ISO timestamp
  */
 export function getCurrentTimestamp(): string {
@@ -117,7 +108,7 @@ export function validatePathWithinBase(
  * @param localSourcePath - For local plugins, the resolved absolute path to the source directory
  * @returns The installation path
  */
-export async function cacheAndRegisterPlugin(
+async function cacheAndRegisterPlugin(
   pluginId: string,
   entry: PluginMarketplaceEntry,
   scope: PluginScope = 'user',
@@ -215,36 +206,6 @@ export async function cacheAndRegisterPlugin(
   )
 
   return finalPath
-}
-
-/**
- * Register a plugin installation without caching
- *
- * Used for local plugins that are already on disk and don't need remote caching.
- * External plugins should use cacheAndRegisterPlugin() instead.
- *
- * @param info - Plugin installation information
- * @param scope - Installation scope (user, project, local, or managed). Defaults to 'user'.
- *                'managed' scope is used for plugins registered from managed settings.
- * @param projectPath - Project path (required for project/local scopes)
- */
-export function registerPluginInstallation(
-  info: PluginInstallationInfo,
-  scope: PluginScope = 'user',
-  projectPath?: string,
-): void {
-  const now = getCurrentTimestamp()
-  addInstalledPlugin(
-    info.pluginId,
-    {
-      version: info.version || 'unknown',
-      installedAt: now,
-      lastUpdated: now,
-      installPath: info.installPath,
-    },
-    scope,
-    projectPath,
-  )
 }
 
 /**

@@ -1,25 +1,12 @@
-import { join } from 'path'
-import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { logError } from 'src/shared/log.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
-import {
-  getSettingsForSource,
-  updateSettingsForSource,
-} from 'src/platform/settings/settings.js'
+import { getSettingsForSource } from 'src/platform/settings/settings.js'
 import { getAddDirEnabledPlugins } from 'src/plugins/addDirPluginSettings.js'
-import { getPluginById } from 'src/plugins/marketplaceManager.js'
 import {
   type ExtendedPluginScope,
   type PersistablePluginScope,
   SETTING_SOURCE_TO_SCOPE,
-  scopeToSettingSource,
 } from 'src/plugins/pluginIdentifier.js'
-import {
-  cacheAndRegisterPlugin,
-  registerPluginInstallation,
-} from 'src/plugins/pluginInstallationHelpers.js'
-import { isLocalPluginSource, type PluginScope } from 'src/plugins/schemas.js'
 
 /**
  * Gets the user-editable scope that "owns" each enabled plugin.
@@ -122,95 +109,4 @@ export function settingSourceToScope(
   source: SettingSource,
 ): ExtendedPluginScope {
   return SETTING_SOURCE_TO_SCOPE[source]
-}
-
-/**
- * Result of plugin installation attempt
- */
-export type PluginInstallResult = {
-  installed: string[]
-  failed: Array<{ name: string; error: string }>
-}
-
-/**
- * Installation scope type for install functions (excludes 'managed' which is read-only)
- */
-type InstallableScope = Exclude<PluginScope, 'managed'>
-
-/**
- * Installs the selected plugins
- * @param pluginsToInstall Array of plugin IDs to install
- * @param onProgress Optional callback for installation progress
- * @param scope Installation scope: user, project, or local (defaults to 'user')
- * @returns Installation results with succeeded and failed plugins
- */
-export async function installSelectedPlugins(
-  pluginsToInstall: string[],
-  onProgress?: (name: string, index: number, total: number) => void,
-  scope: InstallableScope = 'user',
-): Promise<PluginInstallResult> {
-  // Get projectPath for non-user scopes
-  const projectPath = scope !== 'user' ? getCwd() : undefined
-
-  // Get the correct settings source for this scope
-  const settingSource = scopeToSettingSource(scope)
-  const settings = getSettingsForSource(settingSource)
-  const updatedEnabledPlugins = { ...settings?.enabledPlugins }
-  const installed: string[] = []
-  const failed: Array<{ name: string; error: string }> = []
-
-  for (let i = 0; i < pluginsToInstall.length; i++) {
-    const pluginId = pluginsToInstall[i]
-    if (!pluginId) continue
-
-    if (onProgress) {
-      onProgress(pluginId, i + 1, pluginsToInstall.length)
-    }
-
-    try {
-      const pluginInfo = await getPluginById(pluginId)
-      if (!pluginInfo) {
-        failed.push({
-          name: pluginId,
-          error: 'Plugin not found in any marketplace',
-        })
-        continue
-      }
-
-      // Cache the plugin if it's from an external source
-      const { entry, marketplaceInstallLocation } = pluginInfo
-      if (!isLocalPluginSource(entry.source)) {
-        // External plugin - cache and register it with scope
-        await cacheAndRegisterPlugin(pluginId, entry, scope, projectPath)
-      } else {
-        // Local plugin - just register it with the install path and scope
-        registerPluginInstallation(
-          {
-            pluginId,
-            installPath: join(marketplaceInstallLocation, entry.source),
-            version: entry.version,
-          },
-          scope,
-          projectPath,
-        )
-      }
-
-      // Mark as enabled in settings
-      updatedEnabledPlugins[pluginId] = true
-      installed.push(pluginId)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error)
-      failed.push({ name: pluginId, error: errorMessage })
-      logError(error)
-    }
-  }
-
-  // Update settings with newly enabled plugins using the correct settings source
-  updateSettingsForSource(settingSource, {
-    ...settings,
-    enabledPlugins: updatedEnabledPlugins,
-  })
-
-  return { installed, failed }
 }

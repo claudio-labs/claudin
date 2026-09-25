@@ -3,7 +3,6 @@ import { registerCodeReviewSkill } from 'src/skills/bundled/code-review.js'
 import { registerCreateSkill } from 'src/skills/bundled/create.js'
 import { registerDebugSkill } from 'src/skills/bundled/debug.js'
 import { registerFewerPermissionPromptsSkill } from 'src/skills/bundled/fewerPermissionPrompts.js'
-import { registerKeybindingsSkill } from 'src/skills/bundled/keybindings.js'
 import { registerLoopSkill } from 'src/skills/bundled/loop.js'
 import { registerRefreshRulesSkill } from 'src/skills/bundled/refreshRules.js'
 import { registerRunSkill } from 'src/skills/bundled/run.js'
@@ -22,7 +21,6 @@ import { registerVerifySkill } from 'src/skills/bundled/verify.js'
  */
 export function initBundledSkills(): void {
   registerUpdateConfigSkill()
-  registerKeybindingsSkill()
   registerDebugSkill()
   registerCodeReviewSkill()
   registerBatchSkill()

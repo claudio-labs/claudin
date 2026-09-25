@@ -13,9 +13,9 @@
  * (team memory `fork-vs-fresh-ab-2026-09-09`) — so a text change that shifts the
  * fork/fresh mix can cost far more than the shorter text saves.
  *
- * The workload is 7 questions about THIS repo, one headless `-p` session each,
+ * The workload is 6 questions about THIS repo, one headless `-p` session each,
  * so every decision starts from the same small context:
- *  - 5 multi-hop questions, each needing more than 3 dependent searches (trace
+ *  - 4 multi-hop questions, each needing more than 3 dependent searches (trace
  *    a value from a flag to its effect, follow a name through three slices, find
  *    what gates a feature);
  *  - 2 directed lookups (one named function, one named file) as controls that
@@ -44,7 +44,7 @@
  *    parent plus every sub-agent transcript (`forkBench.loadSession` drops the
  *    history a fork inherits), priced at the model's own tier; the CLI's
  *    `total_cost_usd` is shown beside it as a cross-check.
- *  - Per arm, each rep's 7 sessions reduce to one row. The report gives the
+ *  - Per arm, each rep's 6 sessions reduce to one row. The report gives the
  *    median [min–max] over reps and calls a difference SEPARATED only when the
  *    ranges do not overlap. The plan's pre-registered gates close the report.
  *
@@ -116,7 +116,6 @@ type Question = {
 const ASK = "Just answer, don't change any files."
 const item = (label: string, ...anyOf: Needle[]): Item => ({ label, anyOf })
 const at = (path: string, text: string): Evidence => ({ path, text })
-const notAt = (path: string, text: string): Evidence => ({ path, text, absent: true })
 
 const QUESTIONS: Question[] = [
   {
@@ -279,42 +278,6 @@ const QUESTIONS: Question[] = [
     reference:
       "In src/agent/compact/autoCompact.ts. CLAUDIN_AUTO_COMPACT_WINDOW caps the model's context window before the summary reservation is subtracted.",
     wrong: 'In src/agent/compact/autoCompact.ts; CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE shrinks it.',
-  },
-  {
-    id: 'm5-keybind',
-    kind: 'multihop',
-    prompt:
-      'I added a custom binding to `~/.claudin/keybindings.json` and it has no effect at all. Find out why by tracing how claudin ' +
-      'loads keybindings and resolves a key press: which function reads that file, what decides whether it is read at all (the ' +
-      "function and the flag key it checks), where that flag's value comes from on disk, and which function resolves a key press " +
-      `against the loaded bindings. ${ASK}`,
-    items: [
-      item('loadKeybindings', 'loadKeybindings'),
-      item('isKeybindingCustomizationEnabled', 'isKeybindingCustomizationEnabled'),
-      item('keybinding_customization_release', 'keybinding_customization_release'),
-      item('feature-flags.json', 'feature-flags.json'),
-      item('resolveKeyWithChordState', 'resolveKeyWithChordState'),
-    ],
-    evidence: [
-      at('src/terminal/keybindings/loadUserBindings.ts', "return join(getClaudinConfigHomeDir(), 'keybindings.json')"),
-      at('src/terminal/keybindings/loadUserBindings.ts', 'if (!isKeybindingCustomizationEnabled()) {'),
-      at('src/terminal/keybindings/loadUserBindings.ts', "'tengu_keybinding_customization_release',"),
-      at('src/platform/analytics/growthbook.ts', "join(homedir(), '.claudin', 'feature-flags.json')"),
-      // Off by default: the fork's own defaults do not turn it on.
-      notAt('src/platform/analytics/growthbook.ts', 'tengu_keybinding_customization_release'),
-      at('src/terminal/keybindings/resolver.ts', 'export function resolveKeyWithChordState('),
-      at('src/terminal/keybindings/KeybindingProviderSetup.tsx', 'resolveKeyWithChordState(input, key, contexts, bindings, pendingChordRef.current)'),
-    ],
-    reference:
-      'loadKeybindings / loadKeybindingsSyncWithWarnings (src/terminal/keybindings/loadUserBindings.ts) read ~/.claudin/keybindings.json, ' +
-      'but only once isKeybindingCustomizationEnabled() is true; otherwise they return the defaults. That gate reads the flag ' +
-      '`tengu_keybinding_customization_release` (default false) through getFeatureValue_CACHED_MAY_BE_STALE, which ' +
-      'src/platform/analytics/growthbook.ts resolves from ~/.claudin/feature-flags.json (or CLAUDE_FEATURE_FLAGS_FILE); it is not in ' +
-      'OPEN_BUILD_DEFAULTS, so it is off. When on, user bindings follow the defaults and resolveKeyWithChordState (resolver.ts) ' +
-      'takes the last exact match, so the user binding wins.',
-    wrong:
-      'loadKeybindings in loadUserBindings.ts reads the file, but isKeybindingCustomizationEnabled() gates it on the flag ' +
-      'tengu_keybinding_customization_release, which comes from ~/.claudin/settings.json; key presses are matched in resolveKeyWithChordState.',
   },
 ]
 const QUESTION_BY_ID = new Map(QUESTIONS.map(q => [q.id, q]))
@@ -1032,7 +995,7 @@ function report(sessions: SessionResult[], meta: Meta): string {
     out.push('## Pre-registered gates', '')
     for (const other of arms.slice(1)) out.push(`### ${other} vs ${arms[0]}`, '', gateTable(byArm, arms[0]!, other), '')
     out.push(
-      '±20 pp on the delegation rate reads the plan\'s "±20%" as percentage points: with five multi-hop questions a relative ' +
+      '±20 pp on the delegation rate reads the plan\'s "±20%" as percentage points: with four multi-hop questions a relative ' +
         '20% is less than one question.',
       '',
     )

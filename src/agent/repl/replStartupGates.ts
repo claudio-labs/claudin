@@ -5,8 +5,8 @@
  * focus before the user has interacted with the prompt.
  *
  * This addresses the root cause of issue #363: on mount, performStartupChecks
- * triggers plugin loading, which can surface a recommendation dialog (e.g. the
- * plugin-hint dialog). Since promptTypingSuppressionActive is false before the
+ * triggers plugin loading, which can surface a recommendation dialog. Since
+ * promptTypingSuppressionActive is false before the
  * user has typed anything, getFocusedInputDialog() returns the dialog,
  * unmounting PromptInput entirely.
  *

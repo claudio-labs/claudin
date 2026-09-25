@@ -13,19 +13,17 @@
 //
 // Each helper performs no checkpointing.
 
-import chalk from 'chalk';
 import { getInitialMainLoopModel, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType } from 'src/platform/bootstrap/state.js';
 import { getCommands } from 'src/commands/commands.js';
 import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { canUserConfigureAdvisor, getInitialAdvisorSetting, isAdvisorEnabled, isValidAdvisorModel, modelSupportsAdvisor } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { safeParseJSON } from 'src/shared/data/json.js';
 import { logError } from 'src/shared/log.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
-import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, normalizeModelStringForAPI, parseUserSpecifiedModel } from 'src/providers/model/model.js';
+import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, parseUserSpecifiedModel } from 'src/providers/model/model.js';
 import { ensureModelStringsInitialized } from 'src/providers/model/modelStrings.js';
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
 import { cacheSessionTitle, saveAgentSetting } from 'src/sessions/sessionStorage.js';
@@ -165,11 +163,10 @@ export async function runActionPostSetup(input: RunActionPostSetupInput): Promis
 
 // =============================================================================
 // runActionAgentSetup — Block D-post-commands: agent def + system prompts +
-// model + advisor + teammate custom + brief/proactive/assistant addendum
+// model + teammate custom + brief/proactive/assistant addendum
 // =============================================================================
 
 export type RunActionAgentSetupInput = {
-  options: ActionOptions;
   ctx: BootContext;
   isNonInteractiveSession: boolean;
   agentCli: string | undefined;
@@ -194,7 +191,6 @@ export type RunActionAgentSetupResult = {
   effectiveModel: string | undefined;
   initialMainLoopModel: string | null;
   resolvedInitialModel: string;
-  advisorModel: string | undefined;
   systemPrompt: string | undefined;
   appendSystemPrompt: string | undefined;
   inputPrompt: string | AsyncIterable<string>;
@@ -209,7 +205,7 @@ export async function runActionAgentSetup(
   deps: RunActionAgentSetupDeps,
 ): Promise<RunActionAgentSetupResult> {
   const {
-    options, ctx, isNonInteractiveSession, agentCli, agentsJson,
+    ctx, isNonInteractiveSession, agentCli, agentsJson,
     userSpecifiedModel, agentDefinitionsResult,
   } = input;
   let { systemPrompt, appendSystemPrompt, inputPrompt } = input;
@@ -281,26 +277,6 @@ export async function runActionAgentSetup(
   setInitialMainLoopModel(getUserSpecifiedModelSetting() || null);
   const initialMainLoopModel = getInitialMainLoopModel();
   const resolvedInitialModel = parseUserSpecifiedModel(initialMainLoopModel ?? getDefaultMainLoopModel());
-  let advisorModel: string | undefined;
-  if (isAdvisorEnabled()) {
-    const advisorOption = canUserConfigureAdvisor() ? (options as { advisor?: string }).advisor : undefined;
-    if (advisorOption) {
-      logForDebugging(`[AdvisorTool] --advisor ${advisorOption}`);
-      if (!modelSupportsAdvisor(resolvedInitialModel)) {
-        process.stderr.write(chalk.red(`Error: The model "${resolvedInitialModel}" does not support the advisor tool.\n`));
-        process.exit(1);
-      }
-      const normalizedAdvisorModel = normalizeModelStringForAPI(parseUserSpecifiedModel(advisorOption));
-      if (!isValidAdvisorModel(normalizedAdvisorModel)) {
-        process.stderr.write(chalk.red(`Error: The model "${advisorOption}" cannot be used as an advisor.\n`));
-        process.exit(1);
-      }
-    }
-    advisorModel = canUserConfigureAdvisor() ? (advisorOption ?? getInitialAdvisorSetting()) : advisorOption;
-    if (advisorModel) {
-      logForDebugging(`[AdvisorTool] Advisor model: ${advisorModel}`);
-    }
-  }
 
   // For tmux teammates with --agent-type, append the custom agent's prompt.
   if (
@@ -336,7 +312,6 @@ export async function runActionAgentSetup(
     effectiveModel,
     initialMainLoopModel,
     resolvedInitialModel,
-    advisorModel,
     systemPrompt,
     appendSystemPrompt,
     inputPrompt,

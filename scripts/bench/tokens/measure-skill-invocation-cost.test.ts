@@ -27,7 +27,7 @@ describe('measureSkillInvocationCost', () => {
 
   test('real skills array is non-empty (registers at least one bundled skill)', async () => {
     const result = await measureSkillInvocationCost()
-    // We try debug/loop/keybindings — at least one MUST register OR we get
+    // We try debug/loop/code-review — at least one MUST register OR we get
     // a single error row. Either way the array is non-empty.
     expect(result.realSkills.length).toBeGreaterThan(0)
   })

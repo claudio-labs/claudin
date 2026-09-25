@@ -191,8 +191,6 @@ export async function runDefaultActionDispatch(
     mainThreadAgentDefinition = agentRef.current;
     return { handled: true, mainThreadAgentDefinition, sessionConfig };
   }
-  const debugBool = debug as boolean;
-  const debugToStderrBool = debugToStderr as boolean;
   if (options.resume || options.fromPr || teleport || remote !== null) {
     const agentRef = { current: mainThreadAgentDefinition };
     await runResumeBranch({
@@ -201,12 +199,7 @@ export async function runDefaultActionDispatch(
       options: options as Parameters<typeof runResumeBranch>[0]['options'],
       teleport: teleport as Parameters<typeof runResumeBranch>[0]['teleport'],
       remote: remote as Parameters<typeof runResumeBranch>[0]['remote'],
-      debug: debugBool,
-      debugToStderr: debugToStderrBool,
-      commands: commands as Parameters<typeof runResumeBranch>[0]['commands'],
-      ide,
       mainThreadAgentDefinitionRef: agentRef,
-      thinkingConfig,
       sessionConfig: sessionConfig as Parameters<typeof runResumeBranch>[0]['sessionConfig'],
       resumeContext: resumeContext as Parameters<typeof runResumeBranch>[0]['resumeContext'],
       getFpsMetrics,

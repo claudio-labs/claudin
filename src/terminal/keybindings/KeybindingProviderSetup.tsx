@@ -3,25 +3,19 @@ import { c as _c } from "react-compiler-runtime";
  * Setup utilities for integrating KeybindingProvider into the app.
  *
  * This file provides the bindings and a composed provider that can be
- * added to the app's component tree. It loads both default bindings and
- * user-defined bindings from ~/.claudin/keybindings.json, with hot-reload
- * support when the file changes.
+ * added to the app's component tree. It loads the default bindings.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { InputEvent } from 'src/terminal/ink/events/input-event.js';
 // ChordInterceptor intentionally uses useInput to intercept all keystrokes before
 // other handlers process them - this is required for chord sequence support
 // eslint-disable-next-line custom-rules/prefer-use-keybindings
 import { type Key, useInput } from 'src/terminal/ink.js';
-import { count } from 'src/shared/data/array.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { plural } from 'src/shared/text/stringUtils.js';
 import { KeybindingProvider } from 'src/terminal/keybindings/KeybindingContext.js';
-import { initializeKeybindingWatcher, type KeybindingsLoadResult, loadKeybindingsSyncWithWarnings, subscribeToKeybindingChanges } from 'src/terminal/keybindings/loadUserBindings.js';
+import { loadKeybindingsSync } from 'src/terminal/keybindings/loadUserBindings.js';
 import { resolveKeyWithChordState } from 'src/terminal/keybindings/resolver.js';
 import type { KeybindingContextName, ParsedBinding, ParsedKeystroke } from 'src/terminal/keybindings/types.js';
-import type { KeybindingWarning } from 'src/terminal/keybindings/validate.js';
 
 /**
  * Timeout for chord sequences in milliseconds.
@@ -33,7 +27,7 @@ type Props = {
 };
 
 /**
- * Keybinding provider with default + user bindings and hot-reload support.
+ * Keybinding provider over the default bindings.
  *
  * Usage: Wrap your app with this provider to enable keybinding support.
  *
@@ -47,93 +41,17 @@ type Props = {
  *
  * Features:
  * - Loads default bindings from code
- * - Merges with user bindings from ~/.claudin/keybindings.json
- * - Watches for file changes and reloads automatically (hot-reload)
- * - User bindings override defaults (later entries win)
  * - Chord support with automatic timeout
  */
-/**
- * Display keybinding warnings to the user via notifications.
- * Shows a brief message pointing to /doctor for details.
- */
-function useKeybindingWarnings(warnings: KeybindingWarning[], isReload: boolean) {
-  const $ = _c(9);
-  const {
-    addNotification,
-    removeNotification
-  } = useNotifications();
-  let t0;
-  if ($[0] !== addNotification || $[1] !== removeNotification || $[2] !== warnings) {
-    t0 = () => {
-      if (warnings.length === 0) {
-        removeNotification("keybinding-config-warning");
-        return;
-      }
-      const errorCount = count(warnings, _temp);
-      const warnCount = count(warnings, _temp2);
-      let message;
-      if (errorCount > 0 && warnCount > 0) {
-        message = `Found ${errorCount} keybinding ${plural(errorCount, "error")} and ${warnCount} ${plural(warnCount, "warning")}`;
-      } else {
-        if (errorCount > 0) {
-          message = `Found ${errorCount} keybinding ${plural(errorCount, "error")}`;
-        } else {
-          message = `Found ${warnCount} keybinding ${plural(warnCount, "warning")}`;
-        }
-      }
-      message = message + " \xB7 /doctor for details";
-      addNotification({
-        key: "keybinding-config-warning",
-        text: message,
-        color: errorCount > 0 ? "error" : "warning",
-        priority: errorCount > 0 ? "immediate" : "high",
-        timeoutMs: 60000
-      });
-    };
-    $[0] = addNotification;
-    $[1] = removeNotification;
-    $[2] = warnings;
-    $[3] = t0;
-  } else {
-    t0 = $[3];
-  }
-  let t1;
-  if ($[4] !== addNotification || $[5] !== isReload || $[6] !== removeNotification || $[7] !== warnings) {
-    t1 = [warnings, isReload, addNotification, removeNotification];
-    $[4] = addNotification;
-    $[5] = isReload;
-    $[6] = removeNotification;
-    $[7] = warnings;
-    $[8] = t1;
-  } else {
-    t1 = $[8];
-  }
-  useEffect(t0, t1);
-}
-function _temp2(w_0: KeybindingWarning) {
-  return w_0.severity === "warning";
-}
-function _temp(w: KeybindingWarning) {
-  return w.severity === "error";
-}
 export function KeybindingSetup({
   children
 }: Props): React.ReactNode {
   // Load bindings synchronously for initial render
-  const [{
-    bindings,
-    warnings
-  }, setLoadResult] = useState<KeybindingsLoadResult>(() => {
-    const result = loadKeybindingsSyncWithWarnings();
-    logForDebugging(`[keybindings] KeybindingSetup initialized with ${result.bindings.length} bindings, ${result.warnings.length} warnings`);
-    return result;
+  const [bindings] = useState<ParsedBinding[]>(() => {
+    const loaded = loadKeybindingsSync();
+    logForDebugging(`[keybindings] KeybindingSetup initialized with ${loaded.length} bindings`);
+    return loaded;
   });
-
-  // Track if this is a reload (not initial load)
-  const [isReload, setIsReload] = useState(false);
-
-  // Display warnings via notifications
-  useKeybindingWarnings(warnings, isReload);
 
   // Chord state management - use ref for immediate access, state for re-renders
   // The ref is used by resolve() to get the current value without waiting for re-render
@@ -186,19 +104,7 @@ export function KeybindingSetup({
     setPendingChordState(pending);
   }, [clearChordTimeout]);
   useEffect(() => {
-    // Initialize file watcher (idempotent - only runs once)
-    void initializeKeybindingWatcher();
-
-    // Subscribe to changes
-    const unsubscribe = subscribeToKeybindingChanges(result_0 => {
-      // Any callback invocation is a reload since initial load happens
-      // synchronously in useState, not via this subscription
-      setIsReload(true);
-      setLoadResult(result_0);
-      logForDebugging(`[keybindings] Reloaded: ${result_0.bindings.length} bindings, ${result_0.warnings.length} warnings`);
-    });
     return () => {
-      unsubscribe();
       clearChordTimeout();
     };
   }, [clearChordTimeout]);

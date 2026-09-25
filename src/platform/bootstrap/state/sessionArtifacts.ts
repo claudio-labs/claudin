@@ -240,7 +240,3 @@ export function setMainThreadAgentType(agentType: string | undefined): void {
 export function getIsRemoteMode(): boolean {
   return STATE.isRemoteMode
 }
-
-export function setIsRemoteMode(value: boolean): void {
-  STATE.isRemoteMode = value
-}

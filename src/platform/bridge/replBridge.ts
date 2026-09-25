@@ -192,8 +192,8 @@ export type BridgeCoreParams = {
   onStateChange?: (state: BridgeState, detail?: string) => void
   /**
    * Fires on each real user message to flow through writeMessages() until
-   * the callback returns true (done). Mirrors remoteBridgeCore.ts's
-   * onUserMessage so the REPL bridge can derive a session title from early
+   * the callback returns true (done). Lets the REPL bridge derive a
+   * session title from early
    * prompts when none was set at init time (e.g. user runs /remote-control
    * on an empty conversation, then types). Tool-result wrappers, meta
    * messages, and display-tag-only messages are skipped. Receives
@@ -1583,7 +1583,7 @@ export async function initBridgeCore(
     // stopWork/archive latency (~200-500ms) is the drain window for the
     // result POST. Closing BEFORE archive meant relying on HybridTransport's
     // void-ed 3s grace period, which nothing awaits — forceExit can kill the
-    // socket mid-POST. Same reorder as remoteBridgeCore.ts teardown (#22803).
+    // socket mid-POST.
     const teardownTransport = transport
     transport = null
     flushGate.drop()

@@ -26,7 +26,6 @@ export type FocusedInputDialog =
   | 'model-switch'
   | 'effort-callout'
   | 'remote-callout'
-  | 'plugin-hint'
 
 // Minimal shape for `toolJSX`. Only the focus-arbitration flag matters here;
 // REPL.tsx's full type carries additional render fields we don't need.
@@ -58,9 +57,6 @@ export type FocusedInputDialogDeps = {
   showIdeOnboarding: boolean
   showEffortCallout: boolean
   showRemoteCallout: boolean
-  hintRecommendation: unknown
-  // Startup gate for the low-priority suggestion dialogs (issue #363).
-  startupChecksStarted: boolean
 }
 
 export function getFocusedInputDialog(
@@ -94,9 +90,5 @@ export function getFocusedInputDialog(
 
   // Remote callout (shown once before first bridge enable).
   if (allowDialogsWithAnimation && d.showRemoteCallout) return 'remote-callout'
-
-  // Plugin hint from CLI/SDK stderr.
-  // Suppress during startup window to prevent stealing focus from the prompt (issue #363).
-  if (allowDialogsWithAnimation && d.hintRecommendation && d.startupChecksStarted) return 'plugin-hint'
   return undefined
 }

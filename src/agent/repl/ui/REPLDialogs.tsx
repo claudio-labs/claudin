@@ -101,17 +101,9 @@ export type REPLDialogsDeps = {
   // remote callout — none beyond setAppState
   // exit flow
   exitFlow: React.ReactNode
-  // plugin / lsp / desktop
-  hintRecommendation: {
-    pluginName: string
-    pluginDescription: string
-    marketplaceName: string
-    sourceCommand: string
-  } | null
-  handleHintResponse: (response: unknown) => void
 }
 
-// PluginHintMenu / EffortCallout / RemoteCallout / IdeOnboardingDialog /
+// EffortCallout / RemoteCallout / IdeOnboardingDialog /
 // SandboxPermissionRequest
 // are imported lazily by REPL when feature flags require — to keep the
 // extracted block faithful we accept the rendered slot as a ReactNode
@@ -131,19 +123,12 @@ export type REPLDialogsSlots = {
   IdeOnboardingDialog: React.ComponentType<{ onDone: () => void; installationStatus: unknown }>
   EffortCallout: React.ComponentType<{ model: unknown; onDone: (selection: string) => void }>
   RemoteCallout: React.ComponentType<{ onDone: (selection: string) => void }>
-  PluginHintMenu: React.ComponentType<{
-    pluginName: string
-    pluginDescription: string
-    marketplaceName: string
-    sourceCommand: string
-    onResponse: (r: unknown) => void
-  }>
 }
 
 type NetworkHostPattern = { host: string; port?: number }
 
 export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots): React.ReactNode {
-  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout, PluginHintMenu } = slots
+  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout } = slots
   return <>
     {deps.focusedInputDialog === 'sandbox-permission' && <SandboxPermissionRequest key={deps.sandboxPermissionRequestQueue[0]!.hostPattern.host} hostPattern={deps.sandboxPermissionRequestQueue[0]!.hostPattern} onUserResponse={(response: { allow: boolean; persistToSettings: boolean }) => {
       const { allow, persistToSettings } = response
@@ -292,7 +277,5 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
     }} />}
 
     {deps.exitFlow}
-
-    {deps.focusedInputDialog === 'plugin-hint' && deps.hintRecommendation && <PluginHintMenu pluginName={deps.hintRecommendation.pluginName} pluginDescription={deps.hintRecommendation.pluginDescription} marketplaceName={deps.hintRecommendation.marketplaceName} sourceCommand={deps.hintRecommendation.sourceCommand} onResponse={deps.handleHintResponse} />}
   </>
 }

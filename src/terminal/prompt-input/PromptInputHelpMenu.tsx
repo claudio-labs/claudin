@@ -2,7 +2,6 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
-import { isKeybindingCustomizationEnabled } from 'src/terminal/keybindings/loadUserBindings.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { isFastModeAvailable, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { getNewlineInstructions } from 'src/terminal/prompt-input/utils.js';
@@ -308,7 +307,7 @@ export function PromptInputHelpMenu(props: Props) {
   }
   let t43;
   if ($[82] !== dimColor) {
-    t43 = isKeybindingCustomizationEnabled() && <Box><Text dimColor={dimColor}>/keybindings to customize</Text></Box>;
+    t43 = false;
     $[82] = dimColor;
     $[83] = t43;
   } else {
