@@ -115,8 +115,8 @@ describe('tokensSaved chokepoints', () => {
       // >50KB persistence path.
       const out = await processPreMappedToolResultBlock(
         block,
-        'PersistProbeTool',
-        50_000,
+        { name: 'PersistProbeTool', maxResultSizeChars: 50_000 },
+        undefined,
       )
       expect(String(out.content)).toContain('<persisted-output>')
       expect(getBytesSaved()).toBeGreaterThan(0)

@@ -56,7 +56,7 @@ import { registerFrontmatterHooks } from 'src/platform/lifecycleHooks/registerFr
 import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { getAgentModel } from 'src/providers/model/agent.js'
+import { getAgentModel, type AgentModelAlias } from 'src/providers/model/agent.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -64,7 +64,6 @@ import {
   revalidateDossier,
   setAgentPlanSlug,
 } from 'src/agent/planDossier.js'
-import type { ModelAlias } from 'src/providers/model/aliases.js'
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
@@ -297,7 +296,7 @@ export async function* runAgent({
     abortController?: AbortController
     agentId?: AgentId
   }
-  model?: ModelAlias
+  model?: AgentModelAlias
   maxTurns?: number
   /** Preserve toolUseResult on messages for subagents with viewable transcripts */
   preserveToolUseResults?: boolean
@@ -388,8 +387,8 @@ export async function* runAgent({
   // doesn't redundantly re-explore. Skip when:
   //  - fork path is in use (forkContextMessages already carries full parent context)
   //  - no plan slug can be resolved (no active plan in the parent session)
-  // Every type now takes a non-zero budget (SUBAGENT_BUDGET_PCT.__customDefault);
-  // the zero-budget entry that used to suppress this went with the removed agent.
+  // A type with a zero SUBAGENT_BUDGET_PCT entry (Explore) gets no dossier:
+  // renderDossierForSubagent returns null for it.
   const resolvedPlanSlug =
     inheritedPlanSlug ??
     (forkContextMessages === undefined && getPlan() !== null

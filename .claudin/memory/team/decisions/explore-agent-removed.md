@@ -1,24 +1,100 @@
 ---
 name: explore-agent-removed
-description: The built-in Explore agent was REMOVED on 2026-08-18 — what it was measured to be worth, what replaced it, and the bench that still reproduces the old numbers
+description: The built-in Explore agent was REMOVED on 2026-08-18 and came back ON BY DEFAULT on 2026-09-25 (CLAUDIN_EXPLORE_AGENT=0 turns it off; sonnet; verbatim path:start-end excerpts) — the A/B behind the flip, what it was worth in 2026-08, and the bench that reproduces both
 type: project
 scope: tools/AgentTool
 impact: functional
 ---
 
-**The built-in `Explore` sub-agent no longer exists** (removed 2026-08-18, branch
-`refactor/remove-explore-agent`). `Plan` stayed. The replacement announced in the
-prompts *was* a **fork** — `Agent` with no `subagent_type` — but that only held
-until 2026-09-09, when PR #170 (`b7e6913b`) made a **fresh `Code` agent** the
-default delegation target and demoted the fork to conversation-bound work. So the
-lane that stands in for Explore today is the one that does NOT inherit the
-parent's context. See [[fork-vs-fresh-ab-2026-09-09]].
+## Back, on by default (2026-09-25)
 
-This file used to argue the opposite, and the argument was not refuted — it was
-overruled. Both halves are recorded here because the numbers still describe what
-the removal costs.
+**Decision:** `Explore` is a built-in again, ON by default;
+`CLAUDIN_EXPLORE_AGENT=0` turns it off (`isExploreAgentEnabled`,
+`src/tools/AgentTool/builtInAgents.ts`). It landed opt-in and the user flipped
+the default the same day, after the A/B below.
+- **Tools:** an allowlist of Read/Glob/Grep/Bash/WebFetch/WebSearch, not the old
+  denylist.
+- **Model:** `sonnet` (user pick), which means the parent's model off a
+  Claude-native provider. The caller can pass `model` per call, `inherit`
+  included.
+- **Runs:** one-shot, no plan dossier (`Explore: 0`).
+- **Report:** kept out of the head/tail summarizer
+  (`UNSUMMARIZED_AGENT_TYPES`). Its contract: verbatim excerpts under a full
+  absolute `path:start-end`, so the parent can Patch or Edit from them.
+- **Where it is named:** only when the registry has it — the Agent description's
+  research lane and EnterPlanMode's line. Plan mode still does Phase 1 itself.
 
-## What it was measured to be worth (2026-08-16, 99 sessions / 91 Explore calls)
+**Why:** the user asked for a search sub-type whose report comes back in the
+shape Write and Patch consume, with a per-call model (cheaper / stronger / same
+as the main).
+
+**A/B** (`delegation-steer-ab.ts`, N=5, Opus 5.5 at medium effort, arms
+baseline / explore / placebo; run `/tmp/delegation-steer-ab/20260925-032543`).
+The bench's pre-registered gates all passed for explore and for the placebo.
+
+| per rep, median [min–max] | baseline | explore | placebo |
+|---|---|---|---|
+| correct, all reps | 35/35 | 34/35 | 34/35 |
+| multi-hop delegated (of 5) | 0 [0–0] | 1 [1–2] SEPARATED | 0 [0–1] |
+| main-thread tool calls | 45 [39–48] | 32 [31–37] −29% SEPARATED | 46 [43–49] |
+| main-thread turns | 33 [29–37] | 26 [25–30] −21% | 32 [32–37] |
+| CLI total_cost_usd | 3.214 [3.033–3.292] | 2.921 [2.807–3.092] −9% (overlap) | 3.246 (+1%) |
+| wall time (s) | 141 [128–150] | 184 [162–214] +30% SEPARATED | 151 |
+
+- **Misses:** both misses are the same m3-hook item, so they are noise.
+- **Delegation:** every delegation went to Explore (7/7).
+- **Re-reads:** none of the 7 reports was followed by a re-read. The parent made
+  no Read at all after any of them, against 29.4% of calls on 2026-08-16.
+  Compression was 7.1x median (2.9–9.7).
+- **Scope:** the questions only ask for answers, so edit-time re-reads went
+  unmeasured. In the E2E the parent read just the quoted range before an Edit.
+- **Cost:** cite the CLI column. The bench's own cost row priced Explore children
+  as Opus (fixed since, see [[delegation-steer-ab-2026-09-23]]).
+
+**What changes for a teammate:**
+- **The default is on** by the user's decision, knowing the cost gain overlaps
+  the noise and wall time is +30%. `CLAUDIN_EXPLORE_AGENT=0` is the killswitch;
+  turning the default off again is `isExploreAgentEnabled` plus the
+  expectations in `builtInAgents.test.ts` and `exploreAgentGating.test.ts`.
+- **A built-in sub-agent never retries a 529**
+  ([[builtin-subagents-skip-529-retry]]), and with Explore on more searches go
+  through one.
+- **Naming Explore in a new prompt** means gating the text on the registry and
+  adding the file to `ALLOWED_SITES` in `src/__tests__/exploreAgentGating.test.ts`.
+  That test replaced the removal guard.
+  `scripts/migrations/probes/exploreAgent.json` proves every guard goes red.
+- **Every sub-agent's model changed** with this work, because the model this
+  needed never applied: [[subagents-ran-on-parent-model]].
+
+**Rejected:**
+- **Read credit for the parent's gate:** format only, user pick. The Bash credit
+  cost +6% on top of the batch Read ([[bash-read-passthrough-not-promoted]]). A
+  Patch on a never-read file costs one refusal plus `*** Resubmit`.
+- **Haiku default:** the user chose Sonnet.
+
+**Evidence:**
+- **Run dir:** above.
+- **E2E, models:** no `model` → `claude-sonnet-5`, `haiku` →
+  `claude-haiku-4-5-20251001`, `inherit` → `claude-opus-5-5`.
+- **E2E, report size:** a 22 KB, 451-line report arrived uncut.
+- **Excerpt accuracy:** "very thorough" runs went from 20/50 to 41/45 exact
+  against the files across three contract revisions (N=1 each). The fixes were
+  the excerpt's own range (not its function's), and a full path (not
+  `/tmp/.../`).
+
+## Removed (2026-08-18)
+
+The removal was branch `refactor/remove-explore-agent`, `10dc4d18` (#119).
+`Plan` stayed. The replacement announced in the prompts *was* a **fork** (`Agent`
+with no `subagent_type`). That held until 2026-09-09, when PR #170 (`b7e6913b`)
+made a **fresh `Code` agent** the default delegation target and limited the fork
+to work that needs the conversation. So the lane that stood in for Explore was
+the one that does NOT inherit the parent's context. See
+[[fork-vs-fresh-ab-2026-09-09]].
+
+The removal overruled the 2026-08-16 measurement below; it did not refute it.
+
+### What it was measured to be worth (2026-08-16, 99 sessions / 91 Explore calls)
 
 - **93.5% multi-hop.** Of 77 organic calls, 72 needed several dependent searches.
   LOCATE-SYMBOL and READ-ONE-THING were **zero**; only 5 were LOCATE-FILE. Glob
@@ -32,7 +108,7 @@ the removal costs.
   `Code` agent keeps out both, which is what the 2026-09-09 A/B measured at −44%
   total cost for equal answers.
 
-## What actually prompted the removal, and what it was
+### What actually prompted the removal, and what it was
 
 A session measured on 2026-08-18 (`84a654c9`, legendarr) showed the parent
 re-reading **17 of the 35 files** Explore had already read (71,515 B; 12 calls
@@ -44,11 +120,10 @@ That is fixed in the same change, and the fix is **tool-scoped**: no Agent resul
 is ever code-outlined, MCP keeps its arm. See
 `src/agent/toolResultCodeOutline.test.ts` → `agent reports are never outlined`.
 
-## Still reproducible
+### Still reproducible
 
-`bun scripts/bench/tokens/measure-explore-redundancy.ts` was kept on purpose. It
-parses historical transcripts, so the 2026-08-16 baselines below are still
-measurable from disk if the decision is ever revisited:
+`bun scripts/bench/tokens/measure-explore-redundancy.ts [projectDir]` parses
+transcripts, so the 2026-08-16 baselines stay measurable from disk:
 
 | | baseline 2026-08-16 |
 |---|---|
@@ -69,13 +144,5 @@ Two traps that cost a re-run while measuring this:
   `outline|symbol` only — widening it to include `offset/limit` gives 62.9%.
 
 The main chain was and is the worse offender (**7.2%** of its Reads are
-targeted, vs Explore's 22.7%). That is now the only lane left to fix. See also
-[[dev-tooling-token-roadmap]] and [[outline-blind-to-nested-members]].
-
-## If you are bringing it back
-
-`src/__tests__/exploreAgentRemoved.test.ts` fails first, by design — it guards
-the definition, the quoted agent-type literal across `src/`, the **eight** prompt
-sites that named it (most of which shipped ungated, so grepping the registry
-would not have found them), and the `BUILTIN_PLAN_AGENT` flag rename. Delete it
-in the same commit and put the numbers in the message.
+targeted, vs Explore's 22.7%). See also [[dev-tooling-token-roadmap]] and
+[[outline-blind-to-nested-members]].

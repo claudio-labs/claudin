@@ -1,0 +1,163 @@
+{
+  "test": [
+    "src/tools/AgentTool/built-in/exploreAgent.test.ts",
+    "src/tools/AgentTool/built-in/readOnlyAgents.test.ts",
+    "src/tools/AgentTool/builtInAgents.test.ts",
+    "src/tools/AgentTool/autoBackground.test.ts",
+    "src/tools/AgentTool/skipsResultSummarizer.test.ts",
+    "src/tools/AgentTool/prompt.test.ts",
+    "src/tools/EnterPlanModeTool/prompt.test.ts",
+    "src/agent/planDossier.test.ts",
+    "src/agent/tools/toolResultStorage.test.ts",
+    "src/providers/model/agent.test.ts",
+    "src/agent/query/turnModel.test.ts",
+    "src/tools/AgentTool/built-in/webResearcherAgent.test.ts",
+    "src/__tests__/exploreAgentGating.test.ts"
+  ],
+  "source": "src/tools/AgentTool/builtInAgents.ts",
+  "probes": [
+    {
+      "name": "the gate is on by default: going back to opt-in goes red",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXPLORE_AGENT)\n",
+      "replace": "  return isEnvTruthy(process.env.CLAUDIN_EXPLORE_AGENT)\n"
+    },
+    {
+      "name": "CLAUDIN_EXPLORE_AGENT=0 turns it off",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_EXPLORE_AGENT)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "the registry push sits behind its own gate",
+      "find": "  if (isExploreAgentEnabled()) {\n    agents.push(EXPLORE_AGENT)\n  }\n",
+      "replace": "  agents.push(EXPLORE_AGENT)\n"
+    },
+    {
+      "name": "isExploreAgentRegistered reads the registry, not the env",
+      "comment": "The SDK blank slate drops every built-in; a prompt asking the env would still name Explore.",
+      "find": "  return getBuiltInAgents().some(a => a.agentType === EXPLORE_AGENT_TYPE)\n",
+      "replace": "  return isExploreAgentEnabled()\n"
+    },
+    {
+      "name": "Explore is one-shot: inline, no SendMessage trailer",
+      "source": "src/tools/AgentTool/constants.ts",
+      "find": "  'Explore',\n  'Plan',\n",
+      "replace": "  'Plan',\n"
+    },
+    {
+      "name": "Explore's report is in the unsummarized set",
+      "source": "src/tools/AgentTool/constants.ts",
+      "find": "export const UNSUMMARIZED_AGENT_TYPES: ReadonlySet<string> = new Set([\n  'Explore',\n])\n",
+      "replace": "export const UNSUMMARIZED_AGENT_TYPES: ReadonlySet<string> = new Set([])\n"
+    },
+    {
+      "name": "AgentTool answers skipsResultSummarizer from the set",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "    return data.status === 'completed' && data.agentType !== undefined && UNSUMMARIZED_AGENT_TYPES.has(data.agentType);\n",
+      "replace": "    return false;\n"
+    },
+    {
+      "name": "the storage path honors the tool's answer",
+      "source": "src/agent/tools/toolResultStorage.ts",
+      "find": "  const summarized = tool.skipsResultSummarizer?.(toolUseResult)\n    ? toolResultBlock\n    : maybeSummarizeToolResult(toolResultBlock, toolName)\n",
+      "replace": "  const summarized = maybeSummarizeToolResult(toolResultBlock, toolName)\n"
+    },
+    {
+      "name": "Explore takes a zero plan-dossier budget",
+      "source": "src/agent/planDossier.ts",
+      "find": "  'Explore': 0,\n",
+      "replace": ""
+    },
+    {
+      "name": "per-call inherit returns the parent model",
+      "source": "src/providers/model/agent.ts",
+      "find": "  if (toolSpecifiedModel === 'inherit') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a per-call family alias is honored only on a Claude-native provider",
+      "source": "src/providers/model/agent.ts",
+      "find": "  if (toolSpecifiedModel && checkIsClaudeNativeProvider()) {\n",
+      "replace": "  if (toolSpecifiedModel) {\n"
+    },
+    {
+      "name": "the compact research line names Explore only when listed",
+      "source": "src/tools/AgentTool/prompt.ts",
+      "find": "- Say whether you expect code or research${exploreListed ? `",
+      "replace": "- Say whether you expect code or research${true ? `"
+    },
+    {
+      "name": "the full readOnly line names Explore only when listed",
+      "source": "src/tools/AgentTool/prompt.ts",
+      "find": "pays for otherwise.${exploreListed ? ",
+      "replace": "pays for otherwise.${true ? "
+    },
+    {
+      "name": "the full research bullet names Explore only when listed",
+      "source": "src/tools/AgentTool/prompt.ts",
+      "find": "write the question out for a fresh ${exploreListed ? ",
+      "replace": "write the question out for a fresh ${true ? "
+    },
+    {
+      "name": "the dispatch bullet names Explore only when listed",
+      "source": "src/tools/AgentTool/prompt.ts",
+      "find": "Write the question out for ${exploreListed ? ",
+      "replace": "Write the question out for ${true ? "
+    },
+    {
+      "name": "only the built-in counts as listed, not a custom agent of the same name",
+      "source": "src/tools/AgentTool/prompt.ts",
+      "find": "    a => a.agentType === EXPLORE_AGENT_TYPE && a.source === 'built-in',\n",
+      "replace": "    a => a.agentType === EXPLORE_AGENT_TYPE,\n"
+    },
+    {
+      "name": "EnterPlanMode names Explore only when registered",
+      "source": "src/tools/EnterPlanModeTool/prompt.ts",
+      "find": "  return isExploreAgentRegistered()\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "the allowlist admits no write tool",
+      "source": "src/tools/AgentTool/built-in/exploreAgent.ts",
+      "find": "        GLOB_TOOL_NAME,\n        GREP_TOOL_NAME,\n        FILE_READ_TOOL_NAME,\n        BASH_TOOL_NAME,\n",
+      "replace": "        GLOB_TOOL_NAME,\n        GREP_TOOL_NAME,\n        FILE_READ_TOOL_NAME,\n        BASH_TOOL_NAME,\n        FILE_EDIT_TOOL_NAME,\n"
+    },
+    {
+      "name": "the default model is sonnet (user decision, 2026-09-24)",
+      "source": "src/tools/AgentTool/built-in/exploreAgent.ts",
+      "find": "  model: 'sonnet',\n",
+      "replace": "  model: 'haiku',\n"
+    },
+    {
+      "name": "the context matches a readOnly brief",
+      "source": "src/tools/AgentTool/built-in/exploreAgent.ts",
+      "find": "  omitClaudeMd: true,\n  omitGitStatus: true,\n  omitGitInstructions: true,\n",
+      "replace": ""
+    },
+    {
+      "name": "a spawned agent calls the model it was resolved to, not the parent's",
+      "comment": "The query loop read the parent's app state for every agent; query.ts's call into this is covered by the E2E, not a unit test.",
+      "source": "src/agent/query/turnModel.ts",
+      "find": "  if (params.agentType !== undefined) return params.agentModel\n",
+      "replace": ""
+    },
+    {
+      "name": "WebResearcher runs on sonnet (user decision, 2026-09-25)",
+      "source": "src/tools/AgentTool/built-in/webResearcherAgent.ts",
+      "find": "  model: 'sonnet',\n",
+      "replace": "  model: 'haiku',\n"
+    },
+    {
+      "name": "the overflow list keeps each line verbatim",
+      "source": "src/tools/AgentTool/built-in/exploreAgent.ts",
+      "find": "followed by that single line quoted verbatim in backticks",
+      "replace": "followed by a short description"
+    },
+    {
+      "name": "a new file naming the agent fails the source allowlist",
+      "comment": "The removal found eight prompts naming Explore with no gate; this is the shape of the ninth.",
+      "source": "src/tools/AgentTool/built-in/webResearcherAgent.ts",
+      "find": "  whenToUseLean: `Multi-page web research that would take 3+",
+      "replace": "  whenToUseLean: `Use the Explore agent for the repo. Multi-page web research that would take 3+"
+    }
+  ]
+}

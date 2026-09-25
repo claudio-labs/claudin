@@ -12,6 +12,7 @@ describe('allowsImplicitAutoBackground', () => {
     // over-broad edit that drops a type is as damaging as one that adds a type
     // the parent does SendMessage back to.
     expect([...ONE_SHOT_BUILTIN_AGENT_TYPES].sort()).toEqual([
+      'Explore',
       'Plan',
       'WebResearcher',
       'WebResearcherManager',
@@ -20,6 +21,7 @@ describe('allowsImplicitAutoBackground', () => {
 
   test('one-shot built-ins stay inline so the parent gets the report this turn', () => {
     for (const agentType of [
+      'Explore',
       'Plan',
       'WebResearcher',
       'WebResearcherManager',

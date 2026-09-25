@@ -254,6 +254,7 @@ export async function processToolResultBlock<T>(
       result: T,
       toolUseID: string,
     ) => ToolResultBlockParam
+    skipsResultSummarizer?: (result: T) => boolean
   },
   toolUseResult: T,
   toolUseID: string,
@@ -262,25 +263,28 @@ export async function processToolResultBlock<T>(
     toolUseResult,
     toolUseID,
   )
-  const summarized = maybeSummarizeToolResult(toolResultBlock, tool.name)
-  const reversible = await makeReversibleIfElided(toolResultBlock, summarized)
-  return maybePersistLargeToolResult(
-    reversible,
-    tool.name,
-    getPersistenceThreshold(tool.name, tool.maxResultSizeChars),
-  )
+  return processPreMappedToolResultBlock(toolResultBlock, tool, toolUseResult)
 }
 
 /**
  * Process a pre-mapped tool result block. Applies persistence for large results
  * without re-calling mapToolResultToToolResultBlockParam.
+ * `toolUseResult` is the output the block was mapped from, for the tool's
+ * skipsResultSummarizer.
  */
-export async function processPreMappedToolResultBlock(
+export async function processPreMappedToolResultBlock<T>(
   toolResultBlock: ToolResultBlockParam,
-  toolName: string,
-  maxResultSizeChars: number,
+  tool: {
+    name: string
+    maxResultSizeChars: number
+    skipsResultSummarizer?: (result: T) => boolean
+  },
+  toolUseResult: T,
 ): Promise<ToolResultBlockParam> {
-  const summarized = maybeSummarizeToolResult(toolResultBlock, toolName)
+  const { name: toolName, maxResultSizeChars } = tool
+  const summarized = tool.skipsResultSummarizer?.(toolUseResult)
+    ? toolResultBlock
+    : maybeSummarizeToolResult(toolResultBlock, toolName)
   const reversible = await makeReversibleIfElided(toolResultBlock, summarized)
   return maybePersistLargeToolResult(
     reversible,

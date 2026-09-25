@@ -46,3 +46,10 @@ answers inline with Grep/Read. Runs: rep 1 `-172734`, reps 2–5 `-173421`.
   test); `transcriptPath`/`loadSession` sanitize only `/` in the cwd while
   claudin replaces every non-alphanumeric, so a workspace path with `.` or `_`
   finds no transcript.
+
+**Fixed 2026-09-25:** `scanTranscript` skipped `isSidechain` records, which is
+all a sub-agent transcript holds, so every child was priced at the PARENT's
+model. Harmless while every sub-agent really ran on the parent's model
+([[subagents-ran-on-parent-model]]); the Explore A/B's Sonnet children read as
+Opus 5.5 (+$0.08 a session over the CLI's `total_cost_usd`). Children are priced
+by their own model now. A run from before the fix: cite the CLI column.

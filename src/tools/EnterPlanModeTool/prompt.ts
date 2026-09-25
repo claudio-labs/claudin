@@ -13,6 +13,20 @@ In plan mode, you'll:
 
 `
 
+// Names the Explore agent only when this process registered it: the line said
+// "explore agent" for five weeks after that agent was removed. Required
+// lazily — the tool registry loads this module, and builtInAgents reaches back
+// into half the tool tree.
+function researchLane(): string {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { isExploreAgentRegistered } =
+    require('src/tools/AgentTool/builtInAgents.js') as typeof import('src/tools/AgentTool/builtInAgents.js')
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  return isExploreAgentRegistered()
+    ? 'use the Agent tool with the `Explore` agent instead'
+    : 'use the Agent tool instead'
+}
+
 function getEnterPlanModeToolPromptExternal(): string {
   // When interview phase is enabled, omit the "What Happens" section —
   // detailed workflow instructions arrive via the plan_mode attachment (messages.ts).
@@ -60,7 +74,7 @@ Only skip EnterPlanMode for simple tasks:
 - Single-line or few-line fixes (typos, obvious bugs, small tweaks)
 - Adding a single function with clear requirements
 - Tasks where the user has given very specific, detailed instructions
-- Pure research/exploration tasks (use the Agent tool with explore agent instead)
+- Pure research/exploration tasks (${researchLane()})
 
 ${whatHappens}## Examples
 

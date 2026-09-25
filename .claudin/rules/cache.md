@@ -342,7 +342,7 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
 - Slim-subagent: `omitClaudeMdAttachments`/`omitGitStatusAttachments` on
   ToolUseContext gate `claude_md_delta`/`nested_memory`/`git_status_delta` in
   `pipeline.ts`. New attachment producers read globals and
-  bypass the gate — honor the flags explicitly or Plan/WebResearcher get
+  bypass the gate — honor the flags explicitly or Plan/Explore/WebResearcher get
   full CLAUDE.md + rules re-injected per Read.
   Three degrees since 2026-09-10 (`src/tools/AgentTool/readOnlyAgent.ts`,
   `runAgent.ts`): `omitClaudeMd` (Plan, WebResearcher — nothing);

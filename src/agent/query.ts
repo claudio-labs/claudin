@@ -66,7 +66,6 @@ import { headlessProfilerCheckpoint } from 'src/platform/headlessProfiler.js'
 import {
   getDefaultMainLoopModelSetting,
   getUserSpecifiedModelSetting,
-  getRuntimeMainLoopModel,
   parseUserSpecifiedModel,
   renderModelName,
 } from 'src/providers/model/model.js'
@@ -89,6 +88,7 @@ import { recordContentReplacement } from 'src/sessions/sessionStorage.js'
 import { handleStopHooks } from 'src/agent/query/stopHooks.js'
 import { buildQueryConfig } from 'src/agent/query/config.js'
 import { productionDeps, type QueryDeps } from 'src/agent/query/deps.js'
+import { selectTurnModel } from 'src/agent/query/turnModel.js'
 import type { Terminal, Continue } from './query/transitions.js'
 import { feature } from 'bun:bundle'
 import {
@@ -487,9 +487,13 @@ async function* queryLoop(
         getUserSpecifiedModelSetting() ??
         getDefaultMainLoopModelSetting(),
     )
-    let currentModel = getRuntimeMainLoopModel({
+    // A spawned agent calls the model it was resolved to, not the parent's
+    // session model its app state carries (turnModel.ts).
+    let currentModel = selectTurnModel({
+      agentType: toolUseContext.agentType,
+      agentModel: toolUseContext.options.mainLoopModel,
+      sessionModel: appStateMainLoopModel,
       permissionMode,
-      mainLoopModel: appStateMainLoopModel,
       exceeds200kTokens:
         permissionMode === 'plan' &&
         doesMostRecentAssistantMessageExceed200k(messagesForQuery),

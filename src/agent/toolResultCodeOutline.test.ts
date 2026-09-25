@@ -199,7 +199,7 @@ describe('code-outline reversibility', () => {
 
     test('marker gains source= and the file equals the raw source', async () => {
       const block = makeBlock(CODE, 'toolu_roundtrip')
-      const out = await processPreMappedToolResultBlock(block, 'Bash', 1_000_000)
+      const out = await processPreMappedToolResultBlock(block, { name: 'Bash', maxResultSizeChars: 1_000_000 }, undefined)
       const s = asString(out)
       expect(s).toContain('strategy="code-outline"')
       const m = s.match(/source="([^"]+)"/)
@@ -210,7 +210,7 @@ describe('code-outline reversibility', () => {
 
     test('outline range recovers a DROPPED body from the persisted source', async () => {
       const block = makeBlock(CODE, 'toolu_recover')
-      const out = await processPreMappedToolResultBlock(block, 'Bash', 1_000_000)
+      const out = await processPreMappedToolResultBlock(block, { name: 'Bash', maxResultSizeChars: 1_000_000 }, undefined)
       const s = asString(out)
       const src = s.match(/source="([^"]+)"/)
       expect(src).not.toBeNull()
@@ -237,7 +237,7 @@ describe('code-outline reversibility', () => {
         (_, i) => `This is line ${i} of an ordinary prose log, not source code at all.`,
       ).join('\n')
       const block = makeBlock(prose, 'toolu_noback')
-      const out = await processPreMappedToolResultBlock(block, 'Bash', 1_000_000)
+      const out = await processPreMappedToolResultBlock(block, { name: 'Bash', maxResultSizeChars: 1_000_000 }, undefined)
       const s = asString(out)
       expect(s).toContain('strategy="head-tail-errors"')
       expect(s).not.toContain('source=')

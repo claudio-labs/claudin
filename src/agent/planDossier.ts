@@ -25,6 +25,10 @@ export const HARD_CAP_PCT = 0.25
 export const SUBAGENT_BUDGET_PCT: Record<string, number> = {
   'claudin-dev': 0.25,
   'Code': 0.2,
+  // A search agent is briefed with a question, not with the plan; a dossier
+  // would cost it up to a fifth of its window before its first search.
+  // renderDossierForSubagent returns null on a zero budget.
+  'Explore': 0,
   __customDefault: 0.2,
 }
 
