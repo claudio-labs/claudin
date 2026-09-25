@@ -1,0 +1,809 @@
+{
+  "test": [
+    "src/tools/BashTool/readOnlyGlobs.test.ts",
+    "src/tools/BashTool/readOnlyValidation.test.ts",
+    "src/tools/BashTool/bashPermissions.test.ts",
+    "src/tools/BashTool/prompt.test.ts",
+    "src/agent/tools/toolOrchestration.test.ts",
+    "src/agent/prompts/steeringToggles.test.ts",
+    "src/tools/FileReadTool/",
+    "src/shared/fs/glob.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/agent/compact/postCompactAttachments.test.ts",
+    "src/agent/planDossier.test.ts",
+    "src/agent/tools/toolExecution.resolveInput.test.ts",
+    "src/platform/entrypoints/mcp.test.ts",
+    "src/tools/FileReadTool/readGlobs.test.ts",
+    "src/tools/GlobTool"
+  ],
+  "source": "src/tools/BashTool/readOnlyValidation.ts",
+  "probes": [
+    {
+      "name": "readonly-globs: the killswitch is gone, so =0 no longer turns it off",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_READONLY_GLOBS)) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "readonly-globs: off by default again, on only with =1",
+      "find": "if (isEnvDefinedFalsy(process.env.CLAUDIN_READONLY_GLOBS)) return false",
+      "replace": "if (process.env.CLAUDIN_READONLY_GLOBS === undefined || isEnvDefinedFalsy(process.env.CLAUDIN_READONLY_GLOBS)) return false"
+    },
+    {
+      "name": "readonly-globs: readsPathGlobs reads another var",
+      "find": "process.env.CLAUDIN_READONLY_GLOBS)",
+      "replace": "process.env.CLAUDIN_READONLY_GLOB)"
+    },
+    {
+      "name": "readonly-globs: cat is not a path-glob reader",
+      "find": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])",
+      "replace": "new Set([\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])"
+    },
+    {
+      "name": "readonly-globs: head is not a path-glob reader",
+      "find": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])",
+      "replace": "new Set([\n  'cat',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])"
+    },
+    {
+      "name": "readonly-globs: tail is not a path-glob reader",
+      "find": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])",
+      "replace": "new Set([\n  'cat',\n  'head',\n  'wc',\n  'ls',\n  'grep',\n])"
+    },
+    {
+      "name": "readonly-globs: wc is not a path-glob reader",
+      "find": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])",
+      "replace": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'ls',\n  'grep',\n])"
+    },
+    {
+      "name": "readonly-globs: ls is not a path-glob reader",
+      "find": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])",
+      "replace": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'grep',\n])"
+    },
+    {
+      "name": "readonly-globs: grep is not a path-glob reader",
+      "find": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])",
+      "replace": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n])"
+    },
+    {
+      "name": "readonly-globs: xargs, which runs its arguments, is spared",
+      "comment": "A glob can expand to several words and shift the rest into a later slot: `xargs -I src/* echo` runs `src/b`. That case is refused by xargs' own flag check today (`-I` takes only `{}`, `-E` only `EOF`), so the red comes from `xargs echo src/*.ts`, which pins the membership itself.",
+      "find": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n])",
+      "replace": "new Set([\n  'cat',\n  'head',\n  'tail',\n  'wc',\n  'ls',\n  'grep',\n  'xargs',\n])"
+    },
+    {
+      "name": "readonly-globs: a word may start with `-`",
+      "find": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./]$/",
+      "replace": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./-]$/"
+    },
+    {
+      "name": "readonly-globs: a word may start with `~`",
+      "find": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./]$/",
+      "replace": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./~]$/"
+    },
+    {
+      "name": "readonly-globs: a word may start with `{`",
+      "comment": "cat's read-only regex refuses `{` outright, so the red comes through grep. A real brace expansion (a top-level `,` or `..`) is refused before this by validateBraceExpansion; the start class is the second line.",
+      "find": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./]$/",
+      "replace": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./{]$/"
+    },
+    {
+      "name": "readonly-globs: an absolute path glob is not spared",
+      "find": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./]$/",
+      "replace": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_.]$/"
+    },
+    {
+      "name": "readonly-globs: a `./` path glob is not spared",
+      "find": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_./]$/",
+      "replace": "const PATH_GLOB_WORD_START_RE = /^[A-Za-z0-9_/]$/"
+    },
+    {
+      "name": "readonly-globs: allowPathGlobs is ignored",
+      "find": "        !allowPathGlobs ||\n",
+      "replace": ""
+    },
+    {
+      "name": "readonly-globs: any first character is spared",
+      "comment": "Dropping the `wordFirst === undefined ||` guard above it is equivalent code, so it has no probe: RegExp.test(undefined) tests the string `undefined`, which fails the one-character anchor, and wordHasSlash is false whenever wordFirst is unset.",
+      "find": "        !PATH_GLOB_WORD_START_RE.test(wordFirst) ||\n",
+      "replace": ""
+    },
+    {
+      "name": "readonly-globs: a glob with no `/` before it is spared",
+      "find": "        !PATH_GLOB_WORD_START_RE.test(wordFirst) ||\n        !wordHasSlash\n",
+      "replace": "        !PATH_GLOB_WORD_START_RE.test(wordFirst)\n"
+    },
+    {
+      "name": "readonly-globs: a spared glob still costs the verdict",
+      "comment": "Dropping this `continue` instead is equivalent code, so it has no probe: the glob character falls through to noteLiteral, a no-op once wordFirst is set, since it is neither a `/` nor a word boundary.",
+      "find": "        return true\n      }\n      continue\n    }\n",
+      "replace": "        return true\n      }\n      return true\n    }\n"
+    },
+    {
+      "name": "readonly-globs: a new word keeps the last word's first character",
+      "find": "      wordFirst = undefined\n      wordHasSlash = false\n",
+      "replace": "      wordHasSlash = false\n"
+    },
+    {
+      "name": "readonly-globs: a new word keeps the last word's `/`",
+      "find": "      wordFirst = undefined\n      wordHasSlash = false\n",
+      "replace": "      wordFirst = undefined\n"
+    },
+    {
+      "name": "readonly-globs: the boundary itself becomes the next word's first character",
+      "find": "      wordHasSlash = false\n      continue\n    }\n",
+      "replace": "      wordHasSlash = false\n    }\n"
+    },
+    {
+      "name": "readonly-globs: whitespace does not end a word",
+      "find": "const SHELL_WORD_BOUNDARY_RE = /[\\s|&;<>()]/",
+      "replace": "const SHELL_WORD_BOUNDARY_RE = /[|&;<>()]/"
+    },
+    {
+      "name": "readonly-globs: an escaped character is not part of the word",
+      "comment": "splitCommand_DEPRECATED drops an unquoted backslash before isCommandReadOnly runs, so this branch only sees one inside double quotes: the red is `cat \"\\-x\"/*`.",
+      "find": "      escaped = false\n      if (currentChar !== undefined) noteLiteral(currentChar)\n",
+      "replace": "      escaped = false\n"
+    },
+    {
+      "name": "readonly-globs: a single-quoted character is not part of the word",
+      "find": "    if (inSingleQuote) {\n      if (currentChar !== undefined) noteLiteral(currentChar)\n",
+      "replace": "    if (inSingleQuote) {\n"
+    },
+    {
+      "name": "readonly-globs: a double-quoted character is not part of the word",
+      "find": "    if (inDoubleQuote) {\n      if (currentChar !== undefined) noteLiteral(currentChar)\n",
+      "replace": "    if (inDoubleQuote) {\n"
+    },
+    {
+      "name": "readonly-globs: an unquoted character is not part of the word",
+      "find": "      continue\n    }\n    if (currentChar !== undefined) noteLiteral(currentChar)\n  }\n",
+      "replace": "      continue\n    }\n  }\n"
+    },
+    {
+      "name": "readonly-globs: the word's last character stands for its first",
+      "find": "    wordFirst ??= c\n",
+      "replace": "    wordFirst = c\n"
+    },
+    {
+      "name": "readonly-globs: a `/` is never noted",
+      "find": "    if (c === '/') wordHasSlash = true\n",
+      "replace": ""
+    },
+    {
+      "name": "readonly-globs: every command's path globs are spared",
+      "find": "  return name !== undefined && PATH_GLOB_READERS.has(name)\n",
+      "replace": "  return name !== undefined\n"
+    },
+    {
+      "name": "readonly-globs: the command name is read from the last word",
+      "find": "const FIRST_WORD_RE = /^\\S+/",
+      "replace": "const FIRST_WORD_RE = /\\S+$/"
+    },
+    {
+      "name": "readonly-globs: the verdict never asks readsPathGlobs",
+      "comment": "Flipping the `allowPathGlobs = false` default instead is equivalent code, so it has no probe: this is the function's only caller, and it always passes the argument.",
+      "find": "containsUnquotedExpansion(testCommand, readsPathGlobs(testCommand))",
+      "replace": "containsUnquotedExpansion(testCommand)"
+    },
+    {
+      "name": "one-call commit: isOneCallCommitEnabled is on when unset",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_ONE_CALL_COMMIT)\n",
+      "replace": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_ONE_CALL_COMMIT)\n"
+    },
+    {
+      "name": "one-call commit: isOneCallCommitEnabled reads another var",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "process.env.CLAUDIN_ONE_CALL_COMMIT)",
+      "replace": "process.env.CLAUDIN_ONE_CALL)"
+    },
+    {
+      "name": "one-call commit: the steps never change",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  const steps = isOneCallCommitEnabled()\n",
+      "replace": "  const steps = false\n"
+    },
+    {
+      "name": "one-call commit: the steps change with the flag off",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  const steps = isOneCallCommitEnabled()\n",
+      "replace": "  const steps = true\n"
+    },
+    {
+      "name": "one-call commit: CLAUDIN_RESPONSE_CHAINS' read step wins over it",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  const steps = isOneCallCommitEnabled()\n",
+      "replace": "  const steps = isOneCallCommitEnabled() && !isResponseChainsEnabled()\n"
+    },
+    {
+      "name": "one-call commit text: the one call no longer depends on the changes being the session's own",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "1. When every change you are committing is one you made in this session, commit in ONE",
+      "replace": "1. Commit in ONE"
+    },
+    {
+      "name": "one-call commit text: step 1 no longer forbids `git add -A` and `git add .`",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "stage the files by name — never \\`git add -A\\` or \\`git add .\\`; warn",
+      "replace": "stage the files by name; warn"
+    },
+    {
+      "name": "one-call commit text: step 1 no longer warns about secrets",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "\\`git add .\\`; warn about any that likely hold secrets — then commit and run \\`git status\\`. That call",
+      "replace": "\\`git add .\\` — then commit and run \\`git status\\`. That call"
+    },
+    {
+      "name": "one-call commit text: step 1 no longer runs `git status` after the commit",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "then commit and run \\`git status\\`. That call",
+      "replace": "then commit. That call"
+    },
+    {
+      "name": "one-call commit text: the commit may no longer share the last edit's response",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "That call can share the response with your last edit or check: ",
+      "replace": ""
+    },
+    {
+      "name": "one-call commit text: a commit behind a failure is no longer said to be skipped",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": ": if a call before it fails, the commit is skipped.",
+      "replace": "."
+    },
+    {
+      "name": "one-call commit text: the style no longer comes from the recent commits in context",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "Match the style of the recent commits in your context, in a 1-2 sentence message",
+      "replace": "Write a 1-2 sentence message"
+    },
+    {
+      "name": "one-call commit text: the message no longer says why, not what",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "in a 1-2 sentence message saying why, not what.\n2. Otherwise",
+      "replace": "in a 1-2 sentence message.\n2. Otherwise"
+    },
+    {
+      "name": "one-call commit text: the fallback no longer covers an unsure tree or missing recent commits",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "2. Otherwise — changes you did not make, a tree you are unsure of, or no recent commits in your context — read",
+      "replace": "2. Otherwise — changes you did not make — read"
+    },
+    {
+      "name": "one-call commit text: the fallback read is no longer one SINGLE Git call",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "read the repo first in a SINGLE ${GIT_TOOL_NAME} call:",
+      "replace": "read the repo first:"
+    },
+    {
+      "name": "one-call commit text: the fallback read no longer forbids `-uall`",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "read the repo first in a SINGLE ${GIT_TOOL_NAME} call: \\`git status\\` (never \\`-uall\\`),",
+      "replace": "read the repo first in a SINGLE ${GIT_TOOL_NAME} call: \\`git status\\`,"
+    },
+    {
+      "name": "one-call commit text: the fallback may run more than the git steps",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "for the message style. Run nothing beyond these git/gh steps. Then commit as in 1",
+      "replace": "for the message style. Then commit as in 1"
+    },
+    {
+      "name": "one-call commit text: the fallback no longer commits in one more Git call",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "Then commit as in 1, in one more ${GIT_TOOL_NAME} call.",
+      "replace": "Then commit as in 1."
+    },
+    {
+      "name": "one-call commit text: nothing to commit may make an empty commit",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "\n3. Nothing to commit: no empty commit.`",
+      "replace": "`"
+    },
+    {
+      "name": "one-call commit: the flag no longer arms the response-chain guard",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "    isResponseChainsEnabled() || isOneCallCommitEnabled()\n",
+      "replace": "    isResponseChainsEnabled()\n"
+    },
+    {
+      "name": "one-call commit: CLAUDIN_RESPONSE_CHAINS no longer arms the guard",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "    isResponseChainsEnabled() || isOneCallCommitEnabled()\n",
+      "replace": "    isOneCallCommitEnabled()\n"
+    },
+    {
+      "name": "read-globs: readGlobsEnabledAtLoad reads another var",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "process.env.CLAUDIN_READ_GLOBS)",
+      "replace": "process.env.CLAUDIN_READ_GLOB)"
+    },
+    {
+      "name": "read-globs: readGlobsEnabledAtLoad is on when unset",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_READ_GLOBS)\n",
+      "replace": "  return process.env.CLAUDIN_READ_GLOBS !== '0'\n"
+    },
+    {
+      "name": "read-globs: the cap is 51 files",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "export const MAX_GLOB_FILES = 50\n",
+      "replace": "export const MAX_GLOB_FILES = 51\n"
+    },
+    {
+      "name": "read-globs detect: `{` does not make a glob",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?[{]/",
+      "replace": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?[]/"
+    },
+    {
+      "name": "read-globs detect: `?` does not make a glob",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?[{]/",
+      "replace": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*[{]/"
+    },
+    {
+      "name": "read-globs detect: `[` does not make a glob",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?[{]/",
+      "replace": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?{]/"
+    },
+    {
+      "name": "read-globs detect: `*` does not make a glob",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?[{]/",
+      "replace": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[?[{]/"
+    },
+    {
+      "name": "read-globs detect: a backslash no longer escapes",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?[{]/",
+      "replace": "const LIVE_GLOB_CHAR_RE = /(?:\\\\\\\\)*[*?[{]/"
+    },
+    {
+      "name": "read-globs detect: an escaped backslash still escapes",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)(?:\\\\\\\\)*[*?[{]/",
+      "replace": "const LIVE_GLOB_CHAR_RE = /(?<!\\\\)[*?[{]/"
+    },
+    {
+      "name": "read-globs resolve: an input with no glob is expanded anyway",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (entries === undefined || !entries.some(isReadGlob)) return { ok: true, input }\n",
+      "replace": "  if (entries === undefined) return { ok: true, input }\n"
+    },
+    {
+      "name": "read-globs resolve: a shape validateInput refuses is listed anyway",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (batchShapeRefusal(input) !== null) return { ok: true, input }\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs resolve: a refused expansion passes as resolved",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (!expanded.ok) return expanded\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs resolve: the input's other fields are dropped",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  return { ok: true, input: { ...input, file_paths: expanded.paths } }\n",
+      "replace": "  return { ok: true, input: { file_paths: expanded.paths } }\n"
+    },
+    {
+      "name": "read-globs expand: a glob named twice is checked twice",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    if (!isReadGlob(entry) || patterns.has(entry)) continue\n",
+      "replace": "    if (!isReadGlob(entry)) continue\n"
+    },
+    {
+      "name": "read-globs expand: a plain path is taken for a glob",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    if (!isReadGlob(entry) || patterns.has(entry)) continue\n",
+      "replace": "    if (patterns.has(entry)) continue\n"
+    },
+    {
+      "name": "read-globs expand: a glob expandPath refuses is read as a path",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "      return { ok: false, message: `${entry}: ${errorMessage(e)}` }\n",
+      "replace": "      continue\n"
+    },
+    {
+      "name": "read-globs expand: a base outside the project is listed",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    if (!deps.isInsideProject(base)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "read-globs expand: a glob outside the project does not refuse the call",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (outside.length > 0) return { ok: false, message: outside.join('\\n') }\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs expand: a file two entries name is read twice",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    if (seen.has(absolute)) return\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs expand: nothing is remembered as seen",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    seen.add(absolute)\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs expand: a glob named twice is listed twice",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    } else if (!expanded.has(entry)) {\n",
+      "replace": "    } else {\n"
+    },
+    {
+      "name": "read-globs expand: no glob is remembered as expanded",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "      expanded.add(entry)\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs expand: a glob that names an existing file is listed instead",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "      if (await deps.isFile(pattern)) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "read-globs expand: a glob's matches come in reverse",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "        for (const file of listed.paths) add(file, absoluteOf(file, deps.cwd))\n",
+      "replace": "        for (const file of [...listed.paths].reverse()) add(file, absoluteOf(file, deps.cwd))\n"
+    },
+    {
+      "name": "read-globs expand: a refused listing is not a refusal",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "        if (!listed.ok) return listed\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs expand: exactly the cap is over it",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    if (paths.length > MAX_GLOB_FILES) {\n",
+      "replace": "    if (paths.length >= MAX_GLOB_FILES) {\n"
+    },
+    {
+      "name": "read-globs expand: the call has no cap",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    if (paths.length > MAX_GLOB_FILES) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "read-globs expand: nothing left is not refused",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (paths.length === 0) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "read-globs expand: a plain path expandPath refuses throws",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    logError(e)\n    return entry\n",
+      "replace": "    throw e\n"
+    },
+    {
+      "name": "read-globs list: the listing stops at the cap, so one over it looks like it",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    matches = await deps.listMatches(pattern, MAX_GLOB_FILES + 1)\n",
+      "replace": "    matches = await deps.listMatches(pattern, MAX_GLOB_FILES)\n"
+    },
+    {
+      "name": "read-globs list: a cancellation thrown by the listing becomes a refusal",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    if (isAbortError(e)) throw e\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs list: a failed listing throws",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "    return { ok: false, message: `${entry}: ${errorMessage(e)} — list the files with Glob instead.` }\n",
+      "replace": "    throw e\n"
+    },
+    {
+      "name": "read-globs list: an aborted walk is read as cut short",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (matches.incomplete === 'aborted') throw new AbortError()\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs list: a walk cut short is read as whole",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (matches.incomplete !== null) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "read-globs list: exactly the cap is over it",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (matches.files.length > MAX_GLOB_FILES) {\n",
+      "replace": "  if (matches.files.length >= MAX_GLOB_FILES) {\n"
+    },
+    {
+      "name": "read-globs list: one glob has no cap",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  if (matches.files.length > MAX_GLOB_FILES) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "read-globs list: a glob that matches nothing refuses the call",
+      "source": "src/tools/FileReadTool/readGlobs.ts",
+      "find": "  return { ok: true, paths: matches.files }\n",
+      "replace": "  if (matches.files.length === 0) return { ok: false, message: 'no match' }\n  return { ok: true, paths: matches.files }\n"
+    },
+    {
+      "name": "read-globs tool: resolveInput exists with the flag off",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "  ...(READ_GLOBS && {\n",
+      "replace": "  ...(true && {\n"
+    },
+    {
+      "name": "read-globs tool: the flag is never read",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "const READ_GLOBS = readGlobsEnabledAtLoad()\n",
+      "replace": "const READ_GLOBS = false\n"
+    },
+    {
+      "name": "read-globs tool: resolveInput never expands",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "      return resolveReadGlobs(input, readGlobDeps(context))\n",
+      "replace": "      return { ok: true as const, input }\n"
+    },
+    {
+      "name": "read-globs deps: every base is inside the project",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    isInsideProject: directory =>\n",
+      "replace": "    isInsideProject: directory => true ||\n"
+    },
+    {
+      "name": "read-globs deps: the base is checked through its symlinks alone",
+      "comment": "Same answer either way: the check through symlinks also checks the path as written. What the lexical check adds is that a base outside the project is refused before anything touches the disk there, which the test watches through setFsImplementation.",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "      pathInAllowedWorkingPath(directory, toolPermissionContext, [directory]) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs deps: a link inside the project that leads out of it passes",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "[directory]) &&\n      pathInAllowedWorkingPath(directory, toolPermissionContext),\n",
+      "replace": "[directory]),\n"
+    },
+    {
+      "name": "read-globs deps: the base checked is the working directory",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    baseDirectoryOf: pattern => extractGlobBaseDirectory(pattern).baseDir,\n",
+      "replace": "    baseDirectoryOf: () => getCwd(),\n"
+    },
+    {
+      "name": "read-globs deps: a bare `*.ts` matches at any depth under its base",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "        `./${relativePattern}`,\n",
+      "replace": "        relativePattern,\n"
+    },
+    {
+      "name": "read-globs deps: matches come newest first",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "sort: 'path', type: 'file', respectGitignore: true }",
+      "replace": "sort: 'modified', type: 'file', respectGitignore: true }"
+    },
+    {
+      "name": "read-globs deps: .gitignore is not respected",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "type: 'file', respectGitignore: true }",
+      "replace": "type: 'file', respectGitignore: false }"
+    },
+    {
+      "name": "read-globs deps: no glob names an existing file",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return (await getFsImplementation().stat(path)).isFile()\n",
+      "replace": "    return false\n"
+    },
+    {
+      "name": "read-globs deps: every glob names an existing file",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    return (await getFsImplementation().stat(path)).isFile()\n",
+      "replace": "    return true\n"
+    },
+    {
+      "name": "read-globs deps: a glob that is no file name is logged as an error",
+      "comment": "logError records nothing at Claudin's default privacy level (essential-traffic), so the test opts back in with CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC=0; without that it passes either way.",
+      "source": "src/tools/FileReadTool/FileReadTool.ts",
+      "find": "    if (isFsInaccessible(e)) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs schema: the glob field with the flag off",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "const READ_GLOBS = readGlobsEnabledAtLoad()\n",
+      "replace": "const READ_GLOBS = true\n"
+    },
+    {
+      "name": "read-globs schema: the flag never picks the glob field",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "    file_paths: READ_GLOBS\n",
+      "replace": "    file_paths: false\n"
+    },
+    {
+      "name": "read-globs schema: a single entry is refused",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "      z.array(z.string()).min(1).max(MAX_GLOB_FILES).optional(),\n",
+      "replace": "      z.array(z.string()).min(2).max(MAX_GLOB_FILES).optional(),\n"
+    },
+    {
+      "name": "read-globs schema: the batch cap instead of the glob one",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "      z.array(z.string()).min(1).max(MAX_GLOB_FILES).optional(),\n",
+      "replace": "      z.array(z.string()).min(1).max(MAX_BATCH_FILES).optional(),\n"
+    },
+    {
+      "name": "read-globs schema: an empty list no longer reads as absent",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "      absentIfPlaceholder,\n      z.array(z.string()).min(1).max(MAX_GLOB_FILES).optional(),\n",
+      "replace": "      (value: unknown) => value,\n      z.array(z.string()).min(1).max(MAX_GLOB_FILES).optional(),\n"
+    },
+    {
+      "name": "read-globs schema: the description drops .gitignore",
+      "source": "src/tools/FileReadTool/schemas.ts",
+      "find": "inside the project, .gitignore respected. Up to",
+      "replace": "inside the project. Up to"
+    },
+    {
+      "name": "read-globs prompt: the glob line with the flag off",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "const READ_GLOBS = readGlobsEnabledAtLoad()\n",
+      "replace": "const READ_GLOBS = true\n"
+    },
+    {
+      "name": "read-globs prompt: the flag never picks the glob line",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "  if (READ_GLOBS) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "read-globs prompt: the line no longer names a glob",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "; a glob like \\`src/*.ts\\` reads every match.",
+      "replace": "."
+    },
+    {
+      "name": "read-globs prompt: the line gives the batch cap",
+      "source": "src/tools/FileReadTool/prompt.ts",
+      "find": "reads up to ${MAX_GLOB_FILES} files",
+      "replace": "reads up to ${MAX_BATCH_FILES} files"
+    },
+    {
+      "name": "read-globs transcript: no header is matched by a glob",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "  if (named.some(f => f.glob?.(globbed))) return globbed\n",
+      "replace": ""
+    },
+    {
+      "name": "read-globs transcript: a glob matches a header by its tail",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "named.filter(f => !f.glob && f.absolute.endsWith(sep + label))",
+      "replace": "named.filter(f => f.absolute.endsWith(sep + label))"
+    },
+    {
+      "name": "read-globs transcript: a glob is named as a plain path",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "      isReadGlob(path) ? { path, absolute, glob: globMatcher(absolute) } : { path, absolute },\n",
+      "replace": "      { path, absolute },\n"
+    },
+    {
+      "name": "read-globs transcript: a glob no longer matches dotfiles",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "    return picomatch(pattern, { dot: true })\n",
+      "replace": "    return picomatch(pattern)\n"
+    },
+    {
+      "name": "read-globs transcript: an absolute label is joined to the cwd",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "  const globbed = isAbsolute(label) ? label : join(cwd, label)\n",
+      "replace": "  const globbed = join(cwd, label)\n"
+    },
+    {
+      "name": "read-globs transcript: an unusable glob matches every header",
+      "comment": "picomatch throws only on a pattern past 65536 characters. A class like `[z-a]`, which the catch's own comment names, compiles to a regex that matches nothing.",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "    return () => false\n",
+      "replace": "    return () => true\n"
+    },
+    {
+      "name": "read-globs transcript: an unusable glob throws out of the reader",
+      "source": "src/tools/FileReadTool/batchResult.ts",
+      "find": "    logForDebugging(`batch Read result: skipping an unusable glob: ${e}`)\n",
+      "replace": "    throw e\n"
+    },
+    {
+      "name": "glob: respectGitignore is on by default",
+      "source": "src/shared/fs/glob.ts",
+      "find": "    respectGitignore = false,\n",
+      "replace": "    respectGitignore = true,\n"
+    },
+    {
+      "name": "glob: respectGitignore is ignored",
+      "source": "src/shared/fs/glob.ts",
+      "find": "    !respectGitignore && isEnvTruthy(process.env.CLAUDIN_GLOB_NO_IGNORE || 'true')\n",
+      "replace": "    isEnvTruthy(process.env.CLAUDIN_GLOB_NO_IGNORE || 'true')\n"
+    },
+    {
+      "name": "resolveInput: the tool loop does not await it",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    ? await tool.resolveInput(parsedInput.data, toolUseContext)\n",
+      "replace": "    ? tool.resolveInput(parsedInput.data, toolUseContext)\n"
+    },
+    {
+      "name": "resolveInput: the MCP server does not await it",
+      "source": "src/platform/entrypoints/mcp.ts",
+      "find": "          ? await tool.resolveInput(parsedArgs as never, toolUseContext)\n",
+      "replace": "          ? tool.resolveInput(parsedArgs as never, toolUseContext)\n"
+    },
+    {
+      "name": "respectGitignore: the caller's glob goes back to ripgrep (ignored files return)",
+      "source": "src/shared/fs/glob.ts",
+      "find": "  const matchHere = respectGitignore && type === 'file'\n",
+      "replace": "  const matchHere = false as boolean\n"
+    },
+    {
+      "name": "respectGitignore: matching here applies to directory listings too",
+      "source": "src/shared/fs/glob.ts",
+      "find": "  const matchHere = respectGitignore && type === 'file'\n",
+      "replace": "  const matchHere = respectGitignore\n"
+    },
+    {
+      "name": "respectGitignore: a rooted pattern is not anchored",
+      "source": "src/shared/fs/glob.ts",
+      "find": "  const anchored = rootAnchored || searchPattern.includes('/')\n",
+      "replace": "  const anchored = searchPattern.includes('/')\n"
+    },
+    {
+      "name": "respectGitignore: a pattern with a slash is not anchored",
+      "source": "src/shared/fs/glob.ts",
+      "find": "  const anchored = rootAnchored || searchPattern.includes('/')\n",
+      "replace": "  const anchored = rootAnchored\n"
+    },
+    {
+      "name": "respectGitignore: `**` does not lift the depth bound",
+      "source": "src/shared/fs/glob.ts",
+      "find": "const UNBOUNDED_DEPTH_RE = /\\*\\*|\\{/",
+      "replace": "const UNBOUNDED_DEPTH_RE = /\\{/"
+    },
+    {
+      "name": "respectGitignore: the depth bound is one short",
+      "source": "src/shared/fs/glob.ts",
+      "find": "      ? searchPattern.split('/').length\n",
+      "replace": "      ? searchPattern.split('/').length - 1\n"
+    },
+    {
+      "name": "respectGitignore: nothing is filtered after the walk",
+      "source": "src/shared/fs/glob.ts",
+      "find": "  const listedPaths = matchHere\n",
+      "replace": "  const listedPaths = false\n"
+    },
+    {
+      "name": "respectGitignore: an unanchored pattern matches the whole path, not the name",
+      "source": "src/shared/fs/glob.ts",
+      "find": "    return isMatch(anchored ? path : basename(path))\n",
+      "replace": "    return isMatch(path)\n"
+    },
+    {
+      "name": "respectGitignore: the leading ./ stays on the listed path",
+      "source": "src/shared/fs/glob.ts",
+      "find": "      : listed.replace(LEADING_DOT_SLASH_RE, '')\n",
+      "replace": "      : listed\n"
+    },
+    {
+      "name": "respectGitignore: case-insensitive matching is dropped",
+      "source": "src/shared/fs/glob.ts",
+      "find": "): (listed: string) => boolean {\n  const isMatch = picomatch(pattern, { dot: true, nocase: caseInsensitive })\n",
+      "replace": "): (listed: string) => boolean {\n  const isMatch = picomatch(pattern, { dot: true })\n"
+    },
+    {
+      "name": "respectGitignore: dotfiles stop matching",
+      "source": "src/shared/fs/glob.ts",
+      "find": "): (listed: string) => boolean {\n  const isMatch = picomatch(pattern, { dot: true, nocase: caseInsensitive })\n",
+      "replace": "): (listed: string) => boolean {\n  const isMatch = picomatch(pattern, { nocase: caseInsensitive })\n"
+    }
+  ]
+}

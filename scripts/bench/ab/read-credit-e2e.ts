@@ -28,6 +28,23 @@
  *      naming b.secret; Read [a.ts, b.ts] → both read, and the post log holds each path once,
  *      one per line, with no `file_paths` — hooks see a batch as one Read per file
  *
+ * Scenarios 6-10 are CLAUDIN_READ_GLOBS=1, a glob in `file_paths` that
+ * FileReadTool.resolveInput expands (readGlobs.ts; plan
+ * .claudin/plans/synchronous-conjuring-creek.md, lever 2). Their workspace is a git
+ * repo, which is what makes ripgrep, and so the expansion, respect .gitignore. It
+ * holds src/one.ts, src/two.ts and src/gen.ts, which .gitignore lists.
+ *
+ *   6. globs on       — p1: Read file_paths ["src/*.ts"], relative → a section for one.ts
+ *      and two.ts in path order, none for gen.ts → Patch src/one.ts → text
+ *   7. globs resumed  — p1: Read ["src/*.ts"], which the transcript keeps as sent; then
+ *      src/three.ts is written. p2 (--resume): Patch src/two.ts → text, its section
+ *      credited back under the glob; Patch src/three.ts, which the glob matches but p1's
+ *      result cannot have shown → refused
+ *   8. globs outside  — Read ["/etc/*.conf"] → refused: globs expand only inside the project
+ *   9. globs capped   — 51 files under many/: Read ["many/*.ts"] → refused with the 50-file cap
+ *  10. globs off      — the flag unset: Read ["src/*.ts"] → the strict schema's min(2)
+ *      refuses it, the control that makes 6 mean the flag
+ *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
  *
@@ -40,7 +57,9 @@
  * key and the mock's URL. Nothing of the user's config is read or written, a
  * request that escaped the mock would be refused for its key rather than billed,
  * and the host's CLAUDIN_* / CLAUDE_CODE_* / ANTHROPIC_* variables never reach the
- * child.
+ * child — nor GIT_*, since a GIT_DIR would point a scenario's repo elsewhere. The
+ * last check of every scenario reads the ids of the model responses the CLI
+ * printed: each one is the mock's (msg_e2e_…).
  *
  * Usage:
  *   bun scripts/bench/ab/read-credit-e2e.ts
@@ -51,12 +70,12 @@
  * and exits 1 on any FAIL. The temp dir — a captures.json of every request per
  * scenario — is kept on a FAIL or with --keep.
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
 
 type Json = Record<string, unknown>
@@ -86,6 +105,8 @@ const RUN_TIMEOUT_MS = 150_000
 const EXCERPT_CHARS = 200
 const MOCK_KEY = 'sk-ant-api03-read-credit-e2e-mock-key'
 const PROFILE_ID = 'read-credit-e2e-mock'
+/** Every response the mock writes carries an id with this prefix. */
+const MOCK_ID_PREFIX = 'msg_e2e_'
 
 // ---------------------------------------------------------------------------
 // Workspace and script
@@ -114,13 +135,49 @@ const PATCH_A = patchStep('a.ts', A_BEFORE, A_AFTER)
 const PATCH_B = patchStep('b.ts', B_BEFORE, B_AFTER)
 const DONE: Step = { text: 'Done.' }
 
+// Scenarios 6-10: globs in a batch Read's file_paths (CLAUDIN_READ_GLOBS).
+const ONE_BEFORE = "export const ONE = 'one'"
+const ONE_AFTER = "export const ONE = 'one-2'"
+const TWO_BEFORE = "export const TWO = 'two'"
+const TWO_AFTER = "export const TWO = 'two-2'"
+const GEN_BEFORE = "export const GEN = 'generated'"
+const THREE_PATH = 'src/three.ts'
+const THREE_BEFORE = "export const THREE = 'three'"
+const THREE_AFTER = "export const THREE = 'three-2'"
+
+/** The glob scenarios' src/: gen.ts is in .gitignore, so `src/*.ts` lists one.ts and two.ts. */
+const GLOB_FILES: Readonly<Record<string, string>> = {
+  '.gitignore': 'src/gen.ts\n',
+  'src/one.ts': ['export function one(): number {', '  return 1', '}', '', ONE_BEFORE, ''].join('\n'),
+  'src/two.ts': ['export function two(): number {', '  return 2', '}', '', TWO_BEFORE, ''].join('\n'),
+  'src/gen.ts': ['// generated, and ignored by git', GEN_BEFORE, ''].join('\n'),
+}
+/** One file past MAX_GLOB_FILES (readGlobs.ts), which is 50. */
+const MANY_FILES: Readonly<Record<string, string>> = Object.fromEntries(
+  Array.from({ length: 51 }, (_, i) => [`many/f${String(i + 1).padStart(2, '0')}.ts`, `export const F${i + 1} = ${i + 1}\n`]),
+)
+const GLOBS_ON: Record<string, string> = { CLAUDIN_READ_GLOBS: '1' }
+
+/** A batch Read of `paths` as written: relative ones resolve against the workspace. */
+const globRead = (...paths: string[]): Step => ({ tool: 'Read', input: { file_paths: paths } })
+const PATCH_ONE = patchStep('src/one.ts', ONE_BEFORE, ONE_AFTER)
+const PATCH_TWO = patchStep('src/two.ts', TWO_BEFORE, TWO_AFTER)
+const PATCH_THREE = patchStep(THREE_PATH, THREE_BEFORE, THREE_AFTER)
+
 // ---------------------------------------------------------------------------
 // Scenarios and expectations
 // ---------------------------------------------------------------------------
 
 type ToolResult = { phase: number; step: number; tool: string; text: string; isError: boolean }
 type Capture = { phase: number; route: string; body: Json }
-type PhaseOutcome = { sessionId?: string; exitCode: number | null; result?: string; stderrTail: string }
+type PhaseOutcome = {
+  sessionId?: string
+  exitCode: number | null
+  result?: string
+  stderrTail: string
+  /** The ids of the model responses the CLI printed. */
+  modelIds: string[]
+}
 type ScenarioRun = {
   dir: string
   ws: string
@@ -141,6 +198,10 @@ type Scenario = {
   info?: (run: ScenarioRun) => string[]
   /** Files this scenario adds to the shared workspace. */
   files?: Readonly<Record<string, string>>
+  /** Make the workspace a git repo: what makes ripgrep, and so a Read glob's listing, respect .gitignore. */
+  git?: boolean
+  /** Runs before each --resume phase. */
+  beforeResume?: (run: ScenarioRun) => void
   /** Writes what the scenario needs beside the workspace; returns the settings.json to seed, if any. */
   prepare?: (run: ScenarioRun) => Json | undefined
 }
@@ -150,6 +211,14 @@ const CREDIT_LINE_RE = /files? printed whole — (?:they count|it counts) as rea
 const CREDIT_TWO_RE = /^\(2 files printed whole — they count as read\b.*\)$/
 const HEADER_A_RE = /^==> a\.ts <==$/m
 const HEADER_B_RE = /^==> b\.ts <==$/m
+const HEADER_ONE_RE = /^==> src\/one\.ts <==$/m
+const HEADER_TWO_RE = /^==> src\/two\.ts <==$/m
+const HEADER_GEN_RE = /^==> src\/gen\.ts <==$/m
+const ANY_HEADER_RE = /^==> .+ <==$/m
+const ALL_HEADERS_RE = /^==> (.+) <==$/gm
+// readGlobs.ts's refusals.
+const OUTSIDE_TEXT = 'globs in file_paths expand only inside the project'
+const CAP_TEXT = 'many/*.ts matches more than 50 files; Read takes 50 per call'
 
 const lastLine = (text: string): string => text.trimEnd().split('\n').at(-1) ?? ''
 const isPatchSuccess = (r: ToolResult): boolean => !r.isError && r.text.startsWith('Success.') && !r.text.includes(NOT_READ)
@@ -279,6 +348,95 @@ const SCENARIOS: Scenario[] = [
     },
     info: run => [`pre-hook log: ${JSON.stringify(readIfExists(join(run.dir, 'pre-hook.log')) ?? '(none)')}`],
   },
+  {
+    key: '6',
+    title: 'Read globs on',
+    env: GLOBS_ON,
+    git: true,
+    files: GLOB_FILES,
+    script: () => [{ prompt: 'Read every file in src, then rename ONE.', steps: [globRead('src/*.ts'), PATCH_ONE, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 Read ["src/*.ts"] returns a section for src/one.ts and src/two.ts, in path order', r =>
+        !r.isError &&
+        HEADER_ONE_RE.test(r.text) &&
+        HEADER_TWO_RE.test(r.text) &&
+        r.text.search(HEADER_ONE_RE) < r.text.search(HEADER_TWO_RE),
+      ),
+      onResult(run, 0, 0, 'p1 … and none for src/gen.ts, which .gitignore lists', r =>
+        !HEADER_GEN_RE.test(r.text) && !r.text.includes(GEN_BEFORE),
+      ),
+      onResult(run, 0, 1, 'p1 Patch src/one.ts succeeds: the read-before-edit gate counts a file the glob read', isPatchSuccess),
+      onDisk(run, 0, 'src/one.ts', 'p1 src/one.ts is patched on disk', c => c.includes(ONE_AFTER)),
+    ],
+    info: run => [readSections(run)],
+  },
+  {
+    key: '7',
+    title: 'Read globs on, resumed',
+    env: GLOBS_ON,
+    git: true,
+    files: GLOB_FILES,
+    // The control for p2: a file the glob matches that p1's result cannot have shown.
+    beforeResume: run => writeFileSync(join(run.ws, THREE_PATH), `${THREE_BEFORE}\n`),
+    script: () => [
+      { prompt: 'Read every file in src.', steps: [globRead('src/*.ts'), DONE] },
+      { prompt: 'Now rename TWO, then THREE.', steps: [PATCH_TWO, PATCH_THREE, DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 Read ["src/*.ts"] returns src/one.ts and src/two.ts', r =>
+        !r.isError && HEADER_ONE_RE.test(r.text) && HEADER_TWO_RE.test(r.text),
+      ),
+      transcriptKeepsGlob(run),
+      onResult(run, 1, 0, 'p2 (--resume) Patch src/two.ts succeeds — its section was credited back under the glob', isPatchSuccess),
+      onDisk(run, 1, 'src/two.ts', 'p2 src/two.ts is patched on disk', c => c.includes(TWO_AFTER)),
+      onResult(run, 1, 1, 'p2 (--resume) Patch src/three.ts, which the glob matches but p1 never showed, is refused with "has not been read yet"', r =>
+        r.isError && r.text.includes(NOT_READ),
+      ),
+      {
+        label: 'p2 src/three.ts is unchanged on disk',
+        ok: readIfExists(join(run.ws, THREE_PATH)) === `${THREE_BEFORE}\n`,
+      },
+    ],
+  },
+  {
+    key: '8',
+    title: 'Read globs on, outside the project',
+    env: GLOBS_ON,
+    git: true,
+    files: GLOB_FILES,
+    script: () => [{ prompt: 'Read the .conf files in /etc.', steps: [globRead('/etc/*.conf'), DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, `p1 Read ["/etc/*.conf"] is refused, is_error, with "${OUTSIDE_TEXT}", and reads nothing`, r =>
+        r.isError && r.text.includes(OUTSIDE_TEXT) && !ANY_HEADER_RE.test(r.text),
+      ),
+    ],
+  },
+  {
+    key: '9',
+    title: 'Read globs on, past the 50-file cap',
+    env: GLOBS_ON,
+    git: true,
+    files: MANY_FILES,
+    script: () => [{ prompt: 'Read every file in many.', steps: [globRead('many/*.ts'), DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, `p1 Read ["many/*.ts"] over 51 files is refused, is_error, with "${CAP_TEXT}", and reads nothing`, r =>
+        r.isError && r.text.includes(CAP_TEXT) && !ANY_HEADER_RE.test(r.text),
+      ),
+    ],
+  },
+  {
+    key: '10',
+    title: 'Read globs off (the control for 6)',
+    env: {},
+    git: true,
+    files: GLOB_FILES,
+    script: () => [{ prompt: 'Read every file in src.', steps: [globRead('src/*.ts'), DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 Read ["src/*.ts"] is refused by input validation (InputValidationError on file_paths: one entry, under min(2)), and reads nothing', r =>
+        r.isError && r.text.includes('InputValidationError') && r.text.includes('file_paths') && !ANY_HEADER_RE.test(r.text),
+      ),
+    ],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -373,7 +531,7 @@ function messageStart(): string {
   return frame('message_start', {
     type: 'message_start',
     message: {
-      id: `msg_e2e_${++counter}`,
+      id: `${MOCK_ID_PREFIX}${++counter}`,
       type: 'message',
       role: 'assistant',
       model: MODEL,
@@ -497,7 +655,9 @@ const BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
 // ---------------------------------------------------------------------------
 
 /** Stripped from the host env: the session running this script leaks its own. */
-const HOST_ENV_RE = /^(?:CLAUDECODE$|CLAUDE_CODE_|_?CLAUDIN_|ANTHROPIC_)/
+const HOST_ENV_RE = /^(?:CLAUDECODE$|CLAUDE_CODE_|_?CLAUDIN_|ANTHROPIC_|GIT_)/
+/** A GIT_DIR or GIT_WORK_TREE would point git at another repository. */
+const GIT_ENV_RE = /^GIT_/
 
 function childEnv(configDir: string, flags: Record<string, string>): Record<string, string> {
   const env: Record<string, string> = {}
@@ -521,9 +681,19 @@ function childEnv(configDir: string, flags: Record<string, string>): Record<stri
   }
 }
 
-function makeWorkspace(ws: string, extra: Readonly<Record<string, string>> = {}): void {
+function makeWorkspace(ws: string, extra: Readonly<Record<string, string>> = {}, repo = false): void {
   mkdirSync(ws, { recursive: true })
-  for (const [name, content] of Object.entries({ ...FILES, ...extra })) writeFileSync(join(ws, name), content)
+  for (const [name, content] of Object.entries({ ...FILES, ...extra })) {
+    mkdirSync(dirname(join(ws, name)), { recursive: true })
+    writeFileSync(join(ws, name), content)
+  }
+  if (repo) git(ws, ['init', '-q', '-b', 'main'])
+}
+
+function git(ws: string, args: string[]): void {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !GIT_ENV_RE.test(k)))
+  const out = spawnSync('git', args, { cwd: ws, env, encoding: 'utf8' })
+  if (out.status !== 0) throw new Error(`git ${args.join(' ')} in ${ws} exited ${out.status}: ${out.stderr.trim()}`)
 }
 
 /**
@@ -579,12 +749,13 @@ async function runScenario(s: Scenario, root: string): Promise<ScenarioRun> {
     phases: [],
     disk: [],
   }
-  makeWorkspace(run.ws, s.files)
+  makeWorkspace(run.ws, s.files, s.git)
   seedConfig(run.configDir, s.prepare?.(run))
   const env = childEnv(run.configDir, s.env)
   let sessionId: string | undefined
   for (const [phase, script] of s.script(run.ws).entries()) {
     if (phase > 0 && !sessionId) break
+    if (phase > 0) s.beforeResume?.(run)
     const token = `[e2e ${s.key}/p${phase + 1}]`
     const resume = phase > 0 && sessionId ? ['--resume', sessionId] : []
     active = { run, phase, token, steps: script.steps }
@@ -600,8 +771,9 @@ async function runScenario(s: Scenario, root: string): Promise<ScenarioRun> {
       exitCode: out.code,
       result: result ? `${String(result.subtype)}, num_turns ${String(result.num_turns)}` : undefined,
       stderrTail: (out.stderr || out.stdout).slice(-400),
+      modelIds: events.flatMap(e => (e.type === 'assistant' ? [isRecord(e.message) ? String(e.message.id) : '(no message)'] : [])),
     })
-    run.disk.push(Object.fromEntries(Object.keys(FILES).map(f => [f, readFileSync(join(run.ws, f), 'utf8')])))
+    run.disk.push(Object.fromEntries(Object.keys({ ...FILES, ...s.files }).map(f => [f, readFileSync(join(run.ws, f), 'utf8')])))
   }
   writeFileSync(join(dir, 'captures.json'), JSON.stringify(run.captures, null, 1))
   return run
@@ -634,6 +806,49 @@ function creditedFilesInTranscript(run: ScenarioRun): string {
   return 'transcript: no tool result carries creditedFiles'
 }
 
+/** Each Read's file_paths as the transcript keeps them: what --resume credits a glob's sections against. */
+function readPathsInTranscript(run: ScenarioRun): unknown[] | undefined {
+  const id = run.phases[0]?.sessionId
+  const path = id === undefined ? undefined : findTranscript(run.configDir, id)
+  if (path === undefined) return undefined
+  return jsonLines(readFileSync(path, 'utf8')).flatMap(entry => {
+    const message = entry.message
+    if (entry.type !== 'assistant' || !isRecord(message)) return []
+    return blocksOf(message.content).flatMap(b =>
+      b.type === 'tool_use' && b.name === 'Read' && isRecord(b.input) ? [b.input.file_paths] : [],
+    )
+  })
+}
+
+/**
+ * Scenario 7's p2 means "credited under the glob" only if the transcript holds
+ * the glob: were the expanded paths recorded, the plain batch credit would pass it.
+ */
+function transcriptKeepsGlob(run: ScenarioRun): Expectation {
+  const label = 'p1 the transcript keeps the Read\'s file_paths as the model sent them: ["src/*.ts"]'
+  const kept = readPathsInTranscript(run)
+  if (kept === undefined) return { label, ok: false, why: 'no transcript for the session' }
+  return { label, ok: JSON.stringify(kept) === JSON.stringify([['src/*.ts']]), why: `Read file_paths in the transcript: ${JSON.stringify(kept)}` }
+}
+
+/** The files p1's first Read showed, by their `==> … <==` headers. */
+function readSections(run: ScenarioRun): string {
+  const r = resultAt(run, 0, 0)
+  if (!r) return 'p1 Read: no result'
+  return `p1 Read sections: ${JSON.stringify([...r.text.matchAll(ALL_HEADERS_RE)].map(m => m[1]))}`
+}
+
+/** No paid call: every model response the CLI printed, in every phase, is one the mock wrote. */
+function servedByMock(run: ScenarioRun): Expectation {
+  const ids = run.phases.flatMap(p => p.modelIds)
+  const foreign = ids.filter(id => !id.startsWith(MOCK_ID_PREFIX))
+  return {
+    label: `every model response the CLI printed came from the mock (ids ${MOCK_ID_PREFIX}…)`,
+    ok: ids.length > 0 && foreign.length === 0,
+    why: foreign.length > 0 ? `not the mock's: ${JSON.stringify(foreign)}` : `${ids.length} response(s)`,
+  }
+}
+
 function report(s: Scenario, run: ScenarioRun): Expectation[] {
   const flags = Object.entries(s.env).map(([k, v]) => `${k}=${v}`)
   console.log(`\n== ${s.key}. ${s.title} — ${flags.length ? flags.join(' ') : 'flags unset'}`)
@@ -651,7 +866,7 @@ function report(s: Scenario, run: ScenarioRun): Expectation[] {
     }
   })
   for (const line of s.info?.(run) ?? []) console.log(`  info  ${line}`)
-  const checks = s.expect(run)
+  const checks = [...s.expect(run), servedByMock(run)]
   for (const c of checks) console.log(`  ${c.ok ? 'PASS' : 'FAIL'}  ${c.label}${c.why ? ` — ${c.why}` : ''}`)
   return checks
 }

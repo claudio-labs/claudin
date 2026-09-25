@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
 /**
- * Response-chain E2E — the three request-count levers of perf/request-count-levers
+ * Response-chain E2E — the request-count levers of perf/request-count-levers
  * (each off until promoted, `=1` turns it on), driven through the BUILT bundle
  * (bin/claudin → dist/cli.mjs) by a scripted mock model. Zero real API calls.
- * Plan: .claudin/plans/synchronous-conjuring-creek.md, "Alavancas desta rodada".
+ * Plan: .claudin/plans/synchronous-conjuring-creek.md. Scenarios 1-10 are round
+ * 1's three levers; 11-13 are round 2's one-call commit and read-only globs (its
+ * third, globs in the Read, is read-credit-e2e.ts 6-10).
  *
  * The lever with behavior is CLAUDIN_RESPONSE_CHAINS=1. Its guard
  * (agent/tools/responseChain.ts, wired into runTools in
@@ -57,6 +59,20 @@
  *      first request carry the batching note; the main prompt never does
  *  10. wire, CLAUDIN_ONE_PATCH_CHANGE off/on — the Anthropic family addendum,
  *      shown in the off run to be sent on --model, names tests and docs
+ *  11. one-call commit on (CLAUDIN_ONE_CALL_COMMIT=1, chains unset) — [Patch a.ts
+ *      with a hunk the file lacks, Git add a.ts + commit + status]: the flag arms
+ *      the same guard, so the Git comes back Skipped and git log is unchanged; its
+ *      control, the flag unset, commits
+ *  12. wire, CLAUDIN_ONE_CALL_COMMIT on/off — the git protocol (the
+ *      bash_git_instructions attachment) says "commit in ONE Git call", and the
+ *      chains' # Harness bullet stays out
+ *  13. CLAUDIN_READONLY_GLOBS, on by default (the flag unset) and off with `=0`,
+ *      under --permission-mode default instead of --dangerously-skip-permissions.
+ *      -p has no one to ask, so a call that needs approval is refused: its ask
+ *      message comes back as an is_error tool_result, and its id lands in the
+ *      result's permission_denials (QueryEngine's wrappedCanUseTool). Unset, Bash
+ *      `cat src/*.ts` runs and `cat /etc/*.conf` is still refused by the path
+ *      check; with `=0`, `cat src/*.ts` is refused
  *
  * Isolation, as in read-credit-e2e.ts. Each run gets a fresh workspace and a
  * fresh CLAUDIN_CONFIG_DIR under one temp dir. claudin takes the Anthropic API
@@ -67,6 +83,8 @@
  * mock would be refused for its key rather than billed, and the host's
  * CLAUDIN_* / CLAUDE_CODE_* / ANTHROPIC_* variables never reach the child — nor
  * GIT_*, since a GIT_DIR would point a scenario's commit at another repository.
+ * The last checks of every scenario read the ids of the model responses the CLI
+ * printed: each one is the mock's (msg_e2e_…).
  *
  * Usage:
  *   bun scripts/bench/ab/response-chain-e2e.ts
@@ -82,7 +100,7 @@ import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSyn
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
 
 type Json = Record<string, unknown>
@@ -112,6 +130,8 @@ const RUN_TIMEOUT_MS = 150_000
 const EXCERPT_CHARS = 200
 const MOCK_KEY = 'sk-ant-api03-response-chain-e2e-mock-key'
 const PROFILE_ID = 'response-chain-e2e-mock'
+/** Every response the mock writes carries an id with this prefix. */
+const MOCK_ID_PREFIX = 'msg_e2e_'
 
 // ---------------------------------------------------------------------------
 // Workspace and calls
@@ -160,10 +180,26 @@ const TEST_TAIL_COMMAND = 'bun test ./fail.test.ts | tail -5'
 const TEST_TAIL = bashCall(TEST_TAIL_COMMAND, 'Run the failing test, last 5 lines')
 const COMMIT = gitCall('git add a.ts', 'git commit -m x')
 const STATUS = gitCall('git status')
+/** Stage, commit and status in one Git call: the one-call commit. */
+const COMMIT_WITH_STATUS = gitCall('git add a.ts', 'git commit -m x', 'git status')
 const READ_BOTH = (ws: string): Step => ({ calls: [readCall(ws, 'a.ts'), readCall(ws, 'b.ts')] })
 const DONE: Step = { text: 'Done.' }
 
 const CHAINS_ON: Record<string, string> = { CLAUDIN_RESPONSE_CHAINS: '1' }
+const ONE_CALL_COMMIT_ON: Record<string, string> = { CLAUDIN_ONE_CALL_COMMIT: '1' }
+const READONLY_GLOBS_OFF: Record<string, string> = { CLAUDIN_READONLY_GLOBS: '0' }
+
+/** Scenario 13's src/, which `cat src/*.ts` prints. */
+const SRC_ONE = "export const SRC_ONE = 'globbed one'"
+const SRC_TWO = "export const SRC_TWO = 'globbed two'"
+const SRC_FILES: Readonly<Record<string, string>> = { 'src/one.ts': `${SRC_ONE}\n`, 'src/two.ts': `${SRC_TWO}\n` }
+const CAT_SRC = bashCall('cat src/*.ts', 'Print the files in src')
+const CAT_ETC = bashCall('cat /etc/*.conf', 'Print the .conf files in /etc')
+// What -p hands back for scenario 13's asks: each ask's own message, from the
+// read-only fallthrough (bashPermissions/ruleMatching.ts) and the path check
+// (BashTool/pathValidation.ts).
+const NEEDS_APPROVAL = 'This command requires approval'
+const ETC_BLOCKED = "cat in '/etc' was blocked."
 
 // What each lever puts on the wire: prompts.ts (RESPONSE_CHAINS_HARNESS_BULLET,
 // getSubagentBatchingNote), BashTool/prompt.ts (getLeanGitInstructionsBody) and
@@ -174,6 +210,7 @@ const GIT_HEADING = '# Committing changes with git'
 const BATCHING_NOTE = 'Independent tool calls go in ONE response'
 const PATCH_ADDENDUM = 'land it as ONE Patch call with a section per file'
 const ONE_PATCH_SCOPE = 'its tests and docs included'
+const ONE_CALL_COMMIT_STEP = 'commit in ONE Git call'
 
 // ---------------------------------------------------------------------------
 // Scenarios and expectations
@@ -187,6 +224,8 @@ type RunSpec = {
   files?: Readonly<Record<string, string>>
   /** Leave a.ts modified after the initial commit. */
   pending?: boolean
+  /** Run under `--permission-mode <mode>` instead of `--dangerously-skip-permissions`. */
+  permissionMode?: 'default'
 }
 type ToolResult = { step: number; index: number; tool: string; text: string; isError: boolean }
 type Capture = { route: string; body: Json }
@@ -204,6 +243,10 @@ type Run = {
   exitCode: number | null
   result?: string
   outputTail: string
+  /** The tool_use ids in the result event's permission_denials. */
+  denials: string[]
+  /** The ids of the model responses the CLI printed. */
+  modelIds: string[]
 }
 type Expectation = { label: string; ok: boolean; why?: string }
 type Scenario = { key: string; title: string; runs: RunSpec[]; expect: (runs: Run[]) => Expectation[] }
@@ -260,6 +303,24 @@ function commitsExpected(run: Run, expected: number, label: string): Expectation
     const n = commitCount(run.ws)
     return { ok: n === expected, why: `git log holds ${n} commit(s)` }
   })
+}
+
+/** Whether the result event's permission_denials names (`named`) the call at response `step`, call `index`. */
+function onDenials(run: Run, step: number, index: number, named: boolean, label: string): Expectation {
+  const full = `${run.spec.label}: ${label}`
+  const id = [...run.results.entries()].find(([, r]) => r.step === step && r.index === index)?.[0]
+  if (id === undefined) return { label: full, ok: false, why: `no tool_result for response ${step + 1} call ${index + 1} reached the mock` }
+  return { label: full, ok: run.denials.includes(id) === named, why: `permission_denials ${JSON.stringify(run.denials)}` }
+}
+
+/** No paid call: every model response the CLI printed is one the mock wrote. */
+function servedByMock(run: Run): Expectation {
+  const foreign = run.modelIds.filter(id => !id.startsWith(MOCK_ID_PREFIX))
+  return {
+    label: `${run.spec.label}: every model response the CLI printed came from the mock (ids ${MOCK_ID_PREFIX}…)`,
+    ok: run.modelIds.length > 0 && foreign.length === 0,
+    why: foreign.length > 0 ? `not the mock's: ${JSON.stringify(foreign)}` : `${run.modelIds.length} response(s)`,
+  }
 }
 
 const SCENARIOS: Scenario[] = [
@@ -417,6 +478,87 @@ const SCENARIOS: Scenario[] = [
       onWire(on, 'main', `the system prompt carries "${ONE_PATCH_SCOPE}"`, b => systemText(b).includes(ONE_PATCH_SCOPE)),
     ],
   },
+  {
+    key: '11',
+    title: 'one-call commit: a failed Patch skips the commit in its response',
+    runs: [
+      {
+        label: 'one-call commit on',
+        env: ONE_CALL_COMMIT_ON,
+        pending: true,
+        steps: ({ ws }) => [READ_BOTH(ws), { calls: [PATCH_A_BAD, COMMIT_WITH_STATUS] }, DONE],
+      },
+      // Shows this workspace commits when nothing stops it, so "no commit" above is the skip.
+      {
+        label: 'one-call commit off (control)',
+        env: {},
+        pending: true,
+        steps: ({ ws }) => [READ_BOTH(ws), { calls: [PATCH_A_BAD, COMMIT_WITH_STATUS] }, DONE],
+      },
+    ],
+    expect: ([on, off]) => [
+      onResult(on, 1, 0, 'the Patch fails on its hunk (is_error)', r => failedItself(r) && !r.text.includes(NOT_READ)),
+      onResult(on, 1, 1, 'the Git add + commit + status comes back "Skipped: Patch failed earlier… this Git call…", is_error', r =>
+        isSkipOf(r, 'Patch', 'Git'),
+      ),
+      commitsExpected(on, 1, 'no commit landed: git log holds the initial commit only'),
+      onDisk(on, 'a.ts is still modified and unstaged: not even the `git add` ran', () => {
+        const changes = trackedChanges(on.ws)
+        return { ok: changes === ' M a.ts', why: `git status --porcelain: ${JSON.stringify(changes)}` }
+      }),
+      onResult(off, 1, 0, 'the Patch fails on its hunk (is_error)', r => failedItself(r) && !r.text.includes(NOT_READ)),
+      onResult(off, 1, 1, 'the Git add + commit + status runs', ranClean),
+      commitsExpected(off, 2, 'the commit landed'),
+    ],
+  },
+  {
+    key: '12',
+    title: 'wire: the one-call commit in the git protocol',
+    runs: [
+      { label: 'one-call commit on', env: ONE_CALL_COMMIT_ON, steps: () => [DONE] },
+      { label: 'one-call commit off', env: {}, steps: () => [DONE] },
+    ],
+    expect: ([on, off]) => [
+      onWire(on, 'main', `the git instructions (bash_git_instructions, in messages) carry "${ONE_CALL_COMMIT_STEP}"`, b =>
+        gitInstructions(b)?.includes(ONE_CALL_COMMIT_STEP) === true && !systemText(b).includes(ONE_CALL_COMMIT_STEP),
+      ),
+      onWire(on, 'main', `the chains' # Harness bullet stays out: the request does not carry "${CHAINS_BULLET}"`, b =>
+        !JSON.stringify(b).includes(CHAINS_BULLET),
+      ),
+      onWire(off, 'main', `the git instructions are sent, and the request does not carry "${ONE_CALL_COMMIT_STEP}"`, b =>
+        gitInstructions(b) !== undefined && !JSON.stringify(b).includes(ONE_CALL_COMMIT_STEP),
+      ),
+    ],
+  },
+  {
+    key: '13',
+    title: 'default permission mode: a path glob in a read command (CLAUDIN_READONLY_GLOBS, on by default)',
+    runs: [
+      {
+        label: 'read-only globs, the default',
+        env: {},
+        permissionMode: 'default',
+        files: SRC_FILES,
+        steps: () => [{ calls: [CAT_SRC] }, { calls: [CAT_ETC] }, DONE],
+      },
+      // The same command with the killswitch: its glob costs the read-only verdict.
+      { label: 'read-only globs off (=0, control)', env: READONLY_GLOBS_OFF, permissionMode: 'default', files: SRC_FILES, steps: () => [{ calls: [CAT_SRC] }, DONE] },
+    ],
+    expect: ([on, off]) => [
+      onResult(on, 0, 0, 'Bash `cat src/*.ts` runs: its result holds both files', r =>
+        !r.isError && r.text.includes(SRC_ONE) && r.text.includes(SRC_TWO),
+      ),
+      onDenials(on, 0, 0, false, '… and permission_denials does not name it'),
+      onResult(on, 1, 0, `Bash \`cat /etc/*.conf\` is still refused by the path check: "${ETC_BLOCKED}…", is_error`, r =>
+        r.isError && r.text.startsWith(ETC_BLOCKED),
+      ),
+      onDenials(on, 1, 0, true, '… as a permission denial: permission_denials names it'),
+      onResult(off, 0, 0, `Bash \`cat src/*.ts\` is refused: "${NEEDS_APPROVAL}", is_error, nothing printed`, r =>
+        r.isError && r.text.includes(NEEDS_APPROVAL) && !r.text.includes(SRC_ONE),
+      ),
+      onDenials(off, 0, 0, true, '… as a permission denial: permission_denials names it'),
+    ],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -466,7 +608,7 @@ function messageStart(): string {
   return frame('message_start', {
     type: 'message_start',
     message: {
-      id: `msg_e2e_${++counter}`,
+      id: `${MOCK_ID_PREFIX}${++counter}`,
       type: 'message',
       role: 'assistant',
       model: MODEL,
@@ -623,7 +765,10 @@ const trackedChanges = (ws: string): string => git(ws, ['status', '--porcelain',
 
 function makeWorkspace(ws: string, spec: RunSpec): void {
   mkdirSync(ws, { recursive: true })
-  for (const [name, content] of Object.entries({ ...FILES, ...spec.files })) writeFileSync(join(ws, name), content)
+  for (const [name, content] of Object.entries({ ...FILES, ...spec.files })) {
+    mkdirSync(dirname(join(ws, name)), { recursive: true })
+    writeFileSync(join(ws, name), content)
+  }
   git(ws, ['init', '-q', '-b', 'main'])
   // A local identity, no signing and no hooks: a commit nothing stops has to land.
   git(ws, ['config', 'user.name', 'response-chain e2e'])
@@ -689,7 +834,7 @@ function jsonLines(text: string): Json[] {
   })
 }
 
-const COMMON = ['--model', MODEL, '--dangerously-skip-permissions', '--output-format', 'stream-json', '--verbose']
+const COMMON = ['--model', MODEL, '--output-format', 'stream-json', '--verbose']
 
 async function runOne(s: Scenario, spec: RunSpec, n: number, root: string): Promise<Run> {
   const slug = `${s.key}-${n + 1}`
@@ -705,16 +850,23 @@ async function runOne(s: Scenario, spec: RunSpec, n: number, root: string): Prom
     captures: [],
     exitCode: null,
     outputTail: '',
+    denials: [],
+    modelIds: [],
   }
   makeWorkspace(run.ws, spec)
   seedConfig(run.configDir)
   active = { run, steps: spec.steps({ ws: run.ws, subToken: run.subToken }) }
-  const out = await runCli(['-p', `Run the scripted steps. ${run.token}`, ...COMMON], run.ws, childEnv(run.configDir, spec.env))
+  const permission = spec.permissionMode ? ['--permission-mode', spec.permissionMode] : ['--dangerously-skip-permissions']
+  const out = await runCli(['-p', `Run the scripted steps. ${run.token}`, ...COMMON, ...permission], run.ws, childEnv(run.configDir, spec.env))
   active = null
-  const result = jsonLines(out.stdout).findLast(e => e.type === 'result')
+  const events = jsonLines(out.stdout)
+  const result = events.findLast(e => e.type === 'result')
   run.exitCode = out.code
   run.result = result ? `${String(result.subtype)}, num_turns ${String(result.num_turns)}` : undefined
   run.outputTail = (out.stderr || out.stdout).slice(-400)
+  const denials = result?.permission_denials
+  run.denials = Array.isArray(denials) ? denials.filter(isRecord).map(d => String(d.tool_use_id)) : []
+  run.modelIds = events.flatMap(e => (e.type === 'assistant' ? [isRecord(e.message) ? String(e.message.id) : '(no message)'] : []))
   writeFileSync(join(dir, 'captures.json'), JSON.stringify(run.captures, null, 1))
   return run
 }
@@ -727,10 +879,11 @@ function report(s: Scenario, runs: Run[]): Expectation[] {
   console.log(`\n== ${s.key}. ${s.title}`)
   for (const run of runs) {
     const flags = Object.entries(run.spec.env).map(([k, v]) => `${k}=${v}`)
+    const mode = run.spec.permissionMode ? `, --permission-mode ${run.spec.permissionMode}` : ''
     const main = run.captures.filter(c => c.route.startsWith('step ')).length
     const sub = run.captures.filter(c => c.route === 'subagent').length
     console.log(
-      `  ${run.spec.label} (${flags.length ? flags.join(' ') : 'flags unset'}): exit ${run.exitCode}, result ${run.result ?? 'none'} — ` +
+      `  ${run.spec.label} (${flags.length ? flags.join(' ') : 'flags unset'}${mode}): exit ${run.exitCode}, result ${run.result ?? 'none'} — ` +
         `the mock answered ${main} main-loop, ${sub} sub-agent and ${run.captures.length - main - sub} side request(s)`,
     )
     if (run.exitCode !== 0 || !run.result) console.log(`    output tail: ${JSON.stringify(run.outputTail)}`)
@@ -740,7 +893,7 @@ function report(s: Scenario, runs: Run[]): Expectation[] {
       console.log(`    ${at} ${r.tool.padEnd(5)} is_error=${String(r.isError).padEnd(5)} ${JSON.stringify(r.text.slice(0, EXCERPT_CHARS))}`)
     }
   }
-  const checks = s.expect(runs)
+  const checks = [...s.expect(runs), ...runs.map(servedByMock)]
   for (const c of checks) console.log(`  ${c.ok ? 'PASS' : 'FAIL'}  ${c.label}${c.why ? ` — ${c.why}` : ''}`)
   return checks
 }
