@@ -172,6 +172,7 @@
 - [Bash filter samples live in ONE dir since 2026-08-06](bash-filter-sample-corpus-unified.md) — docs/discovery copy merged into __fixtures__/samples/; 87 of 142 unmapped in FIXTURE_MAP
 - [Live-verifying TUI mouse click/hover under tmux](tmux-mouse-click-verification.md) — mouse only in fullscreen (CLAUDIN_NO_FLICKER=1); SGR clicks via `send-keys`; ctrl+o render, SGR click
 - [apply_patch fails 11.9% vs Edit 4.6% — measured taxonomy](apply-patch-failure-taxonomy.md) — 53% read gates, 31% context mismatch, 11% parser; re-measured 09-20: 14.7%, ~87% read gates ($38/wk)
+- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25; display (summarized too) cache-neutral; sub-agents inherit thinking
 
 ## References (sibling repos, wire formats, archives)
 - [openclaude is a sibling fork to mine for BUGS, not features](openclaude-sibling-fork-reference.md) — 28 claims re-verified 2026-09-10: 17 real, 11 falsified incl. 3 of the old top 8
