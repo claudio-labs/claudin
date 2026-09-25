@@ -14,7 +14,6 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import { getCommands } from 'src/commands/commands.js'
-import { initSessionMemory } from 'src/memory/session/sessionMemory.js'
 import { asSessionId } from 'src/shared/types/ids.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { checkAndRestoreTerminalBackup } from 'src/platform/ide/appleTerminalBackup.js'
@@ -271,7 +270,6 @@ export async function setup(
   // the await points above (startUdsMessaging, ~20ms) meant getCommands()
   // raced ahead and memoized an empty bundledSkills list.
   if (!isBareMode()) {
-    initSessionMemory() // Synchronous - registers hook, gate check happens lazily
     // Bring the project's navigation map in line with the tree before the
     // system prompt is assembled: getMemoryFiles memoizes for the process
     // lifetime, so a rewrite after this point would leave the session reading

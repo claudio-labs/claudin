@@ -75,7 +75,6 @@ import {
   tokenCountWithEstimation,
 } from 'src/agent/context/tokens.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
-import { executePostSamplingHooks } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { executeStopFailureHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { StreamingToolExecutor } from 'src/agent/tools/StreamingToolExecutor.js'
@@ -798,18 +797,6 @@ async function* queryLoop(
       // To help track down bugs, log loudly for ants
       logAntError('Query error', error)
       return { reason: 'model_error', error }
-    }
-
-    // Execute post-sampling hooks after model response is complete
-    if (assistantMessages.length > 0) {
-      void executePostSamplingHooks(
-        [...messagesForQuery, ...assistantMessages],
-        systemPrompt,
-        userContext,
-        systemContext,
-        toolUseContext,
-        querySource,
-      )
     }
 
     // We need to handle a streaming abort before anything else.

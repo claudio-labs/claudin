@@ -17,17 +17,12 @@ import { getTranscriptPath } from 'src/sessions/sessionStorage.js'
 import { tokenCountFromLastAPIResponse } from 'src/agent/context/tokens.js'
 import { extractDiscoveredToolNames } from 'src/agent/tools/toolSearch.js'
 import {
-  getDynamicConfig_BLOCKS_ON_INIT,
-  getFeatureValue_CACHED_MAY_BE_STALE,
-} from 'src/platform/analytics/growthbook.js'
-import {
   isSessionMemoryEmpty,
   truncateSessionMemoryForCompact,
 } from 'src/memory/session/prompts.js'
 import {
   getLastSummarizedMessageId,
   getSessionMemoryContent,
-  waitForSessionMemoryExtraction,
 } from 'src/memory/session/sessionMemoryUtils.js'
 import {
   annotateBoundaryWithPreservedSegment,
@@ -57,65 +52,11 @@ export const DEFAULT_SM_COMPACT_CONFIG: SessionMemoryCompactConfig = {
   maxTokens: 40_000,
 }
 
-// Current configuration (starts with defaults)
-let smCompactConfig: SessionMemoryCompactConfig = {
-  ...DEFAULT_SM_COMPACT_CONFIG,
-}
-
-// Track whether config has been initialized from remote
-let configInitialized = false
-
 /**
- * Set the session memory compact configuration
- */
-export function setSessionMemoryCompactConfig(
-  config: Partial<SessionMemoryCompactConfig>,
-): void {
-  smCompactConfig = {
-    ...smCompactConfig,
-    ...config,
-  }
-}
-
-/**
- * Get the current session memory compact configuration
+ * Get the session memory compact configuration
  */
 export function getSessionMemoryCompactConfig(): SessionMemoryCompactConfig {
-  return { ...smCompactConfig }
-}
-
-/**
- * Initialize configuration from remote config (GrowthBook).
- * Only fetches once per session - subsequent calls return immediately.
- */
-async function initSessionMemoryCompactConfig(): Promise<void> {
-  if (configInitialized) {
-    return
-  }
-  configInitialized = true
-
-  // Load config from GrowthBook, merging with defaults
-  const remoteConfig = await getDynamicConfig_BLOCKS_ON_INIT<
-    Partial<SessionMemoryCompactConfig>
-  >('tengu_sm_compact_config', {})
-
-  // Only use remote values if they are explicitly set (positive numbers)
-  // This ensures sensible defaults aren't overridden by zero values
-  const config: SessionMemoryCompactConfig = {
-    minTokens:
-      remoteConfig.minTokens && remoteConfig.minTokens > 0
-        ? remoteConfig.minTokens
-        : DEFAULT_SM_COMPACT_CONFIG.minTokens,
-    minTextBlockMessages:
-      remoteConfig.minTextBlockMessages && remoteConfig.minTextBlockMessages > 0
-        ? remoteConfig.minTextBlockMessages
-        : DEFAULT_SM_COMPACT_CONFIG.minTextBlockMessages,
-    maxTokens:
-      remoteConfig.maxTokens && remoteConfig.maxTokens > 0
-        ? remoteConfig.maxTokens
-        : DEFAULT_SM_COMPACT_CONFIG.maxTokens,
-  }
-  setSessionMemoryCompactConfig(config)
+  return { ...DEFAULT_SM_COMPACT_CONFIG }
 }
 
 /**
@@ -386,29 +327,11 @@ export function calculateMessagesToKeepIndex(
 }
 
 /**
- * Check if we should use session memory for compaction
- * Uses cached gate values to avoid blocking on Statsig initialization
+ * Check if we should use session memory for compaction. Only the env var
+ * turns it on; there is no other switch.
  */
 export function shouldUseSessionMemoryCompaction(): boolean {
-  // Allow env var override for eval runs and testing
-  if (isEnvTruthy(process.env.ENABLE_CLAUDE_CODE_SM_COMPACT)) {
-    return true
-  }
-  if (isEnvTruthy(process.env.DISABLE_CLAUDE_CODE_SM_COMPACT)) {
-    return false
-  }
-
-  const sessionMemoryFlag = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_session_memory',
-    false,
-  )
-  const smCompactFlag = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_sm_compact',
-    false,
-  )
-  const shouldUse = sessionMemoryFlag && smCompactFlag
-
-  return shouldUse
+  return isEnvTruthy(process.env.ENABLE_CLAUDE_CODE_SM_COMPACT)
 }
 
 /**
@@ -507,12 +430,6 @@ export async function trySessionMemoryCompaction(
   if (!shouldUseSessionMemoryCompaction()) {
     return null
   }
-
-  // Initialize config from remote (only fetches once)
-  await initSessionMemoryCompactConfig()
-
-  // Wait for any in-progress session memory extraction to complete (with timeout)
-  await waitForSessionMemoryExtraction()
 
   const lastSummarizedMessageId = getLastSummarizedMessageId()
   const sessionMemory = await getSessionMemoryContent()

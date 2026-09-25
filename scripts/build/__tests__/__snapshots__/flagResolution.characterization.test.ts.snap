@@ -308,14 +308,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": "<unmeasured: default is an expression — { commands: [], substrings: [] }>",
   },
-  "tengu_session_memory": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
-  },
   "tengu_sessions_elevated_auth_enforcement": {
     "defaults": [
       "",
@@ -332,30 +324,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": true,
-  },
-  "tengu_sm_compact": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_sm_compact_config": {
-    "defaults": [
-      "{}",
-    ],
-    "fn": "getDynamicConfig_BLOCKS_ON_INIT",
-    "sites": 1,
-    "stockValue": {},
-  },
-  "tengu_sm_config": {
-    "defaults": [
-      "{}",
-    ],
-    "fn": "getDynamicConfig_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": {},
   },
   "tengu_streaming_tool_execution2": {
     "defaults": [
