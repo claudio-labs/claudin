@@ -1,6 +1,5 @@
 /* eslint-disable custom-rules/no-process-exit -- CLI subcommand handler intentionally exits */
 
-import { clearTrustedDeviceTokenCache } from 'src/platform/bridge/trustedDevice.js'
 import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js'
 import { clearPolicyLimitsCache } from 'src/platform/policyLimits/index.js'
 import { clearRemoteManagedSettingsCache } from 'src/platform/remoteManagedSettings/index.js'
@@ -78,7 +77,6 @@ export async function performLogout({
 export async function clearAuthRelatedCaches(): Promise<void> {
   // Clear the OAuth token cache
   getClaudeAIOAuthTokens.cache?.clear?.()
-  clearTrustedDeviceTokenCache()
   clearBetasCaches()
   clearToolSchemaCache()
 

@@ -26,7 +26,6 @@ import {
 } from 'src/platform/bridge/workSecret.js'
 import { toCompatSessionId, toInfraSessionId } from 'src/platform/bridge/sessionIdCompat.js'
 import { updateSessionBridgeId } from 'src/sessions/concurrentSessions.js'
-import { getTrustedDeviceToken } from 'src/platform/bridge/trustedDevice.js'
 import { HybridTransport } from 'src/platform/headless/transports/HybridTransport.js'
 import {
   type ReplBridgeTransport,
@@ -157,18 +156,15 @@ export type BridgeCoreParams = {
   onAuth401?: (staleAccessToken: string) => Promise<boolean>
   /**
    * Poll interval config getter for the work-poll heartbeat loop. REPL
-   * wrapper passes the GrowthBook-backed getPollIntervalConfig (allows ops
-   * to live-tune poll rates fleet-wide). Daemon passes a static config
-   * with a 60s heartbeat (5× headroom under the 300s work-lease TTL).
-   * Injected because growthbook.ts transitively pulls in the command
-   * registry via the same config.ts chain.
+   * wrapper passes getPollIntervalConfig (the defaults). Daemon passes a
+   * static config with a 60s heartbeat (5× headroom under the 300s
+   * work-lease TTL).
    */
   getPollIntervalConfig?: () => PollIntervalConfig
   /**
-   * Max initial messages to replay on connect. REPL wrapper reads from the
-   * tengu_bridge_initial_history_cap GrowthBook flag. Daemon passes no
-   * initialMessages so this is never read. Default 200 matches the flag
-   * default.
+   * Max initial messages to replay on connect. REPL wrapper passes 200.
+   * Daemon passes no initialMessages so this is never read. Default 200
+   * matches the REPL value.
    */
   initialHistoryCap?: number
   // Same REPL-flush machinery as InitBridgeOptions — daemon omits these.
@@ -334,7 +330,6 @@ export async function initBridgeCore(
     runnerVersion: MACRO.VERSION,
     onDebug: logForDebugging,
     onAuth401,
-    getTrustedDeviceToken,
   })
   const api = rawApi
 
@@ -1504,8 +1499,8 @@ export async function initBridgeCore(
   // and the session-ingress layer don't GC an otherwise-idle remote control
   // session. The keep_alive type is filtered before reaching any client UI
   // (Query.ts drops it; web/iOS/Android never see it in their message loop).
-  // Interval comes from GrowthBook (tengu_bridge_poll_interval_config
-  // session_keepalive_interval_v2_ms, default 120s); 0 = disabled.
+  // Interval is the poll config's session_keepalive_interval_v2_ms (default
+  // 120s); 0 = disabled.
   const keepAliveIntervalMs =
     getPollIntervalConfig().session_keepalive_interval_v2_ms
   const keepAliveTimer =

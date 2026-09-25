@@ -23,16 +23,6 @@ type BridgeApiDeps = {
    * tokens don't refresh, so 401 goes straight to BridgeFatalError.
    */
   onAuth401?: (staleAccessToken: string) => Promise<boolean>
-  /**
-   * Returns the trusted device token to send as X-Trusted-Device-Token on
-   * bridge API calls. Bridge sessions have SecurityTier=ELEVATED on the
-   * server (CCR v2); when the server's enforcement flag is on,
-   * ConnectBridgeWorker requires a trusted device at JWT-issuance.
-   * Optional — when absent or returning undefined, the header is omitted
-   * and the server falls through to its flag-off/no-op path. The CLI-side
-   * gate is tengu_sessions_elevated_auth_enforcement (see trustedDevice.ts).
-   */
-  getTrustedDeviceToken?: () => string | undefined
 }
 
 const BETA_HEADER = 'environments-2025-11-01'
@@ -74,18 +64,13 @@ export function createBridgeApiClient(deps: BridgeApiDeps): BridgeApiClient {
   const EMPTY_POLL_LOG_INTERVAL = 100
 
   function getHeaders(accessToken: string): Record<string, string> {
-    const headers: Record<string, string> = {
+    return {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'anthropic-version': '2023-06-01',
       'anthropic-beta': BETA_HEADER,
       'x-environment-runner-version': deps.runnerVersion,
     }
-    const deviceToken = deps.getTrustedDeviceToken?.()
-    if (deviceToken) {
-      headers['X-Trusted-Device-Token'] = deviceToken
-    }
-    return headers
   }
 
   function resolveAuth(): string {

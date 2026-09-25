@@ -4,23 +4,7 @@
  * Lives in its own file (rather than workSecret.ts) so that sessionHandle.ts
  * and replBridgeTransport.ts (bridge.mjs entry points) can import from
  * workSecret.ts without pulling in these retag functions.
- *
- * The isCseShimEnabled kill switch is injected via setCseShimGate() to avoid
- * a static import of bridgeEnabled.ts → growthbook.ts → config.ts — all
- * banned from the sdk.mjs bundle (scripts/build-agent-sdk.sh). Callers that
- * already import bridgeEnabled.ts register the gate; the SDK path never does,
- * so the shim defaults to active (matching isCseShimEnabled()'s own default).
  */
-
-let _isCseShimEnabled: (() => boolean) | undefined
-
-/**
- * Register the GrowthBook gate for the cse_ shim. Called from bridge
- * init code that already imports bridgeEnabled.ts.
- */
-export function setCseShimGate(gate: () => boolean): void {
-  _isCseShimEnabled = gate
-}
 
 /**
  * Re-tag a `cse_*` session ID to `session_*` for use with the v1 compat API.
@@ -37,7 +21,6 @@ export function setCseShimGate(gate: () => boolean): void {
  */
 export function toCompatSessionId(id: string): string {
   if (!id.startsWith('cse_')) return id
-  if (_isCseShimEnabled && !_isCseShimEnabled()) return id
   return 'session_' + id.slice('cse_'.length)
 }
 

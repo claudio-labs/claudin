@@ -111,15 +111,6 @@ export async function runTrustAndOnboarding(
     resetUserCache();
     // Refresh GrowthBook after login to get updated feature flags (e.g., for claude.ai MCPs)
     refreshGrowthBookAfterAuthChange();
-    // Clear any stale trusted device token then enroll for Remote Control.
-    // Both self-gate on tengu_sessions_elevated_auth_enforcement internally
-    // — enrollTrustedDevice() via checkGate_CACHED_OR_BLOCKING (awaits
-    // the GrowthBook reinit above), clearTrustedDeviceToken() via the
-    // sync cached check (acceptable since clear is idempotent).
-    void import('src/platform/bridge/trustedDevice.js').then(m => {
-      m.clearTrustedDeviceToken();
-      return m.enrollTrustedDevice();
-    });
   }
 
   // Auto-wizard when no provider profile exists and Onboarding didn't

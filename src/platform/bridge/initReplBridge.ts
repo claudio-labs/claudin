@@ -18,7 +18,6 @@ import { hostname } from 'os'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { SDKControlResponse } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/platform/analytics/growthbook.js'
 import { getOrganizationUUID } from 'src/providers/oauth/client.js'
 import {
   isPolicyAllowed,
@@ -53,24 +52,20 @@ import {
   getBridgeBaseUrl,
   getBridgeTokenOverride,
 } from 'src/platform/bridge/bridgeConfig.js'
-import {
-  checkBridgeMinVersion,
-  isBridgeEnabledBlocking,
-  isCseShimEnabled,
-  isEnvLessBridgeEnabled,
-} from 'src/platform/bridge/bridgeEnabled.js'
+import { isBridgeEnabledBlocking } from 'src/platform/bridge/bridgeEnabled.js'
 import {
   archiveBridgeSession,
   createBridgeSession,
   updateBridgeSessionTitle,
 } from 'src/platform/bridge/createSession.js'
 import { logBridgeSkip } from 'src/platform/bridge/debugUtils.js'
-import { checkEnvLessBridgeMinVersion } from 'src/platform/bridge/envLessBridgeConfig.js'
 import { getPollIntervalConfig } from 'src/platform/bridge/pollConfig.js'
 import type { BridgeState, ReplBridgeHandle } from 'src/platform/bridge/replBridge.js'
 import { initBridgeCore } from 'src/platform/bridge/replBridge.js'
-import { setCseShimGate } from 'src/platform/bridge/sessionIdCompat.js'
 import type { BridgeWorkerType } from 'src/platform/bridge/types.js'
+
+/** Max initial messages replayed into the bridge session on connect. */
+const INITIAL_HISTORY_CAP = 200
 
 export type InitBridgeOptions = {
   onInboundMessage?: (msg: SDKMessage) => void | Promise<void>
@@ -98,13 +93,6 @@ export type InitBridgeOptions = {
   previouslyFlushedUUIDs?: Set<string>
   /** See BridgeCoreParams.perpetual. */
   perpetual?: boolean
-  /**
-   * When true, the bridge only forwards events outbound (no SSE inbound
-   * stream). Used by CCR mirror mode — local sessions visible on claude.ai
-   * without enabling inbound control.
-   */
-  outboundOnly?: boolean
-  tags?: string[]
 }
 
 export async function initReplBridge(
@@ -123,23 +111,13 @@ export async function initReplBridge(
     previouslyFlushedUUIDs,
     initialName,
     perpetual,
-    outboundOnly,
-    tags,
   } = options ?? {}
-
-  // Wire the cse_ shim kill switch so toCompatSessionId respects the
-  // GrowthBook gate. Daemon/SDK paths skip this — shim defaults to active.
-  setCseShimGate(isCseShimEnabled)
 
   // 1. Runtime gate
   if (!(await isBridgeEnabledBlocking())) {
     logBridgeSkip('not_enabled', '[bridge:repl] Skipping: bridge not enabled')
     return null
   }
-
-  // 1b. Minimum version check — deferred to after the v1/v2 branch below,
-  // since each implementation has its own floor (tengu_bridge_min_version
-  // for v1, tengu_bridge_repl_v2_config.min_version for v2).
 
   // 2. Check OAuth — must be signed in with claude.ai. Runs before the
   // policy check so console-auth users get the actionable "/login" hint
@@ -244,8 +222,7 @@ export async function initReplBridge(
     }
   }
 
-  // 4. Compute baseUrl — needed by both v1 (env-based) and v2 (env-less)
-  // paths. Hoisted above the v2 gate so both can use it.
+  // 4. Compute baseUrl.
   const baseUrl = getBridgeBaseUrl()
 
   // 5. Derive session title. Precedence: explicit initialName → /rename
@@ -254,8 +231,8 @@ export async function initReplBridge(
   // Two flags: `hasExplicitTitle` (initialName or /rename — never auto-
   // overwrite) vs. `hasTitle` (any title, including auto-derived — blocks
   // the count-1 re-derivation but not count-3). The onUserMessage callback
-  // (wired to both v1 and v2 below) derives from the 1st prompt and again
-  // from the 3rd so mobile/web show a title that reflects more context.
+  // below derives from the 1st prompt and again from the 3rd so mobile/web
+  // show a title that reflects more context.
   // The slug fallback (e.g. "remote-control-graceful-unicorn") makes
   // auto-started sessions distinguishable in the claude.ai list before the
   // first prompt.
@@ -303,15 +280,15 @@ export async function initReplBridge(
     }
   }
 
-  // Shared by both v1 and v2 — fires on every title-worthy user message until
-  // it returns true. At count 1: deriveTitle placeholder immediately, then
+  // Fires on every title-worthy user message until it returns true. At
+  // count 1: deriveTitle placeholder immediately, then
   // generateSessionTitle (Haiku, sentence-case) fire-and-forget upgrade. At
   // count 3: re-generate over the full conversation. Skips entirely if the
   // title is explicit (/remote-control <name> or /rename) — re-checks
   // sessionStorage at call time so /rename between messages isn't clobbered.
   // Skips count 1 if initialMessages already derived (that title is fresh);
-  // still refreshes at count 3. v2 passes cse_*; updateBridgeSessionTitle
-  // retags internally.
+  // still refreshes at count 3. updateBridgeSessionTitle retags cse_* ids
+  // internally.
   let userMessageCount = 0
   let lastBridgeSessionId: string | undefined
   let genSeq = 0
@@ -381,16 +358,7 @@ export async function initReplBridge(
     return userMessageCount >= 3
   }
 
-  const initialHistoryCap = getFeatureValue_CACHED_WITH_REFRESH(
-    'tengu_bridge_initial_history_cap',
-    200,
-    5 * 60 * 1000,
-  )
-
-  // Fetch orgUUID before the v1/v2 branch — both paths need it. v1 for
-  // environment registration; v2 for archive (which lives at the compat
-  // /v1/sessions/{id}/archive, not /v1/code/sessions). Without it, v2
-  // archive 404s and sessions stay alive in CCR after /exit.
+  // Fetch orgUUID — environment registration needs it.
   const orgUUID = await getOrganizationUUID()
   if (!orgUUID) {
     logBridgeSkip('no_org_uuid', '[bridge:repl] Skipping: no org UUID')
@@ -398,71 +366,7 @@ export async function initReplBridge(
     return null
   }
 
-  // ── GrowthBook gate: env-less bridge ──────────────────────────────────
-  // When enabled, skips the Environments API layer entirely (no register/
-  // poll/ack/heartbeat) and connects directly via POST /bridge → worker_jwt.
-  // See server PR #292605 (renamed in #293280). REPL-only — daemon/print stay
-  // on env-based.
-  //
-  // NAMING: "env-less" is distinct from "CCR v2" (the /worker/* transport).
-  // The env-based path below can ALSO use CCR v2 via CLAUDE_CODE_USE_CCR_V2.
-  // tengu_bridge_repl_v2 gates env-less (no poll loop), not transport version.
-  //
-  // perpetual (assistant-mode session continuity via bridge-pointer.json) is
-  // env-coupled and not yet implemented here — fall back to env-based when set
-  // so KAIROS users don't silently lose cross-restart continuity.
-  if (isEnvLessBridgeEnabled() && !perpetual) {
-    const versionError = await checkEnvLessBridgeMinVersion()
-    if (versionError) {
-      logBridgeSkip(
-        'version_too_old',
-        `[bridge:repl] Skipping: ${versionError}`,
-        true,
-      )
-      onStateChange?.('failed', 'run `claude update` to upgrade')
-      return null
-    }
-    logForDebugging(
-      '[bridge:repl] Using env-less bridge path (tengu_bridge_repl_v2)',
-    )
-    const { initEnvLessBridgeCore } = await import('src/platform/bridge/remoteBridgeCore.js')
-    return initEnvLessBridgeCore({
-      baseUrl,
-      orgUUID,
-      title,
-      getAccessToken: getBridgeAccessToken,
-      onAuth401: handleOAuth401Error,
-      toSDKMessages,
-      initialHistoryCap,
-      initialMessages,
-      // v2 always creates a fresh server session (new cse_* id), so
-      // previouslyFlushedUUIDs is not passed — there's no cross-session
-      // UUID collision risk, and the ref persists across enable→disable→
-      // re-enable cycles which would cause the new session to receive zero
-      // history (all UUIDs already in the set from the prior enable).
-      // v1 handles this by calling previouslyFlushedUUIDs.clear() on fresh
-      // session creation (replBridge.ts:768); v2 skips the param entirely.
-      onInboundMessage,
-      onUserMessage,
-      onPermissionResponse,
-      onInterrupt,
-      onSetModel,
-      onSetMaxThinkingTokens,
-      onSetPermissionMode,
-      onStateChange,
-      outboundOnly,
-      tags,
-    })
-  }
-
-  // ── v1 path: env-based (register/poll/ack/heartbeat) ──────────────────
-
-  const versionError = checkBridgeMinVersion()
-  if (versionError) {
-    logBridgeSkip('version_too_old', `[bridge:repl] Skipping: ${versionError}`)
-    onStateChange?.('failed', 'run `claude update` to upgrade')
-    return null
-  }
+  // ── env-based bridge (register/poll/ack/heartbeat) ────────────────────
 
   // Gather git context — this is the bootstrap-read boundary.
   // Everything from here down is passed explicitly to bridgeCore.
@@ -517,7 +421,7 @@ export async function initReplBridge(
     toSDKMessages,
     onAuth401: handleOAuth401Error,
     getPollIntervalConfig,
-    initialHistoryCap,
+    initialHistoryCap: INITIAL_HISTORY_CAP,
     initialMessages,
     previouslyFlushedUUIDs,
     onInboundMessage,

@@ -296,8 +296,7 @@ async function main(): Promise<void> {
     } = await import('src/platform/config/config.js');
     enableConfigs();
     const {
-      getBridgeDisabledReason,
-      checkBridgeMinVersion
+      getBridgeDisabledReason
     } = await import('src/platform/bridge/bridgeEnabled.js');
     const {
       BRIDGE_LOGIN_ERROR
@@ -322,10 +321,6 @@ async function main(): Promise<void> {
     const disabledReason = await getBridgeDisabledReason();
     if (disabledReason) {
       exitWithError(`Error: ${disabledReason}`);
-    }
-    const versionError = checkBridgeMinVersion();
-    if (versionError) {
-      exitWithError(versionError);
     }
 
     // Bridge is a remote control feature - check policy limits

@@ -1,5 +1,4 @@
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
-import { checkGate_CACHED_OR_BLOCKING } from 'src/platform/analytics/growthbook.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import { detectCurrentRepositoryWithHost } from 'src/vcs/git/detectRepository.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -69,14 +68,13 @@ export async function checkBackgroundRemoteSessionEligibility({
     errors.push({ type: 'no_remote_environment' })
   }
 
-  // When bundle seeding is on, in-git-repo is enough — CCR can seed from
-  // a local bundle. No GitHub remote or app needed. Same gate as
-  // teleport.tsx bundleSeedGateOn.
+  // When bundle seeding is on (CCR_FORCE_BUNDLE / CCR_ENABLE_BUNDLE),
+  // in-git-repo is enough — CCR can seed from a local bundle. No GitHub
+  // remote or app needed. Same check as teleport.tsx bundleSeedGateOn.
   const bundleSeedGateOn =
     !skipBundle &&
     (isEnvTruthy(process.env.CCR_FORCE_BUNDLE) ||
-      isEnvTruthy(process.env.CCR_ENABLE_BUNDLE) ||
-      (await checkGate_CACHED_OR_BLOCKING('tengu_ccr_bundle_seed_enabled')))
+      isEnvTruthy(process.env.CCR_ENABLE_BUNDLE))
 
   if (!checkIsInGitRepo()) {
     errors.push({ type: 'not_in_git_repo' })

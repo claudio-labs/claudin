@@ -2,86 +2,6 @@
 
 exports[`tengu gate keys — resolution in a stock install the per-key resolution table matches the snapshot 1`] = `
 {
-  "tengu_bridge_initial_history_cap": {
-    "defaults": [
-      "200",
-    ],
-    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
-    "sites": 1,
-    "stockValue": 200,
-  },
-  "tengu_bridge_min_version": {
-    "defaults": [
-      "{ minVersion: '0.0.0' }",
-    ],
-    "fn": "getDynamicConfig_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — { minVersion: '0.0.0' }>",
-  },
-  "tengu_bridge_poll_interval_config": {
-    "defaults": [
-      "DEFAULT_POLL_CONFIG",
-    ],
-    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — DEFAULT_POLL_CONFIG>",
-  },
-  "tengu_bridge_repl_v2": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_bridge_repl_v2_config": {
-    "defaults": [
-      "DEFAULT_ENV_LESS_BRIDGE_CONFIG",
-    ],
-    "fn": "getFeatureValue_DEPRECATED",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — DEFAULT_ENV_LESS_BRIDGE_CONFIG>",
-  },
-  "tengu_bridge_repl_v2_cse_shim_enabled": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": true,
-  },
-  "tengu_bridge_system_init": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_ccr_bridge_multi_session": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkGate_CACHED_OR_BLOCKING",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_ccr_bundle_max_bytes": {
-    "defaults": [
-      "null",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": null,
-  },
-  "tengu_ccr_bundle_seed_enabled": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkGate_CACHED_OR_BLOCKING",
-    "sites": 2,
-    "stockValue": false,
-  },
   "tengu_cicada_nap_ms": {
     "defaults": [
       "0",
@@ -169,15 +89,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": {},
-  },
-  "tengu_sessions_elevated_auth_enforcement": {
-    "defaults": [
-      "",
-      "false",
-    ],
-    "fn": "checkGate_CACHED_OR_BLOCKING | getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
   },
   "tengu_slate_prism": {
     "defaults": [

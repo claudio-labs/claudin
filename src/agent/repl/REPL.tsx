@@ -2187,7 +2187,7 @@ export function REPL({
   // for remote access via claude.ai. No-op in external builds or when not enabled.
   const {
     sendBridgeResult
-  } = useReplBridge(messages, setMessages, abortControllerRef, commands, mainLoopModel);
+  } = useReplBridge(messages, setMessages, abortControllerRef);
   sendBridgeResultRef.current = sendBridgeResult;
   useAfterFirstRender();
 

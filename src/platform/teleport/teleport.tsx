@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import { randomUUID } from 'crypto';
 import React from 'react';
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js';
-import { checkGate_CACHED_OR_BLOCKING } from 'src/platform/analytics/growthbook.js';
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js';
 import { z } from 'zod/v4';
 import { getTeleportErrors, TeleportError, type TeleportLocalErrorType } from 'src/platform/teleport/TeleportError.js';
@@ -900,11 +899,10 @@ export async function teleportToRemote(options: {
     let ghViable = false;
     let sourceReason: 'github_preflight_ok' | 'ghes_optimistic' | 'github_preflight_failed' | 'no_github_remote' | 'forced_bundle' | 'no_git_at_all' = 'no_git_at_all';
 
-    // gitRoot gates both bundle creation and the gate check itself — no
-    // point awaiting GrowthBook when there's nothing to bundle.
+    // gitRoot gates bundle creation — there's nothing to bundle without it.
     const gitRoot = findGitRoot(getCwd());
     const forceBundle = !options.skipBundle && isEnvTruthy(process.env.CCR_FORCE_BUNDLE);
-    const bundleSeedGateOn = !options.skipBundle && gitRoot !== null && (isEnvTruthy(process.env.CCR_ENABLE_BUNDLE) || (await checkGate_CACHED_OR_BLOCKING('tengu_ccr_bundle_seed_enabled')));
+    const bundleSeedGateOn = !options.skipBundle && gitRoot !== null && isEnvTruthy(process.env.CCR_ENABLE_BUNDLE);
     if (repoInfo && !forceBundle) {
       if (repoInfo.host === 'github.com') {
         ghViable = await checkGithubAppInstalled(repoInfo.owner, repoInfo.name, signal);
