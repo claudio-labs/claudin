@@ -60,6 +60,8 @@ function importFreshPromptModule(): Promise<
 
 const BODY_ENV = [
   'CLAUDIN_LEAN_GIT_INSTRUCTIONS',
+  'CLAUDIN_RESPONSE_CHAINS',
+  'CLAUDIN_ONE_CALL_COMMIT',
   'USER_TYPE',
   'ANTHROPIC_API_KEY',
 ] as const
@@ -162,12 +164,14 @@ const GIT_PROTOCOL_RULES: ReadonlyArray<{
 ]
 
 describe('getBashGitInstructionsBody', () => {
-  const bodies = { full: '', lean: '', unset: '' }
+  const bodies = { full: '', lean: '', unset: '', chains: '', onecall: '', both: '' }
   let attribution: ReturnType<typeof getAttributionTexts> = { commit: '', pr: '' }
 
   beforeAll(async () => {
     const saved = BODY_ENV.map(key => [key, process.env[key]] as const)
     delete process.env.USER_TYPE
+    delete process.env.CLAUDIN_RESPONSE_CHAINS
+    delete process.env.CLAUDIN_ONE_CALL_COMMIT
     // getAttributionTexts() routes through model selection which demands an
     // API key. Non-key-shaped value avoids tripping secret-scanners on this file.
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -181,6 +185,12 @@ describe('getBashGitInstructionsBody', () => {
       bodies.lean = (await importFreshPromptModule()).getBashGitInstructionsBody()
       delete process.env.CLAUDIN_LEAN_GIT_INSTRUCTIONS
       bodies.unset = (await importFreshPromptModule()).getBashGitInstructionsBody()
+      process.env.CLAUDIN_RESPONSE_CHAINS = '1'
+      bodies.chains = (await importFreshPromptModule()).getBashGitInstructionsBody()
+      process.env.CLAUDIN_ONE_CALL_COMMIT = '1'
+      bodies.both = (await importFreshPromptModule()).getBashGitInstructionsBody()
+      delete process.env.CLAUDIN_RESPONSE_CHAINS
+      bodies.onecall = (await importFreshPromptModule()).getBashGitInstructionsBody()
       attribution = getAttributionTexts()
     } finally {
       for (const [key, value] of saved) {
@@ -202,7 +212,58 @@ describe('getBashGitInstructionsBody', () => {
     expect(bodies.unset).toBe(bodies.lean)
   })
 
-  for (const variant of ['full', 'lean'] as const) {
+  // CLAUDIN_RESPONSE_CHAINS moves the read step into the last check's response
+  // and changes nothing else: the commit still waits for the check's result.
+  const LEAN_READ_STEP = `1. Read the repo in a SINGLE ${GIT_TOOL_NAME} call: `
+  const CHAINS_READ_STEP = `1. Read the repo in a SINGLE ${GIT_TOOL_NAME} call, in the same response as your last check if you run one: `
+
+  it('CLAUDIN_RESPONSE_CHAINS=1 changes only the read step', () => {
+    expect(bodies.chains).toContain(CHAINS_READ_STEP)
+    expect(bodies.chains).toContain('Run nothing beyond these git/gh steps and that check.')
+    expect(bodies.lean).not.toContain('your last check')
+    expect(
+      bodies.chains
+        .replace(CHAINS_READ_STEP, LEAN_READ_STEP)
+        .replace(' and that check.', '.'),
+    ).toBe(bodies.lean)
+  })
+
+  // CLAUDIN_ONE_CALL_COMMIT: the session's own changes commit in ONE Git call
+  // that may ride the last edit's response; anything else is read first, as
+  // today. It wins over CLAUDIN_RESPONSE_CHAINS' read step.
+  it('CLAUDIN_ONE_CALL_COMMIT=1 commits the session\'s own changes in one call', () => {
+    expect(bodies.onecall).toContain(
+      `When every change you are committing is one you made in this session, commit in ONE ${GIT_TOOL_NAME} call`,
+    )
+    expect(bodies.onecall).toContain('if a call before it fails, the commit is skipped')
+    expect(bodies.onecall).toContain('Otherwise — changes you did not make')
+    expect(bodies.lean).not.toContain('commit in ONE')
+    expect(bodies.both).toBe(bodies.onecall)
+  })
+
+  // Where the lean steps read the repo, the one call leans on the response it
+  // may share and on the recent commits already in the context — and falls
+  // back to that read whenever those cannot carry it.
+  it('CLAUDIN_ONE_CALL_COMMIT=1 names what the one call leans on, and when to read first', () => {
+    for (const phrase of [
+      'then commit and run `git status`. That call can share the response with your last edit or check',
+      'Match the style of the recent commits in your context, in a 1-2 sentence message saying why, not what.',
+      `a tree you are unsure of, or no recent commits in your context — read the repo first in a SINGLE ${GIT_TOOL_NAME} call`,
+    ]) {
+      expect(bodies.onecall).toContain(phrase)
+    }
+  })
+
+  it('CLAUDIN_ONE_CALL_COMMIT=1 changes only the three steps', () => {
+    const stepsOf = (body: string) =>
+      body.slice(body.indexOf('\n1. '), body.indexOf('\n\n<example>'))
+    expect(stepsOf(bodies.onecall)).not.toBe(stepsOf(bodies.lean))
+    expect(bodies.onecall.replace(stepsOf(bodies.onecall), stepsOf(bodies.lean))).toBe(
+      bodies.lean,
+    )
+  })
+
+  for (const variant of ['full', 'lean', 'chains', 'onecall'] as const) {
     describe(variant, () => {
       const body = () => bodies[variant]
 

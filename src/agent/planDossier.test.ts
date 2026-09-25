@@ -342,6 +342,28 @@ describe('buildDossierFromMessages', () => {
       content: 'InputValidationError: symbol: Expected string',
     })
   })
+
+  test('a batch Read of a glob is one entry per file it matched (CLAUDIN_READ_GLOBS)', async () => {
+    const a = join(testTempDir, 'glob-a.ts')
+    const b = join(testTempDir, 'glob-b.ts')
+    for (const p of [a, b]) writeFileSync(p, 'x\n')
+    const messages = [
+      makeEnterPlanModeMsg(),
+      makeAssistantMessage([
+        { id: 'rg', name: 'Read', input: { file_paths: [join(testTempDir, 'glob-*.ts')] } },
+      ]),
+      makeUserToolResult(
+        'rg',
+        [`==> ${a} <==\n     1→const a = 1`, `==> ${b} <==\n     1→const b = 2`].join('\n\n'),
+      ),
+    ]
+    const dossier = await buildDossierFromMessages(messages, '#', [], 's')
+    const reads = dossier.entries.filter((e): e is ReadEntry => e.source === 'Read')
+    expect(reads.map(e => [e.path, e.content])).toEqual([
+      [a, '     1→const a = 1'],
+      [b, '     1→const b = 2'],
+    ])
+  })
 })
 
 describe('serialize / load round-trip', () => {

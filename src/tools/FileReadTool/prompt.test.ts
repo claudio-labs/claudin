@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   importWithReadMulti,
+  importWithReadGlobs,
   importWithReadMultiUnset,
 } from 'src/tools/FileReadTool/__testutils__/readMultiFlag.js'
 import {
@@ -175,5 +176,26 @@ describe('Read tool prompt — the default, CLAUDIN_READ_MULTI unset', () => {
     expect(unset.renderCompactPromptTemplate(unset.LINE_FORMAT_INSTRUCTION, '')).toContain(
       '`file_paths` reads up to 20 files in one call',
     )
+  })
+})
+
+// CLAUDIN_READ_GLOBS (readGlobs.ts). Off — unset, the default — is the text
+// the arms above pin: every one of them loads with the variable unset.
+describe('Read tool prompt — CLAUDIN_READ_GLOBS on', () => {
+  const BATCH_LINE =
+    '- `file_paths` reads up to 20 files in one call — each as `view`/`symbol` say, within 25k tokens in total.'
+  const GLOB_LINE =
+    '- `file_paths` reads up to 50 files in one call — each as `view`/`symbol` say, within 25k tokens in total; a glob like `src/*.ts` reads every match.'
+
+  test('the batch line takes globs in both descriptions, and nothing else changes', async () => {
+    const on = await importWithReadGlobs<PromptModule>(PROMPT, true)
+    const off = await importWithReadGlobs<PromptModule>(PROMPT, false)
+    for (const render of ['renderPromptTemplate', 'renderCompactPromptTemplate'] as const) {
+      const onText = on[render](on.LINE_FORMAT_INSTRUCTION, '')
+      const offText = off[render](off.LINE_FORMAT_INSTRUCTION, '')
+      expect(onText.split('\n').filter(line => line === GLOB_LINE)).toHaveLength(1)
+      expect(offText.split('\n').filter(line => line === BATCH_LINE)).toHaveLength(1)
+      expect(onText.replace(GLOB_LINE, BATCH_LINE)).toBe(offText)
+    }
   })
 })

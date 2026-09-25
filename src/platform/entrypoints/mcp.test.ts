@@ -57,6 +57,17 @@ describe('placeholder stripping on the MCP server boundary', () => {
   })
 })
 
+describe('Tool.resolveInput on the MCP server boundary', () => {
+  // In the same handler, so a source pin for the same reason. The await is
+  // what lets a Read expand its globs there: that resolution reads the disk
+  // (FileReadTool/readGlobs.ts) and comes back as a promise.
+  const src = readFileSync(new URL('./mcp.ts', import.meta.url), 'utf8')
+
+  it('awaits the resolution, which may be a promise', () => {
+    expect(src).toContain('? await tool.resolveInput(parsedArgs as never, toolUseContext)')
+  })
+})
+
 describe('loadReexposedMcpTools', () => {
   it('loads tools and clients regardless of connection state (including needs-auth)', async () => {
     // Setup the mock to simulate yielding a needs-auth server and a connected server

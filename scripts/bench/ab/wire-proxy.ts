@@ -31,15 +31,21 @@
  * Every response's thinking text — non-empty only when the request asked for
  * `display: "summarized"` — lands beside its request.
  *
+ * `requestKind(body)` tells, from a logged body alone, which part of the CLI
+ * sent it: the agent loop, the auto-mode permission classifier, or a side
+ * request. `summarize` counts requests by kind, and `readKindedRequests`
+ * hands a session's requests to the session bench's census.
+ *
  * Layout under the log dir, one directory per label:
  *   <label>/log.jsonl         one line per request (ProxyRecord)
  *   <label>/req-NNN.json.gz   the body of each /v1/messages request
  *   <label>/resp-NNN.thinking.txt  the response's thinking text, when it had any
  *
  * Usage:
- *   import { startWireProxy, proxyEnv, readProxyThinking } from './wire-proxy'
+ *   import { startWireProxy, proxyEnv, readProxyThinking, readKindedRequests } from './wire-proxy'
  *   bun scripts/bench/ab/wire-proxy.ts summarize <logDir>
  */
+import { createHash } from 'node:crypto'
 import { createServer, type IncomingHttpHeaders, type IncomingMessage, type ServerResponse } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -248,6 +254,11 @@ function upstreamHeaders(from: IncomingHttpHeaders, length: number): IncomingHtt
   return { ...from, host: UPSTREAM_HOST, 'accept-encoding': 'identity', 'content-length': String(length) }
 }
 
+/** A request the model answers: /v1/messages, not its count_tokens sibling. */
+function isMessagesPath(path: string): boolean {
+  return path.startsWith('/v1/messages') && !path.includes('count_tokens')
+}
+
 export function startWireProxy(logDir: string, options: WireProxyOptions = {}): Promise<WireProxy> {
   mkdirSync(logDir, { recursive: true })
   const counters = new Map<string, number>()
@@ -276,7 +287,7 @@ export function startWireProxy(logDir: string, options: WireProxyOptions = {}): 
     req.on('end', () => {
       let body = Buffer.concat(chunks)
       const { n, dir } = nextSlot(label)
-      const isMessages = path.startsWith('/v1/messages') && !path.includes('count_tokens')
+      const isMessages = isMessagesPath(path)
       let rewrite: string | undefined
       if (isMessages && body.length > 0) {
         if (!captured.has(label)) captured.set(label, { ...req.headers })
@@ -432,6 +443,166 @@ export function readProxyThinking(logDir: string, labels: string[]): Map<string,
   return out
 }
 
+function readBody(logDir: string, label: string, reqFile: string): Json {
+  return JSON.parse(gunzipSync(readFileSync(join(logDir, label, reqFile))).toString('utf8')) as Json
+}
+
+// ---------------------------------------------------------------------------
+// requestKind — which part of the CLI sent a request, read off its body
+// ---------------------------------------------------------------------------
+
+/**
+ * `main`: an agent-loop turn — the main thread, or a sub-agent it spawned; the
+ * conversation whose tool calls reach the permission check. `classifier`: the
+ * auto-mode permission classifier, one request per stage. `other`: every side
+ * request — titles and tool-use summaries, the forks that append a prompt to
+ * the main thread's prefix, keep-alive pings, token counts.
+ */
+export type RequestKind = 'main' | 'classifier' | 'other'
+
+// The auto-mode classifier (src/permissions/yoloClassifier/classify.ts). On the
+// XML path, the one an Opus 5.x session always takes, every stage wraps the
+// transcript and the action in <transcript> blocks and appends its own
+// instruction after them, and stage 1 stops at </block>; the tool_use path
+// forces its one tool instead. Its system block opens the same on both paths
+// (the attribution header, when there is one, is a block of its own).
+const CLASSIFIER_TOOL = 'classify_result'
+const CLASSIFIER_STOP = '</block>'
+const TRANSCRIPT_OPEN = '<transcript>\n'
+const TRANSCRIPT_CLOSE = '</transcript>\n'
+const CLASSIFIER_IDENTITY = 'You are a security classifier for an autonomous coding agent'
+
+/**
+ * How each fork's prompt opens. A fork (runForkedAgent) re-sends the main
+ * thread's system prompt, tools and messages, to read the same cache, and
+ * appends one user message: that message is all that tells it apart, on its
+ * first request and on every later one of its loop.
+ */
+const FORK_PROMPTS: readonly string[] = [
+  'You are now acting as the memory extraction subagent', // src/memory/extract/prompts.ts
+  'IMPORTANT: This message and these instructions are NOT part of the actual user conversation', // src/memory/session/prompts.ts
+  '# Dream: Memory Consolidation', // src/memory/autoDream/consolidationPrompt.ts
+  'CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.', // src/agent/compact/prompt.ts
+  'Describe your most recent action in 3-5 words', // src/agent/summary/agentSummary.ts, progress
+  'Produce a concise, actionable summary of your final result above', // same file, a sub-agent's result
+  '<system-reminder>This is a side question from the user.', // src/agent/sideQuestion.ts
+  '[SUGGESTION MODE:', // src/terminal/prompt-suggestion/promptSuggestion.ts
+]
+
+const textOf = (block: unknown): string => (isRecord(block) && typeof block.text === 'string' ? block.text : '')
+
+/** A system prompt or a message's content as blocks, a plain string counting as one. */
+function contentBlocks(content: unknown): Json[] {
+  if (typeof content === 'string') return [{ type: 'text', text: content }]
+  return Array.isArray(content) ? content.filter(isRecord) : []
+}
+
+function messagesOf(body: Json): Json[] {
+  return Array.isArray(body.messages) ? body.messages.filter(isRecord) : []
+}
+
+function lastUserBlocks(body: Json): Json[] {
+  const last = messagesOf(body).at(-1)
+  return last?.role === 'user' ? contentBlocks(last.content) : []
+}
+
+function isClassifierRequest(body: Json): boolean {
+  if (isRecord(body.tool_choice) && body.tool_choice.name === CLASSIFIER_TOOL) return true
+  if (Array.isArray(body.stop_sequences) && body.stop_sequences.includes(CLASSIFIER_STOP)) return true
+  const blocks = lastUserBlocks(body)
+  if (textOf(blocks[0]) === TRANSCRIPT_OPEN && blocks.some(b => textOf(b) === TRANSCRIPT_CLOSE)) return true
+  return contentBlocks(body.system).some(b => textOf(b).startsWith(CLASSIFIER_IDENTITY))
+}
+
+function hasForkPrompt(body: Json): boolean {
+  return messagesOf(body).some(
+    m =>
+      m.role === 'user' &&
+      contentBlocks(m.content).some(b => {
+        const text = textOf(b).trimStart()
+        return FORK_PROMPTS.some(prompt => text.startsWith(prompt))
+      }),
+  )
+}
+
+export function requestKind(body: Json): RequestKind {
+  if (isClassifierRequest(body)) return 'classifier'
+  // The agent loop sends its whole tool pool on every request, deferred tools
+  // included, and lets the model choose. A side query sends no tool or the
+  // one it forces, a count_tokens body has no max_tokens, and a keep-alive
+  // ping asks for a single token.
+  const tools = Array.isArray(body.tools) ? body.tools.filter(isRecord) : []
+  const forced = isRecord(body.tool_choice) && body.tool_choice.type === 'tool'
+  const generates = typeof body.max_tokens === 'number' && body.max_tokens > 1
+  return tools.length > 1 && !forced && generates && !hasForkPrompt(body) ? 'main' : 'other'
+}
+
+/**
+ * What a classifier request judged: the action — the last block inside the
+ * transcript on the XML path, the last block on the tool_use path — and a key
+ * for the judgment, shared by its stages: they send the same transcript and
+ * action, and differ only in the instruction after them.
+ */
+function judgmentOf(body: Json): { action: string; judgment: string } | null {
+  const blocks = lastUserBlocks(body)
+  const close = blocks.findLastIndex(b => textOf(b) === TRANSCRIPT_CLOSE)
+  const judged = close >= 0 ? blocks.slice(0, close) : blocks
+  const action = textOf(judged.at(-1))
+  if (!action) return null
+  return { action, judgment: createHash('sha256').update(JSON.stringify(judged)).digest('hex') }
+}
+
+const BASH_ACTION_PREFIX = 'Bash '
+const ACTION_END_RE = /\n$/
+
+/**
+ * The command of a judged Bash action, or null for another tool's. The
+ * classifier writes the action as one transcript block
+ * (yoloClassifier/transcript.ts `toCompactBlock`): `Bash <command>` on the
+ * default path, `{"Bash":"<command>"}` with its JSONL transcript on.
+ */
+export function bashCommandOf(action: string): string | null {
+  const block = action.replace(ACTION_END_RE, '')
+  if (block.startsWith(BASH_ACTION_PREFIX)) return block.slice(BASH_ACTION_PREFIX.length)
+  if (!block.startsWith('{')) return null
+  try {
+    const parsed: unknown = JSON.parse(block)
+    return isRecord(parsed) && typeof parsed.Bash === 'string' ? parsed.Bash : null
+  } catch {
+    return null // not a JSONL block after all: no command to read from it
+  }
+}
+
+/** An answered request, with what the session bench's census needs of it. */
+export type KindedRequest = {
+  n: number
+  kind: RequestKind
+  /** The response's model, or the body's when the response carried none. */
+  model: string
+  usage: Json | null
+  /** Classifier requests only: the action judged, and the judgment its stages share. */
+  action?: string
+  judgment?: string
+}
+
+/** The answered /v1/messages requests of one label, in the order they were sent. */
+export function readKindedRequests(logDir: string, label: string): KindedRequest[] {
+  return readProxyRecords(logDir, label)
+    .filter(r => r.reqFile && r.status < 400 && isMessagesPath(r.path))
+    .sort((a, b) => a.n - b.n)
+    .map(r => {
+      const body = readBody(logDir, label, r.reqFile!)
+      const kind = requestKind(body)
+      return {
+        n: r.n,
+        kind,
+        model: r.response?.model ?? String(body.model ?? ''),
+        usage: r.response?.usage ?? null,
+        ...(kind === 'classifier' ? (judgmentOf(body) ?? {}) : {}),
+      }
+    })
+}
+
 // ---------------------------------------------------------------------------
 // summarize — what each session sent, request by request
 // ---------------------------------------------------------------------------
@@ -459,6 +630,7 @@ function summarize(logDir: string): void {
     const configs = new Map<string, number>()
     const betas = new Set<string>()
     const tools = new Map<string, number>()
+    const kinds: Record<RequestKind, number> = { main: 0, classifier: 0, other: 0 }
     let thinking = 0
     let output = 0
     let withTools = 0
@@ -468,7 +640,8 @@ function summarize(logDir: string): void {
       for (const b of (r.headers['anthropic-beta'] ?? '').split(',')) if (b.trim()) betas.add(b.trim())
       if (r.rewrite) rewrites.add(r.rewrite)
       if ((r.response?.thinkingChars ?? 0) > 0) summarized++
-      const body = JSON.parse(gunzipSync(readFileSync(join(logDir, label, r.reqFile!))).toString('utf8')) as Json
+      const body = readBody(logDir, label, r.reqFile!)
+      kinds[requestKind(body)]++
       const toolList = Array.isArray(body.tools) ? body.tools.filter(isRecord) : []
       if (toolList.length) withTools++
       const eager = toolList.filter(x => !x.defer_loading).map(x => String(x.name))
@@ -485,6 +658,7 @@ function summarize(logDir: string): void {
       output += typeof r.response?.usage?.output_tokens === 'number' ? (r.response.usage.output_tokens as number) : 0
     }
     console.log(`\n## ${label}: ${messages.length} /v1/messages (${withTools} with tools), output ${output}, thinking ${thinking}`)
+    console.log(`  by kind: ${kinds.main} agent loop, ${kinds.classifier} auto-mode classifier, ${kinds.other} other`)
     for (const [k, n] of configs) console.log(`  ${n}× ${k}`)
     if (rewrites.size) console.log(`  rewritten by the proxy: ${[...rewrites].join(', ')}; ${summarized} responses carried thinking text`)
     console.log(`  betas: ${[...betas].sort().join(', ') || 'none'}`)

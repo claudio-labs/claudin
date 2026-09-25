@@ -308,5 +308,14 @@ describe('createPostCompactFileAttachments', () => {
       )
       expect(await restoredNames([refused!, other!], tail)).toEqual([other!])
     })
+
+    test('spares the files a glob it named showed (CLAUDIN_READ_GLOBS)', async () => {
+      const [a, b, other] = files('glob-a', 'glob-b', 'glob-other')
+      const tail = tailOf(
+        { file_paths: [join(dir, 'batch-glob-[ab].txt')] },
+        [`==> ${a} <==\n     1→glob-a`, `==> ${b} <==\n     1→glob-b`].join('\n\n'),
+      )
+      expect(await restoredNames([a!, b!, other!], tail)).toEqual([other!])
+    })
   })
 })

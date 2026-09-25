@@ -1,4 +1,14 @@
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources/index.mjs'
+import { createUserMessage } from 'src/agent/messages/messages.js'
+import {
+  isOneCallCommitEnabled,
+  isResponseChainsEnabled,
+} from 'src/agent/prompts/steeringToggles.js'
+import {
+  type ChainCall,
+  createResponseChain,
+  describeCall,
+} from 'src/agent/tools/responseChain.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { findToolByName, type ToolUseContext } from 'src/tools/Tool.js'
 import type { AssistantMessage, Message } from 'src/shared/types/message.js'
@@ -23,6 +33,14 @@ export async function* runTools(
   toolUseContext: ToolUseContext,
 ): AsyncGenerator<MessageUpdate, void> {
   let currentContext = toolUseContext
+  // CLAUDIN_RESPONSE_CHAINS or CLAUDIN_ONE_CALL_COMMIT: once a call fails, the
+  // calls after it that would run or ship code are skipped (responseChain.ts)
+  // — the commit a one-call protocol puts beside the last edit among them.
+  // Off, there is no chain and every call runs as before.
+  const chain =
+    isResponseChainsEnabled() || isOneCallCommitEnabled()
+      ? createResponseChain()
+      : null
   for (const { isConcurrencySafe, blocks } of partitionToolCalls(
     toolUseMessages,
     currentContext,
@@ -62,6 +80,17 @@ export async function* runTools(
       }
       yield { newContext: currentContext }
     } else {
+      // partitionToolCalls gives every unsafe call a batch of its own.
+      const block = blocks[0]!
+      const call = chain ? chainCallOf(block, currentContext) : null
+      const skip = chain && call ? chain.skipText(call) : null
+      if (skip !== null) {
+        yield {
+          message: skippedCallMessage(block, skip, assistantMessages),
+          newContext: currentContext,
+        }
+        continue
+      }
       // Run non-read-only batch serially
       for await (const update of runToolsSerially(
         blocks,
@@ -69,6 +98,7 @@ export async function* runTools(
         canUseTool,
         currentContext,
       )) {
+        if (chain && call) chain.observe(call, update.message)
         if (update.newContext) {
           currentContext = update.newContext
         }
@@ -82,6 +112,52 @@ export async function* runTools(
 }
 
 type Batch = { isConcurrencySafe: boolean; blocks: ToolUseBlock[] }
+
+/** What the response chain needs to know about one unsafe call. */
+function chainCallOf(
+  toolUse: ToolUseBlock,
+  toolUseContext: ToolUseContext,
+): ChainCall {
+  const tool = findToolByName(toolUseContext.options.tools, toolUse.name)
+  const parsedInput = tool?.inputSchema.safeParse(toolUse.input)
+  let readOnly = false
+  if (tool && parsedInput?.success) {
+    try {
+      readOnly = Boolean(tool.isReadOnly(parsedInput.data))
+    } catch {
+      // Fail closed, like isConcurrencySafe in partitionToolCalls: a call
+      // that cannot be shown read-only is treated as one that writes.
+      readOnly = false
+    }
+  }
+  return {
+    id: toolUse.id,
+    name: tool?.name ?? toolUse.name,
+    readOnly,
+    description: describeCall(toolUse.name, toolUse.input),
+  }
+}
+
+function skippedCallMessage(
+  toolUse: ToolUseBlock,
+  text: string,
+  assistantMessages: AssistantMessage[],
+): Message {
+  return createUserMessage({
+    content: [
+      {
+        type: 'tool_result',
+        content: `<tool_use_error>${text}</tool_use_error>`,
+        is_error: true,
+        tool_use_id: toolUse.id,
+      },
+    ],
+    toolUseResult: text,
+    sourceToolAssistantUUID: assistantMessages.find(_ =>
+      _.message.content.some(_ => _.type === 'tool_use' && _.id === toolUse.id),
+    )?.uuid,
+  })
+}
 
 /**
  * Partition tool calls into batches where each batch is either:

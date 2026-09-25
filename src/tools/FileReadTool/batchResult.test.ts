@@ -3,6 +3,7 @@
 // so the reader cannot drift from batchRead.ts unnoticed: each file has to
 // come back as exactly the text a Read of that one file returns.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdirSync } from 'fs'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
@@ -201,5 +202,81 @@ describe('splitBatchReadResult — what it will not take', () => {
     expect(splitBatchReadResult(text, [a], fixtureDir())).toEqual([
       { path: a, text: 'Not shown — as a line of the file itself' },
     ])
+  })
+})
+
+// CLAUDIN_READ_GLOBS (readGlobs.ts): the call names a glob, the batch reads
+// the files it matched, and the transcript keeps the glob.
+describe('splitBatchReadResult — a glob the call named', () => {
+  test('each file it matched comes back under its absolute path, as a Read of it returns', async () => {
+    mkdirSync(join(fixtureDir(), 'gsrc'), { recursive: true })
+    const a = writeFixture('gsrc/a.ts', SAMPLE_TS)
+    const b = writeFixture('gsrc/b.txt', 'first\nsecond\n')
+    // What the expansion hands the batch: the files the glob matched.
+    const { text } = await runBatch({ file_paths: [a, b] }, context())
+    expect(splitBatchReadResult(text, readPathsOf({ file_paths: ['gsrc/*'] }), fixtureDir())).toEqual([
+      { path: a, text: await singleText(a) },
+      { path: b, text: await singleText(b) },
+    ])
+  })
+
+  test('a header the glob could not have produced is dropped with its text', () => {
+    const a = join(fixtureDir(), 'src', 'a.ts')
+    const text = [
+      '==> src/a.ts <==\n   1→a',
+      // `*` stops at a `/`, as it did when the Read listed the glob.
+      '==> src/nested/c.ts <==\n   1→nested',
+      '==> src/a.tsx <==\n   1→tsx',
+      '==> /etc/passwd <==\n   1→root',
+    ].join('\n\n')
+    expect(splitBatchReadResult(text, ['src/*.ts'], fixtureDir())).toEqual([
+      { path: a, text: '   1→a' },
+    ])
+  })
+
+  test('an absolute glob takes a label relative to the working directory, and dotfiles', () => {
+    const x = join(fixtureDir(), 'lib', 'x.ts')
+    const hidden = join(fixtureDir(), 'lib', '.hidden.ts')
+    const text = `==> lib/x.ts <==\n   1→x\n\n==> ${hidden} <==\n   1→h`
+    expect(splitBatchReadResult(text, [join(fixtureDir(), 'lib', '*.ts')], fixtureDir())).toEqual([
+      { path: x, text: '   1→x' },
+      { path: hidden, text: '   1→h' },
+    ])
+  })
+
+  test('a path named beside a glob is still credited as the call named it', () => {
+    const named = join(fixtureDir(), 'named.md')
+    const a = join(fixtureDir(), 'src', 'a.ts')
+    const text = '==> named.md <==\n   1→n\n\n==> src/a.ts <==\n   1→a'
+    expect(splitBatchReadResult(text, [named, 'src/*.ts'], fixtureDir())).toEqual([
+      { path: named, text: '   1→n' },
+      { path: a, text: '   1→a' },
+    ])
+  })
+
+  test('a file whose name reads as a glob matches as written', () => {
+    // The Read takes `app/[slug]/page.tsx` as that file when it exists.
+    const page = join(fixtureDir(), 'app', '[slug]', 'page.tsx')
+    const text = '==> app/[slug]/page.tsx <==\n   1→page'
+    expect(splitBatchReadResult(text, [page], fixtureDir())).toEqual([
+      { path: page, text: '   1→page' },
+    ])
+  })
+
+  test('a glob never matches by its tail', () => {
+    // A label written from inside pkg/. The literal pkg/x.ts would match it by
+    // its tail (see "from another working directory" above); the glob, whose
+    // text ends the same way, must not hand itself over as the file.
+    const text = '==> x.ts <==\n   1→x'
+    expect(splitBatchReadResult(text, [join(fixtureDir(), '*', 'x.ts')], fixtureDir())).toEqual(
+      [],
+    )
+  })
+
+  test('a glob picomatch cannot compile credits nothing, and does not throw', () => {
+    // picomatch refuses a pattern longer than 65536 characters.
+    const unusable = join(fixtureDir(), `${'x'.repeat(70_000)}*.ts`)
+    const a = join(fixtureDir(), 'a.ts')
+    expect(splitBatchReadResult(`==> ${a} <==\n   1→a`, [unusable], fixtureDir())).toEqual([])
   })
 })

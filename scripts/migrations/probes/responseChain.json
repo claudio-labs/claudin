@@ -1,0 +1,334 @@
+{
+  "test": [
+    "src/agent/tools/responseChain.test.ts",
+    "src/agent/tools/toolOrchestration.test.ts",
+    "src/tools/BashTool/runShellCommand.test.ts",
+    "src/agent/prompts/prompts.test.ts",
+    "src/agent/prompts/steeringToggles.test.ts",
+    "src/tools/BashTool/prompt.test.ts"
+  ],
+  "source": "src/agent/tools/responseChain.ts",
+  "probes": [
+    {
+      "name": "guard: RunTests is not an exit-code check",
+      "find": "  RUN_TESTS_TOOL_NAME,\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: Typecheck is not an exit-code check",
+      "find": "  TYPECHECK_TOOL_NAME,\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: Build is not an exit-code check",
+      "find": "  BUILD_TOOL_NAME,\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: Bash is not a command tool",
+      "find": "  BASH_TOOL_NAME,\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: PowerShell is not a command tool",
+      "find": "  POWERSHELL_TOOL_NAME,\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: Git is not a command tool",
+      "find": "  GIT_TOOL_NAME,\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: a check behind a failure still runs",
+      "find": "  if (EXIT_CODE_CHECKS.has(call.name)) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: a read-only command behind a failure is skipped",
+      "find": "COMMAND_TOOLS.has(call.name) && !call.readOnly",
+      "replace": "COMMAND_TOOLS.has(call.name)"
+    },
+    {
+      "name": "guard: exit code 0 counts as a failure",
+      "find": "typeof value === 'number' && value !== 0",
+      "replace": "typeof value === 'number'"
+    },
+    {
+      "name": "guard: a failed read-only call breaks the chain",
+      "find": "if (call.readOnly || message?.type !== 'user') return false",
+      "replace": "if (message?.type !== 'user') return false"
+    },
+    {
+      "name": "guard: another call's error counts as this call's",
+      "find": "block.type === 'tool_result' && block.tool_use_id === call.id,",
+      "replace": "block.type === 'tool_result',"
+    },
+    {
+      "name": "guard: an is_error result is not a failure",
+      "find": "  if (result.type === 'tool_result' && result.is_error === true) return true\n",
+      "replace": ""
+    },
+    {
+      "name": "guard: a red RunTests/Typecheck/Build (exitCode) is not a failure",
+      "find": "return 'exitCode' in data && nonZeroNumber(data.exitCode)",
+      "replace": "return false"
+    },
+    {
+      "name": "guard: a `| tail` that hid a failing exit is not a failure",
+      "find": "return 'reducedExitCode' in data && nonZeroNumber(data.reducedExitCode)",
+      "replace": "return false"
+    },
+    {
+      "name": "guard: a later failure replaces the first",
+      "find": "if (failure === null && isFailedResult(call, message)) {",
+      "replace": "if (isFailedResult(call, message)) {"
+    },
+    {
+      "name": "guard: a command is skipped before anything failed",
+      "find": "if (failure === null || !isSkippedAfterFailure(call)) return null",
+      "replace": "if (!isSkippedAfterFailure(call)) return null"
+    },
+    {
+      "name": "guard: reads and edits behind a failure are skipped",
+      "find": "if (failure === null || !isSkippedAfterFailure(call)) return null",
+      "replace": "if (failure === null) return null"
+    },
+    {
+      "name": "guard: a long description is not cut",
+      "find": "    summary.length > MAX_DESCRIPTION_CHARS\n",
+      "replace": "    false\n"
+    },
+    {
+      "name": "guard: the description is cut somewhere other than 40 chars",
+      "find": "const MAX_DESCRIPTION_CHARS = 40",
+      "replace": "const MAX_DESCRIPTION_CHARS = 60"
+    },
+    {
+      "name": "guard: describeCall prefers the pattern over the command",
+      "comment": "RunTests takes both `command` and `pattern`, so a failed RunTests call's label — and the skip text that names it — depends on this order.",
+      "find": "[fields.command, first, fields.file_path, fields.pattern]",
+      "replace": "[fields.pattern, fields.file_path, first, fields.command]"
+    },
+    {
+      "name": "runTools: the guard is off under CLAUDIN_RESPONSE_CHAINS=1",
+      "comment": "Repointed 2026-09-25: round 2 (CLAUDIN_ONE_CALL_COMMIT) turned the flag check into an `||` across two lines; requestLevers2.json probes each side of it.",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "    isResponseChainsEnabled() || isOneCallCommitEnabled()\n      ? createResponseChain()\n",
+      "replace": "    false\n      ? createResponseChain()\n"
+    },
+    {
+      "name": "runTools: the guard is on with the flag unset",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "    isResponseChainsEnabled() || isOneCallCommitEnabled()\n      ? createResponseChain()\n",
+      "replace": "    true\n      ? createResponseChain()\n"
+    },
+    {
+      "name": "runTools: a call the chain skips runs anyway",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "      if (skip !== null) {\n",
+      "replace": "      if (false as boolean) {\n"
+    },
+    {
+      "name": "runTools: a skipped call also runs after its skip result",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "        continue\n      }\n      // Run non-read-only batch serially\n",
+      "replace": "      }\n      // Run non-read-only batch serially\n"
+    },
+    {
+      "name": "runTools: the chain never sees a result",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "        if (chain && call) chain.observe(call, update.message)\n",
+      "replace": ""
+    },
+    {
+      "name": "runTools: every call counts as one that writes",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "readOnly = Boolean(tool.isReadOnly(parsedInput.data))",
+      "replace": "readOnly = false"
+    },
+    {
+      "name": "runTools: every call counts as read-only",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "readOnly = Boolean(tool.isReadOnly(parsedInput.data))",
+      "replace": "readOnly = true"
+    },
+    {
+      "name": "runTools: a call whose input fails its schema counts as read-only",
+      "comment": "Fail closed: a call that never reaches isReadOnly (input fails the schema, or no such tool) must stay a write, so its is_error still stops the commit behind it.",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "  let readOnly = false\n",
+      "replace": "  let readOnly = true\n"
+    },
+    {
+      "name": "runTools: a call whose isReadOnly throws counts as read-only",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "      readOnly = false\n    }\n  }\n",
+      "replace": "      readOnly = true\n    }\n  }\n"
+    },
+    {
+      "name": "runTools: a call made by an alias is judged by the alias",
+      "comment": "RunTests, Build and Typecheck answer to Test, Compile and Check. Judged by the alias, a red Test run is no failure, and a Test/Compile/Check call behind a failure is not skipped.",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "name: tool?.name ?? toolUse.name,",
+      "replace": "name: toolUse.name,"
+    },
+    {
+      "name": "bash: a stripped `| tail` never reports the hidden code",
+      "source": "src/tools/shared/outputFilter/Bash/index.ts",
+      "find": "return plan.droppedReducer && code !== 0 ? code : undefined;",
+      "replace": "return undefined;"
+    },
+    {
+      "name": "bash: a 0 exit behind a stripped `| tail` is reported as hidden",
+      "source": "src/tools/shared/outputFilter/Bash/index.ts",
+      "find": "return plan.droppedReducer && code !== 0 ? code : undefined;",
+      "replace": "return plan.droppedReducer ? code : undefined;"
+    },
+    {
+      "name": "bash: a non-zero exit with nothing stripped is reported as hidden",
+      "comment": "BashTool returns (does not throw) when the last command is a grep/diff/test exiting 1. On a command that is not read-only, a code reported here would make the guard skip the calls behind it.",
+      "source": "src/tools/shared/outputFilter/Bash/index.ts",
+      "find": "return plan.droppedReducer && code !== 0 ? code : undefined;",
+      "replace": "return code !== 0 ? code : undefined;"
+    },
+    {
+      "name": "A: the chains bullet never renders",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "    ...(responseChains ? [RESPONSE_CHAINS_HARNESS_BULLET] : []),\n",
+      "replace": ""
+    },
+    {
+      "name": "A: the chains bullet renders with the flag off",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "    ...(responseChains ? [RESPONSE_CHAINS_HARNESS_BULLET] : []),\n",
+      "replace": "    RESPONSE_CHAINS_HARNESS_BULLET,\n"
+    },
+    {
+      "name": "A: getHarnessSection ignores the flag",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "buildHarnessItems(toolBatching, isResponseChainsEnabled())",
+      "replace": "buildHarnessItems(toolBatching)"
+    },
+    {
+      "name": "A: the v2 harness ignores the flag",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "buildHarnessItems(false, isResponseChainsEnabled())",
+      "replace": "buildHarnessItems(false)"
+    },
+    {
+      "name": "A: the git read step never moves",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  const readStep = isResponseChainsEnabled()\n",
+      "replace": "  const readStep = false\n"
+    },
+    {
+      "name": "A: the git read step moves with the flag off",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": "  const readStep = isResponseChainsEnabled()\n",
+      "replace": "  const readStep = true\n"
+    },
+    {
+      "name": "B: the change scope never names tests and docs",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "const CHANGE_SCOPE = ONE_PATCH_CHANGE ? ', its tests and docs included,' : ','",
+      "replace": "const CHANGE_SCOPE = ','"
+    },
+    {
+      "name": "B: the change scope names tests and docs with the flag off",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "const CHANGE_SCOPE = ONE_PATCH_CHANGE ? ', its tests and docs included,' : ','",
+      "replace": "const CHANGE_SCOPE = ', its tests and docs included,'"
+    },
+    {
+      "name": "B: the anti-pattern never names the split",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "const SPLIT_PATCH_ANTI_PATTERN = ONE_PATCH_CHANGE\n",
+      "replace": "const SPLIT_PATCH_ANTI_PATTERN = false\n"
+    },
+    {
+      "name": "B: the anti-pattern names the split with the flag off",
+      "source": "src/agent/prompts/familyAddendums/anthropic.ts",
+      "find": "const SPLIT_PATCH_ANTI_PATTERN = ONE_PATCH_CHANGE\n",
+      "replace": "const SPLIT_PATCH_ANTI_PATTERN = true\n"
+    },
+    {
+      "name": "S: the note renders with the flag off",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "  if (!isSubagentBatchingEnabled()) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "S: the Read half ignores CLAUDIN_READ_MULTI=0",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "      enabledToolNames.has(FILE_READ_TOOL_NAME)) &&\n    readMultiEnabledAtLoad()",
+      "replace": "      enabledToolNames.has(FILE_READ_TOOL_NAME))"
+    },
+    {
+      "name": "S: the Read half ignores the agent's tools",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "    (enabledToolNames === undefined ||\n      enabledToolNames.has(FILE_READ_TOOL_NAME)) &&\n",
+      "replace": "    true &&\n"
+    },
+    {
+      "name": "S: an agent with no tool list loses the Read half",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "    (enabledToolNames === undefined ||\n      enabledToolNames.has(FILE_READ_TOOL_NAME)) &&\n",
+      "replace": "    enabledToolNames?.has(FILE_READ_TOOL_NAME) === true &&\n"
+    },
+    {
+      "name": "S: the note is dropped from the Notes",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "    ...(batchingNote ? [batchingNote] : []),\n",
+      "replace": ""
+    },
+    {
+      "name": "S: the note moves after the extra notes",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "    ...(batchingNote ? [batchingNote] : []),\n    ...(extraNotes ? SUBAGENT_NOTES_BULLETS : []),\n",
+      "replace": "    ...(extraNotes ? SUBAGENT_NOTES_BULLETS : []),\n    ...(batchingNote ? [batchingNote] : []),\n"
+    },
+    {
+      "name": "S: a fresh sub-agent's Notes never get the note",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "    getSubagentBatchingNote(enabledToolNames),\n",
+      "replace": "    null,\n"
+    },
+    {
+      "name": "flags: isResponseChainsEnabled reads another var",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "process.env.CLAUDIN_RESPONSE_CHAINS)",
+      "replace": "process.env.CLAUDIN_RESPONSE_CHAIN)"
+    },
+    {
+      "name": "flags: isOnePatchChangeEnabled reads another var",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "process.env.CLAUDIN_ONE_PATCH_CHANGE)",
+      "replace": "process.env.CLAUDIN_ONE_PATCH)"
+    },
+    {
+      "name": "flags: isSubagentBatchingEnabled reads another var",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "process.env.CLAUDIN_SUBAGENT_BATCHING)",
+      "replace": "process.env.CLAUDIN_SUBAGENT_BATCH)"
+    },
+    {
+      "name": "flags: CLAUDIN_RESPONSE_CHAINS is on when unset",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_RESPONSE_CHAINS)\n",
+      "replace": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_RESPONSE_CHAINS)\n"
+    },
+    {
+      "name": "flags: CLAUDIN_ONE_PATCH_CHANGE is on when unset",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_ONE_PATCH_CHANGE)\n",
+      "replace": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_ONE_PATCH_CHANGE)\n"
+    },
+    {
+      "name": "flags: CLAUDIN_SUBAGENT_BATCHING is on when unset",
+      "source": "src/agent/prompts/steeringToggles.ts",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_SUBAGENT_BATCHING)\n",
+      "replace": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_BATCHING)\n"
+    }
+  ]
+}

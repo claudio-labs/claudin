@@ -5,6 +5,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import {
   checkReadPermissionForTool,
   matchingRuleForInput,
+  pathInAllowedWorkingPath,
 } from 'src/permissions/filePermissions.js'
 import { checkBatchReadPermission } from 'src/permissions/filePermissions/readWriteChecks.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
@@ -32,7 +33,7 @@ import { renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getErrnoCode, isENOENT } from 'src/shared/errors.js'
+import { getErrnoCode, isENOENT, isFsInaccessible } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   findSimilarFile,
@@ -40,6 +41,8 @@ import {
   getFileModificationTimeAsync,
   suggestPathUnderCwd,
 } from 'src/shared/fs/file.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { extractGlobBaseDirectory, glob } from 'src/shared/fs/glob.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { isPDFExtension, parsePDFPageRange } from 'src/shared/fs/pdfUtils.js'
 import { assertKnownEncoding } from 'src/shared/fs/textEncoding.js'
@@ -92,8 +95,14 @@ import {
   maybeFlagReadReminder,
 } from 'src/tools/FileReadTool/resultContent.js'
 import {
+  readGlobsEnabledAtLoad,
+  resolveReadGlobs,
+  type ReadGlobDeps,
+} from 'src/tools/FileReadTool/readGlobs.js'
+import {
   inputSchema,
   outputSchema,
+  type Input,
   type InputSchema,
   type Output,
   type OutputSchema,
@@ -119,6 +128,8 @@ export { AUTO_OUTLINE_PIVOT_FOOTER, scanFile } from 'src/tools/FileReadTool/outl
 // The batch Read — `file_paths`, and `symbol` as a list (readMulti.ts). Read
 // once, at load, like the schema and the description it must agree with.
 const READ_MULTI = readMultiEnabledAtLoad()
+// Globs in `file_paths` (readGlobs.ts), read at load for the same reason.
+const READ_GLOBS = readGlobsEnabledAtLoad()
 
 export const FileReadTool = buildTool({
   name: FILE_READ_TOOL_NAME,
@@ -228,6 +239,14 @@ export const FileReadTool = buildTool({
     return ''
   },
   renderToolUseErrorMessage,
+  // A glob in file_paths is expanded here, before validateInput, the hooks,
+  // the permission check and call() see the input (readGlobs.ts). Absent
+  // unless CLAUDIN_READ_GLOBS is on, so every other Read runs as it did.
+  ...(READ_GLOBS && {
+    resolveInput(input: Input, context: ToolUseContext) {
+      return resolveReadGlobs(input, readGlobDeps(context))
+    },
+  }),
   async validateInput(
     input,
     toolUseContext: ToolUseContext,
@@ -1075,4 +1094,47 @@ export const FileReadTool = buildTool({
 
 function pickLineFormatInstruction(): string {
   return LINE_FORMAT_INSTRUCTION
+}
+
+/**
+ * The session and the disk as the glob expansion reaches them (readGlobs.ts).
+ * A glob's base directory is checked lexically first, which touches nothing
+ * outside the project, then through its symlinks the way the Read permission
+ * resolves a path — so a link inside the project that leads out of it is not
+ * listed either.
+ */
+function readGlobDeps(context: ToolUseContext): ReadGlobDeps {
+  const { toolPermissionContext } = context.getAppState()
+  return {
+    cwd: getCwd(),
+    baseDirectoryOf: pattern => extractGlobBaseDirectory(pattern).baseDir,
+    isInsideProject: directory =>
+      pathInAllowedWorkingPath(directory, toolPermissionContext, [directory]) &&
+      pathInAllowedWorkingPath(directory, toolPermissionContext),
+    isFile: isExistingFile,
+    listMatches: (pattern, limit) => {
+      const { baseDir, relativePattern } = extractGlobBaseDirectory(pattern)
+      // The leading `./` anchors the pattern at its base, as a shell reads it:
+      // `src/*.ts` is src's own files, where glob.ts matches a bare `*.ts` at
+      // any depth.
+      return glob(
+        `./${relativePattern}`,
+        baseDir,
+        { limit, offset: 0, sort: 'path', type: 'file', respectGitignore: true },
+        context.abortController.signal,
+        toolPermissionContext,
+      )
+    },
+  }
+}
+
+async function isExistingFile(path: string): Promise<boolean> {
+  try {
+    return (await getFsImplementation().stat(path)).isFile()
+  } catch (e) {
+    // A glob is not a file name, so not finding one is the usual answer.
+    if (isFsInaccessible(e)) return false
+    logError(e)
+    return false
+  }
 }

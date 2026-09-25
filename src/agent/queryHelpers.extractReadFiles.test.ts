@@ -566,6 +566,34 @@ describe('extractReadFilesFromMessages — a batch Read', () => {
     expect(cache.get(two)).toBeUndefined()
   })
 
+  // CLAUDIN_READ_GLOBS: the call names a glob and the transcript keeps it; the
+  // result heads each file the glob matched (readGlobs.ts, batchResult.ts).
+  test('a file a glob matched is restored, and a header the glob could not match is not', () => {
+    const a = join(dir, 'src', 'a.ts')
+    const b = join(dir, 'src', 'b.ts')
+    const cache = extractReadFilesFromMessages(
+      batchRead({ file_paths: ['src/*.ts'] }, [
+        ['src/a.ts', shown('a1')],
+        ['src/b.ts', shown('b1\nb2')],
+        ['lib/c.ts', shown('c1')],
+      ]),
+      dir,
+    )
+    expect(cache.get(a)).toMatchObject({ content: 'a1' })
+    expect(cache.get(b)).toMatchObject({ content: 'b1\nb2' })
+    expect(cache.size).toBe(2)
+  })
+
+  test('a single glob that matched one file is a batch too', () => {
+    const notes = join(dir, 'notes.md')
+    const cache = extractReadFilesFromMessages(
+      batchRead({ file_paths: [join(dir, '*.md')] }, [['notes.md', shown('n1')]]),
+      dir,
+    )
+    expect(cache.get(notes)).toMatchObject({ content: 'n1' })
+    expect(cache.size).toBe(1)
+  })
+
   test('a single Read is not a batch, whatever placeholders it carries', () => {
     // Codex strict mode sends every property, so a single Read under the
     // batch-capable schema is stored with `file_paths: null` beside its path.

@@ -72,3 +72,9 @@ exports[`sub-agent notes (CLAUDIN_SUBAGENT_NOTES) bullets match snapshot 1`] = `
 `;
 
 exports[`worktree safety strings stash warning matches snapshot 1`] = `"The git stash stack is SHARED with the main checkout and every other worktree, so a bare \`git stash pop\` here can silently consume another session's work. Prefer a temporary WIP commit. If you must stash: \`git stash push -u -m "<unique-tag>"\`, capture the SHA immediately with \`git stash list --format='%H %gs'\`, restore with \`git stash apply <sha>\` (never \`pop\`), then drop the entry by re-finding its \`stash@{n}\` by that tag."`;
+
+exports[`request-count levers A — CLAUDIN_RESPONSE_CHAINS harness bullet bullet matches snapshot 1`] = `"Calls in one response run in the order written, and once a call fails, the tests, builds, shell and git commands after it in that response are skipped — so an edit and the check that verifies it can share a response. Wait for a result only when the next call's input depends on it, and before a commit."`;
+
+exports[`request-count levers S — CLAUDIN_SUBAGENT_BATCHING note on, it names the shared request and the batch Read 1`] = `"Independent tool calls go in ONE response: they share a single request, while one call per response costs a request each. Read takes several files at once with \`file_paths\`."`;
+
+exports[`request-count levers B — CLAUDIN_ONE_PATCH_CHANGE addendum flag on: the tests and docs of a change go in its ONE Patch 1`] = `"When a change touches several files, its tests and docs included, land it as ONE Patch call with a section per file, and Read every one of those files first in a single message. One patch per file, or code then tests then docs in separate calls, is the anti-pattern here, not the careful option."`;

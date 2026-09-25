@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import {
   importWithReadMulti,
+  importWithReadGlobs,
   importWithReadMultiUnset,
 } from 'src/tools/FileReadTool/__testutils__/readMultiFlag.js'
 
@@ -110,5 +111,43 @@ describe('Read input schema — CLAUDIN_READ_MULTI on', () => {
       file_path: '/a.ts',
       symbol: 'x',
     })
+  })
+})
+
+// CLAUDIN_READ_GLOBS (readGlobs.ts). Off — unset, the default — is the schema
+// pinned above: every arm there loads with the variable unset.
+describe('Read input schema — CLAUDIN_READ_GLOBS on', () => {
+  async function load(on: boolean): Promise<Schemas> {
+    return importWithReadGlobs<Schemas>(SCHEMAS, on)
+  }
+
+  test('file_paths takes one to fifty entries, and says what a glob does', async () => {
+    const paths = propertiesOf(zodToJsonSchema((await load(true)).inputSchema()) as JsonRecord)
+      .file_paths!
+    expect(paths.minItems).toBe(1)
+    expect(paths.maxItems).toBe(50)
+    expect(paths.description).toBe(
+      'Absolute paths to read in one call instead of file_path, or globs such as /repo/src/*.ts — each expanded in path order, inside the project, .gitignore respected. Up to 50 files. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.',
+    )
+  })
+
+  test('file_paths is all that differs from the default schema', async () => {
+    const on = zodToJsonSchema((await load(true)).inputSchema()) as JsonRecord
+    const off = zodToJsonSchema((await load(false)).inputSchema()) as JsonRecord
+    const { file_paths: onPaths, ...onRest } = propertiesOf(on)
+    const { file_paths: offPaths, ...offRest } = propertiesOf(off)
+    expect(onRest).toEqual(offRest)
+    expect({ ...on, properties: undefined }).toEqual({ ...off, properties: undefined })
+    expect(onPaths).not.toEqual(offPaths)
+  })
+
+  test('parses a single glob and fifty paths — what the expansion hands on — and refuses more', async () => {
+    const schema = (await load(true)).inputSchema()
+    expect(schema.safeParse({ file_paths: ['/repo/src/*.ts'] }).success).toBe(true)
+    const fifty = Array.from({ length: 50 }, (_, i) => `/f${i}.ts`)
+    expect(schema.safeParse({ file_paths: fifty }).success).toBe(true)
+    expect(schema.safeParse({ file_paths: [...fifty, '/f50.ts'] }).success).toBe(false)
+    // An empty list still reads as absent, as every placeholder does.
+    expect(schema.parse({ file_path: '/a.ts', file_paths: [] })).toEqual({ file_path: '/a.ts' })
   })
 })
