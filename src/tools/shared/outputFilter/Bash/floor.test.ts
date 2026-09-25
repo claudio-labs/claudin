@@ -11,9 +11,11 @@ import {
 } from "src/tools/shared/outputFilter/Bash/index.js";
 import { stripOutputMarkers } from "src/tools/shared/outputFilter/Bash/markers.js";
 import {
+  BOUNDED_READ_MAX_LINES,
   ERROR_FLOOR,
   FLOOR_CAP_LINES,
   GENERIC_FLOOR,
+  isCapKeepBoundedEnabled,
   isCappableBody,
   isFloorCapEnabled,
   isPathLine,
@@ -792,6 +794,166 @@ describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every li
       expect(String(maybeSummarizeToolResult(bare, BASH_TOOL_NAME).content)).toStartWith(
         "<tool-result-summary",
       );
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CLAUDIN_CAP_KEEP_BOUNDED — see lineBound.ts
+// ---------------------------------------------------------------------------
+
+/**
+ * `count` lines of source as `sed -n` or `grep -n` would print them. Adjacent
+ * lines differ by a word, not only by their digits, so neither collapse can
+ * fire: the only stage that could shorten this is the cap.
+ */
+function sourceLines(count: number, width = 40, prefix = ""): string {
+  return `${Array.from({ length: count }, (_, i) => {
+    const word = WORDS[i % WORDS.length];
+    return `${prefix}export const ${word}${i} = '${word}${"-".repeat(width)}'`;
+  }).join("\n")}\n`;
+}
+
+describe("CLAUDIN_CAP_KEEP_BOUNDED — a read the command bounded keeps every line", () => {
+  const FLAG = "CLAUDIN_CAP_KEEP_BOUNDED";
+  // 90 lines: inside the band where the corpus saw the re-reads (61-100).
+  const RANGE = "sed -n 40,129p src/permissions/permissions.ts";
+  const BODY = sourceLines(90);
+  let savedFlag: string | undefined;
+  let savedCap: boolean | undefined;
+
+  const filter = (body: string, command: string): string =>
+    applyBashFilterToStdout(body, false, planBashFilter(command, { allowRewrite: false }));
+
+  beforeEach(() => {
+    savedFlag = process.env[FLAG];
+    delete process.env[FLAG];
+    savedCap = getGlobalConfig().bashOutputFilterCapEnabled;
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: true }));
+  });
+
+  afterEach(() => {
+    if (savedFlag === undefined) delete process.env[FLAG];
+    else process.env[FLAG] = savedFlag;
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: savedCap }));
+  });
+
+  test("the fixture is the size it claims, and on by default", () => {
+    expect(BODY.trimEnd().split("\n")).toHaveLength(90);
+    expect(isCapKeepBoundedEnabled()).toBe(true);
+  });
+
+  test("a range read comes back whole, byte for byte, in the read wrapper", () => {
+    expect(filter(BODY, RANGE)).toBe(`<bash-output-read>${BODY}</bash-output-read>`);
+  });
+
+  test("a search into a bound comes back whole too, its path prefixes not hoisted", () => {
+    const hits = sourceLines(90, 20, "src/permissions/permissions.ts:");
+    const command = 'grep -n "export const" src/permissions/permissions.ts | head -90';
+    expect(filter(hits, command)).toBe(`<bash-output-read>${hits}</bash-output-read>`);
+  });
+
+  // The surviving surface: the rule must not become "90 lines of anything".
+  test.each([
+    ["a whole file", "cat src/permissions/permissions.ts"],
+    ["any other producer into a bound", "bun test | head -100"],
+    ["a listing and a file", "git ls-files && cat README.md"],
+    ["a range read beside an unbounded one", `${RANGE}; cat src/a.ts`],
+  ])("the same 90 lines from %s are still cut", (_, command) => {
+    const out = filter(BODY, command);
+    expect(out).toContain("lines omitted");
+    expect(out).not.toStartWith("<bash-output-read>");
+  });
+
+  test("=0: the plain cut", () => {
+    process.env[FLAG] = "0";
+    expect(isCapKeepBoundedEnabled()).toBe(false);
+    expect(filter(BODY, RANGE)).toContain("lines omitted");
+  });
+
+  test("a bound past the ceiling takes the cut, however little it printed", () => {
+    expect(filter(BODY, `sed -n 40,${40 + BOUNDED_READ_MAX_LINES}p src/permissions/permissions.ts`)).toContain(
+      "lines omitted",
+    );
+    expect(filter(BODY, `sed -n 40,${39 + BOUNDED_READ_MAX_LINES}p src/permissions/permissions.ts`)).toStartWith(
+      "<bash-output-read>",
+    );
+  });
+
+  test("the printed lines are held to the ceiling too, not only the declaration", () => {
+    const over = sourceLines(BOUNDED_READ_MAX_LINES + 1);
+    expect(filter(over, "sed -n 1,100p src/a.ts; echo done")).toContain("lines omitted");
+  });
+
+  test("past the pass-through's 28k chars, the cut — Bash would persist it", () => {
+    const wide = sourceLines(120, 240);
+    expect(wide.length).toBeGreaterThan(28_000);
+    expect(filter(wide, "sed -n 1,120p src/a.ts")).toContain("lines omitted");
+  });
+
+  test("where the cap would not cut, nothing changes", () => {
+    const short = sourceLines(FLOOR_CAP_LINES - 10);
+    const on = filter(short, RANGE);
+    process.env[FLAG] = "0";
+    expect(on).toBe(filter(short, RANGE));
+    expect(on).not.toStartWith("<bash-output-read>");
+  });
+
+  test("with the cap off, there is no cut to spare it from", () => {
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: false }));
+    const out = filter(BODY, RANGE);
+    expect(out).not.toStartWith("<bash-output-read>");
+    expect(out).not.toContain("lines omitted");
+  });
+
+  test("a structured body is not the cap's, so not this rule's", () => {
+    const json = `[\n${sourceLines(90).trimEnd().split("\n").map((l) => `  ${JSON.stringify(l)},`).join("\n")}\n]\n`;
+    expect(filter(json, "sed -n 1,92p data.json")).not.toStartWith("<bash-output-read>");
+  });
+
+  test("a matched spec keeps its own say", () => {
+    const plan = { ...planBashFilter(RANGE, { allowRewrite: false }), filter: BARE };
+    expect(applyBashFilterToStdout(BODY, false, plan)).not.toStartWith("<bash-output-read>");
+  });
+
+  test("a caller that budgets the result itself gets it unwrapped", () => {
+    const plan = planBashFilter(RANGE, { allowRewrite: false, callerBudgets: true });
+    expect(applyBashFilterToStdout(BODY, false, plan)).not.toStartWith("<bash-output-read>");
+  });
+
+  test("a failing command keeps the error floor", () => {
+    const plan = planBashFilter(RANGE, { allowRewrite: false });
+    expect(applyBashFilterToStdout(BODY, true, plan)).not.toContain("<bash-output-read>");
+  });
+
+  describe("the wrapper keeps the tool-result summarizer away", () => {
+    let savedEnabled: boolean;
+    let savedKillSwitch: string | undefined;
+
+    beforeEach(() => {
+      savedEnabled = getGlobalConfig().toolResultSummarizerEnabled;
+      saveGlobalConfig((c) => ({ ...c, toolResultSummarizerEnabled: true }));
+      savedKillSwitch = process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER;
+      delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER;
+    });
+
+    afterEach(() => {
+      saveGlobalConfig((c) => ({ ...c, toolResultSummarizerEnabled: savedEnabled }));
+      if (savedKillSwitch === undefined) delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER;
+      else process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = savedKillSwitch;
+    });
+
+    test("a 140-line range past the 8k threshold reaches the model whole", () => {
+      const raw = sourceLines(140);
+      expect(raw.length).toBeGreaterThan(8_000);
+      const content = filter(raw, "sed -n 1,140p src/a.ts");
+      const block: ToolResultBlockParam = { type: "tool_result", tool_use_id: "toolu_bounded", content };
+      expect(maybeSummarizeToolResult(block, BASH_TOOL_NAME)).toBe(block);
+      expect(stripOutputMarkers(content)).toBe(raw);
+
+      // Not a tautology: the same body without the wrapper IS summarized.
+      const bare: ToolResultBlockParam = { ...block, content: raw.trimEnd() };
+      expect(String(maybeSummarizeToolResult(bare, BASH_TOOL_NAME).content)).toStartWith("<tool-result-summary");
     });
   });
 });

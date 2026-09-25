@@ -7,6 +7,7 @@
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Decisions
+- [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
 - [Bash advises instead of refusing; 4 dev tools deferred (2026-09-24)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT=refuse|off`, `CLAUDIN_EAGER_DEV_TOOLS=1`
 - [SendMessage reaches other local sessions since 2026-09-24](decisions/cross-session-messaging.md) — owner-only sockets + token; Claudin↔Claudin, REPL inbox only; mode parity holds across bypass
 - [apply_patch is called Patch on the wire since 2026-09-24](decisions/patch-tool-rename.md) — alias + legacy-name map keep rules/hooks/transcripts; a census must count both names
@@ -132,6 +133,7 @@
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run +27% cost (only built getCwd()); with `directory`: −7.7% cost / −25% output (median of 3)
 - [Dev tools deferred + Bash advice A/B 09-24](dev-tools-deferred-advice-ab-2026-09-24.md) — no cost regression, prefix −3.3k; deferred RunTests unused; notes = generic line = no effect
 - [cat-read + batch-Read A/Bs 09-24](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties Claude Code ($1.04 vs $1.04, one run); catread +6% on top, off
+- [Cut results cost ~0.3% of requests (09-25)](cut-results-request-cost-2026-09-25.md) — summarizer none; cap on `sed -n`/`head -N` reads in sub-agents is the leak
 - [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 
 ## Providers & models
