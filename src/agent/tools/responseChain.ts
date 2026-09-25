@@ -11,23 +11,30 @@
  *
  * - A failure is a call that is not read-only coming back `is_error`; a
  *   RunTests, Typecheck or Build result with a non-zero `exitCode` (those three
- *   report a red run without `is_error`); or a Bash command whose stripped
- *   trailing `| tail -N` hid a non-zero exit (`reducedExitCode`, BashTool). A
- *   failed read breaks nothing.
+ *   report a red run without `is_error`); a Bash command whose stripped
+ *   trailing `| tail -N` hid a non-zero exit (`reducedExitCode`, BashTool); or
+ *   a Patch or Edit whose `then` check failed (CLAUDIN_EDIT_THEN, which also
+ *   arms this guard: the edit landed, its check did not pass). A failed read
+ *   breaks nothing.
  * - After a failure only the calls that run or ship code are skipped: Bash,
  *   PowerShell and Git when not read-only, and RunTests, Typecheck and Build.
  *   Reads, edits (usually independent fixes), Agent and MCP calls still run.
  * - A skipped call gets a synthetic `is_error` result naming the failure, and
  *   never reaches permissions or hooks.
  *
- * Off, runTools builds no chain and a response runs exactly as before.
+ * `then` is on by default, so the guard is armed by default too. With all
+ * three off (CLAUDIN_EDIT_THEN=0 and the other two unset), runTools builds no
+ * chain and a response runs exactly as before.
  */
 import type { Message } from 'src/shared/types/message.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
+import { thenFailed } from 'src/tools/shared/editThen/editThenShape.js'
 import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
 
 /** One call of the response, as the chain sees it. */
@@ -54,6 +61,9 @@ const COMMAND_TOOLS: ReadonlySet<string> = new Set([
   POWERSHELL_TOOL_NAME,
   GIT_TOOL_NAME,
 ])
+
+/** Edits that can carry a `then` check (editThenShape.ts). */
+const EDITS_WITH_THEN: ReadonlySet<string> = new Set([APPLY_PATCH_TOOL_NAME, FILE_EDIT_TOOL_NAME])
 
 const MAX_DESCRIPTION_CHARS = 40
 
@@ -85,6 +95,7 @@ export function isFailedResult(call: ChainCall, message: Message | undefined): b
   if (call.name === BASH_TOOL_NAME) {
     return 'reducedExitCode' in data && nonZeroNumber(data.reducedExitCode)
   }
+  if (EDITS_WITH_THEN.has(call.name)) return thenFailed(data)
   return false
 }
 

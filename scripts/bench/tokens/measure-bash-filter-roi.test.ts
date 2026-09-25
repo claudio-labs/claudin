@@ -249,6 +249,8 @@ const UNFILTERED: Record<string, string> = {
 
   // Not command output at all.
   "code-file": "a source file read through `cat` — content, not command output",
+  "orientation-ls-files-cat-wc":
+    "a chain of three heads resolves no spec; the generic floor's cut and the paths it keeps are floor.test.ts's",
   "synthetic-progress": "hand-written to exercise collapseDigitTemplates; no command",
   "synthetic-runs": "hand-written to exercise collapseRuns; no command",
 };

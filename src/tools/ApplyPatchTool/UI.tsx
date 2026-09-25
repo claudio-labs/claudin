@@ -9,6 +9,7 @@ import type {
   ApplyPatchOutput,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import { isResubmitSentinel, parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
+import type { ThenRun } from 'src/tools/shared/editThen/editThenShape.js'
 
 const LABEL: Record<ApplyPatchChangeType, string> = {
   add: 'Write',
@@ -26,16 +27,18 @@ function targetPath(file: ApplyPatchFileResult): string {
 }
 
 export function renderToolUseMessage(
-  input: Partial<{ patchText: string }>,
+  input: Partial<{ patchText: string; then: readonly string[] | null }>,
   _options: { verbose: boolean },
 ): React.ReactNode {
   if (!input.patchText) return null
-  if (isResubmitSentinel(input.patchText)) return 'resubmitted'
+  // The permission dialog shows this line, so the commands are named in it.
+  const then = input.then?.length ? ` · then ${input.then.join(' → ')}` : ''
+  if (isResubmitSentinel(input.patchText)) return `resubmitted${then}`
   // Parse opportunistically — patchText may still be streaming in.
   try {
     const count = parsePatch(input.patchText).hunks.length
     if (count === 0) return null
-    return `${count} file${count === 1 ? '' : 's'}`
+    return `${count} file${count === 1 ? '' : 's'}${then}`
   } catch {
     return null
   }
@@ -160,9 +163,11 @@ function GroupRow({
 
 function ApplyPatchResultMessage({
   files,
+  then,
   verbose,
 }: {
   files: ApplyPatchFileResult[]
+  then: ThenRun[] | undefined
   verbose: boolean
 }): React.ReactNode {
   const [expanded, setExpanded] = useState<ReadonlySet<ApplyPatchChangeType>>(
@@ -188,6 +193,18 @@ function ApplyPatchResultMessage({
           onToggle={() => toggle(group.type)}
         />
       ))}
+      {(then ?? []).map(run => (
+        <Text key={run.command} dimColor={run.ran && run.exitCode === 0}>
+          {`$ ${run.command}  `}
+          {!run.ran ? (
+            <Text dimColor>not run</Text>
+          ) : run.exitCode === 0 ? (
+            <Text color="success">✓</Text>
+          ) : (
+            <Text color="error">{run.exitCode === null ? '✗ interrupted' : `✗ exit ${run.exitCode}`}</Text>
+          )}
+        </Text>
+      ))}
       <Text dimColor>run /diff to review full changes</Text>
     </Box>
   )
@@ -198,7 +215,7 @@ export function renderToolResultMessage(
   _progressMessagesForMessage: unknown,
   { verbose }: { verbose: boolean },
 ): React.ReactNode {
-  const { files } = output
+  const { files, then } = output
   if (files.length === 0) return null
-  return <ApplyPatchResultMessage files={files} verbose={verbose} />
+  return <ApplyPatchResultMessage files={files} then={then} verbose={verbose} />
 }

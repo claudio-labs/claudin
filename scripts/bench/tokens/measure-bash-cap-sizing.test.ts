@@ -32,7 +32,7 @@ import { test } from 'bun:test'
 import { existsSync } from 'fs'
 import { applyPipeline } from 'src/tools/shared/outputFilter/Bash/pipeline.js'
 import { findFilterForCommand } from 'src/tools/shared/outputFilter/Bash/registry.js'
-import { FLOOR_CAP_LINES } from 'src/tools/shared/outputFilter/Bash/floor.js'
+import { FLOOR_CAP_LINES, isPathLine, MAX_KEPT_PATH_LINES } from 'src/tools/shared/outputFilter/Bash/floor.js'
 import { groupMatchLines } from 'src/tools/shared/outputFilter/Bash/groupMatchLines.js'
 import type { FilterSpec } from 'src/tools/shared/outputFilter/Bash/types.js'
 import {
@@ -93,6 +93,14 @@ const CAPS = THRESHOLDS.map(maxLines => ({
 const CAP_TRAP = {
   label: 'maxLines 200 + head/tail 15/15 (caps at 31!)',
   spec: spec('trap', { maxLines: 200, headLines: 15, tailLines: 15 }),
+}
+/** The shipped cap with CLAUDIN_CAP_KEEP_PATHS: what keeping the path lines gives back. */
+const CAP_KEEP_PATHS = {
+  label: `maxLines ${FLOOR_CAP_LINES} + keep path lines`,
+  spec: spec('keep', {
+    maxLines: FLOOR_CAP_LINES,
+    keepLines: { test: isPathLine, max: MAX_KEPT_PATH_LINES },
+  }),
 }
 
 /**
@@ -179,7 +187,7 @@ test('bash filter floor and cap sizing', () => {
   console.log(
     `  ${pad('cap variant', 46)} ${padLeft('entries', 8)} ${padLeft('saved', 10)} ${padLeft('%corpus', 8)} ${padLeft('lines cut', 10)}`,
   )
-  for (const { label, spec: s } of [...CAPS, CAP_TRAP]) {
+  for (const { label, spec: s } of [...CAPS, CAP_TRAP, CAP_KEEP_PATHS]) {
     let kept = 0
     let raw = 0
     let hit = 0

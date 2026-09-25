@@ -15,6 +15,7 @@ import { recordBytesSaved } from 'src/agent/context/tokensSaved.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { isGrepBodiesResult } from 'src/tools/GrepTool/grepBodies.js'
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
@@ -155,6 +156,9 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
       return maybeCodeOutline(text, BASH_SUMMARIZE_THRESHOLD) ?? summarizeBashOutput(text)
     case GREP_TOOL_NAME: {
       if (text.length < GREP_SUMMARIZE_FLOOR) return null
+      // CLAUDIN_GREP_BODIES: the bodies were registered as read, so the model
+      // must see all of them (grepBodies.ts).
+      if (isGrepBodiesResult(text)) return null
       const grep = summarizeGrepOutput(text)
       if (grep === null) return null
       // Under the full threshold, only a summary that keeps every match ships.

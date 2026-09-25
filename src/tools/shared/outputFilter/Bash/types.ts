@@ -40,7 +40,18 @@ export interface FilterSpec {
   headLines?: number;
   tailLines?: number;
   maxLines?: number;
+  /** Lines a `maxLines` cut leaves where they stand instead of dropping them.
+   * Only the generic floor sets it (`CLAUDIN_CAP_KEEP_PATHS`, floor.ts), and
+   * being a function it is not expressible in the user-filter JSON. */
+  keepLines?: KeepLines;
   onEmpty?: string;
+}
+
+/** What a `maxLines` cut spares, and how many lines it may spare before it
+ * falls back to the plain head/tail cut. */
+export interface KeepLines {
+  readonly test: (line: string) => boolean;
+  readonly max: number;
 }
 
 export interface PipelineResult {

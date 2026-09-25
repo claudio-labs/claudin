@@ -1,4 +1,5 @@
 import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEditThenEnabled } from 'src/tools/shared/editThen/editThenShape.js'
 
 export const APPLY_PATCH_TOOL_NAME = 'Patch'
 /**
@@ -22,6 +23,11 @@ export const LEGACY_APPLY_PATCH_TOOL_NAME = 'apply_patch'
 // credit itself, so DESCRIPTION is still one static string per process.
 const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
   ? ' — a Bash `cat` that printed the whole file counts too'
+  : ''
+// CLAUDIN_EDIT_THEN (editThenShape.ts), on unless `=0`, and read once here for
+// the same reason: the patch's check can ride this call.
+const THEN_RULE = isEditThenEnabled()
+  ? '\n- To check the change, put its test, typecheck or build command in `then`: it runs as soon as the patch applies, in this same call, and its output comes back with the result.'
   : ''
 
 export const DESCRIPTION = `Apply a patch to one or more files in a single, atomic call. Use this to create, modify, delete, or rename several files at once.
@@ -73,4 +79,4 @@ Rules:
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - The patch is atomic: if any hunk fails to apply, no files are written.
 - For new lines, always prefix them with "+", including when creating a file.
-- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead.`
+- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead.${THEN_RULE}`

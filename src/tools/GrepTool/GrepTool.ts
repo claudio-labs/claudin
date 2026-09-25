@@ -25,6 +25,11 @@ import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
 import {
+  BODIES_HEADER_SUFFIX,
+  bodiesSchemaFields,
+  isGrepBodiesEnabled,
+} from 'src/tools/GrepTool/grepBodies.js'
+import {
   GREP_TOOL_NAME,
   getCompactDescription,
   getDescription,
@@ -114,6 +119,8 @@ const inputSchema = lazySchema(() =>
     multiline: semanticBoolean(z.boolean().optional()).describe(
       'Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false.',
     ),
+    // CLAUDIN_GREP_BODIES (grepBodies.ts): absent with the flag off.
+    ...bodiesSchemaFields(),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -220,6 +227,8 @@ const outputSchema = lazySchema(() =>
     // Set when ripgrep was cut short, so the results are a prefix of the real
     // ones rather than all of them.
     incomplete: z.enum(['timeout', 'buffer']).optional(),
+    // CLAUDIN_GREP_BODIES: the symbols come with their bodies.
+    bodies: z.boolean().optional(),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -335,6 +344,7 @@ export const GrepTool = buildTool({
       totalMatchFiles,
       ignoredOnly,
       incomplete,
+      bodies,
     },
     toolUseID,
   ) {
@@ -385,7 +395,7 @@ export const GrepTool = buildTool({
       }
       const matches = numMatches ?? 0
       const files = numFiles ?? 0
-      let header = `Found ${matches} matched ${matches === 1 ? 'symbol' : 'symbols'} across ${files} ${files === 1 ? 'file' : 'files'}${limitInfo ? ` (pagination = ${limitInfo})` : ''}`
+      let header = `Found ${matches} matched ${matches === 1 ? 'symbol' : 'symbols'} across ${files} ${files === 1 ? 'file' : 'files'}${bodies ? BODIES_HEADER_SUFFIX : ''}${limitInfo ? ` (pagination = ${limitInfo})` : ''}`
       // An auto-pivoted result maps only the lines that would have been sent,
       // so state how much wider the search actually was — that is the number
       // the model needs to decide between narrowing and paginating.
@@ -441,8 +451,9 @@ export const GrepTool = buildTool({
       head_limit,
       offset = 0,
       multiline = false,
+      bodies = false,
     },
-    { abortController, getAppState },
+    { abortController, getAppState, readFileState },
   ) {
     const absolutePath = path ? expandPath(path) : getCwd()
     const args = ['--hidden']
@@ -729,7 +740,12 @@ export const GrepTool = buildTool({
         head_limit,
         offset,
       )
-      const symbols = await buildSymbolsOutput(limitedResults, encoding)
+      const withBodies = bodies && isGrepBodiesEnabled()
+      const symbols = await buildSymbolsOutput(
+        limitedResults,
+        encoding,
+        withBodies ? { readFileState } : undefined,
+      )
       const output = {
         mode: 'symbols' as const,
         numFiles: symbols.numFiles,
@@ -738,6 +754,7 @@ export const GrepTool = buildTool({
         numMatches: symbols.numMatches,
         ...(appliedLimit !== undefined && { appliedLimit }),
         ...(offset > 0 && { appliedOffset: offset }),
+        ...(withBodies && { bodies: true }),
         ...searchNotes,
       }
       return { data: output }

@@ -687,6 +687,45 @@ describe("applyPipeline", () => {
     expect(result.body).toContain("line99");
   });
 
+  describe("keepLines", () => {
+    const spec = (max: number): FilterSpec => ({
+      name: "test",
+      matchCommand: /^test$/,
+      maxLines: 5,
+      headLines: 1,
+      tailLines: 1,
+      keepLines: { test: (line) => line.startsWith("keep"), max },
+    });
+
+    test("spares its lines in place and marks each cut run", () => {
+      const input = ["h", "a", "b", "keep1", "c", "d", "e", "keep2", "f", "t"].join("\n");
+      const result = applyPipeline(spec(10), input);
+      expect(result.body).toBe(
+        ["h", "…2 lines omitted…", "keep1", "…3 lines omitted…", "keep2", "f", "t"].join("\n"),
+      );
+      expect(result.applied).toEqual(expect.arrayContaining(["maxLines", "keepLines"]));
+    });
+
+    test("past its max, the plain cut", () => {
+      const input = ["h", "keep1", "keep2", "keep3", "x", "y", "t"].join("\n");
+      const result = applyPipeline(spec(2), input);
+      expect(result.body).toBe(["h", "…5 lines omitted…", "t"].join("\n"));
+      expect(result.applied).not.toContain("keepLines");
+    });
+
+    test("sparing nothing, the plain cut", () => {
+      const input = ["h", "a", "b", "c", "d", "e", "t"].join("\n");
+      expect(applyPipeline(spec(10), input).body).toBe(["h", "…5 lines omitted…", "t"].join("\n"));
+    });
+
+    test("sparing everything cuts nothing and records no cut", () => {
+      const input = ["h", "keep1", "keep2", "keep3", "keep4", "keep5", "t"].join("\n");
+      const result = applyPipeline(spec(10), input);
+      expect(result.body).toBe(input);
+      expect(result.applied).not.toContain("maxLines");
+    });
+  });
+
   test("onEmpty substitutes empty result", () => {
     const filter: FilterSpec = {
       name: "test",

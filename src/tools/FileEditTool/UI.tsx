@@ -58,9 +58,11 @@ export function getToolUseSummary(input: Partial<{
   return getDisplayPath(input.file_path);
 }
 export function renderToolUseMessage({
-  file_path
+  file_path,
+  then
 }: {
   file_path?: string;
+  then?: readonly string[] | null;
 }, {
   verbose
 }: {
@@ -73,9 +75,11 @@ export function renderToolUseMessage({
   if (file_path.startsWith(getPlansDirectory())) {
     return '';
   }
-  return <FilePathLink filePath={file_path}>
+  const link = <FilePathLink filePath={file_path}>
       {verbose ? file_path : getDisplayPath(file_path)}
     </FilePathLink>;
+  // CLAUDIN_EDIT_THEN: the commands are named where the call is shown.
+  return then?.length ? <>{link}{` · then ${then.join(' → ')}`}</> : link;
 }
 export function renderToolResultMessage({
   filePath,

@@ -1,0 +1,58 @@
+{
+  "test": [
+    "src/tools/GrepTool/grepBodies.test.ts",
+    "src/tools/GrepTool/GrepTool.test.ts"
+  ],
+  "source": "src/tools/GrepTool/symbolsOutput.ts",
+  "probes": [
+    {
+      "name": "grep-bodies: the flag reads another variable",
+      "source": "src/tools/GrepTool/grepBodies.ts",
+      "find": "export const GREP_BODIES_ENV = 'CLAUDIN_GREP_BODIES'",
+      "replace": "export const GREP_BODIES_ENV = 'CLAUDIN_GREP_BODY'"
+    },
+    {
+      "name": "grep-bodies: the schema field is there with the flag off",
+      "source": "src/tools/GrepTool/grepBodies.ts",
+      "find": "return (isGrepBodiesEnabled() ? { bodies: bodiesField() } : {}) as {",
+      "replace": "return ({ bodies: bodiesField() }) as {"
+    },
+    {
+      "name": "grep-bodies: a bodies result is not recognized by its header",
+      "source": "src/tools/GrepTool/grepBodies.ts",
+      "find": "const BODIES_HEADER_RE = /^Found \\d+ matched symbols? across \\d+ files?, with their bodies/",
+      "replace": "const BODIES_HEADER_RE = /^Found \\d+ matched symbols across \\d+ files, with their bodies/"
+    },
+    {
+      "name": "grep-bodies: the summarizer cuts a bodies result like any Grep",
+      "source": "src/agent/tools/toolResultSummarizer.ts",
+      "find": "      if (isGrepBodiesResult(text)) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "symbols-output: bodies are never rendered",
+      "find": "      if (!bodies) continue\n",
+      "replace": "      continue\n"
+    },
+    {
+      "name": "symbols-output: a symbol past the line cap is shown whole",
+      "find": "      if (span > MAX_BODY_LINES) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "symbols-output: the budget is not checked",
+      "find": "      } else if (bodyChars + body.length > BODIES_BUDGET_CHARS) {",
+      "replace": "      } else if (false) {"
+    },
+    {
+      "name": "symbols-output: the budget is never spent",
+      "find": "        bodyChars += shown.length\n",
+      "replace": ""
+    },
+    {
+      "name": "symbols-output: the body registered is not the symbol's range",
+      "find": "          { start: sym.startLine, end: sym.endLine },",
+      "replace": "          { start: sym.startLine, end: sym.startLine },"
+    }
+  ]
+}

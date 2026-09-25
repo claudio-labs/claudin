@@ -1,0 +1,148 @@
+{
+  "test": [
+    "src/tools/shared/editThen/editThen.test.ts",
+    "src/agent/tools/toolOrchestration.test.ts",
+    "src/agent/tools/responseChain.test.ts"
+  ],
+  "source": "src/tools/shared/editThen/editThen.ts",
+  "probes": [
+    {
+      "name": "edit-then: the flag reads another variable",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "export const EDIT_THEN_ENV = 'CLAUDIN_EDIT_THEN'",
+      "replace": "export const EDIT_THEN_ENV = 'CLAUDIN_EDIT_THENS'"
+    },
+    {
+      "name": "edit-then: the schema field is there with the flag off",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "return (isEditThenEnabled() ? { then: thenSchema() } : {}) as {",
+      "replace": "return ({ then: thenSchema() }) as {"
+    },
+    {
+      "name": "edit-then: off by default again",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "return !isEnvDefinedFalsy(process.env[EDIT_THEN_ENV])",
+      "replace": "return process.env[EDIT_THEN_ENV] === '1'"
+    },
+    {
+      "name": "edit-then: =0 no longer turns it off",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "return !isEnvDefinedFalsy(process.env[EDIT_THEN_ENV])",
+      "replace": "return true"
+    },
+    {
+      "name": "edit-then: blank entries count as commands",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "return (input.then ?? []).map(command => command.trim()).filter(command => command.length > 0)",
+      "replace": "return (input.then ?? []).map(command => command.trim())"
+    },
+    {
+      "name": "edit-then: a command skipped after a failure counts as the failure",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "run.ran === true && run.exitCode !== 0",
+      "replace": "run.exitCode !== 0"
+    },
+    {
+      "name": "edit-then: a configured hook does not drop the commands",
+      "find": "  if (deps.hooksConfigured(context)) {\n    return 'a PreToolUse or PostToolUse hook is configured, and it would not see them'\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "edit-then: a plain ask runs in modes that open a dialog",
+      "find": "    if (!unattended || promptsInAnyMode(decision)) {",
+      "replace": "    if (promptsInAnyMode(decision)) {"
+    },
+    {
+      "name": "edit-then: a safety-check ask runs in bypass and auto",
+      "find": "  if (reason?.type === 'safetyCheck') return true\n",
+      "replace": ""
+    },
+    {
+      "name": "edit-then: an ask rule does not prompt in bypass and auto",
+      "find": "  return reason?.type === 'rule' && reason.rule.ruleBehavior === 'ask'",
+      "replace": "  return false"
+    },
+    {
+      "name": "edit-then: a denied command is not dropped",
+      "find": "    if (decision.behavior === 'deny') return `\\`${command}\\` is denied by a permission rule`\n",
+      "replace": ""
+    },
+    {
+      "name": "edit-then: a stale skip note survives into the next call",
+      "find": "  skipNotes.delete(context.readFileState)\n  if (!('then' in input)) return input",
+      "replace": "  if (!('then' in input)) return input"
+    },
+    {
+      "name": "edit-then: the note is not kept for call()",
+      "find": "  skipNotes.set(context.readFileState, reason)\n",
+      "replace": ""
+    },
+    {
+      "name": "edit-then: placeholders pass through instead of being dropped",
+      "find": "  if (commands.length === 0) return rest as T",
+      "replace": "  if (commands.length === 0) return input"
+    },
+    {
+      "name": "fold: a denied command no longer denies the call",
+      "find": "  if (denied?.behavior === 'deny') return denied\n",
+      "replace": ""
+    },
+    {
+      "name": "fold: the edit's own ask loses the edit's input",
+      "find": "  if (editDecision.behavior === 'ask') return { ...editDecision, updatedInput: input }",
+      "replace": "  if (editDecision.behavior === 'ask') return editDecision"
+    },
+    {
+      "name": "fold: a command's ask carries no input of the edit's",
+      "find": "      ...('suggestions' in needsUser && needsUser.suggestions && { suggestions: needsUser.suggestions }),\n      updatedInput: input,",
+      "replace": "      ...('suggestions' in needsUser && needsUser.suggestions && { suggestions: needsUser.suggestions }),"
+    },
+    {
+      "name": "fold: allow keeps the delegated placeholder input (the clobber bug)",
+      "find": "  return { ...editDecision, updatedInput: input }\n}",
+      "replace": "  return editDecision\n}"
+    },
+    {
+      "name": "fold: a command that asks is ignored",
+      "find": "  const needsUser = decisions.find(decision => decision.behavior !== 'allow')",
+      "replace": "  const needsUser = decisions.find(() => false)"
+    },
+    {
+      "name": "classifier: the commands are not shown to it",
+      "find": "  return `${base}\\n\\nthen, in order:\\n${commands.map(command => `$ ${command}`).join('\\n')}`",
+      "replace": "  return base"
+    },
+    {
+      "name": "runThen: a failure does not stop the rest",
+      "find": "    if (exitCode !== 0) failed = true",
+      "replace": "    if (exitCode !== 0 && exitCode !== null && exitCode > 0 && false) failed = true"
+    },
+    {
+      "name": "runThen: no exit status does not stop the rest",
+      "find": "    if (exitCode !== 0) failed = true",
+      "replace": "    if (exitCode !== null && exitCode !== 0) failed = true"
+    },
+    {
+      "name": "formatThen: the exit code is not reported",
+      "find": "          : `\\nExit code ${run.exitCode}`",
+      "replace": "          : ''"
+    },
+    {
+      "name": "formatThen: the skip note is not reported",
+      "find": "  if (skipNote) {",
+      "replace": "  if (skipNote && false) {"
+    },
+    {
+      "name": "orchestration: the flag does not arm the guard",
+      "source": "src/agent/tools/toolOrchestration.ts",
+      "find": "isResponseChainsEnabled() || isOneCallCommitEnabled() || isEditThenEnabled()",
+      "replace": "isResponseChainsEnabled() || isOneCallCommitEnabled()"
+    },
+    {
+      "name": "chain: a red then is not a failed check",
+      "source": "src/agent/tools/responseChain.ts",
+      "find": "  if (EDITS_WITH_THEN.has(call.name)) return thenFailed(data)\n",
+      "replace": ""
+    }
+  ]
+}

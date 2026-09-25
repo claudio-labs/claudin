@@ -48,6 +48,15 @@ import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import { validateInputForSettingsFileEdit } from 'src/platform/settings/validateEditTool.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
 import {
+  foldThenPermission,
+  formatThen,
+  resolveThen,
+  runThen,
+  takeThenSkipNote,
+  thenClassifierInput,
+} from 'src/tools/shared/editThen/editThen.js'
+import { thenCommands } from 'src/tools/shared/editThen/editThenShape.js'
+import {
   FILE_EDIT_TOOL_NAME,
   FILE_UNEXPECTEDLY_MODIFIED_ERROR,
 } from 'src/tools/FileEditTool/constants.js'
@@ -149,7 +158,7 @@ export const FileEditTool = buildTool({
     return outputSchema()
   },
   toAutoClassifierInput(input) {
-    return `${input.file_path}: ${input.new_string}`
+    return thenClassifierInput(`${input.file_path}: ${input.new_string}`, input)
   },
   getPath(input): string {
     return input.file_path
@@ -164,12 +173,15 @@ export const FileEditTool = buildTool({
   async preparePermissionMatcher({ file_path }) {
     return pattern => matchWildcardPattern(pattern, file_path)
   },
+  async resolveInput(input, context) {
+    return { ok: true, input: await resolveThen(input, context) }
+  },
   async checkPermissions(input, context): Promise<PermissionDecision> {
     const appState = context.getAppState()
-    return checkWritePermissionForTool(
-      FileEditTool,
+    return foldThenPermission(
       input,
-      appState.toolPermissionContext,
+      checkWritePermissionForTool(FileEditTool, input, appState.toolPermissionContext),
+      context,
     )
   },
   renderToolUseMessage,
@@ -487,16 +499,17 @@ export const FileEditTool = buildTool({
   },
   async call(
     input: FileEditInput,
-    {
+    context,
+    _,
+    parentMessage,
+  ) {
+    const {
       readFileState,
       userModified,
       updateFileHistoryState,
       dynamicSkillDirTriggers,
       agentId,
-    },
-    _,
-    parentMessage,
-  ) {
+    } = context
     const { file_path, old_string, new_string, replace_all = false } = input
 
     // 1. Get current state
@@ -670,8 +683,13 @@ export const FileEditTool = buildTool({
     // window (publish lands after per-edit timeout but before next prompt).
     armFileForLateDiagnostics(absoluteFilePath, agentId)
 
+    // CLAUDIN_EDIT_THEN (editThen.ts): the check rides this call.
+    const commands = thenCommands(input)
+    const then = commands.length > 0 ? await runThen(commands, context) : undefined
+    const thenNote = takeThenSkipNote(context)
+
     return {
-      data,
+      data: { ...data, ...(then && { then }), ...(thenNote && { thenNote }) },
       ...(diagnosticMessages.length > 0 && {
         newMessages: diagnosticMessages,
       }),
@@ -682,19 +700,20 @@ export const FileEditTool = buildTool({
     const modifiedNote = userModified
       ? '.  The user modified your proposed changes before accepting them. '
       : ''
+    const thenText = formatThen(data.then, data.thenNote)
 
     if (replaceAll) {
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: `The file ${filePath} has been updated${modifiedNote}. All occurrences were successfully replaced.`,
+        content: `The file ${filePath} has been updated${modifiedNote}. All occurrences were successfully replaced.${thenText}`,
       }
     }
 
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: `The file ${filePath} has been updated successfully${modifiedNote}.`,
+      content: `The file ${filePath} has been updated successfully${modifiedNote}.${thenText}`,
     }
   },
 } satisfies ToolDef<ReturnType<typeof inputSchema>, FileEditOutput>)

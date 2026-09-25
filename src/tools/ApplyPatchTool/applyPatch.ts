@@ -67,6 +67,7 @@ import {
   RESUBMIT_SENTINEL,
 } from 'src/tools/ApplyPatchTool/patchFormat.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
+import type { ThenRun } from 'src/tools/shared/editThen/editThenShape.js'
 
 export type ApplyPatchInput = { patchText: string }
 
@@ -81,7 +82,12 @@ export type ApplyPatchFileResult = {
   structuredPatch: StructuredPatchHunk[]
 }
 
-export type ApplyPatchOutput = { files: ApplyPatchFileResult[] }
+/** `then` and `thenNote` only under CLAUDIN_EDIT_THEN (editThenShape.ts). */
+export type ApplyPatchOutput = {
+  files: ApplyPatchFileResult[]
+  then?: ThenRun[]
+  thenNote?: string
+}
 
 function resolveHunkPath(hunkPath: string): string {
   // expandPath handles `~`, absolute paths, and resolves relative paths

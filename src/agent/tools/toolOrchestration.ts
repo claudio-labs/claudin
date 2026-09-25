@@ -9,6 +9,7 @@ import {
   createResponseChain,
   describeCall,
 } from 'src/agent/tools/responseChain.js'
+import { isEditThenEnabled } from 'src/tools/shared/editThen/editThenShape.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { findToolByName, type ToolUseContext } from 'src/tools/Tool.js'
 import type { AssistantMessage, Message } from 'src/shared/types/message.js'
@@ -33,12 +34,13 @@ export async function* runTools(
   toolUseContext: ToolUseContext,
 ): AsyncGenerator<MessageUpdate, void> {
   let currentContext = toolUseContext
-  // CLAUDIN_RESPONSE_CHAINS or CLAUDIN_ONE_CALL_COMMIT: once a call fails, the
-  // calls after it that would run or ship code are skipped (responseChain.ts)
-  // — the commit a one-call protocol puts beside the last edit among them.
-  // Off, there is no chain and every call runs as before.
+  // CLAUDIN_RESPONSE_CHAINS, CLAUDIN_ONE_CALL_COMMIT or CLAUDIN_EDIT_THEN (on
+  // by default): once a call fails, the calls after it that would run or ship
+  // code are skipped (responseChain.ts) — the commit put beside the last edit,
+  // or beside an edit whose `then` check came back red. With all three off
+  // there is no chain and every call runs as before.
   const chain =
-    isResponseChainsEnabled() || isOneCallCommitEnabled()
+    isResponseChainsEnabled() || isOneCallCommitEnabled() || isEditThenEnabled()
       ? createResponseChain()
       : null
   for (const { isConcurrencySafe, blocks } of partitionToolCalls(

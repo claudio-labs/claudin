@@ -245,8 +245,6 @@ function registryOnlyOutput(entry: CorpusEntry, plan: PreExecPlan): string {
   return wrapStdoutWithMarkers(entry.text, plan, result)
 }
 
-// A real corpus takes ~6s to replay, past bun's 5s default; with none on disk
-// the test returns at once, so the budget only matters where one exists.
 test('bash filter replay over recorded sessions', () => {
   if (!existsSync(CORPUS_PATH)) {
     console.log(
@@ -439,4 +437,5 @@ test('bash filter replay over recorded sessions', () => {
         `${padLeft(pct(b.raw, all.raw), 7)} ${padLeft(pct(b.filtered, b.calls), 7)} ${padLeft(saved(b), 7)}`,
     )
   }
+  // A 60-day corpus (~19k calls, 30 MB) replays in ~6 s, past bun's 5 s default.
 }, 120_000)

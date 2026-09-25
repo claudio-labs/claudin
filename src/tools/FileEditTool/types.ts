@@ -1,6 +1,7 @@
 import { z } from 'zod/v4'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
+import { thenSchemaFields } from 'src/tools/shared/editThen/editThenShape.js'
 
 // The input schema with optional replace_all
 const inputSchema = lazySchema(() =>
@@ -15,6 +16,8 @@ const inputSchema = lazySchema(() =>
     replace_all: semanticBoolean(
       z.boolean().default(false).optional(),
     ).describe('Replace all occurrences of old_string (default false)'),
+    // CLAUDIN_EDIT_THEN (editThenShape.ts): absent with the flag off.
+    ...thenSchemaFields(),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -43,6 +46,15 @@ export const hunkSchema = lazySchema(() =>
   }),
 )
 
+const thenRunSchema = lazySchema(() =>
+  z.object({
+    command: z.string(),
+    ran: z.boolean(),
+    exitCode: z.number().nullable(),
+    output: z.string(),
+  }),
+)
+
 // Output schema for FileEditTool
 const outputSchema = lazySchema(() =>
   z.object({
@@ -59,6 +71,8 @@ const outputSchema = lazySchema(() =>
       .boolean()
       .describe('Whether the user modified the proposed changes'),
     replaceAll: z.boolean().describe('Whether all occurrences were replaced'),
+    then: z.array(thenRunSchema()).optional().describe('The `then` commands and what they printed'),
+    thenNote: z.string().optional().describe('Why the `then` commands did not run'),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>

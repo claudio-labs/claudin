@@ -1491,6 +1491,13 @@ export const MECHANISM_METRICS = [
   'gitOnlyCalls',
   'globReads',
   'globReadFiles',
+  // Round 4 (CLAUDIN_EDIT_THEN, CLAUDIN_GREP_BODIES): edits carrying `then`,
+  // those whose check came back red, those whose `then` was dropped, and
+  // symbols Greps asking for bodies.
+  'thenEdits',
+  'thenFailed',
+  'thenDropped',
+  'bodiesGreps',
 ] as const
 export type Mechanism = Record<(typeof MECHANISM_METRICS)[number], number>
 const zeroMechanism = (): Mechanism => ({
@@ -1503,6 +1510,10 @@ const zeroMechanism = (): Mechanism => ({
   gitOnlyCalls: 0,
   globReads: 0,
   globReadFiles: 0,
+  thenEdits: 0,
+  thenFailed: 0,
+  thenDropped: 0,
+  bodiesGreps: 0,
 })
 
 const GIT_READ_SUBS = new Set(['status', 'diff', 'log', 'show'])
@@ -1518,6 +1529,10 @@ const DOC_PATH_RE = /\.(md|mdx|markdown|rst)$/i
 const BATCH_HEADER_RE = /^==> .+ <==$/gm
 /** A `file_paths` entry the Read expands as a glob: an unescaped `*` `?` `[` `{` (FileReadTool/readGlobs.ts `isReadGlob`). */
 const READ_GLOB_RE = /(?<!\\)(?:\\\\)*[*?[{]/
+/** What an edit's result says when its `then` was dropped (tools/shared/editThen/editThen.ts `formatThen`). */
+const THEN_DROPPED_RE = /`then` did not run:/
+/** The Bash floor cap's marker for the middle it cut (outputFilter/Bash/pipeline.ts). */
+const CAP_CUT_RE = /lines omitted…/
 
 /** A Git or Bash call reading git state (status/diff/log/show) that writes and checks nothing. */
 const readsGitState = (t: ToolInfo): boolean =>
@@ -1582,6 +1597,13 @@ function requestMechanism(ci: CallInfo): Mechanism {
       m.globReads++
       m.globReadFiles += u.result.match(BATCH_HEADER_RE)?.length ?? 0
     }
+    if ((PATCH_TOOLS.has(u.name) || FILE_EDIT_TOOLS.has(u.name)) && list(u.input.then).length > 0) {
+      m.thenEdits++
+      const runs = isRec(u.structured) ? list(u.structured.then) : []
+      if (runs.some(r => isRec(r) && r.ran === true && r.exitCode !== 0)) m.thenFailed++
+    }
+    if (THEN_DROPPED_RE.test(u.result)) m.thenDropped++
+    if (u.name === 'Grep' && u.input.bodies === true) m.bodiesGreps++
     if (PATCH_TOOLS.has(t.name) && !u.isError) {
       const files = t.editTargets
       if (files.some(f => TEST_PATH_RE.test(f)) && files.some(f => SOURCE_PATH_RE.test(f) && !TEST_PATH_RE.test(f))) {
@@ -1615,7 +1637,36 @@ function mechanismTags(ci: CallInfo): string[] {
     m.commitAfterFailure ? 'commit-after-failure' : '',
     m.gitOnlyCalls ? 'git-only' : '',
     m.globReads ? `glob-read:${m.globReadFiles}` : '',
+    m.thenEdits ? (m.thenFailed ? 'then:red' : 'then') : '',
+    m.thenDropped ? 'then-dropped' : '',
+    m.bodiesGreps ? 'grep-bodies' : '',
   ].filter(Boolean)
+}
+
+/**
+ * Fixture sources the Bash cap hid from the session's first response and a
+ * request 3-6 then read, where the request right after the first did not —
+ * the late read a cut listing costs (CLAUDIN_CAP_KEEP_PATHS; team memory
+ * `request-count-levers-2026-09-24`, round 3).
+ */
+function hiddenPathReads(infos: CallInfo[], fixtureDir: string): number {
+  const first = infos[0]?.call.tools.find(u => u.name === 'Bash')
+  if (!first || !CAP_CUT_RE.test(first.result)) return 0
+  const hidden = new Set(pristineFiles(fixtureDir).filter(p => p.startsWith('src/') && !first.result.includes(p)))
+  const second = new Set(infos[1]?.tools.flatMap(t => t.readTargets) ?? [])
+  const late = new Set<string>()
+  for (const ci of infos.slice(2, 6)) {
+    for (const p of ci.tools.flatMap(t => t.readTargets)) if (hidden.has(p) && !second.has(p)) late.add(p)
+  }
+  return late.size
+}
+
+/** A request that only Reads, every file of it named in the Grep result of the request before: the read Grep bodies folds in. */
+function readsGrepHits(prev: CallInfo, ci: CallInfo): boolean {
+  const grepText = prev.call.tools.filter(u => u.name === 'Grep').map(u => u.result).join('\n')
+  if (!grepText || !ci.tools.length || !ci.tools.every(t => t.name === 'Read')) return false
+  const reads = ci.tools.flatMap(t => t.readTargets)
+  return reads.length > 0 && reads.every(p => grepText.includes(p))
 }
 
 /** A phase's responses before its first edit, or all of them when it never edits. */
@@ -1651,6 +1702,7 @@ const SUB_KINDS = [
   'pattern:separate-git-state-call',
   'pattern:compute-retry',
   'pattern:revert-check-redo',
+  'pattern:grep-then-read',
 ]
 const GIT_STATE_HEAD_RE = /^git (status|diff|log|show)$/
 const TSC_PROBE_HEAD_RE = /^(tsc|which|bunx|npx|head|ls|echo)$/
@@ -1719,10 +1771,12 @@ export function analyzeSession(s: Session, fixtureDir = SESSION_CACHE_PROJECT): 
       bump('pattern:separate-git-state-call')
     if (ci.notes.includes('compute') && prev?.notes.includes('compute')) bump('pattern:compute-retry')
     if (ci.revertCheck && prev?.revertCheck) bump('pattern:revert-check-redo')
+    if (prev && readsGrepHits(prev, ci)) bump('pattern:grep-then-read')
     if (ci.mutates) editedInPhase = true
   })
   r.resume = responsesBeforeFirstEdit(infos, 2)
   r.firstEditTurn = responsesBeforeFirstEdit(infos, 1)
+  r.hiddenPathReads = hiddenPathReads(infos, fixtureDir)
   Object.assign(r, mechanismOf(infos))
   return { infos, row: r, reactCats }
 }
@@ -1758,8 +1812,8 @@ function fmt(xs: number[]): string {
 }
 
 const REPORT_METRICS = ['total', 'p1', 'p2', ...LABELS, 'mergeable', ...LEVERS, ...EXTRA_LEVERS, 'softReact', 'revertChecks', 'hardErrCalls', ...TAGS, 'resume', 'subagentCalls']
-/** The mechanism table: the per-request metrics summed per session, then phase 1's responses before its first edit. */
-const MECHANISM_ROWS = [...MECHANISM_METRICS, 'firstEditTurn']
+/** The mechanism table: the per-request metrics summed per session, phase 1's responses before its first edit, and the late reads of a cut listing. */
+const MECHANISM_ROWS = [...MECHANISM_METRICS, 'firstEditTurn', 'hiddenPathReads']
 
 /** The per-arm report: every metric as median [min–max] over sessions, then sums, sub-kinds and REACT causes. */
 export function renderReport(run: string, arms: ArmSummary[]): string {
