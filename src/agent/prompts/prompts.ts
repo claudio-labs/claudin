@@ -25,10 +25,7 @@ import {
   getFamilyAddendum,
   getFamilyForLogging,
 } from 'src/agent/prompts/familyAddendums/index.js'
-import type {
-  MCPServerConnection,
-  ConnectedMCPServer,
-} from 'src/mcp/types.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
@@ -47,7 +44,6 @@ import {
 } from 'src/tools/AgentTool/prompt.js'
 import {
   systemPromptSection,
-  DANGEROUS_uncachedSystemPromptSection,
   resolveSystemPromptSections,
 } from 'src/agent/prompts/systemPromptSections.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -55,7 +51,6 @@ import {
   isLeanMemoryPromptEnabled,
   loadMemoryPrompt,
 } from 'src/memory/memdir/memdir.js'
-import { isMcpInstructionsDeltaEnabled } from 'src/mcp/mcpInstructionsDelta.js'
 import {
   isLeanSystemPromptEnabled,
   isResponseChainsEnabled,
@@ -116,13 +111,6 @@ function getOutputStyleSection(
 
   return `# Output Style: ${outputStyleConfig.name}
 ${outputStyleConfig.prompt}`
-}
-
-function getMcpInstructionsSection(
-  mcpClients: MCPServerConnection[] | undefined,
-): string | null {
-  if (!mcpClients || mcpClients.length === 0) return null
-  return getMcpInstructions(mcpClients)
 }
 
 export function prependBullets(items: Array<string | string[]>): string[] {
@@ -543,19 +531,6 @@ export async function getSystemPrompt(
     systemPromptSection('output_style', () =>
       getOutputStyleSection(outputStyleConfig),
     ),
-    // When delta enabled, instructions are announced via persisted
-    // mcp_instructions_delta attachments (attachments.ts) instead of this
-    // per-turn recompute, which busts the prompt cache on late MCP connect.
-    // Gate check inside compute (not selecting between section variants)
-    // so a mid-session gate flip doesn't read a stale cached value.
-    DANGEROUS_uncachedSystemPromptSection(
-      'mcp_instructions',
-      () =>
-        isMcpInstructionsDeltaEnabled()
-          ? null
-          : getMcpInstructionsSection(mcpClients),
-      'MCP servers connect/disconnect between turns',
-    ),
     // In the v2 prompt the scratchpad is one line of the environment section.
     systemPromptSection(`scratchpad${leanKey}`, () =>
       lean ? null : getScratchpadInstructions(),
@@ -619,33 +594,6 @@ export async function getSystemPrompt(
     // --- Dynamic content (registry-managed) ---
     ...resolvedDynamicSections,
   ].filter(s => s !== null)
-}
-
-function getMcpInstructions(mcpClients: MCPServerConnection[]): string | null {
-  const connectedClients = mcpClients.filter(
-    (client): client is ConnectedMCPServer => client.type === 'connected',
-  )
-
-  const clientsWithInstructions = connectedClients.filter(
-    client => client.instructions,
-  )
-
-  if (clientsWithInstructions.length === 0) {
-    return null
-  }
-
-  const instructionBlocks = clientsWithInstructions
-    .map(client => {
-      return `## ${client.name}
-${client.instructions}`
-    })
-    .join('\n\n')
-
-  return `# MCP Server Instructions
-
-The following MCP servers have provided instructions for how to use their tools and resources:
-
-${instructionBlocks}`
 }
 
 export async function computeEnvInfo(

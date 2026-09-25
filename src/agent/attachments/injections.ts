@@ -39,10 +39,7 @@ import {
   modelSupportsToolReference,
   type DeferredToolsDeltaScanContext,
 } from 'src/agent/tools/toolSearch.js'
-import {
-  getMcpInstructionsDelta,
-  isMcpInstructionsDeltaEnabled,
-} from 'src/mcp/mcpInstructionsDelta.js'
+import { getMcpInstructionsDelta } from 'src/mcp/mcpInstructionsDelta.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { getClaudeMdDelta } from 'src/memory/instructions/claudeMdDelta.js'
 import {
@@ -237,15 +234,13 @@ export function getAgentListingDeltaAttachment(
   ]
 }
 
-// Exported for compact.ts / reactiveCompact.ts — single source of truth for the gate.
+// Exported for compact.ts / reactiveCompact.ts.
 export function getMcpInstructionsDeltaAttachment(
   mcpClients: MCPServerConnection[],
   tools: Tools,
   model: string,
   messages: Message[] | undefined,
 ): Attachment[] {
-  if (!isMcpInstructionsDeltaEnabled()) return []
-
   const delta = getMcpInstructionsDelta(mcpClients, messages ?? [], [])
   if (!delta) return []
   return [{ type: 'mcp_instructions_delta', ...delta }]

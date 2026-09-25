@@ -8,8 +8,9 @@
  *      walks `getAllBaseTools()` and ignores MCP tools entirely, so the
  *      per-server schema cost is invisible. We synthesize realistic tool
  *      schemas, run them through the same engine shims, and report bytes.
- *   2. **Server instructions** — `getMcpInstructionsSection` injects a
- *      static block per connected server with `instructions` set. Concat
+ *   2. **Server instructions** — the static system-prompt block, one entry
+ *      per connected server with `instructions` set, that the delta
+ *      attachment below replaced. Kept as the comparison baseline. Concat
  *      grows linearly with #servers.
  *   3. **mcp_instructions_delta attachment** — initial-turn announcement
  *      is large; subsequent turns are usually empty (delta gating).
@@ -153,9 +154,9 @@ function shimSchema(
 }
 
 /**
- * Mirror `getMcpInstructions()` in `src/agent/prompts/prompts.ts`. Inlined here
- * so we don't depend on `MCPServerConnection` having a real `Client`
- * field — the production helper only reads `name` and `instructions`.
+ * Mirror the system-prompt block `src/agent/prompts/prompts.ts` rendered
+ * before MCP instructions moved to delta attachments. It only ever read
+ * `name` and `instructions`.
  */
 function renderMcpInstructionsBlock(
   fixtures: readonly { name: string; instructions: string }[],

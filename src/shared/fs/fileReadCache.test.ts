@@ -5,7 +5,6 @@ const realFsOperations = { ...(await import('src/shared/fs/fsOperations.js')) }
 const realFileRead = { ...(await import('src/shared/fs/fileRead.js')) }
 const realDebug = { ...(await import('src/shared/debug.js')) }
 const realLog = { ...(await import('src/shared/log.js')) }
-const realGrowthbook = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realCwd = { ...(await import('src/shared/fs/cwd.js')) }
 const realPath = { ...(await import('src/shared/fs/path.js')) }
 const realPlatform = { ...(await import('src/shared/proc/platform.js')) }
@@ -45,10 +44,6 @@ mock.module('src/shared/debug.js', () => ({
 
 mock.module('src/shared/log.js', () => ({
   logError: () => {},
-}))
-
-mock.module('src/platform/analytics/growthbook.js', () => ({
-  getFeatureValue_CACHED_MAY_BE_STALE: () => false,
 }))
 
 mock.module('./cwd.js', () => ({
@@ -210,8 +205,6 @@ afterAll(() => {
   mock.module('src/shared/debug.js', () => realDebug)
   mock.module('src/shared/log.js', () => realLog)
   mock.module('src/shared/log.js', () => realLog)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
-  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
   mock.module('./cwd.js', () => realCwd)
   mock.module('src/shared/fs/cwd.js', () => realCwd)
   mock.module('./path.js', () => realPath)

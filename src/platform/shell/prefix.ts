@@ -9,7 +9,6 @@
 
 import chalk from 'chalk'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { queryHaiku } from 'src/providers/shims/claude.js'
 import { startsWithApiErrorPrefix } from 'src/providers/transport/errors.js'
 import { memoizeWithLRU } from 'src/shared/data/memoize.js'
@@ -204,27 +203,14 @@ async function getCommandPrefixImpl(
       isNonInteractiveSession,
     )
 
-    const useSystemPromptPolicySpec = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_cork_m4q',
-      false,
-    )
-
     const response = await queryHaiku({
-      systemPrompt: asSystemPrompt(
-        useSystemPromptPolicySpec
-          ? [
-              `Your task is to process ${toolName} commands that an AI coding agent wants to run.\n\n${policySpec}`,
-            ]
-          : [
-              `Your task is to process ${toolName} commands that an AI coding agent wants to run.\n\nThis policy spec defines how to determine the prefix of a ${toolName} command:`,
-            ],
-      ),
-      userPrompt: useSystemPromptPolicySpec
-        ? `Command: ${command}`
-        : `${policySpec}\n\nCommand: ${command}`,
+      systemPrompt: asSystemPrompt([
+        `Your task is to process ${toolName} commands that an AI coding agent wants to run.\n\nThis policy spec defines how to determine the prefix of a ${toolName} command:`,
+      ]),
+      userPrompt: `${policySpec}\n\nCommand: ${command}`,
       signal: abortSignal,
       options: {
-        enablePromptCaching: useSystemPromptPolicySpec,
+        enablePromptCaching: false,
         querySource,
         agents: [],
         isNonInteractiveSession,

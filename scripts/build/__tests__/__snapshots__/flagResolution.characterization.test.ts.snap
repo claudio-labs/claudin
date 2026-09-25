@@ -2,14 +2,6 @@
 
 exports[`tengu gate keys — resolution in a stock install the per-key resolution table matches the snapshot 1`] = `
 {
-  "tengu_basalt_3kr": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": true,
-  },
   "tengu_bridge_initial_history_cap": {
     "defaults": [
       "200",
@@ -97,22 +89,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": 0,
-  },
-  "tengu_compact_line_prefix_killswitch": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_cork_m4q": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
   },
   "tengu_immediate_model_command": {
     "defaults": [
