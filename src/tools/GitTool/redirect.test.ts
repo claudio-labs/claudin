@@ -407,9 +407,9 @@ const RECORDED_COMMANDS: readonly string[] = [
   'git stash push -m wip',
   "git commit -q -F - <<'EOF'",
   // The other-checkout shape (2026-09-10 cross-fork audit, 229 of them).
-  'cd /home/viudes/projects/openclaude && git show 787f2a93 -- src/utils/',
-  'cd /home/viudes/projects/openclaude && git show 3fb718f4 --stat && echo ---',
-  'cd /home/viudes/projects/openclaude && git log --oneline -20 | head -10',
+  'cd /home/user/projects/other-repo && git show 787f2a93 -- src/utils/',
+  'cd /home/user/projects/other-repo && git show 3fb718f4 --stat && echo ---',
+  'cd /home/user/projects/other-repo && git log --oneline -20 | head -10',
 ]
 
 describe('deadlock invariant', () => {
