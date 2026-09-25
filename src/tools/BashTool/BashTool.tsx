@@ -95,10 +95,8 @@ export async function fitOverBudgetRead(result: ExecResult, plan: PreExecPlan, c
 }
 
 /**
- * Checks if a command contains tools that shouldn't run in sandbox
- * This includes:
- * - Dynamic config-based disabled commands and substrings (tengu_sandbox_disabled_commands)
- * - User-configured commands from settings.json (sandbox.excludedCommands)
+ * Checks if a command contains tools that shouldn't run in sandbox: the
+ * user-configured commands from settings.json (sandbox.excludedCommands).
  *
  * User-configured commands support the same pattern syntax as permission rules:
  * - Exact matches: "npm run lint"

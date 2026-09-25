@@ -12,18 +12,17 @@
  * recorded, rather than being left to look covered:
  *
  *   - `initialPermissionModeFromCLI` / `initializeToolPermissionContext`
- *     (the startup context) read the merged settings files, the GrowthBook
- *     cache and the filesystem. Under `bun test` they answer from whatever
+ *     (the startup context) read the merged settings files and the
+ *     filesystem. Under `bun test` they answer from whatever
  *     ~/.claudin/settings.json happens to say.
- *   - `verifyAutoModeGateAccess` awaits the dynamic config and can fire a
- *     live classifier probe against the active provider.
+ *   - `verifyAutoModeGateAccess` can fire a live classifier probe against
+ *     the active provider.
  *
  * Both are pinned by name and arity only. Nothing below claims they behave.
  */
 import { describe, expect, test } from 'bun:test'
 import * as permissionSetup from 'src/permissions/permissionSetup.js'
 import type {
-  AutoModeEnabledState,
   AutoModeGateCheckResult,
   AutoModeUnavailableReason,
   DangerousPermissionInfo,
@@ -33,14 +32,10 @@ import type { ToolPermissionContext } from 'src/tools/Tool.js'
 /** Every value export, exactly. Adding one here is a deliberate act. */
 const EXPECTED_EXPORTS = [
   '__autoModeAllowedForModelForTests',
-  'checkAndDisableBypassPermissions',
   'createDisabledBypassPermissionsContext',
   'findDangerousClassifierPermissions',
-  'getAutoModeEnabledState',
-  'getAutoModeEnabledStateIfCached',
   'getAutoModeUnavailableNotification',
   'getAutoModeUnavailableReason',
-  'hasAutoModeOptInAnySource',
   'initialPermissionModeFromCLI',
   'initializeToolPermissionContext',
   'isAutoModeGateEnabled',
@@ -54,7 +49,6 @@ const EXPECTED_EXPORTS = [
   'prepareContextForPlanMode',
   'removeDangerousPermissions',
   'restoreDangerousPermissions',
-  'shouldDisableBypassPermissions',
   'shouldPlanUseAutoMode',
   'stripDangerousPermissionsForAutoMode',
   'transitionPermissionMode',
@@ -73,10 +67,9 @@ describe('permissionSetup surface', () => {
     }
   })
 
-  test('the four exported types survive the barrel', () => {
+  test('the three exported types survive the barrel', () => {
     // Compile-time pin: a type dropped from the barrel is a tsc error on the
     // annotations below, which is what `typecheck` reports as new.
-    const state: AutoModeEnabledState = 'opt-in'
     const reason: AutoModeUnavailableReason = 'circuit-breaker'
     const info: DangerousPermissionInfo = {
       ruleValue: { toolName: 'Bash', ruleContent: 'python:*' },
@@ -87,8 +80,8 @@ describe('permissionSetup surface', () => {
     const gate: AutoModeGateCheckResult = {
       updateContext: (c: ToolPermissionContext) => c,
     }
-    expect([state, reason, info.ruleDisplay, typeof gate.updateContext]).toEqual(
-      ['opt-in', 'circuit-breaker', 'Bash(python:*)', 'function'],
+    expect([reason, info.ruleDisplay, typeof gate.updateContext]).toEqual(
+      ['circuit-breaker', 'Bash(python:*)', 'function'],
     )
   })
 })
@@ -111,18 +104,11 @@ describe('permissionSetup signatures', () => {
     ['initialPermissionModeFromCLI', 1],
     ['initializeToolPermissionContext', 1],
     ['getAutoModeUnavailableNotification', 1],
-    // `fastMode?: boolean` is still a declared parameter — giving it a default
-    // would drop the count, which is the shape this pin is here to catch.
-    ['verifyAutoModeGateAccess', 2],
-    ['shouldDisableBypassPermissions', 0],
+    ['verifyAutoModeGateAccess', 1],
     ['isAutoModeGateEnabled', 0],
     ['getAutoModeUnavailableReason', 0],
-    ['getAutoModeEnabledState', 0],
-    ['getAutoModeEnabledStateIfCached', 0],
-    ['hasAutoModeOptInAnySource', 0],
     ['isBypassPermissionsModeDisabled', 0],
     ['createDisabledBypassPermissionsContext', 1],
-    ['checkAndDisableBypassPermissions', 1],
     ['isDefaultPermissionModeAuto', 0],
     ['shouldPlanUseAutoMode', 0],
     ['prepareContextForPlanMode', 1],

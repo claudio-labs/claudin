@@ -1527,10 +1527,9 @@ function PromptInput({
     const nextMode = getNextPermissionMode(toolPermissionContext, teamContext);
 
     // Check if user is entering auto mode for the first time. Gated on the
-    // persistent settings flag (hasAutoModeOptIn) rather than the broader
-    // hasAutoModeOptInAnySource so that --enable-auto-mode users still see
-    // the warning dialog once — the CLI flag should grant carousel access,
-    // not bypass the safety text.
+    // persistent settings flag (hasAutoModeOptIn), not the CLI flag, so that
+    // --enable-auto-mode users still see the warning dialog once — the CLI
+    // flag should not bypass the safety text.
     let isEnteringAutoModeFirstTime = false;
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       isEnteringAutoModeFirstTime = nextMode === 'auto' && toolPermissionContext.mode !== 'auto' && !hasAutoModeOptIn() && !viewingAgentTaskId; // Only show for primary agent, not subagents

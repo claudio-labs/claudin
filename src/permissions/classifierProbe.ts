@@ -15,9 +15,9 @@
  * probe, not pass a trivial one-field stand-in and then break at runtime.
  *
  * Deliberately format-only: it does NOT judge the classifier's decisions —
- * a provider that returns a well-formed block passes. With GrowthBook stubbed,
- * `tengu_iron_gate_closed` defaults to fail-CLOSED in auto mode, so letting an
- * incapable provider in would deny-loop the session, not just annoy.
+ * a provider that returns a well-formed block passes. An unavailable
+ * classifier fails CLOSED in auto mode, so letting an incapable provider in
+ * would deny-loop the session, not just annoy.
  */
 
 import { isAbortError } from 'src/shared/errors.js'

@@ -2,16 +2,6 @@
 
 exports[`tengu gate keys — resolution in a stock install the per-key resolution table matches the snapshot 1`] = `
 {
-  "tengu_auto_mode_config": {
-    "defaults": [
-      "NO_CACHED_AUTO_MODE_CONFIG",
-      "{}",
-      "{} as AutoModeConfig",
-    ],
-    "fn": "getDynamicConfig_BLOCKS_ON_INIT | getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 6,
-    "stockValue": {},
-  },
   "tengu_basalt_3kr": {
     "defaults": [
       "true",
@@ -124,22 +114,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": false,
   },
-  "tengu_destructive_command_warning": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
-  },
-  "tengu_disable_bypass_permissions_mode": {
-    "defaults": [
-      "",
-    ],
-    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
-    "sites": 3,
-    "stockValue": false,
-  },
   "tengu_immediate_model_command": {
     "defaults": [
       "false",
@@ -147,14 +121,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": false,
-  },
-  "tengu_iron_gate_closed": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
-    "sites": 1,
-    "stockValue": true,
   },
   "tengu_keybinding_customization_release": {
     "defaults": [
@@ -227,14 +193,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 1,
     "stockValue": {},
-  },
-  "tengu_sandbox_disabled_commands": {
-    "defaults": [
-      "{ commands: [], substrings: [] }",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — { commands: [], substrings: [] }>",
   },
   "tengu_sessions_elevated_auth_enforcement": {
     "defaults": [

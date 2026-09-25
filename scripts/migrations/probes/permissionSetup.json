@@ -340,12 +340,6 @@
       "source": "src/permissions/permissionSetup/planAutoMode.ts"
     },
     {
-      "name": "the bypass killswitch is read through the security-restriction gate",
-      "find": "  return checkSecurityRestrictionGate('tengu_disable_bypass_permissions_mode')",
-      "replace": "  return Promise.resolve(true)",
-      "source": "src/permissions/permissionSetup/bypassPermissions.ts"
-    },
-    {
       "name": "a session already in bypass mode is dropped out of it",
       "find": "  if (currentContext.mode === 'bypassPermissions') {",
       "replace": "  if (false as boolean) {",
@@ -364,42 +358,6 @@
       "source": "src/permissions/permissionSetup/bypassPermissions.ts"
     },
     {
-      "name": "the auto-mode enabled default is 'enabled' in this fork",
-      "find": "const AUTO_MODE_ENABLED_DEFAULT: AutoModeEnabledState = 'enabled'",
-      "replace": "const AUTO_MODE_ENABLED_DEFAULT: AutoModeEnabledState = 'opt-in'",
-      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
-    },
-    {
-      "name": "'disabled' is an accepted auto-mode spelling",
-      "find": "  if (value === 'enabled' || value === 'disabled' || value === 'opt-in') {",
-      "replace": "  if (value === 'enabled' || value === 'opt-in') {",
-      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
-    },
-    {
-      "name": "'opt-in' is an accepted auto-mode spelling",
-      "find": "  if (value === 'enabled' || value === 'disabled' || value === 'opt-in') {\n    return value\n  }",
-      "replace": "  if (value === 'enabled' || value === 'disabled') {\n    return value\n  }",
-      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
-    },
-    {
-      "name": "getAutoModeEnabledState reads tengu_auto_mode_config",
-      "find": "  }>('tengu_auto_mode_config', {})\n  return parseAutoModeEnabledState(config?.enabled)",
-      "replace": "  }>('tengu_auto_mode_config_absent', {})\n  return parseAutoModeEnabledState(config?.enabled)",
-      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
-    },
-    {
-      "name": "the uncached sentinel is what gets passed as the default",
-      "find": "  >('tengu_auto_mode_config', NO_CACHED_AUTO_MODE_CONFIG)",
-      "replace": "  >('tengu_auto_mode_config', {})",
-      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
-    },
-    {
-      "name": "'not yet fetched' is reported as undefined, not as a state",
-      "find": "  if (config === NO_CACHED_AUTO_MODE_CONFIG) return undefined",
-      "replace": "  if (false as boolean) return undefined",
-      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
-    },
-    {
       "name": "the settings reason has its own message",
       "find": "      base = 'auto mode disabled by settings'",
       "replace": "      base = 'auto mode unavailable'",
@@ -416,12 +374,6 @@
       "find": "      base = 'auto mode unavailable for this model'",
       "replace": "      base = 'auto mode unavailable'",
       "source": "src/permissions/permissionSetup/autoModeGate.ts"
-    },
-    {
-      "name": "auto-mode opt-in fails closed when no source opted in",
-      "find": "  if (autoModeStateModule?.getAutoModeFlagCli() ?? false) return true\n  return hasAutoModeOptIn()",
-      "replace": "  return true",
-      "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
     },
     {
       "name": "the gate consults the model check",
@@ -461,14 +413,14 @@
     },
     {
       "name": "SURFACE PIN: a name dropped from the public surface is caught",
-      "find": "  shouldDisableBypassPermissions,\n} from 'src/permissions/permissionSetup/bypassPermissions.js'",
-      "replace": "} from 'src/permissions/permissionSetup/bypassPermissions.js'",
+      "find": "  __autoModeAllowedForModelForTests,\n  getAutoModeUnavailableReason,\n",
+      "replace": "  getAutoModeUnavailableReason,\n",
       "source": "src/permissions/permissionSetup.ts"
     },
     {
       "name": "SURFACE PIN: a changed call signature is caught",
-      "find": "  fastMode?: boolean,",
-      "replace": "  fastMode: boolean | undefined = undefined,",
+      "find": "  currentContext: ToolPermissionContext,\n): Promise<AutoModeGateCheckResult> {",
+      "replace": "  currentContext: ToolPermissionContext = {} as ToolPermissionContext,\n): Promise<AutoModeGateCheckResult> {",
       "source": "src/permissions/permissionSetup/autoModeGate.ts"
     }
   ]

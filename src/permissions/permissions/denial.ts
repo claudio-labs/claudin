@@ -9,8 +9,6 @@ import {
   shouldFallbackToPrompting,
 } from 'src/permissions/denialTracking.js'
 
-export const CLASSIFIER_FAIL_CLOSED_REFRESH_MS = 30 * 60 * 1000 // 30 minutes
-
 /**
  * Persist denial tracking state. For async subagents with localDenialTracking,
  * mutate the local state in place (since setAppState is a no-op). Otherwise,

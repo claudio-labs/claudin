@@ -1,11 +1,10 @@
 /**
  * The asynchronous auto-mode gate check, and the notification it produces.
  *
- * This is the only place that awaits the dynamic config and can fire a live
- * classifier capability probe against the active provider, which is why it is
- * covered by a surface pin rather than by behavioural tests.
+ * This is the only place that can fire a live classifier capability probe
+ * against the active provider, which is why it is covered by a surface pin
+ * rather than by behavioural tests.
  */
-import { getDynamicConfig_BLOCKS_ON_INIT } from 'src/platform/analytics/growthbook.js'
 import { setNeedsAutoModeExitAttachment } from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { modelSupportsAutoMode } from 'src/providers/transport/betas.js'
@@ -20,19 +19,16 @@ import {
 import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
 import { autoModeStateModule } from 'src/permissions/permissionSetup/autoModeStateBridge.js'
 import {
-  type AutoModeEnabledState,
   autoModeAllowedForModel,
-  hasAutoModeOptInAnySource,
   isAutoModeDisabledBySettings,
-  parseAutoModeEnabledState,
 } from 'src/permissions/permissionSetup/autoModeAvailability.js'
 import { restoreDangerousPermissions } from 'src/permissions/permissionSetup/dangerousRuleStash.js'
 
 export type AutoModeGateCheckResult = {
   // Transform function (not a pre-computed context) so callers can apply it
   // inside setAppState(prev => ...) against the CURRENT context. Pre-computing
-  // the context here captured a stale snapshot: the async GrowthBook await
-  // below can be outrun by a mid-turn shift-tab, and returning
+  // the context here captured a stale snapshot: the async probe await below
+  // can be outrun by a mid-turn shift-tab, and returning
   // { ...currentContext, ... } would overwrite the user's mode change.
   updateContext: (ctx: ToolPermissionContext) => ToolPermissionContext
   notification?: string
@@ -63,7 +59,7 @@ export function getAutoModeUnavailableNotification(
  *
  * Returns a transform function (not a pre-computed context) that callers
  * apply inside setAppState(prev => ...) against the CURRENT context. This
- * prevents the async GrowthBook await from clobbering mid-turn mode changes
+ * prevents the async probe await from clobbering mid-turn mode changes
  * (e.g., user shift-tabs to acceptEdits while this check is in flight).
  *
  * The transform re-checks mode/prePlanMode against the fresh ctx to avoid
@@ -71,42 +67,21 @@ export function getAutoModeUnavailableNotification(
  */
 export async function verifyAutoModeGateAccess(
   currentContext: ToolPermissionContext,
-  // Runtime AppState.fastMode — passed from callers with AppState access so
-  // the disableFastMode circuit breaker reads current state, not stale
-  // settings.fastMode (which is intentionally sticky across /model auto-
-  // downgrades). Optional for callers without AppState (e.g. SDK init paths).
-  fastMode?: boolean,
 ): Promise<AutoModeGateCheckResult> {
-  // Auto-mode config — runs in ALL builds (circuit breaker, carousel, kick-out)
-  // Fresh read of tengu_auto_mode_config.enabled — this async check runs once
-  // after GrowthBook initialization and is the authoritative source for
-  // isAutoModeAvailable. The sync startup path uses stale cache; this
-  // corrects it. Circuit breaker (enabled==='disabled') takes effect here.
-  const autoModeConfig = await getDynamicConfig_BLOCKS_ON_INIT<{
-    enabled?: AutoModeEnabledState
-    disableFastMode?: boolean
-  }>('tengu_auto_mode_config', {})
-  const enabledState = parseAutoModeEnabledState(autoModeConfig?.enabled)
+  // Runs in ALL builds (circuit breaker, carousel, kick-out) and is the
+  // authoritative source for isAutoModeAvailable.
   const disabledBySettings = isAutoModeDisabledBySettings()
-  // Treat settings-disable the same as GrowthBook 'disabled' for circuit-breaker
-  // semantics — blocks SDK/explicit re-entry via isAutoModeGateEnabled().
-  autoModeStateModule?.setAutoModeCircuitBroken(
-    enabledState === 'disabled' || disabledBySettings,
-  )
+  // A settings disable latches the circuit breaker — blocks SDK/explicit
+  // re-entry via isAutoModeGateEnabled().
+  autoModeStateModule?.setAutoModeCircuitBroken(disabledBySettings)
 
-  // Carousel availability: not circuit-broken, not disabled-by-settings,
-  // model supports it, disableFastMode breaker not firing, and (enabled or opted-in)
   const mainModel = getMainLoopModel()
   // Non-Claude providers: lazily probe forced tool-choice capability once per
   // provider+baseUrl+model key. Claude models pass by name and never probe.
   // Only probe when a probe result could change the outcome (gate otherwise
   // open) and only when no result is cached — a cached failure is respected
   // until /provider doctor re-probes.
-  if (
-    !modelSupportsAutoMode(mainModel) &&
-    enabledState !== 'disabled' &&
-    !disabledBySettings
-  ) {
+  if (!modelSupportsAutoMode(mainModel) && !disabledBySettings) {
     const provider = tryGetActiveProvider()
     if (provider) {
       const key = getClassifierProbeKey({
@@ -125,39 +100,26 @@ export async function verifyAutoModeGateAccess(
       }
     }
   }
-  // Temp circuit breaker: tengu_auto_mode_config.disableFastMode blocks auto
-  // mode when fast mode is on. Checks runtime AppState.fastMode (if provided)
-  // and, for ants, model name '-fast' substring (ant-internal fast models
-  // like capybara-v2-fast[1m] encode speed in the model ID itself).
-  // Remove once auto+fast mode interaction is validated.
-  const disableFastModeBreakerFires =
-    !!autoModeConfig?.disableFastMode && !!fastMode
-  const modelSupported =
-    autoModeAllowedForModel(mainModel) && !disableFastModeBreakerFires
-  let carouselAvailable = false
-  if (enabledState !== 'disabled' && !disabledBySettings && modelSupported) {
-    carouselAvailable =
-      enabledState === 'enabled' || hasAutoModeOptInAnySource()
-  }
-  // canEnterAuto gates explicit entry (--permission-mode auto, defaultMode: auto)
-  // — explicit entry IS an opt-in, so we only block on circuit breaker + settings + model
-  const canEnterAuto =
-    enabledState !== 'disabled' && !disabledBySettings && modelSupported
+  const modelSupported = autoModeAllowedForModel(mainModel)
+  // canEnterAuto gates explicit entry (--permission-mode auto, defaultMode:
+  // auto) on settings + model only.
+  const canEnterAuto = !disabledBySettings && modelSupported
+  // The carousel offers auto whenever it can be entered — no opt-in needed.
+  const carouselAvailable = canEnterAuto
   logForDebugging(
-    `[auto-mode] verifyAutoModeGateAccess: enabledState=${enabledState} disabledBySettings=${disabledBySettings} model=${mainModel} modelSupported=${modelSupported} disableFastModeBreakerFires=${disableFastModeBreakerFires} carouselAvailable=${carouselAvailable} canEnterAuto=${canEnterAuto}`,
+    `[auto-mode] verifyAutoModeGateAccess: disabledBySettings=${disabledBySettings} model=${mainModel} modelSupported=${modelSupported} carouselAvailable=${carouselAvailable} canEnterAuto=${canEnterAuto}`,
   )
 
   // Capture CLI-flag intent now (doesn't depend on context).
   const autoModeFlagCli = autoModeStateModule?.getAutoModeFlagCli() ?? false
 
   // Return a transform function that re-evaluates context-dependent conditions
-  // against the CURRENT context at setAppState time. The async GrowthBook
-  // results above (canEnterAuto, carouselAvailable, enabledState, reason) are
+  // against the CURRENT context at setAppState time. The results above
+  // (canEnterAuto, carouselAvailable, reason) are
   // closure-captured — those don't depend on context. But mode, prePlanMode,
   // and isAutoModeAvailable checks MUST use the fresh ctx or a mid-await
-  // shift-tab gets reverted (or worse, the user stays in auto despite the
-  // circuit breaker if they entered auto DURING the await — which is possible
-  // because setAutoModeCircuitBroken above runs AFTER the await).
+  // shift-tab gets reverted (or worse, the user stays in auto on a model that
+  // failed the probe if they entered auto DURING the probe's await).
   const setAvailable = (
     ctx: ToolPermissionContext,
     available: boolean,
@@ -176,19 +138,13 @@ export async function verifyAutoModeGateAccess(
     return { updateContext: ctx => setAvailable(ctx, carouselAvailable) }
   }
 
-  // Gate is off or circuit-broken — determine reason (context-independent).
+  // Gate is off — determine reason (context-independent).
   let reason: AutoModeUnavailableReason
   if (disabledBySettings) {
     reason = 'settings'
     logForDebugging('auto mode disabled: disableAutoMode in settings', {
       level: 'warn',
     })
-  } else if (enabledState === 'disabled') {
-    reason = 'circuit-breaker'
-    logForDebugging(
-      'auto mode disabled: tengu_auto_mode_config.enabled === "disabled" (circuit breaker)',
-      { level: 'warn' },
-    )
   } else {
     reason = 'model'
     logForDebugging(
@@ -204,8 +160,7 @@ export async function verifyAutoModeGateAccess(
   // with toolPermissionContext.mode even if the user changed modes during
   // the await: if they already left auto on their own, handleCycleMode
   // already deactivated the classifier and we don't fire again; if they
-  // ENTERED auto during the await (possible before setAutoModeCircuitBroken
-  // landed), we kick them out here.
+  // ENTERED auto during the await, we kick them out here.
   const kickOutOfAutoIfNeeded = (
     ctx: ToolPermissionContext,
   ): ToolPermissionContext => {
@@ -259,7 +214,7 @@ export async function verifyAutoModeGateAccess(
   if (!wantedAuto) {
     // User didn't want auto at call time — no notification. But still apply
     // the full kick-out transform: if they shift-tabbed INTO auto during the
-    // await (before setAutoModeCircuitBroken landed), we need to evict them.
+    // await, we need to evict them.
     return { updateContext: kickOutOfAutoIfNeeded }
   }
 

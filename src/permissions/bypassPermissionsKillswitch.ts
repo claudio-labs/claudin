@@ -8,65 +8,13 @@ import {
 } from 'src/terminal/state/AppState.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
-import {
-  createDisabledBypassPermissionsContext,
-  shouldDisableBypassPermissions,
-  verifyAutoModeGateAccess,
-} from 'src/permissions/permissionSetup.js'
-
-let bypassPermissionsCheckRan = false
-
-export async function checkAndDisableBypassPermissionsIfNeeded(
-  toolPermissionContext: ToolPermissionContext,
-  setAppState: (f: (prev: AppState) => AppState) => void,
-): Promise<void> {
-  // Check if bypassPermissions should be disabled based on Statsig gate
-  // Do this only once, before the first query, to ensure we have the latest gate value
-  if (bypassPermissionsCheckRan) {
-    return
-  }
-  bypassPermissionsCheckRan = true
-
-  if (!toolPermissionContext.isBypassPermissionsModeAvailable) {
-    return
-  }
-
-  const shouldDisable = await shouldDisableBypassPermissions()
-  if (!shouldDisable) {
-    return
-  }
-
-  setAppState(prev => {
-    return {
-      ...prev,
-      toolPermissionContext: createDisabledBypassPermissionsContext(
-        prev.toolPermissionContext,
-      ),
-    }
-  })
-}
-
-export function useKickOffCheckAndDisableBypassPermissionsIfNeeded(): void {
-  const toolPermissionContext = useAppState(s => s.toolPermissionContext)
-  const setAppState = useSetAppState()
-
-  // Run once, when the component mounts
-  useEffect(() => {
-    if (getIsRemoteMode()) return
-    void checkAndDisableBypassPermissionsIfNeeded(
-      toolPermissionContext,
-      setAppState,
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-}
+import { verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js'
 
 let autoModeCheckRan = false
 
 export async function checkAndDisableAutoModeIfNeeded(
   toolPermissionContext: ToolPermissionContext,
   setAppState: (f: (prev: AppState) => AppState) => void,
-  fastMode?: boolean,
 ): Promise<void> {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
     if (autoModeCheckRan) {
@@ -76,11 +24,10 @@ export async function checkAndDisableAutoModeIfNeeded(
 
     const { updateContext, notification } = await verifyAutoModeGateAccess(
       toolPermissionContext,
-      fastMode,
     )
     setAppState(prev => {
       // Apply the transform to CURRENT context, not the stale snapshot we
-      // passed to verifyAutoModeGateAccess. The async GrowthBook await inside
+      // passed to verifyAutoModeGateAccess. The async probe await inside
       // can be outrun by a mid-turn shift-tab; spreading a stale context here
       // would revert the user's mode change.
       const nextCtx = updateContext(prev.toolPermissionContext)
@@ -119,17 +66,14 @@ export function resetAutoModeGateCheck(): void {
 export function useKickOffCheckAndDisableAutoModeIfNeeded(): void {
   const mainLoopModel = useAppState(s => s.mainLoopModel)
   const mainLoopModelForSession = useAppState(s => s.mainLoopModelForSession)
-  const fastMode = useAppState(s => s.fastMode)
   const setAppState = useSetAppState()
   const store = useAppStateStore()
   const isFirstRunRef = useRef(true)
 
-  // Runs on mount (startup check) AND whenever the model or fast mode changes
-  // (kick-out / carousel-restore). Watching both model fields covers /model,
-  // Cmd+P picker, /config, and bridge onSetModel paths; fastMode covers
-  // /fast on|off for the tengu_auto_mode_config.disableFastMode circuit
-  // breaker. The print.ts headless paths are covered by the sync
-  // isAutoModeGateEnabled() check.
+  // Runs on mount (startup check) AND whenever the model changes (kick-out /
+  // carousel-restore). Watching both model fields covers /model, Cmd+P
+  // picker, /config, and bridge onSetModel paths. The print.ts headless
+  // paths are covered by the sync isAutoModeGateEnabled() check.
   useEffect(() => {
     if (getIsRemoteMode()) return
     if (isFirstRunRef.current) {
@@ -140,8 +84,7 @@ export function useKickOffCheckAndDisableAutoModeIfNeeded(): void {
     void checkAndDisableAutoModeIfNeeded(
       store.getState().toolPermissionContext,
       setAppState,
-      fastMode,
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainLoopModel, mainLoopModelForSession, fastMode])
+  }, [mainLoopModel, mainLoopModelForSession])
 }

@@ -70,7 +70,7 @@ import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
 import { enqueue, type SetAppState, getCommandQueueLength } from 'src/agent/messageQueueManager.js';
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js';
 import type { EffortValue } from 'src/providers/effort/effort.js';
-import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
+import { checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
 
@@ -375,11 +375,10 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       });
     }
     queryCheckpoint('query_context_loading_start');
-    const [, , defaultSystemPrompt, baseUserContext, systemContext] = await Promise.all([
+    const [, defaultSystemPrompt, baseUserContext, systemContext] = await Promise.all([
       // IMPORTANT: do this after setMessages() above, to avoid UI jank
-      checkAndDisableBypassPermissionsIfNeeded(toolPermissionContext, setAppState),
-      // Gated on TRANSCRIPT_CLASSIFIER so GrowthBook kill switch runs wherever auto mode is built in
-      feature('TRANSCRIPT_CLASSIFIER') ? checkAndDisableAutoModeIfNeeded(toolPermissionContext, setAppState, store.getState().fastMode) : undefined, getSystemPrompt(freshTools, mainLoopModelParam, Array.from(toolPermissionContext.additionalWorkingDirectories.keys()), freshMcpClients), getUserContext(), getSystemContext()]);
+      // Gated on TRANSCRIPT_CLASSIFIER so the auto-mode gate check runs wherever auto mode is built in
+      feature('TRANSCRIPT_CLASSIFIER') ? checkAndDisableAutoModeIfNeeded(toolPermissionContext, setAppState) : undefined, getSystemPrompt(freshTools, mainLoopModelParam, Array.from(toolPermissionContext.additionalWorkingDirectories.keys()), freshMcpClients), getUserContext(), getSystemContext()]);
     const userContext = {
       ...baseUserContext,
       ...getCoordinatorUserContext(freshMcpClients, isScratchpadEnabled() ? getScratchpadDir() : undefined),

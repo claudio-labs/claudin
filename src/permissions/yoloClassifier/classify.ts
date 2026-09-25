@@ -34,13 +34,10 @@ import {
   serializeTranscriptForClassifier,
   toCompact,
 } from 'src/permissions/yoloClassifier/transcript.js'
-import type { TwoStageMode } from 'src/permissions/yoloClassifier/classifierConfig.js'
 import {
   getClassifierModel,
   getClassifierThinkingConfig,
   getClassifierTimeoutMs,
-  getTwoStageMode,
-  isTwoStageClassifierEnabled,
 } from 'src/permissions/yoloClassifier/classifierConfig.js'
 import {
   XML_S1_SUFFIX,
@@ -101,17 +98,10 @@ export const YOLO_CLASSIFIER_TOOL_SCHEMA: BetaToolUnion = {
 }
 
 /**
- * XML classifier for auto mode security decisions. Supports three modes:
- *
- * 'both' (default): Stage 1 ("fast") runs first with max_tokens=64 and
- * stop_sequences for an immediate yes/no. If allowed, returns. If blocked,
- * escalates to stage 2 ("thinking") with chain-of-thought to reduce false
- * positives.
- *
- * 'fast': Stage 1 only. Bumps max_tokens to 256 and drops stop_sequences so
- * the response can include <reason>. Stage 1 verdict is final.
- *
- * 'thinking': Stage 2 only. Skips stage 1 entirely.
+ * Two-stage XML classifier for auto mode security decisions. Stage 1
+ * ("fast") runs first with max_tokens=64 and stop_sequences for an immediate
+ * yes/no. If allowed, returns. If blocked, escalates to stage 2 ("thinking")
+ * with chain-of-thought to reduce false positives.
  *
  * Both stages share the same system prompt and user content, benefiting from
  * prompt caching (1h TTL) across calls.
@@ -138,14 +128,8 @@ async function classifyYoloActionXml(
     messages: number
     action: string
   },
-  mode: TwoStageMode,
 ): Promise<YoloClassifierResult> {
-  const classifierType =
-    mode === 'both'
-      ? 'xml_2stage'
-      : mode === 'fast'
-        ? 'xml_fast'
-        : 'xml_thinking'
+  const classifierType = 'xml_2stage'
   const xmlSystemPrompt = replaceOutputFormatWithXml(systemPrompt)
   const systemBlocks: Anthropic.TextBlockParam[] = [
     {
@@ -175,92 +159,53 @@ async function classifyYoloActionXml(
 
   try {
     // Stage 1: fast (suffix nudges immediate <block> decision)
-    // Skipped entirely when mode === 'thinking'.
-    if (mode !== 'thinking') {
-      const stage1Start = Date.now()
-      const stage1Content = [
-        ...wrappedContent,
-        { type: 'text' as const, text: XML_S1_SUFFIX },
-      ]
-      // In fast-only mode, relax max_tokens and drop stop_sequences so the
-      // response can carry a <reason> tag (system prompt already asks for it).
-      stage1Opts = {
+    const stage1Start = Date.now()
+    const stage1Content = [
+      ...wrappedContent,
+      { type: 'text' as const, text: XML_S1_SUFFIX },
+    ]
+    stage1Opts = {
+      model,
+      max_tokens: 64 + thinkingPadding,
+      system: systemBlocks,
+      temperature: 0,
+      thinking: disableThinking,
+      messages: [
+        ...prefixMessages,
+        { role: 'user' as const, content: stage1Content },
+      ],
+      maxRetries: getDefaultMaxRetries(),
+      signal,
+      stop_sequences: ['</block>'],
+      querySource: 'auto_mode',
+    }
+    const stage1Raw = await sideQuery(stage1Opts)
+    stage1DurationMs = Date.now() - stage1Start
+    stage1Usage = extractUsage(stage1Raw)
+    stage1RequestId = extractRequestId(stage1Raw)
+    stage1MsgId = stage1Raw.id
+    const stage1Text = extractTextContent(stage1Raw.content)
+    const stage1Block = parseXmlBlock(stage1Text)
+
+    void maybeDumpAutoMode(stage1Opts, stage1Raw, stage1Start, 'stage1')
+    setLastClassifierRequests([stage1Opts])
+
+    // If stage 1 says allow, return immediately (fast path)
+    if (stage1Block === false) {
+      logAutoModeOutcome('success', model, {
+        classifierType,
+        durationMs: stage1DurationMs,
+      })
+      return {
+        shouldBlock: false,
+        reason: 'Allowed by fast classifier',
         model,
-        max_tokens: (mode === 'fast' ? 256 : 64) + thinkingPadding,
-        system: systemBlocks,
-        temperature: 0,
-        thinking: disableThinking,
-        messages: [
-          ...prefixMessages,
-          { role: 'user' as const, content: stage1Content },
-        ],
-        maxRetries: getDefaultMaxRetries(),
-        signal,
-        ...(mode !== 'fast' && { stop_sequences: ['</block>'] }),
-        querySource: 'auto_mode',
-      }
-      const stage1Raw = await sideQuery(stage1Opts)
-      stage1DurationMs = Date.now() - stage1Start
-      stage1Usage = extractUsage(stage1Raw)
-      stage1RequestId = extractRequestId(stage1Raw)
-      stage1MsgId = stage1Raw.id
-      const stage1Text = extractTextContent(stage1Raw.content)
-      const stage1Block = parseXmlBlock(stage1Text)
-
-      void maybeDumpAutoMode(stage1Opts, stage1Raw, stage1Start, 'stage1')
-      setLastClassifierRequests([stage1Opts])
-
-      // If stage 1 says allow, return immediately (fast path)
-      if (stage1Block === false) {
-        logAutoModeOutcome('success', model, {
-          classifierType,
-          durationMs: stage1DurationMs,
-        })
-        return {
-          shouldBlock: false,
-          reason: 'Allowed by fast classifier',
-          model,
-          usage: stage1Usage,
-          durationMs: stage1DurationMs,
-          promptLengths,
-          stage: 'fast',
-          stage1RequestId,
-          stage1MsgId,
-        }
-      }
-
-      // In fast-only mode, stage 1 is final — handle block + unparseable here.
-      if (mode === 'fast') {
-        if (stage1Block === null) {
-          logAutoModeOutcome('parse_failure', model, { classifierType })
-          return {
-            shouldBlock: true,
-            reason: 'Classifier stage 1 unparseable - blocking for safety',
-            model,
-            usage: stage1Usage,
-            durationMs: stage1DurationMs,
-            promptLengths,
-            stage: 'fast',
-            stage1RequestId,
-            stage1MsgId,
-          }
-        }
-        // stage1Block === true
-        logAutoModeOutcome('success', model, {
-          classifierType,
-          durationMs: stage1DurationMs,
-        })
-        return {
-          shouldBlock: true,
-          reason: parseXmlReason(stage1Text) ?? 'Blocked by fast classifier',
-          model,
-          usage: stage1Usage,
-          durationMs: stage1DurationMs,
-          promptLengths,
-          stage: 'fast',
-          stage1RequestId,
-          stage1MsgId,
-        }
+        usage: stage1Usage,
+        durationMs: stage1DurationMs,
+        promptLengths,
+        stage: 'fast',
+        stage1RequestId,
+        stage1MsgId,
       }
     }
 
@@ -627,12 +572,12 @@ async function classifyYoloActionUnbounded(
 
   const model = getClassifierModel()
 
-  // Dispatch to 2-stage XML classifier if enabled via GrowthBook. Models with
-  // always-on thinking (Fable-class) are forced onto the XML path: the
-  // tool_use classifier's forced tool_choice is rejected with a deterministic
-  // 400 ("tool_choice forces tool use is not compatible with this model"),
-  // which would degrade every auto-mode decision to a manual prompt.
-  if (isTwoStageClassifierEnabled() || modelRequiresAdaptiveThinking(model)) {
+  // Models with always-on thinking (Fable-class) go to the 2-stage XML
+  // classifier: the tool_use classifier's forced tool_choice is rejected with
+  // a deterministic 400 ("tool_choice forces tool use is not compatible with
+  // this model"), which would degrade every auto-mode decision to a manual
+  // prompt.
+  if (modelRequiresAdaptiveThinking(model)) {
     return classifyYoloActionXml(
       prefixMessages,
       systemPrompt,
@@ -649,7 +594,6 @@ async function classifyYoloActionUnbounded(
         messages: messages.length,
         action: actionCompact,
       },
-      getTwoStageMode(),
     )
   }
   const [disableThinking, thinkingPadding] = getClassifierThinkingConfig(model)

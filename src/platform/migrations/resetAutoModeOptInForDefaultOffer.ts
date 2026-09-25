@@ -1,7 +1,6 @@
 import { feature } from 'bun:bundle'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
-import { getAutoModeEnabledState } from 'src/permissions/permissionSetup.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
@@ -14,18 +13,13 @@ import {
  * Guard lives in GlobalConfig (~/.claudin/config.json), not settings.json, so it
  * survives settings resets and doesn't re-arm itself.
  *
- * Only runs when tengu_auto_mode_config.enabled === 'enabled'. For 'opt-in'
- * users, clearing skipAutoPermissionPrompt would remove auto from the carousel
- * (permissionSetup.ts:988) — the dialog would become unreachable and the
- * migration would defeat itself. In practice the ~40 target ants are all
- * 'enabled' (they reached the old dialog via bare Shift+Tab, which requires
- * 'enabled'), but the guard makes it safe regardless.
+ * Clearing skipAutoPermissionPrompt does not take auto out of the carousel —
+ * the carousel needs no opt-in — so the dialog stays reachable.
  */
 export function resetAutoModeOptInForDefaultOffer(): void {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
     const config = getGlobalConfig()
     if (config.hasResetAutoModeOptInForDefaultOffer) return
-    if (getAutoModeEnabledState() !== 'enabled') return
 
     try {
       const user = getSettingsForSource('userSettings')

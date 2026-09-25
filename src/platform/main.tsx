@@ -632,7 +632,6 @@ async function run(): Promise<CommanderCommand> {
         toolPermissionContext,
         effectiveModel,
         advisorModel,
-        allowDangerouslySkipPermissions,
         betas,
         jsonSchema,
         allowedTools,

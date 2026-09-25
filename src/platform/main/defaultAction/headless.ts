@@ -22,7 +22,7 @@ import { getInitialEffortSetting, parseEffortValue } from 'src/providers/effort/
 import { isBareMode } from 'src/shared/envUtils.js';
 import { getInitialFastModeSetting, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
-import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js';
+import { verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js';
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import type { ThinkingConfig } from 'src/agent/context/thinking.js';
@@ -65,7 +65,6 @@ export type HeadlessBranchDeps = {
   toolPermissionContext: ToolPermissionContext;
   effectiveModel: string | undefined;
   advisorModel: string | undefined;
-  allowDangerouslySkipPermissions: boolean;
   betas: string[];
   jsonSchema: Record<string, unknown> | undefined;
   allowedTools: string[];
@@ -84,7 +83,7 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     commands, tools, mcpClients, mcpCommands, mcpTools,
     sdkMcpConfigs, agentDefinitions, regularMcpConfigs, claudeaiConfigPromise,
     toolPermissionContext, effectiveModel, advisorModel,
-    allowDangerouslySkipPermissions, betas, jsonSchema, allowedTools,
+    betas, jsonSchema, allowedTools,
     thinkingConfig, systemPrompt, appendSystemPrompt,
     userSpecifiedFallbackModel, effectiveReplayUserMessages, agentCli, verbose,
   } = deps;
@@ -146,16 +145,10 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
   // Init app state
   const headlessStore = createStore(headlessInitialState, onChangeAppState);
 
-  // Check if bypassPermissions should be disabled based on Statsig gate
-  // This runs in parallel to the code below, to avoid blocking the main loop.
-  if ((toolPermissionContext as { mode?: string }).mode === 'bypassPermissions' || allowDangerouslySkipPermissions) {
-    void checkAndDisableBypassPermissions(toolPermissionContext);
-  }
-
   // Async check of auto mode gate — corrects state and disables auto if needed.
-  // Gated on TRANSCRIPT_CLASSIFIER (not USER_TYPE) so GrowthBook kill switch runs for external builds too.
+  // Gated on TRANSCRIPT_CLASSIFIER (not USER_TYPE) so it runs for external builds too.
   if (feature('TRANSCRIPT_CLASSIFIER')) {
-    void verifyAutoModeGateAccess(toolPermissionContext, headlessStore.getState().fastMode).then(({
+    void verifyAutoModeGateAccess(toolPermissionContext).then(({
       updateContext
     }) => {
       headlessStore.setState(prev => {

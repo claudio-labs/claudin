@@ -213,7 +213,7 @@ import { getTipToShowOnSpinner, recordShownTip } from 'src/terminal/tips/tipSche
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { isPromptTypingSuppressionActive } from 'src/agent/repl/replInputSuppression.js';
 import { shouldRunStartupChecks } from 'src/agent/repl/replStartupGates.js';
-import { useKickOffCheckAndDisableBypassPermissionsIfNeeded, useKickOffCheckAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
+import { useKickOffCheckAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { useFileHistorySnapshotInit } from 'src/sessions/hooks/useFileHistorySnapshotInit.js';
 import { SandboxPermissionRequest } from 'src/permissions/ui/SandboxPermissionRequest.js';
@@ -481,7 +481,6 @@ export function REPL({
   // the model emits plain text the brief filter hides.
   const isBriefOnly = useAppState(s => s.isBriefOnly);
   const localTools = useMemo(() => getTools(toolPermissionContext), [toolPermissionContext, isBriefOnly]);
-  useKickOffCheckAndDisableBypassPermissionsIfNeeded();
   useKickOffCheckAndDisableAutoModeIfNeeded();
   const [dynamicMcpConfig, setDynamicMcpConfig] = useState<Record<string, ScopedMcpServerConfig> | undefined>(initialDynamicMcpConfig);
   const onChangeDynamicMcpConfig = useCallback((config: Record<string, ScopedMcpServerConfig>) => {

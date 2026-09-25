@@ -1,4 +1,3 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { modelRequiresAdaptiveThinking } from 'src/agent/context/thinking.js'
 
@@ -26,82 +25,9 @@ export function getClassifierTimeoutMs(): number {
     : DEFAULT_CLASSIFIER_TIMEOUT_MS
 }
 
-export type TwoStageMode = 'both' | 'fast' | 'thinking'
-
-type AutoModeConfig = {
-  model?: string
-  /**
-   * Enable XML classifier. `true` runs both stages; `'fast'` and `'thinking'`
-   * run only that stage; `false`/undefined uses the tool_use classifier.
-   */
-  twoStageClassifier?: boolean | 'fast' | 'thinking'
-  /**
-   * Ant builds normally use permissions_anthropic.txt; when true, use
-   * permissions_external.txt instead (dogfood the external template).
-   */
-  forceExternalPermissions?: boolean
-  /**
-   * Gate the JSONL transcript format ({"Bash":"ls"} vs `Bash ls`).
-   * Default false (old text-prefix format) for slow rollout / quick rollback.
-   */
-  jsonlTranscript?: boolean
-}
-
-/**
- * Get the model for the classifier.
- * Ant-only env var takes precedence, then GrowthBook JSON config override,
- * then the main loop model.
- */
+/** The classifier runs on the main loop model. */
 export function getClassifierModel(): string {
-  const config = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_auto_mode_config',
-    {} as AutoModeConfig,
-  )
-  if (config?.model) {
-    return config.model
-  }
   return getMainLoopModel()
-}
-
-/**
- * Resolve the XML classifier setting: internal-only env var takes precedence,
- * then GrowthBook. Returns undefined when unset (caller decides default).
- */
-function resolveTwoStageClassifier():
-  | boolean
-  | 'fast'
-  | 'thinking'
-  | undefined {
-  const config = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_auto_mode_config',
-    {} as AutoModeConfig,
-  )
-  return config?.twoStageClassifier
-}
-
-/**
- * Check if the XML classifier is enabled (any truthy value including 'fast'/'thinking').
- */
-export function isTwoStageClassifierEnabled(): boolean {
-  const v = resolveTwoStageClassifier()
-  return v === true || v === 'fast' || v === 'thinking'
-}
-
-export function isJsonlTranscriptEnabled(): boolean {
-  const config = getFeatureValue_CACHED_MAY_BE_STALE(
-    'tengu_auto_mode_config',
-    {} as AutoModeConfig,
-  )
-  return config?.jsonlTranscript === true
-}
-
-/**
- * Get which stage(s) the XML classifier should run.
- * Only meaningful when isTwoStageClassifierEnabled() is true.
- */
-export function getTwoStageMode(): TwoStageMode {
-  const v = resolveTwoStageClassifier()
-  return v === 'fast' || v === 'thinking' ? v : 'both'
 }
 
 /**

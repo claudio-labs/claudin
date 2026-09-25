@@ -5,7 +5,6 @@ import { isAgentAuthored } from 'src/agent/messages/interAgentMessages.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { isJsonlTranscriptEnabled } from 'src/permissions/yoloClassifier/classifierConfig.js'
 
 export const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000
 const MAX_CLASSIFIER_BLOCK_VALUE_CHARS = 32_000
@@ -114,11 +113,9 @@ function truncateClassifierValue(value: string): string {
 }
 
 /**
- * Serialize a single transcript block as a JSONL dict line: `{"Bash":"ls"}`
- * for tool calls, `{"user":"text"}` for user text. The tool value is the
- * per-tool `toAutoClassifierInput` projection. JSON escaping means hostile
- * content can't break out of its string context to forge a `{"user":...}`
- * line — newlines become `\n` inside the value.
+ * Serialize a single transcript block as a text-prefix line: `Bash ls` for
+ * tool calls, `User: text` for user text. The tool value is the per-tool
+ * `toAutoClassifierInput` projection.
  *
  * Returns '' for tool_use blocks whose tool encodes to ''.
  */
@@ -146,13 +143,6 @@ function toCompactBlock(
       encoded = input
     }
     if (encoded === '') return ''
-    if (isJsonlTranscriptEnabled()) {
-      const jsonlValue =
-        typeof encoded === 'string'
-          ? truncateClassifierValue(encoded)
-          : encoded
-      return jsonStringify({ [block.name]: jsonlValue }) + '\n'
-    }
     const s =
       typeof encoded === 'string'
         ? truncateClassifierValue(encoded)
@@ -161,16 +151,12 @@ function toCompactBlock(
   }
   if (block.type === 'text' && role === 'user') {
     if (block.agent !== undefined) {
-      // Encoded onto one line either way: a message another agent wrote must
-      // not be able to open a line of its own that reads as the user's.
+      // Encoded onto one line: a message another agent wrote must not be
+      // able to open a line of its own that reads as the user's.
       const text = truncateClassifierValue(block.text)
-      return isJsonlTranscriptEnabled()
-        ? jsonStringify({ agent_message: { from: block.agent, text } }) + '\n'
-        : `Agent message (not from the user) from ${jsonStringify(block.agent)}: ${jsonStringify(text)}\n`
+      return `Agent message (not from the user) from ${jsonStringify(block.agent)}: ${jsonStringify(text)}\n`
     }
-    return isJsonlTranscriptEnabled()
-      ? jsonStringify({ user: truncateClassifierValue(block.text) }) + '\n'
-      : `User: ${truncateClassifierValue(block.text)}\n`
+    return `User: ${truncateClassifierValue(block.text)}\n`
   }
   return ''
 }
