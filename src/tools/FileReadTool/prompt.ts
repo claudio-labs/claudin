@@ -132,11 +132,10 @@ export const LINE_FORMAT_INSTRUCTION =
  * The counterpart that used to sit beside this one — "it's recommended to read
  * the whole file by not providing these parameters" — contradicted the
  * surgical-read strategy ten lines above it, and it was the one that shipped:
- * the choice between them hung on `targetedRangeNudge`, read from the
- * `tengu_amber_wren` GrowthBook gate, which this fork stubs to always return
- * its default. So the wrong wording rendered unconditionally and the right one
- * was unreachable. Deleted rather than re-gated — there is no server here to
- * flip it.
+ * the choice between them hung on `targetedRangeNudge`, a runtime flag that
+ * always resolved to its default here. So the wrong wording rendered
+ * unconditionally and the right one was unreachable. Deleted rather than
+ * re-gated — there is no server here to flip it.
  */
 export const OFFSET_INSTRUCTION_TARGETED =
   '- When you already know which part of the file you need, only read that part. This can be important for larger files.'
@@ -147,7 +146,6 @@ export const OFFSET_INSTRUCTION_TARGETED =
  */
 export function renderPromptTemplate(
   lineFormat: string,
-  maxSizeInstruction: string,
 ): string {
   return `Reads a file from the local filesystem. You can access any file directly by using this tool: assume any path the user gives you is valid and readable, including a temporary path outside the project — try the read rather than verifying the path first.
 
@@ -162,7 +160,7 @@ An outline is not always a symbol list: Markdown and HTML outline by heading, a 
 
 Usage:
 - The file_path parameter must be an absolute path, not a relative path
-- By default, it reads up to ${MAX_LINES_TO_READ} lines starting from the beginning of the file${maxSizeInstruction}${batchReadInstruction()}
+- By default, it reads up to ${MAX_LINES_TO_READ} lines starting from the beginning of the file${batchReadInstruction()}
 ${OFFSET_INSTRUCTION_TARGETED}
 ${lineFormat}
 - Reading a directory, a file that does not exist, or an empty file returns an error or a system reminder rather than content; list a directory with the ${GLOB_TOOL_NAME} tool.
@@ -183,13 +181,12 @@ ${lineFormat}
  */
 export function renderCompactPromptTemplate(
   lineFormat: string,
-  maxSizeInstruction: string,
 ): string {
   return `Reads a file from the local filesystem. file_path must be absolute; any path the user gives you is readable, including a temporary path outside the project — read it rather than checking first.
 
 Read only what you need: view='outline' for an unknown file (signatures with line ranges; Markdown and HTML outline by heading, a .diff/.patch by file, with symbol='<path>' for one file's hunks), symbol='X' for one function (a large one comes back as its own outline; add view='full' for the body), offset/limit for a range, the whole file only when you need all of it. A large Read that names no view, and any file over the cap, comes back as an outline, a long plain-text file as its head and tail with the line count — pass view='full' for the body.
 
-- Reads up to ${MAX_LINES_TO_READ} lines by default${maxSizeInstruction}.${batchReadInstruction()}
+- Reads up to ${MAX_LINES_TO_READ} lines by default.${batchReadInstruction()}
 ${lineFormat}
 - A directory, a missing file or an empty file returns an error or a system reminder; list a directory with ${GLOB_TOOL_NAME}.
 - Images come back visually.${isPDFSupported() ? ' A PDF past 10 pages needs `pages` (e.g. "1-5", at most 20 per request).' : ''} A notebook (.ipynb) returns every cell with its outputs.

@@ -114,8 +114,7 @@ export type BaseAgentDefinition = {
   isolation?: 'worktree' | 'remote' // Run in an isolated git worktree, or remotely in CCR (internal-only)
   /** Omit CLAUDE.md hierarchy from the agent's userContext. Read-only agents
    * (Plan) don't need commit/PR/lint guidelines — the main agent has full
-   * CLAUDE.md and interprets their output.
-   * Kill-switch: tengu_slim_subagent_claudemd. */
+   * CLAUDE.md and interprets their output. */
   omitClaudeMd?: boolean
   /** Keep CLAUDE.md/AGENTS.md and the rules but drop the two auto-memory
    * INDEXES (`MEMORY.md` and `team/MEMORY.md`) from the agent's CLAUDE.md

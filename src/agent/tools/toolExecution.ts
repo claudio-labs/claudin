@@ -68,7 +68,6 @@ import {
   createStopHookSummaryMessage,
   createToolResultStopMessage,
   createUserMessage,
-  withMemoryCorrectionHint,
 } from 'src/agent/messages/messages.js'
 import type {
   PermissionDecisionReason,
@@ -313,7 +312,6 @@ export async function* runToolUse(
 
     if (toolUseContext.abortController.signal.aborted) {
       const content = createToolResultStopMessage(toolUse.id)
-      content.content = withMemoryCorrectionHint(CANCEL_MESSAGE)
       yield {
         message: createUserMessage({
           content: [content],
@@ -381,9 +379,9 @@ export async function* runToolUse(
 
 /**
  * Just-in-time nudge for a model that keeps re-issuing a call which keeps
- * failing. Appended to the errored tool_result itself (same injection surface
- * as withMemoryCorrectionHint) once the same (tool, canonical input) has
- * failed REPEATED_ERROR_THRESHOLD times in the active task.
+ * failing. Appended to the errored tool_result itself once the same (tool,
+ * canonical input) has failed REPEATED_ERROR_THRESHOLD times in the active
+ * task.
  */
 function renderRepeatedFailureHint(
   toolName: string,

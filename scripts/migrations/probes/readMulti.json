@@ -362,14 +362,14 @@
     {
       "name": "B10: the legacy prompt drops the batch line",
       "source": "src/tools/FileReadTool/prompt.ts",
-      "find": "the beginning of the file${maxSizeInstruction}${batchReadInstruction()}",
-      "replace": "the beginning of the file${maxSizeInstruction}"
+      "find": "the beginning of the file${batchReadInstruction()}",
+      "replace": "the beginning of the file"
     },
     {
       "name": "B10: the compact prompt drops the batch line",
       "source": "src/tools/FileReadTool/prompt.ts",
-      "find": "lines by default${maxSizeInstruction}.${batchReadInstruction()}",
-      "replace": "lines by default${maxSizeInstruction}."
+      "find": "lines by default.${batchReadInstruction()}",
+      "replace": "lines by default."
     },
     {
       "name": "B9: the tool-use line of a batch renders nothing",

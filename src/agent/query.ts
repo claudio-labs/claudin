@@ -74,8 +74,6 @@ import {
   finalContextTokensFromLastResponse,
   tokenCountWithEstimation,
 } from 'src/agent/context/tokens.js'
-import { ESCALATED_MAX_TOKENS } from 'src/agent/context/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { executePostSamplingHooks } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { executeStopFailureHooks } from 'src/platform/lifecycleHooks/hooks.js'
@@ -893,37 +891,6 @@ async function* queryLoop(
       // was withheld from the stream above; only surface it if recovery
       // exhausts.
       if (isWithheldMaxOutputTokens(lastMessage)) {
-        // Escalating retry: if we used the capped 8k default and hit the
-        // limit, retry the SAME request at 64k — no meta message, no
-        // multi-turn dance. This fires once per turn (guarded by the
-        // override check), then falls through to multi-turn recovery if
-        // 64k also hits the cap.
-        // 3P default: false (not validated on Bedrock/Vertex)
-        const capEnabled = getFeatureValue_CACHED_MAY_BE_STALE(
-          'tengu_otk_slot_v1',
-          false,
-        )
-        if (
-          capEnabled &&
-          maxOutputTokensOverride === undefined &&
-          !process.env.CLAUDIN_MAX_OUTPUT_TOKENS
-        ) {
-          const next: State = {
-            messages: messagesForQuery,
-            toolUseContext,
-            autoCompactTracking: tracking,
-            maxOutputTokensRecoveryCount,
-            maxOutputTokensOverride: ESCALATED_MAX_TOKENS,
-            pendingToolUseSummary: undefined,
-            stopHookActive: undefined,
-            turnCount,
-            continuationNudgeCount: state.continuationNudgeCount,
-            transition: { reason: 'max_output_tokens_escalate' },
-          }
-          state = next
-          continue
-        }
-
         if (maxOutputTokensRecoveryCount < MAX_OUTPUT_TOKENS_RECOVERY_LIMIT) {
           const recoveryMessage = createUserMessage({
             content:

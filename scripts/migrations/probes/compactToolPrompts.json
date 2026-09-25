@@ -11,8 +11,8 @@
     {
       "name": "Read ignores the compact switch",
       "source": "src/tools/FileReadTool/FileReadTool.ts",
-      "find": "    return isCompactToolPromptsEnabled()\n      ? renderCompactPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)\n      : renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)",
-      "replace": "    return renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)"
+      "find": "    return isCompactToolPromptsEnabled()\n      ? renderCompactPromptTemplate(pickLineFormatInstruction())\n      : renderPromptTemplate(pickLineFormatInstruction())",
+      "replace": "    return renderPromptTemplate(pickLineFormatInstruction())"
     },
     {
       "name": "compact Grep stops describing the broad-search pivot",

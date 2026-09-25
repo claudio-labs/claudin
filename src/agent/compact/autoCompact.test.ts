@@ -91,19 +91,14 @@ describe('getEffectiveContextWindowSize', () => {
     // Now the fallback is 128k and there's a floor, so effective is always
     // at least reservedTokensForSummary + buffer.
     //
-    // The exact floor depends on the max-output-tokens slot-reservation cap
-    // (tengu_otk_slot_v1 GrowthBook flag). With cap enabled, the model's
-    // default output cap drops to CAPPED_DEFAULT_MAX_TOKENS (8k), so the
-    // summary reservation is 8k and the floor is 8k + 13k = 21k. With cap
-    // disabled it's 20k + 13k = 33k. Assert the worst case so the test is
-    // stable regardless of flag state in CI vs local.
+    // The summary reservation is min(the model's max output tokens, 20k), so
+    // the floor is that plus AUTOCOMPACT_BUFFER_TOKENS (13k).
     process.env.CLAUDIN_USE_OPENAI = '1'
     try {
       const effective = getEffectiveContextWindowSize('some-unknown-3p-model')
       expect(effective).toBeGreaterThan(0)
-      // 21k = CAPPED_DEFAULT_MAX_TOKENS (8k) + AUTOCOMPACT_BUFFER_TOKENS (13k).
-      // Covers the anti-regression intent of issue #635 without assuming
-      // the GrowthBook flag state.
+      // 21k = an 8k reservation + AUTOCOMPACT_BUFFER_TOKENS (13k). Covers the
+      // anti-regression intent of issue #635.
       expect(effective).toBeGreaterThanOrEqual(21_000)
     } finally {
       delete process.env.CLAUDIN_USE_OPENAI

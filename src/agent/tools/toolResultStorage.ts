@@ -41,45 +41,16 @@ export const PERSISTED_OUTPUT_CLOSING_TAG = '</persisted-output>'
 export const TOOL_RESULT_CLEARED_MESSAGE = '[Old tool result content cleared]'
 
 /**
- * GrowthBook override map: tool name -> persistence threshold (chars).
- * When a tool name is present in this map, that value is used directly as the
- * effective threshold, bypassing the Math.min() clamp against the 50k default.
- * Tools absent from the map use the hardcoded fallback.
- * Flag default is {} (no overrides == behavior unchanged).
- */
-const PERSIST_THRESHOLD_OVERRIDE_FLAG = 'tengu_satin_quoll'
-
-/**
- * Resolve the effective persistence threshold for a tool.
- * GrowthBook override wins when present; otherwise falls back to the declared
+ * Resolve the effective persistence threshold for a tool: the declared
  * per-tool cap clamped by the global default.
- *
- * Defensive: GrowthBook's cache returns `cached !== undefined ? cached : default`,
- * so a flag served as `null` leaks through. We guard with optional chaining and a
- * typeof check so any non-object flag value (null, string, number) falls through
- * to the hardcoded default instead of throwing on index or returning 0.
  */
 export function getPersistenceThreshold(
-  toolName: string,
   declaredMaxResultSizeChars: number,
 ): number {
   // Infinity = hard opt-out. Read self-bounds via maxTokens; persisting its
-  // output to a file the model reads back with Read is circular. Checked
-  // before the GB override so tengu_satin_quoll can't force it back on.
+  // output to a file the model reads back with Read is circular.
   if (!Number.isFinite(declaredMaxResultSizeChars)) {
     return declaredMaxResultSizeChars
-  }
-  const overrides = getFeatureValue_CACHED_MAY_BE_STALE<Record<
-    string,
-    number
-  > | null>(PERSIST_THRESHOLD_OVERRIDE_FLAG, {})
-  const override = overrides?.[toolName]
-  if (
-    typeof override === 'number' &&
-    Number.isFinite(override) &&
-    override > 0
-  ) {
-    return override
   }
   return Math.min(declaredMaxResultSizeChars, DEFAULT_MAX_RESULT_SIZE_CHARS)
 }
@@ -289,7 +260,7 @@ export async function processPreMappedToolResultBlock<T>(
   return maybePersistLargeToolResult(
     reversible,
     toolName,
-    getPersistenceThreshold(toolName, maxResultSizeChars),
+    getPersistenceThreshold(maxResultSizeChars),
   )
 }
 

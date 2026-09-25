@@ -10,7 +10,6 @@ import type { UserMessage } from 'src/shared/types/message.js'
 import { getCurrentProjectConfig } from 'src/platform/config/config.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import {
-  getPewterLedgerVariant,
   getPlanModeV2AgentCount,
   isPlanModeInterviewPhaseEnabled,
 } from 'src/agent/plans/planModeV2.js'
@@ -54,10 +53,10 @@ export function getPlanModeInstructions(
 /**
  * The reminder a plan_mode attachment renders to now, for its producer to
  * keep on the attachment (`rendered`). The text reads the interview flag, the
- * Plan-agent count, the Phase 4 variant, allowedTools and the scratchpad
- * path, any of which can differ by the time a resumed process renders the
- * same attachment — and one changed byte re-writes the prompt cache from
- * there on (.claudin/rules/cache.md §7).
+ * Plan-agent count, allowedTools and the scratchpad path, any of which can
+ * differ by the time a resumed process renders the same attachment — and one
+ * changed byte re-writes the prompt cache from there on
+ * (.claudin/rules/cache.md §7).
  */
 export function snapshotPlanModeReminder(
   attachment: PlanModeReminderFields,
@@ -85,11 +84,6 @@ function renderPlanModeInstructions(
   return getPlanModeV2Instructions(attachment)
 }
 
-// --
-// Plan file structure experiment arms.
-// Each arm returns the full Phase 4 section so the surrounding template
-// stays a flat string interpolation with no conditionals inline.
-
 export const PLAN_PHASE4_CONTROL = `### Phase 4: Final Plan
 Goal: Write your final plan to the plan file (the only file you can edit).
 - Begin with a **Context** section: explain why this change is being made — the problem or need it addresses, what prompted it, and the intended outcome
@@ -105,48 +99,6 @@ Goal: Write your final plan to the plan file (the only file you can edit).
 - Include the paths of critical files to be modified
 - Reference existing functions and utilities you found that should be reused, with their file paths
 - Include a verification section describing how to test the changes end-to-end (run the code, use MCP tools, run tests)`
-
-const PLAN_PHASE4_TRIM = `### Phase 4: Final Plan
-Goal: Write your final plan to the plan file (the only file you can edit).
-- One-line **Context**: what is being changed and why
-- Include only your recommended approach, not all alternatives
-- List the paths of files to be modified
-- Reference existing functions and utilities to reuse, with their file paths
-- End with **Verification**: the single command to run to confirm the change works (no numbered test procedures)`
-
-const PLAN_PHASE4_CUT = `### Phase 4: Final Plan
-Goal: Write your final plan to the plan file (the only file you can edit).
-- Do NOT write a Context or Background section. The user just told you what they want.
-- List the paths of files to be modified and what changes in each (one line per file)
-- Reference existing functions and utilities to reuse, with their file paths
-- End with **Verification**: the single command that confirms the change works
-- Most good plans are under 40 lines. Prose is a sign you are padding.`
-
-const PLAN_PHASE4_CAP = `### Phase 4: Final Plan
-Goal: Write your final plan to the plan file (the only file you can edit).
-- Do NOT write a Context, Background, or Overview section. The user just told you what they want.
-- Do NOT restate the user's request. Do NOT write prose paragraphs.
-- List the paths of files to be modified and what changes in each (one bullet per file)
-- Reference existing functions to reuse, with file:line
-- End with the single verification command
-- **Hard limit: 40 lines.** If the plan is longer, delete prose — not file paths.`
-
-export function getPlanPhase4Section(): string {
-  const variant = getPewterLedgerVariant()
-  switch (variant) {
-    case 'trim':
-      return PLAN_PHASE4_TRIM
-    case 'cut':
-      return PLAN_PHASE4_CUT
-    case 'cap':
-      return PLAN_PHASE4_CAP
-    case null:
-      return PLAN_PHASE4_CONTROL
-    default:
-      variant satisfies never
-      return PLAN_PHASE4_CONTROL
-  }
-}
 
 export function getPlanModeV2Instructions(attachment: {
   isSubAgent?: boolean
@@ -224,7 +176,7 @@ Goal: Stress-test the plan(s) from Phase 2 — look for gaps, simpler alternativ
 3. Decision sweep: list decisions the user hasn't addressed — defaults, naming, scope boundaries, error behavior, tradeoffs. Surface them with your recommended default; don't pre-decide silently. Skip trivia.
 4. Use ${ASK_USER_QUESTION_TOOL_NAME} to resolve those decisions and any other gaps
 
-${getPlanPhase4Section()}
+${PLAN_PHASE4_CONTROL}
 
 ### Phase 5: Call ${ExitPlanModeV2Tool.name}
 At the very end of your turn, once you have asked the user questions and are happy with your final plan file - you should always call ${ExitPlanModeV2Tool.name} to indicate to the user that you are done planning.

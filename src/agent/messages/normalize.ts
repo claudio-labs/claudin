@@ -656,7 +656,6 @@ function ensureSystemReminderWrap(msg: UserMessage): UserMessage {
  * last tool_result of the same user message. Catches siblings from:
  * - PreToolUse hook additionalContext (Gap F: attachment between assistant and
  *   tool_result → standalone push → mergeUserMessages → hoist → sibling)
- * - relocateToolReferenceSiblings output (Gap E)
  * - any attachment-origin text that escaped merge-time smoosh
  *
  * Non-system-reminder text (real user input, TOOL_REFERENCE_TURN_BOUNDARY,
@@ -739,86 +738,6 @@ function sanitizeErrorToolResultContent(
     if (!changed) return msg
     return { ...msg, message: { ...msg.message, content: newContent } }
   })
-}
-
-/**
- * Move text-block siblings off user messages that contain tool_reference.
- *
- * When a tool_result contains tool_reference, the server expands it to a
- * functions block. Any text siblings appended to that same user message
- * (auto-memory, skill reminders, etc.) create a second human-turn segment
- * right after the functions-close tag — an anomalous pattern the model
- * imprints on. At a later tool-results tail, the model completes the
- * pattern and emits the stop sequence. See #21049 for mechanism and
- * five-arm dose-response.
- *
- * The fix: find the next user message with tool_result content but NO
- * tool_reference, and move the text siblings there. Pure transformation —
- * no state, no side effects. The target message's existing siblings (if any)
- * are preserved; moved blocks append.
- *
- * If no valid target exists (tool_reference message is at/near the tail),
- * siblings stay in place. That's safe: a tail ending in a human turn (with
- * siblings) gets an Assistant: cue before generation; only a tail ending
- * in bare tool output (no siblings) lacks the cue.
- *
- * Idempotent: after moving, the source has no text siblings; second pass
- * finds nothing to move.
- */
-function relocateToolReferenceSiblings(
-  messages: (UserMessage | AssistantMessage)[],
-): (UserMessage | AssistantMessage)[] {
-  const result = [...messages]
-
-  for (let i = 0; i < result.length; i++) {
-    const msg = result[i]!
-    if (msg.type !== 'user') continue
-    const content = msg.message.content
-    if (!Array.isArray(content)) continue
-    if (!contentHasToolReference(content)) continue
-
-    const textSiblings = content.filter(b => b.type === 'text')
-    if (textSiblings.length === 0) continue
-
-    // Find the next user message with tool_result but no tool_reference.
-    // Skip tool_reference-containing targets — moving there would just
-    // recreate the problem one position later.
-    let targetIdx = -1
-    for (let j = i + 1; j < result.length; j++) {
-      const cand = result[j]!
-      if (cand.type !== 'user') continue
-      const cc = cand.message.content
-      if (!Array.isArray(cc)) continue
-      if (!cc.some(b => b.type === 'tool_result')) continue
-      if (contentHasToolReference(cc)) continue
-      targetIdx = j
-      break
-    }
-
-    if (targetIdx === -1) continue // No valid target; leave in place.
-
-    // Strip text from source, append to target.
-    result[i] = {
-      ...msg,
-      message: {
-        ...msg.message,
-        content: content.filter(b => b.type !== 'text'),
-      },
-    }
-    const target = result[targetIdx] as UserMessage
-    result[targetIdx] = {
-      ...target,
-      message: {
-        ...target.message,
-        content: [
-          ...(target.message.content as ContentBlockParam[]),
-          ...textSiblings,
-        ],
-      },
-    }
-  }
-
-  return result
 }
 
 export function normalizeMessagesForAPI(
@@ -984,38 +903,25 @@ export function normalizeMessagesForAPI(
           // back through here via claude.ts on the next API request. The first
           // pass's sibling gets a \n[id:xxx] suffix from appendMessageTag below,
           // so startsWith matches both bare and tagged forms.
-          //
-          // Gated OFF when tengu_toolref_defer_j8m is active — that gate
-          // enables relocateToolReferenceSiblings in post-processing below,
-          // which moves existing siblings to a later non-ref message instead
-          // of adding one here. This injection is itself one of the patterns
-          // that gets relocated, so skipping it saves a scan. When gate is
-          // off, this is the fallback (same as pre-#21049 main).
+          const contentAfterStrip = normalizedMessage.message.content
           if (
-            !checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-              'tengu_toolref_defer_j8m',
-            )
+            Array.isArray(contentAfterStrip) &&
+            !contentAfterStrip.some(
+              b =>
+                b.type === 'text' &&
+                b.text.startsWith(TOOL_REFERENCE_TURN_BOUNDARY),
+            ) &&
+            contentHasToolReference(contentAfterStrip)
           ) {
-            const contentAfterStrip = normalizedMessage.message.content
-            if (
-              Array.isArray(contentAfterStrip) &&
-              !contentAfterStrip.some(
-                b =>
-                  b.type === 'text' &&
-                  b.text.startsWith(TOOL_REFERENCE_TURN_BOUNDARY),
-              ) &&
-              contentHasToolReference(contentAfterStrip)
-            ) {
-              normalizedMessage = {
-                ...normalizedMessage,
-                message: {
-                  ...normalizedMessage.message,
-                  content: [
-                    ...contentAfterStrip,
-                    { type: 'text', text: TOOL_REFERENCE_TURN_BOUNDARY },
-                  ],
-                },
-              }
+            normalizedMessage = {
+              ...normalizedMessage,
+              message: {
+                ...normalizedMessage.message,
+                content: [
+                  ...contentAfterStrip,
+                  { type: 'text', text: TOOL_REFERENCE_TURN_BOUNDARY },
+                ],
+              },
             }
           }
 
@@ -1130,23 +1036,11 @@ export function normalizeMessagesForAPI(
       }
     })
 
-  // Relocate text siblings off tool_reference messages — prevents the
-  // anomalous two-consecutive-human-turns pattern that teaches the model
-  // to emit the stop sequence after tool results. See #21049.
-  // Runs after merge (siblings are in place) and before ID tagging (so
-  // tags reflect final positions). When gate is OFF, this is a noop and
-  // the TOOL_REFERENCE_TURN_BOUNDARY injection above serves as fallback.
-  const relocated = checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
-    'tengu_toolref_defer_j8m',
-  )
-    ? relocateToolReferenceSiblings(result)
-    : result
-
   // Filter orphaned thinking-only assistant messages (likely introduced by
   // compaction slicing away intervening messages between a failed streaming
   // response and its retry). Without this, consecutive assistant messages with
   // mismatched thinking block signatures cause API 400 errors.
-  const withFilteredOrphans = filterOrphanedThinkingOnlyMessages(relocated)
+  const withFilteredOrphans = filterOrphanedThinkingOnlyMessages(result)
 
   // Order matters: strip trailing thinking first, THEN filter whitespace-only
   // messages. The reverse order has a bug: a message like [text("\n\n"), thinking("...")]

@@ -7,11 +7,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
-import { WEB_RESEARCHER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
-import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
 import {
-  formatAgentLine,
-  isLeanAgentPromptEnabled,
   isRunInBackgroundHidden,
   renderAgentPrompt,
   type AgentPromptDeps,
@@ -105,14 +101,11 @@ describe('Agent tool prompt — proactive dispatch guidance', () => {
 
 // `isForkSubagentEnabled()` folds to false under `bun test`, so the fork-on
 // text the product ships is reachable only by injecting it. Defaults are the
-// interactive shipping shape: fork on, agent list in an attachment, background
-// available, not a teammate.
+// interactive shipping shape: fork on, background available, not a teammate.
 function makeDeps(overrides: Partial<AgentPromptDeps> = {}): AgentPromptDeps {
   return {
     isForkSubagentEnabled: () => true,
-    shouldInjectAgentListInMessages: () => true,
     hasEmbeddedSearchTools: () => false,
-    getSubscriptionType: () => null,
     isRunInBackgroundHidden: () => false,
     isInProcessTeammate: () => false,
     isTeammate: () => false,
@@ -314,48 +307,6 @@ describe('CLAUDIN_LEAN_AGENT_PROMPT is on unless set to 0', () => {
     expect(await leanWith('1')).toBe(true)
     expect(await leanWith('0')).toBe(false)
     expect(await leanWith('false')).toBe(false)
-  })
-})
-
-describe('agent listing line — CLAUDIN_LEAN_AGENT_PROMPT uses whenToUseLean', () => {
-  // Read through the inline list with `lean` injected, so the assertions hold
-  // whatever CLAUDIN_LEAN_AGENT_PROMPT the test process was started with.
-  type Listed = Parameters<typeof formatAgentLine>[0]
-  function lineIn(agent: Listed, lean: boolean): string | undefined {
-    return renderAgentPrompt([agent], false, undefined, makeDeps({
-      shouldInjectAgentListInMessages: () => false,
-      isLeanAgentPromptEnabled: () => lean,
-    }))
-      .split('\n')
-      .find(line => line.startsWith(`- ${agent.agentType}: `))
-  }
-
-  test('flag off, the two WebResearcher lines are byte-identical to what shipped', () => {
-    // Captured before the lean arm existed (2026-09-23): 564 and 912 chars.
-    expect(sha256(lineIn(WEB_RESEARCHER_AGENT, false) ?? '')).toBe(
-      '9f1544918500eb645cbda7d5ae307580aa83ab095d4fd5da50995a6885770bf1',
-    )
-    expect(sha256(lineIn(WEB_RESEARCHER_MANAGER_AGENT, false) ?? '')).toBe(
-      '3ef41306dd4acdf5c3c161db71478b88f44478fc9c7e7eb4a8b1278bde03939e',
-    )
-  })
-
-  test('lean, a line carries the lean text; an agent without one keeps its own', () => {
-    const plain = { ...WEB_RESEARCHER_AGENT, agentType: 'Plain', whenToUseLean: undefined }
-    expect(lineIn(WEB_RESEARCHER_AGENT, true)).toStartWith(
-      `- WebResearcher: ${WEB_RESEARCHER_AGENT.whenToUseLean} (Tools:`,
-    )
-    expect(lineIn(plain, true)).toStartWith(
-      `- Plain: ${WEB_RESEARCHER_AGENT.whenToUse} (Tools:`,
-    )
-  })
-
-  test('the attachment path (formatAgentLine) renders the same line under the live flag', () => {
-    for (const agent of [WEB_RESEARCHER_AGENT, WEB_RESEARCHER_MANAGER_AGENT]) {
-      expect<string | undefined>(formatAgentLine(agent)).toBe(
-        lineIn(agent, isLeanAgentPromptEnabled()),
-      )
-    }
   })
 })
 

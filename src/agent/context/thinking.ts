@@ -1,7 +1,6 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import type { Theme } from 'src/terminal/theme/theme.js'
 import { feature } from 'bun:bundle'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getCanonicalName } from 'src/providers/model/model.js'
 import { get3PModelCapabilityOverride } from 'src/providers/model/modelSupportOverrides.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
@@ -14,14 +13,13 @@ export type ThinkingConfig =
   | { type: 'disabled' }
 
 /**
- * Build-time gate (feature) + runtime gate (GrowthBook). The build flag
- * controls code inclusion in external builds; the GB flag controls rollout.
+ * Build-time gate: the flag controls code inclusion in external builds.
  */
 export function isUltrathinkEnabled(): boolean {
   if (!feature('ULTRATHINK')) {
     return false
   }
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_turtle_carbon', true)
+  return true
 }
 
 /**

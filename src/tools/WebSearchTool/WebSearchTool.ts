@@ -6,7 +6,6 @@ import { getAPIProvider } from 'src/providers/model/providers.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 
 import { z } from 'zod/v4'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { queryModelWithStreaming } from 'src/providers/shims/claude.js'
 import { collectCodexCompletedResponse } from 'src/providers/shims/codexShim.js'
@@ -19,7 +18,7 @@ import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { getMainLoopModel, getSmallFastModel } from 'src/providers/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { getWebSearchPrompt, WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
@@ -814,26 +813,18 @@ export const WebSearchTool = buildTool({
     })
     const toolSchema = makeToolSchema(input)
 
-    const useHaiku = getFeatureValue_CACHED_MAY_BE_STALE(
-      'tengu_plum_vx3',
-      false,
-    )
-
     const appState = context.getAppState()
     const queryStream = queryModelWithStreaming({
       messages: [userMessage],
       systemPrompt: asSystemPrompt([
         'You are an assistant for performing a web search tool use',
       ]),
-      thinkingConfig: useHaiku
-        ? { type: 'disabled' as const }
-        : context.options.thinkingConfig,
+      thinkingConfig: context.options.thinkingConfig,
       tools: [],
       signal: context.abortController.signal,
       options: {
         getToolPermissionContext: async () => appState.toolPermissionContext,
-        model: useHaiku ? getSmallFastModel() : context.options.mainLoopModel,
-        toolChoice: useHaiku ? { type: 'tool', name: 'web_search' } : undefined,
+        model: context.options.mainLoopModel,
         isNonInteractiveSession: context.options.isNonInteractiveSession,
         hasAppendSystemPrompt: !!context.options.appendSystemPrompt,
         extraToolSchemas: [toolSchema],

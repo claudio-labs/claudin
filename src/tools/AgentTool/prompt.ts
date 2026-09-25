@@ -1,6 +1,4 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
-import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { isTeammate } from 'src/agent/coordinator/teammate.js'
@@ -85,23 +83,6 @@ function agentLine(agent: AgentDefinition, lean: boolean): string {
 }
 
 /**
- * Whether the agent list should be injected as an attachment message instead
- * of embedded in the tool description. When true, getPrompt() returns a static
- * description and attachments.ts emits an agent_listing_delta attachment.
- *
- * The dynamic agent list was ~10.2% of fleet cache_creation tokens: MCP async
- * connect, /reload-plugins, or permission-mode changes mutate the list →
- * description changes → full tool-schema cache bust.
- *
- * Flip it by naming the gate key in ~/.claudin/feature-flags.json; the
- * CLAUDIN_AGENT_LIST_IN_MESSAGES env override that used to shadow it was
- * testing scaffolding with no caller and is gone.
- */
-export function shouldInjectAgentListInMessages(): boolean {
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_agent_list_attach', true)
-}
-
-/**
  * Whether the Agent tool's input schema omits `run_in_background`
  * (AgentTool.tsx): background tasks are off, or the session is headless `-p`,
  * where no event loop drains a background child. The description is rendered
@@ -127,9 +108,7 @@ export function isRunInBackgroundHidden(): boolean {
  */
 export type AgentPromptDeps = {
   isForkSubagentEnabled: () => boolean
-  shouldInjectAgentListInMessages: () => boolean
   hasEmbeddedSearchTools: () => boolean
-  getSubscriptionType: typeof getSubscriptionType
   isRunInBackgroundHidden: () => boolean
   isInProcessTeammate: () => boolean
   isTeammate: () => boolean
@@ -139,9 +118,7 @@ export type AgentPromptDeps = {
 
 const LIVE_PROMPT_DEPS: AgentPromptDeps = {
   isForkSubagentEnabled,
-  shouldInjectAgentListInMessages,
   hasEmbeddedSearchTools,
-  getSubscriptionType,
   isRunInBackgroundHidden,
   isInProcessTeammate,
   isTeammate,
@@ -242,7 +219,6 @@ export function renderAgentPrompt(
     deps.isCompactToolPromptsEnabled() &&
     forkEnabled &&
     !isCoordinator &&
-    deps.shouldInjectAgentListInMessages() &&
     !deps.isInProcessTeammate() &&
     !deps.isTeammate()
   ) {
@@ -375,16 +351,11 @@ assistant: Uses the ${AGENT_TOOL_NAME} tool to launch the claudin-guide agent
 </example>
 `
 
-  // When the gate is on, the agent list lives in an agent_listing_delta
-  // attachment (see attachments.ts) instead of inline here. This keeps the
-  // tool description static across MCP/plugin/permission changes so the
-  // tools-block prompt cache doesn't bust every time an agent loads.
-  const listViaAttachment = deps.shouldInjectAgentListInMessages()
-
-  const agentListSection = listViaAttachment
-    ? `Available agent types are listed in <system-reminder> messages in the conversation.`
-    : `Available agent types and the tools they have access to:
-${effectiveAgents.map(agent => agentLine(agent, lean)).join('\n')}`
+  // The agent list lives in an agent_listing_delta attachment (see
+  // attachments.ts) instead of inline here. This keeps the tool description
+  // static across MCP/plugin/permission changes so the tools-block prompt
+  // cache doesn't bust every time an agent loads.
+  const agentListSection = `Available agent types are listed in <system-reminder> messages in the conversation.`
 
   // Shared core prompt used by both coordinator and non-coordinator modes
   const shared = `Launch a new agent to handle complex, multi-step tasks autonomously.
@@ -430,21 +401,12 @@ When NOT to use the ${AGENT_TOOL_NAME} tool:
 - Other tasks that are not related to the agent descriptions above
 `
 
-  // When listing via attachment, the "launch multiple agents" note is in the
-  // attachment message (conditioned on subscription there). When inline, keep
-  // the existing per-call getSubscriptionType() check.
-  const concurrencyNote =
-    !listViaAttachment && deps.getSubscriptionType() !== 'pro'
-      ? `
-- Launch multiple agents concurrently whenever possible, to maximize performance; to do that, use a single message with multiple tool uses`
-      : ''
-
   // Non-coordinator gets the full prompt with all sections
   return `${shared}
 ${whenNotToUseSection}
 
 Usage notes:
-- Always include a short description (3-5 words) summarizing what the agent will do${concurrencyNote}
+- Always include a short description (3-5 words) summarizing what the agent will do
 - When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.${
     !backgroundHidden && !deps.isInProcessTeammate() && !forkEnabled
       ? `

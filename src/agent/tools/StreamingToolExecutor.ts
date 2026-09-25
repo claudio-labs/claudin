@@ -2,7 +2,6 @@ import type { ToolUseBlock } from '@anthropic-ai/sdk/resources/index.mjs'
 import {
   createUserMessage,
   REJECT_MESSAGE,
-  withMemoryCorrectionHint,
 } from 'src/agent/messages/messages.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { findToolByName, type Tools, type ToolUseContext } from 'src/tools/Tool.js'
@@ -193,7 +192,7 @@ export class StreamingToolExecutor {
         content: [
           {
             type: 'tool_result',
-            content: withMemoryCorrectionHint(REJECT_MESSAGE),
+            content: REJECT_MESSAGE,
             is_error: true,
             tool_use_id: toolUseId,
           },

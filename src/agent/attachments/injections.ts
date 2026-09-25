@@ -11,10 +11,7 @@ import {
   type ToolUseContext,
 } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
-import {
-  formatAgentLine,
-  shouldInjectAgentListInMessages,
-} from 'src/tools/AgentTool/prompt.js'
+import { formatAgentLine } from 'src/tools/AgentTool/prompt.js'
 import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { filterDeniedAgents } from 'src/permissions/permissions.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
@@ -164,7 +161,7 @@ export function getDeferredToolsDeltaAttachment(
 /**
  * Diff the current filtered agent pool against what's already been announced
  * in this conversation (reconstructed from prior agent_listing_delta
- * attachments). Returns [] if nothing changed or the gate is off.
+ * attachments). Returns [] if nothing changed.
  *
  * The agent list was embedded in AgentTool's description, causing ~10.2% of
  * fleet cache_creation: MCP async connect, /reload-plugins, or
@@ -178,8 +175,6 @@ export function getAgentListingDeltaAttachment(
   toolUseContext: ToolUseContext,
   messages: Message[] | undefined,
 ): Attachment[] {
-  if (!shouldInjectAgentListInMessages()) return []
-
   // Skip if AgentTool isn't in the pool — the listing would be unactionable.
   if (
     !toolUseContext.options.tools.some(t => toolMatchesName(t, AGENT_TOOL_NAME))
