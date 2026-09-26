@@ -176,6 +176,18 @@
       "source": "src/tools/SendMessageTool/resumeOnce.ts",
       "find": "    inFlight.delete(agentId)\n",
       "replace": "\n"
+    },
+    {
+      "name": "the completion notice carries unread messages",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "    unread = describeUnreadMessages(task.pendingMessages);\n",
+      "replace": "\n"
+    },
+    {
+      "name": "unread messages are described",
+      "source": "src/agent/messages/interAgentMessages.ts",
+      "find": "  if (pending.length === 0) return undefined\n",
+      "replace": "  if (true) return undefined\n"
     }
   ]
 }

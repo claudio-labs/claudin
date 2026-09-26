@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  describeUnreadMessages,
   describeInterAgentMessage,
   isAgentAuthored,
   isInterAgentMessage,
@@ -8,6 +9,11 @@ import {
 } from 'src/agent/messages/interAgentMessages.js'
 import { wrapCommandText } from 'src/agent/messages/text.js'
 import { getAgentPendingMessageAttachments } from 'src/agent/attachments/pipeline.js'
+import {
+  getCommandQueueSnapshot,
+  resetCommandQueue,
+} from 'src/agent/messageQueueManager.js'
+import { enqueueAgentNotification } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 
@@ -116,5 +122,55 @@ describe('a message queued for a running agent', () => {
     expect(wrapCommandText('x', { kind: 'agent', name: 'tester' })).toStartWith(
       'Agent "tester" sent you a message',
     )
+  })
+})
+
+describe('messages an agent never read', () => {
+  test('nothing to say when the queue is empty', () => {
+    expect(describeUnreadMessages([])).toBeUndefined()
+  })
+
+  test('says how many, from whom, and how they still get read', () => {
+    const text = describeUnreadMessages([
+      formatAgentMessage({ from: 'tester', body: 'bug', to: 'dev' }),
+      formatAgentMessage({ from: 'tester', body: 'another', to: 'dev' }),
+      'the user typed this',
+    ])
+    expect(text).toContain('3 messages reached it after its last tool round')
+    expect(text).toContain('from: tester, the user')
+    expect(text).toContain('resumes it')
+  })
+
+  test("the completion notice carries them, so they do not vanish unseen", () => {
+    let state = {
+      speculation: { status: 'idle' },
+      tasks: {
+        a1: {
+          type: 'local_agent',
+          id: 'a1',
+          status: 'completed',
+          notified: false,
+          pendingMessages: [formatAgentMessage({ from: 'tester', body: 'bug', to: 'dev' })],
+        },
+      },
+    }
+    const setAppState = (f: (prev: typeof state) => typeof state) => {
+      state = f(state)
+    }
+    try {
+      enqueueAgentNotification({
+        taskId: 'a1',
+        description: 'dev',
+        status: 'completed',
+        setAppState: setAppState as never,
+        finalMessage: 'done',
+      })
+      const [notice] = getCommandQueueSnapshot()
+      expect(String(notice?.value)).toContain(
+        '<unread-messages>1 message reached it after its last tool round and went unread, from: tester.',
+      )
+    } finally {
+      resetCommandQueue()
+    }
   })
 })

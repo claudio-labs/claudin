@@ -81,3 +81,23 @@ export function pendingMessageOrigin(text: string): MessageOrigin {
   if (!envelope) return { kind: 'human' }
   return { kind: 'agent', name: envelope.attrs.from ?? 'agent' }
 }
+
+/**
+ * The line an agent's completion notice carries when messages reached it
+ * after its last tool round — otherwise they vanish without anyone knowing.
+ * They stay queued on the task, and a resume while it is still listed reads
+ * them. Undefined when nothing is unread.
+ */
+export function describeUnreadMessages(pending: readonly string[]): string | undefined {
+  if (pending.length === 0) return undefined
+  const senders = [
+    ...new Set(
+      pending.map(text => {
+        const origin = pendingMessageOrigin(text)
+        return origin.kind === 'agent' ? origin.name : 'the user'
+      }),
+    ),
+  ]
+  const count = pending.length === 1 ? '1 message' : `${pending.length} messages`
+  return `${count} reached it after its last tool round and went unread, from: ${senders.join(', ')}. A SendMessage to it resumes it, and it reads them then.`
+}
