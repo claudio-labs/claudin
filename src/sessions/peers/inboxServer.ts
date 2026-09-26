@@ -20,9 +20,9 @@ import { errorMessage, isENOENT } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { isProcessRunning } from 'src/shared/proc/genericProcessUtils.js'
 import {
+  createLineReader,
   decodeRequest,
   encodeFrame,
-  MAX_FRAME_BYTES,
   type RequestFrame,
   type ResponseFrame,
 } from 'src/sessions/peers/frames.js'
@@ -75,8 +75,8 @@ function serveConnection(
   token: string,
   handler: InboxHandler,
 ): void {
-  let buffer = ''
   let answered = false
+  const readLine = createLineReader()
   const answer = (response: ResponseFrame): void => {
     if (answered) return
     answered = true
@@ -87,16 +87,13 @@ function serveConnection(
     logForDebugging(`[peers] inbox connection error: ${error.message}`),
   )
   connection.on('data', chunk => {
-    if (answered) return
-    buffer += chunk.toString('utf8')
-    const end = buffer.indexOf('\n')
-    if (end === -1) {
-      if (buffer.length > MAX_FRAME_BYTES) {
-        answer({ ok: false, outcome: 'refused', detail: 'frame too large' })
-      }
+    const read = readLine(chunk)
+    if (!read) return
+    if ('tooLarge' in read) {
+      answer({ ok: false, outcome: 'refused', detail: 'frame too large' })
       return
     }
-    const decoded = decodeRequest(buffer.slice(0, end))
+    const decoded = decodeRequest(read.line)
     if ('error' in decoded) {
       answer({ ok: false, outcome: 'refused', detail: decoded.error })
       return

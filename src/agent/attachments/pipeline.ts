@@ -24,6 +24,7 @@ import type {
 import { maybeResizeAndDownsampleImageBlock } from 'src/terminal/image/imageResizer.js'
 import type { PastedContent } from 'src/platform/config/config.js'
 import { drainPendingMessages } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import { pendingMessageOrigin } from 'src/agent/messages/interAgentMessages.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -476,7 +477,7 @@ export function getAgentPendingMessageAttachments(
   return drained.map(msg => ({
     type: 'queued_command' as const,
     prompt: msg,
-    origin: { kind: 'coordinator' as const },
+    origin: pendingMessageOrigin(msg),
     isMeta: true,
   }))
 }

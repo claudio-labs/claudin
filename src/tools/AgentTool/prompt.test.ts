@@ -233,11 +233,13 @@ describe('isRunInBackgroundHidden — one predicate for the schema and the descr
     expect(isRunInBackgroundHidden()).toBe(true)
   })
 
-  test('the input schema omits run_in_background by this same predicate', () => {
-    // The schema is cached at first access, so it cannot be flipped in-process;
-    // what can drift is a second, inlined predicate. Pin the call.
+  test('call() ignores a run_in_background the schema withheld, by this same predicate', () => {
+    // The wire schema drops it per request (agentSchema.wire.test.ts); a value
+    // the model sends anyway must not background a child nothing drains in -p.
     const agentTool = readFileSync(new URL('./AgentTool.tsx', import.meta.url), 'utf8')
-    expect(agentTool).toContain('const hideRunInBackground = isRunInBackgroundHidden();')
+    expect(agentTool).toContain(
+      'const run_in_background = isRunInBackgroundHidden() ? undefined : requestedBackground;',
+    )
   })
 })
 

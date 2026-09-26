@@ -1,15 +1,25 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  describeUnreadMessages,
   describeInterAgentMessage,
   isAgentAuthored,
   isInterAgentMessage,
+  pendingMessageOrigin,
 } from 'src/agent/messages/interAgentMessages.js'
+import { wrapCommandText } from 'src/agent/messages/text.js'
+import { getAgentPendingMessageAttachments } from 'src/agent/attachments/pipeline.js'
+import {
+  getCommandQueueSnapshot,
+  resetCommandQueue,
+} from 'src/agent/messageQueueManager.js'
+import { enqueueAgentNotification } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 
 describe('describeInterAgentMessage', () => {
   test('names a named background agent by its name', () => {
-    const text = formatAgentMessage({ from: 'researcher', body: 'found it\nsee a.ts' })
+    const text = formatAgentMessage({ from: 'researcher', body: 'found it\nsee a.ts', to: 'main' })
     expect(describeInterAgentMessage(text)).toEqual({
       kind: 'message',
       sender: 'researcher',
@@ -23,8 +33,17 @@ describe('describeInterAgentMessage', () => {
       from: 'a1b2c3d4e5f60718',
       description: 'Map the registry',
       body: 'done',
+      to: 'main',
     })
     expect(describeInterAgentMessage(text)?.sender).toBe('Map the registry')
+  })
+
+  test('a message from main shows as the main conversation', () => {
+    const text = formatAgentMessage({ from: 'main', body: 'status?', to: 'dev' })
+    expect(describeInterAgentMessage(text)).toMatchObject({
+      sender: 'main',
+      relation: 'main conversation',
+    })
   })
 
   test('ignores prose that only mentions the tag', () => {
@@ -34,6 +53,7 @@ describe('describeInterAgentMessage', () => {
 })
 
 test('only agent-written origins count as agent-authored', () => {
+  expect(isAgentAuthored({ kind: 'agent', name: 'tester' })).toBe(true)
   expect(isAgentAuthored({ kind: 'subagent', name: 'researcher' })).toBe(true)
   expect(isAgentAuthored({ kind: 'peer', name: 'claudin-goal' })).toBe(true)
   expect(isAgentAuthored({ kind: 'peer-notice', name: 'claudin-goal' })).toBe(true)
@@ -43,8 +63,122 @@ test('only agent-written origins count as agent-authored', () => {
 })
 
 test('formatAgentMessage tells the receiver how to answer', () => {
-  const text = formatAgentMessage({ from: 'researcher', body: 'hi' })
+  const text = formatAgentMessage({ from: 'researcher', body: 'hi', to: 'main' })
   expect(text).toStartWith('<agent-message from="researcher">\nhi\n</agent-message>\n')
   expect(text).toContain('not from your user')
   expect(text).toContain('SendMessage with to: "researcher"')
+})
+
+test('formatAgentMessage says who the sender is to the receiver', () => {
+  expect(formatAgentMessage({ from: 'dev', body: 'hi', to: 'main' })).toContain(
+    'From your background agent',
+  )
+  expect(formatAgentMessage({ from: 'main', body: 'hi', to: 'dev' })).toContain(
+    'From the main conversation, which launched you',
+  )
+  const sibling = formatAgentMessage({ from: 'tester', body: 'bug in a.ts', to: 'dev' })
+  expect(sibling).toContain('From another agent of this conversation')
+  expect(sibling).toContain('SendMessage with to: "tester"')
+})
+
+test('a sender blocked on the answer marks its message, and the transcript says so', () => {
+  const text = formatAgentMessage({ from: 'tester', body: 'is it fixed?', to: 'dev', awaitingReply: true })
+  expect(text).toStartWith('<agent-message from="tester" awaiting-reply="true">')
+  expect(text).toContain('It is waiting for your answer — send it before going on')
+  expect(describeInterAgentMessage(text)?.relation).toBe('background agent, waiting for a reply')
+  expect(formatAgentMessage({ from: 'tester', body: 'fyi', to: 'dev' })).not.toContain('awaiting-reply')
+})
+
+describe('a message queued for a running agent', () => {
+  test('SendMessage envelopes are agent-authored, with the address to answer', () => {
+    const letter = formatAgentMessage({ from: 'tester', body: 'bug in a.ts', to: 'dev' })
+    expect(pendingMessageOrigin(letter)).toEqual({ kind: 'agent', name: 'tester' })
+  })
+
+  test('anything else was typed by the user into the agent view', () => {
+    expect(pendingMessageOrigin('please also check b.ts')).toEqual({ kind: 'human' })
+    // Prose that only mentions the tag is not an envelope.
+    expect(pendingMessageOrigin('what is an <agent-message>?')).toEqual({ kind: 'human' })
+  })
+
+  test('the drain labels each one by its author, not as "the coordinator"', () => {
+    const letter = formatAgentMessage({ from: 'main', body: 'status?', to: 'dev' })
+    let state = {
+      tasks: {
+        a1: { type: 'local_agent', pendingMessages: [letter, 'from the user'] },
+      },
+    }
+    const context = {
+      agentId: 'a1',
+      getAppState: () => state,
+      setAppState: (f: (prev: typeof state) => typeof state) => {
+        state = f(state)
+      },
+    } as unknown as ToolUseContext
+    const attachments = getAgentPendingMessageAttachments(context)
+    expect(attachments.map(a => (a as { origin?: unknown }).origin)).toEqual([
+      { kind: 'agent', name: 'main' },
+      { kind: 'human' },
+    ])
+    expect(state.tasks.a1.pendingMessages).toEqual([])
+  })
+
+  test('the wrapper names the sender', () => {
+    expect(wrapCommandText('x', { kind: 'agent', name: 'main' })).toStartWith(
+      'The main conversation sent you a message',
+    )
+    expect(wrapCommandText('x', { kind: 'agent', name: 'tester' })).toStartWith(
+      'Agent "tester" sent you a message',
+    )
+  })
+})
+
+describe('messages an agent never read', () => {
+  test('nothing to say when the queue is empty', () => {
+    expect(describeUnreadMessages([])).toBeUndefined()
+  })
+
+  test('says how many, from whom, and how they still get read', () => {
+    const text = describeUnreadMessages([
+      formatAgentMessage({ from: 'tester', body: 'bug', to: 'dev' }),
+      formatAgentMessage({ from: 'tester', body: 'another', to: 'dev' }),
+      'the user typed this',
+    ])
+    expect(text).toContain('3 messages reached it after its last tool round')
+    expect(text).toContain('from: tester, the user')
+    expect(text).toContain('resumes it')
+  })
+
+  test("the completion notice carries them, so they do not vanish unseen", () => {
+    let state = {
+      speculation: { status: 'idle' },
+      tasks: {
+        a1: {
+          type: 'local_agent',
+          id: 'a1',
+          status: 'completed',
+          notified: false,
+          pendingMessages: [formatAgentMessage({ from: 'tester', body: 'bug', to: 'dev' })],
+        },
+      },
+    }
+    const setAppState = (f: (prev: typeof state) => typeof state) => {
+      state = f(state)
+    }
+    try {
+      enqueueAgentNotification({
+        taskId: 'a1',
+        description: 'dev',
+        status: 'completed',
+        setAppState: setAppState as never,
+        finalMessage: 'done',
+      })
+      const [notice] = getCommandQueueSnapshot()
+      expect(String(notice?.value)).toContain(
+        '<unread-messages>1 message reached it after its last tool round and went unread, from: tester.',
+      )
+    } finally {
+      resetCommandQueue()
+    }
+  })
 })

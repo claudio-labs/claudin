@@ -28,6 +28,11 @@ const common = () => ({
   from: z.string().max(1100).optional(),
   from_name: z.string().max(400).optional(),
   from_mode: PermissionClassSchema().optional(),
+  /**
+   * The sender is in plan mode — still `prompting` in `from_mode`, so a
+   * session that predates this field reads it as it always did.
+   */
+  from_plan: z.boolean().optional(),
 })
 
 const RequestFrameSchema = lazySchema(() =>
@@ -79,6 +84,37 @@ export type ResponseFrame = z.infer<ReturnType<typeof ResponseFrameSchema>>
 
 export function encodeFrame(frame: RequestFrame | ResponseFrame): string {
   return `${jsonStringify(frame)}\n`
+}
+
+/**
+ * Reads a connection's one line: feed it each chunk, and it answers once — the
+ * line, or that it outgrew `maxBytes` — then ignores whatever follows, so a
+ * frame is taken once however the sender keeps writing. The chunks stay bytes
+ * until the newline: a character split across two of them decodes whole, and
+ * the cap counts bytes, not UTF-16 units.
+ */
+export function createLineReader(
+  maxBytes: number = MAX_FRAME_BYTES,
+): (chunk: Buffer | string) => { line: string } | { tooLarge: true } | undefined {
+  const chunks: Buffer[] = []
+  let size = 0
+  let done = false
+  return chunk => {
+    if (done) return undefined
+    // Sockets here never set an encoding, so a chunk arrives as bytes.
+    const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
+    const end = bytes.indexOf(0x0a)
+    const kept = end === -1 ? bytes : bytes.subarray(0, end)
+    chunks.push(kept)
+    size += kept.length
+    if (size > maxBytes) {
+      done = true
+      return { tooLarge: true }
+    }
+    if (end === -1) return undefined
+    done = true
+    return { line: Buffer.concat(chunks).toString('utf8') }
+  }
 }
 
 /** Parse one request line; a reason instead of a frame when it is unusable. */

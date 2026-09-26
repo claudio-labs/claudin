@@ -32,6 +32,14 @@ say when it is idle — Claude Code 2.1.281 parity, measured from its binary
   kind that carries agent text belongs in `isAgentAuthored`.
 - `scripts/migrations/probes/crossSessionMessaging.json` breaks every guard;
   re-run it after touching `src/sessions/peers/`.
+- Since 2026-09-26 (`feat/agents-ask-each-other`) agents of one conversation
+  talk too, and `await_reply` holds a send open for the answer — design in
+  [[agent-messaging-tech-doc]]. Its four probe specs are
+  `scripts/migrations/probes/agentMessaging*.json`; the two
+  `*.regression.test.ts` pin what an agent that never messages keeps, and must
+  not be edited to make a change pass.
+- Plan mode is now a hold boundary too (`from_plan`), and peer text is
+  sanitized on arrival (`sanitize.ts`) — the held-message dialog showed escapes raw.
 
 **Rejected:**
 - Interop with `claude` sessions: its socket protocol is undocumented and moves

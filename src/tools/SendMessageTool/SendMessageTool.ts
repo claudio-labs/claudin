@@ -40,7 +40,11 @@ import {
 } from 'src/sessions/peers/inboxServer.js'
 import { permissionClassOf } from 'src/sessions/peers/policy.js'
 import { awaitDeliveryStatus } from 'src/sessions/peers/notices.js'
-import { awaitIdleNotice } from 'src/sessions/peers/subscriptions.js'
+import {
+  awaitIdleNotice,
+  forgetAwaitedIdleNotices,
+  takeAwaitedIdleNotice,
+} from 'src/sessions/peers/subscriptions.js'
 import {
   type PeerSession,
   readSessionDirectory,
@@ -48,9 +52,13 @@ import {
 } from 'src/sessions/peers/registry.js'
 import {
   CROSS_SESSION_SENDS_PER_USER_PROMPT,
+  AGENT_SENDS_PER_AGENT,
+  takeAgentSend,
   takeCrossSessionSend,
 } from 'src/sessions/peers/sendBudget.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
+import { CROSS_SESSION_MESSAGE_TAG } from 'src/shared/constants/xml.js'
+import { parseXmlEnvelope } from 'src/shared/data/xml.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { BackendType } from 'src/agent/coordinator/swarm/backends/types.js'
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
@@ -70,9 +78,16 @@ import {
   writeToMailbox,
 } from 'src/agent/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
+import { resumeOnce } from 'src/tools/SendMessageTool/resumeOnce.js'
+import {
+  awaitReply,
+  describeAwaitOutcome,
+  inSessionProbe,
+} from 'src/tools/SendMessageTool/awaitReply.js'
 import { LIST_AGENTS_TOOL_NAME } from 'src/tools/ListAgentsTool/constants.js'
-import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
+import { MAIN_ADDRESS, SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/SendMessageTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
 
@@ -97,7 +112,6 @@ const StructuredMessage = lazySchema(() =>
   ]),
 )
 
-const MAIN_ADDRESS = 'main'
 const SUMMARY_MAX_CHARS = 200
 const TO_MAX_CHARS = 1024
 const SINGLE_LINE_RE = /^[^\n\r]*$/
@@ -107,6 +121,9 @@ const MESSAGE_DESCRIPTION =
 
 const NOTIFY_WHEN_IDLE_DESCRIPTION =
   'Ask a session ON THIS MACHINE to send you ONE notice when it next goes idle (finishes its turn with nothing queued) or exits — opt-in, one-shot, no polling. With a message: deliver it now AND subscribe. Without a message (omit it): a pure subscription that costs the other session nothing, answered at once if it is already idle.'
+
+const AWAIT_REPLY_DESCRIPTION =
+  "Only when you cannot go on without the answer: keep this call open until the recipient answers. Returns the first message sent to you (check who sent it — it may not be the reply), or the recipient's end — an agent stopping, a session going idle — if that comes first; gives up after 10 minutes. Without a message (omit it): only wait — how to keep waiting after a timeout."
 
 type SchemaVariant = { swarm: boolean; crossSession: boolean }
 
@@ -133,6 +150,7 @@ const widestInputSchema = () =>
     summary: z.string().optional(),
     message: z.union([z.string(), StructuredMessage()]).optional(),
     notify_when_idle: semanticBoolean(z.boolean().optional()),
+    await_reply: semanticBoolean(z.boolean().optional()),
   })
 type InputSchema = ReturnType<typeof widestInputSchema>
 
@@ -152,8 +170,10 @@ export function inputSchemaFor(variant: SchemaVariant): InputSchema {
   if (cached) return cached
   const text = z.string().describe(MESSAGE_DESCRIPTION)
   const message = swarm ? z.union([text, StructuredMessage()]) : text
+  const awaitReply = semanticBoolean(z.boolean().optional()).describe(AWAIT_REPLY_DESCRIPTION)
   // Only a session on this machine can be subscribed to, so only a schema
-  // that can reach one offers the flag — and with it, leaving out `message`.
+  // that can reach one offers notify_when_idle. `message` is optional in both:
+  // `await_reply` without one only waits.
   const schema = (
     variant.crossSession
       ? z.object({
@@ -163,11 +183,13 @@ export function inputSchemaFor(variant: SchemaVariant): InputSchema {
           notify_when_idle: semanticBoolean(z.boolean().optional()).describe(
             NOTIFY_WHEN_IDLE_DESCRIPTION,
           ),
+          await_reply: awaitReply,
         })
       : z.object({
           to: z.string().describe(describeTo(variant)),
           summary: z.string().optional().describe(describeSummary(swarm)),
-          message,
+          message: message.optional(),
+          await_reply: awaitReply,
         })
   ) as unknown as InputSchema
   inputSchemas.set(key, schema)
@@ -189,6 +211,8 @@ export type MessageOutput = {
   success: boolean
   message: string
   routing?: MessageRouting
+  /** What arrived while `await_reply` waited — the envelopes, verbatim. */
+  replies?: string[]
 }
 
 export type BroadcastOutput = {
@@ -252,15 +276,42 @@ function findAgentName(
 }
 
 /**
- * A background agent writing to the main conversation. It lands in the main
- * thread's queue: drained into the current turn at its next tool round, or
- * starting a turn when the main conversation is idle — the same two paths a
- * task notification takes.
+ * The address a reply to this sender goes to — "main", the agent's name, or
+ * its agentId — and, for an agent without a name, the description the
+ * receiver's transcript shows instead of the id.
  */
-function handleMainMessage(
-  content: string,
-  context: ToolUseContext,
-): { data: MessageOutput } {
+function senderOf(context: ToolUseContext): { from: string; description?: string } {
+  const { agentId } = context
+  if (agentId === undefined) return { from: MAIN_ADDRESS }
+  const appState = context.getAppState()
+  const name = findAgentName(appState.agentNameRegistry, agentId)
+  if (name !== undefined) return { from: name }
+  const task = appState.tasks[agentId]
+  return { from: agentId, description: isLocalAgentTask(task) ? task.description : undefined }
+}
+
+/** One message to another agent of this conversation, against the sender's budget. */
+function spendAgentSend(context: ToolUseContext): void {
+  if (takeAgentSend(context.agentId ?? MAIN_ADDRESS)) return
+  throw new Error(
+    `You have sent ${AGENT_SENDS_PER_AGENT} messages to other agents — the limit that stops two agents looping with no human in it. ${context.agentId === undefined ? 'Tell the user where things stand instead.' : 'Put what is left in your final report instead.'}`,
+  )
+}
+
+/**
+ * The agent of this conversation `to` names — by its registered name or its
+ * raw agentId — the way a send resolves it.
+ */
+function resolveAgentAddress(to: string, context: ToolUseContext): string | undefined {
+  return context.getAppState().agentNameRegistry.get(to) ?? toAgentId(to) ?? undefined
+}
+
+/**
+ * Throw unless this conversation may write to (or wait on) "main": only a
+ * background agent can. Main itself is "main", and main is blocked on an
+ * inline agent, which answers with its final message.
+ */
+function assertReachesMain(context: ToolUseContext): void {
   const { agentId } = context
   if (agentId === undefined) {
     throw new Error(
@@ -276,17 +327,28 @@ function handleMainMessage(
       `"${MAIN_ADDRESS}" is for background agents. An agent running inline hands its final message to the main conversation — put what you want to say there.`,
     )
   }
-  const name = findAgentName(appState.agentNameRegistry, agentId)
+}
+
+/**
+ * A background agent writing to the main conversation. It lands in the main
+ * thread's queue: drained into the current turn at its next tool round, or
+ * starting a turn when the main conversation is idle — the same two paths a
+ * task notification takes.
+ */
+function handleMainMessage(
+  content: string,
+  context: ToolUseContext,
+  awaitingReply: boolean,
+): { data: MessageOutput } {
+  assertReachesMain(context)
+  const sender = senderOf(context)
+  spendAgentSend(context)
   enqueue({
-    value: formatAgentMessage({
-      from: name ?? agentId,
-      description: name === undefined ? task.description : undefined,
-      body: content,
-    }),
+    value: formatAgentMessage({ ...sender, body: content, to: MAIN_ADDRESS, awaitingReply }),
     mode: 'task-notification',
     priority: 'next',
     skipSlashCommands: true,
-    origin: { kind: 'subagent', name: name ?? task.description },
+    origin: { kind: 'subagent', name: sender.description ?? sender.from },
   })
   return {
     data: {
@@ -377,6 +439,9 @@ async function sendToPeer(
       : (findAgentName(appState.agentNameRegistry, context.agentId) ??
         context.agentId)
   const msgId = randomUUID()
+  // Waited on before the send: a session already idle answers a pure
+  // subscription at once, and a notice nobody awaits yet is dropped.
+  if (notifyWhenIdle) awaitIdleNotice(msgId, label)
   const auth = {
     v: FRAME_VERSION,
     msg_id: msgId,
@@ -384,6 +449,7 @@ async function sendToPeer(
     from: own ? formatUdsAddress(own.socketPath) : undefined,
     from_name: ownName,
     from_mode: permissionClassOf(appState.toolPermissionContext.mode),
+    from_plan: appState.toolPermissionContext.mode === 'plan' || undefined,
   } as const
   let response: ResponseFrame
   try {
@@ -400,12 +466,14 @@ async function sendToPeer(
           },
     )
   } catch (e) {
+    takeAwaitedIdleNotice(msgId)
     if (e instanceof PeerDeliveryError) {
       throw new Error(`Could not reach ${label}: ${e.message}.`)
     }
     throw e
   }
   if (!response.ok) {
+    takeAwaitedIdleNotice(msgId)
     return {
       data: {
         success: false,
@@ -416,7 +484,7 @@ async function sendToPeer(
   // Its outcome comes back later as a delivery_status, which is only believed
   // for a send this session is waiting on.
   if (response.outcome === 'held' && own) awaitDeliveryStatus(msgId, label)
-  if (response.subscribed) awaitIdleNotice(msgId, label)
+  if (notifyWhenIdle && !response.subscribed) takeAwaitedIdleNotice(msgId)
   return {
     data: {
       success: true,
@@ -536,7 +604,7 @@ async function handleBroadcast(
 
   if (!teamName) {
     throw new Error(
-      'Not in a team context. Create a team with Teammate spawnTeam first, or set CLAUDE_CODE_TEAM_NAME.',
+      '"*" broadcasts to an agent team, and this session is not in one.',
     )
   }
 
@@ -547,12 +615,6 @@ async function handleBroadcast(
 
   const senderName =
     getAgentName() || (isTeammate() ? 'teammate' : TEAM_LEAD_NAME)
-  if (!senderName) {
-    throw new Error(
-      'Cannot broadcast: sender name is required. Set CLAUDE_CODE_AGENT_NAME.',
-    )
-  }
-
   const senderColor = getTeammateColor()
 
   const recipients: string[] = []
@@ -640,10 +702,23 @@ async function handleShutdownRequest(
   }
 }
 
+/**
+ * Why this conversation may not approve a shutdown, or undefined when it may.
+ * Approving ends the approver — a teammate's own loop or process. Anyone else
+ * (the lead, a background agent) holds no such exit, and the fallback below
+ * would end the whole session instead.
+ */
+export function shutdownApprovalRefusal(): string | undefined {
+  if (isTeammate()) return undefined
+  return 'Only a teammate answers a shutdown request by exiting — you are not one, and approving would end this whole session. Tell whoever asked that you are not a teammate.'
+}
+
 async function handleShutdownApproval(
   requestId: string,
   context: ToolUseContext,
 ): Promise<{ data: ResponseOutput }> {
+  const refusal = shutdownApprovalRefusal()
+  if (refusal) throw new Error(refusal)
   const teamName = getTeamName()
   const agentId = getAgentId()
   const agentName = getAgentName() || 'teammate'
@@ -855,10 +930,178 @@ async function handlePlanRejection(
   }
 }
 
+/**
+ * A stopped agent — or one evicted from state (`status` undefined) — resumed
+ * in the background with the message: once, however many sends reach it
+ * together, the later ones queued into the run the first one started.
+ */
+async function resumeWithLetter({
+  agentId,
+  to,
+  letter,
+  status,
+  context,
+  canUseTool,
+}: {
+  agentId: string
+  to: string
+  letter: string
+  status?: string
+  context: ToolUseContext
+  canUseTool: CanUseToolFn
+}): Promise<{ data: MessageOutput }> {
+  // The user stopped it; another agent restarting it would undo that behind
+  // the user's back. Main answers to the user, so it may.
+  if (status === 'killed' && context.agentId !== undefined) {
+    return {
+      data: {
+        success: false,
+        message: `The user stopped "${to}"; only the main conversation can start it again. Put what you needed from it in your report instead.`,
+      },
+    }
+  }
+  // Its completion notice goes to main, whoever resumed it.
+  const whenDone =
+    context.agentId === undefined
+      ? "You'll be notified when it finishes."
+      : `Its completion notice goes to the main conversation — to get its answer here, call SendMessage with to: ${JSON.stringify(to)}, await_reply: true and no message.`
+  try {
+    const outcome = await resumeOnce(agentId, () =>
+      resumeAgentBackground({ agentId, prompt: letter, toolUseContext: context, canUseTool }),
+    )
+    if ('joined' in outcome) {
+      queuePendingMessage(agentId, letter, context.setAppStateForTasks ?? context.setAppState)
+      return {
+        data: {
+          success: true,
+          message: `Message queued for delivery to ${to} at its next tool round (another send had just resumed it).`,
+        },
+      }
+    }
+    const how =
+      status === undefined
+        ? 'had no active task; resumed it from its transcript'
+        : `was stopped (${status}); resumed it`
+    return {
+      data: {
+        success: true,
+        message: `Agent "${to}" ${how} in the background with your message. ${whenDone} Output: ${outcome.resumed.outputFile}`,
+      },
+    }
+  } catch (e) {
+    return {
+      data: {
+        success: false,
+        message:
+          status === undefined
+            ? `Agent "${to}" is registered but has no transcript to resume. It may have been cleaned up. (${errorMessage(e)})`
+            : `Agent "${to}" is stopped (${status}) and could not be resumed: ${errorMessage(e)}`,
+      },
+    }
+  }
+}
+
+/**
+ * What a wait watches: an agent of this conversation (its agentId), main, or
+ * another session (`peer`). Checked before anything is sent, so a send never
+ * goes out on a wait that cannot happen.
+ */
+async function awaitTargetOf(
+  to: string,
+  context: ToolUseContext,
+): Promise<{ agentId?: string; peer?: { name: string; label: string } }> {
+  if (to === MAIN_ADDRESS) {
+    assertReachesMain(context)
+    return {}
+  }
+  const agentId = resolveAgentAddress(to, context)
+  if (agentId !== undefined) return { agentId }
+  const located = await locatePeer(to, false)
+  if (!located) {
+    throw new Error(
+      `await_reply waits on an agent of this conversation, "${MAIN_ADDRESS}" or another session, and "${to}" is none of them — call ${LIST_AGENTS_TOOL_NAME} to see who you can message.`,
+    )
+  }
+  // Another session answers this session's address, so its reply lands in
+  // the main conversation — the one place a wait on it can see it.
+  if (context.agentId !== undefined) {
+    throw new Error(
+      `A reply from another session reaches the main conversation, not this agent — send without await_reply, or ask "${MAIN_ADDRESS}" to ask.`,
+    )
+  }
+  if (!getOwnInbox()) {
+    throw new Error(
+      'await_reply to another session needs an inbox for the reply to reach, and this session has none (only an interactive session gets one). Send without it.',
+    )
+  }
+  return {
+    peer: { name: located.peer.name, label: `${located.peer.name} [${located.peer.ref}]` },
+  }
+}
+
+/**
+ * The sends sendAndAwait makes through the tool's own call: delivered like any
+ * other, but marked awaiting-reply, so the recipient knows someone is blocked.
+ */
+const sendsForAwait = new WeakSet<Input>()
+
+/** Whether `text` is a message the session named `peerName` sent. */
+function isReplyFrom(peerName: string, text: string): boolean {
+  return parseXmlEnvelope(text, CROSS_SESSION_MESSAGE_TAG)?.attrs['from-name'] === peerName
+}
+
+/**
+ * `await_reply`: send (when there is a message), then hold the call until an
+ * answer arrives or the recipient stops. What arrived is returned verbatim —
+ * taken out of the waiter's queue, so it is not delivered a second time.
+ */
+async function sendAndAwait(
+  input: Input,
+  context: ToolUseContext,
+  send: (input: Input) => Promise<{ data: SendMessageToolOutput }>,
+): Promise<{ data: MessageOutput }> {
+  const target = await awaitTargetOf(input.to, context)
+  let sent: SendMessageToolOutput | undefined
+  let letter: string | undefined
+  // A session is also subscribed to, so the wait ends when it goes idle
+  // without answering — and a wait with no message is that subscription alone.
+  if (typeof input.message === 'string' || target.peer) {
+    const sendInput = { ...input, notify_when_idle: target.peer !== undefined }
+    sendsForAwait.add(sendInput)
+    sent = (await send(sendInput)).data
+    if (!sent.success) return { data: { success: false, message: sent.message } }
+    if (target.agentId !== undefined && typeof input.message === 'string') {
+      letter = formatAgentMessage({
+        ...senderOf(context),
+        body: input.message,
+        to: input.to,
+        awaitingReply: true,
+      })
+    }
+  }
+  const outcome = await awaitReply(inSessionProbe(context, target.agentId, letter), {
+    signal: context.abortController.signal,
+  })
+  // The idle subscription was only there to end the wait if the session went
+  // quiet. It answered, so its later idle notice would be noise — a turn
+  // spent reading "is idle now".
+  if (target.peer && outcome.kind === 'replied' && outcome.messages.some(text => isReplyFrom(target.peer!.name, text))) {
+    forgetAwaitedIdleNotices(target.peer.label)
+  }
+  const waited = describeAwaitOutcome(input.to, outcome, context.agentId === undefined)
+  return {
+    data: {
+      success: true,
+      message: sent ? `${sent.message} ${waited}` : waited,
+      ...(outcome.kind === 'replied' && { replies: outcome.messages }),
+    },
+  }
+}
+
 export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
   buildTool({
     name: SEND_MESSAGE_TOOL_NAME,
-    searchHint: 'send messages to agent teammates (swarm protocol)',
+    searchHint: 'message another agent or session, and wait for its answer',
     maxResultSizeChars: 100_000,
 
     userFacingName() {
@@ -914,7 +1157,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
 
     toAutoClassifierInput(input) {
       if (input.message === undefined) {
-        return `notify_when_idle ${input.to}`
+        return input.await_reply ? `await_reply ${input.to}` : `notify_when_idle ${input.to}`
       }
       if (typeof input.message === 'string') {
         return `to ${input.to}${input.notify_when_idle ? ' (notify_when_idle)' : ''}: ${input.message}`
@@ -976,6 +1219,40 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         }
       }
       const swarm = isAgentSwarmsEnabled()
+      if (input.await_reply) {
+        if (input.notify_when_idle) {
+          return {
+            result: false,
+            message: 'await_reply already waits for the answer — leave out notify_when_idle',
+            errorCode: 9,
+          }
+        }
+        if (input.to === '*') {
+          return {
+            result: false,
+            message: 'await_reply waits on one recipient, not a broadcast',
+            errorCode: 9,
+          }
+        }
+        if (input.message !== undefined && typeof input.message !== 'string') {
+          return {
+            result: false,
+            message: 'await_reply rides on a plain-text message, or on none — not on a structured one',
+            errorCode: 9,
+          }
+        }
+      }
+      if (
+        context.agentId !== undefined &&
+        (input.to === context.agentId ||
+          context.getAppState().agentNameRegistry.get(input.to) === context.agentId)
+      ) {
+        return {
+          result: false,
+          message: `"${input.to}" is you — a message to yourself reaches no one`,
+          errorCode: 9,
+        }
+      }
       if (input.notify_when_idle) {
         if (input.message !== undefined && typeof input.message !== 'string') {
           return {
@@ -1003,11 +1280,12 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         }
       }
       if (input.message === undefined) {
-        return input.notify_when_idle
+        return input.notify_when_idle || input.await_reply
           ? { result: true }
           : {
               result: false,
-              message: 'message is required — leave it out only for a pure notify_when_idle subscription',
+              message:
+                'message is required — leave it out only to wait (await_reply) or for a pure notify_when_idle subscription',
               errorCode: 9,
             }
       }
@@ -1085,6 +1363,20 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     mapToolResultToToolResultBlockParam(data, toolUseID) {
+      // What an await_reply brought back reads as the messages themselves,
+      // not as JSON-escaped strings.
+      if ('replies' in data && data.replies && data.replies.length > 0) {
+        return {
+          tool_use_id: toolUseID,
+          type: 'tool_result' as const,
+          content: [
+            {
+              type: 'text' as const,
+              text: `${data.message}\n\n${data.replies.join('\n\n')}`,
+            },
+          ],
+        }
+      }
       return {
         tool_use_id: toolUseID,
         type: 'tool_result' as const,
@@ -1097,7 +1389,12 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
       }
     },
 
-    async call(input, context, canUseTool) {
+    async call(input, context, canUseTool, parentMessage) {
+      if (input.await_reply && !sendsForAwait.has(input)) {
+        return sendAndAwait(input, context, sendInput =>
+          SendMessageTool.call(sendInput, context, canUseTool, parentMessage),
+        )
+      }
       if (input.notify_when_idle || input.message === undefined) {
         return subscribeToPeer(
           input.to,
@@ -1106,22 +1403,30 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         )
       }
       if (typeof input.message === 'string' && input.to === MAIN_ADDRESS) {
-        return handleMainMessage(input.message, context)
+        return handleMainMessage(input.message, context, input.await_reply === true)
       }
 
       // Route to in-process subagent by name or raw agentId before falling
       // through to ambient-team resolution. Stopped agents are auto-resumed.
       if (typeof input.message === 'string' && input.to !== '*') {
         const appState = context.getAppState()
-        const registered = appState.agentNameRegistry.get(input.to)
-        const agentId = registered ?? toAgentId(input.to)
+        const agentId = resolveAgentAddress(input.to, context)
         if (agentId) {
           const task = appState.tasks[agentId]
+          spendAgentSend(context)
+          // Delivered in the envelope on every path, so the agent learns who
+          // wrote and where to answer, and its classifier sees agent text.
+          const letter = formatAgentMessage({
+            ...senderOf(context),
+            body: input.message,
+            to: input.to,
+            awaitingReply: input.await_reply === true,
+          })
           if (isLocalAgentTask(task) && !isMainSessionTask(task)) {
             if (task.status === 'running') {
               queuePendingMessage(
                 agentId,
-                input.message,
+                letter,
                 context.setAppStateForTasks ?? context.setAppState,
               )
               return {
@@ -1131,73 +1436,19 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
                 },
               }
             }
-            // task exists but stopped — auto-resume.
-            // Guard against race: two concurrent SendMessage calls to the same
-            // stopped agent could both trigger resumeAgentBackground(), causing
-            // duplicate task registration. Check status again after acquiring
-            // the task reference (the first resume changes status to 'running').
-            const freshTask = context.getAppState().tasks[agentId]
-            if (isLocalAgentTask(freshTask) && freshTask.status === 'running') {
-              queuePendingMessage(
-                agentId,
-                input.message,
-                context.setAppStateForTasks ?? context.setAppState,
-              )
-              return {
-                data: {
-                  success: true,
-                  message: `Message queued for delivery to ${input.to} at its next tool round (was concurrently resumed).`,
-                },
-              }
-            }
-            try {
-              const result = await resumeAgentBackground({
-                agentId,
-                prompt: input.message,
-                toolUseContext: context,
-                canUseTool,
-              })
-              return {
-                data: {
-                  success: true,
-                  message: `Agent "${input.to}" was stopped (${task.status}); resumed it in the background with your message. You'll be notified when it finishes. Output: ${result.outputFile}`,
-                },
-              }
-            } catch (e) {
-              return {
-                data: {
-                  success: false,
-                  message: `Agent "${input.to}" is stopped (${task.status}) and could not be resumed: ${errorMessage(e)}`,
-                },
-              }
-            }
-          } else {
-            // task evicted from state — try resume from disk transcript.
-            // agentId is either a registered name or a format-matching raw ID
-            // (toAgentId validates the createAgentId format, so teammate names
-            // never reach this block).
-            try {
-              const result = await resumeAgentBackground({
-                agentId,
-                prompt: input.message,
-                toolUseContext: context,
-                canUseTool,
-              })
-              return {
-                data: {
-                  success: true,
-                  message: `Agent "${input.to}" had no active task; resumed from transcript in the background with your message. You'll be notified when it finishes. Output: ${result.outputFile}`,
-                },
-              }
-            } catch (e) {
-              return {
-                data: {
-                  success: false,
-                  message: `Agent "${input.to}" is registered but has no transcript to resume. It may have been cleaned up. (${errorMessage(e)})`,
-                },
-              }
-            }
+            return resumeWithLetter({
+              agentId,
+              to: input.to,
+              letter,
+              status: task.status,
+              context,
+              canUseTool,
+            })
           }
+          // Evicted from state: resume from its transcript on disk. agentId is a
+          // registered name or a format-matching raw id (toAgentId validates the
+          // createAgentId format, so teammate names never reach this).
+          return resumeWithLetter({ agentId, to: input.to, letter, context, canUseTool })
         }
       }
 

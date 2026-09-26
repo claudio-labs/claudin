@@ -268,13 +268,14 @@ describe('Regression checks', () => {
 // Fix 6: SendMessageTool race condition guard
 // ---------------------------------------------------------------------------
 describe('SendMessageTool race condition fix', () => {
-  test('SendMessageTool has double-check for concurrent resume', async () => {
+  test('SendMessageTool resumes a stopped agent through one in-flight promise', async () => {
     const content = await file('tools/SendMessageTool/SendMessageTool.ts').text()
 
-    // Should have a second status check before resuming to prevent race
-    expect(content).toContain('was concurrently resumed')
-    // The freshTask check should re-read from getAppState
-    expect(content).toMatch(/const freshTask = context\.getAppState\(\)\.tasks\[agentId\]/)
+    // A status re-check was no guard: the resume only marks the agent running
+    // after an awaited transcript read. resumeOnce (behaviour in
+    // resumeOnce.test.ts) starts one run and queues the later sends into it.
+    expect(content).toContain('await resumeOnce(agentId, () =>')
+    expect(content).toContain("if ('joined' in outcome) {")
   })
 })
 

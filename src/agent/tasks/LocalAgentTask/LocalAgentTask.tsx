@@ -15,6 +15,7 @@ import { createAbortController, createChildAbortController } from 'src/shared/ab
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
 import { getToolSearchOrReadInfo } from 'src/agent/tools/collapseReadSearch.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
+import { describeUnreadMessages } from 'src/agent/messages/interAgentMessages.js';
 import { getAgentTranscriptPath } from 'src/sessions/sessionStorage.js';
 import { evictTaskOutput, getTaskOutputPath, initTaskOutputAsSymlink } from 'src/agent/tasks/diskOutput.js';
 import { PANEL_GRACE_MS, registerTask, updateTaskState } from 'src/agent/tasks/framework.js';
@@ -205,6 +206,23 @@ export function drainPendingMessages(taskId: string, getAppState: () => AppState
 }
 
 /**
+ * Remove and return only the queued messages `keep` selects, leaving the rest
+ * for the next tool-round drain — how SendMessage's `await_reply` takes the
+ * agent-written replies and leaves what the user typed to its normal path.
+ */
+export function takePendingMessages(taskId: string, keep: (msg: string) => boolean, getAppState: () => AppState, setAppState: (f: (prev: AppState) => AppState) => void): string[] {
+  const task = getAppState().tasks[taskId];
+  if (!isLocalAgentTask(task)) return [];
+  const taken = task.pendingMessages.filter(keep);
+  if (taken.length === 0) return [];
+  updateTaskState<LocalAgentTaskState>(taskId, setAppState, t => ({
+    ...t,
+    pendingMessages: t.pendingMessages.filter(msg => !taken.includes(msg))
+  }));
+  return taken;
+}
+
+/**
  * Enqueue an agent notification to the message queue.
  */
 export function enqueueAgentNotification({
@@ -238,11 +256,13 @@ export function enqueueAgentNotification({
   // If the task was already marked as notified (e.g., by TaskStopTool), skip
   // enqueueing to avoid sending redundant messages to the model.
   let shouldEnqueue = false;
+  let unread: string | undefined;
   updateTaskState<LocalAgentTaskState>(taskId, setAppState, task => {
     if (task.notified) {
       return task;
     }
     shouldEnqueue = true;
+    unread = describeUnreadMessages(task.pendingMessages);
     return {
       ...task,
       notified: true
@@ -262,11 +282,12 @@ export function enqueueAgentNotification({
   const resultSection = finalMessage ? `\n<result>${finalMessage}</result>` : '';
   const usageSection = usage ? `\n<usage><total_tokens>${usage.totalTokens}</total_tokens><tool_uses>${usage.toolUses}</tool_uses><duration_ms>${usage.durationMs}</duration_ms></usage>` : '';
   const worktreeSection = worktreePath ? `\n<${WORKTREE_TAG}><${WORKTREE_PATH_TAG}>${worktreePath}</${WORKTREE_PATH_TAG}>${worktreeBranch ? `<${WORKTREE_BRANCH_TAG}>${worktreeBranch}</${WORKTREE_BRANCH_TAG}>` : ''}</${WORKTREE_TAG}>` : '';
+  const unreadSection = unread ? `\n<unread-messages>${unread}</unread-messages>` : '';
   const message = `<${TASK_NOTIFICATION_TAG}>
 <${TASK_ID_TAG}>${taskId}</${TASK_ID_TAG}>${toolUseIdLine}
 <${OUTPUT_FILE_TAG}>${outputPath}</${OUTPUT_FILE_TAG}>
 <${STATUS_TAG}>${status}</${STATUS_TAG}>
-<${SUMMARY_TAG}>${summary}</${SUMMARY_TAG}>${resultSection}${usageSection}${worktreeSection}
+<${SUMMARY_TAG}>${summary}</${SUMMARY_TAG}>${resultSection}${usageSection}${worktreeSection}${unreadSection}
 </${TASK_NOTIFICATION_TAG}>`;
   enqueuePendingNotification({
     value: message,

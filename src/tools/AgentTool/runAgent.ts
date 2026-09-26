@@ -273,6 +273,7 @@ export async function* runAgent({
   useExactTools,
   worktreePath,
   description,
+  readOnly,
   transcriptSubdir,
   onQueryProgress,
   agentName,
@@ -328,6 +329,8 @@ export async function* runAgent({
   /** Original task description from AgentTool input. Persisted to metadata
    * so a resumed agent's notification can show the original description. */
   description?: string
+  /** The spawn's `readOnly`, persisted so a resume re-applies it. */
+  readOnly?: boolean
   /** Optional subdirectory under subagents/ to group this agent's transcript
    * with related ones (e.g. workflows/<runId> for workflow subagents). */
   transcriptSubdir?: string
@@ -842,6 +845,7 @@ export async function* runAgent({
     agentType: agentDefinition.agentType,
     ...(worktreePath && { worktreePath }),
     ...(description && { description }),
+    ...(readOnly && { readOnly }),
   }).catch(_err => logForDebugging(`Failed to write agent metadata: ${_err}`))
 
   // Track the last recorded message UUID for parent chain continuity

@@ -18,6 +18,12 @@ export type HeldPeerMessage = {
   /** What delivering it enqueues, built when it arrived. */
   command: QueuedCommand
   expiresAt: number
+  /**
+   * The sender asked notify_when_idle. The subscription is taken only when
+   * the user delivers the message: until then no turn is about it, and an
+   * idle notice would tell the sender its message was dealt with.
+   */
+  subscribeOnDelivery?: boolean
 }
 
 let held: readonly HeldPeerMessage[] = []

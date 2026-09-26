@@ -13,9 +13,12 @@ afterEach(() => {
   resetIdleSubscriptionsForTests()
 })
 
-test('a sender over its share loses its oldest subscription', () => {
+test('a sender over its share loses its oldest subscription, and it is handed back', () => {
   for (let i = 0; i <= MAX_SUBSCRIPTIONS_PER_SENDER; i++) {
-    expect(addIdleSubscription({ id: `s${i}`, socketPath: '/s/1.sock', createdAt: i })).toBe(true)
+    const { added, evicted } = addIdleSubscription({ id: `s${i}`, socketPath: '/s/1.sock', createdAt: i })
+    expect(added).toBe(true)
+    // Handed back so its subscriber can be told no notice is coming.
+    expect(evicted?.id).toBe(i === MAX_SUBSCRIPTIONS_PER_SENDER ? 's0' : undefined)
   }
   expect(takeAllIdleSubscriptions().map(s => s.id)).toEqual(
     Array.from({ length: MAX_SUBSCRIPTIONS_PER_SENDER }, (_, i) => `s${i + 1}`),
@@ -26,7 +29,7 @@ test('past the global cap a new subscription is refused', () => {
   for (let i = 0; i < MAX_SUBSCRIPTIONS; i++) {
     addIdleSubscription({ id: `s${i}`, socketPath: `/s/${i}.sock`, createdAt: i })
   }
-  expect(addIdleSubscription({ id: 'over', socketPath: '/s/new.sock', createdAt: 99 })).toBe(false)
+  expect(addIdleSubscription({ id: 'over', socketPath: '/s/new.sock', createdAt: 99 }).added).toBe(false)
 })
 
 test('an idle stretch takes only the subscriptions made before it began', () => {

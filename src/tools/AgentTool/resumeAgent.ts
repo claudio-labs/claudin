@@ -33,13 +33,38 @@ import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurpo
 import { FORK_AGENT, isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
+import { applyReadOnly } from 'src/tools/AgentTool/readOnlyAgent.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
+import type { AgentMetadata } from 'src/sessions/indexing/agents.js'
 
 export type ResumeAgentResult = {
   agentId: string
   description: string
   outputFile: string
 }
+
+/**
+ * The definition a resumed agent runs under: the one it was launched as, by
+ * the agentType its metadata recorded, with the `readOnly` it was launched
+ * with re-applied. Resume skips filterDeniedAgents re-gating — the original
+ * spawn already passed the permission checks.
+ */
+export function resumedAgentDefinition(
+  meta: AgentMetadata | null,
+  activeAgents: readonly AgentDefinition[],
+): { selectedAgent: AgentDefinition; isResumedFork: boolean } {
+  if (meta?.agentType === FORK_AGENT.agentType) {
+    return { selectedAgent: FORK_AGENT, isResumedFork: true }
+  }
+  const launchedAs =
+    (meta?.agentType && activeAgents.find(a => a.agentType === meta.agentType)) ||
+    GENERAL_PURPOSE_AGENT
+  return {
+    selectedAgent: applyReadOnly(launchedAs, meta?.readOnly, false),
+    isResumedFork: false,
+  }
+}
+
 export async function resumeAgentBackground({
   agentId,
   prompt,
@@ -90,20 +115,10 @@ export async function resumeAgentBackground({
     await fsp.utimes(resumedWorktreePath, now, now)
   }
 
-  // Skip filterDeniedAgents re-gating — original spawn already passed permission checks
-  let selectedAgent: AgentDefinition
-  let isResumedFork = false
-  if (meta?.agentType === FORK_AGENT.agentType) {
-    selectedAgent = FORK_AGENT
-    isResumedFork = true
-  } else if (meta?.agentType) {
-    const found = toolUseContext.options.agentDefinitions.activeAgents.find(
-      a => a.agentType === meta.agentType,
-    )
-    selectedAgent = found ?? GENERAL_PURPOSE_AGENT
-  } else {
-    selectedAgent = GENERAL_PURPOSE_AGENT
-  }
+  const { selectedAgent, isResumedFork } = resumedAgentDefinition(
+    meta,
+    toolUseContext.options.agentDefinitions.activeAgents,
+  )
 
   const uiDescription = meta?.description ?? '(resumed)'
 
@@ -195,6 +210,7 @@ export async function resumeAgentBackground({
     // Re-persist so metadata survives runAgent's writeAgentMetadata overwrite
     worktreePath: resumedWorktreePath,
     description: meta?.description,
+    readOnly: meta?.readOnly,
   }
 
   // Skip name-registry write — original entry persists from the initial spawn

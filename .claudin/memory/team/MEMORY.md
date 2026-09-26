@@ -9,7 +9,7 @@
 - [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `then` arms the response guard by default; `=0` killswitches
 - [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — cat/head/tail/wc/ls/grep with a `/`; classifier 20→11; `CLAUDIN_READONLY_GLOBS=0`
 - [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT=refuse|off`, `CLAUDIN_EAGER_DEV_TOOLS=1`
-- [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets + token; Claudin↔Claudin, REPL inbox only
+- [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets + token; since 09-26 agents ask each other (`await_reply`)
 - [apply_patch is `Patch` on the wire (#244)](decisions/patch-tool-rename.md) — alias + legacy-name map; a census must count both names
 - [Patch takes any earlier read (#242)](decisions/apply-patch-any-read.md) — only never-read is refused, the hunk match is the check; Edit keeps the gate
 - [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — file_paths + symbol lists; `CLAUDIN_READ_MULTI=0` kills it
@@ -40,7 +40,7 @@
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — the Write branch of extractReadFilesFromMessages skips is_error
 - [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — query loop read the parent's app state; definitions, /agents, per-call `model` were inert
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set lists `'agent:builtin'` exactly, built-ins run as `agent:builtin:<Type>`; not fixed
-- [Interactive Agent schema drops run_in_background and name](bugs/agent-schema-drops-run-in-background.md) — still on v1.1.35; "background" agents run inline
+- [Agent schema dropped run_in_background and name — FIXED 09-26](bugs/agent-schema-drops-run-in-background.md) — import-time schema freeze + swarm filter; now trimmed per request
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — phantom `noop`; `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source before committing
 - [Two latent bugs pinned, not fixed (2026-09-20)](bugs/latent-bugs-pinned-not-fixed.md) — autobackground misses `sleep N`; deleted rules resurrect
@@ -58,6 +58,7 @@
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
 - [/diff reviewer living spec (feature 8.1)](docs/diff-reviewer-living-spec.md) — docs/features/8.1-diff-reviewer.md, synced as features land
 - [Public docs site claudiolabs.ai is outside this repo](docs/claudiolabs-docs-site.md) — extensionless URLs; README links pages
+- [Agents asking each other has a tech doc](docs/agent-messaging-tech-doc.md) — docs/tech/agent-messaging; its "Site page" section feeds claudiolabs.ai/docs/agents
 
 ## Conventions
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs; procedures → skills

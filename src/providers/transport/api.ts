@@ -18,6 +18,7 @@ import type { z } from 'zod/v4'
 import { CLI_SYSPROMPT_PREFIXES } from 'src/agent/prompts/system.js'
 import type { Tool, ToolPermissionContext, Tools } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { isRunInBackgroundHidden } from 'src/tools/AgentTool/prompt.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js'
@@ -64,22 +65,39 @@ export type SystemPromptBlock = {
   cacheScope: CacheScope | null
 }
 
-// Fields to filter from tool schemas when swarms are not enabled
+// Fields to filter from tool schemas when swarms are not enabled. The Agent
+// tool's `name` is not here: it also addresses a background agent, so it
+// follows run_in_background instead (backgroundOnlyFields).
 const SWARM_FIELDS_BY_TOOL: Record<string, string[]> = {
   [EXIT_PLAN_MODE_V2_TOOL_NAME]: ['launchSwarm', 'teammateCount'],
-  [AGENT_TOOL_NAME]: ['name', 'team_name', 'mode'],
+  [AGENT_TOOL_NAME]: ['team_name', 'mode'],
 }
 
 /**
- * Filter swarm-related fields from a tool's input schema.
- * Called at runtime when isAgentSwarmsEnabled() returns false.
+ * The Agent fields only a background agent uses, dropped where none can run
+ * (`-p`, background tasks off) — the rule the Agent description follows.
+ * Decided per request, not in the zod schema: that is evaluated while
+ * AgentTool.tsx loads, before the session is known to be interactive. `name`
+ * stays for an agent team, whose teammates are spawned by it.
  */
-function filterSwarmFieldsFromSchema(
-  toolName: string,
+function backgroundOnlyFields(toolName: string): string[] {
+  if (toolName !== AGENT_TOOL_NAME || !isRunInBackgroundHidden()) return []
+  return isAgentSwarmsEnabled() ? ['run_in_background'] : ['run_in_background', 'name']
+}
+
+/** The input-schema fields this session cannot use, for toolToAPISchema to drop. */
+function hiddenSchemaFields(toolName: string): string[] {
+  return [
+    ...(isAgentSwarmsEnabled() ? [] : (SWARM_FIELDS_BY_TOOL[toolName] ?? [])),
+    ...backgroundOnlyFields(toolName),
+  ]
+}
+
+function filterFieldsFromSchema(
   schema: Anthropic.Tool.InputSchema,
+  fieldsToRemove: string[],
 ): Anthropic.Tool.InputSchema {
-  const fieldsToRemove = SWARM_FIELDS_BY_TOOL[toolName]
-  if (!fieldsToRemove || fieldsToRemove.length === 0) {
+  if (fieldsToRemove.length === 0) {
     return schema
   }
 
@@ -187,11 +205,9 @@ export async function toolToAPISchema(
         : zodToJsonSchema(tool.inputSchema)
     ) as Anthropic.Tool.InputSchema
 
-    // Filter out swarm-related fields when swarms are not enabled
-    // This ensures external non-EAP users don't see swarm features in the schema
-    if (!isAgentSwarmsEnabled()) {
-      input_schema = filterSwarmFieldsFromSchema(tool.name, input_schema)
-    }
+    // Drop what this session cannot use: team fields outside an agent team,
+    // background-only Agent fields where no background agent can run.
+    input_schema = filterFieldsFromSchema(input_schema, hiddenSchemaFields(tool.name))
 
     base = {
       name: tool.name,

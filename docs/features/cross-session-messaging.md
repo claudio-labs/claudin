@@ -5,7 +5,7 @@ destination:
 
 | `to` | Destination | Path |
 |---|---|---|
-| a name or agentId from `ListAgents` | A background agent this conversation spawned | Queued for its next tool round; a stopped agent is resumed from its transcript |
+| a name or agentId from `ListAgents` | Another agent of this conversation — one it launched, or a sibling | Queued for its next tool round; a stopped agent is resumed from its transcript |
 | `"main"` | The main conversation (from a background agent only) | Queued for the main thread's next turn |
 | a teammate name, `"*"` | Agent-team members (inside an agent team only) | The team mailbox, unchanged |
 | `claudin-goal`, `claudin-goal [3fa9c1]`, `uds:<path>` | Another interactive Claudin session on this machine | Its peer inbox, a Unix socket |
@@ -19,6 +19,10 @@ Sessions on other machines and cloud / Remote Control sessions are **not**
 reachable: a `bridge:` address is refused with a reason. Windows has no inbox in
 this version (named pipes have no file mode to lean on); it can still message
 its own agents.
+
+Asking another agent and **waiting for the answer** (`await_reply`), agents of
+one conversation talking to each other, and custom agents that message are in
+[docs/tech/agent-messaging](../tech/agent-messaging/README.md).
 
 ## Addressing
 
@@ -47,9 +51,11 @@ conversation's agents goes to the agent.
 ## Transport
 
 `src/sessions/peers/`. Each interactive REPL binds
-`${XDG_RUNTIME_DIR || tmpdir}/claudin-socks/<pid>.sock` (a short `/tmp`
-fallback when that would overflow `sun_path`), and advertises it in its PID
-record `~/.claudin/sessions/<pid>.json` with a 32-byte token:
+`$XDG_RUNTIME_DIR/claudin-socks/<pid>.sock`, or `${tmpdir}/claudin-socks-<uid>/<pid>.sock`
+without a runtime dir — per user, so no user can create the directory first and
+lock another out (a short `/tmp` fallback when either would overflow
+`sun_path`) — and advertises it in its PID record
+`~/.claudin/sessions/<pid>.json` with a 32-byte token:
 
 | Field | Written by | Read by |
 |---|---|---|
@@ -77,10 +83,13 @@ Four fences:
    is no reply address.
 
 The wire is NDJSON, one request and one response per connection, `v: 1`, at
-most 1 MiB, 5 s to answer. Frames: `ping`, `message` (with optional
-`notify_when_idle`), `notify_when_idle`, `delivery_status`, `idle_notice`. A
-message is at most 100,000 characters — the sessions share a filesystem, so
-the refusal says to send a path instead.
+most 1 MiB, 5 s to answer. A line is read as bytes until its newline, so a
+character split across two chunks decodes whole and the cap counts bytes; what
+follows the first line is ignored. Frames: `ping`, `message` (with optional
+`notify_when_idle`), `notify_when_idle`, `delivery_status`, `idle_notice`; any
+of them may carry `from_plan` (see Inbound policy). A message is at most
+100,000 characters — the sessions share a filesystem, so the refusal says to
+send a path instead.
 
 ## What the receiver sees
 
@@ -96,6 +105,10 @@ From another Claudin session on this machine, not from your user: …  To reply,
   turn when the session is idle — the path a background agent's completion
   takes.
 - The body cannot close or open its own tag (`neutralizeXmlTag`).
+- The body is sanitized on arrival (`sanitize.ts`): terminal escapes, bidi
+  overrides and other invisible code points, and every control but tab and
+  newline are removed — so the held-message dialog and the model see the same
+  text.
 - `@path`, `@server:resource` and `@agent-…` in it attach **nothing**
   (`skipInputDirectives`, on both delivery paths), and no slash command runs.
 - The TUI renders it as `@claudin-goal❯ first line · another session`.
@@ -109,13 +122,20 @@ held for the receiving user when they are not — a session that asks before
 acting must not get one that does not to act for it, nor the reverse. A sender
 that states no mode is held only by a bypass receiver.
 
+A session in **plan mode** marks its frames `from_plan: true` (its `from_mode`
+stays `prompting`, so an older session reads it as before). A receiver that is
+not planning holds such a message: a session that changes nothing must not get
+one that can to change things for it. A message *into* a planning session is
+delivered as usual.
+
 `crossSessionInbound` (`/config` → Agents & workflows → *Messages from other
 sessions*) overrides it: `accept`, `hold`, `refuse`. Policy, flag and user
 settings decide, in that order; project and local settings can only make it
 stricter.
 
 A held message waits in a dialog (*Held message from another session*: sender,
-reason, the exact body) — **Deny** is the default and what Esc does; it expires
+reason, the exact body — a long one opens on its first 12 lines with *Show all N
+lines* before a decision) — **Deny** is the default and what Esc does; it expires
 after 5 minutes; at most 100 wait. The sender's tool result says it was held and
 why, and when it is settled the sender gets a `[Cross-session delivery notice]`
 (delivered / denied / expired). A notice is only believed for a send that
@@ -128,16 +148,21 @@ session is actually waiting on.
 (750 ms debounce), or exits. Without a message it is a pure subscription: no
 turn is spent on the other side, and an already-idle session answers at once.
 A subscription lasts 12 hours (then an `expired` notice), a sender holds at most
-3 per session and a session at most 32; one riding on a message that is denied
-or expires is dropped with it. Only a session with an inbox can subscribe — the
-notice needs somewhere to go — and only its main conversation, where the notice
-arrives; a subagent asking is refused.
+3 per session (a fourth pushes out its oldest, which gets an `expired` notice)
+and a session at most 32. One riding on a held message is taken only when the
+user delivers it — until then no turn is about it, so an unrelated turn's end
+says nothing — and never if it is denied or expires. The sender awaits the
+notice before its send goes out, since an idle session answers at once. Only a
+session with an inbox can subscribe — the notice needs somewhere to go — and
+only its main conversation, where the notice arrives; a subagent asking is
+refused.
 
 ## Guards against loops and laundering
 
 - **Send budget**: 10 sends to other sessions per prompt the user types
-  (`sendBudget.ts`). A turn another session opened does not renew it, so two
-  sessions answering each other stop at the tenth.
+  (`sendBudget.ts`). A turn another session opened does not renew it, nor does
+  a prompt the harness wrote (a cron or ScheduleWakeup fire, a rate-limit
+  resume), so two sessions answering each other stop at the tenth.
 - **The prompt**: never ask another session to do what was denied or blocked
   here.
 - **The classifier** (auto mode): a message another agent wrote is shown as

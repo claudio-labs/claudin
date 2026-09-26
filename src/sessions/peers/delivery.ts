@@ -35,6 +35,7 @@ import {
   permissionClassOf,
 } from 'src/sessions/peers/policy.js'
 import type { SessionDirectory } from 'src/sessions/peers/registry.js'
+import { sanitizePeerText } from 'src/sessions/peers/sanitize.js'
 import {
   addIdleSubscription,
   SUBSCRIPTION_TTL_MS,
@@ -183,7 +184,10 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       return { subscribed: false, detail: 'no idle notice: that session could not verify where to send it' }
     }
     const subscription = { id: msgId, socketPath: address.target, createdAt: Date.now() }
-    if (!addIdleSubscription(subscription)) {
+    const { added, evicted } = addIdleSubscription(subscription)
+    // The one it pushed out was promised a notice; say none is coming.
+    if (evicted) void sendIdleNotice(evicted, 'expired')
+    if (!added) {
       return { subscribed: false, detail: 'no idle notice: that session already has too many subscriptions' }
     }
     setTimeout(() => {
@@ -204,9 +208,10 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
   ): Promise<void> {
     const message = takeHeldPeerMessage(id)
     if (!message) return
-    if (decision === 'deliver') deps.enqueue(message.command)
-    // A subscription that rode on a message nobody will read has nothing to report.
-    else takeIdleSubscription(id)
+    if (decision === 'deliver') {
+      deps.enqueue(message.command)
+      if (message.subscribeOnDelivery) subscribe(id, message.sender, { pure: false })
+    }
     await tellSender(message.sender, id, STATUS_OF[decision])
   }
 
@@ -215,8 +220,10 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
   ): Promise<ResponseFrame> {
     const sender = await identifySender(frame, deps.readDirectory)
     const agent = cleanClaimedName(frame.from_agent)
+    // What the user approves and what the model reads are the same text.
+    const text = sanitizePeerText(frame.text)
     const command: QueuedCommand = {
-      value: formatPeerMessage({ ...sender, agent }, frame.text),
+      value: formatPeerMessage({ ...sender, agent }, text),
       mode: 'task-notification',
       priority: 'next',
       skipSlashCommands: true,
@@ -226,14 +233,16 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       setting: deps.inboundSetting(),
       sender: frame.from_mode,
       receiver: permissionClassOf(deps.permissionMode()),
+      senderPlans: frame.from_plan === true,
+      receiverPlans: deps.permissionMode() === 'plan',
     })
     if (decision.action === 'refuse') {
       return { ok: false, outcome: 'refused', detail: decision.toSender }
     }
-    const subscription = frame.notify_when_idle
-      ? subscribe(frame.msg_id, sender, { pure: false })
-      : undefined
     if (decision.action === 'deliver') {
+      const subscription = frame.notify_when_idle
+        ? subscribe(frame.msg_id, sender, { pure: false })
+        : undefined
       deps.enqueue(command)
       return { ok: true, outcome: 'delivered', ...subscription }
     }
@@ -242,12 +251,12 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       id: frame.msg_id,
       sender: { ...sender, agent },
       reason: decision.reason,
-      body: frame.text,
+      body: text,
       command,
       expiresAt: Date.now() + expiryMs,
+      subscribeOnDelivery: frame.notify_when_idle,
     })
     if (!held) {
-      takeIdleSubscription(frame.msg_id)
       return {
         ok: false,
         outcome: 'refused',
@@ -255,7 +264,9 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       }
     }
     setTimeout(() => void settleHeld(frame.msg_id, 'expire'), expiryMs).unref()
-    return { ok: true, outcome: 'held', detail: decision.toSender, subscribed: subscription?.subscribed }
+    // Subscribed on delivery, if the user delivers it; a denial or expiry
+    // reaches the sender as its delivery notice instead.
+    return { ok: true, outcome: 'held', detail: decision.toSender, subscribed: frame.notify_when_idle }
   }
 
   async function receiveSubscription(

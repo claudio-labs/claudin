@@ -1,8 +1,12 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, rmSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
+import {
+  clearDynamicTeamContext,
+  setDynamicTeamContext,
+} from 'src/agent/coordinator/teammate.js'
 import {
   getCommandQueueSnapshot,
   resetCommandQueue,
@@ -10,6 +14,7 @@ import {
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   inputSchemaFor,
+  shutdownApprovalRefusal,
   SendMessageTool,
 } from 'src/tools/SendMessageTool/SendMessageTool.js'
 import { renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
@@ -415,5 +420,112 @@ describe('SendMessageTool — agent teams switched on', () => {
     )
     expect(data).toMatchObject({ success: true, message: "Message sent to sibling's inbox" })
     expect(existsSync(join(configDir, 'teams', 'crew', 'inboxes', 'sibling.json'))).toBe(true)
+  })
+})
+
+describe('SendMessageTool — approving a shutdown (agent teams)', () => {
+  afterEach(() => {
+    clearDynamicTeamContext()
+  })
+
+  test('the lead or a background agent is refused: approving would end the whole session', () => {
+    expect(shutdownApprovalRefusal()).toContain('would end this whole session')
+  })
+
+  test('a teammate may approve its own exit', () => {
+    setDynamicTeamContext({ agentId: 'w1', agentName: 'worker', teamName: 'crew' } as never)
+    expect(shutdownApprovalRefusal()).toBeUndefined()
+  })
+
+  test('the approval checks before it writes or exits', () => {
+    // Its fallback ends the process, so the handler is pinned rather than run.
+    const src = readFileSync(new URL('./SendMessageTool.ts', import.meta.url), 'utf8')
+    const handler = src.indexOf('async function handleShutdownApproval(')
+    const guard = src.indexOf('  const refusal = shutdownApprovalRefusal()\n  if (refusal) throw new Error(refusal)', handler)
+    expect(guard).toBeGreaterThan(handler)
+    expect(guard).toBeLessThan(src.indexOf('writeToMailbox(', handler))
+  })
+})
+
+describe('SendMessageTool — a message to a running agent carries its sender', () => {
+  const DEV = 'a0123456789abcdef'
+  const TESTER = 'a1123456789abcdef'
+  const HELPER = 'a2123456789abcdef'
+
+  function team(agentId?: string) {
+    const running = (id: string, description: string) => ({
+      type: 'local_agent',
+      agentType: 'Code',
+      agentId: id,
+      description,
+      status: 'running',
+      isBackgrounded: true,
+      pendingMessages: [] as string[],
+    })
+    let state = {
+      tasks: {
+        [DEV]: running(DEV, 'Implement the feature'),
+        [TESTER]: running(TESTER, 'Test the feature'),
+        [HELPER]: running(HELPER, 'Unnamed helper'),
+      } as Record<string, ReturnType<typeof running>>,
+      agentNameRegistry: new Map([
+        ['dev', DEV],
+        ['tester', TESTER],
+      ]),
+    }
+    const context = {
+      agentId,
+      getAppState: () => state,
+      setAppState: (f: (prev: typeof state) => typeof state) => {
+        state = f(state)
+      },
+    } as unknown as ToolUseContext
+    return {
+      context,
+      pending: (id: string) => state.tasks[id]!.pendingMessages,
+      kill: (id: string) => {
+        state = { ...state, tasks: { ...state.tasks, [id]: { ...state.tasks[id]!, status: 'killed' } } }
+      },
+    }
+  }
+
+  test('from main: the envelope says main, and how to answer', async () => {
+    const { context, pending } = team()
+    await send({ to: 'dev', message: 'status?' }, context)
+    const [letter] = pending(DEV)
+    expect(letter).toStartWith('<agent-message from="main">\nstatus?\n</agent-message>\n')
+    expect(letter).toContain('SendMessage with to: "main"')
+  })
+
+  test('from a sibling: its name is the reply address', async () => {
+    const { context, pending } = team(TESTER)
+    await send({ to: 'dev', message: 'bug in a.ts:12' }, context)
+    expect(pending(DEV)[0]).toStartWith('<agent-message from="tester">')
+    expect(pending(DEV)[0]).toContain('SendMessage with to: "tester"')
+  })
+
+  test('an agent the user stopped is not restarted by another agent', async () => {
+    const { context, pending, kill } = team(TESTER)
+    kill(DEV)
+    const data = await send({ to: 'dev', message: 'one more fix' }, context)
+    expect(data).toMatchObject({ success: false })
+    expect((data as { message: string }).message).toContain('only the main conversation can start it again')
+    expect(pending(DEV)).toEqual([])
+  })
+
+  test('main may restart it — the resume is attempted', async () => {
+    const { context, kill } = team()
+    kill(DEV)
+    const data = await send({ to: 'dev', message: 'one more fix' }, context)
+    // Attempted; here it fails only for want of a transcript.
+    expect((data as { message: string }).message).toContain('could not be resumed')
+  })
+
+  test('from an unnamed agent: its agentId, with its description for the transcript', async () => {
+    const { context, pending } = team(HELPER)
+    await send({ to: 'tester', message: 'done' }, context)
+    expect(pending(TESTER)[0]).toStartWith(
+      `<agent-message from="${HELPER}" description="Unnamed helper">`,
+    )
   })
 })

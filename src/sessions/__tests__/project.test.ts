@@ -19,6 +19,7 @@ import { randomUUID } from 'crypto'
 import type { UUID } from 'crypto'
 
 import {
+  getOriginalCwd,
   resetStateForTests,
   setOriginalCwd,
   switchSession,
@@ -54,6 +55,9 @@ import { asAgentId } from 'src/shared/types/ids.js'
 import type { TranscriptMessage } from 'src/shared/types/logs.js'
 
 const ORIGINAL_CWD = process.cwd()
+// beforeEach points originalCwd at a temp dir; left there, every later file in
+// the worker sees the project root as that dir and in-project reads ask.
+const ORIGINAL_STATE_CWD = getOriginalCwd()
 const ORIGINAL_CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV
 const ORIGINAL_TEST_PERSIST = process.env.TEST_ENABLE_SESSION_PERSISTENCE
@@ -116,6 +120,7 @@ afterAll(() => {
     process.env.TEST_ENABLE_SESSION_PERSISTENCE = ORIGINAL_TEST_PERSIST
   }
   process.chdir(ORIGINAL_CWD)
+  setOriginalCwd(ORIGINAL_STATE_CWD)
   resetGlobalConfigForTests()
 })
 
