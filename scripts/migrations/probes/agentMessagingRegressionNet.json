@@ -23,7 +23,7 @@
     },
     {
       "name": "an unknown name fails outside an agent team",
-      "find": "        if (!swarm) {\n",
+      "find": "        if (!swarm || !getTeamName(context.getAppState().teamContext)) {\n",
       "replace": "        if (false) {\n"
     },
     {

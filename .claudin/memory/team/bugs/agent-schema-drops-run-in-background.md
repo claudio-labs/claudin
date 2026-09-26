@@ -51,7 +51,7 @@ them before the wire — not traced.
   string; none ran in the background. Fix sketch: keep the field in zod, strip
   it in `toolToAPISchema` at request time; drop `name` from the swarm filter.
 
-**FIXED 2026-09-26** (`cbc52195`, branch `feat/agents-ask-each-other`): the zod
+**FIXED 2026-09-26** (#257, branch `feat/agents-ask-each-other`): the zod
 schema is fixed and `hiddenSchemaFields` (`providers/transport/api.ts`) drops
 `run_in_background` and `name` per request only under `isRunInBackgroundHidden()`
 (`name` stays inside an agent team); `call()` ignores a withheld

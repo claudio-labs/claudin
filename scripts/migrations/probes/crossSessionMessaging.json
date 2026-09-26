@@ -108,7 +108,7 @@
     {
       "name": "only a prompt the user typed renews the send budget",
       "source": "src/sessions/peers/sendBudget.ts",
-      "find": "  if (commands.some(cmd => cmd.mode === 'prompt' && cmd.origin === undefined)) {\n",
+      "find": "  if (commands.some(cmd => cmd.mode === 'prompt' && cmd.origin === undefined && !cmd.isMeta)) {\n",
       "replace": "  if (commands.length > 0) {\n"
     },
     {
@@ -132,8 +132,8 @@
     {
       "name": "a denied held message is not delivered",
       "source": "src/sessions/peers/delivery.ts",
-      "find": "    if (decision === 'deliver') deps.enqueue(message.command)\n",
-      "replace": "    deps.enqueue(message.command)\n"
+      "find": "    if (decision === 'deliver') {\n      deps.enqueue(message.command)\n",
+      "replace": "    if (true) {\n      deps.enqueue(message.command)\n"
     },
     {
       "name": "the hold queue has a ceiling",
@@ -180,7 +180,7 @@
     {
       "name": "an unknown name fails outside an agent team",
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
-      "find": "        if (!swarm) {\n          throw new Error(\n            `No agent or session named",
+      "find": "        if (!swarm || !getTeamName(context.getAppState().teamContext)) {\n          throw new Error(\n            `No agent or session named",
       "replace": "        if (false) {\n          throw new Error(\n            `No agent or session named"
     },
     {

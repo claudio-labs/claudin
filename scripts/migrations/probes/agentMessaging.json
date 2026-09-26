@@ -151,7 +151,7 @@
     {
       "name": "a wait on a session subscribes to its idle notice",
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
-      "find": "    const sendInput = { ...input, notify_when_idle: target.peer }\n",
+      "find": "    const sendInput = { ...input, notify_when_idle: target.peer !== undefined }\n",
       "replace": "    const sendInput = { ...input }\n"
     },
     {
