@@ -1,0 +1,54 @@
+{
+  "test": [
+    "src/tools/AgentTool/subagentSurface.regression.test.ts",
+    "src/tools/SendMessageTool/SendMessageTool.regression.test.ts"
+  ],
+  "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+  "probes": [
+    {
+      "name": "a running agent's message is queued for its next tool round",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "    pendingMessages: [...task.pendingMessages, msg]\n",
+      "replace": "    pendingMessages: [...task.pendingMessages]\n"
+    },
+    {
+      "name": "a stopped agent is resumed, not queued",
+      "find": "            if (isLocalAgentTask(freshTask) && freshTask.status === 'running') {\n",
+      "replace": "            if (isLocalAgentTask(freshTask)) {\n"
+    },
+    {
+      "name": "an inline agent cannot write to \"main\"",
+      "find": "  if (!isLocalAgentTask(task) || isMainSessionTask(task) || !task.isBackgrounded) {\n",
+      "replace": "  if (!isLocalAgentTask(task) || isMainSessionTask(task)) {\n"
+    },
+    {
+      "name": "an unknown name fails outside an agent team",
+      "find": "        if (!swarm) {\n",
+      "replace": "        if (false) {\n"
+    },
+    {
+      "name": "background agents get the async allowlist",
+      "source": "src/tools/AgentTool/agentToolUtils.ts",
+      "find": "    if (isAsync && !ASYNC_AGENT_ALLOWED_TOOLS.has(tool.name)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "the async allowlist carries SendMessage",
+      "source": "src/tools/constants/tools.ts",
+      "find": "  SEND_MESSAGE_TOOL_NAME,\n  LIST_AGENTS_TOOL_NAME,\n])\n",
+      "replace": "  LIST_AGENTS_TOOL_NAME,\n])\n"
+    },
+    {
+      "name": "readOnly strips the write tools",
+      "source": "src/tools/AgentTool/readOnlyAgent.ts",
+      "find": "  if (readOnly !== true || isFork) return definition\n",
+      "replace": "  return definition\n"
+    },
+    {
+      "name": "an explicit tools: list is honored for custom agents",
+      "source": "src/tools/AgentTool/agentToolUtils.ts",
+      "find": "  const hasWildcard =\n    agentTools === undefined ||\n",
+      "replace": "  const hasWildcard =\n    true ||\n"
+    }
+  ]
+}
