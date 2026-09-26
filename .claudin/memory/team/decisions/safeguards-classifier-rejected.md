@@ -14,7 +14,7 @@ round.
 **Why:**
 - **Claude Code does not send it by default on the real first-party
   endpoint.** There its server-side arbiter needs GrowthBook
-  `tengu_smooth_chipmunk`, default false.
+  `smooth_chipmunk`, default false.
 - **The one capture that showed it was an artifact.** It pointed the base URL
   at a localhost mock, which Claude Code classifies as third-party, and there
   the arbiter defaults on.
@@ -38,4 +38,4 @@ with `_CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL=1`, which
 
 **Evidence:** the confound table in `docs/tech/anthropic-betas/wire-matrix.md`.
 The Claude Code 2.1.280 bundle anchors are `function xdr(e,n,r,s)` (the
-context builder) and `tengu_smooth_chipmunk` (the gate).
+context builder) and `smooth_chipmunk` (the gate).

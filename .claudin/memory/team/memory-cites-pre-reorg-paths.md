@@ -1,6 +1,6 @@
 ---
 name: Team memories cited paths the 2026-08 reorg retired — swept 2026-09-21
-description: The reorg never touched the memory corpus — 23 of 135 files carried 55 dead citations; the live ones were swept 2026-09-21, and this is the resolution table plus the rule for telling a live citation from a historical one
+description: The reorg never touched the memory corpus — 23 of 135 files carried 55 dead citations; the live ones were swept 2026-09-21, and this is the resolution table (plus the rule agent-safety.md, deleted 2026-09-24) and the rule for telling a live citation from a historical one
 type: project
 ---
 
@@ -52,6 +52,7 @@ gone. The resolutions confirmed on 2026-09-10:
 | `scripts/profile/json-salient-probe.ts` | `scripts/bench/tokens/json-salient-probe.ts` |
 | `scripts/profile/devin-*` | genuinely gone — archived with the port |
 | `docs/tech/devin-provider-blocker.md` | `docs/tech/devin-provider/README.md` |
+| `.claudin/rules/agent-safety.md` (§1 shared tree, §2 worktree audits, §4 break-and-restore) | deleted 2026-09-24 ([[dogfood-without-repo-steering]]): §4's method is in `testing.md`, §1–§2 are in no rule now. Nine memories cite it; the two live cites (`break-probe-harness`, `coding-gotchas-go-in-rules-not-memory`) were repointed, the rest name the rule as it stood when the work ran |
 
 **The second-order effect is duplicate memories, not just dead links.** Two of
 the three duplicate pairs merged on 2026-09-10 were the same fact written twice:

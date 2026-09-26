@@ -22,11 +22,11 @@ any cwd-sensitive memo.
    the open build. The per-turn caller
    `startRelevantMemoryPrefetch` (`src/agent/attachments/memory.ts:344-353`,
    from `query.ts:342`) returns `undefined` before touching the filesystem
-   unless the GrowthBook flag **`tengu_moth_copse`** is true — and that key is
+   unless the GrowthBook flag **`moth_copse`** is true — and that key is
    absent from `_openBuildDefaults` in `scripts/build/no-telemetry-plugin.ts:52-58`,
    so it resolves to `false` unless the user writes
    `~/.claudin/feature-flags.json`. The live per-session caller is
-   `extractMemories.ts:448`, which sits **after** the `tengu_bramble_lintel`
+   `extractMemories.ts:448`, which sits **after** the `bramble_lintel`
    throttle → one scan per ~15 eligible turns, not per turn.
    Also: when the prefetch *is* on, the scan is the cheap half — the same
    function then fires a **Sonnet `sideQuery`** to pick 5 files

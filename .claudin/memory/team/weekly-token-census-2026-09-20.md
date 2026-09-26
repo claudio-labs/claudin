@@ -69,7 +69,7 @@ input-side clip (`Tool.clearableInputFields` + `applyStableInputStubs`,
 wire-only), band 15% of trigger past ~400k, `relief starved` instead of ~0k
 clips; `fix(tools)` a `| head/tail/grep` tail opts out of the RunTests
 redirect; `feat(permissions)` plan-mode Bash → classifier under auto mode +
-`tengu_scratch` on by default + plan-mode rule bullets in the classifier
+`scratch` on by default + plan-mode rule bullets in the classifier
 prompt; `chore(bench)` census prices glm/qwen/kimi and the `[Cache:]` line
 folds repeated relief clips. Items 1 (context ceiling on 1M) and 3 (5m-TTL
 sub-agent keep-alive) are NOT done. Every new test was break-probed

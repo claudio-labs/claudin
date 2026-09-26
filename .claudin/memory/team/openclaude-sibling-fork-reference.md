@@ -1,10 +1,19 @@
 ---
-name: openclaude is a sibling fork to mine for BUGS, not features
-description: openclaude (sibling Claude Code fork) at ../openclaude; the value is their fix( stream over inherited code — 28 claims re-verified empirically 2026-09-10, 17 real / 11 falsified — not their feature list
+name: openclaude is claudin's parent fork — mine it for BUGS, not features
+description: openclaude (@gitlawb) at ../openclaude is the fork claudin was cut from (9e23c2be, 2026-04-25; ~5.5% of lines still theirs; LICENSE attribution deferred by the user 2026-09-25); the value is their fix( stream over inherited code — 28 claims re-verified 2026-09-10, 17 real / 11 falsified — not their feature list
 type: reference
 ---
 
-`@gitlawb/openclaude` is a sibling fork of Claude Code (same multi-provider retarget as claudin), checked out as a sibling directory at `../openclaude`. Useful to mine for features/fixes when extending claudin — same architecture (openaiShim, providerConfig, withRetry, Ink TUI, slash commands, MCP).
+`@gitlawb/openclaude` is NOT just a sibling — **claudin was forked FROM it** (measured 2026-09-25): root `27454381` ("Claudio v0.1.0", 2026-04-29, `@gitlawb/claudio`) is openclaude `9e23c2be` (04-25, #813) + cherry-picks #882/#908, squashed (83% blob-identical), synced from Gitlawb/openclaude via a Gitea workflow deleted 04-30. At HEAD 71f12a8a: ~45% of distinctive lines are upstream Claude Code, ~5.5% openclaude-authored (openaiShim, codexShim, providerProfiles/ProviderManager, cacheMetrics, WebSearch providers, mcp/doctor, autoFix, wiki), 145 files ≥80% openclaude. LICENSE went from their NOTICE (with "OpenClaude contributors" renamed to "Claudio contributors") to plain MIT "Claudio Labs" on 08-14 (0c37342e). The repo is checked out at `../openclaude`. Useful to mine for features/fixes when extending claudin — same architecture (openaiShim, providerConfig, withRetry, Ink TUI, slash commands, MCP).
+
+**Open, deferred by the user on 2026-09-25:** the LICENSE carries neither
+openclaude's copyright notice nor its NOTE on the Anthropic code, while ~21k of
+their lines remain; the session's reading (not legal advice) was that their
+license asks for the notice to be kept. The user pulled it out of that round —
+"a licença vamos ajustar em uma próxima rodada" — so don't change it unasked.
+The same round (#251) rewrote the `src/` comments that cited openclaude to
+describe only the code; the `/import` adapter for openclaude users
+(`src/platform/import/`), comparison docs and benches keep the name on purpose.
 
 **Why:** Both forks evolve the same upstream independently; openclaude moves fast on providers + context-mgmt and often lands features claudin lacks.
 
@@ -106,7 +115,10 @@ model-supplied `timeout: 86400000` runs unclamped on the Bash path.
 5. **#7 worktree baseRef** — `AgentTool.tsx:592` → `createAgentWorktree(slug)` →
    `getOrCreateWorktree` passes NO baseRef and the setting is global-only
    (`settings/types.ts:426-432`), so every `isolation:"worktree"` sub-agent
-   audits `origin/<default>`. Root cause of agent-safety.md §2.
+   audits `origin/<default>`. Root cause of the hazard in
+   [[audit-agent-worktree-sees-committed-head]] (agent-safety.md §2 documented
+   it until that rule was deleted on 2026-09-24). EnterWorktree also cut
+   `ui-test` from `origin/main` on 2026-09-25, not from the branch in use.
 6. **#9 marketplace hostPattern** — unanchored `new RegExp` + `.test`
    (`marketplaceHelpers.ts:288`); `doesSourceMatchPathPattern` (`:315`) has the
    same flaw. It IS an admin allowlist (policy settings, documented at `:478`).

@@ -5,9 +5,9 @@ type: project
 ---
 
 `feat/claudin-identity` (2026-08-15, 12 commits) removed upstream identity along
-four axes: network identity, dead Anthropic-account subsystems, the `tengu_*`
-event vocabulary, and the `CLAUDE_*` → `CLAUDIN_*` env-var cut-over. The
-mechanics live in the repo — `.claudin/rules/build-system.md` (the tengu strip),
+four axes: network identity, dead Anthropic-account subsystems, the upstream
+codename event vocabulary, and the `CLAUDE_*` → `CLAUDIN_*` env-var cut-over. The
+mechanics live in the repo — `.claudin/rules/build-system.md` (the codename strip),
 `scripts/migrations/env-rename-map.json` (every name, bucket, and reason), and
 `src/__tests__/envNaming.test.ts` (the invariant). What is NOT in the repo is
 why some things were left alone.
@@ -33,7 +33,7 @@ first-party Anthropic OAuth, where the backend inspects them. Gate on
 Claudin. It is a half-done rename, not a deliberate lane like the OAuth one
 above, but changing `name` could break a server that allowlists clients, so it
 needs a decision rather than a sweep. The server side was fixed in the same
-round: `mcp serve` used to introduce itself as `claude/tengu`
+round: `mcp serve` used to introduce itself as `claude/<codename>`
 (`src/platform/entrypoints/mcp.ts:87`).
 
 **Deleted outright, do not go looking for them:** `platform/privacy/grove.ts`

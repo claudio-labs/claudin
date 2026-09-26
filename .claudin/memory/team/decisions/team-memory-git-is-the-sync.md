@@ -12,7 +12,7 @@ paths:
 nothing else. `src/memory/teamSync/` (the HTTP sync to
 `api/claude_code/team_memory`, ~1,950 lines) and
 `src/memory/memdir/findRelevantMemories.ts` (a Sonnet side-query per turn
-picking "relevant" memories, flag `tengu_moth_copse`) were deleted on
+picking "relevant" memories, flag `moth_copse`) were deleted on
 2026-09-21 (branch `feat/memory-v2`). What replaced them: a `paths:`
 frontmatter key on a memory file, loaded through the rules' `nested_memory`
 lane the first time a Read touches a matching file; three category

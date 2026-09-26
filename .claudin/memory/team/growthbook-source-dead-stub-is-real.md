@@ -1,11 +1,13 @@
 ---
 name: growthbook-source-dead-stub-is-real
-description: RESOLVED 2026-09-18 — the growthbook build stub is gone and src/platform/analytics/growthbook.ts (214 lines) is now the real, shipped flag reader; the two-implementations trap this memory described no longer exists
+description: CLOSED — the growthbook build stub became real source on 2026-09-18, and the module itself was deleted 2026-09-25 with the last upstream flag gate; kept for the trap's shape (a whole-module build stub leaves source dead but tested)
 type: project
 ---
 
 **This is closed. Kept because the shape of the trap recurs, and because older
-notes still describe the dead half as if it shipped.**
+notes still describe the dead half as if it shipped.** Update 2026-09-25:
+`src/platform/analytics/` no longer exists — every gate was inlined and the
+resolver deleted, see [[upstream-flag-gates-removed-claudin-killswitches]].
 
 What it used to be (measured 2026-09-15): `scripts/build/no-telemetry-plugin.ts`
 registered a stub for the key `src/platform/analytics/growthbook` that replaced

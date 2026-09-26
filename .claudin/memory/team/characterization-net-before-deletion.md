@@ -58,6 +58,6 @@ thing that proves bundle → dump → normalize → compare is wired.
 
 Not "green after deletion" — **a diff you can read name by name**. The command
 registry named exactly the five bindings that left; the flag table named exactly
-`tengu_desktop_upsell` and `tengu_jade_anvil_4`. Never accept a snapshot change
+`desktop_upsell` and `jade_anvil_4`. Never accept a snapshot change
 with a blanket `--update-snapshots`: read the removed names and confirm each was
 intended.

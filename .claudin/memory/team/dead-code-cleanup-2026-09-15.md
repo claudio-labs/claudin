@@ -1,6 +1,6 @@
 ---
 name: dead-code-cleanup-2026-09-15
-description: The dead-code + tengu cleanup MERGED to main as PR #204 on 2026-09-16 (6d46ec9c) — what landed, the census that survives, and the phases deliberately left behind
+description: The dead-code + upstream-codename cleanup MERGED to main as PR #204 on 2026-09-16 (6d46ec9c) — what landed, the census it used, and the phases deliberately left behind
 type: project
 ---
 
@@ -11,7 +11,7 @@ prompt had drifted on the branch), which were re-snapshotted and pushed. The
 branch lived one day — opened 2026-09-15 off `main` at `099b1469`, ~39+
 commits, ~335 files, roughly −25k/+4k. `src/analytics/` and `src/telemetry/`
 are GONE; `src/platform/analytics/` is down to `growthbook.ts` + its test.
-Post-merge `tengu` census: **326 occurrences across 158 files** (was 1654) —
+Post-merge codename census: **326 occurrences across 158 files** (was 1654) —
 the survivors are gate keys, wire-format names the VS Code extension expects,
 and test fixtures. One PR at the end, one commit per category (the user chose
 the single PR over the 5-PR split after hearing the bisect argument). Plan
@@ -19,15 +19,15 @@ file: `.claudin/plans/wild-wishing-wilkinson.md`.
 
 ## The distinction the whole plan turns on
 
-`tengu_` plays two roles and only one is dead: an **event name** (1st arg of
+The upstream codename prefix plays two roles and only one is dead: an **event name** (1st arg of
 `logEvent`/`logEventAsync`) reaches an empty function, while a **gate key**
 (`getFeatureValue_*`/`checkGate_*`/`getDynamicConfig_*`) is what a user writes in
 `~/.claudin/feature-flags.json`. `scripts/build/build.ts:119-134` already draws
-that line; `scripts/verify/tengu-census.ts` (new) enforces it by classifying
+that line; a census script (new; deleted 2026-09-25 with the last gate) enforces it by classifying
 **every** occurrence into event / gate / indirect / doc / unclassified, with
 `unclassified` pinned at zero so nothing is missed by sampling.
 Baseline 2026-09-15: 1654 → 1648 occurrences, events 1018 → 1000, 91 → 89
-distinct gate keys. Docs at `docs/tech/tengu-census/`.
+distinct gate keys. The docs now live at `docs/tech/upstream-flags/`.
 
 ## State at the end of 2026-09-15 — 39 commits, ~335 files, roughly −25k/+4k
 
@@ -49,7 +49,7 @@ they fixed is what a green gate does NOT catch:
   REPL fell through to skill resolution and said "Unknown skill: feedback". The
   gate was right while the command POSTed to Anthropic; b82f2df9 removed the
   upload and left it. Now `getExplicitEssentialTrafficOnlyReason()`.
-- **Dead event-name parameters outlived their call sites.** 15 non-gate `tengu`
+- **Dead event-name parameters outlived their call sites.** 15 non-gate codename
   tokens were still shipping in `dist/chunks`, every one an event name threaded
   into a signature nothing reads: `respondToPendingRequest`'s `analyticsEvent`,
   `startBackgrounding(eventName)` in both shells, a REQUIRED
@@ -59,7 +59,7 @@ they fixed is what a green gate does NOT catch:
 - **The census under-reported a third time**, and the second time with its
   `unclassified === 0` invariant green. Two blind spots: a key held in a
   file-local `const` and passed by name (no literal between the parens), and a
-  token class with no hyphen (`tengu-off-switch`, `tengu-top-of-feed-tip` — the
+  token class with no hyphen (`off-switch`, `top-of-feed-tip` — the
   first refuses every non-subscriber Opus request). **A count that adds up is
   not a bucket that is right.**
 - **`mcp/channelPermissions.ts` deleted** (240 lines + an `AppState` field):
@@ -177,7 +177,7 @@ the slices are gone from main today.
   break-and-restore. See [[characterization-net-before-deletion]].
 - **Fase 1** — phantom `noop` command; `/feedback` repointed at this repo's
   issues with the `api.anthropic.com/api/claude_cli_feedback` POST and its whole
-  transcript-gathering body removed; `claude/tengu` MCP server name; `/upgrade`,
+  transcript-gathering body removed; the upstream `claude/<codename>` MCP server name; `/upgrade`,
   `/extra-usage`, `/rate-limit-options` and `RateLimitMessage`; referral / guest
   passes / overage credit / `/passes` / desktop upsell; the survey stack and the
   auto-run `/issue` path; 17 eager imports of unregistered stub commands.
@@ -187,13 +187,9 @@ Gates green: build, smoke, typecheck zero, `verify:privacy`, `deadcode:ci`,
 
 ## Left to do (post-merge, open follow-ups)
 
-- **Fase 4a** — audit the surviving gate keys empirically (FUNCIONA / QUEBRA /
-  INERTE) by flipping each in a throwaway `CLAUDIN_CONFIG_DIR`. **Never in the
-  real `~/.claudin`.** The keys are now the live surface — 105 settled at
-  branch end.
-- **Fase 4b** — collapse growthbook, see [[growthbook-source-dead-stub-is-real]].
-  `src/platform/analytics/` is down to just `growthbook.ts` + test, so this is
-  the last file standing between the branch and a deleted slice.
+- **Fase 4a/4b — DONE 2026-09-25** by removing the gates outright rather than
+  auditing them further: all 94 keys inlined to their stock value,
+  `src/platform/analytics/` deleted, see [[upstream-flag-gates-removed-claudin-killswitches]].
 - **Fase 5** — rules and docs. `.claudin/rules/typescript-patterns.md` rule 7
   mandates the `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` suffix, which the
   codemod deleted; `search-strategy.md` teaches grepping `logEvent`;

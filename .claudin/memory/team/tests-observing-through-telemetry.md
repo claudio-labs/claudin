@@ -27,7 +27,7 @@ into one of three cases before touching anything — the answer differs:
   payload flattened it to. The record says strictly more than the event did.
 - **The event stood in for a check the test already makes.** Delete the event
   assertion only. `resumeSession` asserted
-  `logEvent:tengu_session_resumed:false` on a line directly under
+  `logEvent:session_resumed:false` on a line directly under
   `rejects.toThrow('boom')`.
 - **The test's whole subject was the telemetry.** Then it has nothing left to
   assert and should be rewritten around what the user experiences, or deleted

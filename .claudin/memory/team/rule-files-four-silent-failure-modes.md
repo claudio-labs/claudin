@@ -22,7 +22,7 @@ unconditional lane, and loads into **every session, every turn**. One wrong
 frontmatter key turns a scoped rule into a permanent context tax, invisibly.
 
 **Why:** the only telemetry on that path is
-`tengu_claude_rules_md_permission_error`, EACCES only.
+`claude_rules_md_permission_error`, EACCES only.
 
 **How to apply:** three surfaces now exist, all over `src/memory/instructions/rulesLint.ts` —
 `bun run verify:rules` (CI + `/pre-pr`, hard-fails both classes), a `/doctor`

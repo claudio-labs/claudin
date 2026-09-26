@@ -22,9 +22,10 @@ and a host, i.e. a real project setup rather than "parse this string".
 **How to apply:** before reaching for an AST codemod in this tree, decide
 between two honest options.
 
-1. **Lexical, with refusals.** `scripts/verify/tengu-census.ts` exports
-   `scanRegions()`, which classifies every character as code / comment / string
-   / regex and has tests that fail when its quote or regex handling breaks.
+1. **Lexical, with refusals.** The codename census script (`scripts/verify/`,
+   deleted 2026-09-25 — recover it from git history) exported `scanRegions()`,
+   which classifies every character as code / comment / string / regex and had
+   tests that fail when its quote or regex handling breaks.
    Build on that and make the tool REFUSE anything it cannot place, blocking the
    whole file rather than half-rewriting it. That is what the strip-analytics
    codemod does, and the refusals are where every real bug surfaced.

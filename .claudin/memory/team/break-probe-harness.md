@@ -1,11 +1,12 @@
 ---
 name: break-probe-harness
-description: scripts/migrations/break-probe.ts runs agent-safety.md's break-and-restore method as a batch over a committed JSON spec; 21 specs live under scripts/migrations/probes/ and are re-runnable after any later refactor
+description: scripts/migrations/break-probe.ts runs the break-and-restore method (now in testing.md) as a batch over a committed JSON spec; 43 specs under scripts/migrations/probes/ on 2026-09-24, re-runnable after any later refactor
 type: reference
 ---
 
-`.claudin/rules/agent-safety.md` §4 requires break-and-restore for every new
-test but never names the tool that does it. It exists:
+Break-and-restore is how a new test proves it guards something. The method lives
+in `.claudin/rules/testing.md` ("Break-and-restore, run as a batch"); it was
+`agent-safety.md` §4 until that rule was deleted on 2026-09-24. The tool:
 
 ```
 bun run scripts/migrations/break-probe.ts scripts/migrations/probes/<spec>.json
@@ -14,7 +15,7 @@ bun run scripts/migrations/break-probe.ts scripts/migrations/probes/<spec>.json
 For each probe it mutates ONE exact string in a production file, runs the named
 suites, records which tests went red, and restores. **A probe that turns nothing
 red is the finding** — the line it mutated is not guarded, and the test claiming
-to cover it passes for some other reason.
+to cover it passes for some other reason. The run itself fails when that happens.
 
 Spec shape (`test` may be a list; `source` may be overridden per probe):
 
@@ -23,7 +24,7 @@ Spec shape (`test` may be a list; `source` may be overridden per probe):
   "probes": [{ "name": "...", "comment": "...", "find": "...", "replace": "..." }] }
 ```
 
-21 specs are committed under `scripts/migrations/probes/`. They are the evidence
+43 specs are committed under `scripts/migrations/probes/` (2026-09-24). They are the evidence
 for the suites they name and stay re-runnable after later refactors, so add one
 rather than doing a throwaway manual pass.
 

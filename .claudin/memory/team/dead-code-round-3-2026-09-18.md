@@ -77,7 +77,7 @@ Pending is not concluded. Every documented user-facing killswitch stays.
 ## Method notes
 
 - `bun test --update-snapshots` was needed once: deleting `EmergencyTip.tsx`
-  removed the last site of `tengu-top-of-feed-tip`, one of the two hyphenated
+  removed the last site of `top-of-feed-tip`, one of the two hyphenated
   gate keys, so the flag-resolution table moved. Same class as
   `checkRepoForRemoteAccess` in round 2 — a deletion that moves that snapshot is
   expected, not a red flag.

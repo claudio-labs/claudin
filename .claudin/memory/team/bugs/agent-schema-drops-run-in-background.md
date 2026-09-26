@@ -30,4 +30,9 @@ Agent `input` — `"run_in_background":"true"`.
 auto-background or `ctrl+b ctrl+b` can. Verified working that way.
 
 **Status 2026-09-24:** left in place — found during the cross-session E2E, out of
-that PR's scope.
+that PR's scope. Still present later that day, after the v1.1.35 release
+(checkout at 9e93ba9c): an interactive session's Agent schema had the same six
+fields. `inputSchema` (`AgentTool.tsx`) omits only `cwd`, plus
+`run_in_background` when `isRunInBackgroundHidden()`; `name`, `team_name` and
+`mode` sit in `fullInputSchema` yet were missing too, so something else drops
+them before the wire — not traced.

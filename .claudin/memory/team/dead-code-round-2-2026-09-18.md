@@ -51,7 +51,7 @@ mention — write the flag name in prose.
 
 - **The bash parser** — [[bash-parser-unreachable-behind-tree-sitter-flag]].
   ~4.5k lines that ship and cannot run. The biggest single item left.
-- **`checkRepoForRemoteAccess`** — callerless, but the last `tengu_cobalt_lantern`
+- **`checkRepoForRemoteAccess`** — callerless, but the last `cobalt_lantern`
   site, so deleting it moves the flag-resolution characterization snapshot.
 - **`directConnectManager.ts` + `useDirectConnect`** — survived as `REPL.tsx`'s
   `directConnectConfig` prop, which nothing passes now that
