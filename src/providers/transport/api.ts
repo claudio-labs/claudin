@@ -86,7 +86,7 @@ function backgroundOnlyFields(toolName: string): string[] {
 }
 
 /** The input-schema fields this session cannot use, for toolToAPISchema to drop. */
-export function hiddenSchemaFields(toolName: string): string[] {
+function hiddenSchemaFields(toolName: string): string[] {
   return [
     ...(isAgentSwarmsEnabled() ? [] : (SWARM_FIELDS_BY_TOOL[toolName] ?? [])),
     ...backgroundOnlyFields(toolName),

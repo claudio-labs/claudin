@@ -18,7 +18,7 @@ import {
 } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 
-export const AWAIT_REPLY_TIMEOUT_MS = 10 * 60_000
+const AWAIT_REPLY_TIMEOUT_MS = 10 * 60_000
 const POLL_MS = 250
 
 export type AwaitReplyOutcome =
