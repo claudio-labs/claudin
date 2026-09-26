@@ -1,7 +1,11 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   defaultProjectName,
   filterToProject,
+  ownsNestedStacks,
   projectsIn,
 } from 'src/containers/project.js'
 import type { ContainerInfo } from 'src/containers/types.js'
@@ -116,5 +120,50 @@ describe('filterToProject', () => {
     const test_ = container({ id: 'test', project: 'legendarr-test' })
     const out = filterToProject([dev, test_], '/home/dev/projects/legendarr')
     expect(projectsIn(out)).toEqual(['legendarr', 'legendarr-test'])
+  })
+
+  test('a stack brought up below a monorepo root matches with includeNested', () => {
+    const infra = container({
+      project: 'aargau',
+      workingDir: '/home/dev/projects/aargauio/aargau-infra/local',
+    })
+    const root = '/home/dev/projects/aargauio'
+    expect(filterToProject([infra], root)).toEqual([])
+    expect(filterToProject([infra], root, { includeNested: true })).toHaveLength(
+      1,
+    )
+  })
+
+  test('includeNested still excludes a sibling with a shared prefix', () => {
+    const sibling = container({
+      workingDir: '/home/dev/projects/aargauio-other/local',
+    })
+    expect(
+      filterToProject([sibling], '/home/dev/projects/aargauio', {
+        includeNested: true,
+      }),
+    ).toEqual([])
+  })
+})
+
+describe('ownsNestedStacks', () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'owns-nested-'))
+  const repo = join(scratch, 'repo')
+  mkdirSync(join(repo, '.git'), { recursive: true })
+  const plain = join(scratch, 'plain')
+  mkdirSync(plain)
+
+  afterAll(() => rmSync(scratch, { recursive: true, force: true }))
+
+  test('true at the root of a git repository', () => {
+    expect(ownsNestedStacks(repo, '/nonexistent-home')).toBe(true)
+  })
+
+  test('false outside any git repository', () => {
+    expect(ownsNestedStacks(plain, '/nonexistent-home')).toBe(false)
+  })
+
+  test('false when the repository is the home directory itself', () => {
+    expect(ownsNestedStacks(repo, repo)).toBe(false)
   })
 })

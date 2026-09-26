@@ -5,8 +5,10 @@
 // empty list, never the unfiltered one.
 
 import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join, sep } from 'node:path'
 import type { ContainerInfo } from 'src/containers/types.js'
+import { findGitRoot } from 'src/vcs/git/git.js'
 
 /** Compose derives a default project name from the directory basename:
  * lowercased, with everything outside [a-z0-9_-] dropped. */
@@ -33,9 +35,11 @@ function isWithin(parent: string, child: string): boolean {
  *
  * Primary key is `com.docker.compose.project.working_dir`, which compose sets
  * to the directory the stack was brought up from — so running from a
- * subdirectory of the repo still matches. The project-name fallback covers a
- * container whose working_dir label is missing (older compose) but whose
- * project name is still the conventional one.
+ * subdirectory of the repo still matches. With `includeNested`, a stack brought
+ * up BELOW `cwd` matches as well: a monorepo root whose compose file lives in
+ * `infra/local/` is still that stack's project. The project-name fallback
+ * covers a container whose working_dir label is missing (older compose) but
+ * whose project name is still the conventional one.
  *
  * A plain `docker run` container carries neither label and is therefore never
  * matched. That is a deliberate omission, not a bug: there is no reliable way
@@ -44,9 +48,13 @@ function isWithin(parent: string, child: string): boolean {
 export function filterToProject(
   containers: readonly ContainerInfo[],
   cwd: string,
+  { includeNested = false }: { includeNested?: boolean } = {},
 ): ContainerInfo[] {
   const byWorkingDir = containers.filter(
-    c => c.workingDir !== null && isWithin(c.workingDir, cwd),
+    c =>
+      c.workingDir !== null &&
+      (isWithin(c.workingDir, cwd) ||
+        (includeNested && isWithin(cwd, c.workingDir))),
   )
   if (byWorkingDir.length > 0) return byWorkingDir
 
@@ -55,6 +63,16 @@ export function filterToProject(
   return containers.filter(
     c => c.workingDir === null && c.project === fallbackName,
   )
+}
+
+/**
+ * Whether stacks brought up underneath `cwd` count as its own. Only inside a
+ * git repository: from `~/projects`, or from a home directory that is itself a
+ * dotfiles repo, every stack on the machine sits underneath.
+ */
+export function ownsNestedStacks(cwd: string, home = homedir()): boolean {
+  const gitRoot = findGitRoot(cwd)
+  return gitRoot !== null && gitRoot !== home
 }
 
 /** The distinct compose projects present in a filtered snapshot. A repo with a

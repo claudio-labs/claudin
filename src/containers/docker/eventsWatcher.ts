@@ -16,7 +16,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { dockerBin, getDockerAvailability, runDocker } from 'src/containers/docker/dockerCli.js'
 import { parseEventLine, shouldResnapshot } from 'src/containers/docker/parseEvent.js'
 import { parsePsOutput } from 'src/containers/docker/parsePs.js'
-import { filterToProject } from 'src/containers/project.js'
+import { filterToProject, ownsNestedStacks } from 'src/containers/project.js'
 import type { ContainerInfo } from 'src/containers/types.js'
 
 /** Reconnect backoff, doubling to the ceiling. A daemon restart is the common
@@ -56,7 +56,9 @@ export async function snapshotProjectContainers(
     }
   }
   return {
-    containers: filterToProject(parsePsOutput(result.stdout), cwd),
+    containers: filterToProject(parsePsOutput(result.stdout), cwd, {
+      includeNested: ownsNestedStacks(cwd),
+    }),
     error: null,
   }
 }
