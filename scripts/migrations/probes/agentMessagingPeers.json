@@ -111,6 +111,18 @@
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
       "find": "  if (notifyWhenIdle && !response.subscribed) takeAwaitedIdleNotice(msgId)\n",
       "replace": "\n"
+    },
+    {
+      "name": "an answered wait on a session drops its idle notice",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "    forgetAwaitedIdleNotices(target.peer.label)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "only the session waited on counts as its answer",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  return parseXmlEnvelope(text, CROSS_SESSION_MESSAGE_TAG)?.attrs['from-name'] === peerName\n",
+      "replace": "  return false\n"
     }
   ]
 }

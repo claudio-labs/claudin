@@ -42,6 +42,7 @@ import { permissionClassOf } from 'src/sessions/peers/policy.js'
 import { awaitDeliveryStatus } from 'src/sessions/peers/notices.js'
 import {
   awaitIdleNotice,
+  forgetAwaitedIdleNotices,
   takeAwaitedIdleNotice,
 } from 'src/sessions/peers/subscriptions.js'
 import {
@@ -56,6 +57,8 @@ import {
   takeCrossSessionSend,
 } from 'src/sessions/peers/sendBudget.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
+import { CROSS_SESSION_MESSAGE_TAG } from 'src/shared/constants/xml.js'
+import { parseXmlEnvelope } from 'src/shared/data/xml.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { BackendType } from 'src/agent/coordinator/swarm/backends/types.js'
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
@@ -1006,7 +1009,7 @@ async function resumeWithLetter({
 async function awaitTargetOf(
   to: string,
   context: ToolUseContext,
-): Promise<{ agentId?: string; peer?: true }> {
+): Promise<{ agentId?: string; peer?: { name: string; label: string } }> {
   if (to === MAIN_ADDRESS) {
     assertReachesMain(context)
     return {}
@@ -1031,7 +1034,9 @@ async function awaitTargetOf(
       'await_reply to another session needs an inbox for the reply to reach, and this session has none (only an interactive session gets one). Send without it.',
     )
   }
-  return { peer: true }
+  return {
+    peer: { name: located.peer.name, label: `${located.peer.name} [${located.peer.ref}]` },
+  }
 }
 
 /**
@@ -1039,6 +1044,11 @@ async function awaitTargetOf(
  * other, but marked awaiting-reply, so the recipient knows someone is blocked.
  */
 const sendsForAwait = new WeakSet<Input>()
+
+/** Whether `text` is a message the session named `peerName` sent. */
+function isReplyFrom(peerName: string, text: string): boolean {
+  return parseXmlEnvelope(text, CROSS_SESSION_MESSAGE_TAG)?.attrs['from-name'] === peerName
+}
 
 /**
  * `await_reply`: send (when there is a message), then hold the call until an
@@ -1056,7 +1066,7 @@ async function sendAndAwait(
   // A session is also subscribed to, so the wait ends when it goes idle
   // without answering — and a wait with no message is that subscription alone.
   if (typeof input.message === 'string' || target.peer) {
-    const sendInput = { ...input, notify_when_idle: target.peer }
+    const sendInput = { ...input, notify_when_idle: target.peer !== undefined }
     sendsForAwait.add(sendInput)
     sent = (await send(sendInput)).data
     if (!sent.success) return { data: { success: false, message: sent.message } }
@@ -1072,6 +1082,12 @@ async function sendAndAwait(
   const outcome = await awaitReply(inSessionProbe(context, target.agentId, letter), {
     signal: context.abortController.signal,
   })
+  // The idle subscription was only there to end the wait if the session went
+  // quiet. It answered, so its later idle notice would be noise — a turn
+  // spent reading "is idle now".
+  if (target.peer && outcome.kind === 'replied' && outcome.messages.some(text => isReplyFrom(target.peer!.name, text))) {
+    forgetAwaitedIdleNotices(target.peer.label)
+  }
   const waited = describeAwaitOutcome(input.to, outcome, context.agentId === undefined)
   return {
     data: {

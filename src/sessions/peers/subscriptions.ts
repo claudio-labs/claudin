@@ -90,3 +90,8 @@ export function takeAwaitedIdleNotice(
   awaited.delete(msgId)
   return entry.expiresAt > now ? { peerName: entry.peerName } : undefined
 }
+
+/** Stop believing idle notices from `peerName` — a wait on it got its answer. */
+export function forgetAwaitedIdleNotices(peerName: string): void {
+  for (const [id, entry] of awaited) if (entry.peerName === peerName) awaited.delete(id)
+}

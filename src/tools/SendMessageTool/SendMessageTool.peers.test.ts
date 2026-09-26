@@ -312,6 +312,8 @@ describe('await_reply to another session', () => {
     expect(received[0]).toMatchObject({ type: 'message', notify_when_idle: true })
     expect(data.replies?.[0]).toContain('yes, fixing it now')
     expect(getCommandQueueSnapshot()).toEqual([])
+    // Answered: its idle notice, when it comes, would only be noise.
+    expect(takeAwaitedIdleNotice(received[0]!.msg_id)).toBeUndefined()
   })
 
   test('without a message it subscribes and waits — the idle notice ends it', async () => {
