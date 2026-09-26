@@ -82,15 +82,20 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.CLAUDIN_DISABLE_CROSS_SESSION
   // An await_reply a broken build leaves open must not poll on for minutes.
+  for (const cap of caps.splice(0)) clearTimeout(cap)
   for (const controller of controllers.splice(0)) controller.abort()
   resetCommandQueue()
 })
 
 const controllers: AbortController[] = []
+const caps: ReturnType<typeof setTimeout>[] = []
 
 function context(agentId?: string): ToolUseContext {
   const abortController = new AbortController()
   controllers.push(abortController)
+  // Bounds a wait a broken build leaves open: bun's per-test timeout does not
+  // fire while `expect(promise).rejects` waits on one that never settles.
+  caps.push(setTimeout(() => abortController.abort(), 3000))
   return {
     agentId,
     abortController,

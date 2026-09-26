@@ -39,11 +39,15 @@ beforeEach(() => {
   resetAgentSendsForTesting()
 })
 
-// Every wait a test opens is aborted when it ends, so one that a broken build
-// leaves waiting fails in 5s instead of polling for ten minutes.
+// Every wait a test opens is aborted after 3s, and when the test ends. A
+// broken build must fail fast, not hang: bun's per-test timeout does not fire
+// while `expect(promise).rejects` waits on a promise that never settles.
+const WAIT_CAP_MS = 3000
 const controllers: AbortController[] = []
+const caps: ReturnType<typeof setTimeout>[] = []
 
 afterEach(() => {
+  for (const cap of caps.splice(0)) clearTimeout(cap)
   for (const controller of controllers.splice(0)) controller.abort()
   resetCommandQueue()
 })
@@ -183,6 +187,7 @@ function session() {
   }
   const contextFor = (agentId?: string, controller = new AbortController()) => {
     controllers.push(controller)
+    caps.push(setTimeout(() => controller.abort(), WAIT_CAP_MS))
     return {
       agentId,
       abortController: controller,
