@@ -1,0 +1,76 @@
+{
+  "test": [
+    "src/sessions/peers/delivery.test.ts",
+    "src/sessions/peers/sendBudget.test.ts",
+    "src/sessions/peers/inboxServer.test.ts",
+    "src/sessions/peers/ui/HeldPeerMessageDialog.test.tsx",
+    "src/tools/SendMessageTool/SendMessageTool.peers.test.ts"
+  ],
+  "source": "src/sessions/peers/delivery.ts",
+  "probes": [
+    {
+      "name": "another session's text is sanitized on arrival",
+      "find": "    const text = sanitizePeerText(frame.text)\n",
+      "replace": "    const text = frame.text\n"
+    },
+    {
+      "name": "terminal escapes are stripped",
+      "source": "src/sessions/peers/sanitize.ts",
+      "find": "  return partiallySanitizeUnicode(stripAnsi(text)).replace(CONTROL_RE, '')\n",
+      "replace": "  return partiallySanitizeUnicode(text).replace(/[\\u0000-\\u0008\\u000B-\\u001A\\u001C-\\u001F\\u007F-\\u009F]/g, '')\n"
+    },
+    {
+      "name": "bidi overrides and invisible code points are stripped",
+      "source": "src/sessions/peers/sanitize.ts",
+      "find": "  return partiallySanitizeUnicode(stripAnsi(text)).replace(CONTROL_RE, '')\n",
+      "replace": "  return stripAnsi(text).replace(CONTROL_RE, '')\n"
+    },
+    {
+      "name": "bare control characters are stripped",
+      "source": "src/sessions/peers/sanitize.ts",
+      "find": "  return partiallySanitizeUnicode(stripAnsi(text)).replace(CONTROL_RE, '')\n",
+      "replace": "  return partiallySanitizeUnicode(stripAnsi(text))\n"
+    },
+    {
+      "name": "a message from a planning session to one that acts is held",
+      "source": "src/sessions/peers/policy.ts",
+      "find": "  if (senderPlans && !receiverPlans) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a planning session still receives messages as before",
+      "source": "src/sessions/peers/policy.ts",
+      "find": "  if (senderPlans && !receiverPlans) {\n",
+      "replace": "  if (senderPlans) {\n"
+    },
+    {
+      "name": "delivery reads the sender's plan flag",
+      "find": "      senderPlans: frame.from_plan === true,\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a planning session says so when it sends",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "    from_plan: appState.toolPermissionContext.mode === 'plan' || undefined,\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a harness-written prompt does not renew the send budget",
+      "source": "src/sessions/peers/sendBudget.ts",
+      "find": "cmd.origin === undefined && !cmd.isMeta)",
+      "replace": "cmd.origin === undefined)"
+    },
+    {
+      "name": "the temp-dir socket directory is per user",
+      "source": "src/sessions/peers/socketPath.ts",
+      "find": "    : join(tmpdir(), perUser, `${pid}.sock`)\n",
+      "replace": "    : join(tmpdir(), SOCKET_DIR_NAME, `${pid}.sock`)\n"
+    },
+    {
+      "name": "a long held message can be shown whole",
+      "source": "src/sessions/peers/ui/HeldPeerMessageDialog.tsx",
+      "find": "              ...(hidden > 0 ? [{ label: `Show all ${lines.length} lines`, value: 'expand' }] : []),\n",
+      "replace": "\n"
+    }
+  ]
+}

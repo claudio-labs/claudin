@@ -50,12 +50,14 @@ export function resetAgentSendsForTesting(): void {
 /**
  * Renew the budget when a batch of queued commands holds a prompt the user
  * typed. A turn another session's message or a notification opened does not
- * count — that is the loop the budget exists to stop.
+ * count — that is the loop the budget exists to stop — and neither does a
+ * prompt the harness wrote (isMeta): a cron or ScheduleWakeup fire, a
+ * rate-limit resume. The model can schedule its own wakeup.
  */
 export function renewCrossSessionSendsFor(
-  commands: ReadonlyArray<Pick<QueuedCommand, 'mode' | 'origin'>>,
+  commands: ReadonlyArray<Pick<QueuedCommand, 'mode' | 'origin' | 'isMeta'>>,
 ): void {
-  if (commands.some(cmd => cmd.mode === 'prompt' && cmd.origin === undefined)) {
+  if (commands.some(cmd => cmd.mode === 'prompt' && cmd.origin === undefined && !cmd.isMeta)) {
     resetCrossSessionSends()
   }
 }

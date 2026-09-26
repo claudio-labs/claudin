@@ -34,3 +34,9 @@ test('only a prompt with no origin — one the user typed — renews it', () => 
   renewCrossSessionSendsFor([{ mode: 'prompt' }])
   expect(spendAll()).toBe(CROSS_SESSION_SENDS_PER_USER_PROMPT)
 })
+
+test('a prompt the harness wrote — a cron or wakeup fire, a rate-limit resume — does not renew it', () => {
+  spendAll()
+  renewCrossSessionSendsFor([{ mode: 'prompt', isMeta: true }])
+  expect(takeCrossSessionSend()).toBe(false)
+})

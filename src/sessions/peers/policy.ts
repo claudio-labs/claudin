@@ -58,10 +58,15 @@ export function decideInbound({
   setting,
   sender,
   receiver,
+  senderPlans = false,
+  receiverPlans = false,
 }: {
   setting: InboundSetting | undefined
   sender: PermissionClass | undefined
   receiver: PermissionClass
+  /** The sender is in plan mode, where nothing is changed. */
+  senderPlans?: boolean
+  receiverPlans?: boolean
 }): InboundDecision {
   switch (setting) {
     case 'refuse':
@@ -78,6 +83,16 @@ export function decideInbound({
       }
     case 'accept':
       return { action: 'deliver' }
+  }
+  // A session in plan mode changes nothing; one that can must not be moved to
+  // change things on its behalf. The reverse is harmless — a planning
+  // session only plans — so it stays a plain delivery.
+  if (senderPlans && !receiverPlans) {
+    return {
+      action: 'hold',
+      reason: 'the sender is in plan mode, where nothing is changed, and this session can change things',
+      toSender: 'you are in plan mode and that session is not',
+    }
   }
   if (sender === undefined) {
     return receiver === 'bypass'

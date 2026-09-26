@@ -139,6 +139,10 @@ describe('socket paths', () => {
     expect(long).toStartWith('/tmp/claudin-socks-')
     expect(long).toEndWith('/42.sock')
   })
+
+  test("without a runtime dir, the temp dir holds one directory per user — no user can claim another's", () => {
+    expect(socketPathFor(42, {})).toBe(join(tmpdir(), `claudin-socks-${process.getuid?.()}`, '42.sock'))
+  })
 })
 
 test('crossSessionUnavailableReason covers Windows and the killswitch', () => {

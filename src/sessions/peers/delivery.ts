@@ -35,6 +35,7 @@ import {
   permissionClassOf,
 } from 'src/sessions/peers/policy.js'
 import type { SessionDirectory } from 'src/sessions/peers/registry.js'
+import { sanitizePeerText } from 'src/sessions/peers/sanitize.js'
 import {
   addIdleSubscription,
   SUBSCRIPTION_TTL_MS,
@@ -215,8 +216,10 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
   ): Promise<ResponseFrame> {
     const sender = await identifySender(frame, deps.readDirectory)
     const agent = cleanClaimedName(frame.from_agent)
+    // What the user approves and what the model reads are the same text.
+    const text = sanitizePeerText(frame.text)
     const command: QueuedCommand = {
-      value: formatPeerMessage({ ...sender, agent }, frame.text),
+      value: formatPeerMessage({ ...sender, agent }, text),
       mode: 'task-notification',
       priority: 'next',
       skipSlashCommands: true,
@@ -226,6 +229,8 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       setting: deps.inboundSetting(),
       sender: frame.from_mode,
       receiver: permissionClassOf(deps.permissionMode()),
+      senderPlans: frame.from_plan === true,
+      receiverPlans: deps.permissionMode() === 'plan',
     })
     if (decision.action === 'refuse') {
       return { ok: false, outcome: 'refused', detail: decision.toSender }
@@ -242,7 +247,7 @@ export function createInboundDelivery(deps: InboundDeps): InboundDelivery {
       id: frame.msg_id,
       sender: { ...sender, agent },
       reason: decision.reason,
-      body: frame.text,
+      body: text,
       command,
       expiresAt: Date.now() + expiryMs,
     })

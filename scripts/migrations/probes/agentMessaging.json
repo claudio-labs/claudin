@@ -13,7 +13,7 @@
     {
       "name": "a message to a running agent travels in the envelope",
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
-      "find": "          const letter = formatAgentMessage({\n            ...senderOf(context),\n            body: input.message,\n            to: input.to,\n          })\n",
+      "find": "          const letter = formatAgentMessage({\n            ...senderOf(context),\n            body: input.message,\n            to: input.to,\n            awaitingReply: input.await_reply === true,\n          })\n",
       "replace": "          const letter = input.message\n"
     },
     {
@@ -55,8 +55,8 @@
     {
       "name": "the transcript shows a message from main as the main conversation",
       "source": "src/agent/messages/interAgentMessages.ts",
-      "find": "      relation: agent.attrs.from === MAIN_ADDRESS ? 'main conversation' : 'background agent',\n",
-      "replace": "      relation: 'background agent',\n"
+      "find": "    const relation = agent.attrs.from === MAIN_ADDRESS ? 'main conversation' : 'background agent'\n",
+      "replace": "    const relation = 'background agent'\n"
     },
     {
       "name": "the wrapper names the sender",
@@ -151,8 +151,8 @@
     {
       "name": "a wait on a session subscribes to its idle notice",
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
-      "find": "    sent = (await send({ ...input, await_reply: undefined, notify_when_idle: target.peer })).data\n",
-      "replace": "    sent = (await send({ ...input, await_reply: undefined })).data\n"
+      "find": "    const sendInput = { ...input, notify_when_idle: target.peer }\n",
+      "replace": "    const sendInput = { ...input }\n"
     },
     {
       "name": "a bare wait on a session still subscribes",

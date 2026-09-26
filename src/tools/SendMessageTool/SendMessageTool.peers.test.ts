@@ -133,6 +133,26 @@ describe('SendMessage to another session', () => {
     })
   })
 
+  test('a session in plan mode says so, beside the from_mode an older session reads', async () => {
+    const planning = {
+      ...context(),
+      getAppState: () => ({
+        tasks: {},
+        agentNameRegistry: new Map(),
+        toolPermissionContext: { mode: 'plan' },
+      }),
+    } as unknown as ToolUseContext
+    await SendMessageTool.call(
+      { to: 'claudin-goal', message: 'are you on the login bug?' } as never,
+      planning,
+      (() => {}) as never,
+      undefined as never,
+    )
+    expect(received[0]).toMatchObject({ from_mode: 'prompting', from_plan: true })
+    await send({ to: 'claudin-goal', message: 'and now?' })
+    expect(received[1]).not.toHaveProperty('from_plan')
+  })
+
   test('a subagent sends under the session, and is told a reply goes to main', async () => {
     const data = await send({ to: 'claudin-goal', message: 'hi' }, 'a1')
     expect(received[0]).toMatchObject({ from_agent: 'tester' })

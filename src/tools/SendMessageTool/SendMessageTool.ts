@@ -440,6 +440,7 @@ async function sendToPeer(
     from: own ? formatUdsAddress(own.socketPath) : undefined,
     from_name: ownName,
     from_mode: permissionClassOf(appState.toolPermissionContext.mode),
+    from_plan: appState.toolPermissionContext.mode === 'plan' || undefined,
   } as const
   let response: ResponseFrame
   try {

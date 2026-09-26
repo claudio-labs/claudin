@@ -28,6 +28,11 @@ const common = () => ({
   from: z.string().max(1100).optional(),
   from_name: z.string().max(400).optional(),
   from_mode: PermissionClassSchema().optional(),
+  /**
+   * The sender is in plan mode — still `prompting` in `from_mode`, so a
+   * session that predates this field reads it as it always did.
+   */
+  from_plan: z.boolean().optional(),
 })
 
 const RequestFrameSchema = lazySchema(() =>

@@ -10,16 +10,21 @@ const MAX_SOCKET_PATH_BYTES = 103
 
 /**
  * Where a session's inbox socket lives: the per-user runtime dir when there is
- * one (tmpfs, already private), else the temp dir — and a short path under
- * /tmp when either would overflow sun_path.
+ * one (tmpfs, already private), else a directory named for this user in the
+ * temp dir — and a short path under /tmp when either would overflow sun_path.
+ * A shared /tmp with one fixed name would let whichever user made it first
+ * own it, and every other user's inbox would refuse to start there.
  */
 export function socketPathFor(
   pid: number,
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const preferred = join(env.XDG_RUNTIME_DIR || tmpdir(), SOCKET_DIR_NAME, `${pid}.sock`)
+  const perUser = `${SOCKET_DIR_NAME}-${process.getuid?.() ?? 'user'}`
+  const preferred = env.XDG_RUNTIME_DIR
+    ? join(env.XDG_RUNTIME_DIR, SOCKET_DIR_NAME, `${pid}.sock`)
+    : join(tmpdir(), perUser, `${pid}.sock`)
   if (Buffer.byteLength(preferred) <= MAX_SOCKET_PATH_BYTES) return preferred
-  return join('/tmp', `${SOCKET_DIR_NAME}-${process.getuid?.() ?? 'user'}`, `${pid}.sock`)
+  return join('/tmp', perUser, `${pid}.sock`)
 }
 
 class UnsafeSocketDirError extends Error {}
