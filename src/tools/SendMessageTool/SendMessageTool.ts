@@ -1214,8 +1214,9 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         if (peerResult) return peerResult
         // A teammate send writes to a mailbox that only an agent team reads,
         // so outside one an unknown name must fail here — reporting success
-        // would drop the message on the floor.
-        if (!swarm) {
+        // would drop the message on the floor. Agent teams switched on is not
+        // a team: until this session joins one, nothing polls that mailbox.
+        if (!swarm || !getTeamName(context.getAppState().teamContext)) {
           throw new Error(
             `No agent or session named "${input.to}" — call ${LIST_AGENTS_TOOL_NAME} to see who you can message, and copy a name exactly as it prints.`,
           )

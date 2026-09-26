@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync } from 'fs'
+import { existsSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -56,14 +56,16 @@ function makeContext({
   agentId,
   tasks = {},
   names = new Map<string, string>(),
+  teamContext,
 }: {
   agentId?: string
   tasks?: Record<string, FakeTask>
   names?: Map<string, string>
+  teamContext?: { teamName: string; teammates: Record<string, never> }
 }): ToolUseContext {
   return {
     agentId,
-    getAppState: () => ({ tasks, agentNameRegistry: names }),
+    getAppState: () => ({ tasks, agentNameRegistry: names, teamContext }),
   } as unknown as ToolUseContext
 }
 
@@ -392,5 +394,26 @@ describe('SendMessageTool — routing outside an agent team', () => {
       send({ to: 'main', message: 'hi' }, makeContext({ agentId: 'a1', tasks: { a1: inline } })),
     ).rejects.toThrow('is for background agents')
     expect(getCommandQueueSnapshot()).toEqual([])
+  })
+})
+
+describe('SendMessageTool — agent teams switched on', () => {
+  test('with no team joined, an unknown name fails instead of filling a mailbox nobody polls', async () => {
+    withTeams()
+    await expect(send({ to: 'dev-backend', message: 'DB is up' }, makeContext({}))).rejects.toThrow(
+      'No agent or session named "dev-backend" — call ListAgents',
+    )
+    expect(existsSync(join(configDir, 'teams', 'default', 'inboxes', 'dev-backend.json'))).toBe(false)
+  })
+
+  test('inside a team, a name off the local roster still goes to its mailbox', async () => {
+    // A teammate's own roster is empty, so a sibling's name is only in the team file.
+    withTeams()
+    const data = await send(
+      { to: 'sibling', message: 'hi' },
+      makeContext({ teamContext: { teamName: 'crew', teammates: {} } }),
+    )
+    expect(data).toMatchObject({ success: true, message: "Message sent to sibling's inbox" })
+    expect(existsSync(join(configDir, 'teams', 'crew', 'inboxes', 'sibling.json'))).toBe(true)
   })
 })

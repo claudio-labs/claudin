@@ -1,0 +1,22 @@
+{
+  "test": ["src/tools/SendMessageTool", "src/tools/AgentTool/agentName.test.ts"],
+  "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+  "probes": [
+    {
+      "name": "agent teams on with no team joined write to a mailbox nobody polls",
+      "find": "if (!swarm || !getTeamName(context.getAppState().teamContext)) {",
+      "replace": "if (!swarm) {"
+    },
+    {
+      "name": "inside a team, a name off the local roster is refused",
+      "find": "if (!swarm || !getTeamName(context.getAppState().teamContext)) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "an inline agent's name is not registered",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "          if (name) registerAgentName(rootSetAppState, name, syncAgentId);\n",
+      "replace": ""
+    }
+  ]
+}

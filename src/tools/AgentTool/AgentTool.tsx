@@ -50,6 +50,8 @@ import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extra
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES, UNSUMMARIZED_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
 import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js';
+import { agentNameProblem } from 'src/tools/AgentTool/agentName.js';
+import type { SetAppState } from 'src/agent/Task.js';
 import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from 'src/tools/AgentTool/forkSubagent.js';
 import { forkGateVerdict } from 'src/tools/AgentTool/forkGate.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
@@ -91,6 +93,22 @@ function isAutoBackgroundAgentsEnabled(): boolean {
 }
 
 // Multi-agent type constants are defined inline inside gated blocks to enable dead code elimination
+
+/**
+ * Make `name` resolve to `agentId` for SendMessage and ListAgents. The latest
+ * registration of a name wins, and it outlives the agent: a send to a
+ * finished agent's name resumes it from its transcript.
+ */
+function registerAgentName(setAppState: SetAppState, name: string, agentId: string): void {
+  setAppState(prev => {
+    const next = new Map(prev.agentNameRegistry);
+    next.set(name, asAgentId(agentId));
+    return {
+      ...prev,
+      agentNameRegistry: next
+    };
+  });
+}
 
 // Base input schema without multi-agent parameters
 const baseInputSchema = lazySchema(() => z.object({
@@ -253,6 +271,27 @@ export const AgentTool = buildTool({
   },
   get outputSchema(): OutputSchema {
     return outputSchema();
+  },
+  async validateInput({
+    name,
+    team_name
+  }, toolUseContext) {
+    // A teammate's name belongs to the agent-team roster, which has its own rules.
+    if (name === undefined || resolveTeamName({
+      team_name
+    }, toolUseContext.getAppState())) {
+      return {
+        result: true
+      };
+    }
+    const problem = agentNameProblem(name);
+    return problem ? {
+      result: false,
+      message: problem,
+      errorCode: 9
+    } : {
+      result: true
+    };
   },
   async call({
     prompt,
@@ -717,19 +756,8 @@ export const AgentTool = buildTool({
         parentAgentId: toolUseContext.agentId
       });
 
-      // Register name → agentId for SendMessage routing. Post-registerAsyncAgent
-      // so we don't leave a stale entry if spawn fails. Sync agents skipped —
-      // coordinator is blocked, so SendMessage routing doesn't apply.
-      if (name) {
-        rootSetAppState(prev => {
-          const next = new Map(prev.agentNameRegistry);
-          next.set(name, asAgentId(asyncAgentId));
-          return {
-            ...prev,
-            agentNameRegistry: next
-          };
-        });
-      }
+      // Post-registerAsyncAgent so a failed spawn leaves no stale entry.
+      if (name) registerAgentName(rootSetAppState, name, asyncAgentId);
 
       // Wrap async agent execution in agent context for analytics attribution
       const asyncAgentContext = {
@@ -842,6 +870,9 @@ export const AgentTool = buildTool({
             autoBackgroundMs: implicitBackgroundAllowed ? getAutoBackgroundMs() || undefined : undefined
           });
           foregroundTaskId = registration.taskId;
+          // An inline agent is reachable too — not from the parent, which is
+          // blocked on it, but from a background sibling.
+          if (name) registerAgentName(rootSetAppState, name, syncAgentId);
           backgroundPromise = registration.backgroundSignal.then(() => ({
             type: 'background' as const
           }));
