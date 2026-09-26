@@ -161,6 +161,7 @@ type FakeTask = {
   isBackgrounded: boolean
   pendingMessages: string[]
   result?: { content: { type: 'text'; text: string }[] }
+  error?: string
 }
 
 function agentTask(agentId: string, isBackgrounded = true): FakeTask {
@@ -286,6 +287,14 @@ describe('SendMessage with await_reply — agents of this conversation', () => {
     expect(data.message).toContain('dev finished without messaging you')
     expect(data.message).toContain('without reading your message')
     expect(data.message).toContain('shipped the fix')
+  })
+
+  test('a target that fails ends the wait with the failure', async () => {
+    const s = session()
+    setTimeout(() => s.update(DEV, { status: 'failed', error: 'API error: overloaded' }), 20)
+    const data = await call({ to: 'dev', message: 'status?', await_reply: true }, s.contextFor(TESTER))
+    expect(data.message).toContain('dev stopped (failed) without messaging you')
+    expect(data.message).toContain('API error: overloaded')
   })
 
   test('an inline target that returns — its task unregisters — ends the wait too', async () => {
