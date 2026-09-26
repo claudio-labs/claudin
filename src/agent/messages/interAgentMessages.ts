@@ -28,10 +28,11 @@ export function describeInterAgentMessage(
 ): InterAgentMessageView | null {
   const agent = parseXmlEnvelope(text, AGENT_MESSAGE_TAG)
   if (agent) {
+    const relation = agent.attrs.from === MAIN_ADDRESS ? 'main conversation' : 'background agent'
     return {
       kind: 'message',
       sender: agent.attrs.description ?? agent.attrs.from ?? 'agent',
-      relation: agent.attrs.from === MAIN_ADDRESS ? 'main conversation' : 'background agent',
+      relation: agent.attrs['awaiting-reply'] ? `${relation}, waiting for a reply` : relation,
       body: agent.body,
     }
   }

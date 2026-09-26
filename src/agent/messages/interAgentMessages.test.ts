@@ -81,6 +81,14 @@ test('formatAgentMessage says who the sender is to the receiver', () => {
   expect(sibling).toContain('SendMessage with to: "tester"')
 })
 
+test('a sender blocked on the answer marks its message, and the transcript says so', () => {
+  const text = formatAgentMessage({ from: 'tester', body: 'is it fixed?', to: 'dev', awaitingReply: true })
+  expect(text).toStartWith('<agent-message from="tester" awaiting-reply="true">')
+  expect(text).toContain('It is waiting for your answer — send it before going on')
+  expect(describeInterAgentMessage(text)?.relation).toBe('background agent, waiting for a reply')
+  expect(formatAgentMessage({ from: 'tester', body: 'fyi', to: 'dev' })).not.toContain('awaiting-reply')
+})
+
 describe('a message queued for a running agent', () => {
   test('SendMessage envelopes are agent-authored, with the address to answer', () => {
     const letter = formatAgentMessage({ from: 'tester', body: 'bug in a.ts', to: 'dev' })

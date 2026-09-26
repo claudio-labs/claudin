@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { SessionDirectory } from 'src/sessions/peers/registry.js'
 import {
+  collectMain,
   collectPeers,
   collectSubagents,
   collectTeammates,
@@ -79,6 +80,34 @@ describe('collectSubagents', () => {
     )
     expect(rows).toEqual([])
   })
+})
+
+describe('collectMain — "main" is listed for the agents that can write to it', () => {
+  const tasks = {
+    bg: agentTask('bg', 'Background', 'running', true),
+    inline: agentTask('inline', 'Inline', 'running', false),
+  }
+
+  test('a background agent sees main', () => {
+    expect(collectMain(appState(tasks), 'bg')).toEqual([
+      { name: 'main', details: ['the main conversation, which launched you'] },
+    ])
+  })
+
+  test('an inline agent and main itself do not — main is blocked on the one, and is the other', () => {
+    expect(collectMain(appState(tasks), 'inline')).toEqual([])
+    expect(collectMain(appState(tasks), undefined)).toEqual([])
+  })
+})
+
+test('the prompts teach asking and waiting, and who is listed', async () => {
+  const listAgents = await ListAgentsTool.prompt()
+  expect(listAgents).toContain('from a background agent, "main"')
+  const { getPrompt } = await import('src/tools/SendMessageTool/prompt.js')
+  const sendMessage = getPrompt({ swarm: false, crossSession: true })
+  expect(sendMessage).toContain('## Asking another agent')
+  expect(sendMessage).toContain('`await_reply: true`')
+  expect(sendMessage).toContain('one you launched, or a sibling')
 })
 
 test('collectTeammates names the lead for a member, and skips the caller', () => {

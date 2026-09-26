@@ -230,7 +230,20 @@ describe('SendMessage with await_reply — agents of this conversation', () => {
     expect(data.replies).toEqual([s.letter('dev', 'tester', 'fixed in 3f2a, retest')])
     // Taken out of the queue: it is not delivered a second time.
     expect(s.task(TESTER).pendingMessages).toEqual([])
+    // dev learns tester is blocked on it.
+    expect(s.task(DEV).pendingMessages[0]).toStartWith('<agent-message from="tester" awaiting-reply="true">')
     expect(s.task(DEV).pendingMessages[0]).toContain('login fails on empty password')
+  })
+
+  test('a background agent waiting on main marks its message for main too', async () => {
+    const s = session()
+    setTimeout(
+      () => s.update(DEV, { pendingMessages: [s.letter('main', 'dev', 'use the v2 schema')] }),
+      20,
+    )
+    await call({ to: 'main', message: 'v1 or v2 schema?', await_reply: true }, s.contextFor(DEV))
+    const [asked] = getCommandQueueSnapshot()
+    expect(String(asked?.value)).toStartWith('<agent-message from="dev" awaiting-reply="true">')
   })
 
   test('a mutual wait resolves: what the other already sent answers at once', async () => {

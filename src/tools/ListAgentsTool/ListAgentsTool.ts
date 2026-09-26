@@ -9,7 +9,10 @@ import { z } from 'zod/v4'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { isTeamLead } from 'src/agent/coordinator/teammate.js'
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
-import { isPanelAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import {
+  isLocalAgentTask,
+  isPanelAgentTask,
+} from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import {
   crossSessionUnavailableReason,
   getOwnInbox,
@@ -110,6 +113,20 @@ export function collectTeammates(
   return rows
 }
 
+/**
+ * "main", for a background agent — the one kind that can write to it. Main is
+ * blocked on an inline agent, which answers with its final message instead.
+ */
+export function collectMain(
+  appState: Pick<AppState, 'tasks'>,
+  selfAgentId: string | undefined,
+): AgentRow[] {
+  if (selfAgentId === undefined) return []
+  const self = appState.tasks[selfAgentId]
+  if (!isLocalAgentTask(self) || !self.isBackgrounded) return []
+  return [{ name: 'main', details: ['the main conversation, which launched you'] }]
+}
+
 function tildify(path: string): string {
   const home = homedir()
   return path.startsWith(home + sep) ? `~${path.slice(home.length)}` : path
@@ -199,7 +216,10 @@ export const ListAgentsTool = buildTool({
     return {
       data: {
         self: crossSession.self,
-        subagents: collectSubagents(appState, context.agentId),
+        subagents: [
+          ...collectMain(appState, context.agentId),
+          ...collectSubagents(appState, context.agentId),
+        ],
         teammates: isAgentSwarmsEnabled() ? collectTeammates(appState) : [],
         peers: crossSession.peers,
         notes: crossSession.notes,

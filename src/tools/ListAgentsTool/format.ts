@@ -39,7 +39,7 @@ export function formatAgentListing(listing: AgentListing): string {
   ].filter((section): section is string => section !== undefined)
   if (sections.length === 0) {
     sections.push(
-      'No agents to message yet. A background agent you spawn with Agent (run_in_background) shows up here under the name you give it, and so does any other interactive Claudin session running on this machine.',
+      'No agents to message yet. An agent you launch with Agent shows up here under the `name` you give it, and so does any other interactive Claudin session running on this machine.',
     )
   }
   return [...(listing.self ? [listing.self] : []), ...sections, ...listing.notes].join('\n\n')

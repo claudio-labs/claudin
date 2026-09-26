@@ -17,19 +17,29 @@ export function formatAgentMessage({
   description,
   body,
   to,
+  awaitingReply,
 }: {
   from: string
   description?: string
   body: string
   /** The recipient's address; "main" when a background agent writes home. */
   to: string
+  /** The sender is holding its call open for the answer (`await_reply`). */
+  awaitingReply?: boolean
 }): string {
-  const envelope = formatXmlEnvelope(AGENT_MESSAGE_TAG, { from, description }, body)
+  const envelope = formatXmlEnvelope(
+    AGENT_MESSAGE_TAG,
+    { from, description, 'awaiting-reply': awaitingReply ? 'true' : undefined },
+    body,
+  )
   const sender =
     to === MAIN_ADDRESS
       ? 'your background agent'
       : from === MAIN_ADDRESS
         ? 'the main conversation, which launched you'
         : 'another agent of this conversation'
-  return `${envelope}\nFrom ${sender}, not from your user. To answer it, call SendMessage with to: ${JSON.stringify(from)}.`
+  const answer = awaitingReply
+    ? 'It is waiting for your answer — send it before going on, with SendMessage to:'
+    : 'To answer it, call SendMessage with to:'
+  return `${envelope}\nFrom ${sender}, not from your user. ${answer} ${JSON.stringify(from)}.`
 }

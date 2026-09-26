@@ -5,7 +5,8 @@
     "src/agent/messages/interAgentMessages.test.ts",
     "src/tools/SendMessageTool/awaitReply.test.ts",
     "src/tools/SendMessageTool/SendMessageTool.peers.test.ts",
-    "src/tools/SendMessageTool/resumeOnce.test.ts"
+    "src/tools/SendMessageTool/resumeOnce.test.ts",
+    "src/tools/ListAgentsTool/ListAgentsTool.test.ts"
   ],
   "source": "src/tools/SendMessageTool/SendMessageTool.ts",
   "probes": [
@@ -188,6 +189,42 @@
       "source": "src/agent/messages/interAgentMessages.ts",
       "find": "  if (pending.length === 0) return undefined\n",
       "replace": "  if (true) return undefined\n"
+    },
+    {
+      "name": "a blocked sender marks its message",
+      "source": "src/tools/SendMessageTool/agentMessage.ts",
+      "find": "    { from, description, 'awaiting-reply': awaitingReply ? 'true' : undefined },\n",
+      "replace": "    { from, description },\n"
+    },
+    {
+      "name": "a send to an agent carries the await mark",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "            awaitingReply: input.await_reply === true,\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a send to main carries the await mark",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "        return handleMainMessage(input.message, context, input.await_reply === true)\n",
+      "replace": "        return handleMainMessage(input.message, context, false)\n"
+    },
+    {
+      "name": "the transcript says the sender is waiting",
+      "source": "src/agent/messages/interAgentMessages.ts",
+      "find": "      relation: agent.attrs['awaiting-reply'] ? `${relation}, waiting for a reply` : relation,\n",
+      "replace": "      relation,\n"
+    },
+    {
+      "name": "ListAgents offers main only to a background agent",
+      "source": "src/tools/ListAgentsTool/ListAgentsTool.ts",
+      "find": "  if (!isLocalAgentTask(self) || !self.isBackgrounded) return []\n",
+      "replace": "  if (!isLocalAgentTask(self)) return []\n"
+    },
+    {
+      "name": "the SendMessage prompt teaches asking",
+      "source": "src/tools/SendMessageTool/prompt.ts",
+      "find": "${ASKING}${crossSession",
+      "replace": "${crossSession"
     }
   ]
 }

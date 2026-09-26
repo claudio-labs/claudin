@@ -332,12 +332,13 @@ function assertReachesMain(context: ToolUseContext): void {
 function handleMainMessage(
   content: string,
   context: ToolUseContext,
+  awaitingReply: boolean,
 ): { data: MessageOutput } {
   assertReachesMain(context)
   const sender = senderOf(context)
   spendAgentSend(context)
   enqueue({
-    value: formatAgentMessage({ ...sender, body: content, to: MAIN_ADDRESS }),
+    value: formatAgentMessage({ ...sender, body: content, to: MAIN_ADDRESS, awaitingReply }),
     mode: 'task-notification',
     priority: 'next',
     skipSlashCommands: true,
@@ -1018,6 +1019,12 @@ async function awaitTargetOf(
 }
 
 /**
+ * The sends sendAndAwait makes through the tool's own call: delivered like any
+ * other, but marked awaiting-reply, so the recipient knows someone is blocked.
+ */
+const sendsForAwait = new WeakSet<Input>()
+
+/**
  * `await_reply`: send (when there is a message), then hold the call until an
  * answer arrives or the recipient stops. What arrived is returned verbatim —
  * taken out of the waiter's queue, so it is not delivered a second time.
@@ -1033,10 +1040,17 @@ async function sendAndAwait(
   // A session is also subscribed to, so the wait ends when it goes idle
   // without answering — and a wait with no message is that subscription alone.
   if (typeof input.message === 'string' || target.peer) {
-    sent = (await send({ ...input, await_reply: undefined, notify_when_idle: target.peer })).data
+    const sendInput = { ...input, notify_when_idle: target.peer }
+    sendsForAwait.add(sendInput)
+    sent = (await send(sendInput)).data
     if (!sent.success) return { data: { success: false, message: sent.message } }
     if (target.agentId !== undefined && typeof input.message === 'string') {
-      letter = formatAgentMessage({ ...senderOf(context), body: input.message, to: input.to })
+      letter = formatAgentMessage({
+        ...senderOf(context),
+        body: input.message,
+        to: input.to,
+        awaitingReply: true,
+      })
     }
   }
   const outcome = await awaitReply(inSessionProbe(context, target.agentId, letter), {
@@ -1344,7 +1358,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     async call(input, context, canUseTool, parentMessage) {
-      if (input.await_reply) {
+      if (input.await_reply && !sendsForAwait.has(input)) {
         return sendAndAwait(input, context, sendInput =>
           SendMessageTool.call(sendInput, context, canUseTool, parentMessage),
         )
@@ -1357,7 +1371,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         )
       }
       if (typeof input.message === 'string' && input.to === MAIN_ADDRESS) {
-        return handleMainMessage(input.message, context)
+        return handleMainMessage(input.message, context, input.await_reply === true)
       }
 
       // Route to in-process subagent by name or raw agentId before falling
@@ -1374,6 +1388,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
             ...senderOf(context),
             body: input.message,
             to: input.to,
+            awaitingReply: input.await_reply === true,
           })
           if (isLocalAgentTask(task) && !isMainSessionTask(task)) {
             if (task.status === 'running') {
