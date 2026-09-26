@@ -1,0 +1,38 @@
+{
+  "test": [
+    "src/tools/AgentTool/agentSchema.wire.test.ts",
+    "src/tools/AgentTool/prompt.test.ts",
+    "src/tools/AgentTool/subagentSurface.regression.test.ts",
+    "src/tools/SendMessageTool/SendMessageTool.regression.test.ts"
+  ],
+  "source": "src/providers/transport/api.ts",
+  "probes": [
+    {
+      "name": "the zod schema no longer decides run_in_background at import time",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "export const inputSchema = lazySchema(() => fullInputSchema().omit({\n  cwd: true\n}));\n",
+      "replace": "export const inputSchema = lazySchema(() => fullInputSchema().omit({\n  cwd: true,\n  run_in_background: true\n}));\n"
+    },
+    {
+      "name": "name is not a swarm-only field",
+      "find": "  [AGENT_TOOL_NAME]: ['team_name', 'mode'],\n",
+      "replace": "  [AGENT_TOOL_NAME]: ['name', 'team_name', 'mode'],\n"
+    },
+    {
+      "name": "-p withholds the background-only fields",
+      "find": "  if (toolName !== AGENT_TOOL_NAME || !isRunInBackgroundHidden()) return []\n",
+      "replace": "  if (true) return []\n"
+    },
+    {
+      "name": "an agent team keeps name where background is withheld",
+      "find": "  return isAgentSwarmsEnabled() ? ['run_in_background'] : ['run_in_background', 'name']\n",
+      "replace": "  return ['run_in_background', 'name']\n"
+    },
+    {
+      "name": "call() ignores a withheld run_in_background",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "    const run_in_background = isRunInBackgroundHidden() ? undefined : requestedBackground;\n",
+      "replace": "    const run_in_background = requestedBackground;\n"
+    }
+  ]
+}

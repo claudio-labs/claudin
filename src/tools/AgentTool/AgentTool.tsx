@@ -134,34 +134,21 @@ const fullInputSchema = lazySchema(() => {
   });
 });
 
-// Strip optional fields from the schema when the backing feature is off so
-// the model never sees them. Done via .omit() rather than conditional spread
-// inside .extend() because the spread-ternary breaks Zod's type inference
-// (field type collapses to `unknown`). The ternary return produces a union
-// type, but call() destructures via the explicit AgentToolInput type below
-// which always includes all optional fields.
-export const inputSchema = lazySchema(() => {
-  const schema = fullInputSchema().omit({
-    cwd: true
-  });
-
-  // run_in_background is hidden when background tasks are unavailable. Headless
-  // (-p) also hides it: `claudin -p` has no event loop driving the bg-task
-  // drain, so an explicit run_in_background:true there would orphan the child
-  // (see team-memory: headless-bg-agents-not-drained). Fork no longer forces
-  // async — without the param, fork runs inline and stays drainable in -p.
-  // getIsNonInteractiveSession() is stable for a process lifetime, so caching
-  // its value at first schema access is correct. The description renders from
-  // the same predicate (prompt.ts), so it never teaches the omitted param.
-  const hideRunInBackground = isRunInBackgroundHidden();
-  return hideRunInBackground ? schema.omit({
-    run_in_background: true
-  }) : schema;
-});
+// The zod schema is the same in every session. The fields a session cannot use
+// — `run_in_background` and `name` under isRunInBackgroundHidden(), the team
+// fields outside an agent team — are removed from the wire schema per request
+// by toolToAPISchema (providers/transport/api.ts), and call() ignores a
+// `run_in_background` that arrives anyway. Deciding here would be wrong:
+// buildTool's spread reads this getter while AgentTool.tsx loads, before main()
+// has marked the session interactive, so every interactive session got the -p
+// schema and "background" agents ran inline.
+export const inputSchema = lazySchema(() => fullInputSchema().omit({
+  cwd: true
+}));
 type InputSchema = ReturnType<typeof inputSchema>;
 
 // Explicit type widens the schema inference to always include all optional
-// fields even when .omit() strips them for gating (cwd, run_in_background).
+// fields even when .omit() strips them for gating (cwd).
 // subagent_type is optional; call() defaults it to code when the
 // fork gate is off, or routes to the fork path when the gate is on.
 type AgentToolInput = z.infer<ReturnType<typeof baseInputSchema>> & {
@@ -298,7 +285,7 @@ export const AgentTool = buildTool({
     subagent_type,
     description,
     model: modelParam,
-    run_in_background,
+    run_in_background: requestedBackground,
     readOnly,
     name,
     team_name,
@@ -308,6 +295,10 @@ export const AgentTool = buildTool({
   }: AgentToolInput, toolUseContext, canUseTool, assistantMessage, onProgress?) {
     const startTime = Date.now();
     const model = isCoordinatorMode() ? undefined : modelParam;
+    // Where the schema withholds run_in_background (`-p`, background tasks
+    // off), a value the model sends anyway is ignored: in -p nothing drains a
+    // background child, so honoring it would orphan the agent.
+    const run_in_background = isRunInBackgroundHidden() ? undefined : requestedBackground;
 
     // Get app state for permission mode and agent filtering
     const appState = toolUseContext.getAppState();
