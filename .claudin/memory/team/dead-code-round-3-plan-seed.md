@@ -117,4 +117,5 @@ answers, and B only on explicit approval per item.
 One hard mechanical constraint from last round: `bun run build` preprocesses
 ~175 source files IN PLACE, so it cannot overlap with any agent reading source.
 Read-only audit agents can run in parallel; the moment one builds, sequence it
-alone ([[.claudin/rules/agent-safety.md]]).
+alone (then `.claudin/rules/agent-safety.md` §1, deleted 2026-09-24 — see
+[[memory-cites-pre-reorg-paths]]).

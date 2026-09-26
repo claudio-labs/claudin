@@ -77,6 +77,9 @@
 - [Removal passes take only what the build proves unreachable](removal-pass-only-provably-dead.md) — one commit per phase
 - [Deleting telemetry hollows the tests that observed through it](tests-observing-through-telemetry.md) — no assertion may prove nothing
 - [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md) — `ts.createSourceFile` fails at runtime
+- Worktree agents: [stale base](audit-agent-worktree-sees-committed-head.md) · [edits leak to main](worktree-agent-edits-leak-to-main-checkout.md) — pin the SHA
+- [Public copy: no "fork of Claude Code"](public-docs-product-not-fork-framing.md) — one slim non-affiliation line
+- No rule covers: [tools.js → TDZ](tool-importing-tools-registry-tdz.md) · [ProviderManager tests](providermanager-tui-tests-fail-non-tty.md) · [CI order leaks](full-suite-in-ci-portability.md) · [full repaint](ink-bordered-fillheight-panes-recipe.md)
 
 ## Repo health
 - [Attachment producers leaked parent state into sub-agents](attachment-producers-leak-parent-state.md) — #224/#226/#227; agentId is NOT the gate
@@ -89,7 +92,7 @@
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
 - [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
 - Weekly token censuses: [09-04..08](weekly-token-census-2026-09-08.md) · [09-14..20](weekly-token-census-2026-09-20.md) — reads 45%→68%; no compaction on 1M = $355-580/wk
-- [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — outline 100% success; its "79 symbol= calls" is WRONG (25)
+- [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — outline 100% success; its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - [Mask desyncs blanked files from the symbol table — FIXED 08-25](outline-mask-desync-zero-symbols.md) — broke Read(symbol=), Grep symbols, Rename
 - ["Read it first" gate census 2026-09-04 — FIXED in #157](read-gate-false-refusals-census-2026-09.md) — Edit mid-line, injected MEMORY.md, /resume
@@ -98,18 +101,20 @@
 ## Roadmap & major features
 - [Dead-code + codename cleanup — #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines, analytics gone; the gates followed 09-25
 - Dead-code rounds (09-18/19): [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) knip in CI · [r4](dead-code-round-4-2026-09-18.md) throw-probe · [r5 #214](dead-code-round-5-2026-09-19.md) JSX-as-regex trap
+- Dead-code seeds (SPENT): [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash parser](bash-parser-unreachable-behind-tree-sitter-flag.md)
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20; md5 split gate, back-edge trap
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy (#156)](context-relief-unified-policy-ab.md) — cost −25%; on 1M the retain floor sits ABOVE its band
 - [Clip-pin A/B 2026-07-25](clip-pin-cache-ab-2026-07-25.md) — STALE number, don't cite; kept for its three bench traps
-- [Product roadmap 2026-07](roadmap-2026-07.md) — R1 cost routing → R2 sandbox → R3 bg agent ✅ → R4 replay eval → R5 MCP Apps
+- [Product roadmap 2026-07](roadmap-2026-07.md) — R1 cost routing → R2 sandbox → R3 bg agent ✅ → R4 replay eval → R5 MCP Apps · [token-efficiency](token-efficiency-roadmap.md)
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3 Read re-read dedup (~9.5%) and D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
 - [Bash-as-file-reader census + redirect reach (08-09/16)](bash-file-read-census-and-redirect-reach.md) — refusal converted 84.7%
 - [Auto-outline pivot's false cap claim (08-09)](auto-outline-pivot-false-cap-claim.md) — 1,809 is an upper bound; PR #67 closed on it
 - [Token-bench measurement traps](token-bench-measurement-traps.md) — `--allowedTools` doesn't remove tools; check range overlap
+- Bench traps: [cache-ab-bench bugs](cache-ab-bench-unreliable.md) · [head-anchor, unmerged](cache-head-anchor-branch-state.md) · [-p orphans bg agents](headless-bg-agents-not-drained.md)
 - [R3 background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch, triggers, worktree+PR
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas incl. agent frontmatter `model`
 - [Fork vs fresh A/B 2026-09-09](fork-vs-fresh-ab-2026-09-09.md) — fresh Code agent −44% at equal answers; 3 parallel forks pass
@@ -139,7 +144,7 @@
 - [Native-1M models need a getContextWindowForModel branch](native-1m-context-window.md) — modelSupports1M alone doesn't set the window
 - [SDK error checks: isSdk* guards, never instanceof](externalized-sdk-copies-instanceof-apierror.md) — externalized SDKs load their own copy
 - [CLAUDIN_SKIP_VERTEX_AUTH stub must return a real Headers](vertex-skip-auth-stub-needs-headers.md) — vertex-sdk calls .get() on it
-- [Adding a /provider preset](../../skills/add-provider-preset/SKILL.md) — the `/add-provider-preset` skill, not a memory
+- [Adding a /provider preset](../../skills/add-provider-preset/SKILL.md) — the `/add-provider-preset` skill, not a memory · [old recipe](openai-compat-preset-recipe.md)
 - [Kimi Code OAuth provider (device flow)](kimi-code-oauth-provider.md) — mirrors xAI; impersonates the official CLI (gray area)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — gate on activeTransportUsesOpenAiShim
 - [Codex strict schemas → placeholder args](codex-strict-schema-placeholder-args.md) — `pages:""` looped Read 135×; strip ""/null
@@ -158,6 +163,7 @@
 - [Launcher jemalloc LD_PRELOAD leak — fixed 06-11](launcher-jemalloc-ld-preload-leak.md) — it reached children and broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700, global gitignore
 - [PRs go to GitHub via gh](repo-prs-github-via-gh.md) — origin claudio-labs/claudin; the Gitea + tea flow is gone
+- [main's GitHub ruleset](main-branch-ruleset-protection.md) — admin bypass; an empty include made it inert
 
 ## TUI / diff / tooling
 - [Inline TUI stranded the frame at the top — FIXED 09-11](inline-fullreset-per-message.md) — #172 anchored only one branch
@@ -173,7 +179,8 @@
 ## References (sibling repos, wire formats, archives)
 - [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked from 9e23c2be (04-25); ~5.5% of lines theirs; LICENSE attribution deferred; 17/28 bug claims real
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win; 4 ideas kept
-- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — auto-format, LSP-diagnostics-on-edit, ACP/Zed, part-revert
+- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — auto-format, LSP-diagnostics-on-edit, ACP/Zed, part-revert · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — SSL_CERT_FILE + NODE_EXTRA_CA_CERTS + REQUESTS_CA_BUNDLE
+- Devin RE: [backend](devin-shares-codeium-backend.md) · [wire quirks](devin-oauth-quirks.md) · [f31 vs quota](devin-port-works-quota-blocker.md) · [f31 RE](devin-f31-characterization.md) · [A/B method](devin-wire-ab-procedure.md)
 - [Devin provider port — ARCHIVED to docs](../../../docs/tech/devin-provider/README.md) — abandoned 06-12 on f31 attestation

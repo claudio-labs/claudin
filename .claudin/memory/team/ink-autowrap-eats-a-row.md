@@ -10,9 +10,9 @@ chat and the panel renders as a dashed column — present on roughly half the ro
 attributed it to checklists being on screen; checklists are only a correlate,
 because the todo block re-renders constantly and so keeps producing frames.
 
-**This is a THIRD mechanism**, distinct from both of the ones
-[[ink-ambiguous-width-vacate-ghost]] and [[ink-diff-damage-xbounds]] describe
-(`.claudin/rules/ink-tui.md` §3 (a)/(a2)/(b)). Width drift is the trigger, but
+**This is a THIRD mechanism**, distinct from the damage-bounds miss and the
+ambiguous-width vacate ghost (`.claudin/rules/ink-tui.md` §3 (a)/(a2)/(b)).
+Width drift is the trigger, but
 the damage is not a stale glyph on the drifted row — it is **every later row of
 the frame landing one row too low**.
 
@@ -68,7 +68,7 @@ added to `writeDiffToTerminal` has the same trap waiting.
 ## Verification recipe (reusable for any cursor-desync suspicion)
 
 Cheaper and more faithful than the `logForDebugging` + `--debug` probe in
-[[ink-ambiguous-width-vacate-ghost]], because it replays the REAL byte stream:
+`ink-tui.md` §3(b), because it replays the REAL byte stream:
 
 1. Capture the app's own output: run it under `script -qfc '<launcher>' /tmp/s.raw`
    inside a fixed-size tmux session (`tmux new-session -d -x 180 -y 45`). Drive

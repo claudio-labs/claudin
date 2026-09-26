@@ -76,9 +76,15 @@ list it), the cache/bench cluster (`defer-cache-marker-shipped`,
 `toolresult-cache-cwd-invalidation`, `memory-turn-by-turn-bench-flaky-full-suite`,
 `headless-bg-agents-not-drained`), and `bun-mock-module-cross-file-leak`,
 `web-login-provider-port-queue`, `feature-macro-breaks-bun-test-outside-if`,
-`openai-compat-preset-recipe`, `token-efficiency-roadmap`. None of the ink five
-is indexed — `.claudin/rules/ink-tui.md` carries the distilled version with
-current paths, so they are detail behind the rule, not orientation.
+`openai-compat-preset-recipe`, `token-efficiency-roadmap`. The ink five were
+left unindexed because `.claudin/rules/ink-tui.md` carries the distilled
+version. On 2026-09-26 every note whose rule held all of it was deleted —
+`ink-diff-damage-xbounds`, `scrollbox-inline-no-clip`,
+`ink-modules-unimportable-in-tests`, `ink-legacyroot-vestigial`,
+`ink-ambiguous-width-vacate-ghost`, `toolresult-cache-cwd-invalidation`,
+`bun-mock-module-cross-file-leak`, `feature-macro-breaks-bun-test-outside-if`,
+`dist-chunks-stale-when-verifying-bundle` — and
+`ink-bordered-fillheight-panes-recipe`, which no rule holds, got an index line.
 
 **What was deliberately NOT rewritten, and must not be.** A retired path is
 often the *point* of the sentence: the resolution table above,

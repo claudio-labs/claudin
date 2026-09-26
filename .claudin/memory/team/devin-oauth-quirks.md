@@ -1,6 +1,6 @@
 ---
 name: Devin OAuth + chat wire quirks (auth endpoint, token prefix, tier-gated models, top-level proto gate)
-description: Non-obvious gotchas porting Devin to claudin — wrong-endpoint exchange, devin-session-token$ prefix for codeium Basic auth, chat_model_uid tier-gating, and the GetChatMessage top-level field set (f2/f15/f20/f21) that Cognition gates on. f31 is COSMETIC: server only validates UTF-8 if present.
+description: Non-obvious gotchas porting Devin to claudin — wrong-endpoint exchange, devin-session-token$ prefix for codeium Basic auth, chat_model_uid tier-gating, and the GetChatMessage top-level field set (f2/f15/f20/f21) that Cognition gates on. Its 06-06 "f31 is cosmetic" verdict was re-implicated by the 06-12 clean-window A/B (devin-port-works-quota-blocker).
 type: project
 ---
 
@@ -63,6 +63,14 @@ longer the family default. Migration in claudinStartupMigrations
 rewrites stored `model: 'default'` → `'swe-1-6-fast'` on startup.
 
 ## 4. metadata.f31 is COSMETIC — real gate is top-level fields (2026-06-06)
+
+> **Contested 2026-06-12 — read before relying on this section.** A clean-window
+> A/B (official CLI with f31 succeeded; Claudin without it got permission_denied,
+> metadata otherwise byte-identical) re-implicated f31 — see
+> [[devin-port-works-quota-blocker]] — and binary RE found it is a sealed,
+> per-request-unique 366-byte blob, not random hex ([[devin-f31-characterization]]).
+> The replay observations below are kept as recorded; "cosmetic" is not the
+> current conclusion, and the port was abandoned on f31.
 
 CORRECTION: the earlier hypothesis that f31 was a per-request crypto
 signature gating chat was WRONG. An RE agent replayed real chisel
