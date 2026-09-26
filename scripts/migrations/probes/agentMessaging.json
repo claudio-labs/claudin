@@ -1,79 +1,13 @@
 {
   "test": [
-    "src/tools/AgentTool/agentSchema.wire.test.ts",
-    "src/tools/AgentTool/agentName.test.ts",
-    "src/tools/AgentTool/prompt.test.ts",
-    "src/tools/AgentTool/subagentSurface.regression.test.ts",
     "src/tools/SendMessageTool/SendMessageTool.regression.test.ts",
     "src/tools/SendMessageTool/SendMessageTool.test.ts",
     "src/agent/messages/interAgentMessages.test.ts",
-    "src/tools/SendMessageTool/awaitReply.test.ts"
+    "src/tools/SendMessageTool/awaitReply.test.ts",
+    "src/tools/SendMessageTool/SendMessageTool.peers.test.ts"
   ],
-  "source": "src/providers/transport/api.ts",
+  "source": "src/tools/SendMessageTool/SendMessageTool.ts",
   "probes": [
-    {
-      "name": "the zod schema no longer decides run_in_background at import time",
-      "source": "src/tools/AgentTool/AgentTool.tsx",
-      "find": "export const inputSchema = lazySchema(() => fullInputSchema().omit({\n  cwd: true\n}));\n",
-      "replace": "export const inputSchema = lazySchema(() => fullInputSchema().omit({\n  cwd: true,\n  run_in_background: true\n}));\n"
-    },
-    {
-      "name": "name is not a swarm-only field",
-      "find": "  [AGENT_TOOL_NAME]: ['team_name', 'mode'],\n",
-      "replace": "  [AGENT_TOOL_NAME]: ['name', 'team_name', 'mode'],\n"
-    },
-    {
-      "name": "-p withholds the background-only fields",
-      "find": "  if (toolName !== AGENT_TOOL_NAME || !isRunInBackgroundHidden()) return []\n",
-      "replace": "  if (true) return []\n"
-    },
-    {
-      "name": "an agent team keeps name where background is withheld",
-      "find": "  return isAgentSwarmsEnabled() ? ['run_in_background'] : ['run_in_background', 'name']\n",
-      "replace": "  return ['run_in_background', 'name']\n"
-    },
-    {
-      "name": "call() ignores a withheld run_in_background",
-      "source": "src/tools/AgentTool/AgentTool.tsx",
-      "find": "    const run_in_background = isRunInBackgroundHidden() ? undefined : requestedBackground;\n",
-      "replace": "    const run_in_background = requestedBackground;\n"
-    },
-    {
-      "name": "a name must be a plain word",
-      "source": "src/tools/AgentTool/agentName.ts",
-      "find": "  if (!AGENT_NAME_RE.test(name)) {\n",
-      "replace": "  if (false) {\n"
-    },
-    {
-      "name": "\"main\" cannot name an agent",
-      "source": "src/tools/AgentTool/agentName.ts",
-      "find": "  if (name.toLowerCase() === 'main') {\n",
-      "replace": "  if (name === 'main') {\n"
-    },
-    {
-      "name": "an agentId-shaped name is refused",
-      "source": "src/tools/AgentTool/agentName.ts",
-      "find": "  if (toAgentId(name) !== null) {\n",
-      "replace": "  if (false) {\n"
-    },
-    {
-      "name": "the Agent tool checks the name before spawning",
-      "source": "src/tools/AgentTool/AgentTool.tsx",
-      "find": "    const problem = agentNameProblem(name);\n",
-      "replace": "    const problem = undefined;\n"
-    },
-    {
-      "name": "a teammate's name is left to the agent team",
-      "source": "src/tools/AgentTool/AgentTool.tsx",
-      "find": "    if (name === undefined || resolveTeamName({\n",
-      "replace": "    if (name === undefined || false && resolveTeamName({\n"
-    },
-    {
-      "name": "an inline agent registers its name",
-      "source": "src/tools/AgentTool/AgentTool.tsx",
-      "find": "          if (name) registerAgentName(rootSetAppState, name, syncAgentId);\n",
-      "replace": "\n"
-    },
     {
       "name": "a message to a running agent travels in the envelope",
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
@@ -205,6 +139,24 @@
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
       "find": "  if (to === MAIN_ADDRESS) {\n    assertReachesMain(context)\n",
       "replace": "  if (to === MAIN_ADDRESS) {\n"
+    },
+    {
+      "name": "a sub-agent cannot wait on another session",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (context.agentId !== undefined) {\n    throw new Error(\n      `A reply from another session",
+      "replace": "  if (false) {\n    throw new Error(\n      `A reply from another session"
+    },
+    {
+      "name": "a wait on a session subscribes to its idle notice",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "    sent = (await send({ ...input, await_reply: undefined, notify_when_idle: target.peer })).data\n",
+      "replace": "    sent = (await send({ ...input, await_reply: undefined })).data\n"
+    },
+    {
+      "name": "a bare wait on a session still subscribes",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (typeof input.message === 'string' || target.peer) {\n",
+      "replace": "  if (typeof input.message === 'string') {\n"
     }
   ]
 }

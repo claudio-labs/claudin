@@ -1,4 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 import {
   enqueue,
@@ -16,11 +19,32 @@ import {
 import { SendMessageTool } from 'src/tools/SendMessageTool/SendMessageTool.js'
 import { renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
 
+// A name that is no agent is looked up among the other sessions on this
+// machine — point the session directory somewhere empty, not at the developer's.
+let configDir: string
+const savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
+
+beforeAll(() => {
+  configDir = mkdtempSync(join(tmpdir(), 'await-reply-'))
+  process.env.CLAUDIN_CONFIG_DIR = configDir
+})
+
+afterAll(() => {
+  if (savedConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+  else process.env.CLAUDIN_CONFIG_DIR = savedConfigDir
+  rmSync(configDir, { recursive: true, force: true })
+})
+
 beforeEach(() => {
   resetAgentSendsForTesting()
 })
 
+// Every wait a test opens is aborted when it ends, so one that a broken build
+// leaves waiting fails in 5s instead of polling for ten minutes.
+const controllers: AbortController[] = []
+
 afterEach(() => {
+  for (const controller of controllers.splice(0)) controller.abort()
   resetCommandQueue()
 })
 
@@ -157,13 +181,15 @@ function session() {
   const setAppState = (f: (prev: typeof state) => typeof state) => {
     state = f(state)
   }
-  const contextFor = (agentId?: string, controller = new AbortController()) =>
-    ({
+  const contextFor = (agentId?: string, controller = new AbortController()) => {
+    controllers.push(controller)
+    return {
       agentId,
       abortController: controller,
       getAppState: () => state,
       setAppState,
-    }) as unknown as ToolUseContext
+    } as unknown as ToolUseContext
+  }
   return {
     contextFor,
     task: (id: string) => state.tasks[id]!,
@@ -217,7 +243,7 @@ describe('SendMessage with await_reply — agents of this conversation', () => {
     }, 20)
     const data = await call({ to: 'tester', message: 'is it green?', await_reply: true }, s.contextFor(DEV))
     expect(data.replies?.[0]).toStartWith('<agent-message from="infra">')
-    expect(data.message).toContain('check its from')
+    expect(data.message).toContain('check who sent it')
   })
 
   test('the target finishing ends the wait with its report, and says if it never read the message', async () => {

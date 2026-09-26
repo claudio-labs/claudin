@@ -115,7 +115,7 @@ const NOTIFY_WHEN_IDLE_DESCRIPTION =
   'Ask a session ON THIS MACHINE to send you ONE notice when it next goes idle (finishes its turn with nothing queued) or exits — opt-in, one-shot, no polling. With a message: deliver it now AND subscribe. Without a message (omit it): a pure subscription that costs the other session nothing, answered at once if it is already idle.'
 
 const AWAIT_REPLY_DESCRIPTION =
-  "Only when you cannot go on without the answer: keep this call open until the recipient answers. Returns the first message sent to you (read its from — it may be someone else's), or the recipient's end if it stops first; gives up after 10 minutes. Without a message (omit it): only wait — how to keep waiting after a timeout."
+  "Only when you cannot go on without the answer: keep this call open until the recipient answers. Returns the first message sent to you (check who sent it — it may not be the reply), or the recipient's end — an agent stopping, a session going idle — if that comes first; gives up after 10 minutes. Without a message (omit it): only wait — how to keep waiting after a timeout."
 
 type SchemaVariant = { swarm: boolean; crossSession: boolean }
 
@@ -909,20 +909,39 @@ async function handlePlanRejection(
 }
 
 /**
- * The agent a wait watches: one of this conversation's (its agentId), or main
- * (undefined). Checked before anything is sent, so a send never goes out on a
- * wait that cannot happen.
+ * What a wait watches: an agent of this conversation (its agentId), main, or
+ * another session (`peer`). Checked before anything is sent, so a send never
+ * goes out on a wait that cannot happen.
  */
-function awaitTargetOf(to: string, context: ToolUseContext): { agentId?: string } {
+async function awaitTargetOf(
+  to: string,
+  context: ToolUseContext,
+): Promise<{ agentId?: string; peer?: true }> {
   if (to === MAIN_ADDRESS) {
     assertReachesMain(context)
     return {}
   }
   const agentId = resolveAgentAddress(to, context)
   if (agentId !== undefined) return { agentId }
-  throw new Error(
-    `await_reply waits on an agent of this conversation or "${MAIN_ADDRESS}", and "${to}" is neither — call ${LIST_AGENTS_TOOL_NAME} to see who you can message.`,
-  )
+  const located = await locatePeer(to, false)
+  if (!located) {
+    throw new Error(
+      `await_reply waits on an agent of this conversation, "${MAIN_ADDRESS}" or another session, and "${to}" is none of them — call ${LIST_AGENTS_TOOL_NAME} to see who you can message.`,
+    )
+  }
+  // Another session answers this session's address, so its reply lands in
+  // the main conversation — the one place a wait on it can see it.
+  if (context.agentId !== undefined) {
+    throw new Error(
+      `A reply from another session reaches the main conversation, not this agent — send without await_reply, or ask "${MAIN_ADDRESS}" to ask.`,
+    )
+  }
+  if (!getOwnInbox()) {
+    throw new Error(
+      'await_reply to another session needs an inbox for the reply to reach, and this session has none (only an interactive session gets one). Send without it.',
+    )
+  }
+  return { peer: true }
 }
 
 /**
@@ -935,13 +954,15 @@ async function sendAndAwait(
   context: ToolUseContext,
   send: (input: Input) => Promise<{ data: SendMessageToolOutput }>,
 ): Promise<{ data: MessageOutput }> {
-  const target = awaitTargetOf(input.to, context)
+  const target = await awaitTargetOf(input.to, context)
   let sent: SendMessageToolOutput | undefined
   let letter: string | undefined
-  if (typeof input.message === 'string') {
-    sent = (await send({ ...input, await_reply: undefined })).data
+  // A session is also subscribed to, so the wait ends when it goes idle
+  // without answering — and a wait with no message is that subscription alone.
+  if (typeof input.message === 'string' || target.peer) {
+    sent = (await send({ ...input, await_reply: undefined, notify_when_idle: target.peer })).data
     if (!sent.success) return { data: { success: false, message: sent.message } }
-    if (target.agentId !== undefined) {
+    if (target.agentId !== undefined && typeof input.message === 'string') {
       letter = formatAgentMessage({ ...senderOf(context), body: input.message, to: input.to })
     }
   }

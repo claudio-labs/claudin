@@ -4,6 +4,11 @@ import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import {
+  enqueue,
+  getCommandQueueSnapshot,
+  resetCommandQueue,
+} from 'src/agent/messageQueueManager.js'
 import type { ResponseFrame } from 'src/sessions/peers/frames.js'
 import type { InboundFrame, PeerInbox } from 'src/sessions/peers/inboxServer.js'
 import { startPeerInbox } from 'src/sessions/peers/inboxServer.js'
@@ -24,6 +29,8 @@ let peer: PeerInbox
 let own: PeerInbox
 const received: InboundFrame[] = []
 let peerAnswer: ResponseFrame = { ok: true, outcome: 'delivered' }
+/** What the other session does on receiving a frame — how a test makes it answer. */
+let onPeerReceive: ((frame: InboundFrame) => void) | undefined
 const savedConfigDir = process.env.CLAUDIN_CONFIG_DIR
 
 beforeAll(async () => {
@@ -35,6 +42,7 @@ beforeAll(async () => {
     socketPath: join(root, 's', 'peer.sock'),
     handler: async frame => {
       received.push(frame)
+      onPeerReceive?.(frame)
       return peerAnswer
     },
   })
@@ -67,16 +75,25 @@ afterAll(async () => {
 beforeEach(() => {
   received.length = 0
   peerAnswer = { ok: true, outcome: 'delivered' }
+  onPeerReceive = undefined
   resetCrossSessionSends()
 })
 
 afterEach(() => {
   delete process.env.CLAUDIN_DISABLE_CROSS_SESSION
+  // An await_reply a broken build leaves open must not poll on for minutes.
+  for (const controller of controllers.splice(0)) controller.abort()
+  resetCommandQueue()
 })
 
+const controllers: AbortController[] = []
+
 function context(agentId?: string): ToolUseContext {
+  const abortController = new AbortController()
+  controllers.push(abortController)
   return {
     agentId,
+    abortController,
     getAppState: () => ({
       tasks: {},
       agentNameRegistry: new Map(agentId ? [['tester', agentId]] : []),
@@ -231,5 +248,68 @@ describe('notify_when_idle', () => {
     // `message` is optional in both — await_reply without one only waits —
     // and validateInput refuses a send that has neither.
     expect(unreachable.safeParse({ to: 'x', await_reply: true }).success).toBe(true)
+  })
+})
+
+describe('await_reply to another session', () => {
+  /** What this session's inbox enqueues when the other one writes back. */
+  function replyFromPeer(text: string): void {
+    enqueue({
+      value: `<cross-session-message from="uds:${peer.socketPath}" from-name="claudin-goal">\n${text}\n</cross-session-message>`,
+      mode: 'task-notification',
+      priority: 'next',
+      origin: { kind: 'peer', name: 'claudin-goal', from: `uds:${peer.socketPath}` },
+    })
+  }
+
+  test('asks, subscribes, and returns the answer — case 3: "are you on bug X?"', async () => {
+    peerAnswer = { ok: true, outcome: 'delivered', subscribed: true }
+    onPeerReceive = () => setTimeout(() => replyFromPeer('yes, fixing it now'), 20)
+    const result = await SendMessageTool.call(
+      { to: 'claudin-goal', message: 'are you fixing the login bug?', await_reply: true } as never,
+      context(),
+      (() => {}) as never,
+      undefined as never,
+    )
+    const data = result.data as { success: boolean; replies?: string[] }
+    // The wait subscribed, so it also ends if that session goes idle silently.
+    expect(received[0]).toMatchObject({ type: 'message', notify_when_idle: true })
+    expect(data.replies?.[0]).toContain('yes, fixing it now')
+    expect(getCommandQueueSnapshot()).toEqual([])
+  })
+
+  test('without a message it subscribes and waits — the idle notice ends it', async () => {
+    peerAnswer = { ok: true, outcome: 'subscribed', subscribed: true }
+    onPeerReceive = () =>
+      setTimeout(
+        () =>
+          enqueue({
+            value: '<cross-session-notice about="claudin-goal">\n[Cross-session idle notice] claudin-goal … is idle now.\n</cross-session-notice>',
+            mode: 'task-notification',
+            priority: 'later',
+            origin: { kind: 'peer-notice', name: 'claudin-goal' },
+          }),
+        20,
+      )
+    const result = await SendMessageTool.call(
+      { to: 'claudin-goal', await_reply: true } as never,
+      context(),
+      (() => {}) as never,
+      undefined as never,
+    )
+    expect(received[0]).toMatchObject({ type: 'notify_when_idle' })
+    expect((result.data as { replies?: string[] }).replies?.[0]).toContain('idle notice')
+  })
+
+  test('a sub-agent cannot wait on a session — the reply would reach main — and nothing is sent', async () => {
+    await expect(
+      SendMessageTool.call(
+        { to: 'claudin-goal', message: 'hi', await_reply: true } as never,
+        context('a1'),
+        (() => {}) as never,
+        undefined as never,
+      ),
+    ).rejects.toThrow('reaches the main conversation, not this agent')
+    expect(received).toEqual([])
   })
 })

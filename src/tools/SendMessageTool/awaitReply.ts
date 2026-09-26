@@ -147,8 +147,8 @@ export function describeAwaitOutcome(to: string, outcome: AwaitReplyOutcome, isM
   switch (outcome.kind) {
     case 'replied':
       return outcome.messages.length === 1
-        ? 'This arrived while you waited — check its from: it may be another agent, not the reply:'
-        : `${outcome.messages.length} messages arrived while you waited — check each one's from:`
+        ? 'This arrived while you waited — check who sent it: it may not be the reply:'
+        : `${outcome.messages.length} messages arrived while you waited — check who sent each:`
     case 'ended': {
       const unread = outcome.unread
         ? ` It stopped without reading your message; send it again to resume ${to}.`
