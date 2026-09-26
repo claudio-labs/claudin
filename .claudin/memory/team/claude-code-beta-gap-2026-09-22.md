@@ -30,7 +30,7 @@ confound.**
   The last two are Opus 5.5 / Fable 5.1 only, by catalog capability.
 - Interactive adds thinking-display-updates.
 - dangerous-tool-use is NOT one of them: on the real endpoint it needs
-  GrowthBook `tengu_smooth_chipmunk`, default false.
+  GrowthBook `smooth_chipmunk`, default false.
 - Claude Code sends the thinking-binding-controls header on all three models.
   Only the `block_binding` field sits behind its own flag. Claudin's
   header + `drop_block` on Opus 5.5 / Fable 5.1 stays deliberate, because

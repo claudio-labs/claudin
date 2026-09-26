@@ -57,6 +57,6 @@ JSON-RPC lines on stdin (initialize, initialized, tools/list). Cause not traced
 — no `z.custom(`/`z.instanceof(` under `src/tools/`, so it is further down the
 zod-to-JSON-Schema conversion. Unrelated to the two above.
 
-Fixed in the same round: the server announced itself as `claude/tengu`
+Fixed in the same round: the server announced itself as `claude/<codename>`
 (`src/platform/entrypoints/mcp.ts:87`) to every connecting client — see
 [[defingerprinting-branch-2026-08]] for what identity is still upstream-spelled.

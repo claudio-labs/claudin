@@ -144,7 +144,11 @@ NotebookEdit, so a delta must be modelled as a real body or it blocks editing;
 so an eviction is indistinguishable from a first read; mtime is the only
 freshness signal.
 
-### D4 — Make the existing redirects actually fire (52k chars, effort S)
+### D4 — Make the existing redirects actually fire (52k chars, effort S) — STILL OPEN
+Status 2026-09-24: since #244 the lanes advise instead of refusing, and they still
+skip piped and compound runs, which is how the model runs tests
+([[dev-tools-deferred-advice-ab-2026-09-24]]).
+
 99 Bash calls contained `bun run typecheck`/`tsc --noEmit` (52,471 chars) against
 only 15 Typecheck calls; 64 test-ish Bash calls against 117 RunTests calls (mean
 337 chars vs 779 for the Bash equivalent). The redirects are narrow by design
@@ -152,7 +156,7 @@ only 15 Typecheck calls; 64 test-ish Bash calls against 117 RunTests calls (mean
 real invocations escape via compound commands or a trailing `| tail`. Widening the
 matcher needs no new tool.
 
-### D5 — Build wrapper (80 calls, 26.5k chars, effort S)
+### D5 — Build wrapper (80 calls, 26.5k chars, effort S) — DONE: the Build tool ([[build-tool-ab-directory-gap]])
 `bun run build` / `bun run smoke` have no wrapper at all and are always followed by
 a hand-written `| tail -N`. Natural third member of the
 detect/parse/budget/redirect family — see `runtests-tool-language-coverage.md` and

@@ -21,8 +21,8 @@
  * `#N` row index — which the storage layer persists so omitted rows stay
  * retrievable via Read offset/limit or Grep on the cited path.
  *
- * Pure, zero I/O, NO config/ink imports (must stay bun-test-loadable — see the
- * `ink-modules-unimportable-in-tests` note). Never throws: any unexpected
+ * Pure, zero I/O, NO config/ink imports (keeps it testable without module
+ * mocks — see .claudin/rules/testing.md). Never throws: any unexpected
  * shape returns null and the caller passes the output through unchanged.
  */
 

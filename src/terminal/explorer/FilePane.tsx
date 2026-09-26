@@ -65,7 +65,7 @@ function plainLineWindow(
  * The right-hand content pane: a fixed-height, no-wrap, horizontally-scrolling
  * view of the file with a line-number gutter and a block cursor. Windowing is
  * manual (slice visible rows → RawAnsi) because ScrollBox only clips inside an
- * alt-screen fullscreen root (team memory: scrollbox-inline-no-clip).
+ * alt-screen fullscreen root (.claudin/rules/ink-tui.md §4).
  */
 export function FilePane({
   highlighter,

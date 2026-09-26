@@ -1,9 +1,9 @@
 // Orchestration for the Patch tool: validation, permission resolution,
 // staging, atomic commit with best-effort rollback, and post-write wiring
 // (read-state, LSP, file history, IDE notify, diagnostics). Deliberately free
-// of any `ink`/UI import so it can be unit-tested under `bun test` (importing
-// ink fails there — see team memory ink-modules-unimportable-in-tests). The
-// thin Tool definition + UI live in ApplyPatchTool.ts / UI.tsx.
+// of any `ink`/UI import so it stays a pure module that unit-tests cheaply
+// (.claudin/rules/testing.md, "Ink/React components load under `bun test`").
+// The thin Tool definition + UI live in ApplyPatchTool.ts / UI.tsx.
 //
 // Resubmit. When every problem with a patch is a read-gate refusal that served
 // the lines it refused over (servedRegion.ts), the identical patch now passes —

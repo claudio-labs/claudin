@@ -1,6 +1,6 @@
 ---
 name: request-prefix-size-2026-09-23
-description: Why claudin's first request is 32.1k tokens vs Claude Code's 21.2k on Opus 5.5 — eager tools are the bulk (deferred schemas are sent but not billed at their size), per-tool usage over 14 days, and which trims are cheap vs behaviour-sensitive
+description: Why claudin's first request was 32.1k tokens vs Claude Code's 21.2k on Opus 5.5 (2026-09-23; 17.3k vs 21.0k after #242/#244) — eager tools are the bulk (deferred schemas are sent but not billed at their size), per-tool usage over 14 days, and which trims are cheap vs behaviour-sensitive
 type: project
 ---
 
@@ -59,6 +59,13 @@ Candidates, ≈ tokens saved per request:
   `CLAUDIN_LEAN_AGENT_PROMPT`;
 - defer Build/Typecheck, ~2.65k — HIGH risk: the Bash redirects name them, so a
   deferred target costs a ToolSearch round trip in 32–45% of sessions.
+
+**Since 2026-09-24:** Build, RunTests, Typecheck and WaitFor are deferred after
+all (#244). The HIGH-risk note above assumed the redirects refuse; the same PR
+made them advisory ([[bash-redirects-advisory-dev-tools-deferred]]). With the v2
+prompts (#242) as well, the first-turn context is 17.3k against Claude Code's
+21.0k (run `-170553`, [[session-cache-ab-bench-2026-09-23]]). apply_patch is
+`Patch` on the wire now.
 
 **Value:** the whole 11k gap is ≈ $0.05–0.10 per session on Opus 5.5, mostly
 cache reads — the smallest of the three session-cache findings. Anything past

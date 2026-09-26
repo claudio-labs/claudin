@@ -24,7 +24,7 @@ not a leftover of it.
 - `# Delivering work` and `# Corrections` — gated `delivering_work_max` / `overcorrection`.
 - `ACT_ON_WHAT_YOU_KNOW`.
 - "Before ending your turn, check your last paragraph…" — gated to autonomous sessions
-  (`autonomy_append`, flag `tengu_amber_sextant`), carries the "changes system state" para too.
+  (`autonomy_append`, flag `amber_sextant`), carries the "changes system state" para too.
 - Tool batching — TWO shapes: the lean path has the one-sentence form
   ("Independent tool calls can run in parallel in one response"), the standard path has a
   ~560-char paragraph comparable to claudin's. "Upstream is one sentence" is true of the lean path only.
@@ -35,7 +35,7 @@ not a leftover of it.
   grep/jsonl recipes upstream (that half IS claudin-only).
 - Idle notice — **turn**-gated, not time-gated: `"The user hasn't heard from you in a while.
   As you continue, keep them updated when there's something to tell — a finding, a change of plan."`
-  Threshold from `I("tengu_hushed_lark", 5)`, override `CLAUDE_CODE_SILENT_TURN_REMINDER_TURNS` / `_TEXT`.
+  Threshold from `I("hushed_lark", 5)`, override `CLAUDE_CODE_SILENT_TURN_REMINDER_TURNS` / `_TEXT`.
 - Knowledge cutoff — model-keyed from the model catalog (`knowledge_cutoff` per entry), not an
   if-chain. `claude-opus-5` → **"May 2026"**; claudin's `getKnowledgeCutoff` says January 2026.
 

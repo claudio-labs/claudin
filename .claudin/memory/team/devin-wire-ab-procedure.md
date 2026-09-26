@@ -4,8 +4,10 @@ description: Exact reproducible steps to MITM-capture the official `devin` CLI a
 type: reference
 ---
 
-End-to-end procedure used 2026-06-12 to prove f31 is not enforced and that
-the SWE-1.6 UI label maps to `swe-1-6-fast`. Repeat this when the official
+End-to-end procedure used 2026-06-12 to diff the two clients and to show that
+the SWE-1.6 UI label maps to `swe-1-6-fast`. Its morning run read f31 as not
+enforced; the afternoon clean-window rerun reversed that (see the last
+section). Repeat this when the official
 client version bumps or to re-verify a wire diff. Tools confirmed present on
 this box: `/usr/bin/mitmdump`, official CLI `~/.local/bin/devin`
 (v2026.5.26-8), `claudindev`, repo scripts.
@@ -81,8 +83,11 @@ pkill -f 'mitmdump --listen-host 127.0.0.1 --listen-port 8888'
   bytes, NO f31.
 - Match the official GetChatMessage by `sentry-trace` == the error's trace ID.
 
-## What the 2026-06-12 run proved
+## What the 2026-06-12 runs showed
 metadata sub-fields 1,2,3,4,5,7,12 byte-identical; only diff = official's
-metadata.f31 (Claudin omits). Claudin (no f31) + swe-1-6-fast → same
-`Reached message rate limit` as official → f31 NOT enforced. swe-1-6 → opaque
-error (wrong UID). Full conclusions in devin-port-works-quota-blocker.md.
+metadata.f31 (Claudin omits). Morning run: Claudin (no f31) + swe-1-6-fast →
+same `Reached message rate limit` as official, read as "f31 NOT enforced".
+**Reversed that afternoon:** with the Pro quota 100% free, official (with f31)
+got a real reply and Claudin (no f31) got `permission_denied` — f31 is
+re-implicated, not proven. swe-1-6 → opaque error (wrong UID). Full
+conclusions in [[devin-port-works-quota-blocker]].

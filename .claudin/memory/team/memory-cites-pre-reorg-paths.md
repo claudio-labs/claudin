@@ -1,6 +1,6 @@
 ---
 name: Team memories cited paths the 2026-08 reorg retired — swept 2026-09-21
-description: The reorg never touched the memory corpus — 23 of 135 files carried 55 dead citations; the live ones were swept 2026-09-21, and this is the resolution table plus the rule for telling a live citation from a historical one
+description: The reorg never touched the memory corpus — 23 of 135 files carried 55 dead citations; the live ones were swept 2026-09-21, and this is the resolution table (plus the rule agent-safety.md, deleted 2026-09-24) and the rule for telling a live citation from a historical one
 type: project
 ---
 
@@ -52,6 +52,7 @@ gone. The resolutions confirmed on 2026-09-10:
 | `scripts/profile/json-salient-probe.ts` | `scripts/bench/tokens/json-salient-probe.ts` |
 | `scripts/profile/devin-*` | genuinely gone — archived with the port |
 | `docs/tech/devin-provider-blocker.md` | `docs/tech/devin-provider/README.md` |
+| `.claudin/rules/agent-safety.md` (§1 shared tree, §2 worktree audits, §4 break-and-restore) | deleted 2026-09-24 ([[dogfood-without-repo-steering]]): §4's method is in `testing.md`, §1–§2 are in no rule now. Nine memories cite it; the two live cites (`break-probe-harness`, `coding-gotchas-go-in-rules-not-memory`) were repointed, the rest name the rule as it stood when the work ran |
 
 **The second-order effect is duplicate memories, not just dead links.** Two of
 the three duplicate pairs merged on 2026-09-10 were the same fact written twice:
@@ -75,9 +76,15 @@ list it), the cache/bench cluster (`defer-cache-marker-shipped`,
 `toolresult-cache-cwd-invalidation`, `memory-turn-by-turn-bench-flaky-full-suite`,
 `headless-bg-agents-not-drained`), and `bun-mock-module-cross-file-leak`,
 `web-login-provider-port-queue`, `feature-macro-breaks-bun-test-outside-if`,
-`openai-compat-preset-recipe`, `token-efficiency-roadmap`. None of the ink five
-is indexed — `.claudin/rules/ink-tui.md` carries the distilled version with
-current paths, so they are detail behind the rule, not orientation.
+`openai-compat-preset-recipe`, `token-efficiency-roadmap`. The ink five were
+left unindexed because `.claudin/rules/ink-tui.md` carries the distilled
+version. On 2026-09-26 every note whose rule held all of it was deleted —
+`ink-diff-damage-xbounds`, `scrollbox-inline-no-clip`,
+`ink-modules-unimportable-in-tests`, `ink-legacyroot-vestigial`,
+`ink-ambiguous-width-vacate-ghost`, `toolresult-cache-cwd-invalidation`,
+`bun-mock-module-cross-file-leak`, `feature-macro-breaks-bun-test-outside-if`,
+`dist-chunks-stale-when-verifying-bundle` — and
+`ink-bordered-fillheight-panes-recipe`, which no rule holds, got an index line.
 
 **What was deliberately NOT rewritten, and must not be.** A retired path is
 often the *point* of the sentence: the resolution table above,

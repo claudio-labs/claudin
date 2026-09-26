@@ -33,7 +33,8 @@ same branch ([[anti-narration-never-benched-on-claude-5]]).
 - `docs/tech/prompts/claude-code-2.1.280-reference.md` holds the CC prompt the text came from.
 
 **CLEANUP PASS — pending (the user asked for this to be recorded, 2026-09-24).** Delete the four
-killswitches. The code is already marked ("slated for removal in a cleanup pass").
+killswitches. The code is already marked ("slated for removal in a cleanup pass"). The branch
+merged as #242; after the v1.1.35 release the same day all four are still read in `src/`.
 
 **Decide first:** every switch is Anthropic-family only, so the pre-v2 texts are still what
 every OTHER provider receives (system prompt, memory, tool descriptions, skill lines). If other

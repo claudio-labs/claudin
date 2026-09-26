@@ -4,7 +4,7 @@ description: RESOLVED 2026-09-15 — /upgrade, /extra-usage and /rate-limit-opti
 type: project
 ---
 
-**Status: removed on `refactor/dead-code-tengu-cleanup`
+**Status: removed on the dead-code cleanup branch
 ([[dead-code-cleanup-2026-09-15]]).** The product call this memory was waiting
 on since 2026-08-06 was made: they are Anthropic consumer-billing surfaces in a
 project that is not affiliated with Anthropic, and all three were a hang rather
