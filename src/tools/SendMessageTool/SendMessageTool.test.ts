@@ -417,3 +417,63 @@ describe('SendMessageTool — agent teams switched on', () => {
     expect(existsSync(join(configDir, 'teams', 'crew', 'inboxes', 'sibling.json'))).toBe(true)
   })
 })
+
+describe('SendMessageTool — a message to a running agent carries its sender', () => {
+  const DEV = 'a0123456789abcdef'
+  const TESTER = 'a1123456789abcdef'
+  const HELPER = 'a2123456789abcdef'
+
+  function team(agentId?: string) {
+    const running = (id: string, description: string) => ({
+      type: 'local_agent',
+      agentType: 'Code',
+      agentId: id,
+      description,
+      status: 'running',
+      isBackgrounded: true,
+      pendingMessages: [] as string[],
+    })
+    let state = {
+      tasks: {
+        [DEV]: running(DEV, 'Implement the feature'),
+        [TESTER]: running(TESTER, 'Test the feature'),
+        [HELPER]: running(HELPER, 'Unnamed helper'),
+      } as Record<string, ReturnType<typeof running>>,
+      agentNameRegistry: new Map([
+        ['dev', DEV],
+        ['tester', TESTER],
+      ]),
+    }
+    const context = {
+      agentId,
+      getAppState: () => state,
+      setAppState: (f: (prev: typeof state) => typeof state) => {
+        state = f(state)
+      },
+    } as unknown as ToolUseContext
+    return { context, pending: (id: string) => state.tasks[id]!.pendingMessages }
+  }
+
+  test('from main: the envelope says main, and how to answer', async () => {
+    const { context, pending } = team()
+    await send({ to: 'dev', message: 'status?' }, context)
+    const [letter] = pending(DEV)
+    expect(letter).toStartWith('<agent-message from="main">\nstatus?\n</agent-message>\n')
+    expect(letter).toContain('SendMessage with to: "main"')
+  })
+
+  test('from a sibling: its name is the reply address', async () => {
+    const { context, pending } = team(TESTER)
+    await send({ to: 'dev', message: 'bug in a.ts:12' }, context)
+    expect(pending(DEV)[0]).toStartWith('<agent-message from="tester">')
+    expect(pending(DEV)[0]).toContain('SendMessage with to: "tester"')
+  })
+
+  test('from an unnamed agent: its agentId, with its description for the transcript', async () => {
+    const { context, pending } = team(HELPER)
+    await send({ to: 'tester', message: 'done' }, context)
+    expect(pending(TESTER)[0]).toStartWith(
+      `<agent-message from="${HELPER}" description="Unnamed helper">`,
+    )
+  })
+})

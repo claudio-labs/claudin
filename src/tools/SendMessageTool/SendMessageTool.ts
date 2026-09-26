@@ -72,7 +72,7 @@ import {
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
 import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
 import { LIST_AGENTS_TOOL_NAME } from 'src/tools/ListAgentsTool/constants.js'
-import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
+import { MAIN_ADDRESS, SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/SendMessageTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
 
@@ -97,7 +97,6 @@ const StructuredMessage = lazySchema(() =>
   ]),
 )
 
-const MAIN_ADDRESS = 'main'
 const SUMMARY_MAX_CHARS = 200
 const TO_MAX_CHARS = 1024
 const SINGLE_LINE_RE = /^[^\n\r]*$/
@@ -252,6 +251,21 @@ function findAgentName(
 }
 
 /**
+ * The address a reply to this sender goes to — "main", the agent's name, or
+ * its agentId — and, for an agent without a name, the description the
+ * receiver's transcript shows instead of the id.
+ */
+function senderOf(context: ToolUseContext): { from: string; description?: string } {
+  const { agentId } = context
+  if (agentId === undefined) return { from: MAIN_ADDRESS }
+  const appState = context.getAppState()
+  const name = findAgentName(appState.agentNameRegistry, agentId)
+  if (name !== undefined) return { from: name }
+  const task = appState.tasks[agentId]
+  return { from: agentId, description: isLocalAgentTask(task) ? task.description : undefined }
+}
+
+/**
  * A background agent writing to the main conversation. It lands in the main
  * thread's queue: drained into the current turn at its next tool round, or
  * starting a turn when the main conversation is idle — the same two paths a
@@ -276,17 +290,13 @@ function handleMainMessage(
       `"${MAIN_ADDRESS}" is for background agents. An agent running inline hands its final message to the main conversation — put what you want to say there.`,
     )
   }
-  const name = findAgentName(appState.agentNameRegistry, agentId)
+  const sender = senderOf(context)
   enqueue({
-    value: formatAgentMessage({
-      from: name ?? agentId,
-      description: name === undefined ? task.description : undefined,
-      body: content,
-    }),
+    value: formatAgentMessage({ ...sender, body: content, to: MAIN_ADDRESS }),
     mode: 'task-notification',
     priority: 'next',
     skipSlashCommands: true,
-    origin: { kind: 'subagent', name: name ?? task.description },
+    origin: { kind: 'subagent', name: sender.description ?? sender.from },
   })
   return {
     data: {
@@ -1117,11 +1127,18 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         const agentId = registered ?? toAgentId(input.to)
         if (agentId) {
           const task = appState.tasks[agentId]
+          // Delivered in the envelope on every path, so the agent learns who
+          // wrote and where to answer, and its classifier sees agent text.
+          const letter = formatAgentMessage({
+            ...senderOf(context),
+            body: input.message,
+            to: input.to,
+          })
           if (isLocalAgentTask(task) && !isMainSessionTask(task)) {
             if (task.status === 'running') {
               queuePendingMessage(
                 agentId,
-                input.message,
+                letter,
                 context.setAppStateForTasks ?? context.setAppState,
               )
               return {
@@ -1140,7 +1157,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
             if (isLocalAgentTask(freshTask) && freshTask.status === 'running') {
               queuePendingMessage(
                 agentId,
-                input.message,
+                letter,
                 context.setAppStateForTasks ?? context.setAppState,
               )
               return {
@@ -1153,7 +1170,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
             try {
               const result = await resumeAgentBackground({
                 agentId,
-                prompt: input.message,
+                prompt: letter,
                 toolUseContext: context,
                 canUseTool,
               })
@@ -1179,7 +1196,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
             try {
               const result = await resumeAgentBackground({
                 agentId,
-                prompt: input.message,
+                prompt: letter,
                 toolUseContext: context,
                 canUseTool,
               })

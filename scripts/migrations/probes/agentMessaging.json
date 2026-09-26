@@ -4,7 +4,9 @@
     "src/tools/AgentTool/agentName.test.ts",
     "src/tools/AgentTool/prompt.test.ts",
     "src/tools/AgentTool/subagentSurface.regression.test.ts",
-    "src/tools/SendMessageTool/SendMessageTool.regression.test.ts"
+    "src/tools/SendMessageTool/SendMessageTool.regression.test.ts",
+    "src/tools/SendMessageTool/SendMessageTool.test.ts",
+    "src/agent/messages/interAgentMessages.test.ts"
   ],
   "source": "src/providers/transport/api.ts",
   "probes": [
@@ -70,6 +72,60 @@
       "source": "src/tools/AgentTool/AgentTool.tsx",
       "find": "          if (name) registerAgentName(rootSetAppState, name, syncAgentId);\n",
       "replace": "\n"
+    },
+    {
+      "name": "a message to a running agent travels in the envelope",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "          const letter = formatAgentMessage({\n            ...senderOf(context),\n            body: input.message,\n            to: input.to,\n          })\n",
+      "replace": "          const letter = input.message\n"
+    },
+    {
+      "name": "main signs its messages as main",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (agentId === undefined) return { from: MAIN_ADDRESS }\n",
+      "replace": "  if (agentId === undefined) return { from: 'coordinator' }\n"
+    },
+    {
+      "name": "an unnamed sender carries its description",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  return { from: agentId, description: isLocalAgentTask(task) ? task.description : undefined }\n",
+      "replace": "  return { from: agentId }\n"
+    },
+    {
+      "name": "the trailer tells a sub-agent the message is from main",
+      "source": "src/tools/SendMessageTool/agentMessage.ts",
+      "find": "        ? 'the main conversation, which launched you'\n",
+      "replace": "        ? 'another agent of this conversation'\n"
+    },
+    {
+      "name": "the drain labels a queued message by its author",
+      "source": "src/agent/attachments/pipeline.ts",
+      "find": "    origin: pendingMessageOrigin(msg),\n",
+      "replace": "    origin: { kind: 'human' as const },\n"
+    },
+    {
+      "name": "a queued message without an envelope is the user's",
+      "source": "src/agent/messages/interAgentMessages.ts",
+      "find": "  if (!envelope) return { kind: 'human' }\n",
+      "replace": "  if (!envelope) return { kind: 'agent', name: 'agent' }\n"
+    },
+    {
+      "name": "agent-to-agent text is agent-authored for the classifier",
+      "source": "src/agent/messages/interAgentMessages.ts",
+      "find": "    origin?.kind === 'agent' ||\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the transcript shows a message from main as the main conversation",
+      "source": "src/agent/messages/interAgentMessages.ts",
+      "find": "      relation: agent.attrs.from === MAIN_ADDRESS ? 'main conversation' : 'background agent',\n",
+      "replace": "      relation: 'background agent',\n"
+    },
+    {
+      "name": "the wrapper names the sender",
+      "source": "src/agent/messages/text.ts",
+      "find": "      return `${origin.name === MAIN_ADDRESS ? 'The main conversation' : `Agent \"${origin.name}\"`} sent you a message while you were working:\\n${raw}\\n\\nAddress this before completing your current task.`\n",
+      "replace": "      return `The coordinator sent a message while you were working:\\n${raw}\\n\\nAddress this before completing your current task.`\n"
     }
   ]
 }

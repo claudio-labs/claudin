@@ -5,6 +5,7 @@ import {
 } from 'src/shared/constants/xml.js'
 import { parseXmlEnvelope } from 'src/shared/data/xml.js'
 import type { MessageOrigin } from 'src/shared/types/message.js'
+import { MAIN_ADDRESS } from 'src/tools/SendMessageTool/constants.js'
 
 /** How the transcript shows a message one agent sent another. */
 export type InterAgentMessageView = {
@@ -30,7 +31,7 @@ export function describeInterAgentMessage(
     return {
       kind: 'message',
       sender: agent.attrs.description ?? agent.attrs.from ?? 'agent',
-      relation: 'background agent',
+      relation: agent.attrs.from === MAIN_ADDRESS ? 'main conversation' : 'background agent',
       body: agent.body,
     }
   }
@@ -63,8 +64,20 @@ export function isInterAgentMessage(text: string): boolean {
 /** Whether a queued command's text was written by another agent, not the user. */
 export function isAgentAuthored(origin: MessageOrigin | undefined): boolean {
   return (
+    origin?.kind === 'agent' ||
     origin?.kind === 'subagent' ||
     origin?.kind === 'peer' ||
     origin?.kind === 'peer-notice'
   )
+}
+
+/**
+ * Who wrote a message queued for a running agent. SendMessage always delivers
+ * one inside an agent-message envelope; anything else was typed by the user
+ * into that agent's transcript view.
+ */
+export function pendingMessageOrigin(text: string): MessageOrigin {
+  const envelope = parseXmlEnvelope(text, AGENT_MESSAGE_TAG)
+  if (!envelope) return { kind: 'human' }
+  return { kind: 'agent', name: envelope.attrs.from ?? 'agent' }
 }

@@ -62,7 +62,11 @@ type SDKAssistantMessageError = z.infer<
 export type MessageOrigin =
   | { kind: 'human' }
   | { kind: 'task-notification' }
-  | { kind: 'coordinator' }
+  /**
+   * Another agent of this conversation — main or a sibling — writing to a
+   * running agent. `name` is the address to answer to.
+   */
+  | { kind: 'agent'; name: string }
   | { kind: 'channel'; server: string }
   /** A background agent's SendMessage to "main". */
   | { kind: 'subagent'; name: string }
