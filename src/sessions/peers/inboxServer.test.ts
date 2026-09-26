@@ -1,10 +1,16 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from 'fs'
+import { createConnection } from 'net'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
 import { PeerDeliveryError, pingInbox, sendFrame } from 'src/sessions/peers/client.js'
-import type { RequestFrame, ResponseFrame } from 'src/sessions/peers/frames.js'
+import {
+  encodeFrame,
+  MAX_FRAME_BYTES,
+  type RequestFrame,
+  type ResponseFrame,
+} from 'src/sessions/peers/frames.js'
 import {
   crossSessionUnavailableReason,
   getOwnInbox,
@@ -57,6 +63,30 @@ function message(token: string, overrides: Partial<RequestFrame> = {}): RequestF
   } as RequestFrame
 }
 
+/** Write `chunks` to the socket one by one, and read back whatever it answers. */
+function rawExchange(socketPath: string, chunks: Buffer[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const socket = createConnection(socketPath)
+    let answer = ''
+    socket.on('data', data => {
+      answer += data.toString('utf8')
+      // The inbox answers one line, then stops reading what is still coming.
+      if (answer.includes('\n')) {
+        socket.destroy()
+        resolve(answer)
+      }
+    })
+    socket.on('error', reject)
+    socket.on('close', () => resolve(answer))
+    socket.on('connect', async () => {
+      for (const chunk of chunks) {
+        socket.write(chunk)
+        await new Promise(r => setTimeout(r, 5))
+      }
+    })
+  })
+}
+
 describe('peer inbox', () => {
   test('hands an authenticated frame to the handler and returns its answer', async () => {
     const seen: InboundFrame[] = []
@@ -102,6 +132,39 @@ describe('peer inbox', () => {
     const error = await sendFrame(inbox.socketPath, message(inbox.token)).catch(e => e)
     expect(error).toBeInstanceOf(PeerDeliveryError)
     expect((error as PeerDeliveryError).reason).toBe('gone')
+  })
+
+  test('a character split across two chunks arrives whole', async () => {
+    const seen: InboundFrame[] = []
+    const inbox = await open('u.sock', async frame => {
+      seen.push(frame)
+      return { ok: true, outcome: 'delivered' }
+    })
+    const bytes = Buffer.from(encodeFrame(message(inbox.token, { text: 'olá — 日本語' } as Partial<RequestFrame>)))
+    // Cut inside 日 (three bytes in UTF-8).
+    const cut = bytes.indexOf(Buffer.from('日')) + 1
+    const answer = await rawExchange(inbox.socketPath, [bytes.subarray(0, cut), bytes.subarray(cut)])
+    expect(answer).toContain('"outcome":"delivered"')
+    expect(seen[0]).toMatchObject({ text: 'olá — 日本語' })
+  })
+
+  test('one connection carries one frame: bytes after its newline are ignored', async () => {
+    let calls = 0
+    const inbox = await open('o.sock', async () => {
+      calls++
+      await new Promise(resolve => setTimeout(resolve, 20))
+      return { ok: true, outcome: 'delivered' }
+    })
+    const frame = Buffer.from(encodeFrame(message(inbox.token)))
+    await rawExchange(inbox.socketPath, [frame, Buffer.from('x'), Buffer.from('y\n')])
+    expect(calls).toBe(1)
+  })
+
+  test('the frame cap counts bytes, not characters', async () => {
+    const inbox = await open('l.sock')
+    // Under the cap in UTF-16 units, over it in bytes.
+    const answer = await rawExchange(inbox.socketPath, [Buffer.from('日'.repeat(MAX_FRAME_BYTES / 2))])
+    expect(answer).toContain('frame too large')
   })
 
   test('the socket is owner-only inside an owner-only directory', async () => {

@@ -39,18 +39,26 @@ beforeEach(() => {
   resetAgentSendsForTesting()
 })
 
-// Every wait a test opens is aborted after 3s, and when the test ends. A
-// broken build must fail fast, not hang: bun's per-test timeout does not fire
-// while `expect(promise).rejects` waits on a promise that never settles.
-const WAIT_CAP_MS = 3000
+// Every wait a test opens is aborted when the test ends, so one a broken build
+// leaves open stops polling. A test expecting a refusal awaits `failureOf`,
+// not `expect(promise).rejects`: bun's per-test timeout does not fire while
+// `.rejects` waits on a promise that never settles, so a broken build would
+// hang the suite instead of failing it. (Cap timers per wait were tried too:
+// under bun 1.3.11 they segfaulted the runner now and then.)
 const controllers: AbortController[] = []
-const caps: ReturnType<typeof setTimeout>[] = []
 
 afterEach(() => {
-  for (const cap of caps.splice(0)) clearTimeout(cap)
   for (const controller of controllers.splice(0)) controller.abort()
   resetCommandQueue()
 })
+
+/** The message a promise rejects with, or 'resolved'. */
+function failureOf(promise: Promise<unknown>): Promise<string> {
+  return promise.then(
+    () => 'resolved',
+    (error: Error) => error.message,
+  )
+}
 
 function probe(overrides: Partial<AwaitReplyProbe>): AwaitReplyProbe {
   return {
@@ -187,7 +195,6 @@ function session() {
   }
   const contextFor = (agentId?: string, controller = new AbortController()) => {
     controllers.push(controller)
-    caps.push(setTimeout(() => controller.abort(), WAIT_CAP_MS))
     return {
       agentId,
       abortController: controller,
@@ -322,16 +329,16 @@ describe('SendMessage with await_reply — agents of this conversation', () => {
 
   test('an inline agent cannot wait on main — main is blocked on it', async () => {
     const s = session()
-    await expect(call({ to: 'main', await_reply: true }, s.contextFor(INLINE))).rejects.toThrow(
+    expect(await failureOf(call({ to: 'main', await_reply: true }, s.contextFor(INLINE)))).toContain(
       'is for background agents',
     )
   })
 
   test('a recipient that is not an agent of this conversation is refused before anything is sent', async () => {
     const s = session()
-    await expect(
-      call({ to: 'somebody-else', message: 'hi', await_reply: true }, s.contextFor(TESTER)),
-    ).rejects.toThrow('await_reply waits on an agent of this conversation')
+    expect(
+      await failureOf(call({ to: 'somebody-else', message: 'hi', await_reply: true }, s.contextFor(TESTER))),
+    ).toContain('await_reply waits on an agent of this conversation')
     expect(s.task(DEV).pendingMessages).toEqual([])
   })
 

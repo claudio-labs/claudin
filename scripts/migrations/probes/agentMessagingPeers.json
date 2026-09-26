@@ -4,7 +4,8 @@
     "src/sessions/peers/sendBudget.test.ts",
     "src/sessions/peers/inboxServer.test.ts",
     "src/sessions/peers/ui/HeldPeerMessageDialog.test.tsx",
-    "src/tools/SendMessageTool/SendMessageTool.peers.test.ts"
+    "src/tools/SendMessageTool/SendMessageTool.peers.test.ts",
+    "src/sessions/peers/subscriptions.test.ts"
   ],
   "source": "src/sessions/peers/delivery.ts",
   "probes": [
@@ -70,6 +71,45 @@
       "name": "a long held message can be shown whole",
       "source": "src/sessions/peers/ui/HeldPeerMessageDialog.tsx",
       "find": "              ...(hidden > 0 ? [{ label: `Show all ${lines.length} lines`, value: 'expand' }] : []),\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a line is decoded whole, not chunk by chunk",
+      "source": "src/sessions/peers/frames.ts",
+      "find": "    return { line: Buffer.concat(chunks).toString('utf8') }\n",
+      "replace": "    return { line: chunks.map(c => c.toString('utf8')).join('') }\n"
+    },
+    {
+      "name": "the frame cap counts bytes",
+      "source": "src/sessions/peers/frames.ts",
+      "find": "    if (size > maxBytes) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "a held message subscribes once delivered",
+      "find": "      if (message.subscribeOnDelivery) subscribe(id, message.sender, { pure: false })\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a held message remembers it asked to subscribe",
+      "find": "      subscribeOnDelivery: frame.notify_when_idle,\n",
+      "replace": "\n"
+    },
+    {
+      "name": "an evicted subscription is told no notice will come",
+      "find": "    if (evicted) void sendIdleNotice(evicted, 'expired')\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the sender awaits the notice before sending",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (notifyWhenIdle) awaitIdleNotice(msgId, label)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a subscription not taken is no longer awaited",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (notifyWhenIdle && !response.subscribed) takeAwaitedIdleNotice(msgId)\n",
       "replace": "\n"
     }
   ]

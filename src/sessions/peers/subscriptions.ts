@@ -19,18 +19,22 @@ export type IdleSubscription = {
 let subscriptions: IdleSubscription[] = []
 
 /**
- * Record a subscription. A sender over its share loses its oldest; past the
- * global cap the new one is refused.
+ * Record a subscription. A sender over its share loses its oldest — returned
+ * as `evicted`, so it can be told no notice will come; past the global cap
+ * the new one is refused.
  */
-export function addIdleSubscription(subscription: IdleSubscription): boolean {
+export function addIdleSubscription(
+  subscription: IdleSubscription,
+): { added: boolean; evicted?: IdleSubscription } {
   const fromSender = subscriptions.filter(s => s.socketPath === subscription.socketPath)
+  let evicted: IdleSubscription | undefined
   if (fromSender.length >= MAX_SUBSCRIPTIONS_PER_SENDER) {
-    const oldest = fromSender[0]!
-    subscriptions = subscriptions.filter(s => s !== oldest)
+    evicted = fromSender[0]!
+    subscriptions = subscriptions.filter(s => s !== evicted)
   }
-  if (subscriptions.length >= MAX_SUBSCRIPTIONS) return false
+  if (subscriptions.length >= MAX_SUBSCRIPTIONS) return { added: false, evicted }
   subscriptions.push(subscription)
-  return true
+  return { added: true, evicted }
 }
 
 /**

@@ -40,7 +40,10 @@ import {
 } from 'src/sessions/peers/inboxServer.js'
 import { permissionClassOf } from 'src/sessions/peers/policy.js'
 import { awaitDeliveryStatus } from 'src/sessions/peers/notices.js'
-import { awaitIdleNotice } from 'src/sessions/peers/subscriptions.js'
+import {
+  awaitIdleNotice,
+  takeAwaitedIdleNotice,
+} from 'src/sessions/peers/subscriptions.js'
 import {
   type PeerSession,
   readSessionDirectory,
@@ -433,6 +436,9 @@ async function sendToPeer(
       : (findAgentName(appState.agentNameRegistry, context.agentId) ??
         context.agentId)
   const msgId = randomUUID()
+  // Waited on before the send: a session already idle answers a pure
+  // subscription at once, and a notice nobody awaits yet is dropped.
+  if (notifyWhenIdle) awaitIdleNotice(msgId, label)
   const auth = {
     v: FRAME_VERSION,
     msg_id: msgId,
@@ -457,12 +463,14 @@ async function sendToPeer(
           },
     )
   } catch (e) {
+    takeAwaitedIdleNotice(msgId)
     if (e instanceof PeerDeliveryError) {
       throw new Error(`Could not reach ${label}: ${e.message}.`)
     }
     throw e
   }
   if (!response.ok) {
+    takeAwaitedIdleNotice(msgId)
     return {
       data: {
         success: false,
@@ -473,7 +481,7 @@ async function sendToPeer(
   // Its outcome comes back later as a delivery_status, which is only believed
   // for a send this session is waiting on.
   if (response.outcome === 'held' && own) awaitDeliveryStatus(msgId, label)
-  if (response.subscribed) awaitIdleNotice(msgId, label)
+  if (notifyWhenIdle && !response.subscribed) takeAwaitedIdleNotice(msgId)
   return {
     data: {
       success: true,

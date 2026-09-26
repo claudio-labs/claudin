@@ -350,6 +350,27 @@ describe('notify_when_idle', () => {
     expect(noticesSent(sent)).toEqual([])
   })
 
+  test('a held message is subscribed only once it is delivered — no idle notice while it waits', async () => {
+    const { sent, handler, settleHeld, notifyIdle } = harness({ setting: 'hold' })
+    expect(await handler(message({ notify_when_idle: true } as Partial<InboundFrame>))).toMatchObject({
+      outcome: 'held',
+      subscribed: true,
+    })
+    // An unrelated turn ends while the message still waits for the user.
+    await notifyIdle(Date.now() + 1)
+    expect(noticesSent(sent)).toEqual([])
+    await settleHeld('m1', 'deliver')
+    await notifyIdle(Date.now() + 10)
+    expect(noticesSent(sent)).toMatchObject([{ orig_msg_id: 'm1', state: 'idle' }])
+  })
+
+  test('a subscription pushed out by a newer one from the same sender is told no notice will come', async () => {
+    const { sent, handler } = harness()
+    for (const id of ['s1', 's2', 's3', 's4']) await handler(subscribe(id))
+    await new Promise(resolve => setTimeout(resolve, 5))
+    expect(noticesSent(sent)).toMatchObject([{ orig_msg_id: 's1', state: 'expired' }])
+  })
+
   test('a subscription that never fires expires with a notice', async () => {
     const { sent, handler } = harness({ subscriptionTtlMs: 5 })
     await handler(subscribe('s1'))

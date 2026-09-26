@@ -82,20 +82,15 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.CLAUDIN_DISABLE_CROSS_SESSION
   // An await_reply a broken build leaves open must not poll on for minutes.
-  for (const cap of caps.splice(0)) clearTimeout(cap)
   for (const controller of controllers.splice(0)) controller.abort()
   resetCommandQueue()
 })
 
 const controllers: AbortController[] = []
-const caps: ReturnType<typeof setTimeout>[] = []
 
 function context(agentId?: string): ToolUseContext {
   const abortController = new AbortController()
   controllers.push(abortController)
-  // Bounds a wait a broken build leaves open: bun's per-test timeout does not
-  // fire while `expect(promise).rejects` waits on one that never settles.
-  caps.push(setTimeout(() => abortController.abort(), 3000))
   return {
     agentId,
     abortController,
@@ -231,6 +226,22 @@ describe('notify_when_idle', () => {
     expect(takeAwaitedIdleNotice(received[0]!.msg_id)).toBeDefined()
   })
 
+  test('the notice is awaited before the send goes out — an idle session answers at once', async () => {
+    peerAnswer = { ok: true, outcome: 'subscribed', subscribed: true }
+    let awaitedWhenItArrived = false
+    onPeerReceive = frame => {
+      awaitedWhenItArrived = takeAwaitedIdleNotice(frame.msg_id) !== undefined
+    }
+    await send({ to: 'claudin-goal', notify_when_idle: true })
+    expect(awaitedWhenItArrived).toBe(true)
+  })
+
+  test('a subscription the receiver did not take is no longer awaited', async () => {
+    peerAnswer = { ok: true, outcome: 'delivered', subscribed: false, detail: 'too many subscriptions' }
+    await send({ to: 'claudin-goal', message: 'hi', notify_when_idle: true })
+    expect(takeAwaitedIdleNotice(received[0]!.msg_id)).toBeUndefined()
+  })
+
   test('without a message it is a pure subscription, and nothing is delivered', async () => {
     peerAnswer = { ok: true, outcome: 'subscribed', subscribed: true }
     const data = await send({ to: 'claudin-goal', notify_when_idle: true })
@@ -327,14 +338,18 @@ describe('await_reply to another session', () => {
   })
 
   test('a sub-agent cannot wait on a session — the reply would reach main — and nothing is sent', async () => {
-    await expect(
-      SendMessageTool.call(
-        { to: 'claudin-goal', message: 'hi', await_reply: true } as never,
-        context('a1'),
-        (() => {}) as never,
-        undefined as never,
-      ),
-    ).rejects.toThrow('reaches the main conversation, not this agent')
+    // Not `.rejects`: bun's timeout does not fire while it waits on a promise
+    // that never settles, which is what a broken refusal here would leave.
+    const failure = await SendMessageTool.call(
+      { to: 'claudin-goal', message: 'hi', await_reply: true } as never,
+      context('a1'),
+      (() => {}) as never,
+      undefined as never,
+    ).then(
+      () => 'resolved',
+      (error: Error) => error.message,
+    )
+    expect(failure).toContain('reaches the main conversation, not this agent')
     expect(received).toEqual([])
   })
 })

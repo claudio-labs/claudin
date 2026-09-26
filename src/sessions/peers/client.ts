@@ -1,9 +1,9 @@
 import { createConnection } from 'net'
 import { getErrnoCode } from 'src/shared/errors.js'
 import {
+  createLineReader,
   decodeResponse,
   encodeFrame,
-  MAX_FRAME_BYTES,
   type RequestFrame,
   type ResponseFrame,
 } from 'src/sessions/peers/frames.js'
@@ -29,7 +29,7 @@ export function sendFrame(
 ): Promise<ResponseFrame> {
   return new Promise((resolve, reject) => {
     const socket = createConnection(socketPath)
-    let buffer = ''
+    const readLine = createLineReader()
     let settled = false
     const settle = (outcome: () => void): void => {
       if (settled) return
@@ -49,15 +49,13 @@ export function sendFrame(
     )
     socket.on('connect', () => socket.write(encodeFrame(frame)))
     socket.on('data', chunk => {
-      buffer += chunk.toString('utf8')
-      const end = buffer.indexOf('\n')
-      if (end === -1) {
-        if (buffer.length > MAX_FRAME_BYTES) {
-          settle(() => reject(new PeerDeliveryError('oversized answer', 'invalid')))
-        }
+      const read = readLine(chunk)
+      if (!read) return
+      if ('tooLarge' in read) {
+        settle(() => reject(new PeerDeliveryError('oversized answer', 'invalid')))
         return
       }
-      const response = decodeResponse(buffer.slice(0, end))
+      const response = decodeResponse(read.line)
       settle(() =>
         response
           ? resolve(response)
