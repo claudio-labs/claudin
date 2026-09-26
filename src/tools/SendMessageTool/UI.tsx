@@ -11,6 +11,9 @@ function recipientLabel(to: string): string {
   return to.startsWith('uds:') ? 'reply' : to;
 }
 export function renderToolUseMessage(input: Partial<Input>): React.ReactNode {
+  if (input.message === undefined && input.await_reply && input.to) {
+    return `${recipientLabel(input.to)}: wait for reply`;
+  }
   if (input.message === undefined && input.notify_when_idle && input.to) {
     return `${recipientLabel(input.to)}: notify when idle`;
   }
@@ -19,10 +22,11 @@ export function renderToolUseMessage(input: Partial<Input>): React.ReactNode {
       return null;
     }
     const label = input.summary?.trim() || input.message.trim().split('\n')[0] || '';
+    const waiting = input.await_reply ? ' (waits for reply)' : '';
     if (!label) {
-      return recipientLabel(input.to);
+      return `${recipientLabel(input.to)}${waiting}`;
     }
-    return `${recipientLabel(input.to)}: ${label.length > LABEL_MAX_CHARS ? `${label.slice(0, LABEL_MAX_CHARS - 1)}…` : label}`;
+    return `${recipientLabel(input.to)}: ${label.length > LABEL_MAX_CHARS ? `${label.slice(0, LABEL_MAX_CHARS - 1)}…` : label}${waiting}`;
   }
   if (typeof input.message !== 'object' || input.message === null) {
     return null;

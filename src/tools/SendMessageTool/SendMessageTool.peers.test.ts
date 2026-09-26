@@ -223,11 +223,13 @@ describe('notify_when_idle', () => {
     expect(fromAgent).toMatchObject({ result: false })
   })
 
-  test('the schema offers the flag, and an optional message, only where a session can be reached', () => {
+  test('the schema offers the flag only where a session can be reached', () => {
     const reachable = inputSchemaFor({ swarm: false, crossSession: true })
     const unreachable = inputSchemaFor({ swarm: false, crossSession: false })
     expect(reachable.safeParse({ to: 'x', notify_when_idle: 'true' }).success).toBe(true)
-    expect(unreachable.safeParse({ to: 'x' }).success).toBe(false)
     expect(Object.keys(unreachable.shape)).not.toContain('notify_when_idle')
+    // `message` is optional in both — await_reply without one only waits —
+    // and validateInput refuses a send that has neither.
+    expect(unreachable.safeParse({ to: 'x', await_reply: true }).success).toBe(true)
   })
 })

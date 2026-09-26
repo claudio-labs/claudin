@@ -205,6 +205,23 @@ export function drainPendingMessages(taskId: string, getAppState: () => AppState
 }
 
 /**
+ * Remove and return only the queued messages `keep` selects, leaving the rest
+ * for the next tool-round drain — how SendMessage's `await_reply` takes the
+ * agent-written replies and leaves what the user typed to its normal path.
+ */
+export function takePendingMessages(taskId: string, keep: (msg: string) => boolean, getAppState: () => AppState, setAppState: (f: (prev: AppState) => AppState) => void): string[] {
+  const task = getAppState().tasks[taskId];
+  if (!isLocalAgentTask(task)) return [];
+  const taken = task.pendingMessages.filter(keep);
+  if (taken.length === 0) return [];
+  updateTaskState<LocalAgentTaskState>(taskId, setAppState, t => ({
+    ...t,
+    pendingMessages: t.pendingMessages.filter(msg => !taken.includes(msg))
+  }));
+  return taken;
+}
+
+/**
  * Enqueue an agent notification to the message queue.
  */
 export function enqueueAgentNotification({

@@ -48,6 +48,8 @@ import {
 } from 'src/sessions/peers/registry.js'
 import {
   CROSS_SESSION_SENDS_PER_USER_PROMPT,
+  AGENT_SENDS_PER_AGENT,
+  takeAgentSend,
   takeCrossSessionSend,
 } from 'src/sessions/peers/sendBudget.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
@@ -71,6 +73,11 @@ import {
 } from 'src/agent/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
 import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
+import {
+  awaitReply,
+  describeAwaitOutcome,
+  inSessionProbe,
+} from 'src/tools/SendMessageTool/awaitReply.js'
 import { LIST_AGENTS_TOOL_NAME } from 'src/tools/ListAgentsTool/constants.js'
 import { MAIN_ADDRESS, SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/SendMessageTool/prompt.js'
@@ -107,6 +114,9 @@ const MESSAGE_DESCRIPTION =
 const NOTIFY_WHEN_IDLE_DESCRIPTION =
   'Ask a session ON THIS MACHINE to send you ONE notice when it next goes idle (finishes its turn with nothing queued) or exits — opt-in, one-shot, no polling. With a message: deliver it now AND subscribe. Without a message (omit it): a pure subscription that costs the other session nothing, answered at once if it is already idle.'
 
+const AWAIT_REPLY_DESCRIPTION =
+  "Only when you cannot go on without the answer: keep this call open until the recipient answers. Returns the first message sent to you (read its from — it may be someone else's), or the recipient's end if it stops first; gives up after 10 minutes. Without a message (omit it): only wait — how to keep waiting after a timeout."
+
 type SchemaVariant = { swarm: boolean; crossSession: boolean }
 
 function describeTo({ swarm, crossSession }: SchemaVariant): string {
@@ -132,6 +142,7 @@ const widestInputSchema = () =>
     summary: z.string().optional(),
     message: z.union([z.string(), StructuredMessage()]).optional(),
     notify_when_idle: semanticBoolean(z.boolean().optional()),
+    await_reply: semanticBoolean(z.boolean().optional()),
   })
 type InputSchema = ReturnType<typeof widestInputSchema>
 
@@ -151,8 +162,10 @@ export function inputSchemaFor(variant: SchemaVariant): InputSchema {
   if (cached) return cached
   const text = z.string().describe(MESSAGE_DESCRIPTION)
   const message = swarm ? z.union([text, StructuredMessage()]) : text
+  const awaitReply = semanticBoolean(z.boolean().optional()).describe(AWAIT_REPLY_DESCRIPTION)
   // Only a session on this machine can be subscribed to, so only a schema
-  // that can reach one offers the flag — and with it, leaving out `message`.
+  // that can reach one offers notify_when_idle. `message` is optional in both:
+  // `await_reply` without one only waits.
   const schema = (
     variant.crossSession
       ? z.object({
@@ -162,11 +175,13 @@ export function inputSchemaFor(variant: SchemaVariant): InputSchema {
           notify_when_idle: semanticBoolean(z.boolean().optional()).describe(
             NOTIFY_WHEN_IDLE_DESCRIPTION,
           ),
+          await_reply: awaitReply,
         })
       : z.object({
           to: z.string().describe(describeTo(variant)),
           summary: z.string().optional().describe(describeSummary(swarm)),
-          message,
+          message: message.optional(),
+          await_reply: awaitReply,
         })
   ) as unknown as InputSchema
   inputSchemas.set(key, schema)
@@ -188,6 +203,8 @@ export type MessageOutput = {
   success: boolean
   message: string
   routing?: MessageRouting
+  /** What arrived while `await_reply` waited — the envelopes, verbatim. */
+  replies?: string[]
 }
 
 export type BroadcastOutput = {
@@ -265,16 +282,28 @@ function senderOf(context: ToolUseContext): { from: string; description?: string
   return { from: agentId, description: isLocalAgentTask(task) ? task.description : undefined }
 }
 
+/** One message to another agent of this conversation, against the sender's budget. */
+function spendAgentSend(context: ToolUseContext): void {
+  if (takeAgentSend(context.agentId ?? MAIN_ADDRESS)) return
+  throw new Error(
+    `You have sent ${AGENT_SENDS_PER_AGENT} messages to other agents — the limit that stops two agents looping with no human in it. ${context.agentId === undefined ? 'Tell the user where things stand instead.' : 'Put what is left in your final report instead.'}`,
+  )
+}
+
 /**
- * A background agent writing to the main conversation. It lands in the main
- * thread's queue: drained into the current turn at its next tool round, or
- * starting a turn when the main conversation is idle — the same two paths a
- * task notification takes.
+ * The agent of this conversation `to` names — by its registered name or its
+ * raw agentId — the way a send resolves it.
  */
-function handleMainMessage(
-  content: string,
-  context: ToolUseContext,
-): { data: MessageOutput } {
+function resolveAgentAddress(to: string, context: ToolUseContext): string | undefined {
+  return context.getAppState().agentNameRegistry.get(to) ?? toAgentId(to) ?? undefined
+}
+
+/**
+ * Throw unless this conversation may write to (or wait on) "main": only a
+ * background agent can. Main itself is "main", and main is blocked on an
+ * inline agent, which answers with its final message.
+ */
+function assertReachesMain(context: ToolUseContext): void {
   const { agentId } = context
   if (agentId === undefined) {
     throw new Error(
@@ -290,7 +319,21 @@ function handleMainMessage(
       `"${MAIN_ADDRESS}" is for background agents. An agent running inline hands its final message to the main conversation — put what you want to say there.`,
     )
   }
+}
+
+/**
+ * A background agent writing to the main conversation. It lands in the main
+ * thread's queue: drained into the current turn at its next tool round, or
+ * starting a turn when the main conversation is idle — the same two paths a
+ * task notification takes.
+ */
+function handleMainMessage(
+  content: string,
+  context: ToolUseContext,
+): { data: MessageOutput } {
+  assertReachesMain(context)
   const sender = senderOf(context)
+  spendAgentSend(context)
   enqueue({
     value: formatAgentMessage({ ...sender, body: content, to: MAIN_ADDRESS }),
     mode: 'task-notification',
@@ -865,6 +908,56 @@ async function handlePlanRejection(
   }
 }
 
+/**
+ * The agent a wait watches: one of this conversation's (its agentId), or main
+ * (undefined). Checked before anything is sent, so a send never goes out on a
+ * wait that cannot happen.
+ */
+function awaitTargetOf(to: string, context: ToolUseContext): { agentId?: string } {
+  if (to === MAIN_ADDRESS) {
+    assertReachesMain(context)
+    return {}
+  }
+  const agentId = resolveAgentAddress(to, context)
+  if (agentId !== undefined) return { agentId }
+  throw new Error(
+    `await_reply waits on an agent of this conversation or "${MAIN_ADDRESS}", and "${to}" is neither — call ${LIST_AGENTS_TOOL_NAME} to see who you can message.`,
+  )
+}
+
+/**
+ * `await_reply`: send (when there is a message), then hold the call until an
+ * answer arrives or the recipient stops. What arrived is returned verbatim —
+ * taken out of the waiter's queue, so it is not delivered a second time.
+ */
+async function sendAndAwait(
+  input: Input,
+  context: ToolUseContext,
+  send: (input: Input) => Promise<{ data: SendMessageToolOutput }>,
+): Promise<{ data: MessageOutput }> {
+  const target = awaitTargetOf(input.to, context)
+  let sent: SendMessageToolOutput | undefined
+  let letter: string | undefined
+  if (typeof input.message === 'string') {
+    sent = (await send({ ...input, await_reply: undefined })).data
+    if (!sent.success) return { data: { success: false, message: sent.message } }
+    if (target.agentId !== undefined) {
+      letter = formatAgentMessage({ ...senderOf(context), body: input.message, to: input.to })
+    }
+  }
+  const outcome = await awaitReply(inSessionProbe(context, target.agentId, letter), {
+    signal: context.abortController.signal,
+  })
+  const waited = describeAwaitOutcome(input.to, outcome, context.agentId === undefined)
+  return {
+    data: {
+      success: true,
+      message: sent ? `${sent.message} ${waited}` : waited,
+      ...(outcome.kind === 'replied' && { replies: outcome.messages }),
+    },
+  }
+}
+
 export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
   buildTool({
     name: SEND_MESSAGE_TOOL_NAME,
@@ -924,7 +1017,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
 
     toAutoClassifierInput(input) {
       if (input.message === undefined) {
-        return `notify_when_idle ${input.to}`
+        return input.await_reply ? `await_reply ${input.to}` : `notify_when_idle ${input.to}`
       }
       if (typeof input.message === 'string') {
         return `to ${input.to}${input.notify_when_idle ? ' (notify_when_idle)' : ''}: ${input.message}`
@@ -986,6 +1079,40 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         }
       }
       const swarm = isAgentSwarmsEnabled()
+      if (input.await_reply) {
+        if (input.notify_when_idle) {
+          return {
+            result: false,
+            message: 'await_reply already waits for the answer — leave out notify_when_idle',
+            errorCode: 9,
+          }
+        }
+        if (input.to === '*') {
+          return {
+            result: false,
+            message: 'await_reply waits on one recipient, not a broadcast',
+            errorCode: 9,
+          }
+        }
+        if (input.message !== undefined && typeof input.message !== 'string') {
+          return {
+            result: false,
+            message: 'await_reply rides on a plain-text message, or on none — not on a structured one',
+            errorCode: 9,
+          }
+        }
+      }
+      if (
+        context.agentId !== undefined &&
+        (input.to === context.agentId ||
+          context.getAppState().agentNameRegistry.get(input.to) === context.agentId)
+      ) {
+        return {
+          result: false,
+          message: `"${input.to}" is you — a message to yourself reaches no one`,
+          errorCode: 9,
+        }
+      }
       if (input.notify_when_idle) {
         if (input.message !== undefined && typeof input.message !== 'string') {
           return {
@@ -1013,11 +1140,12 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         }
       }
       if (input.message === undefined) {
-        return input.notify_when_idle
+        return input.notify_when_idle || input.await_reply
           ? { result: true }
           : {
               result: false,
-              message: 'message is required — leave it out only for a pure notify_when_idle subscription',
+              message:
+                'message is required — leave it out only to wait (await_reply) or for a pure notify_when_idle subscription',
               errorCode: 9,
             }
       }
@@ -1095,6 +1223,20 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
     },
 
     mapToolResultToToolResultBlockParam(data, toolUseID) {
+      // What an await_reply brought back reads as the messages themselves,
+      // not as JSON-escaped strings.
+      if ('replies' in data && data.replies && data.replies.length > 0) {
+        return {
+          tool_use_id: toolUseID,
+          type: 'tool_result' as const,
+          content: [
+            {
+              type: 'text' as const,
+              text: `${data.message}\n\n${data.replies.join('\n\n')}`,
+            },
+          ],
+        }
+      }
       return {
         tool_use_id: toolUseID,
         type: 'tool_result' as const,
@@ -1107,7 +1249,12 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
       }
     },
 
-    async call(input, context, canUseTool) {
+    async call(input, context, canUseTool, parentMessage) {
+      if (input.await_reply) {
+        return sendAndAwait(input, context, sendInput =>
+          SendMessageTool.call(sendInput, context, canUseTool, parentMessage),
+        )
+      }
       if (input.notify_when_idle || input.message === undefined) {
         return subscribeToPeer(
           input.to,
@@ -1123,10 +1270,10 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
       // through to ambient-team resolution. Stopped agents are auto-resumed.
       if (typeof input.message === 'string' && input.to !== '*') {
         const appState = context.getAppState()
-        const registered = appState.agentNameRegistry.get(input.to)
-        const agentId = registered ?? toAgentId(input.to)
+        const agentId = resolveAgentAddress(input.to, context)
         if (agentId) {
           const task = appState.tasks[agentId]
+          spendAgentSend(context)
           // Delivered in the envelope on every path, so the agent learns who
           // wrote and where to answer, and its classifier sees agent text.
           const letter = formatAgentMessage({

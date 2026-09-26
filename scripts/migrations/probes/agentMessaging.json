@@ -6,7 +6,8 @@
     "src/tools/AgentTool/subagentSurface.regression.test.ts",
     "src/tools/SendMessageTool/SendMessageTool.regression.test.ts",
     "src/tools/SendMessageTool/SendMessageTool.test.ts",
-    "src/agent/messages/interAgentMessages.test.ts"
+    "src/agent/messages/interAgentMessages.test.ts",
+    "src/tools/SendMessageTool/awaitReply.test.ts"
   ],
   "source": "src/providers/transport/api.ts",
   "probes": [
@@ -126,6 +127,84 @@
       "source": "src/agent/messages/text.ts",
       "find": "      return `${origin.name === MAIN_ADDRESS ? 'The main conversation' : `Agent \"${origin.name}\"`} sent you a message while you were working:\\n${raw}\\n\\nAddress this before completing your current task.`\n",
       "replace": "      return `The coordinator sent a message while you were working:\\n${raw}\\n\\nAddress this before completing your current task.`\n"
+    },
+    {
+      "name": "a reply ends the wait",
+      "source": "src/tools/SendMessageTool/awaitReply.ts",
+      "find": "    if (messages.length > 0) return { kind: 'replied', messages }\n",
+      "replace": "    if (false) return { kind: 'replied', messages }\n"
+    },
+    {
+      "name": "the user writing ends the wait",
+      "source": "src/tools/SendMessageTool/awaitReply.ts",
+      "find": "    if (probe.userWrote()) return { kind: 'user-wrote' }\n",
+      "replace": "    if (false) return { kind: 'user-wrote' }\n"
+    },
+    {
+      "name": "a waiting agent takes only agent-written messages",
+      "source": "src/tools/SendMessageTool/awaitReply.ts",
+      "find": "            takePendingMessages(waiterId, isAgentLetter, context.getAppState, setAppState),\n",
+      "replace": "            takePendingMessages(waiterId, () => true, context.getAppState, setAppState),\n"
+    },
+    {
+      "name": "an unregistered target has ended",
+      "source": "src/tools/SendMessageTool/awaitReply.ts",
+      "find": "      if (task === undefined) return { status: 'finished', unread: false }\n",
+      "replace": "      if (task === undefined) return null\n"
+    },
+    {
+      "name": "an ended target that never read the message is reported",
+      "source": "src/tools/SendMessageTool/awaitReply.ts",
+      "find": "        unread: letter !== undefined && task.pendingMessages.includes(letter),\n",
+      "replace": "        unread: false,\n"
+    },
+    {
+      "name": "the agent budget runs out",
+      "source": "src/sessions/peers/sendBudget.ts",
+      "find": "  if (spent >= AGENT_SENDS_PER_AGENT) return false\n",
+      "replace": "  if (false) return false\n"
+    },
+    {
+      "name": "a send to another agent spends from the budget",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "          spendAgentSend(context)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "writing to yourself by name is refused",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "          context.getAppState().agentNameRegistry.get(input.to) === context.agentId)\n",
+      "replace": "          false)\n"
+    },
+    {
+      "name": "await_reply and notify_when_idle together are refused",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "      if (input.await_reply) {\n        if (input.notify_when_idle) {\n",
+      "replace": "      if (input.await_reply) {\n        if (false) {\n"
+    },
+    {
+      "name": "await_reply alone may leave out the message",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "        return input.notify_when_idle || input.await_reply\n",
+      "replace": "        return input.notify_when_idle\n"
+    },
+    {
+      "name": "replies reach the model as text",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "      if ('replies' in data && data.replies && data.replies.length > 0) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "a wait on someone unreachable is refused before sending",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (agentId !== undefined) return { agentId }\n",
+      "replace": "  return { agentId }\n"
+    },
+    {
+      "name": "an inline agent cannot wait on main",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (to === MAIN_ADDRESS) {\n    assertReachesMain(context)\n",
+      "replace": "  if (to === MAIN_ADDRESS) {\n"
     }
   ]
 }
