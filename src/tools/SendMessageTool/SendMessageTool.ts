@@ -592,7 +592,7 @@ async function handleBroadcast(
 
   if (!teamName) {
     throw new Error(
-      'Not in a team context. Create a team with Teammate spawnTeam first, or set CLAUDE_CODE_TEAM_NAME.',
+      '"*" broadcasts to an agent team, and this session is not in one.',
     )
   }
 
@@ -603,12 +603,6 @@ async function handleBroadcast(
 
   const senderName =
     getAgentName() || (isTeammate() ? 'teammate' : TEAM_LEAD_NAME)
-  if (!senderName) {
-    throw new Error(
-      'Cannot broadcast: sender name is required. Set CLAUDE_CODE_AGENT_NAME.',
-    )
-  }
-
   const senderColor = getTeammateColor()
 
   const recipients: string[] = []
@@ -696,10 +690,23 @@ async function handleShutdownRequest(
   }
 }
 
+/**
+ * Why this conversation may not approve a shutdown, or undefined when it may.
+ * Approving ends the approver — a teammate's own loop or process. Anyone else
+ * (the lead, a background agent) holds no such exit, and the fallback below
+ * would end the whole session instead.
+ */
+export function shutdownApprovalRefusal(): string | undefined {
+  if (isTeammate()) return undefined
+  return 'Only a teammate answers a shutdown request by exiting — you are not one, and approving would end this whole session. Tell whoever asked that you are not a teammate.'
+}
+
 async function handleShutdownApproval(
   requestId: string,
   context: ToolUseContext,
 ): Promise<{ data: ResponseOutput }> {
+  const refusal = shutdownApprovalRefusal()
+  if (refusal) throw new Error(refusal)
   const teamName = getTeamName()
   const agentId = getAgentId()
   const agentName = getAgentName() || 'teammate'
@@ -1069,7 +1076,7 @@ async function sendAndAwait(
 export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
   buildTool({
     name: SEND_MESSAGE_TOOL_NAME,
-    searchHint: 'send messages to agent teammates (swarm protocol)',
+    searchHint: 'message another agent or session, and wait for its answer',
     maxResultSizeChars: 100_000,
 
     userFacingName() {

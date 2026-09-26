@@ -225,6 +225,18 @@
       "source": "src/tools/SendMessageTool/prompt.ts",
       "find": "${ASKING}${crossSession",
       "replace": "${crossSession"
+    },
+    {
+      "name": "only a teammate may approve a shutdown",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (isTeammate()) return undefined\n",
+      "replace": "  return undefined\n"
+    },
+    {
+      "name": "the approval checks before it acts",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  const refusal = shutdownApprovalRefusal()\n  if (refusal) throw new Error(refusal)\n",
+      "replace": "\n"
     }
   ]
 }

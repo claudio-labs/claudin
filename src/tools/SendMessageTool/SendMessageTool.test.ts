@@ -1,8 +1,12 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, rmSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
+import {
+  clearDynamicTeamContext,
+  setDynamicTeamContext,
+} from 'src/agent/coordinator/teammate.js'
 import {
   getCommandQueueSnapshot,
   resetCommandQueue,
@@ -10,6 +14,7 @@ import {
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   inputSchemaFor,
+  shutdownApprovalRefusal,
   SendMessageTool,
 } from 'src/tools/SendMessageTool/SendMessageTool.js'
 import { renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
@@ -415,6 +420,30 @@ describe('SendMessageTool — agent teams switched on', () => {
     )
     expect(data).toMatchObject({ success: true, message: "Message sent to sibling's inbox" })
     expect(existsSync(join(configDir, 'teams', 'crew', 'inboxes', 'sibling.json'))).toBe(true)
+  })
+})
+
+describe('SendMessageTool — approving a shutdown (agent teams)', () => {
+  afterEach(() => {
+    clearDynamicTeamContext()
+  })
+
+  test('the lead or a background agent is refused: approving would end the whole session', () => {
+    expect(shutdownApprovalRefusal()).toContain('would end this whole session')
+  })
+
+  test('a teammate may approve its own exit', () => {
+    setDynamicTeamContext({ agentId: 'w1', agentName: 'worker', teamName: 'crew' } as never)
+    expect(shutdownApprovalRefusal()).toBeUndefined()
+  })
+
+  test('the approval checks before it writes or exits', () => {
+    // Its fallback ends the process, so the handler is pinned rather than run.
+    const src = readFileSync(new URL('./SendMessageTool.ts', import.meta.url), 'utf8')
+    const handler = src.indexOf('async function handleShutdownApproval(')
+    const guard = src.indexOf('  const refusal = shutdownApprovalRefusal()\n  if (refusal) throw new Error(refusal)', handler)
+    expect(guard).toBeGreaterThan(handler)
+    expect(guard).toBeLessThan(src.indexOf('writeToMailbox(', handler))
   })
 })
 
