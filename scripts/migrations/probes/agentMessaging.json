@@ -1,6 +1,7 @@
 {
   "test": [
     "src/tools/AgentTool/agentSchema.wire.test.ts",
+    "src/tools/AgentTool/agentName.test.ts",
     "src/tools/AgentTool/prompt.test.ts",
     "src/tools/AgentTool/subagentSurface.regression.test.ts",
     "src/tools/SendMessageTool/SendMessageTool.regression.test.ts"
@@ -33,6 +34,42 @@
       "source": "src/tools/AgentTool/AgentTool.tsx",
       "find": "    const run_in_background = isRunInBackgroundHidden() ? undefined : requestedBackground;\n",
       "replace": "    const run_in_background = requestedBackground;\n"
+    },
+    {
+      "name": "a name must be a plain word",
+      "source": "src/tools/AgentTool/agentName.ts",
+      "find": "  if (!AGENT_NAME_RE.test(name)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "\"main\" cannot name an agent",
+      "source": "src/tools/AgentTool/agentName.ts",
+      "find": "  if (name.toLowerCase() === 'main') {\n",
+      "replace": "  if (name === 'main') {\n"
+    },
+    {
+      "name": "an agentId-shaped name is refused",
+      "source": "src/tools/AgentTool/agentName.ts",
+      "find": "  if (toAgentId(name) !== null) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the Agent tool checks the name before spawning",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "    const problem = agentNameProblem(name);\n",
+      "replace": "    const problem = undefined;\n"
+    },
+    {
+      "name": "a teammate's name is left to the agent team",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "    if (name === undefined || resolveTeamName({\n",
+      "replace": "    if (name === undefined || false && resolveTeamName({\n"
+    },
+    {
+      "name": "an inline agent registers its name",
+      "source": "src/tools/AgentTool/AgentTool.tsx",
+      "find": "          if (name) registerAgentName(rootSetAppState, name, syncAgentId);\n",
+      "replace": "\n"
     }
   ]
 }
