@@ -13,8 +13,8 @@
     },
     {
       "name": "a stopped agent is resumed, not queued",
-      "find": "            if (isLocalAgentTask(freshTask) && freshTask.status === 'running') {\n",
-      "replace": "            if (isLocalAgentTask(freshTask)) {\n"
+      "find": "            if (task.status === 'running') {\n",
+      "replace": "            if (true) {\n"
     },
     {
       "name": "an inline agent cannot write to \"main\"",

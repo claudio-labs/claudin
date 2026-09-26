@@ -4,7 +4,8 @@
     "src/tools/SendMessageTool/SendMessageTool.test.ts",
     "src/agent/messages/interAgentMessages.test.ts",
     "src/tools/SendMessageTool/awaitReply.test.ts",
-    "src/tools/SendMessageTool/SendMessageTool.peers.test.ts"
+    "src/tools/SendMessageTool/SendMessageTool.peers.test.ts",
+    "src/tools/SendMessageTool/resumeOnce.test.ts"
   ],
   "source": "src/tools/SendMessageTool/SendMessageTool.ts",
   "probes": [
@@ -157,6 +158,24 @@
       "source": "src/tools/SendMessageTool/SendMessageTool.ts",
       "find": "  if (typeof input.message === 'string' || target.peer) {\n",
       "replace": "  if (typeof input.message === 'string') {\n"
+    },
+    {
+      "name": "another agent cannot restart one the user stopped",
+      "source": "src/tools/SendMessageTool/SendMessageTool.ts",
+      "find": "  if (status === 'killed' && context.agentId !== undefined) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a send arriving mid-resume joins the run",
+      "source": "src/tools/SendMessageTool/resumeOnce.ts",
+      "find": "  if (starting) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a settled resume no longer holds the agent",
+      "source": "src/tools/SendMessageTool/resumeOnce.ts",
+      "find": "    inFlight.delete(agentId)\n",
+      "replace": "\n"
     }
   ]
 }

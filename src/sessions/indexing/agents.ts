@@ -37,6 +37,10 @@ export type AgentMetadata = {
    * resumed agent's notification can show the original description instead
    * of a placeholder. Optional — older metadata files lack this field. */
   description?: string
+  /** The spawn passed `readOnly: true`. Resume re-applies it — the definition
+   * is looked up again by agentType, which alone would hand a research agent
+   * its write tools back. */
+  readOnly?: boolean
 }
 
 /**

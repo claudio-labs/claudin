@@ -451,7 +451,13 @@ describe('SendMessageTool — a message to a running agent carries its sender', 
         state = f(state)
       },
     } as unknown as ToolUseContext
-    return { context, pending: (id: string) => state.tasks[id]!.pendingMessages }
+    return {
+      context,
+      pending: (id: string) => state.tasks[id]!.pendingMessages,
+      kill: (id: string) => {
+        state = { ...state, tasks: { ...state.tasks, [id]: { ...state.tasks[id]!, status: 'killed' } } }
+      },
+    }
   }
 
   test('from main: the envelope says main, and how to answer', async () => {
@@ -467,6 +473,23 @@ describe('SendMessageTool — a message to a running agent carries its sender', 
     await send({ to: 'dev', message: 'bug in a.ts:12' }, context)
     expect(pending(DEV)[0]).toStartWith('<agent-message from="tester">')
     expect(pending(DEV)[0]).toContain('SendMessage with to: "tester"')
+  })
+
+  test('an agent the user stopped is not restarted by another agent', async () => {
+    const { context, pending, kill } = team(TESTER)
+    kill(DEV)
+    const data = await send({ to: 'dev', message: 'one more fix' }, context)
+    expect(data).toMatchObject({ success: false })
+    expect((data as { message: string }).message).toContain('only the main conversation can start it again')
+    expect(pending(DEV)).toEqual([])
+  })
+
+  test('main may restart it — the resume is attempted', async () => {
+    const { context, kill } = team()
+    kill(DEV)
+    const data = await send({ to: 'dev', message: 'one more fix' }, context)
+    // Attempted; here it fails only for want of a transcript.
+    expect((data as { message: string }).message).toContain('could not be resumed')
   })
 
   test('from an unnamed agent: its agentId, with its description for the transcript', async () => {

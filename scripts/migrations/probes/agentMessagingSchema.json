@@ -3,7 +3,8 @@
     "src/tools/AgentTool/agentSchema.wire.test.ts",
     "src/tools/AgentTool/agentName.test.ts",
     "src/tools/AgentTool/prompt.test.ts",
-    "src/tools/AgentTool/subagentSurface.regression.test.ts"
+    "src/tools/AgentTool/subagentSurface.regression.test.ts",
+    "src/tools/AgentTool/resumeAgent.test.ts"
   ],
   "source": "src/providers/transport/api.ts",
   "probes": [
@@ -68,6 +69,18 @@
       "name": "an inline agent registers its name",
       "source": "src/tools/AgentTool/AgentTool.tsx",
       "find": "          if (name) registerAgentName(rootSetAppState, name, syncAgentId);\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a resume re-applies readOnly",
+      "source": "src/tools/AgentTool/resumeAgent.ts",
+      "find": "    selectedAgent: applyReadOnly(launchedAs, meta?.readOnly, false),\n",
+      "replace": "    selectedAgent: launchedAs,\n"
+    },
+    {
+      "name": "runAgent persists readOnly",
+      "source": "src/tools/AgentTool/runAgent.ts",
+      "find": "    ...(readOnly && { readOnly }),\n",
       "replace": "\n"
     }
   ]

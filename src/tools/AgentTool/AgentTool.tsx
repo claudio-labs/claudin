@@ -674,6 +674,8 @@ export const AgentTool = buildTool({
       }),
       worktreePath: worktreeInfo?.worktreePath,
       description,
+      // A fork ignores readOnly, so there is nothing to re-apply on its resume.
+      readOnly: readOnly === true && !isForkPath,
       agentName: name,
     };
 

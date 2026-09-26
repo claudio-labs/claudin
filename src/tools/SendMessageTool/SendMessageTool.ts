@@ -72,7 +72,9 @@ import {
   writeToMailbox,
 } from 'src/agent/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { formatAgentMessage } from 'src/tools/SendMessageTool/agentMessage.js'
+import { resumeOnce } from 'src/tools/SendMessageTool/resumeOnce.js'
 import {
   awaitReply,
   describeAwaitOutcome,
@@ -909,6 +911,77 @@ async function handlePlanRejection(
 }
 
 /**
+ * A stopped agent — or one evicted from state (`status` undefined) — resumed
+ * in the background with the message: once, however many sends reach it
+ * together, the later ones queued into the run the first one started.
+ */
+async function resumeWithLetter({
+  agentId,
+  to,
+  letter,
+  status,
+  context,
+  canUseTool,
+}: {
+  agentId: string
+  to: string
+  letter: string
+  status?: string
+  context: ToolUseContext
+  canUseTool: CanUseToolFn
+}): Promise<{ data: MessageOutput }> {
+  // The user stopped it; another agent restarting it would undo that behind
+  // the user's back. Main answers to the user, so it may.
+  if (status === 'killed' && context.agentId !== undefined) {
+    return {
+      data: {
+        success: false,
+        message: `The user stopped "${to}"; only the main conversation can start it again. Put what you needed from it in your report instead.`,
+      },
+    }
+  }
+  // Its completion notice goes to main, whoever resumed it.
+  const whenDone =
+    context.agentId === undefined
+      ? "You'll be notified when it finishes."
+      : `Its completion notice goes to the main conversation — to get its answer here, call SendMessage with to: ${JSON.stringify(to)}, await_reply: true and no message.`
+  try {
+    const outcome = await resumeOnce(agentId, () =>
+      resumeAgentBackground({ agentId, prompt: letter, toolUseContext: context, canUseTool }),
+    )
+    if ('joined' in outcome) {
+      queuePendingMessage(agentId, letter, context.setAppStateForTasks ?? context.setAppState)
+      return {
+        data: {
+          success: true,
+          message: `Message queued for delivery to ${to} at its next tool round (another send had just resumed it).`,
+        },
+      }
+    }
+    const how =
+      status === undefined
+        ? 'had no active task; resumed it from its transcript'
+        : `was stopped (${status}); resumed it`
+    return {
+      data: {
+        success: true,
+        message: `Agent "${to}" ${how} in the background with your message. ${whenDone} Output: ${outcome.resumed.outputFile}`,
+      },
+    }
+  } catch (e) {
+    return {
+      data: {
+        success: false,
+        message:
+          status === undefined
+            ? `Agent "${to}" is registered but has no transcript to resume. It may have been cleaned up. (${errorMessage(e)})`
+            : `Agent "${to}" is stopped (${status}) and could not be resumed: ${errorMessage(e)}`,
+      },
+    }
+  }
+}
+
+/**
  * What a wait watches: an agent of this conversation (its agentId), main, or
  * another session (`peer`). Checked before anything is sent, so a send never
  * goes out on a wait that cannot happen.
@@ -1316,73 +1389,19 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
                 },
               }
             }
-            // task exists but stopped — auto-resume.
-            // Guard against race: two concurrent SendMessage calls to the same
-            // stopped agent could both trigger resumeAgentBackground(), causing
-            // duplicate task registration. Check status again after acquiring
-            // the task reference (the first resume changes status to 'running').
-            const freshTask = context.getAppState().tasks[agentId]
-            if (isLocalAgentTask(freshTask) && freshTask.status === 'running') {
-              queuePendingMessage(
-                agentId,
-                letter,
-                context.setAppStateForTasks ?? context.setAppState,
-              )
-              return {
-                data: {
-                  success: true,
-                  message: `Message queued for delivery to ${input.to} at its next tool round (was concurrently resumed).`,
-                },
-              }
-            }
-            try {
-              const result = await resumeAgentBackground({
-                agentId,
-                prompt: letter,
-                toolUseContext: context,
-                canUseTool,
-              })
-              return {
-                data: {
-                  success: true,
-                  message: `Agent "${input.to}" was stopped (${task.status}); resumed it in the background with your message. You'll be notified when it finishes. Output: ${result.outputFile}`,
-                },
-              }
-            } catch (e) {
-              return {
-                data: {
-                  success: false,
-                  message: `Agent "${input.to}" is stopped (${task.status}) and could not be resumed: ${errorMessage(e)}`,
-                },
-              }
-            }
-          } else {
-            // task evicted from state — try resume from disk transcript.
-            // agentId is either a registered name or a format-matching raw ID
-            // (toAgentId validates the createAgentId format, so teammate names
-            // never reach this block).
-            try {
-              const result = await resumeAgentBackground({
-                agentId,
-                prompt: letter,
-                toolUseContext: context,
-                canUseTool,
-              })
-              return {
-                data: {
-                  success: true,
-                  message: `Agent "${input.to}" had no active task; resumed from transcript in the background with your message. You'll be notified when it finishes. Output: ${result.outputFile}`,
-                },
-              }
-            } catch (e) {
-              return {
-                data: {
-                  success: false,
-                  message: `Agent "${input.to}" is registered but has no transcript to resume. It may have been cleaned up. (${errorMessage(e)})`,
-                },
-              }
-            }
+            return resumeWithLetter({
+              agentId,
+              to: input.to,
+              letter,
+              status: task.status,
+              context,
+              canUseTool,
+            })
           }
+          // Evicted from state: resume from its transcript on disk. agentId is a
+          // registered name or a format-matching raw id (toAgentId validates the
+          // createAgentId format, so teammate names never reach this).
+          return resumeWithLetter({ agentId, to: input.to, letter, context, canUseTool })
         }
       }
 
