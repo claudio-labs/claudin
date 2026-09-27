@@ -45,6 +45,9 @@ export type SidePanelComponent = React.ComponentType<SidePanelProps>
 export type SidePanelState = { Component: SidePanelComponent } | null
 
 let state: SidePanelState = null
+// The fullscreen lease the open panel took, handed back on every way it
+// closes. See openSidePanel.
+let releaseLease: (() => void) | null = null
 const listeners = new Set<() => void>()
 
 function emit(): void {
@@ -55,9 +58,19 @@ function emit(): void {
  * Show `Component` in the side panel. Re-opening with the same component is a
  * no-op, so a second `ctrl+g` that races the first cannot remount the dialog
  * and throw away its state.
+ *
+ * `acquireLease` takes the fullscreen lease an inline session needs to show
+ * the panel at all. It runs only when the panel actually opens, and the store
+ * releases it on close — ctrl+g, Esc and `onDone` all end in closeSidePanel,
+ * so no caller has to count its own ways out.
  */
-export function openSidePanel(Component: SidePanelComponent): void {
+export function openSidePanel(
+  Component: SidePanelComponent,
+  acquireLease?: () => () => void,
+): void {
   if (state?.Component === Component) return
+  releaseLease?.()
+  releaseLease = acquireLease?.() ?? null
   state = { Component }
   emit()
 }
@@ -65,6 +78,9 @@ export function openSidePanel(Component: SidePanelComponent): void {
 export function closeSidePanel(): void {
   if (state === null) return
   state = null
+  const release = releaseLease
+  releaseLease = null
+  release?.()
   emit()
 }
 
@@ -83,5 +99,6 @@ export function getSidePanelSnapshot(): SidePanelState {
 // Test-only.
 export function __resetSidePanelStoreForTests(): void {
   state = null
+  releaseLease = null
   listeners.clear()
 }

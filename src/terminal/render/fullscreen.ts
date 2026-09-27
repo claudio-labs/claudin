@@ -6,6 +6,74 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 
+/**
+ * Temporary fullscreen. A view that only works on the fullscreen layout — the
+ * `/diff` side panel, `/explorer` — holds a lease for as long as it is on
+ * screen, and `isFullscreenEnvEnabled()` answers true meanwhile. An inline
+ * session therefore enters the alt screen and renders exactly the fullscreen
+ * layout, and on release goes back to the main screen with its scrollback
+ * where it was: the terminal restores the main screen itself, and Ink diffs
+ * from the frame it had before entering, so what the chat produced meanwhile
+ * is appended rather than repainted over (`Ink.setAltScreenActive`).
+ *
+ * `CLAUDIN_TEMP_FULLSCREEN=0` turns it off, and so do the two things that
+ * already keep the alt screen off — `CLAUDIN_NO_FLICKER=0` and tmux -CC. Those
+ * views then fall back to their inline dialogs.
+ */
+const leaseHolders = new Set<symbol>()
+const leaseListeners = new Set<() => void>()
+
+function emitLeaseChange(): void {
+  for (const listener of leaseListeners) listener()
+}
+
+/** The lease is honoured in this environment (interactive or not). */
+function leaseAllowed(): boolean {
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_TEMP_FULLSCREEN)) return false
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_NO_FLICKER)) return false
+  return !isTmuxControlMode()
+}
+
+/** Whether a view may take the screen with a lease instead of its inline fallback. */
+export function canLeaseFullscreen(): boolean {
+  return getIsInteractive() && leaseAllowed()
+}
+
+/**
+ * Take a fullscreen lease. Returns its release, which is idempotent — a view
+ * can release from every way it closes without counting them.
+ */
+export function acquireFullscreenLease(): () => void {
+  const token = Symbol('fullscreen-lease')
+  leaseHolders.add(token)
+  if (leaseHolders.size === 1) emitLeaseChange()
+  return () => {
+    if (!leaseHolders.delete(token)) return
+    if (leaseHolders.size === 0) emitLeaseChange()
+  }
+}
+
+export function subscribeFullscreenLease(listener: () => void): () => void {
+  leaseListeners.add(listener)
+  return () => {
+    leaseListeners.delete(listener)
+  }
+}
+
+/**
+ * True while fullscreen is on ONLY because of a lease — the inline session is
+ * visiting the alt screen and has a main screen to come back to.
+ */
+export function isTemporaryFullscreen(): boolean {
+  return leaseHolders.size > 0 && leaseAllowed() && !isNativeFullscreen()
+}
+
+/** Test-only. */
+export function _resetFullscreenLeasesForTesting(): void {
+  leaseHolders.clear()
+  leaseListeners.clear()
+}
+
 let loggedTmuxCcDisable = false
 let checkedTmuxMouseHint = false
 
@@ -110,7 +178,15 @@ export function _resetTmuxControlModeProbeForTesting(): void {
  * Whether fullscreen (flicker-free) mode is enabled. Env var takes highest
  * precedence, then the `flickerFreeMode` config setting, then defaults to off.
  * Users pick it in `/config` → "Terminal UI renderer" (default | fullscreen)
- * instead of setting the env.
+ * instead of setting the env. A held lease turns it on as well — see
+ * `isTemporaryFullscreen`.
+ */
+export function isFullscreenEnvEnabled(): boolean {
+  return isNativeFullscreen() || (leaseHolders.size > 0 && leaseAllowed())
+}
+
+/**
+ * The renderer the session runs on when no view holds a lease.
  *
  * Priority order:
  *   CLAUDIN_NO_FLICKER=0    → always off
@@ -121,7 +197,7 @@ export function _resetTmuxControlModeProbeForTesting(): void {
  *                                 snap-to-bottom + stutter — Ghostty today)
  *   default                     → off
  */
-export function isFullscreenEnvEnabled(): boolean {
+function isNativeFullscreen(): boolean {
   // Explicit env opt-out always wins.
   if (isEnvDefinedFalsy(process.env.CLAUDIN_NO_FLICKER)) return false
   // Explicit env opt-in overrides everything including tmux -CC.

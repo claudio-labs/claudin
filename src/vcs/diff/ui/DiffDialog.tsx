@@ -35,6 +35,8 @@ import { useSidePanel } from 'src/terminal/contexts/sidePanelContext.js'
 import {
   computeDialogBodyRows,
   computeTakeoverLayout,
+  inlineDialogRows,
+  LOG_SPLIT_MIN_COLUMNS,
 } from 'src/vcs/diff/ui/layout.js'
 import { buildDiffRenderModel } from 'src/vcs/diff/ui/collapse.js'
 import { CommitFileList } from 'src/vcs/diff/ui/CommitFileList.js'
@@ -284,7 +286,8 @@ export function DiffDialog({
   // Inside the modal slot the dialog owns a full-height surface: the whole
   // terminal under the takeover, or the right half as a side panel. That is
   // also exactly the fullscreen case, since the REPL routes every local-jsx
-  // command to the modal slot there.
+  // command to the modal slot there. The arrangements themselves (stacked
+  // Local, side-by-side Log) are the same inline; only the budgets differ.
   const takeover = useIsInsideModal()
   // EVERY dimension comes from the modal context, never from the terminal: as
   // a side panel the dialog is half a screen wide and stops above the
@@ -300,7 +303,7 @@ export function DiffDialog({
   // Only the Log tab is side-by-side now: its left rail is the git graph, which
   // needs the columns. Local Changes stacks the file list ON TOP of the diff,
   // so it works at any width and drops the gate.
-  const split = takeover && activeTab === 'log' && usableColumns >= 96
+  const split = activeTab === 'log' && usableColumns >= LOG_SPLIT_MIN_COLUMNS
   const leftWidth = Math.max(30, Math.min(50, Math.round(usableColumns * 0.3)))
   // Dialog chrome costs 10 rows on the Local tab: Pane paddingTop+divider (2),
   // and the Dialog content column lays out [title, sourceLine, body, footer]
@@ -315,18 +318,21 @@ export function DiffDialog({
   // spent there. Inside the panel it gets its own budget instead, counted from
   // what the Dialog column actually lays out — otherwise the Log arrangements
   // came up two or three rows short and the hints under them sat three or four
-  // rows above the bottom of the panel. Outside a modal the Pane still draws
-  // its own divider and the prompt sits below it, which is what
-  // `contentHeight` reserves for, so those paths keep the old budget.
+  // rows above the bottom of the panel. Outside a modal the side-by-side panes
+  // get the same treatment from `inlineDialogRows`, which ends them on the row
+  // the stacked Local tab and `/explorer` end on; the one-at-a-time body keeps
+  // the old budget.
   const logHeaderLine = logRepos.length > 1
   /** Inline body: it pays for its own `marginTop`. */
   const inlineBodyRows = takeover
     ? computeDialogBodyRows(usableSize.rows, logHeaderLine, 1)
     : contentHeight
   /** Interior of each side-by-side pane: they pay for two borders. */
-  const splitPaneInner = takeover
-    ? computeDialogBodyRows(usableSize.rows, logHeaderLine, 2)
-    : contentHeight
+  const splitPaneInner = computeDialogBodyRows(
+    takeover ? usableSize.rows : inlineDialogRows(usableSize.rows),
+    logHeaderLine,
+    2,
+  )
   // Both panes are pinned to this height so the dialog frame is CONSTANT
   // regardless of the selected file's diff length (a short diff must not
   // shrink the frame, a long one must not grow it).
@@ -498,18 +504,20 @@ export function DiffDialog({
   }, [activeTab, sourceIndex, treeRows, selectedIndex])
 
   // ── layout, part 2 (needs treeRows) ───────────────────────────────────────
-  // Local Changes under the takeover: the Files pane auto-fits the changed
+  // Local Changes, in every arrangement: the Files pane auto-fits the changed
   // files (capped) and the Diff pane takes what's left.
-  const stacked = takeover && activeTab === 'local'
+  const stacked = activeTab === 'local'
   const takeoverLayout = computeTakeoverLayout(contentHeight, treeRows.length)
   // Side-by-side the body shares its row with the file list; otherwise it spans
   // the dialog's inner width. The Log split still pays for its pane border; the
-  // stacked sections are borderless, so they only give back Pane's paddingX and
-  // 2 columns of slack (the fullscreen indent bites width math).
+  // stacked sections are borderless, so they only give back 2 columns of slack
+  // and, inside a modal, Pane's paddingX (the fullscreen indent bites width
+  // math). Inline the terminal fallback of `usableColumns` has already taken
+  // Pane's paddingX off.
   const diffWidth = split
     ? Math.max(20, usableColumns - leftWidth - 6)
     : stacked
-      ? Math.max(20, usableColumns - 4)
+      ? Math.max(20, usableColumns - (takeover ? 4 : 2))
       : Math.max(20, usableColumns)
   // Reserve 2 rows for the list's ↑/↓ "more" indicators, which both
   // DiffFileList and CommitGraph render IN ADDITION to `maxVisible`, so the
@@ -519,9 +527,10 @@ export function DiffDialog({
     : split
       ? Math.max(3, splitPaneInner - 2)
       : Math.max(3, inlineBodyRows - 2)
-  // Viewport height for the scrollable body. Stacked-inline there is no pane
-  // border to carry the file name and scroll position, so a header row does —
-  // and that row comes out of the body's budget.
+  // Viewport height for the scrollable body. One at a time (the Log tab below
+  // LOG_SPLIT_MIN_COLUMNS) there is no pane border to carry the file name and
+  // scroll position, so a header row does — and that row comes out of the
+  // body's budget.
   const bodyHeight = split
     ? splitPaneInner
     : stacked
@@ -1228,7 +1237,8 @@ export function DiffDialog({
         width={diffWidth}
         cursorRow={hasFocus && focus === 'content' ? cursorRowClamped : null}
         selection={visualRange}
-        backgroundSgr={stacked ? panelBackgroundSgr : null}
+        // Inline there is no panel surface to match, so no tint.
+        backgroundSgr={stacked && takeover ? panelBackgroundSgr : null}
       />
     )
   }
@@ -1265,7 +1275,9 @@ export function DiffDialog({
           rows={treeRows}
           selectedIndex={selectedIndex}
           maxVisible={listMaxVisible}
-          width={stacked ? diffWidth : Math.min(usableColumns, INLINE_LIST_WIDTH)}
+          // Inline on a wide terminal, full width would strand each file's
+          // +N -N at the far edge; the rule above still spans the whole row.
+          width={takeover ? diffWidth : Math.min(diffWidth, INLINE_LIST_WIDTH)}
         />
       )
     const filesTitle = `Files  ${allFiles.length} ${plural(
@@ -1287,9 +1299,7 @@ export function DiffDialog({
       isTruncated: false,
     }
     // Basename only: the tree right above already shows the directory, so the
-    // full path spent a third of the rule repeating it. Stacked layout only —
-    // inline shows EITHER the list or the diff, never both, so the path there
-    // is the only context there is.
+    // full path spent a third of the rule repeating it.
     const diffTitle = selected
       ? `Diff: ${basename(selected.file.path)}${
           selected.file.isTruncated ? ' (truncated)' : ''
@@ -1313,13 +1323,13 @@ export function DiffDialog({
       const stats = diffStatsFile ? statsBorderText(diffStatsFile) : null
       return stats ? [paneTitle(diffTitle), stats] : paneTitle(diffTitle)
     })()
-    // Takeover: the file list sits ON TOP of a full-width diff, both in fixed-
-    // height sections so the frame never moves with the selected file's length.
+    // The file list sits ON TOP of a full-width diff, both in fixed-height
+    // sections so the frame never moves with the selected file's length.
     // Each section is a TOP BORDER ONLY: the rule carries the title and the
     // +N −N the way a pane border used to, but without the vertical edges — so
     // the text gets those two columns back, and the whole frame costs one row
     // per section instead of two.
-    body = stacked ? (
+    body = (
       <Box flexDirection="column">
         <Box
           height={takeoverLayout.listInner + 1}
@@ -1350,23 +1360,6 @@ export function DiffDialog({
         >
           {renderDiffBody(bodyHeight)}
         </Box>
-      </Box>
-    ) : (
-      <Box flexDirection="column" marginTop={1}>
-        {focus === 'list' ? (
-          listEl
-        ) : (
-          <>
-            {selected &&
-              stackedHeader(
-                `${selected.file.path}${
-                  selected.file.isTruncated ? ' (truncated)' : ''
-                }`,
-                diffScrollLabel,
-              )}
-            {renderDiffBody(bodyHeight)}
-          </>
-        )}
       </Box>
     )
   } else {

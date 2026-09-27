@@ -17,9 +17,12 @@ mock.module('src/providers/presets/activeProvider.js', () => ({
 }))
 
 // Re-import after mock so detectProvider sees the patched module.
-const { detectProvider, shouldLatchStartupBanner } = await import(
-  'src/platform/StartupScreen.js'
-)
+const {
+  detectProvider,
+  isStartupBannerLatched,
+  rememberStartupBannerLatch,
+  shouldLatchStartupBanner,
+} = await import('src/platform/StartupScreen.js')
 
 afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
@@ -399,5 +402,15 @@ describe('shouldLatchStartupBanner', () => {
     expect(
       shouldLatchStartupBanner({ ...base, keepBanner: true, visible: false }),
     ).toBe(false)
+  })
+
+  // A fullscreen lease remounts the transcript subtree on the way into the alt
+  // screen and back; the latch has to outlive that or the banner comes back at
+  // frame row 0 and duplicates a stretch of scrollback.
+  test('a latch outlives the component, per conversation', () => {
+    rememberStartupBannerLatch('conversation-a')
+    expect(isStartupBannerLatched('conversation-a')).toBe(true)
+    // /clear starts a new conversation, which gets its banner back.
+    expect(isStartupBannerLatched('conversation-b')).toBe(false)
   })
 })

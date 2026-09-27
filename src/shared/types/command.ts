@@ -213,6 +213,15 @@ export type CommandBase = {
    * there is no modal slot to grow.
    */
   fullscreenPanel?: boolean
+  /**
+   * If true, this command's local-JSX dialog is drawn for the fullscreen
+   * layout, and an inline session takes a fullscreen lease for as long as it
+   * is open: it visits the alt screen and comes back to the main screen, with
+   * its scrollback intact, when the dialog closes
+   * (src/terminal/render/fullscreen.ts). Where no lease is to be had it opens
+   * inline as before.
+   */
+  fullscreenLayout?: boolean
   isSensitive?: boolean // If true, args are redacted from the conversation history
   /** Defaults to `name`. Only override when the displayed name differs (e.g. plugin prefix stripping). */
   userFacingName?: () => string

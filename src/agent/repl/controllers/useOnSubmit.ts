@@ -47,7 +47,7 @@ import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/terminal/prompt-suggestion/speculation.js';
 import { createAbortController } from 'src/shared/abortController.js';
 import type { RemoteMessageContent } from 'src/platform/teleport/api.js';
-import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
+import { canLeaseFullscreen, isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import type { QueryGuard } from 'src/agent/QueryGuard.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
@@ -220,11 +220,11 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
       // 2. Command was triggered via keybinding (fromKeybinding option), OR
       // 3. It opens a fullscreen side panel, which by definition sits BESIDE
       //    the running turn rather than over it — queueing it until the turn
-      //    ends is the one thing a reviewer must not do. Guarded on fullscreen
-      //    so the inline arrangement (no panel surface, prompt hidden under the
-      //    dialog) keeps today's route.
+      //    ends is the one thing a reviewer must not do. An inline session gets
+      //    the panel through a fullscreen lease; only where no lease is to be
+      //    had (the inline dialog, prompt hidden under it) keeps today's route.
       const matchingCommand = commands.find(cmd => isCommandEnabled(cmd) && (cmd.name === commandName || cmd.aliases?.includes(commandName) || getCommandName(cmd) === commandName));
-      const shouldTreatAsImmediate = queryGuard.isActive && (matchingCommand?.immediate || options?.fromKeybinding || (matchingCommand?.fullscreenPanel === true && isFullscreenEnvEnabled()));
+      const shouldTreatAsImmediate = queryGuard.isActive && (matchingCommand?.immediate || options?.fromKeybinding || (matchingCommand?.fullscreenPanel === true && (isFullscreenEnvEnabled() || canLeaseFullscreen())));
       if (matchingCommand && shouldTreatAsImmediate && matchingCommand.type === 'local-jsx') {
         // Only clear input if the submitted text matches what's in the prompt.
         // When a command keybinding fires, input is "/<command>" but the actual

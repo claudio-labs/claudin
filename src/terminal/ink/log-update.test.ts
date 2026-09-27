@@ -516,6 +516,45 @@ test('a scrolled-off change does not stop visible rows from being diffed in plac
   expect(countNewlines(stdout)).toBe(5)
 })
 
+// Coming back from a temporary alt-screen visit (a fullscreen lease from an
+// inline session), Ink restores the main-screen frame it had on entry as the
+// previous frame, because DEC 1049 has put exactly that back on the terminal.
+// What the chat produced during the visit is then plain growth: every new row
+// is written, in order, and nothing is cleared.
+const GROWN_LINES = [
+  ...TALL_LINES,
+  ...Array.from({ length: 15 }, (_, i) => `ROW${String(20 + i).padStart(2, '0')}xxxxx`),
+]
+
+test('returning from a temporary alt screen appends every row that arrived meanwhile', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const snapshot = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, GROWN_LINES, TALL_VIEWPORT)
+  const diff = log.render(snapshot, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  for (let i = 20; i < 35; i++) {
+    expect(stdout.split(`ROW${i}xxxxx`).length - 1).toBe(1)
+  }
+  // Nothing already on the main screen is written a second time.
+  expect(stdout).not.toContain('ROW19xxxxx')
+})
+
+// The repaint it replaces: 0×0 frames plus a pending repaint paint only the
+// bottom viewport of the new frame, so the rows that arrived first — here
+// ROW20..ROW25 — never reach the scrollback.
+test('a repaint on the way back would have dropped the rows that arrived first', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, GROWN_LINES, TALL_VIEWPORT)
+  const empty = { ...emptyFrame(TALL_VIEWPORT, next.viewport.width, stylePool, charPool, hyperlinkPool), viewport: next.viewport }
+  log.markPendingRepaint()
+  const stdout = collectStdout(log.render(empty, next, false, true, false))
+
+  expect(stdout).not.toContain('ROW20xxxxx')
+  expect(stdout).toContain('ROW34xxxxx')
+})
+
 // A reset of a frame that FITS the viewport still repaints every row — but it
 // bottom-anchors them. Top-anchoring put the block at viewport row 0, which
 // pulled the input box off the bottom of the terminal and, when startY reached

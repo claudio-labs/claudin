@@ -85,10 +85,12 @@ function cleanupTerminalModes(skipUnmount: boolean = false): void {
         writeSync(1, EXIT_ALT_SCREEN)
       }
     } else if (skipUnmount && inst?.isAltScreenActive) {
-      // We already unmounted asynchronously in gracefulShutdown, but if we 
-      // fallback to manual alt-screen exit here just in case Ink didn't write it or is dead.
-      // Actually, AlternateScreen unmount writes EXIT_ALT_SCREEN, so if we awaited unmount,
-      // we shouldn't emit it again. So we just do nothing here.
+      // Nothing has unmounted on this path, and detachForShutdown() below
+      // stops the deferred unmount that would otherwise exit — so exit here,
+      // exactly once, or the shell comes back inside the alt screen.
+      // isAltScreenActive is false once AlternateScreen's own cleanup ran,
+      // which is what keeps this from being a second 1049l.
+      inst.exitAltScreenForShutdown()
     }
     // Catches events that arrived during the unmount tree-walk.
     // detachForShutdown() below also drains.

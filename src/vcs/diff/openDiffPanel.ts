@@ -1,4 +1,8 @@
-import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
+import {
+  acquireFullscreenLease,
+  canLeaseFullscreen,
+  isFullscreenEnvEnabled,
+} from 'src/terminal/render/fullscreen.js'
 import {
   openSidePanel,
   type SidePanelComponent,
@@ -13,12 +17,22 @@ import {
  * not a turn, so there is no history entry, no `/diff` row in the transcript,
  * no spinner, and nothing to queue behind a streaming response.
  *
- * Returns false when there is no panel surface (inline / non-fullscreen), which
- * is the caller's signal to fall back to the local-jsx dialog.
+ * An inline session gets the panel too, by taking a fullscreen lease for as
+ * long as it is open (the store hands it back on close). The lease is taken in
+ * fullscreen as well, where it changes nothing, so the panel keeps the screen
+ * even if another lease holder closes first.
+ *
+ * Returns false when there is no panel surface and no lease to be had
+ * (`CLAUDIN_TEMP_FULLSCREEN=0`, `CLAUDIN_NO_FLICKER=0`, tmux -CC), which is
+ * the caller's signal to fall back to the local-jsx dialog.
  */
 export async function openDiffPanel(): Promise<boolean> {
-  if (!isFullscreenEnvEnabled()) return false
+  const canLease = canLeaseFullscreen()
+  if (!isFullscreenEnvEnabled() && !canLease) return false
   const { DiffDialog } = await import('src/vcs/diff/ui/DiffDialog.js')
-  openSidePanel(DiffDialog as SidePanelComponent)
+  openSidePanel(
+    DiffDialog as SidePanelComponent,
+    canLease ? acquireFullscreenLease : undefined,
+  )
   return true
 }

@@ -340,15 +340,12 @@ export function FullscreenLayout(t0: Props) {
     t6 = $[5];
   }
   const pillVisible = useSyncExternalStore(subscribe, t6);
-  let t7: React.DependencyList;
-  if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = [];
-    $[6] = t7;
-  } else {
-    t7 = $[6];
-  }
-  useLayoutEffect(_temp3, t7);
-  if (isFullscreenEnvEnabled()) {
+  // Keyed on the mode, not mount-only: a fullscreen lease flips it while this
+  // component stays mounted, and the hyperlink handler must follow. Slot 6 is
+  // unused since.
+  const fullscreenNow = isFullscreenEnvEnabled();
+  useLayoutEffect(_temp3, [fullscreenNow]);
+  if (fullscreenNow) {
     const sticky = hideSticky ? null : stickyPrompt;
     const headerPrompt = sticky != null && sticky !== "clicked" && overlay == null ? sticky : null;
     const padCollapsed = sticky != null && overlay == null;
