@@ -78,7 +78,7 @@ mock.module('src/terminal/ink.js', () => ({
   Text: () => null,
 }));
 
-const { readSnapshot } = await import('src/providers/ui/SessionTokensIndicator.js');
+const { contextGauge, formatPillTokens, formatTokenParts, readSnapshot } = await import('src/providers/ui/SessionTokensIndicator.js');
 
 afterEach(() => {
   setTotals({});
@@ -155,6 +155,64 @@ describe('readSnapshot — supportsCache layout flag', () => {
   test('no active profile → supportsCache=false (cold first-run)', () => {
     setProfile(undefined);
     expect(readSnapshot().supportsCache).toBe(false);
+  });
+});
+
+describe('formatPillTokens', () => {
+  test('thousands drop the decimal', () => {
+    expect(formatPillTokens(86_300)).toBe('86k');
+    expect(formatPillTokens(74_400)).toBe('74k');
+    expect(formatPillTokens(1_000)).toBe('1k');
+  });
+
+  test('millions keep one decimal', () => {
+    expect(formatPillTokens(1_400_000)).toBe('1.4m');
+    expect(formatPillTokens(999_600)).toBe('1m');
+  });
+
+  test('below a thousand stays exact', () => {
+    expect(formatPillTokens(950)).toBe('950');
+  });
+});
+
+describe('formatTokenParts', () => {
+  const cached = { input: 0, output: 0, cacheRead: 1_400_000, cacheCreation: 74_400, supportsCache: true, cost: 1 };
+
+  test('context is unlabelled; cache groups take icons under a Nerd Font', () => {
+    expect(formatTokenParts(cached, 86_300, true)).toEqual(['86k', '\u{F163E} 74k', '\u{F163B} 1.4m']);
+  });
+
+  test('cache groups fall back to text labels without a Nerd Font', () => {
+    expect(formatTokenParts(cached, 86_300, false)).toEqual(['86k', 'wrt: 74k', 'rd: 1.4m']);
+  });
+
+  test('providers without cache keep in/out', () => {
+    const plain = { ...cached, input: 12_000, output: 3_400, supportsCache: false };
+    expect(formatTokenParts(plain, 0, true)).toEqual(['in: 12k', 'out: 3k']);
+  });
+});
+
+describe('contextGauge', () => {
+  test('fills the circle in eighths', () => {
+    expect(contextGauge(0).glyph).toBe('\u{F0766}');
+    expect(contextGauge(0.05).glyph).toBe('\u{F0766}');
+    expect(contextGauge(0.125).glyph).toBe('\u{F0A9E}');
+    expect(contextGauge(0.47).glyph).toBe('\u{F0AA1}');
+    expect(contextGauge(0.66).glyph).toBe('\u{F0AA2}');
+    expect(contextGauge(0.75).glyph).toBe('\u{F0AA3}');
+    expect(contextGauge(1).glyph).toBe('\u{F0AA5}');
+  });
+
+  test('keeps the row color below 60%, then warning, then error from 80%', () => {
+    expect(contextGauge(0.59).color).toBeNull();
+    expect(contextGauge(0.6).color).toBe('warning');
+    expect(contextGauge(0.79).color).toBe('warning');
+    expect(contextGauge(0.8).color).toBe('error');
+  });
+
+  test('clamps past the window and survives a non-finite ratio', () => {
+    expect(contextGauge(1.3)).toEqual({ glyph: '\u{F0AA5}', color: 'error' });
+    expect(contextGauge(Number.NaN)).toEqual({ glyph: '\u{F0766}', color: null });
   });
 });
 
