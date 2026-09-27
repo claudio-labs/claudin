@@ -78,4 +78,56 @@ describe('sidePanelStore', () => {
     openSidePanel(Panel)
     expect(notifications).toBe(0)
   })
+
+  // An inline session shows the panel through a fullscreen lease; every way
+  // the panel closes has to hand it back, or the session stays in the alt
+  // screen with nothing on it.
+  describe('fullscreen lease', () => {
+    const leaseCounter = () => {
+      const counter = { held: 0, acquired: 0 }
+      const acquire = () => {
+        counter.held++
+        counter.acquired++
+        return () => {
+          counter.held--
+        }
+      }
+      return { counter, acquire }
+    }
+
+    test('is taken on open and released on close', () => {
+      const { counter, acquire } = leaseCounter()
+      openSidePanel(Panel, acquire)
+      expect(counter.held).toBe(1)
+      closeSidePanel()
+      expect(counter.held).toBe(0)
+    })
+
+    test('a re-open that is a no-op takes no second lease', () => {
+      const { counter, acquire } = leaseCounter()
+      openSidePanel(Panel, acquire)
+      openSidePanel(Panel, acquire)
+      expect(counter.acquired).toBe(1)
+    })
+
+    test('replacing the panel hands the old lease back', () => {
+      const { counter, acquire } = leaseCounter()
+      openSidePanel(Panel, acquire)
+      openSidePanel(Other, acquire)
+      expect(counter.held).toBe(1)
+      closeSidePanel()
+      expect(counter.held).toBe(0)
+    })
+
+    test('the lease is released before subscribers hear the close', () => {
+      const { counter, acquire } = leaseCounter()
+      openSidePanel(Panel, acquire)
+      let heldWhenNotified = -1
+      subscribeSidePanel(() => {
+        heldWhenNotified = counter.held
+      })
+      closeSidePanel()
+      expect(heldWhenNotified).toBe(0)
+    })
+  })
 })

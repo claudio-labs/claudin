@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   computeDialogBodyRows,
   computeTakeoverLayout,
+  inlineDialogRows,
   TAKEOVER_LIST_MAX_ROWS,
 } from 'src/vcs/diff/ui/layout.js'
 
@@ -110,6 +111,44 @@ describe('computeDialogBodyRows', () => {
   test('a short panel still leaves three rows to render into', () => {
     for (const rows of [0, 1, 6, 8]) {
       expect(computeDialogBodyRows(rows, true, PANE)).toBeGreaterThanOrEqual(3)
+    }
+  })
+})
+
+describe('inlineDialogRows', () => {
+  // Inline the dialog is a Pane in the transcript: paddingTop + divider.
+  const INLINE_PANE = 2
+  // The row /explorer's inline frame ends on, which the inline /diff lines up
+  // with: title, gap, project line, gap, marginTop + its `rows - 11` body, gap,
+  // mode line (ExplorerDialog.tsx).
+  const explorerBottom = (rows: number): number =>
+    INLINE_PANE + 4 + 1 + (rows - 11) + 2
+
+  test('the Log rail ends on the same row as /explorer', () => {
+    for (const rows of [30, 46, 60]) {
+      const inner = computeDialogBodyRows(inlineDialogRows(rows), false, 2)
+      // tab bar, gap, both panes (interior + two borders), gap, footer.
+      expect(INLINE_PANE + 2 + (inner + 2) + 2).toBe(explorerBottom(rows))
+    }
+  })
+
+  test('a project line comes out of the panes, not below them', () => {
+    for (const rows of [30, 46, 60]) {
+      const inner = computeDialogBodyRows(inlineDialogRows(rows), true, 2)
+      // …plus the project line and its gap above the panes.
+      expect(INLINE_PANE + 2 + 2 + (inner + 2) + 2).toBe(explorerBottom(rows))
+    }
+  })
+
+  test('the stacked Local tab ends there too', () => {
+    for (const rows of [30, 46, 60]) {
+      // DiffDialog's inline contentHeight is `rows - 12`.
+      const { listInner, diffInner } = computeTakeoverLayout(rows - 12, 5)
+      // tab bar, gap, source line, gap, both sections (interior + one rule
+      // each), gap, footer.
+      expect(INLINE_PANE + 4 + (listInner + 1 + diffInner + 1) + 2).toBe(
+        explorerBottom(rows),
+      )
     }
   })
 })

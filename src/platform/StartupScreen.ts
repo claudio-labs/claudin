@@ -257,6 +257,24 @@ export type StartupBannerLatchInput = {
 }
 
 /**
+ * Conversations whose banner already latched. The latch itself is component
+ * state, and a remount starts it over — which a fullscreen lease does to the
+ * whole transcript subtree on the way into the alt screen and back. Back on the
+ * main screen a fresh banner would render at frame row 0, growing the frame at
+ * the TOP and pushing a duplicated stretch into the scrollback. Keyed by
+ * conversation so `/clear`, which starts a new one, still brings it back.
+ */
+const latchedBanners = new Set<string>()
+
+export function rememberStartupBannerLatch(conversationKey: string): void {
+  latchedBanners.add(conversationKey)
+}
+
+export function isStartupBannerLatched(conversationKey: string): boolean {
+  return latchedBanners.has(conversationKey)
+}
+
+/**
  * Whether `<StartupBanner/>` should stop rendering, permanently.
  *
  * The banner is frame row 0 and it never leaves the frame on its own — it only

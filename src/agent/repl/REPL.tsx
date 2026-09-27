@@ -242,7 +242,7 @@ import type { RemoteSessionConfig } from 'src/platform/remote/RemoteSessionManag
 import { REMOTE_SAFE_COMMANDS } from 'src/commands/commands.js';
 import { FullscreenLayout, useUnseenDivider, computeUnseenDivider } from 'src/terminal/FullscreenLayout.js';
 import { StartupBanner } from 'src/platform/StartupBanner.js';
-import { isFullscreenEnvEnabled, maybeGetTmuxMouseHint, isMouseTrackingEnabled } from 'src/terminal/render/fullscreen.js';
+import { isFullscreenEnvEnabled, isTemporaryFullscreen, maybeGetTmuxMouseHint, isMouseTrackingEnabled, subscribeFullscreenLease } from 'src/terminal/render/fullscreen.js';
 import { AlternateScreen } from 'src/terminal/ink/components/AlternateScreen.js';
 import { ScrollKeybindingHandler } from 'src/terminal/ScrollKeybindingHandler.js';
 import { useMessageActions, MessageActionsKeybindings, MessageActionsBar, type MessageActionsState, type MessageActionsNav } from 'src/agent/ui/messageActions.js';
@@ -817,6 +817,7 @@ export function REPL({
     isImmediate?: boolean;
     clearLocalJSX?: boolean;
     generation?: number;
+    fullscreenLease?: () => void;
   } | null) => {
     if (args == null) {
       dispatchToolJSX({ type: 'set_null' });
@@ -826,15 +827,16 @@ export function REPL({
       dispatchToolJSX({ type: 'clear_local_jsx' });
       return;
     }
-    const { clearLocalJSX: _c, generation, ...payload } = args;
+    const { clearLocalJSX: _c, generation, fullscreenLease, ...payload } = args;
     if (args.isLocalJSXCommand) {
       dispatchToolJSX({
         type: 'set_local_jsx',
         payload,
         generation: generation ?? Number.MAX_SAFE_INTEGER,
-      });
+      }, fullscreenLease);
       return;
     }
+    fullscreenLease?.();
     dispatchToolJSX({ type: 'set_regular', payload });
   }, []);
   const [toolUseConfirmQueue, setToolUseConfirmQueue] = useState<ToolUseConfirm[]>([]);
@@ -1047,8 +1049,14 @@ export function REPL({
   // Nothing here reserves the query guard, which is what makes the reviewer a
   // view rather than a command that freezes the loop.
   const sidePanelState = React.useSyncExternalStore(subscribeSidePanel, getSidePanelSnapshot);
-  // Inline has no panel surface at all — there the reviewer is still a local-jsx
-  // command rendered in the scrollable region.
+  // A view holding a fullscreen lease (the /diff panel, /explorer) turns an
+  // inline session into the fullscreen layout for as long as it is up. Every
+  // isFullscreenEnvEnabled() read in this tree sees the lease; subscribing
+  // here is what re-renders them when it flips.
+  React.useSyncExternalStore(subscribeFullscreenLease, isFullscreenEnvEnabled);
+  // An inline session gets here under the lease openDiffPanel takes; where no
+  // lease is to be had, the reviewer is still a local-jsx dialog rendered in
+  // the scrollable region and this stays false.
   const panelOpen = sidePanelState !== null && isFullscreenEnvEnabled();
   // The panel and the prompt are both on screen, so exactly one of them owns
   // the keyboard. This state is the arbiter; see sidePanelContext.tsx. It sits
@@ -2775,7 +2783,7 @@ export function REPL({
                   unmounts itself once it scrolls out of the viewport, and a
                   cleared conversation should open with it again.
                   clearConversation already bumps the id for exactly this. */}
-        <StartupBanner key={conversationId} />
+        <StartupBanner key={conversationId} latchKey={conversationId} />
         <TeammateViewHeader />
         <Messages messages={displayedMessages} tools={tools} commands={renderCommands} verbose={verbose} toolJSX={toolJSX} toolUseConfirmQueue={toolUseConfirmQueue} inProgressToolUseIDs={viewedTeammateTask ? viewedTeammateTask.inProgressToolUseIDs ?? new Set() : inProgressToolUseIDs} isMessageSelectorVisible={isMessageSelectorVisible} conversationId={conversationId} screen={screen} streamingToolUses={streamingToolUses} showAllInTranscript={showAllInTranscript} agentDefinitions={agentDefinitions} isLoading={isLoading} hasStreamingText={isLoading && !viewedAgentTask && hasVisibleStreamingText} isBriefOnly={viewedAgentTask ? false : isBriefOnly} unseenDivider={viewedAgentTask ? undefined : unseenDivider} scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined} trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined} cursor={cursor} setCursor={setCursor} cursorNavRef={cursorNavRef} />
         <AwsAuthStatusBox />
@@ -2934,10 +2942,10 @@ export function REPL({
       </Box>} />
     </MCPConnectionManager>
   </KeybindingSetup></SidePanelContext>;
-  if (isFullscreenEnvEnabled()) {
-    return <AlternateScreen mouseTracking={isMouseTrackingEnabled()}>
+  // Always the same root, entered or not: a fullscreen lease flips `active`
+  // mid-session, and swapping the root element instead would remount the whole
+  // app below it — MCPConnectionManager's reconnect included.
+  return <AlternateScreen active={isFullscreenEnvEnabled()} mouseTracking={isMouseTrackingEnabled()} preserveMainScreen={isTemporaryFullscreen()}>
       {mainReturn}
     </AlternateScreen>;
-  }
-  return mainReturn;
 }

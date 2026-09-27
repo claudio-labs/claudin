@@ -22,7 +22,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { AbortError, MalformedCommandError } from 'src/shared/errors.js';
 import { extractResultText, prepareForkedCommandContext } from 'src/agent/coordinator/forkedAgent.js';
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js';
-import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
+import { acquireFullscreenLease, canLeaseFullscreen, isFullscreenEnvEnabled, isTemporaryFullscreen } from 'src/terminal/render/fullscreen.js';
 import { toArray } from 'src/shared/generators.js';
 import { registerSkillHooks } from 'src/platform/lifecycleHooks/registerSkillHooks.js';
 import { logError } from 'src/shared/log.js';
@@ -348,11 +348,13 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
               // type:system subtype:local_command (user-visible but NOT sent
               // to the model), so skipping them doesn't affect model context.
               // Outside fullscreen keep them so scrollback shows what ran.
+              // A session visiting fullscreen under a lease is going back to
+              // its scrollback, so it keeps them too.
               // Only skip "<Name> dismissed" modal-close notifications —
               // commands that early-exit before showing a modal (/rename,
               // /proactive) use display:system for actual output that must
               // reach the transcript.
-              const skipTranscript = isFullscreenEnvEnabled() && typeof result === 'string' && result.endsWith(' dismissed');
+              const skipTranscript = isFullscreenEnvEnabled() && !isTemporaryFullscreen() && typeof result === 'string' && result.endsWith(' dismissed');
               void resolve({
                 messages: options?.display === 'system' ? skipTranscript ? metaMessages : [createCommandInputMessage(formatCommandInput(command, args)), createCommandInputMessage(`<local-command-stdout>${result}</local-command-stdout>`), ...metaMessages] : [createUserMessage({
                   content: prepareUserContent({
@@ -391,6 +393,12 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
               // case; the generation token guards the async race where
               // onDone is never called and a separate path issues a clear.
               if (doneWasCalled) return;
+              // Take the screen in the same tick the dialog is set, so its first
+              // frame is already the fullscreen one. The toolJSX store holds the
+              // release and hands it back in the dispatch that takes the dialog
+              // off — a clear, a replacement, or this very write if a clear
+              // already superseded it.
+              const fullscreenLease = command.fullscreenLayout === true && canLeaseFullscreen() ? acquireFullscreenLease() : undefined;
               setToolJSX({
                 jsx,
                 // A side-panel command sits BESIDE the chat, so the prompt has
@@ -400,7 +408,8 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
                 showSpinner: false,
                 isLocalJSXCommand: true,
                 isImmediate: command.immediate === true,
-                generation
+                generation,
+                fullscreenLease
               });
             }).catch(e => {
               // If load()/call() throws and onDone never fired, the outer

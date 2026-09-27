@@ -33,7 +33,7 @@ import { Messages } from 'src/agent/ui/Messages.js'
 import { FullscreenLayout } from 'src/terminal/FullscreenLayout.js'
 import { AlternateScreen } from 'src/terminal/ink/components/AlternateScreen.js'
 import { SandboxViolationExpandedView } from 'src/permissions/ui/SandboxViolationExpandedView.js'
-import { isFullscreenEnvEnabled, isMouseTrackingEnabled } from 'src/terminal/render/fullscreen.js'
+import { isFullscreenEnvEnabled, isMouseTrackingEnabled, isTemporaryFullscreen } from 'src/terminal/render/fullscreen.js'
 import { AnimatedTerminalTitle } from 'src/agent/repl/ui/AnimatedTerminalTitle.js'
 import { TranscriptSearchBar } from 'src/agent/repl/ui/TranscriptSearchBar.js'
 import { TranscriptModeFooter } from 'src/agent/repl/ui/TranscriptModeFooter.js'
@@ -231,7 +231,9 @@ export function REPLTranscriptView(props: REPLTranscriptViewProps): React.ReactN
   // stays entered across toggle. The 30-cap dump branch stays
   // unwrapped — it wants native terminal scrollback.
   if (transcriptScrollRef) {
-    return <AlternateScreen mouseTracking={isMouseTrackingEnabled()}>{transcriptReturn}</AlternateScreen>
+    // Under a fullscreen lease the main screen is still waiting behind this
+    // visit too, so the transcript must hand it back the same way.
+    return <AlternateScreen mouseTracking={isMouseTrackingEnabled()} preserveMainScreen={isTemporaryFullscreen()}>{transcriptReturn}</AlternateScreen>
   }
   return transcriptReturn
 }

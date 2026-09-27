@@ -164,6 +164,16 @@ export default class Ink {
     x: number;
     y: number;
   } | null = null;
+  // The main-screen frame and parked cursor as they stood when a TEMPORARY
+  // alt-screen visit began (setAltScreenActive's preserveMainScreen), so the
+  // way back can diff from them instead of repainting. null outside a visit.
+  private mainScreenSnapshot: {
+    frame: Frame;
+    displayCursor: {
+      x: number;
+      y: number;
+    } | null;
+  } | null = null;
   private reportRenderError = (label: string, error: unknown): void => {
     const message =
       error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -895,16 +905,54 @@ export default class Ink {
    * behavior in SIGCONT/resize/unmount handlers. Repaints on change so
    * the first alt-screen frame (and first main-screen frame on exit) is
    * a full redraw with no stale diff state.
+   *
+   * `preserveMainScreen` marks a visit from an inline session that will come
+   * back (a fullscreen lease): leaving it restores the main-screen frame
+   * instead of repainting — see restoreMainScreen.
    */
-  setAltScreenActive(active: boolean, mouseTracking = false): void {
+  setAltScreenActive(active: boolean, mouseTracking = false, preserveMainScreen = false): void {
     if (this.altScreenActive === active) return;
     this.altScreenActive = active;
     this.altScreenMouseTracking = active && mouseTracking;
     if (active) {
+      // A 0×0 front frame is a repaint that has not rendered yet, not a main
+      // screen: diffing from it on the way back would re-emit the whole frame.
+      this.mainScreenSnapshot = preserveMainScreen && this.frontFrame.screen.height > 0 ? {
+        frame: this.frontFrame,
+        displayCursor: this.displayCursor
+      } : null;
       this.resetFramesForAltScreen();
-    } else {
+    } else if (!this.restoreMainScreen()) {
       this.repaint();
     }
+  }
+
+  /**
+   * Leaving a temporary alt-screen visit. DEC 1049 has just put the main
+   * screen back exactly as it was — rows and parked cursor — so the next
+   * frame diffs from the frame that was on it. What the chat produced during
+   * the visit then takes log-update's `growing` path and is appended to the
+   * scrollback. repaint() would paint only the bottom viewport's worth of the
+   * new frame and drop everything above it.
+   *
+   * A viewport that changed during the visit falls back to repaint(), the
+   * same full reset any resize gets. Returns whether it restored.
+   */
+  private restoreMainScreen(): boolean {
+    const snapshot = this.mainScreenSnapshot;
+    this.mainScreenSnapshot = null;
+    if (snapshot === null) return false;
+    const {
+      viewport
+    } = snapshot.frame;
+    if (viewport.width !== this.terminalColumns || viewport.height !== this.terminalRows) return false;
+    this.frontFrame = snapshot.frame;
+    this.backFrame = emptyFrame(viewport.height, viewport.width, this.stylePool, this.charPool, this.hyperlinkPool);
+    this.displayCursor = snapshot.displayCursor;
+    // The restored screen is not the buffer the renderer last wrote into, so
+    // the next frame must not blit from it.
+    this.prevFrameContaminated = true;
+    return true;
   }
   get isAltScreenActive(): boolean {
     return this.altScreenActive;
@@ -955,6 +1003,24 @@ export default class Ink {
       this.reenterAltScreen();
     }
   };
+
+  /**
+   * Leave the alt screen at shutdown, for the path that does not unmount
+   * first (cleanupTerminalModes with skipUnmount). DEC 1049 puts the cursor
+   * back where it was on entry; after a TEMPORARY visit that is the prompt's
+   * caret inside the inline frame, so move it under the frame, where an
+   * inline session's exit output belongs, instead of over the prompt.
+   */
+  exitAltScreenForShutdown(): void {
+    if (!this.altScreenActive) return;
+    const snapshot = this.mainScreenSnapshot;
+    const parked = snapshot?.displayCursor ?? null;
+    const toFrameBottom = snapshot !== null && parked !== null ? cursorMove(snapshot.frame.cursor.x - parked.x, snapshot.frame.cursor.y - parked.y) : '';
+    writeSync(1, EXIT_ALT_SCREEN + toFrameBottom);
+    this.altScreenActive = false;
+    this.altScreenMouseTracking = false;
+    this.mainScreenSnapshot = null;
+  }
 
   /**
    * Mark this instance as unmounted so future unmount() calls early-return.
@@ -1601,6 +1667,11 @@ export default class Ink {
     this.charPool = new CharPool();
     this.hyperlinkPool = new HyperlinkPool();
     migrateScreenPools(this.frontFrame.screen, this.charPool, this.hyperlinkPool);
+    // A main screen waiting behind a temporary alt-screen visit is diffed
+    // against on the way back, so its IDs must stay comparable too.
+    if (this.mainScreenSnapshot !== null) {
+      migrateScreenPools(this.mainScreenSnapshot.frame.screen, this.charPool, this.hyperlinkPool);
+    }
     // Back frame's data is zeroed by resetScreen before reads, but its pool
     // references are used by the renderer to intern new characters. Point
     // them at the new pools so the next frame's IDs are comparable.

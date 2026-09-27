@@ -137,6 +137,13 @@ export type SetToolJSXFn = (
      * callers can omit it.
      */
     generation?: number
+    /**
+     * Release of the fullscreen lease this local-jsx dialog holds (a
+     * `fullscreenLayout` command). The store hands it back in the same
+     * dispatch that takes the dialog off screen, so the render that leaves the
+     * alt screen never draws the dialog inline.
+     */
+    fullscreenLease?: () => void
   } | null,
 ) => void
 

@@ -33,12 +33,27 @@ mock.module('src/terminal/ink/terminal.js', () => ({
 }))
 
 const {
+  acquireFullscreenLease,
+  canLeaseFullscreen,
   isFullscreenEnvEnabled,
+  isTemporaryFullscreen,
+  subscribeFullscreenLease,
+  _resetFullscreenLeasesForTesting,
   _resetTmuxControlModeProbeForTesting,
 } = await import('src/terminal/render/fullscreen.js')
+const { getIsInteractive, setIsInteractive } = await import(
+  'src/platform/bootstrap/state.js'
+)
 
-const ENV_KEYS = ['CLAUDIN_NO_FLICKER', 'TMUX', 'TERM_PROGRAM', 'TERM'] as const
+const ENV_KEYS = [
+  'CLAUDIN_NO_FLICKER',
+  'CLAUDIN_TEMP_FULLSCREEN',
+  'TMUX',
+  'TERM_PROGRAM',
+  'TERM',
+] as const
 const saved: Record<string, string | undefined> = {}
+const savedInteractive = getIsInteractive()
 
 beforeEach(() => {
   for (const k of ENV_KEYS) saved[k] = process.env[k]
@@ -46,6 +61,8 @@ beforeEach(() => {
   mockRewrite = false
   mockConfig = {}
   _resetTmuxControlModeProbeForTesting()
+  _resetFullscreenLeasesForTesting()
+  setIsInteractive(true)
 })
 
 afterEach(() => {
@@ -54,6 +71,8 @@ afterEach(() => {
     else process.env[k] = saved[k]
   }
   _resetTmuxControlModeProbeForTesting()
+  _resetFullscreenLeasesForTesting()
+  setIsInteractive(savedInteractive)
 })
 
 // Restore the real modules so the partial config.js mock (getGlobalConfig
@@ -111,5 +130,89 @@ describe('isFullscreenEnvEnabled — precedence order', () => {
   test('non-rewrite terminal defaults to off', () => {
     mockRewrite = false
     expect(isFullscreenEnvEnabled()).toBe(false)
+  })
+})
+
+describe('fullscreen lease', () => {
+  const setTmuxControlMode = (): void => {
+    process.env.TMUX = '/tmp/tmux'
+    process.env.TERM_PROGRAM = 'iTerm.app'
+    process.env.TERM = 'xterm-256color'
+  }
+
+  test('an inline session is fullscreen while a lease is held, and inline after', () => {
+    mockConfig = { flickerFreeMode: false }
+    const release = acquireFullscreenLease()
+    expect(isFullscreenEnvEnabled()).toBe(true)
+    expect(isTemporaryFullscreen()).toBe(true)
+    release()
+    expect(isFullscreenEnvEnabled()).toBe(false)
+    expect(isTemporaryFullscreen()).toBe(false)
+  })
+
+  test('a session already in fullscreen is never temporary', () => {
+    mockConfig = { flickerFreeMode: true }
+    acquireFullscreenLease()
+    expect(isFullscreenEnvEnabled()).toBe(true)
+    // Nothing to come back to: the main-screen preservation must not engage.
+    expect(isTemporaryFullscreen()).toBe(false)
+  })
+
+  test('the env opt-out beats a lease', () => {
+    process.env.CLAUDIN_NO_FLICKER = '0'
+    acquireFullscreenLease()
+    expect(canLeaseFullscreen()).toBe(false)
+    expect(isFullscreenEnvEnabled()).toBe(false)
+  })
+
+  test('tmux -CC beats a lease', () => {
+    setTmuxControlMode()
+    acquireFullscreenLease()
+    expect(canLeaseFullscreen()).toBe(false)
+    expect(isFullscreenEnvEnabled()).toBe(false)
+  })
+
+  test('CLAUDIN_TEMP_FULLSCREEN=0 turns the lease off', () => {
+    process.env.CLAUDIN_TEMP_FULLSCREEN = '0'
+    acquireFullscreenLease()
+    expect(canLeaseFullscreen()).toBe(false)
+    expect(isFullscreenEnvEnabled()).toBe(false)
+  })
+
+  test('a non-interactive session cannot lease', () => {
+    setIsInteractive(false)
+    expect(canLeaseFullscreen()).toBe(false)
+  })
+
+  test('fullscreen stays on until the last holder releases', () => {
+    const releaseDiff = acquireFullscreenLease()
+    const releaseExplorer = acquireFullscreenLease()
+    releaseDiff()
+    expect(isFullscreenEnvEnabled()).toBe(true)
+    releaseExplorer()
+    expect(isFullscreenEnvEnabled()).toBe(false)
+  })
+
+  test('a release is idempotent and cannot free another holder', () => {
+    const releaseDiff = acquireFullscreenLease()
+    const releaseExplorer = acquireFullscreenLease()
+    releaseDiff()
+    releaseDiff()
+    expect(isFullscreenEnvEnabled()).toBe(true)
+    releaseExplorer()
+    expect(isFullscreenEnvEnabled()).toBe(false)
+  })
+
+  test('subscribers hear the edges, not every holder', () => {
+    let calls = 0
+    subscribeFullscreenLease(() => {
+      calls++
+    })
+    const a = acquireFullscreenLease()
+    const b = acquireFullscreenLease()
+    b()
+    expect(calls).toBe(1)
+    a()
+    expect(calls).toBe(2)
   })
 })

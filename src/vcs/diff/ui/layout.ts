@@ -25,6 +25,32 @@ const DIALOG_CHROME_ROWS = 5
 const HEADER_LINE_ROWS = 2
 
 /**
+ * Usable columns the Log tab needs before its graph rail goes side by side
+ * with the commit's files. Below it the two show one at a time.
+ */
+export const LOG_SPLIT_MIN_COLUMNS = 96
+
+/**
+ * What an inline `Pane` spends above the Dialog column: its `paddingTop` and
+ * its divider. Inside a modal it draws neither.
+ */
+const INLINE_PANE_ROWS = 2
+
+/**
+ * Rows the INLINE dialog is worth, in `computeDialogBodyRows` terms — the
+ * counterpart of `ModalContext.rows` when there is no modal around it.
+ *
+ * Inline the dialog is a `Pane` in the transcript and keeps a 2-row bottom
+ * margin, so its footer stays on screen in inline / main-screen mode.
+ * `DIALOG_CHROME_ROWS` already counts one of those two rows, so only the other
+ * comes off here. That puts the frame's last row on `rows − 2` — the row the
+ * stacked Local tab and `/explorer` end on too.
+ */
+export function inlineDialogRows(terminalRows: number): number {
+  return terminalRows - INLINE_PANE_ROWS - 1
+}
+
+/**
  * Rows the body may take inside the panel.
  *
  * `contentHeight` cannot stand in for this on the Log tab: it is sized for the

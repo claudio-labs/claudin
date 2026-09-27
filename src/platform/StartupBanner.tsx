@@ -5,6 +5,8 @@ import { eagerParseCliFlag } from 'src/platform/cliArgs.js'
 import { subscribeLatestVersion } from 'src/platform/install/latestVersionCache.js'
 import {
   buildStartupBannerLines,
+  isStartupBannerLatched,
+  rememberStartupBannerLatch,
   resolveUpdateNotice,
   shouldLatchStartupBanner,
   STARTUP_BANNER_WIDTH,
@@ -23,6 +25,11 @@ type Props = {
    * with what the agent loop actually uses.
    */
   modelOverride?: string
+  /**
+   * The conversation this banner belongs to. Keeps the latch across a
+   * remount of the same conversation — see rememberStartupBannerLatch.
+   */
+  latchKey?: string
 }
 
 /**
@@ -40,7 +47,7 @@ type Props = {
  * already terminal-ready (ANSI escape codes inline, fixed width), so Yoga
  * sees a single leaf with constant-time measure.
  */
-export function StartupBanner({ modelOverride }: Props): React.ReactNode {
+export function StartupBanner({ modelOverride, latchKey }: Props): React.ReactNode {
   // Use the same resolution the agent loop uses (subscription default,
   // /model selection, session override, --model flag) so the banner stays
   // in sync. Without this, the banner would show the active provider
@@ -83,7 +90,9 @@ export function StartupBanner({ modelOverride }: Props): React.ReactNode {
   // setState is one-shot — guarded by `hidden`, which never goes back to
   // false — so it cannot loop with the hook's own layout effect.
   const [ref, , isVisibleNow] = useTerminalViewport()
-  const [hidden, setHidden] = useState(false)
+  const [hidden, setHidden] = useState(
+    () => latchKey !== undefined && isStartupBannerLatched(latchKey),
+  )
   useLayoutEffect(() => {
     if (hidden) return
     if (
@@ -94,6 +103,7 @@ export function StartupBanner({ modelOverride }: Props): React.ReactNode {
         visible: isVisibleNow(),
       })
     ) {
+      if (latchKey !== undefined) rememberStartupBannerLatch(latchKey)
       setHidden(true)
     }
   })
