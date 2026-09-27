@@ -72,7 +72,7 @@ import { env } from 'src/shared/env.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { isBilledAsExtraUsage } from 'src/providers/usage/extraUsage.js';
 import { getFastModeUnavailableReason, isFastModeAvailable, isFastModeCooldown, isFastModeEnabled, isFastModeSupportedByModel } from 'src/providers/fastMode.js';
-import { buildDiffStatSegment } from 'src/vcs/git/format-branch.js';
+import { buildDiffStatSegment, buildModeRuleLead } from 'src/vcs/git/format-branch.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import type { PromptInputHelpers } from 'src/agent/handlePromptSubmit.js';
 import { extractDraggedFilePaths } from 'src/terminal/input/dragDropPaths.js';
@@ -2440,13 +2440,13 @@ function PromptInput({
   // them and labels the top one, so bash mode reads from the frame and not just
   // from the `!`. undefined keeps the default dim rule and no label.
   const modeBorderColor: keyof Theme | undefined = mode === 'bash' ? 'bashBorder' : undefined;
-  const modeRuleLabel = mode === 'bash' ? '[ bash mode ]' : undefined;
-  // `──[ bash mode ]───[ +254 -30 ■■■■  HEAD +12 -3  main +1240 -300 ]──`: the
-  // mode label leads the rule, the diff-stat closes it. Widths are summed to
-  // exactly `columns` rather than sliced — the diff-stat carries ANSI, and a
+  const ruleTheme = getTheme(effortThemeName);
+  // `──[ bash mode ]──────[ main +552 -5 ]──`, or both as Powerline pills under
+  // a Nerd Font: the mode label leads the rule, the diff-stat closes it. Widths
+  // are summed to exactly `columns` rather than sliced — both carry ANSI, and a
   // rule that wrapped would advance the terminal by a row Ink did not measure.
-  const ruleLead = modeRuleLabel ? `──${modeRuleLabel}` : '';
-  const ruleLeadWidth = modeRuleLabel ? 2 + stringWidth(modeRuleLabel) : 0;
+  const modeRuleLead = mode === 'bash' ? buildModeRuleLead('bash mode', ruleTheme.bashBorder, ruleTheme) : null;
+  const ruleLeadWidth = modeRuleLead?.width ?? 0;
   // Built here rather than in a memo above because the budget needs `columns`:
   // the segment drops its own git groups to fit, and the mode label always
   // wins the space. The 4 reserves a readable run of rule between the two.
@@ -2454,7 +2454,7 @@ function PromptInput({
     session: sessionDiff,
     uncommitted: gitDiff.uncommitted ? { added: gitDiff.uncommitted.linesAdded, removed: gitDiff.uncommitted.linesRemoved } : null,
     branch: gitDiff.branch && gitDiff.branchBase ? { added: gitDiff.branch.linesAdded, removed: gitDiff.branch.linesRemoved, base: gitDiff.branchBase } : null
-  }, getTheme(effortThemeName), columns - ruleLeadWidth - 2 - 4) ?? undefined;
+  }, ruleTheme, columns - ruleLeadWidth - 2 - 4) ?? undefined;
   const ruleFill = Math.max(0, columns - ruleLeadWidth - (ruleDiffStat ? ruleDiffStat.width + 2 : 0));
   if (isExternalEditorActive) {
     return <>{historyPickerEl}<Box flexDirection="row" alignItems="center" justifyContent="center" borderColor={getBorderColor()} borderStyle="round" borderLeft={false} borderRight={false} borderBottom width="100%">
@@ -2470,8 +2470,9 @@ function PromptInput({
           <Text dimColor>Waiting for permission…</Text>
         </Box>}
       <PromptInputStashNotice hasStash={stashedPrompt !== undefined} />
-      {modeRuleLabel || ruleDiffStat ? <Text>
-          <Text color={modeBorderColor} dimColor={!modeBorderColor}>{ruleLead}{'─'.repeat(ruleFill)}</Text>
+      {modeRuleLead || ruleDiffStat ? <Text>
+          {modeRuleLead?.text}
+          <Text color={modeBorderColor} dimColor={!modeBorderColor}>{'─'.repeat(ruleFill)}</Text>
           {ruleDiffStat ? <>
               {ruleDiffStat.text}
               <Text color={modeBorderColor} dimColor={!modeBorderColor}>{'──'}</Text>
