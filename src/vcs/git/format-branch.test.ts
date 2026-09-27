@@ -3,6 +3,7 @@ import chalk from 'chalk'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import {
   buildDiffStatSegment,
+  buildModeRuleLead,
   buildWorktreePill,
   resolveBranchBg,
   resolveWorktreeBg,
@@ -136,8 +137,19 @@ describe('buildDiffStatSegment', () => {
 
     const on = withNerdFont(true, () => build(input))
     // Four cells, after the numbers rather than between them.
-    expect(on!.text).toBe('[ main +552 -5 ■■■■ ]')
-    expect(on!.width).toBe('[ main +552 -5 ■■■■ ]'.length)
+    expect(on!.text).toBe(' \uE728 main +552 -5 ■■■■ \uE0B0')
+    expect(on!.width).toBe(' \uE728 main +552 -5 ■■■■ \uE0B0'.length)
+  })
+
+  test('is a Powerline pill under a Nerd Font, iconed by scope', () => {
+    // git-compare against a base branch, git-commit against HEAD, and no icon
+    // for the session, which has no ref to name.
+    const uncommitted = withNerdFont(true, () =>
+      build({ session: { added: 0, removed: 0 }, uncommitted: { added: 12, removed: 3 } }),
+    )
+    expect(uncommitted!.text).toBe(' \uE729 HEAD +12 -3 ■■■■ \uE0B0')
+    const session = withNerdFont(true, () => build({ session: { added: 34, removed: 0 } }))
+    expect(session!.text).toBe(' +34 ■■■■ \uE0B0')
   })
 
   test('the bar describes the scope actually shown, not the session', () => {
@@ -188,7 +200,7 @@ describe('buildDiffStatSegment', () => {
       branch: { added: 552, removed: 5, base: 'main' },
     }
     const plain = '[ main +552 -5 ]'.length
-    const withBar = '[ main +552 -5 ■■■■ ]'.length
+    const withBar = ' \uE728 main +552 -5 ■■■■ \uE0B0'.length
 
     test('fits exactly at its own width', () => {
       expect(withNerdFont(false, () => build(input, plain))!.width).toBe(plain)
@@ -199,6 +211,26 @@ describe('buildDiffStatSegment', () => {
       expect(withNerdFont(false, () => build(input, plain - 1))).toBeNull()
       expect(withNerdFont(true, () => build(input, withBar - 1))).toBeNull()
     })
+  })
+})
+
+describe('buildModeRuleLead', () => {
+  test('keeps the bracketed label without a Nerd Font', () => {
+    const lead = withNerdFont(false, () => buildModeRuleLead('bash mode', theme.bashBorder, theme))
+    expect(lead.text).toBe('──[ bash mode ]')
+  })
+
+  test('is a terminal-icon Powerline pill under a Nerd Font', () => {
+    const lead = withNerdFont(true, () => buildModeRuleLead('bash mode', theme.bashBorder, theme))
+    expect(lead.text).toBe(' \uF489 bash mode \uE0B0')
+  })
+
+  test('reported width matches the rendered cell width', () => {
+    // It leads the same rule the diff-stat closes, so it feeds the same fill.
+    for (const nerdFont of [true, false]) {
+      const lead = withNerdFont(nerdFont, () => buildModeRuleLead('bash mode', theme.bashBorder, theme))
+      expect(stringWidth(lead.text)).toBe(lead.width)
+    }
   })
 })
 

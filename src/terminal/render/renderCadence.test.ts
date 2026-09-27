@@ -15,11 +15,9 @@ import * as configMod from 'src/platform/config/config.js'
 const realConfig = { ...configMod }
 const realTerminal = { ...terminalMod }
 
-// Mock at boundaries only: the config source and the two terminal probes that
-// can't be driven from env. The GPU allowlist itself stays real — it is the
-// thing under test.
+// Mock at boundaries only: the config source and the terminal probe that can't
+// be driven from env.
 let mockYankBug = false
-let mockXtversion: string | undefined
 let mockConfig: { renderFrameRate?: string } = {}
 
 mock.module('src/platform/config/config.js', () => ({
@@ -29,22 +27,18 @@ mock.module('src/platform/config/config.js', () => ({
 mock.module('src/terminal/ink/terminal.js', () => ({
   ...terminalMod,
   hasCursorUpViewportYankBug: () => mockYankBug,
-  getXtversionName: () => mockXtversion,
 }))
 
 const {
   getEffectiveFrameRate,
   isFrameRateForcedByEnv,
-  isGpuTerminal,
   resolveFrameIntervalMs,
 } = await import('src/terminal/render/renderCadence.js')
 
 const ENV_KEYS = [
   'CLAUDIN_FPS',
   'CLAUDIN_NO_FLICKER',
-  'TERM',
   'TERM_PROGRAM',
-  'TMUX',
 ] as const
 const saved: Record<string, string | undefined> = {}
 
@@ -52,7 +46,6 @@ beforeEach(() => {
   for (const key of ENV_KEYS) saved[key] = process.env[key]
   for (const key of ENV_KEYS) delete process.env[key]
   mockYankBug = false
-  mockXtversion = undefined
   mockConfig = {}
 })
 
@@ -81,46 +74,33 @@ describe('resolveFrameIntervalMs — precedence order', () => {
     expect(resolveFrameIntervalMs()).toBe(4)
   })
 
-  test('the yank bug wins over the config and a GPU terminal', () => {
+  test('the yank bug wins over the config', () => {
     mockYankBug = true
     mockConfig = { renderFrameRate: '360' }
-    process.env.TERM_PROGRAM = 'ghostty'
     expect(resolveFrameIntervalMs()).toBe(16)
   })
 
-  test('an explicit config rate wins over auto on a non-GPU terminal', () => {
-    mockConfig = { renderFrameRate: '240' }
-    process.env.TERM_PROGRAM = 'Apple_Terminal'
-    expect(resolveFrameIntervalMs()).toBe(4)
+  test.each([
+    ['60', 16],
+    ['120', 8],
+    ['240', 4],
+    ['360', 3],
+  ])('an explicit config rate of %s resolves to %ims', (rate, intervalMs) => {
+    mockConfig = { renderFrameRate: rate }
+    expect(resolveFrameIntervalMs()).toBe(intervalMs)
   })
 
-  test('an explicit config rate wins over the tmux cap', () => {
-    mockConfig = { renderFrameRate: '240' }
-    process.env.TMUX = '/tmp/tmux-1000/default,1234,0'
-    process.env.TERM_PROGRAM = 'ghostty'
-    expect(resolveFrameIntervalMs()).toBe(4)
-  })
-
-  test('auto picks 120fps on a GPU terminal', () => {
-    process.env.TERM_PROGRAM = 'ghostty'
-    expect(resolveFrameIntervalMs()).toBe(8)
-  })
-
-  test('auto caps at 60fps under tmux even on a GPU terminal', () => {
-    process.env.TMUX = '/tmp/tmux-1000/default,1234,0'
-    process.env.TERM_PROGRAM = 'ghostty'
-    expect(resolveFrameIntervalMs()).toBe(16)
-  })
-
-  test('auto falls back to 60fps off a GPU terminal', () => {
-    process.env.TERM_PROGRAM = 'Apple_Terminal'
+  // Ghostty was on the GPU list that made auto pick 120fps; auto is 60fps on
+  // every terminal now, that one included.
+  test.each(['ghostty', 'Apple_Terminal'])('auto is 60fps on %s', termProgram => {
+    process.env.TERM_PROGRAM = termProgram
     expect(resolveFrameIntervalMs()).toBe(16)
   })
 
   test("an explicit 'auto' behaves like an unset config", () => {
     mockConfig = { renderFrameRate: 'auto' }
     process.env.TERM_PROGRAM = 'ghostty'
-    expect(resolveFrameIntervalMs()).toBe(8)
+    expect(resolveFrameIntervalMs()).toBe(16)
   })
 })
 
@@ -139,8 +119,8 @@ describe('resolveFrameIntervalMs — rate mapping', () => {
     'CLAUDIN_FPS=%p is ignored and resolution falls through',
     fps => {
       process.env.CLAUDIN_FPS = fps
-      process.env.TERM_PROGRAM = 'ghostty'
-      expect(resolveFrameIntervalMs()).toBe(8)
+      mockConfig = { renderFrameRate: '240' }
+      expect(resolveFrameIntervalMs()).toBe(4)
       expect(isFrameRateForcedByEnv()).toBe(false)
     },
   )
@@ -161,62 +141,12 @@ describe('getEffectiveFrameRate', () => {
 
   test('reports what auto resolved to', () => {
     process.env.TERM_PROGRAM = 'ghostty'
-    expect(getEffectiveFrameRate()).toBe('120')
-    process.env.TERM_PROGRAM = 'Apple_Terminal'
     expect(getEffectiveFrameRate()).toBe('60')
   })
 
   test('falls back to the real rate for an off-ladder interval', () => {
     process.env.CLAUDIN_FPS = '90' // 11ms → 91fps
     expect(getEffectiveFrameRate()).toBe('91')
-  })
-})
-
-describe('isGpuTerminal', () => {
-  test.each([
-    'ghostty',
-    'kitty',
-    'WezTerm',
-    'alacritty',
-    'contour',
-    'foot',
-    'rio',
-    'WarpTerminal',
-  ])('accepts TERM_PROGRAM=%s', termProgram => {
-    process.env.TERM_PROGRAM = termProgram
-    expect(isGpuTerminal()).toBe(true)
-  })
-
-  test.each(['xterm-kitty', 'xterm-ghostty', 'alacritty', 'foot-extra'])(
-    'accepts TERM=%s when TERM_PROGRAM is absent',
-    term => {
-      process.env.TERM = term
-      expect(isGpuTerminal()).toBe(true)
-    },
-  )
-
-  test('accepts a GPU terminal announced over XTVERSION (survives SSH)', () => {
-    process.env.TERM = 'xterm-256color'
-    mockXtversion = 'Ghostty 1.0.1'
-    expect(isGpuTerminal()).toBe(true)
-  })
-
-  test.each(['Apple_Terminal', 'iTerm.app', 'vscode', 'Generic_Terminal'])(
-    'rejects TERM_PROGRAM=%s',
-    termProgram => {
-      process.env.TERM_PROGRAM = termProgram
-      process.env.TERM = 'xterm-256color'
-      expect(isGpuTerminal()).toBe(false)
-    },
-  )
-
-  test('rejects an xterm.js XTVERSION reply', () => {
-    mockXtversion = 'xterm.js 5.3.0'
-    expect(isGpuTerminal()).toBe(false)
-  })
-
-  test('rejects a bare terminal with nothing to go on', () => {
-    expect(isGpuTerminal()).toBe(false)
   })
 })
 

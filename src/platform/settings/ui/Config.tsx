@@ -783,7 +783,7 @@ export function Config({
     id: 'frameRate',
     // CLAUDIN_FPS pins the rate — say so rather than leaving a row that ignores
     // every keypress. The resolved rate rides in the label so `auto` says what
-    // it actually picked (60 off a GPU terminal, 120 on one).
+    // it actually picked (60fps).
     label: isFrameRateForcedByEnv() ? `Frame rate (env, ${getEffectiveFrameRate()}fps)` : `Frame rate (${getEffectiveFrameRate()}fps)`,
     searchText: 'frame rate fps animation smoothness gpu terminal refresh',
     value: globalConfig.renderFrameRate ?? 'auto',

@@ -7,6 +7,9 @@ import type { Theme } from 'src/terminal/theme/theme.js'
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
 const BRANCH_ICON = '\uE725' // Nerd Font devicon git-branch (pairs with PR_ICON)
 const WORKTREE_ICON = '\uE727' // Nerd Font devicon git-merge (same family as BRANCH_ICON)
+const COMPARE_ICON = '\uE728' // Nerd Font devicon git-compare — diff-stat against a base branch
+const COMMIT_ICON = '\uE729'  // Nerd Font devicon git-commit — diff-stat against HEAD
+const TERMINAL_ICON = '\uF489' // Nerd Font octicon terminal — prompt-mode label
 const PR_ICON = ''     // Nerd Font octicon git-pull-request
 const RGB_REGEX = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/
 /** How far the worktree pill's bg moves from the branch bg toward the cwd pill's. */
@@ -308,8 +311,10 @@ function buildDiffBar(
  * to read than an icon and cannot render as tofu; the session has no label
  * because there is no ref to name.
  *
- * Bracketed rather than Powerline-capped because it shares that rule with the
- * `[ bash mode ]` label and has to read as the same kind of thing.
+ * Under a Nerd Font it is a Powerline pill on the branch pill's background
+ * instead — ` <icon> main +552 -5 ■■■■ ►`, git-compare for a base branch and
+ * git-commit for HEAD — matching the pills in the footer and the mode label
+ * that shares the rule (`buildModeRuleLead`).
  *
  * Returns null when the segment would not fit `maxWidth`, so a narrow terminal
  * keeps a plain border rather than a wrapped rule, and when the chosen scope
@@ -320,17 +325,20 @@ export function buildDiffStatSegment(
   theme: Theme,
   maxWidth = Number.POSITIVE_INFINITY,
 ): DiffStatSegment | null {
-  const addedChalk = applyColor(chalk, theme.success, 'fg')
-  const removedChalk = applyColor(chalk, theme.error, 'fg')
-  const mutedChalk = applyColor(chalk, theme.inactive, 'fg')
+  // Every run of the pill, the spaces included, is painted on its background.
+  const pillBg = hasNerdFontGlyphs() ? resolveBranchBg(theme) : null
+  const base = pillBg ? applyColor(chalk, pillBg, 'bg') : chalk
+  const addedChalk = applyColor(base, theme.success, 'fg')
+  const removedChalk = applyColor(base, theme.error, 'fg')
+  const mutedChalk = applyColor(base, theme.inactive, 'fg')
 
   const branch = input.branch
-  const chosen: { count: DiffCount; ref?: string } = branch
-    ? { count: branch, ref: branch.base }
+  const chosen: { count: DiffCount; ref?: string; icon?: string } = branch
+    ? { count: branch, ref: branch.base, icon: COMPARE_ICON }
     : input.uncommitted
-      ? { count: input.uncommitted, ref: 'HEAD' }
+      ? { count: input.uncommitted, ref: 'HEAD', icon: COMMIT_ICON }
       : { count: input.session }
-  const { count, ref } = chosen
+  const { count, ref, icon } = chosen
   // No fall-through to a narrower scope: a clean tree on the base branch is
   // nothing to report, and reviving the session counter there would show
   // numbers git has already absorbed into a commit.
@@ -339,8 +347,9 @@ export function buildDiffStatSegment(
   const parts: string[] = []
   let width = 0
   if (ref) {
-    parts.push(mutedChalk(ref))
-    width += ref.length
+    const label = pillBg ? `${icon} ${ref}` : ref
+    parts.push(mutedChalk(label))
+    width += label.length
   }
   if (count.added > 0) {
     const label = `+${count.added}`
@@ -358,10 +367,33 @@ export function buildDiffStatSegment(
     width += DIFF_BAR_CELLS
   }
 
+  if (pillBg) {
+    // space + parts (single-space joins) + space + arrow cap
+    const total = width + parts.length - 1 + 3
+    if (total > maxWidth) return null
+    const pad = base(' ')
+    return { text: pad + parts.join(pad) + pad + applyColor(chalk, pillBg, 'fg')(SEP), width: total }
+  }
   // `[` + space + parts (single-space joins) + space + `]`
   const total = width + parts.length - 1 + 4
   if (total > maxWidth) return null
   return { text: `${mutedChalk('[')} ${parts.join(' ')} ${mutedChalk(']')}`, width: total }
+}
+
+/**
+ * The prompt-mode label that leads the top rule (`bash mode`). Under a Nerd
+ * Font it is a Powerline pill on the mode's colour, flush with the left edge
+ * like the provider pill in the footer; otherwise the bracketed `──[ label ]`
+ * in that colour. Pre-styled, so the rule renders it outside its own coloured
+ * Text rather than letting that colour wrap the pill.
+ */
+export function buildModeRuleLead(label: string, color: string, theme: Theme): DiffStatSegment {
+  if (!hasNerdFontGlyphs()) {
+    const text = `──[ ${label} ]`
+    return { text: applyColor(chalk, color, 'fg')(text), width: text.length }
+  }
+  // space + icon + space + label + space + arrow cap
+  return { text: buildEffortPill(`${TERMINAL_ICON} ${label}`, color, theme), width: label.length + 5 }
 }
 
 /**

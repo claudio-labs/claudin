@@ -1,5 +1,5 @@
 import { FRAME_INTERVAL_MS, setFrameIntervalMs } from 'src/terminal/ink/constants.js'
-import { getXtversionName, hasCursorUpViewportYankBug } from 'src/terminal/ink/terminal.js'
+import { hasCursorUpViewportYankBug } from 'src/terminal/ink/terminal.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 
 /**
@@ -11,8 +11,10 @@ import { getGlobalConfig } from 'src/platform/config/config.js'
  *   CLAUDIN_FPS=<n>              → that rate (10..360)
  *   cursor-up viewport yank bug  → 60fps (more repaints means more yanks)
  *   config renderFrameRate       → that rate
- *   GPU terminal, not under tmux → 120fps  (the `auto` default)
- *   otherwise                    → 60fps   (the `auto` fallback)
+ *   otherwise                    → 60fps  (`auto`)
+ *
+ * `auto` used to pick 120fps on GPU-accelerated terminals. It is 60fps on every
+ * terminal now; the faster rungs are an explicit choice.
  *
  * Note the nominal rates are not the delivered ones: Node timers store the
  * delay as whole milliseconds, so 120/240/360 land on 8/4/3ms — i.e.
@@ -21,52 +23,11 @@ import { getGlobalConfig } from 'src/platform/config/config.js'
  * reports the nominal rate, since that is what the user picked.
  */
 
-export const FRAME_RATE_OPTIONS = ['auto', '120', '240', '360'] as const
+export const FRAME_RATE_OPTIONS = ['auto', '60', '120', '240', '360'] as const
 export type FrameRateSetting = (typeof FRAME_RATE_OPTIONS)[number]
-
-// GPU-accelerated terminals: they rasterize through the GPU and pace their own
-// frames, so a sub-16ms cadence buys real smoothness. Deliberately NOT
-// isSynchronizedOutputSupported() — that list includes xterm.js (vscode) and
-// CPU-rendered VTE, and it bails under tmux for an unrelated reason.
-const GPU_TERM_PROGRAMS = new Set([
-  'ghostty',
-  'kitty',
-  'WezTerm',
-  'alacritty',
-  'contour',
-  'foot',
-  'rio',
-  'WarpTerminal',
-])
-
-// What these terminals put in TERM when TERM_PROGRAM is absent — the common
-// case over SSH and under some launchers.
-const GPU_TERM_VALUES = new Set([
-  'xterm-kitty',
-  'xterm-ghostty',
-  'alacritty',
-  'contour',
-  'foot',
-  'foot-extra',
-  'rio',
-])
-
-// XTVERSION reply prefixes (lowercased). Survives SSH, where TERM_PROGRAM is
-// not forwarded — same fallback getInlineImageProtocol() uses.
-const GPU_XTVERSION_PREFIXES = [
-  'ghostty',
-  'kitty',
-  'wezterm',
-  'alacritty',
-  'contour',
-  'foot',
-  'rio',
-  'warp',
-]
 
 const MIN_FPS = 10
 const MAX_FPS = 360
-const AUTO_GPU_INTERVAL_MS = 8
 
 // The supported rungs, pinned rather than computed: 60fps is traditionally 16ms
 // (it is really 16.67) and 360fps has to round up to 3ms, since truncating
@@ -74,7 +35,7 @@ const AUTO_GPU_INTERVAL_MS = 8
 // from this one table so the /config label can never drift from the interval.
 const RATE_LADDER: ReadonlyArray<readonly [fps: number, intervalMs: number]> = [
   [60, 16],
-  [120, AUTO_GPU_INTERVAL_MS],
+  [120, 8],
   [240, 4],
   [360, 3],
 ]
@@ -82,16 +43,6 @@ const INTERVAL_MS_BY_FPS = new Map(RATE_LADDER)
 const FPS_BY_INTERVAL_MS = new Map(
   RATE_LADDER.map(([fps, intervalMs]) => [intervalMs, fps] as const),
 )
-
-export function isGpuTerminal(): boolean {
-  const termProgram = process.env.TERM_PROGRAM
-  if (termProgram && GPU_TERM_PROGRAMS.has(termProgram)) return true
-  const term = process.env.TERM
-  if (term && GPU_TERM_VALUES.has(term)) return true
-  const xtversion = getXtversionName()?.toLowerCase()
-  if (xtversion === undefined) return false
-  return GPU_XTVERSION_PREFIXES.some(prefix => xtversion.startsWith(prefix))
-}
 
 /** Parse an fps value, or null when absent/unparseable/out of range. `'auto'`
  *  lands here too and returns null, which is what makes it fall through. */
@@ -119,9 +70,6 @@ export function resolveFrameIntervalMs(): number {
   if (hasCursorUpViewportYankBug()) return FRAME_INTERVAL_MS
   const configuredFps = parseFps(getGlobalConfig().renderFrameRate)
   if (configuredFps !== null) return intervalForFps(configuredFps)
-  // `auto`: tmux parses and proxies every byte, so the extra frames cost more
-  // there than they buy. An explicit choice above still wins.
-  if (isGpuTerminal() && !process.env.TMUX) return AUTO_GPU_INTERVAL_MS
   return FRAME_INTERVAL_MS
 }
 

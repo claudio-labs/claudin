@@ -1,4 +1,5 @@
 import type { RGBColor as RGBColorString } from 'src/terminal/ink/styles.js'
+import { truncateToWidthNoEllipsis } from 'src/shared/text/truncate.js'
 import type { Theme } from 'src/terminal/theme/theme.js'
 
 /**
@@ -10,7 +11,7 @@ export type RGBColorType = { r: number; g: number; b: number }
 
 export function getDefaultCharacters(): string[] {
   // Claudin's spinner: a dense braille orbit that reads as a solid orb turning
-  // (~0.64s per revolution at SPINNER_FRAME_MS). It never rests on a static
+  // (~0.96s per revolution at SPINNER_FRAME_MS). It never rests on a static
   // glyph — the earlier "orbit three turns then resolve on the brand C" cycle
   // spent 5 of its 12.2s parked on a motionless C, which read as a hang.
   // Braille glyphs (U+2800 block) are true narrow width everywhere, unlike the
@@ -24,7 +25,23 @@ const ORB = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
 
 /** How long one spinner frame is held. Every consumer derives its frame index
  *  as `Math.floor(time / SPINNER_FRAME_MS)`, so the cadence lives here. */
-export const SPINNER_FRAME_MS = 80
+export const SPINNER_FRAME_MS = 120
+
+// The verb's '…' is drawn as three fixed ASCII dots.
+const TRAILING_DOTS = '...'
+
+// A long task name (a todo's activeForm) used to wrap the spinner row and
+// break the layout below it, so the message is capped at half the terminal.
+const MAX_MESSAGE_WIDTH_RATIO = 0.5
+
+/** The spinner message as displayed: its '…' drawn as '...', cut to half the
+ *  terminal width. When cut, the trailing dots double as the truncation mark. */
+export function fitSpinnerMessage(message: string, columns: number): string {
+  const verb = message.endsWith('…') ? message.slice(0, -1) : message
+  const maxVerbWidth = Math.floor(columns * MAX_MESSAGE_WIDTH_RATIO) - TRAILING_DOTS.length
+  const fitted = truncateToWidthNoEllipsis(verb, maxVerbWidth)
+  return (fitted === verb ? verb : fitted.trimEnd()) + TRAILING_DOTS
+}
 
 // No frame of the orbit renders bold — the resolved brand C this used to mark
 // is gone. Kept as the single decision point for the glyph's weight (and so a
