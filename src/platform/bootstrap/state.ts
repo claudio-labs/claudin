@@ -136,6 +136,7 @@ export {
   getUsageForModel,
   hasUnknownModelCost,
   incrementBudgetContinuationCount,
+  isTurnActive,
   markPostCompaction,
   markScrollActivity,
   markTurnEnd,

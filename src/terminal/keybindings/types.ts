@@ -98,6 +98,7 @@ export type KnownKeybindingAction =
   | 'chat:externalEditor'
   | 'chat:openDiff'
   | 'chat:openExplorer'
+  | 'chat:openSessions'
   | 'chat:stash'
   | 'chat:focusPanel'
   | 'chat:imagePaste'

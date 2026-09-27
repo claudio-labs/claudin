@@ -5,7 +5,7 @@ import React from 'react';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { getOriginalCwd, switchSession } from 'src/platform/bootstrap/state.js';
 import type { Command } from 'src/commands/commands.js';
-import { LogSelector } from 'src/platform/LogSelector.js';
+import { SessionsScreen } from 'src/sessions/ui/SessionsScreen.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import { restoreCostStateForResume } from 'src/agent/cost-tracker.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
@@ -19,7 +19,6 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { asSessionId } from 'src/shared/types/ids.js';
 import type { LogOption } from 'src/shared/types/logs.js';
 import type { Message } from 'src/shared/types/message.js';
-import { agenticSessionSearch } from 'src/sessions/agenticSessionSearch.js';
 import { renameRecordingForSession } from 'src/terminal/image/asciicast.js';
 import { updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { loadConversationForResume } from 'src/sessions/conversationRecovery.js';
@@ -301,7 +300,7 @@ export function ResumeConversation({
   }
   return <Box flexDirection="column">
       {resumeErrorBanner}
-      <LogSelector logs={filteredLogs} maxHeight={rows} onCancel={onCancel} onSelect={onSelect} onLogsChanged={isResumeWithRenameEnabled ? () => loadLogs(showAllProjects) : undefined} onLoadMore={loadMoreLogs} initialSearchQuery={initialSearchQuery} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} onAgenticSearch={agenticSessionSearch} />
+      <SessionsScreen logs={filteredLogs} maxHeight={rows} onCancel={onCancel} onSelect={log => void onSelect(log)} onLogsChanged={isResumeWithRenameEnabled ? () => loadLogs(showAllProjects) : undefined} onLoadMore={loadMoreLogs} initialSearchQuery={initialSearchQuery} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} />
     </Box>;
 }
 function NoConversationsMessage() {

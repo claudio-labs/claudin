@@ -46,6 +46,7 @@ exports[`slash-command registry — characterization the registered bindings mat
   "mcp",
   "memory",
   "model",
+  "newSession",
   "outputStyle",
   "permissions",
   "plan",

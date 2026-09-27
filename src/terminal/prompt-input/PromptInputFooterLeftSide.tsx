@@ -350,9 +350,16 @@ function ModeIndicator({
   // single top-of-footer line. `showTasksTree` is kept only to drive the
   // navigate hint and the empty-state height guards below.
   const showTasksTree = hasBackgroundTasks && !hasTeammatePills && !shouldHideTasksFooter(tasks, showSpinnerTree);
-  if (parts.length === 0 && !showTasksTree && !modePart && showHint) {
-    parts.push(<Text dimColor key="shortcuts-hint">
-        ? for shortcuts
+  if (parts.length === 0 && !showTasksTree && showHint) {
+    if (!modePart) {
+      parts.push(<Text dimColor key="shortcuts-hint">
+          ? for shortcuts
+        </Text>);
+    }
+    // Beside a permission mode too: the mode hides "? for shortcuts", and
+    // the session list would otherwise have no visible way in.
+    parts.push(<Text dimColor key="sessions-hint">
+        ← for agents
       </Text>);
   }
 

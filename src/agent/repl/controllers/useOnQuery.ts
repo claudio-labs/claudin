@@ -25,6 +25,7 @@
 //     how cancel+resubmit avoids double-counting wall time. The auto-restore
 //     block deliberately sits OUTSIDE that check for the same reason.
 
+import type { UUID } from 'crypto';
 import { useCallback } from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
@@ -36,7 +37,8 @@ import { feature } from 'bun:bundle';
 import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount } from 'src/platform/bootstrap/state.js';
 import { parseTokenBudget } from 'src/agent/context/tokenBudget.js';
 import { count } from 'src/shared/data/array.js';
-import { markTurnStart, markTurnEnd, resetTurnHookDuration, resetTurnToolDuration, resetTurnClassifierDuration } from 'src/platform/bootstrap/state.js';
+import { markTurnStart, markTurnEnd, resetTurnHookDuration, resetTurnToolDuration, resetTurnClassifierDuration, getSessionId } from 'src/platform/bootstrap/state.js';
+import { logError } from 'src/shared/log.js';
 import { QueryGuard } from 'src/agent/QueryGuard.js';
 import { setMemberActive } from 'src/agent/coordinator/swarm/teamHelpers.js';
 import { getTeamName, getAgentName } from 'src/agent/coordinator/teammate.js';
@@ -62,7 +64,7 @@ import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
 import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
-import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage } from 'src/sessions/sessionStorage.js';
+import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage, saveAiGeneratedTitle } from 'src/sessions/sessionStorage.js';
 import { applyStableStubs, pruneOldToolResults, stubToolResultForDisplay, type AnyMessage } from 'src/agent/compact/stableStubState.js';
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
@@ -311,8 +313,21 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       // None of these are the user's topic; wait for real prose.
       if (text && !text.startsWith(`<${LOCAL_COMMAND_STDOUT_TAG}>`) && !text.startsWith(`<${COMMAND_MESSAGE_TAG}>`) && !text.startsWith(`<${COMMAND_NAME_TAG}>`) && !text.startsWith(`<${BASH_INPUT_TAG}>`)) {
         haikuTitleAttemptedRef.current = true;
+        // Captured now: Haiku answers in up to ~15s, and a /resume in between
+        // would otherwise land this title on the session switched to.
+        const titledSessionId = getSessionId();
         void generateSessionTitle(text, new AbortController().signal).then(title => {
-          if (title) setHaikuTitle(title); else haikuTitleAttemptedRef.current = false;
+          if (!title) {
+            haikuTitleAttemptedRef.current = false;
+            return;
+          }
+          if (getSessionId() === titledSessionId) setHaikuTitle(title);
+          // The session list reads this as the session's short name.
+          try {
+            saveAiGeneratedTitle(titledSessionId as UUID, title);
+          } catch (error) {
+            logError(error);
+          }
         }, () => {
           haikuTitleAttemptedRef.current = false;
         });

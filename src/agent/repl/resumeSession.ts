@@ -94,6 +94,10 @@ export interface ResumeSessionDeps {
   setMessages: (action: (prev: MessageType[]) => MessageType[]) => void
   setToolJSX: (args: null) => void
   setInputValue: (value: string) => void
+
+  // Stops the session being left: its turn, background agents and queued
+  // prompts would otherwise run on into the session switched to
+  stopForegroundWork: () => void
 }
 
 /**
@@ -129,10 +133,15 @@ export async function resumeSession(
     setMessages,
     setToolJSX,
     setInputValue,
+    stopForegroundWork,
   } = deps
 
   const resumeStart = performance.now()
   try {
+    // A branch continues this same conversation, so what it has running
+    // carries over; any other switch leaves it behind.
+    if (entrypoint !== 'fork') stopForegroundWork()
+
     // Deserialize messages to properly clean up the conversation
     // This filters unresolved tool uses and adds a synthetic assistant message if needed
     const messages = deserializeMessages(log.messages)

@@ -9,7 +9,7 @@ exports[`<REPL> status baseline idle status (default mount) 1`] = `
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;
 
 exports[`<REPL> status baseline idle status, narrow terminal (40 cols) 1`] = `
@@ -21,7 +21,7 @@ exports[`<REPL> status baseline idle status, narrow terminal (40 cols) 1`] = `
 ❯
 
  ◐ medium ─────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;
 
 exports[`<REPL> status baseline idle status, wide terminal (160 cols) 1`] = `
@@ -33,5 +33,5 @@ exports[`<REPL> status baseline idle status, wide terminal (160 cols) 1`] = `
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;

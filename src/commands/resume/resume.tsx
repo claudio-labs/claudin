@@ -5,20 +5,22 @@ import figures from 'figures';
 import * as React from 'react';
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js';
 import type { CommandResultDisplay, ResumeEntrypoint } from 'src/commands/commands.js';
-import { LogSelector, modalHeightForSessions } from 'src/platform/LogSelector.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
-import { useIsInsideModal, useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
-import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
+import type { LocalJSXCommandCall, LocalJSXCommandContext } from 'src/shared/types/command.js';
 import type { LogOption } from 'src/shared/types/logs.js';
-import { agenticSessionSearch } from 'src/sessions/agenticSessionSearch.js';
+import { tokenCountFromLastAPIResponse } from 'src/agent/context/tokens.js';
+import { listLiveSessions } from 'src/sessions/concurrentSessions.js';
 import { checkCrossProjectResume } from 'src/sessions/crossProjectResume.js';
+import { getInstanceSessionIds } from 'src/sessions/instanceSessions.js';
+import { readSessionPresence } from 'src/sessions/sessionPresence.js';
+import { describeRunningWork } from 'src/sessions/ui/sessionRows.js';
+import { SessionsScreen, type SessionsScreenProps } from 'src/sessions/ui/SessionsScreen.js';
 import { getWorktreePaths } from 'src/vcs/git/getWorktreePaths.js';
 import { logError } from 'src/shared/log.js';
-import { getLastSessionLog, getSessionIdFromLog, isCustomTitleEnabled, isLiteLog, loadAllProjectsMessageLogs, loadFullLog, loadSameRepoMessageLogs, searchSessionsByCustomTitle } from 'src/sessions/sessionStorage.js';
+import { getCurrentSessionTitle, getLastSessionLog, getSessionIdFromLog, isCustomTitleEnabled, isLiteLog, loadAllProjectsMessageLogs, loadFullLog, loadSameRepoMessageLogs, searchSessionsByCustomTitle } from 'src/sessions/sessionStorage.js';
 import { validateUuid } from 'src/shared/data/uuid.js';
 type ResumeResult = {
   resultType: 'sessionNotFound';
@@ -29,8 +31,6 @@ type ResumeResult = {
   count: number;
 };
 
-/** Sessions the fullscreen picker shows before the list starts scrolling. */
-const MODAL_VISIBLE_SESSIONS = 6;
 function resumeHelpMessage(result: ResumeResult): string {
   switch (result.resultType) {
     case 'sessionNotFound':
@@ -91,36 +91,30 @@ function ResumeError(t0: { message: string; args: string; onDone: () => void }) 
 }
 function ResumeCommand({
   onDone,
-  onResume
+  onResume,
+  readCurrent,
+  getRunningWork
 }: {
   onDone: (result?: string, options?: {
     display?: CommandResultDisplay;
   }) => void;
   onResume: (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint) => Promise<void>;
+  readCurrent: NonNullable<SessionsScreenProps['readCurrent']>;
+  getRunningWork: () => string | undefined;
 }): React.ReactNode {
   const [logs, setLogs] = React.useState<LogOption[]>([]);
   const [worktreePaths, setWorktreePaths] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [resuming, setResuming] = React.useState(false);
   const [showAllProjects, setShowAllProjects] = React.useState(false);
-  const insideModal = useIsInsideModal();
-  // In fullscreen the picker lives in the bottom-anchored modal pane, so size it
-  // from the rows that pane actually has. Half the terminal was a
-  // pre-ModalContext guess and left room for only four sessions on 46 rows.
-  const {
-    rows
-  } = useModalOrTerminalSize(useTerminalSize());
+  const [instanceSessionIds] = React.useState(getInstanceSessionIds);
   const loadLogs = React.useCallback(async (allProjects: boolean, paths: string[]) => {
     setLoading(true);
     try {
       const allLogs = allProjects ? await loadAllProjectsMessageLogs() : await loadSameRepoMessageLogs(paths);
-      const resumable = filterResumableSessions(allLogs, getSessionId());
-      if (resumable.length === 0) {
-        onDone('No conversations found to resume');
-        return;
-      }
-      setLogs(resumable);
+      setLogs(allLogs.filter(l => !l.isSidechain));
     } catch (_err) {
+      logError(_err);
       onDone('Failed to load conversations');
     } finally {
       setLoading(false);
@@ -175,12 +169,15 @@ function ResumeCommand({
     setResuming(true);
     void onResume(sessionId, fullLog, 'slash_command_picker');
   }
+  // Closing leaves nothing in the transcript: ← opens this list for a look
+  // as often as for a switch, and each look would otherwise log a line.
   function handleCancel() {
-    onDone('Resume cancelled', {
-      display: 'system'
+    onDone(undefined, {
+      display: 'skip'
     });
   }
-  if (loading) {
+  // The first load shows a spinner; a reload (Ctrl+A) keeps the table up.
+  if (loading && logs.length === 0) {
     return <Box>
         <Spinner />
         <Text> Loading conversations…</Text>
@@ -192,10 +189,29 @@ function ResumeCommand({
         <Text> Resuming conversation…</Text>
       </Box>;
   }
-  return <LogSelector logs={logs} maxHeight={insideModal ? Math.min(rows, modalHeightForSessions(MODAL_VISIBLE_SESSIONS)) : rows - 2} onCancel={handleCancel} onSelect={handleSelect} onLogsChanged={() => loadLogs(showAllProjects, worktreePaths)} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} onAgenticSearch={agenticSessionSearch} />;
+  return <SessionsScreen logs={logs} loading={loading} currentSessionId={getSessionId()} readCurrent={readCurrent} instanceSessionIds={instanceSessionIds} getRunningWork={getRunningWork} onSelect={log => void handleSelect(log)} onCancel={handleCancel} onLogsChanged={() => void loadLogs(showAllProjects, worktreePaths)} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} />;
 }
-export function filterResumableSessions(logs: LogOption[], currentSessionId: string): LogOption[] {
-  return logs.filter(l => !l.isSidechain && getSessionIdFromLog(l) !== currentSessionId);
+
+/** What switching away from this conversation would stop right now. */
+function runningWork(context: LocalJSXCommandContext): string | undefined {
+  const presence = readSessionPresence(context.getAppState().tasks);
+  return describeRunningWork({
+    busy: presence.turnActive,
+    runningAgents: presence.runningAgents
+  });
+}
+
+/** Why `sessionId` cannot be resumed from `/resume <arg>`, if it cannot. */
+async function resumeBlocker(sessionId: string, context: LocalJSXCommandContext): Promise<string | undefined> {
+  const holder = (await listLiveSessions()).find(s => s.sessionId === sessionId);
+  if (holder) {
+    return `That session is open in another claudin (pid ${holder.pid}, ${holder.cwd}). Quit it there to continue here.`;
+  }
+  const work = runningWork(context);
+  if (work) {
+    return `Switching stops ${work} in this session. Run /resume and pick it to confirm.`;
+  }
+  return undefined;
 }
 export const call: LocalJSXCommandCall = async (onDone, context, args) => {
   const onResume = async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint) => {
@@ -213,7 +229,13 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
 
   // No argument provided - show picker
   if (!arg) {
-    return <ResumeCommand key={Date.now()} onDone={onDone} onResume={onResume} />;
+    const contextTokens = tokenCountFromLastAPIResponse(context.messages);
+    const readCurrent = () => ({
+      ...readSessionPresence(context.getAppState().tasks),
+      title: getCurrentSessionTitle(getSessionId()),
+      contextTokens: contextTokens > 0 ? contextTokens : undefined
+    });
+    return <ResumeCommand key={Date.now()} onDone={onDone} onResume={onResume} readCurrent={readCurrent} getRunningWork={() => runningWork(context)} />;
   }
 
   // Load logs to search (includes same-repo worktrees)
@@ -223,6 +245,15 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
     const message = 'No conversations found to resume.';
     return <ResumeError message={message} args={arg} onDone={() => onDone(message)} />;
   }
+  // The picker asks before switching; a direct /resume <arg> explains instead.
+  const resumeUnlessBlocked = async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint): Promise<React.ReactNode> => {
+    const blocker = await resumeBlocker(sessionId, context);
+    if (blocker) {
+      return <ResumeError message={blocker} args={arg} onDone={() => onDone(blocker)} />;
+    }
+    void onResume(sessionId, log, entrypoint);
+    return null;
+  };
 
   // First, check if arg is a valid UUID
   const maybeSessionId = validateUuid(arg);
@@ -231,8 +262,7 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
     if (matchingLogs.length > 0) {
       const log = matchingLogs[0]!;
       const fullLog = isLiteLog(log) ? await loadFullLog(log) : log;
-      void onResume(maybeSessionId, fullLog, 'slash_command_session_id');
-      return null;
+      return resumeUnlessBlocked(maybeSessionId, fullLog, 'slash_command_session_id');
     }
 
     // Enriched logs didn't find it — try direct file lookup. This handles
@@ -240,8 +270,7 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
     // firstPrompt extraction fail, causing the session to be dropped).
     const directLog = await getLastSessionLog(maybeSessionId);
     if (directLog) {
-      void onResume(maybeSessionId, directLog, 'slash_command_session_id');
-      return null;
+      return resumeUnlessBlocked(maybeSessionId, directLog, 'slash_command_session_id');
     }
   }
 
@@ -255,8 +284,7 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
       const sessionId = getSessionIdFromLog(log);
       if (sessionId) {
         const fullLog = isLiteLog(log) ? await loadFullLog(log) : log;
-        void onResume(sessionId, fullLog, 'slash_command_title');
-        return null;
+        return resumeUnlessBlocked(sessionId, fullLog, 'slash_command_title');
       }
     }
 

@@ -1,0 +1,68 @@
+{
+  "test": [
+    "src/sessions/ui",
+    "src/sessions/indexing/sessionStats.test.ts",
+    "src/sessions/concurrentSessions.test.ts",
+    "src/sessions/instanceSessions.test.ts",
+    "src/sessions/sessionPresence.test.ts",
+    "src/agent/repl/resumeSession.test.ts",
+    "src/platform/bootstrap/state.duration.test.ts"
+  ],
+  "source": "src/sessions/ui/SessionsScreen.tsx",
+  "probes": [
+    {
+      "name": "a session another claudin holds is not resumed",
+      "source": "src/sessions/ui/SessionsScreen.tsx",
+      "find": "    if (holder) {\n      setNotice(",
+      "replace": "    if (false) {\n      setNotice("
+    },
+    {
+      "name": "switching away from running work asks first",
+      "source": "src/sessions/ui/SessionsScreen.tsx",
+      "find": "    if (work) {\n      setPending({ log: row.log, work })",
+      "replace": "    if (false) {\n      setPending({ log: row.log, work })"
+    },
+    {
+      "name": "the session being left is stopped before the switch",
+      "source": "src/agent/repl/resumeSession.ts",
+      "find": "    if (entrypoint !== 'fork') stopForegroundWork()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a tool result's summary key does not title the session",
+      "source": "src/sessions/indexing/sessionStats.ts",
+      "find": "      const parsed = SummaryLineSchema().safeParse(parseLine(line))",
+      "replace": "      const parsed = z.object({ summary: z.string() }).safeParse(parseLine(line))"
+    },
+    {
+      "name": "the context size is the main thread's, not a sub-agent's",
+      "source": "src/sessions/indexing/sessionStats.ts",
+      "find": "      if (parsed.success && !parsed.data.isSidechain) {",
+      "replace": "      if (parsed.success) {"
+    },
+    {
+      "name": "agents and the blink come from a live process only",
+      "source": "src/sessions/ui/sessionRows.ts",
+      "find": "    const presence = isCurrent ? current : holder\n",
+      "replace": "    const presence = current\n"
+    },
+    {
+      "name": "an ended session leaves the open group",
+      "source": "src/sessions/instanceSessions.ts",
+      "find": "  visited = visited.filter(id => id !== sessionId)\n}",
+      "replace": "}"
+    },
+    {
+      "name": "a turn is active only between its start and its end",
+      "source": "src/platform/bootstrap/state/cost.ts",
+      "find": "  return STATE.turnActiveSince != null\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "a blank line separates the sessions",
+      "source": "src/sessions/ui/SessionsTable.tsx",
+      "find": "export const SESSION_LINE_ROWS = 2\n",
+      "replace": "export const SESSION_LINE_ROWS = 1\n"
+    }
+  ]
+}

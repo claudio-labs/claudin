@@ -72,6 +72,15 @@ export function markTurnEnd(): void {
 }
 
 /**
+ * Whether a model turn is running now, between markTurnStart and
+ * markTurnEnd. Unlike the REPL's query guard this stays false while a
+ * slash-command dialog is merely being dispatched.
+ */
+export function isTurnActive(): boolean {
+  return STATE.turnActiveSince != null
+}
+
+/**
  * Wall-clock duration of the session's ACTIVE work — the sum of completed
  * turns plus the in-progress turn. Frozen while idle (does not count time the
  * user spends reading, thinking, or staring at the stats screen), unlike a
