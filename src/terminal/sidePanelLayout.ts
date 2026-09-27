@@ -37,6 +37,13 @@ const PANEL_BORDER = 1
 const PANEL_PADDING = 1
 
 /**
+ * Blank columns between the transcript and the seam. Without them the chat's
+ * text runs flush into the divider (or the panel's tint). They come out of
+ * the width the transcript reflows to, not out of the panel.
+ */
+export const CHAT_GAP = 1
+
+/**
  * The two regions a mouse text selection may not cross, measured at each
  * side's CONTENT rectangle. The panel's is inset past its padding — and past
  * its divider border when the theme draws one — so a highlight lines up with
@@ -56,7 +63,7 @@ export function selectionBands(
 }[] {
   const { leftCols } = splitWidths(columns)
   return [
-    { lo: 0, hi: leftCols - 1, rowHi },
+    { lo: 0, hi: leftCols - 1 - CHAT_GAP, rowHi },
     {
       lo: leftCols + (divider ? PANEL_BORDER : 0) + PANEL_PADDING,
       hi: columns - 1 - PANEL_PADDING,

@@ -16,9 +16,10 @@ const WIDTH = 200
 // The split stops above the full-width prompt; rows past this belong to no band.
 const SPLIT_LAST_ROW = 39
 // What ModalSlot publishes for a 200-column split on a tinted theme: chat
-// 0-99, and the panel's CONTENT rectangle 101-198 (one column of padding inset
-// on each side, no divider — the tint is the separator). A theme with no
-// `sidePanelBackground` draws a rule instead and shifts the left edge by one.
+// 0-98 (its column 99 is the gap before the seam), and the panel's CONTENT
+// rectangle 101-198 (one column of padding inset on each side, no divider — the
+// tint is the separator). A theme with no `sidePanelBackground` draws a rule
+// instead and shifts the left edge by one.
 const BANDS = selectionBands(WIDTH, SPLIT_LAST_ROW, false)
 
 // Module singleton — leaving bands set would follow the process into every
@@ -40,7 +41,7 @@ describe('bandForColumn', () => {
   test('the panel band is the dialog content box, not the whole pane', () => {
     // Overhanging the box on both sides is what this is here to prevent.
     expect(BANDS).toEqual([
-      { lo: 0, hi: 99, rowHi: SPLIT_LAST_ROW },
+      { lo: 0, hi: 98, rowHi: SPLIT_LAST_ROW },
       { lo: 101, hi: 198, rowHi: SPLIT_LAST_ROW },
     ])
   })
@@ -55,11 +56,12 @@ describe('bandForColumn', () => {
 
   test('resolves the band a column falls in', () => {
     setSelectionColumnBands(BANDS)
-    expect(bandForColumn(0, 5)?.hi).toBe(99)
-    expect(bandForColumn(99, 5)?.hi).toBe(99)
+    expect(bandForColumn(0, 5)?.hi).toBe(98)
+    expect(bandForColumn(98, 5)?.hi).toBe(98)
     expect(bandForColumn(101, 5)?.lo).toBe(101)
-    // The padding around the dialog belongs to no band, so a press there is
-    // left unconstrained rather than snapped to a side.
+    // The gap before the seam and the padding around the dialog belong to no
+    // band, so a press there is left unconstrained rather than snapped to a side.
+    expect(bandForColumn(99, 5)).toBeNull()
     expect(bandForColumn(100, 5)).toBeNull()
     expect(bandForColumn(199, 5)).toBeNull()
   })
@@ -119,7 +121,7 @@ describe('rowColBounds', () => {
     const s = selection(10)
     expect(
       rowColBounds(s, { col: 10, row: 5 }, { col: 40, row: 8 }, 6, WIDTH),
-    ).toEqual({ colStart: 0, colEnd: 99 })
+    ).toEqual({ colStart: 0, colEnd: 98 })
   })
 
   test('dragging back out of the band still starts at the band edge', () => {

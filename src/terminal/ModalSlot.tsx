@@ -5,7 +5,7 @@ import { setSelectionColumnBands } from 'src/terminal/ink/selectionBands.js'
 import { Box, type DOMElement, measureElement, Text, useTheme } from 'src/terminal/ink.js'
 import type { Color } from 'src/terminal/ink/styles.js'
 import { getTheme } from 'src/terminal/theme/theme.js'
-import { selectionBands, splitWidths } from 'src/terminal/sidePanelLayout.js'
+import { CHAT_GAP, selectionBands, splitWidths } from 'src/terminal/sidePanelLayout.js'
 
 /** Rows of transcript context kept visible above the anchored pane's ▔ divider. */
 export const MODAL_TRANSCRIPT_PEEK = 2
@@ -183,10 +183,11 @@ export function ModalSlot({
           width="100%"
           overflow="hidden"
         >
-          <TerminalSizeContext value={{ columns: leftCols, rows: splitRows }}>
+          <TerminalSizeContext value={{ columns: leftCols - CHAT_GAP, rows: splitRows }}>
             <Box
               flexDirection="column"
               width={leftCols}
+              paddingRight={CHAT_GAP}
               flexShrink={0}
               overflow="hidden"
             >
