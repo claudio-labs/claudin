@@ -566,3 +566,18 @@ No other test imports either file.
 - **Room for reftable** (F3). The ref store sits behind one interface, so that
   a later fallback that runs `git` can take over when
   `extensions.refStorage = reftable`.
+
+## Outcome
+
+**Residue, reviewed.** Both files were rewritten at their old paths, so the
+baseline did not flag them, and they were reviewed by hand. Every line left is
+contract:
+- **`src/vcs/git/gitConfigParser.ts`, 3 lines.** The signature of
+  `parseGitConfigValue`, which `gitFilesystem.ts` and the suite call.
+- **`src/vcs/git/gitFilesystem.ts`, 6 lines.** The signatures of
+  `getHeadForDir`, `getRemoteUrlForDir` and `getWorktreeCountFromFs`, each
+  with the first line of its body, which resolves the git directory.
+
+The new modules under `src/vcs/git/gitFilesystem/` and
+`src/vcs/git/gitConfigParser/`, and every test, measure zero. The residue goes
+when the contract is redesigned, after every consumer has been rewritten.
