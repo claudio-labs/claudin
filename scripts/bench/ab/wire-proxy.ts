@@ -255,7 +255,7 @@ function upstreamHeaders(from: IncomingHttpHeaders, length: number): IncomingHtt
 }
 
 /** A request the model answers: /v1/messages, not its count_tokens sibling. */
-function isMessagesPath(path: string): boolean {
+export function isMessagesPath(path: string): boolean {
   return path.startsWith('/v1/messages') && !path.includes('count_tokens')
 }
 
@@ -443,7 +443,7 @@ export function readProxyThinking(logDir: string, labels: string[]): Map<string,
   return out
 }
 
-function readBody(logDir: string, label: string, reqFile: string): Json {
+export function readBody(logDir: string, label: string, reqFile: string): Json {
   return JSON.parse(gunzipSync(readFileSync(join(logDir, label, reqFile))).toString('utf8')) as Json
 }
 
