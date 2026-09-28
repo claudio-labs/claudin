@@ -136,6 +136,10 @@ gate is what verifies the isolation: a copy, renamed or not, shows up there.
 - **Keep the sandbox free of fingerprints.** The implementer ran the census and reshaped contract declarations until it read zero. Harmless this time, but the gate has to stay independent.
 - **Characterization and the break-probe run must not overlap.** A probe run mutates a source that other suites import. Run the probes one spec at a time, with nothing else testing.
 
+**Pilot notes** (`skills/ui/SkillsMenu`, 2026-09-28):
+- **Test harnesses leak too.** The characterization suite first copied its Ink-mounting harness from an inherited test, and 37 of its lines matched openclaude. `src/terminal/__testutils__/fakeTerminal.ts` is this project's harness: a TTY-looking stdin and a stdout that records frames. Use it, and let the inherited tests that still carry the old harness move over when they are rewritten.
+- **Run the gate on the new tests as well as the new code.** A new test file is held to zero like any other new file.
+
 ### Porting this project's own code
 
 Only a whole unit (a file, or a function) moves across verbatim, and only when

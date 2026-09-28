@@ -1,0 +1,178 @@
+{
+  "test": "src/skills/bundled/inheritedSkills.characterization.test.ts",
+  "source": "src/skills/bundled/loop.ts",
+  "probes": [
+    {
+      "name": "update-config: hidden from the model",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "    allowedTools: ['Read'],\n    userInvocable: true,\n",
+      "replace": "    allowedTools: ['Read'],\n    userInvocable: true,\n    disableModelInvocation: true,\n"
+    },
+    {
+      "name": "update-config: the [hooks-only] prefix is not recognized",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "      if (args.startsWith('[hooks-only]')) {\n",
+      "replace": "      if (args.startsWith('[hooks]')) {\n"
+    },
+    {
+      "name": "update-config: the [hooks-only] summary is dropped",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "          prompt += `\\n\\n## Task\\n\\n${req}`\n",
+      "replace": "          prompt += ''\n"
+    },
+    {
+      "name": "update-config: a blank [hooks-only] summary still adds a task",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "        const req = args.slice('[hooks-only]'.length).trim()\n",
+      "replace": "        const req = args.slice('[hooks-only]'.length)\n"
+    },
+    {
+      "name": "update-config: the schema describes the output side of the settings",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "  const jsonSchema = toJSONSchema(SettingsSchema(), { io: 'input' })\n",
+      "replace": "  const jsonSchema = toJSONSchema(SettingsSchema())\n"
+    },
+    {
+      "name": "update-config: the request is not appended",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "        prompt += `\\n\\n## User Request\\n\\n${args}`\n",
+      "replace": "        prompt += '\\n'\n"
+    },
+    {
+      "name": "update-config: settings precedence reversed",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "Settings load in order: user → project → local (later overrides earlier).",
+      "replace": "Settings load in order: local → project → user (later overrides earlier)."
+    },
+    {
+      "name": "update-config: the jq check of the written hook is dropped",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "\\`jq -e '.hooks.<event>[]",
+      "replace": "\\`jq '.hooks.<event>[]"
+    },
+    {
+      "name": "batch: argument hint changed",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "    argumentHint: '<instruction>',\n",
+      "replace": "    argumentHint: '[instruction]',\n"
+    },
+    {
+      "name": "batch: the instruction is not trimmed",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "      const instruction = args.trim()\n",
+      "replace": "      const instruction = args\n"
+    },
+    {
+      "name": "batch: runs outside a git repository",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "      if (!isGit) {\n",
+      "replace": "      if (isGit === null) {\n"
+    },
+    {
+      "name": "batch: workers share the working tree",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "isolation: \"worktree\"",
+      "replace": "isolation: \"none\""
+    },
+    {
+      "name": "batch: unit ceiling changed",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "const MAX_AGENTS = 30\n",
+      "replace": "const MAX_AGENTS = 20\n"
+    },
+    {
+      "name": "batch: workers are not told the PR line the tracker parses",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "End with a single line: \\`PR: <url>\\`",
+      "replace": "End with a single line: \\`Result: <url>\\`"
+    },
+    {
+      "name": "debug: Grep and Glob no longer pre-approved",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "    allowedTools: ['Read', 'Grep', 'Glob'],\n",
+      "replace": "    allowedTools: ['Read'],\n"
+    },
+    {
+      "name": "debug: logging is not switched on",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "      const wasAlreadyLogging = enableDebugLogging()\n",
+      "replace": "      const wasAlreadyLogging = true\n"
+    },
+    {
+      "name": "debug: announces the switch even when logging was already on",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "      const justEnabledSection = wasAlreadyLogging\n",
+      "replace": "      const justEnabledSection = false\n"
+    },
+    {
+      "name": "debug: reads far more than the tail of a large log",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "const TAIL_READ_BYTES = 64 * 1024\n",
+      "replace": "const TAIL_READ_BYTES = 1024 * 1024\n"
+    },
+    {
+      "name": "debug: a missing log is reported as a read failure",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "        logInfo = isENOENT(e)\n",
+      "replace": "        logInfo = false\n"
+    },
+    {
+      "name": "debug: the local settings path is the project one",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "* local - ${getSettingsFilePathForSource('localSettings')}\n",
+      "replace": "* local - ${getSettingsFilePathForSource('projectSettings')}\n"
+    },
+    {
+      "name": "loop: ignores CLAUDIN_DISABLE_CRON",
+      "find": "    isEnabled: isKairosCronEnabled,\n",
+      "replace": "    isEnabled: () => true,\n"
+    },
+    {
+      "name": "loop: hour spellings other than h are rejected",
+      "find": "  if (['h', 'hr', 'hrs', 'hour', 'hours'].includes(unit)) return 'h'\n",
+      "replace": "  if (['h'].includes(unit)) return 'h'\n"
+    },
+    {
+      "name": "loop: a zero interval is accepted",
+      "find": "  if (!Number.isFinite(value) || value < 1) return null\n",
+      "replace": "  if (!Number.isFinite(value) || value < 0) return null\n"
+    },
+    {
+      "name": "loop: a leading interval is ignored",
+      "find": "  const leadingInterval = parseIntervalToken(firstToken ?? '')\n",
+      "replace": "  const leadingInterval = parseIntervalToken('')\n"
+    },
+    {
+      "name": "loop: the every clause stays in the prompt",
+      "find": "    prompt: match[1]!.trim(),\n",
+      "replace": "    prompt: input.trim(),\n"
+    },
+    {
+      "name": "loop: a self-paced loop reschedules its bare prompt, not /loop",
+      "find": "    ? `/loop ${parsed.prompt}`\n",
+      "replace": "    ? parsed.prompt\n"
+    },
+    {
+      "name": "loop: a self-paced maintenance loop schedules the fixed sentinel",
+      "find": "    : AUTONOMOUS_LOOP_DYNAMIC_SENTINEL\n",
+      "replace": "    : AUTONOMOUS_LOOP_SENTINEL\n"
+    },
+    {
+      "name": "loop: a fixed maintenance loop schedules the self-paced sentinel",
+      "find": "${AUTONOMOUS_LOOP_SENTINEL}\n--- END SCHEDULED PROMPT ---",
+      "replace": "${AUTONOMOUS_LOOP_DYNAMIC_SENTINEL}\n--- END SCHEDULED PROMPT ---"
+    },
+    {
+      "name": "index: /loop is not registered",
+      "source": "src/skills/bundled/index.ts",
+      "find": "  registerLoopSkill()\n",
+      "replace": "  void registerLoopSkill\n"
+    },
+    {
+      "name": "index: registration order changed",
+      "source": "src/skills/bundled/index.ts",
+      "find": "  registerUpdateConfigSkill()\n  registerDebugSkill()\n",
+      "replace": "  registerDebugSkill()\n  registerUpdateConfigSkill()\n"
+    }
+  ]
+}

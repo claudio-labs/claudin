@@ -1,0 +1,131 @@
+{
+  "test": "src/skills/ui/SkillsMenu.characterization.test.tsx",
+  "source": "src/skills/ui/SkillsMenu.tsx",
+  "probes": [
+    {
+      "name": "filter: local and JSX commands count as skills",
+      "find": "return cmd.type === \"prompt\" && (cmd.loadedFrom === \"skills\"",
+      "replace": "return (cmd.loadedFrom === \"skills\""
+    },
+    {
+      "name": "filter: hidden skills are left out",
+      "find": "return cmd.type === \"prompt\" && (",
+      "replace": "return cmd.type === \"prompt\" && !cmd.isHidden && ("
+    },
+    {
+      "name": "filter: legacy commands are left out",
+      "find": "cmd.loadedFrom === \"commands_DEPRECATED\" ||",
+      "replace": "false ||"
+    },
+    {
+      "name": "empty state: wrong subtitle",
+      "find": "subtitle=\"No skills found\"",
+      "replace": "subtitle=\"0 skills\""
+    },
+    {
+      "name": "header: the count is never singular",
+      "find": "t5 = plural(skills.length, \"skill\");",
+      "replace": "t5 = \"skills\";"
+    },
+    {
+      "name": "footer: the dialog's Enter/Esc guide shows under the list",
+      "find": "hideInputGuide={true}>{t12}{t13}</Dialog>",
+      "replace": "hideInputGuide={false}>{t12}{t13}</Dialog>"
+    },
+    {
+      "name": "groups: user skills come before project skills",
+      "find": "{t7}{t8}{t9}{t10}{t11}",
+      "replace": "{t8}{t7}{t9}{t10}{t11}"
+    },
+    {
+      "name": "groups: a source with no skills still gets a heading",
+      "find": "if (groupSkills.length === 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "groups: local-settings skills shown instead of managed ones",
+      "find": "t9 = renderSkillGroup(\"policySettings\");",
+      "replace": "t9 = renderSkillGroup(\"localSettings\");"
+    },
+    {
+      "name": "groups: a repeated name is listed once",
+      "find": "groups[source].push(skill);",
+      "replace": "if (!groups[source].some(other => other.name === skill.name)) groups[source].push(skill);"
+    },
+    {
+      "name": "subtitle: the raw path instead of its display form",
+      "find": "const skillsPath = getDisplayPath(getSkillsPath(source, 'skills'));",
+      "replace": "const skillsPath = getSkillsPath(source, 'skills');"
+    },
+    {
+      "name": "subtitle: the commands directory only when every skill is a legacy command",
+      "find": "skills.some(s => s.loadedFrom === 'commands_DEPRECATED')",
+      "replace": "skills.every(s => s.loadedFrom === 'commands_DEPRECATED')"
+    },
+    {
+      "name": "subtitle: the plugin group names prefixes like the MCP group",
+      "find": "if (source === 'mcp') {\n    const servers",
+      "replace": "if (source === 'mcp' || source === 'plugin') {\n    const servers"
+    },
+    {
+      "name": "subtitle: an MCP server is named once per skill",
+      "find": "[...new Set(skills.map(s => {",
+      "replace": "[...Array.from(skills.map(s => {"
+    },
+    {
+      "name": "subtitle: a leading colon names an empty server",
+      "find": "return idx > 0 ? s.name.slice(0, idx) : null;",
+      "replace": "return idx >= 0 ? s.name.slice(0, idx) : null;"
+    },
+    {
+      "name": "row: the description instead of its token estimate",
+      "find": " · {tokenDisplay} description tokens</Text>",
+      "replace": " · {skill_0.description}</Text>"
+    },
+    {
+      "name": "row: the leaf is the second segment, not the last",
+      "find": "skill.name.split(':').pop()",
+      "replace": "skill.name.split(':')[1]"
+    },
+    {
+      "name": "row: plugin info named on a skill from any source",
+      "find": "skill_0.source === \"plugin\" ? skill_0.pluginInfo?.pluginManifest.name : undefined",
+      "replace": "skill_0.pluginInfo?.pluginManifest.name"
+    },
+    {
+      "name": "row: the estimate is not compacted",
+      "find": "`~${formatTokens(estimatedTokens)}`",
+      "replace": "`~${estimatedTokens}`"
+    },
+    {
+      "name": "row: the estimate leaves out when-to-use",
+      "find": "estimateSkillFrontmatterTokens(skill_0)",
+      "replace": "estimateSkillFrontmatterTokens({ ...skill_0, whenToUse: undefined })"
+    },
+    {
+      "name": "row: labelled by the user-facing name",
+      "find": "<Text>{getSkillListLabel(skill_0)}</Text>",
+      "replace": "<Text>{getCommandName(skill_0)}</Text>"
+    },
+    {
+      "name": "order: code-unit comparison instead of localeCompare",
+      "find": "return a.name.localeCompare(b.name);",
+      "replace": "return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;"
+    },
+    {
+      "name": "close: reported as a user message",
+      "find": "display: \"system\"",
+      "replace": "display: \"user\""
+    },
+    {
+      "name": "close: Esc and n do nothing on the list",
+      "find": "subtitle={t6} onCancel={handleCancel}",
+      "replace": "subtitle={t6} onCancel={() => {}}"
+    },
+    {
+      "name": "close: Esc does nothing on the empty dialog",
+      "find": "subtitle=\"No skills found\" onCancel={handleCancel}",
+      "replace": "subtitle=\"No skills found\" onCancel={() => {}}"
+    }
+  ]
+}
