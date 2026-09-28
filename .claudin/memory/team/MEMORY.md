@@ -5,24 +5,24 @@
 
 ## Decisions
 - [Clean-base rewrite: inherited code rewritten from spec (09-27)](decisions/clean-base-rewrite.md) — branch rewrite/clean-base; `provenance:ci`
-- [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
-- [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined; feature-flags.json gone; 6 `CLAUDIN_*` killswitches
+- [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
+- [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined; 6 `CLAUDIN_*` killswitches
 - [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `=0` killswitches
-- [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — cat/head/tail/wc/ls/grep with a `/`; classifier 20→11; `CLAUDIN_READONLY_GLOBS=0`
-- [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT=refuse|off`, `CLAUDIN_EAGER_DEV_TOOLS=1`
-- [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets + token; since 09-26 agents ask each other (`await_reply`)
+- [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — cat/head/tail/wc/ls/grep with a `/`; `CLAUDIN_READONLY_GLOBS=0`
+- [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT`, `CLAUDIN_EAGER_DEV_TOOLS`
+- [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets + token; `await_reply` since 09-26
 - [apply_patch is `Patch` on the wire (#244)](decisions/patch-tool-rename.md) — alias + legacy-name map; a census must count both names
 - [Patch takes any earlier read (#242)](decisions/apply-patch-any-read.md) — only never-read is refused, the hunk match is the check; Edit keeps the gate
 - [Batch Read on by default, hooks per file (#246)](decisions/batch-read-default-on.md) — file_paths + symbol lists; `CLAUDIN_READ_MULTI=0` kills it
 - [Opus 5.5 defaults to medium effort, like Claude Code (#242)](decisions/opus-5-5-default-effort-medium.md) — the only lever that closed the cost gap; pins win
 - [Team memory: git IS the sync (2026-09-21)](decisions/team-memory-git-is-the-sync.md) — HTTP sync + LLM recall deleted; `paths:` loads on demand
-- [`safeguards` classifier — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — CC doesn't send it on the real endpoint; it would ship rules and identity
+- [`safeguards` classifier — REJECTED 2026-09-22](decisions/safeguards-classifier-rejected.md) — it would ship rules and identity
 - [Tool-prompt tone rewrite — DROPPED 2026-09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls
-- [Seven catch-all dirs retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts; `src/shared/` upward imports ≤131
+- [Seven catch-all dirs retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts
 - [memory_delta deleted 2026-08-07](decisions/memory-delta-removed-double-send.md) — a second full copy, not a delta (~57 KB/session)
-- Repo map / code index — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
+- Repo map / code index — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md)
 - [LSPTool back since 2026-06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only 9 ops, cache-safe; built-in servers removed
-- [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=0` off; A/B: calls −29%, cost −9%, wall +30%
+- [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=0`; calls −29%, cost −9%
 - [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks, a named agent stays fresh; auto-background opt-in
 - [Git tool (D2), shipped 2026-08-04](decisions/git-tool-design.md) — cost −11.5%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — projects[].activeEffortForProject; `/effort inherit` clears
@@ -38,12 +38,11 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
 
 ## Bugs
-- [Skill args reach the shell pass](bugs/skill-arguments-reach-shell-pass.md) — !`cmd` in args runs with the skill's allowed-tools; not fixed
-- [/tmp/claude-<uid> owner never checked](bugs/tmpdir-ownership-unchecked.md) — a pre-created parent lets another user swap skill files; not fixed
+- Found by the rewrite, not fixed: [skill args→shell](bugs/skill-arguments-reach-shell-pass.md) · [/tmp owner](bugs/tmpdir-ownership-unchecked.md) · [memory links](bugs/memory-carveout-follows-symlinks.md) · [.claudin walk](bugs/instruction-loader-walk-to-root-and-links.md) · [long-cwd dir](bugs/long-cwd-project-dir-depends-on-runtime.md) · [SGR/OSC 8](bugs/code-views-honour-sgr-and-osc8.md)
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — the Write branch of extractReadFilesFromMessages skips is_error
 - [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — the query loop read the parent's app state
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set has `'agent:builtin'`, they run as `agent:builtin:<Type>`; not fixed
-- [Agent schema dropped run_in_background and name — FIXED 09-26](bugs/agent-schema-drops-run-in-background.md) — import-time schema freeze + swarm filter; now trimmed per request
+- [Agent schema dropped run_in_background and name — FIXED 09-26](bugs/agent-schema-drops-run-in-background.md) — import-time schema freeze
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — phantom `noop`; `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source before committing
 - [Two latent bugs pinned, not fixed (2026-09-20)](bugs/latent-bugs-pinned-not-fixed.md) — autobackground misses `sleep N`; deleted rules resurrect
@@ -95,8 +94,8 @@
 - [CLAUDIN_SYNC_PLUGIN_INSTALL hung headless -p — FIXED #57](headless-sync-plugin-install-broken-import.md) — real TS2307 vs the ~107 expected
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
 - [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
-- Weekly token censuses: [09-04..08](weekly-token-census-2026-09-08.md) · [09-14..20](weekly-token-census-2026-09-20.md) — reads 45%→68%; no compaction on 1M = $355-580/wk
-- [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — outline 100% success; its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
+- Weekly token censuses: [09-04..08](weekly-token-census-2026-09-08.md) · [09-14..20](weekly-token-census-2026-09-20.md) — reads 45%→68%
+- [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - [Mask desyncs blanked files from the symbol table — FIXED 08-25](outline-mask-desync-zero-symbols.md) — broke Read(symbol=), Grep symbols, Rename
 - ["Read it first" gate census 2026-09-04 — FIXED in #157](read-gate-false-refusals-census-2026-09.md) — Edit mid-line, injected MEMORY.md, /resume
@@ -104,14 +103,14 @@
 
 ## Roadmap & major features
 - [Dead-code + codename cleanup — #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines, analytics gone; the gates followed 09-25
-- Dead-code rounds (09-18/19): [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) knip in CI · [r4](dead-code-round-4-2026-09-18.md) throw-probe · [r5 #214](dead-code-round-5-2026-09-19.md) JSX-as-regex trap
+- Dead-code rounds (09-18/19): [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) · [r4](dead-code-round-4-2026-09-18.md) · [r5 #214](dead-code-round-5-2026-09-19.md)
 - Dead-code seeds (SPENT): [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash parser](bash-parser-unreachable-behind-tree-sitter-flag.md)
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20; md5 split gate, back-edge trap
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy (#156)](context-relief-unified-policy-ab.md) — cost −25%; on 1M the retain floor sits ABOVE its band
 - [Clip-pin A/B 2026-07-25](clip-pin-cache-ab-2026-07-25.md) — STALE number, don't cite; kept for its three bench traps
-- [Product roadmap 2026-07](roadmap-2026-07.md) — R1 cost routing → R2 sandbox → R3 bg agent ✅ → R4 replay eval → R5 MCP Apps · [token-efficiency](token-efficiency-roadmap.md)
+- [Product roadmap 2026-07](roadmap-2026-07.md) — R1 routing → R2 sandbox → R3 bg agent ✅ → R4 replay → R5 MCP Apps · [token-efficiency](token-efficiency-roadmap.md)
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3 Read re-read dedup (~9.5%) and D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
@@ -123,11 +122,11 @@
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas incl. agent frontmatter `model`
 - [Fork vs fresh A/B 2026-09-09](fork-vs-fresh-ab-2026-09-09.md) — fresh Code agent −44% at equal answers; 3 parallel forks pass
 - [Delegation A/B 09-23](delegation-steer-ab-2026-09-23.md) — lean Agent text held every gate (N=5)
-- Typecheck tool: [baseline design](typecheck-tool-baseline-design.md) · [phantom "new" errors, fixed 08-07](typecheck-baseline-message-fingerprint-fragile.md) · [A/B: what to cite](typecheck-ab-bench-fixture-flaw.md)
+- Typecheck tool: [baseline design](typecheck-tool-baseline-design.md) · [phantom "new" errors](typecheck-baseline-message-fingerprint-fragile.md) · [A/B: what to cite](typecheck-ab-bench-fixture-flaw.md)
 - [React Compiler's t0 param → ~1400 TS7006](react-compiler-props-param-typing.md) — count sites (403), not errors
 - [The 107 TS2307 are the fork's shape](missing-subsystems-retired-by-all-any-declarations.md) — all-`any` .d.ts on purpose
 - [RunTests language coverage](runtests-tool-language-coverage.md) — 23 runners; JUnit/JSON vs heuristic tier
-- Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable, sync scanSymbols blocks
+- Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 supersedes the cost gap
 - [Session cache A/B vs Claude Code (09-23/24)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; @medium +14%; run arms simultaneously
@@ -137,7 +136,7 @@
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — with `directory`: −7.7% cost, −25% output
 - [Dev tools deferred + Bash advice A/B (09-24)](dev-tools-deferred-advice-ab-2026-09-24.md) — no regression, prefix −3.3k; deferred RunTests unused
 - [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties Claude Code ($1.04, one run); catread +6%
-- [Fewer requests per session — 4 rounds (09-25)](request-count-levers-2026-09-24.md) — round 4: `then` and path-keeping cap PROMOTED; Grep bodies never engaged, parked
+- [Fewer requests per session — 4 rounds (09-25)](request-count-levers-2026-09-24.md) — `then` and path-keeping cap PROMOTED
 - [Cut results cost ~0.3% of requests (09-25)](cut-results-request-cost-2026-09-25.md) — summarizer none; cap on `sed -n`/`head -N` reads in sub-agents is the leak
 - [Single deferred cache marker → full-history rewrites — FIXED 09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of cache writes
 
@@ -178,7 +177,7 @@
 - [Bash filter samples live in ONE dir](bash-filter-sample-corpus-unified.md) — __fixtures__/samples/; 87 of 142 unmapped
 - [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen only (CLAUDIN_NO_FLICKER=1); SGR via send-keys
 - [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — 11.9% vs Edit 4.6%, mostly read gates (lifted in #242); parser repairs
-- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● since 09-25; display cache-neutral; sub-agents inherit thinking
+- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● since 09-25; cache-neutral
 
 ## References (sibling repos, wire formats, archives)
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win; 4 ideas kept
