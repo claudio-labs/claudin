@@ -165,8 +165,25 @@ export function drain<T>(queue: Queue<T>, visit: (item: T) => void): number {
       `} from 'src/shared/types/command.js'`,
       `export { getBundledSkills, clearBundledSkills } from './bundledSkills.js'`,
       `export type { BundledSkillDefinition } from './bundledSkills.js'`,
+      `import {`,
+      `  activateConditionalSkillsForPaths,`,
+      `  discoverSkillDirsForPaths,`,
+      `} from 'src/skills/loadSkillsDir.js'`,
+      `export {`,
+      `  estimateSkillFrontmatterTokens,`,
+      `  parseSkillFrontmatterFields,`,
+      `}`,
     ].join('\n')
     expect(matchedLines(wiring, referenceOf(wiring, false), false).size).toBe(0)
+  })
+
+  test('a function that opens with export still counts', () => {
+    const code = [
+      `export function estimateTokensForEverySkill(skills: Command[]): number {`,
+      `  return skills.reduce((sum, skill) => sum + estimateSkill(skill), 0)`,
+      `}`,
+    ].join('\n')
+    expect(matchedLines(code, referenceOf(code, false), false).size).toBe(2)
   })
 
   test('a lone matching line is chance; two in a row count', () => {

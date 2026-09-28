@@ -50,7 +50,7 @@ export const MIN_DISTINCT = 10
  * unusable, so bump `version` with any change to how the tokenizer cuts a
  * stream, and rebuild fingerprints.bin in the same commit.
  */
-export const PARAMS = { LINE_MIN_LENGTH, K, W, MIN_RUN, MIN_DISTINCT, version: 2 } as const
+export const PARAMS = { LINE_MIN_LENGTH, K, W, MIN_RUN, MIN_DISTINCT, version: 3 } as const
 
 // ---------------------------------------------------------------------------
 // Hashing
@@ -87,6 +87,14 @@ function mix32(value: number): number {
  */
 const WIRING_LINE = /^(import\b|export\s+(\*|type\s*\{|\{)[^;]*\bfrom\b|\}\s*from\s*['"])/
 
+/**
+ * The first line of an import or re-export whose braces close on a later
+ * line. Its member lines (`  activateConditionalSkillsForPaths,`) are long
+ * enough to count, and two files importing the same names one per line would
+ * otherwise match as a run.
+ */
+const WIRING_BLOCK_START = /^(import\b[^'"]*|export\s+(type\s+)?)\{[^}]*$/
+
 export function normalizeLine(line: string): string | null {
   const text = line.trim().replace(/\s+/g, ' ')
   if (text.length < LINE_MIN_LENGTH || !/[A-Za-z]/.test(text)) return null
@@ -100,7 +108,17 @@ export type LineHash = { line: number; hash: number }
 export function lineHashes(source: string): LineHash[] {
   const out: LineHash[] = []
   const lines = source.split('\n')
+  let inWiringBlock = false
   for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i]!.trim()
+    if (inWiringBlock) {
+      if (trimmed.includes('}')) inWiringBlock = false
+      continue
+    }
+    if (WIRING_BLOCK_START.test(trimmed)) {
+      inWiringBlock = true
+      continue
+    }
     const text = normalizeLine(lines[i]!)
     if (text !== null) out.push({ line: i, hash: hash32(text) })
   }
