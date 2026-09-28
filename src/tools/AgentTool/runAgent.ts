@@ -17,6 +17,7 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
 import { cleanupAgentTracking } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { cleanupLagMarkerKey } from 'src/providers/shims/claude/lagCacheMarker.js'
+import { cancelKeepAlive } from 'src/agent/cache/anthropic/keepAlive.js'
 import {
   connectToServer,
   fetchToolsForClient,
@@ -933,6 +934,7 @@ export async function* runAgent({
       cleanupAgentTracking(agentId)
     }
     cleanupLagMarkerKey(agentId)
+    cancelKeepAlive(agentId)
     // Release cloned file state cache memory
     agentToolUseContext.readFileState.clear()
     // Release the cloned fork context messages

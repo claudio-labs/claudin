@@ -1161,7 +1161,10 @@ export async function* queryModel(
         if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
           recordWireBody(options.querySource, options.agentId, params);
         }
-        if (isCacheKeepAliveEnabled()) {
+        // Agentic requests only: a side query (away summary, web search, a
+        // classifier) has no agentId and would take the main thread's key,
+        // replacing its body and pinging a one-shot prompt for 30 minutes.
+        if (isCacheKeepAliveEnabled() && isAgenticQuery) {
           const key = options.agentId ?? "main";
           noteRequestStarted(key);
           keepAliveCandidate = {
