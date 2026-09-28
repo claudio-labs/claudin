@@ -15,8 +15,21 @@
 //
 // CLAUDIN_DISABLE_SUBAGENT_THINKING=1 turns thinking back off for every
 // sub-agent that is not a fork.
+//
+// The effort a sub-agent inherits can be capped: CLAUDIN_SUBAGENT_EFFORT_CAP=
+// low|medium|high|xhigh — EXPERIMENT, off by default. A sub-agent's thinking
+// is not only billed as output: every token of it stays in the context and is
+// re-read by each later call, and fresh Code agents make 100-200 of them
+// (census 2026-09-26..28: output tokens are ~46% of a sub-agent's final
+// context, under a project pinned at xhigh). A fork keeps the parent's
+// effort, and an agent definition that sets `effort` keeps its own.
 
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
+import {
+  EFFORT_LEVELS,
+  isEffortLevel,
+  type EffortValue,
+} from 'src/providers/effort/effort.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 export function subagentThinkingConfig(
@@ -34,4 +47,19 @@ export function subagentThinkingConfig(
     return parent
   }
   return { type: 'disabled' }
+}
+
+/**
+ * The effort a non-fork sub-agent runs at: the parent's, lowered to the cap
+ * when both are named levels and the parent's is above it. Adaptive, numeric
+ * and unset parents pass through unchanged.
+ */
+export function subagentEffort(
+  parent: EffortValue | undefined,
+  { useExactTools }: { useExactTools: boolean },
+): EffortValue | undefined {
+  const cap = process.env.CLAUDIN_SUBAGENT_EFFORT_CAP?.toLowerCase().trim()
+  if (useExactTools || !cap || !isEffortLevel(cap)) return parent
+  if (typeof parent !== 'string' || !isEffortLevel(parent)) return parent
+  return EFFORT_LEVELS.indexOf(parent) > EFFORT_LEVELS.indexOf(cap) ? cap : parent
 }

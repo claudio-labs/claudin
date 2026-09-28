@@ -69,7 +69,7 @@ import {
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
-import { subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
+import { subagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -541,11 +541,12 @@ export async function* runAgent({
       }
     }
 
-    // Override effort level if agent defines one
+    // Override effort level if agent defines one; otherwise the parent's,
+    // under CLAUDIN_SUBAGENT_EFFORT_CAP when set (subagentThinking.ts).
     const effortValue =
       agentDefinition.effort !== undefined
         ? agentDefinition.effort
-        : state.effortValue
+        : subagentEffort(state.effortValue, { useExactTools: useExactTools === true })
 
     if (
       toolPermissionContext === state.toolPermissionContext &&
