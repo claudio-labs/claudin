@@ -32,3 +32,4 @@ impact: structural
 - **Pilot done 2026-09-28.** `src/skills` went from 2,264 inherited lines to 144 of reviewed residue.
   - **Cost:** about 3.5 M sub-agent tokens and 5.7 agent-hours, roughly 1.7 M tokens per thousand lines. Extrapolated, the remaining ~353 k lines come to about 600 M tokens.
   - **Levers before scaling:** cut, replace with an MIT library, or parallelize. See `docs/tech/rewrite/README.md`, "What the pilot measured".
+- **Phase 2, first ten units, 2026-09-28.** Characterized and implemented in parallel sandboxes. Phase 2 went from 17,253 inherited lines to 10,405, the tree to 346,750. Twelve units of phase 2 remain (`docs/tech/rewrite/phase-2.md`). The CI ratchet does not review a file rewritten at its old path; `land.ts` lists what still matches.

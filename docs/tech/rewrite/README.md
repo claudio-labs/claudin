@@ -167,6 +167,15 @@ verifies the isolation: a copy, renamed or not, shows up there.
 - **The harness itself can leak.** A sub-agent's skill listing shows the installed skills' descriptions, which are the old ones until the rewrite ships. Tell the implementer, and let the gate verify.
 - **A fix is not done until a test pins it.** The probe run showed that nothing noticed the CLI name reverting; a small test now does.
 
+**Phase 2 notes** (ten units at once, 2026-09-28):
+- **Ten sandboxes run side by side.** Ten characterizations, then ten implementations, each in its own copy, took about an hour per round. The main checkout only received finished work, through `land.ts`.
+- **Agents share one shell.** A sub-agent that changes directory leaves the next command there, and a relative `land.ts` run from inside a sandbox takes that sandbox for the checkout. Run the rewrite scripts by absolute path.
+- **The ratchet is not the review.** Files rewritten at their old paths kept their old counts in the baseline, so `provenance:ci` passed 15 of them that still matched 75 lines. `land.ts` now lists every file of the unit that matches; each is reworded or recorded as residue.
+- **Matches in new tests are mostly shape.** A run of `expect(f(x)).toBe(y)` or of `useState` lines matches the reference with every name and literal different. Tables of plain strings, looped over, do not; 69 such lines went to zero without losing a case.
+- **A prompt rule the suite does not pin can vanish.** The memory prompt's short decisions line lost "nothing for a teammate, not a decision", because the facts were pinned on the long form only. Pin the facts of every rendered form of a prompt line.
+- **Re-point displaced probes, do not prune them.** 15 probes of this project's own specs quoted the old memory code. Each was re-pointed at the line that carries the same behaviour now, and each still turned its suite red.
+- **Run the whole suite before committing a characterization suite.** The lifecycle suite passed alone and next to its neighbours, but three older suites left module mocks in place for the rest of the run. Its first full run came only with the implementations: 23 failures, all from those leaks, fixed at the source.
+
 ### Porting this project's own code
 
 Only a whole unit (a file, or a function) moves across verbatim, and only when
