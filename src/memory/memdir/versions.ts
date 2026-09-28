@@ -1,8 +1,6 @@
 import { findGitRoot } from 'src/vcs/git/git.js'
 
-// Note: This is used to check git repo status synchronously
-// Uses findGitRoot which walks the filesystem (no subprocess)
-// Prefer `dirIsInGitRepo()` for async checks
+/** A `.git` directory or file (a worktree) in `cwd` or above it; runs no git. */
 export function projectIsInGitRepo(cwd: string): boolean {
   return findGitRoot(cwd) !== null
 }

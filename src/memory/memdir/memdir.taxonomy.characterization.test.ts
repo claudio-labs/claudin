@@ -120,6 +120,10 @@ describe('the team categories', () => {
     for (const text of [decisions.compact, decisions.lean, decisions.bodyStructure]) {
       expect(text).toContain('`scope:`')
       expect(text).toContain('`impact: structural | functional | rejected`')
+      // The line each prompt shows keeps the bar a teammate applies before
+      // saving: a decision that changes nothing for them is not one.
+      expect(text).toMatch(/frontmatter/)
+      expect(text).toMatch(/nothing[^.]*for a teammate[^.]*not (a team decision|one)/)
       for (const heading of [
         '**Decision:**',
         '**Why:**',

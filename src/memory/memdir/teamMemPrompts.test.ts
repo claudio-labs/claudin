@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test, mock } from 'bun:test'
-import { readFileSync } from 'fs'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
+import type { MemoryPromptDeps } from 'src/memory/memdir/prompt/memoryPromptDispatch.js'
 
 // buildCombinedMemoryPrompt() composes getAutoMemPath()/getTeamMemPath()
 // (./paths.js, ./teamMemPaths.js), the project's git root (../utils/git.js,
@@ -206,18 +206,43 @@ describe('the MEMORY.md index line', () => {
     })
   }
 
-  test('loadMemoryPrompt decides on the indexes the context loaded, for both prompts', () => {
-    // Asserted on the SOURCE: the combined prompts sit behind
-    // feature('TEAMMEM'), which reads false under `bun test`, so
-    // loadMemoryPrompt never reaches them here.
-    const src = readFileSync(new URL('./memdir.ts', import.meta.url), 'utf8')
-    const start = src.indexOf('export async function loadMemoryPrompt(')
-    expect(start).toBeGreaterThan(-1)
-    const body = src.slice(start, src.indexOf('\n}\n', start))
+  test('loadMemoryPrompt decides on the indexes the context loaded, for both prompts', async () => {
+    // feature('TEAMMEM') reads false under `bun test`, so the team branch is
+    // driven through the dispatch with the flag passed in, and with this
+    // file's fresh builders standing in for the shipped ones.
+    const m = await importFreshTeamMemPrompts(FIXED_DIRS)
+    const { loadMemoryPromptWith } = await import(
+      'src/memory/memdir/prompt/memoryPromptDispatch.js'
+    )
+    const { areMemoryIndexesEmpty } = await import('src/memory/memdir/memdir.js')
 
-    expect(body).toContain("await import('src/memory/instructions/claudemd.js')")
-    expect(body).toContain('areMemoryIndexesEmpty(await getMemoryFiles())')
-    expect(body).toContain('buildLeanCombinedMemoryPrompt(extraGuidelines, indexesEmpty)')
-    expect(body).toContain('buildCombinedMemoryPrompt(extraGuidelines, indexesEmpty)')
+    for (const loaded of [...Object.values(EMPTY_STATES), ...Object.values(ONE_PRESENT)]) {
+      const created: string[] = []
+      const deps: MemoryPromptDeps = {
+        teamBuild: true,
+        isTeamMemoryEnabled: () => true,
+        isAutoMemoryEnabled: () => true,
+        autoMemDir: () => FIXED_DIRS.autoDir,
+        teamMemDir: () => FIXED_DIRS.teamDir,
+        ensureDir: async dir => {
+          created.push(dir)
+        },
+        hasMemories: () => {
+          throw new Error('the team branch never looks at the private directory')
+        },
+        loadInstructionFiles: async () => loaded,
+        loadTeamPrompts: async () => m,
+        extraGuidelines: () => undefined,
+      }
+      const indexesEmpty = areMemoryIndexesEmpty(loaded)
+
+      expect(await loadMemoryPromptWith(deps, true)).toBe(
+        m.buildLeanCombinedMemoryPrompt(undefined, indexesEmpty),
+      )
+      expect(await loadMemoryPromptWith(deps, false)).toBe(
+        m.buildCombinedMemoryPrompt(undefined, indexesEmpty),
+      )
+      expect(created).toEqual([FIXED_DIRS.teamDir, FIXED_DIRS.teamDir])
+    }
   })
 })

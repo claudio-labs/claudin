@@ -67,9 +67,9 @@
     },
     {
       "name": "countIndexEntries counts bullets, so a grouped entry still counts",
-      "source": "src/memory/memdir/memdir.ts",
-      "find": "const INDEX_ENTRY_RE = /^-[ \\t]+\\S/gm\n",
-      "replace": "const INDEX_ENTRY_RE = /^-[ \\t]+\\[/gm\n"
+      "source": "src/memory/memdir/entrypoint/indexEntries.ts",
+      "find": "const INDEX_ENTRY_RE = /^-[ \\t]+\\S/\n",
+      "replace": "const INDEX_ENTRY_RE = /^-[ \\t]+\\[/\n"
     },
     {
       "name": "memory_index is render-only on the wire",

@@ -53,9 +53,9 @@
     },
     {
       "name": "the v2 decisions line loses the teammate field",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "the body leads with **Decision:** / **Why:** / **What changes for a teammate:** / **Rejected:** / **Evidence:** — with nothing for a teammate",
-      "replace": "the body leads with **Decision:** / **Why:** / **Rejected:** / **Evidence:** — with nothing for a teammate"
+      "source": "src/memory/memdir/taxonomy/teamCategories.ts",
+      "find": "the body **Decision:**, **Why:**, **What changes for a teammate:**, **Rejected:**, **Evidence:**; with nothing",
+      "replace": "the body **Decision:**, **Why:**, **Rejected:**, **Evidence:**; with nothing"
     }
   ]
 }

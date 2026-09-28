@@ -822,21 +822,21 @@
     },
     {
       "name": "memory: areMemoryIndexesEmpty counts a whitespace-only index as saved",
-      "source": "src/memory/memdir/memdir.ts",
-      "find": "      file.content.trim() !== '',\n",
-      "replace": "      file.content !== '',\n"
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "    file => INDEX_KINDS.has(file.type) && file.content.trim() !== '',\n",
+      "replace": "    file => INDEX_KINDS.has(file.type) && file.content !== '',\n"
     },
     {
       "name": "memory: areMemoryIndexesEmpty counts the project's own instructions",
-      "source": "src/memory/memdir/memdir.ts",
-      "find": "      (file.type === 'AutoMem' || file.type === 'TeamMem') &&\n",
-      "replace": ""
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "    file => INDEX_KINDS.has(file.type) && file.content.trim() !== '',\n",
+      "replace": "    file => file.content.trim() !== '',\n"
     },
     {
       "name": "memory: loadMemoryPrompt never asks areMemoryIndexesEmpty",
-      "source": "src/memory/memdir/memdir.ts",
-      "find": "        indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())\n",
-      "replace": "        indexesEmpty = false\n"
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "    return areMemoryIndexesEmpty(await deps.loadInstructionFiles())\n",
+      "replace": "    return false\n"
     },
     {
       "name": "memory: EMPTY_INDEXES_NOTE says nothing",

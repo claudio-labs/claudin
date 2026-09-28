@@ -22,9 +22,9 @@
     },
     {
       "name": "the category is the file's PARENT directory, nothing higher",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "  const dir = basename(dirname(filePath))\n",
-      "replace": "  const dir = basename(dirname(dirname(filePath)))\n"
+      "source": "src/memory/memdir/taxonomy/teamCategories.ts",
+      "find": "  const parent = basename(dirname(filePath))\n",
+      "replace": "  const parent = basename(dirname(dirname(filePath)))\n"
     },
     {
       "name": "clauses come out in rank order, not arrival order",

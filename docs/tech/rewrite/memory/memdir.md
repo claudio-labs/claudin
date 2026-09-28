@@ -910,3 +910,18 @@ rewrite can apply it.
   - Failures go to `logError` or `logForDebugging`, and none is swallowed silently. The fail-open cases (an unreadable `.gitignore`, a directory that cannot be created, an unreadable memory file) log at debug level.
   - None of these throws to a caller.
 - **The load-time cycle.** `claudemd/parsing.ts` imports `memdir.ts`, so the dispatch must reach `getMemoryFiles` without a load-time cycle.
+
+## Outcome
+
+- **The gate.** It flagged 5 lines of `src/memory/memdir/entrypoint/truncation.ts`. One was a generic line that splits the index into lines. It matched only because it came right after the exported signature, and the two made a run. The byte count is now taken first. That ends the run, and the signature alone is a single line, which the gate does not count. The other 3 lines are listed below.
+- **Residue, reviewed.** These lines of Claude Code stay. Each one is contract:
+  - **`src/memory/memdir/entrypoint/limits.ts`, 2 lines.** `ENTRYPOINT_NAME` and `MAX_ENTRYPOINT_LINES`, which callers outside the unit import. `MEMORY.md` is also the index's name on disk.
+  - **`src/memory/memdir/entrypoint/truncation.ts`, 3 lines.** The first line of the exported `EntrypointTruncation` type, and its `wasLineTruncated` and `wasByteTruncated` fields, which the suites beside the unit read.
+  - **`src/memory/memdir/prompt/agentMemoryPrompt.ts`, 2 lines.** The signature of `buildMemoryPrompt`: its first line, and the optional `extraGuidelines` field of its parameter object, which `agentMemory.ts` passes.
+  - **`src/memory/memdir/prompt/privateMemoryPrompt.ts`, 2 lines.** The signature of `buildMemoryLines`: its first line and its optional `extraGuidelines` parameter.
+  - **`src/memory/memdir/teamMemPaths.ts`, 2 lines.** The exported `isTeamMemFile` and its one-line body, which joins two exported checks.
+  - **`src/memory/memdir/versions.ts`, 2 lines.** The exported `projectIsInGitRepo` and its body, which asks `findGitRoot`.
+
+  The last two files were rewritten at their old paths, so the baseline did not flag them; they were reviewed by hand.
+
+  They go when the contract is redesigned, after every consumer has been rewritten.

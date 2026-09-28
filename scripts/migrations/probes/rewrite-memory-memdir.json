@@ -1,244 +1,738 @@
 {
   "test": [
     "src/memory/memdir/memdir.characterization.test.ts",
+    "src/memory/memdir/memdir.detection.characterization.test.ts",
+    "src/memory/memdir/memdir.pathScoped.characterization.test.ts",
     "src/memory/memdir/memdir.paths.characterization.test.ts",
     "src/memory/memdir/memdir.taxonomy.characterization.test.ts",
     "src/memory/memdir/memdir.teamPrompts.characterization.test.ts",
-    "src/memory/memdir/memdir.detection.characterization.test.ts",
-    "src/memory/memdir/memdir.pathScoped.characterization.test.ts"
+    "src/memory/memdir/teamMemPrompts.test.ts",
+    "src/memory/memdir/memoryPrompt.test.ts",
+    "src/memory/memdir/memoryAge.test.ts",
+    "src/memory/memdir/directory/memoryDirectory.test.ts",
+    "src/memory/memdir/detection/memoryDetection.test.ts",
+    "src/memory/memdir/entrypoint/truncation.test.ts",
+    "src/memory/memdir/location/memoryLocation.test.ts",
+    "src/memory/memdir/location/overrideValidation.test.ts",
+    "src/memory/memdir/location/projectLocalDir.test.ts",
+    "src/memory/memdir/prompt/memoryPromptDispatch.test.ts",
+    "src/memory/memdir/taxonomy/teamCategories.test.ts"
   ],
   "source": "src/memory/memdir/memdir.ts",
   "probes": [
     {
-      "name": "index: the line cap moves from 200 to 150",
-      "find": "export const MAX_ENTRYPOINT_LINES = 200\n",
-      "replace": "export const MAX_ENTRYPOINT_LINES = 150\n"
+      "name": "switch: a truthy CLAUDIN_DISABLE_AUTO_MEMORY no longer turns memory off",
+      "source": "src/memory/memdir/switches/autoMemorySwitch.ts",
+      "find": "if (isEnvTruthy(inputs.disableSwitch)) return false",
+      "replace": "if (isEnvTruthy(inputs.disableSwitch)) return true"
     },
     {
-      "name": "index: the byte cap counts UTF-16 units instead of bytes",
-      "find": "  const byteCount = Buffer.byteLength(trimmed)\n",
-      "replace": "  const byteCount = trimmed.length\n"
+      "name": "switch: an off value no longer forces memory on",
+      "source": "src/memory/memdir/switches/autoMemorySwitch.ts",
+      "find": "if (isEnvDefinedFalsy(inputs.disableSwitch)) return true",
+      "replace": "if (isEnvDefinedFalsy(inputs.disableSwitch)) return false"
     },
     {
-      "name": "index: a hard cut may split a multibyte character",
-      "find": "    while (cutAt > 0 && (buf[cutAt]! & CONTINUATION_MASK) === CONTINUATION_BITS) {\n",
-      "replace": "    while (false) {\n"
+      "name": "switch: bare mode leaves memory on",
+      "source": "src/memory/memdir/switches/autoMemorySwitch.ts",
+      "find": "if (inputs.bareMode) return false",
+      "replace": "if (inputs.bareMode) return true"
     },
     {
-      "name": "count: nested sub-bullets count as index entries",
-      "find": "const INDEX_ENTRY_RE = /^-[ \\t]+\\S/gm\n",
-      "replace": "const INDEX_ENTRY_RE = /^\\s*-[ \\t]+\\S/gm\n"
+      "name": "switch: a remote session without a mount keeps memory",
+      "source": "src/memory/memdir/switches/autoMemorySwitch.ts",
+      "find": "if (inputs.remoteSession && !inputs.remoteMemoryDir) return false",
+      "replace": "if (inputs.remoteSession && inputs.remoteMemoryDir) return false"
     },
     {
-      "name": "existing memories: the index itself counts as a topic file",
-      "find": ".some(d => d.isFile() && d.name.endsWith('.md') && d.name !== ENTRYPOINT_NAME)",
-      "replace": ".some(d => d.isFile() && d.name.endsWith('.md'))"
+      "name": "switch: autoMemoryEnabled in settings is ignored",
+      "source": "src/memory/memdir/switches/autoMemorySwitch.ts",
+      "find": "return inputs.readSetting() ?? true",
+      "replace": "return true"
     },
     {
-      "name": "agent prompt: a whitespace-only index is shown instead of the empty note",
-      "find": "  if (entrypointContent.trim()) {\n",
-      "replace": "  if (entrypointContent) {\n"
+      "name": "extraction: an off CLAUDIN_EXTRACT_MEMORIES is ignored",
+      "source": "src/memory/memdir/switches/extractionSwitches.ts",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_EXTRACT_MEMORIES)",
+      "replace": "return true"
     },
     {
-      "name": "search section: embedded search tools are ignored",
-      "find": "  const embedded = hasEmbeddedSearchTools()\n",
-      "replace": "  const embedded = false\n"
+      "name": "extraction: the mode no longer needs an interactive session",
+      "source": "src/memory/memdir/switches/extractionSwitches.ts",
+      "find": "return isExtractMemoriesEnabled() && getIsInteractive()",
+      "replace": "return isExtractMemoriesEnabled()"
     },
     {
-      "name": "loadMemoryPrompt: a populated directory gets the compact text",
-      "find": "      ? buildMemoryLines\n",
-      "replace": "      ? buildMemoryStubLines\n"
+      "name": "extraction: default interval moves off 15",
+      "source": "src/memory/memdir/switches/extractionSwitches.ts",
+      "find": "const DEFAULT_TURN_INTERVAL = 15",
+      "replace": "const DEFAULT_TURN_INTERVAL = 10"
     },
     {
-      "name": "full text: paths: described with another product's rules directory",
-      "find": "a rule in \\`.claudin/rules/\\`, relative to the project root) is also attached",
-      "replace": "a rule in \\`.claude/rules/\\`, relative to the project root) is also attached"
+      "name": "extraction: the interval cap moves off 1000",
+      "source": "src/memory/memdir/switches/extractionSwitches.ts",
+      "find": "const MAX_TURN_INTERVAL = 1000",
+      "replace": "const MAX_TURN_INTERVAL = 5000"
     },
     {
-      "name": "types: the fourth type is renamed",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "  'reference',\n] as const",
-      "replace": "  'references',\n] as const"
+      "name": "prompt: CLAUDIN_LEAN_MEMORY_PROMPT off is ignored",
+      "source": "src/memory/memdir/switches/promptSwitches.ts",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_MEMORY_PROMPT)",
+      "replace": "return true"
     },
     {
-      "name": "types: parsing folds case",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "  return MEMORY_TYPES.find(t => t === raw)\n",
-      "replace": "  return MEMORY_TYPES.find(t => t === raw.toLowerCase())\n"
+      "name": "prompt: CLAUDIN_MEMORY_PAST_CONTEXT off is ignored",
+      "source": "src/memory/memdir/switches/promptSwitches.ts",
+      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_MEMORY_PAST_CONTEXT)",
+      "replace": "return true"
     },
     {
-      "name": "categories: the bug noun changes",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "    noun: 'bug',\n",
-      "replace": "    noun: 'defect',\n"
-    },
-    {
-      "name": "categories: read off the file name instead of its directory",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "  const dir = basename(dirname(filePath))\n",
-      "replace": "  const dir = basename(filePath)\n"
-    },
-    {
-      "name": "categories: the tagged section drops the trailing slash of <dir>",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "      `    <dir>${category.dir}/</dir>`,\n",
-      "replace": "      `    <dir>${category.dir}</dir>`,\n"
-    },
-    {
-      "name": "frontmatter example: type nested under the other keys",
-      "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "  `type: {{${MEMORY_TYPES.join(' | ')}}}`,\n",
-      "replace": "  `  type: {{${MEMORY_TYPES.join(' | ')}}}`,\n"
-    },
-    {
-      "name": "age: the note waits until three days",
-      "source": "src/memory/memdir/memoryAge.ts",
-      "find": "  if (d <= 1) return ''\n",
-      "replace": "  if (d <= 2) return ''\n"
-    },
-    {
-      "name": "age: the note loses its trailing newline",
-      "source": "src/memory/memdir/memoryAge.ts",
-      "find": "  return `<system-reminder>${text}</system-reminder>\\n`\n",
-      "replace": "  return `<system-reminder>${text}</system-reminder>`\n"
-    },
-    {
-      "name": "enabled: an off value of the disable variable no longer forces memory on",
+      "name": "location: the memory base ignores the remote mount",
       "source": "src/memory/memdir/paths.ts",
-      "find": "  if (isEnvDefinedFalsy(envVal)) {\n    return true\n  }\n",
-      "replace": "  if (isEnvDefinedFalsy(envVal)) {\n    return false\n  }\n"
+      "find": "return process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR || getClaudinConfigHomeDir()",
+      "replace": "return getClaudinConfigHomeDir()"
     },
     {
-      "name": "override: two-character paths are accepted",
+      "name": "location: the memo is no longer keyed by the project root",
       "source": "src/memory/memdir/paths.ts",
-      "find": "    normalized.length < 3 ||\n",
-      "replace": "    normalized.length < 1 ||\n"
+      "find": "export const getAutoMemPath = memoize(resolveAutoMemPath, () =>\n  getProjectRoot(),\n)",
+      "replace": "export const getAutoMemPath = memoize(resolveAutoMemPath, () =>\n  'one-key',\n)"
     },
     {
-      "name": "override: ~/ may name the whole home directory",
+      "name": "location: hasAutoMemPathOverride expands a tilde",
       "source": "src/memory/memdir/paths.ts",
-      "find": "    if (restNorm === '.' || restNorm === '..') {\n",
-      "replace": "    if (false) {\n"
+      "find": "{ expandHome: false, homeDir: homedir() },",
+      "replace": "{ expandHome: true, homeDir: homedir() },"
     },
     {
-      "name": "override: the checked-in project settings may choose the directory",
+      "name": "location: isAutoMemPath skips dot-segment resolution",
       "source": "src/memory/memdir/paths.ts",
-      "find": "    getSettingsForSource('localSettings')?.autoMemoryDirectory ??\n",
-      "replace": "    getSettingsForSource('projectSettings')?.autoMemoryDirectory ??\n"
+      "find": "return normalize(absolutePath).startsWith(getAutoMemPath())",
+      "replace": "return absolutePath.startsWith(getAutoMemPath())"
     },
     {
-      "name": "override: the environment override expands ~",
-      "source": "src/memory/memdir/paths.ts",
-      "find": "    process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE,\n    false,\n",
-      "replace": "    process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE,\n    true,\n"
+      "name": "location: a valid environment override is ignored",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "if (fromEnv.ok) {",
+      "replace": "if (fromEnv.ok && false) {"
     },
     {
-      "name": "project-local: only when explicitly enabled",
-      "source": "src/memory/memdir/paths.ts",
-      "find": "  return val !== false\n",
-      "replace": "  return val === true\n"
+      "name": "location: the checked-in project settings become trusted",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "  'userSettings',\n] as const",
+      "replace": "  'userSettings',\n  'projectSettings',\n] as const"
     },
     {
-      "name": "project-local: the symlink containment check always passes",
-      "source": "src/memory/memdir/paths.ts",
-      "find": "      containmentVerified =\n        realProjectLocalPath === realRoot ||\n        realProjectLocalPath.startsWith(realRoot + sep)\n",
-      "replace": "      containmentVerified = true\n"
+      "name": "location: the layer order is reversed",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "  'policySettings',\n  'flagSettings',\n  'localSettings',\n  'userSettings',\n",
+      "replace": "  'userSettings',\n  'localSettings',\n  'flagSettings',\n  'policySettings',\n"
+    },
+    {
+      "name": "location: an empty setting no longer stops the lookup",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "if (value !== undefined) return { defined: true, value }",
+      "replace": "if (value) return { defined: true, value }"
+    },
+    {
+      "name": "location: autoMemoryProjectLocal false is ignored",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "const projectLocalOff = projectLocal.defined && projectLocal.value === false",
+      "replace": "const projectLocalOff = false"
+    },
+    {
+      "name": "location: the legacy slug follows the project root, not the repository",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "inputs.repoRoot ?? inputs.projectRoot,",
+      "replace": "inputs.projectRoot,"
+    },
+    {
+      "name": "location: the project-local directory is misnamed",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "nodePath.join(inputs.repoRoot, '.claudin', 'memory')",
+      "replace": "nodePath.join(inputs.repoRoot, '.claudin', 'mem')"
+    },
+    {
+      "name": "location: the directory is no longer NFC-normalized",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "return `${bare}${nodePath.sep}`.normalize('NFC') as MemoryDirPath",
+      "replace": "return `${bare}${nodePath.sep}` as MemoryDirPath"
+    },
+    {
+      "name": "location: the setting no longer expands ~/",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "expandHome: true,",
+      "replace": "expandHome: false,"
+    },
+    {
+      "name": "location: the environment override expands ~/",
+      "source": "src/memory/memdir/location/memoryLocation.ts",
+      "find": "expandHome: false,",
+      "replace": "expandHome: true,"
+    },
+    {
+      "name": "override: trailing separators are kept",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "const dir = stripTrailingSeparators(normalized, paths)",
+      "replace": "const dir = normalized"
+    },
+    {
+      "name": "override: a relative path is accepted",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "if (!paths.isAbsolute(normalized)) return rejected('relative')",
+      "replace": "if (!paths.isAbsolute(normalized) && false) return rejected('relative')"
+    },
+    {
+      "name": "override: short paths such as / are accepted",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "const MIN_DIR_LENGTH = 3",
+      "replace": "const MIN_DIR_LENGTH = 0"
+    },
+    {
+      "name": "override: a UNC path is accepted",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "if (dir.startsWith('\\\\\\\\') || dir.startsWith('//')) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "override: a bare drive is not named as one",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "if (DRIVE_ONLY_RE.test(dir)) return rejected('drive-root')",
+      "replace": ""
+    },
+    {
+      "name": "override: a NUL byte is accepted",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "if (raw.includes('\\0')) return rejected('nul-byte')",
+      "replace": ""
+    },
+    {
+      "name": "override: ~/ naming the home directory itself is accepted",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "    expanded === home ||\n",
+      "replace": ""
+    },
+    {
+      "name": "override: ~/ above the home directory is accepted",
+      "source": "src/memory/memdir/location/overrideValidation.ts",
+      "find": "home.startsWith(`${expanded}${paths.sep}`)",
+      "replace": "false"
+    },
+    {
+      "name": "project-local: a directory resolving outside the repository is used",
+      "source": "src/memory/memdir/location/projectLocalDir.ts",
+      "find": "if (!inside) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "project-local: a directory that cannot be created is used anyway",
+      "source": "src/memory/memdir/location/projectLocalDir.ts",
+      "find": "    )\n    return false\n  }\n  if (!inside) {",
+      "replace": "    )\n    return true\n  }\n  if (!inside) {"
+    },
+    {
+      "name": "project-local: an existing directory is not tightened",
+      "source": "src/memory/memdir/location/projectLocalDir.ts",
+      "find": "deps.fs.setMode(candidate.dir, PRIVATE_DIR_MODE)",
+      "replace": "void PRIVATE_DIR_MODE"
+    },
+    {
+      "name": "project-local: created readable by others",
+      "source": "src/memory/memdir/location/projectLocalDir.ts",
+      "find": "const PRIVATE_DIR_MODE = 0o700",
+      "replace": "const PRIVATE_DIR_MODE = 0o755"
     },
     {
       "name": "project-local: legacy memory is not copied in",
-      "source": "src/memory/memdir/paths.ts",
-      "find": "    migrateGlobalMemoryIfNeeded(legacyPath, projectLocalPath)\n",
+      "source": "src/memory/memdir/location/projectLocalDir.ts",
+      "find": "deps.copyLegacyMemory(candidate.legacyDir, candidate.dir)",
+      "replace": "void candidate"
+    },
+    {
+      "name": "project-local: the copy is offered on every resolution",
+      "source": "src/memory/memdir/location/projectLocalDir.ts",
+      "find": "if (deps.copiedRoots.has(projectRoot)) return",
       "replace": ""
     },
     {
-      "name": "legacy slug: taken from the project root instead of the canonical repository root",
-      "source": "src/memory/memdir/paths.ts",
-      "find": "  return findCanonicalGitRoot(getProjectRoot()) ?? getProjectRoot()\n",
-      "replace": "  return getProjectRoot()\n"
-    },
-    {
-      "name": "team: the directory is renamed",
+      "name": "team: the directory is not team/",
       "source": "src/memory/memdir/teamMemPaths.ts",
-      "find": "  return (join(getAutoMemPath(), 'team') + sep).normalize('NFC')\n",
-      "replace": "  return (join(getAutoMemPath(), 'shared') + sep).normalize('NFC')\n"
+      "find": "const TEAM_DIR_NAME = 'team'",
+      "replace": "const TEAM_DIR_NAME = 'shared'"
     },
     {
-      "name": "team: a blanket ignore needs a leading slash to be seen",
+      "name": "team: isTeamMemPath does not resolve first",
       "source": "src/memory/memdir/teamMemPaths.ts",
-      "find": "const BLANKET_CLAUDIN_IGNORE_RE = /^\\/?\\.claudin\\/?$/\n",
-      "replace": "const BLANKET_CLAUDIN_IGNORE_RE = /^\\/\\.claudin\\/?$/\n"
+      "find": "return resolve(filePath).startsWith(getTeamMemPath())",
+      "replace": "return filePath.startsWith(getTeamMemPath())"
     },
     {
-      "name": "team: dot segments are not resolved before the prefix check",
+      "name": "team: isTeamMemFile ignores the switch",
       "source": "src/memory/memdir/teamMemPaths.ts",
-      "find": "  const resolvedPath = resolve(filePath)\n",
-      "replace": "  const resolvedPath = filePath\n"
+      "find": "return isTeamMemoryEnabled() && isTeamMemPath(filePath)",
+      "replace": "return isTeamMemPath(filePath)"
     },
     {
-      "name": "detection: a session summary must end in .txt",
-      "source": "src/memory/memdir/memoryFileDetection.ts",
-      "find": "  if (normalized.includes('/session-memory/') && normalized.endsWith('.md')) {\n",
-      "replace": "  if (normalized.includes('/session-memory/') && normalized.endsWith('.txt')) {\n"
+      "name": "team: team memory stays on with auto memory off",
+      "source": "src/memory/memdir/teamMemPaths.ts",
+      "find": "return isAutoMemoryEnabled()",
+      "replace": "return true"
     },
     {
-      "name": "detection: shell punctuation stays on a path token",
-      "source": "src/memory/memdir/memoryFileDetection.ts",
-      "find": "    const cleanPath = match.replace(/[,;|&>]+$/, '')\n",
-      "replace": "    const cleanPath = match\n"
+      "name": "gitignore: a team carve-out no longer clears the verdict",
+      "source": "src/memory/memdir/location/teamGitignore.ts",
+      "find": "      ignored = false\n",
+      "replace": "      ignored = true\n"
     },
     {
-      "name": "detection: a command naming only the project memory directory is not screened",
-      "source": "src/memory/memdir/memoryFileDetection.ts",
-      "find": "  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)\n",
-      "replace": "  const dirs = [configDir, memoryBase].filter(Boolean)\n"
+      "name": "gitignore: /.claudin is not recognized",
+      "source": "src/memory/memdir/location/teamGitignore.ts",
+      "find": "  '/.claudin',\n",
+      "replace": ""
     },
     {
-      "name": "path-scoped: the walk goes one level deeper",
-      "source": "src/memory/memdir/pathScopedMemories.ts",
-      "find": "const MAX_DEPTH = 3\n",
-      "replace": "const MAX_DEPTH = 4\n"
+      "name": "gitignore: lines are not trimmed",
+      "source": "src/memory/memdir/location/teamGitignore.ts",
+      "find": "const line = rawLine.trim()",
+      "replace": "const line = rawLine"
     },
     {
-      "name": "path-scoped: every memory directory anchors at its grandparent",
-      "source": "src/memory/memdir/pathScopedMemories.ts",
-      "find": "  return basename(parent) === CLAUDIN_DIR_NAME ? dirname(parent) : originalCwd\n",
-      "replace": "  return dirname(parent)\n"
-    },
-    {
-      "name": "path-scoped: a missing directory is remembered as empty",
-      "source": "src/memory/memdir/pathScopedMemories.ts",
-      "find": "  cache = dirMtimes.size === 0 ? null : { memoryDir, dirMtimes, entries }\n",
-      "replace": "  cache = { memoryDir, dirMtimes, entries }\n"
-    },
-    {
-      "name": "path-scoped: symlinked memory files are read",
-      "source": "src/memory/memdir/pathScopedMemories.ts",
-      "find": "      !dirent.isFile() ||\n",
-      "replace": "      dirent.isDirectory() ||\n"
-    },
-    {
-      "name": "team prompts: the .gitignore advice ignores where the team directory is",
-      "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "  if (!gitRoot || !teamDir.startsWith(gitRoot + sep)) {\n",
-      "replace": "  if (!gitRoot) {\n"
-    },
-    {
-      "name": "team prompts: the full prompt never says the indexes are empty",
-      "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "  const teamDir = getTeamMemPath()\n  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n",
-      "replace": "  const teamDir = getTeamMemPath()\n  const emptyIndexesNote = ''\n"
-    },
-    {
-      "name": "versions: the answer is inverted",
+      "name": "versions: projectIsInGitRepo is inverted",
       "source": "src/memory/memdir/versions.ts",
-      "find": "  return findGitRoot(cwd) !== null\n",
-      "replace": "  return findGitRoot(cwd) === null\n"
+      "find": "return findGitRoot(cwd) !== null",
+      "replace": "return findGitRoot(cwd) === null"
     },
     {
-      "name": "types: the managed kind is dropped",
-      "source": "src/memory/memdir/types.ts",
-      "find": "  'Managed',\n",
+      "name": "index: the name is not MEMORY.md",
+      "source": "src/memory/memdir/entrypoint/limits.ts",
+      "find": "export const ENTRYPOINT_NAME = 'MEMORY.md'",
+      "replace": "export const ENTRYPOINT_NAME = 'INDEX.md'"
+    },
+    {
+      "name": "index: the line cap moves off 200",
+      "source": "src/memory/memdir/entrypoint/limits.ts",
+      "find": "export const MAX_ENTRYPOINT_LINES = 200",
+      "replace": "export const MAX_ENTRYPOINT_LINES = 201"
+    },
+    {
+      "name": "index: the byte cap moves off 25,000",
+      "source": "src/memory/memdir/entrypoint/limits.ts",
+      "find": "export const MAX_ENTRYPOINT_BYTES = 25_000",
+      "replace": "export const MAX_ENTRYPOINT_BYTES = 25_001"
+    },
+    {
+      "name": "index: the input is not trimmed",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": "const text = raw.trim()",
+      "replace": "const text = raw"
+    },
+    {
+      "name": "index: the byte flag is never raised",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": "wasByteTruncated: byteCount > MAX_ENTRYPOINT_BYTES,",
+      "replace": "wasByteTruncated: false,"
+    },
+    {
+      "name": "index: the byte cut ignores newlines",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": "const newline = bytes.lastIndexOf(NEWLINE_BYTE, limit)",
+      "replace": "const newline = -1"
+    },
+    {
+      "name": "index: the hard cut may split a character",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": "const end = newline >= 0 ? newline : characterStartAt(bytes, limit)",
+      "replace": "const end = newline >= 0 ? newline : limit"
+    },
+    {
+      "name": "index: the warning for both caps drops the size",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": "reason = `${measured.lineCount} lines and ${size}`",
+      "replace": "reason = `${measured.lineCount} lines`"
+    },
+    {
+      "name": "index: the line-cap warning drops the limit",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": "reason = `${measured.lineCount} lines (limit: ${MAX_ENTRYPOINT_LINES})`",
+      "replace": "reason = `${measured.lineCount} lines`"
+    },
+    {
+      "name": "index: the byte-cap warning drops the reason",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": " because its entries are too long`",
+      "replace": "`"
+    },
+    {
+      "name": "index: the warning follows without a blank line",
+      "source": "src/memory/memdir/entrypoint/truncation.ts",
+      "find": "return { content: `${body}\\n\\n${truncationWarning(measured)}`, ...measured }",
+      "replace": "return { content: `${body}\\n${truncationWarning(measured)}`, ...measured }"
+    },
+    {
+      "name": "index: nested bullets count as entries",
+      "source": "src/memory/memdir/entrypoint/indexEntries.ts",
+      "find": "const INDEX_ENTRY_RE = /^-[ \\t]+\\S/",
+      "replace": "const INDEX_ENTRY_RE = /^\\s*-[ \\t]+\\S/"
+    },
+    {
+      "name": "directory: parents are not created",
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "await mkdir(memoryDir, { recursive: true })",
+      "replace": "await mkdir(memoryDir, { recursive: false })"
+    },
+    {
+      "name": "directory: the index path is concatenated (finding 4)",
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "const indexPath = join(memoryDir, ENTRYPOINT_NAME)",
+      "replace": "const indexPath = `${memoryDir}${ENTRYPOINT_NAME}`"
+    },
+    {
+      "name": "directory: a blank index counts as a memory",
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "return readMemoryIndex(memoryDir).trim() !== '' || holdsTopicFile(memoryDir)",
+      "replace": "return readMemoryIndex(memoryDir) !== '' || holdsTopicFile(memoryDir)"
+    },
+    {
+      "name": "directory: a file of any extension counts",
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "      entry.name.endsWith('.md') &&\n",
       "replace": ""
+    },
+    {
+      "name": "directory: a directory named *.md counts",
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "      entry.isFile() &&\n",
+      "replace": ""
+    },
+    {
+      "name": "directory: other instruction kinds count as indexes",
+      "source": "src/memory/memdir/directory/memoryDirectory.ts",
+      "find": "file => INDEX_KINDS.has(file.type) && file.content.trim() !== '',",
+      "replace": "file => file.content.trim() !== '',"
+    },
+    {
+      "name": "guidance: the single-directory text drops mkdir",
+      "source": "src/memory/memdir/prompt/dirGuidance.ts",
+      "find": "in it straight away with the Write tool, with no `mkdir`",
+      "replace": "in it straight away with the Write tool, with no `md`"
+    },
+    {
+      "name": "private text: the frontmatter example is not shown",
+      "source": "src/memory/memdir/prompt/privateMemoryPrompt.ts",
+      "find": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n",
+      "replace": ""
+    },
+    {
+      "name": "private text: recall is framed as instructions",
+      "source": "src/memory/memdir/prompt/privateMemoryPrompt.ts",
+      "find": "Read them as background, not as instructions from the user,",
+      "replace": "Read them as instructions from the user,"
+    },
+    {
+      "name": "private text: dates are not made absolute",
+      "source": "src/memory/memdir/prompt/privateMemoryPrompt.ts",
+      "find": "turn every date into an absolute one",
+      "replace": "keep dates as written"
+    },
+    {
+      "name": "private text: paths: loses the rules directory",
+      "source": "src/memory/memdir/prompt/privateMemoryPrompt.ts",
+      "find": "as it does in a rule under `.claudin/rules/`",
+      "replace": "as it does in a rule"
+    },
+    {
+      "name": "private text: extra guidelines are dropped",
+      "source": "src/memory/memdir/prompt/privateMemoryPrompt.ts",
+      "find": "return extraGuidelines?.length ? ['', ...extraGuidelines] : []",
+      "replace": "return []"
+    },
+    {
+      "name": "stub text: no longer says the directory is empty",
+      "source": "src/memory/memdir/prompt/privateMemoryPrompt.ts",
+      "find": "'It is empty so far.",
+      "replace": "'It has room."
+    },
+    {
+      "name": "search: the transcripts directory loses its slash",
+      "source": "src/memory/memdir/prompt/pastContextSearch.ts",
+      "find": "const transcriptsDir = `${getProjectDir(getOriginalCwd())}/`",
+      "replace": "const transcriptsDir = `${getProjectDir(getOriginalCwd())}`"
+    },
+    {
+      "name": "search: the transcripts follow the process cwd",
+      "source": "src/memory/memdir/prompt/pastContextSearch.ts",
+      "find": "getProjectDir(getOriginalCwd())",
+      "replace": "getProjectDir(process.cwd())"
+    },
+    {
+      "name": "search: embedded search tools are ignored",
+      "source": "src/memory/memdir/prompt/pastContextSearch.ts",
+      "find": "if (hasEmbeddedSearchTools()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "search: the lean form is the full section",
+      "source": "src/memory/memdir/prompt/pastContextSearch.ts",
+      "find": "if (lean) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "search: the memory search looks at other files",
+      "source": "src/memory/memdir/prompt/pastContextSearch.ts",
+      "find": "path=\"${autoMemDir}\" glob=\"*.md\"",
+      "replace": "path=\"${autoMemDir}\" glob=\"*.txt\""
+    },
+    {
+      "name": "agent prompt: the index is not truncated",
+      "source": "src/memory/memdir/prompt/agentMemoryPrompt.ts",
+      "find": ": truncateEntrypointContent(index).content,",
+      "replace": ": index.trim(),"
+    },
+    {
+      "name": "agent prompt: the empty-index note does not say empty",
+      "source": "src/memory/memdir/prompt/agentMemoryPrompt.ts",
+      "find": "is empty for now;",
+      "replace": "has nothing yet;"
+    },
+    {
+      "name": "dispatch: the team text ignores the build flag",
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "if (switches.teamBuild && switches.teamMemoryEnabled) {",
+      "replace": "if (switches.teamMemoryEnabled) {"
+    },
+    {
+      "name": "dispatch: lean and full are swapped",
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "variant: switches.lean ? 'lean' : 'full'",
+      "replace": "variant: switches.lean ? 'full' : 'lean'"
+    },
+    {
+      "name": "dispatch: the empty-index flag is not passed (finding 9)",
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "return build(deps.extraGuidelines(), indexesEmpty)",
+      "replace": "return build(deps.extraGuidelines(), false)"
+    },
+    {
+      "name": "dispatch: the full and empty-directory texts are swapped",
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "const build = deps.hasMemories(dir) ? buildMemoryLines : buildMemoryStubLines",
+      "replace": "const build = deps.hasMemories(dir) ? buildMemoryStubLines : buildMemoryLines"
+    },
+    {
+      "name": "dispatch: the private directory is not created",
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "await deps.ensureDir(dir)",
+      "replace": "void dir"
+    },
+    {
+      "name": "dispatch: the extra guideline is dropped",
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "return raw !== undefined && raw.trim() !== '' ? [raw] : undefined",
+      "replace": "return undefined"
+    },
+    {
+      "name": "dispatch: a failed index load reports empty indexes",
+      "source": "src/memory/memdir/prompt/memoryPromptDispatch.ts",
+      "find": "      { level: 'warn' },\n    )\n    return false",
+      "replace": "      { level: 'warn' },\n    )\n    return true"
+    },
+    {
+      "name": "detection: session files need no config home",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "  if (!isStrictlyBelow(path, comparablePath(ctx.configHome, ctx.platform))) {\n    return false\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "detection: transcripts are .json files",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "(path.includes(PROJECTS_SEGMENT) && path.endsWith('.jsonl'))",
+      "replace": "(path.includes(PROJECTS_SEGMENT) && path.endsWith('.json'))"
+    },
+    {
+      "name": "detection: agent memory files count with auto memory off",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "(ctx.autoMemoryEnabled && ctx.isAgentMemoryPath(filePath))",
+      "replace": "ctx.isAgentMemoryPath(filePath)"
+    },
+    {
+      "name": "detection: agent memory directories stop counting",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "    ctx.autoMemoryEnabled &&\n    AGENT_MEMORY_SEGMENTS.some",
+      "replace": "    false &&\n    AGENT_MEMORY_SEGMENTS.some"
+    },
+    {
+      "name": "detection: the private directory without its separator is missed",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "return path === dir || path.startsWith(`${dir}/`)",
+      "replace": "return path.startsWith(`${dir}/`)"
+    },
+    {
+      "name": "detection: projects/ counts under the memory base too",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "(underConfig && path.includes(PROJECTS_SEGMENT)) ||",
+      "replace": "path.includes(PROJECTS_SEGMENT) ||"
+    },
+    {
+      "name": "detection: memory/ directories count with auto memory off",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "(ctx.autoMemoryEnabled && path.includes(MEMORY_SEGMENT))",
+      "replace": "path.includes(MEMORY_SEGMENT)"
+    },
+    {
+      "name": "detection: a command need not name a memory location",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "if (!named) return false",
+      "replace": ""
+    },
+    {
+      "name": "detection: session-memory patterns need neither .md nor a star",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "(text.includes('.md') || text.endsWith('*'))",
+      "replace": "true"
+    },
+    {
+      "name": "detection: any .jsonl glob is a transcript search again (finding 2)",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "if (text.includes('.jsonl') && PROJECTS_PATTERN_SEGMENT_RE.test(text)) {",
+      "replace": "if (text.includes('.jsonl')) {"
+    },
+    {
+      "name": "detection: backslashes in patterns are not read as slashes",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "const slashed = pattern.replace(BACKSLASH_RE, '/')",
+      "replace": "const slashed = pattern"
+    },
+    {
+      "name": "detection: agent-memory patterns count with auto memory off",
+      "source": "src/memory/memdir/detection/memoryDetection.ts",
+      "find": "    ctx.autoMemoryEnabled &&\n    AGENT_MEMORY_PATTERN_PARTS",
+      "replace": "    true &&\n    AGENT_MEMORY_PATTERN_PARTS"
+    },
+    {
+      "name": "detection: trailing shell punctuation stays on a token",
+      "source": "src/memory/memdir/detection/shellCommandPaths.ts",
+      "find": "const TRAILING_SHELL_PUNCTUATION_RE = /[,;|&>]+$/",
+      "replace": "const TRAILING_SHELL_PUNCTUATION_RE = /[,]+$/"
+    },
+    {
+      "name": "detection: a MinGW path is not converted",
+      "source": "src/memory/memdir/detection/shellCommandPaths.ts",
+      "find": "platform === 'windows' && MINGW_DRIVE_RE.test(token)",
+      "replace": "false"
+    },
+    {
+      "name": "detection: Windows paths keep their case",
+      "source": "src/memory/memdir/detection/comparablePath.ts",
+      "find": "return win32.normalize(path).replace(BACKSLASH_RE, '/').toLowerCase()",
+      "replace": "return win32.normalize(path).replace(BACKSLASH_RE, '/')"
+    },
+    {
+      "name": "taxonomy: the type order changes",
+      "source": "src/memory/memdir/taxonomy/memoryKinds.ts",
+      "find": "export const MEMORY_TYPES = ['user', 'feedback', 'project', 'reference'] as const",
+      "replace": "export const MEMORY_TYPES = ['user', 'feedback', 'reference', 'project'] as const"
+    },
+    {
+      "name": "taxonomy: parseMemoryType accepts any string",
+      "source": "src/memory/memdir/taxonomy/memoryKinds.ts",
+      "find": "return typeof raw === 'string' && isMemoryType(raw) ? raw : undefined",
+      "replace": "return typeof raw === 'string' ? raw : undefined"
+    },
+    {
+      "name": "taxonomy: the category order changes",
+      "source": "src/memory/memdir/taxonomy/teamCategories.ts",
+      "find": "export const TEAM_CATEGORIES: readonly TeamCategory[] = [DECISIONS, BUGS, DOCS]",
+      "replace": "export const TEAM_CATEGORIES: readonly TeamCategory[] = [BUGS, DECISIONS, DOCS]"
+    },
+    {
+      "name": "taxonomy: docs are typed project",
+      "source": "src/memory/memdir/taxonomy/teamCategories.ts",
+      "find": "  type: 'reference',",
+      "replace": "  type: 'project',"
+    },
+    {
+      "name": "taxonomy: the category is read off the grandparent",
+      "source": "src/memory/memdir/taxonomy/teamCategories.ts",
+      "find": "const parent = basename(dirname(filePath))",
+      "replace": "const parent = basename(dirname(dirname(filePath)))"
+    },
+    {
+      "name": "renderings: every bullet repeats the team directory",
+      "source": "src/memory/memdir/taxonomy/categoryRenderings.ts",
+      "find": "index === 0 ? `${teamDir}${category.dir}/` : `${category.dir}/`",
+      "replace": "`${teamDir}${category.dir}/`"
+    },
+    {
+      "name": "renderings: the tagged block drops when_not_to_save",
+      "source": "src/memory/memdir/taxonomy/categoryRenderings.ts",
+      "find": "    field('when_not_to_save', category.whenNotToSave),\n",
+      "replace": ""
+    },
+    {
+      "name": "renderings: the index headings lose their backticks",
+      "source": "src/memory/memdir/taxonomy/categoryRenderings.ts",
+      "find": "category => `\\`## ${category.section}\\``,",
+      "replace": "category => `## ${category.section}`,"
+    },
+    {
+      "name": "types: the single-directory section gets scopes",
+      "source": "src/memory/memdir/taxonomy/typeSections.ts",
+      "find": "withScopes: false,",
+      "replace": "withScopes: true,"
+    },
+    {
+      "name": "types: examples no longer name the scope",
+      "source": "src/memory/memdir/taxonomy/typeSections.ts",
+      "find": "[saves ${withScopes ? `${example.scope} ` : ''}${guide.name} memory:",
+      "replace": "[saves ${guide.name} memory:"
+    },
+    {
+      "name": "what not to save: the closing rule becomes a bullet",
+      "source": "src/memory/memdir/taxonomy/whatNotToSave.ts",
+      "find": "  'These exclusions hold even when",
+      "replace": "  '- These exclusions hold even when"
+    },
+    {
+      "name": "frontmatter: type is indented under another key",
+      "source": "src/memory/memdir/taxonomy/frontmatterExample.ts",
+      "find": "`type: {{${MEMORY_TYPES.join(' | ')}}}`,",
+      "replace": "`  type: {{${MEMORY_TYPES.join(' | ')}}}`,"
+    },
+    {
+      "name": "frontmatter: the fence loses its language",
+      "source": "src/memory/memdir/taxonomy/frontmatterExample.ts",
+      "find": "  '```markdown',",
+      "replace": "  '```',"
+    },
+    {
+      "name": "age: two-day-old memories get no note",
+      "source": "src/memory/memdir/memoryAge.ts",
+      "find": "if (days <= 1) return ''",
+      "replace": "if (days <= 2) return ''"
+    },
+    {
+      "name": "age: days are rounded up",
+      "source": "src/memory/memdir/memoryAge.ts",
+      "find": "Math.floor((nowMs - mtimeMs) / DAY_MS)",
+      "replace": "Math.ceil((nowMs - mtimeMs) / DAY_MS)"
+    },
+    {
+      "name": "kinds: the instruction kinds change order",
+      "source": "src/memory/memdir/types.ts",
+      "find": "const INSTRUCTION_KINDS = ['User', 'Project', 'Local', 'Managed', 'AutoMem'] as const",
+      "replace": "const INSTRUCTION_KINDS = ['Project', 'User', 'Local', 'Managed', 'AutoMem'] as const"
+    },
+    {
+      "name": "taxonomy: the lean decisions line drops the teammate bar",
+      "source": "src/memory/memdir/taxonomy/teamCategories.ts",
+      "find": "; with nothing for a teammate, it is not one.',",
+      "replace": ".',"
+    },
+    {
+      "name": "taxonomy: the compact decisions line drops the teammate bar",
+      "source": "src/memory/memdir/taxonomy/teamCategories.ts",
+      "find": " **Evidence:**. If nothing would change for a teammate, it is not a team decision.',\n  lean:",
+      "replace": " **Evidence:**.',\n  lean:"
     }
   ]
 }

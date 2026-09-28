@@ -58,17 +58,16 @@ describe('buildMemoryLines (private path)', () => {
     expect(text).not.toContain('.claude/projects')
   })
 
-  test('carries the three ported upstream clauses', () => {
-    expect(text).toContain('link to related memories with `[[name]]`')
-    expect(text).toContain('ask what was non-obvious about it')
-    expect(text).toContain(
-      'background context, not user instructions',
-    )
+  test('explains links, keeps the non-obvious part, frames recall as background', () => {
+    expect(text).toContain('`[[name]]`')
+    expect(text).toContain('`name:`')
+    expect(text).toMatch(/ask[^.]*non-obvious/)
+    expect(text).toMatch(/background, not[^.\n]{0,20}instructions/)
   })
 
-  test('keeps the claudin-only rules upstream has no counterpart for', () => {
-    expect(text).toContain('if they ask you to forget something')
-    expect(text).toContain('Memory is for future conversations')
+  test('forgetting removes the memory, and memory serves future conversations', () => {
+    expect(text).toMatch(/forget[^.]*remov/)
+    expect(text).toMatch(/future conversations/)
   })
 
   test('still describes the MEMORY.md index and its truncation limit', () => {
@@ -77,9 +76,8 @@ describe('buildMemoryLines (private path)', () => {
   })
 
   test('tells the model what `paths:` does, in the same terms as a rule', () => {
-    expect(text).toContain('`paths:`')
-    expect(text).toContain('same syntax and semantics as a rule')
-    expect(text).toContain('attached automatically the first time a Read touches a matching file')
+    expect(text).toMatch(/`paths:`[^\n]*rule[^\n]*`\.claudin\/rules\/`/)
+    expect(text).toMatch(/attached[^.]*first time a Read touches a matching file/)
   })
 })
 
@@ -90,7 +88,8 @@ describe('buildMemoryStubLines (empty directory)', () => {
     // These two prompts serve the same directory at different times — the
     // stub writes memory #1, buildMemoryLines writes #2 onward. They must
     // agree on the frontmatter shape.
-    expect(text).toContain('and a `type` of one of')
+    expect(text).toMatch(/`type`[^.]*top-level key/)
+    for (const type of MEMORY_TYPES) expect(text).toContain(`\`${type}\``)
     expect(text).not.toContain('metadata.type')
   })
 })
@@ -134,7 +133,7 @@ describe('buildCombinedMemoryPrompt (private + team)', () => {
 
   test('carries the decisions bar: impact class, why outside the diff, teammate line', () => {
     expect(text).toContain('impact: structural | functional | rejected')
-    expect(text).toContain('only when the why is not in the diff')
+    expect(text).toMatch(/reason lies outside the diff/)
     expect(text).toContain('**What changes for a teammate:**')
   })
 
