@@ -1,0 +1,219 @@
+{
+  "test": [
+    "src/vcs/git/gitFilesystem.characterization.test.ts",
+    "src/vcs/git/gitFilesystem.config.characterization.test.ts",
+    "src/vcs/git/gitFilesystem.cache.characterization.test.ts"
+  ],
+  "source": "src/vcs/git/gitFilesystem.ts",
+  "probes": [
+    {
+      "name": "git dir: a relative gitdir is not resolved from the .git file's directory",
+      "find": "        const resolved = resolve(root, rawDir)\n",
+      "replace": "        const resolved = rawDir\n"
+    },
+    {
+      "name": "git dir: answers are not remembered",
+      "find": "  if (cached !== undefined) {\n",
+      "replace": "  if (cached !== undefined && false) {\n"
+    },
+    {
+      "name": "git dir: clearResolveGitDirCache clears nothing",
+      "find": "  resolveGitDirCache.clear()\n",
+      "replace": "  void resolveGitDirCache\n"
+    },
+    {
+      "name": "git dir: no argument ignores the session working directory",
+      "find": "  const cwd = resolve(startPath ?? getCwd())\n",
+      "replace": "  const cwd = resolve(startPath ?? process.cwd())\n"
+    },
+    {
+      "name": "ref names: a leading dash is accepted",
+      "find": "  if (!name || name.startsWith('-') || name.startsWith('/')) {\n",
+      "replace": "  if (!name || name.startsWith('/')) {\n"
+    },
+    {
+      "name": "ref names: empty path components are accepted",
+      "find": "  if (name.split('/').some(c => c === '.' || c === '')) {\n",
+      "replace": "  if (name.split('/').some(c => c === '.')) {\n"
+    },
+    {
+      "name": "ref names: '#' joins the allowlist",
+      "find": "  if (!/^[a-zA-Z0-9/._+@-]+$/.test(name)) {\n",
+      "replace": "  if (!/^[a-zA-Z0-9/._+@#-]+$/.test(name)) {\n"
+    },
+    {
+      "name": "object ids: uppercase hex is accepted",
+      "find": "  return /^[0-9a-f]{40}$/.test(s) || /^[0-9a-f]{64}$/.test(s)\n",
+      "replace": "  return /^[0-9a-fA-F]{40}$/.test(s) || /^[0-9a-f]{64}$/.test(s)\n"
+    },
+    {
+      "name": "object ids: SHA-256 ids are refused",
+      "find": "  return /^[0-9a-f]{40}$/.test(s) || /^[0-9a-f]{64}$/.test(s)\n",
+      "replace": "  return /^[0-9a-f]{40}$/.test(s)\n"
+    },
+    {
+      "name": "HEAD: the branch name is not checked",
+      "find": "        if (!isSafeRefName(name)) {\n          return null\n        }\n        return { type: 'branch', name }\n",
+      "replace": "        return { type: 'branch', name }\n"
+    },
+    {
+      "name": "HEAD: a symbolic HEAD outside refs/heads/ is not checked",
+      "find": "      if (!isSafeRefName(ref)) {\n        return null\n      }\n",
+      "replace": ""
+    },
+    {
+      "name": "HEAD: 'ref:' must be followed by exactly one blank",
+      "find": "      const ref = content.slice('ref:'.length).trim()\n",
+      "replace": "      const ref = content.slice('ref: '.length)\n"
+    },
+    {
+      "name": "refs: no fallback to the common dir",
+      "find": "    return resolveRefInDir(commonDir, ref)\n",
+      "replace": "    return null\n"
+    },
+    {
+      "name": "refs: symbolic refs are not followed",
+      "find": "      return resolveRef(dir, target)\n",
+      "replace": "      return null\n"
+    },
+    {
+      "name": "refs: loose content is not checked",
+      "find": "    if (!isValidGitSha(content)) {\n      return null\n    }\n    return content\n",
+      "replace": "    return content\n"
+    },
+    {
+      "name": "packed-refs: a name matches by prefix",
+      "find": "      if (line.slice(spaceIdx + 1) === ref) {\n",
+      "replace": "      if (line.slice(spaceIdx + 1).startsWith(ref)) {\n"
+    },
+    {
+      "name": "commondir: a relative path is not resolved",
+      "find": "    return resolve(gitDir, content)\n",
+      "replace": "    return content\n"
+    },
+    {
+      "name": "default branch: origin/HEAD pointing outside refs/remotes/origin/ is used",
+      "find": "      if (target.startsWith(branchPrefix)) {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "default branch: the name origin/HEAD points at is not checked",
+      "find": "        if (!isSafeRefName(name)) {\n          return null\n        }\n        return name\n",
+      "replace": "        return name\n"
+    },
+    {
+      "name": "watcher: HEAD is not watched",
+      "find": "    this.watchPath(join(this.gitDir, 'HEAD'), () => {\n",
+      "replace": "    this.watchPath(join(this.gitDir, 'HEAD.unwatched'), () => {\n"
+    },
+    {
+      "name": "watcher: the config is watched in the worktree's own git dir",
+      "find": "    this.watchPath(join(this.commonDir ?? this.gitDir, 'config'), () => {\n",
+      "replace": "    this.watchPath(join(this.gitDir, 'config'), () => {\n"
+    },
+    {
+      "name": "watcher: a change marks nothing stale",
+      "find": "      entry.dirty = true\n",
+      "replace": "      entry.dirty = false\n"
+    },
+    {
+      "name": "cache: every call recomputes",
+      "find": "    if (existing && !existing.dirty) {\n",
+      "replace": "    if (existing && !existing.dirty && false) {\n"
+    },
+    {
+      "name": "watcher: the new branch's ref is not watched after a switch",
+      "find": "    await waitForScrollIdle()\n    await this.watchCurrentBranchRef()\n",
+      "replace": "    await waitForScrollIdle()\n"
+    },
+    {
+      "name": "watcher: scrolling holds back the invalidation",
+      "find": "    this.invalidate()\n    await waitForScrollIdle()\n",
+      "replace": "    await waitForScrollIdle()\n    this.invalidate()\n"
+    },
+    {
+      "name": "cached head: a branch with no commit is not empty",
+      "find": "    return (await resolveRef(gitDir, `refs/heads/${head.name}`)) ?? ''\n",
+      "replace": "    return (await resolveRef(gitDir, `refs/heads/${head.name}`)) ?? 'unborn'\n"
+    },
+    {
+      "name": "default branch: origin/master is preferred to origin/main",
+      "find": "  for (const candidate of ['main', 'master']) {\n",
+      "replace": "  for (const candidate of ['master', 'main']) {\n"
+    },
+    {
+      "name": "worktree HEAD: a relative gitdir is not resolved",
+      "find": "    gitDir = resolve(worktreePath, ptr.slice('gitdir:'.length).trim())\n",
+      "replace": "    gitDir = ptr.slice('gitdir:'.length).trim()\n"
+    },
+    {
+      "name": "worktree HEAD: the gitdir: prefix is not required",
+      "find": "    if (!ptr.startsWith('gitdir:')) {\n      return null\n    }\n",
+      "replace": ""
+    },
+    {
+      "name": "remote url for a dir: no fallback to the main repository's config",
+      "find": "    return parseGitConfigValue(commonDir, 'remote', 'origin', 'url')\n  }\n  return null\n}\n\n/**\n * Check if we're in a shallow clone",
+      "replace": "    return null\n  }\n  return null\n}\n\n/**\n * Check if we're in a shallow clone"
+    },
+    {
+      "name": "worktree count: the main worktree is not counted",
+      "find": "    return entries.length + 1\n",
+      "replace": "    return entries.length\n"
+    },
+    {
+      "name": "config: section names become case-sensitive",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "  const sectionLower = section.toLowerCase()\n",
+      "replace": "  const sectionLower = section\n"
+    },
+    {
+      "name": "config: key names become case-sensitive",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "    if (parsed && parsed.key.toLowerCase() === keyLower) {\n",
+      "replace": "    if (parsed && parsed.key === keyLower) {\n"
+    },
+    {
+      "name": "config: a section's keys leak into the sections after it",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "      inSection = matchesSectionHeader(trimmed, sectionLower, subsection)\n",
+      "replace": "      inSection = inSection || matchesSectionHeader(trimmed, sectionLower, subsection)\n"
+    },
+    {
+      "name": "config: quotes are kept as text",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "    if (ch === '\"') {\n      inQuote = !inQuote\n",
+      "replace": "    if (ch === '\\u0000') {\n      inQuote = !inQuote\n"
+    },
+    {
+      "name": "config: \\n inside quotes is not a newline",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "          case 'n':\n            result += '\\n'\n",
+      "replace": "          case 'n':\n            result += 'n'\n"
+    },
+    {
+      "name": "config: an unknown escape inside quotes keeps its backslash",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "            result += next\n",
+      "replace": "            result += '\\\\' + next\n"
+    },
+    {
+      "name": "config: an escaped backslash outside quotes stays doubled",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "      if (next === '\\\\') {\n",
+      "replace": "      if (next === '\\\\' && false) {\n"
+    },
+    {
+      "name": "config: blanks at the end of a value are kept",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "    result = trimTrailingWhitespace(result)\n",
+      "replace": "    result = result\n"
+    },
+    {
+      "name": "config: subsection names become case-insensitive",
+      "source": "src/vcs/git/gitConfigParser.ts",
+      "find": "  return foundSubsection === subsection\n",
+      "replace": "  return foundSubsection.toLowerCase() === subsection.toLowerCase()\n"
+    }
+  ]
+}

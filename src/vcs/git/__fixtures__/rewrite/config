@@ -1,0 +1,17 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	hooksPath = C:\\hooks dir\\x
+[remote "origin"]
+	url = https://github.com/example/project.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+	pushurl = "ssh://git@example.com/a b#c.git"
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+[remote "we\"ird"]
+	url = https://example.com/weird.git
+[remote "Upper"]
+	url = https://example.com/upper.git
