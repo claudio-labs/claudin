@@ -3,236 +3,699 @@
     "src/sessions/storagePure.characterization.test.ts",
     "src/sessions/storagePure.paths.characterization.test.ts",
     "src/sessions/storagePure.jsonl.characterization.test.ts",
-    "src/sessions/storagePure.portable.characterization.test.ts"
+    "src/sessions/storagePure.portable.characterization.test.ts",
+    "src/sessions/pure/firstPrompt.test.ts",
+    "src/sessions/pure/paths.test.ts",
+    "src/sessions/pure/jsonlStripping.test.ts",
+    "src/sessions/sessionStoragePortable/jsonStringField.test.ts",
+    "src/sessions/sessionStoragePortable/loadAssembler.test.ts"
   ],
-  "source": "src/sessions/sessionStoragePortable.ts",
+  "source": "src/sessions/pure/typeGuards.ts",
   "probes": [
     {
-      "name": "uuid: upper case refused",
-      "find": "[0-9a-f]{12}$/i\n",
-      "replace": "[0-9a-f]{12}$/\n"
+      "name": "guards: a system message is not a transcript message",
+      "find": "  'attachment',\n  'system',\n])",
+      "replace": "  'attachment',\n])"
     },
     {
-      "name": "field: no fallback to the spaced form",
-      "find": "    if (idx < 0) continue\n",
-      "replace": "    if (idx < 0) return undefined\n"
+      "name": "guards: a metadata kind leaves the parentUuid chain",
+      "find": "return m.type !== 'progress'",
+      "replace": "return m.type !== 'progress' && m.type !== 'summary'"
     },
     {
-      "name": "field: an escape skips one character only",
-      "find": "\n        i += 2\n",
-      "replace": "\n        i += 1\n"
+      "name": "guards: a legacy progress line needs no string uuid",
+      "find": "typeof uuid === 'string'",
+      "replace": "uuid !== undefined"
     },
     {
-      "name": "last field: stops at the first occurrence",
-      "find": "      searchFrom = i + 1\n",
-      "replace": "      searchFrom = text.length\n"
+      "name": "guards: check_progress is not ephemeral",
+      "find": "  'check_progress',\n",
+      "replace": ""
     },
     {
-      "name": "head/tail: the tail starts one byte late",
-      "find": "      const tailOffset = Math.max(0, fileSize - LITE_READ_BUF_SIZE)\n",
-      "replace": "      const tailOffset = Math.max(0, fileSize - LITE_READ_BUF_SIZE + 1)\n"
+      "name": "guards: ephemeral progress accepts non-strings",
+      "find": "typeof dataType === 'string' && EPHEMERAL_PROGRESS_TYPES.has(dataType)",
+      "replace": "EPHEMERAL_PROGRESS_TYPES.has(String(dataType))"
     },
     {
-      "name": "sanitize: underscores survive",
-      "find": "  const sanitized = name.replace(/[^a-zA-Z0-9]/g, '-')\n",
-      "replace": "  const sanitized = name.replace(/[^a-zA-Z0-9_]/g, '-')\n"
+      "name": "logging: the user type is not external",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "return 'external'",
+      "replace": "return 'ant'"
     },
     {
-      "name": "sanitize: a 200-character name gets a hash",
-      "find": "  if (sanitized.length <= MAX_SANITIZED_LENGTH) {\n",
-      "replace": "  if (sanitized.length < MAX_SANITIZED_LENGTH) {\n"
+      "name": "logging: removeExtraFields keeps isSidechain",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "({ parentUuid: _parentUuid, isSidechain: _isSidechain, ...entry }) => entry",
+      "replace": "({ parentUuid: _parentUuid, ...entry }) => entry"
     },
     {
-      "name": "sanitize: the Node suffix is not base 36",
-      "find": "  return Math.abs(djb2Hash(str)).toString(36)\n",
-      "replace": "  return Math.abs(djb2Hash(str)).toString(32)\n"
+      "name": "logging: progress is written",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "    case 'progress':\n      return false\n",
+      "replace": "    case 'progress':\n      return true\n"
     },
     {
-      "name": "load: snapshots not recognised",
-      "find": "const ATTR_SNAP_PREFIX = Buffer.from('{\"type\":\"attribution-snapshot\"')\n",
-      "replace": "const ATTR_SNAP_PREFIX = Buffer.from('{\"type\":\"attribution_snapshot\"')\n"
+      "name": "logging: every attachment is written",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "return shouldPersistAttachment(m.attachment.type)",
+      "replace": "return true"
     },
     {
-      "name": "load: the marker window is one byte short",
-      "find": "const BOUNDARY_SEARCH_BOUND = 256",
-      "replace": "const BOUNDARY_SEARCH_BOUND = 255"
+      "name": "logging: an empty content list is written",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "return Array.isArray(content) && content.length === 0",
+      "replace": "return false"
     },
     {
-      "name": "load: a non-system line counts as a boundary",
-      "find": "    if (parsed.type !== 'system' || parsed.subtype !== 'compact_boundary') {\n",
-      "replace": "    if (parsed.subtype !== 'compact_boundary') {\n"
+      "name": "logging: a virtual message is written with its flag",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "if (flagged.isVirtual !== true) return m",
+      "replace": "return m"
     },
     {
-      "name": "load: a preserved segment is never reported",
-      "find": "      hasPreservedSegment: Boolean(parsed.compactMetadata?.preservedSegment),\n",
-      "replace": "      hasPreservedSegment: false,\n"
+      "name": "logging: the caller's virtual message loses its flag",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "const { isVirtual: _isVirtual, ...real } = flagged\n  return real as WrittenMessage",
+      "replace": "delete flagged.isVirtual\n  return flagged"
     },
     {
-      "name": "load: a boundary inside a read does not cut",
-      "find": "        s.out.len = 0\n        s.boundaryStartOffset = s.bufFileOff + lineStart\n",
-      "replace": "        s.boundaryStartOffset = s.bufFileOff + lineStart\n"
+      "name": "logging: unloggable messages are written",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "    .filter(isWritten)\n",
+      "replace": ""
     },
     {
-      "name": "load: a boundary across the seam reports offset 0",
-      "find": "        s.boundaryStartOffset = s.bufFileOff\n",
-      "replace": "        s.boundaryStartOffset = 0\n"
-    },
-    {
-      "name": "load: a snapshot across the seam is lost",
-      "find": "  } else if (s.straddleSnapCarryLen > 0) {\n",
-      "replace": "  } else if (false) {\n"
-    },
-    {
-      "name": "load: stale bytes past a short read are taken",
-      "find": "  if (firstNl === -1 || firstNl >= bytesRead) return 0\n",
-      "replace": "  if (firstNl === -1) return 0\n"
-    },
-    {
-      "name": "load: no newline before the moved snapshot",
-      "find": "    if (s.out.len > 0 && s.out.buf[s.out.len - 1] !== LF) {\n",
-      "replace": "    if (false) {\n"
-    },
-    {
-      "name": "load: a growing output loses what it held",
-      "find": "    s.buf.copy(grown, 0, 0, s.len)\n",
-      "replace": "    void grown\n"
-    },
-    {
-      "name": "load: reads past the size given",
-      "find": "        Math.min(CHUNK_SIZE, fileSize - filePos),\n",
-      "replace": "        CHUNK_SIZE,\n"
-    },
-    {
-      "name": "strip: wrong preview tag",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "Buffer.from('<persisted-output>')",
-      "replace": "Buffer.from('<persisted_output>')"
-    },
-    {
-      "name": "strip: a space is not whitespace",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "  return byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0d\n",
-      "replace": "  return byte === 0x09 || byte === 0x0a || byte === 0x0d\n"
-    },
-    {
-      "name": "strip: escapes ignored in a string value",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "      } else if (byte === 0x5c) {\n        escapeNext = true\n",
-      "replace": "      } else if (byte === 0x5c) {\n        escapeNext = false\n"
-    },
-    {
-      "name": "strip: a primitive runs past the closing brace",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "    if (byte === 0x2c || byte === 0x7d) return i\n",
-      "replace": "    if (byte === 0x2c) return i\n"
-    },
-    {
-      "name": "strip: nested members removed too",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "        depth === 1 &&\n",
-      "replace": "        depth >= 1 &&\n"
-    },
-    {
-      "name": "strip: the trailing comma is left behind",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "          removeEnd = afterValue + 1\n",
-      "replace": "          removeEnd = afterValue\n"
-    },
-    {
-      "name": "strip: a new buffer even when nothing changed",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "  return changed ? Buffer.concat(chunks) : buf\n",
-      "replace": "  return Buffer.concat(chunks)\n"
-    },
-    {
-      "name": "visit: lines are not trimmed",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "    const line = buf.toString('utf8', start, end).trim()\n",
-      "replace": "    const line = buf.toString('utf8', start, end)\n"
-    },
-    {
-      "name": "visit: a malformed line throws",
-      "source": "src/sessions/pure/jsonlStripping.ts",
-      "find": "    } catch {\n      // Skip malformed lines\n    }\n",
-      "replace": "    } catch (error) {\n      throw error\n    }\n"
-    },
-    {
-      "name": "skip pattern: no leading whitespace allowed",
+      "name": "titles: tagged output after whitespace is a prompt",
       "source": "src/sessions/pure/firstPrompt.ts",
       "find": "/^(?:\\s*<[a-z]",
       "replace": "/^(?:<[a-z]"
     },
     {
-      "name": "title: wrong fallback text",
+      "name": "titles: a tag name must end in >",
       "source": "src/sessions/pure/firstPrompt.ts",
-      "find": "  return 'No prompt'\n",
-      "replace": "  return 'No prompts'\n"
+      "find": "[\\w-]*[\\s>]|",
+      "replace": "[\\w-]*>|"
     },
     {
-      "name": "first text: compact summaries count",
+      "name": "titles: an interruption marker without 'by user' is skipped",
       "source": "src/sessions/pure/firstPrompt.ts",
-      "find": "    if ('isCompactSummary' in msg && msg.isCompactSummary) continue\n",
-      "replace": ""
+      "find": "\\[Request interrupted by user[^\\]]*\\]",
+      "replace": "\\[Request interrupted[^\\]]*\\]"
     },
     {
-      "name": "first text: built-in commands count",
+      "name": "titles: the skip pattern keeps state between calls",
       "source": "src/sessions/pure/firstPrompt.ts",
-      "find": "        if (builtInCommandNames().has(commandName)) {\n",
-      "replace": "        if (false) {\n"
+      "find": "[^\\]]*\\])/\n",
+      "replace": "[^\\]]*\\])/g\n"
     },
     {
-      "name": "chunk: tool_result lines are read",
+      "name": "titles: a capitalised tag is skipped",
       "source": "src/sessions/pure/firstPrompt.ts",
-      "find": "    if (line.includes('\"tool_result\"')) continue\n",
-      "replace": ""
+      "find": "<[a-z][\\w-]*",
+      "replace": "<[a-zA-Z][\\w-]*"
     },
     {
-      "name": "chunk: no command fallback",
+      "name": "titles: built-in commands become prompts",
       "source": "src/sessions/pure/firstPrompt.ts",
-      "find": "              firstCommandFallback = commandNameTag\n",
-      "replace": ""
+      "find": "const builtIn = builtInCommandNames().has(commandTag.replace(LEADING_SLASH, ''))",
+      "replace": "const builtIn = false"
     },
     {
-      "name": "logging: user type ant keeps virtual flags",
-      "source": "src/sessions/pure/logging.ts",
-      "find": "  return 'external'\n",
-      "replace": "  return 'ant'\n"
+      "name": "titles: the command name is looked up with its slash",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "builtInCommandNames().has(commandTag.replace(LEADING_SLASH, ''))",
+      "replace": "builtInCommandNames().has(commandTag)"
     },
     {
-      "name": "logging: parentUuid kept",
-      "source": "src/sessions/pure/logging.ts",
-      "find": "    const { isSidechain, parentUuid, ...serializedMessage } = m\n",
-      "replace": "    const { isSidechain, ...serializedMessage } = m\n"
+      "name": "titles: command arguments are not trimmed",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "extractTag(text, COMMAND_ARGS_TAG)?.trim() ?? ''",
+      "replace": "extractTag(text, COMMAND_ARGS_TAG) ?? ''"
     },
     {
-      "name": "logging: every attachment written",
-      "source": "src/sessions/pure/logging.ts",
-      "find": "    return shouldPersistAttachment(m.attachment.type)\n",
-      "replace": "    return true\n"
+      "name": "titles: a custom command reads as its name alone",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "text: `${commandTag} ${args}`",
+      "replace": "text: commandTag"
     },
     {
-      "name": "paths: the session project directory is ignored",
+      "name": "titles: bash input has no bang",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "text: `! ${bashInput}`",
+      "replace": "text: bashInput"
+    },
+    {
+      "name": "titles: a blank prompt is a prompt (finding 4)",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "if (candidate.trim() !== '') yield judge(candidate)",
+      "replace": "yield judge(candidate)"
+    },
+    {
+      "name": "titles: only LF is flattened (finding 5)",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "const LINE_BREAK = /\\r\\n?|\\n/g",
+      "replace": "const LINE_BREAK = /\\n/g"
+    },
+    {
+      "name": "titles: the cut is not trimmed before the ellipsis",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "text.slice(0, TITLE_MAX_LENGTH).trim()",
+      "replace": "text.slice(0, TITLE_MAX_LENGTH)"
+    },
+    {
+      "name": "titles: 199 characters are kept",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "const TITLE_MAX_LENGTH = 200",
+      "replace": "const TITLE_MAX_LENGTH = 199"
+    },
+    {
+      "name": "titles: a cut ends in three dots",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "const ELLIPSIS = '\\u2026'",
+      "replace": "const ELLIPSIS = '...'"
+    },
+    {
+      "name": "titles: no prompt reads as Untitled",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "const NO_PROMPT = 'No prompt'",
+      "replace": "const NO_PROMPT = 'Untitled'"
+    },
+    {
+      "name": "titles: non-string text blocks are read",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "return type === 'text' && typeof text === 'string'",
+      "replace": "return type === 'text' && text !== undefined"
+    },
+    {
+      "name": "titles: compact summaries title the message reading",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "if (m.type !== 'user' || m.isMeta || m.isCompactSummary) continue",
+      "replace": "if (m.type !== 'user' || m.isMeta) continue"
+    },
+    {
+      "name": "titles: meta messages title the message reading",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "m.type !== 'user' || m.isMeta ||",
+      "replace": "m.type !== 'user' ||"
+    },
+    {
+      "name": "titles: spaced user lines are not read from a chunk",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "const USER_LINE_MARKERS = ['\"type\":\"user\"', '\"type\": \"user\"']",
+      "replace": "const USER_LINE_MARKERS = ['\"type\":\"user\"']"
+    },
+    {
+      "name": "titles: tool_result lines are read from a chunk",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "const NON_PROMPT_LINE_MARKERS = ['\"tool_result\"', '\"isMeta\":true', '\"isMeta\": true']",
+      "replace": "const NON_PROMPT_LINE_MARKERS = ['\"isMeta\":true', '\"isMeta\": true']"
+    },
+    {
+      "name": "titles: spaced meta lines are read from a chunk",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "const NON_PROMPT_LINE_MARKERS = ['\"tool_result\"', '\"isMeta\":true', '\"isMeta\": true']",
+      "replace": "const NON_PROMPT_LINE_MARKERS = ['\"tool_result\"', '\"isMeta\":true']"
+    },
+    {
+      "name": "titles: a chunk's compact summary titles it (finding 3)",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "if (!entry || entry.isCompactSummary) continue",
+      "replace": "if (!entry) continue"
+    },
+    {
+      "name": "titles: the last command is the fallback",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "firstCommand ??= verdict.name",
+      "replace": "firstCommand = verdict.name"
+    },
+    {
+      "name": "titles: chunk texts are judged unflattened",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "verdicts(chunkTexts(chunk), flatten)",
+      "replace": "verdicts(chunkTexts(chunk), text => text)"
+    },
+    {
+      "name": "titles: a chunk title is not cut",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "if (verdict.kind === 'prompt') return cutToTitle(verdict.text)",
+      "replace": "if (verdict.kind === 'prompt') return verdict.text"
+    },
+    {
+      "name": "titles: no command fallback",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "return firstCommand ?? ''",
+      "replace": "return ''"
+    },
+    {
+      "name": "titles: the message title is not flattened",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "cutToTitle(flatten(text))",
+      "replace": "cutToTitle(text)"
+    },
+    {
+      "name": "titles: a damaged chunk line stops the reading",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "    // A line cut at the end of the chunk, or damaged: not a candidate.\n    return undefined",
+      "replace": "    throw new Error('damaged line')"
+    },
+    {
+      "name": "paths: whole-transcript reads are capped at 5 MiB",
       "source": "src/sessions/pure/paths.ts",
-      "find": "export function getTranscriptPath(): string {\n  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())\n",
-      "replace": "export function getTranscriptPath(): string {\n  const projectDir = getProjectDir(getOriginalCwd())\n"
+      "find": "MAX_TRANSCRIPT_READ_BYTES = 50 * 1024 * 1024",
+      "replace": "MAX_TRANSCRIPT_READ_BYTES = 5 * 1024 * 1024"
+    },
+    {
+      "name": "paths: the memo is keyed on the cwd alone (finding 8)",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "const key = `${projectsDir}\\0${cwd}`",
+      "replace": "const key = cwd"
+    },
+    {
+      "name": "paths: the memo exposes no cache.clear",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "  cache: { clear: (): void => projectDirs.clear() },",
+      "replace": "  memo: { clear: (): void => projectDirs.clear() },"
+    },
+    {
+      "name": "paths: the session's own project directory is ignored",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "return getSessionProjectDir() ?? getProjectDir(getOriginalCwd())",
+      "replace": "return getProjectDir(getOriginalCwd())"
+    },
+    {
+      "name": "paths: the current session is looked up like any other",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "  if (sessionId === getSessionId()) return getTranscriptPath()\n",
+      "replace": ""
+    },
+    {
+      "name": "paths: other sessions follow the session directory",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "return join(getProjectDir(getOriginalCwd()), `${sessionId}.jsonl`)",
+      "replace": "return join(currentSessionDir(), `${sessionId}.jsonl`)"
+    },
+    {
+      "name": "paths: clearing a subdirectory does nothing",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "  agentSubdirs.delete(agentId)",
+      "replace": "  agentSubdirs.get(agentId)"
+    },
+    {
+      "name": "paths: an absolute subdirectory is trusted (finding 12)",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "if (!subdir || isAbsolute(subdir)) return undefined",
+      "replace": "if (!subdir) return undefined"
+    },
+    {
+      "name": "paths: a parent segment is trusted (finding 12)",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "return subdir.split(PATH_SEPARATOR).includes('..') ? undefined : subdir",
+      "replace": "return subdir"
+    },
+    {
+      "name": "paths: only a slash separates segments (finding 12)",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "const PATH_SEPARATOR = /[\\\\/]/",
+      "replace": "const PATH_SEPARATOR = /\\//"
     },
     {
       "name": "paths: the grouping subdirectory is ignored",
       "source": "src/sessions/pure/paths.ts",
-      "find": "    ? join(projectDir, sessionId, 'subagents', subdir)\n",
-      "replace": "    ? join(projectDir, sessionId, 'subagents')\n"
+      "find": "return subdir ? join(subagentsDir, subdir, fileName) : join(subagentsDir, fileName)",
+      "replace": "return join(subagentsDir, fileName)"
     },
     {
-      "name": "guards: attachments are not transcript messages",
-      "source": "src/sessions/pure/typeGuards.ts",
-      "find": "    entry.type === 'attachment' ||\n",
+      "name": "paths: subagents ignore the session directory",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "const subagentsDir = join(currentSessionDir(), getSessionId(), 'subagents')",
+      "replace": "const subagentsDir = join(getProjectDir(getOriginalCwd()), getSessionId(), 'subagents')"
+    },
+    {
+      "name": "strip: lines without a preview qualify",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "const PREVIEW_TAG = Buffer.from('<persisted-output>')",
+      "replace": "const PREVIEW_TAG = Buffer.from('{')"
+    },
+    {
+      "name": "strip: a space before the colon still names the member",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "const RAW_RESULT_MEMBER = Buffer.from('\"toolUseResult\":')",
+      "replace": "const RAW_RESULT_MEMBER = Buffer.from('\"toolUseResult\"')"
+    },
+    {
+      "name": "strip: a nested member is removed",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "if (depth === 1 && outerIsObject && startsWithAt(line, member, i)) return i",
+      "replace": "if (startsWithAt(line, member, i)) return i"
+    },
+    {
+      "name": "strip: an escaped quote ends a string",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "if (backslashes % 2 === 0) return quote + 1",
+      "replace": "return quote + 1"
+    },
+    {
+      "name": "strip: brackets inside strings are counted",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "      i = stringEnd(bytes, i)\n      continue\n",
+      "replace": "      i++\n      continue\n"
+    },
+    {
+      "name": "strip: a primitive runs past the closing brace",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "if (bytes[i] === COMMA || bytes[i] === CLOSE_BRACE) return i",
+      "replace": "if (bytes[i] === COMMA) return i"
+    },
+    {
+      "name": "strip: the comma after the value stays",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "if (line[after] === COMMA) return [member, after + 1]",
+      "replace": "if (line[after] === COMMA) return [member, after]"
+    },
+    {
+      "name": "strip: the comma before a last member stays",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "if (line[before] === COMMA) return [before, end]",
+      "replace": "if (line[before] === COMMA) return [before + 1, end]"
+    },
+    {
+      "name": "strip: whitespace after the value hides the comma",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "const after = skipWhitespaceForward(line, end)",
+      "replace": "const after = end"
+    },
+    {
+      "name": "strip: a new buffer comes back when nothing changed",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "return spans.length === 0 ? buf : withoutSpans(buf, spans)",
+      "replace": "return withoutSpans(buf, spans)"
+    },
+    {
+      "name": "strip: a qualifying line is parsed",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "  if (member === -1) return undefined\n",
+      "replace": "  if (member === -1) return undefined\n  JSON.parse(line.toString('utf8'))\n"
+    },
+    {
+      "name": "visit: lines are not trimmed",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "const text = buf.toString('utf8', start, end).trim()",
+      "replace": "const text = buf.toString('utf8', start, end)"
+    },
+    {
+      "name": "visit: a throwing visitor stops the walk (finding 7)",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "  try {\n    visit(entry)\n  } catch {\n",
+      "replace": "  {\n    visit(entry)\n  }\n  if (Number.NaN) {\n"
+    },
+    {
+      "name": "visit: a last line without LF is dropped",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "const end = newline === -1 ? buf.length : newline",
+      "replace": "const end = newline === -1 ? start : newline"
+    },
+    {
+      "name": "visit: a damaged line stops the walk",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "    // A damaged line is skipped; the rest of the transcript still loads.\n    return",
+      "replace": "    throw new Error('damaged line')"
+    },
+    {
+      "name": "dirs: underscores survive",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "const NOT_NAME_UNIT = /[^A-Za-z0-9]/g",
+      "replace": "const NOT_NAME_UNIT = /[^A-Za-z0-9_]/g"
+    },
+    {
+      "name": "dirs: a 201-character name is kept whole",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "const MAX_NAME_LENGTH = 200",
+      "replace": "const MAX_NAME_LENGTH = 201"
+    },
+    {
+      "name": "dirs: the suffix is joined with an underscore",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "}-${longNameSuffix(name)}",
+      "replace": "}_${longNameSuffix(name)}"
+    },
+    {
+      "name": "dirs: the suffix hashes the sanitized name",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "longNameSuffix(name)}`",
+      "replace": "longNameSuffix(sanitized)}`"
+    },
+    {
+      "name": "dirs: Bun settles on djb2 (finding 1)",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "  return Bun.hash(name).toString(36)",
+      "replace": "  return Math.abs(djb2Hash(name)).toString(36)"
+    },
+    {
+      "name": "dirs: Node writes the suffix in hex (finding 1)",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "return Math.abs(djb2Hash(name)).toString(36)\n",
+      "replace": "return Math.abs(djb2Hash(name)).toString(16)\n"
+    },
+    {
+      "name": "dirs: projects live in project/",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "return join(getClaudinConfigHomeDir(), 'projects')",
+      "replace": "return join(getClaudinConfigHomeDir(), 'project')"
+    },
+    {
+      "name": "dirs: the portable project directory is not sanitized",
+      "source": "src/sessions/sessionStoragePortable/projectDirectory.ts",
+      "find": "return join(getProjectsDir(), sanitizePath(projectDir))",
+      "replace": "return join(getProjectsDir(), projectDir)"
+    },
+    {
+      "name": "fields: the spaced form is not read",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "return [`\"${key}\":\"`, `\"${key}\": \"`]",
+      "replace": "return [`\"${key}\":\"`, `\"${key}\":  \"`]"
+    },
+    {
+      "name": "fields: a backslash escapes nothing",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "    if (char === BACKSLASH) i++",
+      "replace": "    if (char === BACKSLASH) i += 0"
+    },
+    {
+      "name": "fields: an unclosed value counts",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "  }\n  return undefined\n}\n\n// JSON string rules",
+      "replace": "  }\n  return text.slice(valueStart)\n}\n\n// JSON string rules"
+    },
+    {
+      "name": "fields: an invalid value comes back empty",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "return decodeValidBody(body) ?? body",
+      "replace": "return decodeValidBody(body) ?? ''"
+    },
+    {
+      "name": "fields: an escaped newline is not decoded",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "  n: '\\n',",
+      "replace": "  n: 'n',"
+    },
+    {
+      "name": "fields: unicode escapes are not decoded",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "      decoded += String.fromCharCode(Number.parseInt(hex, 16))",
+      "replace": "      decoded += hex"
+    },
+    {
+      "name": "fields: raw control characters are decoded through",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "    if (char < ' ') return undefined\n",
       "replace": ""
     },
     {
-      "name": "paths: the native binary stores the Node suffix",
+      "name": "fields: the compact form ranks first (finding 10)",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "  return a.at <= b.at ? a : b",
+      "replace": "  return a"
+    },
+    {
+      "name": "fields: the last reader ranks the compact form first (finding 10)",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "  return a.at >= b.at ? a : b",
+      "replace": "  return a"
+    },
+    {
+      "name": "fields: a cut last occurrence has no fallback",
+      "source": "src/sessions/sessionStoragePortable/jsonStringField.ts",
+      "find": "    from = previous.at - 1",
+      "replace": "    return undefined"
+    },
+    {
+      "name": "head/tail: the window is 32 KiB",
+      "source": "src/sessions/sessionStoragePortable/headAndTail.ts",
+      "find": "export const LITE_READ_BUF_SIZE = 64 * 1024",
+      "replace": "export const LITE_READ_BUF_SIZE = 32 * 1024"
+    },
+    {
+      "name": "head/tail: the tail starts a byte early",
+      "source": "src/sessions/sessionStoragePortable/headAndTail.ts",
+      "find": "fileSize - LITE_READ_BUF_SIZE)",
+      "replace": "fileSize - LITE_READ_BUF_SIZE - 1)"
+    },
+    {
+      "name": "head/tail: a small file has no tail",
+      "source": "src/sessions/sessionStoragePortable/headAndTail.ts",
+      "find": "return { head, tail: head }",
+      "replace": "return { head, tail: '' }"
+    },
+    {
+      "name": "head/tail: an unreadable file rejects",
+      "source": "src/sessions/sessionStoragePortable/headAndTail.ts",
+      "find": "  } catch {\n    // Listing sessions reads many files; one unreadable file lists as empty.\n    return { head: '', tail: '' }\n  }",
+      "replace": "  } finally {\n    // rejects\n  }"
+    },
+    {
+      "name": "head/tail: bytes are decoded as latin1",
+      "source": "src/sessions/sessionStoragePortable/headAndTail.ts",
+      "find": "return buf.toString('utf8', 0, bytesRead)",
+      "replace": "return buf.toString('latin1', 0, bytesRead)"
+    },
+    {
+      "name": "load: a snapshot is recognised without its brace",
+      "source": "src/sessions/sessionStoragePortable/transcriptLine.ts",
+      "find": "const SNAPSHOT_OPENING = Buffer.from('{\"type\":\"attribution-snapshot\"')",
+      "replace": "const SNAPSHOT_OPENING = Buffer.from('\"type\":\"attribution-snapshot\"')"
+    },
+    {
+      "name": "load: the marker may start at byte 256 (finding 11)",
+      "source": "src/sessions/sessionStoragePortable/transcriptLine.ts",
+      "find": "const BOUNDARY_MARKER_WINDOW = 256",
+      "replace": "const BOUNDARY_MARKER_WINDOW = 257"
+    },
+    {
+      "name": "load: a line's kind is settled a byte short",
+      "source": "src/sessions/sessionStoragePortable/transcriptLine.ts",
+      "find": "export const LINE_KIND_PREFIX_BYTES = BOUNDARY_MARKER_WINDOW - 1 + BOUNDARY_MARKER.length",
+      "replace": "export const LINE_KIND_PREFIX_BYTES = BOUNDARY_MARKER_WINDOW - 2 + BOUNDARY_MARKER.length"
+    },
+    {
+      "name": "load: any compact_boundary subtype is a boundary",
+      "source": "src/sessions/sessionStoragePortable/transcriptLine.ts",
+      "find": "if (type !== 'system' || subtype !== 'compact_boundary') return undefined",
+      "replace": "if (subtype !== 'compact_boundary') return undefined"
+    },
+    {
+      "name": "load: any system candidate is a boundary",
+      "source": "src/sessions/sessionStoragePortable/transcriptLine.ts",
+      "find": "if (type !== 'system' || subtype !== 'compact_boundary') return undefined",
+      "replace": "if (type !== 'system') return undefined"
+    },
+    {
+      "name": "load: preserved segments are ignored",
+      "source": "src/sessions/sessionStoragePortable/transcriptLine.ts",
+      "find": "return compactMetadata?.preservedSegment ? 'preserved' : 'ordinary'",
+      "replace": "return 'ordinary'"
+    },
+    {
+      "name": "load: an unparseable candidate fails the load",
+      "source": "src/sessions/sessionStoragePortable/transcriptLine.ts",
+      "find": "    // A candidate that does not parse is an ordinary line.\n    return undefined",
+      "replace": "    throw new Error('unparseable candidate')"
+    },
+    {
+      "name": "load: an ordinary boundary cuts nothing",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      this.output = this.outputFrom(this.lineOffset)\n",
+      "replace": ""
+    },
+    {
+      "name": "load: snapshots before the cut survive it",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      this.latestSnapshot = undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "load: the cut's offset is not recorded",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      this.boundaryStartOffset = this.lineOffset\n",
+      "replace": ""
+    },
+    {
+      "name": "load: an ordinary boundary keeps the preserved flag",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      this.hasPreservedSegment = false\n",
+      "replace": ""
+    },
+    {
+      "name": "load: a preserved boundary leaves the flag down",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      this.hasPreservedSegment = true\n",
+      "replace": ""
+    },
+    {
+      "name": "load: no LF goes in before a moved snapshot",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      if (this.output.length > 0 && this.output.lastByte() !== LF) this.output.append(LF_BYTES)\n",
+      "replace": ""
+    },
+    {
+      "name": "load: the latest snapshot is dropped",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      this.output.append(this.latestSnapshot)\n",
+      "replace": ""
+    },
+    {
+      "name": "load: snapshots stay where they are",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "if (this.kind === 'snapshot') this.latestSnapshot = this.held.view()",
+      "replace": "if (this.kind === 'snapshot') this.output.append(this.held.view())"
+    },
+    {
+      "name": "load: a line's kind is settled from its first piece (finding 2)",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "      if (this.held.length < LINE_KIND_PREFIX_BYTES) return\n",
+      "replace": ""
+    },
+    {
+      "name": "load: the rest of a plain line is held back",
+      "source": "src/sessions/sessionStoragePortable/loadAssembler.ts",
+      "find": "    if (this.kind === 'plain') this.output.append(rest)\n    else this.held.append(rest)",
+      "replace": "    this.held.append(rest)"
+    },
+    {
+      "name": "load: line offsets restart with every read",
+      "source": "src/sessions/sessionStoragePortable/lineSplitter.ts",
+      "find": "this.receiver.lineStart(this.offset + from)",
+      "replace": "this.receiver.lineStart(from)"
+    },
+    {
+      "name": "load: an unterminated last line never ends",
+      "source": "src/sessions/sessionStoragePortable/lineSplitter.ts",
+      "find": "    this.inLine = false\n    this.receiver.lineEnd()\n",
+      "replace": "    this.inLine = false\n"
+    },
+    {
+      "name": "load: a large output loses a byte when it grows",
+      "source": "src/sessions/sessionStoragePortable/growableBytes.ts",
+      "find": "    this.bytes.copy(grown, 0, 0, this.used)\n",
+      "replace": "    const kept = this.used > 4 * 1024 * 1024 ? this.used - 1 : this.used\n    grown.fill(0x21)\n    this.bytes.copy(grown, 0, 0, kept)\n"
+    },
+    {
+      "name": "load: reads run past the size given",
+      "source": "src/sessions/sessionStoragePortable/transcriptForLoad.ts",
+      "find": "const length = Math.min(chunk.length, fileSize - position)",
+      "replace": "const length = chunk.length"
+    },
+    {
+      "name": "load: the precompact threshold is 4 MiB",
+      "source": "src/sessions/sessionStoragePortable/transcriptForLoad.ts",
+      "find": "export const SKIP_PRECOMPACT_THRESHOLD = 5 * 1024 * 1024",
+      "replace": "export const SKIP_PRECOMPACT_THRESHOLD = 4 * 1024 * 1024"
+    },
+    {
+      "name": "portable: validateUuid accepts any string",
       "source": "src/sessions/sessionStoragePortable.ts",
-      "find": "    typeof Bun !== 'undefined' ? Bun.hash(name).toString(36) : simpleHash(name)\n",
-      "replace": "    simpleHash(name)\n"
+      "find": "export { validateUuid } from 'src/shared/data/uuid.js'",
+      "replace": "export const validateUuid = (value: unknown) => (typeof value === 'string' ? value : null)"
     }
   ]
 }

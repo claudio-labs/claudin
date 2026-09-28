@@ -1,87 +1,74 @@
-import memoize from 'lodash-es/memoize.js'
-import { join } from 'path'
+import { isAbsolute, join } from 'path'
 import {
   getOriginalCwd,
   getSessionId,
   getSessionProjectDir,
 } from 'src/platform/bootstrap/state.js'
+import { getProjectsDir, sanitizePath } from 'src/sessions/sessionStoragePortable.js'
 import type { AgentId } from 'src/shared/types/ids.js'
-import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
-import { sanitizePath } from 'src/shared/fs/path.js'
 
-export function getProjectsDir(): string {
-  return join(getClaudinConfigHomeDir(), 'projects')
+export { getProjectsDir }
+
+/** The cap for callers that read a whole transcript into memory. */
+export const MAX_TRANSCRIPT_READ_BYTES = 50 * 1024 * 1024
+
+// Keyed on the projects directory as well as the cwd, so a config home that
+// moves is honoured without anyone having to clear the memo.
+const projectDirs = new Map<string, string>()
+
+function memoizedProjectDir(cwd: string): string {
+  const projectsDir = getProjectsDir()
+  const key = `${projectsDir}\0${cwd}`
+  const known = projectDirs.get(key)
+  if (known !== undefined) return known
+  const dir = join(projectsDir, sanitizePath(cwd))
+  projectDirs.set(key, dir)
+  return dir
+}
+
+/** `<projects>/<sanitized cwd>`, memoized; `cache.clear()` empties the memo. */
+export const getProjectDir = Object.assign(memoizedProjectDir, {
+  cache: { clear: (): void => projectDirs.clear() },
+})
+
+function currentSessionDir(): string {
+  return getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
 }
 
 export function getTranscriptPath(): string {
-  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
-  return join(projectDir, `${getSessionId()}.jsonl`)
+  return join(currentSessionDir(), `${getSessionId()}.jsonl`)
 }
 
 export function getTranscriptPathForSession(sessionId: string): string {
-  // When asking for the CURRENT session's transcript, honor sessionProjectDir
-  // the same way getTranscriptPath() does. Without this, hooks get a
-  // transcript_path computed from originalCwd while the actual file was
-  // written to sessionProjectDir (set by switchActiveSession on resume/branch)
-  // — different directories, so the hook sees MISSING (gh-30217). CC-34
-  // made sessionId + sessionProjectDir atomic precisely to prevent this
-  // kind of drift; this function just wasn't updated to read both.
-  //
-  // For OTHER session IDs we can only guess via originalCwd — we don't
-  // track a sessionId→projectDir map. Callers wanting a specific other
-  // session's path should pass fullPath explicitly (most save* functions
-  // already accept this).
-  if (sessionId === getSessionId()) {
-    return getTranscriptPath()
-  }
-  const projectDir = getProjectDir(getOriginalCwd())
-  return join(projectDir, `${sessionId}.jsonl`)
+  if (sessionId === getSessionId()) return getTranscriptPath()
+  // Only the current session's directory is tracked; any other session is
+  // looked up where the original cwd keeps its sessions.
+  return join(getProjectDir(getOriginalCwd()), `${sessionId}.jsonl`)
 }
 
-// 50 MB — session JSONL can grow to multiple GB (inc-3930). Callers that
-// read the raw transcript must bail out above this threshold to avoid OOM.
-export const MAX_TRANSCRIPT_READ_BYTES = 50 * 1024 * 1024
+const agentSubdirs = new Map<string, string>()
 
-// In-memory map of agentId → subdirectory for grouping related subagent
-// transcripts (e.g. workflow runs write to subagents/workflows/<runId>/).
-// Populated before the agent runs; consulted by getAgentTranscriptPath.
-const agentTranscriptSubdirs = new Map<string, string>()
-
-export function setAgentTranscriptSubdir(
-  agentId: string,
-  subdir: string,
-): void {
-  agentTranscriptSubdirs.set(agentId, subdir)
+/** Groups one agent's transcript under `subagents/<subdir>/`, e.g. a workflow run. */
+export function setAgentTranscriptSubdir(agentId: string, subdir: string): void {
+  agentSubdirs.set(agentId, subdir)
 }
 
 export function clearAgentTranscriptSubdir(agentId: string): void {
-  agentTranscriptSubdirs.delete(agentId)
+  agentSubdirs.delete(agentId)
+}
+
+const PATH_SEPARATOR = /[\\/]/
+
+// A grouping directory may only nest below `subagents/`. One that is absolute
+// or climbs with `..` is ignored rather than trusted.
+function nestedSubdir(subdir: string | undefined): string | undefined {
+  if (!subdir || isAbsolute(subdir)) return undefined
+  return subdir.split(PATH_SEPARATOR).includes('..') ? undefined : subdir
 }
 
 export function getAgentTranscriptPath(agentId: AgentId): string {
-  // Same sessionProjectDir consistency as getTranscriptPathForSession —
-  // subagent transcripts live under the session dir, so if the session
-  // transcript is at sessionProjectDir, subagent transcripts are too.
-  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
-  const sessionId = getSessionId()
-  const subdir = agentTranscriptSubdirs.get(agentId)
-  const base = subdir
-    ? join(projectDir, sessionId, 'subagents', subdir)
-    : join(projectDir, sessionId, 'subagents')
-  return join(base, `agent-${agentId}.jsonl`)
+  const subagentsDir = join(currentSessionDir(), getSessionId(), 'subagents')
+  const fileName = `agent-${agentId}.jsonl`
+  const subdir = nestedSubdir(agentSubdirs.get(agentId))
+  return subdir ? join(subagentsDir, subdir, fileName) : join(subagentsDir, fileName)
 }
-
-// Memoized: called 12+ times per turn via hooks.ts createBaseHookInput
-// (PostToolUse path, 5×/turn) + various save* functions. Input is a cwd
-// string; homedir/env/regex are all session-invariant so the result is
-// stable for a given input. Worktree switches just change the key — no
-// cache clear needed.
-//
-// CACHE WARNING: the memoize key is ONLY the cwd string. CLAUDIN_CONFIG_DIR
-// is read at compute time via getProjectsDir() → getClaudinConfigHomeDir(),
-// but changes to that env var DO NOT invalidate the cache. Tests that switch
-// CLAUDIN_CONFIG_DIR while keeping the same cwd MUST call
-// getProjectDir.cache.clear() between cases or they will read stale paths.
-export const getProjectDir = memoize((projectDir: string): string => {
-  return join(getProjectsDir(), sanitizePath(projectDir))
-})

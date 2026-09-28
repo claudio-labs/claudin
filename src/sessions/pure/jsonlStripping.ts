@@ -1,230 +1,199 @@
-/**
- * Byte-level JSONL stripping for the on-disk `<persisted-output>` contract.
- *
- * WHY BYTE-LEVEL? `stripPersistedToolUseResultFromLine` and
- * `stripPersistedToolUseResultsFromJSONLBuffer` are called on resume to remove
- * the giant raw `toolUseResult` blobs from JSONL lines before the messages
- * are rehydrated in RAM. `JSON.parse` would allocate the full object tree
- * (including the multi-MB raw blob we are about to discard) just to
- * re-serialize it without one key — that defeats the purpose and causes OOM
- * on long sessions. The byte-level walker skips over the value without ever
- * materializing it.
- *
- * DO NOT "simplify" this to JSON.parse + delete + JSON.stringify.
- *
- * TAG DUPLICATION: `PERSISTED_OUTPUT_TAG` is also defined (as a string) in
- * `src/agent/tools/toolResultStorage.ts:34` (`PERSISTED_OUTPUT_TAG`). The values
- * MUST stay in sync. Deduplication is intentionally deferred — it requires a
- * separate refactor that is out of scope for the sessionStorage split (11c).
- * TODO: consolidate against `toolResultStorage.ts` as the canonical source.
- */
+// Byte-level JSONL helpers for resume.
+//
+// When a tool result is too large, its `tool_result` content becomes a
+// `<persisted-output>` preview, but the line still carries the raw result as
+// the top-level `toolUseResult` member (see buildLargeToolResultMessage in
+// src/agent/tools/toolResultStorage.ts). Resume cuts that member out of the
+// bytes before anything is parsed. It walks bytes on purpose: parsing the line
+// would materialize the raw result, which can be megabytes long, and that is
+// what ran long sessions out of memory. Every other byte comes back as it was,
+// because transcripts are files users keep across versions.
 
-import { jsonParse } from 'src/platform/slowOperations.js'
+const LF = 0x0a
+const CR = 0x0d
+const TAB = 0x09
+const SPACE = 0x20
+const QUOTE = 0x22
+const COMMA = 0x2c
+const BACKSLASH = 0x5c
+const OPEN_BRACE = 0x7b
+const CLOSE_BRACE = 0x7d
+const OPEN_BRACKET = 0x5b
+const CLOSE_BRACKET = 0x5d
 
-export const PERSISTED_OUTPUT_TAG = Buffer.from('<persisted-output>')
-export const TOOL_USE_RESULT_KEY = Buffer.from('"toolUseResult":')
+const PREVIEW_TAG = Buffer.from('<persisted-output>')
+const RAW_RESULT_MEMBER = Buffer.from('"toolUseResult":')
 
-export function isJsonWhitespaceByte(byte: number | undefined): boolean {
-  return byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0d
+type Span = readonly [start: number, end: number]
+
+function isJsonWhitespace(byte: number | undefined): boolean {
+  return byte === SPACE || byte === TAB || byte === LF || byte === CR
 }
 
-export function skipJsonWhitespace(
-  buf: Buffer,
-  index: number,
-  end: number,
-): number {
-  let i = index
-  while (i < end && isJsonWhitespaceByte(buf[i])) i++
+function skipWhitespaceForward(bytes: Uint8Array, from: number): number {
+  let i = from
+  while (i < bytes.length && isJsonWhitespace(bytes[i])) i++
   return i
 }
 
-export function findJsonValueEnd(
-  buf: Buffer,
-  start: number,
-  end: number,
-): number {
-  let i = skipJsonWhitespace(buf, start, end)
-  const first = buf[i]
-  if (first === undefined) return end
-
-  if (first === 0x22) {
-    i++
-    let escapeNext = false
-    while (i < end) {
-      const byte = buf[i]!
-      if (escapeNext) {
-        escapeNext = false
-      } else if (byte === 0x5c) {
-        escapeNext = true
-      } else if (byte === 0x22) {
-        return i + 1
-      }
-      i++
-    }
-    return end
-  }
-
-  if (first === 0x7b || first === 0x5b) {
-    const stack = [first]
-    i++
-    let inString = false
-    let escapeNext = false
-    while (i < end) {
-      const byte = buf[i]!
-      if (escapeNext) {
-        escapeNext = false
-      } else if (inString) {
-        if (byte === 0x5c) escapeNext = true
-        else if (byte === 0x22) inString = false
-      } else if (byte === 0x22) {
-        inString = true
-      } else if (byte === 0x7b || byte === 0x5b) {
-        stack.push(byte)
-      } else if (byte === 0x7d || byte === 0x5d) {
-        const open = stack.at(-1)
-        if (
-          (byte === 0x7d && open === 0x7b) ||
-          (byte === 0x5d && open === 0x5b)
-        ) {
-          stack.pop()
-          if (stack.length === 0) return i + 1
-        }
-      }
-      i++
-    }
-    return end
-  }
-
-  while (i < end) {
-    const byte = buf[i]!
-    if (byte === 0x2c || byte === 0x7d) return i
-    i++
-  }
-  return end
+function skipWhitespaceBackward(bytes: Uint8Array, from: number): number {
+  let i = from
+  while (i >= 0 && isJsonWhitespace(bytes[i])) i--
+  return i
 }
 
-export function stripPersistedToolUseResultFromLine(line: Buffer): Buffer {
-  if (
-    line.indexOf(PERSISTED_OUTPUT_TAG) === -1 ||
-    line.indexOf(TOOL_USE_RESULT_KEY) === -1
-  ) {
-    return line
+/** Index just past the quote that closes the string opened at `open`, or the end. */
+function stringEnd(bytes: Buffer, open: number): number {
+  let from = open + 1
+  for (;;) {
+    const quote = bytes.indexOf(QUOTE, from)
+    if (quote === -1) return bytes.length
+    let backslashes = 0
+    while (bytes[quote - 1 - backslashes] === BACKSLASH) backslashes++
+    if (backslashes % 2 === 0) return quote + 1
+    from = quote + 1
   }
+}
 
+// Brackets are balanced by count, whatever their kind, and strings are
+// skipped, so a raw result that is not valid JSON is still cut exactly.
+function containerEnd(bytes: Buffer, open: number): number {
   let depth = 0
-  let inString = false
-  let escapeNext = false
-  const keyLen = TOOL_USE_RESULT_KEY.length
-
-  for (let i = 0; i <= line.length - keyLen; i++) {
-    const byte = line[i]!
-    if (escapeNext) {
-      escapeNext = false
+  let i = open
+  while (i < bytes.length) {
+    const byte = bytes[i]
+    if (byte === QUOTE) {
+      i = stringEnd(bytes, i)
       continue
     }
-    if (inString) {
-      if (byte === 0x5c) escapeNext = true
-      else if (byte === 0x22) inString = false
-      continue
+    if (byte === OPEN_BRACE || byte === OPEN_BRACKET) depth++
+    else if (byte === CLOSE_BRACE || byte === CLOSE_BRACKET) {
+      depth--
+      if (depth === 0) return i + 1
     }
-    if (byte === 0x22) {
-      if (
-        depth === 1 &&
-        line.compare(TOOL_USE_RESULT_KEY, 0, keyLen, i, i + keyLen) === 0
-      ) {
-        const valueEnd = findJsonValueEnd(line, i + keyLen, line.length)
-        let removeStart = i
-        let removeEnd = valueEnd
-        const afterValue = skipJsonWhitespace(line, valueEnd, line.length)
-
-        if (afterValue < line.length && line[afterValue] === 0x2c) {
-          removeEnd = afterValue + 1
-        } else {
-          let beforeKey = i - 1
-          while (beforeKey >= 0 && isJsonWhitespaceByte(line[beforeKey])) {
-            beforeKey--
-          }
-          if (beforeKey >= 0 && line[beforeKey] === 0x2c) {
-            removeStart = beforeKey
-          }
-        }
-
-        return Buffer.concat([
-          line.subarray(0, removeStart),
-          line.subarray(removeEnd),
-        ])
-      }
-      inString = true
-      continue
-    }
-    if (byte === 0x7b || byte === 0x5b) depth++
-    else if (byte === 0x7d || byte === 0x5d) depth--
+    i++
   }
-
-  return line
+  return bytes.length
 }
 
-export function stripPersistedToolUseResultsFromJSONLBuffer(
-  buf: Buffer,
-): Buffer {
-  if (
-    buf.indexOf(PERSISTED_OUTPUT_TAG) === -1 ||
-    buf.indexOf(TOOL_USE_RESULT_KEY) === -1
-  ) {
-    return buf
+/** A number, `true`, `false` or `null` runs up to the next `,` or `}`. */
+function scalarEnd(bytes: Uint8Array, start: number): number {
+  for (let i = start; i < bytes.length; i++) {
+    if (bytes[i] === COMMA || bytes[i] === CLOSE_BRACE) return i
   }
+  return bytes.length
+}
 
-  const NEWLINE = 0x0a
-  const chunks: Buffer[] = []
-  let changed = false
-  let start = 0
+function valueEnd(bytes: Buffer, start: number): number {
+  const first = bytes[start]
+  if (first === undefined) return bytes.length
+  if (first === QUOTE) return stringEnd(bytes, start)
+  if (first === OPEN_BRACE || first === OPEN_BRACKET) return containerEnd(bytes, start)
+  return scalarEnd(bytes, start)
+}
 
-  while (start < buf.length) {
-    let end = buf.indexOf(NEWLINE, start)
-    let hasNewline = true
-    if (end === -1) {
-      end = buf.length
-      hasNewline = false
+function startsWithAt(bytes: Buffer, prefix: Buffer, at: number): boolean {
+  const end = at + prefix.length
+  return end <= bytes.length && bytes.compare(prefix, 0, prefix.length, at, end) === 0
+}
+
+/** Where the outermost object's first member spelled exactly `member` starts, or -1. */
+function topLevelMemberStart(line: Buffer, member: Buffer): number {
+  let depth = 0
+  let outerIsObject = false
+  let i = 0
+  while (i < line.length) {
+    const byte = line[i]
+    if (byte === QUOTE) {
+      if (depth === 1 && outerIsObject && startsWithAt(line, member, i)) return i
+      i = stringEnd(line, i)
+      continue
     }
-    const line = buf.subarray(start, end)
-    const sanitized = stripPersistedToolUseResultFromLine(line)
-    if (sanitized !== line) changed = true
-    chunks.push(sanitized)
-    if (hasNewline) chunks.push(buf.subarray(end, end + 1))
-    start = end + (hasNewline ? 1 : 0)
+    if (byte === OPEN_BRACE || byte === OPEN_BRACKET) {
+      if (depth === 0) outerIsObject = byte === OPEN_BRACE
+      depth++
+    } else if (byte === CLOSE_BRACE || byte === CLOSE_BRACKET) {
+      if (depth <= 1) return -1
+      depth--
+    }
+    i++
   }
+  return -1
+}
 
-  return changed ? Buffer.concat(chunks) : buf
+/** The bytes of `line` to cut so that its raw result goes, or `undefined`. */
+function rawResultSpan(line: Buffer): Span | undefined {
+  if (!line.includes(RAW_RESULT_MEMBER)) return undefined
+  const member = topLevelMemberStart(line, RAW_RESULT_MEMBER)
+  if (member === -1) return undefined
+  const end = valueEnd(line, skipWhitespaceForward(line, member + RAW_RESULT_MEMBER.length))
+  const after = skipWhitespaceForward(line, end)
+  if (line[after] === COMMA) return [member, after + 1]
+  const before = skipWhitespaceBackward(line, member - 1)
+  if (line[before] === COMMA) return [before, end]
+  return [member, end]
+}
+
+function withoutSpans(buf: Buffer, spans: readonly Span[]): Buffer {
+  const kept: Buffer[] = []
+  let from = 0
+  for (const [start, end] of spans) {
+    kept.push(buf.subarray(from, start))
+    from = end
+  }
+  kept.push(buf.subarray(from))
+  return Buffer.concat(kept)
 }
 
 /**
- * Internal-shared: parse a JSONL buffer and invoke `visit` for each entry.
- * Used by several sessionStorage internal call sites; exported so other
- * split modules (resume/, indexing/) can consume it without re-implementing.
+ * Removes the raw `toolUseResult` from every line that also carries a
+ * `<persisted-output>` preview. Returns the same buffer when nothing changed,
+ * and never modifies the input.
  */
-export function forEachParsedJSONLBufferEntry<T>(
-  buf: Buffer,
-  visit: (entry: T) => void,
-): void {
-  const bufLen = buf.length
-  let start = 0
-
-  if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
-    start = 3
+export function stripPersistedToolUseResultsFromJSONLBuffer(buf: Buffer): Buffer {
+  if (!buf.includes(RAW_RESULT_MEMBER)) return buf
+  const spans: Span[] = []
+  let from = 0
+  while (from < buf.length) {
+    const tag = buf.indexOf(PREVIEW_TAG, from)
+    if (tag === -1) break
+    const lineStart = buf.lastIndexOf(LF, tag) + 1
+    const newline = buf.indexOf(LF, tag)
+    const lineEnd = newline === -1 ? buf.length : newline
+    const span = rawResultSpan(buf.subarray(lineStart, lineEnd))
+    if (span) spans.push([lineStart + span[0], lineStart + span[1]])
+    from = lineEnd + 1
   }
+  return spans.length === 0 ? buf : withoutSpans(buf, spans)
+}
 
-  while (start < bufLen) {
-    let end = buf.indexOf(0x0a, start)
-    if (end === -1) end = bufLen
+function visitLine<T>(text: string, visit: (entry: T) => void): void {
+  let entry: T
+  try {
+    entry = JSON.parse(text) as T
+  } catch {
+    // A damaged line is skipped; the rest of the transcript still loads.
+    return
+  }
+  try {
+    visit(entry)
+  } catch {
+    // Kept on purpose: the resume loader's visitor reads `entry.type` without
+    // a null check, and a stored `null` line is survived only because of this.
+  }
+}
 
-    const line = buf.toString('utf8', start, end).trim()
+/**
+ * Parses each non-blank line (trimmed, so CR and byte-order marks go) and
+ * hands its value to `visit`, in order. Lines that do not parse are skipped.
+ */
+export function forEachParsedJSONLBufferEntry<T>(buf: Buffer, visit: (entry: T) => void): void {
+  let start = 0
+  while (start < buf.length) {
+    const newline = buf.indexOf(LF, start)
+    const end = newline === -1 ? buf.length : newline
+    const text = buf.toString('utf8', start, end).trim()
+    if (text !== '') visitLine(text, visit)
     start = end + 1
-    if (!line) continue
-
-    try {
-      visit(jsonParse(line) as T)
-    } catch {
-      // Skip malformed lines
-    }
   }
 }

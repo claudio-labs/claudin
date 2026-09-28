@@ -2,76 +2,40 @@ import type { UUID } from 'crypto'
 import type { Entry, TranscriptMessage } from 'src/shared/types/logs.js'
 import type { Message } from 'src/shared/types/message.js'
 
-/**
- * Type guard to check if an entry is a transcript message.
- * Transcript messages include user, assistant, attachment, and system messages.
- * IMPORTANT: This is the single source of truth for what constitutes a transcript message.
- * loadTranscriptFile() uses this to determine which messages to load into the chain.
- *
- * Progress messages are NOT transcript messages. They are ephemeral UI state
- * and must not be persisted to the JSONL or participate in the parentUuid
- * chain. Including them caused chain forks that orphaned real conversation
- * messages on resume (see #14373, #23537).
- */
+// Only `type` decides what an on-disk entry is. Everything that is not one of
+// these four kinds is session metadata (titles, tags, snapshots, ...) or a
+// kind a newer build introduced.
+const CONVERSATION_KINDS: ReadonlySet<string> = new Set([
+  'user',
+  'assistant',
+  'attachment',
+  'system',
+])
+
 export function isTranscriptMessage(entry: Entry): entry is TranscriptMessage {
-  return (
-    entry.type === 'user' ||
-    entry.type === 'assistant' ||
-    entry.type === 'attachment' ||
-    entry.type === 'system'
-  )
+  return CONVERSATION_KINDS.has(entry.type)
 }
 
-/**
- * Entries that participate in the parentUuid chain. Used on the write path
- * (insertMessageChain, useLogMessages) to skip progress when assigning
- * parentUuid. Old transcripts with progress already in the chain are handled
- * by the progressBridge rewrite in loadTranscriptFile.
- */
+/** Progress ticks are never linked into the parentUuid chain. */
 export function isChainParticipant(m: Pick<Message, 'type'>): boolean {
   return m.type !== 'progress'
 }
 
+/** A progress line written by a build that still recorded progress. */
 export type LegacyProgressEntry = {
   type: 'progress'
   uuid: UUID
   parentUuid: UUID | null
 }
 
-/**
- * Progress entries in transcripts written before PR #24099. They are not
- * in the Entry type union anymore but still exist on disk with uuid and
- * parentUuid fields. loadTranscriptFile bridges the chain across them.
- *
- * Exported because the resume/ and indexing/ modules also need to skip
- * these legacy entries when walking JSONL on disk.
- */
-export function isLegacyProgressEntry(
-  entry: unknown,
-): entry is LegacyProgressEntry {
-  return (
-    typeof entry === 'object' &&
-    entry !== null &&
-    'type' in entry &&
-    entry.type === 'progress' &&
-    'uuid' in entry &&
-    typeof entry.uuid === 'string'
-  )
+export function isLegacyProgressEntry(entry: unknown): entry is LegacyProgressEntry {
+  if (typeof entry !== 'object' || entry === null) return false
+  const { type, uuid } = entry as { type?: unknown; uuid?: unknown }
+  return type === 'progress' && typeof uuid === 'string'
 }
 
-/**
- * High-frequency tool progress ticks (1/sec for Sleep, per-chunk for Bash).
- * These are UI-only: not sent to the API, not rendered after the tool
- * completes. Used by REPL.tsx to replace-in-place instead of appending, and
- * by loadTranscriptFile to skip legacy entries from old transcripts.
- *
- * Build, RunTests and Typecheck tick once a second for as long as they run and
- * render only the last tick, so a 20-minute build appended ~1200 dead entries
- * to the REPL's message list before they were listed here.
- *
- * Module-level Set per team rule (regex/buffer/set-at-module-level by extension).
- */
-export const EPHEMERAL_PROGRESS_TYPES = new Set([
+/** Tool ticks of which only the latest is ever shown. */
+export const EPHEMERAL_PROGRESS_TYPES: ReadonlySet<string> = new Set([
   'bash_progress',
   'powershell_progress',
   'mcp_progress',

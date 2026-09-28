@@ -39,6 +39,7 @@ import {
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { sanitizePath } from '../../../src/sessions/sessionStoragePortable.js'
 import { REPO_ROOT } from '../../repoRoot'
 
 const BASELINE =
@@ -175,29 +176,23 @@ type RunResult = {
 }
 
 /**
- * Mirrors `sanitizePath` in src/sessions/sessionStoragePortable.ts:311. The
+ * Names the directory with the app's own `sanitizePath`
+ * (src/sessions/sessionStoragePortable.ts) rather than a copy of its rule. The
  * obvious `replace(/[/]/g,'-')` is WRONG and fails silently: claudin replaces
  * every non-alphanumeric character, so a cwd holding a `.`, `_`, space or
  * non-ASCII resolves to a directory that does not exist, the counts come back
  * all zeros, and the run still prints OK with `reads=0` — indistinguishable
  * from a session that used no tools. It also honours CLAUDIN_CONFIG_DIR.
  */
-const NON_ALNUM_RE = /[^a-zA-Z0-9]/g
-const MAX_SANITIZED_LENGTH = 200
-
 function projectDirFor(cwd: string): string {
-  const sanitized = cwd.replace(NON_ALNUM_RE, '-')
-  const name =
-    sanitized.length <= MAX_SANITIZED_LENGTH
-      ? sanitized
-      : `${sanitized.slice(0, MAX_SANITIZED_LENGTH)}-${Bun.hash(cwd).toString(36)}`
   const configHome = process.env.CLAUDIN_CONFIG_DIR ?? join(homedir(), '.claudin')
-  return join(configHome, 'projects', name)
+  return join(configHome, 'projects', sanitizePath(cwd))
 }
 
 /**
  * Every transcript one run produced: the session's own, plus one per sub-agent
- * under `<sessionId>/subagents/` (src/sessions/pure/paths.ts:61-72).
+ * under `<sessionId>/subagents/` (getAgentTranscriptPath in
+ * src/sessions/pure/paths.ts).
  *
  * Counting only the parent is what made the first published result wrong. A
  * baseline run delegated to three sub-agents that did 93 reads between them;

@@ -369,6 +369,19 @@ inserted before the moved snapshot.
 11. **The 256-byte marker window is a heuristic.** A real boundary with long `teamName`, `agentName` and `agentId` members before `type` can exceed it, and then finding 2's consequences follow. **Decision: keep for parity.** The window is what keeps the loader from parsing large lines. Pinned at 255/256.
 12. **The subagent subdirectory is not validated.** It is joined into the path as given. **Decision: fix, as hardening.** A subdirectory that is absolute or has a `..` segment is ignored, and the transcript goes to the plain `subagents/` path. The only caller passes `workflows/<12 hex characters>`, so legitimate use never notices. Not pinned.
 
+## Outcome (2026-09-28)
+
+- **The gate.** Three of the new files matched inherited lines when the unit landed. One was reworded to zero:
+  - `src/sessions/pure/paths.test.ts`: 9 lines, 6 of Claude Code and 3 of openclaude. They were the table of escaping subdirectories and the test run over it, and they matched by shape. The five cases now sit in a table keyed by their names, and none was dropped.
+- **Residue, reviewed.** 4 lines of Claude Code remain. They are contract, or the transcript format on disk:
+  - **`src/sessions/sessionStoragePortable/projectDirectory.ts`, 2 lines.** The signature of the portable `getProjectDir`, and its one-line body. The body is the layout on disk: a project's sessions live in the projects directory, under the sanitized name.
+  - **`src/sessions/sessionStoragePortable/loadAssembler.test.ts`, 2 lines.** The subtype and the content of a compact-boundary record in a fixture, as the transcript writer stores them.
+- **Files rewritten at their old paths.** The baseline still allowed them their old counts, so the gate did not flag them, and they were reviewed by hand:
+  - **`src/sessions/pure/logging.ts`, reworded to zero.** Its 2 lines were the exported signature of `isLoggableMessage` and its first check. The checks are now one `switch` over the message type.
+  - **`src/sessions/pure/typeGuards.ts`, 4 lines of residue.** The signatures of `isChainParticipant` and `isEphemeralToolProgress`, each with its one-line body. Each body is the whole rule the contract names, and the second reads `EPHEMERAL_PROGRESS_TYPES`, which the barrel exports.
+
+  Every other file of the unit, its tests included, measures zero.
+
 ## Target design
 
 - **A pure core.** The guards, the logging filter, the title rules, `sanitizePath`, the field readers and the JSONL byte scanning are pure functions, with no module state and no I/O.

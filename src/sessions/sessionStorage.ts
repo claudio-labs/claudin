@@ -30,10 +30,9 @@
 //
 // On-disk format compatibility is byte-sensitive: see
 // pure/jsonlStripping.ts header for the <persisted-output> contract that
-// stable-stub depends on. Do not "clean up" the byte-level JSON helpers
-// (isJsonWhitespaceByte / skipJsonWhitespace / findJsonValueEnd) — using
-// JSON.parse there would allocate the tool_result blob before discarding
-// it, defeating the OOM-prevention rationale.
+// stable-stub depends on. Its stripper walks bytes on purpose — parsing the
+// line would allocate the raw tool result before discarding it, defeating the
+// OOM-prevention rationale.
 
 export {
   EPHEMERAL_PROGRESS_TYPES,
