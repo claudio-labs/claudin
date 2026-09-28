@@ -15,7 +15,7 @@ exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 1
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;
 
 exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path reachable) 1`] = `
@@ -27,5 +27,5 @@ exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path re
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;

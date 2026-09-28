@@ -48,6 +48,8 @@ export type LogOption = {
   mode?: 'coordinator' | 'normal' // Session mode for coordinator/normal detection
   worktreeSession?: PersistedWorktreeSession | null // Worktree state at session end (null = exited, undefined = never entered)
   costState?: CostStateEntry // Last-wins — the session's running cost, restored on resume
+  contextTokens?: number // Tokens in context at the last model response (lite logs: from the tail)
+  costUSD?: number // Total cost at the last cost-state stamp (lite logs: from the tail)
 }
 
 export type SummaryMessage = {

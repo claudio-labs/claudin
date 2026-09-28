@@ -85,6 +85,9 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       // mirror inside the panel is `diff:close`).
       'ctrl+g': 'chat:openDiff',
       'ctrl+e': 'chat:openExplorer',
+      // Only while the prompt is empty (PromptInput gates the handler): with
+      // text in it, ← still moves the cursor.
+      left: 'chat:openSessions',
       'ctrl+s': 'chat:stash',
       // Side panel only: step INTO the panel on the right. ctrl+g opens and
       // closes the reviewer, so overloading it to mean "focus" as well would

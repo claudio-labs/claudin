@@ -1763,6 +1763,23 @@ function PromptInput({
     isActive: !isModalOverlayActive && !isSearchingHistory
   });
 
+  // ← on an empty prompt opens the session list. It goes the keybinding route
+  // so it opens mid-turn too instead of queueing behind the turn; with text in
+  // the prompt the binding is off and ← moves the cursor as always.
+  const handleOpenSessions = useCallback(() => {
+    void onSubmitProp('/resume', {
+      setCursorOffset,
+      clearBuffer,
+      resetHistory
+    }, undefined, {
+      fromKeybinding: true
+    });
+  }, [onSubmitProp, setCursorOffset, clearBuffer, resetHistory]);
+  useKeybinding('chat:openSessions', handleOpenSessions, {
+    context: 'Chat',
+    isActive: !isModalOverlayActive && !isSearchingHistory && mode === 'prompt' && input === ''
+  });
+
   // Fast mode keybinding is only active when fast mode is enabled and available
   useKeybinding('chat:fastMode', handleFastModePicker, {
     context: 'Chat',

@@ -125,6 +125,9 @@ export function PromptInputHelpMenu(props: Props) {
   // the same reason as effortShortcut above — the _c cache is a runtime no-op.
   const openDiffShortcut = formatShortcut(useShortcutDisplay("chat:openDiff", "Chat", "ctrl+g"));
   const openExplorerShortcut = formatShortcut(useShortcutDisplay("chat:openExplorer", "Chat", "ctrl+e"));
+  // The session list opens on ← while the prompt is empty.
+  const openSessionsKey = useShortcutDisplay("chat:openSessions", "Chat", "left");
+  const openSessionsShortcut = openSessionsKey === "left" ? "\u2190" : formatShortcut(openSessionsKey);
   const t21 = fixedWidth ? 28 : undefined;
   let t22;
   if ($[23] !== dimColor) {
@@ -168,7 +171,7 @@ export function PromptInputHelpMenu(props: Props) {
   }
   let t27;
   if ($[33] !== t21 || $[34] !== t22 || $[35] !== t23 || $[36] !== t24 || $[37] !== t25 || $[38] !== t26) {
-    t27 = <Box flexDirection="column" width={t21}>{t22}{t23}{t24}{t25}{t26}<Box><Text dimColor={dimColor}>{openExplorerShortcut} for file explorer</Text></Box><Box><Text dimColor={dimColor}>{openDiffShortcut} for diff reviewer</Text></Box></Box>;
+    t27 = <Box flexDirection="column" width={t21}>{t22}{t23}{t24}{t25}{t26}<Box><Text dimColor={dimColor}>{openExplorerShortcut} for file explorer</Text></Box><Box><Text dimColor={dimColor}>{openDiffShortcut} for diff reviewer</Text></Box><Box><Text dimColor={dimColor}>{openSessionsShortcut} for agents</Text></Box></Box>;
     $[33] = t21;
     $[34] = t22;
     $[35] = t23;

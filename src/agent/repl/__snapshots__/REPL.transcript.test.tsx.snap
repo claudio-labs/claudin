@@ -9,7 +9,7 @@ exports[`<REPL> transcript baseline empty initialMessages (degenerate) 1`] = `
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;
 
 exports[`<REPL> transcript baseline initialAgentName + color set (resumed agent context) 1`] = `
@@ -21,5 +21,5 @@ exports[`<REPL> transcript baseline initialAgentName + color set (resumed agent 
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 import {
   getTotalDuration,
+  isTurnActive,
   markTurnEnd,
   markTurnStart,
   resetCostState,
@@ -76,6 +77,14 @@ describe('active wall-duration tracking', () => {
     setNow(now + 10_000)
     markTurnEnd() // no active turn — must not add anything
     expect(getTotalDuration()).toBe(5_000)
+  })
+
+  test('a turn is active only between its start and its end', () => {
+    expect(isTurnActive()).toBe(false)
+    markTurnStart()
+    expect(isTurnActive()).toBe(true)
+    markTurnEnd()
+    expect(isTurnActive()).toBe(false)
   })
 
   test('restore seeds the accumulator from persisted lastDuration', () => {

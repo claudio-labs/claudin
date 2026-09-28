@@ -47,7 +47,7 @@ import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/terminal/prompt-suggestion/speculation.js';
 import { createAbortController } from 'src/shared/abortController.js';
 import type { RemoteMessageContent } from 'src/platform/teleport/api.js';
-import { canLeaseFullscreen, isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
+import { acquireFullscreenLease, canLeaseFullscreen, isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import type { QueryGuard } from 'src/agent/QueryGuard.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
@@ -134,6 +134,7 @@ export interface UseOnSubmitDeps {
     isImmediate?: boolean;
     clearLocalJSX?: boolean;
     generation?: number;
+    fullscreenLease?: () => void;
   } | null) => void;
   addNotification: ReturnType<typeof useNotifications>['addNotification'];
   repinScroll: () => void;
@@ -309,7 +310,10 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
               jsx,
               shouldHidePromptInput: false,
               isLocalJSXCommand: true,
-              generation
+              generation,
+              // Same lease as the queued path (processSlashCommand), so a
+              // keybinding that opens one mid-turn still gets the full screen.
+              fullscreenLease: matchingCommand.fullscreenLayout === true && canLeaseFullscreen() ? acquireFullscreenLease() : undefined
             });
           }
         };

@@ -52,6 +52,7 @@ import {
 } from 'src/sessions/sessionStoragePortable.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 import { validateUuid } from 'src/shared/data/uuid.js'
+import { extractTailStats } from 'src/sessions/indexing/sessionStats.js'
 
 // exported for testing
 export function getNodeEnv(): string {
@@ -688,6 +689,8 @@ type LiteMetadata = {
   prNumber?: number
   prUrl?: string
   prRepository?: string
+  contextTokens?: number
+  costUSD?: number
 }
 
 /**
@@ -829,7 +832,8 @@ export async function getLogsWithoutIndex(
  * Reads the first and last ~64KB of a JSONL file and extracts lite metadata.
  *
  * Head (first 64KB): isSidechain, projectPath, teamName, firstPrompt.
- * Tail (last 64KB): customTitle, tag, PR link, latest gitBranch.
+ * Tail (last 64KB): customTitle, tag, PR link, latest gitBranch, context
+ * tokens, cost.
  *
  * Accepts a shared buffer to avoid per-file allocation overhead.
  */
@@ -870,7 +874,6 @@ async function readLiteMetadata(
     extractLastJsonStringField(head, 'customTitle') ??
     extractLastJsonStringField(tail, 'aiTitle') ??
     extractLastJsonStringField(head, 'aiTitle')
-  const summary = extractLastJsonStringField(tail, 'summary')
   const tag = extractLastJsonStringField(tail, 'tag')
   const gitBranch =
     extractLastJsonStringField(tail, 'gitBranch') ??
@@ -900,12 +903,12 @@ async function readLiteMetadata(
     projectPath,
     teamName,
     customTitle,
-    summary,
     tag,
     agentSetting,
     prNumber,
     prUrl,
     prRepository,
+    ...extractTailStats(tail),
   }
 }
 
@@ -1039,6 +1042,8 @@ async function enrichLog(
     prUrl: meta.prUrl,
     prRepository: meta.prRepository,
     projectPath: meta.projectPath ?? log.projectPath,
+    contextTokens: meta.contextTokens,
+    costUSD: meta.costUSD,
   }
 
   // Provide a fallback title for sessions where we couldn't extract the first

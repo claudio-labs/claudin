@@ -12,6 +12,7 @@ import autofixPr from 'src/commands/autofix-pr/index.js'
 import btw from 'src/commands/btw/index.js'
 import feedback from 'src/commands/feedback/index.js'
 import clear from 'src/commands/clear/index.js'
+import newSession from 'src/commands/new/index.js'
 import color from 'src/commands/color/index.js'
 import commit from 'src/commands/commit.js'
 import copy from 'src/commands/copy/index.js'
@@ -178,6 +179,7 @@ const COMMANDS = memoize((): Command[] => [
   cacheStats,
   cd,
   clear,
+  newSession,
   color,
   commit,
   compact,

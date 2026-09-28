@@ -1,11 +1,14 @@
-import { chmod, mkdir, readdir, unlink } from 'fs/promises'
+import { chmod, mkdir, readdir, readFile, unlink } from 'fs/promises'
 import { join } from 'path'
+import { z } from 'zod/v4'
 import {
   getOriginalCwd,
   getSessionId,
   onSessionSwitch,
 } from 'src/platform/bootstrap/state.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, isFsInaccessible } from 'src/shared/errors.js'
 import { isProcessRunning } from 'src/shared/proc/genericProcessUtils.js'
@@ -34,6 +37,10 @@ type SessionRecord = {
   messagingSocketPath?: string | null
   messagingToken?: string | null
   status?: 'busy' | 'idle'
+  /** What the session list in other instances shows for this one. */
+  turnActive?: boolean
+  runningAgents?: number
+  costUSD?: number
 }
 
 // registerSession() runs once per process in production but many times over a
@@ -170,6 +177,15 @@ export async function updateSessionStatus(status: 'busy' | 'idle'): Promise<void
   await updatePidFile({ status })
 }
 
+/** A running turn, running agents and cost, for other instances' session lists. */
+export async function updateSessionPresence(presence: {
+  turnActive: boolean
+  runningAgents: number
+  costUSD: number
+}): Promise<void> {
+  await updatePidFile(presence)
+}
+
 /**
  * Count live concurrent CLI sessions (including this one).
  * Filters out stale PID files (crashed sessions) and deletes them.
@@ -211,4 +227,65 @@ export async function countConcurrentSessions(): Promise<number> {
     }
   }
   return count
+}
+
+const PID_FILE_RE = /^\d+\.json$/
+
+const LiveRecordSchema = lazySchema(() =>
+  z.object({
+    pid: z.number().int(),
+    sessionId: z.string(),
+    cwd: z.string(),
+    turnActive: z.boolean().optional(),
+    runningAgents: z.number().optional(),
+    costUSD: z.number().optional(),
+  }),
+)
+
+export type LiveSession = z.infer<ReturnType<typeof LiveRecordSchema>>
+
+export type LiveSessionDeps = {
+  sessionsDir: string
+  ownPid: number
+  isAlive(pid: number): boolean
+}
+
+/**
+ * The sessions other live processes on this machine have open, from their
+ * PID records. Unlike the peer directory (peers/registry.ts), a record counts
+ * without an inbox: resuming its session here would put a second writer on
+ * the transcript whether or not that process takes messages.
+ */
+export async function listLiveSessions(
+  deps: LiveSessionDeps = {
+    sessionsDir: getSessionsDir(),
+    ownPid: process.pid,
+    isAlive: isProcessRunning,
+  },
+): Promise<LiveSession[]> {
+  let files: string[]
+  try {
+    files = await readdir(deps.sessionsDir)
+  } catch (e) {
+    if (!isFsInaccessible(e)) {
+      logForDebugging(`[concurrentSessions] readdir failed: ${errorMessage(e)}`)
+    }
+    return []
+  }
+  const live: LiveSession[] = []
+  for (const file of files) {
+    if (!PID_FILE_RE.test(file)) continue
+    const pid = parseInt(file.slice(0, -5), 10)
+    if (pid === deps.ownPid || !deps.isAlive(pid)) continue
+    try {
+      const parsed = LiveRecordSchema().safeParse(
+        jsonParse(await readFile(join(deps.sessionsDir, file), 'utf8')),
+      )
+      if (parsed.success) live.push(parsed.data)
+    } catch (e) {
+      // A record vanishing between readdir and read is a session exiting.
+      logForDebugging(`[concurrentSessions] skipped ${file}: ${errorMessage(e)}`)
+    }
+  }
+  return live
 }

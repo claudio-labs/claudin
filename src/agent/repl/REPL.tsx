@@ -43,7 +43,7 @@ import { useTerminalNotification } from 'src/terminal/ink/useTerminalNotificatio
 import { hasCursorUpViewportYankBug } from 'src/terminal/ink/terminal.js';
 import instances from 'src/terminal/ink/instances.js';
 import { createFileStateCacheWithSizeLimit, mergeReplacingLiveCache, READ_FILE_STATE_CACHE_SIZE } from 'src/shared/fs/fileStateCache.js';
-import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnEnd, getTurnHookDurationMs, getTurnHookCount, getTurnToolDurationMs, getTurnToolCount, getTurnClassifierDurationMs, getTurnClassifierCount } from 'src/platform/bootstrap/state.js';
+import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnEnd, isTurnActive, getTurnHookDurationMs, getTurnHookCount, getTurnToolDurationMs, getTurnToolCount, getTurnClassifierDurationMs, getTurnClassifierCount } from 'src/platform/bootstrap/state.js';
 import { asSessionId, asAgentId } from 'src/shared/types/ids.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { QueryGuard } from 'src/agent/QueryGuard.js';
@@ -53,7 +53,7 @@ import { consumeEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { sendSandboxPermissionResponseViaMailbox } from 'src/agent/coordinator/swarm/permissionSync.js';
 import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermission.js';
 import { injectUserMessageToTeammate, getAllInProcessTeammateTasks } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
-import { isLocalAgentTask, queuePendingMessage, appendMessageToLocalAgent, type LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
+import { isLocalAgentTask, queuePendingMessage, appendMessageToLocalAgent, killAllRunningAgentTasks, markAgentsNotified, type LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { registerLeaderToolUseConfirmQueue, unregisterLeaderToolUseConfirmQueue } from 'src/agent/coordinator/swarm/leaderPermissionBridge.js';
 import { useLogMessages } from 'src/agent/hooks/useLogMessages.js';
 import { useReplBridge } from 'src/platform/bridge/useReplBridge.js';
@@ -179,6 +179,7 @@ import { isInProcessTeammateTask, type InProcessTeammateTaskState } from 'src/ag
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { useInboxPoller } from 'src/agent/coordinator/useInboxPoller.js';
 import { usePeerInbox } from 'src/sessions/peers/hooks/usePeerInbox.js';
+import { useSessionPresence } from 'src/sessions/hooks/useSessionPresence.js';
 import { getHeldPeerMessages, subscribeHeldPeerMessages } from 'src/sessions/peers/heldMessages.js';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const SUGGEST_BG_PR_NOOP = (_p: string, _n: string): boolean => false;
@@ -190,7 +191,7 @@ import type { NetworkHostPattern } from 'src/platform/sandbox/sandbox-adapter.js
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/platform/ide/ide.js';
 import { useIDEIntegration } from 'src/platform/ide/useIDEIntegration.js';
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
-import { popAllEditable, getCommandQueue, getCommandQueueLength } from 'src/agent/messageQueueManager.js';
+import { popAllEditable, getCommandQueue, getCommandQueueLength, clearCommandQueue } from 'src/agent/messageQueueManager.js';
 import { bindToolJSXStore, dispatchToolJSX, getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js';
 import { SessionBackgroundHint } from 'src/sessions/ui/SessionBackgroundHint.js';
@@ -1492,6 +1493,8 @@ export function REPL({
     ...prev,
     fileHistory: fileHistoryState
   })));
+  // Filled in once onCancel exists (below); read when a switch runs.
+  const stopForegroundWorkRef = useRef<() => void>(() => {});
   const resume = useCallback(async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint) => {
     await resumeSession(sessionId, log, entrypoint, {
       setAppState,
@@ -1510,6 +1513,7 @@ export function REPL({
       setMessages,
       setToolJSX,
       setInputValue,
+      stopForegroundWork: () => stopForegroundWorkRef.current(),
     });
   }, [resetLoadingState, setAppState]);
 
@@ -1708,6 +1712,21 @@ export function REPL({
     // forceEnd() skips the finally path — fire directly (aborted=true).
     void mrOnTurnComplete(messagesRef.current, true);
   }
+
+  // A session switch first stops what the session being left still runs —
+  // its turn (the Esc path), its background agents and its queued prompts —
+  // so none of it writes into, or notifies, the session switched to.
+  stopForegroundWorkRef.current = () => {
+    // Not queryGuard.isActive: the /resume dialog that asked for this switch
+    // holds the guard in 'dispatching' itself.
+    if (isTurnActive()) onCancel();
+    const tasks = store.getState().tasks;
+    killAllRunningAgentTasks(tasks, setAppState);
+    for (const [taskId, task] of Object.entries(tasks)) {
+      if (task.type === 'local_agent' && task.status === 'running') markAgentsNotified(taskId, setAppState);
+    }
+    clearCommandQueue();
+  };
 
   // Function to handle queued command when canceling a permission request
   const handleQueuedCommandOnCancel = useCallback(() => {
@@ -2319,6 +2338,8 @@ export function REPL({
   } = usePeerInbox({
     isLoading
   });
+  // What the session list in other instances shows for this session.
+  useSessionPresence();
 
   // Scheduled tasks from .claudin/scheduled_tasks.json (CronCreate/Delete/List)
   // and session-only /loop runs.

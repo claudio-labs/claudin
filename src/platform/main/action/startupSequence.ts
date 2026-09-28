@@ -31,6 +31,7 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { logError } from 'src/shared/log.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/sessions/concurrentSessions.js';
+import { trackInstanceSessions } from 'src/sessions/instanceSessions.js';
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
 import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
@@ -328,6 +329,9 @@ export function runMcpHooksAndTelemetry(
   registerCleanup(async () => {
     logForDiagnosticsNoPII('info', 'exited');
   });
+
+  // The session list's "open here" group: every session this process visits.
+  trackInstanceSessions();
 
   // Register PID file for concurrent-session detection (~/.claudin/sessions/)
   // and fire multi-clauding telemetry. Lives here (not init.ts) so only the

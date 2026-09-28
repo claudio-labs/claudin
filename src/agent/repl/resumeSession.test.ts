@@ -256,6 +256,9 @@ function makeDeps(overrides: Partial<ResumeSessionDeps> = {}): ResumeSessionDeps
     setInputValue: mock(() => {
       calls.push('setInputValue')
     }),
+    stopForegroundWork: mock(() => {
+      calls.push('stopForegroundWork')
+    }),
     ...overrides,
   }
 }
@@ -353,6 +356,16 @@ describe('resumeSession', () => {
     expect(deps.haikuTitleAttemptedRef.current).toBe(true)
   })
 
+  test('the session being left is stopped before anything of the new one runs', async () => {
+    calls.length = 0
+
+    await resumeSession(SESSION_ID, makeLog(), 'slash_command_picker', makeDeps())
+
+    expect(calls[0]).toBe('stopForegroundWork')
+    expect(calls.indexOf('stopForegroundWork')).toBeLessThan(calls.indexOf('executeSessionEndHooks'))
+    expect(calls.indexOf('stopForegroundWork')).toBeLessThan(calls.indexOf('switchSession'))
+  })
+
   test('fork entrypoint takes fork branch (no worktree restore)', async () => {
     calls.length = 0
     const deps = makeDeps()
@@ -368,6 +381,8 @@ describe('resumeSession', () => {
 
     // Fork branch still hydrates message state.
     expect(calls).toContain('setMessages')
+    // A branch continues this conversation: what runs in it carries over.
+    expect(calls).not.toContain('stopForegroundWork')
   })
 
   test('an error inside the pipeline is re-thrown, not swallowed', async () => {

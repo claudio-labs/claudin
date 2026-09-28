@@ -121,8 +121,11 @@ describe('the module export surface', () => {
   //
   // 197 until `setIsRemoteMode` went: its only caller was the `--remote` TUI
   // path, whose runtime flag always resolved false.
-  test('still exports 196 runtime symbols', () => {
-    expect(Object.keys(stateModule)).toHaveLength(196)
+  //
+  // 197 again with `isTurnActive`: the session list asks it whether a switch
+  // would cut a running turn short.
+  test('still exports 197 runtime symbols', () => {
+    expect(Object.keys(stateModule)).toHaveLength(197)
   })
 
   test('exports at least one symbol from every planned cluster', () => {

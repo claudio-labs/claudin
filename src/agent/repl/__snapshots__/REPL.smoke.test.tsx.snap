@@ -9,7 +9,7 @@ exports[`<REPL> smoke baseline default mount (prompt mode, empty conversation) 1
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts"
+? for shortcuts · ← for agents"
 `;
 
 exports[`<REPL> smoke baseline disabled prop (no prompt input) 1`] = `
@@ -27,5 +27,5 @@ exports[`<REPL> smoke baseline debug mode on 1`] = `
 ❯
 
  ◐ medium ─────────────────────────────────────────────────────────────────────────────── claudin 
-? for shortcuts                                                                         Debug mode"
+? for shortcuts · ← for agents                                                          Debug mode"
 `;
