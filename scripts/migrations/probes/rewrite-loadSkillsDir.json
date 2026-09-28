@@ -1,0 +1,206 @@
+{
+  "test": "src/skills/loadSkillsDir.characterization.test.ts",
+  "source": "src/skills/loadSkillsDir.ts",
+  "probes": [
+    {
+      "name": "path: policy skills not under .claudin",
+      "find": "      return join(getManagedFilePath(), '.claudin', dir)\n",
+      "replace": "      return join(getManagedFilePath(), dir)\n"
+    },
+    {
+      "name": "estimate: when-to-use not counted",
+      "find": "  const frontmatterText = [skill.name, skill.description, skill.whenToUse]\n",
+      "replace": "  const frontmatterText = [skill.name, skill.description]\n"
+    },
+    {
+      "name": "fields: the description fallback label is ignored",
+      "find": "    extractDescriptionFromMarkdown(markdownContent, descriptionFallbackLabel)\n",
+      "replace": "    extractDescriptionFromMarkdown(markdownContent, 'Skill')\n"
+    },
+    {
+      "name": "fields: user-invocable defaults to false",
+      "find": "      ? true\n      : parseBooleanFrontmatter(frontmatter['user-invocable'])\n",
+      "replace": "      ? false\n      : parseBooleanFrontmatter(frontmatter['user-invocable'])\n"
+    },
+    {
+      "name": "fields: model 'inherit' resolved as a model name",
+      "find": "    frontmatter.model === 'inherit'\n",
+      "replace": "    frontmatter.model === 'inherited'\n"
+    },
+    {
+      "name": "fields: hooks not validated",
+      "find": "    hooks: parseHooksFromFrontmatter(frontmatter, resolvedName),\n",
+      "replace": "    hooks: frontmatter.hooks ?? undefined,\n"
+    },
+    {
+      "name": "paths: a trailing /** is kept",
+      "find": "      return pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern\n",
+      "replace": "      return pattern\n"
+    },
+    {
+      "name": "paths: match-all patterns still scope the skill",
+      "find": "  if (patterns.length === 0 || patterns.every((p: string) => p === '**')) {\n",
+      "replace": "  if (patterns.length === 0) {\n"
+    },
+    {
+      "name": "command: a non-invocable skill is not hidden",
+      "find": "    isHidden: !userInvocable,\n",
+      "replace": "    isHidden: false,\n"
+    },
+    {
+      "name": "prompt: wrong base-directory announcement",
+      "find": "        ? `Base directory for this skill: ${baseDir}\\n\\n${markdownContent}`\n",
+      "replace": "        ? `Skill directory: ${baseDir}\\n\\n${markdownContent}`\n"
+    },
+    {
+      "name": "prompt: only the first ${CLAUDIN_SKILL_DIR} is replaced",
+      "find": "        finalContent = finalContent.replace(/\\$\\{CLAUDIN_SKILL_DIR\\}/g, skillDir)\n",
+      "replace": "        finalContent = finalContent.replace(/\\$\\{CLAUDIN_SKILL_DIR\\}/, skillDir)\n"
+    },
+    {
+      "name": "prompt: MCP skills run their embedded shell",
+      "find": "      if (loadedFrom !== 'mcp') {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "prompt: skills from disk never run their embedded shell",
+      "find": "      if (loadedFrom !== 'mcp') {\n",
+      "replace": "      if (loadedFrom === 'plugin') {\n"
+    },
+    {
+      "name": "walk: SKILL.md matched case-sensitively",
+      "find": "  return /^skill\\.md$/i.test(basename(filePath))\n",
+      "replace": "  return /^SKILL\\.md$/.test(basename(filePath))\n"
+    },
+    {
+      "name": "walk: nested directories are not searched",
+      "find": "    await Promise.all(childDirs.map(walk))\n",
+      "replace": "    void childDirs\n"
+    },
+    {
+      "name": "walk: a symlinked skill directory is not followed",
+      "find": "        if ((await fs.stat(entryPath)).isDirectory()) {\n          topLevelDirs.push(entryPath)\n",
+      "replace": "        if (false) {\n          topLevelDirs.push(entryPath)\n"
+    },
+    {
+      "name": "walk: results not sorted by path",
+      "find": "  skillFiles.sort()\n",
+      "replace": "  void skillFiles\n"
+    },
+    {
+      "name": "walk: namespace joined with / instead of :",
+      "find": "  return relativePath ? relativePath.split(pathSep).join(':') : ''\n",
+      "replace": "  return relativePath ? relativePath.split(pathSep).join('/') : ''\n"
+    },
+    {
+      "name": "legacy: markdown beside a SKILL.md is loaded too",
+      "find": "    if (skillFiles.length > 0) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "legacy: single-file commands get a skill root",
+      "find": "        const skillDirectory = isSkillFormat ? dirname(filePath) : undefined\n",
+      "replace": "        const skillDirectory = dirname(filePath)\n"
+    },
+    {
+      "name": "legacy: paths: is honoured",
+      "find": "            paths: undefined,\n",
+      "replace": "            paths: parseSkillPaths(frontmatter),\n"
+    },
+    {
+      "name": "sources: CLAUDIN_DISABLE_POLICY_SKILLS ignored",
+      "find": "      isEnvTruthy(process.env.CLAUDIN_DISABLE_POLICY_SKILLS)\n",
+      "replace": "      false\n"
+    },
+    {
+      "name": "sources: disabled project settings and the plugin-only lock ignored",
+      "find": "    const projectSettingsEnabled =\n      isSettingSourceEnabled('projectSettings') && !skillsLocked\n",
+      "replace": "    const projectSettingsEnabled = true\n"
+    },
+    {
+      "name": "sources: legacy commands load under the plugin-only lock",
+      "find": "      skillsLocked ? Promise.resolve([]) : loadSkillsFromCommandsDir(cwd),\n",
+      "replace": "      loadSkillsFromCommandsDir(cwd),\n"
+    },
+    {
+      "name": "sources: bare mode ignored",
+      "find": "    if (isBareMode()) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "sources: user skills listed before managed ones",
+      "find": "      ...managedSkills,\n      ...userSkills,\n",
+      "replace": "      ...userSkills,\n      ...managedSkills,\n"
+    },
+    {
+      "name": "sources: no de-duplication by file",
+      "find": "      if (existingSource !== undefined) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "conditional: path-scoped skills listed up front",
+      "find": "        skill.type === 'prompt' &&\n        skill.paths &&\n",
+      "replace": "        false &&\n        skill.paths &&\n"
+    },
+    {
+      "name": "conditional: an activated skill is held again by the next load",
+      "find": "        !activatedConditionalSkillNames.has(skill.name)\n",
+      "replace": "        true\n"
+    },
+    {
+      "name": "activation: a skill stays held after activating",
+      "find": "        conditionalSkills.delete(name)\n",
+      "replace": "        void name\n"
+    },
+    {
+      "name": "activation: the signal fires when nothing activated",
+      "find": "  if (activated.length > 0) {\n",
+      "replace": "  if (true) {\n"
+    },
+    {
+      "name": "cache: clearSkillCaches keeps the activation memory",
+      "find": "  loadMarkdownFilesForSubdir.cache?.clear?.()\n  conditionalSkills.clear()\n  activatedConditionalSkillNames.clear()\n",
+      "replace": "  loadMarkdownFilesForSubdir.cache?.clear?.()\n  conditionalSkills.clear()\n"
+    },
+    {
+      "name": "discover: the cwd itself and prefix siblings are included",
+      "find": "    while (currentDir.startsWith(resolvedCwd + pathSep)) {\n",
+      "replace": "    while (currentDir.startsWith(resolvedCwd)) {\n"
+    },
+    {
+      "name": "discover: a directory already checked is returned again",
+      "find": "      if (!dynamicSkillDirs.has(skillDir)) {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "discover: gitignored directories are not skipped",
+      "find": "          if (await isPathGitignored(currentDir, resolvedCwd)) {\n",
+      "replace": "          if (false) {\n"
+    },
+    {
+      "name": "discover: shallowest first",
+      "find": "    (a, b) => b.split(pathSep).length - a.split(pathSep).length,\n",
+      "replace": "    (a, b) => a.split(pathSep).length - b.split(pathSep).length,\n"
+    },
+    {
+      "name": "dynamic: the settings and policy gate is ignored",
+      "find": "    !isSettingSourceEnabled('projectSettings') ||\n    isRestrictedToPluginOnly('skills')\n",
+      "replace": "    false\n"
+    },
+    {
+      "name": "dynamic: the shallower directory wins a name clash",
+      "find": "  for (let i = loadedSkills.length - 1; i >= 0; i--) {\n",
+      "replace": "  for (let i = 0; i < loadedSkills.length; i++) {\n"
+    },
+    {
+      "name": "dynamic: no signal after loading",
+      "find": "  skillsLoaded.emit()\n}\n\n/**\n * Gets all dynamically discovered skills.\n",
+      "replace": "}\n\n/**\n * Gets all dynamically discovered skills.\n"
+    },
+    {
+      "name": "signal: a throwing listener breaks loading",
+      "find": "    try {\n      callback()\n    } catch (error) {\n      logError(error)\n    }\n",
+      "replace": "    callback()\n"
+    }
+  ]
+}
