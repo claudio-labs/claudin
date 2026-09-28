@@ -1,0 +1,9 @@
+# what a fresh worktree needs from the main checkout
+.env
+.env.*
+!.env.prod
+
+config/secrets/api.key
+config/**/*.pem
+build
+*.key

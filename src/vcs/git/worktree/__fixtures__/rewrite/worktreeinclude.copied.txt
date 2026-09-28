@@ -1,0 +1,8 @@
+.env
+.env.local
+config/local.key
+top.key
+build/nested/deep.map
+build/out.js
+config/certs/site.pem
+config/secrets/api.key

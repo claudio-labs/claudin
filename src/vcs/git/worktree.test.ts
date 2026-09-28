@@ -15,11 +15,9 @@ import {
   generateTmuxSessionName,
   getCurrentWorktreeSession,
   getTmuxInstallInstructions,
-  parsePRReference,
   restoreWorktreeSession,
   validateWorktreeSlug,
   withGitWorktreeMutationLock,
-  worktreeBranchName,
 } from 'src/vcs/git/worktree.js'
 
 afterEach(() => {
@@ -28,65 +26,6 @@ afterEach(() => {
   // left behind here is read by every later file in the run (prompts, the
   // REPL header, the stale-worktree sweep).
   restoreWorktreeSession(null)
-})
-
-test('withGitWorktreeMutationLock serializes mutations for the same repo', async () => {
-  const order: string[] = []
-  let releaseFirst!: () => void
-  const firstGate = new Promise<void>(resolve => {
-    releaseFirst = resolve
-  })
-
-  const first = withGitWorktreeMutationLock('/repo', async () => {
-    order.push('first:start')
-    await firstGate
-    order.push('first:end')
-  })
-
-  const second = withGitWorktreeMutationLock('/repo', async () => {
-    order.push('second:start')
-    order.push('second:end')
-  })
-
-  await Promise.resolve()
-  await Promise.resolve()
-  expect(order).toEqual(['first:start'])
-
-  releaseFirst()
-  await Promise.all([first, second])
-
-  expect(order).toEqual([
-    'first:start',
-    'first:end',
-    'second:start',
-    'second:end',
-  ])
-})
-
-test('withGitWorktreeMutationLock does not serialize different repos', async () => {
-  const order: string[] = []
-  let releaseFirst!: () => void
-  const firstGate = new Promise<void>(resolve => {
-    releaseFirst = resolve
-  })
-
-  const first = withGitWorktreeMutationLock('/repo-a', async () => {
-    order.push('a:start')
-    await firstGate
-    order.push('a:end')
-  })
-
-  const second = withGitWorktreeMutationLock('/repo-b', async () => {
-    order.push('b:start')
-    order.push('b:end')
-  })
-
-  await Promise.resolve()
-  await Promise.resolve()
-  expect(order).toEqual(['a:start', 'b:start', 'b:end'])
-
-  releaseFirst()
-  await Promise.all([first, second])
 })
 
 // attachExistingWorktree — rejection paths only. These throw BEFORE any global
@@ -227,34 +166,6 @@ describe('validateWorktreeSlug', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The naming round trip. `flattenSlug` and `worktreePathFor` are private to the
-// module, so the branch name is the observable half; the collision claim below
-// is what makes the private half safe.
-// ---------------------------------------------------------------------------
-describe('worktreeBranchName', () => {
-  test('prefixes the slug with worktree-', () => {
-    expect(worktreeBranchName('feature')).toBe('worktree-feature')
-    expect(worktreeBranchName('a.b_c-d')).toBe('worktree-a.b_c-d')
-  })
-
-  test('flattens nesting with + so the ref is never a D/F conflict', () => {
-    // `worktree-user` (a file under refs/heads) and `worktree-user/feature`
-    // (which needs `worktree-user` to be a directory) cannot coexist in git.
-    expect(worktreeBranchName('user/feature')).toBe('worktree-user+feature')
-    expect(worktreeBranchName('a/b/c')).toBe('worktree-a+b+c')
-  })
-
-  test('two different valid slugs cannot collide onto one branch or path', () => {
-    // The mapping is injective only because `+` is outside the slug allowlist:
-    // the one slug that would collide with `a/b` is itself rejected.
-    expect(worktreeBranchName('a/b')).toBe('worktree-a+b')
-    expect(() => validateWorktreeSlug('a+b')).toThrow(
-      'only letters, digits, dots, underscores, and dashes',
-    )
-  })
-})
-
-// ---------------------------------------------------------------------------
 // generateTmuxSessionName — tmux rejects `.` and `:` in a session name, and a
 // name that collides attaches the user to somebody else's session.
 // ---------------------------------------------------------------------------
@@ -280,56 +191,6 @@ describe('generateTmuxSessionName', () => {
 
   test('leaves dashes and underscores alone', () => {
     expect(generateTmuxSessionName('/r/a-b_c', 'w-1_2')).toBe('a-b_c_w-1_2')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// parsePRReference — drives `--worktree <ref>`, so a shape that answers a
-// number when it should answer null silently retargets the worktree.
-// ---------------------------------------------------------------------------
-describe('parsePRReference', () => {
-  test('parses the #N form', () => {
-    expect(parsePRReference('#123')).toBe(123)
-    expect(parsePRReference('#1')).toBe(1)
-  })
-
-  test('parses a GitHub pull URL, including GHE hosts', () => {
-    expect(parsePRReference('https://github.com/owner/repo/pull/123')).toBe(123)
-    expect(parsePRReference('http://github.com/owner/repo/pull/7')).toBe(7)
-    expect(parsePRReference('https://ghe.example.com/o/r/pull/42')).toBe(42)
-    expect(parsePRReference('HTTPS://GitHub.com/o/r/PULL/9')).toBe(9)
-  })
-
-  test('tolerates a trailing slash, a query string and a fragment', () => {
-    expect(parsePRReference('https://github.com/o/r/pull/5/')).toBe(5)
-    expect(parsePRReference('https://github.com/o/r/pull/5?w=1')).toBe(5)
-    expect(parsePRReference('https://github.com/o/r/pull/5#issuecomment-1')).toBe(
-      5,
-    )
-  })
-
-  test('answers null for a bare number — that is a worktree name, not a PR', () => {
-    expect(parsePRReference('123')).toBeNull()
-  })
-
-  test('answers null for the shapes that are not a GitHub pull reference', () => {
-    for (const input of [
-      '',
-      'feature-123',
-      '#',
-      '#12a',
-      '# 12',
-      'x#123',
-      '#123x',
-      'https://github.com/o/r/pull/abc',
-      'https://github.com/o/r/pull/',
-      'https://github.com/o/r/pull/12/files',
-      'https://gitlab.com/o/r/-/merge_requests/12',
-      'https://bitbucket.org/o/r/pull-requests/12',
-      'ftp://github.com/o/r/pull/12',
-    ]) {
-      expect(parsePRReference(input)).toBeNull()
-    }
   })
 })
 
@@ -382,9 +243,9 @@ describe('getTmuxInstallInstructions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The mutation lock. The two ordering tests above already pin same-key
-// serialization and different-key independence; what is left is the reset and
-// the release-on-throw contract, both written with real promises.
+// The mutation lock. Same-key serialization, different-key independence and
+// the reset are pinned in worktree/mutationLock.characterization.test.ts; what
+// is left here is the release-on-throw contract, written with real promises.
 // ---------------------------------------------------------------------------
 describe('withGitWorktreeMutationLock', () => {
   test('returns whatever the critical section returned', async () => {
@@ -407,31 +268,6 @@ describe('withGitWorktreeMutationLock', () => {
       ran = true
     })
     expect(ran).toBe(true)
-  })
-
-  test('_resetGitWorktreeMutationLocksForTesting drops a still-held lock', async () => {
-    let releaseFirst!: () => void
-    const firstGate = new Promise<void>(resolve => {
-      releaseFirst = resolve
-    })
-    const first = withGitWorktreeMutationLock('/repo-reset', () => firstGate)
-
-    // Let the first holder enter the critical section, then drop the map.
-    await Promise.resolve()
-    await Promise.resolve()
-    _resetGitWorktreeMutationLocksForTesting()
-
-    let secondStarted = false
-    const second = withGitWorktreeMutationLock('/repo-reset', async () => {
-      secondStarted = true
-    })
-    await Promise.resolve()
-    await Promise.resolve()
-    // Still held, so without the reset this is false.
-    expect(secondStarted).toBe(true)
-
-    releaseFirst()
-    await Promise.all([first, second])
   })
 })
 

@@ -1,0 +1,248 @@
+{
+  "test": [
+    "src/vcs/git/worktree/slugNaming.characterization.test.ts",
+    "src/vcs/git/worktree/mutationLock.characterization.test.ts",
+    "src/vcs/git/worktree/session.characterization.test.ts",
+    "src/vcs/git/worktree/createWorktree.characterization.test.ts",
+    "src/vcs/git/worktree/createWorktree.hooks.characterization.test.ts",
+    "src/vcs/git/worktree/includeFiles.characterization.test.ts",
+    "src/vcs/git/worktree/postCreationSetup.characterization.test.ts",
+    "src/vcs/git/worktree/sessionLifecycle.characterization.test.ts",
+    "src/vcs/git/worktree/tmuxSession.characterization.test.ts",
+    "src/vcs/git/worktree.test.ts"
+  ],
+  "source": "src/vcs/git/worktree/createWorktree.ts",
+  "probes": [
+    {
+      "name": "creation: a worktree made while this caller waited for the lock is taken as existing",
+      "find": "    if (lockedExistingHead) {",
+      "replace": "    if (lockedExistingHead && false) {"
+    },
+    {
+      "name": "creation: a pull request is fetched as pull/<n>/head",
+      "find": "['fetch', 'origin', `pull/${options.prNumber}/head`],",
+      "replace": "['fetch', 'origin', `pull/${options.prNumber}/merge`],"
+    },
+    {
+      "name": "creation: baseRef \"head\" bases on the local HEAD",
+      "find": "(getInitialSettings().worktree?.baseRef ?? 'fresh') === 'head'",
+      "replace": "(getInitialSettings().worktree?.baseRef ?? 'fresh') === 'HEAD'"
+    },
+    {
+      "name": "creation: a failed default-branch fetch falls back to HEAD",
+      "find": "baseBranch = fetchCode === 0 ? originRef : 'HEAD'",
+      "replace": "baseBranch = originRef"
+    },
+    {
+      "name": "creation: sparse checkout uses cone mode",
+      "find": "['sparse-checkout', 'set', '--cone', '--', ...sparsePaths],",
+      "replace": "['sparse-checkout', 'set', '--no-cone', '--', ...sparsePaths],"
+    },
+    {
+      "name": "creation: a failed sparse setup removes the half-made worktree",
+      "find": "          ['worktree', 'remove', '--force', worktreePath],\n          { cwd: repoRoot },",
+      "replace": "          ['worktree', 'list'],\n          { cwd: repoRoot },"
+    },
+    {
+      "name": "creation: a leftover worktree-<slug> branch is reset, not refused",
+      "find": "addArgs.push('-B', worktreeBranch, worktreePath, baseBranch)",
+      "replace": "addArgs.push('-b', worktreeBranch, worktreePath, baseBranch)"
+    },
+    {
+      "name": "session wrapper: the new session is published",
+      "find": "  restoreWorktreeSession(session)\n\n  // Save to project config for persistence",
+      "replace": "  // Save to project config for persistence"
+    },
+    {
+      "name": "agent wrapper: the refusal outside git carries the text AgentTool matches",
+      "find": "'Cannot create agent worktree: not in a git repository and no WorktreeCreate hooks are configured. '",
+      "replace": "'Cannot create an agent worktree outside a git repository when no WorktreeCreate hooks are configured. '"
+    },
+    {
+      "name": "include files: an entry that climbs out of the repository is not linked",
+      "source": "src/vcs/git/worktree/includeFiles.ts",
+      "find": "    if (containsPathTraversal(dir)) {",
+      "replace": "    if (containsPathTraversal(dir) && false) {"
+    },
+    {
+      "name": "include files: wholly ignored directories are listed collapsed",
+      "source": "src/vcs/git/worktree/includeFiles.ts",
+      "find": "['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'],",
+      "replace": "['ls-files', '--others', '--ignored', '--exclude-standard'],"
+    },
+    {
+      "name": "include files: a pattern naming a path inside a collapsed directory expands it",
+      "source": "src/vcs/git/worktree/includeFiles.ts",
+      "find": "        if (normalized.startsWith(dir)) return true",
+      "replace": "        if (normalized.startsWith(dir) && false) return true"
+    },
+    {
+      "name": "include files: a collapsed directory that a pattern matches is expanded",
+      "source": "src/vcs/git/worktree/includeFiles.ts",
+      "find": "    if (matcher.ignores(dir.slice(0, -1))) return true",
+      "replace": "    if (false) return true"
+    },
+    {
+      "name": "lock: a holder waits for the previous holder of its key",
+      "source": "src/vcs/git/worktree/mutationLock.ts",
+      "find": "  await previous.catch(() => {})\n\n  try {",
+      "replace": "  await Promise.resolve()\n\n  try {"
+    },
+    {
+      "name": "lock: leaving the critical section lets the next holder in",
+      "source": "src/vcs/git/worktree/mutationLock.ts",
+      "find": "    releaseCurrent()",
+      "replace": "    void releaseCurrent"
+    },
+    {
+      "name": "lock: the testing reset forgets held locks",
+      "source": "src/vcs/git/worktree/mutationLock.ts",
+      "find": "  gitWorktreeMutationLocks.clear()",
+      "replace": "  void gitWorktreeMutationLocks"
+    },
+    {
+      "name": "post-creation: settings.local.json is copied",
+      "source": "src/vcs/git/worktree/postCreationSetup.ts",
+      "find": "    await copyFile(sourceSettingsLocal, destSettingsLocal)",
+      "replace": "    void destSettingsLocal"
+    },
+    {
+      "name": "post-creation: .husky wins over .git/hooks",
+      "source": "src/vcs/git/worktree/postCreationSetup.ts",
+      "find": "  for (const candidatePath of [huskyPath, gitHooksPath]) {",
+      "replace": "  for (const candidatePath of [gitHooksPath, huskyPath]) {"
+    },
+    {
+      "name": "post-creation: a relative hooks path to the chosen directory is made absolute",
+      "source": "src/vcs/git/worktree/postCreationSetup.ts",
+      "find": "    if (existing !== hooksPath) {",
+      "replace": "    if (existing === null) {"
+    },
+    {
+      "name": "post-creation: .worktreeinclude is applied",
+      "source": "src/vcs/git/worktree/postCreationSetup.ts",
+      "find": "  await copyWorktreeIncludeFiles(repoRoot, worktreePath)",
+      "replace": "  void copyWorktreeIncludeFiles"
+    },
+    {
+      "name": "session: publishing stores the session",
+      "source": "src/vcs/git/worktree/session.ts",
+      "find": "  currentWorktreeSession = session",
+      "replace": "  currentWorktreeSession = null"
+    },
+    {
+      "name": "attach: the main worktree is refused",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "  if (matchIdx === 0) {",
+      "replace": "  if (matchIdx === -2) {"
+    },
+    {
+      "name": "attach: the session is marked attached",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "    attached: true,\n  }",
+      "replace": "    attached: false,\n  }"
+    },
+    {
+      "name": "cleanup: the worktree is removed even when dirty",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "          ['worktree', 'remove', '--force', worktreePath],\n          { cwd: originalCwd },",
+      "replace": "          ['worktree', 'remove', worktreePath],\n          { cwd: originalCwd },"
+    },
+    {
+      "name": "cleanup: the worktree branch is deleted",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "    if (!hookBased && worktreeBranch) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "sweep: only agent-a<7 hex> agent slugs are throwaway",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "  /^agent-a[0-9a-f]{7}$/,",
+      "replace": "  /^agent-[0-9a-f]{8}$/,"
+    },
+    {
+      "name": "sweep: untracked files do not keep a worktree",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "['--no-optional-locks', 'status', '--porcelain', '-uno'],",
+      "replace": "['--no-optional-locks', 'status', '--porcelain'],"
+    },
+    {
+      "name": "sweep: commits on no remote keep a worktree",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "['rev-list', '--max-count=1', 'HEAD', '--not', '--remotes'],",
+      "replace": "['rev-list', '--max-count=1', 'HEAD', '--not', '--all'],"
+    },
+    {
+      "name": "sweep: a removal is followed by a prune",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "    await execFileNoThrowWithCwd(gitExe(), ['worktree', 'prune'], {",
+      "replace": "    await execFileNoThrowWithCwd(gitExe(), ['worktree', 'list'], {"
+    },
+    {
+      "name": "hasWorktreeChanges: untracked files count as changes",
+      "source": "src/vcs/git/worktree/sessionLifecycle.ts",
+      "find": "await execFileNoThrowWithCwd(gitExe(), ['status', '--porcelain'], {",
+      "replace": "await execFileNoThrowWithCwd(gitExe(), ['status', '--porcelain', '-uno'], {"
+    },
+    {
+      "name": "slug: the cap is 64 characters",
+      "source": "src/vcs/git/worktree/slugNaming.ts",
+      "find": "const MAX_WORKTREE_SLUG_LENGTH = 64",
+      "replace": "const MAX_WORKTREE_SLUG_LENGTH = 65"
+    },
+    {
+      "name": "slug: + stays outside the allowlist",
+      "source": "src/vcs/git/worktree/slugNaming.ts",
+      "find": "const VALID_WORKTREE_SLUG_SEGMENT = /^[a-zA-Z0-9._-]+$/",
+      "replace": "const VALID_WORKTREE_SLUG_SEGMENT = /^[a-zA-Z0-9._+-]+$/"
+    },
+    {
+      "name": "tmux name: dots become underscores",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "  return combined.replace(/[/.]/g, '_')",
+      "replace": "  return combined.replace(/[/]/g, '_')"
+    },
+    {
+      "name": "fast path: --tmux=classic is not passed on",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "    if (arg === '--tmux' || arg === '--tmux=classic') continue",
+      "replace": "    if (arg === '--tmux') continue"
+    },
+    {
+      "name": "fast path: an existing session is attached to",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "      '-A', // Attach if exists, create if not",
+      "replace": "      // Attach if exists, create if not"
+    },
+    {
+      "name": "fast path: iTerm2 gets control mode",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "  const tmuxGlobalArgs = useControlMode ? ['-CC'] : []",
+      "replace": "  const tmuxGlobalArgs: string[] = []"
+    },
+    {
+      "name": "fast path: the iTerm2 tip is for new sessions only",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "  if (useControlMode && !sessionExists) {",
+      "replace": "  if (useControlMode) {"
+    },
+    {
+      "name": "fast path: a missing tmux is reported",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "  if (tmuxCheck.status !== 0) {",
+      "replace": "  if (tmuxCheck.status === 127) {"
+    },
+    {
+      "name": "killTmuxSession kills",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "    'kill-session',\n",
+      "replace": "    'has-session',\n"
+    },
+    {
+      "name": "fast path inside tmux: the client is switched to the new session",
+      "source": "src/vcs/git/worktree/tmuxSession.ts",
+      "find": "        // Switch to the new session\n        spawnSync('tmux', ['switch-client', '-t', tmuxSessionName], {",
+      "replace": "        // Switch to the new session\n        spawnSync('tmux', ['has-session', '-t', tmuxSessionName], {"
+    }
+  ]
+}
