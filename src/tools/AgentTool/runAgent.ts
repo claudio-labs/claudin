@@ -16,6 +16,7 @@ import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
 import { cleanupAgentTracking } from 'src/providers/cache/promptCacheBreakDetection.js'
+import { cleanupLagMarkerKey } from 'src/providers/shims/claude/lagCacheMarker.js'
 import {
   connectToServer,
   fetchToolsForClient,
@@ -931,6 +932,7 @@ export async function* runAgent({
     if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
       cleanupAgentTracking(agentId)
     }
+    cleanupLagMarkerKey(agentId)
     // Release cloned file state cache memory
     agentToolUseContext.readFileState.clear()
     // Release the cloned fork context messages

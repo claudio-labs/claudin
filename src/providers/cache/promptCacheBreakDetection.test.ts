@@ -5,6 +5,7 @@ import {
   _getPendingMessageMutationForTesting,
   buildCacheBreakReason,
   checkResponseForCacheBreak,
+  notifyCacheDeletion,
   readServerCacheMissReason,
   recordMarkerAdvance,
   recordPromptState,
@@ -16,6 +17,7 @@ import {
   getCurrentTurnCacheBreaks,
   resetSessionCacheStats,
 } from 'src/providers/cache/cacheStatsTracker.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 
 // Minimal PendingChanges — everything false/empty except what a test flips.
 function changes(
@@ -262,6 +264,18 @@ function prime(): void {
   })
 }
 
+const AGENT_SOURCE = 'agent:builtin:Code' as const
+
+function primeAgent(agentId: AgentId): void {
+  recordPromptState({
+    system: [{ type: 'text', text: 'agent sys' }],
+    toolSchemas: [],
+    querySource: AGENT_SOURCE,
+    model: 'claude-opus-5',
+    agentId,
+  })
+}
+
 describe('recordRenderedMessages', () => {
   beforeEach(() => {
     resetPromptCacheBreakDetection()
@@ -350,6 +364,75 @@ describe('recordRenderedMessages', () => {
     prime()
     recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
     await checkResponseForCacheBreak(SOURCE, 99_000, 1_000, [])
+    expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+
+  test("a sub-agent's mutation is named without keeping its JSON", () => {
+    const agentId = 'a-json' as AgentId
+    primeAgent(agentId)
+    recordRenderedMessages(AGENT_SOURCE, agentId, [user('a'), toolResult('t1', 'full')])
+    recordRenderedMessages(AGENT_SOURCE, agentId, [
+      user('a'),
+      toolResult('t1', '[clipped]'),
+      user('b'),
+    ])
+    const mutation = _getPendingMessageMutationForTesting(AGENT_SOURCE, agentId)
+    expect(mutation).toMatchObject({ index: 1, total: 2, role: 'user', blockTypes: 'tool_result' })
+    expect(mutation?.prevJson).toBe('')
+    expect(mutation?.newJson).toContain('[clipped]')
+  })
+})
+
+// Session 501d7261 (2026-09-28) ran batches of 10–12 concurrent sub-agents.
+// With 10 tracked sources evicted by insertion order, the main thread went
+// first and the `[Cache:]` line reported 9 of ~40 rewrites.
+describe('tracking through a fan-out', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  async function mainRequest(read: number, written: number): Promise<void> {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a')])
+    await checkResponseForCacheBreak(SOURCE, read, written, [])
+  }
+
+  test('the main thread keeps its state while sub-agents come and go', async () => {
+    await mainRequest(200_000, 0)
+    for (let i = 0; i < 20; i++) primeAgent(`a-${i}` as AgentId)
+    // The main thread is still talking: that refreshes its entry.
+    await mainRequest(201_000, 1_000)
+    for (let i = 20; i < 40; i++) primeAgent(`a-${i}` as AgentId)
+    await mainRequest(15_000, 190_000)
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(1)
+  })
+
+  test('a dozen concurrent sub-agents all keep their state', async () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `c-${i}` as AgentId)
+    await mainRequest(200_000, 0)
+    for (const id of ids) {
+      primeAgent(id)
+      recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+      await checkResponseForCacheBreak(AGENT_SOURCE, 100_000, 0, [], id)
+    }
+    for (const id of ids) {
+      primeAgent(id)
+      recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+      await checkResponseForCacheBreak(AGENT_SOURCE, 12_000, 90_000, [], id)
+    }
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(12)
+  })
+
+  test("a clip announced under the agent's id is an expected drop for that agent", async () => {
+    const id = 'clip-1' as AgentId
+    primeAgent(id)
+    recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+    await checkResponseForCacheBreak(AGENT_SOURCE, 400_000, 0, [], id)
+    primeAgent(id)
+    recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+    notifyCacheDeletion(AGENT_SOURCE, id, 'relief clip (3 tool results, ~90k tokens, window lane)')
+    await checkResponseForCacheBreak(AGENT_SOURCE, 12_000, 300_000, [], id)
     expect(getCurrentTurnCacheBreaks()).toEqual([])
   })
 })

@@ -76,7 +76,8 @@ type PreviousState = {
    *  unchanged" for two 180k/250k re-bills in one session (2026-09-04). */
   msgHashes: number[]
   /** The rendered JSON behind each hash, kept so a mutation can be diffed
-   *  message-by-message. ~1 MB per tracked source at a 200k context. */
+   *  message-by-message. ~1 MB per tracked source at a 200k context, so it is
+   *  kept for the main thread only (see recordRenderedMessages). */
   msgJson: string[]
   pendingMessageMutation: MessageMutation | null
   /** How far the message marker moved on this request, in the API's lookback
@@ -148,11 +149,16 @@ type PendingChanges = {
 
 const previousStateBySource = new Map<string, PreviousState>()
 
-// Cap the number of tracked sources to prevent unbounded memory growth.
-// Each entry stores a ~300KB+ diffableContent string (serialized system prompt
-// + tool schemas). Without a cap, spawning many subagents (each with a unique
-// agentId key) causes the map to grow indefinitely.
-const MAX_TRACKED_SOURCES = 10
+// Cap the number of tracked sources to prevent unbounded memory growth: every
+// sub-agent keys on its own agentId. A finished agent's entry is dropped by
+// cleanupAgentTracking (runAgent.ts), so the cap bounds the LIVE set, and it
+// has to hold a fan-out. At 10, with eviction by insertion order, a batch of
+// 10–12 concurrent sub-agents evicted the main thread first, and every state
+// recreated after an eviction skips its next call: session 501d7261
+// (2026-09-28) put 9 of ~40 sub-agent rewrites on the `[Cache:]` line.
+// recordPromptState refreshes recency on every request, so the entry evicted
+// is the one that went quiet longest.
+const MAX_TRACKED_SOURCES = 32
 
 // Minimum absolute token drop required to trigger a cache break warning.
 // Small drops (e.g., a few thousand tokens) can happen due to normal variation
@@ -368,6 +374,10 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
       return
     }
 
+    // Least recently used goes first: re-insert so a Map's insertion order
+    // tracks the last request, not the first.
+    previousStateBySource.delete(key)
+    previousStateBySource.set(key, prev)
     prev.callCount++
 
     const systemPromptChanged = systemHash !== prev.systemHash
@@ -489,6 +499,11 @@ export function recordRenderedMessages(
       jsonStringify(stripMessageCacheControl(m)),
     )
     const msgHashes = msgJson.map(computeHash)
+    // A sub-agent's mutation is still named by index, role and block types;
+    // only the diff file loses its "before" side. Its JSON copy (~2 MB at a
+    // 500k context) times a fan-out's live set is memory the diagnosis does
+    // not need.
+    const keepJson = agentId === undefined
 
     let mutation: MessageMutation | null = null
     const comparable = Math.min(state.msgHashes.length, msgHashes.length)
@@ -508,7 +523,7 @@ export function recordRenderedMessages(
 
     state.pendingMessageMutation = mutation
     state.msgHashes = msgHashes
-    state.msgJson = msgJson
+    state.msgJson = keepJson ? msgJson : []
   } catch (e: unknown) {
     logError(e)
   }
