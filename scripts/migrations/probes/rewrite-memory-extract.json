@@ -1,0 +1,231 @@
+{
+  "test": [
+    "src/memory/extract/extractMemories.characterization.test.ts",
+    "src/memory/extract/extractPrompts.characterization.test.ts",
+    "src/memory/extract/sessionMemory.characterization.test.ts",
+    "src/memory/extract/extractMemories.shipFlags.characterization.test.ts",
+    "src/memory/extract/extractMemories.firstUse.characterization.test.ts"
+  ],
+  "source": "src/memory/extract/extractMemories.ts",
+  "probes": [
+    {
+      "name": "extract: a sub-agent turn forks too",
+      "find": "    if (context.toolUseContext.agentId) {\n",
+      "replace": "    if (context.toolUseContext.agentId && false) {\n"
+    },
+    {
+      "name": "extract: auto memory being off no longer stops it",
+      "find": "    if (!isAutoMemoryEnabled()) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "extract: the cadence is ignored",
+      "find": "      if (turnsSinceLastExtraction < getExtractionTurnInterval()) {\n",
+      "replace": "      if (turnsSinceLastExtraction < 1) {\n"
+    },
+    {
+      "name": "extract: the cadence counter never restarts",
+      "find": "    turnsSinceLastExtraction = 0\n",
+      "replace": "    turnsSinceLastExtraction = turnsSinceLastExtraction + 0\n"
+    },
+    {
+      "name": "extract: a trailing run waits for the cadence",
+      "find": "    if (!isTrailingRun && loopHint === undefined) {\n",
+      "replace": "    if (loopHint === undefined) {\n"
+    },
+    {
+      "name": "extract: a memory saved by the main agent no longer skips the fork",
+      "find": "    if (hasMemoryWritesSince(messages, lastMemoryMessageUuid)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "extract: skipping does not move the new-message mark",
+      "find": "        lastMemoryMessageUuid = lastMessage.uuid\n      }\n      return\n",
+      "replace": "        void lastMessage\n      }\n      return\n"
+    },
+    {
+      "name": "extract: a successful fork does not move the new-message mark",
+      "find": "        lastMemoryMessageUuid = lastMessage.uuid\n      }\n\n      const writtenPaths",
+      "replace": "        void lastMessage\n      }\n\n      const writtenPaths"
+    },
+    {
+      "name": "extract: system messages count as new messages",
+      "find": "  return message.type === 'user' || message.type === 'assistant'\n",
+      "replace": "  return message.type !== 'progress'\n"
+    },
+    {
+      "name": "extract: a vanished mark counts nothing instead of everything",
+      "find": "  if (!foundStart) {\n    return count(messages, isModelVisibleMessage)\n  }\n",
+      "replace": "  if (!foundStart) {\n    return 0\n  }\n"
+    },
+    {
+      "name": "extract: an Edit is no longer a write",
+      "find": "    (block.name !== FILE_EDIT_TOOL_NAME && block.name !== FILE_WRITE_TOOL_NAME)\n",
+      "replace": "    block.name !== FILE_WRITE_TOOL_NAME\n"
+    },
+    {
+      "name": "extract: wrong query source",
+      "find": "        querySource: 'extract_memories',\n",
+      "replace": "        querySource: 'session_memory',\n"
+    },
+    {
+      "name": "extract: another turn cap",
+      "find": "        maxTurns: 5,\n",
+      "replace": "        maxTurns: 8,\n"
+    },
+    {
+      "name": "extract: MEMORY.md is announced as a memory",
+      "find": "        p => basename(p) !== ENTRYPOINT_NAME,\n",
+      "replace": "        p => p.length > 0,\n"
+    },
+    {
+      "name": "extract: announced without notifyMemorySaved",
+      "find": "      if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {\n",
+      "replace": "      if (memoryPaths.length > 0) {\n"
+    },
+    {
+      "name": "extract: the first held turn wins instead of the latest",
+      "find": "      pendingContext = { context, appendSystemMessage }\n",
+      "replace": "      pendingContext ??= { context, appendSystemMessage }\n"
+    },
+    {
+      "name": "extract: draining never waits",
+      "find": "    if (inFlightExtractions.size === 0) return\n",
+      "replace": "    return\n"
+    },
+    {
+      "name": "permissions: any Bash command is allowed",
+      "find": "      if (parsed.success && tool.isReadOnly(parsed.data)) {\n",
+      "replace": "      if (parsed.success) {\n"
+    },
+    {
+      "name": "permissions: Edit and Write are allowed anywhere",
+      "find": "      if (typeof filePath === 'string' && isAutoMemPath(filePath)) {\n",
+      "replace": "      if (typeof filePath === 'string') {\n"
+    },
+    {
+      "name": "shipped build: a loop fires on every turn",
+      "find": "      (loop.loopKey !== lastFiredLoopKey ||\n",
+      "replace": "      (true ||\n"
+    },
+    {
+      "name": "shipped build: teamCount counts every memory",
+      "find": "        ? count(memoryPaths, teamMemPaths!.isTeamMemPath)\n",
+      "replace": "        ? memoryPaths.length\n"
+    },
+    {
+      "name": "prompt: the count is off by one",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    opener(newMessageCount, existingMemories, extraHint),\n    '',\n    'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',\n    '',\n    ...TYPES_SECTION_INDIVIDUAL,\n",
+      "replace": "    opener(newMessageCount + 1, existingMemories, extraHint),\n    '',\n    'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',\n    '',\n    ...TYPES_SECTION_INDIVIDUAL,\n"
+    },
+    {
+      "name": "prompt: the manifest is dropped",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "      ? `\\n\\n## Existing memory files\\n\\n${existingMemories}",
+      "replace": "      ? `\\n\\n## Existing memory files\\n\\n"
+    },
+    {
+      "name": "prompt: the manifest framing appears with no manifest",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    existingMemories.length > 0\n",
+      "replace": "    existingMemories.length >= 0\n"
+    },
+    {
+      "name": "prompt: the hint is dropped",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "  const hint = extraHint ? `\\n\\n${extraHint}` : ''\n",
+      "replace": "  const hint = ''\n"
+    },
+    {
+      "name": "prompt: rm is no longer ruled out",
+      "source": "src/memory/extract/prompts.ts",
+      "find": " ${BASH_TOOL_NAME} rm is not permitted.",
+      "replace": ""
+    },
+    {
+      "name": "prompt: the auto-only prompt carries the team taxonomy",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    ...TYPES_SECTION_INDIVIDUAL,\n",
+      "replace": "    ...TYPES_SECTION_COMBINED,\n"
+    },
+    {
+      "name": "prompt: another index-line limit",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "each entry should be one line, under ~150 characters: `- [Title](file.md) — one-line hook`. It has no frontmatter.",
+      "replace": "each entry should be one line, under ~250 characters: `- [Title](file.md) — one-line hook`. It has no frontmatter."
+    },
+    {
+      "name": "shipped build: the combined prompt allows secrets in team memory",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    '- You MUST avoid saving sensitive data within shared team memories. For example, never save API keys or user credentials.',\n",
+      "replace": ""
+    },
+    {
+      "name": "session paths: no trailing separator",
+      "source": "src/memory/session/paths.ts",
+      "find": "  return join(getProjectDir(getCwd()), getSessionId(), 'session-memory') + sep\n",
+      "replace": "  return join(getProjectDir(getCwd()), getSessionId(), 'session-memory')\n"
+    },
+    {
+      "name": "session paths: not per session",
+      "source": "src/memory/session/paths.ts",
+      "find": "getSessionId(), 'session-memory'",
+      "replace": "'session-memory'"
+    },
+    {
+      "name": "session paths: another file name",
+      "source": "src/memory/session/paths.ts",
+      "find": "  return join(getSessionMemoryDir(), 'summary.md')\n",
+      "replace": "  return join(getSessionMemoryDir(), 'memory.md')\n"
+    },
+    {
+      "name": "session content: a missing file throws",
+      "source": "src/memory/session/sessionMemoryUtils.ts",
+      "find": "    if (isFsInaccessible(e)) return null\n",
+      "replace": "    if (e === null) return null\n"
+    },
+    {
+      "name": "session content: the id cannot be replaced",
+      "source": "src/memory/session/sessionMemoryUtils.ts",
+      "find": "  lastSummarizedMessageId = messageId\n",
+      "replace": "  lastSummarizedMessageId ??= messageId\n"
+    },
+    {
+      "name": "session content: an id is set at start-up",
+      "source": "src/memory/session/sessionMemoryUtils.ts",
+      "find": "let lastSummarizedMessageId: string | undefined\n",
+      "replace": "let lastSummarizedMessageId: string | undefined = 'at-start-up'\n"
+    },
+    {
+      "name": "session prompts: another token cap",
+      "source": "src/memory/session/prompts.ts",
+      "find": "const MAX_SECTION_LENGTH = 2000\n",
+      "replace": "const MAX_SECTION_LENGTH = 1500\n"
+    },
+    {
+      "name": "session prompts: the cap ignores the model's bytes per token",
+      "source": "src/memory/session/prompts.ts",
+      "find": "    MAX_SECTION_LENGTH * getActiveModelBytesPerToken(),\n",
+      "replace": "    MAX_SECTION_LENGTH * 4,\n"
+    },
+    {
+      "name": "session prompts: any # line opens a section",
+      "source": "src/memory/session/prompts.ts",
+      "find": "    if (line.startsWith('# ')) {\n",
+      "replace": "    if (line.startsWith('#')) {\n"
+    },
+    {
+      "name": "session prompts: surrounding whitespace counts",
+      "source": "src/memory/session/prompts.ts",
+      "find": "  return content.trim() === template.trim()\n",
+      "replace": "  return content === template\n"
+    },
+    {
+      "name": "session prompts: the custom template is looked for elsewhere",
+      "source": "src/memory/session/prompts.ts",
+      "find": "    'template.md',\n",
+      "replace": "    'template.markdown',\n"
+    }
+  ]
+}

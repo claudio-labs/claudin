@@ -1,0 +1,2 @@
+- [Prefer real temp dirs](feedback_temp_dirs.md) — no filesystem mocks in tests
+- [Exporter maintainer](user_role.md) — who reviews CSV changes
