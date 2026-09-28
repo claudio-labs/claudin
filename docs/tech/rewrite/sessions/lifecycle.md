@@ -732,6 +732,69 @@ suite passes on the old code. What a "fix" would change is left unpinned.
    outside the unit (`src/shared/log.ts`, `src/platform/config/privacyLevel.ts`).
    Track.
 
+## Outcome (2026-09-28)
+
+- **The gate.** Eleven of the new files matched Claude Code lines when the
+  unit landed, and none matched openclaude. Three held lines that no contract
+  dictates, and those were rewritten:
+  - `activity.ts`, 6 lines, now 2: the constant of the heartbeat's period,
+    and the report logged at shutdown, which is now built apart from the
+    cleanup that logs it;
+  - `restore/agent.ts`, 14 lines, now 10: the body of
+    `restoreAgentFromSession`, where a found agent and a missing one now take
+    the same path;
+  - `restore/worktree.ts`, 5 lines, now 2: the body of
+    `exitRestoredWorktree`, which now reads only the directory it goes back
+    to.
+
+  The probes that quoted the rewritten lines apply the same mutations to the
+  new ones. Every other file of the unit, its tests included, measures zero,
+  apart from the one test noted last.
+- **Residue, reviewed.** 60 lines of Claude Code remain, all under
+  `src/sessions/lifecycle/`. Each one is contract that callers not yet
+  rewritten dictate, or a name on disk or on the wire:
+  - **`restore/types.ts`, 16 lines.** Fields of the resume types, in the
+    order the contract table lists them: the conversation that
+    `loadConversationForResume` returns, the mode API, the resume context,
+    and `ProcessedResume` with its declaration.
+  - **`restore/agent.ts`, 10 lines.** The two fields of what
+    `restoreAgentFromSession` returns, and the signatures of
+    `restoreAgentFromSession` and `computeStandaloneAgentContext`.
+  - **`state/types.ts`, 8 lines.** `RequiresActionDetails` and
+    `SessionExternalMetadata`. Their snake_case fields are what the remote
+    host and the SDK read.
+  - **`state/stateHolder.ts`, 7 lines.** The signatures of `getSessionState`,
+    `notifySessionStateChanged` and `notifyPermissionModeChanged`, and the
+    three calls that hand a notification to its listener, with the arguments
+    the listener types fix.
+  - **`title/generateTitle.ts`, 5 lines.** The signature of
+    `generateSessionTitle`, the query source `generate_session_title`, and two
+    fields that the small-model query's options require.
+  - **`restore/processResumedConversation.ts`, 4 lines.** The resume
+    context's two agent fields, passed to `restoreAgentFromSession` in its
+    parameter order, and two lines that carry the agent definitions and the
+    standalone context into the initial state, named after the app-state
+    fields they fill.
+  - **`activity.ts`, 2 lines.** The signatures of
+    `unregisterSessionActivityCallback` and `sendSessionActivitySignal`.
+  - **`restore/worktree.ts`, 2 lines.** The signature of
+    `restoreWorktreeForResume`.
+  - **`environment/envVars.ts`, 2 lines.** The signatures of
+    `getSessionEnvVars` and `clearSessionEnvVars`.
+  - **`processRecord/registration.ts`, 2 lines.** Two fields of the record on
+    disk, which other instances read: the session id, and the entrypoint,
+    taken from `CLAUDE_CODE_ENTRYPOINT`.
+  - **`startHooks/startHooks.ts`, 2 lines.** The call that builds the
+    additional-context attachment, and its type, `hook_additional_context`,
+    which the renderer and the stored transcripts use.
+
+  The signatures and the type fields go when the contract is redesigned,
+  after every consumer has been rewritten. The names on disk and on the wire
+  stay.
+- **This project's own tests.** `src/sessions/sessionRestore.costState.test.ts`
+  keeps 2 lines, which the baseline already holds: the subtype and the
+  content of a compact-boundary record, as the transcript writer stores them.
+
 ## Target design
 
 - **One slice, one directory.** The code goes under
