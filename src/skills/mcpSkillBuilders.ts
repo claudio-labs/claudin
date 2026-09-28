@@ -1,37 +1,23 @@
-import type {
-  createSkillCommand,
-  parseSkillFrontmatterFields,
-} from 'src/skills/loadSkillsDir.js'
-
 /**
- * Write-once registry for the two loadSkillsDir functions that MCP skill
- * discovery needs. This module is a dependency-graph leaf: it imports nothing
- * but types, so both mcpSkills.ts and loadSkillsDir.ts can depend on it
- * without forming a cycle (client.ts → mcpSkills.ts → loadSkillsDir.ts → …
- * → client.ts).
+ * The registry through which MCP skill discovery would reach the skill
+ * builders without importing the loader, which would close an import cycle.
+ * A leaf on purpose: it imports nothing but types.
  *
- * The non-literal dynamic-import approach ("await import(variable)") fails at
- * runtime in Bun-bundled binaries — the specifier is resolved against the
- * chunk's /$bunfs/root/… path, not the original source tree, yielding "Cannot
- * find module './loadSkillsDir.js'". A literal dynamic import works in bunfs
- * but dependency-cruiser tracks it, and because loadSkillsDir transitively
- * reaches almost everything, the single new edge fans out into many new cycle
- * violations in the diff check.
- *
- * Registration happens at loadSkillsDir.ts module init, which is eagerly
- * evaluated at startup via the static import from commands.ts — long before
- * any MCP server connects.
+ * This fork never received MCP skill discovery, so the registry is
+ * write-only. When discovery lands, it needs a getter here.
  */
+import type { parseSkillFrontmatterFields } from 'src/skills/loading/frontmatterFields.js'
+import type { createSkillCommand } from 'src/skills/loading/skillCommand.js'
 
 export type MCPSkillBuilders = {
-  createSkillCommand: typeof createSkillCommand
+  /** Frontmatter to fields, the same as for a skill on disk. */
   parseSkillFrontmatterFields: typeof parseSkillFrontmatterFields
+  /** MCP skills pass `loadedFrom: 'mcp'`, which keeps their shell from running. */
+  createSkillCommand: typeof createSkillCommand
 }
 
-let builders: MCPSkillBuilders | null = null
+let registeredBuilders: MCPSkillBuilders | undefined
 
-export function registerMCPSkillBuilders(b: MCPSkillBuilders): void {
-  builders = b
+export function registerMCPSkillBuilders(builders: MCPSkillBuilders): void {
+  registeredBuilders = builders
 }
-
-

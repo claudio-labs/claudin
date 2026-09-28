@@ -106,11 +106,15 @@ The old source must be out of reach, not just out of the brief:
 SANDBOX=$(mktemp -d)
 git archive HEAD | tar -x -C "$SANDBOX"           # no .git, so no history to read
 rm <the module's files> scripts/migrations/probes/rewrite-<module>.json   # the probe spec quotes the old code
+rm scripts/verify/provenance/fingerprints.bin   # the gate checks the result; it is not the implementer's tool
 ln -s "$PWD/node_modules" "$SANDBOX/node_modules"
 ```
 
 Before briefing, grep the sandbox for the old module's private names. Nothing
-else should mention them.
+else should mention them. Benches can quote old code as well:
+`scripts/bench/ab/delegation-steer-ab.ts` held lines of the old skill loader.
+Take such files out of the sandbox, and reword them against the new module in
+the rewrite's commit.
 
 The implementer works in `$SANDBOX`. The brief:
 - names the spec, the test files and the rules;
@@ -124,6 +128,13 @@ gate is what verifies the isolation: a copy, renamed or not, shows up there.
 - **Cost.** One fresh agent took about 11 minutes and 49 tool calls to write two files (267 lines) that passed the 20-test suite and `tsc` on the first report.
 - **A finding the old code shared.** The agent raised a security gap that the old module had too, and the spec now records it.
 - **Residue comes from the spec.** A contract table that lists a type's fields in the old order leads to a type with the same field order. That is fine, since it is contract, but it is why residue exists.
+
+**Pilot notes** (`skills/loadSkillsDir`, 2026-09-28):
+- **Characterization.** An agent that reads the old code took about 40 minutes for 103 tests, 40 probes and the spec. The implementer took about 32 minutes for 1,100 lines across 11 files.
+- **Probes against the new code.** A third agent re-authored them in about 11 minutes: 59 probes, all red.
+- **Findings from characterizing.** It surfaced a security finding (skill arguments reach the shell pass) and six unpinned oddities. The spec decides each one: fix, keep for parity, or track.
+- **Keep the sandbox free of fingerprints.** The implementer ran the census and reshaped contract declarations until it read zero. Harmless this time, but the gate has to stay independent.
+- **Characterization and the break-probe run must not overlap.** A probe run mutates a source that other suites import. Run the probes one spec at a time, with nothing else testing.
 
 ### Porting this project's own code
 

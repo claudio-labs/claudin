@@ -379,6 +379,34 @@ argument pass already did for arguments.
 - **The `transformSkillFiles` export.** Nothing imports it (`knip-baseline.json` lists it as unused), and its behaviour survives in section 3. Drop the export and refresh the knip baseline in the same change.
 - **A reader for the MCP registry.** It is write-only. Keep `MCPSkillBuilders` and `registerMCPSkillBuilders` so the contract holds; nothing needs to read them until MCP skill discovery exists. When it lands, it needs a getter, and its skills must keep `loadedFrom: 'mcp'`.
 
+## Outcome (2026-09-28)
+
+**The implementation.** `loadSkillsDir.ts` is now a 38-line facade over ten
+modules in `src/skills/loading/`. It was written in a sandbox that had no
+history, no old module and no probe spec.
+- **Characterization suite:** passes unchanged.
+- **`skillPrompt.test.ts`:** new. It pins two things the old suite could not reach: the literal base-directory insertion, and the `allowedTools` grant during the shell pass.
+- **Probe spec:** re-authored against the new code. It now has 59 probes, the 40 old behaviours plus 19 new ones, and every probe turns the two suites red.
+- **Provenance:** every new file measures zero inherited lines. `loadSkillsDir.test.ts`, which openclaude wrote, is gone.
+
+**Deliberate differences.** All of them are in behaviour no test pinned.
+- **Bare mode de-duplicates.** Bare mode drops a file reached twice, as the normal listing does. Path-scoped skills are still listed at once there, because the file tools never activate them in bare mode.
+- **The prompt-command subtype.** `createSkillCommand` is typed to return it, which every `Command` consumer accepts.
+- **Validated hooks.** They are returned as the schema's parsed copy, which is identical for valid input.
+- **An empty `model:`** counts as absent instead of resolving to a default.
+- **Failed listings.** A listing that fails is not cached, so the next call retries.
+- **Symlink loops.** The walk stops when a directory's real path is already one of its ancestors. That keeps the result deterministic now that directories are read in parallel.
+
+**Kept on purpose:**
+- **Section 6's order.** See the decision under Security requirements.
+- **`transformSkillFiles`.** Dropped, as planned. The knip baseline is one finding lower.
+
+**Process note.** The implementer ran the census inside the sandbox. It found
+36 lines of contract-dictated declarations and cleared them by reshaping the
+field types. That produced no logic change and no hidden copy, but it made the
+gate part of the implementer's loop instead of an independent check. From here
+on the sandbox leaves `fingerprints.bin` out (see the README).
+
 ## Target design
 
 - **Pure core, thin shell.**

@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-09-28",
-  "capturedFrom": "469fdad94892a1eb534b1de2046fece281b8227d",
-  "totals": { "claudeCode": 310595, "openclaude": 44934 },
+  "capturedFrom": "702bf3d01d708ea6ff0c324146761f9d2f01df62",
+  "totals": { "claudeCode": 309771, "openclaude": 44797 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -1845,9 +1845,6 @@
     "src/skills/bundled/updateConfig.test.ts": [0, 13],
     "src/skills/bundled/updateConfig.ts": [198, 0],
     "src/skills/bundledSkills.ts": [31, 0],
-    "src/skills/loadSkillsDir.test.ts": [0, 49],
-    "src/skills/loadSkillsDir.ts": [805, 88],
-    "src/skills/mcpSkillBuilders.ts": [19, 0],
     "src/skills/skillChangeDetector.ts": [228, 0],
     "src/skills/ui/SkillsMenu.tsx": [203, 4],
     "src/terminal/ConfigurableShortcutHint.tsx": [36, 0],

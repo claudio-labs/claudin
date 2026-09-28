@@ -23,7 +23,8 @@ In this order, before the first edit:
    `src/agent/compact/stableStubState/`, `src/permissions/filePermissions/`,
    `src/permissions/yoloClassifier/`, `src/permissions/permissionSetup/`,
    `src/tools/PowerShellTool/pathValidation/`, `src/mcp/auth/` and
-   `src/vcs/git/worktree/`, `src/agent/tools/toolResultSummarizer/`). Editing the
+   `src/vcs/git/worktree/`, `src/agent/tools/toolResultSummarizer/`, and
+   `src/skills/loading/` behind `src/skills/loadSkillsDir.ts`). Editing the
    barrel is almost always wrong.
 
    Four are deliberately NOT pure barrels, and each keeps what it keeps for a

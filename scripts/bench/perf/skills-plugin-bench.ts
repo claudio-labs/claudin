@@ -9,7 +9,7 @@
 //
 // Two modes:
 //   default   → uses the real frontmatter parser (the one
-//               loadSkillsFromSkillsDir uses) against a synthetic fixture
+//               the skill loader uses) against a synthetic fixture
 //               directory of N skills.
 //   raw       → just parses frontmatter + reads markdown content into a
 //               plain array, isolating the parse/retain cost from the
@@ -150,7 +150,7 @@ async function runReal(skills: number, bodyKb: number) {
   const before = snap()
   const t0 = performance.now()
 
-  // Use the real frontmatterParser (same one loadSkillsFromSkillsDir uses).
+  // Use the real frontmatterParser (the same one the skill loader uses).
   const { parseFrontmatter } = await import('../../../src/shared/frontmatterParser.js')
   const { readFileSync, readdirSync } = await import('node:fs')
   // biome-ignore lint/suspicious/noExplicitAny: dynamic shape

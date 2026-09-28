@@ -245,25 +245,26 @@ const QUESTIONS: Question[] = [
       `from the nested folder, and the function that replaces \`$ARGUMENTS\` in the file's body when the command runs. ${ASK}`,
     items: [
       item('deploy:staging', 'deploy:staging'),
-      item('loadSkillsFromCommandsDir', 'loadSkillsFromCommandsDir', 'loadMarkdownFilesForSubdir'),
-      item('getRegularCommandName', 'getRegularCommandName', 'buildNamespace'),
+      item('readLegacyCommands', 'readLegacyCommands', 'loadMarkdownFilesForSubdir'),
+      item('namespacedName', 'namespacedName'),
       item('substituteArguments', 'substituteArguments'),
     ],
     evidence: [
       at('src/memory/instructions/markdownConfigLoader.ts', "const claudeSubdir = join(current, '.claudin', subdir)"),
-      at('src/skills/loadSkillsDir.ts', "const markdownFiles = await loadMarkdownFilesForSubdir('commands', cwd)"),
-      at('src/skills/loadSkillsDir.ts', 'function getRegularCommandName(filePath: string, baseDir: string): string {'),
-      at('src/skills/loadSkillsDir.ts', "return relativePath ? relativePath.split(pathSep).join(':') : ''"),
-      at('src/skills/loadSkillsDir.ts', 'finalContent = substituteArguments('),
+      at('src/skills/loading/legacyCommands.ts', "return await loadMarkdownFilesForSubdir('commands', cwd)"),
+      at('src/skills/loading/legacyCommands.ts', "namespacedName(file.baseDir, file.filePath.replace(MARKDOWN_EXTENSION_RE, ''))"),
+      at('src/skills/loading/skillsDirectory.ts', 'export function namespacedName(root: string, path: string): string {'),
+      at('src/skills/loading/skillPrompt.ts', 'text = substituteArguments(text, args, true, skill.argumentNames)'),
       at('src/commands/argumentSubstitution.ts', 'export function substituteArguments('),
     ],
     reference:
-      "It runs as `/deploy:staging`. loadSkillsFromCommandsDir (src/skills/loadSkillsDir.ts) gets the files from loadMarkdownFilesForSubdir('commands', cwd), " +
-      'which walks .claudin/commands from the cwd up to the git root; getRegularCommandName strips `.md` and prefixes ' +
-      "buildNamespace(dir, baseDir), which joins the sub-folders with ':'. createSkillCommand's getPromptForCommand calls " +
-      'substituteArguments (src/commands/argumentSubstitution.ts) to replace $ARGUMENTS, $ARGUMENTS[n] and $n.',
+      "It runs as `/deploy:staging`. readLegacyCommands (src/skills/loading/legacyCommands.ts) gets the files from loadMarkdownFilesForSubdir('commands', cwd), " +
+      'which walks .claudin/commands from the cwd up to the git root; namespacedName (src/skills/loading/skillsDirectory.ts) takes the path ' +
+      "relative to the commands directory, without `.md`, and joins its segments with ':'. The skill's getPromptForCommand runs " +
+      'buildSkillPrompt (src/skills/loading/skillPrompt.ts), which calls substituteArguments (src/commands/argumentSubstitution.ts) ' +
+      'to replace $ARGUMENTS, $ARGUMENTS[n] and $n.',
     wrong:
-      'It runs as `/deploy/staging`: loadSkillsFromCommandsDir finds it, getRegularCommandName keeps the folder path, and ' +
+      'It runs as `/deploy/staging`: readLegacyCommands finds it, namespacedName keeps the folder path, and ' +
       'substituteArguments fills in $ARGUMENTS.',
   },
   {

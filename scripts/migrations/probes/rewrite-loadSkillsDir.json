@@ -1,206 +1,363 @@
 {
-  "test": "src/skills/loadSkillsDir.characterization.test.ts",
+  "test": [
+    "src/skills/loadSkillsDir.characterization.test.ts",
+    "src/skills/loading/skillPrompt.test.ts"
+  ],
   "source": "src/skills/loadSkillsDir.ts",
   "probes": [
     {
       "name": "path: policy skills not under .claudin",
-      "find": "      return join(getManagedFilePath(), '.claudin', dir)\n",
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "      return join(getManagedFilePath(), CONFIG_DIR, dir)\n",
       "replace": "      return join(getManagedFilePath(), dir)\n"
     },
     {
       "name": "estimate: when-to-use not counted",
-      "find": "  const frontmatterText = [skill.name, skill.description, skill.whenToUse]\n",
-      "replace": "  const frontmatterText = [skill.name, skill.description]\n"
+      "source": "src/skills/loading/skillCommand.ts",
+      "find": "  const frontmatter = [skill.name, skill.description, skill.whenToUse]\n",
+      "replace": "  const frontmatter = [skill.name, skill.description]\n"
     },
     {
       "name": "fields: the description fallback label is ignored",
-      "find": "    extractDescriptionFromMarkdown(markdownContent, descriptionFallbackLabel)\n",
-      "replace": "    extractDescriptionFromMarkdown(markdownContent, 'Skill')\n"
+      "source": "src/skills/loading/frontmatterFields.ts",
+      "find": "      extractDescriptionFromMarkdown(markdownContent, descriptionFallbackLabel),\n",
+      "replace": "      extractDescriptionFromMarkdown(markdownContent, 'Skill'),\n"
     },
     {
       "name": "fields: user-invocable defaults to false",
-      "find": "      ? true\n      : parseBooleanFrontmatter(frontmatter['user-invocable'])\n",
-      "replace": "      ? false\n      : parseBooleanFrontmatter(frontmatter['user-invocable'])\n"
+      "source": "src/skills/loading/frontmatterFields.ts",
+      "find": "      frontmatter['user-invocable'] == null ||\n",
+      "replace": "      false ||\n"
     },
     {
       "name": "fields: model 'inherit' resolved as a model name",
-      "find": "    frontmatter.model === 'inherit'\n",
-      "replace": "    frontmatter.model === 'inherited'\n"
+      "source": "src/skills/loading/frontmatterFields.ts",
+      "find": "const INHERIT_MODEL = 'inherit'\n",
+      "replace": "const INHERIT_MODEL = 'inherited'\n"
     },
     {
       "name": "fields: hooks not validated",
-      "find": "    hooks: parseHooksFromFrontmatter(frontmatter, resolvedName),\n",
+      "source": "src/skills/loading/frontmatterFields.ts",
+      "find": "    hooks: validHooks(frontmatter.hooks, resolvedName),\n",
       "replace": "    hooks: frontmatter.hooks ?? undefined,\n"
     },
     {
+      "name": "fields: any context is kept, not only fork",
+      "source": "src/skills/loading/frontmatterFields.ts",
+      "find": "      frontmatter.context === FORK_CONTEXT ? FORK_CONTEXT : undefined,\n",
+      "replace": "      frontmatter.context ?? undefined,\n"
+    },
+    {
       "name": "paths: a trailing /** is kept",
-      "find": "      return pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern\n",
-      "replace": "      return pattern\n"
+      "source": "src/skills/loading/pathScope.ts",
+      "find": "        ? pattern.slice(0, -TRAILING_GLOBSTAR.length)\n",
+      "replace": "        ? pattern\n"
     },
     {
       "name": "paths: match-all patterns still scope the skill",
-      "find": "  if (patterns.length === 0 || patterns.every((p: string) => p === '**')) {\n",
-      "replace": "  if (patterns.length === 0) {\n"
+      "source": "src/skills/loading/pathScope.ts",
+      "find": "  return patterns.every(pattern => pattern === EVERYTHING) ? undefined : patterns\n",
+      "replace": "  return patterns.length === 0 ? undefined : patterns\n"
     },
     {
       "name": "command: a non-invocable skill is not hidden",
-      "find": "    isHidden: !userInvocable,\n",
+      "source": "src/skills/loading/skillCommand.ts",
+      "find": "    isHidden: !params.userInvocable,\n",
       "replace": "    isHidden: false,\n"
     },
     {
       "name": "prompt: wrong base-directory announcement",
-      "find": "        ? `Base directory for this skill: ${baseDir}\\n\\n${markdownContent}`\n",
-      "replace": "        ? `Skill directory: ${baseDir}\\n\\n${markdownContent}`\n"
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "  return baseDir ? `Base directory for this skill: ${baseDir}\\n\\n${body}` : body\n",
+      "replace": "  return baseDir ? `Skill directory: ${baseDir}\\n\\n${body}` : body\n"
     },
     {
       "name": "prompt: only the first ${CLAUDIN_SKILL_DIR} is replaced",
-      "find": "        finalContent = finalContent.replace(/\\$\\{CLAUDIN_SKILL_DIR\\}/g, skillDir)\n",
-      "replace": "        finalContent = finalContent.replace(/\\$\\{CLAUDIN_SKILL_DIR\\}/, skillDir)\n"
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "    text = replaceLiterally(text, SKILL_DIR_VARIABLE, pathForPrompt(skill.baseDir))\n",
+      "replace": "    text = text.replace(SKILL_DIR_VARIABLE, pathForPrompt(skill.baseDir))\n"
+    },
+    {
+      "name": "prompt: the base directory goes in as a replacement pattern",
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "  return text.replaceAll(variable, () => value)\n",
+      "replace": "  return text.replaceAll(variable, value)\n"
+    },
+    {
+      "name": "prompt: only the first ${CLAUDIN_SESSION_ID} is replaced",
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "  text = replaceLiterally(text, SESSION_ID_VARIABLE, deps.sessionId())\n",
+      "replace": "  text = text.replace(SESSION_ID_VARIABLE, deps.sessionId())\n"
     },
     {
       "name": "prompt: MCP skills run their embedded shell",
-      "find": "      if (loadedFrom !== 'mcp') {\n",
-      "replace": "      if (true) {\n"
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "  if (skill.loadedFrom === 'mcp') return text\n",
+      "replace": "  if (false) return text\n"
     },
     {
       "name": "prompt: skills from disk never run their embedded shell",
-      "find": "      if (loadedFrom !== 'mcp') {\n",
-      "replace": "      if (loadedFrom === 'plugin') {\n"
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "  if (skill.loadedFrom === 'mcp') return text\n",
+      "replace": "  if (skill.loadedFrom !== 'plugin') return text\n"
+    },
+    {
+      "name": "prompt: the shell pass ignores the skill's shell",
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "    skill.shell,\n",
+      "replace": "    undefined,\n"
+    },
+    {
+      "name": "prompt: the shell pass runs without the skill's allowed tools",
+      "source": "src/skills/loading/skillPrompt.ts",
+      "find": "        alwaysAllowRules: { ...permissions.alwaysAllowRules, command: allowedTools },\n",
+      "replace": "        alwaysAllowRules: permissions.alwaysAllowRules,\n"
     },
     {
       "name": "walk: SKILL.md matched case-sensitively",
-      "find": "  return /^skill\\.md$/i.test(basename(filePath))\n",
-      "replace": "  return /^SKILL\\.md$/.test(basename(filePath))\n"
+      "source": "src/skills/loading/skillsDirectory.ts",
+      "find": "const SKILL_FILE_NAME_RE = /^skill\\.md$/i\n",
+      "replace": "const SKILL_FILE_NAME_RE = /^SKILL\\.md$/\n"
     },
     {
       "name": "walk: nested directories are not searched",
-      "find": "    await Promise.all(childDirs.map(walk))\n",
-      "replace": "    void childDirs\n"
+      "source": "src/skills/loading/skillsDirectory.ts",
+      "find": "  const subdirectories = await subdirectoriesAmong(dir, entries)\n",
+      "replace": "  const subdirectories = depth > 0 ? [] : await subdirectoriesAmong(dir, entries)\n"
     },
     {
       "name": "walk: a symlinked skill directory is not followed",
-      "find": "        if ((await fs.stat(entryPath)).isDirectory()) {\n          topLevelDirs.push(entryPath)\n",
-      "replace": "        if (false) {\n          topLevelDirs.push(entryPath)\n"
+      "source": "src/skills/loading/skillsDirectory.ts",
+      "find": "    return (await stat(path)).isDirectory()\n",
+      "replace": "    return false\n"
     },
     {
       "name": "walk: results not sorted by path",
-      "find": "  skillFiles.sort()\n",
-      "replace": "  void skillFiles\n"
+      "source": "src/skills/loading/skillsDirectory.ts",
+      "find": "  files.sort((a, b) => comparePlain(a.filePath, b.filePath))\n",
+      "replace": "  files.sort((a, b) => comparePlain(b.filePath, a.filePath))\n"
     },
     {
       "name": "walk: namespace joined with / instead of :",
-      "find": "  return relativePath ? relativePath.split(pathSep).join(':') : ''\n",
-      "replace": "  return relativePath ? relativePath.split(pathSep).join('/') : ''\n"
+      "source": "src/skills/loading/skillsDirectory.ts",
+      "find": "    : relativePath.split(sep).join(NAME_SEPARATOR)\n",
+      "replace": "    : relativePath.split(sep).join('/')\n"
+    },
+    {
+      "name": "walk: an unreadable SKILL.md fails the whole listing",
+      "source": "src/skills/loading/skillsDirectory.ts",
+      "find": "    // Not found is a dangling link, or a file removed during the walk.\n",
+      "replace": "    throw error\n"
     },
     {
       "name": "legacy: markdown beside a SKILL.md is loaded too",
-      "find": "    if (skillFiles.length > 0) {\n",
-      "replace": "    if (false) {\n"
+      "source": "src/skills/loading/legacyCommands.ts",
+      "find": "    return skillFile === file ? legacyCommandOf(file, dir) : []\n",
+      "replace": "    return skillFile === file ? legacyCommandOf(file, dir) : legacyCommandOf(file, undefined)\n"
     },
     {
       "name": "legacy: single-file commands get a skill root",
-      "find": "        const skillDirectory = isSkillFormat ? dirname(filePath) : undefined\n",
-      "replace": "        const skillDirectory = dirname(filePath)\n"
+      "source": "src/skills/loading/legacyCommands.ts",
+      "find": "      baseDir: skillDir,\n",
+      "replace": "      baseDir: dirname(file.filePath),\n"
     },
     {
       "name": "legacy: paths: is honoured",
-      "find": "            paths: undefined,\n",
-      "replace": "            paths: parseSkillPaths(frontmatter),\n"
+      "source": "src/skills/loading/legacyCommands.ts",
+      "find": "      paths: undefined,\n",
+      "replace": "      paths: file.frontmatter.paths ? [String(file.frontmatter.paths)] : undefined,\n"
+    },
+    {
+      "name": "legacy: name: renames the command",
+      "source": "src/skills/loading/legacyCommands.ts",
+      "find": "      displayName: undefined,\n",
+      "replace": ""
     },
     {
       "name": "sources: CLAUDIN_DISABLE_POLICY_SKILLS ignored",
-      "find": "      isEnvTruthy(process.env.CLAUDIN_DISABLE_POLICY_SKILLS)\n",
-      "replace": "      false\n"
+      "source": "src/skills/loading/sourceGates.ts",
+      "find": "    managedSkills: !isEnvTruthy(process.env.CLAUDIN_DISABLE_POLICY_SKILLS),\n",
+      "replace": "    managedSkills: true,\n"
     },
     {
       "name": "sources: disabled project settings and the plugin-only lock ignored",
-      "find": "    const projectSettingsEnabled =\n      isSettingSourceEnabled('projectSettings') && !skillsLocked\n",
-      "replace": "    const projectSettingsEnabled = true\n"
+      "source": "src/skills/loading/sourceGates.ts",
+      "find": "  return gates.projectSettings && !gates.lockedToPlugins\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "sources: disabled user settings and the plugin-only lock ignored for user skills",
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "    isOn: gates => !gates.bare && gates.userSettings && !gates.lockedToPlugins,\n",
+      "replace": "    isOn: gates => !gates.bare,\n"
     },
     {
       "name": "sources: legacy commands load under the plugin-only lock",
-      "find": "      skillsLocked ? Promise.resolve([]) : loadSkillsFromCommandsDir(cwd),\n",
-      "replace": "      loadSkillsFromCommandsDir(cwd),\n"
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "  !gates.bare && !gates.lockedToPlugins\n",
+      "replace": "  !gates.bare\n"
     },
     {
       "name": "sources: bare mode ignored",
-      "find": "    if (isBareMode()) {\n",
-      "replace": "    if (false) {\n"
+      "source": "src/skills/loading/sourceGates.ts",
+      "find": "    bare: isBareMode(),\n",
+      "replace": "    bare: false,\n"
+    },
+    {
+      "name": "sources: bare mode drops the --add-dir skills too",
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "    isOn: allowsProjectSkills,\n",
+      "replace": "    isOn: gates => !gates.bare && allowsProjectSkills(gates),\n"
+    },
+    {
+      "name": "sources: --add-dir skills not loaded",
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "      getAdditionalDirectoriesForClaudeMd().map(dir => join(dir, CONFIG_DIR, 'skills')),\n",
+      "replace": "      [],\n"
     },
     {
       "name": "sources: user skills listed before managed ones",
-      "find": "      ...managedSkills,\n      ...userSkills,\n",
-      "replace": "      ...userSkills,\n      ...managedSkills,\n"
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "  {\n    source: 'policySettings',\n    isOn: gates => !gates.bare && gates.managedSkills,\n    directories: () => [getSkillsPath('policySettings', 'skills')],\n  },\n  {\n    source: 'userSettings',\n    isOn: gates => !gates.bare && gates.userSettings && !gates.lockedToPlugins,\n    directories: () => [getSkillsPath('userSettings', 'skills')],\n  },\n",
+      "replace": "  {\n    source: 'userSettings',\n    isOn: gates => !gates.bare && gates.userSettings && !gates.lockedToPlugins,\n    directories: () => [getSkillsPath('userSettings', 'skills')],\n  },\n  {\n    source: 'policySettings',\n    isOn: gates => !gates.bare && gates.managedSkills,\n    directories: () => [getSkillsPath('policySettings', 'skills')],\n  },\n"
     },
     {
       "name": "sources: no de-duplication by file",
-      "find": "      if (existingSource !== undefined) {\n",
-      "replace": "      if (false) {\n"
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "    if (seen.has(realPath)) {\n",
+      "replace": "    if (false) {\n"
     },
     {
       "name": "conditional: path-scoped skills listed up front",
-      "find": "        skill.type === 'prompt' &&\n        skill.paths &&\n",
-      "replace": "        false &&\n        skill.paths &&\n"
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "    if (command.paths !== undefined && !wasActivated(command.name)) {\n",
+      "replace": "    if (false && !wasActivated(command.name)) {\n"
     },
     {
       "name": "conditional: an activated skill is held again by the next load",
-      "find": "        !activatedConditionalSkillNames.has(skill.name)\n",
-      "replace": "        true\n"
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "    if (command.paths !== undefined && !wasActivated(command.name)) {\n",
+      "replace": "    if (command.paths !== undefined) {\n"
     },
     {
       "name": "activation: a skill stays held after activating",
-      "find": "        conditionalSkills.delete(name)\n",
-      "replace": "        void name\n"
+      "source": "src/skills/loading/sessionSkills.ts",
+      "find": "    heldSkills.delete(name)\n",
+      "replace": "    void name\n"
+    },
+    {
+      "name": "activation: an activated skill is not added to the dynamic skills",
+      "source": "src/skills/loading/sessionSkills.ts",
+      "find": "    dynamicSkills.set(name, held.command)\n",
+      "replace": "    void held\n"
+    },
+    {
+      "name": "activation: files outside the cwd activate skills",
+      "source": "src/skills/loading/pathScope.ts",
+      "find": "    scopePath.startsWith(PARENT_DIRECTORY) ||\n",
+      "replace": "    false ||\n"
     },
     {
       "name": "activation: the signal fires when nothing activated",
+      "source": "src/skills/loading/sessionSkills.ts",
       "find": "  if (activated.length > 0) {\n",
       "replace": "  if (true) {\n"
     },
     {
       "name": "cache: clearSkillCaches keeps the activation memory",
-      "find": "  loadMarkdownFilesForSubdir.cache?.clear?.()\n  conditionalSkills.clear()\n  activatedConditionalSkillNames.clear()\n",
-      "replace": "  loadMarkdownFilesForSubdir.cache?.clear?.()\n  conditionalSkills.clear()\n"
+      "source": "src/skills/loading/sessionSkills.ts",
+      "find": "  heldSkills.clear()\n  activatedNames.clear()\n",
+      "replace": "  heldSkills.clear()\n"
+    },
+    {
+      "name": "cache: the listing is not memoized",
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "  if (cached !== undefined) return cached\n",
+      "replace": "  void cached\n"
+    },
+    {
+      "name": "cache: clearSkillCaches keeps the cached listings",
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "  listings.clear()\n",
+      "replace": "  void listings\n"
+    },
+    {
+      "name": "cache: clearSkillCaches keeps the legacy commands",
+      "source": "src/skills/loading/skillListing.ts",
+      "find": "  clearLegacyCommandsCache()\n",
+      "replace": ""
+    },
+    {
+      "name": "cache: clearDynamicSkills keeps the dynamic skills",
+      "source": "src/skills/loading/sessionSkills.ts",
+      "find": "  dynamicSkills.clear()\n  checkedSkillDirs.clear()\n",
+      "replace": "  checkedSkillDirs.clear()\n"
     },
     {
       "name": "discover: the cwd itself and prefix siblings are included",
-      "find": "    while (currentDir.startsWith(resolvedCwd + pathSep)) {\n",
-      "replace": "    while (currentDir.startsWith(resolvedCwd)) {\n"
+      "source": "src/skills/loading/skillDirDiscovery.ts",
+      "find": "  while (dir.startsWith(cwdPrefix) && dir !== cwdPrefix) {\n",
+      "replace": "  while (dir.startsWith(cwdPrefix.slice(0, -1))) {\n"
+    },
+    {
+      "name": "discover: a trailing separator on the cwd hides every directory",
+      "source": "src/skills/loading/skillDirDiscovery.ts",
+      "find": "  const cwdPrefix = cwd.endsWith(sep) ? cwd : cwd + sep\n",
+      "replace": "  const cwdPrefix = cwd + sep\n"
     },
     {
       "name": "discover: a directory already checked is returned again",
-      "find": "      if (!dynamicSkillDirs.has(skillDir)) {\n",
-      "replace": "      if (true) {\n"
+      "source": "src/skills/loading/sessionSkills.ts",
+      "find": "  if (checkedSkillDirs.has(skillsDir)) return false\n",
+      "replace": "  if (false) return false\n"
     },
     {
       "name": "discover: gitignored directories are not skipped",
-      "find": "          if (await isPathGitignored(currentDir, resolvedCwd)) {\n",
-      "replace": "          if (false) {\n"
+      "source": "src/skills/loading/skillDirDiscovery.ts",
+      "find": "  if (await deps.isGitignored(candidate.dir, cwd)) {\n",
+      "replace": "  if (false) {\n"
     },
     {
       "name": "discover: shallowest first",
-      "find": "    (a, b) => b.split(pathSep).length - a.split(pathSep).length,\n",
-      "replace": "    (a, b) => a.split(pathSep).length - b.split(pathSep).length,\n"
+      "source": "src/skills/loading/skillDirDiscovery.ts",
+      "find": "    .sort((a, b) => depthOf(b) - depthOf(a))\n",
+      "replace": "    .sort((a, b) => depthOf(a) - depthOf(b))\n"
     },
     {
       "name": "dynamic: the settings and policy gate is ignored",
-      "find": "    !isSettingSourceEnabled('projectSettings') ||\n    isRestrictedToPluginOnly('skills')\n",
-      "replace": "    false\n"
+      "source": "src/skills/loading/skillDirDiscovery.ts",
+      "find": "  if (!allowsProjectSkills(readSourceGates())) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "dynamic: an empty list still signals",
+      "source": "src/skills/loading/skillDirDiscovery.ts",
+      "find": "  if (dirs.length === 0) return\n",
+      "replace": "  void dirs\n"
     },
     {
       "name": "dynamic: the shallower directory wins a name clash",
-      "find": "  for (let i = loadedSkills.length - 1; i >= 0; i--) {\n",
-      "replace": "  for (let i = 0; i < loadedSkills.length; i++) {\n"
+      "source": "src/skills/loading/skillDirDiscovery.ts",
+      "find": "    if (!byName.has(command.name)) byName.set(command.name, command)\n",
+      "replace": "    byName.set(command.name, command)\n"
     },
     {
       "name": "dynamic: no signal after loading",
-      "find": "  skillsLoaded.emit()\n}\n\n/**\n * Gets all dynamically discovered skills.\n",
-      "replace": "}\n\n/**\n * Gets all dynamically discovered skills.\n"
+      "source": "src/skills/loading/sessionSkills.ts",
+      "find": "  for (const skill of skills) dynamicSkills.set(skill.name, skill)\n  dynamicSkillsLoaded.emit()\n",
+      "replace": "  for (const skill of skills) dynamicSkills.set(skill.name, skill)\n"
     },
     {
       "name": "signal: a throwing listener breaks loading",
+      "source": "src/skills/loading/sessionSkills.ts",
       "find": "    try {\n      callback()\n    } catch (error) {\n      logError(error)\n    }\n",
       "replace": "    callback()\n"
+    },
+    {
+      "name": "signal: unsubscribing leaves the listener subscribed",
+      "source": "src/skills/loading/sessionSkills.ts",
+      "find": "  return dynamicSkillsLoaded.subscribe(() => {\n    // Contained: the other listeners still run, and the load that fired the\n    // signal still succeeds.\n    try {\n      callback()\n    } catch (error) {\n      logError(error)\n    }\n  })\n}",
+      "replace": "  dynamicSkillsLoaded.subscribe(() => {\n    // Contained: the other listeners still run, and the load that fired the\n    // signal still succeeds.\n    try {\n      callback()\n    } catch (error) {\n      logError(error)\n    }\n  })\n  return () => {}\n}"
     }
   ]
 }
