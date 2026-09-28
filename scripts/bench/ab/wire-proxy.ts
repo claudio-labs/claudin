@@ -479,7 +479,7 @@ const CLASSIFIER_IDENTITY = 'You are a security classifier for an autonomous cod
  * first request and on every later one of its loop.
  */
 const FORK_PROMPTS: readonly string[] = [
-  'You are now acting as the memory extraction subagent', // src/memory/extract/prompts.ts
+  'From here on you are the memory-extraction agent', // src/memory/extract/prompts/sections.ts
   'IMPORTANT: This message and these instructions are NOT part of the actual user conversation', // src/memory/session/prompts.ts
   '# Dream: Memory Consolidation', // src/memory/autoDream/consolidationPrompt.ts
   'CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.', // src/agent/compact/prompt.ts

@@ -370,3 +370,15 @@ Observations that are not defects:
   - **Session memory.** Paths are pure over the config home, the working directory and the session id. The reader and the template loader do file I/O with `isENOENT`/`isFsInaccessible` from `src/shared/errors.ts`. Truncation is a pure function that takes the character cap, with the active model's cap as its default.
 - **Types.** Explicit types for the decision, the fork request the unit builds, and the `memory_saved` payload, `teamCount` included instead of an ad-hoc widening.
 - **Errors.** A failed fork or scan is logged and absorbed, never thrown to the stop hook. No `any`. Nothing is swallowed without a log line.
+
+## Outcome
+
+- **The gate.** In `src/memory/extract/fork/transcript.ts`, 2 lines of Claude Code opened the reader of failed calls: a set declared, then a loop over the messages. That reader now takes one message at a time, as the reader of file writes does, and the set is built from what each read returns. The file measures zero.
+- **Residue, reviewed.** These lines of Claude Code stay. Each one is contract:
+  - **`src/memory/extract/fork/forkRequest.ts`, 2 lines.** Two parameters of the function that builds the fork request. The hook context has the name and the type that `executeExtractMemories` gives it in the contract table. `canUseTool` is the field of the `runForkedAgent` request it fills, with the type that `createAutoMemCanUseTool` returns. Both types belong to modules outside the unit.
+  - **`src/memory/extract/fork/permissions.ts`, 2 lines.** The case labels of `Edit` and `Write` in the tool policy. Each label holds only the name constant that the tool's own module exports, and section 4 gives the two tools one decision.
+  - **`src/memory/extract/prompts.ts`, 7 lines.** The signatures of `buildExtractAutoOnlyPrompt` and `buildExtractCombinedPrompt` with their `existingMemories` parameter, from the contract table; the two shared sections that section 7 requires verbatim, `TYPES_SECTION_INDIVIDUAL` and `WHAT_NOT_TO_SAVE_SECTION`; and the `feature('TEAMMEM')` test, whose text the build matches to fold the flag.
+
+  `prompts.ts` and `src/memory/session/sessionMemoryUtils.ts` were rewritten at their old paths, so the baseline did not flag them; they were reviewed by hand. `sessionMemoryUtils.ts` matched in 3 lines, the private variable behind the last summarized id and its getter. The variable was renamed, and the file measures zero.
+
+  They go when the contract is redesigned, after every consumer has been rewritten.

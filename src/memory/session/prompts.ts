@@ -1,155 +1,58 @@
+/**
+ * The session-memory template, the check for a file that still holds nothing
+ * but the template, and the per-section cap applied before the file goes into
+ * a compaction summary.
+ */
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { getActiveModelBytesPerToken } from 'src/shared/tokenEstimation.js'
+import { capSectionBodies, type SectionCapResult } from 'src/memory/session/sectionCap.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
-import { getErrnoCode, toError } from 'src/shared/errors.js'
+import { isENOENT } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
+import { getActiveModelBytesPerToken } from 'src/shared/tokenEstimation.js'
 
-const MAX_SECTION_LENGTH = 2000
+/** Each section's header, and the one italic line saying what belongs under it. */
+const TEMPLATE_SECTIONS: ReadonlyArray<readonly [header: string, guidance: string]> = [
+  ['Session Title', 'A short, distinctive title for this session: 5-10 information-dense words'],
+  ['Current State', 'What is being worked on right now, the tasks still pending, and the next steps'],
+  ['Task specification', 'What the user asked to build, the design decisions taken, and the context behind them'],
+  ['Files and Functions', 'The files that matter, what each one holds, and why it is relevant'],
+  ['Workflow', 'The shell commands usually run, in what order, and how to read their output'],
+  ['Errors & Corrections', 'Errors hit and how they were fixed, what the user corrected, and approaches not to try again'],
+  ['Codebase and System Documentation', 'The important components of the system and how they fit together'],
+  ['Learnings', 'What worked, what did not, and what to avoid, without repeating the other sections'],
+  ['Key results', 'Any exact output the user asked for (an answer, a table, a document), repeated here in full'],
+  ['Worklog', 'A terse, step-by-step record of what was tried and what was done'],
+]
 
-export const DEFAULT_SESSION_MEMORY_TEMPLATE = `
-# Session Title
-_A short and distinctive 5-10 word descriptive title for the session. Super info dense, no filler_
+export const DEFAULT_SESSION_MEMORY_TEMPLATE = `\n${TEMPLATE_SECTIONS.map(
+  ([header, guidance]) => `# ${header}\n_${guidance}_\n`,
+).join('\n')}`
 
-# Current State
-_What is actively being worked on right now? Pending tasks not yet completed. Immediate next steps._
+/** How many tokens one section may take in a compaction summary. */
+const SECTION_TOKEN_BUDGET = 2_000
 
-# Task specification
-_What did the user ask to build? Any design decisions or other explanatory context_
+function customTemplatePath(): string {
+  return join(getClaudinConfigHomeDir(), 'session-memory', 'config', 'template.md')
+}
 
-# Files and Functions
-_What are the important files? In short, what do they contain and why are they relevant?_
-
-# Workflow
-_What bash commands are usually run and in what order? How to interpret their output if not obvious?_
-
-# Errors & Corrections
-_Errors encountered and how they were fixed. What did the user correct? What approaches failed and should not be tried again?_
-
-# Codebase and System Documentation
-_What are the important system components? How do they work/fit together?_
-
-# Learnings
-_What has worked well? What has not? What to avoid? Do not duplicate items from other sections_
-
-# Key results
-_If the user asked a specific output such as an answer to a question, a table, or other document, repeat the exact result here_
-
-# Worklog
-_Step by step, what was attempted, done? Very terse summary for each step_
-`
-
-/**
- * Load custom session memory template from file if it exists
- */
-async function loadSessionMemoryTemplate(): Promise<string> {
-  const templatePath = join(
-    getClaudinConfigHomeDir(),
-    'session-memory',
-    'config',
-    'template.md',
-  )
-
+/** A user's own template replaces the default; one that cannot be read does not. */
+async function sessionMemoryTemplate(): Promise<string> {
   try {
-    return await readFile(templatePath, { encoding: 'utf-8' })
-  } catch (e: unknown) {
-    const code = getErrnoCode(e)
-    if (code === 'ENOENT') {
-      return DEFAULT_SESSION_MEMORY_TEMPLATE
-    }
-    logError(toError(e))
+    return await readFile(customTemplatePath(), 'utf8')
+  } catch (error) {
+    if (!isENOENT(error)) logError(error)
     return DEFAULT_SESSION_MEMORY_TEMPLATE
   }
 }
 
-/**
- * Check if the session memory content is essentially empty (matches the template).
- * This is used to detect if no actual content has been extracted yet,
- * which means we should fall back to legacy compact behavior.
- */
+/** True while the content is the template and nothing else, surrounding whitespace aside. */
 export async function isSessionMemoryEmpty(content: string): Promise<boolean> {
-  const template = await loadSessionMemoryTemplate()
-  // Compare trimmed content to detect if it's just the template
+  const template = await sessionMemoryTemplate()
   return content.trim() === template.trim()
 }
 
-/**
- * Truncate session memory sections that exceed the per-section token limit.
- * Used when inserting session memory into compact messages to prevent
- * oversized session memory from consuming the entire post-compact token budget.
- *
- * Returns the truncated content and whether any truncation occurred.
- */
-export function truncateSessionMemoryForCompact(content: string): {
-  truncatedContent: string
-  wasTruncated: boolean
-} {
-  const lines = content.split('\n')
-  // Mirror the bytes/token ratio used by roughTokenCountEstimation downstream
-  // so this section cap stays consistent (Gemini ~4, Claude ~3.5, etc).
-  const maxCharsPerSection = Math.floor(
-    MAX_SECTION_LENGTH * getActiveModelBytesPerToken(),
-  )
-  const outputLines: string[] = []
-  let currentSectionLines: string[] = []
-  let currentSectionHeader = ''
-  let wasTruncated = false
-
-  for (const line of lines) {
-    if (line.startsWith('# ')) {
-      const result = flushSessionSection(
-        currentSectionHeader,
-        currentSectionLines,
-        maxCharsPerSection,
-      )
-      outputLines.push(...result.lines)
-      wasTruncated = wasTruncated || result.wasTruncated
-      currentSectionHeader = line
-      currentSectionLines = []
-    } else {
-      currentSectionLines.push(line)
-    }
-  }
-
-  // Flush the last section
-  const result = flushSessionSection(
-    currentSectionHeader,
-    currentSectionLines,
-    maxCharsPerSection,
-  )
-  outputLines.push(...result.lines)
-  wasTruncated = wasTruncated || result.wasTruncated
-
-  return {
-    truncatedContent: outputLines.join('\n'),
-    wasTruncated,
-  }
-}
-
-function flushSessionSection(
-  sectionHeader: string,
-  sectionLines: string[],
-  maxCharsPerSection: number,
-): { lines: string[]; wasTruncated: boolean } {
-  if (!sectionHeader) {
-    return { lines: sectionLines, wasTruncated: false }
-  }
-
-  const sectionContent = sectionLines.join('\n')
-  if (sectionContent.length <= maxCharsPerSection) {
-    return { lines: [sectionHeader, ...sectionLines], wasTruncated: false }
-  }
-
-  // Truncate at a line boundary near the limit
-  let charCount = 0
-  const keptLines: string[] = [sectionHeader]
-  for (const line of sectionLines) {
-    if (charCount + line.length + 1 > maxCharsPerSection) {
-      break
-    }
-    keptLines.push(line)
-    charCount += line.length + 1
-  }
-  keptLines.push('\n[... section truncated for length ...]')
-  return { lines: keptLines, wasTruncated: true }
+/** Caps each section at the characters its token budget buys with the active model's tokenizer. */
+export function truncateSessionMemoryForCompact(content: string): SectionCapResult {
+  return capSectionBodies(content, Math.floor(SECTION_TOKEN_BUDGET * getActiveModelBytesPerToken()))
 }

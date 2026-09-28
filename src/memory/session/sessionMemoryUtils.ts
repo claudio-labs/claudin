@@ -1,45 +1,42 @@
 /**
- * Session memory state read by session-memory compaction
- * (src/agent/compact/sessionMemoryCompact.ts) and the away summary.
+ * Reading a session's memory file, and the id of the last message a
+ * session-memory summary covered.
+ *
+ * Nothing in this build writes the file or sets the id to anything but
+ * undefined any more; compaction and the away summary still read both, so
+ * they stay until those callers are rewritten.
  */
-
-import { isFsInaccessible } from 'src/shared/errors.js'
-import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { readFile } from 'fs/promises'
 import { getSessionMemoryPath } from 'src/memory/session/paths.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isENOENT, isFsInaccessible } from 'src/shared/errors.js'
 
-// Track the last summarized message ID (shared state)
-let lastSummarizedMessageId: string | undefined
+let summarizedThroughMessageId: string | undefined
 
-/**
- * Get the message ID up to which the session memory is current
- */
 export function getLastSummarizedMessageId(): string | undefined {
-  return lastSummarizedMessageId
+  return summarizedThroughMessageId
+}
+
+/** `undefined` clears it. */
+export function setLastSummarizedMessageId(messageId: string | undefined): void {
+  summarizedThroughMessageId = messageId
 }
 
 /**
- * Set the last summarized message ID
- */
-export function setLastSummarizedMessageId(
-  messageId: string | undefined,
-): void {
-  lastSummarizedMessageId = messageId
-}
-
-/**
- * Get the current session memory content
+ * The file exactly as it is on disk, read afresh at every call, or null when
+ * it cannot be reached: missing, behind a file where a folder should be, a
+ * symlink loop, or no permission. Any other failure (a folder standing where
+ * the file should be, say) is the caller's to see.
  */
 export async function getSessionMemoryContent(): Promise<string | null> {
-  const fs = getFsImplementation()
-  const memoryPath = getSessionMemoryPath()
-
+  const path = getSessionMemoryPath()
   try {
-    const content = await fs.readFile(memoryPath, { encoding: 'utf-8' })
-
-
-    return content
-  } catch (e: unknown) {
-    if (isFsInaccessible(e)) return null
-    throw e
+    return await readFile(path, 'utf8')
+  } catch (error) {
+    if (!isFsInaccessible(error)) throw error
+    if (!isENOENT(error)) {
+      logForDebugging(`session memory at ${path} cannot be read (${error.code}), treating it as absent`)
+    }
+    return null
   }
 }

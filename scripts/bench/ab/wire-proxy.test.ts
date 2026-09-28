@@ -84,7 +84,7 @@ describe('requestKind — the agent loop', () => {
   })
 
   test('a prompt that only mentions a fork prompt or the classifier stays in the loop', () => {
-    const asked = { role: 'user', content: [text('Why does it say "You are now acting as the memory extraction subagent"?')] }
+    const asked = { role: 'user', content: [text('Why does it say "From here on you are the memory-extraction agent"?')] }
     expect(requestKind(loopBody([asked]))).toBe('main')
     const memory = 'Memory: the classifier prompt opens with "You are a security classifier for an autonomous coding agent".'
     expect(requestKind(loopBody([PROMPT], `You are Claudin.\n${memory}`))).toBe('main')
@@ -136,7 +136,7 @@ describe('requestKind — side requests', () => {
   })
 
   test('a fork: the main thread prefix plus its prompt, on its first request and on a later one', () => {
-    const extract = { role: 'user', content: [text('You are now acting as the memory extraction subagent. Analyze the most recent ~12 messages above.')] }
+    const extract = { role: 'user', content: [text('From here on you are the memory-extraction agent, working over the conversation above. Go through its most recent ~12 messages.')] }
     expect(requestKind(loopBody([PROMPT, ...TOOL_TURN, END_TURN, extract]))).toBe('other')
     expect(requestKind(loopBody([PROMPT, ...TOOL_TURN, END_TURN, extract, ...FORK_TOOL_TURN]))).toBe('other')
     const compact = { role: 'user', content: [text('CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.\n\nYour task is to create a detailed summary.')] }

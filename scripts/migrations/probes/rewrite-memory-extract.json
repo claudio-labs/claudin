@@ -1,231 +1,625 @@
 {
   "test": [
     "src/memory/extract/extractMemories.characterization.test.ts",
+    "src/memory/extract/extractMemories.firstUse.characterization.test.ts",
+    "src/memory/extract/extractMemories.shipFlags.characterization.test.ts",
     "src/memory/extract/extractPrompts.characterization.test.ts",
     "src/memory/extract/sessionMemory.characterization.test.ts",
-    "src/memory/extract/extractMemories.shipFlags.characterization.test.ts",
-    "src/memory/extract/extractMemories.firstUse.characterization.test.ts"
+    "src/memory/extract/fork/triggerPolicy.test.ts",
+    "src/memory/extract/fork/transcript.test.ts",
+    "src/memory/extract/fork/permissions.test.ts",
+    "src/memory/extract/fork/extractionRunner.test.ts",
+    "src/memory/session/sectionCap.test.ts",
+    "src/memory/session/prompts.test.ts"
   ],
   "source": "src/memory/extract/extractMemories.ts",
   "probes": [
     {
-      "name": "extract: a sub-agent turn forks too",
-      "find": "    if (context.toolUseContext.agentId) {\n",
-      "replace": "    if (context.toolUseContext.agentId && false) {\n"
+      "name": "before initExtractMemories an end of turn already forks",
+      "find": "let runner: ExtractionRunner | undefined\n",
+      "replace": "let runner: ExtractionRunner | undefined = createExtractionRunner(productionDeps())\n"
     },
     {
-      "name": "extract: auto memory being off no longer stops it",
-      "find": "    if (!isAutoMemoryEnabled()) {\n",
-      "replace": "    if (false) {\n"
+      "name": "initExtractMemories keeps the previous state",
+      "find": "  runner = createExtractionRunner(productionDeps())",
+      "replace": "  runner ??= createExtractionRunner(productionDeps())"
     },
     {
-      "name": "extract: the cadence is ignored",
-      "find": "      if (turnsSinceLastExtraction < getExtractionTurnInterval()) {\n",
-      "replace": "      if (turnsSinceLastExtraction < 1) {\n"
+      "name": "CLAUDIN_EXTRACT_MEMORIES is not read",
+      "find": "extractionEnabled: () => isExtractMemoriesEnabled(),",
+      "replace": "extractionEnabled: () => true,"
     },
     {
-      "name": "extract: the cadence counter never restarts",
-      "find": "    turnsSinceLastExtraction = 0\n",
-      "replace": "    turnsSinceLastExtraction = turnsSinceLastExtraction + 0\n"
+      "name": "auto memory being off is not read",
+      "find": "autoMemoryEnabled: () => isAutoMemoryEnabled(),",
+      "replace": "autoMemoryEnabled: () => true,"
     },
     {
-      "name": "extract: a trailing run waits for the cadence",
-      "find": "    if (!isTrailingRun && loopHint === undefined) {\n",
-      "replace": "    if (loopHint === undefined) {\n"
+      "name": "CLAUDIN_EXTRACT_MEMORIES_EVERY is not read",
+      "find": "turnInterval: () => getExtractionTurnInterval(),",
+      "replace": "turnInterval: () => 15,"
     },
     {
-      "name": "extract: a memory saved by the main agent no longer skips the fork",
-      "find": "    if (hasMemoryWritesSince(messages, lastMemoryMessageUuid)) {\n",
-      "replace": "    if (false) {\n"
+      "name": "CLAUDIN_LOOP_MEMORY_TRIGGER=0 does not turn the loop trigger off",
+      "find": "? !isEnvDefinedFalsy(process.env.CLAUDIN_LOOP_MEMORY_TRIGGER)",
+      "replace": "? true"
     },
     {
-      "name": "extract: skipping does not move the new-message mark",
-      "find": "        lastMemoryMessageUuid = lastMessage.uuid\n      }\n      return\n",
-      "replace": "        void lastMessage\n      }\n      return\n"
+      "name": "the shipped build sends the auto-only prompt",
+      "find": "teamMemoryEnabled: () => (feature('TEAMMEM') ? isTeamMemoryEnabled() : false),",
+      "replace": "teamMemoryEnabled: () => (feature('TEAMMEM') ? false : false),"
     },
     {
-      "name": "extract: a successful fork does not move the new-message mark",
-      "find": "        lastMemoryMessageUuid = lastMessage.uuid\n      }\n\n      const writtenPaths",
-      "replace": "        void lastMessage\n      }\n\n      const writtenPaths"
+      "name": "saves are announced unless notifyMemorySaved is false",
+      "find": "getGlobalConfig().notifyMemorySaved === true",
+      "replace": "getGlobalConfig().notifyMemorySaved !== false"
     },
     {
-      "name": "extract: system messages count as new messages",
-      "find": "  return message.type === 'user' || message.type === 'assistant'\n",
-      "replace": "  return message.type !== 'progress'\n"
+      "name": "the manifest is never read",
+      "find": "formatMemoryManifest(await scanMemoryFiles(memoryDir, new AbortController().signal)),",
+      "replace": "formatMemoryManifest([]),"
     },
     {
-      "name": "extract: a vanished mark counts nothing instead of everything",
-      "find": "  if (!foundStart) {\n    return count(messages, isModelVisibleMessage)\n  }\n",
-      "replace": "  if (!foundStart) {\n    return 0\n  }\n"
+      "name": "the main agent's saves are never recognized",
+      "find": "contains: filePath => isAutoMemPath(filePath),",
+      "replace": "contains: () => false,"
     },
     {
-      "name": "extract: an Edit is no longer a write",
-      "find": "    (block.name !== FILE_EDIT_TOOL_NAME && block.name !== FILE_WRITE_TOOL_NAME)\n",
-      "replace": "    block.name !== FILE_WRITE_TOOL_NAME\n"
+      "name": "team files are not counted",
+      "find": "containsTeamFile: filePath => isTeamMemPath(filePath),",
+      "replace": "containsTeamFile: () => false,"
     },
     {
-      "name": "extract: wrong query source",
-      "find": "        querySource: 'extract_memories',\n",
-      "replace": "        querySource: 'session_memory',\n"
-    },
-    {
-      "name": "extract: another turn cap",
-      "find": "        maxTurns: 5,\n",
-      "replace": "        maxTurns: 8,\n"
-    },
-    {
-      "name": "extract: MEMORY.md is announced as a memory",
-      "find": "        p => basename(p) !== ENTRYPOINT_NAME,\n",
-      "replace": "        p => p.length > 0,\n"
-    },
-    {
-      "name": "extract: announced without notifyMemorySaved",
-      "find": "      if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {\n",
-      "replace": "      if (memoryPaths.length > 0) {\n"
-    },
-    {
-      "name": "extract: the first held turn wins instead of the latest",
-      "find": "      pendingContext = { context, appendSystemMessage }\n",
-      "replace": "      pendingContext ??= { context, appendSystemMessage }\n"
-    },
-    {
-      "name": "extract: draining never waits",
-      "find": "    if (inFlightExtractions.size === 0) return\n",
-      "replace": "    return\n"
-    },
-    {
-      "name": "permissions: any Bash command is allowed",
-      "find": "      if (parsed.success && tool.isReadOnly(parsed.data)) {\n",
-      "replace": "      if (parsed.success) {\n"
-    },
-    {
-      "name": "permissions: Edit and Write are allowed anywhere",
-      "find": "      if (typeof filePath === 'string' && isAutoMemPath(filePath)) {\n",
-      "replace": "      if (typeof filePath === 'string') {\n"
-    },
-    {
-      "name": "shipped build: a loop fires on every turn",
-      "find": "      (loop.loopKey !== lastFiredLoopKey ||\n",
-      "replace": "      (true ||\n"
-    },
-    {
-      "name": "shipped build: teamCount counts every memory",
-      "find": "        ? count(memoryPaths, teamMemPaths!.isTeamMemPath)\n",
-      "replace": "        ? memoryPaths.length\n"
-    },
-    {
-      "name": "prompt: the count is off by one",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "    opener(newMessageCount, existingMemories, extraHint),\n    '',\n    'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',\n    '',\n    ...TYPES_SECTION_INDIVIDUAL,\n",
-      "replace": "    opener(newMessageCount + 1, existingMemories, extraHint),\n    '',\n    'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',\n    '',\n    ...TYPES_SECTION_INDIVIDUAL,\n"
-    },
-    {
-      "name": "prompt: the manifest is dropped",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "      ? `\\n\\n## Existing memory files\\n\\n${existingMemories}",
-      "replace": "      ? `\\n\\n## Existing memory files\\n\\n"
-    },
-    {
-      "name": "prompt: the manifest framing appears with no manifest",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "    existingMemories.length > 0\n",
-      "replace": "    existingMemories.length >= 0\n"
-    },
-    {
-      "name": "prompt: the hint is dropped",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "  const hint = extraHint ? `\\n\\n${extraHint}` : ''\n",
-      "replace": "  const hint = ''\n"
-    },
-    {
-      "name": "prompt: rm is no longer ruled out",
-      "source": "src/memory/extract/prompts.ts",
-      "find": " ${BASH_TOOL_NAME} rm is not permitted.",
+      "name": "a sub-agent's turn forks",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "  if (readings.subAgentTurn) return 'subAgentTurn'\n",
       "replace": ""
     },
     {
-      "name": "prompt: the auto-only prompt carries the team taxonomy",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "    ...TYPES_SECTION_INDIVIDUAL,\n",
-      "replace": "    ...TYPES_SECTION_COMBINED,\n"
-    },
-    {
-      "name": "prompt: another index-line limit",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "each entry should be one line, under ~150 characters: `- [Title](file.md) — one-line hook`. It has no frontmatter.",
-      "replace": "each entry should be one line, under ~250 characters: `- [Title](file.md) — one-line hook`. It has no frontmatter."
-    },
-    {
-      "name": "shipped build: the combined prompt allows secrets in team memory",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "    '- You MUST avoid saving sensitive data within shared team memories. For example, never save API keys or user credentials.',\n",
+      "name": "the extraction switch gates nothing",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "  if (!readings.extractionEnabled) return 'extractionOff'\n",
       "replace": ""
     },
     {
-      "name": "session paths: no trailing separator",
+      "name": "auto memory being off gates nothing",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "  if (!readings.autoMemoryEnabled) return 'autoMemoryOff'\n",
+      "replace": ""
+    },
+    {
+      "name": "a turn during a fork is not held",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "  if (input.overlap === 'forkRunning') return { kind: 'held' }\n",
+      "replace": ""
+    },
+    {
+      "name": "the main agent's own save does not stop the fork",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "  if (input.mainAgentSaved()) return { kind: 'mainAgentSaved' }\n",
+      "replace": ""
+    },
+    {
+      "name": "a kept turn waits for the cadence",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "  if (input.overlap === 'trailing') return { kind: 'fork', reason: 'trailing' }\n",
+      "replace": ""
+    },
+    {
+      "name": "a kept turn skips the gates",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "  if (gate !== undefined) return { kind: 'gated', gate }",
+      "replace": "  if (gate !== undefined && input.overlap !== 'trailing') return { kind: 'gated', gate }"
+    },
+    {
+      "name": "the same loop forks again in the same human turn",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "if (loop !== null && !loopHasFired(input.firedLoops, loop))",
+      "replace": "if (loop !== null)"
+    },
+    {
+      "name": "the cadence forks one turn late",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "return turnsCounted >= input.interval",
+      "replace": "return turnsCounted > input.interval"
+    },
+    {
+      "name": "a new human turn does not re-arm a loop",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "return fired.userTurnUuid === loop.userTurnUuid && fired.loopKeys.has(loop.loopKey)",
+      "replace": "return fired.loopKeys.has(loop.loopKey)"
+    },
+    {
+      "name": "only the last loop of a human turn is remembered",
+      "source": "src/memory/extract/fork/triggerPolicy.ts",
+      "find": "const earlier = fired.userTurnUuid === loop.userTurnUuid ? fired.loopKeys : []",
+      "replace": "const earlier: string[] = []"
+    },
+    {
+      "name": "the marked message counts as new again",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "return at === -1 ? messages : messages.slice(at + 1)",
+      "replace": "return at === -1 ? messages : messages.slice(at)"
+    },
+    {
+      "name": "fix (finding 2): after a compaction the main agent's saves go unseen",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "return messagesAfterMark(messages, mark).some(message =>",
+      "replace": "return (mark !== undefined && !messages.some(m => m.uuid === mark) ? [] : messagesAfterMark(messages, mark)).some(message =>"
+    },
+    {
+      "name": "system messages count as new messages",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "return messages.filter(message => message.type === 'user' || message.type === 'assistant').length",
+      "replace": "return messages.filter(message => message.type !== 'progress').length"
+    },
+    {
+      "name": "an Edit is not a save",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "return name === FILE_EDIT_TOOL_NAME || name === FILE_WRITE_TOOL_NAME",
+      "replace": "return name === FILE_WRITE_TOOL_NAME"
+    },
+    {
+      "name": "fix (finding 1): a refused save is announced",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "if (failed.has(toolUseId) || !isMemoryPath(filePath) || basename(filePath) === ENTRYPOINT_NAME) continue",
+      "replace": "if (!isMemoryPath(filePath) || basename(filePath) === ENTRYPOINT_NAME) continue"
+    },
+    {
+      "name": "fix (finding 1): a write outside the memory directory is announced",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "if (failed.has(toolUseId) || !isMemoryPath(filePath) || basename(filePath) === ENTRYPOINT_NAME) continue",
+      "replace": "if (failed.has(toolUseId) || basename(filePath) === ENTRYPOINT_NAME) continue"
+    },
+    {
+      "name": "indexes are announced as memories",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "if (failed.has(toolUseId) || !isMemoryPath(filePath) || basename(filePath) === ENTRYPOINT_NAME) continue",
+      "replace": "if (failed.has(toolUseId) || !isMemoryPath(filePath) || filePath === ENTRYPOINT_NAME) continue"
+    },
+    {
+      "name": "every answered call counts as failed",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "block.type === 'tool_result' && block.is_error === true ? [block.tool_use_id] : [],",
+      "replace": "block.type === 'tool_result' ? [block.tool_use_id] : [],"
+    },
+    {
+      "name": "saved files come out of order",
+      "source": "src/memory/extract/fork/transcript.ts",
+      "find": "return [...saved]",
+      "replace": "return [...saved].reverse()"
+    },
+    {
+      "name": "Glob is denied",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "    case GLOB_TOOL_NAME:\n",
+      "replace": ""
+    },
+    {
+      "name": "Bash may run a command that writes",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "return parsed.success && tool.isReadOnly(parsed.data)",
+      "replace": "return parsed.success"
+    },
+    {
+      "name": "fix (finding 4): Edit and Write are fenced to a directory other than the one given",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "return isInsideDirectory(input.file_path, memoryDir)",
+      "replace": "return isInsideDirectory(input.file_path, sep)"
+    },
+    {
+      "name": "a sibling whose name extends the directory is inside",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "return normalize(filePath).startsWith(root.endsWith(sep) ? root : root + sep)",
+      "replace": "return normalize(filePath).startsWith(root.endsWith(sep) ? root.slice(0, -1) : root)"
+    },
+    {
+      "name": ".. segments are not resolved",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "return normalize(filePath).startsWith(root.endsWith(sep) ? root : root + sep)",
+      "replace": "return filePath.startsWith(root.endsWith(sep) ? root : root + sep)"
+    },
+    {
+      "name": "a relative path can be inside",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "if (typeof filePath !== 'string' || !isAbsolute(filePath)) return false",
+      "replace": "if (typeof filePath !== 'string') return false"
+    },
+    {
+      "name": "any other tool is allowed",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "    default:\n      return deny(",
+      "replace": "    default:\n      return allow(input)\n      return deny("
+    },
+    {
+      "name": "a denial gives a different reason than its message",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "return { behavior: 'deny', message, decisionReason: { type: 'other', reason: message } }",
+      "replace": "return { behavior: 'deny', message, decisionReason: { type: 'other', reason: 'denied' } }"
+    },
+    {
+      "name": "an allow changes the input",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "return { behavior: 'allow', updatedInput: input }",
+      "replace": "return { behavior: 'allow', updatedInput: { ...input, reviewed: true } }"
+    },
+    {
+      "name": "a denial does not name the directory",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "on files inside ${memoryDir}.",
+      "replace": "on files inside the memory directory."
+    },
+    {
+      "name": "the Bash denial does not say read-only",
+      "source": "src/memory/extract/fork/permissions.ts",
+      "find": "may only run read-only ${BASH_TOOL_NAME} commands.",
+      "replace": "may only run ${BASH_TOOL_NAME} commands that change nothing."
+    },
+    {
+      "name": "the fork records a sidechain transcript",
+      "source": "src/memory/extract/fork/forkRequest.ts",
+      "find": "    skipTranscript: true,",
+      "replace": "    skipTranscript: false,"
+    },
+    {
+      "name": "the fork gets more turns",
+      "source": "src/memory/extract/fork/forkRequest.ts",
+      "find": "const EXTRACTION_MAX_TURNS = 5",
+      "replace": "const EXTRACTION_MAX_TURNS = 8"
+    },
+    {
+      "name": "the fork runs under another query source",
+      "source": "src/memory/extract/fork/forkRequest.ts",
+      "find": "const EXTRACTION_QUERY_SOURCE = 'extract_memories'",
+      "replace": "const EXTRACTION_QUERY_SOURCE = 'session_memory'"
+    },
+    {
+      "name": "the fork does not replay the parent's messages",
+      "source": "src/memory/extract/fork/forkRequest.ts",
+      "find": "forkContextMessages: messages }",
+      "replace": "forkContextMessages: messages.slice(-1) }"
+    },
+    {
+      "name": "the prompt goes as content blocks",
+      "source": "src/memory/extract/fork/forkRequest.ts",
+      "find": "promptMessages: [createUserMessage({ content: prompt })],",
+      "replace": "promptMessages: [createUserMessage({ content: [{ type: 'text', text: prompt }] })],"
+    },
+    {
+      "name": "teamCount counts every saved file",
+      "source": "src/memory/extract/fork/savedNotice.ts",
+      "find": "teamCount: writtenPaths.filter(path => isTeamMemoryFile(path)).length }",
+      "replace": "teamCount: writtenPaths.length }"
+    },
+    {
+      "name": "teamCount is left out when zero",
+      "source": "src/memory/extract/fork/savedNotice.ts",
+      "find": "teamCount: writtenPaths.filter(path => isTeamMemoryFile(path)).length }",
+      "replace": "teamCount: writtenPaths.filter(path => isTeamMemoryFile(path)).length || undefined }"
+    },
+    {
+      "name": "a fork that succeeded leaves its messages new",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "      state.mark = lastMessageId(context.messages)\n",
+      "replace": ""
+    },
+    {
+      "name": "the main agent's save does not move the mark",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "        state.mark = lastMessageId(turn.context.messages)\n",
+      "replace": ""
+    },
+    {
+      "name": "the cadence count is not kept",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "        state.turnsCounted = decision.turnsCounted\n",
+      "replace": ""
+    },
+    {
+      "name": "the first turn held is kept, not the latest",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "        state.kept = turn\n",
+      "replace": "        state.kept ??= turn\n"
+    },
+    {
+      "name": "a fork does not restart the cadence",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "    state.turnsCounted = 0\n",
+      "replace": ""
+    },
+    {
+      "name": "a loop fork is not remembered",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "    if (decision.reason === 'loop') state.firedLoops = withFiredLoop(state.firedLoops, decision.loop)\n",
+      "replace": ""
+    },
+    {
+      "name": "a loop fork carries no hint",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "? buildLoopHint(decision.loop.toolName, decision.loop.repeatCount)",
+      "replace": "? undefined"
+    },
+    {
+      "name": "the prompt variants are swapped",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "? buildExtractCombinedPrompt(newMessages, manifest, hint)\n        : buildExtractAutoOnlyPrompt(newMessages, manifest, hint)",
+      "replace": "? buildExtractAutoOnlyPrompt(newMessages, manifest, hint)\n        : buildExtractCombinedPrompt(newMessages, manifest, hint)"
+    },
+    {
+      "name": "the fork is not fenced to the memory directory",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "createAutoMemCanUseTool(memoryDir)",
+      "replace": "createAutoMemCanUseTool('/')"
+    },
+    {
+      "name": "saves are announced whatever the setting",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "if (appendSystemMessage === undefined || !settings.announceSavedMemories()) return",
+      "replace": "if (appendSystemMessage === undefined) return"
+    },
+    {
+      "name": "an empty notice is sent",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "if (saved.length > 0) appendSystemMessage(",
+      "replace": "if (saved.length >= 0) appendSystemMessage("
+    },
+    {
+      "name": "a turn during a fork starts another",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "const decision = decide(turn, state.forkRunning ? 'forkRunning' : 'none')",
+      "replace": "const decision = decide(turn, 'none')"
+    },
+    {
+      "name": "no fork follows for a kept turn",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "        job = followingFork()\n",
+      "replace": "        job = undefined\n"
+    },
+    {
+      "name": "the running flag is never cleared",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "      state.forkRunning = false\n",
+      "replace": ""
+    },
+    {
+      "name": "the drain does not wait",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "await Promise.race([Promise.allSettled([...state.inFlight]), timedOut])",
+      "replace": "await Promise.race([Promise.resolve(), timedOut])"
+    },
+    {
+      "name": "the drain overstays its timeout",
+      "source": "src/memory/extract/fork/extractionRunner.ts",
+      "find": "timer = setTimeout(resolve, timeoutMs)",
+      "replace": "timer = setTimeout(resolve, timeoutMs * 50)"
+    },
+    {
+      "name": "without TEAMMEM the combined prompt carries team memory, and with it the auto-only one",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "  if (!feature('TEAMMEM')) {",
+      "replace": "  if (feature('TEAMMEM')) {"
+    },
+    {
+      "name": "an empty manifest still gets its framing",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "...(hasText(existingMemories) ? existingMemoryFiles(existingMemories) : []),",
+      "replace": "...existingMemoryFiles(existingMemories),"
+    },
+    {
+      "name": "the hint is dropped",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "...(hasText(extraHint) ? [extraHint, ''] : []),",
+      "replace": "...(hasText(extraHint) ? [] : []),"
+    },
+    {
+      "name": "an empty hint or manifest counts as text",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "return text !== undefined && text.trim() !== ''",
+      "replace": "return text !== undefined"
+    },
+    {
+      "name": "the auto-only prompt carries the combined taxonomy",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    ...TYPES_SECTION_INDIVIDUAL,",
+      "replace": "    ...TYPES_SECTION_COMBINED,"
+    },
+    {
+      "name": "the combined prompt lacks the team categories",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    ...renderTeamCategoriesXml(),\n",
+      "replace": ""
+    },
+    {
+      "name": "the combined prompt lacks the rule against secrets",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    ...noSecretsInTeamMemory(),\n",
+      "replace": ""
+    },
+    {
+      "name": "the opening no longer matches the wire proxy",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "const EXTRACTION_PROMPT_OPENING = 'From here on you are the memory-extraction agent'",
+      "replace": "const EXTRACTION_PROMPT_OPENING = 'From now on you are the memory-extraction agent'"
+    },
+    {
+      "name": "the new-message count loses its tilde",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "most recent ~${newMessageCount} messages",
+      "replace": "most recent ${newMessageCount} messages"
+    },
+    {
+      "name": "Write is not named",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "- ${code(FILE_EDIT_TOOL_NAME)} and ${code(FILE_WRITE_TOOL_NAME)}, on files inside",
+      "replace": "- ${code(FILE_EDIT_TOOL_NAME)}, on files inside"
+    },
+    {
+      "name": "rm is not ruled out",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "`${code('rm')} is not allowed, and any other tool",
+      "replace": "`Deleting is not allowed, and any other tool"
+    },
+    {
+      "name": "Bash is not said to be read-only",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "- ${code(BASH_TOOL_NAME)}, read-only:",
+      "replace": "- ${code(BASH_TOOL_NAME)}, for inspection:"
+    },
+    {
+      "name": "the index entry format changes",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "code('- [Title](file.md) — one-line hook')",
+      "replace": "code('- [Title](file.md): one-line hook')"
+    },
+    {
+      "name": "the index entry limit changes",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "const INDEX_ENTRY_MAX_CHARS = 150",
+      "replace": "const INDEX_ENTRY_MAX_CHARS = 120"
+    },
+    {
+      "name": "the private variant does not state the 200-line cut",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "whatever comes after line ${MAX_ENTRYPOINT_LINES} is cut off, so keep it short.",
+      "replace": "whatever comes after its limit is cut off, so keep it short."
+    },
+    {
+      "name": "paths: is not tied to the rules syntax",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "written the way a rule under ${code('.claudin/rules/')} writes them",
+      "replace": "written the way a rule writes them"
+    },
+    {
+      "name": "the private variant lacks the frontmatter example",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "'First, write the memory to a file of its own, opening with frontmatter in this form:',\n    '',\n    ...MEMORY_FRONTMATTER_EXAMPLE,\n",
+      "replace": "'First, write the memory to a file of its own, opening with frontmatter in this form:',\n    '',\n"
+    },
+    {
+      "name": "the loop hint loses the tool in code and the × count",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "`Earlier in this conversation, ${code(toolName)} was called ${repeatCount}× with the same input",
+      "replace": "`Earlier in this conversation, ${toolName} was called ${repeatCount} times with the same input"
+    },
+    {
+      "name": "the loop hint does not ask for a feedback memory",
+      "source": "src/memory/extract/prompts/sections.ts",
+      "find": "save the lesson as a ${code('feedback')} memory",
+      "replace": "save the lesson as a lesson"
+    },
+    {
+      "name": "the session-memory directory loses its separator",
       "source": "src/memory/session/paths.ts",
-      "find": "  return join(getProjectDir(getCwd()), getSessionId(), 'session-memory') + sep\n",
-      "replace": "  return join(getProjectDir(getCwd()), getSessionId(), 'session-memory')\n"
+      "find": "  return join(getProjectDir(getCwd()), getSessionId(), SESSION_MEMORY_FOLDER) + sep",
+      "replace": "  return join(getProjectDir(getCwd()), getSessionId(), SESSION_MEMORY_FOLDER)"
     },
     {
-      "name": "session paths: not per session",
+      "name": "the session-memory directory follows the process cwd",
       "source": "src/memory/session/paths.ts",
-      "find": "getSessionId(), 'session-memory'",
-      "replace": "'session-memory'"
+      "find": "getProjectDir(getCwd())",
+      "replace": "getProjectDir(process.cwd())"
     },
     {
-      "name": "session paths: another file name",
+      "name": "the session-memory file is renamed",
       "source": "src/memory/session/paths.ts",
-      "find": "  return join(getSessionMemoryDir(), 'summary.md')\n",
-      "replace": "  return join(getSessionMemoryDir(), 'memory.md')\n"
+      "find": "const SESSION_MEMORY_FILE = 'summary.md'",
+      "replace": "const SESSION_MEMORY_FILE = 'notes.md'"
     },
     {
-      "name": "session content: a missing file throws",
+      "name": "an unreachable file rejects instead of reading as null",
       "source": "src/memory/session/sessionMemoryUtils.ts",
-      "find": "    if (isFsInaccessible(e)) return null\n",
-      "replace": "    if (e === null) return null\n"
+      "find": "    if (!isFsInaccessible(error)) throw error",
+      "replace": "    if (!isENOENT(error)) throw error"
     },
     {
-      "name": "session content: the id cannot be replaced",
+      "name": "any read failure reads as null",
       "source": "src/memory/session/sessionMemoryUtils.ts",
-      "find": "  lastSummarizedMessageId = messageId\n",
-      "replace": "  lastSummarizedMessageId ??= messageId\n"
+      "find": "    if (!isFsInaccessible(error)) throw error",
+      "replace": "    if (!isFsInaccessible(error)) return null"
     },
     {
-      "name": "session content: an id is set at start-up",
+      "name": "undefined does not clear the last summarized id",
       "source": "src/memory/session/sessionMemoryUtils.ts",
-      "find": "let lastSummarizedMessageId: string | undefined\n",
-      "replace": "let lastSummarizedMessageId: string | undefined = 'at-start-up'\n"
+      "find": "  summarizedThroughMessageId = messageId\n",
+      "replace": "  summarizedThroughMessageId = messageId ?? summarizedThroughMessageId\n"
     },
     {
-      "name": "session prompts: another token cap",
-      "source": "src/memory/session/prompts.ts",
-      "find": "const MAX_SECTION_LENGTH = 2000\n",
-      "replace": "const MAX_SECTION_LENGTH = 1500\n"
+      "name": "a message is marked as summarized at start",
+      "source": "src/memory/session/sessionMemoryUtils.ts",
+      "find": "let summarizedThroughMessageId: string | undefined\n",
+      "replace": "let summarizedThroughMessageId: string | undefined = 'boot'\n"
     },
     {
-      "name": "session prompts: the cap ignores the model's bytes per token",
+      "name": "the custom template is looked for elsewhere",
       "source": "src/memory/session/prompts.ts",
-      "find": "    MAX_SECTION_LENGTH * getActiveModelBytesPerToken(),\n",
-      "replace": "    MAX_SECTION_LENGTH * 4,\n"
+      "find": "'session-memory', 'config', 'template.md'",
+      "replace": "'session-memory', 'config', 'templates.md'"
     },
     {
-      "name": "session prompts: any # line opens a section",
+      "name": "an unreadable custom template rejects",
       "source": "src/memory/session/prompts.ts",
-      "find": "    if (line.startsWith('# ')) {\n",
-      "replace": "    if (line.startsWith('#')) {\n"
+      "find": "    if (!isENOENT(error)) logError(error)",
+      "replace": "    if (!isENOENT(error)) throw error"
     },
     {
-      "name": "session prompts: surrounding whitespace counts",
+      "name": "surrounding whitespace makes it non-empty",
       "source": "src/memory/session/prompts.ts",
-      "find": "  return content.trim() === template.trim()\n",
-      "replace": "  return content === template\n"
+      "find": "return content.trim() === template.trim()",
+      "replace": "return content === template"
     },
     {
-      "name": "session prompts: the custom template is looked for elsewhere",
+      "name": "a section may take more tokens",
       "source": "src/memory/session/prompts.ts",
-      "find": "    'template.md',\n",
-      "replace": "    'template.markdown',\n"
+      "find": "const SECTION_TOKEN_BUDGET = 2_000",
+      "replace": "const SECTION_TOKEN_BUDGET = 2_500"
+    },
+    {
+      "name": "fix (finding 10): the title guidance loses its 5-10 words",
+      "source": "src/memory/session/prompts.ts",
+      "find": "5-10 information-dense words",
+      "replace": "a few information-dense words"
+    },
+    {
+      "name": "the guidance lines are not italic",
+      "source": "src/memory/session/prompts.ts",
+      "find": "=> `# ${header}\\n_${guidance}_\\n`",
+      "replace": "=> `# ${header}\\n${guidance}\\n`"
+    },
+    {
+      "name": "## sub-headers and #tag lines open sections",
+      "source": "src/memory/session/sectionCap.ts",
+      "find": "const SECTION_HEADER_PREFIX = '# '",
+      "replace": "const SECTION_HEADER_PREFIX = '#'"
+    },
+    {
+      "name": "a line that exactly fills the cap is dropped",
+      "source": "src/memory/session/sectionCap.ts",
+      "find": "if (used > maxChars) break",
+      "replace": "if (used >= maxChars) break"
+    },
+    {
+      "name": "a body of exactly the cap is cut",
+      "source": "src/memory/session/sectionCap.ts",
+      "find": "if (body.join('\\n').length <= maxChars) {",
+      "replace": "if (body.join('\\n').length < maxChars) {"
+    },
+    {
+      "name": "the blank line before the note is missing",
+      "source": "src/memory/session/sectionCap.ts",
+      "find": "output.push(...linesThatFit(body, maxChars), '', SECTION_TRUNCATED_NOTE)",
+      "replace": "output.push(...linesThatFit(body, maxChars), SECTION_TRUNCATED_NOTE)"
+    },
+    {
+      "name": "content that needs no cut is rebuilt, not returned as it was",
+      "source": "src/memory/session/sectionCap.ts",
+      "find": "    : { truncatedContent: content, wasTruncated }",
+      "replace": "    : { truncatedContent: output.join('\\n').trimEnd(), wasTruncated }"
+    },
+    {
+      "name": "the note does not say truncated",
+      "source": "src/memory/session/sectionCap.ts",
+      "find": "const SECTION_TRUNCATED_NOTE = '[section truncated to fit the compaction budget]'",
+      "replace": "const SECTION_TRUNCATED_NOTE = '[section shortened to fit the compaction budget]'"
     }
   ]
 }

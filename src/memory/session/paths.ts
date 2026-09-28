@@ -1,28 +1,29 @@
 /**
- * Where a session's memory lives on disk.
+ * Where a session's memory file lives: a `session-memory/` folder inside the
+ * session's folder of the transcript directory for the working directory.
  *
- * These paths moved here from `src/permissions/filePermissions.ts`: the permissions
- * slice consumed them (to recognize a write to the session memory file) but did
- * not own them — session memory is this slice's domain.
+ * Both are computed at call time, from the working directory (an agent's cwd
+ * override included) and the active session id. The read permission and the
+ * readers compute them the same way at the same moment, which is what keeps
+ * them in agreement when either changes.
  */
 import { join, sep } from 'path'
-
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { getCwd } from 'src/shared/fs/cwd.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+
+const SESSION_MEMORY_FOLDER = 'session-memory'
+const SESSION_MEMORY_FILE = 'summary.md'
 
 /**
- * Returns the session memory directory path for the current session with trailing separator.
- * Path format: {projectDir}/{sessionId}/session-memory/
+ * Ends with the path separator: the read permission grants everything that
+ * starts with this string, and without it a sibling folder whose name merely
+ * begins the same way would be granted too.
  */
 export function getSessionMemoryDir(): string {
-  return join(getProjectDir(getCwd()), getSessionId(), 'session-memory') + sep
+  return join(getProjectDir(getCwd()), getSessionId(), SESSION_MEMORY_FOLDER) + sep
 }
 
-/**
- * Returns the session memory file path for the current session.
- * Path format: {projectDir}/{sessionId}/session-memory/summary.md
- */
 export function getSessionMemoryPath(): string {
-  return join(getSessionMemoryDir(), 'summary.md')
+  return join(getSessionMemoryDir(), SESSION_MEMORY_FILE)
 }
