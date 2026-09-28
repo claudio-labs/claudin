@@ -13,6 +13,7 @@ must stay out of your reach: the point is code written without it.
 - **Keep every exported name in the file that exports it today,** because callers and barrels import from those paths. A file may become a thin facade over new modules in a subdirectory named after the concern. Delete a file only if nothing imports it.
 - **Change nothing outside the unit,** apart from the new files it needs and its probe spec. If something else has to change (a snapshot that pins prompt text, for instance), change only what the spec lists, and say so in the report.
 - Run only targeted tests (`bun test <paths>`), because a whole-repo run fails in a sandbox without git. Do not run `bun run build`.
+- The shell is shared with other agents. Use absolute paths, and never kill processes by pattern (`pkill -f`, `pgrep | kill`): another agent's run may match. Stop only a process you started, by its PID.
 
 ## Deliverables
 
@@ -22,6 +23,8 @@ must stay out of your reach: the point is code written without it.
    - Comments only where they explain why.
    - Apply every "fix" decision in the spec, and keep every "keep for parity" behaviour exactly.
 2. **Unit tests** for whatever the characterization suite does not reach. Every fix decision needs one.
+   - Prefer a table of cases looped over to a run of near-identical assertions.
+   - Do not `mock.module` anything the code can be driven through. If you must, restore the real module as `.claudin/rules/testing.md` prescribes: Bun never reverts a module mock, and a leak breaks suites far from yours.
 3. **A new probe spec**, at `scripts/migrations/probes/rewrite-<unit slug>.json`, written against YOUR code.
    - One probe per behaviour the characterization suite pins, plus the fixes.
    - Its test list names the characterization suite and your new tests.

@@ -12,6 +12,7 @@ so everything a caller relies on has to be in one or the other.
 - Do not read or write the main checkout (`/home/viudes/projects/claudin`) or the openclaude clone, and run no git command.
 - Change nothing but your deliverables and the inherited tests your brief names.
 - Run only targeted tests (`bun test <paths>`), because a whole-repo run fails in a sandbox without git. Do not run `bun run build`.
+- The shell is shared with other agents. Use absolute paths, and never kill processes by pattern (`pkill -f`, `pgrep | kill`): another agent's run may match. Stop only a process you started, by its PID.
 
 ## Deliverables
 
@@ -22,10 +23,12 @@ so everything a caller relies on has to be in one or the other.
    - **What to pin.** Behaviour, defaults, edge cases, errors, and whatever the callers rely on. To find the callers, grep the sandbox for imports of each file.
    - **Coverage and stability.** At least 70% of the lines of each file of the unit (`bun test <suite> --coverage`), and 3 passing runs in a row.
    - **Mocks.** Mock only at a boundary the code cannot be driven through, such as a model call or the network, following `.claudin/rules/testing.md`.
+   - **Shape.** Prefer a table of cases looped over to a run of near-identical assertions. It reads better, and a run of `expect(f(x)).toBe(y)` lines can match the reference by shape alone.
    - **Ink UI.** Mount it through `src/terminal/__testutils__/fakeTerminal.ts`. Do not copy harness code from other tests: some of them are inherited, and the gate will find it.
 2. **The spec**, at `docs/tech/rewrite/<unit>.md`, following [spec-template.md](../spec-template.md) (the `skills/*.md` specs are finished examples). Its sections: purpose, public contract (export, signature, used by), observable behaviour, edge cases and errors, security requirements, tests that pin it, out of scope, findings, target design.
    - **Nothing of the old code.** No code, no private names, and no description of the module's internal structure or control flow: only what a caller can observe. Exported names and their signatures are allowed, since they are the contract.
    - **Prompts.** Text the module sends to a model is described by intent: what it must get the model to do, and the exact facts it must state (paths, names, formats, limits), never its sentences. The suite pins those facts with targeted matches, never with whole sentences. List every test, snapshot or generated file outside the unit that pins that text byte for byte, because the rewrite will have to regenerate them.
+     - When the same line is rendered in more than one form (a full and a short prompt, say), pin the facts of every form. A fact pinned on one form only can vanish from the others unnoticed.
    - **Formats on disk or on the wire.** Pin them exactly, with small fixture files you create from real inputs under the unit's `__fixtures__/rewrite/` directory.
    - **Decisions.** Every defect you find gets one. "Fix" when no caller, stored data, configuration or user workflow can depend on the old behaviour. Otherwise "keep for parity", with the reason. Describe security findings, and keep them for parity unless the fix is pure hardening that legitimate use never notices.
 3. **The probe spec**, at `scripts/migrations/probes/rewrite-<unit slug>.json`. The format is in the header of `scripts/migrations/break-probe.ts`, and `rewrite-bundledSkills.json` is an example.
