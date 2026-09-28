@@ -4,7 +4,7 @@
  *
  *   bun run provenance                   totals, then one row per slice
  *   bun run provenance --files [N]       the N files with the most inherited lines (default 40)
- *   bun run provenance --file <path>     the matching line ranges of one file, by origin
+ *   bun run provenance --file <path>...  the matching line ranges of each file, by origin
  *   bun run provenance --json            every row, for tooling
  *   bun run provenance --inventory       rewrite docs/tech/rewrite/inventory.md
  *
@@ -106,17 +106,26 @@ const reference = loadReference()
 
 const fileArg = args.indexOf('--file')
 if (fileArg !== -1) {
-  const file = args[fileArg + 1]
-  if (!file) {
-    console.error('usage: bun run provenance --file <path>')
+  const rest = args.slice(fileArg + 1)
+  const end = rest.findIndex(arg => arg.startsWith('--'))
+  const files = end === -1 ? rest : rest.slice(0, end)
+  if (files.length === 0) {
+    console.error('usage: bun run provenance --file <path>...')
     process.exit(1)
   }
-  const source = readFileSync(join(REPO_ROOT, file), 'utf8')
-  const match = matchFile(file, source, reference)
-  const lines = source.split('\n').length
-  console.log(`${file}: ${lines} lines`)
-  console.log(`  Claude Code ${match.claudeCode.size} (${percent(match.claudeCode.size, lines)}): ${ranges(match.claudeCode) || '-'}`)
-  console.log(`  openclaude  ${match.openclaude.size} (${percent(match.openclaude.size, lines)}): ${ranges(match.openclaude) || '-'}`)
+  let claudeCode = 0
+  let openclaude = 0
+  for (const file of files) {
+    const source = readFileSync(join(REPO_ROOT, file), 'utf8')
+    const match = matchFile(file, source, reference)
+    const lines = source.split('\n').length
+    claudeCode += match.claudeCode.size
+    openclaude += match.openclaude.size
+    console.log(`${file}: ${lines} lines`)
+    console.log(`  Claude Code ${match.claudeCode.size} (${percent(match.claudeCode.size, lines)}): ${ranges(match.claudeCode) || '-'}`)
+    console.log(`  openclaude  ${match.openclaude.size} (${percent(match.openclaude.size, lines)}): ${ranges(match.openclaude) || '-'}`)
+  }
+  if (files.length > 1) console.log(`${files.length} files: ${claudeCode} Claude Code and ${openclaude} openclaude lines`)
   process.exit(0)
 }
 

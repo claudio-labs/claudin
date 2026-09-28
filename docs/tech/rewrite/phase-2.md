@@ -20,6 +20,9 @@ Two changes from the pilot let units run side by side:
 The main checkout only takes finished work. A unit's tests and spec land as one
 commit, and its implementation as the next one.
 
+The units are defined in `scripts/migrations/rewrite/units/phase-2.json`,
+which the sandbox tools read; the lists below are the same.
+
 ## Units
 
 | Unit | Files | Inherited lines | Inherited tests it replaces | Status |

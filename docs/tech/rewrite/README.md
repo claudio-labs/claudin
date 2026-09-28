@@ -100,29 +100,44 @@ has been rewritten.
 
 ### The implementer's sandbox
 
-The old source must be out of reach, not just out of the brief:
+The old source must be out of reach, not just out of the brief. The tools in
+`scripts/migrations/rewrite/` do the mechanical part; a unit is a named group
+of files in `units/phase-<n>.json`.
 
 ```sh
-SANDBOX=$(mktemp -d)
-git archive HEAD | tar -x -C "$SANDBOX"           # no .git, so no history to read
-rm <the module's files> scripts/migrations/probes/rewrite-<module>.json   # the probe spec quotes the old code
-rm scripts/verify/provenance/fingerprints.bin   # the gate checks the result; it is not the implementer's tool
-ln -s "$PWD/node_modules" "$SANDBOX/node_modules"
+export REWRITE_SANDBOX_ROOT=<a scratch directory>
+bun run scripts/migrations/rewrite/sandbox.ts char <unit>   # characterization: HEAD as it is
+bun run scripts/migrations/rewrite/sandbox.ts impl <unit>   # implementation: the old code taken out
+bun run scripts/migrations/rewrite/land.ts <sandbox>        # what the agent changed; --apply brings it back
 ```
 
-Before briefing, grep the sandbox for the old module's private names. Nothing
-else should mention them. Benches can quote old code as well:
-`scripts/bench/ab/delegation-steer-ab.ts` held lines of the old skill loader.
-Take such files out of the sandbox, and reword them against the new module in
-the rewrite's commit.
+Each sandbox is a copy of HEAD with no `.git`, so no history to read, next to
+a pristine copy (`<sandbox>.base`) that `land.ts` diffs against. A file the
+checkout changed since that copy is a conflict, and nothing lands while there
+is one. So several units can run at once, each in its own sandbox, and only
+the finished work reaches the checkout.
 
-The implementer works in `$SANDBOX`. The brief:
+An `impl` sandbox has none of these:
+- the unit's files and inherited tests;
+- its probe spec, and any older probe spec that probes those files (both quote the old code);
+- the fingerprints, because the gate checks the result and is not the implementer's tool;
+- the team memory;
+- any doc or bench that names one of the old code's private declarations. Benches quote old code too: `scripts/bench/ab/delegation-steer-ab.ts` held lines of the old skill loader.
+
+A private name found anywhere else is reported, not removed. Review each one
+before the brief: inside `src/` it is usually an unrelated function with the
+same name, but in a rule or a spec it is a leak. Reword whatever quoted the old
+code against the new module in the rewrite's commit. When the implementation
+lands, `land.ts` prunes the older probe specs it took out, since their lines
+are gone.
+
+The implementer works in the sandbox. The brief:
 - names the spec, the test files and the rules;
 - forbids reading the main checkout and the openclaude clone, running git, and looking the old implementation up anywhere;
 - asks for explicit confirmation of all that in the report.
 
-When the checks pass there, copy the module's files back and run the gate. The
-gate is what verifies the isolation: a copy, renamed or not, shows up there.
+When the checks pass there, land it and run the gate. The gate is what
+verifies the isolation: a copy, renamed or not, shows up there.
 
 **Pilot notes** (`skills/bundledSkills`, 2026-09-27):
 - **Cost.** One fresh agent took about 11 minutes and 49 tool calls to write two files (267 lines) that passed the 20-test suite and `tsc` on the first report.

@@ -1,0 +1,73 @@
+{
+  "vcs/gitFilesystem": {
+    "files": ["src/vcs/git/gitFilesystem.ts", "src/vcs/git/gitConfigParser.ts"]
+  },
+  "vcs/git": {
+    "files": ["src/vcs/git/git.ts", "src/vcs/git/detectRepository.ts", "src/vcs/git/githubRepoPathMapping.ts", "src/vcs/git/gitignore.ts", "src/vcs/git/getWorktreePaths.ts", "src/vcs/git/getWorktreePathsPortable.ts", "src/vcs/git/worktreeModeEnabled.ts"]
+  },
+  "vcs/worktree": {
+    "files": ["src/vcs/git/worktree/createWorktree.ts", "src/vcs/git/worktree/includeFiles.ts", "src/vcs/git/worktree/mutationLock.ts", "src/vcs/git/worktree/postCreationSetup.ts", "src/vcs/git/worktree/session.ts", "src/vcs/git/worktree/sessionLifecycle.ts", "src/vcs/git/worktree/slugNaming.ts", "src/vcs/git/worktree/tmuxSession.ts"],
+    "tests": ["src/vcs/git/worktree.test.ts"]
+  },
+  "vcs/gitDiff": {
+    "files": ["src/vcs/git/gitDiff.ts", "src/vcs/git/diff.ts", "src/vcs/git/diffStat.ts", "src/vcs/git/gitStatusDelta.ts", "src/vcs/git/commitAttribution.ts", "src/vcs/git/attribution.ts"]
+  },
+  "vcs/structuredDiff": {
+    "files": ["src/vcs/diff/structured/Fallback.tsx", "src/vcs/diff/structured/StructuredDiff.tsx", "src/vcs/diff/structured/StructuredDiffList.tsx", "src/vcs/diff/structured/colorDiff.ts"]
+  },
+  "vcs/diffHooks": {
+    "files": ["src/vcs/diff/hooks/useDiffInIDE.ts", "src/vcs/diff/hooks/useTurnDiffs.ts", "src/vcs/diff/hooks/useDiffData.ts", "src/vcs/hooks/usePrStatus.ts"]
+  },
+  "memory/markdownConfigLoader": {
+    "files": ["src/memory/instructions/markdownConfigLoader.ts", "src/memory/instructions/ruleFrontmatter.ts"]
+  },
+  "memory/claudemd": {
+    "files": ["src/memory/instructions/claudemd.ts", "src/memory/instructions/claudemd/exclusions.ts", "src/memory/instructions/claudemd/externalIncludes.ts", "src/memory/instructions/claudemd/includes.ts", "src/memory/instructions/claudemd/nestedDirectories.ts", "src/memory/instructions/claudemd/parsing.ts", "src/memory/instructions/claudemd/predicates.ts", "src/memory/instructions/claudemd/processing.ts", "src/memory/instructions/claudemd/types.ts", "src/memory/instructions/projectInstructions.ts", "src/memory/instructions/claudeMdDelta.ts"],
+    "tests": ["src/memory/instructions/projectInstructions.test.ts"]
+  },
+  "memory/memdir": {
+    "files": ["src/memory/memdir/memdir.ts", "src/memory/memdir/memoryTypes.ts", "src/memory/memdir/memoryAge.ts", "src/memory/memdir/paths.ts", "src/memory/memdir/teamMemPaths.ts", "src/memory/memdir/memoryFileDetection.ts", "src/memory/memdir/teamMemPrompts.ts", "src/memory/memdir/pathScopedMemories.ts", "src/memory/memdir/versions.ts", "src/memory/memdir/types.ts"]
+  },
+  "memory/teamMemSafety": {
+    "files": ["src/memory/memdir/secretScanner.ts", "src/memory/memdir/teamMemSecretGuard.ts", "src/memory/memdir/teamMemoryOps.ts", "src/memory/memdir/memoryScan.ts"],
+    "tests": ["src/memory/memdir/memoryScan.test.ts"]
+  },
+  "memory/extract": {
+    "files": ["src/memory/extract/extractMemories.ts", "src/memory/extract/prompts.ts", "src/memory/session/prompts.ts", "src/memory/session/sessionMemoryUtils.ts", "src/memory/session/paths.ts"]
+  },
+  "memory/autoDream": {
+    "files": ["src/memory/autoDream/autoDream.ts", "src/memory/autoDream/consolidationLock.ts", "src/memory/autoDream/consolidationPrompt.ts", "src/memory/autoDream/config.ts"]
+  },
+  "memory/ui": {
+    "files": ["src/memory/ui/MemoryFileSelector.tsx", "src/memory/ui/memoryFileSelectorPaths.ts", "src/memory/ui/MemoryUpdateNotification.tsx"],
+    "tests": ["src/memory/ui/memoryFileSelectorPaths.test.ts"]
+  },
+  "sessions/storagePure": {
+    "files": ["src/sessions/sessionStoragePortable.ts", "src/sessions/pure/firstPrompt.ts", "src/sessions/pure/jsonlStripping.ts", "src/sessions/pure/logging.ts", "src/sessions/pure/paths.ts", "src/sessions/pure/typeGuards.ts"]
+  },
+  "sessions/persistence": {
+    "files": ["src/sessions/persistence/project.ts", "src/sessions/persistence/metadata.ts", "src/sessions/persistence/record.ts", "src/sessions/persistence/_helpers.ts", "src/sessions/persistence/flush.ts"]
+  },
+  "sessions/resume": {
+    "files": ["src/sessions/conversationRecovery.ts", "src/sessions/resume/chain.ts", "src/sessions/resume/transcriptLoad.ts", "src/sessions/resume/subagents.ts", "src/sessions/resume/cache.ts", "src/sessions/sessionCandidates.ts", "src/sessions/crossProjectResume.ts"],
+    "tests": ["src/sessions/conversationRecovery.hooks.test.ts", "src/sessions/conversationRecovery.test.ts", "src/sessions/sessionStorage.test.ts"]
+  },
+  "sessions/liteMetadata": {
+    "files": ["src/sessions/indexing/liteMetadata.ts", "src/sessions/indexing/search.ts"]
+  },
+  "sessions/indexingScan": {
+    "files": ["src/sessions/indexing/boundaryScan.ts", "src/sessions/indexing/crossProject.ts", "src/sessions/indexing/agents.ts"]
+  },
+  "sessions/lifecycle": {
+    "files": ["src/sessions/sessionRestore.ts", "src/sessions/sessionStart.ts", "src/sessions/sessionEnvironment.ts", "src/sessions/sessionState.ts", "src/sessions/sessionActivity.ts", "src/sessions/sessionTitle.ts", "src/sessions/concurrentSessions.ts", "src/sessions/sessionEnvVars.ts"]
+  },
+  "sessions/remote": {
+    "files": ["src/sessions/hooks/useRemoteSession.ts", "src/sessions/hooks/useSSHSession.ts", "src/sessions/sessionIngressAuth.ts", "src/sessions/sessionUrl.ts", "src/sessions/hooks/useTeleportResume.tsx"]
+  },
+  "sessions/historySearch": {
+    "files": ["src/sessions/hooks/useHistorySearch.ts", "src/sessions/ui/HistorySearchDialog.tsx", "src/sessions/transcriptSearch.ts"]
+  },
+  "sessions/ui": {
+    "files": ["src/sessions/ui/ResumeConversation.tsx", "src/sessions/ui/SessionPreview.tsx", "src/sessions/ui/SessionBackgroundHint.tsx", "src/sessions/hooks/useSessionBackgrounding.ts", "src/sessions/hooks/useFileHistorySnapshotInit.ts"]
+  }
+}
