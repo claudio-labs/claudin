@@ -6,6 +6,7 @@ import {
   reliefMargin,
   reliefTrigger,
   selectReliefIds,
+  subagentReliefTriggerCap,
   RELIEF_MARGIN_MAX_TOKENS,
   RELIEF_MARGIN_MIN_TOKENS,
   type ReliefInput,
@@ -219,5 +220,46 @@ describe('isReliefWindowLaneEnabled', () => {
     expect(isReliefWindowLaneEnabled()).toBe(false)
     process.env.CLAUDIN_DISABLE_RELIEF_POLICY = '0'
     expect(isReliefWindowLaneEnabled()).toBe(true)
+  })
+})
+
+describe('the sub-agent trigger cap', () => {
+  const saved = process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER
+    else process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER = saved
+  })
+
+  test('lowers a 1M window lane to the cap, with the band measured from it', () => {
+    const at = (usedTokens: number, triggerCap?: number) =>
+      decideRelief(
+        input({ usedTokens, effectiveWindow: WINDOW_1M, autocompactThreshold: AUTOCOMPACT_1M, triggerCap }),
+      )
+    expect(at(300_000)).toEqual({ kind: 'none' })
+    // 250k cap: band max(60k, 15% of 250k) = 60k → target 190k.
+    expect(at(300_000, 250_000)).toEqual({
+      kind: 'clip',
+      lane: 'window',
+      tokensToFree: 110_000,
+      trigger: 250_000,
+      target: 190_000,
+    })
+  })
+
+  test('a cap above the lane changes nothing', () => {
+    expect(decideRelief(input({ usedTokens: 140_000, triggerCap: 900_000 }))).toMatchObject({
+      kind: 'clip',
+      trigger: 135_000,
+    })
+  })
+
+  test('read from the env; unset, 0 or garbage is off', () => {
+    for (const v of [undefined, '0', 'x', '-5']) {
+      if (v === undefined) delete process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER
+      else process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER = v
+      expect(subagentReliefTriggerCap()).toBeUndefined()
+    }
+    process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER = '250000'
+    expect(subagentReliefTriggerCap()).toBe(250_000)
   })
 })

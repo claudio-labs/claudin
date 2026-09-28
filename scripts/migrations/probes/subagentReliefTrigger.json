@@ -1,0 +1,31 @@
+{
+  "test": [
+    "src/agent/compact/reliefPolicy.test.ts",
+    "src/agent/compact/microCompact.test.ts"
+  ],
+  "source": "src/agent/compact/reliefPolicy.ts",
+  "probes": [
+    {
+      "name": "sub-agent cap: the lane takes the lower trigger",
+      "find": "      input.triggerCap ?? Infinity,\n",
+      "replace": "      Infinity,\n"
+    },
+    {
+      "name": "sub-agent cap: a non-positive value is off",
+      "find": "  return Number.isFinite(n) && n > 0 ? n : undefined\n",
+      "replace": "  return Number.isFinite(n) ? n : undefined\n"
+    },
+    {
+      "name": "sub-agent cap: only sub-agents get it",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "    triggerCap: toolUseContext?.agentId ? subagentReliefTriggerCap() : undefined,\n",
+      "replace": "    triggerCap: subagentReliefTriggerCap(),\n"
+    },
+    {
+      "name": "sub-agent cap: the shell passes it at all",
+      "source": "src/agent/compact/microCompact.ts",
+      "find": "    triggerCap: toolUseContext?.agentId ? subagentReliefTriggerCap() : undefined,\n",
+      "replace": "    triggerCap: undefined,\n"
+    }
+  ]
+}

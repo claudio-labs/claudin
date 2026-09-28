@@ -372,6 +372,26 @@ describe('relief policy — window lane via microcompactMessages', () => {
     ])
   })
 
+  test('CLAUDIN_SUBAGENT_RELIEF_TRIGGER caps a sub-agent lane, never the main thread', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const saved = process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER
+    process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER = '10000'
+    try {
+      // ~25-30k estimated tokens under a 100k window: far below its 75k lane.
+      const messages = buildHeavyHistory(20, 5_000)
+      await microcompactMessages(messages, undefined, MAIN)
+      expect(getClippedIds().size).toBe(0)
+      resetClippedIds()
+      const subagent = { agentId: 'a-1', options: { tools: [] } } as unknown as ToolUseContext
+      await microcompactMessages(messages, subagent, 'agent:builtin:Code' as never)
+      expect(getClippedIds().size).toBeGreaterThan(0)
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER
+      else process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER = saved
+    }
+  })
+
   // feature() reads false under bun test, so the notify behind it never runs
   // here; the wiring is pinned on the source. A sub-agent's detector state
   // lives under its agentId, so the announcement has to carry it.

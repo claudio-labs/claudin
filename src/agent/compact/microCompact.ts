@@ -40,6 +40,7 @@ import {
   decideRelief,
   isReliefWindowLaneEnabled,
   selectReliefIds,
+  subagentReliefTriggerCap,
   type ReliefCandidate,
 } from 'src/agent/compact/reliefPolicy.js'
 import {
@@ -311,6 +312,7 @@ function maybeReliefClip(
     retainedFullResultTokens: clearableTokens,
     profile,
     windowLaneEnabled: isReliefWindowLaneEnabled(),
+    triggerCap: toolUseContext?.agentId ? subagentReliefTriggerCap() : undefined,
   })
   if (decision.kind === 'none') return
 
