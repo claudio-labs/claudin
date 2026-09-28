@@ -22,11 +22,11 @@
     "files": ["src/memory/instructions/markdownConfigLoader.ts", "src/memory/instructions/ruleFrontmatter.ts"]
   },
   "memory/claudemd": {
-    "files": ["src/memory/instructions/claudemd.ts", "src/memory/instructions/claudemd/exclusions.ts", "src/memory/instructions/claudemd/externalIncludes.ts", "src/memory/instructions/claudemd/includes.ts", "src/memory/instructions/claudemd/nestedDirectories.ts", "src/memory/instructions/claudemd/parsing.ts", "src/memory/instructions/claudemd/predicates.ts", "src/memory/instructions/claudemd/processing.ts", "src/memory/instructions/claudemd/types.ts", "src/memory/instructions/projectInstructions.ts", "src/memory/instructions/claudeMdDelta.ts"],
+    "files": ["src/memory/instructions/claudemd.ts", "src/memory/instructions/claudemd/exclusions.ts", "src/memory/instructions/claudemd/externalIncludes.ts", "src/memory/instructions/claudemd/includes.ts", "src/memory/instructions/claudemd/nestedDirectories.ts", "src/memory/instructions/claudemd/parsing.ts", "src/memory/instructions/claudemd/predicates.ts", "src/memory/instructions/claudemd/processing.ts", "src/memory/instructions/claudemd/types.ts", "src/memory/instructions/projectInstructions.ts"],
     "tests": ["src/memory/instructions/projectInstructions.test.ts"]
   },
   "memory/memdir": {
-    "files": ["src/memory/memdir/memdir.ts", "src/memory/memdir/memoryTypes.ts", "src/memory/memdir/memoryAge.ts", "src/memory/memdir/paths.ts", "src/memory/memdir/teamMemPaths.ts", "src/memory/memdir/memoryFileDetection.ts", "src/memory/memdir/teamMemPrompts.ts", "src/memory/memdir/pathScopedMemories.ts", "src/memory/memdir/versions.ts", "src/memory/memdir/types.ts"]
+    "files": ["src/memory/memdir/memdir.ts", "src/memory/memdir/memoryTypes.ts", "src/memory/memdir/memoryAge.ts", "src/memory/memdir/paths.ts", "src/memory/memdir/teamMemPaths.ts", "src/memory/memdir/memoryFileDetection.ts", "src/memory/memdir/versions.ts", "src/memory/memdir/types.ts"]
   },
   "memory/teamMemSafety": {
     "files": ["src/memory/memdir/secretScanner.ts", "src/memory/memdir/teamMemSecretGuard.ts", "src/memory/memdir/teamMemoryOps.ts", "src/memory/memdir/memoryScan.ts"],

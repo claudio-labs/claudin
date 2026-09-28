@@ -1,9 +1,13 @@
 # Phase 2: `src/memory`, `src/vcs`, `src/sessions`
 
 Drawn from the inventory on 2026-09-28: 17,253 inherited lines in 152 files.
-The 22 units below hold 16,865 of them. The other 388 are residue in files
+The 22 units below hold 16,837 of them. The other 416 are residue in files
 that are otherwise this project's own, most of it in tests that copied an
 inherited harness. That residue is swept once the units have landed.
+`teamMemPrompts.ts` and `pathScopedMemories.ts` moved from `memory/memdir` to
+the sweep after its characterization, and `claudeMdDelta.ts` from
+`memory/claudemd`: their 28 matching lines are signatures in files that are
+over 93% this project's, the tuned team prompt among them.
 
 Each unit goes through the [definition of done](README.md#definition-of-done-per-module)
 as one module. The session-storage barrel (`src/sessions/sessionStorage.ts`)
@@ -34,8 +38,8 @@ which the sandbox tools read; the lists below are the same.
 | `vcs/structuredDiff` | 4 | 636 | — | characterized |
 | `vcs/diffHooks` | 4 | 563 | — | pending |
 | `memory/markdownConfigLoader` | 2 | 459 | — | characterized |
-| `memory/claudemd` | 11 | 981 | `projectInstructions.test.ts` (77) | pending |
-| `memory/memdir` | 10 | 798 | — | characterized |
+| `memory/claudemd` | 10 | 979 | `projectInstructions.test.ts` (77) | pending |
+| `memory/memdir` | 8 | 772 | — | characterized |
 | `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | pending |
 | `memory/extract` | 5 | 557 | — | characterized |
 | `memory/autoDream` | 4 | 310 | — | pending |
@@ -59,8 +63,8 @@ which the sandbox tools read; the lists below are the same.
 - `vcs/structuredDiff`: `vcs/diff/structured/Fallback.tsx`, `vcs/diff/structured/StructuredDiff.tsx`, `vcs/diff/structured/StructuredDiffList.tsx`, `vcs/diff/structured/colorDiff.ts`
 - `vcs/diffHooks`: `vcs/diff/hooks/useDiffInIDE.ts`, `vcs/diff/hooks/useTurnDiffs.ts`, `vcs/diff/hooks/useDiffData.ts`, `vcs/hooks/usePrStatus.ts`
 - `memory/markdownConfigLoader`: `memory/instructions/markdownConfigLoader.ts`, `memory/instructions/ruleFrontmatter.ts`
-- `memory/claudemd`: `memory/instructions/claudemd.ts`, `memory/instructions/claudemd/exclusions.ts`, `memory/instructions/claudemd/externalIncludes.ts`, `memory/instructions/claudemd/includes.ts`, `memory/instructions/claudemd/nestedDirectories.ts`, `memory/instructions/claudemd/parsing.ts`, `memory/instructions/claudemd/predicates.ts`, `memory/instructions/claudemd/processing.ts`, `memory/instructions/claudemd/types.ts`, `memory/instructions/projectInstructions.ts`, `memory/instructions/claudeMdDelta.ts`
-- `memory/memdir`: `memory/memdir/memdir.ts`, `memory/memdir/memoryTypes.ts`, `memory/memdir/memoryAge.ts`, `memory/memdir/paths.ts`, `memory/memdir/teamMemPaths.ts`, `memory/memdir/memoryFileDetection.ts`, `memory/memdir/teamMemPrompts.ts`, `memory/memdir/pathScopedMemories.ts`, `memory/memdir/versions.ts`, `memory/memdir/types.ts`
+- `memory/claudemd`: `memory/instructions/claudemd.ts`, `memory/instructions/claudemd/exclusions.ts`, `memory/instructions/claudemd/externalIncludes.ts`, `memory/instructions/claudemd/includes.ts`, `memory/instructions/claudemd/nestedDirectories.ts`, `memory/instructions/claudemd/parsing.ts`, `memory/instructions/claudemd/predicates.ts`, `memory/instructions/claudemd/processing.ts`, `memory/instructions/claudemd/types.ts`, `memory/instructions/projectInstructions.ts`
+- `memory/memdir`: `memory/memdir/memdir.ts`, `memory/memdir/memoryTypes.ts`, `memory/memdir/memoryAge.ts`, `memory/memdir/paths.ts`, `memory/memdir/teamMemPaths.ts`, `memory/memdir/memoryFileDetection.ts`, `memory/memdir/versions.ts`, `memory/memdir/types.ts`
 - `memory/teamMemSafety`: `memory/memdir/secretScanner.ts`, `memory/memdir/teamMemSecretGuard.ts`, `memory/memdir/teamMemoryOps.ts`, `memory/memdir/memoryScan.ts`
 - `memory/extract`: `memory/extract/extractMemories.ts`, `memory/extract/prompts.ts`, `memory/session/prompts.ts`, `memory/session/sessionMemoryUtils.ts`, `memory/session/paths.ts`
 - `memory/autoDream`: `memory/autoDream/autoDream.ts`, `memory/autoDream/consolidationLock.ts`, `memory/autoDream/consolidationPrompt.ts`, `memory/autoDream/config.ts`

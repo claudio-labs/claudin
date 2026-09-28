@@ -17,6 +17,14 @@ directory that is committed with the project. This unit owns:
 The design, and why team memory is git-tracked and project-local, is in
 [docs/tech/memory/project-local-team-memory.md](../../memory/project-local-team-memory.md).
 
+**Two files stay as they are.** `teamMemPrompts.ts` (the shipped team prompt)
+and `pathScopedMemories.ts` are this project's own code: 9 of 170 and 17 of 258
+lines match the inherited base, and those are signatures and one-line
+declarations, not prose. They are out of the implementation, which keeps them
+working as callers of the exports below; their few matching lines go to the
+phase's residue sweep. Their behaviour stays described here, and pinned by the
+suites, because the rest of the unit feeds it.
+
 **The team build flag.** `feature('TEAMMEM')` is `true` in the shipped build
 (`scripts/build/build.ts`) and `false` under `bun test`, where Bun resolves
 `bun:bundle` natively. Several behaviours below differ by it, and each one says
