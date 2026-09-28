@@ -5,9 +5,10 @@
  *   bun run scripts/migrations/rewrite/land.ts <sandbox> --apply   apply it
  *
  * The sandbox is diffed against `<sandbox>.base`, the tree sandbox.ts made it
- * from, so only what the agent did is carried over. A file the checkout
- * changed since that base is a conflict, and nothing is applied while there
- * is one. A removal applies only to the unit's own files and inherited tests;
+ * from, so only what the agent did is carried over. A file the checkout also
+ * changed since that base is merged with git merge-file; one whose edits
+ * overlap is a conflict, and nothing is applied while there is one. A removal
+ * applies only to the unit's own files and inherited tests;
  * whatever else sandbox.ts took out was setup, not work, and an agent that
  * deleted a file outside its unit is reported instead of followed.
  *
@@ -25,7 +26,7 @@
  * residue in the spec's Outcome.
  */
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot.js'
 import { loadReference } from '../../verify/provenance/reference.js'
@@ -49,6 +50,22 @@ function files(root: string, dir = root, out = new Set<string>()): Set<string> {
 
 function sameContent(a: string, b: string): boolean {
   return existsSync(a) && existsSync(b) && readFileSync(a).equals(readFileSync(b))
+}
+
+/**
+ * A file the checkout and the sandbox both changed since the base, merged the
+ * way git merges: null when the two edits touch the same lines. Units that
+ * run side by side meet in shared files (a barrel, a snapshot), and the later
+ * one to land keeps the earlier one's edit.
+ */
+function mergedWithCheckout(path: string): string | null {
+  if (!existsSync(join(REPO_ROOT, path))) return null
+  const result = spawnSync(
+    'git',
+    ['merge-file', '-p', '-q', join(REPO_ROOT, path), join(base, path), join(sandbox, path)],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  )
+  return result.status === 0 ? result.stdout : null
 }
 
 const [sandbox] = process.argv.slice(2)
@@ -81,8 +98,15 @@ for (const path of inBase) {
   else if (!removedBySetup(path)) strayRemovals.push(path)
 }
 
+const movedOn = (path: string) => !sameContent(join(REPO_ROOT, path), join(base, path))
+const merged = new Map<string, string>()
+for (const path of changed.filter(movedOn)) {
+  const content = mergedWithCheckout(path)
+  if (content !== null) merged.set(path, content)
+}
 const conflicts = [
-  ...[...changed, ...removed].filter(path => !sameContent(join(REPO_ROOT, path), join(base, path))),
+  ...changed.filter(path => movedOn(path) && !merged.has(path)),
+  ...removed.filter(movedOn),
   ...added.filter(path => existsSync(join(REPO_ROOT, path)) && !sameContent(join(REPO_ROOT, path), join(sandbox, path))),
 ]
 
@@ -95,6 +119,7 @@ show('changed', changed)
 show('removed', removed)
 show('changed outside the unit, review', changed.filter(path => !byDesign(path)))
 show('deleted outside the unit, NOT applied', strayRemovals)
+show('merged with what the checkout changed since the base', [...merged.keys()])
 show('CONFLICT: the checkout changed these since the base', conflicts)
 
 if (record.mode === 'impl') {
@@ -121,7 +146,9 @@ if (conflicts.length > 0) {
 }
 for (const path of [...added, ...changed]) {
   mkdirSync(dirname(join(REPO_ROOT, path)), { recursive: true })
-  copyFileSync(join(sandbox, path), join(REPO_ROOT, path))
+  const content = merged.get(path)
+  if (content === undefined) copyFileSync(join(sandbox, path), join(REPO_ROOT, path))
+  else writeFileSync(join(REPO_ROOT, path), content)
 }
 if (removed.length > 0) {
   const result = spawnSync('git', ['rm', '-q', '--', ...removed], { cwd: REPO_ROOT, encoding: 'utf8' })
