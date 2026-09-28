@@ -46,6 +46,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:ci": "bun run scripts/verify/typecheck-ci.ts",
     "typecheck:baseline": "bun run scripts/verify/typecheck-ci.ts --update",
+    "provenance:fingerprints": "bun run scripts/verify/provenance/build-fingerprints.ts",
     "generate:sdk-types": "bun run scripts/codegen/generate-sdk-types.ts",
     "codegen:reasoning-catalog": "bun run scripts/codegen/reasoning-catalog.ts",
     "verify:sdk-types": "bun run scripts/codegen/generate-sdk-types.ts --check",
