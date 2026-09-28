@@ -21,7 +21,7 @@ rewritten yet import them.
 |---|---|---|
 | `BundledSkillDefinition` (type) | `{ name: string; description: string; aliases?: string[]; whenToUse?: string; argumentHint?: string; allowedTools?: string[]; model?: string; disableModelInvocation?: boolean; userInvocable?: boolean; isEnabled?: () => boolean; hooks?: HooksSettings; context?: 'inline' \| 'fork'; agent?: string; files?: Record<string, string>; getPromptForCommand: (args: string, context: ToolUseContext) => Promise<ContentBlockParam[]> }` | `src/plugins/builtinPlugins.ts`, `src/shared/types/plugin.ts`, every file in `src/skills/bundled/` |
 | `registerBundledSkill` | `(definition: BundledSkillDefinition) => void` | every file in `src/skills/bundled/` |
-| `getBundledSkills` | `() => Command[]` | `src/commands/commands.ts`, the bundled-skill tests |
+| `getBundledSkills` | `() => Command[]`. The rewrite narrows this to `(CommandBase & PromptCommand)[]`, which every `Command[]` consumer still accepts. | `src/commands/commands.ts`, the bundled-skill tests |
 | `clearBundledSkills` | `() => void` | tests |
 | `getBundledSkillExtractDir` | `(skillName: string) => string` | tests; part of the contract because the permission layer has to agree with it |
 | `getBundledSkillsRoot` (in `bundledSkillsRoot.ts`) | `() => string` | `src/permissions/filePermissions/internalPaths.ts`, which allowlists reads under it |
@@ -90,6 +90,33 @@ because the numeric flags can fail with EINVAL there.
 ## Out of scope
 
 Nothing is dropped.
+
+## Outcome (2026-09-27)
+
+This was the first module rewritten under the process, with the implementation
+written in a sandbox that had no history and no old code in it. The
+characterization suite passed unchanged. The probe spec was rewritten against
+the new code, and all 33 of its probes turn the suite red.
+
+**Deliberate differences from the old module:**
+- **`..` in a key.** Any `..` segment is refused, even one that normalizes back inside the directory. The old module accepted `ok/../x.md`.
+- **Validation before writing.** Every key is checked before anything is written, so a bad key leaves no partial extraction behind.
+- **The root is memoized by hand.** A clearable lodash cache could otherwise move the root after files had been written under it.
+
+**Residue.** The gate still finds 31 lines of `bundledSkills.ts`. They were
+reviewed, and all of them are public contract the callers dictate:
+- the fields of `BundledSkillDefinition`, in the order this spec listed them;
+- the signatures of `clearBundledSkills` and `getBundledSkillExtractDir`;
+- the `field: definition.field` lines that map a definition onto a `Command`.
+
+They go when the contract is redesigned, after every consumer has been
+rewritten. `bundledSkillsRoot.ts` measures zero.
+
+**Finding, not fixed here.** Nothing checks who owns the per-user temp dir
+(`/tmp/claude-<uid>`) or the directories between it and the random segment.
+Another local user who creates them first can list their own directory, learn
+the random segment, and swap the extracted files. The old module had the same
+gap. See the team bug memory `tmpdir-ownership-unchecked`.
 
 ## Target design
 

@@ -5,20 +5,20 @@
     {
       "name": "root: the random segment is gone",
       "source": "src/skills/bundledSkillsRoot.ts",
-      "find": "    const nonce = randomBytes(16).toString('hex')\n",
-      "replace": "    const nonce = 'fixed'\n"
+      "find": "    randomBytes(NONCE_BYTES).toString('hex'),\n",
+      "replace": "    'fixed',\n"
     },
     {
       "name": "root: not stable for the process",
       "source": "src/skills/bundledSkillsRoot.ts",
-      "find": "export const getBundledSkillsRoot = memoize(\n",
-      "replace": "export const getBundledSkillsRoot = ((f: () => string) => f)(\n"
+      "find": "  root ??= join(\n",
+      "replace": "  root = join(\n"
     },
     {
       "name": "root: not scoped by version",
       "source": "src/skills/bundledSkillsRoot.ts",
-      "find": "join(getClaudeTempDir(), 'bundled-skills', MACRO.VERSION, nonce)",
-      "replace": "join(getClaudeTempDir(), 'bundled-skills', nonce)"
+      "find": "    MACRO.VERSION,\n",
+      "replace": "    'any-version',\n"
     },
     {
       "name": "extract dir: not the root joined with the name",
@@ -37,12 +37,12 @@
     },
     {
       "name": "command: not user-invocable by default",
-      "find": "    userInvocable: definition.userInvocable ?? true,\n",
-      "replace": "    userInvocable: definition.userInvocable ?? false,\n"
+      "find": "  const userInvocable = definition.userInvocable ?? true\n",
+      "replace": "  const userInvocable = definition.userInvocable ?? false\n"
     },
     {
       "name": "command: a non-invocable skill is not hidden",
-      "find": "    isHidden: !(definition.userInvocable ?? true),\n",
+      "find": "    isHidden: !userInvocable,\n",
       "replace": "    isHidden: false,\n"
     },
     {
@@ -92,63 +92,68 @@
     },
     {
       "name": "registry: hands out the live array",
-      "find": "  return [...bundledSkills]\n",
-      "replace": "  return bundledSkills\n"
+      "find": "  return [...registry]\n",
+      "replace": "  return registry\n"
     },
     {
       "name": "registry: clear does nothing",
-      "find": "  bundledSkills.length = 0\n",
-      "replace": "  void bundledSkills\n"
+      "find": "  registry.length = 0\n",
+      "replace": "  void registry\n"
     },
     {
       "name": "files: an empty map still gets a skill root",
-      "find": "  if (files && Object.keys(files).length > 0) {\n",
-      "replace": "  if (files) {\n"
+      "find": "  if (Object.keys(files).length === 0) {\n",
+      "replace": "  if (definition.files === undefined) {\n"
     },
     {
       "name": "files: skillRoot not set",
-      "find": "    skillRoot = getBundledSkillExtractDir(definition.name)\n",
-      "replace": "    skillRoot = undefined\n"
+      "find": "    skillRoot,\n    async getPromptForCommand(args, context) {\n",
+      "replace": "    skillRoot: undefined,\n    async getPromptForCommand(args, context) {\n"
     },
     {
       "name": "files: extracted on every call",
-      "find": "      extractionPromise ??= extractBundledSkillFiles(definition.name, files)\n",
-      "replace": "      extractionPromise = extractBundledSkillFiles(definition.name, files)\n"
+      "find": "  return () => (outcome ??= extractReferenceFiles(skillRoot, files))\n",
+      "replace": "  return () => (outcome = extractReferenceFiles(skillRoot, files))\n"
     },
     {
       "name": "files: arguments not passed through",
-      "find": "      const blocks = await inner(args, ctx)\n",
-      "replace": "      const blocks = await inner('', ctx)\n"
+      "find": "      const blocks = await definition.getPromptForCommand(args, context)\n",
+      "replace": "      const blocks = await definition.getPromptForCommand('', context)\n"
     },
     {
       "name": "files: a failed extraction drops the prompt",
-      "find": "      if (extractedDir === null) return blocks\n",
-      "replace": "      if (extractedDir === null) return []\n"
+      "find": "      return extracted ? announceBaseDirectory(skillRoot, blocks) : blocks\n",
+      "replace": "      return extracted ? announceBaseDirectory(skillRoot, blocks) : []\n"
     },
     {
-      "name": "files: a failed extraction throws",
-      "find": "    )\n    return null\n",
-      "replace": "    )\n    throw e\n"
+      "name": "files: a failed write throws",
+      "find": "      `[skills] could not extract reference files to ${skillRoot}: ${errorMessage(error)}`,\n    )\n    return false\n",
+      "replace": "      `[skills] could not extract reference files to ${skillRoot}: ${errorMessage(error)}`,\n    )\n    throw error\n"
     },
     {
       "name": "files: wrong announcement",
-      "find": "  const prefix = `Base directory for this skill: ${baseDir}\\n\\n`\n",
-      "replace": "  const prefix = `Skill directory: ${baseDir}\\n\\n`\n"
+      "find": "  const announcement = `Base directory for this skill: ${skillRoot}\\n\\n`\n",
+      "replace": "  const announcement = `Skill directory: ${skillRoot}\\n\\n`\n"
     },
     {
       "name": "files: never merged into a leading text block",
-      "find": "  if (blocks.length > 0 && blocks[0]!.type === 'text') {\n",
+      "find": "  if (first?.type === 'text') {\n",
       "replace": "  if (false) {\n"
     },
     {
       "name": "files: an absolute key is accepted",
-      "find": "    isAbsolute(normalized) ||\n",
-      "replace": "    false ||\n"
+      "find": "  if (win32.isAbsolute(key) || key.split(PATH_SEPARATOR_RE).includes('..')) {\n",
+      "replace": "  if (key.split(PATH_SEPARATOR_RE).includes('..')) {\n"
     },
     {
-      "name": "files: traversal no longer refused",
-      "find": "    throw new Error(`bundled skill file path escapes skill dir: ${relPath}`)\n",
-      "replace": "    void relPath\n"
+      "name": "files: containment not checked at all",
+      "find": "  if (win32.isAbsolute(key) || key.split(PATH_SEPARATOR_RE).includes('..')) {\n    return false\n  }\n  return join(skillRoot, key).startsWith(skillRoot + sep)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "files: an escaping key is written anyway",
+      "find": "would land outside it`,\n    )\n    return false\n",
+      "replace": "would land outside it`,\n    )\n"
     },
     {
       "name": "files: an existing file is overwritten",
@@ -157,13 +162,13 @@
     },
     {
       "name": "files: world-readable files",
-      "find": "  const fh = await open(p, SAFE_WRITE_FLAGS, 0o600)\n",
-      "replace": "  const fh = await open(p, SAFE_WRITE_FLAGS, 0o644)\n"
+      "find": "const FILE_MODE = 0o600\n",
+      "replace": "const FILE_MODE = 0o644\n"
     },
     {
       "name": "files: world-readable directories",
-      "find": "      await mkdir(parent, { recursive: true, mode: 0o700 })\n",
-      "replace": "      await mkdir(parent, { recursive: true, mode: 0o755 })\n"
+      "find": "const DIRECTORY_MODE = 0o700\n",
+      "replace": "const DIRECTORY_MODE = 0o755\n"
     }
   ]
 }

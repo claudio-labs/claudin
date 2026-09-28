@@ -1,40 +1,37 @@
 /**
- * Where bundled skills are extracted on disk.
+ * The directory bundled skills extract their reference files into.
  *
- * A leaf module on purpose: both `bundledSkills.ts` (which writes there) and
- * the permissions slice (which allowlists reads from there) need this path,
- * and routing the permission check through the full bundledSkills module
- * would drag `src/tools/Tool.js` into it. Moved here from
- * `src/permissions/filePermissions.ts` — the skills slice owns the location of its
- * own extraction tree.
+ * A leaf on purpose: the permission layer imports it to allowlist reads under
+ * the root, and must not pull the skill registry or the tool types in with it.
  */
 import { randomBytes } from 'crypto'
-import memoize from 'lodash-es/memoize.js'
 import { join } from 'path'
 
 import { getClaudeTempDir } from 'src/platform/tmpdir.js'
 
 declare const MACRO: { VERSION: string }
 
+const NONCE_BYTES = 16
+
+let root: string | undefined
+
 /**
- * Root for bundled-skill file extraction (see bundledSkills.ts).
+ * `<per-user temp dir>/bundled-skills/<version>/<nonce>`, the same path for
+ * the life of the process.
  *
- * SECURITY: The per-process random nonce is the load-bearing defense here.
- * Every other path component (uid, VERSION, skill name, file keys) is public
- * knowledge, so without it a local attacker can pre-create the tree on a
- * shared /tmp — sticky bit prevents deletion, not creation — and either
- * symlink an intermediate directory (O_NOFOLLOW only checks the final
- * component) or own a parent dir and swap file contents post-write for prompt
- * injection via the read allowlist. diskOutput.ts gets the same property from
- * the session-ID UUID in its path.
- *
- * Memoized so the extraction writes and the permission check agree on the
- * path for the life of the process. Version-scoped so stale extractions from
- * other binaries don't fall under the allowlist.
+ * SECURITY: the nonce is what makes the allowlist safe. The temp dir, the uid
+ * in its name and the version are all public, so on a shared /tmp another
+ * local user could create the rest of the path first and plant files in it.
+ * 128 bits drawn once per process put the path out of their reach. Memoized
+ * by hand rather than with lodash's memoize, whose exposed cache could be
+ * cleared and move the root out from under files already written.
  */
-export const getBundledSkillsRoot = memoize(
-  function getBundledSkillsRoot(): string {
-    const nonce = randomBytes(16).toString('hex')
-    return join(getClaudeTempDir(), 'bundled-skills', MACRO.VERSION, nonce)
-  },
-)
+export function getBundledSkillsRoot(): string {
+  root ??= join(
+    getClaudeTempDir(),
+    'bundled-skills',
+    MACRO.VERSION,
+    randomBytes(NONCE_BYTES).toString('hex'),
+  )
+  return root
+}

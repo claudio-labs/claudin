@@ -52,6 +52,11 @@ of the two origins. Only hashes are committed (`fingerprints.bin`), never text.
 - A copy shorter than about 57 tokens (a handful of lines).
 - Structure copied without its code: a module laid out like the old one, the same functions in the same order. The spec rules below exist for that.
 - Who wrote third-party text that openclaude also carried. `CODE_OF_CONDUCT.md` is the Contributor Covenant and shows up as openclaude.
+- Anything that is not a code, `.md` or `.txt` file. In particular, the probe specs (`scripts/migrations/probes/*.json`) quote the lines they mutate, and snapshots (`*.snap`) can hold inherited text. The final cut reviews both by hand.
+
+Import and re-export lines are left out of both measures. They are wiring:
+two unrelated files that import `join` from `'path'` share nothing worth
+counting.
 
 The numbers are evidence for the process. They are not a legal opinion.
 
@@ -75,11 +80,12 @@ total, so it goes through, but it has to be refreshed in the same change. The
    - Coverage of the old module must reach the targets in `.claudin/rules/testing.md` (providers 80%, shared 75%, everything else 70%), measured with `bun run test:coverage`.
    - Every new test must be proved by `scripts/migrations/break-probe.ts`, with its spec committed as `scripts/migrations/probes/rewrite-<module>.json`. A probe that turns nothing red is a finding, not a pass.
 2. **The spec,** at `docs/tech/rewrite/<slice>/<module>.md` ([template](spec-template.md)). It records observable behaviour, the public contract and the edge cases. It carries no code, no internal names and no internal structure of the old module.
-3. **The removal commit.** It deletes the module's inherited files.
+3. **The removal.** The module's inherited files are deleted in the sandbox, not in a commit of their own. The deletion and the new implementation land together, so the branch never has a commit that does not build.
 4. **The implementation,** in the sandbox below, by a fresh agent (or person) who has the spec, the tests and the project's own code, and nothing else. It follows `.claudin/rules/code-design.md` and `.claudin/rules/typescript-patterns.md`.
 5. **The gate.**
-   - `bun run provenance --file <path>` shows zero inherited lines for every new file.
+   - `bun run provenance --file <path>` shows zero inherited lines for every new file, apart from reviewed **residue**: lines the public contract dictates, such as exported signatures and type fields kept for callers not yet rewritten, or protocol field names. The spec's Outcome section lists the residue and why each part is there. Anything else is rewritten.
    - `bun run provenance:baseline` lowers the baseline.
+   - The probe spec is rewritten against the new code, and every probe still turns the suite red. The old spec quoted the old code, so it goes.
 6. **The checks.**
    - `bun run build`, `bun run typecheck`, `bun test`, `bun run smoke` and `bun run verify:privacy` all pass.
    - A module with UI is also driven in the real app (`/verify`).
@@ -94,19 +100,30 @@ has been rewritten.
 
 ### The implementer's sandbox
 
-The old source must be out of reach, not just out of the brief. After the
-removal commit:
+The old source must be out of reach, not just out of the brief:
 
 ```sh
 SANDBOX=$(mktemp -d)
 git archive HEAD | tar -x -C "$SANDBOX"           # no .git, so no history to read
+rm <the module's files> scripts/migrations/probes/rewrite-<module>.json   # the probe spec quotes the old code
 ln -s "$PWD/node_modules" "$SANDBOX/node_modules"
 ```
 
-The implementer works in `$SANDBOX`, with a permission rule denying reads of
-the openclaude clone. The brief names the spec, the test files and the rules,
-and forbids looking the old implementation up anywhere. When the checks pass
-there, copy the module's directory back and run the gate.
+Before briefing, grep the sandbox for the old module's private names. Nothing
+else should mention them.
+
+The implementer works in `$SANDBOX`. The brief:
+- names the spec, the test files and the rules;
+- forbids reading the main checkout and the openclaude clone, running git, and looking the old implementation up anywhere;
+- asks for explicit confirmation of all that in the report.
+
+When the checks pass there, copy the module's files back and run the gate. The
+gate is what verifies the isolation: a copy, renamed or not, shows up there.
+
+**Pilot notes** (`skills/bundledSkills`, 2026-09-27):
+- **Cost.** One fresh agent took about 11 minutes and 49 tool calls to write two files (267 lines) that passed the 20-test suite and `tsc` on the first report.
+- **A finding the old code shared.** The agent raised a security gap that the old module had too, and the spec now records it.
+- **Residue comes from the spec.** A contract table that lists a type's fields in the old order leads to a type with the same field order. That is fine, since it is contract, but it is why residue exists.
 
 ### Porting this project's own code
 
