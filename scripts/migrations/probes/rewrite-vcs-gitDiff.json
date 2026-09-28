@@ -1,232 +1,656 @@
 {
   "test": [
+    "src/vcs/git/attribution.characterization.test.ts",
+    "src/vcs/git/commitAttribution.characterization.test.ts",
+    "src/vcs/git/diff.characterization.test.ts",
     "src/vcs/git/gitDiff.characterization.test.ts",
     "src/vcs/git/gitDiff.repo.characterization.test.ts",
-    "src/vcs/git/diff.characterization.test.ts",
     "src/vcs/git/gitStatusDelta.characterization.test.ts",
-    "src/vcs/git/attribution.characterization.test.ts",
-    "src/vcs/git/commitAttribution.characterization.test.ts"
+    "src/vcs/git/gitDiff/unifiedDiff.test.ts",
+    "src/vcs/git/gitDiff/workingTree.test.ts",
+    "src/vcs/git/gitDiff/untrackedFiles.test.ts",
+    "src/vcs/git/gitDiff/diffStatScope.test.ts",
+    "src/vcs/git/diff.test.ts"
   ],
-  "source": "src/vcs/git/gitDiff.ts",
+  "source": "src/vcs/git/gitDiff/unifiedDiff.ts",
   "probes": [
     {
-      "name": "numstat: a brace rename keys the old path",
-      "find": "    return { path: collapse(newPart), renamedFrom: collapse(oldPart) }",
-      "replace": "    return { path: collapse(oldPart), renamedFrom: collapse(newPart) }"
+      "name": "parseGitDiff: a section is measured through its final newline",
+      "find": "    yield text.slice(bodyAt, breakAt + 1)\n",
+      "replace": "    yield text.slice(bodyAt, breakAt)\n"
     },
     {
-      "name": "numstat: an arrow rename loses renamedFrom",
-      "find": "  return { path: (newPath ?? raw).trim(), renamedFrom: (oldPath ?? '').trim() }",
-      "replace": "  return { path: (newPath ?? raw).trim() }"
+      "name": "parseGitDiff: a section's size is counted in UTF-8 bytes",
+      "find": "Buffer.byteLength(section, 'utf8') > MAX_SECTION_BYTES",
+      "replace": "section.length > MAX_SECTION_BYTES"
     },
     {
-      "name": "numstat: binary files not flagged",
-      "find": "    const isBinary = addStr === '-' || remStr === '-'",
-      "replace": "    const isBinary = false"
+      "name": "parseGitDiff: a section of exactly 1,000,000 bytes is kept",
+      "find": "> MAX_SECTION_BYTES) continue",
+      "replace": ">= MAX_SECTION_BYTES) continue"
     },
     {
-      "name": "numstat: 51 entries kept",
-      "find": "    if (perFileStats.size < MAX_FILES) {",
-      "replace": "    if (perFileStats.size <= MAX_FILES) {"
+      "name": "parseGitDiff: an oversized section is skipped and the next ones still parse",
+      "find": "MAX_SECTION_BYTES) continue",
+      "replace": "MAX_SECTION_BYTES) break"
     },
     {
-      "name": "hunks: 51 files kept",
-      "find": "    if (result.size >= MAX_FILES) break",
-      "replace": "    if (result.size > MAX_FILES) break"
+      "name": "parseGitDiff: parsing stops at 50 files with hunks",
+      "find": "if (files.size >= MAX_FILES) break",
+      "replace": "if (files.size > MAX_FILES) break"
     },
     {
-      "name": "hunks: the 1 MB file cap measured in string length",
-      "find": "    if (Buffer.byteLength(fileDiff, 'utf8') > MAX_DIFF_SIZE_BYTES) {",
-      "replace": "    if (fileDiff.length > MAX_DIFF_SIZE_BYTES) {"
+      "name": "parseGitDiff: only a file with a hunk gets an entry",
+      "find": "file.hunks.length > 0",
+      "replace": "file.hunks.length >= 0"
     },
     {
-      "name": "hunks: only a/ b/ headers parse",
-      "find": "    const headerMatch = lines[0]?.match(/^.\\/(.+?) .\\/(.+)$/)",
-      "replace": "    const headerMatch = lines[0]?.match(/^a\\/(.+?) b\\/(.+)$/)"
+      "name": "fix (finding 2): the newline that closes a section is not a blank last line",
+      "find": "  if (section.endsWith('\\n')) lines.pop()\n",
+      "replace": ""
     },
     {
-      "name": "hunks: keyed by the old path",
-      "find": "    const filePath = headerMatch[2] ?? headerMatch[1] ?? ''",
-      "replace": "    const filePath = headerMatch[1] ?? ''"
+      "name": "parseGitDiff: the key rule splits at the first space followed by one character and a slash",
+      "find": "const HEADER_PATHS = /^.\\/.+? .\\/(.+)$/",
+      "replace": "const HEADER_PATHS = /^.\\/.+ .\\/(.+)/"
     },
     {
-      "name": "hunks: no-newline markers kept as lines",
-      "find": "          line.startsWith(' ') ||\n          line === '')",
-      "replace": "          line.startsWith(' ') ||\n          line.startsWith('\\\\') ||\n          line === '')"
+      "name": "hunk header: a range without a count is one line",
+      "find": "return count === undefined ? 1 : Number(count)",
+      "replace": "return count === undefined ? 0 : Number(count)"
     },
     {
-      "name": "hunks: empty context lines dropped",
-      "find": "          line === '')\n      ) {",
-      "replace": "          false)\n      ) {"
+      "name": "hunk header: the old start is the first number",
+      "find": "oldStart: Number(header[1]),",
+      "replace": "oldStart: Number(header[3]),"
     },
     {
-      "name": "hunks: 401 lines per file",
-      "find": "const MAX_LINES_PER_FILE = 400 // GitHub's auto-load limit",
-      "replace": "const MAX_LINES_PER_FILE = 401 // GitHub's auto-load limit"
+      "name": "hunk header: git's function context after the second @@ is ignored",
+      "find": "(?:,(\\d+))? @@/",
+      "replace": "(?:,(\\d+))? @@(?!.)/"
     },
     {
-      "name": "fetch hunks: the user's prefix settings leak in",
-      "find": "    ['--no-optional-locks', 'diff', 'HEAD', '--src-prefix=a/', '--dst-prefix=b/'],",
-      "replace": "    ['--no-optional-locks', 'diff', 'HEAD'],"
+      "name": "hunk lines: an empty line is a blank context line (diff.suppressBlankEmpty)",
+      "find": "return line === '' || line.startsWith(' ')",
+      "replace": "return line.startsWith(' ')"
     },
     {
-      "name": "fetch numbers: untracked files not counted",
-      "find": "      stats.filesCount += untrackedStats.size",
-      "replace": "      stats.filesCount += 0"
+      "name": "hunk lines: no-newline markers are left out",
+      "find": "line.startsWith('+') || line.startsWith('-')",
+      "replace": "line.startsWith('+') || line.startsWith('-') || line.startsWith('\\\\')"
     },
     {
-      "name": "fetch numbers: ignored files listed as untracked",
-      "find": "    ['--no-optional-locks', 'ls-files', '--others', '--exclude-standard'],",
-      "replace": "    ['--no-optional-locks', 'ls-files', '--others'],"
+      "name": "fix (finding 1): lines starting --- or +++ after the first hunk are content",
+      "find": "isHunkLine(line) && kept < MAX_LINES_PER_FILE",
+      "replace": "isHunkLine(line) && !line.startsWith('---') && !line.startsWith('+++') && kept < MAX_LINES_PER_FILE"
     },
     {
-      "name": "fetch numbers: untracked files past the free entries",
-      "find": "  for (const filePath of untrackedPaths.slice(0, maxFiles)) {",
-      "replace": "  for (const filePath of untrackedPaths) {"
+      "name": "hunk lines: 400 lines per file are kept",
+      "find": "kept < MAX_LINES_PER_FILE",
+      "replace": "kept <= MAX_LINES_PER_FILE"
     },
     {
-      "name": "fetch numbers: 500 files already take the totals-only path",
-      "find": "    if (quickStats && quickStats.filesCount > MAX_FILES_FOR_DETAILS) {",
-      "replace": "    if (quickStats && quickStats.filesCount >= MAX_FILES_FOR_DETAILS) {"
+      "name": "hunk lines: the 400 count per file, so a later hunk keeps only its header",
+      "find": "      hunks.push(current)\n",
+      "replace": "      hunks.push(current)\n      kept = 0\n"
     },
     {
-      "name": "transient: a merge in progress not seen",
-      "find": "    'MERGE_HEAD',",
-      "replace": "    'MERGE_HEAD_GONE',"
+      "name": "numstat: a dash count is a binary file",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "return { added: 0, removed: 0, isBinary: true, path }",
+      "replace": "return { added: 0, removed: 0, isBinary: false, path }"
     },
     {
-      "name": "transient: a revert in progress not seen",
-      "find": "    'REVERT_HEAD',",
-      "replace": "    'REVERT_HEAD_GONE',"
+      "name": "numstat: a line with fewer than three fields is skipped",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "if (secondTab === -1) return null",
+      "replace": "if (firstTab === -1) return null"
     },
     {
-      "name": "scope: HEAD equal to the merge-base counts as a branch",
-      "find": "  if (!mergeBase || !head || mergeBase === head) return { kind: 'uncommitted' }",
-      "replace": "  if (!mergeBase || !head) return { kind: 'uncommitted' }"
+      "name": "numstat: the first 50 files get an entry",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "if (perFileStats.size < MAX_FILES) {",
+      "replace": "if (perFileStats.size <= MAX_FILES) {"
     },
     {
-      "name": "readout: CLAUDIN_BASE_REF ignored",
-      "find": "  const base = process.env.CLAUDIN_BASE_REF || (await getDefaultBranch())",
-      "replace": "  const base = await getDefaultBranch()"
+      "name": "numstat: the totals cover every line, not only the kept ones",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "stats.linesAdded += line.added",
+      "replace": "stats.linesAdded += perFileStats.size < MAX_FILES ? line.added : 0"
     },
     {
-      "name": "readout: a branch measured against HEAD",
-      "find": "      scope.kind === 'branch' ? scope.against : 'HEAD',",
-      "replace": "      'HEAD',"
+      "name": "numstat: renamedFrom is absent unless the file was renamed",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "if (renamedFrom !== undefined) entry.renamedFrom = renamedFrom",
+      "replace": "entry.renamedFrom = renamedFrom"
     },
     {
-      "name": "patch: singleHunk ignored",
+      "name": "numstat: old => new is keyed by the new path",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "path: printed.slice(arrow + RENAME_ARROW.length).trim(), renamedFrom: printed.slice(0, arrow).trim()",
+      "replace": "path: printed.slice(0, arrow).trim(), renamedFrom: printed.slice(arrow + RENAME_ARROW.length).trim()"
+    },
+    {
+      "name": "numstat: an empty side of a brace rename leaves no doubled slash",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "  if (middle === '' && prefix.endsWith('/') && suffix.startsWith('/')) return prefix + suffix.slice(1)\n",
+      "replace": ""
+    },
+    {
+      "name": "numstat: the part before a brace belongs to both paths",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "const prefix = printed.slice(0, open)",
+      "replace": "const prefix = ''"
+    },
+    {
+      "name": "numstat: the counts are read as numbers",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "const count = Number.parseInt(text, 10)",
+      "replace": "const count = text.length"
+    },
+    {
+      "name": "shortstat: insertions and deletions are read from their own parts",
+      "source": "src/vcs/git/gitDiff/shortstat.ts",
+      "find": "linesAdded: Number(summary[2] ?? 0),",
+      "replace": "linesAdded: Number(summary[3] ?? 0),"
+    },
+    {
+      "name": "shortstat: the singular 'file changed' matches",
+      "source": "src/vcs/git/gitDiff/shortstat.ts",
+      "find": "(\\d+) files? changed",
+      "replace": "(\\d+) files changed"
+    },
+    {
+      "name": "shortstat: no summary line is null",
+      "source": "src/vcs/git/gitDiff/shortstat.ts",
+      "find": "if (summary === null) return null",
+      "replace": "if (summary === null) return { filesCount: 0, linesAdded: 0, linesRemoved: 0 }"
+    },
+    {
+      "name": "added file: empty content has no hunk",
+      "source": "src/vcs/git/gitDiff/addedFileHunks.ts",
+      "find": "  if (content === '') return []\n",
+      "replace": ""
+    },
+    {
+      "name": "added file: the hunk starts at old line 0",
+      "source": "src/vcs/git/gitDiff/addedFileHunks.ts",
+      "find": "oldStart: 0, oldLines: 0, newStart: 1",
+      "replace": "oldStart: 1, oldLines: 0, newStart: 1"
+    },
+    {
+      "name": "added file: the first 400 lines are shown",
+      "source": "src/vcs/git/gitDiff/addedFileHunks.ts",
+      "find": "leadingLines(content, MAX_LINES_PER_FILE)",
+      "replace": "leadingLines(content, MAX_LINES_PER_FILE + 1)"
+    },
+    {
+      "name": "added file: a final newline does not start an empty line",
+      "source": "src/vcs/git/gitDiff/addedFileHunks.ts",
+      "find": "start < text.length",
+      "replace": "start <= text.length"
+    },
+    {
+      "name": "added file: a CRLF line keeps its carriage return",
+      "source": "src/vcs/git/gitDiff/addedFileHunks.ts",
+      "find": "    lines.push(text.slice(start, end))\n",
+      "replace": "    lines.push(text.slice(start, end).replace('\\r', ''))\n"
+    },
+    {
+      "name": "scope: no HEAD means the uncommitted changes",
+      "source": "src/vcs/git/gitDiff/diffStatScope.ts",
+      "find": "if (!head || !mergeBase || mergeBase === head)",
+      "replace": "if (!mergeBase || mergeBase === head)"
+    },
+    {
+      "name": "scope: HEAD at the merge-base means the uncommitted changes",
+      "source": "src/vcs/git/gitDiff/diffStatScope.ts",
+      "find": " || mergeBase === head)",
+      "replace": ")"
+    },
+    {
+      "name": "scope: a branch is measured from the merge-base",
+      "source": "src/vcs/git/gitDiff/diffStatScope.ts",
+      "find": "{ kind: 'branch', against: mergeBase, base }",
+      "replace": "{ kind: 'branch', against: head, base }"
+    },
+    {
+      "name": "untracked files: only the entries the tracked files left free",
+      "source": "src/vcs/git/gitDiff/untrackedFiles.ts",
+      "find": "    if (perFileStats.size >= MAX_FILES) break\n",
+      "replace": ""
+    },
+    {
+      "name": "fix (finding 5): every untracked file is counted, with an entry or not",
+      "source": "src/vcs/git/gitDiff/untrackedFiles.ts",
+      "find": "filesCount: tracked.stats.filesCount + untracked.length",
+      "replace": "filesCount: tracked.stats.filesCount + perFileStats.size - tracked.perFileStats.size"
+    },
+    {
+      "name": "untracked files: the entry says untracked",
+      "source": "src/vcs/git/gitDiff/untrackedFiles.ts",
+      "find": "isBinary: false, isUntracked: true",
+      "replace": "isBinary: false, isUntracked: false"
+    },
+    {
+      "name": "untracked files: a blank line of the listing is not a file",
+      "source": "src/vcs/git/gitDiff/untrackedFiles.ts",
+      "find": ".filter(name => name !== '')",
+      "replace": ""
+    },
+    {
+      "name": "fix (finding 3): non-ASCII names come out unquoted",
+      "source": "src/vcs/git/gitDiff/gitRunner.ts",
+      "find": "'core.quotePath=false'",
+      "replace": "'core.quotePath=true'"
+    },
+    {
+      "name": "fix (finding 8): the repository's color settings are turned off",
+      "source": "src/vcs/git/gitDiff/gitRunner.ts",
+      "find": "const EVERY_DIFF = ['--no-color', '--no-ext-diff'] as const",
+      "replace": "const EVERY_DIFF = ['--no-ext-diff'] as const"
+    },
+    {
+      "name": "fix (finding 8): the repository's external diff program never runs",
+      "source": "src/vcs/git/gitDiff/gitRunner.ts",
+      "find": "const EVERY_DIFF = ['--no-color', '--no-ext-diff'] as const",
+      "replace": "const EVERY_DIFF = ['--no-color'] as const"
+    },
+    {
+      "name": "hunks request: the a/ b/ prefixes are forced",
+      "source": "src/vcs/git/gitDiff/gitRunner.ts",
+      "find": "  patch: FIXED_PREFIXES,",
+      "replace": "  patch: [],"
+    },
+    {
+      "name": "hardening: a file named HEAD is not taken for the revision",
+      "source": "src/vcs/git/gitDiff/gitRunner.ts",
+      "find": "commit, '--']",
+      "replace": "commit]"
+    },
+    {
+      "name": "untracked files: the standard excludes apply",
+      "source": "src/vcs/git/gitDiff/gitRunner.ts",
+      "find": "['ls-files', '--others', '--exclude-standard']",
+      "replace": "['ls-files', '--others']"
+    },
+    {
+      "name": "a failing git is a failure, not empty output",
+      "source": "src/vcs/git/gitDiff/gitRunner.ts",
+      "find": "return result.code === 0 && result.error === undefined ? result.stdout : null",
+      "replace": "return result.stdout"
+    },
+    {
+      "name": "hunks request: git output above 1,000,000 bytes gives no hunks",
+      "source": "src/vcs/git/gitDiff/limits.ts",
+      "find": "export const MAX_PATCH_BYTES = 1_000_000",
+      "replace": "export const MAX_PATCH_BYTES = 2_000_000"
+    },
+    {
+      "name": "fix (finding 6): without a root, the session directory, not the process directory",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "return findGitRoot(root ?? getCwd())",
+      "replace": "return findGitRoot(root ?? process.cwd())"
+    },
+    {
+      "name": "fix (finding 6): whether the session is in a repository is decided at every call",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "export function repositoryRoot(root?: string): string | null {\n  return findGitRoot(root ?? getCwd())\n}",
+      "replace": "let decided = false\nlet decidedRoot: string | null = null\nexport function repositoryRoot(root?: string): string | null {\n  if (root !== undefined) return findGitRoot(root)\n  if (!decided) {\n    decidedRoot = findGitRoot(getCwd())\n    decided = true\n  }\n  return decidedRoot\n}"
+    },
+    {
+      "name": "fix (finding 7): from a subdirectory, git works from the repository root",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "return findGitRoot(root ?? getCwd())",
+      "replace": "return root ?? findGitRoot(getCwd())"
+    },
+    {
+      "name": "stopped operation: MERGE_HEAD",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']",
+      "replace": "['REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']"
+    },
+    {
+      "name": "stopped operation: REBASE_HEAD",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']",
+      "replace": "['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']"
+    },
+    {
+      "name": "stopped operation: CHERRY_PICK_HEAD",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']",
+      "replace": "['MERGE_HEAD', 'REBASE_HEAD', 'REVERT_HEAD']"
+    },
+    {
+      "name": "stopped operation: REVERT_HEAD",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']",
+      "replace": "['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD']"
+    },
+    {
+      "name": "stopped operation: a linked worktree is judged by its own git directory",
+      "source": "src/vcs/git/gitDiff/repository.ts",
+      "find": "const gitDir = await getGitDir(root)",
+      "replace": "const gitDir = join(root, '.git')"
+    },
+    {
+      "name": "numbers: a stopped operation gives null",
+      "source": "src/vcs/git/gitDiff/workingTree.ts",
+      "find": "if (top === null || (await hasStoppedOperation(top))) return null",
+      "replace": "if (top === null) return null"
+    },
+    {
+      "name": "numbers: exactly 500 changed files still get the detail",
+      "source": "src/vcs/git/gitDiff/workingTree.ts",
+      "find": "totals.filesCount > MAX_FILES_FOR_DETAIL",
+      "replace": "totals.filesCount >= MAX_FILES_FOR_DETAIL"
+    },
+    {
+      "name": "numbers: more than 500 changed files give git's totals only",
+      "source": "src/vcs/git/gitDiff/workingTree.ts",
+      "find": "if (totals !== null && totals.filesCount > MAX_FILES_FOR_DETAIL) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "numbers: no changes are zeros, not null",
+      "source": "src/vcs/git/gitDiff/numstat.ts",
+      "find": "const stats = { filesCount: 0, linesAdded: 0, linesRemoved: 0 }",
+      "replace": "const stats = { filesCount: 0, linesAdded: 0, linesRemoved: 1 }"
+    },
+    {
+      "name": "numbers: the untracked files follow the tracked ones",
+      "source": "src/vcs/git/gitDiff/workingTree.ts",
+      "find": "parseUntrackedList(untrackedOutput ?? '')",
+      "replace": "parseUntrackedList('')"
+    },
+    {
+      "name": "readout: CLAUDIN_BASE_REF names the base",
+      "source": "src/vcs/git/gitDiff/diffStatSummary.ts",
+      "find": "process.env[BASE_REF_VARIABLE] || (await getDefaultBranch())",
+      "replace": "(await getDefaultBranch())"
+    },
+    {
+      "name": "readout: an empty CLAUDIN_BASE_REF counts as unset",
+      "source": "src/vcs/git/gitDiff/diffStatSummary.ts",
+      "find": "process.env[BASE_REF_VARIABLE] || (",
+      "replace": "process.env[BASE_REF_VARIABLE] ?? ("
+    },
+    {
+      "name": "readout: a branch is measured from its merge-base",
+      "source": "src/vcs/git/gitDiff/diffStatSummary.ts",
+      "find": "const against = scope.kind === 'branch' ? scope.against : 'HEAD'",
+      "replace": "const against = 'HEAD'"
+    },
+    {
+      "name": "readout: a branch measure is labelled with its base",
+      "source": "src/vcs/git/gitDiff/diffStatScope.ts",
+      "find": "branch: measured, branchBase: scope.base",
+      "replace": "branch: measured, branchBase: null"
+    },
+    {
+      "name": "readout: nothing tracked changed is all null",
+      "source": "src/vcs/git/gitDiff/diffStatScope.ts",
+      "find": "if (measured === null) return noReadout()",
+      "replace": "if (measured === null) return { uncommitted: null, branch: null, branchBase: 'main' }"
+    },
+    {
+      "name": "readout: on the base branch, the uncommitted measure",
+      "source": "src/vcs/git/gitDiff/diffStatScope.ts",
+      "find": "return { uncommitted: measured, branch: null, branchBase: null }",
+      "replace": "return { uncommitted: null, branch: measured, branchBase: null }"
+    },
+    {
+      "name": "text patch: three lines of context",
       "source": "src/vcs/git/diff.ts",
-      "find": "      context: singleHunk ? 100_000 : CONTEXT_LINES,",
-      "replace": "      context: CONTEXT_LINES,"
+      "find": "export const CONTEXT_LINES = 3",
+      "replace": "export const CONTEXT_LINES = 4"
     },
     {
-      "name": "display: replace_all replaces the first occurrence only",
+      "name": "text patch: a five-second limit",
       "source": "src/vcs/git/diff.ts",
-      "find": "        return p.replaceAll(escapedOldString, () => escapedNewString)",
-      "replace": "        return p.replace(escapedOldString, () => escapedNewString)"
+      "find": "export const DIFF_TIMEOUT_MS = 5_000",
+      "replace": "export const DIFF_TIMEOUT_MS = 6_000"
     },
     {
-      "name": "display: the file's leading tabs kept",
+      "name": "text patch: singleHunk puts the whole file in one hunk",
       "source": "src/vcs/git/diff.ts",
-      "find": "  const preparedFileContents = escapeForDiff(\n    convertLeadingTabsToSpaces(fileContents),\n  )",
-      "replace": "  const preparedFileContents = escapeForDiff(\n    fileContents,\n  )"
+      "find": "context: singleHunk ? WHOLE_FILE_CONTEXT : CONTEXT_LINES",
+      "replace": "context: CONTEXT_LINES"
     },
     {
-      "name": "adjust: an offset of 0 returns a copy",
+      "name": "text patch: ignoreWhitespace reaches the diff",
       "source": "src/vcs/git/diff.ts",
-      "find": "  if (offset === 0) return hunks",
-      "replace": "  if (offset === 0) return hunks.slice()"
+      "find": "    ignoreWhitespace,\n    timeout: DIFF_TIMEOUT_MS,",
+      "replace": "    ignoreWhitespace: false,\n    timeout: DIFF_TIMEOUT_MS,"
     },
     {
-      "name": "lines changed: a new file counts no lines",
+      "name": "fix (finding 10): hunk lines carry the texts exactly",
       "source": "src/vcs/git/diff.ts",
-      "find": "    numAdditions = newFileContent.split(/\\r?\\n/).length",
-      "replace": "    numAdditions = 0"
+      "find": "return patch?.hunks ?? []",
+      "replace": "return (patch?.hunks ?? []).map(h => ({ ...h, lines: h.lines.map(l => l.replaceAll('__AMPERSAND__', '&')) }))"
     },
     {
-      "name": "patch: & does not come back as &",
+      "name": "display: leading tabs of the file are shown as two spaces",
       "source": "src/vcs/git/diff.ts",
-      "find": "  return s.replaceAll(AMPERSAND_TOKEN, '&').replaceAll(DOLLAR_TOKEN, '$')",
-      "replace": "  return s.replaceAll(AMPERSAND_TOKEN, 'and').replaceAll(DOLLAR_TOKEN, String.fromCharCode(36))"
+      "find": "const before = convertLeadingTabsToSpaces(fileContents)",
+      "replace": "const before = fileContents"
     },
     {
-      "name": "count: deletions counted as additions",
+      "name": "display: leading tabs of an edit are shown as two spaces",
+      "source": "src/vcs/git/diff.ts",
+      "find": "old_string: convertLeadingTabsToSpaces(edit.old_string),",
+      "replace": "old_string: edit.old_string,"
+    },
+    {
+      "name": "display: edits apply in order, each to the result of the one before",
+      "source": "src/vcs/git/diff.ts",
+      "find": "edits.reduce((text, edit) => applyEdit(text, asDisplayed(edit)), before)",
+      "replace": "edits.reduce((text, edit) => applyEdit(before, asDisplayed(edit)), before)"
+    },
+    {
+      "name": "display: the new text is literal, not a replacement pattern",
+      "source": "src/vcs/git/diff.ts",
+      "find": "text.replace(old_string, replacement)",
+      "replace": "text.replace(old_string, new_string)"
+    },
+    {
+      "name": "display: replace_all replaces every occurrence",
+      "source": "src/vcs/git/diff.ts",
+      "find": "return replace_all ? text.replaceAll(",
+      "replace": "return false ? text.replaceAll("
+    },
+    {
+      "name": "display: ignoreWhitespace hides a re-indent",
+      "source": "src/vcs/git/diff.ts",
+      "find": "newContent: after, ignoreWhitespace })",
+      "replace": "newContent: after })"
+    },
+    {
+      "name": "adjustHunkLineNumbers: an offset of 0 hands back the same array",
+      "source": "src/vcs/git/diff.ts",
+      "find": "  if (offset === 0) return hunks\n",
+      "replace": ""
+    },
+    {
+      "name": "adjustHunkLineNumbers: both starts move",
+      "source": "src/vcs/git/diff.ts",
+      "find": "newStart: hunk.newStart + offset",
+      "replace": "newStart: hunk.newStart"
+    },
+    {
+      "name": "countLinesChanged: with hunks, the content is not looked at",
+      "source": "src/vcs/git/diff.ts",
+      "find": "patch.length > 0 ? countAddDel(patch)",
+      "replace": "patch.length > 1 ? countAddDel(patch)"
+    },
+    {
+      "name": "fix (finding 9): a final newline ends a new file's last line",
+      "source": "src/vcs/git/diff.ts",
+      "find": "return text.endsWith('\\n') ? breaks : breaks + 1",
+      "replace": "return breaks + 1"
+    },
+    {
+      "name": "countLinesChanged: empty content adds nothing",
+      "source": "src/vcs/git/diff.ts",
+      "find": "  if (text === '') return 0\n",
+      "replace": ""
+    },
+    {
+      "name": "countAddDel: a line starting --- is a deletion",
       "source": "src/vcs/git/diffStat.ts",
-      "find": "      else if (line.startsWith('-')) deletions++",
-      "replace": "      else if (line.startsWith('-')) additions++"
+      "find": "else if (line.startsWith('-')) deletions += 1",
+      "replace": "else if (line.startsWith('-') && !line.startsWith('---')) deletions += 1"
     },
     {
-      "name": "count: context lines counted as additions",
+      "name": "countAddDel: empty lines count for neither",
       "source": "src/vcs/git/diffStat.ts",
-      "find": "      if (line.startsWith('+')) additions++",
-      "replace": "      if (!line.startsWith('-')) additions++"
+      "find": "if (line.startsWith('+')) additions += 1",
+      "replace": "if (line.startsWith('+') || line === '') additions += 1"
     },
     {
-      "name": "status delta: wrong system-context key",
+      "name": "status: the system-context key is gitStatus",
       "source": "src/vcs/git/gitStatusDelta.ts",
-      "find": "export const GIT_STATUS_CONTEXT_KEY = 'gitStatus' as const",
-      "replace": "export const GIT_STATUS_CONTEXT_KEY = 'git_status' as const"
+      "find": "export const GIT_STATUS_CONTEXT_KEY = 'gitStatus'",
+      "replace": "export const GIT_STATUS_CONTEXT_KEY = 'git_status'"
     },
     {
-      "name": "status delta: any attachment counts as announced",
+      "name": "status: the announcement is a git_status_delta attachment",
       "source": "src/vcs/git/gitStatusDelta.ts",
-      "find": "    if (msg.attachment?.type === 'git_status_delta') {",
-      "replace": "    if (msg.attachment?.type !== undefined) {"
+      "find": "const ANNOUNCEMENT = 'git_status_delta'",
+      "replace": "const ANNOUNCEMENT = 'git_status'"
     },
     {
-      "name": "status delta: a non-attachment message counts",
+      "name": "status: only an attachment message announces",
       "source": "src/vcs/git/gitStatusDelta.ts",
-      "find": "    if (msg.type !== 'attachment') continue",
-      "replace": "    if (!msg.type) continue"
+      "find": "entry.type === 'attachment' && ",
+      "replace": ""
     },
     {
-      "name": "model name: opus-5-5 named opus-5",
+      "name": "status: an empty snapshot is not announced",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "if (!currentGitStatus || ",
+      "replace": "if (currentGitStatus == null || "
+    },
+    {
+      "name": "status: one announcement is enough",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "messages.some(announcesStatus)",
+      "replace": "messages.every(announcesStatus)"
+    },
+    {
+      "name": "model name: the first family the id contains wins",
       "source": "src/vcs/git/commitAttribution.ts",
-      "find": "  if (shortName.includes('opus-5-5')) return 'claude-opus-5-5'",
-      "replace": "  if (shortName.includes('opus-5-5')) return 'claude-opus-5'"
+      "find": "  'opus-4-1',\n  'opus-4',\n",
+      "replace": "  'opus-4',\n  'opus-4-1',\n"
     },
     {
-      "name": "surface: an empty entrypoint becomes cli",
+      "name": "model name: no known family is the generic name",
       "source": "src/vcs/git/commitAttribution.ts",
-      "find": "  return process.env.CLAUDE_CODE_ENTRYPOINT ?? 'cli'",
-      "replace": "  return process.env.CLAUDE_CODE_ENTRYPOINT || 'cli'"
+      "find": "return family === undefined ? GENERIC_MODEL_NAME :",
+      "replace": "return family === undefined ? '' :"
     },
     {
-      "name": "restore: the first snapshot wins",
+      "name": "surface: cli when CLAUDE_CODE_ENTRYPOINT is unset",
       "source": "src/vcs/git/commitAttribution.ts",
-      "find": "  const lastSnapshot = snapshots[snapshots.length - 1]",
-      "replace": "  const lastSnapshot = snapshots[0]"
+      "find": "const DEFAULT_SURFACE = 'cli'",
+      "replace": "const DEFAULT_SURFACE = 'sdk'"
     },
     {
-      "name": "snapshot line: type is not the first key",
+      "name": "surface: an empty CLAUDE_CODE_ENTRYPOINT stays empty",
       "source": "src/vcs/git/commitAttribution.ts",
-      "find": "    type: 'attribution-snapshot',\n    messageId,",
-      "replace": "    messageId,\n    type: 'attribution-snapshot',"
+      "find": "process.env.CLAUDE_CODE_ENTRYPOINT ?? DEFAULT_SURFACE",
+      "replace": "process.env.CLAUDE_CODE_ENTRYPOINT || DEFAULT_SURFACE"
     },
     {
-      "name": "prompt count: the snapshot saved is of the old state",
+      "name": "empty state: every call has maps of its own",
       "source": "src/vcs/git/commitAttribution.ts",
-      "find": "  const snapshot = stateToSnapshotMessage(newAttribution, randomUUID())",
-      "replace": "  const snapshot = stateToSnapshotMessage(attribution, randomUUID())"
+      "find": "    fileStates: new Map(),\n    sessionBaselines: new Map(),\n    surface: getClientSurface(),\n",
+      "replace": "    fileStates: ((globalThis as { probeShared?: Map<string, FileAttributionState> }).probeShared ??= new Map()),\n    sessionBaselines: new Map(),\n    surface: getClientSurface(),\n"
     },
     {
-      "name": "attribution: remote sessions read the settings",
+      "name": "snapshot: type is the first key of the stored line",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "    type: 'attribution-snapshot',\n    messageId,\n",
+      "replace": "    messageId,\n    type: 'attribution-snapshot',\n"
+    },
+    {
+      "name": "snapshot: the counters keep their stored order",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "    escapeCount: source.escapeCount ?? 0,\n    escapeCountAtLastCommit: source.escapeCountAtLastCommit ?? 0,\n",
+      "replace": "    escapeCountAtLastCommit: source.escapeCountAtLastCommit ?? 0,\n    escapeCount: source.escapeCount ?? 0,\n"
+    },
+    {
+      "name": "snapshot: the starting HEAD is not stored",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "    fileStates: Object.fromEntries(state.fileStates),\n",
+      "replace": "    fileStates: Object.fromEntries(state.fileStates),\n    startingHeadSha: state.startingHeadSha,\n"
+    },
+    {
+      "name": "restore: a counter the snapshot lacks is 0",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "promptCount: source.promptCount ?? 0,",
+      "replace": "promptCount: source.promptCount ?? 1,"
+    },
+    {
+      "name": "restore: the last snapshot is the state",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "const latest = snapshots.at(-1)",
+      "replace": "const latest = snapshots.at(0)"
+    },
+    {
+      "name": "restore: the surface comes from the snapshot",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "    surface: latest.surface,\n",
+      "replace": "    surface: getClientSurface(),\n"
+    },
+    {
+      "name": "restore from log: the callback is called once",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "  onUpdateState(restoreAttributionStateFromSnapshots(snapshots))\n",
+      "replace": "  onUpdateState(restoreAttributionStateFromSnapshots(snapshots))\n  onUpdateState(restoreAttributionStateFromSnapshots(snapshots))\n"
+    },
+    {
+      "name": "incrementPromptCount: one more prompt",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "promptCount: attribution.promptCount + 1",
+      "replace": "promptCount: attribution.promptCount + 2"
+    },
+    {
+      "name": "incrementPromptCount: the snapshot saved is the new state's",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "saveSnapshot(stateToSnapshotMessage(next, randomUUID()))",
+      "replace": "saveSnapshot(stateToSnapshotMessage(attribution, randomUUID()))"
+    },
+    {
+      "name": "attribution: a remote session ignores the settings",
       "source": "src/vcs/git/attribution.ts",
-      "find": "  if (getClientType() === 'remote') {",
-      "replace": "  if (getClientType() === 'remote-session') {"
+      "find": "getClientType() === 'remote' ? remoteSessionTexts() : configuredTexts()",
+      "replace": "configuredTexts()"
     },
     {
-      "name": "attribution: a local-development session gets a link",
+      "name": "attribution: a local-development remote session adds nothing",
       "source": "src/vcs/git/attribution.ts",
-      "find": "      if (!isRemoteSessionLocal(remoteSessionId, ingressUrl)) {",
-      "replace": "      if (remoteSessionId) {"
+      "find": "if (!sessionId || isRemoteSessionLocal(sessionId, ingressUrl))",
+      "replace": "if (!sessionId)"
     },
     {
-      "name": "attribution: a commit trailer by default",
+      "name": "attribution: the session link goes in both texts",
       "source": "src/vcs/git/attribution.ts",
-      "find": "    commit: settings.attribution?.commit ?? '',",
-      "replace": "    commit: settings.attribution?.commit || 'Co-Authored-By: Claudin <noreply@example.invalid>',"
+      "find": "return { commit: link, pr: link }",
+      "replace": "return { commit: link, pr: '' }"
+    },
+    {
+      "name": "attribution: each text comes from its own setting",
+      "source": "src/vcs/git/attribution.ts",
+      "find": "  return { commit, pr }\n",
+      "replace": "  return { commit: pr, pr: commit }\n"
+    },
+    {
+      "name": "attribution: nothing is added by default",
+      "source": "src/vcs/git/attribution.ts",
+      "find": "const { commit = '', pr = '' }",
+      "replace": "const { commit = 'Co-authored-by: Claudin', pr = '' }"
     }
   ]
 }

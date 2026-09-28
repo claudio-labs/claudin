@@ -1,36 +1,30 @@
 import { getClientType } from 'src/platform/bootstrap/state.js'
-import { getRemoteSessionUrl, isRemoteSessionLocal } from 'src/shared/constants/product.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
+import { getRemoteSessionUrl, isRemoteSessionLocal } from 'src/shared/constants/product.js'
 
-export type AttributionTexts = {
-  commit: string
-  pr: string
-}
+export type AttributionTexts = { commit: string; pr: string }
+
+const NOTHING: AttributionTexts = { commit: '', pr: '' }
 
 /**
- * Returns attribution text for commits and PRs.
- *
- * Claudin adds NO attribution by default. Users who want a commit trailer or a
- * PR footer can opt in by setting `attribution.commit` / `attribution.pr` in
- * settings.json — those strings are used verbatim.
+ * The text that ends a commit message and a pull request body. It is the
+ * user's to set, word for word, and nothing by default. A remote session
+ * ignores the settings: the remote runtime configures it, and the link back to
+ * the session is how its commits are traced.
  */
 export function getAttributionTexts(): AttributionTexts {
-  if (getClientType() === 'remote') {
-    const remoteSessionId = process.env.CLAUDE_CODE_REMOTE_SESSION_ID
-    if (remoteSessionId) {
-      const ingressUrl = process.env.SESSION_INGRESS_URL
-      // Skip for local dev - URLs won't persist
-      if (!isRemoteSessionLocal(remoteSessionId, ingressUrl)) {
-        const sessionUrl = getRemoteSessionUrl(remoteSessionId, ingressUrl)
-        return { commit: sessionUrl, pr: sessionUrl }
-      }
-    }
-    return { commit: '', pr: '' }
-  }
+  return getClientType() === 'remote' ? remoteSessionTexts() : configuredTexts()
+}
 
-  const settings = getInitialSettings()
-  return {
-    commit: settings.attribution?.commit ?? '',
-    pr: settings.attribution?.pr ?? '',
-  }
+function configuredTexts(): AttributionTexts {
+  const { commit = '', pr = '' } = getInitialSettings().attribution ?? {}
+  return { commit, pr }
+}
+
+function remoteSessionTexts(): AttributionTexts {
+  const sessionId = process.env.CLAUDE_CODE_REMOTE_SESSION_ID
+  const ingressUrl = process.env.SESSION_INGRESS_URL
+  if (!sessionId || isRemoteSessionLocal(sessionId, ingressUrl)) return { ...NOTHING }
+  const link = getRemoteSessionUrl(sessionId, ingressUrl)
+  return { commit: link, pr: link }
 }

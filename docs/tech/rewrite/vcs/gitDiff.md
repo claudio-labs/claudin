@@ -396,3 +396,13 @@ See finding 14.
 - **`diffStat.ts` and `gitStatusDelta.ts` stay pure leaves.**
 - **Attribution:** one function resolves the texts (remote session or settings). The commit-attribution state is pure functions plus a snapshot codec whose key order is part of the format.
 - **Types:** explicit throughout and no `any`. Keep every export of the contract table while its importers exist.
+
+## Outcome
+
+**Residue, reviewed.**
+- **`src/vcs/git/gitDiff/types.ts`, 7 lines of Claude Code.** The declarations of `GitDiffStats`, `PerFileStats`, `NumstatResult` and `GitDiffResult`, and the `perFileStats` and `hunks` fields of the last two. The contract table fixes those names, fields and types, and `useDiffData.ts`, `useWorkspaceDiff.ts` and `gitLog.ts` read them. They go when the contract is redesigned, after every consumer has been rewritten.
+- **`src/vcs/git/commitAttribution.ts`, 13 lines.** The counters of `AttributionState`, which are written into the transcript's attribution snapshots and read back on resume; the `sessionBaselines` and `surface` fields of a fresh state; and the signatures of `createEmptyAttributionState`, `attributionRestoreStateFromLog` and `incrementPromptCount`, which the REPL and the resume path call.
+- **`src/vcs/git/diff.ts`, 6 lines.** The exported `CONTEXT_LINES` and `DIFF_TIMEOUT_MS`, whose values the suite pins, and the signatures of `getPatchFromContents` and `getPatchForDisplay`, with the `ignoreWhitespace = false` default their callers rely on.
+- **`src/vcs/git/attribution.ts`, 2 lines.** The reads of `CLAUDE_CODE_REMOTE_SESSION_ID` and `SESSION_INGRESS_URL`. The remote session's environment sets those names, so they are protocol.
+
+The last three files were rewritten at their old paths. The baseline still allowed them their old counts, so the gate did not flag them, and they were reviewed by hand.

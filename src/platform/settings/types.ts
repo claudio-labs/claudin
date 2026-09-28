@@ -326,7 +326,7 @@ export const SettingsSchema = lazySchema(() =>
         .optional()
         .describe(
           'Customize attribution text for commits and PRs. ' +
-            'Each field defaults to the standard Claudin attribution if not set.',
+            'Nothing is added for a field that is not set.',
         ),
       includeGitInstructions: z
         .boolean()

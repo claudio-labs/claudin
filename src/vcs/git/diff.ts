@@ -1,167 +1,98 @@
 import { type StructuredPatchHunk, structuredPatch } from 'diff'
-import { addToTotalLinesChanged } from 'src/agent/cost-tracker.js'
-import type { FileEdit } from 'src/tools/FileEditTool/types.js'
-import { count } from 'src/shared/data/array.js'
+import { addToTotalLinesChanged } from 'src/platform/bootstrap/state.js'
 import { convertLeadingTabsToSpaces } from 'src/shared/fs/file.js'
+import type { FileEdit } from 'src/tools/FileEditTool/types.js'
+import { countAddDel } from 'src/vcs/git/diffStat.js'
 
 export const CONTEXT_LINES = 3
 export const DIFF_TIMEOUT_MS = 5_000
 
-/**
- * Shifts hunk line numbers by offset. Use when getPatchForDisplay received
- * a slice of the file (e.g. readEditContext) rather than the whole file —
- * callers pass `ctx.lineOffset - 1` to convert slice-relative to file-relative.
- */
-export function adjustHunkLineNumbers(
-  hunks: StructuredPatchHunk[],
-  offset: number,
-): StructuredPatchHunk[] {
-  if (offset === 0) return hunks
-  return hunks.map(h => ({
-    ...h,
-    oldStart: h.oldStart + offset,
-    newStart: h.newStart + offset,
-  }))
+/** Context wide enough to put every line of a file this long in one hunk. */
+const WHOLE_FILE_CONTEXT = 100_000
+
+type ContentsPatchRequest = {
+  filePath: string
+  oldContent: string
+  newContent: string
+  ignoreWhitespace?: boolean
+  singleHunk?: boolean
 }
 
-// For some reason, & confuses the diff library, so we replace it with a token,
-// then substitute it back in after the diff is computed.
-const AMPERSAND_TOKEN = '<<:AMPERSAND_TOKEN:>>'
-
-const DOLLAR_TOKEN = '<<:DOLLAR_TOKEN:>>'
-
-function escapeForDiff(s: string): string {
-  return s.replaceAll('&', AMPERSAND_TOKEN).replaceAll('$', DOLLAR_TOKEN)
+type DisplayPatchRequest = {
+  filePath: string
+  fileContents: string
+  edits: FileEdit[]
+  ignoreWhitespace?: boolean
 }
 
-function unescapeFromDiff(s: string): string {
-  return s.replaceAll(AMPERSAND_TOKEN, '&').replaceAll(DOLLAR_TOKEN, '$')
-}
-
-/**
- * Count lines added and removed in a patch and update the total
- * For new files, pass the content string as the second parameter
- * @param patch Array of diff hunks
- * @param newFileContent Optional content string for new files
- */
-export function countLinesChanged(
-  patch: StructuredPatchHunk[],
-  newFileContent?: string,
-): void {
-  let numAdditions = 0
-  let numRemovals = 0
-
-  if (patch.length === 0 && newFileContent) {
-    // For new files, count all lines as additions
-    numAdditions = newFileContent.split(/\r?\n/).length
-  } else {
-    numAdditions = patch.reduce(
-      (acc, hunk) => acc + count(hunk.lines, _ => _.startsWith('+')),
-      0,
-    )
-    numRemovals = patch.reduce(
-      (acc, hunk) => acc + count(hunk.lines, _ => _.startsWith('-')),
-      0,
-    )
-  }
-
-  addToTotalLinesChanged(numAdditions, numRemovals)
-}
-
+/** The hunks between two texts, exactly as the texts hold them. */
 export function getPatchFromContents({
   filePath,
   oldContent,
   newContent,
   ignoreWhitespace = false,
   singleHunk = false,
-}: {
-  filePath: string
-  oldContent: string
-  newContent: string
-  ignoreWhitespace?: boolean
-  singleHunk?: boolean
-}): StructuredPatchHunk[] {
-  const result = structuredPatch(
-    filePath,
-    filePath,
-    escapeForDiff(oldContent),
-    escapeForDiff(newContent),
-    undefined,
-    undefined,
-    {
-      ignoreWhitespace,
-      context: singleHunk ? 100_000 : CONTEXT_LINES,
-      timeout: DIFF_TIMEOUT_MS,
-    },
-  )
-  if (!result) {
-    return []
-  }
-  return result.hunks.map(_ => ({
-    ..._,
-    lines: _.lines.map(unescapeFromDiff),
-  }))
+}: ContentsPatchRequest): StructuredPatchHunk[] {
+  const patch = structuredPatch(filePath, filePath, oldContent, newContent, undefined, undefined, {
+    context: singleHunk ? WHOLE_FILE_CONTEXT : CONTEXT_LINES,
+    ignoreWhitespace,
+    timeout: DIFF_TIMEOUT_MS,
+  })
+  // A diff that runs out of time yields no patch; showing no change beats
+  // holding up the dialog that asked for it.
+  return patch?.hunks ?? []
 }
 
 /**
- * Get a patch for display with edits applied
- * @param filePath The path to the file
- * @param fileContents The contents of the file
- * @param edits An array of edits to apply to the file
- * @param ignoreWhitespace Whether to ignore whitespace changes
- * @returns An array of hunks representing the diff
- *
- * NOTE: This function will return the diff with all leading tabs
- * rendered as spaces for display
+ * The file as the edits leave it, against the file as it is. Leading tabs are
+ * shown as two spaces each, in the file and in the edits alike, so an edit
+ * written with spaces still finds a tab-indented line.
  */
-
 export function getPatchForDisplay({
   filePath,
   fileContents,
   edits,
   ignoreWhitespace = false,
-}: {
-  filePath: string
-  fileContents: string
-  edits: FileEdit[]
-  ignoreWhitespace?: boolean
-}): StructuredPatchHunk[] {
-  const preparedFileContents = escapeForDiff(
-    convertLeadingTabsToSpaces(fileContents),
-  )
-  const result = structuredPatch(
-    filePath,
-    filePath,
-    preparedFileContents,
-    edits.reduce((p, edit) => {
-      const { old_string, new_string } = edit
-      const replace_all = 'replace_all' in edit ? edit.replace_all : false
-      const escapedOldString = escapeForDiff(
-        convertLeadingTabsToSpaces(old_string),
-      )
-      const escapedNewString = escapeForDiff(
-        convertLeadingTabsToSpaces(new_string),
-      )
+}: DisplayPatchRequest): StructuredPatchHunk[] {
+  const before = convertLeadingTabsToSpaces(fileContents)
+  const after = edits.reduce((text, edit) => applyEdit(text, asDisplayed(edit)), before)
+  return getPatchFromContents({ filePath, oldContent: before, newContent: after, ignoreWhitespace })
+}
 
-      if (replace_all) {
-        return p.replaceAll(escapedOldString, () => escapedNewString)
-      } else {
-        return p.replace(escapedOldString, () => escapedNewString)
-      }
-    }, preparedFileContents),
-    undefined,
-    undefined,
-    {
-      context: CONTEXT_LINES,
-      ignoreWhitespace,
-      timeout: DIFF_TIMEOUT_MS,
-    },
-  )
-  if (!result) {
-    return []
+function asDisplayed(edit: FileEdit): FileEdit {
+  return {
+    old_string: convertLeadingTabsToSpaces(edit.old_string),
+    new_string: convertLeadingTabsToSpaces(edit.new_string),
+    replace_all: edit.replace_all,
   }
-  return result.hunks.map(_ => ({
-    ..._,
-    lines: _.lines.map(unescapeFromDiff),
-  }))
+}
+
+function applyEdit(text: string, { old_string, new_string, replace_all }: FileEdit): string {
+  // Through a function, the new text stays literal: `$&`, `$1` and `$$` are
+  // not replacement patterns here.
+  const replacement = (): string => new_string
+  return replace_all ? text.replaceAll(old_string, replacement) : text.replace(old_string, replacement)
+}
+
+export function adjustHunkLineNumbers(hunks: StructuredPatchHunk[], offset: number): StructuredPatchHunk[] {
+  if (offset === 0) return hunks
+  return hunks.map(hunk => ({ ...hunk, oldStart: hunk.oldStart + offset, newStart: hunk.newStart + offset }))
+}
+
+/**
+ * Adds a change to the session's lines-added and lines-removed totals. With
+ * no hunks, a written file counts all of its lines as added.
+ */
+export function countLinesChanged(patch: StructuredPatchHunk[], newFileContent?: string): void {
+  const { additions, deletions } =
+    patch.length > 0 ? countAddDel(patch) : { additions: countLines(newFileContent ?? ''), deletions: 0 }
+  if (additions > 0 || deletions > 0) addToTotalLinesChanged(additions, deletions)
+}
+
+/** A final newline ends the last line; it does not start one more. */
+function countLines(text: string): number {
+  if (text === '') return 0
+  let breaks = 0
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) breaks += 1
+  return text.endsWith('\n') ? breaks : breaks + 1
 }
