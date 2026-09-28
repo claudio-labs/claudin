@@ -384,6 +384,11 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   so a rewrite is attributable after the fact without `--debug`. Headless
   `-p` has no `[Cache:]` line; `scripts/bench/ab/cache-break-attribution-probe.ts`
   checks the debug log + diff file instead, and the REPL line is the live gate.
+- When the server says `messages changed` and every client hash matched, the
+  detector cannot say why. `CLAUDIN_CACHE_BREAK_DUMP=1` (or `=<dir>`) keeps the
+  last two wire bodies per tracked key and writes both, gzipped, on every
+  detected break (`cache-break-dumps/index.jsonl` in the Claude temp dir) —
+  diff them, or replay them through `scripts/bench/ab/wire-proxy.ts`.
 - A new tool whose result is disposable (read-only, re-runnable) sets
   `clearableResult: true` on the Tool; `clear_tool_inputs` is derived from the
   pool (`clearableToolNamesFromPool`). Don't add names to the fallback

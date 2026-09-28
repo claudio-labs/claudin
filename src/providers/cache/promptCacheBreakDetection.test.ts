@@ -1,8 +1,13 @@
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { gunzipSync } from 'zlib'
 import {
   _getPendingMarkerAdvanceForTesting,
   _getPendingMessageMutationForTesting,
+  _getWireBodiesForTesting,
   buildCacheBreakReason,
   checkResponseForCacheBreak,
   notifyCacheDeletion,
@@ -10,6 +15,7 @@ import {
   recordMarkerAdvance,
   recordPromptState,
   recordRenderedMessages,
+  recordWireBody,
   resetPromptCacheBreakDetection,
   summarizeAppliedContextEdits,
 } from 'src/providers/cache/promptCacheBreakDetection.js'
@@ -434,6 +440,66 @@ describe('tracking through a fan-out', () => {
     notifyCacheDeletion(AGENT_SOURCE, id, 'relief clip (3 tool results, ~90k tokens, window lane)')
     await checkResponseForCacheBreak(AGENT_SOURCE, 12_000, 300_000, [], id)
     expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+})
+
+describe('the break flight recorder (CLAUDIN_CACHE_BREAK_DUMP)', () => {
+  const saved = process.env.CLAUDIN_CACHE_BREAK_DUMP
+  let dir: string
+
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+    dir = mkdtempSync(join(tmpdir(), 'cache-break-dump-'))
+    process.env.CLAUDIN_CACHE_BREAK_DUMP = dir
+  })
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_CACHE_BREAK_DUMP
+    else process.env.CLAUDIN_CACHE_BREAK_DUMP = saved
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  const body = (tail: string) => ({ model: 'm', messages: [user('a'), user(tail)] })
+
+  async function request(tail: string, read: number, written: number): Promise<void> {
+    prime()
+    recordWireBody(SOURCE, undefined, body(tail))
+    recordRenderedMessages(SOURCE, undefined, body(tail).messages)
+    await checkResponseForCacheBreak(SOURCE, read, written, [])
+  }
+
+  test('a break writes the previous and the current body as they were sent', async () => {
+    await request('b', 200_000, 0)
+    await request('c', 15_000, 190_000)
+    const index = readFileSync(join(dir, 'index.jsonl'), 'utf8').trim().split('\n')
+    expect(index).toHaveLength(1)
+    const entry = JSON.parse(index[0]!) as { key: string; prev: string; cur: string; cacheRead: number }
+    expect(entry).toMatchObject({ key: SOURCE, cacheRead: 15_000 })
+    expect(JSON.parse(gunzipSync(readFileSync(entry.prev)).toString())).toEqual(body('b'))
+    expect(JSON.parse(gunzipSync(readFileSync(entry.cur)).toString())).toEqual(body('c'))
+  })
+
+  test('a healthy response writes nothing', async () => {
+    await request('b', 200_000, 0)
+    await request('c', 201_000, 1_000)
+    expect(readdirSync(dir)).toEqual([])
+  })
+
+  test('a retry of the same body does not push the previous one out', () => {
+    recordWireBody(SOURCE, undefined, body('b'))
+    recordWireBody(SOURCE, undefined, body('c'))
+    recordWireBody(SOURCE, undefined, body('c'))
+    expect(JSON.parse(_getWireBodiesForTesting(SOURCE)?.previous ?? 'null')).toEqual(body('b'))
+  })
+
+  test('off (unset or 0): nothing is held', () => {
+    for (const value of [undefined, '0']) {
+      resetPromptCacheBreakDetection()
+      if (value === undefined) delete process.env.CLAUDIN_CACHE_BREAK_DUMP
+      else process.env.CLAUDIN_CACHE_BREAK_DUMP = value
+      recordWireBody(SOURCE, undefined, body('b'))
+      expect(_getWireBodiesForTesting(SOURCE)).toBeUndefined()
+    }
   })
 })
 

@@ -201,6 +201,7 @@ import {
   readServerCacheMissReason,
   recordPromptState,
   recordRenderedMessages,
+  recordWireBody,
   type ServerCacheMissReason,
   summarizeAppliedContextEdits,
 } from "src/providers/cache/promptCacheBreakDetection.js";
@@ -1157,6 +1158,9 @@ export async function* queryModel(
 
         const params = paramsFromContext(context);
         captureAPIRequest(params, options.querySource); // Capture for bug reports
+        if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
+          recordWireBody(options.querySource, options.agentId, params);
+        }
         if (isCacheKeepAliveEnabled()) {
           const key = options.agentId ?? "main";
           noteRequestStarted(key);
