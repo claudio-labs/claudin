@@ -181,6 +181,28 @@ already rewritten. `scripts/verify/provenance/phases.ts` holds the mapping, and
 Every phase gets its own plan when it starts, drawn module by module from the
 inventory.
 
+### What the pilot measured (phase 1, finished 2026-09-28)
+
+**Result.** `src/skills` went from 2,264 inherited lines to 144. What remains
+is reviewed residue: contract-dictated declarations and generic idioms.
+Data-driven tests (`expect(text).toContain(…)` in a row) also match other
+test suites by shape, and the census counts them. Five module groups went
+through the whole process. Characterizing them found:
+- two security findings, recorded in the team bug memory;
+- about a dozen defects, which the rewrites fixed where no compatibility was at stake.
+
+**Cost.** Twelve sub-agent runs spent about 3.5 M tokens and 5.7 agent-hours
+on those 2,120 lines, some of them in parallel. That works out to roughly
+1.7 M tokens and 2.7 agent-hours per thousand inherited lines. The orchestrator's
+own reviews, gates and commits come on top.
+
+**What it means for the rest.** At the pilot's rate, the ~353 k lines left
+would cost on the order of 600 M tokens and 950 agent-hours. Three levers
+change that more than tuning the process would:
+- **Cut** what the product does not need: every cut line costs nothing to rewrite, as `/insights` showed.
+- **Replace** an inherited subsystem with a maintained MIT library where one fits. The renderer in phase 9 and the yoga port are the obvious candidates.
+- **Run several modules at once,** each in its own sandbox. Only break-probe runs have to be serialized.
+
 ## The final cut
 
 - **The gate reads zero across the tree.** Whatever residue remains is chance matches, or third-party text under its own license. It is reviewed file by file and acknowledged explicitly, never dropped from the measure.

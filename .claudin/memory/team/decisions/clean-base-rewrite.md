@@ -29,3 +29,6 @@ impact: structural
 **Evidence:**
 - Measured 2026-09-27 by distinctive line: production code is 55.7% Claude Code and 3.8% openclaude; tests are 87.7% own. With tokens, 361,433 inherited lines of 914k.
 - Calibration against opencode: 0.08% chance coverage. A renamed 80-line Claude Code block went red on 46 lines when probed.
+- **Pilot done 2026-09-28.** `src/skills` went from 2,264 inherited lines to 144 of reviewed residue.
+  - **Cost:** about 3.5 M sub-agent tokens and 5.7 agent-hours, roughly 1.7 M tokens per thousand lines. Extrapolated, the remaining ~353 k lines come to about 600 M tokens.
+  - **Levers before scaling:** cut, replace with an MIT library, or parallelize. See `docs/tech/rewrite/README.md`, "What the pilot measured".
