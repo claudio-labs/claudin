@@ -371,6 +371,15 @@ describe('relief policy — window lane via microcompactMessages', () => {
       expect.stringMatching(/^relief starved \(~\d+k short, window lane\)$/),
     ])
   })
+
+  // feature() reads false under bun test, so the notify behind it never runs
+  // here; the wiring is pinned on the source. A sub-agent's detector state
+  // lives under its agentId, so the announcement has to carry it.
+  test("the relief clip announces the drop under the agent's own key", async () => {
+    const { readFileSync } = await import('fs')
+    const source = readFileSync(`${import.meta.dir}/microCompact.ts`, 'utf8')
+    expect(source).toContain('notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)')
+  })
 })
 
 afterAll(() => {

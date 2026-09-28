@@ -357,8 +357,11 @@ function maybeReliefClip(
   // flagged as a regression. Gated to first-party transports (anthropic /
   // bedrock / vertex) — the OpenAI/Codex shim paths don't feed the same
   // detector state, so calling it there is a no-op write we'd rather skip.
+  // The agentId is the tracking key of a sub-agent: without it the flag lands
+  // on the querySource's key, which no sub-agent state lives under, and the
+  // agent's own clip is reported as a break.
   if (feature('PROMPT_CACHE_BREAK_DETECTION') && isFirstPartyTransport()) {
-    notifyCacheDeletion(querySource, undefined, reason)
+    notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)
   }
   // The `[Cache: …]` line names the knob that fired; sub-agents keep their
   // clips out of the main thread's line.
