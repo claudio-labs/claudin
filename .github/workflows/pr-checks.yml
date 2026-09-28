@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - rewrite/clean-base
 
 permissions:
   contents: read
@@ -76,6 +77,12 @@ jobs:
       # for what it ADDS. See scripts/verify/deadcode-ci.ts.
       - name: Dead code (new unused exports only)
         run: bun run deadcode:exports
+
+      # The clean-base rewrite's gate: no file may match more Claude Code or
+      # openclaude code than provenance-baseline.json allows, verbatim or with
+      # its identifiers renamed. See scripts/verify/provenance-ci.ts.
+      - name: Provenance (no new inherited code)
+        run: bun run provenance:ci
 
       - name: Smoke check
         run: bun run smoke
