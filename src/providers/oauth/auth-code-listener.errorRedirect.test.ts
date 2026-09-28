@@ -1,4 +1,4 @@
-import { expect, mock, test } from 'bun:test'
+import { afterAll, expect, mock, test } from 'bun:test'
 
 /**
  * `handleErrorRedirect` hands the pending HTTP response to a caller-supplied
@@ -50,6 +50,15 @@ async function freshListener() {
   return new AuthCodeListener('/callback')
 }
 
+// Two tests below replace logError. Bun never reverts a module mock, so the
+// real module goes back when the file is done, or every later suite that
+// reads logged errors finds none.
+const realLog = { ...(await import('src/shared/log.js')) }
+
+afterAll(() => {
+  mock.module('src/shared/log.js', () => realLog)
+})
+
 test('a handler that ends the response leaves nothing pending', async () => {
   const response = makeResponse()
   const listener = await freshListener()
@@ -66,7 +75,7 @@ test('a handler that ends the response leaves nothing pending', async () => {
 })
 
 test('a handler that does not end the response is closed automatically', async () => {
-  mock.module('src/shared/log.js', () => ({ logError: () => {} }))
+  mock.module('src/shared/log.js', () => ({ ...realLog, logError: () => {} }))
 
   const response = makeResponse()
   const listener = await freshListener()
@@ -84,6 +93,7 @@ test('a handler that does not end the response is closed automatically', async (
 test('a handler that throws falls back to a 500 and is logged', async () => {
   const loggedErrors: unknown[] = []
   mock.module('src/shared/log.js', () => ({
+    ...realLog,
     logError: (error: unknown) => {
       loggedErrors.push(error)
     },

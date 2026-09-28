@@ -17,6 +17,9 @@ const ts = '2026-04-02T00:00:00.000Z'
 // restoring an empty object instead leaves getAPIProvider() undefined for the
 // rest of the run (Bun never reverts a module mock on its own).
 const realProviders = { ...(await import('src/providers/model/providers.js')) }
+// The same for the start hooks: re-mocking them with `{}` left this file's hook
+// spy installed for every later suite that runs the real start hooks.
+const realSessionStart = { ...(await import('src/sessions/sessionStart.js')) }
 
 /**
  * Shape this test needs off the deserializer's output. The module is loaded
@@ -60,7 +63,8 @@ async function writeJsonl(entry: unknown): Promise<string> {
 }
 
 afterEach(async () => {
-  mock.module('./sessionStart.js', () => ({}))
+  mock.module('./sessionStart.js', () => realSessionStart)
+  mock.module('src/sessions/sessionStart.js', () => realSessionStart)
   mock.module('src/providers/model/providers.js', () => realProviders)
   if (originalSimple === undefined) delete process.env.CLAUDIN_SIMPLE
   else process.env.CLAUDIN_SIMPLE = originalSimple
