@@ -1,0 +1,234 @@
+{
+  "test": [
+    "src/vcs/git/git.characterization.test.ts",
+    "src/vcs/git/git.commands.characterization.test.ts",
+    "src/vcs/git/git.session.characterization.test.ts",
+    "src/vcs/git/detectRepository.characterization.test.ts",
+    "src/vcs/git/githubRepoPathMapping.characterization.test.ts",
+    "src/vcs/git/gitignore.characterization.test.ts",
+    "src/vcs/git/getWorktreePaths.characterization.test.ts"
+  ],
+  "source": "src/vcs/git/git.ts",
+  "probes": [
+    {
+      "name": "root: a .git file no longer marks a root",
+      "find": "        // .git can be a directory (regular repo) or file (worktree/submodule)\n        if (stat.isDirectory() || stat.isFile()) {\n",
+      "replace": "        // .git can be a directory (regular repo) or file (worktree/submodule)\n        if (stat.isDirectory()) {\n"
+    },
+    {
+      "name": "root: not NFC-normalized",
+      "find": "          return current.normalize('NFC')\n",
+      "replace": "          return current\n"
+    },
+    {
+      "name": "root: answers not remembered",
+      "find": "  path => path,\n",
+      "replace": "  path => `${path}#${Math.random()}`,\n"
+    },
+    {
+      "name": "root: memory no longer bounded in practice",
+      "find": "  path => path,\n  50,\n",
+      "replace": "  path => path,\n  5000,\n"
+    },
+    {
+      "name": "canonical: admin directory outside <common>/worktrees accepted",
+      "find": "      if (resolve(dirname(worktreeGitDir)) !== join(commonDir, 'worktrees')) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "canonical: back-link not checked",
+      "find": "      if (backlink !== join(realpathSync(gitRoot), '.git')) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "canonical: the .git file is resolved instead of its directory",
+      "find": "      if (backlink !== join(realpathSync(gitRoot), '.git')) {\n",
+      "replace": "      if (backlink !== realpathSync(join(gitRoot, '.git'))) {\n"
+    },
+    {
+      "name": "canonical: bare-repository worktree maps to the bare repo's parent",
+      "find": "      if (basename(commonDir) !== '.git') {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "nested: a found repository is not canonicalized",
+      "find": "        found.push(resolveCanonicalRoot(child.normalize('NFC')))\n",
+      "replace": "        found.push(child.normalize('NFC'))\n"
+    },
+    {
+      "name": "nested: target/ is no longer skipped",
+      "find": "  'target',\n",
+      "replace": "  'target-unused',\n"
+    },
+    {
+      "name": "gitExe: fallback is not the bare name",
+      "find": "  return whichSync('git') || 'git'\n",
+      "replace": "  return whichSync('git') || '/usr/local/bin/git'\n"
+    },
+    {
+      "name": "getIsGit: judges the process directory",
+      "find": "  const isGit = findGitRoot(getCwd()) !== null\n",
+      "replace": "  const isGit = findGitRoot(process.cwd()) !== null\n"
+    },
+    {
+      "name": "getBranch(cwd): the commit instead of the branch name",
+      "find": "      ['--no-optional-locks', 'rev-parse', '--abbrev-ref', 'HEAD'],\n",
+      "replace": "      ['--no-optional-locks', 'rev-parse', 'HEAD'],\n"
+    },
+    {
+      "name": "getAheadBehind: behind read from the ahead column",
+      "find": "  const behind = parseInt(parts[0], 10)\n",
+      "replace": "  const behind = parseInt(parts[1], 10)\n"
+    },
+    {
+      "name": "getIsClean: untracked files counted when told to ignore them",
+      "find": "    args.push('-uno')\n",
+      "replace": "    args.push('-unormal')\n"
+    },
+    {
+      "name": "getFileStatus: untracked entries misfiled",
+      "find": "      if (status === '??') {\n",
+      "replace": "      if (status === '!!') {\n"
+    },
+    {
+      "name": "stash: untracked files not added before stashing",
+      "find": "        ['add', ...untracked],\n",
+      "replace": "        ['add', '--dry-run', ...untracked],\n"
+    },
+    {
+      "name": "remote base: fallback order changed",
+      "find": "  const candidates = ['origin/main', 'origin/staging', 'origin/master']\n",
+      "replace": "  const candidates = ['origin/master', 'origin/staging', 'origin/main']\n"
+    },
+    {
+      "name": "remote base: the remote's HEAD branch starts deciding",
+      "find": "    ['remote', 'show', 'origin', '--', 'HEAD'],\n",
+      "replace": "    ['remote', 'show', 'origin'],\n"
+    },
+    {
+      "name": "bare check: a .git file no longer exempts the directory",
+      "find": "      // worktree/submodule — Git follows the gitdir reference\n      return false\n",
+      "replace": "      // worktree/submodule — Git follows the gitdir reference\n"
+    },
+    {
+      "name": "detect: non-github.com hosts reported as GitHub repositories",
+      "source": "src/vcs/git/detectRepository.ts",
+      "find": "  if (result.host !== 'github.com') return null\n",
+      "replace": "  if (result.host === 'none') return null\n"
+    },
+    {
+      "name": "detect: answer not remembered per cwd",
+      "source": "src/vcs/git/detectRepository.ts",
+      "find": "  if (repositoryWithHostCache.has(cwd)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "detect: clearRepositoryCaches keeps the cache",
+      "source": "src/vcs/git/detectRepository.ts",
+      "find": "  repositoryWithHostCache.clear()\n",
+      "replace": "  repositoryWithHostCache.size\n"
+    },
+    {
+      "name": "parse: http drops its port",
+      "source": "src/vcs/git/detectRepository.ts",
+      "find": "      protocol === 'https' || protocol === 'http'\n",
+      "replace": "      protocol === 'https'\n"
+    },
+    {
+      "name": "parse: SSH aliases and IP hosts accepted",
+      "source": "src/vcs/git/detectRepository.ts",
+      "find": "  return /^[a-zA-Z]+$/.test(lastSegment)\n",
+      "replace": "  return /^[a-zA-Z0-9-]+$/.test(lastSegment)\n"
+    },
+    {
+      "name": "parse: shorthand keeps its .git suffix",
+      "source": "src/vcs/git/detectRepository.ts",
+      "find": "      const repo = parts[1].replace(/\\.git$/, '')\n",
+      "replace": "      const repo = parts[1]\n"
+    },
+    {
+      "name": "mapping: key not lower-cased when recording",
+      "source": "src/vcs/git/githubRepoPathMapping.ts",
+      "find": "    // Normalize repo key to lowercase for case-insensitive matching\n    const repoKey = repo.toLowerCase()\n",
+      "replace": "    // Normalize repo key to lowercase for case-insensitive matching\n    const repoKey = repo\n"
+    },
+    {
+      "name": "mapping: launch directory recorded instead of the repository root",
+      "source": "src/vcs/git/githubRepoPathMapping.ts",
+      "find": "    const basePath = gitRoot ?? cwd\n",
+      "replace": "    const basePath = cwd\n"
+    },
+    {
+      "name": "mapping: current path appended instead of moved to the front",
+      "source": "src/vcs/git/githubRepoPathMapping.ts",
+      "find": "    const updatedPaths = [currentPath, ...withoutCurrent]\n",
+      "replace": "    const updatedPaths = [...withoutCurrent, currentPath]\n"
+    },
+    {
+      "name": "mapping: validation becomes case-sensitive",
+      "source": "src/vcs/git/githubRepoPathMapping.ts",
+      "find": "    return actualRepo.toLowerCase() === expectedRepo.toLowerCase()\n",
+      "replace": "    return actualRepo === expectedRepo\n"
+    },
+    {
+      "name": "mapping: an emptied repository keeps its key",
+      "source": "src/vcs/git/githubRepoPathMapping.ts",
+      "find": "    delete updatedMapping[repoKey]\n",
+      "replace": "    updatedMapping[repoKey] = updatedPaths\n"
+    },
+    {
+      "name": "ignore: a git failure reads as ignored",
+      "source": "src/vcs/git/gitignore.ts",
+      "find": "  return code === 0\n",
+      "replace": "  return code !== 1\n"
+    },
+    {
+      "name": "ignore: rule written without the **/ prefix",
+      "source": "src/vcs/git/gitignore.ts",
+      "find": "    const gitignoreEntry = `**/${filename}`\n",
+      "replace": "    const gitignoreEntry = `${filename}`\n"
+    },
+    {
+      "name": "ignore: rule written outside a repository",
+      "source": "src/vcs/git/gitignore.ts",
+      "find": "    if (!(await dirIsInGitRepo(cwd))) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "ignore: a rule already in the file is written again",
+      "source": "src/vcs/git/gitignore.ts",
+      "find": "      if (content.includes(gitignoreEntry)) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "worktrees: the rest sorted in reverse",
+      "source": "src/vcs/git/getWorktreePaths.ts",
+      "find": "    .sort((a, b) => a.localeCompare(b))\n",
+      "replace": "    .sort((a, b) => b.localeCompare(a))\n"
+    },
+    {
+      "name": "worktrees: a subdirectory of a worktree does not make it current",
+      "source": "src/vcs/git/getWorktreePaths.ts",
+      "find": "    path => cwd === path || cwd.startsWith(path + sep),\n",
+      "replace": "    path => cwd === path,\n"
+    },
+    {
+      "name": "portable worktrees: not NFC-normalized",
+      "source": "src/vcs/git/getWorktreePathsPortable.ts",
+      "find": "      .map(line => line.slice('worktree '.length).normalize('NFC'))\n",
+      "replace": "      .map(line => line.slice('worktree '.length))\n"
+    },
+    {
+      "name": "portable worktrees: a failure is not an empty list",
+      "source": "src/vcs/git/getWorktreePathsPortable.ts",
+      "find": "  } catch {\n    return []\n  }\n",
+      "replace": "  } catch {\n    return ['<failed>']\n  }\n"
+    },
+    {
+      "name": "worktree mode: switched off",
+      "source": "src/vcs/git/worktreeModeEnabled.ts",
+      "find": "  return true\n",
+      "replace": "  return false\n"
+    }
+  ]
+}
