@@ -1,0 +1,243 @@
+{
+  "test": [
+    "src/sessions/sessionLifecycle.characterization.test.ts",
+    "src/sessions/sessionLifecycle.restoreState.characterization.test.ts",
+    "src/sessions/sessionLifecycle.hooks.characterization.test.ts",
+    "src/sessions/sessionLifecycle.environment.characterization.test.ts",
+    "src/sessions/sessionLifecycle.signals.characterization.test.ts",
+    "src/sessions/sessionLifecycle.pidRecords.characterization.test.ts"
+  ],
+  "source": "src/sessions/sessionRestore.ts",
+  "probes": [
+    {
+      "name": "resume: a transcript from another project loses its project dir",
+      "find": "        opts.transcriptPath ? dirname(opts.transcriptPath) : null,\n",
+      "replace": "        null,\n"
+    },
+    {
+      "name": "resume: the running cost is not restored",
+      "find": "      restoreCostStateForResume(sid, result)\n",
+      "replace": "      void sid\n"
+    },
+    {
+      "name": "fork: the original session's worktree is taken over",
+      "find": "    opts.forkSession ? { ...result, worktreeSession: undefined } : result,\n",
+      "replace": "    result,\n"
+    },
+    {
+      "name": "resume: the transcript file is not adopted",
+      "find": "    adoptResumedSessionFile()\n",
+      "replace": "    void 0\n"
+    },
+    {
+      "name": "resume: an agent color of 'default' is reported as a color",
+      "find": "    agentColor: (result.agentColor === 'default'\n",
+      "replace": "    agentColor: (result.agentColor === 'none'\n"
+    },
+    {
+      "name": "agent: looked up among every defined agent, active or not",
+      "find": "  const resumedAgent = agentDefinitions.activeAgents.find(\n",
+      "replace": "  const resumedAgent = agentDefinitions.allAgents.find(\n"
+    },
+    {
+      "name": "todos: the first TodoWrite wins instead of the last",
+      "find": "  for (let i = messages.length - 1; i >= 0; i--) {\n",
+      "replace": "  for (let i = 0; i < messages.length; i++) {\n"
+    },
+    {
+      "name": "worktree: a worktree this run created is not recorded for the session",
+      "find": "  if (fresh) {\n    saveWorktreeState(fresh)\n    return\n  }\n",
+      "replace": "  if (fresh) {\n    return\n  }\n"
+    },
+    {
+      "name": "worktree: entering keeps the instruction files of the old directory",
+      "find": "  // chdir above silently repoints them at the wrong dir — clear it too.\n  clearMemoryFileCaches()\n",
+      "replace": "  // chdir above silently repoints them at the wrong dir — clear it too.\n"
+    },
+    {
+      "name": "worktree exit: stays in the worktree directory",
+      "find": "    process.chdir(current.originalCwd)\n",
+      "replace": "    process.chdir(current.worktreePath)\n"
+    },
+    {
+      "name": "session start: the main-thread agent type is not the fallback",
+      "source": "src/sessions/sessionStart.ts",
+      "find": "  const resolvedAgentType = agentType ?? getMainThreadAgentType()\n",
+      "replace": "  const resolvedAgentType = agentType\n"
+    },
+    {
+      "name": "session start: watch paths never reach the file watcher",
+      "source": "src/sessions/sessionStart.ts",
+      "find": "    updateWatchPaths(allWatchPaths)\n",
+      "replace": "    void allWatchPaths\n"
+    },
+    {
+      "name": "session start: plugin hooks load even when only managed hooks are allowed",
+      "source": "src/sessions/sessionStart.ts",
+      "find": "  if (shouldAllowManagedHooksOnly()) {\n    logForDebugging('Skipping plugin hooks - allowManagedHooksOnly is enabled')\n  } else {\n    // Ensure plugin hooks are loaded",
+      "replace": "  if (false) {\n    logForDebugging('Skipping plugin hooks - allowManagedHooksOnly is enabled')\n  } else {\n    // Ensure plugin hooks are loaded"
+    },
+    {
+      "name": "session start: a failed plugin-hook load aborts the start",
+      "source": "src/sessions/sessionStart.ts",
+      "find": "      logError(enhancedError)\n",
+      "replace": "      throw enhancedError\n"
+    },
+    {
+      "name": "session start: bare mode still loads plugin hooks",
+      "source": "src/sessions/sessionStart.ts",
+      "find": "  if (isBareMode()) {\n    return []\n  }\n  const hookMessages: HookResultMessage[] = []\n  const additionalContexts: string[] = []\n  const allWatchPaths: string[] = []\n",
+      "replace": "  const hookMessages: HookResultMessage[] = []\n  const additionalContexts: string[] = []\n  const allWatchPaths: string[] = []\n"
+    },
+    {
+      "name": "setup: the context attachment is not named Setup",
+      "source": "src/sessions/sessionStart.ts",
+      "find": "      hookName: 'Setup',\n",
+      "replace": "      hookName: 'Setup hooks',\n"
+    },
+    {
+      "name": "environment: file-changed files sort before cwd-changed ones",
+      "source": "src/sessions/sessionEnvironment.ts",
+      "find": "  cwdchanged: 2,\n  filechanged: 3,\n",
+      "replace": "  cwdchanged: 3,\n  filechanged: 2,\n"
+    },
+    {
+      "name": "environment: hook indexes sort as text",
+      "source": "src/sessions/sessionEnvironment.ts",
+      "find": "  return aIndex - bIndex\n",
+      "replace": "  return String(aIndex).localeCompare(String(bIndex))\n"
+    },
+    {
+      "name": "environment: the script is never cached",
+      "source": "src/sessions/sessionEnvironment.ts",
+      "find": "  if (sessionEnvScript !== undefined) {\n    return sessionEnvScript\n  }\n",
+      "replace": "  // no cache\n"
+    },
+    {
+      "name": "environment: invalidating keeps the cached script",
+      "source": "src/sessions/sessionEnvironment.ts",
+      "find": "  sessionEnvScript = undefined\n}\n",
+      "replace": "}\n"
+    },
+    {
+      "name": "environment: clearing empties the setup files too",
+      "source": "src/sessions/sessionEnvironment.ts",
+      "find": "            (f.startsWith('filechanged-hook-') ||\n",
+      "replace": "            (f.startsWith('setup-hook-') || f.startsWith('filechanged-hook-') ||\n"
+    },
+    {
+      "name": "state: the last transition is not remembered",
+      "source": "src/sessions/sessionState.ts",
+      "find": "  currentState = state\n",
+      "replace": "  void state\n"
+    },
+    {
+      "name": "state: the pending action is published empty",
+      "source": "src/sessions/sessionState.ts",
+      "find": "      pending_action: details,\n",
+      "replace": "      pending_action: null,\n"
+    },
+    {
+      "name": "state: running, not idle, clears the task summary",
+      "source": "src/sessions/sessionState.ts",
+      "find": "  if (state === 'idle') {\n",
+      "replace": "  if (state === 'running') {\n"
+    },
+    {
+      "name": "state: the SDK stream listens to another variable",
+      "source": "src/sessions/sessionState.ts",
+      "find": "  if (isEnvTruthy(process.env.CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS)) {\n",
+      "replace": "  if (isEnvTruthy(process.env.CLAUDE_CODE_EMIT_STATE_EVENTS)) {\n"
+    },
+    {
+      "name": "activity: the heartbeat interval is not 30 seconds",
+      "source": "src/sessions/sessionActivity.ts",
+      "find": "const SESSION_ACTIVITY_INTERVAL_MS = 30_000\n",
+      "replace": "const SESSION_ACTIVITY_INTERVAL_MS = 45_000\n"
+    },
+    {
+      "name": "activity: the heartbeat ignores the keep-alive switch",
+      "source": "src/sessions/sessionActivity.ts",
+      "find": "    if (isEnvTruthy(process.env.CLAUDE_CODE_REMOTE_SEND_KEEPALIVES)) {\n      activityCallback?.()\n    }\n  }, SESSION_ACTIVITY_INTERVAL_MS)\n",
+      "replace": "    activityCallback?.()\n  }, SESSION_ACTIVITY_INTERVAL_MS)\n"
+    },
+    {
+      "name": "activity: stopping drives the count below zero",
+      "source": "src/sessions/sessionActivity.ts",
+      "find": "  if (refcount > 0) {\n    refcount--\n  }\n",
+      "replace": "  refcount--\n"
+    },
+    {
+      "name": "activity: registering during work does not start the heartbeat",
+      "source": "src/sessions/sessionActivity.ts",
+      "find": "  if (refcount > 0 && heartbeatTimer === null) {\n    startHeartbeatTimer()\n  }\n",
+      "replace": "  void heartbeatTimer\n"
+    },
+    {
+      "name": "title: the conversation keeps its head instead of its tail",
+      "source": "src/sessions/sessionTitle.ts",
+      "find": "    ? text.slice(-MAX_CONVERSATION_TEXT)\n",
+      "replace": "    ? text.slice(0, MAX_CONVERSATION_TEXT)\n"
+    },
+    {
+      "name": "title: messages from other agents count as typed",
+      "source": "src/sessions/sessionTitle.ts",
+      "find": "msg.origin.kind !== 'human'",
+      "replace": "msg.origin.kind === 'task-notification'"
+    },
+    {
+      "name": "title: the description is sent untrimmed",
+      "source": "src/sessions/sessionTitle.ts",
+      "find": "      userPrompt: trimmed,\n",
+      "replace": "      userPrompt: description,\n"
+    },
+    {
+      "name": "title: a failed call gives no title",
+      "source": "src/sessions/sessionTitle.ts",
+      "find": "    return 'Claudin'\n",
+      "replace": "    return null\n"
+    },
+    {
+      "name": "record: teammates register too",
+      "source": "src/sessions/concurrentSessions.ts",
+      "find": "  if (getAgentId() != null) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "record: an existing directory keeps its looser mode",
+      "source": "src/sessions/concurrentSessions.ts",
+      "find": "    await chmod(dir, 0o700)\n",
+      "replace": "    await chmod(dir, 0o755)\n"
+    },
+    {
+      "name": "record: a session switch is not followed",
+      "source": "src/sessions/concurrentSessions.ts",
+      "find": "      void updatePidFile({ sessionId: id })\n",
+      "replace": "      void id\n"
+    },
+    {
+      "name": "count: stale records are kept",
+      "source": "src/sessions/concurrentSessions.ts",
+      "find": "      void unlink(join(dir, file)).catch(() => {})\n",
+      "replace": "      void file\n"
+    },
+    {
+      "name": "count: any file starting like <digits>.json is a candidate",
+      "source": "src/sessions/concurrentSessions.ts",
+      "find": "    if (!/^\\d+\\.json$/.test(file)) continue\n",
+      "replace": "    if (!/^-?\\d+\\.json/.test(file)) continue\n"
+    },
+    {
+      "name": "live list: this process's own record is listed",
+      "source": "src/sessions/concurrentSessions.ts",
+      "find": "    if (pid === deps.ownPid || !deps.isAlive(pid)) continue\n",
+      "replace": "    if (!deps.isAlive(pid)) continue\n"
+    },
+    {
+      "name": "env vars: the map starts non-empty",
+      "source": "src/sessions/sessionEnvVars.ts",
+      "find": "const sessionEnvVars = new Map<string, string>()\n",
+      "replace": "const sessionEnvVars = new Map<string, string>([['LEAKED', '1']])\n"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "pid": "<pid>",
+  "sessionId": "<session id>",
+  "cwd": "<original cwd>",
+  "startedAt": "<epoch ms>",
+  "kind": "interactive",
+  "entrypoint": "sdk-ts"
+}

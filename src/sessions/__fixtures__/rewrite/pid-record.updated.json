@@ -1,0 +1,16 @@
+{
+  "pid": "<pid>",
+  "sessionId": "<session id>",
+  "cwd": "/work/tree",
+  "startedAt": "<epoch ms>",
+  "kind": "interactive",
+  "entrypoint": "sdk-ts",
+  "name": "Scout",
+  "bridgeSessionId": "bridge-42",
+  "messagingSocketPath": "/run/inbox.sock",
+  "messagingToken": "secret-token",
+  "status": "busy",
+  "turnActive": true,
+  "runningAgents": 2,
+  "costUSD": 1.25
+}
