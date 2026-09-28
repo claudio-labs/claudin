@@ -92,9 +92,8 @@ often the *point* of the sentence: the resolution table above,
 re-opens the bucket"), `typecheck-backlog-shape` ("the reorg dissolved
 `src/services/`"), `mechanical-rewrites-skip-producers` (which is about the
 rewrite itself), `memory-delta-removed-double-send` (that file is genuinely
-gone), `worktree-agent-edits-leak-to-main-checkout` (an incident report), and
-every openclaude path in `openclaude-sibling-fork-reference`, which names
-*their* tree, not ours. Read the sentence before fixing the path.
+gone), `worktree-agent-edits-leak-to-main-checkout` (an incident report).
+Read the sentence before fixing the path.
 
 Related: [[reorg-catch-all-dirs-retired]] for what the slices are and what
 enforces them, [[mechanical-rewrites-skip-producers]] for the same blind spot

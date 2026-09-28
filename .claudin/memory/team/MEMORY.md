@@ -178,7 +178,6 @@
 - ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25; display (summarized too) cache-neutral; sub-agents inherit thinking
 
 ## References (sibling repos, wire formats, archives)
-- [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked from 9e23c2be (04-25); ~5.5% of lines theirs; LICENSE attribution deferred; 17/28 bug claims real
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win; 4 ideas kept
 - [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — auto-format, LSP-diagnostics-on-edit, ACP/Zed, part-revert · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow

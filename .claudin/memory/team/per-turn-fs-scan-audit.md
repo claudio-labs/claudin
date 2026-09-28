@@ -36,7 +36,7 @@ any cwd-sensitive memo.
    (unbounded fd usage) and applies `MAX_MEMORY_FILES=200` *after* reading them
    all, with `maxBytes: undefined`. openclaude's counterpart (255 lines vs our
    101) already streams a generator through 8 workers and caps headers at 64 KB —
-   see [[openclaude-sibling-fork-reference]].
+   `../openclaude`.
    **Measured, do not chase:** `scripts/bench/perf/memory-bench.ts` (baseline in
    `scripts/bench/perf/README.md:234-253`) puts this at ~0.014 ms/file, flat —
    2.77 ms p50 at 200 files, ~1 ms at this repo's 72. The round-1 "concurrency

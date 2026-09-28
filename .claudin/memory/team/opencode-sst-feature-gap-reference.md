@@ -4,7 +4,7 @@ description: Port-candidate backlog comparing the SST opencode monorepo at ../op
 type: reference
 ---
 
-`../opencode` is the SST opencode monorepo (Effect/Layer everywhere; agent core in `packages/opencode/src`). Distinct from `../openclaude` (gitlawb fork — see openclaude-sibling-fork-reference.md). Scouted 2026-06-24 for features claudin lacks.
+`../opencode` is the SST opencode monorepo (Effect/Layer everywhere; agent core in `packages/opencode/src`). Distinct from `../openclaude` (gitlawb). Scouted 2026-06-24 for features claudin lacks.
 
 **Already in claudin (NOT gaps — verified against Claude Code inheritance):** markdown custom agents (`loadPluginAgents.ts`/`markdownConfigLoader.ts`), markdown slash commands w/ $ARGUMENTS/@file/!`shell`, wildcard permission allow/deny/ask (`settings/types.ts` PermissionsSchema), hooks, fork/auto-background subagents, read-only 9-op LSPTool, /resume + auto-compaction + auto-memory.
 
