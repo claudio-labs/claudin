@@ -4,7 +4,7 @@
  * Two constraints from our own loader drive the whole translation:
  *
  * 1. **`paths` is the ONLY frontmatter key a rule may set**
- *    (`RULE_FRONTMATTER_SUPPORTED_KEYS`, `src/memory/instructions/ruleFrontmatter.ts:20`).
+ *    (`RULE_FRONTMATTER_SUPPORTED_KEYS` in `src/memory/instructions/ruleFrontmatter.ts`).
  *    Carrying Cursor's `description` or `globs` across would each be an *error*
  *    finding in `bun run verify:rules` — and `globs:` specifically produces the
  *    documented Class B failure: the rule gets no patterns, falls into the
