@@ -1,0 +1,26 @@
+{
+  "test": "src/tools/shared/outputFilter/Bash/groupMatchLines.test.ts",
+  "source": "src/tools/shared/outputFilter/Bash/groupMatchLines.ts",
+  "probes": [
+    {
+      "name": "timestamps: a split at the clock is dropped",
+      "find": "    ? CLOCK_PATH_TAIL_RE.test(path) && CLOCK_REST_RE.test(rest)\n",
+      "replace": "    ? false\n"
+    },
+    {
+      "name": "timestamps: a split inside a date is dropped",
+      "find": "    : DATE_PATH_TAIL_RE.test(path) && DATE_REST_RE.test(rest);\n",
+      "replace": "    : false;\n"
+    },
+    {
+      "name": "timestamps: the check is applied to every reading",
+      "find": "    if (path !== \"\" && !isTimestampSplit(path, colon, rest)) {\n",
+      "replace": "    if (path !== \"\") {\n"
+    },
+    {
+      "name": "timestamps: the clock rule does not swallow a real line number",
+      "find": "const CLOCK_PATH_TAIL_RE = /(?:^|\\D)\\d{1,2}$/;\n",
+      "replace": "const CLOCK_PATH_TAIL_RE = /./;\n"
+    }
+  ]
+}

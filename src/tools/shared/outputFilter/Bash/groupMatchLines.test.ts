@@ -113,6 +113,25 @@ describe("groupMatchLines", () => {
     );
   });
 
+  test("a log file's match lines still group by the file, dates and all", () => {
+    const raw = [
+      // Line 12 whose text opens with `34:56`: the split at `:12:` is the
+      // real one even though what follows looks like a clock.
+      "app.log:12:34:56 start",
+      "app.log:40:2026-09-28 14:20:00 stop",
+      "b.log:7:12:00:00 tick",
+    ].join("\n");
+    expect(groupMatchLines(raw)).toBe(
+      [
+        "app.log",
+        "12:34:56 start",
+        "40:2026-09-28 14:20:00 stop",
+        "b.log",
+        "7:12:00:00 tick",
+      ].join("\n"),
+    );
+  });
+
   describe("declines", () => {
     // Anything unaccounted for aborts the whole reshape: grouping what was
     // recognised and passing the rest through would move lines past each other.
@@ -138,6 +157,27 @@ describe("groupMatchLines", () => {
 
     test("on an empty body", () => {
       expect(groupMatchLines("")).toBeNull();
+    });
+
+    // The report that surfaced it: grouped, every line lost its `HH:` and the
+    // hour became a "file".
+    test("on lines that open with a clock time", () => {
+      const raw = [
+        "09-28T04:07:25 5m gap 0.1 call# 10",
+        "09-28T04:34:57 5m gap 2.7 call# 7",
+        "09-28T05:25:36 5m gap 0.1 call# 37",
+      ].join("\n");
+      expect(groupMatchLines(raw)).toBeNull();
+    });
+
+    test("on lines that open with a date", () => {
+      // Two years, so the `2025`/`2026` readings would make two "files".
+      const raw = [
+        "2025-12-31 23:59:00 stop",
+        "2026-01-01 00:00:01 start",
+        "2026-01-01 00:00:02 tick",
+      ].join("\n");
+      expect(groupMatchLines(raw)).toBeNull();
     });
   });
 
