@@ -1,42 +1,46 @@
+/**
+ * The switch in front of the syntax renderer (src/native-ts/color-diff).
+ *
+ * CLAUDIN_SYNTAX_HIGHLIGHT turns highlighting off when it holds 0, false, no
+ * or off, in any case and with blanks around it. Any other value, or none,
+ * leaves it on. The variable is read on every call, so a change applies at
+ * the next one. While highlighting is off every accessor answers null, and
+ * the callers draw plain text instead.
+ */
 import {
   ColorDiff,
   ColorFile,
   EditorHighlighter,
-  getSyntaxTheme as nativeGetSyntaxTheme,
+  getSyntaxTheme as getRendererSyntaxTheme,
   type SyntaxTheme,
 } from 'src/native-ts/color-diff/index.js'
-import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 export type ColorModuleUnavailableReason = 'env'
 
-/**
- * Returns a static reason why the color-diff module is unavailable, or null if available.
- * 'env' = disabled via CLAUDIN_SYNTAX_HIGHLIGHT
- *
- * The TS port of color-diff works in all build modes, so the only way to
- * disable it is via the env var.
- */
+const SWITCHED_OFF: ReadonlySet<string> = new Set(['0', 'false', 'no', 'off'])
+
 export function getColorModuleUnavailableReason(): ColorModuleUnavailableReason | null {
-  if (isEnvDefinedFalsy(process.env.CLAUDIN_SYNTAX_HIGHLIGHT)) {
-    return 'env'
-  }
-  return null
+  const setting = process.env.CLAUDIN_SYNTAX_HIGHLIGHT
+  if (setting === undefined) return null
+  return SWITCHED_OFF.has(setting.trim().toLowerCase()) ? 'env' : null
+}
+
+function isAvailable(): boolean {
+  return getColorModuleUnavailableReason() === null
 }
 
 export function expectColorDiff(): typeof ColorDiff | null {
-  return getColorModuleUnavailableReason() === null ? ColorDiff : null
+  return isAvailable() ? ColorDiff : null
 }
 
 export function expectColorFile(): typeof ColorFile | null {
-  return getColorModuleUnavailableReason() === null ? ColorFile : null
+  return isAvailable() ? ColorFile : null
 }
 
 export function expectEditorHighlighter(): typeof EditorHighlighter | null {
-  return getColorModuleUnavailableReason() === null ? EditorHighlighter : null
+  return isAvailable() ? EditorHighlighter : null
 }
 
 export function getSyntaxTheme(themeName: string): SyntaxTheme | null {
-  return getColorModuleUnavailableReason() === null
-    ? nativeGetSyntaxTheme(themeName)
-    : null
+  return isAvailable() ? getRendererSyntaxTheme(themeName) : null
 }

@@ -1,6 +1,6 @@
 ---
 name: code-views-honour-sgr-and-osc8
-description: Escape sequences in file content reach the terminal in code views — SGR can hide part of an added line in a permission-dialog diff, OSC 8 plants a clickable link; the diff renderer's rewrite strips them, HighlightedCode and /diff's pane unchecked (2026-09-28)
+description: Escape sequences in file content reach the terminal in code views — SGR can hide part of a line, OSC 8 plants a clickable link; FIXED in the structured diff 2026-09-28, HighlightedCode and /diff's pane still unchecked
 type: project
 ---
 
@@ -8,4 +8,4 @@ type: project
 
 **Where:** the structured diff (`src/vcs/diff/structured/`), on both the highlighted and the plain path. Neither `src/terminal/highlighted-code/` (file previews) nor `src/vcs/diff/ui/` (the /diff pane) strips escapes either; whether they pass SGR/OSC 8 through was not tested.
 
-**Status 2026-09-28:** the clean-base rewrite of the structured diff strips escape sequences and C0 controls (tab excepted) from each hunk line as hardening (`docs/tech/rewrite/vcs/structuredDiff.md`, Security requirements). Check the other two views with a file holding `ESC[8m` and an OSC 8 link before assuming they are safe.
+**Status 2026-09-28:** fixed in the structured diff. Its clean-base rewrite runs one sanitizer (`src/vcs/diff/structured/hunk/sanitize.ts`) before both paths, stripping escape sequences with their payloads and every control character but tab, DEL and C1 included; tests and probes pin it. Still open: check `src/terminal/highlighted-code/` and `src/vcs/diff/ui/` with a file holding `ESC[8m` and an OSC 8 link before assuming they are safe, and reuse that sanitizer if they are not.

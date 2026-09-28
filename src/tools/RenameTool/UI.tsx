@@ -41,11 +41,6 @@ function FileDiff({
         <Text color="success">{'  +'}{file.additions}</Text>
         <Text color="error">{' −'}{file.deletions}</Text>
       </Box>
-      {/*
-        StructuredDiffList returns one node per hunk, so this Box has to stack
-        them. Without the explicit column direction they lay out side by side
-        and a two-hunk file renders as overlapping columns.
-      */}
       <Box flexDirection="column" marginLeft={3}>
         <StructuredDiffList
           hunks={file.structuredPatch}

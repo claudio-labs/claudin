@@ -1,235 +1,631 @@
 {
   "test": [
     "src/vcs/diff/structured/structuredDiff.characterization.test.tsx",
-    "src/vcs/diff/structured/colorDiff.characterization.test.ts"
+    "src/vcs/diff/structured/colorDiff.characterization.test.ts",
+    "src/vcs/diff/structured/StructuredDiff.test.tsx",
+    "src/vcs/diff/structured/hunk/sanitize.test.ts",
+    "src/vcs/diff/structured/hunk/lines.test.ts",
+    "src/vcs/diff/structured/layout/wrap.test.ts",
+    "src/vcs/diff/structured/fallback/wordChanges.test.ts",
+    "src/vcs/diff/structured/fallback/rows.test.ts",
+    "src/vcs/diff/structured/highlighted/path.test.ts",
+    "src/vcs/diff/structured/highlighted/picture.test.ts"
   ],
   "source": "src/vcs/diff/structured/StructuredDiff.tsx",
   "probes": [
     {
-      "name": "gate: the variable no longer turns highlighting off",
+      "name": "switch: \"off\" turns highlighting off",
       "source": "src/vcs/diff/structured/colorDiff.ts",
-      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_SYNTAX_HIGHLIGHT)) {\n",
-      "replace": "  if (false) {\n"
+      "find": "new Set(['0', 'false', 'no', 'off'])",
+      "replace": "new Set(['0', 'false', 'no'])"
     },
     {
-      "name": "gate: ColorDiff handed out while highlighting is off",
+      "name": "switch: the value is trimmed",
       "source": "src/vcs/diff/structured/colorDiff.ts",
-      "find": "return getColorModuleUnavailableReason() === null ? ColorDiff : null",
+      "find": "SWITCHED_OFF.has(setting.trim().toLowerCase())",
+      "replace": "SWITCHED_OFF.has(setting.toLowerCase())"
+    },
+    {
+      "name": "switch: the value is compared without regard to case",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "SWITCHED_OFF.has(setting.trim().toLowerCase())",
+      "replace": "SWITCHED_OFF.has(setting.trim())"
+    },
+    {
+      "name": "switch: an unset variable leaves highlighting on",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "if (setting === undefined) return null",
+      "replace": "if (setting === undefined) return 'env'"
+    },
+    {
+      "name": "switch: expectColorDiff answers null while highlighting is off",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "return isAvailable() ? ColorDiff : null",
       "replace": "return ColorDiff"
     },
     {
-      "name": "gate: ColorFile withheld while highlighting is on",
+      "name": "switch: expectColorFile hands out the renderer's class",
       "source": "src/vcs/diff/structured/colorDiff.ts",
-      "find": "=== null ? ColorFile : null",
-      "replace": "=== null ? null : null"
+      "find": "return isAvailable() ? ColorFile : null",
+      "replace": "return null"
     },
     {
-      "name": "gate: EditorHighlighter handed out while highlighting is off",
+      "name": "switch: expectEditorHighlighter hands out the renderer's class",
       "source": "src/vcs/diff/structured/colorDiff.ts",
-      "find": "=== null ? EditorHighlighter : null",
-      "replace": "=== null ? EditorHighlighter : EditorHighlighter"
+      "find": "return isAvailable() ? EditorHighlighter : null",
+      "replace": "return isAvailable() ? null : EditorHighlighter"
     },
     {
-      "name": "gate: the palette of another theme",
+      "name": "switch: getSyntaxTheme describes the theme it is asked about",
       "source": "src/vcs/diff/structured/colorDiff.ts",
-      "find": "    ? nativeGetSyntaxTheme(themeName)\n",
-      "replace": "    ? nativeGetSyntaxTheme('light')\n"
+      "find": "getRendererSyntaxTheme(themeName) : null",
+      "replace": "getRendererSyntaxTheme('dark') : null"
     },
     {
-      "name": "gate: a palette while highlighting is off",
-      "source": "src/vcs/diff/structured/colorDiff.ts",
-      "find": "    : null\n}",
-      "replace": "    : nativeGetSyntaxTheme(themeName)\n}"
+      "name": "path: skipHighlighting draws the fallback",
+      "source": "src/vcs/diff/structured/highlighted/path.ts",
+      "find": "return skipHighlighting || highlightingDisabled || unavailableReason !== null",
+      "replace": "return highlightingDisabled || unavailableReason !== null"
     },
     {
-      "name": "list: another separator",
+      "name": "path: the syntaxHighlightingDisabled setting draws the fallback",
+      "source": "src/vcs/diff/structured/highlighted/path.ts",
+      "find": "return skipHighlighting || highlightingDisabled || unavailableReason !== null",
+      "replace": "return skipHighlighting || unavailableReason !== null"
+    },
+    {
+      "name": "path: CLAUDIN_SYNTAX_HIGHLIGHT draws the fallback",
+      "source": "src/vcs/diff/structured/highlighted/path.ts",
+      "find": "return skipHighlighting || highlightingDisabled || unavailableReason !== null",
+      "replace": "return skipHighlighting || highlightingDisabled"
+    },
+    {
+      "name": "StructuredDiff: the setting is read from the app state",
+      "find": "highlightingDisabled: settings.syntaxHighlightingDisabled === true,",
+      "replace": "highlightingDisabled: false,"
+    },
+    {
+      "name": "StructuredDiff: the switch is read when the diff renders",
+      "find": "unavailableReason: getColorModuleUnavailableReason(),",
+      "replace": "unavailableReason: null,"
+    },
+    {
+      "name": "StructuredDiff: the renderer draws in the theme in effect",
+      "find": "            themeName,\n",
+      "replace": "            themeName: 'dark' as const,\n"
+    },
+    {
+      "name": "StructuredDiff: the width is rounded down, and at least one",
+      "find": "const columns = effectiveWidth(width)",
+      "replace": "const columns = Math.max(1, Math.ceil(width))"
+    },
+    {
+      "name": "StructuredDiff: dim reaches the renderer",
+      "find": "            dim,\n",
+      "replace": "            dim: false,\n"
+    },
+    {
+      "name": "StructuredDiff: the file path reaches the renderer",
+      "find": "            filePath,\n",
+      "replace": "            filePath: 'plain.txt',\n"
+    },
+    {
+      "name": "StructuredDiff: the first line reaches the renderer",
+      "find": "            firstLine,\n",
+      "replace": "            firstLine: null,\n"
+    },
+    {
+      "name": "StructuredDiff: the renderer's rows are painted as they are",
+      "find": "return <RawAnsi lines={picture.rows} width={width} />",
+      "replace": "return <RawAnsi lines={picture.rows.slice(1)} width={width} />"
+    },
+    {
+      "name": "StructuredDiff: fullscreen paints the code column beside the gutter",
+      "find": "<RawAnsi lines={picture.code} width={width - picture.gutterWidth} />",
+      "replace": "<RawAnsi lines={picture.gutter} width={width - picture.gutterWidth} />"
+    },
+    {
+      "name": "StructuredDiff: the fallback is drawn with dim",
+      "find": "<StructuredDiffFallback patch={patch} dim={dim} width={columns} />",
+      "replace": "<StructuredDiffFallback patch={patch} dim={false} width={columns} />"
+    },
+    {
+      "name": "picture: a kept picture is keyed by the theme",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "JSON.stringify([\n    request.themeName,",
+      "replace": "JSON.stringify([\n    'dark',"
+    },
+    {
+      "name": "picture: a kept picture is keyed by the width",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "request.themeName,\n    request.width,\n    request.dim,\n    request.filePath,",
+      "replace": "request.themeName,\n    request.dim,\n    request.filePath,"
+    },
+    {
+      "name": "picture: a kept picture is keyed by dim",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "request.dim,\n    request.filePath,",
+      "replace": "request.filePath,"
+    },
+    {
+      "name": "picture: a kept picture is keyed by the file path",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "request.filePath,\n    request.firstLine,\n    request.fenced,",
+      "replace": "request.firstLine,\n    request.fenced,"
+    },
+    {
+      "name": "picture: a kept picture is keyed by the first line",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "request.firstLine,\n    request.fenced,",
+      "replace": "request.fenced,"
+    },
+    {
+      "name": "picture: a kept picture is keyed by the fence",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "    request.fenced,\n  ])",
+      "replace": "  ])"
+    },
+    {
+      "name": "picture: a remount does not run the renderer again",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "if (kept.has(key)) {",
+      "replace": "if (kept.has(key) && Math.random() > 2) {"
+    },
+    {
+      "name": "picture: only a few pictures are kept per hunk",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "const PICTURES_PER_HUNK = 8",
+      "replace": "const PICTURES_PER_HUNK = 800"
+    },
+    {
+      "name": "picture: the renderer drawing nothing hands over to the fallback",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "if (drawn === null) return null",
+      "replace": "if (drawn === null) return { kind: 'whole', rows: [] }"
+    },
+    {
+      "name": "picture: the renderer only sees the sanitized hunk (security)",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "separateNotes(sanitizeHunk(request.hunk))",
+      "replace": "separateNotes(request.hunk)"
+    },
+    {
+      "name": "picture: notes are kept out of the renderer's hunk",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "const { hunk, notes } = separateNotes(sanitizeHunk(request.hunk))",
+      "replace": "const { hunk, notes } = { hunk: sanitizeHunk(request.hunk), notes: [] }"
+    },
+    {
+      "name": "picture: a note goes under the rows of the line it qualifies",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "placed.push(...rows.slice(start, firstRows[line + 1] ?? rows.length), ...notesAfter(line))",
+      "replace": "placed.push(...rows.slice(start, firstRows[line + 1] ?? rows.length))"
+    },
+    {
+      "name": "picture: a line's first row is the one that carries a number",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "DIGIT.test(stripAnsi(row).charAt(digits))",
+      "replace": "DIGIT.test(stripAnsi(row).charAt(digits - 1))"
+    },
+    {
+      "name": "picture: rows that do not map onto the lines are all kept",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "firstRows.length !== lineCount || (rows.length > 0 && firstRows[0] !== 0)",
+      "replace": "firstRows.length !== lineCount"
+    },
+    {
+      "name": "picture: a note is drawn in the quiet colour",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "color('inactive', request.themeName)",
+      "replace": "color('text', request.themeName)"
+    },
+    {
+      "name": "picture: the fence covers exactly the gutter",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "code: rows.map(row => sliceAnsi(row, gutterWidth)),",
+      "replace": "code: rows.map(row => sliceAnsi(row, gutterWidth + 1)),"
+    },
+    {
+      "name": "picture: nothing is fenced when the gutter is as wide as the diff",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "gutterWidth >= request.width",
+      "replace": "gutterWidth > request.width"
+    },
+    {
+      "name": "picture: the gutter follows the side whose last line is larger",
+      "source": "src/vcs/diff/structured/highlighted/picture.ts",
+      "find": "Math.max(1, hunk.oldStart + hunk.oldLines - 1, hunk.newStart + hunk.newLines - 1)",
+      "replace": "Math.max(1, hunk.oldStart + hunk.oldLines - 1)"
+    },
+    {
+      "name": "sanitize: escape sequences and control characters are stripped (security)",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "return expandTabs(code.replace(TERMINAL_CONTROL, ''))",
+      "replace": "return expandTabs(code)"
+    },
+    {
+      "name": "sanitize: a string sequence goes with its payload (OSC 8)",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "(?:\\u001B[\\]PX^_]|",
+      "replace": "(?:\\u001B[PX^_]|"
+    },
+    {
+      "name": "sanitize: a control sequence goes whole (SGR, CSI)",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "(?:\\u001B\\[|\\u009B)[0-?]*[ -/]*[@-~]|",
+      "replace": ""
+    },
+    {
+      "name": "sanitize: a carriage return goes",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "\\u000A-\\u001F\\u007F-\\u009F]/g",
+      "replace": "\\u000A-\\u000C\\u000E-\\u001F\\u007F-\\u009F]/g"
+    },
+    {
+      "name": "sanitize: C1 control characters go",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "\\u007F-\\u009F]/g",
+      "replace": "\\u007F]/g"
+    },
+    {
+      "name": "sanitize: tabs are expanded",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "return expandTabs(code.replace(TERMINAL_CONTROL, ''))",
+      "replace": "return code.replace(TERMINAL_CONTROL, '')"
+    },
+    {
+      "name": "sanitize: tab stops count from the start of the code",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "let column = stringWidth(expanded)",
+      "replace": "let column = 1 + stringWidth(expanded)"
+    },
+    {
+      "name": "sanitize: tab stops count wide characters by their columns",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "column += gap + stringWidth(piece)",
+      "replace": "column += gap + piece.length"
+    },
+    {
+      "name": "sanitize: tabs stop every four columns",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "const TAB_STOP = 4",
+      "replace": "const TAB_STOP = 8"
+    },
+    {
+      "name": "sanitize: a line with an unknown first character becomes context",
+      "source": "src/vcs/diff/structured/hunk/sanitize.ts",
+      "find": "(MARKERS.has(marker) ? marker : LINE_MARKERS.context)",
+      "replace": "(marker)"
+    },
+    {
+      "name": "lines: context and added lines are numbered by the new file (one numbering on both paths)",
+      "source": "src/vcs/diff/structured/hunk/lines.ts",
+      "find": "let newNumber = hunk.newStart",
+      "replace": "let newNumber = hunk.oldStart"
+    },
+    {
+      "name": "lines: a context line moves the old count too",
+      "source": "src/vcs/diff/structured/hunk/lines.ts",
+      "find": "      default:\n        oldNumber++\n",
+      "replace": "      default:\n"
+    },
+    {
+      "name": "lines: an added line is numbered by the new file",
+      "source": "src/vcs/diff/structured/hunk/lines.ts",
+      "find": "return { kind: 'added', code, number: newNumber++ }",
+      "replace": "return { kind: 'added', code, number: oldNumber++ }"
+    },
+    {
+      "name": "lines: a removed line is numbered by the old file",
+      "source": "src/vcs/diff/structured/hunk/lines.ts",
+      "find": "return { kind: 'removed', code, number: oldNumber++ }",
+      "replace": "return { kind: 'removed', code, number: newNumber++ }"
+    },
+    {
+      "name": "lines: the no-newline note takes no number and moves no count",
+      "source": "src/vcs/diff/structured/hunk/lines.ts",
+      "find": "return { kind: 'note', code, number: null }",
+      "replace": "return { kind: 'context', code, number: newNumber++ }"
+    },
+    {
+      "name": "lines: notes are taken out of the hunk the renderer gets",
+      "source": "src/vcs/diff/structured/hunk/lines.ts",
+      "find": "line.startsWith(LINE_MARKERS.note)",
+      "replace": "line.startsWith('@@')"
+    },
+    {
+      "name": "lines: a note follows the line of code before it",
+      "source": "src/vcs/diff/structured/hunk/lines.ts",
+      "find": "after: code.length - 1",
+      "replace": "after: code.length"
+    },
+    {
+      "name": "width: a fractional width is rounded down",
+      "source": "src/vcs/diff/structured/layout/width.ts",
+      "find": "Math.max(1, Math.floor(width))",
+      "replace": "Math.max(1, Math.round(width))"
+    },
+    {
+      "name": "width: a width under one column counts as one",
+      "source": "src/vcs/diff/structured/layout/width.ts",
+      "find": "Math.max(1, Math.floor(width))",
+      "replace": "Math.max(0, Math.floor(width))"
+    },
+    {
+      "name": "width: a wide character takes the columns it covers",
+      "source": "src/vcs/diff/structured/layout/width.ts",
+      "find": "columns: stringWidth(segment)",
+      "replace": "columns: segment.length"
+    },
+    {
+      "name": "wrap: rows break at spaces, and no word is cut",
+      "source": "src/vcs/diff/structured/layout/wrap.ts",
+      "find": "const blank = cell.text === ' '",
+      "replace": "const blank = false"
+    },
+    {
+      "name": "wrap: a row takes every word that fits",
+      "source": "src/vcs/diff/structured/layout/wrap.ts",
+      "find": "if (used + columns <= width) {",
+      "replace": "if (used + columns < width) {"
+    },
+    {
+      "name": "wrap: a word wider than the row is broken at the edge",
+      "source": "src/vcs/diff/structured/layout/wrap.ts",
+      "find": "if (used > 0 && used + cell.columns > width) endRow()",
+      "replace": "if (used > 0 && used + cell.columns > width) void 0"
+    },
+    {
+      "name": "wrap: text that fits stays on one row, and no wider text does",
+      "source": "src/vcs/diff/structured/layout/wrap.ts",
+      "find": "if (total <= width) return",
+      "replace": "if (total <= width + 1) return"
+    },
+    {
+      "name": "wrap: spaces at a break never make a row of their own",
+      "source": "src/vcs/diff/structured/layout/wrap.ts",
+      "find": "  if (row.length > 0) endRow()",
+      "replace": "  endRow()"
+    },
+    {
+      "name": "wrap: every piece keeps its tag (a changed word keeps its colour on any row)",
+      "source": "src/vcs/diff/structured/layout/wrap.ts",
+      "find": "if (last !== undefined && last.tag === piece.tag) last.text += piece.text",
+      "replace": "if (last !== undefined) last.text += piece.text"
+    },
+    {
+      "name": "words: lines pair up in order",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "pairs.push([removed[at]!, added[at]!])",
+      "replace": "pairs.push([removed[at]!, added[added.length - 1 - at]!])"
+    },
+    {
+      "name": "words: a context line between the runs means no pairing",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "} else if (line.kind === 'context') {",
+      "replace": "} else if (line.kind === 'note') {"
+    },
+    {
+      "name": "words: a note between the runs does not separate them",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "} else if (line.kind === 'context') {",
+      "replace": "} else {"
+    },
+    {
+      "name": "words: a removal after additions starts new runs",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "if (added.length > 0) closeRuns()",
+      "replace": ""
+    },
+    {
+      "name": "words: up to 40% changed is word by word",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "const WORD_BY_WORD_LIMIT = 0.4",
+      "replace": "const WORD_BY_WORD_LIMIT = 0.39"
+    },
+    {
+      "name": "words: the changed share counts the added words too",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "change.added || change.removed ? sum + change.value.length : sum",
+      "replace": "change.removed ? sum + change.value.length : sum"
+    },
+    {
+      "name": "words: the changed share is of the two lines together",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "before.length + after.length",
+      "replace": "Math.max(before.length, after.length)"
+    },
+    {
+      "name": "words: whitespace is compared too",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "import { type Change, diffWordsWithSpace } from 'diff'",
+      "replace": "import { type Change, diffWords as diffWordsWithSpace } from 'diff'"
+    },
+    {
+      "name": "words: a change of case is a change",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "diffWordsWithSpace(before, after)",
+      "replace": "diffWordsWithSpace(before, after, { ignoreCase: true })"
+    },
+    {
+      "name": "words: each side shows its kept words and its own changes",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": ".filter(change => !change[otherSide])",
+      "replace": ".filter(change => !change.added)"
+    },
+    {
+      "name": "words: the changed words are marked",
+      "source": "src/vcs/diff/structured/fallback/wordChanges.ts",
+      "find": "tag: change[side] ? 'changed' : 'plain'",
+      "replace": "tag: 'plain'"
+    },
+    {
+      "name": "rows: the number column is one wider than the largest number",
+      "source": "src/vcs/diff/structured/fallback/rows.ts",
+      "find": "digitCount(largestNumber(lines)) + 1",
+      "replace": "digitCount(largestNumber(lines)) + 2"
+    },
+    {
+      "name": "rows: one content width for every row, the width minus the gutter",
+      "source": "src/vcs/diff/structured/fallback/rows.ts",
+      "find": "effectiveWidth(width) - numberWidth - GUTTER_AFTER_NUMBER)",
+      "replace": "effectiveWidth(width) - numberWidth - GUTTER_AFTER_NUMBER - 1)"
+    },
+    {
+      "name": "rows: a dimmed diff marks no word",
+      "source": "src/vcs/diff/structured/fallback/rows.ts",
+      "find": "const wordSpans = dim ? new Map<number, Span<Emphasis>[]>() : wordByWordSpans(lines)",
+      "replace": "const wordSpans = wordByWordSpans(lines)"
+    },
+    {
+      "name": "rows: only a line's first row carries its number",
+      "source": "src/vcs/diff/structured/fallback/rows.ts",
+      "find": "number: rowIndex === 0 ? line.number : null",
+      "replace": "number: line.number"
+    },
+    {
+      "name": "rows: every row is filled to the width",
+      "source": "src/vcs/diff/structured/fallback/rows.ts",
+      "find": "fill: Math.max(0, codeWidth - row.columns)",
+      "replace": "fill: 0"
+    },
+    {
+      "name": "fallback: the hunk is sanitized before it is drawn (security)",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "layoutFallback(sanitizeHunk(patch), width, dim)",
+      "replace": "layoutFallback(patch, width, dim)"
+    },
+    {
+      "name": "fallback: removed rows are diffRemoved",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "removed: { fill: 'diffRemoved',",
+      "replace": "removed: { fill: 'diffAdded',"
+    },
+    {
+      "name": "fallback: added rows are diffAdded",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "added: { fill: 'diffAdded',",
+      "replace": "added: { fill: 'diffRemoved',"
+    },
+    {
+      "name": "fallback: dimmed rows take the dimmed colours",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "dimmedFill: 'diffRemovedDimmed'",
+      "replace": "dimmedFill: 'diffRemoved'"
+    },
+    {
+      "name": "fallback: changed words take the word colour",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "wordFill: 'diffAddedWord'",
+      "replace": "wordFill: 'diffAdded'"
+    },
+    {
+      "name": "fallback: a changed word is painted in its own colour",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "backgroundColor={palette.wordFill}",
+      "replace": "backgroundColor={fill}"
+    },
+    {
+      "name": "fallback: code on added and removed rows is in the text colour",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "wordFill: 'diffRemovedWord', ink: 'text'",
+      "replace": "wordFill: 'diffRemovedWord', ink: 'inactive'"
+    },
+    {
+      "name": "fallback: context rows have no background",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "  context: {},",
+      "replace": "  context: { fill: 'diffAdded' },"
+    },
+    {
+      "name": "fallback: dim dims every character",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "backgroundColor={fill} dimColor={quietCode}>",
+      "replace": "backgroundColor={fill} dimColor={row.kind === 'note'}>"
+    },
+    {
+      "name": "fallback: the note row is quiet",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "const quietCode = dim || row.kind === 'note'",
+      "replace": "const quietCode = dim"
+    },
+    {
+      "name": "fallback: the gutter carries the row's background",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "<Text color={palette.ink} backgroundColor={fill} dimColor={quietCode || row.kind === 'context'}>",
+      "replace": "<Text color={palette.ink} dimColor={quietCode || row.kind === 'context'}>"
+    },
+    {
+      "name": "fallback: the number is right-aligned",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "${number.padStart(numberWidth)}",
+      "replace": "${number.padEnd(numberWidth)}"
+    },
+    {
+      "name": "fallback: every row is filled to the width",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "{' '.repeat(row.fill)}",
+      "replace": "{''}"
+    },
+    {
+      "name": "fallback: the rows are stacked",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "    <Box flexDirection=\"column\">",
+      "replace": "    <Box flexDirection=\"row\">"
+    },
+    {
+      "name": "list: a \"...\" row between two hunks, none before or after",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": "{index > 0 && <HunkSeparator />}",
+      "replace": "{index > 1 && <HunkSeparator />}"
+    },
+    {
+      "name": "list: the separator reads \"...\"",
       "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
       "find": "<Text dimColor>...</Text>",
-      "replace": "<Text dimColor>---</Text>"
+      "replace": "<Text dimColor>. . .</Text>"
     },
     {
-      "name": "list: hunks drawn in reverse",
+      "name": "list: the hunks are drawn in order",
       "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
-      "find": "return intersperse(hunks.map(hunk =>",
-      "replace": "return intersperse([...hunks].reverse().map(hunk =>"
+      "find": "{hunks.map((hunk, index) => (",
+      "replace": "{[...hunks].reverse().map((hunk, index) => ("
     },
     {
-      "name": "list: dim not passed on",
+      "name": "list: dim reaches every hunk",
       "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
-      "find": "<StructuredDiff patch={hunk} dim={dim}",
-      "replace": "<StructuredDiff patch={hunk} dim={false}"
+      "find": "            dim={dim}",
+      "replace": "            dim={false}"
     },
     {
-      "name": "list: width not passed on",
+      "name": "list: the width reaches every hunk",
       "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
-      "find": " width={width} filePath={filePath}",
-      "replace": " width={80} filePath={filePath}"
+      "find": "            width={width}",
+      "replace": "            width={40}"
     },
     {
-      "name": "list: first line not passed on",
+      "name": "list: the file path reaches every hunk",
       "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
-      "find": " firstLine={firstLine} fileContent={fileContent}",
-      "replace": " firstLine={null} fileContent={fileContent}"
+      "find": "            filePath={filePath}",
+      "replace": "            filePath={`${filePath}.py`}"
     },
     {
-      "name": "diff: skipHighlighting ignored",
-      "find": "t2 = skipHighlighting || syntaxHighlightingDisabled ? null",
-      "replace": "t2 = syntaxHighlightingDisabled ? null"
+      "name": "list: the first line reaches every hunk",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": "            firstLine={firstLine}",
+      "replace": "            firstLine={null}"
     },
     {
-      "name": "diff: the syntaxHighlightingDisabled setting ignored",
-      "find": "const syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled ?? false;",
-      "replace": "const syntaxHighlightingDisabled = false;"
+      "name": "list: the list stacks its own hunks",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": "<Box flexDirection=\"column\">",
+      "replace": "<Box flexDirection=\"row\">"
     },
     {
-      "name": "diff: a fractional width rounded up",
-      "find": "const safeWidth = Math.max(1, Math.floor(width));",
-      "replace": "const safeWidth = Math.max(1, Math.ceil(width));"
-    },
-    {
-      "name": "diff: the render cache ignores dim",
-      "find": "${dim ? 1 : 0}|",
-      "replace": ""
-    },
-    {
-      "name": "diff: the render cache ignores the theme",
-      "find": "const key = `${theme}|",
-      "replace": "const key = `"
-    },
-    {
-      "name": "diff: the first line never reaches the renderer",
-      "find": "new ColorDiff(patch, firstLine, filePath",
-      "replace": "new ColorDiff(patch, null, filePath"
-    },
-    {
-      "name": "diff: dim never reaches the renderer",
-      "find": ".render(theme, width, dim);",
-      "replace": ".render(theme, width, false);"
-    },
-    {
-      "name": "diff: fullscreen gutter one column short",
-      "find": "sliceAnsi(l, 0, gutterWidth)",
-      "replace": "sliceAnsi(l, 0, gutterWidth - 1)"
-    },
-    {
-      "name": "diff: fullscreen code starts a column late",
-      "find": "contents = lines.map(l => sliceAnsi(l, gutterWidth));",
-      "replace": "contents = lines.map(l => sliceAnsi(l, gutterWidth + 1));"
-    },
-    {
-      "name": "diff: the fallback is never dimmed",
-      "find": "<StructuredDiffFallback patch={patch} dim={dim}",
-      "replace": "<StructuredDiffFallback patch={patch} dim={false}"
-    },
-    {
-      "name": "diff: the first row is dropped",
-      "find": "<RawAnsi lines={lines} width={safeWidth} />",
-      "replace": "<RawAnsi lines={lines.slice(1)} width={safeWidth} />"
-    },
-    {
-      "name": "diff: a settings change on screen is not repainted",
-      "find": " || $[7] !== syntaxHighlightingDisabled",
-      "replace": ""
-    },
-    {
-      "name": "diff: a theme change on screen is not repainted",
-      "find": " || $[8] !== theme)",
-      "replace": ")"
-    },
-    {
-      "name": "diff: a new hunk on screen is not repainted",
-      "find": " || $[4] !== patch",
-      "replace": ""
-    },
-    {
-      "name": "fallback: the threshold raised to half",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "const CHANGE_THRESHOLD = 0.4;",
-      "replace": "const CHANGE_THRESHOLD = 0.5;"
-    },
-    {
-      "name": "fallback: a change of exactly 40% drawn whole",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "if (changeRatio > CHANGE_THRESHOLD || dim) {",
-      "replace": "if (changeRatio >= CHANGE_THRESHOLD || dim) {"
-    },
-    {
-      "name": "fallback: a dimmed diff still highlights words",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "if (changeRatio > CHANGE_THRESHOLD || dim) {",
-      "replace": "if (changeRatio > CHANGE_THRESHOLD) {"
-    },
-    {
-      "name": "fallback: a change of case ignored",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "ignoreCase: false",
-      "replace": "ignoreCase: true"
-    },
-    {
-      "name": "fallback: whitespace ignored by the word diff",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "import { diffWordsWithSpace, type StructuredPatchHunk } from 'diff';",
-      "replace": "import { diffWords as diffWordsWithSpace, type StructuredPatchHunk } from 'diff';"
-    },
-    {
-      "name": "fallback: added words in the line colour",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "partBgColor = 'diffAddedWord';",
-      "replace": "partBgColor = 'diffAdded';"
-    },
-    {
-      "name": "fallback: only the first pair is compared",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "const pairCount = Math.min(removeLines.length, addLines.length);",
-      "replace": "const pairCount = Math.min(1, addLines.length);"
-    },
-    {
-      "name": "fallback: numbers do not rewind after removed lines",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "i -= numRemoved;",
-      "replace": "i -= 0;"
-    },
-    {
-      "name": "fallback: markers swapped",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "const sigil = type === 'add' ? '+' : type === 'remove' ? '-' : ' ';",
-      "replace": "const sigil = type === 'add' ? '-' : type === 'remove' ? '+' : ' ';"
-    },
-    {
-      "name": "fallback: rows wrap past the width",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "safeWidth - maxWidth - 1 - diffPrefixWidth",
-      "replace": "safeWidth - maxWidth + 2 - diffPrefixWidth"
-    },
-    {
-      "name": "fallback: rows wrap too early",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "safeWidth - maxWidth - 1 - diffPrefixWidth",
-      "replace": "safeWidth - maxWidth - 3 - diffPrefixWidth"
-    },
-    {
-      "name": "fallback: word rows not broken when full",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "if (lineIdx > 0 || currentLineWidth + stringWidth(partLine) > availableContentWidth) {",
-      "replace": "if (lineIdx > 0) {"
-    },
-    {
-      "name": "fallback: continued word rows numbered again",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "'diffRemoved';\n    const lineNum = lineIndex === 0 ? i : undefined;",
-      "replace": "'diffRemoved';\n    const lineNum = i;"
-    },
-    {
-      "name": "fallback: dimmed rows in the full colour",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "dim ? 'diffAddedDimmed' : 'diffAdded' : type === 'remove'",
-      "replace": "dim ? 'diffAdded' : 'diffAdded' : type === 'remove'"
-    },
-    {
-      "name": "fallback: rows not filled to the width",
-      "source": "src/vcs/diff/structured/Fallback.tsx",
-      "find": "const padding = Math.max(0, safeWidth - contentWidth);",
-      "replace": "const padding = Math.max(0, safeWidth - contentWidth - 4);"
+      "name": "list: every hunk has a key of its own",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": "<React.Fragment key={index}>",
+      "replace": "<React.Fragment key={hunk.newStart}>"
     }
   ]
 }

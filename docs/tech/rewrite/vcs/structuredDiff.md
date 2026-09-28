@@ -308,3 +308,10 @@ workflow: they change only how a diff looks on screen.
   - The characterization suites, unchanged.
   - Unit tests for the fallback model: numbering at an offset hunk, the note, carriage returns, tabs, one content width, and full word-by-word rows.
   - A test that a hunk line holding SGR and OSC 8 sequences paints as plain text, on both paths.
+
+## Outcome
+
+**Residue, reviewed.**
+- **`src/vcs/diff/structured/hunk/sanitize.test.ts`: none left.** Its 40 lines matched openclaude by the shape of a run of assertions, not by their content. The cases now sit in tables of plain strings, one test per behaviour, and every case and expectation was kept. The file measures zero.
+- **`src/vcs/diff/structured/StructuredDiff.tsx`: none left.** It was rewritten at its old path, so the baseline did not flag it. Its 2 lines were the end of the props and the read of the theme, a generic start of a component; the theme is now read by index. The file measures zero.
+- **`src/vcs/diff/structured/colorDiff.ts`, 2 lines of Claude Code.** The signature of the exported `expectColorDiff`, and the one-line body of the availability check just before it. Both are names the contract table keeps.
