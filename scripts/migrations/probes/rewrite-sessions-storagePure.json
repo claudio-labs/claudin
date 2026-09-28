@@ -1,0 +1,238 @@
+{
+  "test": [
+    "src/sessions/storagePure.characterization.test.ts",
+    "src/sessions/storagePure.paths.characterization.test.ts",
+    "src/sessions/storagePure.jsonl.characterization.test.ts",
+    "src/sessions/storagePure.portable.characterization.test.ts"
+  ],
+  "source": "src/sessions/sessionStoragePortable.ts",
+  "probes": [
+    {
+      "name": "uuid: upper case refused",
+      "find": "[0-9a-f]{12}$/i\n",
+      "replace": "[0-9a-f]{12}$/\n"
+    },
+    {
+      "name": "field: no fallback to the spaced form",
+      "find": "    if (idx < 0) continue\n",
+      "replace": "    if (idx < 0) return undefined\n"
+    },
+    {
+      "name": "field: an escape skips one character only",
+      "find": "\n        i += 2\n",
+      "replace": "\n        i += 1\n"
+    },
+    {
+      "name": "last field: stops at the first occurrence",
+      "find": "      searchFrom = i + 1\n",
+      "replace": "      searchFrom = text.length\n"
+    },
+    {
+      "name": "head/tail: the tail starts one byte late",
+      "find": "      const tailOffset = Math.max(0, fileSize - LITE_READ_BUF_SIZE)\n",
+      "replace": "      const tailOffset = Math.max(0, fileSize - LITE_READ_BUF_SIZE + 1)\n"
+    },
+    {
+      "name": "sanitize: underscores survive",
+      "find": "  const sanitized = name.replace(/[^a-zA-Z0-9]/g, '-')\n",
+      "replace": "  const sanitized = name.replace(/[^a-zA-Z0-9_]/g, '-')\n"
+    },
+    {
+      "name": "sanitize: a 200-character name gets a hash",
+      "find": "  if (sanitized.length <= MAX_SANITIZED_LENGTH) {\n",
+      "replace": "  if (sanitized.length < MAX_SANITIZED_LENGTH) {\n"
+    },
+    {
+      "name": "sanitize: the Node suffix is not base 36",
+      "find": "  return Math.abs(djb2Hash(str)).toString(36)\n",
+      "replace": "  return Math.abs(djb2Hash(str)).toString(32)\n"
+    },
+    {
+      "name": "load: snapshots not recognised",
+      "find": "const ATTR_SNAP_PREFIX = Buffer.from('{\"type\":\"attribution-snapshot\"')\n",
+      "replace": "const ATTR_SNAP_PREFIX = Buffer.from('{\"type\":\"attribution_snapshot\"')\n"
+    },
+    {
+      "name": "load: the marker window is one byte short",
+      "find": "const BOUNDARY_SEARCH_BOUND = 256",
+      "replace": "const BOUNDARY_SEARCH_BOUND = 255"
+    },
+    {
+      "name": "load: a non-system line counts as a boundary",
+      "find": "    if (parsed.type !== 'system' || parsed.subtype !== 'compact_boundary') {\n",
+      "replace": "    if (parsed.subtype !== 'compact_boundary') {\n"
+    },
+    {
+      "name": "load: a preserved segment is never reported",
+      "find": "      hasPreservedSegment: Boolean(parsed.compactMetadata?.preservedSegment),\n",
+      "replace": "      hasPreservedSegment: false,\n"
+    },
+    {
+      "name": "load: a boundary inside a read does not cut",
+      "find": "        s.out.len = 0\n        s.boundaryStartOffset = s.bufFileOff + lineStart\n",
+      "replace": "        s.boundaryStartOffset = s.bufFileOff + lineStart\n"
+    },
+    {
+      "name": "load: a boundary across the seam reports offset 0",
+      "find": "        s.boundaryStartOffset = s.bufFileOff\n",
+      "replace": "        s.boundaryStartOffset = 0\n"
+    },
+    {
+      "name": "load: a snapshot across the seam is lost",
+      "find": "  } else if (s.straddleSnapCarryLen > 0) {\n",
+      "replace": "  } else if (false) {\n"
+    },
+    {
+      "name": "load: stale bytes past a short read are taken",
+      "find": "  if (firstNl === -1 || firstNl >= bytesRead) return 0\n",
+      "replace": "  if (firstNl === -1) return 0\n"
+    },
+    {
+      "name": "load: no newline before the moved snapshot",
+      "find": "    if (s.out.len > 0 && s.out.buf[s.out.len - 1] !== LF) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "load: a growing output loses what it held",
+      "find": "    s.buf.copy(grown, 0, 0, s.len)\n",
+      "replace": "    void grown\n"
+    },
+    {
+      "name": "load: reads past the size given",
+      "find": "        Math.min(CHUNK_SIZE, fileSize - filePos),\n",
+      "replace": "        CHUNK_SIZE,\n"
+    },
+    {
+      "name": "strip: wrong preview tag",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "Buffer.from('<persisted-output>')",
+      "replace": "Buffer.from('<persisted_output>')"
+    },
+    {
+      "name": "strip: a space is not whitespace",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "  return byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0d\n",
+      "replace": "  return byte === 0x09 || byte === 0x0a || byte === 0x0d\n"
+    },
+    {
+      "name": "strip: escapes ignored in a string value",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "      } else if (byte === 0x5c) {\n        escapeNext = true\n",
+      "replace": "      } else if (byte === 0x5c) {\n        escapeNext = false\n"
+    },
+    {
+      "name": "strip: a primitive runs past the closing brace",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "    if (byte === 0x2c || byte === 0x7d) return i\n",
+      "replace": "    if (byte === 0x2c) return i\n"
+    },
+    {
+      "name": "strip: nested members removed too",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "        depth === 1 &&\n",
+      "replace": "        depth >= 1 &&\n"
+    },
+    {
+      "name": "strip: the trailing comma is left behind",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "          removeEnd = afterValue + 1\n",
+      "replace": "          removeEnd = afterValue\n"
+    },
+    {
+      "name": "strip: a new buffer even when nothing changed",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "  return changed ? Buffer.concat(chunks) : buf\n",
+      "replace": "  return Buffer.concat(chunks)\n"
+    },
+    {
+      "name": "visit: lines are not trimmed",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "    const line = buf.toString('utf8', start, end).trim()\n",
+      "replace": "    const line = buf.toString('utf8', start, end)\n"
+    },
+    {
+      "name": "visit: a malformed line throws",
+      "source": "src/sessions/pure/jsonlStripping.ts",
+      "find": "    } catch {\n      // Skip malformed lines\n    }\n",
+      "replace": "    } catch (error) {\n      throw error\n    }\n"
+    },
+    {
+      "name": "skip pattern: no leading whitespace allowed",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "/^(?:\\s*<[a-z]",
+      "replace": "/^(?:<[a-z]"
+    },
+    {
+      "name": "title: wrong fallback text",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "  return 'No prompt'\n",
+      "replace": "  return 'No prompts'\n"
+    },
+    {
+      "name": "first text: compact summaries count",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "    if ('isCompactSummary' in msg && msg.isCompactSummary) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "first text: built-in commands count",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "        if (builtInCommandNames().has(commandName)) {\n",
+      "replace": "        if (false) {\n"
+    },
+    {
+      "name": "chunk: tool_result lines are read",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "    if (line.includes('\"tool_result\"')) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "chunk: no command fallback",
+      "source": "src/sessions/pure/firstPrompt.ts",
+      "find": "              firstCommandFallback = commandNameTag\n",
+      "replace": ""
+    },
+    {
+      "name": "logging: user type ant keeps virtual flags",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "  return 'external'\n",
+      "replace": "  return 'ant'\n"
+    },
+    {
+      "name": "logging: parentUuid kept",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "    const { isSidechain, parentUuid, ...serializedMessage } = m\n",
+      "replace": "    const { isSidechain, ...serializedMessage } = m\n"
+    },
+    {
+      "name": "logging: every attachment written",
+      "source": "src/sessions/pure/logging.ts",
+      "find": "    return shouldPersistAttachment(m.attachment.type)\n",
+      "replace": "    return true\n"
+    },
+    {
+      "name": "paths: the session project directory is ignored",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "export function getTranscriptPath(): string {\n  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())\n",
+      "replace": "export function getTranscriptPath(): string {\n  const projectDir = getProjectDir(getOriginalCwd())\n"
+    },
+    {
+      "name": "paths: the grouping subdirectory is ignored",
+      "source": "src/sessions/pure/paths.ts",
+      "find": "    ? join(projectDir, sessionId, 'subagents', subdir)\n",
+      "replace": "    ? join(projectDir, sessionId, 'subagents')\n"
+    },
+    {
+      "name": "guards: attachments are not transcript messages",
+      "source": "src/sessions/pure/typeGuards.ts",
+      "find": "    entry.type === 'attachment' ||\n",
+      "replace": ""
+    },
+    {
+      "name": "paths: the native binary stores the Node suffix",
+      "source": "src/sessions/sessionStoragePortable.ts",
+      "find": "    typeof Bun !== 'undefined' ? Bun.hash(name).toString(36) : simpleHash(name)\n",
+      "replace": "    simpleHash(name)\n"
+    }
+  ]
+}
