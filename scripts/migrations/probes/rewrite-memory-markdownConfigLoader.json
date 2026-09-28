@@ -1,217 +1,493 @@
 {
   "test": [
     "src/memory/instructions/markdownConfigLoader.characterization.test.ts",
-    "src/memory/instructions/ruleFrontmatter.characterization.test.ts"
+    "src/memory/instructions/ruleFrontmatter.characterization.test.ts",
+    "src/memory/instructions/markdownConfigLoader.test.ts",
+    "src/memory/instructions/markdownConfig/description.test.ts",
+    "src/memory/instructions/markdownConfig/loadCache.test.ts",
+    "src/memory/instructions/markdownConfig/fileIdentity.test.ts",
+    "src/memory/instructions/markdownConfig/markdownSearch.test.ts",
+    "src/memory/instructions/markdownConfig/projectDirectories.test.ts"
   ],
   "source": "src/memory/instructions/markdownConfigLoader.ts",
   "probes": [
     {
-      "name": "directories: output-styles misspelt",
-      "find": "  'output-styles',\n",
-      "replace": "  'output_styles',\n"
+      "name": "directories: workflows is no longer one of the five",
+      "source": "src/memory/instructions/markdownConfig/configDirectories.ts",
+      "find": "  'skills',\n  'workflows',\n",
+      "replace": "  'skills',\n"
     },
     {
-      "name": "description: only a level-one heading loses its marker",
-      "find": "const headerMatch = trimmed.match(/^#+\\s+(.+)$/)",
-      "replace": "const headerMatch = trimmed.match(/^#\\s+(.+)$/)"
+      "name": "directories: the project directory is named .claude",
+      "source": "src/memory/instructions/markdownConfig/configDirectories.ts",
+      "find": "const PROJECT_CONFIG_DIR_NAME = '.claudin'",
+      "replace": "const PROJECT_CONFIG_DIR_NAME = '.claude'"
     },
     {
-      "name": "description: a line of exactly 100 characters is cut",
-      "find": "return text.length > 100 ?",
-      "replace": "return text.length >= 100 ?"
+      "name": "description: another default when no line has text",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": "const DEFAULT_DESCRIPTION = 'Custom item'",
+      "replace": "const DEFAULT_DESCRIPTION = 'Custom command'"
     },
     {
-      "name": "tools: an absent value reads as an empty list",
-      "find": "  if (toolsValue === undefined || toolsValue === null) {\n    return null\n",
-      "replace": "  if (toolsValue === undefined || toolsValue === null) {\n    return []\n"
+      "name": "description: 100 characters no longer stay whole",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": "const MAX_DESCRIPTION_LENGTH = 100",
+      "replace": "const MAX_DESCRIPTION_LENGTH = 99"
     },
     {
-      "name": "tools: list entries that are not strings are kept",
-      "find": "(item): item is string => typeof item === 'string',",
-      "replace": "(item): item is string => item !== null,"
+      "name": "description: the cut ends in a single ellipsis character",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": "const ELLIPSIS = '...'",
+      "replace": "const ELLIPSIS = '\u2026'"
     },
     {
-      "name": "tools: the wildcard no longer collapses the list",
-      "find": "  if (parsedTools.includes('*')) {\n    return ['*']\n",
-      "replace": "  if (parsedTools.includes('**')) {\n    return ['*']\n"
+      "name": "description: a # without whitespace after it counts as a heading marker",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": "const HEADING_MARKER_RE = /^#+\\s+/",
+      "replace": "const HEADING_MARKER_RE = /^#+\\s*/"
     },
     {
-      "name": "agent tools: a bare `tools:` means every tool",
-      "find": "    return toolsValue === undefined ? undefined : []\n",
-      "replace": "    return undefined\n"
+      "name": "description: the heading marker is removed twice",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": ".replace(HEADING_MARKER_RE, ''))",
+      "replace": ".replace(HEADING_MARKER_RE, '').replace(HEADING_MARKER_RE, ''))"
     },
     {
-      "name": "slash tools: an absent value grants a tool",
-      "find": "  if (parsed === null) {\n    return []\n",
-      "replace": "  if (parsed === null) {\n    return ['Read']\n"
+      "name": "description: a line of whitespace counts as the first line",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": ".find(line => line.trim() !== '')",
+      "replace": ".find(line => line !== '')"
     },
     {
-      "name": "walk: a repository nested in the project stops it",
-      "find": "    return sessionGitRoot\n",
-      "replace": "    return cwdGitRoot\n"
+      "name": "description: leading whitespace is kept",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": "shortened(firstLine.trim().replace(",
+      "replace": "shortened(firstLine.trimEnd().replace("
     },
     {
-      "name": "walk: a sibling whose path starts with the project root's counts as nested",
-      "find": "nCwdGitRoot.startsWith(nSessionRoot + sep)",
-      "replace": "nCwdGitRoot.startsWith(nSessionRoot)"
+      "name": "fix, description: the cut splits a surrogate pair again",
+      "source": "src/memory/instructions/markdownConfig/description.ts",
+      "find": "const whole = ENDS_IN_HIGH_SURROGATE_RE.test(cut) ? cut.slice(0, -1) : cut",
+      "replace": "const whole = cut"
     },
     {
-      "name": "walk: a worktree of the session's repository is walked past",
-      "find": "    normalizePathForComparison(cwdCanonical) ===\n      normalizePathForComparison(sessionGitRoot)",
-      "replace": "    normalizePathForComparison(cwdCanonical) !==\n      normalizePathForComparison(sessionGitRoot)"
+      "name": "tools: the slash-command reader drops the wildcard instead of collapsing to it",
+      "source": "src/memory/instructions/markdownConfig/toolLists.ts",
+      "find": "return namedTools(toolsValue) ?? [WILDCARD]",
+      "replace": "return namedTools(toolsValue) ?? []"
     },
     {
-      "name": "walk: HOME no longer ends it",
-      "find": "normalizePathForComparison(current) === normalizePathForComparison(home)",
-      "replace": "normalizePathForComparison(current) === normalizePathForComparison(home + sep)"
+      "name": "tools: an absent agent key grants no tool instead of every tool",
+      "source": "src/memory/instructions/markdownConfig/toolLists.ts",
+      "find": "return toolsValue === undefined ? undefined : namedTools(toolsValue)",
+      "replace": "return namedTools(toolsValue)"
     },
     {
-      "name": "walk: directories listed without checking that they exist",
-      "find": "      statSync(claudeSubdir)\n      dirs.push(claudeSubdir)\n",
-      "replace": "      dirs.push(claudeSubdir)\n"
+      "name": "tools: a string names no tool",
+      "source": "src/memory/instructions/markdownConfig/toolLists.ts",
+      "find": "if (typeof value === 'string') return [value]",
+      "replace": "if (typeof value === 'string') return []"
     },
     {
-      "name": "walk: unexpected errors are swallowed",
-      "find": "      if (!isFsInaccessible(e)) throw e\n",
-      "replace": "      if (!isFsInaccessible(e)) void e\n"
+      "name": "tools: a list names no tool",
+      "source": "src/memory/instructions/markdownConfig/toolLists.ts",
+      "find": "if (Array.isArray(value)) return value.filter((entry): entry is string => typeof entry === 'string')",
+      "replace": "if (Array.isArray(value)) return []"
     },
     {
-      "name": "walk: the repository root no longer stops it",
-      "find": "      gitRoot &&\n      normalizePathForComparison(current) ===",
-      "replace": "      false &&\n      normalizePathForComparison(current) ==="
+      "name": "tools: only a leading wildcard counts",
+      "source": "src/memory/instructions/markdownConfig/toolLists.ts",
+      "find": "return tools.includes(WILDCARD) ? undefined : tools",
+      "replace": "return tools[0] === WILDCARD ? undefined : tools"
     },
     {
-      "name": "cache: keyed by the cwd alone",
-      "find": "(subdir: ClaudeConfigDirectory, cwd: string) => `${subdir}:${cwd}`,",
-      "replace": "(subdir: ClaudeConfigDirectory, cwd: string) => `${cwd}`,"
+      "name": "paths: nesting is judged by prefix, not by whole segments",
+      "source": "src/memory/instructions/markdownConfig/pathComparison.ts",
+      "find": "const outerPrefix = outerPath.endsWith(sep) ? outerPath : `${outerPath}${sep}`",
+      "replace": "const outerPrefix = outerPath"
     },
     {
-      "name": "user directory: an extra .claudin level",
-      "find": "const userDir = join(getClaudinConfigHomeDir(), subdir)",
-      "replace": "const userDir = join(getClaudinConfigHomeDir(), '.claudin', subdir)"
-    },
-    {
-      "name": "managed directory: .claudin level dropped",
-      "find": "const managedDir = join(getManagedFilePath(), '.claudin', subdir)",
-      "replace": "const managedDir = join(getManagedFilePath(), subdir)"
-    },
-    {
-      "name": "worktree: the main checkout read only when the worktree has its own",
-      "find": "      if (!worktreeHasSubdir) {\n",
-      "replace": "      if (worktreeHasSubdir) {\n"
-    },
-    {
-      "name": "sources: the user settings switch is ignored",
-      "find": "      isSettingSourceEnabled('userSettings') &&\n",
-      "replace": "      true &&\n"
-    },
-    {
-      "name": "sources: the project settings switch is ignored",
-      "find": "      isSettingSourceEnabled('projectSettings') &&\n",
-      "replace": "      true &&\n"
-    },
-    {
-      "name": "policy: the agents lock no longer removes user agents",
-      "find": "      !(subdir === 'agents' && isRestrictedToPluginOnly('agents'))\n        ? loadMarkdownFiles(userDir)",
-      "replace": "      !(subdir === 'agent' && isRestrictedToPluginOnly('agents'))\n        ? loadMarkdownFiles(userDir)"
-    },
-    {
-      "name": "order: user before managed",
-      "find": "const allFiles = [...managedFiles, ...userFiles, ...projectFiles]",
-      "replace": "const allFiles = [...userFiles, ...managedFiles, ...projectFiles]"
-    },
-    {
-      "name": "each file once: a file reached twice is kept twice",
-      "find": "      if (existingSource !== undefined) {\n",
-      "replace": "      if (existingSource === 'never') {\n"
-    },
-    {
-      "name": "each file once: identity is the device alone",
-      "find": "    return `${stats.dev}:${stats.ino}`\n",
-      "replace": "    return `${stats.dev}`\n"
-    },
-    {
-      "name": "each file once: a symlinked file is folded into its target",
-      "find": "const stats = await lstat(filePath, { bigint: true })",
-      "replace": "const stats = await stat(filePath, { bigint: true })"
-    },
-    {
-      "name": "search: hidden files left out",
-      "find": "'--hidden', ",
+      "name": "walk: home does not end it",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "    if (isSamePath(dir, home)) break\n",
       "replace": ""
     },
     {
-      "name": "search: ignore files honoured",
-      "find": "'--no-ignore', ",
+      "name": "walk: home's own .claudin is walked before it ends",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "    if (isSamePath(dir, home)) break\n",
+      "replace": "    if (isSamePath(dir, dirname(home))) break\n"
+    },
+    {
+      "name": "walk: the stop directory is left out",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "if (stop !== undefined && isSamePath(dir, stop)) break",
+      "replace": "if (stop !== undefined && isSamePath(dirname(dir), stop)) break"
+    },
+    {
+      "name": "walk: outside any repository it stops at the cwd",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "if (repoRoot === null) return undefined",
+      "replace": "if (repoRoot === null) return start"
+    },
+    {
+      "name": "walk: a relative cwd is not resolved",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "  const start = resolve(cwd)\n  const stop = walkStop(start, deps)",
+      "replace": "  const start = cwd\n  const stop = walkStop(start, deps)"
+    },
+    {
+      "name": "walk: every candidate is listed, existing or not",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "if (isDirectory(candidate)) found.push(candidate)",
+      "replace": "found.push(candidate)"
+    },
+    {
+      "name": "walk: a nested repository stops at its own root",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "return isSameRepository(repoRoot, sessionRepoRoot, deps) ? repoRoot : sessionRepoRoot",
+      "replace": "return repoRoot"
+    },
+    {
+      "name": "walk: a worktree walks on to the session's root",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "return isSameRepository(repoRoot, sessionRepoRoot, deps) ? repoRoot : sessionRepoRoot",
+      "replace": "return sessionRepoRoot"
+    },
+    {
+      "name": "walk: repositories are compared by root, not by main checkout",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "return mainOfA !== null && mainOfB !== null && isSamePath(mainOfA, mainOfB)",
+      "replace": "return mainOfA !== null && mainOfB !== null && isSamePath(a, b)"
+    },
+    {
+      "name": "walk: a repository outside the session's walks on to it",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "if (sessionRepoRoot === null || !isStrictlyInside(repoRoot, sessionRepoRoot)) return repoRoot",
+      "replace": "if (sessionRepoRoot === null) return repoRoot"
+    },
+    {
+      "name": "fix, walk: anything that exists is a source again",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "return statSync(path).isDirectory()",
+      "replace": "return statSync(path) !== undefined"
+    },
+    {
+      "name": "walk: every error is passed over",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "    if (isFsInaccessible(error)) return false\n    throw error\n",
+      "replace": "    return false\n"
+    },
+    {
+      "name": "worktree: the main checkout is read beside the worktree's own directory",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "  if (walked.some(dir => isSamePath(dir, ownDir))) return []\n",
       "replace": ""
     },
     {
-      "name": "search: symlinks not followed",
-      "find": "'--follow', ",
+      "name": "worktree: a checkout that is no worktree falls back to its own root",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "if (repoRoot === null || mainRoot === null || isSamePath(repoRoot, mainRoot)) return []",
+      "replace": "if (repoRoot === null || mainRoot === null) return []"
+    },
+    {
+      "name": "worktree: the fallback reads the worktree's root, not the main checkout",
+      "source": "src/memory/instructions/markdownConfig/projectDirectories.ts",
+      "find": "return [configSubdirOf(mainRoot, subdir)]",
+      "replace": "return [configSubdirOf(repoRoot, subdir)]"
+    },
+    {
+      "name": "search: the extension is compared without case",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "entry.name.endsWith(MARKDOWN_EXTENSION)",
+      "replace": "entry.name.toLowerCase().endsWith(MARKDOWN_EXTENSION)"
+    },
+    {
+      "name": "search: a link's target decides, not its name",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "entry.name.endsWith(MARKDOWN_EXTENSION)",
+      "replace": "(await realpath(path)).endsWith(MARKDOWN_EXTENSION)"
+    },
+    {
+      "name": "search: links are not followed",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "const kind = kindOf(entry) ?? (await kindBehind(path, search))",
+      "replace": "const kind = kindOf(entry)"
+    },
+    {
+      "name": "search: a directory is entered again through a link",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "    if (search.entered.has(realDir)) return []\n",
       "replace": ""
     },
     {
-      "name": "native walk: the extension matched in any case",
-      "find": "          } else if (entry.isFile() && entry.name.endsWith('.md')) {",
-      "replace": "          } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {"
+      "name": "search: hidden entries are skipped",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "    await visit(join(dir, entry.name), entry, search)",
+      "replace": "    if (!entry.name.startsWith('.')) await visit(join(dir, entry.name), entry, search)"
     },
     {
-      "name": "no ripgrep: the fallback finds nothing",
-      "find": "        files = await findMarkdownFilesNative(dir, AbortSignal.timeout(3000))\n",
-      "replace": "        files = []\n"
+      "name": "search: an unreadable directory fails the search",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "    return []\n  }\n}\n\nasync function visit(",
+      "replace": "    throw error\n  }\n}\n\nasync function visit("
     },
     {
-      "name": "entries: frontmatter not parsed",
-      "find": "const { frontmatter, content } = parseFrontmatter(rawContent, filePath)",
-      "replace": "const { frontmatter, content } = { frontmatter: {}, content: rawContent }"
+      "name": "search: a dangling link fails the search",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "    logForDebugging(`[markdown config] passing over ${path}: ${errorMessage(error)}`)\n    return undefined\n",
+      "replace": "    throw error\n"
     },
     {
-      "name": "rules: globs accepted as a key",
+      "name": "search budget: finding nothing in time is an empty directory",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "  if (search.found.length === 0) throw new MarkdownSearchTimeoutError(root, clock.budgetMs)\n",
+      "replace": ""
+    },
+    {
+      "name": "search budget: past it, the files found so far are dropped",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "  return [...search.found]\n",
+      "replace": "  return []\n"
+    },
+    {
+      "name": "search budget: the clock is never read",
+      "source": "src/memory/instructions/markdownConfig/markdownSearch.ts",
+      "find": "  if (search.now() >= search.deadline) search.expired = true\n",
+      "replace": ""
+    },
+    {
+      "name": "identity: taken through a final symlink",
+      "source": "src/memory/instructions/markdownConfig/fileIdentity.ts",
+      "find": "import { lstat } from 'fs/promises'",
+      "replace": "import { stat as lstat } from 'fs/promises'"
+    },
+    {
+      "name": "identity: a file already loaded is loaded again",
+      "source": "src/memory/instructions/markdownConfig/fileIdentity.ts",
+      "find": "    if (seen.has(identity)) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "identity: an entry whose identity is unknown is dropped",
+      "source": "src/memory/instructions/markdownConfig/fileIdentity.ts",
+      "find": "if (identity === undefined) return true",
+      "replace": "if (identity === undefined) return false"
+    },
+    {
+      "name": "identity: inode 0 identifies a file",
+      "source": "src/memory/instructions/markdownConfig/fileIdentity.ts",
+      "find": "return ino === 0n ? undefined : `${dev}:${ino}`",
+      "replace": "return `${dev}:${ino}`"
+    },
+    {
+      "name": "identity: the device is left out",
+      "source": "src/memory/instructions/markdownConfig/fileIdentity.ts",
+      "find": "? undefined : `${dev}:${ino}`",
+      "replace": "? undefined : `${ino}`"
+    },
+    {
+      "name": "sources: the managed directory follows the user setting source",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "    isOn: () => true,\n",
+      "replace": "    isOn: readsFrom('userSettings'),\n"
+    },
+    {
+      "name": "sources: the user directory ignores the setting sources and the lock",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "    isOn: readsFrom('userSettings'),\n",
+      "replace": "    isOn: () => true,\n"
+    },
+    {
+      "name": "sources: the walked project directories ignore the setting sources and the lock",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "    isOn: readsFrom('projectSettings'),\n    directories: ({ walked }) => walked(),",
+      "replace": "    isOn: () => true,\n    directories: ({ walked }) => walked(),"
+    },
+    {
+      "name": "sources: the worktree fallback ignores the setting sources and the lock",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "    isOn: readsFrom('projectSettings'),\n    directories: ({ subdir, cwd, walked }) =>",
+      "replace": "    isOn: () => true,\n    directories: ({ subdir, cwd, walked }) =>"
+    },
+    {
+      "name": "sources: the plugin-only lock names skills instead of agents",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "  agents: 'agents',\n",
+      "replace": "  skills: 'skills',\n"
+    },
+    {
+      "name": "sources: the plugin-only lock is not applied",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "return subdir => isSettingSourceEnabled(source) && !isLockedToPlugins(subdir)",
+      "replace": "return subdir => isSettingSourceEnabled(source)"
+    },
+    {
+      "name": "sources: the agents lock reaches every subdirectory",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "return surface !== undefined && isRestrictedToPluginOnly(surface)",
+      "replace": "return isRestrictedToPluginOnly(surface ?? 'agents')"
+    },
+    {
+      "name": "sources: the user directory is <config>/.claudin/<subdir>",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "directories: ({ subdir }) => [join(getClaudinConfigHomeDir(), subdir)],",
+      "replace": "directories: ({ subdir }) => [configSubdirOf(getClaudinConfigHomeDir(), subdir)],"
+    },
+    {
+      "name": "sources: the managed directory is <managed>/<subdir>",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "directories: ({ subdir }) => [configSubdirOf(getManagedFilePath(), subdir)],",
+      "replace": "directories: ({ subdir }) => [join(getManagedFilePath(), subdir)],"
+    },
+    {
+      "name": "sources: the project directories come farthest first",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "    directories: ({ walked }) => walked(),",
+      "replace": "    directories: ({ walked }) => [...walked()].reverse(),"
+    },
+    {
+      "name": "sources: managed files are labelled as user files",
+      "source": "src/memory/instructions/markdownConfig/configSources.ts",
+      "find": "    source: 'policySettings',\n",
+      "replace": "    source: 'userSettings',\n"
+    },
+    {
+      "name": "load: an unreadable file fails the load",
+      "source": "src/memory/instructions/markdownConfig/loadMarkdownFiles.ts",
+      "find": "    logForDebugging(`[markdown config] leaving out ${filePath}: ${errorMessage(error)}`)\n    return undefined\n",
+      "replace": "    throw error\n"
+    },
+    {
+      "name": "load: baseDir is the file's own directory",
+      "source": "src/memory/instructions/markdownConfig/loadMarkdownFiles.ts",
+      "find": "file: { filePath, baseDir, frontmatter, content, source }",
+      "replace": "file: { filePath, baseDir: filePath.slice(0, filePath.lastIndexOf('/')), frontmatter, content, source }"
+    },
+    {
+      "name": "load: files are not de-duplicated",
+      "source": "src/memory/instructions/markdownConfig/loadMarkdownFiles.ts",
+      "find": "return keepFirstOfEachFile(perDirectory.flat()).map(loaded => loaded.file)",
+      "replace": "return perDirectory.flat().map(loaded => loaded.file)"
+    },
+    {
+      "name": "load: the sources come in reverse order",
+      "source": "src/memory/instructions/markdownConfig/loadMarkdownFiles.ts",
+      "find": "return keepFirstOfEachFile(perDirectory.flat()).map(loaded => loaded.file)",
+      "replace": "return keepFirstOfEachFile(perDirectory.reverse().flat()).map(loaded => loaded.file)"
+    },
+    {
+      "name": "load: the frontmatter is not parsed",
+      "source": "src/memory/instructions/markdownConfig/loadMarkdownFiles.ts",
+      "find": "const { frontmatter, content } = parseFrontmatter(text, filePath)",
+      "replace": "const { frontmatter, content } = { frontmatter: {}, content: text }"
+    },
+    {
+      "name": "fix, cache: a failed load stays cached",
+      "source": "src/memory/instructions/markdownConfig/loadCache.ts",
+      "find": "      if (loads.get(key) === started) loads.delete(key)\n",
+      "replace": ""
+    },
+    {
+      "name": "cache: an older failure evicts the newer load",
+      "source": "src/memory/instructions/markdownConfig/loadCache.ts",
+      "find": "if (loads.get(key) === started) loads.delete(key)",
+      "replace": "loads.delete(key)"
+    },
+    {
+      "name": "cache: a finished load is not reused",
+      "source": "src/memory/instructions/markdownConfig/loadCache.ts",
+      "find": "    if (cached !== undefined) return cached\n",
+      "replace": ""
+    },
+    {
+      "name": "cache: a load is never stored",
+      "source": "src/memory/instructions/markdownConfig/loadCache.ts",
+      "find": "    loads.set(key, started)\n",
+      "replace": ""
+    },
+    {
+      "name": "cache: clear() drops nothing",
+      "source": "src/memory/instructions/markdownConfig/loadCache.ts",
+      "find": "{ cache: { clear: (): void => loads.clear() } }",
+      "replace": "{ cache: { clear: (): void => {} } }"
+    },
+    {
+      "name": "cache: the key leaves out the cwd",
+      "find": "(subdir, cwd) => `${subdir}\\0${cwd}`",
+      "replace": "(subdir, _cwd) => `${subdir}`"
+    },
+    {
+      "name": "cache: the key leaves out the subdirectory",
+      "find": "(subdir, cwd) => `${subdir}\\0${cwd}`",
+      "replace": "(_subdir, cwd) => `${cwd}`"
+    },
+    {
+      "name": "rules: globs becomes a supported key",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": "readonly string[] = ['paths']",
-      "replace": "readonly string[] = ['paths', 'globs']"
+      "find": "export const RULE_FRONTMATTER_SUPPORTED_KEYS: readonly string[] = ['paths']",
+      "replace": "export const RULE_FRONTMATTER_SUPPORTED_KEYS: readonly string[] = ['paths', 'globs']"
+    },
+    {
+      "name": "rules: key names are compared without case",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "key => !RULE_FRONTMATTER_SUPPORTED_KEYS.includes(key),",
+      "replace": "key => !RULE_FRONTMATTER_SUPPORTED_KEYS.includes(key.toLowerCase()),"
+    },
+    {
+      "name": "rules: a missing paths key is malformed",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "Object.hasOwn(frontmatter, 'paths') && !RulePathsShape",
+      "replace": "!RulePathsShape"
+    },
+    {
+      "name": "rules: a bare paths: is malformed",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "z.union([z.string(), z.array(z.string()), z.null()])",
+      "replace": "z.union([z.string(), z.array(z.string())])"
     },
     {
       "name": "rules: a list holding a non-string is well formed",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": "z.array(z.string())",
-      "replace": "z.array(z.unknown())"
+      "find": "z.union([z.string(), z.array(z.string()), z.null()])",
+      "replace": "z.union([z.string(), z.array(z.unknown()), z.null()])"
     },
     {
-      "name": "rules: unsupported keys inverted",
+      "name": "rules: every trailing /** is removed",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": "key => !RULE_FRONTMATTER_SUPPORTED_KEYS.includes(key),",
-      "replace": "key => RULE_FRONTMATTER_SUPPORTED_KEYS.includes(key),"
+      "find": "const TRAILING_GLOBSTAR_RE = /\\/\\*\\*$/",
+      "replace": "const TRAILING_GLOBSTAR_RE = /(\\/\\*\\*)+$/"
     },
     {
-      "name": "rules: a trailing /** kept",
+      "name": "rules: a trailing /** is kept",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": "return pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern",
-      "replace": "return pattern"
+      "find": "    .map(pattern => pattern.replace(TRAILING_GLOBSTAR_RE, ''))\n",
+      "replace": ""
     },
     {
-      "name": "rules: empty patterns kept",
+      "name": "rules: empty patterns are kept",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": ".filter((p: string) => p.length > 0)",
-      "replace": ".filter((p: string) => p.length >= 0)"
+      "find": "    .filter(pattern => pattern !== '')\n",
+      "replace": ""
     },
     {
-      "name": "rules: one ** anywhere makes the rule apply everywhere",
+      "name": "rules: patterns that all match everything still scope the rule",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": "patterns.every((p: string) => p === '**')",
-      "replace": "patterns.some((p: string) => p === '**')"
+      "find": "return patterns.every(pattern => pattern === MATCHES_EVERYTHING) ? undefined : patterns",
+      "replace": "return patterns.length === 0 ? undefined : patterns"
     },
     {
-      "name": "rules: only the first pattern returned",
+      "name": "rules: a list with a non-string scopes nothing",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": "return { content, paths: patterns, unsupportedKeys, malformedPaths }",
-      "replace": "return { content, paths: patterns.slice(0, 1), unsupportedKeys, malformedPaths }"
+      "find": "if (Array.isArray(value)) return value.filter((entry): entry is string => typeof entry === 'string')",
+      "replace": "if (Array.isArray(value)) return value.every(entry => typeof entry === 'string') ? value : []"
     },
     {
-      "name": "rules: the content keeps the frontmatter",
+      "name": "rules: a string scopes nothing",
       "source": "src/memory/instructions/ruleFrontmatter.ts",
-      "find": "  const { frontmatter, content } = parseFrontmatter(rawContent)\n",
-      "replace": "  const { frontmatter } = parseFrontmatter(rawContent)\n  const content = rawContent\n"
+      "find": "if (typeof value === 'string') return [value]",
+      "replace": "if (typeof value === 'string') return []"
     }
   ]
 }

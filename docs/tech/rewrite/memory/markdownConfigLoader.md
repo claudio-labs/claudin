@@ -340,3 +340,12 @@ It parses with `parseFrontmatter` and returns the following fields.
 - **`ruleFrontmatter.ts`** stays a leaf, with the `paths` shape check as a named schema.
 - **Types.** Explicit, with no `any`, and regular expressions at module level.
 - **Call-time reads.** The environment, the settings, the managed path and the home directory are read when a load runs, because the tests change them between calls.
+
+## Outcome
+
+- **The gate.** `src/memory/instructions/markdownConfig/fileIdentity.test.ts` matched 8 lines of openclaude: a run of look-alike entries that matched by shape. The entries are now built from a table of path and identity pairs, and every case and expectation is kept. The file measures zero.
+- **Residue, reviewed.** These lines of Claude Code stay. Each one is contract:
+  - **`src/memory/instructions/markdownConfig/configDirectories.ts`, 2 lines.** The declarations of `CLAUDE_CONFIG_DIRECTORIES` and of `ClaudeConfigDirectory`, the type derived from it. The contract keeps both names: `fileSuggestions.ts` imports the list, `envNaming.test.ts` allowlists it, and the type is the parameter of the public functions.
+  - **`src/memory/instructions/markdownConfig/loadMarkdownFiles.ts`, 2 lines.** The signature of the load that the cache wraps, unchanged, as `loadMarkdownFilesForSubdir`. Its `subdir` parameter and its return type are the ones the contract table gives.
+
+  They go when the contract is redesigned, after every consumer has been rewritten.
