@@ -86,7 +86,7 @@ name (see Tests that pin it), so the module paths stay too.
 | `getGlobalGitignorePath` | `() => string` | nothing outside the module; the suite reads it |
 | `addFileGlobRuleToGitignore` | `(filename: string, cwd?: string) => Promise<void>`; `cwd` defaults to `getCwd()` at call time | `agent/plans/plans.ts`, `platform/settings/settings.ts`, `tools/AgentWorkflow/paths.ts`, `tools/TypecheckTool/baseline.ts` |
 | `getWorktreePaths` | `(cwd: string) => Promise<string[]>` | `commands/resume/resume.tsx`, `defaultAction/resume.ts`, `sessions/indexing/search.ts` |
-| `getWorktreePathsPortable` | `(cwd: string) => Promise<string[]>` | `sessions/sessionStoragePortable.ts` |
+| `getWorktreePathsPortable` | `(cwd: string) => Promise<string[]>` | removed after landing (Outcome) |
 | `isWorktreeModeEnabled` | `() => boolean` | `platform/main/action/parseOptions.ts`, `tools/tools.ts`, `platform/entrypoints/cli.tsx` dynamically |
 
 **Structure constraints:**
@@ -567,3 +567,17 @@ and no test pins the old one.
   - Regexes at module level.
   - `ParsedRepository`, `GitFileStatus` and `GitRepoState` kept as they are.
 - **Call-time reads.** Environment, `PATH`, the cwd and settings are read at call time, except `gitExe()` and `getIsGit()`, which are resolved once as today.
+
+## Outcome
+
+- **`getWorktreePathsPortable` is gone,** with `getWorktreePathsPortable.ts`, the module behind it, its characterization tests and its three probes. Its only production importer was the old `sessionStoragePortable.ts`, which imported it and never called it. Once `sessions/storagePure` rewrote that module without the dead import, the production dead-file check found nothing reaching the portable listing, so it was cut rather than kept alive for its tests. The Node-only structure constraint above goes with it.
+- **The gate.** Four of the new files matched inherited lines when the unit landed. Two of them were reworded to zero:
+  - `src/vcs/git/repository/boundedMemory.ts`: 2 lines of Claude Code, the capacity field and the constructor;
+  - `src/vcs/git/repository/remoteUrl.test.ts`: 14 lines of openclaude, runs of assertions that matched by shape. The cases now sit in tables, and none was dropped.
+
+  The start of `addFileGlobRuleToGitignore`'s body (2 lines) was reworded too. Every other file of the unit, its tests and fixtures included, measures zero.
+- **Residue, reviewed.** 11 lines of Claude Code remain. All of them are contract that callers not yet rewritten dictate:
+  - **`src/vcs/git/repository/globalIgnore.ts`, 7 lines.** The signatures of `getGlobalGitignorePath` and `addFileGlobRuleToGitignore`, with `cwd` defaulting to `getCwd()`, and the one-line body that returns the default path, `<home>/.config/git/ignore`. The contract table fixes the names, the parameters and the default. The suite pins the path.
+  - **`src/vcs/git/repository/sessionRepository.ts`, 4 lines.** The signatures of `getGitDir` and `getGithubRepo`, each with its first line. `getGitDir` hands the lookup to `gitFilesystem.ts`, and `getGithubRepo` starts by reading `getRemoteUrl()`. Both are delegations under names the contract keeps.
+
+  They go when the contract is redesigned, after every consumer has been rewritten.

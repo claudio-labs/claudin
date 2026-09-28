@@ -1,10 +1,7 @@
 /**
- * Worktree mode is now unconditionally enabled for all users.
- *
- * Previously gated by a GrowthBook flag, but the
- * CACHED_MAY_BE_STALE pattern returns the default (false) on first launch
- * before the cache is populated, silently swallowing --worktree.
- * See https://github.com/anthropics/claude-code/issues/27044.
+ * Worktree support is always available in this CLI. The switch stays because
+ * option parsing and the tool list still ask it; it reads no setting,
+ * environment variable, flag or directory.
  */
 export function isWorktreeModeEnabled(): boolean {
   return true

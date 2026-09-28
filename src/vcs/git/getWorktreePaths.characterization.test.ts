@@ -1,14 +1,13 @@
-// Characterization of the worktree listings (getWorktreePaths.ts and
-// getWorktreePathsPortable.ts) and of the worktree-mode switch
-// (worktreeModeEnabled.ts), written for the clean-base rewrite
-// (docs/tech/rewrite/vcs/git.md), against real repositories and worktrees.
+// Characterization of the worktree listing (getWorktreePaths.ts) and of the
+// worktree-mode switch (worktreeModeEnabled.ts), written for the clean-base
+// rewrite (docs/tech/rewrite/vcs/git.md), against real repositories and
+// worktrees.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { getWorktreePaths } from 'src/vcs/git/getWorktreePaths.js'
-import { getWorktreePathsPortable } from 'src/vcs/git/getWorktreePathsPortable.js'
 import { isWorktreeModeEnabled } from 'src/vcs/git/worktreeModeEnabled.js'
 
 const WHO = {
@@ -123,41 +122,6 @@ describe('getWorktreePaths', () => {
     const plain = dirFor('plain')
     expect(await getWorktreePaths(plain)).toEqual([])
     expect(await getWorktreePaths(join(plain, 'missing'))).toEqual([])
-  })
-})
-
-describe('getWorktreePathsPortable', () => {
-  test("lists every working tree in git's order, the main one first, wherever cwd is", async () => {
-    const base = dirFor('portable')
-    const zulu = join(base, 'zulu')
-    const echo = join(base, 'echo')
-    const main = mainWithLinked(join(base, 'main'), [zulu, echo])
-    const fromZulu = await getWorktreePathsPortable(zulu)
-    expect(fromZulu[0]).toBe(main)
-    expect([...fromZulu].sort()).toEqual([echo, main, zulu].sort())
-    expect(await getWorktreePathsPortable(main)).toEqual(fromZulu)
-  })
-
-  test('paths come back NFC-normalized', async () => {
-    const base = dirFor('portable-nfc')
-    const decomposed = join(base, 'nai\u0308ve')
-    const main = mainWithLinked(join(base, 'main'), [decomposed])
-    expect(await getWorktreePathsPortable(main)).toEqual([main, decomposed.normalize('NFC')])
-  })
-
-  test('empty outside a repository, for a missing directory, or when git is not on PATH', async () => {
-    const plain = dirFor('portable-plain')
-    const main = mainWithLinked(join(dirFor('portable-path'), 'main'), [])
-    expect(await getWorktreePathsPortable(plain)).toEqual([])
-    expect(await getWorktreePathsPortable(join(plain, 'missing'))).toEqual([])
-    const pathBefore = process.env.PATH
-    process.env.PATH = dirFor('no-git-here')
-    try {
-      expect(await getWorktreePathsPortable(main)).toEqual([])
-    } finally {
-      process.env.PATH = pathBefore
-    }
-    expect(await getWorktreePathsPortable(main)).toEqual([main])
   })
 })
 

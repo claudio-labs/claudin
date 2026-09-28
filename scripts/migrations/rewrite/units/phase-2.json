@@ -3,7 +3,7 @@
     "files": ["src/vcs/git/gitFilesystem.ts", "src/vcs/git/gitConfigParser.ts"]
   },
   "vcs/git": {
-    "files": ["src/vcs/git/git.ts", "src/vcs/git/detectRepository.ts", "src/vcs/git/githubRepoPathMapping.ts", "src/vcs/git/gitignore.ts", "src/vcs/git/getWorktreePaths.ts", "src/vcs/git/getWorktreePathsPortable.ts", "src/vcs/git/worktreeModeEnabled.ts"]
+    "files": ["src/vcs/git/git.ts", "src/vcs/git/detectRepository.ts", "src/vcs/git/githubRepoPathMapping.ts", "src/vcs/git/gitignore.ts", "src/vcs/git/getWorktreePaths.ts", "src/vcs/git/worktreeModeEnabled.ts"]
   },
   "vcs/worktree": {
     "files": ["src/vcs/git/worktree/createWorktree.ts", "src/vcs/git/worktree/includeFiles.ts", "src/vcs/git/worktree/mutationLock.ts", "src/vcs/git/worktree/postCreationSetup.ts", "src/vcs/git/worktree/session.ts", "src/vcs/git/worktree/sessionLifecycle.ts", "src/vcs/git/worktree/slugNaming.ts", "src/vcs/git/worktree/tmuxSession.ts"],
