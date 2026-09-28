@@ -1,0 +1,235 @@
+{
+  "test": [
+    "src/vcs/diff/structured/structuredDiff.characterization.test.tsx",
+    "src/vcs/diff/structured/colorDiff.characterization.test.ts"
+  ],
+  "source": "src/vcs/diff/structured/StructuredDiff.tsx",
+  "probes": [
+    {
+      "name": "gate: the variable no longer turns highlighting off",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_SYNTAX_HIGHLIGHT)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "gate: ColorDiff handed out while highlighting is off",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "return getColorModuleUnavailableReason() === null ? ColorDiff : null",
+      "replace": "return ColorDiff"
+    },
+    {
+      "name": "gate: ColorFile withheld while highlighting is on",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "=== null ? ColorFile : null",
+      "replace": "=== null ? null : null"
+    },
+    {
+      "name": "gate: EditorHighlighter handed out while highlighting is off",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "=== null ? EditorHighlighter : null",
+      "replace": "=== null ? EditorHighlighter : EditorHighlighter"
+    },
+    {
+      "name": "gate: the palette of another theme",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "    ? nativeGetSyntaxTheme(themeName)\n",
+      "replace": "    ? nativeGetSyntaxTheme('light')\n"
+    },
+    {
+      "name": "gate: a palette while highlighting is off",
+      "source": "src/vcs/diff/structured/colorDiff.ts",
+      "find": "    : null\n}",
+      "replace": "    : nativeGetSyntaxTheme(themeName)\n}"
+    },
+    {
+      "name": "list: another separator",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": "<Text dimColor>...</Text>",
+      "replace": "<Text dimColor>---</Text>"
+    },
+    {
+      "name": "list: hunks drawn in reverse",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": "return intersperse(hunks.map(hunk =>",
+      "replace": "return intersperse([...hunks].reverse().map(hunk =>"
+    },
+    {
+      "name": "list: dim not passed on",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": "<StructuredDiff patch={hunk} dim={dim}",
+      "replace": "<StructuredDiff patch={hunk} dim={false}"
+    },
+    {
+      "name": "list: width not passed on",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": " width={width} filePath={filePath}",
+      "replace": " width={80} filePath={filePath}"
+    },
+    {
+      "name": "list: first line not passed on",
+      "source": "src/vcs/diff/structured/StructuredDiffList.tsx",
+      "find": " firstLine={firstLine} fileContent={fileContent}",
+      "replace": " firstLine={null} fileContent={fileContent}"
+    },
+    {
+      "name": "diff: skipHighlighting ignored",
+      "find": "t2 = skipHighlighting || syntaxHighlightingDisabled ? null",
+      "replace": "t2 = syntaxHighlightingDisabled ? null"
+    },
+    {
+      "name": "diff: the syntaxHighlightingDisabled setting ignored",
+      "find": "const syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled ?? false;",
+      "replace": "const syntaxHighlightingDisabled = false;"
+    },
+    {
+      "name": "diff: a fractional width rounded up",
+      "find": "const safeWidth = Math.max(1, Math.floor(width));",
+      "replace": "const safeWidth = Math.max(1, Math.ceil(width));"
+    },
+    {
+      "name": "diff: the render cache ignores dim",
+      "find": "${dim ? 1 : 0}|",
+      "replace": ""
+    },
+    {
+      "name": "diff: the render cache ignores the theme",
+      "find": "const key = `${theme}|",
+      "replace": "const key = `"
+    },
+    {
+      "name": "diff: the first line never reaches the renderer",
+      "find": "new ColorDiff(patch, firstLine, filePath",
+      "replace": "new ColorDiff(patch, null, filePath"
+    },
+    {
+      "name": "diff: dim never reaches the renderer",
+      "find": ".render(theme, width, dim);",
+      "replace": ".render(theme, width, false);"
+    },
+    {
+      "name": "diff: fullscreen gutter one column short",
+      "find": "sliceAnsi(l, 0, gutterWidth)",
+      "replace": "sliceAnsi(l, 0, gutterWidth - 1)"
+    },
+    {
+      "name": "diff: fullscreen code starts a column late",
+      "find": "contents = lines.map(l => sliceAnsi(l, gutterWidth));",
+      "replace": "contents = lines.map(l => sliceAnsi(l, gutterWidth + 1));"
+    },
+    {
+      "name": "diff: the fallback is never dimmed",
+      "find": "<StructuredDiffFallback patch={patch} dim={dim}",
+      "replace": "<StructuredDiffFallback patch={patch} dim={false}"
+    },
+    {
+      "name": "diff: the first row is dropped",
+      "find": "<RawAnsi lines={lines} width={safeWidth} />",
+      "replace": "<RawAnsi lines={lines.slice(1)} width={safeWidth} />"
+    },
+    {
+      "name": "diff: a settings change on screen is not repainted",
+      "find": " || $[7] !== syntaxHighlightingDisabled",
+      "replace": ""
+    },
+    {
+      "name": "diff: a theme change on screen is not repainted",
+      "find": " || $[8] !== theme)",
+      "replace": ")"
+    },
+    {
+      "name": "diff: a new hunk on screen is not repainted",
+      "find": " || $[4] !== patch",
+      "replace": ""
+    },
+    {
+      "name": "fallback: the threshold raised to half",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "const CHANGE_THRESHOLD = 0.4;",
+      "replace": "const CHANGE_THRESHOLD = 0.5;"
+    },
+    {
+      "name": "fallback: a change of exactly 40% drawn whole",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "if (changeRatio > CHANGE_THRESHOLD || dim) {",
+      "replace": "if (changeRatio >= CHANGE_THRESHOLD || dim) {"
+    },
+    {
+      "name": "fallback: a dimmed diff still highlights words",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "if (changeRatio > CHANGE_THRESHOLD || dim) {",
+      "replace": "if (changeRatio > CHANGE_THRESHOLD) {"
+    },
+    {
+      "name": "fallback: a change of case ignored",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "ignoreCase: false",
+      "replace": "ignoreCase: true"
+    },
+    {
+      "name": "fallback: whitespace ignored by the word diff",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "import { diffWordsWithSpace, type StructuredPatchHunk } from 'diff';",
+      "replace": "import { diffWords as diffWordsWithSpace, type StructuredPatchHunk } from 'diff';"
+    },
+    {
+      "name": "fallback: added words in the line colour",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "partBgColor = 'diffAddedWord';",
+      "replace": "partBgColor = 'diffAdded';"
+    },
+    {
+      "name": "fallback: only the first pair is compared",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "const pairCount = Math.min(removeLines.length, addLines.length);",
+      "replace": "const pairCount = Math.min(1, addLines.length);"
+    },
+    {
+      "name": "fallback: numbers do not rewind after removed lines",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "i -= numRemoved;",
+      "replace": "i -= 0;"
+    },
+    {
+      "name": "fallback: markers swapped",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "const sigil = type === 'add' ? '+' : type === 'remove' ? '-' : ' ';",
+      "replace": "const sigil = type === 'add' ? '-' : type === 'remove' ? '+' : ' ';"
+    },
+    {
+      "name": "fallback: rows wrap past the width",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "safeWidth - maxWidth - 1 - diffPrefixWidth",
+      "replace": "safeWidth - maxWidth + 2 - diffPrefixWidth"
+    },
+    {
+      "name": "fallback: rows wrap too early",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "safeWidth - maxWidth - 1 - diffPrefixWidth",
+      "replace": "safeWidth - maxWidth - 3 - diffPrefixWidth"
+    },
+    {
+      "name": "fallback: word rows not broken when full",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "if (lineIdx > 0 || currentLineWidth + stringWidth(partLine) > availableContentWidth) {",
+      "replace": "if (lineIdx > 0) {"
+    },
+    {
+      "name": "fallback: continued word rows numbered again",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "'diffRemoved';\n    const lineNum = lineIndex === 0 ? i : undefined;",
+      "replace": "'diffRemoved';\n    const lineNum = i;"
+    },
+    {
+      "name": "fallback: dimmed rows in the full colour",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "dim ? 'diffAddedDimmed' : 'diffAdded' : type === 'remove'",
+      "replace": "dim ? 'diffAdded' : 'diffAdded' : type === 'remove'"
+    },
+    {
+      "name": "fallback: rows not filled to the width",
+      "source": "src/vcs/diff/structured/Fallback.tsx",
+      "find": "const padding = Math.max(0, safeWidth - contentWidth);",
+      "replace": "const padding = Math.max(0, safeWidth - contentWidth - 4);"
+    }
+  ]
+}
