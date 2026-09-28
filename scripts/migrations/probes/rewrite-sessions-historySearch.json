@@ -1,233 +1,574 @@
 {
   "test": [
     "src/sessions/historySearch.characterization.test.tsx",
-    "src/sessions/transcriptSearch.characterization.test.ts"
+    "src/sessions/transcriptSearch.characterization.test.ts",
+    "src/sessions/historySearch/historyScan.test.ts",
+    "src/sessions/historySearch/inlineSearch.test.ts",
+    "src/sessions/historySearch/pickerList.test.ts",
+    "src/sessions/historySearch/pickerLayout.test.ts",
+    "src/sessions/hooks/useHistorySearch.test.tsx",
+    "src/sessions/transcriptSearch.test.ts"
   ],
-  "source": "src/sessions/hooks/useHistorySearch.ts",
+  "source": "src/sessions/historySearch/inlineSearch.ts",
   "probes": [
     {
-      "name": "hook search: matching ignores case",
-      "find": "        const matchPosition = display.lastIndexOf(historyQuery)\n",
-      "replace": "        const matchPosition = display.toLowerCase().lastIndexOf(historyQuery.toLowerCase())\n"
+      "name": "inline: Ctrl+R never starts a search",
+      "source": "src/sessions/hooks/useHistorySearch.ts",
+      "find": "    isActive: feature('HISTORY_PICKER') ? false : !isSearching,\n",
+      "replace": "    isActive: feature('HISTORY_PICKER') ? false : false,\n"
     },
     {
-      "name": "hook search: a prompt already shown in this search comes round again",
-      "find": "        if (matchPosition !== -1 && !seenPrompts.current.has(display)) {\n",
-      "replace": "        if (matchPosition !== -1) {\n"
+      "name": "inline: the search keys act while no search runs",
+      "source": "src/sessions/hooks/useHistorySearch.ts",
+      "find": "useKeybindings(keyHandlers, { context: 'HistorySearch', isActive: isSearching })",
+      "replace": "useKeybindings(keyHandlers, { context: 'HistorySearch', isActive: true })"
     },
     {
-      "name": "hook search: the matched prompt's mode is not applied",
-      "find": "          const mode = getModeFromInput(display)\n",
-      "replace": "          const mode = currentMode\n"
+      "name": "inline: Backspace ends the search while the query still has text",
+      "source": "src/sessions/hooks/useHistorySearch.ts",
+      "find": "if (!isSearching || view.query !== '' || e.key !== 'backspace') return",
+      "replace": "if (!isSearching || e.key !== 'backspace') return"
     },
     {
-      "name": "hook search: the prompt box gets the text without its '!'",
-      "find": "          onInputChange(display)\n",
-      "replace": "          onInputChange(getValueFromInput(display))\n"
+      "name": "inline: handleKeyDown leaves the Backspace it acts on unhandled",
+      "source": "src/sessions/hooks/useHistorySearch.ts",
+      "find": "      e.preventDefault()\n      search[EMPTY_QUERY_BACKSPACE]()\n",
+      "replace": "      search[EMPTY_QUERY_BACKSPACE]()\n"
     },
     {
-      "name": "hook search: the match's pastes are not applied",
-      "find": "          setPastedContents(item.value.pastedContents)\n",
-      "replace": "          setPastedContents({})\n"
+      "name": "inline: the hook does not listen for the Backspace itself",
+      "source": "src/sessions/hooks/useHistorySearch.ts",
+      "find": "handleKeyDown(new KeyboardEvent(event.keypress)), { isActive: isSearching })",
+      "replace": "handleKeyDown(new KeyboardEvent(event.keypress)), { isActive: false })"
     },
     {
-      "name": "hook cursor: first occurrence instead of the last",
-      "find": "          const cleanMatchPosition = value.lastIndexOf(historyQuery)\n",
-      "replace": "          const cleanMatchPosition = value.indexOf(historyQuery)\n"
+      "name": "inline: a search remembers the prompt of the first render, not the current one",
+      "source": "src/sessions/hooks/useHistorySearch.ts",
+      "find": "    latest.current = caller\n",
+      "replace": "    void caller\n"
     },
     {
-      "name": "hook search: running out is not reported",
-      "find": "          setHistoryFailedMatch(true)\n",
-      "replace": "          setHistoryFailedMatch(false)\n"
+      "name": "inline: the remembered prompt is read again at every use",
+      "find": "    remembered ??= deps.currentPrompt()\n",
+      "replace": "    remembered = deps.currentPrompt()\n"
     },
     {
-      "name": "hook search: a new query carries on from the old position",
-      "find": "      if (!resume) {\n",
-      "replace": "      if (resume) {\n"
+      "name": "inline: emptying the query does not put the prompt back",
+      "find": "      if (query === '') {\n        showRemembered()\n",
+      "replace": "      if (query === '') {\n        publish(IDLE_VIEW)\n"
     },
     {
-      "name": "hook restore: the mode is not put back when the query empties",
-      "find": "        onModeChange(originalMode)\n",
-      "replace": ""
+      "name": "inline: a query that matches nothing is not reported as failed",
+      "find": "      publish({ ...view, failed: true })\n",
+      "replace": "      publish({ ...view, failed: false })\n"
     },
     {
-      "name": "hook start: the prompt's pastes are not remembered",
-      "find": "    setOriginalPastedContents(currentPastedContents)\n",
-      "replace": "    setOriginalPastedContents({})\n"
+      "name": "inline: a match is not reported",
+      "find": "    publish({ query: view.query, match, failed: false })\n",
+      "replace": "    publish({ query: view.query, match: undefined, failed: false })\n"
     },
     {
-      "name": "hook accept: the '!' stays in the accepted text",
-      "find": "      onInputChange(value)\n",
-      "replace": "      onInputChange(historyMatch.display)\n"
+      "name": "inline: a match's pastes are not put in the prompt",
+      "find": "    deps.writePrompt(promptShowingMatch(match, target.query))\n",
+      "replace": "    deps.writePrompt({ ...promptShowingMatch(match, target.query), pastedContents: {} })\n"
     },
     {
-      "name": "hook cancel: the cursor is not given back",
-      "find": "    onInputChange(originalInput)\n    onCursorChange(originalCursorOffset)\n    setPastedContents(originalPastedContents)\n    reset()\n",
-      "replace": "    onInputChange(originalInput)\n    setPastedContents(originalPastedContents)\n    reset()\n"
+      "name": "inline (fix): a result for an earlier query still reaches the prompt",
+      "find": "    if (target !== scan) return\n",
+      "replace": "    if (target === undefined) return\n"
     },
     {
-      "name": "hook execute: the '!' stays in the submitted text",
-      "find": "        display: value,\n",
-      "replace": "        display: historyMatch.display,\n"
+      "name": "inline: Ctrl+R while searching does not step to an older match",
+      "find": "      if (scan) advance(scan)\n",
+      "replace": "      if (!scan) advance(scan)\n"
     },
     {
-      "name": "hook keys: Ctrl+R accepts instead of stepping to an older match",
-      "find": "      'historySearch:next': handleNextMatch,\n",
-      "replace": "      'historySearch:next': handleAccept,\n"
+      "name": "inline: Ctrl+R on an empty query does not put the prompt back",
+      "find": "      if (view.query === '') {\n        showRemembered()\n",
+      "replace": "      if (view.query === '') {\n        publish(IDLE_VIEW)\n"
     },
     {
-      "name": "hook keys: the search keys also act while no search runs",
-      "find": "    context: 'HistorySearch',\n    isActive: isSearching,\n",
-      "replace": "    context: 'HistorySearch',\n    isActive: true,\n"
+      "name": "inline: accepting keeps nothing of the match",
+      "find": "deps.writePrompt(match ? promptAcceptingMatch(match) : { pastedContents: rememberedPrompt().pastedContents })",
+      "replace": "deps.writePrompt(match ? {} : { pastedContents: rememberedPrompt().pastedContents })"
     },
     {
-      "name": "hook backspace: cancels even with text in the query",
-      "find": "    if (e.key === 'backspace' && historyQuery === '') {\n",
-      "replace": "    if (e.key === 'backspace') {\n"
+      "name": "inline: accepting with no match does not give back the remembered pastes",
+      "find": "deps.writePrompt(match ? promptAcceptingMatch(match) : { pastedContents: rememberedPrompt().pastedContents })",
+      "replace": "deps.writePrompt(match ? promptAcceptingMatch(match) : {})"
     },
     {
-      "name": "dialog query: case matters",
+      "name": "inline: cancelling does not put the prompt back",
+      "find": "    cancel() {\n      deps.writePrompt(rememberedPrompt())\n",
+      "replace": "    cancel() {\n      void 0\n"
+    },
+    {
+      "name": "inline (fix): cancelling keeps the match's mode",
+      "find": "    cancel() {\n      deps.writePrompt(rememberedPrompt())\n",
+      "replace": "    cancel() {\n      deps.writePrompt({ ...rememberedPrompt(), mode: undefined })\n"
+    },
+    {
+      "name": "inline: ending leaves the query and the match in place",
+      "find": "    remembered = undefined\n    publish(IDLE_VIEW)\n",
+      "replace": "    remembered = undefined\n"
+    },
+    {
+      "name": "inline: ending leaves the search running",
+      "find": "    deps.setSearching(false)\n",
+      "replace": "    deps.setSearching(true)\n"
+    },
+    {
+      "name": "inline: Enter submits the match with its !",
+      "find": "      else if (match) deps.submit(entrySubmittingMatch(match))\n",
+      "replace": "      else if (match) deps.submit(match)\n"
+    },
+    {
+      "name": "inline: Enter on a query that matched nothing submits the query",
+      "find": "      else if (match) deps.submit(entrySubmittingMatch(match))\n",
+      "replace": "      else deps.submit({ display: query, pastedContents: {} })\n"
+    },
+    {
+      "name": "inline: Enter on an empty query submits nothing",
+      "find": "      if (query === '') deps.submit({ display: before.input, pastedContents: before.pastedContents })\n",
+      "replace": "      if (query === '') void before\n"
+    },
+    {
+      "name": "inline: the cursor goes to the first occurrence of the query",
+      "source": "src/sessions/historySearch/promptSnapshot.ts",
+      "find": "getValueFromInput(display).lastIndexOf(query)",
+      "replace": "getValueFromInput(display).indexOf(query)"
+    },
+    {
+      "name": "inline: the cursor counts the leading !",
+      "source": "src/sessions/historySearch/promptSnapshot.ts",
+      "find": "  const shown = getValueFromInput(display).lastIndexOf(query)\n",
+      "replace": "  const shown = display.lastIndexOf(query)\n"
+    },
+    {
+      "name": "inline: a query that reaches into the ! puts the cursor nowhere",
+      "source": "src/sessions/historySearch/promptSnapshot.ts",
+      "find": "  return shown === -1 ? display.lastIndexOf(query) : shown\n",
+      "replace": "  return shown\n"
+    },
+    {
+      "name": "inline: a match is shown without its !",
+      "source": "src/sessions/historySearch/promptSnapshot.ts",
+      "find": "    input: match.display,\n",
+      "replace": "    input: getValueFromInput(match.display),\n"
+    },
+    {
+      "name": "inline: a bash-mode match leaves the prompt in its mode",
+      "source": "src/sessions/historySearch/promptSnapshot.ts",
+      "find": "    cursorOffset: queryOffset(match.display, query),\n    mode: getModeFromInput(match.display),\n",
+      "replace": "    cursorOffset: queryOffset(match.display, query),\n    mode: 'prompt',\n"
+    },
+    {
+      "name": "inline: an accepted match keeps its !",
+      "source": "src/sessions/historySearch/promptSnapshot.ts",
+      "find": "    input: getValueFromInput(match.display),\n",
+      "replace": "    input: match.display,\n"
+    },
+    {
+      "name": "inline: accepting moves the cursor",
+      "source": "src/sessions/historySearch/promptSnapshot.ts",
+      "find": "Omit<PromptSnapshot, 'cursorOffset'> {\n  return {\n",
+      "replace": "Omit<PromptSnapshot, 'cursorOffset'> {\n  return {\n    cursorOffset: 0,\n"
+    },
+    {
+      "name": "inline: matching ignores case",
+      "source": "src/sessions/historySearch/historyScan.ts",
+      "find": "if (!entry.display.includes(query) || handedOut.has(entry.display)) continue",
+      "replace": "if (!entry.display.toLowerCase().includes(query.toLowerCase()) || handedOut.has(entry.display)) continue"
+    },
+    {
+      "name": "inline: a scan hands out the same text more than once",
+      "source": "src/sessions/historySearch/historyScan.ts",
+      "find": "if (!entry.display.includes(query) || handedOut.has(entry.display)) continue",
+      "replace": "if (!entry.display.includes(query)) continue"
+    },
+    {
+      "name": "inline (fix): an entry with no text breaks the scan",
+      "source": "src/sessions/historySearch/historyScan.ts",
+      "find": "      if (!hasText(entry)) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "inline: calls to one scan run side by side",
+      "source": "src/sessions/historySearch/historyScan.ts",
+      "find": "      const call = previousCall.then(findNext, findNext)\n",
+      "replace": "      const call = findNext()\n"
+    },
+    {
+      "name": "inline: a closed scan still hands out the prompt it was reading",
+      "source": "src/sessions/historySearch/historyScan.ts",
+      "find": "      if (finished) break\n",
+      "replace": "\n"
+    },
+    {
+      "name": "inline keys: Ctrl+R while searching cancels",
+      "source": "src/sessions/historySearch/searchKeys.ts",
+      "find": "  'historySearch:next': 'step',\n",
+      "replace": "  'historySearch:next': 'cancel',\n"
+    },
+    {
+      "name": "inline keys: Esc and Tab cancel instead of accepting",
+      "source": "src/sessions/historySearch/searchKeys.ts",
+      "find": "  'historySearch:accept': 'accept',\n",
+      "replace": "  'historySearch:accept': 'cancel',\n"
+    },
+    {
+      "name": "inline keys: Ctrl+C accepts instead of cancelling",
+      "source": "src/sessions/historySearch/searchKeys.ts",
+      "find": "  'historySearch:cancel': 'cancel',\n",
+      "replace": "  'historySearch:cancel': 'accept',\n"
+    },
+    {
+      "name": "inline keys: Enter accepts instead of submitting",
+      "source": "src/sessions/historySearch/searchKeys.ts",
+      "find": "  'historySearch:execute': 'submit',\n",
+      "replace": "  'historySearch:execute': 'accept',\n"
+    },
+    {
+      "name": "inline keys: Backspace on an empty query submits the prompt",
+      "source": "src/sessions/historySearch/searchKeys.ts",
+      "find": "export const EMPTY_QUERY_BACKSPACE: SearchOperation = 'cancel'\n",
+      "replace": "export const EMPTY_QUERY_BACKSPACE: SearchOperation = 'submit'\n"
+    },
+    {
+      "name": "picker: not registered as a modal overlay",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "          lower: display.toLowerCase(),\n",
-      "replace": "          lower: display,\n"
+      "find": "  useRegisterOverlay(OVERLAY_ID)\n",
+      "replace": "\n"
     },
     {
-      "name": "dialog query: letters-in-order matches come before substring ones",
+      "name": "picker: the history is read again on every render",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "    return exact.concat(fuzzy);\n",
-      "replace": "    return fuzzy.concat(exact);\n"
+      "find": "    return () => reading.abort()\n  }, [])\n",
+      "replace": "    return () => reading.abort()\n  })\n"
     },
     {
-      "name": "dialog query: letters-in-order matches are dropped",
+      "name": "picker: a pick is handed over without reading its pastes",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "      } else if (isSubsequence(item.lower, q)) {\n",
-      "replace": "      } else if (false) {\n"
+      "find": "      void prompt.resolve().then(onSelect).catch(logError)\n",
+      "replace": "      onSelect({ display: prompt.display, pastedContents: {} })\n"
     },
     {
-      "name": "dialog rows: the whole prompt instead of its first line",
+      "name": "picker: the newest prompt is at the top",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "          firstLine: nl === -1 ? display : display.slice(0, nl),\n",
-      "replace": "          firstLine: display,\n"
+      "find": "      direction=\"up\"\n",
+      "replace": "      direction=\"down\"\n"
     },
     {
-      "name": "dialog rows: the age column is nine wide",
+      "name": "picker: the preview always goes under the list",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "const AGE_WIDTH = 8;\n",
-      "replace": "const AGE_WIDTH = 9;\n"
+      "find": "previewPosition={widths.previewBeside ? 'right' : 'bottom'}",
+      "replace": "previewPosition=\"bottom\""
     },
     {
-      "name": "dialog rows: long first lines are not cut",
+      "name": "picker: Loading… is never shown",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "            {truncateToWidth(item_2.firstLine, rowWidth)}\n",
-      "replace": "            {item_2.firstLine}\n"
+      "find": "emptyListNotice(prompts === undefined, typed)",
+      "replace": "emptyListNotice(false, typed)"
     },
     {
-      "name": "dialog layout: the preview goes beside the list only above 100 columns",
+      "name": "picker: the query does not narrow the list",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "  const previewOnRight = columns >= 100;\n",
-      "replace": "  const previewOnRight = columns > 100;\n"
+      "find": "useMemo(() => filterPrompts(prompts ?? [], query), [prompts, query])",
+      "replace": "useMemo(() => prompts ?? [], [prompts, query])"
     },
     {
-      "name": "dialog preview: blank lines are kept",
+      "name": "picker: the hint says Enter to pick",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "    }).split('\\n').filter(l => l.trim() !== '');\n",
-      "replace": "    }).split('\\n');\n"
+      "find": "      selectAction=\"use\"\n",
+      "replace": "      selectAction=\"pick\"\n"
     },
     {
-      "name": "dialog preview: six rows shown even when the rest is counted",
+      "name": "picker: another title",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "    const shown = wrapped.slice(0, overflow ? PREVIEW_ROWS - 1 : PREVIEW_ROWS);\n",
-      "replace": "    const shown = wrapped.slice(0, PREVIEW_ROWS);\n"
+      "find": "      title=\"Search prompts\"\n",
+      "replace": "      title=\"Prompt history\"\n"
     },
     {
-      "name": "dialog empty: another no-match notice",
+      "name": "picker: another placeholder",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "'No matching prompts'",
-      "replace": "'No results'"
+      "find": "      placeholder=\"Filter history…\"\n",
+      "replace": "      placeholder=\"Type to search…\"\n"
     },
     {
-      "name": "dialog pick: pastes are not resolved",
+      "name": "picker: the preview beside the list is only as tall as its text",
       "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "    void item_1.entry.resolve().then(onSelect);\n",
-      "replace": "    onSelect({ display: item_1.display, pastedContents: {} });\n"
+      "find": "flexDirection=\"column\" flexGrow={1} paddingX={1}",
+      "replace": "flexDirection=\"column\" paddingX={1}"
     },
     {
-      "name": "dialog cancel: onCancel is never called",
-      "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "onCancel={onCancel}",
-      "replace": "onCancel={() => {}}"
+      "name": "picker (fix): an entry with no text is listed",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "      if (typeof entry.display !== 'string') {\n",
+      "replace": "      if (false) {\n"
     },
     {
-      "name": "dialog overlay: registered as a non-modal overlay",
-      "source": "src/sessions/ui/HistorySearchDialog.tsx",
-      "find": "  useRegisterOverlay('history-search');\n",
-      "replace": "  useRegisterOverlay('autocomplete');\n"
+      "name": "picker (fix): two prompts of one timestamp share a row key",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "key: String(listed.length)",
+      "replace": "key: String(entry.timestamp)"
+    },
+    {
+      "name": "picker: reading goes on after the picker is gone",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "      if (signal.aborted) break\n",
+      "replace": "\n"
+    },
+    {
+      "name": "picker: characters-in-order matches come before containing ones",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "  return [...containing, ...scattered]\n",
+      "replace": "  return [...scattered, ...containing]\n"
+    },
+    {
+      "name": "picker: no characters-in-order matches",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "    else if (holdsInOrder(text, wanted)) scattered.push(prompt)\n",
+      "replace": "    else if (false) scattered.push(prompt)\n"
+    },
+    {
+      "name": "picker: the case of a prompt matters",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "    const text = prompt.display.toLowerCase()\n",
+      "replace": "    const text = prompt.display\n"
+    },
+    {
+      "name": "picker: spaces around the query count",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "  return query.trim().toLowerCase()\n",
+      "replace": "  return query.toLowerCase()\n"
+    },
+    {
+      "name": "picker: the two notices swap",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "normalizeQuery(query) === '' ? 'No history yet' : 'No matching prompts'",
+      "replace": "normalizeQuery(query) === '' ? 'No matching prompts' : 'No history yet'"
+    },
+    {
+      "name": "picker: the query's characters are found in any order",
+      "source": "src/sessions/historySearch/pickerList.ts",
+      "find": "    from = at + character.length\n",
+      "replace": "    from = 0\n"
+    },
+    {
+      "name": "picker: the preview sits beside the list only above 100 columns",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "  const previewBeside = columns >= SIDE_BY_SIDE_COLUMNS\n",
+      "replace": "  const previewBeside = columns > SIDE_BY_SIDE_COLUMNS\n"
+    },
+    {
+      "name": "picker: beside the preview the list still takes the whole width",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "  const list = previewBeside ? Math.floor((columns - LIST_CHROME) / 2) : columns - LIST_CHROME\n",
+      "replace": "  const list = columns - LIST_CHROME\n"
+    },
+    {
+      "name": "picker: a row's text is one column wider",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "    rowText: Math.max(MIN_TEXT_WIDTH, list - AGE_COLUMN - 1),\n",
+      "replace": "    rowText: Math.max(MIN_TEXT_WIDTH, list - AGE_COLUMN),\n"
+    },
+    {
+      "name": "picker: the preview beside the list wraps two columns wider",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "previewBeside ? columns - list - PREVIEW_BESIDE_CHROME : columns - PREVIEW_BELOW_CHROME",
+      "replace": "previewBeside ? columns - list - PREVIEW_BELOW_CHROME : columns - PREVIEW_BELOW_CHROME"
+    },
+    {
+      "name": "picker: the preview under the list wraps four columns wider",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "previewBeside ? columns - list - PREVIEW_BESIDE_CHROME : columns - PREVIEW_BELOW_CHROME",
+      "replace": "previewBeside ? columns - list - PREVIEW_BESIDE_CHROME : columns - LIST_CHROME"
+    },
+    {
+      "name": "picker: ages are padded to seven columns",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": ".padEnd(AGE_COLUMN)",
+      "replace": ".padEnd(AGE_COLUMN - 1)"
+    },
+    {
+      "name": "picker: a row shows the whole prompt, not its first line",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "  const firstLine = prompt.display.split(LINE_BREAK_RE, 1)[0] ?? ''\n",
+      "replace": "  const firstLine = prompt.display\n"
+    },
+    {
+      "name": "picker: every row is aged from now",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "formatRelativeTimeAgo(new Date(prompt.timestamp), { now })",
+      "replace": "formatRelativeTimeAgo(new Date(), { now })"
+    },
+    {
+      "name": "picker: long words in the preview are not broken",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "wrapAnsi(display, width, { hard: true })",
+      "replace": "wrapAnsi(display, width, { hard: false })"
+    },
+    {
+      "name": "picker: blank lines stay in the preview",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "    .filter(line => line.trim() !== '')\n",
+      "replace": "    .filter(() => true)\n"
+    },
+    {
+      "name": "picker: the preview shows up to eight lines",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "  if (lines.length <= MAX_PREVIEW_LINES) return lines\n",
+      "replace": "  if (lines.length <= MAX_PREVIEW_LINES + 2) return lines\n"
+    },
+    {
+      "name": "picker: the preview's counter counts every line",
+      "source": "src/sessions/historySearch/pickerLayout.ts",
+      "find": "`… +${lines.length - kept.length} more lines`",
+      "replace": "`… +${lines.length} more lines`"
+    },
+    {
+      "name": "transcript: a typed interruption notice is searchable",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "return INTERRUPTION_NOTICES.has(content) ? [] : [content]",
+      "replace": "return [content]"
+    },
+    {
+      "name": "transcript: a text block that is an interruption notice is searchable",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "if (block.type === 'text' && !INTERRUPTION_NOTICES.has(block.text)) lines.push(block.text)",
+      "replace": "if (block.type === 'text') lines.push(block.text)"
+    },
+    {
+      "name": "transcript: a tool answer contributes nothing of the tool's output",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "      lines.push(toolResultSearchText(message.toolUseResult))\n",
+      "replace": "      lines.push('')\n"
+    },
+    {
+      "name": "transcript: the tool's output is repeated for each result block",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "if (block.type === 'tool_result' && !toolOutputShown) {",
+      "replace": "if (block.type === 'tool_result') {"
+    },
+    {
+      "name": "transcript: an assistant's tool call contributes nothing of its input",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "if (block.type === 'tool_use') return [toolUseSearchText(block.input)]",
+      "replace": "if (block.type === 'tool_use') return ['']"
+    },
+    {
+      "name": "transcript: task notifications are searchable",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "if (attachment.commandMode === 'task-notification' || attachment.isMeta) return []",
+      "replace": "if (attachment.isMeta) return []"
+    },
+    {
+      "name": "transcript: system-injected prompts are searchable",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "if (attachment.commandMode === 'task-notification' || attachment.isMeta) return []",
+      "replace": "if (attachment.commandMode === 'task-notification') return []"
+    },
+    {
+      "name": "transcript: a queued prompt of blocks contributes nothing",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "  return prompt.flatMap(block => (block.type === 'text' ? [block.text] : []))\n",
+      "replace": "  return []\n"
+    },
+    {
+      "name": "transcript: queued prompts are not searchable",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "  attachment: message => queuedPromptLines(message.attachment),\n",
+      "replace": "  attachment: nothingShown,\n"
+    },
+    {
+      "name": "transcript: system reminders are searchable",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": ".replace(SYSTEM_REMINDER_RE, '').toLowerCase()",
+      "replace": ".toLowerCase()"
+    },
+    {
+      "name": "transcript: one reminder cut runs to the last closing tag",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "/<system-reminder>[\\s\\S]*?<\\/system-reminder>/g",
+      "replace": "/<system-reminder>[\\s\\S]*<\\/system-reminder>/g"
     },
     {
       "name": "transcript: the text keeps its case",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "  const result = computeSearchText(msg).toLowerCase()\n",
-      "replace": "  const result = computeSearchText(msg)\n"
+      "find": ".replace(SYSTEM_REMINDER_RE, '').toLowerCase()",
+      "replace": ".replace(SYSTEM_REMINDER_RE, '')"
     },
     {
       "name": "transcript: the text is worked out again on every call",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "  searchTextCache.set(msg, result)\n",
-      "replace": ""
+      "find": "  return searchTextCache.get(msg) ?? rememberSearchText(msg)\n",
+      "replace": "  return rememberSearchText(msg)\n"
     },
     {
-      "name": "transcript: an interruption notice typed as a string is searchable",
+      "name": "transcript: a tool call's fields come in another order",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "        raw = RENDERED_AS_SENTINEL.has(c) ? '' : c\n",
-      "replace": "        raw = c\n"
+      "find": "strings: ['command', 'pattern', 'file_path',",
+      "replace": "strings: ['pattern', 'command', 'file_path',"
     },
     {
-      "name": "transcript: a tool answer is searched through the model-facing block",
+      "name": "transcript: a tool call's lists are joined with commas",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "            parts.push(toolResultSearchText(msg.toolUseResult))\n",
-      "replace": "            parts.push(typeof b.content === 'string' ? b.content : '')\n"
+      "find": "  listSeparator: ' ',\n",
+      "replace": "  listSeparator: ',',\n"
     },
     {
-      "name": "transcript: tool-call arguments are left out",
+      "name": "transcript: lists holding a non-string are searched",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "            if (b.type === 'tool_use') return [toolUseSearchText(b.input)]\n",
-      "replace": "            if (b.type === 'tool_use') return []\n"
+      "find": "  return Array.isArray(value) && value.every(item => typeof item === 'string')\n",
+      "replace": "  return Array.isArray(value)\n"
     },
     {
-      "name": "transcript: task notifications become searchable",
+      "name": "transcript: an empty stderr adds a line",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "        msg.attachment.commandMode !== 'task-notification' &&\n",
-      "replace": ""
+      "find": "typeof output.stderr === 'string' && output.stderr !== ''",
+      "replace": "typeof output.stderr === 'string'"
     },
     {
-      "name": "transcript: the closing reminder tag stays in",
+      "name": "transcript: shell output gives way to a content field",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "    t = t.slice(0, open) + t.slice(close + SYSTEM_REMINDER_CLOSE.length)\n",
-      "replace": "    t = t.slice(0, open) + t.slice(close)\n"
+      "find": "  if (typeof output.stdout === 'string') {\n",
+      "replace": "  if (typeof output.stdout === 'string' && output.content === undefined) {\n"
     },
     {
-      "name": "transcript: only the first reminder is cut",
+      "name": "transcript: a file read contributes nothing of the file",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "    open = t.indexOf('<system-reminder>')\n  }\n",
-      "replace": "    open = -1\n  }\n"
+      "find": "  if (isRecord(output.file) && typeof output.file.content === 'string') return output.file.content\n",
+      "replace": "\n"
     },
     {
-      "name": "toolUseSearchText: the skill field is dropped",
+      "name": "transcript: a tool output's fields come in another order",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "    'skill', // SkillTool\n",
-      "replace": ""
+      "find": "strings: ['content', 'output', 'result', 'text', 'message'],",
+      "replace": "strings: ['output', 'content', 'result', 'text', 'message'],"
     },
     {
-      "name": "toolResultSearchText: stderr is dropped",
+      "name": "transcript: a tool output's lists are joined with spaces",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "    return o.stdout + (err ? '\\n' + err : '')\n",
-      "replace": "    return o.stdout\n"
+      "find": "  listSeparator: '\\n',\n",
+      "replace": "  listSeparator: ' ',\n"
     },
     {
-      "name": "toolResultSearchText: the results list is dropped",
+      "name": "transcript: an empty list adds a line",
       "source": "src/sessions/transcriptSearch.ts",
-      "find": "  for (const k of ['filenames', 'lines', 'results']) {\n",
-      "replace": "  for (const k of ['filenames', 'lines']) {\n"
+      "find": "if (isStringList(value) && value.length > 0) lines.push",
+      "replace": "if (isStringList(value)) lines.push"
+    },
+    {
+      "name": "transcript: null counts as a record",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "  return value !== null && typeof value === 'object'\n",
+      "replace": "  return typeof value === 'object'\n"
+    },
+    {
+      "name": "transcript: a bare string output contributes nothing",
+      "source": "src/sessions/transcriptSearch.ts",
+      "find": "  if (typeof output === 'string') return output\n",
+      "replace": "\n"
     }
   ]
 }

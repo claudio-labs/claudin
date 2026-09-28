@@ -488,6 +488,30 @@ picker is the caller's and the build's job, and stays there.
 | **Empty tool lists add an empty line,** and **a message with several tool-result blocks repeats the tool's output.** Normalized transcript messages carry one block each, so the second cannot happen today. | **Open.** Neither is pinned, and dropping both is allowed. |
 | **The paste hash is used as a file name** (outside the unit). | See Security requirements. |
 
+## Outcome (2026-09-28)
+
+- **The gate.** One new file matched Claude Code lines when the unit landed,
+  and it was reworded to zero:
+  - `src/sessions/hooks/useHistorySearch.test.tsx`, 5 lines. Its harness
+    declared the prompt's fields as five separate pieces of React state, a
+    run that matched by shape. The harness now holds them as one value and
+    hands the hook a setter for each field. Every test and expectation is
+    unchanged.
+- **Files rewritten at their old paths.** The baseline still allowed them
+  their old counts, so the gate did not flag them, and they were reviewed by
+  hand. `src/sessions/transcriptSearch.ts` had 7 matching lines: the cache
+  lookup, the loop over an assistant's blocks and the object guard matched
+  by shape. They are now a lookup that falls back to a function computing and
+  storing the text, a `flatMap`, and the guard's two tests in the other order.
+  The exported signature is left alone, and a single line is not counted.
+  The file measures zero.
+- **Residue, reviewed.** 14 lines of Claude Code stay, all in
+  `src/sessions/hooks/useHistorySearch.ts`, and all contract: the three
+  fields of the hook's result that the prompt reads (`setHistoryQuery`,
+  `historyMatch`, `historyFailedMatch`), and the hook's positional
+  signature, which its caller passes argument by argument. They go when the
+  contract is redesigned, after every consumer has been rewritten.
+
 ## Target design
 
 - **The inline search:**

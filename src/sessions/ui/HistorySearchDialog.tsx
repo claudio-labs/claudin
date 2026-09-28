@@ -1,113 +1,104 @@
-import * as React from 'react';
-import { useEffect, useMemo, useState } from 'react';
-import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
-import { getTimestampedHistory, type TimestampedHistoryEntry } from 'src/agent/history.js';
-import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
-import { stringWidth } from 'src/terminal/ink/stringWidth.js';
-import { wrapAnsi } from 'src/terminal/ink/wrapAnsi.js';
-import { Box, Text } from 'src/terminal/ink.js';
-import type { HistoryEntry } from 'src/platform/config/config.js';
-import { formatRelativeTimeAgo, truncateToWidth } from 'src/shared/text/format.js';
-import { FuzzyPicker } from 'src/terminal/design-system/FuzzyPicker.js';
+/**
+ * The Ctrl+R history picker: this project's recent prompts, newest at the
+ * bottom next to the query box, narrowed as the user types, with the focused
+ * one previewed. Picking one hands it over with its pastes read; the picker
+ * never closes itself, the caller takes it down. The design-system FuzzyPicker
+ * supplies the query box, the scrolling window, the marks, the keys and the
+ * hint line. docs/tech/rewrite/sessions/historySearch.md (section 3) is the spec.
+ */
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { getTimestampedHistory } from 'src/agent/history.js'
+import type { HistoryEntry } from 'src/platform/config/config.js'
+import { emptyListNotice, filterPrompts, type ListedPrompt, readListedPrompts } from 'src/sessions/historySearch/pickerList.js'
+import { pickerWidths, previewLines, promptRow } from 'src/sessions/historySearch/pickerLayout.js'
+import { logError } from 'src/shared/log.js'
+import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js'
+import { FuzzyPicker } from 'src/terminal/design-system/FuzzyPicker.js'
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
+import { Box, Text } from 'src/terminal/ink.js'
+
 type Props = {
-  initialQuery?: string;
-  onSelect: (entry: HistoryEntry) => void;
-  onCancel: () => void;
-};
-const PREVIEW_ROWS = 6;
-const AGE_WIDTH = 8;
-type Item = {
-  entry: TimestampedHistoryEntry;
-  display: string;
-  lower: string;
-  firstLine: string;
-  age: string;
-};
-export function HistorySearchDialog({
-  initialQuery,
-  onSelect,
-  onCancel
-}: Props): React.ReactNode {
-  useRegisterOverlay('history-search');
-  const {
-    columns
-  } = useTerminalSize();
-  const [items, setItems] = useState<Item[] | null>(null);
-  const [query, setQuery] = useState(initialQuery ?? '');
-  useEffect(() => {
-    if (items !== null) return;
-    let cancelled = false;
-    void (async () => {
-      const reader = getTimestampedHistory();
-      const loaded: Item[] = [];
-      for await (const entry of reader) {
-        if (cancelled) {
-          void reader.return(undefined);
-          return;
-        }
-        const display = entry.display;
-        const nl = display.indexOf('\n');
-        const age = formatRelativeTimeAgo(new Date(entry.timestamp));
-        loaded.push({
-          entry,
-          display,
-          lower: display.toLowerCase(),
-          firstLine: nl === -1 ? display : display.slice(0, nl),
-          age: age + ' '.repeat(Math.max(0, AGE_WIDTH - stringWidth(age)))
-        });
-      }
-      if (!cancelled) setItems(loaded);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [items]);
-  const filtered = useMemo(() => {
-    if (!items) return [];
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
-    const exact: Item[] = [];
-    const fuzzy: Item[] = [];
-    for (const item of items) {
-      if (item.lower.includes(q)) {
-        exact.push(item);
-      } else if (isSubsequence(item.lower, q)) {
-        fuzzy.push(item);
-      }
-    }
-    return exact.concat(fuzzy);
-  }, [items, query]);
-  const previewOnRight = columns >= 100;
-  const listWidth = previewOnRight ? Math.floor((columns - 6) * 0.5) : columns - 6;
-  const rowWidth = Math.max(20, listWidth - AGE_WIDTH - 1);
-  const previewWidth = previewOnRight ? Math.max(20, columns - listWidth - 12) : Math.max(20, columns - 10);
-  return <FuzzyPicker title="Search prompts" placeholder="Filter history…" initialQuery={initialQuery} items={filtered} getKey={item_0 => String(item_0.entry.timestamp)} onQueryChange={setQuery} onSelect={item_1 => {
-    void item_1.entry.resolve().then(onSelect);
-  }} onCancel={onCancel} emptyMessage={q_0 => items === null ? 'Loading…' : q_0 ? 'No matching prompts' : 'No history yet'} selectAction="use" direction="up" previewPosition={previewOnRight ? 'right' : 'bottom'} renderItem={(item_2, isFocused) => <Text>
-          <Text dimColor>{item_2.age}</Text>
-          <Text color={isFocused ? 'suggestion' : undefined}>
-            {' '}
-            {truncateToWidth(item_2.firstLine, rowWidth)}
-          </Text>
-        </Text>} renderPreview={item_3 => {
-    const wrapped = wrapAnsi(item_3.display, previewWidth, {
-      hard: true
-    }).split('\n').filter(l => l.trim() !== '');
-    const overflow = wrapped.length > PREVIEW_ROWS;
-    const shown = wrapped.slice(0, overflow ? PREVIEW_ROWS - 1 : PREVIEW_ROWS);
-    const more = wrapped.length - shown.length;
-    return <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1} height={PREVIEW_ROWS + 2}>
-            {shown.map((row, i) => <Text key={i} dimColor>
-                {row}
-              </Text>)}
-            {more > 0 && <Text dimColor>{`… +${more} more lines`}</Text>}
-          </Box>;
-  }} />;
+  initialQuery?: string
+  onSelect: (entry: HistoryEntry) => void
+  onCancel: () => void
 }
-function isSubsequence(text: string, query: string): boolean {
-  let j = 0;
-  for (let i = 0; i < text.length && j < query.length; i++) {
-    if (text[i] === query[j]) j++;
-  }
-  return j === query.length;
+
+const OVERLAY_ID = 'history-search'
+
+const keyOf = (prompt: ListedPrompt): string => prompt.key
+
+export function HistorySearchDialog({ initialQuery, onSelect, onCancel }: Props): React.ReactNode {
+  useRegisterOverlay(OVERLAY_ID)
+  const { columns } = useTerminalSize()
+  const widths = pickerWidths(columns)
+  const prompts = useListedPrompts()
+  const [query, setQuery] = useState(initialQuery ?? '')
+  const shown = useMemo(() => filterPrompts(prompts ?? [], query), [prompts, query])
+
+  const select = useCallback(
+    (prompt: ListedPrompt) => {
+      void prompt.resolve().then(onSelect).catch(logError)
+    },
+    [onSelect],
+  )
+  const renderRow = useCallback(
+    (prompt: ListedPrompt, isFocused: boolean) => <Row prompt={prompt} width={widths.rowText} isFocused={isFocused} />,
+    [widths.rowText],
+  )
+  const renderPreview = useCallback(
+    (prompt: ListedPrompt) => <Preview lines={previewLines(prompt.display, widths.preview)} />,
+    [widths.preview],
+  )
+  const notice = useCallback((typed: string) => emptyListNotice(prompts === undefined, typed), [prompts])
+
+  return (
+    <FuzzyPicker
+      title="Search prompts"
+      placeholder="Filter history…"
+      initialQuery={initialQuery}
+      items={shown}
+      getKey={keyOf}
+      renderItem={renderRow}
+      renderPreview={renderPreview}
+      previewPosition={widths.previewBeside ? 'right' : 'bottom'}
+      direction="up"
+      onQueryChange={setQuery}
+      onSelect={select}
+      onCancel={onCancel}
+      emptyMessage={notice}
+      selectAction="use"
+    />
+  )
+}
+
+/** The history, read once per mount; undefined until the read is done. */
+function useListedPrompts(): readonly ListedPrompt[] | undefined {
+  const [prompts, setPrompts] = useState<readonly ListedPrompt[]>()
+  useEffect(() => {
+    const reading = new AbortController()
+    void readListedPrompts(getTimestampedHistory(), reading.signal).then(listed => {
+      if (!reading.signal.aborted) setPrompts(listed)
+    })
+    return () => reading.abort()
+  }, [])
+  return prompts
+}
+
+/** One line: the age, dimmed, then the prompt's first line. */
+function Row({ prompt, width, isFocused }: { prompt: ListedPrompt; width: number; isFocused: boolean }): React.ReactNode {
+  const row = promptRow(prompt, width)
+  return (
+    <Text>
+      <Text dimColor>{row.age}</Text> <Text color={isFocused ? 'suggestion' : undefined}>{row.text}</Text>
+    </Text>
+  )
+}
+
+/** Beside the list it grows to the list's height, so its frame does not jump as the focus moves. */
+function Preview({ lines }: { lines: readonly string[] }): React.ReactNode {
+  return (
+    <Box borderStyle="round" borderDimColor flexDirection="column" flexGrow={1} paddingX={1}>
+      <Text>{lines.join('\n')}</Text>
+    </Box>
+  )
 }
