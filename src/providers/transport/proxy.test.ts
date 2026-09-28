@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
   _resetH1OnlyForTesting,
@@ -8,6 +8,7 @@ import {
   getProxyFetchOptions,
   isProviderH1Only,
   markProviderH1Only,
+  shouldBypassProxy,
 } from 'src/providers/transport/proxy.js'
 
 const originalProxyEnv = {
@@ -114,5 +115,44 @@ test('getProxyFetchOptions defers to proxy path when HTTPS_PROXY is set', () => 
   } else {
     expect(opts.dispatcher).toBeDefined()
     expect(opts.dispatcher).not.toBe(getProviderDispatcher('firstParty'))
+  }
+})
+
+// The axios path (hooks, OAuth) decides with shouldBypassProxy while fetch goes
+// through undici's EnvHttpProxyAgent, so the two must agree on every NO_PROXY
+// value. These rows are undici 8.11's semantics.
+describe('shouldBypassProxy matches undici EnvHttpProxyAgent', () => {
+  const cases: [noProxy: string, url: string, bypass: boolean][] = [
+    ['', 'https://example.com', false],
+    ['*', 'https://example.com', true],
+    ['localhost,*', 'https://example.com', true],
+    [' * ', 'https://example.com', true],
+    ['*:8080', 'http://example.com:8080', true],
+    ['*:8080', 'https://example.com', false],
+    ['example.com', 'https://example.com', true],
+    ['example.com', 'https://api.example.com', true],
+    ['example.com', 'https://notexample.com', false],
+    ['.example.com', 'https://example.com', true],
+    ['.example.com', 'https://api.example.com', true],
+    ['*.example.com', 'https://api.example.com', true],
+    ['*.example.com', 'https://example.com', false],
+    ['example.com.', 'https://api.example.com', true],
+    ['EXAMPLE.com', 'https://Api.Example.COM', true],
+    ['example.com:8080', 'http://example.com:8080', true],
+    ['example.com:8080', 'http://api.example.com:8080', true],
+    ['example.com:8080', 'https://example.com', false],
+    ['example.com:443', 'https://example.com', true],
+    ['example.com:80', 'ws://example.com', true],
+    ['127.0.0.1', 'http://127.0.0.1:3000', true],
+    ['::1', 'http://[::1]:3000', true],
+    ['[::1]:3000', 'http://[::1]:3000', true],
+    ['[::1]:3000', 'http://[::1]:4000', false],
+    ['localhost', 'not a url', false],
+  ]
+
+  for (const [noProxy, url, bypass] of cases) {
+    test(`NO_PROXY=${JSON.stringify(noProxy)} ${url} → ${bypass ? 'direct' : 'proxy'}`, () => {
+      expect(shouldBypassProxy(url, noProxy)).toBe(bypass)
+    })
   }
 })

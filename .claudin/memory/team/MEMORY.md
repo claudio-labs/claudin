@@ -159,7 +159,7 @@
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live; the /usr/lib layout keeps rg+sharp resolving
 - [Node engine floor 22.12.0](node-engine-floor-22.md) — commander 15 is ESM-only; breaks Node 20
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits, no code changes: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md)
+- Dependabot audits, no code change unless noted: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28 — undici NO_PROXY drift fixed](dependabot-bumps-2026-09-28-audited.md)
 - [v8cache GC blocked process exit — fixed](startup-v8cache-gc-blocked-exit.md) — detached child + daily stamp; checkpoint deltas mislead
 - [Launcher jemalloc LD_PRELOAD leak — fixed 06-11](launcher-jemalloc-ld-preload-leak.md) — it reached children and broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700, global gitignore

@@ -123,14 +123,49 @@ export function getNoProxy(env: EnvLike = process.env): string | undefined {
   return env.no_proxy || env.NO_PROXY
 }
 
+const NO_PROXY_SEPARATOR_RE = /[,\s]+/
+const BRACKETED_IPV6_WITH_PORT_RE = /^\[(.+)\]:(\d+)$/
+const BRACKETED_RE = /^\[(.+)\]$/
+const HOST_WITH_PORT_RE = /^([^:]+):(\d+)$/
+const LEADING_WILDCARD_OR_DOT_RE = /^\*?\./
+const TRAILING_DOT_RE = /^(.+)\.$/
+
+type NoProxyEntry = { hostname: string; port: number; wildcard: boolean }
+
+// Mirrors EnvHttpProxyAgent#parseNoProxy (undici 8.11). A bare IPv6 address
+// has several colons, so only a single colon followed by digits is a port.
+function parseNoProxyEntry(entry: string): NoProxyEntry {
+  let hostname: string
+  let port = 0
+  const ipv6WithPort = BRACKETED_IPV6_WITH_PORT_RE.exec(entry)
+  if (ipv6WithPort) {
+    hostname = ipv6WithPort[1]!
+    port = Number(ipv6WithPort[2])
+  } else {
+    const unbracketed = entry.replace(BRACKETED_RE, '$1')
+    const hostWithPort = HOST_WITH_PORT_RE.exec(unbracketed)
+    hostname = hostWithPort ? hostWithPort[1]! : unbracketed
+    if (hostWithPort) port = Number(hostWithPort[2])
+  }
+  return {
+    hostname: hostname
+      .replace(LEADING_WILDCARD_OR_DOT_RE, '')
+      .replace(TRAILING_DOT_RE, '$1')
+      .toLowerCase(),
+    port,
+    wildcard: entry.startsWith('*'),
+  }
+}
+
 /**
- * Check if a URL should bypass the proxy based on NO_PROXY environment variable
- * Supports:
- * - Exact hostname matches (e.g., "localhost")
- * - Domain suffix matches with leading dot (e.g., ".example.com")
- * - Wildcard "*" to bypass all
- * - Port-specific matches (e.g., "example.com:8080")
- * - IP addresses (e.g., "127.0.0.1")
+ * Check if a URL should bypass the proxy based on NO_PROXY environment variable.
+ * The axios path decides with this while fetch goes through undici's
+ * EnvHttpProxyAgent, so it follows undici's rules exactly:
+ * - "*" anywhere in the list bypasses every host ("*:80" only that port)
+ * - "example.com" and ".example.com" match the domain and its subdomains
+ * - "*.example.com" matches subdomains only, never the apex
+ * - "host:port" restricts any of the above to one port
+ * - IP addresses, including IPv6 ("::1", "[::1]:443")
  * @param urlString URL to check
  * @param noProxy NO_PROXY value (defaults to getNoProxy() for production use)
  */
@@ -145,37 +180,21 @@ export function shouldBypassProxy(
 
   try {
     const url = new URL(urlString)
-    const hostname = url.hostname.toLowerCase()
-    const port = url.port || (
-      url.protocol === 'https:' || url.protocol === 'wss:' ? '443' : '80'
-    )
-    const hostWithPort = `${hostname}:${port}`
+    const hostname = url.hostname.replace(BRACKETED_RE, '$1').toLowerCase()
+    const port =
+      Number(url.port) ||
+      (url.protocol === 'https:' || url.protocol === 'wss:' ? 443 : 80)
 
-    // Split by comma or space and trim each entry
-    const noProxyList = noProxy.split(/[,\s]+/).filter(Boolean)
-
-    return noProxyList.some(pattern => {
-      pattern = pattern.toLowerCase().trim()
-
-      // Check for port-specific match
-      if (pattern.includes(':')) {
-        return hostWithPort === pattern
-      }
-
-      // Check for domain suffix match (with or without leading dot)
-      if (pattern.startsWith('.')) {
-        // Pattern ".example.com" should match "sub.example.com" and "example.com"
-        // but NOT "notexample.com"
-        const suffix = pattern
-        return hostname === pattern.substring(1) || hostname.endsWith(suffix)
-      }
-
-      // Bare domain matches the domain and its subdomains (e.g.
-      // NO_PROXY=example.com covers api.example.com), aligning with the
-      // undici/fetch path and curl/Node conventions. IP addresses have no
-      // subdomains, so the endsWith arm is a harmless no-op for them.
-      return hostname === pattern || hostname.endsWith('.' + pattern)
-    })
+    return noProxy
+      .split(NO_PROXY_SEPARATOR_RE)
+      .filter(Boolean)
+      .map(parseNoProxyEntry)
+      .some(entry => {
+        if (entry.port && entry.port !== port) return false
+        if (entry.hostname === '*') return true
+        if (!entry.wildcard && hostname === entry.hostname) return true
+        return hostname.endsWith(`.${entry.hostname}`)
+      })
   } catch {
     // If URL parsing fails, don't bypass proxy
     return false
@@ -268,7 +287,7 @@ export const getProxyAgent = memoize((uri: string): undici.Dispatcher => {
     // Override both HTTP and HTTPS proxy with the provided URI
     httpProxy: uri,
     httpsProxy: uri,
-    noProxy: process.env.NO_PROXY || process.env.no_proxy,
+    noProxy: getNoProxy(),
   }
 
   // Set both connect and requestTls so TLS options apply to both paths:
