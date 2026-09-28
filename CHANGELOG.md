@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.1.37 — 2026-09-28
+
+### ✨ Features
+
+- feat(sessions): rebuild /resume as a live, fullscreen session table (#261) (624c2742)
+- feat(tui): polish the spinner, token row, prompt rule and frame rate (#259) (d7ff9aed)
+- feat(tui): show /diff and /explorer fullscreen from inline sessions (#258) (3922ed5f)
+- feat(agents): let agents ask each other and wait for the answer (#257) (519c3b57)
+
+### 🐛 Bug Fixes
+
+- fix(tui): keep chat text off the /diff side panel seam (#260) (f18657ee)
+- fix(agents): reach a finished inline agent by name (#256) (0deeed69)
+- fix(containers): show stacks brought up below a monorepo root (#255) (9186fae2)
+
+### 📚 Documentation
+
+- docs(memory): catch up team memory and prune notes the rules hold (#254) (5b197ef4)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.36 — 2026-09-25
 
 ### ✨ Features
