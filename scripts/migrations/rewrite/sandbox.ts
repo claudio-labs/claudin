@@ -58,8 +58,22 @@ const LETTERS_RE = /[A-Za-z]{3}/
 const WIRING_LINE_RE = /^(import\b|export\s+(\*|type\s*\{|\{)|\}\s*from\s*['"])/
 const WHITESPACE_RUN_RE = /\s+/g
 
+// Prompt text sits in string literals, one per line, while a snapshot or a
+// doc shows it bare: `'Save what matters.',` in the source is `Save what
+// matters.` in the system-prompt snapshot. Both forms are compared.
+const LEADING_QUOTE_RE = /^[`'"]/
+const TRAILING_QUOTE_RE = /[`'"][,;)+\s]*$/
+
 function normalizedLine(raw: string): string {
   return raw.trim().replace(WHITESPACE_RUN_RE, ' ')
+}
+
+function unquoted(line: string): string {
+  return line.replace(LEADING_QUOTE_RE, '').replace(TRAILING_QUOTE_RE, '')
+}
+
+function isQuotable(line: string): boolean {
+  return line.length >= QUOTED_LINE_MIN_LENGTH && LETTERS_RE.test(line) && !WIRING_LINE_RE.test(line)
 }
 
 function quotableLines(files: string[], root: string): Set<string> {
@@ -69,12 +83,18 @@ function quotableLines(files: string[], root: string): Set<string> {
     if (!existsSync(path)) continue
     for (const raw of readFileSync(path, 'utf8').split('\n')) {
       const line = normalizedLine(raw)
-      if (line.length >= QUOTED_LINE_MIN_LENGTH && LETTERS_RE.test(line) && !WIRING_LINE_RE.test(line)) {
-        lines.add(line)
-      }
+      if (!isQuotable(line)) continue
+      lines.add(line)
+      const bare = unquoted(line)
+      if (isQuotable(bare)) lines.add(bare)
     }
   }
   return lines
+}
+
+function quotesLine(quoted: Set<string>, raw: string): boolean {
+  const line = normalizedLine(raw)
+  return quoted.has(line) || quoted.has(unquoted(line))
 }
 
 function run(command: string, args: string[], input?: Buffer): Buffer {
@@ -180,7 +200,7 @@ if (mode === 'impl') {
   for (const file of textFiles(sandbox)) {
     const text = readFileSync(join(sandbox, file), 'utf8')
     const found = new Set(nameRe ? (text.match(nameRe) ?? []) : [])
-    const quotes = text.split('\n').filter(raw => quoted.has(normalizedLine(raw))).length
+    const quotes = text.split('\n').filter(raw => quotesLine(quoted, raw)).length
     if (found.size === 0 && quotes === 0) continue
     const what = [...found, ...(quotes > 0 ? [`${quotes} quoted line${quotes === 1 ? '' : 's'}`] : [])]
     const line = `${file}: ${what.join(', ')}`
