@@ -1,7 +1,7 @@
 # Phase 2: `src/memory`, `src/vcs`, `src/sessions`
 
 Drawn from the inventory on 2026-09-28: 17,253 inherited lines in 152 files.
-The 22 units below hold 16,837 of them. The other 416 are residue in files
+The 22 units below hold 16,820 of them, after `getWorktreePathsPortable.ts` (17) was cut as dead. The other 416 are residue in files
 that are otherwise this project's own, most of it in tests that copied an
 inherited harness. That residue is swept once the units have landed.
 `teamMemPrompts.ts` and `pathScopedMemories.ts` moved from `memory/memdir` to
@@ -31,33 +31,33 @@ which the sandbox tools read; the lists below are the same.
 
 | Unit | Files | Inherited lines | Inherited tests it replaces | Status |
 |---|---|---|---|---|
-| `vcs/gitFilesystem` | 2 | 785 | — | characterized |
-| `vcs/git` | 7 | 808 | — | characterized |
+| `vcs/gitFilesystem` | 2 | 785 | — | done |
+| `vcs/git` | 6 | 791 | — | done |
 | `vcs/worktree` | 8 | 1104 | `worktree.test.ts` (76) | pending |
-| `vcs/gitDiff` | 6 | 542 | — | characterized |
-| `vcs/structuredDiff` | 4 | 636 | — | characterized |
+| `vcs/gitDiff` | 6 | 542 | — | done |
+| `vcs/structuredDiff` | 4 | 636 | — | done |
 | `vcs/diffHooks` | 4 | 563 | — | pending |
-| `memory/markdownConfigLoader` | 2 | 459 | — | characterized |
+| `memory/markdownConfigLoader` | 2 | 459 | — | done |
 | `memory/claudemd` | 10 | 979 | `projectInstructions.test.ts` (77) | pending |
-| `memory/memdir` | 8 | 772 | — | characterized |
+| `memory/memdir` | 8 | 772 | — | done |
 | `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | pending |
-| `memory/extract` | 5 | 557 | — | characterized |
+| `memory/extract` | 5 | 557 | — | done |
 | `memory/autoDream` | 4 | 310 | — | pending |
 | `memory/ui` | 3 | 372 | `memoryFileSelectorPaths.test.ts` (58) | pending |
-| `sessions/storagePure` | 6 | 858 | — | characterized |
+| `sessions/storagePure` | 6 | 858 | — | done |
 | `sessions/persistence` | 5 | 1315 | — | pending |
 | `sessions/resume` | 7 | 1201 | `conversationRecovery.hooks.test.ts`, `conversationRecovery.test.ts`, `sessionStorage.test.ts` (377) | pending |
 | `sessions/liteMetadata` | 2 | 856 | — | pending |
 | `sessions/indexingScan` | 3 | 609 | — | pending |
-| `sessions/lifecycle` | 8 | 1057 | — | characterized |
+| `sessions/lifecycle` | 8 | 1057 | — | done |
 | `sessions/remote` | 5 | 917 | — | pending |
-| `sessions/historySearch` | 3 | 534 | — | characterized |
+| `sessions/historySearch` | 3 | 534 | — | done |
 | `sessions/ui` | 5 | 660 | — | pending |
 
 ### Files per unit
 
 - `vcs/gitFilesystem`: `vcs/git/gitFilesystem.ts`, `vcs/git/gitConfigParser.ts`
-- `vcs/git`: `vcs/git/git.ts`, `vcs/git/detectRepository.ts`, `vcs/git/githubRepoPathMapping.ts`, `vcs/git/gitignore.ts`, `vcs/git/getWorktreePaths.ts`, `vcs/git/getWorktreePathsPortable.ts`, `vcs/git/worktreeModeEnabled.ts`
+- `vcs/git`: `vcs/git/git.ts`, `vcs/git/detectRepository.ts`, `vcs/git/githubRepoPathMapping.ts`, `vcs/git/gitignore.ts`, `vcs/git/getWorktreePaths.ts`, `vcs/git/worktreeModeEnabled.ts`
 - `vcs/worktree`: `vcs/git/worktree/createWorktree.ts`, `vcs/git/worktree/includeFiles.ts`, `vcs/git/worktree/mutationLock.ts`, `vcs/git/worktree/postCreationSetup.ts`, `vcs/git/worktree/session.ts`, `vcs/git/worktree/sessionLifecycle.ts`, `vcs/git/worktree/slugNaming.ts`, `vcs/git/worktree/tmuxSession.ts`
 - `vcs/gitDiff`: `vcs/git/gitDiff.ts`, `vcs/git/diff.ts`, `vcs/git/diffStat.ts`, `vcs/git/gitStatusDelta.ts`, `vcs/git/commitAttribution.ts`, `vcs/git/attribution.ts`
 - `vcs/structuredDiff`: `vcs/diff/structured/Fallback.tsx`, `vcs/diff/structured/StructuredDiff.tsx`, `vcs/diff/structured/StructuredDiffList.tsx`, `vcs/diff/structured/colorDiff.ts`
@@ -78,3 +78,24 @@ which the sandbox tools read; the lists below are the same.
 - `sessions/remote`: `sessions/hooks/useRemoteSession.ts`, `sessions/hooks/useSSHSession.ts`, `sessions/sessionIngressAuth.ts`, `sessions/sessionUrl.ts`, `sessions/hooks/useTeleportResume.tsx`
 - `sessions/historySearch`: `sessions/hooks/useHistorySearch.ts`, `sessions/ui/HistorySearchDialog.tsx`, `sessions/transcriptSearch.ts`
 - `sessions/ui`: `sessions/ui/ResumeConversation.tsx`, `sessions/ui/SessionPreview.tsx`, `sessions/ui/SessionBackgroundHint.tsx`, `sessions/hooks/useSessionBackgrounding.ts`, `sessions/hooks/useFileHistorySnapshotInit.ts`
+
+## Findings outside the units
+
+The units' agents found these in code no phase 2 unit owns. Each goes to the
+phase that owns the code; none was changed here.
+
+| Finding | Where | For |
+|---|---|---|
+| Output is decoded one 64 KB chunk at a time, so a multi-byte character across a chunk boundary becomes U+FFFD and large diffs show garbled text | `execFileNoThrowWithCwd` | `shared` |
+| `logError` records nothing at the default privacy level | `src/shared/log.ts` | `shared` |
+| The paste store names a file after a history line's hash without checking it (hardening) | the paste cache behind history search | `terminal` |
+| Callers put commit and PR attribution text into their output without escaping it | the attribution consumers of `vcs/git/attribution.ts` | `tools` |
+| Under git 2.55, `stash show -p` garbles its path prefixes, so the /diff stash view comes up empty | the /diff stash reader | `vcs/diffHooks` |
+| `conversationRecovery.hooks.test.ts`, the REPL harness and `useReplExit.test.tsx` never restore their module mocks, and mocking a facade replaces the function behind it, so combined runs depend on file order | the tests named | `sessions/resume`, `agent` |
+| Five probe specs were already stale on `main` before the rewrite (69 probes): `antiNarrationRemoved`, `patchResubmit`, `providerScreens`, `requestLevers2`, `responseChain` | `scripts/migrations/probes/` | the residue sweep; `stale-probes.ts` lists them |
+
+The older specs the ten units displaced were re-pointed, not pruned: their 15
+stale probes (`catAsRead`, `forkDefaults`, `memoryIndex`, `nestedMemoryBatch`,
+`promptsV2`, `teamMemSecretGuard`) now target the lines that carry the same
+behaviour in the new code, and each still turns its spec's own suites red.
+Pruning would have left this project's tests unproven against the rewrite.
