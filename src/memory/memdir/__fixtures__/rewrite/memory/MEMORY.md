@@ -1,0 +1,1 @@
+- [Prefers terse replies](prefers-terse-replies.md) — no closing recap; the diff speaks for itself

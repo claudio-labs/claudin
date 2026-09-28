@@ -1,0 +1,7 @@
+# dependencies
+node_modules/
+dist/
+
+# local agent state
+/.claudin
+.env

@@ -1,0 +1,5 @@
+node_modules/
+/.claudin/*
+!/.claudin/memory/
+/.claudin/memory/*
+!/.claudin/memory/team/

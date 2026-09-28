@@ -1,0 +1,244 @@
+{
+  "test": [
+    "src/memory/memdir/memdir.characterization.test.ts",
+    "src/memory/memdir/memdir.paths.characterization.test.ts",
+    "src/memory/memdir/memdir.taxonomy.characterization.test.ts",
+    "src/memory/memdir/memdir.teamPrompts.characterization.test.ts",
+    "src/memory/memdir/memdir.detection.characterization.test.ts",
+    "src/memory/memdir/memdir.pathScoped.characterization.test.ts"
+  ],
+  "source": "src/memory/memdir/memdir.ts",
+  "probes": [
+    {
+      "name": "index: the line cap moves from 200 to 150",
+      "find": "export const MAX_ENTRYPOINT_LINES = 200\n",
+      "replace": "export const MAX_ENTRYPOINT_LINES = 150\n"
+    },
+    {
+      "name": "index: the byte cap counts UTF-16 units instead of bytes",
+      "find": "  const byteCount = Buffer.byteLength(trimmed)\n",
+      "replace": "  const byteCount = trimmed.length\n"
+    },
+    {
+      "name": "index: a hard cut may split a multibyte character",
+      "find": "    while (cutAt > 0 && (buf[cutAt]! & CONTINUATION_MASK) === CONTINUATION_BITS) {\n",
+      "replace": "    while (false) {\n"
+    },
+    {
+      "name": "count: nested sub-bullets count as index entries",
+      "find": "const INDEX_ENTRY_RE = /^-[ \\t]+\\S/gm\n",
+      "replace": "const INDEX_ENTRY_RE = /^\\s*-[ \\t]+\\S/gm\n"
+    },
+    {
+      "name": "existing memories: the index itself counts as a topic file",
+      "find": ".some(d => d.isFile() && d.name.endsWith('.md') && d.name !== ENTRYPOINT_NAME)",
+      "replace": ".some(d => d.isFile() && d.name.endsWith('.md'))"
+    },
+    {
+      "name": "agent prompt: a whitespace-only index is shown instead of the empty note",
+      "find": "  if (entrypointContent.trim()) {\n",
+      "replace": "  if (entrypointContent) {\n"
+    },
+    {
+      "name": "search section: embedded search tools are ignored",
+      "find": "  const embedded = hasEmbeddedSearchTools()\n",
+      "replace": "  const embedded = false\n"
+    },
+    {
+      "name": "loadMemoryPrompt: a populated directory gets the compact text",
+      "find": "      ? buildMemoryLines\n",
+      "replace": "      ? buildMemoryStubLines\n"
+    },
+    {
+      "name": "full text: paths: described with another product's rules directory",
+      "find": "a rule in \\`.claudin/rules/\\`, relative to the project root) is also attached",
+      "replace": "a rule in \\`.claude/rules/\\`, relative to the project root) is also attached"
+    },
+    {
+      "name": "types: the fourth type is renamed",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "  'reference',\n] as const",
+      "replace": "  'references',\n] as const"
+    },
+    {
+      "name": "types: parsing folds case",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "  return MEMORY_TYPES.find(t => t === raw)\n",
+      "replace": "  return MEMORY_TYPES.find(t => t === raw.toLowerCase())\n"
+    },
+    {
+      "name": "categories: the bug noun changes",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "    noun: 'bug',\n",
+      "replace": "    noun: 'defect',\n"
+    },
+    {
+      "name": "categories: read off the file name instead of its directory",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "  const dir = basename(dirname(filePath))\n",
+      "replace": "  const dir = basename(filePath)\n"
+    },
+    {
+      "name": "categories: the tagged section drops the trailing slash of <dir>",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "      `    <dir>${category.dir}/</dir>`,\n",
+      "replace": "      `    <dir>${category.dir}</dir>`,\n"
+    },
+    {
+      "name": "frontmatter example: type nested under the other keys",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "  `type: {{${MEMORY_TYPES.join(' | ')}}}`,\n",
+      "replace": "  `  type: {{${MEMORY_TYPES.join(' | ')}}}`,\n"
+    },
+    {
+      "name": "age: the note waits until three days",
+      "source": "src/memory/memdir/memoryAge.ts",
+      "find": "  if (d <= 1) return ''\n",
+      "replace": "  if (d <= 2) return ''\n"
+    },
+    {
+      "name": "age: the note loses its trailing newline",
+      "source": "src/memory/memdir/memoryAge.ts",
+      "find": "  return `<system-reminder>${text}</system-reminder>\\n`\n",
+      "replace": "  return `<system-reminder>${text}</system-reminder>`\n"
+    },
+    {
+      "name": "enabled: an off value of the disable variable no longer forces memory on",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "  if (isEnvDefinedFalsy(envVal)) {\n    return true\n  }\n",
+      "replace": "  if (isEnvDefinedFalsy(envVal)) {\n    return false\n  }\n"
+    },
+    {
+      "name": "override: two-character paths are accepted",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    normalized.length < 3 ||\n",
+      "replace": "    normalized.length < 1 ||\n"
+    },
+    {
+      "name": "override: ~/ may name the whole home directory",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    if (restNorm === '.' || restNorm === '..') {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "override: the checked-in project settings may choose the directory",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    getSettingsForSource('localSettings')?.autoMemoryDirectory ??\n",
+      "replace": "    getSettingsForSource('projectSettings')?.autoMemoryDirectory ??\n"
+    },
+    {
+      "name": "override: the environment override expands ~",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE,\n    false,\n",
+      "replace": "    process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE,\n    true,\n"
+    },
+    {
+      "name": "project-local: only when explicitly enabled",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "  return val !== false\n",
+      "replace": "  return val === true\n"
+    },
+    {
+      "name": "project-local: the symlink containment check always passes",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "      containmentVerified =\n        realProjectLocalPath === realRoot ||\n        realProjectLocalPath.startsWith(realRoot + sep)\n",
+      "replace": "      containmentVerified = true\n"
+    },
+    {
+      "name": "project-local: legacy memory is not copied in",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    migrateGlobalMemoryIfNeeded(legacyPath, projectLocalPath)\n",
+      "replace": ""
+    },
+    {
+      "name": "legacy slug: taken from the project root instead of the canonical repository root",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "  return findCanonicalGitRoot(getProjectRoot()) ?? getProjectRoot()\n",
+      "replace": "  return getProjectRoot()\n"
+    },
+    {
+      "name": "team: the directory is renamed",
+      "source": "src/memory/memdir/teamMemPaths.ts",
+      "find": "  return (join(getAutoMemPath(), 'team') + sep).normalize('NFC')\n",
+      "replace": "  return (join(getAutoMemPath(), 'shared') + sep).normalize('NFC')\n"
+    },
+    {
+      "name": "team: a blanket ignore needs a leading slash to be seen",
+      "source": "src/memory/memdir/teamMemPaths.ts",
+      "find": "const BLANKET_CLAUDIN_IGNORE_RE = /^\\/?\\.claudin\\/?$/\n",
+      "replace": "const BLANKET_CLAUDIN_IGNORE_RE = /^\\/\\.claudin\\/?$/\n"
+    },
+    {
+      "name": "team: dot segments are not resolved before the prefix check",
+      "source": "src/memory/memdir/teamMemPaths.ts",
+      "find": "  const resolvedPath = resolve(filePath)\n",
+      "replace": "  const resolvedPath = filePath\n"
+    },
+    {
+      "name": "detection: a session summary must end in .txt",
+      "source": "src/memory/memdir/memoryFileDetection.ts",
+      "find": "  if (normalized.includes('/session-memory/') && normalized.endsWith('.md')) {\n",
+      "replace": "  if (normalized.includes('/session-memory/') && normalized.endsWith('.txt')) {\n"
+    },
+    {
+      "name": "detection: shell punctuation stays on a path token",
+      "source": "src/memory/memdir/memoryFileDetection.ts",
+      "find": "    const cleanPath = match.replace(/[,;|&>]+$/, '')\n",
+      "replace": "    const cleanPath = match\n"
+    },
+    {
+      "name": "detection: a command naming only the project memory directory is not screened",
+      "source": "src/memory/memdir/memoryFileDetection.ts",
+      "find": "  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)\n",
+      "replace": "  const dirs = [configDir, memoryBase].filter(Boolean)\n"
+    },
+    {
+      "name": "path-scoped: the walk goes one level deeper",
+      "source": "src/memory/memdir/pathScopedMemories.ts",
+      "find": "const MAX_DEPTH = 3\n",
+      "replace": "const MAX_DEPTH = 4\n"
+    },
+    {
+      "name": "path-scoped: every memory directory anchors at its grandparent",
+      "source": "src/memory/memdir/pathScopedMemories.ts",
+      "find": "  return basename(parent) === CLAUDIN_DIR_NAME ? dirname(parent) : originalCwd\n",
+      "replace": "  return dirname(parent)\n"
+    },
+    {
+      "name": "path-scoped: a missing directory is remembered as empty",
+      "source": "src/memory/memdir/pathScopedMemories.ts",
+      "find": "  cache = dirMtimes.size === 0 ? null : { memoryDir, dirMtimes, entries }\n",
+      "replace": "  cache = { memoryDir, dirMtimes, entries }\n"
+    },
+    {
+      "name": "path-scoped: symlinked memory files are read",
+      "source": "src/memory/memdir/pathScopedMemories.ts",
+      "find": "      !dirent.isFile() ||\n",
+      "replace": "      dirent.isDirectory() ||\n"
+    },
+    {
+      "name": "team prompts: the .gitignore advice ignores where the team directory is",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "  if (!gitRoot || !teamDir.startsWith(gitRoot + sep)) {\n",
+      "replace": "  if (!gitRoot) {\n"
+    },
+    {
+      "name": "team prompts: the full prompt never says the indexes are empty",
+      "source": "src/memory/memdir/teamMemPrompts.ts",
+      "find": "  const teamDir = getTeamMemPath()\n  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n",
+      "replace": "  const teamDir = getTeamMemPath()\n  const emptyIndexesNote = ''\n"
+    },
+    {
+      "name": "versions: the answer is inverted",
+      "source": "src/memory/memdir/versions.ts",
+      "find": "  return findGitRoot(cwd) !== null\n",
+      "replace": "  return findGitRoot(cwd) === null\n"
+    },
+    {
+      "name": "types: the managed kind is dropped",
+      "source": "src/memory/memdir/types.ts",
+      "find": "  'Managed',\n",
+      "replace": ""
+    }
+  ]
+}
