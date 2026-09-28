@@ -27,27 +27,27 @@ which the sandbox tools read; the lists below are the same.
 
 | Unit | Files | Inherited lines | Inherited tests it replaces | Status |
 |---|---|---|---|---|
-| `vcs/gitFilesystem` | 2 | 785 | — | pending |
-| `vcs/git` | 7 | 808 | — | pending |
+| `vcs/gitFilesystem` | 2 | 785 | — | characterized |
+| `vcs/git` | 7 | 808 | — | characterized |
 | `vcs/worktree` | 8 | 1104 | `worktree.test.ts` (76) | pending |
-| `vcs/gitDiff` | 6 | 542 | — | pending |
-| `vcs/structuredDiff` | 4 | 636 | — | pending |
+| `vcs/gitDiff` | 6 | 542 | — | characterized |
+| `vcs/structuredDiff` | 4 | 636 | — | characterized |
 | `vcs/diffHooks` | 4 | 563 | — | pending |
-| `memory/markdownConfigLoader` | 2 | 459 | — | pending |
+| `memory/markdownConfigLoader` | 2 | 459 | — | characterized |
 | `memory/claudemd` | 11 | 981 | `projectInstructions.test.ts` (77) | pending |
-| `memory/memdir` | 10 | 798 | — | pending |
+| `memory/memdir` | 10 | 798 | — | characterized |
 | `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | pending |
-| `memory/extract` | 5 | 557 | — | pending |
+| `memory/extract` | 5 | 557 | — | characterized |
 | `memory/autoDream` | 4 | 310 | — | pending |
 | `memory/ui` | 3 | 372 | `memoryFileSelectorPaths.test.ts` (58) | pending |
-| `sessions/storagePure` | 6 | 858 | — | pending |
+| `sessions/storagePure` | 6 | 858 | — | characterized |
 | `sessions/persistence` | 5 | 1315 | — | pending |
 | `sessions/resume` | 7 | 1201 | `conversationRecovery.hooks.test.ts`, `conversationRecovery.test.ts`, `sessionStorage.test.ts` (377) | pending |
 | `sessions/liteMetadata` | 2 | 856 | — | pending |
 | `sessions/indexingScan` | 3 | 609 | — | pending |
-| `sessions/lifecycle` | 8 | 1057 | — | pending |
+| `sessions/lifecycle` | 8 | 1057 | — | characterized |
 | `sessions/remote` | 5 | 917 | — | pending |
-| `sessions/historySearch` | 3 | 534 | — | pending |
+| `sessions/historySearch` | 3 | 534 | — | characterized |
 | `sessions/ui` | 5 | 660 | — | pending |
 
 ### Files per unit
