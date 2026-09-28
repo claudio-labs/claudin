@@ -1,0 +1,240 @@
+{
+  "test": [
+    "src/vcs/diff/hooks/useDiffInIDE.characterization.test.tsx",
+    "src/vcs/diff/hooks/useTurnDiffs.characterization.test.tsx",
+    "src/vcs/diff/hooks/useDiffData.characterization.test.ts",
+    "src/vcs/hooks/usePrStatus.characterization.test.tsx"
+  ],
+  "source": "src/vcs/hooks/usePrStatus.ts",
+  "probes": [
+    {
+      "name": "pr: asks every 3 s instead of 2",
+      "find": "const POLL_INTERVAL_MS = 2_000",
+      "replace": "const POLL_INTERVAL_MS = 3_000"
+    },
+    {
+      "name": "pr: the slow-answer limit is 5 s",
+      "find": "const SLOW_GH_THRESHOLD_MS = 4_000",
+      "replace": "const SLOW_GH_THRESHOLD_MS = 5_000"
+    },
+    {
+      "name": "pr: the idle stop is 90 minutes",
+      "find": "const IDLE_STOP_MS = 60 * 60_000",
+      "replace": "const IDLE_STOP_MS = 90 * 60_000"
+    },
+    {
+      "name": "pr: asks while disabled",
+      "find": "    if (!enabled) return\n",
+      "replace": ""
+    },
+    {
+      "name": "pr: a slow answer does not disable it for good",
+      "find": "    if (disabledRef.current) return\n",
+      "replace": ""
+    },
+    {
+      "name": "pr: an interaction is never noticed",
+      "find": "      if (lastSeenInteractionTime !== currentInteractionTime) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "pr: exactly an hour idle keeps asking",
+      "find": "      } else if (Date.now() - lastActivityTimestamp >= IDLE_STOP_MS) {",
+      "replace": "      } else if (Date.now() - lastActivityTimestamp > IDLE_STOP_MS) {"
+    },
+    {
+      "name": "pr: an answer from a superseded ask is applied",
+      "find": "      if (cancelled) return\n      lastFetchRef.current = start",
+      "replace": "      lastFetchRef.current = start"
+    },
+    {
+      "name": "pr: an unchanged answer makes a new state object",
+      "find": "          return prev\n",
+      "replace": "          return { ...prev }\n"
+    },
+    {
+      "name": "pr: a re-run inside 2 s asks at once",
+      "find": "    if (elapsed >= POLL_INTERVAL_MS) {",
+      "replace": "    if (elapsed >= 0) {"
+    },
+    {
+      "name": "pr: a re-run waits a whole interval",
+      "find": "      timeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS - elapsed)",
+      "replace": "      timeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS)"
+    },
+    {
+      "name": "turns: an edit with an empty patch counts",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "    Array.isArray(r.structuredPatch) && r.structuredPatch.length > 0",
+      "replace": "    Array.isArray(r.structuredPatch) && r.structuredPatch.length >= 0"
+    },
+    {
+      "name": "turns: a created file is not recognised",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "  const isNewFile = r.type === 'create' && typeof r.content === 'string'",
+      "replace": "  const isNewFile = r.type === 'created' && typeof r.content === 'string'"
+    },
+    {
+      "name": "turns: removed lines are not counted",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "      else if (line.startsWith('-')) removed++",
+      "replace": "      else if (line.startsWith('--')) removed++"
+    },
+    {
+      "name": "turns: a 30-character prompt is cut",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "  if (text.length <= 30) return text",
+      "replace": "  if (text.length <= 29) return text"
+    },
+    {
+      "name": "turns: a created file's hunk starts at line 0",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "        newStart: 1,\n        newLines: lines.length,",
+      "replace": "        newStart: 0,\n        newLines: lines.length,"
+    },
+    {
+      "name": "turns: a move is filed under its source path",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "        file.type === 'move' && file.movePath ? file.movePath : file.absPath",
+      "replace": "        file.absPath"
+    },
+    {
+      "name": "turns: a shorter transcript is not read again",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "    if (messages.length < c.lastProcessedIndex) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "turns: a bare tool_result message starts a turn",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "          message.message.content[0]?.type === 'tool_result')",
+      "replace": "          message.message.content[0]?.type === 'tool_results')"
+    },
+    {
+      "name": "turns: a meta message starts a turn",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "      if (!isToolResult && !message.isMeta) {",
+      "replace": "      if (!isToolResult) {"
+    },
+    {
+      "name": "turns: oldest first",
+      "source": "src/vcs/diff/hooks/useTurnDiffs.ts",
+      "find": "    return result.reverse()",
+      "replace": "    return result"
+    },
+    {
+      "name": "files: the per-file line cap is 500",
+      "source": "src/vcs/diff/hooks/useDiffData.ts",
+      "find": "const MAX_LINES_PER_FILE = 400",
+      "replace": "const MAX_LINES_PER_FILE = 500"
+    },
+    {
+      "name": "files: a pure rename reads as large",
+      "source": "src/vcs/diff/hooks/useDiffData.ts",
+      "find": "      !fileStats.isBinary && !isUntracked && !fileHunks && !fileStats.renamedFrom",
+      "replace": "      !fileStats.isBinary && !isUntracked && !fileHunks"
+    },
+    {
+      "name": "files: an untracked file reads as large",
+      "source": "src/vcs/diff/hooks/useDiffData.ts",
+      "find": "      !fileStats.isBinary && !isUntracked && !fileHunks && !fileStats.renamedFrom",
+      "replace": "      !fileStats.isBinary && !fileHunks && !fileStats.renamedFrom"
+    },
+    {
+      "name": "files: exactly 400 lines reads as truncated",
+      "source": "src/vcs/diff/hooks/useDiffData.ts",
+      "find": "      !isLargeFile && !fileStats.isBinary && totalLines > MAX_LINES_PER_FILE",
+      "replace": "      !isLargeFile && !fileStats.isBinary && totalLines >= MAX_LINES_PER_FILE"
+    },
+    {
+      "name": "files: a large file also reads as truncated",
+      "source": "src/vcs/diff/hooks/useDiffData.ts",
+      "find": "      !isLargeFile && !fileStats.isBinary && totalLines > MAX_LINES_PER_FILE",
+      "replace": "      !fileStats.isBinary && totalLines > MAX_LINES_PER_FILE"
+    },
+    {
+      "name": "files: renamedFrom is set on every file",
+      "source": "src/vcs/diff/hooks/useDiffData.ts",
+      "find": "      ...(fileStats.renamedFrom ? { renamedFrom: fileStats.renamedFrom } : {}),",
+      "replace": "      renamedFrom: fileStats.renamedFrom,"
+    },
+    {
+      "name": "files: sorted in git's byte order",
+      "source": "src/vcs/diff/hooks/useDiffData.ts",
+      "find": "  files.sort((a, b) => a.path.localeCompare(b.path))",
+      "replace": "  files.sort((a, b) => (a.path < b.path ? -1 : 1))"
+    },
+    {
+      "name": "ide: the tab name carries another brand",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "`✻ [Claudin] ",
+      "replace": "`✻ [Claude] "
+    },
+    {
+      "name": "ide: the diff tool setting is read backwards",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "    getGlobalConfig().diffTool === 'auto' &&",
+      "replace": "    getGlobalConfig().diffTool !== 'auto' &&"
+    },
+    {
+      "name": "ide: notebooks go to the IDE",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "    !filePath.endsWith('.ipynb')",
+      "replace": "    !filePath.endsWith('.ipynb.never')"
+    },
+    {
+      "name": "ide: an answer after unmount still decides",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "      if (isUnmounted.current) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "ide: a rejection is reported as an acceptance",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "          { type: 'reject' },",
+      "replace": "          { type: 'accept-once' },"
+    },
+    {
+      "name": "ide: a failure is not flagged",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "      setHasError(true)\n",
+      "replace": ""
+    },
+    {
+      "name": "ide: the flow runs again on every render",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [])",
+      "replace": "    // eslint-disable-next-line react-hooks/exhaustive-deps\n  })"
+    },
+    {
+      "name": "ide: single and multiple modes are swapped",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "  const singleHunk = editMode === 'single'",
+      "replace": "  const singleHunk = editMode === 'multiple'"
+    },
+    {
+      "name": "ide: cancelling the tool call leaves the tab open",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "  toolUseContext.abortController.signal.addEventListener('abort', cleanup)",
+      "replace": "  void toolUseContext.abortController.signal"
+    },
+    {
+      "name": "ide: the path is sent as given",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "        old_file_path: ideOldPath,",
+      "replace": "        old_file_path: file_path,"
+    },
+    {
+      "name": "ide: the saved text is ignored",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "        newContent: data[1].text,",
+      "replace": "        newContent: updatedFile,"
+    },
+    {
+      "name": "ide: TAB_CLOSED is not recognised",
+      "source": "src/vcs/diff/hooks/useDiffInIDE.ts",
+      "find": "    data[0].text === 'TAB_CLOSED'",
+      "replace": "    data[0].text === 'TAB_CLOSE'"
+    }
+  ]
+}
