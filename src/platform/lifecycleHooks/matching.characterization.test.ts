@@ -23,6 +23,13 @@ import type { HookMatcher } from 'src/shared/schemas/hooks.js'
 
 type Hooks = typeof import('src/platform/lifecycleHooks/hooks.js')
 
+// A copy taken before the stub goes in, so afterAll can put the real module
+// back. An emptied stub is not enough: it keeps every later file in the run
+// from seeing the hooks its own settings configure.
+const realHooksConfigSnapshot = {
+  ...(await import('src/platform/lifecycleHooks/hooksConfigSnapshot.js')),
+}
+
 let hooks: Hooks
 let snapshotConfig: Partial<Record<HookEvent, HookMatcher[]>> = {}
 
@@ -416,8 +423,8 @@ describe('getMatchingHooks — an if condition on a Read, per file', () => {
   })
 
   afterAll(() => {
-    // The snapshot mock outlives this file (testing.md): leave it empty.
     snapshotConfig = {}
+    mock.module('./hooksConfigSnapshot.js', () => realHooksConfigSnapshot)
   })
 
   function readInput(toolInput: Record<string, unknown>): HookInput {

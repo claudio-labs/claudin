@@ -19,7 +19,9 @@ import { utimes, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-const realPlans = await import('src/agent/plans/plans.js')
+// A copy, not the live namespace: mock.module patches the namespace in place,
+// so restoring from it would put the stub straight back.
+const realPlans = { ...(await import('src/agent/plans/plans.js')) }
 
 let testTempDir: string
 let testPlansDir: string

@@ -27,6 +27,12 @@ const mocks: Mocks = {
 // `stdout`, which made `bootSnapshot.test.ts` read `String(undefined)` as the
 // output of `bin/claudin --help` and report the entire help text as changed.
 const realChildProcess = { ...(await import('node:child_process')) }
+// The four modules stubbed below, for the same reason: left stubbed, every
+// later file saw concurrentSessions and worktree reduced to a single function.
+const realConcurrentSessions = { ...(await import('src/sessions/concurrentSessions.js')) }
+const realWorktree = { ...(await import('src/vcs/git/worktree.js')) }
+const realExitFlow = { ...(await import('src/platform/ExitFlow.js')) }
+const realExitCommand = { ...(await import('src/commands/exit/index.js')) }
 
 // `handleExit()` arms a 10s failsafe that runs
 // `process.kill(process.pid, 'SIGKILL')`, and the branches exercised below (the
@@ -85,6 +91,10 @@ beforeAll(() => {
 afterAll(() => {
   mock.restore()
   mock.module('child_process', () => realChildProcess)
+  mock.module('src/sessions/concurrentSessions.js', () => realConcurrentSessions)
+  mock.module('src/vcs/git/worktree.js', () => realWorktree)
+  mock.module('src/platform/ExitFlow.js', () => realExitFlow)
+  mock.module('src/commands/exit/index.js', () => realExitCommand)
   globalThis.setTimeout = realSetTimeout
   for (const handle of armedTimers) clearTimeout(handle)
   armedTimers.clear()

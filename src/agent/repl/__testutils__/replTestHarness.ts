@@ -97,6 +97,29 @@ const realUseApiKeyVerification = {
 // and the table is whatever some earlier test file cached. Pin them the same
 // way this harness already pins the effort level, the cwd and MACRO.
 const realProviders = { ...(await import('src/providers/model/providers.js')) }
+// Every other module setupReplMocks stubs, snapshotted the same way. Left
+// stubbed, they broke later files in the run: the session suites lost
+// processSessionStartHooks and the file-history restore hook to no-op stubs.
+// Consumed by a dynamic import over the array, like resumeSession.test.ts.
+const STUBBED_BY_SETUP = [
+  'src/platform/preventSleep.js',
+  'src/platform/bridge/useReplBridge.js',
+  'src/platform/bridge/useMailboxBridge.js',
+  'src/sessions/hooks/useRemoteSession.js',
+  'src/providers/hooks/useDirectConnect.js',
+  'src/sessions/hooks/useSSHSession.js',
+  'src/agent/coordinator/hooks/useSwarmInitialization.js',
+  'src/agent/hooks/useScheduledTasks.js',
+  'src/platform/ide/useIDEIntegration.js',
+  'src/sessions/hooks/useFileHistorySnapshotInit.js',
+  'src/platform/backgroundHousekeeping.js',
+  'src/sessions/sessionStart.js',
+  'src/plugins/performStartupChecks.js',
+  'src/platform/status/StatusNotices.js',
+]
+const realStubbedBySetup = await Promise.all(
+  STUBBED_BY_SETUP.map(async spec => [spec, { ...(await import(spec)) }] as const),
+)
 
 export function setupReplMocks(): void {
   // Two footer widgets render session-wide counters that live in process-global
@@ -350,6 +373,7 @@ export function teardownReplMocks(): void {
   mock.module('src/agent/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
   mock.module('src/providers/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
   mock.module('src/providers/model/providers.js', () => realProviders)
+  for (const [spec, real] of realStubbedBySetup) mock.module(spec, () => real)
   // The table cached under the pinned tag must not outlive the pin.
   resetModelStringsForTestingOnly()
   if (effortEnvWasSet) {

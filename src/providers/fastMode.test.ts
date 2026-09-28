@@ -15,6 +15,8 @@ const realProvidersForFastMode = { ...(await import('src/providers/model/provide
 const realPrivacyLevelForFastMode = { ...(await import('src/platform/config/privacyLevel.js')) }
 const realSettingsForFastMode = { ...(await import('src/platform/settings/settings.js')) }
 const realSignalForFastMode = { ...(await import('src/shared/signal.js')) }
+const realAxiosForFastMode = { ...(await import('axios')) }
+const realOauthConstantsForFastMode = { ...(await import('src/shared/constants/oauth.js')) }
 
 async function importFreshFastModeModule() {
   return import(`./fastMode.ts?ts=${Date.now()}-${Math.random()}`)
@@ -124,6 +126,8 @@ afterAll(() => {
   mock.module('src/platform/config/privacyLevel.js', () => realPrivacyLevelForFastMode)
   mock.module('src/platform/settings/settings.js', () => realSettingsForFastMode)
   mock.module('src/shared/signal.js', () => realSignalForFastMode)
+  mock.module('axios', () => realAxiosForFastMode)
+  mock.module('src/shared/constants/oauth.js', () => realOauthConstantsForFastMode)
   realConfigForFastMode.resetGlobalConfigForTests?.()
 })
 
