@@ -1,0 +1,25 @@
+diff --git a/origin.txt b/copy.txt
+similarity index 89%
+copy from origin.txt
+copy to copy.txt
+index 6cd114a..9414425 100644
+--- a/origin.txt
++++ b/copy.txt
+@@ -6,5 +6,5 @@ shared row 5
+ shared row 6
+ shared row 7
+ shared row 8
+-shared row 9
++copy row nine
+ shared row 10
+diff --git a/origin.txt b/origin.txt
+index 6cd114a..a041b61 100644
+--- a/origin.txt
++++ b/origin.txt
+@@ -1,5 +1,5 @@
+ shared row 1
+-shared row 2
++origin row two
+ shared row 3
+ shared row 4
+ shared row 5

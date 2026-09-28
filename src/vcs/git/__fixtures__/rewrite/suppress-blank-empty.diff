@@ -1,0 +1,12 @@
+diff --git a/blank.txt b/blank.txt
+index ee46384..2975028 100644
+--- a/blank.txt
++++ b/blank.txt
+@@ -1,6 +1,6 @@
+ header
+
+ body one
+-body two
++body 2
+
+ footer

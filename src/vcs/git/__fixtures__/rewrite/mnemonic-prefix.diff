@@ -1,0 +1,21 @@
+diff --git c/vs-head.txt w/vs-head.txt
+index 133ffd2..1551c4a 100644
+--- c/vs-head.txt
++++ w/vs-head.txt
+@@ -1 +1 @@
+-head side
++worktree side
+diff --git i/vs-index.txt w/vs-index.txt
+index fd2dce4..1551c4a 100644
+--- i/vs-index.txt
++++ w/vs-index.txt
+@@ -1 +1 @@
+-index side
++worktree side
+diff --git c/staged.txt i/staged.txt
+index 201be28..07d44e5 100644
+--- c/staged.txt
++++ i/staged.txt
+@@ -1 +1 @@
+-staged side
++staged change

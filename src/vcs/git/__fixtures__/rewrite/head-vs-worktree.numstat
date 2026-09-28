@@ -1,0 +1,18 @@
+1	1	"caf\303\251.txt"
+1	1	dir x/trap.txt
+2	2	docs/guide.md
+-	-	image.bin
+0	0	lib/k.ts => k.ts
+1	1	moved/{edited-before.txt => edited-after.txt}
+-	-	new-image.bin
+2	0	notes/added.txt
+0	2	old/removed.txt
+0	0	renamed/{before.txt => after.txt}
+0	0	run.sh
+1	1	single.txt
+1	1	space dir/file name.txt
+0	0	src/{alpha => beta}/mod.ts
+0	0	src/{ => core}/lib.ts
+0	0	src/{deep => }/util.ts
+1	1	tail.txt
+1	1	tool.sh

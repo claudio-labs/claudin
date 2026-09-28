@@ -1,0 +1,21 @@
+diff --git src/deep/file.ts src/deep/file.ts
+index 4cdb226..73fc942 100644
+--- src/deep/file.ts
++++ src/deep/file.ts
+@@ -1 +1 @@
+-deep
++deep edited
+diff --git top.txt top.txt
+index bf1a1fd..e2e3ba4 100644
+--- top.txt
++++ top.txt
+@@ -1 +1 @@
+-top
++top edited
+diff --git x/one.txt x/one.txt
+index 5626abf..cbdb262 100644
+--- x/one.txt
++++ x/one.txt
+@@ -1 +1 @@
+-one
++one edited

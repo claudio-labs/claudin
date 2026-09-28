@@ -1,0 +1,129 @@
+diff --git "a/caf\303\251.txt" "b/caf\303\251.txt"
+index d66d227..7caf0b2 100644
+--- "a/caf\303\251.txt"
++++ "b/caf\303\251.txt"
+@@ -1 +1 @@
+-accent
++accent grave
+diff --git a/dir x/trap.txt b/dir x/trap.txt
+index 22bae5b..444ff3a 100644
+--- a/dir x/trap.txt	
++++ b/dir x/trap.txt	
+@@ -1 +1 @@
+-trap
++trap sprung
+diff --git a/docs/guide.md b/docs/guide.md
+index e449e00..37995b3 100644
+--- a/docs/guide.md
++++ b/docs/guide.md
+@@ -1,6 +1,6 @@
+ Setup
+ step one
+-step two
++step 2
+ step three
+ step four
+ step five
+@@ -11,6 +11,6 @@ run the tool
+ read the output
+ check the logs
+ repeat as needed
+-stop the tool
++stop the tool gracefully
+ clean up
+ done
+diff --git a/image.bin b/image.bin
+index 6125837..6bb5051 100644
+Binary files a/image.bin and b/image.bin differ
+diff --git a/lib/k.ts b/k.ts
+similarity index 100%
+rename from lib/k.ts
+rename to k.ts
+diff --git a/moved/edited-before.txt b/moved/edited-after.txt
+similarity index 86%
+rename from moved/edited-before.txt
+rename to moved/edited-after.txt
+index a3fad35..f424872 100644
+--- a/moved/edited-before.txt
++++ b/moved/edited-after.txt
+@@ -2,7 +2,7 @@ item 1
+ item 2
+ item 3
+ item 4
+-item 5
++item five
+ item 6
+ item 7
+ item 8
+diff --git a/new-image.bin b/new-image.bin
+new file mode 100644
+index 0000000..7506c88
+Binary files /dev/null and b/new-image.bin differ
+diff --git a/notes/added.txt b/notes/added.txt
+new file mode 100644
+index 0000000..da57d34
+--- /dev/null
++++ b/notes/added.txt
+@@ -0,0 +1,2 @@
++first note
++second note
+diff --git a/old/removed.txt b/old/removed.txt
+deleted file mode 100644
+index 3abb420..0000000
+--- a/old/removed.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-stale line one
+-stale line two
+diff --git a/renamed/before.txt b/renamed/after.txt
+similarity index 100%
+rename from renamed/before.txt
+rename to renamed/after.txt
+diff --git a/run.sh b/run.sh
+old mode 100644
+new mode 100755
+diff --git a/single.txt b/single.txt
+index 1bd3656..87a10cb 100644
+--- a/single.txt
++++ b/single.txt
+@@ -1 +1 @@
+-only line
++only line, edited
+diff --git a/space dir/file name.txt b/space dir/file name.txt
+index bd4269f..0679b7a 100644
+--- a/space dir/file name.txt	
++++ b/space dir/file name.txt	
+@@ -1 +1 @@
+-spaced
++spaced out
+diff --git a/src/alpha/mod.ts b/src/beta/mod.ts
+similarity index 100%
+rename from src/alpha/mod.ts
+rename to src/beta/mod.ts
+diff --git a/src/lib.ts b/src/core/lib.ts
+similarity index 100%
+rename from src/lib.ts
+rename to src/core/lib.ts
+diff --git a/src/deep/util.ts b/src/util.ts
+similarity index 100%
+rename from src/deep/util.ts
+rename to src/util.ts
+diff --git a/tail.txt b/tail.txt
+index 50d4924..4056bea 100644
+--- a/tail.txt
++++ b/tail.txt
+@@ -1 +1 @@
+-last line without newline
+\ No newline at end of file
++last line changed, still without newline
+\ No newline at end of file
+diff --git a/tool.sh b/tool.sh
+old mode 100644
+new mode 100755
+index 8488269..f0538c2
+--- a/tool.sh
++++ b/tool.sh
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-echo tool
++echo tool v2

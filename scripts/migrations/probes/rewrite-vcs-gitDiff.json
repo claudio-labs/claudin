@@ -1,0 +1,232 @@
+{
+  "test": [
+    "src/vcs/git/gitDiff.characterization.test.ts",
+    "src/vcs/git/gitDiff.repo.characterization.test.ts",
+    "src/vcs/git/diff.characterization.test.ts",
+    "src/vcs/git/gitStatusDelta.characterization.test.ts",
+    "src/vcs/git/attribution.characterization.test.ts",
+    "src/vcs/git/commitAttribution.characterization.test.ts"
+  ],
+  "source": "src/vcs/git/gitDiff.ts",
+  "probes": [
+    {
+      "name": "numstat: a brace rename keys the old path",
+      "find": "    return { path: collapse(newPart), renamedFrom: collapse(oldPart) }",
+      "replace": "    return { path: collapse(oldPart), renamedFrom: collapse(newPart) }"
+    },
+    {
+      "name": "numstat: an arrow rename loses renamedFrom",
+      "find": "  return { path: (newPath ?? raw).trim(), renamedFrom: (oldPath ?? '').trim() }",
+      "replace": "  return { path: (newPath ?? raw).trim() }"
+    },
+    {
+      "name": "numstat: binary files not flagged",
+      "find": "    const isBinary = addStr === '-' || remStr === '-'",
+      "replace": "    const isBinary = false"
+    },
+    {
+      "name": "numstat: 51 entries kept",
+      "find": "    if (perFileStats.size < MAX_FILES) {",
+      "replace": "    if (perFileStats.size <= MAX_FILES) {"
+    },
+    {
+      "name": "hunks: 51 files kept",
+      "find": "    if (result.size >= MAX_FILES) break",
+      "replace": "    if (result.size > MAX_FILES) break"
+    },
+    {
+      "name": "hunks: the 1 MB file cap measured in string length",
+      "find": "    if (Buffer.byteLength(fileDiff, 'utf8') > MAX_DIFF_SIZE_BYTES) {",
+      "replace": "    if (fileDiff.length > MAX_DIFF_SIZE_BYTES) {"
+    },
+    {
+      "name": "hunks: only a/ b/ headers parse",
+      "find": "    const headerMatch = lines[0]?.match(/^.\\/(.+?) .\\/(.+)$/)",
+      "replace": "    const headerMatch = lines[0]?.match(/^a\\/(.+?) b\\/(.+)$/)"
+    },
+    {
+      "name": "hunks: keyed by the old path",
+      "find": "    const filePath = headerMatch[2] ?? headerMatch[1] ?? ''",
+      "replace": "    const filePath = headerMatch[1] ?? ''"
+    },
+    {
+      "name": "hunks: no-newline markers kept as lines",
+      "find": "          line.startsWith(' ') ||\n          line === '')",
+      "replace": "          line.startsWith(' ') ||\n          line.startsWith('\\\\') ||\n          line === '')"
+    },
+    {
+      "name": "hunks: empty context lines dropped",
+      "find": "          line === '')\n      ) {",
+      "replace": "          false)\n      ) {"
+    },
+    {
+      "name": "hunks: 401 lines per file",
+      "find": "const MAX_LINES_PER_FILE = 400 // GitHub's auto-load limit",
+      "replace": "const MAX_LINES_PER_FILE = 401 // GitHub's auto-load limit"
+    },
+    {
+      "name": "fetch hunks: the user's prefix settings leak in",
+      "find": "    ['--no-optional-locks', 'diff', 'HEAD', '--src-prefix=a/', '--dst-prefix=b/'],",
+      "replace": "    ['--no-optional-locks', 'diff', 'HEAD'],"
+    },
+    {
+      "name": "fetch numbers: untracked files not counted",
+      "find": "      stats.filesCount += untrackedStats.size",
+      "replace": "      stats.filesCount += 0"
+    },
+    {
+      "name": "fetch numbers: ignored files listed as untracked",
+      "find": "    ['--no-optional-locks', 'ls-files', '--others', '--exclude-standard'],",
+      "replace": "    ['--no-optional-locks', 'ls-files', '--others'],"
+    },
+    {
+      "name": "fetch numbers: untracked files past the free entries",
+      "find": "  for (const filePath of untrackedPaths.slice(0, maxFiles)) {",
+      "replace": "  for (const filePath of untrackedPaths) {"
+    },
+    {
+      "name": "fetch numbers: 500 files already take the totals-only path",
+      "find": "    if (quickStats && quickStats.filesCount > MAX_FILES_FOR_DETAILS) {",
+      "replace": "    if (quickStats && quickStats.filesCount >= MAX_FILES_FOR_DETAILS) {"
+    },
+    {
+      "name": "transient: a merge in progress not seen",
+      "find": "    'MERGE_HEAD',",
+      "replace": "    'MERGE_HEAD_GONE',"
+    },
+    {
+      "name": "transient: a revert in progress not seen",
+      "find": "    'REVERT_HEAD',",
+      "replace": "    'REVERT_HEAD_GONE',"
+    },
+    {
+      "name": "scope: HEAD equal to the merge-base counts as a branch",
+      "find": "  if (!mergeBase || !head || mergeBase === head) return { kind: 'uncommitted' }",
+      "replace": "  if (!mergeBase || !head) return { kind: 'uncommitted' }"
+    },
+    {
+      "name": "readout: CLAUDIN_BASE_REF ignored",
+      "find": "  const base = process.env.CLAUDIN_BASE_REF || (await getDefaultBranch())",
+      "replace": "  const base = await getDefaultBranch()"
+    },
+    {
+      "name": "readout: a branch measured against HEAD",
+      "find": "      scope.kind === 'branch' ? scope.against : 'HEAD',",
+      "replace": "      'HEAD',"
+    },
+    {
+      "name": "patch: singleHunk ignored",
+      "source": "src/vcs/git/diff.ts",
+      "find": "      context: singleHunk ? 100_000 : CONTEXT_LINES,",
+      "replace": "      context: CONTEXT_LINES,"
+    },
+    {
+      "name": "display: replace_all replaces the first occurrence only",
+      "source": "src/vcs/git/diff.ts",
+      "find": "        return p.replaceAll(escapedOldString, () => escapedNewString)",
+      "replace": "        return p.replace(escapedOldString, () => escapedNewString)"
+    },
+    {
+      "name": "display: the file's leading tabs kept",
+      "source": "src/vcs/git/diff.ts",
+      "find": "  const preparedFileContents = escapeForDiff(\n    convertLeadingTabsToSpaces(fileContents),\n  )",
+      "replace": "  const preparedFileContents = escapeForDiff(\n    fileContents,\n  )"
+    },
+    {
+      "name": "adjust: an offset of 0 returns a copy",
+      "source": "src/vcs/git/diff.ts",
+      "find": "  if (offset === 0) return hunks",
+      "replace": "  if (offset === 0) return hunks.slice()"
+    },
+    {
+      "name": "lines changed: a new file counts no lines",
+      "source": "src/vcs/git/diff.ts",
+      "find": "    numAdditions = newFileContent.split(/\\r?\\n/).length",
+      "replace": "    numAdditions = 0"
+    },
+    {
+      "name": "patch: & does not come back as &",
+      "source": "src/vcs/git/diff.ts",
+      "find": "  return s.replaceAll(AMPERSAND_TOKEN, '&').replaceAll(DOLLAR_TOKEN, '$')",
+      "replace": "  return s.replaceAll(AMPERSAND_TOKEN, 'and').replaceAll(DOLLAR_TOKEN, String.fromCharCode(36))"
+    },
+    {
+      "name": "count: deletions counted as additions",
+      "source": "src/vcs/git/diffStat.ts",
+      "find": "      else if (line.startsWith('-')) deletions++",
+      "replace": "      else if (line.startsWith('-')) additions++"
+    },
+    {
+      "name": "count: context lines counted as additions",
+      "source": "src/vcs/git/diffStat.ts",
+      "find": "      if (line.startsWith('+')) additions++",
+      "replace": "      if (!line.startsWith('-')) additions++"
+    },
+    {
+      "name": "status delta: wrong system-context key",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "export const GIT_STATUS_CONTEXT_KEY = 'gitStatus' as const",
+      "replace": "export const GIT_STATUS_CONTEXT_KEY = 'git_status' as const"
+    },
+    {
+      "name": "status delta: any attachment counts as announced",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "    if (msg.attachment?.type === 'git_status_delta') {",
+      "replace": "    if (msg.attachment?.type !== undefined) {"
+    },
+    {
+      "name": "status delta: a non-attachment message counts",
+      "source": "src/vcs/git/gitStatusDelta.ts",
+      "find": "    if (msg.type !== 'attachment') continue",
+      "replace": "    if (!msg.type) continue"
+    },
+    {
+      "name": "model name: opus-5-5 named opus-5",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "  if (shortName.includes('opus-5-5')) return 'claude-opus-5-5'",
+      "replace": "  if (shortName.includes('opus-5-5')) return 'claude-opus-5'"
+    },
+    {
+      "name": "surface: an empty entrypoint becomes cli",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "  return process.env.CLAUDE_CODE_ENTRYPOINT ?? 'cli'",
+      "replace": "  return process.env.CLAUDE_CODE_ENTRYPOINT || 'cli'"
+    },
+    {
+      "name": "restore: the first snapshot wins",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "  const lastSnapshot = snapshots[snapshots.length - 1]",
+      "replace": "  const lastSnapshot = snapshots[0]"
+    },
+    {
+      "name": "snapshot line: type is not the first key",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "    type: 'attribution-snapshot',\n    messageId,",
+      "replace": "    messageId,\n    type: 'attribution-snapshot',"
+    },
+    {
+      "name": "prompt count: the snapshot saved is of the old state",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "  const snapshot = stateToSnapshotMessage(newAttribution, randomUUID())",
+      "replace": "  const snapshot = stateToSnapshotMessage(attribution, randomUUID())"
+    },
+    {
+      "name": "attribution: remote sessions read the settings",
+      "source": "src/vcs/git/attribution.ts",
+      "find": "  if (getClientType() === 'remote') {",
+      "replace": "  if (getClientType() === 'remote-session') {"
+    },
+    {
+      "name": "attribution: a local-development session gets a link",
+      "source": "src/vcs/git/attribution.ts",
+      "find": "      if (!isRemoteSessionLocal(remoteSessionId, ingressUrl)) {",
+      "replace": "      if (remoteSessionId) {"
+    },
+    {
+      "name": "attribution: a commit trailer by default",
+      "source": "src/vcs/git/attribution.ts",
+      "find": "    commit: settings.attribution?.commit ?? '',",
+      "replace": "    commit: settings.attribution?.commit || 'Co-Authored-By: Claudin <noreply@example.invalid>',"
+    }
+  ]
+}
