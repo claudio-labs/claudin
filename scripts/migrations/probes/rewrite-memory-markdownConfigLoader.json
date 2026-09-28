@@ -1,0 +1,217 @@
+{
+  "test": [
+    "src/memory/instructions/markdownConfigLoader.characterization.test.ts",
+    "src/memory/instructions/ruleFrontmatter.characterization.test.ts"
+  ],
+  "source": "src/memory/instructions/markdownConfigLoader.ts",
+  "probes": [
+    {
+      "name": "directories: output-styles misspelt",
+      "find": "  'output-styles',\n",
+      "replace": "  'output_styles',\n"
+    },
+    {
+      "name": "description: only a level-one heading loses its marker",
+      "find": "const headerMatch = trimmed.match(/^#+\\s+(.+)$/)",
+      "replace": "const headerMatch = trimmed.match(/^#\\s+(.+)$/)"
+    },
+    {
+      "name": "description: a line of exactly 100 characters is cut",
+      "find": "return text.length > 100 ?",
+      "replace": "return text.length >= 100 ?"
+    },
+    {
+      "name": "tools: an absent value reads as an empty list",
+      "find": "  if (toolsValue === undefined || toolsValue === null) {\n    return null\n",
+      "replace": "  if (toolsValue === undefined || toolsValue === null) {\n    return []\n"
+    },
+    {
+      "name": "tools: list entries that are not strings are kept",
+      "find": "(item): item is string => typeof item === 'string',",
+      "replace": "(item): item is string => item !== null,"
+    },
+    {
+      "name": "tools: the wildcard no longer collapses the list",
+      "find": "  if (parsedTools.includes('*')) {\n    return ['*']\n",
+      "replace": "  if (parsedTools.includes('**')) {\n    return ['*']\n"
+    },
+    {
+      "name": "agent tools: a bare `tools:` means every tool",
+      "find": "    return toolsValue === undefined ? undefined : []\n",
+      "replace": "    return undefined\n"
+    },
+    {
+      "name": "slash tools: an absent value grants a tool",
+      "find": "  if (parsed === null) {\n    return []\n",
+      "replace": "  if (parsed === null) {\n    return ['Read']\n"
+    },
+    {
+      "name": "walk: a repository nested in the project stops it",
+      "find": "    return sessionGitRoot\n",
+      "replace": "    return cwdGitRoot\n"
+    },
+    {
+      "name": "walk: a sibling whose path starts with the project root's counts as nested",
+      "find": "nCwdGitRoot.startsWith(nSessionRoot + sep)",
+      "replace": "nCwdGitRoot.startsWith(nSessionRoot)"
+    },
+    {
+      "name": "walk: a worktree of the session's repository is walked past",
+      "find": "    normalizePathForComparison(cwdCanonical) ===\n      normalizePathForComparison(sessionGitRoot)",
+      "replace": "    normalizePathForComparison(cwdCanonical) !==\n      normalizePathForComparison(sessionGitRoot)"
+    },
+    {
+      "name": "walk: HOME no longer ends it",
+      "find": "normalizePathForComparison(current) === normalizePathForComparison(home)",
+      "replace": "normalizePathForComparison(current) === normalizePathForComparison(home + sep)"
+    },
+    {
+      "name": "walk: directories listed without checking that they exist",
+      "find": "      statSync(claudeSubdir)\n      dirs.push(claudeSubdir)\n",
+      "replace": "      dirs.push(claudeSubdir)\n"
+    },
+    {
+      "name": "walk: unexpected errors are swallowed",
+      "find": "      if (!isFsInaccessible(e)) throw e\n",
+      "replace": "      if (!isFsInaccessible(e)) void e\n"
+    },
+    {
+      "name": "walk: the repository root no longer stops it",
+      "find": "      gitRoot &&\n      normalizePathForComparison(current) ===",
+      "replace": "      false &&\n      normalizePathForComparison(current) ==="
+    },
+    {
+      "name": "cache: keyed by the cwd alone",
+      "find": "(subdir: ClaudeConfigDirectory, cwd: string) => `${subdir}:${cwd}`,",
+      "replace": "(subdir: ClaudeConfigDirectory, cwd: string) => `${cwd}`,"
+    },
+    {
+      "name": "user directory: an extra .claudin level",
+      "find": "const userDir = join(getClaudinConfigHomeDir(), subdir)",
+      "replace": "const userDir = join(getClaudinConfigHomeDir(), '.claudin', subdir)"
+    },
+    {
+      "name": "managed directory: .claudin level dropped",
+      "find": "const managedDir = join(getManagedFilePath(), '.claudin', subdir)",
+      "replace": "const managedDir = join(getManagedFilePath(), subdir)"
+    },
+    {
+      "name": "worktree: the main checkout read only when the worktree has its own",
+      "find": "      if (!worktreeHasSubdir) {\n",
+      "replace": "      if (worktreeHasSubdir) {\n"
+    },
+    {
+      "name": "sources: the user settings switch is ignored",
+      "find": "      isSettingSourceEnabled('userSettings') &&\n",
+      "replace": "      true &&\n"
+    },
+    {
+      "name": "sources: the project settings switch is ignored",
+      "find": "      isSettingSourceEnabled('projectSettings') &&\n",
+      "replace": "      true &&\n"
+    },
+    {
+      "name": "policy: the agents lock no longer removes user agents",
+      "find": "      !(subdir === 'agents' && isRestrictedToPluginOnly('agents'))\n        ? loadMarkdownFiles(userDir)",
+      "replace": "      !(subdir === 'agent' && isRestrictedToPluginOnly('agents'))\n        ? loadMarkdownFiles(userDir)"
+    },
+    {
+      "name": "order: user before managed",
+      "find": "const allFiles = [...managedFiles, ...userFiles, ...projectFiles]",
+      "replace": "const allFiles = [...userFiles, ...managedFiles, ...projectFiles]"
+    },
+    {
+      "name": "each file once: a file reached twice is kept twice",
+      "find": "      if (existingSource !== undefined) {\n",
+      "replace": "      if (existingSource === 'never') {\n"
+    },
+    {
+      "name": "each file once: identity is the device alone",
+      "find": "    return `${stats.dev}:${stats.ino}`\n",
+      "replace": "    return `${stats.dev}`\n"
+    },
+    {
+      "name": "each file once: a symlinked file is folded into its target",
+      "find": "const stats = await lstat(filePath, { bigint: true })",
+      "replace": "const stats = await stat(filePath, { bigint: true })"
+    },
+    {
+      "name": "search: hidden files left out",
+      "find": "'--hidden', ",
+      "replace": ""
+    },
+    {
+      "name": "search: ignore files honoured",
+      "find": "'--no-ignore', ",
+      "replace": ""
+    },
+    {
+      "name": "search: symlinks not followed",
+      "find": "'--follow', ",
+      "replace": ""
+    },
+    {
+      "name": "native walk: the extension matched in any case",
+      "find": "          } else if (entry.isFile() && entry.name.endsWith('.md')) {",
+      "replace": "          } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {"
+    },
+    {
+      "name": "no ripgrep: the fallback finds nothing",
+      "find": "        files = await findMarkdownFilesNative(dir, AbortSignal.timeout(3000))\n",
+      "replace": "        files = []\n"
+    },
+    {
+      "name": "entries: frontmatter not parsed",
+      "find": "const { frontmatter, content } = parseFrontmatter(rawContent, filePath)",
+      "replace": "const { frontmatter, content } = { frontmatter: {}, content: rawContent }"
+    },
+    {
+      "name": "rules: globs accepted as a key",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "readonly string[] = ['paths']",
+      "replace": "readonly string[] = ['paths', 'globs']"
+    },
+    {
+      "name": "rules: a list holding a non-string is well formed",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "z.array(z.string())",
+      "replace": "z.array(z.unknown())"
+    },
+    {
+      "name": "rules: unsupported keys inverted",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "key => !RULE_FRONTMATTER_SUPPORTED_KEYS.includes(key),",
+      "replace": "key => RULE_FRONTMATTER_SUPPORTED_KEYS.includes(key),"
+    },
+    {
+      "name": "rules: a trailing /** kept",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "return pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern",
+      "replace": "return pattern"
+    },
+    {
+      "name": "rules: empty patterns kept",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": ".filter((p: string) => p.length > 0)",
+      "replace": ".filter((p: string) => p.length >= 0)"
+    },
+    {
+      "name": "rules: one ** anywhere makes the rule apply everywhere",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "patterns.every((p: string) => p === '**')",
+      "replace": "patterns.some((p: string) => p === '**')"
+    },
+    {
+      "name": "rules: only the first pattern returned",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "return { content, paths: patterns, unsupportedKeys, malformedPaths }",
+      "replace": "return { content, paths: patterns.slice(0, 1), unsupportedKeys, malformedPaths }"
+    },
+    {
+      "name": "rules: the content keeps the frontmatter",
+      "source": "src/memory/instructions/ruleFrontmatter.ts",
+      "find": "  const { frontmatter, content } = parseFrontmatter(rawContent)\n",
+      "replace": "  const { frontmatter } = parseFrontmatter(rawContent)\n  const content = rawContent\n"
+    }
+  ]
+}
