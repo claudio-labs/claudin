@@ -50,7 +50,7 @@ export const MIN_DISTINCT = 10
  * unusable, so bump `version` with any change to how the tokenizer cuts a
  * stream, and rebuild fingerprints.bin in the same commit.
  */
-export const PARAMS = { LINE_MIN_LENGTH, K, W, MIN_RUN, MIN_DISTINCT, version: 1 } as const
+export const PARAMS = { LINE_MIN_LENGTH, K, W, MIN_RUN, MIN_DISTINCT, version: 2 } as const
 
 // ---------------------------------------------------------------------------
 // Hashing
@@ -78,9 +78,19 @@ function mix32(value: number): number {
 // ---------------------------------------------------------------------------
 // Lines
 
+/**
+ * A line of module wiring: `import …`, `export … from …`, or the `} from '…'`
+ * that closes a multi-line import. Dropped from the line measure for the same
+ * reason the token measure drops it: two unrelated files that both import
+ * `randomBytes` from 'crypto' and `join` from 'path' share nothing worth
+ * counting.
+ */
+const WIRING_LINE = /^(import\b|export\s+(\*|type\s*\{|\{)[^;]*\bfrom\b|\}\s*from\s*['"])/
+
 export function normalizeLine(line: string): string | null {
   const text = line.trim().replace(/\s+/g, ' ')
   if (text.length < LINE_MIN_LENGTH || !/[A-Za-z]/.test(text)) return null
+  if (WIRING_LINE.test(text)) return null
   return text
 }
 

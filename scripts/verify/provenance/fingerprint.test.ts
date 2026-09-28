@@ -158,6 +158,17 @@ export function drain<T>(queue: Queue<T>, visit: (item: T) => void): number {
     expect(matchedLines(unrelated, referenceOf(original), true).size).toBe(0)
   })
 
+  test('import and re-export lines never count, however long', () => {
+    const wiring = [
+      `import { randomBytes, createHash } from 'crypto'`,
+      `import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'`,
+      `} from 'src/shared/types/command.js'`,
+      `export { getBundledSkills, clearBundledSkills } from './bundledSkills.js'`,
+      `export type { BundledSkillDefinition } from './bundledSkills.js'`,
+    ].join('\n')
+    expect(matchedLines(wiring, referenceOf(wiring, false), false).size).toBe(0)
+  })
+
   test('a lone matching line is chance; two in a row count', () => {
     const reference = referenceOf(
       ['the first distinctive sentence of prose', 'the second distinctive sentence of prose'].join('\n'),
