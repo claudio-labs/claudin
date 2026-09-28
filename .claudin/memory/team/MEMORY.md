@@ -4,10 +4,10 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
-- [Clean-base rewrite: inherited code is rewritten from spec, never refactored (09-27)](decisions/clean-base-rewrite.md) — branch rewrite/clean-base; `provenance:ci` ratchet
+- [Clean-base rewrite: inherited code rewritten from spec (09-27)](decisions/clean-base-rewrite.md) — branch rewrite/clean-base; `provenance:ci`
 - [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
-- [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined to stock values; feature-flags.json gone; 6 `CLAUDIN_*` killswitches
-- [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `then` arms the response guard by default; `=0` killswitches
+- [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined; feature-flags.json gone; 6 `CLAUDIN_*` killswitches
+- [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `=0` killswitches
 - [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — cat/head/tail/wc/ls/grep with a `/`; classifier 20→11; `CLAUDIN_READONLY_GLOBS=0`
 - [Bash advises, 4 dev tools deferred (#244)](decisions/bash-redirects-advisory-dev-tools-deferred.md) — `CLAUDIN_BASH_REDIRECT=refuse|off`, `CLAUDIN_EAGER_DEV_TOOLS=1`
 - [SendMessage reaches other local sessions (#243)](decisions/cross-session-messaging.md) — owner-only sockets + token; since 09-26 agents ask each other (`await_reply`)
@@ -22,7 +22,7 @@
 - [memory_delta deleted 2026-08-07](decisions/memory-delta-removed-double-send.md) — a second full copy, not a delta (~57 KB/session)
 - Repo map / code index — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
 - [LSPTool back since 2026-06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only 9 ops, cache-safe; built-in servers removed
-- [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=0` turns it off; sonnet; A/B: tool calls −29%, cost −9% (overlap), wall +30%
+- [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=0` off; A/B: calls −29%, cost −9%, wall +30%
 - [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks, a named agent stays fresh; auto-background opt-in
 - [Git tool (D2), shipped 2026-08-04](decisions/git-tool-design.md) — cost −11.5%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — projects[].activeEffortForProject; `/effort inherit` clears
@@ -38,11 +38,11 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
 
 ## Bugs
-- [Skill arguments reach the embedded-shell pass](bugs/skill-arguments-reach-shell-pass.md) — !`cmd` in args runs under the skill's allowed-tools; kept for parity in the rewrite, not fixed
-- [/tmp/claude-<uid> ownership is never checked](bugs/tmpdir-ownership-unchecked.md) — a pre-created parent lets another user swap allowlisted bundled-skill files; not fixed
+- [Skill args reach the shell pass](bugs/skill-arguments-reach-shell-pass.md) — !`cmd` in args runs with the skill's allowed-tools; not fixed
+- [/tmp/claude-<uid> owner never checked](bugs/tmpdir-ownership-unchecked.md) — a pre-created parent lets another user swap skill files; not fixed
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — the Write branch of extractReadFilesFromMessages skips is_error
-- [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — query loop read the parent's app state; definitions, /agents, per-call `model` were inert
-- [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set lists `'agent:builtin'` exactly, built-ins run as `agent:builtin:<Type>`; not fixed
+- [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — the query loop read the parent's app state
+- [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set has `'agent:builtin'`, they run as `agent:builtin:<Type>`; not fixed
 - [Agent schema dropped run_in_background and name — FIXED 09-26](bugs/agent-schema-drops-run-in-background.md) — import-time schema freeze + swarm filter; now trimmed per request
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — phantom `noop`; `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source before committing
@@ -127,7 +127,7 @@
 - [React Compiler's t0 param → ~1400 TS7006](react-compiler-props-param-typing.md) — count sites (403), not errors
 - [The 107 TS2307 are the fork's shape](missing-subsystems-retired-by-all-any-declarations.md) — all-`any` .d.ts on purpose
 - [RunTests language coverage](runtests-tool-language-coverage.md) — 23 runners; JUnit/JSON vs heuristic tier
-- Search: [stack measured 08-12](search-stack-measured.md) (corrected same day) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable, sync scanSymbols blocks
+- Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable, sync scanSymbols blocks
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 supersedes the cost gap
 - [Session cache A/B vs Claude Code (09-23/24)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; @medium +14%; run arms simultaneously
@@ -162,7 +162,7 @@
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live; the /usr/lib layout keeps rg+sharp resolving
 - [Node engine floor 22.12.0](node-engine-floor-22.md) — commander 15 is ESM-only; breaks Node 20
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits, no code changes: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md)
+- Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md)
 - [v8cache GC blocked process exit — fixed](startup-v8cache-gc-blocked-exit.md) — detached child + daily stamp; checkpoint deltas mislead
 - [Launcher jemalloc LD_PRELOAD leak — fixed 06-11](launcher-jemalloc-ld-preload-leak.md) — it reached children and broke the OAuth browser
 - [Plans dir project-local + hardened](plans-dir-project-local-hardening.md) — realpath check, 0700, global gitignore
@@ -178,11 +178,11 @@
 - [Bash filter samples live in ONE dir](bash-filter-sample-corpus-unified.md) — __fixtures__/samples/; 87 of 142 unmapped
 - [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen only (CLAUDIN_NO_FLICKER=1); SGR via send-keys
 - [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — 11.9% vs Edit 4.6%, mostly read gates (lifted in #242); parser repairs
-- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25; display (summarized too) cache-neutral; sub-agents inherit thinking
+- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● since 09-25; display cache-neutral; sub-agents inherit thinking
 
 ## References (sibling repos, wire formats, archives)
 - [Three code-graph siblings audited 08-17](code-graph-siblings-audited.md) — no measured win; 4 ideas kept
-- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — auto-format, LSP-diagnostics-on-edit, ACP/Zed, part-revert · [OAuth port queue](web-login-provider-port-queue.md)
+- [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — auto-format, LSP-on-edit, ACP/Zed, part-revert · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — SSL_CERT_FILE + NODE_EXTRA_CA_CERTS + REQUESTS_CA_BUNDLE
 - Devin RE: [backend](devin-shares-codeium-backend.md) · [wire quirks](devin-oauth-quirks.md) · [f31 vs quota](devin-port-works-quota-blocker.md) · [f31 RE](devin-f31-characterization.md) · [A/B method](devin-wire-ab-procedure.md)
