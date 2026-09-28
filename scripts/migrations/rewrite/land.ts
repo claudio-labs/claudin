@@ -11,15 +11,26 @@
  * whatever else sandbox.ts took out was setup, not work, and an agent that
  * deleted a file outside its unit is reported instead of followed.
  *
- * Applying an implementation also prunes the older probe specs sandbox.ts
- * took out because they probe the unit's files: their lines are gone now
- * (stale-probes.ts).
+ * Applying an implementation also reports the stale probes in the older specs
+ * sandbox.ts took out because they probe the unit's files. They are reported,
+ * not pruned: each proves one of this project's own tests, and the behaviour
+ * it guards usually still exists in the new code, so the probe is re-pointed
+ * at the line that now carries it. Prune one (stale-probes.ts --prune) only
+ * when the spec dropped that behaviour.
+ *
+ * An implementation also lists every added or changed file that still matches
+ * inherited code. The CI ratchet cannot be the review: a file rewritten at its
+ * old path keeps the old, higher count in the baseline, so the ratchet passes
+ * it whatever it holds. Each file listed is either reworded or recorded as
+ * residue in the spec's Outcome.
  */
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot.js'
-import { pruneSpec } from './stale-probes.js'
+import { loadReference } from '../../verify/provenance/reference.js'
+import { isScanned, matchFile } from '../../verify/provenance/scan.js'
+import { staleness } from './stale-probes.js'
 import { findUnit, probeSpecPath, type SandboxRecord } from './units.js'
 
 const SKIP_RE = /(^|\/)(node_modules|dist|coverage|\.git)(\/|$)|^\.sandbox\.json$/
@@ -86,6 +97,23 @@ show('changed outside the unit, review', changed.filter(path => !byDesign(path))
 show('deleted outside the unit, NOT applied', strayRemovals)
 show('CONFLICT: the checkout changed these since the base', conflicts)
 
+if (record.mode === 'impl') {
+  const reference = loadReference()
+  // Every added file is the implementer's; a changed file outside the unit
+  // keeps whatever inherited count it had, which the ratchet already holds.
+  const inherited = [...added, ...changed.filter(byDesign)]
+    .filter(isScanned)
+    .map(path => {
+      const match = matchFile(path, readFileSync(join(sandbox, path), 'utf8'), reference)
+      return { path, lines: new Set([...match.claudeCode, ...match.openclaude]).size }
+    })
+    .filter(file => file.lines > 0)
+  show(
+    'still matching inherited code: reword each, or record it as residue in the spec',
+    inherited.map(file => `${file.path} (${file.lines})`),
+  )
+}
+
 if (!apply) process.exit(0)
 if (conflicts.length > 0) {
   console.error('Nothing applied: resolve the conflicts first.')
@@ -104,5 +132,12 @@ if (record.mode === 'impl') {
   const olderSpecs = record.removed.filter(
     path => path.startsWith('scripts/migrations/probes/') && path !== probeSpecPath(unit.name),
   )
-  for (const spec of olderSpecs) console.log(pruneSpec(spec))
+  for (const spec of olderSpecs) {
+    if (!existsSync(join(REPO_ROOT, spec))) continue
+    const stale = staleness(spec)
+    if (stale.probes.length === 0 && stale.suites.length === 0) continue
+    console.log(`${spec}: re-point ${stale.probes.length} stale probes, ${stale.suites.length} suites missing`)
+    for (const probe of stale.probes) console.log(`  - ${probe.name}`)
+    for (const suite of stale.suites) console.log(`  - suite ${suite}`)
+  }
 }

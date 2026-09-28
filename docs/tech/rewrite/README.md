@@ -129,8 +129,14 @@ Review each one before the brief: inside `src/` it is usually an unrelated
 function with the same name, or a line another inherited module shares, but in
 a rule or a spec it is a leak. Reword whatever quoted the old
 code against the new module in the rewrite's commit. When the implementation
-lands, `land.ts` prunes the older probe specs it took out, since their lines
-are gone.
+lands, `land.ts` lists the stale probes in the older specs it took out, and every
+added or changed file of the unit that still matches inherited code. Review
+that list rather than the CI gate: a file rewritten at its old path keeps its
+old count in the baseline, so the gate passes it whatever it holds. Re-point
+each at the line of the new code that carries the same behaviour and prove it
+with break-probe; prune one (`stale-probes.ts --prune`) only when the spec
+dropped the behaviour. A pruned probe leaves this project's own test unproven
+against the rewrite.
 
 The implementer works in the sandbox. The brief:
 - names the spec, the test files and the rules;

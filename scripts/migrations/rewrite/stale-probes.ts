@@ -37,24 +37,35 @@ function occurrences(haystack: string, needle: string): number {
 const readSpec = (spec: string) => JSON.parse(readFileSync(join(REPO_ROOT, spec), 'utf8')) as Spec
 const suitesOf = (spec: Spec) => (Array.isArray(spec.test) ? spec.test : [spec.test])
 
-export function staleness(specPath: string): Staleness {
-  const spec = readSpec(specPath)
-  const probes = spec.probes.filter(probe => {
-    const source = join(REPO_ROOT, probe.source ?? spec.source)
-    return !existsSync(source) || occurrences(readFileSync(source, 'utf8'), probe.find) !== 1
-  })
-  const suites = suitesOf(spec).filter(suite => !existsSync(join(REPO_ROOT, suite)))
-  return { probes, suites, total: spec.probes.length }
+function isStale(spec: Spec, probe: Probe): boolean {
+  const source = join(REPO_ROOT, probe.source ?? spec.source)
+  return !existsSync(source) || occurrences(readFileSync(source, 'utf8'), probe.find) !== 1
 }
 
-/** Prunes one spec in place and says what it did. */
+const isMissing = (suite: string) => !existsSync(join(REPO_ROOT, suite))
+
+export function staleness(specPath: string): Staleness {
+  const spec = readSpec(specPath)
+  return {
+    probes: spec.probes.filter(probe => isStale(spec, probe)),
+    suites: suitesOf(spec).filter(isMissing),
+    total: spec.probes.length,
+  }
+}
+
+/**
+ * Prunes one spec in place and says what it did. The kept probes are chosen
+ * from the same parse that is written back, so nothing depends on matching
+ * objects across two reads of the file.
+ */
 export function pruneSpec(specPath: string): string {
   if (basename(specPath).startsWith('rewrite-')) return `${specPath}: a rewrite spec, left for a fix by hand`
-  const stale = staleness(specPath)
-  if (stale.probes.length === 0 && stale.suites.length === 0) return `${specPath}: nothing stale`
   const spec = readSpec(specPath)
-  const probes = spec.probes.filter(probe => !stale.probes.includes(probe))
-  const test = suitesOf(spec).filter(suite => !stale.suites.includes(suite))
+  const probes = spec.probes.filter(probe => !isStale(spec, probe))
+  const test = suitesOf(spec).filter(suite => !isMissing(suite))
+  const staleProbes = spec.probes.length - probes.length
+  const missingSuites = suitesOf(spec).length - test.length
+  if (staleProbes === 0 && missingSuites === 0) return `${specPath}: nothing stale`
   if (probes.length === 0 || test.length === 0) {
     rmSync(join(REPO_ROOT, specPath))
     return `${specPath}: deleted, nothing left to probe`
@@ -63,7 +74,7 @@ export function pruneSpec(specPath: string): string {
     join(REPO_ROOT, specPath),
     `${JSON.stringify({ ...spec, test: test.length === 1 ? test[0] : test, probes }, null, 2)}\n`,
   )
-  return `${specPath}: pruned ${stale.probes.length} stale probes and ${stale.suites.length} missing suites`
+  return `${specPath}: pruned ${staleProbes} stale probes and ${missingSuites} missing suites`
 }
 
 if (import.meta.main) {
