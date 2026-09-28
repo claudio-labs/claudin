@@ -50,7 +50,7 @@ export async function loadAllProjectsMessageLogs(
   options?: { skipIndex?: boolean; initialEnrichCount?: number },
 ): Promise<LogOption[]> {
   if (options?.skipIndex) {
-    // Load all sessions with full message data (e.g. for /insights analysis)
+    // Load all sessions with full message data
     return loadAllProjectsMessageLogsFull(limit)
   }
   const result = await loadAllProjectsMessageLogsProgressive(
@@ -252,4 +252,3 @@ export async function getStatOnlyLogsForWorktrees(
   // worktree project dirs. Keep the entry with the newest modified time.
   return deduplicateLogsBySessionId(allLogs)
 }
-

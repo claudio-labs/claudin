@@ -18,7 +18,7 @@ In this order, before the first edit:
    directory is a **barrel** — the logic lives in the siblings
    (`src/tools/shared/codeOutline/`, `src/platform/headless/print/`,
    `src/providers/shims/claude/`, `src/platform/config/config/`,
-   `src/platform/bootstrap/state/`, `src/commands/insights/`,
+   `src/platform/bootstrap/state/`,
    `src/tools/BashTool/bashPermissions/` and `bashSecurity/`,
    `src/agent/compact/stableStubState/`, `src/permissions/filePermissions/`,
    `src/permissions/yoloClassifier/`, `src/permissions/permissionSetup/`,

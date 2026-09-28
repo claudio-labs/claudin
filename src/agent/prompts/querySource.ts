@@ -49,7 +49,6 @@ type InternalQuerySource =
   | 'generate_session_title'
   | 'hook_agent'
   | 'hook_prompt'
-  | 'insights'
   | 'magic_docs'
   // The context-collapse agent. Compared against by name in
   // `services/compact/autoCompact.ts` so its own context blow-up is handled

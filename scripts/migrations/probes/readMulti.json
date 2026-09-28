@@ -13,7 +13,6 @@
     "src/agent/planDossier.test.ts",
     "src/agent/tools/collapseReadSearch.test.ts",
     "src/platform/bridge/sessionRunner.test.ts",
-    "src/commands/insights/extract.test.ts",
     "src/tools/FileReadTool/batchHooks.test.ts",
     "src/platform/lifecycleHooks/hookUnits.test.ts"
   ],
@@ -220,12 +219,6 @@
       "source": "src/platform/bridge/sessionRunner.ts",
       "find": "    batchReadTarget(input) ??",
       "replace": "    undefined ??"
-    },
-    {
-      "name": "insights: batch languages dropped",
-      "source": "src/commands/insights/extract.ts",
-      "find": "                if (targets.file_paths !== undefined) {",
-      "replace": "                if (targets.file_paths === null) {"
     },
     {
       "name": "B4: checkPermissions never routes a batch to checkBatchReadPermission (flag on)",

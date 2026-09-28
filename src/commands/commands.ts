@@ -128,21 +128,6 @@ import remoteEnv from 'src/commands/remote-env/index.js'
 // three because the transcript opened it by itself when a limit was hit.
 import effort from 'src/commands/effort/index.js'
 import stats from 'src/commands/stats/index.js'
-// insights.ts is 113KB (3200 lines, includes diffLines/html rendering). Lazy
-// shim defers the heavy module until /insights is actually invoked.
-const usageReport: Command = {
-  type: 'prompt',
-  name: 'insights',
-  description: 'Generate a report analyzing your Claudin sessions',
-  contentLength: 0,
-  progressMessage: 'analyzing your sessions',
-  source: 'builtin',
-  async getPromptForCommand(args, context) {
-    const real = (await import('src/commands/insights.js')).default
-    if (real.type !== 'prompt') throw new Error('unreachable')
-    return real.getPromptForCommand(args, context)
-  },
-}
 import { getSettingSourceName } from 'src/platform/settings/constants.js'
 import {
   type Command,
@@ -227,7 +212,6 @@ const COMMANDS = memoize((): Command[] => [
   securityReview,
   terminalSetup,
   usage,
-  usageReport,
   vim,
   wiki,
   ...(buddy ? [buddy] : []),

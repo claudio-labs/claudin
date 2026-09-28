@@ -795,7 +795,7 @@ export async function loadAllLogsFromSessionFile(
 
 /**
  * Gets logs by loading all session files fully, bypassing the session index.
- * Use this when you need full message data (e.g., for /insights analysis).
+ * Use this when you need full message data.
 
  */
 export async function getLogsWithoutIndex(

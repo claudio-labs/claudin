@@ -199,7 +199,7 @@ export async function loadTranscriptFile(
     // falls through the size gate below), the dominant cost is parsing dead
     // fork branches that buildConversationChain would discard anyway. Skip
     // when the caller needs all
-    // leaves (loadAllLogsFromSessionFile for /insights picks the branch with
+    // leaves (loadAllLogsFromSessionFile picks the branch with
     // most user messages, not the latest), when the boundary has a
     // preservedSegment (those messages keep their pre-compact parentUuid on
     // disk -- applyPreservedSegmentRelinks splices them in-memory AFTER

@@ -126,9 +126,7 @@ src/
 │   └── explorer/ vim/ wizard/ custom-select/ buddy/  ← dialogs and input modes
 ├── commands/ (238)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
 │                                  one dir or file per command; registry in commands/commands.ts.
-│                                  plugin/ (19) and install-github-app/ (17) are the big ones;
-│                                  insights.ts is a BARREL over insights/ and must keep re-exporting
-│                                  `default` — commands.ts reaches it through a dynamic import
+│                                  plugin/ (19) and install-github-app/ (17) are the big ones
 ├── permissions/ (153)           ← rules, classifiers, always-allow, and every permission dialog
 │   ├── permissions.ts           ← hasPermissionsToUseTool, the decision core, over a
 │   │                              permissions/ dir (ruleLookup, ruleMutation, requestMessage,

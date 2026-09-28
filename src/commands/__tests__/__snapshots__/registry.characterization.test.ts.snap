@@ -70,7 +70,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "terminalSetup",
   "theme",
   "usage",
-  "usageReport",
   "vim",
   "wiki",
 ]
