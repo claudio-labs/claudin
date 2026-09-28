@@ -1,131 +1,245 @@
 {
-  "test": "src/skills/skillChangeDetector.characterization.test.ts",
+  "test": [
+    "src/skills/skillChangeDetector.characterization.test.ts",
+    "src/skills/changeDetection/watchedLocations.test.ts",
+    "src/skills/changeDetection/ignoredPaths.test.ts",
+    "src/skills/changeDetection/lifecycle.test.ts"
+  ],
   "source": "src/skills/skillChangeDetector.ts",
   "probes": [
     {
       "name": "locations: the project skills directory is not watched",
-      "find": "  const projectSkillsPath = getSkillsPath('projectSettings', 'skills')\n",
-      "replace": "  const projectSkillsPath = getSkillsPath('projectSettings', 'commands')\n"
+      "source": "src/skills/changeDetection/watchedLocations.ts",
+      "find": "    resolve(cwd, PROJECT_CONFIG_DIR, 'skills'),\n",
+      "replace": "    resolve(cwd, PROJECT_CONFIG_DIR, 'commands'),\n"
     },
     {
       "name": "locations: an additional directory's whole .claudin is watched, commands included",
-      "find": "    const additionalSkillsPath = platformPath.join(dir, '.claudin', 'skills')\n",
-      "replace": "    const additionalSkillsPath = platformPath.join(dir, '.claudin')\n"
+      "source": "src/skills/changeDetection/watchedLocations.ts",
+      "find": "    ...additionalDirectories.map(dir => resolve(cwd, dir, PROJECT_CONFIG_DIR, 'skills')),\n",
+      "replace": "    ...additionalDirectories.map(dir => resolve(cwd, dir, PROJECT_CONFIG_DIR)),\n"
     },
     {
-      "name": "locations: a user skills directory missing at startup is watched anyway",
-      "find": "      await fs.stat(userSkillsPath)\n",
-      "replace": ""
+      "name": "locations: a location missing at startup is watched anyway",
+      "source": "src/skills/changeDetection/watchedLocations.ts",
+      "find": "  return candidates.filter((_, index) => present[index])\n",
+      "replace": "  return candidates\n"
     },
     {
       "name": "changes: a deleted file is not a change",
-      "find": "  watcher.on('unlink', handleChange)\n",
+      "source": "src/skills/changeDetection/fileWatcher.ts",
+      "find": ".on('unlink', onChange)",
       "replace": ""
     },
     {
       "name": "changes: directory events count too",
-      "find": "  watcher.on('unlink', handleChange)\n",
-      "replace": "  watcher.on('all', handleChange)\n"
+      "source": "src/skills/changeDetection/fileWatcher.ts",
+      "find": ".on('unlink', onChange)",
+      "replace": ".on('unlink', onChange).on('addDir', onChange).on('unlinkDir', onChange)"
     },
     {
       "name": "changes: the files found at startup are reported",
+      "source": "src/skills/changeDetection/fileWatcher.ts",
       "find": "    ignoreInitial: true,\n",
       "replace": "    ignoreInitial: false,\n"
     },
     {
       "name": "changes: one directory level shallower",
-      "find": "    depth: 2, // Skills use skill-name/SKILL.md format\n",
-      "replace": "    depth: 1,\n"
+      "source": "src/skills/changeDetection/fileWatcher.ts",
+      "find": "const DIRECTORIES_BELOW_LOCATION = 2\n",
+      "replace": "const DIRECTORIES_BELOW_LOCATION = 1\n"
     },
     {
-      "name": "changes: .git is not ignored",
-      "find": "      return path.split(platformPath.sep).some(dir => dir === '.git')\n",
-      "replace": "      return false\n"
-    },
-    {
-      "name": "changes: editor backup and swap files are not ignored",
-      "find": "    atomic: true,\n",
-      "replace": "    atomic: false,\n"
-    },
-    {
-      "name": "changes: special files are not ignored",
-      "find": "      if (stats && !stats.isFile() && !stats.isDirectory()) return true\n",
+      "name": "changes: the ignore rules never reach the watcher",
+      "source": "src/skills/changeDetection/fileWatcher.ts",
+      "find": "    ignored: isIgnoredPath,\n",
       "replace": ""
     },
     {
+      "name": "changes: .git is not ignored",
+      "source": "src/skills/changeDetection/ignoredPaths.ts",
+      "find": "  return path.split(sep).includes(GIT_SEGMENT)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "changes: editor backup and swap files are not ignored",
+      "source": "src/skills/changeDetection/ignoredPaths.ts",
+      "find": "  return BACKUP_FILE_RE.test(name) || VIM_SWAP_FILE_RE.test(name) || SUBLIME_TEMP_FILE_RE.test(name)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "changes: special files are not ignored",
+      "source": "src/skills/changeDetection/ignoredPaths.ts",
+      "find": "    (kind !== undefined && isSpecialFile(kind))\n",
+      "replace": "    false\n"
+    },
+    {
       "name": "timing: a file still being written is reported at once",
+      "source": "src/skills/changeDetection/fileWatcher.ts",
       "find": "    awaitWriteFinish: {\n",
       "replace": "    awaitWriteFinish: false && {\n"
     },
     {
       "name": "timing: default stability threshold of 100 ms",
-      "find": "const FILE_STABILITY_THRESHOLD_MS = 1000\n",
-      "replace": "const FILE_STABILITY_THRESHOLD_MS = 100\n"
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "  stabilityThreshold: 1000,\n",
+      "replace": "  stabilityThreshold: 100,\n"
     },
     {
-      "name": "batching: the quiet period never restarts, every change schedules its own reload",
-      "find": "  if (reloadTimer) clearTimeout(reloadTimer)\n",
-      "replace": ""
+      "name": "timing: default quiet period of 3 s",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "  reloadDebounce: 300,\n",
+      "replace": "  reloadDebounce: 3000,\n"
+    },
+    {
+      "name": "batching: the quiet period never restarts, every change schedules its own settle",
+      "source": "src/skills/changeDetection/changeBatch.ts",
+      "find": "    pending.add(path)\n    clearTimeout(timer)\n",
+      "replace": "    pending.add(path)\n"
     },
     {
       "name": "batching: the paths of an earlier batch carry over",
-      "find": "    const paths = [...pendingChangedPaths]\n    pendingChangedPaths.clear()\n",
-      "replace": "    const paths = [...pendingChangedPaths]\n"
+      "source": "src/skills/changeDetection/changeBatch.ts",
+      "find": "    const [first, ...rest] = pending\n    pending.clear()\n",
+      "replace": "    const [first, ...rest] = pending\n"
     },
     {
       "name": "hooks: fired for the wrong source",
-      "find": "executeConfigChangeHooks('skills', paths[0]!)",
-      "replace": "executeConfigChangeHooks('user_settings', paths[0]!)"
+      "source": "src/skills/skillChangeDetector.ts",
+      "find": "executeConfigChangeHooks('skills', changedFile)",
+      "replace": "executeConfigChangeHooks('user_settings', changedFile)"
     },
     {
       "name": "hooks: a blocking result is ignored",
-      "find": "    if (hasBlockingResult(results)) {\n",
-      "replace": "    if (false) {\n"
+      "source": "src/skills/changeDetection/reload.ts",
+      "find": "  if (await deps.isBlockedByHooks(changed[0])) return\n",
+      "replace": "  await deps.isBlockedByHooks(changed[0])\n"
+    },
+    {
+      "name": "hooks: a blocking result never reaches the reload",
+      "source": "src/skills/skillChangeDetector.ts",
+      "find": "    hasBlockingResult(await executeConfigChangeHooks('skills', changedFile)),\n",
+      "replace": "    (await executeConfigChangeHooks('skills', changedFile), false),\n"
     },
     {
       "name": "reload: subscribers are told before the caches are dropped",
-      "find": "    clearSkillCaches()\n    clearCommandsCache()\n    resetSentSkillNames()\n    skillsChanged.emit()\n",
-      "replace": "    skillsChanged.emit()\n    clearSkillCaches()\n    clearCommandsCache()\n    resetSentSkillNames()\n"
+      "source": "src/skills/changeDetection/reload.ts",
+      "find": "  deps.dropSkillCaches()\n  deps.notifySubscribers()\n",
+      "replace": "  deps.notifySubscribers()\n  deps.dropSkillCaches()\n"
     },
     {
-      "name": "reload: subscribers are handed the changed paths",
-      "find": "    resetSentSkillNames()\n    skillsChanged.emit()\n",
-      "replace": "    resetSentSkillNames()\n    skillsChanged.emit(...(paths as []))\n"
-    },
-    {
-      "name": "discovery: the skill-directory caches are dropped too",
-      "find": "      clearCommandMemoizationCaches()\n",
-      "replace": "      clearCommandsCache()\n"
-    },
-    {
-      "name": "initialize: a second call starts another watcher",
-      "find": "  if (initialized || disposed) return\n",
-      "replace": "  if (disposed) return\n"
-    },
-    {
-      "name": "initialize: runs after dispose()",
-      "find": "  if (initialized || disposed) return\n",
-      "replace": "  if (initialized) return\n"
-    },
-    {
-      "name": "dispose: the watcher is left open",
-      "find": "    closePromise = watcher.close()\n",
+      "name": "reload: the skill and command caches are kept",
+      "source": "src/skills/skillChangeDetector.ts",
+      "find": "    clearCommandsCache()\n",
       "replace": ""
     },
     {
+      "name": "reload: the record of announced skills is kept",
+      "source": "src/skills/skillChangeDetector.ts",
+      "find": "    resetSentSkillNames()\n",
+      "replace": ""
+    },
+    {
+      "name": "reload: subscribers are handed an argument",
+      "source": "src/skills/changeDetection/subscribers.ts",
+      "find": "    const result: unknown = listener()\n",
+      "replace": "    const result: unknown = (listener as (changed: string) => void)('changed')\n"
+    },
+    {
+      "name": "subscribe: unsubscribing leaves the listener subscribed",
+      "source": "src/skills/changeDetection/subscribers.ts",
+      "find": "    subscribe: listener => signal.subscribe(guarded(listener)),\n",
+      "replace": "    subscribe: listener => (signal.subscribe(guarded(listener)), () => {}),\n"
+    },
+    {
+      "name": "subscribers: one that throws keeps the rest from hearing",
+      "source": "src/skills/changeDetection/subscribers.ts",
+      "find": "  } catch (error) {\n    reportError(error)\n  }\n",
+      "replace": "  } catch (error) {\n    throw error\n  }\n"
+    },
+    {
+      "name": "subscribers: one that throws is not logged",
+      "source": "src/skills/changeDetection/subscribers.ts",
+      "find": "    reportError(error)\n",
+      "replace": ""
+    },
+    {
+      "name": "subscribers: an async one's rejection goes unhandled",
+      "source": "src/skills/changeDetection/subscribers.ts",
+      "find": "    if (result instanceof Promise) result.catch(reportError)\n",
+      "replace": ""
+    },
+    {
+      "name": "discovery: the skill-directory caches are dropped too",
+      "source": "src/skills/skillChangeDetector.ts",
+      "find": "  dropCommandLists: clearCommandMemoizationCaches,\n",
+      "replace": "  dropCommandLists: clearCommandsCache,\n"
+    },
+    {
+      "name": "discovery: the command lists are not refreshed",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "      deps.dropCommandLists()\n",
+      "replace": ""
+    },
+    {
+      "name": "discovery: subscribers are not told",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "      subscribers.notify()\n",
+      "replace": ""
+    },
+    {
+      "name": "discovery: the relay piles up with every initialize()",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    if (relayingDiscoveries) return\n",
+      "replace": ""
+    },
+    {
+      "name": "initialize: a second call starts another watcher",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    if (state.phase !== 'idle') return Promise.resolve()\n",
+      "replace": "    if (state.phase === 'disposed') return Promise.resolve()\n"
+    },
+    {
+      "name": "initialize: runs after dispose()",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    if (state.phase !== 'idle') return Promise.resolve()\n",
+      "replace": "    if (state.phase === 'watching') return Promise.resolve()\n"
+    },
+    {
+      "name": "initialize: a dispose() while the locations are worked out still starts a watcher",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    if (startedIn !== generation) return\n",
+      "replace": ""
+    },
+    {
+      "name": "dispose: the watcher is left open",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    const closed = watcher.close()\n",
+      "replace": "    const closed = Promise.resolve()\n"
+    },
+    {
       "name": "dispose: a reload waiting out its quiet period still runs",
-      "find": "    clearTimeout(reloadTimer)\n    reloadTimer = null\n  }\n  pendingChangedPaths.clear()\n  skillsChanged.clear()\n  return closePromise\n",
-      "replace": "    reloadTimer = null\n  }\n  pendingChangedPaths.clear()\n  skillsChanged.clear()\n  return closePromise\n"
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    batch.cancel()\n",
+      "replace": ""
+    },
+    {
+      "name": "dispose: every subscriber is kept",
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    subscribers.clear()\n",
+      "replace": ""
     },
     {
       "name": "process: the watcher keeps the process alive",
+      "source": "src/skills/changeDetection/fileWatcher.ts",
       "find": "    persistent: false,\n",
       "replace": "    persistent: true,\n"
     },
     {
       "name": "process: the graceful-shutdown cleanup does not dispose",
-      "find": "    await dispose()\n",
-      "replace": "    void 0\n"
+      "source": "src/skills/changeDetection/lifecycle.ts",
+      "find": "    return { watcher, batch, unregisterCleanup: deps.registerCleanup(dispose) }\n",
+      "replace": "    return { watcher, batch, unregisterCleanup: deps.registerCleanup(async () => {}) }\n"
     }
   ]
 }

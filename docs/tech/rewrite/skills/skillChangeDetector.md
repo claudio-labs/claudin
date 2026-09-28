@@ -277,6 +277,27 @@ working:
 
 Nothing is dropped except the unused named exports (see Public contract).
 
+## Outcome (2026-09-28)
+
+**The implementation.** `skillChangeDetector.ts` is now a 54-line facade that
+wires seven modules in `src/skills/changeDetection/`: watched locations,
+ignored paths, the file watcher with the Bun polling check, the change batch,
+the reload, the subscribers and the lifecycle. It was written in a sandbox that
+had no history, no old module and no fingerprints.
+- **Characterization suite:** passes unchanged, three runs in a row.
+- **New unit tests:** 11, in three files.
+- **Probe spec:** re-authored against the new code with 39 probes, and every one turns the suites red.
+- **Provenance:** every new file measures zero inherited lines.
+
+**The two fixes the Target design asked for:**
+- **A `dispose()` that arrives during `initialize()`.** `dispose()` and `resetForTesting()` advance a generation, and `initialize()` checks it again after it has worked out the locations. A stale start creates no watcher and registers no cleanup.
+- **Isolated subscribers.** Each subscriber is wrapped once. A throw or a rejected promise is logged with `logError`, and the remaining subscribers still run, on the reload path and the discovery path alike.
+
+**Other deliberate differences.** None of them was pinned before.
+- **`resetForTesting`** also unregisters the shutdown cleanup.
+- **Editor temporaries** are ignored by an explicit rule of this module, instead of by chokidar's internal filtering.
+- **Special files** are only FIFOs, sockets and devices, so symlinks are still watched.
+
 ## Target design
 
 - **The export.** Keep the one exported object with its four members, and
