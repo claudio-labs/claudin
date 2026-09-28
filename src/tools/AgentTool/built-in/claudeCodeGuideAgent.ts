@@ -5,7 +5,6 @@ import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
-import { isUsing3PServices } from 'src/providers/auth/auth.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
@@ -14,8 +13,11 @@ import type {
   BuiltInAgentDefinition,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
 
-const CLAUDE_CODE_DOCS_MAP_URL =
-  'https://code.claude.com/docs/en/claude_code_docs_map.md'
+// Published by claudio-labs/claudin-site at deploy time: one line per docs
+// page, linking its Markdown mirror (served as text/markdown, so WebFetch
+// returns it verbatim instead of summarizing it).
+const CLAUDIN_DOCS_MAP_URL = 'https://claudiolabs.ai/llms.txt'
+const CLAUDIN_DOCS_URL = 'https://claudiolabs.ai/docs/'
 const CDP_DOCS_MAP_URL = 'https://platform.claude.com/llms.txt'
 
 export const CLAUDE_CODE_GUIDE_AGENT_TYPE = 'claudin-guide'
@@ -31,7 +33,7 @@ function getClaudeCodeGuideBasePrompt(): string {
 
 **Your expertise spans three domains:**
 
-1. **Claudin** (the CLI tool): Installation, configuration, hooks, skills, MCP servers, keyboard shortcuts, IDE integrations, settings, and workflows.
+1. **Claudin** (the CLI tool): Installation, providers and models, configuration, hooks, skills, agents, MCP servers, plugins, workflows, memory, settings, and slash commands.
 
 2. **Claude Agent SDK**: A framework for building custom AI agents. Available for Node.js/TypeScript and Python.
 
@@ -39,16 +41,15 @@ function getClaudeCodeGuideBasePrompt(): string {
 
 **Documentation sources:**
 
-- **Claude Code docs** (${CLAUDE_CODE_DOCS_MAP_URL}): Use these as the compatibility reference for questions about the Claudin CLI tool, including:
-  - Installation, setup, and getting started
-  - Hooks (pre/post command execution)
-  - Custom skills
-  - MCP server configuration
-  - IDE integrations (VS Code, JetBrains)
-  - Settings files and configuration
-  - Keyboard shortcuts and hotkeys
-  - Subagents and plugins
-  - Sandboxing and security
+- **Claudin docs** (${CLAUDIN_DOCS_MAP_URL}): The index of Claudin's own documentation at claudiolabs.ai — every page with a one-line summary, linked to its Markdown version. Fetch it first for any question about the Claudin CLI tool, including:
+  - Installation, providers, and model setup
+  - Settings files, permissions, and configuration
+  - Agents, workflows, and cross-session messaging
+  - Skills, plugins, and MCP servers
+  - Hooks and automation (headless mode, scheduled prompts)
+  - Memory, notifications, and the /diff reviewer
+  - The changelog, for when a feature shipped or changed
+  If the index is unavailable, start from ${CLAUDIN_DOCS_URL}.
 
 - **Claude Agent SDK docs** (${CDP_DOCS_MAP_URL}): Fetch this for questions about building agents with the SDK, including:
   - SDK overview and getting started (Python and TypeScript)
@@ -71,28 +72,20 @@ function getClaudeCodeGuideBasePrompt(): string {
 1. Determine which domain the user's question falls into
 2. Use ${WEB_FETCH_TOOL_NAME} to fetch the appropriate docs map
 3. Identify the most relevant documentation URLs from the map
-4. Fetch the specific documentation pages
+4. Fetch the specific documentation pages (for Claudin, the \`.md\` URLs the index links to)
 5. Provide clear, actionable guidance based on official documentation
 6. Use ${WEB_SEARCH_TOOL_NAME} if docs don't cover the topic
 7. Reference local project files (CLAUDE.md, .claudin/ directory) when relevant using ${localSearchHint}
 
 **Guidelines:**
 - Always prioritize official documentation over assumptions
+- Claudin started from Claude Code but differs from it in paths, settings, environment variables, and features. Answer Claudin questions from the Claudin docs, not from what you know about Claude Code; when the docs don't cover something, say so rather than assume Claude Code's behavior
 - Keep responses concise and actionable
 - Include specific examples or code snippets when helpful
-- Reference exact documentation URLs in your responses
+- Reference exact documentation URLs in your responses — for a Claudin page, its URL without the \`.md\` suffix
 - Help users discover features by proactively suggesting related commands, shortcuts, or capabilities
 
 Complete the user's request by providing accurate, documentation-based guidance.`
-}
-
-function getFeedbackGuideline(): string {
-  // For 3P services (Bedrock/Vertex/Foundry), /feedback command is disabled
-  // Direct users to the appropriate feedback channel instead
-  if (isUsing3PServices()) {
-    return `- When you cannot find an answer or the feature doesn't exist, direct the user to ${MACRO.ISSUES_EXPLAINER}`
-  }
-  return "- When you cannot find an answer or the feature doesn't exist, direct the user to use /feedback to report a feature request or bug"
 }
 
 export const CLAUDE_CODE_GUIDE_AGENT: BuiltInAgentDefinition = {
@@ -181,10 +174,9 @@ export const CLAUDE_CODE_GUIDE_AGENT: BuiltInAgentDefinition = {
       )
     }
 
-    // Add the feedback guideline (conditional based on whether user is using 3P services)
-    const feedbackGuideline = getFeedbackGuideline()
+    // Claudin has no /feedback command, so every user gets the issue tracker.
     const basePromptWithFeedback = `${getClaudeCodeGuideBasePrompt()}
-${feedbackGuideline}`
+- When you cannot find an answer or the feature doesn't exist, direct the user to ${MACRO.ISSUES_EXPLAINER}`
 
     // If we have any context to add, append it to the base system prompt
     if (contextSections.length > 0) {

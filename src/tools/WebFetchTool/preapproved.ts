@@ -12,6 +12,11 @@
 // that sandbox network restrictions require explicit user permission rules.
 
 export const PREAPPROVED_HOSTS = new Set([
+  // Claudin — the claudin-guide agent runs in dontAsk mode, where an
+  // unlisted host is denied rather than asked about
+  'claudiolabs.ai',
+  'www.claudiolabs.ai',
+
   // Anthropic
   'platform.claude.com',
   'code.claude.com',
