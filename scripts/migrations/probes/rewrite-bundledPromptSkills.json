@@ -1,60 +1,104 @@
 {
-  "test": "src/skills/bundled/inheritedSkills.characterization.test.ts",
+  "test": [
+    "src/skills/bundled/inheritedSkills.characterization.test.ts",
+    "src/skills/bundled/shared/batchOutcome.test.ts",
+    "src/skills/bundled/shared/logTail.test.ts",
+    "src/skills/bundled/shared/loopRequest.test.ts",
+    "src/skills/bundled/shared/settingsFiles.test.ts",
+    "src/skills/bundled/shared/updateConfigRequest.test.ts",
+    "src/skills/bundled/shared/cliCommand.test.ts"
+  ],
   "source": "src/skills/bundled/loop.ts",
   "probes": [
     {
       "name": "update-config: hidden from the model",
       "source": "src/skills/bundled/updateConfig.ts",
-      "find": "    allowedTools: ['Read'],\n    userInvocable: true,\n",
-      "replace": "    allowedTools: ['Read'],\n    userInvocable: true,\n    disableModelInvocation: true,\n"
+      "find": "    disableModelInvocation: false,\n",
+      "replace": "    disableModelInvocation: true,\n"
+    },
+    {
+      "name": "update-config: the description stops saying a remembered preference cannot replace a hook",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "'while a preference saved to memory never triggers anything. Also for hooks that do not fire. ' +",
+      "replace": "'Also for hooks that do not fire. ' +"
     },
     {
       "name": "update-config: the [hooks-only] prefix is not recognized",
-      "source": "src/skills/bundled/updateConfig.ts",
-      "find": "      if (args.startsWith('[hooks-only]')) {\n",
-      "replace": "      if (args.startsWith('[hooks]')) {\n"
+      "source": "src/skills/bundled/shared/updateConfigRequest.ts",
+      "find": "  if (args.startsWith(HOOKS_ONLY_PREFIX)) {\n",
+      "replace": "  if (args.startsWith('[hooks]')) {\n"
     },
     {
       "name": "update-config: the [hooks-only] summary is dropped",
       "source": "src/skills/bundled/updateConfig.ts",
-      "find": "          prompt += `\\n\\n## Task\\n\\n${req}`\n",
-      "replace": "          prompt += ''\n"
+      "find": "      : `${HOOKS_REFERENCE}\\n\\n## Task\\n\\n${request.task}`\n",
+      "replace": "      : HOOKS_REFERENCE\n"
     },
     {
       "name": "update-config: a blank [hooks-only] summary still adds a task",
-      "source": "src/skills/bundled/updateConfig.ts",
-      "find": "        const req = args.slice('[hooks-only]'.length).trim()\n",
-      "replace": "        const req = args.slice('[hooks-only]'.length)\n"
+      "source": "src/skills/bundled/shared/updateConfigRequest.ts",
+      "find": "      task: nonBlank(args.slice(HOOKS_ONLY_PREFIX.length)),\n",
+      "replace": "      task: args.slice(HOOKS_ONLY_PREFIX.length),\n"
     },
     {
       "name": "update-config: the schema describes the output side of the settings",
       "source": "src/skills/bundled/updateConfig.ts",
-      "find": "  const jsonSchema = toJSONSchema(SettingsSchema(), { io: 'input' })\n",
-      "replace": "  const jsonSchema = toJSONSchema(SettingsSchema())\n"
+      "find": "toJSONSchema(SettingsSchema(), { io: 'input' })",
+      "replace": "toJSONSchema(SettingsSchema())"
+    },
+    {
+      "name": "update-config: the full prompt leaves out the hooks reference",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "const prompt = [SETTINGS_GUIDANCE, HOOKS_REFERENCE, settingsSchemaSection()].join('\\n\\n')",
+      "replace": "const prompt = [SETTINGS_GUIDANCE, settingsSchemaSection()].join('\\n\\n')"
     },
     {
       "name": "update-config: the request is not appended",
       "source": "src/skills/bundled/updateConfig.ts",
-      "find": "        prompt += `\\n\\n## User Request\\n\\n${args}`\n",
-      "replace": "        prompt += '\\n'\n"
+      "find": "    : `${prompt}\\n\\n## The user's request\\n\\n${request.request}`\n",
+      "replace": "    : prompt\n"
+    },
+    {
+      "name": "update-config: a blank request adds an empty request section",
+      "source": "src/skills/bundled/shared/updateConfigRequest.ts",
+      "find": "  return { mode: 'full', request: nonBlank(args) }\n",
+      "replace": "  return { mode: 'full', request: args === '' ? undefined : args.trim() }\n"
+    },
+    {
+      "name": "update-config: the hook troubleshooting drops the --debug restart",
+      "source": "src/skills/bundled/updateConfig.ts",
+      "find": "Restart with \\`${CLI_COMMAND} --debug\\`",
+      "replace": "Restart with \\`${CLI_COMMAND}\\`"
     },
     {
       "name": "update-config: settings precedence reversed",
-      "source": "src/skills/bundled/updateConfig.ts",
-      "find": "Settings load in order: user → project → local (later overrides earlier).",
-      "replace": "Settings load in order: local → project → user (later overrides earlier)."
+      "source": "src/skills/bundled/shared/settingsFiles.ts",
+      "find": "SETTINGS_FILES.map(file => file.label).join(' → ')",
+      "replace": "SETTINGS_FILES.map(file => file.label).reverse().join(' → ')"
     },
     {
       "name": "update-config: the jq check of the written hook is dropped",
-      "source": "src/skills/bundled/updateConfig.ts",
-      "find": "\\`jq -e '.hooks.<event>[]",
-      "replace": "\\`jq '.hooks.<event>[]"
+      "source": "src/skills/bundled/shared/hooksReference.ts",
+      "find": "\\`jq -e '.hooks.PostToolUse[]",
+      "replace": "\\`jq '.hooks.PostToolUse[]"
+    },
+    {
+      "name": "update-config: the hooks reference leaves out the agent hook type",
+      "source": "src/skills/bundled/shared/hooksReference.ts",
+      "find": "\n- \\`\"type\": \"agent\"\\` runs an agent that can use tools to check something: \\`{ \"type\": \"agent\", \"prompt\": \"Confirm the unit tests were run and pass. $ARGUMENTS\" }\\`. It needs the conversation, so it runs on ${codeList(AGENT_HOOK_EVENTS)} only.",
+      "replace": ""
     },
     {
       "name": "batch: argument hint changed",
       "source": "src/skills/bundled/batch.ts",
       "find": "    argumentHint: '<instruction>',\n",
       "replace": "    argumentHint: '[instruction]',\n"
+    },
+    {
+      "name": "batch: the model may invoke it",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "    disableModelInvocation: true,\n",
+      "replace": "    disableModelInvocation: false,\n"
     },
     {
       "name": "batch: the instruction is not trimmed",
@@ -64,9 +108,15 @@
     },
     {
       "name": "batch: runs outside a git repository",
-      "source": "src/skills/bundled/batch.ts",
-      "find": "      if (!isGit) {\n",
-      "replace": "      if (isGit === null) {\n"
+      "source": "src/skills/bundled/shared/batchOutcome.ts",
+      "find": "  if (!inRepository) return { kind: 'needs-repository' }\n",
+      "replace": "  if (inRepository === null) return { kind: 'needs-repository' }\n"
+    },
+    {
+      "name": "batch: the repository check comes before the usage",
+      "source": "src/skills/bundled/shared/batchOutcome.ts",
+      "find": "  if (instruction === '') return { kind: 'usage' }\n  if (!inRepository) return { kind: 'needs-repository' }\n",
+      "replace": "  if (!inRepository) return { kind: 'needs-repository' }\n  if (instruction === '') return { kind: 'usage' }\n"
     },
     {
       "name": "batch: workers share the working tree",
@@ -77,102 +127,200 @@
     {
       "name": "batch: unit ceiling changed",
       "source": "src/skills/bundled/batch.ts",
-      "find": "const MAX_AGENTS = 30\n",
-      "replace": "const MAX_AGENTS = 20\n"
+      "find": "Split the work into 5–30 units.",
+      "replace": "Split the work into 5–20 units."
+    },
+    {
+      "name": "batch: the description's agent range changed",
+      "source": "src/skills/bundled/batch.ts",
+      "find": "across 5–30 background agents",
+      "replace": "across 5–20 background agents"
     },
     {
       "name": "batch: workers are not told the PR line the tracker parses",
       "source": "src/skills/bundled/batch.ts",
-      "find": "End with a single line: \\`PR: <url>\\`",
-      "replace": "End with a single line: \\`Result: <url>\\`"
+      "find": "End your reply with exactly one line: \\`PR: <url>\\`",
+      "replace": "End your reply with exactly one line: \\`Result: <url>\\`"
     },
     {
       "name": "debug: Grep and Glob no longer pre-approved",
       "source": "src/skills/bundled/debug.ts",
-      "find": "    allowedTools: ['Read', 'Grep', 'Glob'],\n",
-      "replace": "    allowedTools: ['Read'],\n"
+      "find": "    allowedTools: [FILE_READ_TOOL_NAME, GREP_TOOL_NAME, GLOB_TOOL_NAME],\n",
+      "replace": "    allowedTools: [FILE_READ_TOOL_NAME],\n"
     },
     {
       "name": "debug: logging is not switched on",
       "source": "src/skills/bundled/debug.ts",
-      "find": "      const wasAlreadyLogging = enableDebugLogging()\n",
-      "replace": "      const wasAlreadyLogging = true\n"
+      "find": "      const wasOn = deps.enableLogging()\n",
+      "replace": "      const wasOn = true\n"
     },
     {
       "name": "debug: announces the switch even when logging was already on",
       "source": "src/skills/bundled/debug.ts",
-      "find": "      const justEnabledSection = wasAlreadyLogging\n",
-      "replace": "      const justEnabledSection = false\n"
+      "find": "        switchedOn: !wasOn,\n",
+      "replace": "        switchedOn: true,\n"
+    },
+    {
+      "name": "debug: the switch note drops the --debug restart advice",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "restart with \\`${CLI_COMMAND} --debug\\`",
+      "replace": "restart with \\`${CLI_COMMAND}\\`"
     },
     {
       "name": "debug: reads far more than the tail of a large log",
       "source": "src/skills/bundled/debug.ts",
-      "find": "const TAIL_READ_BYTES = 64 * 1024\n",
-      "replace": "const TAIL_READ_BYTES = 1024 * 1024\n"
+      "find": "maxBytes: 64 * 1024",
+      "replace": "maxBytes: 1024 * 1024"
+    },
+    {
+      "name": "debug: the tail is not 20 lines",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "maxLines: 20",
+      "replace": "maxLines: 19"
+    },
+    {
+      "name": "debug: a trailing newline counts as one of the 20 lines",
+      "source": "src/skills/bundled/shared/logTail.ts",
+      "find": "  if (lines.at(-1) === '') lines.pop()\n",
+      "replace": ""
     },
     {
       "name": "debug: a missing log is reported as a read failure",
+      "source": "src/skills/bundled/shared/logTail.ts",
+      "find": "    return isENOENT(error)\n",
+      "replace": "    return false\n"
+    },
+    {
+      "name": "debug: a read failure loses its reason",
       "source": "src/skills/bundled/debug.ts",
-      "find": "        logInfo = isENOENT(e)\n",
-      "replace": "        logInfo = false\n"
+      "find": "The tail of the log could not be read: ${tail.reason}",
+      "replace": "The tail of the log could not be read."
+    },
+    {
+      "name": "debug: the issue is not embedded",
+      "source": "src/skills/bundled/debug.ts",
+      "find": "        issue: args.trim() === '' ? undefined : args,\n",
+      "replace": "        issue: undefined,\n"
     },
     {
       "name": "debug: the local settings path is the project one",
-      "source": "src/skills/bundled/debug.ts",
-      "find": "* local - ${getSettingsFilePathForSource('localSettings')}\n",
-      "replace": "* local - ${getSettingsFilePathForSource('projectSettings')}\n"
+      "source": "src/skills/bundled/shared/settingsFiles.ts",
+      "find": "${resolvePath(file.source) ?? 'no path in this session'}",
+      "replace": "${resolvePath(file.source === 'localSettings' ? 'projectSettings' : file.source) ?? 'no path in this session'}"
     },
     {
       "name": "loop: ignores CLAUDIN_DISABLE_CRON",
+      "source": "src/skills/bundled/loop.ts",
       "find": "    isEnabled: isKairosCronEnabled,\n",
       "replace": "    isEnabled: () => true,\n"
     },
     {
       "name": "loop: hour spellings other than h are rejected",
-      "find": "  if (['h', 'hr', 'hrs', 'hour', 'hours'].includes(unit)) return 'h'\n",
-      "replace": "  if (['h'].includes(unit)) return 'h'\n"
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "  ['h', ['h', 'hr', 'hrs', 'hour', 'hours']],\n",
+      "replace": "  ['h', ['h']],\n"
+    },
+    {
+      "name": "loop: an upper-case unit is not an interval",
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "UNIT_BY_SPELLING.get(unitText?.toLowerCase() ?? '')",
+      "replace": "UNIT_BY_SPELLING.get(unitText ?? '')"
     },
     {
       "name": "loop: a zero interval is accepted",
-      "find": "  if (!Number.isFinite(value) || value < 1) return null\n",
-      "replace": "  if (!Number.isFinite(value) || value < 0) return null\n"
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "!Number.isSafeInteger(count) || count <= 0",
+      "replace": "!Number.isSafeInteger(count) || count < 0"
+    },
+    {
+      "name": "loop: a count too large to print exactly is accepted",
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "!Number.isSafeInteger(count)",
+      "replace": "!Number.isFinite(count)"
     },
     {
       "name": "loop: a leading interval is ignored",
-      "find": "  const leadingInterval = parseIntervalToken(firstToken ?? '')\n",
-      "replace": "  const leadingInterval = parseIntervalToken('')\n"
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "  const leadingInterval = leading ? toInterval(leading[1], leading[2]) : undefined\n",
+      "replace": "  const leadingInterval = undefined\n"
+    },
+    {
+      "name": "loop: a fixed loop's prompt has its whitespace collapsed",
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "return { kind: 'fixed', interval: leadingInterval, prompt: leading[3] }",
+      "replace": "return { kind: 'fixed', interval: leadingInterval, prompt: leading[3]?.split(/\\s+/).join(' ') }"
     },
     {
       "name": "loop: the every clause stays in the prompt",
-      "find": "    prompt: match[1]!.trim(),\n",
-      "replace": "    prompt: input.trim(),\n"
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "    const prompt: string | undefined = every[1]\n",
+      "replace": "    const prompt: string | undefined = text\n"
+    },
+    {
+      "name": "loop: `every 5m` alone is a self-paced loop with that prompt",
+      "source": "src/skills/bundled/shared/loopRequest.ts",
+      "find": "const EVERY_CLAUSE_RE = /^(?:([\\s\\S]*?)\\s+)?every",
+      "replace": "const EVERY_CLAUSE_RE = /^([\\s\\S]*?)\\s+every"
     },
     {
       "name": "loop: a self-paced loop reschedules its bare prompt, not /loop",
-      "find": "    ? `/loop ${parsed.prompt}`\n",
-      "replace": "    ? parsed.prompt\n"
+      "source": "src/skills/bundled/loop.ts",
+      "find": "delimited('wakeup prompt', `/loop ${prompt}`)",
+      "replace": "delimited('wakeup prompt', prompt)"
     },
     {
       "name": "loop: a self-paced maintenance loop schedules the fixed sentinel",
-      "find": "    : AUTONOMOUS_LOOP_DYNAMIC_SENTINEL\n",
-      "replace": "    : AUTONOMOUS_LOOP_SENTINEL\n"
+      "source": "src/skills/bundled/loop.ts",
+      "find": "delimited('wakeup prompt', AUTONOMOUS_LOOP_DYNAMIC_SENTINEL)",
+      "replace": "delimited('wakeup prompt', AUTONOMOUS_LOOP_SENTINEL)"
+    },
+    {
+      "name": "loop: a self-paced loop may also schedule cron tasks",
+      "source": "src/skills/bundled/loop.ts",
+      "find": "Never use \\`${CRON_CREATE_TOOL_NAME}\\` in this mode.",
+      "replace": "You may also use \\`${CRON_CREATE_TOOL_NAME}\\` in this mode."
+    },
+    {
+      "name": "loop: the user's loop.md is named before the project's",
+      "source": "src/skills/bundled/loop.ts",
+      "find": "Each iteration runs \\`.claudin/loop.md\\` if it exists, otherwise \\`~/.claudin/loop.md\\`",
+      "replace": "Each iteration runs \\`~/.claudin/loop.md\\` if it exists, otherwise \\`.claudin/loop.md\\`"
     },
     {
       "name": "loop: a fixed maintenance loop schedules the self-paced sentinel",
-      "find": "${AUTONOMOUS_LOOP_SENTINEL}\n--- END SCHEDULED PROMPT ---",
-      "replace": "${AUTONOMOUS_LOOP_DYNAMIC_SENTINEL}\n--- END SCHEDULED PROMPT ---"
+      "source": "src/skills/bundled/loop.ts",
+      "find": "delimited('scheduled prompt', AUTONOMOUS_LOOP_SENTINEL)",
+      "replace": "delimited('scheduled prompt', AUTONOMOUS_LOOP_DYNAMIC_SENTINEL)"
+    },
+    {
+      "name": "loop: a fixed maintenance loop does not run the maintenance prompt now",
+      "source": "src/skills/bundled/loop.ts",
+      "find": "`${runNowSection('the maintenance prompt below')}\\n\\n${delimited('maintenance prompt', MAINTENANCE_PROMPT)}`",
+      "replace": "runNowSection('the maintenance prompt below')"
+    },
+    {
+      "name": "loop: the cron task outlives the session",
+      "source": "src/skills/bundled/loop.ts",
+      "find": "\\`recurring: true\\` and \\`durable: false\\`",
+      "replace": "\\`recurring: true\\` and \\`durable: true\\`"
     },
     {
       "name": "index: /loop is not registered",
       "source": "src/skills/bundled/index.ts",
-      "find": "  registerLoopSkill()\n",
-      "replace": "  void registerLoopSkill\n"
+      "find": "  registerLoopSkill,\n]",
+      "replace": "]"
     },
     {
       "name": "index: registration order changed",
       "source": "src/skills/bundled/index.ts",
-      "find": "  registerUpdateConfigSkill()\n  registerDebugSkill()\n",
-      "replace": "  registerDebugSkill()\n  registerUpdateConfigSkill()\n"
+      "find": "  registerUpdateConfigSkill,\n  registerDebugSkill,\n",
+      "replace": "  registerDebugSkill,\n  registerUpdateConfigSkill,\n"
+    },
+    {
+      "name": "cli name: the advice names another binary",
+      "source": "src/skills/bundled/shared/cliCommand.ts",
+      "find": "export const CLI_COMMAND = 'claudin'\n",
+      "replace": "export const CLI_COMMAND = 'claude'\n"
     }
   ]
 }

@@ -176,7 +176,10 @@ src/
 │                                  getMemoryFiles and the TEAMMEM-gated require stay in the root,
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at session start
-├── skills/ (28)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
+├── skills/ (50)                 ← user-invocable skills (/<name>). loadSkillsDir.ts is a facade over
+│                                  loading/ (the disk loader); skillChangeDetector.ts over
+│                                  changeDetection/ (hot reload); bundled/ (+ shared/ prompt
+│                                  helpers); ui/ (the /skills dialog). Rewritten clean-base 09-28
 ├── shared/ (162)                ← cross-cutting primitives ONLY — a subsystem here is a bug.
 │   │                              moduleBoundaries.test.ts pins how many imports reach UP from
 │   │                              here into a slice (131) — a ceiling that only goes down

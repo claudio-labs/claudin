@@ -366,6 +366,46 @@ rewrite can apply the decision.
 9. **Upstream names in the prose.** The `/batch` prompt names a browser skill this build does not ship, and the hooks reference refers to the model by another product's name. Decision: describe both generically.
 10. **Hook types per event.** The old hooks reference says `prompt` and `agent` hooks work only on `PreToolUse`, `PostToolUse` and `PermissionRequest`. This build also runs `prompt` hooks on `Stop` (the `/goal` judge in `src/platform/lifecycleHooks/sessionHooks.ts`). Decision: check `src/platform/lifecycleHooks/` and state what it allows. Not pinned.
 
+## Outcome (2026-09-28)
+
+**The implementation.** The five modules and their prose were rewritten in a
+sandbox that had no history, no old code and no fingerprints. The repeated
+prompt fragments and the typed argument parsing moved into seven helpers under
+`src/skills/bundled/shared/`, each with a unit test.
+- **Deleted.** `loop.test.ts` and `updateConfig.test.ts`, which openclaude wrote, are gone. The characterization suite covers what they checked.
+- **Characterization suite:** passes unchanged.
+- **Probe spec:** re-authored against the new code. It has 52 probes, and every one turns the suites red.
+- **A new pin for the CLI-name fix.** `shared/cliCommand.test.ts` was added after the probe run showed that no suite noticed `CLI_COMMAND` changing back to another product's binary.
+
+**Every "Decision: fix" was applied:**
+- no mention of a Config tool that does not exist;
+- the CLI named in one place;
+- a missing settings file may be created, and a new `settings.local.json` is gitignored;
+- a blank `/update-config` request counts as no request;
+- `/loop every 5m` is a fixed loop;
+- a fixed loop keeps its prompt as typed;
+- `/debug` shows 20 real lines;
+- the other products' names are gone from the prose;
+- the hooks reference states what `src/platform/lifecycleHooks/` actually runs: `prompt` hooks on six events, `agent` hooks on `Stop`.
+
+**Deviations, none of them pinned:**
+- `/debug` with blank arguments asks for a summary of the log.
+- A `/loop` count too large to be exact counts as no interval.
+- The hooks section is headed "Constructing a Hook", because `/init` points at it by that name.
+
+**Sizes.** `/update-config` is about 110 KB in full, 97 KB of it the live schema,
+and 7.7 KB in hooks-only mode. `/batch` is 2.8 KB, `/debug` is 1.3–1.7 KB plus
+the log tail, and `/loop` is 1.6–2.5 KB.
+
+**Residue, reviewed.**
+- **Registration.** Across the four skills, 2 to 5 lines each: the `register…Skill` names, `description: DESCRIPTION,`, the exact argument hints, `disableModelInvocation: true` and the `getPromptForCommand(args)` signature. All of them are dictated by the registration contract the suite pins.
+- **`shared/logTail.ts`.** Two lines of the standard Node idiom for reading a file backwards (`handle.read`, stop at 0 bytes).
+
+**Leak to note.** A sub-agent's own skill listing shows the first ~100
+characters of each installed skill's description, and during this rewrite
+those were the old descriptions. The new descriptions use different wording,
+and the gate finds no matching line.
+
 ## Target design
 
 - **One module per skill, plus the list.** Each skill module exports only its `register…Skill` function, which the bench relies on, and keeps its prose apart from its logic.

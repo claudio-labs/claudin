@@ -195,6 +195,28 @@ does.
 | **The label repeats the last segment** (`frontend:lint - lint`). | Keep for parity, since it is pinned. |
 | **The first Ctrl+C shows nothing,** because the input guide is hidden. | Keep. It is the design-system dialog's behaviour. |
 
+## Outcome (2026-09-28)
+
+**The implementation.** It was written in a sandbox that had no history, no
+old component and no fingerprints.
+- **`SkillsMenu.tsx`:** 88 lines of hand-written JSX, with no React-Compiler cache slots.
+- **`skillsMenuModel.ts`:** 147 lines. Grouping, ordering, labels and keys are pure functions there.
+- **`skillsMenuModel.test.ts`:** 34 new tests. They include a 36-column render that asserts every heading and row stays whole and in order.
+
+**Results.**
+- **Characterization suite:** passes unchanged.
+- **Probe spec:** re-authored against the new code. It has 35 probes, and every one turns the suites red.
+
+**Decisions applied.**
+- **The narrow layout is fixed:** each line is one `<Text>`, with the dim parts nested.
+- **Keys are unique**, even for two skills with the same name.
+- **The header counts only the listed skills.**
+
+**Residue, reviewed.**
+- **`skillsMenuModel.ts`:** 5 lines match openclaude. They are a generic "count the name's occurrences" idiom that keeps the keys unique.
+- **`skillsMenuModel.test.ts`:** 2 fixture fields (`source`, `progressMessage`) match Claude Code, and 14 lines of data-driven test shape match openclaude by structure.
+- **Nothing was copied:** the sandbox held neither the old code nor the fingerprints.
+
 ## Target design
 
 - **A hand-written function component** in this repo's Ink style: typed props, and no React Compiler output (no cache slots). It keeps the export name and the props.

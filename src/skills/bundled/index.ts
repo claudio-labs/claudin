@@ -11,33 +11,28 @@ import { registerUpdateConfigSkill } from 'src/skills/bundled/updateConfig.js'
 import { registerVerifySkill } from 'src/skills/bundled/verify.js'
 
 /**
- * Initialize all bundled skills.
- * Called at startup to register skills that ship with the CLI.
+ * Every skill that ships inside the CLI, in the order the command list shows
+ * them (it keeps registration order).
  *
- * To add a new bundled skill:
- * 1. Create a new file in src/skills/bundled/ (e.g., myskill.ts)
- * 2. Export a register function that calls registerBundledSkill()
- * 3. Import and call that function here
+ * `/loop` is registered even when cron is off: its `isEnabled` hides it then,
+ * read at call time, and registering it unconditionally is also what keeps
+ * its module in the bundle.
  */
+const REGISTRATIONS: ReadonlyArray<() => void> = [
+  registerUpdateConfigSkill,
+  registerDebugSkill,
+  registerCodeReviewSkill,
+  registerBatchSkill,
+  registerSimplifySkill,
+  registerVerifySkill,
+  registerRunSkill,
+  registerFewerPermissionPromptsSkill,
+  registerCreateSkill,
+  registerRefreshRulesSkill,
+  registerLoopSkill,
+]
+
+/** Registers the bundled skills; startup calls it once. */
 export function initBundledSkills(): void {
-  registerUpdateConfigSkill()
-  registerDebugSkill()
-  registerCodeReviewSkill()
-  registerBatchSkill()
-  // Ported from the upstream built-in skills. All provider-agnostic
-  // (pure agent-loop behavior), so they register unconditionally.
-  registerSimplifySkill()
-  registerVerifySkill()
-  registerRunSkill()
-  registerFewerPermissionPromptsSkill()
-  // Claudin-native: teaches the model to create/refine skills, rules, and
-  // agents in the .claudin structure (project + global).
-  registerCreateSkill()
-  // Claudin-native: keeps .claudin/rules/ honest — reports the rule defects
-  // that are invisible at runtime and proposes corrections from session history.
-  registerRefreshRulesSkill()
-  // /loop's isEnabled delegates to isKairosCronEnabled() — registered
-  // unconditionally so the static import is bundled; visibility is gated
-  // at runtime by the isEnabled callback.
-  registerLoopSkill()
+  for (const register of REGISTRATIONS) register()
 }

@@ -1,130 +1,218 @@
 {
-  "test": "src/skills/ui/SkillsMenu.characterization.test.tsx",
+  "test": [
+    "src/skills/ui/SkillsMenu.characterization.test.tsx",
+    "src/skills/ui/skillsMenuModel.test.ts"
+  ],
   "source": "src/skills/ui/SkillsMenu.tsx",
   "probes": [
     {
       "name": "filter: local and JSX commands count as skills",
-      "find": "return cmd.type === \"prompt\" && (cmd.loadedFrom === \"skills\"",
-      "replace": "return (cmd.loadedFrom === \"skills\""
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "return command.type === 'prompt' && command.loadedFrom !== undefined",
+      "replace": "return command.loadedFrom !== undefined"
     },
     {
       "name": "filter: hidden skills are left out",
-      "find": "return cmd.type === \"prompt\" && (",
-      "replace": "return cmd.type === \"prompt\" && !cmd.isHidden && ("
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "&& SKILL_ORIGINS.has(command.loadedFrom)",
+      "replace": "&& SKILL_ORIGINS.has(command.loadedFrom) && !command.isHidden"
     },
     {
       "name": "filter: legacy commands are left out",
-      "find": "cmd.loadedFrom === \"commands_DEPRECATED\" ||",
-      "replace": "false ||"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "new Set<Origin>(['skills', 'commands_DEPRECATED', 'plugin', 'mcp'])",
+      "replace": "new Set<Origin>(['skills', 'plugin', 'mcp'])"
     },
     {
       "name": "empty state: wrong subtitle",
+      "source": "src/skills/ui/SkillsMenu.tsx",
       "find": "subtitle=\"No skills found\"",
       "replace": "subtitle=\"0 skills\""
     },
     {
+      "name": "empty state: the directions name another product's directories",
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "const CREATE_HINT = 'Create skills in .claudin/skills/ or ~/.claudin/skills/'",
+      "replace": "const CREATE_HINT = 'Create skills in .claude/skills/ or ~/.claude/skills/'"
+    },
+    {
+      "name": "empty state: the dialog's Enter/Esc guide shows",
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "subtitle=\"No skills found\" onCancel={close} hideInputGuide>",
+      "replace": "subtitle=\"No skills found\" onCancel={close} hideInputGuide={false}>"
+    },
+    {
       "name": "header: the count is never singular",
-      "find": "t5 = plural(skills.length, \"skill\");",
-      "replace": "t5 = \"skills\";"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "return count === 1 ? '1 skill' : ",
+      "replace": "return "
+    },
+    {
+      "name": "header: the count is the last group's rows, not every listed row",
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "groups.reduce((total, group) => total + group.rows.length, 0)",
+      "replace": "groups.reduce((total, group) => group.rows.length, 0)"
     },
     {
       "name": "footer: the dialog's Enter/Esc guide shows under the list",
-      "find": "hideInputGuide={true}>{t12}{t13}</Dialog>",
-      "replace": "hideInputGuide={false}>{t12}{t13}</Dialog>"
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "subtitle={skillCountText(groups)} onCancel={close} hideInputGuide>",
+      "replace": "subtitle={skillCountText(groups)} onCancel={close} hideInputGuide={false}>"
+    },
+    {
+      "name": "footer: the close hint shows the key bound to confirm:yes",
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "action=\"confirm:no\"",
+      "replace": "action=\"confirm:yes\""
     },
     {
       "name": "groups: user skills come before project skills",
-      "find": "{t7}{t8}{t9}{t10}{t11}",
-      "replace": "{t8}{t7}{t9}{t10}{t11}"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "  { source: 'projectSettings', title: 'Project skills', subtitle: directoriesOf('projectSettings') },\n  { source: 'userSettings', title: 'User skills', subtitle: directoriesOf('userSettings') },\n",
+      "replace": "  { source: 'userSettings', title: 'User skills', subtitle: directoriesOf('userSettings') },\n  { source: 'projectSettings', title: 'Project skills', subtitle: directoriesOf('projectSettings') },\n"
     },
     {
       "name": "groups: a source with no skills still gets a heading",
-      "find": "if (groupSkills.length === 0) {",
-      "replace": "if (false) {"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "if (members.length === 0) return []",
+      "replace": "if (false) return []"
     },
     {
       "name": "groups: local-settings skills shown instead of managed ones",
-      "find": "t9 = renderSkillGroup(\"policySettings\");",
-      "replace": "t9 = renderSkillGroup(\"localSettings\");"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "{ source: 'policySettings', title: 'Managed skills'",
+      "replace": "{ source: 'localSettings', title: 'Managed skills'"
     },
     {
       "name": "groups: a repeated name is listed once",
-      "find": "groups[source].push(skill);",
-      "replace": "if (!groups[source].some(other => other.name === skill.name)) groups[source].push(skill);"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "const members = skills.filter(skill => skill.source === group.source).toSorted(byName)",
+      "replace": "const members = skills.filter(skill => skill.source === group.source).filter((skill, index, all) => all.findIndex(other => other.name === skill.name) === index).toSorted(byName)"
+    },
+    {
+      "name": "layout: groups run together with no blank line between them",
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "<Box flexDirection=\"column\" gap={1}>",
+      "replace": "<Box flexDirection=\"column\">"
+    },
+    {
+      "name": "layout: a heading splits into side-by-side columns that wrap on their own",
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "      <Text dimColor>\n        <Text bold>{group.title}</Text>\n        {group.subtitle === undefined ? null : ` (${group.subtitle})`}\n      </Text>\n",
+      "replace": "      <Box>\n        <Text bold dimColor>{group.title}</Text>\n        <Text dimColor>{group.subtitle === undefined ? null : ` (${group.subtitle})`}</Text>\n      </Box>\n"
+    },
+    {
+      "name": "layout: a row splits into side-by-side columns that wrap on their own",
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "        <Text key={row.key}>\n          {row.label}\n          <Text dimColor>{row.detail}</Text>\n        </Text>\n",
+      "replace": "        <Box key={row.key}>\n          <Text>{row.label}</Text>\n          <Text dimColor>{row.detail}</Text>\n        </Box>\n"
+    },
+    {
+      "name": "keys: two rows of one name share a React key",
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "key: `${occurrence}:${skill.name}`",
+      "replace": "key: skill.name"
     },
     {
       "name": "subtitle: the raw path instead of its display form",
-      "find": "const skillsPath = getDisplayPath(getSkillsPath(source, 'skills'));",
-      "replace": "const skillsPath = getSkillsPath(source, 'skills');"
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "getDisplayPath(getSkillsPath(source, dir))",
+      "replace": "getSkillsPath(source, dir)"
     },
     {
       "name": "subtitle: the commands directory only when every skill is a legacy command",
-      "find": "skills.some(s => s.loadedFrom === 'commands_DEPRECATED')",
-      "replace": "skills.every(s => s.loadedFrom === 'commands_DEPRECATED')"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "skills.some(skill => skill.loadedFrom === 'commands_DEPRECATED')",
+      "replace": "skills.every(skill => skill.loadedFrom === 'commands_DEPRECATED')"
     },
     {
       "name": "subtitle: the plugin group names prefixes like the MCP group",
-      "find": "if (source === 'mcp') {\n    const servers",
-      "replace": "if (source === 'mcp' || source === 'plugin') {\n    const servers"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "subtitle: directoriesOf('plugin') }",
+      "replace": "subtitle: mcpServers }"
     },
     {
       "name": "subtitle: an MCP server is named once per skill",
-      "find": "[...new Set(skills.map(s => {",
-      "replace": "[...Array.from(skills.map(s => {"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "[...servers].join(', ')",
+      "replace": "skills.flatMap(skill => mcpServerOf(skill.name) ?? []).join(', ')"
+    },
+    {
+      "name": "subtitle: MCP servers in input order instead of row order",
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "const subtitle = group.subtitle(members, deps)",
+      "replace": "const subtitle = group.subtitle(skills.filter(skill => skill.source === group.source), deps)"
     },
     {
       "name": "subtitle: a leading colon names an empty server",
-      "find": "return idx > 0 ? s.name.slice(0, idx) : null;",
-      "replace": "return idx >= 0 ? s.name.slice(0, idx) : null;"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "return firstColon > 0 ?",
+      "replace": "return firstColon >= 0 ?"
     },
     {
       "name": "row: the description instead of its token estimate",
-      "find": " · {tokenDisplay} description tokens</Text>",
-      "replace": " · {skill_0.description}</Text>"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "${SEPARATOR}~${deps.estimateOf(skill)} description tokens",
+      "replace": "${SEPARATOR}${skill.description}"
     },
     {
       "name": "row: the leaf is the second segment, not the last",
-      "find": "skill.name.split(':').pop()",
-      "replace": "skill.name.split(':')[1]"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "${name.slice(lastColon + 1)}",
+      "replace": "${name.split(':')[1]}"
     },
     {
       "name": "row: plugin info named on a skill from any source",
-      "find": "skill_0.source === \"plugin\" ? skill_0.pluginInfo?.pluginManifest.name : undefined",
-      "replace": "skill_0.pluginInfo?.pluginManifest.name"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "  if (skill.source !== 'plugin') return undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "row: an empty plugin name still adds a segment",
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "return skill.pluginInfo?.pluginManifest.name || undefined",
+      "replace": "return skill.pluginInfo?.pluginManifest.name"
     },
     {
       "name": "row: the estimate is not compacted",
-      "find": "`~${formatTokens(estimatedTokens)}`",
-      "replace": "`~${estimatedTokens}`"
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "formatTokens(estimateSkillFrontmatterTokens(skill))",
+      "replace": "String(estimateSkillFrontmatterTokens(skill))"
     },
     {
       "name": "row: the estimate leaves out when-to-use",
-      "find": "estimateSkillFrontmatterTokens(skill_0)",
-      "replace": "estimateSkillFrontmatterTokens({ ...skill_0, whenToUse: undefined })"
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "estimateSkillFrontmatterTokens(skill)",
+      "replace": "estimateSkillFrontmatterTokens({ ...skill, whenToUse: undefined })"
     },
     {
       "name": "row: labelled by the user-facing name",
-      "find": "<Text>{getSkillListLabel(skill_0)}</Text>",
-      "replace": "<Text>{getCommandName(skill_0)}</Text>"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "label: skillLabel(skill.name)",
+      "replace": "label: skillLabel(skill.userFacingName?.() ?? skill.name)"
     },
     {
       "name": "order: code-unit comparison instead of localeCompare",
-      "find": "return a.name.localeCompare(b.name);",
-      "replace": "return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;"
+      "source": "src/skills/ui/skillsMenuModel.ts",
+      "find": "return a.name.localeCompare(b.name)",
+      "replace": "return a.name < b.name ? -1 : a.name > b.name ? 1 : 0"
     },
     {
       "name": "close: reported as a user message",
-      "find": "display: \"system\"",
-      "replace": "display: \"user\""
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "{ display: 'system' }",
+      "replace": "{ display: 'user' }"
     },
     {
       "name": "close: Esc and n do nothing on the list",
-      "find": "subtitle={t6} onCancel={handleCancel}",
-      "replace": "subtitle={t6} onCancel={() => {}}"
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "subtitle={skillCountText(groups)} onCancel={close}",
+      "replace": "subtitle={skillCountText(groups)} onCancel={() => {}}"
     },
     {
       "name": "close: Esc does nothing on the empty dialog",
-      "find": "subtitle=\"No skills found\" onCancel={handleCancel}",
+      "source": "src/skills/ui/SkillsMenu.tsx",
+      "find": "subtitle=\"No skills found\" onCancel={close}",
       "replace": "subtitle=\"No skills found\" onCancel={() => {}}"
     }
   ]

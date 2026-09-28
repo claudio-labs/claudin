@@ -140,6 +140,11 @@ gate is what verifies the isolation: a copy, renamed or not, shows up there.
 - **Test harnesses leak too.** The characterization suite first copied its Ink-mounting harness from an inherited test, and 37 of its lines matched openclaude. `src/terminal/__testutils__/fakeTerminal.ts` is this project's harness: a TTY-looking stdin and a stdout that records frames. Use it, and let the inherited tests that still carry the old harness move over when they are rewritten.
 - **Run the gate on the new tests as well as the new code.** A new test file is held to zero like any other new file.
 
+**Pilot notes** (`skills/bundled` prompt skills, 2026-09-28):
+- **Prose is rewritten from intent.** The spec lists, for each prompt, what it must get the model to do and the facts it must state, with no sentence of the old text. The suite pins those facts with targeted matches, never whole sentences.
+- **The harness itself can leak.** A sub-agent's skill listing shows the installed skills' descriptions, which are the old ones until the rewrite ships. Tell the implementer, and let the gate verify.
+- **A fix is not done until a test pins it.** The probe run showed that nothing noticed the CLI name reverting; a small test now does.
+
 ### Porting this project's own code
 
 Only a whole unit (a file, or a function) moves across verbatim, and only when
