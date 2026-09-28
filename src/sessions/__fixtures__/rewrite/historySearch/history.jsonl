@@ -1,0 +1,8 @@
+{"display":"explain the retry logic in src/net/client.ts","pastedContents":{},"timestamp":1790606277695,"project":"/work/fixture","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
+{"display":"!git status --short","pastedContents":{},"timestamp":1790606277711,"project":"/work/fixture","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
+{"display":"summarize [Pasted text #1 +2 lines]","pastedContents":{"1":{"id":1,"type":"text","content":"alpha\nbeta\ngamma"}},"timestamp":1790606277727,"project":"/work/fixture","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
+{"display":"what changed in the deploy script?","pastedContents":{},"timestamp":1790606277743,"project":"/work/elsewhere","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
+{"display":"review [Pasted text #1 +39 lines]","pastedContents":{"1":{"id":1,"type":"text","contentHash":"202210f25fae3b65"}},"timestamp":1790606277759,"project":"/work/fixture","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
+{"display":"describe [Image #1]","pastedContents":{},"timestamp":1790606277775,"project":"/work/fixture","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
+{"display":"explain the retry logic in src/net/client.ts","pastedContents":{},"timestamp":1790606277791,"project":"/work/fixture","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
+{"display":"write a test for\nthe parser edge cases","pastedContents":{},"timestamp":1790606277807,"project":"/work/fixture","sessionId":"5f0c1e2a-7b3d-4c8e-9a61-2d4f8b7c3e10"}
