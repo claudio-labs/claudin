@@ -122,11 +122,12 @@ An `impl` sandbox has none of these:
 - its probe spec, and any older probe spec that probes those files (both quote the old code);
 - the fingerprints, because the gate checks the result and is not the implementer's tool;
 - the team memory;
-- any doc or bench that names one of the old code's private declarations. Benches quote old code too: `scripts/bench/ab/delegation-steer-ab.ts` held lines of the old skill loader.
+- any doc, bench or snapshot that names one of the old code's private declarations, or quotes one of its lines of 40 characters or more. Benches quote old code too: `scripts/bench/ab/delegation-steer-ab.ts` held lines of the old skill loader, and the system-prompt snapshots hold the old prompts. A snapshot taken out is written afresh by the implementer's run, and `land.ts` lists it for review.
 
-A private name found anywhere else is reported, not removed. Review each one
-before the brief: inside `src/` it is usually an unrelated function with the
-same name, but in a rule or a spec it is a leak. Reword whatever quoted the old
+A private name or a quoted line found anywhere else is reported, not removed.
+Review each one before the brief: inside `src/` it is usually an unrelated
+function with the same name, or a line another inherited module shares, but in
+a rule or a spec it is a leak. Reword whatever quoted the old
 code against the new module in the rewrite's commit. When the implementation
 lands, `land.ts` prunes the older probe specs it took out, since their lines
 are gone.

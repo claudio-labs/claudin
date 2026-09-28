@@ -15,11 +15,14 @@
  * `impl` takes out whatever would put the old code in the implementer's
  * reach: the unit's files and inherited tests, the unit's probe spec (it
  * quotes the old lines), every other probe spec with a probe on those files,
- * the fingerprints, the team memory, and any doc or bench that names one of
- * the old code's private declarations. A private name found anywhere else is
- * only reported. Inside src/ it is usually an unrelated function with the
- * same name, and removing product code would break the build; in a rule file
- * or a rewrite spec it is a leak to fix by hand before the brief.
+ * the fingerprints, the team memory, and any doc, bench or snapshot that names
+ * one of the old code's private declarations or quotes one of its lines.
+ * Either found anywhere else is only reported. Inside src/ it is usually an
+ * unrelated function with the same name, or a line another inherited module
+ * shares, and removing product code would break the build; in a rule file or
+ * a rewrite spec it is a leak to fix by hand before the brief. A snapshot
+ * taken out is written afresh by the implementer's run, and land.ts shows it
+ * for review.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
@@ -41,8 +44,38 @@ const DISTINCTIVE_NAME_RE = /[a-z][A-Z]|_/
 
 const SKIP_DIR_RE = /^(node_modules|dist|coverage|\.git)$/
 const TEXT_FILE_RE = /\.(ts|tsx|js|mjs|cjs|md|json|txt|ya?ml|toml|snap)$/
-/** Where a file naming a private declaration is taken out rather than only reported. */
-const REMOVABLE_RE = /^(docs\/(?!tech\/rewrite\/)|scripts\/(bench|migrations)\/)/
+/** Where a file that names or quotes the old code is taken out rather than only reported. */
+const REMOVABLE_RE = /^(docs\/(?!tech\/rewrite\/)|scripts\/(bench|migrations)\/)|\/__snapshots__\//
+
+/**
+ * A line of the old code this long, found elsewhere, was quoted from it: at
+ * 40 characters the chance matches are boilerplate that other inherited
+ * modules share, which only lands in the report.
+ */
+const QUOTED_LINE_MIN_LENGTH = 40
+const LETTERS_RE = /[A-Za-z]{3}/
+/** Wiring says nothing about the code, and every caller of the module repeats it. */
+const WIRING_LINE_RE = /^(import\b|export\s+(\*|type\s*\{|\{)|\}\s*from\s*['"])/
+const WHITESPACE_RUN_RE = /\s+/g
+
+function normalizedLine(raw: string): string {
+  return raw.trim().replace(WHITESPACE_RUN_RE, ' ')
+}
+
+function quotableLines(files: string[], root: string): Set<string> {
+  const lines = new Set<string>()
+  for (const file of files) {
+    const path = join(root, file)
+    if (!existsSync(path)) continue
+    for (const raw of readFileSync(path, 'utf8').split('\n')) {
+      const line = normalizedLine(raw)
+      if (line.length >= QUOTED_LINE_MIN_LENGTH && LETTERS_RE.test(line) && !WIRING_LINE_RE.test(line)) {
+        lines.add(line)
+      }
+    }
+  }
+  return lines
+}
 
 function run(command: string, args: string[], input?: Buffer): Buffer {
   const result = spawnSync(command, args, { cwd: REPO_ROOT, input, maxBuffer: 1024 ** 3 })
@@ -141,15 +174,18 @@ if (mode === 'impl') {
   for (const spec of probeSpecsTouching(unit.files, base, ownSpec)) remove(spec)
 
   const names = privateNames(unit.files, base)
-  if (names.length > 0) {
-    const nameRe = new RegExp(`\\b(${names.map(n => n.replace(/\$/g, '\\$')).join('|')})\\b`, 'g')
-    for (const file of textFiles(sandbox)) {
-      const found = new Set(readFileSync(join(sandbox, file), 'utf8').match(nameRe) ?? [])
-      if (found.size === 0) continue
-      const line = `${file}: ${[...found].join(', ')}`
-      if (REMOVABLE_RE.test(file)) remove(file)
-      else reported.push(file === specPath(name) ? `SPEC LEAK ${line}` : line)
-    }
+  const nameRe =
+    names.length > 0 ? new RegExp(`\\b(${names.map(n => n.replace(/\$/g, '\\$')).join('|')})\\b`, 'g') : undefined
+  const quoted = quotableLines(unit.files, base)
+  for (const file of textFiles(sandbox)) {
+    const text = readFileSync(join(sandbox, file), 'utf8')
+    const found = new Set(nameRe ? (text.match(nameRe) ?? []) : [])
+    const quotes = text.split('\n').filter(raw => quoted.has(normalizedLine(raw))).length
+    if (found.size === 0 && quotes === 0) continue
+    const what = [...found, ...(quotes > 0 ? [`${quotes} quoted line${quotes === 1 ? '' : 's'}`] : [])]
+    const line = `${file}: ${what.join(', ')}`
+    if (REMOVABLE_RE.test(file)) remove(file)
+    else reported.push(file === specPath(name) ? `SPEC LEAK ${line}` : line)
   }
 }
 
