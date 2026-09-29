@@ -136,7 +136,7 @@
 - [Request prefix, broken down](request-prefix-size-2026-09-23.md) — eager tools were ≈20k; deferred schemas unbilled; 17.3k vs CC 21.0k since 09-24
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — with `directory`: −7.7% cost, −25% output
 - [Dev tools deferred + Bash advice A/B (09-24)](dev-tools-deferred-advice-ab-2026-09-24.md) — no regression, prefix −3.3k; deferred RunTests unused
-- [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties Claude Code ($1.04, one run); catread +6%
+- [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties Claude Code ($1.04, one run); catread +6% · [read-files 09-29](read-files-ab-2026-09-29.md): +13%, gate failed
 - [Fewer requests per session — 4 rounds (09-25)](request-count-levers-2026-09-24.md) — round 4: `then` and path-keeping cap PROMOTED; Grep bodies never engaged, parked
 - [Cut results cost ~0.3% of requests (09-25)](cut-results-request-cost-2026-09-25.md) — the leak (capped `sed -n`/`head -N` reads) is #252's target, unmeasured
 - [Single deferred cache marker → full-history rewrites — FIXED 09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of cache writes
