@@ -21,7 +21,7 @@ Options:
   --debug-file <path>                               Write debug logs to a specific file path (implicitly enables debug mode)
   --disable-slash-commands                          Disable all skills
   --disallowedTools, --disallowed-tools <tools...>  Comma or space-separated list of tool names to deny (e.g. "Bash(git:*) Edit")
-  --effort <level>                                  Effort level for the current session (low, medium, high, max)
+  --effort <level>                                  Effort level for the current session (low, medium, high, xhigh, max)
   --fallback-model <model>                          Enable automatic fallback to specified model when default model is overloaded (only works with --print)
   --file <specs...>                                 File resources to download at startup. Format: file_id:relative_path (e.g., --file file_abc:doc.txt file_def:img.png)
   --fork-session                                    When resuming, create a new session ID instead of reusing the original (use with --resume or --continue)
