@@ -201,6 +201,7 @@ import {
   readServerCacheMissReason,
   recordPromptState,
   recordRenderedMessages,
+  recordWireBody,
   type ServerCacheMissReason,
   summarizeAppliedContextEdits,
 } from "src/providers/cache/promptCacheBreakDetection.js";
@@ -1157,7 +1158,13 @@ export async function* queryModel(
 
         const params = paramsFromContext(context);
         captureAPIRequest(params, options.querySource); // Capture for bug reports
-        if (isCacheKeepAliveEnabled()) {
+        if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
+          recordWireBody(options.querySource, options.agentId, params);
+        }
+        // Agentic requests only: a side query (away summary, web search, a
+        // classifier) has no agentId and would take the main thread's key,
+        // replacing its body and pinging a one-shot prompt for 30 minutes.
+        if (isCacheKeepAliveEnabled() && isAgenticQuery) {
           const key = options.agentId ?? "main";
           noteRequestStarted(key);
           keepAliveCandidate = {

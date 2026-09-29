@@ -5,6 +5,7 @@ import {
   countTokensViaHaikuFallback,
   getActiveModelBytesPerToken,
   getTokenizerConfig,
+  getToolOutputBytesPerToken,
   roughTokenCountEstimation,
   roughTokenCountEstimationForCountRequest,
   roughTokenCountEstimationForFileType,
@@ -141,6 +142,35 @@ describe('roughTokenCountEstimation — model-aware', () => {
     expect(roughTokenCountEstimation('a'.repeat(35))).toBe(10)
     setActiveModel('gemini-2.5-flash') // 4
     expect(roughTokenCountEstimation('a'.repeat(40))).toBe(10)
+  })
+})
+
+describe('getToolOutputBytesPerToken — measured on tool output', () => {
+  it('the dense tokenizer: Opus 4.7 and later, Sonnet 5, Fable, any host prefix', () => {
+    for (const model of [
+      'claude-opus-4-7',
+      'claude-opus-4-8',
+      'claude-opus-5',
+      'claude-opus-5-5',
+      'claude-sonnet-5',
+      'claude-fable-5-1',
+      'anthropic.claude-opus-5-5',
+      'CLAUDE-OPUS-5-5[1m]',
+    ]) {
+      expect(getToolOutputBytesPerToken(model)).toBe(2.4)
+    }
+  })
+
+  it('earlier Claude models', () => {
+    for (const model of ['claude-opus-4-6', 'claude-opus-4-5', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'us.anthropic.claude-sonnet-4-6']) {
+      expect(getToolOutputBytesPerToken(model)).toBe(3.1)
+    }
+  })
+
+  it('any other family keeps its table ratio', () => {
+    expect(getToolOutputBytesPerToken('gpt-5.5')).toBe(4)
+    expect(getToolOutputBytesPerToken('deepseek-v4')).toBe(3.5)
+    expect(getToolOutputBytesPerToken('something-new')).toBe(4)
   })
 })
 

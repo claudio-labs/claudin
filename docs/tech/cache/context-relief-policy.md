@@ -26,6 +26,17 @@ One decision, one source of truth, no message ever dropped from the API view:
     byte-guard, expressed as the same action.
   - Both fired → one event sized by whichever asks for more.
   - `selectReliefIds`: oldest first until the request is covered.
+  - **Units (fixed 2026-09-29).** Once a response carried usage, the window
+    lane's request is REAL tokens, while candidate savings are estimates at
+    the family ratio (3.5 chars/token). The shell converts them with the
+    measured tool-output ratio (`getToolOutputBytesPerToken`: 2.4 on Opus
+    4.7+, 3.1 on earlier Claude). On Opus 5.5 / Fable 5.1 a thread's first
+    clip also drops, server-side, every thinking block after the first
+    clipped result (`block_binding: drop_block`), and that thinking is
+    subtracted from the request. Before both, a sub-agent at 263k asked to
+    free 73k lost 204k (≈140k of results + ≈50k of thinking) and re-read
+    what it lost; the same selection replayed now takes 8 clips instead of
+    68 for ~88k.
 - **`usedTokens` is real usage**: `tokenCountWithEstimation` (previous
   response's counted tokens + estimate of the tail), measured over
   `applyStableStubs(messages)` so the estimated part already reflects the

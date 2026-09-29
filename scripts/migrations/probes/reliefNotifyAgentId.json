@@ -1,0 +1,11 @@
+{
+  "test": "src/agent/compact/microCompact.test.ts",
+  "source": "src/agent/compact/microCompact.ts",
+  "probes": [
+    {
+      "name": "relief clip: the announcement carries the sub-agent's key",
+      "find": "    notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)\n",
+      "replace": "    notifyCacheDeletion(querySource, undefined, reason)\n"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "test": [
+    "src/providers/cache/promptCacheBreakDetection.test.ts",
+    "src/providers/shims/claude/lagCacheMarker.test.ts"
+  ],
+  "source": "src/providers/cache/promptCacheBreakDetection.ts",
+  "probes": [
+    {
+      "name": "detector: the cap holds a fan-out",
+      "find": "const MAX_TRACKED_SOURCES = 32\n",
+      "replace": "const MAX_TRACKED_SOURCES = 10\n"
+    },
+    {
+      "name": "detector: every request refreshes recency",
+      "find": "    previousStateBySource.delete(key)\n    previousStateBySource.set(key, prev)\n",
+      "replace": "    // probe: insertion order only\n"
+    },
+    {
+      "name": "detector: a sub-agent keeps no JSON copy",
+      "find": "    state.msgJson = keepJson ? msgJson : []\n",
+      "replace": "    state.msgJson = msgJson\n"
+    },
+    {
+      "name": "lag marker: the cap holds a fan-out",
+      "source": "src/providers/shims/claude/lagCacheMarker.ts",
+      "find": "const MAX_TRACKED_KEYS = 32;\n",
+      "replace": "const MAX_TRACKED_KEYS = 10;\n"
+    },
+    {
+      "name": "lag marker: a key in use refreshes recency",
+      "source": "src/providers/shims/claude/lagCacheMarker.ts",
+      "find": "    // Re-insert so eviction goes by last use, not first.\n    stateByKey.delete(key);\n",
+      "replace": "    // probe: insertion order only\n"
+    },
+    {
+      "name": "lag marker: a finished agent's key is dropped",
+      "source": "src/providers/shims/claude/lagCacheMarker.ts",
+      "find": "export function cleanupLagMarkerKey(key: string): void {\n  stateByKey.delete(key);\n",
+      "replace": "export function cleanupLagMarkerKey(key: string): void {\n"
+    }
+  ]
+}
