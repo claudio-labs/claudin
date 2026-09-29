@@ -29,6 +29,8 @@
 // Usage:
 //   bun run scripts/bench/ab/subagent-unit-ab.ts [--reps=3] [--arms=claude,base,placebo,relief,effort] [--base=<unit .base dir>]
 //   bun run scripts/bench/ab/subagent-unit-ab.ts --smoke --reps=1   (a one-minute task: checks the plumbing, grades nothing)
+//   bun run scripts/bench/ab/subagent-unit-ab.ts --first-rep=2 --reps=2 --prior=<earlier run>/results.json
+//     (continue a run whose process died: the earlier rows join the summary)
 
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
@@ -205,6 +207,8 @@ async function runArm(arm: Arm, rep: number, base: string, runDir: string, proxy
 async function main(): Promise<void> {
   const arg = (k: string) => process.argv.find(a => a.startsWith(`--${k}=`))?.slice(k.length + 3)
   const reps = Number(arg('reps') ?? 3)
+  const firstRep = Number(arg('first-rep') ?? 1)
+  const prior = arg('prior')
   const base = arg('base') ?? DEFAULT_BASE
   const wanted = (arg('arms') ?? ALL_ARMS.map(a => a.label).join(',')).split(',')
   const arms = ALL_ARMS.filter(a => wanted.includes(a.label))
@@ -212,10 +216,11 @@ async function main(): Promise<void> {
   for (const k of Object.keys(process.env)) if (HOST_ENV_RE.test(k)) delete process.env[k]
   const runDir = join(tmpdir(), 'subagent-unit-ab', new Date().toISOString().replace(/[:.]/g, '-'))
   const proxy = await startWireProxy(join(runDir, 'proxy'))
-  const rows: Row[] = []
+  const rows: Row[] = prior ? (JSON.parse(readFileSync(prior, 'utf8')) as Row[]) : []
   console.log(`=== SUB-AGENT UNIT A/B model=${MODEL} reps=${reps} arms=${arms.map(a => a.label).join(',')} → ${runDir} ===`)
+  if (prior) console.log(`(with ${rows.length} earlier rows from ${prior})`)
   try {
-    for (let rep = 1; rep <= reps; rep++) {
+    for (let rep = firstRep; rep < firstRep + reps; rep++) {
       const done = await Promise.all(arms.map(arm => runArm(arm, rep, base, runDir, proxy)))
       for (const r of done) {
         rows.push(r)
