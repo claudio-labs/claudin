@@ -1,12 +1,20 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  deriveNewContentsFromChunks,
+  applySections,
   parsePatch,
   type UpdateFileChunk,
 } from 'src/tools/ApplyPatchTool/patchFormat.js'
 
 function envelope(body: string): string {
   return `*** Begin Patch\n${body}\n*** End Patch`
+}
+
+/** One section, all or nothing: how the placement tests below read applySections. */
+function deriveNewContentsFromChunks(filePath: string, chunks: UpdateFileChunk[], originalText: string): string {
+  const { text, outcomes } = applySections(filePath, [chunks], originalText)
+  const failed = outcomes[0]!.flatMap(o => (o.kind === 'failed' ? [o.message] : []))
+  if (failed.length) throw new Error(failed.join('\n'))
+  return text
 }
 
 describe('parsePatch', () => {
@@ -794,5 +802,76 @@ describe('deriveNewContentsFromChunks', () => {
         'const a = 1\nconst c = 3\n',
       ),
     ).toThrow('Failed to find expected lines in f')
+  })
+})
+
+// Until 2026-09-29 the first hunk that did not match threw, and the whole
+// patch was refused: the model re-sent every hunk to fix one. Each hunk is now
+// decided on its own — applied, already applied, or failed with its reason.
+describe('applySections — every hunk decided on its own', () => {
+  const sectionsOf = (...bodies: string[]): UpdateFileChunk[][] =>
+    bodies.map(
+      body =>
+        (parsePatch(envelope(`*** Update File: f.txt\n${body}`)).hunks[0] as { chunks: UpdateFileChunk[] }).chunks,
+    )
+  const kinds = (r: ReturnType<typeof applySections>) => r.outcomes.flat().map(o => o.kind)
+
+  test('a failing hunk leaves the others applied, and each failure is reported', () => {
+    const r = applySections(
+      'f.txt',
+      sectionsOf('@@\n-a\n+A\n@@\n-nowhere\n+x\n@@\n-c\n+C\n@@\n-also nowhere\n+y'),
+      'a\nb\nc\nd\n',
+    )
+    expect(r.text).toBe('A\nb\nC\nd\n')
+    expect(kinds(r)).toEqual(['applied', 'failed', 'applied', 'failed'])
+  })
+
+  test('a hunk whose new lines are already in the file is already applied', () => {
+    const r = applySections('f.txt', sectionsOf('@@\n-beta\n+BETA'), 'alpha\nBETA\ngamma\n')
+    expect(r.outcomes[0]![0]).toMatchObject({ kind: 'already', line: 2 })
+    expect(r.text).toBe('alpha\nBETA\ngamma\n')
+  })
+
+  test('a lone short line found once is not taken for an applied change', () => {
+    // `}` or `x` turning up somewhere proves nothing: the hunk still failed.
+    const r = applySections('f.txt', sectionsOf('@@\n-b\n+}'), 'a\n}\nc\n')
+    expect(kinds(r)).toEqual(['failed'])
+  })
+
+  test('an anchored insertion already in place is not inserted twice', () => {
+    const r = applySections('f.txt', sectionsOf('@@ a\n+inserted'), 'a\ninserted\nb\n')
+    expect(kinds(r)).toEqual(['already'])
+    expect(r.text).toBe('a\ninserted\nb\n')
+  })
+
+  test('an end-of-file insertion already at the end is not appended twice', () => {
+    const r = applySections('f.txt', sectionsOf('@@\n+tail'), 'a\ntail\n')
+    expect(kinds(r)).toEqual(['already'])
+    expect(r.text).toBe('a\ntail\n')
+  })
+
+  test('two sections for one file are each matched against the original', () => {
+    const r = applySections('f.txt', sectionsOf('@@\n-c\n+C', '@@\n-a\n+A'), 'a\nb\nc\n')
+    expect(r.text).toBe('A\nb\nC\n')
+    expect(kinds(r)).toEqual(['applied', 'applied'])
+  })
+
+  test('the same hunk in two sections applies once', () => {
+    const r = applySections('f.txt', sectionsOf('@@\n-b\n+B', '@@\n-b\n+B'), 'a\nb\nc\n')
+    expect(r.text).toBe('a\nB\nc\n')
+    expect(kinds(r)).toEqual(['applied', 'already'])
+  })
+
+  test('overlapping hunks both fail, and the rest still applies', () => {
+    const r = applySections('f.txt', sectionsOf('@@\n-b\n+B', '@@\n-a\n-b\n+AB', '@@\n-d\n+D'), 'a\nb\nc\nd\n')
+    expect(r.text).toBe('a\nb\nc\nD\n')
+    expect(kinds(r)).toEqual(['failed', 'failed', 'applied'])
+    expect(r.outcomes[0]![0]).toMatchObject({ kind: 'failed', message: expect.stringContaining('Overlapping edits') })
+  })
+
+  test('nothing applied leaves the text as it was', () => {
+    const r = applySections('f.txt', sectionsOf('@@\n-nowhere\n+x'), 'a\nb\n')
+    expect(r.text).toBe('a\nb\n')
+    expect(kinds(r)).toEqual(['failed'])
   })
 })

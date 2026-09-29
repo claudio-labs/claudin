@@ -31,3 +31,11 @@ model had only seen in a Grep `content` result while looking for the heading
 to rename — the credit does not cover Grep. The fix that would remove it is
 the Patch read gate applying a never-read file whose hunks match exactly
 (plan of 2026-09-29, [[apply-patch-failure-taxonomy]]).
+
+**Round 2 (run `/tmp/read-files-ab/20260929-183540`, build with
+[[patch-applies-what-matches]]):** 20/20 sessions 6/6 + 3/3. Read-gate
+refusals in claudindev went 1 → 0 per session (the Grep-seen `report_test.go`
+now patches with its hunk matching exactly); only one Edit (placebo r5) was
+refused, Edit keeping the full gate. catread vs claudindev −6% cost, placebo
+−5%, calls 6 vs 7 both — noise again, the credit counted 0 files median. It
+stays off.

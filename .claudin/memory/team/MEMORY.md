@@ -4,6 +4,7 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
+- [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — unread exact-match files patched; Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`
 - [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — max→xhigh, xhigh→high −24%; `CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN=0`
 - [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined to stock values; feature-flags.json gone; 6 `CLAUDIN_*` killswitches

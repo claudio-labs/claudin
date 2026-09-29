@@ -1,7 +1,7 @@
 /**
  * Heuristic for the "serial single-file edit" anti-pattern: the model lands one
  * file per turn (`Patch` with a single section, or `Edit`/`Write`) instead
- * of putting every file section into one atomic patch. When triggered,
+ * of putting every file section into one patch. When triggered,
  * toolExecution appends a <system-reminder> to the successful tool_result.
  *
  * Modeled on the serial-READ nudge that used to live in FileReadTool (deleted
@@ -218,5 +218,5 @@ export function detectSerialEditStreak(
 }
 
 export function renderSerialEditNudge(streak: number): string {
-  return `\n\n<system-reminder>\nThat's ${streak} single-file edits in a row, each in its own turn. If the remaining edits are already known and independent, Read every remaining file in ONE message (parallel Read calls) and land them all in ONE ${APPLY_PATCH_TOOL_NAME} call with one section per file — it is atomic and costs a single round-trip instead of one per file.\n</system-reminder>\n`
+  return `\n\n<system-reminder>\nThat's ${streak} single-file edits in a row, each in its own turn. If the remaining edits are already known and independent, Read every remaining file in ONE message (parallel Read calls) and land them all in ONE ${APPLY_PATCH_TOOL_NAME} call with one section per file — it costs a single round-trip instead of one per file.\n</system-reminder>\n`
 }

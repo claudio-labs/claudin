@@ -9,7 +9,7 @@ import {
 } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/tools/Tool.js'
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
@@ -20,9 +20,9 @@ import {
 } from 'src/shared/fs/fsOperations.js'
 import {
   applyPatchCacheInvalidationPaths,
-  resolveApplyPatchInput,
   runApplyPatch,
   summarizeApplyPatch,
+  thenSkippedFor,
   validateApplyPatchInput,
   resolveApplyPatchPaths,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
@@ -165,6 +165,9 @@ describe('runApplyPatch', () => {
   test('deletes a file', async () => {
     const p = join(dir, 'gone.txt')
     writeFileSync(p, 'bye\n')
+    // The read gate lives in runApplyPatch since 2026-09-29, and a Delete of a
+    // file never read is not applied.
+    markRead(p)
     await runApplyPatch(
       { patchText: envelope(`*** Delete File: ${p}`) },
       ctx,
@@ -193,10 +196,11 @@ describe('runApplyPatch', () => {
     cleanup()
   })
 
-  test('applies multiple files atomically', async () => {
+  test('applies multiple files in one call', async () => {
     const a = join(dir, 'a.ts')
     const b = join(dir, 'old.ts')
     writeFileSync(b, 'remove me\n')
+    markRead(b)
     await runApplyPatch(
       {
         patchText: envelope(
@@ -211,24 +215,25 @@ describe('runApplyPatch', () => {
     cleanup()
   })
 
-  test('writes nothing when a hunk fails to apply', async () => {
+  test('a hunk that fails leaves the rest of the patch applied, and says so', async () => {
+    // Until 2026-09-29 this wrote nothing: the patch was all or nothing
+    // (CLAUDIN_PATCH_ALL_OR_NOTHING=1 keeps that, pinned further down).
     const p = join(dir, 'a.txt')
     const q = join(dir, 'created.txt')
     writeFileSync(p, 'hello\n')
-    await expect(
-      runApplyPatch(
-        {
-          patchText: envelope(
-            `*** Add File: ${q}\n+x\n*** Update File: ${p}\n@@\n-nonexistent\n+y`,
-          ),
-        },
-        ctx,
-        randomUUID(),
-      ),
-    ).rejects.toThrow('Failed to find expected lines')
-    // Staging fails before any write — the Add must not have happened.
-    expect(existsSync(q)).toBe(false)
+    markRead(p)
+    const { output } = await runApplyPatch(
+      {
+        patchText: envelope(
+          `*** Add File: ${q}\n+x\n*** Update File: ${p}\n@@\n-nonexistent\n+y`,
+        ),
+      },
+      ctx,
+      randomUUID(),
+    )
+    expect(readFileSync(q, 'utf8')).toBe('x\n')
     expect(readFileSync(p, 'utf8')).toBe('hello\n')
+    expect(output.notApplied).toEqual([expect.stringContaining('Failed to find expected lines')])
     cleanup()
   })
 
@@ -252,7 +257,7 @@ describe('runApplyPatch', () => {
     } catch (e) {
       err = e as Error
     }
-    expect(err?.message).toContain('2 of 2 file sections')
+    expect(err?.message).toContain('2 of 2 changes')
     expect(err?.message).toContain(a)
     expect(err?.message).toContain(b)
     // Atomic: neither file changed.
@@ -369,10 +374,12 @@ describe('runApplyPatch', () => {
 
 describe('validateApplyPatchInput', () => {
   test('a never-read file is reported as never read', () => {
+    // Its hunk does not match it: an unread file whose hunks all match
+    // exactly is patched (2026-09-29).
     const p = join(dir, 'unread.txt')
     writeFileSync(p, 'a\n')
     const r = validateApplyPatchInput(
-      { patchText: envelope(`*** Update File: ${p}\n@@\n-a\n+b`) },
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-zz\n+b`) },
       ctx,
     )
     expect(r).toMatchObject({ result: false })
@@ -446,7 +453,7 @@ describe('validateApplyPatchInput', () => {
     const r = validateApplyPatchInput(
       {
         patchText: envelope(
-          `*** Update File: ${a}\n@@\n-a\n+b` +
+          `*** Update File: ${a}\n@@\n-zz\n+b` +
             `\n*** Update File: ${b}\n@@\n-a\n+b` +
             `\n*** Delete File: ${b}`,
         ),
@@ -495,15 +502,26 @@ describe('validateApplyPatchInput', () => {
     cleanup()
   })
 
-  test('rejects Update of an unread file (read-before-edit)', () => {
+  test('rejects Update of an unread file its hunk does not match (read-before-edit)', () => {
     const p = join(dir, 'unread.txt')
     writeFileSync(p, 'a\n')
     const r = validateApplyPatchInput(
-      { patchText: envelope(`*** Update File: ${p}\n@@\n-a\n+b`) },
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-zz\n+b`) },
       ctx,
     )
     expect(r).toMatchObject({ result: false })
     if (!r.result) expect(r.message).toContain('has not been read')
+    cleanup()
+  })
+
+  test('accepts Update of an unread file every hunk of which matches exactly', () => {
+    const p = join(dir, 'unread-exact.txt')
+    writeFileSync(p, 'alpha\n')
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-alpha\n+beta`) },
+      ctx,
+    )
+    expect(r).toEqual({ result: true })
     cleanup()
   })
 
@@ -530,7 +548,7 @@ describe('validateApplyPatchInput', () => {
     const r = validateApplyPatchInput(
       {
         patchText: envelope(
-          `*** Update File: ${unread}\n@@\n-a\n+b\n` +
+          `*** Update File: ${unread}\n@@\n-zz\n+b\n` +
             `*** Update File: ${dup}\n@@\n-a\n+b\n` +
             `*** Delete File: ${dup}`,
         ),
@@ -692,6 +710,31 @@ describe('validateApplyPatchInput — any read counts', () => {
     cleanup()
   })
 
+  // Since 2026-09-29 a file never read is patched when every hunk matches it
+  // exactly, so what a read still buys is a hunk that does NOT match exactly:
+  // after any read it goes on to the call (and its reason), never read it is
+  // refused up front. That is where each kind of read has to count.
+  test.each([
+    ['a partial view', (p: string) => markPartial(p)],
+    ['a range read that does not cover the hunk', (p: string) => markRange(p, 1, 2)],
+    [
+      'a read of an older version of the file',
+      (p: string) => {
+        markRead(p)
+        const later = new Date(Date.now() + 60_000)
+        utimesSync(p, later, later)
+      },
+    ],
+  ])('%s is a read: a hunk that matches nowhere still passes validation', (_kind, mark) => {
+    const p = join(dir, 'kinds.txt')
+    writeNumbered(p)
+    mark(p)
+    expect(validateApplyPatchInput({ patchText: envelope(`*** Update File: ${p}\n@@\n-nowhere\n+x`) }, ctx)).toEqual({
+      result: true,
+    })
+    cleanup()
+  })
+
   test('a hunk that does not match the file passes validation and is refused when applied', async () => {
     const p = join(dir, 'mismatch.txt')
     writeNumbered(p)
@@ -706,11 +749,19 @@ describe('validateApplyPatchInput — any read counts', () => {
     cleanup()
   })
 
-  describe('the refusal serves the region when the old side matches exactly', () => {
-    // A file never read is still refused (tool-error-census-2026-09-20.md:
-    // half the resubmits after a forced Read were byte-identical). When the
-    // hunk's old side is in the file exactly once, the refusal carries it and
-    // registers it, so the identical resubmit passes.
+  describe('CLAUDIN_PATCH_ALL_OR_NOTHING=1: the refusal serves the region when the old side matches exactly', () => {
+    // Under the killswitch a file never read is still refused
+    // (tool-error-census-2026-09-20.md: half the resubmits after a forced Read
+    // were byte-identical). When the hunk's old side is in the file exactly
+    // once, the refusal carries it and registers it, so the identical resend
+    // passes. By default such a file is patched outright (2026-09-29).
+    beforeEach(() => {
+      process.env.CLAUDIN_PATCH_ALL_OR_NOTHING = '1'
+    })
+    afterEach(() => {
+      delete process.env.CLAUDIN_PATCH_ALL_OR_NOTHING
+    })
+
     test('a never-read refusal carries the lines and the same patch then applies', () => {
       const p = join(dir, 'serve-never.txt')
       writeNumbered(p)
@@ -820,133 +871,14 @@ describe('validateApplyPatchInput — any read counts', () => {
   })
 })
 
-describe('resubmit by reference', () => {
-  // Session A/B 2026-09-23: 24 of 63 claudin sessions had a patch refused with
-  // the lines served, then re-sent the identical ~8k-char patch as output.
-  const RESUBMIT = { patchText: RESUBMIT_SENTINEL }
-
-  test('a served refusal keeps the patch, and the sentinel applies it', async () => {
-    const p = join(dir, 'resubmit.txt')
-    writeNumbered(p)
-    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
-    expect(resolveApplyPatchInput(patch, ctx)).toEqual({ ok: true, input: patch })
-    const refused = validateApplyPatchInput(patch, ctx)
-    expect(refused).toMatchObject({ result: false })
-    if (!refused.result) {
-      expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
-      expect(refused.message).toContain('5→line5')
-      // One instruction: "resubmit the same patch" reads as "send it again".
-      expect(refused.message).not.toContain('resubmit the same patch')
-    }
-
-    const resolved = resolveApplyPatchInput(RESUBMIT, ctx)
-    expect(resolved).toEqual({ ok: true, input: patch })
-    if (!resolved.ok) return
-    expect(validateApplyPatchInput(resolved.input, ctx)).toEqual({ result: true })
-    await runApplyPatch(resolved.input, ctx, randomUUID())
-    expect(readFileSync(p, 'utf8')).toContain('LINE5')
-    // Spent: a second sentinel has nothing to apply.
-    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toMatchObject({ ok: false })
-    cleanup()
-  })
-
-  test('a multi-file patch whose every problem was served can be resubmitted too', () => {
-    const a = join(dir, 'resubmit-a.txt')
-    const b = join(dir, 'resubmit-b.txt')
-    writeNumbered(a)
-    writeNumbered(b)
-    const patch = {
-      patchText: envelope(
-        `*** Update File: ${a}\n@@\n-line5\n+LINE5\n` + `*** Update File: ${b}\n@@\n-line9\n+LINE9`,
-      ),
-    }
-    resolveApplyPatchInput(patch, ctx)
-    const refused = validateApplyPatchInput(patch, ctx)
-    expect(refused).toMatchObject({ result: false })
-    if (!refused.result) {
-      expect(refused.message).toContain('found 2 problems, each shown with the lines it needs')
-      expect(refused.message).toContain(`patchText "${RESUBMIT_SENTINEL}"`)
-      expect(refused.message).not.toContain('resubmit the same patch')
-      expect(refused.message).not.toContain('fix all of them')
-      expect(refused.message).not.toContain('• Patch:')
-    }
-    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
-    cleanup()
-  })
-
-  test('the sentinel with nothing kept is refused', () => {
-    const r = resolveApplyPatchInput(RESUBMIT, ctx)
-    expect(r).toMatchObject({ ok: false })
-    if (!r.ok) expect(r.message).toContain('send the whole patch')
-  })
-
-  test('any other Patch call drops the kept patch', () => {
-    const p = join(dir, 'dropped.txt')
-    writeNumbered(p)
-    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
-    resolveApplyPatchInput(patch, ctx)
-    expect(validateApplyPatchInput(patch, ctx)).toMatchObject({ result: false })
-    const other = { patchText: envelope(`*** Add File: ${join(dir, 'other.txt')}\n+x`) }
-    expect(resolveApplyPatchInput(other, ctx)).toEqual({ ok: true, input: other })
-    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toMatchObject({ ok: false })
-    cleanup()
-  })
-
-  test('a patch with a problem the refusal could not serve keeps nothing', () => {
-    const a = join(dir, 'kept-a.txt')
-    const b = join(dir, 'kept-b.txt')
-    writeNumbered(a)
-    writeNumbered(b)
-    const patch = {
-      patchText: envelope(
-        `*** Update File: ${a}\n@@\n-line5\n+LINE5\n` + `*** Update File: ${b}\n@@\n-nowhere\n+x`,
-      ),
-    }
-    resolveApplyPatchInput(patch, ctx)
-    const refused = validateApplyPatchInput(patch, ctx)
-    expect(refused).toMatchObject({ result: false })
-    if (!refused.result) {
-      expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
-      // The served section keeps its own instruction when nothing is kept.
-      expect(refused.message).toContain('resubmit the same patch')
-      expect(refused.message).toContain('fix all of them')
-    }
-    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toMatchObject({ ok: false })
-    cleanup()
-  })
-
-  test('the kept patch belongs to the agent whose call was refused', () => {
-    const p = join(dir, 'agent.txt')
-    writeNumbered(p)
-    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
-    resolveApplyPatchInput(patch, ctx)
-    validateApplyPatchInput(patch, ctx)
-    expect(resolveApplyPatchInput(RESUBMIT, makeContext())).toMatchObject({ ok: false })
-    expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: patch })
-    cleanup()
-  })
-
-  test('CLAUDIN_DISABLE_PATCH_RESUBMIT=1: no hint, and the sentinel is just an unparseable patch', () => {
-    const p = join(dir, 'resubmit-off.txt')
-    writeNumbered(p)
-    const patch = { patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }
-    process.env.CLAUDIN_DISABLE_PATCH_RESUBMIT = '1'
-    try {
-      resolveApplyPatchInput(patch, ctx)
-      const refused = validateApplyPatchInput(patch, ctx)
-      expect(refused).toMatchObject({ result: false })
-      if (!refused.result) {
-        expect(refused.message).not.toContain(RESUBMIT_SENTINEL)
-        expect(refused.message).toContain('resubmit the same patch')
-      }
-      expect(resolveApplyPatchInput(RESUBMIT, ctx)).toEqual({ ok: true, input: RESUBMIT })
-      const parsed = validateApplyPatchInput(RESUBMIT, ctx)
-      expect(parsed).toMatchObject({ result: false })
-      if (!parsed.result) expect(parsed.message).toContain('failed to parse the patch')
-    } finally {
-      delete process.env.CLAUDIN_DISABLE_PATCH_RESUBMIT
-    }
-    cleanup()
+// `*** Resubmit` (2026-09-23 → 09-29) applied the patch a served read-gate
+// refusal had kept. A never-read file whose hunks match exactly is now applied
+// outright, so nothing is kept and the sentinel is just text again.
+describe('the retired resubmit sentinel', () => {
+  test('is an unparseable patch, not a reference to a kept one', () => {
+    const r = validateApplyPatchInput({ patchText: RESUBMIT_SENTINEL }, ctx)
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) expect(r.message).toContain('failed to parse the patch')
   })
 })
 
@@ -1003,5 +935,218 @@ describe('helpers', () => {
     expect(summary).toContain('A ')
     expect(summary).toContain('D ')
     cleanup()
+  })
+})
+
+// Until 2026-09-29 one hunk that did not match, one unread file or one
+// duplicate section refused the whole patch, and the model re-sent all of it
+// (603k chars over 115 real retries, ~62% of them hunks that would have
+// applied). Now every change that matches is written, and the result lists
+// the rest; applying the same change twice changes nothing.
+describe('applies what matches, reports the rest', () => {
+  const run = (body: string) => runApplyPatch({ patchText: envelope(body) }, ctx, randomUUID())
+
+  test('a hunk that fails in one file leaves the other files applied', async () => {
+    const a = join(dir, 'a.txt')
+    const b = join(dir, 'b.txt')
+    writeFileSync(a, 'one\ntwo\n')
+    writeFileSync(b, 'uno\ndos\n')
+    markRead(a)
+    markRead(b)
+    const { output } = await run(`*** Update File: ${a}\n@@\n-two\n+TWO\n*** Update File: ${b}\n@@\n-nowhere\n+x`)
+    expect(readFileSync(a, 'utf8')).toBe('one\nTWO\n')
+    expect(readFileSync(b, 'utf8')).toBe('uno\ndos\n')
+    expect(output.files.map(f => f.absPath)).toEqual([a])
+    expect(output.notApplied).toEqual([expect.stringContaining('Failed to find expected lines')])
+    const summary = summarizeApplyPatch(output)
+    expect(summary).toContain('M ')
+    expect(summary).toContain('NOT applied')
+    cleanup()
+  })
+
+  test('the other hunks of the same file still apply, and every failure is listed', async () => {
+    const p = join(dir, 'p.txt')
+    writeFileSync(p, 'a\nb\nc\nd\n')
+    markRead(p)
+    const { output } = await run(`*** Update File: ${p}\n@@\n-a\n+A\n@@\n-nope1\n+x\n@@\n-c\n+C\n@@\n-nope2\n+y`)
+    expect(readFileSync(p, 'utf8')).toBe('A\nb\nC\nd\n')
+    expect(output.notApplied).toHaveLength(2)
+    cleanup()
+  })
+
+  test('when nothing applies it is an error that lists every problem, and nothing is written', async () => {
+    const a = join(dir, 'a.txt')
+    const b = join(dir, 'b.txt')
+    writeFileSync(a, 'x\n')
+    writeFileSync(b, 'y\n')
+    markRead(a)
+    markRead(b)
+    let err: Error | undefined
+    try {
+      await run(`*** Update File: ${a}\n@@\n-nope-a\n+1\n*** Update File: ${b}\n@@\n-nope-b\n+2`)
+    } catch (e) {
+      err = e as Error
+    }
+    expect(err?.message).toContain('nope-a')
+    expect(err?.message).toContain('nope-b')
+    expect(readFileSync(a, 'utf8')).toBe('x\n')
+    expect(readFileSync(b, 'utf8')).toBe('y\n')
+    cleanup()
+  })
+
+  test('re-sending an applied patch changes nothing and says it is already applied', async () => {
+    const p = join(dir, 'p.txt')
+    writeFileSync(p, 'alpha\nbeta\n')
+    markRead(p)
+    const body = `*** Update File: ${p}\n@@\n-beta\n+BETA`
+    await run(body)
+    markRead(p)
+    const { output } = await run(body)
+    expect(readFileSync(p, 'utf8')).toBe('alpha\nBETA\n')
+    expect(output.files).toEqual([])
+    expect(output.alreadyApplied).toHaveLength(1)
+    expect(summarizeApplyPatch(output)).toContain('already')
+    cleanup()
+  })
+
+  test('Add of a file that already has that content is already applied', async () => {
+    const p = join(dir, 'same.txt')
+    writeFileSync(p, 'hello\n')
+    const { output } = await run(`*** Add File: ${p}\n+hello`)
+    expect(output.alreadyApplied).toHaveLength(1)
+    expect(output.notApplied ?? []).toEqual([])
+    cleanup()
+  })
+
+  test('Add of a file that exists with other content is not applied, the rest is', async () => {
+    const taken = join(dir, 'taken.txt')
+    const fresh = join(dir, 'fresh.txt')
+    writeFileSync(taken, 'PRECIOUS\n')
+    const { output } = await run(`*** Add File: ${taken}\n+other\n*** Add File: ${fresh}\n+new`)
+    expect(readFileSync(taken, 'utf8')).toBe('PRECIOUS\n')
+    expect(readFileSync(fresh, 'utf8')).toBe('new\n')
+    expect(output.notApplied).toEqual([expect.stringContaining('already exists')])
+    cleanup()
+  })
+
+  test('Delete of a file that is already gone is already applied', async () => {
+    const gone = join(dir, 'gone.txt')
+    const { output } = await run(`*** Delete File: ${gone}`)
+    expect(output.alreadyApplied).toHaveLength(1)
+    cleanup()
+  })
+
+  test('two Update sections for one file both apply', async () => {
+    const p = join(dir, 'two.txt')
+    writeFileSync(p, 'a\nb\nc\n')
+    markRead(p)
+    const { output } = await run(`*** Update File: ${p}\n@@\n-c\n+C\n*** Update File: ${p}\n@@\n-a\n+A`)
+    expect(readFileSync(p, 'utf8')).toBe('A\nb\nC\n')
+    expect(output.files).toHaveLength(1)
+    cleanup()
+  })
+
+  test('an Add and an Update of one path are not applied, the rest is', async () => {
+    const p = join(dir, 'clash.txt')
+    const q = join(dir, 'fine.txt')
+    writeFileSync(p, 'a\n')
+    writeFileSync(q, 'q\n')
+    markRead(p)
+    markRead(q)
+    const { output } = await run(`*** Add File: ${p}\n+x\n*** Update File: ${p}\n@@\n-a\n+A\n*** Update File: ${q}\n@@\n-q\n+Q`)
+    expect(readFileSync(p, 'utf8')).toBe('a\n')
+    expect(readFileSync(q, 'utf8')).toBe('Q\n')
+    expect(output.notApplied?.join('\n')).toContain('more than one section')
+    cleanup()
+  })
+
+  test('a file never read applies when every hunk matches it exactly', async () => {
+    const p = join(dir, 'unread.txt')
+    writeNumbered(p)
+    const { output } = await run(`*** Update File: ${p}\n@@\n-line5\n+LINE5`)
+    expect(readFileSync(p, 'utf8')).toContain('LINE5')
+    expect(ctx.readFileState.get(p)).toBeDefined()
+    expect(summarizeApplyPatch(output)).toContain('had not been read')
+    cleanup()
+  })
+
+  test('a file never read whose hunk does not match exactly is not applied, the rest is', async () => {
+    const unread = join(dir, 'unread.txt')
+    const read = join(dir, 'read.txt')
+    writeNumbered(unread)
+    writeFileSync(read, 'r\n')
+    markRead(read)
+    const { output } = await run(`*** Update File: ${unread}\n@@\n-line55\n+X\n*** Update File: ${read}\n@@\n-r\n+R`)
+    expect(readFileSync(unread, 'utf8')).not.toContain('X')
+    expect(readFileSync(read, 'utf8')).toBe('R\n')
+    expect(output.notApplied).toEqual([expect.stringContaining('has not been read')])
+    cleanup()
+  })
+
+  test('Delete of a file never read is not applied', async () => {
+    const p = join(dir, 'keep.txt')
+    const q = join(dir, 'q.txt')
+    writeFileSync(p, 'keep\n')
+    writeFileSync(q, 'q\n')
+    markRead(q)
+    const { output } = await run(`*** Delete File: ${p}\n*** Update File: ${q}\n@@\n-q\n+Q`)
+    expect(existsSync(p)).toBe(true)
+    expect(output.notApplied).toEqual([expect.stringContaining('has not been read')])
+    // A Delete has no hunks to match: it is refused for the read alone.
+    expect(output.notApplied![0]).not.toContain('do not match')
+    cleanup()
+  })
+
+  test('validation refuses only a patch in which nothing could apply', () => {
+    const taken = join(dir, 'taken.txt')
+    const p = join(dir, 'p.txt')
+    writeFileSync(taken, 'PRECIOUS\n')
+    writeFileSync(p, 'a\n')
+    markRead(p)
+    const mixed = validateApplyPatchInput(
+      { patchText: envelope(`*** Add File: ${taken}\n+other\n*** Update File: ${p}\n@@\n-a\n+A`) },
+      ctx,
+    )
+    expect(mixed).toEqual({ result: true })
+    const hopeless = validateApplyPatchInput({ patchText: envelope(`*** Add File: ${taken}\n+other`) }, ctx)
+    expect(hopeless).toMatchObject({ result: false })
+    cleanup()
+  })
+
+  test('then is skipped when something did not apply, so it does not check half a patch', () => {
+    expect(thenSkippedFor({ files: [] })).toBeUndefined()
+    expect(thenSkippedFor({ files: [], alreadyApplied: ['x'] })).toBeUndefined()
+    expect(thenSkippedFor({ files: [], notApplied: ['a', 'b'] })).toContain('2 changes did not apply')
+  })
+
+  describe('CLAUDIN_PATCH_ALL_OR_NOTHING=1 restores the atomic patch', () => {
+    beforeEach(() => {
+      process.env.CLAUDIN_PATCH_ALL_OR_NOTHING = '1'
+    })
+    afterEach(() => {
+      delete process.env.CLAUDIN_PATCH_ALL_OR_NOTHING
+    })
+
+    test('one hunk that fails writes nothing', async () => {
+      const a = join(dir, 'a.txt')
+      const b = join(dir, 'b.txt')
+      writeFileSync(a, 'one\n')
+      writeFileSync(b, 'uno\n')
+      markRead(a)
+      markRead(b)
+      await expect(run(`*** Update File: ${a}\n@@\n-one\n+ONE\n*** Update File: ${b}\n@@\n-nowhere\n+x`)).rejects.toThrow(
+        'Failed to find expected lines',
+      )
+      expect(readFileSync(a, 'utf8')).toBe('one\n')
+      cleanup()
+    })
+
+    test('a file never read is refused before anything runs', () => {
+      const p = join(dir, 'unread.txt')
+      writeNumbered(p)
+      const r = validateApplyPatchInput({ patchText: envelope(`*** Update File: ${p}\n@@\n-line5\n+LINE5`) }, ctx)
+      expect(r).toMatchObject({ result: false })
+      cleanup()
+    })
   })
 })

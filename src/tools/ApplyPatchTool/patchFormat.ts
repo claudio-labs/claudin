@@ -598,185 +598,197 @@ function describeContextMismatch(
   )
 }
 
-function computeReplacements(
+type Replacement = [start: number, oldLen: number, newLines: string[]]
+
+/** What happened to one chunk in `applySections`. */
+export type ChunkOutcome =
+  | { kind: 'applied' }
+  /** Its old lines are gone and its new ones already sit at `line` (1-based): nothing to do. */
+  | { kind: 'already'; line: number }
+  | { kind: 'failed'; message: string }
+
+/** A chunk's place: the replacement to make, or the line its change already sits at. */
+type Placement = { replacement: Replacement | null; already: number | null; cursor: number }
+
+const sameLines = (a: string[], b: string[]): boolean => a.length === b.length && a.every((line, i) => line === b[i])
+
+/**
+ * Whether `lines` say enough to be recognized: a change that only adds blank
+ * lines, or `}` found once by chance, must not read as already applied.
+ */
+const recognizable = (lines: string[]): boolean => lines.some(line => line.trim().length > 1)
+
+/**
+ * Where one chunk goes when its section's search stands at `cursor`. Throws the
+ * reason it can go nowhere; the caller keeps its cursor then, so the chunks
+ * after it search where they would have.
+ */
+function placeChunk(
   originalLines: string[],
   filePath: string,
-  chunks: UpdateFileChunk[],
-): Array<[number, number, string[]]> {
-  const replacements: Array<[number, number, string[]]> = []
-  let lineIndex = 0
+  chunk: UpdateFileChunk,
+  cursor: number,
+): Placement {
+  let lineIndex = cursor
+  // The `@@` line is a one-line search CURSOR, not a unified-diff header: the
+  // hunk's own old lines still have to match wherever it lands. Every rescue
+  // below therefore only WIDENS where the search may start — none of them
+  // relocates an edit that the anchor had already placed.
+  let anchorIdx = -1
+  if (chunk.changeContext) {
+    anchorIdx = seekSequence(originalLines, [chunk.changeContext], lineIndex)
+    if (anchorIdx === -1) {
+      // The anchor was truncated to a fragment of the real line
+      // (`@@ function foo(` for `export function foo(x: T): R {`). Accept it
+      // only when exactly one line contains the fragment — with several
+      // candidates there is no way to tell which was meant.
+      const containing = findContaining(
+        originalLines,
+        chunk.changeContext,
+        lineIndex,
+      )
+      if (containing.length === 1) anchorIdx = containing[0]
+    }
+  }
 
-  for (const chunk of chunks) {
-    // The `@@` line is a one-line search CURSOR, not a unified-diff header: the
-    // hunk's own old lines still have to match wherever it lands. Every rescue
-    // below therefore only WIDENS where the search may start — none of them
-    // relocates an edit that the anchor had already placed.
-    let anchorIdx = -1
-    if (chunk.changeContext) {
-      anchorIdx = seekSequence(originalLines, [chunk.changeContext], lineIndex)
-      if (anchorIdx === -1) {
-        // The anchor was truncated to a fragment of the real line
-        // (`@@ function foo(` for `export function foo(x: T): R {`). Accept it
-        // only when exactly one line contains the fragment — with several
-        // candidates there is no way to tell which was meant.
-        const containing = findContaining(
+  const searchStart = anchorIdx === -1 ? lineIndex : anchorIdx + 1
+  if (anchorIdx !== -1) lineIndex = searchStart
+
+  // Pure insertion (no removed lines). With an explicit `@@` anchor, insert
+  // right after the anchored line (lineIndex now points just past it).
+  // Without an anchor, append at EOF (before any trailing blank line).
+  // Previously the anchor was ignored and every pure insertion landed at EOF.
+  // An anchor that did NOT resolve is fatal here: there are no old lines to
+  // fall back on, so appending at EOF would report success for an edit that
+  // landed nowhere near the target.
+  if (chunk.oldLines.length === 0) {
+    if (chunk.changeContext && anchorIdx === -1) {
+      throw new Error(
+        describeContextMismatch(
           originalLines,
           chunk.changeContext,
           lineIndex,
-        )
-        if (containing.length === 1) anchorIdx = containing[0]
+          filePath,
+        ),
+      )
+    }
+    const insertionIdx = chunk.changeContext
+      ? searchStart
+      : originalLines.length > 0 &&
+          originalLines[originalLines.length - 1] === ''
+        ? originalLines.length - 1
+        : originalLines.length
+    // Already in place: the lines it adds sit right where it would put them —
+    // after the anchor, or at the end. Inserting them again would duplicate.
+    const n = chunk.newLines.length
+    const from = chunk.changeContext ? insertionIdx : insertionIdx - n
+    if (recognizable(chunk.newLines) && from >= 0 && sameLines(originalLines.slice(from, from + n), chunk.newLines)) {
+      return { replacement: null, already: from + 1, cursor: lineIndex }
+    }
+    return { replacement: [insertionIdx, 0, chunk.newLines], already: null, cursor: lineIndex }
+  }
+
+  let pattern = chunk.oldLines
+  let newSlice = chunk.newLines
+  let found = seekSequence(
+    originalLines,
+    pattern,
+    searchStart,
+    chunk.isEndOfFile,
+  )
+
+  // Retry without a trailing empty line if the first match failed.
+  if (found === -1 && pattern.length > 0 && pattern[pattern.length - 1] === '') {
+    pattern = pattern.slice(0, -1)
+    if (newSlice.length > 0 && newSlice[newSlice.length - 1] === '') {
+      newSlice = newSlice.slice(0, -1)
+    }
+    found = seekSequence(originalLines, pattern, searchStart, chunk.isEndOfFile)
+  }
+
+  // The anchor restated as the hunk's first line — `@@ foo` followed by ` foo`,
+  // the habit unified diff teaches. `searchStart` sits one line PAST the
+  // anchor, so that shape demands the anchored line twice in a row. Retrying
+  // from the anchor itself adds exactly one candidate start, and it can only
+  // match when the hunk's first line IS the anchored line.
+  if (found === -1 && anchorIdx !== -1) {
+    found = seekSequence(originalLines, pattern, anchorIdx, chunk.isEndOfFile)
+  }
+
+  // A bare hunk sent out of file order: its block sits above the cursor,
+  // which only moves forward. With no anchor or End-of-File marker to
+  // contradict, and exactly one place in the file it can mean, it goes
+  // there — the sort and overlap guard in applySections already take
+  // replacements in any order. Two of five bench sessions and 38 real
+  // failures were this shape, each costing a re-send of the whole patch
+  // (build-project-ab, 2026-09-29). Several candidates stay a refusal that
+  // names them.
+  if (found === -1 && !chunk.changeContext && !chunk.isEndOfFile) {
+    const anywhere = findAllByLadder(originalLines, pattern)
+    if (anywhere.length === 1) found = anywhere[0]
+  }
+
+  if (found === -1) {
+    // Already applied: the old lines are gone and the new ones sit in exactly
+    // one place — a patch sent again, or a change someone already made.
+    if (recognizable(newSlice) && !sameLines(newSlice, pattern)) {
+      const at = findAllByLadder(originalLines, newSlice)
+      if (at.length === 1) {
+        return { replacement: null, already: at[0] + 1, cursor: Math.max(lineIndex, at[0] + newSlice.length) }
       }
     }
-
-    const searchStart = anchorIdx === -1 ? lineIndex : anchorIdx + 1
-    if (anchorIdx !== -1) lineIndex = searchStart
-
-    // Pure insertion (no removed lines). With an explicit `@@` anchor, insert
-    // right after the anchored line (lineIndex now points just past it).
-    // Without an anchor, append at EOF (before any trailing blank line).
-    // Previously the anchor was ignored and every pure insertion landed at EOF.
-    // An anchor that did NOT resolve is fatal here: there are no old lines to
-    // fall back on, so appending at EOF would report success for an edit that
-    // landed nowhere near the target.
-    if (chunk.oldLines.length === 0) {
-      if (chunk.changeContext && anchorIdx === -1) {
-        throw new Error(
-          describeContextMismatch(
+    throw new Error(
+      chunk.changeContext && anchorIdx === -1
+        ? describeContextMismatch(
             originalLines,
             chunk.changeContext,
             lineIndex,
             filePath,
+          )
+        : describeLineMismatch(
+            originalLines,
+            pattern,
+            anchorIdx === -1 ? searchStart : anchorIdx,
+            filePath,
           ),
-        )
-      }
-      const insertionIdx = chunk.changeContext
-        ? searchStart
-        : originalLines.length > 0 &&
-            originalLines[originalLines.length - 1] === ''
-          ? originalLines.length - 1
-          : originalLines.length
-      replacements.push([insertionIdx, 0, chunk.newLines])
-      continue
-    }
+    )
+  }
 
-    let pattern = chunk.oldLines
-    let newSlice = chunk.newLines
-    let found = seekSequence(
+  // The anchor never resolved, so this match was located WITHOUT it. Accept it
+  // only when it is the sole candidate: an anchor nobody can find cannot have
+  // been disambiguating anything, but silently picking one of several regions
+  // would be a wrong edit reported as success.
+  if (chunk.changeContext && anchorIdx === -1) {
+    const candidates = findAllMatches(
       originalLines,
       pattern,
-      searchStart,
-      chunk.isEndOfFile,
+      ignoreSurroundingWs,
     )
-
-    // Retry without a trailing empty line if the first match failed.
-    if (found === -1 && pattern.length > 0 && pattern[pattern.length - 1] === '') {
-      pattern = pattern.slice(0, -1)
-      if (newSlice.length > 0 && newSlice[newSlice.length - 1] === '') {
-        newSlice = newSlice.slice(0, -1)
-      }
-      found = seekSequence(originalLines, pattern, searchStart, chunk.isEndOfFile)
-    }
-
-    // The anchor restated as the hunk's first line — `@@ foo` followed by ` foo`,
-    // the habit unified diff teaches. `searchStart` sits one line PAST the
-    // anchor, so that shape demands the anchored line twice in a row. Retrying
-    // from the anchor itself adds exactly one candidate start, and it can only
-    // match when the hunk's first line IS the anchored line.
-    if (found === -1 && anchorIdx !== -1) {
-      found = seekSequence(originalLines, pattern, anchorIdx, chunk.isEndOfFile)
-    }
-
-    // A bare hunk sent out of file order: its block sits above the cursor,
-    // which only moves forward. With no anchor or End-of-File marker to
-    // contradict, and exactly one place in the file it can mean, it goes
-    // there — the sort and overlap guard below already take replacements in
-    // any order. Two of five bench sessions and 38 real failures were this
-    // shape, each costing a re-send of the whole patch (build-project-ab,
-    // 2026-09-29). Several candidates stay a refusal that names them.
-    if (found === -1 && !chunk.changeContext && !chunk.isEndOfFile) {
-      const anywhere = findAllByLadder(originalLines, pattern)
-      if (anywhere.length === 1) found = anywhere[0]
-    }
-
-    if (found === -1) {
+    if (candidates.filter(i => i >= lineIndex).length > 1) {
       throw new Error(
-        chunk.changeContext && anchorIdx === -1
-          ? describeContextMismatch(
-              originalLines,
-              chunk.changeContext,
-              lineIndex,
-              filePath,
-            )
-          : describeLineMismatch(
-              originalLines,
-              pattern,
-              anchorIdx === -1 ? searchStart : anchorIdx,
-              filePath,
-            ),
-      )
-    }
-
-    // The anchor never resolved, so this match was located WITHOUT it. Accept it
-    // only when it is the sole candidate: an anchor nobody can find cannot have
-    // been disambiguating anything, but silently picking one of several regions
-    // would be a wrong edit reported as success.
-    if (chunk.changeContext && anchorIdx === -1) {
-      const candidates = findAllMatches(
-        originalLines,
-        pattern,
-        ignoreSurroundingWs,
-      )
-      if (candidates.filter(i => i >= lineIndex).length > 1) {
-        throw new Error(
-          describeContextMismatch(
-            originalLines,
-            chunk.changeContext,
-            lineIndex,
-            filePath,
-          ),
-        )
-      }
-    }
-
-    const segment = chunk.ops
-      ? rebuildSegment(chunk.ops, originalLines, found, pattern.length)
-      : newSlice
-    replacements.push([found, pattern.length, segment])
-    // Never backwards: a hunk placed above the cursor leaves the hunks after it
-    // searching where they would have.
-    lineIndex = Math.max(lineIndex, found + pattern.length)
-  }
-
-  replacements.sort((a, b) => a[0] - b[0])
-
-  // Adjacent replacements must not overlap. Sequential chunks normally can't —
-  // each searches past the previous match — but a pure insertion's index is
-  // computed independently (EOF / @@ anchor) without advancing the search
-  // cursor, so it can land inside a later chunk's removal span. applyReplacements
-  // splices each range independently in reverse, so an overlap would let the
-  // wider removal silently swallow the inserted lines while reporting success.
-  // Treat conflicting hunks as a hard error instead.
-  for (let k = 1; k < replacements.length; k++) {
-    const [prevStart, prevLen] = replacements[k - 1]
-    const [currStart] = replacements[k]
-    if (currStart < prevStart + prevLen) {
-      throw new Error(
-        `Overlapping edits in ${filePath}: a chunk at line ${currStart + 1} ` +
-          `falls inside an earlier chunk's span (lines ${prevStart + 1}-${
-            prevStart + prevLen
-          }). The patch's hunks conflict — often a pure insertion colliding ` +
-          `with a nearby removal.`,
+        describeContextMismatch(
+          originalLines,
+          chunk.changeContext,
+          lineIndex,
+          filePath,
+        ),
       )
     }
   }
 
-  return replacements
+  const segment = chunk.ops
+    ? rebuildSegment(chunk.ops, originalLines, found, pattern.length)
+    : newSlice
+  // Never backwards: a hunk placed above the cursor leaves the hunks after it
+  // searching where they would have.
+  return {
+    replacement: [found, pattern.length, segment],
+    already: null,
+    cursor: Math.max(lineIndex, found + pattern.length),
+  }
 }
 
-function applyReplacements(
-  lines: string[],
-  replacements: Array<[number, number, string[]]>,
-): string[] {
+function applyReplacements(lines: string[], replacements: Replacement[]): string[] {
   const result = [...lines]
 
   // Apply in reverse so earlier indices stay valid as we splice.
@@ -792,15 +804,21 @@ function applyReplacements(
 }
 
 /**
- * Applies an Update hunk's chunks to the original file text (LF-normalized,
- * no BOM) and returns the new content with a trailing newline. Throws if any
- * chunk's context/old lines can't be located (after the 4-pass fuzzy match).
+ * Applies the Update sections of one file to its original text (LF-normalized,
+ * no BOM). Every section is matched against the ORIGINAL text with a cursor of
+ * its own, and every chunk is decided on its own: applied, already applied, or
+ * failed with the reason — a chunk that fails no longer stops the ones after
+ * it. `text` carries every applied chunk, with a trailing newline.
+ *
+ * Until 2026-09-29 the first chunk that did not match threw and the whole
+ * patch was refused, so the model re-sent every hunk to fix one (603k chars
+ * over 115 real retries, ~62% of them hunks that would have applied).
  */
-export function deriveNewContentsFromChunks(
+export function applySections(
   filePath: string,
-  chunks: UpdateFileChunk[],
+  sections: UpdateFileChunk[][],
   originalText: string,
-): string {
+): { text: string; outcomes: ChunkOutcome[][] } {
   const originalLines = originalText.split('\n')
 
   // Drop a trailing empty element so line counting matches the source.
@@ -811,13 +829,66 @@ export function deriveNewContentsFromChunks(
     originalLines.pop()
   }
 
-  const replacements = computeReplacements(originalLines, filePath, chunks)
-  const newLines = applyReplacements(originalLines, replacements)
+  const outcomes: ChunkOutcome[][] = sections.map(chunks => chunks.map((): ChunkOutcome => ({ kind: 'applied' })))
+  const placed: Array<{ replacement: Replacement; section: number; chunk: number }> = []
+  sections.forEach((chunks, section) => {
+    let cursor = 0
+    chunks.forEach((chunk, i) => {
+      try {
+        const place = placeChunk(originalLines, filePath, chunk, cursor)
+        cursor = place.cursor
+        if (place.replacement) placed.push({ replacement: place.replacement, section, chunk: i })
+        else outcomes[section]![i] = { kind: 'already', line: place.already ?? 0 }
+      } catch (e) {
+        outcomes[section]![i] = { kind: 'failed', message: e instanceof Error ? e.message : String(e) }
+      }
+    })
+  })
+
+  // Stable: chunks at the same line keep their patch order.
+  placed.sort((a, b) => a.replacement[0] - b.replacement[0])
+
+  // Adjacent replacements must not overlap. Chunks of one section normally
+  // can't — each searches past the previous match — but a pure insertion's
+  // index is computed independently (EOF / @@ anchor) without advancing the
+  // search cursor, and two sections of one file are matched independently, so
+  // either can land inside another chunk's span. applyReplacements splices each
+  // range independently in reverse, so an overlap would let the wider removal
+  // silently swallow the other edit while reporting success. Both chunks fail
+  // instead, and the rest still applies. The same chunk twice is one edit.
+  const kept: typeof placed = []
+  for (const p of placed) {
+    const prev = kept.at(-1)
+    if (!prev) {
+      kept.push(p)
+      continue
+    }
+    const [prevStart, prevLen, prevLines] = prev.replacement
+    const [currStart, currLen, currLines] = p.replacement
+    if (currStart === prevStart && currLen === prevLen && sameLines(currLines, prevLines)) {
+      outcomes[p.section]![p.chunk] = { kind: 'already', line: currStart + 1 }
+      continue
+    }
+    if (currStart < prevStart + prevLen) {
+      const message =
+        `Overlapping edits in ${filePath}: a chunk at line ${currStart + 1} ` +
+        `falls inside another chunk's span (lines ${prevStart + 1}-${prevStart + prevLen}). ` +
+        `The two hunks conflict — often a pure insertion colliding with a nearby removal, ` +
+        `or two sections changing the same lines. Neither was applied.`
+      outcomes[prev.section]![prev.chunk] = { kind: 'failed', message }
+      outcomes[p.section]![p.chunk] = { kind: 'failed', message }
+      kept.pop()
+      continue
+    }
+    kept.push(p)
+  }
+
+  const newLines = applyReplacements(originalLines, kept.map(k => k.replacement))
 
   // Ensure a trailing newline (last element becomes '').
   if (newLines.length === 0 || newLines[newLines.length - 1] !== '') {
     newLines.push('')
   }
 
-  return newLines.join('\n')
+  return { text: newLines.join('\n'), outcomes }
 }

@@ -274,6 +274,25 @@ describe('extractReadFilesFromMessages — write tools', () => {
     expect(cache.get(p)).toMatchObject({ content: 'AFTER\n', offset: undefined })
   })
 
+  test('a Patch that applied part of itself restores only the files its result says it wrote', () => {
+    // Since 2026-09-29 a hunk that does not match leaves the rest applied, and
+    // the call still succeeds: the input names files that were never written.
+    const wrote = join(dir, 'wrote.ts')
+    const skipped = join(dir, 'skipped.ts')
+    writeFileSync(wrote, 'NEW\n')
+    writeFileSync(skipped, 'OLD\n')
+    const use = toolUse('Patch', {
+      patchText:
+        `*** Begin Patch\n*** Update File: ${wrote}\n@@\n-x\n+y\n` +
+        `*** Update File: ${skipped}\n@@\n-nowhere\n+z\n*** End Patch`,
+    })
+    const result = toolResult(use, 'Applied part of the patch') as unknown as Record<string, unknown>
+    result.toolUseResult = { files: [{ absPath: wrote, type: 'update', additions: 1, deletions: 1, structuredPatch: [] }] }
+    const cache = extractReadFilesFromMessages([use, result as unknown as Message], dir)
+    expect(cache.get(wrote)).toMatchObject({ content: 'NEW\n', offset: undefined })
+    expect(cache.get(skipped)).toBeUndefined()
+  })
+
   test('a malformed patchText is skipped, not thrown', () => {
     const use = toolUse('Patch', { patchText: 'not a patch' })
     expect(() =>

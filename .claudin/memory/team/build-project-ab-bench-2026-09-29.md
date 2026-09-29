@@ -60,3 +60,10 @@ output −16%, prefix −19%, but tool results +36% ($0.050 vs $0.037; Read's
 line numbers plus a whole-project Read) and test cases 14 vs 18. Calls 8 vs 7
 (overlap), from the model splitting source and tests into two patches, not
 from the fix.
+
+**Round 4 (run `-183540`, build with [[patch-applies-what-matches]]):** 10/10
+sessions 7/7 and built. claudindev 6 calls [6–7] vs claude 7 [6–9], cost
+$0.249 vs $0.247 (+1%, overlap). No Patch was refused for matching or the read
+gate. The re-sends left (median 777 tok, $0.011) were all a new class: 3 of 5
+sessions put 4+ commands in `then`, which the schema caps at 3, so zod
+rejected the whole Patch before the tool saw it (InputValidationError).

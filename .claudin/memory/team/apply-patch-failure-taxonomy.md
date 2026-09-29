@@ -75,6 +75,15 @@ All 38 real reorder sections were bare. The TDD red run was 5/6 tests;
 `scripts/migrations/probes/patchOutOfOrderHunks.json` has 7 probes, all red.
 Both bench patches now apply as sent, byte-identical to the model's retry.
 
-`prompt.ts` was deliberately NOT touched: its DESCRIPTION is frozen per session in
-the cached tool block, so any byte change invalidates the whole prompt cache, and
-the strict format is still what the model should aim for.
+**7. The rest of the re-send: atomicity itself (2026-09-29)** → FIXED by
+[[patch-applies-what-matches]]. After the reorder fix, 115 real failed calls
+still had a retry: 603k chars, of which 227k were sections that had not failed
+and 146k hunks that had not failed inside failing sections — ~62% re-sent only
+because nothing was written. The remaining categories: content wrong (36
+sections, a real model error), retry dropped hunks (6), no retry (2 unique: the
+model gave up on Patch and rewrote the file with Write/Edit). Patch now applies
+what matches and lists the rest, so a retry carries only the failed hunks.
+
+`prompt.ts` changed with #7 only: the atomic/all-or-nothing lines became the
+partial rule, since they had become false. Its DESCRIPTION is frozen per
+session in the cached tool block, so edit it only when it stops being true.

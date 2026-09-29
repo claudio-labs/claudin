@@ -97,16 +97,16 @@
       "replace": "  return merged\n"
     },
     {
-      "name": "item 4: Patch serves the never-read refusal",
+      "name": "item 4: Patch serves the never-read refusal (CLAUDIN_PATCH_ALL_OR_NOTHING)",
       "source": "src/tools/ApplyPatchTool/applyPatch.ts",
-      "find": "        hunk.type === 'update' ? serveUpdateHunk(hunk, absPath, context) : null\n",
-      "replace": "        null\n"
+      "find": "      const served = first.type === 'update' ? serveUpdateHunk(first, absPath, context) : null\n",
+      "replace": "      const served = null\n"
     },
     {
       "name": "item 4: a served section does not count toward the batched-read hint",
       "source": "src/tools/ApplyPatchTool/applyPatch.ts",
-      "find": "        note(message + servedSuffix(served), 2)\n        servedFailures++\n",
-      "replace": "        note(message + servedSuffix(served), 2)\n        servedFailures++\n        readRemedyFailures++\n"
+      "find": "      return served ? problem(message + servedSuffix(served)) : problem(message, true)\n",
+      "replace": "      return served ? problem(message + servedSuffix(served), true) : problem(message, true)\n"
     },
     {
       "name": "item 4: Edit serves the coverage refusal",

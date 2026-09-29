@@ -24,8 +24,8 @@
     },
     {
       "name": "the cursor never moves backwards",
-      "find": "lineIndex = Math.max(lineIndex, found + pattern.length)",
-      "replace": "lineIndex = found + pattern.length"
+      "find": "cursor: Math.max(lineIndex, found + pattern.length),",
+      "replace": "cursor: found + pattern.length,"
     },
     {
       "name": "the miss message names a block above the search start",

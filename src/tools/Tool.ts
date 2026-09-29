@@ -626,8 +626,8 @@ export type Tool<
    * anything else looks at it: validateInput, the PreToolUse hooks, the
    * auto-mode classifier, the permission prompt and call() all receive the
    * resolved input, while the transcript keeps what the model sent (the
-   * cached prefix depends on it). Patch's `*** Resubmit` names the
-   * patch it refused one call earlier. A refusal is reported the way a failed
+   * cached prefix depends on it). Patch and Edit resolve their `then`
+   * commands here. A refusal is reported the way a failed
    * validateInput is. It may be async: a Read's globs are expanded on disk
    * (FileReadTool/readGlobs.ts) so that every step after it sees real files.
    */

@@ -24,7 +24,6 @@ import {
 } from 'src/tools/FileReadTool/outlineView.js'
 import { validateApplyPatchInput } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import { ApplyPatchTool } from 'src/tools/ApplyPatchTool/ApplyPatchTool.js'
-import { RESUBMIT_SENTINEL } from 'src/tools/ApplyPatchTool/patchFormat.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
 import { createPlanAttachmentIfNeeded } from 'src/agent/compact/postCompactAttachments.js'
 import {
@@ -69,8 +68,9 @@ import {
 //   S16 a `cat` credited as a read, then a patch                  (CLAUDIN_BASH_READ_CREDIT)
 //
 // And from the same bench, where 24 of 63 sessions re-sent a whole patch after
-// a refusal that had already served the lines it needed:
-//   S17 a refused patch resubmitted by reference                  (`*** Resubmit`)
+// a refusal that had already served the lines it needed (`*** Resubmit` until
+// 2026-09-29):
+//   S17 a patch on a file only `cat`'d applies when its hunks match exactly
 //
 // And from its proxy logs, where the watcher told the model 53 times in 16 of
 // 30 sessions that a file it had just written was "modified by the user":
@@ -697,8 +697,8 @@ describe('S16 — a `cat` credited as a read, then a patch', () => {
   })
 })
 
-describe('S17 — a refused patch resubmitted by reference', () => {
-  test('the tool resolves the sentinel to the kept patch, which then applies', async () => {
+describe('S17 — a patch on a file only `cat`ed applies when its hunks match exactly', () => {
+  test('the file never Read is patched in the same call as the one that was', async () => {
     // `a` was Read; `b` was only printed by a capped `cat`, so the Read tool never saw it.
     const a = join(dir, 's17-a.txt')
     const b = join(dir, 's17-b.txt')
@@ -712,23 +712,15 @@ describe('S17 — a refused patch resubmitted by reference', () => {
     }
     // The order toolExecution runs them in: resolveInput, then validateInput.
     expect(await ApplyPatchTool.resolveInput!(sent, ctx)).toEqual({ ok: true, input: sent })
-    const refused = await ApplyPatchTool.validateInput!(sent, ctx)
-    expect(refused.result).toBe(false)
-    if (!refused.result) {
-      expect(refused.message).toContain('has not been read yet')
-      expect(refused.message).toContain('9→l9')
-      expect(refused.message).toContain(`"${RESUBMIT_SENTINEL}"`)
-    }
-
-    const resolved = await ApplyPatchTool.resolveInput!({ patchText: RESUBMIT_SENTINEL }, ctx)
-    expect(resolved).toEqual({ ok: true, input: sent })
-    if (!resolved.ok) return
-    expect(await ApplyPatchTool.validateInput!(resolved.input, ctx)).toEqual({ result: true })
-    await ApplyPatchTool.call(resolved.input, ctx, (async () => ({ behavior: 'allow' })) as never, {
+    expect(await ApplyPatchTool.validateInput!(sent, ctx)).toEqual({ result: true })
+    const done = await ApplyPatchTool.call(sent, ctx, (async () => ({ behavior: 'allow' })) as never, {
       uuid: randomUUID(),
     } as never)
     expect(readFileSync(a, 'utf8')).toContain('L3')
     expect(readFileSync(b, 'utf8')).toContain('L9')
+    // The model is told the file was patched unread, and a later Edit finds it read.
+    expect(done.data.appliedUnread).toEqual([expect.stringContaining('s17-b.txt')])
+    expect(ctx.readFileState.get(b)).toBeDefined()
   })
 })
 
@@ -831,9 +823,10 @@ describe('S19 — Patch takes any read', () => {
     expect(readFileSync(p, 'utf8')).toBe(linesWith(30, { 12: 'L12' }))
   })
 
-  test('a file never read is still refused', () => {
+  test('a file never read is refused when a hunk does not match it exactly', () => {
+    // One that does match exactly is patched unread since 2026-09-29 (S17).
     const p = join(dir, 's19-never.txt')
     writeLines(p, 30)
-    expect(refusal(patch(p, '@@\n-l12\n+L12'))).toContain('has not been read yet')
+    expect(refusal(patch(p, '@@\n-l99\n+L99'))).toContain('has not been read yet')
   })
 })
