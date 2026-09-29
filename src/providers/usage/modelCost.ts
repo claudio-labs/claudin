@@ -19,6 +19,7 @@ import {
   CLAUDE_SONNET_4_6_CONFIG,
   CLAUDE_SONNET_4_CONFIG,
   CLAUDE_SONNET_5_CONFIG,
+  CLAUDE_SONNET_5_5_CONFIG,
 } from 'src/providers/model/configs.js'
 import {
   firstPartyNameToCanonical,
@@ -285,6 +286,9 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
   // $2/$10 is Sonnet 5's STANDARD price, not an intro rate — the increase to
   // $3/$15 once scheduled for 2026-09-01 was cancelled, per the pricing docs.
   [firstPartyNameToCanonical(CLAUDE_SONNET_5_CONFIG.firstParty)]:
+    COST_TIER_2_10,
+  // Sonnet 5.5 kept Sonnet 5's price, cache multipliers included.
+  [firstPartyNameToCanonical(CLAUDE_SONNET_5_5_CONFIG.firstParty)]:
     COST_TIER_2_10,
   [firstPartyNameToCanonical(CLAUDE_OPUS_4_CONFIG.firstParty)]: COST_TIER_15_75,
   [firstPartyNameToCanonical(CLAUDE_OPUS_4_1_CONFIG.firstParty)]:

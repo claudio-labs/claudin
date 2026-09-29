@@ -40,11 +40,26 @@ export const getBedrockInferenceProfiles = memoize(async function (): Promise<
   }
 })
 
+// What may follow a model id inside a profile id and still name that model: a
+// `-v1:0` suffix or a date does, a minor-version segment does not. Without the
+// guard the needle 'claude-sonnet-5' picks 'us.anthropic.claude-sonnet-5-5' —
+// and 'claude-opus-5' picks an Opus 5.5 profile — whenever AWS happens to list
+// the newer one first. Claude Code guards the same prefix with
+// `(?!-\d(?!\d))`.
+const MINOR_VERSION_SUFFIX_RE = /^[-.]\d(?!\d)/
+
+function namesModel(profile: string, modelId: string): boolean {
+  for (let at = profile.indexOf(modelId); at >= 0; at = profile.indexOf(modelId, at + 1)) {
+    if (!MINOR_VERSION_SUFFIX_RE.test(profile.slice(at + modelId.length))) return true
+  }
+  return false
+}
+
 export function findFirstMatch(
   profiles: string[],
-  substring: string,
+  modelId: string,
 ): string | null {
-  return profiles.find(p => p.includes(substring)) ?? null
+  return profiles.find(p => namesModel(p, modelId)) ?? null
 }
 
 async function createBedrockClient() {

@@ -8,6 +8,7 @@ import {
 } from 'src/providers/auth/auth.js'
 import { getModelStrings } from 'src/providers/model/modelStrings.js'
 import {
+  COST_TIER_2_10,
   COST_TIER_3_15,
   COST_TIER_10_50,
   COST_HAIKU_35,
@@ -89,7 +90,7 @@ export function getDefaultOptionForUser(fastMode = false): ModelOption {
   return {
     value: null,
     label: 'Default (recommended)',
-    description: `Use the default model (currently ${renderDefaultModelSetting(getDefaultMainLoopModelSetting())})${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
+    description: `Use the default model (currently ${renderDefaultModelSetting(getDefaultMainLoopModelSetting())})${is3P ? '' : ` · ${formatModelPricing(COST_TIER_2_10)}`}`,
   }
 }
 
@@ -113,22 +114,36 @@ function getCustomSonnetOption(): ModelOption | undefined {
 
 // @[MODEL LAUNCH]: Update or add model option functions (getSonnetXXOption, getOpusXXOption, etc.)
 // with the new model's label and description. These appear in the /model picker.
-// Sonnet 5 — 1M context by default (single entry, no [1m] pair, like Fable 5).
-// On 1P the 'sonnet' alias resolves to Sonnet 5, so pin to the alias; on 3P the
-// alias still resolves to Sonnet 4.5, so pin the explicit model string.
+// Sonnet 5.5 — the default Sonnet tier. 1M context by default (single entry, no
+// [1m] pair). On 1P the 'sonnet' alias resolves to Sonnet 5.5, so pin to the
+// alias; on 3P the alias still resolves to Sonnet 4.5, so pin the explicit
+// model string.
+function getSonnet55Option(): ModelOption {
+  const is3P = getAPIProvider() !== 'firstParty'
+  return {
+    value: is3P ? getModelStrings().sonnet55 : 'sonnet',
+    label: 'Sonnet',
+    description: `Sonnet 5.5 · Best for everyday tasks · 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_2_10)}`}`,
+    descriptionForModel:
+      'Sonnet 5.5 - best for everyday tasks. 1M context by default. Generally recommended for most coding tasks',
+  }
+}
+
+// Sonnet 5 — pinned to the explicit model string on both providers now that the
+// 'sonnet' alias on 1P resolves to Sonnet 5.5. Kept selectable rather than
+// retired, like Opus 5: Anthropic serves it until at least 2027-06-30.
 function getSonnet5Option(): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
-    value: is3P ? getModelStrings().sonnet5 : 'sonnet',
+    value: getModelStrings().sonnet5,
     label: 'Sonnet 5',
-    description: `Sonnet 5 · Best for everyday tasks, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
-    descriptionForModel:
-      'Sonnet 5 - best for everyday tasks. 1M context by default. Generally recommended for most coding tasks',
+    description: `Sonnet 5 · Previous Sonnet · 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_2_10)}`}`,
+    descriptionForModel: 'Sonnet 5 - previous Sonnet version. 1M context by default.',
   }
 }
 
 // Sonnet 4.6 — legacy / opt-in entry. Pinned to the explicit model string on both
-// providers since the 'sonnet' alias on 1P now resolves to Sonnet 5.
+// providers since the 'sonnet' alias on 1P now resolves to Sonnet 5.5.
 function getSonnet46Option(): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
@@ -345,11 +360,18 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
   const ms = getModelStrings()
   const billing = isClaudeAISubscriber() ? ' · Billed as extra usage' : ''
   const opts: ModelOption[] = []
-  // Sonnet 5 is 1M by default — single entry, no [1m] pair (like Fable 5).
+  // Sonnet 5.5 is 1M by default — single entry, no [1m] pair. On 1P the
+  // 'sonnet' alias resolves to it; on 3P pin the explicit string.
+  opts.push({
+    value: getAPIProvider() !== 'firstParty' ? ms.sonnet55 : 'sonnet',
+    label: 'Sonnet 5.5',
+    description: `Sonnet 5.5 · Best for everyday tasks · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_2_10)}`}`,
+  })
+  // Sonnet 5 stays listed as the previous generation, like Opus 5 below.
   opts.push({
     value: ms.sonnet5,
     label: 'Sonnet 5',
-    description: `Sonnet 5 · Best for everyday tasks · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
+    description: `Sonnet 5 · Previous Sonnet · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_2_10)}`}`,
   })
   // Fable 5.1 is 1M by default — single entry, no [1m] pair.
   opts.push({
@@ -365,8 +387,9 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
     label: 'Opus 5.5',
     description: `Opus 5.5 · Most capable for complex work · 1M context${billing}${getOpus55PricingSuffix(fastMode)}`,
   })
-  // Opus 5 stays listed as the previous generation — unlike Opus 4.6/4.7/4.8
-  // and Sonnet 4.5/4.6, which remain resolvable by explicit string but unlisted.
+  // Opus 5 stays listed as the previous generation, like Sonnet 5 above —
+  // unlike Opus 4.6/4.7/4.8 and Sonnet 4.5/4.6, which remain resolvable by
+  // explicit string but unlisted.
   opts.push({
     value: ms.opus5,
     label: 'Opus 5',
@@ -531,13 +554,15 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     }
   }
 
-  // PAYG 1P API: Default (Sonnet 5) + Sonnet 5 + Fable 5.1 + Opus 5.5 + Opus 5
-  // + Haiku. Opus 5.5 is 1M-native (no [1m] variant). Opus 5 is the one legacy
-  // generation still listed — it is current at Anthropic and only a generation
-  // old; the older ones (Opus 4.6/4.7/4.8, Sonnet 4.5/4.6) remain resolvable by
-  // explicit string but are hidden here.
+  // PAYG 1P API: Default (Sonnet 5.5) + Sonnet 5.5 + Sonnet 5 + Fable 5.1 +
+  // Opus 5.5 + Opus 5 + Haiku. The 5.x entries are 1M-native (no [1m] variant).
+  // Sonnet 5 and Opus 5 are the legacy generations still listed — both are
+  // current at Anthropic and only a generation old; the older ones (Opus
+  // 4.6/4.7/4.8, Sonnet 4.5/4.6) remain resolvable by explicit string but are
+  // hidden here.
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
+    payg1POptions.push(getSonnet55Option())
     payg1POptions.push(getSonnet5Option())
     payg1POptions.push(getFable51Option())
     payg1POptions.push(getOpus55Option(fastMode))
@@ -561,8 +586,10 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   if (customSonnet !== undefined) {
     payg3pOptions.push(customSonnet)
   } else {
-    // Add Sonnet 5 (new) + Sonnet 4.6 (200k + 1M) since Sonnet 4.5 is the default.
-    // Sonnet 5 may not be available on all 3P providers yet — added as opt-in.
+    // Add Sonnet 5.5 and Sonnet 5 (both 1M-native) + Sonnet 4.6 (200k + 1M)
+    // since Sonnet 4.5 is the default. The 5.x entries may not be available on
+    // every 3P provider yet — added as opt-in.
+    payg3pOptions.push(getSonnet55Option())
     payg3pOptions.push(getSonnet5Option())
     payg3pOptions.push(getSonnet46Option())
     if (checkSonnet1mAccess()) {

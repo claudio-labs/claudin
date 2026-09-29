@@ -143,6 +143,10 @@ const VERTEX_REGION_OVERRIDES: ReadonlyArray<[string, string]> = [
   ['claude-opus-4-6', 'VERTEX_REGION_CLAUDE_4_6_OPUS'],
   ['claude-opus-4-1', 'VERTEX_REGION_CLAUDE_4_1_OPUS'],
   ['claude-opus-4', 'VERTEX_REGION_CLAUDE_4_0_OPUS'],
+  // Sonnet 5.5 before Sonnet 5: startsWith('claude-sonnet-5') matches both.
+  // Claude Code 2.1.284 reads these two names.
+  ['claude-sonnet-5-5', 'VERTEX_REGION_CLAUDE_5_5_SONNET'],
+  ['claude-sonnet-5', 'VERTEX_REGION_CLAUDE_5_SONNET'],
   ['claude-sonnet-4-6', 'VERTEX_REGION_CLAUDE_4_6_SONNET'],
   ['claude-sonnet-4-5', 'VERTEX_REGION_CLAUDE_4_5_SONNET'],
   ['claude-sonnet-4', 'VERTEX_REGION_CLAUDE_4_0_SONNET'],

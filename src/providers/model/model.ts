@@ -278,11 +278,13 @@ export function getDefaultSonnetModel(): ModelName {
   if (getAPIProvider() === 'minimax') {
     return profileModel || 'MiniMax-M2.5'
   }
-  // Default to Sonnet 4.5 for 3P since they may not have Sonnet 5 yet
+  // Default to Sonnet 4.5 for 3P since they may not have Sonnet 5.x yet —
+  // Claude Code 2.1.284 keeps the same per-provider default. Sonnet 5.5 is
+  // offered there as an opt-in picker entry instead.
   if (getAPIProvider() !== 'firstParty') {
     return getModelStrings().sonnet45
   }
-  return getModelStrings().sonnet5
+  return getModelStrings().sonnet55
 }
 
 // @[MODEL LAUNCH]: Update the default Haiku model (3P providers may lag so keep defaults unchanged).
@@ -358,7 +360,7 @@ export function getRuntimeMainLoopModel(params: {
  *
  * This handles the built-in default:
  * - Opus for Max and Team Premium users
- * - Sonnet 5 for all other users (including Team Standard, Pro, Enterprise)
+ * - Sonnet 5.5 for all other users (including Team Standard, Pro, Enterprise)
  *
  * @returns The default model setting to use
  */
@@ -444,7 +446,13 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   // canonical name is the MODEL_COSTS key AND what every display path reads,
   // so without this branch Opus 5.5 bills at $5/$25 with a $0.50 cache read
   // instead of $4/$20 with $0.20, and renders as "Opus 5" in the footer.
-  if (name.includes('claude-opus-5-5')) {
+  //
+  // The 5.5 tiers also arrive dotted: GitHub Copilot's `claude-sonnet-5.5`,
+  // OpenRouter's `anthropic/claude-opus-5.5`. Those contain 'claude-opus-5' but
+  // not 'claude-opus-5-5', and resolved to the previous generation's name and
+  // knowledge cutoff. Plain includes() rather than a module-level regex: this
+  // runs while modelCost.ts builds MODEL_COSTS, before this module's consts exist.
+  if (name.includes('claude-opus-5-5') || name.includes('claude-opus-5.5')) {
     return 'claude-opus-5-5'
   }
   if (name.includes('claude-opus-5')) {
@@ -467,6 +475,11 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   }
   if (name.includes('claude-opus-4')) {
     return 'claude-opus-4'
+  }
+  // Before the Sonnet 5 branch, which matches 'claude-sonnet-5-5' by substring
+  // and would render Sonnet 5.5 as "Sonnet 5" with a January 2026 cutoff.
+  if (name.includes('claude-sonnet-5-5') || name.includes('claude-sonnet-5.5')) {
+    return 'claude-sonnet-5-5'
   }
   if (name.includes('claude-sonnet-5')) {
     return 'claude-sonnet-5'
@@ -531,14 +544,14 @@ export function getClaudeAiUserDefaultModelDescription(
     // Opus 5.5 is native-1M — no 200k/merge distinction.
     return `Opus 5.5 · Most capable for complex work${fastMode ? getOpus55PricingSuffix(true) : ''}`
   }
-  return 'Sonnet 5 · Best for everyday tasks'
+  return 'Sonnet 5.5 · Best for everyday tasks'
 }
 
 export function renderDefaultModelSetting(
   setting: ModelName | ModelAlias,
 ): string {
   if (setting === 'opusplan') {
-    return 'Opus 5.5 in plan mode, else Sonnet 5'
+    return 'Opus 5.5 in plan mode, else Sonnet 5.5'
   }
   return renderModelName(parseUserSpecifiedModel(setting))
 }
@@ -646,6 +659,9 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
       return 'Opus 4.1'
     case getModelStrings().opus40:
       return 'Opus 4'
+    case getModelStrings().sonnet55:
+      // 1M context is the default on Sonnet 5.5 — no [1m] variant needed.
+      return 'Sonnet 5.5'
     case getModelStrings().sonnet5:
       // 1M context is the default on Sonnet 5 — no [1m] variant needed.
       return 'Sonnet 5'
@@ -878,6 +894,10 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   }
   if (canonical.includes('claude-opus-4')) {
     return 'Opus 4'
+  }
+  // Before the Sonnet 5 branch — see firstPartyNameToCanonical.
+  if (canonical.includes('claude-sonnet-5-5')) {
+    return 'Sonnet 5.5'
   }
   if (canonical.includes('claude-sonnet-5')) {
     return 'Sonnet 5'

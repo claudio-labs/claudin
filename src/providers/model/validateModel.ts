@@ -221,6 +221,11 @@ function get3PFallbackSuggestion(model: string): string | undefined {
   if (lowerModel.includes('opus-4-6') || lowerModel.includes('opus_4_6')) {
     return getModelStrings().opus41
   }
+  // Before the sonnet-5 branch — 'sonnet-5-5' contains it. One generation back
+  // is Sonnet 5, which is also Claude Code's fallback_3p for Sonnet 5.5.
+  if (lowerModel.includes('sonnet-5-5') || lowerModel.includes('sonnet_5_5')) {
+    return getModelStrings().sonnet5
+  }
   if (lowerModel.includes('sonnet-5') || lowerModel.includes('sonnet_5')) {
     return getModelStrings().sonnet46
   }

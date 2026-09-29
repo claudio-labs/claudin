@@ -1,0 +1,91 @@
+{
+  "test": [
+    "src/providers/model/claudeCodeParity.test.ts",
+    "src/providers/model/sonnet55.test.ts",
+    "src/providers/model/opus55.test.ts",
+    "src/providers/model/bedrock.test.ts",
+    "src/providers/model/modelLabel.test.ts",
+    "src/providers/model/modelOptions.dualcontext.test.ts"
+  ],
+  "source": "src/providers/model/model.ts",
+  "probes": [
+    {
+      "name": "canonical: sonnet 5.5 branch removed",
+      "find": "if (name.includes('claude-sonnet-5-5') || name.includes('claude-sonnet-5.5')) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "canonical: dotted sonnet 5.5 dropped",
+      "find": "name.includes('claude-sonnet-5-5') || name.includes('claude-sonnet-5.5')",
+      "replace": "name.includes('claude-sonnet-5-5')"
+    },
+    {
+      "name": "canonical: dotted opus 5.5 dropped",
+      "find": "name.includes('claude-opus-5-5') || name.includes('claude-opus-5.5')",
+      "replace": "name.includes('claude-opus-5-5')"
+    },
+    {
+      "name": "default sonnet back to Sonnet 5",
+      "find": "  return getModelStrings().sonnet55\n}",
+      "replace": "  return getModelStrings().sonnet5\n}"
+    },
+    {
+      "name": "marketing name branch removed",
+      "find": "  if (canonical.includes('claude-sonnet-5-5')) {\n    return 'Sonnet 5.5'\n  }",
+      "replace": ""
+    },
+    {
+      "name": "display-name case removed",
+      "find": "    case getModelStrings().sonnet55:\n      // 1M context is the default on Sonnet 5.5 — no [1m] variant needed.\n      return 'Sonnet 5.5'\n",
+      "replace": ""
+    },
+    {
+      "name": "max output: sonnet 5.5 dropped from the 128K branch",
+      "source": "src/agent/context/context.ts",
+      "find": "if (m.includes('opus-5-5') || m.includes('sonnet-5-5')) {",
+      "replace": "if (m.includes('opus-5-5')) {"
+    },
+    {
+      "name": "block binding: sonnet 5.5 dropped",
+      "source": "src/providers/transport/betas.ts",
+      "find": "    canonical.includes('claude-fable-5-1') ||\n    canonical.includes('claude-sonnet-5-5')\n",
+      "replace": "    canonical.includes('claude-fable-5-1')\n"
+    },
+    {
+      "name": "knowledge cutoff branch removed",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "  } else if (canonical.includes('claude-sonnet-5-5')) {\n    // Before the Sonnet 5 branch, same containment trap.\n    return 'June 2026'\n",
+      "replace": ""
+    },
+    {
+      "name": "commit trailer branch removed",
+      "source": "src/vcs/git/commitAttribution.ts",
+      "find": "  if (shortName.includes('sonnet-5-5')) return 'claude-sonnet-5-5'\n",
+      "replace": ""
+    },
+    {
+      "name": "cost entry removed",
+      "source": "src/providers/usage/modelCost.ts",
+      "find": "  [firstPartyNameToCanonical(CLAUDE_SONNET_5_5_CONFIG.firstParty)]:\n    COST_TIER_2_10,\n",
+      "replace": ""
+    },
+    {
+      "name": "bedrock minor-version guard removed",
+      "source": "src/providers/model/bedrock.ts",
+      "find": "    if (!MINOR_VERSION_SUFFIX_RE.test(profile.slice(at + modelId.length))) return true",
+      "replace": "    return true"
+    },
+    {
+      "name": "vertex: sonnet 5.5 region entry removed",
+      "source": "src/shared/envUtils.ts",
+      "find": "  ['claude-sonnet-5-5', 'VERTEX_REGION_CLAUDE_5_5_SONNET'],\n",
+      "replace": ""
+    },
+    {
+      "name": "picker: sonnet 5.5 dual-context entry removed",
+      "source": "src/providers/model/modelOptions.ts",
+      "find": "    label: 'Sonnet 5.5',",
+      "replace": "    label: 'Sonnet 5',"
+    }
+  ]
+}

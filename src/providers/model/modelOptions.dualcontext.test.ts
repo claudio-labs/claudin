@@ -89,19 +89,27 @@ test('Opus 5.5 is a single 1M-native entry (value "opus", no [1m] pair)', async 
   }
 })
 
-// Sonnet 5 is the new default and is 1M-native: it must appear as a SINGLE
-// picker entry with no separate [1m] variant, and the legacy Sonnet 4.6 pair is
-// no longer listed.
-test('Sonnet 5 is a single 1M-native entry (no [1m] pair, no legacy Sonnet)', async () => {
+// Sonnet 5.5 is the default Sonnet and is 1M-native: it must appear as a SINGLE
+// picker entry pinned to the 'sonnet' alias on first party, with no separate
+// [1m] variant. Sonnet 5 is still listed beside it as the previous generation,
+// pinned to its explicit model string, and the legacy Sonnet 4.6 pair is gone.
+test('Sonnet 5.5 is a single 1M-native entry (value "sonnet"), Sonnet 5 stays listed', async () => {
   const { getModelOptions } = await importMaxPicker({
     mergeEnabled: true,
     opusAccess: true,
     sonnetAccess: true,
   })
-  const values = getModelOptions().map((o: { value: string | null }) => o.value)
+  const options = getModelOptions()
+  const values = options.map((o: { value: string | null }) => o.value)
+  const sonnet = options.filter((o: { value: string | null }) => o.value === 'sonnet')
+  expect(sonnet).toHaveLength(1)
+  expect(sonnet[0].label).toBe('Sonnet 5.5')
+  expect(sonnet[0].description).toContain('1M context')
+  expect(values).not.toContain('sonnet[1m]')
+  expect(values).not.toContain('claude-sonnet-5-5')
+  // The previous generation stays selectable, and never as the alias.
   expect(values).toContain('claude-sonnet-5')
   expect(values).not.toContain('claude-sonnet-5[1m]')
-  // Exactly one Sonnet 5 entry.
   expect(values.filter((v: string | null) => v === 'claude-sonnet-5')).toHaveLength(1)
   // The legacy Sonnet 4.6 pair and older Opus generations are gone.
   expect(values).not.toContain('claude-sonnet-4-6')
