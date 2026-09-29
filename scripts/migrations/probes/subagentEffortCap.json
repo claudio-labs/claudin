@@ -14,8 +14,18 @@
     },
     {
       "name": "effort cap: a fork keeps the parent's effort",
-      "find": "  if (useExactTools || !cap || !isEffortLevel(cap)) return parent\n",
-      "replace": "  if (!cap || !isEffortLevel(cap)) return parent\n"
+      "find": "  if (useExactTools) return parent\n  const cap = subagentEffortCap()\n",
+      "replace": "  const cap = subagentEffortCap()\n"
+    },
+    {
+      "name": "effort cap: on by default at high",
+      "find": "  if (!raw) return DEFAULT_SUBAGENT_EFFORT_CAP\n",
+      "replace": "  if (!raw) return null\n"
+    },
+    {
+      "name": "effort cap: off disables it",
+      "find": "  if (raw === 'off' || isEnvDefinedFalsy(raw)) return null\n",
+      "replace": "\n"
     },
     {
       "name": "effort cap: runAgent routes the parent effort through it",

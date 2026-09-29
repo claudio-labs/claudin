@@ -48,18 +48,27 @@ describe('subagentThinkingConfig', () => {
 describe('subagentEffort (CLAUDIN_SUBAGENT_EFFORT_CAP)', () => {
   const fresh = { useExactTools: false }
 
-  test('unset: the parent effort, whatever it is', () => {
+  test('unset: capped at high by default', () => {
     delete process.env[CAP]
-    expect(subagentEffort('xhigh', fresh)).toBe('xhigh')
+    expect(subagentEffort('xhigh', fresh)).toBe('high')
+    expect(subagentEffort('max', fresh)).toBe('high')
+    expect(subagentEffort('medium', fresh)).toBe('medium')
     expect(subagentEffort(undefined, fresh)).toBeUndefined()
   })
 
+  test('off (or 0/false) restores the inherited effort', () => {
+    for (const v of ['off', 'OFF', '0', 'false']) {
+      process.env[CAP] = v
+      expect(subagentEffort('xhigh', fresh)).toBe('xhigh')
+    }
+  })
+
   test('lowers a named level above the cap, leaves one at or below it', () => {
-    process.env[CAP] = 'high'
-    expect(subagentEffort('xhigh', fresh)).toBe('high')
-    expect(subagentEffort('max', fresh)).toBe('high')
-    expect(subagentEffort('high', fresh)).toBe('high')
+    process.env[CAP] = 'medium'
+    expect(subagentEffort('xhigh', fresh)).toBe('medium')
+    expect(subagentEffort('high', fresh)).toBe('medium')
     expect(subagentEffort('medium', fresh)).toBe('medium')
+    expect(subagentEffort('low', fresh)).toBe('low')
   })
 
   test('a fork keeps the parent effort; adaptive, numeric and unset pass through', () => {
@@ -70,9 +79,9 @@ describe('subagentEffort (CLAUDIN_SUBAGENT_EFFORT_CAP)', () => {
     expect(subagentEffort(undefined, fresh)).toBeUndefined()
   })
 
-  test('a value that is not a level is ignored', () => {
+  test('a value that is not a level falls back to the default cap', () => {
     process.env[CAP] = 'turbo'
-    expect(subagentEffort('xhigh', fresh)).toBe('xhigh')
+    expect(subagentEffort('xhigh', fresh)).toBe('high')
   })
 
   // runAgent builds the agent's app state inside a closure no unit test
