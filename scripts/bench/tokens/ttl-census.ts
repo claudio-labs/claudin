@@ -59,9 +59,17 @@ function blocksOf(content: unknown): Json[] {
   return Array.isArray(content) ? content.filter(isRecord) : []
 }
 
+// Both CLIs open the system prompt with a billing block whose `cch=` hash
+// changes per request; keyed on it, a main thread's second request would read
+// as a new sub-agent.
+const BILLING_BLOCK_RE = /^x-anthropic-billing-header:/
+
 function systemKey(body: Json): string {
-  const text = typeof body.system === 'string' ? body.system : blocksOf(body.system).map(b => String(b.text ?? '')).join('\n')
-  return text
+  if (typeof body.system === 'string') return body.system
+  return blocksOf(body.system)
+    .map(b => String(b.text ?? ''))
+    .filter(text => !BILLING_BLOCK_RE.test(text))
+    .join('\n')
 }
 
 function groupOf(body: Json, mainSystem: string | null): Group {
@@ -70,6 +78,14 @@ function groupOf(body: Json, mainSystem: string | null): Group {
   if (kind === 'classifier') return 'classifier'
   if (kind === 'other') return 'side'
   return systemKey(body) === mainSystem ? 'main' : 'sub-agent'
+}
+
+/** The group of each request, in the order they were sent. */
+export function classifyRequests(requests: readonly TtlRequest[]): Group[] {
+  // The session opens on its main thread: the first agent-loop request names it.
+  const first = requests.find(r => requestKind(r.body) === 'main' && !(typeof r.body.max_tokens === 'number' && r.body.max_tokens <= 1))
+  const mainSystem = first ? systemKey(first.body) : null
+  return requests.map(r => groupOf(r.body, mainSystem))
 }
 
 /** Pure core: requests in the order they were sent. */
@@ -82,11 +98,9 @@ export function ttlCensus(requests: readonly TtlRequest[]): Record<Group, GroupS
     ping: emptyStats(),
   } satisfies Record<Group, GroupStats>
   const systems = new Map<Group, Set<string>>()
-  // The session opens on its main thread: the first agent-loop request names it.
-  const first = requests.find(r => requestKind(r.body) === 'main' && !(typeof r.body.max_tokens === 'number' && r.body.max_tokens <= 1))
-  const mainSystem = first ? systemKey(first.body) : null
-  for (const { body, usage } of requests) {
-    const group = groupOf(body, mainSystem)
+  const groups = classifyRequests(requests)
+  requests.forEach(({ body, usage }, i) => {
+    const group = groups[i]!
     const s = out[group]
     s.requests++
     const seen = systems.get(group) ?? new Set<string>()
@@ -112,7 +126,7 @@ export function ttlCensus(requests: readonly TtlRequest[]): Record<Group, GroupS
       s.write1h += Number(cc.ephemeral_1h_input_tokens ?? 0)
       s.read += Number(usage.cache_read_input_tokens ?? 0)
     }
-  }
+  })
   for (const [group, seen] of systems) out[group].systems = seen.size
   return out
 }

@@ -104,8 +104,8 @@ export type WireProxy = {
   url(label: string): string
   /** Whether a CLI already sent a /v1/messages request under this label (its headers are held). */
   hasHeaders(label: string): boolean
-  /** Sends `body` upstream with the headers `fromLabel` used, recording it under `asLabel`. */
-  replay(fromLabel: string, asLabel: string, body: Json): Promise<ReplayResult>
+  /** Sends `body` upstream with the headers `fromLabel` used, recording it under `asLabel`. Streamed unless `stream: false`. */
+  replay(fromLabel: string, asLabel: string, body: Json, options?: { stream?: boolean }): Promise<ReplayResult>
   close(): Promise<void>
 }
 
@@ -358,10 +358,10 @@ export function startWireProxy(logDir: string, options: WireProxyOptions = {}): 
     })
   }
 
-  const replay = (fromLabel: string, asLabel: string, body: Json): Promise<ReplayResult> => {
+  const replay = (fromLabel: string, asLabel: string, body: Json, options: { stream?: boolean } = {}): Promise<ReplayResult> => {
     const from = captured.get(fromLabel)
     if (!from) return Promise.reject(new Error(`wire-proxy: no /v1/messages request seen under ${fromLabel} yet`))
-    const payload = Buffer.from(JSON.stringify({ ...body, stream: true }))
+    const payload = Buffer.from(JSON.stringify({ ...body, stream: options.stream ?? true }))
     const { n, dir } = nextSlot(asLabel)
     const reqFile = `req-${String(n).padStart(3, '0')}.json.gz`
     writeFileSync(join(dir, reqFile), gzipSync(payload))

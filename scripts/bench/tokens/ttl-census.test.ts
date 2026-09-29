@@ -40,6 +40,17 @@ describe('ttlCensus', () => {
     expect(census['sub-agent'].markers.messages).toEqual({ '5m': 2, '1h': 0 })
   })
 
+  test("the per-request billing block does not split the main thread", () => {
+    const withBilling = (cch: string): TtlRequest => {
+      const r = loop('MAIN', '1h', {})
+      const system = r.body.system as Record<string, unknown>[]
+      return { ...r, body: { ...r.body, system: [{ type: 'text', text: `x-anthropic-billing-header: cc_version=1; cch=${cch};` }, ...system] } }
+    }
+    const c = ttlCensus([withBilling('aaaaa'), withBilling('bbbbb')])
+    expect(c.main.requests).toBe(2)
+    expect(c['sub-agent'].requests).toBe(0)
+  })
+
   test('a one-token body is a ping, a tool-less one a side query', () => {
     expect(census.ping).toMatchObject({ requests: 1, read: 40 })
     expect(census.side.requests).toBe(1)
