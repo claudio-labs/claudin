@@ -25,7 +25,19 @@
     {
       "name": "the session being left is stopped before the switch",
       "source": "src/agent/repl/resumeSession.ts",
-      "find": "    if (entrypoint !== 'fork') stopForegroundWork()\n",
+      "find": "    if (entrypoint !== 'fork') stopForegroundWork(options.keepRunning)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a switch that keeps the work running says so when it stops the foreground",
+      "source": "src/agent/repl/resumeSession.ts",
+      "find": "stopForegroundWork(options.keepRunning)",
+      "replace": "stopForegroundWork()"
+    },
+    {
+      "name": "B in the confirmation switches and keeps the work running",
+      "source": "src/sessions/ui/SessionsScreen.tsx",
+      "find": "        else if (input === 'b' && !key.ctrl && pending) onSelect(pending.log, true)\n",
       "replace": "\n"
     },
     {

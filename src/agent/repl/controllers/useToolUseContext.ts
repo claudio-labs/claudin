@@ -22,11 +22,12 @@
 // handed back as `refreshTools` for the same reason - mid-query tool-list
 // updates re-run it.
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { feature } from 'bun:bundle';
 import { sendNotification } from 'src/platform/notifications/notifier.js';
 import { registerLeaderSetToolPermissionContext, unregisterLeaderSetToolPermissionContext } from 'src/agent/coordinator/swarm/leaderPermissionBridge.js';
 import { type ResumeEntrypoint } from 'src/commands/commands.js';
+import type { ResumeOptions } from 'src/shared/types/command.js';
 import { type ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 import type { PromptRequest, PromptResponse } from 'src/shared/types/hooks.js';
 import { getSystemPrompt } from 'src/agent/prompts/prompts.js';
@@ -83,7 +84,8 @@ export interface UseToolUseContextDeps {
   loadedNestedMemoryPathsRef: React.RefObject<Set<string>>;
   hasInterruptibleToolInProgressRef: React.RefObject<boolean>;
   // --- callbacks handed through into the context
-  resume: (sessionId: `${string}-${string}-${string}-${string}-${string}`, log: LogOption, entrypoint: ResumeEntrypoint) => Promise<void>;
+  resume: (sessionId: `${string}-${string}-${string}-${string}-${string}`, log: LogOption, entrypoint: ResumeEntrypoint, options?: ResumeOptions) => Promise<void>;
+  stopForegroundWork: (keepRunning?: boolean) => void;
   reverify: () => void;
   onChangeDynamicMcpConfig: (config: Record<string, ScopedMcpServerConfig>) => void;
   addNotification: ReturnType<typeof import('src/terminal/contexts/notifications.js').useNotifications>['addNotification'];
@@ -145,6 +147,7 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
     loadedNestedMemoryPathsRef,
     hasInterruptibleToolInProgressRef,
     resume,
+    stopForegroundWork,
     reverify,
     onChangeDynamicMcpConfig,
     addNotification,
@@ -163,6 +166,10 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
     setSpinnerShimmerColor,
     setSpinnerMessage,
   } = deps;
+
+  // handleBackgroundQuery needs getToolUseContext, which puts it in the
+  // context this ref is read through — assigned once the callback exists.
+  const backgroundTurnRef = useRef<() => Promise<void>>(async () => {});
 
   const setToolPermissionContext = useCallback((context: ToolPermissionContext, options?: {
     preserveMode?: boolean;
@@ -327,20 +334,24 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
         hasInterruptibleToolInProgressRef.current = v;
       },
       resume,
+      stopForegroundWork,
+      backgroundTurn: () => backgroundTurnRef.current(),
       setConversationId,
       requestPrompt: feature('HOOK_PROMPTS') ? requestPrompt : undefined,
     };
-  }, [commands, combinedInitialTools, mainThreadAgentDefinition, debug, initialMcpClients, ideInstallationStatus, dynamicMcpConfig, theme, allowedAgentTypes, store, setAppState, reverify, addNotification, setMessages, onChangeDynamicMcpConfig, resume, requestPrompt, disabled, customSystemPrompt, appendSystemPrompt, setConversationId]);
+  }, [commands, combinedInitialTools, mainThreadAgentDefinition, debug, initialMcpClients, ideInstallationStatus, dynamicMcpConfig, theme, allowedAgentTypes, store, setAppState, reverify, addNotification, setMessages, onChangeDynamicMcpConfig, resume, stopForegroundWork, requestPrompt, disabled, customSystemPrompt, appendSystemPrompt, setConversationId]);
 
   // Session backgrounding (Ctrl+B to background/foreground)
-  const handleBackgroundQuery = useCallback(() => {
+  // Resolves once the background task holds the conversation: a caller that
+  // clears it sooner hands the task an empty one.
+  const handleBackgroundQuery = useCallback((): Promise<void> => {
     // Stop the foreground query so the background one takes over
     abortController?.abort('background');
     // Aborting subagents may produce task-completed notifications.
     // Clear task notifications so the queue processor doesn't immediately
     // start a new foreground query; forward them to the background session.
     const removedNotifications = removeByFilter(cmd => cmd.mode === 'task-notification');
-    void (async () => {
+    return (async () => {
       const toolUseContext = getToolUseContext(messagesRef.current, [], new AbortController(), mainLoopModel);
       const [defaultSystemPrompt, userContext, systemContext] = await Promise.all([getSystemPrompt(toolUseContext.options.tools, mainLoopModel, Array.from(toolPermissionContext.additionalWorkingDirectories.keys()), toolUseContext.options.mcpClients), getUserContext(), getSystemContext()]);
       const systemPrompt = buildEffectiveSystemPrompt({
@@ -382,6 +393,8 @@ export function useToolUseContext(deps: UseToolUseContextDeps) {
       });
     })();
   }, [abortController, mainLoopModel, toolPermissionContext, mainThreadAgentDefinition, getToolUseContext, customSystemPrompt, appendSystemPrompt, canUseTool, setAppState]);
+
+  backgroundTurnRef.current = handleBackgroundQuery;
 
   return {
     setToolPermissionContext,

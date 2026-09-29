@@ -93,6 +93,7 @@ async function mount(props: Partial<SessionsScreenProps> & Pick<SessionsScreenPr
     output += chunk.toString()
   })
   const selected: LogOption[] = []
+  const keptRunning: (boolean | undefined)[] = []
   let cancelled = 0
   const root = await createRoot({
     stdout: stdout as unknown as NodeJS.WriteStream,
@@ -107,7 +108,10 @@ async function mount(props: Partial<SessionsScreenProps> & Pick<SessionsScreenPr
           instanceSessionIds={['cur']}
           showAllProjects={false}
           maxHeight={20}
-          onSelect={l => selected.push(l)}
+          onSelect={(l, keepRunning) => {
+            selected.push(l)
+            keptRunning.push(keepRunning)
+          }}
           onCancel={() => cancelled++}
           loadLiveSessions={async () => []}
           {...props}
@@ -122,6 +126,7 @@ async function mount(props: Partial<SessionsScreenProps> & Pick<SessionsScreenPr
     press: (sequence: string, done: () => boolean, label: string) =>
       pressUntil(s => stdin.write(s), sequence, done, label),
     selected,
+    keptRunning,
     cancelled: () => cancelled,
     unmount: () => root.unmount(),
   }
@@ -161,6 +166,28 @@ describe('SessionsScreen', () => {
       expect(screen.selected).toEqual([])
       await screen.press(ENTER, () => screen.selected.length > 0, 'the switch')
       expect(screen.selected).toEqual([other])
+      expect(screen.keptRunning).toEqual([undefined])
+    } finally {
+      screen.unmount()
+    }
+  }, 30_000)
+
+  test('in the confirmation, B switches and keeps the work running', async () => {
+    const other = log('other', 5, 'Another session')
+    const screen = await mount({
+      logs: [log('cur', 0, 'This one'), other],
+      getRunningWork: () => 'the running turn',
+    })
+    try {
+      await screen.press(
+        ENTER,
+        () => screen.frame().includes('B to keep it running'),
+        'the confirmation',
+      )
+      expect(screen.selected).toEqual([])
+      await screen.press('b', () => screen.selected.length > 0, 'the switch')
+      expect(screen.selected).toEqual([other])
+      expect(screen.keptRunning).toEqual([true])
     } finally {
       screen.unmount()
     }
