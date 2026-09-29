@@ -154,7 +154,9 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
     '*** Move to',
     '*** End of File',
     '@@',
-    'atomic',
+    // Since 2026-09-29 what matches is applied and the rest is reported; the
+    // prompt must say so, or the model re-sends whole patches again.
+    'NOT applied',
     // The format rules whose absence cost six malformed patches in the v2 A/B
     // (team memory `prompts-v2-2026-09`): a compaction must keep them.
     'Each hunk begins with a "@@" line',

@@ -4,6 +4,8 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
+- [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — unread exact-match files patched; Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`
+- [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — max→xhigh, xhigh→high −24%; `CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN=0`
 - [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined to stock values; feature-flags.json gone; 6 `CLAUDIN_*` killswitches
 - [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `then` arms the response guard by default; `=0` killswitches
@@ -21,7 +23,7 @@
 - [memory_delta deleted 2026-08-07](decisions/memory-delta-removed-double-send.md) — a second full copy, not a delta (~57 KB/session)
 - Repo map / code index — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
 - [LSPTool back since 2026-06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only 9 ops, cache-safe; built-in servers removed
-- [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=0` turns it off; sonnet; A/B: tool calls −29%, cost −9% (overlap), wall +30%
+- [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — `CLAUDIN_EXPLORE_AGENT=0` off; calls −29%, cost −9% (overlap), wall +30%
 - [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks, a named agent stays fresh; auto-background opt-in
 - [Git tool (D2), shipped 2026-08-04](decisions/git-tool-design.md) — cost −11.5%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — projects[].activeEffortForProject; `/effort inherit` clears
@@ -38,7 +40,7 @@
 
 ## Bugs
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — the Write branch of extractReadFilesFromMessages skips is_error
-- [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — query loop read the parent's app state; definitions, /agents, per-call `model` were inert
+- [Sub-agents ran on the PARENT's model — FIXED 2026-09-25](bugs/subagents-ran-on-parent-model.md) — query loop read the parent's app state
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set lists `'agent:builtin'` exactly, built-ins run as `agent:builtin:<Type>`; not fixed
 - [Agent schema dropped run_in_background and name — FIXED 09-26](bugs/agent-schema-drops-run-in-background.md) — import-time schema freeze + swarm filter; now trimmed per request
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — phantom `noop`; `claudin install`, `mcp serve` broken
@@ -53,6 +55,7 @@
 - [WaitFor dropped its optional params — FIXED in #244](bugs/waitfor-drops-optional-params.md) — Bash's updatedInput clobbered them; Monitor too
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
 - [Resume re-wrote the whole prompt cache — FIXED 2026-09-23](bugs/resume-rewrites-cache-prefix.md) — 40%→100% read-back (#239); cache.md §7
+- [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — empty private dir → legacy team/ copied back; 29 untracked (09-28)
 
 ## Docs
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
@@ -91,6 +94,7 @@
 - [growthbook.ts — stub made real, then deleted 09-25](growthbook-source-dead-stub-is-real.md) — a module-wide build stub leaves source dead but tested
 - [CLAUDIN_SYNC_PLUGIN_INSTALL hung headless -p — FIXED #57](headless-sync-plugin-install-broken-import.md) — real TS2307 vs the ~107 expected
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
+- [Token census 09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) — thinking stays resident (k≈1.0); 5m-TTL waits $65; Bash filter not a lever
 - [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
 - Weekly token censuses: [09-04..08](weekly-token-census-2026-09-08.md) · [09-14..20](weekly-token-census-2026-09-20.md) — reads 45%→68%; no compaction on 1M = $355-580/wk
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — outline 100% success; its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
@@ -107,7 +111,6 @@
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20; md5 split gate, back-edge trap
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy (#156)](context-relief-unified-policy-ab.md) — cost −25%; on 1M the retain floor sits ABOVE its band
-- [Clip-pin A/B 2026-07-25](clip-pin-cache-ab-2026-07-25.md) — STALE number, don't cite; kept for its three bench traps
 - [Product roadmap 2026-07](roadmap-2026-07.md) — R1 cost routing → R2 sandbox → R3 bg agent ✅ → R4 replay eval → R5 MCP Apps · [token-efficiency](token-efficiency-roadmap.md)
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3 Read re-read dedup (~9.5%) and D4 open
@@ -115,7 +118,7 @@
 - [Bash-as-file-reader census + redirect reach (08-09/16)](bash-file-read-census-and-redirect-reach.md) — refusal converted 84.7%
 - [Auto-outline pivot's false cap claim (08-09)](auto-outline-pivot-false-cap-claim.md) — 1,809 is an upper bound; PR #67 closed on it
 - [Token-bench measurement traps](token-bench-measurement-traps.md) — `--allowedTools` doesn't remove tools; check range overlap
-- Bench traps: [cache-ab-bench bugs](cache-ab-bench-unreliable.md) · [head-anchor, unmerged](cache-head-anchor-branch-state.md) · [-p orphans bg agents](headless-bg-agents-not-drained.md)
+- Bench traps: [cache-ab-bench bugs](cache-ab-bench-unreliable.md) · [head-anchor, unmerged](cache-head-anchor-branch-state.md) · [-p orphans bg agents](headless-bg-agents-not-drained.md) · [clip-pin A/B, stale number](clip-pin-cache-ab-2026-07-25.md)
 - [R3 background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch, triggers, worktree+PR
 - [/create bundled skill](create-skill-bundled-pr.md) — loader gotchas incl. agent frontmatter `model`
 - [Fork vs fresh A/B 2026-09-09](fork-vs-fresh-ab-2026-09-09.md) — fresh Code agent −44% at equal answers; 3 parallel forks pass
@@ -126,16 +129,17 @@
 - [RunTests language coverage](runtests-tool-language-coverage.md) — 23 runners; JUnit/JSON vs heuristic tier
 - Search: [stack measured 08-12](search-stack-measured.md) (corrected same day) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable, sync scanSymbols blocks
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
-- Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) — 09-22 supersedes the cost gap
+- Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md) — 09-22 supersedes the cost gap
 - [Session cache A/B vs Claude Code (09-23/24)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; @medium +14%; run arms simultaneously
+- [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24% disjoint, quality equal; relief 250k +7%, over-clips 3× (1.7 c/t vs 3.5)
 - [Session cost round 3 (09-23)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't
 - [Prompts v2 — default since #242, cleanup pending](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); 4 `=0` killswitches to delete
 - [Request prefix, broken down](request-prefix-size-2026-09-23.md) — eager tools were ≈20k; deferred schemas unbilled; 17.3k vs CC 21.0k since 09-24
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — with `directory`: −7.7% cost, −25% output
 - [Dev tools deferred + Bash advice A/B (09-24)](dev-tools-deferred-advice-ab-2026-09-24.md) — no regression, prefix −3.3k; deferred RunTests unused
-- [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties Claude Code ($1.04, one run); catread +6%
+- [cat-read + batch-Read A/Bs (09-24)](cat-read-and-batch-read-ab-2026-09-24.md) — batch Read ties Claude Code ($1.04, one run); catread +6% · [read-files 09-29](read-files-ab-2026-09-29.md): +13%, gate failed
 - [Fewer requests per session — 4 rounds (09-25)](request-count-levers-2026-09-24.md) — round 4: `then` and path-keeping cap PROMOTED; Grep bodies never engaged, parked
-- [Cut results cost ~0.3% of requests (09-25)](cut-results-request-cost-2026-09-25.md) — summarizer none; cap on `sed -n`/`head -N` reads in sub-agents is the leak
+- [Cut results cost ~0.3% of requests (09-25)](cut-results-request-cost-2026-09-25.md) — the leak (capped `sed -n`/`head -N` reads) is #252's target, unmeasured
 - [Single deferred cache marker → full-history rewrites — FIXED 09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of cache writes
 
 ## Providers & models
@@ -175,7 +179,7 @@
 - [Bash filter samples live in ONE dir](bash-filter-sample-corpus-unified.md) — __fixtures__/samples/; 87 of 142 unmapped
 - [Live-verifying TUI mouse under tmux](tmux-mouse-click-verification.md) — fullscreen only (CLAUDIN_NO_FLICKER=1); SGR via send-keys
 - [apply_patch failure taxonomy](apply-patch-failure-taxonomy.md) — 11.9% vs Edit 4.6%, mostly read gates (lifted in #242); parser repairs
-- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25; display (summarized too) cache-neutral; sub-agents inherit thinking
+- ["∴ <sentence>" lines are progress updates, not leaked thinking](progress-update-lines-read-as-leaked-thinking.md) — ● like CC since 09-25; display is cache-neutral
 
 ## References (sibling repos, wire formats, archives)
 - [openclaude: claudin's PARENT fork, mine it for BUGS](openclaude-sibling-fork-reference.md) — forked from 9e23c2be (04-25); ~5.5% of lines theirs; LICENSE attribution deferred; 17/28 bug claims real
@@ -183,5 +187,4 @@
 - [opencode (SST) feature gaps](opencode-sst-feature-gap-reference.md) — auto-format, LSP-diagnostics-on-edit, ACP/Zed, part-revert · [OAuth port queue](web-login-provider-port-queue.md)
 - [Windsurf upstream reference](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — SSL_CERT_FILE + NODE_EXTRA_CA_CERTS + REQUESTS_CA_BUNDLE
-- Devin RE: [backend](devin-shares-codeium-backend.md) · [wire quirks](devin-oauth-quirks.md) · [f31 vs quota](devin-port-works-quota-blocker.md) · [f31 RE](devin-f31-characterization.md) · [A/B method](devin-wire-ab-procedure.md)
-- [Devin provider port — ARCHIVED to docs](../../../docs/tech/devin-provider/README.md) — abandoned 06-12 on f31 attestation
+- Devin RE, port [ARCHIVED 06-12](../../../docs/tech/devin-provider/README.md): [backend](devin-shares-codeium-backend.md) · [wire quirks](devin-oauth-quirks.md) · [f31 vs quota](devin-port-works-quota-blocker.md) · [f31 RE](devin-f31-characterization.md) · [A/B method](devin-wire-ab-procedure.md)

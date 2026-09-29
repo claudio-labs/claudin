@@ -69,7 +69,8 @@ The bench's pre-registered gates all passed for explore and for the placebo.
 **Rejected:**
 - **Read credit for the parent's gate:** format only, user pick. The Bash credit
   cost +6% on top of the batch Read ([[bash-read-passthrough-not-promoted]]). A
-  Patch on a never-read file costs one refusal plus `*** Resubmit`.
+  Patch on a never-read file cost one refusal plus `*** Resubmit` until
+  2026-09-29; now it applies when its hunks match exactly ([[patch-applies-what-matches]]).
 - **Haiku default:** the user chose Sonnet.
 
 **Evidence:**

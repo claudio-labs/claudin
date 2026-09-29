@@ -163,10 +163,14 @@ function GroupRow({
 
 function ApplyPatchResultMessage({
   files,
+  notApplied,
+  alreadyApplied,
   then,
   verbose,
 }: {
   files: ApplyPatchFileResult[]
+  notApplied: number
+  alreadyApplied: number
   then: ThenRun[] | undefined
   verbose: boolean
 }): React.ReactNode {
@@ -193,6 +197,12 @@ function ApplyPatchResultMessage({
           onToggle={() => toggle(group.type)}
         />
       ))}
+      {notApplied > 0 ? (
+        <Text color="warning">{`${notApplied} change${notApplied === 1 ? '' : 's'} not applied`}</Text>
+      ) : null}
+      {alreadyApplied > 0 ? (
+        <Text dimColor>{`${alreadyApplied} already applied`}</Text>
+      ) : null}
       {(then ?? []).map(run => (
         <Text key={run.command} dimColor={run.ran && run.exitCode === 0}>
           {`$ ${run.command}  `}
@@ -205,7 +215,7 @@ function ApplyPatchResultMessage({
           )}
         </Text>
       ))}
-      <Text dimColor>run /diff to review full changes</Text>
+      {files.length > 0 ? <Text dimColor>run /diff to review full changes</Text> : null}
     </Box>
   )
 }
@@ -216,6 +226,16 @@ export function renderToolResultMessage(
   { verbose }: { verbose: boolean },
 ): React.ReactNode {
   const { files, then } = output
-  if (files.length === 0) return null
-  return <ApplyPatchResultMessage files={files} then={then} verbose={verbose} />
+  const notApplied = output.notApplied?.length ?? 0
+  const alreadyApplied = output.alreadyApplied?.length ?? 0
+  if (files.length === 0 && alreadyApplied === 0) return null
+  return (
+    <ApplyPatchResultMessage
+      files={files}
+      notApplied={notApplied}
+      alreadyApplied={alreadyApplied}
+      then={then}
+      verbose={verbose}
+    />
+  )
 }

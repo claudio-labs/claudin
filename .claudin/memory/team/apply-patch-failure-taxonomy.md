@@ -46,6 +46,44 @@ byte-identically, 25 rescued, 0 regressed, 0 changed**. Keep that replay in mind
 before touching this parser again — leniency changes must be diffed against the
 corpus, not argued about.
 
-`prompt.ts` was deliberately NOT touched: its DESCRIPTION is frozen per session in
-the cached tool block, so any byte change invalidates the whole prompt cache, and
-the strict format is still what the model should aim for.
+**5. Unprefixed Add File line (2026-09-29)** → kept as content, WHOLE line: an
+Add body holds nothing else. Replay of 6,671 real payloads: 6,544 identical, 2
+rescued (a 434-line doc patch sunk by one markdown line; a Go test file written
+raw after its first `+`), 0 regressed, 0 changed.
+
+**Position misses are most of the "context mismatch" bucket (2026-09-29).** Of 85
+real hunks failing with "none of the N line(s) below appear at or after line K",
+65 had their lines re-sent verbatim by a patch that applied (an upper bound).
+Strictly, the retry for that file was the SAME hunks only reordered in 38 of 83
+sections: 36 of 81 failed calls were pure reorders, and their retries cost 123k
+output tokens (~3.4k per event, almost all Opus). Verified on the bench's three
+cases ([[build-project-ab-bench-2026-09-29]]): bare-`@@` hunks sent at lines
+79→11 and 51→20. Sorted, they apply byte-identical to the model's own retry.
+Cause: `computeReplacements` searches each body from a cursor that only
+advances, while the applier already sorts and guards overlaps. The body
+message ("written from memory") never looks before the cursor, unlike the
+anchor one. prompt.ts recommends a bare `@@` as the safe choice without saying
+that hunks must follow file order.
+
+**6. Out-of-order bare hunk (2026-09-29)** → FIXED. A bare `@@` chunk (no
+anchor, no End of File) not found at or after the cursor takes the block's
+unique match anywhere in the file (`findAllByLadder`: the tightest pass that
+matches decides). The cursor never moves back, and the existing sort plus
+overlap guard handle the rest. Anchored chunks are never moved. The miss
+message now names the line(s) where the block sits above the search start.
+All 38 real reorder sections were bare. The TDD red run was 5/6 tests;
+`scripts/migrations/probes/patchOutOfOrderHunks.json` has 7 probes, all red.
+Both bench patches now apply as sent, byte-identical to the model's retry.
+
+**7. The rest of the re-send: atomicity itself (2026-09-29)** → FIXED by
+[[patch-applies-what-matches]]. After the reorder fix, 115 real failed calls
+still had a retry: 603k chars, of which 227k were sections that had not failed
+and 146k hunks that had not failed inside failing sections — ~62% re-sent only
+because nothing was written. The remaining categories: content wrong (36
+sections, a real model error), retry dropped hunks (6), no retry (2 unique: the
+model gave up on Patch and rewrote the file with Write/Edit). Patch now applies
+what matches and lists the rest, so a retry carries only the failed hunks.
+
+`prompt.ts` changed with #7 only: the atomic/all-or-nothing lines became the
+partial rule, since they had become false. Its DESCRIPTION is frozen per
+session in the cached tool block, so edit it only when it stops being true.

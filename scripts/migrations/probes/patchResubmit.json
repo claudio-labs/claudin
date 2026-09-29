@@ -1,61 +1,14 @@
 {
   "test": [
     "src/agent/tools/toolExecution.resolveInput.test.ts",
-    "src/tools/ApplyPatchTool/applyPatch.test.ts",
-    "src/agent/queryHelpers.extractReadFiles.test.ts",
-    "src/__tests__/readGateScenarios.test.ts"
+    "src/agent/queryHelpers.extractReadFiles.test.ts"
   ],
   "source": "src/tools/ApplyPatchTool/applyPatch.ts",
   "probes": [
     {
-      "name": "the sentinel is never resolved",
-      "find": "  if (!isResubmitSentinel(input.patchText)) return { ok: true, input }",
-      "replace": "  return { ok: true, input }"
-    },
-    {
-      "name": "another Patch call does not drop the kept patch",
-      "find": "  pendingResubmits.delete(context.readFileState)\n  if (!isResubmitSentinel(input.patchText))",
-      "replace": "  if (!isResubmitSentinel(input.patchText))"
-    },
-    {
-      "name": "the killswitch is ignored when resolving",
-      "find": "  if (!isResubmitEnabled()) return { ok: true, input }\n",
-      "replace": ""
-    },
-    {
-      "name": "a patch with an unserved problem is kept too",
-      "find": "  const resubmit = servedFailures === failures.length && isResubmitEnabled()",
-      "replace": "  const resubmit = isResubmitEnabled()"
-    },
-    {
-      "name": "the killswitch is ignored when refusing",
-      "find": "servedFailures === failures.length && isResubmitEnabled()",
-      "replace": "servedFailures === failures.length"
-    },
-    {
-      "name": "the refusal does not say how to resubmit",
-      "find": "    if (shown.length === 1) return fail(shown[0] + RESUBMIT_HINT, firstErrorCode)",
-      "replace": "    if (shown.length === 1) return fail(shown[0], firstErrorCode)"
-    },
-    {
-      "name": "a served section keeps telling the model to resend",
-      "find": "    const shown = failures.map(m => m.replace(SERVED_RESEND, ':'))",
-      "replace": "    const shown = failures"
-    },
-    {
-      "name": "a multi-file resubmit keeps the fix-all header",
-      "find": "      `${APPLY_PATCH_TOOL_NAME} found ${shown.length} problems, each shown with the lines it needs:\\n` +",
-      "replace": "      `${APPLY_PATCH_TOOL_NAME} found ${shown.length} problems — fix all of them, then resubmit the whole patch:\\n` +"
-    },
-    {
-      "name": "a served never-read refusal is not counted",
-      "find": "        note(message + servedSuffix(served), 2)\n        servedFailures++",
-      "replace": "        note(message + servedSuffix(served), 2)"
-    },
-    {
       "name": "the tool loop never calls resolveInput",
       "source": "src/agent/tools/toolExecution.ts",
-      "find": "  const resolution = tool.resolveInput\n    ? tool.resolveInput(parsedInput.data, toolUseContext)\n    : ({ ok: true, input: parsedInput.data } as const)",
+      "find": "  const resolution = tool.resolveInput\n    ? await tool.resolveInput(parsedInput.data, toolUseContext)\n    : ({ ok: true, input: parsedInput.data } as const)",
       "replace": "  const resolution = { ok: true, input: parsedInput.data } as const"
     },
     {

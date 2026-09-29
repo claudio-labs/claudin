@@ -1,0 +1,108 @@
+{
+  "test": [
+    "src/tools/ApplyPatchTool/applyPatch.test.ts",
+    "src/tools/ApplyPatchTool/patchFormat.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts",
+    "src/__tests__/readGateScenarios.test.ts"
+  ],
+  "source": "src/tools/ApplyPatchTool/applyPatch.ts",
+  "probes": [
+    {
+      "name": "a failing hunk stops the hunks after it",
+      "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+      "find": "        outcomes[section]![i] = { kind: 'failed', message: e instanceof Error ? e.message : String(e) }",
+      "replace": "        throw e"
+    },
+    {
+      "name": "a hunk that fails anywhere fails the whole call",
+      "find": "  if (notApplied.length && (strict || staged.length === 0)) {",
+      "replace": "  if (notApplied.length) {"
+    },
+    {
+      "name": "a change already on disk is not recognized",
+      "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+      "find": "    if (recognizable(newSlice) && !sameLines(newSlice, pattern)) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "a lone short line counts as an applied change",
+      "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+      "find": "const recognizable = (lines: string[]): boolean => lines.some(line => line.trim().length > 1)",
+      "replace": "const recognizable = (lines: string[]): boolean => lines.some(line => line.trim().length > 0)"
+    },
+    {
+      "name": "an insertion already in place is inserted again",
+      "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+      "find": "    if (recognizable(chunk.newLines) && from >= 0 && sameLines(originalLines.slice(from, from + n), chunk.newLines)) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "the same hunk twice is applied twice",
+      "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+      "find": "    if (currStart === prevStart && currLen === prevLen && sameLines(currLines, prevLines)) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "of two overlapping hunks the first still applies",
+      "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+      "find": "      outcomes[p.section]![p.chunk] = { kind: 'failed', message }\n      kept.pop()\n",
+      "replace": "      outcomes[p.section]![p.chunk] = { kind: 'failed', message }\n"
+    },
+    {
+      "name": "an Add with the same content is refused",
+      "find": "    if (!strict && readFileForStaging(absPath).content === addContent(first)) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "a Delete of a file already gone is refused",
+      "find": "    if (first.type === 'delete' && !strict) return { kind: 'already', group, note: `${rel}: the file is already gone` }",
+      "replace": ""
+    },
+    {
+      "name": "two Update sections of one file are refused",
+      "find": "  if (hunks.length > 1 && (strict || hunks.some(h => h.type !== 'update' || h.movePath))) {",
+      "replace": "  if (hunks.length > 1) {"
+    },
+    {
+      "name": "a file never read is patched even when its hunks do not match it",
+      "find": "    if (!matchesExactly(hunks, absPath)) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "a Delete of a file never read is applied",
+      "find": "    if (first.type === 'delete') return problem(message, true)\n",
+      "replace": ""
+    },
+    {
+      "name": "a file never read is refused although every hunk matches it",
+      "find": "    unread = true\n",
+      "replace": "    return problem(message, true)\n"
+    },
+    {
+      "name": "validation refuses a patch with anything that can apply",
+      "find": "  if (problems.length === 0 || (!strict && problems.length < plans.length)) return { result: true }",
+      "replace": "  if (problems.length === 0) return { result: true }"
+    },
+    {
+      "name": "the summary leaves out what did not apply",
+      "find": "  if (notApplied.length) out.push('NOT applied — send a patch with only these hunks:', bullets(notApplied))\n",
+      "replace": ""
+    },
+    {
+      "name": "then runs on a patch that applied in part",
+      "find": "  const n = output.notApplied?.length ?? 0\n",
+      "replace": "  const n = 0\n"
+    },
+    {
+      "name": "the killswitch is ignored",
+      "find": "  return isEnvTruthy(process.env.CLAUDIN_PATCH_ALL_OR_NOTHING)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "resume takes the files from the input, not from the result",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "              applyPatchResultTargets(message.toolUseResult) ?? applyPatchTargets(patchText, cwd)",
+      "replace": "              applyPatchTargets(patchText, cwd)"
+    }
+  ]
+}

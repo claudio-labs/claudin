@@ -22,6 +22,10 @@
  * - `runThen` (call) runs them through BashTool's own call — output filter,
  *   sandbox, cwd and timeout as a Bash call would have them — in order, and
  *   stops at the first that fails.
+ *
+ * Only the first MAX_THEN_COMMANDS run, so only those are judged — by the
+ * skip check, the permission fold and the classifier. Any past them are kept
+ * in the input and come back in the result as not run.
  */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { ToolUseContext } from 'src/tools/Tool.js'
@@ -31,9 +35,12 @@ import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
 import { hasHookForEvent } from 'src/platform/lifecycleHooks/matching.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { errorMessage, ShellError } from 'src/shared/errors.js'
-import { thenCommands, type ThenRun } from 'src/tools/shared/editThen/editThenShape.js'
+import { MAX_THEN_COMMANDS, thenCommands, type ThenRun } from 'src/tools/shared/editThen/editThenShape.js'
 
 type ThenInput = { then?: readonly string[] | null }
+
+/** The commands that run, and so the only ones judged: the first MAX_THEN_COMMANDS. */
+const commandsThatRun = (commands: readonly string[]): string[] => commands.slice(0, MAX_THEN_COMMANDS)
 
 export type EditThenDeps = {
   permissionFor(command: string, context: ToolUseContext): Promise<PermissionResult>
@@ -142,7 +149,7 @@ export async function resolveThen<T extends object>(
   const { then: _dropped, ...rest } = input as T & ThenInput
   const commands = thenCommands(input as ThenInput)
   if (commands.length === 0) return rest as T
-  const reason = await thenSkipReason(commands, context, deps)
+  const reason = await thenSkipReason(commandsThatRun(commands), context, deps)
   if (reason === null) return { ...input, then: commands }
   skipNotes.set(context.readFileState, reason)
   return rest as T
@@ -162,7 +169,7 @@ export async function foldThenPermission<I extends Record<string, unknown>>(
   context: ToolUseContext,
   deps: EditThenDeps = DEFAULT_EDIT_THEN_DEPS,
 ): Promise<PermissionDecision> {
-  const commands = thenCommands(input as ThenInput)
+  const commands = commandsThatRun(thenCommands(input as ThenInput))
   if (commands.length === 0 || editDecision.behavior === 'deny') return editDecision
   const decisions = await Promise.all(commands.map(command => deps.permissionFor(command, context)))
   const denied = decisions.find(decision => decision.behavior === 'deny')
@@ -183,12 +190,15 @@ export async function foldThenPermission<I extends Record<string, unknown>>(
 
 /** What the auto-mode classifier judges: the edit, then each command. */
 export function thenClassifierInput(base: string, input: object): string {
-  const commands = thenCommands(input as ThenInput)
+  const commands = commandsThatRun(thenCommands(input as ThenInput))
   if (commands.length === 0) return base
   return `${base}\n\nthen, in order:\n${commands.map(command => `$ ${command}`).join('\n')}`
 }
 
-/** Runs the commands in order; the first that fails leaves the rest unrun. */
+/**
+ * Runs the first MAX_THEN_COMMANDS in order; the first that fails leaves the
+ * rest unrun. Any past the limit are never run, and come back `overLimit`.
+ */
 export async function runThen(
   commands: readonly string[],
   context: ToolUseContext,
@@ -196,7 +206,7 @@ export async function runThen(
 ): Promise<ThenRun[]> {
   const runs: ThenRun[] = []
   let failed = false
-  for (const command of commands) {
+  for (const command of commandsThatRun(commands)) {
     if (failed) {
       runs.push({ command, ran: false, exitCode: null, output: '' })
       continue
@@ -204,6 +214,9 @@ export async function runThen(
     const { exitCode, output } = await deps.runCommand(command, context)
     runs.push({ command, ran: true, exitCode, output })
     if (exitCode !== 0) failed = true
+  }
+  for (const command of commands.slice(MAX_THEN_COMMANDS)) {
+    runs.push({ command, ran: false, exitCode: null, output: '', overLimit: true })
   }
   return runs
 }
@@ -213,7 +226,11 @@ export function formatThen(runs: readonly ThenRun[] | undefined, skipNote: strin
   const parts: string[] = []
   for (const run of runs ?? []) {
     if (!run.ran) {
-      parts.push(`Not run, an earlier command failed: $ ${run.command}`)
+      parts.push(
+        run.overLimit
+          ? `Not run, \`then\` runs only its first ${MAX_THEN_COMMANDS} commands: $ ${run.command}`
+          : `Not run, an earlier command failed: $ ${run.command}`,
+      )
       continue
     }
     const status =

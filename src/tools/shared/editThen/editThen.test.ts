@@ -94,13 +94,15 @@ describe('thenSchemaFields', () => {
     expect(Object.keys(thenSchemaFields())).toEqual([])
   })
 
-  test(`unset, the default: a nullable list of at most ${MAX_THEN_COMMANDS}`, () => {
+  test('unset, the default: a nullable list of any length', () => {
+    // A list past MAX_THEN_COMMANDS used to fail the parse, and with it the
+    // whole edit: the first ones run, the rest are listed as not run.
     delete process.env[EDIT_THEN_ENV]
     const { then } = thenSchemaFields()
     expect(then.safeParse(['bun test']).success).toBe(true)
     expect(then.safeParse(null).success).toBe(true)
     expect(then.safeParse(undefined).success).toBe(true)
-    expect(then.safeParse(['a', 'b', 'c', 'd']).success).toBe(false)
+    expect(then.safeParse(['a', 'b', 'c', 'd', 'e']).success).toBe(true)
   })
 })
 
@@ -273,6 +275,65 @@ describe('runThen', () => {
   })
 })
 
+// Until 2026-09-29 the schema capped `then` at MAX_THEN_COMMANDS, so a longer
+// list made zod refuse the whole edit before the tool ever saw it: 3 of 5
+// build-bench sessions re-sent a whole Patch over it (build-project-ab round 4).
+// Every command now parses; the first MAX_THEN_COMMANDS are judged and run, and
+// the rest are listed in the result as not run.
+describe(`past ${MAX_THEN_COMMANDS} commands`, () => {
+  const five = ['a', 'b', 'c', 'd', 'e']
+  const editAllow: PermissionDecision = { behavior: 'allow', updatedInput: { files: 'placeholder' } }
+
+  test('the first ones run, and the rest come back not run, over the limit', async () => {
+    const d = deps()
+    const runs = await runThen(five, contextIn('auto'), d)
+    expect(d.ran).toEqual(['a', 'b', 'c'])
+    expect(runs.map(r => [r.command, r.ran, r.overLimit === true])).toEqual([
+      ['a', true, false],
+      ['b', true, false],
+      ['c', true, false],
+      ['d', false, true],
+      ['e', false, true],
+    ])
+  })
+
+  test('after a failure the ones within the limit are skipped, and the rest are still over it', async () => {
+    const d = deps({}, { exits: { a: 1 } })
+    const runs = await runThen(['a', 'b', 'c', 'd'], contextIn('auto'), d)
+    expect(d.ran).toEqual(['a'])
+    expect(runs.map(r => [r.ran, r.overLimit === true])).toEqual([
+      [true, false],
+      [false, false],
+      [false, false],
+      [false, true],
+    ])
+  })
+
+  test('a command past the limit is never judged: its denial does not drop the others', async () => {
+    const context = contextIn('auto')
+    expect(await resolveThen({ patchText: 'p', then: five }, context, deps({ e: deny }))).toEqual({
+      patchText: 'p',
+      then: five,
+    })
+    expect(takeThenSkipNote(context)).toBeUndefined()
+  })
+
+  test('nor folded into the permission', async () => {
+    const out = await foldThenPermission({ patchText: 'p', then: five }, editAllow, contextIn('auto'), deps({ d: ask, e: deny }))
+    expect(out.behavior).toBe('allow')
+  })
+
+  test('nor shown to the classifier', () => {
+    expect(thenClassifierInput('a.ts: x', { then: five })).toBe('a.ts: x\n\nthen, in order:\n$ a\n$ b\n$ c')
+  })
+
+  test('the result names each one and why it did not run', () => {
+    expect(formatThen([{ command: 'make build', ran: false, exitCode: null, output: '', overLimit: true }], undefined)).toBe(
+      `\n\nNot run, \`then\` runs only its first ${MAX_THEN_COMMANDS} commands: $ make build`,
+    )
+  })
+})
+
 describe('formatThen', () => {
   test('nothing to say, nothing added', () => {
     expect(formatThen(undefined, undefined)).toBe('')
@@ -334,6 +395,7 @@ describe('the edit tools carry `then` only with the flag', () => {
     expect(off.safeParse({ ...patch, then: ['bun test'] }).success).toBe(false)
     expect(on.safeParse({ ...patch, then: ['bun test'] }).success).toBe(true)
     expect(on.safeParse(patch).success).toBe(true)
+    expect(on.safeParse({ ...patch, then: ['gofmt -l .', 'go vet ./...', 'go test ./...', 'make build'] }).success).toBe(true)
   })
 
   test('Edit: the strict schema refuses `then` off and takes it on', async () => {
@@ -342,6 +404,7 @@ describe('the edit tools carry `then` only with the flag', () => {
     const on = await withThen<SchemaModule, Schema>(spec, true, m => m.inputSchema())
     expect(off.safeParse({ ...edit, then: ['bun test'] }).success).toBe(false)
     expect(on.safeParse({ ...edit, then: ['bun test'] }).success).toBe(true)
+    expect(on.safeParse({ ...edit, then: ['a', 'b', 'c', 'd'] }).success).toBe(true)
   })
 
   test('the prompts name `then` only with the flag', async () => {

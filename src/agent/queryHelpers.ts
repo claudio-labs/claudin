@@ -125,6 +125,34 @@ function applyPatchTargets(
 }
 
 /**
+ * Every path a Patch call wrote or removed, from the files its result lists —
+ * exact since a patch applies the hunks that match and reports the rest
+ * (2026-09-29): its input names files it never wrote. `null` for a transcript
+ * written before the result carried them.
+ */
+function applyPatchResultTargets(
+  toolUseResult: unknown,
+): { written: string[]; deleted: string[] } | null {
+  if (typeof toolUseResult !== 'object' || toolUseResult === null) return null
+  const { files } = toolUseResult as { files?: unknown }
+  if (!Array.isArray(files)) return null
+  const written: string[] = []
+  const deleted: string[] = []
+  for (const f of files as Array<{ absPath?: unknown; type?: unknown; movePath?: unknown }>) {
+    if (typeof f?.absPath !== 'string') continue
+    if (f.type === 'delete') {
+      deleted.push(f.absPath)
+    } else if (f.type === 'move' && typeof f.movePath === 'string') {
+      deleted.push(f.absPath)
+      written.push(f.movePath)
+    } else {
+      written.push(f.absPath)
+    }
+  }
+  return { written, deleted }
+}
+
+/**
  * Checks if the result should be considered successful based on the last message.
  * Returns true if:
  * - Last message is assistant with text/thinking content
@@ -752,11 +780,13 @@ export function extractReadFilesFromMessages(
             cacheFromDisk(editFilePath)
           }
 
-          // Patch: same as Edit, for every file the patch named. Its
-          // result text is a per-file summary, so disk is the only source.
+          // Patch: same as Edit, for every file the patch wrote — the files
+          // its result lists, or, in an older transcript, every file the
+          // patch named. The content comes from disk either way.
           const patchText = applyPatchToolUseIds.get(content.tool_use_id)
           if (patchText && content.is_error !== true) {
-            const { written, deleted } = applyPatchTargets(patchText, cwd)
+            const { written, deleted } =
+              applyPatchResultTargets(message.toolUseResult) ?? applyPatchTargets(patchText, cwd)
             for (const filePath of deleted) {
               cache.delete(filePath)
               readAuthored.delete(filePath)
