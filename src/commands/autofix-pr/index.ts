@@ -40,6 +40,7 @@ const command = {
   type: 'prompt',
   name: 'autofix-pr',
   description: 'Address open review feedback on the current PR',
+  argumentHint: '[--dry-run] [extra instructions]',
   allowedTools: ALLOWED_TOOLS,
   contentLength: 0,
   progressMessage: 'autofixing PR comments',

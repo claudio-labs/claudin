@@ -29,6 +29,7 @@ const review: Command = {
   type: 'prompt',
   name: 'review',
   description: 'Review a pull request',
+  argumentHint: '[pr-number]',
   progressMessage: 'reviewing pull request',
   contentLength: 0,
   source: 'builtin',

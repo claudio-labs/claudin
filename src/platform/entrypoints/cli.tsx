@@ -1,4 +1,8 @@
 import { feature } from 'bun:bundle';
+// Static on purpose, unlike every other import here: it is a ten-line pure
+// function the bundler folds into this entry chunk, so it costs no file I/O on
+// the fast paths, and `-help` has to be rewritten before they run.
+import { normalizeHelpAlias } from 'src/platform/entrypoints/helpAlias.js';
 // NOTE: `validateProviderEnvForStartupOrExit` is dynamic-imported below
 // (inside `main()`) on purpose. The static graph of providerValidation
 // → providerConfig pulls a ~580 KB chunk (zod schemas eagerly built at
@@ -112,7 +116,11 @@ const SUBCOMMAND_NAME_RE = /^[a-z][a-z0-9-]*$/;
  * Fast-path for --version has zero imports beyond this file.
  */
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+  const rawArgs = process.argv.slice(2);
+  // `claudin -help` → `--help`. Commander would call it an unknown option; the
+  // fast path below and its slow-path fallback both need to see the real flag.
+  const args = normalizeHelpAlias(rawArgs);
+  if (args !== rawArgs) process.argv = [...process.argv.slice(0, 2), ...args];
 
   // Fast-path for --version/-v: zero module loading needed
   if (args.length === 1 && (args[0] === '--version' || args[0] === '-v' || args[0] === '-V')) {

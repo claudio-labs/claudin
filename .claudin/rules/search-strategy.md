@@ -158,7 +158,7 @@ src/
 │   ├── diagnostics/ (4)         ← log-error extraction, exit-code and health diagnosis
 │   ├── docker/ (6)              ← CLI wrappers: ps/inspect, the `docker events` watcher
 │   └── build/ (2)               ← compose build parsing and progress
-├── sessions/ (89)               ← persistence/, resume/, indexing/, conversationRecovery, ui/,
+├── sessions/ (104)              ← persistence/, resume/, indexing/, conversationRecovery, ui/,
 │                                  peers/ (the cross-session inbox SendMessage and ListAgents
 │                                  reach other local sessions through; docs/features/cross-session-messaging.md)
 ├── vcs/ (77)                    ← git/ (wrapper, gh PR status) + diff/ (the /diff reviewer).
