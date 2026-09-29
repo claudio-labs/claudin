@@ -355,6 +355,30 @@ export function getBytesPerTokenForModel(model: string): number {
 }
 
 /**
+ * Chars per token of TOOL OUTPUT — numbered file reads, grep hits, shell
+ * output — on Claude, measured, where the family table above is a snapshot of
+ * public figures for prose. The same samples sent with `max_tokens: 1`,
+ * input_tokens with the sample minus without (2026-09-29):
+ *
+ *                                         Read   Bash   Grep   prose
+ *   Opus 4.7+, Sonnet 5, Fable 5.x        2.53   2.13   2.00   2.67
+ *   Opus ≤4.6, Sonnet 4.5/4.6, Haiku 4.5  3.35   2.75   2.78   3.66
+ *
+ * The figures below weigh them the way tool output does (reads ~65% of it).
+ * Only the relief clip uses them — it is the one caller that compares an
+ * estimate against REAL usage. Moving the family ratio would move autocompact,
+ * Read's cap and every other estimate, unmeasured.
+ */
+const CLAUDE_DENSE_TOKENIZER_RE = /claude-(?:opus-(?:4-[7-9]|[5-9])|sonnet-[5-9]|fable)/
+
+export function getToolOutputBytesPerToken(model: string): number {
+  const lower = model.toLowerCase()
+  if (CLAUDE_DENSE_TOKENIZER_RE.test(lower)) return 2.4
+  const config = getTokenizerConfig(lower)
+  return config.modelFamily === 'claude' ? 3.1 : config.bytesPerToken
+}
+
+/**
  * Like {@link roughTokenCountEstimation} but uses a more accurate
  * bytes-per-token ratio when the file type is known.
  *

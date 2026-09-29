@@ -74,7 +74,8 @@ export type ReliefDecision =
   | {
       kind: 'clip'
       lane: ReliefLane
-      /** How much the selected clips must free (estimated tokens). */
+      /** How much the selected clips must free: real tokens on the window
+       * lane once a response carried usage, estimated on the rss lane. */
       tokensToFree: number
       trigger: number
       target: number
