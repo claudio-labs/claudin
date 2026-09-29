@@ -69,34 +69,34 @@
       "replace": ""
     },
     {
-      "name": "the v2 switch rule reads any family",
+      "name": "the v2 family rule takes any family",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
-      "replace": "  return !isEnvDefinedFalsy(envValue)"
+      "find": "  return family === 'anthropic'",
+      "replace": "  return true"
     },
     {
-      "name": "the v2 switch rule falls back to opt-in",
+      "name": "the v2 family rule takes no family",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
-      "replace": "  return envValue === '1' && family === 'anthropic'"
+      "find": "  return family === 'anthropic'",
+      "replace": "  return false"
     },
     {
-      "name": "the v2 switch rule ignores its killswitch",
+      "name": "the compact descriptions stop following the main loop's family",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'",
-      "replace": "  return family === 'anthropic'"
+      "find": "export function isCompactToolPromptsEnabled(): boolean {\n  return isV2PromptFamily(getMainLoopFamily())",
+      "replace": "export function isCompactToolPromptsEnabled(): boolean {\n  return isV2PromptFamily('anthropic')"
     },
     {
-      "name": "the compact switch stops passing the live family",
+      "name": "the lean reminders stop following the main loop's family",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,\n    getFamilyForLogging(getMainLoopModel()),",
-      "replace": "    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,\n    'anthropic',"
+      "find": "export function isLeanRemindersEnabled(): boolean {\n  return isV2PromptFamily(getMainLoopFamily())",
+      "replace": "export function isLeanRemindersEnabled(): boolean {\n  return isV2PromptFamily('anthropic')"
     },
     {
-      "name": "the reminders switch stops passing the live family",
+      "name": "the main loop's family stops reading the live model",
       "source": "src/agent/prompts/toolPromptTier.ts",
-      "find": "    process.env.CLAUDIN_LEAN_REMINDERS,\n    getFamilyForLogging(getMainLoopModel()),",
-      "replace": "    process.env.CLAUDIN_LEAN_REMINDERS,\n    'anthropic',"
+      "find": "  return familyForTesting ?? getFamilyForLogging(getMainLoopModel())",
+      "replace": "  return familyForTesting ?? 'anthropic'"
     },
     {
       "name": "the skills listing ignores the lean cap",

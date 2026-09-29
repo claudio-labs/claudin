@@ -408,17 +408,6 @@ export function buildSearchingPastContextSection(
 }
 
 /**
- * The v2 memory prompt (teamMemPrompts.ts `buildLeanCombinedMemoryPrompt`).
- * Default ON since 2026-09-24 with the rest of the v2 prompt (team memory
- * `prompts-v2-2026-09`); getSystemPrompt applies it to the Anthropic family
- * only. `CLAUDIN_LEAN_MEMORY_PROMPT=0` restores the previous text; the
- * killswitch is slated for removal in a cleanup pass.
- */
-export function isLeanMemoryPromptEnabled(): boolean {
-  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_MEMORY_PROMPT)
-}
-
-/**
  * Load the unified memory prompt for inclusion in the system prompt.
  * Dispatches based on which memory systems are enabled:
  *   - auto + team: combined prompt (both directories)
@@ -426,7 +415,9 @@ export function isLeanMemoryPromptEnabled(): boolean {
  * Team memory requires auto memory (enforced by isTeamMemoryEnabled), so
  * there is no team-only branch.
  *
- * `lean` selects the v2 text of the combined prompt.
+ * `lean` selects the v2 text of the combined prompt
+ * (teamMemPrompts.ts `buildLeanCombinedMemoryPrompt`), which getSystemPrompt
+ * sends to the Anthropic family.
  *
  * Returns null when auto memory is disabled.
  */

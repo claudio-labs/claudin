@@ -2,7 +2,8 @@
   "test": [
     "src/agent/prompts/prompts.test.ts",
     "src/agent/prompts/steeringToggles.test.ts",
-    "src/memory/memdir/memoryPrompt.test.ts"
+    "src/memory/memdir/memoryPrompt.test.ts",
+    "src/agent/prompts/__tests__/promptFeatureCoverage.test.ts"
   ],
   "source": "src/agent/prompts/prompts.ts",
   "probes": [
@@ -22,16 +23,14 @@
       "replace": "`"
     },
     {
-      "name": "the lean toggle falls back to opt-in",
-      "source": "src/agent/prompts/steeringToggles.ts",
-      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)",
-      "replace": "  return isEnvTruthy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)"
+      "name": "the v2 prompt reaches every family",
+      "find": "  const lean = isV2PromptFamily(getFamilyForLogging(model))",
+      "replace": "  const lean = true"
     },
     {
-      "name": "the lean toggle ignores its killswitch",
-      "source": "src/agent/prompts/steeringToggles.ts",
-      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)",
-      "replace": "  return true"
+      "name": "the v2 memory stops following the family",
+      "find": "      loadMemoryPrompt(lean),",
+      "replace": "      loadMemoryPrompt(false),"
     },
     {
       "name": "the v2 memory ships the long category lines",

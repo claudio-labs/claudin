@@ -54,7 +54,7 @@ export type TeamCategory = {
   type: MemoryType
   /** The dense one-liner the system prompt ships every turn. */
   compact: string
-  /** The v2 prompt's one-liner (CLAUDIN_LEAN_MEMORY_PROMPT): the same bar, fewer words. */
+  /** The v2 prompt's one-liner (the Anthropic family): the same bar, fewer words. */
   lean: string
   /** Verbose renderings only (extraction, dream, sort). */
   description: string

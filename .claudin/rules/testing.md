@@ -178,8 +178,9 @@ when A executes first, regardless of `--max-concurrency=1`.
   the full run something leaves `getMainLoopModel()` ignoring
   `setMainLoopModelOverride` — a test that set `'gpt-5'` passed alone and failed
   in the suite; the leaking file was never found. Test through a pure seam that
-  takes the model or family as an argument (`isV2PromptSwitchOn(env, family)` in
-  `toolPromptTier.ts`) and pin the wiring on the source.
+  takes the model or family as an argument (`isV2PromptFamily(family)` in
+  `toolPromptTier.ts`) and pin the wiring on the source; to render what a family
+  receives, `_setToolPromptFamilyForTesting` there stands in for the model.
 - Bisecting a leak: halve the file list with the victim run last; some leaks are
   2-file (a loader + a re-eval trigger).
 - **Do not observe behaviour through an event.** Analytics is gone from this

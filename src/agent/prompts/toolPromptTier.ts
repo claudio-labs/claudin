@@ -1,6 +1,5 @@
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { getFamilyForLogging, type ModelFamily } from 'src/agent/prompts/familyAddendums/index.js'
-import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 // Tool-prompt verbosity tier by model family. Capable families follow the
 // system prompt's altitude principle ("Don't add features… beyond what was
@@ -76,23 +75,13 @@ export function isLeanToolPromptFamily(): boolean {
 }
 
 /**
- * Who receives the v2 texts: the Anthropic family. Every other family keeps
- * the texts from before them. Pure, so a test reaches it without the
- * process-global model state.
+ * Who receives the v2 texts (team memory `prompts-v2-2026-09`): the Anthropic
+ * family, since 2026-09-24. Every other family keeps the texts from before
+ * them, which were never measured against the v2 outside Opus 5.5. Pure, so a
+ * test reaches it without the process-global model state.
  */
 export function isV2PromptFamily(family: ModelFamily): boolean {
   return family === 'anthropic'
-}
-
-/**
- * The rule both v2 switches below share: the v2 family, unless the env var
- * turns the switch off (`=0`, `false`, `no`, `off`).
- */
-export function isV2PromptSwitchOn(
-  envValue: string | undefined,
-  family: ModelFamily,
-): boolean {
-  return !isEnvDefinedFalsy(envValue) && isV2PromptFamily(family)
 }
 
 /**
@@ -100,36 +89,24 @@ export function isV2PromptSwitchOn(
  * Build, Typecheck and RunTests at Claude Code 2.1.280's density, every
  * parameter and behavior still named (promptFeatureCoverage.test.ts), and
  * Monitor behind ToolSearch. Patch keeps its full text: its compact one
- * produced malformed patches in the session A/B. Anthropic family only.
- * Edit, Write, Skill, WebFetch, WebSearch and ReportFindings joined at
- * Claude Code 2.1.284's density (fix/prompt-parity-cc).
- *
- * Default ON since 2026-09-24 with the rest of the v2 prompt (team memory
- * `prompts-v2-2026-09`). `CLAUDIN_COMPACT_TOOL_PROMPTS=0` restores the
- * previous descriptions; the killswitch is slated for removal in a cleanup.
+ * produced malformed patches in the session A/B. Edit, Write, Skill,
+ * WebFetch, WebSearch and ReportFindings joined at Claude Code 2.1.284's
+ * density (fix/prompt-parity-cc).
  *
  * Tool descriptions are cached once per session (toolSchemaCache.ts), so
  * like the tier above this is read when the first request is built.
  */
 export function isCompactToolPromptsEnabled(): boolean {
-  return isV2PromptSwitchOn(
-    process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,
-    getMainLoopFamily(),
-  )
+  return isV2PromptFamily(getMainLoopFamily())
 }
 
 /**
- * The v2 startup reminder: one short line per skill in the listing. Anthropic
- * family only. Default ON since 2026-09-24; `CLAUDIN_LEAN_REMINDERS=0`
- * restores the previous lines, and the killswitch is slated for removal in a
- * cleanup pass. It no longer touches the git protocol attachment: the shorter
- * git text measured on the branch dropped rules the BashTool prompt tests pin
- * ("if unclear, ask first", the review-comments endpoint, backslash escaping),
- * so the round-2 lean git text stays the default.
+ * The v2 startup reminder: one short line per skill in the listing. It does
+ * not touch the git protocol attachment: the shorter git text measured on the
+ * branch dropped rules the BashTool prompt tests pin ("if unclear, ask first",
+ * the review-comments endpoint, backslash escaping), so the round-2 lean git
+ * text stays.
  */
 export function isLeanRemindersEnabled(): boolean {
-  return isV2PromptSwitchOn(
-    process.env.CLAUDIN_LEAN_REMINDERS,
-    getMainLoopFamily(),
-  )
+  return isV2PromptFamily(getMainLoopFamily())
 }

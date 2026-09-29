@@ -123,8 +123,8 @@ export function buildCombinedMemoryPrompt(
 }
 
 /**
- * The same memory system in the v2 prompt (CLAUDIN_LEAN_MEMORY_PROMPT), at
- * about two thirds of the size, written the way Claude Code 2.1.280 writes its
+ * The same memory system in the v2 prompt (the Anthropic family), at about
+ * two thirds of the size, written the way Claude Code 2.1.280 writes its
  * single-directory memory: one paragraph per concern, no worked prose. Every
  * mechanism the full prompt teaches is still named — both directories, the
  * four types and their scope, the three team categories and their bar, the

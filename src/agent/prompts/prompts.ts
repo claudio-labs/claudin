@@ -47,17 +47,14 @@ import {
   resolveSystemPromptSections,
 } from 'src/agent/prompts/systemPromptSections.js'
 import { logForDebugging } from 'src/shared/debug.js'
+import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
 import {
-  isLeanMemoryPromptEnabled,
-  loadMemoryPrompt,
-} from 'src/memory/memdir/memdir.js'
-import {
-  isLeanSystemPromptEnabled,
   isResponseChainsEnabled,
   isSubagentBatchingEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
 } from 'src/agent/prompts/steeringToggles.js'
+import { isV2PromptFamily } from 'src/agent/prompts/toolPromptTier.js'
 import { WORKTREE_STASH_WARNING } from 'src/shared/constants/worktreeSafety.js'
 import type { OutputStyleConfig } from 'src/agent/outputStyles/outputStyles.js'
 import { CYBER_RISK_INSTRUCTION } from 'src/agent/prompts/cyberRiskInstruction.js'
@@ -525,21 +522,19 @@ export async function getSystemPrompt(
 
   const settings = getInitialSettings()
   const enabledTools = new Set(tools.map(_ => _.name))
-  // The v2 prompt (isLeanSystemPromptEnabled). The family depends on the
-  // provider, so every section it changes carries it in its cache key: a
-  // /provider switch must not serve a section rendered for the other shape.
-  const lean =
-    isLeanSystemPromptEnabled() && getFamilyForLogging(model) === 'anthropic'
+  // The v2 prompt, for the Anthropic family (isV2PromptFamily). The family
+  // depends on the provider, so every section it changes carries it in its
+  // cache key: a /provider switch must not serve a section rendered for the
+  // other shape.
+  const lean = isV2PromptFamily(getFamilyForLogging(model))
   const leanKey = lean ? ':lean' : ''
-  const leanMemory =
-    isLeanMemoryPromptEnabled() && getFamilyForLogging(model) === 'anthropic'
 
   const dynamicSections = [
     systemPromptSection(`session_guidance${leanKey}`, () =>
       getSessionSpecificGuidanceSection(enabledTools, skillToolCommands, lean),
     ),
-    systemPromptSection(`memory${leanMemory ? ':lean' : ''}`, () =>
-      loadMemoryPrompt(leanMemory),
+    systemPromptSection(`memory${leanKey}`, () =>
+      loadMemoryPrompt(lean),
     ),
     systemPromptSection(
       // Key includes the provider: the Claude-family lines inside vary by

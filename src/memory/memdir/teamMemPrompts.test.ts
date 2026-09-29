@@ -111,7 +111,7 @@ describe('buildCombinedMemoryPrompt — .gitignore guidance', () => {
 })
 
 describe('the MEMORY.md index line', () => {
-  // As shipped: the same lines systemPrompt.legacy.txt (full) and
+  // As shipped: the same lines systemPrompt.nonAnthropic.txt (full) and
   // systemPrompt.main.txt (v2) carry. Until the empty-index note, this was the
   // text a project with no memory at all got too.
   const FULL_INDEX_LINE =

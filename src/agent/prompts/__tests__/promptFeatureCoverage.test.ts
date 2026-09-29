@@ -34,7 +34,6 @@ import {
   isCompactToolPromptsEnabled,
   isLeanRemindersEnabled,
   isV2PromptFamily,
-  isV2PromptSwitchOn,
 } from 'src/agent/prompts/toolPromptTier.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { getEmptyToolPermissionContext, type Tool } from 'src/tools/Tool.js'
@@ -48,34 +47,21 @@ import { isDeferredTool } from 'src/tools/ToolSearchTool/prompt.js'
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 
 /**
- * The states that ship: the default (the v2 text since 2026-09-24, for the
- * Anthropic family), every killswitch at `=0` (the text before it), and any
- * other family, which still receives that earlier text. The system prompt
- * comes from the bundle's dump in that state; the tool descriptions and
- * reminders are rendered live with `toolSwitches` and `family` set.
+ * The two states that ship: the v2 text (since 2026-09-24, the Anthropic
+ * family) and the text before it, which every other family still receives.
+ * The system prompt comes from the bundle's dump in that state; the tool
+ * descriptions and reminders are rendered live for `family`.
  */
 const STATES = [
-  { state: 'default (v2)', file: 'systemPrompt.main.txt', lean: true, toolSwitches: undefined, family: null },
-  { state: 'killswitched', file: 'systemPrompt.legacy.txt', lean: false, toolSwitches: '0', family: null },
-  { state: 'non-Anthropic family', file: 'systemPrompt.nonAnthropic.txt', lean: false, toolSwitches: undefined, family: 'default' },
+  { state: 'default (v2)', file: 'systemPrompt.main.txt', lean: true, family: null },
+  { state: 'non-Anthropic family', file: 'systemPrompt.nonAnthropic.txt', lean: false, family: 'default' },
 ] as const
 
-const TOOL_SWITCHES = ['CLAUDIN_COMPACT_TOOL_PROMPTS', 'CLAUDIN_LEAN_REMINDERS'] as const
-
-function setToolSwitches(value: '0' | undefined): void {
-  for (const name of TOOL_SWITCHES) {
-    if (value === undefined) delete process.env[name]
-    else process.env[name] = value
-  }
-}
-
-function enterState(s: { toolSwitches: '0' | undefined; family: ModelFamily | null }): void {
-  setToolSwitches(s.toolSwitches)
+function enterState(s: { family: ModelFamily | null }): void {
   _setToolPromptFamilyForTesting(s.family)
 }
 
 function resetState(): void {
-  setToolSwitches(undefined)
   _setToolPromptFamilyForTesting(null)
 }
 
@@ -264,17 +250,13 @@ describe('prompt feature coverage', () => {
   test('every system prompt snapshot is present', () => {
     expect(STATES.map(s => (systemPromptOf(s.file) === null ? `${s.file} missing` : s.state))).toEqual([
       'default (v2)',
-      'killswitched',
       'non-Anthropic family',
     ])
   })
 
-  test('the switches resolve on by default and off at `=0` in this environment (otherwise the states below are one)', () => {
+  test('the v2 texts are on for this environment\'s family (otherwise the states below are one)', () => {
     expect(isCompactToolPromptsEnabled()).toBe(true)
     expect(isLeanRemindersEnabled()).toBe(true)
-    setToolSwitches('0')
-    expect(isCompactToolPromptsEnabled()).toBe(false)
-    expect(isLeanRemindersEnabled()).toBe(false)
   })
 
   test('the v2 texts are off for a family outside Anthropic (otherwise that state is the default)', () => {
@@ -317,38 +299,37 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
 
   // Through the pure rule, not the live model: under the full suite a leaked
   // `model.js` mock makes getMainLoopModel() ignore an override, so a test that
-  // sets one passes alone and fails in the run. The wiring from each switch to
+  // sets one passes alone and fails in the run. The wiring from each reader to
   // that rule is pinned on the source instead.
-  test('the switches do not reach a model outside the Anthropic family', () => {
+  test('the v2 texts do not reach a model outside the Anthropic family', () => {
     expect(isV2PromptFamily('anthropic')).toBe(true)
-    expect(isV2PromptSwitchOn(undefined, 'anthropic')).toBe(true)
-    expect(isV2PromptSwitchOn('1', 'anthropic')).toBe(true)
-    expect(isV2PromptSwitchOn('0', 'anthropic')).toBe(false)
     for (const family of ['default', 'openai-reasoning', 'gemini', 'kimi', 'glm', 'codex'] as const) {
       expect(isV2PromptFamily(family)).toBe(false)
-      expect(isV2PromptSwitchOn(undefined, family)).toBe(false)
-      expect(isV2PromptSwitchOn('1', family)).toBe(false)
     }
     const src = readFileSync(new URL('../toolPromptTier.ts', import.meta.url), 'utf8')
-    for (const [fn, env] of [
-      ['isCompactToolPromptsEnabled', 'CLAUDIN_COMPACT_TOOL_PROMPTS'],
-      ['isLeanRemindersEnabled', 'CLAUDIN_LEAN_REMINDERS'],
-    ] as const) {
+    for (const fn of ['isCompactToolPromptsEnabled', 'isLeanRemindersEnabled']) {
       const start = src.indexOf(`export function ${fn}(`)
       const body = src.slice(start, src.indexOf('\n}\n', start))
-      expect(body).toContain(`process.env.${env}`)
-      expect(body).toContain('getMainLoopFamily()')
+      expect(body).toContain('isV2PromptFamily(getMainLoopFamily())')
     }
     const start = src.indexOf('function getMainLoopFamily(')
     expect(src.slice(start, src.indexOf('\n}\n', start))).toContain('getFamilyForLogging(getMainLoopModel())')
   })
 
+  // The system prompt and the memory section decide on the model the prompt is
+  // built for, not the main loop's; the rendered text is the characterization
+  // test's two snapshots.
+  test('getSystemPrompt sends the v2 text to the v2 family only', () => {
+    const src = readFileSync(new URL('../prompts.ts', import.meta.url), 'utf8')
+    const start = src.indexOf('export async function getSystemPrompt(')
+    const body = src.slice(start, src.indexOf('\n}\n', start))
+    expect(body).toContain('const lean = isV2PromptFamily(getFamilyForLogging(model))')
+    expect(body).toContain('loadMemoryPrompt(lean)')
+  })
+
   test('Monitor waits behind ToolSearch only with the v2 tool descriptions', () => {
     expect(isDeferredTool(MonitorTool)).toBe(true)
     _setToolPromptFamilyForTesting('default')
-    expect(isDeferredTool(MonitorTool)).toBe(false)
-    _setToolPromptFamilyForTesting(null)
-    setToolSwitches('0')
     expect(isDeferredTool(MonitorTool)).toBe(false)
   })
 
