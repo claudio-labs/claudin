@@ -1005,6 +1005,11 @@ function get3PModelFallbackSuggestion(model: string): string | undefined {
   if (m.includes('opus-4-6') || m.includes('opus_4_6')) {
     return getModelStrings().opus41
   }
+  // Sonnet 5.5 falls back one generation, to Sonnet 5. Must precede the
+  // sonnet-5 branch, which matches 'sonnet-5-5' by substring.
+  if (m.includes('sonnet-5-5') || m.includes('sonnet_5_5')) {
+    return getModelStrings().sonnet5
+  }
   // If the failing model looks like a Sonnet 5 variant, fall back to Sonnet 4.6
   if (m.includes('sonnet-5') || m.includes('sonnet_5')) {
     return getModelStrings().sonnet46

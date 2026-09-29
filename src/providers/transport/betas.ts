@@ -176,14 +176,20 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
  * Deliberately NOT a substring match on 'opus-5' — Opus 5 does not enforce it,
  * and sending the header where it buys nothing is one more beta to go wrong.
  *
- * Fable 5.1 is the other model Anthropic documents as enforcing it, and it is
- * included on the strength of a measurement rather than the doc: under the
+ * Fable 5.1 and Sonnet 5.5 are the other models Anthropic documents as
+ * enforcing it (Sonnet 5.5 on the Claude API, Bedrock and Vertex alike; Sonnet
+ * 5 does not). They are included on the strength of a measurement rather than
+ * the doc alone: under the
  * AGGRESSIVE cache profile — what every user without a configured /provider
  * gets — stripOldThinkingBlocks removes thinking from 3 of 4 past user turns,
  * which is precisely the prefix mutation the check rejects. Reproduce with
  * `CLAUDIN_CACHE_PROFILE=aggressive bun run
  * scripts/bench/tokens/thinking-replay-capture.ts --bin=claudindev --full
  * --user-turns=4`; see docs/tech/opus-5-5/wire-capture.md.
+ *
+ * The real API accepts the block_binding field on Sonnet 5.5 (200 with and
+ * without a stripped prefix): scripts/bench/ab/model-launch-capture.ts replays
+ * Claude Code's own request that way.
  */
 export function modelSupportsThinkingBlockBinding(model: string): boolean {
   if (getAPIProvider() !== 'firstParty') {
@@ -191,10 +197,12 @@ export function modelSupportsThinkingBlockBinding(model: string): boolean {
   }
   const canonical = getCanonicalName(model)
   // 'claude-fable-5-1' and not 'claude-fable-5': the retired Fable 5 predates
-  // preserved thinking, and its id is a prefix of 5.1's.
+  // preserved thinking, and its id is a prefix of 5.1's. Same for Sonnet 5.5
+  // against Sonnet 5.
   return (
     canonical.includes('claude-opus-5-5') ||
-    canonical.includes('claude-fable-5-1')
+    canonical.includes('claude-fable-5-1') ||
+    canonical.includes('claude-sonnet-5-5')
   )
 }
 

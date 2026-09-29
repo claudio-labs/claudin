@@ -71,6 +71,10 @@ test('canonicalizes to claude-opus-5-5, not to claude-opus-5', () => {
   expect(firstPartyNameToCanonical('anthropic.claude-opus-5-5')).toBe(
     'claude-opus-5-5',
   )
+  // OpenRouter and GitHub Copilot write the version with a dot, which contains
+  // 'claude-opus-5' but not 'claude-opus-5-5'.
+  expect(firstPartyNameToCanonical('anthropic/claude-opus-5.5')).toBe('claude-opus-5-5')
+  expect(firstPartyNameToCanonical('claude-opus-5.5')).toBe('claude-opus-5-5')
   // And the older model must not be dragged forward by the new branch.
   expect(firstPartyNameToCanonical('claude-opus-5')).toBe('claude-opus-5')
 })
@@ -185,12 +189,13 @@ test('sanitizes to its own id for commit trailers', () => {
 
 // Preserved thinking: Claudin rewrites its own prefix (clip restubs plus
 // stripOldThinkingBlocks), so it needs the block-binding escape hatch that
-// Claude Code does not send. Scoped to the two models Anthropic documents as
+// Claude Code does not send. Scoped to the models Anthropic documents as
 // enforcing it — a substring match on 'opus-5' would send the header to Opus 5,
 // which does not enforce the check and gains nothing from it.
-test('opts into thinking block-binding, together with Fable 5.1 only', () => {
+test('opts into thinking block-binding, with Fable 5.1 and Sonnet 5.5 only', () => {
   expect(modelSupportsThinkingBlockBinding('claude-opus-5-5')).toBe(true)
   expect(modelSupportsThinkingBlockBinding('claude-fable-5-1')).toBe(true)
+  expect(modelSupportsThinkingBlockBinding('claude-sonnet-5-5')).toBe(true)
   expect(modelSupportsThinkingBlockBinding('claude-opus-5')).toBe(false)
   expect(modelSupportsThinkingBlockBinding('claude-sonnet-5')).toBe(false)
   // The retired Fable 5 predates preserved thinking, and its id is a prefix of
