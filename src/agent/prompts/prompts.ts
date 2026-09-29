@@ -147,20 +147,18 @@ export function prependBullets(items: Array<string | string[]>): string[] {
   )
 }
 
-// Product identity leads the prompt, matching the CLAUDIN_SIMPLE path
-// below and DEFAULT_AGENT_PROMPT. Without it the model has no idea what it
-// is until the env section — and on a non-Anthropic provider that section
-// is generic, so it could go the whole session without knowing. Wording is
-// kept identical across the three call sites on purpose: a model that reads
-// "Claudin" here and something else in a subagent prompt has to reconcile
-// two identities.
+// No product identity here: streaming.ts puts the CLI prefix block
+// (getCLISyspromptPrefix, system.ts) ahead of this prompt on every transport —
+// the OpenAI shim joins the system blocks into one message — so naming Claudin
+// again sent the model the same sentence twice. Claude Code's intro opens on
+// the line below too. Keep the prefix worded like DEFAULT_AGENT_PROMPT: a model
+// that reads "Claudin" there and something else in a subagent prompt has to
+// reconcile two identities.
 function getSimpleIntroSection(
   outputStyleConfig: OutputStyleConfig | null,
 ): string {
   // eslint-disable-next-line custom-rules/prompt-spacing
   return `
-You are Claudin, an open-source coding agent and CLI.
-
 You are an interactive agent that helps users ${outputStyleConfig !== null ? 'according to your "Output Style" below, which describes how you should respond to user queries.' : 'with software engineering tasks.'}
 
 ${CYBER_RISK_INSTRUCTION}`

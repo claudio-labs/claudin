@@ -11,7 +11,8 @@
 // Three corpora, each read from the source of truth for what is sent:
 //   - the system prompt from the bundle's own dump (systemPrompt.*.txt, kept
 //     byte-identical by systemPrompt.characterization.test.ts), plus the
-//     session guidance, which that dump cannot render (empty tool registry);
+//     session guidance, which that dump cannot render (empty tool registry),
+//     and the CLI prefix block streaming.ts sends ahead of it (the identity);
 //   - every eager tool's description and input schema, as tool.prompt() and
 //     zodToJsonSchema produce them;
 //   - the startup reminders: the git protocol and a skill listing.
@@ -26,6 +27,7 @@ import {
   buildAgentToolSection,
   getSessionSpecificGuidanceSection,
 } from 'src/agent/prompts/prompts.js'
+import { getCLISyspromptPrefix } from 'src/agent/prompts/system.js'
 import {
   isCompactToolPromptsEnabled,
   isLeanRemindersEnabled,
@@ -267,7 +269,7 @@ describe('prompt feature coverage', () => {
       expect(systemPrompt === null ? `${file} missing` : 'present').toBe('present')
       const toolTexts = await Promise.all(getAllBaseTools().map(t => toolTextIn(t, lean)))
       const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
-      const corpus = [systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
+      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
       const missing = ANYWHERE_MARKERS.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
       expect(missing.map(([capability]) => capability)).toEqual([])
     })

@@ -68,7 +68,7 @@ One short sentence on what you chose and why — shown to the user. "watching CI
 
 ## Runtime behavior
 
-The wakeup is session-only (nothing written to disk, gone when Claude exits) and fires once, while the REPL is idle, by enqueuing \`prompt\` as if the user had submitted it. Only one wakeup can be pending — calling ${SCHEDULE_WAKEUP_TOOL_NAME} again before it fires replaces it. In non-interactive (-p) runs the process exits after the final turn and any pending wakeup is discarded.
+The wakeup is session-only (nothing written to disk, gone when Claudin exits) and fires once, while the REPL is idle, by enqueuing \`prompt\` as if the user had submitted it. Only one wakeup can be pending — calling ${SCHEDULE_WAKEUP_TOOL_NAME} again before it fires replaces it. In non-interactive (-p) runs the process exits after the final turn and any pending wakeup is discarded.
 
 ## Cancelling
 

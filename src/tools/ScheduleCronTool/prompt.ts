@@ -50,7 +50,7 @@ When the request is approximate ("around 9am", "hourly"), pick a minute that is 
 
 ## Durability
 
-By default (durable: false) the job lives only in this Claude session — nothing is written to disk, and the job is gone when Claude exits. Pass durable: true to write to .claudin/scheduled_tasks.json so the job survives restarts. Only use durable: true when the user explicitly asks for the task to persist ("keep doing this every day", "set this up permanently"). Most "remind me in 5 minutes" / "check back in an hour" requests should stay session-only.
+By default (durable: false) the job lives only in this Claudin session — nothing is written to disk, and the job is gone when Claudin exits. Pass durable: true to write to .claudin/scheduled_tasks.json so the job survives restarts. Only use durable: true when the user explicitly asks for the task to persist ("keep doing this every day", "set this up permanently"). Most "remind me in 5 minutes" / "check back in an hour" requests should stay session-only.
 
 ## Runtime behavior
 

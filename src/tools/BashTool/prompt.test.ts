@@ -80,6 +80,10 @@ const GIT_PROTOCOL_RULES: ReadonlyArray<{
       /if (?:that is )?unclear, ask first/,
     ],
   },
+  {
+    rule: 'branch off the default branch before committing',
+    says: [/default branch, (?:branch|create a branch) first/],
+  },
   { rule: 'never update the git config', says: ['Never update the git config'] },
   { rule: 'never push unless asked', says: [/never push unless (?:you were )?asked/] },
   {

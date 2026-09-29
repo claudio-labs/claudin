@@ -534,13 +534,15 @@ export function prependUserContext(
     return messages
   }
 
+  // The date is a sentence of its own ("Today's date is …"), sent bare the
+  // way Claude Code 2.1.284 sends it; any other key keeps its heading.
   return [
     createUserMessage({
-      content: `<system-reminder>\nAs you answer the user's questions, you can use the following context:\n${sortedKeys
-        .map(key => `# ${key}\n${filtered[key]}`)
-        .join('\n')}
-
-      IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.\n</system-reminder>\n`,
+      content: `<system-reminder>\n${sortedKeys
+        .map(key =>
+          key === 'currentDate' ? filtered[key] : `# ${key}\n${filtered[key]}`,
+        )
+        .join('\n')}\n</system-reminder>\n`,
       isMeta: true,
     }),
     ...messages,

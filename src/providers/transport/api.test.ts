@@ -2,7 +2,11 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod/v4'
 import { getEmptyToolPermissionContext, type Tool, type Tools } from 'src/tools/Tool.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
-import { splitSysPromptPrefix, toolToAPISchema } from 'src/providers/transport/api.js'
+import {
+  prependUserContext,
+  splitSysPromptPrefix,
+  toolToAPISchema,
+} from 'src/providers/transport/api.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import {
   SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
@@ -253,5 +257,40 @@ describe('splitSysPromptPrefix per-session element', () => {
     expect(blocks.at(-1)!.text).toBe('Scratchpad directory: /tmp/p/aaaa-1111/scratchpad')
     const cachedText = blocks.filter(b => b.cacheScope !== null).map(b => b.text).join('\n')
     expect(cachedText).toContain('project memory section\n\nappended system prompt')
+  })
+})
+
+/**
+ * The per-request user-context reminder. prependUserContext does nothing under
+ * NODE_ENV=test, so each render switches that off for the one call.
+ */
+describe('prependUserContext', () => {
+  const priorNodeEnv = process.env.NODE_ENV
+  afterEach(() => {
+    if (priorNodeEnv === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = priorNodeEnv
+  })
+
+  function render(context: Record<string, string>): unknown {
+    process.env.NODE_ENV = 'production'
+    const [first] = prependUserContext([], context)
+    return (first as { message: { content: unknown } }).message.content
+  }
+
+  test('the date goes out as a bare sentence, as Claude Code 2.1.284 sends it', () => {
+    expect(render({ currentDate: "Today's date is 2026-09-29." })).toBe(
+      "<system-reminder>\nToday's date is 2026-09-29.\n</system-reminder>\n",
+    )
+  })
+
+  test('another key keeps its heading, with no preamble and no relevance disclaimer', () => {
+    expect(
+      render({
+        currentDate: "Today's date is 2026-09-29.",
+        workerToolsContext: 'Workers spawned via the Agent tool have access to these tools: Bash',
+      }),
+    ).toBe(
+      "<system-reminder>\nToday's date is 2026-09-29.\n# workerToolsContext\nWorkers spawned via the Agent tool have access to these tools: Bash\n</system-reminder>\n",
+    )
   })
 })
