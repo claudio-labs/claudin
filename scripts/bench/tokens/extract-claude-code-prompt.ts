@@ -4,7 +4,7 @@
 //
 //   bun scripts/bench/tokens/extract-claude-code-prompt.ts [--out=DIR] [--mode=interactive|print]
 //        [--model=ID] [--bin=PATH | $CLAUDE_BIN] [--prompt=TEXT] [--config=DIR] [--timeout=SECS]
-//        [--no-deferred]
+//        [--no-deferred] [--env=NAME=VALUE ...]
 //   diff -ru <dirA> <dirB>          # two versions, or interactive against print
 //
 // How: the installed `claude` is pointed at a local stub of the Messages API
@@ -28,6 +28,10 @@
 // stub answers the first agent-loop request with `ToolSearch select:<all of
 // them>`, so the request after it carries every schema; tools.json is that one.
 // `--no-deferred` skips the round trip and keeps only what was sent up front.
+//
+// `--env=NAME=VALUE` (repeatable) passes a variable to the child on top of the
+// short inherited list — how an A/B arm's flag is captured (a claudin
+// `--variant` of session-cache-ab.ts, say) without touching the source.
 //
 // What the extraction is and is not:
 //   - `requestKind()` picks the agent-loop requests out of the side requests;
@@ -366,6 +370,8 @@ export type Options = {
   config: string | null
   timeoutSecs: number
   loadDeferred: boolean
+  /** Extra variables for the child, set last. */
+  env?: Record<string, string>
   mode: Mode
 }
 
@@ -482,7 +488,7 @@ export async function runExtraction(options: Options): Promise<{ out: string; ex
     CLAUDIN_CONFIG_DIR: config,
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     DISABLE_AUTOUPDATER: '1',
-  })
+  }, options.env ?? {})
 
   const modelArgs = options.model ? ['--model', options.model] : []
   try {
@@ -558,6 +564,12 @@ if (import.meta.main) {
     timeoutSecs: Number(flag(argv, 'timeout') ?? DEFAULT_TIMEOUT_SECS),
     loadDeferred: !argv.includes('--no-deferred'),
     mode: flag(argv, 'mode') === 'print' ? 'print' : 'interactive',
+    env: Object.fromEntries(
+      argv
+        .filter(a => a.startsWith('--env='))
+        .map(a => a.slice('--env='.length))
+        .map(pair => [pair.slice(0, pair.indexOf('=')), pair.slice(pair.indexOf('=') + 1)]),
+    ),
   }).catch((err: unknown) => {
     console.error(err instanceof Error ? err.message : String(err))
     process.exit(1)
