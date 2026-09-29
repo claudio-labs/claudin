@@ -46,6 +46,29 @@ type Arm = {
 const THINKING = { type: 'adaptive' }
 const hasBeta = (b: string) => (r: { betas: string[] }) => r.betas.includes(b)
 
+// Claude Code 2.1.284 sends the environment and the startup listings as a
+// role:"system" message after the user's prompt, carrying the message cache
+// breakpoint (team memory `claude-code-2.1.284-wire-diff`, item 2). The body
+// override replaces the CLI's messages with that shape. On 2026-09-29 the API
+// took it WITHOUT the beta too, and a system message saying "reply banana"
+// was obeyed both ways, so the no-beta arm documents that rather than being a
+// control; an accept here is still backed by the two controls above.
+const MID_CONV_BETA = 'mid-conversation-system-2026-04-07'
+const midConvMessages = (cached: boolean) => [
+  { role: 'user', content: [{ type: 'text', text: 'Reply with the single word ok.' }] },
+  {
+    role: 'system',
+    content: [
+      {
+        type: 'text',
+        text: '# Environment\n - Primary working directory: /tmp/wire-matrix-cwd\n - Platform: linux',
+        ...(cached && { cache_control: { type: 'ephemeral' } }),
+      },
+    ],
+  },
+]
+const endsWithSystem = (r: { body: any }) => r.body?.messages?.at(-1)?.role === 'system'
+
 const ARMS: Arm[] = [
   { name: 'baseline', expect: 'accept' },
   {
@@ -124,6 +147,26 @@ const ARMS: Arm[] = [
       r.betas.includes('prompt-caching-scope-2026-01-05') &&
       Array.isArray(r.body?.system) &&
       !r.body.system.some((s: any) => s?.cache_control?.scope === 'global'),
+  },
+  {
+    name: 'mid-conv-system',
+    betas: [MID_CONV_BETA],
+    body: { messages: midConvMessages(true) },
+    expect: 'accept',
+    wire: r => r.betas.includes(MID_CONV_BETA) && endsWithSystem(r),
+  },
+  {
+    name: 'mid-conv-system-uncached',
+    betas: [MID_CONV_BETA],
+    body: { messages: midConvMessages(false) },
+    expect: 'accept',
+    wire: r => r.betas.includes(MID_CONV_BETA) && endsWithSystem(r),
+  },
+  {
+    name: 'mid-conv-system-no-beta',
+    body: { messages: midConvMessages(true) },
+    expect: 'accept',
+    wire: endsWithSystem,
   },
 ]
 
