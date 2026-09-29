@@ -143,6 +143,47 @@
       "source": "src/agent/tools/responseChain.ts",
       "find": "  if (EDITS_WITH_THEN.has(call.name)) return thenFailed(data)\n",
       "replace": ""
+    },
+    {
+      "name": "limit: the schema caps the list again, and a long one refuses the edit",
+      "source": "src/tools/shared/editThen/editThenShape.ts",
+      "find": "  z.array(z.string()).nullish().describe(THEN_DESCRIPTION)",
+      "replace": "  z.array(z.string()).max(MAX_THEN_COMMANDS).nullish().describe(THEN_DESCRIPTION)"
+    },
+    {
+      "name": "limit: every command runs",
+      "find": "  for (const command of commandsThatRun(commands)) {",
+      "replace": "  for (const command of commands) {"
+    },
+    {
+      "name": "limit: commands past it vanish from the result",
+      "find": "    runs.push({ command, ran: false, exitCode: null, output: '', overLimit: true })\n",
+      "replace": ""
+    },
+    {
+      "name": "limit: a command past it is judged by the skip check",
+      "find": "  const reason = await thenSkipReason(commandsThatRun(commands), context, deps)",
+      "replace": "  const reason = await thenSkipReason(commands, context, deps)"
+    },
+    {
+      "name": "limit: the resolved input drops the commands past it",
+      "find": "  if (reason === null) return { ...input, then: commands }",
+      "replace": "  if (reason === null) return { ...input, then: commandsThatRun(commands) }"
+    },
+    {
+      "name": "limit: a command past it is folded into the permission",
+      "find": "  const commands = commandsThatRun(thenCommands(input as ThenInput))\n  if (commands.length === 0 || editDecision.behavior === 'deny') return editDecision",
+      "replace": "  const commands = thenCommands(input as ThenInput)\n  if (commands.length === 0 || editDecision.behavior === 'deny') return editDecision"
+    },
+    {
+      "name": "limit: a command past it is shown to the classifier",
+      "find": "  const commands = commandsThatRun(thenCommands(input as ThenInput))\n  if (commands.length === 0) return base",
+      "replace": "  const commands = thenCommands(input as ThenInput)\n  if (commands.length === 0) return base"
+    },
+    {
+      "name": "limit: the result blames an earlier failure for a command past it",
+      "find": "        run.overLimit\n",
+      "replace": "        false\n"
     }
   ]
 }

@@ -52,6 +52,7 @@ const thenRunSchema = lazySchema(() =>
     ran: z.boolean(),
     exitCode: z.number().nullable(),
     output: z.string(),
+    overLimit: z.boolean().optional(),
   }),
 )
 

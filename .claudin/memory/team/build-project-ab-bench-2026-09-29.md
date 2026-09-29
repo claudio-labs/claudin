@@ -67,3 +67,9 @@ $0.249 vs $0.247 (+1%, overlap). No Patch was refused for matching or the read
 gate. The re-sends left (median 777 tok, $0.011) were all a new class: 3 of 5
 sessions put 4+ commands in `then`, which the schema caps at 3, so zod
 rejected the whole Patch before the tool saw it (InputValidationError).
+
+**Round 5 (run `-185626`, `then` past the limit reported instead of refused):**
+10/10 sessions 7/7 and built. claudindev: 0 harness refusals, 0 re-sent edits,
+cost $0.224 vs claude $0.235 (−5%, overlap), calls 7 vs 6 (overlap). One
+session sent 5 `then` commands: the Patch applied, 3 ran, and the next Bash ran
+the other 2 — before, that was an InputValidationError and a whole re-send.
