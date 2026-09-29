@@ -91,7 +91,7 @@ const ENV_VALUE_RES: ReadonlyArray<readonly [RegExp, string]> = [
     /^(`<SESSION_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad`)$/gm,
     '$1<SESSION_ID>$2',
   ],
-  // The v2 prompt names the same directory inside an Environment bullet.
+  // The v2 prompt names the same directory in its one-line last element.
   [
     /(Scratchpad directory: <SESSION_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad )/g,
     '$1<SESSION_ID>$2',

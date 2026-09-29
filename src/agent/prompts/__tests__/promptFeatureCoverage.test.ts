@@ -172,7 +172,10 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
   Build: ['directory', 'system', 'path'],
   Glob: ['pattern', 'exclude', 'max_depth', 'sort'],
   WaitFor: ['until', 'settle_s', 'timeout_s', 'setup'],
-  Skill: ['skill', 'args'],
+  Skill: ['skill', 'args', /slash command/i, /built-in CLI commands/i, 'already running', '<command-name>'],
+  WebFetch: ['url', 'prompt', /markdown/i, /authenticated/i, 'HTTPS', /redirect/i, '15'],
+  WebSearch: ['query', 'allowed_domains', 'blocked_domains', 'Sources', /current month/i],
+  ReportFindings: ['findings', 'failure_scenario', 'verdict', 'outcome', /most-severe/i, 'print the findings as text'],
 }
 
 /**
@@ -309,7 +312,19 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
   // Per tool, so a description that stops honoring the switch is caught even
   // while the others keep the total down. The marker tests above cannot see
   // it: the killswitched text names every marker too.
-  for (const name of ['Read', 'Grep', 'Bash', 'Build', 'Typecheck', 'RunTests']) {
+  for (const name of [
+    'Read',
+    'Grep',
+    'Bash',
+    'Build',
+    'Typecheck',
+    'RunTests',
+    'Edit',
+    'Write',
+    'WebFetch',
+    'WebSearch',
+    'ReportFindings',
+  ]) {
     test(`v2: the ${name} description is at most two thirds of the killswitched one`, async () => {
       const tool = getAllBaseTools().find(t => t.name === name)!
       setToolSwitches('0')

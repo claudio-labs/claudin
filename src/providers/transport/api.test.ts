@@ -1,9 +1,13 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod/v4'
 import { getEmptyToolPermissionContext, type Tool, type Tools } from 'src/tools/Tool.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
 import { splitSysPromptPrefix, toolToAPISchema } from 'src/providers/transport/api.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
+import {
+  SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
+  SYSTEM_PROMPT_SESSION_MARKER,
+} from 'src/agent/prompts/prompts.js'
 
 test('toolToAPISchema preserves provider-specific schema keywords in input_schema', async () => {
   const schema = await toolToAPISchema(
@@ -166,5 +170,88 @@ describe('splitSysPromptPrefix attribution header placement', () => {
     // The system prefix block (block 1) is byte-identical — proving
     // the only divergence is the attribution header.
     expect(interactive[1]!.text).toBe(cron[1]!.text)
+  })
+})
+
+/**
+ * The scratchpad path carries the session id. splitSysPromptPrefix sends it
+ * as a trailing block without cache_control, so the cached blocks before it
+ * are byte-identical from one session to the next — and the count of cached
+ * blocks (each one a cache_control breakpoint) does not change.
+ */
+describe('splitSysPromptPrefix per-session element', () => {
+  const priorScope = process.env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE
+  const priorBetas = process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS
+  afterEach(() => {
+    if (priorScope === undefined) delete process.env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE
+    else process.env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE = priorScope
+    if (priorBetas === undefined) delete process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS
+    else process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS = priorBetas
+  })
+
+  const MODES = [
+    { mode: 'default (no global scope)', globalScope: false, skipGlobal: false },
+    { mode: 'global scope, MCP path', globalScope: true, skipGlobal: true },
+    { mode: 'global scope with boundary', globalScope: true, skipGlobal: false },
+  ] as const
+
+  function split(
+    globalScope: boolean,
+    skipGlobal: boolean,
+    sessionId: string | null,
+    appended: string[] = [],
+  ) {
+    delete process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS
+    if (globalScope) delete process.env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE
+    else process.env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE = '1'
+    return splitSysPromptPrefix(
+      asSystemPrompt([
+        'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
+        'You are Claudin, an open-source coding agent and CLI.',
+        'static harness text',
+        ...(globalScope ? [SYSTEM_PROMPT_DYNAMIC_BOUNDARY] : []),
+        '# Memory\nproject memory section',
+        ...(sessionId === null
+          ? []
+          : [SYSTEM_PROMPT_SESSION_MARKER, `Scratchpad directory: /tmp/p/${sessionId}/scratchpad`]),
+        ...appended,
+      ]),
+      { skipGlobalCacheForSystemPrompt: skipGlobal },
+    )
+  }
+
+  for (const { mode, globalScope, skipGlobal } of MODES) {
+    test(`${mode}: the session element is the last block, uncached`, () => {
+      const blocks = split(globalScope, skipGlobal, 'aaaa-1111')
+      const last = blocks.at(-1)!
+      expect(last.text).toBe('Scratchpad directory: /tmp/p/aaaa-1111/scratchpad')
+      expect(last.cacheScope).toBeNull()
+      for (const block of blocks) {
+        expect(block.text).not.toContain(SYSTEM_PROMPT_SESSION_MARKER)
+        expect(block.text).not.toContain(SYSTEM_PROMPT_DYNAMIC_BOUNDARY)
+      }
+    })
+
+    test(`${mode}: every block before it is the same in two sessions`, () => {
+      const one = split(globalScope, skipGlobal, 'aaaa-1111')
+      const two = split(globalScope, skipGlobal, 'bbbb-2222')
+      expect(one.slice(0, -1)).toEqual(two.slice(0, -1))
+      expect(one.at(-1)!.text).not.toBe(two.at(-1)!.text)
+    })
+
+    test(`${mode}: no new cached block, so no new breakpoint`, () => {
+      const withSession = split(globalScope, skipGlobal, 'aaaa-1111')
+      const without = split(globalScope, skipGlobal, null)
+      expect(withSession.slice(0, -1)).toEqual(without)
+      const cached = (bs: typeof without) => bs.filter(b => b.cacheScope !== null).length
+      expect(cached(withSession)).toBe(cached(without))
+    })
+  }
+
+  test('text appended after the session element stays in the cached block, in order', () => {
+    const blocks = split(false, false, 'aaaa-1111', ['appended system prompt'])
+    expect(blocks.at(-1)!.text).toBe('Scratchpad directory: /tmp/p/aaaa-1111/scratchpad')
+    const cachedText = blocks.filter(b => b.cacheScope !== null).map(b => b.text).join('\n')
+    expect(cachedText).toContain('project memory section\n\nappended system prompt')
   })
 })

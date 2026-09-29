@@ -278,11 +278,12 @@ async function main(): Promise<void> {
     const {
       getSystemPrompt,
       enhanceSystemPromptWithEnvDetails,
-      DEFAULT_AGENT_PROMPT
+      DEFAULT_AGENT_PROMPT,
+      withoutSystemPromptMarkers
     } = await import('src/agent/prompts/prompts.js');
     const prompt = args.includes('--subagent') ? await enhanceSystemPromptWithEnvDetails([DEFAULT_AGENT_PROMPT], model) : await getSystemPrompt([], model);
     // biome-ignore lint/suspicious/noConsole:: intentional console output
-    console.log(prompt.join('\n'));
+    console.log(withoutSystemPromptMarkers(prompt).join('\n'));
     return;
   }
   // Fast-path for `claude remote-control` (also accepts legacy `claude remote` / `claude sync` / `claude bridge`):

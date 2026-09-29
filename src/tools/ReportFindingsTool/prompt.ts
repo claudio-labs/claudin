@@ -19,3 +19,12 @@ Use this tool ONLY when the active code-review instructions tell you to report f
 - The three required per-finding fields (\`file\`, \`summary\`, \`failure_scenario\`) are the contract's teeth: a finding with no concrete \`failure_scenario\` — real inputs/state that lead to a wrong output or crash — does not get reported. A hunch is not a finding.
 - Set \`verdict\` (\`CONFIRMED\` / \`PLAUSIBLE\`) only when a verify pass ran; omit it on inline-only reviews.
 - When **re-reporting after applying fixes** (only if the apply step asks for it), set \`outcome\` on each finding to what actually happened (\`fixed\` / \`skipped\` / \`no_change_needed\`).`
+
+/**
+ * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density.
+ * The per-finding rules (a concrete `failure_scenario`, `verdict` only after a
+ * verify pass, the MAX_FINDINGS cap) already live in the input schema.
+ * "Unless those instructions ask for it" keeps the headless text dump that
+ * the code-review skill requests in `-p` runs.
+ */
+export const COMPACT_PROMPT = `Report code-review findings as a typed list so the host UI can render them. Use this only when the active code-review instructions tell you to report findings with this tool; otherwise follow whatever output format those instructions specify. When reporting a review's results, call it once with the verified findings ranked most-severe first (empty array if nothing survived verification) and do not also print the findings as text unless those instructions ask for it. When re-reporting after applying fixes (only if the apply instructions ask for it), set \`outcome\` on each finding to what actually happened.`

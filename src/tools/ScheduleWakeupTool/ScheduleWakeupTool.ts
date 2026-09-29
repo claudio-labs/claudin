@@ -14,7 +14,7 @@ import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
 import {
   clampWakeupDelaySeconds,
   SCHEDULE_WAKEUP_DESCRIPTION,
-  SCHEDULE_WAKEUP_PROMPT,
+  getScheduleWakeupPrompt,
   SCHEDULE_WAKEUP_TOOL_NAME,
   WAKEUP_MAX_DELAY_SECONDS,
   WAKEUP_MIN_DELAY_SECONDS,
@@ -88,7 +88,7 @@ export const ScheduleWakeupTool = buildTool({
     return SCHEDULE_WAKEUP_DESCRIPTION
   },
   async prompt() {
-    return SCHEDULE_WAKEUP_PROMPT
+    return getScheduleWakeupPrompt()
   },
   async validateInput(
     input,

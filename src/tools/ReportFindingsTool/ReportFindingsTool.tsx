@@ -11,7 +11,8 @@ import {
   MAX_FINDINGS,
   REPORT_FINDINGS_TOOL_NAME,
 } from 'src/tools/ReportFindingsTool/constants.js'
-import { DESCRIPTION, PROMPT } from 'src/tools/ReportFindingsTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import { COMPACT_PROMPT, DESCRIPTION, PROMPT } from 'src/tools/ReportFindingsTool/prompt.js'
 
 const findingSchema = lazySchema(() =>
   z.strictObject({
@@ -131,7 +132,7 @@ export const ReportFindingsTool: Tool<InputSchema, Output> = buildTool({
     return DESCRIPTION
   },
   async prompt() {
-    return PROMPT
+    return isCompactToolPromptsEnabled() ? COMPACT_PROMPT : PROMPT
   },
   get inputSchema(): InputSchema {
     return inputSchema()

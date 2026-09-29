@@ -1,5 +1,8 @@
 import { feature } from 'bun:bundle'
-import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
+import {
+  isCompactToolPromptsEnabled,
+  isLeanToolPromptFamily,
+} from 'src/agent/prompts/toolPromptTier.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 
@@ -17,8 +20,21 @@ function getPreReadInstruction(): string {
 }
 
 export function getWriteToolDescription(): string {
+  if (isCompactToolPromptsEnabled()) return buildCompactWriteToolDescription()
   const lean = feature('LEAN_TOOL_PROMPTS') ? isLeanToolPromptFamily() : false
   return buildWriteToolDescription(lean)
+}
+
+/**
+ * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density.
+ * Keeps the rule Claude Code's text does not have: a ranged Read does not
+ * count, since a Write replaces the whole file.
+ */
+export function buildCompactWriteToolDescription(): string {
+  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''
+  return `Writes a file to the local filesystem, overwriting if one exists.
+
+When to use: creating a new file, or fully replacing one you've already ${FILE_READ_TOOL_NAME}. Overwriting an existing file fails unless you ${FILE_READ_TOOL_NAME} all of it first${catCounts} — a ranged ${FILE_READ_TOOL_NAME} is not enough. For partial changes, use Edit instead.`
 }
 
 // Pure builder so tests can render both shapes directly (the lean decision

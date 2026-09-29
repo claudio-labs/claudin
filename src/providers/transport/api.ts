@@ -4,7 +4,10 @@ import type {
   BetaToolUnion,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { createHash } from 'crypto'
-import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from 'src/agent/prompts/prompts.js'
+import {
+  SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
+  SYSTEM_PROMPT_SESSION_MARKER,
+} from 'src/agent/prompts/prompts.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
@@ -355,9 +358,45 @@ export function logAPIPrefix(systemPrompt: SystemPrompt): void {
  *    - Attribution header (cacheScope=null)
  *    - System prompt prefix (cacheScope='org')
  *    - Everything else concatenated (cacheScope='org')
+ *
+ * In every mode the element after SYSTEM_PROMPT_SESSION_MARKER (the
+ * scratchpad, whose path carries the session id) is taken out and appended
+ * as one more block with cacheScope=null, so the blocks before it render the
+ * same bytes in every session. A null-scope block carries no cache_control,
+ * so the breakpoint count does not change.
  */
 export function splitSysPromptPrefix(
   systemPrompt: SystemPrompt,
+  options?: { skipGlobalCacheForSystemPrompt?: boolean },
+): SystemPromptBlock[] {
+  const { rest, sessionBlocks } = takeSessionElements(systemPrompt)
+  return [
+    ...splitStableSysPrompt(rest, options),
+    ...sessionBlocks.map(text => ({ text, cacheScope: null })),
+  ]
+}
+
+/** Removes each SYSTEM_PROMPT_SESSION_MARKER and the element after it. */
+function takeSessionElements(systemPrompt: readonly string[]): {
+  rest: string[]
+  sessionBlocks: string[]
+} {
+  const rest: string[] = []
+  const sessionBlocks: string[] = []
+  for (let i = 0; i < systemPrompt.length; i++) {
+    const block = systemPrompt[i]!
+    if (block !== SYSTEM_PROMPT_SESSION_MARKER) {
+      rest.push(block)
+      continue
+    }
+    const next = systemPrompt[++i]
+    if (next) sessionBlocks.push(next)
+  }
+  return { rest, sessionBlocks }
+}
+
+function splitStableSysPrompt(
+  systemPrompt: readonly string[],
   options?: { skipGlobalCacheForSystemPrompt?: boolean },
 ): SystemPromptBlock[] {
   const useGlobalCacheFeature = shouldUseGlobalCacheScope()

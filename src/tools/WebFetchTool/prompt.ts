@@ -20,6 +20,19 @@ Usage notes:
   - For GitHub URLs, prefer using the gh CLI via Bash instead (e.g., gh pr view, gh issue view, gh api).
 `
 
+/**
+ * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density.
+ * Every limit it states is enforced in utils.ts: a hostname without a dot
+ * fails validateURL, a cross-host redirect comes back instead of being
+ * followed, and the cache holds a URL for 15 minutes.
+ */
+export const COMPACT_PROMPT = `Fetches a URL, converts the page to markdown, and answers \`prompt\` against it using a small fast model.
+
+- Fails on authenticated/private URLs (Google Docs, Confluence, Jira, GitHub) — use an authenticated MCP tool or \`gh\` for those instead.
+- Fails on localhost and other hostnames without a dot; for a local server, use curl via Bash.
+- HTTP is upgraded to HTTPS. Cross-host redirects are returned to you rather than followed; call again with the redirect URL.
+- Large pages may be summarized. Responses are cached for 15 minutes per URL.`
+
 export function makeSecondaryModelPrompt(
   markdownContent: string,
   prompt: string,
