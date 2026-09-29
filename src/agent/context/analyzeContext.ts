@@ -1,7 +1,7 @@
 import type { Anthropic } from '@anthropic-ai/sdk'
 import {
   getSystemPrompt,
-  SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
+  withoutSystemPromptMarkers,
 } from 'src/agent/prompts/prompts.js'
 import { withoutRenderedSnapshot } from 'src/agent/attachments/renderedSnapshot.js'
 import { microcompactMessages } from 'src/agent/compact/microCompact.js'
@@ -286,13 +286,10 @@ async function countSystemTokens(
   const systemContext = await getSystemContext()
 
   // Build named entries: system prompt parts + system context values
-  // Skip empty strings and the global-cache boundary marker
+  // Skip empty strings and the boundary/session markers
   const namedEntries: Array<{ name: string; content: string }> = [
-    ...effectiveSystemPrompt
-      .filter(
-        content =>
-          content.length > 0 && content !== SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
-      )
+    ...withoutSystemPromptMarkers(effectiveSystemPrompt)
+      .filter(content => content.length > 0)
       .map(content => ({ name: extractSectionName(content), content })),
     ...Object.entries(systemContext)
       .filter(([, content]) => content.length > 0)

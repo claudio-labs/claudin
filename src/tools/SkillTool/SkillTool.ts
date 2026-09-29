@@ -51,7 +51,8 @@ import {
   tagMessagesWithToolUseID,
 } from 'src/tools/utils.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
-import { getPrompt } from 'src/tools/SkillTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import { COMPACT_SKILL_PROMPT, getPrompt } from 'src/tools/SkillTool/prompt.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
@@ -200,7 +201,7 @@ export const inputSchema = lazySchema(() =>
   z.object({
     skill: z
       .string()
-      .describe('The skill name. E.g., "commit", "review-pr", or "pdf"'),
+      .describe('The name of a skill from the available-skills list. Do not guess names.'),
     args: z.string().optional().describe('Optional arguments for the skill'),
   }),
 )
@@ -249,7 +250,8 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
 
   description: async ({ skill }) => `Execute skill: ${skill}`,
 
-  prompt: async () => getPrompt(getProjectRoot()),
+  prompt: async () =>
+    isCompactToolPromptsEnabled() ? COMPACT_SKILL_PROMPT : getPrompt(getProjectRoot()),
 
   // Only one skill/command should run at a time, since the tool expands the
   // command into a full prompt that Claude must process before continuing.

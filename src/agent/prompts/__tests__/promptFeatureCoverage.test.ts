@@ -11,7 +11,8 @@
 // Three corpora, each read from the source of truth for what is sent:
 //   - the system prompt from the bundle's own dump (systemPrompt.*.txt, kept
 //     byte-identical by systemPrompt.characterization.test.ts), plus the
-//     session guidance, which that dump cannot render (empty tool registry);
+//     session guidance, which that dump cannot render (empty tool registry),
+//     and the CLI prefix block streaming.ts sends ahead of it (the identity);
 //   - every eager tool's description and input schema, as tool.prompt() and
 //     zodToJsonSchema produce them;
 //   - the startup reminders: the git protocol and a skill listing.
@@ -26,6 +27,7 @@ import {
   buildAgentToolSection,
   getSessionSpecificGuidanceSection,
 } from 'src/agent/prompts/prompts.js'
+import { getCLISyspromptPrefix } from 'src/agent/prompts/system.js'
 import {
   isCompactToolPromptsEnabled,
   isLeanRemindersEnabled,
@@ -174,7 +176,10 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
   Build: ['directory', 'system', 'path'],
   Glob: ['pattern', 'exclude', 'max_depth', 'sort'],
   WaitFor: ['until', 'settle_s', 'timeout_s', 'setup'],
-  Skill: ['skill', 'args'],
+  Skill: ['skill', 'args', /slash command/i, /built-in CLI commands/i, 'already running', '<command-name>'],
+  WebFetch: ['url', 'prompt', /markdown/i, /authenticated/i, 'HTTPS', /redirect/i, '15'],
+  WebSearch: ['query', 'allowed_domains', 'blocked_domains', 'Sources', /current month/i],
+  ReportFindings: ['findings', 'failure_scenario', 'verdict', 'outcome', /most-severe/i, 'print the findings as text'],
 }
 
 /**
@@ -266,7 +271,7 @@ describe('prompt feature coverage', () => {
       expect(systemPrompt === null ? `${file} missing` : 'present').toBe('present')
       const toolTexts = await Promise.all(getAllBaseTools().map(t => toolTextIn(t, lean)))
       const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
-      const corpus = [systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
+      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
       const missing = ANYWHERE_MARKERS.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
       expect(missing.map(([capability]) => capability)).toEqual([])
     })
@@ -311,7 +316,19 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
   // Per tool, so a description that stops honoring the switch is caught even
   // while the others keep the total down. The marker tests above cannot see
   // it: the killswitched text names every marker too.
-  for (const name of ['Read', 'Grep', 'Bash', 'Build', 'Typecheck', 'RunTests']) {
+  for (const name of [
+    'Read',
+    'Grep',
+    'Bash',
+    'Build',
+    'Typecheck',
+    'RunTests',
+    'Edit',
+    'Write',
+    'WebFetch',
+    'WebSearch',
+    'ReportFindings',
+  ]) {
     test(`v2: the ${name} description is at most two thirds of the killswitched one`, async () => {
       const tool = getAllBaseTools().find(t => t.name === name)!
       setToolSwitches('0')

@@ -26,6 +26,15 @@ invalidates the whole prefix and silently rebills `cache_creation`.
 - Regression guard: `requestDeterminism.invariant.test.ts` (break-and-restore).
 - When adding anything to the request, ask "does this change a byte before the
   marker on a later turn?" If yes, it belongs after the frontier or not at all.
+- Across sessions the same question applies to the system blocks. The cached
+  system block must render identically in every session of a project; the
+  one per-session element (the scratchpad path, which embeds the session id)
+  follows `SYSTEM_PROMPT_SESSION_MARKER` and `splitSysPromptPrefix` sends it as
+  a trailing block without `cache_control` — not a breakpoint, so the count
+  (capped at 4, see `buildSystemPromptBlocks`) is unchanged. New per-session
+  text goes there, never inside a cached block. Guards:
+  `src/agent/prompts/sessionElement.test.ts`, the split tests in
+  `src/providers/transport/api.test.ts`.
 
 ## 2. The message marker goes on the last message; deferring it is opt-in
 

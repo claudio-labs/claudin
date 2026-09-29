@@ -808,7 +808,7 @@ You have exited auto mode. The user may now want to interact more directly. You 
       const parts: string[] = []
       if (attachment.addedLines.length > 0) {
         parts.push(
-          `The following deferred tools are now available via ToolSearch:\n${attachment.addedLines.join('\n')}`,
+          `The following deferred tools are now available via ToolSearch. Their schemas are NOT loaded — calling them directly will fail with InputValidationError. Use ToolSearch with query "select:<name>[,<name>...]" to load tool schemas before calling them:\n${attachment.addedLines.join('\n')}`,
         )
       }
       if (attachment.removedNames.length > 0) {
@@ -835,7 +835,7 @@ You have exited auto mode. The user may now want to interact more directly. You 
       }
       if (attachment.isInitial && attachment.showConcurrencyNote) {
         parts.push(
-          `Launch multiple agents concurrently whenever possible, to maximize performance; to do that, use a single message with multiple tool uses.`,
+          `When you launch multiple agents for independent work, send them in a single message with multiple tool uses so they run concurrently.`,
         )
       }
       return wrapMessagesInSystemReminder([

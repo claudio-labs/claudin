@@ -32,3 +32,16 @@ IMPORTANT - Use the correct year in search queries:
   - Example: If the user asks for "latest React docs", search for "React documentation" with the current year, NOT last year
 `
 }
+
+/**
+ * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density.
+ * `usOnly` is false on the adapter and Codex backends, which have no region
+ * limit — the full text strips that line with a regex instead.
+ */
+export function getCompactWebSearchPrompt(usOnly: boolean): string {
+  return `Search the web. Returns result blocks with titles and URLs.${usOnly ? ' US-only.' : ''}
+
+- The current month is ${getLocalMonthYear()} — use this when searching for recent information.
+- \`allowed_domains\` / \`blocked_domains\` filter results.
+- After answering from results, end with a "Sources:" list of the URLs you used as markdown links.`
+}

@@ -1,0 +1,31 @@
+{
+  "test": "scripts/bench/tokens/extract-claude-code-prompt.test.ts",
+  "source": "scripts/bench/tokens/extract-claude-code-prompt.ts",
+  "probes": [
+    {
+      "name": "hash keeps the billing header block",
+      "find": "const stableSystem = blocks.map(textOf).filter(t => !t.startsWith(BILLING_HEADER)).join('\\n\\n')",
+      "replace": "const stableSystem = blocks.map(textOf).join('\\n\\n')"
+    },
+    {
+      "name": "request.json keeps the raw metadata",
+      "find": "const redacted = (body: Json | null): Json => ({ ...body, ...(body && 'metadata' in body ? { metadata: '<redacted>' } : {}) })",
+      "replace": "const redacted = (body: Json | null): Json => ({ ...body })"
+    },
+    {
+      "name": "tools come from the first request, not the last",
+      "find": "const tools = (Array.isArray(last.body?.tools) ? last.body.tools : []).filter(isRecord)",
+      "replace": "const tools = (Array.isArray(first.body?.tools) ? first.body.tools : []).filter(isRecord)"
+    },
+    {
+      "name": "the responder never asks for the deferred tools",
+      "find": "      asked = true\n      return { toolUse:",
+      "replace": "      return TEXT_REPLY\n      return { toolUse:"
+    },
+    {
+      "name": "deferred names read past the blank line",
+      "find": "/deferred tools are now available via ToolSearch[^\\n]*:\\n((?:[^\\n]+\\n)+)/",
+      "replace": "/deferred tools are now available via ToolSearch[^\\n]*:\\n((?:[^\\n]*\\n)+)/"
+    }
+  ]
+}

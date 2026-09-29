@@ -11,7 +11,10 @@
 
 import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
-import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
+import {
+  getSystemPrompt,
+  withoutSystemPromptMarkers,
+} from 'src/agent/prompts/prompts.js'
 import { TEAMMATE_MESSAGE_TAG } from 'src/shared/constants/xml.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
@@ -919,8 +922,10 @@ export async function runInProcessTeammate(
       toolUseContext.options.mcpClients,
     )
 
+    // Joined into one string below, so the markers would reach the model as
+    // text; the teammate prompt is one block and caches as one anyway.
     const systemPromptParts = [
-      ...fullSystemPromptParts,
+      ...withoutSystemPromptMarkers(fullSystemPromptParts),
       TEAMMATE_SYSTEM_PROMPT_ADDENDUM,
     ]
 

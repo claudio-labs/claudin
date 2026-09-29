@@ -16,8 +16,10 @@ import {
   createTeammateContext,
   runWithTeammateContext,
 } from 'src/agent/coordinator/teammateContext.js'
+import { should1hCacheTTL } from 'src/providers/shims/claude/cacheControl.js'
 import {
   clampWakeupDelaySeconds,
+  getScheduleWakeupPrompt,
   WAKEUP_MAX_DELAY_SECONDS,
   WAKEUP_MIN_DELAY_SECONDS,
 } from 'src/tools/ScheduleWakeupTool/prompt.js'
@@ -61,6 +63,44 @@ describe('clampWakeupDelaySeconds', () => {
 
   test('falls back to the minimum on NaN (never throws)', () => {
     expect(clampWakeupDelaySeconds(Number.NaN)).toBe(WAKEUP_MIN_DELAY_SECONDS)
+  })
+})
+
+describe('getScheduleWakeupPrompt', () => {
+  const priorTtl = process.env.CLAUDIN_MAIN_CACHE_TTL
+  afterEach(() => {
+    if (priorTtl === undefined) delete process.env.CLAUDIN_MAIN_CACHE_TTL
+    else process.env.CLAUDIN_MAIN_CACHE_TTL = priorTtl
+  })
+
+  test('a 1h main-thread cache gets no 5-minute pacing advice', () => {
+    delete process.env.CLAUDIN_MAIN_CACHE_TTL
+    // No provider profile in tests resolves to firstParty, which caches at 1h.
+    expect(should1hCacheTTL()).toBe(true)
+    const text = getScheduleWakeupPrompt()
+    expect(text).toContain('1-hour Anthropic prompt-cache TTL')
+    expect(text).not.toContain('5-minute TTL')
+    expect(text).not.toContain('270s')
+  })
+
+  test('a 5m main-thread cache keeps the stay-under-300s advice', () => {
+    process.env.CLAUDIN_MAIN_CACHE_TTL = '5m'
+    expect(should1hCacheTTL()).toBe(false)
+    const text = getScheduleWakeupPrompt()
+    expect(text).toContain('5-minute TTL')
+    expect(text).toContain('270s')
+    expect(text).not.toContain('1-hour')
+  })
+
+  test('both variants keep the sections around the delay advice', () => {
+    for (const ttl of [undefined, '5m']) {
+      if (ttl === undefined) delete process.env.CLAUDIN_MAIN_CACHE_TTL
+      else process.env.CLAUDIN_MAIN_CACHE_TTL = ttl
+      const text = getScheduleWakeupPrompt()
+      expect(text).toContain('## Picking delaySeconds')
+      expect(text).toContain('The runtime clamps to [60, 3600].\n\n## The reason field')
+      expect(text).toContain('## Cancelling')
+    }
   })
 })
 

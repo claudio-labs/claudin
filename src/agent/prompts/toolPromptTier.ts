@@ -80,6 +80,8 @@ export function isV2PromptSwitchOn(
  * parameter and behavior still named (promptFeatureCoverage.test.ts), and
  * Monitor behind ToolSearch. Patch keeps its full text: its compact one
  * produced malformed patches in the session A/B. Anthropic family only.
+ * Edit, Write, Skill, WebFetch, WebSearch and ReportFindings joined at
+ * Claude Code 2.1.284's density (fix/prompt-parity-cc).
  *
  * Default ON since 2026-09-24 with the rest of the v2 prompt (team memory
  * `prompts-v2-2026-09`). `CLAUDIN_COMPACT_TOOL_PROMPTS=0` restores the

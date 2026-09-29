@@ -77,6 +77,32 @@ export const CLAUDE_CODE_DOCS_MAP_URL =
 export const SYSTEM_PROMPT_DYNAMIC_BOUNDARY =
   '__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__'
 
+/**
+ * Marks the one system prompt element that changes every session: the
+ * scratchpad, whose path carries the session id. getSystemPrompt emits
+ * `[SYSTEM_PROMPT_SESSION_MARKER, <that element>]` last, and
+ * splitSysPromptPrefix (src/providers/transport/api.ts) sends the element as
+ * a trailing block WITHOUT cache_control. The block before it then renders
+ * the same bytes in every session of a project, so its breakpoint is read back
+ * across sessions instead of being written again at the 1h price. The message
+ * marker still covers the tail within a session.
+ *
+ * No new breakpoint: a block without cache_control is not one (the billing
+ * header is the same shape). Anything that renders the array as text instead
+ * of sending it passes it through withoutSystemPromptMarkers.
+ */
+export const SYSTEM_PROMPT_SESSION_MARKER = '__SYSTEM_PROMPT_SESSION_MARKER__'
+
+/** The system prompt as text: both markers dropped, element order kept. */
+export function withoutSystemPromptMarkers(
+  parts: readonly string[],
+): string[] {
+  return parts.filter(
+    p =>
+      p !== SYSTEM_PROMPT_DYNAMIC_BOUNDARY && p !== SYSTEM_PROMPT_SESSION_MARKER,
+  )
+}
+
 // @[MODEL LAUNCH]: Update the model family IDs below to the latest in each tier.
 const CLAUDE_LATEST_MODEL_IDS = {
   fable: 'claude-fable-5-1',
@@ -121,20 +147,18 @@ export function prependBullets(items: Array<string | string[]>): string[] {
   )
 }
 
-// Product identity leads the prompt, matching the CLAUDIN_SIMPLE path
-// below and DEFAULT_AGENT_PROMPT. Without it the model has no idea what it
-// is until the env section — and on a non-Anthropic provider that section
-// is generic, so it could go the whole session without knowing. Wording is
-// kept identical across the three call sites on purpose: a model that reads
-// "Claudin" here and something else in a subagent prompt has to reconcile
-// two identities.
+// No product identity here: streaming.ts puts the CLI prefix block
+// (getCLISyspromptPrefix, system.ts) ahead of this prompt on every transport —
+// the OpenAI shim joins the system blocks into one message — so naming Claudin
+// again sent the model the same sentence twice. Claude Code's intro opens on
+// the line below too. Keep the prefix worded like DEFAULT_AGENT_PROMPT: a model
+// that reads "Claudin" there and something else in a subagent prompt has to
+// reconcile two identities.
 function getSimpleIntroSection(
   outputStyleConfig: OutputStyleConfig | null,
 ): string {
   // eslint-disable-next-line custom-rules/prompt-spacing
   return `
-You are Claudin, an open-source coding agent and CLI.
-
 You are an interactive agent that helps users ${outputStyleConfig !== null ? 'according to your "Output Style" below, which describes how you should respond to user queries.' : 'with software engineering tasks.'}
 
 ${CYBER_RISK_INSTRUCTION}`
@@ -522,18 +546,14 @@ export async function getSystemPrompt(
       // provider (via getFamilyForLogging), and a memoized section keyed
       // only by model would serve stale content when /provider switches
       // mid-session without a model change.
-      `env_info_simple:${model}:${getAPIProvider()}${leanKey}`,
-      () => computeSimpleEnvInfo(model, additionalWorkingDirectories, lean),
+      `env_info_simple:${model}:${getAPIProvider()}`,
+      () => computeSimpleEnvInfo(model, additionalWorkingDirectories),
     ),
     systemPromptSection('language', () =>
       getLanguageSection(settings.language),
     ),
     systemPromptSection('output_style', () =>
       getOutputStyleSection(outputStyleConfig),
-    ),
-    // In the v2 prompt the scratchpad is one line of the environment section.
-    systemPromptSection(`scratchpad${leanKey}`, () =>
-      lean ? null : getScratchpadInstructions(),
     ),
     systemPromptSection(
       'summarize_tool_results',
@@ -558,8 +578,16 @@ export async function getSystemPrompt(
       : []),
   ]
 
-  const resolvedDynamicSections =
-    await resolveSystemPromptSections(dynamicSections)
+  // The per-session element (SYSTEM_PROMPT_SESSION_MARKER): the scratchpad
+  // path embeds the session id. v2 states it in Claude Code's one line.
+  const [resolvedDynamicSections, [scratchpadSection]] = await Promise.all([
+    resolveSystemPromptSections(dynamicSections),
+    resolveSystemPromptSections([
+      systemPromptSection(`scratchpad${leanKey}`, () =>
+        lean ? getScratchpadEnvItem() : getScratchpadInstructions(),
+      ),
+    ]),
+  ])
 
   return [
     // --- Static content (cacheable) ---
@@ -593,6 +621,10 @@ export async function getSystemPrompt(
     ...(shouldUseGlobalCacheScope() ? [SYSTEM_PROMPT_DYNAMIC_BOUNDARY] : []),
     // --- Dynamic content (registry-managed) ---
     ...resolvedDynamicSections,
+    // --- Per-session content: last, sent uncached ---
+    ...(scratchpadSection
+      ? [SYSTEM_PROMPT_SESSION_MARKER, scratchpadSection]
+      : []),
   ].filter(s => s !== null)
 }
 
@@ -631,7 +663,6 @@ ${modelDescription}${knowledgeCutoffMessage}`
 export async function computeSimpleEnvInfo(
   modelId: string,
   additionalWorkingDirectories?: string[],
-  lean = false,
 ): Promise<string> {
   const [isGit, unameSR] = await Promise.all([getIsGit(), getUnameSR()])
 
@@ -671,8 +702,6 @@ export async function computeSimpleEnvInfo(
     `Platform: ${env.platform}`,
     getShellInfoLine(),
     `OS Version: ${unameSR}`,
-    // v2: the scratchpad instructions ride here as one line, Claude Code style.
-    lean ? getScratchpadEnvItem() : null,
     modelDescription,
     knowledgeCutoffMessage,
     // Claude-specific guidance only when a Claude model is active: on a
@@ -681,7 +710,7 @@ export async function computeSimpleEnvInfo(
     // references. Family resolution depends on provider — hence the
     // provider-qualified section cache key at the call site.
     isAnthropicFamily
-      ? `The most recent Claude models are Fable 5.1, Opus 5.5, Sonnet 5.5, and the Claude 4.x family. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5.5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
+      ? `The most recent Claude models are the Claude 5 family and Haiku 4.5. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5.5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
       : null,
     `Claudin is available as a CLI in the terminal and can be used across local development environments and IDE workflows.`,
     // @[MODEL LAUNCH]: Keep the fast-mode model list in sync with

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'bun:test'
-import { buildEditToolDescription } from 'src/tools/FileEditTool/prompt.js'
+import {
+  buildCompactEditToolDescription,
+  buildEditToolDescription,
+} from 'src/tools/FileEditTool/prompt.js'
 
 type EditPrompt = typeof import('src/tools/FileEditTool/prompt.js')
 
@@ -89,5 +92,36 @@ describe('buildEditToolDescription under CLAUDIN_BASH_READ_CREDIT', () => {
         buildEditToolDescription(lean).replace(READ_ONLY, READ_OR_CAT),
       )
     }
+  })
+})
+
+describe('buildCompactEditToolDescription (v2)', () => {
+  const compact = buildCompactEditToolDescription()
+
+  it('states every rule of the full text', () => {
+    for (const rule of [
+      'Read the file in this conversation before editing',
+      'match the file exactly, including indentation',
+      'be unique',
+      'line number + arrow',
+      '`replace_all: true`',
+      '`then`',
+    ]) {
+      expect(compact).toContain(rule)
+    }
+  })
+
+  it('drops the gated guardrails and is shorter than the lean shape', () => {
+    for (const line of GATED) expect(compact).not.toContain(line)
+    expect(compact.length).toBeLessThan(buildEditToolDescription(true).length)
+  })
+
+  it('under CLAUDIN_BASH_READ_CREDIT a whole-file cat counts as the read', async () => {
+    const on = await loadEditPrompt(true)
+    expect(on.buildCompactEditToolDescription()).toContain(
+      'You must read the file first — with `Read`, or a Bash `cat` that printed it whole — or the call will fail.',
+    )
+    const off = await loadEditPrompt(false)
+    expect(off.buildCompactEditToolDescription()).toBe(compact)
   })
 })

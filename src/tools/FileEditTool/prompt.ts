@@ -1,5 +1,8 @@
 import { feature } from 'bun:bundle'
-import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
+import {
+  isCompactToolPromptsEnabled,
+  isLeanToolPromptFamily,
+} from 'src/agent/prompts/toolPromptTier.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { isEditThenEnabled } from 'src/tools/shared/editThen/editThenShape.js'
@@ -21,8 +24,25 @@ function getPreReadInstruction(): string {
 }
 
 export function getEditToolDescription(): string {
+  if (isCompactToolPromptsEnabled()) return buildCompactEditToolDescription()
   const lean = feature('LEAN_TOOL_PROMPTS') ? isLeanToolPromptFamily() : false
   return buildEditToolDescription(lean)
+}
+
+/**
+ * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density:
+ * the read gate, the exact-and-unique match, the line prefix to strip,
+ * `replace_all` and `then` — every rule of the full text, fewer words.
+ */
+export function buildCompactEditToolDescription(): string {
+  const mustRead = READ_CREDIT
+    ? `You must read the file first — with \`${FILE_READ_TOOL_NAME}\`, or a Bash \`cat\` that printed it whole — or the call will fail.`
+    : `You must ${FILE_READ_TOOL_NAME} the file in this conversation before editing, or the call will fail.`
+  return `Performs exact string replacement in a file.
+
+- ${mustRead}
+- \`old_string\` must match the file exactly, including indentation, and be unique — the edit fails otherwise. Strip the ${FILE_READ_TOOL_NAME} line prefix (line number + arrow) before matching.
+- \`replace_all: true\` replaces every occurrence instead.${THEN_LINE}`
 }
 
 // Pure builder so tests can render both shapes directly (the lean decision

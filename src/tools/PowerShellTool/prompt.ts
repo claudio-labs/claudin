@@ -27,7 +27,7 @@ function getBackgroundUsageNote(): string | null {
   if (isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)) {
     return null
   }
-  return `  - You can use the \`run_in_background\` parameter to run the command in the background. Only use this if you don't need the result immediately and are OK being notified when the command completes later. You do not need to check the output right away - you'll be notified when it finishes.`
+  return `  - \`run_in_background\` runs the command detached: it keeps running across turns and re-invokes you when it exits.`
 }
 
 function getSleepGuidance(): string | null {
