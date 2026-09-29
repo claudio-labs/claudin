@@ -33,6 +33,10 @@ describe('getModelFamily', () => {
     { provider: 'bedrock', model: 'arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-opus-4-8-v1:0', baseUrl: undefined, expected: 'anthropic' },
     // Vertex date-suffixed ids
     { provider: 'vertex', model: 'claude-opus-4-5@20251101', baseUrl: undefined, expected: 'anthropic' },
+    // Foundry serves Claude through Anthropic's SDK; a deployment named
+    // otherwise gets no addendum, like a non-claude Bedrock id
+    { provider: 'foundry', model: 'claude-opus-4-5', baseUrl: undefined, expected: 'anthropic' },
+    { provider: 'foundry', model: 'my-opus-deployment', baseUrl: undefined, expected: 'default' },
     // Bedrock/Vertex with a non-claude model → no addendum
     { provider: 'bedrock', model: 'llama-3', baseUrl: undefined, expected: 'default' },
     { provider: 'bedrock', model: 'amazon.titan-text-express-v1', baseUrl: undefined, expected: 'default' },
@@ -93,7 +97,6 @@ describe('getModelFamily', () => {
     { provider: 'mistral', model: 'mistral-large', baseUrl: undefined, expected: 'default' },
     { provider: 'github', model: 'gpt-4o', baseUrl: undefined, expected: 'default' },
     { provider: 'nvidia-nim', model: 'some-model', baseUrl: undefined, expected: 'default' },
-    { provider: 'foundry', model: 'some-model', baseUrl: undefined, expected: 'default' },
     { provider: 'minimax', model: 'abab-7', baseUrl: undefined, expected: 'default' },
   ]
 
