@@ -97,7 +97,14 @@ export interface ResumeSessionDeps {
 
   // Stops the session being left: its turn, background agents and queued
   // prompts would otherwise run on into the session switched to
-  stopForegroundWork: () => void
+  // (`keepRunning` spares the agents — see ResumeSessionOptions)
+  stopForegroundWork: (keepRunning?: boolean) => void
+}
+
+export interface ResumeSessionOptions {
+  // The work of the session being left carries on instead of being stopped;
+  // the caller has already handed its turn to a background task
+  keepRunning?: boolean
 }
 
 /**
@@ -115,6 +122,7 @@ export async function resumeSession(
   log: LogOption,
   entrypoint: ResumeEntrypoint,
   deps: ResumeSessionDeps,
+  options: ResumeSessionOptions = {},
 ): Promise<void> {
   const {
     setAppState,
@@ -140,7 +148,7 @@ export async function resumeSession(
   try {
     // A branch continues this same conversation, so what it has running
     // carries over; any other switch leaves it behind.
-    if (entrypoint !== 'fork') stopForegroundWork()
+    if (entrypoint !== 'fork') stopForegroundWork(options.keepRunning)
 
     // Deserialize messages to properly clean up the conversation
     // This filters unresolved tool uses and adds a synthetic assistant message if needed

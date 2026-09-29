@@ -94,7 +94,23 @@ export type LocalJSXCommandContext = ToolUseContext & {
     sessionId: UUID,
     log: LogOption,
     entrypoint: ResumeEntrypoint,
+    options?: ResumeOptions,
   ) => Promise<void>
+  /**
+   * Stops what the session being left still runs — its turn, its background
+   * agents and its queued prompts. `keepRunning` spares the agents.
+   */
+  stopForegroundWork?: (keepRunning?: boolean) => void
+  /**
+   * Hands the running turn to a background task. Resolves once that task
+   * holds the conversation, so the caller may then clear it.
+   */
+  backgroundTurn?: () => Promise<void>
+}
+
+export type ResumeOptions = {
+  /** Leave the work of the session being left running instead of stopping it. */
+  keepRunning?: boolean
 }
 
 export type ResumeEntrypoint =

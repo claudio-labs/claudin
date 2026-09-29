@@ -51,7 +51,8 @@ export type SessionsScreenProps = {
   instanceSessionIds?: readonly string[]
   /** What switching would stop right now, in words; asked on each pick. */
   getRunningWork?: () => string | undefined
-  onSelect: (log: LogOption) => void
+  /** `keepRunning`: switch without stopping that work (B in the confirmation). */
+  onSelect: (log: LogOption, keepRunning?: boolean) => void
   onCancel: () => void
   onLoadMore?: (count: number) => void
   onLogsChanged?: () => void
@@ -226,6 +227,7 @@ export function SessionsScreen({
     (input, key) => {
       if (mode === 'confirm') {
         if (key.return && pending) onSelect(pending.log)
+        else if (input === 'b' && !key.ctrl && pending) onSelect(pending.log, true)
         else if (key.escape) {
           setPending(undefined)
           setMode('list')
@@ -298,7 +300,7 @@ export function SessionsScreen({
         />
       </Box>
     ) : mode === 'confirm' && pending ? (
-      <Text color="warning">Switching stops {pending.work} in this session. Enter to switch · Esc to stay</Text>
+      <Text color="warning">Switching stops {pending.work} in this session. Enter to stop it and switch · B to keep it running · Esc to stay</Text>
     ) : notice ? (
       <Text color="warning">{notice}</Text>
     ) : loading ? (
