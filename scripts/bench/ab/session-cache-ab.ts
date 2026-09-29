@@ -123,7 +123,7 @@ const TPL_SUFFIX = '.tpl'
 const REPLAY_TEST = 'scripts/bench/tokens/measure-bash-filter-replay.test.ts'
 
 /** A turn that failed to read back more than this much of the previous prefix broke the cache. */
-const BREAK_TOKENS = 2048
+export const BREAK_TOKENS = 2048
 
 // ---------------------------------------------------------------------------
 // Prices — USD per 1M tokens. Opus 5.5 is claudin's COST_TIER_4_20 and
@@ -149,7 +149,7 @@ function priceOf(model: string): Price {
   return PRICES.find(([re]) => re.test(model))?.[1] ?? PRICES[0]![1]
 }
 
-function costOf(model: string, u: Usage): number {
+export function costOf(model: string, u: Usage): number {
   const price = priceOf(model)
   // A write the API did not split by TTL is priced at the cheaper tier.
   const unsplit = Math.max(0, u.cW - u.cW5m - u.cW1h)
@@ -191,7 +191,7 @@ type Args = {
   proxyDisplay: string | null
 }
 
-type PhaseRun = {
+export type PhaseRun = {
   phase: Phase
   exitCode: number
   timedOut: boolean
@@ -208,7 +208,7 @@ type PhaseRun = {
   stderrTail: string
 }
 
-type Turn = Usage & {
+export type Turn = Usage & {
   n: number
   phase: Phase
   id: string
@@ -224,7 +224,7 @@ type Turn = Usage & {
   visibleChars: number
 }
 
-type Call = {
+export type Call = {
   turn: number
   phase: Phase
   name: string
@@ -241,7 +241,7 @@ type Call = {
   credited?: string[]
 }
 
-type SubagentUsage = { files: number; turns: number; usage: Usage; costUsd: number; models: string[] }
+export type SubagentUsage = { files: number; turns: number; usage: Usage; costUsd: number; models: string[] }
 
 type TestRun = { ok: boolean; pass: number; fail: number; failed: string[] }
 
@@ -262,7 +262,7 @@ type Grade = { tests: TestRun; hidden: TestRun[]; git: GitGrade | null }
  * (`requestKind` in wire-proxy.ts), and what batching or caching the
  * auto-mode classifier's requests would give back.
  */
-type RequestCensus = {
+export type RequestCensus = {
   main: number
   classifier: number
   other: number
@@ -337,7 +337,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function stamp(): string {
+export function stamp(): string {
   return new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)
 }
 
@@ -346,7 +346,7 @@ function stamp(): string {
 // ---------------------------------------------------------------------------
 
 /** Copies a `.tpl` tree into `dest`, dropping the suffix. */
-function materialize(src: string, dest: string): void {
+export function materialize(src: string, dest: string): void {
   for (const entry of readdirSync(src, { withFileTypes: true })) {
     const from = join(src, entry.name)
     if (entry.isDirectory()) {
@@ -372,7 +372,7 @@ const GIT_ENV = {
   GIT_COMMITTER_DATE: '2026-09-01T12:00:00Z',
 }
 
-function git(cwd: string, ...args: string[]): { ok: boolean; out: string } {
+export function git(cwd: string, ...args: string[]): { ok: boolean; out: string } {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...GIT_ENV } })
   return { ok: r.status === 0, out: `${r.stdout ?? ''}${r.status === 0 ? '' : (r.stderr ?? '')}` }
 }
@@ -493,7 +493,7 @@ function armEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
   }
 }
 
-function spawnCollect(
+export function spawnCollect(
   bin: string,
   args: string[],
   cwd: string,
@@ -531,6 +531,8 @@ function spawnCollect(
     child.on('close', code => finish(code ?? -1))
   })
 }
+
+type Spawned = Awaited<ReturnType<typeof spawnCollect>>
 
 type RunContext = { args: Args; runDir: string; graderDir: string; proxy: WireProxy | null }
 
@@ -590,6 +592,11 @@ async function runPhase(
     extraEnv,
   )
   const events = parseJsonl(res.stdout) as Json[]
+  return { events, run: phaseRunOf(phase, res, events) }
+}
+
+/** One process's run, read off its stream-json events. */
+export function phaseRunOf(phase: Phase, res: Spawned, events: Json[]): PhaseRun {
   const init = events.find(e => e.type === 'system' && e.subtype === 'init')
   const result = events.findLast(e => e.type === 'result')
   const messageIds: string[] = []
@@ -601,22 +608,19 @@ async function runPhase(
   const sessionId =
     typeof init?.session_id === 'string' ? init.session_id : typeof result?.session_id === 'string' ? result.session_id : null
   return {
-    events,
-    run: {
-      phase,
-      exitCode: res.code,
-      timedOut: res.timedOut,
-      wallMs: res.wallMs,
-      sessionId,
-      subtype: typeof result?.subtype === 'string' ? result.subtype : null,
-      numTurns: typeof result?.num_turns === 'number' ? result.num_turns : null,
-      cliCostUsd: typeof result?.total_cost_usd === 'number' ? result.total_cost_usd : null,
-      thinkingTokens: thinkingFromResult(result),
-      modelUsage: isRecord(result?.modelUsage) ? (result.modelUsage as PhaseRun['modelUsage']) : {},
-      initTools: Array.isArray(init?.tools) ? init.tools.length : null,
-      messageIds,
-      stderrTail: res.stderr.trim().split('\n').slice(-5).join('\n'),
-    },
+    phase,
+    exitCode: res.code,
+    timedOut: res.timedOut,
+    wallMs: res.wallMs,
+    sessionId,
+    subtype: typeof result?.subtype === 'string' ? result.subtype : null,
+    numTurns: typeof result?.num_turns === 'number' ? result.num_turns : null,
+    cliCostUsd: typeof result?.total_cost_usd === 'number' ? result.total_cost_usd : null,
+    thinkingTokens: thinkingFromResult(result),
+    modelUsage: isRecord(result?.modelUsage) ? (result.modelUsage as PhaseRun['modelUsage']) : {},
+    initTools: Array.isArray(init?.tools) ? init.tools.length : null,
+    messageIds,
+    stderrTail: res.stderr.trim().split('\n').slice(-5).join('\n'),
   }
 }
 
@@ -771,7 +775,7 @@ const CHARS_PER_VISIBLE_TOKEN = 2.22
  * has it is each phase's `result` total spread over that phase's turns, by the
  * part of each turn's output its visible content does not explain.
  */
-function fillThinking(
+export function fillThinking(
   turns: Turn[],
   phases: PhaseRun[],
   proxyThinking: Map<string, number> | null,
@@ -888,7 +892,7 @@ export function analyzeSession(
   return { turns, calls, source: transcript ? 'transcript+stream' : 'stream only' }
 }
 
-function emptySubagents(): SubagentUsage {
+export function emptySubagents(): SubagentUsage {
   return { files: 0, turns: 0, usage: zeroUsage(), costUsd: 0, models: [] }
 }
 
@@ -904,7 +908,7 @@ function jsonlFiles(dir: string): string[] {
 }
 
 /** Every sub-agent / fork transcript under `<project>/<session>/`, both CLIs' layout. */
-function subagentUsage(sessionDir: string, archiveDir: string): SubagentUsage {
+export function subagentUsage(sessionDir: string, archiveDir: string): SubagentUsage {
   const files = jsonlFiles(sessionDir)
   const acc = emptySubagents()
   const models = new Set<string>()
@@ -1535,7 +1539,7 @@ function cliSessionCost(r: RunResult, estimate: number): { usd: number; cumulati
   return { usd: cumulative ? last : summed, cumulative }
 }
 
-type CostSplit = {
+export type CostSplit = {
   thinking: number
   resent: number
   visible: number
@@ -1552,7 +1556,7 @@ type CostSplit = {
  * on every later call. A turn's output enters the next call's context, thinking
  * included; the rest of that growth is tool results and reminders.
  */
-function costSplit(r: RunResult): CostSplit {
+export function costSplit(r: Pick<RunResult, 'turns' | 'calls'>): CostSplit {
   const s: CostSplit = { thinking: 0, resent: 0, visible: 0, prefix: 0, results: 0, gap: 0, resentOut: 0 }
   const turns = r.turns
   const T = turns.length
@@ -1890,17 +1894,17 @@ function metricsOf(r: RunResult): Metrics {
 // Reporting
 // ---------------------------------------------------------------------------
 
-function fmtK(n: number): string {
+export function fmtK(n: number): string {
   const a = Math.abs(n)
   if (a >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
   if (a >= 1_000) return `${(n / 1_000).toFixed(1)}k`
   return String(Math.round(n))
 }
 
-const fmtInt = (n: number): string => String(Math.round(n))
+export const fmtInt = (n: number): string => String(Math.round(n))
 const fmtDec = (n: number): string => n.toFixed(1)
-const fmtUsd = (n: number): string => `$${n.toFixed(3)}`
-const fmtPct = (n: number): string => `${n.toFixed(1)}%`
+export const fmtUsd = (n: number): string => `$${n.toFixed(3)}`
+export const fmtPct = (n: number): string => `${n.toFixed(1)}%`
 
 function median(values: number[]): number {
   const s = [...values].sort((a, b) => a - b)
@@ -1908,20 +1912,20 @@ function median(values: number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2
 }
 
-function table(headers: string[], rows: string[][]): string {
+export function table(headers: string[], rows: string[][]): string {
   const widths = headers.map((h, i) => Math.max(h.length, ...rows.map(r => (r[i] ?? '').length)))
   const line = (cells: string[]) =>
     `| ${cells.map((c, i) => (i === 0 ? c.padEnd(widths[i]!) : c.padStart(widths[i]!))).join(' | ')} |`
   return [line(headers), `|${widths.map(w => '-'.repeat(w + 2)).join('|')}|`, ...rows.map(line)].join('\n')
 }
 
-function toolSummary(names: string[]): string {
+export function toolSummary(names: string[]): string {
   const counts = new Map<string, number>()
   for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1)
   return [...counts].map(([n, c]) => (c > 1 ? `${n}×${c}` : n)).join(' ')
 }
 
-function turnTable(r: RunResult): string {
+export function turnTable(r: Pick<RunResult, 'turns'>): string {
   const rows = r.turns.map((t, i) => {
     const prev = r.turns[i - 1]
     const lost = t.lost ?? 0
@@ -2027,9 +2031,9 @@ export const CENSUS_ROWS: CensusRow[] = [
 ]
 
 /** A table row: its label, each arm's values (one per run), and their format. */
-type ArmRow = [label: string, perArm: number[][], fmt: (n: number) => string]
+export type ArmRow = [label: string, perArm: number[][], fmt: (n: number) => string]
 
-function armTable(arms: Arm[], rows: ArmRow[], multi: boolean): string {
+export function armTable(arms: Arm[], rows: ArmRow[], multi: boolean): string {
   const [base, ...others] = arms
   const body = rows.map(([label, perArm, fmt]) => {
     const cells = perArm.map(values => {
@@ -2448,7 +2452,7 @@ export function parseArgs(argv: string[]): Args {
   return a
 }
 
-function version(bin: string): string {
+export function version(bin: string): string {
   const r = spawnSync(bin, ['--version'], { encoding: 'utf8', env: armEnv(), timeout: 30_000 })
   return (r.stdout ?? '').trim() || `(no --version: ${(r.stderr ?? '').trim().slice(0, 80)})`
 }
