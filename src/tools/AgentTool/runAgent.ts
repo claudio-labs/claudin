@@ -58,7 +58,7 @@ import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentModel, type AgentModelAlias } from 'src/providers/model/agent.js'
-import { modelSupportsEffort } from 'src/providers/effort/effort.js'
+import { getDefaultEffortForModel, modelSupportsEffort } from 'src/providers/effort/effort.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -541,12 +541,15 @@ export async function* runAgent({
       }
     }
 
-    // Override effort level if agent defines one; otherwise the parent's,
-    // under CLAUDIN_SUBAGENT_EFFORT_CAP when set (subagentThinking.ts).
+    // Override effort level if agent defines one; otherwise the parent's, one
+    // level down when raised above its model's default (subagentThinking.ts).
     const effortValue =
       agentDefinition.effort !== undefined
         ? agentDefinition.effort
-        : subagentEffort(state.effortValue, { useExactTools: useExactTools === true })
+        : subagentEffort(state.effortValue, {
+            useExactTools: useExactTools === true,
+            parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),
+          })
 
     if (
       toolPermissionContext === state.toolPermissionContext &&

@@ -6,15 +6,15 @@ import { subagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/suba
 const ADAPTIVE: ThinkingConfig = { type: 'adaptive' }
 const OFF: ThinkingConfig = { type: 'disabled' }
 const KILLSWITCH = 'CLAUDIN_DISABLE_SUBAGENT_THINKING'
-const CAP = 'CLAUDIN_SUBAGENT_EFFORT_CAP'
+const STEP_DOWN = 'CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN'
 const saved = process.env[KILLSWITCH]
-const savedCap = process.env[CAP]
+const savedStepDown = process.env[STEP_DOWN]
 
 afterEach(() => {
   if (saved === undefined) delete process.env[KILLSWITCH]
   else process.env[KILLSWITCH] = saved
-  if (savedCap === undefined) delete process.env[CAP]
-  else process.env[CAP] = savedCap
+  if (savedStepDown === undefined) delete process.env[STEP_DOWN]
+  else process.env[STEP_DOWN] = savedStepDown
 })
 
 describe('subagentThinkingConfig', () => {
@@ -45,51 +45,47 @@ describe('subagentThinkingConfig', () => {
   })
 })
 
-describe('subagentEffort (CLAUDIN_SUBAGENT_EFFORT_CAP)', () => {
-  const fresh = { useExactTools: false }
+describe('subagentEffort — one level below a raised parent', () => {
+  // Opus 5.5 defaults to medium, Fable 5.1 to high.
+  const opus55 = { useExactTools: false, parentDefault: 'medium' as const }
+  const fable = { useExactTools: false, parentDefault: 'high' as const }
 
-  test('unset: capped at high by default', () => {
-    delete process.env[CAP]
-    expect(subagentEffort('xhigh', fresh)).toBe('high')
-    expect(subagentEffort('max', fresh)).toBe('high')
-    expect(subagentEffort('medium', fresh)).toBe('medium')
-    expect(subagentEffort(undefined, fresh)).toBeUndefined()
+  test('above the default: one level down', () => {
+    expect(subagentEffort('max', opus55)).toBe('xhigh')
+    expect(subagentEffort('xhigh', opus55)).toBe('high')
+    expect(subagentEffort('high', opus55)).toBe('medium')
+    expect(subagentEffort('max', fable)).toBe('xhigh')
+    expect(subagentEffort('xhigh', fable)).toBe('high')
   })
 
-  test('off (or 0/false) restores the inherited effort', () => {
-    for (const v of ['off', 'OFF', '0', 'false']) {
-      process.env[CAP] = v
-      expect(subagentEffort('xhigh', fresh)).toBe('xhigh')
+  test('at or below the default: the parent effort', () => {
+    expect(subagentEffort('medium', opus55)).toBe('medium')
+    expect(subagentEffort('low', opus55)).toBe('low')
+    expect(subagentEffort('high', fable)).toBe('high')
+    expect(subagentEffort('medium', fable)).toBe('medium')
+  })
+
+  test('CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN=0 (or off/false) restores plain inheritance', () => {
+    for (const v of ['0', 'off', 'false']) {
+      process.env[STEP_DOWN] = v
+      expect(subagentEffort('max', opus55)).toBe('max')
     }
   })
 
-  test('lowers a named level above the cap, leaves one at or below it', () => {
-    process.env[CAP] = 'medium'
-    expect(subagentEffort('xhigh', fresh)).toBe('medium')
-    expect(subagentEffort('high', fresh)).toBe('medium')
-    expect(subagentEffort('medium', fresh)).toBe('medium')
-    expect(subagentEffort('low', fresh)).toBe('low')
-  })
-
-  test('a fork keeps the parent effort; adaptive, numeric and unset pass through', () => {
-    process.env[CAP] = 'medium'
-    expect(subagentEffort('xhigh', { useExactTools: true })).toBe('xhigh')
-    expect(subagentEffort('adaptive', fresh)).toBe('adaptive')
-    expect(subagentEffort(80, fresh)).toBe(80)
-    expect(subagentEffort(undefined, fresh)).toBeUndefined()
-  })
-
-  test('a value that is not a level falls back to the default cap', () => {
-    process.env[CAP] = 'turbo'
-    expect(subagentEffort('xhigh', fresh)).toBe('high')
+  test('a fork keeps the parent effort; adaptive, numeric, unset and a default that is no level pass through', () => {
+    expect(subagentEffort('xhigh', { ...opus55, useExactTools: true })).toBe('xhigh')
+    expect(subagentEffort('adaptive', opus55)).toBe('adaptive')
+    expect(subagentEffort(80, opus55)).toBe(80)
+    expect(subagentEffort(undefined, opus55)).toBeUndefined()
+    expect(subagentEffort('max', { useExactTools: false, parentDefault: undefined })).toBe('max')
   })
 
   // runAgent builds the agent's app state inside a closure no unit test
   // drives; the wiring is pinned on the source.
-  test('runAgent applies it when the agent definition sets no effort', () => {
+  test("runAgent applies it with the parent model's default when the agent definition sets no effort", () => {
     const source = readFileSync(`${import.meta.dir}/runAgent.ts`, 'utf8')
     expect(source).toContain(
-      ': subagentEffort(state.effortValue, { useExactTools: useExactTools === true })',
+      ': subagentEffort(state.effortValue, {\n            useExactTools: useExactTools === true,\n            parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),\n          })',
     )
   })
 })

@@ -16,31 +16,29 @@
 // CLAUDIN_DISABLE_SUBAGENT_THINKING=1 turns thinking back off for every
 // sub-agent that is not a fork.
 //
-// The effort a sub-agent inherits is capped at `high` — on by default since
-// 2026-09-29. A sub-agent's thinking is not only billed as output: every token
-// of it stays in the context and is re-read by each later call, and fresh Code
-// agents make 100-200 of them (census 2026-09-26..28: output tokens are ~46% of
-// a sub-agent's final context, under a project pinned at xhigh). On a real
-// rewrite unit with the parent at xhigh, the cap cost 24% less than the
-// inherited effort, ranges disjoint from base and placebo, thinking -48%, same
-// deliverable (`scripts/bench/ab/subagent-unit-ab.ts`). It only bites below a
-// parent pinned above `high`: the Opus 5.5 default is `medium`.
+// A sub-agent runs one effort level below its parent when the parent's is
+// raised above its model's default — max → xhigh, xhigh → high, and on Opus 5.5
+// (default medium) high → medium — and at the parent's otherwise, so a session
+// that never raised its effort sees no change. On since 2026-09-29. A
+// sub-agent's thinking is not only billed as output: every token of it stays in
+// the context and is re-read by each later call, and fresh Code agents make
+// 100-200 of them (census 2026-09-26..28: output tokens are ~46% of a
+// sub-agent's final context, under a project pinned at xhigh). On a real
+// rewrite unit with the parent at xhigh, running the sub-agent at high cost 24%
+// less, ranges disjoint from base and placebo, thinking -48%, same deliverable
+// (`scripts/bench/ab/subagent-unit-ab.ts`).
 //
-// CLAUDIN_SUBAGENT_EFFORT_CAP=off restores the inherited effort; a level
-// (low|medium|high|xhigh|max) moves the cap. A fork keeps the parent's effort,
-// an agent definition that sets `effort` keeps its own, and CLAUDIN_EFFORT_LEVEL
-// still pins every request.
+// CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN=0 restores plain inheritance. A fork keeps
+// the parent's effort, an agent definition that sets `effort` keeps its own,
+// and CLAUDIN_EFFORT_LEVEL still pins every request.
 
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import {
   EFFORT_LEVELS,
   isEffortLevel,
-  type EffortLevel,
   type EffortValue,
 } from 'src/providers/effort/effort.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
-
-const DEFAULT_SUBAGENT_EFFORT_CAP: EffortLevel = 'high'
 
 export function subagentThinkingConfig(
   parent: ThinkingConfig,
@@ -59,27 +57,23 @@ export function subagentThinkingConfig(
   return { type: 'disabled' }
 }
 
-/** The cap from CLAUDIN_SUBAGENT_EFFORT_CAP: unset or not a level is the
- * default, `off` (or 0/false/no) is none. */
-function subagentEffortCap(): EffortLevel | null {
-  const raw = process.env.CLAUDIN_SUBAGENT_EFFORT_CAP?.toLowerCase().trim()
-  if (!raw) return DEFAULT_SUBAGENT_EFFORT_CAP
-  if (raw === 'off' || isEnvDefinedFalsy(raw)) return null
-  return isEffortLevel(raw) ? raw : DEFAULT_SUBAGENT_EFFORT_CAP
-}
-
 /**
- * The effort a non-fork sub-agent runs at: the parent's, lowered to the cap
- * when both are named levels and the parent's is above it. Adaptive, numeric
- * and unset parents pass through unchanged.
+ * The effort a non-fork sub-agent runs at: one level below the parent's when
+ * that is above `parentDefault` (the default of the parent's model), else the
+ * parent's. Never lands below the default. Adaptive, numeric and unset parents,
+ * and a model whose default is not a named level, pass through unchanged.
  */
 export function subagentEffort(
   parent: EffortValue | undefined,
-  { useExactTools }: { useExactTools: boolean },
+  {
+    useExactTools,
+    parentDefault,
+  }: { useExactTools: boolean; parentDefault: EffortValue | undefined },
 ): EffortValue | undefined {
   if (useExactTools) return parent
-  const cap = subagentEffortCap()
-  if (cap === null) return parent
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN)) return parent
   if (typeof parent !== 'string' || !isEffortLevel(parent)) return parent
-  return EFFORT_LEVELS.indexOf(parent) > EFFORT_LEVELS.indexOf(cap) ? cap : parent
+  if (typeof parentDefault !== 'string' || !isEffortLevel(parentDefault)) return parent
+  const at = EFFORT_LEVELS.indexOf(parent)
+  return at > EFFORT_LEVELS.indexOf(parentDefault) ? EFFORT_LEVELS[at - 1]! : parent
 }

@@ -1,13 +1,17 @@
 #!/usr/bin/env bun
-// Sub-agent unit A/B: the context ceiling and the effort cap, measured on a
+// Sub-agent unit A/B: the context ceiling and the effort step-down, measured on a
 // real unit of the clean-base rewrite instead of a toy fixture.
 //
 // The 2026-09-26..28 census put 77% of three days' spend in one fan-out of
 // fresh Code sub-agents (session 501d7261), each reading 400-700k on every one
-// of 100-200 calls, at the project's pinned xhigh effort. Two experiments
-// target it, both off by default:
-//   CLAUDIN_SUBAGENT_RELIEF_TRIGGER  a lower relief trigger for sub-agents
-//   CLAUDIN_SUBAGENT_EFFORT_CAP      a cap on the effort a sub-agent inherits
+// of 100-200 calls, at the project's pinned xhigh effort. Two levers target it:
+//   CLAUDIN_SUBAGENT_RELIEF_TRIGGER    a lower relief trigger for sub-agents (off)
+//   CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN  a sub-agent one effort level below a
+//                                      raised parent (on since 2026-09-29; the
+//                                      2026-09-29 run measured it as a `high`
+//                                      cap, which is the same step from xhigh)
+// Every arm but `effort` sets the step-down's killswitch, so `base` is still
+// plain inheritance.
 // A toy task never reaches 300k, so each arm re-runs one recorded unit —
 // `sessions/indexingScan`, $24 and 115 calls when it ran — from the pristine
 // sandbox copy the fan-out left (`<unit>.base`), through the recording proxy.
@@ -61,12 +65,13 @@ const HOST_ENV_RE = /^(CLAUDECODE$|CLAUDE_CODE_|CLAUDIN_(?!CONFIG_DIR$))/
 type Arm = { label: string; bin: string; env: Record<string, string>; agentHint: string }
 const CLAUDIN = join(REPO_ROOT, 'bin', 'claudin')
 const CODE_HINT = 'with subagent_type "Code"'
+const INHERIT = { CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN: '0' }
 const ALL_ARMS: Arm[] = [
   { label: 'claude', bin: 'claude', env: {}, agentHint: 'with subagent_type "general-purpose"' },
-  { label: 'base', bin: CLAUDIN, env: {}, agentHint: CODE_HINT },
-  { label: 'placebo', bin: CLAUDIN, env: {}, agentHint: CODE_HINT },
-  { label: 'relief', bin: CLAUDIN, env: { CLAUDIN_SUBAGENT_RELIEF_TRIGGER: '250000' }, agentHint: CODE_HINT },
-  { label: 'effort', bin: CLAUDIN, env: { CLAUDIN_SUBAGENT_EFFORT_CAP: 'high' }, agentHint: CODE_HINT },
+  { label: 'base', bin: CLAUDIN, env: INHERIT, agentHint: CODE_HINT },
+  { label: 'placebo', bin: CLAUDIN, env: INHERIT, agentHint: CODE_HINT },
+  { label: 'relief', bin: CLAUDIN, env: { ...INHERIT, CLAUDIN_SUBAGENT_RELIEF_TRIGGER: '250000' }, agentHint: CODE_HINT },
+  { label: 'effort', bin: CLAUDIN, env: {}, agentHint: CODE_HINT },
 ]
 
 function brief(sandbox: string): string {

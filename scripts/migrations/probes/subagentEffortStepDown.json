@@ -1,0 +1,37 @@
+{
+  "test": "src/tools/AgentTool/subagentThinking.test.ts",
+  "source": "src/tools/AgentTool/subagentThinking.ts",
+  "probes": [
+    {
+      "name": "effort step-down: a raised parent goes one level down",
+      "find": "  return at > EFFORT_LEVELS.indexOf(parentDefault) ? EFFORT_LEVELS[at - 1]! : parent\n",
+      "replace": "  return parent\n"
+    },
+    {
+      "name": "effort step-down: a parent at or below the default is kept",
+      "find": "  return at > EFFORT_LEVELS.indexOf(parentDefault) ? EFFORT_LEVELS[at - 1]! : parent\n",
+      "replace": "  return at > 0 ? EFFORT_LEVELS[at - 1]! : parent\n"
+    },
+    {
+      "name": "effort step-down: exactly one level, not to the default",
+      "find": "  return at > EFFORT_LEVELS.indexOf(parentDefault) ? EFFORT_LEVELS[at - 1]! : parent\n",
+      "replace": "  return at > EFFORT_LEVELS.indexOf(parentDefault) ? parentDefault : parent\n"
+    },
+    {
+      "name": "effort step-down: a fork keeps the parent's effort",
+      "find": "  if (useExactTools) return parent\n  if (isEnvDefinedFalsy(",
+      "replace": "  if (isEnvDefinedFalsy("
+    },
+    {
+      "name": "effort step-down: the killswitch restores inheritance",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN)) return parent\n",
+      "replace": "\n"
+    },
+    {
+      "name": "effort step-down: runAgent passes the parent model's default",
+      "source": "src/tools/AgentTool/runAgent.ts",
+      "find": "            parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),\n",
+      "replace": "            parentDefault: undefined,\n"
+    }
+  ]
+}
