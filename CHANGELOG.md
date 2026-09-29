@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.1.38 — 2026-09-29
+
+### ✨ Features
+
+- feat(sessions): keep a running turn going across /new and /resume (#268) (#268) (0dc5f216)
+- feat(providers): register claude sonnet 5.5 as the default sonnet tier (#267) (accf40ee)
+- feat(agents): point claudin-guide at the claudiolabs.ai docs (#262) (d614834f)
+
+### 🐛 Bug Fixes
+
+- fix(providers): align NO_PROXY matching with undici 8.11 (#265) (6c127ba6)
+
+### ⚡ Performance
+
+- perf(agents): step sub-agent effort down and fix relief over-clip (#266) (06abe257)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group with 2 updates (#263) (90ba7825)
+- chore(deps): bump the production-dependencies group with 13 updates (#264) (a883f9f2)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.37 — 2026-09-28
 
 ### ✨ Features
