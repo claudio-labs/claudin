@@ -429,9 +429,16 @@ const MULTI_HOP_SEARCH_MIN_QUERIES = 3
  * only the report comes back), so this keeps what it does not say: search
  * directly for a directed lookup, and the threshold. It names no lane, so it
  * holds with fork off too.
+ *
+ * `directLookup` false (the v2 prompt): the compact Agent description that
+ * family receives says "search directly" itself, so only the threshold is
+ * left here.
  */
-export function buildLeanMultiHopItem(searchTools: string): string {
-  return `Use ${searchTools} directly for a directed lookup (a specific file, class or function); when the question needs more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches, delegate it to the ${AGENT_TOOL_NAME} tool.`
+export function buildLeanMultiHopItem(searchTools: string, directLookup = true): string {
+  const delegate = `more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches, delegate it to the ${AGENT_TOOL_NAME} tool.`
+  return directLookup
+    ? `Use ${searchTools} directly for a directed lookup (a specific file, class or function); when the question needs ${delegate}`
+    : `When the question needs ${delegate}`
 }
 
 /**
@@ -449,6 +456,11 @@ export function buildLeanMultiHopItem(searchTools: string): string {
  *
  * `lean` is the v2 prompt: the denied-call and skill items in Claude Code's
  * shorter wording.
+ *
+ * `lean` is the v2 prompt: the denied-call item names no tool (AskUserQuestion
+ * is deferred there), the multi-hop item keeps only the threshold, and there is
+ * no skill item — the Skill tool's description carries its rules. Each was
+ * said twice (2026-09-29, team memory `claude-code-2.1.284-wire-diff`).
  */
 export function getSessionSpecificGuidanceSection(
   enabledTools: Set<string>,
@@ -466,7 +478,7 @@ export function getSessionSpecificGuidanceSection(
   const items = [
     hasAskUserQuestionTool
       ? lean
-        ? `If you don't know why a tool call was denied, ask the user with ${ASK_USER_QUESTION_TOOL_NAME}.`
+        ? `If you don't know why a tool call was denied, ask the user.`
         : `If you do not understand why the user has denied a tool call, use the ${ASK_USER_QUESTION_TOOL_NAME} to ask them.`
       : null,
     getIsNonInteractiveSession()
@@ -477,7 +489,7 @@ export function getSessionSpecificGuidanceSection(
     hasAgentTool ? getAgentToolSection() : null,
     hasAgentTool
       ? isLeanAgentPromptEnabled()
-        ? buildLeanMultiHopItem(searchTools)
+        ? buildLeanMultiHopItem(searchTools, !lean)
         : // The delegation lane depends on isForkSubagentEnabled(): with fork off
           // (coordinator mode) omitting subagent_type spawns a FRESH agent, so
           // promising inherited context here would contradict the Agent tool's
@@ -488,10 +500,8 @@ export function getSessionSpecificGuidanceSection(
               : ` — it starts fresh, so give it a self-contained task description`
           }: the fan-out of Grep and Read stays there and you get back only its report.`
       : null,
-    hasSkills
-      ? lean
-        ? `When the user types \`/<skill-name>\`, invoke it via ${SKILL_TOOL_NAME}. Only use skills listed in the user-invocable skills section — don't guess, and don't use built-in CLI commands.`
-        : `/<skill-name> (e.g., /commit) is shorthand for users to invoke a user-invocable skill. When executed, the skill gets expanded to a full prompt. Use the ${SKILL_TOOL_NAME} tool to execute them. IMPORTANT: Only use ${SKILL_TOOL_NAME} for skills listed in its user-invocable skills section - do not guess or use built-in CLI commands.`
+    hasSkills && !lean
+      ? `/<skill-name> (e.g., /commit) is shorthand for users to invoke a user-invocable skill. When executed, the skill gets expanded to a full prompt. Use the ${SKILL_TOOL_NAME} tool to execute them. IMPORTANT: Only use ${SKILL_TOOL_NAME} for skills listed in its user-invocable skills section - do not guess or use built-in CLI commands.`
       : null,
   ].filter(item => item !== null)
 
@@ -707,21 +717,18 @@ export async function computeSimpleEnvInfo(
     isAnthropicFamily
       ? `The most recent Claude models are the Claude 5 family and Haiku 4.5. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5.5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
       : null,
-    `Claudin is available as a CLI in the terminal and can be used across local development environments and IDE workflows.`,
     // @[MODEL LAUNCH]: Keep the fast-mode model list in sync with
     // isFastModeSupportedByModel / FAST_MODE_MODEL_DISPLAY (src/providers/fastMode.ts).
     // firstParty-only: fast mode is rejected on every other provider
-    // (isFastModeEnabled bails on getAPIProvider() !== 'firstParty').
-    isAnthropicFamily && getAPIProvider() === 'firstParty'
+    // (isFastModeEnabled bails on getAPIProvider() !== 'firstParty'), and
+    // interactive-only: /fast is a TUI toggle, so `-p` leaves it out, as
+    // Claude Code does.
+    isAnthropicFamily && getAPIProvider() === 'firstParty' && !getIsNonInteractiveSession()
       ? `Fast mode for Claudin uses Claude Opus with faster output (it does not downgrade to a smaller model). It can be toggled with /fast and is available on Opus 5.5/5/4.7/4.6.`
       : null,
   ].filter(item => item !== null)
 
-  return [
-    `# Environment`,
-    `You have been invoked in the following environment: `,
-    ...prependBullets(envItems),
-  ].join(`\n`)
+  return [`# Environment`, ...prependBullets(envItems)].join(`\n`)
 }
 
 // @[MODEL LAUNCH]: Add a knowledge cutoff date for the new model.

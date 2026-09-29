@@ -25,7 +25,7 @@ export const EDIT_THEN_ENV = 'CLAUDIN_EDIT_THEN'
 
 export const MAX_THEN_COMMANDS = 3
 
-/** On unless `=0`. Read per call; the schema and the prompts read it once, when they are built. */
+/** On unless `=0`. Read per call; the schema reads it once, when it is built. */
 export function isEditThenEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env[EDIT_THEN_ENV])
 }

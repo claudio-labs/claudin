@@ -118,7 +118,6 @@ function finishedTurn(): Message[] {
       addedLines: ['- Code: General-purpose agent.'],
       removedTypes: [],
       isInitial: true,
-      showConcurrencyNote: true,
     }),
     attachment({ type: 'git_status_delta', content: 'Current branch: master\n\nStatus:\n(clean)' }),
     attachment({

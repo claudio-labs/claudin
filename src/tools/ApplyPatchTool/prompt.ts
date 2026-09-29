@@ -1,5 +1,4 @@
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { isEditThenEnabled } from 'src/tools/shared/editThen/editThenShape.js'
 
 export const APPLY_PATCH_TOOL_NAME = 'Patch'
 /**
@@ -21,13 +20,13 @@ export const LEGACY_APPLY_PATCH_TOOL_NAME = 'apply_patch'
 // file a Bash `cat` printed whole counts as read (BashTool/creditShownFiles.ts)
 // and the contract below says so. It is read once at module load, like the
 // credit itself, so DESCRIPTION is still one static string per process.
+//
+// It does not name `then` (CLAUDIN_EDIT_THEN): the parameter's own schema
+// text (editThenShape.ts) says what it runs and when, and repeating it here
+// cost every request a line (lean3 A/B, team memory
+// `claude-code-2.1.284-wire-diff`).
 const CAT_COUNTS_AS_READ = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
   ? ' — a Bash `cat` that printed the whole file counts too'
-  : ''
-// CLAUDIN_EDIT_THEN (editThenShape.ts), on unless `=0`, and read once here for
-// the same reason: the patch's check can ride this call.
-const THEN_RULE = isEditThenEnabled()
-  ? '\n- To check the change, put its test, typecheck or build command in `then`: it runs as soon as the patch applies, in this same call, and its output comes back with the result.'
   : ''
 
 export const DESCRIPTION = `Apply a patch to one or more files in a single call. Use this to create, modify, delete, or rename several files at once.
@@ -78,4 +77,4 @@ Rules:
 - Update and Delete need a prior Read of the file, and any Read counts: the whole file, an outline, a symbol, or a range${CAT_COUNTS_AS_READ}. Nothing has to be re-read, or read whole, to be allowed to patch — a hunk applies when its context and "-" lines match the file as it is on disk, so read only the lines you need to write it. Add does not require a prior read.
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - For new lines, always prefix them with "+", including when creating a file.
-- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead.${THEN_RULE}`
+- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead.`

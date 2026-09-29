@@ -177,6 +177,9 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
     for (const category of TEAM_CATEGORIES) {
       expect(text).toContain(`${category.dir}/\` — `)
       expect(text).toContain(`## ${category.section}`)
+      // The one-liner, not the full prompt's longer line: the length test
+      // above stopped catching the swap once the section shrank.
+      expect(text).toContain(category.lean)
     }
     expect(text).toContain('stays at the team root')
     expect(text).toContain('impact: structural | functional | rejected')

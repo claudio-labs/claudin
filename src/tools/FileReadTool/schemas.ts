@@ -16,32 +16,40 @@ import {
 const READ_MULTI = readMultiEnabledAtLoad()
 const READ_GLOBS = readGlobsEnabledAtLoad()
 
+/*
+ * The parameter texts state every limit and precedence, which only they say,
+ * and leave to the description what it already says: when to outline, slice
+ * or read whole, and that view and symbol apply to each file of a batch
+ * (lean3 A/B, team memory `claude-code-2.1.284-wire-diff`). The parked
+ * CLAUDIN_READ_GLOBS field was not part of that A/B and keeps its text.
+ */
+
 /** The fields both shapes share, built fresh per schema. */
 function sharedFields() {
   return {
     offset: semanticNumber(z.number().int().nonnegative().optional()).describe(
-      'The line number to start reading from. Only provide if the file is too large to read at once',
+      'Line number to start reading from.',
     ),
     limit: semanticNumber(z.number().int().positive().optional()).describe(
-      'The number of lines to read. Only provide if the file is too large to read at once.',
+      'Number of lines to read.',
     ),
     pages: z
       .string()
       .optional()
       .describe(
-        `Page range for PDF files (e.g., "1-5", "3", "10-20"). Only applicable to PDF files. Maximum ${PDF_MAX_PAGES_PER_READ} pages per request.`,
+        `PDF page range, e.g. "1-5" or "3"; at most ${PDF_MAX_PAGES_PER_READ} pages per request.`,
       ),
     view: z
       .enum(['outline', 'full'])
       .optional()
       .describe(
-        "Set to 'outline' to read only the structural skeleton of a code file — every function, class and object-literal member signature with its line range — instead of the full contents. Set to 'full' to force a full-body read even on large files that would otherwise auto-pivot to an outline. Cheap way to navigate a large file before expanding one part.",
+        "'outline': only the file's skeleton — every function, class and object-literal member signature with its line range. 'full': the whole body, even of a large file that would otherwise come back as an outline.",
       ),
     encoding: z
       .string()
       .optional()
       .describe(
-        'Decode the file with this Encoding Standard label (e.g. "utf-16le", "shift_jis", "windows-1252") instead of UTF-8. Only needed for a file that is not UTF-8 and carries no BOM — those read as mojibake or as binary otherwise. Same label space as Grep\'s `encoding`, so a match Grep found with one is readable here with the same one.',
+        'Encoding Standard label to decode with instead of UTF-8 (e.g. "utf-16le", "shift_jis", "windows-1252"), for a file that is not UTF-8 and has no BOM. The same labels as Grep\'s `encoding`.',
       ),
   }
 }
@@ -73,7 +81,7 @@ function singleFileInputSchema() {
       .string()
       .optional()
       .describe(
-        "Expand exactly one symbol by name: returns just that function/class/type body with its real line numbers. Use after an outline to read one part of a large file. Takes precedence over offset/limit and view.",
+        "One symbol's body by name — a function, class or type — with its real line numbers. Takes precedence over offset/limit and view.",
       ),
     encoding,
   })
@@ -102,7 +110,7 @@ function batchCapableInputSchema() {
             z.array(z.string()).min(MIN_BATCH_FILES).max(MAX_BATCH_FILES).optional(),
           )
           .describe(
-            `${MIN_BATCH_FILES}-${MAX_BATCH_FILES} absolute paths to read in one call, instead of file_path. view and symbol apply to every file; offset, limit, pages and encoding are single-file only.`,
+            `${MIN_BATCH_FILES}-${MAX_BATCH_FILES} absolute paths to read in one call, instead of file_path; offset, limit, pages and encoding are single-file only.`,
           ),
     offset,
     limit,
@@ -123,7 +131,7 @@ function batchCapableInputSchema() {
           .optional(),
       )
       .describe(
-        `Expand a symbol by name — or a list of up to ${MAX_BATCH_SYMBOLS}, each looked up in every file: returns just that function/class/type body with its real line numbers. Use after an outline to read one part of a large file. Takes precedence over offset/limit and view.`,
+        `A symbol's body by name — a function, class or type — with its real line numbers; or a list of up to ${MAX_BATCH_SYMBOLS}, each looked up in every file. Takes precedence over offset/limit and view.`,
       ),
     encoding,
   })

@@ -12,6 +12,7 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 }
 
 import type { ProviderProfile } from 'src/platform/config/config.js'
+import { getIsNonInteractiveSession, setIsInteractive } from 'src/platform/bootstrap/state.js'
 
 // Capture the real modules first so we can spread them and restore at teardown.
 // Following CLAUDE.md mock.module rules — never narrow the namespace shape.
@@ -80,6 +81,10 @@ afterAll(() => {
 test('mid-session provider switch recomputes the env section without a section clear', async () => {
   clearSystemPromptSections()
   invalidateActiveProviderCache()
+  // The fast-mode line is interactive-only (/fast is a TUI toggle), so the
+  // firstParty half needs an interactive session to have one to drop.
+  const wasNonInteractive = getIsNonInteractiveSession()
+  setIsInteractive(true)
 
   // No profile → getAPIProvider() falls back to 'firstParty'.
   const firstPartyText = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
@@ -97,6 +102,7 @@ test('mid-session provider switch recomputes the env section without a section c
   invalidateActiveProviderCache()
 
   const bedrockText = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
+  setIsInteractive(!wasNonInteractive)
   // Still the anthropic family → keeps the Claude model-list line…
   expect(bedrockText).toContain('most capable Claude models')
   // …but /fast only works on firstParty, so the fast-mode line must drop.

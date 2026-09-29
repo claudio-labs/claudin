@@ -140,3 +140,21 @@ export function isSubagentBatchingEnabled(): boolean {
 export function isOneCallCommitEnabled(): boolean {
   return isEnvTruthy(process.env.CLAUDIN_ONE_CALL_COMMIT)
 }
+
+/*
+ * Round 3 of the prompt work (2026-09-29, branch perf/prompt-parity-2284): the
+ * memory section's write-time rules, needed only when a memory is written. An
+ * A/B arm, OFF until measured — `=1` turns it on, unset leaves every prompt
+ * byte-identical — and process-constant like the toggles above. Its sibling,
+ * the text the first request said twice, passed the same A/B and is the
+ * default since, with no killswitch left behind.
+ */
+
+/**
+ * `CLAUDIN_MEMORY_RULES_ON_DEMAND=1`: the memory section keeps what every
+ * request needs and the frontmatter template; the rules only a write needs
+ * come back from memoryFormatGuard.ts when a write breaks them.
+ */
+export function isMemoryRulesOnDemandEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_MEMORY_RULES_ON_DEMAND)
+}

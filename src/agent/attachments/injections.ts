@@ -14,7 +14,6 @@ import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { formatAgentLine } from 'src/tools/AgentTool/prompt.js'
 import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { filterDeniedAgents } from 'src/permissions/permissions.js'
-import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { getLocalISODate } from 'src/shared/constants/common.js'
@@ -229,7 +228,6 @@ export function getAgentListingDeltaAttachment(
       addedLines: added.map(formatAgentLine),
       removedTypes: removed,
       isInitial: announced.size === 0,
-      showConcurrencyNote: getSubscriptionType() !== 'pro',
     },
   ]
 }

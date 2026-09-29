@@ -284,7 +284,11 @@ describe('prompt feature coverage', () => {
       expect(systemPrompt === null ? `${file} missing` : 'present').toBe('present')
       const toolTexts = await Promise.all(getAllBaseTools().map(t => toolTextIn(t, lean)))
       const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
-      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
+      // Each tool's name is read too: since the v2 guidance dropped its skill
+      // item (the Skill tool's description carries the rules), the Skill tool
+      // itself is what names the skills capability there.
+      const toolNames = getAllBaseTools().map(t => t.name)
+      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolNames, ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
       const markers = s.family === null ? ANYWHERE_MARKERS : ANYWHERE_MARKERS.filter(([c]) => !ANTHROPIC_ONLY_MARKERS.has(c))
       const missing = markers.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
       expect(missing.map(([capability]) => capability)).toEqual([])

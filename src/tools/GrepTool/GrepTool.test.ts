@@ -5,12 +5,15 @@ import { basename, join } from 'path'
 
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getCwdState, setCwdState } from 'src/platform/bootstrap/state.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
 import 'src/tools/GlobTool/GlobTool.js'
 import { GrepTool, RG_LINE_RE, relativizeRgLine } from 'src/tools/GrepTool/GrepTool.js'
+import { isGrepBodiesEnabled } from 'src/tools/GrepTool/grepBodies.js'
+import { getCompactDescription, getDescription } from 'src/tools/GrepTool/prompt.js'
 
 // ---------------------------------------------------------------------------
 // Regression + feature suite for GrepTool.
@@ -1212,4 +1215,94 @@ describe('GrepTool — auto-pivot respects encoding', () => {
     expect(d.content).toContain('pivotFn0')
     expect(d.content).not.toContain('matched outside any symbol')
   })
+})
+
+// The parameter texts are the only place each default, limit, rg flag and
+// alias is stated; what the descriptions already say they leave out (see the
+// note above inputSchema in GrepTool.ts).
+describe('GrepTool — input schema texts', () => {
+  type JsonRecord = Record<string, unknown>
+
+  const schema = zodToJsonSchema(GrepTool.inputSchema) as JsonRecord
+  const texts: Record<string, string> = Object.fromEntries(
+    Object.entries(schema.properties as Record<string, JsonRecord>).map(
+      ([name, field]) => [name, String(field.description)],
+    ),
+  )
+
+  test('every parameter stays', () => {
+    expect(Object.keys(texts)).toEqual([
+      'pattern',
+      'path',
+      'glob',
+      'output_mode',
+      '-B',
+      '-A',
+      '-C',
+      'context',
+      '-n',
+      '-i',
+      'no_ignore',
+      'binary',
+      'encoding',
+      'type',
+      'head_limit',
+      'offset',
+      'multiline',
+      ...(isGrepBodiesEnabled() ? ['bodies'] : []),
+    ])
+    expect(schema.required).toEqual(['pattern'])
+  })
+
+  test('keeps the defaults, the alias, the limits and the rg flags only the schema states', () => {
+    const required: Record<string, string[]> = {
+      path: ['(rg PATH)', 'Defaults to the working directory'],
+      glob: ['(rg --glob)'],
+      output_mode: ['"files_with_matches" (default)', '"symbols"', 'Terraform'],
+      '-B': ['(rg -B)'],
+      '-A': ['(rg -A)'],
+      '-C': ['Alias for context; context wins when both are given'],
+      context: ['(rg -C)'],
+      '-n': ['(rg -n), default true'],
+      '-i': ['smart-case'],
+      no_ignore: ['.gitignore/.ignore', '(rg --no-ignore)', 'Default false'],
+      binary: ['(rg -a)', 'Default false'],
+      encoding: ['(rg --encoding)', 'UTF-16 without a BOM is skipped as binary'],
+      type: ['(rg --type)'],
+      head_limit: ['"| head -N"', 'Default 250; 0 for unlimited'],
+      offset: ['"| tail -n +N | head -N"', 'Default 0'],
+      multiline: ['(rg -U --multiline-dotall)', 'Default false'],
+    }
+    for (const flag of ['-A', '-B', '-C', 'context', '-n']) {
+      required[flag]!.push('Ignored outside "content" mode.')
+    }
+    const missing = Object.entries(required).flatMap(([field, needles]) =>
+      needles.filter(needle => !texts[field]!.includes(needle)).map(needle => `${field}: ${needle}`),
+    )
+    expect(missing).toEqual([])
+  })
+
+  for (const [shape, render] of [
+    ['compact', getCompactDescription],
+    ['full', getDescription],
+  ] as const) {
+    test(`${shape} description + schema still name every capability`, () => {
+      const text = `${render()}\n${JSON.stringify(schema)}`
+      const markers = [
+        'symbols',
+        /broad/i,
+        'files_with_matches',
+        'count',
+        'head_limit',
+        'multiline',
+        '.gitignore',
+        'no_ignore',
+        'binary',
+        'encoding',
+        'smart-case',
+      ]
+      const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
+      expect(missing.map(String)).toEqual([])
+    })
+  }
 })

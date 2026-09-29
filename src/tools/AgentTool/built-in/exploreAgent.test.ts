@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { renderCompactAgentPrompt } from 'src/tools/AgentTool/prompt.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
@@ -113,9 +114,12 @@ describe('EXPLORE_AGENT.whenToUse', () => {
     expect(whenToUse).toContain('verbatim')
   })
 
-  test('sends a directed lookup back to a direct search', () => {
-    // 0 of 77 organic calls in 2026-08 were LOCATE-SYMBOL or READ-ONE-THING.
-    expect(whenToUse).toContain('search directly instead')
+  test('leaves the direct-lookup rule to the Agent description', () => {
+    // 0 of 77 organic calls in 2026-08 were LOCATE-SYMBOL or READ-ONE-THING;
+    // the compact Agent description says to search a directed lookup directly,
+    // and this line stopped repeating it on 2026-09-29.
+    expect(whenToUse).not.toContain('search directly')
+    expect(renderCompactAgentPrompt(false, true)).toContain('For a lookup where you already know the file, symbol or value, search directly.')
   })
 
   test('lists the thoroughness levels callers pass', () => {

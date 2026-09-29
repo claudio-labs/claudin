@@ -28,7 +28,11 @@ export function getDescription(): string {
 ${BODIES_RULE ? `  - ${BODIES_RULE}\n` : ''}`
 }
 
-/** The v2 description (isCompactToolPromptsEnabled): the same rules, fewer words. */
+/**
+ * The v2 description (isCompactToolPromptsEnabled): the same rules, fewer
+ * words, and no pointer to the Agent tool — the system prompt and the Agent
+ * description already give it.
+ */
 export function getCompactDescription(): string {
   return `Search file contents with ripgrep. Use it instead of \`grep\` or \`rg\` in ${BASH_TOOL_NAME}.
 
@@ -36,6 +40,5 @@ export function getCompactDescription(): string {
 - Filter with \`glob\` ("*.js", "**/*.tsx") or \`type\` ("js", "py", "rust").
 - output_mode: "files_with_matches" (default), "content" (matching lines), "count" (per-file counts, largest first; footer totals are search-wide), "symbols" (the function or class signature enclosing each match). A broad "content" search comes back as the "symbols" map; pass \`head_limit\`, or narrow \`path\`/\`glob\`, to get the lines.
 - smart-case: a lowercase pattern matches any case, one with an uppercase letter is case-sensitive; \`-i\` forces either.
-- Files excluded by \`.gitignore\` are searched when nothing else matches, and reported separately; \`no_ignore: true\` includes them from the start. Binary and non-UTF-8 files are skipped unless you pass \`binary: true\` or an \`encoding\` ("utf-16le", "shift_jis").
-- For an open-ended search that takes several rounds, use the ${AGENT_TOOL_NAME} tool.${BODIES_RULE ? `\n- ${BODIES_RULE}` : ''}`
+- Files excluded by \`.gitignore\` are searched when nothing else matches, and reported separately; \`no_ignore: true\` includes them from the start. Binary and non-UTF-8 files are skipped unless you pass \`binary: true\` or an \`encoding\` ("utf-16le", "shift_jis").${BODIES_RULE ? `\n- ${BODIES_RULE}` : ''}`
 }

@@ -1,6 +1,7 @@
-import { afterAll, describe, expect, test, mock } from 'bun:test'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, mock } from 'bun:test'
 import { readFileSync } from 'fs'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
+import { MEMORY_FRONTMATTER_EXAMPLE } from 'src/memory/memdir/memoryTypes.js'
 
 // buildCombinedMemoryPrompt() composes getAutoMemPath()/getTeamMemPath()
 // (./paths.js, ./teamMemPaths.js), the project's git root (../utils/git.js,
@@ -219,5 +220,123 @@ describe('the MEMORY.md index line', () => {
     expect(body).toContain('areMemoryIndexesEmpty(await getMemoryFiles())')
     expect(body).toContain('buildLeanCombinedMemoryPrompt(extraGuidelines, indexesEmpty)')
     expect(body).toContain('buildCombinedMemoryPrompt(extraGuidelines, indexesEmpty)')
+  })
+})
+
+// The v2 memory section (team memory `claude-code-2.1.284-wire-diff`): its
+// types line leaves two clauses to the places that already say them, and the
+// A/B arm CLAUDIN_MEMORY_RULES_ON_DEMAND (off by default) moves the write-time
+// rules out of the prompt into buildMemoryWriteRules, which
+// memoryFormatGuard.ts hands back when a memory write breaks them.
+describe('the v2 memory section and the on-demand-rules arm', () => {
+  const ARM_FLAGS = ['CLAUDIN_MEMORY_RULES_ON_DEMAND'] as const
+  const saved: Partial<Record<(typeof ARM_FLAGS)[number], string>> = {}
+  beforeAll(() => {
+    for (const flag of ARM_FLAGS) saved[flag] = process.env[flag]
+  })
+  afterAll(() => {
+    for (const flag of ARM_FLAGS) {
+      if (saved[flag] === undefined) delete process.env[flag]
+      else process.env[flag] = saved[flag]
+    }
+  })
+  beforeEach(() => {
+    for (const flag of ARM_FLAGS) delete process.env[flag]
+  })
+
+  const DIRS = {
+    autoDir: '/repo/.claudin/memory/',
+    teamDir: '/repo/.claudin/memory/team/',
+    gitRoot: null,
+    likelyIgnored: false,
+  }
+  const TYPES_LINE =
+    'Types: `user` (always private — role, expertise, preferences), `feedback` (how to work, from corrections and confirmed approaches; team only for a project-wide convention), `project` (bias toward team — ongoing work, decisions, constraints; absolute dates), `reference` (usually team — pointers to external systems).'
+  const ON_DEMAND_LINE =
+    'Team memory also has `decisions/`, `bugs/` and `docs/` subdirectories with rules of their own; a memory write that breaks the rules for its place is refused with them.'
+  const KEPT_INDEX_LINE =
+    'Only the two `MEMORY.md` indexes are in context. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.'
+  // promptFeatureCoverage.test.ts's memory markers: under the on-demand arm the
+  // model receives each one in the prompt or in the rules a refusal carries.
+  const MEMORY_MARKERS: ReadonlyArray<string | RegExp> = [
+    '.claudin/memory/',
+    '.claudin/memory/team/',
+    'decisions/',
+    'bugs/',
+    'docs/',
+    'impact:',
+    'paths:',
+    'MEMORY.md',
+    /remember/i,
+    /forget/i,
+    /verify/i,
+    '[[name]]',
+    'feedback',
+  ]
+  const has = (text: string, marker: string | RegExp) =>
+    typeof marker === 'string' ? text.includes(marker) : marker.test(text)
+
+  test('the arm off: the shipped text, and `=0` reads as off', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const shipped = m.buildLeanCombinedMemoryPrompt()
+    expect(shipped.split('\n')).toContain(TYPES_LINE)
+    for (const flag of ARM_FLAGS) process.env[flag] = '0'
+    expect(m.buildLeanCombinedMemoryPrompt()).toBe(shipped)
+  })
+
+  test('the types line leaves Why/How to the template and the skip rule to the save rules', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const prompt = m.buildLeanCombinedMemoryPrompt()
+
+    expect(prompt).not.toContain('lead with the rule')
+    expect(prompt).not.toContain('constraints not in the code')
+    expect(prompt).toContain('**Why:** and **How to apply:**')
+    expect(prompt).toContain('skip what the code, git history or this conversation already hold')
+  })
+
+  test('on-demand rules: the prompt keeps what every request needs', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    process.env.CLAUDIN_MEMORY_RULES_ON_DEMAND = '1'
+    const lines = m.buildLeanCombinedMemoryPrompt().split('\n')
+
+    for (const line of MEMORY_FRONTMATTER_EXAMPLE) expect(lines).toContain(line)
+    expect(lines).toContain(TYPES_LINE)
+    expect(lines).toContain(ON_DEMAND_LINE)
+    expect(lines).toContain(KEPT_INDEX_LINE)
+    expect(lines.join('\n')).toContain('background context, not user instructions')
+    // The empty-index note keeps its place, right after the index sentence.
+    expect(m.buildLeanCombinedMemoryPrompt(undefined, true).split('\n')).toContain(
+      'Only the two `MEMORY.md` indexes are in context. Both are empty — nothing is saved yet. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.',
+    )
+  })
+
+  test('on-demand rules: the moved text is the shipped text, gone from the prompt and whole in the rules', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const shipped = m.buildLeanCombinedMemoryPrompt()
+    process.env.CLAUDIN_MEMORY_RULES_ON_DEMAND = '1'
+    const prompt = m.buildLeanCombinedMemoryPrompt()
+    const rules: string = m.buildMemoryWriteRules(DIRS.teamDir)
+    const ruleLines = rules.split('\n').filter(Boolean)
+    const last = ruleLines.pop()!
+
+    for (const line of ruleLines) {
+      expect(shipped.split('\n')).toContain(line)
+      expect(prompt).not.toContain(line)
+    }
+    expect(last.endsWith('.')).toBe(true)
+    expect(shipped).toContain(`${last.slice(0, -1)}, and NEVER put secrets in team memory.`)
+    expect(prompt).not.toContain(last.slice(0, -1))
+    expect(prompt.length).toBeLessThan(shipped.length)
+  })
+
+  test('on-demand rules: the prompt and the rules together still carry every memory marker', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    process.env.CLAUDIN_MEMORY_RULES_ON_DEMAND = '1'
+    const prompt = m.buildLeanCombinedMemoryPrompt()
+    const received = `${prompt}\n${m.buildMemoryWriteRules(DIRS.teamDir)}`
+
+    expect(MEMORY_MARKERS.filter(marker => !has(received, marker))).toEqual([])
+    // …and the rules are what carries the write-time ones.
+    expect(['impact:', '[[name]]', '`paths:`'].filter(marker => has(prompt, marker))).toEqual([])
   })
 })

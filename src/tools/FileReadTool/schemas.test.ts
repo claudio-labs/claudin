@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import {
+  LINE_FORMAT_INSTRUCTION,
+  renderCompactPromptTemplate,
+  renderPromptTemplate,
+} from 'src/tools/FileReadTool/prompt.js'
+import {
   importWithReadMulti,
   importWithReadGlobs,
   importWithReadMultiUnset,
@@ -14,8 +19,9 @@ const SCHEMAS = 'src/tools/FileReadTool/schemas.js'
 // the default. The describe keeps its name so its snapshot keeps its key.
 describe('Read input schema — CLAUDIN_READ_MULTI off', () => {
   test('the JSON schema the API receives is pinned byte for byte', async () => {
-    // Taken before the batch Read existed. Under the killswitch the model
-    // must see exactly this schema — one file_path, one symbol — so the
+    // Its shape was taken before the batch Read existed; only the parameter
+    // texts have changed since (shortened 2026-09-29). Under the killswitch the
+    // model must see exactly this schema — one file_path, one symbol — so the
     // snapshot is the proof, not a description of it.
     const { inputSchema } = await importWithReadMulti<Schemas>(SCHEMAS, false)
     expect(JSON.stringify(zodToJsonSchema(inputSchema()), null, 2)).toMatchSnapshot()
@@ -150,4 +156,70 @@ describe('Read input schema — CLAUDIN_READ_GLOBS on', () => {
     // An empty list still reads as absent, as every placeholder does.
     expect(schema.parse({ file_path: '/a.ts', file_paths: [] })).toEqual({ file_path: '/a.ts' })
   })
+})
+
+// The parameter texts state every limit and precedence, which only they say;
+// the snapshots above pin them byte for byte, these name what must survive
+// the next edit of them.
+describe('Read input schema — what only the parameter texts say', () => {
+  async function texts(load: () => Promise<Schemas>): Promise<Record<string, string>> {
+    const schema = zodToJsonSchema((await load()).inputSchema()) as JsonRecord
+    return Object.fromEntries(
+      Object.entries(propertiesOf(schema)).map(([name, field]) => [name, String(field.description)]),
+    )
+  }
+  const byDefault = () => importWithReadMultiUnset<Schemas>(SCHEMAS)
+
+  test('the default schema keeps its limits and precedence', async () => {
+    const t = await texts(byDefault)
+    expect(t.file_path).toContain('Give this or file_paths, not both.')
+    expect(t.file_paths).toContain('2-20 absolute paths to read in one call, instead of file_path')
+    expect(t.file_paths).toContain('offset, limit, pages and encoding are single-file only')
+    expect(t.pages).toContain('at most 20 pages per request')
+    expect(t.view).toContain("'outline'")
+    expect(t.view).toContain("'full'")
+    expect(t.symbol).toContain('a list of up to 10, each looked up in every file')
+    expect(t.symbol).toContain('Takes precedence over offset/limit and view.')
+    expect(t.encoding).toContain('Encoding Standard label')
+    expect(t.encoding).toContain("Grep's `encoding`")
+  })
+
+  test('the CLAUDIN_READ_MULTI=0 schema keeps the same, for one file and one symbol', async () => {
+    const t = await texts(() => importWithReadMulti<Schemas>(SCHEMAS, false))
+    expect(t.pages).toContain('at most 20 pages per request')
+    expect(t.view).toContain("'outline'")
+    expect(t.view).toContain("'full'")
+    expect(t.symbol).toContain('Takes precedence over offset/limit and view.')
+    expect(t.symbol).not.toContain('a list of up to')
+    expect(t.encoding).toContain("Grep's `encoding`")
+  })
+
+  for (const [shape, render] of [
+    ['compact', renderCompactPromptTemplate],
+    ['full', renderPromptTemplate],
+  ] as const) {
+    test(`${shape} description + schema still name every capability`, async () => {
+      const schema = JSON.stringify(zodToJsonSchema((await byDefault()).inputSchema()))
+      const text = `${render(LINE_FORMAT_INSTRUCTION)}\n${schema}`
+      const markers = [
+        'outline',
+        'symbol',
+        "view='full'",
+        'offset',
+        'limit',
+        'encoding',
+        'pages',
+        'PDF',
+        /image/i,
+        /notebook/i,
+        /heading/i,
+        /diff/i,
+        'head and tail',
+        '→',
+        /re-read/i,
+      ]
+      const missing = markers.filter(m => (typeof m === 'string' ? !text.includes(m) : !m.test(text)))
+      expect(missing.map(String)).toEqual([])
+    })
+  }
 })
