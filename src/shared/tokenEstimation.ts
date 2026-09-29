@@ -369,11 +369,11 @@ export function getBytesPerTokenForModel(model: string): number {
  * estimate against REAL usage. Moving the family ratio would move autocompact,
  * Read's cap and every other estimate, unmeasured.
  */
-const CLAUDE_DENSE_TOKENIZER_RE = /claude-(?:opus-(?:4-[7-9]|[5-9])|sonnet-[5-9]|fable)/
+const DENSE_TOKENIZER_MODEL_RE = /claude-(?:opus-(?:4-[7-9]|[5-9])|sonnet-[5-9]|fable)/
 
 export function getToolOutputBytesPerToken(model: string): number {
   const lower = model.toLowerCase()
-  if (CLAUDE_DENSE_TOKENIZER_RE.test(lower)) return 2.4
+  if (DENSE_TOKENIZER_MODEL_RE.test(lower)) return 2.4
   const config = getTokenizerConfig(lower)
   return config.modelFamily === 'claude' ? 3.1 : config.bytesPerToken
 }

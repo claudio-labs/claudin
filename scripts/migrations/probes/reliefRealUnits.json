@@ -33,7 +33,7 @@
     {
       "name": "tool-output ratio: the dense tokenizer is told apart",
       "source": "src/shared/tokenEstimation.ts",
-      "find": "  if (CLAUDE_DENSE_TOKENIZER_RE.test(lower)) return 2.4\n",
+      "find": "  if (DENSE_TOKENIZER_MODEL_RE.test(lower)) return 2.4\n",
       "replace": "\n"
     },
     {
