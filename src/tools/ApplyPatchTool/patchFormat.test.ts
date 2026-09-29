@@ -288,10 +288,27 @@ describe('parsePatch', () => {
     ).toThrow("has a body line starting with '***' that is not a section marker")
   })
 
-  test('throws on an Add File content line missing its + prefix', () => {
-    expect(() =>
-      parsePatch(envelope('*** Add File: f.txt\n+ok\nlost its plus')),
-    ).toThrow("has a content line without a '+' prefix")
+  test('keeps an Add File content line missing its + prefix, whole', () => {
+    const { hunks } = parsePatch(envelope('*** Add File: f.txt\n+ok\nlost its plus\n-dash\n indented'))
+    expect(hunks).toEqual([
+      { type: 'add', path: 'f.txt', contents: 'ok\nlost its plus\n-dash\n indented' },
+    ])
+  })
+
+  test('an Add File written raw after its first line does not sink the other sections', () => {
+    // The shape a real session sent: only the first line carried its `+`, and
+    // rejecting it threw away the six other files of the patch with it.
+    const { hunks } = parsePatch(
+      envelope(
+        '*** Update File: a.go\n@@\n-old\n+new\n*** Add File: a_test.go\n+package a\n\nimport (\n\t"testing"\n)\n*** Delete File: b.go',
+      ),
+    )
+    expect(hunks.map(h => h.type)).toEqual(['update', 'add', 'delete'])
+    expect(hunks[1]).toEqual({
+      type: 'add',
+      path: 'a_test.go',
+      contents: 'package a\n\nimport (\n\t"testing"\n)',
+    })
   })
 
   test('preserves a stripped blank line in an Add File body', () => {
@@ -671,6 +688,89 @@ describe('deriveNewContentsFromChunks', () => {
     expect(() =>
       deriveFromPatch('*** Update File: f.py\n@@\n-nope\n+x', 'a\nb\n'),
     ).toThrow('none of the 1 line(s) below appear at or after line 1')
+  })
+
+  test('applies bare hunks sent out of file order', () => {
+    // The shape behind two of five bench sessions and 38 real failures: a hunk
+    // near the end of a file, then one near the top. Each block is unique, so
+    // where it goes is not in doubt; refusing it cost a re-send of the whole
+    // patch (scripts/bench/ab/build-project-ab.ts, 2026-09-29).
+    const original =
+      'import (\n\t"io"\n\t"strconv"\n)\n\nfunc a() {}\n\nfunc parse(s string) {\n\treturn strconv.Atoi(s)\n}\n'
+    const out = deriveFromPatch(
+      '*** Update File: f.go\n@@\n func parse(s string) {\n-\treturn strconv.Atoi(s)\n+\treturn time.ParseDuration(s)\n@@\n \t"io"\n \t"strconv"\n+\t"time"',
+      original,
+    )
+    expect(out).toBe(
+      'import (\n\t"io"\n\t"strconv"\n\t"time"\n)\n\nfunc a() {}\n\nfunc parse(s string) {\n\treturn time.ParseDuration(s)\n}\n',
+    )
+  })
+
+  test('applies bare hunks in any order: bottom, top, middle', () => {
+    const out = deriveFromPatch(
+      '*** Update File: f.txt\n@@\n-f\n+F\n@@\n-a\n+A\n@@\n-c\n+C',
+      'a\nb\nc\nd\ne\nf\n',
+    )
+    expect(out).toBe('A\nb\nC\nd\ne\nF\n')
+  })
+
+  test('refuses an out-of-order block that matches several places, naming them', () => {
+    // Two candidates before the cursor: guessing one would be a wrong edit
+    // reported as success.
+    expect(() =>
+      deriveFromPatch(
+        '*** Update File: f.txt\n@@\n-bar\n+BAR\n@@\n-return 1\n+return 2',
+        'return 1\nfoo\nreturn 1\nbar\n',
+      ),
+    ).toThrow(/above the search start \(line 5\) — it matches 2 places, lines 1, 3/)
+  })
+
+  test('never moves an anchored hunk above its anchor, but says where the block is', () => {
+    // The anchor placed the hunk; the block only exists above it. Relocating it
+    // would contradict what the model pointed at, so it stays a refusal — with
+    // the line the block is really on, instead of "written from memory".
+    expect(() =>
+      deriveFromPatch(
+        '*** Update File: f.py\n@@ def g():\n-  x = 1\n+  x = 3',
+        'def f():\n  x = 1\ndef g():\n  y = 2\n',
+      ),
+    ).toThrow(/above the search start \(line 3\) — it matches line 2/)
+  })
+
+  test('an out-of-order block inside an earlier hunk is an overlap, not a second edit', () => {
+    expect(() =>
+      deriveFromPatch(
+        '*** Update File: f.txt\n@@\n a\n-b\n+B\n c\n@@\n-b\n+X',
+        'a\nb\nc\n',
+      ),
+    ).toThrow('Overlapping edits')
+  })
+
+  test('a hunk placed above the cursor does not pull the later hunks up', () => {
+    // The third hunk follows the `m` one, so it means the `x` below `m` — as it
+    // would have if the out-of-order `a` hunk were not in the patch at all.
+    const out = deriveFromPatch(
+      '*** Update File: f.txt\n@@\n-m\n+M\n@@\n-a\n+A\n@@\n-x\n+X',
+      'a\nx\nm\nx\n',
+    )
+    expect(out).toBe('A\nx\nM\nX\n')
+  })
+
+  test('a block present verbatim once is not made ambiguous by a whitespace near-copy', () => {
+    const out = deriveFromPatch(
+      '*** Update File: f.go\n@@\n-y\n+Y\n@@\n-\treturn 1\n+\treturn 2',
+      'x\n\treturn 1\nreturn 1\ny\n',
+    )
+    expect(out).toBe('x\n\treturn 2\nreturn 1\nY\n')
+  })
+
+  test('an out-of-order block marked End of File is not moved off the tail', () => {
+    expect(() =>
+      deriveFromPatch(
+        '*** Update File: f.txt\n@@\n-z\n+Z\n@@\n-a\n+A\n*** End of File',
+        'a\nb\nz\n',
+      ),
+    ).toThrow('Failed to find expected lines')
   })
 
   test('applies a hunk whose closing brace lost its leading space', () => {

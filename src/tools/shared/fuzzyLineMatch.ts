@@ -82,6 +82,18 @@ export function findAllMatches(
   return found
 }
 
+// Every start index of `pattern`, under the tightest comparator in the ladder
+// that matches anywhere — the whole-file, ambiguity-checking counterpart of
+// `seekSequence`, so a block present verbatim once is not made ambiguous by a
+// looser pass that also accepts a near-copy.
+export function findAllByLadder(lines: string[], pattern: string[]): number[] {
+  for (const compare of SEEK_PASSES) {
+    const found = findAllMatches(lines, pattern, compare)
+    if (found.length) return found
+  }
+  return []
+}
+
 export function seekSequence(
   lines: string[],
   pattern: string[],

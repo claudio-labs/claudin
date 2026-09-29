@@ -11,6 +11,7 @@
 
 import {
   bestPartialMatch,
+  findAllByLadder,
   findAllMatches,
   findContaining,
   ignoreSurroundingWs,
@@ -359,20 +360,16 @@ function parseAddFileContent(
 
     if (line.startsWith('+')) {
       content += line.substring(1) + '\n'
-    } else if (line === '') {
-      // A blank content line whose single leading `+` was stripped (a common
-      // whitespace artifact). Preserve it as an empty line rather than dropping
-      // it, matching the Update body's handling of a stripped blank context line.
-      content += '\n'
     } else {
-      // Any other unprefixed body line is malformed. opencode silently dropped
-      // it, truncating the created file while still reporting success. Fail
-      // loudly, mirroring the Update body's unprefixed-line guard.
-      throw new Error(
-        `Add File '${filePath}' has a content line without a '+' prefix: ${JSON.stringify(
-          line,
-        )}`,
-      )
+      // A content line that lost its `+`: a blank line whose `+` was stripped
+      // (a whitespace artifact), or a line the model left unprefixed — often
+      // every line after the first, when it wrote the file raw. An Add body
+      // holds nothing but content, so the line is kept WHOLE, as the Update
+      // body keeps an unprefixed line as context. opencode dropped it,
+      // truncating the file while reporting success; rejecting it failed the
+      // whole atomic patch and cost a full re-send of every section
+      // (scripts/bench/ab/build-project-ab.ts, 2026-09-29).
+      content += line + '\n'
     }
 
     i++
@@ -525,6 +522,10 @@ function excerpt(line: string): string {
  * practice was a blind re-send. The divergence point, plus the file's actual
  * line there, is what makes it a one-shot fix: a dropped intervening line is by
  * far the most common cause.
+ *
+ * A block that is in the file, only above where the search started, comes
+ * first: "matches nowhere, written from memory" sent the model re-reading a
+ * file whose lines it had copied correctly.
  */
 function describeLineMismatch(
   originalLines: string[],
@@ -533,6 +534,18 @@ function describeLineMismatch(
   filePath: string,
 ): string {
   const head = `Failed to find expected lines in ${filePath}`
+  const above = findAllByLadder(originalLines, pattern).filter(i => i < searchStart)
+  if (above.length) {
+    const lines = above.map(i => i + 1).join(', ')
+    return (
+      `${head}: the block below is above the search start (line ${searchStart + 1}) — it matches ` +
+      (above.length === 1 ? `line ${lines}` : `${above.length} places, lines ${lines}`) +
+      `. Hunks apply top-to-bottom and the search only moves down: put this hunk before the ` +
+      `one above it in the patch` +
+      (above.length === 1 ? '' : ', with a context line that makes the block unique') +
+      `, or give it an '@@' anchor above the block.\n${pattern.map(excerpt).join('\n')}`
+    )
+  }
   const best = bestPartialMatch(originalLines, pattern, searchStart)
   if (!best) {
     return (
@@ -673,6 +686,18 @@ function computeReplacements(
       found = seekSequence(originalLines, pattern, anchorIdx, chunk.isEndOfFile)
     }
 
+    // A bare hunk sent out of file order: its block sits above the cursor,
+    // which only moves forward. With no anchor or End-of-File marker to
+    // contradict, and exactly one place in the file it can mean, it goes
+    // there — the sort and overlap guard below already take replacements in
+    // any order. Two of five bench sessions and 38 real failures were this
+    // shape, each costing a re-send of the whole patch (build-project-ab,
+    // 2026-09-29). Several candidates stay a refusal that names them.
+    if (found === -1 && !chunk.changeContext && !chunk.isEndOfFile) {
+      const anywhere = findAllByLadder(originalLines, pattern)
+      if (anywhere.length === 1) found = anywhere[0]
+    }
+
     if (found === -1) {
       throw new Error(
         chunk.changeContext && anchorIdx === -1
@@ -717,7 +742,9 @@ function computeReplacements(
       ? rebuildSegment(chunk.ops, originalLines, found, pattern.length)
       : newSlice
     replacements.push([found, pattern.length, segment])
-    lineIndex = found + pattern.length
+    // Never backwards: a hunk placed above the cursor leaves the hunks after it
+    // searching where they would have.
+    lineIndex = Math.max(lineIndex, found + pattern.length)
   }
 
   replacements.sort((a, b) => a[0] - b[0])
