@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { getAnthropicAddendum } from 'src/agent/prompts/familyAddendums/anthropic.js'
+import { getAnthropicAddendum, TOTAL_TOKENS_LINE } from 'src/agent/prompts/familyAddendums/anthropic.js'
 import { CODEX_ADDENDUM } from 'src/agent/prompts/familyAddendums/codex.js'
 import { DEFAULT_ADDENDUM } from 'src/agent/prompts/familyAddendums/default.js'
 import { GEMINI_ADDENDUM } from 'src/agent/prompts/familyAddendums/gemini.js'
@@ -145,5 +145,20 @@ describe('addendum contents', () => {
 
   test('codex inherits openai-reasoning content', () => {
     expect(CODEX_ADDENDUM).toBe(OPENAI_REASONING_ADDENDUM)
+  })
+
+  // The A/B arm for Claude Code's budget line. Under the test preload the
+  // batching clause is null, so the flag alone decides the addendum here.
+  test('anthropic: CLAUDIN_TOTAL_TOKENS=1 adds the total_tokens line, and only then', () => {
+    const prior = process.env.CLAUDIN_TOTAL_TOKENS
+    try {
+      process.env.CLAUDIN_TOTAL_TOKENS = '1'
+      expect(getAnthropicAddendum()).toBe(TOTAL_TOKENS_LINE)
+      process.env.CLAUDIN_TOTAL_TOKENS = '0'
+      expect(getAnthropicAddendum()).toBeNull()
+    } finally {
+      if (prior === undefined) delete process.env.CLAUDIN_TOTAL_TOKENS
+      else process.env.CLAUDIN_TOTAL_TOKENS = prior
+    }
   })
 })

@@ -35,6 +35,28 @@ const SPLIT_PATCH_ANTI_PATTERN = ONE_PATCH_CHANGE
 export const ANTHROPIC_BATCHED_EDITS_ADDENDUM =
   `When a change touches several files${CHANGE_SCOPE} land it as ONE Patch call with a section per file, and Read every one of those files first in a single message${CAT_COUNTS_AS_READ}. ${SPLIT_PATCH_ANTI_PATTERN} is the anti-pattern here, not the careful option.`
 
-export function getAnthropicAddendum(): string | null {
+// CLAUDIN_TOTAL_TOKENS=1 (off by default, an A/B arm; team memory
+// `claude-code-2.1.284-wire-diff`, item 1): the budget line Claude Code 2.1.284
+// ends its system prompt with, on every Claude model and in `-p` too. Here it
+// rides the addendum, so it closes the static part rather than the whole
+// prompt. Constant for the process like the toggles above; off, the text is
+// byte-identical.
+//
+// PARKED since 2026-09-29: in the session A/B /tmp/session-cache-ab/20260929-231527
+// (N=5, Opus 5.5 medium) the line reached every request and moved nothing —
+// cost −4.4% against a placebo at −5.3%, one more turn, thinking unchanged.
+// Claude Code also repeats it after tool results; measure that countdown
+// before trying the line again.
+export const TOTAL_TOKENS_LINE = '<total_tokens>15000000 tokens left</total_tokens>'
+
+function getBatchedEditsClause(): string | null {
   return feature('TOOL_BATCHING_NUDGE') ? ANTHROPIC_BATCHED_EDITS_ADDENDUM : null
+}
+
+export function getAnthropicAddendum(): string | null {
+  const parts = [
+    getBatchedEditsClause(),
+    isEnvTruthy(process.env.CLAUDIN_TOTAL_TOKENS) ? TOTAL_TOKENS_LINE : null,
+  ].filter(part => part !== null)
+  return parts.length > 0 ? parts.join('\n\n') : null
 }
