@@ -34,6 +34,20 @@ export function isLeanFamily(family: ModelFamily): boolean {
   return FAMILY_TIER[family] === 'lean'
 }
 
+// The family the main loop's tool texts are rendered for. A test renders what
+// another family receives through _setToolPromptFamilyForTesting instead of
+// overriding the model: a dozen suites mock `model.js`, and one that leaks
+// makes `getMainLoopModel()` ignore an override (.claudin/rules/testing.md).
+let familyForTesting: ModelFamily | null = null
+
+export function _setToolPromptFamilyForTesting(family: ModelFamily | null): void {
+  familyForTesting = family
+}
+
+function getMainLoopFamily(): ModelFamily {
+  return familyForTesting ?? getFamilyForLogging(getMainLoopModel())
+}
+
 /**
  * Force a tier regardless of the active model's family:
  * `CLAUDIN_TOOL_PROMPT_TIER=lean|verbose`. Anything else is ignored silently —
@@ -58,20 +72,27 @@ export function getForcedToolPromptTier(): 'lean' | 'verbose' | null {
 export function isLeanToolPromptFamily(): boolean {
   const forced = getForcedToolPromptTier()
   if (forced !== null) return forced === 'lean'
-  return isLeanFamily(getFamilyForLogging(getMainLoopModel()))
+  return isLeanFamily(getMainLoopFamily())
 }
 
 /**
- * The rule both v2 switches below share, pure so a test can reach it without
- * the process-global model state (a dozen suites mock `model.js`, and one that
- * leaks makes `getMainLoopModel()` ignore an override): the Anthropic family,
- * unless the env var turns the switch off (`=0`, `false`, `no`, `off`).
+ * Who receives the v2 texts: the Anthropic family. Every other family keeps
+ * the texts from before them. Pure, so a test reaches it without the
+ * process-global model state.
+ */
+export function isV2PromptFamily(family: ModelFamily): boolean {
+  return family === 'anthropic'
+}
+
+/**
+ * The rule both v2 switches below share: the v2 family, unless the env var
+ * turns the switch off (`=0`, `false`, `no`, `off`).
  */
 export function isV2PromptSwitchOn(
   envValue: string | undefined,
   family: ModelFamily,
 ): boolean {
-  return !isEnvDefinedFalsy(envValue) && family === 'anthropic'
+  return !isEnvDefinedFalsy(envValue) && isV2PromptFamily(family)
 }
 
 /**
@@ -93,7 +114,7 @@ export function isV2PromptSwitchOn(
 export function isCompactToolPromptsEnabled(): boolean {
   return isV2PromptSwitchOn(
     process.env.CLAUDIN_COMPACT_TOOL_PROMPTS,
-    getFamilyForLogging(getMainLoopModel()),
+    getMainLoopFamily(),
   )
 }
 
@@ -109,6 +130,6 @@ export function isCompactToolPromptsEnabled(): boolean {
 export function isLeanRemindersEnabled(): boolean {
   return isV2PromptSwitchOn(
     process.env.CLAUDIN_LEAN_REMINDERS,
-    getFamilyForLogging(getMainLoopModel()),
+    getMainLoopFamily(),
   )
 }

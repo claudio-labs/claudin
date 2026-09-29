@@ -223,6 +223,13 @@ describe('shipped system prompt — characterization', () => {
     expect(dump([], {}, other)).toBe(dump([], V2_OFF_ENV, other))
   }, 180_000)
 
+  // Every family outside Anthropic receives the text from before the v2 — the
+  // one surface of it that outlives the killswitches, so it keeps a snapshot.
+  // A first-party session on a non-Claude id resolves to the default family.
+  test('a non-Anthropic main-session prompt is byte-identical to its snapshot', () => {
+    compareOrWrite('systemPrompt.nonAnthropic.txt', dump([], {}, 'gpt-5'))
+  }, 180_000)
+
   test('the snapshots are the flags-ON shape, not a source-side render', () => {
     // The trap this whole file is built around: if someone regenerates the
     // snapshot from source instead of from the bundle, every flag reads false
@@ -236,5 +243,9 @@ describe('shipped system prompt — characterization', () => {
     expect(legacy).toContain('# Delivering work')
     expect(legacy).toContain('# Corrections')
     expect(legacy).toContain('Batch independent tool calls in a single message')
+    const nonAnthropic = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.nonAnthropic.txt'), 'utf8')
+    expect(nonAnthropic).toContain('# Delivering work')
+    expect(nonAnthropic).toContain('# Corrections')
+    expect(nonAnthropic).toContain('Batch independent tool calls in a single message')
   })
 })
