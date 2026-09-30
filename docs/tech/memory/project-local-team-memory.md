@@ -200,6 +200,55 @@ mechanisms for one purpose, one of them dead by flag. Transcripts recorded
 before then may still carry a `relevant_memories` attachment; the consumers
 treat it as an unknown legacy type and render nothing.
 
+## Write rules on demand
+
+Since 2026-09-29 (team memory `claude-code-2.1.284-wire-diff`) the v2 memory
+section — `buildLeanCombinedMemoryPrompt`, the Anthropic family — carries only
+what every request needs; the full prompt of the other families is unchanged.
+
+- **What stays in the prompt** (what every request needs): where the two
+  directories live, remember/forget, the frontmatter template, the four
+  types, one line saying `decisions/`, `bugs/` and `docs/` exist with rules of
+  their own, "only the two `MEMORY.md` indexes are in context" (with the
+  empty-index note), what to save (update rather than duplicate, skip what
+  the code and git history hold), the secrets rule, recall, and the
+  past-context search.
+- **What moves out** (what only a write needs), into
+  `buildMemoryWriteRules(teamDir)` in `teamMemPrompts.ts`: the `[[name]]`
+  links line, the three category lines with their bar (rendered from
+  `TEAM_CATEGORIES` as before), and the index, `paths:`, update and skip
+  rules. About 1.1k characters of ~3.6k.
+- **The guard** — `checkMemoryFileFormat` in `memoryFormatGuard.ts`, beside
+  `checkTeamMemSecrets` on the same four write paths (an Edit only when it
+  creates the file, since only then is `new_string` the whole file). A `.md`
+  under either memory dir, never a `MEMORY.md`, is refused when its
+  frontmatter lacks `name`, `description` or a valid `type`; when a team file
+  is `type: user`; when a category file's `type` is not its category's
+  (decisions and bugs `project`, docs `reference`); or when a decision lacks
+  `scope:` or an `impact:` of structural / functional / rejected. The refusal
+  names what is missing and carries `buildMemoryWriteRules`. What the
+  extraction and dream forks write passes (`memoryFormatGuard.test.ts` builds
+  its fixtures from `MEMORY_FRONTMATTER_EXAMPLE`).
+- **The advice** — `memoryIndexAdvice`, the Write and Patch tools' `advise`:
+  a memory file its directory's index does not link to yet gets a note with
+  the index-line rule (the section, for a category file). A Patch that adds
+  the index line in the same call gets none.
+
+The guard applies to every family, and asks for nothing their prompts do not
+already state. Its checks are format checks, so the rules no check can
+enforce — update rather than duplicate, skip what the code holds — stay in
+the prompt as well.
+
+How it was measured: the session A/B `/tmp/session-cache-ab/20260929-231527`
+(no regression, with the rest of the first-request dedup) and the memory-write
+check `scripts/bench/ab/memory-write-ab.ts` (`/tmp/memory-write-ab/20260929-230343`,
+N=3 × four requests): 12/12 sessions wrote each memory in its place with a
+complete frontmatter and its index line, as the full-rules baseline did. A
+decision's first write was refused once per session for its missing
+`scope:`/`impact:`, then written right; every new memory got the index note.
+A Patch or a staged rewrite of a memory file that was already malformed is
+refused until its frontmatter is fixed; an Edit inside it is not.
+
 ## What the dream reads
 
 Auto-dream (`src/memory/autoDream/`) and `/dream` file team decisions, bugs

@@ -12,7 +12,9 @@ import {
 import {
   buildCombinedMemoryPrompt,
   buildLeanCombinedMemoryPrompt,
+  buildMemoryWriteRules,
 } from 'src/memory/memdir/teamMemPrompts.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import {
   buildExtractAutoOnlyPrompt,
   buildExtractCombinedPrompt,
@@ -147,8 +149,12 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
   // The v2 prompt says less, not something else: every mechanism the full
   // prompt above teaches must still be named here, and the traps the full
   // prompt's tests pin (flat `type`, git-tracked team dir, recall framing)
-  // apply to it the same way.
+  // apply to it the same way. "Here" is what the model receives: the prompt
+  // on every request, and the write rules with the refusal of a memory write
+  // that breaks them (memoryFormatGuard.ts).
   const text = buildLeanCombinedMemoryPrompt()
+  const rules = buildMemoryWriteRules(getTeamMemPath())
+  const received = `${text}\n${rules}`
   const full = buildCombinedMemoryPrompt()
 
   test('is shorter than the full prompt by at least a third', () => {
@@ -157,7 +163,7 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
 
   test('shows the parseable frontmatter and explains the wikilink cue', () => {
     for (const line of MEMORY_FRONTMATTER_EXAMPLE) expect(text).toContain(line)
-    expect(text).toContain('Link related memories with `[[name]]`')
+    expect(rules).toContain('Link related memories with `[[name]]`')
   })
 
   test('names all four types with their scope', () => {
@@ -175,22 +181,23 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
 
   test('keeps every team category, its index section and the decisions bar', () => {
     for (const category of TEAM_CATEGORIES) {
-      expect(text).toContain(`${category.dir}/\` — `)
-      expect(text).toContain(`## ${category.section}`)
-      // The one-liner, not the full prompt's longer line: the length test
-      // above stopped catching the swap once the section shrank.
-      expect(text).toContain(category.lean)
+      // The prompt says the subdirectory exists; its rules come with a write.
+      expect(text).toContain(`\`${category.dir}/\``)
+      expect(rules).toContain(`${category.dir}/\` — `)
+      expect(rules).toContain(`## ${category.section}`)
+      // The one-liner, not the full prompt's longer line.
+      expect(rules).toContain(category.lean)
     }
-    expect(text).toContain('stays at the team root')
-    expect(text).toContain('impact: structural | functional | rejected')
-    expect(text).toContain('**What changes for a teammate:**')
+    expect(rules).toContain('stays at the team root')
+    expect(rules).toContain('impact: structural | functional | rejected')
+    expect(rules).toContain('**What changes for a teammate:**')
   })
 
   test('keeps remember/forget, `paths:`, the index cap and the secrets rule', () => {
     expect(text).toContain('asks you to remember')
     expect(text).toContain('forget')
-    expect(text).toContain('`paths:`')
-    expect(text).toContain('truncated')
+    expect(received).toContain('`paths:`')
+    expect(received).toContain('truncated')
     expect(text).toContain('NEVER put secrets in team memory')
   })
 })

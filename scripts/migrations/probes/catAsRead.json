@@ -799,14 +799,14 @@
     {
       "name": "contract: Write drops the cat clause under the credit",
       "source": "src/tools/FileWriteTool/prompt.ts",
-      "find": "  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''",
-      "replace": "  const catCounts = ''"
+      "find": "  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''\n  return `\\n- If this is an existing file",
+      "replace": "  const catCounts = ''\n  return `\\n- If this is an existing file"
     },
     {
       "name": "contract: Write says the cat clause with the credit off",
       "source": "src/tools/FileWriteTool/prompt.ts",
-      "find": "  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''",
-      "replace": "  const catCounts = ' (a Bash `cat` that printed it whole counts)'"
+      "find": "  const catCounts = READ_CREDIT ? ' (a Bash `cat` that printed it whole counts)' : ''\n  return `\\n- If this is an existing file",
+      "replace": "  const catCounts = ' (a Bash `cat` that printed it whole counts)'\n  return `\\n- If this is an existing file"
     },
     {
       "name": "contract: the addendum drops the cat clause under the credit",
@@ -853,8 +853,8 @@
     {
       "name": "memory: the lean prompt drops the note",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "indexes are in context.${emptyIndexesNote} After writing",
-      "replace": "indexes are in context. After writing"
+      "find": "indexes are in context.${emptyIndexesNote}`\n",
+      "replace": "indexes are in context.`\n"
     },
     {
       "name": "memory: the full prompt says the note with an index present",
@@ -865,8 +865,8 @@
     {
       "name": "memory: the lean prompt says the note with an index present",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n  const lines = [",
-      "replace": "  const emptyIndexesNote = EMPTY_INDEXES_NOTE\n  const lines = ["
+      "find": "  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n  const indexesInContext",
+      "replace": "  const emptyIndexesNote = EMPTY_INDEXES_NOTE\n  const indexesInContext"
     },
     {
       "name": "bench: a cat the pass-through wrapped whole counts as a miss",

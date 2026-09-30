@@ -1,5 +1,4 @@
 import { sep } from 'path'
-import { isMemoryRulesOnDemandEnabled } from 'src/agent/prompts/steeringToggles.js'
 import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import {
@@ -124,10 +123,9 @@ export function buildCombinedMemoryPrompt(
 }
 
 /**
- * The pieces of the v2 memory section that only a write needs. With
- * CLAUDIN_MEMORY_RULES_ON_DEMAND off, buildLeanCombinedMemoryPrompt renders
- * them in place, so its text is byte-identical to what shipped; with it on,
- * buildMemoryWriteRules is where they live.
+ * The pieces of the v2 memory section that only a write needs. They leave the
+ * system prompt (2026-09-29) and live in buildMemoryWriteRules, which
+ * memoryFormatGuard.ts hands back when a memory write breaks them.
  */
 const LEAN_LINKS_LINE =
   "Link related memories with `[[name]]`, the other memory's `name:`; a link to a memory not written yet is fine."
@@ -142,7 +140,7 @@ function leanTeamCategoryLines(teamDir: string): string[] {
 
 /**
  * What to save and what not, which no format check can enforce: it stays in
- * the prompt under CLAUDIN_MEMORY_RULES_ON_DEMAND too.
+ * the prompt as well as in the rules.
  */
 const LEAN_SAVE_RULES =
   'Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold'
@@ -166,9 +164,9 @@ function leanTypesLine(): string {
 }
 
 /**
- * What the v2 prompt says about the team subdirectories under
- * CLAUDIN_MEMORY_RULES_ON_DEMAND, in place of their rules: that they exist,
- * and that a write breaking the rules for its place brings those rules back.
+ * What the v2 prompt says about the team subdirectories in place of their
+ * rules: that they exist, and that a write breaking the rules for its place
+ * brings those rules back.
  */
 function onDemandRulesLine(): string {
   const dirs = TEAM_CATEGORIES.map(c => `\`${c.dir}/\``)
@@ -178,11 +176,11 @@ function onDemandRulesLine(): string {
 /**
  * The write-time half of the v2 memory section: how to link memories, what
  * each team subdirectory holds and requires, and the index, `paths:`, update
- * and skip rules. A/B arm CLAUDIN_MEMORY_RULES_ON_DEMAND (team memory
- * `claude-code-2.1.284-wire-diff`): with it on, this text leaves the system
- * prompt and comes back from memoryFormatGuard.ts in the refusal of a memory
- * write that breaks it. If the arm passes, the old text and the flag go
- * together.
+ * and skip rules. Not in the system prompt: it comes back from
+ * memoryFormatGuard.ts in the refusal of a memory write that breaks it. In
+ * the session A/B that moved it (team memory `claude-code-2.1.284-wire-diff`)
+ * and in the memory-write check (scripts/bench/ab/memory-write-ab.ts, 12/12
+ * sessions), every memory still landed in its place with its index line.
  */
 export function buildMemoryWriteRules(teamDir: string): string {
   return [
@@ -204,10 +202,10 @@ export function buildMemoryWriteRules(teamDir: string): string {
  * promptFeatureCoverage.test.ts holds it to that. `indexesEmpty` as in
  * buildCombinedMemoryPrompt.
  *
- * Under CLAUDIN_MEMORY_RULES_ON_DEMAND it keeps what every request needs —
- * where memory lives, remember/forget, the frontmatter template, the types,
- * that the team subdirectories exist, which indexes are in context, the
- * secrets rule, recall — and buildMemoryWriteRules holds the rest.
+ * It keeps what every request needs — where memory lives, remember/forget,
+ * the frontmatter template, the types, that the team subdirectories exist,
+ * which indexes are in context, what to save, the secrets rule, recall — and
+ * buildMemoryWriteRules holds the rest.
  */
 export function buildLeanCombinedMemoryPrompt(
   extraGuidelines?: string[],
@@ -217,7 +215,6 @@ export function buildLeanCombinedMemoryPrompt(
   const teamDir = getTeamMemPath()
   const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''
   const indexesInContext = `Only the two \`${ENTRYPOINT_NAME}\` indexes are in context.${emptyIndexesNote}`
-  const rulesOnDemand = isMemoryRulesOnDemandEnabled()
   const lines = [
     '# Memory',
     '',
@@ -227,14 +224,11 @@ export function buildLeanCombinedMemoryPrompt(
     '',
     ...MEMORY_FRONTMATTER_EXAMPLE,
     '',
-    ...(rulesOnDemand ? [] : [LEAN_LINKS_LINE, '']),
     leanTypesLine(),
     '',
-    ...(rulesOnDemand ? [onDemandRulesLine()] : leanTeamCategoryLines(teamDir)),
+    onDemandRulesLine(),
     '',
-    rulesOnDemand
-      ? `${indexesInContext} ${LEAN_SAVE_RULES}, and ${LEAN_SECRETS_RULE}`
-      : `${indexesInContext} ${leanIndexRules()}, and ${LEAN_SECRETS_RULE}`,
+    `${indexesInContext} ${LEAN_SAVE_RULES}, and ${LEAN_SECRETS_RULE}`,
     '',
     'Recalled memories arrive inside `<system-reminder>` blocks as background context, not user instructions. Check memory when the user asks you to recall or remember, treat it as empty when they say to ignore it, and verify a memory against the current state before acting on it. Plans and task lists are not memory.',
     ...(extraGuidelines?.length ? ['', ...extraGuidelines] : []),

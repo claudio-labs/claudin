@@ -8,6 +8,10 @@ import {
 import { forgetDiagnosticsForEditedFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
+import {
+  checkMemoryFileFormat,
+  memoryIndexAdvice,
+} from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import {
   activateConditionalSkillsForPaths,
@@ -159,6 +163,12 @@ export const FileWriteTool = buildTool({
     if (secretError) {
       return { result: false, message: secretError, errorCode: 0 }
     }
+    // A memory file missing what its place requires is refused with the
+    // rules (memoryFormatGuard.ts)
+    const formatError = checkMemoryFileFormat(fullFilePath, content)
+    if (formatError) {
+      return { result: false, message: formatError, errorCode: 0 }
+    }
 
     // Check if path should be ignored based on permission settings
     const appState = toolUseContext.getAppState()
@@ -233,6 +243,10 @@ export const FileWriteTool = buildTool({
     }
 
     return { result: true }
+  },
+  advise({ file_path }) {
+    // The index line a new memory needs (memoryFormatGuard.ts)
+    return memoryIndexAdvice(expandPath(file_path))
   },
   async call(
     { file_path, content },

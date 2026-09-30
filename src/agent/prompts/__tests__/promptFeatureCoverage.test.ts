@@ -43,6 +43,8 @@ import { getBashGitInstructionsBody } from 'src/tools/BashTool/prompt.js'
 import { MonitorTool } from 'src/tools/MonitorTool/MonitorTool.js'
 import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
 import { isDeferredTool } from 'src/tools/ToolSearchTool/prompt.js'
+import { buildMemoryWriteRules } from 'src/memory/memdir/teamMemPrompts.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 
@@ -288,7 +290,11 @@ describe('prompt feature coverage', () => {
       // item (the Skill tool's description carries the rules), the Skill tool
       // itself is what names the skills capability there.
       const toolNames = getAllBaseTools().map(t => t.name)
-      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolNames, ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
+      // The v2 memory section leaves its write-time rules (links, the team
+      // subdirectories' fields, `paths:`) to the refusal of a memory write that
+      // breaks them (memoryFormatGuard.ts), which is where the model reads them.
+      const memoryWriteRules = lean ? buildMemoryWriteRules(getTeamMemPath()) : ''
+      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolNames, ...toolTexts, getBashGitInstructionsBody(), skillListing, memoryWriteRules].join('\n')
       const markers = s.family === null ? ANYWHERE_MARKERS : ANYWHERE_MARKERS.filter(([c]) => !ANTHROPIC_ONLY_MARKERS.has(c))
       const missing = markers.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
       expect(missing.map(([capability]) => capability)).toEqual([])

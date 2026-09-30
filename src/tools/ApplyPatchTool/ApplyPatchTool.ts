@@ -3,6 +3,7 @@ import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   type ApplyPatchOutput,
+  applyPatchMemoryIndexAdvice,
   checkApplyPatchPermissions,
   runApplyPatch,
   summarizeApplyPatch,
@@ -75,6 +76,10 @@ export const ApplyPatchTool = buildTool({
   },
   async checkPermissions(input, context) {
     return foldThenPermission(input, checkApplyPatchPermissions(input, context), context)
+  },
+  advise(input) {
+    // The index line a new memory needs (memoryFormatGuard.ts)
+    return applyPatchMemoryIndexAdvice(input)
   },
   async call(input, context, _canUseTool, parentMessage) {
     const { output, newMessages } = await runApplyPatch(
