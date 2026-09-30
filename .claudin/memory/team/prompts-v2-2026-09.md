@@ -4,13 +4,13 @@ description: Prompts v2 (branch perf/prompts-v2) — Claude Code 2.1.280's lean 
 type: project
 ---
 
-**Cleanup DONE 2026-09-29 (commit 4261c7b5, branch perf/prompt-parity-2284).** The four
+**Cleanup DONE 2026-09-29 (#271, branch perf/prompt-parity-2284).** The four
 killswitches are gone. The user kept the family gate: `isV2PromptFamily` (toolPromptTier.ts) is
 the one rule, and every other family still receives the pre-v2 text, pinned by
 `systemPrompt.nonAnthropic.txt` (a gpt-5 dump) and by rendering tools through
 `_setToolPromptFamilyForTesting`; `systemPrompt.legacy.txt` is deleted. Claudin's first request
 was byte-identical before and after on the wire. The same PR moved Claude on Foundry into the
-Anthropic family (9d11d371). The table and checklist below are history.
+Anthropic family. The table and checklist below are history.
 
 **Goal, in the user's words (2026-09-24):** cut tokens and cost to near Claude Code *and keep
 every claudin feature*. It follows round 3 ([[session-cost-round-3-2026-09-23]]), where the

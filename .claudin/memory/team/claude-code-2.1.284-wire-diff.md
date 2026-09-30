@@ -26,8 +26,8 @@ decided with a measurement; nothing ships on the text diff alone.
   Enter/ExitPlanMode), and carrying the schemas eagerly would cost +0.85M input-token units more
   than those trips (~0.1% of spend). Fewer calls at a higher cost; it stays deferred.
 - **Promoted from the same round** — an audit of the first request found rules stated 2–5 times
-  and text pointing at things that do not exist; each rule got one home (commit 1448fcea), and the
-  memory section's write-time rules moved behind `memoryFormatGuard.ts` (d41f4d79). The `lean3`
+  and text pointing at things that do not exist; each rule got one home, and the memory
+  section's write-time rules moved behind `memoryFormatGuard.ts` (both in #271). The `lean3`
   arm (both together): cost −4.7% (placebo −5.3%), turns equal, 25/25 sessions passing,
   first-turn context 17.7k → 15.8k SEPARATED; memory-write check 12/12 like the baseline. No
   killswitch left; the default renders the measured arm byte for byte.
