@@ -67,6 +67,12 @@ prompts (#242) as well, the first-turn context is 17.3k against Claude Code's
 21.0k (run `-170553`, [[session-cache-ab-bench-2026-09-23]]). apply_patch is
 `Patch` on the wire now.
 
+**Since 2026-09-29 (#271):** each rule of the first request is said once and the memory
+section's write-time rules left the prompt; first-turn context 17.7k → **15.8k** against Claude
+Code 2.1.284's 21.4k in the same run (`/tmp/session-cache-ab/20260929-231527`,
+[[claude-code-2.1.284-wire-diff]]). Cost moved inside the placebo band, as the value note below
+predicts.
+
 **Value:** the whole 11k gap is ≈ $0.05–0.10 per session on Opus 5.5, mostly
 cache reads — the smallest of the three session-cache findings. Anything past
 deferral should go through a `session-cache-ab.ts --variant` A/B first.

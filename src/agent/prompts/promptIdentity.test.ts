@@ -14,6 +14,7 @@ import { join } from 'node:path'
 }
 
 import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
+import { getIsNonInteractiveSession, setIsInteractive } from 'src/platform/bootstrap/state.js'
 import {
   ACT_ON_WHAT_YOU_KNOW_SECTION,
   CORRECTIONS_SECTION,
@@ -100,12 +101,22 @@ test('system prompt model identity updates when model changes mid-session', asyn
 test('Claude model recommendations only ship for the anthropic family', async () => {
   delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
+  // The fast-mode line is interactive-only (/fast is a TUI toggle).
+  const wasNonInteractive = getIsNonInteractiveSession()
+  setIsInteractive(true)
 
   // Test env has no provider profile → getAPIProvider() falls back to
   // 'firstParty', so family is decided by the model id alone here.
-  const claudeText = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
-  clearSystemPromptSections()
-  const otherText = (await getSystemPrompt([], 'gpt-4o')).join('\n')
+  let claudeText: string
+  let otherText: string
+  try {
+    claudeText = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
+    clearSystemPromptSections()
+    otherText = (await getSystemPrompt([], 'gpt-4o')).join('\n')
+  } finally {
+    setIsInteractive(!wasNonInteractive)
+    clearSystemPromptSections()
+  }
 
   expect(claudeText).toContain('most capable Claude models')
   expect(claudeText).toContain('Fast mode for Claudin')

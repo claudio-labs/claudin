@@ -226,6 +226,8 @@ const THEN_OFF: Record<string, string> = { CLAUDIN_EDIT_THEN: '0' }
 const BASH_HOOK_SETTINGS: Json = {
   hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'true' }] }] },
 }
+// The Patch description stopped naming `then` on 2026-09-29: the schema field
+// describes itself, so the wire checks below look for the field alone.
 const THEN_RULE = 'put its test, typecheck or build command in `then`'
 const THEN_SKIPPED = '`then` did not run:'
 const BODIES_ON: Record<string, string> = { CLAUDIN_GREP_BODIES: '1' }
@@ -751,7 +753,7 @@ const SCENARIOS: Scenario[] = [
       onResult(off, 1, 0, 'a Patch sending `then` is refused by the strict schema (is_error)', r => r.isError && r.text.includes('then')),
       onDisk(off, 'a.ts is as committed', () => ({ ok: readFileSync(join(off.ws, 'a.ts'), 'utf8') === FILES['a.ts'] })),
       onWire(on, 'main', 'Patch and Edit carry `then` in their schemas', b => hasThenField(b, 'Patch') && hasThenField(b, 'Edit')),
-      onWire(on, 'main', `the Patch description says "${THEN_RULE}"`, b => toolDescription(b, 'Patch').includes(THEN_RULE)),
+      onWire(on, 'main', 'the Patch description leaves `then` to its schema field', b => !toolDescription(b, 'Patch').includes(THEN_RULE)),
     ],
   },
   {

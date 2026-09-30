@@ -92,8 +92,10 @@ Rules for the report:
 Complete the user's search request efficiently, then report in the format above.`
 }
 
+// A single directed lookup is searched directly: the Agent description says
+// so, and this line used to say it again.
 const EXPLORE_WHEN_TO_USE =
-  'Read-only agent for searching this codebase. Use it when an answer needs several dependent searches — tracing a feature end to end, mapping a subsystem, finding every call site of something. It returns `path:start-end` anchors with the lines quoted verbatim, exact enough to serve as Patch context or an Edit old_string. For a single directed lookup (one file path, one symbol definition), search directly instead. Say how thorough it should be: "quick", "medium" or "very thorough".'
+  'Read-only agent for searching this codebase. Use it when an answer needs several dependent searches — tracing a feature end to end, mapping a subsystem, finding every call site of something. It returns `path:start-end` anchors with the lines quoted verbatim, exact enough to serve as Patch context or an Edit old_string. Say how thorough it should be: "quick", "medium" or "very thorough".'
 
 export const EXPLORE_AGENT: BuiltInAgentDefinition = {
   agentType: EXPLORE_AGENT_TYPE,

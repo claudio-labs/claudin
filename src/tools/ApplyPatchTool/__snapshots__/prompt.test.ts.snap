@@ -49,6 +49,5 @@ Rules:
 - Update and Delete need a prior Read of the file, and any Read counts: the whole file, an outline, a symbol, or a range. Nothing has to be re-read, or read whole, to be allowed to patch — a hunk applies when its context and "-" lines match the file as it is on disk, so read only the lines you need to write it. Add does not require a prior read.
 - Include enough context/"@@" anchors that each hunk matches a unique location.
 - For new lines, always prefix them with "+", including when creating a file.
-- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead.
-- To check the change, put its test, typecheck or build command in \`then\`: it runs as soon as the patch applies, in this same call, and its output comes back with the result."
+- To edit Jupyter notebooks (.ipynb), use the NotebookEdit tool instead."
 `;

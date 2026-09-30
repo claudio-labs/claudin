@@ -345,15 +345,17 @@ describe('v2 system prompt pieces', () => {
     expect(LEAN_TURN_DISCIPLINE_SECTION).toContain('changes system state')
   })
 
-  test('the v2 session guidance is shorter and keeps every item', () => {
+  test('the v2 session guidance is shorter: no deferred tool named, no skill item', () => {
     const tools = new Set(['AskUserQuestion', 'Agent', 'Skill', 'Grep', 'Glob'])
     const skill = { type: 'prompt', name: 's', description: 'd', source: 'bundled' } as never
     const full = getSessionSpecificGuidanceSection(tools, [skill])!
     const lean = getSessionSpecificGuidanceSection(tools, [skill], true)!
     expect(lean.length).toBeLessThan(full.length)
-    expect(lean.split('\n').length).toBe(full.split('\n').length)
-    expect(lean).toContain('AskUserQuestion')
-    expect(lean).toContain('`/<skill-name>`')
+    // The skill item is the one the v2 guidance drops: the Skill tool's own
+    // description carries its rules (firstRequestDedup.test.ts).
+    expect(lean.split('\n').length).toBe(full.split('\n').length - 1)
+    expect(lean).toContain('a tool call was denied, ask the user.')
+    expect(full).toContain('/<skill-name> (e.g., /commit)')
   })
 })
 

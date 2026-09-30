@@ -344,7 +344,7 @@ describe('Agent tool description — the Explore lane follows the agent list', (
       isCompactToolPromptsEnabled: () => true,
     })
     expect(text).toContain(
-      '- Say whether you expect code or research. To search this codebase, use `subagent_type: "Explore"`: it is read-only and quotes what it finds verbatim, with line numbers. For other research pass `readOnly: true`',
+      '- Say whether you expect code or research. To search this codebase, use `subagent_type: "Explore"`. For other research pass `readOnly: true`',
     )
     // Everything else in the compact text is the off-state text.
     const off = renderWith([GENERAL_PURPOSE_AGENT], { isCompactToolPromptsEnabled: () => true })

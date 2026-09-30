@@ -7,13 +7,14 @@ import {
 import { forgetDiagnosticsForEditedFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
+import { checkMemoryFileFormat } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,
   discoverSkillDirsForPaths,
 } from 'src/skills/loadSkillsDir.js'
-import type { ToolUseContext } from 'src/tools/Tool.js'
+import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -132,6 +133,17 @@ function serveEditRegion(
 function withServedRegion(message: string, served: string | null): string {
   if (served === null) return message
   return `${message} The lines you are changing are shown below and now count as read — resubmit the same edit:\n${served}`
+}
+
+/**
+ * The verdict on an Edit that creates a file (an empty `old_string` on a file
+ * that is missing or empty): `new_string` is then the whole file, so a memory
+ * file is checked the way a Write of it is. An edit inside an existing file
+ * is not — it holds a fragment (memoryFormatGuard.ts).
+ */
+function createFileVerdict(fullFilePath: string, content: string): ValidationResult {
+  const formatError = checkMemoryFileFormat(fullFilePath, content)
+  return formatError ? { result: false, message: formatError, errorCode: 0 } : { result: true }
 }
 
 export const FileEditTool = buildTool({
@@ -279,7 +291,7 @@ export const FileEditTool = buildTool({
     if (fileContent === null) {
       // Empty old_string on nonexistent file means new file creation — valid
       if (old_string === '') {
-        return { result: true }
+        return createFileVerdict(fullFilePath, new_string)
       }
       // Try to find a similar file with a different extension
       const similarFilename = findSimilarFile(fullFilePath)
@@ -313,9 +325,7 @@ export const FileEditTool = buildTool({
       }
 
       // Empty file with empty old_string is valid - we're replacing empty with content
-      return {
-        result: true,
-      }
+      return createFileVerdict(fullFilePath, new_string)
     }
 
     if (fullFilePath.endsWith('.ipynb')) {

@@ -32,9 +32,14 @@
 // (.claudin/rules/cache.md).
 
 import type { UUID } from 'crypto'
-import { extname, relative } from 'path'
+import { basename, extname, relative } from 'path'
 import type { StructuredPatchHunk } from 'diff'
-import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
+import type { ToolAdvice, ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
+import {
+  checkMemoryFileFormat,
+  indexTextFromResponse,
+  memoryIndexAdvice,
+} from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
@@ -417,6 +422,50 @@ export function checkApplyPatchPermissions(
   return decision
 }
 
+/**
+ * The index-line note (memoryFormatGuard.ts) for the first memory file this
+ * patch adds, updates or moves in that its directory's `MEMORY.md` does not
+ * list — a line this patch, or another call of the same response
+ * (`responseToolUses`), adds to that index counts. One note per call is
+ * enough. An Add the format guard will refuse gets none: its refusal carries
+ * the rules.
+ */
+export function applyPatchMemoryIndexAdvice(
+  input: ApplyPatchInput,
+  responseToolUses?: ToolUseContext['responseToolUses'],
+): ToolAdvice | null {
+  let hunks: Hunk[]
+  try {
+    hunks = parsePatch(input.patchText).hunks
+  } catch {
+    return null // validateInput has refused it already
+  }
+  const targets: Array<{ hunk: Hunk; path: string }> = []
+  const pending = indexTextFromResponse(responseToolUses, getCwd())
+  for (const hunk of hunks) {
+    if (hunk.type === 'delete') continue
+    let path: string
+    try {
+      const { absPath, movePath } = hunkTargets(hunk)
+      path = movePath ?? absPath
+    } catch {
+      continue // a malformed path is reported by the call
+    }
+    if (basename(path) !== 'MEMORY.md') {
+      targets.push({ hunk, path })
+      continue
+    }
+    const added = hunk.type === 'add' ? hunk.contents : hunk.chunks.map(c => c.newLines.join('\n')).join('\n')
+    pending.set(path, `${pending.get(path) ?? ''}\n${added}`)
+  }
+  for (const { hunk, path } of targets) {
+    if (hunk.type === 'add' && checkMemoryFileFormat(path, addContent(hunk))) continue
+    const advice = memoryIndexAdvice(path, pending)
+    if (advice) return advice
+  }
+  return null
+}
+
 /** What staging one file produced: its change, if any, and the reports of its hunks. */
 type StagedFile = { change: StagedChange | null; failed: string[]; already: string[] }
 
@@ -429,6 +478,9 @@ function stageFile(group: FileGroup): StagedFile {
     const newContent = addContent(first)
     const secretError = checkTeamMemSecrets(absPath, newContent)
     if (secretError) throw new Error(secretError)
+    // A memory file missing what its place requires (memoryFormatGuard.ts)
+    const formatError = checkMemoryFileFormat(absPath, newContent)
+    if (formatError) throw new Error(formatError)
     const structuredPatch = getPatchFromContents({
       filePath: absPath,
       oldContent: '',
@@ -491,6 +543,8 @@ function stageFile(group: FileGroup): StagedFile {
   if (applied === 0 && !movePath) return { change: null, failed, already }
   const secretError = checkTeamMemSecrets(movePath ?? absPath, text)
   if (secretError) throw new Error(secretError)
+  const formatError = checkMemoryFileFormat(movePath ?? absPath, text)
+  if (formatError) throw new Error(formatError)
   const structuredPatch = getPatchFromContents({
     filePath: absPath,
     oldContent: current.content,

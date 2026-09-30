@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'bun:test'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import {
   buildCompactEditToolDescription,
   buildEditToolDescription,
 } from 'src/tools/FileEditTool/prompt.js'
+import { inputSchema } from 'src/tools/FileEditTool/types.js'
 
 type EditPrompt = typeof import('src/tools/FileEditTool/prompt.js')
 
@@ -105,7 +107,6 @@ describe('buildCompactEditToolDescription (v2)', () => {
       'be unique',
       'line number + arrow',
       '`replace_all: true`',
-      '`then`',
     ]) {
       expect(compact).toContain(rule)
     }
@@ -123,5 +124,32 @@ describe('buildCompactEditToolDescription (v2)', () => {
     )
     const off = await loadEditPrompt(false)
     expect(off.buildCompactEditToolDescription()).toBe(compact)
+  })
+})
+
+// `then` is described once, by its own schema field: no description shape
+// repeats it (see the note in prompt.ts).
+describe('the Edit description and `then`', () => {
+  const SHAPES: Array<[string, string]> = [
+    ['compact', buildCompactEditToolDescription()],
+    ['verbose', buildEditToolDescription(false)],
+    ['lean', buildEditToolDescription(true)],
+  ]
+  const schema = JSON.stringify(zodToJsonSchema(inputSchema()))
+
+  it('no shape names `then`, while the schema field still describes itself', () => {
+    expect(schema).toContain('"then"')
+    expect(schema).toContain('the test, typecheck or build that checks it')
+    for (const [shape, text] of SHAPES) {
+      expect({ shape, namesThen: text.includes('`then`') }).toEqual({ shape, namesThen: false })
+    }
+  })
+
+  it('the description and the schema still name every capability', () => {
+    for (const [shape, description] of SHAPES) {
+      const text = `${description}\n${schema}`
+      const missing = ['old_string', 'new_string', 'replace_all'].filter(m => !text.includes(m))
+      expect({ shape, missing }).toEqual({ shape, missing: [] })
+    }
   })
 })

@@ -28,10 +28,12 @@ import {
   getSessionSpecificGuidanceSection,
 } from 'src/agent/prompts/prompts.js'
 import { getCLISyspromptPrefix } from 'src/agent/prompts/system.js'
+import type { ModelFamily } from 'src/agent/prompts/familyAddendums/index.js'
 import {
+  _setToolPromptFamilyForTesting,
   isCompactToolPromptsEnabled,
   isLeanRemindersEnabled,
-  isV2PromptSwitchOn,
+  isV2PromptFamily,
 } from 'src/agent/prompts/toolPromptTier.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { getEmptyToolPermissionContext, type Tool } from 'src/tools/Tool.js'
@@ -41,27 +43,28 @@ import { getBashGitInstructionsBody } from 'src/tools/BashTool/prompt.js'
 import { MonitorTool } from 'src/tools/MonitorTool/MonitorTool.js'
 import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
 import { isDeferredTool } from 'src/tools/ToolSearchTool/prompt.js'
+import { buildMemoryWriteRules } from 'src/memory/memdir/teamMemPrompts.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 
 /**
- * The two states that ship while the v2 killswitches exist: the default (the
- * v2 text since 2026-09-24) and every killswitch at `=0` (the text before it).
+ * The two states that ship: the v2 text (since 2026-09-24, the Anthropic
+ * family) and the text before it, which every other family still receives.
  * The system prompt comes from the bundle's dump in that state; the tool
- * descriptions and reminders are rendered live with `toolSwitches` set.
+ * descriptions and reminders are rendered live for `family`.
  */
 const STATES = [
-  { state: 'default (v2)', file: 'systemPrompt.main.txt', lean: true, toolSwitches: undefined },
-  { state: 'killswitched', file: 'systemPrompt.legacy.txt', lean: false, toolSwitches: '0' },
+  { state: 'default (v2)', file: 'systemPrompt.main.txt', lean: true, family: null },
+  { state: 'non-Anthropic family', file: 'systemPrompt.nonAnthropic.txt', lean: false, family: 'default' },
 ] as const
 
-const TOOL_SWITCHES = ['CLAUDIN_COMPACT_TOOL_PROMPTS', 'CLAUDIN_LEAN_REMINDERS'] as const
+function enterState(s: { family: ModelFamily | null }): void {
+  _setToolPromptFamilyForTesting(s.family)
+}
 
-function setToolSwitches(value: '0' | undefined): void {
-  for (const name of TOOL_SWITCHES) {
-    if (value === undefined) delete process.env[name]
-    else process.env[name] = value
-  }
+function resetState(): void {
+  _setToolPromptFamilyForTesting(null)
 }
 
 function systemPromptOf(file: string): string | null {
@@ -165,6 +168,9 @@ const TOOL_MARKERS: Record<string, readonly (string | RegExp)[]> = {
     'each "@@" must sit at or after the previous hunk\'s',
     'give each file exactly ONE section',
     'lines you copied from the file (not remembered)',
+    // The multi-file rule every family reads; the Anthropic family is told it
+    // again by its addendum (ANTHROPIC_ONLY_MARKERS below).
+    'Batch related edits into ONE call',
   ],
   Agent: ['subagent_type', /fork/i, 'readOnly', 'isolation', 'worktree', 'SendMessage', 'Code'],
   Bash: ['timeout', /absolute path/i, 'RunTests', 'Typecheck', 'Build', 'Git', 'Read', 'Grep', 'Glob'],
@@ -219,7 +225,7 @@ const ANYWHERE_MARKERS: ReadonlyArray<[string, string | RegExp]> = [
   ['token budget', 'token target'],
   ['answer length', 'shortest response'],
   ['working directory', 'Primary working directory'],
-  ['model identity', 'model named'],
+  ['model identity', 'powered by the model'],
   ['sub-agent rule', /sub-agent/i],
   ['delegation threshold', /delegate/i],
   ['skills', 'Skill'],
@@ -235,28 +241,37 @@ const ANYWHERE_MARKERS: ReadonlyArray<[string, string | RegExp]> = [
   ['skill listing', 'coverage-fake-skill'],
 ]
 
-describe('prompt feature coverage', () => {
-  afterEach(() => setToolSwitches(undefined))
+// Sent to the Anthropic family only, by design: the family addendum
+// (familyAddendums/anthropic.ts). Another family reads the same rule in the
+// Patch description, which TOOL_MARKERS pins for every state.
+const ANTHROPIC_ONLY_MARKERS = new Set(['one multi-file patch'])
 
-  test('both system prompt snapshots are present', () => {
+describe('prompt feature coverage', () => {
+  afterEach(resetState)
+
+  test('every system prompt snapshot is present', () => {
     expect(STATES.map(s => (systemPromptOf(s.file) === null ? `${s.file} missing` : s.state))).toEqual([
       'default (v2)',
-      'killswitched',
+      'non-Anthropic family',
     ])
   })
 
-  test('the switches resolve on by default and off at `=0` in this environment (otherwise the states below are one)', () => {
+  test('the v2 texts are on for this environment\'s family (otherwise the states below are one)', () => {
     expect(isCompactToolPromptsEnabled()).toBe(true)
     expect(isLeanRemindersEnabled()).toBe(true)
-    setToolSwitches('0')
+  })
+
+  test('the v2 texts are off for a family outside Anthropic (otherwise that state is the default)', () => {
+    _setToolPromptFamilyForTesting('default')
     expect(isCompactToolPromptsEnabled()).toBe(false)
     expect(isLeanRemindersEnabled()).toBe(false)
   })
 
-  for (const { state, file, lean, toolSwitches } of STATES) {
+  for (const s of STATES) {
+    const { state, file, lean } = s
     for (const [name, markers] of Object.entries(TOOL_MARKERS)) {
       test(`${state}: ${name} still names every capability`, async () => {
-        setToolSwitches(toolSwitches)
+        enterState(s)
         const tool = getAllBaseTools().find(t => t.name === name)
         expect(tool ? name : `${name} missing from getAllBaseTools()`).toBe(name)
         const text = await toolTextIn(tool!, lean)
@@ -266,56 +281,71 @@ describe('prompt feature coverage', () => {
     }
 
     test(`${state}: every capability is named somewhere the model reads`, async () => {
-      setToolSwitches(toolSwitches)
+      enterState(s)
       const systemPrompt = systemPromptOf(file)
       expect(systemPrompt === null ? `${file} missing` : 'present').toBe('present')
       const toolTexts = await Promise.all(getAllBaseTools().map(t => toolTextIn(t, lean)))
       const skillListing = formatCommandsWithinBudget([FAKE_SKILL], 200_000)
-      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolTexts, getBashGitInstructionsBody(), skillListing].join('\n')
-      const missing = ANYWHERE_MARKERS.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
+      // Each tool's name is read too: since the v2 guidance dropped its skill
+      // item (the Skill tool's description carries the rules), the Skill tool
+      // itself is what names the skills capability there.
+      const toolNames = getAllBaseTools().map(t => t.name)
+      // The v2 memory section leaves its write-time rules (links, the team
+      // subdirectories' fields, `paths:`) to the refusal of a memory write that
+      // breaks them (memoryFormatGuard.ts), which is where the model reads them.
+      const memoryWriteRules = lean ? buildMemoryWriteRules(getTeamMemPath()) : ''
+      const corpus = [getCLISyspromptPrefix(), systemPrompt, sessionGuidance(lean), ...toolNames, ...toolTexts, getBashGitInstructionsBody(), skillListing, memoryWriteRules].join('\n')
+      const markers = s.family === null ? ANYWHERE_MARKERS : ANYWHERE_MARKERS.filter(([c]) => !ANTHROPIC_ONLY_MARKERS.has(c))
+      const missing = markers.filter(([, m]) => (typeof m === 'string' ? !corpus.includes(m) : !m.test(corpus)))
       expect(missing.map(([capability]) => capability)).toEqual([])
     })
   }
 })
 
-// What the v2 tool switches change, against the killswitched text. Both are
-// read when a description or reminder is built.
+// What the v2 texts change, against what another family receives. Both are
+// decided when a description or reminder is built.
 describe('prompt feature coverage — v2 tools and reminders', () => {
-  afterEach(() => setToolSwitches(undefined))
+  afterEach(resetState)
 
   // Through the pure rule, not the live model: under the full suite a leaked
   // `model.js` mock makes getMainLoopModel() ignore an override, so a test that
-  // sets one passes alone and fails in the run. The wiring from each switch to
+  // sets one passes alone and fails in the run. The wiring from each reader to
   // that rule is pinned on the source instead.
-  test('the switches do not reach a model outside the Anthropic family', () => {
-    expect(isV2PromptSwitchOn(undefined, 'anthropic')).toBe(true)
-    expect(isV2PromptSwitchOn('1', 'anthropic')).toBe(true)
-    expect(isV2PromptSwitchOn('0', 'anthropic')).toBe(false)
+  test('the v2 texts do not reach a model outside the Anthropic family', () => {
+    expect(isV2PromptFamily('anthropic')).toBe(true)
     for (const family of ['default', 'openai-reasoning', 'gemini', 'kimi', 'glm', 'codex'] as const) {
-      expect(isV2PromptSwitchOn(undefined, family)).toBe(false)
-      expect(isV2PromptSwitchOn('1', family)).toBe(false)
+      expect(isV2PromptFamily(family)).toBe(false)
     }
     const src = readFileSync(new URL('../toolPromptTier.ts', import.meta.url), 'utf8')
-    for (const [fn, env] of [
-      ['isCompactToolPromptsEnabled', 'CLAUDIN_COMPACT_TOOL_PROMPTS'],
-      ['isLeanRemindersEnabled', 'CLAUDIN_LEAN_REMINDERS'],
-    ] as const) {
+    for (const fn of ['isCompactToolPromptsEnabled', 'isLeanRemindersEnabled']) {
       const start = src.indexOf(`export function ${fn}(`)
       const body = src.slice(start, src.indexOf('\n}\n', start))
-      expect(body).toContain(`process.env.${env}`)
-      expect(body).toContain('getFamilyForLogging(getMainLoopModel())')
+      expect(body).toContain('isV2PromptFamily(getMainLoopFamily())')
     }
+    const start = src.indexOf('function getMainLoopFamily(')
+    expect(src.slice(start, src.indexOf('\n}\n', start))).toContain('getFamilyForLogging(getMainLoopModel())')
+  })
+
+  // The system prompt and the memory section decide on the model the prompt is
+  // built for, not the main loop's; the rendered text is the characterization
+  // test's two snapshots.
+  test('getSystemPrompt sends the v2 text to the v2 family only', () => {
+    const src = readFileSync(new URL('../prompts.ts', import.meta.url), 'utf8')
+    const start = src.indexOf('export async function getSystemPrompt(')
+    const body = src.slice(start, src.indexOf('\n}\n', start))
+    expect(body).toContain('const lean = isV2PromptFamily(getFamilyForLogging(model))')
+    expect(body).toContain('loadMemoryPrompt(lean)')
   })
 
   test('Monitor waits behind ToolSearch only with the v2 tool descriptions', () => {
     expect(isDeferredTool(MonitorTool)).toBe(true)
-    setToolSwitches('0')
+    _setToolPromptFamilyForTesting('default')
     expect(isDeferredTool(MonitorTool)).toBe(false)
   })
 
   // Per tool, so a description that stops honoring the switch is caught even
   // while the others keep the total down. The marker tests above cannot see
-  // it: the killswitched text names every marker too.
+  // it: the text another family receives names every marker too.
   for (const name of [
     'Read',
     'Grep',
@@ -329,20 +359,20 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
     'WebSearch',
     'ReportFindings',
   ]) {
-    test(`v2: the ${name} description is at most two thirds of the killswitched one`, async () => {
+    test(`v2: the ${name} description is at most two thirds of what another family receives`, async () => {
       const tool = getAllBaseTools().find(t => t.name === name)!
-      setToolSwitches('0')
+      _setToolPromptFamilyForTesting('default')
       const before = (await tool.prompt(TOOL_OPTIONS)).length
-      setToolSwitches(undefined)
+      _setToolPromptFamilyForTesting(null)
       expect((await tool.prompt(TOOL_OPTIONS)).length).toBeLessThan(before * (2 / 3))
     })
   }
 
   test('v2: the skill listing keeps one short line per skill', () => {
     const long = { ...FAKE_SKILL, description: 'x'.repeat(200) } as unknown as Command
-    setToolSwitches('0')
+    _setToolPromptFamilyForTesting('default')
     const before = formatCommandsWithinBudget([long], 200_000)
-    setToolSwitches(undefined)
+    _setToolPromptFamilyForTesting(null)
     const after = formatCommandsWithinBudget([long], 200_000)
     expect(after.length).toBeLessThan(before.length)
     expect(after).toContain('coverage-fake-skill')
@@ -351,9 +381,9 @@ describe('prompt feature coverage — v2 tools and reminders', () => {
   // The git protocol attachment is the same text in both states: the shorter
   // one measured on the branch dropped rules BashTool/prompt.test.ts pins.
   test('v2: the git reminder is the same text as before', () => {
-    setToolSwitches('0')
+    _setToolPromptFamilyForTesting('default')
     const before = getBashGitInstructionsBody()
-    setToolSwitches(undefined)
+    _setToolPromptFamilyForTesting(null)
     expect(getBashGitInstructionsBody()).toBe(before)
   })
 })

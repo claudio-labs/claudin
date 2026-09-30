@@ -833,11 +833,8 @@ You have exited auto mode. The user may now want to interact more directly. You 
           `The following agent types are no longer available:\n${attachment.removedTypes.map(t => `- ${t}`).join('\n')}`,
         )
       }
-      if (attachment.isInitial && attachment.showConcurrencyNote) {
-        parts.push(
-          `When you launch multiple agents for independent work, send them in a single message with multiple tool uses so they run concurrently.`,
-        )
-      }
+      // No "launch them in one message" note: the Agent description says
+      // that several calls in one message run in parallel.
       return wrapMessagesInSystemReminder([
         createUserMessage({ content: parts.join('\n\n'), isMeta: true }),
       ])

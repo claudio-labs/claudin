@@ -23,6 +23,7 @@ import {
 import { forgetDiagnosticsForEditedFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
+import { checkMemoryFileFormat } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { countLinesChanged, getPatchFromContents } from 'src/vcs/git/diff.js'
@@ -110,7 +111,8 @@ export { countAddDel }
  * Stages a whole-content rewrite of an existing file. For callers that compute
  * the new text themselves (a codemod) instead of deriving it from patch hunks.
  * Throws if the file is missing or the new content would leak a secret into
- * tracked team memory.
+ * tracked team memory, or leave a memory file without what its place requires
+ * (memoryFormatGuard.ts).
  *
  * `base` is the read `newContent` was derived from. A caller that already read
  * the file MUST pass it: `oldContent` is what the commit-time modification
@@ -128,6 +130,8 @@ export function stageContentReplacement(
   }
   const secretError = checkTeamMemSecrets(absPath, newContent)
   if (secretError) throw new Error(secretError)
+  const formatError = checkMemoryFileFormat(absPath, newContent)
+  if (formatError) throw new Error(formatError)
   const structuredPatch = getPatchFromContents({
     filePath: absPath,
     oldContent: current.content,

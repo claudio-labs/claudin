@@ -10,7 +10,9 @@ import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
 import type { ToolUseContext } from 'src/tools/Tool.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { GlobTool } from 'src/tools/GlobTool/GlobTool.js'
+import { DESCRIPTION } from 'src/tools/GlobTool/prompt.js'
 
 let workDir: string
 // Files whose mtimes run oldest → newest in the opposite order of their names,
@@ -424,5 +426,53 @@ describe('GlobTool', () => {
     })
     expect(parsed.success).toBe(true)
     if (parsed.success) expect(parsed.data.listedDirectories).toBe(true)
+  })
+})
+
+// The parameter texts are the only place each default and limit is stated;
+// what the description already says they leave out (see the note above
+// inputSchema in GlobTool.ts).
+describe('GlobTool — input schema texts', () => {
+  type JsonRecord = Record<string, unknown>
+
+  const schema = zodToJsonSchema(GlobTool.inputSchema) as JsonRecord
+  const t: Record<string, string> = Object.fromEntries(
+    Object.entries(schema.properties as Record<string, JsonRecord>).map(
+      ([name, field]) => [name, String(field.description)],
+    ),
+  )
+
+  test('every parameter stays', () => {
+    expect(Object.keys(t)).toEqual([
+      'pattern',
+      'path',
+      'offset',
+      'head_limit',
+      'max_depth',
+      'type',
+      'sort',
+      'exclude',
+      '-i',
+    ])
+    expect(schema.required).toEqual(['pattern'])
+  })
+
+  test('keeps the defaults and the limits only the schema states', () => {
+    expect(t.path).toContain('never pass "undefined" or "null"')
+    expect(t.offset).toContain('100-file cap. Default 0')
+    expect(t.head_limit).toContain('never more than 100')
+    expect(t.max_depth).toContain('1 means no recursion. Default unlimited')
+    expect(t.type).toContain('"file" (default)')
+    expect(t.type).toContain('an empty directory is not listed')
+    expect(t.sort).toContain('"modified" (default, newest first)')
+    expect(t.sort).toContain('stable prefix')
+    expect(t.exclude).toContain('.gitignore is not applied')
+    expect(t['-i']).toContain('(rg --iglob, like `find -iname`). Default false')
+  })
+
+  test('the description + schema still name every capability', () => {
+    const text = `${DESCRIPTION}\n${JSON.stringify(schema)}`
+    const missing = ['pattern', 'exclude', 'max_depth', 'sort'].filter(m => !text.includes(m))
+    expect(missing).toEqual([])
   })
 })

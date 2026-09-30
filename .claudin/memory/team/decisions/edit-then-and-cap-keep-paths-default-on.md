@@ -15,8 +15,8 @@ paths:
 (branch `perf/request-count-round-4`, commit 67541d95).
 - `then` on Patch and Edit: up to 3 shell commands run once the edit applies,
   in order, stopping at the first failure; their output rides the edit's
-  result. `CLAUDIN_EDIT_THEN=0` removes the field, the prompt line and the guard
-  it arms.
+  result. `CLAUDIN_EDIT_THEN=0` removes the field and the guard it arms. (Since
+  2026-09-29 no tool description names `then`: the field describes itself.)
 - The Bash floor's 15+15 cut keeps every middle line that is only a path
   (`git ls-files`, `find`, `wc -l`), up to 200. `CLAUDIN_CAP_KEEP_PATHS=0`
   restores the plain cut.

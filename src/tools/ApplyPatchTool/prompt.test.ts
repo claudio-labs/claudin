@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
+import { ApplyPatchTool } from 'src/tools/ApplyPatchTool/ApplyPatchTool.js'
 import { DESCRIPTION } from 'src/tools/ApplyPatchTool/prompt.js'
 
 type PatchPrompt = typeof import('src/tools/ApplyPatchTool/prompt.js')
@@ -48,5 +50,36 @@ describe('Patch DESCRIPTION under CLAUDIN_BASH_READ_CREDIT', () => {
     const on = await loadPatchPrompt(true)
     expect(on.DESCRIPTION).toContain(ANY_READ_OR_CAT)
     expect(on.DESCRIPTION).toBe(DESCRIPTION.replace(ANY_READ, ANY_READ_OR_CAT))
+  })
+})
+
+describe('Patch DESCRIPTION — the rules it must keep', () => {
+  // Every format rule and contract line promptFeatureCoverage.test.ts pins.
+  const MARKERS = [
+    '*** Begin Patch',
+    '*** Add File',
+    '*** Update File',
+    '*** Delete File',
+    '*** Move to',
+    '*** End of File',
+    '@@',
+    'NOT applied',
+    'Each hunk begins with a "@@" line',
+    'each "@@" must sit at or after the previous hunk\'s',
+    'give each file exactly ONE section',
+    'lines you copied from the file (not remembered)',
+    'Batch related edits into ONE call',
+  ]
+
+  test('keeps every format rule', () => {
+    expect(MARKERS.filter(m => !DESCRIPTION.includes(m))).toEqual([])
+  })
+
+  // `then` is described once, by its own schema field (see the note in prompt.ts).
+  test('does not name `then`, while the schema field still describes itself', () => {
+    const schema = JSON.stringify(zodToJsonSchema(ApplyPatchTool.inputSchema))
+    expect(schema).toContain('"then"')
+    expect(schema).toContain('the test, typecheck or build that checks it')
+    expect(DESCRIPTION).not.toContain('`then`')
   })
 })

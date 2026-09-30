@@ -5,16 +5,14 @@ import {
 } from 'src/agent/prompts/toolPromptTier.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
-import { isEditThenEnabled } from 'src/tools/shared/editThen/editThenShape.js'
 
 // CLAUDIN_BASH_READ_CREDIT (off by default): a file a Bash `cat` printed whole
 // counts as read (BashTool/creditShownFiles.ts), and the contract says so.
 // Read once at module load, like the credit itself.
 const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
-// CLAUDIN_EDIT_THEN (editThenShape.ts), on unless `=0`, read once the same way.
-const THEN_LINE = isEditThenEnabled()
-  ? '\n- To check the change, put its test, typecheck or build command in `then`: it runs as soon as the edit applies, in this same call, and its output comes back with the result.'
-  : ''
+// No shape names `then` (CLAUDIN_EDIT_THEN): the parameter's own schema text
+// (editThenShape.ts) says what it runs and when, and repeating it here cost
+// every request a line (lean3 A/B, team memory `claude-code-2.1.284-wire-diff`).
 
 function getPreReadInstruction(): string {
   const mustRead = READ_CREDIT
@@ -32,7 +30,7 @@ export function getEditToolDescription(): string {
 /**
  * The v2 description (isCompactToolPromptsEnabled), at Claude Code's density:
  * the read gate, the exact-and-unique match, the line prefix to strip,
- * `replace_all` and `then` — every rule of the full text, fewer words.
+ * `replace_all` — every rule of the full text, fewer words.
  */
 export function buildCompactEditToolDescription(): string {
   const mustRead = READ_CREDIT
@@ -42,7 +40,7 @@ export function buildCompactEditToolDescription(): string {
 
 - ${mustRead}
 - \`old_string\` must match the file exactly, including indentation, and be unique — the edit fails otherwise. Strip the ${FILE_READ_TOOL_NAME} line prefix (line number + arrow) before matching.
-- \`replace_all: true\` replaces every occurrence instead.${THEN_LINE}`
+- \`replace_all: true\` replaces every occurrence instead.`
 }
 
 // Pure builder so tests can render both shapes directly (the lean decision
@@ -63,5 +61,5 @@ export function buildEditToolDescription(lean: boolean): string {
 Usage:${getPreReadInstruction()}
 - When editing text from Read tool output, ensure you preserve the exact indentation (tabs/spaces) as it appears AFTER the line number prefix. The line number prefix format is: ${prefixFormat}. Everything after that is the actual file content to match. Never include any part of the line number prefix in the old_string or new_string.${guardrails}
 - The edit will FAIL if \`old_string\` is not unique in the file. Either provide a larger string with more surrounding context to make it unique or use \`replace_all\` to change every instance of \`old_string\`.${minimalUniquenessHint}
-- Use \`replace_all\` for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.${THEN_LINE}`
+- Use \`replace_all\` for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.`
 }

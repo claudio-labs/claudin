@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { getAnthropicAddendum } from 'src/agent/prompts/familyAddendums/anthropic.js'
+import { getAnthropicAddendum, TOTAL_TOKENS_LINE } from 'src/agent/prompts/familyAddendums/anthropic.js'
 import { CODEX_ADDENDUM } from 'src/agent/prompts/familyAddendums/codex.js'
 import { DEFAULT_ADDENDUM } from 'src/agent/prompts/familyAddendums/default.js'
 import { GEMINI_ADDENDUM } from 'src/agent/prompts/familyAddendums/gemini.js'
@@ -33,6 +33,10 @@ describe('getModelFamily', () => {
     { provider: 'bedrock', model: 'arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-opus-4-8-v1:0', baseUrl: undefined, expected: 'anthropic' },
     // Vertex date-suffixed ids
     { provider: 'vertex', model: 'claude-opus-4-5@20251101', baseUrl: undefined, expected: 'anthropic' },
+    // Foundry serves Claude through Anthropic's SDK; a deployment named
+    // otherwise gets no addendum, like a non-claude Bedrock id
+    { provider: 'foundry', model: 'claude-opus-4-5', baseUrl: undefined, expected: 'anthropic' },
+    { provider: 'foundry', model: 'my-opus-deployment', baseUrl: undefined, expected: 'default' },
     // Bedrock/Vertex with a non-claude model → no addendum
     { provider: 'bedrock', model: 'llama-3', baseUrl: undefined, expected: 'default' },
     { provider: 'bedrock', model: 'amazon.titan-text-express-v1', baseUrl: undefined, expected: 'default' },
@@ -93,7 +97,6 @@ describe('getModelFamily', () => {
     { provider: 'mistral', model: 'mistral-large', baseUrl: undefined, expected: 'default' },
     { provider: 'github', model: 'gpt-4o', baseUrl: undefined, expected: 'default' },
     { provider: 'nvidia-nim', model: 'some-model', baseUrl: undefined, expected: 'default' },
-    { provider: 'foundry', model: 'some-model', baseUrl: undefined, expected: 'default' },
     { provider: 'minimax', model: 'abab-7', baseUrl: undefined, expected: 'default' },
   ]
 
@@ -142,5 +145,20 @@ describe('addendum contents', () => {
 
   test('codex inherits openai-reasoning content', () => {
     expect(CODEX_ADDENDUM).toBe(OPENAI_REASONING_ADDENDUM)
+  })
+
+  // The A/B arm for Claude Code's budget line. Under the test preload the
+  // batching clause is null, so the flag alone decides the addendum here.
+  test('anthropic: CLAUDIN_TOTAL_TOKENS=1 adds the total_tokens line, and only then', () => {
+    const prior = process.env.CLAUDIN_TOTAL_TOKENS
+    try {
+      process.env.CLAUDIN_TOTAL_TOKENS = '1'
+      expect(getAnthropicAddendum()).toBe(TOTAL_TOKENS_LINE)
+      process.env.CLAUDIN_TOTAL_TOKENS = '0'
+      expect(getAnthropicAddendum()).toBeNull()
+    } finally {
+      if (prior === undefined) delete process.env.CLAUDIN_TOTAL_TOKENS
+      else process.env.CLAUDIN_TOTAL_TOKENS = prior
+    }
   })
 })

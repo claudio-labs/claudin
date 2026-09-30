@@ -407,20 +407,21 @@ describe('the edit tools carry `then` only with the flag', () => {
     expect(on.safeParse({ ...edit, then: ['a', 'b', 'c', 'd'] }).success).toBe(true)
   })
 
-  test('the prompts name `then` only with the flag', async () => {
+  // The field describes itself (THEN_DESCRIPTION), so no description repeats
+  // it (2026-09-29): with the flag off there is no field and nothing to name.
+  test('the prompts never name `then`: the schema field is the one place', async () => {
     type PatchPrompt = { DESCRIPTION: string }
     const patchSpec = 'src/tools/ApplyPatchTool/prompt.js'
     const patchOff = await withThen<PatchPrompt, string>(patchSpec, false, m => m.DESCRIPTION)
     const patchOn = await withThen<PatchPrompt, string>(patchSpec, true, m => m.DESCRIPTION)
     expect(patchOff).not.toContain('`then`')
-    expect(patchOn).toContain('put its test, typecheck or build command in `then`')
-    expect(patchOn.startsWith(patchOff)).toBe(true)
+    expect(patchOn).toBe(patchOff)
 
     type EditPrompt = { buildEditToolDescription(lean: boolean): string }
     const editSpec = 'src/tools/FileEditTool/prompt.js'
     const editOff = await withThen<EditPrompt, string>(editSpec, false, m => m.buildEditToolDescription(false))
     const editOn = await withThen<EditPrompt, string>(editSpec, true, m => m.buildEditToolDescription(false))
     expect(editOff).not.toContain('`then`')
-    expect(editOn).toContain('put its test, typecheck or build command in `then`')
+    expect(editOn).toBe(editOff)
   })
 })

@@ -54,11 +54,13 @@ export function getModelFamily(
     case 'firstParty':
     case 'bedrock':
     case 'vertex':
+    case 'foundry':
       // Bedrock namespaces the id ('anthropic.claude-opus-4-8-v1:0',
       // 'us.anthropic.claude-...', inference-profile ARNs); Vertex and 1P
-      // ids start with 'claude-' directly. Anchor at start-of-string or
-      // after a '.' so a custom id merely containing 'claude' elsewhere
-      // does NOT match.
+      // ids start with 'claude-' directly, and so do Foundry's (Claude
+      // through Anthropic's own SDK, AnthropicFoundry in client.ts). Anchor
+      // at start-of-string or after a '.' so a custom id merely containing
+      // 'claude' elsewhere does NOT match.
       return /(?:^|\.)claude-/.test(m) ? 'anthropic' : 'default'
     case 'codex':
       return 'codex'
