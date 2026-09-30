@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.1.39 — 2026-09-30
+
+### ✨ Features
+
+- feat(patch): apply every hunk that matches and report the rest (#269) (ec848f3c)
+
+### 🐛 Bug Fixes
+
+- fix(prompts): ajust system and tool prompts  (#270) (6209ab39)
+
+### ⚡ Performance
+
+- perf(prompts): dedup the first request and drop the v2 killswitches (#271) (1325367b)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.38 — 2026-09-29
 
 ### ✨ Features
