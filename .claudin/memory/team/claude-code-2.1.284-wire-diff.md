@@ -1,8 +1,36 @@
 ---
 name: claude-code-2.1.284-wire-diff
-description: Claude Code 2.1.284 vs Claudin captured on the wire (2026-09-29, interactive, Opus 5.5) — five structural differences PARKED for A/B by the user: total_tokens reminder, env in a role:"system" message, auto-mode Bash text, tool set, divergences Claudin already chose
+description: Claude Code 2.1.284 vs Claudin on the wire (2026-09-29) — the five parked differences, all decided the same day on perf/prompt-parity-2284: total_tokens parked (placebo band), env-as-role:system no-go (0.1%), auto-mode text not adopted, AskUserQuestion stays deferred; plus the first-request dedup (lean3) and on-demand memory rules that were promoted
 type: project
 ---
+
+**Outcome, 2026-09-29 (branch `perf/prompt-parity-2284`, one PR).** Every item below was
+decided with a measurement; nothing ships on the text diff alone.
+- **1, total_tokens — PARKED.** Re-capture: the line ends CC's system prompt on Opus 5.5,
+  Sonnet 5.5 and Haiku 4.5, interactive and `-p`. Built as `CLAUDIN_TOTAL_TOKENS=1` (the static
+  line, at the end of the Anthropic addendum). Session A/B `/tmp/session-cache-ab/20260929-231527`
+  (N=5, Opus 5.5 medium, proxy): the line reached 76/76 requests and moved nothing — cost −4.4%
+  against a placebo at −5.3%, one more turn. The user dropped the per-turn countdown before the
+  run, fearing cache breaks; a reminder appended once to a tool result never rewrites the prefix
+  (cache.md), so that fear is not the reason to skip it — the countdown is simply unmeasured.
+- **2, env as role:system — NO-GO.** The API takes a role:system message after the prompt on
+  Opus 5.5 with or without `mid-conversation-system-2026-04-07`, and the model obeys it
+  (`scripts/bench/tokens/beta-acceptance-probe.ts`, arm `mid-conv-system*`). But the only gain is
+  reusing another directory's cached prefix: `cross-project-cache-estimate.ts --since=2026-09-15`
+  found 36 of 168 cold starts it would serve, 0.1% of main-thread spend, against a 5% bar set
+  before measuring. session-cache-ab would overstate it (a fresh workspace per session).
+- **3, auto-mode text — not adopted.** It is only the Bash-first paragraph, and cat-as-read
+  already lost (+6%, [[cat-read-and-batch-read-ab-2026-09-24]]); the user closed it.
+- **4, AskUserQuestion eager — rejected.** `scripts/bench/tokens/deferred-load-census.ts` over
+  144 interactive sessions (19,876 requests): 26 round trips only to load it (72 with
+  Enter/ExitPlanMode), and carrying the schemas eagerly would cost +0.85M input-token units more
+  than those trips (~0.1% of spend). Fewer calls at a higher cost; it stays deferred.
+- **Promoted from the same round** — an audit of the first request found rules stated 2–5 times
+  and text pointing at things that do not exist; each rule got one home (commit 1448fcea), and the
+  memory section's write-time rules moved behind `memoryFormatGuard.ts` (d41f4d79). The `lean3`
+  arm (both together): cost −4.7% (placebo −5.3%), turns equal, 25/25 sessions passing,
+  first-turn context 17.7k → 15.8k SEPARATED; memory-write check 12/12 like the baseline. No
+  killswitch left; the default renders the measured arm byte for byte.
 
 Captured 2026-09-29 with `scripts/bench/tokens/extract-claude-code-prompt.ts` (local stub,
 zero cost): Claude Code 2.1.284 against the `fix/prompt-parity-cc` build of Claudin,
