@@ -77,9 +77,9 @@ export const ApplyPatchTool = buildTool({
   async checkPermissions(input, context) {
     return foldThenPermission(input, checkApplyPatchPermissions(input, context), context)
   },
-  advise(input) {
+  advise(input, context) {
     // The index line a new memory needs (memoryFormatGuard.ts)
-    return applyPatchMemoryIndexAdvice(input)
+    return applyPatchMemoryIndexAdvice(input, context.responseToolUses)
   },
   async call(input, context, _canUseTool, parentMessage) {
     const { output, newMessages } = await runApplyPatch(

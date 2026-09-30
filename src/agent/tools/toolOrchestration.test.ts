@@ -205,6 +205,46 @@ async function respond(calls: Array<[name: string, input: Record<string, unknown
   return { ran, results }
 }
 
+describe('runTools — what a call knows of its response', () => {
+  // advise runs before the calls after it, and `messages` stops before this
+  // response: responseToolUses is how a Write's advice sees the index line a
+  // later call of the same response writes (memoryFormatGuard.ts).
+  test('each call, concurrent or serial, runs with every call of its response; the context handed back carries none', async () => {
+    const seen: string[][] = []
+    const tools = probeTools([]).map(tool =>
+      // Read runs in a concurrent batch, Edit alone in a serial one.
+      tool.name === 'Read' || tool.name === 'Edit'
+        ? {
+            ...tool,
+            advise: (_input: unknown, context: ToolUseContext) => {
+              seen.push((context.responseToolUses ?? []).map(use => use.id))
+              return null
+            },
+          }
+        : tool,
+    )
+    const blocks = [
+      { type: 'tool_use' as const, id: 'toolu_0', name: 'Read', input: { file_path: 'a.md' } },
+      { type: 'tool_use' as const, id: 'toolu_1', name: 'Edit', input: { file: 'a.ts', ok: true } },
+      { type: 'tool_use' as const, id: 'toolu_2', name: 'Read', input: { file_path: 'b.md' } },
+    ]
+    const assistant = { type: 'assistant', uuid: 'a-seen', message: { id: 'msg_seen', role: 'assistant', content: blocks } }
+    const allow = (async (_tool: unknown, input: unknown) => ({ behavior: 'allow', updatedInput: input })) as never
+    const handedBack: ToolUseContext[] = []
+    for await (const update of runTools(blocks as never, [assistant] as never, allow, contextFor(tools as never))) {
+      handedBack.push(update.newContext)
+    }
+
+    expect(seen).toEqual([
+      ['toolu_0', 'toolu_1', 'toolu_2'],
+      ['toolu_0', 'toolu_1', 'toolu_2'],
+      ['toolu_0', 'toolu_1', 'toolu_2'],
+    ])
+    expect(handedBack.length).toBeGreaterThan(0)
+    expect(handedBack.filter(context => context.responseToolUses !== undefined)).toEqual([])
+  })
+})
+
 describe('runTools — one response, in order', () => {
   test('an edit and the test after it run in the order written', async () => {
     process.env[FLAG] = '1'

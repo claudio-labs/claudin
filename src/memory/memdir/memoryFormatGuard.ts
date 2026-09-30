@@ -24,7 +24,8 @@ import type { ToolAdvice } from 'src/tools/Tool.js'
  *    checkTeamMemSecrets on the four write paths (FileWriteTool, FileEditTool
  *    when the edit creates the file, applyPatch, stagedWrite).
  *  - memoryIndexAdvice notes, after a Write or a Patch, a memory file its
- *    directory's `MEMORY.md` does not list yet.
+ *    directory's `MEMORY.md` does not list yet — counting what the rest of
+ *    the same response writes to that index (indexTextFromResponse).
  *
  * Both apply to every family: another family's prompt states the same rules
  * in full, and the guard asks for nothing it does not.
@@ -177,6 +178,53 @@ export function checkMemoryFileFormatIn(
 
 /** Markdown link targets: `](target)`, up to the first space or `)`. */
 const LINK_TARGET_RE = /\]\(\s*<?([^)\s>]+)/g
+
+const PATCH_FILE_HEADER_RE = /^\*\*\* (Add|Update|Delete) File: (.+)$/
+const PATCH_MOVE_RE = /^\*\*\* Move to: (.+)$/
+
+/**
+ * What the tool calls of one response write into a memory index, by the
+ * index's absolute path: a Write's content, an Edit's new_string, the lines a
+ * Patch adds. Read by input shape, not tool name, so an alias reads the same;
+ * a relative path resolves against `cwd`, as the Patch tool resolves it. The
+ * advice asks this of the whole response because the calls after the one it
+ * advises have not run yet: a memory file and its index line written side by
+ * side are both about to be on disk.
+ */
+export function indexTextFromResponse(
+  toolUses: ReadonlyArray<{ input: unknown }> | undefined,
+  cwd: string,
+): Map<string, string> {
+  const pending = new Map<string, string>()
+  const add = (path: string, text: string): void => {
+    const abs = resolve(cwd, path)
+    if (basename(abs) !== INDEX_NAME) return
+    pending.set(abs, `${pending.get(abs) ?? ''}\n${text}`)
+  }
+  for (const { input } of toolUses ?? []) {
+    if (!input || typeof input !== 'object') continue
+    const fields = input as Record<string, unknown>
+    if (typeof fields.patchText === 'string') {
+      let current: string | null = null
+      for (const line of fields.patchText.split('\n')) {
+        const header = PATCH_FILE_HEADER_RE.exec(line)
+        const move = PATCH_MOVE_RE.exec(line)
+        if (header) current = header[1] === 'Delete' ? null : header[2]!.trim()
+        else if (move) current = move[1]!.trim()
+        else if (current && line.startsWith('+')) add(current, line.slice(1))
+      }
+    } else if (typeof fields.file_path === 'string') {
+      const text =
+        typeof fields.content === 'string'
+          ? fields.content
+          : typeof fields.new_string === 'string'
+            ? fields.new_string
+            : null
+      if (text !== null) add(fields.file_path, text)
+    }
+  }
+  return pending
+}
 
 /** Whether `index` links to `abs`, resolving each link target against the index's directory. */
 function indexLinks(index: string, root: string, abs: string): boolean {

@@ -231,8 +231,10 @@ what every request needs; the full prompt of the other families is unchanged.
   its fixtures from `MEMORY_FRONTMATTER_EXAMPLE`).
 - **The advice** — `memoryIndexAdvice`, the Write and Patch tools' `advise`:
   a memory file its directory's index does not link to yet gets a note with
-  the index-line rule (the section, for a category file). A Patch that adds
-  the index line in the same call gets none.
+  the index-line rule (the section, for a category file). An index line
+  written in the same response gets none — by the same Patch, or by a Write,
+  Edit or Patch beside it (`indexTextFromResponse`; `advise` runs before the
+  calls after it, so it reads them from `ToolUseContext.responseToolUses`).
 
 The guard applies to every family, and asks for nothing their prompts do not
 already state. Its checks are format checks, so the rules no check can

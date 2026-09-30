@@ -58,6 +58,7 @@ export async function* runTools(
         assistantMessages,
         canUseTool,
         currentContext,
+        toolUseMessages,
       )) {
         if (update.contextModifier) {
           const { toolUseID, modifyContext } = update.contextModifier
@@ -99,6 +100,7 @@ export async function* runTools(
         assistantMessages,
         canUseTool,
         currentContext,
+        toolUseMessages,
       )) {
         if (chain && call) chain.observe(call, update.message)
         if (update.newContext) {
@@ -198,6 +200,7 @@ async function* runToolsSerially(
   assistantMessages: AssistantMessage[],
   canUseTool: CanUseToolFn,
   toolUseContext: ToolUseContext,
+  responseToolUses: readonly ToolUseBlock[],
 ): AsyncGenerator<MessageUpdate, void> {
   let currentContext = toolUseContext
 
@@ -218,7 +221,9 @@ async function* runToolsSerially(
           ),
         )!,
         canUseTool,
-        currentContext,
+        // The whole response, for `advise`; only on the context this call
+        // runs with, so the context handed back never carries it.
+        { ...currentContext, responseToolUses },
       )) {
         if (update.contextModifier) {
           currentContext = update.contextModifier.modifyContext(currentContext)
@@ -239,6 +244,7 @@ async function* runToolsConcurrently(
   assistantMessages: AssistantMessage[],
   canUseTool: CanUseToolFn,
   toolUseContext: ToolUseContext,
+  responseToolUses: readonly ToolUseBlock[],
 ): AsyncGenerator<MessageUpdateLazy, void> {
   yield* all(
     toolUseMessages.map(async function* (toolUse) {
@@ -254,7 +260,7 @@ async function* runToolsConcurrently(
             ),
           )!,
           canUseTool,
-          toolUseContext,
+          { ...toolUseContext, responseToolUses },
         )
       } finally {
         markToolUseAsComplete(toolUseContext, toolUse.id)

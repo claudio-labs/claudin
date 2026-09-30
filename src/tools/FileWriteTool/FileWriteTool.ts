@@ -10,6 +10,7 @@ import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import {
   checkMemoryFileFormat,
+  indexTextFromResponse,
   memoryIndexAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
@@ -244,9 +245,13 @@ export const FileWriteTool = buildTool({
 
     return { result: true }
   },
-  advise({ file_path }) {
-    // The index line a new memory needs (memoryFormatGuard.ts)
-    return memoryIndexAdvice(expandPath(file_path))
+  advise({ file_path }, context) {
+    // The index line a new memory needs (memoryFormatGuard.ts); one a later
+    // call of the same response writes counts
+    return memoryIndexAdvice(
+      expandPath(file_path),
+      indexTextFromResponse(context.responseToolUses, getCwd()),
+    )
   },
   async call(
     { file_path, content },

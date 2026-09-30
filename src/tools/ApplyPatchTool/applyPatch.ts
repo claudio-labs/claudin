@@ -37,6 +37,7 @@ import type { StructuredPatchHunk } from 'diff'
 import type { ToolAdvice, ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
 import {
   checkMemoryFileFormat,
+  indexTextFromResponse,
   memoryIndexAdvice,
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
@@ -424,11 +425,15 @@ export function checkApplyPatchPermissions(
 /**
  * The index-line note (memoryFormatGuard.ts) for the first memory file this
  * patch adds, updates or moves in that its directory's `MEMORY.md` does not
- * list — a line the same patch adds to that index counts. One note per call is
+ * list — a line this patch, or another call of the same response
+ * (`responseToolUses`), adds to that index counts. One note per call is
  * enough. An Add the format guard will refuse gets none: its refusal carries
  * the rules.
  */
-export function applyPatchMemoryIndexAdvice(input: ApplyPatchInput): ToolAdvice | null {
+export function applyPatchMemoryIndexAdvice(
+  input: ApplyPatchInput,
+  responseToolUses?: ToolUseContext['responseToolUses'],
+): ToolAdvice | null {
   let hunks: Hunk[]
   try {
     hunks = parsePatch(input.patchText).hunks
@@ -436,7 +441,7 @@ export function applyPatchMemoryIndexAdvice(input: ApplyPatchInput): ToolAdvice 
     return null // validateInput has refused it already
   }
   const targets: Array<{ hunk: Hunk; path: string }> = []
-  const pending = new Map<string, string>()
+  const pending = indexTextFromResponse(responseToolUses, getCwd())
   for (const hunk of hunks) {
     if (hunk.type === 'delete') continue
     let path: string

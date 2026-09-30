@@ -15,6 +15,7 @@ import {
   CATEGORY_FIELDS,
   checkMemoryFileFormat,
   checkMemoryFileFormatIn,
+  indexTextFromResponse,
   memoryIndexAdvice,
   memoryIndexAdviceIn,
   type MemoryDirs,
@@ -290,6 +291,71 @@ describe("the Patch tool's advice (applyPatchMemoryIndexAdvice)", () => {
   test('a patch that touches no memory file gets nothing', () => {
     expect(applyPatchMemoryIndexAdvice({ patchText: addPatch('/repo/src/a.ts', 'export const a = 1\n') })).toBeNull()
   })
+
+  test("a Write of the index beside the patch counts: it runs after the patch's advice", () => {
+    const patchText = addPatch(probe(), fromTemplate('feedback'))
+    const sibling = {
+      input: { file_path: join(getAutoMemPath(), 'MEMORY.md'), content: '- [Probe](memory-format-guard-probe.md) — hook\n' },
+    }
+    expect(applyPatchMemoryIndexAdvice({ patchText }, [{ input: { patchText } }, sibling] as never)).toBeNull()
+  })
+})
+
+// advise runs before the calls after it: a memory file and its index line
+// written side by side in one response are only both on disk once the
+// response has run (the 2026-09-29 memory-write check: every session wrote
+// them in one response, and the note fired anyway until this counted).
+describe('the rest of the response (indexTextFromResponse)', () => {
+  const INDEX = `${AUTO}MEMORY.md`
+  const LINE = '- [Uses pnpm](uses-pnpm.md) — never npm'
+
+  test('reads a Write, an Edit and the lines a Patch adds to an index, by shape', () => {
+    const patch = ['*** Begin Patch', `*** Update File: ${TEAM}MEMORY.md`, '@@', ' ## Decisions', '+- [Drop](decisions/drop.md) — x', '*** End Patch'].join('\n')
+    const pending = indexTextFromResponse(
+      [
+        { input: { file_path: INDEX, content: `${LINE}\n` } },
+        { input: { file_path: INDEX, old_string: 'a', new_string: '- [B](b.md) — y' } },
+        { input: { patchText: patch } },
+      ],
+      '/',
+    )
+    expect(pending.get(INDEX)).toContain(LINE)
+    expect(pending.get(INDEX)).toContain('- [B](b.md) — y')
+    expect(pending.get(`${TEAM}MEMORY.md`)).toContain('- [Drop](decisions/drop.md) — x')
+    expect(pending.get(`${TEAM}MEMORY.md`)).not.toContain('## Decisions')
+  })
+
+  test('ignores what is not an index, a deleted file, and a call with no text', () => {
+    const patch = ['*** Begin Patch', `*** Delete File: ${INDEX}`, `*** Add File: ${AUTO}uses-pnpm.md`, '+---', '*** End Patch'].join('\n')
+    const pending = indexTextFromResponse(
+      [
+        { input: { file_path: `${AUTO}uses-pnpm.md`, content: LINE } },
+        { input: { patchText: patch } },
+        { input: { command: `echo '${LINE}' >> ${INDEX}` } },
+        { input: null },
+      ],
+      '/',
+    )
+    expect([...pending.keys()]).toEqual([])
+  })
+
+  test("a Patch's relative index path resolves against the working directory", () => {
+    const patch = ['*** Begin Patch', '*** Add File: .claudin/memory/MEMORY.md', `+${LINE}`, '*** End Patch'].join('\n')
+    expect([...indexTextFromResponse([{ input: { patchText: patch } }], '/repo').keys()]).toEqual([INDEX])
+  })
+
+  test('the Write advice counts an index line the same response writes', () => {
+    const memory = join(getAutoMemPath(), 'memory-format-guard-probe.md')
+    const index = join(getAutoMemPath(), 'MEMORY.md')
+    const response = [
+      { input: { file_path: memory, content: fromTemplate('feedback') } },
+      { input: { file_path: index, content: '- [Probe](memory-format-guard-probe.md) — hook\n' } },
+    ]
+    expect(memoryIndexAdvice(memory, indexTextFromResponse(response, '/'))).toBeNull()
+    // The same index written for another file does not count.
+    const other = [response[0]!, { input: { file_path: index, content: '- [Other](other.md) — x\n' } }]
+    expect(memoryIndexAdvice(memory, indexTextFromResponse(other, '/'))?.message).toContain('memory-format-guard-probe.md')
+  })
 })
 
 describe('the write paths consult the guard', () => {
@@ -300,7 +366,7 @@ describe('the write paths consult the guard', () => {
   test('Write, Edit (creating a file), Patch (add, update, move) and the staged rewrite', () => {
     const write = source('../../tools/FileWriteTool/FileWriteTool.ts')
     expect(write).toContain('checkMemoryFileFormat(fullFilePath, content)')
-    expect(write).toContain('return memoryIndexAdvice(expandPath(file_path))')
+    expect(write).toContain('indexTextFromResponse(context.responseToolUses, getCwd())')
 
     const edit = source('../../tools/FileEditTool/FileEditTool.ts')
     expect(edit).toContain('const formatError = checkMemoryFileFormat(fullFilePath, content)')
@@ -310,7 +376,7 @@ describe('the write paths consult the guard', () => {
     expect(patch).toContain('const formatError = checkMemoryFileFormat(absPath, newContent)')
     expect(patch).toContain('const formatError = checkMemoryFileFormat(movePath ?? absPath, text)')
     expect(source('../../tools/ApplyPatchTool/ApplyPatchTool.ts')).toContain(
-      'return applyPatchMemoryIndexAdvice(input)',
+      'return applyPatchMemoryIndexAdvice(input, context.responseToolUses)',
     )
 
     expect(source('../../tools/shared/stagedWrite/stagedWrite.ts')).toContain(
