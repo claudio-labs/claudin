@@ -38,7 +38,6 @@ import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import {
   createUserMessage,
   createUserInterruptionMessage,
-  normalizeMessagesForAPI,
   createSystemMessage,
   createAssistantAPIErrorMessage,
   getMessagesAfterCompactBoundary,
@@ -83,6 +82,7 @@ import { handleStopHooks } from 'src/agent/query/stopHooks.js'
 import { buildQueryConfig } from 'src/agent/query/config.js'
 import { productionDeps, type QueryDeps } from 'src/agent/query/deps.js'
 import { selectTurnModel } from 'src/agent/query/turnModel.js'
+import { toolMessagesForNextRequest } from 'src/agent/query/toolResultMessages.js'
 import type { Terminal, Continue } from './query/transitions.js'
 import { feature } from 'bun:bundle'
 import {
@@ -1049,12 +1049,7 @@ async function* queryLoop(
           shouldPreventContinuation = true
         }
 
-        toolResults.push(
-          ...normalizeMessagesForAPI(
-            [update.message],
-            toolUseContext.options.tools,
-          ).filter(_ => _.type === 'user'),
-        )
+        toolResults.push(...toolMessagesForNextRequest(update.message))
       }
       if (update.newContext) {
         updatedToolUseContext = {

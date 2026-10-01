@@ -199,6 +199,7 @@ import {
   CACHE_TTL_1HOUR_MS,
   checkResponseForCacheBreak,
   readServerCacheMissReason,
+  readThinkingDrops,
   recordPromptState,
   recordRenderedMessages,
   recordWireBody,
@@ -1081,24 +1082,6 @@ export async function* queryModel(
     };
   };
 
-  // Scoped so the params built purely for the debug line are not kept alive
-  // alongside paramsFromContext's full closure (messagesForAPI, system,
-  // allTools, betas — the entire request-building context).
-  {
-    const queryParams = paramsFromContext({
-      model: options.model,
-      thinkingConfig,
-    });
-    const logThinkingType = queryParams.thinking?.type ?? "disabled";
-    // Observability for the reasoning-channel: if Anthropic-native requests
-    // ever stop opting into the `thinking` block, CoT can leak into visible
-    // text. Mirroring the [OpenAIShim] log style so regressions show up in
-    // CLAUDIN_DEBUG output without ad-hoc instrumentation.
-    logForDebugging(
-      `[Claude] thinking=${logThinkingType} model=${options.model}`,
-    );
-  }
-
   const newMessages: AssistantMessage[] = [];
   let ttftMs = 0;
   let partialMessage: BetaMessage | undefined = undefined;
@@ -1113,6 +1096,9 @@ export async function* queryModel(
   // The server's cache-miss diagnosis (cache-diagnosis beta), from
   // message_start or message_delta; handed to the break detector.
   let serverCacheMissReason: ServerCacheMissReason | null = null;
+  // The thinking blocks the server dropped from this request (message_start
+  // input_transformations); handed to the break detector.
+  let thinkingDropPaths: string[] = [];
   let didFallBackToNonStreaming = false;
   let fallbackMessage: AssistantMessage | undefined;
   let maxOutputTokens = 0;
@@ -1157,6 +1143,14 @@ export async function* queryModel(
         queryCheckpoint("query_client_creation_end");
 
         const params = paramsFromContext(context);
+        // Observability for the reasoning-channel: if Anthropic-native requests
+        // ever stop opting into the `thinking` block, CoT can leak into visible
+        // text. Read off the request being sent: a second paramsFromContext
+        // just for this line rendered every request twice, and the second
+        // render erased what the break detector had found in the first.
+        logForDebugging(
+          `[Claude] thinking=${params.thinking?.type ?? "disabled"} model=${params.model}`,
+        );
         captureAPIRequest(params, options.querySource); // Capture for bug reports
         if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
           recordWireBody(options.querySource, options.agentId, params);
@@ -1344,6 +1338,7 @@ export async function* queryModel(
             usage = updateUsage(usage, part.message?.usage);
             serverCacheMissReason =
               readServerCacheMissReason(part.message) ?? serverCacheMissReason;
+            thinkingDropPaths = readThinkingDrops(part.message);
             break;
           }
           case "content_block_start":
@@ -1627,6 +1622,7 @@ export async function* queryModel(
           streamRequestId,
           appliedContextEdits,
           serverCacheMissReason,
+          thinkingDropPaths,
         );
       }
 

@@ -85,6 +85,10 @@ type PreviousState = {
   /** How far the message marker moved on this request, in the API's lookback
    *  positions, and whether the lagging marker was placed to cover it. */
   pendingMarkerAdvance: MarkerAdvance | null
+  /** The thinking blocks the server dropped from the previous response's
+   *  request (readThinkingDrops). It drops them again on every later request
+   *  while their prefix stays changed, so only paths not in here are news. */
+  thinkingDropPaths: Set<string>
 }
 
 /** The first message whose rendered bytes changed behind the previous
@@ -119,6 +123,8 @@ export type MarkerAdvance = {
 /** Mirrors CACHE_LOOKBACK_POSITIONS in lagCacheMarker.ts — the detector must
  *  not import the renderer. */
 const LOOKBACK_POSITIONS = 20
+
+const THINKING_DROP_MESSAGE_RE = /^messages\.(\d+)\./
 
 type PendingChanges = {
   systemPromptChanged: boolean
@@ -372,6 +378,7 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         msgJson: [],
         pendingMessageMutation: null,
         pendingMarkerAdvance: null,
+        thinkingDropPaths: new Set(),
       })
       return
     }
@@ -501,6 +508,16 @@ export function recordRenderedMessages(
       jsonStringify(stripMessageCacheControl(m)),
     )
     const msgHashes = msgJson.map(computeHash)
+    // The same request rendered again (a withRetry attempt) is not a new
+    // request: compared with itself it finds nothing, and recording that
+    // would erase the mutation the first render found. Same rule as the lag
+    // marker's retry (lagCacheMarker.ts).
+    if (
+      msgHashes.length === state.msgHashes.length &&
+      msgHashes.every((h, i) => h === state.msgHashes[i])
+    ) {
+      return
+    }
     // A sub-agent's mutation is still named by index, role and block types;
     // only the diff file loses its "before" side. Its JSON copy (~2 MB at a
     // 500k context) times a fan-out's live set is memory the diagnosis does
@@ -631,6 +648,38 @@ function describeServerCacheMissReason(
       ? ` (${formatCompactNumber(tokens)} missed)`
       : ''
   return `server: ${reason.type.replaceAll('_', ' ')}${size}`
+}
+
+/**
+ * Paths of the thinking blocks the server dropped from this request, from
+ * `message_start.message.input_transformations` (`thinking_dropped`), e.g.
+ * `messages.193.content.0`. Opus 5.5 binds every thinking block to the bytes
+ * of system, tools and the messages before it; when those changed, a request
+ * carrying `block_binding: drop_block` gets the block — and every later one —
+ * dropped instead of a 400, and the cached prefix is written again from the
+ * first of them. It is the server's own account of a rewrite the client hash
+ * may not see. Empty for anything else.
+ */
+export function readThinkingDrops(message: unknown): string[] {
+  if (typeof message !== 'object' || message === null) return []
+  const transformations = (message as { input_transformations?: unknown })
+    .input_transformations
+  if (!Array.isArray(transformations)) return []
+  const paths: string[] = []
+  for (const t of transformations) {
+    if (typeof t !== 'object' || t === null) continue
+    const { type, path } = t as { type?: unknown; path?: unknown }
+    if (type === 'thinking_dropped' && typeof path === 'string') paths.push(path)
+  }
+  return paths
+}
+
+function describeThinkingDrops(paths: readonly string[]): string {
+  const first = Math.min(
+    ...paths.map(p => Number(THINKING_DROP_MESSAGE_RE.exec(p)?.[1] ?? Infinity)),
+  )
+  const where = Number.isFinite(first) ? ` from messages.${first}` : ''
+  return `server dropped ${paths.length} thinking block${paths.length === 1 ? '' : 's'}${where}`
 }
 
 /**
@@ -789,6 +838,7 @@ export async function checkResponseForCacheBreak(
   requestId?: string | null,
   contextManagement?: BetaContextManagementResponse | null,
   serverMissReason?: ServerCacheMissReason | null,
+  thinkingDropPaths: readonly string[] = [],
 ): Promise<void> {
   try {
     const key = getTrackingKey(querySource, agentId)
@@ -802,6 +852,15 @@ export async function checkResponseForCacheBreak(
     if (serverMissReason) {
       logForDebugging(
         `[PROMPT CACHE] ${describeServerCacheMissReason(serverMissReason)} [source=${querySource}]`,
+      )
+    }
+    const newThinkingDrops = thinkingDropPaths.filter(
+      p => !state.thinkingDropPaths.has(p),
+    )
+    state.thinkingDropPaths = new Set(thinkingDropPaths)
+    if (newThinkingDrops.length > 0) {
+      logForDebugging(
+        `[PROMPT CACHE] ${describeThinkingDrops(newThinkingDrops)} [source=${querySource}]`,
       )
     }
 
@@ -869,11 +928,17 @@ export async function checkResponseForCacheBreak(
       messageMutation,
       markerAdvance,
     )
-    // The server's own diagnosis leads when the request asked for one: it is
-    // the one cause here that is not an inference.
-    const reason = serverMissReason
-      ? `${describeServerCacheMissReason(serverMissReason)}; ${clientReason}`
-      : clientReason
+    // The server's own account leads — its diagnosis when the request asked
+    // for one, and the thinking it dropped: the causes here that are not an
+    // inference.
+    const serverParts = [
+      ...(serverMissReason ? [describeServerCacheMissReason(serverMissReason)] : []),
+      ...(newThinkingDrops.length > 0 ? [describeThinkingDrops(newThinkingDrops)] : []),
+    ]
+    const reason =
+      serverParts.length > 0
+        ? `${serverParts.join('; ')}; ${clientReason}`
+        : clientReason
     // The `[Cache: …]` line is persisted to the transcript, so this is the
     // record that survives a session without `--debug`.
     recordCacheBreak(

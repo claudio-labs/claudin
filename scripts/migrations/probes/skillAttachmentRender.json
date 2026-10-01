@@ -1,0 +1,30 @@
+{
+  "test": [
+    "src/agent/query/toolResultMessages.test.ts",
+    "src/providers/cache/promptCacheBreakDetection.test.ts"
+  ],
+  "source": "src/providers/cache/promptCacheBreakDetection.ts",
+  "probes": [
+    {
+      "name": "the turn renders each tool message alone again (the pre-2026-10-01 loop)",
+      "source": "src/agent/query/toolResultMessages.ts",
+      "find": "  return message.type === 'user' || message.type === 'attachment'\n    ? [message]\n    : []\n",
+      "replace": "  return require('../messages/normalize.js')\n    .normalizeMessagesForAPI([message])\n    .filter((m: Message) => m.type === 'user')\n"
+    },
+    {
+      "name": "a re-render of the same request erases the mutation it found",
+      "find": "      msgHashes.length === state.msgHashes.length &&\n",
+      "replace": "      false &&\n"
+    },
+    {
+      "name": "the dropped thinking is left off the break line",
+      "find": "      ...(newThinkingDrops.length > 0 ? [describeThinkingDrops(newThinkingDrops)] : []),\n",
+      "replace": ""
+    },
+    {
+      "name": "thinking the server keeps re-dropping is named on every break",
+      "find": "      p => !state.thinkingDropPaths.has(p),\n",
+      "replace": "      () => true,\n"
+    }
+  ]
+}
