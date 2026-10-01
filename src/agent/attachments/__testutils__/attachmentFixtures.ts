@@ -158,7 +158,7 @@ export const ATTACHMENT_FIXTURES: AttachmentFixtures = {
     content: { contents: [{ uri: 'docs://readme', mimeType: 'text/plain', text: 'Hello.' }] },
   },
   command_permissions: { type: 'command_permissions', allowedTools: ['Bash(git status:*)'] },
-  agent_mention: { type: 'agent_mention', agentType: 'Explore' },
+  agent_mention: { type: 'agent_mention', agentType: 'Code' },
   task_status: {
     type: 'task_status',
     taskId: 'task_1',
@@ -280,8 +280,8 @@ export const ATTACHMENT_FIXTURES: AttachmentFixtures = {
   },
   agent_listing_delta: {
     type: 'agent_listing_delta',
-    addedTypes: ['Explore'],
-    addedLines: ['- Explore: Read-only search agent.'],
+    addedTypes: ['Plan'],
+    addedLines: ['- Plan: Designs an implementation plan.'],
     removedTypes: [],
     isInitial: true,
   },

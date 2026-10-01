@@ -287,9 +287,7 @@ export async function runSession(
     ANTHROPIC_BASE_URL: mock.baseUrl,
     // A localhost base URL otherwise flips the CLI into its non-first-party shape.
     CLAUDIN_ASSUME_FIRST_PARTY_BASE_URL: '1',
-    _CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL: '1',
     CLAUDIN_DISABLE_BACKGROUND_TASKS: '1',
-    CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
     DISABLE_AUTOUPDATER: '1',
     NO_PROXY: noProxy,
     no_proxy: noProxy,

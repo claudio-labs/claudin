@@ -593,7 +593,7 @@ function isCacheStrict(): boolean {
 }
 
 /** What a strict-mode request changed that it should not have, or null. */
-export function describeStrictViolation(
+function describeStrictViolation(
   changes: PendingChanges | null,
   mutation: MessageMutation | null,
   announced: boolean,
