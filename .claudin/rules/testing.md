@@ -293,18 +293,25 @@ it drops more than 0.5pp, or when one of the named invariant suites disappears:
 ```
 src/agent/compact/requestDeterminism.invariant.test.ts
 src/agent/compact/stableStubState.stub-byte-stability.test.ts
-src/tools/shared/outputFilter/Bash/phase12Report.test.ts
+src/tools/shared/outputFilter/Bash/reductionFloors.test.ts
 scripts/build/feature-flags-source-guard.test.ts
 scripts/bench/tokens/measure-tool-schemas.test.ts
 src/__tests__/upstreamCodename.test.ts
 scripts/verify/pr-intent-scan.test.ts
+src/agent/query/toolResultMessages.test.ts
+src/agent/cache/loopPrefix.invariant.test.ts
+src/agent/cache/wirePrefix.e2e.test.ts
+src/agent/attachments/renderStability.invariant.test.ts
+src/tools/toolSchemaStability.invariant.test.ts
+src/agent/prompts/systemPromptStability.invariant.test.ts
 ```
 
 Do **not** chase the percentage. It cannot tell a real assertion from
-`expect(true).toBe(true)`, and the seven suites above are worth more than any
+`expect(true).toBe(true)`, and the thirteen suites above are worth more than any
 number it could report — they pin request-byte determinism (the prompt cache
-stops hitting the moment it breaks), per-filter reduction, and the build-system
-invariants. What the ratio is good for is noticing a *loss*: a refactor that
+stops hitting the moment it breaks — the last six are the prefix guards mapped
+in cache.md §1), per-filter reduction, and the build-system invariants. What
+the ratio is good for is noticing a *loss*: a refactor that
 deletes a suite along with the code it covered. Re-record deliberately with
 `bun run test:floor:update`.
 
@@ -400,7 +407,10 @@ is what makes it reachable.
 
 ## What NOT to Test
 
-- `dist/cli.mjs` — it's generated, test the source
+- `dist/cli.mjs` — it's generated, test the source. The exception is what only
+  the bundle shows (every `feature()` reads false under `bun test`): the system
+  prompt characterization and `src/agent/cache/wirePrefix.e2e.test.ts`, which
+  need `bun run build` first and say so when `dist/` is missing.
 - `MACRO.*` constants — they're inlined at build time
 - Provider presets in `providerConfig.ts` — covered by smoke test
 - Feature flags set to `false` — dead code paths
@@ -469,6 +479,12 @@ The specs in `scripts/migrations/probes/` are committed as the evidence for the
 suites they name, and stay re-runnable: after moving code, repoint each probe's
 `source` and they must all still go red. That is what proves a relocation
 preserved behaviour, and it is stronger than any diff of the move.
+
+Two spec options: `"build": true` rebuilds before every suite run, for suites
+that drive `dist/` (`cachePrefixGuardsE2E.json`, ~15 min); a probe with
+`"expect": "green"` is a control — a change the suite must accept (new prompt
+text, a stable new attachment), so going red is its finding. A guard with no
+control can be red for any change at all, which is a test nobody keeps.
 
 **A SIGKILLed run leaves the mutation in the working tree:** the restore is a
 `finally` plus a SIGINT/SIGTERM handler, and SIGKILL reaches neither.
@@ -569,7 +585,7 @@ committed `typecheck-baseline.json`.
 - [ ] `bun run build` passes
 - [ ] `bun run smoke` passes (version + help)
 - [ ] Focused tests pass (`bun test <file>`)
-- [ ] `bun run test:floor` holds (7/7 invariant suites, ratio within 0.5pp)
+- [ ] `bun run test:floor` holds (13/13 invariant suites, ratio within 0.5pp)
 - [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
 - [ ] `bun run deadcode:exports` reports no NEW unused exports
 - [ ] If touching `src/providers/*`: `bun run test:provider`

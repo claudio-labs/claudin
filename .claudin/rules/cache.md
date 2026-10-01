@@ -27,6 +27,41 @@ invalidates the whole prefix and silently rebills `cache_creation`.
 - Regression guard: `requestDeterminism.invariant.test.ts` (break-and-restore).
 - When adding anything to the request, ask "does this change a byte before the
   marker on a later turn?" If yes, it belongs after the frontier or not at all.
+- **Who guards the prefix** (all in `bun test`, all in `test-floor`'s required
+  suites; break-probed by `scripts/migrations/probes/cachePrefixGuards.json` and
+  `cachePrefixGuardsE2E.json`, which also carry controls that must stay green):
+  | you add / change | guard |
+  |---|---|
+  | a message the loop yields, a tool's `newMessages`, the REPL's append rules | `src/agent/cache/loopPrefix.invariant.test.ts` — the real `query()` with a scripted model, next turn via REPL array, transcript and raw history |
+  | an attachment type | `src/agent/attachments/__testutils__/attachmentFixtures.ts` won't compile without a payload; `renderStability.invariant.test.ts` + the loop suite then check it |
+  | a tool, or a tool description | `src/tools/toolSchemaStability.invariant.test.ts` — same pool and text in every permission mode |
+  | a system prompt section, or a call to `clearSystemPromptSections()` | `src/agent/prompts/systemPromptStability.invariant.test.ts` — callers limited to /compact and /resume; the bundle's prompt equal in every mode |
+  | anything else that reaches the wire (betas, thinking, `context_management`, a whole new feature) | `src/agent/cache/wirePrefix.e2e.test.ts` — the built CLI against a mock API, 10 scenarios; add one for a new feature |
+
+  `CLAUDIN_CACHE_STRICT=1` makes the break detector print `[PROMPT CACHE
+  STRICT]` for any unannounced change it sees (the e2e suite and the bundle e2es
+  in `scripts/bench/ab/` turn it on); try it on a `claudindev` session when a
+  feature has no scenario. A failure names the request pair, the message and
+  the bytes around the change — read it before touching the test: a scenario
+  that "did not run" is a harness problem, not a cache verdict.
+- **What changes mid-session goes to the tail.** The system prompt's sections
+  are frozen once rendered; only a session boundary (/compact, /resume) may
+  clear them. A change the model must learn of (the working directory, a
+  worktree, an added directory) is an attachment at the tail — `env_delta`
+  (`src/agent/prompts/envDelta.ts`), the way `git_status_delta` and
+  `claude_md_delta` work. Until 2026-10-01 EnterWorktree, ExitWorktree,
+  /add-dir and /cd each cleared the sections and the next request rewrote
+  everything.
+- **The SDK's view of a tool input is not the history's.** query.ts yields
+  what the API saw; the fields `backfillObservableInput` adds exist only in
+  the SDK output (`withObservableToolInputs`). Until 2026-10-01 every consumer
+  stored the backfilled clone, so the turn after a SendMessage re-sent its
+  tool_use with three more fields.
+- The billing header (system block 0) is not cached by the API — a request
+  with another fingerprint read the whole prefix back (2026-10-01) — so the
+  detector and the wire suite leave it out. A string `content` and its one text
+  block are the same prompt (count_tokens); comparisons use
+  `canonicalWireMessage`.
 - **Render once: the turn reads what the REPL keeps.** The in-turn request is
   built from `toolResults` (`query.ts`), the next turn's from the REPL array
   and the transcript. Both must hold the same messages, unrendered, because

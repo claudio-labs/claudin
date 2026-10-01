@@ -1,6 +1,6 @@
 ---
 name: turn-opening-full-prefix-rewrites
-description: Main source FIXED 2026-10-01 (branch fix/skill-attachment-prefix-rewrite) — turn-opening full rewrites are server thinking drops (input_transformations prefix_binding_mismatch) after a client byte change; a Skill + turn-start attachment rendered differently in-turn vs next turn; slash-command and SendMessage cases still open
+description: FIXED 2026-10-01 (#273, then test/cache-prefix-guards) — turn-opening full rewrites are server thinking drops (prefix_binding_mismatch) after a client byte change; Skill attachment, SendMessage backfill and worktree/add-dir/cd section clears fixed; slash commands found clean; guards in cache.md §1
 type: project
 paths:
   - src/providers/cache/promptCacheBreakDetection.ts
@@ -36,16 +36,24 @@ turns, `CLAUDIN_ENABLE_TASKS=1`, TaskCreate + TaskUpdate in_progress, then the S
 so the second compares the request with itself and erases the mutation. No live
 `messages mutated at` line exists in any transcript.
 
-**Still unexplained:** turn-open drops after slash commands (`local_command`), and a few whose
-first dropped block follows only tool results (SendMessage, Bash). Sibling F4: the system prompt
-grows after EnterWorktree / plan mode and drops everything from messages.1.
+**The rest, 2026-10-01 (branch `test/cache-prefix-guards`):**
+- SendMessage: `query.ts` yielded a clone with the fields `backfillObservableInput` adds, and
+  every consumer stored it, so the next turn re-sent the tool_use with type/recipient/content.
+  Fixed: only the SDK output builds that view (`withObservableToolInputs`).
+- F4: EnterWorktree, ExitWorktree, /add-dir (and permission-prompt directory grants) and /cd
+  cleared the memoized system prompt sections. Fixed: the section stays, `env_delta` announces
+  the change at the tail.
+- Slash command between turns and plan mode: the wire e2e found no break in either (headless).
+- Not a cause: the billing header's fingerprint moves between a session's first request and the
+  next, but the API does not cache that block (measured).
 
-**Status:** main source fixed on branch `fix/skill-attachment-prefix-rewrite` (PR). Render once:
+**Status:** main source fixed in #273. Render once:
 `query.ts` keeps tool-yielded messages unrendered (`src/agent/query/toolResultMessages.ts`), so
 the turn and the next one render the same array; `streaming.ts` renders each request once and a
 retry keeps the detector's verdict; the `[Cache:]` line names new thinking drops
 (`server dropped N thinking blocks from messages.K`). Live probe
 `scripts/bench/ab/skill-attachment-cache-probe.ts` (Opus 5.5, 2026-10-01): claudin 1.1.39
 rewrote 3/3 (3 thinking blocks dropped from messages.9), the branch 0/3 (read back the previous
-prompt − 2 tokens). The slash-command and SendMessage cases above stay open; the drop label
-should name them next time they happen. [[token-census-2026-09-28]].
+prompt − 2 tokens). Guards for every path (loop, REPL, transcript, attachments, tools, system
+prompt, the built CLI's wire, strict mode): `.claudin/rules/cache.md` §1. A new drop the label
+names after these is a new cause. [[token-census-2026-09-28]].
