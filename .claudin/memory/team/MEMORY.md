@@ -5,6 +5,7 @@
 
 ## Decisions
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed memory writes are refused with the rules
+- [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — output lands in the task transcript; multi-session runtime rejected
 - [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`
 - [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — max→xhigh, xhigh→high −24%; `CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN=0`
 - [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
@@ -29,7 +30,7 @@
 - [Git tool (D2), shipped 2026-08-04](decisions/git-tool-design.md) — cost −11.5%; the batching claim did NOT survive the A/B
 - [Effort is project-scoped like provider and model](decisions/effort-is-project-scoped.md) — projects[].activeEffortForProject; `/effort inherit` clears
 - [Adaptive thinking on by default (2026-07-13)](decisions/adaptive-thinking-default-on.md) — `CLAUDIN_ENABLE_ADAPTIVE_THINKING=0` opts out
-- [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests; `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0` opts in
+- [Essential-traffic privacy level by default](decisions/anthropic-startup-traffic-disabled-default.md) — 7→0 startup requests; opt-in `=0`
 - [Footer PR pill supports GitLab + Gitea](decisions/pr-status-gitlab-gitea.md) — prStatusHosts lives in config.json, not settings.json
 - [Bash filter shape blindness — CLOSED 2026-08-29](decisions/bash-filter-shape-wontfix.md) — specs cap at 6.8% of chars over 18.3k calls
 - [code-review-graph — REJECTED 2026-08-08](decisions/code-review-graph-evaluated-rejected.md) — 284 MB db, loses to reading the diff; 4 ideas kept
@@ -40,18 +41,20 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
 
 ## Bugs
-- [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — the Write branch of extractReadFilesFromMessages skips is_error
+- [Turn-opening full-prefix rewrites — OPEN](bugs/turn-opening-full-prefix-rewrites.md) — ~$100/2 wk after long turns; `CLAUDIN_CACHE_BREAK_DUMP=1` captures it
+- [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
+- [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set matches `'agent:builtin'` exactly; not fixed
 - [The missing-module stub's default is TRUTHY](bugs/missing-module-stub-makes-dead-things-look-alive.md) — phantom `noop`; `claudin install`, `mcp serve` broken
 - [systemPrompt.main.txt regen captures harness text](bugs/systemprompt-snapshot-harness-drift.md) — diff the regen against source before committing
 - [Two latent bugs pinned, not fixed (2026-09-20)](bugs/latent-bugs-pinned-not-fixed.md) — autobackground misses `sleep N`; deleted rules resurrect
 - [Provider pointer heal — open follow-ups](bugs/provider-pointer-heal-followups.md) — mid-session reconcile, cache GC, migrate rerun pending
-- [Codex 403 HTML block misread as "run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — a Cloudflare edge block, not a revoked token
+- [Codex 403 HTML block misread as "run /login"](bugs/codex-403-html-block-misclassified-as-login.md) — a Cloudflare edge block
 - [/diff canonicalizes worktrees to the main repo](bugs/diff-reviewer-worktree-canonicalization.md) — fix deferred on purpose
 - [checkBatchWritePermission's updatedInput:{} clobbers the input](bugs/checkbatchwrite-updatedinput-clobbers-input.md) — echo the real input on allow
 - [memory-turn-by-turn RSS bench flakes under full bun test](bugs/memory-turn-by-turn-bench-flaky-full-suite.md) — re-run in isolation first
 - [stream-json prints each assistant event twice](bugs/stream-json-duplicate-assistant-events.md) — benches counting blocks dedupe by uuid
-- [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — empty private dir → legacy team/ copied back; 29 untracked (09-28)
+- [Legacy memory migration resurrects moved team files](bugs/legacy-memory-migration-resurrects-team-files.md) — legacy team/ copied back as untracked root files
 - FIXED: [sub-agents on parent model](bugs/subagents-ran-on-parent-model.md) · [Agent schema freeze](bugs/agent-schema-drops-run-in-background.md) · [RunTests env](bugs/runtests-tool-shell-env-bugs.md)
 - FIXED: [WaitFor params](bugs/waitfor-drops-optional-params.md) · [resume re-wrote the cache](bugs/resume-rewrites-cache-prefix.md) — 40%→100% read-back; cache.md §7
 
@@ -59,7 +62,8 @@
 - [The memory subsystem has a design doc](docs/memory-subsystem-design-doc.md) — docs/tech/memory/project-local-team-memory.md
 - [/diff reviewer living spec (feature 8.1)](docs/diff-reviewer-living-spec.md) — docs/features/8.1-diff-reviewer.md, synced as features land
 - [Public docs site claudiolabs.ai is outside this repo](docs/claudiolabs-docs-site.md) — extensionless URLs; README links pages
-- [Agents asking each other has a tech doc](docs/agent-messaging-tech-doc.md) — docs/tech/agent-messaging; its "Site page" section feeds claudiolabs.ai/docs/agents
+- [Agents asking each other has a tech doc](docs/agent-messaging-tech-doc.md) — docs/tech/agent-messaging; feeds claudiolabs.ai/docs/agents
+- [Adding a Claude model](docs/claude-model-launch.md) — #237/#267 templates, model-launch-capture.ts, claudeCodeParity fixtures
 
 ## Conventions
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs; procedures → skills
@@ -93,7 +97,7 @@
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
 - [Token census 09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) — thinking stays resident; 5m-TTL waits $65
 - [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
-- Weekly token censuses: [09-04..08](weekly-token-census-2026-09-08.md) · [09-14..20](weekly-token-census-2026-09-20.md) — reads 45%→68%; no compaction on 1M = $355-580/wk
+- Weekly token censuses: [09-04..08](weekly-token-census-2026-09-08.md) · [09-14..20](weekly-token-census-2026-09-20.md) — no compaction on 1M = $355-580/wk
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - [Tool error census 09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs fixed
@@ -102,12 +106,12 @@
 ## Roadmap & major features
 - [Dead-code + codename cleanup — #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines, analytics gone; the gates followed 09-25
 - Dead-code rounds (09-18/19): [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) · [r4](dead-code-round-4-2026-09-18.md) · [r5 #214](dead-code-round-5-2026-09-19.md)
-- Dead-code seeds (SPENT): [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash parser](bash-parser-unreachable-behind-tree-sitter-flag.md)
+- Dead-code seeds (SPENT): [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash](bash-parser-unreachable-behind-tree-sitter-flag.md)
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20; md5 split gate, back-edge trap
 - [PR #129's code vanished from main](pr-129-lost-to-force-push.md) — recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy (#156)](context-relief-unified-policy-ab.md) — cost −25%; on 1M the retain floor sits ABOVE its band
-- [Product roadmap 2026-07](roadmap-2026-07.md) — R1 cost routing → R2 sandbox → R3 bg agent ✅ → R4 replay eval → R5 MCP Apps · [token-efficiency](token-efficiency-roadmap.md)
+- [Product roadmap 2026-07](roadmap-2026-07.md) — R1 routing → R2 sandbox → R3 bg agent ✅ → R4 replay eval → R5 MCP Apps · [tokens](token-efficiency-roadmap.md)
 - [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts, map drift
 - [Dev-tooling token roadmap 2026-08](dev-tooling-token-roadmap.md) — D1 D2 D5 done; D3 Read re-read dedup (~9.5%) and D4 open
 - [A session-corpus grep census overcounts ~3x](session-corpus-census-inflation.md) — pair tool_use↔tool_result
@@ -126,7 +130,7 @@
 - Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable, sync scanSymbols blocks
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md) — 09-22 supersedes the cost gap
-- [Session cache A/B vs Claude Code (09-23/24)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; @medium +14%; run arms simultaneously
+- [Session cache A/B vs Claude Code (09-23/24)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; run arms simultaneously
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal; relief 250k +7%, over-clips 3×
 - [Session cost round 3 (09-23)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't
 - [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); family gate stays
