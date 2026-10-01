@@ -23,6 +23,11 @@
 // `source` may be overridden per probe; `test` may list several suites when
 // the probes span more than one area.
 //
+// `"build": true` runs `bun run build` before every suite run, for suites that
+// drive the built CLI (dist/) rather than the source. A probe with
+// `"expect": "green"` is a control: a change the suites must NOT flag (a new
+// prompt text, say), so going red is its finding.
+//
 // Written for the giant-file split, kept afterwards: agent-safety.md requires
 // break-and-restore for every new test, and doing that by hand is what let
 // three tests that guarded nothing ship on this branch's first pass. The specs
@@ -40,8 +45,9 @@ type Probe = {
   find: string
   replace: string
   source?: string
+  expect?: 'red' | 'green'
 }
-type Spec = { test: string | string[]; source: string; probes: Probe[] }
+type Spec = { test: string | string[]; source: string; probes: Probe[]; build?: boolean }
 
 const specPath = process.argv[2]
 if (!specPath) {
@@ -68,6 +74,13 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 }
 
 async function runSuite(): Promise<{ pass: number; fail: number; names: string[] }> {
+  if (spec.build) {
+    const build = Bun.spawn(['bun', 'run', 'build'], { stdout: 'ignore', stderr: 'pipe' })
+    running = build
+    const [err, code] = await Promise.all([new Response(build.stderr).text(), build.exited])
+    running = null
+    if (code !== 0) throw new Error(`bun run build failed (${code}): ${err.slice(-400)}`)
+  }
   const suites = Array.isArray(spec.test) ? spec.test : [spec.test]
   const proc = Bun.spawn(['bun', 'test', ...suites], {
     stdout: 'pipe',
@@ -116,7 +129,15 @@ for (const probe of spec.probes) {
     inFlight = { path, original }
     writeFileSync(path, original.replace(probe.find, probe.replace))
     const result = await runSuite()
-    if (result.fail === 0) {
+    if (probe.expect === 'green') {
+      if (result.fail === 0) {
+        console.log(`✓ ${probe.name} — control, stayed green`)
+      } else {
+        console.log(`✗ ${probe.name}\n    CONTROL WENT RED — the suite flags a change it should accept`)
+        for (const n of result.names) console.log(`    ${n}`)
+        unguarded.push(`${probe.name} (control went red)`)
+      }
+    } else if (result.fail === 0) {
       console.log(`✗ ${probe.name}\n    NOTHING WENT RED — this line is not guarded`)
       unguarded.push(probe.name)
     } else {
@@ -136,8 +157,8 @@ if (after.fail > 0 || after.pass !== baseline.pass) {
   process.exit(1)
 }
 if (unguarded.length > 0) {
-  console.error(`\n${unguarded.length} probe(s) guarded nothing:`)
+  console.error(`\n${unguarded.length} probe(s) failed their expectation:`)
   for (const n of unguarded) console.error(`  - ${n}`)
   process.exit(1)
 }
-console.log('every probe turned at least one test red')
+console.log('every probe met its expectation: breaks went red, controls stayed green')
