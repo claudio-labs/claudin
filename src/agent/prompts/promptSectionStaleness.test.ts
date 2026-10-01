@@ -52,6 +52,7 @@ const { applyPermissionUpdate } = await import(
   'src/permissions/PermissionUpdate.js'
 )
 const { getEmptyToolPermissionContext } = await import('src/tools/Tool.js')
+const { getEnvDeltaAttachment } = await import('src/agent/attachments/injections.js')
 
 const originalSimpleEnv = process.env.CLAUDIN_SIMPLE
 delete process.env.CLAUDIN_SIMPLE
@@ -130,11 +131,11 @@ test('Bedrock-namespaced Claude id keeps the Claude model-list line', async () =
   expect(text).not.toContain('Fast mode for Claudin')
 })
 
-// Regression test for /add-dir staleness: applying an addDirectories
-// permission update must invalidate the memoized env section so the next
-// prompt lists the new directory. No clearSystemPromptSections() here — the
-// update itself is responsible for the invalidation.
-test('addDirectories permission update invalidates the memoized env section', async () => {
+// /add-dir (or a directory granted from a permission prompt) mid-session: the
+// memoized env section stays as it was — re-rendering it rewrote the whole
+// cached prefix — and the next request announces the directory at the tail.
+// Until 2026-10-01 the update cleared the section instead.
+test('addDirectories keeps the env section and announces the directory at the tail', async () => {
   clearSystemPromptSections()
   invalidateActiveProviderCache()
 
@@ -144,9 +145,9 @@ test('addDirectories permission update invalidates the memoized env section', as
   expect(before).toContain('/tmp/staleness-dir-a')
   expect(before).not.toContain('/tmp/staleness-dir-b')
 
-  applyPermissionUpdate(getEmptyToolPermissionContext(), {
+  const updated = applyPermissionUpdate(getEmptyToolPermissionContext(), {
     type: 'addDirectories',
-    directories: ['/tmp/staleness-dir-b'],
+    directories: ['/tmp/staleness-dir-a', '/tmp/staleness-dir-b'],
     destination: 'session',
   })
 
@@ -156,5 +157,15 @@ test('addDirectories permission update invalidates the memoized env section', as
       '/tmp/staleness-dir-b',
     ])
   ).join('\n')
-  expect(after).toContain('/tmp/staleness-dir-b')
+  expect(after).toBe(before)
+
+  const delta = getEnvDeltaAttachment([], {
+    getAppState: () => ({ toolPermissionContext: updated }),
+  } as never)
+  expect(delta).toEqual([
+    expect.objectContaining({
+      type: 'env_delta',
+      additionalDirectories: ['/tmp/staleness-dir-a', '/tmp/staleness-dir-b'],
+    }),
+  ])
 })

@@ -87,6 +87,7 @@ export const ATTACHMENT_PERSISTENCE: Readonly<Record<Attachment['type'], 'persis
   git_status_delta: 'persist',
   todo_reminder_delta: 'persist',
   task_reconcile: 'persist',
+  env_delta: 'persist',
   companion_intro: 'persist',
   bagel_console: 'skip',
 }

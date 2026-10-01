@@ -54,6 +54,8 @@ const NULL_RENDERING_TYPES = [
   'git_status_delta',
   'todo_reminder_delta',
   'task_reconcile',
+  // The tool result or command that moved the environment already says so.
+  'env_delta',
   // The footer's containers group already shows the user this state, live and
   // in place. The attachment exists to tell the MODEL, so painting it in the
   // transcript too would say the same thing twice.

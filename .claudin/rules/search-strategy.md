@@ -16,13 +16,13 @@ point to the rule that owns that subsystem.
 src/
 ├── agent/ (552)                 ← the agent loop and everything that renders it
 │   ├── QueryEngine.ts           ← model drive, tool dispatch, streaming, compaction
-│   ├── query.ts + query/ (8)    ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
+│   ├── query.ts + query/ (12)   ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
 │   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
 │   │                              context blocks (git status, dir structure)
 │   ├── context/ (12)            ← token accounting + context-window math. Three things carry
 │   │                              this name: agent/context.ts (prompt blocks), agent/context/
 │   │                              (accounting), terminal/contexts/ (React providers)
-│   ├── prompts/ (26)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
+│   ├── prompts/ (31)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
 │   ├── repl/ (38)               ← REPL.tsx (main loop), controllers/, ui/ (8), replLauncher
 │   ├── ui/ (166)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
 │   ├── tools/ (45)              ← toolExecution, toolResultCache (→ cache.md); toolResultSummarizer.ts
@@ -38,7 +38,7 @@ src/
 │   │                              compact.ts is NOT a barrel: it keeps compactConversation and
 │   │                              partialCompactConversation over postCompactAttachments.ts and
 │   │                              messagePreparation.ts
-│   ├── cache/ (6)               ← prompt-cache policy + profiles (→ cache.md)
+│   ├── cache/ (12)              ← prompt-cache policy + profiles (→ cache.md)
 │   ├── messages/ attachments/   ← message normalization, attachment rendering
 │   ├── hooks/ (18)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
 │   ├── plans/ goal/ autoFix/           ← planning + self-correction

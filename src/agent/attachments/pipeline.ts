@@ -58,6 +58,7 @@ import {
   getClaudeMdDeltaAttachment,
   getMemoryIndexAttachment,
   getGitStatusDeltaAttachment,
+  getEnvDeltaAttachment,
   getCriticalSystemReminderAttachment,
   getOutputStyleAttachment,
   getTeamContextAttachment,
@@ -357,6 +358,9 @@ export async function getAttachments(
         ),
         maybe('output_style', async () =>
           Promise.resolve(getOutputStyleAttachment()),
+        ),
+        maybe('env_delta', async () =>
+          Promise.resolve(getEnvDeltaAttachment(messages, toolUseContext)),
         ),
         maybe('diagnostics', async () =>
           getDiagnosticAttachments(toolUseContext),

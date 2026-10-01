@@ -41,7 +41,7 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
 
 ## Bugs
-- [Turn-opening full-prefix rewrites — main source FIXED 10-01](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; Skill+attachment rendered twice; slash-command cases open
+- FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; Skill, SendMessage, worktree causes fixed; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set matches `'agent:builtin'` exactly; not fixed

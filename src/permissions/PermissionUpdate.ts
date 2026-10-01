@@ -1,5 +1,4 @@
 import { posix } from 'path'
-import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 // Types extracted to src/shared/types/permissions.ts to break import cycles
 import type {
@@ -128,11 +127,9 @@ export function applyPermissionUpdate(
           source: update.destination,
         })
       }
-      // The memoized env_info_simple system-prompt section renders the
-      // additional working directories; without this, a mid-session
-      // /add-dir (or a permission-prompt directory grant) stays invisible
-      // to the model until /clear or /compact.
-      clearSystemPromptSections()
+      // The model learns of the directory from an env_delta attachment on the
+      // next request; the frozen Environment section is not re-rendered —
+      // clearing it here rewrote the whole cached prefix.
       return {
         ...context,
         additionalWorkingDirectories: newAdditionalDirs,
@@ -179,9 +176,7 @@ export function applyPermissionUpdate(
       for (const directory of update.directories) {
         newAdditionalDirs.delete(directory)
       }
-      // Same staleness as addDirectories: the env_info_simple section must
-      // stop listing a removed directory.
-      clearSystemPromptSections()
+      // Announced the same way as addDirectories (env_delta).
       return {
         ...context,
         additionalWorkingDirectories: newAdditionalDirs,

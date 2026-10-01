@@ -173,6 +173,9 @@ const MAX_TRACKED_SOURCES = 32
 // and aren't worth alerting on.
 const MIN_CACHE_MISS_TOKENS = 2_000
 
+/** System block 0 on the first-party lane (getAttributionHeader). */
+const BILLING_HEADER_PREFIX = 'x-anthropic-billing-header:'
+
 // Anthropic's server-side prompt cache TTL thresholds to test.
 // Cache breaks after these durations are likely due to TTL expiration
 // rather than client-side changes.
@@ -198,16 +201,28 @@ function stripCacheControl(
   })
 }
 
-/** A message's wire bytes minus the `cache_control` markers, which move
- *  every turn by design (defer-cache-marker) and are not a prefix change. */
-function stripMessageCacheControl(message: BetaMessageParam): unknown {
-  if (!Array.isArray(message.content)) return message
-  return {
-    ...message,
-    content: stripCacheControl(
-      message.content as unknown as ReadonlyArray<Record<string, unknown>>,
-    ),
-  }
+type WireBlock = Record<string, unknown> & { type?: string; content?: unknown }
+
+/**
+ * A message as the prompt cache sees it: the wire bytes minus the
+ * `cache_control` markers, which move every turn by design
+ * (defer-cache-marker), with a string `content` written as the one text block
+ * it stands for. addCacheBreakpoints turns the marked message's string into a
+ * block to carry the marker, and the next request sends a string again — the
+ * same prompt: count_tokens measured a user message and a tool_result either
+ * way at the same size, with no thinking dropped (2026-10-01), while one
+ * changed character drops it.
+ */
+export function canonicalWireMessage(message: BetaMessageParam): unknown {
+  const content =
+    typeof message.content === 'string'
+      ? [{ type: 'text', text: message.content }]
+      : (message.content as unknown as WireBlock[]).map(block =>
+          block.type === 'tool_result' && typeof block.content === 'string'
+            ? { ...block, content: [{ type: 'text', text: block.content }] }
+            : block,
+        )
+  return { ...message, content: stripCacheControl(content) }
 }
 
 function describeBlockTypes(message: BetaMessageParam): string {
@@ -315,8 +330,13 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
     const key = getTrackingKey(querySource, agentId)
     if (!key) return
 
+    // The billing header is not part of the cached prompt: a request whose
+    // header carried another fingerprint read the whole prefix back
+    // (2026-10-01), and the fingerprint does move between a session's first
+    // request and the next. Hashing it reported a system change that was not.
+    const cachedSystem = system.filter(b => !b.text.startsWith(BILLING_HEADER_PREFIX))
     const strippedSystem = stripCacheControl(
-      system as unknown as ReadonlyArray<Record<string, unknown>>,
+      cachedSystem as unknown as ReadonlyArray<Record<string, unknown>>,
     )
     const strippedTools = stripCacheControl(
       toolSchemas as unknown as ReadonlyArray<Record<string, unknown>>,
@@ -328,14 +348,14 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
     // scope flips (global↔org/none) and TTL flips (1h↔5m) that the stripped
     // hash can't see because the text content is identical.
     const cacheControlHash = computeHash(
-      system.map(b => ('cache_control' in b ? b.cache_control : null)),
+      cachedSystem.map(b => ('cache_control' in b ? b.cache_control : null)),
     )
     const toolNames = toolSchemas.map(t => ('name' in t ? t.name : 'unknown'))
     // Only compute per-tool hashes when the aggregate changed — common case
     // (tools unchanged) skips N extra jsonStringify calls.
     const computeToolHashes = () =>
       computePerToolHashes(strippedTools, toolNames)
-    const systemCharCount = getSystemCharCount(system)
+    const systemCharCount = getSystemCharCount(cachedSystem)
     const lazyDiffableContent = () =>
       buildDiffableContent(system, toolSchemas, model)
     const isFastMode = fastMode ?? false
@@ -505,7 +525,7 @@ export function recordRenderedMessages(
     if (!state) return
 
     const msgJson = renderedMessages.map(m =>
-      jsonStringify(stripMessageCacheControl(m)),
+      jsonStringify(canonicalWireMessage(m)),
     )
     const msgHashes = msgJson.map(computeHash)
     // The same request rendered again (a withRetry attempt) is not a new
@@ -543,9 +563,78 @@ export function recordRenderedMessages(
     state.pendingMessageMutation = mutation
     state.msgHashes = msgHashes
     state.msgJson = keepJson ? msgJson : []
+    if (isCacheStrict()) reportStrictViolation(key, state, mutation)
   } catch (e: unknown) {
     logError(e)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Strict mode — CLAUDIN_CACHE_STRICT=1, off by default.
+//
+// Turns the request-side half of the detector into an assertion, for the
+// end-to-end suites and the benches that drive the built CLI: a request that
+// changes bytes the previous one sent — a message behind the tail, the system
+// prompt, the tools array — without a client mechanism having announced it
+// (notifyCacheDeletion: the relief clip) writes `[PROMPT CACHE STRICT] …` to
+// stderr, one line per offending request. The line is the signal, not the exit
+// code: headless ends through gracefulShutdown(0), which sets its own, and
+// src/shared/ may not import the detector to change it. A model switch is a
+// different cache and does not count; /clear and /compact reset the tracking.
+//
+// It needs no server: the verdict is on the bytes sent, not on a cache read
+// dropping, so it works against a mock that never reports one.
+// ---------------------------------------------------------------------------
+
+export const CACHE_STRICT_MARKER = '[PROMPT CACHE STRICT]'
+
+function isCacheStrict(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_CACHE_STRICT)
+}
+
+/** What a strict-mode request changed that it should not have, or null. */
+function describeStrictViolation(
+  changes: PendingChanges | null,
+  mutation: MessageMutation | null,
+  announced: boolean,
+): string | null {
+  if (announced || changes?.modelChanged) return null
+  const parts: string[] = []
+  if (mutation) {
+    let at = 0
+    while (at < mutation.prevJson.length && mutation.prevJson[at] === mutation.newJson[at]) at++
+    const around = (s: string) => JSON.stringify(s.slice(Math.max(0, at - 60), at + 100))
+    parts.push(
+      `messages mutated at ${mutation.index}/${mutation.total} (${mutation.role}: ${mutation.blockTypes})` +
+        (mutation.prevJson ? `: sent ${around(mutation.prevJson)}, resent ${around(mutation.newJson)}` : ''),
+    )
+  }
+  if (changes?.systemPromptChanged) {
+    parts.push(`system prompt changed (${changes.systemCharDelta >= 0 ? '+' : ''}${changes.systemCharDelta} chars)`)
+  }
+  if (changes?.toolSchemasChanged) {
+    const detail = [
+      ...changes.addedTools.map(t => `+${t}`),
+      ...changes.removedTools.map(t => `-${t}`),
+      ...changes.changedToolSchemas.map(t => `~${t}`),
+    ].join(' ')
+    parts.push(`tools changed${detail ? ` (${detail})` : ''}`)
+  }
+  return parts.length > 0 ? parts.join('; ') : null
+}
+
+function reportStrictViolation(
+  key: string,
+  state: PreviousState,
+  mutation: MessageMutation | null,
+): void {
+  const violation = describeStrictViolation(
+    state.pendingChanges,
+    mutation,
+    state.cacheDeletionsPending,
+  )
+  if (!violation) return
+  process.stderr.write(`${CACHE_STRICT_MARKER} [${key}] call #${state.callCount}: ${violation}\n`)
 }
 
 export function _getPendingMessageMutationForTesting(

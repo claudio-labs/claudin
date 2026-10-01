@@ -1,5 +1,4 @@
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
-import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import { invalidateAll as invalidateToolResultCache } from 'src/agent/tools/toolResultCache.js'
 import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
 import { loadMarkdownFilesForSubdir } from 'src/memory/instructions/markdownConfigLoader.js'
@@ -85,7 +84,10 @@ export function rerootSession(targetDir: string): RerootResult {
  * rest are the ones a *full* re-root additionally invalidates.
  */
 function clearRerootedCaches(): void {
-  clearSystemPromptSections()
+  // Not the system prompt sections: the Environment section stays as
+  // rendered and the new directory is announced at the tail (env_delta,
+  // src/agent/prompts/envDelta.ts) — clearing them rewrote the whole cached
+  // prefix on every /cd.
   clearMemoryFileCaches()
   getPlansDirectory.cache.clear?.()
   // The read-only tool-result cache (Read/Glob/Grep/LSP) keys relative paths

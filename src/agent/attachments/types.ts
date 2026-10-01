@@ -540,6 +540,15 @@ export type Attachment =
       signature: string
     }
   | {
+      // The working directory, worktree flag or additional directories moved
+      // since the system prompt's frozen Environment section was rendered.
+      // See src/agent/prompts/envDelta.ts.
+      type: 'env_delta'
+      cwd: string
+      isWorktree: boolean
+      additionalDirectories: string[]
+    }
+  | {
       type: 'companion_intro'
       name: string
       species: string

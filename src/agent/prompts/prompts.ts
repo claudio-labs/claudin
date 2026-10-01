@@ -5,6 +5,7 @@ import { getIsGit } from 'src/vcs/git/git.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
+import { recordPromptEnv } from 'src/agent/prompts/envDelta.js'
 import { getSessionStartDate } from 'src/shared/constants/common.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
@@ -552,7 +553,16 @@ export async function getSystemPrompt(
       // only by model would serve stale content when /provider switches
       // mid-session without a model change.
       `env_info_simple:${model}:${getAPIProvider()}`,
-      () => computeSimpleEnvInfo(model, additionalWorkingDirectories),
+      () => {
+        // Frozen once rendered: a later cwd/worktree/directory change is
+        // announced at the tail (env_delta), measured against this.
+        recordPromptEnv({
+          cwd: getCwd(),
+          isWorktree: getCurrentWorktreeSession() !== null,
+          additionalDirectories: additionalWorkingDirectories ?? [],
+        })
+        return computeSimpleEnvInfo(model, additionalWorkingDirectories)
+      },
     ),
     systemPromptSection('language', () =>
       getLanguageSection(settings.language),

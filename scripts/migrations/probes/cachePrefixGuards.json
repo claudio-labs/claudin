@@ -1,0 +1,79 @@
+{
+  "test": [
+    "src/agent/cache/loopPrefix.invariant.test.ts",
+    "src/agent/attachments/renderStability.invariant.test.ts",
+    "src/tools/toolSchemaStability.invariant.test.ts",
+    "src/agent/prompts/systemPromptStability.invariant.test.ts",
+    "src/providers/cache/promptCacheBreakDetection.test.ts"
+  ],
+  "source": "src/agent/query.ts",
+  "probes": [
+    {
+      "name": "the loop renders each tool message alone again (#273)",
+      "source": "src/agent/query/toolResultMessages.ts",
+      "find": "  return message.type === 'user' || message.type === 'attachment'\n    ? [message]\n    : []\n",
+      "replace": "  return require('../messages/normalize.js')\n    .normalizeMessagesForAPI([message])\n    .filter((m: Message) => m.type === 'user')\n"
+    },
+    {
+      "name": "the loop yields the backfilled tool input to every consumer again",
+      "find": "              yield message\n",
+      "replace": "              yield message.type === 'assistant' ? require('./messages/observableInput.js').withObservableToolInputs(message, toolUseContext.options.tools) : message\n"
+    },
+    {
+      "name": "the REPL stubs a result for display under the retain profile",
+      "source": "src/agent/repl/queryMessages.ts",
+      "find": "    profile.immediateStubTokens,\n",
+      "replace": "    0,\n"
+    },
+    {
+      "name": "an attachment renderer reads live state",
+      "source": "src/agent/messages/attachments.ts",
+      "find": "        createUserMessage({ content: renderEnvDelta(attachment), isMeta: true }),\n",
+      "replace": "        createUserMessage({ content: `${renderEnvDelta(attachment)} ${Math.random()}`, isMeta: true }),\n"
+    },
+    {
+      "name": "the transcript stops keeping an attachment that renders bytes",
+      "source": "src/sessions/pure/attachmentPersistence.ts",
+      "find": "  task_reconcile: 'persist',\n",
+      "replace": "  task_reconcile: 'skip',\n"
+    },
+    {
+      "name": "the tool pool depends on the permission mode",
+      "source": "src/tools/tools.ts",
+      "find": "  const builtInTools = getTools(permissionContext)\n\n  // Filter out MCP tools that are in the deny list",
+      "replace": "  const builtInTools = getTools(permissionContext).filter(t => permissionContext.mode !== 'plan' || t.name !== 'Bash')\n\n  // Filter out MCP tools that are in the deny list"
+    },
+    {
+      "name": "a mid-session path clears the system prompt sections again",
+      "source": "src/sessions/rerootSession.ts",
+      "find": "function clearRerootedCaches(): void {\n",
+      "replace": "function clearRerootedCaches(): void {\n  clearSystemPromptSections()\n"
+    },
+    {
+      "name": "strict mode stops reporting",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    if (isCacheStrict()) reportStrictViolation(key, state, mutation)\n",
+      "replace": ""
+    },
+    {
+      "name": "the detector hashes the billing header again",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    const cachedSystem = system.filter(b => !b.text.startsWith(BILLING_HEADER_PREFIX))\n",
+      "replace": "    const cachedSystem = system\n"
+    },
+    {
+      "name": "control: a tool's prompt text changes",
+      "expect": "green",
+      "source": "src/tools/EnterPlanModeTool/prompt.ts",
+      "find": "  return `Use this tool proactively when you're about to start a non-trivial implementation task.",
+      "replace": "  return `Use this tool proactively when you are about to start a non-trivial implementation task."
+    },
+    {
+      "name": "control: a new attachment renderer with stable bytes",
+      "expect": "green",
+      "source": "src/agent/messages/attachments.ts",
+      "find": "        createUserMessage({ content: renderEnvDelta(attachment), isMeta: true }),\n",
+      "replace": "        createUserMessage({ content: `${renderEnvDelta(attachment)}\\n(announced once)`, isMeta: true }),\n"
+    }
+  ]
+}

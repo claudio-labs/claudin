@@ -91,15 +91,13 @@ export function getAttributionHeader(
   const version = `${MACRO.VERSION}.${fingerprint}`
   const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT ?? 'unknown'
 
-  // NOTE: this header is block 0 of the system prompt array
-  // (claude.ts:1348) and result[0] of splitSysPromptPrefix
-  // (utils/api.ts:399-485) — the literal-byte anchor of Anthropic's
-  // prompt-cache prefix match. Anything appended here that varies per
-  // turn invalidates the entire cached prefix on every flip. The
-  // previously-injected `cc_workload` tag (a 1P QoS hint for cron
-  // turns) was removed for that reason — do not re-add per-turn data
-  // here without first moving it past every downstream cache_control
-  // breakpoint.
+  // NOTE: this header is block 0 of the system prompt array. The API reads
+  // it and keeps it out of the prompt cache: a request whose fingerprint
+  // differed read the whole cached prefix back (measured 2026-10-01), which
+  // is why the break detector does not hash it. The previously-injected
+  // `cc_workload` tag (a 1P QoS hint for cron turns) was removed on the
+  // opposite assumption; keep per-turn data out of here all the same — the
+  // backend validates the fingerprint.
   const header = `x-anthropic-billing-header: cc_version=${version}; cc_entrypoint=${entrypoint};`
 
   logForDebugging(`attribution header ${header}`)
