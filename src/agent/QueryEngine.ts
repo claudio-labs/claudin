@@ -833,7 +833,7 @@ export class QueryEngine {
             lastStopReason = message.message.stop_reason
           }
           this.mutableMessages.push(message)
-          yield* normalizeMessage(message)
+          yield* normalizeMessage(message, tools)
           break
         case 'progress':
           this.mutableMessages.push(message)
@@ -846,7 +846,7 @@ export class QueryEngine {
             messages.push(message)
             void recordTranscript(messages)
           }
-          yield* normalizeMessage(message)
+          yield* normalizeMessage(message, tools)
           break
         case 'user':
           this.mutableMessages.push(message)
@@ -877,7 +877,7 @@ export class QueryEngine {
               this.mutableMessages = pruned
             }
           }
-          yield* normalizeMessage(message)
+          yield* normalizeMessage(message, tools)
           break
         case 'stream_event':
           if (message.event.type === 'message_start') {

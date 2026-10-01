@@ -38,6 +38,7 @@ import {
   type FileState,
 } from 'src/shared/fs/fileStateCache.js'
 import { isNotEmptyMessage, normalizeMessages } from 'src/agent/messages/messages.js'
+import { withObservableToolInputs } from 'src/agent/messages/observableInput.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import type {
   inputSchema as permissionToolInputSchema,
@@ -238,10 +239,18 @@ export function __TEST_ONLY_resetToolProgressMap(): void {
   toolProgressLastSentTime.clear()
 }
 
-export function* normalizeMessage(message: Message): Generator<SDKMessage> {
+/**
+ * One loop message as the SDK stream emits it. Assistant tool_use inputs carry
+ * the fields their tool's backfillObservableInput adds (`tools` resolves the
+ * tool) — only here, never in the histories the next request is built from.
+ */
+export function* normalizeMessage(
+  message: Message,
+  tools: Tools = [],
+): Generator<SDKMessage> {
   switch (message.type) {
     case 'assistant':
-      for (const _ of normalizeMessages([message])) {
+      for (const _ of normalizeMessages([withObservableToolInputs(message, tools)])) {
         // Skip empty messages (e.g., "(no content)") that shouldn't be output to SDK
         if (!isNotEmptyMessage(_)) {
           continue
@@ -261,7 +270,10 @@ export function* normalizeMessage(message: Message): Generator<SDKMessage> {
         message.data.type === 'agent_progress' ||
         message.data.type === 'skill_progress'
       ) {
-        for (const _ of normalizeMessages([message.data.message])) {
+        const nested = message.data.message
+        for (const _ of normalizeMessages([
+          nested.type === 'assistant' ? withObservableToolInputs(nested, tools) : nested,
+        ])) {
           switch (_.type) {
             case 'assistant':
               // Skip empty messages (e.g., "(no content)") that shouldn't be output to SDK
