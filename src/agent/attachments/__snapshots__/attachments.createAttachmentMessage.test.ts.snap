@@ -27,6 +27,7 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "dynamic_skill",
   "edited_image_file",
   "edited_text_file",
+  "env_delta",
   "file",
   "git_status_delta",
   "hook_additional_context",

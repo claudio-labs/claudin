@@ -5,7 +5,6 @@ import {
   setOriginalCwd,
   setProjectRoot,
 } from 'src/platform/bootstrap/state.js'
-import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { count } from 'src/shared/data/array.js'
@@ -141,7 +140,8 @@ function restoreSessionToOriginalCwd(
     updateHooksConfigSnapshot()
   }
   saveWorktreeState(null)
-  clearSystemPromptSections()
+  // The system prompt is not re-rendered: the return is announced at the tail
+  // (env_delta), the cached prefix stays.
   clearMemoryFileCaches()
   getPlansDirectory.cache.clear?.()
 }

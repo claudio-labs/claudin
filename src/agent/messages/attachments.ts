@@ -3,6 +3,7 @@ import type {
   TextBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import { companionIntroText } from 'src/terminal/buddy/prompt.js'
+import { renderEnvDelta } from 'src/agent/prompts/envDelta.js'
 import { OUTPUT_STYLE_CONFIG } from 'src/agent/outputStyles/outputStyles.js'
 import { DiagnosticTrackingService } from 'src/platform/diagnosticTracking.js'
 import type { AnyObject } from 'src/tools/Tool.js'
@@ -882,6 +883,11 @@ You have exited auto mode. The user may now want to interact more directly. You 
           content: buildTaskReconcileReminder(attachment),
           isMeta: true,
         }),
+      ])
+    }
+    case 'env_delta': {
+      return wrapMessagesInSystemReminder([
+        createUserMessage({ content: renderEnvDelta(attachment), isMeta: true }),
       ])
     }
     case 'todo_reminder_delta': {

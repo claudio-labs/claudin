@@ -324,6 +324,12 @@ export const ATTACHMENT_FIXTURES: AttachmentFixtures = {
     stale: [{ id: '1', subject: 'Run the checks', status: 'in_progress' }],
     signature: '1:in_progress',
   },
+  env_delta: {
+    type: 'env_delta',
+    cwd: '/repo/.claudin/worktrees/demo',
+    isWorktree: true,
+    additionalDirectories: ['/tmp/shared'],
+  },
   companion_intro: { type: 'companion_intro', name: 'Pip', species: 'otter' },
   bagel_console: { type: 'bagel_console', errorCount: 1, warningCount: 0, sample: 'TypeError: x is undefined' },
 }

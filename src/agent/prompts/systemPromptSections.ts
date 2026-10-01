@@ -4,6 +4,7 @@ import {
   getSystemPromptSectionCache,
   setSystemPromptSectionCacheEntry,
 } from 'src/platform/bootstrap/state.js'
+import { resetPromptEnv } from 'src/agent/prompts/envDelta.js'
 
 type ComputeFn = () => string | null | Promise<string | null>
 
@@ -47,8 +48,15 @@ export async function resolveSystemPromptSections(
  * Clear all system prompt section state. Called on /clear and /compact.
  * Also resets beta header latches so a fresh conversation gets fresh
  * evaluation of AFK/fast-mode/cache-editing headers.
+ *
+ * A session boundary only: the next request rewrites the whole cached
+ * prefix. Something that changes mid-session is announced at the tail
+ * instead (env_delta for the environment section) —
+ * src/agent/prompts/systemPromptStability.invariant.test.ts holds the list
+ * of callers.
  */
 export function clearSystemPromptSections(): void {
   clearSystemPromptSectionState()
   clearBetaHeaderLatches()
+  resetPromptEnv()
 }
