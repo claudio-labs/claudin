@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.40 — 2026-10-01
+
+### 🐛 Bug Fixes
+
+- fix(cache): guard the prompt-cache prefix and fix the breaks it found (#274) (6db71b82)
+- fix(cache): render skill attachments the same in-turn and next turn (#273) (7f2760bc)
+
+### 📚 Documentation
+
+- docs(memory): record two open bugs, #268 and the model-launch doc (#272) (6cd81577)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.39 — 2026-09-30
 
 ### ✨ Features
