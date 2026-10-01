@@ -8,6 +8,7 @@ paths:
   - "src/sessions/pure/logging.ts"
   - "src/sessions/resume/chain.ts"
   - "src/agent/attachments/renderedSnapshot.ts"
+  - "src/agent/query/toolResultMessages.ts"
 ---
 # Prompt Cache & Tool-Result Cache — Claudin Development Rules
 
@@ -26,6 +27,25 @@ invalidates the whole prefix and silently rebills `cache_creation`.
 - Regression guard: `requestDeterminism.invariant.test.ts` (break-and-restore).
 - When adding anything to the request, ask "does this change a byte before the
   marker on a later turn?" If yes, it belongs after the frontier or not at all.
+- **Render once: the turn reads what the REPL keeps.** The in-turn request is
+  built from `toolResults` (`query.ts`), the next turn's from the REPL array
+  and the transcript. Both must hold the same messages, unrendered, because
+  `normalizeMessagesForAPI` lays a message out by its neighbors
+  (`reorderAttachmentsForAPI` bubbles an attachment into the tool_result).
+  Until 2026-10-01 the loop rendered each tool message alone, so a Skill's
+  turn-start attachment (task_reconcile, auto_mode) or a PostToolUse hook's
+  additional context went out in-turn after the tool_result and from the next
+  turn on inside it. Guard: `src/agent/query/toolResultMessages.test.ts`; live:
+  `scripts/bench/ab/skill-attachment-cache-probe.ts`.
+- **A mid-turn byte change costs more than its cache tail.** Opus 5.5 binds
+  every thinking block to the exact bytes of system + tools + the messages
+  before it (`cache_control`, effort, display, betas and `context_management`
+  are not part of it — count_tokens probe, 2026-10-01). Change a byte behind a
+  block, even one the cache absorbed, and the server drops that block and
+  every later one (`input_transformations: thinking_dropped,
+  prefix_binding_mismatch`): the prompt shrinks and everything from there is
+  written again. count_tokens is a free oracle for a body:
+  `input_tokens < context_management.original_input_tokens` means drops.
 - Across sessions the same question applies to the system blocks. The cached
   system block must render identically in every session of a project; the
   one per-session element (the scratchpad path, which embeds the session id)
@@ -393,11 +413,21 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   so a rewrite is attributable after the fact without `--debug`. Headless
   `-p` has no `[Cache:]` line; `scripts/bench/ab/cache-break-attribution-probe.ts`
   checks the debug log + diff file instead, and the REPL line is the live gate.
+  It has to see each request ONCE: until 2026-10-01 `streaming.ts` rendered
+  every request twice (a second `paramsFromContext` for a debug line), the
+  second render compared the request with itself and erased the mutation, and
+  no live `messages mutated` line ever existed. A re-render with the same
+  hashes (a retry) keeps the verdict.
 - When the server says `messages changed` and every client hash matched, the
   detector cannot say why. `CLAUDIN_CACHE_BREAK_DUMP=1` (or `=<dir>`) keeps the
   last two wire bodies per tracked key and writes both, gzipped, on every
   detected break (`cache-break-dumps/index.jsonl` in the Claude temp dir) —
   diff them, or replay them through `scripts/bench/ab/wire-proxy.ts`.
+  The response also names the thinking the server dropped
+  (`message_start.message.input_transformations`, `readThinkingDrops`); the
+  line says `server dropped N thinking blocks from messages.K`, and the bytes
+  that changed sit just before message K — only new drops are named, since the
+  server drops them again on every later request.
 - A new tool whose result is disposable (read-only, re-runnable) sets
   `clearableResult: true` on the Tool; `clear_tool_inputs` is derived from the
   pool (`clearableToolNamesFromPool`). Don't add names to the fallback

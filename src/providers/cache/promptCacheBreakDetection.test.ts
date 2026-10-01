@@ -12,6 +12,7 @@ import {
   checkResponseForCacheBreak,
   notifyCacheDeletion,
   readServerCacheMissReason,
+  readThinkingDrops,
   recordMarkerAdvance,
   recordPromptState,
   recordRenderedMessages,
@@ -337,6 +338,23 @@ describe('recordRenderedMessages', () => {
     expect(mutation?.newJson).toContain('[clipped]')
   })
 
+  // streaming.ts used to render every request twice (once for a debug line),
+  // and a withRetry attempt renders it again: the repeat compared the request
+  // with itself and erased the mutation, so no live `[Cache:]` line ever named
+  // one.
+  test('rendering the same request again keeps the mutation it found', () => {
+    prime()
+    const history = [user('ask'), toolResult('t1', 'full result'), assistant('done')]
+    recordRenderedMessages(SOURCE, undefined, history)
+    const next = [history[0]!, toolResult('t1', '[clipped]'), history[2]!, user('next')]
+    recordRenderedMessages(SOURCE, undefined, next)
+    recordRenderedMessages(SOURCE, undefined, next)
+    expect(_getPendingMessageMutationForTesting(SOURCE)).toMatchObject({
+      index: 1,
+      total: 3,
+    })
+  })
+
   test('an untracked source records nothing', () => {
     recordRenderedMessages('speculation', undefined, [user('a')])
     recordRenderedMessages('speculation', undefined, [user('b')])
@@ -386,6 +404,53 @@ describe('recordRenderedMessages', () => {
     expect(mutation).toMatchObject({ index: 1, total: 2, role: 'user', blockTypes: 'tool_result' })
     expect(mutation?.prevJson).toBe('')
     expect(mutation?.newJson).toContain('[clipped]')
+  })
+})
+
+describe('thinking the server dropped', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  test('readThinkingDrops reads the thinking_dropped paths and nothing else', () => {
+    expect(
+      readThinkingDrops({
+        input_transformations: [
+          { type: 'thinking_dropped', path: 'messages.193.content.0', reason: 'prefix_binding_mismatch' },
+          { type: 'something_else', path: 'messages.2.content.0' },
+          { type: 'thinking_dropped', path: 'messages.195.content.1' },
+        ],
+      }),
+    ).toEqual(['messages.193.content.0', 'messages.195.content.1'])
+    expect(readThinkingDrops({ input_transformations: [] })).toEqual([])
+    expect(readThinkingDrops({})).toEqual([])
+    expect(readThinkingDrops(null)).toEqual([])
+  })
+
+  // Session e55e6d94 (2026-10-01): the turn opening after a Skill call had 22
+  // thinking blocks dropped from messages.193 and the line said only
+  // "likely server-side (prompt unchanged)". The server re-drops them on every
+  // later request, so only the new ones are named.
+  test('a break names the first dropped block, once', async () => {
+    const dropped = ['messages.195.content.0', 'messages.193.content.0']
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a')])
+    await checkResponseForCacheBreak(SOURCE, 258_000, 0, [])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
+    await checkResponseForCacheBreak(SOURCE, 12_700, 238_800, [], undefined, null, null, null, dropped)
+    expect(getCurrentTurnCacheBreaks()[0]).toStartWith(
+      'server dropped 2 thinking blocks from messages.193; ',
+    )
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b'), user('c')])
+    await checkResponseForCacheBreak(SOURCE, 251_500, 1_000, [], undefined, null, null, null, dropped)
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b'), user('c'), user('d')])
+    await checkResponseForCacheBreak(SOURCE, 12_700, 240_000, [], undefined, null, null, null, dropped)
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(2)
+    expect(getCurrentTurnCacheBreaks()[1]).not.toContain('thinking')
   })
 })
 
