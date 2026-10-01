@@ -192,9 +192,15 @@ function env(): Record<string, string> {
     CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
     CLAUDIN_DISABLE_BACKGROUND_TASKS: '1',
     DISABLE_AUTOUPDATER: '1',
+    // Inside each process too: the detector reports a request that changed
+    // bytes an earlier one sent (promptCacheBreakDetection.ts). Claudin only.
+    CLAUDIN_CACHE_STRICT: '1',
     ...EXTRA_ENV,
   }
 }
+
+/** `[PROMPT CACHE STRICT]` lines (CACHE_STRICT_MARKER) from both processes. */
+const strictLines: string[] = []
 
 function run(args: string[]): Promise<string> {
   return new Promise(resolve => {
@@ -207,6 +213,7 @@ function run(args: string[]): Promise<string> {
     child.on('close', code => {
       clearTimeout(kill)
       if (code !== 0) console.error(`${BIN} exited ${code}: ${(err || out).slice(-400)}`)
+      strictLines.push(...err.split('\n').filter(l => l.startsWith('[PROMPT CACHE STRICT]')))
       resolve(out)
     })
   })
@@ -368,3 +375,9 @@ console.log('\nmessages[0] before the resume:')
 for (const line of blocks(a.messages[0])) console.log(`  ${line}`)
 console.log('messages[0] after the resume:')
 for (const line of blocks(b.messages[0])) console.log(`  ${line}`)
+console.log(
+  strictLines.length === 0
+    ? '\nwithin each process: every request re-sent the bytes the previous one sent'
+    : `\nwithin a process, a request changed bytes an earlier one sent:\n${strictLines.map(l => `  ${l}`).join('\n')}`,
+)
+if (strictLines.length > 0) process.exitCode = 1

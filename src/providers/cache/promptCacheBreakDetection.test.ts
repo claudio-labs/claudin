@@ -9,6 +9,7 @@ import {
   _getPendingMessageMutationForTesting,
   _getWireBodiesForTesting,
   buildCacheBreakReason,
+  CACHE_STRICT_MARKER,
   checkResponseForCacheBreak,
   notifyCacheDeletion,
   readServerCacheMissReason,
@@ -646,5 +647,116 @@ describe('the server cache-miss diagnosis', () => {
     expect(getCurrentTurnCacheBreaks()).toEqual([
       'server: system changed (182.8k missed); unknown cause — read 205k→25.9k, rewrote 182.8k',
     ])
+  })
+})
+
+// CLAUDIN_CACHE_STRICT=1: the request-side verdict as an assertion, for the
+// suites that drive the built CLI against a mock (no cache read to drop).
+describe('strict mode', () => {
+  const savedStrict = process.env.CLAUDIN_CACHE_STRICT
+  let written: string[] = []
+  const realWrite = process.stderr.write.bind(process.stderr)
+
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+    process.env.CLAUDIN_CACHE_STRICT = '1'
+    written = []
+    process.stderr.write = ((chunk: string) => {
+      written.push(String(chunk))
+      return true
+    }) as typeof process.stderr.write
+  })
+
+  afterEach(() => {
+    process.stderr.write = realWrite
+    if (savedStrict === undefined) delete process.env.CLAUDIN_CACHE_STRICT
+    else process.env.CLAUDIN_CACHE_STRICT = savedStrict
+  })
+
+  const strictLines = () => written.filter(l => l.startsWith(CACHE_STRICT_MARKER))
+
+  test('a message changed behind the tail is reported, with the bytes around it', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result')])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'other result'), user('next')])
+    expect(strictLines()).toHaveLength(1)
+    expect(strictLines()[0]).toContain('messages mutated at 1/2 (user: tool_result)')
+    expect(strictLines()[0]).toContain('full result')
+  })
+
+  test('the system prompt or the tools changing mid-session is reported', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask')])
+    recordPromptState({ system: [{ type: 'text', text: 'sys, changed' }], toolSchemas: [], querySource: SOURCE, model: 'claude-opus-5' })
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), user('next')])
+    expect(strictLines()[0]).toContain('system prompt changed')
+  })
+
+  test('an append, an announced clip and a model switch are not', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result')])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result'), user('next')])
+    notifyCacheDeletion(SOURCE, undefined, 'relief clip')
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', '[clipped]'), user('next'), user('more')])
+    recordPromptState({ system: [{ type: 'text', text: 'sys for another model' }], toolSchemas: [], querySource: SOURCE, model: 'claude-sonnet-5' })
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', '[clipped]'), user('next'), user('more'), user('x')])
+    expect(strictLines()).toEqual([])
+  })
+
+  // addCacheBreakpoints turns the marked message's string into a block; the
+  // next request sends the string again. Same prompt (count_tokens, 10-01).
+  test('a string content re-sent as its one text block is not a change', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [
+      { role: 'user', content: [{ type: 'text', text: 'ask', cache_control: { type: 'ephemeral' } }] },
+    ])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [
+      { role: 'user', content: 'ask' },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Read', input: {} }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'x' }] },
+    ])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [
+      { role: 'user', content: 'ask' },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Read', input: {} }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'text', text: 'x' }] }] },
+      { role: 'user', content: 'next' },
+    ])
+    expect(strictLines()).toEqual([])
+  })
+
+  // The fingerprint in block 0 moves between a session's first request and
+  // the next (the first user message the fingerprint reads changes); the API
+  // keeps the block out of the cache.
+  test('a billing header with another fingerprint is not a system change', () => {
+    const withHeader = (fp: string) =>
+      recordPromptState({
+        system: [
+          { type: 'text', text: `x-anthropic-billing-header: cc_version=99.0.0.${fp}; cc_entrypoint=cli;` },
+          { type: 'text', text: 'sys' },
+        ],
+        toolSchemas: [],
+        querySource: SOURCE,
+        model: 'claude-opus-5',
+      })
+    withHeader('be0')
+    recordRenderedMessages(SOURCE, undefined, [user('ask')])
+    withHeader('3af')
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), user('next')])
+    expect(strictLines()).toEqual([])
+  })
+
+  test('off by default', () => {
+    delete process.env.CLAUDIN_CACHE_STRICT
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result')])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'other'), user('next')])
+    expect(strictLines()).toEqual([])
   })
 })

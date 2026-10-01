@@ -7,37 +7,23 @@
  * again (input_transformations: thinking_dropped).
  *
  * Messages are rendered with the production pipeline (renderMessagesForAPI +
- * addCacheBreakpoints) and compared with `cache_control` stripped — the
- * marker legitimately moves every request.
+ * addCacheBreakpoints) and compared in the break detector's canonical form —
+ * the marker legitimately moves every request.
  */
+import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
+import { canonicalWireMessage } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { addCacheBreakpoints } from 'src/providers/shims/claude/paramBuilders.js'
 import { renderMessagesForAPI } from 'src/providers/shims/claude/renderMessages.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { Tools } from 'src/tools/Tool.js'
 
-type Block = { type?: string; text?: string; content?: unknown }
-
 /**
- * A string `content` and a single text block are the same prompt to the API:
- * addCacheBreakpoints turns the last message's string into a block to carry
- * the marker, and the next request sends it as a string again. Measured
- * 2026-10-01 with count_tokens: a tool_result as a string or as one text
- * block counts the same and drops no thinking. Comparing the canonical form
- * keeps the check on bytes that change the prompt.
+ * The wire bytes of one request's messages, one string per message, in the
+ * break detector's canonical form (canonicalWireMessage: cache_control
+ * stripped, a string content as its one text block).
  */
-function canonicalContent(content: unknown): unknown {
-  if (typeof content === 'string') return [{ type: 'text', text: content }]
-  if (!Array.isArray(content)) return content
-  return (content as Block[]).map(block =>
-    block?.type === 'tool_result' && typeof block.content === 'string'
-      ? { ...block, content: [{ type: 'text', text: block.content }] }
-      : block,
-  )
-}
-
-/** The wire bytes of one request's messages, one string per message. */
 export function wireMessages(messages: Message[], tools: Tools): string[] {
   const historyRedaction = getCacheProfile().historyRedactionEnabled
   const config = getGlobalConfig()
@@ -48,9 +34,7 @@ export function wireMessages(messages: Message[], tools: Tools): string[] {
     stripOldNarration: historyRedaction && !!config.narrationHistoryRedactionEnabled,
   })
   return addCacheBreakpoints(rendered, true).map(m =>
-    JSON.stringify({ ...m, content: canonicalContent(m.content) }, (key, value) =>
-      key === 'cache_control' ? undefined : value,
-    ),
+    JSON.stringify(canonicalWireMessage(m as BetaMessageParam)),
   )
 }
 
