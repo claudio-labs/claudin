@@ -1,0 +1,70 @@
+{
+  "test": [
+    "src/platform/settings/settings.characterization.test.ts",
+    "src/platform/settings/ui/Config.characterization.test.tsx"
+  ],
+  "source": "src/platform/settings/settings.ts",
+  "probes": [
+    {
+      "name": "managed drop-ins: applied in name order",
+      "find": "      .map(d => d.name)\n      .sort()",
+      "replace": "      .map(d => d.name)"
+    },
+    {
+      "name": "layer merge: arrays from every layer are joined",
+      "find": "return mergeArrays(objValue, srcValue)",
+      "replace": "return srcValue"
+    },
+    {
+      "name": "write: an undefined value deletes the key",
+      "find": "delete object[key]",
+      "replace": "void key"
+    },
+    {
+      "name": "write: broken JSON is never overwritten",
+      "find": "if (rawData === null) {",
+      "replace": "if (rawData === undefined) {"
+    },
+    {
+      "name": "bypass prompt: the project layer is not trusted",
+      "find": "getSettingsForSource('localSettings')?.skipDangerousModePermissionPrompt ||",
+      "replace": "getSettingsForSource('projectSettings')?.skipDangerousModePermissionPrompt ||"
+    },
+    {
+      "name": "Config: 'default' for messages from other sessions removes the key",
+      "source": "src/platform/settings/ui/Config.tsx",
+      "find": "const crossSessionInbound = value === 'accept' || value === 'hold' || value === 'refuse' ? value : undefined;",
+      "replace": "const crossSessionInbound = value === 'accept' || value === 'hold' || value === 'refuse' ? value : 'accept';"
+    },
+    {
+      "name": "Config: thinking on removes the key, off writes false",
+      "source": "src/platform/settings/ui/Config.tsx",
+      "find": "alwaysThinkingEnabled: enabled ? undefined : false",
+      "replace": "alwaysThinkingEnabled: enabled"
+    },
+    {
+      "name": "Config: the warning needs an answer from the model",
+      "source": "src/platform/settings/ui/Config.tsx",
+      "find": "} else if (context.messages.some(m_0 => m_0.type === 'assistant')) {",
+      "replace": "} else if (true) {"
+    },
+    {
+      "name": "Config: a short pane counts the settings scrolled above",
+      "source": "src/platform/settings/ui/Config.tsx",
+      "find": "const hiddenAbove = countSettingRows(displayRows.slice(0, scrollOffset));",
+      "replace": "const hiddenAbove = 0;"
+    },
+    {
+      "name": "Config: Esc puts the local file back",
+      "source": "src/platform/settings/ui/Config.tsx",
+      "find": "spinnerTipsEnabled: il?.spinnerTipsEnabled,",
+      "replace": "spinnerTipsEnabled: undefined,"
+    },
+    {
+      "name": "Config: staying on this version pins it",
+      "source": "src/platform/settings/ui/Config.tsx",
+      "find": "newSettings.minimumVersion = MACRO.VERSION;",
+      "replace": "newSettings.minimumVersion = undefined;"
+    }
+  ]
+}
