@@ -4,7 +4,9 @@ import { linuxSecretStorage } from "src/platform/secureStorage/linuxSecretStorag
 import { windowsCredentialStorage } from "src/platform/secureStorage/windowsCredentialStorage.js";
 import { getSecureStorageServiceName, CREDENTIALS_SERVICE_SUFFIX } from "src/platform/secureStorage/macOsKeychainHelpers.js";
 
-const realExeca = await import("execa");
+// A plain copy: the live namespace would show the stub below once it lands, so
+// restoring with it would leave execa mocked for every later file.
+const realExeca = { ...(await import("execa")) };
 
 // Mock execaSync. The parameter list mirrors how every caller in
 // src/platform/secureStorage/ invokes it — `execaSync(file, args, options)` — so

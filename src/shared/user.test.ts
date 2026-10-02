@@ -11,6 +11,7 @@ const realAuthForUserTest = { ...(await import('src/providers/auth/auth.js')) }
 const realBootstrapStateForUserTest = { ...(await import('src/platform/bootstrap/state.js')) }
 const realCwdForUserTest = { ...(await import('src/shared/fs/cwd.js')) }
 const realEnvForUserTest = { ...(await import('src/shared/env.js')) }
+const realExecaForUserTest = { ...(await import('execa')) }
 
 async function importFreshUserModule() {
   return import(`./user.ts?ts=${Date.now()}-${Math.random()}`)
@@ -68,7 +69,9 @@ function installCommonMocks(options?: {
 }
 
 afterEach(() => {
-  process.env = { ...originalEnv }
+  // In place: a fresh object would cut process.env off from the real environment.
+  for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]
+  Object.assign(process.env, originalEnv)
   delete (globalThis as Record<string, unknown>).MACRO
 })
 
@@ -82,6 +85,7 @@ afterAll(() => {
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapStateForUserTest)
   mock.module('src/shared/fs/cwd.js', () => realCwdForUserTest)
   mock.module('./env.js', () => realEnvForUserTest)
+  mock.module('execa', () => realExecaForUserTest)
 })
 
 describe('user email fallbacks', () => {
