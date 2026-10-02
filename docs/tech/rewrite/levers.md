@@ -5,6 +5,10 @@ module from a spec. At the pilot's rate (about 1.7 M tokens per thousand lines)
 the 346 k inherited lines left would cost about 600 M tokens. This page is how
 that number comes down without claiming a shortcut the law does not give.
 
+The levers run on the branch `rewrite/levers`, cut from `rewrite/clean-base`
+and merged back by pull request one group at a time (cover and cut, yoga,
+opencode). Nothing reaches `main` before the final cut.
+
 Restyling inherited code does not clean it. Renaming, retyping and moving leave
 a derived work, and the measure normalizes identifiers for that reason: an
 80-line block renamed throughout still matched on 46 lines. An inherited line
@@ -24,12 +28,11 @@ Inherited lines, from the 2026-09-28 inventory.
 | Lever | Lines |
 |---|---|
 | Cuts of first-party-only and dead code | ~19.7 k |
-| Cuts decided on 2026-10-02 (marketplace, coordinator/swarm, PowerShell, buddy) | ~29.8 k |
 | MIT packages (`yoga-layout`; `file-index` and `highlighted-code` if at parity) | ~3 k |
 | opencode pieces | ~5 k |
-| Left for the per-method rewrite | ~289 k |
+| Left for the per-method rewrite | ~318 k |
 
-So the cheap levers take about 17%. The core (the agent loop, the TUI,
+So the cheap levers take about 8%. The core (the agent loop, the TUI,
 permissions, tools, platform) has no legal shortcut. The rest of the saving is
 in the process: per method there is no spec per module, because the tests are
 the specification.
@@ -45,17 +48,29 @@ the specification.
 - `prompt-suggestion/speculation.ts`, which is always off
 - the native installer (`install/installer.ts` and `download.ts`): `GCS_BUCKET_URL` is empty, so `claudin install` can only fail
 
-**Decided on 2026-10-02:**
-- the plugin marketplace and `/plugin`. The loader stays, and a new `pluginDirs` setting loads plugin folders through the same path as `--plugin-dir`.
-- coordinator mode and the swarm. `forkedAgent`, `agentContext` and `agentId` stay.
-- `PowerShellTool`
-- `/buddy`
+**Kept, by a reversal on 2026-10-02.** The same day these were first marked
+for cutting, the user kept them. Each goes through the per-method rewrite in
+its own phase:
+- the plugin marketplace and `/plugin`, in phase 7;
+- coordinator mode and the swarm, in phase 10;
+- `PowerShellTool`, in phase 6;
+- `/buddy`, in phase 9.
 
 **Kept:** fast mode. It works with an Anthropic API key and runs through the
 request and cache path; it goes through phase 5 with the providers.
 
-One phase 2 unit goes with the cuts: `sessions/remote` (`useRemoteSession`,
-`useSSHSession`, `useTeleportResume`).
+One phase 2 unit goes with the cuts: the remote session hooks
+(`sessions/hooks/useRemoteSession.ts`, `useSSHSession.ts`, `useTeleportResume.tsx`).
+
+Some of the files that import the cut are remote code themselves:
+- `headless/transports/ccrClient.ts` and `headless/remoteIO.ts`
+- `agent/tasks/RemoteAgentTask` and `agent/ui/tasks/RemoteSessionDetailDialog.tsx`
+- `agent/background/remote/*`
+- `providers/hooks/useDirectConnect.ts` and `providers/transport/sessionIngress.ts`
+- `commands/remote-env`
+
+Each one is classified before the cut. An unreachable one joins the cut. A
+reachable one is covered like any other surviving file.
 
 ## Replacements
 
@@ -79,36 +94,38 @@ Ink TUI. It would also mean rewriting the whole UX in Solid and Effect.
 ## Cover before touching
 
 Any surviving file a lever edits gets tested first, and so does any file a
-per-method rewrite fills in:
-1. Find the lines that will change in `coverage/lcov.info` (`bun run test:coverage`).
-2. If a test does not run them, add characterization tests on the public contract.
-3. Prove each test with `scripts/migrations/break-probe.ts`, using a spec at `scripts/migrations/probes/levers-<group>.json`.
-4. Commit the tests as `test(<slice>): pin … before …`, ahead of the change.
+per-method rewrite fills in. Before the change:
+1. Every function that changes is run by a test.
+2. The file reaches the `testing.md` target for its slice: providers 80%,
+   shared 75%, tools 70%, and 70% for a slice without a target. Measure it with
+   `coverage/lcov.info` (`bun run test:coverage`).
+3. Each new test is a characterization of the public contract. Prove it with
+   `scripts/migrations/break-probe.ts`, using a spec at
+   `scripts/migrations/probes/levers-<group>.json`.
+4. The tests are committed as `test(<slice>): pin … before …`, ahead of the change.
 
-The check is on the lines that change, not a target for the whole file. Most
-files a cut touches are wiring hubs that sit far below any target. One example
-is `REPL.tsx` at 57%. Raising each of them to 70% before removing an import
-would cost more than the cut itself saves. A per-method rewrite also holds the
-file to the `testing.md` target, because every function in it changes.
+The target is per file, not only per changed line. The user set that on
+2026-10-02. It replaces an earlier rule that checked only the lines that change.
+
+Most files a cut touches are wiring hubs far below the target. `REPL.tsx` is
+at 57%, and `AgentTool.tsx` is at 12%. Covering them is not spent on the cut:
+the per-method rewrite holds every file it fills in to the same target. So the
+tests are the spec that rewrite needs anyway, written earlier. A file that is
+itself being cut gets no tests.
 
 Tests that pin behaviour being cut go with the cut, on purpose, and the commit
 names them.
 
 ### Coverage of the files the cuts touch (2026-10-02)
 
-These are the surviving files that import something being cut, with their
-lcov line and function coverage. "Not loaded" means no test imports the file
-at all.
+These are the surviving files that import something being cut, with their lcov
+line coverage. "Not loaded" means no test imports the file at all.
 
-| Group | Surviving files | Hubs and their coverage |
-|---|---|---|
-| remote | 41 | `REPL.tsx` 57%, `PromptInput.tsx` 37%, `commands.ts` 81%, `tools.ts` 92%, `settings.ts` 51%, headless `print/*` 5–8%; not loaded: `init.ts`, `cli.tsx`, `preActionHook.ts`, `Config.tsx` |
-| commands | 10 | `commands.ts` 81%, `REPL.tsx` 57%, `promptSuggestion.ts` 31% |
-| coordinator | 81 | `QueryEngine.ts` 7%, `AgentTool.tsx` 12%, `spawnMultiAgent.ts` 3%, `turnLoop.ts` 4%, `SendMessageTool.ts` 63%, `tools.ts` 92%; not loaded: `main.tsx`, `setup.ts`, `startupSequence.ts` |
-| powershell | 11 | `permissions.ts` 40%, `PermissionRequest.tsx` 23%, `tools.ts` 92%; not loaded: `processBashCommand.tsx` |
-| buddy | 7 | `REPL.tsx` 57%, `PromptInput.tsx` 37%, `messages/attachments.ts` 80% |
-| marketplace | 12 | `pluginLoader.ts` 7%, `installedPluginsManager.ts` 8%, `tipRegistry.ts` 54%; not loaded: `headless/handlers/plugins.ts`, `main/commands/plugin.ts` |
-| yoga | 2 | `ink/layout/yoga.ts` 91%, `ink/reconciler.ts` 78% |
+| Group | Surviving files | Below target | Hubs and their coverage |
+|---|---|---|---|
+| dead code | 42 | 36 (10 not loaded) | `REPL.tsx` 57%, `PromptInput.tsx` 37%, `AgentTool.tsx` 12%, `settings.ts` 51%, `commands.ts` 81%, headless `print/*` 5–8%; not loaded: `init.ts`, `preActionHook.ts`, `Config.tsx` |
+| yoga | 2 | 0 | `ink/layout/yoga.ts` 91%, `ink/reconciler.ts` 78% |
+| opencode | — | most | `lsp/LSPServerManager.ts` 1%, `LSPServerInstance.ts` 2%, `lsp/manager.ts` 15%, `mcp/auth/*` 3–7%, `providers/oauth/client.ts` 3%; Codex OAuth 63–86% |
 
 ## Rewriting per method
 
