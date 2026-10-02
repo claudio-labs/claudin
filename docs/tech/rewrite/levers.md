@@ -88,6 +88,8 @@ build keeps every one of these modules: the gates are checked at runtime.
 - `main/commands/remoteControl.ts`. It registers the bridge's `rc` subcommand.
 - `agent/ui/ResumeTask.tsx`. It only runs under bare `--teleport`, and reads the
   claude.ai sessions API.
+- `agent/ui/WorkflowMultiselectDialog.tsx`. Its only importer is
+  `install-github-app`.
 
 **Stay, and get covered:** `headless/remoteIO.ts` and the transports other
 than `ccrClient.ts`. The hidden `--sdk-url` flag runs stream-json over any
