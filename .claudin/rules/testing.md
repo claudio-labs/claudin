@@ -182,7 +182,15 @@ when A executes first, regardless of `--max-concurrency=1`.
   `toolPromptTier.ts`) and pin the wiring on the source; to render what a family
   receives, `_setToolPromptFamilyForTesting` there stands in for the model.
 - Bisecting a leak: halve the file list with the victim run last; some leaks are
-  2-file (a loader + a re-eval trigger).
+  2-file (a loader + a re-eval trigger). The full run's file order comes from
+  `bun test --reporter=junit --reporter-outfile=<file>`; take the victim's
+  predecessors from it.
+- **Restore `process.env` in place.** Assigning a new object to it (`process.env = { ...saved }`) detaches it from the real
+  environment, so a TMPDIR that a later file sets no longer reaches `os.tmpdir()`.
+  Delete the keys that were added and `Object.assign` the saved ones back instead.
+- **The test global config is one shared object.** Under `NODE_ENV=test`, `saveGlobalConfig` does an `Object.assign` onto it,
+  so a key the updater deletes survives. To put a field back, write its saved
+  value, `undefined` included.
 - **Do not observe behaviour through an event.** Analytics is gone from this
   fork, and the flake it used to cause is the reason to keep the lesson: a
   mocked `logEvent` collected the WHOLE process, so asserting `toEqual([...])`
