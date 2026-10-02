@@ -1,0 +1,143 @@
+{
+  "test": [
+    "src/terminal/prompt-input/PromptInput.characterization.test.tsx",
+    "src/terminal/prompt-suggestion/promptSuggestion.characterization.test.ts",
+    "src/terminal/prompt-suggestion/usePromptSuggestion.characterization.test.tsx",
+    "src/terminal/spinner/Spinner.characterization.test.tsx"
+  ],
+  "source": "src/terminal/prompt-input/PromptInput.tsx",
+  "probes": [
+    {
+      "name": "PromptInput.tsx: help toggles on a lone ?",
+      "source": "src/terminal/prompt-input/PromptInput.tsx",
+      "find": "    if (value === '?') {",
+      "replace": "    if (value === '¿') {"
+    },
+    {
+      "name": "PromptInput.tsx: submit keeps trailing whitespace",
+      "source": "src/terminal/prompt-input/PromptInput.tsx",
+      "find": "    inputParam = inputParam.trimEnd();",
+      "replace": "    inputParam = inputParam;"
+    },
+    {
+      "name": "PromptInput.tsx: long pastes fit more lines inline",
+      "source": "src/terminal/prompt-input/PromptInput.tsx",
+      "find": "    const maxLines = Math.min(rows - 10, 2);",
+      "replace": "    const maxLines = Math.min(rows - 10, 20);"
+    },
+    {
+      "name": "PromptInput.tsx: paste numbering skips one",
+      "source": "src/terminal/prompt-input/PromptInput.tsx",
+      "find": "  return maxId + 1;",
+      "replace": "  return maxId + 2;"
+    },
+    {
+      "name": "PromptInput.tsx: Left on a teammate pill moves forward",
+      "source": "src/terminal/prompt-input/PromptInput.tsx",
+      "find": "setTeammateFooterIndex(prev => (prev - 1 + totalAgents) % totalAgents);",
+      "replace": "setTeammateFooterIndex(prev => (prev + 1) % totalAgents);"
+    },
+    {
+      "name": "PromptInput.tsx: stash does not restore pastes",
+      "source": "src/terminal/prompt-input/PromptInput.tsx",
+      "find": "      setPastedContents(stashedPrompt.pastedContents);\n      setStashedPrompt(undefined);",
+      "replace": "      setStashedPrompt(undefined);"
+    },
+    {
+      "name": "promptSuggestion.ts: cache ceiling raised",
+      "source": "src/terminal/prompt-suggestion/promptSuggestion.ts",
+      "find": "const MAX_PARENT_UNCACHED_TOKENS = 100_000",
+      "replace": "const MAX_PARENT_UNCACHED_TOKENS = 100_001"
+    },
+    {
+      "name": "promptSuggestion.ts: 100-character suggestions kept",
+      "source": "src/terminal/prompt-suggestion/promptSuggestion.ts",
+      "find": "['too_long', () => suggestion.length >= 100],",
+      "replace": "['too_long', () => suggestion.length > 100],"
+    },
+    {
+      "name": "promptSuggestion.ts: two assistant turns required",
+      "source": "src/terminal/prompt-suggestion/promptSuggestion.ts",
+      "find": "  if (assistantTurnCount < 1) {",
+      "replace": "  if (assistantTurnCount < 2) {"
+    },
+    {
+      "name": "promptSuggestion.ts: any query source forks",
+      "source": "src/terminal/prompt-suggestion/promptSuggestion.ts",
+      "find": "  if (context.querySource !== 'repl_main_thread') return",
+      "replace": "  if (context.querySource === 'never') return"
+    },
+    {
+      "name": "promptSuggestion.ts: suggestion text not trimmed",
+      "source": "src/terminal/prompt-suggestion/promptSuggestion.ts",
+      "find": "      const suggestion = textBlock.text.trim()",
+      "replace": "      const suggestion = textBlock.text"
+    },
+    {
+      "name": "promptSuggestion.ts: plan mode not suppressed",
+      "source": "src/terminal/prompt-suggestion/promptSuggestion.ts",
+      "find": "  if (appState.toolPermissionContext.mode === 'plan') return 'plan_mode'",
+      "replace": "  if (appState.toolPermissionContext.mode === 'auto') return 'plan_mode'"
+    },
+    {
+      "name": "usePromptSuggestion.ts: suggestion shown over typed text",
+      "source": "src/terminal/prompt-suggestion/usePromptSuggestion.ts",
+      "find": "    isAssistantResponding || inputValue.length > 0 ? null : suggestionText",
+      "replace": "    isAssistantResponding ? null : suggestionText"
+    },
+    {
+      "name": "usePromptSuggestion.ts: acceptance re-stamped",
+      "source": "src/terminal/prompt-suggestion/usePromptSuggestion.ts",
+      "find": "      if (ps.acceptedAt > 0 && ps.acceptedAt >= ps.shownAt) return prev",
+      "replace": "      if (ps.acceptedAt < 0) return prev"
+    },
+    {
+      "name": "usePromptSuggestion.ts: showing stamped with no suggestion",
+      "source": "src/terminal/prompt-suggestion/usePromptSuggestion.ts",
+      "find": "      if (prev.promptSuggestion.shownAt !== 0 || !prev.promptSuggestion.text) {",
+      "replace": "      if (prev.promptSuggestion.shownAt !== 0) {"
+    },
+    {
+      "name": "usePromptSuggestion.ts: skipReset ignored",
+      "source": "src/terminal/prompt-suggestion/usePromptSuggestion.ts",
+      "find": "      if (!opts?.skipReset) resetSuggestion()",
+      "replace": "      resetSuggestion()"
+    },
+    {
+      "name": "Spinner.tsx: no minimum thinking display",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "      const remainingThinkingTime = Math.max(0, 2000 - elapsed);",
+      "replace": "      const remainingThinkingTime = Math.max(0, 0 - elapsed);"
+    },
+    {
+      "name": "Spinner.tsx: clear tip later",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "  const showClearTip = tipsEnabled && elapsedSnapshot > 1_800_000;",
+      "replace": "  const showClearTip = tipsEnabled && elapsedSnapshot > 3_600_000;"
+    },
+    {
+      "name": "Spinner.tsx: btw tip ignores past use",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "  const showBtwTip = tipsEnabled && elapsedSnapshot > 30_000 && !getGlobalConfig().btwUseCount;",
+      "replace": "  const showBtwTip = tipsEnabled && elapsedSnapshot > 30_000;"
+    },
+    {
+      "name": "Spinner.tsx: teammates-running note always",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "            {!allIdle && ' · teammates running'}",
+      "replace": "            {' · teammates running'}"
+    },
+    {
+      "name": "Spinner.tsx: task active form ignored",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "  const leaderVerb = overrideMessage ?? currentTodo?.activeForm ?? currentTodo?.subject ?? randomVerb;",
+      "replace": "  const leaderVerb = overrideMessage ?? currentTodo?.subject ?? randomVerb;"
+    },
+    {
+      "name": "Spinner.tsx: reduced motion glyph",
+      "source": "src/terminal/spinner/Spinner.tsx",
+      "find": "      t0 = <Text color=\"text\">●</Text>;",
+      "replace": "      t0 = <Text color=\"text\">○</Text>;"
+    }
+  ]
+}
