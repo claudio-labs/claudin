@@ -29,7 +29,7 @@ Inherited lines, from the 2026-09-28 inventory.
 |---|---|
 | Cuts of first-party-only and dead code | ~19.7 k, plus the remote files classified below |
 | MIT packages (`file-index` and `highlighted-code` if at parity; not `yoga-layout`, see below) | ~0.7 k |
-| opencode pieces | ~5 k |
+| opencode pieces (LSP client, MCP OAuth, Codex OAuth; not the arity table) | ~2 k |
 | Left for the per-method rewrite | ~320 k |
 
 So the cheap levers take about 7%. The core (the agent loop, the TUI,
@@ -111,6 +111,14 @@ no Effect in them:
 - `mcp/oauth-provider.ts` and `mcp/oauth-callback.ts`, for part of `src/mcp/auth`
 - `plugin/openai/codex.ts`, for the Codex OAuth
 - `permission/arity.ts`, for command-prefix matching in the Bash rules. The file says an LLM generated the table.
+  **Ported, then not landed (2026-10-02).** The port passed every suite that
+  pins `prefixes.ts`, but opencode's table settled only whether a command has a
+  subcommand. About 165 of its 310 lines were the porter's own. Worse, it changed
+  behaviour no suite pinned. For a command the table marks as one word
+  (`rm build`), the permission dialog's editable rule became `rm:*`, where it had
+  been `rm build:*`. That widens the default "always allow" on a security path,
+  for 109 inherited lines. `prefixes.ts` goes through the per-method rewrite in
+  phase 6, and pins for the one-word cases come first.
 
 The files each piece replaces are covered first, as the units `levers/lsp`,
 `levers/mcp-auth` and `levers/codex-oauth`. Their tests pin the contract the
