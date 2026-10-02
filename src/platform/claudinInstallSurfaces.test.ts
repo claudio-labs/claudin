@@ -6,6 +6,7 @@ import { join } from 'path'
 const originalEnv = { ...process.env }
 const originalMacro = (globalThis as Record<string, unknown>).MACRO
 const realEnvUtils = { ...(await import('src/shared/envUtils.js')) }
+const realEnv = { ...(await import('src/shared/env.js')) }
 const realExecFileNoThrowInstall = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
 // Plain snapshot of the real fs/promises taken BEFORE any mock.module runs.
 // `fsPromises` above is a live namespace view — once the rm stub is installed
@@ -14,7 +15,10 @@ const realExecFileNoThrowInstall = { ...(await import('src/shared/proc/execFileN
 const realFsPromises = { ...fsPromises }
 
 afterEach(() => {
-  process.env = { ...originalEnv }
+  // Restore in place: assigning a new object to process.env detaches it from
+  // the real environment, so later files' TMPDIR no longer reaches os.tmpdir().
+  for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]
+  Object.assign(process.env, originalEnv)
   ;(globalThis as Record<string, unknown>).MACRO = originalMacro
 })
 
@@ -27,7 +31,6 @@ async function importFreshInstaller() {
 }
 
 test('install command displays ~/.local/bin/claudin on non-Windows', async () => {
-  const realEnv = await import('src/shared/env.js')
   mock.module('src/shared/env.js', () => ({
     ...realEnv,
     env: { platform: 'darwin' },
@@ -39,7 +42,6 @@ test('install command displays ~/.local/bin/claudin on non-Windows', async () =>
 })
 
 test('install command displays claudin.exe path on Windows', async () => {
-  const realEnv = await import('src/shared/env.js')
   mock.module('src/shared/env.js', () => ({
     ...realEnv,
     env: { platform: 'win32' },
@@ -93,6 +95,10 @@ test('cleanupNpmInstallations removes both claudin and legacy claude local insta
 })
 
 afterAll(() => {
+  // The two stubs above replace `env` with a bare { platform }, so every later
+  // file that calls env.isSSH() (the spinner tips, for one) would throw.
+  mock.module('src/shared/env.js', () => realEnv)
+  mock.module('src/shared/env.js', () => realEnv)
   mock.module('src/shared/envUtils.js', () => realEnvUtils)
   mock.module('src/shared/envUtils.js', () => realEnvUtils)
   mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrowInstall)
