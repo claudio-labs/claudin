@@ -1,0 +1,236 @@
+{
+  "test": [
+    "src/platform/entrypoints/cli.characterization.test.ts",
+    "src/platform/entrypoints/init.characterization.test.ts",
+    "src/platform/main/preActionHook.characterization.test.ts",
+    "src/platform/main/registerSubcommands.characterization.test.ts",
+    "src/platform/main/action/trustAndOnboarding.characterization.test.ts",
+    "src/platform/main/defaultAction/resume.characterization.test.tsx",
+    "src/terminal/dialogLaunchers.characterization.test.tsx"
+  ],
+  "source": "src/platform/entrypoints/cli.tsx",
+  "probes": [
+    {
+      "name": "cli: experimental betas default off",
+      "source": "src/platform/entrypoints/cli.tsx",
+      "find": "process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'true'",
+      "replace": "process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'false'"
+    },
+    {
+      "name": "cli: fine-grained tool streaming default on",
+      "source": "src/platform/entrypoints/cli.tsx",
+      "find": "process.env.CLAUDIN_ENABLE_FINE_GRAINED_TOOL_STREAMING ??= '1'",
+      "replace": "process.env.CLAUDIN_ENABLE_FINE_GRAINED_TOOL_STREAMING ??= '0'"
+    },
+    {
+      "name": "cli: corepack auto-pin forced off",
+      "source": "src/platform/entrypoints/cli.tsx",
+      "find": "process.env.COREPACK_ENABLE_AUTO_PIN = '0';",
+      "replace": "process.env.COREPACK_ENABLE_AUTO_PIN ??= '0';"
+    },
+    {
+      "name": "cli: version line names Claudin",
+      "source": "src/platform/entrypoints/cli.tsx",
+      "find": "console.log(`${MACRO.DISPLAY_VERSION ?? MACRO.VERSION} (Claudin)`);",
+      "replace": "console.log(`${MACRO.VERSION} (Claudin)`);"
+    },
+    {
+      "name": "cli: -help rewrites process.argv",
+      "source": "src/platform/entrypoints/cli.tsx",
+      "find": "if (args !== rawArgs) process.argv = [...process.argv.slice(0, 2), ...args];",
+      "replace": "if (args !== rawArgs) process.argv = [...process.argv];"
+    },
+    {
+      "name": "cli: help snapshot written verbatim",
+      "source": "src/platform/entrypoints/cli.tsx",
+      "find": "process.stdout.write(help);",
+      "replace": "process.stdout.write(help + '\\n');"
+    },
+    {
+      "name": "init: applies the safe config env",
+      "source": "src/platform/entrypoints/init.ts",
+      "find": "    applySafeConfigEnvironmentVariables()\n",
+      "replace": "    void applySafeConfigEnvironmentVariables\n"
+    },
+    {
+      "name": "init: records first start time",
+      "source": "src/platform/entrypoints/init.ts",
+      "find": "    recordFirstStartTime()\n",
+      "replace": "    void recordFirstStartTime\n"
+    },
+    {
+      "name": "init: scratchpad only when enabled",
+      "source": "src/platform/entrypoints/init.ts",
+      "find": "    if (isScratchpadEnabled()) {",
+      "replace": "    if (!isScratchpadEnabled()) {"
+    },
+    {
+      "name": "init: non-config errors rethrown",
+      "source": "src/platform/entrypoints/init.ts",
+      "find": "      throw error",
+      "replace": "      return"
+    },
+    {
+      "name": "init: memoized",
+      "source": "src/platform/entrypoints/init.ts",
+      "find": "export const init = memoize(async (): Promise<void> => {",
+      "replace": "export const init = (async (): Promise<void> => {"
+    },
+    {
+      "name": "preAction: hook is preAction",
+      "source": "src/platform/main/preActionHook.ts",
+      "find": "program.hook('preAction',",
+      "replace": "program.hook('postAction',"
+    },
+    {
+      "name": "preAction: process title",
+      "source": "src/platform/main/preActionHook.ts",
+      "find": "process.title = 'claudin';",
+      "replace": "process.title = 'claudin-cli';"
+    },
+    {
+      "name": "preAction: title kill switch",
+      "source": "src/platform/main/preActionHook.ts",
+      "find": "if (!isEnvTruthy(process.env.CLAUDIN_DISABLE_TERMINAL_TITLE)) {",
+      "replace": "if (process.env.CLAUDIN_DISABLE_TERMINAL_TITLE === undefined) {"
+    },
+    {
+      "name": "preAction: --plugin-dir to inline plugins",
+      "source": "src/platform/main/preActionHook.ts",
+      "find": "      setInlinePlugins(pluginDir);",
+      "replace": "      setInlinePlugins(pluginDir.slice(1));"
+    },
+    {
+      "name": "preAction: runs migrations",
+      "source": "src/platform/main/preActionHook.ts",
+      "find": "    runMigrations();",
+      "replace": "    void runMigrations;"
+    },
+    {
+      "name": "preAction: runs claudin startup migrations",
+      "source": "src/platform/main/preActionHook.ts",
+      "find": "      runClaudinStartupMigrations();",
+      "replace": "      void runClaudinStartupMigrations;"
+    },
+    {
+      "name": "subcommands: mcp",
+      "source": "src/platform/main/registerSubcommands.ts",
+      "find": "  registerMcpCommands(program);\n",
+      "replace": "\n"
+    },
+    {
+      "name": "subcommands: auth",
+      "source": "src/platform/main/registerSubcommands.ts",
+      "find": "  registerAuthCommands(program);\n",
+      "replace": "\n"
+    },
+    {
+      "name": "subcommands: doctor",
+      "source": "src/platform/main/registerSubcommands.ts",
+      "find": "  registerDoctorCommand(program);\n",
+      "replace": "\n"
+    },
+    {
+      "name": "subcommands: plugin before setup-token",
+      "source": "src/platform/main/registerSubcommands.ts",
+      "find": "  registerPluginCommands(program);\n\n  registerSetupTokenCommand(program);",
+      "replace": "  registerSetupTokenCommand(program);\n\n  registerPluginCommands(program);"
+    },
+    {
+      "name": "subcommands: returns the program",
+      "source": "src/platform/main/registerSubcommands.ts",
+      "find": "  return program;\n}",
+      "replace": "  return undefined as never;\n}"
+    },
+    {
+      "name": "trust: wizard when no provider",
+      "source": "src/platform/main/action/trustAndOnboarding.ts",
+      "find": "    if (!hasProfiles && !onboardingShown) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "trust: clear only when env is 1",
+      "source": "src/platform/main/action/trustAndOnboarding.ts",
+      "find": "if (tryGetActiveProvider() && process.stdout.isTTY && process.env.CLAUDIN_CLEAR_ON_START === '1') {",
+      "replace": "if (tryGetActiveProvider() && process.env.CLAUDIN_CLEAR_ON_START === '1') {"
+    },
+    {
+      "name": "trust: clear sequence written",
+      "source": "src/platform/main/action/trustAndOnboarding.ts",
+      "find": "      process.stdout.write(clearTerminal);",
+      "replace": "      process.stdout.write('');"
+    },
+    {
+      "name": "trust: prompt handed back",
+      "source": "src/platform/main/action/trustAndOnboarding.ts",
+      "find": "    prompt,\n    inputPrompt,\n  };",
+      "replace": "    prompt: input.prompt?.trim(),\n    inputPrompt,\n  };"
+    },
+    {
+      "name": "trust: render context stats handed back",
+      "source": "src/platform/main/action/trustAndOnboarding.ts",
+      "find": "  const stats = renderCtx.stats;",
+      "replace": "  const stats = { ...renderCtx.stats };"
+    },
+    {
+      "name": "resume: single title match resumes it",
+      "source": "src/platform/main/defaultAction/resume.ts",
+      "find": "      if (matches.length === 1) {",
+      "replace": "      if (matches.length === 2) {"
+    },
+    {
+      "name": "resume: title is trimmed",
+      "source": "src/platform/main/defaultAction/resume.ts",
+      "find": "    const trimmedValue = options.resume.trim();",
+      "replace": "    const trimmedValue = options.resume;"
+    },
+    {
+      "name": "resume: --from-pr with no value filters to PR sessions",
+      "source": "src/platform/main/defaultAction/resume.ts",
+      "find": "      filterByPr = true;",
+      "replace": "      filterByPr = undefined;"
+    },
+    {
+      "name": "resume: partial download failure warns",
+      "source": "src/platform/main/defaultAction/resume.ts",
+      "find": "      if (failedCount > 0) {",
+      "replace": "      if (failedCount > 1) {"
+    },
+    {
+      "name": "resume: restored agent written back",
+      "source": "src/platform/main/defaultAction/resume.ts",
+      "find": "        mainThreadAgentDefinitionRef.current = processedResume.restoredAgentDef;",
+      "replace": "        void processedResume.restoredAgentDef;"
+    },
+    {
+      "name": "resume: --fork-session forwarded",
+      "source": "src/platform/main/defaultAction/resume.ts",
+      "find": "        forkSession: !!options.forkSession,",
+      "replace": "        forkSession: false,"
+    },
+    {
+      "name": "dialogs: continue settles the launcher",
+      "source": "src/terminal/dialogLaunchers.tsx",
+      "find": "onContinue={done} onExit",
+      "replace": "onContinue={() => {}} onExit"
+    },
+    {
+      "name": "dialogs: exit goes to the caller",
+      "source": "src/terminal/dialogLaunchers.tsx",
+      "find": "onExit={props.onExit}",
+      "replace": "onExit={() => {}}"
+    },
+    {
+      "name": "dialogs: settings errors shown",
+      "source": "src/terminal/dialogLaunchers.tsx",
+      "find": "settingsErrors={props.settingsErrors}",
+      "replace": "settingsErrors={[]}"
+    },
+    {
+      "name": "dialogs: picker props passed through",
+      "source": "src/terminal/dialogLaunchers.tsx",
+      "find": "<ResumeConversation {...resumeProps} worktreePaths={worktreePaths} />",
+      "replace": "<ResumeConversation {...resumeProps} filterByPr={undefined} initialSearchQuery={undefined} worktreePaths={worktreePaths} />"
+    }
+  ]
+}
