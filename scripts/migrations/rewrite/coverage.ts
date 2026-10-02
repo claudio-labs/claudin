@@ -9,7 +9,9 @@
  * Each file is read from coverage/lcov.info (`bun run test:coverage` writes
  * it) and held to the testing.md target of its slice, 70% where testing.md
  * names none. A file no test loads is not in the lcov at all, and counts as
- * 0%. The exit code is 1 while any file is below its target.
+ * 0%. A bench is listed, so the cut still edits it, but has no target: it
+ * measures the product rather than shipping in it. The exit code is 1 while
+ * any file is below its target.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
@@ -23,13 +25,15 @@ export type Row = {
   /** Line coverage in percent, or null when no test loads the file. */
   percent: number | null
   functionPercent: number | null
-  target: number
+  /** Null for a bench, which is listed but not held to a target. */
+  target: number | null
 }
 
 const LCOV_PATH = 'coverage/lcov.info'
 
 /** testing.md, "Coverage Targets"; the first matching prefix wins. */
-const TARGETS: [prefix: string, percent: number][] = [
+const TARGETS: [prefix: string, percent: number | null][] = [
+  ['scripts/bench/', null],
   ['src/providers/', 80],
   ['src/shared/', 75],
   ['src/tools/', 70],
@@ -37,8 +41,10 @@ const TARGETS: [prefix: string, percent: number][] = [
 ]
 const DEFAULT_TARGET = 70
 
-export const targetFor = (path: string): number =>
-  TARGETS.find(([prefix]) => path.startsWith(prefix))?.[1] ?? DEFAULT_TARGET
+export function targetFor(path: string): number | null {
+  const match = TARGETS.find(([prefix]) => path.startsWith(prefix))
+  return match === undefined ? DEFAULT_TARGET : match[1]
+}
 
 /** Per file, keyed by its path from the repository root. */
 export function parseLcov(text: string, root: string): Map<string, FileCoverage> {
@@ -113,7 +119,7 @@ export function rowsFor(paths: string[], coverage: Map<string, FileCoverage>): R
     .sort((a, b) => (a.percent ?? -1) - (b.percent ?? -1) || a.path.localeCompare(b.path))
 }
 
-export const isBelowTarget = (row: Row): boolean => (row.percent ?? 0) < row.target
+export const isBelowTarget = (row: Row): boolean => row.target !== null && (row.percent ?? 0) < row.target
 
 function productionSources(): Map<string, string> {
   const sources = new Map<string, string>()
@@ -148,7 +154,8 @@ if (import.meta.main) {
   for (const row of rows) {
     const lines = row.percent === null ? 'not loaded' : `${row.percent}%`
     const functions = row.functionPercent === null ? '-' : `${row.functionPercent}%`
-    console.log(`${isBelowTarget(row) ? '✗' : '✓'} ${lines.padStart(10)}  fn ${functions.padStart(4)}  target ${row.target}%  ${row.path}`)
+    const target = row.target === null ? 'no target' : `target ${row.target}%`
+    console.log(`${isBelowTarget(row) ? '✗' : '✓'} ${lines.padStart(10)}  fn ${functions.padStart(4)}  ${target}  ${row.path}`)
   }
   console.log(`${rows.length} file(s), ${below.length} below target`)
   process.exit(below.length === 0 ? 0 : 1)

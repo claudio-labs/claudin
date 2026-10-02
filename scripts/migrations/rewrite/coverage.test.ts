@@ -37,6 +37,12 @@ describe('targetFor', () => {
     ]
     expect(paths.map(targetFor)).toEqual([80, 75, 70, 60, 70])
   })
+
+  test('a bench has no target, so it is listed without failing the gate', () => {
+    expect(targetFor('scripts/bench/perf/memory-e2e-bench.ts')).toBeNull()
+    const [row] = rowsFor(['scripts/bench/perf/memory-e2e-bench.ts'], new Map())
+    expect(isBelowTarget(row!)).toBe(false)
+  })
 })
 
 describe('resolveSpecifier', () => {

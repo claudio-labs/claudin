@@ -36,6 +36,11 @@
       "name": "a file no test loads passes the gate",
       "find": "(row.percent ?? 0) < row.target",
       "replace": "(row.percent ?? 100) < row.target"
+    },
+    {
+      "name": "a bench is held to the scripts target",
+      "find": "  ['scripts/bench/', null],\n",
+      "replace": ""
     }
   ]
 }

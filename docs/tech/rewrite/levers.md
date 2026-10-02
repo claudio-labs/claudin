@@ -62,15 +62,44 @@ request and cache path; it goes through phase 5 with the providers.
 One phase 2 unit goes with the cuts: the remote session hooks
 (`sessions/hooks/useRemoteSession.ts`, `useSSHSession.ts`, `useTeleportResume.tsx`).
 
-Some of the files that import the cut are remote code themselves:
-- `headless/transports/ccrClient.ts` and `headless/remoteIO.ts`
-- `agent/tasks/RemoteAgentTask` and `agent/ui/tasks/RemoteSessionDetailDialog.tsx`
-- `agent/background/remote/*`
-- `providers/hooks/useDirectConnect.ts` and `providers/transport/sessionIngress.ts`
-- `commands/remote-env`
+Some of the files that import the cut are remote code themselves. They were
+classified on 2026-10-02 by runtime reachability, using the same rule as the
+list above: code that only runs with a claude.ai token or an Anthropic-only
+server counts as first-party. The bundle could not settle it, because the
+build keeps every one of these modules: the gates are checked at runtime.
 
-Each one is classified before the cut. An unreachable one joins the cut. A
-reachable one is covered like any other surviving file.
+**Join the cut:**
+- `agent/tasks/RemoteAgentTask`, `agent/ui/tasks/RemoteSessionDetailDialog.tsx`
+  and `RemoteSessionProgress.tsx`, and `agent/background/remote/`. Nothing
+  creates a `remote_agent` task: `registerRemoteAgentTask` has no caller, and
+  `AgentTool` only accepts `isolation: 'worktree'`. `restoreRemoteAgentTasks`
+  runs on every resume but returns at once, because only
+  `registerRemoteAgentTask` writes the sidecars it reads, and the migration from
+  `~/.claude` does not copy session directories.
+- `providers/hooks/useDirectConnect.ts`. `REPL.tsx` calls it on every render with
+  a `directConnectConfig` nothing passes, so it returns at once.
+- `providers/transport/sessionIngress.ts`. It serves `-p --resume <url>` with
+  `ENABLE_SESSION_PERSISTENCE` and `--teleport`, and both need Anthropic's
+  ingress. Its one local export, `clearAllSessions`, clears that module's own
+  maps, so its calls in `/clear` and compaction go with it.
+- `headless/transports/ccrClient.ts`. It speaks the CCR `/worker/*` protocol,
+  behind `CLAUDE_CODE_USE_CCR_V2`.
+- `commands/remote-env`. Its `isEnabled` is `isClaudeAISubscriber()`.
+- `main/commands/remoteControl.ts`. It registers the bridge's `rc` subcommand.
+- `agent/ui/ResumeTask.tsx`. It only runs under bare `--teleport`, and reads the
+  claude.ai sessions API.
+
+**Stay, and get covered:** `headless/remoteIO.ts` and the transports other
+than `ccrClient.ts`. The hidden `--sdk-url` flag runs stream-json over any
+WebSocket or HTTPS endpoint, and nothing in that path needs Anthropic. Its
+`CLAUDE_CODE_USE_CCR_V2` branch goes with `ccrClient.ts`.
+
+Before deleting, check the remaining callers of the following:
+- the remote-agent metadata helpers in `sessions/indexing/agents.ts`;
+- `sessions/sessionIngressAuth.ts`;
+- `getDirectConnectServerUrl` and `setDirectConnectServerUrl` in `bootstrap/state/cwd.ts`.
+
+Any of them left with no caller goes too.
 
 ## Replacements
 
@@ -128,7 +157,7 @@ imports the file at all.
 
 | Group | Surviving files | Below target | Hubs and their coverage |
 |---|---|---|---|
-| dead code | 47 | 39 (13 not loaded) | `REPL.tsx` 57%, `PromptInput.tsx` 37%, `AgentTool.tsx` 12%, `settings.ts` 51%, `commands.ts` 81%, headless `print/*` 5–8%; not loaded: `cli.tsx`, `init.ts`, `preActionHook.ts`, `Config.tsx` |
+| dead code, with the remote files classified above | 49, 2 of them benches | 35 (12 not loaded) | `REPL.tsx` 57%, `PromptInput.tsx` 37%, `AgentTool.tsx` 12%, `remoteIO.ts` 2%, `settings.ts` 51%, `commands.ts` 81%, headless `print/*` 5–8%; not loaded: `cli.tsx`, `init.ts`, `preActionHook.ts`, `Config.tsx`, `clear/caches.ts` |
 | yoga | 2 | 0 | `ink/layout/yoga.ts` 91%, `ink/reconciler.ts` 78% |
 | opencode | — | most | `lsp/LSPServerManager.ts` 1%, `LSPServerInstance.ts` 2%, `lsp/manager.ts` 15%, `mcp/auth/*` 3–7%, `providers/oauth/client.ts` 3%; Codex OAuth 63–86% |
 
