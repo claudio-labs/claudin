@@ -27,12 +27,12 @@ Inherited lines, from the 2026-09-28 inventory.
 
 | Lever | Lines |
 |---|---|
-| Cuts of first-party-only and dead code | ~19.7 k |
-| MIT packages (`yoga-layout`; `file-index` and `highlighted-code` if at parity) | ~3 k |
+| Cuts of first-party-only and dead code | ~19.7 k, plus the remote files classified below |
+| MIT packages (`file-index` and `highlighted-code` if at parity; not `yoga-layout`, see below) | ~0.7 k |
 | opencode pieces | ~5 k |
-| Left for the per-method rewrite | ~318 k |
+| Left for the per-method rewrite | ~320 k |
 
-So the cheap levers take about 8%. The core (the agent loop, the TUI,
+So the cheap levers take about 7%. The core (the agent loop, the TUI,
 permissions, tools, platform) has no legal shortcut. The rest of the saving is
 in the process: per method there is no spec per module, because the tests are
 the specification.
@@ -142,9 +142,10 @@ Ink TUI. It would also mean rewriting the whole UX in Solid and Effect.
   - **Memory:** WASM linear memory never shrinks. Upstream ported to TypeScript
     to escape that; the comment at the end of `ink/layout/yoga.ts` says so.
 
-  The swap waits on a decision. The other way out is a per-method rewrite of the
-  port in phase 9, with the package kept as a test-only oracle: the same tree is
-  laid out by both engines and the results compared.
+  **Decided on 2026-10-02: no swap.** The port goes through the per-method
+  rewrite in phase 9. The package comes in as a devDependency only, as the
+  tests' oracle: the same tree is laid out by both engines and the results
+  compared.
 - Reclassifying `src/terminal/ink` as upstream Ink code was measured and dropped. Only 262 of its 9,941 distinctive lines are in `vadimdemedes/ink`.
 
 ## Cover before touching
