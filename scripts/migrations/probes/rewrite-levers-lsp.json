@@ -1,0 +1,149 @@
+{
+  "test": [
+    "src/platform/lsp/LSPClient.characterization.test.ts",
+    "src/platform/lsp/LSPServerInstance.characterization.test.ts",
+    "src/platform/lsp/LSPServerManager.characterization.test.ts",
+    "src/platform/lsp/manager.characterization.test.ts"
+  ],
+  "source": "src/platform/lsp/LSPClient.ts",
+  "probes": [
+    {
+      "name": "client: a clean exit is not reported as a crash",
+      "find": "if (code !== 0 && code !== null && !isStopping) {",
+      "replace": "if (code !== null && !isStopping) {"
+    },
+    {
+      "name": "client: initialize records the server capabilities",
+      "find": "capabilities = result.capabilities",
+      "replace": "capabilities = {}"
+    },
+    {
+      "name": "client: the server is told initialized",
+      "find": "await connection.sendNotification('initialized', {})",
+      "replace": "await connection.sendNotification('initialised', {})"
+    },
+    {
+      "name": "client: notification handlers queued before start are applied",
+      "find": "for (const { method, handler } of pendingHandlers) {",
+      "replace": "for (const { method, handler } of pendingHandlers.slice(1)) {"
+    },
+    {
+      "name": "client: a refused shutdown is kept as a start failure",
+      "find": "startFailed = true\n          startError = shutdownError",
+      "replace": "startFailed = false\n          startError = shutdownError"
+    },
+    {
+      "name": "client: the caller env reaches the child",
+      "find": "env: { ...subprocessEnv(), ...options?.env },",
+      "replace": "env: { ...subprocessEnv() },"
+    },
+    {
+      "name": "instance: a successful start forgives earlier crashes",
+      "source": "src/platform/lsp/LSPServerInstance.ts",
+      "find": "      startTime = new Date()\n      crashRecoveryCount = 0",
+      "replace": "      startTime = new Date()"
+    },
+    {
+      "name": "instance: content-modified is retried three times",
+      "source": "src/platform/lsp/LSPServerInstance.ts",
+      "find": "attempt < MAX_RETRIES_FOR_TRANSIENT_ERRORS",
+      "replace": "attempt < 2"
+    },
+    {
+      "name": "instance: restarts are capped at maxRestarts",
+      "source": "src/platform/lsp/LSPServerInstance.ts",
+      "find": "if (restartCount > maxRestarts) {",
+      "replace": "if (restartCount > maxRestarts + 1) {"
+    },
+    {
+      "name": "instance: the client does not claim workspace/configuration",
+      "source": "src/platform/lsp/LSPServerInstance.ts",
+      "find": "configuration: false,",
+      "replace": "configuration: true,"
+    },
+    {
+      "name": "instance: the workspace folder is named by its basename",
+      "source": "src/platform/lsp/LSPServerInstance.ts",
+      "find": "name: path.basename(workspaceFolder),",
+      "replace": "name: workspaceFolder,"
+    },
+    {
+      "name": "instance: without a workspace folder the session cwd is the root",
+      "source": "src/platform/lsp/LSPServerInstance.ts",
+      "find": "const workspaceFolder = config.workspaceFolder || getCwd()",
+      "replace": "const workspaceFolder = config.workspaceFolder || '/'"
+    },
+    {
+      "name": "manager: extensions route case-insensitively",
+      "source": "src/platform/lsp/LSPServerManager.ts",
+      "find": "const normalized = ext.toLowerCase()",
+      "replace": "const normalized = ext"
+    },
+    {
+      "name": "manager: the first registered server wins an extension",
+      "source": "src/platform/lsp/LSPServerManager.ts",
+      "find": "const serverName = serverNames[0]",
+      "replace": "const serverName = serverNames[serverNames.length - 1]"
+    },
+    {
+      "name": "manager: workspace/configuration is answered with one null per item",
+      "source": "src/platform/lsp/LSPServerManager.ts",
+      "find": "return params.items.map(() => null)",
+      "replace": "return params.items.map(() => ({}))"
+    },
+    {
+      "name": "manager: didRename is skipped without the capability",
+      "source": "src/platform/lsp/LSPServerManager.ts",
+      "find": "if (server.capabilities !== undefined && !didRename) {",
+      "replace": "if (server.capabilities !== undefined && didRename) {"
+    },
+    {
+      "name": "manager: an opened file is tracked so didOpen is sent once",
+      "source": "src/platform/lsp/LSPServerManager.ts",
+      "find": "openedFiles.set(fileUri, server.name)",
+      "replace": "openedFiles.set(fileUri, '')"
+    },
+    {
+      "name": "manager: shutdown stops running servers",
+      "source": "src/platform/lsp/LSPServerManager.ts",
+      "find": "([, s]) => s.state === 'running' || s.state === 'error',",
+      "replace": "([, s]) => s.state === 'error',"
+    },
+    {
+      "name": "singleton: a configured server that is not in error counts as connected",
+      "source": "src/platform/lsp/manager.ts",
+      "find": "if (server.state !== 'error') return true",
+      "replace": "if (server.state === 'running') return true"
+    },
+    {
+      "name": "singleton: server transitions after init reach the listeners",
+      "source": "src/platform/lsp/manager.ts",
+      "find": "server.onStateChange(notifyLspStateListeners)",
+      "replace": "server.onStateChange(() => {})"
+    },
+    {
+      "name": "singleton: diagnostics handlers are registered on success",
+      "source": "src/platform/lsp/manager.ts",
+      "find": "registerLSPNotificationHandlers(lspManagerInstance)",
+      "replace": "void lspManagerInstance"
+    },
+    {
+      "name": "singleton: a stale initialization does not overwrite the state",
+      "source": "src/platform/lsp/manager.ts",
+      "find": "if (currentGeneration === initializationGeneration) {\n        initializationState = 'success'",
+      "replace": "if (true) {\n        initializationState = 'success'"
+    },
+    {
+      "name": "singleton: bare mode skips initialization",
+      "source": "src/platform/lsp/manager.ts",
+      "find": "if (isBareMode()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "singleton: reinitialize shuts the old manager down",
+      "source": "src/platform/lsp/manager.ts",
+      "find": "void lspManagerInstance.shutdown().catch(err => {",
+      "replace": "void Promise.resolve().catch(err => {"
+    }
+  ]
+}
