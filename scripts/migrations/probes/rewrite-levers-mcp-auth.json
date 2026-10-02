@@ -1,0 +1,186 @@
+{
+  "test": [
+    "src/mcp/auth/claudeAuthProvider.characterization.test.ts",
+    "src/mcp/auth/oauthFlow.characterization.test.ts",
+    "src/mcp/auth/authFetch.characterization.test.ts",
+    "src/mcp/auth/tokenRevocation.characterization.test.ts",
+    "src/mcp/auth/clientSecretStore.characterization.test.ts"
+  ],
+  "source": "src/mcp/auth/claudeAuthProvider.ts",
+  "probes": [
+    {
+      "name": "provider: a token within five minutes of expiry is refreshed first",
+      "find": "if (expiresIn <= 300 && tokenData.refreshToken && !needsStepUp) {",
+      "replace": "if (expiresIn <= 30 && tokenData.refreshToken && !needsStepUp) {"
+    },
+    {
+      "name": "provider: a pending step-up hides the refresh token",
+      "find": "refresh_token: needsStepUp ? undefined : tokenData.refreshToken,",
+      "replace": "refresh_token: tokenData.refreshToken,"
+    },
+    {
+      "name": "provider: only the discovery URLs are persisted, not the metadata blobs",
+      "find": "discoveryState: {\n            authorizationServerUrl: state.authorizationServerUrl,\n            resourceMetadataUrl: state.resourceMetadataUrl,\n          },",
+      "replace": "discoveryState: state as never,"
+    },
+    {
+      "name": "provider: the cross-process refresh lock lives at mcp-refresh-<key>.lock",
+      "find": "`mcp-refresh-${sanitizedKey}.lock`",
+      "replace": "`mcp-refresh-${sanitizedKey}.lck`"
+    },
+    {
+      "name": "provider: invalid_grant clears the stored tokens",
+      "find": "if (error instanceof InvalidGrantError) {",
+      "replace": "if (error instanceof InvalidGrantError && false) {"
+    },
+    {
+      "name": "provider: transient token-endpoint errors are retried",
+      "find": "const isRetryable = isTimeoutError || isTransientServerError",
+      "replace": "const isRetryable = isTimeoutError"
+    },
+    {
+      "name": "flow: the callback server checks state against the provider's",
+      "find": "const result = validateOAuthCallbackParams(\n            parsedUrl.query,\n            oauthState,\n          )",
+      "replace": "const result = validateOAuthCallbackParams(\n            parsedUrl.query,\n            String(parsedUrl.query.state),\n          )",
+      "source": "src/mcp/auth/oauthFlow.ts"
+    },
+    {
+      "name": "flow: the error page escapes the provider's description",
+      "find": "? xss(result.errorDescription)",
+      "replace": "? result.errorDescription",
+      "source": "src/mcp/auth/oauthFlow.ts"
+    },
+    {
+      "name": "flow: a busy port gets the in-use hint",
+      "find": "if (err.code === 'EADDRINUSE') {",
+      "replace": "if (err.code === 'EADDRNOTAVAIL') {",
+      "source": "src/mcp/auth/oauthFlow.ts"
+    },
+    {
+      "name": "flow: a configured callback port is used",
+      "find": "const port = configuredCallbackPort ?? (await findAvailablePort())",
+      "replace": "const port = await findAvailablePort()",
+      "source": "src/mcp/auth/oauthFlow.ts"
+    },
+    {
+      "name": "flow: a pasted URL with the wrong state is ignored",
+      "find": "// Ignore so a stray or malicious URL cannot cancel an active flow.\n              return",
+      "replace": "cleanup()\n              rejectOnce(new Error('mismatch'))\n              return",
+      "source": "src/mcp/auth/oauthFlow.ts"
+    },
+    {
+      "name": "flow: step-up detection reads an unquoted scope too",
+      "find": "const match = wwwAuth.match(/scope=(?:\"([^\"]+)\"|([^\\s,]+))/)",
+      "replace": "const match = wwwAuth.match(/scope=\"([^\"]+)\"()/)",
+      "source": "src/mcp/auth/oauthFlow.ts"
+    },
+    {
+      "name": "authFetch: a POST without a caller signal is normalised",
+      "find": "      return isPost ? normalizeOAuthErrorBody(response) : response\n    }\n\n    // Combine signals",
+      "replace": "      return response\n    }\n\n    // Combine signals",
+      "source": "src/mcp/auth/authFetch.ts"
+    },
+    {
+      "name": "authFetch: a POST with a caller signal is normalised",
+      "find": "      cleanup()\n      return isPost ? normalizeOAuthErrorBody(response) : response",
+      "replace": "      cleanup()\n      return response",
+      "source": "src/mcp/auth/authFetch.ts"
+    },
+    {
+      "name": "authFetch: aborting the caller signal aborts the request",
+      "find": "init.signal.addEventListener('abort', abort)",
+      "replace": "init.signal.addEventListener('abort-never', abort)",
+      "source": "src/mcp/auth/authFetch.ts"
+    },
+    {
+      "name": "authFetch: a configured metadata URL must be https",
+      "find": "if (!configuredMetadataUrl.startsWith('https://')) {",
+      "replace": "if (configuredMetadataUrl.startsWith('ftp://')) {",
+      "source": "src/mcp/auth/authFetch.ts"
+    },
+    {
+      "name": "authFetch: the path-aware legacy fallback is tried for a URL with a path",
+      "find": "  if (url.pathname === '/') {",
+      "replace": "  if (url.pathname !== '') {",
+      "source": "src/mcp/auth/authFetch.ts"
+    },
+    {
+      "name": "authFetch: a given resource metadata URL is passed to discovery",
+      "find": "...(resourceMetadataUrl && { resourceMetadataUrl }),",
+      "replace": "",
+      "source": "src/mcp/auth/authFetch.ts"
+    },
+    {
+      "name": "revocation: post is chosen only when basic is not offered",
+      "find": "!authMethods.includes('client_secret_basic') &&",
+      "replace": "",
+      "source": "src/mcp/auth/tokenRevocation.ts"
+    },
+    {
+      "name": "revocation: the revocation endpoint's own method list is preferred",
+      "find": "('revocation_endpoint_auth_methods_supported' in metadata",
+      "replace": "('revocation_endpoint_auth_methods_supported_x' in metadata",
+      "source": "src/mcp/auth/tokenRevocation.ts"
+    },
+    {
+      "name": "revocation: Basic credentials are URL-encoded first",
+      "find": "`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`",
+      "replace": "`${clientId}:${clientSecret}`",
+      "source": "src/mcp/auth/tokenRevocation.ts"
+    },
+    {
+      "name": "revocation: the Bearer retry drops client credentials from the body",
+      "find": "params.delete('client_secret')",
+      "replace": "",
+      "source": "src/mcp/auth/tokenRevocation.ts"
+    },
+    {
+      "name": "revocation: the authorization server from discovery is asked",
+      "find": "tokenData.discoveryState?.authorizationServerUrl ?? serverConfig.url",
+      "replace": "serverConfig.url",
+      "source": "src/mcp/auth/tokenRevocation.ts"
+    },
+    {
+      "name": "revocation: re-authentication keeps the step-up state",
+      "find": "    preserveStepUpState &&\n    tokenData &&",
+      "replace": "    false &&\n    tokenData &&",
+      "source": "src/mcp/auth/tokenRevocation.ts"
+    },
+    {
+      "name": "secrets: MCP_CLIENT_SECRET is read",
+      "find": "const envSecret = process.env.MCP_CLIENT_SECRET",
+      "replace": "const envSecret = process.env.MCP_CLIENT_SECRET_UNSET",
+      "source": "src/mcp/auth/clientSecretStore.ts"
+    },
+    {
+      "name": "secrets: DEL is a backspace",
+      "find": "} else if (c === '\\u007F' || c === '\\b') {",
+      "replace": "} else if (c === '\\b') {",
+      "source": "src/mcp/auth/clientSecretStore.ts"
+    },
+    {
+      "name": "secrets: Ctrl+C cancels",
+      "find": "reject(new Error('Cancelled'))",
+      "replace": "resolve(secret)",
+      "source": "src/mcp/auth/clientSecretStore.ts"
+    },
+    {
+      "name": "secrets: Enter detaches the keystroke listener",
+      "find": "        process.stdin.removeListener('data', onData)\n        process.stderr.write('\\n')",
+      "replace": "        process.stderr.write('\\n')",
+      "source": "src/mcp/auth/clientSecretStore.ts"
+    },
+    {
+      "name": "secrets: the secret is stored under the server key",
+      "find": "[serverKey]: { clientSecret },",
+      "replace": "[serverKey]: { secret: clientSecret },",
+      "source": "src/mcp/auth/clientSecretStore.ts"
+    },
+    {
+      "name": "secrets: clearing deletes the server's secret",
+      "find": "delete existingData.mcpOAuthClientConfig[serverKey]",
+      "replace": "void existingData.mcpOAuthClientConfig[serverKey]",
+      "source": "src/mcp/auth/clientSecretStore.ts"
+    }
+  ]
+}
