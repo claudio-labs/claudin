@@ -2,9 +2,9 @@
   "//": "Generated — do not hand-edit. Refresh with `bun run deadcode:baseline`.",
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
-  "capturedAt": "2026-09-28",
-  "capturedFrom": "1455255106de78a71d20e4e41611a6afb5be982b",
-  "count": 1140,
+  "capturedAt": "2026-10-02",
+  "capturedFrom": "03af36302898730422b43a8f1f3a1e88f7d326a6",
+  "count": 1137,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
     "exports src/agent/attachments/attachments.ts#isFileReadDenied",
@@ -76,7 +76,6 @@
     "exports src/agent/hooks/useScheduledTasks.ts#useScheduledTasks",
     "exports src/agent/input/processSlashCommand.tsx#looksLikeCommand",
     "exports src/agent/messageQueueManager.ts#isPromptInputModeEditable",
-    "exports src/agent/messages/autoMode.ts#getAutoModeFullInstructions",
     "exports src/agent/messages/autoMode.ts#getAutoModeSparseInstructions",
     "exports src/agent/messages/normalize.ts#mergeAssistantMessages",
     "exports src/agent/messages/normalize.ts#mergeUserContentBlocks",
@@ -510,7 +509,6 @@
     "exports src/sessions/indexing/liteMetadata.ts#countVisibleMessages",
     "exports src/shared/browser.ts#resolveLinuxBrowser",
     "exports src/shared/constants/files.ts#BINARY_EXTENSIONS",
-    "exports src/shared/constants/oauth.ts#CONSOLE_OAUTH_SCOPES",
     "exports src/shared/constants/product.ts#CLAUDE_AI_BASE_URL",
     "exports src/shared/constants/product.ts#CLAUDE_AI_LOCAL_BASE_URL",
     "exports src/shared/constants/product.ts#CLAUDE_AI_STAGING_BASE_URL",
@@ -1143,7 +1141,6 @@
     "types src/tools/shared/serialEditNudge.ts#EditMessageLike",
     "types src/tools/shared/twoTierCache.ts#TwoTierStats",
     "types src/vcs/diff/hooks/useDiffData.ts#DiffData",
-    "types src/vcs/diff/hooks/useTurnDiffs.ts#TurnFileDiff",
     "types src/vcs/git/format-branch.ts#DiffCount",
     "types src/vcs/hooks/useGitStashes.ts#StashDetail"
   ]

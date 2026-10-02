@@ -1,7 +1,7 @@
 import { dirname, join } from 'path'
 
 export const PRIMARY_PROJECT_INSTRUCTION_FILE = 'AGENTS.md'
-export const FALLBACK_PROJECT_INSTRUCTION_FILE = 'CLAUDE.md'
+const FALLBACK_PROJECT_INSTRUCTION_FILE = 'CLAUDE.md'
 
 export function getProjectInstructionFilePaths(dir: string): string[] {
   return [
@@ -20,7 +20,7 @@ export function getProjectInstructionFilePath(
     : fallbackPath
 }
 
-export function hasProjectInstructionFile(
+function hasProjectInstructionFile(
   dir: string,
   existsSync: (path: string) => boolean,
 ): boolean {
