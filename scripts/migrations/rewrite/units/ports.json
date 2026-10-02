@@ -1,0 +1,14 @@
+{
+  "port/lsp-client": {
+    "files": ["src/platform/lsp/LSPClient.ts"]
+  },
+  "port/mcp-oauth": {
+    "files": ["src/mcp/auth/claudeAuthProvider.ts", "src/mcp/auth/oauthFlow.ts"]
+  },
+  "port/codex-oauth": {
+    "files": ["src/providers/oauth/codexOAuth.ts", "src/providers/oauth/codexOAuthShared.ts", "src/providers/oauth/codexCredentials.ts"]
+  },
+  "port/bash-prefixes": {
+    "files": ["src/tools/BashTool/bashPermissions/prefixes.ts"]
+  }
+}

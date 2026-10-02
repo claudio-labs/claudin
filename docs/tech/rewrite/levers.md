@@ -122,6 +122,13 @@ ported piece has to meet. Their coverage on 2026-10-02:
 
 `bashPermissions/prefixes.ts` is already at 71%.
 
+The ports run as the units in `scripts/migrations/rewrite/units/ports.json`.
+Each one gets an `impl` sandbox (`sandbox.ts impl port/<name>`), which takes
+the old implementation out, and an agent briefed with
+[briefs/port.md](briefs/port.md). The agent may read the opencode clone and
+nothing else outside its sandbox. Its characterization suites are the
+contract, and they pass unchanged except for the defects a brief marks "fix".
+
 Each ported file starts with `Adapted from opencode (MIT)`, and
 `THIRD_PARTY_NOTICES.md` carries opencode's license. Rebasing Claudin on opencode
 was rejected. It has no equivalent for about 50 k inherited lines: the Bash
