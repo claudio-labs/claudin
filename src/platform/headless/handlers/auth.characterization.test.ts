@@ -82,7 +82,7 @@ const PROFILE_BODY = {
   },
 }
 const ROLES_BODY = { organization_role: 'admin', workspace_role: 'developer', organization_name: 'Analytical Engines' }
-const CLAUDE_AI_SCOPES = ['user:inference', 'user:profile']
+const SUBSCRIBER_SCOPES = ['user:inference', 'user:profile']
 const CONSOLE_SCOPES = ['org:create_api_key', 'user:profile']
 
 function tokens(overrides: Partial<OAuthTokens> = {}): OAuthTokens {
@@ -90,7 +90,7 @@ function tokens(overrides: Partial<OAuthTokens> = {}): OAuthTokens {
     accessToken: 'at-new',
     refreshToken: 'rt-new',
     expiresAt: Date.now() + 3_600_000,
-    scopes: CLAUDE_AI_SCOPES,
+    scopes: SUBSCRIBER_SCOPES,
     subscriptionType: 'max',
     rateLimitTier: 'default_claude_max_5x',
     profile: PROFILE_BODY as never,
@@ -320,7 +320,7 @@ describe('installOAuthTokens', () => {
     expect(readCredentials()?.claudeAiOauth).toMatchObject({
       accessToken: 'at-new',
       refreshToken: 'rt-new',
-      scopes: CLAUDE_AI_SCOPES,
+      scopes: SUBSCRIBER_SCOPES,
       subscriptionType: 'max',
       rateLimitTier: 'default_claude_max_5x',
     })
@@ -622,7 +622,7 @@ describe('authStatus', () => {
     writeFileSync(
       credentialsPath(),
       JSON.stringify({
-        claudeAiOauth: { accessToken: 'at-stored', refreshToken: 'rt', expiresAt: Date.now() + 3_600_000, scopes: CLAUDE_AI_SCOPES, subscriptionType: 'max', rateLimitTier: null },
+        claudeAiOauth: { accessToken: 'at-stored', refreshToken: 'rt', expiresAt: Date.now() + 3_600_000, scopes: SUBSCRIBER_SCOPES, subscriptionType: 'max', rateLimitTier: null },
       }),
     )
     setConfig({

@@ -30,7 +30,7 @@ export const agentRow = (id: string, over: Over = {}) =>
   as(base(id, 'local_agent', {
     agentId: id,
     prompt: `investigate ${id}`,
-    agentType: 'Explore',
+    agentType: 'reviewer',
     isBackgrounded: true,
     pendingMessages: [],
     ...over,

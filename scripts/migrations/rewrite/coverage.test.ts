@@ -66,7 +66,7 @@ describe('importersOf', () => {
     ['src/platform/bridge/inner.ts', "import { x } from 'src/platform/bridge/index.js'"],
     ['src/agent/repl/REPL.test.tsx', "import { x } from 'src/platform/bridge/index.js'"],
     ['src/platform/other.ts', "import { y } from 'src/platform/bridgeLike/other.js'"],
-    ['src/tools/tools.ts', "import { z } from 'zod'"],
+    ['src/tools/tools.ts', "import { useState } from 'react'"],
   ])
 
   test('lists the production files outside the cut that import into it, and no test', () => {
