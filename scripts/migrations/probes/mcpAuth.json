@@ -151,36 +151,6 @@
       "replace": "    .substring(0, 8)"
     },
     {
-      "name": "'scope' outranks the other two metadata fields",
-      "source": "src/mcp/auth/claudeAuthProvider.ts",
-      "find": "  if ('scope' in metadata && typeof metadata.scope === 'string') {\n    return metadata.scope\n  }\n",
-      "replace": ""
-    },
-    {
-      "name": "a non-string 'scope' falls through instead of being returned",
-      "source": "src/mcp/auth/claudeAuthProvider.ts",
-      "find": "typeof metadata.scope === 'string'",
-      "replace": "typeof metadata.scope !== 'undefined'"
-    },
-    {
-      "name": "'default_scope' is read when 'scope' is absent",
-      "source": "src/mcp/auth/claudeAuthProvider.ts",
-      "find": "  if (\n    'default_scope' in metadata &&\n    typeof metadata.default_scope === 'string'\n  ) {\n    return metadata.default_scope\n  }\n",
-      "replace": ""
-    },
-    {
-      "name": "scopes_supported is joined with spaces",
-      "source": "src/mcp/auth/claudeAuthProvider.ts",
-      "find": "    return metadata.scopes_supported.join(' ')",
-      "replace": "    return metadata.scopes_supported.join(',')"
-    },
-    {
-      "name": "a scopes_supported that is not an array is ignored",
-      "source": "src/mcp/auth/claudeAuthProvider.ts",
-      "find": "  if (metadata.scopes_supported && Array.isArray(metadata.scopes_supported)) {",
-      "replace": "  if (metadata.scopes_supported) {"
-    },
-    {
       "name": "AuthenticationCancelledError carries its own .name",
       "source": "src/mcp/auth/oauthFlow.ts",
       "find": "    this.name = 'AuthenticationCancelledError'",
@@ -197,12 +167,6 @@
       "source": "src/mcp/auth.ts",
       "find": "  clearMcpClientConfig,\n",
       "replace": ""
-    },
-    {
-      "name": "SURFACE PIN: a dropped ClaudeAuthProvider method is caught",
-      "source": "src/mcp/auth/claudeAuthProvider.ts",
-      "find": "  setMetadata(\n    metadata: Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>,\n  ): void {",
-      "replace": "  setMetadataRenamed(\n    metadata: Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>,\n  ): void {"
     },
     {
       "name": "SURFACE PIN: a changed call signature is caught",

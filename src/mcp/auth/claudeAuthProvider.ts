@@ -1,82 +1,223 @@
+// Adapted from opencode (MIT, Copyright (c) 2025 opencode):
+// packages/opencode/src/mcp/oauth-provider.ts
+
 /**
- * The OAuthClientProvider the MCP SDK drives: secure-storage-backed client
- * information, tokens, discovery state, and the cross-process-locked refresh.
+ * The MCP SDK's OAuthClientProvider for one remote MCP server. Credentials
+ * live in secure storage under the server key; the PKCE verifier and the
+ * OAuth state only ever live in memory. On top of what the SDK asks for, it
+ * refreshes a token that is about to expire (once per process at a time, and
+ * once across processes thanks to a lock file), and it tracks step-up: a
+ * request for a scope the held token does not cover.
  */
 
+import { randomBytes } from 'node:crypto'
+import { mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
 import {
   discoverAuthorizationServerMetadata,
+  refreshAuthorization as requestTokenRefresh,
   type OAuthClientProvider,
   type OAuthDiscoveryState,
-  refreshAuthorization as sdkRefreshAuthorization,
 } from '@modelcontextprotocol/sdk/client/auth.js'
 import {
   InvalidGrantError,
+  OAuthError,
   ServerError,
   TemporarilyUnavailableError,
-  TooManyRequestsError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js'
 import type {
   AuthorizationServerMetadata,
-  OAuthClientInformation,
-  OAuthClientInformationFull,
+  OAuthClientInformationMixed,
   OAuthClientMetadata,
   OAuthTokens,
 } from '@modelcontextprotocol/sdk/shared/auth.js'
-import { randomBytes, randomInt } from 'crypto'
-import { mkdir } from 'fs/promises'
-import { join } from 'path'
-import { MCP_CLIENT_METADATA_URL } from 'src/shared/constants/oauth.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
+import type { SecureStorageData } from 'src/platform/secureStorage/index.js'
+import { clearKeychainCache } from 'src/platform/secureStorage/macOsKeychainHelpers.js'
 import { openBrowser } from 'src/shared/browser.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
 import * as lockfile from 'src/shared/fs/lockfile.js'
 import { logMCPDebug } from 'src/shared/log.js'
-import { getSecureStorage } from 'src/platform/secureStorage/index.js'
-import { clearKeychainCache } from 'src/platform/secureStorage/macOsKeychainHelpers.js'
-import type { SecureStorageData } from 'src/platform/secureStorage/index.js'
 import { sleep } from 'src/shared/sleep.js'
-import { buildRedirectUri } from 'src/mcp/oauthPort.js'
 import type { McpHTTPServerConfig, McpSSEServerConfig } from 'src/mcp/types.js'
-import {
-  createAuthFetch,
-  fetchAuthServerMetadata,
-} from 'src/mcp/auth/authFetch.js'
+import { createAuthFetch, fetchAuthServerMetadata } from 'src/mcp/auth/authFetch.js'
 import { redactSensitiveUrlParams } from 'src/mcp/auth/callbackParams.js'
 import { getServerKey } from 'src/mcp/auth/serverKey.js'
+import { clearServerTokensFromSecureStorage } from 'src/mcp/auth/tokenRevocation.js'
 
-const MAX_LOCK_RETRIES = 5
+type RemoteServerConfig = McpSSEServerConfig | McpHTTPServerConfig
+type StoredCredentials = NonNullable<SecureStorageData['mcpOAuth']>[string]
+type CredentialScope = 'all' | 'client' | 'tokens' | 'verifier' | 'discovery'
+
+/** Where the SDK is told to send the browser when no callback server was started. */
+const FALLBACK_REDIRECT_URL = 'http://localhost:3118/callback'
+
+/**
+ * The client-id metadata document (SEP-991) offered to authorization servers
+ * that accept a URL as client_id. Still the inherited product value; which
+ * document this client should advertise is an open decision.
+ */
+const CLIENT_ID_METADATA_DOCUMENT_URL = 'https://claude.ai/oauth/claude-code-client-metadata'
+
+/** A token this close to expiry is refreshed before it is handed out. */
+const REFRESH_MARGIN_MS = 5 * 60 * 1000
+/** RFC 6749 leaves expires_in optional; an hour is the common default. */
+const DEFAULT_TOKEN_LIFETIME_S = 3600
+const REFRESH_ATTEMPTS = 3
+const REFRESH_BACKOFF_MS = 1000
+/** Long enough to outlast another process's refresh, short enough not to stall a connect. */
+const REFRESH_LOCK_ATTEMPTS = 50
+const REFRESH_LOCK_RETRY_MS = 100
+
+const SCOPE_SEPARATOR_RE = /\s+/
+const LOCK_NAME_UNSAFE_RE = /[^a-zA-Z0-9]/g
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+/**
+ * The scope to ask for, read from authorization-server metadata. `scope` and
+ * `default_scope` are not in RFC 8414 but some servers publish them, and they
+ * name what the server expects better than the full `scopes_supported` list.
+ */
+export function getScopeFromMetadata(
+  metadata: AuthorizationServerMetadata | undefined,
+): string | undefined {
+  if (!metadata) return undefined
+  const fields: Record<string, unknown> = { ...metadata }
+  const named = nonEmptyString(fields.scope) ?? nonEmptyString(fields.default_scope)
+  if (named) return named
+  const supported = fields.scopes_supported
+  if (!Array.isArray(supported)) return undefined
+  return nonEmptyString(supported.join(' '))
+}
+
+function scopeSet(scope: string | undefined): Set<string> {
+  return new Set((scope ?? '').split(SCOPE_SEPARATOR_RE).filter(Boolean))
+}
+
+function scopeCovers(held: string | undefined, wanted: string): boolean {
+  const granted = scopeSet(held)
+  return [...scopeSet(wanted)].every(scope => granted.has(scope))
+}
+
+function isFresh(entry: StoredCredentials): boolean {
+  return entry.accessToken.length > 0 && entry.expiresAt - Date.now() > REFRESH_MARGIN_MS
+}
+
+function asTokenSet(entry: StoredCredentials, withRefreshToken: boolean): OAuthTokens {
+  return {
+    access_token: entry.accessToken,
+    token_type: 'Bearer',
+    expires_in: Math.max(0, Math.floor((entry.expiresAt - Date.now()) / 1000)),
+    ...(entry.scope ? { scope: entry.scope } : {}),
+    refresh_token: withRefreshToken ? entry.refreshToken : undefined,
+  }
+}
+
+/** Worth another try: the server said so, or the request never got an OAuth answer. */
+function isTransientRefreshFailure(error: unknown): boolean {
+  return (
+    error instanceof TemporarilyUnavailableError ||
+    error instanceof ServerError ||
+    !(error instanceof OAuthError)
+  )
+}
+
+function readCredentials(key: string): StoredCredentials | undefined {
+  return getSecureStorage().read()?.mcpOAuth?.[key]
+}
+
+/** Another process may have written since our last read; the macOS keychain read is cached. */
+function readCredentialsUncached(key: string): StoredCredentials | undefined {
+  clearKeychainCache()
+  return readCredentials(key)
+}
+
+function writeCredentials(serverName: string, key: string, entry: StoredCredentials): void {
+  const storage = getSecureStorage()
+  const data = storage.read() ?? {}
+  const result = storage.update({ ...data, mcpOAuth: { ...data.mcpOAuth, [key]: entry } })
+  if (!result.success) {
+    logMCPDebug(serverName, `Could not store OAuth credentials: ${result.warning ?? 'unknown failure'}`)
+  }
+}
+
+function resourceIndicator(serverUrl: string): URL {
+  const url = new URL(serverUrl)
+  url.hash = ''
+  return url
+}
+
+/**
+ * Serialises refreshes across processes: the refresh token rotates, so two
+ * processes presenting the same one would leave one of them signed out. A
+ * lock that cannot be taken is not worth failing the refresh over.
+ */
+async function acquireRefreshLock(
+  serverName: string,
+  key: string,
+): Promise<(() => Promise<void>) | undefined> {
+  const dir = getClaudinConfigHomeDir()
+  const path = join(dir, `mcp-refresh-${key.replace(LOCK_NAME_UNSAFE_RE, '_')}.lock`)
+  // Only a held lock is waited for; proper-lockfile's own retries would also
+  // wait out a lock that can never be created.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await mkdir(dir, { recursive: true })
+      return await lockfile.lock(path, {
+        realpath: false,
+        onCompromised: error => logMCPDebug(serverName, `Refresh lock compromised: ${errorMessage(error)}`),
+      })
+    } catch (error) {
+      if (getErrnoCode(error) === 'ELOCKED' && attempt < REFRESH_LOCK_ATTEMPTS) {
+        await sleep(REFRESH_LOCK_RETRY_MS)
+        continue
+      }
+      logMCPDebug(serverName, `Refreshing without the cross-process lock: ${errorMessage(error)}`)
+      return undefined
+    }
+  }
+}
+
+async function releaseRefreshLock(
+  serverName: string,
+  release: (() => Promise<void>) | undefined,
+): Promise<void> {
+  if (!release) return
+  try {
+    await release()
+  } catch (error) {
+    logMCPDebug(serverName, `Could not release the refresh lock: ${errorMessage(error)}`)
+  }
+}
 
 export class ClaudeAuthProvider implements OAuthClientProvider {
-  private serverName: string
-  private serverConfig: McpSSEServerConfig | McpHTTPServerConfig
-  private redirectUri: string
-  private handleRedirection: boolean
-  private _codeVerifier?: string
-  private _authorizationUrl?: string
-  private _state?: string
-  private _scopes?: string
-  private _metadata?: Awaited<
-    ReturnType<typeof discoverAuthorizationServerMetadata>
-  >
-  private _refreshInProgress?: Promise<OAuthTokens | undefined>
-  private _pendingStepUpScope?: string
-  private onAuthorizationUrlCallback?: (url: string) => void
-  private skipBrowserOpen: boolean
+  readonly #key: string
+  #state: string | undefined
+  #codeVerifier: string | undefined
+  #metadata: AuthorizationServerMetadata | undefined
+  #authorizationUrl: string | undefined
+  /** Scope a 403 insufficient_scope asked for; held until new tokens arrive. */
+  #stepUpScope: string | undefined
+  #refreshing: Promise<OAuthTokens | undefined> | undefined
 
+  /**
+   * `handleRedirection` is true for an interactive sign-in, where the
+   * authorization URL is reported and opened. On the transport it is false:
+   * the URL is only remembered, since nobody is there to approve it.
+   */
   constructor(
-    serverName: string,
-    serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
-    redirectUri: string = buildRedirectUri(),
-    handleRedirection = false,
-    onAuthorizationUrl?: (url: string) => void,
-    skipBrowserOpen?: boolean,
+    private readonly serverName: string,
+    private readonly serverConfig: RemoteServerConfig,
+    private readonly redirectUri: string = FALLBACK_REDIRECT_URL,
+    private readonly handleRedirection: boolean = false,
+    private readonly onAuthorizationUrl?: (url: string) => void,
+    private readonly skipBrowserOpen: boolean = false,
   ) {
-    this.serverName = serverName
-    this.serverConfig = serverConfig
-    this.redirectUri = redirectUri
-    this.handleRedirection = handleRedirection
-    this.onAuthorizationUrlCallback = onAuthorizationUrl
-    this.skipBrowserOpen = skipBrowserOpen ?? false
+    this.#key = getServerKey(serverName, serverConfig)
   }
 
   get redirectUrl(): string {
@@ -84,756 +225,294 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
   }
 
   get authorizationUrl(): string | undefined {
-    return this._authorizationUrl
+    return this.#authorizationUrl
+  }
+
+  get clientMetadataUrl(): string {
+    return process.env.MCP_OAUTH_CLIENT_METADATA_URL || CLIENT_ID_METADATA_DOCUMENT_URL
   }
 
   get clientMetadata(): OAuthClientMetadata {
-    const metadata: OAuthClientMetadata = {
+    const scope = getScopeFromMetadata(this.#metadata)
+    return {
       client_name: `Claudin (${this.serverName})`,
-      redirect_uris: [this.redirectUri],
+      redirect_uris: [this.redirectUrl],
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
-      token_endpoint_auth_method: 'none', // Public client
+      token_endpoint_auth_method: 'none',
+      ...(scope ? { scope } : {}),
     }
-
-    // Include scope from metadata if available
-    const metadataScope = getScopeFromMetadata(this._metadata)
-    if (metadataScope) {
-      metadata.scope = metadataScope
-      logMCPDebug(
-        this.serverName,
-        `Using scope from metadata: ${metadata.scope}`,
-      )
-    }
-
-    return metadata
   }
 
-  /**
-   * CIMD (SEP-991): URL-based client_id. When the auth server advertises
-   * client_id_metadata_document_supported: true, the SDK uses this URL as the
-   * client_id instead of performing Dynamic Client Registration.
-   * Override via MCP_OAUTH_CLIENT_METADATA_URL env var (e.g. for testing, FedStart).
-   */
-  get clientMetadataUrl(): string | undefined {
-    const override = process.env.MCP_OAUTH_CLIENT_METADATA_URL
-    if (override) {
-      logMCPDebug(this.serverName, `Using CIMD URL from env: ${override}`)
-      return override
-    }
-    return MCP_CLIENT_METADATA_URL
+  setMetadata(metadata: AuthorizationServerMetadata): void {
+    this.#metadata = metadata
   }
 
-  setMetadata(
-    metadata: Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>,
-  ): void {
-    this._metadata = metadata
-  }
-
-  /**
-   * Called by the fetch wrapper when a 403 insufficient_scope response is
-   * detected. Setting this causes tokens() to omit refresh_token, forcing
-   * the SDK's authInternal to skip its (useless) refresh path and fall through
-   * to startAuthorization → redirectToAuthorization → step-up persistence.
-   * RFC 6749 §6 forbids scope elevation via refresh, so refreshing would just
-   * return the same-scoped token and the retry would 403 again.
-   */
   markStepUpPending(scope: string): void {
-    this._pendingStepUpScope = scope
-    logMCPDebug(this.serverName, `Marked step-up pending: ${scope}`)
+    this.#stepUpScope = scope
+    logMCPDebug(this.serverName, `Step-up pending for scope: ${scope}`)
   }
 
   async state(): Promise<string> {
-    // Generate state if not already generated for this instance
-    if (!this._state) {
-      this._state = randomBytes(32).toString('base64url')
-      logMCPDebug(this.serverName, 'Generated new OAuth state')
-    }
-    return this._state
+    this.#state ??= randomBytes(32).toString('base64url')
+    return this.#state
   }
 
-  async clientInformation(): Promise<OAuthClientInformation | undefined> {
-    const storage = getSecureStorage()
-    const data = storage.read()
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
-
-    // Check session credentials first (from DCR or previous auth)
-    const storedInfo = data?.mcpOAuth?.[serverKey]
-    if (storedInfo?.clientId) {
-      logMCPDebug(this.serverName, `Found client info`)
-      return {
-        client_id: storedInfo.clientId,
-        client_secret: storedInfo.clientSecret,
-      }
+  async clientInformation(): Promise<OAuthClientInformationMixed | undefined> {
+    const presetClientId = this.serverConfig.oauth?.clientId
+    if (presetClientId) {
+      const secret = getSecureStorage().read()?.mcpOAuthClientConfig?.[this.#key]?.clientSecret
+      return { client_id: presetClientId, client_secret: secret }
     }
-
-    // Fallback: pre-configured client ID from server config
-    const configClientId = this.serverConfig.oauth?.clientId
-    if (configClientId) {
-      const clientConfig = data?.mcpOAuthClientConfig?.[serverKey]
-      logMCPDebug(this.serverName, `Using pre-configured client ID`)
-      return {
-        client_id: configClientId,
-        client_secret: clientConfig?.clientSecret,
-      }
-    }
-
-    // If we don't have stored client info, return undefined to trigger registration
-    logMCPDebug(this.serverName, `No client info found`)
-    return undefined
+    const entry = readCredentials(this.#key)
+    if (!entry?.clientId) return undefined
+    return { client_id: entry.clientId, client_secret: entry.clientSecret }
   }
 
-  async saveClientInformation(
-    clientInformation: OAuthClientInformationFull,
-  ): Promise<void> {
-    const storage = getSecureStorage()
-    const existingData = storage.read() || {}
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
-
-    const updatedData: SecureStorageData = {
-      ...existingData,
-      mcpOAuth: {
-        ...existingData.mcpOAuth,
-        [serverKey]: {
-          ...existingData.mcpOAuth?.[serverKey],
-          serverName: this.serverName,
-          serverUrl: this.serverConfig.url,
-          clientId: clientInformation.client_id,
-          clientSecret: clientInformation.client_secret,
-          // Provide default values for required fields if not present
-          accessToken: existingData.mcpOAuth?.[serverKey]?.accessToken || '',
-          expiresAt: existingData.mcpOAuth?.[serverKey]?.expiresAt || 0,
-        },
-      },
-    }
-
-    storage.update(updatedData)
+  async saveClientInformation(info: OAuthClientInformationMixed): Promise<void> {
+    const existing = readCredentials(this.#key)
+    this.#write({
+      ...this.#baseEntry(existing),
+      clientId: info.client_id,
+      clientSecret: info.client_secret,
+    })
   }
 
   async tokens(): Promise<OAuthTokens | undefined> {
-    // Cross-process token changes (another CC instance refreshed or invalidated)
-    // are picked up via the keychain cache TTL (see macOsKeychainStorage.ts).
-    // In-process writes already invalidate the cache via storage.update().
-    // We do NOT clearKeychainCache() here — tokens() is called by the MCP SDK's
-    // _commonHeaders on every request, and forcing a cache miss would trigger
-    // a blocking spawnSync(`security find-generic-password`) 30-40x/sec.
-    // See CPU profile: spawnSync was 7.2% of total CPU after PR #19436.
-    const storage = getSecureStorage()
-    const data = await storage.readAsync()
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
+    const entry = readCredentials(this.#key)
+    if (!entry) return undefined
+    const usable = entry.accessToken.length > 0 && entry.expiresAt > Date.now()
+    if (!usable && !entry.refreshToken) return undefined
 
-    const tokenData = data?.mcpOAuth?.[serverKey]
-
-    if (!tokenData) {
-      logMCPDebug(this.serverName, `No token data found`)
-      return undefined
+    // A refresh cannot widen the grant, so while a step-up is pending the
+    // refresh token is withheld: the SDK then goes straight to a new sign-in.
+    const pending = this.#stepUpScope
+    const offerRefresh = pending === undefined || scopeCovers(entry.scope, pending)
+    if (offerRefresh && entry.refreshToken && !isFresh(entry)) {
+      const refreshed = await this.refreshAuthorization(entry.refreshToken)
+      if (refreshed) return refreshed
     }
-
-    // Check if token is expired
-    const expiresIn = (tokenData.expiresAt - Date.now()) / 1000
-
-    // Step-up check: if a 403 insufficient_scope was detected and the current
-    // token doesn't have the requested scope, omit refresh_token below so the
-    // SDK skips refresh and falls through to the PKCE flow.
-    const currentScopes = tokenData.scope?.split(' ') ?? []
-    const needsStepUp =
-      this._pendingStepUpScope !== undefined &&
-      this._pendingStepUpScope.split(' ').some(s => !currentScopes.includes(s))
-    if (needsStepUp) {
-      logMCPDebug(
-        this.serverName,
-        `Step-up pending (${this._pendingStepUpScope}), omitting refresh_token`,
-      )
-    }
-
-    // If token is expired and we don't have a refresh token, return undefined
-    if (expiresIn <= 0 && !tokenData.refreshToken) {
-      logMCPDebug(this.serverName, `Token expired without refresh token`)
-      return undefined
-    }
-
-    // If token is expired or about to expire (within 5 minutes) and we have a refresh token, refresh it proactively.
-    // This proactive refresh is a UX improvement - it avoids the latency of a failed request followed by token refresh.
-    // While MCP servers should return 401 for expired tokens (which triggers SDK-level refresh), proactively refreshing
-    // before expiry provides a smoother user experience.
-    // Skip when step-up is pending — refreshing can't elevate scope (RFC 6749 §6).
-    if (expiresIn <= 300 && tokenData.refreshToken && !needsStepUp) {
-      // Reuse existing refresh promise if one is in progress to prevent concurrent refreshes
-      if (!this._refreshInProgress) {
-        logMCPDebug(
-          this.serverName,
-          `Token expires in ${Math.floor(expiresIn)}s, attempting proactive refresh`,
-        )
-        this._refreshInProgress = this.refreshAuthorization(
-          tokenData.refreshToken,
-        ).finally(() => {
-          this._refreshInProgress = undefined
-        })
-      } else {
-        logMCPDebug(
-          this.serverName,
-          `Token refresh already in progress, reusing existing promise`,
-        )
-      }
-
-      try {
-        const refreshed = await this._refreshInProgress
-        if (refreshed) {
-          logMCPDebug(this.serverName, `Token refreshed successfully`)
-          return refreshed
-        }
-        logMCPDebug(
-          this.serverName,
-          `Token refresh failed, returning current tokens`,
-        )
-      } catch (error) {
-        logMCPDebug(
-          this.serverName,
-          `Token refresh error: ${errorMessage(error)}`,
-        )
-      }
-    }
-
-    // Return current tokens (may be expired if refresh failed or not needed yet)
-    const tokens = {
-      access_token: tokenData.accessToken,
-      refresh_token: needsStepUp ? undefined : tokenData.refreshToken,
-      expires_in: expiresIn,
-      scope: tokenData.scope,
-      token_type: 'Bearer',
-    }
-
-    logMCPDebug(this.serverName, `Returning tokens`)
-    logMCPDebug(this.serverName, `Token length: ${tokens.access_token?.length}`)
-    logMCPDebug(this.serverName, `Has refresh token: ${!!tokens.refresh_token}`)
-    logMCPDebug(this.serverName, `Expires in: ${Math.floor(expiresIn)}s`)
-
-    return tokens
+    return asTokenSet(entry, offerRefresh)
   }
 
   async saveTokens(tokens: OAuthTokens): Promise<void> {
-    this._pendingStepUpScope = undefined
-    const storage = getSecureStorage()
-    const existingData = storage.read() || {}
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
-
-    logMCPDebug(this.serverName, `Saving tokens`)
-    logMCPDebug(this.serverName, `Token expires in: ${tokens.expires_in}`)
-    logMCPDebug(this.serverName, `Has refresh token: ${!!tokens.refresh_token}`)
-
-    const updatedData: SecureStorageData = {
-      ...existingData,
-      mcpOAuth: {
-        ...existingData.mcpOAuth,
-        [serverKey]: {
-          ...existingData.mcpOAuth?.[serverKey],
-          serverName: this.serverName,
-          serverUrl: this.serverConfig.url,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          expiresAt: Date.now() + (tokens.expires_in || 3600) * 1000,
-          scope: tokens.scope,
-        },
-      },
-    }
-
-    storage.update(updatedData)
+    this.#stepUpScope = undefined
+    const existing = readCredentials(this.#key)
+    this.#write({
+      ...this.#baseEntry(existing),
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt: Date.now() + (tokens.expires_in ?? DEFAULT_TOKEN_LIFETIME_S) * 1000,
+      // RFC 6749 §5.1: an omitted scope means the one already granted.
+      scope: tokens.scope ?? existing?.scope,
+    })
   }
 
   async redirectToAuthorization(authorizationUrl: URL): Promise<void> {
-    // Store the authorization URL
-    this._authorizationUrl = authorizationUrl.toString()
-
-    // Extract and store scopes from the authorization URL for later use in token exchange
-    const scopes = authorizationUrl.searchParams.get('scope')
-    logMCPDebug(
-      this.serverName,
-      `Authorization URL: ${redactSensitiveUrlParams(authorizationUrl.toString())}`,
-    )
-    logMCPDebug(this.serverName, `Scopes in URL: ${scopes || 'NOT FOUND'}`)
-
-    if (scopes) {
-      this._scopes = scopes
-      logMCPDebug(
-        this.serverName,
-        `Captured scopes from authorization URL: ${scopes}`,
-      )
-    } else {
-      // If no scope in URL, try to get it from metadata
-      const metadataScope = getScopeFromMetadata(this._metadata)
-      if (metadataScope) {
-        this._scopes = metadataScope
-        logMCPDebug(
-          this.serverName,
-          `Using scopes from metadata: ${metadataScope}`,
-        )
-      } else {
-        logMCPDebug(this.serverName, `No scopes available from URL or metadata`)
-      }
-    }
-
-    // Persist scope for step-up auth: only when the transport-attached provider
-    // (handleRedirection=false) receives a step-up 401. The SDK calls auth()
-    // which calls redirectToAuthorization with the new scope. We persist it
-    // so the next performMCPOAuthFlow can use it without an extra probe request.
-    // Guard with !handleRedirection to avoid persisting during normal auth flows
-    // (where the scope may come from metadata scopes_supported rather than a 401).
-    if (this._scopes && !this.handleRedirection) {
-      const storage = getSecureStorage()
-      const existingData = storage.read() || {}
-      const serverKey = getServerKey(this.serverName, this.serverConfig)
-      const existing = existingData.mcpOAuth?.[serverKey]
-      if (existing) {
-        existing.stepUpScope = this._scopes
-        storage.update(existingData)
-        logMCPDebug(this.serverName, `Persisted step-up scope: ${this._scopes}`)
-      }
-    }
-
     if (!this.handleRedirection) {
-      logMCPDebug(
-        this.serverName,
-        `Redirection handling is disabled, skipping redirect`,
-      )
+      this.#authorizationUrl = authorizationUrl.toString()
+      this.#rememberStepUpScope(authorizationUrl)
       return
     }
-
-    // Validate URL scheme for security
-    const urlString = authorizationUrl.toString()
-    if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
-      throw new Error(
-        'Invalid authorization URL: must use http:// or https:// scheme',
-      )
+    if (authorizationUrl.protocol !== 'http:' && authorizationUrl.protocol !== 'https:') {
+      throw new Error('Invalid authorization URL: must use http:// or https:// scheme')
     }
-
-    logMCPDebug(this.serverName, `Redirecting to authorization URL`)
-    const redactedUrl = redactSensitiveUrlParams(urlString)
-    logMCPDebug(this.serverName, `Authorization URL: ${redactedUrl}`)
-
-    // Notify the UI about the authorization URL BEFORE opening the browser,
-    // so users can see the URL as a fallback if the browser fails to open
-    if (this.onAuthorizationUrlCallback) {
-      this.onAuthorizationUrlCallback(urlString)
-    }
-
-    if (!this.skipBrowserOpen) {
-      logMCPDebug(this.serverName, `Opening authorization URL: ${redactedUrl}`)
-
-      const success = await openBrowser(urlString)
-      if (!success) {
-        logMCPDebug(
-          this.serverName,
-          `Browser didn't open automatically. URL is shown in UI.`,
-        )
-      }
-    } else {
-      logMCPDebug(
-        this.serverName,
-        `Skipping browser open (skipBrowserOpen=true). URL: ${redactedUrl}`,
-      )
+    const url = authorizationUrl.toString()
+    this.#authorizationUrl = url
+    logMCPDebug(this.serverName, `Authorization URL: ${redactSensitiveUrlParams(url)}`)
+    this.onAuthorizationUrl?.(url)
+    if (this.skipBrowserOpen) return
+    if (!(await openBrowser(url))) {
+      logMCPDebug(this.serverName, 'Could not open a browser; the authorization URL has to be opened by hand')
     }
   }
 
   async saveCodeVerifier(codeVerifier: string): Promise<void> {
-    logMCPDebug(this.serverName, `Saving code verifier`)
-    this._codeVerifier = codeVerifier
+    this.#codeVerifier = codeVerifier
   }
 
   async codeVerifier(): Promise<string> {
-    if (!this._codeVerifier) {
-      logMCPDebug(this.serverName, `No code verifier saved`)
-      throw new Error('No code verifier saved')
+    if (!this.#codeVerifier) {
+      throw new Error(`No code verifier saved for MCP server: ${this.serverName}`)
     }
-    logMCPDebug(this.serverName, `Returning code verifier`)
-    return this._codeVerifier
+    return this.#codeVerifier
   }
 
-  async invalidateCredentials(
-    scope: 'all' | 'client' | 'tokens' | 'verifier' | 'discovery',
-  ): Promise<void> {
-    const storage = getSecureStorage()
-    const existingData = storage.read()
-    if (!existingData?.mcpOAuth) return
-
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
-    const tokenData = existingData.mcpOAuth[serverKey]
-    if (!tokenData) return
-
+  async invalidateCredentials(scope: CredentialScope): Promise<void> {
+    // The verifier is in memory, so it is dropped whether or not anything is stored.
+    if (scope === 'verifier') {
+      this.#codeVerifier = undefined
+      return
+    }
+    const entry = readCredentials(this.#key)
+    if (!entry) return
     switch (scope) {
       case 'all':
-        delete existingData.mcpOAuth[serverKey]
-        break
-      case 'client':
-        tokenData.clientId = undefined
-        tokenData.clientSecret = undefined
-        break
-      case 'tokens':
-        tokenData.accessToken = ''
-        tokenData.refreshToken = undefined
-        tokenData.expiresAt = 0
-        break
-      case 'verifier':
-        this._codeVerifier = undefined
+        clearServerTokensFromSecureStorage(this.serverName, this.serverConfig)
         return
-      case 'discovery':
-        tokenData.discoveryState = undefined
-        tokenData.stepUpScope = undefined
-        break
+      case 'client': {
+        const { clientId: _clientId, clientSecret: _clientSecret, ...rest } = entry
+        this.#write(rest)
+        return
+      }
+      case 'tokens': {
+        const { refreshToken: _refreshToken, scope: _scope, ...rest } = entry
+        this.#write({ ...rest, accessToken: '', expiresAt: 0 })
+        return
+      }
+      case 'discovery': {
+        const { discoveryState: _discoveryState, stepUpScope: _stepUpScope, ...rest } = entry
+        this.#write(rest)
+        return
+      }
     }
-
-    storage.update(existingData)
-    logMCPDebug(this.serverName, `Invalidated credentials (scope: ${scope})`)
   }
 
   async saveDiscoveryState(state: OAuthDiscoveryState): Promise<void> {
-    const storage = getSecureStorage()
-    const existingData = storage.read() || {}
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
-
-    logMCPDebug(
-      this.serverName,
-      `Saving discovery state (authServer: ${state.authorizationServerUrl})`,
-    )
-
-    // Persist only the URLs, NOT the full metadata blobs.
-    // authorizationServerMetadata alone is ~1.5-2KB per MCP server (every
-    // grant type, PKCE method, endpoint the IdP supports). On macOS the
-    // keychain write goes through `security -i` which has a 4096-byte stdin
-    // line limit — with hex encoding that's ~2013 bytes of JSON total. Two
-    // OAuth MCP servers persisting full metadata overflows it, corrupting
-    // the credential store (#30337). The SDK re-fetches missing metadata
-    // with one HTTP GET on the next auth — see node_modules/.../auth.js
-    // `cachedState.authorizationServerMetadata ?? await discover...`.
-    const updatedData: SecureStorageData = {
-      ...existingData,
-      mcpOAuth: {
-        ...existingData.mcpOAuth,
-        [serverKey]: {
-          ...existingData.mcpOAuth?.[serverKey],
-          serverName: this.serverName,
-          serverUrl: this.serverConfig.url,
-          accessToken: existingData.mcpOAuth?.[serverKey]?.accessToken || '',
-          expiresAt: existingData.mcpOAuth?.[serverKey]?.expiresAt || 0,
-          discoveryState: {
-            authorizationServerUrl: state.authorizationServerUrl,
-            resourceMetadataUrl: state.resourceMetadataUrl,
-          },
-        },
+    // Only the two URLs: the metadata documents can be large enough to
+    // overflow an OS credential vault, and they are cheap to fetch again.
+    const existing = readCredentials(this.#key)
+    this.#write({
+      ...this.#baseEntry(existing),
+      discoveryState: {
+        authorizationServerUrl: state.authorizationServerUrl,
+        ...(state.resourceMetadataUrl ? { resourceMetadataUrl: state.resourceMetadataUrl } : {}),
       },
-    }
-
-    storage.update(updatedData)
+    })
   }
 
   async discoveryState(): Promise<OAuthDiscoveryState | undefined> {
-    const storage = getSecureStorage()
-    const data = storage.read()
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
+    const cached = readCredentials(this.#key)?.discoveryState
+    const configuredUrl = this.serverConfig.oauth?.authServerMetadataUrl
+    if (!cached && !configuredUrl) return undefined
 
-    const cached = data?.mcpOAuth?.[serverKey]?.discoveryState
-    if (cached?.authorizationServerUrl) {
-      logMCPDebug(
-        this.serverName,
-        `Returning cached discovery state (authServer: ${cached.authorizationServerUrl})`,
-      )
-
+    let metadata: AuthorizationServerMetadata | undefined
+    if (configuredUrl) {
+      try {
+        metadata = await fetchAuthServerMetadata(this.serverName, this.serverConfig.url, configuredUrl)
+      } catch (error) {
+        logMCPDebug(this.serverName, `Configured auth server metadata unusable: ${errorMessage(error)}`)
+      }
+    }
+    if (cached) {
       return {
         authorizationServerUrl: cached.authorizationServerUrl,
         resourceMetadataUrl: cached.resourceMetadataUrl,
-        // Only the URLs are ever persisted (see saveDiscoveryState) — the SDK
-        // re-fetches the metadata blobs with one HTTP GET on the next auth.
+        ...(metadata ? { authorizationServerMetadata: metadata } : {}),
       }
     }
-
-    // Check config hint for direct metadata URL
-    const metadataUrl = this.serverConfig.oauth?.authServerMetadataUrl
-    if (metadataUrl) {
-      logMCPDebug(
-        this.serverName,
-        `Fetching metadata from configured URL: ${metadataUrl}`,
-      )
-      try {
-        const metadata = await fetchAuthServerMetadata(
-          this.serverName,
-          this.serverConfig.url,
-          metadataUrl,
-        )
-        if (metadata) {
-          return {
-            authorizationServerUrl: metadata.issuer,
-            authorizationServerMetadata:
-              metadata as OAuthDiscoveryState['authorizationServerMetadata'],
-          }
-        }
-      } catch (error) {
-        logMCPDebug(
-          this.serverName,
-          `Failed to fetch from configured metadata URL: ${errorMessage(error)}`,
-        )
-      }
-    }
-
-    return undefined
+    if (!metadata) return undefined
+    return { authorizationServerUrl: metadata.issuer, authorizationServerMetadata: metadata }
   }
 
-  async refreshAuthorization(
-    refreshToken: string,
-  ): Promise<OAuthTokens | undefined> {
-    const serverKey = getServerKey(this.serverName, this.serverConfig)
-    const claudeDir = getClaudinConfigHomeDir()
-    await mkdir(claudeDir, { recursive: true })
-    const sanitizedKey = serverKey.replace(/[^a-zA-Z0-9]/g, '_')
-    const lockfilePath = join(claudeDir, `mcp-refresh-${sanitizedKey}.lock`)
+  /** Concurrent callers in this process share one refresh. */
+  async refreshAuthorization(refreshToken: string): Promise<OAuthTokens | undefined> {
+    this.#refreshing ??= this._doRefresh(refreshToken).finally(() => {
+      this.#refreshing = undefined
+    })
+    return this.#refreshing
+  }
 
-    let release: (() => Promise<void>) | undefined
-    for (let retry = 0; retry < MAX_LOCK_RETRIES; retry++) {
+  private async _doRefresh(refreshToken: string): Promise<OAuthTokens | undefined> {
+    const release = await acquireRefreshLock(this.serverName, this.#key)
+    try {
+      const current = readCredentialsUncached(this.#key)
+      if (current && isFresh(current)) {
+        logMCPDebug(this.serverName, 'Tokens were refreshed elsewhere meanwhile; using those')
+        return asTokenSet(current, true)
+      }
+      const client = await this.clientInformation()
+      if (!client) {
+        logMCPDebug(this.serverName, 'No client information; cannot refresh')
+        return undefined
+      }
+      const metadata = await this.#tokenServerMetadata(current)
+      if (!metadata) {
+        logMCPDebug(this.serverName, 'No authorization server metadata; cannot refresh')
+        return undefined
+      }
+      // The stored token beats the caller's: it may have rotated since the caller read it.
+      return await this.#exchangeRefreshToken(current?.refreshToken ?? refreshToken, client, metadata)
+    } finally {
+      await releaseRefreshLock(this.serverName, release)
+    }
+  }
+
+  async #tokenServerMetadata(
+    current: StoredCredentials | undefined,
+  ): Promise<AuthorizationServerMetadata | undefined> {
+    const configuredUrl = this.serverConfig.oauth?.authServerMetadataUrl
+    const knownServer = current?.discoveryState?.authorizationServerUrl
+    const fetchFn = createAuthFetch()
+    try {
+      if (!configuredUrl && knownServer) {
+        return await discoverAuthorizationServerMetadata(knownServer, { fetchFn })
+      }
+      return await fetchAuthServerMetadata(this.serverName, this.serverConfig.url, configuredUrl, fetchFn)
+    } catch (error) {
+      logMCPDebug(this.serverName, `Metadata discovery for refresh failed: ${errorMessage(error)}`)
+      return undefined
+    }
+  }
+
+  async #exchangeRefreshToken(
+    refreshToken: string,
+    clientInformation: OAuthClientInformationMixed,
+    metadata: AuthorizationServerMetadata,
+  ): Promise<OAuthTokens | undefined> {
+    for (let attempt = 1; ; attempt += 1) {
       try {
-        logMCPDebug(
-          this.serverName,
-          `Acquiring refresh lock (attempt ${retry + 1})`,
-        )
-        release = await lockfile.lock(lockfilePath, {
-          realpath: false,
-          onCompromised: () => {
-            logMCPDebug(this.serverName, `Refresh lock was compromised`)
-          },
+        const tokens = await requestTokenRefresh(metadata.issuer, {
+          metadata,
+          clientInformation,
+          refreshToken,
+          resource: resourceIndicator(this.serverConfig.url),
+          fetchFn: createAuthFetch(),
         })
-        logMCPDebug(this.serverName, `Acquired refresh lock`)
-        break
-      } catch (e: unknown) {
-        const code = getErrnoCode(e)
-        if (code === 'ELOCKED') {
-          logMCPDebug(
-            this.serverName,
-            `Refresh lock held by another process, waiting (attempt ${retry + 1}/${MAX_LOCK_RETRIES})`,
-          )
-          // randomInt (CSPRNG) instead of Math.random — this backs off an
-          // OAuth credential-refresh lock, a security context (CodeQL
-          // js/insecure-randomness).
-          await sleep(1000 + randomInt(1000))
+        await this.saveTokens(tokens)
+        logMCPDebug(this.serverName, 'Refreshed the access token')
+        return tokens
+      } catch (error) {
+        if (error instanceof InvalidGrantError) return this.#afterRejectedRefresh()
+        if (attempt < REFRESH_ATTEMPTS && isTransientRefreshFailure(error)) {
+          logMCPDebug(this.serverName, `Refresh attempt ${attempt} failed, retrying: ${errorMessage(error)}`)
+          await sleep(REFRESH_BACKOFF_MS * 2 ** (attempt - 1))
           continue
         }
-        logMCPDebug(
-          this.serverName,
-          `Failed to acquire refresh lock: ${code}, proceeding without lock`,
-        )
-        break
-      }
-    }
-    if (!release) {
-      logMCPDebug(
-        this.serverName,
-        `Could not acquire refresh lock after ${MAX_LOCK_RETRIES} retries, proceeding without lock`,
-      )
-    }
-
-    try {
-      // Re-read tokens after acquiring lock — another process may have refreshed
-      clearKeychainCache()
-      const storage = getSecureStorage()
-      const data = storage.read()
-      const tokenData = data?.mcpOAuth?.[serverKey]
-      if (tokenData) {
-        const expiresIn = (tokenData.expiresAt - Date.now()) / 1000
-        if (expiresIn > 300) {
-          logMCPDebug(
-            this.serverName,
-            `Another process already refreshed tokens (expires in ${Math.floor(expiresIn)}s)`,
-          )
-          return {
-            access_token: tokenData.accessToken,
-            refresh_token: tokenData.refreshToken,
-            expires_in: expiresIn,
-            scope: tokenData.scope,
-            token_type: 'Bearer',
-          }
-        }
-        // Use the freshest refresh token from storage
-        if (tokenData.refreshToken) {
-          refreshToken = tokenData.refreshToken
-        }
-      }
-      return await this._doRefresh(refreshToken)
-    } finally {
-      if (release) {
-        try {
-          await release()
-          logMCPDebug(this.serverName, `Released refresh lock`)
-        } catch {
-          logMCPDebug(this.serverName, `Failed to release refresh lock`)
-        }
+        logMCPDebug(this.serverName, `Refresh failed: ${errorMessage(error)}`)
+        return undefined
       }
     }
   }
 
-  private async _doRefresh(
-    refreshToken: string,
-  ): Promise<OAuthTokens | undefined> {
-    const MAX_ATTEMPTS = 3
-
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      try {
-        logMCPDebug(this.serverName, `Starting token refresh`)
-        const authFetch = createAuthFetch()
-
-        // Reuse cached metadata from the initial OAuth flow if available,
-        // since metadata (token endpoint URL, etc.) is static per auth server.
-        // Priority:
-        // 1. In-memory cache (same-session refreshes)
-        // 2. Persisted discovery state from initial auth (cross-session) —
-        //    avoids re-running RFC 9728 discovery on every refresh.
-        // 3. Full RFC 9728 → RFC 8414 re-discovery via fetchAuthServerMetadata.
-        let metadata = this._metadata
-        if (!metadata) {
-          const cached = await this.discoveryState()
-          if (cached?.authorizationServerMetadata) {
-            logMCPDebug(
-              this.serverName,
-              `Using persisted auth server metadata for refresh`,
-            )
-            metadata = cached.authorizationServerMetadata
-          } else if (cached?.authorizationServerUrl) {
-            logMCPDebug(
-              this.serverName,
-              `Re-discovering metadata from persisted auth server URL: ${cached.authorizationServerUrl}`,
-            )
-            metadata = await discoverAuthorizationServerMetadata(
-              cached.authorizationServerUrl,
-              { fetchFn: authFetch },
-            )
-          }
-        }
-        if (!metadata) {
-          metadata = await fetchAuthServerMetadata(
-            this.serverName,
-            this.serverConfig.url,
-            this.serverConfig.oauth?.authServerMetadataUrl,
-            authFetch,
-          )
-        }
-        if (!metadata) {
-          logMCPDebug(this.serverName, `Failed to discover OAuth metadata`)
-          return undefined
-        }
-        // Cache for future refreshes
-        this._metadata = metadata
-
-        const clientInfo = await this.clientInformation()
-        if (!clientInfo) {
-          logMCPDebug(this.serverName, `No client information available`)
-          return undefined
-        }
-
-        const newTokens = await sdkRefreshAuthorization(
-          new URL(this.serverConfig.url),
-          {
-            metadata,
-            clientInformation: clientInfo,
-            refreshToken,
-            resource: new URL(this.serverConfig.url),
-            fetchFn: authFetch,
-          },
-        )
-
-        if (newTokens) {
-          logMCPDebug(this.serverName, `Token refresh successful`)
-          await this.saveTokens(newTokens)
-          return newTokens
-        }
-
-        logMCPDebug(this.serverName, `Token refresh returned no tokens`)
-        return undefined
-      } catch (error) {
-        // Invalid grant means the refresh token itself is invalid/revoked/expired.
-        // But another process may have already refreshed successfully — check first.
-        if (error instanceof InvalidGrantError) {
-          logMCPDebug(
-            this.serverName,
-            `Token refresh failed with invalid_grant: ${error.message}`,
-          )
-          clearKeychainCache()
-          const storage = getSecureStorage()
-          const data = storage.read()
-          const serverKey = getServerKey(this.serverName, this.serverConfig)
-          const tokenData = data?.mcpOAuth?.[serverKey]
-          if (tokenData) {
-            const expiresIn = (tokenData.expiresAt - Date.now()) / 1000
-            if (expiresIn > 300) {
-              logMCPDebug(
-                this.serverName,
-                `Another process refreshed tokens, using those`,
-              )
-              return {
-                access_token: tokenData.accessToken,
-                refresh_token: tokenData.refreshToken,
-                expires_in: expiresIn,
-                scope: tokenData.scope,
-                token_type: 'Bearer',
-              }
-            }
-          }
-          logMCPDebug(
-            this.serverName,
-            `No valid tokens in storage, clearing stored tokens`,
-          )
-          await this.invalidateCredentials('tokens')
-          return undefined
-        }
-
-        // Retry on timeouts or transient server errors
-        const isTimeoutError =
-          error instanceof Error &&
-          /timeout|timed out|etimedout|econnreset/i.test(error.message)
-        const isTransientServerError =
-          error instanceof ServerError ||
-          error instanceof TemporarilyUnavailableError ||
-          error instanceof TooManyRequestsError
-        const isRetryable = isTimeoutError || isTransientServerError
-
-        if (!isRetryable || attempt >= MAX_ATTEMPTS) {
-          logMCPDebug(
-            this.serverName,
-            `Token refresh failed: ${errorMessage(error)}`,
-          )
-          return undefined
-        }
-
-        const delayMs = 1000 * Math.pow(2, attempt - 1) // 1s, 2s, 4s
-        logMCPDebug(
-          this.serverName,
-          `Token refresh failed, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})`,
-        )
-        await sleep(delayMs)
-      }
-    }
-
+  async #afterRejectedRefresh(): Promise<OAuthTokens | undefined> {
+    // A process that refreshed first rotated the token we presented; its result stands.
+    const latest = readCredentialsUncached(this.#key)
+    if (latest && isFresh(latest)) return asTokenSet(latest, true)
+    logMCPDebug(this.serverName, 'Refresh token rejected; clearing the stored tokens')
+    await this.invalidateCredentials('tokens')
     return undefined
   }
-}
 
-/**
- * Safely extracts scope information from AuthorizationServerMetadata.
- * The metadata can be either OAuthMetadata or OpenIdProviderDiscoveryMetadata,
- * and different providers use different fields for scope information.
- */
-export function getScopeFromMetadata(
-  metadata: AuthorizationServerMetadata | undefined,
-): string | undefined {
-  if (!metadata) return undefined
-  // Try 'scope' first (non-standard but used by some providers)
-  if ('scope' in metadata && typeof metadata.scope === 'string') {
-    return metadata.scope
+  #rememberStepUpScope(authorizationUrl: URL): void {
+    const scope = authorizationUrl.searchParams.get('scope') || getScopeFromMetadata(this.#metadata)
+    const entry = readCredentials(this.#key)
+    if (!scope || !entry) return
+    this.#write({ ...entry, stepUpScope: scope })
+    logMCPDebug(this.serverName, `Remembered scope ${scope} for the next sign-in`)
   }
-  // Try 'default_scope' (non-standard but used by some providers)
-  if (
-    'default_scope' in metadata &&
-    typeof metadata.default_scope === 'string'
-  ) {
-    return metadata.default_scope
+
+  #baseEntry(existing: StoredCredentials | undefined): StoredCredentials {
+    return {
+      ...existing,
+      serverName: this.serverName,
+      serverUrl: this.serverConfig.url,
+      accessToken: existing?.accessToken ?? '',
+      expiresAt: existing?.expiresAt ?? 0,
+    }
   }
-  // Fall back to scopes_supported (standard OAuth 2.0 field)
-  if (metadata.scopes_supported && Array.isArray(metadata.scopes_supported)) {
-    return metadata.scopes_supported.join(' ')
+
+  #write(entry: StoredCredentials): void {
+    writeCredentials(this.serverName, this.#key, entry)
   }
-  return undefined
 }

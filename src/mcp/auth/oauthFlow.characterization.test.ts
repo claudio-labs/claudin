@@ -218,7 +218,7 @@ describe('the callback server', () => {
     expect(bed.hits('/token')).toHaveLength(1)
   })
 
-  test('DEFECT: a request for any path other than /callback is never answered', async () => {
+  test('FIXED: a request for any path other than /callback is answered instead of left hanging', async () => {
     bed = startAuthBed()
     let outcome = ''
     await performMCPOAuthFlow(
@@ -239,7 +239,7 @@ describe('the callback server', () => {
       undefined,
       { skipBrowserOpen: true },
     )
-    expect(outcome).toBe('hung')
+    expect(outcome).toBe('answered')
   })
 
   test('an error from the authorization server ends the sign-in, escaped on the page', async () => {

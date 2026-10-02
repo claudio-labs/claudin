@@ -1,0 +1,561 @@
+{
+  "test": [
+    "src/mcp/auth/claudeAuthProvider.characterization.test.ts",
+    "src/mcp/auth/oauthFlow.characterization.test.ts",
+    "src/mcp/auth.test.ts",
+    "src/mcp/auth/claudeAuthProvider.test.ts",
+    "src/mcp/auth/oauthFlow.test.ts"
+  ],
+  "source": "src/mcp/auth/claudeAuthProvider.ts",
+  "probes": [
+    {
+      "name": "the fallback redirect URL moves to another port",
+      "find": "const FALLBACK_REDIRECT_URL = 'http://localhost:3118/callback'",
+      "replace": "const FALLBACK_REDIRECT_URL = 'http://localhost:3119/callback'"
+    },
+    {
+      "name": "the client-id metadata document URL changes",
+      "find": "const CLIENT_ID_METADATA_DOCUMENT_URL = 'https://claude.ai/oauth/claude-code-client-metadata'",
+      "replace": "const CLIENT_ID_METADATA_DOCUMENT_URL = 'https://claude.ai/oauth/claudin-client-metadata'"
+    },
+    {
+      "name": "the client-id metadata URL ignores the environment",
+      "find": "return process.env.MCP_OAUTH_CLIENT_METADATA_URL || CLIENT_ID_METADATA_DOCUMENT_URL",
+      "replace": "return CLIENT_ID_METADATA_DOCUMENT_URL"
+    },
+    {
+      "name": "the registered client is no longer named after the server",
+      "find": "client_name: `Claudin (${this.serverName})`,",
+      "replace": "client_name: 'Claudin',"
+    },
+    {
+      "name": "the client advertises secret-based token auth",
+      "find": "token_endpoint_auth_method: 'none',",
+      "replace": "token_endpoint_auth_method: 'client_secret_post',"
+    },
+    {
+      "name": "redirect_uris is left empty",
+      "find": "redirect_uris: [this.redirectUrl],",
+      "replace": "redirect_uris: [],"
+    },
+    {
+      "name": "client metadata never carries the metadata scope",
+      "find": "      ...(scope ? { scope } : {}),",
+      "replace": "      ...({}),"
+    },
+    {
+      "name": "default_scope wins over scope",
+      "find": "nonEmptyString(fields.scope) ?? nonEmptyString(fields.default_scope)",
+      "replace": "nonEmptyString(fields.default_scope) ?? nonEmptyString(fields.scope)"
+    },
+    {
+      "name": "scopes_supported is comma-joined",
+      "find": "return nonEmptyString(supported.join(' '))",
+      "replace": "return nonEmptyString(supported.join(','))"
+    },
+    {
+      "name": "empty scope fields count as present",
+      "find": "return typeof value === 'string' && value.length > 0 ? value : undefined",
+      "replace": "return typeof value === 'string' ? value : undefined"
+    },
+    {
+      "name": "state is regenerated on every call",
+      "find": "this.#state ??= randomBytes(32).toString('base64url')",
+      "replace": "this.#state = randomBytes(32).toString('base64url')"
+    },
+    {
+      "name": "state is hex instead of base64url",
+      "find": "randomBytes(32).toString('base64url')",
+      "replace": "randomBytes(32).toString('hex')"
+    },
+    {
+      "name": "a missing verifier is not an error",
+      "find": "    if (!this.#codeVerifier) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "FIX 2 reverted: the verifier survives when the server has no stored entry",
+      "find": "if (scope === 'verifier') {",
+      "replace": "if (scope === 'verifier' && readCredentials(this.#key)) {"
+    },
+    {
+      "name": "invalidating everything also drops the verifier",
+      "find": "        clearServerTokensFromSecureStorage(this.serverName, this.serverConfig)\n        return",
+      "replace": "        clearServerTokensFromSecureStorage(this.serverName, this.serverConfig)\n        this.#codeVerifier = undefined\n        return"
+    },
+    {
+      "name": "invalidating everything leaves the entry",
+      "find": "        clearServerTokensFromSecureStorage(this.serverName, this.serverConfig)",
+      "replace": "        void 0"
+    },
+    {
+      "name": "a pre-configured client id is ignored",
+      "find": "    if (presetClientId) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "the saved secret is looked up under the bare server name",
+      "find": "mcpOAuthClientConfig?.[this.#key]?.clientSecret",
+      "replace": "mcpOAuthClientConfig?.[this.serverName]?.clientSecret"
+    },
+    {
+      "name": "a stored client loses its secret",
+      "find": "return { client_id: entry.clientId, client_secret: entry.clientSecret }",
+      "replace": "return { client_id: entry.clientId }"
+    },
+    {
+      "name": "writing a client or discovery state drops the tokens held",
+      "find": "      accessToken: existing?.accessToken ?? '',",
+      "replace": "      accessToken: '',"
+    },
+    {
+      "name": "a dead token without a refresh token is still handed out",
+      "find": "    if (!usable && !entry.refreshToken) return undefined",
+      "replace": "    if (false as boolean) return undefined"
+    },
+    {
+      "name": "a pending step-up never withholds the refresh token",
+      "find": "pending === undefined || scopeCovers(entry.scope, pending)",
+      "replace": "true"
+    },
+    {
+      "name": "scope coverage needs only one matching scope",
+      "find": ".every(scope => granted.has(scope))",
+      "replace": ".some(scope => granted.has(scope))"
+    },
+    {
+      "name": "saving tokens keeps the pending step-up",
+      "find": "    this.#stepUpScope = undefined\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a token set without a lifetime lasts two hours",
+      "find": "const DEFAULT_TOKEN_LIFETIME_S = 3600",
+      "replace": "const DEFAULT_TOKEN_LIFETIME_S = 7200"
+    },
+    {
+      "name": "expires_in is reported in tenths of a second",
+      "find": "Math.floor((entry.expiresAt - Date.now()) / 1000)",
+      "replace": "Math.floor((entry.expiresAt - Date.now()) / 100)"
+    },
+    {
+      "name": "the token type is lowercase",
+      "find": "token_type: 'Bearer',",
+      "replace": "token_type: 'bearer',"
+    },
+    {
+      "name": "an omitted scope in new tokens erases the granted one",
+      "find": "scope: tokens.scope ?? existing?.scope,",
+      "replace": "scope: tokens.scope,"
+    },
+    {
+      "name": "the refresh margin shrinks to thirty seconds",
+      "find": "const REFRESH_MARGIN_MS = 5 * 60 * 1000",
+      "replace": "const REFRESH_MARGIN_MS = 30 * 1000"
+    },
+    {
+      "name": "the refresh margin grows to ten minutes",
+      "find": "const REFRESH_MARGIN_MS = 5 * 60 * 1000",
+      "replace": "const REFRESH_MARGIN_MS = 10 * 60 * 1000"
+    },
+    {
+      "name": "tokens() discards a successful refresh",
+      "find": "      if (refreshed) return refreshed",
+      "replace": "      void refreshed"
+    },
+    {
+      "name": "on the transport the step-up scope ignores the URL",
+      "find": "authorizationUrl.searchParams.get('scope') || getScopeFromMetadata(this.#metadata)",
+      "replace": "getScopeFromMetadata(this.#metadata)"
+    },
+    {
+      "name": "on the transport the step-up scope has no metadata fallback",
+      "find": "authorizationUrl.searchParams.get('scope') || getScopeFromMetadata(this.#metadata)",
+      "replace": "authorizationUrl.searchParams.get('scope')"
+    },
+    {
+      "name": "on the transport a server with no entry gets one written",
+      "find": "    if (!scope || !entry) return",
+      "replace": "    if (!scope) return"
+    },
+    {
+      "name": "the transport path behaves like an interactive sign-in",
+      "find": "    if (!this.handleRedirection) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "name": "non-http authorization URLs are accepted",
+      "find": "authorizationUrl.protocol !== 'http:' && authorizationUrl.protocol !== 'https:'",
+      "replace": "false"
+    },
+    {
+      "name": "the authorization URL is reported only when the browser is skipped",
+      "find": "    this.onAuthorizationUrl?.(url)",
+      "replace": "    if (this.skipBrowserOpen) this.onAuthorizationUrl?.(url)"
+    },
+    {
+      "name": "skipBrowserOpen is ignored",
+      "find": "    if (this.skipBrowserOpen) return",
+      "replace": "    if (false as boolean) return"
+    },
+    {
+      "name": "the browser is never opened",
+      "find": "if (!(await openBrowser(url))) {",
+      "replace": "if (!(await Promise.resolve(false))) {"
+    },
+    {
+      "name": "invalidating with no stored entry still writes",
+      "find": "    if (!entry) return\n    switch (scope) {",
+      "replace": "    switch (scope) {"
+    },
+    {
+      "name": "invalidating the client keeps its id",
+      "find": "const { clientId: _clientId, clientSecret: _clientSecret, ...rest } = entry",
+      "replace": "const { clientSecret: _clientSecret, ...rest } = entry"
+    },
+    {
+      "name": "invalidating tokens keeps the refresh token",
+      "find": "const { refreshToken: _refreshToken, scope: _scope, ...rest } = entry",
+      "replace": "const { scope: _scope, ...rest } = entry"
+    },
+    {
+      "name": "invalidating tokens keeps the access token",
+      "find": "this.#write({ ...rest, accessToken: '', expiresAt: 0 })",
+      "replace": "this.#write({ ...rest, expiresAt: 0 })"
+    },
+    {
+      "name": "invalidating discovery keeps the step-up scope",
+      "find": "const { discoveryState: _discoveryState, stepUpScope: _stepUpScope, ...rest } = entry",
+      "replace": "const { discoveryState: _discoveryState, ...rest } = entry"
+    },
+    {
+      "name": "discovery state persists the metadata documents",
+      "find": "      discoveryState: {\n        authorizationServerUrl: state.authorizationServerUrl,",
+      "replace": "      discoveryState: {\n        ...state,\n        authorizationServerUrl: state.authorizationServerUrl,"
+    },
+    {
+      "name": "discovery state is never created for a new server",
+      "find": "    const existing = readCredentials(this.#key)\n    this.#write({\n      ...this.#baseEntry(existing),\n      discoveryState: {",
+      "replace": "    const existing = readCredentials(this.#key)\n    if (!existing) return\n    this.#write({\n      ...this.#baseEntry(existing),\n      discoveryState: {"
+    },
+    {
+      "name": "a cached discovery state reports the server URL instead",
+      "find": "        authorizationServerUrl: cached.authorizationServerUrl,",
+      "replace": "        authorizationServerUrl: this.serverConfig.url,"
+    },
+    {
+      "name": "a cached discovery state drops the configured metadata",
+      "find": "        ...(metadata ? { authorizationServerMetadata: metadata } : {}),",
+      "replace": "        ...({}),"
+    },
+    {
+      "name": "a configured metadata URL is not fetched for discovery",
+      "find": "metadata = await fetchAuthServerMetadata(this.serverName, this.serverConfig.url, configuredUrl)",
+      "replace": "metadata = undefined"
+    },
+    {
+      "name": "a failing configured metadata URL throws out of discoveryState",
+      "find": "        logMCPDebug(this.serverName, `Configured auth server metadata unusable: ${errorMessage(error)}`)",
+      "replace": "        throw error"
+    },
+    {
+      "name": "discovery from a configured URL reports the MCP URL as the server",
+      "find": "return { authorizationServerUrl: metadata.issuer, authorizationServerMetadata: metadata }",
+      "replace": "return { authorizationServerUrl: this.serverConfig.url, authorizationServerMetadata: metadata }"
+    },
+    {
+      "name": "concurrent callers no longer share the in-flight refresh",
+      "find": "this.#refreshing ??= this._doRefresh(refreshToken)",
+      "replace": "this.#refreshing = this._doRefresh(refreshToken)"
+    },
+    {
+      "name": "the lock file name keeps unsafe characters",
+      "find": "`mcp-refresh-${key.replace(LOCK_NAME_UNSAFE_RE, '_')}.lock`",
+      "replace": "`mcp-refresh-${key}.lock`"
+    },
+    {
+      "name": "a held lock is not waited for",
+      "find": "getErrnoCode(error) === 'ELOCKED' && attempt < REFRESH_LOCK_ATTEMPTS",
+      "replace": "false"
+    },
+    {
+      "name": "a lock that cannot be taken stops the refresh",
+      "find": "      logMCPDebug(serverName, `Refreshing without the cross-process lock: ${errorMessage(error)}`)\n      return undefined",
+      "replace": "      throw error"
+    },
+    {
+      "name": "tokens refreshed elsewhere are refreshed again",
+      "find": "      if (current && isFresh(current)) {",
+      "replace": "      if (false as boolean) {"
+    },
+    {
+      "name": "the caller's refresh token beats the stored one",
+      "find": "current?.refreshToken ?? refreshToken",
+      "replace": "refreshToken"
+    },
+    {
+      "name": "a refresh is attempted without client information",
+      "find": "      if (!client) {\n        logMCPDebug(this.serverName, 'No client information; cannot refresh')\n        return undefined\n      }",
+      "replace": "      if (!client) {\n        logMCPDebug(this.serverName, 'No client information; cannot refresh')\n      }"
+    },
+    {
+      "name": "a persisted authorization server is rediscovered through the resource",
+      "find": "      if (!configuredUrl && knownServer) {",
+      "replace": "      if (false as boolean) {"
+    },
+    {
+      "name": "a refresh ignores the configured metadata URL",
+      "find": "return await fetchAuthServerMetadata(this.serverName, this.serverConfig.url, configuredUrl, fetchFn)",
+      "replace": "return await fetchAuthServerMetadata(this.serverName, this.serverConfig.url, undefined, fetchFn)"
+    },
+    {
+      "name": "the refresh request names no resource",
+      "find": "          resource: resourceIndicator(this.serverConfig.url),\n",
+      "replace": ""
+    },
+    {
+      "name": "refreshed tokens are not stored",
+      "find": "        await this.saveTokens(tokens)",
+      "replace": "        void tokens"
+    },
+    {
+      "name": "a rejected refresh token is treated like any other failure",
+      "find": "        if (error instanceof InvalidGrantError) return this.#afterRejectedRefresh()",
+      "replace": "        void InvalidGrantError"
+    },
+    {
+      "name": "transient failures are not retried",
+      "find": "attempt < REFRESH_ATTEMPTS && isTransientRefreshFailure(error)",
+      "replace": "false"
+    },
+    {
+      "name": "one more refresh attempt",
+      "find": "const REFRESH_ATTEMPTS = 3",
+      "replace": "const REFRESH_ATTEMPTS = 4"
+    },
+    {
+      "name": "the backoff is ten times shorter",
+      "find": "const REFRESH_BACKOFF_MS = 1000",
+      "replace": "const REFRESH_BACKOFF_MS = 100"
+    },
+    {
+      "name": "every OAuth error is retried",
+      "find": "    error instanceof ServerError ||",
+      "replace": "    error instanceof OAuthError ||"
+    },
+    {
+      "name": "a rejected refresh ignores tokens stored meanwhile",
+      "find": "    if (latest && isFresh(latest)) return asTokenSet(latest, true)",
+      "replace": "    void latest"
+    },
+    {
+      "name": "a rejected refresh keeps the dead tokens",
+      "find": "    await this.invalidateCredentials('tokens')",
+      "replace": "    void 0"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the cancellation error loses its name",
+      "find": "    this.name = 'AuthenticationCancelledError'",
+      "replace": "    void 0"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "FIX 1 reverted: other paths are left hanging",
+      "find": "      res.end('Not found')",
+      "replace": "      void res"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "other paths are treated as the callback",
+      "find": "    if (url.pathname !== CALLBACK_PATH) {",
+      "replace": "    if (false as boolean) {"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the success page names another product",
+      "find": "callbackPage('Authentication Successful', 'Return to Claudin.')",
+      "replace": "callbackPage('Authentication Successful', 'Return to the CLI.')"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "pages drop their closing line",
+      "find": "<p>${message}</p><p>You can close this window.</p>",
+      "replace": "<p>${message}</p>"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "a state mismatch is reported with another reason",
+      "find": "retryPage('Invalid state parameter.')",
+      "replace": "retryPage('Bad state.')"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "a state mismatch answers 200",
+      "find": "respond(res, 400, retryPage('Invalid state parameter.'))",
+      "replace": "respond(res, 200, retryPage('Invalid state parameter.'))"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "a missing result is reported with another reason",
+      "find": "retryPage('Missing OAuth result.')",
+      "replace": "retryPage('No result.')"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the error page is not escaped",
+      "find": "  return text.replace(HTML_SPECIALS_RE, ch => HTML_ENTITIES[ch] ?? ch)",
+      "replace": "  return text"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the error page joins code and description differently",
+      "find": "`${escapeHtml(result.error)}: ${escapeHtml(result.errorDescription)}`",
+      "replace": "`${escapeHtml(result.error)} - ${escapeHtml(result.errorDescription)}`"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "an error without description gets a dangling separator",
+      "find": "        : escapeHtml(result.error)",
+      "replace": "        : `${escapeHtml(result.error)}: `"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "an error from the authorization server does not end the sign-in",
+      "find": "        waiter.reject(new Error(result.message)),",
+      "replace": "        waiter.resolve('denied'),"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the authorization code from the browser is never handed back",
+      "find": "respond(res, 200, SUCCESS_PAGE, () => waiter.resolve(result.code))",
+      "replace": "respond(res, 200, SUCCESS_PAGE)"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the port-in-use message loses its hint",
+      "find": " Run \\`lsof -ti:${requestedPort} -sTCP:LISTEN\\` to find it.`",
+      "replace": "`"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "other listen failures lose their prefix",
+      "find": "throw new Error(`OAuth callback server failed: ${errorMessage(error)}`)",
+      "replace": "throw error"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the configured callback port is ignored",
+      "find": "  if (configured) return configured",
+      "replace": "  void configured"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the environment callback port is ignored",
+      "find": "  if (Number.isInteger(fromEnv) && fromEnv > 0 && fromEnv <= MAX_PORT) return fromEnv",
+      "replace": "  void fromEnv"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "an out-of-range environment port is used anyway",
+      "find": "fromEnv > 0 && fromEnv <= MAX_PORT",
+      "replace": "fromEnv > 0"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the redirect URI uses the IP instead of localhost",
+      "find": "`http://localhost:${callback.port}${CALLBACK_PATH}`",
+      "replace": "`http://127.0.0.1:${callback.port}${CALLBACK_PATH}`"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "a sign-in reuses the stale stored entry",
+      "find": "  clearServerTokensFromSecureStorage(serverName, serverConfig)",
+      "replace": "  void 0"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the cached step-up scope is not asked for",
+      "find": "scope: carried.stepUpScope })",
+      "replace": "scope: undefined })"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the metadata scope is not requested",
+      "find": "    if (metadata) provider.setMetadata(metadata)",
+      "replace": "    void metadata"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "an unusable configured metadata URL stops the sign-in",
+      "find": "    logMCPDebug(serverName, `Metadata discovery before sign-in failed: ${errorMessage(error)}`)\n    return undefined",
+      "replace": "    throw error"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "SDK failures lose their prefix",
+      "find": "throw new Error(`SDK auth failed: ${errorMessage(error)}`, { cause: error })",
+      "replace": "throw error"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "an already aborted signal is not checked up front",
+      "find": "  if (abortSignal?.aborted) throw new AuthenticationCancelledError()\n\n  const callback",
+      "replace": "  const callback"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "an abort during discovery still goes on to auth()",
+      "find": "    if (abortSignal?.aborted) throw new AuthenticationCancelledError()\n    options?.onWaitingForCallback",
+      "replace": "    options?.onWaitingForCallback"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "aborting while waiting is not reported as a cancellation",
+      "find": "const cancel = (): void => callback.fail(new AuthenticationCancelledError())",
+      "replace": "const cancel = (): void => callback.fail(new Error(\"aborted\"))"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the callback server stays up after the sign-in",
+      "find": "    callback.close()",
+      "replace": "    void callback"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "the paste submitter is never handed out",
+      "find": "    options?.onWaitingForCallback?.(url => callback.submit(url))",
+      "replace": "    void options"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "a pasted code is ignored",
+      "find": "      waiter.resolve(result.code)\n    } else if",
+      "replace": "      void waiter\n    } else if"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "a pasted error is taken as a code",
+      "find": "      waiter.reject(new Error(result.message))\n    } else {",
+      "replace": "      waiter.resolve(\"pasted-error\")\n    } else {"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "exchange failures are wrapped instead of propagated",
+      "find": "    await sdkAuth(provider, { ...authOptions, authorizationCode })",
+      "replace": "    await sdkAuth(provider, { ...authOptions, authorizationCode }).catch((e: unknown) => { throw new Error(String(e)) })"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "any WWW-Authenticate scope marks a step-up",
+      "find": "if (error === 'insufficient_scope' && scope) provider.markStepUpPending(scope)",
+      "replace": "if (scope) provider.markStepUpPending(scope)"
+    },
+    {
+      "source": "src/mcp/auth/oauthFlow.ts",
+      "name": "a step-up is detected on any error status",
+      "find": "    if (response.status === 403) {",
+      "replace": "    if (response.status >= 400) {"
+    }
+  ]
+}

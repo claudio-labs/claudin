@@ -142,13 +142,13 @@ describe('what the provider advertises', () => {
     expect(store.read()).toEqual(before)
   })
 
-  test('DEFECT: invalidating the verifier is a no-op while the server has no stored entry', async () => {
-    // The early returns for a missing store entry run before the switch, so
-    // the in-memory verifier survives an SDK request to drop it.
+  test('FIXED: invalidating the verifier drops it even while the server has no stored entry', async () => {
+    // Was a defect: the early return for a missing store entry ran before the
+    // switch, so the in-memory verifier survived an SDK request to drop it.
     const provider = new ClaudeAuthProvider('docs', http('https://mcp.test/mcp'))
     await provider.saveCodeVerifier('verifier-1')
     await provider.invalidateCredentials('verifier')
-    expect(await provider.codeVerifier()).toBe('verifier-1')
+    await expect(provider.codeVerifier()).rejects.toThrow('No code verifier saved')
   })
 })
 

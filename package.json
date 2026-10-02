@@ -147,7 +147,6 @@
     "vscode-languageserver-protocol": "3.18.4",
     "wrap-ansi": "10",
     "ws": "^8.21.0",
-    "xss": "1.0.15",
     "yaml": "^2.9.0",
     "zod": "4.6.5"
   },
