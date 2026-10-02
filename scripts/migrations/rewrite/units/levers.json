@@ -1,0 +1,26 @@
+{
+  "levers/headless-print": {
+    "files": ["src/platform/headless/print/streamingContext.ts", "src/platform/headless/print/controlLoop.ts", "src/platform/headless/print/sessionLoad.ts", "src/platform/headless/print/mcpRuntime.ts", "src/platform/headless/print/settingsControlHandlers.ts"]
+  },
+  "levers/headless-io": {
+    "files": ["src/platform/headless/remoteIO.ts", "src/platform/headless/handlers/auth.ts", "src/platform/config/managedEnv.ts", "src/permissions/toolPermission/handlers/interactiveHandler.ts"]
+  },
+  "levers/boot": {
+    "files": ["src/platform/entrypoints/cli.tsx", "src/platform/entrypoints/init.ts", "src/platform/main/preActionHook.ts", "src/platform/main/registerSubcommands.ts", "src/platform/main/action/trustAndOnboarding.ts", "src/platform/main/defaultAction/resume.ts", "src/terminal/dialogLaunchers.tsx"]
+  },
+  "levers/settings": {
+    "files": ["src/platform/settings/settings.ts", "src/platform/settings/ui/Config.tsx"]
+  },
+  "levers/tasks": {
+    "files": ["src/agent/tasks.ts", "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx", "src/agent/tasks/LocalShellTask/LocalShellTask.tsx", "src/agent/ui/tasks/BackgroundTask.tsx", "src/agent/ui/tasks/BackgroundTasksDialog.tsx", "src/agent/ui/WorkflowMultiselectDialog.tsx", "src/tools/TaskOutputTool/TaskOutputTool.tsx"]
+  },
+  "levers/agent-tool": {
+    "files": ["src/tools/AgentTool/AgentTool.tsx", "src/agent/plans/plans.ts", "src/commands/clear/caches.ts", "src/commands/rename/rename.ts"]
+  },
+  "levers/repl": {
+    "files": ["src/agent/repl/REPL.tsx", "src/agent/repl/controllers/useOnSubmit.ts"]
+  },
+  "levers/prompt-input": {
+    "files": ["src/terminal/prompt-input/PromptInput.tsx", "src/terminal/prompt-suggestion/promptSuggestion.ts", "src/terminal/prompt-suggestion/usePromptSuggestion.ts", "src/terminal/spinner/Spinner.tsx"]
+  }
+}

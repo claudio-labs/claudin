@@ -134,8 +134,13 @@ per-method rewrite fills in. Before the change:
    - a list of files checks those files.
 3. Each new test is a characterization of the public contract. Prove it with
    `scripts/migrations/break-probe.ts`, using a spec at
-   `scripts/migrations/probes/levers-<group>.json`.
+   `scripts/migrations/probes/rewrite-levers-<group>.json`.
 4. The tests are committed as `test(<slice>): pin … before …`, ahead of the change.
+
+The groups are units in `scripts/migrations/rewrite/units/levers.json`. They
+are covered in parallel like rewrite units: a `char` sandbox each
+(`sandbox.ts char levers/<group>`), an agent briefed with
+[briefs/cover.md](briefs/cover.md), and `land.ts` to bring the tests back.
 
 The target is per file, not only per changed line. The user set that on
 2026-10-02. It replaces an earlier rule that checked only the lines that change.
