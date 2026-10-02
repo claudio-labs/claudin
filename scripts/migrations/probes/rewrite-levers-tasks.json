@@ -1,0 +1,233 @@
+{
+  "test": [
+    "src/agent/tasks.characterization.test.ts",
+    "src/agent/tasks/LocalAgentTask/LocalAgentTask.characterization.test.ts",
+    "src/agent/tasks/LocalShellTask/LocalShellTask.characterization.test.ts",
+    "src/agent/ui/tasks/BackgroundTask.characterization.test.tsx",
+    "src/agent/ui/tasks/BackgroundTasksDialog.characterization.test.tsx",
+    "src/agent/ui/WorkflowMultiselectDialog.characterization.test.tsx",
+    "src/tools/TaskOutputTool/TaskOutputTool.characterization.test.tsx"
+  ],
+  "source": "src/agent/tasks.ts",
+  "probes": [
+    {
+      "name": "tasks: lookup matches on the type",
+      "find": "return getAllTasks().find(t => t.type === type)",
+      "replace": "return getAllTasks().find(t => t.type !== type)"
+    },
+    {
+      "name": "tasks: the shell is listed first",
+      "find": "    LocalShellTask,\n    LocalAgentTask,\n",
+      "replace": "    LocalAgentTask,\n    LocalShellTask,\n"
+    },
+    {
+      "name": "tasks: the dream task is registered",
+      "find": "    DreamTask,\n  ]",
+      "replace": "  ]"
+    },
+
+    {
+      "name": "agent progress: StructuredOutput stays out of the activity list",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "if (content.name !== SYNTHETIC_OUTPUT_TOOL_NAME) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "agent progress: five recent activities at most",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "while (tracker.recentActivities.length > MAX_RECENT_ACTIVITIES) {",
+      "replace": "while (tracker.recentActivities.length > MAX_RECENT_ACTIVITIES + 1) {"
+    },
+    {
+      "name": "agent progress: output tokens accumulate",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "tracker.cumulativeOutputTokens += usage.output_tokens;",
+      "replace": "tracker.cumulativeOutputTokens = usage.output_tokens;"
+    },
+    {
+      "name": "agent notice: a second notice is dropped",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "    if (task.notified) {\n      return task;\n    }\n    shouldEnqueue = true;",
+      "replace": "    shouldEnqueue = true;"
+    },
+    {
+      "name": "agent mailbox: take keeps the unselected messages",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "const taken = task.pendingMessages.filter(keep);",
+      "replace": "const taken = task.pendingMessages;"
+    },
+    {
+      "name": "agent foreground: backgrounding twice is refused",
+      "source": "src/agent/tasks/LocalAgentTask/LocalAgentTask.tsx",
+      "find": "  if (!isLocalAgentTask(task) || task.isBackgrounded) {\n    return false;\n  }",
+      "replace": "  if (!isLocalAgentTask(task)) {\n    return false;\n  }"
+    },
+
+    {
+      "name": "shell prompt detection: only the last line counts",
+      "source": "src/agent/tasks/LocalShellTask/LocalShellTask.tsx",
+      "find": "const lastLine = tail.trimEnd().split('\\n').pop() ?? '';",
+      "replace": "const lastLine = tail;"
+    },
+    {
+      "name": "shell watchdog: 45 s of silence",
+      "source": "src/agent/tasks/LocalShellTask/LocalShellTask.tsx",
+      "find": "if (Date.now() - lastGrowth < STALL_THRESHOLD_MS) return;",
+      "replace": "if (Date.now() - lastGrowth < STALL_THRESHOLD_MS * 2) return;"
+    },
+    {
+      "name": "shell watchdog: monitors are not watched",
+      "source": "src/agent/tasks/LocalShellTask/LocalShellTask.tsx",
+      "find": "  if (kind === 'monitor') return () => {};\n",
+      "replace": ""
+    },
+    {
+      "name": "shell notice: the failed summary names the exit code",
+      "source": "src/agent/tasks/LocalShellTask/LocalShellTask.tsx",
+      "find": "` with exit code ${exitCode}`",
+      "replace": "` (exit ${exitCode})`"
+    },
+    {
+      "name": "shell foreground: the main session is not a foreground task",
+      "source": "src/agent/tasks/LocalShellTask/LocalShellTask.tsx",
+      "find": "if (isLocalAgentTask(task) && !task.isBackgrounded && !isMainSessionTask(task)) {",
+      "replace": "if (isLocalAgentTask(task) && !task.isBackgrounded) {"
+    },
+    {
+      "name": "shell in-place background: the notice carries the row's agent",
+      "source": "src/agent/tasks/LocalShellTask/LocalShellTask.tsx",
+      "find": "enqueueShellNotification(taskId, description, finalStatus, result.code, setAppState, toolUseId, undefined, agentId);",
+      "replace": "enqueueShellNotification(taskId, description, finalStatus, result.code, setAppState, toolUseId, undefined, undefined);"
+    },
+
+    {
+      "name": "row: a monitor shell shows its description",
+      "source": "src/agent/ui/tasks/BackgroundTask.tsx",
+      "find": "const t1 = task.kind === \"monitor\" ? task.description : task.command;",
+      "replace": "const t1 = task.command;"
+    },
+    {
+      "name": "row: a workflow prefers its name, then its summary",
+      "source": "src/agent/ui/tasks/BackgroundTask.tsx",
+      "find": "const t1 = task.workflowName ?? task.summary ?? task.description;",
+      "replace": "const t1 = task.description;"
+    },
+    {
+      "name": "row: a dream counts files only while updating",
+      "source": "src/agent/ui/tasks/BackgroundTask.tsx",
+      "find": "t1 = task.phase === \"updating\" && n > 0 ?",
+      "replace": "t1 = n > 0 ?"
+    },
+    {
+      "name": "row: a teammate is shown as @name",
+      "source": "src/agent/ui/tasks/BackgroundTask.tsx",
+      "find": "t4 = <Text color={t5}>@{task.identity.agentName}</Text>;",
+      "replace": "t4 = <Text color={t5}>{task.identity.agentName}</Text>;"
+    },
+    {
+      "name": "row: 40 columns by default",
+      "source": "src/agent/ui/tasks/BackgroundTask.tsx",
+      "find": "const activityLimit = maxActivityWidth ?? 40;",
+      "replace": "const activityLimit = maxActivityWidth ?? 80;"
+    },
+
+    {
+      "name": "dialog: the spinner tree takes the teammates",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "const teammates = showSpinnerTree ? [] : sorted.filter(",
+      "replace": "const teammates = sorted.filter("
+    },
+    {
+      "name": "dialog: newest first within a status",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "return bTime - aTime;",
+      "replace": "return aTime - bTime;"
+    },
+    {
+      "name": "dialog: left closes the list",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "    if (e.key === 'left') {",
+      "replace": "    if (e.key === 'q') {"
+    },
+    {
+      "name": "dialog: back shows the list once a second task arrived",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "if (skippedListOnMount.current && allSelectableItems.length <= 1) {",
+      "replace": "if (skippedListOnMount.current) {"
+    },
+    {
+      "name": "dialog: the pointer follows a shrinking list",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "if (selectedIndex >= totalItems && totalItems > 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "dialog: up stops at the first row",
+      "source": "src/agent/ui/tasks/BackgroundTasksDialog.tsx",
+      "find": "setSelectedIndex(prev => Math.max(0, prev - 1))",
+      "replace": "setSelectedIndex(prev => prev - 1)"
+    },
+
+    {
+      "name": "task output: a live shell joins stdout and stderr",
+      "source": "src/tools/TaskOutputTool/TaskOutputTool.tsx",
+      "find": "output = [stdout, stderr].filter(Boolean).join('\\n');",
+      "replace": "output = stdout;"
+    },
+    {
+      "name": "task output: an agent answers with its final text",
+      "source": "src/tools/TaskOutputTool/TaskOutputTool.tsx",
+      "find": "const cleanResult = agentTask.result ? extractTextContent(agentTask.result.content, '\\n') : undefined;",
+      "replace": "const cleanResult = undefined;"
+    },
+    {
+      "name": "task output: a timeout carries the current state",
+      "source": "src/tools/TaskOutputTool/TaskOutputTool.tsx",
+      "find": "return finalState.tasks?.[taskId] as TaskState ?? null;",
+      "replace": "return null;"
+    },
+    {
+      "name": "task output: an abort stops the wait",
+      "source": "src/tools/TaskOutputTool/TaskOutputTool.tsx",
+      "find": "if (abortController?.signal.aborted) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "task output: exit code zero is still reported",
+      "source": "src/tools/TaskOutputTool/TaskOutputTool.tsx",
+      "find": "if (data.task.exitCode !== undefined && data.task.exitCode !== null) {",
+      "replace": "if (data.task.exitCode) {"
+    },
+    {
+      "name": "task output: other task types show the first 500 characters",
+      "source": "src/tools/TaskOutputTool/TaskOutputTool.tsx",
+      "find": "{task.output.slice(0, 500)}",
+      "replace": "{task.output.slice(0, 600)}"
+    },
+
+    {
+      "name": "workflow picker: an empty selection is refused",
+      "source": "src/agent/ui/WorkflowMultiselectDialog.tsx",
+      "find": "if (selectedValues.length === 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "workflow picker: Esc shows the error",
+      "source": "src/agent/ui/WorkflowMultiselectDialog.tsx",
+      "find": "    t3 = () => {\n      setShowError(true);\n    };",
+      "replace": "    t3 = () => {};"
+    },
+    {
+      "name": "workflow picker: changing the selection clears the error",
+      "source": "src/agent/ui/WorkflowMultiselectDialog.tsx",
+      "find": "    t2 = () => {\n      setShowError(false);\n    };",
+      "replace": "    t2 = () => {};"
+    },
+    {
+      "name": "workflow picker: the review workflow is offered",
+      "source": "src/agent/ui/WorkflowMultiselectDialog.tsx",
+      "find": "label: 'Claude Code Review - Automated code review on new PRs'",
+      "replace": "label: 'Code Review'"
+    }
+  ]
+}
