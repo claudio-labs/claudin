@@ -1,0 +1,186 @@
+{
+  "test": [
+    "src/platform/headless/print/controlLoop.characterization.test.ts",
+    "src/platform/headless/print/sessionLoad.characterization.test.ts",
+    "src/platform/headless/print/mcpRuntime.characterization.test.ts",
+    "src/platform/headless/print/settingsControlHandlers.characterization.test.ts",
+    "src/platform/headless/print/streamingContext.characterization.test.ts"
+  ],
+  "source": "src/platform/headless/print/controlLoop.ts",
+  "probes": [
+    {
+      "name": "controlLoop: end_session keeps reading stdin",
+      "find": "break // exits for-await → falls through to inputClosed=true drain below",
+      "replace": "// end_session no longer stops the loop"
+    },
+    {
+      "name": "controlLoop: max_thinking_tokens 0 no longer disables thinking",
+      "find": "options.thinkingConfig = { type: 'disabled' }",
+      "replace": "options.thinkingConfig = undefined"
+    },
+    {
+      "name": "controlLoop: cancel_async_message always claims a cancellation",
+      "find": "cancelled: removed.length > 0,",
+      "replace": "cancelled: true,"
+    },
+    {
+      "name": "controlLoop: a runtime duplicate user message is run again",
+      "find": "if (existsInSession || hasReceivedMessageUuid(messageUuid)) {",
+      "replace": "if (existsInSession) {"
+    },
+    {
+      "name": "controlLoop: initialize starts a turn with nothing queued",
+      "find": "if (hasCommandsInQueue()) {",
+      "replace": "if (!hasCommandsInQueue()) {"
+    },
+    {
+      "name": "controlLoop: stdin closing mid-turn closes the output too",
+      "find": "  if (!ctx.running) {\n    await ctx.closeOutput()",
+      "replace": "  if (ctx.running || !ctx.running) {\n    await ctx.closeOutput()"
+    },
+    {
+      "name": "sessionLoad: stream-json errors go to stderr as text",
+      "source": "src/platform/headless/print/sessionLoad.ts",
+      "find": "if (outputFormat === 'stream-json') {",
+      "replace": "if (outputFormat === 'json') {"
+    },
+    {
+      "name": "sessionLoad: --resume-session-at drops the named message",
+      "source": "src/platform/headless/print/sessionLoad.ts",
+      "find": "result.messages.slice(0, index + 1)",
+      "replace": "result.messages.slice(0, index)"
+    },
+    {
+      "name": "sessionLoad: --resume --fork-session takes the session id over",
+      "source": "src/platform/headless/print/sessionLoad.ts",
+      "find": "if (!options.forkSession && result.sessionId) {",
+      "replace": "if (result.sessionId) {"
+    },
+    {
+      "name": "sessionLoad: --continue --fork-session keeps the worktree",
+      "source": "src/platform/headless/print/sessionLoad.ts",
+      "find": "            ? { ...result, worktreeSession: undefined }",
+      "replace": "            ? result"
+    },
+    {
+      "name": "sessionLoad: the missing-session message loses its id",
+      "source": "src/platform/headless/print/sessionLoad.ts",
+      "find": "`No conversation found with session ID: ${parsedSessionId.sessionId}`",
+      "replace": "'No conversation found'"
+    },
+    {
+      "name": "sessionLoad: the CCR v2 worker model is not applied",
+      "source": "src/platform/headless/print/sessionLoad.ts",
+      "find": "setMainLoopModelOverride(metadata.model)",
+      "replace": "void metadata.model"
+    },
+    {
+      "name": "mcpRuntime: SDK servers get elicitation handlers",
+      "source": "src/platform/headless/print/mcpRuntime.ts",
+      "find": "if (connection.config.type === 'sdk') {",
+      "replace": "if (connection.config.type === 'sdk-never') {"
+    },
+    {
+      "name": "mcpRuntime: URL elicitations are sent as forms",
+      "source": "src/platform/headless/print/mcpRuntime.ts",
+      "find": "const mode = request.params.mode === 'url' ? 'url' : 'form'",
+      "replace": "const mode = 'form'"
+    },
+    {
+      "name": "mcpRuntime: a failed SDK server is never retried",
+      "source": "src/platform/headless/print/mcpRuntime.ts",
+      "find": "const hasFailedSdkClients = ctx.sdkClients.some(c => c.type === 'failed')",
+      "replace": "const hasFailedSdkClients = false"
+    },
+    {
+      "name": "mcpRuntime: concurrent server changes are no longer serialized",
+      "source": "src/platform/headless/print/mcpRuntime.ts",
+      "find": "ctx.mcpChangesPromise = ctx.mcpChangesPromise.then(doWork, doWork)",
+      "replace": "ctx.mcpChangesPromise = doWork()"
+    },
+    {
+      "name": "mcpRuntime: a dynamic server shadowed by an app server is listed twice",
+      "source": "src/platform/headless/print/mcpRuntime.ts",
+      "find": "...ctx.dynamicMcpState.clients.filter(c => !existingNames.has(c.name)),",
+      "replace": "...ctx.dynamicMcpState.clients,"
+    },
+    {
+      "name": "mcpRuntime: a plugin refresh drops the SDK-injected agents",
+      "source": "src/platform/headless/print/mcpRuntime.ts",
+      "find": "  const sdkAgents = ctx.currentAgents.filter(a => a.source === 'flagSettings')\n  ctx.currentAgents = [...freshAgentDefs.allAgents, ...sdkAgents]",
+      "replace": "  ctx.currentAgents = [...freshAgentDefs.allAgents]"
+    },
+    {
+      "name": "settingsControlHandlers: a seed at exactly the observed mtime is skipped",
+      "source": "src/platform/headless/print/settingsControlHandlers.ts",
+      "find": "if (diskMtime <= message.request.mtime) {",
+      "replace": "if (diskMtime < message.request.mtime) {"
+    },
+    {
+      "name": "settingsControlHandlers: seeds keep Windows line endings",
+      "source": "src/platform/headless/print/settingsControlHandlers.ts",
+      "find": ").replaceAll('\\r\\n', '\\n')",
+      "replace": ")"
+    },
+    {
+      "name": "settingsControlHandlers: a null flag setting is kept instead of removed",
+      "source": "src/platform/headless/print/settingsControlHandlers.ts",
+      "find": "if (merged[key as keyof typeof merged] === null) {",
+      "replace": "if (merged[key as keyof typeof merged] === 'never-null') {"
+    },
+    {
+      "name": "settingsControlHandlers: a numeric effort is reported as a value",
+      "source": "src/platform/headless/print/settingsControlHandlers.ts",
+      "find": "effort: typeof effort === 'string' ? effort : null,",
+      "replace": "effort: effort ?? null,"
+    },
+    {
+      "name": "settingsControlHandlers: a title reuses an aborted turn signal",
+      "source": "src/platform/headless/print/settingsControlHandlers.ts",
+      "find": "ctx.abortController && !ctx.abortController.signal.aborted",
+      "replace": "ctx.abortController"
+    },
+    {
+      "name": "settingsControlHandlers: a side question keeps the spent abort controller",
+      "source": "src/platform/headless/print/settingsControlHandlers.ts",
+      "find": "              abortController: createAbortController(),",
+      "replace": "              abortController: saved.toolUseContext.abortController,"
+    },
+    {
+      "name": "streamingContext: the output stream becomes reassignable",
+      "source": "src/platform/headless/print/streamingContext.ts",
+      "find": "  readonly output: Stream<StdoutMessage>",
+      "replace": "  output: Stream<StdoutMessage>"
+    },
+    {
+      "name": "streamingContext: a run phase is renamed",
+      "source": "src/platform/headless/print/streamingContext.ts",
+      "find": "  | 'finally_post_flush'",
+      "replace": "  | 'finally_after_flush'"
+    },
+    {
+      "name": "streamingContext: the run flag becomes read-only",
+      "source": "src/platform/headless/print/streamingContext.ts",
+      "find": "  running: boolean\n",
+      "replace": "  readonly running: boolean\n"
+    },
+    {
+      "name": "streamingContext: fallbackModel becomes optional",
+      "source": "src/platform/headless/print/streamingContext.ts",
+      "find": "  fallbackModel: string | undefined",
+      "replace": "  fallbackModel?: string | undefined"
+    },
+    {
+      "name": "streamingContext: the outcome flag becomes optional",
+      "source": "src/platform/headless/print/streamingContext.ts",
+      "find": "  sdkServersChanged: boolean\n",
+      "replace": "  sdkServersChanged?: boolean\n"
+    },
+    {
+      "name": "streamingContext: the envelope widens its request",
+      "source": "src/platform/headless/print/streamingContext.ts",
+      "find": "> & { request: R }",
+      "replace": "> & { request: R & { server_name: string } }"
+    }
+  ]
+}
