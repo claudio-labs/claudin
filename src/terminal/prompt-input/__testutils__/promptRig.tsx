@@ -101,12 +101,11 @@ export function useSandbox(): () => Sandbox {
       setCwdState(dirs.cwd)
       setOriginalCwd(dirs.original)
       setProjectRoot(dirs.project)
+      // Under bun test the save is an Object.assign onto one shared object, so
+      // a deleted key would survive into the next file; write undefined instead.
       saveGlobalConfig(c => {
         const next = { ...c } as Record<string, unknown>
-        for (const [field, value] of savedConfig) {
-          if (value === undefined) delete next[field]
-          else next[field] = value
-        }
+        for (const [field, value] of savedConfig) next[field] = value
         return next as typeof c
       })
       for (const [name, value] of saved) {
