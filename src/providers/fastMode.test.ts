@@ -108,7 +108,7 @@ function installCommonMocks(options?: {
 }
 
 afterEach(() => {
-  process.env = { ...originalEnv }
+  { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
 })
 
 // Re-pin every mocked module to its captured real namespace. Bun's

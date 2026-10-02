@@ -54,14 +54,14 @@ describe('Windows clipboard fallback', () => {
     installOscMocks()
     execFileNoThrowMock.mockClear()
     generateTempFilePathMock.mockClear()
-    process.env = { ...originalEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
     delete process.env['SSH_CONNECTION']
     delete process.env['TMUX']
     Object.defineProperty(process, 'platform', { value: 'win32' })
   })
 
   afterEach(() => {
-    process.env = { ...originalEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
     Object.defineProperty(process, 'platform', { value: originalPlatform })
   })
 
@@ -104,13 +104,13 @@ describe('clipboard path behavior remains stable', () => {
   beforeEach(() => {
     installOscMocks()
     execFileNoThrowMock.mockClear()
-    process.env = { ...originalEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
     delete process.env['SSH_CONNECTION']
     delete process.env['TMUX']
   })
 
   afterEach(() => {
-    process.env = { ...originalEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
     Object.defineProperty(process, 'platform', { value: originalPlatform })
   })
 

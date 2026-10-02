@@ -40,7 +40,7 @@ describe('getEarlySkipReason', () => {
   })
 
   afterEach(() => {
-    process.env = { ...originalEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
     Object.defineProperty(process.stdout, 'isTTY', {
       configurable: true,
       value: originalIsTTY,
@@ -147,7 +147,7 @@ describe('runStartupUpdateCheck — fail-open behavior', () => {
   })
 
   afterEach(() => {
-    process.env = { ...originalEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
     Object.defineProperty(process.stdout, 'isTTY', {
       configurable: true,
       value: originalIsTTY,
@@ -252,7 +252,7 @@ describe('runStartupUpdateCheck — gates, throttle, and CLAUDIN_FORCE_UPDATE_CH
   })
 
   afterEach(async () => {
-    process.env = { ...originalEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]; Object.assign(process.env, originalEnv) }
     Object.defineProperty(process.stdout, 'isTTY', {
       configurable: true,
       value: originalIsTTY,

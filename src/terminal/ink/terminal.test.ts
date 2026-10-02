@@ -31,7 +31,7 @@ describe('getInlineImageProtocol', () => {
 
   afterEach(() => {
     setIsTTY(origIsTTY)
-    process.env = { ...origEnv }
+    { for (const key of Object.keys(process.env)) if (!(key in origEnv)) delete process.env[key]; Object.assign(process.env, origEnv) }
   })
 
   test('returns null when stdout is not a TTY', () => {

@@ -40,13 +40,13 @@ async function importFresh() {
 }
 
 beforeEach(() => {
-  process.env = { ...ORIGINAL_ENV }
+  { for (const key of Object.keys(process.env)) if (!(key in ORIGINAL_ENV)) delete process.env[key]; Object.assign(process.env, ORIGINAL_ENV) }
   delete process.env.ENABLE_PROMPT_CACHING_1H_BEDROCK
   mockedProvider = 'firstParty'
 })
 
 afterEach(() => {
-  process.env = { ...ORIGINAL_ENV }
+  { for (const key of Object.keys(process.env)) if (!(key in ORIGINAL_ENV)) delete process.env[key]; Object.assign(process.env, ORIGINAL_ENV) }
 })
 
 afterAll(() => {
