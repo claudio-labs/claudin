@@ -8,34 +8,9 @@
   "source": "src/platform/lsp/LSPClient.ts",
   "probes": [
     {
-      "name": "client: a clean exit is not reported as a crash",
-      "find": "if (code !== 0 && code !== null && !isStopping) {",
-      "replace": "if (code !== null && !isStopping) {"
-    },
-    {
       "name": "client: initialize records the server capabilities",
       "find": "capabilities = result.capabilities",
       "replace": "capabilities = {}"
-    },
-    {
-      "name": "client: the server is told initialized",
-      "find": "await connection.sendNotification('initialized', {})",
-      "replace": "await connection.sendNotification('initialised', {})"
-    },
-    {
-      "name": "client: notification handlers queued before start are applied",
-      "find": "for (const { method, handler } of pendingHandlers) {",
-      "replace": "for (const { method, handler } of pendingHandlers.slice(1)) {"
-    },
-    {
-      "name": "client: a refused shutdown is kept as a start failure",
-      "find": "startFailed = true\n          startError = shutdownError",
-      "replace": "startFailed = false\n          startError = shutdownError"
-    },
-    {
-      "name": "client: the caller env reaches the child",
-      "find": "env: { ...subprocessEnv(), ...options?.env },",
-      "replace": "env: { ...subprocessEnv() },"
     },
     {
       "name": "instance: a successful start forgives earlier crashes",

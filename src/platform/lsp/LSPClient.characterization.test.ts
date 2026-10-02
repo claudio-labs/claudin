@@ -216,14 +216,17 @@ describe('stop', () => {
     expect(client.isInitialized).toBe(false)
   })
 
-  // Defect, pinned as-is: the refusal is kept as a start failure and nothing
-  // clears it, so the same client can be spawned again but never initialized.
-  test('after a refused shutdown the client cannot be initialized again', async () => {
+  // Fixed (was pinned as a defect): the refusal used to be kept as a start
+  // failure that nothing cleared, so the client could never initialize again.
+  test('after a refused shutdown the client can be started and initialized again', async () => {
     const client = await launchReady({ onShutdown: 'reject' })
     await client.stop().catch(() => {})
+    await expect(client.initialize(minimalInit('/'))).rejects.toThrow('LSP client not started')
     const { command, args } = fakeServerCommand()
     await client.start(command, args)
-    await expect(client.initialize(minimalInit('/'))).rejects.toThrow('shutdown refused by fake')
+    await client.initialize(minimalInit(dirs.make()))
+    expect(client.isInitialized).toBe(true)
+    expect(await client.sendRequest<unknown>('fake/echo', { round: 2 })).toEqual({ round: 2 })
   })
 })
 
@@ -245,10 +248,9 @@ describe('crash', () => {
     expect(crashes).toEqual([])
   })
 
-  // Defect, pinned as-is: the in-flight initialize does not settle when the
-  // server dies under it; only a later stop() (which disposes the connection)
-  // rejects it. Without a startupTimeout an owner awaiting it waits forever.
-  test('an exit during initialize reports a crash; the initialize settles only on stop', async () => {
+  // Fixed (was pinned as a defect): the in-flight initialize used to settle
+  // only on a later stop(), so an owner without a startupTimeout waited forever.
+  test('an exit during initialize reports a crash and rejects the initialize with it', async () => {
     const crashes: Error[] = []
     const client = await launch({ onInitialize: { exitWith: 3 } }, error => crashes.push(error))
     let settled: string | undefined
@@ -258,11 +260,9 @@ describe('crash', () => {
     )
     await eventually(() => crashes.length > 0, 3000, 'onCrash')
     expect(crashes.map(e => e.message)).toEqual(['LSP server fake crashed with exit code 3'])
-    await new Promise(resolve => setTimeout(resolve, 150))
-    expect(settled).toBeUndefined()
-    await expect(client.stop()).rejects.toThrow('Connection is closed')
     await initializing
-    expect(settled).toContain('connection got disposed')
+    expect(settled).toBe('LSP server fake crashed with exit code 3')
+    await expect(client.stop()).rejects.toThrow('Connection is closed')
   })
 
   test('a notification to a server that already exited is dropped without an error', async () => {
@@ -272,7 +272,10 @@ describe('crash', () => {
     await expect(client.sendNotification('custom/late', {})).resolves.toBeUndefined()
   })
 
-  test('an unreadable message poisons the client: every later call throws the parse error', async () => {
+  // Fixed (was pinned as a defect): one unreadable message used to make every
+  // later call throw the parse error while the client still reported itself
+  // initialized. The message is now dropped and the session carries on.
+  test('an unreadable message is dropped and every later call still works', async () => {
     const client = await launchReady()
     expect(await client.sendRequest<string>('fake/garbage', {})).toBe('after garbage')
     const later: Array<[string, () => unknown]> = [
@@ -290,7 +293,7 @@ describe('crash', () => {
         outcomes.push([label, /JSON/i.test((error as Error).message) ? 'parse error' : (error as Error).message])
       }
     }
-    expect(outcomes).toEqual(later.map(([label]) => [label, 'parse error']))
+    expect(outcomes).toEqual(later.map(([label]) => [label, 'ok']))
     expect(client.isInitialized).toBe(true)
   })
 

@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-02",
-  "capturedFrom": "2cc464afe344e32c8248867f919a9e088d3a9ae2",
-  "totals": { "claudeCode": 302062, "openclaude": 42767 },
+  "capturedFrom": "e1a8da4356c93ae48bd2e41078d43c2bc077d1ef",
+  "totals": { "claudeCode": 301703, "openclaude": 42767 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -1164,7 +1164,7 @@
     "src/platform/lifecycleHooks/ui/SelectHookMode.tsx": [89, 0],
     "src/platform/lifecycleHooks/ui/SelectMatcherMode.tsx": [123, 0],
     "src/platform/lifecycleHooks/ui/ViewHookMode.tsx": [175, 0],
-    "src/platform/lsp/LSPClient.ts": [371, 0],
+    "src/platform/lsp/LSPClient.ts": [12, 0],
     "src/platform/lsp/LSPDiagnosticRegistry.ts": [279, 0],
     "src/platform/lsp/LSPServerInstance.ts": [375, 0],
     "src/platform/lsp/LSPServerManager.ts": [329, 0],

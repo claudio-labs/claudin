@@ -1,0 +1,152 @@
+{
+  "test": [
+    "src/platform/lsp/LSPClient.characterization.test.ts",
+    "src/platform/lsp/LSPServerInstance.characterization.test.ts",
+    "src/platform/lsp/LSPServerManager.characterization.test.ts",
+    "src/platform/lsp/manager.characterization.test.ts",
+    "src/platform/lsp/LSPClient.test.ts"
+  ],
+  "source": "src/platform/lsp/LSPClient.ts",
+  "probes": [
+    {
+      "name": "a call before start no longer says the client is not started",
+      "find": "if (!session) throw new Error('LSP client not started')",
+      "replace": "if (!session) throw new Error('LSP client missing')"
+    },
+    {
+      "name": "a request before initialize is no longer refused locally",
+      "find": "    if (!current.initialized) throw new Error('LSP server not initialized')\n",
+      "replace": ""
+    },
+    {
+      "name": "initialize forgets the server capabilities",
+      "find": "    current.capabilities = result.capabilities\n",
+      "replace": ""
+    },
+    {
+      "name": "the server is never told initialized",
+      "find": "sendNotification('initialized', {})",
+      "replace": "sendNotification('initialised', {})"
+    },
+    {
+      "name": "initialize never marks the client initialized",
+      "find": "    current.initialized = !current.gone\n",
+      "replace": ""
+    },
+    {
+      "name": "the caller env is not laid over ours",
+      "find": "env: { ...subprocessEnv(), ...options.env },",
+      "replace": "env: { ...options.env },"
+    },
+    {
+      "name": "the caller cwd is ignored",
+      "find": "      cwd: options.cwd,\n",
+      "replace": ""
+    },
+    {
+      "name": "a spawn error no longer rejects start",
+      "find": "    child.once('error', reject)\n",
+      "replace": "    child.once('error', () => resolve(child))\n"
+    },
+    {
+      "name": "notification handlers registered before start are not applied",
+      "find": "      connection.onNotification(method, handler)\n",
+      "replace": ""
+    },
+    {
+      "name": "request handlers registered before start are not applied",
+      "find": "      connection.onRequest(method, handler)\n",
+      "replace": ""
+    },
+    {
+      "name": "notification handlers registered after start are not applied",
+      "find": "    session?.connection.onNotification(method, handler)\n",
+      "replace": ""
+    },
+    {
+      "name": "request handlers registered after start are not applied",
+      "find": "    session?.connection.onRequest(method, untyped)\n",
+      "replace": ""
+    },
+    {
+      "name": "stop keeps the session around",
+      "find": "    if (!current) return\n    session = undefined\n",
+      "replace": "    if (!current) return\n"
+    },
+    {
+      "name": "stop never sends shutdown",
+      "find": "current.connection.sendRequest('shutdown').then(() => true)",
+      "replace": "Promise.resolve(true)"
+    },
+    {
+      "name": "a server that leaves during shutdown makes stop hang or fail",
+      "find": "    current.exit.then(() => false),\n",
+      "replace": ""
+    },
+    {
+      "name": "an exit during stop is reported as a crash",
+      "find": "    session = undefined\n    current.stopping = true\n",
+      "replace": "    session = undefined\n"
+    },
+    {
+      "name": "closing a session does not kill its process",
+      "find": "    current.child.kill()\n",
+      "replace": ""
+    },
+    {
+      "name": "starting over a live session leaves the old process running",
+      "find": "    if (session) closeSession(session)\n",
+      "replace": ""
+    },
+    {
+      "name": "a crash is not reported",
+      "find": "      onCrash?.(error)\n",
+      "replace": ""
+    },
+    {
+      "name": "a clean exit is reported as a crash",
+      "find": "if (current.stopping || code === 0) {",
+      "replace": "if (current.stopping) {"
+    },
+    {
+      "name": "an exit leaves the client counting as initialized",
+      "find": "      current.gone = true\n      current.initialized = false\n      const error",
+      "replace": "      current.gone = true\n      const error"
+    },
+    {
+      "name": "a notification to a server that is gone throws",
+      "find": "    if (current.gone) {\n      logForDebugging",
+      "replace": "    if (current.gone && method === '') {\n      logForDebugging"
+    },
+    {
+      "name": "the crash message loses the exit code",
+      "find": "crashed with exit code ${code}",
+      "replace": "crashed"
+    },
+    {
+      "name": "a kill by signal is not named",
+      "find": "  if (signal !== null) return new Error(`LSP server ${serverName} was killed by ${signal}`)\n",
+      "replace": ""
+    },
+    {
+      "name": "fix 1: initialize no longer settles when the server dies under it",
+      "find": "    const result = await settleBeforeExit(\n      current,\n      current.connection.sendRequest<InitializeResult>('initialize', params),\n    )",
+      "replace": "    const result = await current.connection.sendRequest<InitializeResult>('initialize', params)"
+    },
+    {
+      "name": "a request in flight no longer settles when the server dies under it",
+      "find": "    return settleBeforeExit(current, current.connection.sendRequest<TResult>(method, params))",
+      "replace": "    return current.connection.sendRequest<TResult>(method, params)"
+    },
+    {
+      "name": "fix 2: a refused shutdown leaves the client on the dead session",
+      "find": "    session = undefined\n    current.stopping = true\n    try {\n      await shutdownGracefully(current)\n",
+      "replace": "    current.stopping = true\n    try {\n      await shutdownGracefully(current)\n      session = undefined\n"
+    },
+    {
+      "name": "fix 3: an unreadable message poisons the connection",
+      "find": "    connection.onError(([error]) => {\n",
+      "replace": "    connection.onError(([error]) => {\n      connection.dispose()\n"
+    }
+  ]
+}

@@ -251,17 +251,15 @@ describe('requests and notifications', () => {
     expect(flaky.attempts).toBe(5)
   }, 15000)
 
-  test('after an unreadable message the instance still looks healthy, but calls fail wrapped', async () => {
+  // Fixed in LSPClient (was pinned as a defect): calls used to fail with the
+  // parse error for good while isHealthy() still reported true.
+  test('after an unreadable message the instance is healthy and calls still work', async () => {
     const instance = instanceOf(configFor())
     await instance.start()
     await instance.sendRequest('fake/garbage', {})
     expect([instance.state, instance.isHealthy()]).toEqual(['running', true])
-    await expect(instance.sendNotification('custom/x', {})).rejects.toThrow(
-      /^LSP notification 'custom\/x' failed for server 'fake': .*JSON/i,
-    )
-    await expect(instance.sendRequest('fake/echo', {})).rejects.toThrow(
-      /^LSP request 'fake\/echo' failed for server 'fake': .*JSON/i,
-    )
+    await expect(instance.sendNotification('custom/x', {})).resolves.toBeUndefined()
+    expect(await instance.sendRequest<unknown>('fake/echo', { after: 'garbage' })).toEqual({ after: 'garbage' })
   })
 
   test('a notification reaches the running server', async () => {
