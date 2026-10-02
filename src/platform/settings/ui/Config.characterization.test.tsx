@@ -327,12 +327,12 @@ describe('a row stored in the global config', () => {
         if (row.seed) seedConfig(row.seed)
         if (row.inIdeTerminal) isSupportedTerminal.cache.set(undefined, true)
         const pane = await mount()
-        expect(getGlobalConfig()[row.key]).toEqual(row.stored[0])
+        expect(getGlobalConfig()[row.key] as unknown).toEqual(row.stored[0])
         await pane.pick(row.query)
         expect(pane.value(row.label)).toBe(row.shown[0])
         await pane.press(KEY.space)
         await pane.until(() => pane.value(row.label) === row.shown[1], `${row.label} to read ${row.shown[1]}`)
-        expect(getGlobalConfig()[row.key]).toEqual(row.stored[1])
+        expect(getGlobalConfig()[row.key] as unknown).toEqual(row.stored[1])
       },
       SLOW,
     )
