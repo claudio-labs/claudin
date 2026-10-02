@@ -29,4 +29,3 @@ export {
 } from 'src/memory/memdir/prompt/privateMemoryPrompt.js'
 export { buildMemoryPrompt } from 'src/memory/memdir/prompt/agentMemoryPrompt.js'
 export { loadMemoryPrompt } from 'src/memory/memdir/prompt/memoryPromptDispatch.js'
-export { isLeanMemoryPromptEnabled } from 'src/memory/memdir/switches/promptSwitches.js'

@@ -75,12 +75,6 @@
       "replace": "const MAX_TURN_INTERVAL = 5000"
     },
     {
-      "name": "prompt: CLAUDIN_LEAN_MEMORY_PROMPT off is ignored",
-      "source": "src/memory/memdir/switches/promptSwitches.ts",
-      "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_MEMORY_PROMPT)",
-      "replace": "return true"
-    },
-    {
       "name": "prompt: CLAUDIN_MEMORY_PAST_CONTEXT off is ignored",
       "source": "src/memory/memdir/switches/promptSwitches.ts",
       "find": "return !isEnvDefinedFalsy(process.env.CLAUDIN_MEMORY_PAST_CONTEXT)",

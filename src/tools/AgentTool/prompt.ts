@@ -13,6 +13,7 @@ import { EXPLORE_AGENT_TYPE } from 'src/tools/AgentTool/built-in/exploreAgent.js
 import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 
 function getToolsDescription(agent: AgentDefinition): string {
   const { tools, disallowedTools } = agent
@@ -38,7 +39,7 @@ function getToolsDescription(agent: AgentDefinition): string {
   return 'All tools'
 }
 
-/** What the Explore agent hands back, in every render that names it. */
+/** What the Explore agent hands back, in the full render (the compact one leaves it to Explore's listing line). */
 const EXPLORE_REPORT_NOTE =
   'it is read-only and quotes what it finds verbatim, with line numbers'
 
@@ -79,7 +80,12 @@ export function formatAgentLine(agent: AgentDefinition): string {
 function agentLine(agent: AgentDefinition, lean: boolean): string {
   const toolsDescription = getToolsDescription(agent)
   const whenToUse = (lean && agent.whenToUseLean) || agent.whenToUse
-  return `- ${agent.agentType}: ${whenToUse} (Tools: ${toolsDescription})`
+  // A denylist that takes the edit tools away says one thing to whoever picks
+  // the agent: it cannot change files.
+  const readOnly =
+    !agent.tools?.length &&
+    [FILE_EDIT_TOOL_NAME, FILE_WRITE_TOOL_NAME].every(t => agent.disallowedTools?.includes(t))
+  return `- ${agent.agentType}: ${whenToUse} (${readOnly ? 'read-only' : `Tools: ${toolsDescription}`})`
 }
 
 /**
@@ -149,6 +155,10 @@ export async function getPrompt(
  *
  * `exploreListed`: the built-in Explore agent is in the agent list, so a
  * codebase search goes to it rather than to a `readOnly` Code agent.
+ *
+ * Two things it leaves to others: the no-double-work rule is the system
+ * prompt's (buildAgentToolSection, every lane), and what Explore hands back
+ * is Explore's own listing line.
  */
 export function renderCompactAgentPrompt(
   backgroundHidden: boolean,
@@ -161,11 +171,11 @@ export function renderCompactAgentPrompt(
 An agent runs inline: its report comes back in the same turn. Pass \`run_in_background: true\` only when you have independent work meanwhile; you are notified when it finishes — don't read its \`output_file\` before that, and never predict its result. Give a background agent a short \`name\` so the user can see and steer it. Saying you launched an agent does nothing: only an ${AGENT_TOOL_NAME} call does, so emit the calls, then announce them.`
   return `Launch an agent for a complex, multi-step task. Available agent types are listed in <system-reminder> messages in the conversation.
 
-Reach for this when the task matches an available agent type, when you have independent work to run in parallel (several ${AGENT_TOOL_NAME} calls in one message — which is what the user asking for "parallel" means), or when answering would mean reading across several files: delegate it and you keep the conclusion, not the file dumps. For a lookup where you already know the file, symbol or value, search directly. Once you've delegated a search, don't also run it yourself.
+Reach for this when the task matches an available agent type, when you have independent work to run in parallel (several ${AGENT_TOOL_NAME} calls in one message — which is what the user asking for "parallel" means), or when answering would mean reading across several files: delegate it and you keep the conclusion, not the file dumps. For a lookup where you already know the file, symbol or value, search directly.
 
 - Omitting \`subagent_type\` forks you: the child inherits this whole conversation and re-reads it on every call it makes, so a fork costs more the deeper the session. A fresh agent (\`subagent_type: "Code"\` or a named one) starts from your prompt alone. Default to a fresh agent; fork only when the child needs what is in this conversation and a paragraph cannot carry it. Don't set \`model\` on a fork.
 - Brief a fresh agent like a colleague who hasn't seen this conversation: the goal, what you ruled out, scope, file paths and line numbers, an output-length cap. A fork's prompt is a directive: what to do, not the background. Never delegate understanding — "based on your findings, fix the bug" hands the synthesis to the agent.
-- Say whether you expect code or research${exploreListed ? `. To search this codebase, use \`subagent_type: "${EXPLORE_AGENT_TYPE}"\`: ${EXPLORE_REPORT_NOTE}. For other research` : '; for research'} pass \`readOnly: true\`, which removes the write tools and the repo-convention injection.
+- Say whether you expect code or research${exploreListed ? `. To search this codebase, use \`subagent_type: "${EXPLORE_AGENT_TYPE}"\`. For other research` : '; for research'} pass \`readOnly: true\`, which removes the write tools and the repo-convention injection.
 - The agent's final message comes back to you, not to the user — relay what matters. ${SEND_MESSAGE_TOOL_NAME} with its ID${backgroundHidden ? '' : ' or name'} continues it with its context.
 - \`isolation: "worktree"\` gives it a temporary git worktree, removed if it made no changes; otherwise its path and branch come back.
 - Give it a short (3-5 word) description. If an agent type says to use it proactively, do.${background}`

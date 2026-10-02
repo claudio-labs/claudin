@@ -1,0 +1,57 @@
+{
+  "source": "claude-code 2.1.284 via scripts/bench/ab/model-launch-capture.ts",
+  "capturedAt": "2026-09-29",
+  "model": "claude-sonnet-5-5",
+  "catalog": {
+    "display_name": "Sonnet 5.5",
+    "knowledge_cutoff": "June 2026",
+    "default_effort": "medium",
+    "fallback_3p": "claude-sonnet-5",
+    "pricing": "tier_2_10"
+  },
+  "request": {
+    "max_tokens": 128000,
+    "thinking": {
+      "type": "adaptive",
+      "display": "updates"
+    },
+    "context_management": {
+      "edits": [
+        {
+          "type": "clear_thinking_20251015",
+          "keep": "all"
+        }
+      ]
+    },
+    "betas": [
+      "claude-code-20250219",
+      "oauth-2025-04-20",
+      "interleaved-thinking-2025-05-14",
+      "thinking-token-count-2026-05-13",
+      "context-management-2025-06-27",
+      "prompt-caching-scope-2026-01-05",
+      "mid-conversation-system-2026-04-07",
+      "per-turn-control-2026-07-01",
+      "advisor-tool-2026-03-01",
+      "advanced-tool-use-2025-11-20",
+      "effort-2025-11-24",
+      "dangerous-tool-use-2026-09-03",
+      "thinking-binding-controls-2026-08-01",
+      "thinking-display-updates-2026-08-18",
+      "afk-mode-2026-01-31",
+      "extended-cache-ttl-2025-04-11",
+      "cache-diagnosis-2026-04-07"
+    ]
+  },
+  "thinkingReplay": {
+    "replayedThinking": 3,
+    "replayedWithSignature": 3,
+    "strippedMessage": 4,
+    "replays": {
+      "control": 200,
+      "binding-only": 200,
+      "strip": 200,
+      "strip+binding": 200
+    }
+  }
+}

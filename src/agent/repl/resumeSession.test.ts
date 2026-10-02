@@ -366,6 +366,31 @@ describe('resumeSession', () => {
     expect(calls.indexOf('stopForegroundWork')).toBeLessThan(calls.indexOf('switchSession'))
   })
 
+  test('a switch that keeps the work running says so to the foreground it stops', async () => {
+    calls.length = 0
+    const stop = mock((_keepRunning?: boolean) => {
+      calls.push('stopForegroundWork')
+    })
+
+    await resumeSession(
+      SESSION_ID,
+      makeLog(),
+      'slash_command_picker',
+      makeDeps({ stopForegroundWork: stop }),
+      { keepRunning: true },
+    )
+    expect(stop).toHaveBeenCalledWith(true)
+
+    stop.mockClear()
+    await resumeSession(
+      SESSION_ID,
+      makeLog(),
+      'slash_command_picker',
+      makeDeps({ stopForegroundWork: stop }),
+    )
+    expect(stop).toHaveBeenCalledWith(undefined)
+  })
+
   test('fork entrypoint takes fork branch (no worktree restore)', async () => {
     calls.length = 0
     const deps = makeDeps()

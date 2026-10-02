@@ -5,12 +5,14 @@ import type {
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { createPatch } from 'diff'
-import { mkdir, writeFile } from 'fs/promises'
+import { appendFile, mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
+import { gzipSync } from 'zlib'
 import type { AgentId } from 'src/shared/types/ids.js'
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { djb2Hash } from 'src/shared/data/hash.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { logError } from 'src/shared/log.js'
 import { getClaudeTempDir } from 'src/platform/tmpdir.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
@@ -76,12 +78,17 @@ type PreviousState = {
    *  unchanged" for two 180k/250k re-bills in one session (2026-09-04). */
   msgHashes: number[]
   /** The rendered JSON behind each hash, kept so a mutation can be diffed
-   *  message-by-message. ~1 MB per tracked source at a 200k context. */
+   *  message-by-message. ~1 MB per tracked source at a 200k context, so it is
+   *  kept for the main thread only (see recordRenderedMessages). */
   msgJson: string[]
   pendingMessageMutation: MessageMutation | null
   /** How far the message marker moved on this request, in the API's lookback
    *  positions, and whether the lagging marker was placed to cover it. */
   pendingMarkerAdvance: MarkerAdvance | null
+  /** The thinking blocks the server dropped from the previous response's
+   *  request (readThinkingDrops). It drops them again on every later request
+   *  while their prefix stays changed, so only paths not in here are news. */
+  thinkingDropPaths: Set<string>
 }
 
 /** The first message whose rendered bytes changed behind the previous
@@ -117,6 +124,8 @@ export type MarkerAdvance = {
  *  not import the renderer. */
 const LOOKBACK_POSITIONS = 20
 
+const THINKING_DROP_MESSAGE_RE = /^messages\.(\d+)\./
+
 type PendingChanges = {
   systemPromptChanged: boolean
   toolSchemasChanged: boolean
@@ -148,16 +157,24 @@ type PendingChanges = {
 
 const previousStateBySource = new Map<string, PreviousState>()
 
-// Cap the number of tracked sources to prevent unbounded memory growth.
-// Each entry stores a ~300KB+ diffableContent string (serialized system prompt
-// + tool schemas). Without a cap, spawning many subagents (each with a unique
-// agentId key) causes the map to grow indefinitely.
-const MAX_TRACKED_SOURCES = 10
+// Cap the number of tracked sources to prevent unbounded memory growth: every
+// sub-agent keys on its own agentId. A finished agent's entry is dropped by
+// cleanupAgentTracking (runAgent.ts), so the cap bounds the LIVE set, and it
+// has to hold a fan-out. At 10, with eviction by insertion order, a batch of
+// 10–12 concurrent sub-agents evicted the main thread first, and every state
+// recreated after an eviction skips its next call: session 501d7261
+// (2026-09-28) put 9 of ~40 sub-agent rewrites on the `[Cache:]` line.
+// recordPromptState refreshes recency on every request, so the entry evicted
+// is the one that went quiet longest.
+const MAX_TRACKED_SOURCES = 32
 
 // Minimum absolute token drop required to trigger a cache break warning.
 // Small drops (e.g., a few thousand tokens) can happen due to normal variation
 // and aren't worth alerting on.
 const MIN_CACHE_MISS_TOKENS = 2_000
+
+/** System block 0 on the first-party lane (getAttributionHeader). */
+const BILLING_HEADER_PREFIX = 'x-anthropic-billing-header:'
 
 // Anthropic's server-side prompt cache TTL thresholds to test.
 // Cache breaks after these durations are likely due to TTL expiration
@@ -184,16 +201,28 @@ function stripCacheControl(
   })
 }
 
-/** A message's wire bytes minus the `cache_control` markers, which move
- *  every turn by design (defer-cache-marker) and are not a prefix change. */
-function stripMessageCacheControl(message: BetaMessageParam): unknown {
-  if (!Array.isArray(message.content)) return message
-  return {
-    ...message,
-    content: stripCacheControl(
-      message.content as unknown as ReadonlyArray<Record<string, unknown>>,
-    ),
-  }
+type WireBlock = Record<string, unknown> & { type?: string; content?: unknown }
+
+/**
+ * A message as the prompt cache sees it: the wire bytes minus the
+ * `cache_control` markers, which move every turn by design
+ * (defer-cache-marker), with a string `content` written as the one text block
+ * it stands for. addCacheBreakpoints turns the marked message's string into a
+ * block to carry the marker, and the next request sends a string again — the
+ * same prompt: count_tokens measured a user message and a tool_result either
+ * way at the same size, with no thinking dropped (2026-10-01), while one
+ * changed character drops it.
+ */
+export function canonicalWireMessage(message: BetaMessageParam): unknown {
+  const content =
+    typeof message.content === 'string'
+      ? [{ type: 'text', text: message.content }]
+      : (message.content as unknown as WireBlock[]).map(block =>
+          block.type === 'tool_result' && typeof block.content === 'string'
+            ? { ...block, content: [{ type: 'text', text: block.content }] }
+            : block,
+        )
+  return { ...message, content: stripCacheControl(content) }
 }
 
 function describeBlockTypes(message: BetaMessageParam): string {
@@ -301,8 +330,13 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
     const key = getTrackingKey(querySource, agentId)
     if (!key) return
 
+    // The billing header is not part of the cached prompt: a request whose
+    // header carried another fingerprint read the whole prefix back
+    // (2026-10-01), and the fingerprint does move between a session's first
+    // request and the next. Hashing it reported a system change that was not.
+    const cachedSystem = system.filter(b => !b.text.startsWith(BILLING_HEADER_PREFIX))
     const strippedSystem = stripCacheControl(
-      system as unknown as ReadonlyArray<Record<string, unknown>>,
+      cachedSystem as unknown as ReadonlyArray<Record<string, unknown>>,
     )
     const strippedTools = stripCacheControl(
       toolSchemas as unknown as ReadonlyArray<Record<string, unknown>>,
@@ -314,14 +348,14 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
     // scope flips (global↔org/none) and TTL flips (1h↔5m) that the stripped
     // hash can't see because the text content is identical.
     const cacheControlHash = computeHash(
-      system.map(b => ('cache_control' in b ? b.cache_control : null)),
+      cachedSystem.map(b => ('cache_control' in b ? b.cache_control : null)),
     )
     const toolNames = toolSchemas.map(t => ('name' in t ? t.name : 'unknown'))
     // Only compute per-tool hashes when the aggregate changed — common case
     // (tools unchanged) skips N extra jsonStringify calls.
     const computeToolHashes = () =>
       computePerToolHashes(strippedTools, toolNames)
-    const systemCharCount = getSystemCharCount(system)
+    const systemCharCount = getSystemCharCount(cachedSystem)
     const lazyDiffableContent = () =>
       buildDiffableContent(system, toolSchemas, model)
     const isFastMode = fastMode ?? false
@@ -364,10 +398,15 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         msgJson: [],
         pendingMessageMutation: null,
         pendingMarkerAdvance: null,
+        thinkingDropPaths: new Set(),
       })
       return
     }
 
+    // Least recently used goes first: re-insert so a Map's insertion order
+    // tracks the last request, not the first.
+    previousStateBySource.delete(key)
+    previousStateBySource.set(key, prev)
     prev.callCount++
 
     const systemPromptChanged = systemHash !== prev.systemHash
@@ -486,9 +525,24 @@ export function recordRenderedMessages(
     if (!state) return
 
     const msgJson = renderedMessages.map(m =>
-      jsonStringify(stripMessageCacheControl(m)),
+      jsonStringify(canonicalWireMessage(m)),
     )
     const msgHashes = msgJson.map(computeHash)
+    // The same request rendered again (a withRetry attempt) is not a new
+    // request: compared with itself it finds nothing, and recording that
+    // would erase the mutation the first render found. Same rule as the lag
+    // marker's retry (lagCacheMarker.ts).
+    if (
+      msgHashes.length === state.msgHashes.length &&
+      msgHashes.every((h, i) => h === state.msgHashes[i])
+    ) {
+      return
+    }
+    // A sub-agent's mutation is still named by index, role and block types;
+    // only the diff file loses its "before" side. Its JSON copy (~2 MB at a
+    // 500k context) times a fan-out's live set is memory the diagnosis does
+    // not need.
+    const keepJson = agentId === undefined
 
     let mutation: MessageMutation | null = null
     const comparable = Math.min(state.msgHashes.length, msgHashes.length)
@@ -508,10 +562,79 @@ export function recordRenderedMessages(
 
     state.pendingMessageMutation = mutation
     state.msgHashes = msgHashes
-    state.msgJson = msgJson
+    state.msgJson = keepJson ? msgJson : []
+    if (isCacheStrict()) reportStrictViolation(key, state, mutation)
   } catch (e: unknown) {
     logError(e)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Strict mode — CLAUDIN_CACHE_STRICT=1, off by default.
+//
+// Turns the request-side half of the detector into an assertion, for the
+// end-to-end suites and the benches that drive the built CLI: a request that
+// changes bytes the previous one sent — a message behind the tail, the system
+// prompt, the tools array — without a client mechanism having announced it
+// (notifyCacheDeletion: the relief clip) writes `[PROMPT CACHE STRICT] …` to
+// stderr, one line per offending request. The line is the signal, not the exit
+// code: headless ends through gracefulShutdown(0), which sets its own, and
+// src/shared/ may not import the detector to change it. A model switch is a
+// different cache and does not count; /clear and /compact reset the tracking.
+//
+// It needs no server: the verdict is on the bytes sent, not on a cache read
+// dropping, so it works against a mock that never reports one.
+// ---------------------------------------------------------------------------
+
+export const CACHE_STRICT_MARKER = '[PROMPT CACHE STRICT]'
+
+function isCacheStrict(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_CACHE_STRICT)
+}
+
+/** What a strict-mode request changed that it should not have, or null. */
+function describeStrictViolation(
+  changes: PendingChanges | null,
+  mutation: MessageMutation | null,
+  announced: boolean,
+): string | null {
+  if (announced || changes?.modelChanged) return null
+  const parts: string[] = []
+  if (mutation) {
+    let at = 0
+    while (at < mutation.prevJson.length && mutation.prevJson[at] === mutation.newJson[at]) at++
+    const around = (s: string) => JSON.stringify(s.slice(Math.max(0, at - 60), at + 100))
+    parts.push(
+      `messages mutated at ${mutation.index}/${mutation.total} (${mutation.role}: ${mutation.blockTypes})` +
+        (mutation.prevJson ? `: sent ${around(mutation.prevJson)}, resent ${around(mutation.newJson)}` : ''),
+    )
+  }
+  if (changes?.systemPromptChanged) {
+    parts.push(`system prompt changed (${changes.systemCharDelta >= 0 ? '+' : ''}${changes.systemCharDelta} chars)`)
+  }
+  if (changes?.toolSchemasChanged) {
+    const detail = [
+      ...changes.addedTools.map(t => `+${t}`),
+      ...changes.removedTools.map(t => `-${t}`),
+      ...changes.changedToolSchemas.map(t => `~${t}`),
+    ].join(' ')
+    parts.push(`tools changed${detail ? ` (${detail})` : ''}`)
+  }
+  return parts.length > 0 ? parts.join('; ') : null
+}
+
+function reportStrictViolation(
+  key: string,
+  state: PreviousState,
+  mutation: MessageMutation | null,
+): void {
+  const violation = describeStrictViolation(
+    state.pendingChanges,
+    mutation,
+    state.cacheDeletionsPending,
+  )
+  if (!violation) return
+  process.stderr.write(`${CACHE_STRICT_MARKER} [${key}] call #${state.callCount}: ${violation}\n`)
 }
 
 export function _getPendingMessageMutationForTesting(
@@ -614,6 +737,38 @@ function describeServerCacheMissReason(
       ? ` (${formatCompactNumber(tokens)} missed)`
       : ''
   return `server: ${reason.type.replaceAll('_', ' ')}${size}`
+}
+
+/**
+ * Paths of the thinking blocks the server dropped from this request, from
+ * `message_start.message.input_transformations` (`thinking_dropped`), e.g.
+ * `messages.193.content.0`. Opus 5.5 binds every thinking block to the bytes
+ * of system, tools and the messages before it; when those changed, a request
+ * carrying `block_binding: drop_block` gets the block — and every later one —
+ * dropped instead of a 400, and the cached prefix is written again from the
+ * first of them. It is the server's own account of a rewrite the client hash
+ * may not see. Empty for anything else.
+ */
+export function readThinkingDrops(message: unknown): string[] {
+  if (typeof message !== 'object' || message === null) return []
+  const transformations = (message as { input_transformations?: unknown })
+    .input_transformations
+  if (!Array.isArray(transformations)) return []
+  const paths: string[] = []
+  for (const t of transformations) {
+    if (typeof t !== 'object' || t === null) continue
+    const { type, path } = t as { type?: unknown; path?: unknown }
+    if (type === 'thinking_dropped' && typeof path === 'string') paths.push(path)
+  }
+  return paths
+}
+
+function describeThinkingDrops(paths: readonly string[]): string {
+  const first = Math.min(
+    ...paths.map(p => Number(THINKING_DROP_MESSAGE_RE.exec(p)?.[1] ?? Infinity)),
+  )
+  const where = Number.isFinite(first) ? ` from messages.${first}` : ''
+  return `server dropped ${paths.length} thinking block${paths.length === 1 ? '' : 's'}${where}`
 }
 
 /**
@@ -772,6 +927,7 @@ export async function checkResponseForCacheBreak(
   requestId?: string | null,
   contextManagement?: BetaContextManagementResponse | null,
   serverMissReason?: ServerCacheMissReason | null,
+  thinkingDropPaths: readonly string[] = [],
 ): Promise<void> {
   try {
     const key = getTrackingKey(querySource, agentId)
@@ -785,6 +941,15 @@ export async function checkResponseForCacheBreak(
     if (serverMissReason) {
       logForDebugging(
         `[PROMPT CACHE] ${describeServerCacheMissReason(serverMissReason)} [source=${querySource}]`,
+      )
+    }
+    const newThinkingDrops = thinkingDropPaths.filter(
+      p => !state.thinkingDropPaths.has(p),
+    )
+    state.thinkingDropPaths = new Set(thinkingDropPaths)
+    if (newThinkingDrops.length > 0) {
+      logForDebugging(
+        `[PROMPT CACHE] ${describeThinkingDrops(newThinkingDrops)} [source=${querySource}]`,
       )
     }
 
@@ -852,11 +1017,17 @@ export async function checkResponseForCacheBreak(
       messageMutation,
       markerAdvance,
     )
-    // The server's own diagnosis leads when the request asked for one: it is
-    // the one cause here that is not an inference.
-    const reason = serverMissReason
-      ? `${describeServerCacheMissReason(serverMissReason)}; ${clientReason}`
-      : clientReason
+    // The server's own account leads — its diagnosis when the request asked
+    // for one, and the thinking it dropped: the causes here that are not an
+    // inference.
+    const serverParts = [
+      ...(serverMissReason ? [describeServerCacheMissReason(serverMissReason)] : []),
+      ...(newThinkingDrops.length > 0 ? [describeThinkingDrops(newThinkingDrops)] : []),
+    ]
+    const reason =
+      serverParts.length > 0
+        ? `${serverParts.join('; ')}; ${clientReason}`
+        : clientReason
     // The `[Cache: …]` line is persisted to the transcript, so this is the
     // record that survives a session without `--debug`.
     recordCacheBreak(
@@ -883,7 +1054,18 @@ export async function checkResponseForCacheBreak(
     }
 
     const diffSuffix = diffPath ? `, diff: ${diffPath}` : ''
-    const summary = `[PROMPT CACHE BREAK] ${reason} [source=${querySource}, call #${state.callCount}, cache read: ${prevCacheRead} → ${cacheReadTokens}, creation: ${cacheCreationTokens}${diffSuffix}]`
+    const dumpStem = await writeWireBodyDump(key, {
+      at: new Date().toISOString(),
+      querySource,
+      requestId: requestId ?? null,
+      reason,
+      prevCacheRead,
+      cacheRead: cacheReadTokens,
+      cacheCreation: cacheCreationTokens,
+      gapMs: timeSinceLastAssistantMsg,
+    })
+    const dumpSuffix = dumpStem ? `, bodies: ${dumpStem}.{prev,cur}.json.gz` : ''
+    const summary = `[PROMPT CACHE BREAK] ${reason} [source=${querySource}, call #${state.callCount}, cache read: ${prevCacheRead} → ${cacheReadTokens}, creation: ${cacheCreationTokens}${diffSuffix}${dumpSuffix}]`
 
     logForDebugging(summary, { level: 'warn' })
 
@@ -935,14 +1117,103 @@ export function notifyCompaction(
 
 export function cleanupAgentTracking(agentId: AgentId): void {
   previousStateBySource.delete(agentId)
+  wireBodies.delete(agentId)
 }
 
 export function resetPromptCacheBreakDetection(): void {
   previousStateBySource.clear()
+  wireBodies.clear()
 }
 
 export function _getSourceCountForTesting(): number {
   return previousStateBySource.size
+}
+
+// ---------------------------------------------------------------------------
+// Break flight recorder — CLAUDIN_CACHE_BREAK_DUMP, off by default.
+//
+// The detector compares what the CLIENT rendered. A rewrite the server calls
+// `messages changed` while every client hash matched cannot be explained from
+// here: the 2026-09-26..28 census found them on the first request after a
+// long turn (a third of turns past 100 calls), with the prompt SHRINKING.
+// With the switch on, the last two wire bodies of each tracked key are kept as
+// the JSON that was sent, and every detected break writes both, gzipped, with
+// a line in `index.jsonl` — the pair a byte diff or a replay needs.
+//
+//   CLAUDIN_CACHE_BREAK_DUMP=1      <claude temp>/cache-break-dumps/
+//   CLAUDIN_CACHE_BREAK_DUMP=<dir>  that directory
+//
+// Costs one serialization of the body per request while on. The files hold
+// the whole conversation, so they are written owner-only.
+// ---------------------------------------------------------------------------
+
+const wireBodies = new Map<string, { previous: string | null; current: string }>()
+
+function cacheBreakDumpDir(): string | null {
+  const value = process.env.CLAUDIN_CACHE_BREAK_DUMP
+  if (!value || isEnvDefinedFalsy(value)) return null
+  return isEnvTruthy(value) ? join(getClaudeTempDir(), 'cache-break-dumps') : value
+}
+
+/** Pre-call, with the exact params about to be sent. */
+export function recordWireBody(
+  querySource: QuerySource,
+  agentId: AgentId | undefined,
+  body: unknown,
+): void {
+  if (cacheBreakDumpDir() === null) return
+  try {
+    const key = getTrackingKey(querySource, agentId)
+    if (!key) return
+    const json = jsonStringify(body)
+    const held = wireBodies.get(key)
+    // A retry re-sends the same body; rotating would lose the previous one.
+    if (held?.current === json) return
+    wireBodies.delete(key)
+    while (wireBodies.size >= MAX_TRACKED_SOURCES) {
+      const oldest = wireBodies.keys().next().value
+      if (oldest === undefined) break
+      wireBodies.delete(oldest)
+    }
+    wireBodies.set(key, { previous: held?.current ?? null, current: json })
+  } catch (e: unknown) {
+    logError(e)
+  }
+}
+
+async function writeWireBodyDump(
+  key: string,
+  entry: Record<string, unknown>,
+): Promise<string | undefined> {
+  const dir = cacheBreakDumpDir()
+  const bodies = wireBodies.get(key)
+  if (dir === null || !bodies?.previous) return undefined
+  try {
+    await mkdir(dir, { recursive: true, mode: 0o700 })
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const stem = join(dir, `${stamp}-${key.replace(/[^\w.-]/g, '_')}`)
+    const prev = `${stem}.prev.json.gz`
+    const cur = `${stem}.cur.json.gz`
+    await writeFile(prev, gzipSync(bodies.previous), { mode: 0o600 })
+    await writeFile(cur, gzipSync(bodies.current), { mode: 0o600 })
+    await appendFile(
+      join(dir, 'index.jsonl'),
+      `${jsonStringify({ ...entry, key, prev, cur })}\n`,
+      { mode: 0o600 },
+    )
+    return stem
+  } catch (e: unknown) {
+    logError(e)
+    return undefined
+  }
+}
+
+export function _getWireBodiesForTesting(
+  querySource: QuerySource,
+  agentId?: AgentId,
+): { previous: string | null; current: string } | undefined {
+  const key = getTrackingKey(querySource, agentId)
+  return key ? wireBodies.get(key) : undefined
 }
 
 async function writeCacheBreakDiff(

@@ -1,0 +1,46 @@
+{
+  "test": [
+    "src/agent/prompts/promptIdentity.test.ts",
+    "src/agent/prompts/__tests__/promptFeatureCoverage.test.ts",
+    "src/providers/transport/api.test.ts",
+    "src/tools/BashTool/prompt.test.ts"
+  ],
+  "source": "src/agent/prompts/prompts.ts",
+  "probes": [
+    {
+      "name": "the intro names Claudin again",
+      "find": "  return `\nYou are an interactive agent that helps users",
+      "replace": "  return `\nYou are Claudin, an open-source coding agent and CLI.\n\nYou are an interactive agent that helps users"
+    },
+    {
+      "name": "streaming.ts stops prepending the CLI prefix",
+      "source": "src/providers/shims/claude/streaming.ts",
+      "find": "      getCLISyspromptPrefix({\n        isNonInteractive: options.isNonInteractiveSession,\n        hasAppendSystemPrompt: options.hasAppendSystemPrompt,\n      }),\n",
+      "replace": ""
+    },
+    {
+      "name": "the user-context reminder gets its old preamble back",
+      "source": "src/providers/transport/api.ts",
+      "find": "content: `<system-reminder>\\n${sortedKeys",
+      "replace": "content: `<system-reminder>\\nAs you answer the user's questions, you can use the following context:\\n${sortedKeys"
+    },
+    {
+      "name": "the date goes out under a heading again",
+      "source": "src/providers/transport/api.ts",
+      "find": "key === 'currentDate' ? filtered[key]",
+      "replace": "key === 'currentDateX' ? filtered[key]"
+    },
+    {
+      "name": "the lean git body drops branch-first",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": " If on the default branch, branch first.",
+      "replace": ""
+    },
+    {
+      "name": "the full git body drops branch-first",
+      "source": "src/tools/BashTool/prompt.ts",
+      "find": " If you are on the default branch, create a branch first.",
+      "replace": ""
+    }
+  ]
+}

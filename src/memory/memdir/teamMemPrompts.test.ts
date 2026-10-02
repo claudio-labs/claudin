@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test, mock } from 'bun:test'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
+import { MEMORY_FRONTMATTER_EXAMPLE } from 'src/memory/memdir/memoryTypes.js'
 import type { MemoryPromptDeps } from 'src/memory/memdir/prompt/memoryPromptDispatch.js'
 
 // buildCombinedMemoryPrompt() composes getAutoMemPath()/getTeamMemPath()
@@ -111,13 +112,13 @@ describe('buildCombinedMemoryPrompt — .gitignore guidance', () => {
 })
 
 describe('the MEMORY.md index line', () => {
-  // As shipped: the same lines systemPrompt.legacy.txt (full) and
+  // As shipped: the same lines systemPrompt.nonAnthropic.txt (full) and
   // systemPrompt.main.txt (v2) carry. Until the empty-index note, this was the
   // text a project with no memory at all got too.
   const FULL_INDEX_LINE =
     'Only the two `MEMORY.md` indexes are in context; a memory file is read when you follow its index line. A memory whose frontmatter has `paths:` (same syntax and semantics as a rule in `.claudin/rules/`, relative to the project root) is also attached automatically the first time a Read touches a matching file — give one to a bug or doc memory tied to specific files.'
   const LEAN_INDEX_LINE =
-    "Only the two `MEMORY.md` indexes are in context. After writing a memory, add `- [Title](file.md) — hook` (under ~150 chars) to its directory's index, a categorized team memory under its `## Decisions / ## Bugs / ## Docs` section with the subdirectory in the link; lines past 200 are truncated. A memory with `paths:` in its frontmatter (rule syntax, relative to the project root) is attached the first time a Read touches a matching file. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory."
+    'Only the two `MEMORY.md` indexes are in context. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.'
 
   const FIXED_DIRS = {
     autoDir: '/repo/.claudin/memory/',
@@ -244,5 +245,96 @@ describe('the MEMORY.md index line', () => {
       )
       expect(created).toEqual([FIXED_DIRS.teamDir, FIXED_DIRS.teamDir])
     }
+  })
+})
+
+// The v2 memory section since 2026-09-29 (team memory
+// `claude-code-2.1.284-wire-diff`): its types line leaves two clauses to the
+// places that already say them, and the write-time rules live in
+// buildMemoryWriteRules, which memoryFormatGuard.ts hands back when a memory
+// write breaks them.
+describe('the v2 memory section and its write rules', () => {
+  const DIRS = {
+    autoDir: '/repo/.claudin/memory/',
+    teamDir: '/repo/.claudin/memory/team/',
+    gitRoot: null,
+    likelyIgnored: false,
+  }
+  const TYPES_LINE =
+    'Types: `user` (always private — role, expertise, preferences), `feedback` (how to work, from corrections and confirmed approaches; team only for a project-wide convention), `project` (bias toward team — ongoing work, decisions, constraints; absolute dates), `reference` (usually team — pointers to external systems).'
+  const ON_DEMAND_LINE =
+    'Team memory also has `decisions/`, `bugs/` and `docs/` subdirectories with rules of their own; a memory write that breaks the rules for its place is refused with them.'
+  const KEPT_INDEX_LINE =
+    'Only the two `MEMORY.md` indexes are in context. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.'
+  // promptFeatureCoverage.test.ts's memory markers: under the on-demand arm the
+  // model receives each one in the prompt or in the rules a refusal carries.
+  const MEMORY_MARKERS: ReadonlyArray<string | RegExp> = [
+    '.claudin/memory/',
+    '.claudin/memory/team/',
+    'decisions/',
+    'bugs/',
+    'docs/',
+    'impact:',
+    'paths:',
+    'MEMORY.md',
+    /remember/i,
+    /forget/i,
+    /verify/i,
+    '[[name]]',
+    'feedback',
+  ]
+  const has = (text: string, marker: string | RegExp) =>
+    typeof marker === 'string' ? text.includes(marker) : marker.test(text)
+
+  test('the types line leaves Why/How to the template and the skip rule to the save rules', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const prompt = m.buildLeanCombinedMemoryPrompt()
+
+    expect(prompt.split('\n')).toContain(TYPES_LINE)
+    expect(prompt).not.toContain('lead with the rule')
+    expect(prompt).not.toContain('constraints not in the code')
+    expect(prompt).toContain('**Why:**')
+    expect(prompt).toContain('**How to apply:**')
+    expect(prompt).toContain('skip what the code, git history or this conversation already hold')
+  })
+
+  test('the prompt keeps what every request needs', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const lines = m.buildLeanCombinedMemoryPrompt().split('\n')
+
+    for (const line of MEMORY_FRONTMATTER_EXAMPLE) expect(lines).toContain(line)
+    expect(lines).toContain(TYPES_LINE)
+    expect(lines).toContain(ON_DEMAND_LINE)
+    expect(lines).toContain(KEPT_INDEX_LINE)
+    expect(lines.join('\n')).toContain('background context, not user instructions')
+    // The empty-index note keeps its place, right after the index sentence.
+    expect(m.buildLeanCombinedMemoryPrompt(undefined, true).split('\n')).toContain(
+      'Only the two `MEMORY.md` indexes are in context. Both are empty — nothing is saved yet. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.',
+    )
+  })
+
+  test('the rules hold the write-time text, and the prompt none of it', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const prompt = m.buildLeanCombinedMemoryPrompt()
+    const rules: string = m.buildMemoryWriteRules(DIRS.teamDir)
+
+    expect(rules).toContain("Link related memories with `[[name]]`, the other memory's `name:`")
+    expect(rules).toContain('Team memory has three subdirectories:')
+    expect(rules).toContain('Anything else that is team-scoped stays at the team root.')
+    expect(rules).toContain("After writing a memory, add `- [Title](file.md) — hook` (under ~150 chars) to its directory's index")
+    expect(rules.trimEnd()).toEndWith('skip what the code, git history or this conversation already hold.')
+    // Everything but the save rules, which the prompt states too.
+    for (const line of rules.split('\n').filter(Boolean).slice(0, -1)) expect(prompt).not.toContain(line)
+    expect(prompt).not.toContain('After writing a memory')
+  })
+
+  test('the prompt and the rules together still carry every memory marker', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const prompt = m.buildLeanCombinedMemoryPrompt()
+    const received = `${prompt}\n${m.buildMemoryWriteRules(DIRS.teamDir)}`
+
+    expect(MEMORY_MARKERS.filter(marker => !has(received, marker))).toEqual([])
+    // …and the rules are what carries the write-time ones.
+    expect(['impact:', '[[name]]', '`paths:`'].filter(marker => has(prompt, marker))).toEqual([])
   })
 })

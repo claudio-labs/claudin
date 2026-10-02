@@ -1,0 +1,40 @@
+{
+  "test": [
+    "src/agent/cache/wirePrefix.e2e.test.ts",
+    "src/agent/prompts/systemPromptStability.invariant.test.ts"
+  ],
+  "build": true,
+  "source": "src/agent/query/toolResultMessages.ts",
+  "probes": [
+    {
+      "name": "the loop renders each tool message alone again (#273)",
+      "find": "  return message.type === 'user' || message.type === 'attachment'\n    ? [message]\n    : []\n",
+      "replace": "  return require('../messages/normalize.js')\n    .normalizeMessagesForAPI([message])\n    .filter((m: Message) => m.type === 'user')\n"
+    },
+    {
+      "name": "a system prompt section is recomputed on every request",
+      "source": "src/agent/prompts/systemPromptSections.ts",
+      "find": "      if (cache.has(s.name)) {\n",
+      "replace": "      if (false && cache.has(s.name)) {\n"
+    },
+    {
+      "name": "the environment change is never announced",
+      "source": "src/agent/attachments/pipeline.ts",
+      "find": "          Promise.resolve(getEnvDeltaAttachment(messages, toolUseContext)),\n",
+      "replace": "          Promise.resolve([]),\n"
+    },
+    {
+      "name": "the system prompt depends on the permission mode",
+      "source": "src/agent/prompts/prompts.ts",
+      "find": "      getLanguageSection(settings.language),\n",
+      "replace": "      getLanguageSection(settings.language) ?? (process.argv.includes('plan') ? '# Planning' : null),\n"
+    },
+    {
+      "name": "control: a tool's prompt text changes",
+      "expect": "green",
+      "source": "src/tools/EnterPlanModeTool/prompt.ts",
+      "find": "  return `Use this tool proactively when you're about to start a non-trivial implementation task.",
+      "replace": "  return `Use this tool proactively when you are about to start a non-trivial implementation task."
+    }
+  ]
+}

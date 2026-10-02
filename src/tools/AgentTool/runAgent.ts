@@ -16,6 +16,8 @@ import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
 import { cleanupAgentTracking } from 'src/providers/cache/promptCacheBreakDetection.js'
+import { cleanupLagMarkerKey } from 'src/providers/shims/claude/lagCacheMarker.js'
+import { cancelKeepAlive } from 'src/agent/cache/anthropic/keepAlive.js'
 import {
   connectToServer,
   fetchToolsForClient,
@@ -56,7 +58,7 @@ import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentModel, type AgentModelAlias } from 'src/providers/model/agent.js'
-import { modelSupportsEffort } from 'src/providers/effort/effort.js'
+import { getDefaultEffortForModel, modelSupportsEffort } from 'src/providers/effort/effort.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -67,7 +69,7 @@ import {
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
 import { buildSubagentPlanModeAttachment } from 'src/tools/AgentTool/subagentPlanMode.js'
-import { subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
+import { subagentEffort, subagentThinkingConfig } from 'src/tools/AgentTool/subagentThinking.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -539,11 +541,15 @@ export async function* runAgent({
       }
     }
 
-    // Override effort level if agent defines one
+    // Override effort level if agent defines one; otherwise the parent's, one
+    // level down when raised above its model's default (subagentThinking.ts).
     const effortValue =
       agentDefinition.effort !== undefined
         ? agentDefinition.effort
-        : state.effortValue
+        : subagentEffort(state.effortValue, {
+            useExactTools: useExactTools === true,
+            parentDefault: getDefaultEffortForModel(toolUseContext.options.mainLoopModel),
+          })
 
     if (
       toolPermissionContext === state.toolPermissionContext &&
@@ -931,6 +937,8 @@ export async function* runAgent({
     if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
       cleanupAgentTracking(agentId)
     }
+    cleanupLagMarkerKey(agentId)
+    cancelKeepAlive(agentId)
     // Release cloned file state cache memory
     agentToolUseContext.readFileState.clear()
     // Release the cloned fork context messages

@@ -44,7 +44,7 @@ import type { Output as ReadOutput } from 'src/tools/FileReadTool/schemas.js'
 // stayed.
 const CURRENT_DATE = createUserMessage({
   content:
-    "<system-reminder>\nAs you answer the user's questions, you can use the following context:\n# currentDate\nToday's date is 2026-09-23.\n</system-reminder>\n",
+    "<system-reminder>\nToday's date is 2026-09-23.\n</system-reminder>\n",
   isMeta: true,
 })
 
@@ -118,7 +118,6 @@ function finishedTurn(): Message[] {
       addedLines: ['- Code: General-purpose agent.'],
       removedTypes: [],
       isInitial: true,
-      showConcurrencyNote: true,
     }),
     attachment({ type: 'git_status_delta', content: 'Current branch: master\n\nStatus:\n(clean)' }),
     attachment({

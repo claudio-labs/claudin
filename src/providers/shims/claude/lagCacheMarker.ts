@@ -55,8 +55,11 @@ type LagState = {
 
 const stateByKey = new Map<string, LagState>();
 // Same cap as the break detector's previousStateBySource: sub-agents key on
-// their agentId, so a busy session would otherwise grow this forever.
-const MAX_TRACKED_KEYS = 10;
+// their agentId, so a busy session would otherwise grow this forever. A
+// finished agent's key is dropped by cleanupLagMarkerKey (runAgent.ts); the
+// cap bounds the live set and has to hold a fan-out of 10+ agents, and
+// remember() refreshes recency so the main thread is never the first out.
+const MAX_TRACKED_KEYS = 32;
 
 export function isLagMarkerEnabled(): boolean {
   return !isEnvTruthy(process.env.CLAUDIN_DISABLE_LAG_CACHE_MARKER);
@@ -167,7 +170,10 @@ export function countPositions(
 }
 
 function remember(key: string, state: LagState): void {
-  if (!stateByKey.has(key)) {
+  if (stateByKey.has(key)) {
+    // Re-insert so eviction goes by last use, not first.
+    stateByKey.delete(key);
+  } else {
     while (stateByKey.size >= MAX_TRACKED_KEYS) {
       const oldest = stateByKey.keys().next().value;
       if (oldest === undefined) break;
@@ -175,6 +181,11 @@ function remember(key: string, state: LagState): void {
     }
   }
   stateByKey.set(key, state);
+}
+
+/** A finished agent's key: its prefix will never be requested again. */
+export function cleanupLagMarkerKey(key: string): void {
+  stateByKey.delete(key);
 }
 
 export function _resetLagMarkerStateForTesting(): void {

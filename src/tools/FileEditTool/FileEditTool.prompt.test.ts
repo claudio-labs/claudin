@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test'
-import { buildEditToolDescription } from 'src/tools/FileEditTool/prompt.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
+import {
+  buildCompactEditToolDescription,
+  buildEditToolDescription,
+} from 'src/tools/FileEditTool/prompt.js'
+import { inputSchema } from 'src/tools/FileEditTool/types.js'
 
 type EditPrompt = typeof import('src/tools/FileEditTool/prompt.js')
 
@@ -88,6 +93,63 @@ describe('buildEditToolDescription under CLAUDIN_BASH_READ_CREDIT', () => {
       expect(on.buildEditToolDescription(lean)).toBe(
         buildEditToolDescription(lean).replace(READ_ONLY, READ_OR_CAT),
       )
+    }
+  })
+})
+
+describe('buildCompactEditToolDescription (v2)', () => {
+  const compact = buildCompactEditToolDescription()
+
+  it('states every rule of the full text', () => {
+    for (const rule of [
+      'Read the file in this conversation before editing',
+      'match the file exactly, including indentation',
+      'be unique',
+      'line number + arrow',
+      '`replace_all: true`',
+    ]) {
+      expect(compact).toContain(rule)
+    }
+  })
+
+  it('drops the gated guardrails and is shorter than the lean shape', () => {
+    for (const line of GATED) expect(compact).not.toContain(line)
+    expect(compact.length).toBeLessThan(buildEditToolDescription(true).length)
+  })
+
+  it('under CLAUDIN_BASH_READ_CREDIT a whole-file cat counts as the read', async () => {
+    const on = await loadEditPrompt(true)
+    expect(on.buildCompactEditToolDescription()).toContain(
+      'You must read the file first — with `Read`, or a Bash `cat` that printed it whole — or the call will fail.',
+    )
+    const off = await loadEditPrompt(false)
+    expect(off.buildCompactEditToolDescription()).toBe(compact)
+  })
+})
+
+// `then` is described once, by its own schema field: no description shape
+// repeats it (see the note in prompt.ts).
+describe('the Edit description and `then`', () => {
+  const SHAPES: Array<[string, string]> = [
+    ['compact', buildCompactEditToolDescription()],
+    ['verbose', buildEditToolDescription(false)],
+    ['lean', buildEditToolDescription(true)],
+  ]
+  const schema = JSON.stringify(zodToJsonSchema(inputSchema()))
+
+  it('no shape names `then`, while the schema field still describes itself', () => {
+    expect(schema).toContain('"then"')
+    expect(schema).toContain('the test, typecheck or build that checks it')
+    for (const [shape, text] of SHAPES) {
+      expect({ shape, namesThen: text.includes('`then`') }).toEqual({ shape, namesThen: false })
+    }
+  })
+
+  it('the description and the schema still name every capability', () => {
+    for (const [shape, description] of SHAPES) {
+      const text = `${description}\n${schema}`
+      const missing = ['old_string', 'new_string', 'replace_all'].filter(m => !text.includes(m))
+      expect({ shape, missing }).toEqual({ shape, missing: [] })
     }
   })
 })

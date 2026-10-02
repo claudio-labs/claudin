@@ -206,6 +206,8 @@ type PhaseOutcome = {
   stderrTail: string
   /** The ids of the model responses the CLI printed. */
   modelIds: string[]
+  /** `[PROMPT CACHE STRICT]` lines: a request that changed bytes an earlier one sent. */
+  strict: string[]
 }
 type ScenarioRun = {
   dir: string
@@ -749,6 +751,9 @@ function childEnv(configDir: string, flags: Record<string, string>): Record<stri
     DISABLE_AUTOUPDATER: '1',
     NO_PROXY: noProxy,
     no_proxy: noProxy,
+    // Every scenario is also a prompt-cache check: the detector reports a
+    // request that changed bytes an earlier one sent (promptCacheBreakDetection.ts).
+    CLAUDIN_CACHE_STRICT: '1',
     ...flags,
   }
 }
@@ -844,6 +849,7 @@ async function runScenario(s: Scenario, root: string): Promise<ScenarioRun> {
       result: result ? `${String(result.subtype)}, num_turns ${String(result.num_turns)}` : undefined,
       stderrTail: (out.stderr || out.stdout).slice(-400),
       modelIds: events.flatMap(e => (e.type === 'assistant' ? [isRecord(e.message) ? String(e.message.id) : '(no message)'] : [])),
+      strict: out.stderr.split('\n').filter(l => l.startsWith(CACHE_STRICT_MARKER)),
     })
     run.disk.push(Object.fromEntries(Object.keys({ ...FILES, ...s.files }).map(f => [f, readFileSync(join(run.ws, f), 'utf8')])))
   }
@@ -938,9 +944,22 @@ function report(s: Scenario, run: ScenarioRun): Expectation[] {
     }
   })
   for (const line of s.info?.(run) ?? []) console.log(`  info  ${line}`)
-  const checks = [...s.expect(run), servedByMock(run)]
+  const checks = [...s.expect(run), servedByMock(run), cacheKept(run)]
   for (const c of checks) console.log(`  ${c.ok ? 'PASS' : 'FAIL'}  ${c.label}${c.why ? ` — ${c.why}` : ''}`)
   return checks
+}
+
+/** CACHE_STRICT_MARKER in promptCacheBreakDetection.ts; its tests pin the value. */
+const CACHE_STRICT_MARKER = '[PROMPT CACHE STRICT]'
+
+/** No request re-sent different bytes for something an earlier request had sent. */
+function cacheKept(run: ScenarioRun): Expectation {
+  const lines = run.phases.flatMap(p => p.strict)
+  return {
+    label: 'every request re-sent the bytes the previous one sent (CLAUDIN_CACHE_STRICT)',
+    ok: lines.length === 0,
+    why: lines.length > 0 ? lines.join(' | ') : undefined,
+  }
 }
 
 const chosen = SCENARIOS.filter(s => ONLY.size === 0 || ONLY.has(s.key))

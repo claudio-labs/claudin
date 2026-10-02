@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import {
-  isLeanSystemPromptEnabled,
   isOneCallCommitEnabled,
   isOnePatchChangeEnabled,
   isResponseChainsEnabled,
@@ -13,7 +12,6 @@ import {
 const VARS = [
   'CLAUDIN_WORK_CONTRACT',
   'CLAUDIN_SUBAGENT_NOTES',
-  'CLAUDIN_LEAN_SYSTEM_PROMPT',
   'CLAUDIN_RESPONSE_CHAINS',
   'CLAUDIN_ONE_PATCH_CHANGE',
   'CLAUDIN_SUBAGENT_BATCHING',
@@ -27,7 +25,6 @@ afterEach(() => {
 const CASES: Array<{ name: (typeof VARS)[number]; fn: () => boolean }> = [
   { name: 'CLAUDIN_WORK_CONTRACT', fn: isWorkContractEnabled },
   { name: 'CLAUDIN_SUBAGENT_NOTES', fn: isSubagentNotesEnabled },
-  { name: 'CLAUDIN_LEAN_SYSTEM_PROMPT', fn: isLeanSystemPromptEnabled },
 ]
 
 // The request-count levers (2026-09-24) are the opposite shape: opt-in A/B
@@ -40,8 +37,8 @@ const OPT_IN: Array<{ name: (typeof VARS)[number]; fn: () => boolean }> = [
   { name: 'CLAUDIN_ONE_CALL_COMMIT', fn: isOneCallCommitEnabled },
 ]
 
-// Every toggle here is default-ON: the env can only subtract a section (or,
-// for CLAUDIN_LEAN_SYSTEM_PROMPT, restore the pre-v2 text), never add one.
+// Every toggle here is default-ON: the env can only subtract a section, never
+// add one.
 for (const { name, fn } of CASES) {
   describe(name, () => {
     test('defaults ON when unset', () => {

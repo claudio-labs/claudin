@@ -51,14 +51,8 @@ import { captureAPIRequest } from "src/shared/log.js";
 import {
   createAssistantAPIErrorMessage,
   createUserMessage,
-  ensureToolResultPairing,
   normalizeContentFromAPI,
-  normalizeMessagesForAPI,
-  stripAdvisorBlocks,
-  stripOldNarrationBlocks,
   stripOldThinkingBlocks,
-  stripCallerFieldFromAssistantMessage,
-  stripToolReferenceBlocksFromUserMessage,
 } from "src/agent/messages/messages.js";
 import {
   asSystemPrompt,
@@ -75,8 +69,6 @@ import {
   getAPIContextManagement,
 } from "src/agent/cache/anthropic/apiMicrocompact.js";
 import {
-  applyStableInputStubs,
-  applyStableStubs,
   getClipFrontierIndex,
   isClipFrontierEnabled,
 } from "src/agent/compact/stableStubState.js";
@@ -163,7 +155,6 @@ import {
   isToolSearchEnabled,
   maybeLatchLegacyDeferredAnnouncement,
 } from "src/agent/tools/toolSearch.js";
-import { API_MAX_MEDIA_PER_REQUEST } from "src/shared/constants/apiLimits.js";
 import { ADVISOR_BETA_HEADER } from "src/shared/constants/betas.js";
 import {
   formatDeferredToolLine,
@@ -199,8 +190,10 @@ import {
   CACHE_TTL_1HOUR_MS,
   checkResponseForCacheBreak,
   readServerCacheMissReason,
+  readThinkingDrops,
   recordPromptState,
   recordRenderedMessages,
+  recordWireBody,
   type ServerCacheMissReason,
   summarizeAppliedContextEdits,
 } from "src/providers/cache/promptCacheBreakDetection.js";
@@ -232,8 +225,8 @@ import { getAPIMetadata } from "src/providers/shims/claude/metadata.js";
 import {
   getPreviousMessageIdFromMessages,
   getPreviousRequestIdFromMessages,
-  stripExcessMediaItems,
 } from "src/providers/shims/claude/messageConverters.js";
+import { renderMessagesForAPI } from "src/providers/shims/claude/renderMessages.js";
 import { executeNonStreamingRequest } from "src/providers/shims/claude/nonStreamingRequest.js";
 import type { Options, TaskBudgetParam } from "src/providers/shims/claude/types.js";
 
@@ -476,90 +469,20 @@ export async function* queryModel(
 
 
   queryCheckpoint("query_message_normalization_start");
-  let messagesForAPI = normalizeMessagesForAPI(messages, filteredTools);
-  queryCheckpoint("query_message_normalization_end");
-
-  // Model-specific post-processing: strip tool-search-specific fields if the
-  // selected model doesn't support tool search.
-  //
-  // Why is this needed in addition to normalizeMessagesForAPI?
-  // - normalizeMessagesForAPI uses isToolSearchEnabledNoModelCheck() because it's
-  //   called from ~20 places (analytics, feedback, sharing, etc.), many of which
-  //   don't have model context. Adding model to its signature would be a large refactor.
-  // - This post-processing uses the model-aware isToolSearchEnabled() check
-  // - This handles mid-conversation model switching (e.g., Sonnet → Haiku) where
-  //   stale tool-search fields from the previous model would cause 400 errors
-  //
-  // Note: For assistant messages, normalizeMessagesForAPI already normalized the
-  // tool inputs, so stripCallerFieldFromAssistantMessage only needs to remove the
-  // 'caller' field (not re-normalize inputs).
-  if (!useToolSearch) {
-    messagesForAPI = messagesForAPI.map((msg) => {
-      switch (msg.type) {
-        case "user":
-          // Strip tool_reference blocks from tool_result content
-          return stripToolReferenceBlocksFromUserMessage(msg);
-        case "assistant":
-          // Strip 'caller' field from tool_use blocks
-          return stripCallerFieldFromAssistantMessage(msg);
-        default:
-          return msg;
-      }
-    });
-  }
-
-  // Repair tool_use/tool_result pairing mismatches that can occur when resuming
-  // remote/teleport sessions. Inserts synthetic error tool_results for orphaned
-  // tool_uses and strips orphaned tool_results referencing non-existent tool_uses.
-  messagesForAPI = ensureToolResultPairing(messagesForAPI);
-
-  // Apply stable stubs to tool_result blocks whose ids are in the per-session
-  // clipped set. No-op when the set is empty. Bytes are deterministic across
-  // turns so the prompt cache prefix stays stable after the first clip.
-  //
-  // Invariant: applyStableStubs MUST run after ensureToolResultPairing
-  // (so tool_use_ids are valid) and BEFORE addCacheBreakpoints places
-  // the cache_control marker. The stable bytes need to live inside the
-  // cached prefix.
-  messagesForAPI = applyStableStubs(messagesForAPI);
-  // Same contract for the tool_use INPUT side (Patch bodies, Write
-  // content, Agent briefs the relief policy clipped): wire-only, byte-stable,
-  // and before the frontier for the same reason.
-  messagesForAPI = applyStableInputStubs(messagesForAPI);
-
-  // Strip advisor blocks — the API rejects them without the beta header.
-  if (!betas.includes(ADVISOR_BETA_HEADER)) {
-    messagesForAPI = stripAdvisorBlocks(messagesForAPI);
-  }
-
-  // Client-side thinking/narration history redactions. Profile-gated: under
-  // the retain cache profile they are skipped entirely — their keep windows
-  // hold the last 2 assistant turns permanently mutable, pinning the clip
-  // frontier behind them and re-billing every big tool_result at 1.0× for 2
-  // turns before it can freeze, to save only ~50-200 tokens of text. Old
-  // thinking/narration is byte-stable when never stripped, so it freezes
-  // into the cached prefix and costs 0.1× thereafter.
+  // Every stage from the history to the cache markers lives in one pure
+  // function, so the prompt-cache invariant suites render exactly this.
   const historyRedactionActive = getCacheProfile().historyRedactionEnabled;
-  if (historyRedactionActive && getGlobalConfig().thinkingHistoryRedactionEnabled) {
-    messagesForAPI = stripOldThinkingBlocks(messagesForAPI, 2);
-  }
-  if (historyRedactionActive && getGlobalConfig().narrationHistoryRedactionEnabled) {
-    messagesForAPI = stripOldNarrationBlocks(messagesForAPI, 2);
-  }
-
-  // Strip excess media items before making the API call.
-  // The API rejects requests with >100 media items but returns a confusing error.
-  // Rather than erroring (which is hard to recover from in Cowork/CCD), we
-  // silently drop the oldest media items to stay within the limit.
-  const beforeMediaStrip = messagesForAPI;
-  messagesForAPI = stripExcessMediaItems(
-    messagesForAPI,
-    API_MAX_MEDIA_PER_REQUEST,
-  );
-  // Past the media cap, the strip rewrites the OLDEST media-bearing blocks
-  // turn by turn as new media arrives — image-bearing tool_results stop
-  // being byte-stable, and the clip frontier must treat them as mutable.
-  const mediaCapActive = messagesForAPI !== beforeMediaStrip;
+  const rendered = renderMessagesForAPI(messages, filteredTools, {
+    useToolSearch,
+    advisor: betas.includes(ADVISOR_BETA_HEADER),
+    stripOldThinking:
+      historyRedactionActive && !!getGlobalConfig().thinkingHistoryRedactionEnabled,
+    stripOldNarration:
+      historyRedactionActive && !!getGlobalConfig().narrationHistoryRedactionEnabled,
+  });
+  let messagesForAPI = rendered.messages;
+  const mediaCapActive = rendered.mediaCapActive;
+  queryCheckpoint("query_message_normalization_end");
 
 
   // Compute fingerprint from first user message for attribution.
@@ -1080,24 +1003,6 @@ export async function* queryModel(
     };
   };
 
-  // Scoped so the params built purely for the debug line are not kept alive
-  // alongside paramsFromContext's full closure (messagesForAPI, system,
-  // allTools, betas — the entire request-building context).
-  {
-    const queryParams = paramsFromContext({
-      model: options.model,
-      thinkingConfig,
-    });
-    const logThinkingType = queryParams.thinking?.type ?? "disabled";
-    // Observability for the reasoning-channel: if Anthropic-native requests
-    // ever stop opting into the `thinking` block, CoT can leak into visible
-    // text. Mirroring the [OpenAIShim] log style so regressions show up in
-    // CLAUDIN_DEBUG output without ad-hoc instrumentation.
-    logForDebugging(
-      `[Claude] thinking=${logThinkingType} model=${options.model}`,
-    );
-  }
-
   const newMessages: AssistantMessage[] = [];
   let ttftMs = 0;
   let partialMessage: BetaMessage | undefined = undefined;
@@ -1112,6 +1017,9 @@ export async function* queryModel(
   // The server's cache-miss diagnosis (cache-diagnosis beta), from
   // message_start or message_delta; handed to the break detector.
   let serverCacheMissReason: ServerCacheMissReason | null = null;
+  // The thinking blocks the server dropped from this request (message_start
+  // input_transformations); handed to the break detector.
+  let thinkingDropPaths: string[] = [];
   let didFallBackToNonStreaming = false;
   let fallbackMessage: AssistantMessage | undefined;
   let maxOutputTokens = 0;
@@ -1156,8 +1064,22 @@ export async function* queryModel(
         queryCheckpoint("query_client_creation_end");
 
         const params = paramsFromContext(context);
+        // Observability for the reasoning-channel: if Anthropic-native requests
+        // ever stop opting into the `thinking` block, CoT can leak into visible
+        // text. Read off the request being sent: a second paramsFromContext
+        // just for this line rendered every request twice, and the second
+        // render erased what the break detector had found in the first.
+        logForDebugging(
+          `[Claude] thinking=${params.thinking?.type ?? "disabled"} model=${params.model}`,
+        );
         captureAPIRequest(params, options.querySource); // Capture for bug reports
-        if (isCacheKeepAliveEnabled()) {
+        if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
+          recordWireBody(options.querySource, options.agentId, params);
+        }
+        // Agentic requests only: a side query (away summary, web search, a
+        // classifier) has no agentId and would take the main thread's key,
+        // replacing its body and pinging a one-shot prompt for 30 minutes.
+        if (isCacheKeepAliveEnabled() && isAgenticQuery) {
           const key = options.agentId ?? "main";
           noteRequestStarted(key);
           keepAliveCandidate = {
@@ -1337,6 +1259,7 @@ export async function* queryModel(
             usage = updateUsage(usage, part.message?.usage);
             serverCacheMissReason =
               readServerCacheMissReason(part.message) ?? serverCacheMissReason;
+            thinkingDropPaths = readThinkingDrops(part.message);
             break;
           }
           case "content_block_start":
@@ -1620,6 +1543,7 @@ export async function* queryModel(
           streamRequestId,
           appliedContextEdits,
           serverCacheMissReason,
+          thinkingDropPaths,
         );
       }
 

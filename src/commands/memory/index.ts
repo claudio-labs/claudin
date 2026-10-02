@@ -5,6 +5,7 @@ const memory: Command = {
   name: 'memory',
   description:
     'Browse and edit memory files; /memory private|team opens a directory, /memory tidy merges duplicates, /memory sort files team memories into decisions/bugs/docs',
+  argumentHint: '[tidy|sort|private|team]',
   load: () => import('src/commands/memory/memory.js'),
 }
 

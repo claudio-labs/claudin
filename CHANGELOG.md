@@ -1,5 +1,66 @@
 # Changelog
 
+## v1.1.40 — 2026-10-01
+
+### 🐛 Bug Fixes
+
+- fix(cache): guard the prompt-cache prefix and fix the breaks it found (#274) (6db71b82)
+- fix(cache): render skill attachments the same in-turn and next turn (#273) (7f2760bc)
+
+### 📚 Documentation
+
+- docs(memory): record two open bugs, #268 and the model-launch doc (#272) (6cd81577)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
+## v1.1.39 — 2026-09-30
+
+### ✨ Features
+
+- feat(patch): apply every hunk that matches and report the rest (#269) (ec848f3c)
+
+### 🐛 Bug Fixes
+
+- fix(prompts): ajust system and tool prompts  (#270) (6209ab39)
+
+### ⚡ Performance
+
+- perf(prompts): dedup the first request and drop the v2 killswitches (#271) (1325367b)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
+## v1.1.38 — 2026-09-29
+
+### ✨ Features
+
+- feat(sessions): keep a running turn going across /new and /resume (#268) (#268) (0dc5f216)
+- feat(providers): register claude sonnet 5.5 as the default sonnet tier (#267) (accf40ee)
+- feat(agents): point claudin-guide at the claudiolabs.ai docs (#262) (d614834f)
+
+### 🐛 Bug Fixes
+
+- fix(providers): align NO_PROXY matching with undici 8.11 (#265) (6c127ba6)
+
+### ⚡ Performance
+
+- perf(agents): step sub-agent effort down and fix relief over-clip (#266) (06abe257)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group with 2 updates (#263) (90ba7825)
+- chore(deps): bump the production-dependencies group with 13 updates (#264) (a883f9f2)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.37 — 2026-09-28
 
 ### ✨ Features

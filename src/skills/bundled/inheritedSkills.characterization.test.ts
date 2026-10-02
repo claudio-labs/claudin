@@ -245,7 +245,7 @@ describe('/update-config', () => {
   })
 
   test('registers for users and the model alike, pre-approving Read only', () => {
-    expectRegistration(registered('update-config'), { name: 'update-config', argumentHint: undefined, allowedTools: ['Read'], disableModelInvocation: false, hasWhenToUse: false })
+    expectRegistration(registered('update-config'), { name: 'update-config', argumentHint: '[what to configure]', allowedTools: ['Read'], disableModelInvocation: false, hasWhenToUse: false })
   })
 
   test('its description routes event-driven automation, permissions and env vars to it', () => {

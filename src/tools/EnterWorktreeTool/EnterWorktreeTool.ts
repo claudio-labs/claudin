@@ -1,6 +1,5 @@
 import { z } from 'zod/v4'
 import { getSessionId, setOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
@@ -119,8 +118,9 @@ export const EnterWorktreeTool: Tool<InputSchema, Output> = buildTool({
     setOriginalCwd(getCwd())
     void updateSessionCwd(getCwd())
     saveWorktreeState(worktreeSession)
-    // Clear cached system prompt sections so env_info_simple recomputes with worktree context
-    clearSystemPromptSections()
+    // The system prompt's Environment section stays as rendered: clearing it
+    // here rewrote the whole cached prefix. The next request announces the
+    // worktree at the tail instead (env_delta, src/agent/prompts/envDelta.ts).
     // Clear memoized caches that depend on CWD
     clearMemoryFileCaches()
     getPlansDirectory.cache.clear?.()

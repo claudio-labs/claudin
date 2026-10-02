@@ -1,0 +1,42 @@
+{
+  "test": ["src/commands/new"],
+  "source": "src/commands/new/newSession.ts",
+  "probes": [
+    {
+      "name": "a turn is handed to the background task before the conversation is cleared",
+      "source": "src/commands/new/newSession.ts",
+      "find": "      if (work.turnActive) await deps.backgroundTurn?.()\n",
+      "replace": "      if (work.turnActive) void deps.backgroundTurn?.()\n"
+    },
+    {
+      "name": "agents alone have no turn to hand over",
+      "source": "src/commands/new/newSession.ts",
+      "find": "      if (work.turnActive) await deps.backgroundTurn?.()\n",
+      "replace": "      await deps.backgroundTurn?.()\n"
+    },
+    {
+      "name": "choosing to stop stops the work",
+      "source": "src/commands/new/newSession.ts",
+      "find": "      deps.stopForegroundWork?.()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "keeping it running spares the agents",
+      "source": "src/commands/new/newSession.ts",
+      "find": "      deps.stopForegroundWork?.(true)\n",
+      "replace": "      deps.stopForegroundWork?.()\n"
+    },
+    {
+      "name": "ending the session closes it",
+      "source": "src/commands/new/newSession.ts",
+      "find": "  if (choice === 'end') deps.close(previous)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "/new is asked at once instead of queued behind the turn",
+      "source": "src/commands/new/index.ts",
+      "find": "  immediate: true,\n",
+      "replace": "\n"
+    }
+  ]
+}

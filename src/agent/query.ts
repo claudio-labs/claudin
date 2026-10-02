@@ -38,7 +38,6 @@ import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import {
   createUserMessage,
   createUserInterruptionMessage,
-  normalizeMessagesForAPI,
   createSystemMessage,
   createAssistantAPIErrorMessage,
   getMessagesAfterCompactBoundary,
@@ -83,6 +82,7 @@ import { handleStopHooks } from 'src/agent/query/stopHooks.js'
 import { buildQueryConfig } from 'src/agent/query/config.js'
 import { productionDeps, type QueryDeps } from 'src/agent/query/deps.js'
 import { selectTurnModel } from 'src/agent/query/turnModel.js'
+import { toolMessagesForNextRequest } from 'src/agent/query/toolResultMessages.js'
 import type { Terminal, Continue } from './query/transitions.js'
 import { feature } from 'bun:bundle'
 import {
@@ -589,52 +589,6 @@ async function* queryLoop(
               // it back on and cleans up the retry's partials the same way.
               streamingFallbackOccured = false
             }
-            // Backfill tool_use inputs on a cloned message before yield so
-            // SDK stream output and transcript serialization see legacy/derived
-            // fields. The original `message` is left untouched for
-            // assistantMessages.push below — it flows back to the API and
-            // mutating it would break prompt caching (byte mismatch).
-            let yieldMessage: typeof message = message
-            if (message.type === 'assistant') {
-              let clonedContent: typeof message.message.content | undefined
-              for (let i = 0; i < message.message.content.length; i++) {
-                const block = message.message.content[i]!
-                if (
-                  block.type === 'tool_use' &&
-                  typeof block.input === 'object' &&
-                  block.input !== null
-                ) {
-                  const tool = findToolByName(
-                    toolUseContext.options.tools,
-                    block.name,
-                  )
-                  if (tool?.backfillObservableInput) {
-                    const originalInput = block.input as Record<string, unknown>
-                    const inputCopy = { ...originalInput }
-                    tool.backfillObservableInput(inputCopy)
-                    // Only yield a clone when backfill ADDED fields; skip if
-                    // it only OVERWROTE existing ones (e.g. file tools
-                    // expanding file_path). Overwrites change the serialized
-                    // transcript and break VCR fixture hashes on resume,
-                    // while adding nothing the SDK stream needs — hooks get
-                    // the expanded path via toolExecution.ts separately.
-                    const addedFields = Object.keys(inputCopy).some(
-                      k => !(k in originalInput),
-                    )
-                    if (addedFields) {
-                      clonedContent ??= [...message.message.content]
-                      clonedContent[i] = { ...block, input: inputCopy }
-                    }
-                  }
-                }
-              }
-              if (clonedContent) {
-                yieldMessage = {
-                  ...message,
-                  message: { ...message.message, content: clonedContent },
-                }
-              }
-            }
             // Withhold recoverable errors (prompt-too-long, max-output-tokens)
             // until we know whether the truncation-retry recovery can
             // succeed. Still pushed to assistantMessages so the recovery
@@ -644,7 +598,11 @@ async function* queryLoop(
               withheld = true
             }
             if (!withheld) {
-              yield yieldMessage
+              // Yielded as the API sent it: every consumer stores what it is
+              // given, and the next request is built from that. The SDK's
+              // view with backfilled inputs is made at its output
+              // (withObservableToolInputs, queryHelpers.normalizeMessage).
+              yield message
             }
             if (message.type === 'assistant') {
               assistantMessages.push(message)
@@ -1049,12 +1007,7 @@ async function* queryLoop(
           shouldPreventContinuation = true
         }
 
-        toolResults.push(
-          ...normalizeMessagesForAPI(
-            [update.message],
-            toolUseContext.options.tools,
-          ).filter(_ => _.type === 'user'),
-        )
+        toolResults.push(...toolMessagesForNextRequest(update.message))
       }
       if (update.newContext) {
         updatedToolUseContext = {

@@ -1,0 +1,29 @@
+{
+  "test": "src/agent/cache/anthropic/keepAlive.test.ts",
+  "source": "src/agent/cache/anthropic/keepAlive.ts",
+  "probes": [
+    {
+      "name": "keep-alive: a cancelled key's timer is cleared",
+      "find": "export function cancelKeepAlive(key: string): void {\n  cancel(key)\n",
+      "replace": "export function cancelKeepAlive(key: string): void {\n"
+    },
+    {
+      "name": "keep-alive: only agentic requests arm",
+      "source": "src/providers/shims/claude/streaming.ts",
+      "find": "        if (isCacheKeepAliveEnabled() && isAgenticQuery) {\n",
+      "replace": "        if (isCacheKeepAliveEnabled()) {\n"
+    },
+    {
+      "name": "keep-alive: a finished agent cancels its chain",
+      "source": "src/tools/AgentTool/runAgent.ts",
+      "find": "    cancelKeepAlive(agentId)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "keep-alive: /clear cancels the main chain",
+      "source": "src/commands/clear/caches.ts",
+      "find": "  cancelKeepAlive('main')\n",
+      "replace": "\n"
+    }
+  ]
+}

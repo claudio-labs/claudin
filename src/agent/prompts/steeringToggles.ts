@@ -50,25 +50,6 @@ export function isSubagentNotesEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_NOTES)
 }
 
-/**
- * The v2 system prompt: Claude Code 2.1.280's lean `-p` shape with every
- * Claudin capability kept (docs/tech/prompts/claude-code-2.1.280-reference.md,
- * pinned by promptFeatureCoverage.test.ts). The whole prompt, not one section,
- * moved thinking 30–50% in the transplant replays of 2026-09-23, so the v2 is
- * one switch. Anthropic family only — getSystemPrompt checks the family.
- *
- * Default ON since 2026-09-24, promoted by the user's decision: with the other
- * three v2 switches it takes the first request from 27.8k to 19.7k tokens,
- * and the session A/B found no cost change either way (team memory
- * `prompts-v2-2026-09`). `CLAUDIN_LEAN_SYSTEM_PROMPT=0` restores the previous
- * text; the killswitch is slated for removal in a cleanup pass. Same cache
- * reasoning as the toggles above: process-constant, so it yields two prefix
- * texts, never one that flips mid-session.
- */
-export function isLeanSystemPromptEnabled(): boolean {
-  return !isEnvDefinedFalsy(process.env.CLAUDIN_LEAN_SYSTEM_PROMPT)
-}
-
 /*
  * The three request-count levers of 2026-09-24 (team memory
  * `request-count-levers-2026-09-24`). One request is one model response, and

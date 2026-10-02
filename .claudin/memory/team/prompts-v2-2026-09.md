@@ -1,8 +1,16 @@
 ---
 name: prompts-v2-2026-09
-description: Prompts v2 (branch perf/prompts-v2) — Claude Code 2.1.280's lean prompt shape with every claudin capability kept; PROMOTED to default 2026-09-24 by the user's call although the cost gate failed; four `=0` killswitches remain and are slated for a cleanup pass (removal checklist inside)
+description: Prompts v2 (branch perf/prompts-v2) — Claude Code 2.1.280's lean prompt shape with every claudin capability kept; PROMOTED to default 2026-09-24 by the user's call although the cost gate failed; the four `=0` killswitches were REMOVED 2026-09-29, the Anthropic family gate stays
 type: project
 ---
+
+**Cleanup DONE 2026-09-29 (#271, branch perf/prompt-parity-2284).** The four
+killswitches are gone. The user kept the family gate: `isV2PromptFamily` (toolPromptTier.ts) is
+the one rule, and every other family still receives the pre-v2 text, pinned by
+`systemPrompt.nonAnthropic.txt` (a gpt-5 dump) and by rendering tools through
+`_setToolPromptFamilyForTesting`; `systemPrompt.legacy.txt` is deleted. Claudin's first request
+was byte-identical before and after on the wire. The same PR moved Claude on Foundry into the
+Anthropic family. The table and checklist below are history.
 
 **Goal, in the user's words (2026-09-24):** cut tokens and cost to near Claude Code *and keep
 every claudin feature*. It follows round 3 ([[session-cost-round-3-2026-09-23]]), where the
@@ -19,7 +27,7 @@ same branch ([[anti-narration-never-benched-on-claude-5]]).
 |---|---|
 | `CLAUDIN_LEAN_SYSTEM_PROMPT` | CC's lean shape: batching in one sentence, turn discipline at ~⅓, only act-on-what-you-know of the work contract, scratchpad as one env line |
 | `CLAUDIN_LEAN_MEMORY_PROMPT` | the memory section with the same mechanisms in fewer words |
-| `CLAUDIN_COMPACT_TOOL_PROMPTS` | Read, Grep, Agent, Bash, Build, Typecheck, RunTests at CC density; Monitor behind ToolSearch. apply_patch keeps its full text (its compact one broke patches, a04426dc) |
+| `CLAUDIN_COMPACT_TOOL_PROMPTS` | Read, Grep, Agent, Bash, Build, Typecheck, RunTests at CC density (Edit, Write, Skill, WebFetch, WebSearch, ReportFindings joined 2026-09-29, CC 2.1.284 text); Monitor behind ToolSearch. apply_patch keeps its full text (its compact one broke patches, a04426dc) |
 | `CLAUDIN_LEAN_REMINDERS` | skill listing lines capped at 100 chars. The git protocol attachment is NOT shortened: the compact git text dropped rules `BashTool/prompt.test.ts` pins ("if unclear, ask first", the review-comments endpoint, backslash escaping), so it was deleted at promotion and the round-2 lean git text stays |
 
 - **First request, measured through the proxy at promotion** (same empty cwd, Opus 5.5, `-p`):
@@ -53,7 +61,8 @@ unmeasured outside Opus 5.5. Checklist:
   switched).
 - `src/agent/prompts/toolPromptTier.ts` `isCompactToolPromptsEnabled` / `isLeanRemindersEnabled`
   / `isV2PromptSwitchOn` → keep the family test, drop the env read. The compact descriptions live
-  beside the full ones in Read, Grep, Agent, Bash, Build, Typecheck, RunTests;
+  beside the full ones in Read, Grep, Agent, Bash, Build, Typecheck, RunTests, Edit, Write, Skill,
+  WebFetch, WebSearch, ReportFindings;
   `ToolSearchTool/prompt.ts` (Monitor deferral) and `SkillTool/prompt.ts` (listing cap) read the
   same switches.
 - Tests: `systemPrompt.legacy.txt` and the killswitched state in

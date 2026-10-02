@@ -1,0 +1,46 @@
+{
+  "test": [
+    "src/agent/compact/microCompact.test.ts",
+    "src/shared/tokenEstimation.test.ts"
+  ],
+  "source": "src/agent/compact/microCompact.ts",
+  "probes": [
+    {
+      "name": "relief units: window-lane savings are converted to real tokens",
+      "find": "      ? getActiveModelBytesPerToken() / getToolOutputBytesPerToken(model)\n",
+      "replace": "      ? 1\n"
+    },
+    {
+      "name": "relief units: only once a response carried usage",
+      "find": "    decision.lane === 'window' && view.some(m => getTokenUsage(m) !== undefined)\n",
+      "replace": "    decision.lane === 'window'\n"
+    },
+    {
+      "name": "relief thinking: a first clip counts the thinking it drops",
+      "find": "    Math.max(1, decision.tokensToFree - thinkingDropped),\n",
+      "replace": "    Math.max(1, decision.tokensToFree),\n"
+    },
+    {
+      "name": "relief thinking: only on the thread's first clip",
+      "find": "    modelSupportsThinkingBlockBinding(model) &&\n    !holdsClippedResult(view)\n",
+      "replace": "    modelSupportsThinkingBlockBinding(model)\n"
+    },
+    {
+      "name": "relief thinking: only the thinking after the clip point",
+      "find": "  for (const m of messages.slice(at + 1)) {\n",
+      "replace": "  for (const m of messages) {\n"
+    },
+    {
+      "name": "tool-output ratio: the dense tokenizer is told apart",
+      "source": "src/shared/tokenEstimation.ts",
+      "find": "  if (DENSE_TOKENIZER_MODEL_RE.test(lower)) return 2.4\n",
+      "replace": "\n"
+    },
+    {
+      "name": "tool-output ratio: earlier Claude has its own figure",
+      "source": "src/shared/tokenEstimation.ts",
+      "find": "  return config.modelFamily === 'claude' ? 3.1 : config.bytesPerToken\n",
+      "replace": "  return config.bytesPerToken\n"
+    }
+  ]
+}

@@ -226,6 +226,8 @@ const THEN_OFF: Record<string, string> = { CLAUDIN_EDIT_THEN: '0' }
 const BASH_HOOK_SETTINGS: Json = {
   hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'true' }] }] },
 }
+// The Patch description stopped naming `then` on 2026-09-29: the schema field
+// describes itself, so the wire checks below look for the field alone.
 const THEN_RULE = 'put its test, typecheck or build command in `then`'
 const THEN_SKIPPED = '`then` did not run:'
 const BODIES_ON: Record<string, string> = { CLAUDIN_GREP_BODIES: '1' }
@@ -295,6 +297,8 @@ type Run = {
   denials: string[]
   /** The ids of the model responses the CLI printed. */
   modelIds: string[]
+  /** `[PROMPT CACHE STRICT]` lines: a request that changed bytes an earlier one sent. */
+  strict: string[]
 }
 type Expectation = { label: string; ok: boolean; why?: string }
 type Scenario = { key: string; title: string; runs: RunSpec[]; expect: (runs: Run[]) => Expectation[] }
@@ -368,6 +372,18 @@ function servedByMock(run: Run): Expectation {
     label: `${run.spec.label}: every model response the CLI printed came from the mock (ids ${MOCK_ID_PREFIX}…)`,
     ok: run.modelIds.length > 0 && foreign.length === 0,
     why: foreign.length > 0 ? `not the mock's: ${JSON.stringify(foreign)}` : `${run.modelIds.length} response(s)`,
+  }
+}
+
+/** CACHE_STRICT_MARKER in promptCacheBreakDetection.ts; its tests pin the value. */
+const CACHE_STRICT_MARKER = '[PROMPT CACHE STRICT]'
+
+/** No request re-sent different bytes for something an earlier request had sent. */
+function cacheKept(run: Run): Expectation {
+  return {
+    label: `${run.spec.label}: every request re-sent the bytes the previous one sent (CLAUDIN_CACHE_STRICT)`,
+    ok: run.strict.length === 0,
+    why: run.strict.length > 0 ? run.strict.join(' | ') : undefined,
   }
 }
 
@@ -751,7 +767,7 @@ const SCENARIOS: Scenario[] = [
       onResult(off, 1, 0, 'a Patch sending `then` is refused by the strict schema (is_error)', r => r.isError && r.text.includes('then')),
       onDisk(off, 'a.ts is as committed', () => ({ ok: readFileSync(join(off.ws, 'a.ts'), 'utf8') === FILES['a.ts'] })),
       onWire(on, 'main', 'Patch and Edit carry `then` in their schemas', b => hasThenField(b, 'Patch') && hasThenField(b, 'Edit')),
-      onWire(on, 'main', `the Patch description says "${THEN_RULE}"`, b => toolDescription(b, 'Patch').includes(THEN_RULE)),
+      onWire(on, 'main', 'the Patch description leaves `then` to its schema field', b => !toolDescription(b, 'Patch').includes(THEN_RULE)),
     ],
   },
   {
@@ -1032,6 +1048,8 @@ function childEnv(configDir: string, flags: Record<string, string>): Record<stri
     DISABLE_AUTOUPDATER: '1',
     NO_PROXY: noProxy,
     no_proxy: noProxy,
+    // Every run is also a prompt-cache check (promptCacheBreakDetection.ts).
+    CLAUDIN_CACHE_STRICT: '1',
     ...flags,
   }
 }
@@ -1082,6 +1100,7 @@ async function runOne(s: Scenario, spec: RunSpec, n: number, root: string): Prom
     outputTail: '',
     denials: [],
     modelIds: [],
+    strict: [],
   }
   makeWorkspace(run.ws, spec)
   seedConfig(run.configDir)
@@ -1098,6 +1117,7 @@ async function runOne(s: Scenario, spec: RunSpec, n: number, root: string): Prom
   const denials = result?.permission_denials
   run.denials = Array.isArray(denials) ? denials.filter(isRecord).map(d => String(d.tool_use_id)) : []
   run.modelIds = events.flatMap(e => (e.type === 'assistant' ? [isRecord(e.message) ? String(e.message.id) : '(no message)'] : []))
+  run.strict = out.stderr.split('\n').filter(l => l.startsWith(CACHE_STRICT_MARKER))
   writeFileSync(join(dir, 'captures.json'), JSON.stringify(run.captures, null, 1))
   return run
 }
@@ -1124,7 +1144,7 @@ function report(s: Scenario, runs: Run[]): Expectation[] {
       console.log(`    ${at} ${r.tool.padEnd(5)} is_error=${String(r.isError).padEnd(5)} ${JSON.stringify(r.text.slice(0, EXCERPT_CHARS))}`)
     }
   }
-  const checks = [...s.expect(runs), ...runs.map(servedByMock)]
+  const checks = [...s.expect(runs), ...runs.map(servedByMock), ...runs.map(cacheKept)]
   for (const c of checks) console.log(`  ${c.ok ? 'PASS' : 'FAIL'}  ${c.label}${c.why ? ` — ${c.why}` : ''}`)
   return checks
 }

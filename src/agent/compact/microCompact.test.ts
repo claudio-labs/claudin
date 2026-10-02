@@ -133,6 +133,7 @@ describe('microCompact MCP tool compaction', () => {
 
 const mockSizeState = {
   effectiveWindow: 100_000,
+  model: 'claude-sonnet-4',
 }
 
 const realAutoCompact = { ...(await import('src/agent/compact/autoCompact.js')) }
@@ -145,7 +146,7 @@ mock.module('./autoCompact.js', () => ({
 
 mock.module('src/providers/model/model.js', () => ({
   ...realModel,
-  getMainLoopModel: () => 'claude-sonnet-4',
+  getMainLoopModel: () => mockSizeState.model,
 }))
 
 describe('relief policy — window lane via microcompactMessages', () => {
@@ -158,6 +159,7 @@ describe('relief policy — window lane via microcompactMessages', () => {
     const { _resetCacheProfileForTesting } = await import('src/agent/cache/cacheProfile.js')
     resetClippedIds()
     mockSizeState.effectiveWindow = 100_000
+    mockSizeState.model = 'claude-sonnet-4'
     delete process.env.CLAUDIN_DISABLE_RELIEF_POLICY
     // Pin the profile: `auto` resolves through the machine's active provider.
     process.env.CLAUDIN_CACHE_PROFILE = 'retain'
@@ -192,6 +194,95 @@ describe('relief policy — window lane via microcompactMessages', () => {
     for (let i = 0; i < total; i++) if (clipped.has(`toolu_${i}`)) ids.push(`toolu_${i}`)
     return ids
   }
+
+  /** The same history with REAL usage on its last assistant: the window lane
+   * then asks for real tokens, as it does in every live session. */
+  function withUsage(messages: Message[], contextTokens: number): Message[] {
+    const last = messages.findLast(m => m.type === 'assistant') as Message & {
+      message: Record<string, unknown>
+    }
+    last.message.id = 'msg_real'
+    last.message.model = 'claude-opus-5-5'
+    last.message.usage = {
+      input_tokens: 2,
+      cache_read_input_tokens: contextTokens,
+      cache_creation_input_tokens: 0,
+      output_tokens: 0,
+    }
+    return messages
+  }
+
+  // Real usage vs estimated savings: the lane asks for REAL tokens, and tool
+  // output tokenizes at ~2.4 chars/token on Opus 4.7+ against the 3.1 of
+  // earlier Claude — while both are estimated at 3.5. Selecting in estimate
+  // units freed ~3× the request on a 2026-09-29 sub-agent.
+  test('with real usage, a denser tokenizer frees the request with fewer clips', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    mockSizeState.effectiveWindow = 40_000
+    const clipsFor = async (model: string, usage: boolean): Promise<number> => {
+      resetClippedIds()
+      mockSizeState.model = model
+      const messages = buildHeavyHistory(40, 3_000)
+      await microcompactMessages(usage ? withUsage(messages, 32_000) : messages, undefined, MAIN)
+      return getClippedIds().size
+    }
+    const dense = await clipsFor('claude-opus-5-5', true)
+    const earlier = await clipsFor('claude-opus-4-6', true)
+    expect(dense).toBeGreaterThan(0)
+    expect(dense).toBeLessThan(earlier)
+    // Before any usage both sides are estimates: the tokenizer does not matter.
+    expect(await clipsFor('claude-opus-5-5', false)).toBe(await clipsFor('claude-opus-4-6', false))
+  })
+
+  // On Opus 5.5 the clip also drops, server-side, every thinking block after
+  // the first clipped result (`drop_block`): the first event counts it.
+  test('a first clip on a preserved-thinking model counts the thinking it drops', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    mockSizeState.effectiveWindow = 40_000
+    mockSizeState.model = 'claude-opus-5-5'
+    const clipsWith = async (
+      thinkingPerResponse: number,
+      preClipped = 0,
+      thinkingBeforeFirstResult = 0,
+    ): Promise<number> => {
+      resetClippedIds()
+      // Two leading exchanges no relief can clip: thinking there sits before
+      // the first candidate, so no clip drops it.
+      const lead = [0, 1].flatMap(i => [
+        assistantWithToolUse('TaskUpdate', `lead_${i}`),
+        userWithToolResult(`lead_${i}`, 'ok'),
+      ])
+      const messages = withUsage([...lead, ...buildHeavyHistory(40, 3_000)], 32_000)
+      messages.forEach((m, i) => {
+        if (m.type !== 'assistant' || (m.message as { id?: string }).id === 'msg_real') return
+        const inner = m.message as Record<string, unknown>
+        const thinking = i < lead.length ? thinkingBeforeFirstResult : thinkingPerResponse
+        inner.id = `msg_${i}`
+        inner.model = 'claude-opus-5-5'
+        inner.usage = {
+          input_tokens: 2,
+          cache_read_input_tokens: 1_000,
+          cache_creation_input_tokens: 0,
+          output_tokens: thinking,
+          output_tokens_details: { thinking_tokens: thinking },
+        }
+      })
+      if (preClipped > 0) addClippedIds(Array.from({ length: preClipped }, (_, i) => `toolu_${i}`))
+      await microcompactMessages(messages, undefined, MAIN)
+      return getClippedIds().size - preClipped
+    }
+    const { addClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const without = await clipsWith(0)
+    const withThinking = await clipsWith(200)
+    expect(withThinking).toBeGreaterThan(0)
+    expect(withThinking).toBeLessThan(without)
+    // Thinking before the first clipped result keeps its prefix: not counted.
+    expect(await clipsWith(200, 0, 5_000)).toBe(withThinking)
+    // After an earlier clip that thinking is already gone: not counted again.
+    expect(await clipsWith(200, 2)).toBe(await clipsWith(0, 2))
+  })
 
   test('below the trigger: no new clipped ids', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
@@ -370,6 +461,35 @@ describe('relief policy — window lane via microcompactMessages', () => {
       expect.stringMatching(/^relief starved \(~\d+k short, window lane\)$/),
       expect.stringMatching(/^relief starved \(~\d+k short, window lane\)$/),
     ])
+  })
+
+  test('CLAUDIN_SUBAGENT_RELIEF_TRIGGER caps a sub-agent lane, never the main thread', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const saved = process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER
+    process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER = '10000'
+    try {
+      // ~25-30k estimated tokens under a 100k window: far below its 75k lane.
+      const messages = buildHeavyHistory(20, 5_000)
+      await microcompactMessages(messages, undefined, MAIN)
+      expect(getClippedIds().size).toBe(0)
+      resetClippedIds()
+      const subagent = { agentId: 'a-1', options: { tools: [] } } as unknown as ToolUseContext
+      await microcompactMessages(messages, subagent, 'agent:builtin:Code' as never)
+      expect(getClippedIds().size).toBeGreaterThan(0)
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER
+      else process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER = saved
+    }
+  })
+
+  // feature() reads false under bun test, so the notify behind it never runs
+  // here; the wiring is pinned on the source. A sub-agent's detector state
+  // lives under its agentId, so the announcement has to carry it.
+  test("the relief clip announces the drop under the agent's own key", async () => {
+    const { readFileSync } = await import('fs')
+    const source = readFileSync(`${import.meta.dir}/microCompact.ts`, 'utf8')
+    expect(source).toContain('notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)')
   })
 })
 

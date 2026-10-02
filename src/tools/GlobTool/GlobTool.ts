@@ -25,6 +25,10 @@ import {
   userFacingName,
 } from 'src/tools/GlobTool/UI.js'
 
+// Every parameter's default and limit is stated here, the only place that says
+// it; what the description already says (the offset a truncated result
+// reports) is not repeated (lean3 A/B, team memory
+// `claude-code-2.1.284-wire-diff`).
 const inputSchema = lazySchema(() =>
   z.strictObject({
     pattern: z.string().describe('The glob pattern to match files against'),
@@ -32,37 +36,37 @@ const inputSchema = lazySchema(() =>
       .string()
       .optional()
       .describe(
-        'The directory to search in. If not specified, the current working directory will be used. IMPORTANT: Omit this field to use the default directory. DO NOT enter "undefined" or "null" - simply omit it for the default behavior. Must be a valid directory path if provided.',
+        'Directory to search in. Omit it for the working directory — never pass "undefined" or "null".',
       ),
     offset: semanticNumber(z.number().optional()).describe(
-      'Skip the first N matching files before applying the 100-file cap. Pass the offset a truncated result reports to page through the rest. Defaults to 0.',
+      'Skip the first N matching files before the 100-file cap. Default 0.',
     ),
     head_limit: semanticNumber(z.number().optional()).describe(
-      'Return at most N paths (`head -N`). Capped at 100 regardless.',
+      'Return at most N paths (`head -N`), never more than 100.',
     ),
     max_depth: semanticNumber(z.number().optional()).describe(
-      'How deep to walk below the search directory (`find -maxdepth`). 1 means no recursion. Default: unlimited.',
+      'Depth to walk below the search directory (`find -maxdepth`); 1 means no recursion. Default unlimited.',
     ),
     type: z
       .enum(['file', 'dir'])
       .optional()
       .describe(
-        '"file" (default) or "dir" (`find -type d`). A directory is inferred from the files in it, so an empty one is not listed.',
+        '"file" (default) or "dir" (`find -type d`); an empty directory is not listed.',
       ),
     sort: z
       .enum(['modified', 'path'])
       .optional()
       .describe(
-        '"modified" (default, newest first) or "path" (alphabetical, like `find | sort`), which makes a truncated listing a stable prefix.',
+        '"modified" (default, newest first) or "path" (alphabetical, so a truncated listing is a stable prefix).',
       ),
     exclude: z
       .array(z.string())
       .optional()
       .describe(
-        'Globs to leave out, e.g. ["**/node_modules/**"] — .gitignore is not applied, so this is how a vendored tree is kept out.',
+        'Globs to leave out, e.g. ["**/node_modules/**"]; .gitignore is not applied.',
       ),
     '-i': semanticBoolean(z.boolean().optional()).describe(
-      'Match the pattern case-insensitively (rg --iglob). Defaults to false — unlike Grep, which applies smart-case, this tool is case-sensitive unless you ask. Use it for the `find -iname` case: "*readme*" with -i finds README.md.',
+      'Match case-insensitively (rg --iglob, like `find -iname`). Default false: case-sensitive, unlike Grep\'s smart-case.',
     ),
   }),
 )

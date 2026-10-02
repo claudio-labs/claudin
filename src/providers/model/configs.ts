@@ -297,6 +297,33 @@ export const CLAUDE_SONNET_5_CONFIG = {
   mistral: 'mistral-medium-latest',
 } as const satisfies ModelConfig
 
+// Claude Sonnet 5.5 (2026-09-28) — the default Sonnet tier, replacing Sonnet 5.
+// Carries Sonnet 5's request shape and price: 1M context as both the default
+// and the maximum, same tokenizer, adaptive thinking always on, sampling params
+// rejected, effort ladder low→max, $2/$10 (COST_TIER_2_10). What it does NOT
+// share: max output is 128K by default rather than 64K, the knowledge cutoff is
+// June 2026, and it enforces preserved thinking (see
+// modelSupportsThinkingBlockBinding in src/providers/transport/betas.ts). Claude
+// Code 2.1.284's wire, captured in
+// src/providers/model/__fixtures__/claude-code-wire/, is the reference.
+//
+// The ID CONTAINS 'claude-sonnet-5', the same containment trap as Opus 5.5:
+// capability predicates match it for free, and every site that RESOLVES a
+// version needs a 5.5 branch placed before the Sonnet 5 one.
+export const CLAUDE_SONNET_5_5_CONFIG = {
+  firstParty: 'claude-sonnet-5-5',
+  bedrock: 'anthropic.claude-sonnet-5-5',
+  vertex: 'claude-sonnet-5-5',
+  foundry: 'claude-sonnet-5-5',
+  openai: 'gpt-4o',
+  gemini: 'gemini-2.0-flash',
+  github: 'github:copilot',
+  codex: 'gpt-5.5',
+  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',
+  minimax: 'MiniMax-M2.5',
+  mistral: 'mistral-medium-latest',
+} as const satisfies ModelConfig
+
 // @[MODEL LAUNCH]: Register the new config here.
 export const ALL_MODEL_CONFIGS = {
   haiku35: CLAUDE_3_5_HAIKU_CONFIG,
@@ -307,6 +334,7 @@ export const ALL_MODEL_CONFIGS = {
   sonnet45: CLAUDE_SONNET_4_5_CONFIG,
   sonnet46: CLAUDE_SONNET_4_6_CONFIG,
   sonnet5: CLAUDE_SONNET_5_CONFIG,
+  sonnet55: CLAUDE_SONNET_5_5_CONFIG,
   opus40: CLAUDE_OPUS_4_CONFIG,
   opus41: CLAUDE_OPUS_4_1_CONFIG,
   opus45: CLAUDE_OPUS_4_5_CONFIG,

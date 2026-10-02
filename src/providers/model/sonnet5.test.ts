@@ -107,8 +107,7 @@ test('supports the xhigh and max effort tiers (like Opus 4.8 / Fable 5)', () => 
 test('uses the $2/$10 tier, which is Sonnet 5 standard pricing', () => {
   // Not an introductory rate: the increase to $3/$15 once scheduled for
   // 2026-09-01 was cancelled, so $2/$10 is the standing price. Reverting this
-  // to COST_TIER_3_15 over-reports every Sonnet 5 session — the default model —
-  // by 50%.
+  // to COST_TIER_3_15 over-reports every Sonnet 5 session by 50%.
   const canonical = firstPartyNameToCanonical(CLAUDE_SONNET_5_CONFIG.firstParty)
   expect(MODEL_COSTS[canonical]).toEqual(COST_TIER_2_10)
   expect(MODEL_COSTS[canonical]?.promptCacheReadTokens).toBe(0.2)

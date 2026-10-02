@@ -55,6 +55,26 @@
  */
 const SEPARATOR_RE = /[:-](\d+)[:-]/g;
 
+/**
+ * A clock or a date is not a path and a line number. `09-26T20:51:28 …` offers
+ * the reading path `09-26T20`, line 51, and a page of log lines hoisted under
+ * `09-26T20` reads as a file listing — seen on a `bun -e` report, 2026-09-28.
+ * `2026-09-28` likewise offers `2026` at line 9. A split whose path ends in the
+ * hour (or the year) and whose "line" is the minute (or the month) is dropped,
+ * so a body of timestamps has no reading left and is declined, while a match
+ * line in a log file keeps its real `app.log:12:` split.
+ */
+const CLOCK_PATH_TAIL_RE = /(?:^|\D)\d{1,2}$/;
+const CLOCK_REST_RE = /^\d{2}:\d{2}(?!\d)/;
+const DATE_PATH_TAIL_RE = /(?:^|\D)\d{4}$/;
+const DATE_REST_RE = /^\d{2}-\d{2}(?!\d)/;
+
+function isTimestampSplit(path: string, colon: boolean, rest: string): boolean {
+  return colon
+    ? CLOCK_PATH_TAIL_RE.test(path) && CLOCK_REST_RE.test(rest)
+    : DATE_PATH_TAIL_RE.test(path) && DATE_REST_RE.test(rest);
+}
+
 type Reading = { path: string; colon: boolean; rest: string };
 
 /** Every position where this line could split into `path`, line number, text. */
@@ -64,12 +84,10 @@ function readingsOf(line: string): Reading[] {
   let m: RegExpExecArray | null;
   while ((m = SEPARATOR_RE.exec(line)) !== null) {
     const path = line.slice(0, m.index);
-    if (path !== "") {
-      out.push({
-        path,
-        colon: line[m.index] === ":",
-        rest: line.slice(m.index + 1),
-      });
+    const colon = line[m.index] === ":";
+    const rest = line.slice(m.index + 1);
+    if (path !== "" && !isTimestampSplit(path, colon, rest)) {
+      out.push({ path, colon, rest });
     }
     // Overlapping readings matter: `a-1-b-2-c` offers both.
     SEPARATOR_RE.lastIndex = m.index + 1;

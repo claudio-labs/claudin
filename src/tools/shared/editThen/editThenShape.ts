@@ -25,15 +25,19 @@ export const EDIT_THEN_ENV = 'CLAUDIN_EDIT_THEN'
 
 export const MAX_THEN_COMMANDS = 3
 
-/** On unless `=0`. Read per call; the schema and the prompts read it once, when they are built. */
+/** On unless `=0`. Read per call; the schema reads it once, when it is built. */
 export function isEditThenEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env[EDIT_THEN_ENV])
 }
 
 const THEN_DESCRIPTION = `Up to ${MAX_THEN_COMMANDS} shell commands to run once the edit has applied — the test, typecheck or build that checks it. They run in order and stop at the first that fails, and their output comes back in this result, so the check needs no call of its own. Nothing runs if the edit fails.`
 
+// No `.max()`: a list past the limit failed the parse, and with it the whole
+// edit, so the model re-sent the edit to trim its checks (3 of 5 sessions of
+// build-project-ab round 4, 2026-09-29). runThen runs the first
+// MAX_THEN_COMMANDS and lists the rest as not run.
 const thenSchema = () =>
-  z.array(z.string()).max(MAX_THEN_COMMANDS).nullish().describe(THEN_DESCRIPTION)
+  z.array(z.string()).nullish().describe(THEN_DESCRIPTION)
 
 /**
  * The `then` field for an edit tool's input schema. With the flag off (`=0`) it is
@@ -52,12 +56,17 @@ export function thenCommands(input: { then?: readonly string[] | null }): string
   return (input.then ?? []).map(command => command.trim()).filter(command => command.length > 0)
 }
 
-/** One command of `then`. `ran: false` is one skipped after an earlier failure; `exitCode: null`, one interrupted or sent to the background. */
+/**
+ * One command of `then`. `ran: false` is one not run: skipped after an earlier
+ * failure, or past MAX_THEN_COMMANDS (`overLimit`); `exitCode: null`, one
+ * interrupted or sent to the background.
+ */
 export type ThenRun = {
   command: string
   ran: boolean
   exitCode: number | null
   output: string
+  overLimit?: boolean
 }
 
 /** Whether an edit's result carries a `then` command that failed — a failed check, for the response chain. */

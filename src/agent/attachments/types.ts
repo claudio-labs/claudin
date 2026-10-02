@@ -480,8 +480,6 @@ export type Attachment =
       removedTypes: string[]
       /** True when this is the first announcement in the conversation */
       isInitial: boolean
-      /** Whether to include the "launch multiple agents concurrently" note (non-pro subscriptions) */
-      showConcurrencyNote: boolean
     }
   | {
       type: 'mcp_instructions_delta'
@@ -540,6 +538,15 @@ export type Attachment =
       stale: Array<{ id: string; subject: string; status: string }>
       /** Open-task state this fired for; the repeat-cap compares against it. */
       signature: string
+    }
+  | {
+      // The working directory, worktree flag or additional directories moved
+      // since the system prompt's frozen Environment section was rendered.
+      // See src/agent/prompts/envDelta.ts.
+      type: 'env_delta'
+      cwd: string
+      isWorktree: boolean
+      additionalDirectories: string[]
     }
   | {
       type: 'companion_intro'

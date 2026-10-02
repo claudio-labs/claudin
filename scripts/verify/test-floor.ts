@@ -19,6 +19,12 @@
  *     byte-identical across runs for the same reason.
  *   - reductionFloors — the per-filter reduction report for the bash filter.
  *
+ * …and the prompt-cache prefix guards (cache.md §1, "Who guards the prefix"):
+ * every request must re-send what the previous one sent. They are what turns a
+ * feature that moves a byte behind the tail — a new attachment, prompt section,
+ * tool or loop step — into a red CI run instead of a rewritten prefix and,
+ * on Opus 5.5, dropped thinking.
+ *
  * …plus the four build-system invariant suites in `scripts/`, which
  * .claudin/rules/testing.md already names as must-run when touching
  * scripts/build/build.ts. They live outside `src/`, so an earlier version of this
@@ -61,6 +67,12 @@ const REQUIRED_SUITES = [
   // is that the upstream codename stays gone from every tracked file.
   'src/__tests__/upstreamCodename.test.ts',
   'scripts/verify/pr-intent-scan.test.ts',
+  'src/agent/query/toolResultMessages.test.ts',
+  'src/agent/cache/loopPrefix.invariant.test.ts',
+  'src/agent/cache/wirePrefix.e2e.test.ts',
+  'src/agent/attachments/renderStability.invariant.test.ts',
+  'src/tools/toolSchemaStability.invariant.test.ts',
+  'src/agent/prompts/systemPromptStability.invariant.test.ts',
 ]
 
 /** Trees the ratio is measured over. `scripts/` carries the build invariants. */

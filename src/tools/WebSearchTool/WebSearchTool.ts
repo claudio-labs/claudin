@@ -21,7 +21,12 @@ import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
-import { getWebSearchPrompt, WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import {
+  getCompactWebSearchPrompt,
+  getWebSearchPrompt,
+  WEB_SEARCH_TOOL_NAME,
+} from 'src/tools/WebSearchTool/prompt.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
@@ -702,8 +707,13 @@ export const WebSearchTool = buildTool({
     }
   },
   async prompt() {
+    const nonNativeBackend =
+      shouldUseAdapterProvider() || isCodexResponsesWebSearchEnabled()
+    if (isCompactToolPromptsEnabled()) {
+      return getCompactWebSearchPrompt(!nonNativeBackend)
+    }
     // Strip "US only" when using non-native backends
-    if (shouldUseAdapterProvider() || isCodexResponsesWebSearchEnabled()) {
+    if (nonNativeBackend) {
       return getWebSearchPrompt().replace(
         /\n\s*-\s*Web search is only available in the US/,
         '',

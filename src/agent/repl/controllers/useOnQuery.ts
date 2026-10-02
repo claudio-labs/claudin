@@ -51,7 +51,7 @@ import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { removeLastFromHistory } from 'src/agent/history.js';
 import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
-import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
+import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
 import { getCurrentTurnCacheBreaks, getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
 import { formatCacheMetricsCompact, formatCacheMetricsFull } from 'src/providers/cache/cacheMetrics.js';
 import { generateSessionTitle } from 'src/sessions/sessionTitle.js';
@@ -64,8 +64,8 @@ import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
 import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
-import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage, saveAiGeneratedTitle } from 'src/sessions/sessionStorage.js';
-import { applyStableStubs, pruneOldToolResults, stubToolResultForDisplay, type AnyMessage } from 'src/agent/compact/stableStubState.js';
+import { removeTranscriptMessage, isLoggableMessage, saveAiGeneratedTitle } from 'src/sessions/sessionStorage.js';
+import { appendQueryMessage, settleTurnMessages } from 'src/agent/repl/queryMessages.js';
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
@@ -209,55 +209,14 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       // switch never paints an intermediate frame. Ink's throttled stdout
       // paint is a second, independent net.
       coalescedStreamingToolUses.flush();
-      if (isCompactBoundaryMessage(newMessage)) {
-        // Compaction is a CONTEXT operation, not a timeline operation: the
-        // boundary is appended like any other message and nothing before it is
-        // dropped. query.ts:587 already replaced the model-facing array, which
-        // is the only place the summary has to take effect.
-        //
-        // This used to replace the array — with `[newMessage]` on the main
-        // screen, with one compact-interval in fullscreen — so the transcript
-        // a user could scroll, export or rewind through ended at the last
-        // compaction. It is also what made the frame collapse mid-session.
-        // Appending matches what manual /compact has always done
-        // (processSlashCommand -> handlePromptSubmit -> the append below), so
-        // the two paths finally agree, and useLogMessages sees the incremental
-        // append it prefers (messages[0] unchanged).
-        //
-        // No conversationId bump: no existing row's content changes, so
-        // re-keying every row would only remount them — and it reprinted the
-        // startup banner in the middle of the timeline, since the banner is
-        // keyed on it (REPL.tsx:2974). /clear still bumps it; a compaction is
-        // not a new conversation.
-        setMessages(old => [...old, newMessage]);
-      } else if (newMessage.type === 'progress' && isEphemeralToolProgress(newMessage.data.type)) {
-        // Replace the previous ephemeral progress tick for the same tool
-        // call instead of appending. Sleep/Bash emit a tick per second and
-        // only the last one is rendered; appending blows up the messages
-        // array (13k+ observed) and the transcript (120MB of sleep_progress
-        // lines). useLogMessages tracks length, so same-length replacement
-        // also skips the transcript write.
-        // agent_progress / hook_progress / skill_progress are NOT ephemeral
-        // — each carries distinct state the UI needs (e.g. subagent tool
-        // history). Replacing those leaves the AgentTool UI stuck at
-        // "Initializing…" because it renders the full progress trail.
-        setMessages(oldMessages => {
-          const last = oldMessages.at(-1);
-          if (last?.type === 'progress' && last.parentToolUseID === newMessage.parentToolUseID && last.data.type === newMessage.data.type) {
-            const copy = oldMessages.slice();
-            copy[copy.length - 1] = newMessage;
-            return copy;
-          }
-          return [...oldMessages, newMessage];
-        });
-      } else {
-        // Immediately stub large tool_results for display to prevent
-        // mid-turn memory spikes. Full content is preserved in
-        // QueryEngine.mutableMessages (API-facing) and transcript.
-        const displayProfile = getCacheProfile()
-        const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current, displayProfile.immediateStubTokens, displayProfile.stubKeepHeadChars)
-        setMessages(oldMessages => [...oldMessages, displayMessage]);
-      }
+      // A compact boundary is appended, never a replacement (the timeline keeps
+      // what came before it; no conversationId bump — that reprinted the
+      // startup banner, REPL.tsx); same-length replacement of an ephemeral
+      // progress tick also skips the transcript write in useLogMessages. The
+      // rules themselves live in appendQueryMessage, which the loop-prefix
+      // invariant suite drives.
+      const displayProfile = getCacheProfile();
+      setMessages(oldMessages => appendQueryMessage(oldMessages, newMessage, displayProfile));
     }, newContent => {
       // setResponseLength handles updating both responseLengthRef (for
       // spinner animation) and apiMetricsRef (endResponseLength/lastTokenTime
@@ -434,12 +393,10 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     // view, and dropping from it was a prefix rewrite that also lost content
     // the model had read (docs/tech/cache/context-relief-policy.md). The
     // display cap is applied at render time in REPL.tsx instead.
-    const before = messagesRef.current as AnyMessage[]
-    const cacheProfile = getCacheProfile()
-    const aged = pruneOldToolResults(before, cacheProfile.keepTurns, cacheProfile.stubKeepHeadChars)
-    const after = applyStableStubs(aged)
+    const before = messagesRef.current
+    const after = settleTurnMessages(before, getCacheProfile())
     if (after !== before) {
-      setMessages(() => after as MessageType[])
+      setMessages(() => after)
     }
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {

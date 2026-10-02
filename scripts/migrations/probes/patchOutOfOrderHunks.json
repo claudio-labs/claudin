@@ -1,0 +1,42 @@
+{
+  "test": "src/tools/ApplyPatchTool/patchFormat.test.ts",
+  "source": "src/tools/ApplyPatchTool/patchFormat.ts",
+  "probes": [
+    {
+      "name": "a unique bare block above the cursor is applied",
+      "find": "if (anywhere.length === 1) found = anywhere[0]",
+      "replace": "if (anywhere.length === -1) found = anywhere[0]"
+    },
+    {
+      "name": "several candidates above the cursor stay a refusal",
+      "find": "if (anywhere.length === 1) found = anywhere[0]",
+      "replace": "if (anywhere.length >= 1) found = anywhere[0]"
+    },
+    {
+      "name": "an anchored hunk is never moved above its anchor",
+      "find": "if (found === -1 && !chunk.changeContext && !chunk.isEndOfFile) {",
+      "replace": "if (found === -1 && !chunk.isEndOfFile) {"
+    },
+    {
+      "name": "an End-of-File hunk is never moved off the tail",
+      "find": "if (found === -1 && !chunk.changeContext && !chunk.isEndOfFile) {",
+      "replace": "if (found === -1 && !chunk.changeContext) {"
+    },
+    {
+      "name": "the cursor never moves backwards",
+      "find": "cursor: Math.max(lineIndex, found + pattern.length),",
+      "replace": "cursor: found + pattern.length,"
+    },
+    {
+      "name": "the miss message names a block above the search start",
+      "find": "  if (above.length) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "the tightest matching pass decides ambiguity",
+      "source": "src/tools/shared/fuzzyLineMatch.ts",
+      "find": "    if (found.length) return found\n  }\n  return []",
+      "replace": "    if (found.length && compare === SEEK_PASSES[SEEK_PASSES.length - 1]) return found\n  }\n  return []"
+    }
+  ]
+}

@@ -7,6 +7,11 @@
  * `loadMemoryPrompt` only reaches these behind the team build flag, which reads
  * false under `bun test`, so they are driven through their own exports. The
  * directories come from a real repository entered as the session's project.
+ *
+ * Since 2026-09-29 the lean prompt leaves its write-time rules (links, the team
+ * subdirectories, the index line, `paths:`) to `buildMemoryWriteRules`, which a
+ * refused memory write hands back; those facts are checked on what the model is
+ * taught in total, `taught()`.
  */
 import { describe, expect, test } from 'bun:test'
 import { cpSync } from 'node:fs'
@@ -14,6 +19,7 @@ import { join, sep } from 'node:path'
 import {
   buildCombinedMemoryPrompt,
   buildLeanCombinedMemoryPrompt,
+  buildMemoryWriteRules,
 } from 'src/memory/memdir/teamMemPrompts.js'
 import {
   buildSearchingPastContextSection,
@@ -70,6 +76,13 @@ function hasIgnoreAdvice(prompt: string): boolean {
   return prompt.split('\n').includes('!/.claudin/memory/team/')
 }
 
+/** The prompt, plus the write rules a refused write brings back for the lean one. */
+function taught(build: Builder, teamDir: string): string {
+  return build === buildLeanCombinedMemoryPrompt
+    ? `${build()}\n${buildMemoryWriteRules(teamDir)}`
+    : build()
+}
+
 describe.each(BUILDERS)('the %s combined prompt', (_name, build) => {
   test('names both directories, the team one as git-tracked, and says they exist', () => {
     const { autoDir, teamDir } = enterRepo()
@@ -93,14 +106,14 @@ describe.each(BUILDERS)('the %s combined prompt', (_name, build) => {
   })
 
   test('shows the frontmatter example whole and explains [[name]] links', () => {
-    enterRepo()
+    const { teamDir } = enterRepo()
     const lines = build().split('\n')
     const start = lines.indexOf(MEMORY_FRONTMATTER_EXAMPLE[0]!)
     expect(lines.slice(start, start + MEMORY_FRONTMATTER_EXAMPLE.length)).toEqual([
       ...MEMORY_FRONTMATTER_EXAMPLE,
     ])
-    expect(lines.join('\n')).toContain('`[[name]]`')
-    expect(lines.join('\n')).toContain('`name:`')
+    expect(taught(build, teamDir)).toContain('`[[name]]`')
+    expect(taught(build, teamDir)).toContain('`name:`')
   })
 
   test('gives each type its scope: user private, feedback private unless a convention, project and reference team', () => {
@@ -110,8 +123,10 @@ describe.each(BUILDERS)('the %s combined prompt', (_name, build) => {
     const feedback = typeClause(prompt, 'feedback')
     expect(feedback).toMatch(/team/)
     expect(feedback).toMatch(/convention/)
-    expect(feedback).toContain('**Why:**')
-    expect(feedback).toContain('**How to apply:**')
+    // The lean types line leaves Why/How to the frontmatter template.
+    const whyHow = build === buildCombinedMemoryPrompt ? feedback : prompt
+    expect(whyHow).toContain('**Why:**')
+    expect(whyHow).toContain('**How to apply:**')
     expect(typeClause(prompt, 'project')).toMatch(/team/)
     expect(typeClause(prompt, 'project')).toMatch(/absolute/)
     expect(typeClause(prompt, 'reference')).toMatch(/team/)
@@ -119,7 +134,7 @@ describe.each(BUILDERS)('the %s combined prompt', (_name, build) => {
 
   test('the team categories, then the team root for anything else', () => {
     const { teamDir } = enterRepo()
-    const lines = build().split('\n')
+    const lines = taught(build, teamDir).split('\n')
     const rendered =
       build === buildCombinedMemoryPrompt
         ? renderTeamCategoriesCompact(teamDir)
@@ -131,8 +146,8 @@ describe.each(BUILDERS)('the %s combined prompt', (_name, build) => {
   })
 
   test('the indexes: both in context, the pointer line, the sections, the 200-line cut', () => {
-    enterRepo()
-    const prompt = build()
+    const { teamDir } = enterRepo()
+    const prompt = taught(build, teamDir)
     expect(prompt).toContain('`MEMORY.md`')
     expect(prompt).toMatch(/indexes/)
     expect(prompt).toMatch(/`- \[Title\]\(file\.md\) — [^`]*hook`/)
@@ -146,8 +161,8 @@ describe.each(BUILDERS)('the %s combined prompt', (_name, build) => {
   })
 
   test('paths: works like a rule, relative to the project root, on the first matching Read', () => {
-    enterRepo()
-    const prompt = build()
+    const { teamDir } = enterRepo()
+    const prompt = taught(build, teamDir)
     expect(prompt).toContain('`paths:`')
     expect(prompt).toMatch(/rule/)
     expect(prompt).toMatch(/project root/)
@@ -202,19 +217,20 @@ describe.each(BUILDERS)('the %s combined prompt', (_name, build) => {
     expect(noted.split(inserted)).toHaveLength(2)
     const line = noted.split('\n').find(l => l.includes(inserted))!
     expect(line.indexOf('indexes')).toBeLessThan(line.indexOf(inserted))
-    expect(line.indexOf('`paths:`')).toBeGreaterThan(line.indexOf(inserted))
+    expect(line.indexOf(inserted) + inserted.length).toBeLessThan(line.length)
   })
 })
 
 describe('where each prompt ends', () => {
-  test('only the full prompt spells out a categorized index line and the index rules', () => {
-    enterRepo()
+  test('only the full prompt spells out a categorized index line; the lean one leaves the index rules to the write rules', () => {
+    const { teamDir } = enterRepo()
     const full = buildCombinedMemoryPrompt()
     expect(full).toContain('`- [Title](bugs/file.md) — hook`')
     expect(full).toContain('`- [Title](file.md) — one-line hook`')
     expect(full).toMatch(/no frontmatter/)
     expect(full).toMatch(/topic/)
-    expect(buildLeanCombinedMemoryPrompt()).toContain('`- [Title](file.md) — hook`')
+    expect(buildLeanCombinedMemoryPrompt()).not.toContain('`- [Title](file.md) — hook`')
+    expect(buildMemoryWriteRules(teamDir)).toContain('`- [Title](file.md) — hook`')
   })
 
   test('the full prompt ends with the full past-context section for the private directory', () => {

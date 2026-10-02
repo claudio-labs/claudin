@@ -1,7 +1,7 @@
 ---
 name: /diff reviewer has a living design doc (feature 8.1)
 description: The /diff diff reviewer is actively iterated; its canonical spec lives in docs/features/8.1-diff-reviewer.md and is kept in sync as features land
-type: project
+type: reference
 paths:
   - "src/terminal/ModalSlot.tsx"
   - "src/terminal/contexts/sidePanelContext.tsx"

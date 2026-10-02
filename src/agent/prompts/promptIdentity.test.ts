@@ -1,4 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 // MACRO is replaced at build time by Bun.define but not in test mode.
 // Define it globally so tests that import modules using MACRO don't crash.
@@ -12,6 +14,7 @@ import { afterEach, expect, test } from 'bun:test'
 }
 
 import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
+import { getIsNonInteractiveSession, setIsInteractive } from 'src/platform/bootstrap/state.js'
 import {
   ACT_ON_WHAT_YOU_KNOW_SECTION,
   CORRECTIONS_SECTION,
@@ -98,12 +101,22 @@ test('system prompt model identity updates when model changes mid-session', asyn
 test('Claude model recommendations only ship for the anthropic family', async () => {
   delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
+  // The fast-mode line is interactive-only (/fast is a TUI toggle).
+  const wasNonInteractive = getIsNonInteractiveSession()
+  setIsInteractive(true)
 
   // Test env has no provider profile → getAPIProvider() falls back to
   // 'firstParty', so family is decided by the model id alone here.
-  const claudeText = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
-  clearSystemPromptSections()
-  const otherText = (await getSystemPrompt([], 'gpt-4o')).join('\n')
+  let claudeText: string
+  let otherText: string
+  try {
+    claudeText = (await getSystemPrompt([], 'claude-opus-4-8')).join('\n')
+    clearSystemPromptSections()
+    otherText = (await getSystemPrompt([], 'gpt-4o')).join('\n')
+  } finally {
+    setIsInteractive(!wasNonInteractive)
+    clearSystemPromptSections()
+  }
 
   expect(claudeText).toContain('most capable Claude models')
   expect(claudeText).toContain('Fast mode for Claudin')
@@ -137,17 +150,24 @@ test('Anthropic-family system prompt does not include any non-Anthropic family a
   }
 })
 
-test('the system prompt opens by naming Claudin', async () => {
+test('the identity reaches the model once, from the CLI prefix block', async () => {
   delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
 
+  const identity = 'You are Claudin, an open-source coding agent and CLI.'
   const [intro] = await getSystemPrompt([], 'claude-opus-4-8')
 
-  // First block, not merely somewhere in the prompt: the point of the line
-  // is that identity arrives before anything else, and the env section (the
-  // only other place that names the product) is provider-conditional.
-  expect(intro).toContain('You are Claudin, an open-source coding agent and CLI.')
+  // streaming.ts sends the prefix ahead of the prompt on every transport, so
+  // an intro that also names Claudin puts the sentence on the wire twice.
+  expect(getCLISyspromptPrefix()).toBe(identity)
+  expect(intro).not.toContain(identity)
   expect(intro).not.toContain('Claude Code')
+  expect(intro).toContain('You are an interactive agent')
+  const streaming = readFileSync(
+    join(import.meta.dir, '../../providers/shims/claude/streaming.ts'),
+    'utf8',
+  )
+  expect(streaming).toMatch(/getCLISyspromptPrefix\(\{[^}]*\}\),\s*\.\.\.systemPrompt,/)
   // Same wording as DEFAULT_AGENT_PROMPT, asserted below — a subagent that
   // reads a different identity than its parent has to reconcile the two.
   expect(DEFAULT_AGENT_PROMPT).toContain('Claudin, an open-source coding agent and CLI')

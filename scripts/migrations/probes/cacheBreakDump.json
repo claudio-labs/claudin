@@ -1,0 +1,26 @@
+{
+  "test": "src/providers/cache/promptCacheBreakDetection.test.ts",
+  "source": "src/providers/cache/promptCacheBreakDetection.ts",
+  "probes": [
+    {
+      "name": "recorder: a retry does not rotate the held bodies",
+      "find": "    if (held?.current === json) return\n",
+      "replace": "    // probe: retries rotate\n"
+    },
+    {
+      "name": "recorder: the previous body is the one written as prev",
+      "find": "    await writeFile(prev, gzipSync(bodies.previous), { mode: 0o600 })\n",
+      "replace": "    await writeFile(prev, gzipSync(bodies.current), { mode: 0o600 })\n"
+    },
+    {
+      "name": "recorder: off holds nothing",
+      "find": "  if (!value || isEnvDefinedFalsy(value)) return null\n",
+      "replace": "  if (!value) return null\n"
+    },
+    {
+      "name": "recorder: a break writes the pair",
+      "find": "    const dumpStem = await writeWireBodyDump(key, {\n",
+      "replace": "    const dumpStem = undefined && await writeWireBodyDump(key, {\n"
+    }
+  ]
+}

@@ -26,14 +26,8 @@
     {
       "name": "the multi-problem list keeps each message's tool prefix",
       "source": "src/tools/ApplyPatchTool/applyPatch.ts",
-      "find": "        .map(m => `  • ${m.replace(MESSAGE_PREFIX_RE, '')}`)\n",
-      "replace": "        .map(m => `  • ${m}`)\n"
-    },
-    {
-      "name": "the served multi-problem list keeps each message's tool prefix",
-      "source": "src/tools/ApplyPatchTool/applyPatch.ts",
-      "find": "        shown.map(m => `  • ${m.replace(MESSAGE_PREFIX_RE, '')}`).join('\\n') +",
-      "replace": "        shown.map(m => `  • ${m}`).join('\\n') +"
+      "find": "  messages.map(m => `  • ${m.replace(MESSAGE_PREFIX_RE, '')}`).join('\\n')",
+      "replace": "  messages.map(m => `  • ${m}`).join('\\n')"
     }
   ]
 }

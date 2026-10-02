@@ -36,7 +36,13 @@ prefix.
   for that agent (`key` = `agentId`, or `main`).
 - `armKeepAlive(req)` in `streaming.ts`'s `finally` schedules the first ping
   4m30s after the response completes, only when the request was at the 5m
-  tier and the caller did not abort.
+  tier, the caller did not abort, and the request was agentic (main thread,
+  `agent:*`, `sdk`, `hook_agent`). A side query has no `agentId`, so before
+  2026-09-28 it took the `main` key, replaced the main thread's body and
+  pinged a one-shot prompt.
+- `cancelKeepAlive(key)` ends a chain for good: a finished agent
+  (`runAgent.ts`) and `/clear` (`main`) call it, so no dead prefix is kept
+  warm until the chain's ceiling.
 - The ping re-sends the **same** params — `thinking` included, since changing
   it invalidates the message cache — with `stream: false` and
   `max_tokens: 1` (`CLAUDIN_CACHE_KEEPALIVE_MAX_TOKENS`), logs the usage it

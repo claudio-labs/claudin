@@ -3,10 +3,11 @@ import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   type ApplyPatchOutput,
+  applyPatchMemoryIndexAdvice,
   checkApplyPatchPermissions,
-  resolveApplyPatchInput,
   runApplyPatch,
   summarizeApplyPatch,
+  thenSkippedFor,
   validateApplyPatchInput,
 } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import {
@@ -68,17 +69,17 @@ export const ApplyPatchTool = buildTool({
     return thenClassifierInput(input.patchText, input)
   },
   async resolveInput(input, context) {
-    const resolved = resolveApplyPatchInput(input, context)
-    if (!resolved.ok) return resolved
-    // `*** Resubmit` swaps the patch text; the rest of the input is the call's.
-    const withPatch = { ...input, patchText: resolved.input.patchText }
-    return { ok: true, input: await resolveThen(withPatch, context) }
+    return { ok: true, input: await resolveThen(input, context) }
   },
   async validateInput(input, context) {
     return validateApplyPatchInput(input, context)
   },
   async checkPermissions(input, context) {
     return foldThenPermission(input, checkApplyPatchPermissions(input, context), context)
+  },
+  advise(input, context) {
+    // The index line a new memory needs (memoryFormatGuard.ts)
+    return applyPatchMemoryIndexAdvice(input, context.responseToolUses)
   },
   async call(input, context, _canUseTool, parentMessage) {
     const { output, newMessages } = await runApplyPatch(
@@ -87,8 +88,10 @@ export const ApplyPatchTool = buildTool({
       parentMessage.uuid,
     )
     const commands = thenCommands(input)
-    const then = commands.length > 0 ? await runThen(commands, context) : undefined
-    const thenNote = takeThenSkipNote(context)
+    // A patch that applied in part would be checked half-done.
+    const skipped = commands.length > 0 ? thenSkippedFor(output) : undefined
+    const then = commands.length > 0 && !skipped ? await runThen(commands, context) : undefined
+    const thenNote = takeThenSkipNote(context) ?? skipped
     return {
       data: { ...output, ...(then && { then }), ...(thenNote && { thenNote }) },
       ...(newMessages.length > 0 && { newMessages }),

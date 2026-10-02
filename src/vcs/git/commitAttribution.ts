@@ -16,6 +16,7 @@ const PUBLIC_MODEL_FAMILIES = [
   'opus-4-5',
   'opus-4-1',
   'opus-4',
+  'sonnet-5-5',
   'sonnet-5',
   'sonnet-4-6',
   'sonnet-4-5',

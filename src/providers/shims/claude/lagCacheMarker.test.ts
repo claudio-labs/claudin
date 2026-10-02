@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   _resetLagMarkerStateForTesting,
   CACHE_LOOKBACK_POSITIONS,
+  cleanupLagMarkerKey,
   countPositions,
   isLagMarkerEnabled,
   resolveLagMarker,
@@ -134,6 +135,26 @@ describe('resolveLagMarker', () => {
   test('out-of-range marker is a no-op', () => {
     expect(resolveLagMarker('k', [], 0).lagIndex).toBeUndefined()
     expect(resolveLagMarker('k', [user()], 3).lagIndex).toBeUndefined()
+  })
+
+  test('a key still in use survives a fan-out of other keys', () => {
+    const msgs = [user(), assistant(), user()]
+    resolveLagMarker('main', msgs, 1)
+    const others = () => [user(), assistant(), user()]
+    for (let i = 0; i < 20; i++) resolveLagMarker(`agent-${i}`, others(), 1)
+    const next = [...msgs, assistant(), user()]
+    expect(resolveLagMarker('main', next, 4).lagIndex).toBe(1)
+    for (let i = 20; i < 40; i++) resolveLagMarker(`agent-${i}`, others(), 1)
+    const after = [...next, assistant(), user()]
+    expect(resolveLagMarker('main', after, 6).lagIndex).toBe(4)
+  })
+
+  test("a finished agent's key is dropped", () => {
+    const msgs = [user(), assistant(), user()]
+    resolveLagMarker('k', msgs, 1)
+    cleanupLagMarkerKey('k')
+    const next = [...msgs, assistant(), user()]
+    expect(resolveLagMarker('k', next, 4).lagIndex).toBeUndefined()
   })
 })
 

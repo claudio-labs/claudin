@@ -98,7 +98,7 @@ function ResumeCommand({
   onDone: (result?: string, options?: {
     display?: CommandResultDisplay;
   }) => void;
-  onResume: (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint) => Promise<void>;
+  onResume: (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint, keepRunning?: boolean) => Promise<void>;
   readCurrent: NonNullable<SessionsScreenProps['readCurrent']>;
   getRunningWork: () => string | undefined;
 }): React.ReactNode {
@@ -133,7 +133,7 @@ function ResumeCommand({
     setShowAllProjects(newValue);
     void loadLogs(newValue, worktreePaths);
   }, [showAllProjects, loadLogs, worktreePaths]);
-  async function handleSelect(log: LogOption) {
+  async function handleSelect(log: LogOption, keepRunning = false) {
     const sessionId = validateUuid(getSessionIdFromLog(log));
     if (!sessionId) {
       onDone('Failed to resume conversation');
@@ -149,7 +149,7 @@ function ResumeCommand({
       if (crossProjectCheck.isSameRepoWorktree) {
         // Same repo worktree - can resume directly
         setResuming(true);
-        void onResume(sessionId, fullLog, 'slash_command_picker');
+        void onResume(sessionId, fullLog, 'slash_command_picker', keepRunning);
         return;
       }
 
@@ -167,7 +167,7 @@ function ResumeCommand({
 
     // Same directory - proceed with resume
     setResuming(true);
-    void onResume(sessionId, fullLog, 'slash_command_picker');
+    void onResume(sessionId, fullLog, 'slash_command_picker', keepRunning);
   }
   // Closing leaves nothing in the transcript: ← opens this list for a look
   // as often as for a switch, and each look would otherwise log a line.
@@ -189,7 +189,7 @@ function ResumeCommand({
         <Text> Resuming conversation…</Text>
       </Box>;
   }
-  return <SessionsScreen logs={logs} loading={loading} currentSessionId={getSessionId()} readCurrent={readCurrent} instanceSessionIds={instanceSessionIds} getRunningWork={getRunningWork} onSelect={log => void handleSelect(log)} onCancel={handleCancel} onLogsChanged={() => void loadLogs(showAllProjects, worktreePaths)} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} />;
+  return <SessionsScreen logs={logs} loading={loading} currentSessionId={getSessionId()} readCurrent={readCurrent} instanceSessionIds={instanceSessionIds} getRunningWork={getRunningWork} onSelect={(log, keepRunning) => void handleSelect(log, keepRunning)} onCancel={handleCancel} onLogsChanged={() => void loadLogs(showAllProjects, worktreePaths)} showAllProjects={showAllProjects} onToggleAllProjects={handleToggleAllProjects} />;
 }
 
 /** What switching away from this conversation would stop right now. */
@@ -209,14 +209,21 @@ async function resumeBlocker(sessionId: string, context: LocalJSXCommandContext)
   }
   const work = runningWork(context);
   if (work) {
-    return `Switching stops ${work} in this session. Run /resume and pick it to confirm.`;
+    return `Switching stops ${work} in this session. Run /resume and pick it to stop it or keep it running.`;
   }
   return undefined;
 }
 export const call: LocalJSXCommandCall = async (onDone, context, args) => {
-  const onResume = async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint) => {
+  const onResume = async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint, keepRunning = false) => {
     try {
-      await context.resume?.(sessionId, log, entrypoint);
+      // A running turn goes to a background task while this session still
+      // holds it; agents already in the background just carry on.
+      if (keepRunning && readSessionPresence(context.getAppState().tasks).turnActive) {
+        await context.backgroundTurn?.();
+      }
+      await context.resume?.(sessionId, log, entrypoint, {
+        keepRunning
+      });
       onDone(undefined, {
         display: 'skip'
       });

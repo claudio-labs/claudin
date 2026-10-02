@@ -14,7 +14,6 @@ import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { formatAgentLine } from 'src/tools/AgentTool/prompt.js'
 import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { filterDeniedAgents } from 'src/permissions/permissions.js'
-import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { getLocalISODate } from 'src/shared/constants/common.js'
@@ -51,6 +50,9 @@ import { countIndexEntries } from 'src/memory/memdir/memdir.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
+import { getEnvDelta, getPromptEnv } from 'src/agent/prompts/envDelta.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import {
   getAgentName,
@@ -229,7 +231,6 @@ export function getAgentListingDeltaAttachment(
       addedLines: added.map(formatAgentLine),
       removedTypes: removed,
       isInitial: announced.size === 0,
-      showConcurrencyNote: getSubscriptionType() !== 'pro',
     },
   ]
 }
@@ -362,6 +363,30 @@ export async function getGitStatusDeltaAttachment(
   )
   if (!delta) return []
   return [{ type: 'git_status_delta', content: delta.content }]
+}
+
+/**
+ * The environment the model should now work in, when it moved since the
+ * system prompt's frozen Environment section (or the last env_delta): a
+ * worktree entered or left, a directory granted or removed. Main thread only
+ * — a sub-agent renders its own prompt when it starts.
+ */
+export function getEnvDeltaAttachment(
+  messages: Message[] | undefined,
+  toolUseContext: ToolUseContext,
+): Attachment[] {
+  const delta = getEnvDelta(
+    {
+      cwd: getCwd(),
+      isWorktree: getCurrentWorktreeSession() !== null,
+      additionalDirectories: Array.from(
+        toolUseContext.getAppState().toolPermissionContext.additionalWorkingDirectories.keys(),
+      ),
+    },
+    getPromptEnv(),
+    messages ?? [],
+  )
+  return delta ? [{ type: 'env_delta', ...delta }] : []
 }
 
 export function getCriticalSystemReminderAttachment(

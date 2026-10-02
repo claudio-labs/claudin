@@ -91,7 +91,7 @@ const ENV_VALUE_RES: ReadonlyArray<readonly [RegExp, string]> = [
     /^(`<SESSION_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad`)$/gm,
     '$1<SESSION_ID>$2',
   ],
-  // The v2 prompt names the same directory inside an Environment bullet.
+  // The v2 prompt names the same directory in its one-line last element.
   [
     /(Scratchpad directory: <SESSION_TMP>\/<PROJECT_SLUG>\/)[0-9a-f-]{36}(\/scratchpad )/g,
     '$1<SESSION_ID>$2',
@@ -206,21 +206,11 @@ describe('shipped system prompt — characterization', () => {
     compareOrWrite('systemPrompt.subagent.txt', dump(['--subagent']))
   }, 180_000)
 
-  // The v2 prompt is the default since 2026-09-24; its killswitches restore
-  // the text that shipped before. That text keeps its own snapshot for as long
-  // as the killswitches exist, so `=0` is reviewed like the default.
-  const V2_OFF_ENV = { CLAUDIN_LEAN_SYSTEM_PROMPT: '0', CLAUDIN_LEAN_MEMORY_PROMPT: '0' }
-
-  test('the killswitched (pre-v2) main-session prompt is byte-identical to its snapshot', () => {
-    compareOrWrite('systemPrompt.legacy.txt', dump([], V2_OFF_ENV))
-  }, 180_000)
-
-  test('the v2 switches do not reach a model outside the Anthropic family', () => {
-    // getSystemPrompt applies the v2 text to the Anthropic family only. A
-    // first-party session on a non-Claude id resolves to the default family,
-    // so the killswitches must change nothing there.
-    const other = 'gpt-5'
-    expect(dump([], {}, other)).toBe(dump([], V2_OFF_ENV, other))
+  // The v2 prompt goes to the Anthropic family (isV2PromptFamily); every other
+  // family receives the text from before it, which keeps its own snapshot. A
+  // first-party session on a non-Claude id resolves to the default family.
+  test('a non-Anthropic main-session prompt is byte-identical to its snapshot', () => {
+    compareOrWrite('systemPrompt.nonAnthropic.txt', dump([], {}, 'gpt-5'))
   }, 180_000)
 
   test('the snapshots are the flags-ON shape, not a source-side render', () => {
@@ -232,9 +222,9 @@ describe('shipped system prompt — characterization', () => {
     const main = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.main.txt'), 'utf8')
     expect(main).toContain('When you have enough information to act, act.')
     expect(main).toContain('When a change touches several files, land it as ONE Patch')
-    const legacy = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.legacy.txt'), 'utf8')
-    expect(legacy).toContain('# Delivering work')
-    expect(legacy).toContain('# Corrections')
-    expect(legacy).toContain('Batch independent tool calls in a single message')
+    const nonAnthropic = readFileSync(join(SNAPSHOT_DIR, 'systemPrompt.nonAnthropic.txt'), 'utf8')
+    expect(nonAnthropic).toContain('# Delivering work')
+    expect(nonAnthropic).toContain('# Corrections')
+    expect(nonAnthropic).toContain('Batch independent tool calls in a single message')
   })
 })

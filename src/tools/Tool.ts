@@ -296,6 +296,15 @@ export type ToolUseContext = {
    *  Used by speculation for overlay file path rewriting. */
   requireCanUseTool?: boolean
   messages: Message[]
+  /**
+   * Every tool call of the response this one belongs to, in the order the
+   * model wrote them. runTools sets it on the context each call runs with and
+   * never on the one it hands back, so it cannot outlive the response. For
+   * `advise`: `messages` stops before this response, so this is the only view
+   * of the calls after this one (a memory file and its index line, written
+   * side by side — memoryFormatGuard.ts).
+   */
+  responseToolUses?: ReadonlyArray<{ id: string; name: string; input: unknown }>
   fileReadingLimits?: {
     maxTokens?: number
     maxSizeBytes?: number
@@ -626,8 +635,8 @@ export type Tool<
    * anything else looks at it: validateInput, the PreToolUse hooks, the
    * auto-mode classifier, the permission prompt and call() all receive the
    * resolved input, while the transcript keeps what the model sent (the
-   * cached prefix depends on it). Patch's `*** Resubmit` names the
-   * patch it refused one call earlier. A refusal is reported the way a failed
+   * cached prefix depends on it). Patch and Edit resolve their `then`
+   * commands here. A refusal is reported the way a failed
    * validateInput is. It may be async: a Read's globs are expanded on disk
    * (FileReadTool/readGlobs.ts) so that every step after it sees real files.
    */

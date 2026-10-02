@@ -811,10 +811,8 @@ export function normalizeMessagesForAPI(
           // auto-skipped when strip* above removes all tool_reference content.
           // Must be a sibling, NOT inside tool_result.content — mixing text with
           // tool_reference inside the block is a server ValueError.
-          // Idempotent: query.ts calls this per-tool-result; the output flows
-          // back through here via claude.ts on the next API request. The first
-          // pass's sibling gets a \n[id:xxx] suffix from appendMessageTag below,
-          // so startsWith matches both bare and tagged forms.
+          // Idempotent: a message that already carries the sibling (a caller
+          // that normalizes twice) does not get a second one.
           const contentAfterStrip = normalizedMessage.message.content
           if (
             Array.isArray(contentAfterStrip) &&

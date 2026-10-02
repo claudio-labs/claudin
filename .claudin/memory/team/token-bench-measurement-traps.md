@@ -1,6 +1,6 @@
 ---
 name: token-bench-measurement-traps
-description: Traps that make a headless A/B token bench measure the wrong thing — the --allowedTools non-gate, per-content-block usage rows, arm-ordering cache warmth and its odd-N imbalance, metrics structurally zero in one arm, dropping cache-read from cost, a rounding median, and process checks that match themselves
+description: Traps that make a headless A/B token bench measure the wrong thing — the --allowedTools non-gate, per-content-block usage rows, arm-ordering cache warmth, metrics structurally zero in one arm, dropping cache-read from cost, a rounding median, and stream-json tool results counted twice
 type: project
 ---
 
@@ -85,6 +85,13 @@ written it) and wrote 9.5k; the v2 arm, whose bytes had never been sent, read 0 
 19.7k. Its "prefix" cost came out **+22% on a prefix 29% smaller**. Warm a new prompt's
 prefix before rep 1, or read prefix cost from later reps — never size a new prompt's
 saving from an N=1 smoke.
+
+**stream-json carries each tool result twice.** A `user` event holds the `tool_result` block
+and, beside it, a `tool_use_result` copy of the same text, so a substring count over the raw
+stream counts every result twice: `memory-write-ab.ts` reported 6 guard refusals where there
+were 3 (2026-09-29, fixed in the harness). Count per `tool_use_id` over the parsed
+`tool_result` blocks. Assistant events are doubled too
+([[stream-json-duplicate-assistant-events]]).
 
 **Why:** every number this bench produced before the last fix was wrong, and not
 conservatively so — 2.01× and 2.35× both looked defensible and both died to a

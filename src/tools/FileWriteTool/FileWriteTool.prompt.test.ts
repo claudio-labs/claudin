@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'bun:test'
-import { buildWriteToolDescription } from 'src/tools/FileWriteTool/prompt.js'
+import {
+  buildCompactWriteToolDescription,
+  buildWriteToolDescription,
+} from 'src/tools/FileWriteTool/prompt.js'
 
 type WritePrompt = typeof import('src/tools/FileWriteTool/prompt.js')
 
@@ -87,5 +90,35 @@ describe('buildWriteToolDescription under CLAUDIN_BASH_READ_CREDIT', () => {
         buildWriteToolDescription(lean).replace(READ_FIRST, READ_OR_CAT_FIRST),
       )
     }
+  })
+})
+
+describe('buildCompactWriteToolDescription (v2)', () => {
+  const compact = buildCompactWriteToolDescription()
+
+  it('states every rule of the full text', () => {
+    for (const rule of [
+      'overwriting if one exists',
+      'creating a new file',
+      'Read all of it first',
+      'a ranged Read is not enough',
+      'use Edit instead',
+    ]) {
+      expect(compact).toContain(rule)
+    }
+  })
+
+  it('drops the gated guardrails and is shorter than the lean shape', () => {
+    for (const line of GATED) expect(compact).not.toContain(line)
+    expect(compact.length).toBeLessThan(buildWriteToolDescription(true).length)
+  })
+
+  it('under CLAUDIN_BASH_READ_CREDIT a whole-file cat counts as the read', async () => {
+    const on = await loadWritePrompt(true)
+    expect(on.buildCompactWriteToolDescription()).toContain(
+      'Read all of it first (a Bash `cat` that printed it whole counts)',
+    )
+    const off = await loadWritePrompt(false)
+    expect(off.buildCompactWriteToolDescription()).toBe(compact)
   })
 })

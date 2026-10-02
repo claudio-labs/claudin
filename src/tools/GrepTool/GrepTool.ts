@@ -49,75 +49,80 @@ import {
   renderToolUseMessage,
 } from 'src/tools/GrepTool/UI.js'
 
+// What the texts below say of a flag only "content" mode reads.
+const CONTENT_ONLY = 'Ignored outside "content" mode.'
+
+// Every parameter's default, limit, rg flag and alias is stated here, the only
+// place that says it; what the description already says (the retry past
+// .gitignore, what binary files do without `binary`, head_limit per mode) is
+// not repeated (lean3 A/B, team memory `claude-code-2.1.284-wire-diff`).
 const inputSchema = lazySchema(() =>
   z.strictObject({
     pattern: z
       .string()
-      .describe(
-        'The regular expression pattern to search for in file contents',
-      ),
+      .describe('Regex to search file contents for'),
     path: z
       .string()
       .optional()
       .describe(
-        'File or directory to search in (rg PATH). Defaults to current working directory.',
+        'File or directory to search (rg PATH). Defaults to the working directory.',
       ),
     glob: z
       .string()
       .optional()
       .describe(
-        'Glob pattern to filter files (e.g. "*.js", "*.{ts,tsx}") - maps to rg --glob',
+        'Glob that filters files, e.g. "*.js", "*.{ts,tsx}" (rg --glob)',
       ),
     output_mode: z
       .enum(['content', 'files_with_matches', 'count', 'symbols'])
       .optional()
       .describe(
-        'Output mode: "content" shows matching lines (supports -A/-B/-C context, -n line numbers, head_limit), "files_with_matches" shows file paths (supports head_limit), "count" shows match counts (supports head_limit), "symbols" maps each match to the enclosing function/class signature (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform). Defaults to "files_with_matches".',
+        '"content": matching lines, with -A/-B/-C and -n. "files_with_matches" (default): file paths. "count": match counts. "symbols": the function/class signature enclosing each match (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform).',
       ),
     '-B': semanticNumber(z.number().optional()).describe(
-      'Number of lines to show before each match (rg -B). Requires output_mode: "content", ignored otherwise.',
+      `Lines before each match (rg -B). ${CONTENT_ONLY}`,
     ),
     '-A': semanticNumber(z.number().optional()).describe(
-      'Number of lines to show after each match (rg -A). Requires output_mode: "content", ignored otherwise.',
+      `Lines after each match (rg -A). ${CONTENT_ONLY}`,
     ),
     '-C': semanticNumber(z.number().optional()).describe(
-      'Alias for context; when both are given, context wins. Requires output_mode: "content", ignored otherwise.',
+      `Alias for context; context wins when both are given. ${CONTENT_ONLY}`,
     ),
     context: semanticNumber(z.number().optional()).describe(
-      'Number of lines to show before and after each match (rg -C). Requires output_mode: "content", ignored otherwise.',
+      `Lines before and after each match (rg -C). ${CONTENT_ONLY}`,
     ),
     '-n': semanticBoolean(z.boolean().optional()).describe(
-      'Show line numbers in output (rg -n). Requires output_mode: "content", ignored otherwise. Defaults to true.',
+      `Line numbers (rg -n), default true. ${CONTENT_ONLY}`,
     ),
     '-i': semanticBoolean(z.boolean().optional()).describe(
-      'Force case-insensitive (true) or case-sensitive (false) matching. When omitted, ripgrep smart-case applies: a lowercase pattern matches any case, a pattern containing an uppercase letter does not.',
+      'true forces case-insensitive matching, false case-sensitive; omitted, ripgrep smart-case applies.',
     ),
     no_ignore: semanticBoolean(z.boolean().optional()).describe(
-      'Also search files excluded by .gitignore/.ignore (rg --no-ignore). Off by default; a search that finds nothing retries with this automatically and says so.',
+      'Also search files excluded by .gitignore/.ignore (rg --no-ignore). Default false.',
     ),
     binary: semanticBoolean(z.boolean().optional()).describe(
-      'Search binary files as if they were text (rg -a). Off by default, so matches inside binaries are invisible without it.',
+      'Search binary files as text (rg -a). Default false.',
     ),
     encoding: z
       .string()
       .optional()
       .describe(
-        'Force a text encoding (rg --encoding), e.g. "utf-16le", "utf-16be", "shift_jis", "windows-1252", "euc-jp", "gbk". Default is UTF-8 with BOM sniffing, so UTF-16 without a BOM is otherwise skipped as binary.',
+        'Text encoding to force (rg --encoding), e.g. "utf-16le", "shift_jis", "windows-1252". Default: UTF-8 with BOM sniffing, so UTF-16 without a BOM is skipped as binary.',
       ),
     type: z
       .string()
       .optional()
       .describe(
-        'File type to search (rg --type). Common types: js, py, rust, go, java, etc. More efficient than include for standard file types.',
+        'File type to search (rg --type), e.g. js, py, rust, go, java. More efficient than glob for standard types.',
       ),
     head_limit: semanticNumber(z.number().optional()).describe(
-      'Limit output to first N lines/entries, equivalent to "| head -N". Works across all output modes: content (limits output lines), files_with_matches (limits file paths), count (limits count entries). Defaults to 250 when unspecified. Pass 0 for unlimited (use sparingly — large result sets waste context).',
+      'First N lines/entries ("| head -N"), in every output mode. Default 250; 0 for unlimited (use sparingly — large result sets waste context).',
     ),
     offset: semanticNumber(z.number().optional()).describe(
-      'Skip first N lines/entries before applying head_limit, equivalent to "| tail -n +N | head -N". Works across all output modes. Defaults to 0.',
+      'Skip the first N lines/entries before head_limit ("| tail -n +N | head -N"), in every output mode. Default 0.',
     ),
     multiline: semanticBoolean(z.boolean().optional()).describe(
-      'Enable multiline mode where . matches newlines and patterns can span lines (rg -U --multiline-dotall). Default: false.',
+      'Lets . match newlines and patterns span lines (rg -U --multiline-dotall). Default false.',
     ),
     // CLAUDIN_GREP_BODIES (grepBodies.ts): absent with the flag off.
     ...bodiesSchemaFields(),

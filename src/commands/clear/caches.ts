@@ -18,6 +18,7 @@ import { clearFileSuggestionCaches } from 'src/terminal/prompt-suggestion/fileSu
 import { clearAllPendingCallbacks } from 'src/agent/coordinator/hooks/useSwarmPermissionPoller.js'
 import { clearAllDumpState } from 'src/providers/transport/dumpPrompts.js'
 import { resetPromptCacheBreakDetection } from 'src/providers/cache/promptCacheBreakDetection.js'
+import { cancelKeepAlive } from 'src/agent/cache/anthropic/keepAlive.js'
 import { clearAllSessions } from 'src/providers/transport/sessionIngress.js'
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
 import { resetAllLSPDiagnosticState } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
@@ -60,6 +61,8 @@ export function clearSessionCaches(
 
   // Clear prompt cache break detection state
   if (!hasPreserved) resetPromptCacheBreakDetection()
+  // The main thread's history is gone; a preserved agent keeps its chain.
+  cancelKeepAlive('main')
 
   // Clear last emitted date so it's re-detected on next turn
   setLastEmittedDate(null)

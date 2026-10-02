@@ -37,3 +37,8 @@ round-trip per refusal.
 
 **Evidence:** headless claudindev run, Read(view='outline') then apply_patch
 inserting above `fn37`: applied first try, 3 turns. The A/B re-run is pending.
+
+**Superseded in part (2026-09-29):** a never-read file is no longer refused
+when every hunk matches it exactly — it is patched and the result says so, and
+`*** Resubmit` is gone ([[patch-applies-what-matches]]). Any-read still decides
+the rest: after any read a non-matching hunk goes on to the call.

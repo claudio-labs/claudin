@@ -34,6 +34,13 @@
  *
  * Pure: everything here is a function of its input. The shell that reads
  * the profile, the model window and the messages lives in microCompact.ts.
+ *
+ * `CLAUDIN_SUBAGENT_RELIEF_TRIGGER=<tokens>` — EXPERIMENT, off by default: caps
+ * the window-lane trigger of sub-agents (not the main thread). On a 1M window
+ * the lane triggers near 750k, which fresh Code sub-agents rarely reach while
+ * reading 400-700k on every call (census 2026-09-26..28).
+ * `scripts/bench/tokens/relief-ceiling-sim.ts` bounds the gain: +10% of
+ * sub-agent reads at 200k, +6% at 250k, before the re-reads it causes.
  */
 
 import type { CacheProfile } from 'src/agent/cache/cacheProfile.js'
@@ -58,6 +65,8 @@ export type ReliefInput = {
   retainedFullResultTokens: number
   profile: ReliefProfile
   windowLaneEnabled: boolean
+  /** Upper bound on the window-lane trigger (a sub-agent's ceiling). */
+  triggerCap?: number
 }
 
 export type ReliefDecision =
@@ -65,7 +74,8 @@ export type ReliefDecision =
   | {
       kind: 'clip'
       lane: ReliefLane
-      /** How much the selected clips must free (estimated tokens). */
+      /** How much the selected clips must free: real tokens on the window
+       * lane once a response carried usage, estimated on the rss lane. */
       tokensToFree: number
       trigger: number
       target: number
@@ -143,10 +153,13 @@ export function decideRelief(input: ReliefInput): ReliefDecision {
   let best: ReliefDecision = { kind: 'none' }
 
   if (input.windowLaneEnabled) {
-    const trigger = reliefTrigger(
-      input.effectiveWindow,
-      input.autocompactThreshold,
-      profile.sizeStubThresholdFraction,
+    const trigger = Math.min(
+      reliefTrigger(
+        input.effectiveWindow,
+        input.autocompactThreshold,
+        profile.sizeStubThresholdFraction,
+      ),
+      input.triggerCap ?? Infinity,
     )
     if (trigger > 0 && input.usedTokens > trigger) {
       const band = Math.min(
@@ -213,4 +226,10 @@ export function selectReliefIds(
 export function isReliefWindowLaneEnabled(): boolean {
   const v = process.env.CLAUDIN_DISABLE_RELIEF_POLICY
   return !(v === '1' || v === 'true')
+}
+
+/** The sub-agent ceiling from CLAUDIN_SUBAGENT_RELIEF_TRIGGER, when set. */
+export function subagentReliefTriggerCap(): number | undefined {
+  const n = Number(process.env.CLAUDIN_SUBAGENT_RELIEF_TRIGGER)
+  return Number.isFinite(n) && n > 0 ? n : undefined
 }

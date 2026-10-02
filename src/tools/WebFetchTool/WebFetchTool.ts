@@ -6,7 +6,8 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { getRuleByContentsForTool } from 'src/permissions/permissions.js'
 import { isPreapprovedHost } from 'src/tools/WebFetchTool/preapproved.js'
-import { DESCRIPTION, WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
+import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
+import { COMPACT_PROMPT, DESCRIPTION, WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
@@ -198,6 +199,8 @@ export const WebFetchTool = buildTool({
     // between SDK query() calls (when ToolSearch enablement varies due to
     // MCP tool count thresholds), invalidating the Anthropic API prompt
     // cache on each toggle — two consecutive cache misses per flicker event.
+    // The compact text carries the same warning as its first bullet.
+    if (isCompactToolPromptsEnabled()) return COMPACT_PROMPT
     return `IMPORTANT: WebFetch WILL FAIL for authenticated or private URLs. Before using this tool, check if the URL points to an authenticated service (e.g. Google Docs, Confluence, Jira, GitHub). If so, look for a specialized MCP tool that provides authenticated access.
 ${DESCRIPTION}`
   },

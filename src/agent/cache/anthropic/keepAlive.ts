@@ -133,6 +133,16 @@ export function armKeepAlive(req: KeepAliveRequest, now: number = Date.now()): v
   schedule(req, generations.get(req.key) ?? 0, now)
 }
 
+/**
+ * Stop pinging for `key` for good: its conversation is gone — the agent
+ * finished, or /clear dropped the main thread's history. Without it a chain
+ * keeps a dead prefix warm until its ceiling.
+ */
+export function cancelKeepAlive(key: string): void {
+  cancel(key)
+  generations.delete(key)
+}
+
 function schedule(req: KeepAliveRequest, generation: number, firstArmedAt: number): void {
   const timer = setTimeout(() => void fire(req.key, generation), PING_AFTER_MS)
   // Never keep the process alive for a ping.
@@ -182,9 +192,9 @@ async function fire(key: string, generation: number): Promise<void> {
 }
 
 /**
- * Drop every chain. Called only by the tests today: the experiment is off by
- * default, so nothing on the process-exit or /clear path reaches here. Wiring
- * those two is part of promoting the experiment, not of running it.
+ * Drop every chain. The process-exit path needs no call: every timer is
+ * unref'd. A finished agent and /clear cancel their own key
+ * (`cancelKeepAlive`).
  */
 export function cancelAllKeepAlives(): void {
   for (const key of [...chains.keys()]) cancel(key)
@@ -202,4 +212,9 @@ export async function _fireNowForTesting(key: string): Promise<void> {
   if (!chain) return
   clearTimeout(chain.timer)
   await fire(key, chain.generation)
+}
+
+/** Test-only: whether `key` holds a scheduled ping (and its body). */
+export function _isArmedForTesting(key: string): boolean {
+  return chains.has(key)
 }

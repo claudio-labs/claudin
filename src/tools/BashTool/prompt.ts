@@ -42,7 +42,7 @@ function getBackgroundUsageNote(): string | null {
   if (isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)) {
     return null
   }
-  return "You can use the `run_in_background` parameter to run the command in the background. Only use this if you don't need the result immediately and are OK being notified when the command completes later. You do not need to check the output right away - you'll be notified when it finishes. You do not need to use '&' at the end of the command when using this parameter."
+  return "`run_in_background` runs the command detached: it keeps running across turns and re-invokes you when it exits. No `&` needed."
 }
 
 /**
@@ -103,7 +103,7 @@ export function getBashGitInstructionsBody(): string {
 
   return `# Committing changes with git
 
-Only create commits when the user asks for one; if that is unclear, ask first. Never update the git config, and never push unless you were asked to.
+Only create commits when the user asks for one; if that is unclear, ask first. If you are on the default branch, create a branch first. Never update the git config, and never push unless you were asked to.
 
 Destructive commands — \`push --force\`, \`reset --hard\`, \`checkout .\`, \`restore .\`, \`clean -f\`, \`branch -D\` — and hook skips (\`--no-verify\`, \`--no-gpg-sign\`) need the user to ask for them by name; a force push to main/master gets a warning instead of a run. Never amend unless the user asks: when a pre-commit hook fails the commit did NOT happen, so \`--amend\` would rewrite the PREVIOUS commit and can destroy work. Fix the issue, re-stage, and create a NEW commit.
 
@@ -161,7 +161,7 @@ function getLeanGitInstructionsBody(
 3. In one more ${GIT_TOOL_NAME} call, stage files by name — never \`git add -A\` or \`git add .\`; warn about any that likely hold secrets — then commit and run \`git status\`. Nothing to commit: no empty commit.`
   return `# Committing changes with git
 
-Commit only when the user asks; if unclear, ask first. Never update the git config; never push unless asked. Destructive commands — \`push --force\`, \`reset --hard\`, \`checkout .\`, \`restore .\`, \`clean -f\`, \`branch -D\` — and hook skips (\`--no-verify\`, \`--no-gpg-sign\`) run only when the user asks for them by name; warn instead of force-pushing to main/master. Never amend unless asked: a failed pre-commit hook means the commit did NOT happen, so fix it, re-stage and make a NEW commit.
+Commit only when the user asks; if unclear, ask first. If on the default branch, branch first. Never update the git config; never push unless asked. Destructive commands — \`push --force\`, \`reset --hard\`, \`checkout .\`, \`restore .\`, \`clean -f\`, \`branch -D\` — and hook skips (\`--no-verify\`, \`--no-gpg-sign\`) run only when the user asks for them by name; warn instead of force-pushing to main/master. Never amend unless asked: a failed pre-commit hook means the commit did NOT happen, so fix it, re-stage and make a NEW commit.
 
 ${steps}${commitAttribution ? `\n\nEvery commit message must end with this trailer, on its own line after a blank one:\n\n${commitAttribution}` : ''}
 

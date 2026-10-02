@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
   _fireNowForTesting,
   _getPingsForTesting,
+  _isArmedForTesting,
   _resetKeepAliveForTesting,
   armKeepAlive,
   cancelAllKeepAlives,
+  cancelKeepAlive,
   noteRequestStarted,
   type KeepAliveClient,
   type KeepAliveRequest,
@@ -120,5 +122,32 @@ describe('cache keep-alive', () => {
     const before = sent.length
     await _fireNowForTesting('g')
     expect(sent).toHaveLength(before)
+  })
+
+  test('a cancelled key stops for good, and only that key', async () => {
+    const { client, sent } = fakeClient()
+    noteRequestStarted('agent-done')
+    armKeepAlive(req('agent-done', client))
+    noteRequestStarted('main')
+    armKeepAlive(req('main', client))
+    cancelKeepAlive('agent-done')
+    // The chain and the body it holds are released now, not at the next tick.
+    expect(_isArmedForTesting('agent-done')).toBe(false)
+    expect(_isArmedForTesting('main')).toBe(true)
+    await _fireNowForTesting('agent-done')
+    await _fireNowForTesting('main')
+    expect(sent).toHaveLength(1)
+  })
+
+  // The three call sites sit on paths a unit test cannot drive (a streamed
+  // request, an agent's teardown, /clear); the wiring is pinned on the source.
+  test('only agentic requests arm, and a finished agent or /clear cancels', async () => {
+    const { readFileSync } = await import('fs')
+    const read = (path: string) => readFileSync(`${import.meta.dir}/../../../../${path}`, 'utf8')
+    expect(read('src/providers/shims/claude/streaming.ts')).toContain(
+      'if (isCacheKeepAliveEnabled() && isAgenticQuery) {',
+    )
+    expect(read('src/tools/AgentTool/runAgent.ts')).toContain('cancelKeepAlive(agentId)')
+    expect(read('src/commands/clear/caches.ts')).toContain("cancelKeepAlive('main')")
   })
 })

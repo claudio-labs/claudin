@@ -31,7 +31,6 @@ import {
   ensureMemoryDirExists,
   ENTRYPOINT_NAME,
   hasExistingMemories,
-  isLeanMemoryPromptEnabled,
   loadMemoryPrompt,
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
@@ -545,20 +544,6 @@ describe('buildSearchingPastContextSection', () => {
   test.each(['1', 'yes', '', 'sometimes'])('CLAUDIN_MEMORY_PAST_CONTEXT=%p keeps it', value => {
     process.env.CLAUDIN_MEMORY_PAST_CONTEXT = value
     expect(buildSearchingPastContextSection(dir)[0]).toBe('## Searching past context')
-  })
-})
-
-describe('isLeanMemoryPromptEnabled', () => {
-  test('on unless CLAUDIN_LEAN_MEMORY_PROMPT is an off value', () => {
-    expect(isLeanMemoryPromptEnabled()).toBe(true)
-    for (const off of ['0', 'false', 'no', 'off']) {
-      process.env.CLAUDIN_LEAN_MEMORY_PROMPT = off
-      expect(isLeanMemoryPromptEnabled()).toBe(false)
-    }
-    for (const on of ['1', 'true', '', 'v2']) {
-      process.env.CLAUDIN_LEAN_MEMORY_PROMPT = on
-      expect(isLeanMemoryPromptEnabled()).toBe(true)
-    }
   })
 })
 

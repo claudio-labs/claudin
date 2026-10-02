@@ -17,20 +17,26 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { notifyCacheDeletion } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { recordPrefixRewrite } from 'src/providers/cache/cacheStatsTracker.js'
-import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
-import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
+import {
+  getActiveModelBytesPerToken,
+  getToolOutputBytesPerToken,
+  roughTokenCountEstimation,
+} from 'src/shared/tokenEstimation.js'
+import { getTokenUsage, tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { getAutoCompactThreshold, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js'
 import {
   clearCompactWarningSuppression,
   suppressCompactWarning,
 } from 'src/agent/compact/compactWarningState.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { modelSupportsThinkingBlockBinding } from 'src/providers/transport/betas.js'
 import {
   addClippedIds,
   addClippedInputs,
   applyStableInputStubs,
   applyStableStubs,
   collectClearableCandidates,
+  getClippedInputFields,
   getClippedIds,
   resetClippedIds,
 } from 'src/agent/compact/stableStubState.js'
@@ -40,6 +46,7 @@ import {
   decideRelief,
   isReliefWindowLaneEnabled,
   selectReliefIds,
+  subagentReliefTriggerCap,
   type ReliefCandidate,
 } from 'src/agent/compact/reliefPolicy.js'
 import {
@@ -292,6 +299,7 @@ function maybeReliefClip(
   if (candidates.length === 0) return
 
   const model = getMainLoopModel()
+  const view = applyStableInputStubs(applyStableStubs(messages))
   const decision = decideRelief({
     // Real usage: the previous response's counted tokens plus an estimate
     // of what was appended since — the same unit autocompact anchors on.
@@ -301,9 +309,7 @@ function maybeReliefClip(
     // history before any response has usage) also reflects the clipped
     // set — otherwise a request between a clip and its response would
     // count content the wire no longer sends and clip again.
-    usedTokens: tokenCountWithEstimation(
-      applyStableInputStubs(applyStableStubs(messages)),
-    ),
+    usedTokens: tokenCountWithEstimation(view),
     effectiveWindow: getEffectiveContextWindowSize(model),
     autocompactThreshold: isAutoCompactEnabled()
       ? getAutoCompactThreshold(model)
@@ -311,24 +317,55 @@ function maybeReliefClip(
     retainedFullResultTokens: clearableTokens,
     profile,
     windowLaneEnabled: isReliefWindowLaneEnabled(),
+    triggerCap: toolUseContext?.agentId ? subagentReliefTriggerCap() : undefined,
   })
   if (decision.kind === 'none') return
 
+  // Units. Once a response carried usage, the window lane asks for REAL
+  // tokens, while each candidate's savings is a rough estimate at the family
+  // ratio (3.5 chars/token for Claude). Tool output tokenizes denser — ~2.4
+  // from Opus 4.7 on — so selecting in estimate units freed ~3× what the lane
+  // asked: a sub-agent at 263k asked to free 73k lost 204k and re-read it
+  // (A/B 2026-09-29). Before any usage both sides are estimates, and the rss
+  // lane compares estimates with estimates.
+  const realUnits =
+    decision.lane === 'window' && view.some(m => getTokenUsage(m) !== undefined)
+  const scale = realUnits
+      ? getActiveModelBytesPerToken() / getToolOutputBytesPerToken(model)
+      : 1
+  // The other part of that 204k was thinking. On a preserved-thinking model
+  // the request binds each replayed thinking block to its prefix with
+  // `drop_block` (streaming.ts), so clipping the oldest result drops every
+  // thinking block after it, server-side: ~50k in that sub-agent. It is
+  // counted on a thread's FIRST clip only — after one, the thinking produced
+  // before it is already gone, and which of it came after is not recorded.
+  const firstCandidate = candidates.find(c => c.savings > 0)
+  const thinkingDropped =
+    realUnits &&
+    firstCandidate &&
+    modelSupportsThinkingBlockBinding(model) &&
+    !holdsClippedResult(view)
+      ? thinkingTokensAfter(view, firstCandidate.toolUseId)
+      : 0
   const { ids, savings, selected } = selectReliefIds(
-    candidates,
-    decision.tokensToFree,
+    scale === 1
+      ? candidates
+      : candidates.map(c => ({ ...c, savings: c.savings * scale })),
+    // At least the first candidate: its clip is what drops the thinking.
+    Math.max(1, decision.tokensToFree - thinkingDropped),
   )
   if (ids.length === 0) return
+  const freed = savings + thinkingDropped
 
   // Starved: the candidates left cannot free enough to be worth a prefix
   // rewrite — the session's floor (stub heads, protected turns, results
   // under MIN_STUB_TOKENS) sits above the target and no clip changes that.
   // Record it once per turn instead of clipping one tiny result per request;
   // the `[Cache:]` line is where the next census sees it.
-  if (savings < RELIEF_MIN_EVENT_TOKENS) {
-    const short = Math.round((decision.tokensToFree - savings) / 1000)
+  if (freed < RELIEF_MIN_EVENT_TOKENS) {
+    const short = Math.round((decision.tokensToFree - freed) / 1000)
     logForDebugging(
-      `[RELIEF] starved: ${ids.length} candidates free ~${savings} tokens, ~${short}k short of target ${Math.round(decision.target)} (${decision.lane} lane)`,
+      `[RELIEF] starved: ${ids.length} candidates free ~${freed} tokens, ~${short}k short of target ${Math.round(decision.target)} (${decision.lane} lane)`,
     )
     if (isMainThreadSource(querySource) && !starvedReportedThisTurn) {
       starvedReportedThisTurn = true
@@ -347,7 +384,7 @@ function maybeReliefClip(
 
   // Label format is parsed by collapsePrefixRewrites (cacheMetrics.ts) and
   // by the lookback census — keep the shape when changing the words.
-  const reason = `relief clip (${resultIds.length} tool results${inputsClipped > 0 ? ` + ${inputsClipped} inputs` : ''}, ~${Math.round(savings / 1000)}k tokens, ${decision.lane} lane)`
+  const reason = `relief clip (${resultIds.length} tool results${inputsClipped > 0 ? ` + ${inputsClipped} inputs` : ''}, ~${Math.round(freed / 1000)}k tokens, ${decision.lane} lane)`
   logForDebugging(
     `[RELIEF] ${reason}: trigger ${Math.round(decision.trigger)} → target ${Math.round(decision.target)}`,
   )
@@ -357,8 +394,11 @@ function maybeReliefClip(
   // flagged as a regression. Gated to first-party transports (anthropic /
   // bedrock / vertex) — the OpenAI/Codex shim paths don't feed the same
   // detector state, so calling it there is a no-op write we'd rather skip.
+  // The agentId is the tracking key of a sub-agent: without it the flag lands
+  // on the querySource's key, which no sub-agent state lives under, and the
+  // agent's own clip is reported as a break.
   if (feature('PROMPT_CACHE_BREAK_DETECTION') && isFirstPartyTransport()) {
-    notifyCacheDeletion(querySource, undefined, reason)
+    notifyCacheDeletion(querySource, toolUseContext?.agentId, reason)
   }
   // The `[Cache: …]` line names the knob that fired; sub-agents keep their
   // clips out of the main thread's line.
@@ -379,6 +419,58 @@ function isFirstPartyTransport(): boolean {
   } catch {
     return false
   }
+}
+
+/** Whether an earlier relief event already clipped anything in this thread. */
+function holdsClippedResult(messages: readonly Message[]): boolean {
+  const clipped = getClippedIds()
+  const clippedInputs = getClippedInputFields()
+  if (clipped.size === 0 && clippedInputs.size === 0) return false
+  for (const m of messages) {
+    if (m.type !== 'user' && m.type !== 'assistant') continue
+    const content = m.message.content
+    if (!Array.isArray(content)) continue
+    for (const block of content) {
+      if (block.type === 'tool_result' && clipped.has(block.tool_use_id)) return true
+      if (block.type === 'tool_use' && clippedInputs.has(block.id)) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Thinking tokens of the responses recorded AFTER the message holding
+ * `toolUseId` (its result, or its call for an input-only candidate) — the
+ * thinking whose bound prefix a clip there changes. A response split into
+ * several records is counted once, at the largest figure its records carry
+ * (a streamed record can hold the usage of an earlier event).
+ */
+function thinkingTokensAfter(messages: readonly Message[], toolUseId: string): number {
+  const at = messages.findIndex(m => {
+    if (m.type !== 'user' && m.type !== 'assistant') return false
+    const content = m.message.content
+    return (
+      Array.isArray(content) &&
+      content.some(
+        b =>
+          (b.type === 'tool_result' && b.tool_use_id === toolUseId) ||
+          (b.type === 'tool_use' && b.id === toolUseId),
+      )
+    )
+  })
+  if (at < 0) return 0
+  const byResponse = new Map<string, number>()
+  for (const m of messages.slice(at + 1)) {
+    if (m.type !== 'assistant') continue
+    const usage = getTokenUsage(m) as
+      | { output_tokens_details?: { thinking_tokens?: number } }
+      | undefined
+    const thinking = usage?.output_tokens_details?.thinking_tokens ?? 0
+    byResponse.set(m.message.id, Math.max(byResponse.get(m.message.id) ?? 0, thinking))
+  }
+  let total = 0
+  for (const thinking of byResponse.values()) total += thinking
+  return total
 }
 
 /**

@@ -15,8 +15,8 @@ paths:
 (branch `perf/request-count-round-4`, commit 67541d95).
 - `then` on Patch and Edit: up to 3 shell commands run once the edit applies,
   in order, stopping at the first failure; their output rides the edit's
-  result. `CLAUDIN_EDIT_THEN=0` removes the field, the prompt line and the guard
-  it arms.
+  result. `CLAUDIN_EDIT_THEN=0` removes the field and the guard it arms. (Since
+  2026-09-29 no tool description names `then`: the field describes itself.)
 - The Bash floor's 15+15 cut keeps every middle line that is only a path
   (`git ls-files`, `find`, `wc -l`), up to 200. `CLAUDIN_CAP_KEEP_PATHS=0`
   restores the plain cut.
@@ -53,3 +53,12 @@ alone after an edit 4 vs 9; pathcap left 0/8 late reads of a listed file (base
 - `scripts/bench/ab/response-chain-e2e.ts` scenarios 3 and 14-19 on the bundle;
 - `scripts/migrations/probes/editThen.json` and `capKeepPaths.json`, every
   probe red, including "off by default again" and "`=0` ignored".
+
+**The limit stopped refusing (2026-09-29).** The schema's `.max(3)` made zod
+refuse the whole edit when the model sent a 4th command — 3 of 5 sessions of
+build-project-ab round 4 re-sent a whole Patch for it. The schema now takes any
+length; `runThen` runs the first `MAX_THEN_COMMANDS` and returns the rest
+`overLimit` ("Not run, `then` runs only its first 3 commands"), and only those
+3 are judged (skip check, permission fold, classifier). Round 5: 0 re-sends;
+the one 5-command Patch applied, ran 3, and the next Bash ran the other 2.
+`scripts/migrations/probes/editThen.json` has 8 probes for it, all red.

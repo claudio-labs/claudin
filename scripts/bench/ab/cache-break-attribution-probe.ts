@@ -17,12 +17,17 @@
 // `[Cache: … cache break: …]` line is checked live in the REPL (plan
 // Verification §3), not here.
 //
+// Every run also carries CLAUDIN_CACHE_BREAK_DUMP=<its own dir>: the legacy
+// arm must leave one body pair whose current request sends more tools than
+// the previous one, and the clean arm none.
+//
 // Usage:
 //   bun run scripts/bench/ab/cache-break-attribution-probe.ts --model=claude-sonnet-5 --reps=3
 
-import { mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { gunzipSync } from 'node:zlib'
 import { cacheBreakDiffs, parseArgs, readDebugLog, runHeadless, type HeadlessRun } from './headlessProbe.ts'
 import { TOOL_SEARCH_SCRIPT } from './tool-search-cache-probe.ts'
 
@@ -42,6 +47,19 @@ function postDiscoveryDrop(run: HeadlessRun): { drop: boolean; prevCr: number; c
   return { drop: cr < prevCr, prevCr, cr }
 }
 
+/** Tool counts of each dumped body pair: `[previous, current]`. */
+function dumpedToolCounts(dir: string): Array<[number, number]> {
+  const index = join(dir, 'index.jsonl')
+  if (!existsSync(index)) return []
+  const tools = (path: string): number =>
+    (JSON.parse(gunzipSync(readFileSync(path)).toString()) as { tools?: unknown[] }).tools?.length ?? 0
+  return readFileSync(index, 'utf8')
+    .trim()
+    .split('\n')
+    .map(line => JSON.parse(line) as { prev: string; cur: string })
+    .map(e => [tools(e.prev), tools(e.cur)])
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   let failures = 0
@@ -54,13 +72,14 @@ async function main() {
       // request (measured: with a shared cwd the legacy arm's post-discovery
       // prefix was served from the clean arm's entry and no break happened).
       const cwd = mkdtempSync(join(tmpdir(), `cache-break-probe-${arm.label}-`))
+      const dumpDir = mkdtempSync(join(tmpdir(), `cache-break-dump-${arm.label}-`))
       const startedAt = Date.now()
       const run = await runHeadless({
         bin: args.bin,
         model: args.model,
         cwd,
         prompt: TOOL_SEARCH_SCRIPT,
-        env: arm.env,
+        env: { ...arm.env, CLAUDIN_CACHE_BREAK_DUMP: dumpDir },
         extraArgs: ['--debug'],
         timeoutMs: args.timeoutMs,
       })
@@ -75,15 +94,16 @@ async function main() {
       const breakLines = [...log.matchAll(BREAK_LINE_RE)].map(m => m[1]!)
       const diffs = cacheBreakDiffs(startedAt)
       const attributed = breakLines.some(l => l.includes('tools changed') && l.includes('+EnterPlanMode'))
+      const dumps = dumpedToolCounts(dumpDir)
       let ok: boolean
       if (arm.expectBreak) {
-        ok = drop?.drop === true && attributed && diffs.length > 0
+        ok = drop?.drop === true && attributed && diffs.length > 0 && dumps.some(([prev, cur]) => cur > prev)
       } else {
-        ok = drop?.drop === false && breakLines.length === 0 && diffs.length === 0
+        ok = drop?.drop === false && breakLines.length === 0 && diffs.length === 0 && dumps.length === 0
       }
       if (!ok) failures++
       const seq = run.calls.map(c => `${c.tools[0] ?? 'text'}:cr=${c.cr}`).join(' ')
-      console.log(`  ${arm.label.padEnd(14)} ${ok ? 'PASS' : 'FAIL'} calls=${run.calls.length} postDiscovery=${drop ? `${drop.prevCr}→${drop.cr}` : 'n/a'} breaks=${breakLines.length} diffs=${diffs.length}`)
+      console.log(`  ${arm.label.padEnd(14)} ${ok ? 'PASS' : 'FAIL'} calls=${run.calls.length} postDiscovery=${drop ? `${drop.prevCr}→${drop.cr}` : 'n/a'} breaks=${breakLines.length} diffs=${diffs.length} dumps=${dumps.map(([p, c]) => `${p}→${c} tools`).join(',') || 0}`)
       console.log(`    ${seq}`)
       for (const l of breakLines) console.log(`    break: ${l.slice(0, 200)}`)
       if (!run.sessionId || !log) console.log(`    (no --debug log at session ${run.sessionId || '?'})`)

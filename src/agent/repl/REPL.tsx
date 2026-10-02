@@ -58,6 +58,7 @@ import { registerLeaderToolUseConfirmQueue, unregisterLeaderToolUseConfirmQueue 
 import { useLogMessages } from 'src/agent/hooks/useLogMessages.js';
 import { useReplBridge } from 'src/platform/bridge/useReplBridge.js';
 import { type Command, type ResumeEntrypoint } from 'src/commands/commands.js';
+import type { ResumeOptions } from 'src/shared/types/command.js';
 import type { PromptInputMode, QueuedCommand, VimMode } from 'src/shared/types/textInputTypes.js';
 import { MessageSelector } from 'src/agent/ui/MessageSelector.js';
 import { useIdeLogging } from 'src/platform/ide/useIdeLogging.js';
@@ -1494,8 +1495,9 @@ export function REPL({
     fileHistory: fileHistoryState
   })));
   // Filled in once onCancel exists (below); read when a switch runs.
-  const stopForegroundWorkRef = useRef<() => void>(() => {});
-  const resume = useCallback(async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint) => {
+  const stopForegroundWorkRef = useRef<(keepRunning?: boolean) => void>(() => {});
+  const stopForegroundWork = useCallback((keepRunning?: boolean) => stopForegroundWorkRef.current(keepRunning), []);
+  const resume = useCallback(async (sessionId: UUID, log: LogOption, entrypoint: ResumeEntrypoint, options?: ResumeOptions) => {
     await resumeSession(sessionId, log, entrypoint, {
       setAppState,
       store,
@@ -1513,9 +1515,9 @@ export function REPL({
       setMessages,
       setToolJSX,
       setInputValue,
-      stopForegroundWork: () => stopForegroundWorkRef.current(),
-    });
-  }, [resetLoadingState, setAppState]);
+      stopForegroundWork,
+    }, options);
+  }, [resetLoadingState, setAppState, stopForegroundWork]);
 
 
   // Lazy init: useRef(createX()) would call createX on every render and
@@ -1716,14 +1718,18 @@ export function REPL({
   // A session switch first stops what the session being left still runs —
   // its turn (the Esc path), its background agents and its queued prompts —
   // so none of it writes into, or notifies, the session switched to.
-  stopForegroundWorkRef.current = () => {
+  // `keepRunning` spares the agents (a turn handed to a background task is
+  // one of them): they carry on and report back as notifications.
+  stopForegroundWorkRef.current = (keepRunning = false) => {
     // Not queryGuard.isActive: the /resume dialog that asked for this switch
     // holds the guard in 'dispatching' itself.
     if (isTurnActive()) onCancel();
-    const tasks = store.getState().tasks;
-    killAllRunningAgentTasks(tasks, setAppState);
-    for (const [taskId, task] of Object.entries(tasks)) {
-      if (task.type === 'local_agent' && task.status === 'running') markAgentsNotified(taskId, setAppState);
+    if (!keepRunning) {
+      const tasks = store.getState().tasks;
+      killAllRunningAgentTasks(tasks, setAppState);
+      for (const [taskId, task] of Object.entries(tasks)) {
+        if (task.type === 'local_agent' && task.status === 'running') markAgentsNotified(taskId, setAppState);
+      }
     }
     clearCommandQueue();
   };
@@ -1848,6 +1854,7 @@ export function REPL({
     loadedNestedMemoryPathsRef,
     hasInterruptibleToolInProgressRef,
     resume,
+    stopForegroundWork,
     reverify,
     onChangeDynamicMcpConfig,
     addNotification,

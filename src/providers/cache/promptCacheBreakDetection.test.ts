@@ -1,14 +1,23 @@
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { gunzipSync } from 'zlib'
 import {
   _getPendingMarkerAdvanceForTesting,
   _getPendingMessageMutationForTesting,
+  _getWireBodiesForTesting,
   buildCacheBreakReason,
+  CACHE_STRICT_MARKER,
   checkResponseForCacheBreak,
+  notifyCacheDeletion,
   readServerCacheMissReason,
+  readThinkingDrops,
   recordMarkerAdvance,
   recordPromptState,
   recordRenderedMessages,
+  recordWireBody,
   resetPromptCacheBreakDetection,
   summarizeAppliedContextEdits,
 } from 'src/providers/cache/promptCacheBreakDetection.js'
@@ -16,6 +25,7 @@ import {
   getCurrentTurnCacheBreaks,
   resetSessionCacheStats,
 } from 'src/providers/cache/cacheStatsTracker.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 
 // Minimal PendingChanges — everything false/empty except what a test flips.
 function changes(
@@ -262,6 +272,18 @@ function prime(): void {
   })
 }
 
+const AGENT_SOURCE = 'agent:builtin:Code' as const
+
+function primeAgent(agentId: AgentId): void {
+  recordPromptState({
+    system: [{ type: 'text', text: 'agent sys' }],
+    toolSchemas: [],
+    querySource: AGENT_SOURCE,
+    model: 'claude-opus-5',
+    agentId,
+  })
+}
+
 describe('recordRenderedMessages', () => {
   beforeEach(() => {
     resetPromptCacheBreakDetection()
@@ -317,6 +339,23 @@ describe('recordRenderedMessages', () => {
     expect(mutation?.newJson).toContain('[clipped]')
   })
 
+  // streaming.ts used to render every request twice (once for a debug line),
+  // and a withRetry attempt renders it again: the repeat compared the request
+  // with itself and erased the mutation, so no live `[Cache:]` line ever named
+  // one.
+  test('rendering the same request again keeps the mutation it found', () => {
+    prime()
+    const history = [user('ask'), toolResult('t1', 'full result'), assistant('done')]
+    recordRenderedMessages(SOURCE, undefined, history)
+    const next = [history[0]!, toolResult('t1', '[clipped]'), history[2]!, user('next')]
+    recordRenderedMessages(SOURCE, undefined, next)
+    recordRenderedMessages(SOURCE, undefined, next)
+    expect(_getPendingMessageMutationForTesting(SOURCE)).toMatchObject({
+      index: 1,
+      total: 3,
+    })
+  })
+
   test('an untracked source records nothing', () => {
     recordRenderedMessages('speculation', undefined, [user('a')])
     recordRenderedMessages('speculation', undefined, [user('b')])
@@ -351,6 +390,182 @@ describe('recordRenderedMessages', () => {
     recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
     await checkResponseForCacheBreak(SOURCE, 99_000, 1_000, [])
     expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+
+  test("a sub-agent's mutation is named without keeping its JSON", () => {
+    const agentId = 'a-json' as AgentId
+    primeAgent(agentId)
+    recordRenderedMessages(AGENT_SOURCE, agentId, [user('a'), toolResult('t1', 'full')])
+    recordRenderedMessages(AGENT_SOURCE, agentId, [
+      user('a'),
+      toolResult('t1', '[clipped]'),
+      user('b'),
+    ])
+    const mutation = _getPendingMessageMutationForTesting(AGENT_SOURCE, agentId)
+    expect(mutation).toMatchObject({ index: 1, total: 2, role: 'user', blockTypes: 'tool_result' })
+    expect(mutation?.prevJson).toBe('')
+    expect(mutation?.newJson).toContain('[clipped]')
+  })
+})
+
+describe('thinking the server dropped', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  test('readThinkingDrops reads the thinking_dropped paths and nothing else', () => {
+    expect(
+      readThinkingDrops({
+        input_transformations: [
+          { type: 'thinking_dropped', path: 'messages.193.content.0', reason: 'prefix_binding_mismatch' },
+          { type: 'something_else', path: 'messages.2.content.0' },
+          { type: 'thinking_dropped', path: 'messages.195.content.1' },
+        ],
+      }),
+    ).toEqual(['messages.193.content.0', 'messages.195.content.1'])
+    expect(readThinkingDrops({ input_transformations: [] })).toEqual([])
+    expect(readThinkingDrops({})).toEqual([])
+    expect(readThinkingDrops(null)).toEqual([])
+  })
+
+  // Session e55e6d94 (2026-10-01): the turn opening after a Skill call had 22
+  // thinking blocks dropped from messages.193 and the line said only
+  // "likely server-side (prompt unchanged)". The server re-drops them on every
+  // later request, so only the new ones are named.
+  test('a break names the first dropped block, once', async () => {
+    const dropped = ['messages.195.content.0', 'messages.193.content.0']
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a')])
+    await checkResponseForCacheBreak(SOURCE, 258_000, 0, [])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
+    await checkResponseForCacheBreak(SOURCE, 12_700, 238_800, [], undefined, null, null, null, dropped)
+    expect(getCurrentTurnCacheBreaks()[0]).toStartWith(
+      'server dropped 2 thinking blocks from messages.193; ',
+    )
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b'), user('c')])
+    await checkResponseForCacheBreak(SOURCE, 251_500, 1_000, [], undefined, null, null, null, dropped)
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b'), user('c'), user('d')])
+    await checkResponseForCacheBreak(SOURCE, 12_700, 240_000, [], undefined, null, null, null, dropped)
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(2)
+    expect(getCurrentTurnCacheBreaks()[1]).not.toContain('thinking')
+  })
+})
+
+// Session 501d7261 (2026-09-28) ran batches of 10–12 concurrent sub-agents.
+// With 10 tracked sources evicted by insertion order, the main thread went
+// first and the `[Cache:]` line reported 9 of ~40 rewrites.
+describe('tracking through a fan-out', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  async function mainRequest(read: number, written: number): Promise<void> {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a')])
+    await checkResponseForCacheBreak(SOURCE, read, written, [])
+  }
+
+  test('the main thread keeps its state while sub-agents come and go', async () => {
+    await mainRequest(200_000, 0)
+    for (let i = 0; i < 20; i++) primeAgent(`a-${i}` as AgentId)
+    // The main thread is still talking: that refreshes its entry.
+    await mainRequest(201_000, 1_000)
+    for (let i = 20; i < 40; i++) primeAgent(`a-${i}` as AgentId)
+    await mainRequest(15_000, 190_000)
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(1)
+  })
+
+  test('a dozen concurrent sub-agents all keep their state', async () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `c-${i}` as AgentId)
+    await mainRequest(200_000, 0)
+    for (const id of ids) {
+      primeAgent(id)
+      recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+      await checkResponseForCacheBreak(AGENT_SOURCE, 100_000, 0, [], id)
+    }
+    for (const id of ids) {
+      primeAgent(id)
+      recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+      await checkResponseForCacheBreak(AGENT_SOURCE, 12_000, 90_000, [], id)
+    }
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(12)
+  })
+
+  test("a clip announced under the agent's id is an expected drop for that agent", async () => {
+    const id = 'clip-1' as AgentId
+    primeAgent(id)
+    recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+    await checkResponseForCacheBreak(AGENT_SOURCE, 400_000, 0, [], id)
+    primeAgent(id)
+    recordRenderedMessages(AGENT_SOURCE, id, [user('a')])
+    notifyCacheDeletion(AGENT_SOURCE, id, 'relief clip (3 tool results, ~90k tokens, window lane)')
+    await checkResponseForCacheBreak(AGENT_SOURCE, 12_000, 300_000, [], id)
+    expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+})
+
+describe('the break flight recorder (CLAUDIN_CACHE_BREAK_DUMP)', () => {
+  const saved = process.env.CLAUDIN_CACHE_BREAK_DUMP
+  let dir: string
+
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+    dir = mkdtempSync(join(tmpdir(), 'cache-break-dump-'))
+    process.env.CLAUDIN_CACHE_BREAK_DUMP = dir
+  })
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CLAUDIN_CACHE_BREAK_DUMP
+    else process.env.CLAUDIN_CACHE_BREAK_DUMP = saved
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  const body = (tail: string) => ({ model: 'm', messages: [user('a'), user(tail)] })
+
+  async function request(tail: string, read: number, written: number): Promise<void> {
+    prime()
+    recordWireBody(SOURCE, undefined, body(tail))
+    recordRenderedMessages(SOURCE, undefined, body(tail).messages)
+    await checkResponseForCacheBreak(SOURCE, read, written, [])
+  }
+
+  test('a break writes the previous and the current body as they were sent', async () => {
+    await request('b', 200_000, 0)
+    await request('c', 15_000, 190_000)
+    const index = readFileSync(join(dir, 'index.jsonl'), 'utf8').trim().split('\n')
+    expect(index).toHaveLength(1)
+    const entry = JSON.parse(index[0]!) as { key: string; prev: string; cur: string; cacheRead: number }
+    expect(entry).toMatchObject({ key: SOURCE, cacheRead: 15_000 })
+    expect(JSON.parse(gunzipSync(readFileSync(entry.prev)).toString())).toEqual(body('b'))
+    expect(JSON.parse(gunzipSync(readFileSync(entry.cur)).toString())).toEqual(body('c'))
+  })
+
+  test('a healthy response writes nothing', async () => {
+    await request('b', 200_000, 0)
+    await request('c', 201_000, 1_000)
+    expect(readdirSync(dir)).toEqual([])
+  })
+
+  test('a retry of the same body does not push the previous one out', () => {
+    recordWireBody(SOURCE, undefined, body('b'))
+    recordWireBody(SOURCE, undefined, body('c'))
+    recordWireBody(SOURCE, undefined, body('c'))
+    expect(JSON.parse(_getWireBodiesForTesting(SOURCE)?.previous ?? 'null')).toEqual(body('b'))
+  })
+
+  test('off (unset or 0): nothing is held', () => {
+    for (const value of [undefined, '0']) {
+      resetPromptCacheBreakDetection()
+      if (value === undefined) delete process.env.CLAUDIN_CACHE_BREAK_DUMP
+      else process.env.CLAUDIN_CACHE_BREAK_DUMP = value
+      recordWireBody(SOURCE, undefined, body('b'))
+      expect(_getWireBodiesForTesting(SOURCE)).toBeUndefined()
+    }
   })
 })
 
@@ -432,5 +647,116 @@ describe('the server cache-miss diagnosis', () => {
     expect(getCurrentTurnCacheBreaks()).toEqual([
       'server: system changed (182.8k missed); unknown cause — read 205k→25.9k, rewrote 182.8k',
     ])
+  })
+})
+
+// CLAUDIN_CACHE_STRICT=1: the request-side verdict as an assertion, for the
+// suites that drive the built CLI against a mock (no cache read to drop).
+describe('strict mode', () => {
+  const savedStrict = process.env.CLAUDIN_CACHE_STRICT
+  let written: string[] = []
+  const realWrite = process.stderr.write.bind(process.stderr)
+
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+    process.env.CLAUDIN_CACHE_STRICT = '1'
+    written = []
+    process.stderr.write = ((chunk: string) => {
+      written.push(String(chunk))
+      return true
+    }) as typeof process.stderr.write
+  })
+
+  afterEach(() => {
+    process.stderr.write = realWrite
+    if (savedStrict === undefined) delete process.env.CLAUDIN_CACHE_STRICT
+    else process.env.CLAUDIN_CACHE_STRICT = savedStrict
+  })
+
+  const strictLines = () => written.filter(l => l.startsWith(CACHE_STRICT_MARKER))
+
+  test('a message changed behind the tail is reported, with the bytes around it', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result')])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'other result'), user('next')])
+    expect(strictLines()).toHaveLength(1)
+    expect(strictLines()[0]).toContain('messages mutated at 1/2 (user: tool_result)')
+    expect(strictLines()[0]).toContain('full result')
+  })
+
+  test('the system prompt or the tools changing mid-session is reported', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask')])
+    recordPromptState({ system: [{ type: 'text', text: 'sys, changed' }], toolSchemas: [], querySource: SOURCE, model: 'claude-opus-5' })
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), user('next')])
+    expect(strictLines()[0]).toContain('system prompt changed')
+  })
+
+  test('an append, an announced clip and a model switch are not', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result')])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result'), user('next')])
+    notifyCacheDeletion(SOURCE, undefined, 'relief clip')
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', '[clipped]'), user('next'), user('more')])
+    recordPromptState({ system: [{ type: 'text', text: 'sys for another model' }], toolSchemas: [], querySource: SOURCE, model: 'claude-sonnet-5' })
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', '[clipped]'), user('next'), user('more'), user('x')])
+    expect(strictLines()).toEqual([])
+  })
+
+  // addCacheBreakpoints turns the marked message's string into a block; the
+  // next request sends the string again. Same prompt (count_tokens, 10-01).
+  test('a string content re-sent as its one text block is not a change', () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [
+      { role: 'user', content: [{ type: 'text', text: 'ask', cache_control: { type: 'ephemeral' } }] },
+    ])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [
+      { role: 'user', content: 'ask' },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Read', input: {} }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'x' }] },
+    ])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [
+      { role: 'user', content: 'ask' },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Read', input: {} }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'text', text: 'x' }] }] },
+      { role: 'user', content: 'next' },
+    ])
+    expect(strictLines()).toEqual([])
+  })
+
+  // The fingerprint in block 0 moves between a session's first request and
+  // the next (the first user message the fingerprint reads changes); the API
+  // keeps the block out of the cache.
+  test('a billing header with another fingerprint is not a system change', () => {
+    const withHeader = (fp: string) =>
+      recordPromptState({
+        system: [
+          { type: 'text', text: `x-anthropic-billing-header: cc_version=99.0.0.${fp}; cc_entrypoint=cli;` },
+          { type: 'text', text: 'sys' },
+        ],
+        toolSchemas: [],
+        querySource: SOURCE,
+        model: 'claude-opus-5',
+      })
+    withHeader('be0')
+    recordRenderedMessages(SOURCE, undefined, [user('ask')])
+    withHeader('3af')
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), user('next')])
+    expect(strictLines()).toEqual([])
+  })
+
+  test('off by default', () => {
+    delete process.env.CLAUDIN_CACHE_STRICT
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'full result')])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('ask'), toolResult('t1', 'other'), user('next')])
+    expect(strictLines()).toEqual([])
   })
 })

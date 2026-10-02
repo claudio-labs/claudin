@@ -186,6 +186,7 @@ export function registerUpdateConfigSkill(): void {
     name: 'update-config',
     description: DESCRIPTION,
     allowedTools: [FILE_READ_TOOL_NAME],
+    argumentHint: '[what to configure]',
     userInvocable: true,
     disableModelInvocation: false,
     async getPromptForCommand(args) {
