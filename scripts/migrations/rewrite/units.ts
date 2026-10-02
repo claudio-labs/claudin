@@ -53,9 +53,19 @@ export const specPath = (name: string): string => `docs/tech/rewrite/${name}.md`
 
 /** What `.base/.sandbox.json` records about how a sandbox was made. */
 export type SandboxRecord = {
-  mode: 'char' | 'impl'
+  mode: 'char' | 'impl' | 'bodies'
   unit: string
   sha: string
   /** Paths removed from the working copy, beyond the unit's own files. */
   removed: string[]
+  /** `bodies` only: per unit file, what was stubbed and what was left for review. */
+  stubs?: Record<
+    string,
+    {
+      stubbed: { name: string; startLine: number; endLine: number }[]
+      residue: number[]
+      unlocated: { line: number; symbol: string | null }[]
+      comments: number[]
+    }
+  >
 }

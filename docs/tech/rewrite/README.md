@@ -22,6 +22,12 @@ why the measure below normalizes identifiers. Inherited code leaves the tree in
 one way only: the module is deleted, and a new implementation is written from a
 specification and from the tests, never from the old source.
 
+Since 2026-10-02 two cheaper exits come first, and the rewrite itself can go
+one function at a time instead of one module at a time: cut the feature,
+replace it with MIT code under its own notice, or rewrite each inherited body
+without seeing it. [levers.md](levers.md) has the cuts, the replacements, the
+per-method sandbox and the rule to cover a file with tests before touching it.
+
 ## The measure
 
 `scripts/verify/provenance/` compares every tracked file against 32-bit hashes
@@ -108,6 +114,7 @@ of files in `units/phase-<n>.json`.
 export REWRITE_SANDBOX_ROOT=<a scratch directory>
 bun run scripts/migrations/rewrite/sandbox.ts char <unit>   # characterization: HEAD as it is
 bun run scripts/migrations/rewrite/sandbox.ts impl <unit>   # implementation: the old code taken out
+bun run scripts/migrations/rewrite/sandbox.ts bodies <unit> # per method: only the inherited bodies taken out
 bun run scripts/migrations/rewrite/land.ts <sandbox>        # what the agent changed; --apply brings it back
 ```
 

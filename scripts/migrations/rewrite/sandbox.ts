@@ -4,6 +4,7 @@
  *
  *   bun run scripts/migrations/rewrite/sandbox.ts char <unit>
  *   bun run scripts/migrations/rewrite/sandbox.ts impl <unit>
+ *   bun run scripts/migrations/rewrite/sandbox.ts bodies <unit>
  *
  * Both are a copy of HEAD with no .git, so no history can be read, and a
  * pristine copy of the same tree at `<sandbox>.base` for land.ts to diff
@@ -23,11 +24,22 @@
  * a rewrite spec it is a leak to fix by hand before the brief. A snapshot
  * taken out is written afresh by the implementer's run, and land.ts shows it
  * for review.
+ *
+ * `bodies` keeps the unit's files and takes out only the old bodies: every
+ * function or method holding an inherited line is stubbed (bodies.ts), and
+ * the rest of the file stays for the implementer to fill in from the tests.
+ * The setup removals are the ones `impl` makes, except the unit's files, and
+ * the quote search looks for lines of the stubbed bodies only, since the
+ * signatures left in place are meant to be seen.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot.js'
+import { loadReference } from '../../verify/provenance/reference.js'
+import { CODE_EXTENSION } from '../../verify/provenance/fingerprint.js'
+import { matchFile } from '../../verify/provenance/scan.js'
+import { type BodiesResult, stripInheritedBodies } from './bodies.js'
 import { findUnit, probeSpecPath, SANDBOX_ROOT, type SandboxRecord, specPath, unitSlug } from './units.js'
 
 const PROBES_DIR = 'scripts/migrations/probes'
@@ -77,11 +89,13 @@ function isQuotable(line: string): boolean {
 }
 
 function quotableLines(files: string[], root: string): Set<string> {
+  return quotableLinesOf(files.filter(file => existsSync(join(root, file))).map(file => readFileSync(join(root, file), 'utf8')))
+}
+
+function quotableLinesOf(texts: string[]): Set<string> {
   const lines = new Set<string>()
-  for (const file of files) {
-    const path = join(root, file)
-    if (!existsSync(path)) continue
-    for (const raw of readFileSync(path, 'utf8').split('\n')) {
+  for (const text of texts) {
+    for (const raw of text.split('\n')) {
       const line = normalizedLine(raw)
       if (!isQuotable(line)) continue
       lines.add(line)
@@ -151,9 +165,41 @@ function probeSpecsTouching(files: string[], root: string, ownSpec: string): str
   return specs
 }
 
+/**
+ * Stubs the inherited bodies of the unit's files in the sandbox, and returns
+ * the text of the bodies taken out, for the quote search.
+ */
+function stubUnitBodies(files: string[], reports: Record<string, Omit<BodiesResult, 'text'>>): string[] {
+  const reference = loadReference()
+  const takenOut: string[] = []
+  for (const file of files) {
+    const path = join(base, file)
+    if (!existsSync(path)) continue
+    const source = readFileSync(path, 'utf8')
+    const match = matchFile(file, source, reference)
+    const inherited = new Set([...match.claudeCode, ...match.openclaude].map(line => line + 1))
+    if (!CODE_EXTENSION.test(file)) {
+      reports[file] = {
+        stubbed: [],
+        residue: [],
+        unlocated: [...inherited].map(line => ({ line, symbol: null })),
+        comments: [],
+      }
+      continue
+    }
+    const { text, ...report } = stripInheritedBodies(file, source, inherited)
+    writeFileSync(join(sandbox, file), text)
+    reports[file] = report
+    const lines = source.split('\n')
+    for (const stub of report.stubbed) takenOut.push(lines.slice(stub.startLine - 1, stub.endLine).join('\n'))
+    takenOut.push(report.comments.map(line => lines[line - 1]!).join('\n'))
+  }
+  return takenOut
+}
+
 const [mode, name] = process.argv.slice(2)
-if ((mode !== 'char' && mode !== 'impl') || name === undefined) {
-  console.error('usage: bun run scripts/migrations/rewrite/sandbox.ts <char|impl> <unit>')
+if ((mode !== 'char' && mode !== 'impl' && mode !== 'bodies') || name === undefined) {
+  console.error('usage: bun run scripts/migrations/rewrite/sandbox.ts <char|impl|bodies> <unit>')
   process.exit(2)
 }
 const unit = findUnit(name)
@@ -181,23 +227,27 @@ symlinkSync(join(REPO_ROOT, 'node_modules'), join(sandbox, 'node_modules'))
 
 const removed: string[] = []
 const reported: string[] = []
-if (mode === 'impl') {
+const stubs: Record<string, Omit<BodiesResult, 'text'>> = {}
+if (mode !== 'char') {
   const remove = (path: string) => {
     if (!existsSync(join(sandbox, path))) return
     rmSync(join(sandbox, path), { recursive: true, force: true })
     removed.push(path)
   }
   const ownSpec = probeSpecPath(name)
-  for (const path of [...unit.files, ...unit.tests, ownSpec, 'scripts/verify/provenance/fingerprints.bin', '.claudin/memory']) {
+  const setup = [...unit.tests, ownSpec, 'scripts/verify/provenance/fingerprints.bin', '.claudin/memory']
+  for (const path of mode === 'impl' ? [...unit.files, ...setup] : setup) {
     remove(path)
   }
   for (const spec of probeSpecsTouching(unit.files, base, ownSpec)) remove(spec)
 
-  const names = privateNames(unit.files, base)
+  const names = mode === 'impl' ? privateNames(unit.files, base) : []
   const nameRe =
     names.length > 0 ? new RegExp(`\\b(${names.map(n => n.replace(/\$/g, '\\$')).join('|')})\\b`, 'g') : undefined
-  const quoted = quotableLines(unit.files, base)
+  const quoted = mode === 'impl' ? quotableLines(unit.files, base) : quotableLinesOf(stubUnitBodies(unit.files, stubs))
+  const unitFiles = new Set(unit.files)
   for (const file of textFiles(sandbox)) {
+    if (unitFiles.has(file)) continue
     const text = readFileSync(join(sandbox, file), 'utf8')
     const found = new Set(nameRe ? (text.match(nameRe) ?? []) : [])
     const quotes = text.split('\n').filter(raw => quotesLine(quoted, raw)).length
@@ -209,9 +259,20 @@ if (mode === 'impl') {
   }
 }
 
-const record: SandboxRecord = { mode, unit: name, sha, removed }
+const record: SandboxRecord = { mode, unit: name, sha, removed, ...(mode === 'bodies' ? { stubs } : {}) }
 writeFileSync(join(base, '.sandbox.json'), `${JSON.stringify(record, null, 2)}\n`)
 
 console.log(sandbox)
 if (removed.length > 0) console.log(`removed (${removed.length}):\n  ${removed.join('\n  ')}`)
+for (const [file, report] of Object.entries(stubs)) {
+  const parts = [
+    `${report.stubbed.length} stubbed${report.stubbed.length > 0 ? ` (${report.stubbed.map(s => s.name).join(', ')})` : ''}`,
+    ...(report.residue.length > 0 ? [`signature residue on lines ${report.residue.join(', ')}`] : []),
+    ...(report.comments.length > 0 ? [`${report.comments.length} comment lines taken out`] : []),
+    ...(report.unlocated.length > 0
+      ? [`outside a body: ${report.unlocated.map(u => `${u.line}${u.symbol ? ` (${u.symbol})` : ''}`).join(', ')}`]
+      : []),
+  ]
+  console.log(`${file}: ${parts.join('; ')}`)
+}
 if (reported.length > 0) console.log(`private names still in the sandbox, review before the brief:\n  ${reported.join('\n  ')}`)

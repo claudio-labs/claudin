@@ -81,6 +81,7 @@
         "@types/turndown": "^5.0.6",
         "@types/ws": "^8.18.1",
         "knip": "^6.32.0",
+        "oxc-parser": "0.150.0",
         "typescript": "7.0.2",
       },
     },

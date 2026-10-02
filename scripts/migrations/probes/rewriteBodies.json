@@ -1,0 +1,47 @@
+{
+  "test": ["scripts/migrations/rewrite/bodies.test.ts"],
+  "probes": [
+    {
+      "name": "the signature line of a block is stubbed instead of kept as residue",
+      "source": "scripts/migrations/rewrite/bodies.ts",
+      "find": "if (site.isBlock ? line <= bodyFirstLine : line < bodyFirstLine) result.residue.push(line)",
+      "replace": "if (line < bodyFirstLine) result.residue.push(line)"
+    },
+    {
+      "name": "inherited comments stay in the sandbox",
+      "source": "scripts/migrations/rewrite/bodies.ts",
+      "find": "      if (comment !== undefined) {\n        looseComments.add(comment)\n        continue\n      }\n",
+      "replace": ""
+    },
+    {
+      "name": "a comment alone on its line leaves a blank line behind",
+      "source": "scripts/migrations/rewrite/bodies.ts",
+      "find": "edits.push(alone ? { start: lineStart, end: lineEnd, replacement: '' } : { ...comment, replacement: '' })",
+      "replace": "edits.push({ ...comment, replacement: '' })"
+    },
+    {
+      "name": "the stub keeps the old body's indentation flat",
+      "source": "scripts/migrations/rewrite/bodies.ts",
+      "find": "const replacement = `{\\n${indent}  throw new Error('not rewritten: ${site.name}')\\n${indent}}`",
+      "replace": "const replacement = `{\\nthrow new Error('not rewritten: ${site.name}')\\n}`"
+    },
+    {
+      "name": "a file that does not parse is stubbed anyway",
+      "source": "scripts/migrations/rewrite/bodies.ts",
+      "find": "  if (parsed.errors.length > 0) {",
+      "replace": "  if (parsed.errors.length > 99) {"
+    },
+    {
+      "name": "the holder of a loose line is not named",
+      "source": "scripts/migrations/rewrite/bodies.ts",
+      "find": "symbol: holder ? declaredName(holder.statement) : null",
+      "replace": "symbol: null"
+    },
+    {
+      "name": "a property function is named after nothing",
+      "source": "scripts/migrations/rewrite/bodies.ts",
+      "find": "        hint = keyName(value.key)\n",
+      "replace": "        hint = null\n"
+    }
+  ]
+}

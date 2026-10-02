@@ -122,7 +122,7 @@ show('deleted outside the unit, NOT applied', strayRemovals)
 show('merged with what the checkout changed since the base', [...merged.keys()])
 show('CONFLICT: the checkout changed these since the base', conflicts)
 
-if (record.mode === 'impl') {
+if (record.mode !== 'char') {
   const reference = loadReference()
   // Every added file is the implementer's; a changed file outside the unit
   // keeps whatever inherited count it had, which the ratchet already holds.
@@ -155,7 +155,7 @@ if (removed.length > 0) {
   if (result.status !== 0) throw new Error(`git rm failed:\n${result.stderr}`)
 }
 console.log(`applied: ${added.length} added, ${changed.length} changed, ${removed.length} removed`)
-if (record.mode === 'impl') {
+if (record.mode !== 'char') {
   const olderSpecs = record.removed.filter(
     path => path.startsWith('scripts/migrations/probes/') && path !== probeSpecPath(unit.name),
   )
