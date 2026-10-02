@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-02",
-  "capturedFrom": "b82a3b11006077a02b999afc7e7b26a86221680d",
-  "totals": { "claudeCode": 302067, "openclaude": 43968 },
+  "capturedFrom": "b4332fdaca8b2d3d2b591bac386f59f516c06183",
+  "totals": { "claudeCode": 302067, "openclaude": 43354 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -753,7 +753,7 @@
     "src/memory/instructions/claudemd/types.ts": [6, 0],
     "src/memory/instructions/markdownConfig/configDirectories.ts": [2, 0],
     "src/memory/instructions/markdownConfig/loadMarkdownFiles.ts": [2, 0],
-    "src/memory/instructions/projectInstructions.ts": [0, 44],
+    "src/memory/instructions/projectInstructions.ts": [0, 39],
     "src/memory/instructions/rulesClaims.test.ts": [0, 19],
     "src/memory/instructions/rulesClaims.ts": [2, 0],
     "src/memory/instructions/rulesLint.test.ts": [0, 15],
@@ -1469,7 +1469,6 @@
     "src/providers/oauth/aws.ts": [54, 0],
     "src/providers/oauth/awsAuthStatusManager.ts": [65, 0],
     "src/providers/oauth/client.ts": [415, 0],
-    "src/providers/oauth/codexCredentials.test.ts": [0, 609],
     "src/providers/oauth/codexCredentials.ts": [4, 305],
     "src/providers/oauth/codexOAuth.test.ts": [0, 97],
     "src/providers/oauth/codexOAuth.ts": [2, 217],
