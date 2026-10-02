@@ -1,0 +1,143 @@
+{
+  "test": [
+    "src/tools/AgentTool/AgentTool.characterization.test.ts",
+    "src/agent/plans/plans.characterization.test.ts",
+    "src/commands/clear/caches.characterization.test.ts",
+    "src/commands/rename/rename.characterization.test.ts"
+  ],
+  "source": "src/tools/AgentTool/AgentTool.tsx",
+  "probes": [
+    {
+      "name": "a team spawn without agent teams is refused",
+      "find": "if (team_name && !isAgentSwarmsEnabled()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "an agent defined as background runs in the background",
+      "find": "const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator",
+      "replace": "const shouldRunAsync = (run_in_background === true || isCoordinator"
+    },
+    {
+      "name": "a worktree without changes is removed",
+      "find": "if (!changed) {",
+      "replace": "if (changed) {"
+    },
+    {
+      "name": "an inline agent's name is registered",
+      "find": "if (name) registerAgentName(rootSetAppState, name, syncAgentId);",
+      "replace": "if (false) registerAgentName(rootSetAppState, name, syncAgentId);"
+    },
+    {
+      "name": "an agent that said nothing gets the explicit marker",
+      "find": "const contentOrMarker = data.content.length > 0",
+      "replace": "const contentOrMarker = data.content.length >= 0"
+    },
+    {
+      "name": "a one-shot built-in that kept a worktree still gets the trailer",
+      "find": "ONE_SHOT_BUILTIN_AGENT_TYPES.has(data.agentType) && !worktreeInfoText",
+      "replace": "ONE_SHOT_BUILTIN_AGENT_TYPES.has(data.agentType)"
+    },
+    {
+      "name": "a sub-agent plan file carries the agent id",
+      "source": "src/agent/plans/plans.ts",
+      "find": "-agent-${agentId}.md",
+      "replace": "-sub-${agentId}.md"
+    },
+    {
+      "name": "an unprovable plans path falls back to the config directory",
+      "source": "src/agent/plans/plans.ts",
+      "find": "plansPath = join(getClaudinConfigHomeDir(), 'plans')",
+      "replace": "plansPath = join(getClaudinConfigHomeDir(), 'plan')"
+    },
+    {
+      "name": "a fork gets its own slug",
+      "source": "src/agent/plans/plans.ts",
+      "find": "const newSlug = getPlanSlug(targetSessionId)",
+      "replace": "const newSlug = originalSlug"
+    },
+    {
+      "name": "a missing plan reads as null",
+      "source": "src/agent/plans/plans.ts",
+      "find": "if (isENOENT(error)) return null",
+      "replace": "if (isENOENT(error)) return ''"
+    },
+    {
+      "name": "clearing a slug forgets it",
+      "source": "src/agent/plans/plans.ts",
+      "find": "getPlanSlugCache().delete(id)",
+      "replace": "getPlanSlugCache().get(id)"
+    },
+    {
+      "name": "a resumed session adopts the transcript slug",
+      "source": "src/agent/plans/plans.ts",
+      "find": "  setPlanSlug(sessionId, slug)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "/clear forgets the last emitted date",
+      "source": "src/commands/clear/caches.ts",
+      "find": "setLastEmittedDate(null)",
+      "replace": "void 0"
+    },
+    {
+      "name": "/clear empties the file read cache",
+      "source": "src/commands/clear/caches.ts",
+      "find": "fileReadCache.clear()",
+      "replace": "void fileReadCache"
+    },
+    {
+      "name": "/clear keeps the invoked skills of preserved agents",
+      "source": "src/commands/clear/caches.ts",
+      "find": "clearInvokedSkills(preservedAgentIds)",
+      "replace": "clearInvokedSkills(new Set())"
+    },
+    {
+      "name": "/clear keeps swarm callbacks while agents are preserved",
+      "source": "src/commands/clear/caches.ts",
+      "find": "if (!hasPreserved) clearAllPendingCallbacks()",
+      "replace": "clearAllPendingCallbacks()"
+    },
+    {
+      "name": "/clear drops the session start date memo",
+      "source": "src/commands/clear/caches.ts",
+      "find": "getSessionStartDate.cache.clear?.()",
+      "replace": "void getSessionStartDate"
+    },
+    {
+      "name": "/clear drops the agent definitions memo",
+      "source": "src/commands/clear/caches.ts",
+      "find": "({ clearAgentDefinitionsCache }) => clearAgentDefinitionsCache(),",
+      "replace": "() => {},"
+    },
+    {
+      "name": "a typed name is trimmed",
+      "source": "src/commands/rename/rename.ts",
+      "find": "newName = args.trim()",
+      "replace": "newName = args"
+    },
+    {
+      "name": "a teammate cannot rename itself",
+      "source": "src/commands/rename/rename.ts",
+      "find": "if (isTeammate()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "the name is saved as the agent name too",
+      "source": "src/commands/rename/rename.ts",
+      "find": "await saveAgentName(sessionId, newName, fullPath)",
+      "replace": "void 0"
+    },
+    {
+      "name": "the prompt bar shows the new name",
+      "source": "src/commands/rename/rename.ts",
+      "find": "      name: newName,",
+      "replace": "      name: 'unchanged',"
+    },
+    {
+      "name": "no generated name means no rename",
+      "source": "src/commands/rename/rename.ts",
+      "find": "if (!generated) {",
+      "replace": "if (generated === undefined) {"
+    }
+  ]
+}

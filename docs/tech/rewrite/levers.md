@@ -181,6 +181,25 @@ the per-method rewrite holds every file it fills in to the same target. So the
 tests are the spec that rewrite needs anyway, written earlier. A file that is
 itself being cut gets no tests.
 
+Some files fall short only because of lines the cut deletes. `plans.ts` is one:
+the cover round brought it from 19% to 52%, and about 130 of its 283 lines are
+the remote plan recovery. For such a file the tests still land first, and the
+target is checked in the cut's own commit, on what survives. A survivor below
+target after the cut blocks the commit.
+
+Two measurement traps, both found in the cover round:
+- **Feature flags.** `bun test` runs every `feature()` as false, and 32 flags
+  are true in the build. A line behind one of those flags runs in production
+  but in no test. `interactiveHandler.ts` stops at 46% because of it.
+- **Query-string imports.** About 30 suites import a module under a
+  cache-busting query string (`./plans.js?t=…`) to get a fresh copy. Bun's lcov
+  keeps one record per file, so in a run that loads several copies the number
+  depends on which copy it kept. `plans.ts` reads 19% whenever `plans.test.ts`
+  is in the run, whatever else covers it.
+
+  Until those suites change, a full `bun run test:coverage` undercounts those
+  modules. A unit is measured by a run limited to its characterization suites.
+
 Tests that pin behaviour being cut go with the cut, on purpose, and the commit
 names them.
 

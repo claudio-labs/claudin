@@ -284,6 +284,15 @@ more cheaply in its own module re-exported from the `.tsx` (e.g.
 | `src/shared/*` | 75%+ | Cross-cutting primitives used everywhere |
 | Build scripts | 60%+ | Invariants via the guard tests |
 
+Two things make lcov under-report a file:
+- **Feature flags.** `bun test` evaluates every `feature()` as false, so a
+  branch behind a flag that is true in the build is never covered.
+  `bun test --feature=NAME` turns one flag on, for that run only.
+- **Query-string imports.** A suite that imports a module under a cache-busting
+  query string (`import('./x.js?t=…')`) loads a second copy of it. The lcov keeps
+  one record per file, so which copy's hits it reports depends on the run. To
+  measure such a module, run without those suites.
+
 ### The test floor (`bun run test:floor`)
 
 A ratchet, not a target. `test-floor.json` records the test-to-source LOC ratio
