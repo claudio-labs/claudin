@@ -1,0 +1,152 @@
+{
+  "test": [
+    "src/platform/config/managedEnv.characterization.test.ts",
+    "src/permissions/toolPermission/handlers/interactiveHandler.characterization.test.ts",
+    "src/platform/headless/remoteIO.characterization.test.ts",
+    "src/platform/headless/handlers/auth.characterization.test.ts"
+  ],
+  "source": "src/platform/config/managedEnv.ts",
+  "probes": [
+    {
+      "name": "managedEnv: the ssh tunnel strip runs without a socket",
+      "find": "if (!env || !process.env.ANTHROPIC_UNIX_SOCKET) return env || {}",
+      "replace": "if (!env || process.env.ANTHROPIC_UNIX_SOCKET) return env || {}"
+    },
+    {
+      "name": "managedEnv: the host-routing filter keeps provider vars instead",
+      "find": "    if (!isProviderManagedEnvVar(key)) {",
+      "replace": "    if (isProviderManagedEnvVar(key)) {"
+    },
+    {
+      "name": "managedEnv: a disallowed userSettings source still applies",
+      "find": "    if (!isSettingSourceEnabled(source)) continue",
+      "replace": "    if (isSettingSourceEnabled(source) && false) continue"
+    },
+    {
+      "name": "managedEnv: project sources apply only names outside the allowlist",
+      "find": "    if (SAFE_ENV_VARS.has(key.toUpperCase())) {",
+      "replace": "    if (!SAFE_ENV_VARS.has(key.toUpperCase())) {"
+    },
+    {
+      "name": "managedEnv: the desktop host is no longer recognised",
+      "find": "process.env.CLAUDE_CODE_ENTRYPOINT === 'claude-desktop'",
+      "replace": "process.env.CLAUDE_CODE_ENTRYPOINT === 'claude-desktop-probe'"
+    },
+    {
+      "name": "managedEnv: settings no longer reconfigure outgoing HTTP",
+      "find": "  configureGlobalAgents()\n",
+      "replace": "\n"
+    },
+
+    {
+      "name": "interactiveHandler: the dialog shows the raw input, not the rewritten one",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "    input: displayInput,",
+      "replace": "    input: ctx.input,"
+    },
+    {
+      "name": "interactiveHandler: abort is recorded as a reject",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "{ decision: 'reject', source: { type: 'user_abort' } },",
+      "replace": "{ decision: 'reject', source: { type: 'user_reject', hasFeedback: false } },"
+    },
+    {
+      "name": "interactiveHandler: reject drops the content blocks",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "resolveOnce(ctx.cancelAndAbort(feedback, undefined, contentBlocks))",
+      "replace": "resolveOnce(ctx.cancelAndAbort(feedback, undefined, undefined))"
+    },
+    {
+      "name": "interactiveHandler: re-check resolves on deny instead of allow",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "      if (freshResult.behavior === 'allow') {",
+      "replace": "      if (freshResult.behavior === 'deny') {"
+    },
+    {
+      "name": "interactiveHandler: a late hook no longer checks who answered first",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "      if (!hookDecision || !claim()) return",
+      "replace": "      if (!hookDecision) return"
+    },
+    {
+      "name": "interactiveHandler: hooks run even when the caller already awaited them",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "  if (!awaitAutomatedChecksBeforeDialog) {",
+      "replace": "  if (true) {"
+    },
+
+    {
+      "name": "remoteIO: the session token is sent with the wrong scheme",
+      "source": "src/platform/headless/remoteIO.ts",
+      "find": "      headers['Authorization'] = `Bearer ${sessionToken}`",
+      "replace": "      headers['Authorization'] = `Token ${sessionToken}`"
+    },
+    {
+      "name": "remoteIO: the runner version header is dropped",
+      "source": "src/platform/headless/remoteIO.ts",
+      "find": "      headers['x-environment-runner-version'] = erVersion",
+      "replace": "      void erVersion"
+    },
+    {
+      "name": "remoteIO: a reconnect reuses a stale token",
+      "source": "src/platform/headless/remoteIO.ts",
+      "find": "        h['Authorization'] = `Bearer ${freshToken}`",
+      "replace": "        h['Authorization'] = `Bearer first-token`"
+    },
+    {
+      "name": "remoteIO: the endpoint closing no longer ends the input",
+      "source": "src/platform/headless/remoteIO.ts",
+      "find": "      // End the input stream to trigger graceful shutdown\n      this.inputStream.end()",
+      "replace": "      // End the input stream to trigger graceful shutdown"
+    },
+    {
+      "name": "remoteIO: the initial prompt is never fed in",
+      "source": "src/platform/headless/remoteIO.ts",
+      "find": "    if (initialPrompt) {",
+      "replace": "    if (!initialPrompt) {"
+    },
+    {
+      "name": "remoteIO: write no longer reaches the transport",
+      "source": "src/platform/headless/remoteIO.ts",
+      "find": "      await this.transport.write(message)",
+      "replace": "      void message"
+    },
+
+    {
+      "name": "auth: logout with clearOnboarding leaves the notice count",
+      "source": "src/platform/headless/handlers/auth.ts",
+      "find": "      updated.subscriptionNoticeCount = 0",
+      "replace": "      updated.subscriptionNoticeCount = 1"
+    },
+    {
+      "name": "auth: the profile email_address fallback is lost",
+      "source": "src/platform/headless/handlers/auth.ts",
+      "find": "      emailAddress: account.email ?? account.email_address ?? '',",
+      "replace": "      emailAddress: account.email ?? '',"
+    },
+    {
+      "name": "auth: a missing minted key passes silently",
+      "source": "src/platform/headless/handlers/auth.ts",
+      "find": "    const apiKey = await createAndStoreApiKey(tokens.accessToken)\n    if (!apiKey) {",
+      "replace": "    const apiKey = await createAndStoreApiKey(tokens.accessToken)\n    if (apiKey === 'never') {"
+    },
+    {
+      "name": "auth: login without flags goes to the console",
+      "source": "src/platform/headless/handlers/auth.ts",
+      "find": "    : !useConsole",
+      "replace": "    : !!useConsole"
+    },
+    {
+      "name": "auth: env scopes are split on single spaces",
+      "source": "src/platform/headless/handlers/auth.ts",
+      "find": "    const scopes = envScopes.split(/\\s+/).filter(Boolean)",
+      "replace": "    const scopes = envScopes.split(' ')"
+    },
+    {
+      "name": "auth: an apiKeyHelper is reported as an OAuth token",
+      "source": "src/platform/headless/handlers/auth.ts",
+      "find": "    authMethod = 'api_key_helper'",
+      "replace": "    authMethod = 'oauth_token'"
+    }
+  ]
+}

@@ -91,8 +91,10 @@ build keeps every one of these modules: the gates are checked at runtime.
 
 **Stay, and get covered:** `headless/remoteIO.ts` and the transports other
 than `ccrClient.ts`. The hidden `--sdk-url` flag runs stream-json over any
-WebSocket or HTTPS endpoint, and nothing in that path needs Anthropic. Its
-`CLAUDE_CODE_USE_CCR_V2` branch goes with `ccrClient.ts`.
+WebSocket endpoint (`ws:` or `wss:`), and nothing in that path needs Anthropic.
+An `http:` or `https:` URL only works through the `CLAUDE_CODE_USE_CCR_V2`
+branch, and otherwise throws `Unsupported protocol`. That branch goes with
+`ccrClient.ts`.
 
 Before deleting, check the remaining callers of the following:
 - the remote-agent metadata helpers in `sessions/indexing/agents.ts`;

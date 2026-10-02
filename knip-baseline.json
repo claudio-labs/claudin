@@ -3,8 +3,8 @@
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
   "capturedAt": "2026-10-02",
-  "capturedFrom": "b4332fdaca8b2d3d2b591bac386f59f516c06183",
-  "count": 1132,
+  "capturedFrom": "804e1348a31eeac7c166aee1616505f445f9e9eb",
+  "count": 1131,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
     "exports src/agent/attachments/attachments.ts#isFileReadDenied",
@@ -282,7 +282,6 @@
     "exports src/platform/entrypoints/sdk/coreSchemas.ts#UUIDPlaceholder",
     "exports src/platform/entrypoints/sdk/coreTypes.ts#EXIT_REASONS",
     "exports src/platform/exportRenderer.tsx#streamRenderedMessages",
-    "exports src/platform/headless/handlers/auth.ts#performLogout",
     "exports src/platform/headless/handlers/plugins.ts#VALID_INSTALLABLE_SCOPES",
     "exports src/platform/headless/handlers/plugins.ts#VALID_UPDATE_SCOPES",
     "exports src/platform/headless/handlers/plugins.ts#handleMarketplaceError",
