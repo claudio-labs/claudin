@@ -97,8 +97,12 @@ Any surviving file a lever edits gets tested first, and so does any file a
 per-method rewrite fills in. Before the change:
 1. Every function that changes is run by a test.
 2. The file reaches the `testing.md` target for its slice: providers 80%,
-   shared 75%, tools 70%, and 70% for a slice without a target. Measure it with
-   `coverage/lcov.info` (`bun run test:coverage`).
+   shared 75%, tools 70%, and 70% for a slice without a target. After
+   `bun run test:coverage`, `bun run rewrite:coverage` checks it and exits 1
+   while any file is below its target:
+   - `--cut <path>...` checks the surviving files that import what a cut or a replacement removes;
+   - `--unit <name>` checks a unit's own files;
+   - a list of files checks those files.
 3. Each new test is a characterization of the public contract. Prove it with
    `scripts/migrations/break-probe.ts`, using a spec at
    `scripts/migrations/probes/levers-<group>.json`.
@@ -119,11 +123,12 @@ names them.
 ### Coverage of the files the cuts touch (2026-10-02)
 
 These are the surviving files that import something being cut, with their lcov
-line coverage. "Not loaded" means no test imports the file at all.
+line coverage, from `bun run rewrite:coverage --cut`. "Not loaded" means no test
+imports the file at all.
 
 | Group | Surviving files | Below target | Hubs and their coverage |
 |---|---|---|---|
-| dead code | 42 | 36 (10 not loaded) | `REPL.tsx` 57%, `PromptInput.tsx` 37%, `AgentTool.tsx` 12%, `settings.ts` 51%, `commands.ts` 81%, headless `print/*` 5–8%; not loaded: `init.ts`, `preActionHook.ts`, `Config.tsx` |
+| dead code | 47 | 39 (13 not loaded) | `REPL.tsx` 57%, `PromptInput.tsx` 37%, `AgentTool.tsx` 12%, `settings.ts` 51%, `commands.ts` 81%, headless `print/*` 5–8%; not loaded: `cli.tsx`, `init.ts`, `preActionHook.ts`, `Config.tsx` |
 | yoga | 2 | 0 | `ink/layout/yoga.ts` 91%, `ink/reconciler.ts` 78% |
 | opencode | — | most | `lsp/LSPServerManager.ts` 1%, `LSPServerInstance.ts` 2%, `lsp/manager.ts` 15%, `mcp/auth/*` 3–7%, `providers/oauth/client.ts` 3%; Codex OAuth 63–86% |
 

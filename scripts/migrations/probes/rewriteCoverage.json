@@ -1,0 +1,41 @@
+{
+  "test": "scripts/migrations/rewrite/coverage.test.ts",
+  "source": "scripts/migrations/rewrite/coverage.ts",
+  "probes": [
+    {
+      "name": "a slice without a testing.md target falls to 60%",
+      "find": "const DEFAULT_TARGET = 70",
+      "replace": "const DEFAULT_TARGET = 60"
+    },
+    {
+      "name": "an absolute SF path is kept absolute",
+      "find": "value.startsWith('/') ? relative(root, value) : value",
+      "replace": "value"
+    },
+    {
+      "name": "a relative specifier resolves from the root",
+      "find": "return withoutExtension(join(dirname(importer), specifier))",
+      "replace": "return withoutExtension(specifier)"
+    },
+    {
+      "name": "a dynamic import is not read",
+      "find": "|\\bimport\\s*\\(\\s*|",
+      "replace": "|"
+    },
+    {
+      "name": "a path sharing a prefix with the cut counts as inside it",
+      "find": "path.startsWith(`${t}/`)",
+      "replace": "path.startsWith(t)"
+    },
+    {
+      "name": "a test file counts as an importer",
+      "find": "if (NOT_PRODUCTION_RE.test(path) || inside(withoutExtension(path))) continue",
+      "replace": "if (inside(withoutExtension(path))) continue"
+    },
+    {
+      "name": "a file no test loads passes the gate",
+      "find": "(row.percent ?? 0) < row.target",
+      "replace": "(row.percent ?? 100) < row.target"
+    }
+  ]
+}

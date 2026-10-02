@@ -50,6 +50,7 @@
     "provenance:ci": "bun run scripts/verify/provenance-ci.ts",
     "provenance:baseline": "bun run scripts/verify/provenance-ci.ts --update",
     "provenance:fingerprints": "bun run scripts/verify/provenance/build-fingerprints.ts",
+    "rewrite:coverage": "bun run scripts/migrations/rewrite/coverage.ts",
     "generate:sdk-types": "bun run scripts/codegen/generate-sdk-types.ts",
     "codegen:reasoning-catalog": "bun run scripts/codegen/reasoning-catalog.ts",
     "verify:sdk-types": "bun run scripts/codegen/generate-sdk-types.ts --check",
