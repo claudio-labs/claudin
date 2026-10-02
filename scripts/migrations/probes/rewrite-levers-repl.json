@@ -1,0 +1,81 @@
+{
+  "test": [
+    "src/agent/repl/REPL.characterization.test.tsx",
+    "src/agent/repl/controllers/useOnSubmit.characterization.test.tsx"
+  ],
+  "source": "src/agent/repl/REPL.tsx",
+  "probes": [
+    {
+      "name": "repl: Esc aborts the turn as a user cancel, so its prompt comes back",
+      "source": "src/agent/repl/REPL.tsx",
+      "find": "    } else {\n      abortController?.abort('user-cancel');\n    }",
+      "replace": "    } else {\n      abortController?.abort('background');\n    }"
+    },
+    {
+      "name": "repl: stopping foreground work drops the queued prompts",
+      "source": "src/agent/repl/REPL.tsx",
+      "find": "    clearCommandQueue();\n  };",
+      "replace": "    void 0;\n  };"
+    },
+    {
+      "name": "repl: v hands the rendered transcript to the editor",
+      "source": "src/agent/repl/REPL.tsx",
+      "find": "const opened = openFileInExternalEditor(path);",
+      "replace": "const opened = false;"
+    },
+    {
+      "name": "repl: several stop hooks show a done/total count",
+      "source": "src/agent/repl/REPL.tsx",
+      "find": "`running stop hooks… ${completedCount}/${total}`",
+      "replace": "`running hooks… ${completedCount}/${total}`"
+    },
+    {
+      "name": "repl: text typed at a running agent joins its pending queue",
+      "source": "src/agent/repl/REPL.tsx",
+      "find": "queuePendingMessage(task.id, input, setAppState);",
+      "replace": "void setAppState;"
+    },
+    {
+      "name": "repl: an initial message switches to the permission mode it names",
+      "source": "src/agent/repl/REPL.tsx",
+      "find": "let updatedToolPermissionContext = initialMsg.mode ?",
+      "replace": "let updatedToolPermissionContext = undefined ?"
+    },
+    {
+      "name": "submit: an immediate command clears the prompt it was typed in",
+      "source": "src/agent/repl/controllers/useOnSubmit.ts",
+      "find": "if (input.trim() === inputValueRef.current.trim()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "submit: a skipped command result stays out of the transcript",
+      "source": "src/agent/repl/controllers/useOnSubmit.ts",
+      "find": "if (result && doneOptions?.display !== 'skip') {",
+      "replace": "if (result) {"
+    },
+    {
+      "name": "submit: a command's meta messages reach the conversation",
+      "source": "src/agent/repl/controllers/useOnSubmit.ts",
+      "find": "if (doneOptions?.metaMessages?.length) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "submit: history keeps the mode character of a bash prompt",
+      "source": "src/agent/repl/controllers/useOnSubmit.ts",
+      "find": "display: speculationAccept ? input : prependModeCharacterToInput(input, inputMode),",
+      "replace": "display: input,"
+    },
+    {
+      "name": "submit: a keybinding-triggered command stays out of history",
+      "source": "src/agent/repl/controllers/useOnSubmit.ts",
+      "find": "    if (!options?.fromKeybinding) {\n      addToHistory({",
+      "replace": "    if (true) {\n      addToHistory({"
+    },
+    {
+      "name": "submit: a stashed prompt returns as soon as a prompt is sent",
+      "source": "src/agent/repl/controllers/useOnSubmit.ts",
+      "find": "if (stashedPrompt !== undefined && !isSlashCommand && submitsNow) {",
+      "replace": "if (false) {"
+    }
+  ]
+}
