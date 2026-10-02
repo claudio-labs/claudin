@@ -1,18 +1,28 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import axios from 'axios'
 
 const originalEnv = { ...process.env }
+// Plain copies taken before any stub lands; afterAll puts them back, because
+// Bun never reverts a mock.module and axios is one shared instance.
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
+const realAxiosGet = axios.get
+
+function restoreEnv(): void {
+  for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key]
+  Object.assign(process.env, originalEnv)
+}
 
 async function importFreshModule() {
   return import(`./utils.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
-beforeEach(() => {
-  process.env = { ...originalEnv }
-})
+beforeEach(restoreEnv)
 
-afterEach(() => {
-  process.env = { ...originalEnv }
+afterEach(restoreEnv)
+
+afterAll(() => {
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  axios.get = realAxiosGet
 })
 
 describe('checkDomainBlocklist', () => {
