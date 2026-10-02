@@ -110,6 +110,16 @@ no Effect in them:
 - `plugin/openai/codex.ts`, for the Codex OAuth
 - `permission/arity.ts`, for command-prefix matching in the Bash rules. The file says an LLM generated the table.
 
+The files each piece replaces are covered first, as the units `levers/lsp`,
+`levers/mcp-auth` and `levers/codex-oauth`. Their tests pin the contract the
+ported piece has to meet. Their coverage on 2026-10-02:
+- `LSPClient.ts` is not loaded by any test;
+- `LSPServerInstance.ts` and `LSPServerManager.ts` are at 2%, and `lsp/manager.ts` at 15%;
+- the `mcp/auth` files are at 3–7%;
+- `codexCredentials.ts` is at 63%, and `codexOAuthShared.ts` at 78%.
+
+`bashPermissions/prefixes.ts` is already at 71%.
+
 Each ported file starts with `Adapted from opencode (MIT)`, and
 `THIRD_PARTY_NOTICES.md` carries opencode's license. Rebasing Claudin on opencode
 was rejected. It has no equivalent for about 50 k inherited lines: the Bash
@@ -117,7 +127,24 @@ security analysis, shell hooks, headless stream-json, JSONL transcripts and the
 Ink TUI. It would also mean rewriting the whole UX in Solid and Effect.
 
 **MIT packages.**
-- `src/native-ts/yoga-layout` mirrors the `yoga-layout/load` API, so the package replaces it. The gate is a render bench and the compiled binary.
+- `src/native-ts/yoga-layout` mirrors the `yoga-layout` API, so the package (MIT, 3.2.1, WASM) can replace it.
+  A spike on 2026-10-02 built Ink-shaped trees (rows with a gutter and a body of
+  measured text leaves) in both engines:
+  - **Layout:** identical, on 2,404, 9,604 and 36,004 values.
+  - **Speed:** the package is slower, and the gap grows with the tree.
+
+    | Messages | Full layout (port → package) | Incremental (port → package) |
+    |---|---|---|
+    | 100 | 0.36 → 0.99 ms | 0.17 → 0.17 ms |
+    | 400 | 1.5 → 3.4 ms | 0.44 → 0.59 ms |
+    | 1,500 | 4.4 → 12.8 ms | 1.0 → 2.3 ms |
+  - **Import:** about 7.5 ms more, to compile the WASM.
+  - **Memory:** WASM linear memory never shrinks. Upstream ported to TypeScript
+    to escape that; the comment at the end of `ink/layout/yoga.ts` says so.
+
+  The swap waits on a decision. The other way out is a per-method rewrite of the
+  port in phase 9, with the package kept as a test-only oracle: the same tree is
+  laid out by both engines and the results compared.
 - Reclassifying `src/terminal/ink` as upstream Ink code was measured and dropped. Only 262 of its 9,941 distinctive lines are in `vadimdemedes/ink`.
 
 ## Cover before touching

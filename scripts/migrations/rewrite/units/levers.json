@@ -22,5 +22,14 @@
   },
   "levers/prompt-input": {
     "files": ["src/terminal/prompt-input/PromptInput.tsx", "src/terminal/prompt-suggestion/promptSuggestion.ts", "src/terminal/prompt-suggestion/usePromptSuggestion.ts", "src/terminal/spinner/Spinner.tsx"]
+  },
+  "levers/lsp": {
+    "files": ["src/platform/lsp/LSPClient.ts", "src/platform/lsp/LSPServerInstance.ts", "src/platform/lsp/LSPServerManager.ts", "src/platform/lsp/manager.ts"]
+  },
+  "levers/mcp-auth": {
+    "files": ["src/mcp/auth/claudeAuthProvider.ts", "src/mcp/auth/oauthFlow.ts", "src/mcp/auth/authFetch.ts", "src/mcp/auth/tokenRevocation.ts", "src/mcp/auth/clientSecretStore.ts"]
+  },
+  "levers/codex-oauth": {
+    "files": ["src/providers/oauth/codexCredentials.ts", "src/providers/oauth/codexOAuthShared.ts", "src/providers/oauth/codexOAuth.ts"]
   }
 }
