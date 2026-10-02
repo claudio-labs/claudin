@@ -263,18 +263,17 @@ describe('a failed code exchange', () => {
     })
   }
 
-  test('DEFECT pinned: an error whose text contains the callback port is reported as a busy port', async () => {
-    // With port 0 any message holding a "0" (here the status 400) is
-    // rewritten; with the default 1455 the same happens to an issuer error
-    // that echoes the redirect_uri. The browser still gets the real message.
+  test('FIXED: an error whose text contains the callback port keeps its own message', async () => {
+    // Was: with port 0 any message holding a "0" (here the status 400) was
+    // rewritten into the busy-port message. Only a bind failure with
+    // code EADDRINUSE is a busy port now; the caller and the browser get
+    // the same real message.
     process.env.CODEX_OAUTH_CALLBACK_PORT = '0'
     issuerFor({ code: () => ({ status: 400, body: 'bad code' }) })
 
     const { error, page } = await login()
 
-    expect(error?.message).toBe(
-      'Codex OAuth needs localhost:0 for its callback. Close any app already using that port and try again.',
-    )
+    expect(error?.message).toBe('Codex OAuth token exchange failed (400): bad code')
     expect(page?.html).toContain('Codex OAuth token exchange failed (400): bad code')
   })
 })

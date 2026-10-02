@@ -1,0 +1,497 @@
+{
+  "test": [
+    "src/providers/oauth/codexOAuthShared.characterization.test.ts",
+    "src/providers/oauth/codexOAuth.characterization.test.ts",
+    "src/providers/oauth/codexCredentials.characterization.test.ts",
+    "src/providers/oauth/codexOAuth.test.ts",
+    "src/providers/oauth/codexOAuthPort.test.ts"
+  ],
+  "source": "src/providers/oauth/codexOAuthShared.ts",
+  "probes": [
+    {
+      "name": "shared: the default client id is the Codex CLI's",
+      "find": "export const DEFAULT_CODEX_OAUTH_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'",
+      "replace": "export const DEFAULT_CODEX_OAUTH_CLIENT_ID = 'app_other'"
+    },
+    {
+      "name": "shared: the scope asks for the connectors",
+      "find": "  'openid profile email offline_access api.connectors.read api.connectors.invoke'",
+      "replace": "  'openid profile email offline_access'"
+    },
+    {
+      "name": "shared: the originator is codex_cli_rs",
+      "find": "export const CODEX_OAUTH_ORIGINATOR = 'codex_cli_rs'",
+      "replace": "export const CODEX_OAUTH_ORIGINATOR = 'claudin'"
+    },
+    {
+      "name": "shared: a blank string trims to undefined",
+      "find": "  return trimmed === '' ? undefined : trimmed",
+      "replace": "  return trimmed"
+    },
+    {
+      "name": "shared: CODEX_OAUTH_CLIENT_ID overrides the client id",
+      "find": "  return asTrimmedString(env.CODEX_OAUTH_CLIENT_ID) ?? DEFAULT_CODEX_OAUTH_CLIENT_ID",
+      "replace": "  return DEFAULT_CODEX_OAUTH_CLIENT_ID"
+    },
+    {
+      "name": "shared: a callback port above 65535 falls back to the default",
+      "find": "  return port <= MAX_PORT ? port : DEFAULT_CODEX_OAUTH_CALLBACK_PORT",
+      "replace": "  return port"
+    },
+    {
+      "name": "shared: the callback port reads its leading digits",
+      "find": "const LEADING_DIGITS_RE = /^\\d+/",
+      "replace": "const LEADING_DIGITS_RE = /^\\d+$/"
+    },
+    {
+      "name": "shared: a JWT payload that is not an object decodes to undefined",
+      "find": "  return isRecord(claims) ? claims : undefined",
+      "replace": "  return claims as Record<string, unknown> | undefined"
+    },
+    {
+      "name": "shared: the namespaced auth claim outranks the top-level one",
+      "find": "    auth?.chatgpt_account_id,\n",
+      "replace": "    claims.chatgpt_account_id,\n    auth?.chatgpt_account_id,\n"
+    },
+    {
+      "name": "shared: the dotted flat claim is read",
+      "find": "    claims[`${OPENAI_AUTH_CLAIM}.chatgpt_account_id`],",
+      "replace": "    undefined,"
+    },
+    {
+      "name": "shared: a blank higher-priority claim hides a lower one",
+      "find": "  return asTrimmedString(candidates.find(claim => claim !== undefined && claim !== null))",
+      "replace": "  return candidates.map(asTrimmedString).find(Boolean)"
+    },
+    {
+      "name": "shared: an organization entry must be an object to give its id",
+      "find": "  return isRecord(first) ? first.id : undefined",
+      "replace": "  return first"
+    },
+    {
+      "name": "shared: the organizations fallback also reads the top-level claim",
+      "find": "    firstOrganizationId(auth) ?? firstOrganizationId(claims),",
+      "replace": "    firstOrganizationId(auth),"
+    },
+    {
+      "name": "shared: escapeHtml neutralises the apostrophe",
+      "find": "    .replaceAll(\"'\", '&#39;')",
+      "replace": ""
+    },
+    {
+      "name": "shared: token requests are form-encoded",
+      "find": "    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+      "replace": "    headers: { 'Content-Type': 'application/json' },"
+    },
+    {
+      "name": "shared: the exchange names the subject as an id token",
+      "find": "      subject_token_type: CODEX_ID_TOKEN_SUBJECT_TYPE,",
+      "replace": "      subject_token_type: CODEX_TOKEN_EXCHANGE_GRANT,"
+    },
+    {
+      "name": "shared: a rejected exchange reports the issuer's body",
+      "find": "        ? `Codex API key exchange failed (${response.status}): ${detail}`",
+      "replace": "        ? `Codex API key exchange failed with status ${response.status}.`"
+    },
+    {
+      "name": "shared: an exchange reply without a token is an error",
+      "find": "  if (!apiKey) {",
+      "replace": "  if (apiKey === 'never') {"
+    },
+    {
+      "name": "shared: a failed API-key mint is not fatal",
+      "find": "      { level: 'warn' },\n    )\n    return undefined",
+      "replace": "      { level: 'warn' },\n    )\n    throw error"
+    },
+    {
+      "name": "login: the authorize URL is /oauth/authorize",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "  return `${CODEX_OAUTH_ISSUER}/oauth/authorize?${params.toString()}`",
+      "replace": "  return `${CODEX_OAUTH_ISSUER}/authorize?${params.toString()}`"
+    },
+    {
+      "name": "login: the authorize URL asks for organizations in the id token",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    id_token_add_organizations: 'true',",
+      "replace": ""
+    },
+    {
+      "name": "login: the PKCE challenge is the S256 of the verifier",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "  return { verifier, challenge: Buffer.from(digest).toString('base64url') }",
+      "replace": "  return { verifier, challenge: verifier }"
+    },
+    {
+      "name": "login: the redirect_uri names localhost",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    const redirectUri = `http://localhost:${port}${CALLBACK_PATH}`",
+      "replace": "    const redirectUri = `http://127.0.0.1:${port}${CALLBACK_PATH}`"
+    },
+    {
+      "name": "login: the callback path is /auth/callback",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "const CALLBACK_PATH = '/auth/callback'",
+      "replace": "const CALLBACK_PATH = '/callback'"
+    },
+    {
+      "name": "login: the code is redeemed with the PKCE verifier",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "      code_verifier: login.pkce.verifier,",
+      "replace": "      code_verifier: login.pkce.challenge,"
+    },
+    {
+      "name": "login: a rejected redemption reports the issuer's body",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "        ? `Codex OAuth token exchange failed (${response.status}): ${detail}`",
+      "replace": "        ? `Codex OAuth token exchange failed with status ${response.status}.`"
+    },
+    {
+      "name": "login: a reply without a refresh token is incomplete",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "  if (!accessToken || !refreshToken) throw new Error(INCOMPLETE_MESSAGE)",
+      "replace": "  if (!accessToken) throw new Error(INCOMPLETE_MESSAGE)"
+    },
+    {
+      "name": "login: an id token is exchanged for an API key",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    apiKey: idToken ? await mintCodexApiKey(idToken, signal) : undefined,",
+      "replace": "    apiKey: undefined,"
+    },
+    {
+      "name": "login: the account id comes from the id token before the access token",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "      parseChatgptAccountId(idToken) ?? parseChatgptAccountId(accessToken),",
+      "replace": "      parseChatgptAccountId(accessToken) ?? parseChatgptAccountId(idToken),"
+    },
+    {
+      "name": "login: the page escapes the message it shows",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    <p>${escapeHtml(copy.message)}</p>",
+      "replace": "    <p>${copy.message}</p>"
+    },
+    {
+      "name": "login: the success page sends the user back to Claudin",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "  message: 'You can return to Claudin now.',",
+      "replace": "  message: 'This window will continue automatically.',"
+    },
+    {
+      "name": "login: a failed redemption answers the browser with 400",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "      sendPage(res, 400, failurePage(failure.message))",
+      "replace": "      sendPage(res, 200, failurePage(failure.message))"
+    },
+    {
+      "name": "login: a callback with the wrong state is refused",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    if (params.get('state') !== login.state) return 'Invalid state parameter'",
+      "replace": ""
+    },
+    {
+      "name": "login: an issuer error prefers its description",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    if (error) return asTrimmedString(params.get('error_description')) ?? error",
+      "replace": "    if (error) return error"
+    },
+    {
+      "name": "login: a callback without a code is refused",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    if (!asTrimmedString(params.get('code'))) return 'Missing authorization code'",
+      "replace": ""
+    },
+    {
+      "name": "login: other paths get a 404",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "      res.writeHead(404)",
+      "replace": "      res.writeHead(204)"
+    },
+    {
+      "name": "login: a second callback during redemption is refused",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    if (!login || login.redeeming) {",
+      "replace": "    if (!login) {"
+    },
+    {
+      "name": "login: a busy port is detected by the EADDRINUSE code",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "          getErrnoCode(error) === 'EADDRINUSE'",
+      "replace": "          getErrnoCode(error) === 'EADDRNOTAVAIL'"
+    },
+    {
+      "name": "FIX login: a flow error mentioning the port is not rewritten as a busy port",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "      return await tokens\n",
+      "replace": "      return await tokens.catch((e: Error) => {\n        throw e.message.includes(String(configuredPort)) ? new Error(busyPortMessage(configuredPort)) : e\n      })\n"
+    },
+    {
+      "name": "login: tokens minted after cancellation are discarded",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "      if (signal.aborted) throw new Error(CANCELLED_MESSAGE)",
+      "replace": ""
+    },
+    {
+      "name": "login: a cancelled redemption shows the cancelled page",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "        sendPage(res, 200, CANCELLED_PAGE)",
+      "replace": "        sendPage(res, 200, SUCCESS_PAGE)"
+    },
+    {
+      "name": "login: cleanup aborts the in-flight redemption",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    this.abortController?.abort()",
+      "replace": ""
+    },
+    {
+      "name": "login: cleanup rejects a login still waiting for the browser",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    this.settle(login => login.reject(new Error(CANCELLED_MESSAGE)))\n    this.stop()",
+      "replace": "    this.stop()"
+    },
+    {
+      "name": "login: the callback timeout is honoured",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    }, this.callbackTimeoutMs)",
+      "replace": "    }, DEFAULT_CALLBACK_TIMEOUT_MS)"
+    },
+    {
+      "name": "login: the callback port is released when the flow ends",
+      "source": "src/providers/oauth/codexOAuth.ts",
+      "find": "    } finally {\n      this.stop()\n    }",
+      "replace": "    } finally {\n    }"
+    },
+    {
+      "name": "store: credentials live under the codex key",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "export const CODEX_STORAGE_KEY = 'codex' as const",
+      "replace": "export const CODEX_STORAGE_KEY = 'openai' as const"
+    },
+    {
+      "name": "store: a blob without an access token is refused",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    return { success: false, warning: 'Codex credentials are incomplete.' }",
+      "replace": "    return { success: false, warning: 'incomplete' }"
+    },
+    {
+      "name": "store: saving keeps an earlier linked profile id",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "      profileId: credentials.profileId ?? previous?.profileId,",
+      "replace": "      profileId: credentials.profileId,"
+    },
+    {
+      "name": "store: saving stamps lastRefreshAt",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "      lastRefreshAt: credentials.lastRefreshAt ?? Date.now(),",
+      "replace": "      lastRefreshAt: credentials.lastRefreshAt,"
+    },
+    {
+      "name": "store: other entries in the store survive a write",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  const data: SecureStorageData = { ...storage.read() }",
+      "replace": "  const data: SecureStorageData = {}"
+    },
+    {
+      "name": "store: reads trim strings and drop blanks",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    apiKey: asTrimmedString(raw.apiKey),",
+      "replace": "    apiKey: raw.apiKey as string | undefined,"
+    },
+    {
+      "name": "store: reads drop timestamps that are not numbers",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    lastRefreshAt: optionalNumber(raw.lastRefreshAt),",
+      "replace": "    lastRefreshAt: raw.lastRefreshAt as number | undefined,"
+    },
+    {
+      "name": "store: the account id falls back to the token claims",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "      asTrimmedString(raw.accountId) ??\n      parseChatgptAccountId(idToken) ??\n      parseChatgptAccountId(accessToken),",
+      "replace": "      asTrimmedString(raw.accountId),"
+    },
+    {
+      "name": "store: bare mode hides stored credentials",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "export function readCodexCredentials(): CodexCredentialBlob | undefined {\n  if (isBareMode()) return undefined",
+      "replace": "export function readCodexCredentials(): CodexCredentialBlob | undefined {"
+    },
+    {
+      "name": "store: bare mode refuses to save",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  if (isBareMode()) return BARE_MODE_RESULT\n  const accessToken",
+      "replace": "  const accessToken"
+    },
+    {
+      "name": "store: clearing with nothing stored writes nothing",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  if (storage.read()?.codex === undefined) return { success: true }",
+      "replace": ""
+    },
+    {
+      "name": "store: attaching a profile id needs stored credentials",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "      warning: 'Codex credentials are not stored securely yet.',",
+      "replace": "      warning: 'nothing stored',"
+    },
+    {
+      "name": "refresh: the failure cooldown lasts 60s",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "const REFRESH_FAILURE_COOLDOWN_MS = 60_000",
+      "replace": "const REFRESH_FAILURE_COOLDOWN_MS = 30_000"
+    },
+    {
+      "name": "refresh: the cooldown ends exactly at 60s",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  return failedAt !== undefined && now - failedAt < REFRESH_FAILURE_COOLDOWN_MS",
+      "replace": "  return failedAt !== undefined && now - failedAt <= REFRESH_FAILURE_COOLDOWN_MS"
+    },
+    {
+      "name": "refresh: tokens expiring within 60s are refreshed",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "const EXPIRY_SKEW_MS = 60_000",
+      "replace": "const EXPIRY_SKEW_MS = 0"
+    },
+    {
+      "name": "refresh: an opaque access token falls back to the id token's expiry",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    tokenExpiresAt(credentials.accessToken) ?? tokenExpiresAt(credentials.idToken)",
+      "replace": "    tokenExpiresAt(credentials.accessToken)"
+    },
+    {
+      "name": "refresh: an exp that is not a number is no expiry",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  return typeof exp === 'number' ? exp * 1000 : undefined",
+      "replace": "  return exp === undefined ? undefined : 0"
+    },
+    {
+      "name": "refresh: force refreshes a fresh token",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "(!force && !isExpiring(credentials, now))",
+      "replace": "!isExpiring(credentials, now)"
+    },
+    {
+      "name": "refresh: no refresh token means no request",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  const refreshToken = credentials.refreshToken\n",
+      "replace": "  const refreshToken = credentials.refreshToken ?? 'missing'\n"
+    },
+    {
+      "name": "refresh: a profile pinning an API key skips the refresh",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  if (activeProfilePinsApiKey()) return { refreshed: false }",
+      "replace": ""
+    },
+    {
+      "name": "refresh: the request is a refresh_token grant",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    grant_type: 'refresh_token',",
+      "replace": "    grant_type: 'refresh',"
+    },
+    {
+      "name": "refresh: a rotated refresh token replaces the old one",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    refreshToken: asTrimmedString(body.refresh_token) ?? refreshToken,",
+      "replace": "    refreshToken,"
+    },
+    {
+      "name": "refresh: an absent id token carries over",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  const idToken = asTrimmedString(body.id_token) ?? current.idToken",
+      "replace": "  const idToken = asTrimmedString(body.id_token)"
+    },
+    {
+      "name": "refresh: the stored account id is the last resort",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "      parseChatgptAccountId(accessToken) ??\n      current.accountId,",
+      "replace": "      parseChatgptAccountId(accessToken),"
+    },
+    {
+      "name": "refresh: a failed mint drops the stale API key",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    apiKey: idToken ? await mintCodexApiKey(idToken) : undefined,",
+      "replace": "    apiKey: (idToken ? await mintCodexApiKey(idToken) : undefined) ?? current.apiKey,"
+    },
+    {
+      "name": "refresh: a success clears the failure stamp",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    lastRefreshAt: Date.now(),\n  })",
+      "replace": "    lastRefreshAt: Date.now(),\n    lastRefreshFailureAt: current.lastRefreshFailureAt,\n  })"
+    },
+    {
+      "name": "refresh: an empty failure body reports the status",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  if (!detail) return `Codex token refresh failed with status ${status}.`",
+      "replace": ""
+    },
+    {
+      "name": "refresh: a nested error code classifies the failure",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  const code = asTrimmedString(nested.code) ?? asTrimmedString(body.code)",
+      "replace": "  const code = asTrimmedString(body.code)"
+    },
+    {
+      "name": "refresh: a nested error message is the detail",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    asTrimmedString(nested.message) ??\n",
+      "replace": ""
+    },
+    {
+      "name": "refresh: error_description is the detail",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    asTrimmedString(body.error_description) ??\n",
+      "replace": ""
+    },
+    {
+      "name": "refresh: a reply without an access token fails",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    throw new Error('Codex token refresh succeeded without a new access token.')",
+      "replace": "    throw new Error('no access token')"
+    },
+    {
+      "name": "refresh: a failure is stamped on disk",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    ? writeEntry(storage, { ...current, lastRefreshFailureAt: failedAt })",
+      "replace": "    ? writeEntry(storage, current)"
+    },
+    {
+      "name": "refresh: an unstampable failure is kept in memory",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  if (!stamped.success) unrecordedRefreshFailureAt = failedAt",
+      "replace": ""
+    },
+    {
+      "name": "refresh: the in-memory cooldown is honoured",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "      { lastRefreshFailureAt: unrecordedRefreshFailureAt },",
+      "replace": "      { lastRefreshFailureAt: undefined },"
+    },
+    {
+      "name": "refresh: clearing lifts the in-memory cooldown",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "export function clearCodexCredentials(): StoreResult {\n  unrecordedRefreshFailureAt = undefined",
+      "replace": "export function clearCodexCredentials(): StoreResult {"
+    },
+    {
+      "name": "refresh: an unsaved refresh is a failure",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    throw new Error(UNSAVED_REFRESH_MESSAGE)",
+      "replace": "    return { refreshed: true, credentials: next }"
+    },
+    {
+      "name": "refresh: a failed request is rethrown",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "    recordRefreshFailure()\n    throw error",
+      "replace": "    recordRefreshFailure()\n    return { refreshed: false, credentials }"
+    },
+    {
+      "name": "refresh: concurrent callers share one flight",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": "  refreshInFlight ??= runRefresh",
+      "replace": "  refreshInFlight = runRefresh"
+    },
+    {
+      "name": "refresh: the next call after a flight starts a new one",
+      "source": "src/providers/oauth/codexCredentials.ts",
+      "find": ".finally(() => {\n    refreshInFlight = undefined\n  })",
+      "replace": ".finally(() => {})"
+    }
+  ]
+}

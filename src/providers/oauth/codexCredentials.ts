@@ -1,396 +1,277 @@
+// Adapted from opencode (MIT, Copyright (c) 2025 opencode):
+// packages/opencode/src/plugin/openai/codex.ts
+import {
+  getSecureStorage,
+  type SecureStorage,
+  type SecureStorageData,
+} from 'src/platform/secureStorage/index.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import { logForDebugging } from 'src/shared/debug.js'
 import { isBareMode } from 'src/shared/envUtils.js'
-import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import {
   asTrimmedString,
-  CODEX_REFRESH_URL,
-  exchangeCodexIdTokenForApiKey,
-  getCodexOAuthClientId,
-  parseChatgptAccountId,
   decodeJwtPayload,
+  getCodexOAuthClientId,
+  isRecord,
+  mintCodexApiKey,
+  parseChatgptAccountId,
+  parseJson,
+  postCodexTokenForm,
 } from 'src/providers/oauth/codexOAuthShared.js'
 
 export const CODEX_STORAGE_KEY = 'codex' as const
-const CODEX_TOKEN_REFRESH_SKEW_MS = 60_000
-const CODEX_TOKEN_REFRESH_RETRY_COOLDOWN_MS = 60_000
 
-export type CodexCredentialBlob = {
-  apiKey?: string
-  accessToken: string
-  refreshToken?: string
-  idToken?: string
-  accountId?: string
-  profileId?: string
-  lastRefreshAt?: number
-  lastRefreshFailureAt?: number
+export type CodexCredentialBlob = NonNullable<SecureStorageData['codex']>
+
+export type CodexRefreshResult = {
+  refreshed: boolean
+  credentials?: CodexCredentialBlob
 }
 
-type CodexTokenRefreshResponse = {
-  access_token?: string
-  refresh_token?: string
-  id_token?: string
+type StoreResult = { success: boolean; warning?: string }
+
+const BARE_MODE_RESULT: StoreResult = {
+  success: false,
+  warning: 'Bare mode: secure storage is disabled.',
+}
+const REFRESH_FAILURE_COOLDOWN_MS = 60_000
+/** Refresh this long before the token's `exp`, so a request never leaves with a dying token. */
+const EXPIRY_SKEW_MS = 60_000
+const UNSAVED_REFRESH_MESSAGE =
+  'Codex token refresh succeeded but credentials could not be saved.'
+
+/**
+ * A refresh failure that could not be stamped on disk. It still has to stop
+ * the next attempts, or a read-only store would retry on every request.
+ */
+let unrecordedRefreshFailureAt: number | undefined
+let refreshInFlight: Promise<CodexRefreshResult> | undefined
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' ? value : undefined
 }
 
-let inFlightCodexRefresh:
-  | Promise<{
-      refreshed: boolean
-      credentials?: CodexCredentialBlob
-    }>
-  | null = null
-let inMemoryLastRefreshFailureAt: number | null = null
-
-function getCodexSecureStorage() {
-  return getSecureStorage({ allowPlainTextFallback: true })
+/** Drops keys whose value is undefined, so the stored entry has no empty slots. */
+function compact(blob: CodexCredentialBlob): CodexCredentialBlob {
+  return Object.fromEntries(
+    Object.entries(blob).filter(([, value]) => value !== undefined),
+  ) as CodexCredentialBlob
 }
 
-function parseJwtExpiryMs(token: string | undefined): number | undefined {
-  if (!token) return undefined
-  const payload = decodeJwtPayload(token)
-  const exp = payload?.exp
-  if (typeof exp === 'number' && Number.isFinite(exp)) {
-    return exp * 1000
-  }
-  return undefined
-}
-
-function normalizeCodexCredentialBlob(
-  value: unknown,
-): CodexCredentialBlob | undefined {
-  if (!value || typeof value !== 'object') return undefined
-
-  const record = value as Record<string, unknown>
-  const apiKey = asTrimmedString(record.apiKey)
-  const accessToken = asTrimmedString(record.accessToken)
+function normalizeEntry(raw: unknown): CodexCredentialBlob | undefined {
+  if (!isRecord(raw)) return undefined
+  const accessToken = asTrimmedString(raw.accessToken)
   if (!accessToken) return undefined
-
-  const refreshToken = asTrimmedString(record.refreshToken)
-  const idToken = asTrimmedString(record.idToken)
-  const accountId =
-    asTrimmedString(record.accountId) ??
-    parseChatgptAccountId(idToken) ??
-    parseChatgptAccountId(accessToken)
-  const profileId = asTrimmedString(record.profileId)
-
-  const lastRefreshAt =
-    typeof record.lastRefreshAt === 'number' &&
-    Number.isFinite(record.lastRefreshAt)
-      ? record.lastRefreshAt
-      : undefined
-  const lastRefreshFailureAt =
-    typeof record.lastRefreshFailureAt === 'number' &&
-    Number.isFinite(record.lastRefreshFailureAt)
-      ? record.lastRefreshFailureAt
-      : undefined
-
-  return {
-    apiKey,
+  const idToken = asTrimmedString(raw.idToken)
+  return compact({
+    apiKey: asTrimmedString(raw.apiKey),
     accessToken,
-    refreshToken,
+    refreshToken: asTrimmedString(raw.refreshToken),
     idToken,
-    accountId,
-    profileId,
-    lastRefreshAt,
-    lastRefreshFailureAt,
-  }
+    accountId:
+      asTrimmedString(raw.accountId) ??
+      parseChatgptAccountId(idToken) ??
+      parseChatgptAccountId(accessToken),
+    profileId: asTrimmedString(raw.profileId),
+    lastRefreshAt: optionalNumber(raw.lastRefreshAt),
+    lastRefreshFailureAt: optionalNumber(raw.lastRefreshFailureAt),
+  })
 }
 
-function shouldRefreshCodexToken(blob: CodexCredentialBlob): boolean {
-  const expiresAt =
-    parseJwtExpiryMs(blob.accessToken) ?? parseJwtExpiryMs(blob.idToken)
-  if (expiresAt === undefined) {
-    return false
-  }
-  return expiresAt <= Date.now() + CODEX_TOKEN_REFRESH_SKEW_MS
-}
-
-function isWithinRefreshFailureCooldown(
-  blob: CodexCredentialBlob,
-  now = Date.now(),
-): boolean {
-  const lastRefreshFailureAt = Math.max(
-    blob.lastRefreshFailureAt ?? 0,
-    inMemoryLastRefreshFailureAt ?? 0,
-  )
-
-  if (!lastRefreshFailureAt) {
-    return false
-  }
-
-  return (
-    now - lastRefreshFailureAt < CODEX_TOKEN_REFRESH_RETRY_COOLDOWN_MS
-  )
-}
-
-function getRefreshErrorMessage(
-  status: number,
-  bodyText: string,
-): string {
-  if (!bodyText.trim()) {
-    return `Codex token refresh failed with status ${status}.`
-  }
-
-  try {
-    const parsed = JSON.parse(bodyText) as Record<string, unknown>
-    const nestedError =
-      parsed.error && typeof parsed.error === 'object'
-        ? (parsed.error as Record<string, unknown>)
-        : undefined
-    const code = asTrimmedString(nestedError?.code ?? parsed.code)
-    const message =
-      asTrimmedString(nestedError?.message ?? parsed.error_description) ??
-      bodyText.trim()
-    return code
-      ? `Codex token refresh failed (${code}): ${message}`
-      : `Codex token refresh failed with status ${status}: ${message}`
-  } catch {
-    return `Codex token refresh failed with status ${status}: ${bodyText.trim()}`
-  }
+function writeEntry(
+  storage: SecureStorage,
+  entry: CodexCredentialBlob | undefined,
+): StoreResult {
+  const data: SecureStorageData = { ...storage.read() }
+  if (entry) data.codex = entry
+  else delete data.codex
+  return storage.update(data)
 }
 
 export function readCodexCredentials(): CodexCredentialBlob | undefined {
   if (isBareMode()) return undefined
-
-  try {
-    const data = getCodexSecureStorage().read()
-    return normalizeCodexCredentialBlob(data?.codex)
-  } catch {
-    return undefined
-  }
+  return normalizeEntry(getSecureStorage().read()?.codex)
 }
 
 export async function readCodexCredentialsAsync(): Promise<
   CodexCredentialBlob | undefined
 > {
   if (isBareMode()) return undefined
-
-  try {
-    const data = await getCodexSecureStorage().readAsync()
-    return normalizeCodexCredentialBlob(data?.codex)
-  } catch {
-    return undefined
-  }
+  const data = await getSecureStorage().readAsync()
+  return normalizeEntry(data?.codex)
 }
 
-export function isCodexRefreshFailureCoolingDown(
-  blob: Pick<CodexCredentialBlob, 'lastRefreshFailureAt'>,
-  now = Date.now(),
-): boolean {
-  return isWithinRefreshFailureCooldown(
-    blob as CodexCredentialBlob,
-    now,
-  )
-}
-
+/** Stores a login or a refresh. A profile link already on disk survives a blob without one. */
 export function saveCodexCredentials(
   credentials: CodexCredentialBlob,
-): { success: boolean; warning?: string } {
-  if (isBareMode()) {
-    return { success: false, warning: 'Bare mode: secure storage is disabled.' }
-  }
-
-  const normalized = normalizeCodexCredentialBlob(credentials)
-  if (!normalized) {
+): StoreResult {
+  if (isBareMode()) return BARE_MODE_RESULT
+  const accessToken = asTrimmedString(credentials.accessToken)
+  if (!accessToken) {
     return { success: false, warning: 'Codex credentials are incomplete.' }
   }
-
-  const secureStorage = getCodexSecureStorage()
-  const previous = secureStorage.read() || {}
-  const previousCodex = normalizeCodexCredentialBlob(previous[CODEX_STORAGE_KEY])
-  const next = {
-    ...(previous as Record<string, unknown>),
-    [CODEX_STORAGE_KEY]: {
-      ...normalized,
-      profileId: normalized.profileId ?? previousCodex?.profileId,
-      lastRefreshAt: normalized.lastRefreshAt ?? Date.now(),
-    },
-  }
-  const result = secureStorage.update(next as typeof previous)
-  if (result.success) {
-    const storedCodex = normalizeCodexCredentialBlob(next[CODEX_STORAGE_KEY])
-    inMemoryLastRefreshFailureAt = storedCodex?.lastRefreshFailureAt ?? null
-  }
+  const storage = getSecureStorage()
+  const previous = normalizeEntry(storage.read()?.codex)
+  const result = writeEntry(
+    storage,
+    compact({
+      ...credentials,
+      accessToken,
+      profileId: credentials.profileId ?? previous?.profileId,
+      lastRefreshAt: credentials.lastRefreshAt ?? Date.now(),
+    }),
+  )
+  if (result.success) unrecordedRefreshFailureAt = undefined
   return result
 }
 
-export function attachCodexProfileIdToStoredCredentials(profileId: string): {
-  success: boolean
-  warning?: string
-} {
-  if (isBareMode()) {
-    return { success: false, warning: 'Bare mode: secure storage is disabled.' }
-  }
+export function clearCodexCredentials(): StoreResult {
+  unrecordedRefreshFailureAt = undefined
+  if (isBareMode()) return { success: true }
+  const storage = getSecureStorage()
+  if (storage.read()?.codex === undefined) return { success: true }
+  return writeEntry(storage, undefined)
+}
 
-  const current = readCodexCredentials()
+export function attachCodexProfileIdToStoredCredentials(
+  profileId: string,
+): StoreResult {
+  if (isBareMode()) return BARE_MODE_RESULT
+  const storage = getSecureStorage()
+  const current = normalizeEntry(storage.read()?.codex)
   if (!current) {
     return {
       success: false,
       warning: 'Codex credentials are not stored securely yet.',
     }
   }
+  return writeEntry(storage, { ...current, profileId })
+}
 
-  return saveCodexCredentials({
-    ...current,
-    profileId,
+export function isCodexRefreshFailureCoolingDown(
+  credentials: Pick<CodexCredentialBlob, 'lastRefreshFailureAt'>,
+  now: number = Date.now(),
+): boolean {
+  const failedAt = credentials.lastRefreshFailureAt
+  return failedAt !== undefined && now - failedAt < REFRESH_FAILURE_COOLDOWN_MS
+}
+
+function tokenExpiresAt(token: string | undefined): number | undefined {
+  const exp = token ? decodeJwtPayload(token)?.exp : undefined
+  return typeof exp === 'number' ? exp * 1000 : undefined
+}
+
+/** A token with no readable `exp` is treated as live: only the server can say otherwise. */
+function isExpiring(credentials: CodexCredentialBlob, now: number): boolean {
+  const expiresAt =
+    tokenExpiresAt(credentials.accessToken) ?? tokenExpiresAt(credentials.idToken)
+  return expiresAt !== undefined && expiresAt - now <= EXPIRY_SKEW_MS
+}
+
+/** A profile carrying its own API key does not use the OAuth tokens at all. */
+function activeProfilePinsApiKey(): boolean {
+  return asTrimmedString(tryGetActiveProvider()?.apiKey) !== undefined
+}
+
+function describeRefreshFailure(status: number, text: string): string {
+  const detail = text.trim()
+  if (!detail) return `Codex token refresh failed with status ${status}.`
+  const parsed = parseJson(detail)
+  const body = isRecord(parsed) ? parsed : {}
+  const nested = isRecord(body.error) ? body.error : {}
+  const code = asTrimmedString(nested.code) ?? asTrimmedString(body.code)
+  const message =
+    asTrimmedString(nested.message) ??
+    asTrimmedString(body.error_description) ??
+    asTrimmedString(body.message) ??
+    detail
+  return code
+    ? `Codex token refresh failed (${code}): ${message}`
+    : `Codex token refresh failed with status ${status}: ${message}`
+}
+
+async function requestRefresh(
+  current: CodexCredentialBlob,
+  refreshToken: string,
+): Promise<CodexCredentialBlob> {
+  const response = await postCodexTokenForm({
+    client_id: getCodexOAuthClientId(),
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  })
+  const text = await response.text()
+  if (!response.ok) throw new Error(describeRefreshFailure(response.status, text))
+  const parsed = parseJson(text)
+  const body = isRecord(parsed) ? parsed : {}
+  const accessToken = asTrimmedString(body.access_token)
+  if (!accessToken) {
+    throw new Error('Codex token refresh succeeded without a new access token.')
+  }
+  // The issuer may rotate the refresh and id tokens or leave them out; absent ones carry over.
+  const idToken = asTrimmedString(body.id_token) ?? current.idToken
+  return compact({
+    apiKey: idToken ? await mintCodexApiKey(idToken) : undefined,
+    accessToken,
+    refreshToken: asTrimmedString(body.refresh_token) ?? refreshToken,
+    idToken,
+    accountId:
+      parseChatgptAccountId(idToken) ??
+      parseChatgptAccountId(accessToken) ??
+      current.accountId,
+    profileId: current.profileId,
+    lastRefreshAt: Date.now(),
   })
 }
 
-function persistCodexRefreshFailure(
-  credentials: CodexCredentialBlob,
-  occurredAt: number,
-): void {
-  const result = saveCodexCredentials({
-    ...credentials,
-    lastRefreshFailureAt: occurredAt,
-  })
-  if (!result.success) {
-    inMemoryLastRefreshFailureAt = occurredAt
-  }
+function recordRefreshFailure(): void {
+  const failedAt = Date.now()
+  const storage = getSecureStorage()
+  const current = normalizeEntry(storage.read()?.codex)
+  const stamped = current
+    ? writeEntry(storage, { ...current, lastRefreshFailureAt: failedAt })
+    : { success: false }
+  if (!stamped.success) unrecordedRefreshFailureAt = failedAt
 }
 
-export function clearCodexCredentials(): {
-  success: boolean
-  warning?: string
-} {
-  if (isBareMode()) {
-    return { success: true }
+async function runRefresh(force: boolean): Promise<CodexRefreshResult> {
+  if (activeProfilePinsApiKey()) return { refreshed: false }
+  const credentials = await readCodexCredentialsAsync()
+  if (!credentials) return { refreshed: false }
+
+  const now = Date.now()
+  const coolingDown =
+    isCodexRefreshFailureCoolingDown(credentials, now) ||
+    isCodexRefreshFailureCoolingDown(
+      { lastRefreshFailureAt: unrecordedRefreshFailureAt },
+      now,
+    )
+  const refreshToken = credentials.refreshToken
+  if (coolingDown || !refreshToken || (!force && !isExpiring(credentials, now))) {
+    return { refreshed: false, credentials }
   }
 
-  const secureStorage = getCodexSecureStorage()
-  const previous = secureStorage.read() || {}
-  const next = { ...(previous as Record<string, unknown>) }
-  delete next[CODEX_STORAGE_KEY]
-  const result = secureStorage.update(next as typeof previous)
-  if (result.success) {
-    inMemoryLastRefreshFailureAt = null
+  let next: CodexCredentialBlob
+  try {
+    next = await requestRefresh(credentials, refreshToken)
+  } catch (error) {
+    recordRefreshFailure()
+    throw error
   }
-  return result
+  if (!saveCodexCredentials(next).success) {
+    recordRefreshFailure()
+    throw new Error(UNSAVED_REFRESH_MESSAGE)
+  }
+  return { refreshed: true, credentials: next }
 }
 
-export async function refreshCodexAccessTokenIfNeeded(options?: {
+/**
+ * Refreshes the stored tokens when they are about to expire (or when
+ * `force` is set). Concurrent callers share one request and one result.
+ */
+export function refreshCodexAccessTokenIfNeeded(options?: {
   force?: boolean
-}): Promise<{
-  refreshed: boolean
-  credentials?: CodexCredentialBlob
-}> {
-  if (isBareMode()) {
-    return { refreshed: false }
-  }
-
-  // If the active profile already pins a Codex API key, skip the refresh.
-  if (tryGetActiveProvider()?.apiKey?.trim()) {
-    return { refreshed: false }
-  }
-
-  const current = await readCodexCredentialsAsync()
-  if (!current) {
-    return { refreshed: false }
-  }
-
-  const refreshToken = current.refreshToken
-  if (!refreshToken) {
-    return { refreshed: false, credentials: current }
-  }
-
-  if (!options?.force && !shouldRefreshCodexToken(current)) {
-    return { refreshed: false, credentials: current }
-  }
-
-  // Cooldown applies to BOTH the pre-flight (lazy) and the force-refresh paths.
-  // Bypassing the cooldown on force would let a 401 retry-loop hammer a
-  // degraded /oauth/token endpoint, burning the entire withRetry budget on
-  // every request. If the user genuinely needs to recover sooner they can
-  // re-login via /provider.
-  if (isWithinRefreshFailureCooldown(current)) {
-    return { refreshed: false, credentials: current }
-  }
-
-  if (inFlightCodexRefresh) {
-    return inFlightCodexRefresh
-  }
-
-  inFlightCodexRefresh = (async () => {
-    const refreshAttemptedAt = Date.now()
-
-    try {
-      const body = new URLSearchParams({
-        client_id: getCodexOAuthClientId(),
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-      })
-
-      const response = await fetch(CODEX_REFRESH_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body,
-        signal: AbortSignal.timeout(15_000),
-      })
-
-      if (!response.ok) {
-        const bodyText = await response.text().catch(() => '')
-        throw new Error(getRefreshErrorMessage(response.status, bodyText))
-      }
-
-      const payload = (await response.json()) as CodexTokenRefreshResponse
-      const accessToken = asTrimmedString(payload.access_token)
-      if (!accessToken) {
-        throw new Error(
-          'Codex token refresh succeeded without a new access token.',
-        )
-      }
-
-      const next: CodexCredentialBlob = {
-        accessToken,
-        refreshToken:
-          asTrimmedString(payload.refresh_token) ?? current.refreshToken,
-        idToken: asTrimmedString(payload.id_token) ?? current.idToken,
-        accountId:
-          parseChatgptAccountId(payload.id_token) ??
-          parseChatgptAccountId(payload.access_token) ??
-          current.accountId,
-        lastRefreshAt: Date.now(),
-      }
-
-      const idTokenForExchange = next.idToken ?? current.idToken
-      if (idTokenForExchange) {
-        // The id-token → API-key exchange is best-effort: when it fails the
-        // request path falls back to using `accessToken` as the bearer (see
-        // resolveStoredCodexCredentials in providerConfig.ts). We MUST NOT
-        // silently swallow the error though — observability matters when a
-        // user reports "requests are 401ing" and the real culprit is a 5xx
-        // on the exchange endpoint.
-        next.apiKey = await exchangeCodexIdTokenForApiKey(
-          idTokenForExchange,
-        ).catch(error => {
-          logForDebugging(
-            `[codex] id-token → API-key exchange failed; falling back to access_token bearer: ${error instanceof Error ? error.message : String(error)}`,
-            { level: 'warn' },
-          )
-          return undefined
-        })
-      }
-
-      const saveResult = saveCodexCredentials(next)
-      if (!saveResult.success) {
-        throw new Error(
-          saveResult.warning ??
-            'Codex token refresh succeeded but credentials could not be saved.',
-        )
-      }
-
-      return {
-        refreshed: true,
-        credentials: next,
-      }
-    } catch (error) {
-      persistCodexRefreshFailure(current, refreshAttemptedAt)
-      throw error
-    } finally {
-      inFlightCodexRefresh = null
-    }
-  })()
-
-  return inFlightCodexRefresh
+}): Promise<CodexRefreshResult> {
+  refreshInFlight ??= runRefresh(options?.force === true).finally(() => {
+    refreshInFlight = undefined
+  })
+  return refreshInFlight
 }
