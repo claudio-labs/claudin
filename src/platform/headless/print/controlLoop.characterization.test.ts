@@ -19,6 +19,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import { getCommandQueue, enqueue, resetCommandQueue } from 'src/agent/messageQueueManager.js'
+import { saveCacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { setCommandLifecycleListener } from 'src/commands/commandLifecycle.js'
 import {
   getMainLoopModelOverride,
@@ -146,6 +147,10 @@ describe('control requests answered with an error', () => {
   })
 
   test('a side question whose fallback context cannot be built reports the failure', async () => {
+    // The fallback only runs with no saved main-turn snapshot. An earlier file
+    // in the run can leave one behind, and with it the side question forks a
+    // real model request instead.
+    saveCacheSafeParams(null)
     const session = start({
       wiring: {
         buildAllTools: () => {
