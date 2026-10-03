@@ -180,7 +180,9 @@ async function completeFromFile(log: LogOption, fullPath: string): Promise<LogOp
     ...sessionLabels(loaded, session),
     costState: loaded.costStates.get(session as UUID),
     worktreeSession: worktreeOf(loaded, session, log.worktreeSession),
-    gitBranch: anchor.gitBranch,
+    // The newest message may carry no branch (a reply written without one); the
+    // branch the session was last on is the newest one the chain names.
+    gitBranch: chain.findLast(message => message.gitBranch)?.gitBranch ?? log.gitBranch,
     leafUuid: anchor.uuid,
     isSidechain: root.isSidechain,
     teamName: root.teamName,
