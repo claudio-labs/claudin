@@ -32,7 +32,6 @@ import {
   type ContextCollapseCommitEntry,
   type ContextCollapseSnapshotEntry,
   type CostStateEntry,
-  type Entry,
   type FileHistorySnapshotMessage,
   type PersistedWorktreeSession,
   type TranscriptMessage,
@@ -40,8 +39,8 @@ import {
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
-import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
-import { isCompactBoundaryMessage } from 'src/agent/messages/messages.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import {
   SKIP_PRECOMPACT_THRESHOLD,
   readTranscriptForLoad,
@@ -52,13 +51,15 @@ import {
   stripPersistedToolUseResultsFromJSONLBuffer,
 } from 'src/sessions/pure/jsonlStripping.js'
 import {
-  isLegacyProgressEntry,
-  isTranscriptMessage,
-} from 'src/sessions/pure/typeGuards.js'
-import {
   applyPreservedSegmentRelinks,
   applySnipRemovals,
 } from 'src/sessions/resume/chain.js'
+import {
+  emptyTranscript,
+  findTips,
+  type LoadedTranscript,
+  TranscriptCollector,
+} from 'src/sessions/resume/transcriptFile.js'
 
 // Byte-walker primitives live in `indexing/boundaryScan.ts` — shared with
 // `indexing/search.ts`. Importing across the resume/indexing boundary is
@@ -109,9 +110,6 @@ function parseCostStateEntry(entry: unknown): CostStateEntry | undefined {
   return parsed.success ? (parsed.data as CostStateEntry) : undefined
 }
 
-/**
- * Loads all messages, summaries, file history snapshots, and attribution snapshots from a specific session file.
- */
 export async function loadTranscriptFile(
   filePath: string,
   opts?: { keepAllLeaves?: boolean },
@@ -135,287 +133,50 @@ export async function loadTranscriptFile(
   contextCollapseSnapshot: ContextCollapseSnapshotEntry | undefined
   leafUuids: Set<UUID>
 }> {
-  const messages = new Map<UUID, TranscriptMessage>()
-  const summaries = new Map<UUID, string>()
-  const customTitles = new Map<UUID, string>()
-  const tags = new Map<UUID, string>()
-  const agentNames = new Map<UUID, string>()
-  const agentColors = new Map<UUID, string>()
-  const agentSettings = new Map<UUID, string>()
-  const prNumbers = new Map<UUID, number>()
-  const prUrls = new Map<UUID, string>()
-  const prRepositories = new Map<UUID, string>()
-  const modes = new Map<UUID, string>()
-  const worktreeStates = new Map<UUID, PersistedWorktreeSession | null>()
-  // Last-wins per session.
-  const costStates = new Map<UUID, CostStateEntry>()
-  const fileHistorySnapshots = new Map<UUID, FileHistorySnapshotMessage>()
-  const attributionSnapshots = new Map<UUID, AttributionSnapshotMessage>()
-  // Array, not Map — commit order matters (nested collapses).
-  const contextCollapseCommits: ContextCollapseCommitEntry[] = []
-  // Last-wins — later entries supersede.
-  let contextCollapseSnapshot: ContextCollapseSnapshotEntry | undefined
-
+  const collector = new TranscriptCollector({ parseCostState: parseCostStateEntry })
   try {
-    // For large transcripts, avoid materializing megabytes of stale content.
-    // Single forward chunked read: attribution-snapshot lines are skipped at
-    // the fd level (never buffered), compact boundaries truncate the
-    // accumulator in-stream. Peak allocation is the OUTPUT size, not the
-    // file size — a 151 MB session that is 84% stale attr-snaps allocates
-    // ~32 MB instead of 159+64 MB. This matters because mimalloc does not
-    // return those pages to the OS even after JS-level GC frees the backing
-    // buffers (measured: arrayBuffers=0 after Bun.gc(true) but RSS stuck at
-    // ~316 MB on the old scan+strip path vs ~155 MB here).
-    //
-    // Pre-boundary metadata (agent-setting, mode, pr-link, etc.) is recovered
-    // via a cheap byte-level forward scan of [0, boundary).
-    let buf: Buffer | null = null
-    let metadataLines: string[] | null = null
-    let hasPreservedSegment = false
-    if (!isEnvTruthy(process.env.CLAUDIN_DISABLE_PRECOMPACT_SKIP)) {
-      const { size } = await stat(filePath)
-      if (size > SKIP_PRECOMPACT_THRESHOLD) {
-        const scan = await readTranscriptForLoad(filePath, size)
-        buf = scan.postBoundaryBuf
-        hasPreservedSegment = scan.hasPreservedSegment
-        // >0 means we truncated pre-boundary bytes and must recover
-        // session-scoped metadata from that range. A preservedSegment
-        // boundary does not truncate (preserved messages are physically
-        // pre-boundary), so offset stays 0 unless an EARLIER non-preserved
-        // boundary already truncated — in which case the preserved messages
-        // for the later boundary are post-that-earlier-boundary and were
-        // kept, and we still want the metadata scan.
-        if (scan.boundaryStartOffset > 0) {
-          metadataLines = await scanPreBoundaryMetadata(
-            filePath,
-            scan.boundaryStartOffset,
-          )
-        }
-      }
-    }
-    buf ??= await readFile(filePath)
-    // For large buffers (which here means readTranscriptForLoad output with
-    // attr-snaps already stripped at the fd level — the <5MB readFile path
-    // falls through the size gate below), the dominant cost is parsing dead
-    // fork branches that buildConversationChain would discard anyway. Skip
-    // when the caller needs all
-    // leaves (loadAllLogsFromSessionFile picks the branch with
-    // most user messages, not the latest), when the boundary has a
-    // preservedSegment (those messages keep their pre-compact parentUuid on
-    // disk -- applyPreservedSegmentRelinks splices them in-memory AFTER
-    // parse, so a pre-parse chain walk would drop them as orphans), and when
-    // CLAUDIN_DISABLE_PRECOMPACT_SKIP is set (that kill switch means
-    // "load everything, skip nothing"; this is another skip-before-parse
-    // optimization and the scan it depends on for hasPreservedSegment did
-    // not run).
-    if (
-      !opts?.keepAllLeaves &&
-      !hasPreservedSegment &&
-      !isEnvTruthy(process.env.CLAUDIN_DISABLE_PRECOMPACT_SKIP) &&
-      buf.length > SKIP_PRECOMPACT_THRESHOLD
-    ) {
-      buf = walkChainBeforeParse(buf)
-    }
-
-    // Resume path: once a tool_result has been replaced with a persisted
-    // preview, loading the original toolUseResult blob back into memory is
-    // wasted work and can OOM before the replacement re-hydration runs.
-    buf = stripPersistedToolUseResultsFromJSONLBuffer(buf)
-
-    // First pass: process metadata-only lines collected during the boundary scan.
-    // These populate the session-scoped maps (agentSettings, modes, prNumbers,
-    // etc.) for entries written before the compact boundary. Any overlap with
-    // the post-boundary buffer is harmless — later values overwrite earlier ones.
-    if (metadataLines && metadataLines.length > 0) {
-      forEachParsedJSONLBufferEntry<Entry>(
-        Buffer.from(metadataLines.join('\n')),
-        entry => {
-        if (entry.type === 'summary' && entry.leafUuid) {
-          summaries.set(entry.leafUuid, entry.summary)
-        } else if (entry.type === 'custom-title' && entry.sessionId) {
-          customTitles.set(entry.sessionId, entry.customTitle)
-        } else if (entry.type === 'tag' && entry.sessionId) {
-          tags.set(entry.sessionId, entry.tag)
-        } else if (entry.type === 'agent-name' && entry.sessionId) {
-          agentNames.set(entry.sessionId, entry.agentName)
-        } else if (entry.type === 'agent-color' && entry.sessionId) {
-          agentColors.set(entry.sessionId, entry.agentColor)
-        } else if (entry.type === 'agent-setting' && entry.sessionId) {
-          agentSettings.set(entry.sessionId, entry.agentSetting)
-        } else if (entry.type === 'mode' && entry.sessionId) {
-          modes.set(entry.sessionId, entry.mode)
-        } else if (entry.type === 'worktree-state' && entry.sessionId) {
-          worktreeStates.set(entry.sessionId, entry.worktreeSession)
-        } else if (entry.type === 'cost-state' && entry.sessionId) {
-          const costState = parseCostStateEntry(entry)
-          if (costState) costStates.set(entry.sessionId, costState)
-        } else if (entry.type === 'pr-link' && entry.sessionId) {
-          prNumbers.set(entry.sessionId, entry.prNumber)
-          prUrls.set(entry.sessionId, entry.prUrl)
-          prRepositories.set(entry.sessionId, entry.prRepository)
-        }
-      })
-    }
-
-    // Bridge map for legacy progress entries: progress_uuid → progress_parent_uuid.
-    // PR #24099 removed progress from isTranscriptMessage, so old transcripts with
-    // progress in the parentUuid chain would truncate at buildConversationChain
-    // when messages.get(progressUuid) returns undefined. Since transcripts are
-    // append-only (parents before children), we record each progress→parent link
-    // as we see it, chain-resolving through consecutive progress entries, then
-    // rewrite any subsequent message whose parentUuid lands in the bridge.
-    const progressBridge = new Map<UUID, UUID | null>()
-
-    // Entry types with no branch below are skipped. That includes the
-    // 'content-replacement' records an older build wrote for a tool-result
-    // budget that no longer exists, so such transcripts still load.
-    forEachParsedJSONLBufferEntry<Entry>(buf, entry => {
-      // Legacy progress check runs before the Entry-typed else-if chain —
-      // progress is not in the Entry union, so checking it after TypeScript
-      // has narrowed `entry` intersects to `never`.
-      if (isLegacyProgressEntry(entry)) {
-        // Chain-resolve through consecutive progress entries so a later
-        // message pointing at the tail of a progress run bridges to the
-        // nearest non-progress ancestor in one lookup.
-        const parent = entry.parentUuid
-        progressBridge.set(
-          entry.uuid,
-          parent && progressBridge.has(parent)
-            ? (progressBridge.get(parent) ?? null)
-            : parent,
-        )
-      } else if (isTranscriptMessage(entry)) {
-        if (entry.parentUuid && progressBridge.has(entry.parentUuid)) {
-          entry.parentUuid = progressBridge.get(entry.parentUuid) ?? null
-        }
-        messages.set(entry.uuid, entry)
-        // Compact boundary: prior marble-origami-commit entries reference
-        // messages that won't be in the post-boundary chain. The >5MB
-        // backward-scan path discards them naturally by never reading the
-        // pre-boundary bytes; the <5MB path reads everything, so discard
-        // here. Without this, getStats().collapsedSpans in /context
-        // overcounts (projectView silently skips the stale commits but
-        // they're still in the log).
-        if (isCompactBoundaryMessage(entry)) {
-          contextCollapseCommits.length = 0
-          contextCollapseSnapshot = undefined
-        }
-      } else if (entry.type === 'summary' && entry.leafUuid) {
-        summaries.set(entry.leafUuid, entry.summary)
-      } else if (entry.type === 'custom-title' && entry.sessionId) {
-        customTitles.set(entry.sessionId, entry.customTitle)
-      } else if (entry.type === 'tag' && entry.sessionId) {
-        tags.set(entry.sessionId, entry.tag)
-      } else if (entry.type === 'agent-name' && entry.sessionId) {
-        agentNames.set(entry.sessionId, entry.agentName)
-      } else if (entry.type === 'agent-color' && entry.sessionId) {
-        agentColors.set(entry.sessionId, entry.agentColor)
-      } else if (entry.type === 'agent-setting' && entry.sessionId) {
-        agentSettings.set(entry.sessionId, entry.agentSetting)
-      } else if (entry.type === 'mode' && entry.sessionId) {
-        modes.set(entry.sessionId, entry.mode)
-      } else if (entry.type === 'worktree-state' && entry.sessionId) {
-        worktreeStates.set(entry.sessionId, entry.worktreeSession)
-      } else if (entry.type === 'cost-state' && entry.sessionId) {
-        const costState = parseCostStateEntry(entry)
-        if (costState) costStates.set(entry.sessionId, costState)
-      } else if (entry.type === 'pr-link' && entry.sessionId) {
-        prNumbers.set(entry.sessionId, entry.prNumber)
-        prUrls.set(entry.sessionId, entry.prUrl)
-        prRepositories.set(entry.sessionId, entry.prRepository)
-      } else if (entry.type === 'file-history-snapshot') {
-        fileHistorySnapshots.set(entry.messageId, entry)
-      } else if (entry.type === 'attribution-snapshot') {
-        attributionSnapshots.set(entry.messageId, entry)
-      } else if (entry.type === 'marble-origami-commit') {
-        contextCollapseCommits.push(entry)
-      } else if (entry.type === 'marble-origami-snapshot') {
-        contextCollapseSnapshot = entry
-      }
-    })
-  } catch {
-    // File doesn't exist or can't be read
+    const bytes = await readForParse(filePath, collector, opts?.keepAllLeaves === true)
+    forEachParsedJSONLBufferEntry(stripPersistedToolUseResultsFromJSONLBuffer(bytes), line => collector.take(line))
+  } catch (error) {
+    if (!isENOENT(error)) logError(error)
+    return emptyTranscript()
   }
-
-  const { relinkFailed } = applyPreservedSegmentRelinks(messages)
-  if (relinkFailed) {
-    logForDiagnosticsNoPII('warn', 'resume_relink_fail_closed', {
-      transcriptSize: messages.size,
-    })
-  }
-  applySnipRemovals(messages)
-
-  // Compute leaf UUIDs once at load time
-  // Only user/assistant messages should be considered as leaves for anchoring resume.
-  // Other message types (system, attachment) are metadata or auxiliary and shouldn't
-  // anchor a conversation chain.
-  //
-  // We use standard parent relationship for main chain detection, but also need to
-  // handle cases where the last message is a system/metadata message.
-  // For each conversation chain (identified by following parent links), the leaf
-  // is the most recent user/assistant message.
-  const allMessages = [...messages.values()]
-
-  // Standard leaf computation using parent relationships
-  const parentUuids = new Set(
-    allMessages
-      .map(msg => msg.parentUuid)
-      .filter((uuid): uuid is UUID => uuid !== null),
-  )
-
-  // Find all terminal messages (messages with no children)
-  const terminalMessages = allMessages.filter(msg => !parentUuids.has(msg.uuid))
-
-  const leafUuids = new Set<UUID>()
-  let hasCycle = false
-
-  // Walk back from each terminal message to the nearest user/assistant
-  // ancestor.
-  for (const terminal of terminalMessages) {
-    const seen = new Set<UUID>()
-    let current: TranscriptMessage | undefined = terminal
-    while (current) {
-      if (seen.has(current.uuid)) {
-        hasCycle = true
-        break
-      }
-      seen.add(current.uuid)
-      if (current.type === 'user' || current.type === 'assistant') {
-        leafUuids.add(current.uuid)
-        break
-      }
-      current = current.parentUuid
-        ? messages.get(current.parentUuid)
-        : undefined
-    }
-  }
-
-
-  return {
-    messages,
-    summaries,
-    customTitles,
-    tags,
-    agentNames,
-    agentColors,
-    agentSettings,
-    prNumbers,
-    prUrls,
-    prRepositories,
-    modes,
-    worktreeStates,
-    costStates,
-    fileHistorySnapshots,
-    attributionSnapshots,
-    contextCollapseCommits,
-    contextCollapseSnapshot,
-    leafUuids,
-  }
+  return replayed(collector.transcript)
 }
 
 /**
- * Loads all messages, summaries, file history snapshots, and attribution snapshots from a specific session file.
+ * The bytes to parse. A transcript over the threshold is read from its last
+ * compact boundary on, the metadata written before the cut going to the
+ * collector first; when even that is too large, the branches off the latest
+ * chain are left out, unless the caller wants every tip or a preserved
+ * segment still has to be spliced in.
  */
+async function readForParse(
+  filePath: string,
+  collector: TranscriptCollector,
+  keepAllLeaves: boolean,
+): Promise<Buffer> {
+  const { size } = await stat(filePath)
+  if (size <= SKIP_PRECOMPACT_THRESHOLD || isEnvTruthy(process.env.CLAUDIN_DISABLE_PRECOMPACT_SKIP)) {
+    return readFile(filePath)
+  }
+  const cut = await readTranscriptForLoad(filePath, size)
+  if (cut.boundaryStartOffset > 0) {
+    const before = await scanPreBoundaryMetadata(filePath, cut.boundaryStartOffset)
+    forEachParsedJSONLBufferEntry(Buffer.from(before.join('\n')), line => collector.takeMetadata(line))
+  }
+  const kept = cut.postBoundaryBuf
+  const skipAbandoned = !keepAllLeaves && !cut.hasPreservedSegment && kept.length > SKIP_PRECOMPACT_THRESHOLD
+  return skipAbandoned ? walkChainBeforeParse(kept) : kept
+}
+
+function replayed(transcript: LoadedTranscript): LoadedTranscript {
+  applyPreservedSegmentRelinks(transcript.messages)
+  applySnipRemovals(transcript.messages)
+  transcript.leafUuids = findTips(transcript.messages)
+  return transcript
+}
+
 export async function loadSessionFile(sessionId: UUID): Promise<{
   messages: Map<UUID, TranscriptMessage>
   summaries: Map<UUID, string>
@@ -429,52 +190,30 @@ export async function loadSessionFile(sessionId: UUID): Promise<{
   contextCollapseCommits: ContextCollapseCommitEntry[]
   contextCollapseSnapshot: ContextCollapseSnapshotEntry | undefined
 }> {
-  const sessionFile = join(
-    getSessionProjectDir() ?? getProjectDir(getOriginalCwd()),
-    `${sessionId}.jsonl`,
-  )
-  return loadTranscriptFile(sessionFile)
+  const directory = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
+  return loadTranscriptFile(join(directory, `${sessionId}.jsonl`))
 }
 
-/**
- * Builds a filie history snapshot chain from the conversation
- */
 export function buildFileHistorySnapshotChain(
   fileHistorySnapshots: Map<UUID, FileHistorySnapshotMessage>,
   conversation: TranscriptMessage[],
 ): FileHistorySnapshot[] {
-  const snapshots: FileHistorySnapshot[] = []
-  // messageId → last index in snapshots[] for O(1) update lookup
-  const indexByMessageId = new Map<string, number>()
-  for (const message of conversation) {
-    const snapshotMessage = fileHistorySnapshots.get(message.uuid)
-    if (!snapshotMessage) {
-      continue
-    }
-    const { snapshot, isSnapshotUpdate } = snapshotMessage
-    const existingIndex = isSnapshotUpdate
-      ? indexByMessageId.get(snapshot.messageId)
-      : undefined
-    if (existingIndex === undefined) {
-      indexByMessageId.set(snapshot.messageId, snapshots.length)
-      snapshots.push(snapshot)
-    } else {
-      snapshots[existingIndex] = snapshot
-    }
+  const chain: FileHistorySnapshot[] = []
+  for (const { uuid } of conversation) {
+    const entry = fileHistorySnapshots.get(uuid)
+    if (!entry) continue
+    const replaced = entry.isSnapshotUpdate
+      ? chain.findLastIndex(snapshot => snapshot.messageId === entry.snapshot.messageId)
+      : -1
+    if (replaced === -1) chain.push(entry.snapshot)
+    else chain[replaced] = entry.snapshot
   }
-  return snapshots
+  return chain
 }
 
-/**
- * Builds an attribution snapshot chain from the conversation.
- * Unlike file history snapshots, attribution snapshots are returned in full
- * because they use generated UUIDs (not message UUIDs) and represent
- * cumulative state that should be restored on session resume.
- */
 export function buildAttributionSnapshotChain(
   attributionSnapshots: Map<UUID, AttributionSnapshotMessage>,
   _conversation: TranscriptMessage[],
 ): AttributionSnapshotMessage[] {
-  // Return all attribution snapshots - they will be merged during restore
-  return Array.from(attributionSnapshots.values())
+  return [...attributionSnapshots.values()]
 }

@@ -20,8 +20,8 @@
     {
       "name": "a resumed transcript keeps the legacy tool name",
       "source": "src/sessions/conversationRecovery.ts",
-      "find": "      migrateLegacyToolNames(migrateLegacyAttachmentTypes(message)),",
-      "replace": "      migrateLegacyAttachmentTypes(message),"
+      "find": "  return withKnownPermissionMode(migrateLegacyToolNames(migrateLegacyAttachmentTypes(message)))",
+      "replace": "  return withKnownPermissionMode(migrateLegacyAttachmentTypes(message))"
     },
     {
       "name": "the multi-problem list keeps each message's tool prefix",

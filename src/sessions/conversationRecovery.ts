@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import { relative } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
@@ -14,6 +13,7 @@ import type {
   SerializedMessage,
 } from 'src/shared/types/logs.js'
 import type {
+  AttachmentMessage,
   Message,
   NormalizedMessage,
   NormalizedUserMessage,
@@ -28,7 +28,7 @@ import {
   type FileHistorySnapshot,
 } from 'src/shared/fs/fileHistory.js'
 import { logError } from 'src/shared/log.js'
-import { getAPIProvider } from 'src/providers/model/providers.js'
+import { type APIProvider, getAPIProvider } from 'src/providers/model/providers.js'
 import { normalizeLegacyToolName } from 'src/permissions/permissionRuleParser.js'
 import {
   createAssistantMessage,
@@ -38,7 +38,6 @@ import {
   filterWhitespaceOnlyAssistantMessages,
   isToolUseResultMessage,
   NO_RESPONSE_REQUESTED,
-  normalizeMessages,
 } from 'src/agent/messages/messages.js'
 import { copyPlanForResume } from 'src/agent/plans/plans.js'
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
@@ -52,12 +51,16 @@ import {
   loadTranscriptFile,
   removeExtraFields,
 } from 'src/sessions/sessionStorage.js'
+import { latestByTimestamp } from 'src/sessions/resume/latest.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
-// Hard cap for reconstructed resume payloads before REPL boot. 8 MiB keeps
-// resume bounded well below the multi-GB failure mode we saw while leaving
-// enough room for normal compacted sessions plus resume hook context.
 const MAX_RESUME_MESSAGE_BYTES = 8 * 1024 * 1024
+
+const BYTES_PER_MIB = 1024 * 1024
+
+function inMiB(bytes: number): string {
+  return (bytes / BYTES_PER_MIB).toFixed(1)
+}
 
 export class ResumeTranscriptTooLargeError extends Error {
   constructor(
@@ -66,9 +69,7 @@ export class ResumeTranscriptTooLargeError extends Error {
     readonly messageCount: number,
   ) {
     super(
-      `Reconstructed transcript is too large to resume safely (${(
-        bytes / (1024 * 1024)
-      ).toFixed(1)} MiB > ${(maxBytes / (1024 * 1024)).toFixed(1)} MiB, ${messageCount} messages).`,
+      `This conversation is too large to resume (${inMiB(bytes)} MiB > ${inMiB(maxBytes)} MiB, ${messageCount} messages)`,
     )
     this.name = 'ResumeTranscriptTooLargeError'
   }
@@ -77,72 +78,41 @@ export class ResumeTranscriptTooLargeError extends Error {
 function assertResumeMessageSize(messages: Message[]): void {
   const bytes = Buffer.byteLength(jsonStringify(messages), 'utf8')
   if (bytes > MAX_RESUME_MESSAGE_BYTES) {
-    throw new ResumeTranscriptTooLargeError(
-      bytes,
-      MAX_RESUME_MESSAGE_BYTES,
-      messages.length,
-    )
+    throw new ResumeTranscriptTooLargeError(bytes, MAX_RESUME_MESSAGE_BYTES, messages.length)
   }
 }
 
-/**
- * Transforms legacy attachment types to current types for backward compatibility
- */
+// --- readying: each step returns new messages and leaves its input alone -----------
+
+type Attachment = AttachmentMessage['attachment']
+
+/** The fields older builds wrote on file-like attachments. */
+type FileLikeFields = {
+  type: string
+  displayPath?: unknown
+  filename?: unknown
+  path?: unknown
+  skillDir?: unknown
+}
+
+const RENAMED_ATTACHMENT_KINDS: Readonly<Record<string, string>> = {
+  new_file: 'file',
+  new_directory: 'directory',
+}
+
 function migrateLegacyAttachmentTypes(message: Message): Message {
-  if (message.type !== 'attachment') {
-    return message
+  if (message.type !== 'attachment') return message
+  if (!message.attachment) {
+    throw new Error(`Transcript attachment message ${message.uuid} carries no attachment`)
   }
-
-  const attachment = message.attachment as {
-    type: string
-    [key: string]: unknown
-  } // Handle legacy types not in current type system
-
-  // Transform legacy attachment types
-  if (attachment.type === 'new_file') {
-    return {
-      ...message,
-      attachment: {
-        ...attachment,
-        type: 'file',
-        displayPath: relative(getCwd(), attachment.filename as string),
-      },
-    } as SerializedMessage // Cast entire message since we know the structure is correct
-  }
-
-  if (attachment.type === 'new_directory') {
-    return {
-      ...message,
-      attachment: {
-        ...attachment,
-        type: 'directory',
-        displayPath: relative(getCwd(), attachment.path as string),
-      },
-    } as SerializedMessage // Cast entire message since we know the structure is correct
-  }
-
-  // Backfill displayPath for attachments from old sessions
-  if (!('displayPath' in attachment)) {
-    const path =
-      'filename' in attachment
-        ? (attachment.filename as string)
-        : 'path' in attachment
-          ? (attachment.path as string)
-          : 'skillDir' in attachment
-            ? (attachment.skillDir as string)
-            : undefined
-    if (path) {
-      return {
-        ...message,
-        attachment: {
-          ...attachment,
-          displayPath: relative(getCwd(), path),
-        },
-      } as Message
-    }
-  }
-
-  return message
+  const fields = message.attachment as unknown as FileLikeFields
+  const type = Object.hasOwn(RENAMED_ATTACHMENT_KINDS, fields.type) ? RENAMED_ATTACHMENT_KINDS[fields.type]! : fields.type
+  const located = [fields.filename, fields.path, fields.skillDir].find(
+    (candidate): candidate is string => typeof candidate === 'string',
+  )
+  const displayPath = fields.displayPath ?? (located === undefined ? undefined : relative(getCwd(), located))
+  if (type === fields.type && displayPath === fields.displayPath) return message
+  return { ...message, attachment: { ...fields, type, displayPath } as unknown as Attachment }
 }
 
 /**
@@ -154,20 +124,29 @@ function migrateLegacyAttachmentTypes(message: Message): Message {
  * old calls at all.
  */
 function migrateLegacyToolNames(message: Message): Message {
-  if (message.type !== 'assistant' || !Array.isArray(message.message?.content)) {
-    return message
-  }
-  let renamed = false
+  if (message.type !== 'assistant' || !Array.isArray(message.message.content)) return message
+  let renamedAny = false
   const content = message.message.content.map(block => {
     if (block.type !== 'tool_use') return block
     const name = normalizeLegacyToolName(block.name)
     if (name === block.name) return block
-    renamed = true
+    renamedAny = true
     return { ...block, name }
   })
-  return renamed
-    ? ({ ...message, message: { ...message.message, content } } as Message)
-    : message
+  return renamedAny ? { ...message, message: { ...message.message, content } } : message
+}
+
+const KNOWN_PERMISSION_MODES: ReadonlySet<string> = new Set(PERMISSION_MODES)
+
+/** A mode written by another build never reaches the session; the copy is cleared, not the caller's message. */
+function withKnownPermissionMode(message: Message): Message {
+  if (message.type !== 'user' || message.permissionMode === undefined) return message
+  if (KNOWN_PERMISSION_MODES.has(message.permissionMode)) return message
+  return { ...message, permissionMode: undefined }
+}
+
+function upgradeLegacyShapes(message: Message): Message {
+  return withKnownPermissionMode(migrateLegacyToolNames(migrateLegacyAttachmentTypes(message)))
 }
 
 export type TeleportRemoteResponse = {
@@ -184,224 +163,85 @@ export type DeserializeResult = {
   turnInterruptionState: TurnInterruptionState
 }
 
-/**
- * Remove thinking/redacted_thinking content blocks from assistant messages.
- * Messages that become empty after stripping are removed entirely.
- */
+/** Only these providers accept the thinking blocks of an earlier turn back. */
+const PROVIDERS_KEEPING_THINKING: ReadonlySet<APIProvider> = new Set(['firstParty', 'bedrock', 'vertex', 'foundry'])
+
+const THINKING_BLOCK_KINDS: ReadonlySet<string> = new Set(['thinking', 'redacted_thinking'])
+
 function stripThinkingBlocks(messages: NormalizedMessage[]): NormalizedMessage[] {
-  return messages.reduce<NormalizedMessage[]>((acc, msg) => {
-    if (msg.type !== 'assistant' || !Array.isArray(msg.message?.content)) {
-      acc.push(msg)
-      return acc
-    }
-    const filtered = msg.message.content.filter(
-      (block: { type?: string }) => block.type !== 'thinking' && block.type !== 'redacted_thinking',
-    )
-    if (filtered.length === 0) return acc
-    // `NormalizedAssistantMessage` declares `content` as a 1-tuple, but the
-    // transcripts this runs over legitimately carry several blocks per
-    // assistant message (thinking + text), so the filtered array is kept
-    // whole rather than truncated to the declared arity.
-    acc.push({
-      ...msg,
-      message: {
-        ...msg.message,
-        content: filtered as typeof msg.message.content,
-      },
-    })
-    return acc
-  }, [])
+  return messages.flatMap((message): NormalizedMessage[] => {
+    if (message.type !== 'assistant' || !Array.isArray(message.message.content)) return [message]
+    const content = message.message.content.filter(block => !THINKING_BLOCK_KINDS.has(block.type))
+    if (content.length === message.message.content.length) return [message]
+    if (content.length === 0) return []
+    return [{ ...message, message: { ...message.message, content } } as NormalizedMessage]
+  })
 }
 
-/**
- * Deserializes messages from a log file into the format expected by the REPL.
- * Filters unresolved tool uses, orphaned thinking messages, and appends a
- * synthetic assistant sentinel when the last message is from the user.
- * @internal Exported for testing - use loadConversationForResume instead
- */
+/** Leaves out what the API would reject: unanswered calls, orphan or foreign thinking, blank replies. */
+function keepWhatTheApiAccepts(messages: Message[]): Message[] {
+  let kept = filterOrphanedThinkingOnlyMessages(filterUnresolvedToolUses(messages))
+  if (!PROVIDERS_KEEPING_THINKING.has(getAPIProvider())) {
+    kept = stripThinkingBlocks(kept as NormalizedMessage[])
+  }
+  return filterWhitespaceOnlyAssistantMessages(kept)
+}
+
 export function deserializeMessages(serializedMessages: Message[]): Message[] {
   return deserializeMessagesWithInterruptDetection(serializedMessages).messages
 }
 
-/**
- * Like deserializeMessages, but also detects whether the session was
- * interrupted mid-turn. Used by the SDK resume path to auto-continue
- * interrupted turns after a gateway-triggered restart.
- * @internal Exported for testing
- */
 export function deserializeMessagesWithInterruptDetection(
   serializedMessages: Message[],
 ): DeserializeResult {
   try {
-    // Transform legacy attachment types before processing
-    const migratedMessages = serializedMessages.map(message =>
-      migrateLegacyToolNames(migrateLegacyAttachmentTypes(message)),
-    )
-
-    // Strip invalid permissionMode values from deserialized user messages.
-    // The field is unvalidated JSON from disk and may contain modes from a different build.
-    const validModes = new Set<string>(PERMISSION_MODES)
-    for (const msg of migratedMessages) {
-      if (
-        msg.type === 'user' &&
-        msg.permissionMode !== undefined &&
-        !validModes.has(msg.permissionMode)
-      ) {
-        msg.permissionMode = undefined
-      }
+    const kept = keepWhatTheApiAccepts(serializedMessages.map(upgradeLegacyShapes))
+    const interruption = detectTurnInterruption(kept as NormalizedMessage[])
+    if (interruption.kind !== 'interrupted_turn') {
+      return { messages: withAnswerPlaceholder(kept), turnInterruptionState: interruption }
     }
-
-    // Filter out unresolved tool uses and any synthetic messages that follow them
-    const filteredToolUses = filterUnresolvedToolUses(
-      migratedMessages,
-    ) as NormalizedMessage[]
-
-    // Filter out orphaned thinking-only assistant messages that can cause API errors
-    // during resume. These occur when streaming yields separate messages per content
-    // block and interleaved user messages prevent proper merging by message.id.
-    const filteredThinking = filterOrphanedThinkingOnlyMessages(
-      filteredToolUses,
-    ) as NormalizedMessage[]
-
-    // Strip thinking/redacted_thinking content blocks from assistant messages
-    // when resuming against a 3P provider. These Anthropic-specific blocks cause
-    // 400 errors or context corruption on OpenAI-compatible providers (issue #248 finding 5).
-    const provider = getAPIProvider()
-    const isThirdPartyProvider = provider !== 'firstParty' && provider !== 'bedrock' && provider !== 'vertex' && provider !== 'foundry'
-    const thinkingStripped = isThirdPartyProvider
-      ? stripThinkingBlocks(filteredThinking)
-      : filteredThinking
-
-    // Filter out assistant messages with only whitespace text content.
-    // This can happen when model outputs "\n\n" before thinking, user cancels mid-stream.
-    const filteredMessages = filterWhitespaceOnlyAssistantMessages(
-      thinkingStripped,
-    ) as NormalizedMessage[]
-
-    const internalState = detectTurnInterruption(filteredMessages)
-
-    // Transform mid-turn interruptions into interrupted_prompt by appending
-    // a synthetic continuation message. This unifies both interruption kinds
-    // so the consumer only needs to handle interrupted_prompt.
-    let turnInterruptionState: TurnInterruptionState
-    if (internalState.kind === 'interrupted_turn') {
-      const [continuationMessage] = normalizeMessages([
-        createUserMessage({
-          content: 'Continue from where you left off.',
-          isMeta: true,
-        }),
-      ])
-      filteredMessages.push(continuationMessage!)
-      turnInterruptionState = {
-        kind: 'interrupted_prompt',
-        message: continuationMessage!,
-      }
-    } else {
-      turnInterruptionState = internalState
+    const continuation = continuationPrompt()
+    return {
+      messages: withAnswerPlaceholder([...kept, continuation]),
+      turnInterruptionState: { kind: 'interrupted_prompt', message: continuation },
     }
-
-    // Append a synthetic assistant sentinel after the last user message so
-    // the conversation is API-valid if no resume action is taken. Skip past
-    // trailing system/progress messages and insert right after the user
-    // message so removeInterruptedMessage's splice(idx, 2) removes the
-    // correct pair.
-    const lastRelevantIdx = filteredMessages.findLastIndex(
-      m => m.type !== 'system' && m.type !== 'progress',
-    )
-    if (
-      lastRelevantIdx !== -1 &&
-      filteredMessages[lastRelevantIdx]!.type === 'user'
-    ) {
-      filteredMessages.splice(
-        lastRelevantIdx + 1,
-        0,
-        createAssistantMessage({
-          content: NO_RESPONSE_REQUESTED,
-        }) as NormalizedMessage,
-      )
-    }
-
-    return { messages: filteredMessages, turnInterruptionState }
   } catch (error) {
-    logError(error as Error)
+    logError(error)
     throw error
   }
 }
 
-/**
- * Internal 3-way result from detection, before transforming interrupted_turn
- * into interrupted_prompt with a synthetic continuation message.
- */
 type InternalInterruptionState =
   | TurnInterruptionState
   | { kind: 'interrupted_turn' }
 
-/**
- * Determines whether the conversation was interrupted mid-turn based on the
- * last message after filtering. An assistant as last message (after filtering
- * unresolved tool_uses) is treated as a completed turn because stop_reason is
- * always null on persisted messages in the streaming path.
- *
- * System and progress messages are skipped when finding the last turn-relevant
- * message — they are bookkeeping artifacts that should not mask a genuine
- * interruption. So is hook output: it lands after the message that fired the
- * hook — a Stop hook's after the final reply — and says nothing about whether
- * the model still owed a response. Other attachments are kept as part of the
- * turn.
- */
+/** The one line resume writes for the model, when a turn stopped between a tool result and its answer. */
+const CONTINUATION_TEXT =
+  'The previous session ended before this turn was finished. Continue the task from where it stopped.'
+
+function continuationPrompt(): NormalizedUserMessage {
+  return createUserMessage({
+    content: [{ type: 'text', text: CONTINUATION_TEXT }],
+    isMeta: true,
+  }) as NormalizedUserMessage
+}
+
 function detectTurnInterruption(
   messages: NormalizedMessage[],
 ): InternalInterruptionState {
-  if (messages.length === 0) {
-    return { kind: 'none' }
-  }
+  const deciding = messages.findLast(decidesTheTurn)
+  if (!deciding || deciding.type === 'assistant') return { kind: 'none' }
+  if (deciding.type !== 'user') return { kind: 'interrupted_turn' }
+  if (isToolUseResultMessage(deciding)) return { kind: 'interrupted_turn' }
+  if (deciding.isMeta || deciding.isCompactSummary) return { kind: 'none' }
+  return { kind: 'interrupted_prompt', message: deciding }
+}
 
-  // Find the last turn-relevant message, skipping system/progress, hook
-  // output and synthetic API error assistants. Error assistants are already
-  // filtered before API send (normalizeMessagesForAPI) — skipping them here
-  // lets auto-resume fire after retry exhaustion instead of reading the error
-  // as a completed turn.
-  const lastMessageIdx = messages.findLastIndex(
-    m =>
-      m.type !== 'system' &&
-      m.type !== 'progress' &&
-      !isHookOutput(m) &&
-      !(m.type === 'assistant' && m.isApiErrorMessage),
-  )
-  const lastMessage =
-    lastMessageIdx !== -1 ? messages[lastMessageIdx] : undefined
-
-  if (!lastMessage) {
-    return { kind: 'none' }
-  }
-
-  if (lastMessage.type === 'assistant') {
-    // In the streaming path, stop_reason is always null on persisted messages
-    // because messages are recorded at content_block_stop time, before
-    // message_delta delivers the stop_reason. After filterUnresolvedToolUses
-    // has removed assistant messages with unmatched tool_uses, an assistant as
-    // the last message means the turn most likely completed normally.
-    return { kind: 'none' }
-  }
-
-  if (lastMessage.type === 'user') {
-    if (lastMessage.isMeta || lastMessage.isCompactSummary) {
-      return { kind: 'none' }
-    }
-    if (isToolUseResultMessage(lastMessage)) {
-      return { kind: 'interrupted_turn' }
-    }
-    // Plain text user prompt — CC hadn't started responding
-    return { kind: 'interrupted_prompt', message: lastMessage }
-  }
-
-  if (lastMessage.type === 'attachment') {
-    // Attachments are part of the user turn — the user provided context but
-    // the assistant never responded.
-    return { kind: 'interrupted_turn' }
-  }
-
-  return { kind: 'none' }
+/** Notices, progress, hook output and API errors say nothing about whether the turn finished. */
+function decidesTheTurn(message: NormalizedMessage): boolean {
+  if (message.type === 'system' || message.type === 'progress') return false
+  if (message.type === 'assistant') return message.isApiErrorMessage !== true
+  return !isHookOutput(message)
 }
 
 function isHookOutput(m: NormalizedMessage): boolean {
@@ -412,97 +252,144 @@ function isHookOutput(m: NormalizedMessage): boolean {
   )
 }
 
-/**
- * Restores skill state from invoked_skills attachments in messages.
- * This ensures that skills are preserved across resume after compaction.
- * Without this, if another compaction happens after resume, the skills would be lost
- * because STATE.invokedSkills would be empty.
- * @internal Exported for testing - use loadConversationForResume instead
- */
+/** A list ending on a user message gets an answer right after it, so the list stays API-valid. */
+function withAnswerPlaceholder(messages: Message[]): Message[] {
+  const last = messages.findLastIndex(message => message.type !== 'system' && message.type !== 'progress')
+  if (last === -1 || messages[last]!.type !== 'user') return messages
+  const placeholder = createAssistantMessage({ content: NO_RESPONSE_REQUESTED })
+  return [...messages.slice(0, last + 1), placeholder, ...messages.slice(last + 1)]
+}
+
+// --- restoring: state the transcript already carries -----------------------------
+
 export function restoreSkillStateFromMessages(messages: Message[]): void {
   for (const message of messages) {
-    if (message.type !== 'attachment') {
-      continue
-    }
-    if (message.attachment.type === 'invoked_skills') {
-      for (const skill of message.attachment.skills) {
-        if (skill.name && skill.path && skill.content) {
-          // Resume only happens for the main session, so agentId is null
-          addInvokedSkill(skill.name, skill.path, skill.content, null)
+    if (message.type !== 'attachment' || !message.attachment) continue
+    const { attachment } = message
+    switch (attachment.type) {
+      case 'invoked_skills':
+        for (const { name, path, content } of attachment.skills) {
+          if (name && path && content) addInvokedSkill(name, path, content, null)
         }
-      }
-    }
-    // A prior process already injected the skills-available reminder — it's
-    // in the transcript the model is about to see. sentSkillNames is
-    // process-local, so without this every resume re-announces the same
-    // ~600 tokens. Fire-once latch; consumed on the first attachment pass.
-    if (message.attachment.type === 'skill_listing') {
-      suppressNextSkillListing()
-    }
-    // Same rationale for the bash git/PR protocol attachment: prior process
-    // injected ~3.5KB worth of body and it's already in the transcript.
-    // Without this latch, every --resume re-injects, breaking prompt-cache
-    // stability for daemons / repeat-launch scripts.
-    if (message.attachment.type === 'bash_git_instructions') {
-      suppressNextBashGitInstructions()
+        break
+      case 'skill_listing':
+        suppressNextSkillListing()
+        break
+      case 'bash_git_instructions':
+        suppressNextBashGitInstructions()
+        break
     }
   }
 }
 
-/**
- * Chain-walk a transcript jsonl by path.  Same sequence loadFullLog
- * runs internally — loadTranscriptFile → find newest non-sidechain
- * leaf → buildConversationChain → removeExtraFields — just starting
- * from an arbitrary path instead of the sid-derived one.
- *
- * leafUuids is populated by loadTranscriptFile as "uuids that no
- * other message's parentUuid points at" — the chain tips.  There can
- * be several (sidechains, orphans); newest non-sidechain is the main
- * conversation's end.
- */
+// --- the loader ----------------------------------------------------------------------
+
+/** Timestamps at or before the epoch never pick a path resume's tip. */
+const EPOCH_MS = 0
+
 export async function loadMessagesFromJsonlPath(path: string): Promise<{
   messages: SerializedMessage[]
   sessionId: UUID | undefined
   costState: CostStateEntry | undefined
 }> {
-  const { messages: byUuid, leafUuids, costStates } =
-    await loadTranscriptFile(path)
-  let tip: (typeof byUuid extends Map<UUID, infer T> ? T : never) | null = null
-  let tipTs = 0
-  for (const m of byUuid.values()) {
-    if (m.isSidechain || !leafUuids.has(m.uuid)) continue
-    const ts = new Date(m.timestamp).getTime()
-    if (ts > tipTs) {
-      tipTs = ts
-      tip = m
-    }
-  }
+  const { messages, leafUuids, costStates } = await loadTranscriptFile(path)
+  const tip = latestByTimestamp(
+    messages.values(),
+    entry => leafUuids.has(entry.uuid) && !entry.isSidechain,
+    EPOCH_MS,
+  )
   if (!tip) return { messages: [], sessionId: undefined, costState: undefined }
-  const chain = buildConversationChain(byUuid, tip)
+  // A fork copies its first entries from the source session; the tip names the session.
+  const sessionId = tip.sessionId as UUID | undefined
   return {
-    messages: removeExtraFields(chain),
-    // Leaf's sessionId — forked sessions copy chain[0] from the source
-    // transcript, so the root retains the source session's ID. Matches
-    // loadFullLog's mostRecentLeaf.sessionId.
-    sessionId: tip.sessionId as UUID | undefined,
-    costState: costStates.get(tip.sessionId as UUID),
+    messages: removeExtraFields(buildConversationChain(messages, tip)),
+    sessionId,
+    costState: sessionId === undefined ? undefined : costStates.get(sessionId),
   }
 }
 
-/**
- * Loads a conversation for resume from various sources.
- * This is the centralized function for loading and deserializing conversations.
- *
- * @param source - The source to load from:
- *   - undefined: load most recent conversation
- *   - string: session ID to load
- *   - LogOption: already loaded conversation
- * @param sourceJsonlFile - Alternate: path to a transcript jsonl.
- *   Used when --resume receives a .jsonl path (cli/print.ts routes
- *   on suffix), typically for cross-directory resume where the
- *   transcript lives outside the current project dir.
- * @returns Object containing the deserialized messages and the original log, or null if not found
- */
+type ResumeSource =
+  | { kind: 'continue' }
+  | { kind: 'sessionId'; sessionId: UUID }
+  | { kind: 'log'; log: LogOption }
+  | { kind: 'file'; path: string }
+
+function resumeSourceOf(source: string | LogOption | undefined, sourceJsonlFile: string | undefined): ResumeSource {
+  // No source is a --continue, whatever path came with it.
+  if (source === undefined) return { kind: 'continue' }
+  if (sourceJsonlFile) return { kind: 'file', path: sourceJsonlFile }
+  if (typeof source === 'string') return { kind: 'sessionId', sessionId: source as UUID }
+  return { kind: 'log', log: source }
+}
+
+/** A conversation found for a source, before it is readied. `log` is absent for a path. */
+type FoundConversation = {
+  messages: Message[]
+  sessionId: UUID | undefined
+  costState: CostStateEntry | undefined
+  log?: LogOption
+}
+
+type LoadedResume = NonNullable<Awaited<ReturnType<typeof loadConversationForResume>>>
+
+async function inFull(log: LogOption): Promise<LogOption> {
+  return isLiteLog(log) ? loadFullLog(log) : log
+}
+
+async function findLog(
+  source: Exclude<ResumeSource, { kind: 'file' }>,
+): Promise<{ log: LogOption; sessionId: UUID | undefined } | null> {
+  switch (source.kind) {
+    case 'continue': {
+      const [latest] = await loadMessageLogs()
+      if (!latest) return null
+      const log = await inFull(latest)
+      return { log, sessionId: getSessionIdFromLog(log) }
+    }
+    case 'sessionId': {
+      const log = await getLastSessionLog(source.sessionId)
+      return log ? { log, sessionId: source.sessionId } : null
+    }
+    case 'log': {
+      const log = await inFull(source.log)
+      return { log, sessionId: getSessionIdFromLog(log) }
+    }
+  }
+}
+
+async function findConversation(source: ResumeSource): Promise<FoundConversation | null> {
+  if (source.kind === 'file') return loadMessagesFromJsonlPath(source.path)
+  const found = await findLog(source)
+  if (!found) return null
+  const { log, sessionId } = found
+  await copyPlanForResume(log, sessionId === undefined ? undefined : asSessionId(sessionId))
+  void copyFileHistoryForResume(log).catch(logError)
+  return { messages: log.messages, sessionId, costState: log.costState, log }
+}
+
+type CarriedMetadata = Omit<LoadedResume, 'messages' | 'turnInterruptionState' | 'sessionId' | 'costState'>
+
+function metadataOf(log: LogOption | undefined): CarriedMetadata {
+  if (!log) return {}
+  return {
+    fileHistorySnapshots: log.fileHistorySnapshots,
+    attributionSnapshots: log.attributionSnapshots,
+    contextCollapseCommits: log.contextCollapseCommits,
+    contextCollapseSnapshot: log.contextCollapseSnapshot,
+    agentName: log.agentName,
+    agentColor: log.agentColor,
+    agentSetting: log.agentSetting,
+    customTitle: log.customTitle,
+    tag: log.tag,
+    mode: log.mode,
+    worktreeSession: log.worktreeSession,
+    prNumber: log.prNumber,
+    prUrl: log.prUrl,
+    prRepository: log.prRepository,
+    fullPath: log.fullPath,
+  }
+}
+
 export async function loadConversationForResume(
   source: string | LogOption | undefined,
   sourceJsonlFile: string | undefined,
@@ -532,102 +419,24 @@ export async function loadConversationForResume(
   fullPath?: string
 } | null> {
   try {
-    let log: LogOption | null = null
-    let messages: Message[] | null = null
-    let sessionId: UUID | undefined
-    let costState: CostStateEntry | undefined
-
-    if (source === undefined) {
-      // --continue: most recent session.
-      const logs = await loadMessageLogs()
-      log = logs[0] ?? null
-    } else if (sourceJsonlFile) {
-      // --resume with a .jsonl path (cli/print.ts routes on suffix).
-      // Same chain walk as the sid branch below — only the starting
-      // path differs.
-      const loaded = await loadMessagesFromJsonlPath(sourceJsonlFile)
-      messages = loaded.messages
-      sessionId = loaded.sessionId
-      costState = loaded.costState
-    } else if (typeof source === 'string') {
-      // Load specific session by ID
-      log = await getLastSessionLog(source as UUID)
-      sessionId = source as UUID
-    } else {
-      // Already have a LogOption
-      log = source
-    }
-
-    if (!log && !messages) {
-      return null
-    }
-
-    if (log) {
-      // Load full messages for lite logs
-      if (isLiteLog(log)) {
-        log = await loadFullLog(log)
-      }
-
-      // Determine sessionId first so we can pass it to copy functions
-      if (!sessionId) {
-        sessionId = getSessionIdFromLog(log) as UUID
-      }
-      // Pass the original session ID to ensure the plan slug is associated with
-      // the session we're resuming, not the temporary session ID before resume
-      if (sessionId) {
-        await copyPlanForResume(log, asSessionId(sessionId))
-      }
-
-      // Copy file history for resume
-      void copyFileHistoryForResume(log)
-
-      messages = log.messages
-    }
-
-    // Restore skill state from invoked_skills attachments before deserialization.
-    // This ensures skills survive multiple compaction cycles after resume.
-    restoreSkillStateFromMessages(messages!)
-
-    // Deserialize messages to handle unresolved tool uses and ensure proper format
-    const deserialized = deserializeMessagesWithInterruptDetection(messages!)
-    messages = deserialized.messages
-
-    // Reject oversized resumes before running side-effectful resume hooks.
+    const found = await findConversation(resumeSourceOf(source, sourceJsonlFile))
+    if (!found) return null
+    restoreSkillStateFromMessages(found.messages)
+    const { messages, turnInterruptionState } = deserializeMessagesWithInterruptDetection(found.messages)
+    // Checked before the hooks too, so an oversized session never runs them.
     assertResumeMessageSize(messages)
-
-    // Process session start hooks for resume
-    const hookMessages = await processSessionStartHooks('resume', { sessionId })
-
-    // Append hook messages to the conversation and guard again in case hook
-    // output itself pushes the session over the safe resume limit.
-    messages.push(...hookMessages)
-    assertResumeMessageSize(messages)
-
+    const hookOutput = await processSessionStartHooks('resume', { sessionId: found.sessionId })
+    const withHookOutput = [...messages, ...hookOutput]
+    assertResumeMessageSize(withHookOutput)
     return {
-      messages,
-      turnInterruptionState: deserialized.turnInterruptionState,
-      fileHistorySnapshots: log?.fileHistorySnapshots,
-      attributionSnapshots: log?.attributionSnapshots,
-      contextCollapseCommits: log?.contextCollapseCommits,
-      contextCollapseSnapshot: log?.contextCollapseSnapshot,
-      sessionId,
-      // Include session metadata for restoring agent context on resume
-      agentName: log?.agentName,
-      agentColor: log?.agentColor,
-      agentSetting: log?.agentSetting,
-      customTitle: log?.customTitle,
-      tag: log?.tag,
-      mode: log?.mode,
-      worktreeSession: log?.worktreeSession,
-      prNumber: log?.prNumber,
-      prUrl: log?.prUrl,
-      prRepository: log?.prRepository,
-      costState: log?.costState ?? costState,
-      // Include full path for cross-directory resume
-      fullPath: log?.fullPath,
+      ...metadataOf(found.log),
+      messages: withHookOutput,
+      turnInterruptionState,
+      sessionId: found.sessionId,
+      costState: found.costState,
     }
   } catch (error) {
-    logError(error as Error)
+    logError(error)
     throw error
   }
 }

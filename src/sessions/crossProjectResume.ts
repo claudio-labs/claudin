@@ -2,6 +2,7 @@ import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import type { LogOption } from 'src/shared/types/logs.js'
 import { quote } from 'src/platform/bash/shellQuote.js'
 import { getSessionIdFromLog } from 'src/sessions/sessionStorage.js'
+import { CLI_COMMAND } from 'src/skills/bundled/shared/cliCommand.js'
 
 export type CrossProjectResumeResult =
   | {
@@ -19,30 +20,22 @@ export type CrossProjectResumeResult =
       projectPath: string
     }
 
-/**
- * Check if a log is from a different project directory and determine
- * whether it's a related worktree or a completely different project.
- *
- * For same-repo worktrees, we can resume directly without requiring cd.
- * For different projects, we generate the cd command.
- */
 export function checkCrossProjectResume(
   log: LogOption,
   showAllProjects: boolean,
   _worktreePaths: string[],
 ): CrossProjectResumeResult {
-  const currentCwd = getOriginalCwd()
-
-  if (!showAllProjects || !log.projectPath || log.projectPath === currentCwd) {
+  const projectPath = log.projectPath
+  if (!showAllProjects || !projectPath || projectPath === getOriginalCwd()) {
     return { isCrossProject: false }
   }
-
-  const sessionId = getSessionIdFromLog(log)
-  const command = `cd ${quote([log.projectPath])} && claude --resume ${sessionId}`
+  // Sibling worktrees of this repository get the cd command too: resuming
+  // one in place would point the conversation's paths at other files.
+  const resume = quote([CLI_COMMAND, '--resume', String(getSessionIdFromLog(log))])
   return {
     isCrossProject: true,
     isSameRepoWorktree: false,
-    command,
-    projectPath: log.projectPath,
+    projectPath,
+    command: `cd ${quote([projectPath])} && ${resume}`,
   }
 }

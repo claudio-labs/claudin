@@ -20,15 +20,18 @@ type Candidate = {
   sessionId: string
   filePath: string
   mtime: number
-  /** Project path for cwd fallback when file lacks a cwd field. */
   projectPath?: string
 }
 
-/**
- * Lists candidate session files in a directory via readdir, optionally
- * stat'ing each for mtime. When `doStat` is false, mtime is set to 0
- * (caller must sort/dedup after reading file contents instead).
- */
+const TRANSCRIPT_SUFFIX = '.jsonl'
+
+/** The session id a directory entry names, when it is `<uuid>.jsonl`. */
+function sessionIdOf(name: string): string | undefined {
+  if (!name.endsWith(TRANSCRIPT_SUFFIX)) return undefined
+  const stem = name.slice(0, -TRANSCRIPT_SUFFIX.length)
+  return validateUuid(stem) ? stem : undefined
+}
+
 export async function listCandidates(
   projectDir: string,
   doStat: boolean,
@@ -38,24 +41,23 @@ export async function listCandidates(
   try {
     names = await readdir(projectDir)
   } catch {
+    // A project without a readable session store simply has no candidates.
     return []
   }
-
-  const results = await Promise.all(
-    names.map(async (name): Promise<Candidate | null> => {
-      if (!name.endsWith('.jsonl')) return null
-      const sessionId = validateUuid(name.slice(0, -6))
-      if (!sessionId) return null
-      const filePath = join(projectDir, name)
-      if (!doStat) return { sessionId, filePath, mtime: 0, projectPath }
+  const named = names.flatMap((name): Candidate[] => {
+    const sessionId = sessionIdOf(name)
+    return sessionId ? [{ sessionId, filePath: join(projectDir, name), mtime: 0, projectPath }] : []
+  })
+  if (!doStat) return named
+  const stamped = await Promise.all(
+    named.map(async (candidate): Promise<Candidate | undefined> => {
       try {
-        const s = await stat(filePath)
-        return { sessionId, filePath, mtime: s.mtime.getTime(), projectPath }
+        return { ...candidate, mtime: (await stat(candidate.filePath)).mtime.getTime() }
       } catch {
-        return null
+        // Gone or dangling since the listing: not a session to count.
+        return undefined
       }
     }),
   )
-
-  return results.filter((c): c is Candidate => c !== null)
+  return stamped.filter((candidate): candidate is Candidate => candidate !== undefined)
 }

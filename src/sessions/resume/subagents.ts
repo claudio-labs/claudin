@@ -18,12 +18,18 @@ import {
 import { type AgentId, asAgentId } from 'src/shared/types/ids.js'
 import type { Message } from 'src/shared/types/message.js'
 import { uniq } from 'src/shared/data/array.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import {
   buildConversationChain,
   findLatestMessage,
 } from 'src/sessions/resume/chain.js'
 import { loadTranscriptFile } from 'src/sessions/resume/transcriptLoad.js'
 import { getAgentTranscriptPath, getProjectDir } from 'src/sessions/pure/paths.js'
+import { removeExtraFields } from 'src/sessions/pure/logging.js'
+
+const AGENT_TRANSCRIPT_NAME = /^agent-(.+)\.jsonl$/
+const PROGRESS_FROM_AGENTS: ReadonlySet<unknown> = new Set(['agent_progress', 'skill_progress'])
 
 /**
  * Get the transcript for a specific agent
@@ -31,81 +37,27 @@ import { getAgentTranscriptPath, getProjectDir } from 'src/sessions/pure/paths.j
 export async function getAgentTranscript(agentId: AgentId): Promise<{
   messages: Message[]
 } | null> {
-  const agentFile = getAgentTranscriptPath(agentId)
-
-  try {
-    const { messages } = await loadTranscriptFile(agentFile)
-
-    // Find messages with matching agentId
-    const agentMessages = Array.from(messages.values()).filter(
-      msg => msg.agentId === agentId && msg.isSidechain,
-    )
-
-    if (agentMessages.length === 0) {
-      return null
-    }
-
-    // Find the most recent leaf message with this agentId
-    const parentUuids = new Set(agentMessages.map(msg => msg.parentUuid))
-    const leafMessage = findLatestMessage(
-      agentMessages,
-      msg => !parentUuids.has(msg.uuid),
-    )
-
-    if (!leafMessage) {
-      return null
-    }
-
-    // Build the conversation chain
-    const transcript = buildConversationChain(messages, leafMessage)
-
-    // Filter to only include messages with this agentId
-    const agentTranscript = transcript.filter(msg => msg.agentId === agentId)
-
-    return {
-      // Convert TranscriptMessage[] to Message[]
-      messages: agentTranscript.map(
-        ({ isSidechain, parentUuid, ...msg }) => msg,
-      ),
-    }
-  } catch {
-    return null
-  }
+  const { messages } = await loadTranscriptFile(getAgentTranscriptPath(agentId))
+  const ownEntries = [...messages.values()].filter(entry => entry.isSidechain && entry.agentId === agentId)
+  const parentsWithin = new Set(ownEntries.map(entry => entry.parentUuid))
+  const tip = findLatestMessage(ownEntries, entry => !parentsWithin.has(entry.uuid))
+  if (!tip) return null
+  const ownChain = buildConversationChain(messages, tip).filter(entry => entry.agentId === agentId)
+  return { messages: removeExtraFields(ownChain) }
 }
 
-/**
- * Extract agent IDs from progress messages in the conversation.
- * Agent/skill progress messages have type 'progress' with data.type
- * 'agent_progress' or 'skill_progress' and data.agentId.
- * This captures sync agents that emit progress messages during execution.
- */
 export function extractAgentIdsFromMessages(messages: Message[]): string[] {
-  const agentIds: string[] = []
-
+  const found: string[] = []
   for (const message of messages) {
-    if (
-      message.type === 'progress' &&
-      message.data &&
-      typeof message.data === 'object' &&
-      'type' in message.data &&
-      (message.data.type === 'agent_progress' ||
-        message.data.type === 'skill_progress') &&
-      'agentId' in message.data &&
-      typeof message.data.agentId === 'string'
-    ) {
-      agentIds.push(message.data.agentId)
-    }
+    if (message.type !== 'progress') continue
+    const data: unknown = message.data
+    if (typeof data !== 'object' || data === null) continue
+    const { type, agentId } = data as { type?: unknown; agentId?: unknown }
+    if (PROGRESS_FROM_AGENTS.has(type) && typeof agentId === 'string') found.push(agentId)
   }
-
-  return uniq(agentIds)
+  return uniq(found)
 }
 
-/**
- * Extract teammate transcripts directly from AppState tasks.
- * In-process teammates store their messages in task.messages,
- * which is more reliable than loading from disk since each teammate turn
- * uses a random agentId for transcript storage.
- */
 export function extractTeammateTranscriptsFromTasks(tasks: {
   [taskId: string]: {
     type: string
@@ -113,73 +65,43 @@ export function extractTeammateTranscriptsFromTasks(tasks: {
     messages?: Message[]
   }
 }): { [agentId: string]: Message[] } {
-  const transcripts: { [agentId: string]: Message[] } = {}
-
+  const byAgent: { [agentId: string]: Message[] } = {}
   for (const task of Object.values(tasks)) {
-    if (
-      task.type === 'in_process_teammate' &&
-      task.identity?.agentId &&
-      task.messages &&
-      task.messages.length > 0
-    ) {
-      transcripts[task.identity.agentId] = task.messages
-    }
+    const agentId = task.identity?.agentId
+    if (task.type !== 'in_process_teammate' || !agentId || !task.messages?.length) continue
+    byAgent[agentId] = task.messages
   }
-
-  return transcripts
+  return byAgent
 }
 
-/**
- * Load subagent transcripts for the given agent IDs
- */
 export async function loadSubagentTranscripts(
   agentIds: string[],
 ): Promise<{ [agentId: string]: Message[] }> {
-  const results = await Promise.all(
-    agentIds.map(async agentId => {
-      try {
-        const result = await getAgentTranscript(asAgentId(agentId))
-        if (result && result.messages.length > 0) {
-          return { agentId, transcript: result.messages }
-        }
-        return null
-      } catch {
-        // Skip if transcript can't be loaded
-        return null
-      }
-    }),
+  const loaded = await Promise.all(
+    agentIds.map(async agentId => [agentId, await getAgentTranscript(asAgentId(agentId))] as const),
   )
-
-  const transcripts: { [agentId: string]: Message[] } = {}
-  for (const result of results) {
-    if (result) {
-      transcripts[result.agentId] = result.transcript
-    }
+  const byAgent: { [agentId: string]: Message[] } = {}
+  for (const [agentId, transcript] of loaded) {
+    if (transcript && transcript.messages.length > 0) byAgent[agentId] = transcript.messages
   }
-  return transcripts
+  return byAgent
 }
 
-// Globs the session's subagents dir directly — unlike AppState.tasks, this survives task eviction.
 export async function loadAllSubagentTranscriptsFromDisk(): Promise<{
   [agentId: string]: Message[]
 }> {
-  const subagentsDir = join(
-    getSessionProjectDir() ?? getProjectDir(getOriginalCwd()),
-    getSessionId(),
-    'subagents',
-  )
+  const sessionDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
+  const subagentsDir = join(sessionDir, getSessionId(), 'subagents')
   let entries: Dirent[]
   try {
     entries = await readdir(subagentsDir, { withFileTypes: true })
-  } catch {
+  } catch (error) {
+    if (!isENOENT(error)) logError(error)
     return {}
   }
-  // Filename format is the inverse of getAgentTranscriptPath() — keep in sync.
-  const agentIds = entries
-    .filter(
-      d =>
-        d.isFile() && d.name.startsWith('agent-') && d.name.endsWith('.jsonl'),
-    )
-    .map(d => d.name.slice('agent-'.length, -'.jsonl'.length))
+  const agentIds = entries.flatMap(entry => {
+    const id = entry.isFile() ? AGENT_TRANSCRIPT_NAME.exec(entry.name)?.[1] : undefined
+    return id ? [id] : []
+  })
   return loadSubagentTranscripts(agentIds)
 }

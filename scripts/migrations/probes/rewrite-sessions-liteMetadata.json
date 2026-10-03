@@ -588,8 +588,8 @@
     {
       "name": "fields: the raw title is 200 characters",
       "source": "src/sessions/indexing/liteRead/listedFields.ts",
-      "find": "export const RAW_TITLE_MAX_CHARS = 200",
-      "replace": "export const RAW_TITLE_MAX_CHARS = 100"
+      "find": "const RAW_TITLE_MAX_CHARS = 200",
+      "replace": "const RAW_TITLE_MAX_CHARS = 100"
     },
     {
       "name": "fields: a user title in the head beats an AI title in the tail",

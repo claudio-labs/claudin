@@ -534,3 +534,31 @@ suite passes on the old code. What a "fix" would change is left unpinned.
   - `LoadedResume`, the loader's result (today an anonymous type that `lifecycle/restore/types.ts` reaches for with `ReturnType`).
 - **`crossProjectResume`** builds its command from the binary name the rest of the CLI uses, and quotes every argument.
 - **Follow `.claudin/rules/code-design.md`:** no module-level mutable state except the uuid memo, which stays one shared memo per session id because the persistence module adds to it.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **What was rewritten.** The 31 inherited bodies, the class constructor in
+  `conversationRecovery.ts` included, were written anew. The JSONL reading
+  moved into `resume/transcriptFile.ts`. The six characterization suites pass
+  unchanged.
+- **Fixes, each with a test.**
+  1. Ties: on a timestamp tie, the later-written message wins in
+     `findLatestMessage`, the same rule `sessions/liteMetadata` landed.
+  2. The cross-project command names `claudin`.
+  3. `deserializeMessages` copies before clearing an unknown `permissionMode`.
+  4. The session id in that command is shell-quoted.
+- **Probes.** `rewrite-sessions-resume.json` has 95 probes. `patchRename.json`'s
+  probe on the legacy tool-name migration was re-pointed at the new call site.
+- **Residue, reviewed.** 181 lines of Claude Code remain, all of them contract
+  that callers not yet rewritten dictate.
+  - `conversationRecovery.ts`, 55: the signatures of the deserialize and load
+    family, and the result type's fields.
+  - `transcriptLoad.ts`, 36: the declared return type of `loadTranscriptFile`,
+    one `Map` per entry kind, and the signature of `loadSessionFile`.
+  - `subagents.ts` 19, `crossProjectResume.ts` 17, `cache.ts` 16, `transcriptFile.ts`
+    14, `chain.ts` 12 and `sessionCandidates.ts` 12: signatures, result types, and
+    the one-line guards those signatures imply.
+
+  The result types are the largest share. They shrink when the contract is
+  redesigned, after every consumer has been rewritten.

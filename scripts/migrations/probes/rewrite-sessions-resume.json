@@ -5,249 +5,550 @@
     "src/sessions/resume/resume.subagents.characterization.test.ts",
     "src/sessions/conversationRecovery.characterization.test.ts",
     "src/sessions/conversationRecovery.load.characterization.test.ts",
-    "src/sessions/resumeLookup.characterization.test.ts"
+    "src/sessions/resumeLookup.characterization.test.ts",
+    "src/sessions/conversationRecovery.test.ts",
+    "src/sessions/resume/chain.test.ts",
+    "src/sessions/resume/fixes.test.ts"
   ],
   "source": "src/sessions/conversationRecovery.ts",
   "probes": [
     {
-      "name": "recovery: the size cap is 8 MiB",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "const MAX_RESUME_MESSAGE_BYTES = 8 * 1024 * 1024",
-      "replace": "const MAX_RESUME_MESSAGE_BYTES = 16 * 1024 * 1024"
+      "name": "recovery: over 8 MiB is refused",
+      "find": "  if (bytes > MAX_RESUME_MESSAGE_BYTES) {",
+      "replace": "  if (bytes > MAX_RESUME_MESSAGE_BYTES * 2) {"
     },
     {
-      "name": "recovery: the size is checked before the hooks run",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "    assertResumeMessageSize(messages)\n\n    // Process session start hooks",
-      "replace": "    // Process session start hooks"
-    },
-    {
-      "name": "recovery: new_file becomes file",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "        type: 'file',",
-      "replace": "        type: 'new_file',"
-    },
-    {
-      "name": "recovery: a skill dir gets a display path",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "'skillDir' in attachment",
-      "replace": "'skillDirectory' in attachment"
-    },
-    {
-      "name": "recovery: legacy tool names are mapped",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "const name = normalizeLegacyToolName(block.name)",
-      "replace": "const name = block.name"
-    },
-    {
-      "name": "recovery: unknown permission modes are cleared",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "!validModes.has(msg.permissionMode)",
-      "replace": "validModes.has(msg.permissionMode)"
-    },
-    {
-      "name": "recovery: bedrock keeps thinking blocks",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "provider !== 'bedrock' && ",
+      "name": "recovery: the size error names itself",
+      "find": "    this.name = 'ResumeTranscriptTooLargeError'\n",
       "replace": ""
     },
     {
-      "name": "recovery: hook output does not count as an unanswered turn",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "      !isHookOutput(m) &&\n",
-      "replace": "      true &&\n"
+      "name": "recovery: the size error states MiB with one decimal",
+      "find": "  return (bytes / BYTES_PER_MIB).toFixed(1)",
+      "replace": "  return (bytes / BYTES_PER_MIB).toFixed(2)"
     },
     {
-      "name": "recovery: the placeholder goes right after the last prompt",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "        lastRelevantIdx + 1,",
-      "replace": "        filteredMessages.length,"
-    },
-    {
-      "name": "recovery: a path resume skips sidechain tips",
-      "source": "src/sessions/conversationRecovery.ts",
-      "find": "if (m.isSidechain || !leafUuids.has(m.uuid)) continue",
-      "replace": "if (!leafUuids.has(m.uuid)) continue"
-    },
-    {
-      "name": "chain: the predicate filters the latest",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "if (!predicate(m)) continue",
-      "replace": "if (predicate(m)) continue"
-    },
-    {
-      "name": "chain: the walk is returned root first",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "  transcript.reverse()\n",
-      "replace": "\n"
-    },
-    {
-      "name": "chain: results of sibling blocks are recovered",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "for (const tr of toolResultsByAsst.get(member.uuid) ?? []) claim(tr)",
-      "replace": "void member"
-    },
-    {
-      "name": "chain: hook output of a call is recovered",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "for (const hook of hookOutputByToolUseId.get(toolUseId) ?? []) claim(hook)",
-      "replace": "void toolUseId"
-    },
-    {
-      "name": "chain: what follows a recovered entry comes with it",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "for (const child of childrenByParent.get(orphanedRuns[i]!.uuid) ?? []) claim(child)",
-      "replace": "void i"
-    },
-    {
-      "name": "chain: recovered entries are in write order",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "orphanedRuns.sort(byWriteOrder)",
-      "replace": "orphanedRuns.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))"
-    },
-    {
-      "name": "chain: the head of a live segment follows the anchor",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "        parentUuid: lastSeg.anchorUuid,",
-      "replace": "        parentUuid: lastSeg.tailUuid,"
-    },
-    {
-      "name": "chain: a stale segment is not spliced",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "const segIsLive = lastSegBoundaryIdx === absoluteLastBoundaryIdx",
-      "replace": "const segIsLive = true"
-    },
-    {
-      "name": "chain: a missing anchor fails the relink",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "if (!reachedHead || !anchorInTranscript) {",
-      "replace": "if (!reachedHead) {"
-    },
-    {
-      "name": "chain: kept replies lose their output tokens",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "            output_tokens: 0,",
-      "replace": "            output_tokens: 7,"
-    },
-    {
-      "name": "chain: a snip relinks to the parent of the removed run",
-      "source": "src/sessions/resume/chain.ts",
-      "find": "deletedParent.set(uuid, entry.parentUuid)",
-      "replace": "deletedParent.set(uuid, null)"
-    },
-    {
-      "name": "load: a cost over 1e9 is rejected",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "totalCostUSD: amount.max(1e9),",
-      "replace": "totalCostUSD: amount,"
-    },
-    {
-      "name": "load: model names reject format characters",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "const COST_STATE_MODEL_NAME_RE = /^[^\\p{Cc}\\p{Cf}]+$/u",
-      "replace": "const COST_STATE_MODEL_NAME_RE = /^[^\\p{Cc}]+$/u"
-    },
-    {
-      "name": "load: a run of progress entries resolves to the message before it",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "parent && progressBridge.has(parent)",
-      "replace": "false"
-    },
-    {
-      "name": "load: a compact boundary drops earlier collapse commits",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "          contextCollapseCommits.length = 0\n",
-      "replace": "\n"
-    },
-    {
-      "name": "load: metadata before the cut is read",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "if (metadataLines && metadataLines.length > 0) {",
-      "replace": "if (metadataLines && metadataLines.length > 9999) {"
-    },
-    {
-      "name": "load: all tips keeps every branch",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "      !opts?.keepAllLeaves &&\n",
+      "name": "recovery: new_file is read back as file",
+      "find": "  new_file: 'file',\n",
       "replace": ""
     },
     {
-      "name": "load: a preserved segment disables the pre-parse walk",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "      !hasPreservedSegment &&\n",
+      "name": "recovery: displayPath is relative to the cwd",
+      "find": "(located === undefined ? undefined : relative(getCwd(), located))",
+      "replace": "(located === undefined ? undefined : located)"
+    },
+    {
+      "name": "recovery: legacy tool names are renamed",
+      "find": "    const name = normalizeLegacyToolName(block.name)",
+      "replace": "    const name = block.name"
+    },
+    {
+      "name": "recovery: an unknown permission mode is cleared",
+      "find": "  if (KNOWN_PERMISSION_MODES.has(message.permissionMode)) return message\n",
+      "replace": "  return message\n"
+    },
+    {
+      "name": "fix 3: the caller's message is not mutated",
+      "find": "  return { ...message, permissionMode: undefined }",
+      "replace": "  ;(message as { permissionMode?: unknown }).permissionMode = undefined\n  return message"
+    },
+    {
+      "name": "recovery: foundry keeps thinking blocks",
+      "find": "new Set(['firstParty', 'bedrock', 'vertex', 'foundry'])",
+      "replace": "new Set(['firstParty', 'bedrock', 'vertex'])"
+    },
+    {
+      "name": "recovery: a reply emptied of thinking is dropped",
+      "find": "    if (content.length === 0) return []\n",
       "replace": ""
     },
     {
-      "name": "load: saved tool output is stripped",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "    buf = stripPersistedToolUseResultsFromJSONLBuffer(buf)\n",
-      "replace": "\n"
+      "name": "recovery: unanswered calls are dropped",
+      "find": "filterOrphanedThinkingOnlyMessages(filterUnresolvedToolUses(messages))",
+      "replace": "filterOrphanedThinkingOnlyMessages(messages)"
     },
     {
-      "name": "load: only user and assistant entries are tips",
-      "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "if (current.type === 'user' || current.type === 'assistant') {",
-      "replace": "if (current.type !== 'attachment') {"
+      "name": "recovery: whitespace-only replies are dropped",
+      "find": "  return filterWhitespaceOnlyAssistantMessages(kept)",
+      "replace": "  return kept"
     },
     {
-      "name": "load: a snapshot update replaces in place",
+      "name": "recovery: hook output does not decide the turn",
+      "find": "  return !isHookOutput(message)",
+      "replace": "  return true"
+    },
+    {
+      "name": "recovery: an API error reply does not decide the turn",
+      "find": "  if (message.type === 'assistant') return message.isApiErrorMessage !== true",
+      "replace": "  if (message.type === 'assistant') return true"
+    },
+    {
+      "name": "recovery: a meta prompt last is not an interruption",
+      "find": "  if (deciding.isMeta || deciding.isCompactSummary) return { kind: 'none' }",
+      "replace": "  if (deciding.isCompactSummary) return { kind: 'none' }"
+    },
+    {
+      "name": "recovery: an unanswered tool result gets a continuation",
+      "find": "  if (isToolUseResultMessage(deciding)) return { kind: 'interrupted_turn' }\n",
+      "replace": ""
+    },
+    {
+      "name": "recovery: the continuation is a meta prompt",
+      "find": "    isMeta: true,\n  }) as NormalizedUserMessage",
+      "replace": "  }) as NormalizedUserMessage"
+    },
+    {
+      "name": "recovery: a trailing user message gets the answer placeholder",
+      "find": "  if (last === -1 || messages[last]!.type !== 'user') return messages",
+      "replace": "  if (last === -1 || messages[last]!.type !== 'user' || last >= 0) return messages"
+    },
+    {
+      "name": "recovery: the placeholder goes before trailing notices and progress",
+      "find": "  return [...messages.slice(0, last + 1), placeholder, ...messages.slice(last + 1)]",
+      "replace": "  return [...messages, placeholder]"
+    },
+    {
+      "name": "restore: incomplete skills are skipped",
+      "find": "          if (name && path && content) addInvokedSkill(name, path, content, null)",
+      "replace": "          if (name && path) addInvokedSkill(name, path, content, null)"
+    },
+    {
+      "name": "restore: a skill listing holds back the next one",
+      "find": "        suppressNextSkillListing()\n",
+      "replace": ""
+    },
+    {
+      "name": "restore: git instructions hold back the next injection",
+      "find": "        suppressNextBashGitInstructions()\n",
+      "replace": ""
+    },
+    {
+      "name": "path resume: sidechain tips never win",
+      "find": "    entry => leafUuids.has(entry.uuid) && !entry.isSidechain,",
+      "replace": "    entry => leafUuids.has(entry.uuid),"
+    },
+    {
+      "name": "path resume: a tip at the epoch never wins",
+      "find": "    EPOCH_MS,\n  )",
+      "replace": "  )"
+    },
+    {
+      "name": "path resume: the cost is the tip session's",
+      "find": "    costState: sessionId === undefined ? undefined : costStates.get(sessionId),",
+      "replace": "    costState: costStates.values().next().value,"
+    },
+    {
+      "name": "loader: no source is a --continue, whatever the path",
+      "find": "  if (source === undefined) return { kind: 'continue' }\n  if (sourceJsonlFile) return { kind: 'file', path: sourceJsonlFile }",
+      "replace": "  if (sourceJsonlFile) return { kind: 'file', path: sourceJsonlFile }\n  if (source === undefined) return { kind: 'continue' }"
+    },
+    {
+      "name": "loader: a lite log is loaded in full",
+      "find": "  return isLiteLog(log) ? loadFullLog(log) : log",
+      "replace": "  return log"
+    },
+    {
+      "name": "loader: the plan follows the session",
+      "find": "  await copyPlanForResume(log, sessionId === undefined ? undefined : asSessionId(sessionId))\n",
+      "replace": ""
+    },
+    {
+      "name": "loader: hook output follows the conversation",
+      "find": "    const withHookOutput = [...messages, ...hookOutput]",
+      "replace": "    const withHookOutput = [...messages]"
+    },
+    {
+      "name": "loader: the size is checked before the hooks",
+      "find": "    assertResumeMessageSize(messages)\n",
+      "replace": ""
+    },
+    {
+      "name": "loader: the log's title is carried",
+      "find": "    customTitle: log.customTitle,\n",
+      "replace": ""
+    },
+    {
+      "name": "loader: the log's path is carried",
+      "find": "    fullPath: log.fullPath,\n",
+      "replace": ""
+    },
+    {
+      "name": "fix 1: on a tie the later entry wins",
+      "source": "src/sessions/resume/latest.ts",
+      "find": "    if (chosen === undefined || at >= chosenAt) {",
+      "replace": "    if (chosen === undefined || at > chosenAt) {"
+    },
+    {
+      "name": "latest: a stamp that does not parse never wins",
+      "source": "src/sessions/resume/latest.ts",
+      "find": "    if (Number.isNaN(at) || at <= notAfter) continue",
+      "replace": "    if (at <= notAfter) continue"
+    },
+    {
+      "name": "chain: a parent loop stops the walk",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    if (onChain.has(current.uuid)) {",
+      "replace": "    if (leafFirst.length > 50) {"
+    },
+    {
+      "name": "chain: skipped sibling blocks come back",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  const skippedBlocks = blocks.filter(block => !taken.has(block.uuid))",
+      "replace": "  const skippedBlocks: TranscriptMessage[] = []"
+    },
+    {
+      "name": "chain: skipped tool results come back",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "      if (carriesToolResult(child)) anchors.push(child)\n",
+      "replace": ""
+    },
+    {
+      "name": "chain: only tool results hang off a block",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "      if (carriesToolResult(child)) anchors.push(child)\n",
+      "replace": "      anchors.push(child)\n"
+    },
+    {
+      "name": "chain: hook output naming a call comes back",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    for (const call of toolUseIdsOf(block)) anchors.push(...(index.hooksFor.get(call) ?? []))\n",
+      "replace": ""
+    },
+    {
+      "name": "chain: what follows a recovered entry comes back",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    pending.push(...(index.childrenOf.get(next.uuid) ?? []))\n",
+      "replace": ""
+    },
+    {
+      "name": "chain: recovered entries in file order",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  return [...entries].sort((a, b) => at(a) - at(b))",
+      "replace": "  return entries"
+    },
+    {
+      "name": "chain: no response id recovers nothing",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  return entry.message.id || undefined",
+      "replace": "  return entry.message.id || 'no-id'"
+    },
+    {
+      "name": "chain: inserted after the last block of the response",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    if (response) lastBlockOnChain.set(response, position)",
+      "replace": "    if (response && !lastBlockOnChain.has(response)) lastBlockOnChain.set(response, position)"
+    },
+    {
+      "name": "segment: the head follows the anchor",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  messages.set(segment.headUuid, { ...head, parentUuid: segment.anchorUuid })",
+      "replace": ""
+    },
+    {
+      "name": "segment: the parsed head is not mutated",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  messages.set(segment.headUuid, { ...head, parentUuid: segment.anchorUuid })",
+      "replace": "  head.parentUuid = segment.anchorUuid"
+    },
+    {
+      "name": "segment: the anchor's children follow the tail",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "      messages.set(uuid, { ...entry, parentUuid: segment.tailUuid })\n",
+      "replace": ""
+    },
+    {
+      "name": "segment: kept replies stop counting pre-compact tokens",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    for (const counter of PRE_COMPACT_TOKEN_COUNTERS) usage[counter] = 0\n",
+      "replace": ""
+    },
+    {
+      "name": "segment: a later plain boundary makes it stale",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  const live = lastBoundary.compactMetadata?.preservedSegment",
+      "replace": "  const live = boundaries.find(b => b.compactMetadata?.preservedSegment)?.compactMetadata?.preservedSegment"
+    },
+    {
+      "name": "segment: without one nothing is pruned",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  if (!boundaries.some(boundary => boundary.compactMetadata?.preservedSegment)) {",
+      "replace": "  if (boundaries.length === 0) {"
+    },
+    {
+      "name": "segment: a walk that ends before the head fails closed",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    if (!parent) return { ok: false, reason: 'parent_missing' }",
+      "replace": "    if (!parent) break"
+    },
+    {
+      "name": "segment: a missing anchor fails closed",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  if (!messages.has(segment.anchorUuid)) return { ok: false, reason: 'anchor_missing' }\n",
+      "replace": ""
+    },
+    {
+      "name": "segment: the spliced entries survive the pruning",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    if (!kept.has(uuid)) messages.delete(uuid)",
+      "replace": "    messages.delete(uuid)"
+    },
+    {
+      "name": "snip: removed entries leave the map",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    if (entry) parentOfSnipped.set(uuid, entry.parentUuid)\n    messages.delete(uuid)\n",
+      "replace": "    if (entry) parentOfSnipped.set(uuid, entry.parentUuid)\n"
+    },
+    {
+      "name": "snip: a survivor joins the nearest surviving ancestor",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "    current = parentOfSnipped.get(current)",
+      "replace": "    current = null"
+    },
+    {
+      "name": "snip: a way that leaves the map ends at null",
+      "source": "src/sessions/resume/chain.ts",
+      "find": "  return current && messages.has(current) ? current : null",
+      "replace": "  return current ?? null"
+    },
+    {
+      "name": "transcript: a reply under legacy progress is re-parented",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "        ? { ...entry, parentUuid: this.standInFor(entry.parentUuid) }",
+      "replace": "        ? entry"
+    },
+    {
+      "name": "transcript: a run of progress entries is crossed",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "    return standIn === undefined ? (parent as UUID) : standIn",
+      "replace": "    return parent as UUID"
+    },
+    {
+      "name": "transcript: a compact boundary drops earlier collapse commits",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "      transcript.contextCollapseCommits = []\n",
+      "replace": ""
+    },
+    {
+      "name": "transcript: metadata without a session id is ignored",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "    if (typeof line.sessionId === 'string') write(this.transcript, line, line.sessionId as UUID, this.deps)",
+      "replace": "    write(this.transcript, line, line.sessionId as UUID, this.deps)"
+    },
+    {
+      "name": "transcript: the PR repository is read",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "    into.prRepositories.set(session, line.prRepository as string)\n",
+      "replace": ""
+    },
+    {
+      "name": "transcript: an invalid cost line is skipped",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "    if (cost) into.costStates.set(session, cost)",
+      "replace": "    into.costStates.set(session, (cost ?? line) as CostStateEntry)"
+    },
+    {
+      "name": "transcript: a cost over 1e9 is invalid",
       "source": "src/sessions/resume/transcriptLoad.ts",
-      "find": "const existingIndex = isSnapshotUpdate",
-      "replace": "const existingIndex = !isSnapshotUpdate"
+      "find": "    totalCostUSD: amount.max(1e9),",
+      "replace": "    totalCostUSD: amount,"
+    },
+    {
+      "name": "transcript: a model name with control characters is invalid",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "      z.string().regex(COST_STATE_MODEL_NAME_RE),",
+      "replace": "      z.string(),"
+    },
+    {
+      "name": "tips: an entry that is a parent is no tip",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "    if (parents.has(entry.uuid)) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "tips: a terminal attachment makes its reply the tip",
+      "source": "src/sessions/resume/transcriptFile.ts",
+      "find": "    if (current.type === 'user' || current.type === 'assistant') return current",
+      "replace": "    return current"
+    },
+    {
+      "name": "transcript: an unreadable file loads empty",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "    return emptyTranscript()\n",
+      "replace": "    throw error\n"
+    },
+    {
+      "name": "transcript: raw output saved to disk is stripped",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "    forEachParsedJSONLBufferEntry(stripPersistedToolUseResultsFromJSONLBuffer(bytes), line => collector.take(line))",
+      "replace": "    forEachParsedJSONLBufferEntry(bytes, line => collector.take(line))"
+    },
+    {
+      "name": "large: CLAUDIN_DISABLE_PRECOMPACT_SKIP loads everything",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  if (size <= SKIP_PRECOMPACT_THRESHOLD || isEnvTruthy(process.env.CLAUDIN_DISABLE_PRECOMPACT_SKIP)) {",
+      "replace": "  if (size <= SKIP_PRECOMPACT_THRESHOLD) {"
+    },
+    {
+      "name": "large: read from the last compact boundary",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  if (size <= SKIP_PRECOMPACT_THRESHOLD || isEnvTruthy(process.env.CLAUDIN_DISABLE_PRECOMPACT_SKIP)) {",
+      "replace": "  if (size >= 0) {"
+    },
+    {
+      "name": "large: metadata before the cut is read",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "    forEachParsedJSONLBufferEntry(Buffer.from(before.join('\\n')), line => collector.takeMetadata(line))\n",
+      "replace": ""
+    },
+    {
+      "name": "large: abandoned branches are skipped",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  return skipAbandoned ? walkChainBeforeParse(kept) : kept",
+      "replace": "  return kept"
+    },
+    {
+      "name": "large: keepAllLeaves keeps every branch",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  const skipAbandoned = !keepAllLeaves && !cut.hasPreservedSegment && kept.length > SKIP_PRECOMPACT_THRESHOLD",
+      "replace": "  const skipAbandoned = !cut.hasPreservedSegment && kept.length > SKIP_PRECOMPACT_THRESHOLD"
+    },
+    {
+      "name": "large: a preserved segment is never skipped",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  const skipAbandoned = !keepAllLeaves && !cut.hasPreservedSegment && kept.length > SKIP_PRECOMPACT_THRESHOLD",
+      "replace": "  const skipAbandoned = !keepAllLeaves && kept.length > SKIP_PRECOMPACT_THRESHOLD"
+    },
+    {
+      "name": "transcript: the relink is replayed on load",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  applyPreservedSegmentRelinks(transcript.messages)\n",
+      "replace": ""
+    },
+    {
+      "name": "transcript: snips are replayed on load",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  applySnipRemovals(transcript.messages)\n",
+      "replace": ""
+    },
+    {
+      "name": "file history: an update replaces in place",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "      ? chain.findLastIndex(snapshot => snapshot.messageId === entry.snapshot.messageId)",
+      "replace": "      ? -1"
+    },
+    {
+      "name": "loadSessionFile: the current session's directory wins",
+      "source": "src/sessions/resume/transcriptLoad.ts",
+      "find": "  const directory = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())",
+      "replace": "  const directory = getProjectDir(getOriginalCwd())"
     },
     {
       "name": "subagents: only sidechain entries of the agent",
       "source": "src/sessions/resume/subagents.ts",
-      "find": "msg => msg.agentId === agentId && msg.isSidechain,",
-      "replace": "msg => msg.agentId === agentId,"
+      "find": "filter(entry => entry.isSidechain && entry.agentId === agentId)",
+      "replace": "filter(entry => entry.agentId === agentId)"
     },
     {
-      "name": "subagents: the chain is filtered to the agent",
+      "name": "subagents: the chain keeps only the agent's entries",
       "source": "src/sessions/resume/subagents.ts",
-      "find": "const agentTranscript = transcript.filter(msg => msg.agentId === agentId)",
-      "replace": "const agentTranscript = transcript"
+      "find": "  const ownChain = buildConversationChain(messages, tip).filter(entry => entry.agentId === agentId)",
+      "replace": "  const ownChain = buildConversationChain(messages, tip)"
     },
     {
-      "name": "subagents: skill progress names an agent",
+      "name": "subagents: agents with nothing are left out",
       "source": "src/sessions/resume/subagents.ts",
-      "find": "message.data.type === 'skill_progress')",
-      "replace": "message.data.type === 'agent_progress')"
+      "find": "    if (transcript && transcript.messages.length > 0) byAgent[agentId] = transcript.messages",
+      "replace": "    byAgent[agentId] = transcript?.messages ?? []"
     },
     {
-      "name": "subagents: disk ids drop the file name frame",
+      "name": "subagents: a missing directory gives nothing",
       "source": "src/sessions/resume/subagents.ts",
-      "find": ".map(d => d.name.slice('agent-'.length, -'.jsonl'.length))",
-      "replace": ".map(d => d.name)"
+      "find": "    if (!isENOENT(error)) logError(error)\n    return {}",
+      "replace": "    throw error"
     },
     {
-      "name": "cache: one set per session",
+      "name": "subagents: ids come from skill progress too",
+      "source": "src/sessions/resume/subagents.ts",
+      "find": "new Set(['agent_progress', 'skill_progress'])",
+      "replace": "new Set(['agent_progress'])"
+    },
+    {
+      "name": "subagents: each id once",
+      "source": "src/sessions/resume/subagents.ts",
+      "find": "  return uniq(found)",
+      "replace": "  return found"
+    },
+    {
+      "name": "subagents: teammates without messages are left out",
+      "source": "src/sessions/resume/subagents.ts",
+      "find": "    if (task.type !== 'in_process_teammate' || !agentId || !task.messages?.length) continue",
+      "replace": "    if (task.type !== 'in_process_teammate' || !agentId) continue"
+    },
+    {
+      "name": "cache: one memo per session id",
       "source": "src/sessions/resume/cache.ts",
-      "find": "(sessionId: UUID) => sessionId,",
-      "replace": "() => 'every session',"
+      "find": "  (sessionId: UUID) => sessionId,",
+      "replace": "  (sessionId: UUID) => `${sessionId}${Math.random()}`,"
     },
     {
-      "name": "cache: clearing forgets the sets",
+      "name": "cache: clearing forgets the memo",
       "source": "src/sessions/resume/cache.ts",
-      "find": "getSessionMessages.cache.clear?.()",
-      "replace": "void 0"
+      "find": "  getSessionMessages.cache.clear?.()",
+      "replace": ""
     },
     {
-      "name": "candidates: only uuid names",
+      "name": "cache: existence is asked of the set",
+      "source": "src/sessions/resume/cache.ts",
+      "find": "  return recorded.has(messageUuid)",
+      "replace": "  return recorded.size > 0"
+    },
+    {
+      "name": "candidates: only <uuid>.jsonl names",
       "source": "src/sessions/sessionCandidates.ts",
-      "find": "const sessionId = validateUuid(name.slice(0, -6))",
-      "replace": "const sessionId = name.slice(0, -6)"
+      "find": "  return validateUuid(stem) ? stem : undefined",
+      "replace": "  return stem"
     },
     {
-      "name": "candidates: mtime is in ms",
+      "name": "candidates: without stat, mtime 0 and nothing checked",
       "source": "src/sessions/sessionCandidates.ts",
-      "find": "mtime: s.mtime.getTime(), projectPath",
-      "replace": "mtime: Math.floor(s.mtime.getTime() / 1000), projectPath"
+      "find": "  if (!doStat) return named\n",
+      "replace": ""
     },
     {
-      "name": "cross: the directory is shell-quoted",
+      "name": "candidates: entries that cannot be stat'ed are left out",
+      "source": "src/sessions/sessionCandidates.ts",
+      "find": "        return undefined\n",
+      "replace": "        return candidate\n"
+    },
+    {
+      "name": "candidates: an unreadable directory gives none",
+      "source": "src/sessions/sessionCandidates.ts",
+      "find": "    return []\n",
+      "replace": "    throw new Error('unreadable')\n"
+    },
+    {
+      "name": "cross-project: only when every project is shown",
       "source": "src/sessions/crossProjectResume.ts",
-      "find": "cd ${quote([log.projectPath])}",
-      "replace": "cd ${log.projectPath}"
+      "find": "  if (!showAllProjects || !projectPath || projectPath === getOriginalCwd()) {",
+      "replace": "  if (!projectPath || projectPath === getOriginalCwd()) {"
+    },
+    {
+      "name": "cross-project: the directory is shell-quoted",
+      "source": "src/sessions/crossProjectResume.ts",
+      "find": "    command: `cd ${quote([projectPath])} && ${resume}`,",
+      "replace": "    command: `cd ${projectPath} && ${resume}`,"
+    },
+    {
+      "name": "fix 2: the command launches claudin",
+      "source": "src/sessions/crossProjectResume.ts",
+      "find": "  const resume = quote([CLI_COMMAND, '--resume', String(getSessionIdFromLog(log))])",
+      "replace": "  const resume = quote(['claude', '--resume', String(getSessionIdFromLog(log))])"
+    },
+    {
+      "name": "fix 4: the session id is shell-quoted",
+      "source": "src/sessions/crossProjectResume.ts",
+      "find": "  const resume = quote([CLI_COMMAND, '--resume', String(getSessionIdFromLog(log))])",
+      "replace": "  const resume = `${quote([CLI_COMMAND, '--resume'])} ${String(getSessionIdFromLog(log))}`"
     }
   ]
 }
