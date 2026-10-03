@@ -1,0 +1,243 @@
+{
+  "test": [
+    "src/permissions/ruleModel.parser.characterization.test.ts",
+    "src/permissions/ruleModel.modes.characterization.test.ts",
+    "src/permissions/ruleModel.loader.characterization.test.ts",
+    "src/permissions/ruleModel.updates.characterization.test.ts",
+    "src/permissions/ruleModel.promptTool.characterization.test.ts"
+  ],
+  "source": "src/permissions/permissionRuleParser.ts",
+  "probes": [
+    {
+      "name": "rule schema: passthrough is not a rule behavior",
+      "source": "src/permissions/PermissionRule.ts",
+      "find": "z.enum(['allow', 'deny', 'ask']),",
+      "replace": "z.enum(['allow', 'deny', 'ask', 'passthrough']),"
+    },
+    {
+      "name": "rule schema: content must be a string",
+      "source": "src/permissions/PermissionRule.ts",
+      "find": "ruleContent: z.string().optional(),",
+      "replace": "ruleContent: z.unknown().optional(),"
+    },
+    {
+      "name": "behavior verb: deny reads as denied",
+      "source": "src/permissions/PermissionResult.ts",
+      "find": "return 'denied'",
+      "replace": "return 'asked for confirmation for'"
+    },
+    {
+      "name": "modes: plan reports itself as plan",
+      "source": "src/permissions/PermissionMode.ts",
+      "find": "    external: 'plan',\n",
+      "replace": "    external: 'default',\n"
+    },
+    {
+      "name": "modes: only auto is internal",
+      "source": "src/permissions/PermissionMode.ts",
+      "find": "return mode !== 'auto'",
+      "replace": "return mode !== 'plan'"
+    },
+    {
+      "name": "modes: no mode counts as the default mode",
+      "source": "src/permissions/PermissionMode.ts",
+      "find": "return mode === 'default' || mode === undefined",
+      "replace": "return mode === 'default'"
+    },
+    {
+      "name": "modes (classifier build): auto is drawn in the warning colour",
+      "source": "src/permissions/PermissionMode.ts",
+      "find": "color: 'warning' as ModeColorKey,",
+      "replace": "color: 'error' as ModeColorKey,"
+    },
+    {
+      "name": "modes (classifier build): auto reports itself to an SDK host as default",
+      "source": "src/permissions/PermissionMode.ts",
+      "find": "external: 'default' as ExternalPermissionMode,",
+      "replace": "external: 'plan' as ExternalPermissionMode,"
+    },
+    {
+      "name": "parser: object members are not legacy aliases",
+      "find": "return Object.hasOwn(LEGACY_TOOL_NAME_ALIASES, name)",
+      "replace": "return name in LEGACY_TOOL_NAME_ALIASES"
+    },
+    {
+      "name": "escape: an open paren is escaped",
+      "find": ".replace(/\\(/g, '\\\\(') // Escape opening parentheses",
+      "replace": ".replace(/\\(/g, '(') // Escape opening parentheses"
+    },
+    {
+      "name": "parser: an escaped open paren does not start the content",
+      "find": "const openParenIndex = findFirstUnescapedChar(ruleString, '(')",
+      "replace": "const openParenIndex = ruleString.indexOf('(')"
+    },
+    {
+      "name": "parser: an escaped close paren does not end the content",
+      "find": "const closeParenIndex = findLastUnescapedChar(ruleString, ')')",
+      "replace": "const closeParenIndex = ruleString.lastIndexOf(')')"
+    },
+    {
+      "name": "parser: text after the close makes the whole string a tool name",
+      "find": "if (closeParenIndex !== ruleString.length - 1) {",
+      "replace": "if (closeParenIndex > ruleString.length) {"
+    },
+    {
+      "name": "parser: content with no tool name is a whole-string tool name",
+      "find": "  if (!toolName) {\n",
+      "replace": "  if (toolName === '-') {\n"
+    },
+    {
+      "name": "parser: a lone star is the whole tool",
+      "find": "if (rawContent === '' || rawContent === '*') {",
+      "replace": "if (rawContent === '') {"
+    },
+    {
+      "name": "writer: empty content is written as the bare tool",
+      "find": "if (!ruleValue.ruleContent) {",
+      "replace": "if (ruleValue.ruleContent === undefined) {"
+    },
+    {
+      "name": "parser: a scoped rule under a legacy name is aliased",
+      "find": "return { toolName: normalizeLegacyToolName(toolName), ruleContent }",
+      "replace": "return { toolName, ruleContent }"
+    },
+    {
+      "name": "loader: only the managed layer can switch to managed rules only",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "getSettingsForSource('policySettings')?.allowManagedPermissionRulesOnly ===",
+      "replace": "getSettingsForSource('userSettings')?.allowManagedPermissionRulesOnly ==="
+    },
+    {
+      "name": "loader: managed rules only needs the value true",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "allowManagedPermissionRulesOnly ===\n    true",
+      "replace": "allowManagedPermissionRulesOnly ==\n    true"
+    },
+    {
+      "name": "loader: deny rules are read",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "  'allow',\n  'deny',\n  'ask',\n] as const",
+      "replace": "  'allow',\n  'ask',\n] as const"
+    },
+    {
+      "name": "loader: managed rules only ignores every other layer",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "return getPermissionRulesForSource('policySettings')\n",
+      "replace": "return [...getPermissionRulesForSource('policySettings'), ...getPermissionRulesForSource('userSettings')]\n"
+    },
+    {
+      "name": "delete: managed and --settings rules are never deleted",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "if (!EDITABLE_SOURCES.includes(rule.source as EditableSettingSource)) {",
+      "replace": "if (rule.source === 'session') {"
+    },
+    {
+      "name": "delete: a rule is found under any spelling",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "if (!behaviorArray.some(raw => normalizeEntry(raw) === ruleString)) {",
+      "replace": "if (!behaviorArray.includes(ruleString)) {"
+    },
+    {
+      "name": "add: refused while only managed rules count",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "if (shouldAllowManagedPermissionRulesOnly()) {\n    return false",
+      "replace": "if (false) {\n    return false"
+    },
+    {
+      "name": "add: a file invalid elsewhere keeps its rules",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "    getSettingsForSourceLenient_FOR_EDITING_ONLY_NOT_FOR_READING(source) ||\n",
+      "replace": ""
+    },
+    {
+      "name": "add: rules already present are not added again",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "const newRules = ruleStrings.filter(rule => !existingRulesSet.has(rule))",
+      "replace": "const newRules = ruleStrings"
+    },
+    {
+      "name": "add: a failed write answers false",
+      "source": "src/permissions/permissionsLoader.ts",
+      "find": "      throw result.error",
+      "replace": "      return true"
+    },
+    {
+      "name": "update schema: the managed layer is not a destination",
+      "source": "src/permissions/PermissionUpdateSchema.ts",
+      "find": "    'cliArg',\n  ]),\n)",
+      "replace": "    'cliArg',\n    'policySettings',\n  ]),\n)"
+    },
+    {
+      "name": "update schema: setMode takes external modes only",
+      "source": "src/permissions/PermissionUpdateSchema.ts",
+      "find": "mode: externalPermissionModeSchema(),",
+      "replace": "mode: z.string(),"
+    },
+    {
+      "name": "apply: added deny rules go to the deny rules",
+      "source": "src/permissions/PermissionUpdate.ts",
+      "find": "          : update.behavior === 'deny'\n            ? 'alwaysDenyRules'\n            : 'alwaysAskRules'\n\n      return {\n        ...context,\n        [ruleKind]: {\n          ...context[ruleKind],\n          [update.destination]: [",
+      "replace": "          : update.behavior === 'never'\n            ? 'alwaysDenyRules'\n            : 'alwaysAskRules'\n\n      return {\n        ...context,\n        [ruleKind]: {\n          ...context[ruleKind],\n          [update.destination]: ["
+    },
+    {
+      "name": "apply: removed rules leave, the others stay",
+      "source": "src/permissions/PermissionUpdate.ts",
+      "find": "rule => !rulesToRemove.has(rule),",
+      "replace": "rule => rulesToRemove.has(rule),"
+    },
+    {
+      "name": "apply: removed directories are forgotten",
+      "source": "src/permissions/PermissionUpdate.ts",
+      "find": "newAdditionalDirs.delete(directory)",
+      "replace": "void directory"
+    },
+    {
+      "name": "persist: directories already listed are not added again",
+      "source": "src/permissions/PermissionUpdate.ts",
+      "find": "dir => !existingDirs.includes(dir),",
+      "replace": "dir => dir !== '',"
+    },
+    {
+      "name": "persist: removed rules leave under every spelling",
+      "source": "src/permissions/PermissionUpdate.ts",
+      "find": "const normalized = permissionRuleValueToString(\n          permissionRuleValueFromString(rule),\n        )",
+      "replace": "const normalized = rule"
+    },
+    {
+      "name": "read suggestion: never the filesystem root",
+      "source": "src/permissions/PermissionUpdate.ts",
+      "find": "if (pathForPattern === '/') {",
+      "replace": "if (pathForPattern === '') {"
+    },
+    {
+      "name": "prompt tool: an empty input means the original input",
+      "source": "src/permissions/PermissionPromptToolResultSchema.ts",
+      "find": "Object.keys(result.updatedInput).length > 0 ? result.updatedInput : input",
+      "replace": "result.updatedInput"
+    },
+    {
+      "name": "prompt tool: a deny with interrupt stops the turn",
+      "source": "src/permissions/PermissionPromptToolResultSchema.ts",
+      "find": "toolUseContext.abortController.abort()",
+      "replace": "void toolUseContext"
+    },
+    {
+      "name": "prompt tool: a plain deny does not stop the turn",
+      "source": "src/permissions/PermissionPromptToolResultSchema.ts",
+      "find": "} else if (result.behavior === 'deny' && result.interrupt) {",
+      "replace": "} else if (result.behavior === 'deny') {"
+    },
+    {
+      "name": "prompt tool: updates carried by an allow are saved",
+      "source": "src/permissions/PermissionPromptToolResultSchema.ts",
+      "find": "      persistPermissionUpdates(updatedPermissions)\n",
+      "replace": ""
+    },
+    {
+      "name": "prompt tool: malformed permission updates are dropped",
+      "source": "src/permissions/PermissionPromptToolResultSchema.ts",
+      "find": "        return undefined\n      }),",
+      "replace": "        return ctx.value\n      }),"
+    }
+  ]
+}

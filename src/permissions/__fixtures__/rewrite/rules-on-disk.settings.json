@@ -1,0 +1,16 @@
+{
+  "model": "kept-as-is",
+  "permissions": {
+    "ask": ["WebFetch(domain:example.com)"],
+    "deny": ["KillShell", "Bash(rm -rf:*)", "Read(//etc/**)"],
+    "allow": [
+      "Bash(npm test)",
+      "Bash(python -c \"print\\(1\\)\")",
+      "Task(reviewer)",
+      "Bash(*)",
+      "mcp__docs"
+    ],
+    "additionalDirectories": ["../shared"],
+    "defaultMode": "plan"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(python -c \"print\\(1\\)\")"
+    ],
+    "deny": [
+      "Read(//home/me/.ssh/**)"
+    ]
+  }
+}
