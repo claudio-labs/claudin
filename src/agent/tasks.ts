@@ -3,7 +3,6 @@ import type { Task, TaskType } from 'src/agent/Task.js'
 import { DreamTask } from 'src/agent/tasks/DreamTask/DreamTask.js'
 import { LocalAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js'
-import { RemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const MonitorMcpTask: Task | null = feature('MONITOR_TOOL')
@@ -20,7 +19,6 @@ export function getAllTasks(): Task[] {
   const tasks: Task[] = [
     LocalShellTask,
     LocalAgentTask,
-    RemoteAgentTask,
     DreamTask,
   ]
   if (MonitorMcpTask) tasks.push(MonitorMcpTask)

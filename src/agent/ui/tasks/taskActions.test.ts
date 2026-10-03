@@ -13,7 +13,6 @@ const realModules = {
   'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js': { ...(await import('src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js')) },
   'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js': { ...(await import('src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js')) },
   'src/agent/tasks/DreamTask/DreamTask.js': { ...(await import('src/agent/tasks/DreamTask/DreamTask.js')) },
-  'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js': { ...(await import('src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js')) },
   'src/shared/debug.js': { ...(await import('src/shared/debug.js')) },
 };
 
@@ -25,7 +24,6 @@ const localAgentKill = mock(() => Promise.resolve());
 const teammateKill = mock(() => Promise.resolve());
 const monitorMcpKill = mock(() => Promise.resolve());
 const dreamKill = mock(() => Promise.resolve());
-const remoteAgentKill = mock(() => Promise.resolve());
 const debugMock = mock((_msg: string) => {});
 
 mock.module('src/agent/tasks/LocalShellTask/LocalShellTask.js', () => ({
@@ -45,9 +43,6 @@ mock.module('src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js', () => ({
 }));
 mock.module('src/agent/tasks/DreamTask/DreamTask.js', () => ({
   DreamTask: { kill: dreamKill },
-}));
-mock.module('src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
-  RemoteAgentTask: { kill: remoteAgentKill },
 }));
 mock.module('src/shared/debug.js', () => ({
   logForDebugging: debugMock,
@@ -80,7 +75,6 @@ describe('killBackgroundTask', () => {
     teammateKill.mockClear();
     monitorMcpKill.mockClear();
     dreamKill.mockClear();
-    remoteAgentKill.mockClear();
     debugMock.mockClear();
     setAppState.mockClear();
   });
@@ -122,12 +116,6 @@ describe('killBackgroundTask', () => {
     const task = makeTask('dream');
     killBackgroundTask(task, setAppState);
     expect(dreamKill).toHaveBeenCalledTimes(1);
-  });
-
-  test('remote_agent routes to RemoteAgentTask.kill', () => {
-    const task = makeTask('remote_agent', {});
-    killBackgroundTask(task, setAppState);
-    expect(remoteAgentKill).toHaveBeenCalledTimes(1);
   });
 
   test('unknown task type logs via logForDebugging instead of silently no-op', () => {

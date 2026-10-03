@@ -56,14 +56,9 @@ export {
 
 export {
   type AgentMetadata,
-  deleteRemoteAgentMetadata,
-  listRemoteAgentMetadata,
   readAgentMetadata,
-  readRemoteAgentMetadata,
-  type RemoteAgentMetadata,
   sessionIdExists,
   writeAgentMetadata,
-  writeRemoteAgentMetadata,
 } from 'src/sessions/indexing/agents.js'
 
 export {

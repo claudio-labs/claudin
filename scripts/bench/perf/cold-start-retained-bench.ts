@@ -123,11 +123,6 @@ const PROBES: Probe[] = [
     description: 'Lazy candidate — power-use only.',
   },
   {
-    name: 'cand: BriefTool',
-    importExpr: `await import('./src/tools/BriefTool/BriefTool.ts')`,
-    description: 'Lazy candidate — coordinator-mode primary channel.',
-  },
-  {
     name: 'cand: ToolSearchTool',
     importExpr: `await import('./src/tools/ToolSearchTool/ToolSearchTool.ts')`,
     description: 'Lazy candidate — gated by isToolSearchEnabledOptimistic.',

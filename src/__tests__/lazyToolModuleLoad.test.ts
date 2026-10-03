@@ -105,7 +105,6 @@ const CURRENT_BASELINE = [
   'ApplyPatchTool',
   'AskUserQuestionTool',
   'BashTool',
-  'BriefTool',
   'BuildTool',
   'ContainerTool',
   'EnterPlanModeTool',

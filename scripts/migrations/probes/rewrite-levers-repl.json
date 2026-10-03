@@ -62,7 +62,7 @@
     {
       "name": "submit: history keeps the mode character of a bash prompt",
       "source": "src/agent/repl/controllers/useOnSubmit.ts",
-      "find": "display: speculationAccept ? input : prependModeCharacterToInput(input, inputMode),",
+      "find": "display: prependModeCharacterToInput(input, inputMode),",
       "replace": "display: input,"
     },
     {

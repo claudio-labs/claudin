@@ -252,7 +252,7 @@ export type TranscriptMessage = SerializedMessage & {
   promptId?: string // Correlates with OTel prompt.id for user prompt messages
 }
 
-export type SpeculationAcceptMessage = {
+type SpeculationAcceptMessage = {
   type: 'speculation-accept'
   timestamp: string
   timeSavedMs: number

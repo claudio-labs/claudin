@@ -41,11 +41,3 @@ export function getCwdState(): string {
 export function setCwdState(cwd: string): void {
   STATE.cwd = cwd.normalize('NFC')
 }
-
-export function getDirectConnectServerUrl(): string | undefined {
-  return STATE.directConnectServerUrl
-}
-
-export function setDirectConnectServerUrl(url: string): void {
-  STATE.directConnectServerUrl = url
-}

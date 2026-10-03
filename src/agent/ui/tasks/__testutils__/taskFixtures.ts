@@ -37,7 +37,6 @@ export function containerInfo(over: Partial<ContainerInfo> = {}): ContainerInfo 
 // don't have to satisfy every TaskStateBase field.
 const RAW: Record<string, unknown> = {
   local_bash: { id: 'b1', type: 'local_bash', status: 'running', kind: 'bash', command: 'npm run dev', startTime: 1 },
-  remote_agent: { id: 'r1', type: 'remote_agent', status: 'running', title: 'Remote review', startTime: 1 },
   local_agent: { id: 'a1', type: 'local_agent', status: 'running', description: 'Audit the parser', startTime: 1 },
   in_process_teammate: { id: 't1', type: 'in_process_teammate', status: 'running', identity: { agentName: 'ada', teamName: 'core' }, startTime: 1 },
   local_workflow: { id: 'w1', type: 'local_workflow', status: 'running', description: 'Nightly', summary: 'Nightly sweep', startTime: 1 },

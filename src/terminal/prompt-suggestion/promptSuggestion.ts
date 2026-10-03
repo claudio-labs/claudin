@@ -22,7 +22,6 @@ import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { isTeammate } from 'src/agent/coordinator/teammate.js'
 import { currentLimits } from 'src/providers/claudeAiLimits.js'
 import { endsWithFollowupOffer } from 'src/terminal/prompt-suggestion/followupOffer.js'
-import { isSpeculationEnabled, startSpeculation } from 'src/terminal/prompt-suggestion/speculation.js'
 
 let currentAbortController: AbortController | null = null
 
@@ -191,16 +190,6 @@ export async function executePromptSuggestion(
         generationRequestId: result.generationRequestId,
       },
     }))
-
-    if (isSpeculationEnabled() && result.suggestion) {
-      void startSpeculation(
-        result.suggestion,
-        context,
-        context.toolUseContext.setAppState,
-        false,
-        cacheSafeParams,
-      )
-    }
   } catch (error) {
     if (
       error instanceof Error &&

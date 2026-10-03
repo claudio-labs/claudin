@@ -44,7 +44,6 @@ import {
   restoreSessionMetadata,
   saveWorktreeState,
 } from 'src/sessions/sessionStorage.js'
-import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import {
   getOriginalCwd,
@@ -293,11 +292,6 @@ export async function resumeSession(
       exitRestoredWorktree()
       restoreWorktreeForResume(log.worktreeSession)
       adoptResumedSessionFile()
-      void restoreRemoteAgentTasks({
-        abortController: new AbortController(),
-        getAppState: () => store.getState(),
-        setAppState,
-      })
     } else {
       // Fork: same re-persist as /clear (conversation.ts). The clear
       // above wiped currentSessionWorktree, forkLog doesn't carry it,

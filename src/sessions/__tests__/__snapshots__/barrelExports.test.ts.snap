@@ -17,7 +17,6 @@ exports[`sessionStorage barrel exports a stable, known set of runtime symbols 1`
   "clearAgentTranscriptSubdir",
   "clearSessionMessagesCache",
   "clearSessionMetadata",
-  "deleteRemoteAgentMetadata",
   "doesMessageExistInSession",
   "enrichLogs",
   "extractAgentIdsFromMessages",
@@ -56,7 +55,6 @@ exports[`sessionStorage barrel exports a stable, known set of runtime symbols 1`
   "isLoggableMessage",
   "isTranscriptMessage",
   "linkSessionToPR",
-  "listRemoteAgentMetadata",
   "loadAllLogsFromSessionFile",
   "loadAllProjectsMessageLogs",
   "loadAllProjectsMessageLogsProgressive",
@@ -70,7 +68,6 @@ exports[`sessionStorage barrel exports a stable, known set of runtime symbols 1`
   "loadTranscriptFromFile",
   "reAppendSessionMetadata",
   "readAgentMetadata",
-  "readRemoteAgentMetadata",
   "recordAttributionSnapshot",
   "recordContextCollapseCommit",
   "recordContextCollapseSnapshot",
@@ -103,6 +100,5 @@ exports[`sessionStorage barrel exports a stable, known set of runtime symbols 1`
   "setSessionFileForTesting",
   "stripPersistedToolUseResultsFromJSONLBuffer",
   "writeAgentMetadata",
-  "writeRemoteAgentMetadata",
 ]
 `;

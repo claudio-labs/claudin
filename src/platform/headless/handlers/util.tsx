@@ -1,11 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 /**
  * Miscellaneous subcommand handlers — extracted from main.tsx for lazy loading.
- * setup-token, doctor, install
+ * setup-token, doctor
  */
 /* eslint-disable custom-rules/no-process-exit -- CLI subcommand handlers intentionally exit */
 
-import { cwd } from 'process';
 import React from 'react';
 import { WelcomeV2 } from 'src/terminal/logo/WelcomeV2.js';
 import { useManagePlugins } from 'src/plugins/hooks/useManagePlugins.js';
@@ -87,26 +86,4 @@ export async function doctorHandler(root: Root): Promise<void> {
   });
   root.unmount();
   process.exit(0);
-}
-
-// install handler
-export async function installHandler(target: string | undefined, options: {
-  force?: boolean;
-}): Promise<void> {
-  const {
-    setup
-  } = await import('src/platform/setup.js');
-  await setup(cwd(), 'default', false, false, undefined, false);
-  const {
-    install
-  } = await import('src/commands/install.js');
-  await new Promise<void>(resolve => {
-    const args: string[] = [];
-    if (target) args.push(target);
-    if (options.force) args.push('--force');
-    void install.call(result => {
-      void resolve();
-      process.exit(result.includes('failed') ? 1 : 0);
-    }, {}, args);
-  });
 }

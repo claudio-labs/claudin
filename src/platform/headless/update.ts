@@ -18,10 +18,7 @@ import {
   installOrUpdateClaudePackage,
   localInstallationExists,
 } from 'src/platform/install/localInstaller.js'
-import {
-  installLatest as installLatestNative,
-  removeInstalledSymlink,
-} from 'src/platform/install/index.js'
+import { removeInstalledSymlink } from 'src/platform/install/index.js'
 import { getPackageManager } from 'src/platform/install/packageManagers.js'
 import { writeToStdout } from 'src/shared/proc/process.js'
 import { gte } from 'src/shared/semver.js'
@@ -200,53 +197,6 @@ export async function update() {
       logForDebugging(
         `update: config expected ${configExpects}, running ${runningType} — config updated`,
       )
-    }
-  }
-
-  // Handle native installation updates first
-  if (diagnostic.installationType === 'native') {
-    logForDebugging(
-      'update: Detected native installation, using native updater',
-    )
-    try {
-      const result = await installLatestNative(channel, true)
-
-      // Handle lock contention gracefully
-      if (result.lockFailed) {
-        const pidInfo = result.lockHolderPid
-          ? ` (PID ${result.lockHolderPid})`
-          : ''
-        writeToStdout(
-          chalk.yellow(
-            `Another Claude process${pidInfo} is currently running. Please try again in a moment.`,
-          ) + '\n',
-        )
-        await gracefulShutdown(0)
-      }
-
-      if (!result.latestVersion) {
-        process.stderr.write('Failed to check for updates\n')
-        await gracefulShutdown(1)
-      }
-
-      if (result.latestVersion === MACRO.DISPLAY_VERSION) {
-        writeToStdout(
-          chalk.green(`Claudin is up to date (${MACRO.DISPLAY_VERSION})`) + '\n',
-        )
-      } else {
-        writeToStdout(
-          chalk.green(
-            `Successfully updated from ${MACRO.DISPLAY_VERSION} to version ${result.latestVersion}`,
-          ) + '\n',
-        )
-        await regenerateCompletionCache()
-      }
-      await gracefulShutdown(0)
-    } catch (error) {
-      process.stderr.write('Error: Failed to install native update\n')
-      process.stderr.write(String(error) + '\n')
-      process.stderr.write('Try running "claude doctor" for diagnostics\n')
-      await gracefulShutdown(1)
     }
   }
 

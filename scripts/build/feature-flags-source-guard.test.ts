@@ -66,10 +66,9 @@ test('build feature flags are not enabled without their source files', () => {
 // different things, which is exactly why a blanket sweep is the wrong tool:
 //
 //   toolchain    Set per build target or on the command line, never in the map.
-//                Removing one BREAKS something — `bun --feature=ALLOW_TEST_VERSIONS`
-//                is how `bun run smoke` reaches the 99.99.x install path, and
-//                IS_LIBC_MUSL/GLIBC are compile-target pins that `envDynamic.ts`
-//                falls back to runtime detection without.
+//                Removing one BREAKS something — IS_LIBC_MUSL/GLIBC are
+//                compile-target pins that `envDynamic.ts` falls back to runtime
+//                detection without.
 //   absent module  Gates a `require()` of a module this fork never received. The
 //                require is already a build stub, so the branch costs a line.
 //   dead local   Gates code that IS in this tree and can never run. The removal
@@ -97,7 +96,6 @@ test('build feature flags are not enabled without their source files', () => {
 // ───────────────────────────────────────────────────────────────────────────
 
 const TOOLCHAIN_FLAGS = new Set([
-  'ALLOW_TEST_VERSIONS', // bun --feature=…, used by `bun run smoke`
   'IS_LIBC_MUSL', // compile-target pin; falls back to runtime detection
   'IS_LIBC_GLIBC', // idem
   'HARD_FAIL', // debug build: --hard-fail crashes on logError

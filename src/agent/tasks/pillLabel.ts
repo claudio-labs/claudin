@@ -1,4 +1,3 @@
-import { DIAMOND_OPEN } from 'src/shared/constants/figures.js'
 import { count } from 'src/shared/data/array.js'
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js'
 
@@ -36,10 +35,6 @@ export function getPillLabel(tasks: BackgroundTaskState[]): string {
       }
       case 'local_agent':
         return n === 1 ? '1 local agent' : `${n} local agents`
-      case 'remote_agent':
-        return n === 1
-          ? `${DIAMOND_OPEN} 1 cloud session`
-          : `${DIAMOND_OPEN} ${n} cloud sessions`
       case 'local_workflow':
         return n === 1 ? '1 background workflow' : `${n} background workflows`
       case 'monitor_mcp':
@@ -51,4 +46,3 @@ export function getPillLabel(tasks: BackgroundTaskState[]): string {
 
   return `${n} background ${n === 1 ? 'task' : 'tasks'}`
 }
-
