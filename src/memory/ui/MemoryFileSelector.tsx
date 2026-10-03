@@ -1,447 +1,191 @@
-import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
-import chalk from 'chalk';
-import { basename, join } from 'path';
-import * as React from 'react';
-import { use, useEffect, useState } from 'react';
-import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, Text } from 'src/terminal/ink.js';
-import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
-import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js';
-import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js';
-import { useAppState } from 'src/terminal/state/AppState.js';
-import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import type { TaskState } from 'src/agent/tasks/types.js';
-import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js';
-import { getMemoryFiles, type MemoryFileInfo } from 'src/memory/instructions/claudemd.js';
-import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
-import { getDisplayPath } from 'src/shared/fs/file.js';
-import { formatRelativeTimeAgo } from 'src/shared/text/format.js';
-import { projectIsInGitRepo } from 'src/memory/memdir/versions.js';
-import { updateSettingsForSource } from 'src/platform/settings/settings.js';
-import { Select } from 'src/terminal/custom-select/index.js';
-import { ListItem } from 'src/terminal/design-system/ListItem.js';
-import { getProjectMemoryPathForSelector } from 'src/memory/ui/memoryFileSelectorPaths.js';
-import { encodeBrowseValue, TIDY_VALUE } from 'src/memory/ui/memoryDirRows.js';
+import { feature } from 'bun:bundle'
+import { join } from 'path'
+import React, { use, useCallback, useEffect, useMemo, useState } from 'react'
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM') ? require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
+import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
+import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js'
+import { getMemoryFiles } from 'src/memory/instructions/claudemd.js'
+import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { getTeamMemPath, isTeamMemoryEnabled } from 'src/memory/memdir/teamMemPaths.js'
+import { projectIsInGitRepo } from 'src/memory/memdir/versions.js'
+import { pickerChoice } from 'src/memory/ui/memoryFileSelector/choiceMemory.js'
+import { describeDreamStatus } from 'src/memory/ui/memoryFileSelector/dreamStatus.js'
+import { type PickerFocus, stepFocus, type SwitchKey } from 'src/memory/ui/memoryFileSelector/focus.js'
+import { MemorySwitches, type SwitchView } from 'src/memory/ui/memoryFileSelector/MemorySwitches.js'
+import { buildSelectorRows, type SelectorRow, type SelectorRowDeps } from 'src/memory/ui/memoryFileSelector/rows.js'
+import { overrideNote } from 'src/memory/ui/memoryFileSelector/switchNote.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { updateSettingsForSource } from 'src/platform/settings/settings.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { getDisplayPath } from 'src/shared/fs/file.js'
+import { logError } from 'src/shared/log.js'
+import { type OptionWithDescription, Select } from 'src/terminal/custom-select/index.js'
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
+import { useAppState } from 'src/terminal/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
+import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
 
-interface ExtendedMemoryFileInfo extends MemoryFileInfo {
-  isNested?: boolean;
-  exists: boolean;
-}
-
-// Remember last selected path
-let lastSelectedPath: string | undefined;
 type Props = {
-  onSelect: (path: string) => void;
-  onCancel: () => void;
+  onSelect: (path: string) => void
+  onCancel: () => void
   /** Memory counts for the two browse rows, scanned before the dialog opens. */
   dirCounts?: {
-    private: number;
-    team: number;
-  };
-};
-export function MemoryFileSelector(t0: Props) {
-  const $ = _c(58);
-  const {
-    onSelect,
-    onCancel,
-    dirCounts
-  } = t0;
-  const existingMemoryFiles = use(getMemoryFiles());
-  const originalCwd = getOriginalCwd();
-  const userMemoryPath = join(getClaudinConfigHomeDir(), "CLAUDE.md");
-  const projectMemoryPath = getProjectMemoryPathForSelector(existingMemoryFiles, originalCwd);
-  const projectMemoryFileName = basename(projectMemoryPath);
-  const hasUserMemory = existingMemoryFiles.some(f => f.path === userMemoryPath);
-  const hasProjectMemory = existingMemoryFiles.some(f_0 => f_0.path === projectMemoryPath);
-  const allMemoryFiles: ExtendedMemoryFileInfo[] = [...existingMemoryFiles.filter(_temp).map(_temp2), ...(hasUserMemory ? [] : [{
-    path: userMemoryPath,
-    type: "User" as const,
-    content: "",
-    exists: false
-  }]), ...(hasProjectMemory ? [] : [{
-    path: projectMemoryPath,
-    type: "Project" as const,
-    content: "",
-    exists: false
-  }])];
-  const depths = new Map();
-  const memoryOptions = allMemoryFiles.map(file => {
-    const displayPath = getDisplayPath(file.path);
-    const existsLabel = file.exists ? "" : " (new)";
-    const depth = file.parent ? (depths.get(file.parent) ?? 0) + 1 : 0;
-    depths.set(file.path, depth);
-    const indent = depth > 0 ? "  ".repeat(depth - 1) : "";
-    let label;
-    if (file.type === "User" && !file.isNested && file.path === userMemoryPath) {
-      label = "User memory";
-    } else {
-      if (file.type === "Project" && !file.isNested && file.path === projectMemoryPath) {
-        label = "Project memory";
-      } else {
-        if (depth > 0) {
-          label = `${indent}L ${displayPath}${existsLabel}`;
-        } else {
-          label = `${displayPath}`;
-        }
-      }
+    private: number
+    team: number
+  }
+}
+
+type SwitchSetting = {
+  label: string
+  /** The value in effect, after every settings layer and environment override. */
+  read: () => boolean
+  /** Only the user's own settings: a toggle here must not change a checked-in or managed file. */
+  write: (on: boolean) => { error: Error | null }
+}
+
+const SWITCH_SETTINGS: Record<SwitchKey, SwitchSetting> = {
+  autoMemory: {
+    label: 'Auto-memory',
+    read: isAutoMemoryEnabled,
+    write: on => updateSettingsForSource('userSettings', { autoMemoryEnabled: on }),
+  },
+  autoDream: {
+    label: 'Auto-dream',
+    read: isAutoDreamEnabled,
+    write: on => updateSettingsForSource('userSettings', { autoDreamEnabled: on }),
+  },
+}
+
+const ROW_DEPS: SelectorRowDeps = {
+  displayPath: getDisplayPath,
+  agentMemoryDir: getAgentMemoryDir,
+}
+
+const selectActiveAgents = (state: AppState): AppState['agentDefinitions']['activeAgents'] =>
+  state.agentDefinitions.activeAgents
+
+const selectDreamRunning = (state: AppState): boolean =>
+  Object.values(state.tasks).some(task => task.type === 'dream' && task.status === 'running')
+
+/** The last consolidation stamp, read once: `null` until it arrives, `0` for never. */
+function useLastConsolidation(): number | null {
+  const [lastRunAt, setLastRunAt] = useState<number | null>(null)
+  useEffect(() => {
+    let mounted = true
+    readLastConsolidatedAt().then(at => {
+      if (mounted) setLastRunAt(at)
+    }, logError)
+    return () => {
+      mounted = false
     }
-    let description;
-    const isGit = projectIsInGitRepo(originalCwd);
-    if (file.type === "User" && !file.isNested) {
-      description = "Saved in ~/.claudin/CLAUDE.md";
-    } else {
-      if (file.type === "Project" && !file.isNested && file.path === projectMemoryPath) {
-        description = `${isGit ? "Checked in at" : "Saved in"} ./${projectMemoryFileName}`;
-      } else {
-        if (file.parent) {
-          description = "@-imported";
-        } else {
-          if (file.isNested) {
-            description = "dynamically loaded";
-          } else {
-            description = "";
-          }
-        }
-      }
+  }, [])
+  return lastRunAt
+}
+
+function toOption(row: SelectorRow): OptionWithDescription<string> {
+  const label =
+    row.emphasis === undefined ? (
+      row.label
+    ) : (
+      <Text>
+        <Text bold>{row.emphasis}</Text>
+        {row.label.slice(row.emphasis.length)}
+      </Text>
+    )
+  return { label, value: row.value, description: row.description }
+}
+
+export function MemoryFileSelector({ onSelect, onCancel, dirCounts }: Props): React.ReactNode {
+  const loadedFiles = use(getMemoryFiles())
+  const agents = useAppState(selectActiveAgents)
+  const dreamRunning = useAppState(selectDreamRunning)
+  const lastRunAt = useLastConsolidation()
+
+  // Fixed for the life of the picker: where the session started, whether it is
+  // a repository, and whether the auto-dream line is shown at all.
+  const [startDir] = useState(getOriginalCwd)
+  const [inGitRepo] = useState(() => projectIsInGitRepo(startDir))
+  const [switchKeys] = useState<readonly SwitchKey[]>(() =>
+    isAutoMemoryEnabled() ? ['autoMemory', 'autoDream'] : ['autoMemory'],
+  )
+
+  const [focus, setFocus] = useState<PickerFocus>('list')
+  // What each switch last asked for, to tell when another layer overrides it.
+  const [requested, setRequested] = useState<Partial<Record<SwitchKey, boolean>>>({})
+
+  useExitOnCtrlCDWithKeybindings()
+  useKeybinding('confirm:no', onCancel, { context: 'Confirmation' })
+
+  // Read on every render, so a toggle shows its effect on the rows at once.
+  const autoMemoryOn = isAutoMemoryEnabled()
+  const teamOn = feature('TEAMMEM') ? isTeamMemoryEnabled() : false
+
+  const rows = useMemo(
+    () =>
+      buildSelectorRows(
+        {
+          loadedFiles,
+          startDir,
+          userFilePath: join(getClaudinConfigHomeDir(), 'CLAUDE.md'),
+          inGitRepo,
+          autoMemoryOn,
+          privateDir: getAutoMemPath(),
+          teamDir: teamOn ? getTeamMemPath() : null,
+          counts: dirCounts,
+          agents,
+        },
+        ROW_DEPS,
+      ),
+    [loadedFiles, startDir, inGitRepo, autoMemoryOn, teamOn, dirCounts, agents],
+  )
+  const options = useMemo(() => rows.map(toOption), [rows])
+  const [initialFocus] = useState(() => pickerChoice.focusAmong(rows.map(row => row.value)))
+
+  const switches: SwitchView[] = switchKeys.map(key => {
+    const on = SWITCH_SETTINGS[key].read()
+    const status = key === 'autoDream' ? describeDreamStatus({ enabled: on, running: dreamRunning, lastRunAt }) : ''
+    return { key, label: SWITCH_SETTINGS[key].label, on, detail: `${status}${overrideNote(requested[key], on)}` }
+  })
+
+  const toggle = useCallback((key: SwitchKey) => {
+    const setting = SWITCH_SETTINGS[key]
+    const next = !setting.read()
+    const { error } = setting.write(next)
+    if (error !== null) {
+      logError(error)
+      return
     }
-    return {
-      label,
-      value: file.path,
-      description
-    };
-  });
-  const folderOptions = [];
-  const agentDefinitions = useAppState(_temp3);
-  if (isAutoMemoryEnabled()) {
-    // Deliberately NOT memoized: memoryOptions above is rebuilt on every
-    // render anyway, so caching these literals in $ slots buys nothing — and
-    // the counts are props, which a memo_cache_sentinel branch would freeze at
-    // their first value. $[0] and $[1] are left unused on purpose; changing
-    // _c(58) or reusing an index is what breaks this file (ink-tui.md §6).
-    const autoMemPath = getAutoMemPath();
-    folderOptions.push({
-      label: `Private memory${dirCounts ? ` · ${dirCounts.private}` : ""}`,
-      value: encodeBrowseValue({
-        dir: autoMemPath,
-        title: "Private memory",
-        isTeamDir: false
-      }),
-      description: `Saved in ${getDisplayPath(autoMemPath)}`
-    });
-    if (feature("TEAMMEM") && teamMemPaths?.isTeamMemoryEnabled()) {
-      const teamMemPath = teamMemPaths.getTeamMemPath();
-      folderOptions.push({
-        label: `Team memory${dirCounts ? ` · ${dirCounts.team}` : ""}`,
-        value: encodeBrowseValue({
-          dir: teamMemPath,
-          title: "Team memory",
-          isTeamDir: true
-        }),
-        description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`
-      });
-    }
-    folderOptions.push({
-      label: "Tidy memories",
-      value: TIDY_VALUE,
-      description: "Merge duplicate memories and rebuild the index"
-    });
-    for (const agent of agentDefinitions.activeAgents) {
-      if (agent.memory) {
-        const agentDir = getAgentMemoryDir(agent.agentType, agent.memory);
-        folderOptions.push({
-          label: `${chalk.bold(agent.agentType)} agent memory`,
-          value: encodeBrowseValue({
-            dir: agentDir,
-            title: `${agent.agentType} agent memory`,
-            isTeamDir: false
-          }),
-          description: `${agent.memory} scope`
-        });
-      }
-    }
-  }
-  memoryOptions.push(...folderOptions);
-  let t1;
-  if ($[2] !== memoryOptions) {
-    t1 = lastSelectedPath && memoryOptions.some(_temp4) ? lastSelectedPath : memoryOptions[0]?.value || "";
-    $[2] = memoryOptions;
-    $[3] = t1;
-  } else {
-    t1 = $[3];
-  }
-  const initialPath = t1;
-  const [autoMemoryOn, setAutoMemoryOn] = useState(isAutoMemoryEnabled);
-  const [autoDreamOn, setAutoDreamOn] = useState(isAutoDreamEnabled);
-  const [showDreamRow] = useState(isAutoMemoryEnabled);
-  const isDreamRunning = useAppState(_temp6);
-  const [lastDreamAt, setLastDreamAt] = useState<number | null>(null);
-  let t2;
-  if ($[4] !== showDreamRow) {
-    t2 = () => {
-      if (!showDreamRow) {
-        return;
-      }
-      readLastConsolidatedAt().then(setLastDreamAt);
-    };
-    $[4] = showDreamRow;
-    $[5] = t2;
-  } else {
-    t2 = $[5];
-  }
-  let t3;
-  if ($[6] !== isDreamRunning || $[7] !== showDreamRow) {
-    t3 = [showDreamRow, isDreamRunning];
-    $[6] = isDreamRunning;
-    $[7] = showDreamRow;
-    $[8] = t3;
-  } else {
-    t3 = $[8];
-  }
-  useEffect(t2, t3);
-  let t4;
-  if ($[9] !== isDreamRunning || $[10] !== lastDreamAt) {
-    t4 = isDreamRunning ? "running" : lastDreamAt === null ? "" : lastDreamAt === 0 ? "never" : `last ran ${formatRelativeTimeAgo(new Date(lastDreamAt))}`;
-    $[9] = isDreamRunning;
-    $[10] = lastDreamAt;
-    $[11] = t4;
-  } else {
-    t4 = $[11];
-  }
-  const dreamStatus = t4;
-  const [focusedToggle, setFocusedToggle] = useState<number | null>(null);
-  const toggleFocused = focusedToggle !== null;
-  const lastToggleIndex = showDreamRow ? 1 : 0;
-  let t5;
-  if ($[12] !== autoMemoryOn) {
-    t5 = function handleToggleAutoMemory() {
-      const newValue = !autoMemoryOn;
-      updateSettingsForSource("userSettings", {
-        autoMemoryEnabled: newValue
-      });
-      setAutoMemoryOn(newValue);
-    };
-    $[12] = autoMemoryOn;
-    $[13] = t5;
-  } else {
-    t5 = $[13];
-  }
-  const handleToggleAutoMemory = t5;
-  let t6;
-  if ($[14] !== autoDreamOn) {
-    t6 = function handleToggleAutoDream() {
-      const newValue_0 = !autoDreamOn;
-      updateSettingsForSource("userSettings", {
-        autoDreamEnabled: newValue_0
-      });
-      setAutoDreamOn(newValue_0);
-    };
-    $[14] = autoDreamOn;
-    $[15] = t6;
-  } else {
-    t6 = $[15];
-  }
-  const handleToggleAutoDream = t6;
-  useExitOnCtrlCDWithKeybindings();
-  let t7;
-  if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = {
-      context: "Confirmation"
-    };
-    $[16] = t7;
-  } else {
-    t7 = $[16];
-  }
-  useKeybinding("confirm:no", onCancel, t7);
-  let t8;
-  if ($[17] !== focusedToggle || $[18] !== handleToggleAutoDream || $[19] !== handleToggleAutoMemory) {
-    t8 = () => {
-      if (focusedToggle === 0) {
-        handleToggleAutoMemory();
-      } else {
-        if (focusedToggle === 1) {
-          handleToggleAutoDream();
-        }
-      }
-    };
-    $[17] = focusedToggle;
-    $[18] = handleToggleAutoDream;
-    $[19] = handleToggleAutoMemory;
-    $[20] = t8;
-  } else {
-    t8 = $[20];
-  }
-  let t9;
-  if ($[21] !== toggleFocused) {
-    t9 = {
-      context: "Confirmation",
-      isActive: toggleFocused
-    };
-    $[21] = toggleFocused;
-    $[22] = t9;
-  } else {
-    t9 = $[22];
-  }
-  useKeybinding("confirm:yes", t8, t9);
-  let t10;
-  if ($[23] !== lastToggleIndex) {
-    t10 = () => {
-      setFocusedToggle(prev => prev !== null && prev < lastToggleIndex ? prev + 1 : null);
-    };
-    $[23] = lastToggleIndex;
-    $[24] = t10;
-  } else {
-    t10 = $[24];
-  }
-  let t11;
-  if ($[25] !== toggleFocused) {
-    t11 = {
-      context: "Select",
-      isActive: toggleFocused
-    };
-    $[25] = toggleFocused;
-    $[26] = t11;
-  } else {
-    t11 = $[26];
-  }
-  useKeybinding("select:next", t10, t11);
-  let t12;
-  if ($[27] === Symbol.for("react.memo_cache_sentinel")) {
-    t12 = () => {
-      setFocusedToggle(_temp7);
-    };
-    $[27] = t12;
-  } else {
-    t12 = $[27];
-  }
-  let t13;
-  if ($[28] !== toggleFocused) {
-    t13 = {
-      context: "Select",
-      isActive: toggleFocused
-    };
-    $[28] = toggleFocused;
-    $[29] = t13;
-  } else {
-    t13 = $[29];
-  }
-  useKeybinding("select:previous", t12, t13);
-  const t14 = focusedToggle === 0;
-  const t15 = autoMemoryOn ? "on" : "off";
-  let t16;
-  if ($[30] !== t15) {
-    t16 = <Text>Auto-memory: {t15}</Text>;
-    $[30] = t15;
-    $[31] = t16;
-  } else {
-    t16 = $[31];
-  }
-  let t17;
-  if ($[32] !== t14 || $[33] !== t16) {
-    t17 = <ListItem isFocused={t14}>{t16}</ListItem>;
-    $[32] = t14;
-    $[33] = t16;
-    $[34] = t17;
-  } else {
-    t17 = $[34];
-  }
-  let t18;
-  if ($[35] !== autoDreamOn || $[36] !== dreamStatus || $[37] !== focusedToggle || $[38] !== isDreamRunning || $[39] !== showDreamRow) {
-    t18 = showDreamRow && <ListItem isFocused={focusedToggle === 1} styled={false}><Text color={focusedToggle === 1 ? "suggestion" : undefined}>Auto-dream: {autoDreamOn ? "on" : "off"}{dreamStatus && <Text dimColor={true}> · {dreamStatus}</Text>}{!isDreamRunning && autoDreamOn && <Text dimColor={true}> · /dream to run</Text>}</Text></ListItem>;
-    $[35] = autoDreamOn;
-    $[36] = dreamStatus;
-    $[37] = focusedToggle;
-    $[38] = isDreamRunning;
-    $[39] = showDreamRow;
-    $[40] = t18;
-  } else {
-    t18 = $[40];
-  }
-  let t19;
-  if ($[41] !== t17 || $[42] !== t18) {
-    t19 = <Box flexDirection="column" marginBottom={1}>{t17}{t18}</Box>;
-    $[41] = t17;
-    $[42] = t18;
-    $[43] = t19;
-  } else {
-    t19 = $[43];
-  }
-  let t20;
-  if ($[44] !== onSelect) {
-    t20 = (value: string) => {
-      // Tidy is an action, not a destination — remembering it would land the
-      // cursor on it the next time /memory opens.
-      if (value !== TIDY_VALUE) {
-        lastSelectedPath = value;
-      }
-      onSelect(value);
-    };
-    $[44] = onSelect;
-    $[45] = t20;
-  } else {
-    t20 = $[45];
-  }
-  let t21;
-  if ($[46] !== lastToggleIndex) {
-    t21 = () => setFocusedToggle(lastToggleIndex);
-    $[46] = lastToggleIndex;
-    $[47] = t21;
-  } else {
-    t21 = $[47];
-  }
-  let t22;
-  if ($[48] !== initialPath || $[49] !== memoryOptions || $[50] !== onCancel || $[51] !== t20 || $[52] !== t21 || $[53] !== toggleFocused) {
-    t22 = <Select defaultFocusValue={initialPath} options={memoryOptions} isDisabled={toggleFocused} onChange={t20} onCancel={onCancel} onUpFromFirstItem={t21} />;
-    $[48] = initialPath;
-    $[49] = memoryOptions;
-    $[50] = onCancel;
-    $[51] = t20;
-    $[52] = t21;
-    $[53] = toggleFocused;
-    $[54] = t22;
-  } else {
-    t22 = $[54];
-  }
-  let t23;
-  if ($[55] !== t19 || $[56] !== t22) {
-    t23 = <Box flexDirection="column" width="100%">{t19}{t22}</Box>;
-    $[55] = t19;
-    $[56] = t22;
-    $[57] = t23;
-  } else {
-    t23 = $[57];
-  }
-  return t23;
-}
-function _temp7(prev_0: number | null) {
-  return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : prev_0;
-}
-function _temp6(s_0: AppState) {
-  return Object.values(s_0.tasks).some(_temp5);
-}
-function _temp5(t: TaskState) {
-  return t.type === "dream" && t.status === "running";
-}
-function _temp4(opt: {
-  value: string;
-}) {
-  return opt.value === lastSelectedPath;
-}
-function _temp3(s: AppState) {
-  return s.agentDefinitions;
-}
-function _temp2(f_2: MemoryFileInfo) {
-  return {
-    ...f_2,
-    exists: true
-  };
-}
-function _temp(f_1: MemoryFileInfo) {
-  return f_1.type !== "AutoMem" && f_1.type !== "TeamMem";
+    setRequested(previous => ({ ...previous, [key]: next }))
+  }, [])
+
+  const move = useCallback(
+    (direction: 'up' | 'down') => setFocus(current => stepFocus(current, direction, switchKeys)),
+    [switchKeys],
+  )
+  const leaveList = useCallback(() => move('up'), [move])
+
+  const choose = useCallback(
+    (value: string) => {
+      pickerChoice.remember(value)
+      onSelect(value)
+    },
+    [onSelect],
+  )
+
+  return (
+    <Box flexDirection="column">
+      <MemorySwitches switches={switches} focus={focus} onMove={move} onToggle={toggle} />
+      <Box flexDirection="column" marginTop={1}>
+        <Select
+          options={options}
+          defaultFocusValue={initialFocus}
+          isDisabled={focus !== 'list'}
+          onChange={choose}
+          onUpFromFirstItem={leaveList}
+        />
+      </Box>
+    </Box>
+  )
 }

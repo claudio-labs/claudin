@@ -2,218 +2,445 @@
   "test": [
     "src/memory/ui/MemoryFileSelector.characterization.test.tsx",
     "src/memory/ui/memoryFileSelectorPaths.characterization.test.ts",
-    "src/memory/ui/MemoryUpdateNotification.characterization.test.tsx"
+    "src/memory/ui/MemoryUpdateNotification.characterization.test.tsx",
+    "src/memory/ui/memoryFileSelector/rows.test.ts",
+    "src/memory/ui/memoryFileSelector/pickerModels.test.ts",
+    "src/memory/ui/memoryFileSelector/switches.test.tsx",
+    "src/memory/ui/shortMemoryPath.test.ts"
   ],
-  "source": "src/memory/ui/MemoryFileSelector.tsx",
+  "source": "src/memory/ui/memoryFileSelector/rows.ts",
   "probes": [
     {
-      "name": "rows: the user file loses its name",
-      "find": "label = \"User memory\";",
-      "replace": "label = \"User\";"
+      "name": "rows: the user file's label",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "label: 'User memory'",
+      "replace": "label: 'User file'"
     },
     {
-      "name": "rows: the project file loses its name",
-      "find": "label = \"Project memory\";",
-      "replace": "label = \"Project\";"
+      "name": "rows: the user file's fixed description",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "const USER_FILE_NOTE = 'Saved in ~/.claudin/CLAUDE.md'",
+      "replace": "const USER_FILE_NOTE = 'Saved in ~/.claude/CLAUDE.md'"
     },
     {
-      "name": "rows: an existing user file gets a second, synthetic row",
-      "find": "const hasUserMemory = existingMemoryFiles.some(f => f.path === userMemoryPath);",
-      "replace": "const hasUserMemory = false;"
+      "name": "rows: the project file's label",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "label: 'Project memory'",
+      "replace": "label: 'Project file'"
     },
     {
-      "name": "rows: the user file names another product's directory",
-      "find": "description = \"Saved in ~/.claudin/CLAUDE.md\";",
-      "replace": "description = \"Saved in ~/.claude/CLAUDE.md\";"
+      "name": "rows: checked in only inside a repository",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "input.inGitRepo ? 'Checked in at' : 'Saved in'",
+      "replace": "input.inGitRepo ? 'Saved in' : 'Checked in at'"
     },
     {
-      "name": "rows: checked-in and saved-in are swapped",
-      "find": "${isGit ? \"Checked in at\" : \"Saved in\"}",
-      "replace": "${isGit ? \"Saved in\" : \"Checked in at\"}"
+      "name": "rows: an import is described as @-imported",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "const IMPORT_NOTE = '@-imported'",
+      "replace": "const IMPORT_NOTE = 'imported'"
     },
     {
-      "name": "rows: an import is not called @-imported",
-      "find": "description = \"@-imported\";",
-      "replace": "description = \"imported\";"
+      "name": "rows: imports indent from the second level",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "'  '.repeat(Math.max(0, depth - 1))",
+      "replace": "'  '.repeat(depth)"
     },
     {
-      "name": "rows: a nested import is not indented one step deeper",
-      "find": "const indent = depth > 0 ? \"  \".repeat(depth - 1) : \"\";",
-      "replace": "const indent = \"\";"
+      "name": "rows: an import's L marker",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "}L ${deps.displayPath(path)}",
+      "replace": "}- ${deps.displayPath(path)}"
     },
     {
-      "name": "rows: the team index is listed as a file",
-      "find": "return f_1.type !== \"AutoMem\" && f_1.type !== \"TeamMem\";",
-      "replace": "return f_1.type !== \"AutoMem\";"
+      "name": "rows: an imported file is an import",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "if (file.parent !== undefined) return { kind: 'import'",
+      "replace": "if (false) return { kind: 'import'"
     },
     {
-      "name": "rows: the private index is listed as a file",
-      "find": "return f_1.type !== \"AutoMem\" && f_1.type !== \"TeamMem\";",
-      "replace": "return f_1.type !== \"TeamMem\";"
+      "name": "rows: other files show their display path",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "other: (_kind, { path, deps }) => ({ label: deps.displayPath(path) })",
+      "replace": "other: (_kind, { path }) => ({ label: path })"
     },
     {
-      "name": "rows: the private row shows the team count",
-      "find": "${dirCounts.private}",
-      "replace": "${dirCounts.team}"
+      "name": "rows: the private index is not a file row",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "return file.type !== 'AutoMem' && file.type !== 'TeamMem'",
+      "replace": "return file.type !== 'TeamMem'"
     },
     {
-      "name": "rows: the private folder is shown as a raw path",
-      "find": "description: `Saved in ${getDisplayPath(autoMemPath)}`",
-      "replace": "description: `Saved in ${autoMemPath}`"
+      "name": "rows: a file row hands back its absolute path",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "    value: file.path,\n",
+      "replace": "    value: deps.displayPath(file.path),\n"
     },
     {
-      "name": "rows: the team folder loses its git-tracked note",
-      "find": "description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`",
-      "replace": "description: `Shared at ${getDisplayPath(teamMemPath)}`"
-    },
-    {
-      "name": "rows: the tidy row is renamed",
-      "find": "label: \"Tidy memories\",",
-      "replace": "label: \"Tidy\","
-    },
-    {
-      "name": "rows: the folder rows come before the files",
-      "find": "memoryOptions.push(...folderOptions);",
-      "replace": "memoryOptions.unshift(...folderOptions);"
-    },
-    {
-      "name": "rows: an agent without memory gets a row",
-      "find": "if (agent.memory) {",
-      "replace": "if (agent.agentType) {"
-    },
-    {
-      "name": "values: the team folder is not marked as the team one",
-      "find": "isTeamDir: true",
-      "replace": "isTeamDir: false"
-    },
-    {
-      "name": "values: an agent folder carries the bare agent type as its title",
-      "find": "title: `${agent.agentType} agent memory`,",
-      "replace": "title: agent.agentType,"
-    },
-    {
-      "name": "values: tidy hands back another value",
-      "find": "value: TIDY_VALUE,",
-      "replace": "value: \"tidy\","
-    },
-    {
-      "name": "memory: tidy is remembered as the last row",
-      "find": "if (value !== TIDY_VALUE) {",
-      "replace": "if (value) {"
-    },
-    {
-      "name": "memory: the last row is not remembered",
-      "find": "lastSelectedPath = value;",
-      "replace": "lastSelectedPath = undefined;"
-    },
-    {
-      "name": "keys: n does not cancel",
-      "find": "useKeybinding(\"confirm:no\", onCancel, t7);",
-      "replace": "useKeybinding(\"confirm:no\", () => {}, t7);"
-    },
-    {
-      "name": "keys: Esc on the list does not cancel",
-      "find": "options={memoryOptions} isDisabled={toggleFocused} onChange={t20} onCancel={onCancel}",
-      "replace": "options={memoryOptions} isDisabled={toggleFocused} onChange={t20} onCancel={() => {}}"
-    },
-    {
-      "name": "keys: the list still takes Enter while a switch is focused",
-      "find": "isDisabled={toggleFocused}",
-      "replace": "isDisabled={false}"
-    },
-    {
-      "name": "switches: Up from the first row lands on Auto-memory",
-      "find": "t21 = () => setFocusedToggle(lastToggleIndex);",
-      "replace": "t21 = () => setFocusedToggle(0);"
-    },
-    {
-      "name": "switches: Down from the last switch stays there",
-      "find": "setFocusedToggle(prev => prev !== null && prev < lastToggleIndex ? prev + 1 : null);",
-      "replace": "setFocusedToggle(prev => prev !== null && prev < lastToggleIndex ? prev + 1 : prev);"
-    },
-    {
-      "name": "switches: Up on Auto-memory leaves the switches",
-      "find": "return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : prev_0;",
-      "replace": "return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : null;"
-    },
-    {
-      "name": "switches: auto memory writes the old value",
-      "find": "autoMemoryEnabled: newValue\n",
-      "replace": "autoMemoryEnabled: autoMemoryOn\n"
-    },
-    {
-      "name": "switches: auto-dream writes the old value",
-      "find": "autoDreamEnabled: newValue_0\n",
-      "replace": "autoDreamEnabled: autoDreamOn\n"
-    },
-    {
-      "name": "dream: the line shows with auto memory off",
-      "find": "const [showDreamRow] = useState(isAutoMemoryEnabled);",
-      "replace": "const [showDreamRow] = useState(true);"
-    },
-    {
-      "name": "dream: a finished dream task counts as running",
-      "find": "return t.type === \"dream\" && t.status === \"running\";",
-      "replace": "return t.type === \"dream\";"
-    },
-    {
-      "name": "dream: the run hint shows while a dream runs",
-      "find": "{!isDreamRunning && autoDreamOn && <Text dimColor={true}> · /dream to run</Text>}",
-      "replace": "{autoDreamOn && <Text dimColor={true}> · /dream to run</Text>}"
-    },
-    {
-      "name": "project path: a same-named file of another layer counts",
-      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
-      "find": "file.type === 'Project' &&",
-      "replace": "file.type !== 'User' &&"
-    },
-    {
-      "name": "project path: an imported file counts",
-      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
-      "find": "    file.parent === undefined &&\n",
+      "name": "rows: a missing user file still gets its row",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "    [input.userFilePath, { kind: 'user' }],\n",
       "replace": ""
     },
     {
-      "name": "project path: the fallback is CLAUDE.md",
+      "name": "rows: a missing project file still gets its row",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "    [projectFilePath, { kind: 'project' }],\n",
+      "replace": ""
+    },
+    {
+      "name": "rows: the folders only while auto memory is on",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "return input.autoMemoryOn ? [...rows, ...folderRows(input, deps)] : rows",
+      "replace": "return [...rows, ...folderRows(input, deps)]"
+    },
+    {
+      "name": "rows: the count follows a middle dot",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "`${title} · ${count}`",
+      "replace": "`${title} (${count})`"
+    },
+    {
+      "name": "rows: no counts, no number",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "count === undefined ? title :",
+      "replace": "count === undefined ? `${title} · 0` :"
+    },
+    {
+      "name": "rows: the private folder's description",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "description: `Saved in ${deps.displayPath(input.privateDir)}`",
+      "replace": "description: `Stored in ${deps.displayPath(input.privateDir)}`"
+    },
+    {
+      "name": "rows: the team folder's description",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "`Shared with the team, git-tracked at ${",
+      "replace": "`Shared at ${"
+    },
+    {
+      "name": "rows: the team row only when team memory is on",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "if (input.teamDir !== null) {",
+      "replace": "if (input.teamDir !== null && false) {"
+    },
+    {
+      "name": "rows: the private target is not the team dir",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "title: PRIVATE_TITLE, isTeamDir: false",
+      "replace": "title: PRIVATE_TITLE, isTeamDir: true"
+    },
+    {
+      "name": "rows: the team target is the team dir",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "title: TEAM_TITLE, isTeamDir: true",
+      "replace": "title: TEAM_TITLE, isTeamDir: false"
+    },
+    {
+      "name": "rows: tidy's description",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "const TIDY_NOTE = 'Merge duplicate memories and rebuild the index'",
+      "replace": "const TIDY_NOTE = 'Tidy up'"
+    },
+    {
+      "name": "rows: tidy hands back the sentinel",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "value: TIDY_VALUE",
+      "replace": "value: 'tidy'"
+    },
+    {
+      "name": "rows: agents without a memory scope get no row",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "if (agent.memory === undefined) continue",
+      "replace": "if (agent.memory === undefined) {}"
+    },
+    {
+      "name": "rows: an agent row's title",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "const title = `${agent.agentType} agent memory`",
+      "replace": "const title = `${agent.agentType} memory`"
+    },
+    {
+      "name": "rows: an agent row's scope",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "description: `${agent.memory} scope`",
+      "replace": "description: `${agent.memory}`"
+    },
+    {
+      "name": "rows: the agent type is emphasised",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "emphasis: agent.agentType,",
+      "replace": "emphasis: undefined,"
+    },
+    {
+      "name": "fix: only the user file is described as the user file",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "if (file.path === anchors.userFilePath) return { kind: 'user' }",
+      "replace": "if (file.type === 'User') return { kind: 'user' }"
+    },
+    {
+      "name": "fix: an ancestor's project file is described from the start directory",
+      "source": "src/memory/ui/memoryFileSelector/rows.ts",
+      "find": "return rel === '..' || rel.startsWith(`..${sep}`) ? rel : `./${rel}`",
+      "replace": "return `./${rel.split(sep).pop()}`"
+    },
+    {
+      "name": "project path: an imported file does not count",
       "source": "src/memory/ui/memoryFileSelectorPaths.ts",
-      "find": "?? join(cwd, PRIMARY_PROJECT_INSTRUCTION_FILE)",
-      "replace": "?? join(cwd, 'CLAUDE.md')"
+      "find": "return file.type === 'Project' && file.parent === undefined",
+      "replace": "return file.type === 'Project'"
     },
     {
-      "name": "short path: the home form keeps the home directory",
-      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
-      "find": "'~' + path.slice(homeDir.length)",
-      "replace": "path"
+      "name": "project path: only project files count",
+      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
+      "find": "return file.type === 'Project' && file.parent === undefined",
+      "replace": "return file.parent === undefined"
     },
     {
-      "name": "short path: the working-directory form has no ./",
-      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
-      "find": "'./' + relative(cwd, path)",
-      "replace": "relative(cwd, path)"
+      "name": "project path: the fallback is AGENTS.md in the start directory",
+      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
+      "find": "return nearest ?? join(cwd, PRIMARY_PROJECT_INSTRUCTION_FILE)",
+      "replace": "return nearest ?? join(cwd, 'CLAUDE.md')"
     },
     {
-      "name": "short path: a tie goes to the working-directory form",
-      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
-      "find": "relativeToHome.length <= relativeToCwd.length",
-      "replace": "relativeToHome.length < relativeToCwd.length"
+      "name": "picker: a choice is remembered",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "      pickerChoice.remember(value)\n",
+      "replace": ""
     },
     {
-      "name": "short path: a working-directory path alone is not shortened",
-      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
-      "find": "return relativeToHome || relativeToCwd || path;",
-      "replace": "return relativeToHome || path;"
+      "name": "picker: Enter calls onSelect once",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "      onSelect(value)\n",
+      "replace": "      onSelect(value)\n      onSelect(value)\n"
     },
     {
-      "name": "notice: the path is shown in full",
-      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
-      "find": "t1 = getRelativeMemoryPath(memoryPath);",
-      "replace": "t1 = memoryPath;"
+      "name": "picker: the list opens on the remembered row",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "defaultFocusValue={initialFocus}",
+      "replace": "defaultFocusValue={undefined}"
     },
     {
-      "name": "notice: another verb",
+      "name": "picker: the list ignores keys while a switch is focused",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "isDisabled={focus !== 'list'}",
+      "replace": "isDisabled={false}"
+    },
+    {
+      "name": "picker: Up from the first row climbs to the switches",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "onUpFromFirstItem={leaveList}",
+      "replace": "onUpFromFirstItem={undefined}"
+    },
+    {
+      "name": "picker: Esc and n cancel",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "useKeybinding('confirm:no', onCancel,",
+      "replace": "useKeybinding('confirm:never', onCancel,"
+    },
+    {
+      "name": "picker: the dream line only when auto memory was on at open",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "isAutoMemoryEnabled() ? ['autoMemory', 'autoDream'] : ['autoMemory'],",
+      "replace": "['autoMemory', 'autoDream'],"
+    },
+    {
+      "name": "picker: the dream line is decided at open",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "  const [switchKeys] = useState<readonly SwitchKey[]>(() =>\n    isAutoMemoryEnabled() ? ['autoMemory', 'autoDream'] : ['autoMemory'],\n  )",
+      "replace": "  const switchKeys: readonly SwitchKey[] = isAutoMemoryEnabled() ? ['autoMemory', 'autoDream'] : ['autoMemory']"
+    },
+    {
+      "name": "picker: a running dream task",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "task.type === 'dream' && task.status === 'running'",
+      "replace": "task.type === 'dream'"
+    },
+    {
+      "name": "picker: the last-run stamp is read",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "if (mounted) setLastRunAt(at)",
+      "replace": "if (mounted) setLastRunAt(0)"
+    },
+    {
+      "name": "picker: only the auto-dream line has a status",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "const status = key === 'autoDream' ? describeDreamStatus(",
+      "replace": "const status = key === 'autoMemory' ? describeDreamStatus("
+    },
+    {
+      "name": "picker: the auto-memory label",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "label: 'Auto-memory',",
+      "replace": "label: 'Auto memory',"
+    },
+    {
+      "name": "picker: auto memory is written to the user settings",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "updateSettingsForSource('userSettings', { autoMemoryEnabled: on })",
+      "replace": "updateSettingsForSource('localSettings', { autoMemoryEnabled: on })"
+    },
+    {
+      "name": "picker: auto-dream is written to the user settings",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "updateSettingsForSource('userSettings', { autoDreamEnabled: on })",
+      "replace": "updateSettingsForSource('localSettings', { autoDreamEnabled: on })"
+    },
+    {
+      "name": "picker: a toggle flips the value",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "const next = !setting.read()",
+      "replace": "const next = setting.read()"
+    },
+    {
+      "name": "picker: the team row follows team memory",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "const teamOn = feature('TEAMMEM') ? isTeamMemoryEnabled() : false",
+      "replace": "const teamOn = feature('TEAMMEM') ? false : false"
+    },
+    {
+      "name": "fix: a switch shows the value in effect",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "const on = SWITCH_SETTINGS[key].read()",
+      "replace": "const on = requested[key] ?? SWITCH_SETTINGS[key].read()"
+    },
+    {
+      "name": "fix: a switch says when it is overridden",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "${overrideNote(requested[key], on)}",
+      "replace": ""
+    },
+    {
+      "name": "fix: the override note is silent when the write took",
+      "source": "src/memory/ui/memoryFileSelector/switchNote.ts",
+      "find": "if (requested === undefined || requested === effective) return ''",
+      "replace": "if (requested === undefined) return ''"
+    },
+    {
+      "name": "switches: on and off",
+      "source": "src/memory/ui/memoryFileSelector/MemorySwitches.tsx",
+      "find": "{view.on ? 'on' : 'off'}",
+      "replace": "{view.on ? 'yes' : 'no'}"
+    },
+    {
+      "name": "switches: Enter and y toggle the focused switch",
+      "source": "src/memory/ui/memoryFileSelector/MemorySwitches.tsx",
+      "find": "'confirm:yes': () => {",
+      "replace": "'confirm:yes:never': () => {"
+    },
+    {
+      "name": "switches: Up moves within the switches",
+      "source": "src/memory/ui/memoryFileSelector/MemorySwitches.tsx",
+      "find": "'confirm:previous': () => onMove('up')",
+      "replace": "'confirm:previous': () => onMove('down')"
+    },
+    {
+      "name": "switches: Down moves toward the list",
+      "source": "src/memory/ui/memoryFileSelector/MemorySwitches.tsx",
+      "find": "'confirm:next': () => onMove('down')",
+      "replace": "'confirm:next': () => onMove('up')"
+    },
+    {
+      "name": "focus: Up from the list lands on the nearest switch",
+      "source": "src/memory/ui/memoryFileSelector/focus.ts",
+      "find": "switches.at(-1) ?? 'list'",
+      "replace": "switches[0] ?? 'list'"
+    },
+    {
+      "name": "focus: Up stops at the top switch",
+      "source": "src/memory/ui/memoryFileSelector/focus.ts",
+      "find": "return switches[Math.max(0, at - 1)] ?? 'list'",
+      "replace": "return switches[at - 1] ?? 'list'"
+    },
+    {
+      "name": "focus: Down from the last switch returns to the list",
+      "source": "src/memory/ui/memoryFileSelector/focus.ts",
+      "find": "return switches[at + 1] ?? 'list'",
+      "replace": "return switches[at + 1] ?? switches[0] ?? 'list'"
+    },
+    {
+      "name": "choice: tidy is not remembered",
+      "source": "src/memory/ui/memoryFileSelector/choiceMemory.ts",
+      "find": "if (value !== TIDY_VALUE) last = value",
+      "replace": "last = value"
+    },
+    {
+      "name": "choice: a gone row falls back to the first",
+      "source": "src/memory/ui/memoryFileSelector/choiceMemory.ts",
+      "find": "last !== undefined && values.includes(last) ? last : values[0]",
+      "replace": "last !== undefined ? last : values[0]"
+    },
+    {
+      "name": "dream: running",
+      "source": "src/memory/ui/memoryFileSelector/dreamStatus.ts",
+      "find": "if (running) parts.push('running')",
+      "replace": "if (running) parts.push('busy')"
+    },
+    {
+      "name": "dream: never",
+      "source": "src/memory/ui/memoryFileSelector/dreamStatus.ts",
+      "find": "else if (lastRunAt === 0) parts.push('never')",
+      "replace": "else if (lastRunAt === 0) parts.push('not yet')"
+    },
+    {
+      "name": "dream: last ran",
+      "source": "src/memory/ui/memoryFileSelector/dreamStatus.ts",
+      "find": "parts.push(`last ran ${ago(lastRunAt)}`)",
+      "replace": "parts.push(`ran ${ago(lastRunAt)}`)"
+    },
+    {
+      "name": "dream: the hint only while on and idle",
+      "source": "src/memory/ui/memoryFileSelector/dreamStatus.ts",
+      "find": "if (enabled && !running) parts.push('/dream to run')",
+      "replace": "if (enabled) parts.push('/dream to run')"
+    },
+    {
+      "name": "dream: the time is shown as time ago",
+      "source": "src/memory/ui/memoryFileSelector/dreamStatus.ts",
+      "find": "const defaultAgo = (at: number): string => formatRelativeTimeAgo(new Date(at))",
+      "replace": "const defaultAgo = (at: number): string => new Date(at).toISOString()"
+    },
+    {
+      "name": "short path: ./ under the working directory",
+      "source": "src/memory/ui/shortMemoryPath.ts",
+      "find": "const cwdForm = isPathWithin(cwd, path) ? `./${relative(cwd, path)}` : null",
+      "replace": "const cwdForm = isPathWithin(cwd, path) ? relative(cwd, path) : null"
+    },
+    {
+      "name": "short path: ~ under home",
+      "source": "src/memory/ui/shortMemoryPath.ts",
+      "find": "return rest === '' ? '~' : `~${sep}${rest}`",
+      "replace": "return rest === '' ? home : `${home}${sep}${rest}`"
+    },
+    {
+      "name": "short path: the shorter form, home on a tie",
+      "source": "src/memory/ui/shortMemoryPath.ts",
+      "find": "return cwdForm.length < homeForm.length ? cwdForm : homeForm",
+      "replace": "return cwdForm.length <= homeForm.length ? cwdForm : homeForm"
+    },
+    {
+      "name": "short path: neither, the path itself",
+      "source": "src/memory/ui/shortMemoryPath.ts",
+      "find": "return cwdForm ?? homeForm ?? path",
+      "replace": "return cwdForm ?? homeForm ?? `./${path}`"
+    },
+    {
+      "name": "fix: a directory contains a path only up to a separator",
+      "source": "src/memory/ui/shortMemoryPath.ts",
+      "find": "return path.startsWith(dir.endsWith(sep) ? dir : `${dir}${sep}`)",
+      "replace": "return path.startsWith(dir)"
+    },
+    {
+      "name": "short path: the working directory is read on every call",
       "source": "src/memory/ui/MemoryUpdateNotification.tsx",
-      "find": "Memory updated in {displayPath} · /memory to edit",
-      "replace": "Memory saved in {displayPath} · /memory to edit"
+      "find": "shortenMemoryPath(path, { cwd: getCwd(), home: homedir() })",
+      "replace": "shortenMemoryPath(path, { cwd: process.cwd(), home: homedir() })"
+    },
+    {
+      "name": "notice: its wording",
+      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
+      "find": "Memory updated in {getRelativeMemoryPath(memoryPath)} · /memory to edit",
+      "replace": "Memory saved in {getRelativeMemoryPath(memoryPath)} · /memory to edit"
     }
   ]
 }

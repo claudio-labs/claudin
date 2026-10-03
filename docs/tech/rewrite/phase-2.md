@@ -43,7 +43,7 @@ which the sandbox tools read; the lists below are the same.
 | `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | done |
 | `memory/extract` | 5 | 557 | — | done |
 | `memory/autoDream` | 4 | 310 | — | done |
-| `memory/ui` | 3 | 372 | `memoryFileSelectorPaths.test.ts` (58) | pending |
+| `memory/ui` | 3 | 372 | `memoryFileSelectorPaths.test.ts` (58) | done |
 | `sessions/storagePure` | 6 | 858 | — | done |
 | `sessions/persistence` | 5 | 1315 | — | done (residue sweep pending) |
 | `sessions/resume` | 7 | 1201 | `conversationRecovery.hooks.test.ts`, `conversationRecovery.test.ts`, `sessionStorage.test.ts` (377) | done |

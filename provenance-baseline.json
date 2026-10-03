@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "f304d618c3ba171578634ccb98c518ef8e40f401",
-  "totals": { "claudeCode": 288124, "openclaude": 42318 },
+  "capturedFrom": "7b3f7bed734d3b7c9494ddcd1d59d5d2175df464",
+  "totals": { "claudeCode": 287775, "openclaude": 42295 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -768,10 +768,7 @@
     "src/memory/memdir/teamMemoryOps.ts": [7, 0],
     "src/memory/memdir/versions.ts": [2, 0],
     "src/memory/ui/MemoryDirBrowser.test.tsx": [0, 37],
-    "src/memory/ui/MemoryFileSelector.tsx": [317, 3],
-    "src/memory/ui/MemoryUpdateNotification.tsx": [32, 0],
     "src/memory/ui/memoryDirRows.test.ts": [0, 7],
-    "src/memory/ui/memoryFileSelectorPaths.ts": [0, 20],
     "src/native-ts/color-diff/index.ts": [884, 0],
     "src/native-ts/file-index/index.ts": [307, 0],
     "src/native-ts/yoga-layout/enums.ts": [115, 0],

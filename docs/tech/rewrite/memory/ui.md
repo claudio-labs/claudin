@@ -308,3 +308,27 @@ the `Select`'s scrolling and padding.
 - **Types.** Explicit throughout, no `any`. Regexes at module level.
 - **Tests.** The characterization suites, unchanged, plus unit tests for the
   row model and the status model, and one each for the Fix decisions.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+
+**The rewrite.** The picker is now a plain hand-written function component. It sits on a pure row model in
+`memoryFileSelector/` (`rows`, `dreamStatus`, `focus`, `choiceMemory`, `switchNote`, `MemorySwitches`).
+Path shortening moved to `shortMemoryPath.ts`. The three characterization suites pass unchanged.
+
+**Fixes**, each with a test:
+- Only the user file is described as saved in `~/.claudin/CLAUDE.md`.
+- An ancestor project file is shown from the start directory.
+- A directory contains a path only up to a separator.
+- A switch shows the value in effect.
+
+**Deviations**
+- The override note appears after a flip that did not take, not at open. A note at open would break the
+  pinned `Auto-memory: off` under `CLAUDIN_DISABLE_AUTO_MEMORY`.
+- The team row imports `teamMemPaths` statically and gates the call with `feature('TEAMMEM') ? … : false`.
+  TEAMMEM ships true, and build and smoke pass.
+
+**Probes.** `rewrite-memory-ui.json` holds 72 probes.
+
+**Residue.** None: all three files measure 0 inherited lines.
