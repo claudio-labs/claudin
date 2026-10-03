@@ -1,7 +1,0 @@
-{
-  "authorization": "Bearer claude-ai-token-1",
-  "content-type": "application/json",
-  "anthropic-version": "2023-06-01",
-  "anthropic-beta": "ccr-byoc-2025-07-29",
-  "x-organization-uuid": "org-from-login"
-}

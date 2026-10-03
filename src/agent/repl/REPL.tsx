@@ -68,11 +68,8 @@ import { PromptDialog } from 'src/platform/lifecycleHooks/ui/PromptDialog.js';
 import type { PromptRequest, PromptResponse } from 'src/shared/types/hooks.js';
 import PromptInput from 'src/terminal/prompt-input/PromptInput.js';
 import { PromptInputQueuedCommands } from 'src/terminal/prompt-input/PromptInputQueuedCommands.js';
-import { useRemoteSession } from 'src/sessions/hooks/useRemoteSession.js';
 import { streamingTextStore, useStreamingTextPresence } from 'src/agent/hooks/useStreamingTextStore.js';
 import { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
-import { useSSHSession } from 'src/sessions/hooks/useSSHSession.js';
-import type { SSHSession } from '../../platform/ssh/createSSHSession.js';
 import { useMoreRight } from 'src/terminal/moreright/useMoreRight.js';
 import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import { getSystemPrompt } from 'src/agent/prompts/prompts.js';
@@ -236,8 +233,6 @@ import type { HookProgress } from 'src/shared/types/hooks.js';
 import { CompanionSprite, CompanionFloatingBubble, MIN_COLS_FOR_FULL_SPRITE } from 'src/terminal/buddy/CompanionSprite.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 // Session manager removed - using AppState now
-import type { RemoteSessionConfig } from 'src/platform/remote/RemoteSessionManager.js';
-import { REMOTE_SAFE_COMMANDS } from 'src/commands/commands.js';
 import { FullscreenLayout, useUnseenDivider, computeUnseenDivider } from 'src/terminal/FullscreenLayout.js';
 import { StartupBanner } from 'src/platform/StartupBanner.js';
 import { isFullscreenEnvEnabled, isTemporaryFullscreen, maybeGetTmuxMouseHint, isMouseTrackingEnabled, subscribeFullscreenLease } from 'src/terminal/render/fullscreen.js';
@@ -247,10 +242,6 @@ import { useMessageActions, MessageActionsKeybindings, MessageActionsBar, type M
 import type { ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
 import { applyDisplayWindow } from 'src/agent/repl/displayWindow.js';
 
-// Stable empty array for hooks that accept MCPServerConnection[] — avoids
-// creating a new [] literal on every render in remote mode, which would
-// cause useEffect dependency changes and infinite re-render loops.
-const EMPTY_MCP_CLIENTS: MCPServerConnection[] = [];
 // Window after a user-initiated scroll during which type-into-empty does NOT
 // repin to bottom. Josh Rosen's workflow: Claude emits long output → scroll
 // up to read the start → start typing → before this fix, snapped to bottom.
@@ -319,10 +310,6 @@ export type Props = {
   disableSlashCommands?: boolean;
   // Task list id: when set, enables tasks mode that watches a task list and auto-processes tasks.
   taskListId?: string;
-  // Remote session config for --remote mode (uses CCR as execution engine)
-  remoteSessionConfig?: RemoteSessionConfig;
-  // SSH session for `claude ssh` mode (local REPL, remote tools over ssh)
-  sshSession?: SSHSession;
   // Thinking configuration to use when thinking is enabled
   thinkingConfig: ThinkingConfig;
 };
@@ -348,8 +335,6 @@ export function REPL({
   mainThreadAgentDefinition: initialMainThreadAgentDefinition,
   disableSlashCommands = false,
   taskListId,
-  remoteSessionConfig,
-  sshSession,
   thinkingConfig
 }: Props): React.ReactNode {
   // Wave 6 audit — repl_first_paint fires exactly once on initial mount.
@@ -360,7 +345,6 @@ export function REPL({
     _replFirstPaintMarked = true;
     profileCheckpoint('repl_first_paint');
   }
-  const isRemoteSession = !!remoteSessionConfig;
 
   // Wire up Ctrl+C / Ctrl+D double-press to exit. Ink raw mode disables ISIG,
   // so the OS-level SIGINT handler in main.tsx never fires while the TUI is
@@ -463,7 +447,7 @@ export function REPL({
   const [localCommands, setLocalCommands] = useState(initialCommands);
 
   // Watch for skill file changes and reload all commands
-  useSkillsChange(isRemoteSession ? undefined : getProjectRoot(), setLocalCommands);
+  useSkillsChange(getProjectRoot(), setLocalCommands);
 
   // BriefTool.isEnabled() reads getUserMsgOptIn() from bootstrap state, which
   // /brief flips mid-session alongside isBriefOnly. The memo below needs a
@@ -542,7 +526,7 @@ export function REPL({
 
   // Initialize plugin management
   const pluginCommands = useManagePlugins({
-    enabled: !isRemoteSession
+    enabled: true
   });
   const tasksV2 = useTasksV2WithCollapseEffect();
 
@@ -560,7 +544,7 @@ export function REPL({
   // Initialize swarm features: teammate hooks and context
   // Handles both fresh spawns and resumed teammate sessions
   useSwarmInitialization(setAppState, initialMessages, {
-    enabled: !isRemoteSession
+    enabled: true
   });
   const mergedTools = useMergedTools(combinedInitialTools, mcp.tools, toolPermissionContext);
 
@@ -593,8 +577,8 @@ export function REPL({
   // Filter out all commands if disableSlashCommands is true
   const commands = useMemo(() => disableSlashCommands ? [] : mergedCommands, [disableSlashCommands, mergedCommands]);
   const renderCommands = useMemo(() => disableSlashCommands ? [] : renderMergedCommands, [disableSlashCommands, renderMergedCommands]);
-  useIdeLogging(isRemoteSession ? EMPTY_MCP_CLIENTS : mcp.clients);
-  useIdeSelection(isRemoteSession ? EMPTY_MCP_CLIENTS : mcp.clients, setIDESelection);
+  useIdeLogging(mcp.clients);
+  useIdeSelection(mcp.clients, setIDESelection);
   const [streamMode, setStreamMode] = useState<SpinnerMode>('responding');
   // Ref mirror so onSubmit can read the latest value without adding
   // streamMode to its deps. streamMode flips between
@@ -673,11 +657,9 @@ export function REPL({
   const heldPeerMessages = React.useSyncExternalStore(subscribeHeldPeerMessages, getHeldPeerMessages);
 
   // Separate loading flag for operations outside the local query guard:
-  // remote sessions (useRemoteSession / useSSHSession) and foregrounded
-  // background tasks (useSessionBackgrounding). These don't route through
-  // onQuery / queryGuard, so they need their own spinner-visibility state.
-  // Initialize true if remote mode with initial prompt (CCR processing it).
-  const [isExternalLoading, setIsExternalLoadingRaw] = React.useState(remoteSessionConfig?.hasInitialPrompt ?? false);
+  // foregrounded background tasks (useSessionBackgrounding). These don't route
+  // through onQuery / queryGuard, so they need their own spinner-visibility state.
+  const [isExternalLoading, setIsExternalLoadingRaw] = React.useState(false);
 
   // Derived: any loading source active. Read-only — no setter. Local query
   // loading is driven by queryGuard (reserve/tryStart/end/cancelReservation),
@@ -1170,42 +1152,8 @@ export function REPL({
     cursorOffset: number;
     pastedContents: Record<number, PastedContent>;
   } | undefined>();
-
-  // Callback to filter commands based on CCR's available slash commands
-  const handleRemoteInit = useCallback((remoteSlashCommands: string[]) => {
-    const remoteCommandSet = new Set(remoteSlashCommands);
-    // Keep commands that CCR lists OR that are in the local-safe set
-    setLocalCommands(prev => prev.filter(cmd => remoteCommandSet.has(cmd.name) || REMOTE_SAFE_COMMANDS.has(cmd)));
-  }, [setLocalCommands]);
   const [inProgressToolUseIDs, setInProgressToolUseIDs] = useState<Set<string>>(new Set());
   const hasInterruptibleToolInProgressRef = useRef(false);
-
-  // Remote session hook - manages WebSocket connection and message handling for --remote mode
-  const remoteSession = useRemoteSession({
-    config: remoteSessionConfig,
-    setMessages,
-    setIsLoading: setIsExternalLoading,
-    onInit: handleRemoteInit,
-    setToolUseConfirmQueue,
-    tools: combinedInitialTools,
-    setStreamingToolUses,
-    setStreamMode,
-    setInProgressToolUseIDs
-  });
-
-  // SSH session hook - manages ssh child process for `claude ssh` mode.
-  // Same callback shape as useRemoteSession; only the transport under the
-  // hood differs (ChildProcess stdin/stdout vs WebSocket).
-  const sshRemote = useSSHSession({
-    session: sshSession,
-    setMessages,
-    setIsLoading: setIsExternalLoading,
-    setToolUseConfirmQueue,
-    tools: combinedInitialTools
-  });
-
-  // Use whichever remote mode is active
-  const activeRemote = sshRemote.isRemoteMode ? sshRemote : remoteSession;
   const [pastedContents, setPastedContents] = useState<Record<number, PastedContent>>({});
   const [submitCount, setSubmitCount] = useState(0);
 
@@ -1217,16 +1165,15 @@ export function REPL({
   const startupChecksStartedRef = React.useRef(false);
   const hasHadFirstSubmission = (submitCount ?? 0) > 0;
   useEffect(() => {
-    if (isRemoteSession) return;
     if (startupChecksStartedRef.current) return;
     if (!shouldRunStartupChecks({
-      isRemoteSession,
+      isRemoteSession: false,
       hasStarted: startupChecksStartedRef.current,
       hasHadFirstSubmission,
     })) return;
     startupChecksStartedRef.current = true;
     void performStartupChecks(setAppState);
-  }, [setAppState, isRemoteSession, hasHadFirstSubmission]);
+  }, [setAppState, hasHadFirstSubmission]);
   // Ref instead of state to avoid triggering React re-renders on every
   // streaming text_delta. The spinner reads this via its animation timer.
   const responseLengthRef = useRef(0);
@@ -1677,9 +1624,6 @@ export function REPL({
       }
       setPromptQueue([]);
       abortController?.abort('user-cancel');
-    } else if (activeRemote.isRemoteMode) {
-      // Remote mode: send interrupt signal to CCR
-      activeRemote.cancelRequest();
     } else {
       abortController?.abort('user-cancel');
     }
@@ -2029,8 +1973,6 @@ export function REPL({
     isLoading,
     isExternalLoading,
     abortController,
-    activeRemote,
-    remoteSession,
     inputMode,
     pastedContents,
     stashedPrompt,

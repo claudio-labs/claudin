@@ -4,6 +4,15 @@ The five modules of this unit are `src/sessions/hooks/useRemoteSession.ts`,
 `src/sessions/hooks/useSSHSession.ts`, `src/sessions/hooks/useTeleportResume.tsx`,
 `src/sessions/sessionIngressAuth.ts` and `src/sessions/sessionUrl.ts`.
 
+> **Cut on 2026-10-03:** `useRemoteSession.ts` and `useSSHSession.ts` were
+> deleted as dead code, with their three characterization suites, the
+> `remoteSessionHost.tsx` harness and the `__fixtures__/rewrite/remote/`
+> fixtures. Their only caller was `REPL.tsx`, through the `remoteSessionConfig`
+> and `sshSession` props; no launcher ever set either prop, nothing constructs a
+> `RemoteSessionConfig`, and `src/platform/ssh/` holds only `.d.ts` stubs. Both
+> hooks therefore always took their local-mode path. The unit is now the other
+> three modules; the sections below on the two hooks are kept as history.
+
 ## Purpose
 
 The local side of sessions that run somewhere else:

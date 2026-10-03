@@ -1,6 +1,0 @@
-{
-  "path": "/v1/sessions/ws/session_01remote/subscribe",
-  "query": { "organization_uuid": "org-7f3c" },
-  "authorization": "Bearer socket-token-1",
-  "version": "2023-06-01"
-}

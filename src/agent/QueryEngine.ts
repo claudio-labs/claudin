@@ -915,8 +915,6 @@ export class QueryEngine {
               // message.event is the internal BetaRawMessageStreamEvent
               // (see StreamEvent in types/message.ts); SDKMessage's
               // stream_event arm expects the non-beta RawMessageStreamEvent.
-              // Same beta/non-beta divergence handled the same way in
-              // src/platform/remote/sdkMessageAdapter.ts.
               event: message.event as unknown as RawMessageStreamEvent,
               session_id: getSessionId(),
               parent_tool_use_id: null,

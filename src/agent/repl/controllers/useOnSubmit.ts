@@ -1,5 +1,5 @@
 // Owns `onSubmit` — the prompt-submission controller: immediate slash commands,
-// history, stash restore, the remote path, the idle-gap
+// history, stash restore, the idle-gap
 // eviction sweep, and the handoff to handlePromptSubmit.
 //
 // Extracted from src/agent/repl/REPL.tsx (controllers, ROADMAP 11e deferred half).
@@ -11,17 +11,14 @@
 // one hook call (that same `useCallback`). The component's hook-call sequence
 // is unchanged.
 //
-// The dependency array at the bottom is verbatim, including its two load-bearing
-// oddities - do not "clean" either:
+// The dependency array at the bottom is verbatim, including its load-bearing
+// oddity - do not "clean" it:
 //   * `messages` is deliberately ABSENT. It is read through `messagesRef.current`
 //     so onSubmit stays stable across message updates; adding it back recreates
 //     onSubmit ~30x per turn and pins the REPL render scope (1776B) plus that
 //     render's messages array in downstream closures (PromptInput,
 //     handleAutoRunIssue). Heap analysis after #20174/#20175 found ~9 REPL scopes
 //     and ~15 messages array versions accumulating, all traced to that dep.
-//   * `remoteSession` is listed but never read in the body. It is there so the
-//     callback is recreated when the remote session object changes; `activeRemote`
-//     is derived from it and is not itself a dep.
 
 import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
@@ -38,13 +35,11 @@ import { escapeXml } from 'src/shared/data/xml.js';
 import { handlePromptSubmit, type PromptInputHelpers } from 'src/agent/handlePromptSubmit.js';
 import type { Message as MessageType } from 'src/shared/types/message.js';
 import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
-import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import { incrementPromptCount } from 'src/vcs/git/commitAttribution.js';
 import { recordAttributionSnapshot } from 'src/sessions/sessionStorage.js';
 import { type SetAppState } from 'src/agent/messageQueueManager.js';
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { createAbortController } from 'src/shared/abortController.js';
-import type { RemoteMessageContent } from 'src/platform/teleport/api.js';
 import { acquireFullscreenLease, canLeaseFullscreen, isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import type { QueryGuard } from 'src/agent/QueryGuard.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
@@ -53,14 +48,8 @@ import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.j
 import type { EffortValue } from 'src/providers/effort/effort.js';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js';
-import type { useRemoteSession } from 'src/sessions/hooks/useRemoteSession.js';
-import type { useSSHSession } from 'src/sessions/hooks/useSSHSession.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { useDeferredHookMessages } from 'src/agent/hooks/useDeferredHookMessages.js';
-
-export type ActiveRemote =
-  | ReturnType<typeof useSSHSession>
-  | ReturnType<typeof useRemoteSession>;
 
 export interface StashedPrompt {
   text: string;
@@ -97,8 +86,6 @@ export interface UseOnSubmitDeps {
   isLoading: boolean;
   isExternalLoading: boolean;
   abortController: AbortController | null;
-  activeRemote: ActiveRemote;
-  remoteSession: ReturnType<typeof useRemoteSession>;
   // --- input state
   inputMode: PromptInputMode;
   pastedContents: Record<number, PastedContent>;
@@ -158,8 +145,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     isLoading,
     isExternalLoading,
     abortController,
-    activeRemote,
-    remoteSession,
     inputMode,
     pastedContents,
     stashedPrompt,
@@ -310,11 +295,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
       }
     }
 
-    // Remote mode: skip empty input early before any state mutations
-    if (activeRemote.isRemoteMode && !input.trim()) {
-      return;
-    }
-
     // Add to history for direct user submissions.
     // Queued command processing (executeQueuedInput) doesn't call onSubmit,
     // so notifications and already-queued user input won't be added to history here.
@@ -339,14 +319,10 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     // - When loading, the submitted input will be queued and handlePromptSubmit
     //   will clear the input field (onInputChange('')), which would clobber the
     //   restored stash. Defer restoration to after handlePromptSubmit (below).
-    //   Remote mode is exempt: it sends via WebSocket and returns early without
-    //   calling handlePromptSubmit, so there's no clobbering risk — restore eagerly.
     // In both deferred cases, the stash is restored after await handlePromptSubmit.
     const isSlashCommand = input.trim().startsWith('/');
-    // Submit runs "now" (not queued) when not already loading, or in remote
-    // mode (which sends via WS and returns early without calling
-    // handlePromptSubmit).
-    const submitsNow = !isLoading || activeRemote.isRemoteMode;
+    // Submit runs "now" (not queued) when not already loading.
+    const submitsNow = !isLoading;
     if (stashedPrompt !== undefined && !isSlashCommand && submitsNow) {
       setInputValue(stashedPrompt.text);
       helpers.setCursorOffset(stashedPrompt.cursorOffset);
@@ -369,9 +345,8 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
       tipPickedThisTurnRef.current = false;
 
       // Show the placeholder in the same React batch as setInputValue('').
-      // Skip for slash/bash (they have their own echo) and remote mode
-      // (it setMessages directly with no gap to bridge).
-      if (!isSlashCommand && inputMode === 'prompt' && !activeRemote.isRemoteMode) {
+      // Skip for slash/bash (they have their own echo).
+      if (!isSlashCommand && inputMode === 'prompt') {
         setUserInputOnProcessing(input);
         // showSpinner includes userInputOnProcessing, so the spinner appears
         // on this render. Reset timing refs now (before queryGuard.reserve()
@@ -380,86 +355,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
         resetTimingRefs();
       }
 
-    }
-
-    // Remote mode: send input via stream-json instead of local query.
-    // Permission requests from the remote are bridged into toolUseConfirmQueue
-    // and rendered using the standard PermissionRequest component.
-    //
-    // local-jsx slash commands (e.g. /agents, /config) render UI in THIS
-    // process — they have no remote equivalent. Let those fall through to
-    // handlePromptSubmit so they execute locally. Prompt commands and
-    // plain text go to the remote.
-    if (activeRemote.isRemoteMode && !(isSlashCommand && commands.find(c => {
-      const name = input.trim().slice(1).split(/\s/)[0];
-      return isCommandEnabled(c) && (c.name === name || c.aliases?.includes(name!) || getCommandName(c) === name);
-    })?.type === 'local-jsx')) {
-      // Build content blocks when there are pasted attachments (images)
-      const pastedValues = Object.values(pastedContents);
-      const imageContents = pastedValues.filter(c => c.type === 'image');
-      const imagePasteIds = imageContents.length > 0 ? imageContents.map(c => c.id) : undefined;
-      let messageContent: string | ContentBlockParam[] = input.trim();
-      let remoteContent: RemoteMessageContent = input.trim();
-      if (pastedValues.length > 0) {
-        const contentBlocks: ContentBlockParam[] = [];
-        const remoteBlocks: Array<{
-          type: string;
-          [key: string]: unknown;
-        }> = [];
-        const trimmedInput = input.trim();
-        if (trimmedInput) {
-          contentBlocks.push({
-            type: 'text',
-            text: trimmedInput
-          });
-          remoteBlocks.push({
-            type: 'text',
-            text: trimmedInput
-          });
-        }
-        for (const pasted of pastedValues) {
-          if (pasted.type === 'image') {
-            const source = {
-              type: 'base64' as const,
-              media_type: (pasted.mediaType ?? 'image/png') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: pasted.content
-            };
-            contentBlocks.push({
-              type: 'image',
-              source
-            });
-            remoteBlocks.push({
-              type: 'image',
-              source
-            });
-          } else {
-            contentBlocks.push({
-              type: 'text',
-              text: pasted.content
-            });
-            remoteBlocks.push({
-              type: 'text',
-              text: pasted.content
-            });
-          }
-        }
-        messageContent = contentBlocks;
-        remoteContent = remoteBlocks;
-      }
-
-      // Create and add user message to UI
-      // Note: empty input already handled by early return above
-      const userMessage = createUserMessage({
-        content: messageContent,
-        imagePasteIds
-      });
-      setMessages(prev => [...prev, userMessage]);
-
-      // Send to remote session
-      await activeRemote.sendMessage(remoteContent, {
-        uuid: userMessage.uuid
-      });
-      return;
     }
 
     // Ensure SessionStart hook context is available before the first API call.
@@ -519,7 +414,7 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     // messages array in downstream closures (PromptInput, handleAutoRunIssue).
     // Heap analysis showed ~9 REPL scopes and ~15 messages array versions
     // accumulating after #20174/#20175, all traced to this dep.
-    mainLoopModel, pastedContents, ideSelection, setUserInputOnProcessing, setAbortController, addNotification, onQuery, stashedPrompt, setStashedPrompt, setAppState, onBeforeQuery, canUseTool, remoteSession, setMessages, awaitPendingHooks, repinScroll]);
+    mainLoopModel, pastedContents, ideSelection, setUserInputOnProcessing, setAbortController, addNotification, onQuery, stashedPrompt, setStashedPrompt, setAppState, onBeforeQuery, canUseTool, setMessages, awaitPendingHooks, repinScroll]);
 
   return onSubmit;
 }
