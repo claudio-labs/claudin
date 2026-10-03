@@ -222,7 +222,7 @@ already rewritten. `scripts/verify/provenance/phases.ts` holds the mapping, and
 | 12 | The final cut |
 
 Every phase gets its own plan when it starts, drawn module by module from the
-inventory: [phase 2](phase-2.md).
+inventory: [phase 2](phase-2.md) (done 2026-10-03), [phase 3](phase-3.md).
 
 ### What the pilot measured (phase 1, finished 2026-09-28)
 

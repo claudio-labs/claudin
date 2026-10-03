@@ -1,0 +1,107 @@
+{
+  "mcp/config": {
+    "files": ["src/mcp/config.ts", "src/mcp/envExpansion.ts"]
+  },
+  "mcp/core": {
+    "files": ["src/mcp/types.ts", "src/mcp/utils.ts", "src/mcp/mcpStringUtils.ts", "src/mcp/normalization.ts", "src/mcp/mcpInstructionsDelta.ts"]
+  },
+  "mcp/auth": {
+    "files": ["src/mcp/auth/authFetch.ts", "src/mcp/auth/callbackParams.ts", "src/mcp/auth/clientSecretStore.ts", "src/mcp/auth/oauthErrors.ts", "src/mcp/auth/serverKey.ts", "src/mcp/auth/tokenRevocation.ts", "src/mcp/headersHelper.ts"],
+    "tests": ["src/mcp/auth.test.ts"]
+  },
+  "mcp/connection": {
+    "files": ["src/mcp/client/connection.ts", "src/mcp/client/transport.ts", "src/mcp/client/fetch.ts", "src/mcp/client/authCache.ts", "src/mcp/mcpWebSocketTransport.ts"],
+    "tests": ["src/mcp/client.test.ts"]
+  },
+  "mcp/capabilities": {
+    "files": ["src/mcp/client/fetchCapabilities.ts", "src/mcp/client/sdkClients.ts", "src/mcp/SdkControlTransport.ts", "src/mcp/vscodeSdkMcp.ts", "src/mcp/client/ide.ts", "src/mcp/claudeai.ts"]
+  },
+  "mcp/callTool": {
+    "files": ["src/mcp/client/callTool.ts", "src/mcp/client/toolResult.ts", "src/mcp/client/errors.ts", "src/mcp/mcpValidation.ts", "src/mcp/mcpOutputStorage.ts"]
+  },
+  "mcp/connectionManager": {
+    "files": ["src/mcp/useManageMCPConnections.ts", "src/mcp/MCPConnectionManager.tsx", "src/mcp/hooks/useMergedClients.ts"]
+  },
+  "mcp/elicitation": {
+    "files": ["src/mcp/elicitationHandler.ts", "src/mcp/elicitationValidation.ts", "src/mcp/dateTimeParser.ts"]
+  },
+  "mcp/doctor": {
+    "files": ["src/mcp/doctor.ts"],
+    "tests": ["src/mcp/doctor.test.ts"]
+  },
+  "mcp/elicitationDialog": {
+    "files": ["src/mcp/ui/ElicitationDialog.tsx"]
+  },
+  "mcp/settingsUi": {
+    "files": ["src/mcp/ui/MCPSettings.tsx", "src/mcp/ui/MCPListPanel.tsx", "src/mcp/ui/McpParsingWarnings.tsx", "src/mcp/ui/MCPToolListView.tsx", "src/mcp/ui/MCPToolDetailView.tsx"]
+  },
+  "mcp/serverMenus": {
+    "files": ["src/mcp/ui/MCPRemoteServerMenu.tsx", "src/mcp/ui/MCPStdioServerMenu.tsx", "src/mcp/ui/MCPAgentServerMenu.tsx", "src/mcp/ui/CapabilitiesSection.tsx", "src/mcp/ui/reconnectHelpers.tsx", "src/mcp/ui/MCPReconnect.tsx"]
+  },
+  "mcp/approvalDialogs": {
+    "files": ["src/mcp/mcpServerApproval.tsx", "src/mcp/ui/MCPServerApprovalDialog.tsx", "src/mcp/ui/MCPServerMultiselectDialog.tsx", "src/mcp/ui/MCPServerDialogCopy.tsx", "src/mcp/ui/MCPServerDesktopImportDialog.tsx"]
+  },
+  "permissions/ruleModel": {
+    "files": ["src/permissions/PermissionRule.ts", "src/permissions/PermissionResult.ts", "src/permissions/PermissionMode.ts", "src/permissions/permissionRuleParser.ts", "src/permissions/permissionsLoader.ts", "src/permissions/PermissionUpdateSchema.ts", "src/permissions/PermissionUpdate.ts", "src/permissions/PermissionPromptToolResultSchema.ts"]
+  },
+  "permissions/decision": {
+    "files": ["src/permissions/permissions.ts", "src/permissions/permissions/ruleLookup.ts", "src/permissions/permissions/ruleMutation.ts", "src/permissions/permissions/requestMessage.ts", "src/permissions/permissions/denial.ts", "src/permissions/denialTracking.ts"]
+  },
+  "permissions/shellRules": {
+    "files": ["src/permissions/shellRuleMatching.ts", "src/permissions/shadowedRuleDetection.ts", "src/permissions/dangerousPatterns.ts", "src/permissions/permissionSetup/dangerousRuleDetection.ts", "src/permissions/permissionSetup/dangerousRuleStash.ts"]
+  },
+  "permissions/filePaths": {
+    "files": ["src/permissions/pathValidation.ts", "src/permissions/filePermissions/internalPaths.ts", "src/permissions/filePermissions/dangerousPaths.ts", "src/permissions/filePermissions/workingDirs.ts", "src/permissions/filePermissions/pathCase.ts"],
+    "tests": ["src/permissions/filePermissions.test.ts"]
+  },
+  "permissions/fileRules": {
+    "files": ["src/permissions/filePermissions/readWriteChecks.ts", "src/permissions/filePermissions/rulePatterns.ts"]
+  },
+  "permissions/setup": {
+    "files": ["src/permissions/permissionSetup/startupContext.ts", "src/permissions/permissionSetup/autoModeGate.ts", "src/permissions/permissionSetup/planAutoMode.ts", "src/permissions/permissionSetup/cliToolParsing.ts", "src/permissions/permissionSetup/modeTransition.ts", "src/permissions/permissionSetup/autoModeAvailability.ts", "src/permissions/permissionSetup/bypassPermissions.ts", "src/permissions/getNextPermissionMode.ts", "src/permissions/bypassPermissionsKillswitch.ts", "src/permissions/autoModeState.ts"],
+    "tests": ["src/permissions/autoModeGate.test.ts"]
+  },
+  "permissions/autoModeClassifier": {
+    "files": ["src/permissions/yoloClassifier/classify.ts", "src/permissions/yoloClassifier/transcript.ts", "src/permissions/yoloClassifier/prompts.ts", "src/permissions/yoloClassifier/xmlResponse.ts", "src/permissions/yoloClassifier/autoModeDumps.ts", "src/permissions/yoloClassifier/classifierConfig.ts", "src/permissions/classifierApprovals.ts", "src/permissions/classifierApprovalsHook.ts", "src/permissions/classifierDecision.ts", "src/permissions/classifierShared.ts", "src/permissions/bashClassifier.ts", "src/permissions/autoModeRules.ts", "src/permissions/autoModeDenials.ts"],
+    "tests": ["src/permissions/yoloClassifier.test.ts", "src/permissions/bashClassifier.test.ts"]
+  },
+  "permissions/toolPermission": {
+    "files": ["src/permissions/useCanUseTool.tsx", "src/permissions/toolPermission/PermissionContext.ts", "src/permissions/toolPermission/handlers/interactiveHandler.ts", "src/permissions/toolPermission/handlers/swarmWorkerHandler.ts", "src/permissions/toolPermission/handlers/coordinatorHandler.ts", "src/permissions/toolPermission/permissionLogging.ts"]
+  },
+  "permissions/promptFrame": {
+    "files": ["src/permissions/ui/PermissionRequest.tsx", "src/permissions/ui/PermissionDialog.tsx", "src/permissions/ui/PermissionRequestTitle.tsx", "src/permissions/ui/PermissionPrompt.tsx", "src/permissions/ui/PermissionRuleExplanation.tsx", "src/permissions/ui/hooks.ts", "src/permissions/ui/WorkerBadge.tsx", "src/permissions/ui/WorkerPendingPermission.tsx"]
+  },
+  "permissions/decisionExplanation": {
+    "files": ["src/permissions/ui/PermissionDecisionDebugInfo.tsx", "src/permissions/ui/PermissionExplanation.tsx", "src/permissions/permissionExplainer.ts"]
+  },
+  "permissions/shellDialogs": {
+    "files": ["src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx", "src/permissions/ui/BashPermissionRequest/bashToolUseOptions.tsx", "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx", "src/permissions/ui/PowerShellPermissionRequest/powershellToolUseOptions.tsx", "src/permissions/ui/shellPermissionHelpers.tsx", "src/permissions/ui/useShellPermissionFeedback.ts", "src/permissions/ui/SedEditPermissionRequest/SedEditPermissionRequest.tsx"]
+  },
+  "permissions/fileDialogs": {
+    "files": ["src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx", "src/permissions/ui/FilePermissionDialog/permissionOptions.tsx", "src/permissions/ui/FilePermissionDialog/useFilePermissionDialog.ts", "src/permissions/ui/FilePermissionDialog/usePermissionHandler.ts", "src/permissions/ui/FilePermissionDialog/ideDiffConfig.ts", "src/permissions/ui/FileEditPermissionRequest/FileEditPermissionRequest.tsx", "src/permissions/ui/FileWritePermissionRequest/FileWritePermissionRequest.tsx", "src/permissions/ui/FileWritePermissionRequest/FileWriteToolDiff.tsx", "src/permissions/ui/FilesystemPermissionRequest/FilesystemPermissionRequest.tsx", "src/permissions/ui/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx", "src/permissions/ui/NotebookEditPermissionRequest/NotebookEditToolDiff.tsx"]
+  },
+  "permissions/toolDialogs": {
+    "files": ["src/permissions/ui/FallbackPermissionRequest.tsx", "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx", "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx", "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx"]
+  },
+  "permissions/modeDialogs": {
+    "files": ["src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx", "src/permissions/ui/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx", "src/permissions/ui/AutoModeOptInDialog.tsx", "src/permissions/ui/BypassPermissionsModeDialog.tsx"]
+  },
+  "permissions/askUserQuestion": {
+    "files": ["src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx", "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx", "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx", "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts"]
+  },
+  "permissions/askUserQuestionViews": {
+    "files": ["src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx", "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx", "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx"]
+  },
+  "permissions/sandboxUi": {
+    "files": ["src/permissions/ui/sandbox/SandboxSettings.tsx", "src/permissions/ui/sandbox/SandboxOverridesTab.tsx", "src/permissions/ui/sandbox/SandboxConfigTab.tsx", "src/permissions/ui/sandbox/SandboxDependenciesTab.tsx", "src/permissions/ui/sandbox/SandboxDoctorSection.tsx", "src/permissions/ui/SandboxPermissionRequest.tsx", "src/permissions/ui/SandboxViolationExpandedView.tsx"]
+  },
+  "permissions/ruleList": {
+    "files": ["src/permissions/ui/rules/PermissionRuleList.tsx", "src/permissions/ui/rules/PermissionRuleDescription.tsx", "src/permissions/ui/rules/PermissionRuleInput.tsx"]
+  },
+  "permissions/ruleEditors": {
+    "files": ["src/permissions/ui/rules/AddPermissionRules.tsx", "src/permissions/ui/rules/AddWorkspaceDirectory.tsx", "src/permissions/ui/rules/RemoveWorkspaceDirectory.tsx", "src/permissions/ui/rules/WorkspaceTab.tsx", "src/permissions/ui/rules/RecentDenialsTab.tsx"]
+  },
+  "permissions/sessionDialogs": {
+    "files": ["src/permissions/ui/trust/TrustDialog.tsx", "src/permissions/ui/trust/utils.ts", "src/permissions/ui/WorktreeExitDialog.tsx", "src/permissions/ui/CostThresholdDialog.tsx"]
+  }
+}
