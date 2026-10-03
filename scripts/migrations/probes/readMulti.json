@@ -85,8 +85,8 @@
     {
       "name": "B4: a rule-backed ask loses its rule",
       "source": "src/permissions/filePermissions/readWriteChecks.ts",
-      "find": "      asked.find(a => a.decision.decisionReason?.type === 'rule') ?? firstAsked\n",
-      "replace": "      firstAsked\n"
+      "find": "    const binding = asked.find(a => a.decision.decisionReason?.type === 'rule') ?? firstAsked\n",
+      "replace": "    const binding = firstAsked\n"
     },
     {
       "name": "B1: file_paths with offset is accepted",
@@ -277,14 +277,14 @@
     {
       "name": "B4: a denied path lets the batch through",
       "source": "src/permissions/filePermissions/readWriteChecks.ts",
-      "find": "    if (decision.behavior === 'deny') {\n      denied.push({ path: p, decision })\n",
-      "replace": "    if (false as boolean) {\n      denied.push({ path: p, decision })\n"
+      "find": "    if (decision.behavior === 'deny') denied.push({ path, decision })\n",
+      "replace": "    if (false as boolean) denied.push({ path, decision })\n"
     },
     {
       "name": "B4: a path that asks lets the batch through unasked",
       "source": "src/permissions/filePermissions/readWriteChecks.ts",
-      "find": "    } else if (decision.behavior === 'ask') {\n      asked.push({ path: p, decision })\n",
-      "replace": "    } else if (false as boolean) {\n      asked.push({ path: p, decision })\n"
+      "find": "    else if (decision.behavior === 'ask') asked.push({ path, decision })\n",
+      "replace": "    else if (false as boolean) asked.push({ path, decision })\n"
     },
     {
       "name": "B4: the deny loses its rule",
@@ -295,14 +295,14 @@
     {
       "name": "B4: the deny names only the first denied path",
       "source": "src/permissions/filePermissions/readWriteChecks.ts",
-      "find": "      message: `Permission to read the following paths has been denied:\\n${denied\n        .map(",
-      "replace": "      message: `Permission to read the following paths has been denied:\\n${denied.slice(0, 1)\n        .map("
+      "find": "pathList(denied.map(d => d.path))",
+      "replace": "pathList(denied.slice(0, 1).map(d => d.path))"
     },
     {
       "name": "B4: the ask names only the first path that asked",
       "source": "src/permissions/filePermissions/readWriteChecks.ts",
-      "find": "      message: `Claude requested permissions to read ${asked.length} file${asked.length === 1 ? '' : 's'}:\\n${asked\n        .map(",
-      "replace": "      message: `Claude requested permissions to read ${asked.length} file${asked.length === 1 ? '' : 's'}:\\n${asked.slice(0, 1)\n        .map("
+      "find": "pathList(asked.map(a => a.path))",
+      "replace": "pathList(asked.slice(0, 1).map(a => a.path))"
     },
     {
       "name": "B1: the flag-off schema is the batch-capable one",

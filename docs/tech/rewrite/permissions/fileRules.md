@@ -245,3 +245,34 @@ wording changes.
   - `SuggestionOperation = 'read' | 'write' | 'create'`.
 
   No `any`, and no casts at the boundary.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **The rewrite.** All 11 inherited bodies were rewritten. `rulePatterns.ts`
+  and `readWriteChecks.ts` are now thin facades over `fileRules/` (anchors, a
+  pure matcher that cannot throw, rule selection, search patterns) and
+  `fileChecks/` (an ordered read check and write check, suggestions,
+  messages). The batch checks now sit on the path-level checks, and their
+  messages are unchanged. The three characterization suites pass unchanged, the
+  home-anchored child included.
+- **Fixes, each with a test:**
+  - **F1:** whole-anchor deny and ask patterns cover everything under their
+    anchor. Allow stays inert.
+  - **F2:** deny and ask keep every source's anchor.
+  - **F3:** a path at or above an anchor no longer throws.
+  - **F4:** the read check applies denies first.
+  - **F5:** batch writes under bypass honour Edit denies.
+  - **F9:** write messages name the resolved path.
+
+  F6, F7 and F8 are kept as they were.
+- **Probes:**
+  - `rewrite-permissions-fileRules.json` holds 103 probes.
+  - `readMulti.json`'s five B4 probes on the batch read check were re-pointed
+    at the new code with the same mutations, and re-proved.
+- **Open, routed to `filePaths`:** the harness-path allowances check only the
+  requested path. A link inside the scratchpad that points at a protected file
+  would be allowed for writing. This is the same family as
+  `bugs/permission-carveouts-compare-paths-as-text.md`.
+- **Residue, reviewed:** 24 lines of Claude Code remain, all signatures of the
+  exported checks and of the pattern helpers.
