@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "e4a59220cbeeac549c8991142083cdb806558a77",
-  "totals": { "claudeCode": 296160, "openclaude": 42638 },
+  "capturedFrom": "530e6c6c84f85bb2715b2fdc7ac6eee5b770e5c3",
+  "totals": { "claudeCode": 295123, "openclaude": 42612 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -2497,14 +2497,13 @@
     "src/vcs/git/gitFilesystem.ts": [6, 0],
     "src/vcs/git/repository/globalIgnore.ts": [7, 0],
     "src/vcs/git/repository/sessionRepository.ts": [4, 0],
-    "src/vcs/git/worktree/createWorktree.ts": [321, 8],
-    "src/vcs/git/worktree/includeFiles.ts": [153, 0],
-    "src/vcs/git/worktree/mutationLock.ts": [0, 24],
-    "src/vcs/git/worktree/postCreationSetup.ts": [75, 0],
-    "src/vcs/git/worktree/session.ts": [14, 0],
-    "src/vcs/git/worktree/sessionLifecycle.ts": [210, 0],
-    "src/vcs/git/worktree/slugNaming.ts": [39, 0],
-    "src/vcs/git/worktree/tmuxSession.ts": [260, 0],
+    "src/vcs/git/worktree/createWorktree.ts": [13, 0],
+    "src/vcs/git/worktree/mutationLock.ts": [0, 6],
+    "src/vcs/git/worktree/session.ts": [6, 0],
+    "src/vcs/git/worktree/sessionLifecycle.ts": [8, 0],
+    "src/vcs/git/worktree/slugNaming.ts": [2, 0],
+    "src/vcs/git/worktree/tmuxLaunch.ts": [4, 0],
+    "src/vcs/git/worktree/tmuxSession.ts": [2, 0],
     "src/vcs/hooks/usePrStatus.ts": [73, 0]
   }
 }

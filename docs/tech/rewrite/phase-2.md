@@ -33,7 +33,7 @@ which the sandbox tools read; the lists below are the same.
 |---|---|---|---|---|
 | `vcs/gitFilesystem` | 2 | 785 | — | done |
 | `vcs/git` | 6 | 791 | — | done |
-| `vcs/worktree` | 8 | 1104 | `worktree.test.ts` (76) | pending |
+| `vcs/worktree` | 8 | 1104 | `worktree.test.ts` (76) | done |
 | `vcs/gitDiff` | 6 | 542 | — | done |
 | `vcs/structuredDiff` | 4 | 636 | — | done |
 | `vcs/diffHooks` | 4 | 563 | — | pending |

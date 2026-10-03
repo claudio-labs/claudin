@@ -294,6 +294,20 @@ still matches, and the stale probes of older specs.
 order and split of its functions. The measure cannot see structure. The legal
 review before the final cut covers it.
 
+### What the first unit measured (2026-10-03)
+
+`vcs/worktree` was the first per-method unit: 8 files, 27 stubbed functions,
+1,104 inherited lines. It was characterized on 2026-09-28.
+- **Implementation:** one agent, 31 minutes, 83 tool calls and about 260 k
+  tokens. About 12 of those minutes went to its break-probe run.
+- **Result:** 41 lines of reviewed residue (see the unit's spec).
+- **Rate:** about 0.24 M tokens per thousand inherited lines removed, for the
+  implementation alone. The pilot's 1.7 M also included characterization. The
+  cover units of 2026-10-02 spent 0.17 to 0.37 M tokens each, so a unit that
+  still needs its tests costs roughly twice the implementation figure.
+- **Remaining:** at about 0.5 M per thousand lines, the ~335 k lines come to
+  about 170 M tokens instead of 600 M.
+
 ## The first merge of main (2026-10-02)
 
 The branch's first merge of `main` passed the baseline refresh on a lower total

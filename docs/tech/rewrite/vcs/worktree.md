@@ -865,3 +865,39 @@ and no test pins the old one.
 - **Types.** Explicit throughout, with no `any`. A creation result that says
   whether the worktree was created or resumed. `WorktreeSession` kept as it
   is.
+
+## Outcome
+
+Rewritten per method on 2026-10-03, the first unit to go through the `bodies`
+sandbox (`docs/tech/rewrite/levers.md`, "Rewriting per method").
+
+- **Done.** The 27 inherited bodies were written anew, and seven small modules
+  took the parts that read better on their own: `gitCommand`, `tmuxCommand`,
+  `tmuxLaunch`, `baseChoice`, `includeSelection`, `worktreeList` and
+  `throwawayNames`. The nine characterization suites pass unchanged.
+  - **Fixed, each with a test:** F1, F2, F3, F5, F7, F9, F12 and F14.
+  - **Kept for parity:** F4, F8, F10, F11, F13 and F15.
+  - **F6 deviates:** the fast path reads `process.platform` at call time,
+    because `getPlatform()` is memoized and the suite switches platforms
+    inside one process.
+- **Probes.**
+  - `rewrite-vcs-worktree.json`: 79 probes on the new code.
+  - `worktree.json`: kept its 5 surface and suite probes. Its 20 stale
+    probes were pruned, because every behaviour they guarded is pinned again in
+    `rewrite-vcs-worktree.json`.
+- **Residue, reviewed.** 1,104 inherited lines down to 41, every one dictated
+  by the contract:
+  - `createWorktree.ts` (13): the signatures of `getOrCreateWorktree`,
+    `createWorktreeForSession` and `createAgentWorktree`, and their opening
+    `validateWorktreeSlug` call and path/branch derivation.
+  - `session.ts` (6): the fields of `WorktreeSession`, and the two one-line
+    accessors.
+  - `sessionLifecycle.ts` (8) and `slugNaming.ts` (2): signatures and their
+    first statement.
+  - `tmuxLaunch.ts` (4) and `tmuxSession.ts` (2): the `tmux` argument lists,
+    which the protocol fixes.
+  - `mutationLock.ts` (6, openclaude): the signature of
+    `withGitWorktreeMutationLock`, and the read of the previous holder.
+
+  They go when the contract is redesigned, after every consumer has been
+  rewritten.

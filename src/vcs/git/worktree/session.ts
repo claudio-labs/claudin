@@ -18,9 +18,7 @@ export type WorktreeSession = {
   sessionId: string
   tmuxSessionName?: string
   hookBased?: boolean
-  /** How long worktree creation took (unset when resuming an existing worktree). */
   creationDurationMs?: number
-  /** True if git sparse-checkout was applied via settings.worktree.sparsePaths. */
   usedSparsePaths?: boolean
   /**
    * True when the session entered a PRE-EXISTING worktree via EnterWorktree's
@@ -30,20 +28,13 @@ export type WorktreeSession = {
   attached?: boolean
 }
 
-let currentWorktreeSession: WorktreeSession | null = null
+/** The published session, kept by reference: readers get the very object. */
+const binding: { session: WorktreeSession | null } = { session: null }
 
 export function getCurrentWorktreeSession(): WorktreeSession | null {
-  return currentWorktreeSession
+  return binding.session
 }
 
-/**
- * Restore the worktree session on --resume. The caller must have already
- * verified the directory exists (via process.chdir) and set the bootstrap
- * state (cwd, originalCwd).
- *
- * This is also the setter the sibling modules use when they enter or leave a
- * worktree, since the binding above is private to this file.
- */
 export function restoreWorktreeSession(session: WorktreeSession | null): void {
-  currentWorktreeSession = session
+  binding.session = session
 }

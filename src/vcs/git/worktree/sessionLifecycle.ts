@@ -8,21 +8,14 @@
  */
 
 import { readdir, realpath, stat } from 'fs/promises'
-import { basename, join } from 'path'
-import { saveCurrentProjectConfig } from 'src/platform/config/config.js'
+import { basename, join, resolve } from 'path'
 import { executeWorktreeRemoveHook } from 'src/platform/lifecycleHooks/hooks.js'
 import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
-import { sleep } from 'src/shared/sleep.js'
-import {
-  findCanonicalGitRoot,
-  findGitRoot,
-  getBranch,
-  gitExe,
-} from 'src/vcs/git/git.js'
-import { readWorktreeHeadSha } from 'src/vcs/git/gitFilesystem.js'
+import { findCanonicalGitRoot, findGitRoot, getBranch } from 'src/vcs/git/git.js'
 import { removeAgentWorktree } from 'src/vcs/git/worktree/createWorktree.js'
+import { complaintOf, git } from 'src/vcs/git/worktree/gitCommand.js'
 import {
   getCurrentWorktreeSession,
   restoreWorktreeSession,
@@ -32,6 +25,8 @@ import {
   worktreeBranchName,
   worktreesDir,
 } from 'src/vcs/git/worktree/slugNaming.js'
+import { isThrowawayName } from 'src/vcs/git/worktree/throwawayNames.js'
+import { parseWorktreeList, type ListedWorktree } from 'src/vcs/git/worktree/worktreeList.js'
 
 /**
  * Normalize a path for comparison, resolving symlinks when the path exists.
@@ -45,6 +40,32 @@ async function normalizePath(p: string): Promise<string> {
   }
 }
 
+async function isDirectory(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+function notRegistered(path: string): Error {
+  return new Error(
+    `${path} is not a registered worktree of this repository. ` +
+      'Create one with `git worktree add`, or pass EnterWorktree a `name` to make a fresh one.',
+  )
+}
+
+/** The listed worktree at `resolvedPath` and whether it is the main one, or null. */
+async function findListed(
+  listed: readonly ListedWorktree[],
+  resolvedPath: string,
+): Promise<{ worktree: ListedWorktree; isMain: boolean } | null> {
+  for (const [index, worktree] of listed.entries()) {
+    if ((await normalizePath(worktree.path)) === resolvedPath) return { worktree, isMain: index === 0 }
+  }
+  return null
+}
+
 /**
  * Enter a PRE-EXISTING git worktree (e.g. one created by `git worktree add`)
  * instead of creating a new one. The path must be a registered worktree of the
@@ -56,357 +77,129 @@ export async function attachExistingWorktree(
   path: string,
   sessionId: string,
 ): Promise<WorktreeSession> {
-  const gitRoot = findGitRoot(getCwd())
-  if (!gitRoot) {
-    throw new Error('Cannot enter a worktree: not in a git repository.')
+  const originalCwd = getCwd()
+  if (findGitRoot(originalCwd) === null) {
+    throw new Error('Cannot attach to a worktree: not in a git repository')
   }
+  const listing = await git(originalCwd, 'worktree', 'list', '--porcelain', '-z')
+  if (!listing.ok) throw new Error(`Cannot list the worktrees of this repository: ${complaintOf(listing)}`)
 
-  const targetPath = await normalizePath(path)
-
-  // Enumerate registered worktrees of this repo. Use `-z` (NUL-delimited): the
-  // plain `--porcelain` form does NOT quote paths, so a path containing a
-  // newline would be split mid-value. With `-z` every attribute line is
-  // NUL-terminated, so a `worktree <path>` value can hold any byte except NUL.
-  // The FIRST `worktree` entry is always the main worktree.
-  const { code, stdout, stderr } = await execFileNoThrowWithCwd(
-    gitExe(),
-    ['worktree', 'list', '--porcelain', '-z'],
-    { cwd: gitRoot },
-  )
-  if (code !== 0) {
-    throw new Error(`Failed to list worktrees: ${stderr.trim()}`)
+  const resolvedPath = await normalizePath(resolve(path))
+  const found = await findListed(parseWorktreeList(listing.stdout), resolvedPath)
+  // A registration whose directory is gone cannot be entered either.
+  if (found === null || !(await isDirectory(resolvedPath))) throw notRegistered(path)
+  if (found.isMain) {
+    throw new Error(`${path} is the main worktree of this repository, not a linked one; it cannot be attached.`)
   }
-
-  // Don't trim the path value — a leading/trailing space can be a real path
-  // char, and the NUL split already stripped the terminator.
-  const listedPaths = stdout
-    .split('\0')
-    .filter(field => field.startsWith('worktree '))
-    .map(field => field.slice('worktree '.length))
-  const normalizedListed = await Promise.all(listedPaths.map(normalizePath))
-
-  const matchIdx = normalizedListed.findIndex(p => p === targetPath)
-  if (matchIdx === -1) {
-    throw new Error(
-      `${path} is not a registered worktree of this repository. ` +
-        `Create it first with \`git worktree add\`, or use EnterWorktree with a \`name\` to create a fresh one.`,
-    )
-  }
-  // The first entry in `git worktree list` is the main worktree — entering it
-  // is a no-op that would later let ExitWorktree chdir to a stale originalCwd.
-  if (matchIdx === 0) {
-    throw new Error(
-      `${path} is the main worktree, not a linked worktree — there is nothing to enter.`,
-    )
-  }
-
-  const [originalBranch, worktreeHead, branchResult] = await Promise.all([
-    getBranch(),
-    readWorktreeHeadSha(targetPath),
-    execFileNoThrowWithCwd(
-      gitExe(),
-      ['rev-parse', '--abbrev-ref', 'HEAD'],
-      { cwd: targetPath },
-    ),
-  ])
-  const worktreeBranch =
-    branchResult.code === 0 ? branchResult.stdout.trim() : undefined
 
   const session: WorktreeSession = {
-    originalCwd: getCwd(),
-    worktreePath: targetPath,
-    worktreeName: basename(targetPath),
-    worktreeBranch: worktreeBranch && worktreeBranch !== 'HEAD'
-      ? worktreeBranch
-      : undefined,
-    originalBranch,
-    // NOTE: for created worktrees this is the BASE commit (diff origin for
-    // countWorktreeChanges). For an attached worktree there is no base — it's
-    // the worktree's current HEAD. Harmless: attached sessions always coerce to
-    // keep, so this is only ever read for keep-path analytics, never to gate a
-    // removal.
-    originalHeadCommit: worktreeHead ?? undefined,
+    originalCwd,
+    worktreePath: resolvedPath,
+    worktreeName: basename(resolvedPath),
+    worktreeBranch: found.worktree.branch ?? undefined,
+    originalBranch: await getBranch(),
+    originalHeadCommit: found.worktree.head ?? undefined,
     sessionId,
     hookBased: false,
     attached: true,
   }
   restoreWorktreeSession(session)
-
-  saveCurrentProjectConfig(current => ({
-    ...current,
-    activeWorktreeSession: session,
-  }))
-
   return session
 }
 
+/** Moves the process back where the session came from; false when that directory is gone. */
+function returnToOriginalDirectory(session: WorktreeSession): boolean {
+  try {
+    process.chdir(session.originalCwd)
+    return true
+  } catch (error) {
+    logForDebugging(`worktree: cannot return to ${session.originalCwd}: ${errorMessage(error)}`, { level: 'warn' })
+    return false
+  }
+}
+
 export async function keepWorktree(): Promise<void> {
-  const currentSession = getCurrentWorktreeSession()
-  if (!currentSession) {
+  const session = getCurrentWorktreeSession()
+  if (session === null || !returnToOriginalDirectory(session)) return
+  restoreWorktreeSession(null)
+}
+
+async function removeSessionWorktree(session: WorktreeSession): Promise<void> {
+  if (session.hookBased) {
+    try {
+      await executeWorktreeRemoveHook(session.worktreePath)
+    } catch (error) {
+      logForDebugging(`worktree: WorktreeRemove hook failed: ${errorMessage(error)}`, { level: 'warn' })
+    }
     return
   }
-
-  try {
-    const { worktreePath, originalCwd, worktreeBranch } = currentSession
-
-    // Change back to original directory first
-    process.chdir(originalCwd)
-
-    // Clear the session but keep the worktree intact
-    restoreWorktreeSession(null)
-
-    // Update config
-    saveCurrentProjectConfig(current => ({
-      ...current,
-      activeWorktreeSession: undefined,
-    }))
-
-    logForDebugging(
-      `Linked worktree preserved at: ${worktreePath}${worktreeBranch ? ` on branch: ${worktreeBranch}` : ''}`,
-    )
-    logForDebugging(
-      `You can continue working there by running: cd ${worktreePath}`,
-    )
-  } catch (error) {
-    logForDebugging(`Error keeping worktree: ${error}`, {
-      level: 'error',
-    })
-  }
+  const removed = await git(session.originalCwd, 'worktree', 'remove', '--force', session.worktreePath)
+  if (!removed.ok) logForDebugging(`worktree: could not remove ${session.worktreePath}: ${complaintOf(removed)}`)
 }
 
 export async function cleanupWorktree(): Promise<void> {
-  const currentSession = getCurrentWorktreeSession()
-  if (!currentSession) {
-    return
-  }
-
-  try {
-    const { worktreePath, originalCwd, worktreeBranch, hookBased } =
-      currentSession
-
-    // Change back to original directory first
-    process.chdir(originalCwd)
-
-    if (hookBased) {
-      // Hook-based worktree: delegate cleanup to WorktreeRemove hook
-      const hookRan = await executeWorktreeRemoveHook(worktreePath)
-      if (hookRan) {
-        logForDebugging(`Removed hook-based worktree at: ${worktreePath}`)
-      } else {
-        logForDebugging(
-          `No WorktreeRemove hook configured, hook-based worktree left at: ${worktreePath}`,
-          { level: 'warn' },
-        )
-      }
-    } else {
-      // Git-based worktree: use git worktree remove.
-      // Explicit cwd: process.chdir above does NOT update getCwd() (the state
-      // CWD that execFileNoThrow defaults to). If the model cd'd to a non-repo
-      // dir, the bare execFileNoThrow variant would fail silently here.
-      const { code: removeCode, stderr: removeError } =
-        await execFileNoThrowWithCwd(
-          gitExe(),
-          ['worktree', 'remove', '--force', worktreePath],
-          { cwd: originalCwd },
-        )
-
-      if (removeCode !== 0) {
-        logForDebugging(`Failed to remove linked worktree: ${removeError}`, {
-          level: 'error',
-        })
-      } else {
-        logForDebugging(`Removed linked worktree at: ${worktreePath}`)
-      }
-    }
-
-    // Clear the session
-    restoreWorktreeSession(null)
-
-    // Update config
-    saveCurrentProjectConfig(current => ({
-      ...current,
-      activeWorktreeSession: undefined,
-    }))
-
-    // Delete the temporary worktree branch (git-based only)
-    if (!hookBased && worktreeBranch) {
-      // Wait a bit to ensure git has released all locks
-      await sleep(100)
-
-      const { code: deleteBranchCode, stderr: deleteBranchError } =
-        await execFileNoThrowWithCwd(
-          gitExe(),
-          ['branch', '-D', worktreeBranch],
-          { cwd: originalCwd },
-        )
-
-      if (deleteBranchCode !== 0) {
-        logForDebugging(
-          `Could not delete worktree branch: ${deleteBranchError}`,
-          { level: 'error' },
-        )
-      } else {
-        logForDebugging(`Deleted worktree branch: ${worktreeBranch}`)
-      }
-    }
-
-    logForDebugging('Linked worktree cleaned up completely')
-  } catch (error) {
-    logForDebugging(`Error cleaning up worktree: ${error}`, {
-      level: 'error',
-    })
+  const session = getCurrentWorktreeSession()
+  if (session === null || !returnToOriginalDirectory(session)) return
+  await removeSessionWorktree(session)
+  restoreWorktreeSession(null)
+  // Removing means discarding, so the branch goes even if the removal failed.
+  if (!session.hookBased && session.worktreeBranch) {
+    const deleted = await git(session.originalCwd, 'branch', '-D', session.worktreeBranch)
+    if (!deleted.ok) logForDebugging(`worktree: kept branch ${session.worktreeBranch}: ${complaintOf(deleted)}`)
   }
 }
 
-/**
- * Slug patterns for throwaway worktrees created by AgentTool (`agent-a<7hex>`,
- * from earlyAgentId.slice(0,8)), WorkflowTool (`wf_<runId>-<idx>` where runId
- * is randomUUID().slice(0,12) = 8 hex + `-` + 3 hex), and bridgeMain
- * (`bridge-<safeFilenameId>`). These leak when the parent process is killed
- * (Ctrl+C, ESC, crash) before their in-process cleanup runs. Exact-shape
- * patterns avoid sweeping user-named EnterWorktree slugs like `wf-myfeature`.
- */
-const EPHEMERAL_WORKTREE_PATTERNS = [
-  /^agent-a[0-9a-f]{7}$/,
-  /^wf_[0-9a-f]{8}-[0-9a-f]{3}-\d+$/,
-  // Legacy wf-<idx> slugs from before workflowRunId disambiguation — kept so
-  // the 30-day sweep still cleans up worktrees leaked by older builds.
-  /^wf-\d+$/,
-  // Real bridge slugs are `bridge-${safeFilenameId(sessionId)}`.
-  /^bridge-[A-Za-z0-9_]+(-[A-Za-z0-9_]+)*$/,
-  // Template job worktrees: job-<templateName>-<8hex>. Prefix distinguishes
-  // from user-named EnterWorktree slugs that happen to end in 8 hex.
-  /^job-[a-zA-Z0-9._-]{1,55}-[0-9a-f]{8}$/,
-]
+/** Whether a throwaway worktree may go: old, clean in tracked files, nothing unpushed. */
+async function isAbandoned(path: string, cutoffDate: Date): Promise<boolean> {
+  try {
+    if ((await stat(path)).mtime.getTime() >= cutoffDate.getTime()) return false
+  } catch {
+    return false
+  }
+  // A plain directory would answer for whatever repository encloses it.
+  const top = await git(path, 'rev-parse', '--show-toplevel')
+  if (!top.ok || (await normalizePath(top.stdout.trim())) !== (await normalizePath(path))) return false
+  const status = await git(path, 'status', '--porcelain', '--untracked-files=no')
+  if (!status.ok || status.stdout.trim() !== '') return false
+  const unpushed = await git(path, 'rev-list', '--max-count=1', 'HEAD', '--not', '--remotes')
+  return unpushed.ok && unpushed.stdout.trim() === ''
+}
 
-/**
- * Remove stale agent/workflow worktrees older than cutoffDate.
- *
- * Safety:
- * - Only touches slugs matching ephemeral patterns (never user-named worktrees)
- * - Skips the current session's worktree
- * - Fail-closed: skips if git status fails or shows tracked changes
- *   (-uno: untracked files in a 30-day-old crashed agent worktree are build
- *   artifacts; skipping the untracked scan is 5-10× faster on large repos)
- * - Fail-closed: skips if any commits aren't reachable from a remote
- *
- * `git worktree remove --force` handles both the directory and git's internal
- * worktree tracking. If git doesn't recognize the path as a worktree (orphaned
- * dir), it's left in place — a later readdir finding it stale again is harmless.
- */
 export async function cleanupStaleAgentWorktrees(
   cutoffDate: Date,
 ): Promise<number> {
-  const gitRoot = findCanonicalGitRoot(getCwd())
-  if (!gitRoot) {
-    return 0
-  }
-
-  const dir = worktreesDir(gitRoot)
-  let entries: string[]
+  const repoRoot = findCanonicalGitRoot(getCwd())
+  if (repoRoot === null) return 0
+  const dir = worktreesDir(repoRoot)
+  let names: string[]
   try {
-    entries = await readdir(dir)
+    names = await readdir(dir)
   } catch {
     return 0
   }
 
-  const cutoffMs = cutoffDate.getTime()
-  const currentPath = getCurrentWorktreeSession()?.worktreePath
+  const current = getCurrentWorktreeSession()?.worktreePath
   let removed = 0
-
-  for (const slug of entries) {
-    if (!EPHEMERAL_WORKTREE_PATTERNS.some(p => p.test(slug))) {
-      continue
-    }
-
-    const worktreePath = join(dir, slug)
-    if (currentPath === worktreePath) {
-      continue
-    }
-
-    let mtimeMs: number
-    try {
-      mtimeMs = (await stat(worktreePath)).mtimeMs
-    } catch {
-      continue
-    }
-    if (mtimeMs >= cutoffMs) {
-      continue
-    }
-
-    // Both checks must succeed with empty output. Non-zero exit (corrupted
-    // worktree, git not recognizing it, etc.) means skip — we don't know
-    // what's in there.
-    const [status, unpushed] = await Promise.all([
-      execFileNoThrowWithCwd(
-        gitExe(),
-        ['--no-optional-locks', 'status', '--porcelain', '-uno'],
-        { cwd: worktreePath },
-      ),
-      execFileNoThrowWithCwd(
-        gitExe(),
-        ['rev-list', '--max-count=1', 'HEAD', '--not', '--remotes'],
-        { cwd: worktreePath },
-      ),
-    ])
-    if (status.code !== 0 || status.stdout.trim().length > 0) {
-      continue
-    }
-    if (unpushed.code !== 0 || unpushed.stdout.trim().length > 0) {
-      continue
-    }
-
-    if (
-      await removeAgentWorktree(worktreePath, worktreeBranchName(slug), gitRoot)
-    ) {
-      removed++
-    }
+  for (const name of names.filter(isThrowawayName)) {
+    const path = join(dir, name)
+    if (path === current || !(await isAbandoned(path, cutoffDate))) continue
+    if (await removeAgentWorktree(path, worktreeBranchName(name), repoRoot)) removed += 1
   }
-
   if (removed > 0) {
-    await execFileNoThrowWithCwd(gitExe(), ['worktree', 'prune'], {
-      cwd: gitRoot,
-    })
-    logForDebugging(
-      `cleanupStaleAgentWorktrees: removed ${removed} stale worktree(s)`,
-    )
+    const pruned = await git(repoRoot, 'worktree', 'prune')
+    if (!pruned.ok) logForDebugging(`worktree: prune failed: ${complaintOf(pruned)}`)
   }
   return removed
 }
 
-/**
- * Check whether a worktree has uncommitted changes or new commits since creation.
- * Returns true if there are uncommitted changes (dirty working tree), if commits
- * were made on the worktree branch since `headCommit`, or if git commands fail
- * — callers use this to decide whether to remove a worktree, so fail-closed.
- */
+/** Fail-closed: anything git cannot answer counts as a change. */
 export async function hasWorktreeChanges(
   worktreePath: string,
   headCommit: string,
 ): Promise<boolean> {
-  const { code: statusCode, stdout: statusOutput } =
-    await execFileNoThrowWithCwd(gitExe(), ['status', '--porcelain'], {
-      cwd: worktreePath,
-    })
-  if (statusCode !== 0) {
-    return true
-  }
-  if (statusOutput.trim().length > 0) {
-    return true
-  }
-
-  const { code: revListCode, stdout: revListOutput } =
-    await execFileNoThrowWithCwd(
-      gitExe(),
-      ['rev-list', '--count', `${headCommit}..HEAD`],
-      { cwd: worktreePath },
-    )
-  if (revListCode !== 0) {
-    return true
-  }
-  if (parseInt(revListOutput.trim(), 10) > 0) {
-    return true
-  }
-
-  return false
+  const status = await git(worktreePath, 'status', '--porcelain')
+  if (!status.ok || status.stdout.trim() !== '') return true
+  const ahead = await git(worktreePath, 'rev-list', '--count', `${headCommit}..HEAD`)
+  if (!ahead.ok) return true
+  return Number.parseInt(ahead.stdout.trim(), 10) !== 0
 }

@@ -4,17 +4,16 @@
  */
 
 import chalk from 'chalk'
-import { spawnSync } from 'child_process'
 import { basename } from 'path'
 import { isInITerm2 } from 'src/agent/coordinator/swarm/backends/detection.js'
+import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import {
   executeWorktreeCreateHook,
   hasWorktreeCreateHook,
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
-import { getPlatform } from 'src/shared/proc/platform.js'
+import { getPlatform, type Platform } from 'src/shared/proc/platform.js'
 import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import {
   getOrCreateWorktree,
@@ -24,307 +23,162 @@ import { performPostCreationSetup } from 'src/vcs/git/worktree/postCreationSetup
 import {
   validateWorktreeSlug,
   worktreeBranchName,
-  worktreePathFor,
 } from 'src/vcs/git/worktree/slugNaming.js'
+import { exactSession, tmux, tmuxInForeground } from 'src/vcs/git/worktree/tmuxCommand.js'
+import {
+  inventWorktreeName,
+  ITERM_TABS_TIP,
+  readFastPathArgs,
+  relaunchCommand,
+  tmuxInstallHint,
+  worktreeTarget,
+  type Launch,
+} from 'src/vcs/git/worktree/tmuxLaunch.js'
+
+const SESSION_NAME_RESERVED = /[/.]/g
+
+type FastPathAnswer = { handled: boolean; error?: string }
 
 export function generateTmuxSessionName(
   repoPath: string,
   branch: string,
 ): string {
-  const repoName = basename(repoPath)
-  const combined = `${repoName}_${branch}`
-  return combined.replace(/[/.]/g, '_')
+  return `${basename(repoPath)}_${branch}`.replace(SESSION_NAME_RESERVED, '_')
 }
 
 export async function isTmuxAvailable(): Promise<boolean> {
-  const { code } = await execFileNoThrow('tmux', ['-V'])
-  return code === 0
+  return (await tmux('-V')).ok
 }
 
 export function getTmuxInstallInstructions(): string {
-  const platform = getPlatform()
-  switch (platform) {
-    case 'macos':
-      return 'Install tmux with: brew install tmux'
-    case 'linux':
-    case 'wsl':
-      return 'Install tmux with: sudo apt install tmux (Debian/Ubuntu) or sudo dnf install tmux (Fedora/RHEL)'
-    case 'windows':
-      return 'tmux is not natively available on Windows. Consider using WSL or Cygwin.'
-    default:
-      return 'Install tmux using your system package manager.'
-  }
+  return tmuxInstallHint(getPlatform())
 }
 
 export async function createTmuxSessionForWorktree(
   sessionName: string,
   worktreePath: string,
 ): Promise<{ created: boolean; error?: string }> {
-  const { code, stderr } = await execFileNoThrow('tmux', [
-    'new-session',
-    '-d',
-    '-s',
-    sessionName,
-    '-c',
-    worktreePath,
-  ])
-
-  if (code !== 0) {
-    return { created: false, error: stderr }
-  }
-
-  return { created: true }
+  const started = await tmux('new-session', '-d', '-s', sessionName, '-c', worktreePath)
+  return started.ok ? { created: true } : { created: false, error: started.stderr.trim() }
 }
 
 export async function killTmuxSession(sessionName: string): Promise<boolean> {
-  const { code } = await execFileNoThrow('tmux', [
-    'kill-session',
-    '-t',
-    sessionName,
-  ])
-  return code === 0
+  return (await tmux('kill-session', '-t', exactSession(sessionName))).ok
 }
 
 /**
- * Fast-path handler for --worktree --tmux.
- * Creates the worktree and execs into tmux running Claude inside.
- * This is called early in cli.tsx before loading the full CLI.
+ * The platform as `process.platform` says it now. getPlatform() is memoized
+ * for the life of the process; it is asked only to tell WSL from Linux.
  */
+function platformNow(): Platform {
+  switch (process.platform) {
+    case 'darwin':
+      return 'macos'
+    case 'win32':
+      return 'windows'
+    case 'linux':
+      return getPlatform() === 'wsl' ? 'wsl' : 'linux'
+    default:
+      return 'unknown'
+  }
+}
+
+function currentLaunch(): Launch {
+  const script = process.argv[1]
+  return { runtime: process.execPath, script: isInBundledMode() || !script ? null : script }
+}
+
+function refusal(message: string): FastPathAnswer {
+  return { handled: false, error: `Error: ${message}` }
+}
+
+type Prepared = { worktreePath: string; repoName: string }
+
+async function prepareWorktree(slug: string, prNumber: number | undefined): Promise<Prepared | FastPathAnswer> {
+  const cwd = getCwd()
+  const repoRoot = findCanonicalGitRoot(cwd)
+
+  if (hasWorktreeCreateHook()) {
+    try {
+      const { worktreePath } = await executeWorktreeCreateHook(slug)
+      console.log(`Using worktree from the WorktreeCreate hook: ${worktreePath}`)
+      return { worktreePath, repoName: basename(repoRoot ?? cwd) }
+    } catch (error) {
+      return refusal(errorMessage(error))
+    }
+  }
+
+  if (repoRoot === null) return refusal('--worktree requires a git repository (or a WorktreeCreate hook).')
+  try {
+    const made = await getOrCreateWorktree(repoRoot, slug, { prNumber })
+    if (!made.existed) {
+      console.log(`Created worktree ${made.worktreePath} from ${made.baseBranch}`)
+      await performPostCreationSetup(repoRoot, made.worktreePath)
+    }
+    return { worktreePath: made.worktreePath, repoName: basename(repoRoot) }
+  } catch (error) {
+    return refusal(errorMessage(error))
+  }
+}
+
+async function sessionExists(name: string): Promise<boolean> {
+  return (await tmux('has-session', '-t', exactSession(name))).ok
+}
+
+/** Already inside tmux: start the session detached when needed, then move this client to it. */
+async function switchInsideTmux(name: string, worktreePath: string, command: string[]): Promise<void> {
+  if (!(await sessionExists(name))) {
+    await tmux('new-session', '-d', '-s', name, '-c', worktreePath, '--', ...command)
+  }
+  await tmux('switch-client', '-t', exactSession(name))
+}
+
+/** From a plain terminal: attach in the foreground, creating the session when it is missing. */
+async function attachFromTerminal(
+  name: string,
+  worktreePath: string,
+  command: string[],
+  classic: boolean,
+): Promise<void> {
+  const controlMode = !classic && isInITerm2()
+  const exists = await sessionExists(name)
+  if (controlMode && !exists) console.log(chalk.dim(ITERM_TABS_TIP))
+  const client = controlMode ? ['-CC'] : []
+  tmuxInForeground(
+    exists
+      ? [...client, 'attach-session', '-t', exactSession(name)]
+      : [...client, 'new-session', '-s', name, '-c', worktreePath, '--', ...command],
+  )
+}
+
 export async function execIntoTmuxWorktree(args: string[]): Promise<{
   handled: boolean
   error?: string
 }> {
-  // Check platform - tmux doesn't work on Windows
-  if (process.platform === 'win32') {
-    return {
-      handled: false,
-      error: 'Error: --tmux is not supported on Windows',
-    }
+  if (process.platform === 'win32') return refusal('--tmux is not supported on Windows.')
+  if (!(await isTmuxAvailable())) {
+    return refusal(`tmux is not installed. ${tmuxInstallHint(platformNow())}`)
   }
 
-  // Check if tmux is available
-  const tmuxCheck = spawnSync('tmux', ['-V'], { encoding: 'utf-8' })
-  if (tmuxCheck.status !== 0) {
-    const installHint =
-      process.platform === 'darwin'
-        ? 'Install tmux with: brew install tmux'
-        : 'Install tmux with: sudo apt install tmux'
-    return {
-      handled: false,
-      error: `Error: tmux is not installed. ${installHint}`,
-    }
-  }
-
-  // Parse worktree name and tmux mode from args
-  let worktreeName: string | undefined
-  let forceClassicTmux = false
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]
-    if (!arg) continue
-    if (arg === '-w' || arg === '--worktree') {
-      // Check if next arg exists and isn't another flag
-      const next = args[i + 1]
-      if (next && !next.startsWith('-')) {
-        worktreeName = next
-      }
-    } else if (arg.startsWith('--worktree=')) {
-      worktreeName = arg.slice('--worktree='.length)
-    } else if (arg === '--tmux=classic') {
-      forceClassicTmux = true
-    }
-  }
-
-  // Check if worktree name is a PR reference
-  let prNumber: number | null = null
-  if (worktreeName) {
-    prNumber = parsePRReference(worktreeName)
-    if (prNumber !== null) {
-      worktreeName = `pr-${prNumber}`
-    }
-  }
-
-  // Generate a slug if no name provided
-  if (!worktreeName) {
-    const adjectives = ['swift', 'bright', 'calm', 'keen', 'bold']
-    const nouns = ['fox', 'owl', 'elm', 'oak', 'ray']
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)]
-    const noun = nouns[Math.floor(Math.random() * nouns.length)]
-    const suffix = Math.random().toString(36).slice(2, 6)
-    worktreeName = `${adj}-${noun}-${suffix}`
-  }
-
-  // worktreeName is joined into worktreeDir via path.join below; apply the
-  // same allowlist used by the in-session worktree tool so the constraint
-  // holds uniformly regardless of entry point.
+  const parsed = readFastPathArgs(args)
+  const named = parsed.name ?? inventWorktreeName()
+  const { slug, prNumber } = worktreeTarget(named, parsePRReference(named))
   try {
-    validateWorktreeSlug(worktreeName)
-  } catch (e) {
-    return {
-      handled: false,
-      error: `Error: ${(e as Error).message}`,
-    }
+    validateWorktreeSlug(slug)
+  } catch (error) {
+    return refusal(errorMessage(error))
   }
 
-  // Mirror createWorktreeForSession(): hook takes precedence over git so the
-  // WorktreeCreate hook substitutes the VCS backend for this fast-path too
-  // (anthropics/claude-code#39281). Git path below runs only when no hook.
-  let worktreeDir: string
-  let repoName: string
-  if (hasWorktreeCreateHook()) {
-    try {
-      const hookResult = await executeWorktreeCreateHook(worktreeName)
-      worktreeDir = hookResult.worktreePath
-    } catch (error) {
-      return {
-        handled: false,
-        error: `Error: ${errorMessage(error)}`,
-      }
-    }
-    repoName = basename(findCanonicalGitRoot(getCwd()) ?? getCwd())
-    // biome-ignore lint/suspicious/noConsole: intentional console output
-    console.log(`Using worktree via hook: ${worktreeDir}`)
+  const prepared = await prepareWorktree(slug, prNumber)
+  if ('handled' in prepared) return prepared
+
+  const sessionName = generateTmuxSessionName(prepared.repoName, worktreeBranchName(slug))
+  const command = relaunchCommand(currentLaunch(), parsed.forwarded)
+  if (process.env.TMUX) {
+    await switchInsideTmux(sessionName, prepared.worktreePath, command)
   } else {
-    // Get main git repo root (resolves through worktrees)
-    const repoRoot = findCanonicalGitRoot(getCwd())
-    if (!repoRoot) {
-      return {
-        handled: false,
-        error: 'Error: --worktree requires a git repository',
-      }
-    }
-
-    repoName = basename(repoRoot)
-    worktreeDir = worktreePathFor(repoRoot, worktreeName)
-
-    // Create or resume worktree
-    try {
-      const result = await getOrCreateWorktree(
-        repoRoot,
-        worktreeName,
-        prNumber !== null ? { prNumber } : undefined,
-      )
-      if (!result.existed) {
-        // biome-ignore lint/suspicious/noConsole: intentional console output
-        console.log(
-          `Created worktree: ${worktreeDir} (based on ${result.baseBranch})`,
-        )
-        await performPostCreationSetup(repoRoot, worktreeDir)
-      }
-    } catch (error) {
-      return {
-        handled: false,
-        error: `Error: ${errorMessage(error)}`,
-      }
-    }
+    // tmux's exit status is not ours to report: it prints its own errors.
+    await attachFromTerminal(sessionName, prepared.worktreePath, command, parsed.classic)
   }
-
-  // Sanitize for tmux session name (replace / and . with _)
-  const tmuxSessionName =
-    `${repoName}_${worktreeBranchName(worktreeName)}`.replace(/[/.]/g, '_')
-
-  // Build new args without --tmux and --worktree (we're already in the worktree)
-  const newArgs: string[] = []
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]
-    if (!arg) continue
-    if (arg === '--tmux' || arg === '--tmux=classic') continue
-    if (arg === '-w' || arg === '--worktree') {
-      // Skip the flag and its value if present
-      const next = args[i + 1]
-      if (next && !next.startsWith('-')) {
-        i++ // Skip the value too
-      }
-      continue
-    }
-    if (arg.startsWith('--worktree=')) continue
-    newArgs.push(arg)
-  }
-
-  // Check if session already exists
-  const hasSessionResult = spawnSync(
-    'tmux',
-    ['has-session', '-t', tmuxSessionName],
-    { encoding: 'utf-8' },
-  )
-  const sessionExists = hasSessionResult.status === 0
-
-  // Check if we're already inside a tmux session
-  const isAlreadyInTmux = Boolean(process.env.TMUX)
-
-  // Use tmux control mode (-CC) for native iTerm2 tab/pane integration
-  // This lets users use iTerm2's UI instead of learning tmux keybindings
-  // Use --tmux=classic to force traditional tmux even in iTerm2
-  // Control mode doesn't make sense when already in tmux (would need to switch-client)
-  const useControlMode = isInITerm2() && !forceClassicTmux && !isAlreadyInTmux
-  const tmuxGlobalArgs = useControlMode ? ['-CC'] : []
-
-  // Print hint about iTerm2 preferences when using control mode
-  if (useControlMode && !sessionExists) {
-    const y = chalk.yellow
-    // biome-ignore lint/suspicious/noConsole: intentional user guidance
-    console.log(
-      `\n${y('╭─ iTerm2 Tip ────────────────────────────────────────────────────────╮')}\n` +
-        `${y('│')} To open as a tab instead of a new window:                           ${y('│')}\n` +
-        `${y('│')} iTerm2 > Settings > General > tmux > "Tabs in attaching window"     ${y('│')}\n` +
-        `${y('╰─────────────────────────────────────────────────────────────────────╯')}\n`,
-    )
-  }
-
-  {
-    // Standard behavior: create or attach
-    if (isAlreadyInTmux) {
-      // Already in tmux - create detached session, then switch to it (sibling)
-      // Check if session already exists first
-      if (sessionExists) {
-        // Just switch to existing session
-        spawnSync('tmux', ['switch-client', '-t', tmuxSessionName], {
-          stdio: 'inherit',
-        })
-      } else {
-        // Create new detached session
-        spawnSync(
-          'tmux',
-          [
-            'new-session',
-            '-d', // detached
-            '-s',
-            tmuxSessionName,
-            '-c',
-            worktreeDir,
-            '--',
-            process.execPath,
-            ...newArgs,
-          ],
-          { cwd: worktreeDir, env: process.env },
-        )
-
-        // Switch to the new session
-        spawnSync('tmux', ['switch-client', '-t', tmuxSessionName], {
-          stdio: 'inherit',
-        })
-      }
-    } else {
-      // Not in tmux - create and attach (original behavior)
-      const tmuxArgs = [
-        ...tmuxGlobalArgs,
-        'new-session',
-        '-A', // Attach if exists, create if not
-        '-s',
-        tmuxSessionName,
-        '-c',
-        worktreeDir,
-        '--', // Separator before command
-        process.execPath,
-        ...newArgs,
-      ]
-
-      spawnSync('tmux', tmuxArgs, {
-        stdio: 'inherit',
-        cwd: worktreeDir,
-        env: process.env,
-      })
-    }
-  }
-
   return { handled: true }
 }
