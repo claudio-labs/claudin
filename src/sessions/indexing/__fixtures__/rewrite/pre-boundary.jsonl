@@ -1,0 +1,20 @@
+{"parentUuid":null,"isSidechain":false,"type":"user","message":{"role":"user","content":"Set up CI for the shop repo"},"uuid":"c0ffee00-0000-4000-8000-000000000001","timestamp":"2026-09-20T10:00:01.000Z","userType":"external","entrypoint":"cli","cwd":"/home/dev/shop","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f","version":"1.4.2","gitBranch":"main"}
+{"type":"summary","summary":"Set up the repo","leafUuid":"c0ffee00-0000-4000-8000-000000000002"}
+{"type":"ai-title","aiTitle":"Repo setup","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"parentUuid":"c0ffee00-0000-4000-8000-000000000001","isSidechain":false,"type":"assistant","uuid":"c0ffee00-0000-4000-8000-000000000002","timestamp":"2026-09-20T10:00:02.000Z","message":{"id":"msg_2","role":"assistant","type":"message","model":"claude-sonnet-4-5","content":[{"type":"text","text":"Added a workflow."}]},"userType":"external","entrypoint":"cli","cwd":"/home/dev/shop","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f","version":"1.4.2","gitBranch":"main"}
+{"type":"custom-title","customTitle":"repo setup","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"tag","tag":"infra","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"last-prompt","lastPrompt":"Set up CI","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"agent-name","agentName":"builder","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"agent-color","agentColor":"cyan","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"task-summary","summary":"CI setup","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"agent-setting","agentSetting":"reviewer","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"mode","mode":"coordinator","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"file-history-snapshot","messageId":"c0ffee00-0000-4000-8000-000000000002","snapshot":{"messageId":"c0ffee00-0000-4000-8000-000000000002","trackedFileBackups":{},"timestamp":"2026-09-20T10:00:02.000Z"},"isSnapshotUpdate":false}
+{"type":"worktree-state","worktreeSession":null,"sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"type":"cost-state","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f","totalCostUSD":0.42,"modelUsage":{}}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-20T10:00:03.000Z","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f","content":"later"}
+{"type":"pr-link","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f","prNumber":17,"prUrl":"https://github.com/acme/shop/pull/17","prRepository":"acme/shop","timestamp":"2026-09-20T10:00:30.000Z"}
+{"parentUuid":null,"logicalParentUuid":"c0ffee00-0000-4000-8000-000000000002","isSidechain":false,"type":"system","subtype":"compact_boundary","content":"Conversation compacted","isMeta":false,"timestamp":"2026-09-20T10:00:40.000Z","uuid":"c0ffee00-0000-4000-8000-000000000040","level":"info","compactMetadata":{"trigger":"auto","preTokens":180000},"userType":"external","entrypoint":"cli","cwd":"/home/dev/shop","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f","version":"1.4.2","gitBranch":"main"}
+{"type":"tag","tag":"after-boundary","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f"}
+{"parentUuid":"c0ffee00-0000-4000-8000-000000000040","isSidechain":false,"type":"user","message":{"role":"user","content":"Continue"},"uuid":"c0ffee00-0000-4000-8000-000000000041","timestamp":"2026-09-20T10:00:41.000Z","userType":"external","entrypoint":"cli","cwd":"/home/dev/shop","sessionId":"5e551a0e-7c3b-4d2a-9f10-2b4c6d8e0a1f","version":"1.4.2","gitBranch":"main"}

@@ -1,0 +1,229 @@
+{
+  "test": [
+    "src/sessions/indexing/indexingScan.boundaryScan.characterization.test.ts",
+    "src/sessions/indexing/indexingScan.crossProject.characterization.test.ts",
+    "src/sessions/indexing/indexingScan.agents.characterization.test.ts"
+  ],
+  "source": "src/sessions/indexing/boundaryScan.ts",
+  "probes": [
+    {
+      "name": "scan: agent-color is not session metadata",
+      "find": "  '\"type\":\"agent-color\"',\n",
+      "replace": ""
+    },
+    {
+      "name": "scan: a carry that opens with a marker is not joined to the next piece",
+      "find": "if (carry[0] === 0x7b /* { */) {",
+      "replace": "if (carry[0] === 0x5b) {"
+    },
+    {
+      "name": "scan: after a dropped carry the next line loses its first byte",
+      "find": "return firstNl === -1 ? null : chunkBuf.subarray(firstNl + 1)",
+      "replace": "return firstNl === -1 ? null : chunkBuf.subarray(firstNl + 2)"
+    },
+    {
+      "name": "scan: the carry cap drops lines of a few KiB",
+      "find": "if (carry.length > 64 * 1024) carry = null",
+      "replace": "if (carry.length > 1024) carry = null"
+    },
+    {
+      "name": "scan: a marker in a later line counts for the current one",
+      "find": "if (mIdx !== -1 && mIdx < nl) {",
+      "replace": "if (mIdx !== -1) {"
+    },
+    {
+      "name": "scan: the unterminated last line is dropped",
+      "find": "        metadataLines.push(carry.toString('utf-8'))",
+      "replace": "        void carry"
+    },
+    {
+      "name": "scan: the byte at the end offset is read",
+      "find": "{ end: endOffset - 1 }",
+      "replace": "{ end: endOffset }"
+    },
+    {
+      "name": "walk: the sidechain flag is read as false",
+      "find": "const SIDECHAIN_TRUE = Buffer.from('\"isSidechain\":true')",
+      "replace": "const SIDECHAIN_TRUE = Buffer.from('\"isSidechain\":false')"
+    },
+    {
+      "name": "walk: a sidechain flag on the next line counts",
+      "find": "if (sc === -1 || sc >= msgIdx[i + 1]!) {",
+      "replace": "if (sc === -1) {"
+    },
+    {
+      "name": "walk: no uuid is followed by a timestamp",
+      "find": "const TS_SUFFIX = Buffer.from('\",\"timestamp\":\"')",
+      "replace": "const TS_SUFFIX = Buffer.from('\",\"time\":\"')"
+    },
+    {
+      "name": "walk: the nested candidate is preferred",
+      "find": "if (depth === 1 && !inString) return candidates[ci]!",
+      "replace": "if (depth === 2 && !inString) return candidates[ci]!"
+    },
+    {
+      "name": "walk: escapes inside strings are ignored",
+      "find": "if (b === BACKSLASH) escapeNext = true",
+      "replace": "if (b === 0x00) escapeNext = true"
+    },
+    {
+      "name": "walk: braces inside strings count",
+      "find": "} else if (b === QUOTE) inString = true",
+      "replace": "} else if (b === 0x00) inString = true"
+    },
+    {
+      "name": "walk: every message is a root",
+      "find": "buf[pos + PREFIX_LEN] === QUOTE ? pos + PREFIX_LEN + 1 : -1",
+      "replace": "-1"
+    },
+    {
+      "name": "walk: a uuid-less message line is dropped",
+      "find": "        metaRanges.push(pos, lineEnd)\n      }\n    } else {",
+      "replace": "        void 0\n      }\n    } else {"
+    },
+    {
+      "name": "walk: a message with no timestamp after its uuid is not indexed",
+      "find": "          : firstAny",
+      "replace": "          : -1"
+    },
+    {
+      "name": "walk: every uuid points at the first message",
+      "find": "uuidToSlot.set(uuid, msgIdx.length)",
+      "replace": "uuidToSlot.set(uuid, 0)"
+    },
+    {
+      "name": "walk: the cut needs three quarters dead",
+      "find": "if (len - chainBytes < len >> 1) return buf",
+      "replace": "if (len - chainBytes < len - (len >> 2)) return buf"
+    },
+    {
+      "name": "walk: exactly half dead is not cut",
+      "find": "if (len - chainBytes < len >> 1) return buf",
+      "replace": "if (len - chainBytes <= len >> 1) return buf"
+    },
+    {
+      "name": "walk: metadata goes after the message it preceded",
+      "find": "while (m < metaRanges.length && metaRanges[m]! < start) {",
+      "replace": "while (m < metaRanges.length && metaRanges[m]! > start) {"
+    },
+    {
+      "name": "walk: metadata after the last message is lost",
+      "find": "  while (m < metaRanges.length) {",
+      "replace": "  while (m < 0) {"
+    },
+    {
+      "name": "worktrees: one worktree is treated as several",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "if (worktreePaths.length <= 1) {",
+      "replace": "if (worktreePaths.length < 1) {"
+    },
+    {
+      "name": "worktrees: the single-worktree listing has no project path",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "return getSessionFilesLite(projectDir, undefined, cwd)",
+      "replace": "return getSessionFilesLite(projectDir, undefined, undefined)"
+    },
+    {
+      "name": "worktrees: case is ignored on every platform",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "const caseInsensitive = process.platform === 'win32'",
+      "replace": "const caseInsensitive = true"
+    },
+    {
+      "name": "worktrees: the shortest worktree wins",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "indexed.sort((a, b) => b.prefix.length - a.prefix.length)",
+      "replace": "indexed.sort((a, b) => a.prefix.length - b.prefix.length)"
+    },
+    {
+      "name": "worktrees: subfolders of a worktree are not listed",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "if (dirName === prefix || dirName.startsWith(prefix + '-')) {",
+      "replace": "if (dirName === prefix) {"
+    },
+    {
+      "name": "worktrees: a folder sharing a name prefix is listed",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "if (dirName === prefix || dirName.startsWith(prefix + '-')) {",
+      "replace": "if (dirName.startsWith(prefix)) {"
+    },
+    {
+      "name": "worktrees: the matched folder carries no project path",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "            wtPath,\n",
+      "replace": "            undefined,\n"
+    },
+    {
+      "name": "worktrees: duplicates across folders stay",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "  return deduplicateLogsBySessionId(allLogs)",
+      "replace": "  return allLogs"
+    },
+    {
+      "name": "same repo: the count read is ignored",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "    allStatLogs,\n    0,\n    initialEnrichCount,",
+      "replace": "    allStatLogs,\n    0,\n    50,"
+    },
+    {
+      "name": "same repo: listed sessions keep their stat positions",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "  logs.forEach((log, i) => {\n    log.value = i\n  })\n  return { logs, allStatLogs, nextIndex }",
+      "replace": "  return { logs, allStatLogs, nextIndex }"
+    },
+    {
+      "name": "all projects: the limit per folder is ignored",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "rawLogs.push(...(await getSessionFilesLite(projectDir, limit)))",
+      "replace": "rawLogs.push(...(await getSessionFilesLite(projectDir)))"
+    },
+    {
+      "name": "all projects: duplicates across folders stay",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "const sorted = deduplicateLogsBySessionId(rawLogs)",
+      "replace": "const sorted = rawLogs"
+    },
+    {
+      "name": "all projects: the count option is ignored",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "options?.initialEnrichCount ?? INITIAL_ENRICH_COUNT,",
+      "replace": "INITIAL_ENRICH_COUNT,"
+    },
+    {
+      "name": "all projects: no folder gives a negative next index",
+      "source": "src/sessions/indexing/crossProject.ts",
+      "find": "return { logs: [], allStatLogs: [], nextIndex: 0 }",
+      "replace": "return { logs: [], allStatLogs: [], nextIndex: -1 }"
+    },
+    {
+      "name": "agents: the sidecar is named .json",
+      "source": "src/sessions/indexing/agents.ts",
+      "find": ".replace(/\\.jsonl$/, '.meta.json')",
+      "replace": ".replace(/\\.jsonl$/, '.json')"
+    },
+    {
+      "name": "agents: the folder is not created",
+      "source": "src/sessions/indexing/agents.ts",
+      "find": "  await mkdir(dirname(path), { recursive: true })\n",
+      "replace": ""
+    },
+    {
+      "name": "agents: the sidecar is pretty-printed",
+      "source": "src/sessions/indexing/agents.ts",
+      "find": "await writeFile(path, JSON.stringify(metadata))",
+      "replace": "await writeFile(path, JSON.stringify(metadata, null, 2))"
+    },
+    {
+      "name": "agents: a missing sidecar rejects",
+      "source": "src/sessions/indexing/agents.ts",
+      "find": "if (isFsInaccessible(e)) return null",
+      "replace": "if (e === null) return null"
+    },
+    {
+      "name": "agents: any session id exists",
+      "source": "src/sessions/indexing/agents.ts",
+      "find": "  } catch {\n    return false\n  }",
+      "replace": "  } catch {\n    return true\n  }"
+    }
+  ]
+}
