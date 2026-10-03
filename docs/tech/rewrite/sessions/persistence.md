@@ -494,16 +494,17 @@ Rewritten per method on 2026-10-03.
     `rename.characterization.test.ts` pins that `/rename` writes under plain
     test mode.
 - **Probes.** `rewrite-sessions-persistence.json` holds 81 probes.
-- **Residue.** 235 lines of Claude Code remain, in two kinds.
-  - **Contract, about 120 lines.** The public signatures of the record and
-    metadata families. The parameter shapes of
-    `recordContextCollapseCommit` and `recordContextCollapseSnapshot`. The
-    metadata fields of `Project` that callers read
-    (`currentSessionTitle`, `currentSessionTag` and the others).
-  - **To sweep, about 115 lines.** The brief kept every declaration outside
-    the bodies, so the old private state of `Project` survived: the write queues,
-    the flush timer and interval, the chunk limit, and the ingress and
-    internal-event fields. So did the one-field-per-line mapping in
-    `restoreSessionMetadata` and `clearSessionMetadata`. None of it is contract.
-    A residue sweep rewrites it, with the class's private state stubbed along
-    with its methods.
+- **Residue.** 235 lines of Claude Code remain. On review at landing they split
+  into two kinds:
+  - **Contract, about 219 lines.** The public signatures of the record and
+    metadata families, which callers outside the unit call. The parameter shapes
+    of `recordContextCollapseCommit` and `recordContextCollapseSnapshot`. The
+    `currentSession*` fields of `Project` that callers read. And the
+    one-field-per-line bodies of `restoreSessionMetadata`,
+    `clearSessionMetadata` and the setters, whose shape is forced by those
+    field names.
+  - **To sweep, 16 lines.** `Project`'s old private state survived because the
+    brief kept every declaration outside the bodies: the write queues, the
+    flush timer and interval, the chunk limit, and the ingress and
+    internal-event fields. None of it is contract. A residue sweep redeclares
+    it in a sandbox with those lines taken out.

@@ -294,8 +294,8 @@ specs, fingerprints, team memory), with two differences:
   with the same meaning.
 
 `sessions/persistence` was briefed to keep every declaration outside the
-bodies. About 115 lines of `Project`'s old private state survived as
-residue as a result.
+bodies. As a result, 16 lines of `Project`'s old private state survived as
+residue that is not contract.
 
 **Land a characterization suite against the current tree, not its base.**
 A suite characterized before a neighbouring unit was rewritten can catch that
