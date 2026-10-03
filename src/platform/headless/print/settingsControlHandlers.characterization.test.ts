@@ -254,6 +254,7 @@ describe('reload_plugins', () => {
 
   test('answers with the reloaded commands, agents, plugins and servers', async () => {
     const session = start({ agents: [agent('from-sdk', 'flagSettings', 'inherit'), agent('dropped', 'projectSettings')] })
+    session.ctx.sdkClients = [{ type: 'pending', name: 'pinned-sdk', config: { type: 'sdk', name: 'pinned-sdk', scope: 'dynamic' } }] as never
     const answer = await ask(session, { subtype: 'reload_plugins' })
 
     expect(answer.subtype).toBe('success')
@@ -268,7 +269,11 @@ describe('reload_plugins', () => {
     expect(response.agents.map(a => a.name)).not.toContain('dropped')
     expect(response.commands.length).toBeGreaterThan(0)
     expect(response.commands.every(c => typeof c.argumentHint === 'string')).toBe(true)
-    expect(response).toMatchObject({ plugins: [], mcpServers: [], error_count: 0 })
+    expect(response).toMatchObject({ plugins: [], error_count: 0 })
+    // In a full run, MCP config another file left in the process reaches app
+    // state through the plugin refresh, so assert on a server this session owns
+    // rather than on an empty list.
+    expect((response.mcpServers as Array<{ name: string }>).map(s => s.name)).toContain('pinned-sdk')
     expect(session.ctx.currentCommands.length).toBe(response.commands.length + session.ctx.currentCommands.filter(c => c.userInvocable === false).length)
     expect(session.calls.applyPluginMcpDiff).toBe(1)
   })

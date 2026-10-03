@@ -181,6 +181,12 @@
       "source": "src/platform/headless/print/streamingContext.ts",
       "find": "> & { request: R }",
       "replace": "> & { request: R & { server_name: string } }"
+    },
+    {
+      "name": "reload_plugins answers with no MCP servers",
+      "find": "      mcpServers: ctx.buildMcpServerStatuses(),\n      error_count: r.error_count,",
+      "replace": "      mcpServers: [],\n      error_count: r.error_count,",
+      "source": "src/platform/headless/print/settingsControlHandlers.ts"
     }
   ]
 }
