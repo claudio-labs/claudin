@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "c444c92e18c2a3d35e79c7a9fdaa9cc4460367ae",
-  "totals": { "claudeCode": 295123, "openclaude": 42600 },
+  "capturedFrom": "810473dc826ec7e314b2a44e530c83dc2a35f627",
+  "totals": { "claudeCode": 295121, "openclaude": 42543 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -1628,7 +1628,6 @@
     "src/sessions/__tests__/project.test.ts": [15, 26],
     "src/sessions/__tests__/pure.test.ts": [22, 32],
     "src/sessions/__tests__/resumeRoundTrip.test.ts": [3, 0],
-    "src/sessions/conversationRecovery.test.ts": [2, 57],
     "src/sessions/conversationRecovery.ts": [345, 59],
     "src/sessions/crossProjectResume.ts": [27, 0],
     "src/sessions/hooks/useFileHistorySnapshotInit.ts": [15, 0],
