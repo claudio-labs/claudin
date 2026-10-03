@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "f491addaadf07ae49ed4d132f15cc0c0af97a7ba",
-  "totals": { "claudeCode": 286458, "openclaude": 42237 },
+  "capturedFrom": "c7948bdc1c2d2369974ad1e9e883ef327740a8d8",
+  "totals": { "claudeCode": 286458, "openclaude": 42155 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -782,7 +782,6 @@
     "src/permissions/autoModeRules.test.ts": [0, 8],
     "src/permissions/autoModeRules.ts": [20, 0],
     "src/permissions/autoModeState.ts": [26, 0],
-    "src/permissions/bashClassifier.test.ts": [0, 24],
     "src/permissions/bashClassifier.ts": [30, 0],
     "src/permissions/bypassPermissions.test.ts": [3, 0],
     "src/permissions/bypassPermissionsKillswitch.ts": [56, 0],
@@ -901,7 +900,6 @@
     "src/permissions/yoloClassifier.fallback.test.ts": [2, 2],
     "src/permissions/yoloClassifier.live.test.ts": [4, 5],
     "src/permissions/yoloClassifier.stallBudget.test.ts": [2, 4],
-    "src/permissions/yoloClassifier.test.ts": [0, 58],
     "src/permissions/yoloClassifier/autoModeDumps.ts": [55, 0],
     "src/permissions/yoloClassifier/classifierConfig.ts": [12, 0],
     "src/permissions/yoloClassifier/classify.ts": [256, 16],

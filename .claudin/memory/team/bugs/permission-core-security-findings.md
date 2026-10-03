@@ -9,6 +9,12 @@ The 2026-10-03 characterizations of `permissions/setup`, `fileRules` and
 behaviour.
 
 **Being fixed in the rewrites**, each with a test:
+- `shellRules` 1: after a switch into auto mid-session, `--allowed-tools`
+  entries spelled `Bash(*)`, `Bash()`, `Task` or `Task(x)` are flagged but never
+  stripped (removal looks for the canonical spelling), so `Bash(*)` keeps
+  allowing every command in auto mode.
+- `autoModeClassifier` 3: a tool missing from the tool list is allowed without
+  asking the model.
 - `fileRules` F1: whole-anchor deny and ask patterns (`Read(~/**)`,
   `Edit(/**)`, `Read(//**)`) match nothing. A user who denies their whole home
   gets no protection.
@@ -35,6 +41,9 @@ behaviour.
   directories, labelled `cliArg`.
 - **Plan mode.** A tool's own allow rule (`Edit(src/**)`) gets past plan mode.
 - **First write check.** It creates `<start dir>/.claudin/plans`, as a side effect.
+- **Auto mode's dangerous-rule check is narrow.** It misses broader rules
+  (`p*`, `* *`, `npm:*`, `python3.12:*`, `timeout:*`), and leaves dangerous
+  rules from `flagSettings`, `policySettings` and `command` active (`shellRules` 4, 5).
 
 **Why:** these decide what runs or gets written without asking.
 
