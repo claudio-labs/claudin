@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "88079be0379141ecbaf1341b5b33d69c5d4a97a3",
-  "totals": { "claudeCode": 286983, "openclaude": 42277 },
+  "capturedFrom": "7ed588caa5ca71d56af81bba3b462e797bb7d328",
+  "totals": { "claudeCode": 286951, "openclaude": 42277 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -1653,7 +1653,7 @@
     "src/sessions/persistence/flush.ts": [2, 0],
     "src/sessions/persistence/metadata.ts": [58, 0],
     "src/sessions/persistence/persistenceFixes.test.ts": [3, 0],
-    "src/sessions/persistence/project.ts": [123, 0],
+    "src/sessions/persistence/project.ts": [91, 0],
     "src/sessions/persistence/record.ts": [51, 0],
     "src/sessions/pure/typeGuards.ts": [4, 0],
     "src/sessions/rerootSession.test.ts": [3, 0],

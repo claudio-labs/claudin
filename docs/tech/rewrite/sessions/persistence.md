@@ -508,3 +508,11 @@ Rewritten per method on 2026-10-03.
     flush timer and interval, the chunk limit, and the ingress and
     internal-event fields. None of it is contract. A residue sweep redeclares
     it in a sandbox with those lines taken out.
+
+**Sweep, done on 2026-10-03.** The private state block of `Project` was taken
+out of a sandbox copy, and an agent that never saw it declared the state again
+from what the methods use. It is now a `QueueState` class in
+`writer/queueState.ts`, plus six private fields with their own names.
+`sessionFile` stays public. In `project.ts` the residue went from 123 lines to
+91, and the 91 are the `currentSession*` fields and the method signatures that
+callers use. The unit's residue is now 203 lines, all of it contract.

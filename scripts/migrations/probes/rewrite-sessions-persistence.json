@@ -15,7 +15,7 @@
     },
     {
       "name": "file: entries held before it opens are written when it does",
-      "find": "    const held = this.pendingEntries\n",
+      "find": "    const held = this.heldEntries\n",
       "replace": "    const held: Entry[] = []\n"
     },
     {
@@ -25,18 +25,19 @@
     },
     {
       "name": "file: resetting the pointer drops the held entries",
-      "find": "    this.sessionFile = null\n    this.pendingEntries = []\n",
+      "find": "    this.sessionFile = null\n    this.heldEntries = []\n",
       "replace": "    this.sessionFile = null\n"
     },
     {
       "name": "queue: lines wait about 100 ms for the timer",
-      "find": "  private FLUSH_INTERVAL_MS = 100",
-      "replace": "  private FLUSH_INTERVAL_MS = 15"
+      "source": "src/sessions/persistence/writer/queueState.ts",
+      "find": "const DRAIN_DELAY_MS = 100",
+      "replace": "const DRAIN_DELAY_MS = 15"
     },
     {
       "name": "queue: a remote ingress URL drops the interval to 10 ms",
-      "find": "    this.remoteIngressUrl = url\n    this.FLUSH_INTERVAL_MS = REMOTE_FLUSH_INTERVAL_MS\n",
-      "replace": "    this.remoteIngressUrl = url\n"
+      "find": "    this.ingressUrl = url\n    this.queue.delayMs = REMOTE_FLUSH_INTERVAL_MS\n",
+      "replace": "    this.ingressUrl = url\n"
     },
     {
       "name": "queue: flushSessionStorage rejects with the failed append's error",
@@ -354,8 +355,8 @@
     },
     {
       "name": "remove: before the file opens, the held entry is dropped",
-      "find": "        this.pendingEntries = this.pendingEntries.filter(entry => !hasUuid(entry, targetUuid))",
-      "replace": "        this.pendingEntries = this.pendingEntries.filter(() => true)"
+      "find": "        this.heldEntries = this.heldEntries.filter(entry => !hasUuid(entry, targetUuid))",
+      "replace": "        this.heldEntries = this.heldEntries.filter(() => true)"
     },
     {
       "name": "remove: the full rewrite is refused above 50 MiB",
@@ -419,7 +420,7 @@
     },
     {
       "name": "CCR v2: the internal writer receives each new main-file message",
-      "find": "    const writer = this.internalEventWriter\n",
+      "find": "    const writer = this.eventWriter\n",
       "replace": "    const writer = null as InternalEventWriter | null\n"
     },
     {

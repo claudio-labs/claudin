@@ -45,7 +45,7 @@ which the sandbox tools read; the lists below are the same.
 | `memory/autoDream` | 4 | 310 | — | done |
 | `memory/ui` | 3 | 372 | `memoryFileSelectorPaths.test.ts` (58) | done |
 | `sessions/storagePure` | 6 | 858 | — | done |
-| `sessions/persistence` | 5 | 1315 | — | done (residue sweep pending) |
+| `sessions/persistence` | 5 | 1315 | — | done |
 | `sessions/resume` | 7 | 1201 | `conversationRecovery.hooks.test.ts`, `conversationRecovery.test.ts`, `sessionStorage.test.ts` (377) | done |
 | `sessions/liteMetadata` | 2 | 856 | — | done |
 | `sessions/indexingScan` | 3 | 609 | — | done |

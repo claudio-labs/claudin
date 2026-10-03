@@ -122,6 +122,10 @@ import {
   internalEventOptions,
   isEpochMismatch,
 } from 'src/sessions/persistence/writer/remote.js'
+import {
+  APPEND_CHUNK_LIMIT_BYTES,
+  QueueState,
+} from 'src/sessions/persistence/writer/queueState.js'
 import { removeMessageLine } from 'src/sessions/persistence/writer/remover.js'
 
 // Cache MACRO.VERSION at module level to work around bun --define bug in
@@ -246,50 +250,44 @@ export class Project {
   currentSessionPrUrl: string | undefined
   currentSessionPrRepository: string | undefined
 
+  /** The open transcript's path, or null until the session's first message opens it. */
   sessionFile: string | null = null
-  private pendingEntries: Entry[] = []
-  private remoteIngressUrl: string | null = null
-  private internalEventWriter: InternalEventWriter | null = null
-  private internalEventReader: InternalEventReader | null = null
-  private internalSubagentEventReader: InternalEventReader | null = null
-  private pendingWriteCount: number = 0
-  private flushResolvers: Array<() => void> = []
-  private writeQueues = new Map<
-    string,
-    Array<{ entry: Entry; resolve: () => void }>
-  >()
-  private flushTimer: ReturnType<typeof setTimeout> | null = null
-  private activeDrain: Promise<void> | null = null
-  private FLUSH_INTERVAL_MS = 100
-  private readonly MAX_CHUNK_BYTES = 100 * 1024 * 1024
+  /** Entries recorded before the transcript opened, written when it does. */
+  private heldEntries: Entry[] = []
+  private readonly queue = new QueueState()
+  private ingressUrl: string | null = null
+  private eventWriter: InternalEventWriter | null = null
+  private eventReader: InternalEventReader | null = null
+  private subagentEventReader: InternalEventReader | null = null
+
   /** Settles once every recording call handed in so far has queued its lines. */
   private recordingTail: Promise<unknown> = Promise.resolve()
 
   constructor() {}
 
   _resetFlushState(): void {
-    if (this.flushTimer) clearTimeout(this.flushTimer)
-    this.flushTimer = null
-    this.activeDrain = null
-    for (const queue of this.writeQueues.values()) {
-      for (const item of queue) item.resolve()
+    if (this.queue.timer) clearTimeout(this.queue.timer)
+    this.queue.timer = null
+    this.queue.drainChain = null
+    for (const lines of this.queue.linesByFile.values()) {
+      for (const item of lines) item.resolve()
     }
-    this.writeQueues.clear()
-    this.pendingWriteCount = 0
+    this.queue.linesByFile.clear()
+    this.queue.inFlight = 0
     this.releaseFlushWaiters()
   }
 
   private releaseFlushWaiters(): void {
-    for (const release of this.flushResolvers.splice(0)) release()
+    for (const release of this.queue.idleWaiters.splice(0)) release()
   }
 
   private incrementPendingWrites(): void {
-    this.pendingWriteCount += 1
+    this.queue.inFlight += 1
   }
 
   private decrementPendingWrites(): void {
-    this.pendingWriteCount = Math.max(0, this.pendingWriteCount - 1)
-    if (this.pendingWriteCount === 0) this.releaseFlushWaiters()
+    this.queue.inFlight = Math.max(0, this.queue.inFlight - 1)
+    if (this.queue.inFlight === 0) this.releaseFlushWaiters()
   }
 
   private async trackWrite<T>(fn: () => Promise<T>): Promise<T> {
@@ -315,28 +313,28 @@ export class Project {
   /** Resolves once the entry's batch was attempted; a failed batch is reported by the drain. */
   private enqueueWrite(filePath: string, entry: Entry): Promise<void> {
     return new Promise(resolve => {
-      const queue = this.writeQueues.get(filePath)
-      if (queue) queue.push({ entry, resolve })
-      else this.writeQueues.set(filePath, [{ entry, resolve }])
+      const lines = this.queue.linesByFile.get(filePath)
+      if (lines) lines.push({ entry, resolve })
+      else this.queue.linesByFile.set(filePath, [{ entry, resolve }])
       this.scheduleDrain()
     })
   }
 
   private scheduleDrain(): void {
-    if (this.flushTimer) return
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = null
+    if (this.queue.timer) return
+    this.queue.timer = setTimeout(() => {
+      this.queue.timer = null
       // Nobody awaits the timer, so its failure is logged rather than left
       // as an unhandled rejection (finding 6).
       this.drainQueuedWrites().catch(logError)
-    }, this.FLUSH_INTERVAL_MS)
+    }, this.queue.delayMs)
   }
 
   private async appendToFile(filePath: string, data: string): Promise<void> {
     await appendPrivate(filePath, data)
   }
 
-  /** Text chunks of the queued entries, none over MAX_CHUNK_BYTES unless one line is. */
+  /** Text chunks of the queued entries, none over APPEND_CHUNK_LIMIT_BYTES unless one line is. */
   private chunksOf(entries: readonly Entry[]): string[] {
     const chunks: string[] = []
     let chunk = ''
@@ -344,7 +342,7 @@ export class Project {
     for (const entry of entries) {
       const line = toJsonl([entry])
       const size = Buffer.byteLength(line)
-      if (bytes > 0 && bytes + size > this.MAX_CHUNK_BYTES) {
+      if (bytes > 0 && bytes + size > APPEND_CHUNK_LIMIT_BYTES) {
         chunks.push(chunk)
         chunk = ''
         bytes = 0
@@ -358,8 +356,8 @@ export class Project {
 
   /** Writes what is queued now, file by file; a file whose append fails loses that batch. */
   private async drainWriteQueue(): Promise<void> {
-    const batches = [...this.writeQueues]
-    this.writeQueues.clear()
+    const batches = [...this.queue.linesByFile]
+    this.queue.linesByFile.clear()
     let failure: { error: unknown } | undefined
     for (const [filePath, items] of batches) {
       try {
@@ -377,12 +375,12 @@ export class Project {
 
   resetSessionFile(): void {
     this.sessionFile = null
-    this.pendingEntries = []
+    this.heldEntries = []
   }
 
   /** Whether an entry with this uuid waits for the transcript file to open. */
   holdsEntry(uuid: UUID): boolean {
-    return this.pendingEntries.some(entry => hasUuid(entry, uuid))
+    return this.heldEntries.some(entry => hasUuid(entry, uuid))
   }
 
   reAppendSessionMetadata(skipTitleRefresh = false): void {
@@ -433,13 +431,13 @@ export class Project {
   }
 
   async flush(): Promise<void> {
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer)
-      this.flushTimer = null
+    if (this.queue.timer) {
+      clearTimeout(this.queue.timer)
+      this.queue.timer = null
     }
     await this.drainQueuedWrites()
-    if (this.pendingWriteCount > 0) {
-      await new Promise<void>(resolve => this.flushResolvers.push(resolve))
+    if (this.queue.inFlight > 0) {
+      await new Promise<void>(resolve => this.queue.idleWaiters.push(resolve))
     }
   }
 
@@ -447,13 +445,13 @@ export class Project {
    * Drain everything currently in the write queues to disk, bypassing the
    * flush timer. Unlike flush(), this does NOT wait for non-queue tracked
    * operations — which makes it safe to call from inside trackWrite
-   * (flush() there would deadlock on its own pendingWriteCount).
+   * (flush() there would deadlock on its own in-flight count).
    */
   private async drainQueuedWrites(): Promise<void> {
     // Drains never overlap: two appends to one file must land in queue order.
-    const previous = this.activeDrain ?? Promise.resolve()
+    const previous = this.queue.drainChain ?? Promise.resolve()
     const run = previous.then(() => this.drainWriteQueue())
-    this.activeDrain = run.catch(() => undefined)
+    this.queue.drainChain = run.catch(() => undefined)
     await run
   }
 
@@ -462,7 +460,7 @@ export class Project {
     await this.trackWrite(async () => {
       await recorded
       if (!this.sessionFile) {
-        this.pendingEntries = this.pendingEntries.filter(entry => !hasUuid(entry, targetUuid))
+        this.heldEntries = this.heldEntries.filter(entry => !hasUuid(entry, targetUuid))
         return
       }
       await this.drainQueuedWrites()
@@ -496,8 +494,8 @@ export class Project {
     } catch (error) {
       logError(error)
     }
-    const held = this.pendingEntries
-    this.pendingEntries = []
+    const held = this.heldEntries
+    this.heldEntries = []
     for (const entry of held) void this.enqueueWrite(file, entry)
     for (const entry of held) await this.afterMainWrite(entry)
   }
@@ -572,7 +570,7 @@ export class Project {
     }
     if (!this.sessionFile) {
       if (!opensTranscript(entry)) {
-        this.pendingEntries.push(entry)
+        this.heldEntries.push(entry)
         return
       }
       await this.materializeSessionFile()
@@ -614,7 +612,7 @@ export class Project {
   }
 
   private async persistToRemote(sessionId: UUID, entry: TranscriptMessage) {
-    const writer = this.internalEventWriter
+    const writer = this.eventWriter
     if (writer) {
       try {
         await writer('transcript', entry as unknown as Record<string, unknown>, internalEventOptions(entry))
@@ -623,7 +621,7 @@ export class Project {
       }
       return
     }
-    const url = this.remoteIngressUrl
+    const url = this.ingressUrl
     if (!url || !isEnvTruthy(process.env.ENABLE_SESSION_PERSISTENCE) || isShuttingDown()) return
     const accepted = await sessionIngress.appendSessionLog(sessionId, entry, url).catch(() => false)
     if (accepted) return
@@ -633,29 +631,29 @@ export class Project {
   }
 
   setRemoteIngressUrl(url: string): void {
-    this.remoteIngressUrl = url
-    this.FLUSH_INTERVAL_MS = REMOTE_FLUSH_INTERVAL_MS
+    this.ingressUrl = url
+    this.queue.delayMs = REMOTE_FLUSH_INTERVAL_MS
   }
 
   setInternalEventWriter(writer: InternalEventWriter): void {
-    this.internalEventWriter = writer
-    this.FLUSH_INTERVAL_MS = REMOTE_FLUSH_INTERVAL_MS
+    this.eventWriter = writer
+    this.queue.delayMs = REMOTE_FLUSH_INTERVAL_MS
   }
 
   setInternalEventReader(reader: InternalEventReader): void {
-    this.internalEventReader = reader
+    this.eventReader = reader
   }
 
   setInternalSubagentEventReader(reader: InternalEventReader): void {
-    this.internalSubagentEventReader = reader
+    this.subagentEventReader = reader
   }
 
   getInternalEventReader(): InternalEventReader | null {
-    return this.internalEventReader
+    return this.eventReader
   }
 
   getInternalSubagentEventReader(): InternalEventReader | null {
-    return this.internalSubagentEventReader
+    return this.subagentEventReader
   }
 }
 
