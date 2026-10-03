@@ -12,9 +12,12 @@ import { enableConfigs } from 'src/platform/config/config.js'
 let mainLoopModel = 'claude-fable-5'
 let capturedOpts: Array<Record<string, unknown>> = []
 
-const actualModel = await import('src/providers/model/model.js')
+// Copy the real module BEFORE the stub lands: the namespace is live, so a copy
+// taken after mock.module holds the stubbed getMainLoopModel, and the afterAll
+// "restore" re-installed the stub for every later file in the run.
+const realModelModule = { ...(await import('src/providers/model/model.js')) }
 mock.module('src/providers/model/model.js', () => ({
-  ...actualModel,
+  ...realModelModule,
   getMainLoopModel: () => mainLoopModel,
 }))
 
@@ -22,7 +25,6 @@ mock.module('src/providers/model/model.js', () => ({
 // `mock.restore()` does not undo `mock.module` (.claudin/rules/testing.md,
 // "Cross-file mock leaks"). The sideQuery stub below never reaches the network,
 // so leaving it installed makes every later classifier test pass vacuously.
-const realModelModule = { ...actualModel }
 const realSideQueryModule = { ...(await import('src/agent/sideQuery.js')) }
 
 mock.module('src/agent/sideQuery.js', () => ({

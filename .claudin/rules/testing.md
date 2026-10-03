@@ -174,13 +174,13 @@ when A executes first, regardless of `--max-concurrency=1`.
   `afterAll`/`afterEach` re-mock every module you mocked, both the relative form the
   file uses AND the `src/...` alias. Mocking a dep of a singleton (bootstrap/state)
   re-evaluates it → duplicate instances, so restore fully.
-- **`src/providers/model/model.js` leaks too.** A dozen suites mock it, and under
-  the full run something leaves `getMainLoopModel()` ignoring
-  `setMainLoopModelOverride` — a test that set `'gpt-5'` passed alone and failed
-  in the suite; the leaking file was never found. Test through a pure seam that
-  takes the model or family as an argument (`isV2PromptFamily(family)` in
-  `toolPromptTier.ts`) and pin the wiring on the source; to render what a family
-  receives, `_setToolPromptFamilyForTesting` there stands in for the model.
+- **A "real" copy taken after the stub is the stub.** The `model.js` leak was
+  `yoloClassifier.fableXmlRouting.test.ts`, found by bisect on 2026-10-02. It
+  spread `{ ...actualModel }` into its "real" copy *after* `mock.module` had
+  landed. The namespace is live, so the copy held the stubbed `getMainLoopModel`,
+  and the `afterAll` restore re-installed the stub for the rest of the run. A
+  test that set a model override passed alone and failed in the full suite. Take
+  every real copy before the first `mock.module` in the file.
 - Bisecting a leak: halve the file list with the victim run last; some leaks are
   2-file (a loader + a re-eval trigger). The full run's file order comes from
   `bun test --reporter=junit --reporter-outfile=<file>`; take the victim's
