@@ -180,14 +180,13 @@ describe('runResumeBranch — a session it can pin down goes to the REPL', () =>
     }, TIMEOUT)
   }
 
-  // Defect, pinned as it stands: a session id is resolved by getLastSessionLog,
-  // whose findLatestMessage (sessions/resume/chain.ts) keeps the FIRST message
-  // when several share the latest timestamp. The chain is then rebuilt from
-  // that message and every later one is lost. A title match goes through the
-  // session list instead and keeps them all.
+  // Fixed on 2026-10-03 (was pinned as a defect): a session id is resolved by
+  // getLastSessionLog, which used to keep the FIRST of several messages sharing
+  // the latest timestamp and rebuild the chain from it, losing every later one.
+  // On a tie the later-written message now wins, so every resume keeps them all.
   const stampCases = [
     { by: 'session id', stamps: 'distinct', texts: ['Let us fix the parser.', 'On it.', 'That is all for now.'] },
-    { by: 'session id', stamps: 'tied', texts: ['Let us fix the parser.', 'No response requested.'] },
+    { by: 'session id', stamps: 'tied', texts: ['Let us fix the parser.', 'On it.', 'That is all for now.'] },
     { by: 'exact title', stamps: 'tied', texts: ['Let us fix the parser.', 'On it.', 'That is all for now.'] },
   ]
   for (const c of stampCases) {

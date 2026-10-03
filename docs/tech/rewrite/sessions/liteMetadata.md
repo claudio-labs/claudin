@@ -320,3 +320,37 @@ id, and `null` when no such call exists, when any user message holds a
 - **Search stays a thin filter** over the worktree listing and enrichment. Its per-session deduplication can go, since the listing already holds one record per session id.
 - **Explicit types.** The listed fields as a named type, no `any`, regexes and limits (64 KiB, 200 characters, 50) as module constants. No error swallowed except the documented ones: an unreadable file lists as `'(session)'`, and a failed full load returns the record unchanged.
 - **Call-time reads.** The config home, the original cwd and the current session's directory are read at call time, because the tests change them between calls.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **The rewrite.** The 25 inherited bodies were written anew. `liteMetadata.ts`
+  is now a facade over three groups of modules:
+  - `listing/` reads the session files;
+  - `liteRead/` takes the windowed fields;
+  - `fullLoad/` does the full loads.
+
+  The four characterization suites pass, apart from the two `DEFECT, finding 1`
+  pins, which now assert the fix.
+- **Fixes, each with a test.**
+  1. **Ties.** On a timestamp tie, the later-written message wins for every
+     loader. The tied row in
+     `src/platform/main/defaultAction/resume.characterization.test.tsx` now
+     expects all three messages. `sessions/resume` makes the same fix for
+     `findLatestMessage` in `chain.ts`.
+  2. Only whole top-level fields are read, so a tool input's `tag` or `teamName`
+     is ignored.
+  3. The agent setting is taken last-in-tail, then first-in-head.
+  4. `fullPath` names the file actually read.
+- **Narrowed surface.** As "Out of scope" says:
+  - `convertToLogOption` and `countVisibleMessages` are private;
+  - `trackSessionBranchingAnalytics` is gone;
+  - `search.ts` no longer de-duplicates or re-sorts.
+- **Probes.** 135, in `rewrite-sessions-liteMetadata.json`.
+- **Residue, reviewed.** 48 lines of Claude Code remain, all of them
+  signatures, one-line visibility guards, and the newest-per-session map that
+  the contract of `deduplicateLogsBySessionId` dictates:
+  - `liteMetadata.ts`: 41
+  - `search.ts`: 3
+  - `fullLoad/exportFile.ts`: 2
+  - `fullLoad/messageContent.ts`: 2

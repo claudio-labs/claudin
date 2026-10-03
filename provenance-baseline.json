@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "53bfde636fcf1a332e4b213410bb521aa52bcbd8",
-  "totals": { "claudeCode": 293492, "openclaude": 42533 },
+  "capturedFrom": "96501520088577b73793432f7af367be8331b971",
+  "totals": { "claudeCode": 292684, "openclaude": 42533 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -1639,8 +1639,10 @@
     "src/sessions/indexing/agents.ts": [10, 0],
     "src/sessions/indexing/boundaryScan.ts": [2, 0],
     "src/sessions/indexing/crossProject.ts": [16, 0],
-    "src/sessions/indexing/liteMetadata.ts": [815, 0],
-    "src/sessions/indexing/search.ts": [41, 0],
+    "src/sessions/indexing/fullLoad/exportFile.ts": [2, 0],
+    "src/sessions/indexing/fullLoad/messageContent.ts": [2, 0],
+    "src/sessions/indexing/liteMetadata.ts": [41, 0],
+    "src/sessions/indexing/search.ts": [3, 0],
     "src/sessions/indexing/sessionStats.test.ts": [0, 2],
     "src/sessions/indexing/sessionStats.ts": [4, 0],
     "src/sessions/lifecycle/activity.ts": [2, 0],

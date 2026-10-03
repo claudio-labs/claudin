@@ -285,10 +285,10 @@ describe('messages that share a timestamp', () => {
   }
   const all = [uid(1), uid(2), uid(3)]
 
-  test('DEFECT, finding 1 (decision: fix): getLastSessionLog keeps only the first message of the tie', async () => {
+  test('DEFECT, finding 1 (decision: fix): getLastSessionLog keeps every message of the tie, anchored on the last written', async () => {
     writtenSession()
     const log = await getLastSessionLog(WRITTEN_ID as never)
-    expect([uuids(log), log!.leafUuid, log!.messageCount]).toEqual([[uid(1)], uid(1), 1])
+    expect([uuids(log), log!.leafUuid, log!.messageCount]).toEqual([all, uid(3), 3])
   })
 
   test('the listing path (--continue, the picker) loads every message of the tie', async () => {
@@ -302,7 +302,7 @@ describe('messages that share a timestamp', () => {
     expect((await loadAllLogsFromSessionFile(file)).map(uuids)).toEqual([all])
   })
 
-  test('DEFECT, finding 1 (decision: fix): between two branches that end at the same time, the first written wins', async () => {
+  test('DEFECT, finding 1 (decision: fix): between two branches that end at the same time, the last written wins', async () => {
     world.write(
       SESSION_A,
       chat([
@@ -311,7 +311,7 @@ describe('messages that share a timestamp', () => {
         { kind: 'assistant', content: 'second branch', parent: 1, t: 5 },
       ]),
     )
-    expect(uuids(await loadFullLog(await listedRecord()))).toEqual([uid(1), uid(2)])
+    expect(uuids(await loadFullLog(await listedRecord()))).toEqual([uid(1), uid(3)])
   })
 })
 

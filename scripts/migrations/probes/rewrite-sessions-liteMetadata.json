@@ -3,215 +3,821 @@
     "src/sessions/indexing/liteMetadata.characterization.test.ts",
     "src/sessions/indexing/liteMetadata.listing.characterization.test.ts",
     "src/sessions/indexing/liteMetadata.loading.characterization.test.ts",
-    "src/sessions/indexing/liteMetadata.search.characterization.test.ts"
+    "src/sessions/indexing/liteMetadata.search.characterization.test.ts",
+    "src/sessions/indexing/liteMetadata.fixes.test.ts",
+    "src/sessions/indexing/liteRead/liteRead.test.ts"
   ],
   "source": "src/sessions/indexing/liteMetadata.ts",
   "probes": [
     {
-      "name": "env: an unset NODE_ENV reads as development",
-      "find": "return process.env.NODE_ENV || 'development'",
-      "replace": "return process.env.NODE_ENV || 'production'"
+      "name": "switch: NODE_ENV empty falls back to development",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "return process.env.NODE_ENV || DEFAULT_NODE_ENV",
+      "replace": "return process.env.NODE_ENV ?? DEFAULT_NODE_ENV"
     },
     {
-      "name": "switch: custom titles are on",
-      "find": "export function isCustomTitleEnabled(): boolean {\n  return true",
-      "replace": "export function isCustomTitleEnabled(): boolean {\n  return false"
+      "name": "switch: INITIAL_ENRICH_COUNT is 50",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "export const INITIAL_ENRICH_COUNT = 50",
+      "replace": "export const INITIAL_ENRICH_COUNT = 20"
     },
     {
-      "name": "jsonl: the worktree comes from the leaf session",
-      "find": "worktreeSession: worktreeStates.has(sessionId)",
-      "replace": "worktreeSession: !worktreeStates.has(sessionId)"
+      "name": "switch: custom titles are always on",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "  return true\n}\n\nexport async function loadTranscriptFromFile",
+      "replace": "  return false\n}\n\nexport async function loadTranscriptFromFile"
     },
     {
-      "name": "count: a meta user message is not a turn",
-      "find": "  if (message.isMeta) return false\n",
-      "replace": ""
+      "name": "turns: a meta user message does not count",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (message.type !== 'user' || isMetaMessage(message)) return false",
+      "replace": "if (message.type !== 'user') return false"
     },
     {
-      "name": "count: a document block is a turn",
-      "find": "block.type === 'document',",
-      "replace": "block.type === 'tool_result',"
+      "name": "turns: a blank user string does not count",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (typeof content === 'string') return content.trim() !== ''",
+      "replace": "if (typeof content === 'string') return content !== ''"
     },
     {
-      "name": "count: a blank assistant text is not a turn",
-      "find": "block.text.trim().length > 0,",
-      "replace": "block.text.length > 0,"
+      "name": "turns: image and document blocks count",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "new Set(['text', 'image', 'document'])",
+      "replace": "new Set(['text'])"
     },
     {
-      "name": "record: the branch is the last message's",
-      "find": "gitBranch: lastMessage.gitBranch,",
-      "replace": "gitBranch: firstMessage.gitBranch,"
+      "name": "turns: an assistant text must be non-blank",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "block => block.type === 'text' && typeof block.text === 'string' && block.text.trim() !== '',",
+      "replace": "block => block.type === 'text',"
     },
     {
-      "name": "record: a full record names the session of its first message",
-      "find": "return log.messages[0]?.sessionId as UUID | undefined",
-      "replace": "return log.messages.at(-1)?.sessionId as UUID | undefined"
+      "name": "turns: a string assistant content does not count",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (message.type !== 'assistant') return false\n",
+      "replace": "if (message.type !== 'assistant') return false\n  if (typeof contentOf(message) === 'string') return true\n"
     },
     {
-      "name": "full load: metadata is keyed by the leaf's session",
-      "find": "const sessionId = mostRecentLeaf.sessionId as UUID | undefined",
-      "replace": "const sessionId = transcript[0]?.sessionId as UUID | undefined"
+      "name": "turns: tool results are not user blocks that count",
+      "source": "src/sessions/indexing/fullLoad/messageContent.ts",
+      "find": "return Array.isArray(content) ? content.filter(isRecord) : []",
+      "replace": "return Array.isArray(content) ? content.filter(isRecord).map(b => (b.type === 'tool_result' ? { ...b, type: 'text' } : b)) : []"
     },
     {
-      "name": "full load: only a user title survives",
-      "find": "customTitle: sessionId ? customTitles.get(sessionId) : log.customTitle,",
-      "replace": "customTitle: log.customTitle,"
+      "name": "record: an empty transcript is refused with its message",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "throw new Error('Cannot build session metadata from an empty transcript')",
+      "replace": "throw new Error('empty')"
     },
     {
-      "name": "full load: the chain's first message decides sidechain",
-      "find": "isSidechain: transcript[0]?.isSidechain ?? log.isSidechain,",
-      "replace": "isSidechain: log.isSidechain,"
+      "name": "record: messages lose parentUuid and isSidechain",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    messages: removeExtraFields(transcript),",
+      "replace": "    messages: transcript,"
     },
     {
-      "name": "full load: a worktree with no entry is kept",
-      "find": "          : log.worktreeSession,",
-      "replace": "          : undefined,"
+      "name": "record: date is the last timestamp",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "date: end.timestamp,\n    messages: removeExtraFields(transcript),",
+      "replace": "date: root.timestamp,\n    messages: removeExtraFields(transcript),"
     },
     {
-      "name": "by id: a warm message cache is not overwritten",
-      "find": "if (!getSessionMessages.cache.has(sessionId)) {",
-      "replace": "if (true) {"
+      "name": "record: created is the first timestamp",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "created: new Date(root.timestamp),",
+      "replace": "created: new Date(end.timestamp),"
     },
     {
-      "name": "by id: sidechain messages never anchor the chain",
-      "find": "findLatestMessage(messages.values(), m => !m.isSidechain)",
-      "replace": "findLatestMessage(messages.values(), m => true)"
+      "name": "record: the first prompt titles it",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "firstPrompt: extractFirstPrompt(transcript),",
+      "replace": "firstPrompt: '',"
     },
     {
-      "name": "by id: the agent setting of the requested session",
-      "find": "const agentSetting = agentSettings.get(sessionId)",
-      "replace": "const agentSetting = undefined"
+      "name": "record: leafUuid is the last message",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "agentSetting,\n    leafUuid: end.uuid,",
+      "replace": "agentSetting,\n    leafUuid: root.uuid,"
     },
     {
-      "name": "pending call: an answered call is not pending",
-      "find": "block.tool_use_id === toolUseId",
-      "replace": "block.tool_use_id === 'answered-elsewhere'"
+      "name": "record: gitBranch is the last message's",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "gitBranch: end.gitBranch,\n    projectPath: root.cwd,",
+      "replace": "gitBranch: root.gitBranch,\n    projectPath: root.cwd,"
     },
     {
-      "name": "files: only regular files are sessions",
-      "find": "if (!dirent.isFile() || !dirent.name.endsWith('.jsonl')) continue",
-      "replace": "if (!dirent.name.endsWith('.jsonl')) continue"
+      "name": "record: projectPath is the first message's cwd",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    projectPath: root.cwd,",
+      "replace": "    projectPath: end.cwd,"
     },
     {
-      "name": "files: created time is the birth time",
-      "find": "ctime: st.birthtime.getTime(),",
-      "replace": "ctime: st.mtime.getTime(),"
+      "name": "record: team and agent name come from the first message",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "teamName: root.teamName,\n    agentName: root.agentName,",
+      "replace": "teamName: end.teamName,\n    agentName: end.agentName,"
     },
     {
-      "name": "without index: a limit keeps the newest files",
-      "find": ".sort((a, b) => b.mtime - a.mtime)\n      .slice(0, limit)",
-      "replace": ".sort((a, b) => a.mtime - b.mtime)\n      .slice(0, limit)"
+      "name": "read: a full record names the session of its first message",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const id = log.sessionId || log.messages[0]?.sessionId",
+      "replace": "const id = log.sessionId"
     },
     {
-      "name": "lite: the last prompt comes from the tail only",
-      "find": "extractLastJsonStringField(tail, 'lastPrompt') ||",
-      "replace": "extractLastJsonStringField(head, 'lastPrompt') ||"
+      "name": "read: a lite record needs a session id",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "return log.messages.length === 0 && Boolean(log.sessionId)",
+      "replace": "return log.messages.length === 0"
     },
     {
-      "name": "lite: a cut first line gives 200 characters",
-      "find": "extractJsonStringFieldPrefix(head, 'content', 200) ||",
-      "replace": "extractJsonStringFieldPrefix(head, 'content', 100) ||"
-    },
-    {
-      "name": "lite: a user title beats an AI title",
-      "find": "    extractLastJsonStringField(tail, 'customTitle') ??\n",
-      "replace": "    extractLastJsonStringField(tail, 'aiTitle') ??\n"
-    },
-    {
-      "name": "lite: the tag comes from the tail only",
-      "find": "const tag = extractLastJsonStringField(tail, 'tag')",
-      "replace": "const tag = extractLastJsonStringField(head, 'tag')"
-    },
-    {
-      "name": "lite: with no branch in the tail, the first in the head",
-      "find": "extractJsonStringField(head, 'gitBranch')",
-      "replace": "extractLastJsonStringField(head, 'gitBranch')"
-    },
-    {
-      "name": "lite: a PR number stored as a string",
-      "find": "prNumber = parseInt(prNumStr, 10) || undefined",
-      "replace": "prNumber = undefined"
-    },
-    {
-      "name": "lite: a tab in a cut prompt becomes a space",
-      "find": ".replace(/\\\\t/g, ' ')",
-      "replace": ""
-    },
-    {
-      "name": "lite: a titled session keeps an empty prompt",
-      "find": "if (!enriched.firstPrompt && !enriched.customTitle) {",
-      "replace": "if (!enriched.firstPrompt) {"
-    },
-    {
-      "name": "lite: teammate sessions are hidden",
-      "find": "if (enriched.teamName) {",
+      "name": "file: a .json path is an export",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (!filePath.endsWith(TRANSCRIPT_EXTENSION)) {",
       "replace": "if (false) {"
     },
     {
-      "name": "lite: the head cwd beats the listing's project path",
-      "find": "projectPath: meta.projectPath ?? log.projectPath,",
-      "replace": "projectPath: log.projectPath ?? meta.projectPath,"
-    },
-    {
-      "name": "lite: the spaced sidechain flag hides a session too",
-      "find": " || head.includes('\"isSidechain\": true')",
+      "name": "file: no messages at all is its own refusal",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "  if (loaded.messages.size === 0) throw new Error('No messages found in JSONL file')\n",
       "replace": ""
     },
     {
-      "name": "enrich: stops once enough sessions are found",
-      "find": "while (i < allLogs.length && result.length < count) {",
-      "replace": "while (i < allLogs.length && result.length <= count) {"
+      "name": "file: only a user or assistant branch end anchors a .jsonl",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const leaf = newestMessage(loaded.messages.values(), isBranchEndIn(loaded.leafUuids))",
+      "replace": "const leaf = newestMessage(loaded.messages.values(), isMainThreadMessage)"
     },
     {
-      "name": "listing: stat-only records are flagged lite",
-      "find": "isLite: true,",
-      "replace": "isLite: false,"
+      "name": "file: the worktree of the leaf session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "worktreeSession: worktreeOf(loaded, leaf.sessionId, undefined),",
+      "replace": "worktreeSession: undefined,"
     },
     {
-      "name": "dedupe: a tie keeps the first record seen",
-      "find": "if (!existing || log.modified.getTime() > existing.modified.getTime()) {",
-      "replace": "if (!existing || log.modified.getTime() >= existing.modified.getTime()) {"
+      "name": "file: the collapse state of the leaf session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "...collapseStateOf(loaded, leaf.sessionId),",
+      "replace": "...collapseStateOf(loaded, 'nobody'),"
     },
     {
-      "name": "branches: messages after a branch end follow in time order",
-      "find": "a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0,",
-      "replace": "a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0,"
+      "name": "file: title and tag of the leaf session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const { customTitle, tag } = sessionLabels(loaded, leaf.sessionId)",
+      "replace": "const { customTitle, tag } = sessionLabels(loaded, 'nobody')"
     },
     {
-      "name": "search: the query is trimmed",
-      "find": "const normalizedQuery = query.toLowerCase().trim()",
-      "replace": "const normalizedQuery = query.toLowerCase()",
-      "source": "src/sessions/indexing/search.ts"
+      "name": "export: invalid JSON names the parse error",
+      "source": "src/sessions/indexing/fullLoad/exportFile.ts",
+      "find": "Invalid JSON in transcript file: ",
+      "replace": "Bad JSON: "
     },
     {
-      "name": "search: titles are compared without case",
-      "find": "const title = log.customTitle?.toLowerCase().trim()",
-      "replace": "const title = log.customTitle?.trim()",
-      "source": "src/sessions/indexing/search.ts"
+      "name": "export: a messages member that is not a list is refused",
+      "source": "src/sessions/indexing/fullLoad/exportFile.ts",
+      "find": "    if (!Array.isArray(exported.messages)) throw new Error('Transcript messages must be an array')\n",
+      "replace": ""
     },
     {
-      "name": "search: exact mode compares whole titles",
-      "find": "return exact ? title === normalizedQuery : title.includes(normalizedQuery)",
-      "replace": "return title.includes(normalizedQuery)",
-      "source": "src/sessions/indexing/search.ts"
+      "name": "export: an object with a messages list is accepted",
+      "source": "src/sessions/indexing/fullLoad/exportFile.ts",
+      "find": "if (isRecord(exported) && 'messages' in exported) {",
+      "replace": "if (false) {"
     },
     {
-      "name": "search: newest first",
-      "find": "deduplicated.sort((a, b) => b.modified.getTime() - a.modified.getTime())",
-      "replace": "deduplicated.sort((a, b) => a.modified.getTime() - b.modified.getTime())",
-      "source": "src/sessions/indexing/search.ts"
+      "name": "full: nothing to anchor returns the very record",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "  if (!anchor) return log\n  const chain = buildConversationChain(loaded.messages, anchor)\n  const root",
+      "replace": "  if (!anchor) return { ...log }\n  const chain = buildConversationChain(loaded.messages, anchor)\n  const root"
     },
     {
-      "name": "search: every worktree of the repository is searched",
-      "find": "const worktreePaths = await getWorktreePaths(getOriginalCwd())",
-      "replace": "const worktreePaths: string[] = []",
-      "source": "src/sessions/indexing/search.ts"
+      "name": "full: only branch ends anchor a full load",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const anchor = newestMessage(loaded.messages.values(), isBranchEndIn(loaded.leafUuids))",
+      "replace": "const anchor = newestMessage(loaded.messages.values(), isMainThreadMessage)"
     },
     {
-      "name": "search: the limit",
-      "find": "return deduplicated.slice(0, limit)",
-      "replace": "return deduplicated.slice(0, limit + 1)",
-      "source": "src/sessions/indexing/search.ts"
+      "name": "full: metadata is the anchor session's (a fork)",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "...sessionLabels(loaded, session),",
+      "replace": "...sessionLabels(loaded, root.sessionId),"
+    },
+    {
+      "name": "full: the summary names the anchor",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "summary: summaryOf(loaded, anchor.uuid),\n    // A user title",
+      "replace": "summary: log.summary,\n    // A user title"
+    },
+    {
+      "name": "full: the cost state of the session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "costState: loaded.costStates.get(session as UUID),",
+      "replace": "costState: undefined,"
+    },
+    {
+      "name": "full: no worktree entry keeps the record's",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "worktreeSession: worktreeOf(loaded, session, log.worktreeSession),",
+      "replace": "worktreeSession: worktreeOf(loaded, session, undefined),"
+    },
+    {
+      "name": "full: sidechain and team come from the first chain message",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "isSidechain: root.isSidechain,\n    teamName: root.teamName,",
+      "replace": "isSidechain: log.isSidechain,\n    teamName: log.teamName,"
+    },
+    {
+      "name": "full: snapshots follow the chain",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    ...snapshotsOf(loaded, chain),\n    ...collapseStateOf(loaded, session),",
+      "replace": "    ...collapseStateOf(loaded, session),"
+    },
+    {
+      "name": "full: the chain, recounted",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "messageCount: countVisibleMessages(chain),",
+      "replace": "messageCount: log.messageCount,"
+    },
+    {
+      "name": "last: read from the current session directory first (finding 4)",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "getSessionProjectDir() ?? getProjectDir(getOriginalCwd())",
+      "replace": "getProjectDir(getOriginalCwd())"
+    },
+    {
+      "name": "last: sidechain messages never anchor",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const anchor = newestMessage(loaded.messages.values(), isMainThreadMessage)",
+      "replace": "const anchor = newestMessage(loaded.messages.values(), () => true)"
+    },
+    {
+      "name": "last: the message cache is primed",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "  rememberPersistedMessages(sessionId, loaded.messages.keys())\n",
+      "replace": ""
+    },
+    {
+      "name": "last: a primed cache entry is never replaced",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (!cache.has(sessionId)) cache.set(",
+      "replace": "if (cache) cache.set("
+    },
+    {
+      "name": "last: agent setting of the requested session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "fullPath, attributionSnapshots, loaded.agentSettings.get(sessionId)),",
+      "replace": "fullPath, attributionSnapshots, undefined),"
+    },
+    {
+      "name": "last: worktree of the requested session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "worktreeSession: worktreeOf(loaded, sessionId, undefined),",
+      "replace": "worktreeSession: undefined,"
+    },
+    {
+      "name": "last: cost state of the requested session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "costState: loaded.costStates.get(sessionId),",
+      "replace": "costState: undefined,"
+    },
+    {
+      "name": "last: collapse commits of the requested session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "...collapseStateOf(loaded, sessionId),",
+      "replace": "...collapseStateOf(loaded, 'nobody'),"
+    },
+    {
+      "name": "last: snapshots of the chain",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const { fileHistorySnapshots, attributionSnapshots } = snapshotsOf(loaded, chain)",
+      "replace": "const { fileHistorySnapshots, attributionSnapshots } = { fileHistorySnapshots: undefined, attributionSnapshots: undefined }"
+    },
+    {
+      "name": "last: summary names the anchor",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const summary = summaryOf(loaded, anchor.uuid)",
+      "replace": "const summary = undefined"
+    },
+    {
+      "name": "anchor: a tie goes to the later-written message (finding 1)",
+      "source": "src/sessions/indexing/fullLoad/anchor.ts",
+      "find": "if (newest === undefined || time >= newestTime) {",
+      "replace": "if (newest === undefined || time > newestTime) {"
+    },
+    {
+      "name": "anchor: an unparseable timestamp sorts first",
+      "source": "src/sessions/indexing/fullLoad/anchor.ts",
+      "find": "return Number.isNaN(time) ? -Infinity : time",
+      "replace": "return time"
+    },
+    {
+      "name": "anchor: branch ends are the loader's leaves",
+      "source": "src/sessions/indexing/fullLoad/anchor.ts",
+      "find": "return message => branchEnds.has(message.uuid)",
+      "replace": "return () => true"
+    },
+    {
+      "name": "anchor: the main thread excludes sidechains",
+      "source": "src/sessions/indexing/fullLoad/anchor.ts",
+      "find": "message => !message.isSidechain",
+      "replace": "() => true"
+    },
+    {
+      "name": "entries: mode is read",
+      "source": "src/sessions/indexing/fullLoad/sessionEntries.ts",
+      "find": "mode: isSessionMode(mode) ? mode : undefined,",
+      "replace": "mode: undefined,"
+    },
+    {
+      "name": "entries: collapse commits are the session's",
+      "source": "src/sessions/indexing/fullLoad/sessionEntries.ts",
+      "find": ".filter(commit => commit.sessionId === sessionId)",
+      "replace": ".filter(() => true)"
+    },
+    {
+      "name": "entries: the collapse snapshot only when it is the session's",
+      "source": "src/sessions/indexing/fullLoad/sessionEntries.ts",
+      "find": "snapshot?.sessionId === sessionId ? snapshot : undefined",
+      "replace": "snapshot"
+    },
+    {
+      "name": "entries: a null worktree entry clears the worktree",
+      "source": "src/sessions/indexing/fullLoad/sessionEntries.ts",
+      "find": "return loaded.worktreeStates.has(id) ? loaded.worktreeStates.get(id) : fallback",
+      "replace": "return loaded.worktreeStates.get(id) ?? fallback"
+    },
+    {
+      "name": "entries: a snapshot update replaces the one it updates",
+      "source": "src/sessions/indexing/fullLoad/sessionEntries.ts",
+      "find": "fileHistorySnapshots: buildFileHistorySnapshotChain(loaded.fileHistorySnapshots, chain),",
+      "replace": "fileHistorySnapshots: [...loaded.fileHistorySnapshots.values()].map(s => s.snapshot),"
+    },
+    {
+      "name": "entries: every attribution snapshot",
+      "source": "src/sessions/indexing/fullLoad/sessionEntries.ts",
+      "find": "attributionSnapshots: buildAttributionSnapshotChain(loaded.attributionSnapshots, chain),",
+      "replace": "attributionSnapshots: [],"
+    },
+    {
+      "name": "branches: trailing messages are sorted by time",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": ".sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))",
+      "replace": ".sort(() => 0)"
+    },
+    {
+      "name": "branches: trailing messages are included",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const messages = [...buildConversationChain(loaded.messages, end), ...messagesAfterEnd(loaded, end)]",
+      "replace": "const messages = buildConversationChain(loaded.messages, end)"
+    },
+    {
+      "name": "branches: date and modified are the end's",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    date: end.timestamp,\n    modified: new Date(end.timestamp),\n",
+      "replace": ""
+    },
+    {
+      "name": "branches: the full session labels",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    ...labels,\n    date: end.timestamp,",
+      "replace": "    date: end.timestamp,"
+    },
+    {
+      "name": "branches: the caller's project path wins",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "projectPath: projectPathOverride ?? record.projectPath,",
+      "replace": "projectPath: record.projectPath,"
+    },
+    {
+      "name": "branches: each record names the end's session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    sessionId: end.sessionId,\n",
+      "replace": ""
+    },
+    {
+      "name": "branches: one record per branch end",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": ".filter(isBranchEndIn(loaded.leafUuids))",
+      "replace": ".filter(m => m.uuid === [...loaded.leafUuids].at(-1))"
+    },
+    {
+      "name": "branches: summary names the end",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const summary = summaryOf(loaded, end.uuid)",
+      "replace": "const summary = undefined"
+    },
+    {
+      "name": "without index: a limit reads the newest files only",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const read = limit && limit < files.length ? files.slice(0, limit) : files",
+      "replace": "const read = files"
+    },
+    {
+      "name": "without index: newest file first",
+      "source": "src/sessions/indexing/listing/sessionFiles.ts",
+      "find": "[...files].sort((a, b) => b.mtime - a.mtime)",
+      "replace": "[...files].sort((a, b) => a.mtime - b.mtime)"
+    },
+    {
+      "name": "files: only <uuid>.jsonl names",
+      "source": "src/sessions/indexing/listing/sessionFiles.ts",
+      "find": "return validateUuid(id) ? id : undefined",
+      "replace": "return id"
+    },
+    {
+      "name": "files: only regular files",
+      "source": "src/sessions/indexing/listing/sessionFiles.ts",
+      "find": "entries.filter(entry => entry.isFile())",
+      "replace": "entries"
+    },
+    {
+      "name": "files: ctime is the birth time",
+      "source": "src/sessions/indexing/listing/sessionFiles.ts",
+      "find": "ctime: st.birthtime.getTime()",
+      "replace": "ctime: st.ctime.getTime()"
+    },
+    {
+      "name": "files: mtime in milliseconds",
+      "source": "src/sessions/indexing/listing/sessionFiles.ts",
+      "find": "mtime: st.mtime.getTime(),",
+      "replace": "mtime: Math.floor(st.mtime.getTime() / 1000),"
+    },
+    {
+      "name": "listing: records are lite",
+      "source": "src/sessions/indexing/listing/sessionFiles.ts",
+      "find": "    isLite: true,",
+      "replace": "    isLite: false,"
+    },
+    {
+      "name": "listing: date is the mtime as ISO",
+      "source": "src/sessions/indexing/listing/sessionFiles.ts",
+      "find": "date: modified.toISOString(),",
+      "replace": "date: String(file.mtime),"
+    },
+    {
+      "name": "listing: newest first",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const records = sortLogs([...files].map(([sessionId, file]) => statOnlyRecord(sessionId, file, projectPath)))",
+      "replace": "const records = [...files].map(([sessionId, file]) => statOnlyRecord(sessionId, file, projectPath)).reverse()"
+    },
+    {
+      "name": "listing: a limit keeps the newest",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const kept = limit && limit < records.length ? records.slice(0, limit) : records",
+      "replace": "const kept = records"
+    },
+    {
+      "name": "listing: value is the position",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "  return kept.map((log, value) => ({ ...log, value }))",
+      "replace": "  return kept"
+    },
+    {
+      "name": "project: fetchLogs tags records with the original cwd",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "return getSessionFilesLite(getProjectDir(cwd), limit, cwd)",
+      "replace": "return getSessionFilesLite(getProjectDir(cwd), limit)"
+    },
+    {
+      "name": "project: loadMessageLogs sorts and renumbers",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "return sortLogs([...logs]).map((log, value) => ({ ...log, value }))",
+      "replace": "return logs"
+    },
+    {
+      "name": "project: getLogByIndex picks from that list",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "return (await loadMessageLogs())[index] ?? null",
+      "replace": "return (await loadMessageLogs())[index + 1] ?? null"
+    },
+    {
+      "name": "dedupe: a tie keeps the first seen",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (!kept || log.modified.getTime() > kept.modified.getTime())",
+      "replace": "if (!kept || log.modified.getTime() >= kept.modified.getTime())"
+    },
+    {
+      "name": "dedupe: records without an id are dropped",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    if (!log.sessionId) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "dedupe: results are new objects",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "return sortLogs([...newest.values()]).map((log, value) => ({ ...log, value }))",
+      "replace": "return sortLogs([...newest.values()]).map((log, value) => Object.assign(log, { value }))"
+    },
+    {
+      "name": "enrich: the tail starts mid-line only past one window",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "tailStartsMidLine: fileSize > LITE_READ_BUF_SIZE",
+      "replace": "tailStartsMidLine: false"
+    },
+    {
+      "name": "enrich: a teammate session is hidden",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (fields.isSidechain || fields.teamName) return null",
+      "replace": "if (fields.isSidechain) return null"
+    },
+    {
+      "name": "enrich: a sidechain session is hidden",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "if (fields.isSidechain || fields.teamName) return null",
+      "replace": "if (fields.teamName) return null"
+    },
+    {
+      "name": "enrich: the listed project path is the fallback",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "projectPath: fields.projectPath ?? log.projectPath",
+      "replace": "projectPath: fields.projectPath"
+    },
+    {
+      "name": "enrich: an enriched record is no longer flagged lite",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "isLite: false }",
+      "replace": "isLite: true }"
+    },
+    {
+      "name": "enrich: a lite record without a file passes through",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "  if (!log.fullPath) return log\n  const fields",
+      "replace": "  if (!log.fullPath) return { ...log }\n  const fields"
+    },
+    {
+      "name": "enrich: a record that is not lite passes through",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const shown = log.isLite ? await enrichLog(log, readBuf) : log",
+      "replace": "const shown = await enrichLog(log, readBuf)"
+    },
+    {
+      "name": "enrich: count bounds what is kept, and hidden ones do not count",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "while (index < allLogs.length && logs.length < count) {",
+      "replace": "while (index < allLogs.length && index - startIndex < count) {"
+    },
+    {
+      "name": "fields: \"(session)\" only without a prompt and a title",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "firstPrompt: (prompt || customTitle) ? prompt : UNTITLED_SESSION,",
+      "replace": "firstPrompt: prompt || UNTITLED_SESSION,"
+    },
+    {
+      "name": "fields: the last last-prompt comes first (finding 6)",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "    last(tail, entryField('last-prompt', 'lastPrompt')) ||\n",
+      "replace": ""
+    },
+    {
+      "name": "fields: the chunk title of the head",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "    extractFirstPromptFromChunk(head) ||\n",
+      "replace": ""
+    },
+    {
+      "name": "fields: raw content start as a fallback",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "    deps.stringPrefix(head, 'content', RAW_TITLE_MAX_CHARS) ||\n",
+      "replace": ""
+    },
+    {
+      "name": "fields: raw text start as the last fallback",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "    deps.stringPrefix(head, 'text', RAW_TITLE_MAX_CHARS)\n",
+      "replace": "    ''\n"
+    },
+    {
+      "name": "fields: the raw title is 200 characters",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "export const RAW_TITLE_MAX_CHARS = 200",
+      "replace": "export const RAW_TITLE_MAX_CHARS = 100"
+    },
+    {
+      "name": "fields: a user title in the head beats an AI title in the tail",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "last(tail, userTitle) || last(head, userTitle) || last(tail, aiTitle) || last(head, aiTitle)",
+      "replace": "last(tail, userTitle) || last(tail, aiTitle) || last(head, userTitle) || last(head, aiTitle)"
+    },
+    {
+      "name": "fields: an AI title is listed as the title (finding 5)",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": " || last(tail, aiTitle) || last(head, aiTitle) || undefined",
+      "replace": " || undefined"
+    },
+    {
+      "name": "fields: an AI title in the tail beats one in the head",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "|| last(tail, aiTitle) || last(head, aiTitle)",
+      "replace": "|| last(head, aiTitle) || last(tail, aiTitle)"
+    },
+    {
+      "name": "fields: the tag is read from the tail only",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "tag: last(tailEntries, entryField('tag', 'tag')) || undefined,",
+      "replace": "tag: last(tailEntries, entryField('tag', 'tag')) ?? last(headEntries, entryField('tag', 'tag')),"
+    },
+    {
+      "name": "fields: the branch is the last in the tail",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "gitBranch: latestKnown(headEntries, tailEntries, messageField('gitBranch')),",
+      "replace": "gitBranch: first(headEntries, messageField('gitBranch')),"
+    },
+    {
+      "name": "fields: else the first in the head",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "return last(tail, pick) ?? first(head, pick)",
+      "replace": "return last(tail, pick)"
+    },
+    {
+      "name": "fields: projectPath is the first cwd in the head",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "projectPath: first(headEntries, messageField('cwd')),",
+      "replace": "projectPath: last(tailEntries, messageField('cwd')),"
+    },
+    {
+      "name": "fields: teamName is read from the head",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "teamName: first(headEntries, messageField('teamName')),",
+      "replace": "teamName: undefined,"
+    },
+    {
+      "name": "fields: the agent setting is read like the branch (finding 3)",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "agentSetting: latestKnown(headEntries, tailEntries, entryField('agent-setting', 'agentSetting')),",
+      "replace": "agentSetting: first(headEntries, entryField('agent-setting', 'agentSetting')),"
+    },
+    {
+      "name": "fields: the sidechain flag is read from the head only",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "isSidechain: headEntries.some(",
+      "replace": "isSidechain: [...headEntries, ...tailEntries].some("
+    },
+    {
+      "name": "fields: the sidechain flag is a message line's (finding 2)",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "isMessageLine(entry) && entry.isSidechain === true",
+      "replace": "entry.isSidechain === true"
+    },
+    {
+      "name": "fields: message fields come from message lines only (finding 2)",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "return entry => (isMessageLine(entry) ? stringMember(entry, key) : undefined)",
+      "replace": "return entry => stringMember(entry, key)"
+    },
+    {
+      "name": "fields: entry fields come from entries of their type (finding 2)",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "return entry => (entry.type === type ? stringMember(entry, key) : undefined)",
+      "replace": "return entry => stringMember(entry, key)"
+    },
+    {
+      "name": "fields: a PR number string is parsed",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : value",
+      "replace": "const parsed = value"
+    },
+    {
+      "name": "fields: a PR number must be positive",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "parsed > 0 ? parsed : undefined",
+      "replace": "parsed >= 0 ? parsed : undefined"
+    },
+    {
+      "name": "fields: the last PR URL",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "prUrl: last(tailEntries, entryField('pr-link', 'prUrl')),",
+      "replace": "prUrl: first(tailEntries, entryField('pr-link', 'prUrl')),"
+    },
+    {
+      "name": "fields: the PR repository",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "prRepository: last(tailEntries, entryField('pr-link', 'prRepository')),",
+      "replace": "prRepository: undefined,"
+    },
+    {
+      "name": "fields: the summary from the tail",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "summary: stats.summary,",
+      "replace": "summary: undefined,"
+    },
+    {
+      "name": "fields: the cost from the tail",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "costUSD: stats.costUSD,",
+      "replace": "costUSD: undefined,"
+    },
+    {
+      "name": "fields: the context size from the tail",
+      "source": "src/sessions/indexing/liteRead/listedFields.ts",
+      "find": "contextTokens: stats.contextTokens,",
+      "replace": "contextTokens: undefined,"
+    },
+    {
+      "name": "window: the cut first line of a tail is dropped (finding 2)",
+      "source": "src/sessions/indexing/liteRead/windowEntries.ts",
+      "find": "    if (index === 0 && startsMidLine) return\n",
+      "replace": ""
+    },
+    {
+      "name": "window: a cut head line keeps its leading members",
+      "source": "src/sessions/indexing/liteRead/windowEntries.ts",
+      "find": "    if (partial && Object.keys(partial).length > 0) entries.push(partial)\n",
+      "replace": ""
+    },
+    {
+      "name": "window: object values are skipped in a cut line",
+      "source": "src/sessions/indexing/liteRead/windowEntries.ts",
+      "find": "    if (!OPENERS.has(line[valueStart]!)) {",
+      "replace": "    if (true) {"
+    },
+    {
+      "name": "window: a literal running to the end may be cut",
+      "source": "src/sessions/indexing/liteRead/windowEntries.ts",
+      "find": "  return -1\n}\n\nfunction endOfValue",
+      "replace": "  return text.length\n}\n\nfunction endOfValue"
+    },
+    {
+      "name": "window: braces inside strings do not count when skipping an object",
+      "source": "src/sessions/indexing/liteRead/windowEntries.ts",
+      "find": "    if (char === QUOTE) {\n      const next = endOfString(text, i)",
+      "replace": "    if (false) {\n      const next = endOfString(text, i)"
+    },
+    {
+      "name": "prefix: \\t becomes a space",
+      "source": "src/sessions/indexing/liteRead/promptPrefix.ts",
+      "find": "new Set(['n', 't'])",
+      "replace": "new Set(['n'])"
+    },
+    {
+      "name": "prefix: stops at the closing quote",
+      "source": "src/sessions/indexing/liteRead/promptPrefix.ts",
+      "find": "    if (char === QUOTE) break\n",
+      "replace": ""
+    },
+    {
+      "name": "prefix: trimmed",
+      "source": "src/sessions/indexing/liteRead/promptPrefix.ts",
+      "find": "return prefix.slice(0, maxLen).trim()",
+      "replace": "return prefix.slice(0, maxLen)"
+    },
+    {
+      "name": "prefix: other escapes stay as written",
+      "source": "src/sessions/indexing/liteRead/promptPrefix.ts",
+      "find": "prefix += SPACED_ESCAPES.has(escaped) ? ' ' : char + escaped",
+      "replace": "prefix += SPACED_ESCAPES.has(escaped) ? ' ' : escaped"
+    },
+    {
+      "name": "tool call: an answered call is not pending",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    if (message.type === 'user' && answersTool(message, toolUseId)) return null\n",
+      "replace": ""
+    },
+    {
+      "name": "tool call: the call is matched by id",
+      "source": "src/sessions/indexing/fullLoad/messageContent.ts",
+      "find": "block.type === 'tool_use' && block.id === toolUseId",
+      "replace": "block.type === 'tool_use'"
+    },
+    {
+      "name": "tool call: read from the current session",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "const { messages } = await loadTranscriptFile(getTranscriptPath())",
+      "replace": "const { messages } = await loadTranscriptFile(join(getProjectDir(getOriginalCwd()), 'a11ce000-1111-4222-8333-444455556666.jsonl'))"
+    },
+    {
+      "name": "search: matching ignores case and surrounding space",
+      "source": "src/sessions/indexing/search.ts",
+      "find": "return text.toLowerCase().trim()",
+      "replace": "return text.trim()"
+    },
+    {
+      "name": "search: an untitled session never matches",
+      "source": "src/sessions/indexing/search.ts",
+      "find": "  if (!title) return false\n",
+      "replace": "  if (!title) return query === ''\n"
+    },
+    {
+      "name": "search: exact matches the whole title",
+      "source": "src/sessions/indexing/search.ts",
+      "find": "return exact ? candidate === query : candidate.includes(query)",
+      "replace": "return candidate.includes(query)"
+    },
+    {
+      "name": "search: a limit keeps that many",
+      "source": "src/sessions/indexing/search.ts",
+      "find": "return options?.limit ? found.slice(0, options.limit) : found",
+      "replace": "return found"
+    },
+    {
+      "name": "search: every worktree is listed",
+      "source": "src/sessions/indexing/search.ts",
+      "find": "await getStatOnlyLogsForWorktrees(await getWorktreePaths(getOriginalCwd()))",
+      "replace": "await getStatOnlyLogsForWorktrees([])"
+    },
+    {
+      "name": "search: listed sessions are enriched",
+      "source": "src/sessions/indexing/search.ts",
+      "find": "const { logs } = await enrichLogs(listed, 0, listed.length)",
+      "replace": "const logs = listed"
     }
   ]
 }

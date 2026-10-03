@@ -47,7 +47,7 @@ which the sandbox tools read; the lists below are the same.
 | `sessions/storagePure` | 6 | 858 | — | done |
 | `sessions/persistence` | 5 | 1315 | — | pending |
 | `sessions/resume` | 7 | 1201 | `conversationRecovery.hooks.test.ts`, `conversationRecovery.test.ts`, `sessionStorage.test.ts` (377) | pending |
-| `sessions/liteMetadata` | 2 | 856 | — | pending |
+| `sessions/liteMetadata` | 2 | 856 | — | done |
 | `sessions/indexingScan` | 3 | 609 | — | done |
 | `sessions/lifecycle` | 8 | 1057 | — | done |
 | `sessions/remote` | 5 | 917 | — | pending |
