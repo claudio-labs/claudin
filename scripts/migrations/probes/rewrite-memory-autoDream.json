@@ -1,0 +1,227 @@
+{
+  "test": [
+    "src/memory/autoDream/autoDream.characterization.test.ts",
+    "src/memory/autoDream/autoDream.shipped.characterization.test.ts",
+    "src/memory/autoDream/consolidationLock.characterization.test.ts",
+    "src/memory/autoDream/consolidationPrompt.characterization.test.ts"
+  ],
+  "source": "src/memory/autoDream/autoDream.ts",
+  "probes": [
+    {
+      "name": "an end of turn before initAutoDream already runs",
+      "find": "  | null = null\n",
+      "replace": "  | null = null\nqueueMicrotask(() => initAutoDream())\n"
+    },
+    {
+      "name": "assistant (KAIROS) mode does not stop it",
+      "find": "if (getKairosActive()) return false",
+      "replace": "if (false) return false"
+    },
+    {
+      "name": "auto memory being off does not stop it",
+      "find": "if (!isAutoMemoryEnabled()) return false",
+      "replace": "if (false) return false"
+    },
+    {
+      "name": "the autoDreamEnabled setting is not read",
+      "find": "  return isAutoDreamEnabled()",
+      "replace": "  return true"
+    },
+    {
+      "name": "exactly 24 hours is not yet due",
+      "find": "hoursSince < cfg.minHours) return",
+      "replace": "hoursSince <= cfg.minHours) return"
+    },
+    {
+      "name": "the scan throttle becomes nine minutes",
+      "find": "const SESSION_SCAN_INTERVAL_MS = 10 * 60 * 1000",
+      "replace": "const SESSION_SCAN_INTERVAL_MS = 9 * 60 * 1000"
+    },
+    {
+      "name": "the time of the last scan is never recorded",
+      "find": "    lastSessionScanAt = Date.now()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "the current session counts toward the five",
+      "find": "sessionIds = sessionIds.filter(id => id !== currentSession)",
+      "replace": "sessionIds = sessionIds.filter(Boolean)"
+    },
+    {
+      "name": "exactly five sessions is not enough",
+      "find": "sessionIds.length < cfg.minSessions",
+      "replace": "sessionIds.length <= cfg.minSessions"
+    },
+    {
+      "name": "the task-state setter is not preferred",
+      "find": "context.toolUseContext.setAppStateForTasks ??\n      context.toolUseContext.setAppState",
+      "replace": "context.toolUseContext.setAppState ??\n      context.toolUseContext.setAppStateForTasks"
+    },
+    {
+      "name": "the task does not carry the time to roll back to",
+      "find": "      priorMtime,\n      abortController,\n",
+      "replace": "      priorMtime: 0,\n      abortController,\n"
+    },
+    {
+      "name": "team memory is never offered to the dream",
+      "find": "feature('TEAMMEM') && isTeamMemoryEnabled() ? getTeamMemPath() : null",
+      "replace": "null"
+    },
+    {
+      "name": "the digest ignores the last consolidation time",
+      "find": "collectDreamDigest(lastAt, sessionIds)",
+      "replace": "collectDreamDigest(0, sessionIds)"
+    },
+    {
+      "name": "the sessions are not listed one per line",
+      "find": "${sessionIds.map(id => `- ${id}`).join('\\n')}",
+      "replace": "${sessionIds.map(id => `- ${id}`).join(' ')}"
+    },
+    {
+      "name": "the fork is labelled as an extraction",
+      "find": "querySource: 'auto_dream',",
+      "replace": "querySource: 'extract_memories',"
+    },
+    {
+      "name": "the fork records a transcript",
+      "find": "skipTranscript: true,",
+      "replace": "skipTranscript: false,"
+    },
+    {
+      "name": "the fork may use any tool",
+      "find": "canUseTool: createAutoMemCanUseTool(memoryRoot),",
+      "replace": "canUseTool: async (_tool, input) => ({ behavior: 'allow', updatedInput: input }),"
+    },
+    {
+      "name": "the notice ignores the user's setting",
+      "find": "getGlobalConfig().notifyMemorySaved === true",
+      "replace": "getGlobalConfig().notifyMemorySaved !== false"
+    },
+    {
+      "name": "the notice says Saved",
+      "find": "verb: 'Improved',",
+      "replace": "verb: 'Saved',"
+    },
+    {
+      "name": "an aborted run is treated as a failure",
+      "find": "if (abortController.signal.aborted) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "a failed fork keeps the lock",
+      "find": "      await rollbackConsolidationLock(priorMtime)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a failed fork completes the task",
+      "find": "failDreamTask(taskId, setAppState)",
+      "replace": "completeDreamTask(taskId, setAppState)"
+    },
+    {
+      "name": "the turn text is not trimmed",
+      "find": "text: text.trim()",
+      "replace": "text"
+    },
+    {
+      "name": "a non-string file_path is recorded",
+      "find": "if (typeof input.file_path === 'string') {",
+      "replace": "if (input.file_path !== undefined) {"
+    },
+    {
+      "name": "the lock file is renamed",
+      "find": "const LOCK_FILE = '.consolidate-lock'",
+      "replace": "const LOCK_FILE = '.consolidation-lock'",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "a live holder is still trusted at exactly one hour",
+      "find": "Date.now() - mtimeMs < HOLDER_STALE_MS",
+      "replace": "Date.now() - mtimeMs <= HOLDER_STALE_MS",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "the last consolidation is read in seconds",
+      "find": "return s.mtimeMs",
+      "replace": "return Math.round(s.mtimeMs / 1000)",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "a dead holder still blocks",
+      "find": "if (holderPid !== undefined && isProcessRunning(holderPid)) {",
+      "replace": "if (holderPid !== undefined) {",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "the acquired lock body gains a newline",
+      "find": "  await writeFile(path, String(process.pid))\n",
+      "replace": "  await writeFile(path, String(process.pid) + '\\n')\n",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "acquiring answers 0 instead of the previous time",
+      "find": "return mtimeMs ?? 0",
+      "replace": "return 0",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "rolling back to 0 keeps the file",
+      "find": "if (priorMtime === 0) {",
+      "replace": "if (priorMtime < 0) {",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "rolling back keeps the PID in the body",
+      "find": "await writeFile(path, '')",
+      "replace": "await writeFile(path, String(process.pid))",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "sessions touched exactly at the time count",
+      "find": "c.mtime > sinceMs",
+      "replace": "c.mtime >= sinceMs",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "recording does not create the memory directory",
+      "find": "await mkdir(getAutoMemPath(), { recursive: true })\n    await writeFile(lockPath(), String(process.pid))",
+      "replace": "await writeFile(lockPath(), String(process.pid))",
+      "source": "src/memory/autoDream/consolidationLock.ts"
+    },
+    {
+      "name": "only one trailing slash is stripped from the team root",
+      "find": "const TRAILING_SEP_RE = /[/\\\\]+$/",
+      "replace": "const TRAILING_SEP_RE = /\\/$/",
+      "source": "src/memory/autoDream/consolidationPrompt.ts"
+    },
+    {
+      "name": "the additional context loses its blank line",
+      "find": "## Additional context\\n\\n${extra}",
+      "replace": "## Additional context\\n${extra}",
+      "source": "src/memory/autoDream/consolidationPrompt.ts"
+    },
+    {
+      "name": "the directory guidance is dropped",
+      "find": "${DIR_EXISTS_GUIDANCE}",
+      "replace": "",
+      "source": "src/memory/autoDream/consolidationPrompt.ts"
+    },
+    {
+      "name": "the index line limit is hard-coded to 150",
+      "find": "under ${MAX_ENTRYPOINT_LINES} lines",
+      "replace": "under 150 lines",
+      "source": "src/memory/autoDream/consolidationPrompt.ts"
+    },
+    {
+      "name": "one team category is left out",
+      "find": "renderTeamCategoriesXml().join('\\n')",
+      "replace": "renderTeamCategoriesXml().slice(1).join('\\n')",
+      "source": "src/memory/autoDream/consolidationPrompt.ts"
+    },
+    {
+      "name": "an unset setting turns the dream on",
+      "find": "getInitialSettings().autoDreamEnabled === true",
+      "replace": "getInitialSettings().autoDreamEnabled !== false",
+      "source": "src/memory/autoDream/config.ts"
+    }
+  ]
+}

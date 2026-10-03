@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "530e6c6c84f85bb2715b2fdc7ac6eee5b770e5c3",
-  "totals": { "claudeCode": 295123, "openclaude": 42612 },
+  "capturedFrom": "c444c92e18c2a3d35e79c7a9fdaa9cc4460367ae",
+  "totals": { "claudeCode": 295123, "openclaude": 42600 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -725,7 +725,6 @@
     "src/memory/autoDream/autoDream.ts": [184, 0],
     "src/memory/autoDream/config.ts": [3, 0],
     "src/memory/autoDream/consolidationLock.ts": [102, 0],
-    "src/memory/autoDream/consolidationPrompt.test.ts": [0, 12],
     "src/memory/autoDream/consolidationPrompt.ts": [21, 0],
     "src/memory/autoDream/dreamDigest.test.ts": [0, 16],
     "src/memory/extract/fork/forkRequest.ts": [2, 0],
