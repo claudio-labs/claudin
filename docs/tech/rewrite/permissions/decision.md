@@ -391,3 +391,34 @@ deleted.
 - **Make the decision record explicit.** Return the `PermissionDecision` union unchanged, and derive the reason types from `PermissionResult.ts` (`permissions/ruleModel`) rather than restating them.
 - **The denial counter stays pure:** immutable updates, and one persistence function that knows the sub-agent and app-state cases.
 - **No telemetry.** Drop the unused cost and decision-label computations.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.** All 29 inherited bodies were written anew. The auto-mode path
+  moved to `permissions/autoMode.ts`, which takes an `AutoModeDeps` parameter.
+  `ruleSlots.ts` (the rule slots per source) and `toolVerdict.ts` are new. The
+  three characterization suites pass unchanged, the flagged child included,
+  and 11,647 caller tests stay green.
+- **Fixes, each with a test.**
+  1. The classifier and its allowlist load inside `loadAutoModeDeps()`, when a
+     decision needs them. This removes the TDZ cycle. `loadOrder.test.ts`
+     loads the classifier first, with the flags on.
+  2. The auto-mode allowlist is checked against the full MCP name, so an MCP
+     tool named like a built-in no longer skips the classifier.
+  3. A managed-only re-sync empties `flagSettings`.
+- **Kept.** Findings 3, 5, 6, 7 and 8. Finding 7 gained the test it was missing.
+- **Dead code, gone with it.** The old code computed a classifier cost in USD
+  and never used it. That was a telemetry leftover, so
+  `calculateCostFromTokens` in `providers/usage/modelCost.ts` lost its last
+  caller and was removed.
+- **Text kept on purpose.** `permissions.test.ts` reads `permissions.ts` as
+  text and requires two fragments verbatim: the `planModeDefersToClassifier(…)`
+  call and the `AGENT_TOOL_NAME` plan-mode guard. Both are kept. The
+  auto-mode suite now covers that behaviour directly, so those text checks can
+  be retired.
+- **Probes.** `rewrite-permissions-decision.json` has 98 probes, 43 of them on
+  deny, ask or refusal branches.
+- **Residue, reviewed.** 110 lines of Claude Code remain: the signatures of the
+  rule lookups, of the denial-limit and request-message functions, and of the
+  exported decision functions.

@@ -1,14 +1,20 @@
+/**
+ * The text a permission prompt shows, and the `PermissionRequest` hooks that
+ * stand in for the prompt in a session that cannot show one.
+ */
 import { feature } from 'bun:bundle'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { extractOutputRedirections } from 'src/platform/bash/commands.js'
-import { logForDebugging } from 'src/shared/debug.js'
-import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { plural } from 'src/shared/text/stringUtils.js'
+import type { PermissionRequestResult } from 'src/shared/types/hooks.js'
 import { permissionModeTitle } from 'src/permissions/PermissionMode.js'
 import type {
+  PermissionAllowDecision,
   PermissionDecision,
   PermissionDecisionReason,
+  PermissionDenyDecision,
   PermissionResult,
 } from 'src/permissions/PermissionResult.js'
 import {
@@ -20,92 +26,123 @@ import { permissionRuleValueToString } from 'src/permissions/permissionRuleParse
 import { executePermissionRequestHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { permissionRuleSourceDisplayString } from 'src/permissions/permissions/ruleLookup.js'
 
-/**
- * Creates a permission request message that explain the permission request
- */
+const PERMISSION_REQUEST_HOOK = 'PermissionRequest'
+
+function notYetGranted(toolName: string): string {
+  return `Claudin requested permissions to use ${toolName}, but you haven't granted it yet.`
+}
+
+function needsApprovalFrom(who: string, toolName: string): string {
+  return `${who} requires approval for this ${toolName} command`
+}
+
+function stillToApprove(result: PermissionResult): boolean {
+  return result.behavior === 'ask' || result.behavior === 'passthrough'
+}
+
+/** Bash parts lose their output redirections, so the list names the commands themselves. */
+function shownPart(toolName: string, part: string): string {
+  if (toolName !== BASH_TOOL_NAME) return part
+  const { redirections, commandWithoutRedirections } = extractOutputRedirections(part)
+  // The extractor re-serialises what it parses, so a part with nothing to cut keeps its own quoting.
+  return redirections.length > 0 ? commandWithoutRedirections.trim() : part
+}
+
+function compoundCommandMessage(
+  toolName: string,
+  parts: Map<string, PermissionResult>,
+): string {
+  const pending = [...parts]
+    .filter(([, result]) => stillToApprove(result))
+    .map(([part]) => shownPart(toolName, part))
+  const opening = `This ${toolName} command contains multiple operations`
+  if (pending.length === 0) return `${opening} that require approval`
+  const subject = `The following ${plural(pending.length, 'part')}`
+  const verb = pending.length === 1 ? 'requires' : 'require'
+  return `${opening}. ${subject} ${verb} approval: ${pending.join(', ')}`
+}
+
 export function createPermissionRequestMessage(
   toolName: string,
   decisionReason?: PermissionDecisionReason,
 ): string {
-  // Handle different decision reason types
-  if (decisionReason) {
-    if (
-      (feature('BASH_CLASSIFIER') || feature('TRANSCRIPT_CLASSIFIER')) &&
-      decisionReason.type === 'classifier'
-    ) {
-      return `Classifier '${decisionReason.classifier}' requires approval for this ${toolName} command: ${decisionReason.reason}`
+  if (!decisionReason) return notYetGranted(toolName)
+  switch (decisionReason.type) {
+    case 'hook': {
+      const hook = `Hook '${decisionReason.hookName}'`
+      return decisionReason.reason
+        ? `${hook} blocked this action: ${decisionReason.reason}`
+        : needsApprovalFrom(hook, toolName)
     }
-    switch (decisionReason.type) {
-      case 'hook': {
-        const hookMessage = decisionReason.reason
-          ? `Hook '${decisionReason.hookName}' blocked this action: ${decisionReason.reason}`
-          : `Hook '${decisionReason.hookName}' requires approval for this ${toolName} command`
-        return hookMessage
-      }
-      case 'rule': {
-        const ruleString = permissionRuleValueToString(
-          decisionReason.rule.ruleValue,
-        )
-        const sourceString = permissionRuleSourceDisplayString(
-          decisionReason.rule.source,
-        )
-        return `Permission rule '${ruleString}' from ${sourceString} requires approval for this ${toolName} command`
-      }
-      case 'subcommandResults': {
-        const needsApproval: string[] = []
-        for (const [cmd, result] of decisionReason.reasons) {
-          if (result.behavior === 'ask' || result.behavior === 'passthrough') {
-            // Strip output redirections for display to avoid showing filenames as commands
-            // Only do this for Bash tool to avoid affecting other tools
-            if (toolName === 'Bash') {
-              const { commandWithoutRedirections, redirections } =
-                extractOutputRedirections(cmd)
-              // Only use stripped version if there were actual redirections
-              const displayCmd =
-                redirections.length > 0 ? commandWithoutRedirections : cmd
-              needsApproval.push(displayCmd)
-            } else {
-              needsApproval.push(cmd)
-            }
-          }
-        }
-        if (needsApproval.length > 0) {
-          const n = needsApproval.length
-          return `This ${toolName} command contains multiple operations. The following ${plural(n, 'part')} ${plural(n, 'requires', 'require')} approval: ${needsApproval.join(', ')}`
-        }
-        return `This ${toolName} command contains multiple operations that require approval`
-      }
-      case 'permissionPromptTool':
-        return `Tool '${decisionReason.permissionPromptToolName}' requires approval for this ${toolName} command`
-      case 'sandboxOverride':
-        return 'Run outside of the sandbox'
-      case 'workingDir':
-        return decisionReason.reason
-      case 'safetyCheck':
-      case 'other':
-        return decisionReason.reason
-      case 'mode': {
-        const modeTitle = permissionModeTitle(decisionReason.mode)
-        return `Current permission mode (${modeTitle}) requires approval for this ${toolName} command`
-      }
-      case 'asyncAgent':
-        return decisionReason.reason
+    case 'rule': {
+      const { rule } = decisionReason
+      const ruleText = permissionRuleValueToString(rule.ruleValue)
+      const where = permissionRuleSourceDisplayString(rule.source)
+      return needsApprovalFrom(`Permission rule '${ruleText}' from ${where}`, toolName)
     }
+    case 'subcommandResults':
+      return compoundCommandMessage(toolName, decisionReason.reasons)
+    case 'permissionPromptTool':
+      return needsApprovalFrom(`Tool '${decisionReason.permissionPromptToolName}'`, toolName)
+    case 'sandboxOverride':
+      return 'Run outside of the sandbox'
+    case 'mode':
+      return needsApprovalFrom(
+        `Current permission mode (${permissionModeTitle(decisionReason.mode)})`,
+        toolName,
+      )
+    case 'classifier':
+      return feature('TRANSCRIPT_CLASSIFIER')
+        ? `${needsApprovalFrom(`Classifier '${decisionReason.classifier}'`, toolName)}: ${decisionReason.reason}`
+        : notYetGranted(toolName)
+    case 'workingDir':
+    case 'safetyCheck':
+    case 'other':
+    case 'asyncAgent':
+      return decisionReason.reason
   }
+}
 
-  // Default message without listing allowed commands
-  const message = `Claude requested permissions to use ${toolName}, but you haven't granted it yet.`
+function grantedByHook(
+  verdict: Extract<PermissionRequestResult, { behavior: 'allow' }>,
+  input: { [key: string]: unknown },
+  context: ToolUseContext,
+): PermissionAllowDecision {
+  const updates = verdict.updatedPermissions ?? []
+  if (updates.length > 0) {
+    persistPermissionUpdates(updates)
+    context.setAppState(prev => ({
+      ...prev,
+      toolPermissionContext: applyPermissionUpdates(prev.toolPermissionContext, updates),
+    }))
+  }
+  return {
+    behavior: 'allow',
+    updatedInput: verdict.updatedInput ?? input,
+    decisionReason: { type: 'hook', hookName: PERMISSION_REQUEST_HOOK },
+  }
+}
 
-  return message
+function refusedByHook(
+  verdict: Extract<PermissionRequestResult, { behavior: 'deny' }>,
+  tool: Tool,
+  context: ToolUseContext,
+): PermissionDenyDecision {
+  if (verdict.interrupt) context.abortController.abort()
+  return {
+    behavior: 'deny',
+    message: verdict.message || `Using ${tool.name} was denied by hook ${PERMISSION_REQUEST_HOOK}.`,
+    decisionReason: {
+      type: 'hook',
+      hookName: PERMISSION_REQUEST_HOOK,
+      ...(verdict.message ? { reason: verdict.message } : {}),
+    },
+  }
 }
 
 /**
- * Runs PermissionRequest hooks for headless/async agents that cannot show
- * permission prompts. This gives hooks an opportunity to allow or deny
- * tool use before the fallback auto-deny kicks in.
- *
- * Returns a PermissionDecision if a hook made a decision, or null if no
- * hook provided a decision (caller should proceed to auto-deny).
+ * The first hook that allows or denies settles the call. Null when none
+ * decides, or when the hook runner itself fails.
  */
 export async function runPermissionRequestHooksForHeadlessAgent(
   tool: Tool,
@@ -116,7 +153,7 @@ export async function runPermissionRequestHooksForHeadlessAgent(
   suggestions: PermissionUpdate[] | undefined,
 ): Promise<PermissionDecision | null> {
   try {
-    for await (const hookResult of executePermissionRequestHooks(
+    const events = executePermissionRequestHooks(
       tool.name,
       toolUseID,
       input,
@@ -124,73 +161,25 @@ export async function runPermissionRequestHooksForHeadlessAgent(
       permissionMode,
       suggestions,
       context.abortController.signal,
-    )) {
-      if (!hookResult.permissionRequestResult) {
-        continue
-      }
-      const decision = hookResult.permissionRequestResult
-      if (decision.behavior === 'allow') {
-        const finalInput = decision.updatedInput ?? input
-        // Persist permission updates if provided
-        if (decision.updatedPermissions?.length) {
-          persistPermissionUpdates(decision.updatedPermissions)
-          context.setAppState(prev => ({
-            ...prev,
-            toolPermissionContext: applyPermissionUpdates(
-              prev.toolPermissionContext,
-              decision.updatedPermissions!,
-            ),
-          }))
-        }
-        return {
-          behavior: 'allow',
-          updatedInput: finalInput,
-          decisionReason: {
-            type: 'hook',
-            hookName: 'PermissionRequest',
-          },
-        }
-      }
-      if (decision.behavior === 'deny') {
-        if (decision.interrupt) {
-          logForDebugging(
-            `Hook interrupt: tool=${tool.name} hookMessage=${decision.message}`,
-          )
-          context.abortController.abort()
-        }
-        return {
-          behavior: 'deny',
-          message: decision.message || 'Permission denied by hook',
-          decisionReason: {
-            type: 'hook',
-            hookName: 'PermissionRequest',
-            reason: decision.message,
-          },
-        }
-      }
+    )
+    for await (const event of events) {
+      const verdict = event.permissionRequestResult
+      if (verdict?.behavior === 'allow') return grantedByHook(verdict, input, context)
+      if (verdict?.behavior === 'deny') return refusedByHook(verdict, tool, context)
     }
   } catch (error) {
-    // If hooks fail, fall through to auto-deny rather than crashing
-    logError(
-      new Error('PermissionRequest hook failed for headless agent', {
-        cause: toError(error),
-      }),
-    )
+    logError(error)
   }
   return null
 }
 
-/**
- * Extract updatedInput from a permission result, falling back to the original input.
- * Handles the case where some PermissionResult variants don't have updatedInput.
- */
 export function getUpdatedInputOrFallback(
   permissionResult: PermissionResult,
   fallback: Record<string, unknown>,
 ): Record<string, unknown> {
-  return (
-    ('updatedInput' in permissionResult
+  const rewritten =
+    permissionResult.behavior === 'allow' || permissionResult.behavior === 'ask'
       ? permissionResult.updatedInput
-      : undefined) ?? fallback
-  )
+      : undefined
+  return rewritten ?? fallback
 }

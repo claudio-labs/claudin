@@ -1,9 +1,8 @@
 /**
- * Denial tracking infrastructure for permission classifiers.
- * Tracks consecutive denials and total denials to determine
- * when to fall back to prompting.
+ * The streak of auto-mode classifier blocks. Each update returns a new
+ * state; where the state lives (a sub-agent's own counter or the app state)
+ * is `permissions/denial.ts`'s business.
  */
-
 export type DenialTrackingState = {
   consecutiveDenials: number
   totalDenials: number
@@ -15,26 +14,20 @@ export const DENIAL_LIMITS = {
 } as const
 
 export function createDenialTrackingState(): DenialTrackingState {
-  return {
-    consecutiveDenials: 0,
-    totalDenials: 0,
-  }
+  return { consecutiveDenials: 0, totalDenials: 0 }
 }
 
 export function recordDenial(state: DenialTrackingState): DenialTrackingState {
   return {
-    ...state,
     consecutiveDenials: state.consecutiveDenials + 1,
     totalDenials: state.totalDenials + 1,
   }
 }
 
+/** Hands back the same object when there is no streak, so callers can skip the write. */
 export function recordSuccess(state: DenialTrackingState): DenialTrackingState {
-  if (state.consecutiveDenials === 0) return state // No change needed
-  return {
-    ...state,
-    consecutiveDenials: 0,
-  }
+  if (state.consecutiveDenials === 0) return state
+  return { ...state, consecutiveDenials: 0 }
 }
 
 export function shouldFallbackToPrompting(state: DenialTrackingState): boolean {

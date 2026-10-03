@@ -2,225 +2,570 @@
   "test": [
     "src/permissions/permissions.decision.characterization.test.ts",
     "src/permissions/permissions.rules.characterization.test.ts",
-    "src/permissions/permissions.autoMode.characterization.test.ts"
+    "src/permissions/permissions.autoMode.characterization.test.ts",
+    "src/permissions/permissions/autoMode.test.ts",
+    "src/permissions/permissions/ruleMutation.test.ts",
+    "src/permissions/permissions/loadOrder.test.ts",
+    "src/permissions/permissions/decision.test.ts"
   ],
   "source": "src/permissions/permissions.ts",
   "probes": [
     {
-      "name": "decision: a whole-tool deny rule refuses",
-      "find": "// 1a. Entire tool is denied\n  const denyRule = getDenyRuleForTool(appState.toolPermissionContext, tool)\n  if (denyRule) {",
-      "replace": "// 1a. Entire tool is denied\n  const denyRule = getDenyRuleForTool(appState.toolPermissionContext, tool)\n  if (false) {"
+      "name": "deny: the turn already aborted fails before anything is looked at",
+      "find": "  if (context.abortController.signal.aborted) throw new AbortError()\n",
+      "replace": ""
     },
     {
-      "name": "decision: a whole-tool ask rule asks",
-      "find": "// 1b. Check if the entire tool should always ask for permission\n  const askRule = getAskRuleForTool(appState.toolPermissionContext, tool)\n  if (askRule) {",
-      "replace": "// 1b. Check if the entire tool should always ask for permission\n  const askRule = getAskRuleForTool(appState.toolPermissionContext, tool)\n  if (false) {"
+      "name": "deny: a whole-tool deny rule refuses",
+      "find": "  if (denyRule) {",
+      "replace": "  if (denyRule && false) {"
     },
     {
-      "name": "decision: only sandboxed Bash may skip an ask rule",
-      "find": "// commands, dangerouslyDisableSandbox) still need to respect the ask rule.\n    const canSandboxAutoAllow =\n      tool.name === BASH_TOOL_NAME &&",
-      "replace": "// commands, dangerouslyDisableSandbox) still need to respect the ask rule.\n    const canSandboxAutoAllow =\n      true ||"
+      "name": "deny: the rule refusal names the tool and says it was denied",
+      "find": "message: `Use of ${tool.name} is denied by a permission rule.`,",
+      "replace": "message: 'refused',"
     },
     {
-      "name": "rule-only check: a deny rule objects",
-      "find": "// 1a. Entire tool is denied by rule\n  const denyRule = getDenyRuleForTool(appState.toolPermissionContext, tool)\n  if (denyRule) {",
-      "replace": "// 1a. Entire tool is denied by rule\n  const denyRule = getDenyRuleForTool(appState.toolPermissionContext, tool)\n  if (false) {"
-    },
-    {
-      "name": "rule-only check: an ask rule objects",
-      "find": "// 1b. Entire tool has an ask rule\n  const askRule = getAskRuleForTool(appState.toolPermissionContext, tool)\n  if (askRule) {",
-      "replace": "// 1b. Entire tool has an ask rule\n  const askRule = getAskRuleForTool(appState.toolPermissionContext, tool)\n  if (false) {"
-    },
-    {
-      "name": "decision: the tool's own deny stands",
-      "find": "  // 1d. Tool implementation denied permission\n  if (toolPermissionResult?.behavior === 'deny') {",
-      "replace": "  // 1d. Tool implementation denied permission\n  if (toolPermissionResult?.behavior === 'never') {"
-    },
-    {
-      "name": "decision: a tool that needs the user keeps its ask in bypass mode",
-      "find": "// 1e. Tool requires user interaction even in bypass mode\n  if (\n    tool.requiresUserInteraction?.() &&",
-      "replace": "// 1e. Tool requires user interaction even in bypass mode\n  if (\n    false &&"
-    },
-    {
-      "name": "decision: a content ask rule beats bypass mode",
-      "find": "toolPermissionResult.decisionReason.rule.ruleBehavior === 'ask'\n  ) {\n    return toolPermissionResult\n  }\n\n  // 1g. Safety checks (e.g. .git/, .claudin/, .vscode/, shell configs) are\n  // bypass-immune — they must prompt even in bypassPermissions mode.",
-      "replace": "toolPermissionResult.decisionReason.rule.ruleBehavior === 'deny'\n  ) {\n    return toolPermissionResult\n  }\n\n  // 1g. Safety checks (e.g. .git/, .claudin/, .vscode/, shell configs) are\n  // bypass-immune — they must prompt even in bypassPermissions mode."
-    },
-    {
-      "name": "decision: a safety check beats bypass mode",
-      "find": "toolPermissionResult.decisionReason?.type === 'safetyCheck'\n  ) {\n    return toolPermissionResult\n  }\n\n  // 2a.",
-      "replace": "toolPermissionResult.decisionReason?.type === 'safetyCheckOff'\n  ) {\n    return toolPermissionResult\n  }\n\n  // 2a."
-    },
-    {
-      "name": "rule-only check: a safety check objects",
-      "find": "toolPermissionResult.decisionReason?.type === 'safetyCheck'\n  ) {\n    return toolPermissionResult\n  }\n\n  // No rule-based objection",
-      "replace": "toolPermissionResult.decisionReason?.type === 'safetyCheckOff'\n  ) {\n    return toolPermissionResult\n  }\n\n  // No rule-based objection"
-    },
-    {
-      "name": "decision: dontAsk turns an ask into a deny",
-      "find": "if (appState.toolPermissionContext.mode === 'dontAsk') {",
-      "replace": "if (appState.toolPermissionContext.mode === 'dontAskOff') {"
-    },
-    {
-      "name": "decision: a session with no prompt refuses an ask",
-      "find": "if (appState.toolPermissionContext.shouldAvoidPermissionPrompts) {\n      const hookDecision",
-      "replace": "if (false) {\n      const hookDecision"
-    },
-    {
-      "name": "plan gate: a session that started in bypass mode is exempt",
-      "find": "    ctx.isBypassPermissionsModeAvailable ||",
-      "replace": "    false ||"
-    },
-    {
-      "name": "plan gate: a read-only check that fails counts as a write",
-      "find": "  } catch {\n    readOnly = false\n  }",
-      "replace": "  } catch {\n    readOnly = true\n  }"
-    },
-    {
-      "name": "decision: an aborted turn fails before anything is asked",
-      "find": "if (context.abortController.signal.aborted) {\n    throw new AbortError()",
-      "replace": "if (false) {\n    throw new AbortError()"
-    },
-    {
-      "name": "auto: a safety check only a person may approve stays out of the classifier",
-      "find": "result.decisionReason?.type === 'safetyCheck' &&\n        !result.decisionReason.classifierApprovable",
-      "replace": "result.decisionReason?.type === 'safetyCheck' &&\n        result.decisionReason.classifierApprovable"
-    },
-    {
-      "name": "auto: PowerShell never reaches the classifier",
-      "find": "if (tool.name === POWERSHELL_TOOL_NAME) {",
-      "replace": "if (tool.name === 'PowerShellOff') {"
-    },
-    {
-      "name": "auto: PowerShell is refused where no one can be asked",
-      "find": "behavior: 'deny',\n            message: 'PowerShell tool requires interactive approval',",
-      "replace": "behavior: 'ask',\n            message: 'PowerShell tool requires interactive approval',"
-    },
-    {
-      "name": "auto: the Agent tool skips the acceptEdits shortcut",
-      "find": "tool.name !== AGENT_TOOL_NAME &&",
-      "replace": "true &&"
-    },
-    {
-      "name": "auto: a permanent classifier failure asks the user when one is there",
-      "find": "if (!appState.toolPermissionContext.shouldAvoidPermissionPrompts) {\n            logForDebugging(",
-      "replace": "if (false) {\n            logForDebugging("
-    },
-    {
-      "name": "auto: headless timeout is an outage, not an abort",
-      "find": "if (!classifierResult.timedOut) {",
-      "replace": "if (true) {"
-    },
-    {
-      "name": "auto: an unavailable classifier fails closed",
-      "find": "if (classifierResult.unavailable) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "auto: a classifier block refuses",
-      "find": "        return {\n          behavior: 'deny',\n          decisionReason: {\n            type: 'classifier',\n            classifier: 'auto-mode',\n            reason: classifierResult.reason,",
-      "replace": "        return {\n          behavior: 'ask',\n          decisionReason: {\n            type: 'classifier',\n            classifier: 'auto-mode',\n            reason: classifierResult.reason,"
-    },
-    {
-      "name": "auto: plan mode with auto active routes to the classifier",
-      "find": "(appState.toolPermissionContext.mode === 'plan' &&\n          (autoModeStateModule?.isAutoModeActive() ?? false)))",
-      "replace": "false)"
-    },
-    {
-      "name": "denial: below the limits, no hand-back",
-      "source": "src/permissions/permissions/denial.ts",
-      "find": "if (!shouldFallbackToPrompting(denialState)) {",
-      "replace": "if (true) {"
-    },
-    {
-      "name": "denial: a session with no prompt is aborted at the limit",
-      "source": "src/permissions/permissions/denial.ts",
-      "find": "  if (isHeadless) {",
+      "name": "ask: a whole-tool ask rule asks",
+      "find": "  if (askRule && !sandboxWillContain(tool, input)) {",
       "replace": "  if (false) {"
     },
     {
-      "name": "denial: the total limit starts the count again",
-      "source": "src/permissions/permissions/denial.ts",
-      "find": "  if (hitTotalLimit) {\n    persistDenialState",
-      "replace": "  if (false) {\n    persistDenialState"
+      "name": "ask (finding 7): the whole-tool ask shows the default request message",
+      "find": "message: createPermissionRequestMessage(tool.name),",
+      "replace": "message: createPermissionRequestMessage(tool.name, { type: 'rule', rule: askRule }),"
     },
     {
-      "name": "denial: the tool's own classifier name is kept",
-      "source": "src/permissions/permissions/denial.ts",
-      "find": "      ? result.decisionReason.classifier",
-      "replace": "      ? 'auto-mode'"
+      "name": "ask (finding 8): the Bash sandbox exception needs a sandbox runtime",
+      "find": "    shouldUseSandbox(input as Parameters<typeof shouldUseSandbox>[0])\n  )",
+      "replace": "    shouldUseSandbox(input as Parameters<typeof shouldUseSandbox>[0])\n  ) || tool.name === BASH_TOOL_NAME"
     },
     {
-      "name": "denialTracking: three in a row is the limit",
-      "source": "src/permissions/denialTracking.ts",
-      "find": "maxConsecutive: 3,",
-      "replace": "maxConsecutive: 4,"
+      "name": "refusal: plan mode refuses a write",
+      "find": "  if (mayProceed) return null",
+      "replace": "  return null"
     },
     {
-      "name": "denialTracking: reaching the limit counts",
-      "source": "src/permissions/denialTracking.ts",
-      "find": "state.consecutiveDenials >= DENIAL_LIMITS.maxConsecutive ||",
-      "replace": "state.consecutiveDenials > DENIAL_LIMITS.maxConsecutive ||"
+      "name": "refusal: a session started with bypass available skips plan mode",
+      "find": "  if (permissions.mode !== 'plan' || permissions.isBypassPermissionsModeAvailable) {",
+      "replace": "  if (permissions.mode !== 'plan') {"
+    },
+    {
+      "name": "refusal: ExitPlanMode is never refused by plan mode",
+      "find": "    tool.name === EXIT_PLAN_MODE_V2_TOOL_NAME ||\n",
+      "replace": "    false ||\n"
+    },
+    {
+      "name": "refusal (finding 5): the tool's own allow passes plan mode",
+      "find": "    verdict.behavior === 'allow' ||\n",
+      "replace": "    false ||\n"
+    },
+    {
+      "name": "refusal: a read-only call passes plan mode",
+      "find": "    readsOnly(tool, parsed) ||\n",
+      "replace": "    false ||\n"
+    },
+    {
+      "name": "refusal: plan mode defers Bash to the classifier while auto mode is active",
+      "find": "      autoModeStateModule?.isAutoModeActive() ?? false,",
+      "replace": "      false,"
+    },
+    {
+      "name": "refusal: the plan-mode message gives the agent's own plan file",
+      "find": "Only the plan file (${getPlanFilePath(context.agentId)}) may be edited.",
+      "replace": "Only the plan file (${getPlanFilePath()}) may be edited."
+    },
+    {
+      "name": "refusal: a PreToolUse hook allow cannot get around plan mode",
+      "find": "  return planModeRefusal(tool, parsed, context, verdict) ?? toolObjection(verdict)",
+      "replace": "  return toolObjection(verdict)"
+    },
+    {
+      "name": "deny: the tool's own deny stands in every mode",
+      "find": "  if (verdict.behavior === 'deny') return verdict",
+      "replace": "  if (verdict.behavior === 'deny') return null"
+    },
+    {
+      "name": "ask: a content ask rule survives bypass mode",
+      "find": "  const contentAskRule = reason?.type === 'rule' && reason.rule.ruleBehavior === 'ask'",
+      "replace": "  const contentAskRule = false"
+    },
+    {
+      "name": "ask: a safety check survives bypass mode",
+      "find": "  return contentAskRule || reason?.type === 'safetyCheck' ? verdict : null",
+      "replace": "  return contentAskRule ? verdict : null"
+    },
+    {
+      "name": "ask: a tool that needs the user keeps its ask in bypass mode",
+      "find": "      s.verdict.behavior === 'ask' && s.tool.requiresUserInteraction?.() ? s.verdict : null,",
+      "replace": "      null,"
+    },
+    {
+      "name": "bypass mode allows what nothing above refused",
+      "find": "        mode === 'bypassPermissions' || (mode === 'plan' && isBypassPermissionsModeAvailable)",
+      "replace": "        mode === 'plan' && isBypassPermissionsModeAvailable"
+    },
+    {
+      "name": "a whole-tool allow rule allows",
+      "find": "      return rule ? allowWithReason(s, { type: 'rule', rule }) : null",
+      "replace": "      return null"
+    },
+    {
+      "name": "ask: a passthrough becomes an ask worded from its reason",
+      "find": "message: createPermissionRequestMessage(tool.name, verdict.decisionReason),",
+      "replace": "message: createPermissionRequestMessage(tool.name),"
+    },
+    {
+      "name": "deny: dontAsk turns an ask into a deny",
+      "find": "  if (mode !== 'dontAsk') return ask",
+      "replace": "  return ask"
+    },
+    {
+      "name": "deny: dontAsk runs before the headless hooks",
+      "find": "> = [refuseInDontAskMode, settleInAutoMode, askHeadlessHooks]",
+      "replace": "> = [askHeadlessHooks, refuseInDontAskMode, settleInAutoMode]"
+    },
+    {
+      "name": "deny: a session that cannot prompt refuses an ask no hook settled",
+      "find": "  if (!permissions.shouldAvoidPermissionPrompts) return ask",
+      "replace": "  return ask"
+    },
+    {
+      "name": "deny: the headless refusal is an asyncAgent reason",
+      "find": "        type: 'asyncAgent',\n        reason: 'Permission prompts are not available",
+      "replace": "        type: 'other',\n        reason: 'Permission prompts are not available"
+    },
+    {
+      "name": "the hooks are told the mode and the tool's suggestions",
+      "find": "    permissions.mode,\n    ask.suggestions,",
+      "replace": "    undefined,\n    undefined,"
+    },
+    {
+      "name": "auto mode settles asks in mode auto",
+      "find": "  const deps = mode === 'auto' || (mode === 'plan' && autoModeActive) ? loadAutoModeDeps() : null",
+      "replace": "  const deps = mode === 'plan' && autoModeActive ? loadAutoModeDeps() : null"
+    },
+    {
+      "name": "auto mode settles asks in plan mode while auto mode is active",
+      "find": "(mode === 'plan' && autoModeActive)",
+      "replace": "false"
+    },
+    {
+      "name": "the acceptEdits second look is not taken for the Agent tool",
+      "find": "        tool.name !== AGENT_TOOL_NAME &&\n",
+      "replace": "        true &&\n"
+    },
+    {
+      "name": "the acceptEdits second look is not taken in plan mode",
+      "find": "        appState.toolPermissionContext.mode !== 'plan',",
+      "replace": "        true,"
+    },
+    {
+      "name": "an allow ends the denial streak in mode auto only",
+      "find": "    context.getAppState().toolPermissionContext.mode === 'auto'\n  ) {",
+      "replace": "    true\n  ) {"
+    },
+    {
+      "name": "lookup: a deny rule matches an MCP tool by its full name only",
+      "source": "src/permissions/permissions/ruleLookup.ts",
+      "find": "  const permissionName = getToolNameForPermissionCheck(tool)",
+      "replace": "  const permissionName = tool.name"
+    },
+    {
+      "name": "lookup: mcp__server and mcp__server__* cover every tool of the server",
+      "source": "src/permissions/permissions/ruleLookup.ts",
+      "find": "  const wholeServer = ruled.toolName === undefined || ruled.toolName === '*'",
+      "replace": "  const wholeServer = false"
+    },
+    {
+      "name": "lookup: a server rule covers no other server",
+      "source": "src/permissions/permissions/ruleLookup.ts",
+      "find": "  return wholeServer && ruled.serverName === target.serverName",
+      "replace": "  return wholeServer"
+    },
+    {
+      "name": "lookup (finding 3): a server name holding __ is matched as the part before it",
+      "source": "src/permissions/permissions/ruleLookup.ts",
+      "find": "  if (ruled === null || target === null) return false",
+      "replace": "  if (ruled === null || target === null || permissionName.split('__').length > 3) return false"
     },
     {
       "name": "lookup: a content rule never covers the whole tool",
       "source": "src/permissions/permissions/ruleLookup.ts",
-      "find": "  if (rule.ruleValue.ruleContent !== undefined) {\n    return false",
-      "replace": "  if (false) {\n    return false"
+      "find": "  if (rule.ruleValue.ruleContent) return false\n",
+      "replace": ""
     },
     {
-      "name": "lookup: a named MCP tool rule covers only that tool",
+      "name": "lookup: the later source wins a content tie",
       "source": "src/permissions/permissions/ruleLookup.ts",
-      "find": "(ruleInfo.toolName === undefined || ruleInfo.toolName === '*') &&",
-      "replace": "true &&"
+      "find": "      byContent.set(content, rule)",
+      "replace": "      if (!byContent.has(content)) byContent.set(content, rule)"
     },
     {
-      "name": "lookup: a server rule covers only its own server",
+      "name": "lookup: content rules of an MCP tool are found by its full name",
       "source": "src/permissions/permissions/ruleLookup.ts",
-      "find": "ruleInfo.serverName === toolInfo.serverName",
-      "replace": "true"
+      "find": "    getToolNameForPermissionCheck(tool),\n    behavior,",
+      "replace": "    tool.name,\n    behavior,"
     },
     {
-      "name": "lookup: MCP tools are matched by their full name",
+      "name": "lookup: an agent deny rule names its type exactly",
       "source": "src/permissions/permissions/ruleLookup.ts",
-      "find": "const nameForRuleMatch = getToolNameForPermissionCheck(tool)",
-      "replace": "const nameForRuleMatch = tool.name"
+      "find": "        ruleValue.ruleContent === agentType,",
+      "replace": "        ruleValue.ruleContent?.toLowerCase() === agentType.toLowerCase(),"
     },
     {
-      "name": "mutation: managed settings are read-only",
+      "name": "lookup: denied agent types are filtered out",
+      "source": "src/permissions/permissions/ruleLookup.ts",
+      "find": "  return agents.filter(agent => !deniedTypes.has(agent.agentType))",
+      "replace": "  return agents"
+    },
+    {
+      "name": "lookup: each source has its display name",
+      "source": "src/permissions/permissions/ruleLookup.ts",
+      "find": "  return getSettingSourceDisplayNameLowercase(source)",
+      "replace": "  return source"
+    },
+    {
+      "name": "lookup: rules are read in source order",
+      "source": "src/permissions/permissions/ruleSlots.ts",
+      "find": "  ...SETTING_SOURCES,\n  ...SESSION_SCOPED_SOURCES,",
+      "replace": "  ...SESSION_SCOPED_SOURCES,\n  ...SETTING_SOURCES,"
+    },
+    {
+      "name": "refusal: policy, flag and command rules cannot be deleted",
       "source": "src/permissions/permissions/ruleMutation.ts",
-      "find": "    rule.source === 'policySettings' ||",
-      "replace": "    false ||"
+      "find": "  if (LOCKED_SOURCES.has(rule.source)) {",
+      "replace": "  if (false) {"
     },
     {
-      "name": "mutation: a settings rule is removed on disk",
+      "name": "delete: a settings-file rule leaves the file too",
       "source": "src/permissions/permissions/ruleMutation.ts",
-      "find": "      deletePermissionRuleFromSettings(\n        rule as PermissionRuleFromEditableSettings,\n      )",
-      "replace": "      void 0"
+      "find": "    deletePermissionRuleFromSettings({ ...rule, source })\n",
+      "replace": ""
     },
     {
-      "name": "mutation: managed-only clears the CLI and session rules",
+      "name": "delete: the rule leaves the session",
       "source": "src/permissions/permissions/ruleMutation.ts",
-      "find": "      'cliArg',\n      'session',\n    ]",
-      "replace": "    ]"
+      "find": "    held => held !== text,",
+      "replace": "    held => true,"
     },
     {
-      "name": "message: a rule ask names the rule's source",
-      "source": "src/permissions/permissions/requestMessage.ts",
-      "find": "from ${sourceString} requires approval",
-      "replace": "requires approval"
+      "name": "apply: rules are appended after what is there",
+      "source": "src/permissions/permissions/ruleMutation.ts",
+      "find": "        ...currentSlot(context, rule.ruleBehavior, rule.source),\n",
+      "replace": ""
     },
     {
-      "name": "headless hook: a deny refuses",
-      "source": "src/permissions/permissions/requestMessage.ts",
-      "find": "if (decision.behavior === 'deny') {",
-      "replace": "if (decision.behavior === 'denyOff') {"
+      "name": "sync: the three settings files are replaced wholesale",
+      "source": "src/permissions/permissions/ruleMutation.ts",
+      "find": "  let next = emptySlotsFor(toolPermissionContext, SETTINGS_FILE_SOURCES)",
+      "replace": "  let next = toolPermissionContext"
     },
     {
-      "name": "headless hook: a silent deny gets a stock message",
+      "name": "sync: managed-only drops the CLI and session rules",
+      "source": "src/permissions/permissions/ruleMutation.ts",
+      "find": "  let next = emptySlotsFor(context, ['cliArg', 'session'])",
+      "replace": "  let next = context"
+    },
+    {
+      "name": "sync (fix 3): managed-only drops --settings rules",
+      "source": "src/permissions/permissions/ruleMutation.ts",
+      "find": "      next = withSlot(next, kind, 'flagSettings', [])\n",
+      "replace": ""
+    },
+    {
+      "name": "sync: only a managed-only policy locks the rules",
+      "source": "src/permissions/permissions/ruleMutation.ts",
+      "find": "  if (shouldAllowManagedPermissionRulesOnly()) next = lockToManagedRules(next)",
+      "replace": "  next = lockToManagedRules(next)"
+    },
+    {
+      "name": "message: the default request names the tool and that it is not granted",
       "source": "src/permissions/permissions/requestMessage.ts",
-      "find": "message: decision.message || 'Permission denied by hook',",
-      "replace": "message: decision.message || '',"
+      "find": "  return `Claudin requested permissions to use ${toolName}, but you haven't granted it yet.`",
+      "replace": "  return toolName"
+    },
+    {
+      "name": "message: a hook reason says the hook blocked the action",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "        ? `${hook} blocked this action: ${decisionReason.reason}`",
+      "replace": "        ? needsApprovalFrom(hook, toolName)"
+    },
+    {
+      "name": "message: a rule reason names its source",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "needsApprovalFrom(`Permission rule '${ruleText}' from ${where}`, toolName)",
+      "replace": "needsApprovalFrom(`Permission rule '${ruleText}'`, toolName)"
+    },
+    {
+      "name": "message: a compound command lists only the parts still to approve",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "    .filter(([, result]) => stillToApprove(result))\n",
+      "replace": ""
+    },
+    {
+      "name": "message: a Bash part loses its output redirections",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "  return redirections.length > 0 ? commandWithoutRedirections.trim() : part",
+      "replace": "  return part"
+    },
+    {
+      "name": "message: a mode reason shows the mode's title",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "        `Current permission mode (${permissionModeTitle(decisionReason.mode)})`,",
+      "replace": "        `Current permission mode (${decisionReason.mode})`,"
+    },
+    {
+      "name": "message (classifier build): a classifier reason ends with the reason",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "toolName)}: ${decisionReason.reason}`",
+      "replace": "toolName)}`"
+    },
+    {
+      "name": "hooks: an allowing hook lets the call run",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "      if (verdict?.behavior === 'allow') return grantedByHook(verdict, input, context)\n",
+      "replace": ""
+    },
+    {
+      "name": "deny: a denying hook refuses",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "      if (verdict?.behavior === 'deny') return refusedByHook(verdict, tool, context)\n",
+      "replace": ""
+    },
+    {
+      "name": "hooks: an allowing hook's rule updates are saved",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "    persistPermissionUpdates(updates)\n",
+      "replace": ""
+    },
+    {
+      "name": "deny: a hook deny that interrupts aborts the turn",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "  if (verdict.interrupt) context.abortController.abort()\n",
+      "replace": ""
+    },
+    {
+      "name": "deny: a silent hook deny gets the stock message",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "verdict.message || `Using ${tool.name} was denied by hook ${PERMISSION_REQUEST_HOOK}.`",
+      "replace": "verdict.message || 'no'"
+    },
+    {
+      "name": "an allow carries the tool's rewritten input",
+      "source": "src/permissions/permissions/requestMessage.ts",
+      "find": "  return rewritten ?? fallback",
+      "replace": "  return fallback"
+    },
+    {
+      "name": "streak: a sub-agent's counter is updated in place",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "    ownCounter.consecutiveDenials = newState.consecutiveDenials\n",
+      "replace": ""
+    },
+    {
+      "name": "streak: the session's counter lives in app state",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "    prev.denialTracking === newState ? prev : { ...prev, denialTracking: newState },",
+      "replace": "    prev,"
+    },
+    {
+      "name": "ask: at the limit a block is handed back to the user",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "  if (!shouldFallbackToPrompting(denialState)) return null",
+      "replace": "  return null"
+    },
+    {
+      "name": "streak: the total limit is reported as such",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "  const totalLimitHit = denialState.totalDenials >= DENIAL_LIMITS.maxTotal",
+      "replace": "  const totalLimitHit = false"
+    },
+    {
+      "name": "streak: reaching the total limit starts the count again",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "  if (totalLimitHit) persistDenialState(context, createDenialTrackingState())\n",
+      "replace": ""
+    },
+    {
+      "name": "refusal: at the limit a session that cannot prompt is aborted",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "  if (appState.toolPermissionContext.shouldAvoidPermissionPrompts) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "streak: the handed-back call keeps the tool's own classifier name",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "        ownReason?.type === 'classifier' ? ownReason.classifier : AUTO_MODE_CLASSIFIER,",
+      "replace": "        AUTO_MODE_CLASSIFIER,"
+    },
+    {
+      "name": "streak: an allow ends it",
+      "source": "src/permissions/permissions/denial.ts",
+      "find": "  if (after !== before) persistDenialState(context, after)",
+      "replace": ""
+    },
+    {
+      "name": "counter: the limits are 3 in a row and 20 in all",
+      "source": "src/permissions/denialTracking.ts",
+      "find": "  maxConsecutive: 3,",
+      "replace": "  maxConsecutive: 4,"
+    },
+    {
+      "name": "counter: a denial counts in the total too",
+      "source": "src/permissions/denialTracking.ts",
+      "find": "    totalDenials: state.totalDenials + 1,",
+      "replace": "    totalDenials: state.totalDenials,"
+    },
+    {
+      "name": "counter: a success with no streak hands back the same state",
+      "source": "src/permissions/denialTracking.ts",
+      "find": "  if (state.consecutiveDenials === 0) return state\n",
+      "replace": ""
+    },
+    {
+      "name": "counter: the consecutive limit is inclusive",
+      "source": "src/permissions/denialTracking.ts",
+      "find": "    state.consecutiveDenials >= DENIAL_LIMITS.maxConsecutive ||",
+      "replace": "    state.consecutiveDenials > DENIAL_LIMITS.maxConsecutive ||"
+    },
+    {
+      "name": "counter: the total limit is inclusive",
+      "source": "src/permissions/denialTracking.ts",
+      "find": "    state.totalDenials >= DENIAL_LIMITS.maxTotal\n",
+      "replace": "    state.totalDenials > DENIAL_LIMITS.maxTotal\n"
+    },
+    {
+      "name": "fix 1: the classifier allowlist is not loaded with the decision module",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "export function loadAutoModeDeps(): AutoModeDeps | null {",
+      "replace": "const eagerAllowlist = feature('TRANSCRIPT_CLASSIFIER') ? require('src/permissions/classifierDecision.js') : null\nexport function loadAutoModeDeps(): AutoModeDeps | null {"
+    },
+    {
+      "name": "fix 2: the safe-tool allowlist is checked against the full MCP name",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  const name = getToolNameForPermissionCheck(call.tool)",
+      "replace": "  const name = call.tool.name"
+    },
+    {
+      "name": "ask: a safety check only a person may approve stays an ask in auto mode",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  return reason?.type === 'safetyCheck' && reason.classifierApprovable !== true",
+      "replace": "  return false"
+    },
+    {
+      "name": "deny: that safety check is refused where no one can be asked",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "    if (!noOneToAsk(call.context)) return ask\n    const reason =",
+      "replace": "    return ask\n    const reason ="
+    },
+    {
+      "name": "ask: a tool that needs the user stays an ask in auto mode",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (tool.requiresUserInteraction?.()) return ask\n",
+      "replace": ""
+    },
+    {
+      "name": "ask: PowerShell is never classified in auto mode",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (tool.name === POWERSHELL_TOOL_NAME) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "deny: PowerShell is refused where no one can be asked",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "    if (!noOneToAsk(call.context)) return ask\n    const why",
+      "replace": "    return ask\n    const why"
+    },
+    {
+      "name": "auto: what acceptEdits would allow is allowed",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (verdict.behavior !== 'allow') return null",
+      "replace": "  return null"
+    },
+    {
+      "name": "auto: the acceptEdits allow carries its rewritten input",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  return allowedByAutoMode(verdict.updatedInput ?? call.input)",
+      "replace": "  return allowedByAutoMode(call.input)"
+    },
+    {
+      "name": "auto: the safe tools skip the classifier",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (safeWithoutClassifier(call, deps)) return allowedByAutoMode(call.input)\n",
+      "replace": ""
+    },
+    {
+      "name": "auto: Git skips the classifier only when the call reads",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "    deps.isSafeWhenReading(name, () => readsOnly(call.tool, call.parsed))",
+      "replace": "    deps.isSafeWhenReading(name, () => true)"
+    },
+    {
+      "name": "auto: the call is unmarked once the classifier is done",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "    clearClassifierChecking(toolUseID)\n",
+      "replace": ""
+    },
+    {
+      "name": "auto: only an answer with a duration adds to the turn's tally",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (result.durationMs !== undefined) addToTurnClassifierDuration(result.durationMs)",
+      "replace": "  addToTurnClassifierDuration(result.durationMs ?? 0)"
+    },
+    {
+      "name": "refusal: a permanent classifier failure aborts a session that cannot prompt",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "    if (headless) {\n      throw new AbortError",
+      "replace": "    if (false) {\n      throw new AbortError"
+    },
+    {
+      "name": "ask: a transcript too long for the classifier falls back to the user",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (result.transcriptTooLong) return 'the transcript does not fit its context window'\n",
+      "replace": ""
+    },
+    {
+      "name": "ask: a deterministic API error falls back to the user",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (result.deterministic) return 'its request failed with a deterministic error'\n",
+      "replace": ""
+    },
+    {
+      "name": "ask: running out of time falls back to the user",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (result.timedOut && !headless) return handBackToUser(call.ask, 'it ran out of its time budget')\n",
+      "replace": ""
+    },
+    {
+      "name": "deny: running out of time with no one to ask is an outage",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (result.timedOut && !headless) return",
+      "replace": "  if (result.timedOut) return"
+    },
+    {
+      "name": "deny: an outage refuses and counts no denial",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (result.unavailable || result.timedOut) return classifierUnavailable(call.tool.name, result.model)\n",
+      "replace": ""
+    },
+    {
+      "name": "deny: a block counts in the streak",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  persistDenialState(call.context, streak)\n",
+      "replace": ""
+    },
+    {
+      "name": "deny: a block tells the model why",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "      message: buildYoloRejectionMessage(reason),",
+      "replace": "      message: reason,"
+    },
+    {
+      "name": "deny: the classifier's block refuses",
+      "source": "src/permissions/permissions/autoMode.ts",
+      "find": "  if (result.shouldBlock) return classifierBlocked(call, result.reason)\n",
+      "replace": ""
     }
   ]
 }
