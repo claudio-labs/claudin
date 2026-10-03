@@ -1,0 +1,5 @@
+{
+  "type": "control_request",
+  "request_id": "<uuid>",
+  "request": { "subtype": "interrupt" }
+}

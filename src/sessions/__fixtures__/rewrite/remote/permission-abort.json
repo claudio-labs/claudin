@@ -1,0 +1,8 @@
+{
+  "type": "control_response",
+  "response": {
+    "subtype": "success",
+    "request_id": "req-9",
+    "response": { "behavior": "deny", "message": "User aborted" }
+  }
+}

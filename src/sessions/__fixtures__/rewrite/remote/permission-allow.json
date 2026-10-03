@@ -1,0 +1,8 @@
+{
+  "type": "control_response",
+  "response": {
+    "subtype": "success",
+    "request_id": "req-9",
+    "response": { "behavior": "allow", "updatedInput": { "command": "rm -rf build/tmp" } }
+  }
+}

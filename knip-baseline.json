@@ -3,8 +3,8 @@
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "163b79d6651510a45029bd0eb116807a5d187075",
-  "count": 1111,
+  "capturedFrom": "223a575c9238245f55c225ef8478624d4e3ffb4c",
+  "count": 1110,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
     "exports src/agent/attachments/attachments.ts#isFileReadDenied",
@@ -321,7 +321,6 @@
     "exports src/platform/main/defaultAction/dispatch.ts#buildSessionAndResumeContext",
     "exports src/platform/notifications/notifierHelpers.ts#DEBOUNCE_WINDOW_MS",
     "exports src/platform/notifications/useNotifyAfterTimeout.ts#DEFAULT_INTERACTION_THRESHOLD_MS",
-    "exports src/platform/policyLimits/index.ts#_resetPolicyLimitsForTesting",
     "exports src/platform/policyLimits/index.ts#startBackgroundPolling",
     "exports src/platform/policyLimits/index.ts#stopBackgroundPolling",
     "exports src/platform/preventSleep.ts#forceStopPreventSleep",

@@ -1,0 +1,253 @@
+{
+  "test": [
+    "src/sessions/sessionUrl.characterization.test.ts",
+    "src/sessions/sessionIngressAuth.characterization.test.ts",
+    "src/sessions/hooks/useRemoteSession.characterization.test.tsx",
+    "src/sessions/hooks/useRemoteSession.sending.characterization.test.tsx",
+    "src/sessions/hooks/useSSHSession.characterization.test.tsx",
+    "src/sessions/hooks/useTeleportResume.characterization.test.tsx"
+  ],
+  "source": "src/sessions/hooks/useRemoteSession.ts",
+  "probes": [
+    {
+      "name": "remote: the watchdog waits a minute",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "const RESPONSE_TIMEOUT_MS = 60000",
+      "replace": "const RESPONSE_TIMEOUT_MS = 90000"
+    },
+    {
+      "name": "remote: the watchdog waits three minutes while compacting",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "const COMPACTION_TIMEOUT_MS = 180000",
+      "replace": "const COMPACTION_TIMEOUT_MS = 60000"
+    },
+    {
+      "name": "remote: echoes of sent uuids are dropped",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "sentUUIDsRef.current.has(sdkMessage.uuid)",
+      "replace": "sentUUIDsRef.current.has(sdkMessage.uuid + \"-\")"
+    },
+    {
+      "name": "remote: the last 50 sent uuids are remembered",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "new BoundedUUIDSet(50)",
+      "replace": "new BoundedUUIDSet(60)"
+    },
+    {
+      "name": "remote: init hands over the slash commands",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "onInit(sdkMessage.slash_commands)",
+      "replace": "onInit([])"
+    },
+    {
+      "name": "remote: task_started counts each task id",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "runningTaskIdsRef.current.add(sdkMessage.task_id)",
+      "replace": "runningTaskIdsRef.current.add('one')"
+    },
+    {
+      "name": "remote: repeated compacting ticks are not shown",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "if (wasCompacting && isCompactingRef.current) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "remote: a result ends loading",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "isCompactingRef.current = false\n          setIsLoading(false)",
+      "replace": "isCompactingRef.current = false"
+    },
+    {
+      "name": "remote: an unchanged in-flight set keeps its identity",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "return next.size === prev.size ? prev : next",
+      "replace": "return next"
+    },
+    {
+      "name": "remote: a viewer shows user text",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "? { convertToolResults: true, convertUserTextMessages: true }",
+      "replace": "? { convertToolResults: true }"
+    },
+    {
+      "name": "remote: a permission request is queued",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "setToolUseConfirmQueue(queue => [...queue, toolUseConfirm])",
+      "replace": "setToolUseConfirmQueue(queue => queue)"
+    },
+    {
+      "name": "remote: a cancel removes by tool use id first",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "const idToRemove = toolUseId ?? requestId",
+      "replace": "const idToRemove = requestId"
+    },
+    {
+      "name": "remote: a drop reports reconnecting",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "setConnStatus('reconnecting')",
+      "replace": "setConnStatus('connected')"
+    },
+    {
+      "name": "remote: only sessions without a prompt are titled",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "!config.hasInitialPrompt &&",
+      "replace": "config.hasInitialPrompt &&"
+    },
+    {
+      "name": "remote: the fallback title is cut to 75 columns",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "title ?? truncateToWidth(description, 75)",
+      "replace": "title ?? truncateToWidth(description, 80)"
+    },
+    {
+      "name": "remote: text blocks are joined by a space",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": ": extractTextContent(content, ' ')",
+      "replace": ": extractTextContent(content, '')"
+    },
+    {
+      "name": "remote: cancel interrupts the session",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "managerRef.current?.cancelSession()",
+      "replace": "void 0"
+    },
+    {
+      "name": "remote: any frame stands the watchdog down",
+      "source": "src/sessions/hooks/useRemoteSession.ts",
+      "find": "        if (responseTimeoutRef.current) {\n          clearTimeout(responseTimeoutRef.current)\n          responseTimeoutRef.current = null\n        }\n\n        // Echo filter",
+      "replace": "        // Echo filter"
+    },
+    {
+      "name": "ssh: repeated inits are not shown",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "if (hasReceivedInitRef.current) return",
+      "replace": "if (false) return"
+    },
+    {
+      "name": "ssh: a new session shows its init again",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "hasReceivedInitRef.current = false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "ssh: tool results are shown",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "convertToolResults: true,",
+      "replace": "convertToolResults: false,"
+    },
+    {
+      "name": "ssh: the drop warning names the attempt",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "(attempt ${attempt}/${max})",
+      "replace": "(attempt ${max}/${attempt})"
+    },
+    {
+      "name": "ssh: stderr after connecting only on a failing exit",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "if (stderr && (!connected || exitCode !== 0)) {",
+      "replace": "if (stderr && !connected) {"
+    },
+    {
+      "name": "ssh: unmount stops the auth proxy",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "session.proxy.stop()",
+      "replace": "void session"
+    },
+    {
+      "name": "ssh: cancel interrupts the remote turn",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "managerRef.current?.sendInterrupt()",
+      "replace": "void 0"
+    },
+    {
+      "name": "ssh: giving up exits with status 1",
+      "source": "src/sessions/hooks/useSSHSession.ts",
+      "find": "void gracefulShutdown(1, 'other', { finalMessage: msg })",
+      "replace": "void gracefulShutdown(0, 'other', { finalMessage: msg })"
+    },
+    {
+      "name": "ingress: the access-token variable wins",
+      "source": "src/sessions/sessionIngressAuth.ts",
+      "find": "const envToken = process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN",
+      "replace": "const envToken = process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN_OFF"
+    },
+    {
+      "name": "ingress: only session keys become a cookie",
+      "source": "src/sessions/sessionIngressAuth.ts",
+      "find": "if (token.startsWith('sk-ant-sid')) {",
+      "replace": "if (token.startsWith('sk-ant-')) {"
+    },
+    {
+      "name": "ingress: the organization header name",
+      "source": "src/sessions/sessionIngressAuth.ts",
+      "find": "headers['X-Organization-Uuid'] = orgUuid",
+      "replace": "headers['X-Organization-Id'] = orgUuid"
+    },
+    {
+      "name": "ingress: the first answer is kept",
+      "source": "src/sessions/sessionIngressAuth.ts",
+      "find": "if (cachedToken !== undefined) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "ingress: a non-numeric descriptor gives nothing",
+      "source": "src/sessions/sessionIngressAuth.ts",
+      "find": "if (Number.isNaN(fd)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "ingress: update sets the access-token variable",
+      "source": "src/sessions/sessionIngressAuth.ts",
+      "find": "process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN = token",
+      "replace": "process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN_NEXT = token"
+    },
+    {
+      "name": "url: .jsonl marks a transcript file",
+      "source": "src/sessions/sessionUrl.ts",
+      "find": ".endsWith('.jsonl')",
+      "replace": ".endsWith('.json')"
+    },
+    {
+      "name": "url: the extension check ignores case",
+      "source": "src/sessions/sessionUrl.ts",
+      "find": "resumeIdentifier.toLowerCase()",
+      "replace": "resumeIdentifier"
+    },
+    {
+      "name": "url: a uuid is resumed under itself",
+      "source": "src/sessions/sessionUrl.ts",
+      "find": "sessionId: resumeIdentifier as UUID",
+      "replace": "sessionId: randomUUID() as UUID"
+    },
+    {
+      "name": "url: the ingress url is normalized",
+      "source": "src/sessions/sessionUrl.ts",
+      "find": "ingressUrl: url.href,",
+      "replace": "ingressUrl: resumeIdentifier,"
+    },
+    {
+      "name": "teleport: the process is marked teleported with the session id",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "sessionId: session.id",
+      "replace": "sessionId: null"
+    },
+    {
+      "name": "teleport: an operation error keeps its formatted message",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "formattedMessage: err instanceof TeleportOperationError ? err.formattedMessage : undefined,",
+      "replace": "formattedMessage: undefined,"
+    },
+    {
+      "name": "teleport: only operation errors are flagged as such",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "isOperationError: err instanceof TeleportOperationError",
+      "replace": "isOperationError: true"
+    },
+    {
+      "name": "teleport: other errors keep their own message",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "? err.message : errorMessage(err)",
+      "replace": "? err.message : 'failed'"
+    }
+  ]
+}
