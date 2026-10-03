@@ -279,12 +279,19 @@ describe('reload_plugins', () => {
     mkdirSync(join(plugin, '.claude-plugin'), { recursive: true })
     writeFileSync(join(plugin, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'tidy', version: '1.0.0' }))
     setInlinePlugins([plugin])
+    // src/platform/lsp/config.test.ts pins an empty loadAllPluginsCacheOnly for
+    // the rest of the run on purpose (REPL baselines must not discover plugins).
+    // Swap a fresh, real copy in for this test and put back whatever was live.
+    const live = { ...(await import('src/plugins/pluginLoader.js')) }
+    const { loadAllPluginsCacheOnly } = await import(`src/plugins/pluginLoader.js?reload-plugins=${Date.now()}`)
+    mock.module('src/plugins/pluginLoader.js', () => ({ ...live, loadAllPluginsCacheOnly }))
     try {
       const answer = await ask(start(), { subtype: 'reload_plugins' })
       const plugins = (answer.response as { plugins: Array<{ name: string; path: string; source: string }> }).plugins
       expect(plugins.map(p => [p.name, p.path])).toEqual([['tidy', plugin]])
       expect(plugins[0]!.source).toContain('tidy')
     } finally {
+      mock.module('src/plugins/pluginLoader.js', () => live)
       setInlinePlugins(before)
       clearAllCaches()
     }
