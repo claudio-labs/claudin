@@ -1,0 +1,251 @@
+{
+  "test": [
+    "src/memory/memdir/teamMemSafety.scanner.characterization.test.ts",
+    "src/memory/memdir/teamMemSafety.guard.characterization.test.ts",
+    "src/memory/memdir/teamMemSafety.ops.characterization.test.ts",
+    "src/memory/memdir/teamMemSafety.scan.characterization.test.ts"
+  ],
+  "source": "src/memory/memdir/secretScanner.ts",
+  "probes": [
+    {
+      "name": "the AWS family accepts the AKIA prefix",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "|AKIA|ASIA|",
+      "replace": "|ASIA|"
+    },
+    {
+      "name": "the AWS body is base32: digits outside 2-7 are not part of it",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "[A-Z2-7]{16}",
+      "replace": "[A-Z0-9]{16}"
+    },
+    {
+      "name": "the Azure secret tail is 31 to 34 characters",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "Q~[a-zA-Z0-9_~.-]{31,34}",
+      "replace": "Q~[a-zA-Z0-9_~.-]{33,34}"
+    },
+    {
+      "name": "the Anthropic key prefix is assembled with api",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "['sk', 'ant', 'api'].join('-')",
+      "replace": "['sk', 'ant', 'apl'].join('-')"
+    },
+    {
+      "name": "OpenAI project keys are a shape of their own",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "sk-(?:proj|svcacct|admin)-",
+      "replace": "sk-(?:svcacct|admin)-"
+    },
+    {
+      "name": "a Hugging Face token body is letters only",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "\\\\b(hf_[a-zA-Z]{34})",
+      "replace": "\\\\b(hf_[a-zA-Z0-9]{34})"
+    },
+    {
+      "name": "a GitHub PAT body is 36 characters, no fewer",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "'ghp_[0-9a-zA-Z]{36}'",
+      "replace": "'ghp_[0-9a-zA-Z]{35}'"
+    },
+    {
+      "name": "GitHub user-to-server tokens count as app tokens",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "(?:ghu|ghs)_",
+      "replace": "(?:ghs)_"
+    },
+    {
+      "name": "Slack config tokens count as user tokens",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "xox[pe]",
+      "replace": "xoxp"
+    },
+    {
+      "name": "Slack app tokens match in any case",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "    flags: 'i',\n  },\n  {\n    id: 'twilio-api-key',",
+      "replace": "  },\n  {\n    id: 'twilio-api-key',"
+    },
+    {
+      "name": "Twilio keys take hex in either case",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "SK[0-9a-fA-F]{32}",
+      "replace": "SK[0-9a-f]{32}"
+    },
+    {
+      "name": "PyPI tokens need only 50 characters after the marker",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "[\\\\w-]{50,1000}",
+      "replace": "[\\\\w-]{150,1000}"
+    },
+    {
+      "name": "a Databricks token may carry a numeric suffix",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "(?:-\\\\d)?",
+      "replace": ""
+    },
+    {
+      "name": "the Terraform marker is lowercase only",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "\\\\.atlasv1\\\\.",
+      "replace": "\\\\.[aA]tlasv1\\\\."
+    },
+    {
+      "name": "Stripe keys in prod mode count",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "(?:test|live|prod)",
+      "replace": "(?:test|live)"
+    },
+    {
+      "name": "a private key body needs 64 characters, no more",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "[\\\\s\\\\S-]{64,}?",
+      "replace": "[\\\\s\\\\S-]{65,}?"
+    },
+    {
+      "name": "a PGP private key block counts",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "PRIVATE KEY(?: BLOCK)?-----[",
+      "replace": "PRIVATE KEY-----["
+    },
+    {
+      "name": "an npm token may not be glued to a preceding word",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "\\\\b(npm_",
+      "replace": "(npm_"
+    },
+    {
+      "name": "an escaped newline ends an npm token",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "(npm_[a-zA-Z0-9]{36})(?:[\\\\x60\\'\"\\\\s;]|\\\\\\\\[nr]|$)",
+      "replace": "(npm_[a-zA-Z0-9]{36})(?:[\\\\x60\\'\"\\\\s;]|$)"
+    },
+    {
+      "name": "labels spell OAuth the vendor's way",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "    oauth: 'OAuth',\n",
+      "replace": ""
+    },
+    {
+      "name": "label words are joined by spaces",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "    .join(' ')\n}",
+      "replace": "    .join('-')\n}"
+    },
+    {
+      "name": "scanning keeps no state between calls",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "re: new RegExp(r.source, r.flags),",
+      "replace": "re: new RegExp(r.source, (r.flags ?? '') + 'g'),"
+    },
+    {
+      "name": "a match carries the family only, never the text",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "        label: ruleIdToLabel(rule.id),\n      })",
+      "replace": "        label: ruleIdToLabel(rule.id),\n        excerpt: content.slice(0, 40),\n      } as SecretMatch)"
+    },
+    {
+      "name": "only a team path is scanned",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "    if (!isTeamMemPath(filePath)) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "clean content is let through",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "if (matches.length === 0) {",
+      "replace": "if (matches.length === 1) {"
+    },
+    {
+      "name": "the refusal lists labels, not rule ids",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "matches.map(m => m.label)",
+      "replace": "matches.map(m => m.ruleId)"
+    },
+    {
+      "name": "the refusal separates families with a comma",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": ".join(', ')",
+      "replace": ".join('; ')"
+    },
+    {
+      "name": "the refusal says who shares team memory",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "'Team memory is shared with all repository collaborators. ' +",
+      "replace": "'Team memory is shared. ' +"
+    },
+    {
+      "name": "a search counts only when its path is in team",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "if (input.path && isTeamMemFile(input.path)) {",
+      "replace": "if (input.path) {"
+    },
+    {
+      "name": "an Edit counts as well as a Write",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "toolName !== FILE_WRITE_TOOL_NAME && toolName !== FILE_EDIT_TOOL_NAME",
+      "replace": "toolName !== FILE_WRITE_TOOL_NAME"
+    },
+    {
+      "name": "file_path wins over path",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "input?.file_path ?? input?.path",
+      "replace": "input?.path ?? input?.file_path"
+    },
+    {
+      "name": "the search part carries no count",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "parts.push(`${verb} team memories`)",
+      "replace": "parts.push(`${verb} ${teamSearchCount} team memories`)"
+    },
+    {
+      "name": "the listing keeps 200 files",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "const MAX_MEMORY_FILES = 200",
+      "replace": "const MAX_MEMORY_FILES = 199"
+    },
+    {
+      "name": "only the first 30 lines are read",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "const FRONTMATTER_MAX_LINES = 30",
+      "replace": "const FRONTMATTER_MAX_LINES = 40"
+    },
+    {
+      "name": "an index is skipped in every directory",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "basename(f) !== 'MEMORY.md'",
+      "replace": "f !== 'MEMORY.md'"
+    },
+    {
+      "name": "files three directories deep are left out",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "const MAX_DEPTH = 3",
+      "replace": "const MAX_DEPTH = 4"
+    },
+    {
+      "name": "the newest file comes first",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "(a, b) => b.mtimeMs - a.mtimeMs",
+      "replace": "(a, b) => a.mtimeMs - b.mtimeMs"
+    },
+    {
+      "name": "an empty description reads as none",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "frontmatter.description || null",
+      "replace": "frontmatter.description ?? null"
+    },
+    {
+      "name": "the type tag is bracketed",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "`[${m.type}] `",
+      "replace": "`(${m.type}) `"
+    },
+    {
+      "name": "the timestamp is ISO",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "new Date(m.mtimeMs).toISOString()",
+      "replace": "new Date(m.mtimeMs).toUTCString()"
+    }
+  ]
+}
