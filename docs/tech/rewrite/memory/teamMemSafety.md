@@ -348,3 +348,35 @@ listing and the manifest.
   imports.
 - **Types.** Explicit throughout, with no `any`. `MemoryHeader.description`
   is truly `string | null`.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **The rewrite.** The 9 inherited bodies and the secret rule table were
+  written anew. The 36 rule families are now data, each with its ID, label,
+  pattern and boundary. The rule IDs and token shapes come from gitleaks (MIT).
+  Its notice is in `THIRD_PARTY_NOTICES.md`, and the copyright line was checked
+  against gitleaks' LICENSE. The private-key check and the directory walk moved
+  into `secretScanner/` and `memoryScan/`. The characterization suites and
+  `teamMemSecretGuard.test.ts` pass unchanged.
+- **Fixes**, each with a test:
+  - 432 KB of `BEGIN` markers scans in 17 ms instead of 27 s;
+  - a token ends at any character outside its family's alphabet;
+  - no directory is entered twice;
+  - a search of the team directory counts as a team-memory search;
+  - descriptions are coerced to text and collapsed to one line.
+- **Deviations.**
+  - The token-end rule is wider than the five characters listed, and covers
+    SendGrid's trailing `.`.
+  - A second name for a directory lists its files once, under the real name.
+- **Probes.**
+  - `rewrite-memory-teamMemSafety.json`: 80 probes.
+  - `teamMemSecretGuard.json`: kept its 2 surface probes. Its 3 stale probes were
+    pruned, since the new spec pins the same behaviour.
+- **Residue, reviewed.** 20 lines of Claude Code remain, and all are contract:
+  - `memoryScan.ts`, 9: the `MemoryHeader` fields, the two limits (200 files,
+    30 frontmatter lines) and the signature and abort check of `scanMemoryFiles`;
+  - `teamMemoryOps.ts`, 7: the count fields of the summary parameter;
+  - `teamMemSecretGuard.ts`, 2: the signature and the `feature('TEAMMEM')`
+    guard, whose shape the build fixes;
+  - `readMemoryHeader.ts`, 2: a signature.

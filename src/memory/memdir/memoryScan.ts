@@ -4,11 +4,10 @@
  * memdir.ts (#25372).
  */
 
-import { readdir } from 'fs/promises'
-import { basename, join } from 'path'
-import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
-import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
-import { type MemoryType, parseMemoryType } from 'src/memory/memdir/memoryTypes.js'
+import { join } from 'path'
+import type { MemoryType } from 'src/memory/memdir/memoryTypes.js'
+import { readMemoryHeader, toOneLine } from 'src/memory/memdir/memoryScan/readMemoryHeader.js'
+import { walkMemoryDir } from 'src/memory/memdir/memoryScan/walkMemoryDir.js'
 
 export type MemoryHeader = {
   filename: string
@@ -21,61 +20,32 @@ export type MemoryHeader = {
 const MAX_MEMORY_FILES = 200
 const FRONTMATTER_MAX_LINES = 30
 
-/**
- * Scan a memory directory for .md files, read their frontmatter, and return
- * a header list sorted newest-first (capped at MAX_MEMORY_FILES). Used by
- * extractMemories (pre-injects the listing so the extraction agent doesn't
- * spend a turn on `ls`) and the /memory browser.
- *
- * Single-pass: readFileInRange stats internally and returns mtimeMs, so we
- * read-then-sort rather than stat-sort-read. For the common case (N ≤ 200)
- * this halves syscalls vs a separate stat round; for large N we read a few
- * extra small files but still avoid the double-stat on the surviving 200.
- */
+async function headerOrNull(
+  memoryDir: string,
+  filename: string,
+  signal: AbortSignal,
+): Promise<MemoryHeader | null> {
+  const filePath = join(memoryDir, filename)
+  try {
+    const head = await readMemoryHeader(filePath, FRONTMATTER_MAX_LINES, signal)
+    return { filename, filePath, ...head }
+  } catch {
+    return null
+  }
+}
+
+/** Never rejects: a listing that cannot be made, or is aborted, is empty. */
 export async function scanMemoryFiles(
   memoryDir: string,
   signal: AbortSignal,
 ): Promise<MemoryHeader[]> {
+  if (signal.aborted) return []
   try {
-    const entries = await readdir(memoryDir, { recursive: true })
-    // Limit depth to 3 levels to prevent DoS from deep/symlinked directory trees.
-    // Relative paths from readdir use the OS separator, so count separators.
-    const sep = require('path').sep as string
-    const MAX_DEPTH = 3
-    const mdFiles = entries.filter(
-      f =>
-        f.endsWith('.md') &&
-        basename(f) !== 'MEMORY.md' &&
-        (f.split(sep).length - 1) < MAX_DEPTH,
-    )
-
-    const headerResults = await Promise.allSettled(
-      mdFiles.map(async (relativePath): Promise<MemoryHeader> => {
-        const filePath = join(memoryDir, relativePath)
-        const { content, mtimeMs } = await readFileInRange(
-          filePath,
-          0,
-          FRONTMATTER_MAX_LINES,
-          undefined,
-          signal,
-        )
-        const { frontmatter } = parseFrontmatter(content, filePath)
-        return {
-          filename: relativePath,
-          filePath,
-          mtimeMs,
-          description: frontmatter.description || null,
-          type: parseMemoryType(frontmatter.type),
-        }
-      }),
-    )
-
-    return headerResults
-      .filter(
-        (r): r is PromiseFulfilledResult<MemoryHeader> =>
-          r.status === 'fulfilled',
-      )
-      .map(r => r.value)
+    const filenames = await walkMemoryDir(memoryDir, signal)
+    const headers = await Promise.all(filenames.map(name => headerOrNull(memoryDir, name, signal)))
+    if (signal.aborted) return []
+    return headers
+      .filter((header): header is MemoryHeader => header !== null)
       .sort((a, b) => b.mtimeMs - a.mtimeMs)
       .slice(0, MAX_MEMORY_FILES)
   } catch {
@@ -83,19 +53,13 @@ export async function scanMemoryFiles(
   }
 }
 
-/**
- * Format memory headers as a text manifest: one line per file with
- * [type] filename (timestamp): description. Used by both the recall
- * selector prompt and the extraction-agent prompt.
- */
+function manifestLine({ type, filename, mtimeMs, description }: MemoryHeader): string {
+  const tag = type ? `[${type}] ` : ''
+  const summary = description ? toOneLine(description) : ''
+  const tail = summary ? `: ${summary}` : ''
+  return `- ${tag}${filename} (${new Date(mtimeMs).toISOString()})${tail}`
+}
+
 export function formatMemoryManifest(memories: MemoryHeader[]): string {
-  return memories
-    .map(m => {
-      const tag = m.type ? `[${m.type}] ` : ''
-      const ts = new Date(m.mtimeMs).toISOString()
-      return m.description
-        ? `- ${tag}${m.filename} (${ts}): ${m.description}`
-        : `- ${tag}${m.filename} (${ts})`
-    })
-    .join('\n')
+  return memories.map(manifestLine).join('\n')
 }

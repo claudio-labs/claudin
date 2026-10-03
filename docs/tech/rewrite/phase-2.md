@@ -40,7 +40,7 @@ which the sandbox tools read; the lists below are the same.
 | `memory/markdownConfigLoader` | 2 | 459 | — | done |
 | `memory/claudemd` | 10 | 979 | `projectInstructions.test.ts` (77) | pending |
 | `memory/memdir` | 8 | 772 | — | done |
-| `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | pending |
+| `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | done |
 | `memory/extract` | 5 | 557 | — | done |
 | `memory/autoDream` | 4 | 310 | — | pending |
 | `memory/ui` | 3 | 372 | `memoryFileSelectorPaths.test.ts` (58) | pending |

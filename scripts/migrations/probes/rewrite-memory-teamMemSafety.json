@@ -3,249 +3,491 @@
     "src/memory/memdir/teamMemSafety.scanner.characterization.test.ts",
     "src/memory/memdir/teamMemSafety.guard.characterization.test.ts",
     "src/memory/memdir/teamMemSafety.ops.characterization.test.ts",
-    "src/memory/memdir/teamMemSafety.scan.characterization.test.ts"
+    "src/memory/memdir/teamMemSafety.scan.characterization.test.ts",
+    "src/memory/memdir/teamMemSecretGuard.test.ts",
+    "src/memory/memdir/teamMemSafety.fixes.test.ts"
   ],
   "source": "src/memory/memdir/secretScanner.ts",
   "probes": [
     {
-      "name": "the AWS family accepts the AKIA prefix",
+      "name": "scanner: AWS temporary keys (ASIA) are a family shape",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "|AKIA|ASIA|",
-      "replace": "|ASIA|"
+      "find": "(?:AKIA|ASIA|ABIA|ACCA|A3T[A-Z0-9])",
+      "replace": "(?:AKIA|ABIA|ACCA|A3T[A-Z0-9])"
     },
     {
-      "name": "the AWS body is base32: digits outside 2-7 are not part of it",
+      "name": "scanner: AWS needs a word boundary after it too",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "[A-Z2-7]{16}",
-      "replace": "[A-Z0-9]{16}"
+      "find": "[A-Z2-7]{16}`, { kind: 'word' })",
+      "replace": "[A-Z2-7]{16}`, { kind: 'wordStart' })"
     },
     {
-      "name": "the Azure secret tail is 31 to 34 characters",
+      "name": "scanner: OpenAI legacy shape",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "Q~[a-zA-Z0-9_~.-]{31,34}",
-      "replace": "Q~[a-zA-Z0-9_~.-]{33,34}"
+      "find": "|sk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}`",
+      "replace": "`"
     },
     {
-      "name": "the Anthropic key prefix is assembled with api",
+      "name": "scanner: GitHub user-to-server tokens are app tokens",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "['sk', 'ant', 'api'].join('-')",
-      "replace": "['sk', 'ant', 'apl'].join('-')"
+      "find": "gh[su]_",
+      "replace": "ghs_"
     },
     {
-      "name": "OpenAI project keys are a shape of their own",
+      "name": "scanner: Slack config tokens are user tokens",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "sk-(?:proj|svcacct|admin)-",
-      "replace": "sk-(?:svcacct|admin)-"
-    },
-    {
-      "name": "a Hugging Face token body is letters only",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "\\\\b(hf_[a-zA-Z]{34})",
-      "replace": "\\\\b(hf_[a-zA-Z0-9]{34})"
-    },
-    {
-      "name": "a GitHub PAT body is 36 characters, no fewer",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "'ghp_[0-9a-zA-Z]{36}'",
-      "replace": "'ghp_[0-9a-zA-Z]{35}'"
-    },
-    {
-      "name": "GitHub user-to-server tokens count as app tokens",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "(?:ghu|ghs)_",
-      "replace": "(?:ghs)_"
-    },
-    {
-      "name": "Slack config tokens count as user tokens",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "xox[pe]",
+      "find": "xox[ep]",
       "replace": "xoxp"
     },
     {
-      "name": "Slack app tokens match in any case",
+      "name": "scanner: Slack app tokens match in any case",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "    flags: 'i',\n  },\n  {\n    id: 'twilio-api-key',",
-      "replace": "  },\n  {\n    id: 'twilio-api-key',"
+      "find": "xapp-\\d-[a-z0-9]+-\\d+-[a-z0-9]+`, ANYWHERE, true)",
+      "replace": "xapp-\\d-[a-z0-9]+-\\d+-[a-z0-9]+`, ANYWHERE)"
     },
     {
-      "name": "Twilio keys take hex in either case",
+      "name": "scanner: Hugging Face body is letters only",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "SK[0-9a-fA-F]{32}",
-      "replace": "SK[0-9a-f]{32}"
+      "find": "hf_[A-Za-z]{34}",
+      "replace": "hf_[A-Za-z0-9]{34}"
     },
     {
-      "name": "PyPI tokens need only 50 characters after the marker",
+      "name": "scanner: Databricks numeric suffix",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "[\\\\w-]{50,1000}",
-      "replace": "[\\\\w-]{150,1000}"
+      "find": "dapi[0-9a-f]{32}(?:-\\d)?",
+      "replace": "dapi[0-9a-f]{32}"
     },
     {
-      "name": "a Databricks token may carry a numeric suffix",
+      "name": "scanner: Databricks is lowercase hex only",
       "source": "src/memory/memdir/secretScanner.ts",
-      "find": "(?:-\\\\d)?",
+      "find": "dapi[0-9a-f]{32}",
+      "replace": "dapi[0-9a-fA-F]{32}"
+    },
+    {
+      "name": "scanner: Terraform marker is lowercase",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "\\.atlasv1\\.",
+      "replace": "\\.[Aa]tlasv1\\."
+    },
+    {
+      "name": "scanner: Stripe restricted keys",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "[rs]k_(?:test|live|prod)_",
+      "replace": "sk_(?:test|live|prod)_"
+    },
+    {
+      "name": "scanner: Stripe prod mode",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "(?:test|live|prod)_",
+      "replace": "(?:test|live)_"
+    },
+    {
+      "name": "scanner: Sentry org region spelling cmVnaW9uX3VybCI6",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "|cmVnaW9uX3VybCI6)",
+      "replace": ")"
+    },
+    {
+      "name": "scanner: npm has an end rule",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "npm_[A-Za-z0-9]{36}`, TOKEN_END)",
+      "replace": "npm_[A-Za-z0-9]{36}`, ANYWHERE)"
+    },
+    {
+      "name": "scanner: GitHub PAT has no end rule",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "ghp_[A-Za-z0-9]{36}`, ANYWHERE)",
+      "replace": "ghp_[A-Za-z0-9]{36}`, TOKEN_END)"
+    },
+    {
+      "name": "scanner: GitLab PAT has no end rule",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "glpat-[\\w-]{20}`, ANYWHERE)",
+      "replace": "glpat-[\\w-]{20}`, TOKEN_END)"
+    },
+    {
+      "name": "scanner: base64 families are continued by +/=",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "continuedBy: '+/='",
+      "replace": "continuedBy: ''"
+    },
+    {
+      "name": "scanner: SendGrid is continued by =",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "{ kind: 'tokenEnd', continuedBy: '=' }",
+      "replace": "TOKEN_END"
+    },
+    {
+      "name": "scanner: a match never carries the text",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "({ ruleId, label: ruleIdToLabel(ruleId) })",
+      "replace": "({ ruleId, label: ruleIdToLabel(ruleId), text: content.slice(0, 40) })"
+    },
+    {
+      "name": "scanner: labels come from the table",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "  return LABEL_BY_ID.get(ruleId) ?? ruleId\n",
+      "replace": "  return ruleId\n"
+    },
+    {
+      "name": "scanner: families are reported in table order",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "return detectedRuleIds(content).map(",
+      "replace": "return detectedRuleIds(content).reverse().map("
+    },
+    {
+      "name": "scanner: patterns have no global flag (stateless)",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "detect.anyCase ? 'i' : ''",
+      "replace": "detect.anyCase ? 'gi' : 'g'"
+    },
+    {
+      "name": "scanner: each call returns a new list",
+      "source": "src/memory/memdir/secretScanner.ts",
+      "find": "  return detectedRuleIds(content).map(ruleId => ({ ruleId, label: ruleIdToLabel(ruleId) }))\n",
+      "replace": "  const memo = ((scanForSecrets as unknown as { memo?: Record<string, SecretMatch[]> }).memo ??= {})\n  return (memo[content] ??= detectedRuleIds(content).map(ruleId => ({ ruleId, label: ruleIdToLabel(ruleId) })))\n"
+    },
+    {
+      "name": "boundary: tokenEnd needs a word boundary before",
+      "source": "src/memory/memdir/secretScanner/boundaries.ts",
+      "find": "return String.raw`\\b(?:${token})(?![",
+      "replace": "return String.raw`(?:${token})(?!["
+    },
+    {
+      "name": "boundary: punctuation ends a token (fix 2)",
+      "source": "src/memory/memdir/secretScanner/boundaries.ts",
+      "find": "(?![\\w${boundary.continuedBy ?? ''}-])",
+      "replace": "(?=[\\x60'\"\\s;]|\\\\[nr]|$)"
+    },
+    {
+      "name": "boundary: Azure needs a delimiter before",
+      "source": "src/memory/memdir/secretScanner/boundaries.ts",
+      "find": "const AZURE_BEFORE = String.raw`^|[\\s\\\\'\"\\x60(),=:>]`",
+      "replace": "const AZURE_BEFORE = String.raw`^|[\\s\\\\'\"\\x60(),=:>]|[a-z]`"
+    },
+    {
+      "name": "boundary: Azure accepts < after",
+      "source": "src/memory/memdir/secretScanner/boundaries.ts",
+      "find": "const AZURE_AFTER = String.raw`$|[\\s\\\\'\"\\x60),<]`",
+      "replace": "const AZURE_AFTER = String.raw`$|[\\s\\\\'\"\\x60),]`"
+    },
+    {
+      "name": "boundary: Azure rejects ! after",
+      "source": "src/memory/memdir/secretScanner/boundaries.ts",
+      "find": "const AZURE_AFTER = String.raw`$|[\\s\\\\'\"\\x60),<]`",
+      "replace": "const AZURE_AFTER = String.raw`$|[\\s\\\\'\"\\x60),<!]`"
+    },
+    {
+      "name": "private key: markers match in any case",
+      "source": "src/memory/memdir/secretScanner/privateKey.ts",
+      "find": "const BEGIN_MARKER = new RegExp(`-----BEGIN${MARKER_LABEL}`, 'i')",
+      "replace": "const BEGIN_MARKER = new RegExp(`-----BEGIN${MARKER_LABEL}`)"
+    },
+    {
+      "name": "private key: PGP key blocks",
+      "source": "src/memory/memdir/secretScanner/privateKey.ts",
+      "find": "(?: BLOCK)?",
       "replace": ""
     },
     {
-      "name": "the Terraform marker is lowercase only",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "\\\\.atlasv1\\\\.",
-      "replace": "\\\\.[aA]tlasv1\\\\."
+      "name": "private key: a body of at least 64 characters",
+      "source": "src/memory/memdir/secretScanner/privateKey.ts",
+      "find": "const MIN_BODY = 64",
+      "replace": "const MIN_BODY = 65"
     },
     {
-      "name": "Stripe keys in prod mode count",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "(?:test|live|prod)",
-      "replace": "(?:test|live)"
+      "name": "private key: the END is searched only after the body",
+      "source": "src/memory/memdir/secretScanner/privateKey.ts",
+      "find": "END_MARKER.test(text.slice(bodyStart + MIN_BODY))",
+      "replace": "END_MARKER.test(text)"
     },
     {
-      "name": "a private key body needs 64 characters, no more",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "[\\\\s\\\\S-]{64,}?",
-      "replace": "[\\\\s\\\\S-]{65,}?"
+      "name": "private key: linear time (fix 1)",
+      "source": "src/memory/memdir/secretScanner/privateKey.ts",
+      "find": "  const begin = BEGIN_MARKER.exec(text)\n",
+      "replace": "  return new RegExp(`-----BEGIN${MARKER_LABEL}[^]{64,}?-----END${MARKER_LABEL}`, 'i').test(text)\n  const begin = BEGIN_MARKER.exec(text)\n"
     },
     {
-      "name": "a PGP private key block counts",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "PRIVATE KEY(?: BLOCK)?-----[",
-      "replace": "PRIVATE KEY-----["
+      "name": "guard: only a team build refuses",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "  if (feature('TEAMMEM')) {\n",
+      "replace": "  if (true) {\n"
     },
     {
-      "name": "an npm token may not be glued to a preceding word",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "\\\\b(npm_",
-      "replace": "(npm_"
-    },
-    {
-      "name": "an escaped newline ends an npm token",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "(npm_[a-zA-Z0-9]{36})(?:[\\\\x60\\'\"\\\\s;]|\\\\\\\\[nr]|$)",
-      "replace": "(npm_[a-zA-Z0-9]{36})(?:[\\\\x60\\'\"\\\\s;]|$)"
-    },
-    {
-      "name": "labels spell OAuth the vendor's way",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "    oauth: 'OAuth',\n",
+      "name": "guard: only paths below team are checked",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "    if (!isTeamMemPath(filePath)) return null\n",
       "replace": ""
     },
     {
-      "name": "label words are joined by spaces",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "    .join(' ')\n}",
-      "replace": "    .join('-')\n}"
-    },
-    {
-      "name": "scanning keeps no state between calls",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "re: new RegExp(r.source, r.flags),",
-      "replace": "re: new RegExp(r.source, (r.flags ?? '') + 'g'),"
-    },
-    {
-      "name": "a match carries the family only, never the text",
-      "source": "src/memory/memdir/secretScanner.ts",
-      "find": "        label: ruleIdToLabel(rule.id),\n      })",
-      "replace": "        label: ruleIdToLabel(rule.id),\n        excerpt: content.slice(0, 40),\n      } as SecretMatch)"
-    },
-    {
-      "name": "only a team path is scanned",
+      "name": "guard: auto memory off does not disable it",
       "source": "src/memory/memdir/teamMemSecretGuard.ts",
-      "find": "    if (!isTeamMemPath(filePath)) {",
-      "replace": "    if (false) {"
+      "find": "    if (!isTeamMemPath(filePath)) return null\n",
+      "replace": "    if (!require('src/memory/memdir/teamMemPaths.js').isTeamMemFile(filePath)) return null\n"
     },
     {
-      "name": "clean content is let through",
+      "name": "guard: clean content is let through",
       "source": "src/memory/memdir/teamMemSecretGuard.ts",
-      "find": "if (matches.length === 0) {",
-      "replace": "if (matches.length === 1) {"
+      "find": "  if (matches.length === 0) return null\n",
+      "replace": ""
     },
     {
-      "name": "the refusal lists labels, not rule ids",
+      "name": "guard: the refusal starts with the labels",
       "source": "src/memory/memdir/teamMemSecretGuard.ts",
-      "find": "matches.map(m => m.label)",
-      "replace": "matches.map(m => m.ruleId)"
+      "find": "return `Content contains potential secrets (${labels})",
+      "replace": "return `Content may contain secrets (${labels})"
     },
     {
-      "name": "the refusal separates families with a comma",
+      "name": "guard: labels are joined by a comma",
       "source": "src/memory/memdir/teamMemSecretGuard.ts",
       "find": ".join(', ')",
-      "replace": ".join('; ')"
+      "replace": ".join(' / ')"
     },
     {
-      "name": "the refusal says who shares team memory",
+      "name": "guard: the refusal says team memory is shared",
       "source": "src/memory/memdir/teamMemSecretGuard.ts",
-      "find": "'Team memory is shared with all repository collaborators. ' +",
-      "replace": "'Team memory is shared. ' +"
+      "find": "Team memory is shared with all repository collaborators. ",
+      "replace": ""
     },
     {
-      "name": "a search counts only when its path is in team",
+      "name": "guard: the refusal asks to remove the content",
+      "source": "src/memory/memdir/teamMemSecretGuard.ts",
+      "find": "Remove the sensitive content and try again.",
+      "replace": "Try again."
+    },
+    {
+      "name": "ops: Edit counts as a write",
       "source": "src/memory/memdir/teamMemoryOps.ts",
-      "find": "if (input.path && isTeamMemFile(input.path)) {",
-      "replace": "if (input.path) {"
+      "find": "new Set([FILE_WRITE_TOOL_NAME, FILE_EDIT_TOOL_NAME])",
+      "replace": "new Set([FILE_WRITE_TOOL_NAME])"
     },
     {
-      "name": "an Edit counts as well as a Write",
+      "name": "ops: tool names are case-sensitive",
       "source": "src/memory/memdir/teamMemoryOps.ts",
-      "find": "toolName !== FILE_WRITE_TOOL_NAME && toolName !== FILE_EDIT_TOOL_NAME",
-      "replace": "toolName !== FILE_WRITE_TOOL_NAME"
+      "find": "!WRITE_TOOL_NAMES.has(toolName)",
+      "replace": "!WRITE_TOOL_NAMES.has(toolName.charAt(0).toUpperCase() + toolName.slice(1))"
     },
     {
-      "name": "file_path wins over path",
+      "name": "ops: file_path wins over path",
       "source": "src/memory/memdir/teamMemoryOps.ts",
-      "find": "input?.file_path ?? input?.path",
-      "replace": "input?.path ?? input?.file_path"
+      "find": "toolInput.file_path ?? toolInput.path",
+      "replace": "toolInput.path ?? toolInput.file_path"
     },
     {
-      "name": "the search part carries no count",
+      "name": "ops: path stands in for file_path",
       "source": "src/memory/memdir/teamMemoryOps.ts",
-      "find": "parts.push(`${verb} team memories`)",
-      "replace": "parts.push(`${verb} ${teamSearchCount} team memories`)"
+      "find": "toolInput.file_path ?? toolInput.path",
+      "replace": "toolInput.file_path"
     },
     {
-      "name": "the listing keeps 200 files",
+      "name": "ops: a search reads only path, not pattern",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "  const { path } = toolInput\n",
+      "replace": "  const path = toolInput.path ?? (toolInput as { pattern?: unknown }).pattern\n"
+    },
+    {
+      "name": "ops: the team directory itself is a team search (fix 4)",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "return isTeamMemFile(path) || isTeamMemDir(path)",
+      "replace": "return isTeamMemFile(path)"
+    },
+    {
+      "name": "ops: the team directory search needs auto memory on",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "return isTeamMemoryEnabled() && resolve(path)",
+      "replace": "return resolve(path)"
+    },
+    {
+      "name": "ops: only the first part is capitalized",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "parts.length === 0))",
+      "replace": "true))"
+    },
+    {
+      "name": "ops: one is singular",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "n === 1 ? 'team memory'",
+      "replace": "n === 1 ? 'team memories'"
+    },
+    {
+      "name": "ops: searches carry no number",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "showsCount: false",
+      "replace": "showsCount: true"
+    },
+    {
+      "name": "ops: done reads recalled",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "done: 'recalled'",
+      "replace": "done: 'read'"
+    },
+    {
+      "name": "ops: running writes read writing",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "running: 'writing'",
+      "replace": "running: 'saving'"
+    },
+    {
+      "name": "ops: a zero count adds nothing",
+      "source": "src/memory/memdir/teamMemoryOps.ts",
+      "find": "if (n > 0)",
+      "replace": "if (n >= 0)"
+    },
+    {
+      "name": "scan: MEMORY.md is left out",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "name !== INDEX_FILE_NAME",
+      "replace": "name !== 'INDEX.md'"
+    },
+    {
+      "name": "scan: .md is matched in lower case only",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "name.endsWith('.md')",
+      "replace": "name.toLowerCase().endsWith('.md')"
+    },
+    {
+      "name": "scan: at most two directories deep",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "const MAX_DIR_DEPTH = 2",
+      "replace": "const MAX_DIR_DEPTH = 3"
+    },
+    {
+      "name": "scan: two directories deep are listed",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "const MAX_DIR_DEPTH = 2",
+      "replace": "const MAX_DIR_DEPTH = 1"
+    },
+    {
+      "name": "scan: symlinked directories are walked",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "        else if (entry.isSymbolicLink()) links.push(child)\n",
+      "replace": ""
+    },
+    {
+      "name": "scan: no directory is entered twice (fix 3)",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "!entered.has(identity(target))",
+      "replace": "true"
+    },
+    {
+      "name": "scan: real directories are claimed before links",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "[...dirs.filter(d => d.depth <= MAX_DIR_DEPTH), ...links]",
+      "replace": "[...links, ...dirs.filter(d => d.depth <= MAX_DIR_DEPTH)]"
+    },
+    {
+      "name": "scan: an unreadable directory is skipped",
+      "source": "src/memory/memdir/memoryScan/walkMemoryDir.ts",
+      "find": "  } catch {\n    return []\n  }",
+      "replace": "  } catch (error) {\n    throw error\n  }"
+    },
+    {
+      "name": "scan: an unreadable file is skipped",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "  } catch {\n    return null\n  }",
+      "replace": "  } catch (error) {\n    throw error\n  }"
+    },
+    {
+      "name": "scan: the 200 newest are kept",
       "source": "src/memory/memdir/memoryScan.ts",
       "find": "const MAX_MEMORY_FILES = 200",
-      "replace": "const MAX_MEMORY_FILES = 199"
+      "replace": "const MAX_MEMORY_FILES = 201"
     },
     {
-      "name": "only the first 30 lines are read",
+      "name": "scan: newest first",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "b.mtimeMs - a.mtimeMs",
+      "replace": "a.mtimeMs - b.mtimeMs"
+    },
+    {
+      "name": "scan: failures resolve to an empty list",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "  } catch {\n    return []\n  }",
+      "replace": "  } catch (error) {\n    throw error\n  }"
+    },
+    {
+      "name": "scan: an aborted signal gives an empty list",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "  if (signal.aborted) return []\n  try {\n    const filenames = await walkMemoryDir(memoryDir, signal)\n    const headers = await Promise.all(filenames.map(name => headerOrNull(memoryDir, name, signal)))\n    if (signal.aborted) return []\n",
+      "replace": "  try {\n    const filenames = await walkMemoryDir(memoryDir, new AbortController().signal)\n    const headers = await Promise.all(filenames.map(name => headerOrNull(memoryDir, name, new AbortController().signal)))\n"
+    },
+    {
+      "name": "scan: only the first 30 lines are read",
       "source": "src/memory/memdir/memoryScan.ts",
       "find": "const FRONTMATTER_MAX_LINES = 30",
       "replace": "const FRONTMATTER_MAX_LINES = 40"
     },
     {
-      "name": "an index is skipped in every directory",
+      "name": "scan: filePath joins the directory and the name",
       "source": "src/memory/memdir/memoryScan.ts",
-      "find": "basename(f) !== 'MEMORY.md'",
-      "replace": "f !== 'MEMORY.md'"
+      "find": "    return { filename, filePath, ...head }",
+      "replace": "    return { filename, filePath: filename, ...head }"
     },
     {
-      "name": "files three directories deep are left out",
-      "source": "src/memory/memdir/memoryScan.ts",
-      "find": "const MAX_DEPTH = 3",
-      "replace": "const MAX_DEPTH = 4"
+      "name": "header: the modification time",
+      "source": "src/memory/memdir/memoryScan/readMemoryHeader.ts",
+      "find": "mtimeMs: head.mtimeMs",
+      "replace": "mtimeMs: Math.round(head.mtimeMs / 1000) * 1000 + 1"
     },
     {
-      "name": "the newest file comes first",
-      "source": "src/memory/memdir/memoryScan.ts",
-      "find": "(a, b) => b.mtimeMs - a.mtimeMs",
-      "replace": "(a, b) => a.mtimeMs - b.mtimeMs"
+      "name": "header: the type must be one of the four",
+      "source": "src/memory/memdir/memoryScan/readMemoryHeader.ts",
+      "find": "type: parseMemoryType(frontmatter.type)",
+      "replace": "type: (typeof frontmatter.type === 'string' ? frontmatter.type : undefined) as MemoryType | undefined"
     },
     {
-      "name": "an empty description reads as none",
-      "source": "src/memory/memdir/memoryScan.ts",
-      "find": "frontmatter.description || null",
-      "replace": "frontmatter.description ?? null"
+      "name": "header: an empty description is null",
+      "source": "src/memory/memdir/memoryScan/readMemoryHeader.ts",
+      "find": "return toOneLine(text) || null",
+      "replace": "return toOneLine(text)"
     },
     {
-      "name": "the type tag is bracketed",
-      "source": "src/memory/memdir/memoryScan.ts",
-      "find": "`[${m.type}] `",
-      "replace": "`(${m.type}) `"
+      "name": "header: numbers and booleans become text (fix 5)",
+      "source": "src/memory/memdir/memoryScan/readMemoryHeader.ts",
+      "find": "typeof raw === 'number' || typeof raw === 'boolean' ? String(raw)",
+      "replace": "typeof raw === 'number' || typeof raw === 'boolean' ? ''"
     },
     {
-      "name": "the timestamp is ISO",
+      "name": "header: lists are no description (fix 5)",
+      "source": "src/memory/memdir/memoryScan/readMemoryHeader.ts",
+      "find": "    : ''\n  return toOneLine",
+      "replace": "    : String(raw)\n  return toOneLine"
+    },
+    {
+      "name": "header: whitespace runs collapse to one space (fix 6)",
+      "source": "src/memory/memdir/memoryScan/readMemoryHeader.ts",
+      "find": "text.replace(/\\s+/g, ' ').trim()",
+      "replace": "text.trim()"
+    },
+    {
+      "name": "manifest: the type tag",
       "source": "src/memory/memdir/memoryScan.ts",
-      "find": "new Date(m.mtimeMs).toISOString()",
-      "replace": "new Date(m.mtimeMs).toUTCString()"
+      "find": "type ? `[${type}] ` : ''",
+      "replace": "type ? `(${type}) ` : ''"
+    },
+    {
+      "name": "manifest: ISO time with milliseconds",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "new Date(mtimeMs).toISOString()",
+      "replace": "new Date(mtimeMs).toISOString().replace(/\\.\\d{3}Z$/, \"Z\")"
+    },
+    {
+      "name": "manifest: the description tail",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "summary ? `: ${summary}`",
+      "replace": "summary ? ` - ${summary}`"
+    },
+    {
+      "name": "manifest: one line per header, no trailing newline",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "memories.map(manifestLine).join('\\n')",
+      "replace": "memories.map(manifestLine).map(line => line + '\\n').join('')"
+    },
+    {
+      "name": "manifest: a header built elsewhere stays one line (fix 6)",
+      "source": "src/memory/memdir/memoryScan.ts",
+      "find": "const summary = description ? toOneLine(description) : ''",
+      "replace": "const summary = description ?? ''"
     }
   ]
 }

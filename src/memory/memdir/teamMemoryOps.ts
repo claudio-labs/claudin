@@ -1,44 +1,72 @@
-import { isTeamMemFile } from 'src/memory/memdir/teamMemPaths.js'
+import { resolve } from 'path'
+import { getTeamMemPath, isTeamMemFile, isTeamMemoryEnabled } from 'src/memory/memdir/teamMemPaths.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
+import { capitalize } from 'src/shared/text/stringUtils.js'
 
 export { isTeamMemFile }
 
-/**
- * Check if a search tool use targets team memory files by examining its path.
- */
-export function isTeamMemorySearch(toolInput: unknown): boolean {
-  const input = toolInput as
-    | { path?: string; pattern?: string; glob?: string }
-    | undefined
-  if (!input) {
-    return false
-  }
-  if (input.path && isTeamMemFile(input.path)) {
-    return true
-  }
-  return false
+/** The two path keys a file or search tool may name its target with. */
+type PathInput = { file_path?: unknown; path?: unknown }
+
+function isPathInput(toolInput: unknown): toolInput is PathInput {
+  return typeof toolInput === 'object' && toolInput !== null
 }
 
+const WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([FILE_WRITE_TOOL_NAME, FILE_EDIT_TOOL_NAME])
+
 /**
- * Check if a Write or Edit tool use targets a team memory file.
+ * The team directory itself. `isTeamMemFile` only accepts paths below it,
+ * because resolving drops the trailing separator its prefix test relies on.
  */
+function isTeamMemDir(path: string): boolean {
+  return isTeamMemoryEnabled() && resolve(path) === resolve(getTeamMemPath())
+}
+
+export function isTeamMemorySearch(toolInput: unknown): boolean {
+  if (!isPathInput(toolInput)) return false
+  const { path } = toolInput
+  if (typeof path !== 'string' || path === '') return false
+  return isTeamMemFile(path) || isTeamMemDir(path)
+}
+
 export function isTeamMemoryWriteOrEdit(
   toolName: string,
   toolInput: unknown,
 ): boolean {
-  if (toolName !== FILE_WRITE_TOOL_NAME && toolName !== FILE_EDIT_TOOL_NAME) {
-    return false
-  }
-  const input = toolInput as { file_path?: string; path?: string } | undefined
-  const filePath = input?.file_path ?? input?.path
-  return filePath !== undefined && isTeamMemFile(filePath)
+  if (!WRITE_TOOL_NAMES.has(toolName) || !isPathInput(toolInput)) return false
+  const target = toolInput.file_path ?? toolInput.path
+  return typeof target === 'string' && isTeamMemFile(target)
 }
 
-/**
- * Append team memory summary parts to the parts array.
- * Encapsulates all team memory verb/string logic for getSearchReadSummaryText.
- */
+type TeamMemoryCounts = {
+  teamMemoryReadCount?: number
+  teamMemorySearchCount?: number
+  teamMemoryWriteCount?: number
+}
+
+type SummaryPhrase = {
+  count: keyof TeamMemoryCounts
+  running: string
+  done: string
+  /** Searches are summarised without their number. */
+  showsCount: boolean
+}
+
+const SUMMARY_PHRASES: readonly SummaryPhrase[] = [
+  { count: 'teamMemoryReadCount', running: 'recalling', done: 'recalled', showsCount: true },
+  { count: 'teamMemorySearchCount', running: 'searching', done: 'searched', showsCount: false },
+  { count: 'teamMemoryWriteCount', running: 'writing', done: 'wrote', showsCount: true },
+]
+
+function phraseFor(phrase: SummaryPhrase, n: number, isActive: boolean, opensLine: boolean): string {
+  const verb = isActive ? phrase.running : phrase.done
+  const object = !phrase.showsCount
+    ? 'team memories'
+    : `${n} ${n === 1 ? 'team memory' : 'team memories'}`
+  return `${opensLine ? capitalize(verb) : verb} ${object}`
+}
+
 export function appendTeamMemorySummaryParts(
   memoryCounts: {
     teamMemoryReadCount?: number
@@ -48,41 +76,8 @@ export function appendTeamMemorySummaryParts(
   isActive: boolean,
   parts: string[],
 ): void {
-  const teamReadCount = memoryCounts.teamMemoryReadCount ?? 0
-  const teamSearchCount = memoryCounts.teamMemorySearchCount ?? 0
-  const teamWriteCount = memoryCounts.teamMemoryWriteCount ?? 0
-  if (teamReadCount > 0) {
-    const verb = isActive
-      ? parts.length === 0
-        ? 'Recalling'
-        : 'recalling'
-      : parts.length === 0
-        ? 'Recalled'
-        : 'recalled'
-    parts.push(
-      `${verb} ${teamReadCount} team ${teamReadCount === 1 ? 'memory' : 'memories'}`,
-    )
-  }
-  if (teamSearchCount > 0) {
-    const verb = isActive
-      ? parts.length === 0
-        ? 'Searching'
-        : 'searching'
-      : parts.length === 0
-        ? 'Searched'
-        : 'searched'
-    parts.push(`${verb} team memories`)
-  }
-  if (teamWriteCount > 0) {
-    const verb = isActive
-      ? parts.length === 0
-        ? 'Writing'
-        : 'writing'
-      : parts.length === 0
-        ? 'Wrote'
-        : 'wrote'
-    parts.push(
-      `${verb} ${teamWriteCount} team ${teamWriteCount === 1 ? 'memory' : 'memories'}`,
-    )
+  for (const phrase of SUMMARY_PHRASES) {
+    const n = memoryCounts[phrase.count] ?? 0
+    if (n > 0) parts.push(phraseFor(phrase, n, isActive, parts.length === 0))
   }
 }
