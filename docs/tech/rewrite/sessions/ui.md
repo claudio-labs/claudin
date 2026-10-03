@@ -479,3 +479,27 @@ pins caught differences:
   fixes only the fact that the transcript is "too large to resume". This suite
   had pinned the old sentence, "too large to resume safely"; it now checks the
   fact.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.** The five files are now thin facades. The picker lives in
+  `ui/resumePicker/`, with the resume steps as a named table. The preview's
+  read lives in `ui/sessionPreview/useSessionRead.ts`, and the
+  foreground/background moves in `hooks/sessionBackgrounding/foreground.ts`.
+  No React Compiler bookkeeping is left. The three characterization suites
+  pass unchanged.
+- **Fixes, each tested.**
+  - The empty screen offers Ctrl+A with a hint.
+  - Switching straight between agents sends the new agent in full.
+  - The preview drops a read for an entry that is no longer current.
+  - The cross-project command runs `claudin --resume`.
+- **Kept, because the unchanged suite pins it.** The empty screen still says
+  "No conversations found to resume." and exits with code 1.
+- **Probes.** `rewrite-sessions-ui.json` holds 67 probes, among them the branch
+  fallback in `liteMetadata.ts`.
+- **Residue, reviewed.** 53 lines of Claude Code remain. 18 are
+  `ResumeConversation`'s props type. The rest are the props and parameter types
+  of the hooks and components, plus `releaseForeground`'s immutable state
+  update. Its shape converges with the original, and the implementer never saw
+  that original.

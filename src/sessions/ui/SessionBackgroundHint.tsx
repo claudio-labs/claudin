@@ -1,50 +1,37 @@
-import { useCallback } from 'react';
-import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
-import { backgroundAll, hasForegroundTasks } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
-import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
-import { isEnvTruthy } from 'src/shared/envUtils.js';
+import { useCallback } from 'react'
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
+import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js'
+import { backgroundAll, hasForegroundTasks } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js'
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 type Props = {
-  onBackgroundSession: () => void;
-  isLoading: boolean;
-};
+  onBackgroundSession: () => void
+  isLoading: boolean
+}
 
 /**
- * Owns the ctrl+b (`task:background`) binding: with foreground bash/agent tasks
- * running, it backgrounds them all.
+ * Owns Ctrl+B (`task:background`) while foreground bash or agent tasks run,
+ * and sends them all to the background. It renders nothing.
  *
- * It renders nothing. There used to be a second behaviour here — a double-press
- * hint that backgrounded the whole SESSION while a query was in flight — gated
- * on a flag that had been folded to a constant false, so the hint could not
- * appear and the second press could not fire. `onBackgroundSession` is kept in
- * the props because the REPL passes it; wiring it to a real gate is what it
- * would take to bring that behaviour back.
+ * Neither prop is read. The REPL passes them for a second behaviour that is
+ * gone (backgrounding the whole session on a double press while a query
+ * runs); they stay until the REPL decides what Ctrl+B does then.
  */
-export function SessionBackgroundHint(_props: Props) {
-  const setAppState = useSetAppState();
-  const appStateStore = useAppStateStore();
-  const handleBackground = useCallback(() => {
-    if (isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)) {
-      return;
-    }
-    const state = appStateStore.getState();
-    if (hasForegroundTasks(state)) {
-      backgroundAll(() => appStateStore.getState(), setAppState);
-      if (!getGlobalConfig().hasUsedBackgroundTask) {
-        saveGlobalConfig(markBackgroundTaskUsed);
-      }
-    }
-  }, [appStateStore, setAppState]);
-  const hasForeground = useAppState(hasForegroundTasks);
-  useKeybinding('task:background', handleBackground, {
-    context: 'Task',
-    isActive: hasForeground,
-  });
-  return null;
+export function SessionBackgroundHint(_props: Props): null {
+  const store = useAppStateStore()
+  const setAppState = useSetAppState()
+  const foregroundWork = useAppState(hasForegroundTasks)
+
+  const sendToBackground = useCallback(() => {
+    if (isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)) return
+    backgroundAll(store.getState, setAppState)
+    if (!getGlobalConfig().hasUsedBackgroundTask) saveGlobalConfig(withBackgroundTaskUsed)
+  }, [store, setAppState])
+
+  useKeybinding('task:background', sendToBackground, { context: 'Task', isActive: foregroundWork })
+  return null
 }
-function markBackgroundTaskUsed(c: GlobalConfig): GlobalConfig {
-  return c.hasUsedBackgroundTask ? c : {
-    ...c,
-    hasUsedBackgroundTask: true
-  };
+
+function withBackgroundTaskUsed(config: GlobalConfig): GlobalConfig {
+  return config.hasUsedBackgroundTask ? config : { ...config, hasUsedBackgroundTask: true }
 }

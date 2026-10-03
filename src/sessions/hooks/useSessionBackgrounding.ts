@@ -1,15 +1,12 @@
-/**
- * Hook for managing session backgrounding (Ctrl+B to background/foreground sessions).
- *
- * Handles:
- * - Calling onBackgroundQuery to spawn a background task for the current query
- * - Re-backgrounding foregrounded tasks
- * - Syncing foregrounded task messages/state to main view
- */
-
 import { useCallback, useEffect, useRef } from 'react'
-import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
+import { isLocalAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import {
+  type MirroredMessages,
+  releaseForeground,
+  shouldMirror,
+} from 'src/sessions/hooks/sessionBackgrounding/foreground.js'
 import type { Message } from 'src/shared/types/message.js'
+import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
 
 type UseSessionBackgroundingProps = {
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void
@@ -20,139 +17,61 @@ type UseSessionBackgroundingProps = {
 }
 
 type UseSessionBackgroundingResult = {
-  /** Call when user wants to background (Ctrl+B) */
   handleBackgroundSession: () => void
 }
 
-export function useSessionBackgrounding({
-  setMessages,
-  setIsLoading,
-  resetLoadingState,
-  setAbortController,
-  onBackgroundQuery,
-}: UseSessionBackgroundingProps): UseSessionBackgroundingResult {
-  const foregroundedTaskId = useAppState(s => s.foregroundedTaskId)
-  const foregroundedTask = useAppState(s =>
-    s.foregroundedTaskId ? s.tasks[s.foregroundedTaskId] : undefined,
-  )
+/**
+ * The REPL's side of an agent task brought to the foreground: its messages
+ * and loading state are mirrored into the main view until it ends, is
+ * aborted, or is sent back with `handleBackgroundSession`.
+ */
+export function useSessionBackgrounding(props: UseSessionBackgroundingProps): UseSessionBackgroundingResult {
   const setAppState = useSetAppState()
-  const lastSyncedMessagesLengthRef = useRef<number>(0)
+  const foregroundedId = useAppState(state => state.foregroundedTaskId)
+  const foregrounded = useAppState(state => (state.foregroundedTaskId ? state.tasks[state.foregroundedTaskId] : undefined))
+  const mirrored = useRef<MirroredMessages | null>(null)
+  // The REPL's setters change identity between renders; the effect should follow the task, not them.
+  const view = useRef(props)
+  view.current = props
+
+  useEffect(() => {
+    const { setMessages, setIsLoading, resetLoadingState, setAbortController } = view.current
+    // Every way out of the foreground clears foregroundedTaskId, so the count restarts here alone.
+    if (!foregroundedId) {
+      mirrored.current = null
+      return
+    }
+    if (!foregrounded || !isLocalAgentTask(foregrounded)) {
+      setAppState(state => ({ ...state, foregroundedTaskId: undefined }))
+      resetLoadingState()
+      return
+    }
+    if (foregrounded.status !== 'running' || foregrounded.abortController?.signal.aborted) {
+      setAppState(state => releaseForeground(state, foregroundedId))
+      resetLoadingState()
+      setAbortController(null)
+      return
+    }
+    const messages = foregrounded.messages ?? []
+    if (shouldMirror(mirrored.current, foregroundedId, messages.length)) {
+      mirrored.current = { taskId: foregroundedId, count: messages.length }
+      setMessages([...messages])
+    }
+    setIsLoading(true)
+    if (foregrounded.abortController) setAbortController(foregrounded.abortController)
+  }, [foregroundedId, foregrounded, setAppState])
 
   const handleBackgroundSession = useCallback(() => {
-    if (foregroundedTaskId) {
-      // Re-background the foregrounded task
-      setAppState(prev => {
-        const taskId = prev.foregroundedTaskId
-        if (!taskId) return prev
-        const task = prev.tasks[taskId]
-        if (!task) {
-          return { ...prev, foregroundedTaskId: undefined }
-        }
-        return {
-          ...prev,
-          foregroundedTaskId: undefined,
-          tasks: {
-            ...prev.tasks,
-            [taskId]: { ...task, isBackgrounded: true },
-          },
-        }
-      })
-      setMessages([])
-      resetLoadingState()
-      setAbortController(null)
+    const { setMessages, resetLoadingState, setAbortController, onBackgroundQuery } = view.current
+    if (!foregroundedId) {
+      onBackgroundQuery()
       return
     }
+    setAppState(state => releaseForeground(state, foregroundedId))
+    setMessages([])
+    resetLoadingState()
+    setAbortController(null)
+  }, [foregroundedId, setAppState])
 
-    onBackgroundQuery()
-  }, [
-    foregroundedTaskId,
-    setAppState,
-    setMessages,
-    resetLoadingState,
-    setAbortController,
-    onBackgroundQuery,
-  ])
-
-  // Sync foregrounded task's messages and loading state to the main view
-  useEffect(() => {
-    if (!foregroundedTaskId) {
-      // Reset when no foregrounded task
-      lastSyncedMessagesLengthRef.current = 0
-      return
-    }
-
-    if (!foregroundedTask || foregroundedTask.type !== 'local_agent') {
-      setAppState(prev => ({ ...prev, foregroundedTaskId: undefined }))
-      resetLoadingState()
-      lastSyncedMessagesLengthRef.current = 0
-      return
-    }
-
-    // Sync messages from background task to main view
-    // Only update if messages have actually changed to avoid redundant renders
-    const taskMessages = foregroundedTask.messages ?? []
-    if (taskMessages.length !== lastSyncedMessagesLengthRef.current) {
-      lastSyncedMessagesLengthRef.current = taskMessages.length
-      setMessages([...taskMessages])
-    }
-
-    if (foregroundedTask.status === 'running') {
-      // Check if the task was aborted (user pressed Escape)
-      const taskAbortController = foregroundedTask.abortController
-      if (taskAbortController?.signal.aborted) {
-        // Task was aborted - clear foregrounded state immediately
-        setAppState(prev => {
-          if (!prev.foregroundedTaskId) return prev
-          const task = prev.tasks[prev.foregroundedTaskId]
-          if (!task) return { ...prev, foregroundedTaskId: undefined }
-          return {
-            ...prev,
-            foregroundedTaskId: undefined,
-            tasks: {
-              ...prev.tasks,
-              [prev.foregroundedTaskId]: { ...task, isBackgrounded: true },
-            },
-          }
-        })
-        resetLoadingState()
-        setAbortController(null)
-        lastSyncedMessagesLengthRef.current = 0
-        return
-      }
-
-      setIsLoading(true)
-      // Set abort controller to the foregrounded task's controller for Escape handling
-      if (taskAbortController) {
-        setAbortController(taskAbortController)
-      }
-    } else {
-      // Task completed - restore to background and clear foregrounded view
-      setAppState(prev => {
-        const taskId = prev.foregroundedTaskId
-        if (!taskId) return prev
-        const task = prev.tasks[taskId]
-        if (!task) return { ...prev, foregroundedTaskId: undefined }
-        return {
-          ...prev,
-          foregroundedTaskId: undefined,
-          tasks: { ...prev.tasks, [taskId]: { ...task, isBackgrounded: true } },
-        }
-      })
-      resetLoadingState()
-      setAbortController(null)
-      lastSyncedMessagesLengthRef.current = 0
-    }
-  }, [
-    foregroundedTaskId,
-    foregroundedTask,
-    setAppState,
-    setMessages,
-    setIsLoading,
-    resetLoadingState,
-    setAbortController,
-  ])
-
-  return {
-    handleBackgroundSession,
-  }
+  return { handleBackgroundSession }
 }
