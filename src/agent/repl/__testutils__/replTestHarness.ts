@@ -105,8 +105,6 @@ const STUBBED_BY_SETUP = [
   'src/platform/preventSleep.js',
   'src/platform/bridge/useReplBridge.js',
   'src/platform/bridge/useMailboxBridge.js',
-  'src/sessions/hooks/useRemoteSession.js',
-  'src/sessions/hooks/useSSHSession.js',
   'src/agent/coordinator/hooks/useSwarmInitialization.js',
   'src/agent/hooks/useScheduledTasks.js',
   'src/platform/ide/useIDEIntegration.js',
@@ -207,16 +205,6 @@ export function setupReplMocks(): void {
   // Mailbox bridge — polls the on-disk mailbox for cross-session messages.
   mock.module('src/platform/bridge/useMailboxBridge.js', () => ({
     useMailboxBridge: noop,
-  }))
-
-  // Remote session — opens a CCR session when --remote is set.
-  mock.module('src/sessions/hooks/useRemoteSession.js', () => ({
-    useRemoteSession: () => ({ state: 'idle', error: null }),
-  }))
-
-  // SSH session.
-  mock.module('src/sessions/hooks/useSSHSession.js', () => ({
-    useSSHSession: () => ({ state: 'idle', error: null }),
   }))
 
   // Swarm initialization — spawns worker processes and creates files.

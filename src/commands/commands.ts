@@ -466,31 +466,6 @@ export const getSlashCommandToolSkills = memoize(
 )
 
 /**
- * Commands that are safe to use in remote mode (--remote).
- * These only affect local TUI state and don't depend on local filesystem,
- * git, shell, IDE, MCP, or other local execution context.
- *
- * Used to preserve local-only commands in REPL's handleRemoteInit after CCR
- * filters.
- */
-export const REMOTE_SAFE_COMMANDS: Set<Command> = new Set([
-  session, // Shows QR code / URL for remote session
-  exit, // Exit the TUI
-  clear, // Clear screen
-  help, // Show help
-  theme, // Change terminal theme
-  color, // Change agent color
-  vim, // Toggle vim mode
-  cost, // Show session cost (local cost tracking)
-  usage, // Show usage info
-  copy, // Copy last message
-  btw, // Quick note
-  feedback, // Send feedback
-  plan, // Plan mode toggle
-  stickers, // Stickers
-])
-
-/**
  * Builtin commands of type 'local' that ARE safe to execute when received
  * over the Remote Control bridge. These produce text output that streams
  * back to the mobile/web client and have no terminal-only side effects.

@@ -57,7 +57,7 @@
     "files": ["src/sessions/sessionRestore.ts", "src/sessions/sessionStart.ts", "src/sessions/sessionEnvironment.ts", "src/sessions/sessionState.ts", "src/sessions/sessionActivity.ts", "src/sessions/sessionTitle.ts", "src/sessions/concurrentSessions.ts", "src/sessions/sessionEnvVars.ts"]
   },
   "sessions/remote": {
-    "files": ["src/sessions/hooks/useRemoteSession.ts", "src/sessions/hooks/useSSHSession.ts", "src/sessions/sessionIngressAuth.ts", "src/sessions/sessionUrl.ts", "src/sessions/hooks/useTeleportResume.tsx"]
+    "files": ["src/sessions/sessionIngressAuth.ts", "src/sessions/sessionUrl.ts", "src/sessions/hooks/useTeleportResume.tsx"]
   },
   "sessions/historySearch": {
     "files": ["src/sessions/hooks/useHistorySearch.ts", "src/sessions/ui/HistorySearchDialog.tsx", "src/sessions/transcriptSearch.ts"]
