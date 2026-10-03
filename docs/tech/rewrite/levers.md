@@ -27,19 +27,41 @@ Inherited lines, from the 2026-09-28 inventory.
 
 | Lever | Lines |
 |---|---|
-| Cuts of first-party-only and dead code | ~19.7 k, plus the remote files classified below |
+| Cut of dead code only (see "The cuts") | ~4.9 k |
 | MIT packages (`file-index` and `highlighted-code` if at parity; not `yoga-layout`, see below) | ~0.7 k |
 | opencode pieces (LSP client, MCP OAuth, Codex OAuth; not the arity table) | ~2 k |
-| Left for the per-method rewrite | ~320 k |
+| Left for the per-method rewrite | ~338 k |
 
-So the cheap levers take about 7%. The core (the agent loop, the TUI,
+So the cheap levers take about 2%. The core (the agent loop, the TUI,
 permissions, tools, platform) has no legal shortcut. The rest of the saving is
 in the process: per method there is no spec per module, because the tests are
 the specification.
 
 ## The cuts
 
-**First-party only, or unreachable:**
+**Decided on 2026-10-02: only dead code is cut.** The user's rule is that no
+feature a user can reach today leaves the product. That holds even when it
+needs a claude.ai login or an Anthropic server. Everything else in this
+section stays, and goes through the per-method rewrite with its phase. Both
+full cuts were made in worktrees (`cut/remote`, `cut/commands`), but they did
+not land.
+
+Measured in inherited lines:
+
+| Group | Inherited lines | Fate |
+|---|---|---|
+| Dead: nobody can reach it | ~4.9 k | cut |
+| Works only with a claude.ai login or an Anthropic server | ~16.9 k | kept |
+| Reachable by any user (`/install-github-app`, `/stickers`) | ~2.0 k | kept |
+
+**Cut, because nobody can reach it:**
+- `tools/BriefTool`: `isBriefEnabled()` is always false.
+- `platform/server`, `providers/hooks/useDirectConnect.ts`, and the `directConnectConfig` plumbing: nothing constructs that config.
+- `agent/tasks/RemoteAgentTask` and its dialogs, `agent/background/remote/remoteSession.ts`, and the two preconditions only it calls. Nothing creates a `remote_agent` task (details below).
+- `prompt-suggestion/speculation.ts`, which is always off.
+- The native installer's download path (`install/download.ts`, the install half of `installer.ts`, and `claudin install`): `GCS_BUCKET_URL` is empty, so it can only fail. The parts of `installer.ts` other code calls stay.
+
+**The original list, before 2026-10-02's decision.** Of these, only `platform/server`, `BriefTool`, `speculation.ts` and the installer's download path are dead:
 - `platform/bridge` and `commands/bridge` (Remote Control needs a claude.ai token)
 - `platform/teleport`, `platform/remote`, `platform/remoteManagedSettings`, `platform/policyLimits`, `platform/upstreamproxy`
 - `platform/server`: nothing constructs a `directConnectConfig`
@@ -63,12 +85,14 @@ One phase 2 unit goes with the cuts: the remote session hooks
 (`sessions/hooks/useRemoteSession.ts`, `useSSHSession.ts`, `useTeleportResume.tsx`).
 
 Some of the files that import the cut are remote code themselves. They were
-classified on 2026-10-02 by runtime reachability, using the same rule as the
-list above: code that only runs with a claude.ai token or an Anthropic-only
-server counts as first-party. The bundle could not settle it, because the
-build keeps every one of these modules: the gates are checked at runtime.
+classified on 2026-10-02 by runtime reachability, at first using the same rule
+as the list above: code that only runs with a claude.ai token or an
+Anthropic-only server counted as first-party. Under the dead-code-only
+decision, only the remote agent task and direct-connect from the list below
+are cut. The bundle could not settle it, because the build keeps every one of
+these modules: the gates are checked at runtime.
 
-**Join the cut:**
+**The original "join the cut" list:**
 - `agent/tasks/RemoteAgentTask`, `agent/ui/tasks/RemoteSessionDetailDialog.tsx`
   and `RemoteSessionProgress.tsx`, and `agent/background/remote/`. Nothing
   creates a `remote_agent` task: `registerRemoteAgentTask` has no caller, and
