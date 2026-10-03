@@ -42,7 +42,7 @@ which the sandbox tools read; the lists below are the same.
 | `memory/memdir` | 8 | 772 | — | done |
 | `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | done |
 | `memory/extract` | 5 | 557 | — | done |
-| `memory/autoDream` | 4 | 310 | — | pending |
+| `memory/autoDream` | 4 | 310 | — | done |
 | `memory/ui` | 3 | 372 | `memoryFileSelectorPaths.test.ts` (58) | pending |
 | `sessions/storagePure` | 6 | 858 | — | done |
 | `sessions/persistence` | 5 | 1315 | — | pending |

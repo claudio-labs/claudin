@@ -313,3 +313,33 @@ Observations that are not defects:
   - **The prompt.** Prose apart from logic, one builder for both variants, and facts from constants: `ENTRYPOINT_NAME`, `MAX_ENTRYPOINT_LINES`, the category sections, the limits. The run's `extra` is built by its own function.
 - **Types.** Explicit types for the schedule decision, the lock state, the request the unit builds, and the notice payload with `verb` declared, instead of an ad-hoc widening.
 - **Errors.** Nothing reaches the stop hook. Each absorbed failure leaves a debug line. No `any`.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **The rewrite.** The 12 inherited bodies were written anew, and split into:
+  - `lock/lockFile.ts`, the lock protocol;
+  - `run/schedule.ts`, `run/forkMessages.ts` and `run/dreamRun.ts`, the scheduling and the forked run;
+  - `prompt/`, the consolidation prompt.
+
+  The prompt was written fresh from the spec's facts, with a new opening, which
+  `scripts/bench/ab/wire-proxy.ts` now quotes. The characterization suites pass
+  unchanged.
+- **Fixes**, each with a test:
+  - the remote-mode gate is gone;
+  - the notice lists only writes into the memory directory that did not fail;
+  - text blocks are joined with a newline;
+  - a stale lock is claimed by exclusive creation after an exclusive move-aside,
+    in the same file format.
+
+  Finding 8, the schema description, lives in `src/platform/settings/types.ts`
+  and was left for that unit.
+- **Probes.** `rewrite-memory-autoDream.json` holds 83 probes.
+- **Residue, reviewed.** 24 lines of Claude Code, all contract:
+  - `autoDream.ts`, 16: the scheduling defaults (24 hours, 5 sessions), the
+    three-condition gate, the `isForced` stub kept for its signature, the hook
+    runner's type and the signature of `executeAutoDream`;
+  - `consolidationLock.ts`, 4: the lock file name, the one-hour staleness, and
+    the path helper;
+  - `run/dreamRun.ts`, 2, and `run/forkMessages.ts`, 2: call shapes of the
+    forked-agent API.
