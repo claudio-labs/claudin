@@ -5,96 +5,94 @@ import type {
 import type { Message } from 'src/shared/types/message.js'
 
 export type McpInstructionsDelta = {
-  /** Server names — for stateless-scan reconstruction. */
   addedNames: string[]
-  /** Rendered "## {name}\n{instructions}" blocks for addedNames. */
   addedBlocks: string[]
   removedNames: string[]
 }
 
-/**
- * Client-authored instruction block to announce when a server connects,
- * in addition to (or instead of) the server's own `InitializeResult.instructions`.
- * Lets first-party servers (e.g., claude-in-chrome) carry client-side
- * context the server itself doesn't know about.
- */
 export type ClientSideInstruction = {
   serverName: string
   block: string
 }
 
+type ServerBlock = { name: string; block: string }
+
 /**
- * Diff the current set of connected MCP servers that have instructions
- * (server-authored via InitializeResult, or client-side synthesized)
- * against what's already been announced in this conversation. MCP server
- * instructions reach the model only this way, as persisted delta
- * attachments, never through the system prompt. Null if nothing changed.
- *
- * Instructions are immutable for the life of a connection (set once at
- * handshake), so the scan diffs on server NAME, not on content.
+ * Compares the servers announced so far in the conversation with the ones
+ * connected now. Announcements are keyed by name only, so changed text for an
+ * announced server is not re-sent.
  */
 export function getMcpInstructionsDelta(
   mcpClients: MCPServerConnection[],
   messages: Message[],
   clientSideInstructions: ClientSideInstruction[],
 ): McpInstructionsDelta | null {
-  const announced = new Set<string>()
-  let attachmentCount = 0
-  let midCount = 0
-  for (const msg of messages) {
-    if (msg.type !== 'attachment') continue
-    attachmentCount++
-    if (msg.attachment.type !== 'mcp_instructions_delta') continue
-    midCount++
-    for (const n of msg.attachment.addedNames) announced.add(n)
-    for (const n of msg.attachment.removedNames) announced.delete(n)
-  }
-
   const connected = mcpClients.filter(
-    (c): c is ConnectedMCPServer => c.type === 'connected',
+    (client): client is ConnectedMCPServer => client.type === 'connected',
   )
-  const connectedNames = new Set(connected.map(c => c.name))
+  return diffAnnouncements(
+    announcedServerNames(messages),
+    new Set(connected.map(server => server.name)),
+    collectBlocks(connected, clientSideInstructions),
+  )
+}
 
-  // Servers with instructions to announce (either channel). A server can
-  // have both: server-authored instructions + a client-side block appended.
-  const blocks = new Map<string, string>()
-  for (const c of connected) {
-    if (c.instructions) blocks.set(c.name, `## ${c.name}\n${c.instructions}`)
+/** Replays every earlier delta attachment, in history order. */
+function announcedServerNames(messages: Message[]): Set<string> {
+  const announced = new Set<string>()
+  for (const message of messages) {
+    if (message.type !== 'attachment') continue
+    const attachment = message.attachment
+    if (attachment.type !== 'mcp_instructions_delta') continue
+    for (const name of attachment.addedNames) announced.add(name)
+    for (const name of attachment.removedNames) announced.delete(name)
   }
-  for (const ci of clientSideInstructions) {
-    if (!connectedNames.has(ci.serverName)) continue
-    const existing = blocks.get(ci.serverName)
-    blocks.set(
-      ci.serverName,
-      existing
-        ? `${existing}\n\n${ci.block}`
-        : `## ${ci.serverName}\n${ci.block}`,
-    )
+  return announced
+}
+
+function collectBlocks(
+  connected: ConnectedMCPServer[],
+  clientSideInstructions: ClientSideInstruction[],
+): ServerBlock[] {
+  const blocks: ServerBlock[] = []
+  for (const server of connected) {
+    const extras = clientSideInstructions
+      .filter(instruction => instruction.serverName === server.name)
+      .map(instruction => instruction.block)
+    const block = renderBlock(server.name, server.instructions, extras)
+    if (block !== null) blocks.push({ name: server.name, block })
   }
+  return blocks
+}
 
-  const added: Array<{ name: string; block: string }> = []
-  for (const [name, block] of blocks) {
-    if (!announced.has(name)) added.push({ name, block })
-  }
+/** The heading uses the configured name, not the folded one. */
+function renderBlock(
+  serverName: string,
+  ownInstructions: string | undefined,
+  extras: string[],
+): string | null {
+  const sections = ownInstructions ? [ownInstructions, ...extras] : extras
+  if (sections.length === 0) return null
+  return `## ${serverName}\n${sections.join('\n\n')}`
+}
 
-  // A previously-announced server that is no longer connected → removed.
-  // There is no "announced but now has no instructions" case for a still-
-  // connected server: InitializeResult is immutable, and client-side
-  // instruction gates are session-stable in practice. (/model can flip
-  // the model gate, but deferred_tools_delta has the same property and
-  // we treat history as historical — no retroactive retractions.)
-  const removed: string[] = []
-  for (const n of announced) {
-    if (!connectedNames.has(n)) removed.push(n)
-  }
-
-  if (added.length === 0 && removed.length === 0) return null
-
-
-  added.sort((a, b) => a.name.localeCompare(b.name))
+// Added names sort by locale, removed names by code unit. Both are pinned:
+// changing either reorders the bytes of new attachments.
+function diffAnnouncements(
+  announced: Set<string>,
+  connectedNames: Set<string>,
+  blocks: ServerBlock[],
+): McpInstructionsDelta | null {
+  const added = blocks
+    .filter(entry => !announced.has(entry.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const removedNames = [...announced]
+    .filter(name => !connectedNames.has(name))
+    .sort()
+  if (added.length === 0 && removedNames.length === 0) return null
   return {
-    addedNames: added.map(a => a.name),
-    addedBlocks: added.map(a => a.block),
-    removedNames: removed.sort(),
+    addedNames: added.map(entry => entry.name),
+    addedBlocks: added.map(entry => entry.block),
+    removedNames,
   }
 }

@@ -322,3 +322,28 @@ Nothing is dropped.
 - **Approval.** A pure decision over explicit inputs (the merged lists, bypass acceptance from trusted layers only, interactivity, whether project settings are enabled), wrapped by a thin function that reads them. This makes the precedence testable without settings files, and keeps the trust boundary visible in the signature.
 - **The delta.** A pure function from (announced set, connected servers with their blocks) to the delta, with block rendering separate from set arithmetic.
 - **Types.** Explicit throughout, no `any`. The connection-state union stays discriminated on `type`.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **What was rewritten.** All 42 inherited bodies, and the declarations outside
+  them. The project-server approval rules are now a pure function,
+  `projectServerStatus.ts` (`decideProjectServerStatus`), behind a thin reader.
+  The five characterization suites pass unchanged.
+- **Fixes.** Finding 4: the logging-safe URL drops the username and password,
+  tested on six table cases.
+- **Kept for parity, each with a probe.** Findings 1 and 3 are the `__` folding
+  and the repository's settings approving its own servers. Both are tracked in
+  team memory, `bugs/mcp-server-name-folding-reaches-other-servers-rules.md`.
+  Findings 2, 5, 6 and 7 are kept too.
+- **Probes.** `rewrite-mcp-core.json`, 125 probes.
+- **Residue, reviewed.** 226 lines of Claude Code remain, all of them contract.
+  - **`types.ts`, 129.** The zod schemas' field lists: `type`, `url`,
+    `headers`, `ideName` and the rest. They are the MCP config wire format, and
+    the suites pin it. The file also holds the exported inferred types and the
+    connection-state union types that 90 files import.
+  - **`utils.ts`, 75.** The signatures of the filter, exclude and stale-client
+    functions, with their record-shaped parameters, and the scope-to-path text
+    the suites pin. The header-parsing error message is pinned too.
+  - **`mcpInstructionsDelta.ts`, 10, and `mcpStringUtils.ts`, 8.** Signatures
+    and the delta's result type.
