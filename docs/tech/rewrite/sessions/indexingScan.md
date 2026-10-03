@@ -197,3 +197,25 @@ Every other line is a **metadata line**, including a line that starts with
 - **Sidecars as a small module** with an explicit `AgentMetadata` shape check on read and an atomic write (finding 6).
 - **Explicit types.** No `any`, no casts of parsed JSON without a check, regexes at module level. The only errors swallowed are the documented ones: a missing sidecar, an unreadable session folder, a missing projects folder.
 - **Call-time reads.** The config home, the original cwd, the session id and folder, and `process.platform` are read at call time, because the tests change them between calls.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.** The 15 inherited bodies were written anew. A new helper,
+  `byteScan/jsonStructure.ts`, reads string ends and top-level members from
+  bytes without parsing. The three characterization suites pass unchanged.
+- **Fixes.** All four landed, each with a test:
+  - `limit` applies per folder in every listing;
+  - an `endOffset` of 0 or less returns `[]`;
+  - only a top-level `isSidechain` counts;
+  - the sidecar is written atomically, and a bad one reads as `null`.
+- **Dropped.** The `skipIndex` path is gone. The option stays in the type,
+  which is public contract, and is ignored.
+- **Probes.** `rewrite-sessions-indexingScan.json` now holds 55 probes on the new code.
+- **Residue, reviewed.** 28 lines of Claude Code remain, all of them contract:
+  - `crossProject.ts`, 16: the signatures of the five listing exports, their
+    `limit`/`initialEnrichCount` defaults, and the one-line delegations
+    between the plain and progressive forms;
+  - `agents.ts`, 10: the signatures of `writeAgentMetadata`/`readAgentMetadata`
+    and the two-line directory-then-write of the sidecar;
+  - `boundaryScan.ts`, 2: a signature.

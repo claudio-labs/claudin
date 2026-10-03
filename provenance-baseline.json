@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "810473dc826ec7e314b2a44e530c83dc2a35f627",
-  "totals": { "claudeCode": 295121, "openclaude": 42543 },
+  "capturedFrom": "cf9aa46630088936aebefbfa8a704b946b9ad82a",
+  "totals": { "claudeCode": 294624, "openclaude": 42543 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -1636,9 +1636,9 @@
     "src/sessions/hooks/useSSHSession.ts": [188, 0],
     "src/sessions/hooks/useSessionBackgrounding.ts": [135, 0],
     "src/sessions/hooks/useTeleportResume.tsx": [54, 0],
-    "src/sessions/indexing/agents.ts": [37, 0],
-    "src/sessions/indexing/boundaryScan.ts": [312, 0],
-    "src/sessions/indexing/crossProject.ts": [176, 0],
+    "src/sessions/indexing/agents.ts": [10, 0],
+    "src/sessions/indexing/boundaryScan.ts": [2, 0],
+    "src/sessions/indexing/crossProject.ts": [16, 0],
     "src/sessions/indexing/liteMetadata.ts": [815, 0],
     "src/sessions/indexing/search.ts": [41, 0],
     "src/sessions/indexing/sessionStats.test.ts": [0, 2],

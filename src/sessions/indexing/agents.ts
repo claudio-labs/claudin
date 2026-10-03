@@ -1,35 +1,32 @@
 /**
- * Agent metadata sidecars — extracted Wave 4 of the 11c split.
- *
- * Local agents: `<agentId>.meta.json` sibling to the agent's transcript JSONL.
- *
- * No state; pure read/write helpers.
+ * Local agent sidecars: `agent-<agentId>.meta.json` beside the agent's
+ * transcript, remembering how the agent was spawned so a resume restores it.
+ * Also the check of whether a session id already has a transcript.
  */
 
-import { mkdir, readFile, writeFile } from 'fs/promises'
+import { randomUUID } from 'crypto'
+import { mkdir, readFile, rename, rm, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import {
   getOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
 import type { AgentId } from 'src/shared/types/ids.js'
-import { isFsInaccessible } from 'src/shared/errors.js'
+import { getErrnoCode, isFsInaccessible } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   getAgentTranscriptPath,
   getProjectDir,
 } from 'src/sessions/pure/paths.js'
 
+const TRANSCRIPT_SUFFIX = /\.jsonl$/
+
 function getAgentMetadataPath(agentId: AgentId): string {
-  return getAgentTranscriptPath(agentId).replace(/\.jsonl$/, '.meta.json')
+  return getAgentTranscriptPath(agentId).replace(TRANSCRIPT_SUFFIX, '.meta.json')
 }
 
 export type AgentMetadata = {
   agentType: string
-  /** Worktree path if the agent was spawned with isolation: "worktree" */
   worktreePath?: string
-  /** Original task description from the AgentTool input. Persisted so a
-   * resumed agent's notification can show the original description instead
-   * of a placeholder. Optional — older metadata files lack this field. */
   description?: string
   /** The spawn passed `readOnly: true`. Resume re-applies it — the definition
    * is looked up again by agentType, which alone would hand a research agent
@@ -37,45 +34,62 @@ export type AgentMetadata = {
   readOnly?: boolean
 }
 
-/**
- * Persist the agentType used to launch a subagent. Read by resume to
- * route correctly when subagent_type is omitted — without this, resuming
- * a fork silently degrades to code (4KB system prompt, no
- * inherited history). Sidecar file avoids JSONL schema changes.
- *
- * Also stores the worktreePath when the agent was spawned with worktree
- * isolation, enabling resume to restore the correct cwd.
- */
+function isAgentMetadata(value: unknown): value is AgentMetadata {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'agentType' in value &&
+    typeof value.agentType === 'string'
+  )
+}
+
+/** Writes beside the target and renames over it, so a reader never sees half a file. */
+async function replaceFile(path: string, contents: string): Promise<void> {
+  const staging = `${path}.${process.pid}.${randomUUID()}.tmp`
+  try {
+    await writeFile(staging, contents, 'utf8')
+    await rename(staging, path)
+  } catch (error) {
+    await rm(staging, { force: true })
+    throw error
+  }
+}
+
 export async function writeAgentMetadata(
   agentId: AgentId,
   metadata: AgentMetadata,
 ): Promise<void> {
   const path = getAgentMetadataPath(agentId)
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, JSON.stringify(metadata))
+  await replaceFile(path, JSON.stringify(metadata))
 }
 
+/**
+ * The stored sidecar, or null when there is none to use: missing, unreachable,
+ * a directory, or not an object with a string `agentType`. The metadata is
+ * optional (older agents have none), so a bad sidecar must not fail a resume.
+ */
 export async function readAgentMetadata(
   agentId: AgentId,
 ): Promise<AgentMetadata | null> {
-  const path = getAgentMetadataPath(agentId)
+  let text: string
   try {
-    const raw = await readFile(path, 'utf-8')
-    return JSON.parse(raw) as AgentMetadata
-  } catch (e) {
-    if (isFsInaccessible(e)) return null
-    throw e
+    text = await readFile(getAgentMetadataPath(agentId), 'utf8')
+  } catch (error) {
+    if (isFsInaccessible(error) || getErrnoCode(error) === 'EISDIR') return null
+    throw error
   }
+  let stored: unknown
+  try {
+    stored = JSON.parse(text)
+  } catch {
+    return null
+  }
+  return isAgentMetadata(stored) ? stored : null
 }
 
+/** Whether the original cwd's project folder holds a transcript for this id. */
 export function sessionIdExists(sessionId: string): boolean {
-  const projectDir = getProjectDir(getOriginalCwd())
-  const sessionFile = join(projectDir, `${sessionId}.jsonl`)
-  const fs = getFsImplementation()
-  try {
-    fs.statSync(sessionFile)
-    return true
-  } catch {
-    return false
-  }
+  const transcript = join(getProjectDir(getOriginalCwd()), `${sessionId}.jsonl`)
+  return getFsImplementation().existsSync(transcript)
 }
