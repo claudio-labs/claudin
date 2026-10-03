@@ -302,3 +302,31 @@ sorted by path with `localeCompare`. That is case-insensitive order (`a.ts`,
 
   The code host logic stays in `ghPrStatus.ts`.
 - **Types:** explicit, and no `any`. Keep every export of the contract table while its importers exist.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.** Eighteen inherited bodies were written anew. The IDE-diff logic
+  moved into `diff/hooks/ideDiff/` (gate, proposal, edit rebuild), and the PR
+  pill into `hooks/prStatus/` (pill state, poller). `SLOW_GH_THRESHOLD_MS`
+  became `PILL_POLL_RULES.slowAnswerMs`, and `INITIAL_STATE` became an
+  `emptyPill()` factory.
+- **The `useDiffData` hook was deleted** as dead code, per finding 1. Its file
+  keeps `DiffData`. Its old 37% coverage was that dead hook.
+- **Callers.** Four exports outside the unit lost their last caller and were
+  removed: `getEditsForPatch` in `FileEditTool/utils.ts`, the two IDE MCP
+  config types in `mcp/types.ts`, and the `callIdeRpc` re-export in
+  `platform/ide/ide.ts`.
+- **Spec decisions.** Fixes 2–5 and 7–10 landed with tests; 6 and 11 are kept
+  for parity.
+- **Deviations.**
+  - Closing the tab from the terminal ends the IDE session.
+  - `closeTabInIDE` closes only a tab this mount opened.
+- **Probes.** `rewrite-vcs-diffHooks.json`, 96 probes.
+- **Residue, reviewed.** 46 lines of Claude Code remain.
+  - `useTurnDiffs.ts`, 27: the `TurnFileDiff`, `TurnDiff`, `FileEditResult` and
+    `TurnDiffCache` types, plus the shape of a new turn.
+  - `useDiffInIDE.ts`, 14: the `Props` type and the hook's signature.
+  - `useDiffData.ts`, 2, and `usePrStatus.ts`, 3: type fields.
+
+  The two counting loops in `useTurnDiffs.ts` were reworded at landing.

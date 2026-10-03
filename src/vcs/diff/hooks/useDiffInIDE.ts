@@ -1,32 +1,18 @@
-import { randomUUID } from 'crypto'
+import { randomBytes } from 'crypto'
 import { basename } from 'path'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { readFileSync } from 'src/shared/fs/fileRead.js'
-import { expandPath } from 'src/shared/fs/path.js'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { callIdeRpc } from 'src/mcp/client/ide.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import type { PermissionOption } from 'src/permissions/ui/FilePermissionDialog/permissionOptions.js'
-import type {
-  MCPServerConnection,
-  McpSSEIDEServerConfig,
-  McpWebSocketIDEServerConfig,
-} from 'src/mcp/types.js'
-import type { ToolUseContext } from 'src/tools/Tool.js'
-import type { FileEdit } from 'src/tools/FileEditTool/types.js'
-import {
-  getEditsForPatch,
-  getPatchForEdits,
-} from 'src/tools/FileEditTool/utils.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
-import { getPatchFromContents } from 'src/vcs/git/diff.js'
-import { isENOENT } from 'src/shared/errors.js'
-import {
-  callIdeRpc,
-  getConnectedIdeClient,
-  getConnectedIdeName,
-  hasAccessToIDEExtensionDiffFeature,
-} from 'src/platform/ide/ide.js'
-import { WindowsToWSLConverter } from 'src/platform/ide/idePathConversion.js'
+import { getConnectedIdeClient, getConnectedIdeName } from 'src/platform/ide/ide.js'
+import { AbortError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { getPlatform } from 'src/shared/proc/platform.js'
+import type { FileEdit } from 'src/tools/FileEditTool/types.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { regionEdits, wholeTextEdit } from 'src/vcs/diff/hooks/ideDiff/editRebuild.js'
+import { isIdeDiffAvailable } from 'src/vcs/diff/hooks/ideDiff/gate.js'
+import { pathForIde, proposeEdits } from 'src/vcs/diff/hooks/ideDiff/proposal.js'
 
 type Props = {
   onChange(
@@ -42,6 +28,13 @@ type Props = {
   editMode: 'single' | 'multiple'
 }
 
+/** The diff this mount opened: cancelling it closes its tab, once. */
+type OpenDiff = {
+  cancel: AbortController
+  /** Settles once the diff is over, its tab closed. Never rejects. */
+  finished: Promise<void>
+}
+
 export function useDiffInIDE({
   onChange,
   toolUseContext,
@@ -54,159 +47,87 @@ export function useDiffInIDE({
   ideName: string
   hasError: boolean
 } {
-  const isUnmounted = useRef(false)
-  const [hasError, setHasError] = useState(false)
-
-  const sha = useMemo(() => randomUUID().slice(0, 6), [])
-  const tabName = useMemo(
-    () => `✻ [Claudin] ${basename(filePath)} (${sha}) ⧉`,
-    [filePath, sha],
+  const mcpClients = toolUseContext.options.mcpClients
+  const [tabName] = useState(() => `✻ [Claudin] ${basename(filePath)} (${randomBytes(3).toString('hex')}) ⧉`)
+  const [sentToIde] = useState(() =>
+    isIdeDiffAvailable({ mcpClients, diffTool: getGlobalConfig().diffTool, filePath }),
   )
+  const [hasError, setHasError] = useState(false)
+  const ideName = useMemo(() => getConnectedIdeName(mcpClients) ?? 'IDE', [mcpClients])
 
-  const shouldShowDiffInIDE =
-    hasAccessToIDEExtensionDiffFeature(toolUseContext.options.mcpClients) &&
-    getGlobalConfig().diffTool === 'auto' &&
-    // Diffs should only be for file edits.
-    // File writes may come through here but are not supported for diffs.
-    !filePath.endsWith('.ipynb')
+  // The dialog hands a fresh callback on every render; the answer goes to the latest.
+  const decide = useRef(onChange)
+  decide.current = onChange
+  const openDiff = useRef<OpenDiff | null>(null)
 
-  const ideName =
-    getConnectedIdeName(toolUseContext.options.mcpClients) ?? 'IDE'
-
-  async function showDiff(): Promise<void> {
-    if (!shouldShowDiffInIDE) {
-      return
-    }
-
-    try {
-
-      const { oldContent, newContent } = await showDiffInIDE(
-        filePath,
-        edits,
-        toolUseContext,
-        tabName,
-      )
-      // Skip if component has been unmounted
-      if (isUnmounted.current) {
-        return
-      }
-
-
-      const newEdits = computeEditsFromContents(
-        filePath,
-        oldContent,
-        newContent,
-        editMode,
-      )
-
-      if (newEdits.length === 0) {
-        // We close the tab here because 'no' no longer auto-closes
-        const ideClient = getConnectedIdeClient(
-          toolUseContext.options.mcpClients,
-        )
-        if (ideClient) {
-          // Close the tab in the IDE
-          await closeTabInIDE(tabName, ideClient)
-        }
-        onChange(
-          { type: 'reject' },
-          {
-            file_path: filePath,
-            edits: edits,
-          },
-        )
-        return
-      }
-
-      // File was modified - edit was accepted
-      onChange(
-        { type: 'accept-once' },
-        {
-          file_path: filePath,
-          edits: newEdits,
-        },
-      )
-    } catch (error) {
-      logError(error as Error)
-      setHasError(true)
-    }
-  }
-
+  // Once per mount: later props never reopen the diff.
   useEffect(() => {
-    void showDiff()
-
-    // Set flag on unmount
-    return () => {
-      isUnmounted.current = true
+    if (!sentToIde) return
+    const cancel = new AbortController()
+    const stop = (): void => cancel.abort()
+    const toolSignal = toolUseContext.abortController.signal
+    toolSignal.addEventListener('abort', stop)
+    process.on('beforeExit', stop)
+    const detach = (): void => {
+      toolSignal.removeEventListener('abort', stop)
+      process.off('beforeExit', stop)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    const scoped: ToolUseContext = { ...toolUseContext, abortController: cancel }
+    const finished = showDiffInIDE(filePath, edits, scoped, tabName)
+      .then(({ oldContent, newContent }) => {
+        if (cancel.signal.aborted) return
+        const input =
+          oldContent === newContent
+            ? { file_path: filePath, edits }
+            : { file_path: filePath, edits: computeEditsFromContents(filePath, oldContent, newContent, editMode) }
+        decide.current({ type: oldContent === newContent ? 'reject' : 'accept-once' }, input)
+      })
+      .catch((error: unknown) => {
+        if (cancel.signal.aborted) return
+        logError(error)
+        setHasError(true)
+      })
+      .finally(detach)
+    openDiff.current = { cancel, finished }
+
+    return () => {
+      cancel.abort()
+      detach()
+    }
+  }, [])
+
+  const closeTab = useCallback(async (): Promise<void> => {
+    const current = openDiff.current
+    if (!current) return
+    current.cancel.abort()
+    await current.finished
   }, [])
 
   return {
-    closeTabInIDE() {
-      const ideClient = getConnectedIdeClient(toolUseContext.options.mcpClients)
-
-      if (!ideClient) {
-        return Promise.resolve()
-      }
-
-      return closeTabInIDE(tabName, ideClient)
-    },
-    showingDiffInIDE: shouldShowDiffInIDE && !hasError,
-    ideName: ideName,
+    closeTabInIDE: closeTab,
+    showingDiffInIDE: sentToIde && !hasError,
+    ideName,
     hasError,
   }
 }
 
-/**
- * Re-computes the edits from the old and new contents. This is necessary
- * to apply any edits the user may have made to the new contents.
- */
 export function computeEditsFromContents(
   filePath: string,
   oldContent: string,
   newContent: string,
   editMode: 'single' | 'multiple',
 ): FileEdit[] {
-  // Use unformatted patches, otherwise the edits will be formatted.
-  const singleHunk = editMode === 'single'
-  const patch = getPatchFromContents({
-    filePath,
-    oldContent,
-    newContent,
-    singleHunk,
-  })
-
-  if (patch.length === 0) {
-    return []
-  }
-
-  // For single edit mode, verify we only got one hunk
-  if (singleHunk && patch.length > 1) {
-    logError(
-      new Error(
-        `Unexpected number of hunks: ${patch.length}. Expected 1 hunk.`,
-      ),
-    )
-  }
-
-  // Re-compute the edits to match the patch
-  return getEditsForPatch(patch)
+  return editMode === 'single'
+    ? wholeTextEdit(oldContent, newContent)
+    : regionEdits(filePath, oldContent, newContent)
 }
 
 /**
- * Done if:
- *
- * 1. Tab is closed in IDE
- * 2. Tab is saved in IDE (we then close the tab)
- * 3. User selected an option in IDE
- * 4. User selected an option in terminal (or hit esc)
- *
- * Resolves with the new file content.
- *
- * TODO: Time out after 5 mins of inactivity?
- * TODO: Update auto-approval UI when IDE exits
- * TODO: Close the IDE tab when the approval prompt is unmounted
+ * Opens the diff tab and waits for the user's action in the editor. The
+ * answer comes back as a text pair: equal texts mean a rejection. Cancelling
+ * `toolUseContext.abortController` closes the tab and rejects with AbortError.
+ * The tab is closed exactly once, and only if it was opened.
  */
 async function showDiffInIDE(
   file_path: string,
@@ -214,161 +135,78 @@ async function showDiffInIDE(
   toolUseContext: ToolUseContext,
   tabName: string,
 ): Promise<{ oldContent: string; newContent: string }> {
-  let isCleanedUp = false
+  const ide = getConnectedIdeClient(toolUseContext.options.mcpClients)
+  if (!ide) throw new Error('No connected IDE to show the diff in')
+  const proposal = proposeEdits(file_path, edits)
+  const cancelled = toolUseContext.abortController.signal
+  if (cancelled.aborted) throw new AbortError('The IDE diff was cancelled before it opened')
 
-  const oldFilePath = expandPath(file_path)
-  let oldContent = ''
+  const idePath = pathForIde(proposal.absolutePath, ide)
+  const reply = callIdeRpc(
+    'openDiff',
+    {
+      old_file_path: idePath,
+      new_file_path: idePath,
+      new_file_contents: proposal.newContent,
+      tab_name: tabName,
+    },
+    ide,
+  )
+
+  let answer: unknown
   try {
-    oldContent = readFileSync(oldFilePath)
-  } catch (e: unknown) {
-    if (!isENOENT(e)) {
-      throw e
-    }
-  }
-
-  async function cleanup() {
-    // Careful to avoid race conditions, since this
-    // function can be called from multiple places.
-    if (isCleanedUp) {
-      return
-    }
-    isCleanedUp = true
-
-    // Don't fail if this fails
-    try {
-      await closeTabInIDE(tabName, ideClient)
-    } catch (e) {
-      logError(e as Error)
-    }
-
-    process.off('beforeExit', cleanup)
-    toolUseContext.abortController.signal.removeEventListener('abort', cleanup)
-  }
-
-  // Cleanup if the user hits esc to cancel the tool call - or on exit
-  toolUseContext.abortController.signal.addEventListener('abort', cleanup)
-  process.on('beforeExit', cleanup)
-
-  // Open the diff in the IDE
-  const ideClient = getConnectedIdeClient(toolUseContext.options.mcpClients)
-  try {
-    const { updatedFile } = getPatchForEdits({
-      filePath: oldFilePath,
-      fileContents: oldContent,
-      edits,
-    })
-
-    if (!ideClient || ideClient.type !== 'connected') {
-      throw new Error('IDE client not available')
-    }
-    let ideOldPath = oldFilePath
-
-    // Only convert paths if we're in WSL and IDE is on Windows
-    const ideRunningInWindows =
-      (ideClient.config as McpSSEIDEServerConfig | McpWebSocketIDEServerConfig)
-        .ideRunningInWindows === true
-    if (
-      getPlatform() === 'wsl' &&
-      ideRunningInWindows &&
-      process.env.WSL_DISTRO_NAME
-    ) {
-      const converter = new WindowsToWSLConverter(process.env.WSL_DISTRO_NAME)
-      ideOldPath = converter.toIDEPath(oldFilePath)
-    }
-
-    const rpcResult = await callIdeRpc(
-      'openDiff',
-      {
-        old_file_path: ideOldPath,
-        new_file_path: ideOldPath,
-        new_file_contents: updatedFile,
-        tab_name: tabName,
-      },
-      ideClient,
-    )
-
-    // Convert the raw RPC result to a ToolCallResponse format
-    const data = Array.isArray(rpcResult) ? rpcResult : [rpcResult]
-
-    // If the user saved the file then take the new contents and resolve with that.
-    if (isSaveMessage(data)) {
-      void cleanup()
-      return {
-        oldContent: oldContent,
-        newContent: data[1].text,
-      }
-    } else if (isClosedMessage(data)) {
-      void cleanup()
-      return {
-        oldContent: oldContent,
-        newContent: updatedFile,
-      }
-    } else if (isRejectedMessage(data)) {
-      void cleanup()
-      return {
-        oldContent: oldContent,
-        newContent: oldContent,
-      }
-    }
-
-    // Indicates that the tool call completed with none of the expected
-    // results. Did the user close the IDE?
-    throw new Error('Not accepted')
+    answer = await settledOrCancelled(reply, cancelled)
   } catch (error) {
-    logError(error as Error)
-    void cleanup()
+    await closeTabInIDE(tabName, ide)
     throw error
   }
+  void closeTabInIDE(tabName, ide)
+
+  const blocks: unknown[] = Array.isArray(answer) ? answer : []
+  if (isSaveMessage(blocks)) return { oldContent: proposal.oldContent, newContent: blocks[1].text }
+  if (isClosedMessage(blocks[0])) return { oldContent: proposal.oldContent, newContent: proposal.newContent }
+  if (isRejectedMessage(blocks[0])) return { oldContent: proposal.oldContent, newContent: proposal.oldContent }
+  throw new Error(`The IDE answered the diff of ${file_path} with something unrecognised`)
 }
 
 async function closeTabInIDE(
   tabName: string,
   ideClient?: MCPServerConnection | undefined,
 ): Promise<void> {
+  if (ideClient?.type !== 'connected') return
   try {
-    if (!ideClient || ideClient.type !== 'connected') {
-      throw new Error('IDE client not available')
-    }
-
-    // Use direct RPC to close the tab
     await callIdeRpc('close_tab', { tab_name: tabName }, ideClient)
   } catch (error) {
-    logError(error as Error)
-    // Don't throw - this is a cleanup operation
+    // The tab may already be gone with the editor; the decision stands either way.
+    logError(error)
   }
 }
 
 function isClosedMessage(data: unknown): data is { text: 'TAB_CLOSED' } {
-  return (
-    Array.isArray(data) &&
-    typeof data[0] === 'object' &&
-    data[0] !== null &&
-    'type' in data[0] &&
-    data[0].type === 'text' &&
-    'text' in data[0] &&
-    data[0].text === 'TAB_CLOSED'
-  )
+  return textOf(data) === 'TAB_CLOSED'
 }
 
 function isRejectedMessage(data: unknown): data is { text: 'DIFF_REJECTED' } {
-  return (
-    Array.isArray(data) &&
-    typeof data[0] === 'object' &&
-    data[0] !== null &&
-    'type' in data[0] &&
-    data[0].type === 'text' &&
-    'text' in data[0] &&
-    data[0].text === 'DIFF_REJECTED'
-  )
+  return textOf(data) === 'DIFF_REJECTED'
 }
 
 function isSaveMessage(
   data: unknown,
 ): data is [{ text: 'FILE_SAVED' }, { text: string }] {
-  return (
-    Array.isArray(data) &&
-    data[0]?.type === 'text' &&
-    data[0].text === 'FILE_SAVED' &&
-    typeof data[1].text === 'string'
-  )
+  if (!Array.isArray(data)) return false
+  return textOf(data[0]) === 'FILE_SAVED' && textOf(data[1]) !== undefined
+}
+
+function textOf(block: unknown): string | undefined {
+  if (typeof block !== 'object' || block === null || !('text' in block)) return undefined
+  return typeof block.text === 'string' ? block.text : undefined
+}
+
+/** The IDE's reply, unless the signal fires first. */
+function settledOrCancelled<T>(reply: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => reject(new AbortError('The IDE diff was cancelled'))
+    signal.addEventListener('abort', onAbort, { once: true })
+    reply.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
+  })
 }

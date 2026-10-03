@@ -133,12 +133,6 @@ export type McpStdioServerConfig = z.infer<
 export type McpSSEServerConfig = z.infer<
   ReturnType<typeof McpSSEServerConfigSchema>
 >
-export type McpSSEIDEServerConfig = z.infer<
-  ReturnType<typeof McpSSEIDEServerConfigSchema>
->
-export type McpWebSocketIDEServerConfig = z.infer<
-  ReturnType<typeof McpWebSocketIDEServerConfigSchema>
->
 export type McpHTTPServerConfig = z.infer<
   ReturnType<typeof McpHTTPServerConfigSchema>
 >

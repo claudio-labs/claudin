@@ -36,7 +36,7 @@ which the sandbox tools read; the lists below are the same.
 | `vcs/worktree` | 8 | 1104 | `worktree.test.ts` (76) | done |
 | `vcs/gitDiff` | 6 | 542 | — | done |
 | `vcs/structuredDiff` | 4 | 636 | — | done |
-| `vcs/diffHooks` | 4 | 563 | — | pending |
+| `vcs/diffHooks` | 4 | 563 | — | done |
 | `memory/markdownConfigLoader` | 2 | 459 | — | done |
 | `memory/claudemd` | 10 | 979 | `projectInstructions.test.ts` (77) | pending |
 | `memory/memdir` | 8 | 772 | — | done |

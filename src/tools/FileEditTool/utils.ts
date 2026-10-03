@@ -547,40 +547,6 @@ export function getSnippetForTwoFileDiff(
   return `${kept}\n\n... [${remaining} lines truncated] ...`
 }
 
-const CONTEXT_LINES = 4
-
-
-export function getEditsForPatch(patch: StructuredPatchHunk[]): FileEdit[] {
-  return patch.map(hunk => {
-    // Extract the changes from this hunk
-    const contextLines: string[] = []
-    const oldLines: string[] = []
-    const newLines: string[] = []
-
-    // Parse each line and categorize it
-    for (const line of hunk.lines) {
-      if (line.startsWith(' ')) {
-        // Context line - appears in both versions
-        contextLines.push(line.slice(1))
-        oldLines.push(line.slice(1))
-        newLines.push(line.slice(1))
-      } else if (line.startsWith('-')) {
-        // Deleted line - only in old version
-        oldLines.push(line.slice(1))
-      } else if (line.startsWith('+')) {
-        // Added line - only in new version
-        newLines.push(line.slice(1))
-      }
-    }
-
-    return {
-      old_string: oldLines.join('\n'),
-      new_string: newLines.join('\n'),
-      replace_all: false,
-    }
-  })
-}
-
 /**
  * Contains replacements to de-sanitize strings from Claude
  * Since Claude can't see any of these strings (sanitized in the API)

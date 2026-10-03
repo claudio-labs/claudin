@@ -1,10 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getLastInteractionTime } from 'src/platform/bootstrap/state.js'
+import { logError } from 'src/shared/log.js'
 import { fetchPrStatus, type PrLabel, type PrReviewState } from 'src/vcs/git/ghPrStatus.js'
+import { emptyPill, pillAfterAnswer } from 'src/vcs/hooks/prStatus/pillState.js'
+import { type PollRules, PrStatusPoller, SYSTEM_CLOCKS } from 'src/vcs/hooks/prStatus/prStatusPoller.js'
 
 const POLL_INTERVAL_MS = 2_000
-const SLOW_GH_THRESHOLD_MS = 4_000
-const IDLE_STOP_MS = 60 * 60_000 // stop polling after 60 min idle
+const IDLE_STOP_MS = 60 * 60_000
+
+/** A CLI that needs this long per answer would make the footer drag; stop asking it. */
+const PILL_POLL_RULES: PollRules = {
+  intervalMs: POLL_INTERVAL_MS,
+  slowAnswerMs: 4 * 1000,
+  idleStopMs: IDLE_STOP_MS,
+}
 
 export type PrStatusState = {
   number: number | null
@@ -14,102 +23,31 @@ export type PrStatusState = {
   lastUpdated: number
 }
 
-const INITIAL_STATE: PrStatusState = {
-  number: null,
-  url: null,
-  reviewState: null,
-  label: null,
-  lastUpdated: 0,
-}
-
-/**
- * Polls PR review status every 2s while the session is active (matches the
- * branch/ahead-behind segment cadence in useCwdBranchSegment).
- * When no interaction is detected for 60 minutes, the loop stops — no
- * timers remain. React re-runs the effect when isLoading changes
- * (turn starts/ends), restarting the loop. Effect setup schedules
- * the next poll relative to the last fetch time so turn boundaries
- * don't spawn `gh` more than once per interval. Disables permanently
- * if a fetch exceeds 4s.
- *
- * Pass `enabled: false` to skip polling entirely (hook still must be
- * called unconditionally to satisfy the rules of hooks).
- */
 export function usePrStatus(isLoading: boolean, enabled = true): PrStatusState {
-  const [prStatus, setPrStatus] = useState<PrStatusState>(INITIAL_STATE)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const disabledRef = useRef(false)
-  const lastFetchRef = useRef(0)
+  const [pill, setPill] = useState<PrStatusState>(() => emptyPill())
+  const [poller] = useState(
+    () =>
+      new PrStatusPoller(PILL_POLL_RULES, {
+        ask: fetchPrStatus,
+        onAnswer: answer => {
+          const now = Date.now()
+          setPill(current => pillAfterAnswer(current, answer, now))
+        },
+        onError: logError,
+        ...SYSTEM_CLOCKS,
+        lastInteractionAt: getLastInteractionTime,
+        schedule: (task, delayMs) => {
+          const timer = setTimeout(task, delayMs)
+          return () => clearTimeout(timer)
+        },
+      }),
+  )
 
   useEffect(() => {
     if (!enabled) return
-    if (disabledRef.current) return
+    poller.resume()
+    return () => poller.pause()
+  }, [poller, isLoading, enabled])
 
-    let cancelled = false
-    let lastSeenInteractionTime = -1
-    let lastActivityTimestamp = Date.now()
-
-    async function poll() {
-      if (cancelled) return
-
-      const currentInteractionTime = getLastInteractionTime()
-      if (lastSeenInteractionTime !== currentInteractionTime) {
-        lastSeenInteractionTime = currentInteractionTime
-        lastActivityTimestamp = Date.now()
-      } else if (Date.now() - lastActivityTimestamp >= IDLE_STOP_MS) {
-        return
-      }
-
-      const start = Date.now()
-      const result = await fetchPrStatus()
-      if (cancelled) return
-      lastFetchRef.current = start
-
-      setPrStatus(prev => {
-        const newNumber = result?.number ?? null
-        const newReviewState = result?.reviewState ?? null
-        const newLabel = result?.label ?? null
-        if (
-          prev.number === newNumber &&
-          prev.reviewState === newReviewState &&
-          prev.label === newLabel
-        ) {
-          return prev
-        }
-        return {
-          number: newNumber,
-          url: result?.url ?? null,
-          reviewState: newReviewState,
-          label: newLabel,
-          lastUpdated: Date.now(),
-        }
-      })
-
-      if (Date.now() - start > SLOW_GH_THRESHOLD_MS) {
-        disabledRef.current = true
-        return
-      }
-
-      if (!cancelled) {
-        timeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS)
-      }
-    }
-
-    const elapsed = Date.now() - lastFetchRef.current
-    if (elapsed >= POLL_INTERVAL_MS) {
-      void poll()
-    } else {
-      timeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS - elapsed)
-    }
-
-    return () => {
-      cancelled = true
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-        timeoutRef.current = null
-      }
-    }
-  }, [isLoading, enabled])
-
-  return prStatus
+  return pill
 }

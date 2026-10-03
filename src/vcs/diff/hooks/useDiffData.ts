@@ -1,11 +1,5 @@
 import type { StructuredPatchHunk } from 'diff'
-import { useEffect, useMemo, useState } from 'react'
-import {
-  fetchGitDiff,
-  fetchGitDiffHunks,
-  type GitDiffResult,
-  type GitDiffStats,
-} from 'src/vcs/git/gitDiff.js'
+import type { GitDiffResult, GitDiffStats, PerFileStats } from 'src/vcs/git/gitDiff.js'
 
 const MAX_LINES_PER_FILE = 400
 
@@ -30,102 +24,35 @@ export type DiffData = {
 }
 
 /**
- * Convert a raw GitDiffResult + on-demand hunks into the display file list.
- * Pure — shared by useDiffData (single repo) and useWorkspaceDiff (per root).
+ * Convert a raw GitDiffResult + on-demand hunks into the display file list,
+ * ordered by `localeCompare` (case-insensitive, unlike git's byte order).
  */
 export function gitDiffResultToFiles(
   diffResult: GitDiffResult,
   hunks: Map<string, StructuredPatchHunk[]>,
 ): DiffFile[] {
-  const { perFileStats } = diffResult
   const files: DiffFile[] = []
-
-  for (const [path, fileStats] of perFileStats) {
-    const fileHunks = hunks.get(path)
-    const isUntracked = fileStats.isUntracked ?? false
-
-    // Detect large file (in perFileStats but not in hunks, and not
-    // binary/untracked). A pure rename also has a numstat entry with no hunks
-    // (git emits no `@@` when the content is identical), so exclude renames —
-    // they render as a rename badge, not a "Large file" placeholder.
-    const isLargeFile =
-      !fileStats.isBinary && !isUntracked && !fileHunks && !fileStats.renamedFrom
-
-    // Detect truncated file (total > limit means we truncated)
-    const totalLines = fileStats.added + fileStats.removed
-    const isTruncated =
-      !isLargeFile && !fileStats.isBinary && totalLines > MAX_LINES_PER_FILE
-
-    files.push({
-      path,
-      linesAdded: fileStats.added,
-      linesRemoved: fileStats.removed,
-      isBinary: fileStats.isBinary,
-      isLargeFile,
-      isTruncated,
-      isUntracked,
-      ...(fileStats.renamedFrom ? { renamedFrom: fileStats.renamedFrom } : {}),
-    })
+  for (const [path, stats] of diffResult.perFileStats) {
+    files.push(toDiffFile(path, stats, hunks.has(path)))
   }
-
-  files.sort((a, b) => a.path.localeCompare(b.path))
-  return files
+  return files.sort((left, right) => left.path.localeCompare(right.path))
 }
 
-/**
- * Hook to fetch git diff data on demand. Fetches both stats and hunks when the
- * component mounts. Pass `cwd` to diff a specific repo root (default: ambient).
- */
-export function useDiffData(cwd?: string): DiffData {
-  const [diffResult, setDiffResult] = useState<GitDiffResult | null>(null)
-  const [hunks, setHunks] = useState<Map<string, StructuredPatchHunk[]>>(
-    new Map(),
-  )
-  const [loading, setLoading] = useState(true)
-
-  // Fetch diff data on mount
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadDiffData() {
-      try {
-        // Fetch both stats and hunks
-        const [statsResult, hunksResult] = await Promise.all([
-          fetchGitDiff(cwd),
-          fetchGitDiffHunks(cwd),
-        ])
-
-        if (!cancelled) {
-          setDiffResult(statsResult)
-          setHunks(hunksResult)
-          setLoading(false)
-        }
-      } catch (_error) {
-        if (!cancelled) {
-          setDiffResult(null)
-          setHunks(new Map())
-          setLoading(false)
-        }
-      }
-    }
-
-    void loadDiffData()
-
-    return () => {
-      cancelled = true
-    }
-  }, [cwd])
-
-  return useMemo(() => {
-    if (!diffResult) {
-      return { stats: null, files: [], hunks: new Map(), loading }
-    }
-
-    return {
-      stats: diffResult.stats,
-      files: gitDiffResultToFiles(diffResult, hunks),
-      hunks,
-      loading: false,
-    }
-  }, [diffResult, hunks, loading])
+function toDiffFile(path: string, stats: PerFileStats, hasHunks: boolean): DiffFile {
+  const isUntracked = stats.isUntracked === true
+  const isRename = stats.renamedFrom !== undefined
+  // No hunks for a tracked text file means the hunk fetch gave up on size. A
+  // mode-only change and an empty new file land here too (vcs/gitDiff, finding 16).
+  const isLargeFile = !stats.isBinary && !isUntracked && !isRename && !hasHunks
+  const isTruncated = !isLargeFile && !stats.isBinary && stats.added + stats.removed > MAX_LINES_PER_FILE
+  return {
+    path,
+    linesAdded: stats.added,
+    linesRemoved: stats.removed,
+    isBinary: stats.isBinary,
+    isLargeFile,
+    isTruncated,
+    isUntracked,
+    ...(isRename ? { renamedFrom: stats.renamedFrom } : {}),
+  }
 }

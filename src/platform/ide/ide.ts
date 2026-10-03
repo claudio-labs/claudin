@@ -1191,7 +1191,6 @@ export function toIDEDisplayName(terminal: string | null): string {
   return capitalize(terminal)
 }
 
-export { callIdeRpc }
 
 /**
  * Gets the connected IDE client from a list of MCP clients
@@ -1320,4 +1319,3 @@ const detectHostIP = memoize(
   },
   (isIdeRunningInWindows, port) => `${isIdeRunningInWindows}:${port}`,
 )
-

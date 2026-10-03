@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react'
 import type { ApplyPatchFileResult } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import type { FileEditOutput } from 'src/tools/FileEditTool/types.js'
 import type { Output as FileWriteOutput } from 'src/tools/FileWriteTool/FileWriteTool.js'
-import type { Message } from 'src/shared/types/message.js'
+import type { Message, UserMessage } from 'src/shared/types/message.js'
 
 export type TurnFileDiff = {
   filePath: string
@@ -34,39 +34,31 @@ type TurnDiffCache = {
   lastTurnIndex: number
 }
 
+const PREVIEW_MAX_CHARS = 30
+
 function isFileEditResult(result: unknown): result is FileEditResult {
-  if (!result || typeof result !== 'object') return false
-  const r = result as Record<string, unknown>
-  // FileEditTool: has structuredPatch with content
-  // FileWriteTool (update): has structuredPatch with content
-  // FileWriteTool (create): has type='create' and content (structuredPatch is empty)
-  const hasFilePath = typeof r.filePath === 'string'
-  const hasStructuredPatch =
-    Array.isArray(r.structuredPatch) && r.structuredPatch.length > 0
-  const isNewFile = r.type === 'create' && typeof r.content === 'string'
-  return hasFilePath && (hasStructuredPatch || isNewFile)
+  if (typeof result !== 'object' || result === null) return false
+  const shape = result as { filePath?: unknown; structuredPatch?: unknown }
+  return typeof shape.filePath === 'string' && Array.isArray(shape.structuredPatch)
 }
 
 function isFileWriteOutput(result: FileEditResult): result is FileWriteOutput {
-  return (
-    'type' in result && (result.type === 'create' || result.type === 'update')
-  )
+  return 'type' in result && (result.type === 'create' || result.type === 'update')
 }
 
 /** Patch returns `{ files: [...] }` instead of a top-level filePath. */
 export function isApplyPatchResult(
   result: unknown,
 ): result is { files: ApplyPatchFileResult[] } {
-  if (!result || typeof result !== 'object') return false
-  const r = result as Record<string, unknown>
-  if (!Array.isArray(r.files)) return false
-  return r.files.every(f => {
-    if (!f || typeof f !== 'object') return false
-    const file = f as Record<string, unknown>
-    return (
-      typeof file.absPath === 'string' && Array.isArray(file.structuredPatch)
-    )
-  })
+  if (typeof result !== 'object' || result === null || !('files' in result)) return false
+  const { files } = result
+  return Array.isArray(files) && files.every(isPatchedFile)
+}
+
+function isPatchedFile(entry: unknown): boolean {
+  if (typeof entry !== 'object' || entry === null) return false
+  const shape = entry as { absPath?: unknown; structuredPatch?: unknown }
+  return typeof shape.absPath === 'string' && Array.isArray(shape.structuredPatch)
 }
 
 /** Merge one file's hunks into the current turn (Patch fans out files). */
@@ -76,59 +68,48 @@ export function mergeFileDiff(
   hunks: StructuredPatchHunk[],
   isNewFile: boolean,
 ): void {
-  let fileEntry = turn.files.get(filePath)
-  if (!fileEntry) {
-    fileEntry = {
-      filePath,
-      hunks: [],
-      isNewFile,
-      linesAdded: 0,
-      linesRemoved: 0,
-    }
-    turn.files.set(filePath, fileEntry)
+  const entry = turn.files.get(filePath) ?? {
+    filePath,
+    hunks: [],
+    isNewFile: false,
+    linesAdded: 0,
+    linesRemoved: 0,
   }
-  fileEntry.hunks.push(...hunks)
   const { added, removed } = countHunkLines(hunks)
-  fileEntry.linesAdded += added
-  fileEntry.linesRemoved += removed
-  if (isNewFile) fileEntry.isNewFile = true
+  turn.files.set(filePath, {
+    filePath,
+    hunks: [...entry.hunks, ...hunks],
+    // A file the turn created stays new however often it is edited afterwards.
+    isNewFile: entry.isNewFile || isNewFile,
+    linesAdded: entry.linesAdded + added,
+    linesRemoved: entry.linesRemoved + removed,
+  })
+  computeTurnStats(turn)
 }
 
 function countHunkLines(hunks: StructuredPatchHunk[]): {
   added: number
   removed: number
 } {
-  let added = 0
-  let removed = 0
-  for (const hunk of hunks) {
-    for (const line of hunk.lines) {
-      if (line.startsWith('+')) added++
-      else if (line.startsWith('-')) removed++
-    }
-  }
-  return { added, removed }
+  const lines = hunks.flatMap(hunk => hunk.lines)
+  const marked = (sign: string) => lines.filter(line => line.startsWith(sign)).length
+  return { added: marked('+'), removed: marked('-') }
 }
 
 function getUserPromptPreview(message: Message): string {
   if (message.type !== 'user') return ''
-  const content = message.message.content
-  const text = typeof content === 'string' ? content : ''
-  // Truncate to ~30 chars
-  if (text.length <= 30) return text
-  return text.slice(0, 29) + '…'
+  const { content } = message.message
+  if (typeof content !== 'string') return ''
+  return content.length <= PREVIEW_MAX_CHARS ? content : `${content.slice(0, PREVIEW_MAX_CHARS - 1)}…`
 }
 
 function computeTurnStats(turn: TurnDiff): void {
-  let totalAdded = 0
-  let totalRemoved = 0
-  for (const file of turn.files.values()) {
-    totalAdded += file.linesAdded
-    totalRemoved += file.linesRemoved
-  }
+  const files = [...turn.files.values()]
+  const total = (pick: (file: TurnFileDiff) => number) => files.reduce((sum, file) => sum + pick(file), 0)
   turn.stats = {
-    filesChanged: turn.files.size,
-    linesAdded: totalAdded,
-    linesRemoved: totalRemoved,
+    filesChanged: files.length,
+    linesAdded: total(file => file.linesAdded),
+    linesRemoved: total(file => file.linesRemoved),
   }
 }
 
@@ -138,133 +119,109 @@ function computeTurnStats(turn: TurnDiff): void {
  * Patch shape (`{ files: [...] }`, where a move keys on its destination).
  */
 export function applyToolResultToTurn(turn: TurnDiff, result: unknown): void {
-  if (isFileEditResult(result)) {
-    const { filePath, structuredPatch } = result
-    const isNewFile = 'type' in result && result.type === 'create'
-
-    // Get or create file entry
-    let fileEntry = turn.files.get(filePath)
-    if (!fileEntry) {
-      fileEntry = {
-        filePath,
-        hunks: [],
-        isNewFile,
-        linesAdded: 0,
-        linesRemoved: 0,
-      }
-      turn.files.set(filePath, fileEntry)
-    }
-
-    // For new files, generate synthetic hunk from content
-    if (
-      isNewFile &&
-      structuredPatch.length === 0 &&
-      isFileWriteOutput(result)
-    ) {
-      const content = result.content
-      const lines = content.split('\n')
-      const syntheticHunk: StructuredPatchHunk = {
-        oldStart: 0,
-        oldLines: 0,
-        newStart: 1,
-        newLines: lines.length,
-        lines: lines.map(l => '+' + l),
-      }
-      fileEntry.hunks.push(syntheticHunk)
-      fileEntry.linesAdded += lines.length
-    } else {
-      // Append hunks (same file may be edited multiple times in a turn)
-      fileEntry.hunks.push(...structuredPatch)
-
-      // Update line counts
-      const { added, removed } = countHunkLines(structuredPatch)
-      fileEntry.linesAdded += added
-      fileEntry.linesRemoved += removed
-    }
-
-    // If file was created and then edited, it's still a new file
-    if (isNewFile) {
-      fileEntry.isNewFile = true
-    }
-  } else if (isApplyPatchResult(result)) {
+  if (isApplyPatchResult(result)) {
     for (const file of result.files) {
-      // A move's resulting file lives at the destination path.
-      const filePath =
-        file.type === 'move' && file.movePath ? file.movePath : file.absPath
-      mergeFileDiff(turn, filePath, file.structuredPatch, file.type === 'add')
+      const filedUnder = file.type === 'move' && file.movePath ? file.movePath : file.absPath
+      mergeFileDiff(turn, filedUnder, file.structuredPatch, file.type === 'add')
     }
+    return
+  }
+  if (!isFileEditResult(result)) return
+
+  const created = isFileWriteOutput(result) && result.type === 'create'
+  if (result.structuredPatch.length > 0) {
+    mergeFileDiff(turn, result.filePath, result.structuredPatch, created)
+  } else if (created && typeof result.content === 'string') {
+    mergeFileDiff(turn, result.filePath, createdFileHunks(result.content), true)
   }
 }
 
-/**
- * Extract turn-based diffs from messages.
- * A turn is defined as a user prompt followed by assistant responses and tool results.
- * Each turn with file edits is included in the result.
- *
- * Uses incremental accumulation - only processes new messages since last render.
- */
+/** A created file as one all-added hunk; a final newline ends the last line (finding 4). */
+function createdFileHunks(content: string): StructuredPatchHunk[] {
+  if (content === '') return []
+  const body = content.endsWith('\n') ? content.slice(0, -1) : content
+  const lines = body.split('\n').map(line => `+${line}`)
+  return [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: lines.length, lines }]
+}
+
 export function useTurnDiffs(messages: Message[]): TurnDiff[] {
-  const cache = useRef<TurnDiffCache>({
-    completedTurns: [],
-    currentTurn: null,
-    lastProcessedIndex: 0,
-    lastTurnIndex: 0,
-  })
-
+  const lastReading = useRef<TranscriptReading | null>(null)
   return useMemo(() => {
-    const c = cache.current
-
-    // Reset if messages shrunk (user rewound conversation)
-    if (messages.length < c.lastProcessedIndex) {
-      c.completedTurns = []
-      c.currentTurn = null
-      c.lastProcessedIndex = 0
-      c.lastTurnIndex = 0
-    }
-
-    // Process only new messages
-    for (let i = c.lastProcessedIndex; i < messages.length; i++) {
-      const message = messages[i]
-      if (!message || message.type !== 'user') continue
-
-      // Check if this is a user prompt (not a tool result)
-      const isToolResult =
-        message.toolUseResult ||
-        (Array.isArray(message.message.content) &&
-          message.message.content[0]?.type === 'tool_result')
-
-      if (!isToolResult && !message.isMeta) {
-        // Start a new turn on user prompt
-        if (c.currentTurn && c.currentTurn.files.size > 0) {
-          computeTurnStats(c.currentTurn)
-          c.completedTurns.push(c.currentTurn)
-        }
-
-        c.lastTurnIndex++
-        c.currentTurn = {
-          turnIndex: c.lastTurnIndex,
-          userPromptPreview: getUserPromptPreview(message),
-          timestamp: message.timestamp,
-          files: new Map(),
-          stats: { filesChanged: 0, linesAdded: 0, linesRemoved: 0 },
-        }
-      } else if (c.currentTurn && message.toolUseResult) {
-        // Collect file edits from tool results
-        applyToolResultToTurn(c.currentTurn, message.toolUseResult)
-      }
-    }
-
-    c.lastProcessedIndex = messages.length
-
-    // Build result: completed turns + current turn if it has files
-    const result = [...c.completedTurns]
-    if (c.currentTurn && c.currentTurn.files.size > 0) {
-      // Compute stats for current turn before including
-      computeTurnStats(c.currentTurn)
-      result.push(c.currentTurn)
-    }
-
-    // Return in reverse order (most recent first)
-    return result.reverse()
+    const reading = readTranscript(lastReading.current, messages)
+    lastReading.current = reading
+    return turnsNewestFirst(reading.cache)
   }, [messages])
+}
+
+/** What has been read so far, and the list it was read from. */
+type TranscriptReading = {
+  cache: TurnDiffCache
+  source: readonly Message[]
+}
+
+/**
+ * Folds the messages the previous reading has not seen into a copy of it. When
+ * what was read is no longer the start of the list (a rewind, a compaction),
+ * the list is read again from the start (finding 5).
+ */
+function readTranscript(previous: TranscriptReading | null, messages: readonly Message[]): TranscriptReading {
+  const cache =
+    previous && startsWithRead(messages, previous) ? resumeCache(previous.cache) : emptyCache()
+  for (let index = cache.lastProcessedIndex; index < messages.length; index++) {
+    foldMessage(cache, messages[index]!)
+  }
+  cache.lastProcessedIndex = messages.length
+  return { cache, source: messages }
+}
+
+function startsWithRead(messages: readonly Message[], previous: TranscriptReading): boolean {
+  if (messages === previous.source) return true
+  const read = previous.cache.lastProcessedIndex
+  if (messages.length < read) return false
+  for (let index = 0; index < read; index++) {
+    if (messages[index] !== previous.source[index]) return false
+  }
+  return true
+}
+
+function emptyCache(): TurnDiffCache {
+  return { completedTurns: [], currentTurn: null, lastProcessedIndex: 0, lastTurnIndex: 0 }
+}
+
+/** A copy whose open turn can change without touching turns already handed out. */
+function resumeCache(cache: TurnDiffCache): TurnDiffCache {
+  const open = cache.currentTurn
+  return {
+    ...cache,
+    completedTurns: [...cache.completedTurns],
+    currentTurn: open && { ...open, files: new Map(open.files), stats: { ...open.stats } },
+  }
+}
+
+function foldMessage(cache: TurnDiffCache, message: Message): void {
+  if (message.type !== 'user' || message.isMeta) return
+  if (isToolResultMessage(message)) {
+    if (cache.currentTurn) applyToolResultToTurn(cache.currentTurn, message.toolUseResult)
+    return
+  }
+  if (cache.currentTurn && cache.currentTurn.files.size > 0) cache.completedTurns.push(cache.currentTurn)
+  cache.lastTurnIndex += 1
+  cache.currentTurn = {
+    turnIndex: cache.lastTurnIndex,
+    userPromptPreview: getUserPromptPreview(message),
+    timestamp: message.timestamp,
+    files: new Map(),
+    stats: { filesChanged: 0, linesAdded: 0, linesRemoved: 0 },
+  }
+}
+
+function isToolResultMessage(message: UserMessage): boolean {
+  if (message.toolUseResult !== undefined) return true
+  const { content } = message.message
+  return Array.isArray(content) && content[0]?.type === 'tool_result'
+}
+
+function turnsNewestFirst(cache: TurnDiffCache): TurnDiff[] {
+  const turns = cache.currentTurn?.files.size ? [...cache.completedTurns, cache.currentTurn] : cache.completedTurns
+  return [...turns].reverse()
 }

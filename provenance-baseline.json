@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "d0def918e7c5066b0a2bd6378bfbe9717641b642",
-  "totals": { "claudeCode": 294050, "openclaude": 42533 },
+  "capturedFrom": "53bfde636fcf1a332e4b213410bb521aa52bcbd8",
+  "totals": { "claudeCode": 293492, "openclaude": 42533 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -702,7 +702,7 @@
     "src/mcp/mcpWebSocketTransport.ts": [159, 0],
     "src/mcp/normalization.ts": [12, 0],
     "src/mcp/serverStatus.ts": [2, 0],
-    "src/mcp/types.ts": [185, 0],
+    "src/mcp/types.ts": [181, 0],
     "src/mcp/ui/CapabilitiesSection.tsx": [50, 0],
     "src/mcp/ui/ElicitationDialog.tsx": [1105, 0],
     "src/mcp/ui/MCPAgentServerMenu.tsx": [151, 0],
@@ -2274,7 +2274,7 @@
     "src/tools/FileEditTool/ui/FileEditToolDiff.tsx": [156, 0],
     "src/tools/FileEditTool/ui/FileEditToolUpdatedMessage.tsx": [97, 0],
     "src/tools/FileEditTool/ui/FileEditToolUseRejectedMessage.tsx": [157, 0],
-    "src/tools/FileEditTool/utils.ts": [565, 0],
+    "src/tools/FileEditTool/utils.ts": [528, 0],
     "src/tools/FileReadTool/FileReadTool.ts": [181, 0],
     "src/tools/FileReadTool/UI.tsx": [137, 0],
     "src/tools/FileReadTool/autoOutlineOnElision.test.ts": [4, 0],
@@ -2481,9 +2481,9 @@
     "src/tools/testing/TestingPermissionTool.tsx": [61, 0],
     "src/tools/tools.ts": [186, 0],
     "src/tools/utils.ts": [25, 0],
-    "src/vcs/diff/hooks/useDiffData.ts": [43, 0],
-    "src/vcs/diff/hooks/useDiffInIDE.ts": [278, 0],
-    "src/vcs/diff/hooks/useTurnDiffs.ts": [169, 0],
+    "src/vcs/diff/hooks/useDiffData.ts": [2, 0],
+    "src/vcs/diff/hooks/useDiffInIDE.ts": [14, 0],
+    "src/vcs/diff/hooks/useTurnDiffs.ts": [27, 0],
     "src/vcs/diff/structured/colorDiff.ts": [2, 0],
     "src/vcs/diff/ui/DiffDialog.tsx": [2, 0],
     "src/vcs/git/attribution.ts": [2, 0],
@@ -2502,6 +2502,6 @@
     "src/vcs/git/worktree/slugNaming.ts": [2, 0],
     "src/vcs/git/worktree/tmuxLaunch.ts": [4, 0],
     "src/vcs/git/worktree/tmuxSession.ts": [2, 0],
-    "src/vcs/hooks/usePrStatus.ts": [73, 0]
+    "src/vcs/hooks/usePrStatus.ts": [3, 0]
   }
 }
