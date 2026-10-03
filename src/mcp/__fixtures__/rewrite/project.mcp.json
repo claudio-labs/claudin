@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/srv/data"],
+      "env": { "LOG_LEVEL": "warn" }
+    },
+    "local-script": {
+      "type": "stdio",
+      "command": "./bin/mcp-server"
+    },
+    "sentry": {
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp",
+      "headers": { "X-Team": "core" },
+      "oauth": {
+        "clientId": "abc123",
+        "callbackPort": 8765,
+        "authServerMetadataUrl": "https://auth.sentry.dev/.well-known/oauth-authorization-server"
+      }
+    },
+    "events": {
+      "type": "sse",
+      "url": "https://events.example.com/sse",
+      "headersHelper": "./scripts/mcp-headers.sh",
+      "comment": "dropped by the schema"
+    },
+    "live": {
+      "type": "ws",
+      "url": "wss://live.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${LIVE_TOKEN}" }
+    }
+  }
+}

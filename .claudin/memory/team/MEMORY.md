@@ -44,6 +44,7 @@
 ## Bugs
 - Found by the rewrite, not fixed: [skill args→shell](bugs/skill-arguments-reach-shell-pass.md) · [/tmp owner](bugs/tmpdir-ownership-unchecked.md) · [memory links](bugs/memory-carveout-follows-symlinks.md) · [.claudin walk](bugs/instruction-loader-walk-to-root-and-links.md) · [long-cwd dir](bugs/long-cwd-project-dir-depends-on-runtime.md) · [SGR/OSC 8](bugs/code-views-honour-sgr-and-osc8.md)
 - Pinned by the 10-02 cover round: [/config copies project allow rules to user scope](bugs/config-default-mode-copies-project-permissions.md) · [MCP OAuth uses CC's client id](bugs/mcp-oauth-presents-claude-code-client-id.md)
+- [MCP server names folding to `__` reach another server's rules; repos self-approve .mcp.json](bugs/mcp-server-name-folding-reaches-other-servers-rules.md) — pinned, not fixed
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; Skill, SendMessage, worktree causes fixed; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error

@@ -1,0 +1,236 @@
+{
+  "test": [
+    "src/mcp/core.names.characterization.test.ts",
+    "src/mcp/core.schemas.characterization.test.ts",
+    "src/mcp/core.utils.characterization.test.ts",
+    "src/mcp/core.projectApproval.characterization.test.ts",
+    "src/mcp/core.instructionsDelta.characterization.test.ts"
+  ],
+  "source": "src/mcp/utils.ts",
+  "probes": [
+    {
+      "name": "normalize: connector prefix loses its trailing space",
+      "source": "src/mcp/normalization.ts",
+      "find": "export const CLAUDEAI_SERVER_PREFIX = 'claude.ai '",
+      "replace": "export const CLAUDEAI_SERVER_PREFIX = 'claude.ai'"
+    },
+    {
+      "name": "normalize: dots allowed through the fold",
+      "source": "src/mcp/normalization.ts",
+      "find": "name.replace(/[^a-zA-Z0-9_-]/g, '_')",
+      "replace": "name.replace(/[^a-zA-Z0-9_.-]/g, '_')"
+    },
+    {
+      "name": "normalize: connector names no longer collapse underscore runs",
+      "source": "src/mcp/normalization.ts",
+      "find": "normalized.replace(/_+/g, '_').replace(/^_|_$/g, '')",
+      "replace": "normalized.replace(/^_|_$/g, '')"
+    },
+    {
+      "name": "normalize: connector detection matches anywhere in the name",
+      "source": "src/mcp/normalization.ts",
+      "find": "return name.startsWith(CLAUDEAI_SERVER_PREFIX)",
+      "replace": "return name.includes(CLAUDEAI_SERVER_PREFIX)"
+    },
+    {
+      "name": "parse: an empty server part is accepted",
+      "source": "src/mcp/mcpStringUtils.ts",
+      "find": "if (mcpPart !== 'mcp' || !serverName) {",
+      "replace": "if (mcpPart !== 'mcp') {"
+    },
+    {
+      "name": "parse: the mcp marker becomes case-insensitive",
+      "source": "src/mcp/mcpStringUtils.ts",
+      "find": "if (mcpPart !== 'mcp' || !serverName) {",
+      "replace": "if (mcpPart.toLowerCase() !== 'mcp' || !serverName) {"
+    },
+    {
+      "name": "parse: tool parts rejoined with a single underscore",
+      "source": "src/mcp/mcpStringUtils.ts",
+      "find": "toolNameParts.join('__')",
+      "replace": "toolNameParts.join('_')"
+    },
+    {
+      "name": "build: server name not folded in the prefix",
+      "source": "src/mcp/mcpStringUtils.ts",
+      "find": "  return `mcp__${normalizeNameForMCP(serverName)}__`",
+      "replace": "  return `mcp__${serverName}__`"
+    },
+    {
+      "name": "build: tool name not folded",
+      "source": "src/mcp/mcpStringUtils.ts",
+      "find": "${getMcpPrefix(serverName)}${normalizeNameForMCP(toolName)}",
+      "replace": "${getMcpPrefix(serverName)}${toolName}"
+    },
+    {
+      "name": "permission name: an MCP tool is matched by its display name",
+      "source": "src/mcp/mcpStringUtils.ts",
+      "find": "  return tool.mcpInfo\n",
+      "replace": "  return tool.mcpInfo && false\n"
+    },
+    {
+      "name": "display: prefix stripped with the raw server name",
+      "source": "src/mcp/mcpStringUtils.ts",
+      "find": "const prefix = `mcp__${normalizeNameForMCP(serverName)}__`",
+      "replace": "const prefix = `mcp__${serverName}__`"
+    },
+    {
+      "name": "schema: the managed scope dropped",
+      "source": "src/mcp/types.ts",
+      "find": "    'claudeai',\n    'managed',\n",
+      "replace": "    'claudeai',\n"
+    },
+    {
+      "name": "schema: an empty stdio command accepted",
+      "source": "src/mcp/types.ts",
+      "find": "command: z.string().min(1, 'Command cannot be empty'),",
+      "replace": "command: z.string(),"
+    },
+    {
+      "name": "schema: stdio args no longer default to []",
+      "source": "src/mcp/types.ts",
+      "find": "args: z.array(z.string()).default([]),",
+      "replace": "args: z.array(z.string()).optional(),"
+    },
+    {
+      "name": "schema: an OAuth metadata URL over plain http accepted",
+      "source": "src/mcp/types.ts",
+      "find": "      .startsWith('https://', {",
+      "replace": "      .startsWith('http', {"
+    },
+    {
+      "name": "schema: a zero or negative callback port accepted",
+      "source": "src/mcp/types.ts",
+      "find": "callbackPort: z.number().int().positive().optional(),",
+      "replace": "callbackPort: z.number().int().optional(),"
+    },
+    {
+      "name": "schema: the claude.ai proxy left out of the server union",
+      "source": "src/mcp/types.ts",
+      "find": "    McpSdkServerConfigSchema(),\n    McpClaudeAIProxyServerConfigSchema(),\n  ]),",
+      "replace": "    McpSdkServerConfigSchema(),\n  ]),"
+    },
+    {
+      "name": "utils: a server's tools matched without the closing delimiter",
+      "find": "const prefix = `mcp__${normalizeNameForMCP(serverName)}__`\n  return tools.filter(tool => tool.name?.startsWith(prefix))",
+      "replace": "const prefix = `mcp__${normalizeNameForMCP(serverName)}`\n  return tools.filter(tool => tool.name?.startsWith(prefix))"
+    },
+    {
+      "name": "utils: skills matched by the raw server name",
+      "find": "name.startsWith(`${normalized}:`)",
+      "replace": "name.startsWith(`${serverName}:`)"
+    },
+    {
+      "name": "utils: MCP skills counted as prompts",
+      "find": "!(c.type === 'prompt' && c.loadedFrom === 'mcp')",
+      "replace": "!(c.type === 'prompt' && c.loadedFrom === 'plugin')"
+    },
+    {
+      "name": "hash: scope included",
+      "find": "const { scope: _scope, ...rest } = config",
+      "replace": "const rest = config"
+    },
+    {
+      "name": "hash: keys not sorted",
+      "find": "for (const k of Object.keys(obj).sort()) sorted[k] = obj[k]",
+      "replace": "for (const k of Object.keys(obj)) sorted[k] = obj[k]"
+    },
+    {
+      "name": "stale: a vanished non-dynamic server is dropped too",
+      "find": "if (!fresh) return c.config.scope === 'dynamic'",
+      "replace": "if (!fresh) return true"
+    },
+    {
+      "name": "isMcpTool: the isMcp flag ignored",
+      "find": "return tool.name?.startsWith('mcp__') || tool.isMcp === true",
+      "replace": "return tool.name?.startsWith('mcp__') === true"
+    },
+    {
+      "name": "mcp add: an empty header name accepted",
+      "find": "    if (!key) {",
+      "replace": "    if (key === undefined) {"
+    },
+    {
+      "name": "approval: a disabled server reads pending",
+      "find": "    return 'rejected'\n",
+      "replace": "    return 'pending'\n"
+    },
+    {
+      "name": "approval: enabled list compared unfolded",
+      "find": "settings?.enabledMcpjsonServers?.some(\n      name => normalizeNameForMCP(name) === normalizedName,",
+      "replace": "settings?.enabledMcpjsonServers?.some(\n      name => name === serverName,"
+    },
+    {
+      "name": "approval: enable-all ignored",
+      "find": "    ) ||\n    settings?.enableAllProjectMcpServers\n",
+      "replace": "    )\n"
+    },
+    {
+      "name": "approval SECURITY: bypass acceptance read from the merged settings, repository included",
+      "find": "    hasSkipDangerousModePermissionPrompt() &&\n",
+      "replace": "    (hasSkipDangerousModePermissionPrompt() || settings?.skipDangerousModePermissionPrompt) &&\n"
+    },
+    {
+      "name": "approval: bypass approves without project settings loaded",
+      "find": "    hasSkipDangerousModePermissionPrompt() &&\n    isSettingSourceEnabled('projectSettings')",
+      "replace": "    hasSkipDangerousModePermissionPrompt()"
+    },
+    {
+      "name": "approval: non-interactive approves without project settings loaded",
+      "find": "    getIsNonInteractiveSession() &&\n    isSettingSourceEnabled('projectSettings')",
+      "replace": "    getIsNonInteractiveSession()"
+    },
+    {
+      "name": "agent servers: a repeat agent listed twice",
+      "find": "if (!existing.sourceAgents.includes(agent.agentType)) {",
+      "replace": "if (existing.sourceAgents.length > 0) {"
+    },
+    {
+      "name": "safe URL: the query string kept",
+      "find": "    url.search = ''\n",
+      "replace": "\n"
+    },
+    {
+      "name": "delta: retractions in the history ignored",
+      "source": "src/mcp/mcpInstructionsDelta.ts",
+      "find": "for (const n of msg.attachment.removedNames) announced.delete(n)",
+      "replace": "void 0"
+    },
+    {
+      "name": "delta: servers that are not connected announced",
+      "source": "src/mcp/mcpInstructionsDelta.ts",
+      "find": "(c): c is ConnectedMCPServer => c.type === 'connected',",
+      "replace": "(c): c is ConnectedMCPServer => c.type !== 'disabled',"
+    },
+    {
+      "name": "delta: block heading level changed",
+      "source": "src/mcp/mcpInstructionsDelta.ts",
+      "find": "blocks.set(c.name, `## ${c.name}\\n${c.instructions}`)",
+      "replace": "blocks.set(c.name, `# ${c.name}\\n${c.instructions}`)"
+    },
+    {
+      "name": "delta: client-side block joined without a blank line",
+      "source": "src/mcp/mcpInstructionsDelta.ts",
+      "find": "? `${existing}\\n\\n${ci.block}`",
+      "replace": "? `${existing}\\n${ci.block}`"
+    },
+    {
+      "name": "delta: client-side block kept for a server that is not connected",
+      "source": "src/mcp/mcpInstructionsDelta.ts",
+      "find": "if (!connectedNames.has(ci.serverName)) continue",
+      "replace": "void 0"
+    },
+    {
+      "name": "delta: no-op turns return an empty delta instead of null",
+      "source": "src/mcp/mcpInstructionsDelta.ts",
+      "find": "if (added.length === 0 && removed.length === 0) return null",
+      "replace": "void 0"
+    },
+    {
+      "name": "delta: removed names left unsorted",
+      "source": "src/mcp/mcpInstructionsDelta.ts",
+      "find": "removedNames: removed.sort(),",
+      "replace": "removedNames: removed,"
+    }
+  ]
+}
