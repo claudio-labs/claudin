@@ -4,7 +4,7 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
-- [Clean-base rewrite: inherited code rewritten from spec (09-27)](decisions/clean-base-rewrite.md) — branch `rewrite`, merged without PRs; `provenance:ci`
+- [Clean-base rewrite (09-27)](decisions/clean-base-rewrite.md) — branch `rewrite`, no PRs; only dead code is cut; per-method ~0.5M tok/kLOC
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed memory writes are refused with the rules
 - [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — output lands in the task transcript; multi-session runtime rejected
 - [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`
@@ -43,6 +43,7 @@
 
 ## Bugs
 - Found by the rewrite, not fixed: [skill args→shell](bugs/skill-arguments-reach-shell-pass.md) · [/tmp owner](bugs/tmpdir-ownership-unchecked.md) · [memory links](bugs/memory-carveout-follows-symlinks.md) · [.claudin walk](bugs/instruction-loader-walk-to-root-and-links.md) · [long-cwd dir](bugs/long-cwd-project-dir-depends-on-runtime.md) · [SGR/OSC 8](bugs/code-views-honour-sgr-and-osc8.md)
+- Pinned by the 10-02 cover round: [/config copies project allow rules to user scope](bugs/config-default-mode-copies-project-permissions.md) · [MCP OAuth uses CC's client id](bugs/mcp-oauth-presents-claude-code-client-id.md)
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; Skill, SendMessage, worktree causes fixed; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error

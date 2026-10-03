@@ -33,3 +33,12 @@ impact: structural
   - **Cost:** about 3.5 M sub-agent tokens and 5.7 agent-hours, roughly 1.7 M tokens per thousand lines. Extrapolated, the remaining ~353 k lines come to about 600 M tokens.
   - **Levers before scaling:** cut, replace with an MIT library, or parallelize. See `docs/tech/rewrite/README.md`, "What the pilot measured".
 - **Phase 2, first ten units, 2026-09-28.** Characterized and implemented in parallel sandboxes. Phase 2 went from 17,253 inherited lines to 10,405, the tree to 346,750. Twelve units of phase 2 remain (`docs/tech/rewrite/phase-2.md`). The CI ratchet does not review a file rewritten at its old path; `land.ts` lists what still matches.
+- **Levers round, 2026-10-02/03.** Plan and outcome are in `docs/tech/rewrite/levers.md`. Every defect the round pinned is in `levers-findings.md`.
+  - **Only dead code is cut.** The user asked "a gente não vai remover nenhuma funcionalidade?". Since then, no feature a user can reach today leaves the product, even one that needs a claude.ai login or an Anthropic server. That keeps the bridge, teleport, `/remote-env`, `/install-github-app`, `/stickers`, `/desktop`, policy limits, the marketplace, the swarm, PowerShellTool and `/buddy`. The cut was BriefTool, direct-connect, the remote agent task, speculation and the installer's download path: about 4.9k inherited lines.
+  - **Replaced by opencode code** (MIT, notice in `THIRD_PARTY_NOTICES.md`): the LSP client, the MCP OAuth provider and flow, and Codex OAuth.
+  - **Rejected:**
+    - The Bash arity-table port widened the "always allow" default from `rm build:*` to `rm:*`.
+    - The npm `yoga-layout` swap was 2–3x slower; the port is rewritten in phase 9 with the package as a test oracle.
+    - A Vercel AI SDK spike for the providers.
+  - **Cover before touching:** every surviving file a lever or rewrite edits first reaches its `testing.md` target, 70% where none is set (`bun run rewrite:coverage`).
+- **Per-method rewrite measured 2026-10-03** on `vcs/worktree`: 1,104 inherited lines down to 41 of residue, in about 0.24 M tokens per thousand lines for the implementation, or about 0.5 M with characterization. The ~335 k lines left come to about 170 M tokens, not 600 M. Process: a `bodies` sandbox stubs the inherited bodies, and the unit's characterization suites are the spec.

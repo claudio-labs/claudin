@@ -33,6 +33,14 @@ and the user wants it separated from the mechanical work, not bundled into it.
   the function means following every caller, so it belongs to the slice-removal
   phase rather than a call-site codemod.
 
+**"Only login-gated" is not dead.** This happened again on 2026-10-02, in the clean-base levers. An option labelled
+"cut only the unreachable code (~19.7k)" also held features that work today for claude.ai subscribers (Remote
+Control, `--teleport`, `/remote-env`, `/desktop`, `/install-slack-app`) and two that anyone can use (`/install-github-app`,
+`/stickers`). The user picked it believing nothing would be lost, then asked "a gente não vai remover nenhuma
+funcionalidade?". The cut shrank to ~4.9k lines of truly unreachable code. When you offer a cut, split it in
+three: nobody can reach it, reachable only behind a login or a vendor server, reachable by anyone. Count the lines
+for each group.
+
 **Commit cadence:** the user asked for "ir comitando cada fase" — one commit per
 phase, each independently green through the full gate (build, typecheck at zero,
 `bun test`, `verify:privacy`, knip, `test:floor`). Note this is the OPPOSITE of

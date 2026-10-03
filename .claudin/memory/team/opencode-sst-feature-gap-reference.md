@@ -6,6 +6,15 @@ type: reference
 
 `../opencode` is the SST opencode monorepo (Effect/Layer everywhere; agent core in `packages/opencode/src`). Distinct from `../openclaude` (gitlawb). Scouted 2026-06-24 for features claudin lacks.
 
+**Code ported from it (branch `rewrite`, 2026-10-02/03, clean-base levers).** The origin is now `github.com/anomalyco/opencode`, at revision `b471c2b449`, with the MIT notice in `THIRD_PARTY_NOTICES.md` and a header in each ported file.
+- **Ported:**
+  - `lsp/client.ts` → `src/platform/lsp/LSPClient.ts`
+  - `mcp/oauth-provider.ts` and `oauth-callback.ts` → `src/mcp/auth/{claudeAuthProvider,oauthFlow}.ts`
+  - `plugin/openai/codex.ts` → `src/providers/oauth/codex*.ts`
+- **Rejected:** `permission/arity.ts`. Its table only says whether a command has a subcommand, and the port widened the Bash "always allow" default.
+- **The ported files keep:** their contract (export names), and every behaviour pinned in their characterization suites.
+- Rebasing Claudin on opencode as a whole was rejected (`docs/tech/rewrite/levers.md`).
+
 **Already in claudin (NOT gaps — verified against Claude Code inheritance):** markdown custom agents (`loadPluginAgents.ts`/`markdownConfigLoader.ts`), markdown slash commands w/ $ARGUMENTS/@file/!`shell`, wildcard permission allow/deny/ask (`settings/types.ts` PermissionsSchema), hooks, fork/auto-background subagents, read-only 9-op LSPTool, /resume + auto-compaction + auto-memory.
 
 **Shipped since this scout (were real gaps on 2026-06-24, verified present 2026-08-07):**
