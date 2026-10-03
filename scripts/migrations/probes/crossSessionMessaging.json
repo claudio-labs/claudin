@@ -12,7 +12,7 @@
     "src/agent/handlePromptSubmit.agentAuthored.test.ts",
     "src/agent/repl/getFocusedInputDialog.test.ts",
     "src/shared/data/xml.test.ts",
-    "src/permissions/yoloClassifier.test.ts"
+    "src/permissions/yoloClassifier/transcript.agentMessages.test.ts"
   ],
   "source": "src/sessions/peers/inboxServer.ts",
   "probes": [

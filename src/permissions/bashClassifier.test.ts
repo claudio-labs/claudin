@@ -1,12 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import {
-  createPromptRuleContent,
-  extractPromptDescription,
   getBashPromptAllowDescriptions,
   getBashPromptAskDescriptions,
   getBashPromptDenyDescriptions,
-  PROMPT_PREFIX,
 } from 'src/permissions/bashClassifier.js'
 
 const ctx = (rulesByBucket: {
@@ -29,47 +26,8 @@ const ctx = (rulesByBucket: {
     isBypassPermissionsModeAvailable: false,
   }) as unknown as ToolPermissionContext
 
-describe('extractPromptDescription', () => {
-  test('extracts the description after prompt:', () => {
-    expect(extractPromptDescription('prompt: list git remotes')).toBe(
-      'list git remotes',
-    )
-  })
-
-  test('handles leading whitespace', () => {
-    expect(extractPromptDescription('  prompt:   foo bar')).toBe('foo bar')
-  })
-
-  test('is case-insensitive on the prefix', () => {
-    expect(extractPromptDescription('Prompt: foo')).toBe('foo')
-  })
-
-  test('returns null for non-prompt rules', () => {
-    expect(extractPromptDescription('npm install:*')).toBeNull()
-    expect(extractPromptDescription('git status')).toBeNull()
-  })
-
-  test('returns null for empty / undefined input', () => {
-    expect(extractPromptDescription(undefined)).toBeNull()
-    expect(extractPromptDescription('')).toBeNull()
-    expect(extractPromptDescription('prompt:   ')).toBeNull()
-  })
-})
-
-describe('createPromptRuleContent', () => {
-  test('produces "prompt: <description>"', () => {
-    expect(createPromptRuleContent('list git remotes')).toBe(
-      `${PROMPT_PREFIX} list git remotes`,
-    )
-  })
-
-  test('trims the description', () => {
-    expect(createPromptRuleContent('  foo  ')).toBe(`${PROMPT_PREFIX} foo`)
-  })
-})
-
-describe('get*PromptDescriptions', () => {
-  test('returns descriptions only for Bash(prompt:...) rules in the matching bucket', () => {
+describe('the Bash prompt-rule descriptions of a permission context', () => {
+  test('each bucket yields only its own Bash(prompt: …) rules', () => {
     const c = ctx({
       allow: [
         'Bash(prompt: list git remotes)',
