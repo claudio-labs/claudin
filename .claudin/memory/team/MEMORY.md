@@ -47,6 +47,7 @@
 - [MCP server names folding to `__` reach another server's rules; repos self-approve .mcp.json](bugs/mcp-server-name-folding-reaches-other-servers-rules.md) — pinned, not fixed
 - [Permission carve-outs compare paths as text: symlinks skip the prompt](bugs/permission-carveouts-compare-paths-as-text.md) — first fix after filePaths lands
 - [mcp/config: secrets written back expanded; broken managed file fails open](bugs/mcp-config-security-findings.md) — 4 fixes queued, 5 to decide
+- [Permission core: repo settings start -p in bypass; bypass batch writes skip denies](bugs/permission-core-security-findings.md) — 8 fixed in rewrites, 4 to decide
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; Skill, SendMessage, worktree causes fixed; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error

@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "2bbb21a30d2c8f9c14ec88445acc9211e61cbd32",
-  "totals": { "claudeCode": 286949, "openclaude": 42255 },
+  "capturedFrom": "ff2105399dcad72344000ca8fc97660ff82d9d26",
+  "totals": { "claudeCode": 286949, "openclaude": 42233 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -780,7 +780,6 @@
     "src/permissions/PermissionUpdate.ts": [304, 0],
     "src/permissions/PermissionUpdateSchema.ts": [54, 0],
     "src/permissions/autoModeDenials.ts": [16, 0],
-    "src/permissions/autoModeGate.test.ts": [0, 22],
     "src/permissions/autoModeRules.test.ts": [0, 8],
     "src/permissions/autoModeRules.ts": [20, 0],
     "src/permissions/autoModeState.ts": [26, 0],

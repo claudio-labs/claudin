@@ -1,0 +1,220 @@
+{
+  "test": [
+    "src/permissions/filePermissions/rulePatterns.characterization.test.ts",
+    "src/permissions/filePermissions/readWriteChecks.characterization.test.ts",
+    "src/permissions/filePermissions/homeAnchored.characterization.test.ts"
+  ],
+  "source": "src/permissions/filePermissions/readWriteChecks.ts",
+  "probes": [
+    {
+      "name": "read: a tool with no path asks",
+      "find": "): PermissionDecision {\n  if (typeof tool.getPath !== 'function') {\n    return {\n      behavior: 'ask',\n      message: `Claude requested permissions to use ${tool.name}, but you haven't granted it yet.`,\n    }\n  }\n  // Resolve relative",
+      "replace": "): PermissionDecision {\n  if (false) {\n    return {\n      behavior: 'ask',\n      message: `Claude requested permissions to use ${tool.name}, but you haven't granted it yet.`,\n    }\n  }\n  // Resolve relative"
+    },
+    {
+      "name": "read: a relative path is resolved against the session cwd",
+      "find": "const path = expandPath(tool.getPath(input))",
+      "replace": "const path = tool.getPath(input)"
+    },
+    {
+      "name": "read: a UNC path asks before anything else",
+      "find": "pathToCheck.startsWith('//')) {",
+      "replace": "pathToCheck.startsWith('//NOPE')) {"
+    },
+    {
+      "name": "read: a suspicious Windows shape asks",
+      "find": "if (hasSuspiciousWindowsPathPattern(pathToCheck)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "read: Read deny rules are consulted on every resolved path",
+      "find": "      'read',\n      'deny',",
+      "replace": "      'read',\n      'ask',"
+    },
+    {
+      "name": "read: a Read deny denies",
+      "find": "        behavior: 'deny',\n        message: `Permission to read ${path} has been denied.`",
+      "replace": "        behavior: 'ask',\n        message: `Permission to read ${path} has been denied.`"
+    },
+    {
+      "name": "read: Read ask rules are consulted",
+      "find": "      'read',\n      'ask',",
+      "replace": "      'read',\n      'allow',"
+    },
+    {
+      "name": "read: an allowed write implies an allowed read",
+      "find": "if (editResult.behavior === 'allow') {",
+      "replace": "if (editResult.behavior === 'deny') {"
+    },
+    {
+      "name": "read: the working directory allows",
+      "find": "if (isInWorkingDir) {",
+      "replace": "if (!isInWorkingDir) {"
+    },
+    {
+      "name": "read: harness-owned paths are readable",
+      "find": "if (internalReadResult.behavior !== 'passthrough') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "write: a tool with no path asks",
+      "find": "  precomputedPathsToCheck?: readonly string[],\n): PermissionDecision {\n  if (typeof tool.getPath !== 'function') {",
+      "replace": "  precomputedPathsToCheck?: readonly string[],\n): PermissionDecision {\n  if (false) {"
+    },
+    {
+      "name": "write: Edit deny rules are consulted on every resolved path",
+      "find": "      'edit',\n      'deny',",
+      "replace": "      'edit',\n      'allow',"
+    },
+    {
+      "name": "write: an Edit deny denies",
+      "find": "        behavior: 'deny',\n        message: `Permission to edit ${path} has been denied.`",
+      "replace": "        behavior: 'ask',\n        message: `Permission to edit ${path} has been denied.`"
+    },
+    {
+      "name": "write: harness-owned editable paths are allowed",
+      "find": "if (internalEditResult.behavior !== 'passthrough') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "write: only session rules can open .claudin",
+      "find": "      alwaysAllowRules: {\n        session: toolPermissionContext.alwaysAllowRules.session ?? [],\n      },",
+      "replace": "      alwaysAllowRules: toolPermissionContext.alwaysAllowRules,"
+    },
+    {
+      "name": "write: the project .claudin grant prefix",
+      "find": "(ruleContent.startsWith(CLAUDE_FOLDER_PERMISSION_PATTERN.slice(0, -2)) ||",
+      "replace": "(false ||"
+    },
+    {
+      "name": "write: the home .claudin grant prefix",
+      "find": "          GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN.slice(0, -2),",
+      "replace": "          '~/.nowhere/',"
+    },
+    {
+      "name": "write: a .claudin grant with .. is refused",
+      "find": "      !ruleContent.includes('..') &&",
+      "replace": ""
+    },
+    {
+      "name": "write: a .claudin grant must end in /**",
+      "find": "      ruleContent.endsWith('/**')",
+      "replace": "      ruleContent.endsWith('')"
+    },
+    {
+      "name": "write: protected paths ask",
+      "find": "if (!safetyCheck.safe) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "write: the safety ask keeps whether a classifier may approve",
+      "find": "classifierApprovable: safetyCheck.classifierApprovable,",
+      "replace": "classifierApprovable: true,"
+    },
+    {
+      "name": "write: Edit ask rules are consulted",
+      "find": "      'edit',\n      'ask',",
+      "replace": "      'edit',\n      'deny',"
+    },
+    {
+      "name": "write: only acceptEdits allows in the working directory",
+      "find": "if (toolPermissionContext.mode === 'acceptEdits' && isInWorkingDir) {",
+      "replace": "if (toolPermissionContext.mode !== 'default' && isInWorkingDir) {"
+    },
+    {
+      "name": "batch write: bypassPermissions allows outright",
+      "find": "if (toolPermissionContext.mode === 'bypassPermissions') {",
+      "replace": "if (toolPermissionContext.mode === 'plan') {"
+    },
+    {
+      "name": "batch write: a denied file denies the batch",
+      "find": "if (denied.length > 0) {",
+      "replace": "if (denied.length > 99) {"
+    },
+    {
+      "name": "batch write: an asking file makes the batch ask",
+      "find": "if (asked.length > 0) {",
+      "replace": "if (asked.length > 99) {"
+    },
+    {
+      "name": "batch write: the threshold is inclusive",
+      "find": "paths.length >= options.confirmThreshold",
+      "replace": "paths.length > options.confirmThreshold"
+    },
+    {
+      "name": "batch read: the ask keeps a rule-backed reason",
+      "find": "asked.find(a => a.decision.decisionReason?.type === 'rule') ?? firstAsked",
+      "replace": "firstAsked"
+    },
+    {
+      "name": "batch read: the allow hands back the real input",
+      "find": "    updatedInput: input,\n    decisionReason: { type: 'other', reason: 'batch allow' },",
+      "replace": "    updatedInput: {},\n    decisionReason: { type: 'other', reason: 'batch allow' },"
+    },
+    {
+      "name": "suggestions: the root directory is never suggested",
+      "find": ".filter((s): s is PermissionUpdate => s !== undefined)",
+      "replace": ".filter((s): s is PermissionUpdate => true)"
+    },
+    {
+      "name": "patterns: a session / rule is anchored at the starting directory",
+      "find": "return expandPath(getOriginalCwd())",
+      "replace": "return expandPath(getCwd())",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "patterns: a settings / rule is anchored at its settings root",
+      "find": "root: rootPathForSource(source),",
+      "replace": "root: getOriginalCwd(),",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "patterns: a // rule is anchored at the filesystem root",
+      "find": "      root: DIR_SEP,\n    }",
+      "replace": "      root: null,\n    }",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "patterns: a ~/ rule is anchored at home",
+      "find": "root: homedir().normalize('NFC'),",
+      "replace": "root: getCwd(),",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "patterns: dir/** also covers the directory",
+      "find": "adjustedPattern = adjustedPattern.slice(0, -3)",
+      "replace": "adjustedPattern = adjustedPattern.slice(0)",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "patterns: paths outside the anchor are skipped",
+      "find": "if (relativePathStr.startsWith(`..${DIR_SEP}`)) {",
+      "replace": "if (relativePathStr.startsWith('#')) {",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "patterns: the Edit kind consults Edit rules",
+      "find": "return FILE_EDIT_TOOL_NAME",
+      "replace": "return FILE_READ_TOOL_NAME",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "patterns: the behaviour selects the rule list",
+      "find": "    toolName,\n    behavior,\n  )",
+      "replace": "    toolName,\n    'deny',\n  )",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "ignore patterns: only Read deny rules",
+      "find": "    'read',\n    'deny',\n  )\n  const result",
+      "replace": "    'read',\n    'ask',\n  )\n  const result",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    },
+    {
+      "name": "normalize: a pattern above the root is cut down to it",
+      "find": "return prependDirSep(relativePart)",
+      "replace": "return prependDirSep(fullPattern)",
+      "source": "src/permissions/filePermissions/rulePatterns.ts"
+    }
+  ]
+}
