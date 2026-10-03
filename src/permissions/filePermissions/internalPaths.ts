@@ -18,448 +18,252 @@ import { expandPath } from 'src/shared/fs/path.js'
 import { getBundledSkillsRoot } from 'src/skills/bundledSkillsRoot.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 
-/**
- * If filePath is inside a .claudin/skills/{name}/ directory (project or global),
- * return the skill name and a session-allow pattern scoped to just that skill.
- * Used to offer a narrower "allow edits to this skill only" option in the
- * permission dialog and SDK suggestions, so iterating on one skill doesn't
- * require granting session access to all of .claudin/ (settings.json, hooks/, etc.).
- */
-export function getClaudeSkillScope(
-  filePath: string,
-): { skillName: string; pattern: string } | null {
-  const absolutePath = expandPath(filePath)
-  const absolutePathLower = normalizeCaseForComparison(absolutePath)
+const AGENT_DIRECTORY = '.claudin'
 
-  const bases = [
-    {
-      dir: expandPath(join(getOriginalCwd(), '.claudin', 'skills')),
-      prefix: '/.claudin/skills/',
-    },
-    {
-      dir: expandPath(join(getClaudinConfigHomeDir(), 'skills')),
-      prefix: '~/.claudin/skills/',
-    },
-  ]
+/** The `.claudin` entries of the session's project that configure the agent. */
+const PROJECT_CONFIG_DIRECTORIES = ['commands', 'agents', 'skills'] as const
 
-  for (const { dir, prefix } of bases) {
-    const dirLower = normalizeCaseForComparison(dir)
-    // Try both path separators (Windows paths may not be normalized to /)
-    for (const s of [sep, '/']) {
-      if (absolutePathLower.startsWith(dirLower + s.toLowerCase())) {
-        // Match on lowercase, but slice the ORIGINAL path so the skill name
-        // preserves case (pattern matching downstream is case-sensitive)
-        const rest = absolutePath.slice(dir.length + s.length)
-        const slash = rest.indexOf('/')
-        const bslash = sep === '\\' ? rest.indexOf('\\') : -1
-        const cut =
-          slash === -1
-            ? bslash
-            : bslash === -1
-              ? slash
-              : Math.min(slash, bslash)
-        // Require a separator: file must be INSIDE the skill dir, not a
-        // file directly under skills/ (no skill scope for that)
-        if (cut <= 0) return null
-        const skillName = rest.slice(0, cut)
-        // Reject traversal and empty. Use includes('..') not === '..' to
-        // match step 1.6's ruleContent.includes('..') guard: a skillName like
-        // 'v2..beta' would otherwise produce a suggestion step 1.7 emits but
-        // step 1.6 always rejects (dead suggestion, infinite re-prompt).
-        if (!skillName || skillName === '.' || skillName.includes('..')) {
-          return null
-        }
-        // Reject glob metacharacters. skillName is interpolated into a
-        // gitignore pattern consumed by ignore().add() in matchingRuleForInput
-        // at step 1.6. A directory literally named '*' (valid on POSIX) would
-        // produce '/.claude/skills/*/**' which matches ALL skills. Return null
-        // to fall through to generateSuggestions() instead.
-        if (/[*?[\]]/.test(skillName)) return null
-        return { skillName, pattern: prefix + skillName + '/**' }
-      }
-    }
-  }
+/** Settings file names that are settings in whichever project they sit. */
+const PROJECT_SETTINGS_FILE_NAMES = ['settings.json', 'settings.local.json'] as const
 
-  return null
+/** Characters that would turn a skill name into a rule pattern of its own. */
+const UNSAFE_SKILL_NAME = /\.\.|[*?[\]]/
+
+// ─── Settings and config ────────────────────────────────────────────────────
+
+function settingsFilesOfEverySource(): string[] {
+  return SETTING_SOURCES.map(getSettingsFilePathForSource).filter(
+    (path): path is string => path !== undefined,
+  )
 }
 
-function getSettingsPaths(): string[] {
-  return SETTING_SOURCES.map(source =>
-    getSettingsFilePathForSource(source),
-  ).filter(path => path !== undefined)
+function foldedAbsolute(path: string): string {
+  return normalizeCaseForComparison(expandPath(path))
 }
 
 export function isClaudeSettingsPath(filePath: string): boolean {
-  // SECURITY: Normalize path structure first to prevent bypass via redundant ./
-  // sequences like `./.claude/./settings.json` which would evade the endsWith() check
-  const expandedPath = expandPath(filePath)
-
-  // Normalize for case-insensitive comparison to prevent bypassing security
-  // with paths like .cLauDe/Settings.locaL.json
-  const normalizedPath = normalizeCaseForComparison(expandedPath)
-
-  // Use platform separator so endsWith checks work on both Unix (/) and Windows (\)
-  if (
-    normalizedPath.endsWith(`${sep}.claudin${sep}settings.json`) ||
-    normalizedPath.endsWith(`${sep}.claudin${sep}settings.local.json`)
-  ) {
-    // Include .claudin/settings.json even for other projects
-    return true
-  }
-  // Check for current project's settings files (including managed settings and CLI args)
-  // Both paths are now absolute and normalized for consistent comparison
-  return getSettingsPaths().some(
-    settingsPath => normalizeCaseForComparison(settingsPath) === normalizedPath,
+  const target = foldedAbsolute(filePath)
+  const isProjectSettings = PROJECT_SETTINGS_FILE_NAMES.some(name =>
+    target.endsWith(`${sep}${AGENT_DIRECTORY}${sep}${name}`),
+  )
+  if (isProjectSettings) return true
+  return settingsFilesOfEverySource().some(
+    settingsFile => foldedAbsolute(settingsFile) === target,
   )
 }
 
-// Always ask when Claude Code tries to edit its own config files
 export function isClaudeConfigFilePath(filePath: string): boolean {
-  if (isClaudeSettingsPath(filePath)) {
-    return true
-  }
-
-  // Check if file is within .claudin/commands, .claudin/agents, or .claudin/skills directories
-  // using proper path segment validation (not string matching with includes())
-  // pathInWorkingPath now handles case-insensitive comparison to prevent bypasses
-  const commandsDir = join(getOriginalCwd(), '.claudin', 'commands')
-  const agentsDir = join(getOriginalCwd(), '.claudin', 'agents')
-  const skillsDir = join(getOriginalCwd(), '.claudin', 'skills')
-
-  return (
-    pathInWorkingPath(filePath, commandsDir) ||
-    pathInWorkingPath(filePath, agentsDir) ||
-    pathInWorkingPath(filePath, skillsDir)
+  if (isClaudeSettingsPath(filePath)) return true
+  const agentDirectory = join(getOriginalCwd(), AGENT_DIRECTORY)
+  return PROJECT_CONFIG_DIRECTORIES.some(entry =>
+    pathInWorkingPath(filePath, join(agentDirectory, entry)),
   )
 }
 
-// Check if file is a plan file for the current session.
-//
-// Plan files live DIRECTLY inside the session plans directory:
-//   Main plan file:  {plansDir}/{planSlug}.md
-//   Agent plan file: {plansDir}/{planSlug}-agent-{agentId}.md
-//
-// We match any *.md directly in that directory rather than requiring the path
-// to start with the exact current {planSlug}. The slug is regenerable and
-// cached per session (getPlanSlug()); if it drifts from the slug embedded in
-// the path the model was told (e.g. a slug-cache miss, resume without a slug
-// marker), an exact-slug match would silently fail — and because plan mode
-// forbids every other write, the model gets locked out of its own plan file
-// with a confusing "Only the plan file may be edited" denial. Matching the
-// whole directory removes that brittleness.
-//
-// SECURITY: the plans directory itself is symlink-escape validated and created
-// 0700 in getPlansDirectory(), so widening to the directory keeps the same
-// containment guarantee. Subdirectories and path-traversal are still rejected:
-// after the "{plansDir}/" prefix the remainder must be a single .md filename
-// with no further path separator.
-function isSessionPlanFile(absolutePath: string): boolean {
-  // SECURITY: Normalize both sides to prevent traversal bypasses via .. segments
-  const plansDir = normalize(getPlansDirectory())
-  const normalizedPath = normalize(absolutePath)
-  const prefix = plansDir + sep
-  if (!normalizedPath.startsWith(prefix) || !normalizedPath.endsWith('.md')) {
-    return false
-  }
-  const basename = normalizedPath.slice(prefix.length)
-  return basename.length > 0 && !basename.includes(sep)
+// ─── Skill scope ────────────────────────────────────────────────────────────
+
+type SkillRoot = { readonly directory: string; readonly rulePrefix: string }
+
+function skillRoots(): SkillRoot[] {
+  return [
+    {
+      directory: join(getOriginalCwd(), AGENT_DIRECTORY, 'skills'),
+      rulePrefix: `/${AGENT_DIRECTORY}/skills/`,
+    },
+    {
+      // Spelled from `~` whatever the config home is: that is the global rule
+      // convention `fileRules` reads.
+      directory: join(getClaudinConfigHomeDir(), 'skills'),
+      rulePrefix: `~/${AGENT_DIRECTORY}/skills/`,
+    },
+  ]
 }
 
-// Check if file is within the session memory directory
-function isSessionMemoryPath(absolutePath: string): boolean {
-  // SECURITY: Normalize to prevent path traversal bypasses via .. segments
-  const normalizedPath = normalize(absolutePath)
-  return normalizedPath.startsWith(getSessionMemoryDir())
+function componentsOf(path: string): string[] {
+  return path.split(sep).filter(part => part !== '')
 }
 
 /**
- * Check if file is within the current project's directory.
- * Path format: ~/.claude/projects/{sanitized-cwd}/...
+ * The components of `path` below `directory`, compared in any case, or null
+ * when `path` is not below it.
  */
-function isProjectDirPath(absolutePath: string): boolean {
-  const projectDir = getProjectDir(getCwd())
-  // SECURITY: Normalize to prevent path traversal bypasses via .. segments
-  const normalizedPath = normalize(absolutePath)
-  return (
-    normalizedPath === projectDir || normalizedPath.startsWith(projectDir + sep)
+function componentsBelow(path: string, directory: string): string[] | null {
+  const outer = componentsOf(directory)
+  const inner = componentsOf(path)
+  if (inner.length <= outer.length) return null
+  const sharesPrefix = outer.every(
+    (part, index) =>
+      normalizeCaseForComparison(part) === normalizeCaseForComparison(inner[index] ?? ''),
   )
+  return sharesPrefix ? inner.slice(outer.length) : null
 }
 
-// Check if file is within the scratchpad directory
-function isScratchpadPath(absolutePath: string): boolean {
-  if (!isScratchpadEnabled()) {
-    return false
+export function getClaudeSkillScope(
+  filePath: string,
+): { skillName: string; pattern: string } | null {
+  const target = expandPath(filePath)
+  for (const root of skillRoots()) {
+    const below = componentsBelow(target, root.directory)
+    // A skill scope needs a file inside a skill: the name plus something more.
+    if (below === null || below.length < 2) continue
+    const skillName = below[0] ?? ''
+    if (UNSAFE_SKILL_NAME.test(skillName)) return null
+    return { skillName, pattern: `${root.rulePrefix}${skillName}/**` }
   }
-  const scratchpadDir = getScratchpadDir()
-  // SECURITY: Normalize the path to resolve .. segments before checking
-  // This prevents path traversal bypasses like:
-  //   echo "malicious" > /tmp/claude-0/proj/session/scratchpad/../../../etc/passwd
-  // Without normalization, the path would pass the startsWith check but write to /etc/passwd
-  const normalizedPath = normalize(absolutePath)
-  return (
-    normalizedPath === scratchpadDir ||
-    normalizedPath.startsWith(scratchpadDir + sep)
-  )
+  return null
 }
+
+// ─── Harness carve-outs ─────────────────────────────────────────────────────
+
+type Operation = 'read' | 'write'
+
+type Carveout = {
+  /** What the allow reason names. */
+  readonly label: string
+  readonly opens: (operation: Operation) => boolean
+  /** Receives the path with `.` and `..` applied, compared as text. */
+  readonly contains: (path: string) => boolean
+}
+
+function withoutTrailingSeparator(directory: string): string {
+  return directory.length > 1 && directory.endsWith(sep)
+    ? directory.slice(0, -1)
+    : directory
+}
+
+/** Anything strictly below `directory()`. */
+function below(directory: () => string): (path: string) => boolean {
+  return path => path.startsWith(withoutTrailingSeparator(directory()) + sep)
+}
+
+/** `directory()` itself and anything below it. */
+function atOrBelow(directory: () => string): (path: string) => boolean {
+  const strictlyBelow = below(directory)
+  return path =>
+    path === withoutTrailingSeparator(directory()) || strictlyBelow(path)
+}
+
+// Any `.md` directly in the plans directory, not only the current slug: the
+// slug can be regenerated mid-session, and plan mode refuses every other
+// write, so an exact-slug match could lock the agent out of its own plan.
+// The plans owner keeps the directory itself inside the project or falls
+// back to the config home.
+function isPlanFile(path: string): boolean {
+  const plans = withoutTrailingSeparator(getPlansDirectory())
+  if (!path.startsWith(plans + sep)) return false
+  const name = path.slice(plans.length + 1)
+  return !name.includes(sep) && name.endsWith('.md')
+}
+
+function isPreviewLaunchConfig(path: string): boolean {
+  const launchConfig = join(getOriginalCwd(), AGENT_DIRECTORY, 'launch.json')
+  return normalizeCaseForComparison(path) === normalizeCaseForComparison(launchConfig)
+}
+
+const readOnly = (operation: Operation): boolean => operation === 'read'
+const readAndWrite = (): boolean => true
 
 /**
- * Check if a path is an internal path that can be edited without permission.
- * Returns a PermissionResult - either 'allow' if matched, or 'passthrough' to continue checking.
+ * Listed in the order reads are tried; writes try the entries that open them
+ * in the same order. Reason wording comes from `label`.
  */
+const CARVEOUTS: readonly Carveout[] = [
+  {
+    label: 'session memory',
+    opens: readOnly,
+    contains: below(getSessionMemoryDir),
+  },
+  {
+    label: "this project directory's session files",
+    opens: readOnly,
+    contains: atOrBelow(() => getProjectDir(getCwd())),
+  },
+  {
+    label: 'plan files of this session',
+    opens: readAndWrite,
+    contains: isPlanFile,
+  },
+  {
+    label: 'tool results',
+    opens: readOnly,
+    contains: atOrBelow(getToolResultsDir),
+  },
+  {
+    label: 'the session scratchpad',
+    opens: () => isScratchpadEnabled(),
+    contains: atOrBelow(getScratchpadDir),
+  },
+  {
+    label: 'the project temp directory',
+    opens: readOnly,
+    contains: below(getProjectTempDir),
+  },
+  {
+    label: 'agent memory',
+    opens: readAndWrite,
+    contains: path => isAgentMemoryPath(path),
+  },
+  {
+    label: 'auto memory',
+    // A memory override points at a directory the user chose, not one the
+    // harness made, so writes there go through the normal checks.
+    opens: operation => operation === 'read' || !hasAutoMemPathOverride(),
+    contains: path => isAutoMemPath(path),
+  },
+  {
+    label: 'task files',
+    opens: readOnly,
+    contains: atOrBelow(() => join(getClaudinConfigHomeDir(), 'tasks')),
+  },
+  {
+    label: 'team files',
+    opens: readOnly,
+    contains: atOrBelow(() => join(getClaudinConfigHomeDir(), 'teams')),
+  },
+  {
+    label: 'bundled skill files',
+    opens: readOnly,
+    contains: below(getBundledSkillsRoot),
+  },
+  {
+    label: 'the preview launch config',
+    opens: operation => operation === 'write',
+    contains: isPreviewLaunchConfig,
+  },
+]
+
+const GERUND: Record<Operation, string> = { read: 'Reading', write: 'Writing' }
+
+function openedByCarveout(
+  absolutePath: string,
+  input: { [key: string]: unknown },
+  operation: Operation,
+): PermissionResult {
+  const path = normalize(absolutePath)
+  const carveout = CARVEOUTS.find(
+    entry => entry.opens(operation) && entry.contains(path),
+  )
+  if (carveout === undefined) return { behavior: 'passthrough', message: '' }
+  return {
+    behavior: 'allow',
+    updatedInput: input,
+    decisionReason: {
+      type: 'other',
+      reason: `${GERUND[operation]} ${carveout.label} needs no prompt`,
+    },
+  }
+}
+
 export function checkEditableInternalPath(
   absolutePath: string,
   input: { [key: string]: unknown },
 ): PermissionResult {
-  // SECURITY: Normalize path to prevent traversal bypasses via .. segments
-  // This is defense-in-depth; individual helper functions also normalize
-  const normalizedPath = normalize(absolutePath)
-
-  // Plan files for current session
-  if (isSessionPlanFile(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Plan files for current session are allowed for writing',
-      },
-    }
-  }
-
-  // Scratchpad directory for current session
-  if (isScratchpadPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Scratchpad files for current session are allowed for writing',
-      },
-    }
-  }
-
-  // Agent memory directory (for self-improving agents)
-  if (isAgentMemoryPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Agent memory files are allowed for writing',
-      },
-    }
-  }
-
-  // Memdir directory (persistent memory for cross-session learning)
-  // This pre-safety-check carve-out exists because the default path is under
-  // ~/.claude/, which is in DANGEROUS_DIRECTORIES. The CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
-  // override is an arbitrary caller-designated directory with no such conflict,
-  // so it gets NO special permission treatment here — writes go through normal
-  // permission flow (step 5 → ask). SDK callers who want silent memory should
-  // pass an allow rule for the override path.
-  if (!hasAutoMemPathOverride() && isAutoMemPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'auto memory files are allowed for writing',
-      },
-    }
-  }
-
-  // .claudin/launch.json — desktop preview config (dev server command + port).
-  // The desktop's preview_start MCP tool instructs Claude to create/update
-  // this file as part of the preview workflow. Without this carve-out the
-  // .claudin/ DANGEROUS_DIRECTORIES check prompts for it, which in SDK mode
-  // cascades: user clicks "Always allow" → setMode:acceptEdits suggestion
-  // applied → silent downgrade from auto mode. Matches the project-level
-  // .claudin/ only (not ~/.claudin/) since launch.json is per-project.
-  if (
-    normalizeCaseForComparison(normalizedPath) ===
-    normalizeCaseForComparison(join(getOriginalCwd(), '.claudin', 'launch.json'))
-  ) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Preview launch config is allowed for writing',
-      },
-    }
-  }
-
-  return { behavior: 'passthrough', message: '' }
+  return openedByCarveout(absolutePath, input, 'write')
 }
 
-/**
- * Check if a path is an internal path that can be read without permission.
- * Returns a PermissionResult - either 'allow' if matched, or 'passthrough' to continue checking.
- */
 export function checkReadableInternalPath(
   absolutePath: string,
   input: { [key: string]: unknown },
 ): PermissionResult {
-  // SECURITY: Normalize path to prevent traversal bypasses via .. segments
-  // This is defense-in-depth; individual helper functions also normalize
-  const normalizedPath = normalize(absolutePath)
-
-  // Session memory directory
-  if (isSessionMemoryPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Session memory files are allowed for reading',
-      },
-    }
-  }
-
-  // Project directory (for reading past session memories)
-  // Path format: ~/.claude/projects/{sanitized-cwd}/...
-  if (isProjectDirPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Project directory files are allowed for reading',
-      },
-    }
-  }
-
-  // Plan files for current session
-  if (isSessionPlanFile(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Plan files for current session are allowed for reading',
-      },
-    }
-  }
-
-  // Tool results directory (persisted large outputs)
-  // Use path separator suffix to prevent path traversal (e.g., tool-results-evil/)
-  const toolResultsDir = getToolResultsDir()
-  const toolResultsDirWithSep = toolResultsDir.endsWith(sep)
-    ? toolResultsDir
-    : toolResultsDir + sep
-  if (
-    normalizedPath === toolResultsDir ||
-    normalizedPath.startsWith(toolResultsDirWithSep)
-  ) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Tool result files are allowed for reading',
-      },
-    }
-  }
-
-  // Scratchpad directory for current session
-  if (isScratchpadPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Scratchpad files for current session are allowed for reading',
-      },
-    }
-  }
-
-  // Project temp directory (/tmp/claude/{sanitized-cwd}/)
-  // Intentionally allows reading files from all sessions in this project, not just the current session.
-  // This enables cross-session file access within the same project's temp space.
-  const projectTempDir = getProjectTempDir()
-  if (normalizedPath.startsWith(projectTempDir)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Project temp directory files are allowed for reading',
-      },
-    }
-  }
-
-  // Agent memory directory (for self-improving agents)
-  if (isAgentMemoryPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Agent memory files are allowed for reading',
-      },
-    }
-  }
-
-  // Memdir directory (persistent memory for cross-session learning)
-  if (isAutoMemPath(normalizedPath)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'auto memory files are allowed for reading',
-      },
-    }
-  }
-
-  // Tasks directory (~/.claude/tasks/) for swarm task coordination
-  const tasksDir = join(getClaudinConfigHomeDir(), 'tasks') + sep
-  if (
-    normalizedPath === tasksDir.slice(0, -1) ||
-    normalizedPath.startsWith(tasksDir)
-  ) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Task files are allowed for reading',
-      },
-    }
-  }
-
-  // Teams directory (~/.claude/teams/) for swarm coordination
-  const teamsReadDir = join(getClaudinConfigHomeDir(), 'teams') + sep
-  if (
-    normalizedPath === teamsReadDir.slice(0, -1) ||
-    normalizedPath.startsWith(teamsReadDir)
-  ) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Team files are allowed for reading',
-      },
-    }
-  }
-
-  // Bundled skill reference files extracted on first invocation.
-  // SECURITY: See getBundledSkillsRoot() — the per-process nonce in the path
-  // is the load-bearing defense; uid/VERSION alone are public knowledge and
-  // squattable. We always write-before-read on invocation, so content under
-  // this subtree is harness-controlled.
-  const bundledSkillsRoot = getBundledSkillsRoot() + sep
-  if (normalizedPath.startsWith(bundledSkillsRoot)) {
-    return {
-      behavior: 'allow',
-      updatedInput: input,
-      decisionReason: {
-        type: 'other',
-        reason: 'Bundled skill reference files are allowed for reading',
-      },
-    }
-  }
-
-  return { behavior: 'passthrough', message: '' }
+  return openedByCarveout(absolutePath, input, 'read')
 }

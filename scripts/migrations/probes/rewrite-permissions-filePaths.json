@@ -3,233 +3,598 @@
     "src/permissions/filePaths.workingDirs.characterization.test.ts",
     "src/permissions/filePaths.dangerous.characterization.test.ts",
     "src/permissions/filePaths.internal.characterization.test.ts",
-    "src/permissions/filePaths.validation.characterization.test.ts"
+    "src/permissions/filePaths.validation.characterization.test.ts",
+    "src/permissions/filePaths.fixes.test.ts"
   ],
   "source": "src/permissions/pathValidation.ts",
   "probes": [
     {
-      "name": "glob base: backslash no longer a separator on Windows",
-      "find": "Math.max(beforeGlob.lastIndexOf('/'), beforeGlob.lastIndexOf('\\\\'))",
-      "replace": "beforeGlob.lastIndexOf('/')"
-    },
-    {
-      "name": "expandTilde: ~user expanded like ~/",
-      "find": "path.startsWith('~/') ||",
-      "replace": "path.startsWith('~') ||"
-    },
-    {
-      "name": "sandbox allowlist: deny-within-allow ignored",
-      "find": "if (pathInWorkingPath(p, denyPath)) return false",
-      "replace": "if (false) return false"
-    },
-    {
-      "name": "refusal: deny rule ignored",
-      "find": "if (denyRule !== null) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "refusal: auto-edit safety check ignored",
-      "find": "if (!safetyCheck.safe) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "refusal: safety reason always classifier-approvable",
-      "find": "classifierApprovable: safetyCheck.classifierApprovable,",
-      "replace": "classifierApprovable: true,"
-    },
-    {
-      "name": "refusal: writes in the working dir no longer need acceptEdits",
-      "find": "if (operationType === 'read' || context.mode === 'acceptEdits') {",
-      "replace": "if (true) {"
-    },
-    {
-      "name": "refusal: sandbox allowlist lifts the acceptEdits gate inside the working dir",
-      "find": "    !isInWorkingDir &&\n",
-      "replace": ""
-    },
-    {
-      "name": "refusal: glob with dot-dot judged by its base only",
-      "find": "  if (containsPathTraversal(cleanPath)) {",
-      "replace": "  if (false) {"
-    },
-    {
-      "name": "removal: dir/* no longer dangerous",
-      "find": "if (forwardSlashed === '*' || forwardSlashed.endsWith('/*')) {",
-      "replace": "if (forwardSlashed === '*') {"
-    },
-    {
-      "name": "refusal: UNC paths on Windows not refused",
-      "find": "if (containsVulnerableUncPath(cleanPath)) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "refusal: ~user / ~+ / ~- not refused",
-      "find": "if (cleanPath.startsWith('~')) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "refusal: $ expansion not refused",
-      "find": "cleanPath.includes('$') ||",
-      "replace": "false ||"
-    },
-    {
-      "name": "refusal: %VAR% expansion not refused",
-      "find": "cleanPath.includes('%') ||",
-      "replace": "false ||"
-    },
-    {
-      "name": "refusal: zsh =cmd not refused",
-      "find": "cleanPath.startsWith('=')",
-      "replace": "false"
-    },
-    {
-      "name": "refusal: glob allowed for create",
-      "find": "if (operationType === 'write' || operationType === 'create') {",
-      "replace": "if (operationType === 'write') {"
-    },
-    {
-      "name": "dangerous: UNC prefix no longer sensitive off Windows",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "if (path.startsWith('\\\\\\\\') || path.startsWith('//')) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "dangerous: .claudin/worktrees exemption lost",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "normalizeCaseForComparison(nextSegment) === 'worktrees'",
-      "replace": "normalizeCaseForComparison(nextSegment) === 'worktrees-off'"
-    },
-    {
-      "name": "dangerous: .bashrc dropped from the protected files",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "  '.bashrc',\n",
-      "replace": ""
-    },
-    {
-      "name": "windows pattern: alternate data streams unchecked on WSL",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "if (getPlatform() === 'windows' || getPlatform() === 'wsl') {",
-      "replace": "if (getPlatform() === 'windows') {"
-    },
-    {
-      "name": "windows pattern: 8.3 short names unchecked",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "if (/~\\d/.test(path)) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "windows pattern: trailing whitespace unchecked",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "if (/[.\\s]+$/.test(path)) {",
-      "replace": "if (/[.]+$/.test(path)) {"
-    },
-    {
-      "name": "windows pattern: device names matched only in upper case",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "/\\.(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(path)",
-      "replace": "/\\.(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(path)"
-    },
-    {
-      "name": "windows pattern: ... component unchecked",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "if (/(^|\\/|\\\\)\\.{3,}(\\/|\\\\|$)/.test(path)) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "auto-edit safety: symlink targets not followed",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "precomputedPathsToCheck ?? getPathsForPermissionCheck(path)",
-      "replace": "precomputedPathsToCheck ?? [path]"
-    },
-    {
-      "name": "auto-edit safety: Windows pattern becomes classifier-approvable",
-      "source": "src/permissions/filePermissions/dangerousPaths.ts",
-      "find": "        classifierApprovable: false,\n",
-      "replace": "        classifierApprovable: true,\n"
-    },
-    {
-      "name": "settings: settings.local.json anywhere not recognised",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "normalizedPath.endsWith(`${sep}.claudin${sep}settings.local.json`)",
-      "replace": "false"
-    },
-    {
-      "name": "settings: user, managed and --settings files not recognised",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "settingsPath => normalizeCaseForComparison(settingsPath) === normalizedPath,",
-      "replace": "settingsPath => false,"
-    },
-    {
-      "name": "config files: .claudin/agents not protected",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "pathInWorkingPath(filePath, agentsDir) ||",
-      "replace": "false ||"
-    },
-    {
-      "name": "skill scope: glob characters in a skill name accepted",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "if (/[*?[\\]]/.test(skillName)) return null",
-      "replace": ""
-    },
-    {
-      "name": "carve-out: plans in subdirectories writable",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "return basename.length > 0 && !basename.includes(sep)",
-      "replace": "return basename.length > 0"
-    },
-    {
-      "name": "carve-out: scratchpad sibling matched by prefix",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "normalizedPath.startsWith(scratchpadDir + sep)",
-      "replace": "normalizedPath.startsWith(scratchpadDir)"
-    },
-    {
-      "name": "carve-out: memory override no longer withholds the write carve-out",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "if (!hasAutoMemPathOverride() && isAutoMemPath(normalizedPath)) {",
-      "replace": "if (isAutoMemPath(normalizedPath)) {"
-    },
-    {
-      "name": "carve-out: tasks sibling matched by prefix",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "const tasksDir = join(getClaudinConfigHomeDir(), 'tasks') + sep",
-      "replace": "const tasksDir = join(getClaudinConfigHomeDir(), 'tasks')"
-    },
-    {
-      "name": "carve-out: project directory sibling matched by prefix",
-      "source": "src/permissions/filePermissions/internalPaths.ts",
-      "find": "normalizedPath === projectDir || normalizedPath.startsWith(projectDir + sep)",
-      "replace": "normalizedPath.startsWith(projectDir)"
-    },
-    {
-      "name": "working dirs: one form inside is enough",
-      "source": "src/permissions/filePermissions/workingDirs.ts",
-      "find": "return pathsToCheck.every(pathToCheck =>",
-      "replace": "return pathsToCheck.some(pathToCheck =>"
-    },
-    {
-      "name": "working dirs: symlinked working dirs not resolved",
-      "source": "src/permissions/filePermissions/workingDirs.ts",
-      "find": ".flatMap(wp => getResolvedWorkingDirPaths(wp))",
-      "replace": ".flatMap(wp => [wp])"
-    },
-    {
-      "name": "working dirs: dot-dot escape accepted",
-      "source": "src/permissions/filePermissions/workingDirs.ts",
-      "find": "if (containsPathTraversal(relative)) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "working dirs: comparison becomes case-sensitive",
-      "source": "src/permissions/filePermissions/workingDirs.ts",
-      "find": "const caseNormalizedPath = normalizeCaseForComparison(normalizedPath)",
-      "replace": "const caseNormalizedPath = normalizedPath"
-    },
-    {
-      "name": "case folding: nothing folded",
+      "name": "case: fold to lower case",
       "source": "src/permissions/filePermissions/pathCase.ts",
       "find": "return path.toLowerCase()",
       "replace": "return path"
+    },
+    {
+      "name": "workingDirs: added directories count",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "    ...context.additionalWorkingDirectories.keys(),\n",
+      "replace": ""
+    },
+    {
+      "name": "FIX finding 5: empty forms are not inside",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "if (forms.length === 0) return false",
+      "replace": "if (forms.length === -1) return false"
+    },
+    {
+      "name": "workingDirs refusal: every form must be inside",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "return forms.every(form => roots.some(",
+      "replace": "return forms.some(form => roots.some("
+    },
+    {
+      "name": "workingDirs: a working dir link covers its target",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "].flatMap(settledFormsOf)",
+      "replace": "].map(dir => dir)"
+    },
+    {
+      "name": "workingDirs refusal: a dot-dot that climbs out",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "return !containsPathTraversal(route) && !route.startsWith('/')",
+      "replace": "return !route.startsWith('/')"
+    },
+    {
+      "name": "workingDirs refusal: /private/var without slash is not /var",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "path.startsWith('/private/var/')",
+      "replace": "path.startsWith('/private/var')"
+    },
+    {
+      "name": "workingDirs: /private/tmp itself is /tmp",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "path === '/private/tmp' ||",
+      "replace": "path === '/private/tmpx' ||"
+    },
+    {
+      "name": "workingDirs: case folded (parity, finding 2)",
+      "source": "src/permissions/filePermissions/workingDirs.ts",
+      "find": "return withoutPrivateAlias(normalizeCaseForComparison(expandPath(path)))",
+      "replace": "return withoutPrivateAlias(expandPath(path))"
+    },
+    {
+      "name": "windows: a stream colon from index 2",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "path.indexOf(':', 2) !== -1",
+      "replace": "path.indexOf(':', 1) !== -1"
+    },
+    {
+      "name": "windows: stream colon on windows and wsl only",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "    scope: 'windowsAndWsl',",
+      "replace": "    scope: 'everywhere',"
+    },
+    {
+      "name": "windows: wsl counts as windows for streams",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "return platform === 'windows' || platform === 'wsl'",
+      "replace": "return platform === 'windows'"
+    },
+    {
+      "name": "windows: 8.3 short names",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "matches: path => /~\\d/.test(path),",
+      "replace": "matches: path => /~\\d\\d/.test(path),"
+    },
+    {
+      "name": "windows: //./ device prefix",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "'//?/', '//./'] as const",
+      "replace": "'//?/'] as const"
+    },
+    {
+      "name": "windows: trailing whitespace",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "matches: path => /[.\\s]$/.test(path),",
+      "replace": "matches: path => /[.]$/.test(path),"
+    },
+    {
+      "name": "windows: COM0 is not a device",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "com[1-9]|lpt[1-9]",
+      "replace": "com[0-9]|lpt[1-9]"
+    },
+    {
+      "name": "windows: device suffix in any case",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "lpt[1-9])$/i.test(path)",
+      "replace": "lpt[1-9])$/.test(path)"
+    },
+    {
+      "name": "windows: a component of three dots",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "/^\\.{3,}$/.test(part)",
+      "replace": "/^\\.{4,}$/.test(part)"
+    },
+    {
+      "name": "windows: UNC on windows",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "matches: path => containsVulnerableUncPath(path),",
+      "replace": "matches: () => false,"
+    },
+    {
+      "name": "sensitive: // network paths off windows",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "if (path.startsWith('\\\\\\\\') || path.startsWith('//')) return true",
+      "replace": "if (path.startsWith('\\\\\\\\')) return true"
+    },
+    {
+      "name": "sensitive: protected file names",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "if (PROTECTED_FILE_NAMES.has(leaf)) return true",
+      "replace": "if (PROTECTED_FILE_NAMES.has(parts[0] ?? '')) return true"
+    },
+    {
+      "name": "sensitive: protected directories in any case",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "const parts = splitComponents(path).map(normalizeCaseForComparison)",
+      "replace": "const parts = splitComponents(path)"
+    },
+    {
+      "name": "sensitive: .claudin/worktrees exemption",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "!(part === AGENT_DIRECTORY && parts[index + 1] === WORKTREES_DIRECTORY),",
+      "replace": "true,"
+    },
+    {
+      "name": "sensitive refusal: worktrees exemption is .claudin only",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "!(part === AGENT_DIRECTORY && parts[index + 1] === WORKTREES_DIRECTORY),",
+      "replace": "!(parts[index + 1] === WORKTREES_DIRECTORY),"
+    },
+    {
+      "name": "safety: windows pattern is not classifier-approvable",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "    classifierApprovable: false,",
+      "replace": "    classifierApprovable: true,"
+    },
+    {
+      "name": "safety: config refusal before sensitive",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "appliesTo: form => isClaudeConfigFilePath(form),",
+      "replace": "appliesTo: () => false,"
+    },
+    {
+      "name": "safety: symlink forms are checked",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "const forms = precomputedPathsToCheck ?? formsOf(path)",
+      "replace": "const forms = precomputedPathsToCheck ?? [path]"
+    },
+    {
+      "name": "safety: supplied forms replace the path",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "const forms = precomputedPathsToCheck ?? formsOf(path)",
+      "replace": "const forms = formsOf(path)"
+    },
+    {
+      "name": "safety: message names the path as given",
+      "source": "src/permissions/filePermissions/dangerousPaths.ts",
+      "find": "message: refusal.explain(path),",
+      "replace": "message: refusal.explain(''),"
+    },
+    {
+      "name": "settings: .claudin must be a whole component",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "target.endsWith(`${sep}${AGENT_DIRECTORY}${sep}${name}`)",
+      "replace": "target.endsWith(`${AGENT_DIRECTORY}${sep}${name}`)"
+    },
+    {
+      "name": "settings: compared in any case",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "return normalizeCaseForComparison(expandPath(path))",
+      "replace": "return expandPath(path)"
+    },
+    {
+      "name": "settings: every source file (user, managed, --settings)",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "settingsFile => foldedAbsolute(settingsFile) === target,",
+      "replace": "() => false,"
+    },
+    {
+      "name": "config: agents directory",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "const PROJECT_CONFIG_DIRECTORIES = ['commands', 'agents', 'skills'] as const",
+      "replace": "const PROJECT_CONFIG_DIRECTORIES = ['commands', 'skills'] as const"
+    },
+    {
+      "name": "config refusal: hooks and rules are not config",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "pathInWorkingPath(filePath, join(agentDirectory, entry)),",
+      "replace": "pathInWorkingPath(filePath, agentDirectory),"
+    },
+    {
+      "name": "skill scope: a file inside a skill, not under skills/",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "if (below === null || below.length < 2) continue",
+      "replace": "if (below === null || below.length < 1) continue"
+    },
+    {
+      "name": "skill scope: names with .. refused",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "const UNSAFE_SKILL_NAME = /\\.\\.|[*?[\\]]/",
+      "replace": "const UNSAFE_SKILL_NAME = /[*?[\\]]/"
+    },
+    {
+      "name": "skill scope: config home spelled from ~ (parity, finding 4)",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "rulePrefix: `~/${AGENT_DIRECTORY}/skills/`,",
+      "replace": "rulePrefix: `${getClaudinConfigHomeDir()}/skills/`,"
+    },
+    {
+      "name": "skill scope: directory matched in any case",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "normalizeCaseForComparison(part) === normalizeCaseForComparison(inner[index] ?? ''),",
+      "replace": "part === (inner[index] ?? ''),"
+    },
+    {
+      "name": "carve-out boundary: plans are direct children",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "return !name.includes(sep) && name.endsWith('.md')",
+      "replace": "return name.endsWith('.md')"
+    },
+    {
+      "name": "carve-out boundary: plans are markdown",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "return !name.includes(sep) && name.endsWith('.md')",
+      "replace": "return !name.includes(sep)"
+    },
+    {
+      "name": "carve-out boundary: dot-dot applied before matching",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "const path = normalize(absolutePath)",
+      "replace": "const path = absolutePath"
+    },
+    {
+      "name": "carve-out boundary: the directory itself where allowed",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "path === withoutTrailingSeparator(directory()) || strictlyBelow(path)",
+      "replace": "strictlyBelow(path)"
+    },
+    {
+      "name": "carve-out boundary: siblings sharing a prefix",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "return path => path.startsWith(withoutTrailingSeparator(directory()) + sep)",
+      "replace": "return path => path.startsWith(withoutTrailingSeparator(directory()))"
+    },
+    {
+      "name": "carve-out: scratchpad killswitch",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "opens: () => isScratchpadEnabled(),",
+      "replace": "opens: readAndWrite,"
+    },
+    {
+      "name": "carve-out refusal: memory override withholds the write",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "opens: operation => operation === 'read' || !hasAutoMemPathOverride(),",
+      "replace": "opens: readAndWrite,"
+    },
+    {
+      "name": "carve-out refusal: tool results are read-only",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "    label: 'tool results',\n    opens: readOnly,",
+      "replace": "    label: 'tool results',\n    opens: readAndWrite,"
+    },
+    {
+      "name": "carve-out refusal: session memory is read-only",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "    label: 'session memory',\n    opens: readOnly,",
+      "replace": "    label: 'session memory',\n    opens: readAndWrite,"
+    },
+    {
+      "name": "carve-out refusal: tasks are read-only",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "    label: 'task files',\n    opens: readOnly,",
+      "replace": "    label: 'task files',\n    opens: readAndWrite,"
+    },
+    {
+      "name": "carve-out refusal: bundled skills are read-only",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "    label: 'bundled skill files',\n    opens: readOnly,",
+      "replace": "    label: 'bundled skill files',\n    opens: readAndWrite,"
+    },
+    {
+      "name": "carve-out refusal: launch config is write-only",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "opens: operation => operation === 'write',",
+      "replace": "opens: readAndWrite,"
+    },
+    {
+      "name": "carve-out: launch config in any case",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "return normalizeCaseForComparison(path) === normalizeCaseForComparison(launchConfig)",
+      "replace": "return path === launchConfig"
+    },
+    {
+      "name": "carve-out: project directory follows the current cwd",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "contains: atOrBelow(() => getProjectDir(getCwd())),",
+      "replace": "contains: atOrBelow(() => getProjectDir(getOriginalCwd())),"
+    },
+    {
+      "name": "carve-out: reason names the operation",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "const GERUND: Record<Operation, string> = { read: 'Reading', write: 'Writing' }",
+      "replace": "const GERUND: Record<Operation, string> = { read: 'Opening', write: 'Opening' }"
+    },
+    {
+      "name": "carve-out: allow hands back the same input",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "    updatedInput: input,",
+      "replace": "    updatedInput: { ...input },"
+    },
+    {
+      "name": "carve-out compares text, not real paths (parity, finding 1)",
+      "source": "src/permissions/filePermissions/internalPaths.ts",
+      "find": "const path = normalize(absolutePath)",
+      "replace": "const path = normalize(require('fs').existsSync(absolutePath) ? require('fs').realpathSync(absolutePath) : absolutePath)"
+    },
+    {
+      "name": "formatDirectoryList: five listed",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const LISTED_DIRECTORY_LIMIT = 5",
+      "replace": "const LISTED_DIRECTORY_LIMIT = 6"
+    },
+    {
+      "name": "formatDirectoryList: quoted",
+      "source": "src/permissions/pathValidation.ts",
+      "find": ".map(directory => `'${directory}'`)",
+      "replace": ".map(directory => directory)"
+    },
+    {
+      "name": "glob base: leading separator gives /",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "if (cut === 0) return '/'",
+      "replace": "if (cut === 0) return ''"
+    },
+    {
+      "name": "glob base: no separator gives .",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "if (cut === -1) return '.'",
+      "replace": "if (cut === -1) return ''"
+    },
+    {
+      "name": "glob base: backslash only on windows",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "return character === '/' || (character === '\\\\' && getPlatform() === 'windows')",
+      "replace": "return character === '/' || character === '\\\\'"
+    },
+    {
+      "name": "glob: braces are glob characters",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "new Set(['*', '?', '[', ']', '{', '}'])",
+      "replace": "new Set(['*', '?', '[', ']'])"
+    },
+    {
+      "name": "expandTilde: only ~ and ~/",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "    path.startsWith('~/') ||",
+      "replace": "    path.startsWith('~') ||"
+    },
+    {
+      "name": "removal: trailing /*",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "if (path === '*' || path.endsWith('/*')) return true",
+      "replace": "if (path === '*') return true"
+    },
+    {
+      "name": "removal: the home directory",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "if (target === '/' || target === home) return true",
+      "replace": "if (target === '/') return true"
+    },
+    {
+      "name": "removal: a direct child of /",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const topLevel = /^\\/[^/]+$/",
+      "replace": "const topLevel = /^\\/[^/]+\\/[^/]+$/"
+    },
+    {
+      "name": "removal: a direct child of a drive root",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const driveTopLevel = /^[a-z]:\\/[^/]+$/i",
+      "replace": "const driveTopLevel = /^[a-z]:\\/$/i"
+    },
+    {
+      "name": "removal: runs of separators collapse",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "return path.replace(/[\\\\/]+/g, '/')",
+      "replace": "return path.replace(/\\\\/g, '/')"
+    },
+    {
+      "name": "sandbox refusal: a deny entry wins",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "!denied.some(entry => pathInWorkingPath(form, entry)),",
+      "replace": "true,"
+    },
+    {
+      "name": "sandbox refusal: every form must be allowed",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  return forms.every(\n    form =>\n      allowed.some",
+      "replace": "  return forms.some(\n    form =>\n      allowed.some"
+    },
+    {
+      "name": "sandbox: an allow entry link covers its target",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const allowed = config.allowOnly.flatMap(settledFormsOf)",
+      "replace": "const allowed = config.allowOnly.map(entry => entry)"
+    },
+    {
+      "name": "sandbox: a deny entry link covers its target",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const denied = config.denyWithinAllow.flatMap(settledFormsOf)",
+      "replace": "const denied = config.denyWithinAllow.map(entry => entry)"
+    },
+    {
+      "name": "sandbox refusal: empty forms open nothing (finding 5)",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  if (forms.length === 0) return false\n  const config",
+      "replace": "  if (forms.length === -1) return false\n  const config"
+    },
+    {
+      "name": "sandbox refusal: off means no allowlist",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  if (!SandboxManager.isSandboxingEnabled()) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "decision: deny rule before the harness carve-outs",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  denyRule,\n  harnessWrite,",
+      "replace": "  harnessWrite,\n  denyRule,"
+    },
+    {
+      "name": "decision: harness write before the protected check",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  harnessWrite,\n  protectedPath,",
+      "replace": "  protectedPath,\n  harnessWrite,"
+    },
+    {
+      "name": "decision refusal: protected before the working dir",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  protectedPath,\n  workingDirectory,",
+      "replace": "  workingDirectory,\n  protectedPath,"
+    },
+    {
+      "name": "decision refusal: acceptEdits gate on writes",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const opened = !request.writes || request.context.mode === 'acceptEdits'",
+      "replace": "const opened = true"
+    },
+    {
+      "name": "decision refusal: allowlist ignored inside a working dir",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "if (!request.writes || request.insideWorkingDirectory()) return undefined",
+      "replace": "if (!request.writes) return undefined"
+    },
+    {
+      "name": "decision refusal: allowlist never opens reads",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "if (!request.writes || request.insideWorkingDirectory()) return undefined",
+      "replace": "if (request.insideWorkingDirectory()) return undefined"
+    },
+    {
+      "name": "decision: allowlist uses the supplied forms",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const forms = request.forms ?? formsOf(request.path)",
+      "replace": "const forms = formsOf(request.path)"
+    },
+    {
+      "name": "decision: protected check uses the supplied forms",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "checkPathSafetyForAutoEdit(request.path, request.forms)",
+      "replace": "checkPathSafetyForAutoEdit(request.path)"
+    },
+    {
+      "name": "decision: working dir uses the supplied forms",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "pathInAllowedWorkingPath(resolvedPath, context, precomputedPathsToCheck),",
+      "replace": "pathInAllowedWorkingPath(resolvedPath, context),"
+    },
+    {
+      "name": "decision: harness read opening",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  if (request.writes) return undefined\n  const result = checkReadableInternalPath",
+      "replace": "  return undefined\n  const result = checkReadableInternalPath"
+    },
+    {
+      "name": "decision: an allow rule opens",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "return rule ? { allowed: true, decisionReason: { type: 'rule', rule } } : undefined",
+      "replace": "return undefined"
+    },
+    {
+      "name": "decision refusal: Read rules for reads, Edit rules for writes",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "ruleTool: writes ? 'edit' : 'read',",
+      "replace": "ruleTool: 'read',"
+    },
+    {
+      "name": "validatePath: one leading quote stripped",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const head = path.startsWith('\"') || path.startsWith(\"'\") ? 1 : 0",
+      "replace": "const head = 0"
+    },
+    {
+      "name": "validatePath: one trailing quote stripped",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const tail = rest.endsWith('\"') || rest.endsWith(\"'\") ? 1 : 0",
+      "replace": "const tail = 0"
+    },
+    {
+      "name": "refusal: UNC on windows",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "applies: path => containsVulnerableUncPath(path),",
+      "replace": "applies: () => false,"
+    },
+    {
+      "name": "refusal: tilde variants",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "applies: path => path.startsWith('~'),",
+      "replace": "applies: path => path.startsWith('~~'),"
+    },
+    {
+      "name": "refusal: $ anywhere",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "path.includes('$') || path.includes('%') || path.startsWith('='),",
+      "replace": "path.includes('%') || path.startsWith('='),"
+    },
+    {
+      "name": "refusal: % anywhere",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "path.includes('$') || path.includes('%') || path.startsWith('='),",
+      "replace": "path.includes('$$') || path.startsWith('='),"
+    },
+    {
+      "name": "refusal: leading = (zsh)",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "path.includes('$') || path.includes('%') || path.startsWith('='),",
+      "replace": "path.includes('$$') || path.includes('%'),"
+    },
+    {
+      "name": "refusal: globs in write and create",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "applies: (path, operationType) => operationType !== 'read' && hasGlob(path),",
+      "replace": "applies: (path, operationType) => operationType === 'create' && hasGlob(path),"
+    },
+    {
+      "name": "validatePath: resolved against the cwd argument",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const anchored = isNetworkShaped(path) ? path : resolve(cwd, path)",
+      "replace": "const anchored = isNetworkShaped(path) ? path : resolve(path)"
+    },
+    {
+      "name": "validatePath: network paths are not resolved",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const anchored = isNetworkShaped(path) ? path : resolve(cwd, path)",
+      "replace": "const anchored = resolve(cwd, path)"
+    },
+    {
+      "name": "validatePath: reported and judged at the symlink target",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  return { ...verdict, resolvedPath }",
+      "replace": "  return { ...verdict, resolvedPath: anchored }"
+    },
+    {
+      "name": "glob refusal: a dot-dot glob is judged whole",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "const judged = containsPathTraversal(cleanPath)",
+      "replace": "const judged = false"
+    },
+    {
+      "name": "validatePath: a read glob is judged at its base",
+      "source": "src/permissions/pathValidation.ts",
+      "find": "  if (hasGlob(cleanPath)) {\n    return validateGlobPattern",
+      "replace": "  if (false) {\n    return validateGlobPattern"
     }
   ]
 }

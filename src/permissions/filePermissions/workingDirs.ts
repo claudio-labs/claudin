@@ -1,8 +1,10 @@
-import memoize from 'lodash-es/memoize.js'
-import { posix } from 'path'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
+import {
+  formsOf,
+  settledFormsOf,
+  type PathForms,
+} from 'src/permissions/filePermissions/pathForms.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getPathsForPermissionCheck } from 'src/shared/fs/fsOperations.js'
 import {
   containsPathTraversal,
   expandPath,
@@ -19,71 +21,49 @@ export function allWorkingDirectories(
   ])
 }
 
-// Working directories are session-stable; memoize their resolved forms to
-// avoid repeated existsSync/lstatSync/realpathSync syscalls on every
-// permission check. Keyed by path string — getPathsForPermissionCheck is
-// deterministic for existing directories within a session.
-const getResolvedWorkingDirPaths = memoize(getPathsForPermissionCheck)
-
+/**
+ * True when every form of `path` lies inside some form of some working
+ * directory. Forms passed by the caller are trusted as they are; an empty list
+ * proves nothing, so it never counts as inside.
+ */
 export function pathInAllowedWorkingPath(
   path: string,
   toolPermissionContext: ToolPermissionContext,
   precomputedPathsToCheck?: readonly string[],
 ): boolean {
-  // Check both the original path and the resolved symlink path
-  const pathsToCheck =
-    precomputedPathsToCheck ?? getPathsForPermissionCheck(path)
+  const forms = precomputedPathsToCheck ?? formsOf(path)
+  if (forms.length === 0) return false
 
-  // Resolve working directories the same way we resolve input paths so
-  // comparisons are symmetric. Without this, a resolved input path
-  // (e.g. /System/Volumes/Data/home/... on macOS) would not match an
-  // unresolved working directory (/home/...), causing false denials.
-  const workingPaths = Array.from(
-    allWorkingDirectories(toolPermissionContext),
-  ).flatMap(wp => getResolvedWorkingDirPaths(wp))
-
-  // All paths must be within allowed working paths
-  // If any resolved path is outside, deny access
-  return pathsToCheck.every(pathToCheck =>
-    workingPaths.some(workingPath =>
-      pathInWorkingPath(pathToCheck, workingPath),
-    ),
-  )
+  const roots: PathForms = [
+    ...allWorkingDirectories(toolPermissionContext),
+  ].flatMap(settledFormsOf)
+  return forms.every(form => roots.some(root => pathInWorkingPath(form, root)))
 }
 
+/**
+ * Lexical containment: `.`/`..` and `~` are applied, symlinks are not
+ * followed, and case is ignored.
+ */
 export function pathInWorkingPath(path: string, workingPath: string): boolean {
-  const absolutePath = expandPath(path)
-  const absoluteWorkingPath = expandPath(workingPath)
+  const child = comparable(path)
+  const parent = comparable(workingPath)
+  const route = relativePath(parent, child)
+  if (route === '') return true
+  return !containsPathTraversal(route) && !route.startsWith('/')
+}
 
-  // On macOS, handle common symlink issues:
-  // - /var -> /private/var
-  // - /tmp -> /private/tmp
-  const normalizedPath = absolutePath
-    .replace(/^\/private\/var\//, '/var/')
-    .replace(/^\/private\/tmp(\/|$)/, '/tmp$1')
-  const normalizedWorkingPath = absoluteWorkingPath
-    .replace(/^\/private\/var\//, '/var/')
-    .replace(/^\/private\/tmp(\/|$)/, '/tmp$1')
+/** Absolute, folded, and with the macOS `/private` temp aliases removed. */
+function comparable(path: string): string {
+  return withoutPrivateAlias(normalizeCaseForComparison(expandPath(path)))
+}
 
-  // Normalize case for case-insensitive comparison to prevent bypassing security
-  // checks on case-insensitive filesystems (macOS/Windows) like .cLauDe/CoMmAnDs
-  const caseNormalizedPath = normalizeCaseForComparison(normalizedPath)
-  const caseNormalizedWorkingPath = normalizeCaseForComparison(
-    normalizedWorkingPath,
-  )
-
-  // Use cross-platform relative path helper
-  const relative = relativePath(caseNormalizedWorkingPath, caseNormalizedPath)
-
-  // Same path
-  if (relative === '') {
-    return true
-  }
-
-  if (containsPathTraversal(relative)) {
-    return false
-  }
-
-  // Path is inside (relative path that doesn't go up)
-  return !posix.isAbsolute(relative)
+// macOS reaches /tmp and /var through /private. Only the spellings that name
+// the directory or something below it are mapped: `/private/var` alone is
+// left as is, and so is any name that merely starts with `tmp` or `var`.
+function withoutPrivateAlias(path: string): string {
+  const aliased =
+    path === '/private/tmp' ||
+    path.startsWith('/private/tmp/') ||
+    path.startsWith('/private/var/')
+  return aliased ? path.slice('/private'.length) : path
 }

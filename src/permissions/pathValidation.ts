@@ -1,11 +1,9 @@
-import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
-import { dirname, isAbsolute, resolve } from 'path'
+import { resolve } from 'path'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import {
   getFsImplementation,
-  getPathsForPermissionCheck,
   safeResolvePath,
 } from 'src/shared/fs/fsOperations.js'
 import { containsPathTraversal } from 'src/shared/fs/path.js'
@@ -19,10 +17,12 @@ import {
   pathInAllowedWorkingPath,
   pathInWorkingPath,
 } from 'src/permissions/filePermissions.js'
+import {
+  formsOf,
+  settledFormsOf,
+  type PathForms,
+} from 'src/permissions/filePermissions/pathForms.js'
 import type { PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
-
-const MAX_DIRS_TO_LIST = 5
-const GLOB_PATTERN_REGEX = /[*?[\]{}]/
 
 export type FileOperationType = 'read' | 'write' | 'create'
 
@@ -35,453 +35,334 @@ export type ResolvedPathCheckResult = PathCheckResult & {
   resolvedPath: string
 }
 
+// ─── Small helpers the callers share ────────────────────────────────────────
+
+const LISTED_DIRECTORY_LIMIT = 5
+
 export function formatDirectoryList(directories: string[]): string {
-  const dirCount = directories.length
-
-  if (dirCount <= MAX_DIRS_TO_LIST) {
-    return directories.map(dir => `'${dir}'`).join(', ')
-  }
-
-  const firstDirs = directories
-    .slice(0, MAX_DIRS_TO_LIST)
-    .map(dir => `'${dir}'`)
+  const listed = directories
+    .slice(0, LISTED_DIRECTORY_LIMIT)
+    .map(directory => `'${directory}'`)
     .join(', ')
-
-  return `${firstDirs}, and ${dirCount - MAX_DIRS_TO_LIST} more`
+  const unlisted = directories.length - LISTED_DIRECTORY_LIMIT
+  return unlisted > 0 ? `${listed}, and ${unlisted} more` : listed
 }
 
-/**
- * Extracts the base directory from a glob pattern for validation.
- * For example: "/path/to/*.txt" returns "/path/to"
- */
-export function getGlobBaseDirectory(path: string): string {
-  const globMatch = path.match(GLOB_PATTERN_REGEX)
-  if (!globMatch || globMatch.index === undefined) {
-    return path
+const GLOB_CHARACTERS: ReadonlySet<string> = new Set(['*', '?', '[', ']', '{', '}'])
+
+function firstGlobIndex(path: string): number {
+  for (let index = 0; index < path.length; index++) {
+    if (GLOB_CHARACTERS.has(path.charAt(index))) return index
   }
-
-  // Get everything before the first glob character
-  const beforeGlob = path.substring(0, globMatch.index)
-
-  // Find the last directory separator
-  const lastSepIndex =
-    getPlatform() === 'windows'
-      ? Math.max(beforeGlob.lastIndexOf('/'), beforeGlob.lastIndexOf('\\'))
-      : beforeGlob.lastIndexOf('/')
-  if (lastSepIndex === -1) return '.'
-
-  return beforeGlob.substring(0, lastSepIndex) || '/'
+  return -1
 }
 
-/**
- * Expands tilde (~) at the start of a path to the user's home directory.
- * Note: ~username expansion is not supported for security reasons.
- */
+function hasGlob(path: string): boolean {
+  return firstGlobIndex(path) !== -1
+}
+
+function isSeparator(character: string): boolean {
+  return character === '/' || (character === '\\' && getPlatform() === 'windows')
+}
+
+/** The literal directory a glob expands in. */
+export function getGlobBaseDirectory(path: string): string {
+  const globAt = firstGlobIndex(path)
+  if (globAt === -1) return path
+  let cut = globAt - 1
+  while (cut >= 0 && !isSeparator(path.charAt(cut))) cut--
+  if (cut === -1) return '.'
+  if (cut === 0) return '/'
+  return path.slice(0, cut)
+}
+
+/** Only the forms every shell agrees on: `~` and `~/`. */
 export function expandTilde(path: string): string {
-  if (
-    path === '~' ||
+  if (path === '~') return homedir()
+  const homeRelative =
     path.startsWith('~/') ||
     (process.platform === 'win32' && path.startsWith('~\\'))
-  ) {
-    return homedir() + path.slice(1)
-  }
-  return path
+  return homeRelative ? homedir() + path.slice(1) : path
 }
 
-/**
- * Checks if a resolved path is writable according to the sandbox write allowlist.
- * When the sandbox is enabled, the user has explicitly configured which directories
- * are writable. We treat these as additional allowed write directories for path
- * validation purposes, so commands like `echo foo > /tmp/claude/x.txt` don't
- * prompt for permission when /tmp/claude/ is already in the sandbox allowlist.
- *
- * Respects the deny-within-allow list: paths in denyWithinAllow (like
- * .claudin/settings.json) are still blocked even if their parent is in allowOnly.
- */
+// ─── rm / Remove-Item guard ─────────────────────────────────────────────────
+
+function collapseSeparators(path: string): string {
+  return path.replace(/[\\/]+/g, '/')
+}
+
+function withoutTrailingSlash(path: string): string {
+  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path
+}
+
+/** A target whose removal wipes a root, a home or a top-level directory. */
+export function isDangerousRemovalPath(resolvedPath: string): boolean {
+  const path = collapseSeparators(resolvedPath)
+  if (path === '*' || path.endsWith('/*')) return true
+
+  const target = withoutTrailingSlash(path)
+  const home = withoutTrailingSlash(collapseSeparators(homedir()))
+  if (target === '/' || target === home) return true
+
+  const topLevel = /^\/[^/]+$/
+  const driveRoot = /^[a-z]:$/i
+  const driveTopLevel = /^[a-z]:\/[^/]+$/i
+  return [topLevel, driveRoot, driveTopLevel].some(shape => shape.test(target))
+}
+
+// ─── OS sandbox write allowlist ─────────────────────────────────────────────
+
+/** The part of the sandbox's write config this check reads. */
+type SandboxWriteLists = {
+  readonly allowOnly: readonly string[]
+  readonly denyWithinAllow: readonly string[]
+}
+
+function sandboxAllowsWrite(forms: PathForms): boolean {
+  if (forms.length === 0) return false
+  const config: SandboxWriteLists = SandboxManager.getFsWriteConfig()
+  const allowed = config.allowOnly.flatMap(settledFormsOf)
+  const denied = config.denyWithinAllow.flatMap(settledFormsOf)
+  return forms.every(
+    form =>
+      allowed.some(entry => pathInWorkingPath(form, entry)) &&
+      !denied.some(entry => pathInWorkingPath(form, entry)),
+  )
+}
+
 export function isPathInSandboxWriteAllowlist(resolvedPath: string): boolean {
-  if (!SandboxManager.isSandboxingEnabled()) {
-    return false
-  }
-  const { allowOnly, denyWithinAllow } = SandboxManager.getFsWriteConfig()
-  // Resolve symlinks on both sides so comparisons are symmetric (matching
-  // pathInAllowedWorkingPath). Without this, an allowlist entry that is a
-  // symlink (e.g. /home/user/proj -> /data/proj) would not match a write to
-  // its resolved target, causing an unnecessary prompt. Over-conservative,
-  // not a security issue. All resolved input representations must be allowed
-  // and none may be denied. Config paths are session-stable, so memoize
-  // their resolution to avoid N × config.length redundant syscalls per
-  // command with N write targets (matching getResolvedWorkingDirPaths).
-  const pathsToCheck = getPathsForPermissionCheck(resolvedPath)
-  const resolvedAllow = allowOnly.flatMap(getResolvedSandboxConfigPath)
-  const resolvedDeny = denyWithinAllow.flatMap(getResolvedSandboxConfigPath)
-  return pathsToCheck.every(p => {
-    for (const denyPath of resolvedDeny) {
-      if (pathInWorkingPath(p, denyPath)) return false
-    }
-    return resolvedAllow.some((allowPath: string) =>
-      pathInWorkingPath(p, allowPath),
-    )
-  })
+  if (!SandboxManager.isSandboxingEnabled()) return false
+  return sandboxAllowsWrite(formsOf(resolvedPath))
 }
 
-// Sandbox config paths are session-stable; memoize their resolved forms to
-// avoid repeated lstat/realpath syscalls on every write-target check.
-// Matches the getResolvedWorkingDirPaths pattern in filesystem.ts.
-const getResolvedSandboxConfigPath = memoize(getPathsForPermissionCheck)
+// ─── The decision ───────────────────────────────────────────────────────────
 
-/**
- * Checks if a resolved path is allowed for the given operation type.
- *
- * @param precomputedPathsToCheck - Optional cached result of
- *   `getPathsForPermissionCheck(resolvedPath)`. When `resolvedPath` is the
- *   output of `realpathSync` (canonical path, all symlinks resolved), this
- *   is trivially `[resolvedPath]` and passing it here skips 5 redundant
- *   syscalls per inner check. Do NOT pass this for non-canonical paths
- *   (nonexistent files, UNC paths, etc.) — parent-directory symlink
- *   resolution is still required for those.
- */
+type AccessRequest = {
+  readonly path: string
+  readonly context: ToolPermissionContext
+  readonly writes: boolean
+  readonly ruleTool: 'read' | 'edit'
+  /** The caller's forms, which replace resolving `path`. */
+  readonly forms: readonly string[] | undefined
+  readonly insideWorkingDirectory: () => boolean
+}
+
+/** A verdict, or undefined for "no opinion: ask the next check". */
+type DecisionStep = (request: AccessRequest) => PathCheckResult | undefined
+
+const SANDBOX_ALLOWLIST_REASON =
+  'The path is inside the sandbox write allowlist'
+
+const denyRule: DecisionStep = request => {
+  const rule = matchingRuleForInput(
+    request.path,
+    request.context,
+    request.ruleTool,
+    'deny',
+  )
+  return rule ? { allowed: false, decisionReason: { type: 'rule', rule } } : undefined
+}
+
+const harnessWrite: DecisionStep = request => {
+  if (!request.writes) return undefined
+  const result = checkEditableInternalPath(request.path, {})
+  return result.behavior === 'allow'
+    ? { allowed: true, decisionReason: result.decisionReason }
+    : undefined
+}
+
+const protectedPath: DecisionStep = request => {
+  if (!request.writes) return undefined
+  const safety = checkPathSafetyForAutoEdit(request.path, request.forms)
+  if (safety.safe) return undefined
+  return {
+    allowed: false,
+    decisionReason: {
+      type: 'safetyCheck',
+      reason: safety.message,
+      classifierApprovable: safety.classifierApprovable,
+    },
+  }
+}
+
+const workingDirectory: DecisionStep = request => {
+  if (!request.insideWorkingDirectory()) return undefined
+  const opened = !request.writes || request.context.mode === 'acceptEdits'
+  return opened ? { allowed: true } : undefined
+}
+
+const harnessRead: DecisionStep = request => {
+  if (request.writes) return undefined
+  const result = checkReadableInternalPath(request.path, {})
+  return result.behavior === 'allow'
+    ? { allowed: true, decisionReason: result.decisionReason }
+    : undefined
+}
+
+// Inside a working directory the acceptEdits gate decides alone; the
+// allowlist only widens what lies outside every working directory.
+const sandboxAllowlist: DecisionStep = request => {
+  if (!request.writes || request.insideWorkingDirectory()) return undefined
+  if (!SandboxManager.isSandboxingEnabled()) return undefined
+  const forms = request.forms ?? formsOf(request.path)
+  return sandboxAllowsWrite(forms)
+    ? { allowed: true, decisionReason: { type: 'other', reason: SANDBOX_ALLOWLIST_REASON } }
+    : undefined
+}
+
+const allowRule: DecisionStep = request => {
+  const rule = matchingRuleForInput(
+    request.path,
+    request.context,
+    request.ruleTool,
+    'allow',
+  )
+  return rule ? { allowed: true, decisionReason: { type: 'rule', rule } } : undefined
+}
+
+/** Precedence, first to last. A deny rule outranks every opening. */
+const DECISION_STEPS: readonly DecisionStep[] = [
+  denyRule,
+  harnessWrite,
+  protectedPath,
+  workingDirectory,
+  harnessRead,
+  sandboxAllowlist,
+  allowRule,
+]
+
+function once<T>(compute: () => T): () => T {
+  let settled: { value: T } | undefined
+  return () => {
+    settled ??= { value: compute() }
+    return settled.value
+  }
+}
+
 export function isPathAllowed(
   resolvedPath: string,
   context: ToolPermissionContext,
   operationType: FileOperationType,
   precomputedPathsToCheck?: readonly string[],
 ): PathCheckResult {
-  // Determine which permission type to check based on operation
-  const permissionType = operationType === 'read' ? 'read' : 'edit'
-
-  // 1. Check deny rules first (they take precedence)
-  const denyRule = matchingRuleForInput(
-    resolvedPath,
+  const writes = operationType !== 'read'
+  const request: AccessRequest = {
+    path: resolvedPath,
     context,
-    permissionType,
-    'deny',
-  )
-  if (denyRule !== null) {
-    return {
-      allowed: false,
-      decisionReason: { type: 'rule', rule: denyRule },
-    }
+    writes,
+    ruleTool: writes ? 'edit' : 'read',
+    forms: precomputedPathsToCheck,
+    insideWorkingDirectory: once(() =>
+      pathInAllowedWorkingPath(resolvedPath, context, precomputedPathsToCheck),
+    ),
   }
-
-  // 2. For write/create operations, check internal editable paths (plan files, scratchpad, agent memory, job dirs)
-  // This MUST come before checkPathSafetyForAutoEdit since .claudin is a dangerous directory
-  // and internal editable paths live under ~/.claudin/ — matching the ordering in
-  // checkWritePermissionForTool (filesystem.ts step 1.5)
-  if (operationType !== 'read') {
-    const internalEditResult = checkEditableInternalPath(resolvedPath, {})
-    if (internalEditResult.behavior === 'allow') {
-      return {
-        allowed: true,
-        decisionReason: internalEditResult.decisionReason,
-      }
-    }
+  for (const step of DECISION_STEPS) {
+    const verdict = step(request)
+    if (verdict !== undefined) return verdict
   }
-
-  // 2.5. For write/create operations, check comprehensive safety validations
-  // This MUST come before checking working directory to prevent bypass via acceptEdits mode
-  // Checks: Windows patterns, Claude config files, dangerous files (on original + symlink paths)
-  if (operationType !== 'read') {
-    const safetyCheck = checkPathSafetyForAutoEdit(
-      resolvedPath,
-      precomputedPathsToCheck,
-    )
-    if (!safetyCheck.safe) {
-      return {
-        allowed: false,
-        decisionReason: {
-          type: 'safetyCheck',
-          reason: safetyCheck.message,
-          classifierApprovable: safetyCheck.classifierApprovable,
-        },
-      }
-    }
-  }
-
-  // 3. Check if path is in allowed working directory
-  // For write/create operations, require acceptEdits mode to auto-allow
-  // This is consistent with checkWritePermissionForTool in filesystem.ts
-  const isInWorkingDir = pathInAllowedWorkingPath(
-    resolvedPath,
-    context,
-    precomputedPathsToCheck,
-  )
-  if (isInWorkingDir) {
-    if (operationType === 'read' || context.mode === 'acceptEdits') {
-      return { allowed: true }
-    }
-    // Write/create without acceptEdits mode falls through to check allow rules
-  }
-
-  // 3.5. For read operations, check internal readable paths (project temp dir, session memory, etc.)
-  // This allows reading agent output files without explicit permission
-  if (operationType === 'read') {
-    const internalReadResult = checkReadableInternalPath(resolvedPath, {})
-    if (internalReadResult.behavior === 'allow') {
-      return {
-        allowed: true,
-        decisionReason: internalReadResult.decisionReason,
-      }
-    }
-  }
-
-  // 3.7. For write/create operations to paths OUTSIDE the working directory,
-  // check the sandbox write allowlist. When the sandbox is enabled, users
-  // have explicitly configured writable directories (e.g. /tmp/claude/) —
-  // treat these as additional allowed write directories so redirects/touch/
-  // mkdir don't prompt unnecessarily. Safety checks (step 2) already ran.
-  // Paths IN the working directory are intentionally excluded: the sandbox
-  // allowlist always seeds '.' (cwd, see sandbox-adapter.ts), which would
-  // bypass the acceptEdits gate at step 3. Step 3 handles those.
-  if (
-    operationType !== 'read' &&
-    !isInWorkingDir &&
-    isPathInSandboxWriteAllowlist(resolvedPath)
-  ) {
-    return {
-      allowed: true,
-      decisionReason: {
-        type: 'other',
-        reason: 'Path is in sandbox write allowlist',
-      },
-    }
-  }
-
-  // 4. Check allow rules for the operation type
-  const allowRule = matchingRuleForInput(
-    resolvedPath,
-    context,
-    permissionType,
-    'allow',
-  )
-  if (allowRule !== null) {
-    return {
-      allowed: true,
-      decisionReason: { type: 'rule', rule: allowRule },
-    }
-  }
-
-  // 5. Path is not allowed
   return { allowed: false }
 }
 
+// ─── Parsing a shell path ───────────────────────────────────────────────────
+
+function isNetworkShaped(path: string): boolean {
+  return path.startsWith('//') || path.startsWith('\\\\')
+}
+
 /**
- * Validates a glob pattern by checking its base directory.
- * Returns the validation result for the base path where the glob would expand.
+ * Anchors `path` at `cwd` and follows its symlinks when it exists, then
+ * judges it. A canonical path is its own only form. A network-shaped path is
+ * left as written, so resolving it can never reach the network.
  */
+function judgeOnDisk(
+  path: string,
+  cwd: string,
+  context: ToolPermissionContext,
+  operationType: FileOperationType,
+): ResolvedPathCheckResult {
+  const anchored = isNetworkShaped(path) ? path : resolve(cwd, path)
+  const { resolvedPath, isCanonical } = safeResolvePath(
+    getFsImplementation(),
+    anchored,
+  )
+  const verdict = isPathAllowed(
+    resolvedPath,
+    context,
+    operationType,
+    isCanonical ? [resolvedPath] : undefined,
+  )
+  return { ...verdict, resolvedPath }
+}
+
 export function validateGlobPattern(
   cleanPath: string,
   cwd: string,
   toolPermissionContext: ToolPermissionContext,
   operationType: FileOperationType,
 ): ResolvedPathCheckResult {
-  if (containsPathTraversal(cleanPath)) {
-    // For patterns with path traversal, resolve the full path
-    const absolutePath = isAbsolute(cleanPath)
-      ? cleanPath
-      : resolve(cwd, cleanPath)
-    const { resolvedPath, isCanonical } = safeResolvePath(
-      getFsImplementation(),
-      absolutePath,
-    )
-    const result = isPathAllowed(
-      resolvedPath,
-      toolPermissionContext,
-      operationType,
-      isCanonical ? [resolvedPath] : undefined,
-    )
-    return {
-      allowed: result.allowed,
-      resolvedPath,
-      decisionReason: result.decisionReason,
-    }
-  }
-
-  const basePath = getGlobBaseDirectory(cleanPath)
-  const absoluteBasePath = isAbsolute(basePath)
-    ? basePath
-    : resolve(cwd, basePath)
-  const { resolvedPath, isCanonical } = safeResolvePath(
-    getFsImplementation(),
-    absoluteBasePath,
-  )
-  const result = isPathAllowed(
-    resolvedPath,
-    toolPermissionContext,
-    operationType,
-    isCanonical ? [resolvedPath] : undefined,
-  )
-  return {
-    allowed: result.allowed,
-    resolvedPath,
-    decisionReason: result.decisionReason,
-  }
+  // A `..` can carry the expansion anywhere, so the base directory proves
+  // nothing: judge the whole pattern where it lands.
+  const judged = containsPathTraversal(cleanPath)
+    ? cleanPath
+    : getGlobBaseDirectory(cleanPath)
+  return judgeOnDisk(judged, cwd, toolPermissionContext, operationType)
 }
 
-const WINDOWS_DRIVE_ROOT_REGEX = /^[A-Za-z]:\/?$/
-const WINDOWS_DRIVE_CHILD_REGEX = /^[A-Za-z]:\/[^/]+$/
-
-/**
- * Checks if a resolved path is dangerous for removal operations (rm/rmdir).
- * Dangerous paths are:
- * - Wildcard '*' (removes all files in directory)
- * - Any path ending with '/*' or '\*' (e.g., /path/to/dir/*, C:\foo\*)
- * - Root directory (/)
- * - Home directory (~)
- * - Direct children of root (/usr, /tmp, /etc, etc.)
- * - Windows drive root (C:\, D:\) and direct children (C:\Windows, C:\Users)
- */
-export function isDangerousRemovalPath(resolvedPath: string): boolean {
-  // Callers pass both slash forms; collapse runs so C:\\Windows (valid in
-  // PowerShell) doesn't bypass the drive-child check.
-  const forwardSlashed = resolvedPath.replace(/[\\/]+/g, '/')
-
-  if (forwardSlashed === '*' || forwardSlashed.endsWith('/*')) {
-    return true
-  }
-
-  const normalizedPath =
-    forwardSlashed === '/' ? forwardSlashed : forwardSlashed.replace(/\/$/, '')
-
-  if (normalizedPath === '/') {
-    return true
-  }
-
-  if (WINDOWS_DRIVE_ROOT_REGEX.test(normalizedPath)) {
-    return true
-  }
-
-  const normalizedHome = homedir().replace(/[\\/]+/g, '/')
-  if (normalizedPath === normalizedHome) {
-    return true
-  }
-
-  // Direct children of root: /usr, /tmp, /etc (but not /usr/local)
-  const parentDir = dirname(normalizedPath)
-  if (parentDir === '/') {
-    return true
-  }
-
-  if (WINDOWS_DRIVE_CHILD_REGEX.test(normalizedPath)) {
-    return true
-  }
-
-  return false
+type HumanApprovalRule = {
+  readonly applies: (cleanPath: string, operationType: FileOperationType) => boolean
+  readonly reason: string
 }
 
-/**
- * Validates a file system path, handling tilde expansion and glob patterns.
- * Returns whether the path is allowed and the resolved path for error messages.
- */
+/** Paths the validator will not interpret; the first that applies wins. */
+const NEEDS_A_HUMAN: readonly HumanApprovalRule[] = [
+  {
+    applies: path => containsVulnerableUncPath(path),
+    reason: 'UNC network paths need manual approval',
+  },
+  {
+    // `~user`, `~+`, `~-` and `~N` expand differently per shell.
+    applies: path => path.startsWith('~'),
+    reason: 'Tilde expansion variants (~user, ~+, ~-, ~N) in a path need manual approval',
+  },
+  {
+    applies: path =>
+      path.includes('$') || path.includes('%') || path.startsWith('='),
+    reason:
+      'Shell expansion syntax ($VAR, %VAR%, =cmd) in a path needs manual approval',
+  },
+  {
+    applies: (path, operationType) => operationType !== 'read' && hasGlob(path),
+    reason:
+      'Writes cannot target a glob pattern; name an exact file path instead',
+  },
+]
+
+function stripOneQuotePerEnd(path: string): string {
+  const head = path.startsWith('"') || path.startsWith("'") ? 1 : 0
+  const rest = path.slice(head)
+  const tail = rest.endsWith('"') || rest.endsWith("'") ? 1 : 0
+  return rest.slice(0, rest.length - tail)
+}
+
 export function validatePath(
   path: string,
   cwd: string,
   toolPermissionContext: ToolPermissionContext,
   operationType: FileOperationType,
 ): ResolvedPathCheckResult {
-  // Remove surrounding quotes if present
-  const cleanPath = expandTilde(path.replace(/^['"]|['"]$/g, ''))
+  const cleanPath = expandTilde(stripOneQuotePerEnd(path))
 
-  // SECURITY: Block UNC paths that could leak credentials
-  if (containsVulnerableUncPath(cleanPath)) {
+  const refusal = NEEDS_A_HUMAN.find(rule => rule.applies(cleanPath, operationType))
+  if (refusal !== undefined) {
     return {
       allowed: false,
       resolvedPath: cleanPath,
-      decisionReason: {
-        type: 'other',
-        reason: 'UNC network paths require manual approval',
-      },
+      decisionReason: { type: 'other', reason: refusal.reason },
     }
   }
 
-  // SECURITY: Reject tilde variants (~user, ~+, ~-, ~N) that expandTilde doesn't handle.
-  // expandTilde resolves ~ and ~/ to $HOME, but ~root, ~+, ~- etc. are left as literal
-  // text and resolved as relative paths (e.g., /cwd/~root/.ssh/id_rsa).
-  // The shell expands these differently (~root → /var/root, ~+ → $PWD, ~- → $OLDPWD),
-  // creating a TOCTOU gap: we validate /cwd/~root/... but bash reads /var/root/...
-  // This check is safe from false positives because expandTilde already converted
-  // ~ and ~/ to absolute paths starting with /, so only unexpanded variants remain.
-  if (cleanPath.startsWith('~')) {
-    return {
-      allowed: false,
-      resolvedPath: cleanPath,
-      decisionReason: {
-        type: 'other',
-        reason:
-          'Tilde expansion variants (~user, ~+, ~-) in paths require manual approval',
-      },
-    }
+  if (hasGlob(cleanPath)) {
+    return validateGlobPattern(cleanPath, cwd, toolPermissionContext, operationType)
   }
-
-  // SECURITY: Reject paths containing ANY shell expansion syntax ($ or % characters,
-  // or paths starting with = which triggers Zsh equals expansion)
-  // - $VAR (Unix/Linux environment variables like $HOME, $PWD)
-  // - ${VAR} (brace expansion)
-  // - $(cmd) (command substitution)
-  // - %VAR% (Windows environment variables like %TEMP%, %USERPROFILE%)
-  // - Nested combinations like $(echo $HOME)
-  // - =cmd (Zsh equals expansion, e.g. =rg expands to /usr/bin/rg)
-  // All of these are preserved as literal strings during validation but expanded
-  // by the shell during execution, creating a TOCTOU vulnerability
-  if (
-    cleanPath.includes('$') ||
-    cleanPath.includes('%') ||
-    cleanPath.startsWith('=')
-  ) {
-    return {
-      allowed: false,
-      resolvedPath: cleanPath,
-      decisionReason: {
-        type: 'other',
-        reason: 'Shell expansion syntax in paths requires manual approval',
-      },
-    }
-  }
-
-  // SECURITY: Block glob patterns in write/create operations
-  // Write tools don't expand globs - they use paths literally.
-  // Allowing globs in write operations could bypass security checks.
-  // Example: /allowed/dir/*.txt would only validate /allowed/dir,
-  // but the actual write would use the literal path with the *
-  if (GLOB_PATTERN_REGEX.test(cleanPath)) {
-    if (operationType === 'write' || operationType === 'create') {
-      return {
-        allowed: false,
-        resolvedPath: cleanPath,
-        decisionReason: {
-          type: 'other',
-          reason:
-            'Glob patterns are not allowed in write operations. Please specify an exact file path.',
-        },
-      }
-    }
-
-    // For read operations, validate the base directory where the glob would expand
-    return validateGlobPattern(
-      cleanPath,
-      cwd,
-      toolPermissionContext,
-      operationType,
-    )
-  }
-
-  // Resolve path
-  const absolutePath = isAbsolute(cleanPath)
-    ? cleanPath
-    : resolve(cwd, cleanPath)
-  const { resolvedPath, isCanonical } = safeResolvePath(
-    getFsImplementation(),
-    absolutePath,
-  )
-
-  const result = isPathAllowed(
-    resolvedPath,
-    toolPermissionContext,
-    operationType,
-    isCanonical ? [resolvedPath] : undefined,
-  )
-  return {
-    allowed: result.allowed,
-    resolvedPath,
-    decisionReason: result.decisionReason,
-  }
+  return judgeOnDisk(cleanPath, cwd, toolPermissionContext, operationType)
 }

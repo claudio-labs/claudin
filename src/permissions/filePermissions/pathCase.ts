@@ -1,11 +1,9 @@
 /**
- * Normalizes a path for case-insensitive comparison.
- * This prevents bypassing security checks using mixed-case paths on case-insensitive
- * filesystems (macOS/Windows) like `.cLauDe/Settings.locaL.json`.
+ * Folds a path for comparison, never for display or I/O.
  *
- * We always normalize to lowercase regardless of platform for consistent security.
- * @param path The path to normalize
- * @returns The lowercase path for safe comparison
+ * The fold is the same on every platform: the protected-path checks have to
+ * hold on case-insensitive filesystems (macOS, Windows) even when the host
+ * that runs the check is case-sensitive.
  */
 export function normalizeCaseForComparison(path: string): string {
   return path.toLowerCase()

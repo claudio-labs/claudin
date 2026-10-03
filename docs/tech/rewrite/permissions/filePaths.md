@@ -474,3 +474,23 @@ not allowed in write" message, but that is PowerShell's own copy, in
   are.
 - **Types.** Explicit throughout, with no `any`. The `forms` parameters stay
   `readonly string[]`.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **The rewrite.** All 25 inherited bodies were written anew. The protected-path
+  tables, the Windows patterns, the carve-outs and the refusals are now data
+  tables. `pathForms.ts` holds the path-forms type and the per-string cache
+  that working directories and sandbox entries share. The four
+  characterization suites pass unchanged.
+- **Fix, with a test.** Finding 5: an empty list of path forms counts as "not
+  inside". The same rule now covers the sandbox write allowlist.
+- **Kept exactly as pinned.** Findings 1–4. Finding 1 is the symlink carve-out
+  family. A probe that switches the carve-outs to real paths turns 6 tests red,
+  so the fix in `bugs/permission-carveouts-compare-paths-as-text.md` has a
+  ready net.
+- **Probes.** `rewrite-permissions-filePaths.json` holds 98 probes.
+- **Residue, reviewed.** 46 lines of Claude Code remain, all of them
+  signatures of the exported checks plus the refusal reason texts that
+  `tools/BashTool/pathValidation.test.ts` pins ("Shell expansion", "Tilde
+  expansion").
