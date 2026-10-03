@@ -398,3 +398,33 @@ The preamble and the labels are text for the model. Described by intent:
 - **The instruction block** is a pure function over the entries, with the labels in one table keyed by type, `Managed` included (Findings, 3).
 - **Types.** Explicit, with no `any`, and regular expressions at module level.
 - **Call-time reads.** The environment, the settings, the setting sources, the managed path and the config home are read when a load runs, because the tests change them between calls.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **The rewrite.** Every inherited body was written anew, and three new modules
+  took over parts of the old code:
+  - `claudemd/sessionSources.ts`: the sources table, the walk plan and the worktree rule.
+  - `claudemd/instructionBlock.ts`: the label table and the rendering.
+  - `claudemd/rulesDirectory.ts`: the rules reader, with a cycle guard on real paths.
+
+  `getMemoryFiles` keeps its memo and its `.cache` map, and the one
+  `feature('TEAMMEM')` require stays in `claudemd.ts`. The four
+  characterization suites pass unchanged.
+- **Fixes**, each with a test:
+  - 3: `Managed` has its own label, naming the organization's policy.
+  - 4: literal directories before the first wildcard resolve through links.
+  - 5: `getMemoryFiles()` and `getMemoryFiles(false)` share one cache entry.
+
+  Findings 1, 2 and 6–9 are kept for parity. Findings 1 and 2 are tracked in
+  team memory.
+- **Probes.** `rewrite-memory-claudemd.json` holds 91 probes.
+- **Residue, reviewed.** 107 lines remain: 97 of Claude Code and 10 of openclaude.
+  They are the signatures of the loader family and their destructured option
+  objects, which callers not yet rewritten dictate, and the declarations kept
+  outside the bodies: the preamble string, the extension table and the
+  pending-hook-report variables. The 10 openclaude lines are the
+  `AGENTS.md`/`CLAUDE.md` slot functions in `projectInstructions.ts`.
+- **Still to reword outside the unit.** Two files name the old code: a comment
+  in `pathScopedMemories.ts`, and the team memory note
+  `rule-files-four-silent-failure-modes.md`.

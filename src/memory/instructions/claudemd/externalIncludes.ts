@@ -8,10 +8,10 @@ export function getExternalClaudeMdIncludes(
   files: MemoryFileInfo[],
 ): ExternalClaudeMdInclude[] {
   const externals: ExternalClaudeMdInclude[] = []
-  for (const file of files) {
-    if (file.type !== 'User' && file.parent && !pathInOriginalCwd(file.path)) {
-      externals.push({ path: file.path, parent: file.parent })
-    }
+  for (const { path, parent, type } of files) {
+    // User files may include anything, so their includes never need approval.
+    if (parent === undefined || type === 'User' || pathInOriginalCwd(path)) continue
+    externals.push({ path, parent })
   }
   return externals
 }

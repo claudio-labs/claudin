@@ -11,148 +11,120 @@ import { inspectRuleFrontmatter } from 'src/memory/instructions/ruleFrontmatter.
 import {
   TEXT_FILE_EXTENSIONS,
   extractIncludePathsFromTokens,
-  stripHtmlCommentSpans,
+  htmlCommentResidue,
 } from 'src/memory/instructions/claudemd/includes.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
+
+type ParsedMemoryFile = { info: MemoryFileInfo | null; includePaths: string[] }
+
+const nothingRead = (): ParsedMemoryFile => ({ info: null, includePaths: [] })
+
+/** The memory indexes are capped, so they get the index truncation. */
+const INDEX_TYPES: ReadonlySet<MemoryType> = new Set<MemoryType>(['AutoMem', 'TeamMem'])
+
+/** An absent file, or a directory where a file was expected, is an ordinary miss. */
+const ORDINARY_MISSES: ReadonlySet<string> = new Set(['ENOENT', 'EISDIR', 'ENOTDIR'])
+
+const COMMENT_OPEN = '<!--'
+const INCLUDE_MARK = '@'
 
 export function pathInOriginalCwd(path: string): boolean {
   return pathInWorkingPath(path, getOriginalCwd())
 }
 
-/**
- * Parses raw content to extract both content and glob patterns from frontmatter
- * @param rawContent Raw file content with frontmatter
- * @returns Object with content and globs (undefined if no paths or match-all pattern)
- */
 function parseFrontmatterPaths(rawContent: string): {
   content: string
   paths?: string[]
 } {
   const { content, paths } = inspectRuleFrontmatter(rawContent)
-  return paths ? { content, paths } : { content }
+  return paths === undefined ? { content } : { content, paths }
 }
 
 
+/**
+ * The document rebuilt from its tokens with every comment-led HTML block
+ * reduced to what follows its comments. Rebuilding normalizes line ends, so
+ * the caller keeps the original text when nothing was stripped.
+ */
 function stripHtmlCommentsFromTokens(tokens: ReturnType<Lexer['lex']>): {
   content: string
   stripped: boolean
 } {
-  let result = ''
   let stripped = false
-
-  for (const token of tokens) {
-    if (token.type === 'html') {
-      const trimmed = token.raw.trimStart()
-      if (trimmed.startsWith('<!--') && trimmed.includes('-->')) {
-        // Per CommonMark, a type-2 HTML block ends at the *line* containing
-        // `-->`, so text after `-->` on that line is part of this token.
-        // Strip only the comment spans and keep any residual content.
-        const residue = stripHtmlCommentSpans(token.raw)
-        stripped = true
-        if (residue.trim().length > 0) {
-          // Residual content exists (e.g. `<!-- note --> Use bun`): keep it.
-          result += residue
-        }
-        continue
-      }
-    }
-    result += token.raw
-  }
-
-  return { content: result, stripped }
+  const pieces = tokens.map(token => {
+    if (token.type !== 'html') return token.raw
+    const residue = htmlCommentResidue(token.raw)
+    if (residue === null || residue === token.raw) return token.raw
+    stripped = true
+    return residue
+  })
+  return { content: pieces.join(''), stripped }
 }
 
-/**
- * Parses raw memory file content into a MemoryFileInfo. Pure function — no I/O.
- *
- * When includeBasePath is given, @include paths are resolved in the same lex
- * pass and returned alongside the parsed file (so processMemoryFile doesn't
- * need to lex the same content a second time).
- */
 function parseMemoryFileContent(
   rawContent: string,
   filePath: string,
   type: MemoryType,
   includeBasePath?: string,
-): { info: MemoryFileInfo | null; includePaths: string[] } {
-  // Skip non-text files to prevent loading binary data (images, PDFs, etc.) into memory
-  const ext = extname(filePath).toLowerCase()
-  if (ext && !TEXT_FILE_EXTENSIONS.has(ext)) {
-    logForDebugging(`Skipping non-text file in @include: ${filePath}`)
-    return { info: null, includePaths: [] }
+): ParsedMemoryFile {
+  const { content: body, paths } = parseFrontmatterPaths(rawContent)
+  const hasComment = body.includes(COMMENT_OPEN)
+  const wantsIncludes = includeBasePath !== undefined && body.includes(INCLUDE_MARK)
+
+  let content = body
+  let includePaths: string[] = []
+  if (hasComment || wantsIncludes) {
+    const tokens = new Lexer({ gfm: true }).lex(body)
+    if (hasComment) {
+      const result = stripHtmlCommentsFromTokens(tokens)
+      if (result.stripped) content = result.content
+    }
+    if (includeBasePath !== undefined && wantsIncludes) {
+      includePaths = extractIncludePathsFromTokens(tokens, includeBasePath)
+    }
   }
+  if (INDEX_TYPES.has(type)) content = truncateEntrypointContent(content).content
 
-  const { content: withoutFrontmatter, paths } =
-    parseFrontmatterPaths(rawContent)
-
-  // Lex once so strip and @include-extract share the same tokens. gfm:false
-  // is required by extract (so ~/path doesn't tokenize as strikethrough) and
-  // doesn't affect strip (html blocks are a CommonMark rule).
-  const hasComment = withoutFrontmatter.includes('<!--')
-  const tokens =
-    hasComment || includeBasePath !== undefined
-      ? new Lexer({ gfm: false }).lex(withoutFrontmatter)
-      : undefined
-
-  // Only rebuild via tokens when a comment actually needs stripping —
-  // marked normalises \r\n during lex, so round-tripping a CRLF file
-  // through token.raw would spuriously flip contentDiffersFromDisk.
-  const strippedContent =
-    hasComment && tokens
-      ? stripHtmlCommentsFromTokens(tokens).content
-      : withoutFrontmatter
-
-  const includePaths =
-    tokens && includeBasePath !== undefined
-      ? extractIncludePathsFromTokens(tokens, includeBasePath)
-      : []
-
-  // Truncate MEMORY.md entrypoints to the line AND byte caps
-  let finalContent = strippedContent
-  if (type === 'AutoMem' || type === 'TeamMem') {
-    finalContent = truncateEntrypointContent(strippedContent).content
+  const differs = content !== rawContent
+  const info: MemoryFileInfo = {
+    path: filePath,
+    type,
+    content,
+    ...(paths === undefined ? {} : { globs: paths }),
+    contentDiffersFromDisk: differs,
+    ...(differs ? { rawContent } : {}),
   }
-
-  // Covers frontmatter strip, HTML comment strip, and MEMORY.md truncation
-  const contentDiffersFromDisk = finalContent !== rawContent
-  return {
-    info: {
-      path: filePath,
-      type,
-      content: finalContent,
-      globs: paths,
-      contentDiffersFromDisk,
-      rawContent: contentDiffersFromDisk ? rawContent : undefined,
-    },
-    includePaths,
-  }
+  return { info, includePaths }
 }
 
 function handleMemoryFileReadError(error: unknown, filePath: string): void {
   const code = getErrnoCode(error)
-  // ENOENT = file doesn't exist, EISDIR = is a directory — both expected
-  if (code === 'ENOENT' || code === 'EISDIR') {
-    return
-  }
+  if (code !== undefined && ORDINARY_MISSES.has(code)) return
+  logForDebugging(`Instruction file not loaded: ${filePath} (${code ?? String(error)})`, { level: 'warn' })
+}
+
+function hasTextExtension(filePath: string): boolean {
+  const extension = extname(filePath).toLowerCase()
+  return extension === '' || TEXT_FILE_EXTENSIONS.has(extension)
 }
 
 /**
- * Used by processMemoryFile → getMemoryFiles so the event loop stays
- * responsive during the directory walk (many readFile attempts, most
- * ENOENT). When includeBasePath is given, @include paths are resolved in
- * the same lex pass and returned alongside the parsed file.
+ * Reads one instruction file into an entry. `includeBasePath` is the path its
+ * `@` references resolve next to; without it they are not collected. Blank
+ * content still gives an entry: dropping it is the caller's call.
  */
 export async function safelyReadMemoryFileAsync(
   filePath: string,
   type: MemoryType,
   includeBasePath?: string,
 ): Promise<{ info: MemoryFileInfo | null; includePaths: string[] }> {
+  if (!hasTextExtension(filePath)) return nothingRead()
+  let rawContent: string
   try {
-    const fs = getFsImplementation()
-    const rawContent = await fs.readFile(filePath, { encoding: 'utf-8' })
-    return parseMemoryFileContent(rawContent, filePath, type, includeBasePath)
+    rawContent = await getFsImplementation().readFile(filePath, { encoding: 'utf-8' })
   } catch (error) {
     handleMemoryFileReadError(error, filePath)
-    return { info: null, includePaths: [] }
+    return nothingRead()
   }
+  return parseMemoryFileContent(rawContent, filePath, type, includeBasePath)
 }

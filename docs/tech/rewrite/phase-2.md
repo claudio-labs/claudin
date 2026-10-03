@@ -38,7 +38,7 @@ which the sandbox tools read; the lists below are the same.
 | `vcs/structuredDiff` | 4 | 636 | — | done |
 | `vcs/diffHooks` | 4 | 563 | — | done |
 | `memory/markdownConfigLoader` | 2 | 459 | — | done |
-| `memory/claudemd` | 10 | 979 | `projectInstructions.test.ts` (77) | pending |
+| `memory/claudemd` | 10 | 979 | `projectInstructions.test.ts` (77) | done |
 | `memory/memdir` | 8 | 772 | — | done |
 | `memory/teamMemSafety` | 4 | 318 | `memoryScan.test.ts` (37) | done |
 | `memory/extract` | 5 | 557 | — | done |

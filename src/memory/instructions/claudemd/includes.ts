@@ -3,8 +3,6 @@ import { dirname } from 'path'
 import { expandPath } from 'src/shared/fs/path.js'
 import type { MarkdownToken } from 'src/memory/instructions/claudemd/types.js'
 
-// File extensions that are allowed for @include directives
-// This prevents binary files (images, PDFs, etc.) from being loaded into memory
 export const TEXT_FILE_EXTENSIONS = new Set([
   // Markdown and text
   '.md',
@@ -138,106 +136,70 @@ export const TEXT_FILE_EXTENSIONS = new Set([
   '.patch',
 ])
 
-export function stripHtmlCommentSpans(raw: string): string {
-  let residue = raw
+/** A closed comment; an unclosed `<!--` is left as text. */
+const CLOSED_COMMENT_RE = /<!--[\s\S]*?-->/g
+const COMMENT_OPEN = '<!--'
 
-  while (residue.includes('<!--')) {
-    const updated = residue.replace(/<!--[\s\S]*?-->/g, '')
-    if (updated === residue) {
-      break
-    }
-    residue = updated
-  }
+/** `@` at the start or after whitespace, then non-space characters, where `\ ` is an escaped space. */
+const INCLUDE_REFERENCE_RE = /(?<=^|\s)@((?:\\ |\S)+)/g
+/** `./x`, `~/x`, `/x`, or a bare name read as relative. A bare `/` is refused after the fragment goes. */
+const ACCEPTED_REFERENCE_RE = /^(?:~\/|\/|[A-Za-z0-9._-])/
+const ESCAPED_SPACE_RE = /\\ /g
 
-  return residue
+/** Token types whose text the model sees as code, never as an include. */
+const CODE_TOKEN_TYPES: ReadonlySet<string> = new Set(['code', 'codespan'])
+/** Containers whose children are blocks rather than inline runs. */
+const BLOCK_CONTAINER_TYPES: ReadonlySet<string> = new Set(['blockquote', 'list_item'])
+
+function stripHtmlCommentSpans(raw: string): string {
+  return raw.replace(CLOSED_COMMENT_RE, '')
 }
 
-// Extract @path include references from pre-lexed tokens and resolve to
-// absolute paths. Skips html tokens so @paths inside block comments are
-// ignored — the caller may pass pre-strip tokens.
+/** What survives of an HTML token: the text around a comment's spans, nothing of any other tag. */
+export function htmlCommentResidue(raw: string): string | null {
+  return raw.trimStart().startsWith(COMMENT_OPEN) ? stripHtmlCommentSpans(raw) : null
+}
+
+/**
+ * The absolute targets of the `@path` references in the prose of a document,
+ * each once, in document order. `basePath` is the including file: relative
+ * references resolve against its directory.
+ */
 export function extractIncludePathsFromTokens(
   tokens: ReturnType<Lexer['lex']>,
   basePath: string,
 ): string[] {
-  const absolutePaths = new Set<string>()
-
-  // Extract @paths from a text string and add resolved paths to absolutePaths.
-  function extractPathsFromText(textContent: string) {
-    const includeRegex = /(?:^|\s)@((?:[^\s\\]|\\ )+)/g
-    let match
-    while ((match = includeRegex.exec(textContent)) !== null) {
-      let path = match[1]
-      if (!path) continue
-
-      // Strip fragment identifiers (#heading, #section-name, etc.)
-      const hashIndex = path.indexOf('#')
-      if (hashIndex !== -1) {
-        path = path.substring(0, hashIndex)
-      }
-      if (!path) continue
-
-      // Unescape the spaces in the path
-      path = path.replace(/\\ /g, ' ')
-
-      // Accept @path, @./path, @~/path, or @/path
-      if (path) {
-        const isValidPath =
-          path.startsWith('./') ||
-          path.startsWith('~/') ||
-          (path.startsWith('/') && path !== '/') ||
-          (!path.startsWith('@') &&
-            !path.match(/^[#%^&*()]+/) &&
-            path.match(/^[a-zA-Z0-9._-]/))
-
-        if (isValidPath) {
-          const resolvedPath = expandPath(path, dirname(basePath))
-          absolutePaths.add(resolvedPath)
-        }
-      }
-    }
+  const prose = (tokens as MarkdownToken[]).map(token => proseOf(token)).join('\n')
+  const baseDir = dirname(basePath)
+  const targets = new Set<string>()
+  for (const match of prose.matchAll(INCLUDE_REFERENCE_RE)) {
+    const reference = referenceTarget(match[1] ?? '')
+    if (reference !== null) targets.add(expandPath(reference, baseDir))
   }
+  return [...targets]
+}
 
-  // Recursively process elements to find text nodes
-  function processElements(elements: MarkdownToken[]) {
-    for (const element of elements) {
-      if (element.type === 'code' || element.type === 'codespan') {
-        continue
-      }
+function referenceTarget(written: string): string | null {
+  if (!ACCEPTED_REFERENCE_RE.test(written)) return null
+  const fragmentAt = written.indexOf('#')
+  const path = (fragmentAt === -1 ? written : written.slice(0, fragmentAt)).replace(ESCAPED_SPACE_RE, ' ')
+  return path === '' || path === '/' ? null : path
+}
 
-      // For html tokens that contain comments, strip the comment spans and
-      // check the residual for @paths (e.g. `<!-- note --> @./file.md`).
-      // Other html tokens (non-comment tags) are skipped entirely.
-      if (element.type === 'html') {
-        const raw = element.raw || ''
-        const trimmed = raw.trimStart()
-        if (trimmed.startsWith('<!--') && trimmed.includes('-->')) {
-          const residue = stripHtmlCommentSpans(raw)
-          if (residue.trim().length > 0) {
-            extractPathsFromText(residue)
-          }
-        }
-        continue
-      }
-
-      // Process text nodes
-      if (element.type === 'text') {
-        extractPathsFromText(element.text || '')
-      }
-
-      // Recurse into children tokens
-      if (element.tokens) {
-        processElements(element.tokens)
-      }
-
-      // Special handling for list structures
-      if (element.items) {
-        processElements(element.items)
-      }
-    }
+/**
+ * The text of a token as prose: code is dropped, comments are dropped, and
+ * inline runs are glued back from their raw source, so a reference the inline
+ * lexer split across tokens (a link, an emphasis marker) comes back whole.
+ */
+function proseOf(token: MarkdownToken): string {
+  if (CODE_TOKEN_TYPES.has(token.type)) return ''
+  if (token.type === 'html') return htmlCommentResidue(token.raw ?? '') ?? ''
+  if (token.items) return token.items.map(item => proseOf(item)).join('\n')
+  if (token.tokens) {
+    const separator = BLOCK_CONTAINER_TYPES.has(token.type) ? '\n' : ''
+    return token.tokens.map(child => proseOf(child)).join(separator)
   }
-
-  processElements(tokens as MarkdownToken[])
-  return [...absolutePaths]
+  return token.raw ?? token.text ?? ''
 }
 
 export const MAX_INCLUDE_DEPTH = 5

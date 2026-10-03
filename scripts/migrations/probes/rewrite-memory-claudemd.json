@@ -2,237 +2,560 @@
   "test": [
     "src/memory/instructions/claudemd.characterization.test.ts",
     "src/memory/instructions/claudemd.files.characterization.test.ts",
+    "src/memory/instructions/claudemd.teamMemory.characterization.test.ts",
     "src/memory/instructions/projectInstructions.characterization.test.ts",
-    "src/memory/instructions/claudemd.teamMemory.characterization.test.ts"
+    "src/memory/instructions/claudemd.test.ts",
+    "src/memory/instructions/claudemd/fixes.test.ts",
+    "src/memory/instructions/claudemd/pureCores.test.ts",
+    "src/memory/instructions/claudemd/includeExtraction.test.ts"
   ],
   "source": "src/memory/instructions/claudemd.ts",
   "probes": [
     {
-      "name": "loader: the managed slot reads the user file",
-      "find": "const managedClaudeMd = getMemoryPath('Managed')",
-      "replace": "const managedClaudeMd = getMemoryPath('User')"
+      "name": "root file: AGENTS.md wins over CLAUDE.md",
+      "source": "src/memory/instructions/projectInstructions.ts",
+      "find": "return existsSync(primary) ? primary : fallback",
+      "replace": "return existsSync(fallback) ? fallback : primary"
     },
     {
-      "name": "loader: the walk stops two directories up",
-      "find": "while (currentDir !== parse(currentDir).root) {",
-      "replace": "while (currentDir !== parse(currentDir).root && dirs.length < 2) {"
+      "name": "root file: the ancestor search reaches the filesystem root",
+      "source": "src/memory/instructions/projectInstructions.ts",
+      "find": "if (up === dir) return null",
+      "replace": "if (up === dir || dirname(up) === up) return null"
     },
     {
-      "name": "loader: directories read from the cwd upward",
-      "find": "for (const dir of dirs.reverse()) {",
-      "replace": "for (const dir of dirs) {"
+      "name": "root file: names are case-sensitive",
+      "source": "src/memory/instructions/projectInstructions.ts",
+      "find": "return name === PRIMARY_PROJECT_INSTRUCTION_FILE ||",
+      "replace": "return name.toUpperCase() === PRIMARY_PROJECT_INSTRUCTION_FILE.toUpperCase() ||"
     },
     {
-      "name": "loader: .claudin/CLAUDE.md is no longer read in the walk",
-      "find": "// Try reading .claudin/CLAUDE.md (Project)\n        const dotClaudePath = join(dir, '.claudin', 'CLAUDE.md')",
-      "replace": "// Try reading .claudin/CLAUDE.md (Project)\n        const dotClaudePath = join(dir, '.claudin', 'CLAUDE.mdx')"
+      "name": "large files: strictly over 40,000",
+      "source": "src/memory/instructions/claudemd/predicates.ts",
+      "find": "file.content.length > MAX_MEMORY_CHARACTER_COUNT",
+      "replace": "file.content.length >= MAX_MEMORY_CHARACTER_COUNT"
     },
     {
-      "name": "loader: CLAUDE.local.md ignores localSettings",
+      "name": "isMemoryFilePath: CLAUDE.local.md anywhere",
+      "source": "src/memory/instructions/claudemd/predicates.ts",
+      "find": "const LOCAL_INSTRUCTION_FILE_NAME = 'CLAUDE.local.md'",
+      "replace": "const LOCAL_INSTRUCTION_FILE_NAME = 'CLAUDE.local'"
+    },
+    {
+      "name": "isMemoryFilePath: only .md below .claudin/rules",
+      "source": "src/memory/instructions/claudemd/predicates.ts",
+      "find": "return name.endsWith('.md') && ",
+      "replace": "return "
+    },
+    {
+      "name": "external includes: never a User include",
+      "source": "src/memory/instructions/claudemd/externalIncludes.ts",
+      "find": "type === 'User' || pathInOriginalCwd(path)",
+      "replace": "pathInOriginalCwd(path)"
+    },
+    {
+      "name": "excludes: managed files cannot be excluded",
+      "source": "src/memory/instructions/claudemd/exclusions.ts",
+      "find": "new Set<MemoryType>(['User', 'Project', 'Local'])",
+      "replace": "new Set<MemoryType>(['User', 'Project', 'Local', 'Managed'])"
+    },
+    {
+      "name": "excludes: wildcards cross dot segments",
+      "source": "src/memory/instructions/claudemd/exclusions.ts",
+      "find": "const MATCH_OPTIONS = { dot: true }",
+      "replace": "const MATCH_OPTIONS = { dot: false }"
+    },
+    {
+      "name": "excludes: empty patterns are ignored",
+      "source": "src/memory/instructions/claudemd/exclusions.ts",
+      "find": ".filter(pattern => pattern !== '')",
+      "replace": ".filter(pattern => pattern !== '\\u0000')"
+    },
+    {
+      "name": "excludes: a pattern through a linked directory matches the real path",
+      "source": "src/memory/instructions/claudemd/exclusions.ts",
+      "find": "if (real !== null) resolved.add(real)",
+      "replace": "if (real === '') resolved.add(real)"
+    },
+    {
+      "name": "FIX 4: a glob right after a linked directory is resolved",
+      "source": "src/memory/instructions/claudemd/exclusions.ts",
+      "find": "const literalCount = firstGlob === -1 ? segments.length - 1 : firstGlob",
+      "replace": "const literalCount = firstGlob === -1 ? segments.length - 1 : Math.max(0, firstGlob - 1)"
+    },
+    {
+      "name": "comments: each span ends at its own -->",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "const CLOSED_COMMENT_RE = /<!--[\\s\\S]*?-->/g",
+      "replace": "const CLOSED_COMMENT_RE = /<!--[\\s\\S]*-->/g"
+    },
+    {
+      "name": "includes: @ must start the text or follow whitespace",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "const INCLUDE_REFERENCE_RE = /(?<=^|\\s)@",
+      "replace": "const INCLUDE_REFERENCE_RE = /@"
+    },
+    {
+      "name": "includes: \\  is an escaped space",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "@((?:\\\\ |\\S)+)/g",
+      "replace": "@(\\S+)/g"
+    },
+    {
+      "name": "includes: a reference starting with a symbol is refused",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "|[A-Za-z0-9._-])/",
+      "replace": "|[A-Za-z0-9._#*-])/"
+    },
+    {
+      "name": "includes: @/ alone, or with only a fragment, is refused",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "return path === '' || path === '/' ? null : path",
+      "replace": "return path === '' ? null : path"
+    },
+    {
+      "name": "includes: a #fragment is dropped",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "const fragmentAt = written.indexOf('#')",
+      "replace": "const fragmentAt = written.indexOf('#!')"
+    },
+    {
+      "name": "includes: not found in inline code",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "new Set(['code', 'codespan'])",
+      "replace": "new Set(['code'])"
+    },
+    {
+      "name": "includes: found after a comment, not inside one",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "if (token.type === 'html') return htmlCommentResidue(token.raw ?? '') ?? ''",
+      "replace": "if (token.type === 'html') return token.raw ?? ''"
+    },
+    {
+      "name": "includes: found in list items",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "if (token.items) return token.items.map(item => proseOf(item)).join('\\n')",
+      "replace": "if (token.items) return ''"
+    },
+    {
+      "name": "includes: relative to the including file's directory",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "const baseDir = dirname(basePath)",
+      "replace": "const baseDir = basePath"
+    },
+    {
+      "name": "includes: depth limit of five files",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "export const MAX_INCLUDE_DEPTH = 5",
+      "replace": "export const MAX_INCLUDE_DEPTH = 6"
+    },
+    {
+      "name": "includes: .txt is a text extension",
+      "source": "src/memory/instructions/claudemd/includes.ts",
+      "find": "  '.txt',\n",
+      "replace": ""
+    },
+    {
+      "name": "extensions: a target without an extension is read",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "return extension === '' || TEXT_FILE_EXTENSIONS.has(extension)",
+      "replace": "return TEXT_FILE_EXTENSIONS.has(extension)"
+    },
+    {
+      "name": "extensions: compared lower-cased",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "const extension = extname(filePath).toLowerCase()",
+      "replace": "const extension = extname(filePath)"
+    },
+    {
+      "name": "indexes: truncated and trimmed",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "if (INDEX_TYPES.has(type)) content = truncateEntrypointContent(content).content",
+      "replace": "if (INDEX_TYPES.has(type)) content = content"
+    },
+    {
+      "name": "comments: an unclosed comment stays and the file matches the disk",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "if (residue === null || residue === token.raw) return token.raw",
+      "replace": "if (residue === null) return token.raw"
+    },
+    {
+      "name": "comments: a comment inside a paragraph stays (Findings 6)",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "if (token.type !== 'html') return token.raw",
+      "replace": "if (token.type !== 'html') return token.raw.replace(/<!--[\\s\\S]*?-->/g, '')"
+    },
+    {
+      "name": "content: differs from disk after frontmatter",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "const differs = content !== rawContent",
+      "replace": "const differs = content !== body"
+    },
+    {
+      "name": "content: rawContent holds the disk text when it differs",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "...(differs ? { rawContent } : {}),",
+      "replace": "...{},"
+    },
+    {
+      "name": "frontmatter: paths become globs",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "...(paths === undefined ? {} : { globs: paths }),",
+      "replace": "...{},"
+    },
+    {
+      "name": "external: judged against the original cwd",
+      "source": "src/memory/instructions/claudemd/parsing.ts",
+      "find": "return pathInWorkingPath(path, getOriginalCwd())",
+      "replace": "return pathInWorkingPath(path, getOriginalCwd()) || path.endsWith('.md')"
+    },
+    {
+      "name": "each file once per set",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "if (processedPaths.has(key) || depth >= MAX_INCLUDE_DEPTH) return []",
+      "replace": "if (depth >= MAX_INCLUDE_DEPTH) return []"
+    },
+    {
+      "name": "excluded files are not loaded",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "if (isClaudeMdExcluded(filePath, type)) return []",
+      "replace": "if (false && isClaudeMdExcluded(filePath, type)) return []"
+    },
+    {
+      "name": "a missing file is still recorded",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "  processedPaths.add(key)\n",
+      "replace": ""
+    },
+    {
+      "name": "a link's target is recorded as seen",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "if (isSymlink) processedPaths.add(normalizePathForComparison(resolvedPath))",
+      "replace": "if (isSymlink) void resolvedPath"
+    },
+    {
+      "name": "a link's includes resolve next to its target",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "safelyReadMemoryFileAsync(filePath, type, resolvedPath)",
+      "replace": "safelyReadMemoryFileAsync(filePath, type, filePath)"
+    },
+    {
+      "name": "blank content gives nothing",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "if (info === null || info.content.trim() === '') return []",
+      "replace": "if (info === null) return []"
+    },
+    {
+      "name": "the parent argument is set on the entry",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "[parent === undefined ? info : { ...info, parent }]",
+      "replace": "[info]"
+    },
+    {
+      "name": "external includes need includeExternal",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "if (!includeExternal && !pathInOriginalCwd(target)) continue",
+      "replace": "if (includeExternal && !pathInOriginalCwd(target)) continue"
+    },
+    {
+      "name": "an include names its includer as parent",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "depth + 1, filePath)",
+      "replace": "depth + 1)"
+    },
+    {
+      "name": "rules: the pass keeps scoped or unscoped files",
+      "source": "src/memory/instructions/claudemd/processing.ts",
+      "find": "return loaded.filter(file => isScopedRule(file) === conditionalRule)",
+      "replace": "return loaded"
+    },
+    {
+      "name": "rules: subdirectories are searched",
+      "source": "src/memory/instructions/claudemd/rulesDirectory.ts",
+      "find": "if (entry.isDirectory()) found.push(...(await listRuleFiles(path, visitedDirs)))",
+      "replace": "if (entry.isDirectory()) found.push()"
+    },
+    {
+      "name": "rules: only the .md suffix, case-sensitive",
+      "source": "src/memory/instructions/claudemd/rulesDirectory.ts",
+      "find": "return name.endsWith(RULE_FILE_SUFFIX)",
+      "replace": "return name.toLowerCase().endsWith(RULE_FILE_SUFFIX)"
+    },
+    {
+      "name": "rules: a linked directory is followed",
+      "source": "src/memory/instructions/claudemd/rulesDirectory.ts",
+      "find": "if (isDirectory) return listRuleFiles(target, visitedDirs)",
+      "replace": "if (isDirectory) return []"
+    },
+    {
+      "name": "rules: a linked file is reported at its target",
+      "source": "src/memory/instructions/claudemd/rulesDirectory.ts",
+      "find": "return isFile && isRuleFileName(name) ? [target] : []",
+      "replace": "return isFile && isRuleFileName(name) ? [link] : []"
+    },
+    {
+      "name": "rules: the link name decides",
+      "source": "src/memory/instructions/claudemd/rulesDirectory.ts",
+      "find": "isFile && isRuleFileName(name)",
+      "replace": "isFile && isRuleFileName(target)"
+    },
+    {
+      "name": "rules: a dangling link is skipped",
+      "source": "src/memory/instructions/claudemd/rulesDirectory.ts",
+      "find": "  } catch {\n    return []\n  }\n  if (isDirectory)",
+      "replace": "  } catch (error) {\n    throw error\n  }\n  if (isDirectory)"
+    },
+    {
+      "name": "rules: an unreadable or missing directory gives nothing",
+      "source": "src/memory/instructions/claudemd/rulesDirectory.ts",
+      "find": "    noteUnreadable(error, dir)\n    return []",
+      "replace": "    throw error"
+    },
+    {
+      "name": "conditional: managed and user globs anchor at the cwd",
+      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
+      "find": "return type === 'Project' ? dirname(dirname(rulesDir)) : getOriginalCwd()",
+      "replace": "return dirname(dirname(rulesDir))"
+    },
+    {
+      "name": "conditional: a relative target is matched as written",
+      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
+      "find": "const fromAnchor = isAbsolute(targetPath) ? relative(anchor, targetPath) : targetPath",
+      "replace": "const fromAnchor = relative(anchor, targetPath)"
+    },
+    {
+      "name": "conditional: the anchor itself matches nothing",
+      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
+      "find": "if (fromAnchor === '' || isAbsolute(fromAnchor)) return false",
+      "replace": "if (isAbsolute(fromAnchor)) return false"
+    },
+    {
+      "name": "conditional: only matching scoped rules",
+      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
+      "find": "file.globs !== undefined && ruleGlobsMatch(file.globs, targetPath, anchor)",
+      "replace": "file.globs !== undefined"
+    },
+    {
+      "name": "conditional: user rules only with user settings",
+      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
+      "find": "if (!isSettingSourceEnabled('userSettings')) return managed",
+      "replace": "if (false) return managed"
+    },
+    {
+      "name": "nested: projectSettings gates the instruction files",
+      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
+      "find": "if (isSettingSourceEnabled('projectSettings')) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "nested: localSettings gates CLAUDE.local.md",
+      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
       "find": "if (isSettingSourceEnabled('localSettings')) {",
       "replace": "if (true) {"
     },
     {
-      "name": "loader: a nested worktree skips its own files instead",
-      "find": "!pathInWorkingPath(dir, gitRoot)",
-      "replace": "pathInWorkingPath(dir, gitRoot)"
-    },
-    {
-      "name": "loader: --add-dir files load without the variable",
-      "find": "if (isEnvTruthy(process.env.CLAUDIN_ADDITIONAL_DIRECTORIES_CLAUDE_MD)) {",
-      "replace": "if (true) {"
-    },
-    {
-      "name": "loader: the memory index is added even when already loaded",
-      "find": "if (!processedPaths.has(normalizedPath)) {\n          processedPaths.add(normalizedPath)\n          result.push(memdirEntry)",
-      "replace": "if (true) {\n          processedPaths.add(normalizedPath)\n          result.push(memdirEntry)"
-    },
-    {
-      "name": "loader: the external-include approval is inverted",
-      "find": "config.hasClaudeMdExternalIncludesApproved ||\n      false",
-      "replace": "!config.hasClaudeMdExternalIncludesApproved ||\n      false"
-    },
-    {
-      "name": "hook: included files report the eager reason",
-      "find": "const loadReason = file.parent ? 'include' : eagerLoadReason",
-      "replace": "const loadReason = eagerLoadReason"
-    },
-    {
-      "name": "hook: the pending report is never used up",
-      "find": "  shouldFireHook = false\n  const reason = nextEagerLoadReason",
-      "replace": "  const reason = nextEagerLoadReason"
-    },
-    {
-      "name": "prompt: file text is no longer trimmed",
-      "find": "const content = file.content.trim()",
-      "replace": "const content = file.content"
-    },
-    {
-      "name": "prompt: the team index loses its shared-content tag",
-      "find": "<team-memory-content source=\"shared\">",
-      "replace": "<team-memory-content>"
-    },
-    {
-      "name": "include: the depth limit allows one more level",
-      "source": "src/memory/instructions/claudemd/processing.ts",
-      "find": "depth >= MAX_INCLUDE_DEPTH",
-      "replace": "depth > MAX_INCLUDE_DEPTH"
-    },
-    {
-      "name": "include: external targets load without approval",
-      "source": "src/memory/instructions/claudemd/processing.ts",
-      "find": "if (isExternal && !includeExternal) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "include: a link target is not marked as seen",
-      "source": "src/memory/instructions/claudemd/processing.ts",
-      "find": "if (isSymlink) {\n    processedPaths.add(normalizePathForComparison(resolvedPath))",
-      "replace": "if (false) {\n    processedPaths.add(normalizePathForComparison(resolvedPath))"
-    },
-    {
-      "name": "include: targets resolved next to the link, not the target",
-      "source": "src/memory/instructions/claudemd/processing.ts",
-      "find": "await safelyReadMemoryFileAsync(filePath, type, resolvedPath)",
-      "replace": "await safelyReadMemoryFileAsync(filePath, type, filePath)"
-    },
-    {
-      "name": "rules: the conditional split is inverted",
-      "source": "src/memory/instructions/claudemd/processing.ts",
-      "find": "files.filter(f => (conditionalRule ? f.globs : !f.globs))",
-      "replace": "files.filter(f => (conditionalRule ? !f.globs : f.globs))"
-    },
-    {
-      "name": "rules: any dotted name counts as a rule",
-      "source": "src/memory/instructions/claudemd/processing.ts",
-      "find": "entry.name.endsWith('.md')",
-      "replace": "entry.name.includes('.')"
-    },
-    {
-      "name": "excludes: user files can no longer be excluded",
-      "source": "src/memory/instructions/claudemd/exclusions.ts",
-      "find": "if (type !== 'User' && type !== 'Project' && type !== 'Local') {",
-      "replace": "if (type !== 'Project' && type !== 'Local') {"
-    },
-    {
-      "name": "excludes: globs stop matching dot directories",
-      "source": "src/memory/instructions/claudemd/exclusions.ts",
-      "find": "const matchOpts = { dot: true }",
-      "replace": "const matchOpts = { dot: false }"
-    },
-    {
-      "name": "excludes: linked prefixes are not resolved",
-      "source": "src/memory/instructions/claudemd/exclusions.ts",
-      "find": "expanded.push(resolvedPattern)",
-      "replace": "void resolvedPattern"
-    },
-    {
-      "name": "include: .gradle leaves the text extensions",
-      "source": "src/memory/instructions/claudemd/includes.ts",
-      "find": "'.gradle',",
-      "replace": "'.gradlex',"
-    },
-    {
-      "name": "include: an @ glued to a word is followed",
-      "source": "src/memory/instructions/claudemd/includes.ts",
-      "find": "/(?:^|\\s)@((?:[^\\s\\\\]|\\\\ )+)/g",
-      "replace": "/@((?:[^\\s\\\\]|\\\\ )+)/g"
-    },
-    {
-      "name": "include: the #fragment is kept in the path",
-      "source": "src/memory/instructions/claudemd/includes.ts",
-      "find": "path = path.substring(0, hashIndex)",
-      "replace": "path = path"
-    },
-    {
-      "name": "include: text after a closing comment is not scanned",
-      "source": "src/memory/instructions/claudemd/includes.ts",
-      "find": "if (residue.trim().length > 0) {\n            extractPathsFromText(residue)",
-      "replace": "if (false) {\n            extractPathsFromText(residue)"
-    },
-    {
-      "name": "include: list items are not scanned",
-      "source": "src/memory/instructions/claudemd/includes.ts",
-      "find": "if (element.items) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "parse: binary extensions are read",
-      "source": "src/memory/instructions/claudemd/parsing.ts",
-      "find": "if (ext && !TEXT_FILE_EXTENSIONS.has(ext)) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "parse: the extension check is case-sensitive",
-      "source": "src/memory/instructions/claudemd/parsing.ts",
-      "find": "const ext = extname(filePath).toLowerCase()",
-      "replace": "const ext = extname(filePath)"
-    },
-    {
-      "name": "parse: a stripped comment keeps its whole line",
-      "source": "src/memory/instructions/claudemd/parsing.ts",
-      "find": "result += residue",
-      "replace": "result += token.raw"
-    },
-    {
-      "name": "parse: the auto-memory index is not truncated",
-      "source": "src/memory/instructions/claudemd/parsing.ts",
-      "find": "if (type === 'AutoMem' || type === 'TeamMem') {",
-      "replace": "if (type === 'TeamMem') {"
-    },
-    {
-      "name": "nested: project globs anchored at .claudin, not its parent",
+      "name": "nested: unconditional rules are included",
       "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
-      "find": "? dirname(dirname(rulesDir)) // Parent of .claudin",
-      "replace": "? dirname(rulesDir) // Parent of .claudin"
+      "find": "loaded.push(...rules.filter(rule => !isScopedRule(rule)))",
+      "replace": "loaded.push(...rules.filter(rule => !isScopedRule(rule) && false))"
     },
     {
-      "name": "nested: user globs anchored at the rules directory",
+      "name": "nested: no external include is followed",
       "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
-      "find": ": getOriginalCwd() // Project root for managed/user rules",
-      "replace": ": dirname(dirname(rulesDir)) // Project root for managed/user rules"
+      "find": "loaded.push(...(await processMemoryFile(path, 'Project', processedPaths, false)))",
+      "replace": "loaded.push(...(await processMemoryFile(path, 'Project', processedPaths, true)))"
     },
     {
-      "name": "nested: unconditional pass shares the set with the conditional one",
-      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
-      "find": "const unconditionalProcessedPaths = new Set(processedPaths)",
-      "replace": "const unconditionalProcessedPaths = processedPaths"
+      "name": "walk: top down",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "dirname(dir) !== dir; dir = dirname(dir)) dirs.unshift(dir)",
+      "replace": "dirname(dir) !== dir; dir = dirname(dir)) dirs.push(dir)"
     },
     {
-      "name": "nested: project instruction files ignore projectSettings",
-      "source": "src/memory/instructions/claudemd/nestedDirectories.ts",
-      "find": "// Process project memory files (AGENTS.md first, otherwise CLAUDE.md, plus .claudin/CLAUDE.md)\n  if (isSettingSourceEnabled('projectSettings')) {",
-      "replace": "// Process project memory files (AGENTS.md first, otherwise CLAUDE.md, plus .claudin/CLAUDE.md)\n  if (true) {"
+      "name": "walk: does not stop at the repository root (Findings 1)",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "for (let dir = cwd; dirname(dir) !== dir;",
+      "replace": "for (let dir = cwd; dirname(dir) !== dir && dir !== (gitRoot === null ? '' : dirname(gitRoot));"
     },
     {
-      "name": "predicate: CLAUDE.local.md is not a memory file",
-      "source": "src/memory/instructions/claudemd/predicates.ts",
-      "find": "name === 'CLAUDE.local.md'",
-      "replace": "name === 'CLAUDE.local'"
+      "name": "worktree: the checkout outside a nested worktree skips checked-in files",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "return dirs.map(dir => ({ dir, skipCheckedIn: insideCheckoutOnly(dir) }))",
+      "replace": "return dirs.map(dir => ({ dir, skipCheckedIn: false }))"
     },
     {
-      "name": "predicate: a file at exactly the cap counts as large",
-      "source": "src/memory/instructions/claudemd/predicates.ts",
-      "find": "f.content.length > MAX_MEMORY_CHARACTER_COUNT",
-      "replace": "f.content.length >= MAX_MEMORY_CHARACTER_COUNT"
+      "name": "worktree: the worktree itself keeps its checked-in files",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "isWithin(dir, canonicalRoot) && !isWithin(dir, gitRoot)",
+      "replace": "isWithin(dir, canonicalRoot)"
     },
     {
-      "name": "externals: user includes are reported",
-      "source": "src/memory/instructions/claudemd/externalIncludes.ts",
-      "find": "file.type !== 'User' && ",
-      "replace": ""
+      "name": "sources: the setting sources gate user, project and local",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "const open = (row: SourceRow): boolean => row.gate === null || isEnabled(row.gate)",
+      "replace": "const open = (row: SourceRow): boolean => true"
     },
     {
-      "name": "names: CLAUDE.md wins over AGENTS.md",
-      "source": "src/memory/instructions/projectInstructions.ts",
-      "find": "return existsSync(primaryPath)\n    ? primaryPath\n    : fallbackPath",
-      "replace": "return existsSync(fallbackPath)\n    ? fallbackPath\n    : primaryPath"
+      "name": "sources: a skipping stop drops checked-in rows only",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "if (!open(source) || (source.checkedIn && skipCheckedIn)) continue",
+      "replace": "if (!open(source) || skipCheckedIn) continue"
     },
     {
-      "name": "names: the fallback name changes",
-      "source": "src/memory/instructions/projectInstructions.ts",
-      "find": "const FALLBACK_PROJECT_INSTRUCTION_FILE = 'CLAUDE.md'",
-      "replace": "const FALLBACK_PROJECT_INSTRUCTION_FILE = 'CLAUDE.markdown'"
+      "name": "add-dir: no local file from an added directory",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "if (source.fromAddedDirectory) reads.push",
+      "replace": "if (true) reads.push"
+    },
+    {
+      "name": "sources: user files may include anything",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "const includeExternal = type === 'User' || externalApproved",
+      "replace": "const includeExternal = externalApproved"
+    },
+    {
+      "name": "sources: .claudin/CLAUDE.md beside the root file",
+      "source": "src/memory/instructions/claudemd/sessionSources.ts",
+      "find": "path: dir => join(dir, '.claudin', 'CLAUDE.md'),",
+      "replace": "path: dir => join(dir, '.claudin', 'AGENTS.md'),"
+    },
+    {
+      "name": "approval: the project config allows external includes",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "forceIncludeExternal || getCurrentProjectConfig().hasClaudeMdExternalIncludesApproved === true",
+      "replace": "forceIncludeExternal"
+    },
+    {
+      "name": "add-dir: read only with the variable",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "addedDirectories: isEnvTruthy(process.env.CLAUDIN_ADDITIONAL_DIRECTORIES_CLAUDE_MD)",
+      "replace": "addedDirectories: true"
+    },
+    {
+      "name": "index: only with auto memory on",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "if (isAutoMemoryEnabled()) indexes.push({ type: 'AutoMem'",
+      "replace": "if (true) indexes.push({ type: 'AutoMem'"
+    },
+    {
+      "name": "index: not added twice",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "if (present.has(normalizePathForComparison(path))) continue",
+      "replace": "if (false) continue"
+    },
+    {
+      "name": "index: an empty index still gives an entry",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "if (info !== null) found.push(info)",
+      "replace": "if (info !== null && info.content !== '') found.push(info)"
+    },
+    {
+      "name": "team index: follows team memory (child run)",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "if (teamMemPaths?.isTeamMemoryEnabled()) indexes.push",
+      "replace": "if (teamMemPaths) indexes.push"
+    },
+    {
+      "name": "team index: fenced in the instruction block (child run)",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "fenceTeamMemory: feature('TEAMMEM') ? true : false,",
+      "replace": "fenceTeamMemory: false,"
+    },
+    {
+      "name": "hooks: a forced load does not report",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "if (!forceIncludeExternal) reportInstructionsLoaded(files)",
+      "replace": "reportInstructionsLoaded(files)"
+    },
+    {
+      "name": "hooks: the pending report is used up without a listener",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "  const reason = consumeNextEagerLoadReason()\n  if (reason === undefined || !hasInstructionsLoadedHook()) return",
+      "replace": "  if (!hasInstructionsLoadedHook()) return\n  const reason = consumeNextEagerLoadReason()\n  if (reason === undefined) return"
+    },
+    {
+      "name": "hooks: an include is reported as include",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "parent === undefined ? reason : 'include'",
+      "replace": "reason"
+    },
+    {
+      "name": "hooks: memory indexes are not reported",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "if (!isInstructionsMemoryType(type)) continue",
+      "replace": "if (false) continue"
+    },
+    {
+      "name": "hooks: the globs ride along",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "      globs,\n      parentFilePath: parent,",
+      "replace": "      parentFilePath: parent,"
+    },
+    {
+      "name": "hooks: one report per arming",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "  shouldFireHook = false\n  return nextEagerLoadReason",
+      "replace": "  return nextEagerLoadReason"
+    },
+    {
+      "name": "hooks: a reset arms a report with its reason",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "  nextEagerLoadReason = reason\n  shouldFireHook = true",
+      "replace": "  shouldFireHook = true"
+    },
+    {
+      "name": "cache: clearing drops every entry",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "getMemoryFiles.cache.clear?.()",
+      "replace": "void getMemoryFiles.cache"
+    },
+    {
+      "name": "FIX 5: an absent argument and false share one entry",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "(forceIncludeExternal?: boolean) => forceIncludeExternal === true,",
+      "replace": "(forceIncludeExternal?: boolean) => forceIncludeExternal,"
+    },
+    {
+      "name": "warning: off once shown",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "if (config.hasClaudeMdExternalIncludesApproved || config.hasClaudeMdExternalIncludesWarningShown) return false",
+      "replace": "if (config.hasClaudeMdExternalIncludesApproved) return false"
+    },
+    {
+      "name": "warning: judged on the forced load",
+      "source": "src/memory/instructions/claudemd.ts",
+      "find": "return hasExternalClaudeMdIncludes(await getMemoryFiles(true))",
+      "replace": "return hasExternalClaudeMdIncludes(await getMemoryFiles())"
+    },
+    {
+      "name": "FIX 3: Managed has its own label",
+      "source": "src/memory/instructions/claudemd/instructionBlock.ts",
+      "find": "Managed: \"instructions set by the organization's managed policy\",",
+      "replace": "Managed: \"the user's private global instructions, for all projects\","
+    },
+    {
+      "name": "block: empty entries and filtered types are dropped",
+      "source": "src/memory/instructions/claudemd/instructionBlock.ts",
+      "find": ".filter(file => file.content !== '' && (filter === undefined || filter(file.type)))",
+      "replace": ".filter(file => filter === undefined || filter(file.type))"
+    },
+    {
+      "name": "block: content is trimmed",
+      "source": "src/memory/instructions/claudemd/instructionBlock.ts",
+      "find": "const text = file.content.trim()",
+      "replace": "const text = file.content"
+    },
+    {
+      "name": "block: nothing to show gives an empty string",
+      "source": "src/memory/instructions/claudemd/instructionBlock.ts",
+      "find": "return blocks.length === 0 ? '' : [preamble, ...blocks].join(BLOCK_SEPARATOR)",
+      "replace": "return [preamble, ...blocks].join(BLOCK_SEPARATOR)"
+    },
+    {
+      "name": "block: the Local label",
+      "source": "src/memory/instructions/claudemd/instructionBlock.ts",
+      "find": "Local: \"the user's private project instructions, not checked in\",",
+      "replace": "Local: \"the user's private project instructions\","
     }
   ]
 }

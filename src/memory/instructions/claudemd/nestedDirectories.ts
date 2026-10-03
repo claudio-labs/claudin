@@ -1,5 +1,5 @@
 import ignore from 'ignore'
-import { dirname, isAbsolute, join, relative } from 'path'
+import { dirname, isAbsolute, join, relative, sep } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import {
   getManagedClaudeRulesDir,
@@ -10,171 +10,80 @@ import type { MemoryType } from 'src/memory/memdir/types.js'
 import { getProjectInstructionFilePath } from 'src/memory/instructions/projectInstructions.js'
 import { isSettingSourceEnabled } from 'src/platform/settings/constants.js'
 import {
+  isScopedRule,
+  loadRulesDirectory,
   processMdRules,
   processMemoryFile,
 } from 'src/memory/instructions/claudemd/processing.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 
+const PARENT_SEGMENT = '..'
+
 /**
- * Gets managed and user conditional rules that match the target path.
- * This is the first phase of nested memory loading.
- *
- * @param targetPath The target file path to match against glob patterns
- * @param processedPaths Set of already processed file paths (will be mutated)
- * @returns Array of MemoryFileInfo objects for matching conditional rules
+ * Whether a rule's `paths:` patterns cover `targetPath`, with `.gitignore`
+ * semantics, relative to `anchor`. An absolute target is made relative to the
+ * anchor; a relative one is taken as written. A target outside the anchor, or
+ * the anchor itself, matches nothing.
  */
+export function ruleGlobsMatch(globs: readonly string[], targetPath: string, anchor: string): boolean {
+  const fromAnchor = isAbsolute(targetPath) ? relative(anchor, targetPath) : targetPath
+  if (fromAnchor === '' || isAbsolute(fromAnchor)) return false
+  if (fromAnchor === PARENT_SEGMENT || fromAnchor.startsWith(PARENT_SEGMENT + sep)) return false
+  return ignore().add([...globs]).ignores(fromAnchor.split(sep).join('/'))
+}
+
+/** Project globs are relative to the directory holding `.claudin`; managed and user ones to the cwd. */
+function globAnchor(rulesDir: string, type: MemoryType): string {
+  return type === 'Project' ? dirname(dirname(rulesDir)) : getOriginalCwd()
+}
+
+function matchingScopedRules(files: MemoryFileInfo[], targetPath: string, anchor: string): MemoryFileInfo[] {
+  return files.filter(file => file.globs !== undefined && ruleGlobsMatch(file.globs, targetPath, anchor))
+}
+
 export async function getManagedAndUserConditionalRules(
   targetPath: string,
   processedPaths: Set<string>,
 ): Promise<MemoryFileInfo[]> {
-  const result: MemoryFileInfo[] = []
-
-  // Process Managed conditional .claudin/rules/*.md files
-  const managedClaudeRulesDir = getManagedClaudeRulesDir()
-  result.push(
-    ...(await processConditionedMdRules(
-      targetPath,
-      managedClaudeRulesDir,
-      'Managed',
-      processedPaths,
-      false,
-    )),
-  )
-
-  if (isSettingSourceEnabled('userSettings')) {
-    // Process User conditional .claudin/rules/*.md files
-    const userClaudeRulesDir = getUserClaudeRulesDir()
-    result.push(
-      ...(await processConditionedMdRules(
-        targetPath,
-        userClaudeRulesDir,
-        'User',
-        processedPaths,
-        true,
-      )),
-    )
-  }
-
-  return result
+  const managed = await processConditionedMdRules(targetPath, getManagedClaudeRulesDir(), 'Managed', processedPaths, false)
+  if (!isSettingSourceEnabled('userSettings')) return managed
+  const user = await processConditionedMdRules(targetPath, getUserClaudeRulesDir(), 'User', processedPaths, true)
+  return [...managed, ...user]
 }
 
-/**
- * Gets memory files for a single nested directory (between CWD and target).
- * Loads the root project instruction file, unconditional rules, and conditional rules for that directory.
- *
- * @param dir The directory to process
- * @param targetPath The target file path (for conditional rule matching)
- * @param processedPaths Set of already processed file paths (will be mutated)
- * @returns Array of MemoryFileInfo objects
- */
 export async function getMemoryFilesForNestedDirectory(
   dir: string,
   targetPath: string,
   processedPaths: Set<string>,
 ): Promise<MemoryFileInfo[]> {
-  const result: MemoryFileInfo[] = []
-
-  // Process project memory files (AGENTS.md first, otherwise CLAUDE.md, plus .claudin/CLAUDE.md)
+  const loaded: MemoryFileInfo[] = []
   if (isSettingSourceEnabled('projectSettings')) {
-    const projectPath = getProjectInstructionFilePath(
-      dir,
-      getFsImplementation().existsSync,
-    )
-    result.push(
-      ...(await processMemoryFile(
-        projectPath,
-        'Project',
-        processedPaths,
-        false,
-      )),
-    )
-    const dotClaudePath = join(dir, '.claudin', 'CLAUDE.md')
-    result.push(
-      ...(await processMemoryFile(
-        dotClaudePath,
-        'Project',
-        processedPaths,
-        false,
-      )),
-    )
+    const rootFile = getProjectInstructionFilePath(dir, path => getFsImplementation().existsSync(path))
+    for (const path of [rootFile, join(dir, '.claudin', 'CLAUDE.md')]) {
+      loaded.push(...(await processMemoryFile(path, 'Project', processedPaths, false)))
+    }
   }
-
-  // Process local memory file (CLAUDE.local.md)
   if (isSettingSourceEnabled('localSettings')) {
-    const localPath = join(dir, 'CLAUDE.local.md')
-    result.push(
-      ...(await processMemoryFile(localPath, 'Local', processedPaths, false)),
-    )
+    loaded.push(...(await processMemoryFile(join(dir, 'CLAUDE.local.md'), 'Local', processedPaths, false)))
   }
 
+  // One read of the rules serves both halves: a second pass would find every
+  // rule file already seen.
   const rulesDir = join(dir, '.claudin', 'rules')
-
-  // Process project unconditional .claudin/rules/*.md files, which were not eagerly loaded
-  // Use a separate processedPaths set to avoid marking conditional rule files as processed
-  const unconditionalProcessedPaths = new Set(processedPaths)
-  result.push(
-    ...(await processMdRules({
-      rulesDir,
-      type: 'Project',
-      processedPaths: unconditionalProcessedPaths,
-      includeExternal: false,
-      conditionalRule: false,
-    })),
-  )
-
-  // Process project conditional .claudin/rules/*.md files
-  result.push(
-    ...(await processConditionedMdRules(
-      targetPath,
-      rulesDir,
-      'Project',
-      processedPaths,
-      false,
-    )),
-  )
-
-  // processedPaths must be seeded with unconditional paths for subsequent directories
-  for (const path of unconditionalProcessedPaths) {
-    processedPaths.add(path)
-  }
-
-  return result
+  const rules = await loadRulesDirectory({ rulesDir, type: 'Project', processedPaths, includeExternal: false })
+  loaded.push(...rules.filter(rule => !isScopedRule(rule)))
+  loaded.push(...matchingScopedRules(rules, targetPath, globAnchor(rulesDir, 'Project')))
+  return loaded
 }
 
-/**
- * Gets conditional rules for a CWD-level directory (from root up to CWD).
- * Only processes conditional rules since unconditional rules are already loaded eagerly.
- *
- * @param dir The directory to process
- * @param targetPath The target file path (for conditional rule matching)
- * @param processedPaths Set of already processed file paths (will be mutated)
- * @returns Array of MemoryFileInfo objects
- */
 export async function getConditionalRulesForCwdLevelDirectory(
   dir: string,
   targetPath: string,
   processedPaths: Set<string>,
 ): Promise<MemoryFileInfo[]> {
-  const rulesDir = join(dir, '.claudin', 'rules')
-  return processConditionedMdRules(
-    targetPath,
-    rulesDir,
-    'Project',
-    processedPaths,
-    false,
-  )
+  return processConditionedMdRules(targetPath, join(dir, '.claudin', 'rules'), 'Project', processedPaths, false)
 }
 
-/**
- * Processes all .md files in the .claudin/rules/ directory and its subdirectories,
- * filtering to only include files with frontmatter paths that match the target path
- * @param targetPath The file path to match against frontmatter glob patterns
- * @param rulesDir The path to the rules directory
- * @param type Type of memory file (User, Project, Local)
- * @param processedPaths Set of already processed file paths
- * @param includeExternal Whether to include external files
- * @returns Array of MemoryFileInfo objects that match the target path
- */
 export async function processConditionedMdRules(
   targetPath: string,
   rulesDir: string,
@@ -182,40 +91,6 @@ export async function processConditionedMdRules(
   processedPaths: Set<string>,
   includeExternal: boolean,
 ): Promise<MemoryFileInfo[]> {
-  const conditionedRuleMdFiles = await processMdRules({
-    rulesDir,
-    type,
-    processedPaths,
-    includeExternal,
-    conditionalRule: true,
-  })
-
-  // Filter to only include files whose globs patterns match the targetPath
-  return conditionedRuleMdFiles.filter(file => {
-    if (!file.globs || file.globs.length === 0) {
-      return false
-    }
-
-    // For Project rules: glob patterns are relative to the directory containing .claudin
-    // For Managed/User rules: glob patterns are relative to the original CWD
-    const baseDir =
-      type === 'Project'
-        ? dirname(dirname(rulesDir)) // Parent of .claudin
-        : getOriginalCwd() // Project root for managed/user rules
-
-    const relativePath = isAbsolute(targetPath)
-      ? relative(baseDir, targetPath)
-      : targetPath
-    // ignore() throws on empty strings, paths escaping the base (../),
-    // and absolute paths (Windows cross-drive relative() returns absolute).
-    // Files outside baseDir can't match baseDir-relative globs anyway.
-    if (
-      !relativePath ||
-      relativePath.startsWith('..') ||
-      isAbsolute(relativePath)
-    ) {
-      return false
-    }
-    return ignore().add(file.globs).ignores(relativePath)
-  })
+  const scoped = await processMdRules({ rulesDir, type, processedPaths, includeExternal, conditionalRule: true })
+  return matchingScopedRules(scoped, targetPath, globAnchor(rulesDir, type))
 }
