@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
 import { renderToString } from 'src/terminal/render/staticRender.js'
@@ -51,6 +51,13 @@ mock.module('src/agent/cost-tracker.js', () => ({
   hasUnknownModelCost: () => unknownCost,
   getProjectTotals: () => projectTotals,
 }))
+
+// Bun never reverts a mock.module: left in place, these getters report this
+// file's counters to every later file, and the --continue/--resume cost
+// restore in sessionLoad's suite read zeros.
+afterAll(() => {
+  mock.module('src/agent/cost-tracker.js', () => realCostTracker)
+})
 
 function resetState() {
   totalCost = 0
