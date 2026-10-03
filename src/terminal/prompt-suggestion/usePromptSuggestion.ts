@@ -1,6 +1,5 @@
 import { useCallback, useRef } from 'react'
 import { useTerminalFocus } from 'src/terminal/ink/hooks/use-terminal-focus.js'
-import { abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js'
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
 import { computeGhostRemainder } from 'src/terminal/prompt-suggestion/promptSuggestionGhost.js'
 
@@ -72,8 +71,6 @@ export function usePromptSuggestion({
   }
 
   const resetSuggestion = useCallback(() => {
-    abortSpeculation(setAppState)
-
     setAppState(prev => ({
       ...prev,
       promptSuggestion: {

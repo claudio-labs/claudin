@@ -19,7 +19,6 @@ import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js
 // Type import is erased at build time — safe even though module is ant-gated.
 import type { LocalWorkflowTaskState } from 'src/agent/tasks/LocalWorkflowTask/LocalWorkflowTask.js';
 import type { MonitorMcpTaskState } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
-import { RemoteAgentTask, type RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { ContainerTaskState } from 'src/agent/tasks/ContainerTask/types.js';
 import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js';
 import type { McpServerTaskState } from 'src/agent/tasks/McpServerTask/types.js';
@@ -47,7 +46,6 @@ import { ContainerLogsDialog } from 'src/agent/ui/tasks/ContainerLogsDialog.js';
 import { DreamDetailDialog } from 'src/agent/ui/tasks/DreamDetailDialog.js';
 import { InProcessTeammateDetailDialog } from 'src/agent/ui/tasks/InProcessTeammateDetailDialog.js';
 import { McpServerDetailDialog } from 'src/agent/ui/tasks/McpServerDetailDialog.js';
-import { RemoteSessionDetailDialog } from 'src/agent/ui/tasks/RemoteSessionDetailDialog.js';
 import { ShellDetailDialog } from 'src/agent/ui/tasks/ShellDetailDialog.js';
 type ViewState = {
   mode: 'list';
@@ -68,12 +66,6 @@ type ListItem = {
   label: string;
   status: string;
   task: DeepImmutable<LocalShellTaskState>;
-} | {
-  id: string;
-  type: 'remote_agent';
-  label: string;
-  status: string;
-  task: DeepImmutable<RemoteAgentTaskState>;
 } | {
   id: string;
   type: 'local_agent';
@@ -186,7 +178,6 @@ export function BackgroundTasksDialog({
   // Memoize the sorted and categorized items together to ensure stable references
   const {
     bashTasks,
-    remoteSessions,
     agentTasks,
     teammateTasks,
     workflowTasks,
@@ -209,7 +200,6 @@ export function BackgroundTasksDialog({
       return bTime - aTime;
     });
     const bash = sorted.filter(item => item.type === 'local_bash');
-    const remote = sorted.filter(item_0 => item_0.type === 'remote_agent');
     // Exclude foregrounded task - it's being viewed in the main UI, not a background task
     const agent = sorted.filter(item_1 => item_1.type === 'local_agent' && item_1.id !== foregroundedTaskId);
     const workflows = sorted.filter(item_2 => item_2.type === 'local_workflow');
@@ -228,7 +218,6 @@ export function BackgroundTasksDialog({
     }] : [];
     return {
       bashTasks: bash,
-      remoteSessions: remote,
       agentTasks: agent,
       workflowTasks: workflows,
       mcpMonitors: monitorMcp,
@@ -237,11 +226,11 @@ export function BackgroundTasksDialog({
       dreamTasks,
       teammateTasks: [...leaderItem, ...teammates],
       // Order MUST match JSX render order (teammates \u2192 bash \u2192 monitorMcp \u2192
-      // containers \u2192 mcpServers \u2192 remote \u2192 agent \u2192 workflows \u2192 dream) so \u2193/\u2191
+      // containers \u2192 mcpServers \u2192 agent \u2192 workflows \u2192 dream) so \u2193/\u2191
       // navigation moves the cursor visually downward. That order is also
       // FOOTER_GROUP_ORDER's, so the cursor walks the same sequence here as in
       // the inline footer tree.
-      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...containers, ...mcpServers, ...remote, ...agent, ...workflows, ...dreamTasks]
+      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...containers, ...mcpServers, ...agent, ...workflows, ...dreamTasks]
     };
   }, [typedTasks, foregroundedTaskId, showSpinnerTree]);
   const currentSelection = allSelectableItems[selectedIndex] ?? null;
@@ -326,9 +315,6 @@ export function BackgroundTasksDialog({
   async function killDreamTask(taskId_2: string): Promise<void> {
     await DreamTask.kill(taskId_2, setAppState);
   }
-  async function killRemoteAgentTask(taskId_3: string): Promise<void> {
-    await RemoteAgentTask.kill(taskId_3, setAppState);
-  }
 
   // Wrap onDone in useEffectEvent to get a stable reference that always calls
   // the current onDone callback without causing the effect to re-fire.
@@ -388,8 +374,6 @@ export function BackgroundTasksDialog({
         return <ShellDetailDialog shell={task_0} onDone={onDone} onKillShell={() => void killShellTask(task_0.id)} onBack={goBackToList} key={`shell-${task_0.id}`} />;
       case 'local_agent':
         return <AsyncAgentDetailDialog agent={task_0} onDone={onDone} onKillAgent={() => void killAgentTask(task_0.id)} onBack={goBackToList} key={`agent-${task_0.id}`} />;
-      case 'remote_agent':
-        return <RemoteSessionDetailDialog session={task_0} onDone={onDone} toolUseContext={toolUseContext} onBack={goBackToList} onKill={task_0.status !== 'running' ? undefined : () => void killRemoteAgentTask(task_0.id)} key={`session-${task_0.id}`} />;
       case 'in_process_teammate':
         return <InProcessTeammateDetailDialog teammate={task_0} onDone={onDone} onKill={task_0.status === 'running' ? () => void killTeammateTask(task_0.id) : undefined} onBack={goBackToList} onForeground={task_0.status === 'running' ? () => {
           enterTeammateView(task_0.id, setAppState);
@@ -415,7 +399,7 @@ export function BackgroundTasksDialog({
     }
   }
   const runningBashCount = count(bashTasks, _ => _.status === 'running');
-  const runningAgentCount = count(remoteSessions, __0 => __0.status === 'running' || __0.status === 'pending') + count(agentTasks, __1 => __1.status === 'running');
+  const runningAgentCount = count(agentTasks, __1 => __1.status === 'running');
   const runningTeammateCount = count(teammateTasks, __2 => __2.status === 'running');
   const subtitle = intersperse([...(runningTeammateCount > 0 ? [<Text key="teammates">
               {runningTeammateCount}{' '}
@@ -452,7 +436,7 @@ export function BackgroundTasksDialog({
       <Dialog title="Background tasks" subtitle={<>{subtitle}</>} onCancel={handleCancel} color="background" inputGuide={renderInputGuide}>
         {allSelectableItems.length === 0 ? <Text dimColor>No tasks currently running</Text> : <Box flexDirection="column">
             {teammateTasks.length > 0 && <Box flexDirection="column">
-                {(bashTasks.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0) && <Text dimColor>
+                {(bashTasks.length > 0 || agentTasks.length > 0) && <Text dimColor>
                     <Text bold>{'  '}Agents</Text> (
                     {count(teammateTasks, i => i.type !== 'leader')})
                   </Text>}
@@ -462,7 +446,7 @@ export function BackgroundTasksDialog({
               </Box>}
 
             {bashTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 ? 1 : 0}>
-                {(teammateTasks.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0) && <Text dimColor>
+                {(teammateTasks.length > 0 || agentTasks.length > 0) && <Text dimColor>
                     <Text bold>{'  '}Shells</Text> ({bashTasks.length})
                   </Text>}
                 <Box flexDirection="column">
@@ -497,17 +481,7 @@ export function BackgroundTasksDialog({
                 </Box>
               </Box>}
 
-            {remoteSessions.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 ? 1 : 0}>
-                <Text dimColor>
-                  <Text bold>{'  '}Remote agents</Text> ({remoteSessions.length}
-                  )
-                </Text>
-                <Box flexDirection="column">
-                  {remoteSessions.map(item_8 => <Item key={item_8.id} item={item_8} isSelected={item_8.id === currentSelection?.id} />)}
-                </Box>
-              </Box>}
-
-            {agentTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 || remoteSessions.length > 0 ? 1 : 0}>
+            {agentTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 ? 1 : 0}>
                 <Text dimColor>
                   <Text bold>{'  '}Local agents</Text> ({agentTasks.length})
                 </Text>
@@ -516,7 +490,7 @@ export function BackgroundTasksDialog({
                 </Box>
               </Box>}
 
-            {workflowTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0 ? 1 : 0}>
+            {workflowTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 || agentTasks.length > 0 ? 1 : 0}>
                 <Text dimColor>
                   <Text bold>{'  '}Workflows</Text> ({workflowTasks.length})
                 </Text>
@@ -525,7 +499,7 @@ export function BackgroundTasksDialog({
                 </Box>
               </Box>}
 
-            {dreamTasks_0.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0 || workflowTasks.length > 0 ? 1 : 0}>
+            {dreamTasks_0.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || mcpServerTasks.length > 0 || agentTasks.length > 0 || workflowTasks.length > 0 ? 1 : 0}>
                 <Box flexDirection="column">
                   {dreamTasks_0.map(item_11 => <Item key={item_11.id} item={item_11} isSelected={item_11.id === currentSelection?.id} />)}
                 </Box>
@@ -542,8 +516,6 @@ export function toListItem(task: BackgroundTaskState): ListItem {
   switch (task.type) {
     case 'local_bash':
       return { id: task.id, type: 'local_bash', label, status: task.status, task };
-    case 'remote_agent':
-      return { id: task.id, type: 'remote_agent', label, status: task.status, task };
     case 'local_agent':
       return { id: task.id, type: 'local_agent', label, status: task.status, task };
     case 'in_process_teammate':

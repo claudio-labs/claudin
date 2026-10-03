@@ -10,7 +10,6 @@ import { registerAgentsCommand } from 'src/platform/main/commands/agents.js';
 import { registerAuthCommands } from 'src/platform/main/commands/auth.js';
 import { registerAutoModeCommand } from 'src/platform/main/commands/autoMode.js';
 import { registerDoctorCommand } from 'src/platform/main/commands/doctor.js';
-import { registerInstallCommand } from 'src/platform/main/commands/install.js';
 import { registerMcpCommands } from 'src/platform/main/commands/mcp.js';
 import { registerPluginCommands } from 'src/platform/main/commands/plugin.js';
 import { registerRemoteControlCommand } from 'src/platform/main/commands/remoteControl.js';
@@ -42,7 +41,6 @@ export function registerSubcommands(
 
   registerDoctorCommand(program);
   registerUpdateCommand(program);
-  registerInstallCommand(program);
   registerWorkflowCommand(program);
 
   return program;

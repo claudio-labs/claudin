@@ -178,8 +178,6 @@ export type State = {
   mainThreadAgentType: string | undefined
   // Remote mode (--remote flag)
   isRemoteMode: boolean
-  // Direct connect server URL (for display in header)
-  directConnectServerUrl: string | undefined
   // System prompt section cache state
   systemPromptSectionCache: Map<string, string | null>
   // Last date emitted to the model (for detecting midnight date changes)

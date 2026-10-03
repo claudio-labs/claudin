@@ -28,8 +28,6 @@ const getWebFetchTool = () =>
   require('src/tools/WebFetchTool/WebFetchTool.js').WebFetchTool as typeof import('src/tools/WebFetchTool/WebFetchTool.js').WebFetchTool
 const getTaskStopTool = () =>
   require('src/tools/TaskStopTool/TaskStopTool.js').TaskStopTool as typeof import('src/tools/TaskStopTool/TaskStopTool.js').TaskStopTool
-const getBriefTool = () =>
-  require('src/tools/BriefTool/BriefTool.js').BriefTool as typeof import('src/tools/BriefTool/BriefTool.js').BriefTool
 const getLSPTool = () =>
   require('src/tools/LSPTool/LSPTool.js').LSPTool as typeof import('src/tools/LSPTool/LSPTool.js').LSPTool
 const getRunTestsTool = () =>
@@ -253,7 +251,6 @@ export function getAllBaseTools(): Tools {
     // one-call replacement for `sleep N && check` loops. Killswitch documented
     // at the top of WaitForTool.ts.
     ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_WAITFOR_TOOL) ? [] : [getWaitForTool()]),
-    getBriefTool(),
     ...(getPowerShellTool() ? [getPowerShellTool()] : []),
     ...(process.env.NODE_ENV === 'test' ? [getTestingPermissionTool()] : []),
     // MCP resource tools are added conditionally by fetchCapabilities.ts

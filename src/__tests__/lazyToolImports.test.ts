@@ -96,11 +96,6 @@ const CANDIDATES: Candidate[] = [
     current: ['src/agent/compact/compact.ts'],
     goal: ['src/tools/tools.ts'],
   },
-  {
-    modulePath: 'src/tools/BriefTool/BriefTool',
-    current: [],
-    goal: ['src/tools/tools.ts'],
-  },
   // AgentTool: only one cross-importer beyond tools.ts — REPLTool's
   // primitiveTools (REPL VM exposes Agent for inline calls).
   {

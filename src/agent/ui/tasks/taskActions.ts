@@ -5,7 +5,6 @@ import { InProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/InP
 import { LocalAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
 import { MonitorMcpTask } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
-import { RemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js';
 import { shortContainerName } from 'src/agent/ui/tasks/containerRowLabel.js';
 import { footerRowAction } from 'src/agent/ui/tasks/footerRowAction.js';
@@ -73,9 +72,6 @@ export function killBackgroundTask(
       return;
     case 'dream':
       void DreamTask.kill(task.id, setAppState);
-      return;
-    case 'remote_agent':
-      void RemoteAgentTask.kill(task.id, setAppState);
       return;
     default: {
       // Surface unhandled task types instead of silently no-op'ing the x key

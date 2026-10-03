@@ -71,8 +71,6 @@ import { PromptInputQueuedCommands } from 'src/terminal/prompt-input/PromptInput
 import { useRemoteSession } from 'src/sessions/hooks/useRemoteSession.js';
 import { streamingTextStore, useStreamingTextPresence } from 'src/agent/hooks/useStreamingTextStore.js';
 import { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
-import { useDirectConnect } from 'src/providers/hooks/useDirectConnect.js';
-import type { DirectConnectConfig } from 'src/platform/server/directConnectManager.js';
 import { useSSHSession } from 'src/sessions/hooks/useSSHSession.js';
 import type { SSHSession } from '../../platform/ssh/createSSHSession.js';
 import { useMoreRight } from 'src/terminal/moreright/useMoreRight.js';
@@ -177,7 +175,6 @@ import { fileHistoryMakeSnapshot, type FileHistoryState, fileHistoryRewind, type
 import { computeStandaloneAgentContext, restoreAgentFromSession, restoreSessionStateFromLog, restoreWorktreeForResume, exitRestoredWorktree } from 'src/sessions/sessionRestore.js';
 import { updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
-import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { useInboxPoller } from 'src/agent/coordinator/useInboxPoller.js';
 import { usePeerInbox } from 'src/sessions/peers/hooks/usePeerInbox.js';
 import { useSessionPresence } from 'src/sessions/hooks/useSessionPresence.js';
@@ -198,7 +195,6 @@ import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js';
 import { SessionBackgroundHint } from 'src/sessions/ui/SessionBackgroundHint.js';
 import { useSessionBackgrounding } from 'src/sessions/hooks/useSessionBackgrounding.js';
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js';
-import { handleSpeculationAccept } from 'src/terminal/prompt-suggestion/speculation.js';
 import { IdeOnboardingDialog } from 'src/platform/ide/IdeOnboardingDialog.js';
 import { EffortCallout, shouldShowEffortCallout } from 'src/providers/ui/EffortCallout.js';
 import { RemoteCallout } from 'src/platform/remote/RemoteCallout.js';
@@ -325,8 +321,6 @@ export type Props = {
   taskListId?: string;
   // Remote session config for --remote mode (uses CCR as execution engine)
   remoteSessionConfig?: RemoteSessionConfig;
-  // Direct connect config for `claude connect` mode (connects to a claude server)
-  directConnectConfig?: DirectConnectConfig;
   // SSH session for `claude ssh` mode (local REPL, remote tools over ssh)
   sshSession?: SSHSession;
   // Thinking configuration to use when thinking is enabled
@@ -355,7 +349,6 @@ export function REPL({
   disableSlashCommands = false,
   taskListId,
   remoteSessionConfig,
-  directConnectConfig,
   sshSession,
   thinkingConfig
 }: Props): React.ReactNode {
@@ -680,7 +673,7 @@ export function REPL({
   const heldPeerMessages = React.useSyncExternalStore(subscribeHeldPeerMessages, getHeldPeerMessages);
 
   // Separate loading flag for operations outside the local query guard:
-  // remote sessions (useRemoteSession / useDirectConnect) and foregrounded
+  // remote sessions (useRemoteSession / useSSHSession) and foregrounded
   // background tasks (useSessionBackgrounding). These don't route through
   // onQuery / queryGuard, so they need their own spinner-visibility state.
   // Initialize true if remote mode with initial prompt (CCR processing it).
@@ -1200,17 +1193,8 @@ export function REPL({
     setInProgressToolUseIDs
   });
 
-  // Direct connect hook - manages WebSocket to a claude server for `claude connect` mode
-  const directConnect = useDirectConnect({
-    config: directConnectConfig,
-    setMessages,
-    setIsLoading: setIsExternalLoading,
-    setToolUseConfirmQueue,
-    tools: combinedInitialTools
-  });
-
   // SSH session hook - manages ssh child process for `claude ssh` mode.
-  // Same callback shape as useDirectConnect; only the transport under the
+  // Same callback shape as useRemoteSession; only the transport under the
   // hood differs (ChildProcess stdin/stdout vs WebSocket).
   const sshRemote = useSSHSession({
     session: sshSession,
@@ -1221,7 +1205,7 @@ export function REPL({
   });
 
   // Use whichever remote mode is active
-  const activeRemote = sshRemote.isRemoteMode ? sshRemote : directConnect.isRemoteMode ? directConnect : remoteSession;
+  const activeRemote = sshRemote.isRemoteMode ? sshRemote : remoteSession;
   const [pastedContents, setPastedContents] = useState<Record<number, PastedContent>>({});
   const [submitCount, setSubmitCount] = useState(0);
 
@@ -1556,11 +1540,6 @@ export function REPL({
   useEffect(() => {
     if (initialMessages && initialMessages.length > 0) {
       restoreReadFileState(initialMessages, getOriginalCwd());
-      void restoreRemoteAgentTasks({
-        abortController: new AbortController(),
-        getAppState: () => store.getState(),
-        setAppState
-      });
     }
     // Only run on mount - initialMessages shouldn't change during component lifetime
     // eslint-disable-next-line react-hooks/exhaustive-deps

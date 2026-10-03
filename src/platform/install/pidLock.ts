@@ -35,7 +35,7 @@ export function isPidBasedLockingEnabled(): boolean {
 /**
  * Content stored in a version lock file
  */
-export type VersionLockContent = {
+type VersionLockContent = {
   pid: number
   version: string
   execPath: string
@@ -118,7 +118,7 @@ function isClaudeProcess(pid: number, expectedExecPath: string): boolean {
 /**
  * Read and parse a lock file's content
  */
-export function readLockContent(
+function readLockContent(
   lockFilePath: string,
 ): VersionLockContent | null {
   const fs = getFsImplementation()

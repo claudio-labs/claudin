@@ -21,8 +21,6 @@ export function taskRowLabel(task: DeepImmutable<BackgroundTaskState>): string {
   switch (task.type) {
     case 'local_bash':
       return task.kind === 'monitor' ? task.description : task.command
-    case 'remote_agent':
-      return task.title
     case 'local_agent':
       return task.description
     case 'local_workflow':

@@ -52,7 +52,7 @@ describe('main.tsx — boot characterization (Fase 0)', () => {
   test('per-subcommand --help matches snapshot', () => {
     // 32 subprocess spawns × ~500ms each — needs generous timeout.
     const visibleCommands = [
-      'agents', 'auth', 'auto-mode', 'doctor', 'install',
+      'agents', 'auth', 'auto-mode', 'doctor',
       'mcp', 'plugin', 'setup-token', 'update',
     ] as const
     const subcommands = [

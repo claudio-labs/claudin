@@ -1,5 +1,5 @@
 // Owns `onSubmit` — the prompt-submission controller: immediate slash commands,
-// history, stash restore, speculation accept, the remote path, the idle-gap
+// history, stash restore, the remote path, the idle-gap
 // eviction sweep, and the handoff to handlePromptSubmit.
 //
 // Extracted from src/agent/repl/REPL.tsx (controllers, ROADMAP 11e deferred half).
@@ -25,7 +25,6 @@
 
 import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
-import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { type Command, type CommandResultDisplay, getCommandName, isCommandEnabled } from 'src/commands/commands.js';
 import type { PromptInputMode } from 'src/shared/types/textInputTypes.js';
@@ -44,7 +43,6 @@ import { incrementPromptCount } from 'src/vcs/git/commitAttribution.js';
 import { recordAttributionSnapshot } from 'src/sessions/sessionStorage.js';
 import { type SetAppState } from 'src/agent/messageQueueManager.js';
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
-import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/terminal/prompt-suggestion/speculation.js';
 import { createAbortController } from 'src/shared/abortController.js';
 import type { RemoteMessageContent } from 'src/platform/teleport/api.js';
 import { acquireFullscreenLease, canLeaseFullscreen, isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
@@ -56,14 +54,12 @@ import type { EffortValue } from 'src/providers/effort/effort.js';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js';
 import type { useRemoteSession } from 'src/sessions/hooks/useRemoteSession.js';
-import type { useDirectConnect } from 'src/providers/hooks/useDirectConnect.js';
 import type { useSSHSession } from 'src/sessions/hooks/useSSHSession.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { useDeferredHookMessages } from 'src/agent/hooks/useDeferredHookMessages.js';
 
 export type ActiveRemote =
   | ReturnType<typeof useSSHSession>
-  | ReturnType<typeof useDirectConnect>
   | ReturnType<typeof useRemoteSession>;
 
 export interface StashedPrompt {
@@ -144,11 +140,7 @@ export interface UseOnSubmitDeps {
 export type OnSubmit = (
   input: string,
   helpers: PromptInputHelpers,
-  speculationAccept?: {
-    state: ActiveSpeculationState;
-    speculationSessionTimeSavedMs: number;
-    setAppState: SetAppState;
-  },
+  speculationAccept?: undefined,
   options?: { fromKeybinding?: boolean },
 ) => Promise<void>;
 
@@ -193,11 +185,7 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     resetTimingRefs,
   } = deps;
 
-  const onSubmit = useCallback(async (input: string, helpers: PromptInputHelpers, speculationAccept?: {
-    state: ActiveSpeculationState;
-    speculationSessionTimeSavedMs: number;
-    setAppState: SetAppState;
-  }, options?: {
+  const onSubmit = useCallback(async (input: string, helpers: PromptInputHelpers, _speculationAccept?: undefined, options?: {
     fromKeybinding?: boolean;
   }) => {
     // Re-pin scroll to bottom on submit so the user always sees the new
@@ -207,7 +195,7 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     // Handle immediate commands - these bypass the queue and execute right away
     // even while Claude is processing. Commands opt-in via `immediate: true`.
     // Commands triggered via keybindings are always treated as immediate.
-    if (!speculationAccept && input.trim().startsWith('/')) {
+    if (input.trim().startsWith('/')) {
       // Expand [Pasted text #N] refs so immediate commands (e.g. /btw) receive
       // the pasted content, not the placeholder. The non-immediate path gets
       // this expansion later in handlePromptSubmit.
@@ -333,8 +321,8 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     // Skip history for keybinding-triggered commands (user didn't type the command).
     if (!options?.fromKeybinding) {
       addToHistory({
-        display: speculationAccept ? input : prependModeCharacterToInput(input, inputMode),
-        pastedContents: speculationAccept ? {} : pastedContents
+        display: prependModeCharacterToInput(input, inputMode),
+        pastedContents
       });
       // Add the just-submitted command to the front of the ghost-text
       // cache so it's suggested immediately (not after the 60s TTL).
@@ -354,11 +342,11 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     //   Remote mode is exempt: it sends via WebSocket and returns early without
     //   calling handlePromptSubmit, so there's no clobbering risk — restore eagerly.
     // In both deferred cases, the stash is restored after await handlePromptSubmit.
-    const isSlashCommand = !speculationAccept && input.trim().startsWith('/');
-    // Submit runs "now" (not queued) when not already loading, or when
-    // accepting speculation, or in remote mode (which sends via WS and
-    // returns early without calling handlePromptSubmit).
-    const submitsNow = !isLoading || speculationAccept || activeRemote.isRemoteMode;
+    const isSlashCommand = input.trim().startsWith('/');
+    // Submit runs "now" (not queued) when not already loading, or in remote
+    // mode (which sends via WS and returns early without calling
+    // handlePromptSubmit).
+    const submitsNow = !isLoading || activeRemote.isRemoteMode;
     if (stashedPrompt !== undefined && !isSlashCommand && submitsNow) {
       setInputValue(stashedPrompt.text);
       helpers.setCursorOffset(stashedPrompt.cursorOffset);
@@ -366,7 +354,7 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
       setStashedPrompt(undefined);
     } else if (submitsNow) {
       if (!options?.fromKeybinding) {
-        // Clear input when not loading or accepting speculation.
+        // Clear input when not loading.
         // Preserve input for keybinding-triggered commands.
         setInputValue('');
         helpers.setCursorOffset(0);
@@ -381,9 +369,9 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
       tipPickedThisTurnRef.current = false;
 
       // Show the placeholder in the same React batch as setInputValue('').
-      // Skip for slash/bash (they have their own echo), speculation and remote
-      // mode (both setMessages directly with no gap to bridge).
-      if (!isSlashCommand && inputMode === 'prompt' && !speculationAccept && !activeRemote.isRemoteMode) {
+      // Skip for slash/bash (they have their own echo) and remote mode
+      // (it setMessages directly with no gap to bridge).
+      if (!isSlashCommand && inputMode === 'prompt' && !activeRemote.isRemoteMode) {
         setUserInputOnProcessing(input);
         // showSpinner includes userInputOnProcessing, so the spinner appears
         // on this render. Reset timing refs now (before queryGuard.reserve()
@@ -392,23 +380,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
         resetTimingRefs();
       }
 
-    }
-
-    // Handle speculation acceptance
-    if (speculationAccept) {
-      const {
-        queryRequired
-      } = await handleSpeculationAccept(speculationAccept.state, speculationAccept.speculationSessionTimeSavedMs, speculationAccept.setAppState, input, {
-        setMessages,
-        readFileState,
-        cwd: getOriginalCwd()
-      });
-      if (queryRequired) {
-        const newAbortController = createAbortController();
-        setAbortController(newAbortController);
-        void onQuery([], newAbortController, true, [], mainLoopModel);
-      }
-      return;
     }
 
     // Remote mode: send input via stream-json instead of local query.

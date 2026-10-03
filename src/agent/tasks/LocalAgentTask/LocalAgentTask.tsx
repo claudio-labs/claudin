@@ -1,6 +1,5 @@
 import { getSdkAgentProgressSummariesEnabled } from 'src/platform/bootstrap/state.js';
 import { OUTPUT_FILE_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TOOL_USE_ID_TAG, WORKTREE_BRANCH_TAG, WORKTREE_PATH_TAG, WORKTREE_TAG } from 'src/shared/constants/xml.js';
-import { abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js';
 import { createTaskStateBase } from 'src/agent/Task.js';
@@ -271,11 +270,6 @@ export function enqueueAgentNotification({
   if (!shouldEnqueue) {
     return;
   }
-
-  // Abort any active speculation — background task state changed, so speculated
-  // results may reference stale task output. The prompt suggestion text is
-  // preserved; only the pre-computed response is discarded.
-  abortSpeculation(setAppState);
   const summary = status === 'completed' ? `Agent "${description}" completed` : status === 'failed' ? `Agent "${description}" failed: ${error || 'Unknown error'}` : `Agent "${description}" was stopped`;
   const outputPath = getTaskOutputPath(taskId);
   const toolUseIdLine = toolUseId ? `\n<${TOOL_USE_ID_TAG}>${toolUseId}</${TOOL_USE_ID_TAG}>` : '';

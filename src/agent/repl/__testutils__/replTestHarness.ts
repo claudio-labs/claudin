@@ -106,7 +106,6 @@ const STUBBED_BY_SETUP = [
   'src/platform/bridge/useReplBridge.js',
   'src/platform/bridge/useMailboxBridge.js',
   'src/sessions/hooks/useRemoteSession.js',
-  'src/providers/hooks/useDirectConnect.js',
   'src/sessions/hooks/useSSHSession.js',
   'src/agent/coordinator/hooks/useSwarmInitialization.js',
   'src/agent/hooks/useScheduledTasks.js',
@@ -213,11 +212,6 @@ export function setupReplMocks(): void {
   // Remote session — opens a CCR session when --remote is set.
   mock.module('src/sessions/hooks/useRemoteSession.js', () => ({
     useRemoteSession: () => ({ state: 'idle', error: null }),
-  }))
-
-  // Direct connect — connects to a claudin server.
-  mock.module('src/providers/hooks/useDirectConnect.js', () => ({
-    useDirectConnect: () => ({ state: 'idle', error: null }),
   }))
 
   // SSH session.

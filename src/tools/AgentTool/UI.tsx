@@ -29,7 +29,7 @@ import { buildSubagentLookups, createAssistantMessage, EMPTY_LOOKUPS } from 'src
 import { checkIsClaudeNativeProvider, type AgentModelAlias } from 'src/providers/model/agent.js';
 import { getMainLoopModel, parseUserSpecifiedModel, renderModelName } from 'src/providers/model/model.js';
 import type { Theme, ThemeName } from 'src/terminal/theme/theme.js';
-import type { outputSchema, Progress, RemoteLaunchedOutput } from 'src/tools/AgentTool/AgentTool.js';
+import type { outputSchema, Progress } from 'src/tools/AgentTool/AgentTool.js';
 import { inputSchema } from 'src/tools/AgentTool/AgentTool.js';
 import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';
@@ -381,21 +381,6 @@ export function renderToolResultMessage(data: Output, progressMessagesForMessage
   theme: ThemeName;
   isTranscriptMode?: boolean;
 }): React.ReactNode {
-  // Remote-launched agents (internal-only) use a private output type not in the
-  // public schema. Narrow via the internal discriminant.
-  const internal = data as Output | RemoteLaunchedOutput;
-  if (internal.status === 'remote_launched') {
-    return <Box flexDirection="column">
-        <MessageResponse height={1}>
-          <Text>
-            Remote agent launched{' '}
-            <Text dimColor>
-              · {internal.taskId} · {internal.sessionUrl}
-            </Text>
-          </Text>
-        </MessageResponse>
-      </Box>;
-  }
   if (data.status === 'async_launched') {
     const { prompt, agentId } = data;
     return <BackgroundedAgentResult agentId={agentId} prompt={prompt} isTranscriptMode={isTranscriptMode} theme={theme} />;
@@ -749,7 +734,7 @@ export function renderGroupedAgentToolUse(toolUses: Array<{
     const outputStatus = (result?.output as {
       status?: string;
     } | undefined)?.status;
-    const backgroundedMidExecution = outputStatus === 'async_launched' || outputStatus === 'remote_launched';
+    const backgroundedMidExecution = outputStatus === 'async_launched';
     const isAsync = launchedAsAsync || backgroundedMidExecution || isTeammateSpawn;
     const name = parsedInput.success ? parsedInput.data.name : undefined;
     const errorMessage = isError ? extractAgentErrorSummary(result?.param.content) : undefined;

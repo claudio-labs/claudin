@@ -64,7 +64,6 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/sessions/concurrentSessions.js',
     'src/shared/fs/fileHistory.js',
     'src/sessions/sessionStorage.js',
-    'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js',
     'src/vcs/git/worktree.js',
     'src/platform/bootstrap/state.js',
     'src/agent/cost-tracker.js',
@@ -152,12 +151,6 @@ mock.module('src/sessions/sessionStorage.js', () => ({
   }),
   saveWorktreeState: mock(() => {
     calls.push('saveWorktreeState')
-  }),
-}))
-
-mock.module('src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
-  restoreRemoteAgentTasks: mock(async () => {
-    calls.push('restoreRemoteAgentTasks')
   }),
 }))
 
@@ -344,7 +337,6 @@ describe('resumeSession', () => {
     expect(calls).toContain('exitRestoredWorktree')
     expect(calls).toContain('restoreWorktreeForResume')
     expect(calls).toContain('adoptResumedSessionFile')
-    expect(calls).toContain('restoreRemoteAgentTasks')
     expect(calls).toContain('setMessages')
     expect(calls).toContain('setToolJSX')
     expect(calls).toContain('setInputValue')
@@ -402,7 +394,6 @@ describe('resumeSession', () => {
     expect(calls).not.toContain('exitRestoredWorktree')
     expect(calls).not.toContain('restoreWorktreeForResume')
     expect(calls).not.toContain('adoptResumedSessionFile')
-    expect(calls).not.toContain('restoreRemoteAgentTasks')
 
     // Fork branch still hydrates message state.
     expect(calls).toContain('setMessages')

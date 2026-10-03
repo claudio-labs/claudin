@@ -27,7 +27,6 @@ const GROUP_ICONS: Record<FooterGroupKey, string> = {
   // puzzle piece keeps its notches, and it is the one shape in this set that
   // says "something that clips in and brings tools with it".
   mcp: '\u{f0431}', // nf-md-puzzle
-  remote: '\u{f015f}', // nf-md-cloud
   workflows: '\u{f1049}', // nf-md-graph
   dreams: '\u{f04b2}', // nf-md-sleep
 }

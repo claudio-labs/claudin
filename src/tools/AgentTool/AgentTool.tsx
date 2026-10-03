@@ -13,7 +13,6 @@ import { startAgentSummarization, summarizeAgentResult } from 'src/agent/summary
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { clearDumpState } from 'src/providers/transport/dumpPrompts.js';
 import { completeAgentTask as completeAsyncAgent, createActivityDescriptionResolver, createProgressTracker, enqueueAgentNotification, failAgentTask as failAsyncAgent, getProgressUpdate, getTokenCountFromTracker, isLocalAgentTask, killAsyncAgent, registerAgentForeground, registerAsyncAgent, unregisterAgentForeground, updateAgentProgress as updateAsyncAgentProgress, updateProgressFromMessage } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
-import { checkRemoteAgentEligibility, formatPreconditionError, getRemoteTaskSessionUrl, registerRemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { assembleToolPool } from 'src/tools/tools.js';
 import { asAgentId } from 'src/shared/types/ids.js';
 import { runWithAgentContext } from 'src/agent/coordinator/agentContext.js';
@@ -37,7 +36,6 @@ import { asSystemPrompt } from 'src/agent/systemPromptType.js';
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js';
 import { getParentSessionId, isTeammate } from 'src/agent/coordinator/teammate.js';
 import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js';
-import { teleportToRemote } from 'src/platform/teleport/teleport.js';
 import { getAssistantMessageContentLength, tokenCountWithEstimation } from 'src/agent/context/tokens.js';
 import { createAgentId } from 'src/shared/data/uuid.js';
 import { createAgentWorktree, hasWorktreeChanges, removeAgentWorktree } from 'src/vcs/git/worktree.js';
@@ -199,18 +197,7 @@ type TeammateSpawnedOutput = {
 
 // Combined output type including both public and internal types
 // Note: TeammateSpawnedOutput type is fine - TypeScript types are erased at compile time
-// Private type for remote-launched results — excluded from exported schema
-// like TeammateSpawnedOutput for dead code elimination purposes. Exported
-// for UI.tsx to do proper discriminated-union narrowing instead of ad-hoc casts.
-export type RemoteLaunchedOutput = {
-  status: 'remote_launched';
-  taskId: string;
-  sessionUrl: string;
-  description: string;
-  prompt: string;
-  outputFile: string;
-};
-type InternalOutput = Output | TeammateSpawnedOutput | RemoteLaunchedOutput;
+type InternalOutput = Output | TeammateSpawnedOutput;
 import type { AgentToolProgress, ShellProgress } from 'src/shared/types/tools.js';
 // AgentTool forwards both its own progress events and shell progress
 // events from the sub-agent so the SDK receives tool_progress updates during bash/powershell runs.
@@ -1346,17 +1333,6 @@ agent_id: ${spawnData.teammate_id}
 name: ${spawnData.name}
 team_name: ${spawnData.team_name}
 The agent is now running and will receive instructions via mailbox.`
-        }]
-      };
-    }
-    if ('status' in internalData && internalData.status === 'remote_launched') {
-      const r = internalData;
-      return {
-        tool_use_id: toolUseID,
-        type: 'tool_result',
-        content: [{
-          type: 'text',
-          text: `Remote agent launched in CCR.\ntaskId: ${r.taskId}\nsession_url: ${r.sessionUrl}\noutput_file: ${r.outputFile}\nThe agent is running remotely. You will be notified automatically when it completes.\nBriefly tell the user what you launched and end your response.`
         }]
       };
     }

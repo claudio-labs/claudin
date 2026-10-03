@@ -124,8 +124,11 @@ describe('the module export surface', () => {
   //
   // 197 again with `isTurnActive`: the session list asks it whether a switch
   // would cut a running turn short.
-  test('still exports 197 runtime symbols', () => {
-    expect(Object.keys(stateModule)).toHaveLength(197)
+  //
+  // 195 since `getDirectConnectServerUrl` and `setDirectConnectServerUrl`
+  // went with the remote cut: neither had a caller.
+  test('still exports 195 runtime symbols', () => {
+    expect(Object.keys(stateModule)).toHaveLength(195)
   })
 
   test('exports at least one symbol from every planned cluster', () => {

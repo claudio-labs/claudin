@@ -85,11 +85,9 @@ export {
 } from 'src/platform/bootstrap/state/session.js'
 export {
   getCwdState,
-  getDirectConnectServerUrl,
   getOriginalCwd,
   getProjectRoot,
   setCwdState,
-  setDirectConnectServerUrl,
   setOriginalCwd,
   setProjectRoot,
 } from 'src/platform/bootstrap/state/cwd.js'

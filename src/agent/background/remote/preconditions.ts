@@ -6,12 +6,10 @@ import {
   getClaudeAIOAuthTokens,
   isClaudeAISubscriber,
 } from 'src/providers/auth/auth.js'
-import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { findGitRoot, getIsClean } from 'src/vcs/git/git.js'
+import { getIsClean } from 'src/vcs/git/git.js'
 import { getOAuthHeaders } from 'src/platform/teleport/api.js'
-import { fetchEnvironments } from 'src/platform/teleport/environments.js'
 
 /**
  * Checks if user needs to log in with Claude.ai
@@ -34,28 +32,6 @@ export async function checkNeedsClaudeAiLogin(): Promise<boolean> {
 export async function checkIsGitClean(): Promise<boolean> {
   const isClean = await getIsClean({ ignoreUntracked: true })
   return isClean
-}
-
-/**
- * Checks if user has access to at least one remote environment
- * @returns true if user has remote environments, false otherwise
- */
-export async function checkHasRemoteEnvironment(): Promise<boolean> {
-  try {
-    const environments = await fetchEnvironments()
-    return environments.length > 0
-  } catch (error) {
-    logForDebugging(`checkHasRemoteEnvironment failed: ${errorMessage(error)}`)
-    return false
-  }
-}
-
-/**
- * Checks if current directory is inside a git repository (has .git/).
- * Distinct from checkHasGitRemote — a local-only repo passes this but not that.
- */
-export function checkIsInGitRepo(): boolean {
-  return findGitRoot(getCwd()) !== null
 }
 
 /**

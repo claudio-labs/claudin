@@ -37,7 +37,6 @@ exports[`tool registry — characterization the unconditional tool list matches 
   "CronList",
   "ScheduleWakeup",
   "WaitFor",
-  "SendUserMessage",
   "TestingPermission",
   "ToolSearch",
 ]

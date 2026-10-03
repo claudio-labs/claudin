@@ -259,7 +259,7 @@ one and is *also* reached from `/knowledge`.
 
 `BRIDGE_MODE` is the one enabled flag whose subsystem still needs a credential
 the open build cannot mint on its own: it builds Remote Control in
-(`remote-control`/`rc`, `/bridge`, BriefTool's upload path), and
+(`remote-control`/`rc`, `/bridge`), and
 `hasBridgeCredential()` then decides at runtime whether any of it opens — a
 claude.ai web-login OAuth token with the `user:profile` scope, or the
 `CLAUDE_BRIDGE_OAUTH_TOKEN` dev override. Without one, `/bridge` reports the
