@@ -45,7 +45,7 @@ which the sandbox tools read. The lists below are the same.
 | Unit | Files | Inherited lines | Inherited tests it replaces | Status |
 |---|---|---|---|---|
 | `mcp/core` | 5 | 713 | — | done |
-| `mcp/config` | 2 | 1291 | — | pending |
+| `mcp/config` | 2 | 1291 | — | done |
 | `mcp/auth` | 7 | 658 | `auth.test.ts` (50) | pending |
 | `mcp/connection` | 5 | 1305 | `client.test.ts` (34) | pending |
 | `mcp/capabilities` | 6 | 924 | — | pending |

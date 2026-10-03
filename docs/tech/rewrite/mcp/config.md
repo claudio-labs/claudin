@@ -454,3 +454,32 @@ to stdio.
   - No `any`.
 - **Call-time reads.** The settings, the global config, the managed path, the cwd and the environment are read on each call. Only the enterprise check is cached, and it exposes `cache.clear()`.
 - **No new import of `settings.ts` into a module it imports.** Keep `allErrors.ts` as the place that joins the two.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.**
+  - All 35 inherited bodies were written anew.
+  - `config.ts` is now a facade that re-exports from `src/mcp/config/`. The
+    modules there are `jsonFile`, `expand`, `parse`, `scopes`, `policy` (a
+    pure verdict function), `policySettings`, `dedup`, `toggles`,
+    `projectFile` (an atomic writer), `write` and `merge`.
+  - The six characterization suites pass unchanged.
+- **Fixes, each with a test.**
+  - **Secrets stay placeholders.** Adding or removing a project server writes
+    the other entries back raw, so `${TOKEN}` stays a placeholder. Keys beside
+    `mcpServers` are kept.
+  - **No wipe.** Adding to an unusable `.mcp.json` throws and leaves the file alone.
+  - **Names.** An empty server name is refused.
+  - **Errors.** A config that matches no transport gets a clear error.
+  - **URL patterns.** Scheme and host compare case-insensitively.
+  - **Windows npx hint.** It no longer links to `code.claude.com`.
+- **Unchanged.** Every "keep" and "keep, track" behaviour is as before,
+  security ones included (team memory `bugs/mcp-config-security-findings.md`).
+- **Probes.** `rewrite-mcp-config.json` holds 130 probes, one on every deny path.
+- **Residue, reviewed.** 24 lines of Claude Code remain, all signatures:
+  - `dedup.ts`, 16: the two dedup exports and their record-shaped parameters,
+    and the shared helper's signature;
+  - `parse.ts`, 4;
+  - `scopes.ts`, 2;
+  - `envExpansion.ts`, 2.

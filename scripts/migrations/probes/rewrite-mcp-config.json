@@ -5,249 +5,791 @@
     "src/mcp/config.scopes.characterization.test.ts",
     "src/mcp/config.policy.characterization.test.ts",
     "src/mcp/config.write.characterization.test.ts",
-    "src/mcp/config.merge.characterization.test.ts"
+    "src/mcp/config.merge.characterization.test.ts",
+    "src/mcp/config/fixes.test.ts",
+    "src/mcp/config/internals.test.ts"
   ],
-  "source": "src/mcp/config.ts",
+  "source": "src/mcp/config/policy.ts",
   "probes": [
     {
-      "name": "env: an empty value no longer counts as set",
+      "name": "env: an empty value counts as set",
       "source": "src/mcp/envExpansion.ts",
-      "find": "    if (envValue !== undefined) {\n",
-      "replace": "    if (envValue) {\n"
+      "find": "if (fromEnv !== undefined) return fromEnv",
+      "replace": "if (fromEnv) return fromEnv"
     },
     {
-      "name": "env: the default loses its first character",
+      "name": "env: an empty default gives an empty string",
       "source": "src/mcp/envExpansion.ts",
-      "find": "      sepIdx === -1 ? undefined : varContent.slice(sepIdx + 2)\n",
-      "replace": "      sepIdx === -1 ? undefined : varContent.slice(sepIdx + 3)\n"
+      "find": "if (fallback !== undefined) return fallback",
+      "replace": "if (fallback) return fallback"
     },
     {
-      "name": "env: the last :- separates the default",
+      "name": "env: only the first :- separates",
       "source": "src/mcp/envExpansion.ts",
-      "find": "    const sepIdx = varContent.indexOf(':-')\n",
-      "replace": "    const sepIdx = varContent.lastIndexOf(':-')\n"
+      "find": "const mark = body.indexOf(FALLBACK_MARK)",
+      "replace": "const mark = body.lastIndexOf(FALLBACK_MARK)"
     },
     {
-      "name": "env: a missing variable is not reported",
+      "name": "env: every unset occurrence is reported, repeats included",
       "source": "src/mcp/envExpansion.ts",
-      "find": "    missingVars.push(varName)\n",
-      "replace": "    void varName\n"
+      "find": "    missingVars.push(name)",
+      "replace": "    if (!missingVars.includes(name)) missingVars.push(name)"
     },
     {
-      "name": "env: a missing placeholder is blanked",
+      "name": "env: an unset variable stays verbatim",
       "source": "src/mcp/envExpansion.ts",
-      "find": "    return match\n",
-      "replace": "    return ''\n"
+      "find": "    return placeholder",
+      "replace": "    return ''"
     },
     {
-      "name": "managed file: wrong name",
-      "source": "src/mcp/config.ts",
-      "find": "  return join(getManagedFilePath(), 'managed-mcp.json')\n",
-      "replace": "  return join(getManagedFilePath(), 'mcp.json')\n"
+      "name": "env: empty braces are not a placeholder",
+      "source": "src/mcp/envExpansion.ts",
+      "find": "const PLACEHOLDER = /\\$\\{([^}]+)\\}/g",
+      "replace": "const PLACEHOLDER = /\\$\\{([^}]*)\\}/g"
     },
     {
-      "name": ".mcp.json write: existing mode not kept",
-      "source": "src/mcp/config.ts",
-      "find": "      await chmod(tempPath, existingMode)\n",
-      "replace": "      void existingMode\n"
+      "name": "env: a substituted value is not expanded again",
+      "source": "src/mcp/envExpansion.ts",
+      "find": "  return { expanded, missingVars }",
+      "replace": "  return { expanded: expanded.replace(PLACEHOLDER, (p: string, b: string) => process.env[readPlaceholder(b).name] ?? p), missingVars }"
     },
     {
-      "name": "command match: a prefix matches",
-      "source": "src/mcp/config.ts",
-      "find": "  if (a.length !== b.length) {\n",
-      "replace": "  if (a.length > b.length) {\n"
+      "name": "file: a byte-order mark is tolerated",
+      "source": "src/mcp/config/jsonFile.ts",
+      "find": "  const body = text.startsWith(BYTE_ORDER_MARK) ? text.slice(BYTE_ORDER_MARK.length) : text",
+      "replace": "  const body = text"
     },
     {
-      "name": "ccr unwrap: session-ingress marker lost",
-      "source": "src/mcp/config.ts",
-      "find": "  '/v2/session_ingress/shttp/mcp/',\n",
-      "replace": "  '/v2/session_ingress/shttp/mcp/x/',\n"
+      "name": "file: the literal false is not a valid JSON config",
+      "source": "src/mcp/config/jsonFile.ts",
+      "find": "  if (value === null || value === false) return { kind: 'malformed' }",
+      "replace": "  if (value === null) return { kind: 'malformed' }"
     },
     {
-      "name": "claude.ai dedup: disabled manual servers count",
-      "source": "src/mcp/config.ts",
-      "find": "    if (isMcpServerDisabled(name)) continue\n",
-      "replace": ""
+      "name": "file: a missing file is recognized as missing",
+      "source": "src/mcp/config/jsonFile.ts",
+      "find": "if (getErrnoCode(error) === 'ENOENT') return { kind: 'missing' }",
+      "replace": "if (getErrnoCode(error) === 'ENOTFOUND') return { kind: 'missing' }"
     },
     {
-      "name": "plugin dedup: no plugin-vs-plugin race",
-      "source": "src/mcp/config.ts",
-      "find": "    seenPluginSigs.set(sig, name)\n",
-      "replace": "    void sig\n"
+      "name": "parse: the schema message is contract (mcp doctor)",
+      "source": "src/mcp/config/parse.ts",
+      "find": "const OFF_SCHEMA = 'Does not adhere to MCP server configuration schema'",
+      "replace": "const OFF_SCHEMA = 'Does not match the MCP server configuration schema'"
     },
     {
-      "name": "url pattern: regex characters not escaped",
-      "source": "src/mcp/config.ts",
-      "find": "  const escaped = pattern.replace(/[.+?^${}()|[\\]\\\\]/g, '\\\\$&')\n",
-      "replace": "  const escaped = pattern\n"
+      "name": "parse: the issue path is dot-joined",
+      "source": "src/mcp/config/parse.ts",
+      "find": "issue.path.map(String).join('.')",
+      "replace": "issue.path.map(String).join('/')"
     },
     {
-      "name": "url pattern: not anchored",
-      "source": "src/mcp/config.ts",
-      "find": "  return new RegExp(`^${regexStr}$`)\n",
-      "replace": "  return new RegExp(regexStr)\n"
+      "name": "parse: the file is stamped on every error",
+      "source": "src/mcp/config/parse.ts",
+      "find": "  return origin.filePath === undefined ? error : { ...error, file: origin.filePath }",
+      "replace": "  return error"
     },
     {
-      "name": "deny: name entries ignored",
-      "source": "src/mcp/config.ts",
-      "find": "  for (const entry of settings.deniedMcpServers) {\n    if (isMcpServerNameEntry(entry) && entry.serverName === serverName) {\n",
-      "replace": "  for (const entry of settings.deniedMcpServers) {\n    if (isMcpServerNameEntry(entry) && entry.serverName === serverName && false) {\n"
+      "name": "parse: schema errors are fatal",
+      "source": "src/mcp/config/parse.ts",
+      "find": "mcpErrorMetadata: { scope: origin.scope, severity: 'fatal' }",
+      "replace": "mcpErrorMetadata: { scope: origin.scope, severity: 'warning' }"
     },
     {
-      "name": "deny: command entries ignored",
-      "source": "src/mcp/config.ts",
-      "find": "    if (serverCommand) {\n      for (const entry of settings.deniedMcpServers) {\n",
-      "replace": "    if (serverCommand && false) {\n      for (const entry of settings.deniedMcpServers) {\n"
+      "name": "parse: one unset variable already warns",
+      "source": "src/mcp/config/parse.ts",
+      "find": "    if (missing.length > 0) {",
+      "replace": "    if (missing.length > 1) {"
     },
     {
-      "name": "deny: url entries ignored",
-      "source": "src/mcp/config.ts",
-      "find": "    if (serverUrl) {\n      for (const entry of settings.deniedMcpServers) {\n",
-      "replace": "    if (serverUrl && false) {\n      for (const entry of settings.deniedMcpServers) {\n"
+      "name": "parse: the missing-variables prefix is contract",
+      "source": "src/mcp/config/parse.ts",
+      "find": "`Missing environment variables: ${names}`",
+      "replace": "`Missing env vars: ${names}`"
     },
     {
-      "name": "deny: no longer beats the allowlist",
-      "source": "src/mcp/config.ts",
-      "find": "  if (isMcpServerDenied(serverName, config)) {\n    return false\n  }\n",
-      "replace": ""
+      "name": "parse: expandVars off substitutes nothing",
+      "source": "src/mcp/config/parse.ts",
+      "find": "params.expandVars ? expandServerPlaceholders(declared)",
+      "replace": "true ? expandServerPlaceholders(declared)"
     },
     {
-      "name": "policy: sdk servers not exempt in the filter",
-      "source": "src/mcp/config.ts",
-      "find": "    if (c.type === 'sdk' || isMcpServerAllowedByPolicy(name, c)) {\n",
-      "replace": "    if (isMcpServerAllowedByPolicy(name, c)) {\n"
+      "name": "parse: the npx warning is Windows-only",
+      "source": "src/mcp/config/parse.ts",
+      "find": "    if (onWindows && needsCmdWrapper(server)) {",
+      "replace": "    if (needsCmdWrapper(server)) {"
     },
     {
-      "name": "allow: any allowlist blocks everything",
-      "source": "src/mcp/config.ts",
-      "find": "  if (settings.allowedMcpServers.length === 0) {\n",
-      "replace": "  if (settings.allowedMcpServers.length >= 0) {\n"
+      "name": "parse: only a bare npx (or a path ending in it) warns",
+      "source": "src/mcp/config/parse.ts",
+      "find": "const BARE_NPX = /(?:^|[\\\\/])npx$/",
+      "replace": "const BARE_NPX = /npx/"
     },
     {
-      "name": "allow: unmatched stdio server allowed",
-      "source": "src/mcp/config.ts",
-      "find": "        return false // Stdio server doesn't match any command entry\n",
-      "replace": "        return true // Stdio server doesn't match any command entry\n"
+      "name": "parse: remote servers never get the npx warning",
+      "source": "src/mcp/config/parse.ts",
+      "find": "return (server.type === undefined || server.type === 'stdio') && BARE_NPX.test(server.command)",
+      "replace": "return BARE_NPX.test('command' in server ? server.command : server.url)"
     },
     {
-      "name": "allow: unmatched remote server allowed",
-      "source": "src/mcp/config.ts",
-      "find": "        return false // Remote server doesn't match any URL entry\n",
-      "replace": "        return true // Remote server doesn't match any URL entry\n"
+      "name": "parse: a missing file names its path",
+      "source": "src/mcp/config/parse.ts",
+      "find": "`MCP config file not found: ${params.filePath}`",
+      "replace": "`MCP config file is missing`"
     },
     {
-      "name": "allow: managed-only flag ignored",
-      "source": "src/mcp/config.ts",
-      "find": "  if (shouldAllowManagedMcpServersOnly()) {\n",
-      "replace": "  if (false) {\n"
+      "name": "parse: an unreadable file carries the system error",
+      "source": "src/mcp/config/parse.ts",
+      "find": "`Failed to read file: ${read.reason}`",
+      "replace": "`Failed to read file`"
     },
     {
-      "name": "allow: managed-only flag read from any layer",
-      "source": "src/mcp/config.ts",
-      "find": "    getSettingsForSource('policySettings')?.allowManagedMcpServersOnly === true\n",
-      "replace": "    getInitialSettings().allowManagedMcpServersOnly === true\n"
+      "name": "parse: the not-JSON message is contract",
+      "source": "src/mcp/config/parse.ts",
+      "find": "'MCP config is not a valid JSON'",
+      "replace": "'MCP config is not valid JSON'"
     },
     {
-      "name": "parse: missing variables listed once per occurrence",
-      "source": "src/mcp/config.ts",
-      "find": "    missingVars: [...new Set(missingVars)],\n",
-      "replace": "    missingVars,\n"
+      "name": "expand: stdio env values are expanded",
+      "source": "src/mcp/config/expand.ts",
+      "find": "env: fillValues(server.env)",
+      "replace": "env: server.env"
     },
     {
-      "name": "parse: schema message changed",
-      "source": "src/mcp/config.ts",
-      "find": "        message: 'Does not adhere to MCP server configuration schema',\n",
-      "replace": "        message: 'Invalid MCP server configuration',\n"
+      "name": "expand: stdio args are expanded",
+      "source": "src/mcp/config/expand.ts",
+      "find": "      const args = server.args.map(fill)",
+      "replace": "      const args = server.args"
     },
     {
-      "name": "parse: windows npx by path not caught",
-      "source": "src/mcp/config.ts",
-      "find": "        configToCheck.command.endsWith('/npx'))\n",
-      "replace": "        configToCheck.command.endsWith('/npx.exe'))\n"
+      "name": "expand: remote header values are expanded",
+      "source": "src/mcp/config/expand.ts",
+      "find": "headers: fillValues(server.headers)",
+      "replace": "headers: server.headers"
     },
     {
-      "name": "add: dots accepted in names",
-      "source": "src/mcp/config.ts",
-      "find": "  if (name.match(/[^a-zA-Z0-9_-]/)) {\n",
-      "replace": "  if (name.match(/[^a-zA-Z0-9_.-]/)) {\n"
+      "name": "expand: the remote url is expanded",
+      "source": "src/mcp/config/expand.ts",
+      "find": "      const url = fill(server.url)",
+      "replace": "      const url = server.url"
     },
     {
-      "name": "add: managed MCP file does not lock",
-      "source": "src/mcp/config.ts",
-      "find": "  // Block adding servers when enterprise MCP config exists (it has exclusive control)\n  if (doesEnterpriseMcpConfigExist()) {\n",
-      "replace": "  // Block adding servers when enterprise MCP config exists (it has exclusive control)\n  if (false) {\n"
+      "name": "expand: each missing name is reported once per server",
+      "source": "src/mcp/config/expand.ts",
+      "find": "  return { server: expanded, missing: [...new Set(unset)] }",
+      "replace": "  return { server: expanded, missing: unset }"
     },
     {
-      "name": "add: denylist not checked",
-      "source": "src/mcp/config.ts",
-      "find": "  if (isMcpServerDenied(name, validatedConfig)) {\n",
-      "replace": "  if (false) {\n"
+      "name": "expand: ws is a remote transport that expands",
+      "source": "src/mcp/config/expand.ts",
+      "find": "    case 'ws': {",
+      "replace": "    case 'ws-never': {"
     },
     {
-      "name": "project walk: farther file wins",
-      "source": "src/mcp/config.ts",
-      "find": "      for (const dir of dirs.reverse()) {\n",
-      "replace": "      for (const dir of dirs) {\n"
+      "name": "expand: IDE transports are never expanded",
+      "source": "src/mcp/config/expand.ts",
+      "find": "    case 'sse':\n    case 'http':",
+      "replace": "    case 'sse-ide':\n    case 'sse':\n    case 'http':"
     },
     {
-      "name": "setting sources do not gate scopes",
-      "source": "src/mcp/config.ts",
-      "find": "  if (scope in sourceMap && !isSettingSourceEnabled(sourceMap[scope]!)) {\n",
-      "replace": "  if (false) {\n"
+      "name": "scopes: the managed file name",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "const MANAGED_FILE = 'managed-mcp.json'",
+      "replace": "const MANAGED_FILE = 'managed.mcp.json'"
     },
     {
-      "name": "by name: local skipped",
-      "source": "src/mcp/config.ts",
-      "find": "  if (localServers[name]) {\n",
-      "replace": "  if (localServers[name] && false) {\n"
+      "name": "scopes: the project read walks every ancestor",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "      return readProjectChain(getCwd())",
+      "replace": "      return readOptionalFile(join(getCwd(), PROJECT_FILE), 'project')"
     },
     {
-      "name": "by name: plugin-only lock ignored",
-      "source": "src/mcp/config.ts",
-      "find": "  if (isRestrictedToPluginOnly('mcp')) {\n    return enterpriseServers[name] ?? null\n",
-      "replace": "  if (false) {\n    return enterpriseServers[name] ?? null\n"
+      "name": "scopes: the nearer file wins, farthest read first",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "    chain.unshift(dir)",
+      "replace": "    chain.push(dir)"
     },
     {
-      "name": "merge: managed servers not policy-filtered",
-      "source": "src/mcp/config.ts",
-      "find": "      if (!isMcpServerAllowedByPolicy(name, serverConfig)) {\n        continue\n      }\n      filtered[name] = serverConfig\n",
-      "replace": "      filtered[name] = serverConfig\n"
+      "name": "scopes: the filesystem root is never read",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "  return chain\n",
+      "replace": "  return dir === start ? chain : [dir, ...chain]\n"
     },
     {
-      "name": "merge: plugin-only lock ignored",
-      "source": "src/mcp/config.ts",
-      "find": "  const mcpLocked = isRestrictedToPluginOnly('mcp')\n",
-      "replace": "  const mcpLocked = false\n"
+      "name": "scopes: setting sources gate user, project and local",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "  if (!isSettingSourceEnabled(GATING_SOURCE[scope])) return nothing()",
+      "replace": "  if (false) return nothing()"
     },
     {
-      "name": "merge: unapproved project servers connect",
-      "source": "src/mcp/config.ts",
-      "find": "    if (getProjectMcpServerStatus(name) === 'approved') {\n",
-      "replace": "    if (getProjectMcpServerStatus(name) !== 'rejected') {\n"
+      "name": "scopes: local is gated by localSettings",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "  local: 'localSettings',",
+      "replace": "  local: 'userSettings',"
     },
     {
-      "name": "merge: user beats local",
-      "source": "src/mcp/config.ts",
-      "find": "    userServers,\n    approvedProjectServers,\n    localServers,\n  )\n",
-      "replace": "    localServers,\n    approvedProjectServers,\n    userServers,\n  )\n"
+      "name": "scopes: the cwd-only read is gated by projectSettings",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "  if (!isSettingSourceEnabled(GATING_SOURCE.project)) return nothing()",
+      "replace": "  if (false) return nothing()"
     },
     {
-      "name": "merge: no policy filter on the result",
-      "source": "src/mcp/config.ts",
-      "find": "    if (!isMcpServerAllowedByPolicy(name, serverConfig as McpServerConfig)) {\n",
-      "replace": "    if (false) {\n"
+      "name": "scopes: a missing scope file is silent",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "  if (read.kind === 'missing') return nothing()",
+      "replace": "  if (read.kind === 'missing' && scope !== 'enterprise') return nothing()"
     },
     {
-      "name": "merge: claude.ai connectors skip the policy",
-      "source": "src/mcp/config.ts",
-      "find": "  const { allowed: claudeaiMcpServers } = filterMcpServersByPolicy(\n    await claudeaiPromise,\n  )\n",
-      "replace": "  const claudeaiMcpServers = await claudeaiPromise\n"
+      "name": "scopes: every server is tagged with its scope",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "[name, { ...server, scope }]",
+      "replace": "[name, { ...server }]"
     },
     {
-      "name": "toggle: claude.ai connectors on by default",
-      "source": "src/mcp/config.ts",
-      "find": "    return !enabledServers.includes(name)\n",
-      "replace": "    return enabledServers.includes(name)\n"
+      "name": "scopes: a managed file that only warns still takes over",
+      "source": "src/mcp/config/scopes.ts",
+      "find": ".config !== null,",
+      "replace": ".errors.length === 0,"
+    },
+    {
+      "name": "scopes: the take-over is decided once per process",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "import memoize from 'lodash-es/memoize.js'",
+      "replace": "const memoize = (f: () => boolean) => Object.assign(() => f(), { cache: { clear: () => {} } })"
+    },
+    {
+      "name": "scopes: by name, local beats project",
+      "source": "src/mcp/config/scopes.ts",
+      "find": ": ['enterprise', 'local', 'project', 'user']",
+      "replace": ": ['enterprise', 'project', 'local', 'user']"
+    },
+    {
+      "name": "scopes: the plugin-only lock limits lookup to enterprise",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "    ? ['enterprise']",
+      "replace": "    ? ['enterprise', 'local', 'project', 'user']"
+    },
+    {
+      "name": "scopes: only the VS Code SDK server passes the managed lock",
+      "source": "src/mcp/config/scopes.ts",
+      "find": "config.type === 'sdk' && config.name === IDE_SDK_SERVER",
+      "replace": "config.type === 'sdk'"
+    },
+    {
+      "name": "policy: deny by name",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  if (policy.deny.names.has(name) || matchesTyped(policy.deny, handle)) return 'denied'",
+      "replace": "  if (matchesTyped(policy.deny, handle)) return 'denied'"
+    },
+    {
+      "name": "policy: deny by command",
+      "source": "src/mcp/config/policy.ts",
+      "find": "      return index.commands.some(entry => sameArgv(entry, handle.argv))",
+      "replace": "      return false"
+    },
+    {
+      "name": "policy: deny by URL pattern",
+      "source": "src/mcp/config/policy.ts",
+      "find": "      return index.urls.some(matches => matches(handle.url))",
+      "replace": "      return false"
+    },
+    {
+      "name": "policy: deny wins over the allowlist",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  if (policy.deny.names.has(name) || matchesTyped(policy.deny, handle)) return 'denied'",
+      "replace": "  if (!policy.allow && (policy.deny.names.has(name) || matchesTyped(policy.deny, handle))) return 'denied'"
+    },
+    {
+      "name": "policy: a command entry matches the whole array",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  return a.length === b.length && a.every((part, i) => part === b[i])",
+      "replace": "  return a.every((part, i) => part === b[i])"
+    },
+    {
+      "name": "policy: a command entry is ordered",
+      "source": "src/mcp/config/policy.ts",
+      "find": "a.every((part, i) => part === b[i])",
+      "replace": "a.every(part => b.includes(part))"
+    },
+    {
+      "name": "policy: a server without args is matched as the command alone",
+      "source": "src/mcp/config/policy.ts",
+      "find": "args.filter((arg): arg is string => typeof arg === 'string') : []",
+      "replace": "args.filter((arg): arg is string => typeof arg === 'string') : ['']"
+    },
+    {
+      "name": "policy: a typed stdio server is matched by command",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  if ((type === undefined || type === 'stdio') && typeof command === 'string') {",
+      "replace": "  if (type === undefined && typeof command === 'string') {"
+    },
+    {
+      "name": "policy: IDE transports are matched by URL",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  if (typeof url === 'string') return { kind: 'url', url }",
+      "replace": "  if (typeof url === 'string' && type !== 'ws-ide') return { kind: 'url', url }"
+    },
+    {
+      "name": "policy: a star crosses path separators",
+      "source": "src/mcp/config/policy.ts",
+      "find": "map(escapeRegExp).join('.*')",
+      "replace": "map(escapeRegExp).join('[^/]*')"
+    },
+    {
+      "name": "policy: a URL pattern is anchored at the end",
+      "source": "src/mcp/config/policy.ts",
+      "find": ".join('.*')}$`)",
+      "replace": ".join('.*')}`)"
+    },
+    {
+      "name": "policy: other characters in a URL pattern are literal",
+      "source": "src/mcp/config/policy.ts",
+      "find": ".map(escapeRegExp)",
+      "replace": ".map(part => part)"
+    },
+    {
+      "name": "policy (fix): the host compares case-insensitively",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  return url => asWritten.test(url) || folded.test(foldSchemeAndHost(url))",
+      "replace": "  return url => asWritten.test(url)"
+    },
+    {
+      "name": "policy (fix): only the scheme and host are folded",
+      "source": "src/mcp/config/policy.ts",
+      "find": "const SCHEME_AND_HOST = /^[^:/?#]*:\\/\\/[^/?#]*/",
+      "replace": "const SCHEME_AND_HOST = /^.*$/"
+    },
+    {
+      "name": "policy: no allowlist allows",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  if (!policy.allow) return 'allowed'",
+      "replace": "  if (!policy.allow) return 'not-allowed'"
+    },
+    {
+      "name": "policy: typed allow entries bind their kind",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  const admitted = hasTypedEntries(policy.allow, handle)",
+      "replace": "  const admitted = false && hasTypedEntries(policy.allow, handle)"
+    },
+    {
+      "name": "policy: URL allow entries bind remote servers",
+      "source": "src/mcp/config/policy.ts",
+      "find": "  if (handle.kind === 'url') return index.urls.length > 0",
+      "replace": "  if (handle.kind === 'url') return false"
+    },
+    {
+      "name": "policy: a name allow entry admits only that name",
+      "source": "src/mcp/config/policy.ts",
+      "find": "    : policy.allow.names.has(name)",
+      "replace": "    : policy.allow.names.size > 0"
+    },
+    {
+      "name": "policy lists: the managed-only flag is read from the policy alone",
+      "source": "src/mcp/config/policySettings.ts",
+      "find": "  return getSettingsForSource('policySettings')?.allowManagedMcpServersOnly === true",
+      "replace": "  return getInitialSettings().allowManagedMcpServersOnly === true"
+    },
+    {
+      "name": "policy lists: a claimed allowlist is the policy's own",
+      "source": "src/mcp/config/policySettings.ts",
+      "find": "    ? getSettingsForSource('policySettings')?.allowedMcpServers",
+      "replace": "    ? merged.allowedMcpServers"
+    },
+    {
+      "name": "policy lists: denies merge from every source",
+      "source": "src/mcp/config/policySettings.ts",
+      "find": "  return { allow, deny: merged.deniedMcpServers ?? [] }",
+      "replace": "  return { allow, deny: getSettingsForSource('policySettings')?.deniedMcpServers ?? [] }"
+    },
+    {
+      "name": "policy filter: sdk entries are exempt",
+      "source": "src/mcp/config/policySettings.ts",
+      "find": "  return splitByPolicy(configs, { exemptSdk: true })",
+      "replace": "  return splitByPolicy(configs, { exemptSdk: false })"
+    },
+    {
+      "name": "policy filter: allowed entries are the same objects",
+      "source": "src/mcp/config/policySettings.ts",
+      "find": "split.allowed[name] = config",
+      "replace": "split.allowed[name] = { ...config }"
+    },
+    {
+      "name": "ccr: the session-ingress marker unwraps",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "const PROXY_PATH_MARKERS = ['/v2/ccr-sessions/', '/v2/session_ingress/shttp/mcp/']",
+      "replace": "const PROXY_PATH_MARKERS = ['/v2/ccr-sessions/']"
+    },
+    {
+      "name": "ccr: an empty mcp_url keeps the input",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "  return new URL(url).searchParams.get('mcp_url') || url",
+      "replace": "  return new URL(url).searchParams.get('mcp_url') ?? url"
+    },
+    {
+      "name": "ccr: a string that is not a URL is returned as is",
+      "source": "src/mcp/config/dedup.ts",
+      "find": " || !URL.canParse(url)) return url",
+      "replace": ") return url"
+    },
+    {
+      "name": "signature: stdio is the whole command line",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "`stdio:${JSON.stringify([config.command, ...(config.args ?? [])])}`",
+      "replace": "`stdio:${JSON.stringify([config.command])}`"
+    },
+    {
+      "name": "signature: a URL is unwrapped",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "`url:${unwrapCcrProxyUrl(config.url)}`",
+      "replace": "`url:${config.url}`"
+    },
+    {
+      "name": "dedup: the first manual name is reported",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "    if (signature !== null && !owners.has(signature)) owners.set(signature, name)",
+      "replace": "    if (signature !== null) owners.set(signature, name)"
+    },
+    {
+      "name": "dedup: between plugins the first wins",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "  return dropDuplicates(pluginServers, manualServers, true)",
+      "replace": "  return dropDuplicates(pluginServers, manualServers, false)"
+    },
+    {
+      "name": "dedup: connectors never suppress each other",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "  return dropDuplicates(claudeAiServers, enabledManual, false)",
+      "replace": "  return dropDuplicates(claudeAiServers, enabledManual, true)"
+    },
+    {
+      "name": "dedup: a disabled manual server suppresses no connector",
+      "source": "src/mcp/config/dedup.ts",
+      "find": "Object.entries(manualServers).filter(([name]) => !isMcpServerDisabled(name))",
+      "replace": "Object.entries(manualServers)"
+    },
+    {
+      "name": "toggles: claude.ai connectors are opt-in",
+      "source": "src/mcp/config/toggles.ts",
+      "find": "  return isClaudeAIMcpServerName(name)",
+      "replace": "  return name.startsWith('claude.ai:')"
+    },
+    {
+      "name": "toggles: a listed server reads as disabled",
+      "source": "src/mcp/config/toggles.ts",
+      "find": "  return listed !== listedMeansEnabled",
+      "replace": "  return listed"
+    },
+    {
+      "name": "toggles: a toggle that changes nothing writes nothing",
+      "source": "src/mcp/config/toggles.ts",
+      "find": "    if (names.includes(name) === shouldBeListed) return project",
+      "replace": "    if (false) return project"
+    },
+    {
+      "name": "merge: the managed file takes over",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  if (doesEnterpriseMcpConfigExist()) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "merge: managed servers pass the policy",
+      "source": "src/mcp/config/merge.ts",
+      "find": "    return { servers: passingPolicy(getMcpConfigsByScope('enterprise').servers), errors: [] }",
+      "replace": "    return { servers: getMcpConfigsByScope('enterprise').servers, errors: [] }"
+    },
+    {
+      "name": "merge: the plugin-only lock drops user, project and local",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  const pluginsOnly = isRestrictedToPluginOnly('mcp')",
+      "replace": "  const pluginsOnly = false"
+    },
+    {
+      "name": "merge: only approved project servers connect",
+      "source": "src/mcp/config/merge.ts",
+      "find": "getProjectMcpServerStatus(name) === 'approved'",
+      "replace": "getProjectMcpServerStatus(name) !== 'rejected'"
+    },
+    {
+      "name": "merge: dynamic servers stay out of the result",
+      "source": "src/mcp/config/merge.ts",
+      "find": "    servers: passingPolicy({ ...keptPlugins, ...user, ...project, ...local }),",
+      "replace": "    servers: passingPolicy({ ...keptPlugins, ...user, ...project, ...local, ...dynamicServers }),"
+    },
+    {
+      "name": "merge: precedence plugin < user < project < local",
+      "source": "src/mcp/config/merge.ts",
+      "find": "    servers: passingPolicy({ ...keptPlugins, ...user, ...project, ...local }),",
+      "replace": "    servers: passingPolicy({ ...keptPlugins, ...local, ...project, ...user }),"
+    },
+    {
+      "name": "merge: the merged result passes the policy",
+      "source": "src/mcp/config/merge.ts",
+      "find": "    servers: passingPolicy({ ...keptPlugins, ...user, ...project, ...local }),",
+      "replace": "    servers: { ...keptPlugins, ...user, ...project, ...local },"
+    },
+    {
+      "name": "merge: sdk entries in a config scope are judged by name",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  return splitByPolicy(servers, { exemptSdk: false }).allowed",
+      "replace": "  return splitByPolicy(servers, { exemptSdk: true }).allowed"
+    },
+    {
+      "name": "merge: a disabled server takes no part in the race",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  return passingPolicy(Object.fromEntries(Object.entries(servers).filter(([name]) => !isMcpServerDisabled(name))))",
+      "replace": "  return passingPolicy(servers)"
+    },
+    {
+      "name": "merge: a blocked manual server cannot hide its plugin twin",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  return passingPolicy(Object.fromEntries(Object.entries(servers).filter(([name]) => !isMcpServerDisabled(name))))",
+      "replace": "  return Object.fromEntries(Object.entries(servers).filter(([name]) => !isMcpServerDisabled(name)))"
+    },
+    {
+      "name": "merge: the extra targets are awaited and count",
+      "source": "src/mcp/config/merge.ts",
+      "find": "...dynamicServers, ...(await extraDedupTargets) })",
+      "replace": "...dynamicServers })"
+    },
+    {
+      "name": "merge: suppressions are reported",
+      "source": "src/mcp/config/merge.ts",
+      "find": "    errors: [...plugins.errors, ...suppressionErrors],",
+      "replace": "    errors: plugins.errors,"
+    },
+    {
+      "name": "merge: plugin MCP errors are returned",
+      "source": "src/mcp/config/merge.ts",
+      "find": "    errors: [...plugins.errors, ...suppressionErrors],",
+      "replace": "    errors: suppressionErrors,"
+    },
+    {
+      "name": "merge: a suppressed plugin server leaves the result",
+      "source": "src/mcp/config/merge.ts",
+      "find": ".filter(([key]) => !losers.has(key))",
+      "replace": ".filter(() => true)"
+    },
+    {
+      "name": "merge: a suppression names the plugin's own server name",
+      "source": "src/mcp/config/merge.ts",
+      "find": "      serverName: origin?.serverName ?? name,",
+      "replace": "      serverName: name,"
+    },
+    {
+      "name": "merge: plugin load failures are not MCP errors",
+      "source": "src/mcp/config/merge.ts",
+      "find": "    plugins = loaded.enabled\n",
+      "replace": "    plugins = loaded.enabled\n    collected.errors.push(...loaded.errors)\n"
+    },
+    {
+      "name": "all: connectors pass the policy",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  const connectors = splitByPolicy(await connectorsPending, { exemptSdk: true }).allowed",
+      "replace": "  const connectors = await connectorsPending"
+    },
+    {
+      "name": "all: a connector twin of an enabled server is dropped",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  const { servers: newConnectors } = dedupClaudeAiMcpServers(connectors, configured.servers)",
+      "replace": "  const newConnectors = connectors"
+    },
+    {
+      "name": "all: connectors rank lowest",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  return { servers: { ...newConnectors, ...configured.servers }, errors: configured.errors }",
+      "replace": "  return { servers: { ...configured.servers, ...newConnectors }, errors: configured.errors }"
+    },
+    {
+      "name": "all: connectors are dedup targets of plugin servers",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  const configured = await getClaudeCodeMcpConfigs({}, connectorsPending)",
+      "replace": "  const configured = await getClaudeCodeMcpConfigs({})"
+    },
+    {
+      "name": "all: with the managed file no connector joins",
+      "source": "src/mcp/config/merge.ts",
+      "find": "  if (doesEnterpriseMcpConfigExist()) return getClaudeCodeMcpConfigs()",
+      "replace": "  if (false) return getClaudeCodeMcpConfigs()"
+    },
+    {
+      "name": "add: the name alphabet",
+      "source": "src/mcp/config/write.ts",
+      "find": "const SERVER_NAME = /^[A-Za-z0-9_-]+$/",
+      "replace": "const SERVER_NAME = /^[\\w.-]+$/"
+    },
+    {
+      "name": "add (fix): an empty name is refused",
+      "source": "src/mcp/config/write.ts",
+      "find": "  if (name.length === 0) throw new Error('Invalid name: a server name cannot be empty.')",
+      "replace": "  if (false) return"
+    },
+    {
+      "name": "add: the managed file locks every scope",
+      "source": "src/mcp/config/write.ts",
+      "find": "  if (doesEnterpriseMcpConfigExist()) {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "add: the managed lock is checked before the schema",
+      "source": "src/mcp/config/write.ts",
+      "find": "  assertNameAllowed(name)\n  if (doesEnterpriseMcpConfigExist()) {",
+      "replace": "  assertNameAllowed(name)\n  validated(config)\n  if (doesEnterpriseMcpConfigExist()) {"
+    },
+    {
+      "name": "add: an issue names its field",
+      "source": "src/mcp/config/write.ts",
+      "find": "  return issue.path.length > 0 ? `${issue.path.map(String).join('.')}: ${text}` : text",
+      "replace": "  return text"
+    },
+    {
+      "name": "add: several issues are joined with a comma",
+      "source": "src/mcp/config/write.ts",
+      "find": ".map(describeIssue).join(', ')",
+      "replace": ".map(describeIssue).join('; ')"
+    },
+    {
+      "name": "add (fix): no transport matched names the transports",
+      "source": "src/mcp/config/write.ts",
+      "find": "    issue.code === 'invalid_union'",
+      "replace": "    issue.code === 'never'"
+    },
+    {
+      "name": "add: the policy gate runs",
+      "source": "src/mcp/config/write.ts",
+      "find": "  assertPolicyAdmits(name, server)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "add: the explicit-deny message",
+      "source": "src/mcp/config/write.ts",
+      "find": "server is explicitly blocked by enterprise policy",
+      "replace": "server is blocked by policy"
+    },
+    {
+      "name": "add: the not-allowed message",
+      "source": "src/mcp/config/write.ts",
+      "find": "`Cannot add MCP server \"${name}\": not allowed by enterprise policy`",
+      "replace": "`Cannot add MCP server \"${name}\": blocked`"
+    },
+    {
+      "name": "add: the validated config is stored",
+      "source": "src/mcp/config/write.ts",
+      "find": "  return checked.data",
+      "replace": "  return config as McpServerConfig"
+    },
+    {
+      "name": "add: a name already in .mcp.json is refused",
+      "source": "src/mcp/config/write.ts",
+      "find": "  if (Object.hasOwn(state.servers, name)) throw",
+      "replace": "  if (false) throw"
+    },
+    {
+      "name": "add: a name already in user or local is refused",
+      "source": "src/mcp/config/write.ts",
+      "find": "  if (Object.hasOwn(scope.read() ?? {}, name)) throw",
+      "replace": "  if (false) throw"
+    },
+    {
+      "name": "add: local names its own config",
+      "source": "src/mcp/config/write.ts",
+      "find": "    addedTo: 'local config',",
+      "replace": "    addedTo: 'user config',"
+    },
+    {
+      "name": "add (fix): an unusable .mcp.json is left alone",
+      "source": "src/mcp/config/write.ts",
+      "find": "  if (state.kind === 'broken') {",
+      "replace": "  if (false) {"
+    },
+    {
+      "name": "add: other scopes are refused",
+      "source": "src/mcp/config/write.ts",
+      "find": "      throw new Error(`Cannot add MCP server to scope: ${scope}`)",
+      "replace": "      return"
+    },
+    {
+      "name": "add: a write failure is wrapped",
+      "source": "src/mcp/config/write.ts",
+      "find": "    throw new Error(`Failed to write to .mcp.json: ${errorMessage(error)}`)",
+      "replace": "    throw error"
+    },
+    {
+      "name": "remove: a write failure is wrapped",
+      "source": "src/mcp/config/write.ts",
+      "find": "    throw new Error(`Failed to remove from .mcp.json: ${errorMessage(error)}`)",
+      "replace": "    throw error"
+    },
+    {
+      "name": "remove: an unknown project name is an error",
+      "source": "src/mcp/config/write.ts",
+      "find": "`No MCP server found with name: ${name} in .mcp.json`",
+      "replace": "`No MCP server named ${name}`"
+    },
+    {
+      "name": "remove: the user scope names itself",
+      "source": "src/mcp/config/write.ts",
+      "find": "    removedLabel: 'user-scoped MCP server',",
+      "replace": "    removedLabel: 'MCP server',"
+    },
+    {
+      "name": "remove: other scopes are refused",
+      "source": "src/mcp/config/write.ts",
+      "find": "      throw new Error(`Cannot remove MCP server from scope: ${scope}`)",
+      "replace": "      return"
+    },
+    {
+      "name": "remove: the other entries are kept",
+      "source": "src/mcp/config/write.ts",
+      "find": "without(state.servers, name)",
+      "replace": "{}"
+    },
+    {
+      "name": "project file: only the cwd file is written",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "  return join(getCwd(), '.mcp.json')",
+      "replace": "  return join(getCwd(), '..', '.mcp.json')"
+    },
+    {
+      "name": "project file (fix): entries are written back unexpanded",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "  return { kind: 'usable', document: value, servers: value.mcpServers }",
+      "replace": "  return { kind: 'usable', document: value, servers: parseMcpConfig({ configObject: value, expandVars: true, scope: 'project' }).config?.mcpServers ?? {} }"
+    },
+    {
+      "name": "project file (fix): keys beside mcpServers are kept",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "jsonStringify({ ...document, mcpServers: servers }, null, 2)",
+      "replace": "jsonStringify({ mcpServers: servers }, null, 2)"
+    },
+    {
+      "name": "project file: two-space indent",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "jsonStringify({ ...document, mcpServers: servers }, null, 2)",
+      "replace": "jsonStringify({ ...document, mcpServers: servers }, null, 4)"
+    },
+    {
+      "name": "project file: a new file is 0644 under the umask",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "const NEW_FILE_MODE = 0o644",
+      "replace": "const NEW_FILE_MODE = 0o600"
+    },
+    {
+      "name": "project file: an existing mode is kept exactly",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "    if (mode !== undefined) await chmod(staging, mode)",
+      "replace": "    if (false) await chmod(staging, mode)"
+    },
+    {
+      "name": "project file: a failed write leaves no staging file",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "    await discard(staging)",
+      "replace": "    void discard"
+    },
+    {
+      "name": "project file: writes go through a staging file",
+      "source": "src/mcp/config/projectFile.ts",
+      "find": "  const staging = `${path}.${process.pid}.${Date.now()}.tmp`",
+      "replace": "  const staging = path"
     }
   ]
 }

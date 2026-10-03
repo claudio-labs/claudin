@@ -1,43 +1,33 @@
-/**
- * Shared utilities for expanding environment variables in MCP server configurations
- */
+// A placeholder body runs to the first closing brace, so `${A:-${B}}` reads
+// the body `A:-${B` and leaves the trailing `}` as literal text.
+const PLACEHOLDER = /\$\{([^}]+)\}/g
+const FALLBACK_MARK = ':-'
+
+type Placeholder = { name: string; fallback?: string }
+
+function readPlaceholder(body: string): Placeholder {
+  const mark = body.indexOf(FALLBACK_MARK)
+  if (mark < 0) return { name: body }
+  return { name: body.slice(0, mark), fallback: body.slice(mark + FALLBACK_MARK.length) }
+}
 
 /**
- * Expand environment variables in a string value
- * Handles ${VAR} and ${VAR:-default} syntax
- * @returns Object with expanded string and list of missing variables
+ * Substitutes `${NAME}` and `${NAME:-fallback}` from `process.env` in one
+ * pass. An unset name without a fallback stays verbatim and is listed in
+ * `missingVars` once per occurrence.
  */
 export function expandEnvVarsInString(value: string): {
   expanded: string
   missingVars: string[]
 } {
   const missingVars: string[] = []
-
-  const expanded = value.replace(/\$\{([^}]+)\}/g, (match, varContent) => {
-    // Split on the FIRST `:-` only so `:-` inside the default is preserved.
-    // `split(':-', 2)` truncates and DROPS the remainder, so `${VAR:-a:-b}`
-    // would wrongly yield the default `a` instead of `a:-b`.
-    const sepIdx = varContent.indexOf(':-')
-    const varName = sepIdx === -1 ? varContent : varContent.slice(0, sepIdx)
-    const defaultValue =
-      sepIdx === -1 ? undefined : varContent.slice(sepIdx + 2)
-    const envValue = process.env[varName]
-
-    if (envValue !== undefined) {
-      return envValue
-    }
-    if (defaultValue !== undefined) {
-      return defaultValue
-    }
-
-    // Track missing variable for error reporting
-    missingVars.push(varName)
-    // Return original if not found (allows debugging but will be reported as error)
-    return match
+  const expanded = value.replace(PLACEHOLDER, (placeholder: string, body: string) => {
+    const { name, fallback } = readPlaceholder(body)
+    const fromEnv = process.env[name]
+    if (fromEnv !== undefined) return fromEnv
+    if (fallback !== undefined) return fallback
+    missingVars.push(name)
+    return placeholder
   })
-
-  return {
-    expanded,
-    missingVars,
-  }
+  return { expanded, missingVars }
 }
