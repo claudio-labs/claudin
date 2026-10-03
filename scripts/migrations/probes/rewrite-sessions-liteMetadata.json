@@ -1,0 +1,217 @@
+{
+  "test": [
+    "src/sessions/indexing/liteMetadata.characterization.test.ts",
+    "src/sessions/indexing/liteMetadata.listing.characterization.test.ts",
+    "src/sessions/indexing/liteMetadata.loading.characterization.test.ts",
+    "src/sessions/indexing/liteMetadata.search.characterization.test.ts"
+  ],
+  "source": "src/sessions/indexing/liteMetadata.ts",
+  "probes": [
+    {
+      "name": "env: an unset NODE_ENV reads as development",
+      "find": "return process.env.NODE_ENV || 'development'",
+      "replace": "return process.env.NODE_ENV || 'production'"
+    },
+    {
+      "name": "switch: custom titles are on",
+      "find": "export function isCustomTitleEnabled(): boolean {\n  return true",
+      "replace": "export function isCustomTitleEnabled(): boolean {\n  return false"
+    },
+    {
+      "name": "jsonl: the worktree comes from the leaf session",
+      "find": "worktreeSession: worktreeStates.has(sessionId)",
+      "replace": "worktreeSession: !worktreeStates.has(sessionId)"
+    },
+    {
+      "name": "count: a meta user message is not a turn",
+      "find": "  if (message.isMeta) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "count: a document block is a turn",
+      "find": "block.type === 'document',",
+      "replace": "block.type === 'tool_result',"
+    },
+    {
+      "name": "count: a blank assistant text is not a turn",
+      "find": "block.text.trim().length > 0,",
+      "replace": "block.text.length > 0,"
+    },
+    {
+      "name": "record: the branch is the last message's",
+      "find": "gitBranch: lastMessage.gitBranch,",
+      "replace": "gitBranch: firstMessage.gitBranch,"
+    },
+    {
+      "name": "record: a full record names the session of its first message",
+      "find": "return log.messages[0]?.sessionId as UUID | undefined",
+      "replace": "return log.messages.at(-1)?.sessionId as UUID | undefined"
+    },
+    {
+      "name": "full load: metadata is keyed by the leaf's session",
+      "find": "const sessionId = mostRecentLeaf.sessionId as UUID | undefined",
+      "replace": "const sessionId = transcript[0]?.sessionId as UUID | undefined"
+    },
+    {
+      "name": "full load: only a user title survives",
+      "find": "customTitle: sessionId ? customTitles.get(sessionId) : log.customTitle,",
+      "replace": "customTitle: log.customTitle,"
+    },
+    {
+      "name": "full load: the chain's first message decides sidechain",
+      "find": "isSidechain: transcript[0]?.isSidechain ?? log.isSidechain,",
+      "replace": "isSidechain: log.isSidechain,"
+    },
+    {
+      "name": "full load: a worktree with no entry is kept",
+      "find": "          : log.worktreeSession,",
+      "replace": "          : undefined,"
+    },
+    {
+      "name": "by id: a warm message cache is not overwritten",
+      "find": "if (!getSessionMessages.cache.has(sessionId)) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "by id: sidechain messages never anchor the chain",
+      "find": "findLatestMessage(messages.values(), m => !m.isSidechain)",
+      "replace": "findLatestMessage(messages.values(), m => true)"
+    },
+    {
+      "name": "by id: the agent setting of the requested session",
+      "find": "const agentSetting = agentSettings.get(sessionId)",
+      "replace": "const agentSetting = undefined"
+    },
+    {
+      "name": "pending call: an answered call is not pending",
+      "find": "block.tool_use_id === toolUseId",
+      "replace": "block.tool_use_id === 'answered-elsewhere'"
+    },
+    {
+      "name": "files: only regular files are sessions",
+      "find": "if (!dirent.isFile() || !dirent.name.endsWith('.jsonl')) continue",
+      "replace": "if (!dirent.name.endsWith('.jsonl')) continue"
+    },
+    {
+      "name": "files: created time is the birth time",
+      "find": "ctime: st.birthtime.getTime(),",
+      "replace": "ctime: st.mtime.getTime(),"
+    },
+    {
+      "name": "without index: a limit keeps the newest files",
+      "find": ".sort((a, b) => b.mtime - a.mtime)\n      .slice(0, limit)",
+      "replace": ".sort((a, b) => a.mtime - b.mtime)\n      .slice(0, limit)"
+    },
+    {
+      "name": "lite: the last prompt comes from the tail only",
+      "find": "extractLastJsonStringField(tail, 'lastPrompt') ||",
+      "replace": "extractLastJsonStringField(head, 'lastPrompt') ||"
+    },
+    {
+      "name": "lite: a cut first line gives 200 characters",
+      "find": "extractJsonStringFieldPrefix(head, 'content', 200) ||",
+      "replace": "extractJsonStringFieldPrefix(head, 'content', 100) ||"
+    },
+    {
+      "name": "lite: a user title beats an AI title",
+      "find": "    extractLastJsonStringField(tail, 'customTitle') ??\n",
+      "replace": "    extractLastJsonStringField(tail, 'aiTitle') ??\n"
+    },
+    {
+      "name": "lite: the tag comes from the tail only",
+      "find": "const tag = extractLastJsonStringField(tail, 'tag')",
+      "replace": "const tag = extractLastJsonStringField(head, 'tag')"
+    },
+    {
+      "name": "lite: with no branch in the tail, the first in the head",
+      "find": "extractJsonStringField(head, 'gitBranch')",
+      "replace": "extractLastJsonStringField(head, 'gitBranch')"
+    },
+    {
+      "name": "lite: a PR number stored as a string",
+      "find": "prNumber = parseInt(prNumStr, 10) || undefined",
+      "replace": "prNumber = undefined"
+    },
+    {
+      "name": "lite: a tab in a cut prompt becomes a space",
+      "find": ".replace(/\\\\t/g, ' ')",
+      "replace": ""
+    },
+    {
+      "name": "lite: a titled session keeps an empty prompt",
+      "find": "if (!enriched.firstPrompt && !enriched.customTitle) {",
+      "replace": "if (!enriched.firstPrompt) {"
+    },
+    {
+      "name": "lite: teammate sessions are hidden",
+      "find": "if (enriched.teamName) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "lite: the head cwd beats the listing's project path",
+      "find": "projectPath: meta.projectPath ?? log.projectPath,",
+      "replace": "projectPath: log.projectPath ?? meta.projectPath,"
+    },
+    {
+      "name": "lite: the spaced sidechain flag hides a session too",
+      "find": " || head.includes('\"isSidechain\": true')",
+      "replace": ""
+    },
+    {
+      "name": "enrich: stops once enough sessions are found",
+      "find": "while (i < allLogs.length && result.length < count) {",
+      "replace": "while (i < allLogs.length && result.length <= count) {"
+    },
+    {
+      "name": "listing: stat-only records are flagged lite",
+      "find": "isLite: true,",
+      "replace": "isLite: false,"
+    },
+    {
+      "name": "dedupe: a tie keeps the first record seen",
+      "find": "if (!existing || log.modified.getTime() > existing.modified.getTime()) {",
+      "replace": "if (!existing || log.modified.getTime() >= existing.modified.getTime()) {"
+    },
+    {
+      "name": "branches: messages after a branch end follow in time order",
+      "find": "a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0,",
+      "replace": "a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0,"
+    },
+    {
+      "name": "search: the query is trimmed",
+      "find": "const normalizedQuery = query.toLowerCase().trim()",
+      "replace": "const normalizedQuery = query.toLowerCase()",
+      "source": "src/sessions/indexing/search.ts"
+    },
+    {
+      "name": "search: titles are compared without case",
+      "find": "const title = log.customTitle?.toLowerCase().trim()",
+      "replace": "const title = log.customTitle?.trim()",
+      "source": "src/sessions/indexing/search.ts"
+    },
+    {
+      "name": "search: exact mode compares whole titles",
+      "find": "return exact ? title === normalizedQuery : title.includes(normalizedQuery)",
+      "replace": "return title.includes(normalizedQuery)",
+      "source": "src/sessions/indexing/search.ts"
+    },
+    {
+      "name": "search: newest first",
+      "find": "deduplicated.sort((a, b) => b.modified.getTime() - a.modified.getTime())",
+      "replace": "deduplicated.sort((a, b) => a.modified.getTime() - b.modified.getTime())",
+      "source": "src/sessions/indexing/search.ts"
+    },
+    {
+      "name": "search: every worktree of the repository is searched",
+      "find": "const worktreePaths = await getWorktreePaths(getOriginalCwd())",
+      "replace": "const worktreePaths: string[] = []",
+      "source": "src/sessions/indexing/search.ts"
+    },
+    {
+      "name": "search: the limit",
+      "find": "return deduplicated.slice(0, limit)",
+      "replace": "return deduplicated.slice(0, limit + 1)",
+      "source": "src/sessions/indexing/search.ts"
+    }
+  ]
+}

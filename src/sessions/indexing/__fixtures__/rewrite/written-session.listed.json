@@ -1,0 +1,17 @@
+{
+  "sessionId": "d1c2b3a4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+  "firstPrompt": "Let us fix the parser.",
+  "customTitle": "Parser rewrite",
+  "tag": "parser",
+  "agentSetting": "reviewer",
+  "gitBranch": "parser-fix",
+  "projectPath": "/home/dev/shop",
+  "prNumber": 42,
+  "prUrl": "https://github.com/acme/shop/pull/42",
+  "prRepository": "acme/shop",
+  "costUSD": 0.25,
+  "contextTokens": null,
+  "summary": null,
+  "teamName": null,
+  "isSidechain": false
+}
