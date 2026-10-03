@@ -232,6 +232,14 @@ imports the file at all.
 | yoga | 2 | 0 | `ink/layout/yoga.ts` 91%, `ink/reconciler.ts` 78% |
 | opencode | — | most | `lsp/LSPServerManager.ts` 1%, `LSPServerInstance.ts` 2%, `lsp/manager.ts` 15%, `mcp/auth/*` 3–7%, `providers/oauth/client.ts` 3%; Codex OAuth 63–86% |
 
+**After the cover round (2026-10-02).** All eleven units landed:
+- 1,232 characterization tests;
+- 267 break-probes, re-run in the checkout before each landing. The ports later replaced the probes of the code they removed.
+
+Of the 48 surviving files the cut touches, 42 reach their target. The six left:
+- `plans.ts`, `settingsControlHandlers.ts`, `defaultAction/resume.ts` and `dialogLaunchers.tsx` fall short only by lines the cut deletes. The cut's commit checks them.
+- `cli.tsx` and `interactiveHandler.ts` are exceptions. Their reasons are in [levers-findings.md](levers-findings.md), which also lists every defect the round pinned.
+
 ## Rewriting per method
 
 ```sh
