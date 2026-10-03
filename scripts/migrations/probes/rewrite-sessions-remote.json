@@ -2,93 +2,183 @@
   "test": [
     "src/sessions/sessionUrl.characterization.test.ts",
     "src/sessions/sessionIngressAuth.characterization.test.ts",
-    "src/sessions/hooks/useTeleportResume.characterization.test.tsx"
+    "src/sessions/hooks/useTeleportResume.characterization.test.tsx",
+    "src/sessions/sessionUrl.test.ts",
+    "src/sessions/remote/ingressTokenSource.test.ts"
   ],
   "source": "src/sessions/sessionIngressAuth.ts",
   "probes": [
     {
       "name": "ingress: the access-token variable wins",
-      "source": "src/sessions/sessionIngressAuth.ts",
-      "find": "const envToken = process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN",
-      "replace": "const envToken = process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN_OFF"
+      "find": "  if (fromEnv) return fromEnv",
+      "replace": "  if (fromEnv && false) return fromEnv"
     },
     {
-      "name": "ingress: only session keys become a cookie",
-      "source": "src/sessions/sessionIngressAuth.ts",
-      "find": "if (token.startsWith('sk-ant-sid')) {",
-      "replace": "if (token.startsWith('sk-ant-')) {"
+      "name": "ingress: what the disk gave is remembered, null included",
+      "find": "  if (remembered !== undefined) return remembered",
+      "replace": "  if (remembered) return remembered"
     },
     {
-      "name": "ingress: the organization header name",
-      "source": "src/sessions/sessionIngressAuth.ts",
-      "find": "headers['X-Organization-Uuid'] = orgUuid",
-      "replace": "headers['X-Organization-Id'] = orgUuid"
+      "name": "ingress: the disk result is stored for the process",
+      "find": "  setSessionIngressToken(fromDisk)",
+      "replace": "  void fromDisk"
     },
     {
-      "name": "ingress: the first answer is kept",
-      "source": "src/sessions/sessionIngressAuth.ts",
-      "find": "if (cachedToken !== undefined) {",
-      "replace": "if (false) {"
+      "name": "ingress: the token file variable reaches the reader",
+      "find": "      tokenFile: process.env.CLAUDE_SESSION_INGRESS_TOKEN_FILE,",
+      "replace": "      tokenFile: undefined,"
     },
     {
-      "name": "ingress: a non-numeric descriptor gives nothing",
-      "source": "src/sessions/sessionIngressAuth.ts",
-      "find": "if (Number.isNaN(fd)) {",
-      "replace": "if (false) {"
+      "name": "headers: no token gives no headers",
+      "find": "  if (!token) return {}",
+      "replace": "  if (!token) return { Authorization: 'Bearer ' }"
     },
     {
-      "name": "ingress: update sets the access-token variable",
-      "source": "src/sessions/sessionIngressAuth.ts",
-      "find": "process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN = token",
-      "replace": "process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN_NEXT = token"
+      "name": "headers: a session key is a cookie",
+      "find": "const SESSION_KEY_PREFIX = 'sk-ant-sid'",
+      "replace": "const SESSION_KEY_PREFIX = 'sk-ant-sidX'"
     },
     {
-      "name": "url: .jsonl marks a transcript file",
+      "name": "headers: the organization rides only with a session key, when set",
+      "find": "    ? { Cookie: `sessionKey=${token}`, 'X-Organization-Uuid': organization }",
+      "replace": "    ? { Cookie: `sessionKey=${token}` }"
+    },
+    {
+      "name": "update: rotation sets the access-token variable",
+      "find": "  process.env[ACCESS_TOKEN_ENV] = token",
+      "replace": "  process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN_X = token"
+    },
+    {
+      "name": "disk: no descriptor variable reads the token file",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "  if (!where.descriptor) return deps.readTokenFile(fallbackFile)",
+      "replace": "  if (!where.descriptor) return null"
+    },
+    {
+      "name": "disk: the well-known path is the default token file",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "  const fallbackFile = where.tokenFile || CCR_SESSION_INGRESS_TOKEN_PATH",
+      "replace": "  const fallbackFile = where.tokenFile ?? CCR_SESSION_INGRESS_TOKEN_PATH"
+    },
+    {
+      "name": "disk: a non-numeric descriptor variable never falls back to a file",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "    deps.debug(`Ingress token descriptor variable is not a number: ${where.descriptor}`)\n    return null",
+      "replace": "    deps.debug(`Ingress token descriptor variable is not a number: ${where.descriptor}`)\n    return deps.readTokenFile(fallbackFile)"
+    },
+    {
+      "name": "disk: an unreadable descriptor falls back to the file",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "    return deps.readTokenFile(fallbackFile)\n  }\n\n  const token",
+      "replace": "    return null\n  }\n\n  const token"
+    },
+    {
+      "name": "disk: the descriptor content is trimmed",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "  const token = content.trim()",
+      "replace": "  const token = content"
+    },
+    {
+      "name": "disk: an empty descriptor gives null, file or not",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "    deps.debug(`Ingress token descriptor ${fd} was empty`)\n    return null",
+      "replace": "    deps.debug(`Ingress token descriptor ${fd} was empty`)\n    return deps.readTokenFile(fallbackFile)"
+    },
+    {
+      "name": "disk: a descriptor token is copied for subprocesses (CCR)",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "  deps.keepCopyForSubprocesses(token)",
+      "replace": "  void token"
+    },
+    {
+      "name": "disk: macOS and FreeBSD read the descriptor through /dev/fd",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "  const hasDevFd = platform === 'darwin' || platform === 'freebsd'",
+      "replace": "  const hasDevFd = platform === 'darwin'"
+    },
+    {
+      "name": "disk: the debug lines never carry the token",
+      "source": "src/sessions/remote/ingressTokenSource.ts",
+      "find": "  deps.debug(`Ingress token read from descriptor ${fd}`)",
+      "replace": "  deps.debug(`Ingress token read from descriptor ${fd}: ${token}`)"
+    },
+    {
+      "name": "resume id: .jsonl, any case, is checked first",
       "source": "src/sessions/sessionUrl.ts",
-      "find": ".endsWith('.jsonl')",
-      "replace": ".endsWith('.json')"
+      "find": "  if (text.toLowerCase().endsWith('.jsonl')) return { kind: 'file', path: text }",
+      "replace": "  if (text.endsWith('.jsonl')) return { kind: 'file', path: text }"
     },
     {
-      "name": "url: the extension check ignores case",
+      "name": "resume id: a UUID is resumed under itself",
       "source": "src/sessions/sessionUrl.ts",
-      "find": "resumeIdentifier.toLowerCase()",
-      "replace": "resumeIdentifier"
+      "find": "      return { sessionId: target.id, ingressUrl: null, isUrl: false, jsonlFile: null, isJsonlFile: false }",
+      "replace": "      return { sessionId: randomUUID(), ingressUrl: null, isUrl: false, jsonlFile: null, isJsonlFile: false }"
     },
     {
-      "name": "url: a uuid is resumed under itself",
+      "name": "resume id: a file gets a fresh session id each parse",
       "source": "src/sessions/sessionUrl.ts",
-      "find": "sessionId: resumeIdentifier as UUID",
-      "replace": "sessionId: randomUUID() as UUID"
+      "find": "      return { sessionId: randomUUID(), ingressUrl: null, isUrl: false, jsonlFile: target.path, isJsonlFile: true }",
+      "replace": "      return { sessionId: '00000000-0000-4000-8000-000000000000', ingressUrl: null, isUrl: false, jsonlFile: target.path, isJsonlFile: true }"
     },
     {
-      "name": "url: the ingress url is normalized",
+      "name": "resume id: the URL is normalized",
       "source": "src/sessions/sessionUrl.ts",
-      "find": "ingressUrl: url.href,",
-      "replace": "ingressUrl: resumeIdentifier,"
+      "find": "  return INGRESS_PROTOCOLS.has(url.protocol) ? url.href : null",
+      "replace": "  return INGRESS_PROTOCOLS.has(url.protocol) ? text : null"
     },
     {
-      "name": "teleport: the process is marked teleported with the session id",
-      "source": "src/sessions/hooks/useTeleportResume.tsx",
-      "find": "sessionId: session.id",
-      "replace": "sessionId: null"
+      "name": "resume id: an unparseable URL is refused",
+      "source": "src/sessions/sessionUrl.ts",
+      "find": "  } catch {\n    return null\n  }",
+      "replace": "  } catch {\n    return text\n  }"
     },
     {
-      "name": "teleport: an operation error keeps its formatted message",
-      "source": "src/sessions/hooks/useTeleportResume.tsx",
-      "find": "formattedMessage: err instanceof TeleportOperationError ? err.formattedMessage : undefined,",
-      "replace": "formattedMessage: undefined,"
+      "name": "fix (finding 6): only http: and https: are ingress URLs",
+      "source": "src/sessions/sessionUrl.ts",
+      "find": "const INGRESS_PROTOCOLS: ReadonlySet<string> = new Set(['http:', 'https:'])",
+      "replace": "const INGRESS_PROTOCOLS: ReadonlySet<string> = { has: (_: string) => true } as ReadonlySet<string>"
     },
     {
-      "name": "teleport: only operation errors are flagged as such",
+      "name": "teleport: a pick sets resuming, clears the error and selects in one render",
       "source": "src/sessions/hooks/useTeleportResume.tsx",
-      "find": "isOperationError: err instanceof TeleportOperationError",
-      "replace": "isOperationError: true"
+      "find": "      setState({ isResuming: true, error: null, selectedSession: session })",
+      "replace": "      setState(prev => ({ ...prev, isResuming: true, selectedSession: session }))"
     },
     {
-      "name": "teleport: other errors keep their own message",
+      "name": "teleport: success marks the process teleported",
       "source": "src/sessions/hooks/useTeleportResume.tsx",
-      "find": "? err.message : errorMessage(err)",
-      "replace": "? err.message : 'failed'"
+      "find": "        setTeleportedSessionInfo({ sessionId: session.id })",
+      "replace": "        void session"
+    },
+    {
+      "name": "teleport: an operation error carries its formatted message",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "  if (thrown instanceof TeleportOperationError) {",
+      "replace": "  if (thrown instanceof TeleportOperationError && false) {"
+    },
+    {
+      "name": "teleport: a failure resolves null and records the error",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "        setState(prev => ({ ...prev, isResuming: false, error: failure }))",
+      "replace": "        setState(prev => ({ ...prev, isResuming: false, error: failure.isOperationError ? failure : null }))"
+    },
+    {
+      "name": "teleport: clearError drops the error",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "    setState(prev => (prev.error === null ? prev : { ...prev, error: null }))",
+      "replace": "    setState(prev => prev)"
+    },
+    {
+      "name": "teleport: the result keeps its identity across renders",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "    [state, resumeSession, clearError],",
+      "replace": "    [state, resumeSession, clearError, {}],"
+    },
+    {
+      "name": "teleport: the resume function follows the source",
+      "source": "src/sessions/hooks/useTeleportResume.tsx",
+      "find": "    [source],",
+      "replace": "    [],"
     }
   ]
 }

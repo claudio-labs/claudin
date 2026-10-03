@@ -50,7 +50,7 @@ which the sandbox tools read; the lists below are the same.
 | `sessions/liteMetadata` | 2 | 856 | — | done |
 | `sessions/indexingScan` | 3 | 609 | — | done |
 | `sessions/lifecycle` | 8 | 1057 | — | done |
-| `sessions/remote` | 3 | 210 | — | pending (2 dead hooks cut) |
+| `sessions/remote` | 3 | 210 | — | done (2 dead hooks cut) |
 | `sessions/historySearch` | 3 | 534 | — | done |
 | `sessions/ui` | 5 | 660 | — | pending |
 

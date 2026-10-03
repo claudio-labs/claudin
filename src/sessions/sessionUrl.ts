@@ -9,56 +9,50 @@ export type ParsedSessionUrl = {
   isJsonlFile: boolean
 }
 
-/**
- * Parses a session resume identifier which can be either:
- * - A URL containing session ID (e.g., https://api.example.com/v1/session_ingress/session/550e8400-e29b-41d4-a716-446655440000)
- * - A plain session ID (UUID)
- *
- * @param resumeIdentifier - The URL or session ID to parse
- * @returns Parsed session information or null if invalid
- */
+type ResumeTarget =
+  | { kind: 'file'; path: string }
+  | { kind: 'id'; id: UUID }
+  | { kind: 'url'; href: string }
+
+const INGRESS_PROTOCOLS: ReadonlySet<string> = new Set(['http:', 'https:'])
+
+function asIngressUrl(text: string): string | null {
+  let url: URL
+  try {
+    url = new URL(text)
+  } catch {
+    return null
+  }
+  // `foo:bar` and `C:\x` parse as URLs too; only a web address can be an ingress.
+  return INGRESS_PROTOCOLS.has(url.protocol) ? url.href : null
+}
+
+function classify(text: string): ResumeTarget | null {
+  // The extension is checked before anything else: a URL or a Windows path
+  // ending in `.jsonl` names a transcript file.
+  if (text.toLowerCase().endsWith('.jsonl')) return { kind: 'file', path: text }
+  const id = validateUuid(text)
+  if (id) return { kind: 'id', id }
+  const href = asIngressUrl(text)
+  return href === null ? null : { kind: 'url', href }
+}
+
+function toParsed(target: ResumeTarget): ParsedSessionUrl {
+  switch (target.kind) {
+    case 'file':
+      return { sessionId: randomUUID(), ingressUrl: null, isUrl: false, jsonlFile: target.path, isJsonlFile: true }
+    case 'id':
+      return { sessionId: target.id, ingressUrl: null, isUrl: false, jsonlFile: null, isJsonlFile: false }
+    case 'url':
+      // The id in the URL belongs to the remote session; ours is always fresh.
+      return { sessionId: randomUUID(), ingressUrl: target.href, isUrl: true, jsonlFile: null, isJsonlFile: false }
+  }
+}
+
+/** What `-p --resume <value>` names: a transcript file, a session id, or an ingress URL. */
 export function parseSessionIdentifier(
   resumeIdentifier: string,
 ): ParsedSessionUrl | null {
-  // Check for JSONL file path before URL parsing, since Windows absolute
-  // paths (e.g., C:\path\file.jsonl) are parsed as valid URLs with C: as protocol
-  if (resumeIdentifier.toLowerCase().endsWith('.jsonl')) {
-    return {
-      sessionId: randomUUID() as UUID,
-      ingressUrl: null,
-      isUrl: false,
-      jsonlFile: resumeIdentifier,
-      isJsonlFile: true,
-    }
-  }
-
-  // Check if it's a plain UUID
-  if (validateUuid(resumeIdentifier)) {
-    return {
-      sessionId: resumeIdentifier as UUID,
-      ingressUrl: null,
-      isUrl: false,
-      jsonlFile: null,
-      isJsonlFile: false,
-    }
-  }
-
-  // Check if it's a URL
-  try {
-    const url = new URL(resumeIdentifier)
-
-    // Use the entire URL as the ingress URL
-    // Always generate a random session ID
-    return {
-      sessionId: randomUUID() as UUID,
-      ingressUrl: url.href,
-      isUrl: true,
-      jsonlFile: null,
-      isJsonlFile: false,
-    }
-  } catch {
-    // Not a valid URL
-  }
-
-  return null
+  const target = classify(resumeIdentifier)
+  return target === null ? null : toParsed(target)
 }

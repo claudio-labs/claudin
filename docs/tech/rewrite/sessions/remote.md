@@ -519,3 +519,22 @@ suite passes on the old code. What a "fix" would change is left unpinned.
 - **Types to make explicit:** the SSH session contract of the Public contract
   section, as a type in this slice rather than the absent module's `any`; the
   teleport error shape; the permission reply.
+
+## Outcome
+
+Rewritten per method on 2026-10-03, after the two dead hooks were cut.
+- **Code.**
+  - `sessionIngressAuth.ts` is now a thin entry point over
+    `remote/ingressTokenSource.ts`, which takes a `…Deps` parameter.
+  - `sessionUrl.ts` classifies the input first.
+  - `useTeleportResume` is a plain hook.
+  - The three characterization suites pass unchanged.
+- **Fixes.** Finding 6: only `http:` and `https:` count as ingress URLs, so
+  `--resume foo:bar` reaches the existing "invalid session ID" error. Findings 7
+  and 8 are kept for parity, and are now tested through the deps.
+- **Probes.** `rewrite-sessions-remote.json` holds 30 probes.
+- **Residue, reviewed.** Seven lines of Claude Code remain, all contract:
+  - `sessionUrl.ts`, 5: the `ParsedSessionUrl` fields and the shape of its result;
+  - `sessionIngressAuth.ts`, 2: a header object's two fields.
+
+  At landing, one test table that matched openclaude by shape was reworded.

@@ -1,80 +1,65 @@
-import { c as _c } from "react-compiler-runtime";
-import { useCallback, useState } from 'react';
-import { setTeleportedSessionInfo } from 'src/platform/bootstrap/state.js';
-import type { TeleportRemoteResponse } from 'src/sessions/conversationRecovery.js';
-import type { CodeSession } from 'src/platform/teleport/api.js';
-import { errorMessage, TeleportOperationError } from 'src/shared/errors.js';
-import { teleportResumeCodeSession } from 'src/platform/teleport/teleport.js';
+import { useCallback, useMemo, useState } from 'react'
+import { setTeleportedSessionInfo } from 'src/platform/bootstrap/state.js'
+import type { CodeSession } from 'src/platform/teleport/api.js'
+import { teleportResumeCodeSession } from 'src/platform/teleport/teleport.js'
+import type { TeleportRemoteResponse } from 'src/sessions/conversationRecovery.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage, TeleportOperationError } from 'src/shared/errors.js'
 
-export type TeleportSource = 'cliArg' | 'localCommand';
-type TeleportResumeError = {
-  message: string;
-  formattedMessage: string | undefined;
-  isOperationError: boolean;
-};
+export type TeleportSource = 'cliArg' | 'localCommand'
+
+/** What the picker shows when a resume fails. */
+type ResumeFailure = {
+  message: string
+  /** Set only for a teleport operation error, which carries its own rendering. */
+  formattedMessage: string | undefined
+  isOperationError: boolean
+}
+
+type PickerState = {
+  isResuming: boolean
+  error: ResumeFailure | null
+  selectedSession: CodeSession | null
+}
+
+const NOTHING_PICKED: PickerState = { isResuming: false, error: null, selectedSession: null }
+
+function toResumeFailure(thrown: unknown): ResumeFailure {
+  if (thrown instanceof TeleportOperationError) {
+    return { message: thrown.message, formattedMessage: thrown.formattedMessage, isOperationError: true }
+  }
+  return { message: errorMessage(thrown), formattedMessage: undefined, isOperationError: false }
+}
+
+/** State behind the `--teleport` picker: resume a claude.ai session into this process. */
 export function useTeleportResume(source: TeleportSource) {
-  const $ = _c(8);
-  const [isResuming, setIsResuming] = useState(false);
-  const [error, setError] = useState<TeleportResumeError | null>(null);
-  const [selectedSession, setSelectedSession] = useState<CodeSession | null>(null);
-  let t0;
-  if ($[0] !== source) {
-    t0 = async (session: CodeSession) => {
-      setIsResuming(true);
-      setError(null);
-      setSelectedSession(session);
-      ;
+  const [state, setState] = useState<PickerState>(NOTHING_PICKED)
+
+  const resumeSession = useCallback(
+    async (session: CodeSession): Promise<TeleportRemoteResponse | null> => {
+      setState({ isResuming: true, error: null, selectedSession: session })
+      logForDebugging(`Teleport resume of ${session.id} (from ${source})`)
       try {
-        const result = await teleportResumeCodeSession(session.id);
-        setTeleportedSessionInfo({
-          sessionId: session.id
-        });
-        setIsResuming(false);
-        return result;
-      } catch (t1) {
-        const err = t1;
-        const teleportError = {
-          message: err instanceof TeleportOperationError ? err.message : errorMessage(err),
-          formattedMessage: err instanceof TeleportOperationError ? err.formattedMessage : undefined,
-          isOperationError: err instanceof TeleportOperationError
-        };
-        setError(teleportError);
-        setIsResuming(false);
-        return null;
+        const resumed = await teleportResumeCodeSession(session.id)
+        setTeleportedSessionInfo({ sessionId: session.id })
+        setState(prev => ({ ...prev, isResuming: false }))
+        return resumed
+      } catch (thrown) {
+        const failure = toResumeFailure(thrown)
+        setState(prev => ({ ...prev, isResuming: false, error: failure }))
+        return null
       }
-    };
-    $[0] = source;
-    $[1] = t0;
-  } else {
-    t0 = $[1];
-  }
-  const resumeSession = t0;
-  let t1;
-  if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = () => {
-      setError(null);
-    };
-    $[2] = t1;
-  } else {
-    t1 = $[2];
-  }
-  const clearError = t1;
-  let t2;
-  if ($[3] !== error || $[4] !== isResuming || $[5] !== resumeSession || $[6] !== selectedSession) {
-    t2 = {
-      resumeSession,
-      isResuming,
-      error,
-      selectedSession,
-      clearError
-    };
-    $[3] = error;
-    $[4] = isResuming;
-    $[5] = resumeSession;
-    $[6] = selectedSession;
-    $[7] = t2;
-  } else {
-    t2 = $[7];
-  }
-  return t2;
+    },
+    [source],
+  )
+
+  const clearError = useCallback(() => {
+    setState(prev => (prev.error === null ? prev : { ...prev, error: null }))
+  }, [])
+
+  // The wrapper's effects depend on this object, so it changes only with its parts.
+  return useMemo(
+    () => ({ ...state, resumeSession, clearError }),
+    [state, resumeSession, clearError],
+  )
 }
