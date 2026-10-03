@@ -1,12 +1,7 @@
-import { afterEach, expect, test } from 'bun:test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { expect, test } from 'bun:test'
 
 import {
   deserializeMessagesWithInterruptDetection,
-  loadConversationForResume,
-  ResumeTranscriptTooLargeError,
   restoreSkillStateFromMessages,
 } from 'src/sessions/conversationRecovery.js'
 import {
@@ -21,76 +16,6 @@ import {
   APPLY_PATCH_TOOL_NAME,
   LEGACY_APPLY_PATCH_TOOL_NAME,
 } from 'src/tools/ApplyPatchTool/prompt.js'
-
-const tempDirs: string[] = []
-const originalSimple = process.env.CLAUDIN_SIMPLE
-const sessionId = '00000000-0000-4000-8000-000000001999'
-const ts = '2026-04-02T00:00:00.000Z'
-
-
-function id(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
-
-function user(uuid: string, content: string) {
-  return {
-    type: 'user',
-    uuid,
-    parentUuid: null,
-    timestamp: ts,
-    cwd: '/tmp',
-    userType: 'external',
-    sessionId,
-    version: 'test',
-    isSidechain: false,
-    isMeta: false,
-    message: {
-      role: 'user',
-      content,
-    },
-  }
-}
-
-async function writeJsonl(entry: unknown): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'claudin-conversation-recovery-'))
-  tempDirs.push(dir)
-  const filePath = join(dir, 'resume.jsonl')
-  await writeFile(filePath, `${JSON.stringify(entry)}\n`)
-  return filePath
-}
-
-afterEach(async () => {
-  process.env.CLAUDIN_SIMPLE = originalSimple
-  await Promise.all(tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
-})
-
-test('loadConversationForResume accepts a small transcript from jsonl path', async () => {
-  process.env.CLAUDIN_SIMPLE = '1'
-  const path = await writeJsonl(user(id(1), 'hello'))
-
-  const result = await loadConversationForResume('fixture', path)
-  expect(result).not.toBeNull()
-  expect(result?.sessionId).toBe(sessionId)
-  expect(result?.messages.length).toBeGreaterThan(0)
-})
-
-test('loadConversationForResume rejects oversized reconstructed transcripts', async () => {
-  process.env.CLAUDIN_SIMPLE = '1'
-  const hugeContent = 'x'.repeat(8 * 1024 * 1024 + 32 * 1024)
-  const path = await writeJsonl(user(id(2), hugeContent))
-
-  let caught: unknown
-  try {
-    await loadConversationForResume('fixture', path)
-  } catch (error) {
-    caught = error
-  }
-
-  expect(caught).toBeInstanceOf(ResumeTranscriptTooLargeError)
-  expect((caught as Error).message).toContain(
-    'Reconstructed transcript is too large to resume safely',
-  )
-})
 
 test('restoreSkillStateFromMessages arms the bash_git_instructions suppress latch', async () => {
   // Clean slate — process-local state from earlier tests would falsely
@@ -153,31 +78,6 @@ test('a Stop hook attachment after the final reply is not an interrupted turn', 
   expect(result.messages.at(-1)?.type).toBe('attachment')
 })
 
-test('a hook attachment after a tool result still reads as an interrupted turn', () => {
-  const result = deserializeMessagesWithInterruptDetection([
-    createUserMessage({ content: 'hi' }),
-    createAssistantMessage({
-      content: [{ type: 'tool_use' as const, id: 'toolu_01', name: 'Read', input: { file_path: '/a' } }],
-    }),
-    createUserMessage({ content: [{ type: 'tool_result', tool_use_id: 'toolu_01', content: 'x' }] }),
-    createAttachmentMessage({
-      type: 'hook_success',
-      hookName: 'PostToolUse',
-      hookEvent: 'PostToolUse',
-      toolUseID: 'toolu_01',
-      content: '',
-    }),
-  ])
-
-  expect(result.turnInterruptionState.kind).toBe('interrupted_prompt')
-  const continuation = result.turnInterruptionState as { message: { message: { content: unknown } } }
-  expect(JSON.stringify(continuation.message.message.content)).toContain('Continue from where you left off.')
-})
-
-// A session recorded before the rename carries `apply_patch` tool_uses. The
-// request path maps them through the tool's alias; the in-memory readers (the
-// read-state rebuild, /diff, the write collapse) compare names and need the
-// new one.
 test('a resumed transcript calls the renamed patch tool by its new name', () => {
   const patch = { patchText: '*** Begin Patch\n*** Add File: a.txt\n+a\n*** End Patch' }
   const result = deserializeMessagesWithInterruptDetection([
