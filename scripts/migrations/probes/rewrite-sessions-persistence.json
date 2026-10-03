@@ -1,0 +1,225 @@
+{
+  "test": [
+    "src/sessions/persistence.characterization.test.ts",
+    "src/sessions/persistence.metadata.characterization.test.ts",
+    "src/sessions/persistence.remote.characterization.test.ts"
+  ],
+  "source": "src/sessions/persistence/project.ts",
+  "probes": [
+    {
+      "name": "helpers: a metadata line ends in CRLF",
+      "source": "src/sessions/persistence/_helpers.ts",
+      "find": "const line = jsonStringify(entry) + '\\n'",
+      "replace": "const line = jsonStringify(entry) + '\\r\\n'"
+    },
+    {
+      "name": "helpers: a created project directory is world-readable",
+      "source": "src/sessions/persistence/_helpers.ts",
+      "find": "fs.mkdirSync(dirname(fullPath), { mode: 0o700 })",
+      "replace": "fs.mkdirSync(dirname(fullPath), { mode: 0o755 })"
+    },
+    {
+      "name": "helpers: the tail read starts 1 MiB from the end",
+      "source": "src/sessions/persistence/_helpers.ts",
+      "find": "const tailOffset = Math.max(0, st.size - LITE_READ_BUF_SIZE)",
+      "replace": "const tailOffset = Math.max(0, st.size - 1024 * 1024)"
+    },
+    {
+      "name": "flush: flushSessionStorage does not wait",
+      "source": "src/sessions/persistence/flush.ts",
+      "find": "await getProject().flush()",
+      "replace": "void getProject().flush()"
+    },
+    {
+      "name": "record: recorded messages after a new one are chained to",
+      "source": "src/sessions/persistence/record.ts",
+      "find": "if (!seenNewMessage && isChainParticipant(m)) {",
+      "replace": "if (isChainParticipant(m)) {"
+    },
+    {
+      "name": "record: the result ignores what was just written",
+      "source": "src/sessions/persistence/record.ts",
+      "find": "return (lastRecorded?.uuid as UUID | undefined) ?? startingParentUuid ?? null",
+      "replace": "return startingParentUuid ?? null"
+    },
+    {
+      "name": "record: subagent lines are not marked as sidechain",
+      "source": "src/sessions/persistence/record.ts",
+      "find": "    cleanMessagesForLogging(messages),\n    true,",
+      "replace": "    cleanMessagesForLogging(messages),\n    false,"
+    },
+    {
+      "name": "record: adopting a file re-reads the title from it",
+      "source": "src/sessions/persistence/record.ts",
+      "find": "project.reAppendSessionMetadata(true)",
+      "replace": "project.reAppendSessionMetadata(false)"
+    },
+    {
+      "name": "metadata: another session's title is cached",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (sessionId === getSessionId()) {\n    getProject().currentSessionTitle = customTitle",
+      "replace": "  {\n    getProject().currentSessionTitle = customTitle"
+    },
+    {
+      "name": "metadata: an AI title is written as a custom title",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "type: 'ai-title',",
+      "replace": "type: 'custom-title',"
+    },
+    {
+      "name": "metadata: the resumed title overrides --name",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "project.currentSessionTitle ??= meta.customTitle",
+      "replace": "project.currentSessionTitle = meta.customTitle"
+    },
+    {
+      "name": "metadata: an empty resumed tag is kept as empty",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "project.currentSessionTag = meta.tag || undefined",
+      "replace": "project.currentSessionTag = meta.tag"
+    },
+    {
+      "name": "metadata: PR number 0 is dropped on restore",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (meta.prNumber !== undefined)\n",
+      "replace": "  if (meta.prNumber)\n"
+    },
+    {
+      "name": "metadata: the worktree loses its attached flag",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "        attached: worktreeSession.attached,\n",
+      "replace": ""
+    },
+    {
+      "name": "metadata: clearing keeps the last prompt",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  project.currentSessionLastPrompt = undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "project: a hook line alone creates the file",
+      "find": "messages.some(m => m.type === 'user' || m.type === 'assistant')",
+      "replace": "messages.length > 0"
+    },
+    {
+      "name": "project: a compact boundary keeps its parent",
+      "find": "parentUuid: isCompactBoundary ? null : effectiveParentUuid,",
+      "replace": "parentUuid: effectiveParentUuid,"
+    },
+    {
+      "name": "project: a compact boundary has no logical parent",
+      "find": "            ? (parentUuid ?? undefined)",
+      "replace": "            ? undefined"
+    },
+    {
+      "name": "project: a tool result hangs off the line before it",
+      "find": "effectiveParentUuid = message.sourceToolAssistantUUID",
+      "replace": "effectiveParentUuid = parentUuid"
+    },
+    {
+      "name": "project: every line carries the prompt id",
+      "find": "message.type === 'user' ? (getPromptId() ?? undefined) : undefined",
+      "replace": "getPromptId() ?? undefined"
+    },
+    {
+      "name": "project: the last prompt keeps 200 characters only below 200",
+      "find": "flat.length > 200 ? flat.slice(0, 200).trim() + '…' : flat",
+      "replace": "flat.length > 199 ? flat.slice(0, 199).trim() + '…' : flat"
+    },
+    {
+      "name": "project: an external title is matched anywhere in a line",
+      "find": "l.startsWith('{\"type\":\"custom-title\"')",
+      "replace": "l.includes('\"customTitle\"')"
+    },
+    {
+      "name": "project: an empty external title does not clear the cache",
+      "find": "this.currentSessionTitle = tailTitle || undefined",
+      "replace": "this.currentSessionTitle = tailTitle || this.currentSessionTitle"
+    },
+    {
+      "name": "project: a PR link is re-appended without its repository",
+      "find": "      this.currentSessionPrUrl &&\n      this.currentSessionPrRepository\n",
+      "replace": "      this.currentSessionPrUrl\n"
+    },
+    {
+      "name": "project: the cost is stamped with persistence off",
+      "find": "if (!this.sessionFile || this.shouldSkipPersistence()) return",
+      "replace": "if (!this.sessionFile) return"
+    },
+    {
+      "name": "project: cleanupPeriodDays 0 keeps writing",
+      "find": "      getInitialSettings()?.cleanupPeriodDays === 0 ||\n",
+      "replace": ""
+    },
+    {
+      "name": "project: removal matches the bare uuid",
+      "find": "const needle = `\"uuid\":\"${targetUuid}\"`",
+      "replace": "const needle = `${targetUuid}`"
+    },
+    {
+      "name": "project: removal does not drain the queue first",
+      "find": "      await this.drainQueuedWrites()\n      try {",
+      "replace": "      try {"
+    },
+    {
+      "name": "project: the rewrite cap is 500 MiB",
+      "find": "const MAX_TOMBSTONE_REWRITE_BYTES = 50 * 1024 * 1024",
+      "replace": "const MAX_TOMBSTONE_REWRITE_BYTES = 500 * 1024 * 1024"
+    },
+    {
+      "name": "project: the rewrite drops damaged lines",
+      "find": "return true // Keep malformed lines",
+      "replace": "return false // Keep malformed lines"
+    },
+    {
+      "name": "project: agent lines are deduplicated",
+      "find": "if (isAgentSidechain || isNewUuid) {",
+      "replace": "if (isNewUuid) {"
+    },
+    {
+      "name": "project: agent lines join the main dedup set and are mirrored",
+      "find": "if (!isAgentSidechain) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "project: mirroring ignores ENABLE_SESSION_PERSISTENCE",
+      "find": "      !isEnvTruthy(process.env.ENABLE_SESSION_PERSISTENCE) ||\n",
+      "replace": ""
+    },
+    {
+      "name": "project: a failed PUT exits 0",
+      "find": "gracefulShutdownSync(1, 'other')",
+      "replace": "gracefulShutdownSync(0, 'other')"
+    },
+    {
+      "name": "project: remote writes wait the default interval",
+      "find": "const REMOTE_FLUSH_INTERVAL_MS = 10",
+      "replace": "const REMOTE_FLUSH_INTERVAL_MS = 100"
+    },
+    {
+      "name": "project: the writer is not told about compaction",
+      "find": "...(isCompactBoundaryMessage(entry) && { isCompaction: true }),",
+      "replace": ""
+    },
+    {
+      "name": "project: a failed hydration leaves mirroring off",
+      "find": "    project.setRemoteIngressUrl(ingressUrl)\n  }\n}",
+      "replace": "  }\n}"
+    },
+    {
+      "name": "project: hydration always reports a find",
+      "find": "    return remoteLogs.length > 0",
+      "replace": "    return true"
+    },
+    {
+      "name": "project: subagent events without an agent id are written",
+      "find": "          if (!agentId) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "project: an epoch mismatch is swallowed",
+      "find": "error.message === 'CCRClient: Epoch mismatch (409)'",
+      "replace": "error.message === 'CCRClient: epoch mismatch'"
+    }
+  ]
+}

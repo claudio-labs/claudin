@@ -1,0 +1,7 @@
+{"type":"custom-title","customTitle":"Parser fixes","sessionId":"5e551011-0000-4000-8000-00000000a7a7"}
+{"type":"ai-title","aiTitle":"Fix the parser","sessionId":"5e551011-0000-4000-8000-00000000a7a7"}
+{"type":"task-summary","summary":"Running the tests","sessionId":"5e551011-0000-4000-8000-00000000a7a7","timestamp":"2026-03-14T09:26:53.000Z"}
+{"type":"tag","tag":"bugfix","sessionId":"5e551011-0000-4000-8000-00000000a7a7"}
+{"type":"pr-link","sessionId":"5e551011-0000-4000-8000-00000000a7a7","prNumber":42,"prUrl":"https://github.test/o/r/pull/42","prRepository":"o/r","timestamp":"2026-03-14T09:26:53.000Z"}
+{"type":"agent-name","agentName":"Scout","sessionId":"5e551011-0000-4000-8000-00000000a7a7"}
+{"type":"agent-color","agentColor":"blue","sessionId":"5e551011-0000-4000-8000-00000000a7a7"}

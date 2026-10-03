@@ -1,0 +1,9 @@
+{"type":"last-prompt","lastPrompt":"start","sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"custom-title","customTitle":"Parser fixes","sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"tag","tag":"bugfix","sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"agent-name","agentName":"Scout","sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"agent-color","agentColor":"blue","sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"agent-setting","agentSetting":"reviewer","sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"mode","mode":"normal","sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"worktree-state","worktreeSession":{"originalCwd":"/work/app","worktreePath":"/work/app/.claudin/worktrees/fix","worktreeName":"fix","worktreeBranch":"worktree-fix","originalBranch":"main","originalHeadCommit":"abc123","sessionId":"worktree-session","tmuxSessionName":"tmux-1","hookBased":false,"attached":true},"sessionId":"5e551011-0000-4000-8000-00000000beef"}
+{"type":"pr-link","sessionId":"5e551011-0000-4000-8000-00000000beef","prNumber":42,"prUrl":"https://github.test/o/r/pull/42","prRepository":"o/r","timestamp":"2026-03-14T09:26:53.000Z"}
