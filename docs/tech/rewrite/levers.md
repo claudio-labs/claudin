@@ -287,6 +287,22 @@ specs, fingerprints, team memory), with two differences:
   belong to tables, types or class fields, and are rewritten whole.
 - On `vcs/worktree`, the stubbed tree typechecked as is.
 
+**What a brief must say about the lines outside the bodies.**
+- Exported types and props types are the contract, so keep them.
+- Everything else is still inherited: module constants, private types,
+  tables, and a class's private fields. Rewrite it in the agent's own form,
+  with the same meaning.
+
+`sessions/persistence` was briefed to keep every declaration outside the
+bodies. About 115 lines of `Project`'s old private state survived as
+residue as a result.
+
+**Land a characterization suite against the current tree, not its base.**
+A suite characterized before a neighbouring unit was rewritten can catch that
+rewrite's regressions. That happened when `sessions/ui` landed: it caught the
+branch a `sessions/liteMetadata` full load had dropped. Run the full suite
+after every landing.
+
 `land.ts` treats a `bodies` sandbox like an `impl` one. It lists every file that
 still matches, and the stale probes of older specs.
 
