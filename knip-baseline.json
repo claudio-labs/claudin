@@ -3,8 +3,8 @@
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
   "capturedAt": "2026-10-03",
-  "capturedFrom": "96501520088577b73793432f7af367be8331b971",
-  "count": 1106,
+  "capturedFrom": "37a2c51fe3060311a56d030432e91ac805b19984",
+  "count": 1105,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
     "exports src/agent/attachments/attachments.ts#isFileReadDenied",
@@ -148,7 +148,6 @@
     "exports src/mcp/types.ts#TransportSchema",
     "exports src/mcp/utils.ts#hashMcpConfig",
     "exports src/memory/instructions/rulesLint.ts#extractProsePathCitations",
-    "exports src/memory/ui/MemoryUpdateNotification.tsx#MemoryUpdateNotification",
     "exports src/native-ts/color-diff/index.ts#__test",
     "exports src/native-ts/color-diff/index.ts#getNativeModule",
     "exports src/native-ts/yoga-layout/index.ts#Dimension",

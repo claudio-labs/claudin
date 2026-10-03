@@ -1,0 +1,219 @@
+{
+  "test": [
+    "src/memory/ui/MemoryFileSelector.characterization.test.tsx",
+    "src/memory/ui/memoryFileSelectorPaths.characterization.test.ts",
+    "src/memory/ui/MemoryUpdateNotification.characterization.test.tsx"
+  ],
+  "source": "src/memory/ui/MemoryFileSelector.tsx",
+  "probes": [
+    {
+      "name": "rows: the user file loses its name",
+      "find": "label = \"User memory\";",
+      "replace": "label = \"User\";"
+    },
+    {
+      "name": "rows: the project file loses its name",
+      "find": "label = \"Project memory\";",
+      "replace": "label = \"Project\";"
+    },
+    {
+      "name": "rows: an existing user file gets a second, synthetic row",
+      "find": "const hasUserMemory = existingMemoryFiles.some(f => f.path === userMemoryPath);",
+      "replace": "const hasUserMemory = false;"
+    },
+    {
+      "name": "rows: the user file names another product's directory",
+      "find": "description = \"Saved in ~/.claudin/CLAUDE.md\";",
+      "replace": "description = \"Saved in ~/.claude/CLAUDE.md\";"
+    },
+    {
+      "name": "rows: checked-in and saved-in are swapped",
+      "find": "${isGit ? \"Checked in at\" : \"Saved in\"}",
+      "replace": "${isGit ? \"Saved in\" : \"Checked in at\"}"
+    },
+    {
+      "name": "rows: an import is not called @-imported",
+      "find": "description = \"@-imported\";",
+      "replace": "description = \"imported\";"
+    },
+    {
+      "name": "rows: a nested import is not indented one step deeper",
+      "find": "const indent = depth > 0 ? \"  \".repeat(depth - 1) : \"\";",
+      "replace": "const indent = \"\";"
+    },
+    {
+      "name": "rows: the team index is listed as a file",
+      "find": "return f_1.type !== \"AutoMem\" && f_1.type !== \"TeamMem\";",
+      "replace": "return f_1.type !== \"AutoMem\";"
+    },
+    {
+      "name": "rows: the private index is listed as a file",
+      "find": "return f_1.type !== \"AutoMem\" && f_1.type !== \"TeamMem\";",
+      "replace": "return f_1.type !== \"TeamMem\";"
+    },
+    {
+      "name": "rows: the private row shows the team count",
+      "find": "${dirCounts.private}",
+      "replace": "${dirCounts.team}"
+    },
+    {
+      "name": "rows: the private folder is shown as a raw path",
+      "find": "description: `Saved in ${getDisplayPath(autoMemPath)}`",
+      "replace": "description: `Saved in ${autoMemPath}`"
+    },
+    {
+      "name": "rows: the team folder loses its git-tracked note",
+      "find": "description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`",
+      "replace": "description: `Shared at ${getDisplayPath(teamMemPath)}`"
+    },
+    {
+      "name": "rows: the tidy row is renamed",
+      "find": "label: \"Tidy memories\",",
+      "replace": "label: \"Tidy\","
+    },
+    {
+      "name": "rows: the folder rows come before the files",
+      "find": "memoryOptions.push(...folderOptions);",
+      "replace": "memoryOptions.unshift(...folderOptions);"
+    },
+    {
+      "name": "rows: an agent without memory gets a row",
+      "find": "if (agent.memory) {",
+      "replace": "if (agent.agentType) {"
+    },
+    {
+      "name": "values: the team folder is not marked as the team one",
+      "find": "isTeamDir: true",
+      "replace": "isTeamDir: false"
+    },
+    {
+      "name": "values: an agent folder carries the bare agent type as its title",
+      "find": "title: `${agent.agentType} agent memory`,",
+      "replace": "title: agent.agentType,"
+    },
+    {
+      "name": "values: tidy hands back another value",
+      "find": "value: TIDY_VALUE,",
+      "replace": "value: \"tidy\","
+    },
+    {
+      "name": "memory: tidy is remembered as the last row",
+      "find": "if (value !== TIDY_VALUE) {",
+      "replace": "if (value) {"
+    },
+    {
+      "name": "memory: the last row is not remembered",
+      "find": "lastSelectedPath = value;",
+      "replace": "lastSelectedPath = undefined;"
+    },
+    {
+      "name": "keys: n does not cancel",
+      "find": "useKeybinding(\"confirm:no\", onCancel, t7);",
+      "replace": "useKeybinding(\"confirm:no\", () => {}, t7);"
+    },
+    {
+      "name": "keys: Esc on the list does not cancel",
+      "find": "options={memoryOptions} isDisabled={toggleFocused} onChange={t20} onCancel={onCancel}",
+      "replace": "options={memoryOptions} isDisabled={toggleFocused} onChange={t20} onCancel={() => {}}"
+    },
+    {
+      "name": "keys: the list still takes Enter while a switch is focused",
+      "find": "isDisabled={toggleFocused}",
+      "replace": "isDisabled={false}"
+    },
+    {
+      "name": "switches: Up from the first row lands on Auto-memory",
+      "find": "t21 = () => setFocusedToggle(lastToggleIndex);",
+      "replace": "t21 = () => setFocusedToggle(0);"
+    },
+    {
+      "name": "switches: Down from the last switch stays there",
+      "find": "setFocusedToggle(prev => prev !== null && prev < lastToggleIndex ? prev + 1 : null);",
+      "replace": "setFocusedToggle(prev => prev !== null && prev < lastToggleIndex ? prev + 1 : prev);"
+    },
+    {
+      "name": "switches: Up on Auto-memory leaves the switches",
+      "find": "return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : prev_0;",
+      "replace": "return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : null;"
+    },
+    {
+      "name": "switches: auto memory writes the old value",
+      "find": "autoMemoryEnabled: newValue\n",
+      "replace": "autoMemoryEnabled: autoMemoryOn\n"
+    },
+    {
+      "name": "switches: auto-dream writes the old value",
+      "find": "autoDreamEnabled: newValue_0\n",
+      "replace": "autoDreamEnabled: autoDreamOn\n"
+    },
+    {
+      "name": "dream: the line shows with auto memory off",
+      "find": "const [showDreamRow] = useState(isAutoMemoryEnabled);",
+      "replace": "const [showDreamRow] = useState(true);"
+    },
+    {
+      "name": "dream: a finished dream task counts as running",
+      "find": "return t.type === \"dream\" && t.status === \"running\";",
+      "replace": "return t.type === \"dream\";"
+    },
+    {
+      "name": "dream: the run hint shows while a dream runs",
+      "find": "{!isDreamRunning && autoDreamOn && <Text dimColor={true}> · /dream to run</Text>}",
+      "replace": "{autoDreamOn && <Text dimColor={true}> · /dream to run</Text>}"
+    },
+    {
+      "name": "project path: a same-named file of another layer counts",
+      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
+      "find": "file.type === 'Project' &&",
+      "replace": "file.type !== 'User' &&"
+    },
+    {
+      "name": "project path: an imported file counts",
+      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
+      "find": "    file.parent === undefined &&\n",
+      "replace": ""
+    },
+    {
+      "name": "project path: the fallback is CLAUDE.md",
+      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
+      "find": "?? join(cwd, PRIMARY_PROJECT_INSTRUCTION_FILE)",
+      "replace": "?? join(cwd, 'CLAUDE.md')"
+    },
+    {
+      "name": "short path: the home form keeps the home directory",
+      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
+      "find": "'~' + path.slice(homeDir.length)",
+      "replace": "path"
+    },
+    {
+      "name": "short path: the working-directory form has no ./",
+      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
+      "find": "'./' + relative(cwd, path)",
+      "replace": "relative(cwd, path)"
+    },
+    {
+      "name": "short path: a tie goes to the working-directory form",
+      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
+      "find": "relativeToHome.length <= relativeToCwd.length",
+      "replace": "relativeToHome.length < relativeToCwd.length"
+    },
+    {
+      "name": "short path: a working-directory path alone is not shortened",
+      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
+      "find": "return relativeToHome || relativeToCwd || path;",
+      "replace": "return relativeToHome || path;"
+    },
+    {
+      "name": "notice: the path is shown in full",
+      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
+      "find": "t1 = getRelativeMemoryPath(memoryPath);",
+      "replace": "t1 = memoryPath;"
+    },
+    {
+      "name": "notice: another verb",
+      "source": "src/memory/ui/MemoryUpdateNotification.tsx",
+      "find": "Memory updated in {displayPath} · /memory to edit",
+      "replace": "Memory saved in {displayPath} · /memory to edit"
+    }
+  ]
+}
