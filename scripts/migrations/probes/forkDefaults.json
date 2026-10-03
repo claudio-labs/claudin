@@ -2,7 +2,8 @@
   "test": [
     "src/agent/forkDefaults.test.ts",
     "src/memory/memdir/extractionDefaults.test.ts",
-    "src/permissions/autoModeGate.test.ts",
+    "src/permissions/permissionSetup/setup.autoGate.characterization.test.tsx",
+    "src/permissions/permissionSetup/setup.autoModes.characterization.test.ts",
     "src/permissions/bypassPermissions.test.ts"
   ],
   "source": "src/agent/awaySummary.ts",

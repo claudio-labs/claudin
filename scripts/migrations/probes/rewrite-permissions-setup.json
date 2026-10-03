@@ -1,0 +1,239 @@
+{
+  "test": [
+    "src/permissions/permissionSetup/setup.characterization.test.ts",
+    "src/permissions/permissionSetup/setup.autoGate.characterization.test.tsx",
+    "src/permissions/permissionSetup/setup.autoModes.characterization.test.ts"
+  ],
+  "source": "src/permissions/permissionSetup/startupContext.ts",
+  "probes": [
+    {
+      "name": "startup: the kill switch no longer reads the settings",
+      "find": "  const disableBypassPermissionsMode =\n    settings.permissions?.disableBypassPermissionsMode === 'disable'\n",
+      "replace": "  const disableBypassPermissionsMode =\n    settings.permissions?.disableBypassPermissionsMode === 'never'\n"
+    },
+    {
+      "name": "startup: a refused bypass is not skipped",
+      "find": "    if (mode === 'bypassPermissions' && disableBypassPermissionsMode) {\n",
+      "replace": "    if (mode === 'bypassPermissions' && disableBypassPermissionsMode && false) {\n"
+    },
+    {
+      "name": "startup: the refusal notice changes",
+      "find": "      notification = 'Bypass permissions mode was disabled by settings'\n",
+      "replace": "      notification = 'Bypass permissions mode is off'\n"
+    },
+    {
+      "name": "startup: the skip flag no longer asks for bypass",
+      "find": "    orderedModes.push('bypassPermissions')\n",
+      "replace": "    orderedModes.push('default')\n"
+    },
+    {
+      "name": "startup: remote sessions accept defaultMode bypassPermissions",
+      "find": "      !['acceptEdits', 'plan', 'default'].includes(settingsMode)\n",
+      "replace": "      !['acceptEdits', 'plan', 'default', 'bypassPermissions'].includes(settingsMode)\n"
+    },
+    {
+      "name": "startup: starting in auto no longer turns auto on",
+      "find": "  if (feature('TRANSCRIPT_CLASSIFIER') && result.mode === 'auto') {\n",
+      "replace": "  if (feature('TRANSCRIPT_CLASSIFIER') && result.mode === 'plan') {\n"
+    },
+    {
+      "name": "startup: the kill switch no longer removes bypass from the list",
+      "find": "      settingsAllowBypassPermissionsMode) &&\n    !settingsDisableBypassPermissionsMode\n",
+      "replace": "      settingsAllowBypassPermissionsMode) &&\n    true\n"
+    },
+    {
+      "name": "startup: --allow-dangerously-skip-permissions no longer offers bypass",
+      "find": "      allowDangerouslySkipPermissions ||\n",
+      "replace": "      false ||\n"
+    },
+    {
+      "name": "startup: risky rules are reported outside auto",
+      "find": "  if (feature('TRANSCRIPT_CLASSIFIER') && permissionMode === 'auto') {\n",
+      "replace": "  if (feature('TRANSCRIPT_CLASSIFIER') && permissionMode !== 'auto') {\n"
+    },
+    {
+      "name": "startup: a missing --add-dir warns",
+      "find": "      result.resultType !== 'pathNotFound'\n",
+      "replace": "      true\n"
+    },
+    {
+      "name": "startup: auto is always offered",
+      "find": "{ isAutoModeAvailable: isAutoModeGateEnabled() }",
+      "replace": "{ isAutoModeAvailable: true }"
+    },
+    {
+      "name": "gate check: settings no longer latch the breaker",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "  autoModeStateModule?.setAutoModeCircuitBroken(disabledBySettings)\n",
+      "replace": "  autoModeStateModule?.setAutoModeCircuitBroken(false)\n"
+    },
+    {
+      "name": "gate check: the probe runs although settings disable auto",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "  if (!modelSupportsAutoMode(mainModel) && !disabledBySettings) {\n",
+      "replace": "  if (!modelSupportsAutoMode(mainModel)) {\n"
+    },
+    {
+      "name": "gate check: a stored probe result is probed again",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "      if (!getCachedClassifierProbe(key)) {\n",
+      "replace": "      if (true) {\n"
+    },
+    {
+      "name": "gate check: settings no longer close the gate",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "  const canEnterAuto = !disabledBySettings && modelSupported\n",
+      "replace": "  const canEnterAuto = modelSupported\n"
+    },
+    {
+      "name": "gate check: the kick-out leaves the risky rules aside",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "        ...applyPermissionUpdate(restoreDangerousPermissions(ctx), {\n",
+      "replace": "        ...applyPermissionUpdate(ctx, {\n"
+    },
+    {
+      "name": "gate check: plan entered from auto still returns to auto",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "      prePlanMode: ctx.prePlanMode === 'auto' ? 'default' : ctx.prePlanMode,\n",
+      "replace": "      prePlanMode: ctx.prePlanMode,\n"
+    },
+    {
+      "name": "gate check: the command-line notice repeats",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "    notification: currentContext.isAutoModeAvailable ? notification : undefined,\n",
+      "replace": "    notification,\n"
+    },
+    {
+      "name": "gate check: a session that never wanted auto is told",
+      "source": "src/permissions/permissionSetup/autoModeGate.ts",
+      "find": "    return { updateContext: kickOutOfAutoIfNeeded }\n",
+      "replace": "    return { updateContext: kickOutOfAutoIfNeeded, notification }\n"
+    },
+    {
+      "name": "availability: permissions.disableAutoMode is ignored",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts",
+      "find": "      ?.disableAutoMode === 'disable'\n",
+      "replace": "      ?.disableAutoMode === 'never'\n"
+    },
+    {
+      "name": "availability: top-level disableAutoMode is ignored",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts",
+      "find": "    (settings as { disableAutoMode?: 'disable' }).disableAutoMode ===\n      'disable' ||\n",
+      "replace": "    (settings as { disableAutoMode?: 'disable' }).disableAutoMode ===\n      'never' ||\n"
+    },
+    {
+      "name": "availability: a failed probe clears the model",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts",
+      "find": "  return getCachedClassifierProbe(key)?.ok === true\n",
+      "replace": "  return getCachedClassifierProbe(key) !== undefined\n"
+    },
+    {
+      "name": "availability: the breaker no longer closes the gate",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts",
+      "find": "  if (autoModeStateModule?.isAutoModeCircuitBroken() ?? false) return false\n",
+      "replace": "  if (false) return false\n"
+    },
+    {
+      "name": "availability: the model no longer closes the gate",
+      "source": "src/permissions/permissionSetup/autoModeAvailability.ts",
+      "find": "  if (!autoModeAllowedForModel(getMainLoopModel())) return false\n",
+      "replace": "  if (false) return false\n"
+    },
+    {
+      "name": "kill switch: the setting is no longer read",
+      "source": "src/permissions/permissionSetup/bypassPermissions.ts",
+      "find": "  return settings.permissions?.disableBypassPermissionsMode === 'disable'\n",
+      "replace": "  return settings.permissions?.disableBypassPermissionsMode === 'never'\n"
+    },
+    {
+      "name": "kill switch: bypass stays in the list",
+      "source": "src/permissions/permissionSetup/bypassPermissions.ts",
+      "find": "    isBypassPermissionsModeAvailable: false,\n",
+      "replace": "    isBypassPermissionsModeAvailable: true,\n"
+    },
+    {
+      "name": "kill switch: a session in bypass stays there",
+      "source": "src/permissions/permissionSetup/bypassPermissions.ts",
+      "find": "      mode: 'default',\n",
+      "replace": "      mode: 'bypassPermissions',\n"
+    },
+    {
+      "name": "CLI lists: a comma inside parentheses splits",
+      "source": "src/permissions/permissionSetup/cliToolParsing.ts",
+      "find": "        case ',':\n          if (isInParens) {\n",
+      "replace": "        case ',':\n          if (!isInParens) {\n"
+    },
+    {
+      "name": "mode change: auto is entered past a closed gate",
+      "source": "src/permissions/permissionSetup/modeTransition.ts",
+      "find": "      if (!isAutoModeGateEnabled()) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "mode change: entering auto keeps the risky rules",
+      "source": "src/permissions/permissionSetup/modeTransition.ts",
+      "find": "      context = stripDangerousPermissionsForAutoMode(context)\n",
+      "replace": "      context = { ...context }\n"
+    },
+    {
+      "name": "mode change: plan with auto no longer counts as auto",
+      "source": "src/permissions/permissionSetup/modeTransition.ts",
+      "find": "        (autoModeStateModule?.isAutoModeActive() ?? false))\n",
+      "replace": "        false)\n"
+    },
+    {
+      "name": "plan: plan entered from bypass borrows auto",
+      "source": "src/permissions/permissionSetup/planAutoMode.ts",
+      "find": "    if (planAutoMode && currentMode !== 'bypassPermissions') {\n",
+      "replace": "    if (planAutoMode) {\n"
+    },
+    {
+      "name": "plan: catching up turns auto on after a bypass entry",
+      "source": "src/permissions/permissionSetup/planAutoMode.ts",
+      "find": "  if (context.prePlanMode === 'bypassPermissions') {\n",
+      "replace": "  if (context.prePlanMode === 'never') {\n"
+    },
+    {
+      "name": "plan: borrowing auto needs no opt-in",
+      "source": "src/permissions/permissionSetup/planAutoMode.ts",
+      "find": "      hasAutoModeOptIn() &&\n",
+      "replace": "      true &&\n"
+    },
+    {
+      "name": "plan: leaving auto for plan keeps the risky rules aside",
+      "source": "src/permissions/permissionSetup/planAutoMode.ts",
+      "find": "        ...restoreDangerousPermissions(context),\n        prePlanMode: 'auto',\n",
+      "replace": "        ...context,\n        prePlanMode: 'auto',\n"
+    },
+    {
+      "name": "shift+tab: the live gate is not consulted",
+      "source": "src/permissions/getNextPermissionMode.ts",
+      "find": "    const can = !!ctx.isAutoModeAvailable && gateEnabled\n",
+      "replace": "    const can = !!ctx.isAutoModeAvailable\n"
+    },
+    {
+      "name": "startup check: runs more than once",
+      "source": "src/permissions/bypassPermissionsKillswitch.ts",
+      "find": "    if (autoModeCheckRan) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "startup check: applied to the stale snapshot",
+      "source": "src/permissions/bypassPermissionsKillswitch.ts",
+      "find": "      const nextCtx = updateContext(prev.toolPermissionContext)\n",
+      "replace": "      const nextCtx = updateContext(toolPermissionContext)\n"
+    },
+    {
+      "name": "startup check: a model change does not re-run it",
+      "source": "src/permissions/bypassPermissionsKillswitch.ts",
+      "find": "    } else {\n      resetAutoModeGateCheck()\n    }\n",
+      "replace": "    } else {\n    }\n"
+    },
+    {
+      "name": "state: the breaker never reads as broken",
+      "source": "src/permissions/autoModeState.ts",
+      "find": "  return autoModeCircuitBroken\n",
+      "replace": "  return false\n"
+    }
+  ]
+}
