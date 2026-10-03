@@ -1,0 +1,250 @@
+{
+  "test": [
+    "src/sessions/ui/ResumeConversation.characterization.test.tsx",
+    "src/sessions/ui/SessionPreview.characterization.test.tsx",
+    "src/sessions/hooks/sessionBackgrounding.characterization.test.tsx"
+  ],
+  "source": "src/sessions/ui/ResumeConversation.tsx",
+  "probes": [
+    {
+      "name": "picker: filterByPr true keeps unlinked sessions",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "        result = result.filter(l_0 => l_0.prNumber !== undefined);\n",
+      "replace": "        result = result;\n"
+    },
+    {
+      "name": "picker: a PR named as text is ignored",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "        if (prNumber !== null) {\n",
+      "replace": "        if (prNumber === null) {\n"
+    },
+    {
+      "name": "picker: PR URLs not recognised",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "/github\\.com\\/[^/]+\\/[^/]+\\/pull\\/(\\d+)/",
+      "replace": "/github\\.com\\/[^/]+\\/[^/]+\\/pulls\\/(\\d+)/"
+    },
+    {
+      "name": "picker: Ctrl+A does not flip the scope",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "    const newValue = !showAllProjects;\n",
+      "replace": "    const newValue = showAllProjects;\n"
+    },
+    {
+      "name": "picker: never loads more",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "    if (!ref || ref.nextIndex >= ref.allStatLogs.length) return;\n",
+      "replace": "    if (ref) return;\n"
+    },
+    {
+      "name": "picker: a rename does not reload the list",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "onLogsChanged={isResumeWithRenameEnabled ? () => loadLogs(showAllProjects) : undefined}",
+      "replace": "onLogsChanged={undefined}"
+    },
+    {
+      "name": "picker: Esc does not end the process",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "    // eslint-disable-next-line custom-rules/no-process-exit\n    process.exit(1);\n",
+      "replace": "    // eslint-disable-next-line custom-rules/no-process-exit\n    process.exit(2);\n"
+    },
+    {
+      "name": "picker: empty list message never shown",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "  if (filteredLogs.length === 0) {\n",
+      "replace": "  if (filteredLogs.length === -1) {\n"
+    },
+    {
+      "name": "picker: Ctrl+C on the empty message does not end with 1",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "function _temp() {\n  process.exit(1);\n",
+      "replace": "function _temp() {\n  process.exit(2);\n"
+    },
+    {
+      "name": "cross-project: resumed in place",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "      if (!crossProjectCheck.isSameRepoWorktree) {\n",
+      "replace": "      if (crossProjectCheck.isSameRepoWorktree) {\n"
+    },
+    {
+      "name": "cross-project: clipboard sequence not written",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "        if (raw) process.stdout.write(raw);\n",
+      "replace": "        if (raw) void raw;\n"
+    },
+    {
+      "name": "cross-project: ends with 1 instead of 0",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "  process.exit(0);\n",
+      "replace": "  process.exit(1);\n"
+    },
+    {
+      "name": "resume: fork takes the session over",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "      if (result_3.sessionId && !forkSession) {\n",
+      "replace": "      if (result_3.sessionId) {\n"
+    },
+    {
+      "name": "resume: cost not restored",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "        restoreCostStateForResume(result_3.sessionId, result_3);\n",
+      "replace": ""
+    },
+    {
+      "name": "resume: agent not set",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "        agent: resolvedAgentDef?.agentType\n",
+      "replace": "        agent: undefined\n"
+    },
+    {
+      "name": "resume: agent context inverted",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "      if (standaloneAgentContext) {\n",
+      "replace": "      if (!standaloneAgentContext) {\n"
+    },
+    {
+      "name": "resume: worktree not entered",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "        restoreWorktreeForResume(result_3.worktreeSession);\n",
+      "replace": ""
+    },
+    {
+      "name": "resume: REPL opens with no messages",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "        messages: result_3.messages,\n",
+      "replace": "        messages: [],\n"
+    },
+    {
+      "name": "resume: failure shows no banner",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "      setResumeError(errorMessage(e));\n",
+      "replace": "      setResumeError('');\n"
+    },
+    {
+      "name": "resume: failure leaves the picker resuming",
+      "source": "src/sessions/ui/ResumeConversation.tsx",
+      "find": "      setResuming(false);\n    }\n",
+      "replace": "    }\n"
+    },
+    {
+      "name": "preview: the session is never read",
+      "source": "src/sessions/ui/SessionPreview.tsx",
+      "find": "        loadFullLog(log).then(setFullLog);\n",
+      "replace": ""
+    },
+    {
+      "name": "preview: no loading frame",
+      "source": "src/sessions/ui/SessionPreview.tsx",
+      "find": "  const isLoading = isLiteLog(log) && fullLog === null;\n",
+      "replace": "  const isLoading = false;\n"
+    },
+    {
+      "name": "preview: Enter hands back the unread entry",
+      "source": "src/sessions/ui/SessionPreview.tsx",
+      "find": "      onSelect(fullLog ?? log);\n",
+      "replace": "      onSelect(log);\n"
+    },
+    {
+      "name": "preview: Esc does nothing",
+      "source": "src/sessions/ui/SessionPreview.tsx",
+      "find": "  useKeybinding(\"confirm:no\", onExit, t5);\n",
+      "replace": "  useKeybinding(\"confirm:no\", () => {}, t5);\n"
+    },
+    {
+      "name": "preview: branch left out of the footer",
+      "source": "src/sessions/ui/SessionPreview.tsx",
+      "find": "  const t14 = displayLog.gitBranch ? ` · ${displayLog.gitBranch}` : \"\";\n",
+      "replace": "  const t14 = \"\";\n"
+    },
+    {
+      "name": "hint: the kill switch is ignored",
+      "source": "src/sessions/ui/SessionBackgroundHint.tsx",
+      "find": "    if (isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "hint: nothing is backgrounded",
+      "source": "src/sessions/ui/SessionBackgroundHint.tsx",
+      "find": "      backgroundAll(() => appStateStore.getState(), setAppState);\n",
+      "replace": ""
+    },
+    {
+      "name": "hint: the binding is never active",
+      "source": "src/sessions/ui/SessionBackgroundHint.tsx",
+      "find": "    isActive: hasForeground,\n",
+      "replace": "    isActive: false,\n"
+    },
+    {
+      "name": "hint: the first use is not recorded",
+      "source": "src/sessions/ui/SessionBackgroundHint.tsx",
+      "find": "    hasUsedBackgroundTask: true\n",
+      "replace": "    hasUsedBackgroundTask: false\n"
+    },
+    {
+      "name": "backgrounding: the query is not backgrounded",
+      "source": "src/sessions/hooks/useSessionBackgrounding.ts",
+      "find": "    onBackgroundQuery()\n  }, [\n",
+      "replace": "  }, [\n"
+    },
+    {
+      "name": "backgrounding: the view keeps the task's messages",
+      "source": "src/sessions/hooks/useSessionBackgrounding.ts",
+      "find": "      setMessages([])\n",
+      "replace": ""
+    },
+    {
+      "name": "backgrounding: a non-agent task stays foregrounded",
+      "source": "src/sessions/hooks/useSessionBackgrounding.ts",
+      "find": "    if (!foregroundedTask || foregroundedTask.type !== 'local_agent') {\n",
+      "replace": "    if (!foregroundedTask) {\n"
+    },
+    {
+      "name": "backgrounding: messages mirrored on every change",
+      "source": "src/sessions/hooks/useSessionBackgrounding.ts",
+      "find": "    if (taskMessages.length !== lastSyncedMessagesLengthRef.current) {\n",
+      "replace": "    if (true) {\n"
+    },
+    {
+      "name": "backgrounding: an abort is not noticed",
+      "source": "src/sessions/hooks/useSessionBackgrounding.ts",
+      "find": "      if (taskAbortController?.signal.aborted) {\n",
+      "replace": "      if (false) {\n"
+    },
+    {
+      "name": "backgrounding: a finished task is not sent back",
+      "source": "src/sessions/hooks/useSessionBackgrounding.ts",
+      "find": "          tasks: { ...prev.tasks, [taskId]: { ...task, isBackgrounded: true } },\n",
+      "replace": "          tasks: prev.tasks,\n"
+    },
+    {
+      "name": "backgrounding: the mirror count survives a release",
+      "source": "src/sessions/hooks/useSessionBackgrounding.ts",
+      "find": "      // Reset when no foregrounded task\n      lastSyncedMessagesLengthRef.current = 0\n",
+      "replace": "      // Reset when no foregrounded task\n"
+    },
+    {
+      "name": "snapshot init: the off switch is not consulted first",
+      "source": "src/sessions/hooks/useFileHistorySnapshotInit.ts",
+      "find": "    if (!fileHistoryEnabled() || initialized.current) {\n",
+      "replace": "    if (initialized.current) {\n"
+    },
+    {
+      "name": "snapshot init: runs on every change",
+      "source": "src/sessions/hooks/useFileHistorySnapshotInit.ts",
+      "find": "    initialized.current = true\n",
+      "replace": ""
+    },
+    {
+      "name": "snapshot init: the snapshots are not used",
+      "source": "src/sessions/hooks/useFileHistorySnapshotInit.ts",
+      "find": "      fileHistoryRestoreStateFromLog(initialFileHistorySnapshots, onUpdateState)\n",
+      "replace": "      fileHistoryRestoreStateFromLog([], onUpdateState)\n"
+    },
+    {
+      "name": "a full load keeps the newest branch the chain names, not only the anchor's",
+      "source": "src/sessions/indexing/liteMetadata.ts",
+      "find": "    gitBranch: chain.findLast(message => message.gitBranch)?.gitBranch ?? log.gitBranch,",
+      "replace": "    gitBranch: chain.at(-1)?.gitBranch,"
+    }
+  ]
+}
