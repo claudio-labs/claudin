@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "files": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": { "LOG_LEVEL": "${CHAR_MCP_FIXTURE_LEVEL:-info}" }
+    },
+    "tracker": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${CHAR_MCP_FIXTURE_TOKEN}" }
+    },
+    "events": {
+      "type": "sse",
+      "url": "https://events.example.com/sse"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+---
+name: mcp-config-security-findings
+description: mcp/config pinned findings — adding a server writes ${TOKEN} placeholders back expanded into .mcp.json; a broken managed-mcp.json lifts the policy; name lookup ignores approval/deny; the .mcp.json walk passes the repo root
+type: project
+---
+
+Found by the `mcp/config` characterization on 2026-10-03, branch `rewrite`. All
+of it is pinned in `src/mcp/config.*.characterization.test.ts`.
+
+**Marked fix.** These land with the `mcp/config` rewrite:
+- **Secrets written back.** Adding or removing a project server writes the
+  other entries back expanded, so `${TOKEN}` in `.mcp.json` becomes the secret
+  itself, on disk, in a file that is often committed.
+- **File wiped.** Adding a server to a `.mcp.json` that doesn't parse empties it.
+- **Empty server name.** An empty name is accepted.
+- **URL pattern case.** URL patterns compare case-sensitively.
+
+**Marked keep and track.** These are security decisions still to make:
+- **Name lookup.** A lookup by server name ignores approval, the deny policy and
+  the disabled list. Agents connect through that lookup.
+- **Broken managed file.** A `managed-mcp.json` that doesn't parse lets every
+  other scope back in, instead of failing closed.
+- **The `.mcp.json` walk.** It goes above the repo and home. Non-interactive
+  sessions auto-approve what it finds.
+- **URL patterns and `/`.** In a URL pattern, `*` crosses `/`.
+- **Command and name denies.** They can be stepped around with an exact array or
+  with a rename.
+
+**Why:** `.mcp.json` decides which commands run as MCP servers from a checkout.
+
+**How to apply:** take the "keep and track" items together with
+[[mcp-server-name-folding-reaches-other-servers-rules]] when the approval units
+land. Failing closed on a broken managed file is the cheapest win.

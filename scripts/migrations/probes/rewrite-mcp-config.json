@@ -1,0 +1,253 @@
+{
+  "test": [
+    "src/mcp/envExpansion.characterization.test.ts",
+    "src/mcp/config.parse.characterization.test.ts",
+    "src/mcp/config.scopes.characterization.test.ts",
+    "src/mcp/config.policy.characterization.test.ts",
+    "src/mcp/config.write.characterization.test.ts",
+    "src/mcp/config.merge.characterization.test.ts"
+  ],
+  "source": "src/mcp/config.ts",
+  "probes": [
+    {
+      "name": "env: an empty value no longer counts as set",
+      "source": "src/mcp/envExpansion.ts",
+      "find": "    if (envValue !== undefined) {\n",
+      "replace": "    if (envValue) {\n"
+    },
+    {
+      "name": "env: the default loses its first character",
+      "source": "src/mcp/envExpansion.ts",
+      "find": "      sepIdx === -1 ? undefined : varContent.slice(sepIdx + 2)\n",
+      "replace": "      sepIdx === -1 ? undefined : varContent.slice(sepIdx + 3)\n"
+    },
+    {
+      "name": "env: the last :- separates the default",
+      "source": "src/mcp/envExpansion.ts",
+      "find": "    const sepIdx = varContent.indexOf(':-')\n",
+      "replace": "    const sepIdx = varContent.lastIndexOf(':-')\n"
+    },
+    {
+      "name": "env: a missing variable is not reported",
+      "source": "src/mcp/envExpansion.ts",
+      "find": "    missingVars.push(varName)\n",
+      "replace": "    void varName\n"
+    },
+    {
+      "name": "env: a missing placeholder is blanked",
+      "source": "src/mcp/envExpansion.ts",
+      "find": "    return match\n",
+      "replace": "    return ''\n"
+    },
+    {
+      "name": "managed file: wrong name",
+      "source": "src/mcp/config.ts",
+      "find": "  return join(getManagedFilePath(), 'managed-mcp.json')\n",
+      "replace": "  return join(getManagedFilePath(), 'mcp.json')\n"
+    },
+    {
+      "name": ".mcp.json write: existing mode not kept",
+      "source": "src/mcp/config.ts",
+      "find": "      await chmod(tempPath, existingMode)\n",
+      "replace": "      void existingMode\n"
+    },
+    {
+      "name": "command match: a prefix matches",
+      "source": "src/mcp/config.ts",
+      "find": "  if (a.length !== b.length) {\n",
+      "replace": "  if (a.length > b.length) {\n"
+    },
+    {
+      "name": "ccr unwrap: session-ingress marker lost",
+      "source": "src/mcp/config.ts",
+      "find": "  '/v2/session_ingress/shttp/mcp/',\n",
+      "replace": "  '/v2/session_ingress/shttp/mcp/x/',\n"
+    },
+    {
+      "name": "claude.ai dedup: disabled manual servers count",
+      "source": "src/mcp/config.ts",
+      "find": "    if (isMcpServerDisabled(name)) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "plugin dedup: no plugin-vs-plugin race",
+      "source": "src/mcp/config.ts",
+      "find": "    seenPluginSigs.set(sig, name)\n",
+      "replace": "    void sig\n"
+    },
+    {
+      "name": "url pattern: regex characters not escaped",
+      "source": "src/mcp/config.ts",
+      "find": "  const escaped = pattern.replace(/[.+?^${}()|[\\]\\\\]/g, '\\\\$&')\n",
+      "replace": "  const escaped = pattern\n"
+    },
+    {
+      "name": "url pattern: not anchored",
+      "source": "src/mcp/config.ts",
+      "find": "  return new RegExp(`^${regexStr}$`)\n",
+      "replace": "  return new RegExp(regexStr)\n"
+    },
+    {
+      "name": "deny: name entries ignored",
+      "source": "src/mcp/config.ts",
+      "find": "  for (const entry of settings.deniedMcpServers) {\n    if (isMcpServerNameEntry(entry) && entry.serverName === serverName) {\n",
+      "replace": "  for (const entry of settings.deniedMcpServers) {\n    if (isMcpServerNameEntry(entry) && entry.serverName === serverName && false) {\n"
+    },
+    {
+      "name": "deny: command entries ignored",
+      "source": "src/mcp/config.ts",
+      "find": "    if (serverCommand) {\n      for (const entry of settings.deniedMcpServers) {\n",
+      "replace": "    if (serverCommand && false) {\n      for (const entry of settings.deniedMcpServers) {\n"
+    },
+    {
+      "name": "deny: url entries ignored",
+      "source": "src/mcp/config.ts",
+      "find": "    if (serverUrl) {\n      for (const entry of settings.deniedMcpServers) {\n",
+      "replace": "    if (serverUrl && false) {\n      for (const entry of settings.deniedMcpServers) {\n"
+    },
+    {
+      "name": "deny: no longer beats the allowlist",
+      "source": "src/mcp/config.ts",
+      "find": "  if (isMcpServerDenied(serverName, config)) {\n    return false\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "policy: sdk servers not exempt in the filter",
+      "source": "src/mcp/config.ts",
+      "find": "    if (c.type === 'sdk' || isMcpServerAllowedByPolicy(name, c)) {\n",
+      "replace": "    if (isMcpServerAllowedByPolicy(name, c)) {\n"
+    },
+    {
+      "name": "allow: any allowlist blocks everything",
+      "source": "src/mcp/config.ts",
+      "find": "  if (settings.allowedMcpServers.length === 0) {\n",
+      "replace": "  if (settings.allowedMcpServers.length >= 0) {\n"
+    },
+    {
+      "name": "allow: unmatched stdio server allowed",
+      "source": "src/mcp/config.ts",
+      "find": "        return false // Stdio server doesn't match any command entry\n",
+      "replace": "        return true // Stdio server doesn't match any command entry\n"
+    },
+    {
+      "name": "allow: unmatched remote server allowed",
+      "source": "src/mcp/config.ts",
+      "find": "        return false // Remote server doesn't match any URL entry\n",
+      "replace": "        return true // Remote server doesn't match any URL entry\n"
+    },
+    {
+      "name": "allow: managed-only flag ignored",
+      "source": "src/mcp/config.ts",
+      "find": "  if (shouldAllowManagedMcpServersOnly()) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "allow: managed-only flag read from any layer",
+      "source": "src/mcp/config.ts",
+      "find": "    getSettingsForSource('policySettings')?.allowManagedMcpServersOnly === true\n",
+      "replace": "    getInitialSettings().allowManagedMcpServersOnly === true\n"
+    },
+    {
+      "name": "parse: missing variables listed once per occurrence",
+      "source": "src/mcp/config.ts",
+      "find": "    missingVars: [...new Set(missingVars)],\n",
+      "replace": "    missingVars,\n"
+    },
+    {
+      "name": "parse: schema message changed",
+      "source": "src/mcp/config.ts",
+      "find": "        message: 'Does not adhere to MCP server configuration schema',\n",
+      "replace": "        message: 'Invalid MCP server configuration',\n"
+    },
+    {
+      "name": "parse: windows npx by path not caught",
+      "source": "src/mcp/config.ts",
+      "find": "        configToCheck.command.endsWith('/npx'))\n",
+      "replace": "        configToCheck.command.endsWith('/npx.exe'))\n"
+    },
+    {
+      "name": "add: dots accepted in names",
+      "source": "src/mcp/config.ts",
+      "find": "  if (name.match(/[^a-zA-Z0-9_-]/)) {\n",
+      "replace": "  if (name.match(/[^a-zA-Z0-9_.-]/)) {\n"
+    },
+    {
+      "name": "add: managed MCP file does not lock",
+      "source": "src/mcp/config.ts",
+      "find": "  // Block adding servers when enterprise MCP config exists (it has exclusive control)\n  if (doesEnterpriseMcpConfigExist()) {\n",
+      "replace": "  // Block adding servers when enterprise MCP config exists (it has exclusive control)\n  if (false) {\n"
+    },
+    {
+      "name": "add: denylist not checked",
+      "source": "src/mcp/config.ts",
+      "find": "  if (isMcpServerDenied(name, validatedConfig)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "project walk: farther file wins",
+      "source": "src/mcp/config.ts",
+      "find": "      for (const dir of dirs.reverse()) {\n",
+      "replace": "      for (const dir of dirs) {\n"
+    },
+    {
+      "name": "setting sources do not gate scopes",
+      "source": "src/mcp/config.ts",
+      "find": "  if (scope in sourceMap && !isSettingSourceEnabled(sourceMap[scope]!)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "by name: local skipped",
+      "source": "src/mcp/config.ts",
+      "find": "  if (localServers[name]) {\n",
+      "replace": "  if (localServers[name] && false) {\n"
+    },
+    {
+      "name": "by name: plugin-only lock ignored",
+      "source": "src/mcp/config.ts",
+      "find": "  if (isRestrictedToPluginOnly('mcp')) {\n    return enterpriseServers[name] ?? null\n",
+      "replace": "  if (false) {\n    return enterpriseServers[name] ?? null\n"
+    },
+    {
+      "name": "merge: managed servers not policy-filtered",
+      "source": "src/mcp/config.ts",
+      "find": "      if (!isMcpServerAllowedByPolicy(name, serverConfig)) {\n        continue\n      }\n      filtered[name] = serverConfig\n",
+      "replace": "      filtered[name] = serverConfig\n"
+    },
+    {
+      "name": "merge: plugin-only lock ignored",
+      "source": "src/mcp/config.ts",
+      "find": "  const mcpLocked = isRestrictedToPluginOnly('mcp')\n",
+      "replace": "  const mcpLocked = false\n"
+    },
+    {
+      "name": "merge: unapproved project servers connect",
+      "source": "src/mcp/config.ts",
+      "find": "    if (getProjectMcpServerStatus(name) === 'approved') {\n",
+      "replace": "    if (getProjectMcpServerStatus(name) !== 'rejected') {\n"
+    },
+    {
+      "name": "merge: user beats local",
+      "source": "src/mcp/config.ts",
+      "find": "    userServers,\n    approvedProjectServers,\n    localServers,\n  )\n",
+      "replace": "    localServers,\n    approvedProjectServers,\n    userServers,\n  )\n"
+    },
+    {
+      "name": "merge: no policy filter on the result",
+      "source": "src/mcp/config.ts",
+      "find": "    if (!isMcpServerAllowedByPolicy(name, serverConfig as McpServerConfig)) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "merge: claude.ai connectors skip the policy",
+      "source": "src/mcp/config.ts",
+      "find": "  const { allowed: claudeaiMcpServers } = filterMcpServersByPolicy(\n    await claudeaiPromise,\n  )\n",
+      "replace": "  const claudeaiMcpServers = await claudeaiPromise\n"
+    },
+    {
+      "name": "toggle: claude.ai connectors on by default",
+      "source": "src/mcp/config.ts",
+      "find": "    return !enabledServers.includes(name)\n",
+      "replace": "    return enabledServers.includes(name)\n"
+    }
+  ]
+}
