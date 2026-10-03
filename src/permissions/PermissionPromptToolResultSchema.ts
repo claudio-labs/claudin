@@ -12,75 +12,68 @@ import {
 } from 'src/permissions/PermissionUpdate.js'
 import { permissionUpdateSchema } from 'src/permissions/PermissionUpdateSchema.js'
 
+/** The question put to the permission prompt tool. */
 export const inputSchema = lazySchema(() =>
   z.object({
-    tool_name: z
-      .string()
-      .describe('The name of the tool requesting permission'),
-    input: z.record(z.string(), z.unknown()).describe('The input for the tool'),
-    tool_use_id: z
-      .string()
-      .optional()
-      .describe('The unique tool use request ID'),
+    tool_name: z.string().describe('The tool asking for permission'),
+    input: z.record(z.string(), z.unknown()).describe('The input of that tool call'),
+    tool_use_id: z.string().optional().describe('The id of that tool call'),
   }),
 )
 
 export type Input = z.infer<ReturnType<typeof inputSchema>>
 
-// Zod schema for permission results
-// This schema is used to validate the MCP permission prompt tool
-// so we maintain it as a subset of the real PermissionDecision type
+/**
+ * The answer comes from an SDK host or an MCP tool, so it is untrusted. An
+ * optional part that does not parse is dropped, with a debug line, rather
+ * than rejecting a decision that is otherwise well formed.
+ */
+function droppedWhenMalformed(field: string) {
+  return ({ input }: { input: unknown }): undefined => {
+    logForDebugging(
+      `Permission prompt tool answer: dropped a malformed ${field}: ${String(JSON.stringify(input)).slice(0, 200)}`,
+      { level: 'warn' },
+    )
+    return undefined
+  }
+}
 
-// Matches PermissionDecisionClassificationSchema in entrypoints/sdk/coreSchemas.ts.
-// Malformed values fall through to undefined (same pattern as updatedPermissions
-// below) so a bad string from the SDK host doesn't reject the whole decision.
-const decisionClassificationField = lazySchema(() =>
+const decisionClassificationSchema = lazySchema(() =>
   z
     .enum(['user_temporary', 'user_permanent', 'user_reject'])
     .optional()
-    .catch(undefined),
+    .catch(droppedWhenMalformed('decisionClassification')),
 )
 
-const PermissionAllowResultSchema = lazySchema(() =>
+const allowAnswerSchema = lazySchema(() =>
   z.object({
     behavior: z.literal('allow'),
     updatedInput: z.record(z.string(), z.unknown()),
-    // SDK hosts may send malformed entries; fall back to undefined rather
-    // than rejecting the entire allow decision (anthropics/claude-code#29440)
     updatedPermissions: z
       .array(permissionUpdateSchema())
       .optional()
-      .catch(ctx => {
-        logForDebugging(
-          `Malformed updatedPermissions from SDK host ignored: ${ctx.error.issues[0]?.message ?? 'unknown'}`,
-          { level: 'warn' },
-        )
-        return undefined
-      }),
+      .catch(droppedWhenMalformed('updatedPermissions')),
     toolUseID: z.string().optional(),
-    decisionClassification: decisionClassificationField(),
+    decisionClassification: decisionClassificationSchema(),
   }),
 )
 
-const PermissionDenyResultSchema = lazySchema(() =>
+const denyAnswerSchema = lazySchema(() =>
   z.object({
     behavior: z.literal('deny'),
     message: z.string(),
     interrupt: z.boolean().optional(),
     toolUseID: z.string().optional(),
-    decisionClassification: decisionClassificationField(),
+    decisionClassification: decisionClassificationSchema(),
   }),
 )
 
 export const outputSchema = lazySchema(() =>
-  z.union([PermissionAllowResultSchema(), PermissionDenyResultSchema()]),
+  z.union([allowAnswerSchema(), denyAnswerSchema()]),
 )
 
 export type Output = z.infer<ReturnType<typeof outputSchema>>
 
-/**
- * Normalizes the result of a permission prompt tool to a PermissionDecision.
- */
 export function permissionPromptToolResultToPermissionDecision(
   result: Output,
   tool: Tool,
@@ -92,36 +85,24 @@ export function permissionPromptToolResultToPermissionDecision(
     permissionPromptToolName: tool.name,
     toolResult: result,
   }
-  if (result.behavior === 'allow') {
-    const updatedPermissions = result.updatedPermissions
-    if (updatedPermissions) {
-      toolUseContext.setAppState(prev => ({
-        ...prev,
-        toolPermissionContext: applyPermissionUpdates(
-          prev.toolPermissionContext,
-          updatedPermissions,
-        ),
-      }))
-      persistPermissionUpdates(updatedPermissions)
-    }
-    // Mobile clients responding from a push notification don't have the
-    // original tool input, so they send `{}` to satisfy the schema. Treat an
-    // empty object as "use original" so the tool doesn't run with no args.
-    const updatedInput =
-      Object.keys(result.updatedInput).length > 0 ? result.updatedInput : input
-    return {
-      ...result,
-      updatedInput,
-      decisionReason,
-    }
-  } else if (result.behavior === 'deny' && result.interrupt) {
-    logForDebugging(
-      `SDK permission prompt deny+interrupt: tool=${tool.name} message=${result.message}`,
-    )
-    toolUseContext.abortController.abort()
+
+  if (result.behavior === 'deny') {
+    if (result.interrupt === true) toolUseContext.abortController.abort()
+    return { ...result, decisionReason }
   }
-  return {
-    ...result,
-    decisionReason,
+
+  const updates = result.updatedPermissions ?? []
+  if (updates.length > 0) {
+    toolUseContext.setAppState(state => ({
+      ...state,
+      toolPermissionContext: applyPermissionUpdates(state.toolPermissionContext, updates),
+    }))
+    persistPermissionUpdates(updates)
   }
+
+  // An empty object means "run it as asked": a tool must never run with no
+  // arguments because a host answered `{}`.
+  const answeredInput = result.updatedInput
+  const updatedInput = Object.keys(answeredInput).length === 0 ? input : answeredInput
+  return { ...result, updatedInput, decisionReason }
 }

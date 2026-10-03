@@ -14,7 +14,7 @@
     {
       "name": "rules and hooks written for apply_patch stop resolving",
       "source": "src/permissions/permissionRuleParser.ts",
-      "find": "  [LEGACY_APPLY_PATCH_TOOL_NAME]: APPLY_PATCH_TOOL_NAME,\n",
+      "find": "  [LEGACY_APPLY_PATCH_TOOL_NAME, APPLY_PATCH_TOOL_NAME],\n",
       "replace": ""
     },
     {

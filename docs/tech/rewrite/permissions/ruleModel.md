@@ -565,3 +565,38 @@ The unit has no inherited tests to fold in: `phase-3.json` names none for it.
   called through `PermissionUpdate.ts`. It has no other side effects.
 - **Types.** Explicit throughout, with no `any`. `getModeColor` returns a named
   exported union.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.** All 43 inherited bodies were written anew.
+  - `permissionsLoader.ts` is now a thin facade over `ruleSettings/`: the rule
+    lists, reading rules, the file edits, and persisting an update.
+  - Edits refuse non-editable sources at one gate, `editPermissionSettings`.
+  - The managed-only lock lives in one place, `ruleFileEdits.ts`.
+  - The five characterization suites pass unchanged, the classifier child run
+    included.
+- **Fixes, each with a test.** Findings 2 and 4–9: the session `Bash(*)`
+  deletion, Read-suggestion roots, `bubble`, add-rule keeping unvalidated
+  entries, de-duplication and canonical form, managed-only `replaceRules`, and
+  a removal no longer creating a missing file. Findings 1 and 3 are kept.
+- **Probes.**
+  - `rewrite-permissions-ruleModel.json` holds 119 probes.
+  - `patchRename.json`'s probe on the `apply_patch` alias was re-pointed at the
+    new rename table.
+- **Found outside the unit, not fixed.** The settings parser memoizes its
+  results, and the settings reader then filters rule lists in place on those
+  cached objects. A later reader of the same text gets the filtered lists.
+  This belongs to `platform/settings`. The rule edits parse the file
+  themselves to avoid it.
+- **Residue, reviewed.** 106 lines of Claude Code remain, all of them contract:
+  - `PermissionPromptToolResultSchema.ts`, 44: the permission prompt tool's
+    wire schema, meaning its field names and their `.describe()` text, which
+    SDK callers read.
+  - `PermissionUpdate.ts`, 23: the update union's signatures.
+  - `PermissionUpdateSchema.ts`, 10.
+  - `permissionsLoader.ts`, 8.
+  - `PermissionMode.ts` and `PermissionRule.ts`, 7 each: the mode and rule
+    enums.
+
+  One fixes-test table matched openclaude by shape. It was reworded at landing.

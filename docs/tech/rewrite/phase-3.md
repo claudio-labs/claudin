@@ -57,7 +57,7 @@ which the sandbox tools read. The lists below are the same.
 | `mcp/settingsUi` | 5 | 1258 | — | pending |
 | `mcp/serverMenus` | 6 | 1075 | — | pending |
 | `mcp/approvalDialogs` | 5 | 412 | — | pending |
-| `permissions/ruleModel` | 8 | 910 | — | pending |
+| `permissions/ruleModel` | 8 | 910 | — | done |
 | `permissions/decision` | 6 | 1026 | — | pending |
 | `permissions/shellRules` | 5 | 711 | — | pending |
 | `permissions/filePaths` | 5 | 1002 | `filePermissions.test.ts` (24) | pending |

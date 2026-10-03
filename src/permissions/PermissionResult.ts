@@ -1,4 +1,3 @@
-// Types extracted to src/shared/types/permissions.ts to break import cycles
 import type {
   PermissionAllowDecision,
   PermissionAskDecision,
@@ -9,7 +8,6 @@ import type {
   PermissionResult,
 } from 'src/shared/types/permissions.js'
 
-// Re-export for backwards compatibility
 export type {
   PermissionAllowDecision,
   PermissionAskDecision,
@@ -20,16 +18,11 @@ export type {
   PermissionResult,
 }
 
-// Helper function to get the appropriate prose description for rule behavior
+/** The verb a hook message uses for an outcome: `Hook … <verb> this tool`. */
 export function getRuleBehaviorDescription(
   permissionResult: PermissionResult['behavior'],
 ): string {
-  switch (permissionResult) {
-    case 'allow':
-      return 'allowed'
-    case 'deny':
-      return 'denied'
-    default:
-      return 'asked for confirmation for'
-  }
+  if (permissionResult === 'allow') return 'allowed'
+  if (permissionResult === 'deny') return 'denied'
+  return 'asked for confirmation for'
 }

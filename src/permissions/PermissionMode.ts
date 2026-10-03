@@ -1,7 +1,6 @@
 import { feature } from 'bun:bundle'
 import z from 'zod/v4'
 import { PAUSE_ICON } from 'src/shared/constants/figures.js'
-// Types extracted to src/shared/types/permissions.ts to break import cycles
 import {
   EXTERNAL_PERMISSION_MODES,
   type ExternalPermissionMode,
@@ -10,7 +9,6 @@ import {
 } from 'src/shared/types/permissions.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 
-// Re-export for backwards compatibility
 export {
   EXTERNAL_PERMISSION_MODES,
   PERMISSION_MODES,
@@ -19,11 +17,13 @@ export {
 }
 
 export const permissionModeSchema = lazySchema(() => z.enum(PERMISSION_MODES))
+
 export const externalPermissionModeSchema = lazySchema(() =>
   z.enum(EXTERNAL_PERMISSION_MODES),
 )
 
-type ModeColorKey =
+/** The theme colour a mode is drawn in. */
+export type PermissionModeColor =
   | 'text'
   | 'planMode'
   | 'permission'
@@ -31,104 +31,80 @@ type ModeColorKey =
   | 'error'
   | 'warning'
 
-type PermissionModeConfig = {
-  title: string
-  shortTitle: string
-  symbol: string
-  color: ModeColorKey
-  external: ExternalPermissionMode
+type ModeRow = {
+  readonly title: string
+  readonly symbol: string
+  readonly color: PermissionModeColor
+  /** How the mode is reported to an SDK host. */
+  readonly reportedAs: ExternalPermissionMode
 }
 
-const PERMISSION_MODE_CONFIG: Partial<
-  Record<PermissionMode, PermissionModeConfig>
-> = {
-  default: {
-    title: 'Default',
-    shortTitle: 'Default',
-    symbol: '',
-    color: 'text',
-    external: 'default',
-  },
-  plan: {
-    title: 'Plan Mode',
-    shortTitle: 'Plan',
-    symbol: PAUSE_ICON,
-    color: 'planMode',
-    external: 'plan',
-  },
-  acceptEdits: {
-    title: 'Accept edits',
-    shortTitle: 'Accept',
-    symbol: '⏵⏵',
-    color: 'autoAccept',
-    external: 'acceptEdits',
-  },
-  bypassPermissions: {
-    title: 'Bypass Permissions',
-    shortTitle: 'Bypass',
-    symbol: '⏵⏵',
-    color: 'error',
-    external: 'bypassPermissions',
-  },
-  dontAsk: {
-    title: "Don't Ask",
-    shortTitle: 'DontAsk',
-    symbol: '⏵⏵',
-    color: 'error',
-    external: 'dontAsk',
-  },
+const FAST_FORWARD = '\u23f5\u23f5'
+
+const DEFAULT_ROW: ModeRow = {
+  title: 'Default',
+  symbol: '',
+  color: 'text',
+  reportedAs: 'default',
+}
+
+const AUTO_ROW: ModeRow = {
+  title: 'Auto mode',
+  symbol: FAST_FORWARD,
+  color: 'warning',
+  reportedAs: 'default',
+}
+
+// `bubble` has no row of its own, and `auto` has one only in a classifier
+// build; both fall back to the default row.
+const MODE_ROWS: ReadonlyMap<PermissionMode, ModeRow> = new Map<
+  PermissionMode,
+  ModeRow
+>([
+  ['default', DEFAULT_ROW],
+  ['plan', { title: 'Plan Mode', symbol: PAUSE_ICON, color: 'planMode', reportedAs: 'plan' }],
+  ['acceptEdits', { title: 'Accept edits', symbol: FAST_FORWARD, color: 'autoAccept', reportedAs: 'acceptEdits' }],
+  ['bypassPermissions', { title: 'Bypass Permissions', symbol: FAST_FORWARD, color: 'error', reportedAs: 'bypassPermissions' }],
+  ['dontAsk', { title: "Don't Ask", symbol: FAST_FORWARD, color: 'error', reportedAs: 'dontAsk' }],
   ...(feature('TRANSCRIPT_CLASSIFIER')
-    ? {
-        auto: {
-          title: 'Auto mode',
-          shortTitle: 'Auto',
-          symbol: '⏵⏵',
-          color: 'warning' as ModeColorKey,
-          external: 'default' as ExternalPermissionMode,
-        },
-      }
-    : {}),
+    ? [['auto', AUTO_ROW] as const]
+    : []),
+])
+
+function rowFor(mode: PermissionMode): ModeRow {
+  return MODE_ROWS.get(mode) ?? DEFAULT_ROW
 }
 
-/**
- * Type guard to check if a PermissionMode is an ExternalPermissionMode.
- * auto is internal-only and excluded from external modes.
- */
+const EXTERNAL_MODE_SET: ReadonlySet<string> = new Set(EXTERNAL_PERMISSION_MODES)
+
 export function isExternalPermissionMode(
   mode: PermissionMode,
 ): mode is ExternalPermissionMode {
-  return mode !== 'auto'
-}
-
-function getModeConfig(mode: PermissionMode): PermissionModeConfig {
-  return PERMISSION_MODE_CONFIG[mode] ?? PERMISSION_MODE_CONFIG.default!
+  return EXTERNAL_MODE_SET.has(mode)
 }
 
 export function toExternalPermissionMode(
   mode: PermissionMode,
 ): ExternalPermissionMode {
-  return getModeConfig(mode).external
+  return rowFor(mode).reportedAs
 }
 
 export function permissionModeFromString(str: string): PermissionMode {
-  return (PERMISSION_MODES as readonly string[]).includes(str)
-    ? (str as PermissionMode)
-    : 'default'
+  return PERMISSION_MODES.find(mode => mode === str) ?? 'default'
 }
 
 export function permissionModeTitle(mode: PermissionMode): string {
-  return getModeConfig(mode).title
+  return rowFor(mode).title
 }
 
 export function isDefaultMode(mode: PermissionMode | undefined): boolean {
-  return mode === 'default' || mode === undefined
+  return mode === undefined || mode === 'default'
 }
-
 
 export function permissionModeSymbol(mode: PermissionMode): string {
-  return getModeConfig(mode).symbol
+  return rowFor(mode).symbol
 }
 
-export function getModeColor(mode: PermissionMode): ModeColorKey {
-  return getModeConfig(mode).color
+export function getModeColor(mode: PermissionMode): PermissionModeColor {
+  return rowFor(mode).color
 }
