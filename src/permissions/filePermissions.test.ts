@@ -27,7 +27,6 @@ import {
   matchingRuleForInput,
   normalizePatternsToPath,
   pathInAllowedWorkingPath,
-  pathInWorkingPath,
 } from 'src/permissions/filePermissions.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 
@@ -65,14 +64,8 @@ function callRead(tool: unknown, path: string, ctx: ToolPermissionContext) {
   )
 }
 
-function contextWith(
-  overrides: Partial<Record<string, unknown>>,
-): ToolPermissionContext {
-  return {
-    ...getEmptyToolPermissionContext(),
-    ...overrides,
-  } as unknown as ToolPermissionContext
-}
+const contextWith = (overrides: Partial<Record<string, unknown>>) =>
+  Object.assign(getEmptyToolPermissionContext(), overrides) as unknown as ToolPermissionContext
 
 function workingDirContext(
   dir: string,
@@ -93,37 +86,6 @@ function withTempDir<T>(fn: (dir: string) => T): T {
     rmSync(dir, { recursive: true, force: true })
   }
 }
-
-describe('pathInWorkingPath', () => {
-  test('a directory contains itself', () => {
-    expect(pathInWorkingPath('/repo/src', '/repo/src')).toBe(true)
-  })
-
-  test('a descendant is inside', () => {
-    expect(pathInWorkingPath('/repo/src/a/b.ts', '/repo')).toBe(true)
-  })
-
-  test('a sibling is outside', () => {
-    expect(pathInWorkingPath('/other/a.ts', '/repo')).toBe(false)
-  })
-
-  test('a prefix match that is not a path boundary is outside', () => {
-    expect(pathInWorkingPath('/repo-evil/a.ts', '/repo')).toBe(false)
-  })
-
-  test('a traversal escape is outside', () => {
-    expect(pathInWorkingPath('/repo/../etc/passwd', '/repo')).toBe(false)
-  })
-
-  test('macOS /private/tmp is normalized onto /tmp', () => {
-    expect(pathInWorkingPath('/private/tmp/work/a.ts', '/tmp/work')).toBe(true)
-    expect(pathInWorkingPath('/tmp/work/a.ts', '/private/tmp/work')).toBe(true)
-  })
-
-  test('comparison is case-insensitive', () => {
-    expect(pathInWorkingPath('/Repo/SRC/a.ts', '/repo/src')).toBe(true)
-  })
-})
 
 describe('allWorkingDirectories', () => {
   test('always includes the original cwd', () => {
