@@ -426,28 +426,6 @@ export function calculateUSDCost(resolvedModel: string, usage: Usage): number {
   return tokensToUSDCost(modelCosts, usage)
 }
 
-/**
- * Calculate cost from raw token counts without requiring a full BetaUsage object.
- * Useful for side queries (e.g. classifier) that track token counts independently.
- */
-export function calculateCostFromTokens(
-  model: string,
-  tokens: {
-    inputTokens: number
-    outputTokens: number
-    cacheReadInputTokens: number
-    cacheCreationInputTokens: number
-  },
-): number {
-  const usage: Usage = {
-    input_tokens: tokens.inputTokens,
-    output_tokens: tokens.outputTokens,
-    cache_read_input_tokens: tokens.cacheReadInputTokens,
-    cache_creation_input_tokens: tokens.cacheCreationInputTokens,
-  } as Usage
-  return calculateUSDCost(model, usage)
-}
-
 function formatPrice(price: number): string {
   // Format price: integers without decimals, others with 2 decimal places
   // e.g., 3 -> "$3", 0.8 -> "$0.80", 22.5 -> "$22.50"
