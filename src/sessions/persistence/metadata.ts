@@ -7,6 +7,7 @@
  * Extracted in Wave 3 of the 11c sessionStorage split.
  */
 import type { UUID } from 'crypto'
+import { existsSync } from 'fs'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { SessionId } from 'src/shared/types/ids.js'
 import type { PersistedWorktreeSession } from 'src/shared/types/logs.js'
@@ -14,6 +15,35 @@ import { updateSessionName } from 'src/sessions/concurrentSessions.js'
 import { appendEntryToFile } from 'src/sessions/persistence/_helpers.js'
 import { getProject } from 'src/sessions/persistence/project.js'
 import { getTranscriptPathForSession } from 'src/sessions/pure/paths.js'
+import { isPersistenceDisabledByUser } from 'src/sessions/persistence/writer/gate.js'
+import {
+  agentColorLine,
+  agentNameLine,
+  persistedWorktree,
+  prLinkLine,
+  tagLine,
+  titleLine,
+  worktreeLine,
+  type MetadataLine,
+} from 'src/sessions/persistence/writer/metadataBlock.js'
+import { logError } from 'src/shared/log.js'
+
+const isCurrentSession = (sessionId: string): boolean => sessionId === getSessionId()
+
+/**
+ * Appends one metadata line at once. With persistence off, the current
+ * session keeps it in the cache only, and another session's file is written
+ * only when it already exists, since the user named that session (finding 2).
+ */
+function writeMetadataLine(
+  sessionId: UUID,
+  line: MetadataLine | Record<string, unknown>,
+  fullPath: string | undefined,
+): void {
+  const file = fullPath ?? getTranscriptPathForSession(sessionId)
+  if (isPersistenceDisabledByUser() && (isCurrentSession(sessionId) || !existsSync(file))) return
+  appendEntryToFile(file, line)
+}
 
 export async function saveCustomTitle(
   sessionId: UUID,
@@ -21,82 +51,24 @@ export async function saveCustomTitle(
   fullPath?: string,
   source: 'user' | 'auto' = 'user',
 ) {
-  // Fall back to computed path if fullPath is not provided
-  const resolvedPath = fullPath ?? getTranscriptPathForSession(sessionId)
-  appendEntryToFile(resolvedPath, {
-    type: 'custom-title',
-    customTitle,
-    sessionId,
-  })
-  // Cache for current session only (for immediate visibility)
-  if (sessionId === getSessionId()) {
-    getProject().currentSessionTitle = customTitle
-  }
+  writeMetadataLine(sessionId, titleLine(sessionId, customTitle), fullPath)
+  if (isCurrentSession(sessionId)) getProject().currentSessionTitle = customTitle
 }
 
-/**
- * Persist an AI-generated title to the JSONL as a distinct `ai-title` entry.
- *
- * Writing a separate entry type (vs. reusing `custom-title`) is load-bearing:
- * - Read preference: readers prefer `customTitle` field over `aiTitle`, so
- *   a user rename always wins regardless of append order.
- * - Resume safety: `loadTranscriptFile` only populates the `customTitles`
- *   Map from `custom-title` entries, so `restoreSessionMetadata` never
- *   caches an AI title and `reAppendSessionMetadata` never re-appends one
- *   at EOF — avoiding the clobber-on-resume bug where a stale AI title
- *   overwrites a mid-session user rename.
- * - CAS semantics: VS Code's `onlyIfNoCustomTitle` check scans for the
- *   `customTitle` field only, so AI can overwrite its own previous AI
- *   title but never a user title.
- *
- * Because the entry is never re-appended, it scrolls out of the 64KB tail
- * window once enough messages accumulate. Readers (`readLiteMetadata` and
- * VS Code's `fetchSessions`) fall back to scanning the head buffer for
- * `aiTitle` in that case. Both head and tail reads are bounded (64KB each
- * via `extractLastJsonStringField`), never a full scan.
- *
- * Callers with a stale-write guard (e.g., VS Code client) should prefer
- * passing `persist: false` to the SDK control request and persisting
- * through their own rename path after the guard passes, to avoid a race
- * where the AI title lands after a mid-flight user rename.
- */
 export function saveAiGeneratedTitle(sessionId: UUID, aiTitle: string): void {
-  appendEntryToFile(getTranscriptPathForSession(sessionId), {
-    type: 'ai-title',
-    aiTitle,
-    sessionId,
-  })
+  writeMetadataLine(sessionId, { type: 'ai-title', aiTitle, sessionId }, undefined)
 }
 
-/**
- * Append a periodic task summary for `claude ps`. Unlike ai-title this is
- * not re-appended by reAppendSessionMetadata — it's a rolling snapshot of
- * what the agent is doing *now*, so staleness is fine; ps reads the most
- * recent one from the tail.
- */
 export function saveTaskSummary(sessionId: UUID, summary: string): void {
-  appendEntryToFile(getTranscriptPathForSession(sessionId), {
-    type: 'task-summary',
-    summary,
-    sessionId,
-    timestamp: new Date().toISOString(),
-  })
+  const line = { type: 'task-summary', summary, sessionId, timestamp: new Date().toISOString() }
+  writeMetadataLine(sessionId, line, undefined)
 }
 
 export async function saveTag(sessionId: UUID, tag: string, fullPath?: string) {
-  // Fall back to computed path if fullPath is not provided
-  const resolvedPath = fullPath ?? getTranscriptPathForSession(sessionId)
-  appendEntryToFile(resolvedPath, { type: 'tag', tag, sessionId })
-  // Cache for current session only (for immediate visibility)
-  if (sessionId === getSessionId()) {
-    getProject().currentSessionTag = tag
-  }
+  writeMetadataLine(sessionId, tagLine(sessionId, tag), fullPath)
+  if (isCurrentSession(sessionId)) getProject().currentSessionTag = tag
 }
 
-/**
- * Link a session to a GitHub pull request.
- * This stores the PR number, URL, and repository for tracking and navigation.
- */
 export async function linkSessionToPR(
   sessionId: UUID,
   prNumber: number,
@@ -104,51 +76,28 @@ export async function linkSessionToPR(
   prRepository: string,
   fullPath?: string,
 ): Promise<void> {
-  const resolvedPath = fullPath ?? getTranscriptPathForSession(sessionId)
-  appendEntryToFile(resolvedPath, {
-    type: 'pr-link',
-    sessionId,
-    prNumber,
-    prUrl,
-    prRepository,
-    timestamp: new Date().toISOString(),
-  })
-  // Cache for current session so reAppendSessionMetadata can re-write after compaction
-  if (sessionId === getSessionId()) {
-    const project = getProject()
-    project.currentSessionPrNumber = prNumber
-    project.currentSessionPrUrl = prUrl
-    project.currentSessionPrRepository = prRepository
-  }
+  writeMetadataLine(sessionId, prLinkLine(sessionId, { prNumber, prUrl, prRepository }, new Date()), fullPath)
+  if (!isCurrentSession(sessionId)) return
+  const cache = getProject()
+  cache.currentSessionPrNumber = prNumber
+  cache.currentSessionPrUrl = prUrl
+  cache.currentSessionPrRepository = prRepository
 }
 
 export function getCurrentSessionTag(sessionId: UUID): string | undefined {
-  // Only returns tag for current session (the only one we cache)
-  if (sessionId === getSessionId()) {
-    return getProject().currentSessionTag
-  }
-  return undefined
+  return isCurrentSession(sessionId) ? getProject().currentSessionTag : undefined
 }
 
 export function getCurrentSessionTitle(
   sessionId: SessionId,
 ): string | undefined {
-  // Only returns title for current session (the only one we cache)
-  if (sessionId === getSessionId()) {
-    return getProject().currentSessionTitle
-  }
-  return undefined
+  return isCurrentSession(sessionId) ? getProject().currentSessionTitle : undefined
 }
 
 export function getCurrentSessionAgentColor(): string | undefined {
   return getProject().currentSessionAgentColor
 }
 
-/**
- * Restore session metadata into in-memory cache on resume.
- * Populates the cache so metadata is available for display (e.g. the
- * agent banner) and re-appended on session exit via reAppendSessionMetadata.
- */
 export function restoreSessionMetadata(meta: {
   customTitle?: string
   tag?: string
@@ -161,51 +110,35 @@ export function restoreSessionMetadata(meta: {
   prUrl?: string
   prRepository?: string
 }): void {
-  const project = getProject()
-  // ??= so --name (cacheSessionTitle) wins over the resumed
-  // session's title. REPL.tsx clears before calling, so /resume is unaffected.
-  if (meta.customTitle) project.currentSessionTitle ??= meta.customTitle
-  if (meta.tag !== undefined) project.currentSessionTag = meta.tag || undefined
-  if (meta.agentName) project.currentSessionAgentName = meta.agentName
-  if (meta.agentColor) project.currentSessionAgentColor = meta.agentColor
-  if (meta.agentSetting) project.currentSessionAgentSetting = meta.agentSetting
-  if (meta.mode) project.currentSessionMode = meta.mode
-  if (meta.worktreeSession !== undefined)
-    project.currentSessionWorktree = meta.worktreeSession
-  if (meta.prNumber !== undefined)
-    project.currentSessionPrNumber = meta.prNumber
-  if (meta.prUrl) project.currentSessionPrUrl = meta.prUrl
-  if (meta.prRepository) project.currentSessionPrRepository = meta.prRepository
+  const cache = getProject()
+  // A title already cached came from --name, which beats the resumed one.
+  if (meta.customTitle && cache.currentSessionTitle === undefined) cache.currentSessionTitle = meta.customTitle
+  if (meta.tag !== undefined) cache.currentSessionTag = meta.tag || undefined
+  if (meta.agentName) cache.currentSessionAgentName = meta.agentName
+  if (meta.agentColor) cache.currentSessionAgentColor = meta.agentColor
+  if (meta.agentSetting) cache.currentSessionAgentSetting = meta.agentSetting
+  if (meta.mode) cache.currentSessionMode = meta.mode
+  if (meta.worktreeSession !== undefined) cache.currentSessionWorktree = meta.worktreeSession
+  if (meta.prNumber !== undefined) cache.currentSessionPrNumber = meta.prNumber
+  if (meta.prUrl) cache.currentSessionPrUrl = meta.prUrl
+  if (meta.prRepository) cache.currentSessionPrRepository = meta.prRepository
 }
 
-/**
- * Clear all cached session metadata (title, tag, agent name/color).
- * Called when /clear creates a new session so stale metadata
- * from the previous session does not leak into the new one.
- */
 export function clearSessionMetadata(): void {
-  const project = getProject()
-  project.currentSessionTitle = undefined
-  project.currentSessionTag = undefined
-  project.currentSessionAgentName = undefined
-  project.currentSessionAgentColor = undefined
-  project.currentSessionLastPrompt = undefined
-  project.currentSessionAgentSetting = undefined
-  project.currentSessionMode = undefined
-  project.currentSessionWorktree = undefined
-  project.currentSessionPrNumber = undefined
-  project.currentSessionPrUrl = undefined
-  project.currentSessionPrRepository = undefined
+  const cache = getProject()
+  cache.currentSessionTitle = undefined
+  cache.currentSessionTag = undefined
+  cache.currentSessionAgentName = undefined
+  cache.currentSessionAgentColor = undefined
+  cache.currentSessionLastPrompt = undefined
+  cache.currentSessionAgentSetting = undefined
+  cache.currentSessionMode = undefined
+  cache.currentSessionWorktree = undefined
+  cache.currentSessionPrNumber = undefined
+  cache.currentSessionPrUrl = undefined
+  cache.currentSessionPrRepository = undefined
 }
 
-/**
- * Re-append cached session metadata (custom title, tag) to the end of the
- * transcript file. Call this after compaction so the metadata stays within
- * the 16KB tail window that readLiteMetadata reads during progressive loading.
- * Without this, enough post-compaction messages can push the metadata entry
- * out of the window, causing `--resume` to show the auto-generated firstPrompt
- * instead of the user-set session name.
- */
 export function reAppendSessionMetadata(): void {
   getProject().reAppendSessionMetadata()
 }
@@ -216,13 +149,10 @@ export async function saveAgentName(
   fullPath?: string,
   source: 'user' | 'auto' = 'user',
 ) {
-  const resolvedPath = fullPath ?? getTranscriptPathForSession(sessionId)
-  appendEntryToFile(resolvedPath, { type: 'agent-name', agentName, sessionId })
-  // Cache for current session only (for immediate visibility)
-  if (sessionId === getSessionId()) {
-    getProject().currentSessionAgentName = agentName
-    void updateSessionName(agentName)
-  }
+  writeMetadataLine(sessionId, agentNameLine(sessionId, agentName), fullPath)
+  if (!isCurrentSession(sessionId)) return
+  getProject().currentSessionAgentName = agentName
+  updateSessionName(agentName).catch(logError)
 }
 
 export async function saveAgentColor(
@@ -230,81 +160,28 @@ export async function saveAgentColor(
   agentColor: string,
   fullPath?: string,
 ) {
-  const resolvedPath = fullPath ?? getTranscriptPathForSession(sessionId)
-  appendEntryToFile(resolvedPath, {
-    type: 'agent-color',
-    agentColor,
-    sessionId,
-  })
-  // Cache for current session only (for immediate visibility)
-  if (sessionId === getSessionId()) {
-    getProject().currentSessionAgentColor = agentColor
-  }
+  writeMetadataLine(sessionId, agentColorLine(sessionId, agentColor), fullPath)
+  if (isCurrentSession(sessionId)) getProject().currentSessionAgentColor = agentColor
 }
 
-/**
- * Cache the session agent setting. Written to disk by materializeSessionFile
- * on the first user message, and re-stamped by reAppendSessionMetadata on exit.
- * Cache-only here to avoid creating metadata-only session files at startup.
- */
 export function saveAgentSetting(agentSetting: string): void {
   getProject().currentSessionAgentSetting = agentSetting
 }
 
-/**
- * Cache a session title set at startup (--name). Written to disk by
- * materializeSessionFile on the first user message. Cache-only here so no
- * orphan metadata-only file is created before the session ID is finalized.
- */
 export function cacheSessionTitle(customTitle: string): void {
   getProject().currentSessionTitle = customTitle
 }
 
-/**
- * Cache the session mode. Written to disk by materializeSessionFile on the
- * first user message, and re-stamped by reAppendSessionMetadata on exit.
- * Cache-only here to avoid creating metadata-only session files at startup.
- */
 export function saveMode(mode: 'coordinator' | 'normal'): void {
   getProject().currentSessionMode = mode
 }
 
-/**
- * Record the session's worktree state for --resume. Written to disk by
- * materializeSessionFile on the first user message and re-stamped by
- * reAppendSessionMetadata on exit. Pass null when exiting a worktree
- * so --resume knows not to cd back into it.
- */
 export function saveWorktreeState(
   worktreeSession: PersistedWorktreeSession | null,
 ): void {
-  // Strip ephemeral fields (creationDurationMs, usedSparsePaths) that callers
-  // may pass via full WorktreeSession objects — TypeScript structural typing
-  // allows this, but we don't want them serialized to the transcript.
-  const stripped: PersistedWorktreeSession | null = worktreeSession
-    ? {
-        originalCwd: worktreeSession.originalCwd,
-        worktreePath: worktreeSession.worktreePath,
-        worktreeName: worktreeSession.worktreeName,
-        worktreeBranch: worktreeSession.worktreeBranch,
-        originalBranch: worktreeSession.originalBranch,
-        originalHeadCommit: worktreeSession.originalHeadCommit,
-        sessionId: worktreeSession.sessionId,
-        tmuxSessionName: worktreeSession.tmuxSessionName,
-        hookBased: worktreeSession.hookBased,
-        attached: worktreeSession.attached,
-      }
-    : null
-  const project = getProject()
-  project.currentSessionWorktree = stripped
-  // Write eagerly when the file already exists (mid-session enter/exit).
-  // For --worktree startup, sessionFile is null — materializeSessionFile
-  // will write it on the first message via reAppendSessionMetadata.
-  if (project.sessionFile) {
-    appendEntryToFile(project.sessionFile, {
-      type: 'worktree-state',
-      worktreeSession: stripped,
-      sessionId: getSessionId(),
-    })
-  }
+  const kept = worktreeSession ? persistedWorktree(worktreeSession) : null
+  const current = getProject()
+  current.currentSessionWorktree = kept
+  if (!current.sessionFile || isPersistenceDisabledByUser()) return
+  appendEntryToFile(current.sessionFile, worktreeLine(getSessionId() as UUID, kept))
 }

@@ -2,224 +2,464 @@
   "test": [
     "src/sessions/persistence.characterization.test.ts",
     "src/sessions/persistence.metadata.characterization.test.ts",
-    "src/sessions/persistence.remote.characterization.test.ts"
+    "src/sessions/persistence.remote.characterization.test.ts",
+    "src/sessions/persistence/persistenceFixes.test.ts",
+    "src/sessions/persistence/writer/writer.test.ts"
   ],
   "source": "src/sessions/persistence/project.ts",
   "probes": [
     {
-      "name": "helpers: a metadata line ends in CRLF",
+      "name": "file: only a user or assistant message opens the transcript",
+      "find": "      if (!opensTranscript(entry)) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "file: entries held before it opens are written when it does",
+      "find": "    const held = this.pendingEntries\n",
+      "replace": "    const held: Entry[] = []\n"
+    },
+    {
+      "name": "file: the cached metadata leads a new transcript",
+      "find": "      this.reAppendSessionMetadata(skipTitleRefresh)\n    } catch",
+      "replace": "      void skipTitleRefresh\n    } catch"
+    },
+    {
+      "name": "file: resetting the pointer drops the held entries",
+      "find": "    this.sessionFile = null\n    this.pendingEntries = []\n",
+      "replace": "    this.sessionFile = null\n"
+    },
+    {
+      "name": "queue: lines wait about 100 ms for the timer",
+      "find": "  private FLUSH_INTERVAL_MS = 100",
+      "replace": "  private FLUSH_INTERVAL_MS = 15"
+    },
+    {
+      "name": "queue: a remote ingress URL drops the interval to 10 ms",
+      "find": "    this.remoteIngressUrl = url\n    this.FLUSH_INTERVAL_MS = REMOTE_FLUSH_INTERVAL_MS\n",
+      "replace": "    this.remoteIngressUrl = url\n"
+    },
+    {
+      "name": "queue: flushSessionStorage rejects with the failed append's error",
+      "find": "    if (failure) throw failure.error",
+      "replace": "    void failure"
+    },
+    {
+      "name": "finding 6: the timer path logs a failed batch instead of rejecting unhandled",
+      "find": "      this.drainQueuedWrites().catch(logError)",
+      "replace": "      void this.drainQueuedWrites()"
+    },
+    {
+      "name": "line: the session stamp members keep their order",
+      "find": "        cwd,\n        sessionId,\n        version: VERSION,",
+      "replace": "        sessionId,\n        cwd,\n        version: VERSION,"
+    },
+    {
+      "name": "line: gitBranch is the session cwd's branch, HEAD outside a repository",
+      "find": "    const gitBranch = await getBranch().catch(() => 'HEAD')",
+      "replace": "    const gitBranch = await Promise.resolve('main')"
+    },
+    {
+      "name": "line: an unset entrypoint removes the carried one",
+      "find": "  return process.env.CLAUDE_CODE_ENTRYPOINT",
+      "replace": "  return process.env.CLAUDE_CODE_ENTRYPOINT ?? 'cli'"
+    },
+    {
+      "name": "line: slug is the plan slug cached for the session",
+      "find": "        slug: getPlanSlugCache().get(sessionId),",
+      "replace": "        slug: undefined,"
+    },
+    {
+      "name": "line: tool results hang off their source assistant message",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "  if (message.type === 'user' && message.sourceToolAssistantUUID) return message.sourceToolAssistantUUID",
+      "replace": "  if (false) return message.sourceToolAssistantUUID"
+    },
+    {
+      "name": "line: a compact boundary starts a new chain",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "return { parentUuid: null, logicalParentUuid: parent ?? undefined }",
+      "replace": "return { parentUuid: parent, logicalParentUuid: parent ?? undefined }"
+    },
+    {
+      "name": "line: a compact boundary keeps its logical parent",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "return { parentUuid: null, logicalParentUuid: parent ?? undefined }",
+      "replace": "return { parentUuid: null, logicalParentUuid: undefined }"
+    },
+    {
+      "name": "line: promptId on user lines only",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "      promptId: message.type === 'user' ? options.promptId : undefined,",
+      "replace": "      promptId: options.promptId,"
+    },
+    {
+      "name": "finding 7: a message's own members win over the chain fields",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "      agentId: options.agentId,\n      ...message,\n",
+      "replace": "      ...message,\n      agentId: options.agentId,\n"
+    },
+    {
+      "name": "line: the session stamp wins over what a message carries",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "      ...message,\n      ...stamp,\n",
+      "replace": "      ...stamp,\n      ...message,\n"
+    },
+    {
+      "name": "line: each message hangs off the one before it",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "    previous = message.uuid\n",
+      "replace": "    previous = options.parent\n"
+    },
+    {
+      "name": "subagents: only a sidechain line with an agent id leaves the main file",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "  return line.isSidechain && line.agentId !== undefined ? line.agentId : undefined",
+      "replace": "  return line.agentId !== undefined ? line.agentId : undefined"
+    },
+    {
+      "name": "subagents: agent lines go to the agent's own file",
+      "find": "      void this.enqueueWrite(getAgentTranscriptPath(asAgentId(agentId)), entry)\n",
+      "replace": "      void this.enqueueWrite(this.ensureCurrentSessionFile(), entry)\n"
+    },
+    {
+      "name": "subagents: agent lines never count as recorded or get mirrored",
+      "find": "      void this.enqueueWrite(getAgentTranscriptPath(asAgentId(agentId)), entry)\n      return\n",
+      "replace": "      void this.enqueueWrite(getAgentTranscriptPath(asAgentId(agentId)), entry)\n      await this.afterMainWrite(entry, sessionId)\n      return\n"
+    },
+    {
+      "name": "finding 10: agent lines are written again on every call",
+      "source": "src/sessions/persistence/record.ts",
+      "find": "      await project.insertMessageChain(cleaned, true, agentId, startingParentUuid)",
+      "replace": "      await project.insertMessageChain((await planMainWrite(cleaned, startingParentUuid)).fresh, true, agentId, startingParentUuid)"
+    },
+    {
+      "name": "dedup: a message written by this process counts as recorded",
+      "find": "      ;(await getSessionMessages(sessionId)).add(entry.uuid)",
+      "replace": "      ;(await getSessionMessages(sessionId)).has(entry.uuid)"
+    },
+    {
+      "name": "dedup: recorded messages are skipped",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "    if (!recorded) fresh.push(message)",
+      "replace": "    if (true) fresh.push(message)"
+    },
+    {
+      "name": "dedup: only recorded messages ahead of the first new one move the parent",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "    else if (fresh.length === 0) parent = message.uuid",
+      "replace": "    else parent = message.uuid"
+    },
+    {
+      "name": "dedup: nothing new returns the starting parent",
+      "source": "src/sessions/persistence/writer/lines.ts",
+      "find": "  return { fresh, parent, last: fresh.at(-1)?.uuid ?? parent }",
+      "replace": "  return { fresh, parent, last: fresh.at(-1)?.uuid ?? null }"
+    },
+    {
+      "name": "side entries: the file-history snapshot keeps its key order",
+      "find": "      type: 'file-history-snapshot',\n      messageId,\n",
+      "replace": "      messageId,\n      type: 'file-history-snapshot',\n"
+    },
+    {
+      "name": "side entries: context-collapse lines open with type and session",
+      "source": "src/sessions/persistence/record.ts",
+      "find": "{ type: 'marble-origami-commit', sessionId, ...commit }",
+      "replace": "{ ...commit, type: 'marble-origami-commit', sessionId }"
+    },
+    {
+      "name": "gate: NODE_ENV=test mutes the writer unless a suite opts in",
+      "source": "src/sessions/persistence/writer/gate.ts",
+      "find": "  const mutedForTests = nodeEnv === 'test' && !isEnvTruthy(process.env.TEST_ENABLE_SESSION_PERSISTENCE)",
+      "replace": "  const mutedForTests = false && nodeEnv === 'test'"
+    },
+    {
+      "name": "gate: cleanupPeriodDays 0 turns persistence off",
+      "source": "src/sessions/persistence/writer/gate.ts",
+      "find": "    getInitialSettings().cleanupPeriodDays === 0 ||",
+      "replace": "    getInitialSettings().cleanupPeriodDays === -1 ||"
+    },
+    {
+      "name": "gate: CLAUDIN_SKIP_PROMPT_HISTORY turns persistence off",
+      "source": "src/sessions/persistence/writer/gate.ts",
+      "find": "    isEnvTruthy(process.env.CLAUDIN_SKIP_PROMPT_HISTORY)",
+      "replace": "    isEnvTruthy(process.env.CLAUDIN_SKIP_PROMPT_HISTORY_UNUSED)"
+    },
+    {
+      "name": "finding 2: saves for the current session are cached only when persistence is off",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (isPersistenceDisabledByUser() && (isCurrentSession(sessionId) || !existsSync(file))) return",
+      "replace": "  if (false) return"
+    },
+    {
+      "name": "finding 2: another session's existing file is still written",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "(isCurrentSession(sessionId) || !existsSync(file))",
+      "replace": "(true)"
+    },
+    {
+      "name": "finding 2: the re-append writes nothing when persistence is off",
+      "find": "    if (!file || !sessionId || isPersistenceDisabledByUser()) return",
+      "replace": "    if (!file || !sessionId) return"
+    },
+    {
+      "name": "finding 2: saveWorktreeState writes nothing when persistence is off",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (!current.sessionFile || isPersistenceDisabledByUser()) return",
+      "replace": "  if (!current.sessionFile) return"
+    },
+    {
+      "name": "finding 1: a save that creates the directory creates its file 0600",
+      "source": "src/sessions/persistence/writer/privateFiles.ts",
+      "find": "    fs.mkdirSync(dirname(path), { mode: PRIVATE_DIR_MODE })\n    fs.appendFileSync(path, text, { mode: PRIVATE_FILE_MODE })",
+      "replace": "    fs.mkdirSync(dirname(path), { mode: PRIVATE_DIR_MODE })\n    fs.appendFileSync(path, text)"
+    },
+    {
+      "name": "modes: transcripts are created 0600",
+      "source": "src/sessions/persistence/writer/privateFiles.ts",
+      "find": "const PRIVATE_FILE_MODE = 0o600",
+      "replace": "const PRIVATE_FILE_MODE = 0o644"
+    },
+    {
+      "name": "modes: directories are created 0700",
+      "source": "src/sessions/persistence/writer/privateFiles.ts",
+      "find": "const PRIVATE_DIR_MODE = 0o700",
+      "replace": "const PRIVATE_DIR_MODE = 0o755"
+    },
+    {
+      "name": "metadata: saves cache for the current session only",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (isCurrentSession(sessionId)) getProject().currentSessionTag = tag",
+      "replace": "  getProject().currentSessionTag = tag"
+    },
+    {
+      "name": "metadata: the title getter answers for the current session only",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  return isCurrentSession(sessionId) ? getProject().currentSessionTitle : undefined",
+      "replace": "  return getProject().currentSessionTitle"
+    },
+    {
+      "name": "metadata: saveWorktreeState keeps only the persisted fields",
+      "source": "src/sessions/persistence/writer/metadataBlock.ts",
+      "find": "  return {\n    originalCwd: session.originalCwd,",
+      "replace": "  return {\n    ...session,\n    originalCwd: session.originalCwd,"
+    },
+    {
+      "name": "restore: a cached (--name) title wins",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (meta.customTitle && cache.currentSessionTitle === undefined) cache.currentSessionTitle = meta.customTitle",
+      "replace": "  if (meta.customTitle) cache.currentSessionTitle = meta.customTitle"
+    },
+    {
+      "name": "restore: an empty tag clears the cached one",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (meta.tag !== undefined) cache.currentSessionTag = meta.tag || undefined",
+      "replace": "  if (meta.tag) cache.currentSessionTag = meta.tag"
+    },
+    {
+      "name": "restore: PR number 0 is kept",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  if (meta.prNumber !== undefined) cache.currentSessionPrNumber = meta.prNumber",
+      "replace": "  if (meta.prNumber) cache.currentSessionPrNumber = meta.prNumber"
+    },
+    {
+      "name": "clear: the last prompt goes with the rest of the cache",
+      "source": "src/sessions/persistence/metadata.ts",
+      "find": "  cache.currentSessionLastPrompt = undefined\n",
+      "replace": "\n"
+    },
+    {
+      "name": "re-append: title before tag, in the fixture's order",
+      "source": "src/sessions/persistence/writer/metadataBlock.ts",
+      "find": "  if (cache.title) lines.push(titleLine(sessionId, cache.title))\n  if (cache.tag) lines.push(tagLine(sessionId, cache.tag))",
+      "replace": "  if (cache.tag) lines.push(tagLine(sessionId, cache.tag))\n  if (cache.title) lines.push(titleLine(sessionId, cache.title))"
+    },
+    {
+      "name": "re-append: a null worktree is written",
+      "source": "src/sessions/persistence/writer/metadataBlock.ts",
+      "find": "  if (cache.worktree !== undefined) lines.push(worktreeLine(sessionId, cache.worktree))",
+      "replace": "  if (cache.worktree) lines.push(worktreeLine(sessionId, cache.worktree))"
+    },
+    {
+      "name": "re-append: a PR link needs its repository too",
+      "source": "src/sessions/persistence/writer/metadataBlock.ts",
+      "find": "  if (prNumber !== undefined && prUrl && prRepository) {",
+      "replace": "  if (prNumber !== undefined && prUrl) {"
+    },
+    {
+      "name": "re-append: PR number 0 still writes the link",
+      "source": "src/sessions/persistence/writer/metadataBlock.ts",
+      "find": "  if (prNumber !== undefined && prUrl && prRepository) {",
+      "replace": "  if (prNumber && prUrl && prRepository) {"
+    },
+    {
+      "name": "tail: only lines opening with the compact type member count",
+      "source": "src/sessions/persistence/writer/metadataBlock.ts",
+      "find": "line.startsWith(TITLE_OPENER)",
+      "replace": "line.includes('\"custom-title\"')"
+    },
+    {
+      "name": "tail: an external empty title clears the cache",
+      "find": "this.currentSessionTitle = external.title || undefined",
+      "replace": "this.currentSessionTitle = external.title || this.currentSessionTitle"
+    },
+    {
+      "name": "tail: only the last 64 KiB are read",
       "source": "src/sessions/persistence/_helpers.ts",
-      "find": "const line = jsonStringify(entry) + '\\n'",
-      "replace": "const line = jsonStringify(entry) + '\\r\\n'"
+      "find": "  return readTailSync(fullPath, LITE_READ_BUF_SIZE)",
+      "replace": "  return readTailSync(fullPath, 4 * LITE_READ_BUF_SIZE)"
     },
     {
-      "name": "helpers: a created project directory is world-readable",
-      "source": "src/sessions/persistence/_helpers.ts",
-      "find": "fs.mkdirSync(dirname(fullPath), { mode: 0o700 })",
-      "replace": "fs.mkdirSync(dirname(fullPath), { mode: 0o755 })"
+      "name": "adopt: the title is not re-read from the file",
+      "find": "    this.openSessionFile(this.sessionFile, true).catch(logError)",
+      "replace": "    this.openSessionFile(this.sessionFile, false).catch(logError)"
     },
     {
-      "name": "helpers: the tail read starts 1 MiB from the end",
-      "source": "src/sessions/persistence/_helpers.ts",
-      "find": "const tailOffset = Math.max(0, st.size - LITE_READ_BUF_SIZE)",
-      "replace": "const tailOffset = Math.max(0, st.size - 1024 * 1024)"
-    },
-    {
-      "name": "flush: flushSessionStorage does not wait",
-      "source": "src/sessions/persistence/flush.ts",
-      "find": "await getProject().flush()",
-      "replace": "void getProject().flush()"
-    },
-    {
-      "name": "record: recorded messages after a new one are chained to",
+      "name": "last prompt: a turn without text keeps the previous one",
       "source": "src/sessions/persistence/record.ts",
-      "find": "if (!seenNewMessage && isChainParticipant(m)) {",
-      "replace": "if (isChainParticipant(m)) {"
+      "find": "    if (lastPrompt !== undefined) project.currentSessionLastPrompt = lastPrompt",
+      "replace": "    project.currentSessionLastPrompt = lastPrompt"
     },
     {
-      "name": "record: the result ignores what was just written",
-      "source": "src/sessions/persistence/record.ts",
-      "find": "return (lastRecorded?.uuid as UUID | undefined) ?? startingParentUuid ?? null",
-      "replace": "return startingParentUuid ?? null"
+      "name": "finding 8: CR and CRLF are flattened too",
+      "source": "src/sessions/persistence/writer/lastPrompt.ts",
+      "find": "  const flat = text.replace(/\\r\\n|[\\r\\n]/g, ' ').trim()",
+      "replace": "  const flat = text.replace(/\\n/g, ' ').trim()"
     },
     {
-      "name": "record: subagent lines are not marked as sidechain",
-      "source": "src/sessions/persistence/record.ts",
-      "find": "    cleanMessagesForLogging(messages),\n    true,",
-      "replace": "    cleanMessagesForLogging(messages),\n    false,"
+      "name": "last prompt: cut at 200 characters",
+      "source": "src/sessions/persistence/writer/lastPrompt.ts",
+      "find": "const MAX_LAST_PROMPT_CHARS = 200",
+      "replace": "const MAX_LAST_PROMPT_CHARS = 199"
     },
     {
-      "name": "record: adopting a file re-reads the title from it",
-      "source": "src/sessions/persistence/record.ts",
-      "find": "project.reAppendSessionMetadata(true)",
-      "replace": "project.reAppendSessionMetadata(false)"
+      "name": "last prompt: the cut text is trimmed before the ellipsis",
+      "source": "src/sessions/persistence/writer/lastPrompt.ts",
+      "find": "  return `${flat.slice(0, MAX_LAST_PROMPT_CHARS).trim()}${ELLIPSIS}`",
+      "replace": "  return `${flat.slice(0, MAX_LAST_PROMPT_CHARS)}${ELLIPSIS}`"
     },
     {
-      "name": "metadata: another session's title is cached",
-      "source": "src/sessions/persistence/metadata.ts",
-      "find": "  if (sessionId === getSessionId()) {\n    getProject().currentSessionTitle = customTitle",
-      "replace": "  {\n    getProject().currentSessionTitle = customTitle"
+      "name": "exit: the cleanup is registered",
+      "find": "    registerCleanup(settleAtExit)",
+      "replace": "    void settleAtExit"
     },
     {
-      "name": "metadata: an AI title is written as a custom title",
-      "source": "src/sessions/persistence/metadata.ts",
-      "find": "type: 'ai-title',",
-      "replace": "type: 'custom-title',"
+      "name": "exit: the queue is flushed before the stamps",
+      "find": "    await current.flush()\n",
+      "replace": "    void current.flush\n"
     },
     {
-      "name": "metadata: the resumed title overrides --name",
-      "source": "src/sessions/persistence/metadata.ts",
-      "find": "project.currentSessionTitle ??= meta.customTitle",
-      "replace": "project.currentSessionTitle = meta.customTitle"
+      "name": "remove: the queue is drained first, so a queued line is not resurrected",
+      "find": "      await this.drainQueuedWrites()\n      await removeMessageLine(",
+      "replace": "      await removeMessageLine("
     },
     {
-      "name": "metadata: an empty resumed tag is kept as empty",
-      "source": "src/sessions/persistence/metadata.ts",
-      "find": "project.currentSessionTag = meta.tag || undefined",
-      "replace": "project.currentSessionTag = meta.tag"
+      "name": "remove: before the file opens, the held entry is dropped",
+      "find": "        this.pendingEntries = this.pendingEntries.filter(entry => !hasUuid(entry, targetUuid))",
+      "replace": "        this.pendingEntries = this.pendingEntries.filter(() => true)"
     },
     {
-      "name": "metadata: PR number 0 is dropped on restore",
-      "source": "src/sessions/persistence/metadata.ts",
-      "find": "  if (meta.prNumber !== undefined)\n",
-      "replace": "  if (meta.prNumber)\n"
+      "name": "remove: the full rewrite is refused above 50 MiB",
+      "find": "        maxRewriteBytes: MAX_TOMBSTONE_REWRITE_BYTES,",
+      "replace": "        maxRewriteBytes: Number.POSITIVE_INFINITY,"
     },
     {
-      "name": "metadata: the worktree loses its attached flag",
-      "source": "src/sessions/persistence/metadata.ts",
-      "find": "        attached: worktreeSession.attached,\n",
-      "replace": ""
+      "name": "remove: the file is cut back to the target line's start",
+      "source": "src/sessions/persistence/writer/remover.ts",
+      "find": "    await handle.truncate(cutAt)",
+      "replace": "    await handle.truncate(cutAt + 1)"
     },
     {
-      "name": "metadata: clearing keeps the last prompt",
-      "source": "src/sessions/persistence/metadata.ts",
-      "find": "  project.currentSessionLastPrompt = undefined\n",
-      "replace": ""
+      "name": "remove: the lines after the target are written back",
+      "source": "src/sessions/persistence/writer/remover.ts",
+      "find": "    if (after.length > 0) await handle.write(after, 0, after.length, cutAt)",
+      "replace": "    void after"
     },
     {
-      "name": "project: a hook line alone creates the file",
-      "find": "messages.some(m => m.type === 'user' || m.type === 'assistant')",
-      "replace": "messages.length > 0"
+      "name": "remove: a child naming the target as parent does not match",
+      "source": "src/sessions/persistence/writer/remover.ts",
+      "find": "(parsed as { uuid?: unknown }).uuid === uuid",
+      "replace": "JSON.stringify(parsed).includes(uuid)"
     },
     {
-      "name": "project: a compact boundary keeps its parent",
-      "find": "parentUuid: isCompactBoundary ? null : effectiveParentUuid,",
-      "replace": "parentUuid: effectiveParentUuid,"
+      "name": "finding 3: only the line whose own uuid matches is cut",
+      "source": "src/sessions/persistence/writer/remover.ts",
+      "find": "    if (line.includes(needle) && isLineOf(line.toString('utf8'), uuid)) return spans[i]",
+      "replace": "    if (line.includes(needle)) return spans[i]"
     },
     {
-      "name": "project: a compact boundary has no logical parent",
-      "find": "            ? (parentUuid ?? undefined)",
-      "replace": "            ? undefined"
+      "name": "remove: the full rewrite keeps blank and damaged lines",
+      "source": "src/sessions/persistence/writer/remover.ts",
+      "find": "  const kept = lines.filter(line => !isLineOf(line, uuid))",
+      "replace": "  const kept = lines.filter(line => line !== '' && !isLineOf(line, uuid))"
     },
     {
-      "name": "project: a tool result hangs off the line before it",
-      "find": "effectiveParentUuid = message.sourceToolAssistantUUID",
-      "replace": "effectiveParentUuid = parentUuid"
+      "name": "ingress: hydration answers whether anything was stored",
+      "find": "    return logs.length > 0\n  } catch (error) {\n    logError(error)\n    return false\n  } finally {",
+      "replace": "    return true\n  } catch (error) {\n    logError(error)\n    return false\n  } finally {"
     },
     {
-      "name": "project: every line carries the prompt id",
-      "find": "message.type === 'user' ? (getPromptId() ?? undefined) : undefined",
-      "replace": "getPromptId() ?? undefined"
+      "name": "finding 4: a failed fetch empties the local transcript",
+      "find": "(await sessionIngress.getSessionLogs(sessionId, ingressUrl)) ?? []",
+      "replace": "(await sessionIngress.getSessionLogs(sessionId, ingressUrl))!"
     },
     {
-      "name": "project: the last prompt keeps 200 characters only below 200",
-      "find": "flat.length > 200 ? flat.slice(0, 200).trim() + '…' : flat",
-      "replace": "flat.length > 199 ? flat.slice(0, 199).trim() + '…' : flat"
+      "name": "ingress: the URL is kept whatever the hydration found",
+      "find": "  } finally {\n    getProject().setRemoteIngressUrl(ingressUrl)\n  }",
+      "replace": "  } finally {\n    void ingressUrl\n  }"
     },
     {
-      "name": "project: an external title is matched anywhere in a line",
-      "find": "l.startsWith('{\"type\":\"custom-title\"')",
-      "replace": "l.includes('\"customTitle\"')"
+      "name": "ingress: no mirroring without ENABLE_SESSION_PERSISTENCE",
+      "find": "    if (!url || !isEnvTruthy(process.env.ENABLE_SESSION_PERSISTENCE) || isShuttingDown()) return",
+      "replace": "    if (!url || isShuttingDown()) return"
     },
     {
-      "name": "project: an empty external title does not clear the cache",
-      "find": "this.currentSessionTitle = tailTitle || undefined",
-      "replace": "this.currentSessionTitle = tailTitle || this.currentSessionTitle"
+      "name": "finding 5: a PUT rejected for good exits with code 1",
+      "find": "    gracefulShutdownSync(1)",
+      "replace": "    gracefulShutdownSync(0)"
     },
     {
-      "name": "project: a PR link is re-appended without its repository",
-      "find": "      this.currentSessionPrUrl &&\n      this.currentSessionPrRepository\n",
-      "replace": "      this.currentSessionPrUrl\n"
+      "name": "CCR v2: the internal writer receives each new main-file message",
+      "find": "    const writer = this.internalEventWriter\n",
+      "replace": "    const writer = null as InternalEventWriter | null\n"
     },
     {
-      "name": "project: the cost is stamped with persistence off",
-      "find": "if (!this.sessionFile || this.shouldSkipPersistence()) return",
-      "replace": "if (!this.sessionFile) return"
+      "name": "CCR v2: the internal writer replaces Session Ingress",
+      "find": "        logForDebugging(`Internal event writer failed for ${entry.uuid}: ${String(error)}`, { level: 'warn' })\n      }\n      return\n",
+      "replace": "        logForDebugging(`Internal event writer failed for ${entry.uuid}: ${String(error)}`, { level: 'warn' })\n      }\n"
     },
     {
-      "name": "project: cleanupPeriodDays 0 keeps writing",
-      "find": "      getInitialSettings()?.cleanupPeriodDays === 0 ||\n",
-      "replace": ""
+      "name": "CCR v2: a compact boundary is flagged as compaction",
+      "source": "src/sessions/persistence/writer/remote.ts",
+      "find": "  if (isCompactBoundaryMessage(line)) options.isCompaction = true",
+      "replace": "  void isCompactBoundaryMessage"
     },
     {
-      "name": "project: removal matches the bare uuid",
-      "find": "const needle = `\"uuid\":\"${targetUuid}\"`",
-      "replace": "const needle = `${targetUuid}`"
+      "name": "CCR v2: a line's agent id is passed along",
+      "source": "src/sessions/persistence/writer/remote.ts",
+      "find": "  if (line.agentId) options.agentId = line.agentId",
+      "replace": "  void line"
     },
     {
-      "name": "project: removal does not drain the queue first",
-      "find": "      await this.drainQueuedWrites()\n      try {",
-      "replace": "      try {"
+      "name": "CCR v2: no events from the reader writes nothing",
+      "find": "    if (!events) return false",
+      "replace": "    if (!events) return Boolean(await writeHydrated(sessionId, []))"
     },
     {
-      "name": "project: the rewrite cap is 500 MiB",
-      "find": "const MAX_TOMBSTONE_REWRITE_BYTES = 50 * 1024 * 1024",
-      "replace": "const MAX_TOMBSTONE_REWRITE_BYTES = 500 * 1024 * 1024"
+      "name": "CCR v2: an epoch mismatch reaches the caller",
+      "find": "    if (isEpochMismatch(error)) throw error",
+      "replace": "    void isEpochMismatch"
     },
     {
-      "name": "project: the rewrite drops damaged lines",
-      "find": "return true // Keep malformed lines",
-      "replace": "return false // Keep malformed lines"
+      "name": "CCR v2: subagent events without an agent id are dropped",
+      "source": "src/sessions/persistence/writer/remote.ts",
+      "find": "    if (!isSafeAgentId(agent_id)) continue",
+      "replace": "    if (agent_id === undefined) continue"
     },
     {
-      "name": "project: agent lines are deduplicated",
-      "find": "if (isAgentSidechain || isNewUuid) {",
-      "replace": "if (isNewUuid) {"
-    },
-    {
-      "name": "project: agent lines join the main dedup set and are mirrored",
-      "find": "if (!isAgentSidechain) {",
-      "replace": "if (true) {"
-    },
-    {
-      "name": "project: mirroring ignores ENABLE_SESSION_PERSISTENCE",
-      "find": "      !isEnvTruthy(process.env.ENABLE_SESSION_PERSISTENCE) ||\n",
-      "replace": ""
-    },
-    {
-      "name": "project: a failed PUT exits 0",
-      "find": "gracefulShutdownSync(1, 'other')",
-      "replace": "gracefulShutdownSync(0, 'other')"
-    },
-    {
-      "name": "project: remote writes wait the default interval",
-      "find": "const REMOTE_FLUSH_INTERVAL_MS = 10",
-      "replace": "const REMOTE_FLUSH_INTERVAL_MS = 100"
-    },
-    {
-      "name": "project: the writer is not told about compaction",
-      "find": "...(isCompactBoundaryMessage(entry) && { isCompaction: true }),",
-      "replace": ""
-    },
-    {
-      "name": "project: a failed hydration leaves mirroring off",
-      "find": "    project.setRemoteIngressUrl(ingressUrl)\n  }\n}",
-      "replace": "  }\n}"
-    },
-    {
-      "name": "project: hydration always reports a find",
-      "find": "    return remoteLogs.length > 0",
-      "replace": "    return true"
-    },
-    {
-      "name": "project: subagent events without an agent id are written",
-      "find": "          if (!agentId) continue\n",
-      "replace": ""
-    },
-    {
-      "name": "project: an epoch mismatch is swallowed",
-      "find": "error.message === 'CCRClient: Epoch mismatch (409)'",
-      "replace": "error.message === 'CCRClient: epoch mismatch'"
+      "name": "finding 9: agent ids that are not one safe path segment are dropped",
+      "source": "src/sessions/persistence/writer/remote.ts",
+      "find": "const SAFE_AGENT_ID = /^[A-Za-z0-9_@-][A-Za-z0-9_@.-]*$/",
+      "replace": "const SAFE_AGENT_ID = /^.+$/"
     }
   ]
 }

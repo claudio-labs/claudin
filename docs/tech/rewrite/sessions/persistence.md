@@ -471,3 +471,39 @@ written by the real API:
 - **Explicit types.** A discriminated union for the entries written, and a `TranscriptLine` type for the stamped message. No `any`.
 - **The singleton stays a module-level instance** behind `getProject()`, with `resetProjectForTesting()` replacing it. It keeps `sessionFile`, `currentSessionWorktree` and a synchronous `reAppendCostState()` public.
 - **Call-time reads.** Environment variables, bootstrap state (session id, cwd, prompt id, plan slug) and settings are read at call time, because the tests change them between calls.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.** The 70 inherited bodies were written anew. The writer's parts moved
+  into `persistence/writer/`:
+  - the line formatter and recording plan;
+  - the metadata block;
+  - the message remover;
+  - the one helper that creates `0700` directories and `0600` files;
+  - the remote mirror;
+  - the persistence gate;
+  - the last-prompt cleanup.
+
+  `Project` gains `runInOrder`, `holdsEntry` and `adoptSessionFile`, and
+  `recordTranscript` calls now run in order. The three characterization suites
+  pass unchanged, and the on-disk fixtures still match byte for byte.
+- **Fixes.** Findings 1, 2, 3, 6, 8 and 9 landed, each with a test.
+  - Finding 2 honours `--no-session-persistence`, `cleanupPeriodDays: 0` and
+    `CLAUDIN_SKIP_PROMPT_HISTORY`. It does not honour the `NODE_ENV=test` mute:
+    `rename.characterization.test.ts` pins that `/rename` writes under plain
+    test mode.
+- **Probes.** `rewrite-sessions-persistence.json` holds 81 probes.
+- **Residue.** 235 lines of Claude Code remain, in two kinds.
+  - **Contract, about 120 lines.** The public signatures of the record and
+    metadata families. The parameter shapes of
+    `recordContextCollapseCommit` and `recordContextCollapseSnapshot`. The
+    metadata fields of `Project` that callers read
+    (`currentSessionTitle`, `currentSessionTag` and the others).
+  - **To sweep, about 115 lines.** The brief kept every declaration outside
+    the bodies, so the old private state of `Project` survived: the write queues,
+    the flush timer and interval, the chunk limit, and the ingress and
+    internal-event fields. So did the one-field-per-line mapping in
+    `restoreSessionMetadata` and `clearSessionMetadata`. None of it is contract.
+    A residue sweep rewrites it, with the class's private state stubbed along
+    with its methods.

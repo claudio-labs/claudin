@@ -15,64 +15,17 @@ import { dirname } from 'path'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { LITE_READ_BUF_SIZE } from 'src/sessions/sessionStoragePortable.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
+import { appendPrivateSync, readTailSync } from 'src/sessions/persistence/writer/privateFiles.js'
 
-/**
- * Append an entry to a session file. Creates the parent dir if missing.
- */
-/* eslint-disable custom-rules/no-sync-fs -- sync callers (exit cleanup, materialize) */
+/** One line, written synchronously; a new file is owner-only (finding 1). */
 export function appendEntryToFile(
   fullPath: string,
   entry: Record<string, unknown>,
 ): void {
-  const fs = getFsImplementation()
-  const line = jsonStringify(entry) + '\n'
-  try {
-    fs.appendFileSync(fullPath, line, { mode: 0o600 })
-  } catch (firstErr) {
-    // Two-stage fallback: parent dir may not exist yet (first write of a
-    // session) OR file may exist with a mode mismatch that confuses the
-    // fsOps 'ax' fast-path under Bun. `recursive: true` keeps mkdirSync
-    // idempotent. The second append intentionally omits `mode` so it never
-    // takes the create-exclusive branch in the wrapper — the file is
-    // guaranteed to already exist after a failed mode-tagged append.
-    try {
-      // fs.mkdirSync is always recursive (see FsOperations.mkdirSync) — no
-      // `recursive` option to pass through.
-      fs.mkdirSync(dirname(fullPath), { mode: 0o700 })
-    } catch {
-      throw firstErr
-    }
-    fs.appendFileSync(fullPath, line)
-  }
+  appendPrivateSync(fullPath, `${jsonStringify(entry)}\n`)
 }
 
-/**
- * Sync tail read for reAppendSessionMetadata's external-writer check.
- * fstat on the already-open fd (no extra path lookup); reads the same
- * LITE_READ_BUF_SIZE window that readLiteMetadata scans. Returns empty
- * string on any error so callers fall through to unconditional behavior.
- */
+/** The part of the file the session list reads, or '' when there is none. */
 export function readFileTailSync(fullPath: string): string {
-  let fd: number | undefined
-  try {
-    fd = openSync(fullPath, 'r')
-    const st = fstatSync(fd)
-    const tailOffset = Math.max(0, st.size - LITE_READ_BUF_SIZE)
-    const buf = Buffer.allocUnsafe(
-      Math.min(LITE_READ_BUF_SIZE, st.size - tailOffset),
-    )
-    const bytesRead = readSync(fd, buf, 0, buf.length, tailOffset)
-    return buf.toString('utf8', 0, bytesRead)
-  } catch {
-    return ''
-  } finally {
-    if (fd !== undefined) {
-      try {
-        closeSync(fd)
-      } catch {
-        // closeSync can throw; swallow to preserve return '' contract
-      }
-    }
-  }
+  return readTailSync(fullPath, LITE_READ_BUF_SIZE)
 }
-/* eslint-enable custom-rules/no-sync-fs */
