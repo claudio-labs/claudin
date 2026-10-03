@@ -10,7 +10,12 @@ Measured on 2026-09-27 by distinctive line, production code was **55.7% Claude
 Code and 3.8% openclaude**, and the tests were **87.7% this project's own**. The
 live numbers, module by module, are in [inventory.md](inventory.md).
 
-The work happens on the `rewrite/clean-base` branch. Both `main` and the branch
+The work happens on the `rewrite` branch. Since 2026-10-03 it holds what used to
+be `rewrite/clean-base` and `rewrite/levers`. Each piece of work is written, then
+merged into `rewrite` and pushed, with no pull request, until the code is
+entirely this project's own. A working branch can't be named `rewrite/...`
+any more, because git refuses a branch nested under another branch's name. Use
+`rewrite-phase-<n>`, or land straight on `rewrite`. Both `main` and the branch
 take new features; the branch merges `main` at least weekly (see
 [Merging main](#merging-main-into-the-branch)).
 
@@ -69,7 +74,7 @@ The numbers are evidence for the process. They are not a legal opinion.
 ## The gate
 
 `bun run provenance:ci` runs in `pr-checks.yml`, on every PR and on pushes to
-`main` and `rewrite/clean-base`. It holds each file to the inherited lines
+`main` and `rewrite`. It holds each file to the inherited lines
 recorded in `provenance-baseline.json`, and a file the baseline never saw is
 allowed none.
 

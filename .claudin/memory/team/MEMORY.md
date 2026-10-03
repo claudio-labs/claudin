@@ -4,7 +4,7 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
-- [Clean-base rewrite: inherited code rewritten from spec (09-27)](decisions/clean-base-rewrite.md) — branch rewrite/clean-base; `provenance:ci`
+- [Clean-base rewrite: inherited code rewritten from spec (09-27)](decisions/clean-base-rewrite.md) — branch `rewrite`, merged without PRs; `provenance:ci`
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed memory writes are refused with the rules
 - [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — output lands in the task transcript; multi-session runtime rejected
 - [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`

@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - rewrite/clean-base
+      - rewrite
 
 permissions:
   contents: read

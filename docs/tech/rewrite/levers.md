@@ -5,9 +5,9 @@ module from a spec. At the pilot's rate (about 1.7 M tokens per thousand lines)
 the 346 k inherited lines left would cost about 600 M tokens. This page is how
 that number comes down without claiming a shortcut the law does not give.
 
-The levers run on the branch `rewrite/levers`, cut from `rewrite/clean-base`
-and merged back by pull request one group at a time (cover and cut, yoga,
-opencode). Nothing reaches `main` before the final cut.
+The levers ran on the branch `rewrite/levers`, cut from `rewrite/clean-base`.
+On 2026-10-03 both were merged into the single `rewrite` branch. Nothing
+reaches `main` before the final cut.
 
 Restyling inherited code does not clean it. Renaming, retyping and moving leave
 a derived work, and the measure normalizes identifiers for that reason: an

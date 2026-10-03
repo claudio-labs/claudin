@@ -1,6 +1,6 @@
 ---
 name: clean-base-rewrite
-description: 2026-09-27 — every inherited module (Claude Code base + openclaude) is rewritten from spec on branch rewrite/clean-base, never refactored; provenance:ci ratchet blocks new inherited lines; LICENSE stays MIT meanwhile
+description: 2026-09-27 — every inherited module (Claude Code base + openclaude) is rewritten from spec on branch `rewrite` (was rewrite/clean-base), never refactored; provenance:ci ratchet blocks new inherited lines; LICENSE stays MIT meanwhile
 type: project
 scope: repository
 impact: structural
@@ -8,7 +8,7 @@ impact: structural
 
 **Decision:** on 2026-09-27 the user chose to make Claudin entirely this project's own code, so that the MIT `LICENSE` covers the whole tree.
 - Every module that matches the Claude Code base or the openclaude fork point is **rewritten from a spec and the tests**, never refactored.
-- The work lives on branch `rewrite/clean-base`. Both `main` and the branch take features, and the branch merges `main` at least weekly.
+- The work lives on branch `rewrite`, pushed to origin. Until 2026-10-03 it was `rewrite/clean-base`, plus `rewrite/levers`. Work is merged into it with no pull request. Both `main` and the branch take features, and the branch merges `main` at least weekly.
 - The only feature cut instead of rewritten is `/insights`. The openclaude-authored code (mostly provider shims) is rewritten too.
 - The `LICENSE` stays plain MIT during the migration. That is the user's call, taken knowing it overclaims until the cut.
 
