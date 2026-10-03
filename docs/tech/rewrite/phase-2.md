@@ -50,7 +50,7 @@ which the sandbox tools read; the lists below are the same.
 | `sessions/liteMetadata` | 2 | 856 | — | done |
 | `sessions/indexingScan` | 3 | 609 | — | done |
 | `sessions/lifecycle` | 8 | 1057 | — | done |
-| `sessions/remote` | 5 | 917 | — | pending |
+| `sessions/remote` | 3 | 210 | — | pending (2 dead hooks cut) |
 | `sessions/historySearch` | 3 | 534 | — | done |
 | `sessions/ui` | 5 | 660 | — | pending |
 
@@ -75,7 +75,7 @@ which the sandbox tools read; the lists below are the same.
 - `sessions/liteMetadata`: `sessions/indexing/liteMetadata.ts`, `sessions/indexing/search.ts`
 - `sessions/indexingScan`: `sessions/indexing/boundaryScan.ts`, `sessions/indexing/crossProject.ts`, `sessions/indexing/agents.ts`
 - `sessions/lifecycle`: `sessions/sessionRestore.ts`, `sessions/sessionStart.ts`, `sessions/sessionEnvironment.ts`, `sessions/sessionState.ts`, `sessions/sessionActivity.ts`, `sessions/sessionTitle.ts`, `sessions/concurrentSessions.ts`, `sessions/sessionEnvVars.ts`
-- `sessions/remote`: `sessions/hooks/useRemoteSession.ts`, `sessions/hooks/useSSHSession.ts`, `sessions/sessionIngressAuth.ts`, `sessions/sessionUrl.ts`, `sessions/hooks/useTeleportResume.tsx`
+- `sessions/remote`: `sessions/sessionIngressAuth.ts`, `sessions/sessionUrl.ts`, `sessions/hooks/useTeleportResume.tsx` (`useRemoteSession.ts` and `useSSHSession.ts` were cut as dead code on 2026-10-03)
 - `sessions/historySearch`: `sessions/hooks/useHistorySearch.ts`, `sessions/ui/HistorySearchDialog.tsx`, `sessions/transcriptSearch.ts`
 - `sessions/ui`: `sessions/ui/ResumeConversation.tsx`, `sessions/ui/SessionPreview.tsx`, `sessions/ui/SessionBackgroundHint.tsx`, `sessions/hooks/useSessionBackgrounding.ts`, `sessions/hooks/useFileHistorySnapshotInit.ts`
 

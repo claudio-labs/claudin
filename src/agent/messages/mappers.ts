@@ -101,7 +101,7 @@ export function toSDKCompactMetadata(
 /**
  * Shared SDK→internal compact_metadata converter.
  */
-export function fromSDKCompactMetadata(
+function fromSDKCompactMetadata(
   meta: SDKCompactMetadata,
 ): CompactMetadata {
   const seg = meta.preserved_segment

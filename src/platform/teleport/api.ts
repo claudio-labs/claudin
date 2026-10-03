@@ -1,5 +1,4 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
-import { randomUUID } from 'crypto'
 import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getOrganizationUUID } from 'src/providers/oauth/client.js'
 import z from 'zod/v4'
@@ -10,7 +9,6 @@ import { errorMessage, toError } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { sleep } from 'src/shared/sleep.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
 
 // Retry configuration for teleport API requests
 const TELEPORT_RETRY_DELAYS = [2000, 4000, 8000, 16000] // 4 retries with exponential backoff
@@ -338,128 +336,4 @@ export function getBranchFromSession(
       outcome.type === 'git_repository',
   )
   return gitOutcome?.git_info?.branches[0]
-}
-
-/**
- * Content for a remote session message.
- * Accepts a plain string or an array of content blocks (text, image, etc.)
- * following the Anthropic API messages spec.
- */
-export type RemoteMessageContent =
-  | string
-  | Array<{ type: string; [key: string]: unknown }>
-
-/**
- * Sends a user message event to an existing remote session via the Sessions API
- * @param sessionId The session ID to send the event to
- * @param messageContent The user message content (string or content blocks)
- * @param opts.uuid Optional UUID for the event — callers that added a local
- *   UserMessage first should pass its UUID so echo filtering can dedup
- * @returns Promise<boolean> True if successful, false otherwise
- */
-export async function sendEventToRemoteSession(
-  sessionId: string,
-  messageContent: RemoteMessageContent,
-  opts?: { uuid?: string },
-): Promise<boolean> {
-  try {
-    const { accessToken, orgUUID } = await prepareApiRequest()
-
-    const url = `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}/events`
-    const headers = {
-      ...getOAuthHeaders(accessToken),
-      'anthropic-beta': 'ccr-byoc-2025-07-29',
-      'x-organization-uuid': orgUUID,
-    }
-
-    const userEvent = {
-      uuid: opts?.uuid ?? randomUUID(),
-      session_id: sessionId,
-      type: 'user',
-      parent_tool_use_id: null,
-      message: {
-        role: 'user',
-        content: messageContent,
-      },
-    }
-
-    const requestBody = {
-      events: [userEvent],
-    }
-
-    logForDebugging(
-      `[sendEventToRemoteSession] Sending event to session ${sessionId}`,
-    )
-    // The endpoint may block until the CCR worker is ready. Observed ~2.6s
-    // in normal cases; allow a generous margin for cold-start containers.
-    const response = await axios.post(url, requestBody, {
-      headers,
-      validateStatus: status => status < 500,
-      timeout: 30000,
-    })
-
-    if (response.status === 200 || response.status === 201) {
-      logForDebugging(
-        `[sendEventToRemoteSession] Successfully sent event to session ${sessionId}`,
-      )
-      return true
-    }
-
-    logForDebugging(
-      `[sendEventToRemoteSession] Failed with status ${response.status}: ${jsonStringify(response.data)}`,
-    )
-    return false
-  } catch (error) {
-    logForDebugging(`[sendEventToRemoteSession] Error: ${errorMessage(error)}`)
-    return false
-  }
-}
-
-/**
- * Updates the title of an existing remote session via the Sessions API
- * @param sessionId The session ID to update
- * @param title The new title for the session
- * @returns Promise<boolean> True if successful, false otherwise
- */
-export async function updateSessionTitle(
-  sessionId: string,
-  title: string,
-): Promise<boolean> {
-  try {
-    const { accessToken, orgUUID } = await prepareApiRequest()
-
-    const url = `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}`
-    const headers = {
-      ...getOAuthHeaders(accessToken),
-      'anthropic-beta': 'ccr-byoc-2025-07-29',
-      'x-organization-uuid': orgUUID,
-    }
-
-    logForDebugging(
-      `[updateSessionTitle] Updating title for session ${sessionId}: "${title}"`,
-    )
-    const response = await axios.patch(
-      url,
-      { title },
-      {
-        headers,
-        validateStatus: status => status < 500,
-      },
-    )
-
-    if (response.status === 200) {
-      logForDebugging(
-        `[updateSessionTitle] Successfully updated title for session ${sessionId}`,
-      )
-      return true
-    }
-
-    logForDebugging(
-      `[updateSessionTitle] Failed with status ${response.status}: ${jsonStringify(response.data)}`,
-    )
-    return false
-  } catch (error) {
-    logForDebugging(`[updateSessionTitle] Error: ${errorMessage(error)}`)
-    return false
-  }
 }
