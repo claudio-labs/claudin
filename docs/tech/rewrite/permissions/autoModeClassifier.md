@@ -366,3 +366,32 @@ Each of these is pinned by the suite and guarded by a probe.
 - **`bashPromptRules.ts`** for the rule helpers and **`bashClassifier.ts`** for the two model calls. They share one small "forced tool call → validated input or null" helper, which is today's `classifierShared.ts`.
 - **The stores stay tiny modules with signals.** The flag gates stay at their edges.
 - **Types.** No `any`. `ClassifierUsage` and `YoloClassifierResult` stay in `shared/types/permissions.ts` until every consumer has been rewritten.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **Code.** All 50 inherited bodies were written anew. The classifier protocol
+  lives in a leaf, `yoloClassifier/protocol.ts`: the tool name, the XML
+  suffixes and the tool-use instruction. The routing is split into `route`,
+  `toolUseRoute`, `xmlRoute` and `failureVerdict`.
+- **Fixes, each with a test.**
+  - **Finding 1.** The skip list reads the tool name from the leaf, and the
+    decision rewrite loads the classifier lazily, so the import cycle is
+    broken from both sides. The probe written for this fix could no longer
+    turn anything red, which is how that showed up, so it was dropped.
+    `importOrder.test.ts` keeps pinning the load order.
+  - **Finding 3.** An action on a tool missing from the tool list now goes to
+    the model on its raw input instead of being allowed unasked. The
+    characterization row that pinned the fail-open behaviour ("a tool missing
+    from the tool list is allowed without a model call") was removed: it
+    contradicted the spec's own fix decision.
+- **Kept.** All "keep" findings.
+- **Probes.**
+  - `rewrite-permissions-autoModeClassifier.json` holds 115 probes.
+  - Two older specs were re-pointed at the new code with the same mutations:
+    `planModeClassifierPrompt.json` (3 probes) and `crossSessionMessaging.json`
+    (the agent-authored label).
+- **Residue, reviewed.** 114 lines of Claude Code and 0 of openclaude remain:
+  - the signatures of the exported classifier functions;
+  - the classifier result and usage types;
+  - the dump-file layout that the error-dump fixture pins byte for byte.

@@ -30,23 +30,6 @@ export function getClassifierModel(): string {
   return getMainLoopModel()
 }
 
-/**
- * Thinking config for classifier calls. The classifier wants short text-only
- * responses — API thinking blocks are ignored by extractTextContent() and waste tokens.
- *
- * For most models: send { type: 'disabled' } via sideQuery's `thinking: false`.
- *
- * Models that require adaptive thinking (modelRequiresAdaptiveThinking) default
- * to adaptive thinking server-side and reject `disabled` with a 400. For those:
- * don't pass `thinking: false`, instead pad max_tokens so adaptive thinking
- * (observed 0–1114 tokens replaying go/ccshare/shawnm-20260310-202833) doesn't
- * exhaust the budget before <block> is emitted. Without headroom,
- * stop_reason=max_tokens yields an empty text response → parseXmlBlock('')
- * → null → "unparseable" → safe commands blocked.
- *
- * Returns [disableThinking, headroom] — tuple instead of named object so
- * property-name strings don't survive minification into external builds.
- */
 export function getClassifierThinkingConfig(
   model: string,
 ): [false | undefined, number] {

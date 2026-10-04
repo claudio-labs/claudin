@@ -2,235 +2,687 @@
   "test": [
     "src/permissions/autoModeClassifier.characterization.test.ts",
     "src/permissions/autoModeClassifier.rules.characterization.test.ts",
-    "src/permissions/autoModeClassifier.shipped.characterization.test.tsx"
+    "src/permissions/autoModeClassifier.shipped.characterization.test.tsx",
+    "src/permissions/autoModeClassifier.fixes.test.ts",
+    "src/permissions/yoloClassifier/importOrder.test.ts"
   ],
   "source": "src/permissions/yoloClassifier/classify.ts",
   "probes": [
     {
-      "name": "stage 1: anything but a clean no is an allow",
-      "find": "    if (stage1Block === false) {",
-      "replace": "    if (stage1Block !== true) {"
+      "name": "fail-open without templates (finding 2, kept): no model call",
+      "find": "if (!isClassifierBundled()) {",
+      "replace": "if (!isClassifierBundled() && false) {"
     },
     {
-      "name": "stage 2 unparseable answer allows",
-      "find": "      return {\n        shouldBlock: true,\n        reason: `Classifier stage 2 unparseable",
-      "replace": "      return {\n        shouldBlock: false,\n        reason: `Classifier stage 2 unparseable"
+      "name": "fail-open without templates: the one-time stderr warning",
+      "find": "    warnClassifierDisabledOnce()\n",
+      "replace": ""
     },
     {
-      "name": "tool_use: no tool call allows",
-      "find": "        shouldBlock: true,\n        reason: 'Classifier returned no tool use block - blocking for safety',",
-      "replace": "        shouldBlock: false,\n        reason: 'Classifier returned no tool use block - blocking for safety',"
+      "name": "an action with nothing to judge is allowed without a model call",
+      "find": "if (actionLine === '') {",
+      "replace": "if (actionLine === '' && false) {"
     },
     {
-      "name": "tool_use: invalid verdict allows",
-      "find": "        shouldBlock: true,\n        reason: 'Invalid classifier response - blocking for safety',",
-      "replace": "        shouldBlock: false,\n        reason: 'Invalid classifier response - blocking for safety',"
+      "name": "fail safe: an already-aborted signal sends nothing",
+      "find": "  if (signal.aborted) return abortedVerdict(model)\n\n",
+      "replace": "\n"
     },
     {
-      "name": "XML: an API failure allows",
-      "find": "    return {\n      shouldBlock: true,\n      reason: tooLong\n        ? 'Classifier transcript exceeded context window'\n        : stage1Usage",
-      "replace": "    return {\n      shouldBlock: false,\n      reason: tooLong\n        ? 'Classifier transcript exceeded context window'\n        : stage1Usage"
+      "name": "fail safe: an abort during the request is the abort verdict",
+      "find": "    if (signal.aborted) return abortedVerdict(model)\n    logForDebugging",
+      "replace": "    logForDebugging"
     },
     {
-      "name": "tool_use: a too-long prompt also counts as deterministic",
-      "find": "    const deterministic = !tooLong && detectDeterministicApiError(error)",
-      "replace": "    const deterministic = detectDeterministicApiError(error)"
+      "name": "always-thinking models take the XML route",
+      "find": "return modelRequiresAdaptiveThinking(model) ? xmlRoute : toolUseRoute",
+      "replace": "return toolUseRoute"
     },
     {
-      "name": "XML: a failed stage 2 claims the classifier was unavailable",
-      "find": "      unavailable: stage1Usage === undefined,",
-      "replace": "      unavailable: true,"
+      "name": "the action's length comes out of the transcript budget",
+      "find": "MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionLine.length,",
+      "replace": "MAX_CLASSIFIER_TRANSCRIPT_CHARS,"
     },
     {
-      "name": "the time budget never applies",
-      "find": "  if (timeoutMs === 0) {",
-      "replace": "  if (timeoutMs >= 0) {"
+      "name": "the CLAUDE.md message rides in front of the transcript",
+      "find": "claudeMd: buildClaudeMdMessage(),",
+      "replace": "claudeMd: null,"
     },
     {
-      "name": "the request outlives the budget",
-      "find": "          timedOut = true\n          budget.abort()\n",
-      "replace": "          timedOut = true\n"
+      "name": "the action block is the only cache breakpoint",
+      "find": "      text: actionLine,\n      cache_control: getCacheControl({ querySource: 'auto_mode' }),\n",
+      "replace": "      text: actionLine,\n"
     },
     {
-      "name": "the caller's abort is not forwarded",
+      "name": "promptLengths.toolCalls counts the action line",
+      "find": "toolCalls: transcript.promptLengths.toolCalls + actionLine.length,",
+      "replace": "toolCalls: transcript.promptLengths.toolCalls,"
+    },
+    {
+      "name": "the request record holds stage 1 and the last stage 2",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "await call.send(1, classifierRequest(call, system, content, budget))",
+      "replace": "await call.send(attempt + 1, classifierRequest(call, system, content, budget))"
+    },
+    {
+      "name": "a failure carries the dump path",
+      "find": "return failureVerdict(error, model, dumpPath ?? undefined)",
+      "replace": "return failureVerdict(error, model, undefined)"
+    },
+    {
+      "name": "the dump shows the system prompt as sent (XML-swapped)",
+      "find": "const systemSent = route.systemSent(systemPrompt)",
+      "replace": "const systemSent = systemPrompt"
+    },
+    {
+      "name": "fail safe: the time budget blocks",
+      "find": "    shouldBlock: true,\n    reason: `Classifier timed out after",
+      "replace": "    shouldBlock: false,\n    reason: `Classifier timed out after"
+    },
+    {
+      "name": "fail safe: the caller's abort passes through the budget",
       "find": "    signal.addEventListener('abort', abortBudget, { once: true })\n",
       "replace": ""
     },
     {
-      "name": "an answer with room and no verdict is retried",
-      "find": "      if (!verdict.retry) break\n",
+      "name": "the classifier runs on the main-loop model",
+      "source": "src/permissions/yoloClassifier/classifierConfig.ts",
+      "find": "  return getMainLoopModel()",
+      "replace": "  return 'claude-sonnet-4-6'"
+    },
+    {
+      "name": "fail safe: a request error blocks",
+      "source": "src/permissions/yoloClassifier/failureVerdict.ts",
+      "find": "return { shouldBlock: true, reason, model, unavailable: true,",
+      "replace": "return { shouldBlock: false, reason, model, unavailable: true,"
+    },
+    {
+      "name": "a non-transient 4xx is deterministic",
+      "source": "src/permissions/yoloClassifier/failureVerdict.ts",
+      "find": "const deterministic = !transcriptTooLong && detectDeterministicApiError(error)",
+      "replace": "const deterministic = false"
+    },
+    {
+      "name": "a prompt-too-long error marks transcriptTooLong",
+      "source": "src/permissions/yoloClassifier/failureVerdict.ts",
+      "find": "  const transcriptTooLong = detectPromptTooLong(error) !== undefined\n  const deterministic",
+      "replace": "  const transcriptTooLong = false\n  const deterministic"
+    },
+    {
+      "name": "fail safe: a stage 2 failure blocks",
+      "source": "src/permissions/yoloClassifier/failureVerdict.ts",
+      "find": "    shouldBlock: true,\n    reason: transcriptTooLong",
+      "replace": "    shouldBlock: false,\n    reason: transcriptTooLong"
+    },
+    {
+      "name": "a stage 2 failure after a stage 1 answer is not unavailable",
+      "source": "src/permissions/yoloClassifier/failureVerdict.ts",
+      "find": "    unavailable: false,",
+      "replace": "    unavailable: true,"
+    },
+    {
+      "name": "fail safe: the abort verdict blocks",
+      "source": "src/permissions/yoloClassifier/failureVerdict.ts",
+      "find": "return { shouldBlock: true, reason: 'Classifier request aborted', model, unavailable: true }",
+      "replace": "return { shouldBlock: false, reason: 'Classifier request aborted', model, unavailable: true }"
+    },
+    {
+      "name": "prompt-too-long is matched in any case",
+      "source": "src/permissions/yoloClassifier/autoModeDumps.ts",
+      "find": "const PROMPT_TOO_LONG = /prompt is too long/i",
+      "replace": "const PROMPT_TOO_LONG = /prompt is too long/"
+    },
+    {
+      "name": "429 is transient, not deterministic",
+      "source": "src/permissions/yoloClassifier/autoModeDumps.ts",
+      "find": "new Set([408, 409, 429])",
+      "replace": "new Set([408, 409])"
+    },
+    {
+      "name": "the dump lives in the session-scoped error directory",
+      "source": "src/permissions/yoloClassifier/autoModeDumps.ts",
+      "find": "join(getClaudeTempDir(), 'auto-mode-classifier-errors')",
+      "replace": "join(getClaudeTempDir(), 'auto-mode-errors')"
+    },
+    {
+      "name": "the dump format is fixed byte for byte",
+      "source": "src/permissions/yoloClassifier/autoModeDumps.ts",
+      "find": "return `=== ${title} ===\\n${body}\\n`",
+      "replace": "return `=== ${title} ===\\n${body}`"
+    },
+    {
+      "name": "a dump that cannot be written leaves no path and the verdict unchanged",
+      "source": "src/permissions/yoloClassifier/autoModeDumps.ts",
+      "find": "    return null\n  }\n}",
+      "replace": "    throw writeError\n  }\n}"
+    },
+    {
+      "name": "fail safe: no classify_result call blocks",
+      "source": "src/permissions/yoloClassifier/toolUseRoute.ts",
+      "find": "return { ...telemetry, shouldBlock: true, reason: 'Classifier returned no tool use block; blocking for safety' }",
+      "replace": "return { ...telemetry, shouldBlock: false, reason: 'Classifier returned no tool use block; blocking for safety' }"
+    },
+    {
+      "name": "fail safe: a malformed verdict blocks",
+      "source": "src/permissions/yoloClassifier/toolUseRoute.ts",
+      "find": "return { ...telemetry, shouldBlock: true, reason: 'Invalid classifier response; blocking for safety' }",
+      "replace": "return { ...telemetry, shouldBlock: false, reason: 'Invalid classifier response; blocking for safety' }"
+    },
+    {
+      "name": "the tool_use route forces classify_result",
+      "source": "src/permissions/yoloClassifier/toolUseRoute.ts",
+      "find": "      tool_choice: { type: 'tool', name: YOLO_CLASSIFIER_TOOL_NAME },\n",
       "replace": ""
     },
     {
-      "name": "an empty action is sent to the model",
-      "find": "  if (actionCompact === '') {",
-      "replace": "  if (actionCompact === '' && tools.length === 0) {"
+      "name": "the tool_use route asks for 4,096 tokens",
+      "source": "src/permissions/yoloClassifier/toolUseRoute.ts",
+      "find": "const VERDICT_MAX_TOKENS = 4096",
+      "replace": "const VERDICT_MAX_TOKENS = 2048"
     },
     {
-      "name": "always-on-thinking models take the tool_use route",
-      "find": "  if (modelRequiresAdaptiveThinking(model)) {\n    return classifyYoloActionXml(",
-      "replace": "  if (!modelRequiresAdaptiveThinking(model)) {\n    return classifyYoloActionXml("
+      "name": "a verdict without thinking is malformed",
+      "source": "src/permissions/yoloClassifier/protocol.ts",
+      "find": "z.object({ thinking: z.string(), shouldBlock",
+      "replace": "z.object({ thinking: z.string().optional(), shouldBlock"
     },
     {
-      "name": "the action does not shrink the transcript budget",
-      "find": "    MAX_CLASSIFIER_TRANSCRIPT_CHARS - actionCompact.length,",
-      "replace": "    MAX_CLASSIFIER_TRANSCRIPT_CHARS,"
+      "name": "a verdict typed as a string is malformed",
+      "source": "src/permissions/yoloClassifier/protocol.ts",
+      "find": "shouldBlock: z.boolean(), reason",
+      "replace": "shouldBlock: z.coerce.boolean(), reason"
     },
     {
-      "name": "plan mode adds no deny rule",
-      "find": "return planMode ? appendRules(section, PLAN_MODE_DENY_RULES) : section",
-      "replace": "return section",
-      "source": "src/permissions/yoloClassifier/prompts.ts"
+      "name": "the tool is named classify_result",
+      "source": "src/permissions/yoloClassifier/protocol.ts",
+      "find": "export const YOLO_CLASSIFIER_TOOL_NAME = 'classify_result'",
+      "replace": "export const YOLO_CLASSIFIER_TOOL_NAME = 'classify'"
     },
     {
-      "name": "the default template is inserted as a replacement pattern",
-      "find": "    () => EXTERNAL_PERMISSIONS_TEMPLATE,\n  )",
-      "replace": "    EXTERNAL_PERMISSIONS_TEMPLATE,\n  )",
-      "source": "src/permissions/yoloClassifier/prompts.ts"
+      "name": "the XML format spells out the block answer",
+      "source": "src/permissions/yoloClassifier/protocol.ts",
+      "find": "  '<block>yes</block><reason>one short sentence</reason>',",
+      "replace": "  '<block>yes</block>',"
     },
     {
-      "name": "CLAUDE.md is sent without its delimiter",
-      "find": "`<user_claude_md>\\n${claudeMd}\\n</user_claude_md>`",
-      "replace": "`${claudeMd}`",
-      "source": "src/permissions/yoloClassifier/prompts.ts"
+      "name": "the stage 1 suffix asks to err on the side of blocking",
+      "source": "src/permissions/yoloClassifier/protocol.ts",
+      "find": "'\\nErr on the side of blocking. <block> immediately.'",
+      "replace": "'\\nAnswer now.'"
     },
     {
-      "name": "unfinished reasoning is not stripped",
-      "find": "    .replace(/<thinking>[\\s\\S]*$/, '')\n",
-      "replace": "",
-      "source": "src/permissions/yoloClassifier/xmlResponse.ts"
+      "name": "stage 1 stops at </block>",
+      "source": "src/permissions/yoloClassifier/protocol.ts",
+      "find": "export const XML_STAGE1_STOP = '</block>'",
+      "replace": "export const XML_STAGE1_STOP = '</reason>'"
     },
     {
-      "name": "a verdict word only has to start with no",
-      "find": "/<block>(yes|no)\\b(<\\/block>)?/gi",
-      "replace": "/<block>(yes|no)(<\\/block>)?/gi",
-      "source": "src/permissions/yoloClassifier/xmlResponse.ts"
+      "name": "stage 1 allows only on an explicit <block>no",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "if (parseXmlBlock(responseText(fast)) === false) {",
+      "replace": "if (parseXmlBlock(responseText(fast)) !== true) {"
     },
     {
-      "name": "the XML swap misses the tool instruction",
-      "find": "    'Use the classify_result tool to report your classification.'",
-      "replace": "    'Use the classify_result tool.'",
-      "source": "src/permissions/yoloClassifier/xmlResponse.ts"
+      "name": "stage 1 asks for 64 tokens",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "const STAGE1_MAX_TOKENS = 64",
+      "replace": "const STAGE1_MAX_TOKENS = 128"
     },
     {
-      "name": "assistant text reads as the user",
-      "find": "  if (block.type === 'text' && role === 'user') {",
-      "replace": "  if (block.type === 'text') {",
-      "source": "src/permissions/yoloClassifier/transcript.ts"
+      "name": "a truncated or blank stage 2 is retried once with 8,192 tokens",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "const STAGE2_BUDGETS = [4096, 8192] as const",
+      "replace": "const STAGE2_BUDGETS = [4096] as const"
     },
     {
-      "name": "agent messages read as the user",
-      "find": "    if (block.agent !== undefined) {",
-      "replace": "    if (false) {",
-      "source": "src/permissions/yoloClassifier/transcript.ts"
+      "name": "fail safe: an unparseable stage 2 blocks",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "return { ...telemetry, shouldBlock: true, reason: `Classifier stage 2 unparseable",
+      "replace": "return { ...telemetry, shouldBlock: false, reason: `Classifier stage 2 unparseable"
     },
     {
-      "name": "a transcript that exactly fits loses its oldest entry",
-      "find": "    if (totalChars + entryChars > maxChars) {",
-      "replace": "    if (totalChars + entryChars >= maxChars) {",
-      "source": "src/permissions/yoloClassifier/transcript.ts"
+      "name": "a stage 2 verdict without a reason says so",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "?? 'No reason provided'",
+      "replace": "?? ''"
     },
     {
-      "name": "409 counts as deterministic",
-      "find": "const TRANSIENT_4XX_STATUSES = new Set([408, 409, 429])",
-      "replace": "const TRANSIENT_4XX_STATUSES = new Set([408, 429])",
-      "source": "src/permissions/yoloClassifier/autoModeDumps.ts"
+      "name": "a stage 2 failure is reported as one, with the stage 1 facts",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "      throw new StageTwoFailure(error, stage1)",
+      "replace": "      throw error"
     },
     {
-      "name": "the prompt-too-long match is case-sensitive",
-      "find": "  if (!error.message.toLowerCase().includes('prompt is too long')) {",
-      "replace": "  if (!error.message.includes('prompt is too long')) {",
-      "source": "src/permissions/yoloClassifier/autoModeDumps.ts"
+      "name": "usage sums both stages",
+      "source": "src/permissions/yoloClassifier/xmlRoute.ts",
+      "find": "    usage: combineUsage(stage1.usage, stage2.usage),",
+      "replace": "    usage: stage2.usage,"
     },
     {
-      "name": "a negative budget is used as given",
-      "find": "Number.isFinite(parsed) && parsed >= 0",
-      "replace": "Number.isFinite(parsed)",
-      "source": "src/permissions/yoloClassifier/classifierConfig.ts"
+      "name": "API thinking blocks are not read as the answer",
+      "source": "src/permissions/yoloClassifier/route.ts",
+      "find": "    if (block.type === 'text') text += block.text",
+      "replace": "    text += (block as { thinking?: string; text?: string }).thinking ?? (block as { text?: string }).text ?? ''"
     },
     {
-      "name": "a Bash rule approval is stored as an auto-mode one",
-      "find": "    classifier: 'bash',\n    matchedRule,",
-      "replace": "    classifier: 'auto-mode',\n    matchedRule,",
-      "source": "src/permissions/classifierApprovals.ts"
+      "name": "reasoning is stripped before the verdict is read",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": ".replace(CLOSED_REASONING, '')",
+      "replace": ""
     },
     {
-      "name": "starting a check notifies nobody",
-      "find": "  CLASSIFIER_CHECKING.add(toolUseID)\n  classifierChecking.emit()",
-      "replace": "  CLASSIFIER_CHECKING.add(toolUseID)",
-      "source": "src/permissions/classifierApprovals.ts"
+      "name": "unclosed reasoning is stripped too",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": ".replace(OPEN_REASONING, '')",
+      "replace": ""
     },
     {
-      "name": "the checking marker is set with the flags off",
-      "find": "export function setClassifierChecking(toolUseID: string): void {\n  if (!feature('BASH_CLASSIFIER') && !feature('TRANSCRIPT_CLASSIFIER')) return\n",
-      "replace": "export function setClassifierChecking(toolUseID: string): void {\n",
-      "source": "src/permissions/classifierApprovals.ts"
+      "name": "a word that only starts like no is not a verdict",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "const VERDICT_TAG = /<block>(yes|no)\\b/i",
+      "replace": "const VERDICT_TAG = /<block>(yes|no)/i"
     },
     {
-      "name": "the hook never reports a check",
-      "find": "    isClassifierChecking(toolUseID),",
-      "replace": "    false,",
-      "source": "src/permissions/classifierApprovalsHook.ts"
+      "name": "the verdict tag is read in any letter case",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "const VERDICT_TAG = /<block>(yes|no)\\b/i",
+      "replace": "const VERDICT_TAG = /<block>(yes|no)\\b/"
     },
     {
-      "name": "Bash skips the classifier",
-      "find": "  SLEEP_TOOL_NAME,\n",
-      "replace": "  SLEEP_TOOL_NAME,\n  'Bash',\n",
-      "source": "src/permissions/classifierDecision.ts"
+      "name": "a reason inside the reasoning does not count",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "REASON_TAG.exec(stripThinking(text))",
+      "replace": "REASON_TAG.exec(text)"
     },
     {
-      "name": "a read-only predicate that throws skips the classifier",
-      "find": "  } catch {\n    return false\n  }",
-      "replace": "  } catch {\n    return true\n  }",
-      "source": "src/permissions/classifierDecision.ts"
+      "name": "usage cache fields default to 0",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "cacheCreationInputTokens: usage.cache_creation_input_tokens ?? 0,",
+      "replace": "cacheCreationInputTokens: usage.cache_creation_input_tokens ?? undefined,"
     },
     {
-      "name": "any tool call is taken as the verdict",
-      "find": "b.type === 'tool_use' && b.name === toolName",
-      "replace": "b.type === 'tool_use'",
-      "source": "src/permissions/classifierShared.ts"
+      "name": "the XML route swaps the tool instruction for the tag format",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "return systemPrompt.replace(TOOL_USE_INSTRUCTION, () => XML_OUTPUT_FORMAT)",
+      "replace": "return systemPrompt"
     },
     {
-      "name": "an index past the list matches",
-      "find": "      parsed.matchedIndex >= descriptions.length",
-      "replace": "      parsed.matchedIndex > descriptions.length",
-      "source": "src/permissions/bashClassifier.ts"
+      "name": "the request id comes from _request_id",
+      "source": "src/permissions/yoloClassifier/xmlResponse.ts",
+      "find": "  return id ?? undefined",
+      "replace": "  return undefined"
     },
     {
-      "name": "a failed call matches",
-      "find": "      matches: false,\n      confidence: 'low',\n      reason: `classifier error:",
-      "replace": "      matches: true,\n      confidence: 'low',\n      reason: `classifier error:",
-      "source": "src/permissions/bashClassifier.ts"
+      "name": "assistant prose never reaches the classifier",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "return role === 'user' ? textLine(block) : ''",
+      "replace": "return textLine(block)"
     },
     {
-      "name": "an abort becomes a verdict",
-      "find": "    if (signal.aborted) throw err\n    logForDebugging(`bash classifier error",
-      "replace": "    logForDebugging(`bash classifier error",
-      "source": "src/permissions/bashClassifier.ts"
+      "name": "agent-written text is labelled and quoted on one line",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "  if (block.agent === undefined) return `User: ${text}\\n`",
+      "replace": "  return `User: ${text}\\n`"
     },
     {
-      "name": "tabs and newlines pass the control filter",
-      "find": "/[\\u0000-\\u001F\\u007F-\\u009F]/",
-      "replace": "/[\\u0000-\\u0008\\u007F-\\u009F]/",
-      "source": "src/permissions/autoModeRules.ts"
+      "name": "a user message's origin decides the agent label",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "return userEntry(textsOf(msg.message.content as TextSource), msg.origin)",
+      "replace": "return userEntry(textsOf(msg.message.content as TextSource), undefined)"
     },
     {
-      "name": "curl wildcards are allowed",
-      "find": "(sh|bash|zsh|dash|ksh|fish|curl|wget|",
-      "replace": "(sh|bash|zsh|dash|ksh|fish|wget|",
-      "source": "src/permissions/autoModeRules.ts"
+      "name": "a queued prompt's text blocks are joined by newlines",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "textsOf(attachment.prompt as TextSource).join('\\n')",
+      "replace": "textsOf(attachment.prompt as TextSource).join(' ')"
     },
     {
-      "name": "an opening settings delimiter passes",
-      "find": "/<\\/?settings_/i",
-      "replace": "/<\\/settings_/i",
-      "source": "src/permissions/autoModeRules.ts"
+      "name": "text values are cut at 32,000 characters",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "const MAX_TEXT_VALUE_CHARS = 32_000",
+      "replace": "const MAX_TEXT_VALUE_CHARS = 64_000"
     },
     {
-      "name": "21 denials are kept",
-      "find": "DENIALS = [denial, ...DENIALS.slice(0, MAX_DENIALS - 1)]",
-      "replace": "DENIALS = [denial, ...DENIALS.slice(0, MAX_DENIALS)]",
-      "source": "src/permissions/autoModeDenials.ts"
+      "name": "a projection that gives nothing back falls back to the raw input",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "if (projected === undefined) return rawJson(input)",
+      "replace": "if (projected === undefined) return ''"
+    },
+    {
+      "name": "a projection that throws falls back to the raw input",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "    return rawJson(input)\n  }\n  if (projected",
+      "replace": "    return ''\n  }\n  if (projected"
+    },
+    {
+      "name": "a projection of '' gives no line",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "return projected === '' ? '' : `${block.name} ${projected}\\n`",
+      "replace": "return `${block.name} ${projected}\\n`"
+    },
+    {
+      "name": "fix, finding 3: an unknown tool's action is judged on its raw input",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "if (!tool) return unknownTool === 'raw' ?",
+      "replace": "if (!tool) return unknownTool === 'never' ?"
+    },
+    {
+      "name": "an unknown tool in the history stays out of the transcript",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "toolUseLine(block, lookup, 'skip')",
+      "replace": "toolUseLine(block, lookup, 'raw')"
+    },
+    {
+      "name": "tools are found by alias too",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "for (const name of [tool.name, ...(tool.aliases ?? [])])",
+      "replace": "for (const name of [tool.name])"
+    },
+    {
+      "name": "a call with no input is projected from {}",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "const input = block.input ?? {}",
+      "replace": "const input = block.input"
+    },
+    {
+      "name": "the budget walk stops at the first message that does not fit",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "    break\n  }\n  return kept.reverse()",
+      "replace": "  }\n  return kept.reverse()"
+    },
+    {
+      "name": "an oversized newest message keeps the blocks that fit",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "    if (kept.length === 0) kept.push(partialMessage(message, maxChars))\n",
+      "replace": ""
+    },
+    {
+      "name": "finding 6 (kept): a block that does not fit is skipped, not the end",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "    if (used + line.length > maxChars) continue",
+      "replace": "    if (used + line.length > maxChars) break"
+    },
+    {
+      "name": "the default transcript budget is 200,000 characters",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "export const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 200_000",
+      "replace": "export const MAX_CLASSIFIER_TRANSCRIPT_CHARS = 100_000"
+    },
+    {
+      "name": "an action is one assistant tool call",
+      "source": "src/permissions/yoloClassifier/transcript.ts",
+      "find": "content: [{ type: 'tool_use', name: toolName, input: toolInput }]",
+      "replace": "content: [{ type: 'tool_use', name: toolName, input: {} }]"
+    },
+    {
+      "name": "bundled exactly when the base template is non-empty",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "  return templates.base.length > 0",
+      "replace": "  return true"
+    },
+    {
+      "name": "resetting the templates re-arms the warning",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "  warnedClassifierDisabled = false\n}",
+      "replace": "}"
+    },
+    {
+      "name": "the permissions template is inserted literally",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "templates.base.replace(PERMISSIONS_PLACEHOLDER, () => permissions)",
+      "replace": "templates.base.replace(PERMISSIONS_PLACEHOLDER, permissions)"
+    },
+    {
+      "name": "the section wrappers are dropped, keeping their bodies",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "    permissions = permissions.replace(wrapperPattern(tag), (_whole, defaults: string) => resolveBody(key, defaults))\n",
+      "replace": ""
+    },
+    {
+      "name": "the user's autoMode rules are read with the flag on",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "return feature('TRANSCRIPT_CLASSIFIER') ? (getAutoModeConfig() ?? {}) : {}",
+      "replace": "return {}"
+    },
+    {
+      "name": "plan mode appends its rules",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "return inPlanMode ? appendRules(section, planRules) : section",
+      "replace": "return section"
+    },
+    {
+      "name": "the environment section gets no plan rules",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "tag: 'user_environment_to_replace', planRules: [] }",
+      "replace": "tag: 'user_environment_to_replace', planRules: PLAN_MODE_DENY_RULES }"
+    },
+    {
+      "name": "CLAUDE.md is wrapped in <user_claude_md>",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "\\n\\n<user_claude_md>\\n${claudeMd}\\n</user_claude_md>",
+      "replace": "\\n\\n${claudeMd}"
+    },
+    {
+      "name": "the shipped defaults are read out of the template",
+      "source": "src/permissions/yoloClassifier/prompts.ts",
+      "find": "return wrapped ? parseBulletBlock(wrapped[1]!) : []",
+      "replace": "return []"
+    },
+    {
+      "name": "a defaults block is read one trimmed bullet per line",
+      "source": "src/permissions/autoModeRules.ts",
+      "find": "    const bullet = line.trim()",
+      "replace": "    const bullet = line"
+    },
+    {
+      "name": "each drop reason has its own words",
+      "source": "src/permissions/autoModeRules.ts",
+      "find": "'too-long': `longer than ${MAX_ENTRY_CHARS} characters`,",
+      "replace": "'too-long': 'too long',"
+    },
+    {
+      "name": "the first call to the named tool is the answer",
+      "source": "src/permissions/classifierShared.ts",
+      "find": "if (block.type === 'tool_use' && block.name === toolName) return block",
+      "replace": "if (block.type === 'tool_use') return block"
+    },
+    {
+      "name": "an input of the wrong shape is no answer",
+      "source": "src/permissions/classifierShared.ts",
+      "find": "return checked.success ? (checked.data as z.infer<T>) : null",
+      "replace": "return toolUseBlock.input as z.infer<T>"
+    },
+    {
+      "name": "the skip list holds no shell tool",
+      "source": "src/permissions/classifierDecision.ts",
+      "find": "classifier: [YOLO_CLASSIFIER_TOOL_NAME],",
+      "replace": "classifier: [YOLO_CLASSIFIER_TOOL_NAME, 'Bash'],"
+    },
+    {
+      "name": "the read tools skip the classifier",
+      "source": "src/permissions/classifierDecision.ts",
+      "find": "reads: [FILE_READ_TOOL_NAME, ",
+      "replace": "reads: ["
+    },
+    {
+      "name": "each approval getter answers only for its own kind",
+      "source": "src/permissions/classifierApprovals.ts",
+      "find": "return approval?.kind === kind ? approval.detail : undefined",
+      "replace": "return approval?.detail"
+    },
+    {
+      "name": "Bash rule approvals are not recorded with BASH_CLASSIFIER off",
+      "source": "src/permissions/classifierApprovals.ts",
+      "find": "  if (!feature('BASH_CLASSIFIER')) return\n",
+      "replace": ""
+    },
+    {
+      "name": "auto-mode approvals are not recorded with TRANSCRIPT_CLASSIFIER off",
+      "source": "src/permissions/classifierApprovals.ts",
+      "find": "  if (!feature('TRANSCRIPT_CLASSIFIER')) return\n",
+      "replace": ""
+    },
+    {
+      "name": "the checking marker is not recorded with both flags off",
+      "source": "src/permissions/classifierApprovals.ts",
+      "find": "  if (!checkingIsTracked()) return\n  checking.add(toolUseID)",
+      "replace": "  checking.add(toolUseID)"
+    },
+    {
+      "name": "setting the checking marker notifies",
+      "source": "src/permissions/classifierApprovals.ts",
+      "find": "  checking.add(toolUseID)\n  checkingChanged.emit()",
+      "replace": "  checking.add(toolUseID)"
+    },
+    {
+      "name": "clearing the approvals wipes the checking markers",
+      "source": "src/permissions/classifierApprovals.ts",
+      "find": "  approvals.clear()\n  checking.clear()\n",
+      "replace": "  approvals.clear()\n"
+    },
+    {
+      "name": "clearing the approvals always notifies",
+      "source": "src/permissions/classifierApprovals.ts",
+      "find": "  checking.clear()\n  checkingChanged.emit()",
+      "replace": "  checking.clear()"
+    },
+    {
+      "name": "the hook follows the checking signal",
+      "source": "src/permissions/classifierApprovalsHook.ts",
+      "find": "useSyncExternalStore(subscribeClassifierChecking, snapshot, snapshot)",
+      "replace": "useSyncExternalStore(() => () => {}, snapshot, snapshot)"
+    },
+    {
+      "name": "denials: newest first",
+      "source": "src/permissions/autoModeDenials.ts",
+      "find": "recent = [denial, ...recent].slice(0, KEPT_DENIALS)",
+      "replace": "recent = [...recent, denial].slice(-KEPT_DENIALS)"
+    },
+    {
+      "name": "denials: a list handed out never changes",
+      "source": "src/permissions/autoModeDenials.ts",
+      "find": "recent = [denial, ...recent].slice(0, KEPT_DENIALS)",
+      "replace": "(recent as AutoModeDenial[]).unshift(denial); (recent as AutoModeDenial[]).splice(KEPT_DENIALS)"
+    },
+    {
+      "name": "denials: only the newest 20 are kept",
+      "source": "src/permissions/autoModeDenials.ts",
+      "find": "const KEPT_DENIALS = 20",
+      "replace": "const KEPT_DENIALS = 25"
+    },
+    {
+      "name": "denials are not recorded with TRANSCRIPT_CLASSIFIER off",
+      "source": "src/permissions/autoModeDenials.ts",
+      "find": "  if (!feature('TRANSCRIPT_CLASSIFIER')) return\n",
+      "replace": ""
+    },
+    {
+      "name": "a prompt rule is written trimmed",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "return `${PROMPT_PREFIX} ${description.trim()}`",
+      "replace": "return `${PROMPT_PREFIX} ${description}`"
+    },
+    {
+      "name": "only Bash prompt rules give descriptions",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "      if (toolName !== BASH_TOOL_NAME) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "descriptions are deduplicated across sources",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "  const found = new Set<string>()",
+      "replace": "  const found = Object.assign([] as string[], { add(this: string[], d: string) { this.push(d) } })"
+    },
+    {
+      "name": "switched off, the Bash classifier calls nothing",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "  if (!isClassifierPermissionsEnabled()) {\n    return { matches: false, confidence: 'high', reason: 'classifier disabled' }\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "with no descriptions there is nothing to ask",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "  if (descriptions.length === 0) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "fail safe: a Bash classifier error never matches",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "return { matches: false, confidence: 'low', reason: `classifier error: ${errorMessage(error)}` }",
+      "replace": "return { matches: true, confidence: 'low', reason: `classifier error: ${errorMessage(error)}` }"
+    },
+    {
+      "name": "an abort while classifying is thrown",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "    if (signal.aborted) throw error\n    logForDebugging(`Bash prompt-rule",
+      "replace": "    logForDebugging(`Bash prompt-rule"
+    },
+    {
+      "name": "fail safe: no classify_match call never matches",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "return { matches: false, confidence: 'low', reason: 'classifier returned no tool_use block' }",
+      "replace": "return { matches: true, confidence: 'low', reason: 'classifier returned no tool_use block' }"
+    },
+    {
+      "name": "fail safe: a malformed Bash answer never matches",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "return { matches: false, confidence: 'low', reason: 'classifier returned malformed response' }",
+      "replace": "return { matches: true, confidence: 'low', reason: 'classifier returned malformed response' }"
+    },
+    {
+      "name": "fail safe: an out-of-range index never matches",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "  if (matched === undefined) return { matches: false, confidence, reason }",
+      "replace": "  if (matchedIndex === null) return { matches: false, confidence, reason }"
+    },
+    {
+      "name": "a fractional index is malformed",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "matchedIndex: z.number().int().nullable(),",
+      "replace": "matchedIndex: z.number().nullable(),"
+    },
+    {
+      "name": "each bucket gets its own instructions",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "system: getBehaviorInstructions(behavior),",
+      "replace": "system: getBehaviorInstructions('allow'),"
+    },
+    {
+      "name": "the Bash classifier asks for 512 tokens",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "      max_tokens: 512,",
+      "replace": "      max_tokens: 1024,"
+    },
+    {
+      "name": "switched off, generalizing returns the draft without a call",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "  if (!isClassifierPermissionsEnabled()) return fallback\n",
+      "replace": ""
+    },
+    {
+      "name": "a generic description is trimmed",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "outcome.input.description.trim()",
+      "replace": "outcome.input.description"
+    },
+    {
+      "name": "the draft goes to the model",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "`<user_draft>${specificDescription ?? ''}</user_draft>`",
+      "replace": "'<user_draft></user_draft>'"
+    },
+    {
+      "name": "a failed generalization falls back to the draft",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "    logForDebugging(`Bash rule generalization failed: ${errorMessage(error)}`, { level: 'warn' })\n    return fallback",
+      "replace": "    return null"
+    },
+    {
+      "name": "an abort while generalizing is thrown",
+      "source": "src/permissions/bashClassifier.ts",
+      "find": "    if (signal.aborted) throw error\n    logForDebugging(`Bash rule generalization",
+      "replace": "    logForDebugging(`Bash rule generalization"
     }
   ]
 }

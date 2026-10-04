@@ -19,50 +19,36 @@ import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
 import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
 import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
-import { YOLO_CLASSIFIER_TOOL_NAME } from 'src/permissions/yoloClassifier.js'
+// The leaf, not the classifier barrel: the barrel loads the classifier, which
+// reaches back into the permission engine that loads this file.
+import { YOLO_CLASSIFIER_TOOL_NAME } from 'src/permissions/yoloClassifier/protocol.js'
+
+const READ_MCP_RESOURCE_TOOL_NAME = 'ReadMcpResourceTool'
 
 /**
- * Tools that are safe and don't need any classifier checking.
- * Used by the auto mode classifier to skip unnecessary API calls.
- * Does NOT include write/edit tools — those are handled by the
- * acceptEdits fast path (allowed in CWD, classified outside CWD).
+ * Tools that never need a verdict, grouped by why. None of them runs a shell,
+ * writes a file, reaches the network or starts an agent.
  */
-const SAFE_YOLO_ALLOWLISTED_TOOLS = new Set([
-  // Read-only file operations
-  FILE_READ_TOOL_NAME,
-  // Search / read-only
-  GREP_TOOL_NAME,
-  GLOB_TOOL_NAME,
-  TOOL_SEARCH_TOOL_NAME,
-  LIST_MCP_RESOURCES_TOOL_NAME,
-  'ReadMcpResourceTool', // no exported constant
-  // Task management (metadata only)
-  TODO_WRITE_TOOL_NAME,
-  TASK_CREATE_TOOL_NAME,
-  TASK_GET_TOOL_NAME,
-  TASK_UPDATE_TOOL_NAME,
-  TASK_LIST_TOOL_NAME,
-  TASK_STOP_TOOL_NAME,
-  TASK_OUTPUT_TOOL_NAME,
-  // Plan mode / UI
-  ASK_USER_QUESTION_TOOL_NAME,
-  ENTER_PLAN_MODE_TOOL_NAME,
-  EXIT_PLAN_MODE_TOOL_NAME,
-  // Swarm coordination (internal mailbox/team state only — teammates have
-  // their own permission checks, so no actual security bypass).
-  TEAM_CREATE_TOOL_NAME,
-  // Agent cleanup
-  TEAM_DELETE_TOOL_NAME,
-  SEND_MESSAGE_TOOL_NAME,
-  LIST_AGENTS_TOOL_NAME,
-  // Misc safe
-  SLEEP_TOOL_NAME,
-  // Internal classifier tool
-  YOLO_CLASSIFIER_TOOL_NAME,
-])
+const SKIP_CLASSIFIER_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  reads: [FILE_READ_TOOL_NAME, GREP_TOOL_NAME, GLOB_TOOL_NAME, TOOL_SEARCH_TOOL_NAME, LIST_MCP_RESOURCES_TOOL_NAME, READ_MCP_RESOURCE_TOOL_NAME],
+  taskBookkeeping: [
+    TODO_WRITE_TOOL_NAME,
+    TASK_CREATE_TOOL_NAME,
+    TASK_GET_TOOL_NAME,
+    TASK_UPDATE_TOOL_NAME,
+    TASK_LIST_TOOL_NAME,
+    TASK_STOP_TOOL_NAME,
+    TASK_OUTPUT_TOOL_NAME,
+  ],
+  conversation: [ASK_USER_QUESTION_TOOL_NAME, ENTER_PLAN_MODE_TOOL_NAME, EXIT_PLAN_MODE_TOOL_NAME, SLEEP_TOOL_NAME],
+  coordination: [TEAM_CREATE_TOOL_NAME, TEAM_DELETE_TOOL_NAME, SEND_MESSAGE_TOOL_NAME, LIST_AGENTS_TOOL_NAME],
+  classifier: [YOLO_CLASSIFIER_TOOL_NAME],
+}
+
+const SKIP_CLASSIFIER_BY_NAME: ReadonlySet<string> = new Set(Object.values(SKIP_CLASSIFIER_GROUPS).flat())
 
 export function isAutoModeAllowlistedTool(toolName: string): boolean {
-  return SAFE_YOLO_ALLOWLISTED_TOOLS.has(toolName)
+  return SKIP_CLASSIFIER_BY_NAME.has(toolName)
 }
 
 /**

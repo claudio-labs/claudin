@@ -168,8 +168,8 @@
     {
       "name": "the classifier labels agent-written text",
       "source": "src/permissions/yoloClassifier/transcript.ts",
-      "find": "    if (block.agent !== undefined) {\n",
-      "replace": "    if (false) {\n"
+      "find": "  return { role: 'user', content: texts.map(text => ({ type: 'text', text, ...author })) }",
+      "replace": "  return { role: 'user', content: texts.map(text => ({ type: 'text', text })) }"
     },
     {
       "name": "a send to this session's own address is refused",

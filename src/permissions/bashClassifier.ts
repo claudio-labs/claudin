@@ -20,16 +20,15 @@
  * without classifier prompts don't attempt API calls.
  */
 import { feature } from 'bun:bundle'
-import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
+import type { BetaTool } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import { z } from 'zod/v4'
 import { getDefaultMaxRetries } from 'src/providers/transport/withRetry.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { permissionRuleValueFromString } from 'src/permissions/permissionRuleParser.js'
-import { sideQuery } from 'src/agent/sideQuery.js'
+import { sideQuery, type SideQueryOptions } from 'src/agent/sideQuery.js'
 import {
   extractToolUseBlock,
   parseClassifierResponse,
@@ -94,23 +93,16 @@ export function isClassifierPermissionsEnabled(): boolean {
 function collectPromptDescriptions(
   rulesBySource: ToolPermissionContext['alwaysAllowRules'],
 ): string[] {
-  const descriptions: string[] = []
-  const seen = new Set<string>()
-  const sources = Object.values(rulesBySource) as Array<
-    readonly string[] | undefined
-  >
-  for (const ruleStrings of sources) {
-    if (!ruleStrings) continue
-    for (const ruleString of ruleStrings) {
-      const value = permissionRuleValueFromString(ruleString)
-      if (value.toolName !== BASH_TOOL_NAME) continue
-      const desc = extractPromptDescription(value.ruleContent)
-      if (!desc || seen.has(desc)) continue
-      seen.add(desc)
-      descriptions.push(desc)
+  const found = new Set<string>()
+  for (const rules of Object.values(rulesBySource)) {
+    for (const rule of rules ?? []) {
+      const { toolName, ruleContent } = permissionRuleValueFromString(rule)
+      if (toolName !== BASH_TOOL_NAME) continue
+      const description = extractPromptDescription(ruleContent)
+      if (description !== null) found.add(description)
     }
   }
-  return descriptions
+  return [...found]
 }
 
 export function getBashPromptDenyDescriptions(
@@ -131,44 +123,62 @@ export function getBashPromptAllowDescriptions(
   return collectPromptDescriptions(context.alwaysAllowRules)
 }
 
-const CLASSIFY_MATCH_TOOL_NAME = 'classify_match'
-
-const CLASSIFY_MATCH_TOOL_SCHEMA: BetaToolUnion = {
-  type: 'custom',
-  name: CLASSIFY_MATCH_TOOL_NAME,
-  description:
-    'Report whether the shell command matches one of the listed descriptions',
-  input_schema: {
-    type: 'object',
-    properties: {
-      matchedIndex: {
-        type: ['integer', 'null'],
-        description:
-          'Zero-based index of the description the command matches, or null if no description matches',
-      },
-      confidence: {
-        type: 'string',
-        enum: ['high', 'medium', 'low'],
-        description:
-          "Confidence in the match. 'high' means the command unambiguously falls under the description; 'low' means a plausible but uncertain interpretation.",
-      },
-      reason: {
-        type: 'string',
-        description:
-          'Brief one-sentence explanation of the match (or non-match)',
-      },
-    },
-    required: ['matchedIndex', 'confidence', 'reason'],
-  },
+/** A tool the model is forced to call, every one of whose fields is required. */
+function forcedTool(name: string, description: string, fields: Record<string, Record<string, unknown>>): BetaTool {
+  return {
+    type: 'custom',
+    name,
+    description,
+    input_schema: { type: 'object', properties: fields, required: Object.keys(fields) },
+  }
 }
 
-const classifyMatchSchema = lazySchema(() =>
-  z.object({
-    matchedIndex: z.number().int().nullable(),
-    confidence: z.enum(['high', 'medium', 'low']),
-    reason: z.string(),
-  }),
-)
+const CONFIDENCE_LEVELS = ['high', 'medium', 'low'] as const
+
+const MATCH_TOOL = forcedTool('classify_match', 'Report whether the shell command matches one of the listed descriptions', {
+  matchedIndex: {
+    type: ['integer', 'null'],
+    description: 'Zero-based index of the description the command matches, or null if no description matches',
+  },
+  confidence: {
+    type: 'string',
+    enum: [...CONFIDENCE_LEVELS],
+    description:
+      "Confidence in the match. 'high' means the command unambiguously falls under the description; 'low' means a plausible but uncertain interpretation.",
+  },
+  reason: { type: 'string', description: 'Brief one-sentence explanation of the match (or non-match)' },
+})
+
+const matchAnswer = z.object({
+  matchedIndex: z.number().int().nullable(),
+  confidence: z.enum(CONFIDENCE_LEVELS),
+  reason: z.string(),
+})
+
+type ForcedCallOutcome<T> = { kind: 'answer'; input: T } | { kind: 'no-call' } | { kind: 'malformed' }
+
+/**
+ * One forced tool call: the validated input, or why there is none. A failed
+ * request throws; the callers decide what an error means.
+ */
+async function askForcedTool<T extends z.ZodType>(
+  tool: BetaTool,
+  answer: T,
+  request: Pick<SideQueryOptions, 'system' | 'messages' | 'max_tokens' | 'temperature' | 'signal'>,
+): Promise<ForcedCallOutcome<z.infer<T>>> {
+  const response = await sideQuery({
+    ...request,
+    model: getMainLoopModel(),
+    thinking: false,
+    maxRetries: getDefaultMaxRetries(),
+    tools: [tool],
+    tool_choice: { type: 'tool', name: tool.name },
+  })
+  const call = extractToolUseBlock(response.content, tool.name)
+  if (call === null) return { kind: 'no-call' }
+  const input = parseClassifierResponse(call, answer)
+  return input === null ? { kind: 'malformed' } : { kind: 'answer', input }
+}
 
 const ALLOW_BEHAVIOR_INSTRUCTIONS =
   'You are deciding whether a shell command should be auto-approved. ' +
@@ -247,111 +257,53 @@ export async function classifyBashCommand(
   _isNonInteractiveSession: boolean,
 ): Promise<ClassifierResult> {
   if (!isClassifierPermissionsEnabled()) {
-    return {
-      matches: false,
-      confidence: 'high',
-      reason: 'classifier disabled',
-    }
+    return { matches: false, confidence: 'high', reason: 'classifier disabled' }
   }
   if (descriptions.length === 0) {
-    return {
-      matches: false,
-      confidence: 'high',
-      reason: 'no descriptions to match against',
-    }
+    return { matches: false, confidence: 'high', reason: 'no descriptions to match against' }
   }
 
-  const systemPrompt = getBehaviorInstructions(behavior)
-  const userPrompt = buildBashClassifierUserPrompt(command, cwd, descriptions)
-
+  let outcome: ForcedCallOutcome<z.infer<typeof matchAnswer>>
   try {
-    const response = await sideQuery({
-      model: getMainLoopModel(),
+    outcome = await askForcedTool(MATCH_TOOL, matchAnswer, {
+      system: getBehaviorInstructions(behavior),
+      messages: [{ role: 'user', content: buildBashClassifierUserPrompt(command, cwd, descriptions) }],
       max_tokens: 512,
-      system: systemPrompt,
       temperature: 0,
-      thinking: false,
-      messages: [{ role: 'user', content: userPrompt }],
-      tools: [CLASSIFY_MATCH_TOOL_SCHEMA],
-      tool_choice: { type: 'tool', name: CLASSIFY_MATCH_TOOL_NAME },
-      maxRetries: getDefaultMaxRetries(),
       signal,
     })
-
-    const toolUseBlock = extractToolUseBlock(
-      response.content,
-      CLASSIFY_MATCH_TOOL_NAME,
-    )
-    if (!toolUseBlock) {
-      return {
-        matches: false,
-        confidence: 'low',
-        reason: 'classifier returned no tool_use block',
-      }
-    }
-    const parsed = parseClassifierResponse(toolUseBlock, classifyMatchSchema())
-    if (!parsed) {
-      return {
-        matches: false,
-        confidence: 'low',
-        reason: 'classifier returned malformed response',
-      }
-    }
-    if (
-      parsed.matchedIndex === null ||
-      parsed.matchedIndex < 0 ||
-      parsed.matchedIndex >= descriptions.length
-    ) {
-      return {
-        matches: false,
-        confidence: parsed.confidence,
-        reason: parsed.reason,
-      }
-    }
-    return {
-      matches: true,
-      matchedDescription: descriptions[parsed.matchedIndex],
-      confidence: parsed.confidence,
-      reason: parsed.reason,
-    }
-  } catch (err) {
-    if (signal.aborted) throw err
-    logForDebugging(`bash classifier error: ${errorMessage(err)}`, {
-      level: 'warn',
-    })
-    return {
-      matches: false,
-      confidence: 'low',
-      reason: `classifier error: ${errorMessage(err)}`,
-    }
+  } catch (error) {
+    if (signal.aborted) throw error
+    logForDebugging(`Bash prompt-rule classifier failed: ${errorMessage(error)}`, { level: 'warn' })
+    return { matches: false, confidence: 'low', reason: `classifier error: ${errorMessage(error)}` }
   }
+
+  if (outcome.kind === 'no-call') {
+    return { matches: false, confidence: 'low', reason: 'classifier returned no tool_use block' }
+  }
+  if (outcome.kind === 'malformed') {
+    return { matches: false, confidence: 'low', reason: 'classifier returned malformed response' }
+  }
+  const { matchedIndex, confidence, reason } = outcome.input
+  const matched = matchedIndex === null ? undefined : descriptions[matchedIndex]
+  // A negative or out-of-range index finds nothing here, so it can never match.
+  if (matched === undefined) return { matches: false, confidence, reason }
+  return { matches: true, matchedDescription: matched, confidence, reason }
 }
 
-const GENERIC_DESCRIPTION_TOOL_NAME = 'propose_description'
-
-const GENERIC_DESCRIPTION_TOOL_SCHEMA: BetaToolUnion = {
-  type: 'custom',
-  name: GENERIC_DESCRIPTION_TOOL_NAME,
-  description:
-    'Propose a reusable natural-language description for a class of shell commands',
-  input_schema: {
-    type: 'object',
-    properties: {
-      description: {
-        type: 'string',
-        description:
-          'A short description of the command class, in the imperative — e.g. "list git remotes" or "run jest tests".',
-      },
+const PROPOSE_TOOL = forcedTool(
+  'propose_description',
+  'Propose a reusable natural-language description for a class of shell commands',
+  {
+    description: {
+      type: 'string',
+      description:
+        'A short description of the command class, in the imperative — e.g. "list git remotes" or "run jest tests".',
     },
-    required: ['description'],
   },
-}
-
-const genericDescriptionSchema = lazySchema(() =>
-  z.object({
-    description: z.string().min(1),
-  }),
 )
+
+const proposalAnswer = z.object({ description: z.string().min(1) })
 
 const GENERIC_DESCRIPTION_SYSTEM_PROMPT =
   'You generalize a specific shell command into a short reusable description ' +
@@ -372,49 +324,30 @@ export async function generateGenericDescription(
   specificDescription: string | undefined,
   signal: AbortSignal,
 ): Promise<string | null> {
-  if (!isClassifierPermissionsEnabled()) {
-    return specificDescription || null
-  }
-  const userPrompt = [
+  const fallback = specificDescription || null
+  if (!isClassifierPermissionsEnabled()) return fallback
+
+  const prompt = [
     '<command>',
     command,
     '</command>',
     '',
     `<user_draft>${specificDescription ?? ''}</user_draft>`,
     '',
-    'Propose a reusable description via the propose_description tool.',
+    'Propose the description via the propose_description tool.',
   ].join('\n')
-
   try {
-    const response = await sideQuery({
-      model: getMainLoopModel(),
-      max_tokens: 256,
+    const outcome = await askForcedTool(PROPOSE_TOOL, proposalAnswer, {
       system: GENERIC_DESCRIPTION_SYSTEM_PROMPT,
-      temperature: 0,
-      thinking: false,
-      messages: [{ role: 'user', content: userPrompt }],
-      tools: [GENERIC_DESCRIPTION_TOOL_SCHEMA],
-      tool_choice: { type: 'tool', name: GENERIC_DESCRIPTION_TOOL_NAME },
-      maxRetries: getDefaultMaxRetries(),
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 256,
       signal,
     })
-    const toolUseBlock = extractToolUseBlock(
-      response.content,
-      GENERIC_DESCRIPTION_TOOL_NAME,
-    )
-    if (!toolUseBlock) return specificDescription || null
-    const parsed = parseClassifierResponse(
-      toolUseBlock,
-      genericDescriptionSchema(),
-    )
-    if (!parsed) return specificDescription || null
-    return parsed.description.trim() || specificDescription || null
-  } catch (err) {
-    if (signal.aborted) throw err
-    logForDebugging(
-      `generateGenericDescription error: ${errorMessage(err)}`,
-      { level: 'warn' },
-    )
-    return specificDescription || null
+    const proposal = outcome.kind === 'answer' ? outcome.input.description.trim() : ''
+    return proposal === '' ? fallback : proposal
+  } catch (error) {
+    if (signal.aborted) throw error
+    logForDebugging(`Bash rule generalization failed: ${errorMessage(error)}`, { level: 'warn' })
+    return fallback
   }
 }

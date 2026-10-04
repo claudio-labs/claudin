@@ -4,18 +4,18 @@
   "probes": [
     {
       "name": "plan-mode deny bullets are appended",
-      "find": "        return planMode ? appendRules(section, PLAN_MODE_DENY_RULES) : section\n",
-      "replace": "        return section\n"
+      "find": "  { key: 'soft_deny', tag: 'user_deny_rules_to_replace', planRules: PLAN_MODE_DENY_RULES },",
+      "replace": "  { key: 'soft_deny', tag: 'user_deny_rules_to_replace', planRules: [] },"
     },
     {
       "name": "plan-mode allow bullets are appended",
-      "find": "        return planMode ? appendRules(section, PLAN_MODE_ALLOW_RULES) : section\n",
-      "replace": "        return section\n"
+      "find": "  { key: 'allow', tag: 'user_allow_rules_to_replace', planRules: PLAN_MODE_ALLOW_RULES },",
+      "replace": "  { key: 'allow', tag: 'user_allow_rules_to_replace', planRules: [] },"
     },
     {
       "name": "bullets go only to plan mode",
-      "find": "  const planMode = context.mode === 'plan'\n",
-      "replace": "  const planMode = true\n"
+      "find": "  const inPlanMode = context.mode === 'plan'\n",
+      "replace": "  const inPlanMode = true\n"
     }
   ]
 }

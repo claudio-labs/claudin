@@ -181,11 +181,12 @@ export function filterBroadAllowEntries(
  * single-line in the template, so one `- ` line is one entry.
  */
 export function parseBulletBlock(block: string): string[] {
-  return block
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('- '))
-    .map(line => line.slice(2))
+  const entries: string[] = []
+  for (const line of block.split('\n')) {
+    const bullet = line.trim()
+    if (bullet.startsWith('- ')) entries.push(bullet.slice(2))
+  }
+  return entries
 }
 
 /**
@@ -205,20 +206,15 @@ export function renderRuleSection(
 
 /** Human-readable reason, for the review screen and the CLI notes. */
 export function describeDropReason(reason: RuleDropReason): string {
-  switch (reason) {
-    case 'empty':
-      return 'empty entry'
-    case 'control-characters':
-      return 'contains control characters'
-    case 'invisible-characters':
-      return 'contains invisible or bidirectional characters'
-    case 'settings-token':
-      return 'contains a settings delimiter token'
-    case 'too-long':
-      return `longer than ${MAX_ENTRY_CHARS} characters`
-    case 'over-entry-cap':
-      return `beyond the ${MAX_ENTRIES_PER_SECTION}-entry limit`
-    case 'too-broad':
-      return 'too broad for auto mode to honor safely'
-  }
+  return DROP_REASON_WORDS[reason]
+}
+
+const DROP_REASON_WORDS: Readonly<Record<RuleDropReason, string>> = {
+  empty: 'an empty entry',
+  'control-characters': 'contains control characters (a line break or tab could forge another rule)',
+  'invisible-characters': 'contains invisible or bidirectional characters',
+  'settings-token': 'contains a settings delimiter token',
+  'too-long': `longer than ${MAX_ENTRY_CHARS} characters`,
+  'over-entry-cap': `beyond the ${MAX_ENTRIES_PER_SECTION}-entry limit`,
+  'too-broad': 'too broad for auto mode to honor safely',
 }

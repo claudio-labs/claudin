@@ -1,39 +1,23 @@
-/**
- * Shared infrastructure for classifier-based permission systems.
- *
- * This module provides common types, schemas, and utilities used by both:
- * - bashClassifier.ts (semantic Bash command matching)
- * - yoloClassifier.ts (YOLO mode security classification)
- */
-
+/** The one step every forced-tool classifier shares: find the call, then validate its input. */
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import type { z } from 'zod/v4'
 
-/**
- * Extract tool use block from message content by tool name.
- */
+/** The first call the answer makes to `toolName`, or null when it made none. */
 export function extractToolUseBlock(
   content: BetaContentBlock[],
   toolName: string,
 ): Extract<BetaContentBlock, { type: 'tool_use' }> | null {
-  const block = content.find(b => b.type === 'tool_use' && b.name === toolName)
-  if (!block || block.type !== 'tool_use') {
-    return null
+  for (const block of content) {
+    if (block.type === 'tool_use' && block.name === toolName) return block
   }
-  return block
+  return null
 }
 
-/**
- * Parse and validate classifier response from tool use block.
- * Returns null if parsing fails.
- */
+/** The call's input when it has the expected shape; null otherwise, so the caller fails safe. */
 export function parseClassifierResponse<T extends z.ZodType>(
   toolUseBlock: Extract<BetaContentBlock, { type: 'tool_use' }>,
   schema: T,
 ): z.infer<T> | null {
-  const parseResult = schema.safeParse(toolUseBlock.input)
-  if (!parseResult.success) {
-    return null
-  }
-  return parseResult.data
+  const checked = schema.safeParse(toolUseBlock.input)
+  return checked.success ? (checked.data as z.infer<T>) : null
 }

@@ -153,7 +153,6 @@ describe('decisions made without asking the model', () => {
 
   const nothingToJudge: Array<[string, ReturnType<typeof formatActionForClassifier>]> = [
     ['a tool that declares no relevant input', formatActionForClassifier('Quiet', { anything: 1 })],
-    ['a tool missing from the tool list', formatActionForClassifier('Unknown', { command: 'rm -rf /' })],
     ['an assistant action made only of text', { role: 'assistant', content: [{ type: 'text', text: 'rm -rf /' }] }],
   ]
   for (const [label, action] of nothingToJudge) {

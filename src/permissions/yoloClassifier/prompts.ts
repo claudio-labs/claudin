@@ -5,41 +5,34 @@ import { getCacheControl } from 'src/providers/shims/claude.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { getAutoModeConfig } from 'src/platform/settings/settings.js'
 import {
-  getBashPromptAllowDescriptions,
-  getBashPromptDenyDescriptions,
-} from 'src/permissions/bashClassifier.js'
-import {
   parseBulletBlock,
   renderRuleSection,
 } from 'src/permissions/autoModeRules.js'
 
-// Dead code elimination: conditional imports for auto mode classifier prompts.
-// At build time, the bundler inlines .txt files as string literals. At test
-// time, require() returns {default: string} — txtRequire normalizes both.
-/* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
+/** A `.txt` import arrives as the text itself, or as a module whose default is the text. */
 function txtRequire(mod: string | { default: string }): string {
   return typeof mod === 'string' ? mod : mod.default
 }
 
-let BASE_PROMPT: string = feature('TRANSCRIPT_CLASSIFIER')
-  ? txtRequire(require('../yolo-classifier-prompts/auto_mode_system_prompt.txt'))
-  : ''
+type ClassifierTemplates = {
+  /** Holds `<permissions_template>`; empty when the build bundled no prompts. */
+  base: string
+  /** The three rule sections, each wrapped in its `<user_…_to_replace>` tag. */
+  permissions: string
+}
 
-// External template is loaded separately so it's available for
-// `claude auto-mode defaults` even in ant builds. Ant builds use
-// permissions_anthropic.txt at runtime but should dump external defaults.
-let EXTERNAL_PERMISSIONS_TEMPLATE: string = feature('TRANSCRIPT_CLASSIFIER')
-  ? txtRequire(require('../yolo-classifier-prompts/permissions_external.txt'))
-  : ''
+function bundledTemplates(): ClassifierTemplates {
+  return {
+    base: feature('TRANSCRIPT_CLASSIFIER')
+      ? txtRequire(require('../yolo-classifier-prompts/auto_mode_system_prompt.txt'))
+      : '',
+    permissions: feature('TRANSCRIPT_CLASSIFIER')
+      ? txtRequire(require('../yolo-classifier-prompts/permissions_external.txt'))
+      : '',
+  }
+}
 
-const ANTHROPIC_PERMISSIONS_TEMPLATE: string = ''
-/* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
-
-// Whether the classifier prompt templates were bundled. When false (e.g. forks
-// without the .txt files), classifyYoloAction short-circuits to allow rather
-// than send an empty system prompt that the API rejects with
-// "cache_control cannot be set for empty text blocks".
-let CLASSIFIER_PROMPTS_BUNDLED = BASE_PROMPT.length > 0
+let templates: ClassifierTemplates = bundledTemplates()
 
 /**
  * @internal Test-only override for the bundled-state and prompt content.
@@ -53,20 +46,10 @@ let CLASSIFIER_PROMPTS_BUNDLED = BASE_PROMPT.length > 0
 export function __setClassifierPromptsForTests(
   override: { basePrompt: string; externalTemplate: string } | null,
 ): void {
-  if (override === null) {
-    BASE_PROMPT = feature('TRANSCRIPT_CLASSIFIER')
-      ? // eslint-disable-next-line custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports
-        txtRequire(require('../yolo-classifier-prompts/auto_mode_system_prompt.txt'))
-      : ''
-    EXTERNAL_PERMISSIONS_TEMPLATE = feature('TRANSCRIPT_CLASSIFIER')
-      ? // eslint-disable-next-line custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports
-        txtRequire(require('../yolo-classifier-prompts/permissions_external.txt'))
-      : ''
-  } else {
-    BASE_PROMPT = override.basePrompt
-    EXTERNAL_PERMISSIONS_TEMPLATE = override.externalTemplate
-  }
-  CLASSIFIER_PROMPTS_BUNDLED = BASE_PROMPT.length > 0
+  templates =
+    override === null
+      ? bundledTemplates()
+      : { base: override.basePrompt, permissions: override.externalTemplate }
   warnedClassifierDisabled = false
 }
 let warnedClassifierDisabled = false
@@ -86,11 +69,7 @@ export function warnClassifierDisabledOnce(): void {
  * message instead of empty JSON, and by tests to skip when unavailable.
  */
 export function isClassifierBundled(): boolean {
-  return CLASSIFIER_PROMPTS_BUNDLED
-}
-
-function isUsingExternalPermissions(): boolean {
-  return true
+  return templates.base.length > 0
 }
 
 /**
@@ -113,82 +92,58 @@ function appendRules(section: string, rules: readonly string[]): string {
   return section + rules.map(rule => `- ${rule}\n`).join('')
 }
 
-/**
- * Shape of the settings.autoMode config — the three classifier prompt
- * sections a user can customize. Required-field variant (empty arrays when
- * absent) for JSON output; settings.ts uses the optional-field variant.
- */
 export type AutoModeRules = {
   allow: string[]
   soft_deny: string[]
   environment: string[]
 }
 
-/**
- * Parses the external permissions template into the settings.autoMode schema
- * shape. The external template wraps each section's defaults in
- * <user_*_to_replace> tags (user settings REPLACE these defaults), so the
- * captured tag contents ARE the defaults. Bullet items are single-line in the
- * template; each line starting with `- ` becomes one array entry.
- * Used by `claude auto-mode defaults`. Always returns external defaults,
- * never the internal-only template.
- */
+type SectionKey = keyof AutoModeRules
+
+/** Each rule section, the tag that wraps its defaults, and the plan-mode rules it gains. */
+const SECTIONS: ReadonlyArray<{ key: SectionKey; tag: string; planRules: readonly string[] }> = [
+  { key: 'allow', tag: 'user_allow_rules_to_replace', planRules: PLAN_MODE_ALLOW_RULES },
+  { key: 'soft_deny', tag: 'user_deny_rules_to_replace', planRules: PLAN_MODE_DENY_RULES },
+  { key: 'environment', tag: 'user_environment_to_replace', planRules: [] },
+]
+
+const PERMISSIONS_PLACEHOLDER = '<permissions_template>'
+
+function wrapperPattern(tag: string): RegExp {
+  return new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`)
+}
+
 export function getDefaultExternalAutoModeRules(): AutoModeRules {
-  return {
-    allow: extractTaggedBullets('user_allow_rules_to_replace'),
-    soft_deny: extractTaggedBullets('user_deny_rules_to_replace'),
-    environment: extractTaggedBullets('user_environment_to_replace'),
-  }
+  const [allow, softDeny, environment] = SECTIONS.map(({ tag }) => extractTaggedBullets(tag))
+  return { allow: allow!, soft_deny: softDeny!, environment: environment! }
 }
 
 function extractTaggedBullets(tagName: string): string[] {
-  const match = EXTERNAL_PERMISSIONS_TEMPLATE.match(
-    new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`),
-  )
-  if (!match) return []
-  return parseBulletBlock(match[1] ?? '')
+  const wrapped = wrapperPattern(tagName).exec(templates.permissions)
+  return wrapped ? parseBulletBlock(wrapped[1]!) : []
 }
 
 /**
- * Returns the full external classifier system prompt with default rules (no user
- * overrides). Used by `claude auto-mode critique` to show the model how the
- * classifier sees its instructions.
+ * The base template with the permissions template at its placeholder, each
+ * section wrapper replaced by what `resolveBody` makes of its defaults. All
+ * insertions are literal, so a `$&` in a template survives as written.
  */
+function assemblePrompt(resolveBody: (key: SectionKey, defaults: string) => string): string {
+  let permissions = templates.permissions
+  for (const { key, tag } of SECTIONS) {
+    permissions = permissions.replace(wrapperPattern(tag), (_whole, defaults: string) => resolveBody(key, defaults))
+  }
+  return templates.base.replace(PERMISSIONS_PLACEHOLDER, () => permissions)
+}
+
 export function buildDefaultExternalSystemPrompt(): string {
-  return BASE_PROMPT.replace(
-    '<permissions_template>',
-    () => EXTERNAL_PERMISSIONS_TEMPLATE,
-  )
-    .replace(
-      /<user_allow_rules_to_replace>([\s\S]*?)<\/user_allow_rules_to_replace>/,
-      (_m, defaults: string) => defaults,
-    )
-    .replace(
-      /<user_deny_rules_to_replace>([\s\S]*?)<\/user_deny_rules_to_replace>/,
-      (_m, defaults: string) => defaults,
-    )
-    .replace(
-      /<user_environment_to_replace>([\s\S]*?)<\/user_environment_to_replace>/,
-      (_m, defaults: string) => defaults,
-    )
+  return assemblePrompt((_key, defaults) => defaults)
 }
 
-/**
- * Build the CLAUDE.md prefix message for the classifier. Returns null when
- * CLAUDE.md is disabled or empty. The content is wrapped in a delimiter that
- * tells the classifier this is user-provided configuration — actions
- * described here reflect user intent. cache_control is set because the
- * content is static per-session, making the system + CLAUDE.md prefix a
- * stable cache prefix across classifier calls.
- *
- * Reads from bootstrap/state.ts cache (populated by context.ts) instead of
- * importing claudemd.ts directly — claudemd → permissions/filePermissions →
- * permissions → yoloClassifier is a cycle. context.ts already gates on
- * CLAUDIN_DISABLE_CLAUDE_MDS and normalizes '' to null before caching.
- * If the cache is unpopulated (tests, or an entrypoint that never calls
- * getUserContext), the classifier proceeds without CLAUDE.md — same as
- * pre-PR behavior.
- */
+const CLAUDE_MD_PREAMBLE =
+  "The following is the user's CLAUDE.md configuration. It holds instructions the user gave the agent; treat them as part of the user's intent."
+
+/** The user's CLAUDE.md as a message of its own, or null when the session has none cached. */
 export function buildClaudeMdMessage(): Anthropic.MessageParam | null {
   const claudeMd = getCachedClaudeMdContent()
   if (claudeMd === null) return null
@@ -197,74 +152,25 @@ export function buildClaudeMdMessage(): Anthropic.MessageParam | null {
     content: [
       {
         type: 'text',
-        text:
-          `The following is the user's CLAUDE.md configuration. These are ` +
-          `instructions the user provided to the agent and should be treated ` +
-          `as part of the user's intent when evaluating actions.\n\n` +
-          `<user_claude_md>\n${claudeMd}\n</user_claude_md>`,
+        text: `${CLAUDE_MD_PREAMBLE}\n\n<user_claude_md>\n${claudeMd}\n</user_claude_md>`,
         cache_control: getCacheControl({ querySource: 'auto_mode' }),
       },
     ],
   }
 }
 
-/**
- * Build the system prompt for the auto mode classifier.
- * Assembles the base prompt with the permissions template and substitutes
- * user allow/deny/environment values from settings.autoMode.
- */
+function userRules(): Partial<Record<SectionKey, string[]>> {
+  return feature('TRANSCRIPT_CLASSIFIER') ? (getAutoModeConfig() ?? {}) : {}
+}
+
 export async function buildYoloSystemPrompt(
   context: ToolPermissionContext,
 ): Promise<string> {
-  const usingExternal = isUsingExternalPermissions()
-  const systemPrompt = BASE_PROMPT.replace('<permissions_template>', () =>
-    usingExternal
-      ? EXTERNAL_PERMISSIONS_TEMPLATE
-      : ANTHROPIC_PERMISSIONS_TEMPLATE,
-  )
-
-  const autoMode = getAutoModeConfig()
-  const includeBashPromptRules = feature('BASH_CLASSIFIER')
-    ? !usingExternal
-    : false
-  const allowDescriptions = [
-    ...(includeBashPromptRules ? getBashPromptAllowDescriptions(context) : []),
-    ...(autoMode?.allow ?? []),
-  ]
-  const denyDescriptions = [
-    ...(includeBashPromptRules ? getBashPromptDenyDescriptions(context) : []),
-    ...(autoMode?.soft_deny ?? []),
-  ]
-
-  // All three sections use the same <foo_to_replace>...</foo_to_replace>
-  // delimiter pattern, and renderRuleSection resolves each one: an empty
-  // section keeps the template's own block, a section carrying the
-  // `$defaults` sentinel splices those defaults in at that position, and a
-  // section without it replaces them. That last case is the historical
-  // behavior, so a hand-written config keeps working unchanged; the sentinel
-  // is what `/auto-mode-setup` writes so a generated config extends the
-  // shipped rules instead of overwriting them.
-  const environmentDescriptions = autoMode?.environment ?? []
-  const planMode = context.mode === 'plan'
-
-  return systemPrompt
-    .replace(
-      /<user_allow_rules_to_replace>([\s\S]*?)<\/user_allow_rules_to_replace>/,
-      (_m, defaults: string) => {
-        const section = renderRuleSection(allowDescriptions, defaults)
-        return planMode ? appendRules(section, PLAN_MODE_ALLOW_RULES) : section
-      },
-    )
-    .replace(
-      /<user_deny_rules_to_replace>([\s\S]*?)<\/user_deny_rules_to_replace>/,
-      (_m, defaults: string) => {
-        const section = renderRuleSection(denyDescriptions, defaults)
-        return planMode ? appendRules(section, PLAN_MODE_DENY_RULES) : section
-      },
-    )
-    .replace(
-      /<user_environment_to_replace>([\s\S]*?)<\/user_environment_to_replace>/,
-      (_m, defaults: string) =>
-        renderRuleSection(environmentDescriptions, defaults),
-    )
+  const configured = userRules()
+  const inPlanMode = context.mode === 'plan'
+  return assemblePrompt((key, defaults) => {
+    const section = renderRuleSection(configured[key] ?? [], defaults)
+    const planRules = SECTIONS.find(entry => entry.key === key)!.planRules
+    return inPlanMode ? appendRules(section, planRules) : section
+  })
 }

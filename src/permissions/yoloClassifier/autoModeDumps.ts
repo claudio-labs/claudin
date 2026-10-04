@@ -7,41 +7,49 @@ import { errorMessage, isSdkApiError } from 'src/shared/errors.js'
 import { getClaudeTempDir } from 'src/platform/tmpdir.js'
 
 function getAutoModeDumpDir(): string {
-  return join(getClaudeTempDir(), 'auto-mode')
+  return join(getClaudeTempDir(), 'auto-mode-classifier-errors')
 }
 
-/**
- * Dump the auto mode classifier request and response bodies to the per-user
- * claude temp directory when CLAUDE_CODE_DUMP_AUTO_MODE is set. Files are
- * named by unix timestamp: {timestamp}[.{suffix}].req.json and .res.json
- */
-export async function maybeDumpAutoMode(
-  _request: unknown,
-  _response: unknown,
-  _timestamp: number,
-  _suffix?: string,
-): Promise<void> {}
-
-/**
- * Session-scoped dump file for auto mode classifier error prompts. Written on API
- * error so users can share via /share without needing to repro with env var.
- */
+/** One file per session, overwritten by each failure. */
 export function getAutoModeClassifierErrorDumpPath(): string {
-  return join(
-    getClaudeTempDir(),
-    'auto-mode-classifier-errors',
-    `${getSessionId()}.txt`,
-  )
+  return join(getAutoModeDumpDir(), `${getSessionId()}.txt`)
 }
 
+type DumpContext = {
+  mainLoopTokens: number
+  classifierChars: number
+  classifierTokensEst: number
+  transcriptEntries: number
+  messages: number
+  action: string
+  model: string
+}
 
-/**
- * Dump classifier input prompts + context-comparison diagnostics on API error.
- * Written to a session-scoped file in the claude temp dir so /share can collect
- * it (replaces the old Desktop dump). Includes context numbers to help diagnose
- * projection divergence (classifier tokens >> main loop tokens).
- * Returns the dump path on success, null on failure.
- */
+function section(title: string, body: string): string {
+  return `=== ${title} ===\n${body}\n`
+}
+
+function renderDump(systemPrompt: string, userPrompt: string, error: unknown, info: DumpContext): string {
+  const comparison = [
+    `timestamp: ${new Date().toISOString()}`,
+    `model: ${info.model}`,
+    `mainLoopTokens: ${info.mainLoopTokens}`,
+    `classifierChars: ${info.classifierChars}`,
+    `classifierTokensEst: ${info.classifierTokensEst}`,
+    `transcriptEntries: ${info.transcriptEntries}`,
+    `messages: ${info.messages}`,
+    `delta (classifierEst - mainLoop): ${info.classifierTokensEst - info.mainLoopTokens}`,
+  ].join('\n')
+  return [
+    section('ERROR', errorMessage(error)),
+    section('CONTEXT COMPARISON', comparison),
+    section('ACTION BEING CLASSIFIED', info.action),
+    section('SYSTEM PROMPT', systemPrompt),
+    section('USER PROMPT (transcript)', userPrompt),
+  ].join('\n')
+}
+
+/** Write what the failed request carried; the path, or null when it could not be written. */
 export async function dumpErrorPrompts(
   systemPrompt: string,
   userPrompt: string,
@@ -56,45 +64,27 @@ export async function dumpErrorPrompts(
     model: string
   },
 ): Promise<string | null> {
+  const path = getAutoModeClassifierErrorDumpPath()
   try {
-    const path = getAutoModeClassifierErrorDumpPath()
     await mkdir(dirname(path), { recursive: true })
-    const content =
-      `=== ERROR ===\n${errorMessage(error)}\n\n` +
-      `=== CONTEXT COMPARISON ===\n` +
-      `timestamp: ${new Date().toISOString()}\n` +
-      `model: ${contextInfo.model}\n` +
-      `mainLoopTokens: ${contextInfo.mainLoopTokens}\n` +
-      `classifierChars: ${contextInfo.classifierChars}\n` +
-      `classifierTokensEst: ${contextInfo.classifierTokensEst}\n` +
-      `transcriptEntries: ${contextInfo.transcriptEntries}\n` +
-      `messages: ${contextInfo.messages}\n` +
-      `delta (classifierEst - mainLoop): ${contextInfo.classifierTokensEst - contextInfo.mainLoopTokens}\n\n` +
-      `=== ACTION BEING CLASSIFIED ===\n${contextInfo.action}\n\n` +
-      `=== SYSTEM PROMPT ===\n${systemPrompt}\n\n` +
-      `=== USER PROMPT (transcript) ===\n${userPrompt}\n`
-    await writeFile(path, content, 'utf-8')
-    logForDebugging(`Dumped auto mode classifier error prompts to ${path}`)
+    await writeFile(path, renderDump(systemPrompt, userPrompt, error, contextInfo), 'utf8')
     return path
-  } catch {
+  } catch (writeError) {
+    logForDebugging(`auto mode classifier: could not write the error dump: ${errorMessage(writeError)}`, {
+      level: 'warn',
+    })
     return null
   }
 }
 
-/**
- * Detect API 400 "prompt is too long: N tokens > M maximum" errors and
- * parse the token counts. Returns undefined for any other error.
- * These are deterministic (same transcript → same error) so retrying
- * won't help — unlike 429/5xx which sideQuery already retries internally.
- */
+const PROMPT_TOO_LONG = /prompt is too long/i
+
+/** The token counts of a "prompt is too long" failure, or undefined for any other error. */
 export function detectPromptTooLong(
   error: unknown,
 ): ReturnType<typeof parsePromptTooLongTokenCounts> | undefined {
-  if (!(error instanceof Error)) return undefined
-  if (!error.message.toLowerCase().includes('prompt is too long')) {
-    return undefined
-  }
-  return parsePromptTooLongTokenCounts(error.message)
+  const message = errorMessage(error)
+  return PROMPT_TOO_LONG.test(message) ? parsePromptTooLongTokenCounts(message) : undefined
 }
 
 // 4xx statuses that are still transient: 408 (request timeout), 409 (conflict),

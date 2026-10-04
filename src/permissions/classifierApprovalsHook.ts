@@ -1,17 +1,11 @@
-/**
- * React hook for classifierApprovals store.
- * Split from classifierApprovals.ts so pure-state importers (permissions.ts,
- * toolExecution.ts, postCompactCleanup.ts) do not pull React into print.ts.
- */
-
 import { useSyncExternalStore } from 'react'
 import {
   isClassifierChecking,
   subscribeClassifierChecking,
 } from 'src/permissions/classifierApprovals.js'
 
+/** Re-renders whenever a check starts or ends, with whether this tool use is being checked. */
 export function useIsClassifierChecking(toolUseID: string): boolean {
-  return useSyncExternalStore(subscribeClassifierChecking, () =>
-    isClassifierChecking(toolUseID),
-  )
+  const snapshot = (): boolean => isClassifierChecking(toolUseID)
+  return useSyncExternalStore(subscribeClassifierChecking, snapshot, snapshot)
 }
