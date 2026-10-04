@@ -1,6 +1,6 @@
 ---
 name: permission-core-security-findings
-description: Phase-3 pins — a repo's settings start headless -p in bypassPermissions; batch writes under bypass skip Edit denies; read check asks on UNC paths before denies; whole-anchor deny patterns match nothing
+description: Phase-3 pins — repo settings start -p in bypass and can ship the bypass-warning skip; shift+tab approves into bypass silently; Monitor's always-allow saves a Bash prefix rule; .mcp.json approval defaults to "all future"; plus the rewrite-fixed deny holes
 type: project
 ---
 
@@ -41,7 +41,28 @@ behaviour.
   directories, labelled `cliArg`.
 - **Plan mode.** A tool's own allow rule (`Edit(src/**)`) gets past plan mode.
 - **First write check.** It creates `<start dir>/.claudin/plans`, as a side effect.
-[clipped: ~424 tokens of new_string from Edit] It misses broader rules
+- **One bypass acceptance covers every checkout** (`modeDialogs` 1). Startup also
+  takes the skip from a checkout's own `.claudin/settings.local.json`, so with the
+  repo-bypass item above a checkout can open an interactive session in bypass
+  with no warning at all.
+- **Shift+Tab on "Ready to code?" approves straight into bypass** (`modeDialogs` 4)
+  whenever bypass is offered; nothing on screen says so.
+- **A read's "Yes, during this session" inside the project turns on accept-edits
+  for the whole session** (`fileDialogs` 1); the file dialogs ignore the result's
+  suggestions and compute their own grant, so ask rules and protected paths
+  still offer accept-edits (`fileDialogs` 2). The config-home grant always names
+  `~/.claudin/**` even when `CLAUDIN_CONFIG_DIR` points elsewhere (`fileDialogs` 3),
+  and the project `.claudin` match ignores case, so `.CLAUDIN/x` grants
+  `Edit(/.claudin/**)` (`fileDialogs` 4).
+- **Monitor/Wait "don't ask again" saves a Bash prefix rule** (`toolDialogs` 2):
+  `make` → `Bash(make:*)`, `rm -rf x` → `Bash(rm -rf:*)`, words taken across
+  `&&` or a newline; plain Bash then stops asking too. The label says "Wait commands".
+- **The `.mcp.json` approval dialog** (`mcp/approvalDialogs`): Enter means "this
+  and all future servers" and every checklist row starts ticked; servers the
+  policy denies are still asked about. Queued fix: an answer copies the MERGED
+  approval lists into `.claudin/settings.local.json`, so a repo's self-approval
+  outlives the repo.
+- **Auto mode's dangerous-rule check is narrow.** It misses broader rules
   (`p*`, `* *`, `npm:*`, `python3.12:*`, `timeout:*`), and leaves dangerous
   rules from `flagSettings`, `policySettings` and `command` active (`shellRules` 4, 5).
 

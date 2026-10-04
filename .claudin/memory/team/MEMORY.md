@@ -42,12 +42,14 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
 
 ## Bugs
+- **LIVE ON MAIN:** [Trust dialog, .mcp.json approvals and include warning skipped for every non-Anthropic provider](bugs/trust-dialog-skipped-for-third-party-providers.md) — session marked trusted anyway
 - Found by the rewrite, not fixed: [skill args→shell](bugs/skill-arguments-reach-shell-pass.md) · [/tmp owner](bugs/tmpdir-ownership-unchecked.md) · [memory links](bugs/memory-carveout-follows-symlinks.md) · [.claudin walk](bugs/instruction-loader-walk-to-root-and-links.md) · [long-cwd dir](bugs/long-cwd-project-dir-depends-on-runtime.md) · [SGR/OSC 8](bugs/code-views-honour-sgr-and-osc8.md)
 - Pinned by the 10-02 cover round: [/config copies project allow rules to user scope](bugs/config-default-mode-copies-project-permissions.md) · [MCP OAuth uses CC's client id](bugs/mcp-oauth-presents-claude-code-client-id.md)
 - [MCP server names folding to `__` reach another server's rules; repos self-approve .mcp.json](bugs/mcp-server-name-folding-reaches-other-servers-rules.md) — pinned, not fixed
 - [Permission carve-outs compare paths as text: symlinks skip the prompt](bugs/permission-carveouts-compare-paths-as-text.md) — first fix after filePaths lands
 - [mcp/config: secrets written back expanded; broken managed file fails open](bugs/mcp-config-security-findings.md) — 4 fixes queued, 5 to decide
-- [Permission core: repo settings start -p in bypass; bypass batch writes skip denies](bugs/permission-core-security-findings.md) — 8 fixed in rewrites, 4 to decide
+- [Permission core + dialogs: repo bypass, silent shift+tab bypass, Monitor saves Bash rules](bugs/permission-core-security-findings.md) — trust items to decide
+- **LIVE ON MAIN:** [Worktree exit dialog force-removes attached worktrees, drops commits](bugs/worktree-exit-dialog-data-loss.md) — fix queued in rewrite
 - FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; Skill, SendMessage, worktree causes fixed; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error
