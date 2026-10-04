@@ -301,3 +301,32 @@ object is not modified.
   - No `any`, and no casts on `scope`: take a `ScopedMcpServerConfig` or an explicit `scope?`.
 - **Timeouts as named constants:** the 30-second OAuth request (revocation included) and the 10-second helper.
 - **Build-time constants.** `MACRO` stays out of the module, so its tests need no globals.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**Code.** The seven files were rewritten. New modules sit beside them:
+- `auth/credentialMaps` (typed store access);
+- `auth/hiddenPrompt`;
+- `auth/revocation/clientAuth` and `auth/revocation/signOut`;
+- `headersHelper/` (`trust`, `runHelper`, `parseOutput`, `mergeHeaders`, `readHelperHeaders`).
+
+The eight characterization suites and `src/mcp/auth.test.ts` pass unchanged.
+
+**Fixes, each with a test.**
+- **3.** The helper has a hard 10 s deadline: its own process group, SIGTERM, then SIGKILL.
+- **4.** The environment passes through with newlines.
+- **5.** A refusal made before trust is logged to the server's MCP log.
+- **6.** Header names merge case-insensitively.
+- **8.** Revocation is bounded at 30 s.
+- **12.** No trailing `\r` on a pasted secret.
+- **13.** Output that is not JSON is reported without quoting it.
+
+**Kept, tracked.** Findings 1 and 2: `-p` runs a project's helper without trust, and trust is per-workspace. Both are tracked in `bugs/mcp-config-security-findings.md`. Findings 7, 9, 10 and 11 are also kept.
+
+**Probes.** `rewrite-mcp-auth.json` holds 155 probes. The older `mcpAuth.json` (19 probes) and `rewrite-levers-mcp-auth.json` (18) were re-pointed with the same mutations, and all three specs were proved in the checkout.
+
+**Residue, reviewed.** What remains is contract:
+- 17 lines of Claude Code: signatures, and the helper's `exec` options.
+- 22 lines of openclaude: the `OAuthCallbackValidationResult` union and the OAuth callback parameter names (`code`, `state`, `error`, `error_description`, `error_uri`), which the protocol fixes.

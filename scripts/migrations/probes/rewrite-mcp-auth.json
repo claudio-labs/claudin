@@ -1,235 +1,186 @@
 {
   "test": [
     "src/mcp/headersHelper.characterization.test.ts",
-    "src/mcp/auth/authFetch.characterization.test.ts",
-    "src/mcp/auth/clientSecretStore.characterization.test.ts",
-    "src/mcp/auth/tokenRevocation.characterization.test.ts",
     "src/mcp/auth/serverKey.characterization.test.ts",
     "src/mcp/auth/callbackParams.characterization.test.ts",
     "src/mcp/auth/oauthErrors.characterization.test.ts",
-    "src/mcp/auth/barrel.characterization.test.ts"
+    "src/mcp/auth/barrel.characterization.test.ts",
+    "src/mcp/auth/authFetch.characterization.test.ts",
+    "src/mcp/auth/clientSecretStore.characterization.test.ts",
+    "src/mcp/auth/tokenRevocation.characterization.test.ts",
+    "src/mcp/auth.test.ts",
+    "src/mcp/headersHelper.fixes.test.ts",
+    "src/mcp/auth/auth.fixes.test.ts"
   ],
-  "source": "src/mcp/headersHelper.ts",
+  "source": "src/mcp/auth/serverKey.ts",
   "probes": [
-    {
-      "name": "headersHelper: project scope no longer waits for trust",
-      "find": "  return config.scope === 'project' || config.scope === 'local'\n",
-      "replace": "  return config.scope === 'local'\n"
-    },
-    {
-      "name": "headersHelper: local scope no longer waits for trust",
-      "find": "  return config.scope === 'project' || config.scope === 'local'\n",
-      "replace": "  return config.scope === 'project'\n"
-    },
-    {
-      "name": "headersHelper: trust checked only when non-interactive",
-      "find": "    !getIsNonInteractiveSession()\n",
-      "replace": "    getIsNonInteractiveSession()\n"
-    },
-    {
-      "name": "headersHelper: an untrusted workspace runs the helper anyway",
-      "find": "    if (!hasTrust) {\n",
-      "replace": "    if (false) {\n"
-    },
-    {
-      "name": "headersHelper: timeout raised to a minute",
-      "find": "      timeout: 10000,\n",
-      "replace": "      timeout: 60000,\n"
-    },
-    {
-      "name": "headersHelper: timeout cut to one second",
-      "find": "      timeout: 10000,\n",
-      "replace": "      timeout: 1000,\n"
-    },
-    {
-      "name": "headersHelper: server name variable carries the URL",
-      "find": "        CLAUDIN_MCP_SERVER_NAME: serverName,\n",
-      "replace": "        CLAUDIN_MCP_SERVER_NAME: config.url,\n"
-    },
-    {
-      "name": "headersHelper: server URL variable dropped",
-      "find": "        CLAUDIN_MCP_SERVER_URL: config.url,\n",
-      "replace": ""
-    },
-    {
-      "name": "headersHelper: parent environment not inherited",
-      "find": "        ...process.env,\n",
-      "replace": "        PATH: process.env.PATH,\n"
-    },
-    {
-      "name": "headersHelper: a failing exit code is ignored",
-      "find": "    if (execResult.code !== 0 || !execResult.stdout) {\n",
-      "replace": "    if (!execResult.stdout) {\n"
-    },
-    {
-      "name": "headersHelper: a JSON array is accepted",
-      "find": "      Array.isArray(headers)\n",
-      "replace": "      false\n"
-    },
-    {
-      "name": "headersHelper: non-string header values accepted",
-      "find": "      if (typeof value !== 'string') {\n",
-      "replace": "      if (typeof value === 'symbol') {\n"
-    },
-    {
-      "name": "headersHelper: static headers win over the helper",
-      "find": "    ...staticHeaders,\n    ...dynamicHeaders,\n",
-      "replace": "    ...dynamicHeaders,\n    ...staticHeaders,\n"
-    },
-    {
-      "name": "headersHelper: a failure throws instead of yielding null",
-      "find": "    // Return null instead of throwing to avoid blocking the connection\n    return null\n",
-      "replace": "    throw error\n"
-    },
-    {
-      "name": "callbackParams: code no longer redacted",
-      "source": "src/mcp/auth/callbackParams.ts",
-      "find": "  'code',\n]",
-      "replace": "]"
-    },
-    {
-      "name": "callbackParams: state no longer redacted",
-      "source": "src/mcp/auth/callbackParams.ts",
-      "find": "  'state',\n  'nonce',\n",
-      "replace": "  'nonce',\n"
-    },
-    {
-      "name": "callbackParams: a repeated parameter takes its first value even when empty",
-      "source": "src/mcp/auth/callbackParams.ts",
-      "find": "    return value.find(item => item.length > 0)\n",
-      "replace": "    return value[0]\n"
-    },
-    {
-      "name": "callbackParams: an absent state is not a mismatch",
-      "source": "src/mcp/auth/callbackParams.ts",
-      "find": "  if (state !== oauthState) {\n",
-      "replace": "  if (state !== undefined && state !== oauthState) {\n"
-    },
-    {
-      "name": "callbackParams: a code beats an error",
-      "source": "src/mcp/auth/callbackParams.ts",
-      "find": "  if (error) {\n",
-      "replace": "  if (error && !code) {\n"
-    },
-    {
-      "name": "clientSecretStore: environment variable renamed",
-      "source": "src/mcp/auth/clientSecretStore.ts",
-      "find": "  const envSecret = process.env.MCP_CLIENT_SECRET\n",
-      "replace": "  const envSecret = process.env.MCP_OAUTH_CLIENT_SECRET\n"
-    },
-    {
-      "name": "clientSecretStore: backspace no longer edits",
-      "source": "src/mcp/auth/clientSecretStore.ts",
-      "find": "        secret = secret.slice(0, -1)\n",
-      "replace": "        secret += c\n"
-    },
-    {
-      "name": "clientSecretStore: saving drops other servers' secrets",
-      "source": "src/mcp/auth/clientSecretStore.ts",
-      "find": "      ...existingData.mcpOAuthClientConfig,\n",
-      "replace": ""
-    },
-    {
-      "name": "clientSecretStore: clearing leaves the secret",
-      "source": "src/mcp/auth/clientSecretStore.ts",
-      "find": "    delete existingData.mcpOAuthClientConfig[serverKey]\n",
-      "replace": ""
-    },
-    {
-      "name": "oauthErrors: token_expired no longer an invalid_grant alias",
-      "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  'token_expired',\n])",
-      "replace": "])"
-    },
-    {
-      "name": "oauthErrors: a token response with an error key is rewritten",
-      "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  if (OAuthTokensSchema.safeParse(parsed).success) {\n",
-      "replace": "  if (false) {\n"
-    },
-    {
-      "name": "oauthErrors: rewritten to 401 instead of 400",
-      "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "    status: 400,\n",
-      "replace": "    status: 401,\n"
-    },
-    {
-      "name": "oauthErrors: only 5xx left alone",
-      "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  if (!response.ok) {\n",
-      "replace": "  if (response.status >= 500) {\n"
-    },
-    {
-      "name": "serverKey: digest shortened",
-      "source": "src/mcp/auth/serverKey.ts",
-      "find": "    .substring(0, 16)\n",
-      "replace": "    .substring(0, 12)\n"
-    },
-    {
-      "name": "serverKey: headers left out of the identity",
-      "source": "src/mcp/auth/serverKey.ts",
-      "find": "    headers: serverConfig.headers || {},\n",
-      "replace": ""
-    },
-    {
-      "name": "serverKey: a refresh token alone counts as no token",
-      "source": "src/mcp/auth/serverKey.ts",
-      "find": "  return entry !== undefined && !entry.accessToken && !entry.refreshToken\n",
-      "replace": "  return entry !== undefined && !entry.accessToken\n"
-    },
-    {
-      "name": "authFetch: every method's body is normalized",
-      "source": "src/mcp/auth/authFetch.ts",
-      "find": "    const isPost = init?.method?.toUpperCase() === 'POST'\n",
-      "replace": "    const isPost = true\n"
-    },
-    {
-      "name": "authFetch: a configured metadata URL may be http",
-      "source": "src/mcp/auth/authFetch.ts",
-      "find": "    if (!configuredMetadataUrl.startsWith('https://')) {\n",
-      "replace": "    if (false) {\n"
-    },
-    {
-      "name": "authFetch: caller abort ignored once in flight",
-      "source": "src/mcp/auth/authFetch.ts",
-      "find": "    init.signal.addEventListener('abort', abort)\n",
-      "replace": ""
-    },
-    {
-      "name": "tokenRevocation: refresh token never revoked",
-      "source": "src/mcp/auth/tokenRevocation.ts",
-      "find": "          if (tokenData.refreshToken) {\n",
-      "replace": "          if (false) {\n"
-    },
-    {
-      "name": "tokenRevocation: Bearer retry on 403 instead of 401",
-      "source": "src/mcp/auth/tokenRevocation.ts",
-      "find": "      error.response?.status === 401 &&\n",
-      "replace": "      error.response?.status === 403 &&\n"
-    },
-    {
-      "name": "tokenRevocation: Bearer retry keeps the client secret",
-      "source": "src/mcp/auth/tokenRevocation.ts",
-      "find": "      params.delete('client_secret')\n",
-      "replace": ""
-    },
-    {
-      "name": "tokenRevocation: post chosen even when basic is allowed",
-      "source": "src/mcp/auth/tokenRevocation.ts",
-      "find": "            !authMethods.includes('client_secret_basic') &&\n",
-      "replace": ""
-    },
-    {
-      "name": "tokenRevocation: Basic credentials not URL-encoded",
-      "source": "src/mcp/auth/tokenRevocation.ts",
-      "find": "        `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`,\n",
-      "replace": "        `${clientId}:${clientSecret}`,\n"
-    },
-    {
-      "name": "tokenRevocation: local tokens kept after revocation",
-      "source": "src/mcp/auth/tokenRevocation.ts",
-      "find": "  // Always clear local tokens, regardless of server-side revocation result.\n  clearServerTokensFromSecureStorage(serverName, serverConfig)\n",
-      "replace": ""
-    }
+    { "name": "key: type before url, the member order is the format", "find": "    type: serverConfig.type,\n    url: serverConfig.url,", "replace": "    url: serverConfig.url,\n    type: serverConfig.type," },
+    { "name": "key: 16 hex characters", "find": "const DIGEST_HEX_CHARS = 16", "replace": "const DIGEST_HEX_CHARS = 12" },
+    { "name": "key: absent headers hash as {}", "find": "headers: serverConfig.headers ?? {},", "replace": "headers: serverConfig.headers," },
+    { "name": "key: name and digest joined by |", "find": "return `${serverName}|${digest", "replace": "return `${serverName}#${digest" },
+    { "name": "discovery-only: a refresh token counts as a token", "find": "return !entry.accessToken && !entry.refreshToken", "replace": "return !entry.accessToken" },
+    { "name": "discovery-only: no entry is false", "find": "if (!entry) return false", "replace": "if (!entry) return true" },
+
+    { "name": "store: a token put keeps the other servers", "source": "src/mcp/auth/credentialMaps.ts", "find": "const map: OAuthMap = { ...store.mcpOAuth, [key]: entry }", "replace": "const map: OAuthMap = { [key]: entry }" },
+    { "name": "store: a token put keeps the other maps", "source": "src/mcp/auth/credentialMaps.ts", "find": "writeStore({ ...store, mcpOAuth: map })", "replace": "writeStore({ mcpOAuth: map })" },
+    { "name": "store refusal: removing an absent token entry writes nothing", "source": "src/mcp/auth/credentialMaps.ts", "find": "const map = store?.mcpOAuth\n  if (!store || !map || !Object.hasOwn(map, key)) return", "replace": "const map = store?.mcpOAuth\n  if (!store || !map) return" },
+    { "name": "store: a token removal keeps the other maps", "source": "src/mcp/auth/credentialMaps.ts", "find": "writeStore({ ...store, mcpOAuth: withoutKey(map, key) })", "replace": "writeStore({ mcpOAuth: withoutKey(map, key) })" },
+    { "name": "store: a removal drops only that key", "source": "src/mcp/auth/credentialMaps.ts", "find": "  delete rest[key]\n", "replace": "  for (const k of Object.keys(rest)) delete rest[k]\n" },
+    { "name": "store: a secret put keeps the other maps", "source": "src/mcp/auth/credentialMaps.ts", "find": "writeStore({ ...store, mcpOAuthClientConfig: map })", "replace": "writeStore({ mcpOAuthClientConfig: map })" },
+    { "name": "store: a secret put keeps other servers' secrets", "source": "src/mcp/auth/credentialMaps.ts", "find": "    ...store.mcpOAuthClientConfig,\n", "replace": "" },
+    { "name": "store refusal: removing an absent secret writes nothing", "source": "src/mcp/auth/credentialMaps.ts", "find": "const map = store?.mcpOAuthClientConfig\n  if (!store || !map || !Object.hasOwn(map, key)) return", "replace": "const map = store?.mcpOAuthClientConfig\n  if (!store || !map) return" },
+    { "name": "store: a secret removal keeps the other maps", "source": "src/mcp/auth/credentialMaps.ts", "find": "writeStore({ ...store, mcpOAuthClientConfig: withoutKey(map, key) })", "replace": "writeStore({ mcpOAuthClientConfig: withoutKey(map, key) })" },
+
+    { "name": "redact: nonce is sensitive", "source": "src/mcp/auth/callbackParams.ts", "find": "  'nonce',\n", "replace": "" },
+    { "name": "redact: code is sensitive", "source": "src/mcp/auth/callbackParams.ts", "find": "  'code',\n]", "replace": "]" },
+    { "name": "redact: absent parameters are not invented", "source": "src/mcp/auth/callbackParams.ts", "find": "if (parsed.searchParams.has(name)) parsed.searchParams.set(name, REDACTION)", "replace": "parsed.searchParams.set(name, REDACTION)" },
+    { "name": "redact: the marker text", "source": "src/mcp/auth/callbackParams.ts", "find": "const REDACTION = '[REDACTED]'", "replace": "const REDACTION = '***'" },
+    { "name": "redact: a string that is not a URL comes back unchanged", "source": "src/mcp/auth/callbackParams.ts", "find": "  } catch {\n    return url\n  }", "replace": "  } catch {\n    return ''\n  }" },
+    { "name": "param: first non-empty item of an array", "source": "src/mcp/auth/callbackParams.ts", "find": "return value.find(item => item !== '')", "replace": "return value[0]" },
+    { "name": "param: an empty string is undefined", "source": "src/mcp/auth/callbackParams.ts", "find": "return value ? value : undefined", "replace": "return value ?? undefined" },
+    { "name": "redirect refusal: an absent state is a mismatch", "source": "src/mcp/auth/callbackParams.ts", "find": "if (state !== oauthState) {", "replace": "if (state !== undefined && state !== oauthState) {" },
+    { "name": "redirect: an error wins over a code", "source": "src/mcp/auth/callbackParams.ts", "find": "if (error !== undefined) {", "replace": "if (error !== undefined && params.code === undefined) {" },
+    { "name": "redirect: message carries the description", "source": "src/mcp/auth/callbackParams.ts", "find": "if (description) message += ` - ${description}`", "replace": "if (description) message += `: ${description}`" },
+    { "name": "redirect: message carries the uri", "source": "src/mcp/auth/callbackParams.ts", "find": "if (uri) message += ` (See: ${uri})`", "replace": "if (uri) message += ` <${uri}>`" },
+    { "name": "redirect: an absent description is ''", "source": "src/mcp/auth/callbackParams.ts", "find": "getFirstOAuthCallbackParam(params.error_description) ?? ''", "replace": "getFirstOAuthCallbackParam(params.error_description) ?? 'none'" },
+    { "name": "redirect: no code is missing_result", "source": "src/mcp/auth/callbackParams.ts", "find": "return code === undefined ? { type: 'missing_result' } : { type: 'code', code }", "replace": "return { type: 'code', code: code ?? '' }" },
+
+    { "name": "error body: a failed response is handed back unread", "source": "src/mcp/auth/oauthErrors.ts", "find": "if (!response.ok) return response", "replace": "if (response.status >= 500) return response" },
+    { "name": "error body: a token response wins over an error key", "source": "src/mcp/auth/oauthErrors.ts", "find": "  if (OAuthTokensSchema.safeParse(body).success) return undefined\n", "replace": "" },
+    { "name": "error body: token_expired is an alias", "source": "src/mcp/auth/oauthErrors.ts", "find": "  'token_expired',\n", "replace": "" },
+    { "name": "error body: the alias default description", "source": "src/mcp/auth/oauthErrors.ts", "find": "`Server returned non-standard error code: ${error}`", "replace": "`non-standard: ${error}`" },
+    { "name": "error body: an alias keeps the server description", "source": "src/mcp/auth/oauthErrors.ts", "find": "        error_description ??\n", "replace": "" },
+    { "name": "error body: rewritten to status 400", "source": "src/mcp/auth/oauthErrors.ts", "find": "    status: 400,\n", "replace": "    status: 401,\n" },
+    { "name": "error body: rewritten status text", "source": "src/mcp/auth/oauthErrors.ts", "find": "statusText: 'Bad Request',", "replace": "statusText: 'Bad'," },
+    { "name": "error body: rewritten keeps the headers", "source": "src/mcp/auth/oauthErrors.ts", "find": "    headers: response.headers,\n", "replace": "" },
+    { "name": "error body: a standard code keeps error_uri", "source": "src/mcp/auth/oauthErrors.ts", "find": "return { error, error_description, error_uri }", "replace": "return { error, error_description }" },
+    { "name": "error body: text that is not JSON passes", "source": "src/mcp/auth/oauthErrors.ts", "find": "  } catch {\n    return undefined\n  }", "replace": "  } catch (cause) {\n    throw cause\n  }" },
+    { "name": "error body: a pass-through is the original response", "source": "src/mcp/auth/oauthErrors.ts", "find": "if (!standard) return response", "replace": "if (!standard) return new Response(await response.text())" },
+
+    { "name": "fetch: the caller's signal joins the deadline", "source": "src/mcp/auth/authFetch.ts", "find": "? AbortSignal.any([init.signal, deadline])", "replace": "? deadline" },
+    { "name": "fetch: POST in any case", "source": "src/mcp/auth/authFetch.ts", "find": "const isPost = init?.method?.toUpperCase() === 'POST'", "replace": "const isPost = init?.method === 'POST'" },
+    { "name": "fetch: only POST answers are rewritten", "source": "src/mcp/auth/authFetch.ts", "find": "return isPost ? normalizeOAuthErrorBody(response) : response", "replace": "return normalizeOAuthErrorBody(response)" },
+    { "name": "fetch: the OAuth request timeout is 30 s", "source": "src/mcp/auth/authFetch.ts", "find": "export const OAUTH_REQUEST_TIMEOUT_MS = 30_000", "replace": "export const OAUTH_REQUEST_TIMEOUT_MS = 20_000" },
+    { "name": "metadata refusal: a configured URL must be https", "source": "src/mcp/auth/authFetch.ts", "find": "if (!metadataUrl.startsWith('https://')) {", "replace": "if (!metadataUrl.startsWith('http')) {" },
+    { "name": "metadata refusal: a non-OK configured URL throws", "source": "src/mcp/auth/authFetch.ts", "find": "  if (!response.ok) {\n    throw", "replace": "  if (response.status >= 500) {\n    throw" },
+    { "name": "metadata: the configured URL is asked for JSON", "source": "src/mcp/auth/authFetch.ts", "find": "headers: { Accept: 'application/json' },", "replace": "headers: {}," },
+    { "name": "metadata: the configured URL goes through the given fetch", "source": "src/mcp/auth/authFetch.ts", "find": "fetchFn ?? createAuthFetch(),", "replace": "createAuthFetch()," },
+    { "name": "metadata: discovery gets the given fetch", "source": "src/mcp/auth/authFetch.ts", "find": "      resourceMetadataUrl,\n      fetchFn,\n    })", "replace": "      resourceMetadataUrl,\n    })" },
+    { "name": "metadata: discovery starts at the given resource metadata URL", "source": "src/mcp/auth/authFetch.ts", "find": "      resourceMetadataUrl,\n      fetchFn,\n    })", "replace": "      fetchFn,\n    })" },
+    { "name": "metadata: discovered metadata is the answer", "source": "src/mcp/auth/authFetch.ts", "find": "if (info.authorizationServerMetadata) {\n      return info.authorizationServerMetadata\n    }", "replace": "if (info.authorizationServerMetadata) {\n    }" },
+    { "name": "metadata: a failed discovery falls back", "source": "src/mcp/auth/authFetch.ts", "find": "  } catch (error) {\n    logMCPDebug(\n      serverName,\n      `Authorization server discovery failed", "replace": "  } catch (error) {\n    throw error\n    logMCPDebug(\n      serverName,\n      `Authorization server discovery failed" },
+    { "name": "metadata: a root URL gets no second attempt", "source": "src/mcp/auth/authFetch.ts", "find": "if (resource.pathname === '/') return undefined", "replace": "if (resource.pathname === '') return undefined" },
+    { "name": "metadata: the path-aware fallback", "source": "src/mcp/auth/authFetch.ts", "find": "return discoverAuthorizationServerMetadata(resource, { fetchFn })", "replace": "return undefined" },
+
+    { "name": "secret: the environment wins", "source": "src/mcp/auth/clientSecretStore.ts", "find": "if (fromEnv) return fromEnv", "replace": "if (fromEnv) void fromEnv" },
+    { "name": "secret refusal: no TTY", "source": "src/mcp/auth/clientSecretStore.ts", "find": "if (!process.stdin.isTTY) {", "replace": "if (!process.stdin.isTTY) {\n    return ''\n  }\n  if (false) {" },
+    { "name": "secret refusal: the message names the variable", "source": "src/mcp/auth/clientSecretStore.ts", "find": "Set ${SECRET_ENV_VAR} env var instead.", "replace": "Set the env var instead." },
+    { "name": "secret: saved under the server key", "source": "src/mcp/auth/clientSecretStore.ts", "find": "putClientSecret(getServerKey(serverName, serverConfig), clientSecret)", "replace": "putClientSecret(serverName, clientSecret)" },
+    { "name": "secret: cleared under the server key", "source": "src/mcp/auth/clientSecretStore.ts", "find": "removeClientSecret(getServerKey(serverName, serverConfig))", "replace": "removeClientSecret(serverName)" },
+
+    { "name": "prompt: Ctrl+C cancels", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "    if (char === CTRL_C) return { status: 'cancelled' }\n", "replace": "" },
+    { "name": "prompt: LF is Enter", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "new Set(['\\r', '\\n'])", "replace": "new Set(['\\r'])" },
+    { "name": "prompt: BS is a backspace", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "new Set(['\\u007F', '\\b'])", "replace": "new Set(['\\u007F'])" },
+    { "name": "prompt (Finding 12): a chunk is read character by character", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "for (const char of chunk) {", "replace": "for (const char of [chunk]) {" },
+    { "name": "prompt: backspace removes one character", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "line = Array.from(line).slice(0, -1).join('')", "replace": "line = ''" },
+    { "name": "prompt: the stdin listener is removed", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "      stdin.removeListener('data', onData)\n", "replace": "" },
+    { "name": "prompt: raw mode on while asking", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "    setRawMode(true)\n", "replace": "    setRawMode(false)\n" },
+    { "name": "prompt: raw mode off afterwards", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "      setRawMode(false)\n", "replace": "" },
+    { "name": "prompt: the question goes to stderr", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "  stderr.write(prompt)\n", "replace": "" },
+    { "name": "prompt: a newline after Enter", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "      stderr.write('\\n')\n", "replace": "" },
+    { "name": "prompt: Enter resolves the whole line", "source": "src/mcp/auth/hiddenPrompt.ts", "find": "      resolve(state.text)", "replace": "      resolve(typed)" },
+
+    { "name": "client auth: Basic unless the server rules it out", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "    !advertised.includes('client_secret_basic')", "replace": "    true" },
+    { "name": "client auth: post must be allowed", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "    advertised.includes('client_secret_post') &&\n", "replace": "" },
+    { "name": "client auth: the revocation list before the token list", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "metadata.revocation_endpoint_auth_methods_supported ??\n    metadata.token_endpoint_auth_methods_supported", "replace": "metadata.token_endpoint_auth_methods_supported ??\n    metadata.revocation_endpoint_auth_methods_supported" },
+    { "name": "client auth: an id alone is a public client", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "if (!clientSecret) return { kind: 'public', clientId }", "replace": "if (!clientSecret) return { kind: 'none' }" },
+    { "name": "client auth: no id, no client authentication", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "if (!clientId) return { kind: 'none' }", "replace": "if (!clientId) return { kind: 'public', clientId: '' }" },
+    { "name": "client auth: Basic credentials are URL-encoded", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`", "replace": "`${clientId}:${clientSecret}`" },
+    { "name": "client auth: post carries the secret", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "      form.set('client_secret', auth.clientSecret)\n", "replace": "" },
+    { "name": "client auth: a public client sends its id", "source": "src/mcp/auth/revocation/clientAuth.ts", "find": "    case 'public':\n      form.set('client_id', auth.clientId)\n", "replace": "    case 'public':\n" },
+
+    { "name": "revoke: the refresh token first", "source": "src/mcp/auth/revocation/signOut.ts", "find": "    [entry.refreshToken, 'refresh_token'],\n    [entry.accessToken, 'access_token'],\n", "replace": "    [entry.accessToken, 'access_token'],\n    [entry.refreshToken, 'refresh_token'],\n" },
+    { "name": "revoke: token_type_hint is sent", "source": "src/mcp/auth/revocation/signOut.ts", "find": "new URLSearchParams({ token, token_type_hint: hint })", "replace": "new URLSearchParams({ token })" },
+    { "name": "revoke refusal: no Bearer retry without an access token", "source": "src/mcp/auth/revocation/signOut.ts", "find": "if (response.status === 401 && accessToken) {", "replace": "if (response.status === 401) {" },
+    { "name": "revoke: only a 401 is retried", "source": "src/mcp/auth/revocation/signOut.ts", "find": "if (response.status === 401 && accessToken) {", "replace": "if (response.status >= 400 && accessToken) {" },
+    { "name": "revoke: the retry carries no client credentials", "source": "src/mcp/auth/revocation/signOut.ts", "find": "      { kind: 'none' },\n", "replace": "      auth,\n" },
+    { "name": "revoke: the retry is a Bearer", "source": "src/mcp/auth/revocation/signOut.ts", "find": "if (bearer) headers.Authorization = `Bearer ${bearer}`", "replace": "if (bearer) headers.Authorization = `Token ${bearer}`" },
+    { "name": "revoke: one token's failure does not stop the other", "source": "src/mcp/auth/revocation/signOut.ts", "find": "      logMCPDebug(serverName, `Revoking ${hint} failed: ${errorMessage(error)}`)", "replace": "      throw error" },
+    { "name": "revoke: a failed lookup is swallowed", "source": "src/mcp/auth/revocation/signOut.ts", "find": "      logMCPDebug(serverName, `Token revocation skipped: ${errorMessage(error)}`)", "replace": "      throw error" },
+    { "name": "revoke: the issuer recorded at sign-in", "source": "src/mcp/auth/revocation/signOut.ts", "find": "entry.discoveryState?.authorizationServerUrl ?? config.url", "replace": "config.url" },
+    { "name": "revoke: the configured metadata URL is honoured", "source": "src/mcp/auth/revocation/signOut.ts", "find": "    config.oauth?.authServerMetadataUrl,\n", "replace": "    undefined,\n" },
+    { "name": "revoke refusal: nothing is contacted without a token", "source": "src/mcp/auth/revocation/signOut.ts", "find": "if (entry && (entry.accessToken || entry.refreshToken)) {", "replace": "if (entry) {" },
+    { "name": "revoke (Finding 8): requests go through the timed fetch", "source": "src/mcp/auth/revocation/signOut.ts", "find": "        createTimedAuthFetch(deps.requestTimeoutMs),\n", "replace": "        fetch,\n" },
+    { "name": "revoke (Finding 8): the default deadline is the OAuth one", "source": "src/mcp/auth/revocation/signOut.ts", "find": "  requestTimeoutMs: OAUTH_REQUEST_TIMEOUT_MS,\n", "replace": "  requestTimeoutMs: 600_000,\n" },
+    { "name": "step-up: either part is enough to keep a remnant", "source": "src/mcp/auth/revocation/signOut.ts", "find": "if (!stepUpScope && !discoveryState) return undefined", "replace": "if (!stepUpScope) return undefined" },
+    { "name": "step-up: discoveryState cut to its URLs", "source": "src/mcp/auth/revocation/signOut.ts", "find": "    remnant.discoveryState = {\n      authorizationServerUrl: discoveryState.authorizationServerUrl,\n    }", "replace": "    remnant.discoveryState = { ...discoveryState }" },
+    { "name": "step-up: resourceMetadataUrl kept", "source": "src/mcp/auth/revocation/signOut.ts", "find": "      remnant.discoveryState.resourceMetadataUrl =\n        discoveryState.resourceMetadataUrl\n", "replace": "" },
+    { "name": "step-up: stepUpScope kept", "source": "src/mcp/auth/revocation/signOut.ts", "find": "  if (stepUpScope) remnant.stepUpScope = stepUpScope\n", "replace": "" },
+    { "name": "step-up: the remnant holds no token", "source": "src/mcp/auth/revocation/signOut.ts", "find": "    accessToken: '',\n    expiresAt: 0,", "replace": "    accessToken: 'stale',\n    expiresAt: 0," },
+    { "name": "step-up: kept only when asked", "source": "src/mcp/auth/revocation/signOut.ts", "find": "preserveStepUpState && entry ? stepUpRemnant(entry) : undefined", "replace": "entry ? stepUpRemnant(entry) : undefined" },
+    { "name": "sign-out: the local entry is always cleared", "source": "src/mcp/auth/revocation/signOut.ts", "find": "  else removeOAuthEntry(key)", "replace": "  else void key" },
+    { "name": "sign-out: the option reaches the work", "source": "src/mcp/auth/tokenRevocation.ts", "find": "    preserveStepUpState,\n    DEFAULT_REVOCATION_DEPS,", "replace": "    false,\n    DEFAULT_REVOCATION_DEPS," },
+    { "name": "clear: removes under the server key", "source": "src/mcp/auth/tokenRevocation.ts", "find": "  removeOAuthEntry(getServerKey(serverName, serverConfig))", "replace": "  removeOAuthEntry(serverName)" },
+
+    { "name": "headers: the static headers stay under the helper's", "source": "src/mcp/headersHelper.ts", "find": "return mergeHeaders(config.headers ?? {}, fromHelper ?? {})", "replace": "return mergeHeaders({}, fromHelper ?? {})" },
+    { "name": "merge (Finding 6): names compared case-insensitively", "source": "src/mcp/headersHelper/mergeHeaders.ts", "find": "const replaced = new Set(Object.keys(overlay).map(name => name.toLowerCase()))", "replace": "const replaced = new Set(Object.keys(overlay))" },
+    { "name": "merge: the helper's headers are laid over", "source": "src/mcp/headersHelper/mergeHeaders.ts", "find": "return { ...Object.fromEntries(kept), ...overlay }", "replace": "return { ...Object.fromEntries(kept) }" },
+
+    { "name": "trust refusal: local servers are gated", "source": "src/mcp/headersHelper/trust.ts", "find": "new Set(['project', 'local'])", "replace": "new Set(['project'])" },
+    { "name": "trust refusal: project servers are gated", "source": "src/mcp/headersHelper/trust.ts", "find": "new Set(['project', 'local'])", "replace": "new Set(['local'])" },
+    { "name": "trust (Finding 1, parity): a non-interactive session runs", "source": "src/mcp/headersHelper/trust.ts", "find": "  if (!interactive) return 'run'\n", "replace": "" },
+    { "name": "trust: other scopes are not gated", "source": "src/mcp/headersHelper/trust.ts", "find": "if (scope === undefined || !WORKSPACE_SCOPES.has(scope)) return 'run'", "replace": "if (scope === undefined) return 'run'" },
+    { "name": "trust: no scope is not gated", "source": "src/mcp/headersHelper/trust.ts", "find": "if (scope === undefined || !WORKSPACE_SCOPES.has(scope)) return 'run'", "replace": "if (scope !== undefined && !WORKSPACE_SCOPES.has(scope)) return 'run'" },
+    { "name": "trust: a trusted workspace runs", "source": "src/mcp/headersHelper/trust.ts", "find": "return isWorkspaceTrusted() ? 'run' : 'refuse'", "replace": "return 'refuse'" },
+    { "name": "trust refusal: an untrusted workspace is refused", "source": "src/mcp/headersHelper/trust.ts", "find": "return isWorkspaceTrusted() ? 'run' : 'refuse'", "replace": "return 'run'" },
+
+    { "name": "helper refusal: an empty helper is no helper", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "if (!command) return null", "replace": "if (command === undefined) return null" },
+    { "name": "helper: interactivity comes from the session", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "isInteractive: () => !getIsNonInteractiveSession(),", "replace": "isInteractive: () => true," },
+    { "name": "helper: trust comes from the trust dialog", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "isWorkspaceTrusted: checkHasTrustDialogAccepted,", "replace": "isWorkspaceTrusted: () => false," },
+    { "name": "helper: the scope is read from the config", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "return 'scope' in config && typeof config.scope === 'string'", "replace": "return false && 'scope' in config && typeof config.scope === 'string'" },
+    { "name": "helper refusal: a refusal stops the run", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "    if (decision === 'refuse') {", "replace": "    if (decision === 'refuse' && false) {" },
+    { "name": "helper (Finding 5): the refusal is logged", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "      deps.logToServer(\n        serverName,\n        `headersHelper for MCP server '${serverName}' was not run", "replace": "      String(\n        serverName,\n        `headersHelper for MCP server '${serverName}' was not run" },
+    { "name": "helper (Finding 5): the refusal names workspace trust", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "was not run: workspace trust has not been accepted for this project yet.", "replace": "was not run." },
+    { "name": "helper env: the server name", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "CLAUDIN_MCP_SERVER_NAME: serverName,", "replace": "CLAUDIN_MCP_SERVER: serverName," },
+    { "name": "helper env: the server URL", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "CLAUDIN_MCP_SERVER_URL: config.url,", "replace": "CLAUDIN_MCP_URL: config.url," },
+    { "name": "helper env: the process environment is inherited", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "      ...process.env,\n", "replace": "" },
+    { "name": "helper report: to the server log", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "  deps.logToServer(serverName, message)\n", "replace": "" },
+    { "name": "helper report: to the error log", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "  deps.logError(new Error(message))\n", "replace": "" },
+    { "name": "helper report: the prefix", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "Error getting MCP headers from headersHelper for server '${serverName}': ${reason}", "replace": "headersHelper failed for '${serverName}': ${reason}" },
+    { "name": "helper report: a failed run's reason", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "        `headersHelper for MCP server '${serverName}' did not return a valid value`,\n", "replace": "        `headersHelper for MCP server '${serverName}' failed`,\n" },
+    { "name": "helper report: empty output's reason", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "      return `${subject} did not return a valid value`", "replace": "      return `${subject} printed nothing`" },
+    { "name": "helper report (Finding 13): output that is not JSON", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "      return `${subject} did not print valid JSON`", "replace": "      return `${subject} is not valid JSON`" },
+    { "name": "helper report: not an object", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "must return a JSON object with string key-value pairs`", "replace": "must return an object`" },
+    { "name": "helper report: a value that is not a string", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "returned non-string value for key \"${verdict.key}\": ${verdict.valueType}", "replace": "returned non-string value for key ${verdict.key}: ${verdict.valueType}" },
+    { "name": "helper (Finding 3): the deadline is 10 s", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "export const HELPER_TIMEOUT_MS = 10_000", "replace": "export const HELPER_TIMEOUT_MS = 13_500" },
+    { "name": "helper: the output limit is about 1 MB", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "const HELPER_MAX_OUTPUT_BYTES = 1024 * 1024", "replace": "const HELPER_MAX_OUTPUT_BYTES = 2 * 1024 * 1024" },
+    { "name": "helper: an exception ends in null and a report", "source": "src/mcp/headersHelper/readHelperHeaders.ts", "find": "  } catch (error) {\n    report(deps, serverName, errorMessage(error))\n    return null\n  }", "replace": "  } catch (error) {\n    throw error\n  }" },
+
+    { "name": "parse: the output is trimmed", "source": "src/mcp/headersHelper/parseOutput.ts", "find": "const text = stdout.trim()", "replace": "const text = stdout" },
+    { "name": "parse (Finding 13): text that is not JSON is a verdict, not the parser's message", "source": "src/mcp/headersHelper/parseOutput.ts", "find": "  } catch {\n    return { ok: false, problem: 'not-json' }\n  }", "replace": "  } catch (cause) {\n    throw cause\n  }" },
+    { "name": "parse refusal: an array", "source": "src/mcp/headersHelper/parseOutput.ts", "find": "typeof value !== 'object' || value === null || Array.isArray(value)", "replace": "typeof value !== 'object' || value === null" },
+    { "name": "parse refusal: null", "source": "src/mcp/headersHelper/parseOutput.ts", "find": "typeof value !== 'object' || value === null || Array.isArray(value)", "replace": "typeof value !== 'object' || Array.isArray(value)" },
+    { "name": "parse refusal: a value that is not a string", "source": "src/mcp/headersHelper/parseOutput.ts", "find": "if (typeof item !== 'string') {", "replace": "if (typeof item === 'object') {" },
+    { "name": "parse: the type of a bad value", "source": "src/mcp/headersHelper/parseOutput.ts", "find": "valueType: typeof item", "replace": "valueType: 'value'" },
+    { "name": "parse: headers are own properties", "source": "src/mcp/headersHelper/parseOutput.ts", "find": "  return { ok: true, headers: Object.fromEntries(entries) }", "replace": "  const headers: Record<string, string> = {}\n  for (const [k, v] of entries) headers[k] = String(v)\n  return { ok: true, headers }" },
+
+    { "name": "run refusal: bare names are vetted", "source": "src/mcp/headersHelper/runHelper.ts", "find": "const BARE_NAME = /^[A-Za-z0-9._-]+$/", "replace": "const BARE_NAME = /^.+$/" },
+    { "name": "run: a value with a separator is a path", "source": "src/mcp/headersHelper/runHelper.ts", "find": "const PATH_SEPARATOR = isWindows ? /[\\\\/]/ : /\\//", "replace": "const PATH_SEPARATOR = isWindows ? /[\\\\/]/ : /^$/" },
+    { "name": "run refusal: a line break in the command", "source": "src/mcp/headersHelper/runHelper.ts", "find": "const LINE_BREAK_OR_NUL = /[\\0\\r\\n]/", "replace": "const LINE_BREAK_OR_NUL = /[\\0]/" },
+    { "name": "run refusal: a refused command never reaches spawn", "source": "src/mcp/headersHelper/runHelper.ts", "find": "  if (problem) return Promise.resolve({ ok: false, failure: problem })\n", "replace": "" },
+    { "name": "run (Finding 3): the deadline fires", "source": "src/mcp/headersHelper/runHelper.ts", "find": "      options.timeoutMs,\n    )", "replace": "      options.timeoutMs * 100,\n    )" },
+    { "name": "run (Finding 3): the answer comes at the deadline, not at the process's end", "source": "src/mcp/headersHelper/runHelper.ts", "find": "      abandon(child, options.killGraceMs)\n      settle({ ok: false, failure })", "replace": "      abandon(child, options.killGraceMs)" },
+    { "name": "run (Finding 3): SIGTERM first", "source": "src/mcp/headersHelper/runHelper.ts", "find": "  signalHelper(child, 'SIGTERM')\n", "replace": "" },
+    { "name": "run (Finding 3): SIGKILL after the grace", "source": "src/mcp/headersHelper/runHelper.ts", "find": "  setTimeout(() => signalHelper(child, 'SIGKILL'), killGraceMs).unref()\n", "replace": "" },
+    { "name": "run (Finding 3): the whole group is signalled", "source": "src/mcp/headersHelper/runHelper.ts", "find": "if (ownProcessGroup) process.kill(-child.pid, signal)", "replace": "if (ownProcessGroup) process.kill(child.pid, signal)" },
+    { "name": "run (Finding 3): the helper gets a group of its own", "source": "src/mcp/headersHelper/runHelper.ts", "find": "        detached: ownProcessGroup,\n", "replace": "" },
+    { "name": "run (Finding 4): the environment is passed as it is", "source": "src/mcp/headersHelper/runHelper.ts", "find": "        env: options.env,\n", "replace": "        env: Object.fromEntries(Object.entries(options.env).filter(([, v]) => !v?.includes('\\n'))),\n" },
+    { "name": "run: the output limit", "source": "src/mcp/headersHelper/runHelper.ts", "find": "if (outputBytes > options.maxOutputBytes) {", "replace": "if (outputBytes > options.maxOutputBytes * 100) {" },
+    { "name": "run: stderr counts toward the limit", "source": "src/mcp/headersHelper/runHelper.ts", "find": "    child.stderr?.on('data', collect(false))\n", "replace": "" },
+    { "name": "run: only stdout is the answer", "source": "src/mcp/headersHelper/runHelper.ts", "find": "    child.stdout?.on('data', collect(true))\n    child.stderr?.on('data', collect(false))", "replace": "    child.stdout?.on('data', collect(false))\n    child.stderr?.on('data', collect(true))" },
+    { "name": "run: a non-zero exit fails", "source": "src/mcp/headersHelper/runHelper.ts", "find": "      if (code === 0) {", "replace": "      if (code === 0 || code !== null) {" },
+    { "name": "run: stdin is closed at once", "source": "src/mcp/headersHelper/runHelper.ts", "find": "    child.stdin?.end()\n", "replace": "" },
+    { "name": "run: a start error is a failure", "source": "src/mcp/headersHelper/runHelper.ts", "find": "    child.on('error', error => settle({ ok: false, failure: error.message }))\n", "replace": "" },
+    { "name": "run: a synchronous spawn error is a failure", "source": "src/mcp/headersHelper/runHelper.ts", "find": "      resolve({ ok: false, failure: errorMessage(error) })\n      return", "replace": "      throw error" }
   ]
 }

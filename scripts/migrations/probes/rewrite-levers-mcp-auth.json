@@ -10,111 +10,111 @@
   "probes": [
     {
       "name": "authFetch: a POST without a caller signal is normalised",
-      "find": "      return isPost ? normalizeOAuthErrorBody(response) : response\n    }\n\n    // Combine signals",
-      "replace": "      return response\n    }\n\n    // Combine signals",
+      "find": "    return isPost ? normalizeOAuthErrorBody(response) : response",
+      "replace": "    return isPost && init?.signal ? normalizeOAuthErrorBody(response) : response",
       "source": "src/mcp/auth/authFetch.ts"
     },
     {
       "name": "authFetch: a POST with a caller signal is normalised",
-      "find": "      cleanup()\n      return isPost ? normalizeOAuthErrorBody(response) : response",
-      "replace": "      cleanup()\n      return response",
+      "find": "    return isPost ? normalizeOAuthErrorBody(response) : response",
+      "replace": "    return isPost && !init?.signal ? normalizeOAuthErrorBody(response) : response",
       "source": "src/mcp/auth/authFetch.ts"
     },
     {
       "name": "authFetch: aborting the caller signal aborts the request",
-      "find": "init.signal.addEventListener('abort', abort)",
-      "replace": "init.signal.addEventListener('abort-never', abort)",
+      "find": "      ? AbortSignal.any([init.signal, deadline])",
+      "replace": "      ? deadline",
       "source": "src/mcp/auth/authFetch.ts"
     },
     {
       "name": "authFetch: a configured metadata URL must be https",
-      "find": "if (!configuredMetadataUrl.startsWith('https://')) {",
-      "replace": "if (configuredMetadataUrl.startsWith('ftp://')) {",
+      "find": "  if (!metadataUrl.startsWith('https://')) {",
+      "replace": "  if (metadataUrl.startsWith('ftp://')) {",
       "source": "src/mcp/auth/authFetch.ts"
     },
     {
       "name": "authFetch: the path-aware legacy fallback is tried for a URL with a path",
-      "find": "  if (url.pathname === '/') {",
-      "replace": "  if (url.pathname !== '') {",
+      "find": "  if (resource.pathname === '/') return undefined",
+      "replace": "  if (resource.pathname !== '') return undefined",
       "source": "src/mcp/auth/authFetch.ts"
     },
     {
       "name": "authFetch: a given resource metadata URL is passed to discovery",
-      "find": "...(resourceMetadataUrl && { resourceMetadataUrl }),",
-      "replace": "",
+      "find": "      resourceMetadataUrl,\n      fetchFn,\n",
+      "replace": "      fetchFn,\n",
       "source": "src/mcp/auth/authFetch.ts"
     },
     {
       "name": "revocation: post is chosen only when basic is not offered",
-      "find": "!authMethods.includes('client_secret_basic') &&",
-      "replace": "",
-      "source": "src/mcp/auth/tokenRevocation.ts"
+      "find": "    advertised.includes('client_secret_post') &&\n    !advertised.includes('client_secret_basic')",
+      "replace": "    advertised.includes('client_secret_post')",
+      "source": "src/mcp/auth/revocation/clientAuth.ts"
     },
     {
       "name": "revocation: the revocation endpoint's own method list is preferred",
-      "find": "('revocation_endpoint_auth_methods_supported' in metadata",
-      "replace": "('revocation_endpoint_auth_methods_supported_x' in metadata",
-      "source": "src/mcp/auth/tokenRevocation.ts"
+      "find": "    metadata.revocation_endpoint_auth_methods_supported ??\n    metadata.token_endpoint_auth_methods_supported",
+      "replace": "    metadata.token_endpoint_auth_methods_supported",
+      "source": "src/mcp/auth/revocation/clientAuth.ts"
     },
     {
       "name": "revocation: Basic credentials are URL-encoded first",
-      "find": "`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`",
-      "replace": "`${clientId}:${clientSecret}`",
-      "source": "src/mcp/auth/tokenRevocation.ts"
+      "find": "  const pair = `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`",
+      "replace": "  const pair = `${clientId}:${clientSecret}`",
+      "source": "src/mcp/auth/revocation/clientAuth.ts"
     },
     {
       "name": "revocation: the Bearer retry drops client credentials from the body",
-      "find": "params.delete('client_secret')",
-      "replace": "",
-      "source": "src/mcp/auth/tokenRevocation.ts"
+      "find": "      { kind: 'none' },\n      accessToken,",
+      "replace": "      auth,\n      accessToken,",
+      "source": "src/mcp/auth/revocation/signOut.ts"
     },
     {
       "name": "revocation: the authorization server from discovery is asked",
-      "find": "tokenData.discoveryState?.authorizationServerUrl ?? serverConfig.url",
-      "replace": "serverConfig.url",
-      "source": "src/mcp/auth/tokenRevocation.ts"
+      "find": "    entry.discoveryState?.authorizationServerUrl ?? config.url",
+      "replace": "    config.url",
+      "source": "src/mcp/auth/revocation/signOut.ts"
     },
     {
       "name": "revocation: re-authentication keeps the step-up state",
-      "find": "    preserveStepUpState &&\n    tokenData &&",
-      "replace": "    false &&\n    tokenData &&",
-      "source": "src/mcp/auth/tokenRevocation.ts"
+      "find": "    preserveStepUpState && entry ? stepUpRemnant(entry) : undefined",
+      "replace": "    (false as boolean) && entry ? stepUpRemnant(entry) : undefined",
+      "source": "src/mcp/auth/revocation/signOut.ts"
     },
     {
       "name": "secrets: MCP_CLIENT_SECRET is read",
-      "find": "const envSecret = process.env.MCP_CLIENT_SECRET",
-      "replace": "const envSecret = process.env.MCP_CLIENT_SECRET_UNSET",
+      "find": "  const fromEnv = process.env[SECRET_ENV_VAR]",
+      "replace": "  const fromEnv = process.env[`${SECRET_ENV_VAR}_UNSET`]",
       "source": "src/mcp/auth/clientSecretStore.ts"
     },
     {
       "name": "secrets: DEL is a backspace",
-      "find": "} else if (c === '\\u007F' || c === '\\b') {",
-      "replace": "} else if (c === '\\b') {",
-      "source": "src/mcp/auth/clientSecretStore.ts"
+      "find": "const BACKSPACE_KEYS: ReadonlySet<string> = new Set(['\\u007F', '\\b'])",
+      "replace": "const BACKSPACE_KEYS: ReadonlySet<string> = new Set(['\\b'])",
+      "source": "src/mcp/auth/hiddenPrompt.ts"
     },
     {
       "name": "secrets: Ctrl+C cancels",
-      "find": "reject(new Error('Cancelled'))",
-      "replace": "resolve(secret)",
-      "source": "src/mcp/auth/clientSecretStore.ts"
+      "find": "        reject(new Error('Cancelled'))",
+      "replace": "        resolve(typed)",
+      "source": "src/mcp/auth/hiddenPrompt.ts"
     },
     {
       "name": "secrets: Enter detaches the keystroke listener",
-      "find": "        process.stdin.removeListener('data', onData)\n        process.stderr.write('\\n')",
-      "replace": "        process.stderr.write('\\n')",
-      "source": "src/mcp/auth/clientSecretStore.ts"
+      "find": "      stdin.removeListener('data', onData)\n",
+      "replace": "",
+      "source": "src/mcp/auth/hiddenPrompt.ts"
     },
     {
       "name": "secrets: the secret is stored under the server key",
-      "find": "[serverKey]: { clientSecret },",
-      "replace": "[serverKey]: { secret: clientSecret },",
-      "source": "src/mcp/auth/clientSecretStore.ts"
+      "find": "    [key]: { clientSecret },",
+      "replace": "    [key]: { secret: clientSecret },",
+      "source": "src/mcp/auth/credentialMaps.ts"
     },
     {
       "name": "secrets: clearing deletes the server's secret",
-      "find": "delete existingData.mcpOAuthClientConfig[serverKey]",
-      "replace": "void existingData.mcpOAuthClientConfig[serverKey]",
-      "source": "src/mcp/auth/clientSecretStore.ts"
+      "find": "  writeStore({ ...store, mcpOAuthClientConfig: withoutKey(map, key) })",
+      "replace": "  writeStore({ ...store, mcpOAuthClientConfig: map })",
+      "source": "src/mcp/auth/credentialMaps.ts"
     }
   ]
 }

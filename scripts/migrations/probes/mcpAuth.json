@@ -9,28 +9,28 @@
     },
     {
       "name": "a repeated parameter takes the first NON-EMPTY value, not index 0",
-      "find": "    return value.find(item => item.length > 0)",
-      "replace": "    return value[0]"
+      "find": "  if (Array.isArray(value)) return value.find(item => item !== '')",
+      "replace": "  if (Array.isArray(value)) return value[0]"
     },
     {
       "name": "an empty parameter value is undefined, not the empty string",
-      "find": "  return value && value.length > 0 ? value : undefined",
+      "find": "  return value ? value : undefined",
       "replace": "  return value ?? undefined"
     },
     {
       "name": "a sensitive parameter's value is replaced, not just rewritten",
-      "find": "        parsedUrl.searchParams.set(param, '[REDACTED]')",
-      "replace": "        parsedUrl.searchParams.set(param, parsedUrl.searchParams.get(param) ?? '')"
+      "find": "    if (parsed.searchParams.has(name)) parsed.searchParams.set(name, REDACTION)",
+      "replace": "    if (parsed.searchParams.has(name)) parsed.searchParams.set(name, parsed.searchParams.get(name) ?? '')"
     },
     {
       "name": "redaction only touches parameters the URL actually carried",
-      "find": "      if (parsedUrl.searchParams.has(param)) {",
-      "replace": "      if (true as boolean) {"
+      "find": "    if (parsed.searchParams.has(name)) parsed.searchParams.set(name, REDACTION)",
+      "replace": "    if (true as boolean) parsed.searchParams.set(name, REDACTION)"
     },
     {
       "name": "a string that is not a URL comes back unchanged",
-      "find": "  } catch {\n    // Return as-is if not a valid URL\n    return url\n  }",
-      "replace": "  } catch {\n    // Return as-is if not a valid URL\n    return ''\n  }"
+      "find": "  } catch {\n    return url\n  }",
+      "replace": "  } catch {\n    return ''\n  }"
     },
     {
       "name": "'code' is in the sensitive-parameter list",
@@ -39,38 +39,38 @@
     },
     {
       "name": "'state' is in the sensitive-parameter list",
-      "find": "const SENSITIVE_OAUTH_PARAMS = [\n  'state',",
-      "replace": "const SENSITIVE_OAUTH_PARAMS = ["
+      "find": "const LOG_REDACTED_QUERY_PARAMS: readonly string[] = [\n  'state',",
+      "replace": "const LOG_REDACTED_QUERY_PARAMS: readonly string[] = ["
     },
     {
       "name": "a non-2xx response is returned untouched, by identity",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  if (!response.ok) {\n    return response\n  }",
-      "replace": "  if (false as boolean) {\n    return response\n  }"
+      "find": "  if (!response.ok) return response",
+      "replace": "  if (false as boolean) return response"
     },
     {
       "name": "a body parsing as tokens wins over a body parsing as an error",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  if (OAuthTokensSchema.safeParse(parsed).success) {\n    return new Response(text, response)\n  }",
-      "replace": "  if (false as boolean) {\n    return new Response(text, response)\n  }"
+      "find": "  if (OAuthTokensSchema.safeParse(body).success) return undefined",
+      "replace": "  if (false as boolean) return undefined"
     },
     {
       "name": "a body that is not JSON does not throw out of the normalizer",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  try {\n    parsed = jsonParse(text)\n  } catch {\n    return new Response(text, response)\n  }",
-      "replace": "  parsed = jsonParse(text)"
+      "find": "  try {\n    return jsonParse(text)\n  } catch {\n    return undefined\n  }",
+      "replace": "  return jsonParse(text)"
     },
     {
       "name": "a JSON body of an unrelated shape is left alone",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  const result = OAuthErrorResponseSchema.safeParse(parsed)\n  if (!result.success) {\n    return new Response(text, response)\n  }",
-      "replace": "  const result = OAuthErrorResponseSchema.safeParse(parsed)\n  if (false as boolean) {\n    return new Response(text, response)\n  }"
+      "find": "  if (!parsed.success) return undefined",
+      "replace": "  if (false as boolean) return undefined"
     },
     {
       "name": "the non-standard alias set is consulted at all",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "  const normalized = NONSTANDARD_INVALID_GRANT_ALIASES.has(result.data.error)",
-      "replace": "  const normalized = (false as boolean)"
+      "find": "  if (VENDOR_INVALID_GRANT_CODES.has(error)) {",
+      "replace": "  if (false as boolean) {"
     },
     {
       "name": "'invalid_refresh_token' is one of the aliases",
@@ -93,20 +93,20 @@
     {
       "name": "an error code outside the alias set keeps its own code",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "    : result.data\n  return new Response(jsonStringify(normalized), {",
-      "replace": "    : { error: 'invalid_grant' }\n  return new Response(jsonStringify(normalized), {"
+      "find": "  return { error, error_description, error_uri }",
+      "replace": "  return { error: 'invalid_grant' }"
     },
     {
       "name": "a normalized alias carries a description naming the original code",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "          `Server returned non-standard error code: ${result.data.error}`,",
-      "replace": "          '',"
+      "find": "        `Server returned non-standard error code: ${error}`,",
+      "replace": "        '',"
     },
     {
       "name": "the server's own error_description survives normalization",
       "source": "src/mcp/auth/oauthErrors.ts",
-      "find": "          result.data.error_description ??\n          `Server returned non-standard error code: ${result.data.error}`,",
-      "replace": "          `Server returned non-standard error code: ${result.data.error}`,"
+      "find": "        error_description ??\n        `Server returned non-standard error code: ${error}`,",
+      "replace": "        `Server returned non-standard error code: ${error}`,"
     },
     {
       "name": "a normalized error body is rewritten to a 400",
@@ -117,19 +117,19 @@
     {
       "name": "the server URL is part of the credential key",
       "source": "src/mcp/auth/serverKey.ts",
-      "find": "    url: serverConfig.url,\n    headers: serverConfig.headers || {},",
-      "replace": "    headers: serverConfig.headers || {},"
+      "find": "    url: serverConfig.url,\n    headers: serverConfig.headers ?? {},",
+      "replace": "    headers: serverConfig.headers ?? {},"
     },
     {
       "name": "the configured headers are part of the credential key",
       "source": "src/mcp/auth/serverKey.ts",
-      "find": "    headers: serverConfig.headers || {},\n  })\n",
-      "replace": "  })\n"
+      "find": "    headers: serverConfig.headers ?? {},\n  })",
+      "replace": "  })"
     },
     {
       "name": "absent headers are normalized to {} before hashing",
       "source": "src/mcp/auth/serverKey.ts",
-      "find": "    headers: serverConfig.headers || {},",
+      "find": "    headers: serverConfig.headers ?? {},",
       "replace": "    headers: serverConfig.headers,"
     },
     {
@@ -141,14 +141,14 @@
     {
       "name": "the server name is part of the credential key",
       "source": "src/mcp/auth/serverKey.ts",
-      "find": "  return `${serverName}|${hash}`",
-      "replace": "  return hash"
+      "find": "  return `${serverName}|${digest.slice(0, DIGEST_HEX_CHARS)}`",
+      "replace": "  return digest.slice(0, DIGEST_HEX_CHARS)"
     },
     {
       "name": "the config digest is 16 hex characters",
       "source": "src/mcp/auth/serverKey.ts",
-      "find": "    .substring(0, 16)",
-      "replace": "    .substring(0, 8)"
+      "find": "const DIGEST_HEX_CHARS = 16",
+      "replace": "const DIGEST_HEX_CHARS = 8"
     },
     {
       "name": "AuthenticationCancelledError carries its own .name",

@@ -4,40 +4,33 @@
  * else, and redacting the sensitive parameters out of a URL before it reaches
  * a log.
  */
-/**
- * OAuth query parameters that should be redacted from logs.
- * These contain sensitive values that could enable CSRF or session fixation attacks.
- */
-const SENSITIVE_OAUTH_PARAMS = [
+
+const LOG_REDACTED_QUERY_PARAMS: readonly string[] = [
   'state',
   'nonce',
   'code_challenge',
   'code_verifier',
   'code',
 ]
+const REDACTION = '[REDACTED]'
 
-/**
- * Redacts sensitive OAuth query parameters from a URL for safe logging.
- * Prevents exposure of state, nonce, code_challenge, code_verifier, and authorization codes.
- */
 export function redactSensitiveUrlParams(url: string): string {
+  let parsed: URL
   try {
-    const parsedUrl = new URL(url)
-    for (const param of SENSITIVE_OAUTH_PARAMS) {
-      if (parsedUrl.searchParams.has(param)) {
-        parsedUrl.searchParams.set(param, '[REDACTED]')
-      }
-    }
-    return parsedUrl.toString()
+    parsed = new URL(url)
   } catch {
-    // Return as-is if not a valid URL
     return url
   }
+  for (const name of LOG_REDACTED_QUERY_PARAMS) {
+    // set() also drops any repeat of the name, so one marker stands for all.
+    if (parsed.searchParams.has(name)) parsed.searchParams.set(name, REDACTION)
+  }
+  return parsed.toString()
 }
 
 type OAuthCallbackParamValue = string | string[] | null | undefined
 
-type OAuthCallbackValidationResult =
+export type OAuthCallbackValidationResult =
   | { type: 'code'; code: string }
   | {
       type: 'error'
@@ -52,10 +45,19 @@ type OAuthCallbackValidationResult =
 export function getFirstOAuthCallbackParam(
   value: OAuthCallbackParamValue,
 ): string | undefined {
-  if (Array.isArray(value)) {
-    return value.find(item => item.length > 0)
-  }
-  return value && value.length > 0 ? value : undefined
+  if (Array.isArray(value)) return value.find(item => item !== '')
+  return value ? value : undefined
+}
+
+function describeOAuthError(
+  error: string,
+  description: string,
+  uri: string,
+): string {
+  let message = `OAuth error: ${error}`
+  if (description) message += ` - ${description}`
+  if (uri) message += ` (See: ${uri})`
+  return message
 }
 
 export function validateOAuthCallbackParams(
@@ -68,37 +70,27 @@ export function validateOAuthCallbackParams(
   },
   oauthState: string,
 ): OAuthCallbackValidationResult {
-  const code = getFirstOAuthCallbackParam(params.code)
+  // State first: nothing else in a forged redirect may be acted on. A reduced
+  // parameter is never '', so an empty expected state can never match.
   const state = getFirstOAuthCallbackParam(params.state)
-  const error = getFirstOAuthCallbackParam(params.error)
-  const errorDescription =
-    getFirstOAuthCallbackParam(params.error_description) ?? ''
-  const errorUri = getFirstOAuthCallbackParam(params.error_uri) ?? ''
-
   if (state !== oauthState) {
     return { type: 'state_mismatch' }
   }
 
-  if (error) {
-    let message = `OAuth error: ${error}`
-    if (errorDescription) {
-      message += ` - ${errorDescription}`
-    }
-    if (errorUri) {
-      message += ` (See: ${errorUri})`
-    }
+  const error = getFirstOAuthCallbackParam(params.error)
+  if (error !== undefined) {
+    const errorDescription =
+      getFirstOAuthCallbackParam(params.error_description) ?? ''
+    const errorUri = getFirstOAuthCallbackParam(params.error_uri) ?? ''
     return {
       type: 'error',
       error,
       errorDescription,
       errorUri,
-      message,
+      message: describeOAuthError(error, errorDescription, errorUri),
     }
   }
 
-  if (code) {
-    return { type: 'code', code }
-  }
-
-  return { type: 'missing_result' }
+  const code = getFirstOAuthCallbackParam(params.code)
+  return code === undefined ? { type: 'missing_result' } : { type: 'code', code }
 }

@@ -13,74 +13,52 @@ import { errorMessage } from 'src/shared/errors.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import { normalizeOAuthErrorBody } from 'src/mcp/auth/oauthErrors.js'
 
-/**
- * Timeout for individual OAuth requests (metadata discovery, token refresh, etc.)
- */
-const AUTH_REQUEST_TIMEOUT_MS = 30000
+export const OAUTH_REQUEST_TIMEOUT_MS = 30_000
+
+type DiscoveredMetadata = Awaited<
+  ReturnType<typeof discoverAuthorizationServerMetadata>
+>
 
 /**
- * Creates a fetch function with a fresh 30-second timeout for each OAuth request.
- * Used by ClaudeAuthProvider for metadata discovery and token refresh.
- * Prevents stale timeout signals from affecting auth operations.
+ * An OAuth fetch whose every request gets its own deadline. Only token-style
+ * POSTs can carry a 200-with-error body, so only their answers are rewritten.
  */
-export function createAuthFetch(): FetchLike {
-  return async (url: string | URL, init?: RequestInit) => {
-    const timeoutSignal = AbortSignal.timeout(AUTH_REQUEST_TIMEOUT_MS)
+export function createTimedAuthFetch(timeoutMs: number): FetchLike {
+  return async (url, init) => {
+    const deadline = AbortSignal.timeout(timeoutMs)
+    const signal = init?.signal
+      ? AbortSignal.any([init.signal, deadline])
+      : deadline
+    const response = await fetch(url, { ...init, signal })
     const isPost = init?.method?.toUpperCase() === 'POST'
-
-    // No existing signal - just use timeout
-    if (!init?.signal) {
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      const response = await fetch(url, { ...init, signal: timeoutSignal })
-      return isPost ? normalizeOAuthErrorBody(response) : response
-    }
-
-    // Combine signals: abort when either fires
-    const controller = new AbortController()
-    const abort = () => controller.abort()
-
-    init.signal.addEventListener('abort', abort)
-    timeoutSignal.addEventListener('abort', abort)
-
-    // Cleanup to prevent event listener leaks after fetch completes
-    const cleanup = () => {
-      init.signal?.removeEventListener('abort', abort)
-      timeoutSignal.removeEventListener('abort', abort)
-    }
-
-    if (init.signal.aborted) {
-      controller.abort()
-    }
-
-    try {
-      // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-      const response = await fetch(url, { ...init, signal: controller.signal })
-      cleanup()
-      return isPost ? normalizeOAuthErrorBody(response) : response
-    } catch (error) {
-      cleanup()
-      throw error
-    }
+    return isPost ? normalizeOAuthErrorBody(response) : response
   }
 }
 
-/**
- * Fetches authorization server metadata, using a configured metadata URL if available,
- * otherwise performing RFC 9728 → RFC 8414 discovery via the SDK.
- *
- * Discovery order when no configured URL:
- * 1. RFC 9728: probe /.well-known/oauth-protected-resource on the MCP server,
- *    read authorization_servers[0], then RFC 8414 against that URL.
- * 2. Fallback: RFC 8414 directly against the MCP server URL (path-aware). Covers
- *    legacy servers that co-host auth metadata at /.well-known/oauth-authorization-server/{path}
- *    without implementing RFC 9728. The SDK's own fallback strips the path, so this
- *    preserves the pre-existing path-aware probe for backward compatibility.
- *
- * Note: configuredMetadataUrl is user-controlled via .mcp.json. Project-scoped MCP
- * servers require user approval before connecting (same trust level as the MCP server
- * URL itself). The HTTPS requirement here is defense-in-depth beyond schema validation
- * — RFC 8414 mandates OAuth metadata retrieval over TLS.
- */
+export function createAuthFetch(): FetchLike {
+  return createTimedAuthFetch(OAUTH_REQUEST_TIMEOUT_MS)
+}
+
+async function fetchConfiguredMetadata(
+  metadataUrl: string,
+  fetchFn: FetchLike,
+): Promise<DiscoveredMetadata> {
+  if (!metadataUrl.startsWith('https://')) {
+    throw new Error(
+      `authServerMetadataUrl must use https:// (got: ${metadataUrl})`,
+    )
+  }
+  const response = await fetchFn(metadataUrl, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status} fetching configured auth server metadata from ${metadataUrl}`,
+    )
+  }
+  return OAuthMetadataSchema.parse(await response.json())
+}
+
 export async function fetchAuthServerMetadata(
   serverName: string,
   serverUrl: string,
@@ -89,51 +67,33 @@ export async function fetchAuthServerMetadata(
   resourceMetadataUrl?: URL,
 ): Promise<Awaited<ReturnType<typeof discoverAuthorizationServerMetadata>>> {
   if (configuredMetadataUrl) {
-    if (!configuredMetadataUrl.startsWith('https://')) {
-      throw new Error(
-        `authServerMetadataUrl must use https:// (got: ${configuredMetadataUrl})`,
-      )
-    }
-    const authFetch = fetchFn ?? createAuthFetch()
-    const response = await authFetch(configuredMetadataUrl, {
-      headers: { Accept: 'application/json' },
-    })
-    if (response.ok) {
-      return OAuthMetadataSchema.parse(await response.json())
-    }
-    throw new Error(
-      `HTTP ${response.status} fetching configured auth server metadata from ${configuredMetadataUrl}`,
+    return fetchConfiguredMetadata(
+      configuredMetadataUrl,
+      fetchFn ?? createAuthFetch(),
     )
   }
 
   try {
-    const { authorizationServerMetadata } = await discoverOAuthServerInfo(
-      serverUrl,
-      {
-        ...(fetchFn && { fetchFn }),
-        ...(resourceMetadataUrl && { resourceMetadataUrl }),
-      },
-    )
-    if (authorizationServerMetadata) {
-      return authorizationServerMetadata
+    const info = await discoverOAuthServerInfo(serverUrl, {
+      resourceMetadataUrl,
+      fetchFn,
+    })
+    if (info.authorizationServerMetadata) {
+      return info.authorizationServerMetadata
     }
-  } catch (err) {
-    // Any error from the RFC 9728 → RFC 8414 chain (5xx from the root or
-    // resolved-AS probe, schema parse failure, network error) — fall through
-    // to the legacy path-aware retry.
+  } catch (error) {
     logMCPDebug(
       serverName,
-      `RFC 9728 discovery failed, falling back: ${errorMessage(err)}`,
+      `Authorization server discovery failed: ${errorMessage(error)}`,
     )
   }
 
-  // Fallback only when the URL has a path component; for root URLs the SDK's
-  // own fallback already probed the same endpoints.
-  const url = new URL(serverUrl)
-  if (url.pathname === '/') {
-    return undefined
-  }
-  return discoverAuthorizationServerMetadata(url, {
-    ...(fetchFn && { fetchFn }),
-  })
+  // Older servers publish RFC 8414 metadata under the MCP endpoint's own path.
+  const resource = new URL(serverUrl)
+  if (resource.pathname === '/') return undefined
+  logMCPDebug(
+    serverName,
+    'Trying path-aware authorization server metadata at the server URL',
+  )
+  return discoverAuthorizationServerMetadata(resource, { fetchFn })
 }

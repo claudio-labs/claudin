@@ -5,44 +5,32 @@
  */
 
 import { createHash } from 'crypto'
-import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { McpHTTPServerConfig, McpSSEServerConfig } from 'src/mcp/types.js'
+import { getOAuthEntry } from 'src/mcp/auth/credentialMaps.js'
 
-/**
- * Generates a unique key for server credentials based on both name and config hash
- * This prevents credentials from being reused across different servers
- * with the same name or different configurations
- */
+// A storage format: users' credentials are filed under keys of this length.
+const DIGEST_HEX_CHARS = 16
+
 export function getServerKey(
   serverName: string,
   serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
 ): string {
-  const configJson = jsonStringify({
+  // Member order is part of the format, so the object is spelled out.
+  const identity = jsonStringify({
     type: serverConfig.type,
     url: serverConfig.url,
-    headers: serverConfig.headers || {},
+    headers: serverConfig.headers ?? {},
   })
-
-  const hash = createHash('sha256')
-    .update(configJson)
-    .digest('hex')
-    .substring(0, 16)
-
-  return `${serverName}|${hash}`
+  const digest = createHash('sha256').update(identity).digest('hex')
+  return `${serverName}|${digest.slice(0, DIGEST_HEX_CHARS)}`
 }
 
-/**
- * True when we have probed this server before (OAuth discovery state is
- * stored) but hold no credentials to try. A connection attempt in this
- * state is guaranteed to 401 — the only way out is the user running
- * /mcp to authenticate.
- */
 export function hasMcpDiscoveryButNoToken(
   serverName: string,
   serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
 ): boolean {
-  const serverKey = getServerKey(serverName, serverConfig)
-  const entry = getSecureStorage().read()?.mcpOAuth?.[serverKey]
-  return entry !== undefined && !entry.accessToken && !entry.refreshToken
+  const entry = getOAuthEntry(getServerKey(serverName, serverConfig))
+  if (!entry) return false
+  return !entry.accessToken && !entry.refreshToken
 }
