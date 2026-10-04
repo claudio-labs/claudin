@@ -1,0 +1,251 @@
+{
+  "test": [
+    "src/permissions/ui/FallbackPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+  "probes": [
+    {
+      "name": "fallback: Yes fails open, saving a whole-tool rule",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [{ type: \"addRules\", rules: [{ toolName: toolUseConfirm.tool.name }], behavior: \"allow\", destination: \"localSettings\" }], feedback);"
+    },
+    {
+      "name": "fallback: Yes drops the note",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, []);"
+    },
+    {
+      "name": "fallback: allow-always saved to the user settings, wider than the project",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "destination: \"localSettings\"",
+      "replace": "destination: \"userSettings\""
+    },
+    {
+      "name": "fallback: allow-always rule names the user-facing name",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "                toolName: toolUseConfirm.tool.name\n",
+      "replace": "                toolName: userFacingName\n"
+    },
+    {
+      "name": "fallback: No fails open",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "            toolUseConfirm.onReject(feedback);",
+      "replace": "            toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback);"
+    },
+    {
+      "name": "fallback: Esc fails open",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "    t4 = () => {\n      toolUseConfirm.onReject();",
+      "replace": "    t4 = () => {\n      toolUseConfirm.onAllow(toolUseConfirm.input, []);"
+    },
+    {
+      "name": "fallback: managed policy ignored, allow-always offered anyway",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "t6 = shouldShowAlwaysAllowOptions();",
+      "replace": "t6 = true;"
+    },
+    {
+      "name": "fallback: description cut at five lines",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "truncateToLines(toolUseConfirm.description, 3)",
+      "replace": "truncateToLines(toolUseConfirm.description, 5)"
+    },
+    {
+      "name": "fallback: MCP suffix kept in the name",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "originalUserFacingName.slice(0, -6)",
+      "replace": "originalUserFacingName"
+    },
+    {
+      "name": "fallback: tool use rendered in its short form",
+      "source": "src/permissions/ui/FallbackPermissionRequest.tsx",
+      "find": "      verbose: true\n",
+      "replace": "      verbose: false\n"
+    },
+    {
+      "name": "skill: Yes fails open, saving a whole-tool Skill rule",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [{ type: \"addRules\", rules: [{ toolName: SKILL_TOOL_NAME }], behavior: \"allow\", destination: \"localSettings\" }], feedback);"
+    },
+    {
+      "name": "skill: exact rule widened to the whole tool",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "                ruleContent: skill\n",
+      "replace": "                ruleContent: undefined\n"
+    },
+    {
+      "name": "skill: prefix rule widened to the first letter",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "ruleContent: `${commandPrefix_0}:*`",
+      "replace": "ruleContent: `${commandPrefix_0.slice(0, 1)}:*`"
+    },
+    {
+      "name": "skill: prefix rule keeps the whole string",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "spaceIndex_0 > 0 ? skill.substring(0, spaceIndex_0) : skill",
+      "replace": "skill"
+    },
+    {
+      "name": "skill: prefix option offered for a leading space",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "      if (spaceIndex > 0) {",
+      "replace": "      if (spaceIndex >= 0) {"
+    },
+    {
+      "name": "skill: exact rule saved to the user settings",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "                ruleContent: skill\n              }],\n              behavior: \"allow\",\n              destination: \"localSettings\"",
+      "replace": "                ruleContent: skill\n              }],\n              behavior: \"allow\",\n              destination: \"userSettings\""
+    },
+    {
+      "name": "skill: No fails open",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "            toolUseConfirm.onReject(feedback);",
+      "replace": "            toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback);"
+    },
+    {
+      "name": "skill: Esc fails open",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "    t11 = () => {\n      toolUseConfirm.onReject();",
+      "replace": "    t11 = () => {\n      toolUseConfirm.onAllow(toolUseConfirm.input, []);"
+    },
+    {
+      "name": "skill: managed policy ignored, allow-always offered anyway",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "t3 = shouldShowAlwaysAllowOptions();",
+      "replace": "t3 = true;"
+    },
+    {
+      "name": "skill: description read from any decision, not only an ask",
+      "source": "src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx",
+      "find": "toolUseConfirm.permissionResult.behavior === \"ask\" && ",
+      "replace": "toolUseConfirm.permissionResult.behavior !== \"deny\" && "
+    },
+    {
+      "name": "webfetch: Yes fails open, saving the domain",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, []);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [{ type: \"addRules\", rules: [{ toolName: toolUseConfirm.tool.name, ruleContent: inputToPermissionRuleContent(toolUseConfirm.input) }], behavior: \"allow\", destination: \"localSettings\" }]);"
+    },
+    {
+      "name": "webfetch: domain rule widened to the parent domain",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "return `domain:${hostname}`;",
+      "replace": "return `domain:${hostname.split(\".\").slice(-2).join(\".\")}`;"
+    },
+    {
+      "name": "webfetch: rule names the user-facing tool name",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "              toolName: toolUseConfirm.tool.name,",
+      "replace": "              toolName: \"Fetch\","
+    },
+    {
+      "name": "webfetch: domain rule saved to the user settings",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "destination: \"localSettings\"",
+      "replace": "destination: \"userSettings\""
+    },
+    {
+      "name": "webfetch: Esc fails open",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "t12 = () => onChange(\"no\");",
+      "replace": "t12 = () => onChange(\"yes\");"
+    },
+    {
+      "name": "webfetch: No fails open",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "            toolUseConfirm.onReject();",
+      "replace": "            toolUseConfirm.onAllow(toolUseConfirm.input, []);"
+    },
+    {
+      "name": "webfetch: managed policy ignored, allow-always offered anyway",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "t3 = shouldShowAlwaysAllowOptions();",
+      "replace": "t3 = true;"
+    },
+    {
+      "name": "webfetch: the label shows host and port",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "const hostname = t1.hostname;",
+      "replace": "const hostname = t1.host;"
+    },
+    {
+      "name": "webfetch: verbose not passed to the tool use",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "      theme,\n      verbose\n    });",
+      "replace": "      theme,\n      verbose: false\n    });"
+    },
+    {
+      "name": "webfetch: a readable input saved as raw input",
+      "source": "src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx",
+      "find": "    if (!parsedInput.success) {",
+      "replace": "    if (parsedInput.success) {"
+    },
+    {
+      "name": "monitor: Yes fails open, saving a whole-tool Bash rule",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback)",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [{ type: 'addRules', rules: [{ toolName: 'Bash' }], behavior: 'allow', destination: 'localSettings' }], feedback)"
+    },
+    {
+      "name": "monitor: prefix widened to the first word",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": ".slice(0, 2)",
+      "replace": ".slice(0, 1)"
+    },
+    {
+      "name": "monitor: rule saved under the tool instead of Bash",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "rules: [{ toolName: 'Bash', ruleContent:",
+      "replace": "rules: [{ toolName: toolUseConfirm.tool.name, ruleContent:"
+    },
+    {
+      "name": "monitor: only spaces split words",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "split(/\\s+/)",
+      "replace": "split(' ')"
+    },
+    {
+      "name": "monitor: an empty command saves a whole-tool Bash rule",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "] : [])",
+      "replace": "] : [{ type: 'addRules', rules: [{ toolName: 'Bash' }], behavior: 'allow', destination: 'localSettings' }])"
+    },
+    {
+      "name": "monitor: rule saved to the user settings",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "destination: 'localSettings'",
+      "replace": "destination: 'userSettings'"
+    },
+    {
+      "name": "monitor: No fails open",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "toolUseConfirm.onReject(feedback)",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback)"
+    },
+    {
+      "name": "monitor: Esc fails open",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "  const handleCancel = () => {\n    toolUseConfirm.onReject()",
+      "replace": "  const handleCancel = () => {\n    toolUseConfirm.onAllow(toolUseConfirm.input, [])"
+    },
+    {
+      "name": "monitor: managed policy ignored, allow-always offered anyway",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "const showAlwaysAllow = shouldShowAlwaysAllowOptions()",
+      "replace": "const showAlwaysAllow = true"
+    },
+    {
+      "name": "monitor: description taken from the request, not the input",
+      "source": "src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.tsx",
+      "find": "<Text dimColor>{description}</Text>",
+      "replace": "<Text dimColor>{toolUseConfirm.description}</Text>"
+    }
+  ]
+}
