@@ -51,7 +51,7 @@ which the sandbox tools read. The lists below are the same.
 | `mcp/capabilities` | 6 | 924 | — | pending |
 | `mcp/callTool` | 5 | 983 | — | pending |
 | `mcp/connectionManager` | 3 | 726 | — | pending |
-| `mcp/elicitation` | 3 | 535 | — | pending |
+| `mcp/elicitation` | 3 | 535 | — | done |
 | `mcp/doctor` | 1 | 620 | `doctor.test.ts` (443) | done |
 | `mcp/elicitationDialog` | 1 | 1105 | — | pending |
 | `mcp/settingsUi` | 5 | 1258 | — | pending |

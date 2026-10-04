@@ -2,229 +2,755 @@
   "test": [
     "src/mcp/elicitation.validation.characterization.test.ts",
     "src/mcp/elicitation.dateTime.characterization.test.ts",
-    "src/mcp/elicitation.handler.characterization.test.ts"
+    "src/mcp/elicitation.handler.characterization.test.ts",
+    "src/mcp/elicitation.fixes.test.ts",
+    "src/mcp/elicitation/pieces.test.ts"
   ],
   "source": "src/mcp/elicitationHandler.ts",
   "probes": [
     {
-      "name": "handler: a URL request is treated as form",
-      "find": "return params.mode === 'url' ? 'url' : 'form'",
-      "replace": "return 'form'"
+      "name": "fieldKind: a oneOf string is no longer a single choice",
+      "source": "src/mcp/elicitation/fieldKind.ts",
+      "find": "('enum' in fields || 'oneOf' in fields)",
+      "replace": "'enum' in fields"
     },
     {
-      "name": "handler: URL waiting-state label changes",
-      "find": "elicitationId ? { actionLabel: 'Skip confirmation' } : undefined",
-      "replace": "elicitationId ? { actionLabel: 'Open link' } : undefined"
+      "name": "fieldKind: an enum on any type is a single choice",
+      "source": "src/mcp/elicitation/fieldKind.ts",
+      "find": "fields?.type === 'string' && ('enum'",
+      "replace": "fields?.type !== 'boolean' && ('enum'"
     },
     {
-      "name": "handler: requestId is no longer the JSON-RPC id",
-      "find": "requestId: extra.requestId,",
-      "replace": "requestId: String(extra.requestId),"
+      "name": "fieldKind: an anyOf array is no longer a multi choice",
+      "source": "src/mcp/elicitation/fieldKind.ts",
+      "find": "('enum' in items || 'anyOf' in items)",
+      "replace": "'enum' in items"
     },
     {
-      "name": "handler: earlier queue entries are dropped",
-      "find": "                ...prev.elicitation.queue,\n",
+      "name": "fieldKind: a multi choice need not be an array",
+      "source": "src/mcp/elicitation/fieldKind.ts",
+      "find": "if (fields?.type !== 'array') return false",
+      "replace": "if (fields === undefined) return false"
+    },
+    {
+      "name": "fieldKind: date-time is not a date field",
+      "source": "src/mcp/elicitation/fieldKind.ts",
+      "find": "(fields.format === 'date' || fields.format === 'date-time')",
+      "replace": "fields.format === 'date'"
+    },
+    {
+      "name": "fieldKind: integer is unsupported",
+      "source": "src/mcp/elicitation/fieldKind.ts",
+      "find": "    case 'integer':\n",
       "replace": ""
     },
     {
-      "name": "handler: the user's answer is replaced by cancel",
-      "find": "                    resolve(result)\n",
-      "replace": "                    resolve({ action: 'cancel' })\n"
-    },
-    {
-      "name": "handler: a server cancel resolves decline",
-      "find": "resolve({ action: 'cancel' })",
-      "replace": "resolve({ action: 'decline' })"
-    },
-    {
-      "name": "handler: the server's cancel is not listened to",
-      "find": "extra.signal.addEventListener('abort', onAbort, { once: true })",
-      "replace": "void onAbort"
-    },
-    {
-      "name": "handler: a failure answers decline instead of cancel",
-      "find": "return { action: 'cancel' as const }",
-      "replace": "return { action: 'decline' as const }"
-    },
-    {
-      "name": "handler: result hooks no longer change the answer",
-      "find": "        return result\n      } catch (error) {",
-      "replace": "        return rawResult\n      } catch (error) {"
-    },
-    {
-      "name": "handler: result hooks lose the mode",
-      "find": "          mode,\n          elicitationId,\n        )",
-      "replace": "          undefined,\n          elicitationId,\n        )"
-    },
-    {
-      "name": "completion: the event is not marked completed",
-      "find": "queue[idx] = { ...queue[idx]!, completed: true }",
-      "replace": "queue[idx] = { ...queue[idx]!, completed: false }"
-    },
-    {
-      "name": "completion: any server's event matches",
-      "find": "      e.serverName === serverName &&\n",
+      "name": "fieldKind: choices are checked as text",
+      "source": "src/mcp/elicitation/fieldKind.ts",
+      "find": "  if (isSingleChoiceField(schema)) return { kind: 'singleChoice', schema }\n",
       "replace": ""
     },
     {
-      "name": "completion: a form event matches",
-      "find": "      e.params.mode === 'url' &&\n",
+      "name": "choices: oneOf consts ignored",
+      "source": "src/mcp/elicitation/choices.ts",
+      "find": "return titledOptionsIn(fields?.oneOf)?.map(option => option.const) ?? []",
+      "replace": "return []"
+    },
+    {
+      "name": "choices: oneOf labels are the consts",
+      "source": "src/mcp/elicitation/choices.ts",
+      "find": "if (titled) return titled.map(option => option.title)",
+      "replace": "if (titled) return titled.map(option => option.const)"
+    },
+    {
+      "name": "choices: legacy enumNames ignored",
+      "source": "src/mcp/elicitation/choices.ts",
+      "find": "return stringsIn(fields?.enumNames) ?? singleChoiceValues(schema)",
+      "replace": "return singleChoiceValues(schema)"
+    },
+    {
+      "name": "choices: an unlisted value has an empty label",
+      "source": "src/mcp/elicitation/choices.ts",
+      "find": "return position === -1 ? value : (labels[position] ?? value)",
+      "replace": "return position === -1 ? '' : (labels[position] ?? value)"
+    },
+    {
+      "name": "choices: a listed value without a label reads empty",
+      "source": "src/mcp/elicitation/choices.ts",
+      "find": "return position === -1 ? value : (labels[position] ?? value)",
+      "replace": "return position === -1 ? value : (labels[position] ?? '')"
+    },
+    {
+      "name": "choices: anyOf consts ignored",
+      "source": "src/mcp/elicitation/choices.ts",
+      "find": "return titledOptionsIn(items?.anyOf)?.map(option => option.const) ?? []",
+      "replace": "return []"
+    },
+    {
+      "name": "choices: anyOf labels are the consts",
+      "source": "src/mcp/elicitation/choices.ts",
+      "find": "? titled.map(option => option.title)\n    : multiChoiceValues(schema)",
+      "replace": "? titled.map(option => option.const)\n    : multiChoiceValues(schema)"
+    },
+    {
+      "name": "isoDate: no leap years",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0",
+      "replace": "return false"
+    },
+    {
+      "name": "isoDate: every month has 31 days",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "return [4, 6, 9, 11].includes(month) ? 30 : 31",
+      "replace": "return 31"
+    },
+    {
+      "name": "isoDate: month 13 accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "month >= 1 && month <= 12 && ",
       "replace": ""
     },
     {
-      "name": "completion: any id matches",
-      "find": "      e.params.elicitationId === elicitationId,",
-      "replace": "      true,"
+      "name": "isoDate: day 0 accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "day >= 1 && day <=",
+      "replace": "day <="
     },
     {
-      "name": "completion: an unknown id still replaces the state",
-      "find": "if (idx === -1) return prev",
-      "replace": "if (idx === -1) return { ...prev }"
+      "name": "isoDate: hour 24 accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "Number(hours) <= 23",
+      "replace": "Number(hours) <= 24"
     },
     {
-      "name": "registration: a client without the capability throws",
-      "find": "  } catch {\n    // Client wasn't created with elicitation capability - nothing to register\n    return\n  }",
-      "replace": "  } catch (error) {\n    throw error\n  }"
+      "name": "isoDate: minute 60 accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "Number(minutes) <= 59",
+      "replace": "Number(minutes) <= 60"
     },
     {
-      "name": "hooks: a blocking Elicitation hook cancels instead of declining",
-      "find": "    if (blockingError) {\n      return { action: 'decline' }\n    }\n\n    if (elicitationResponse) {",
-      "replace": "    if (blockingError) {\n      return { action: 'cancel' }\n    }\n\n    if (elicitationResponse) {"
+      "name": "isoDate: second 60 accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "Number(seconds) <= 59",
+      "replace": "Number(seconds) <= 60"
     },
     {
-      "name": "hooks: an Elicitation hook's content is dropped",
-      "find": "content: elicitationResponse.content,",
-      "replace": "content: undefined,"
+      "name": "isoDate: zone hour 24 accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "Number(parts[1]) <= 23",
+      "replace": "Number(parts[1]) <= 24"
     },
     {
-      "name": "hooks: a result hook without content drops the user's",
-      "find": "content: elicitationResultResponse.content ?? result.content,",
-      "replace": "content: elicitationResultResponse.content,"
+      "name": "isoDate: zone minute 60 accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "Number(parts[2]) <= 59",
+      "replace": "Number(parts[2]) <= 60"
     },
     {
-      "name": "hooks: a blocking result hook keeps the answer",
-      "find": "      return { action: 'decline' }\n    }\n\n    const finalResult",
-      "replace": "      return result\n    }\n\n    const finalResult"
+      "name": "isoDate: typed date-time without a zone accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "(?:\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$/\n",
+      "replace": "(?:\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})?$/\n"
     },
     {
-      "name": "kinds: oneOf is not a single choice",
+      "name": "isoDate: typed date-time without seconds accepted",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(Z|",
+      "replace": "T(\\d{2}):(\\d{2})(?::(\\d{2}))?(?:\\.\\d+)?(Z|"
+    },
+    {
+      "name": "isoDate: typed fractional seconds refused",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "(?:\\.\\d+)?(Z|",
+      "replace": "(Z|"
+    },
+    {
+      "name": "isoDate (fix 3): a model date-time needs seconds",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "(?::(\\d{2})(?:\\.\\d+)?)?",
+      "replace": "(?::(\\d{2})(?:\\.\\d+)?)"
+    },
+    {
+      "name": "isoDate (fix 3): a model date-time needs a zone",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "(Z|[+-]\\d{2}:\\d{2})?$/",
+      "replace": "(Z|[+-]\\d{2}:\\d{2})$/"
+    },
+    {
+      "name": "isoDate: a date may run on",
+      "source": "src/mcp/elicitation/isoDate.ts",
+      "find": "/^(\\d{4})-(\\d{2})-(\\d{2})$/",
+      "replace": "/^(\\d{4})-(\\d{2})-(\\d{2})/"
+    },
+    {
+      "name": "fieldChecks: minLength exclusive",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "text.length < minLength",
+      "replace": "text.length <= minLength"
+    },
+    {
+      "name": "fieldChecks: maxLength exclusive",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "text.length > maxLength",
+      "replace": "text.length >= maxLength"
+    },
+    {
+      "name": "fieldChecks: minLength always plural",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "plural(minLength, 'character')",
+      "replace": "plural(2, 'character')"
+    },
+    {
+      "name": "fieldChecks: maxLength always plural",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "plural(maxLength, 'character')",
+      "replace": "plural(2, 'character')"
+    },
+    {
+      "name": "fieldChecks: messages joined by comma",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "problems.join('; ')",
+      "replace": "problems.join(', ')"
+    },
+    {
+      "name": "fieldChecks: format message first",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "problems.push(rule.message)",
+      "replace": "problems.unshift(rule.message)"
+    },
+    {
+      "name": "fieldChecks: email needs only an @",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "accepts: text => EMAIL_ADDRESS.test(text)",
+      "replace": "accepts: text => text.includes('@')"
+    },
+    {
+      "name": "fieldChecks: any uri accepted",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "accepts: text => URL.canParse(text)",
+      "replace": "accepts: () => true"
+    },
+    {
+      "name": "fieldChecks: date checked as date-time",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "['date', { accepts: isCalendarDate",
+      "replace": "['date', { accepts: isZonedDateTime"
+    },
+    {
+      "name": "fieldChecks: date-time checked as date",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "['date-time', { accepts: isZonedDateTime",
+      "replace": "['date-time', { accepts: isCalendarDate"
+    },
+    {
+      "name": "fieldChecks: unknown formats checked as email",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "FORMAT_RULES.get(format)",
+      "replace": "(FORMAT_RULES.get(format) ?? FORMAT_RULES.get('email'))"
+    },
+    {
+      "name": "fieldChecks: whole number bounds lose .0",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "? bound.toFixed(1) : String(bound)",
+      "replace": "? String(bound) : String(bound)"
+    },
+    {
+      "name": "fieldChecks: integer bounds get .0",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "!integer && Number.isInteger(bound)",
+      "replace": "Number.isInteger(bound)"
+    },
+    {
+      "name": "fieldChecks: both bounds reported as one",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "if (minimum !== undefined && maximum !== undefined) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "fieldChecks: minimum message says >",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": ">= ${boundText(minimum, integer)}",
+      "replace": "> ${boundText(minimum, integer)}"
+    },
+    {
+      "name": "fieldChecks: maximum message says <",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "<= ${boundText(maximum, integer)}",
+      "replace": "< ${boundText(maximum, integer)}"
+    },
+    {
+      "name": "fieldChecks: integer called a number",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "const noun = integer ? 'an integer' : 'a number'",
+      "replace": "const noun = 'a number'"
+    },
+    {
+      "name": "fieldChecks (fix 2): blank text reads as 0",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "  if (text.trim() === '') return undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "fieldChecks: Infinity is a number",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "return Number.isFinite(number) ? number : undefined",
+      "replace": "return Number.isNaN(number) ? undefined : number"
+    },
+    {
+      "name": "fieldChecks: integer accepts fractions",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "(schema.type !== 'integer' || Number.isInteger(number))",
+      "replace": "true"
+    },
+    {
+      "name": "fieldChecks: minimum exclusive",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "number >= schema.minimum",
+      "replace": "number > schema.minimum"
+    },
+    {
+      "name": "fieldChecks: maximum exclusive",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "number <= schema.maximum",
+      "replace": "number < schema.maximum"
+    },
+    {
+      "name": "fieldChecks (fix 1): any non-empty text is true",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "return refuse(FIELD_MESSAGES.boolean)",
+      "replace": "return accept(text !== '')"
+    },
+    {
+      "name": "fieldChecks (fix 1): false refused",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "  if (text === 'false') return accept(false)\n",
+      "replace": ""
+    },
+    {
+      "name": "fieldChecks: choices ignore case",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "if (allowed.includes(text)) return accept(text)",
+      "replace": "if (allowed.includes(text.toLowerCase())) return accept(text)"
+    },
+    {
+      "name": "fieldChecks: empty list gets the generic message",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "  if (allowed.length === 0) return refuse(FIELD_MESSAGES.noChoices)\n",
+      "replace": ""
+    },
+    {
+      "name": "fieldChecks: allowed values unquoted",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "allowed.map(value => JSON.stringify(value))",
+      "replace": "allowed.map(value => value)"
+    },
+    {
+      "name": "fieldChecks: multi choice checked as text",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "    case 'multiChoice':\n",
+      "replace": "    case 'multiChoice':\n      return checkText(text, field.schema as never)\n"
+    },
+    {
+      "name": "fieldChecks: unsupported error does not quote the schema",
+      "source": "src/mcp/elicitation/fieldChecks.ts",
+      "find": "Unsupported schema: ${JSON.stringify(schema)}",
+      "replace": "Unsupported schema: ${String(schema)}"
+    },
+    {
+      "name": "validation: ISO-shaped input goes to the model",
       "source": "src/mcp/elicitationValidation.ts",
-      "find": "('enum' in schema || 'oneOf' in schema)",
-      "replace": "('enum' in schema)"
+      "find": " || looksLikeISO8601(stringValue)) {",
+      "replace": ") {"
     },
     {
-      "name": "kinds: items.anyOf is not a multi choice",
+      "name": "validation: any field goes to the model",
       "source": "src/mcp/elicitationValidation.ts",
-      "find": "('enum' in schema.items || 'anyOf' in schema.items)",
-      "replace": "('enum' in schema.items)"
+      "find": "if (!isDateField(schema) || looksLikeISO8601",
+      "replace": "if (looksLikeISO8601"
     },
     {
-      "name": "labels: legacy enumNames ignored",
+      "name": "validation: the model value is not re-checked",
       "source": "src/mcp/elicitationValidation.ts",
-      "find": "('enumNames' in schema ? schema.enumNames : undefined) ?? schema.enum",
-      "replace": "schema.enum"
+      "find": "return resolved.isValid ? resolved : typed",
+      "replace": "return resolved"
     },
     {
-      "name": "text: maxLength message always plural",
+      "name": "validation: the parser error replaces the field error",
       "source": "src/mcp/elicitationValidation.ts",
-      "find": "plural(schema.maxLength, 'character')",
-      "replace": "'characters'"
+      "find": "if (!parsed.success) return typed",
+      "replace": "if (!parsed.success) return { isValid: false, error: parsed.error }"
     },
     {
-      "name": "date-time: an offset is refused",
+      "name": "validation: the model is always asked for a date",
       "source": "src/mcp/elicitationValidation.ts",
-      "find": "offset: true,",
-      "replace": "offset: false,"
+      "find": "parseNaturalLanguageDateTime(stringValue, schema.format, signal)",
+      "replace": "parseNaturalLanguageDateTime(stringValue, 'date', signal)"
     },
     {
-      "name": "numbers: whole bounds lose the .0",
-      "source": "src/mcp/elicitationValidation.ts",
-      "find": "Number.isInteger(n) && !isInteger ? `${n}.0` : String(n)",
-      "replace": "String(n)"
-    },
-    {
-      "name": "numbers: integer accepts fractions",
-      "source": "src/mcp/elicitationValidation.ts",
-      "find": "numberSchema = numberSchema.int({ message: rangeMsg })",
-      "replace": "numberSchema = numberSchema"
-    },
-    {
-      "name": "malformed: the error no longer quotes the schema",
-      "source": "src/mcp/elicitationValidation.ts",
-      "find": "throw new Error(`Unsupported schema: ${jsonStringify(schema)}`)",
-      "replace": "throw new Error('Unsupported schema')"
-    },
-    {
-      "name": "errors: joined with a comma",
-      "source": "src/mcp/elicitationValidation.ts",
-      "find": ".join('; ')",
-      "replace": ".join(', ')"
-    },
-    {
-      "name": "async: ISO-shaped input goes to the model",
-      "source": "src/mcp/elicitationValidation.ts",
-      "find": "if (isDateTimeSchema(schema) && !looksLikeISO8601(stringValue)) {",
-      "replace": "if (isDateTimeSchema(schema)) {"
-    },
-    {
-      "name": "async: the model's value is not re-checked",
-      "source": "src/mcp/elicitationValidation.ts",
-      "find": "if (validatedParsed.isValid) {",
-      "replace": "if (true) {"
-    },
-    {
-      "name": "prompt: a zero offset is signed minus",
+      "name": "parser: ISO prefix may run on",
       "source": "src/mcp/dateTimeParser.ts",
-      "find": "const tzSign = timezoneOffset >= 0 ? '+' : '-'",
-      "replace": "const tzSign = timezoneOffset > 0 ? '+' : '-'"
+      "find": "(?:T|$)/",
+      "replace": "/"
     },
     {
-      "name": "prompt: offset minutes not padded",
+      "name": "parser: ISO prefix not trimmed",
       "source": "src/mcp/dateTimeParser.ts",
-      "find": "String(tzMinutes).padStart(2, '0')",
-      "replace": "String(tzMinutes)"
+      "find": "STARTS_AS_ISO_DATE.test(input.trim())",
+      "replace": "STARTS_AS_ISO_DATE.test(input)"
     },
     {
-      "name": "prompt: weekday taken in UTC",
+      "name": "parser: reply not trimmed",
       "source": "src/mcp/dateTimeParser.ts",
-      "find": "now.toLocaleDateString('en-US', { weekday: 'long' })",
-      "replace": "now.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })"
+      "find": "extractTextContent(response.message.content).trim()",
+      "replace": "extractTextContent(response.message.content)"
     },
     {
-      "name": "prompt: date format loses its description",
+      "name": "parser: model failure shows its cause",
       "source": "src/mcp/dateTimeParser.ts",
-      "find": "'YYYY-MM-DD (date only, no time)'",
-      "replace": "'YYYY-MM-DD'"
+      "find": "return { success: false, error: MODEL_UNAVAILABLE }",
+      "replace": "return { success: false, error: String(error) }"
     },
     {
-      "name": "prompt: input no longer quoted",
+      "name": "parser: unreadable reply shows the reply",
       "source": "src/mcp/dateTimeParser.ts",
+      "find": ": { success: false, error: UNREADABLE_REPLY }",
+      "replace": ": { success: false, error: reply }"
+    },
+    {
+      "name": "parser: wrong query source",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "querySource: 'mcp_datetime_parse',",
+      "replace": "querySource: 'mcp_datetime',"
+    },
+    {
+      "name": "parser: caller signal dropped",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "    signal,\n    options: {",
+      "replace": "    signal: new AbortController().signal,\n    options: {"
+    },
+    {
+      "name": "parser: agents not empty",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "      agents: [],\n",
+      "replace": ""
+    },
+    {
+      "name": "parser (fix 3): four leading digits are a success",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "return isIsoDateOrDateTime(reply)",
+      "replace": "return /^\\d{4}/.test(reply)"
+    },
+    {
+      "name": "dateRequest: zero offset signed minus",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "const sign = minutesEast < 0 ? '-' : '+'",
+      "replace": "const sign = minutesEast <= 0 ? '-' : '+'"
+    },
+    {
+      "name": "dateRequest: offset hours not padded",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "${pad(Math.floor(minutes / 60))}",
+      "replace": "${Math.floor(minutes / 60)}"
+    },
+    {
+      "name": "dateRequest: offset inverted",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "formatOffset(-now.getTimezoneOffset())",
+      "replace": "formatOffset(now.getTimezoneOffset())"
+    },
+    {
+      "name": "dateRequest: weekday taken in UTC",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "WEEKDAYS[now.getDay()]!",
+      "replace": "WEEKDAYS[now.getUTCDay()]!"
+    },
+    {
+      "name": "dateRequest: instant in local text",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "utc: now.toISOString(),",
+      "replace": "utc: now.toString(),"
+    },
+    {
+      "name": "dateRequest: date format allows a time",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "? 'YYYY-MM-DD (date only, no time)'",
+      "replace": "? 'YYYY-MM-DDTHH:MM:SS (date only, no time)'"
+    },
+    {
+      "name": "dateRequest: date-time format always Z",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "SS${offset} (full",
+      "replace": "SSZ (full"
+    },
+    {
+      "name": "dateRequest: user input unquoted",
+      "source": "src/mcp/elicitation/dateRequest.ts",
       "find": "User input: \"${input}\"",
       "replace": "User input: ${input}"
     },
     {
-      "name": "reply: two leading digits are enough",
-      "source": "src/mcp/dateTimeParser.ts",
-      "find": "/^\\d{4}/.test(parsedText)",
-      "replace": "/^\\d{2}/.test(parsedText)"
+      "name": "dateRequest: instructions drop ONLY",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "'Answer with ONLY the ISO 8601 string",
+      "replace": "'Answer with the ISO 8601 string"
     },
     {
-      "name": "reply: not trimmed",
-      "source": "src/mcp/dateTimeParser.ts",
-      "find": "extractTextContent(result.message.content).trim()",
-      "replace": "extractTextContent(result.message.content)"
+      "name": "dateRequest: instructions drop the future",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "choose the one in the future.",
+      "replace": "choose the nearest one."
     },
     {
-      "name": "reply: model failure reads as unparsed",
-      "source": "src/mcp/dateTimeParser.ts",
-      "find": "'Unable to parse date/time. Please enter in ISO 8601 format manually.'",
-      "replace": "'Unable to parse date/time from input'"
+      "name": "dateRequest: instructions sentinel unquoted",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "answer exactly \"${INVALID_REPLY}\".",
+      "replace": "answer exactly ${INVALID_REPLY}."
     },
     {
-      "name": "iso shape: surrounding spaces count",
-      "source": "src/mcp/dateTimeParser.ts",
-      "find": "return /^\\d{4}-\\d{2}-\\d{2}(T|$)/.test(input.trim())",
-      "replace": "return /^\\d{4}-\\d{2}-\\d{2}(T|$)/.test(input)"
+      "name": "dateRequest: prompt sentinel unquoted",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "you can resolve, answer \"${INVALID_REPLY}\".",
+      "replace": "you can resolve, answer ${INVALID_REPLY}."
+    },
+    {
+      "name": "dateRequest: instant not labelled UTC",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "${clock.utc} (UTC)",
+      "replace": "${clock.utc}"
+    },
+    {
+      "name": "dateRequest: timezone label renamed",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "Local timezone: ${clock.offset}",
+      "replace": "Timezone: ${clock.offset}"
+    },
+    {
+      "name": "dateRequest: weekday label renamed",
+      "source": "src/mcp/elicitation/dateRequest.ts",
+      "find": "Day of week: ${clock.weekday}",
+      "replace": "Weekday: ${clock.weekday}"
+    },
+    {
+      "name": "queue: a mode-less request has no mode",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "return params.mode === 'url' ? 'url' : 'form'",
+      "replace": "return params.mode === 'url' ? 'url' : (params.mode as 'form')"
+    },
+    {
+      "name": "queue: every event waits",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "if (modeOf(fields.params) === 'url') {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "queue: waiting state offers cancel",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "{ actionLabel: 'Skip confirmation' }",
+      "replace": "{ actionLabel: 'Skip confirmation', showCancel: true }"
+    },
+    {
+      "name": "queue: event put first",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "return [...queue, event]",
+      "replace": "return [event, ...queue]"
+    },
+    {
+      "name": "queue: last match marked",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "const position = queue.findIndex(",
+      "replace": "const position = queue.findLastIndex("
+    },
+    {
+      "name": "queue: any server marked",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "      event.serverName === serverName &&\n",
+      "replace": ""
+    },
+    {
+      "name": "queue: no match still copies",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "if (position === -1) return queue",
+      "replace": "if (position === -1) return [...queue]"
+    },
+    {
+      "name": "queue: form events carry a URL id",
+      "source": "src/mcp/elicitation/queue.ts",
+      "find": "return params.mode === 'url' ? params.elicitationId : undefined",
+      "replace": "return (params as { elicitationId?: string }).elicitationId"
+    },
+    {
+      "name": "hooks: a decline keeps its content",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "  return answer.action === 'decline'\n    ? { ...DECLINED }",
+      "replace": "  return answer.action === 'never'\n    ? { ...DECLINED }"
+    },
+    {
+      "name": "hooks: a blocking Elicitation hook is ignored",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "    if (outcome.blockingError) return { ...DECLINED }\n    return outcome.elicitationResponse",
+      "replace": "    return outcome.elicitationResponse"
+    },
+    {
+      "name": "hooks: a blocking ElicitationResult hook is ignored",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "    if (outcome.blockingError) return { ...DECLINED }\n    const override",
+      "replace": "    const override"
+    },
+    {
+      "name": "hooks: result hook without content drops the user content",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "content: answer.content ?? result.content",
+      "replace": "content: answer.content"
+    },
+    {
+      "name": "hooks: no override still rebuilds the answer",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "if (!override) return result",
+      "replace": "if (!override) return { action: result.action }"
+    },
+    {
+      "name": "hooks: Elicitation hook gets no message",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "message: params.message,",
+      "replace": "message: '',"
+    },
+    {
+      "name": "hooks: Elicitation hook gets no schema",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "'requestedSchema' in params ? params.requestedSchema : undefined",
+      "replace": "undefined"
+    },
+    {
+      "name": "hooks: Elicitation hook gets no url",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "url: params.mode === 'url' ? params.url : undefined,",
+      "replace": "url: undefined,"
+    },
+    {
+      "name": "hooks: Elicitation hook gets no id",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "elicitationId: urlElicitationIdOf(params),",
+      "replace": "elicitationId: undefined,"
+    },
+    {
+      "name": "hooks: Elicitation hook always form",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "mode: modeOf(params),",
+      "replace": "mode: 'form',"
+    },
+    {
+      "name": "hooks: ElicitationResult hook gets no mode",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "      mode,\n      elicitationId,\n    })",
+      "replace": "      elicitationId,\n    })"
+    },
+    {
+      "name": "hooks: ElicitationResult hook gets no content",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "content: result.content,",
+      "replace": "content: undefined,"
+    },
+    {
+      "name": "hooks: the user action is announced",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "\"${serverName}\": ${final.action}",
+      "replace": "\"${serverName}\": ${result.action}"
+    },
+    {
+      "name": "hooks: response announced under another type",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "    'elicitation_response',",
+      "replace": "    'elicitation_result',"
+    },
+    {
+      "name": "hooks: completion announced under another type",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "    'elicitation_complete',",
+      "replace": "    'elicitation_completed',"
+    },
+    {
+      "name": "hooks: completion message drops the id",
+      "source": "src/mcp/elicitation/hookRunners.ts",
+      "find": "confirmed elicitation ${elicitationId} complete",
+      "replace": "confirmed elicitation complete"
+    },
+    {
+      "name": "pipeline: a hook answer still queues",
+      "source": "src/mcp/elicitation/answerPipeline.ts",
+      "find": "    if (fromHooks) return fromHooks\n",
+      "replace": ""
+    },
+    {
+      "name": "pipeline: result hooks skipped",
+      "source": "src/mcp/elicitation/answerPipeline.ts",
+      "find": "    return await deps.runResultHooks(",
+      "replace": "    return fromUser\n    await deps.runResultHooks("
+    },
+    {
+      "name": "pipeline: a failure declines",
+      "source": "src/mcp/elicitation/answerPipeline.ts",
+      "find": "    deps.onError(serverName, error)\n    return { ...CANCELLED }",
+      "replace": "    deps.onError(serverName, error)\n    return { action: 'decline' }"
+    },
+    {
+      "name": "pipeline: a server cancel is never heard",
+      "source": "src/mcp/elicitation/answerPipeline.ts",
+      "find": "const onAbort = () => settle({ ...CANCELLED })",
+      "replace": "const onAbort = () => {}"
+    },
+    {
+      "name": "pipeline: an aborted signal still presents",
+      "source": "src/mcp/elicitation/answerPipeline.ts",
+      "find": "    if (signal.aborted) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "handler: request id stringified",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "requestId: extra.requestId,",
+      "replace": "requestId: String(extra.requestId),"
+    },
+    {
+      "name": "handler: params get a mode",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "params: request.params,",
+      "replace": "params: { mode: 'form', ...request.params },"
+    },
+    {
+      "name": "handler: server cancel not wired",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "signal: extra.signal,",
+      "replace": "signal: new AbortController().signal,"
+    },
+    {
+      "name": "handler: an unchanged queue makes a new state",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "  if (queue === state.elicitation.queue) return state\n",
+      "replace": ""
+    },
+    {
+      "name": "handler: other state fields dropped",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "return { ...state, elicitation: { ...state.elicitation, queue } }",
+      "replace": "return { elicitation: { ...state.elicitation, queue } } as AppState"
+    },
+    {
+      "name": "handler: a client without the capability still hears notices",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "    return\n  }\n\n  client.setNotificationHandler(",
+      "replace": "  }\n\n  client.setNotificationHandler("
+    },
+    {
+      "name": "handler: completion not announced",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "      announceCompletion(serverName, elicitationId)\n",
+      "replace": ""
+    },
+    {
+      "name": "handler: completion not marked",
+      "source": "src/mcp/elicitationHandler.ts",
+      "find": "          markElicitationCompleted(\n            state.elicitation.queue,",
+      "replace": "          ((queue: ElicitationRequestEvent[]) => queue)(\n            state.elicitation.queue,"
     }
   ]
 }

@@ -4,9 +4,20 @@ import type {
   PrimitiveSchemaDefinition,
   StringSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { z } from 'zod/v4'
-import { jsonStringify } from 'src/platform/slowOperations.js'
-import { plural } from 'src/shared/text/stringUtils.js'
+import {
+  multiChoiceLabel,
+  multiChoiceLabels,
+  multiChoiceValues,
+  singleChoiceLabel,
+  singleChoiceLabels,
+  singleChoiceValues,
+} from 'src/mcp/elicitation/choices.js'
+import { checkField } from 'src/mcp/elicitation/fieldChecks.js'
+import {
+  isDateField,
+  isMultiChoiceField,
+  isSingleChoiceField,
+} from 'src/mcp/elicitation/fieldKind.js'
 import {
   looksLikeISO8601,
   parseNaturalLanguageDateTime,
@@ -18,255 +29,73 @@ export type ValidationResult = {
   error?: string
 }
 
-/**
- * Check if schema is a single-select enum (either legacy `enum` format or new `oneOf` format)
- */
 export const isEnumSchema = (
   schema: PrimitiveSchemaDefinition,
-): schema is EnumSchema => {
-  return schema.type === 'string' && ('enum' in schema || 'oneOf' in schema)
-}
+): schema is EnumSchema => isSingleChoiceField(schema)
 
-/**
- * Check if schema is a multi-select enum (`type: "array"` with `items.enum` or `items.anyOf`)
- */
 export function isMultiSelectEnumSchema(
   schema: PrimitiveSchemaDefinition,
 ): schema is MultiSelectEnumSchema {
-  return (
-    schema.type === 'array' &&
-    'items' in schema &&
-    typeof schema.items === 'object' &&
-    schema.items !== null &&
-    ('enum' in schema.items || 'anyOf' in schema.items)
-  )
+  return isMultiChoiceField(schema)
 }
 
-/**
- * Get values from a multi-select enum schema
- */
 export function getMultiSelectValues(schema: MultiSelectEnumSchema): string[] {
-  if ('anyOf' in schema.items) {
-    return schema.items.anyOf.map(item => item.const)
-  }
-  if ('enum' in schema.items) {
-    return schema.items.enum
-  }
-  return []
+  return multiChoiceValues(schema)
 }
 
-/**
- * Get display labels from a multi-select enum schema
- */
 export function getMultiSelectLabels(schema: MultiSelectEnumSchema): string[] {
-  if ('anyOf' in schema.items) {
-    return schema.items.anyOf.map(item => item.title)
-  }
-  if ('enum' in schema.items) {
-    return schema.items.enum
-  }
-  return []
+  return multiChoiceLabels(schema)
 }
 
-/**
- * Get label for a specific value in a multi-select enum
- */
 export function getMultiSelectLabel(
   schema: MultiSelectEnumSchema,
   value: string,
 ): string {
-  const index = getMultiSelectValues(schema).indexOf(value)
-  return index >= 0 ? (getMultiSelectLabels(schema)[index] ?? value) : value
+  return multiChoiceLabel(schema, value)
 }
 
-/**
- * Get enum values from EnumSchema (handles both legacy `enum` and new `oneOf` formats)
- */
 export function getEnumValues(schema: EnumSchema): string[] {
-  if ('oneOf' in schema) {
-    return schema.oneOf.map(item => item.const)
-  }
-  if ('enum' in schema) {
-    return schema.enum
-  }
-  return []
+  return singleChoiceValues(schema)
 }
 
-/**
- * Get enum display labels from EnumSchema
- */
 export function getEnumLabels(schema: EnumSchema): string[] {
-  if ('oneOf' in schema) {
-    return schema.oneOf.map(item => item.title)
-  }
-  if ('enum' in schema) {
-    return ('enumNames' in schema ? schema.enumNames : undefined) ?? schema.enum
-  }
-  return []
+  return singleChoiceLabels(schema)
 }
 
-/**
- * Get label for a specific enum value
- */
 export function getEnumLabel(schema: EnumSchema, value: string): string {
-  const index = getEnumValues(schema).indexOf(value)
-  return index >= 0 ? (getEnumLabels(schema)[index] ?? value) : value
-}
-
-function getZodSchema(schema: PrimitiveSchemaDefinition): z.ZodType {
-  if (isEnumSchema(schema)) {
-    const [first, ...rest] = getEnumValues(schema)
-    if (!first) {
-      return z.never()
-    }
-    return z.enum([first, ...rest])
-  }
-  if (schema.type === 'string') {
-    let stringSchema = z.string()
-    if (schema.minLength !== undefined) {
-      stringSchema = stringSchema.min(schema.minLength, {
-        message: `Must be at least ${schema.minLength} ${plural(schema.minLength, 'character')}`,
-      })
-    }
-    if (schema.maxLength !== undefined) {
-      stringSchema = stringSchema.max(schema.maxLength, {
-        message: `Must be at most ${schema.maxLength} ${plural(schema.maxLength, 'character')}`,
-      })
-    }
-    switch (schema.format) {
-      case 'email':
-        stringSchema = stringSchema.email({
-          message: 'Must be a valid email address, e.g. user@example.com',
-        })
-        break
-      case 'uri':
-        stringSchema = stringSchema.url({
-          message: 'Must be a valid URI, e.g. https://example.com',
-        })
-        break
-      case 'date':
-        stringSchema = stringSchema.date(
-          'Must be a valid date, e.g. 2024-03-15, today, next Monday',
-        )
-        break
-      case 'date-time':
-        stringSchema = stringSchema.datetime({
-          offset: true,
-          message:
-            'Must be a valid date-time, e.g. 2024-03-15T14:30:00Z, tomorrow at 3pm',
-        })
-        break
-      default:
-        // No specific format validation
-        break
-    }
-    return stringSchema
-  }
-  if (schema.type === 'number' || schema.type === 'integer') {
-    const typeLabel = schema.type === 'integer' ? 'an integer' : 'a number'
-    const isInteger = schema.type === 'integer'
-    const formatNum = (n: number) =>
-      Number.isInteger(n) && !isInteger ? `${n}.0` : String(n)
-
-    // Build a single descriptive error message for range violations
-    const rangeMsg =
-      schema.minimum !== undefined && schema.maximum !== undefined
-        ? `Must be ${typeLabel} between ${formatNum(schema.minimum)} and ${formatNum(schema.maximum)}`
-        : schema.minimum !== undefined
-          ? `Must be ${typeLabel} >= ${formatNum(schema.minimum)}`
-          : schema.maximum !== undefined
-            ? `Must be ${typeLabel} <= ${formatNum(schema.maximum)}`
-            : `Must be ${typeLabel}`
-
-    let numberSchema = z.coerce.number({
-      error: rangeMsg,
-    })
-    if (schema.type === 'integer') {
-      numberSchema = numberSchema.int({ message: rangeMsg })
-    }
-    if (schema.minimum !== undefined) {
-      numberSchema = numberSchema.min(schema.minimum, {
-        message: rangeMsg,
-      })
-    }
-    if (schema.maximum !== undefined) {
-      numberSchema = numberSchema.max(schema.maximum, {
-        message: rangeMsg,
-      })
-    }
-    return numberSchema
-  }
-  if (schema.type === 'boolean') {
-    return z.coerce.boolean()
-  }
-
-  throw new Error(`Unsupported schema: ${jsonStringify(schema)}`)
+  return singleChoiceLabel(schema, value)
 }
 
 export function validateElicitationInput(
   stringValue: string,
   schema: PrimitiveSchemaDefinition,
 ): ValidationResult {
-  const zodSchema = getZodSchema(schema)
-  const parseResult = zodSchema.safeParse(stringValue)
-
-  if (parseResult.success) {
-    // zodSchema always produces primitive types for elicitation
-    return {
-      value: parseResult.data as string | number | boolean,
-      isValid: true,
-    }
-  }
-  return {
-    isValid: false,
-    error: parseResult.error.issues.map(e => e.message).join('; '),
-  }
+  return checkField(stringValue, schema)
 }
 
-/**
- * Check if a schema is a date or date-time format that supports NL parsing
- */
 export function isDateTimeSchema(
   schema: PrimitiveSchemaDefinition,
 ): schema is StringSchema & { format: 'date' | 'date-time' } {
-  return (
-    schema.type === 'string' &&
-    'format' in schema &&
-    (schema.format === 'date' || schema.format === 'date-time')
-  )
+  return isDateField(schema)
 }
 
 /**
- * Async validation that attempts NL date/time parsing via Haiku
- * when the input doesn't look like ISO 8601.
+ * The typed-input check, with a model fallback for natural-language dates.
+ * Valid date input is always ISO-shaped, so it never reaches the model.
+ * The model's value is never trusted: it must pass the same check, and when
+ * it does not, the user sees the error for what they typed.
  */
 export async function validateElicitationInputAsync(
   stringValue: string,
   schema: PrimitiveSchemaDefinition,
   signal: AbortSignal,
 ): Promise<ValidationResult> {
-  const syncResult = validateElicitationInput(stringValue, schema)
-  if (syncResult.isValid) {
-    return syncResult
+  const typed = validateElicitationInput(stringValue, schema)
+  if (!isDateField(schema) || looksLikeISO8601(stringValue)) {
+    return typed
   }
-
-  if (isDateTimeSchema(schema) && !looksLikeISO8601(stringValue)) {
-    const parseResult = await parseNaturalLanguageDateTime(
-      stringValue,
-      schema.format,
-      signal,
-    )
-
-    if (parseResult.success) {
-      const validatedParsed = validateElicitationInput(
-        parseResult.value,
-        schema,
-      )
-      if (validatedParsed.isValid) {
-        return validatedParsed
-      }
-    }
-  }
-
-  return syncResult
+  const parsed = await parseNaturalLanguageDateTime(stringValue, schema.format, signal)
+  if (!parsed.success) return typed
+  const resolved = validateElicitationInput(parsed.value, schema)
+  return resolved.isValid ? resolved : typed
 }

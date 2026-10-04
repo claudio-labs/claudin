@@ -288,3 +288,32 @@ No test, snapshot or generated file outside the unit pins this text. `agent/prom
 - **Validation is a pure mapping** from a field schema to a checker that returns `ValidationResult`. Field kinds form a discriminated union (text, number, boolean, single choice, multi choice), classified once. The messages listed above live as named constants.
 - **Date parsing** splits into a pure prompt builder, which takes the instant, the offset and the weekday as inputs (so no clock or `TZ` is needed in tests), and a thin model call. The success test is the ISO shape from finding 3.
 - **Types.** Explicit throughout, with no `any`, and the SDK's schema types at the boundary.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**Code.** The three unit files are now thin facades over `src/mcp/elicitation/`:
+- `fieldKind`, which classifies each field once;
+- `choices` and `isoDate`;
+- `fieldChecks`, with its messages as named constants;
+- `dateRequest`, which takes the clock as input;
+- `queue`;
+- `answerPipeline`, which takes its dependencies as a parameter;
+- `hookRunners`.
+
+The three characterization suites pass unchanged.
+
+**Fixes, each with a test:**
+1. A boolean field accepts only `true` and `false`.
+2. A blank number is refused.
+3. A date parse succeeds only on a real, in-range ISO date or date-time, so `2026-02-30` and hour 24 are refused.
+
+**Kept as pinned.** Findings 4–9. For finding 9, the out-of-list error is worded by this code now
+that the validation library is gone. It still names every allowed value.
+
+**Probes.** 124, in `rewrite-mcp-elicitation.json`.
+
+**Residue, reviewed.** 61 lines of Claude Code remain: the exported validation and handler
+signatures, the `ElicitationRequestEvent` and waiting-state types, and the date parser's result type.
+At landing, one table in `pieces.test.ts` was reworded because it matched by shape.
