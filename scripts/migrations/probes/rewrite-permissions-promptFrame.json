@@ -1,0 +1,241 @@
+{
+  "test": [
+    "src/permissions/ui/PermissionPrompt.characterization.test.tsx",
+    "src/permissions/ui/PermissionDialog.characterization.test.tsx",
+    "src/permissions/ui/PermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/PermissionRequest.notify.characterization.test.tsx",
+    "src/permissions/ui/promptFrame.shipped.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/PermissionRequest.tsx",
+  "probes": [
+    {
+      "name": "routing: file edits lose their dialog",
+      "find": "      return FileEditPermissionRequest;\n",
+      "replace": "      return FallbackPermissionRequest;\n"
+    },
+    {
+      "name": "routing: git takes the tool-wide dialog",
+      "find": "      return GitPermissionRequest;\n",
+      "replace": "      return FallbackPermissionRequest;\n"
+    },
+    {
+      "name": "routing: reads lose the filesystem dialog",
+      "find": "    case FileReadTool:\n",
+      "replace": ""
+    },
+    {
+      "name": "routing: wait loses the shell-delegate dialog",
+      "find": "      return ShellDelegatePermissionRequest;\n",
+      "replace": "      return FallbackPermissionRequest;\n"
+    },
+    {
+      "name": "routing: monitor takes the tool-wide dialog in the shipped build",
+      "find": "      return MonitorPermissionRequest ?? FallbackPermissionRequest;\n",
+      "replace": "      return FallbackPermissionRequest;\n"
+    },
+    {
+      "name": "routing: unknown tools get the bash dialog",
+      "find": "    default:\n      return FallbackPermissionRequest;\n",
+      "replace": "    default:\n      return BashPermissionRequest;\n"
+    },
+    {
+      "name": "interrupt: Ctrl+C allows instead of rejecting",
+      "find": "      toolUseConfirm.onReject();\n",
+      "replace": "      toolUseConfirm.onAllow(toolUseConfirm.input, []);\n"
+    },
+    {
+      "name": "interrupt: handler bound to a context where Ctrl+C means something else",
+      "find": "      context: \"Confirmation\"\n",
+      "replace": "      context: \"Transcript\"\n"
+    },
+    {
+      "name": "interrupt: caller callbacks in the other order",
+      "find": "      onDone();\n      onReject();\n",
+      "replace": "      onReject();\n      onDone();\n"
+    },
+    {
+      "name": "notify: a blank name is treated as a name",
+      "find": "  if (!toolName || toolName.trim() === '') {",
+      "replace": "  if (!toolName) {"
+    },
+    {
+      "name": "notify: wrong notification type",
+      "find": "useNotifyAfterTimeout(notificationMessage, \"permission_prompt\");",
+      "replace": "useNotifyAfterTimeout(notificationMessage, \"idle_prompt\");"
+    },
+    {
+      "name": "frame: default border colour",
+      "source": "src/permissions/ui/PermissionDialog.tsx",
+      "find": "const color = t1 === undefined ? \"permission\" : t1;",
+      "replace": "const color = t1 === undefined ? \"warning\" : t1;"
+    },
+    {
+      "name": "frame: the title takes the border colour",
+      "source": "src/permissions/ui/PermissionDialog.tsx",
+      "find": "color={titleColor} workerBadge",
+      "replace": "color={color} workerBadge"
+    },
+    {
+      "name": "frame: default inner padding",
+      "source": "src/permissions/ui/PermissionDialog.tsx",
+      "find": "const innerPaddingX = t2 === undefined ? 1 : t2;",
+      "replace": "const innerPaddingX = t2 === undefined ? 2 : t2;"
+    },
+    {
+      "name": "frame: side edge drawn",
+      "source": "src/permissions/ui/PermissionDialog.tsx",
+      "find": "borderLeft={false}",
+      "replace": "borderLeft={true}"
+    },
+    {
+      "name": "frame: title-right no longer pushed right",
+      "source": "src/permissions/ui/PermissionDialog.tsx",
+      "find": "justifyContent=\"space-between\"",
+      "replace": "justifyContent=\"flex-start\""
+    },
+    {
+      "name": "title: badge loses its separator",
+      "source": "src/permissions/ui/PermissionRequestTitle.tsx",
+      "find": "{\"\\xB7 \"}@{workerBadge.name}",
+      "replace": "@{workerBadge.name}"
+    },
+    {
+      "name": "title: subtitle loses its end instead of its start",
+      "source": "src/permissions/ui/PermissionRequestTitle.tsx",
+      "find": "wrap=\"truncate-start\"",
+      "replace": "wrap=\"truncate-end\""
+    },
+    {
+      "name": "prompt: every answer becomes the first option",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "    onSelect(value_1, feedback);\n",
+      "replace": "    onSelect(options[0]!.value, feedback);\n"
+    },
+    {
+      "name": "prompt: the yes note rides on a no",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "const rawFeedback = option_0.feedbackConfig.type === \"accept\" ? acceptFeedback : rejectFeedback;",
+      "replace": "const rawFeedback = acceptFeedback || rejectFeedback;"
+    },
+    {
+      "name": "prompt: note not trimmed",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "const trimmedFeedback = rawFeedback.trim();",
+      "replace": "const trimmedFeedback = rawFeedback;"
+    },
+    {
+      "name": "prompt: an empty note on no cancels",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "            allowEmptySubmitToCancel: true\n",
+      "replace": "            allowEmptySubmitToCancel: false\n"
+    },
+    {
+      "name": "prompt: Esc does not reach the caller",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "      onCancel?.();\n",
+      "replace": ""
+    },
+    {
+      "name": "prompt: Esc not counted",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "escapeCount: prev.attribution.escapeCount + 1",
+      "replace": "escapeCount: prev.attribution.escapeCount"
+    },
+    {
+      "name": "prompt: default question",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "const question = t1 === undefined ? \"Do you want to proceed?\" : t1;",
+      "replace": "const question = t1 === undefined ? \"Proceed?\" : t1;"
+    },
+    {
+      "name": "prompt: Tab hint gone",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "showTabHint && \" \\xB7 Tab to amend\"",
+      "replace": "showTabHint && \"\""
+    },
+    {
+      "name": "prompt: Tab does not close an open note",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "        if (acceptInputMode) {\n          setAcceptInputMode(false);",
+      "replace": "        if (acceptInputMode) {\n          setAcceptInputMode(true);"
+    },
+    {
+      "name": "prompt: an empty note stays open when focus leaves",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "if (newOption?.feedbackConfig?.type !== \"accept\" && acceptInputMode && !acceptFeedback.trim()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "prompt: bound actions answer nothing",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "        handlers[opt_3.keybinding] = () => handleSelect(opt_3.value);\n",
+      "replace": ""
+    },
+    {
+      "name": "explanation: managed rules offer the /permissions hint",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "reason.rule.source === 'policySettings' ? undefined",
+      "replace": "reason.rule.source === 'userSettings' ? undefined"
+    },
+    {
+      "name": "explanation: hook reason not on its own line",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "const hookReasonString = reason.reason ? `:\\n${reason.reason}` : '.';",
+      "replace": "const hookReasonString = reason.reason ? `: ${reason.reason}` : '.';"
+    },
+    {
+      "name": "explanation: hooks in auto mode not in warning",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "permissionMode === \"auto\" ? \"warning\" : undefined",
+      "replace": "permissionMode === \"default\" ? \"warning\" : undefined"
+    },
+    {
+      "name": "explanation: working-directory reasons lose the hint",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "        configString: '/permissions to update rules'\n",
+      "replace": "        configString: undefined\n"
+    },
+    {
+      "name": "explanation: no blank line after it",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "<Box marginBottom={1} flexDirection=\"column\">",
+      "replace": "<Box flexDirection=\"column\">"
+    },
+    {
+      "name": "explanation: auto-mode classifier not in error colour",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "        themeColor: 'error'\n",
+      "replace": "        themeColor: 'warning'\n"
+    },
+    {
+      "name": "counter: counts every render",
+      "source": "src/permissions/ui/hooks.ts",
+      "find": "    if (loggedToolUseID.current === toolUseConfirm.toolUseID) {",
+      "replace": "    if (false) {"
+    },
+    {
+      "name": "counter: does not count",
+      "source": "src/permissions/ui/hooks.ts",
+      "find": "permissionPromptCount: prev.attribution.permissionPromptCount + 1,",
+      "replace": "permissionPromptCount: prev.attribution.permissionPromptCount,"
+    },
+    {
+      "name": "badge: raw colour name, not the agent colour",
+      "source": "src/permissions/ui/WorkerBadge.tsx",
+      "find": "    t1 = toInkColor(color);\n",
+      "replace": "    t1 = color as never;\n"
+    },
+    {
+      "name": "pending: badge without a colour",
+      "source": "src/permissions/ui/WorkerPendingPermission.tsx",
+      "find": "t5 = agentName && agentColor && <Box",
+      "replace": "t5 = agentName && <Box"
+    },
+    {
+      "name": "pending: border colour",
+      "source": "src/permissions/ui/WorkerPendingPermission.tsx",
+      "find": "borderColor=\"warning\"",
+      "replace": "borderColor=\"permission\""
+    }
+  ]
+}
