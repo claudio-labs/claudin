@@ -1,6 +1,6 @@
-import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
+import { useCallback } from 'react';
 import { EnterPlanModeTool } from 'src/tools/EnterPlanModeTool/EnterPlanModeTool.js';
 import { ExitPlanModeV2Tool } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';
 import { useNotifyAfterTimeout } from 'src/platform/notifications/useNotifyAfterTimeout.js';
@@ -34,56 +34,12 @@ import { NotebookEditPermissionRequest } from 'src/permissions/ui/NotebookEditPe
 import { PowerShellPermissionRequest } from 'src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.js';
 import { SkillPermissionRequest } from 'src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.js';
 import { WebFetchPermissionRequest } from 'src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.js';
-// WaitFor delegates its permission check to the Bash rules exactly like
-// Monitor, so it shares Monitor's dialog (which labels itself from the tool).
-import { MonitorPermissionRequest as ShellDelegatePermissionRequest } from 'src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const MonitorTool = feature('MONITOR_TOOL') ? (require('src/tools/MonitorTool/MonitorTool.js') as typeof import('src/tools/MonitorTool/MonitorTool.js')).MonitorTool : null;
-const MonitorPermissionRequest = feature('MONITOR_TOOL') ? (require('src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js') as typeof import('src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js')).MonitorPermissionRequest : null;
+import { MonitorPermissionRequest } from 'src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js';
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
-/* eslint-enable @typescript-eslint/no-require-imports */
 import type { z } from 'zod/v4';
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js';
 import type { WorkerBadgeProps } from 'src/permissions/ui/WorkerBadge.js';
-function permissionComponentForTool(tool: Tool): React.ComponentType<PermissionRequestProps> {
-  switch (tool) {
-    case FileEditTool:
-      return FileEditPermissionRequest;
-    case FileWriteTool:
-      return FileWritePermissionRequest;
-    case BashTool:
-      return BashPermissionRequest;
-    case PowerShellTool:
-      return PowerShellPermissionRequest;
-    // Not the fallback: its "don't ask again" would save a tool-wide `Git`
-    // grant, and this tool's permissions are checked as `Bash(...)` rules.
-    case GitTool:
-      return GitPermissionRequest;
-    case WebFetchTool:
-      return WebFetchPermissionRequest;
-    case NotebookEditTool:
-      return NotebookEditPermissionRequest;
-    case ExitPlanModeV2Tool:
-      return ExitPlanModePermissionRequest;
-    case EnterPlanModeTool:
-      return EnterPlanModePermissionRequest;
-    case SkillTool:
-      return SkillPermissionRequest;
-    case AskUserQuestionTool:
-      return AskUserQuestionPermissionRequest;
-    case MonitorTool:
-      return MonitorPermissionRequest ?? FallbackPermissionRequest;
-    case WaitForTool:
-      return ShellDelegatePermissionRequest;
-    case GlobTool:
-    case GrepTool:
-    case FileReadTool:
-      return FilesystemPermissionRequest;
-    default:
-      return FallbackPermissionRequest;
-  }
-}
+
 export type PermissionRequestProps<Input extends AnyObject = AnyObject> = {
   toolUseConfirm: ToolUseConfirm<Input>;
   toolUseContext: ToolUseContext;
@@ -91,17 +47,6 @@ export type PermissionRequestProps<Input extends AnyObject = AnyObject> = {
   onReject(): void;
   verbose: boolean;
   workerBadge: WorkerBadgeProps | undefined;
-  /**
-   * Register JSX to render in a sticky footer below the scrollable area.
-   * Fullscreen mode only (non-fullscreen has no sticky area — terminal
-   * scrollback moves everything together). Call with null to clear.
-   *
-   * Used by ExitPlanModePermissionRequest to keep response options visible
-   * while the user scrolls through a long plan. The callback is stable —
-   * JSX passed should use refs for callbacks that close over component state
-   * to avoid stale closures (React reconciles the JSX, preserving Select's
-   * internal focus/input state).
-   */
   setStickyFooter?: (jsx: React.ReactNode | null) => void;
 };
 export type ToolUseConfirm<Input extends AnyObject = AnyObject> = {
@@ -113,11 +58,6 @@ export type ToolUseConfirm<Input extends AnyObject = AnyObject> = {
   toolUseID: string;
   permissionResult: PermissionDecision;
   permissionPromptStartTimeMs: number;
-  /**
-   * Called when user interacts with the permission dialog (e.g., arrow keys, tab, typing).
-   * This prevents async auto-approval mechanisms (like the bash classifier) from
-   * dismissing the dialog while the user is actively engaging with it.
-   */
   classifierCheckInProgress?: boolean;
   classifierAutoApproved?: boolean;
   classifierMatchedRule?: string;
@@ -129,89 +69,69 @@ export type ToolUseConfirm<Input extends AnyObject = AnyObject> = {
   onReject(feedback?: string, contentBlocks?: ContentBlockParam[]): void;
   recheckPermission(): Promise<void>;
 };
-function getNotificationMessage(toolUseConfirm: ToolUseConfirm): string {
-  const toolName = toolUseConfirm.tool.userFacingName(toolUseConfirm.input as never);
-  if (toolUseConfirm.tool === ExitPlanModeV2Tool) {
-    return 'Claudin needs your approval for the plan';
-  }
-  if (toolUseConfirm.tool === EnterPlanModeTool) {
-    return 'Claudin wants to enter plan mode';
-  }
-  if (!toolName || toolName.trim() === '') {
-    return 'Claudin needs your attention';
-  }
-  return `Claude needs your permission to use ${toolName}`;
+type PermissionDialogComponent = React.ComponentType<PermissionRequestProps>;
+
+let dialogByTool: ReadonlyMap<unknown, PermissionDialogComponent> | undefined;
+
+/**
+ * Which dialog each tool's request is shown in, keyed by the tool object.
+ * Built on first use, after every tool module has finished loading.
+ */
+function dialogRoutes(): ReadonlyMap<unknown, PermissionDialogComponent> {
+  if (dialogByTool) return dialogByTool;
+  const routes: Array<[unknown, PermissionDialogComponent]> = [
+    [FileEditTool, FileEditPermissionRequest],
+    [FileWriteTool, FileWritePermissionRequest],
+    [BashTool, BashPermissionRequest],
+    [PowerShellTool, PowerShellPermissionRequest],
+    // Git is checked against Bash(...) rules; the tool-wide dialog's "don't ask again" would bypass them.
+    [GitTool, GitPermissionRequest],
+    [WebFetchTool, WebFetchPermissionRequest],
+    [NotebookEditTool, NotebookEditPermissionRequest],
+    [ExitPlanModeV2Tool, ExitPlanModePermissionRequest],
+    [EnterPlanModeTool, EnterPlanModePermissionRequest],
+    [SkillTool, SkillPermissionRequest],
+    [AskUserQuestionTool, AskUserQuestionPermissionRequest],
+    // Wait runs a shell command under the Bash rules, like Monitor, and that dialog names itself after its tool.
+    [WaitForTool, MonitorPermissionRequest],
+    [GlobTool, FilesystemPermissionRequest],
+    [GrepTool, FilesystemPermissionRequest],
+    [FileReadTool, FilesystemPermissionRequest],
+  ];
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const monitorTool = feature('MONITOR_TOOL') ? (require('src/tools/MonitorTool/MonitorTool.js') as typeof import('src/tools/MonitorTool/MonitorTool.js')).MonitorTool : null;
+  if (monitorTool) routes.push([monitorTool, MonitorPermissionRequest]);
+  dialogByTool = new Map(routes);
+  return dialogByTool;
 }
 
-// TODO: Move this to Tool.renderPermissionRequest
-export function PermissionRequest(t0: PermissionRequestProps) {
-  const $ = _c(18);
-  const {
-    toolUseConfirm,
-    toolUseContext,
-    onDone,
-    onReject,
-    verbose,
-    workerBadge,
-    setStickyFooter
-  } = t0;
-  let t1;
-  if ($[0] !== onDone || $[1] !== onReject || $[2] !== toolUseConfirm) {
-    t1 = () => {
-      onDone();
-      onReject();
-      toolUseConfirm.onReject();
-    };
-    $[0] = onDone;
-    $[1] = onReject;
-    $[2] = toolUseConfirm;
-    $[3] = t1;
-  } else {
-    t1 = $[3];
-  }
-  let t2;
-  if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = {
-      context: "Confirmation"
-    };
-    $[4] = t2;
-  } else {
-    t2 = $[4];
-  }
-  useKeybinding("app:interrupt", t1, t2);
-  let t3;
-  if ($[5] !== toolUseConfirm) {
-    t3 = getNotificationMessage(toolUseConfirm);
-    $[5] = toolUseConfirm;
-    $[6] = t3;
-  } else {
-    t3 = $[6];
-  }
-  const notificationMessage = t3;
-  useNotifyAfterTimeout(notificationMessage, "permission_prompt");
-  let t4;
-  if ($[7] !== toolUseConfirm.tool) {
-    t4 = permissionComponentForTool(toolUseConfirm.tool);
-    $[7] = toolUseConfirm.tool;
-    $[8] = t4;
-  } else {
-    t4 = $[8];
-  }
-  const PermissionComponent = t4;
-  let t5;
-  if ($[9] !== PermissionComponent || $[10] !== onDone || $[11] !== onReject || $[12] !== setStickyFooter || $[13] !== toolUseConfirm || $[14] !== toolUseContext || $[15] !== verbose || $[16] !== workerBadge) {
-    t5 = <PermissionComponent toolUseContext={toolUseContext} toolUseConfirm={toolUseConfirm} onDone={onDone} onReject={onReject} verbose={verbose} workerBadge={workerBadge} setStickyFooter={setStickyFooter} />;
-    $[9] = PermissionComponent;
-    $[10] = onDone;
-    $[11] = onReject;
-    $[12] = setStickyFooter;
-    $[13] = toolUseConfirm;
-    $[14] = toolUseContext;
-    $[15] = verbose;
-    $[16] = workerBadge;
-    $[17] = t5;
-  } else {
-    t5 = $[17];
-  }
-  return t5;
+function permissionComponentForTool(tool: Tool): React.ComponentType<PermissionRequestProps> {
+  return dialogRoutes().get(tool) ?? FallbackPermissionRequest;
+}
+
+// The named-tool wording says Claude where the others say Claudin; user hooks may match on it, so it stays.
+function getNotificationMessage(toolUseConfirm: ToolUseConfirm): string {
+  const { tool, input } = toolUseConfirm;
+  if (tool === ExitPlanModeV2Tool) return 'Claudin needs your approval for the plan';
+  if (tool === EnterPlanModeTool) return 'Claudin wants to enter plan mode';
+  const name = tool.userFacingName(input);
+  if (!name.trim()) return 'Claudin needs your attention';
+  return `Claude needs your permission to use ${name}`;
+}
+
+/**
+ * Shows a permission request in the dialog made for its tool. Ctrl+C
+ * answers it as a deny, and an unanswered request leaves a notification.
+ */
+export function PermissionRequest(props: PermissionRequestProps): React.ReactNode {
+  const { toolUseConfirm, onDone, onReject } = props;
+  const interrupt = useCallback(() => {
+    onDone();
+    onReject();
+    toolUseConfirm.onReject();
+  }, [onDone, onReject, toolUseConfirm]);
+  useKeybinding('app:interrupt', interrupt, { context: 'Confirmation' });
+  useNotifyAfterTimeout(getNotificationMessage(toolUseConfirm), 'permission_prompt');
+  const Dialog = permissionComponentForTool(toolUseConfirm.tool);
+  return <Dialog {...props} />;
 }

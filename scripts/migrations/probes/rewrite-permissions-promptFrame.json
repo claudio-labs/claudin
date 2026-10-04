@@ -4,238 +4,514 @@
     "src/permissions/ui/PermissionDialog.characterization.test.tsx",
     "src/permissions/ui/PermissionRequest.characterization.test.tsx",
     "src/permissions/ui/PermissionRequest.notify.characterization.test.tsx",
-    "src/permissions/ui/promptFrame.shipped.characterization.test.tsx"
+    "src/permissions/ui/promptFrame.shipped.characterization.test.tsx",
+    "src/permissions/ui/promptFrame.fixes.test.tsx"
   ],
   "source": "src/permissions/ui/PermissionRequest.tsx",
   "probes": [
     {
-      "name": "routing: file edits lose their dialog",
-      "find": "      return FileEditPermissionRequest;\n",
-      "replace": "      return FallbackPermissionRequest;\n"
+      "name": "route: FileEditTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[FileEditTool, FileEditPermissionRequest],",
+      "replace": "[FileEditTool, FallbackPermissionRequest],"
     },
     {
-      "name": "routing: git takes the tool-wide dialog",
-      "find": "      return GitPermissionRequest;\n",
-      "replace": "      return FallbackPermissionRequest;\n"
+      "name": "route: FileWriteTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[FileWriteTool, FileWritePermissionRequest],",
+      "replace": "[FileWriteTool, FallbackPermissionRequest],"
     },
     {
-      "name": "routing: reads lose the filesystem dialog",
-      "find": "    case FileReadTool:\n",
-      "replace": ""
+      "name": "route: BashTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[BashTool, BashPermissionRequest],",
+      "replace": "[BashTool, FallbackPermissionRequest],"
     },
     {
-      "name": "routing: wait loses the shell-delegate dialog",
-      "find": "      return ShellDelegatePermissionRequest;\n",
-      "replace": "      return FallbackPermissionRequest;\n"
+      "name": "route: PowerShellTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[PowerShellTool, PowerShellPermissionRequest],",
+      "replace": "[PowerShellTool, FallbackPermissionRequest],"
     },
     {
-      "name": "routing: monitor takes the tool-wide dialog in the shipped build",
-      "find": "      return MonitorPermissionRequest ?? FallbackPermissionRequest;\n",
-      "replace": "      return FallbackPermissionRequest;\n"
+      "name": "route: GitTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[GitTool, GitPermissionRequest],",
+      "replace": "[GitTool, FallbackPermissionRequest],"
     },
     {
-      "name": "routing: unknown tools get the bash dialog",
-      "find": "    default:\n      return FallbackPermissionRequest;\n",
-      "replace": "    default:\n      return BashPermissionRequest;\n"
+      "name": "route: WebFetchTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[WebFetchTool, WebFetchPermissionRequest],",
+      "replace": "[WebFetchTool, FallbackPermissionRequest],"
     },
     {
-      "name": "interrupt: Ctrl+C allows instead of rejecting",
-      "find": "      toolUseConfirm.onReject();\n",
-      "replace": "      toolUseConfirm.onAllow(toolUseConfirm.input, []);\n"
+      "name": "route: NotebookEditTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[NotebookEditTool, NotebookEditPermissionRequest],",
+      "replace": "[NotebookEditTool, FallbackPermissionRequest],"
     },
     {
-      "name": "interrupt: handler bound to a context where Ctrl+C means something else",
-      "find": "      context: \"Confirmation\"\n",
-      "replace": "      context: \"Transcript\"\n"
+      "name": "route: ExitPlanModeV2Tool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[ExitPlanModeV2Tool, ExitPlanModePermissionRequest],",
+      "replace": "[ExitPlanModeV2Tool, FallbackPermissionRequest],"
     },
     {
-      "name": "interrupt: caller callbacks in the other order",
-      "find": "      onDone();\n      onReject();\n",
-      "replace": "      onReject();\n      onDone();\n"
+      "name": "route: EnterPlanModeTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[EnterPlanModeTool, EnterPlanModePermissionRequest],",
+      "replace": "[EnterPlanModeTool, FallbackPermissionRequest],"
+    },
+    {
+      "name": "route: SkillTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[SkillTool, SkillPermissionRequest],",
+      "replace": "[SkillTool, FallbackPermissionRequest],"
+    },
+    {
+      "name": "route: AskUserQuestionTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[AskUserQuestionTool, AskUserQuestionPermissionRequest],",
+      "replace": "[AskUserQuestionTool, FallbackPermissionRequest],"
+    },
+    {
+      "name": "route: WaitForTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[WaitForTool, MonitorPermissionRequest],",
+      "replace": "[WaitForTool, FallbackPermissionRequest],"
+    },
+    {
+      "name": "route: GlobTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[GlobTool, FilesystemPermissionRequest],",
+      "replace": "[GlobTool, FallbackPermissionRequest],"
+    },
+    {
+      "name": "route: GrepTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[GrepTool, FilesystemPermissionRequest],",
+      "replace": "[GrepTool, FallbackPermissionRequest],"
+    },
+    {
+      "name": "route: FileReadTool falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "[FileReadTool, FilesystemPermissionRequest],",
+      "replace": "[FileReadTool, FallbackPermissionRequest],"
+    },
+    {
+      "name": "route: Monitor (shipped flag) falls to the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "routes.push([monitorTool, MonitorPermissionRequest])",
+      "replace": "routes.push([monitorTool, FallbackPermissionRequest])"
+    },
+    {
+      "name": "route: the default is no longer the tool-wide dialog",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "?? FallbackPermissionRequest;",
+      "replace": "?? WebFetchPermissionRequest;"
+    },
+    {
+      "name": "Ctrl+C: the request is rejected before the caller is done",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "    onDone();\n    onReject();\n    toolUseConfirm.onReject();",
+      "replace": "    toolUseConfirm.onReject();\n    onDone();\n    onReject();"
+    },
+    {
+      "name": "Ctrl+C: allows instead of rejecting",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "    toolUseConfirm.onReject();\n  }",
+      "replace": "    toolUseConfirm.onAllow(toolUseConfirm.input, []);\n  }"
+    },
+    {
+      "name": "Ctrl+C: resolved in a context where it means something else",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "{ context: 'Confirmation' }",
+      "replace": "{ context: 'Transcript' }"
+    },
+    {
+      "name": "notify: plan approval wording",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "'Claudin needs your approval for the plan'",
+      "replace": "'Claudin needs your approval'"
+    },
+    {
+      "name": "notify: enter plan mode wording",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "'Claudin wants to enter plan mode'",
+      "replace": "'Claudin needs your attention'"
     },
     {
       "name": "notify: a blank name is treated as a name",
-      "find": "  if (!toolName || toolName.trim() === '') {",
-      "replace": "  if (!toolName) {"
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "if (!name.trim())",
+      "replace": "if (!name)"
     },
     {
-      "name": "notify: wrong notification type",
-      "find": "useNotifyAfterTimeout(notificationMessage, \"permission_prompt\");",
-      "replace": "useNotifyAfterTimeout(notificationMessage, \"idle_prompt\");"
+      "name": "notify (Finding 4 kept): the named-tool wording says Claude",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "`Claude needs your permission to use ${name}`",
+      "replace": "`Claudin needs your permission to use ${name}`"
     },
     {
-      "name": "frame: default border colour",
+      "name": "notify: the notification type",
+      "source": "src/permissions/ui/PermissionRequest.tsx",
+      "find": "'permission_prompt'",
+      "replace": "'permission'"
+    },
+    {
+      "name": "Esc: no escape counted",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "escapeCount: state.attribution.escapeCount + 1",
+      "replace": "escapeCount: state.attribution.escapeCount"
+    },
+    {
+      "name": "Esc: the cancel handler is not called",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "    onCancel?.()\n",
+      "replace": ""
+    },
+    {
+      "name": "answer: the note is dropped",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "onSelect(answer.value, answer.note)",
+      "replace": "onSelect(answer.value)"
+    },
+    {
+      "name": "note (Finding 4 kept): accept placeholder wording",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "accept: 'tell Claude what to do next',",
+      "replace": "accept: 'tell Claudin what to do next',"
+    },
+    {
+      "name": "note: reject placeholder wording",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "reject: 'tell Claude what to do differently',",
+      "replace": "reject: 'tell Claude what to do next',"
+    },
+    {
+      "name": "note: an option's own placeholder is ignored",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "placeholder: note.placeholder ?? NOTE_PROMPTS[note.type],",
+      "replace": "placeholder: NOTE_PROMPTS[note.type],"
+    },
+    {
+      "name": "note: Enter on an empty note cancels",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "allowEmptySubmitToCancel: true,",
+      "replace": "allowEmptySubmitToCancel: false,"
+    },
+    {
+      "name": "note: the label is not shown with the note",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "showLabelWithValue: true,",
+      "replace": "showLabelWithValue: false,"
+    },
+    {
+      "name": "layout: the default question",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "const DEFAULT_QUESTION = 'Do you want to proceed?'",
+      "replace": "const DEFAULT_QUESTION = 'Proceed?'"
+    },
+    {
+      "name": "layout: not every option is visible",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "visibleOptionCount={options.length}",
+      "replace": "visibleOptionCount={2}"
+    },
+    {
+      "name": "Finding 1: bound keys stay live while a note is typed",
+      "source": "src/permissions/ui/PermissionPrompt.tsx",
+      "find": "useBoundOptions(options, choose, !isNoteOpen(state, options, state.pointer))",
+      "replace": "useBoundOptions(options, choose, true)"
+    },
+    {
+      "name": "model: leaving an empty note keeps it open",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "notes[kind].text === ''",
+      "replace": "notes[kind].text === 'never'"
+    },
+    {
+      "name": "model: moving onto an option of the same kind closes its note",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "if (kind !== kept && notes[kind].open",
+      "replace": "if (notes[kind].open"
+    },
+    {
+      "name": "model: Tab again does not close the note",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "open: !note.open",
+      "replace": "open: true"
+    },
+    {
+      "name": "model: a closed note is still reported",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "const text = kind && state.notes[kind].open ? state.notes[kind].text.trim() : ''",
+      "replace": "const text = kind ? state.notes[kind].text.trim() : ''"
+    },
+    {
+      "name": "model: the note is not trimmed",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "state.notes[kind].text.trim()",
+      "replace": "state.notes[kind].text"
+    },
+    {
+      "name": "model: a blank note is reported as text",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "note: text === '' ? undefined : text",
+      "replace": "note: text"
+    },
+    {
+      "name": "model: the hint never offers Tab",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "amendable ? CANCEL_HINT + AMEND_HINT : CANCEL_HINT",
+      "replace": "CANCEL_HINT"
+    },
+    {
+      "name": "model: the pointer starts nowhere",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "pointer: options[0]?.value",
+      "replace": "pointer: undefined"
+    },
+    {
+      "name": "model: a typed note is lost",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "text: event.text",
+      "replace": "text: ''"
+    },
+    {
+      "name": "Finding 1: space is not a list key",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "input === ' ' || ",
+      "replace": ""
+    },
+    {
+      "name": "Finding 1: Tab is not a list key",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "key.tab || ",
+      "replace": ""
+    },
+    {
+      "name": "Finding 1: Enter is not a list key",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "key.return || ",
+      "replace": ""
+    },
+    {
+      "name": "Finding 1: full-width digits are not list keys",
+      "source": "src/permissions/ui/prompt/answerModel.ts",
+      "find": "/^[0-9\\uFF10-\\uFF19]$/",
+      "replace": "/^[0-9]$/"
+    },
+    {
+      "name": "Finding 1: the hook ignores the list-key rule",
+      "source": "src/permissions/ui/prompt/useBoundOptions.ts",
+      "find": "if (!keybindings || isListKey(input, key)) return",
+      "replace": "if (!keybindings) return"
+    },
+    {
+      "name": "bound: resolved outside the Confirmation context",
+      "source": "src/permissions/ui/prompt/useBoundOptions.ts",
+      "find": "[...keybindings.activeContexts, 'Confirmation', 'Global']",
+      "replace": "[...keybindings.activeContexts, 'Global']"
+    },
+    {
+      "name": "bound: answers with the wrong option",
+      "source": "src/permissions/ui/prompt/useBoundOptions.ts",
+      "find": "      choose(option.value)",
+      "replace": "      choose(options[0]!.value)"
+    },
+    {
+      "name": "frame: no blank line above",
       "source": "src/permissions/ui/PermissionDialog.tsx",
-      "find": "const color = t1 === undefined ? \"permission\" : t1;",
-      "replace": "const color = t1 === undefined ? \"warning\" : t1;"
+      "find": "marginTop={1}",
+      "replace": "marginTop={0}"
     },
     {
-      "name": "frame: the title takes the border colour",
+      "name": "frame: the bottom edge is drawn",
       "source": "src/permissions/ui/PermissionDialog.tsx",
-      "find": "color={titleColor} workerBadge",
-      "replace": "color={color} workerBadge"
+      "find": "borderBottom={false}",
+      "replace": "borderBottom={true}"
     },
     {
-      "name": "frame: default inner padding",
+      "name": "frame: the rule ignores its colour",
       "source": "src/permissions/ui/PermissionDialog.tsx",
-      "find": "const innerPaddingX = t2 === undefined ? 1 : t2;",
-      "replace": "const innerPaddingX = t2 === undefined ? 2 : t2;"
+      "find": "borderColor={color}",
+      "replace": "borderColor=\"permission\""
     },
     {
-      "name": "frame: side edge drawn",
+      "name": "frame: title colour default",
       "source": "src/permissions/ui/PermissionDialog.tsx",
-      "find": "borderLeft={false}",
-      "replace": "borderLeft={true}"
+      "find": "titleColor = 'permission',",
+      "replace": "titleColor = 'error',"
     },
     {
-      "name": "frame: title-right no longer pushed right",
+      "name": "frame: the title takes the rule colour",
       "source": "src/permissions/ui/PermissionDialog.tsx",
-      "find": "justifyContent=\"space-between\"",
-      "replace": "justifyContent=\"flex-start\""
+      "find": "color={titleColor}",
+      "replace": "color={color}"
     },
     {
-      "name": "title: badge loses its separator",
+      "name": "frame: inner padding ignored",
+      "source": "src/permissions/ui/PermissionDialog.tsx",
+      "find": "paddingX={innerPaddingX}",
+      "replace": "paddingX={1}"
+    },
+    {
+      "name": "Finding 2: the right part gives up its width",
+      "source": "src/permissions/ui/PermissionDialog.tsx",
+      "find": "<Box flexShrink={0} marginLeft={1}>",
+      "replace": "<Box flexShrink={1} marginLeft={1}>"
+    },
+    {
+      "name": "Finding 2: title and badge become side-by-side columns",
       "source": "src/permissions/ui/PermissionRequestTitle.tsx",
-      "find": "{\"\\xB7 \"}@{workerBadge.name}",
-      "replace": "@{workerBadge.name}"
+      "find": "      <Text>\n        <Text bold color={color}>\n          {title}\n        </Text>\n        {workerBadge && (\n          <>\n            {' '}\n            <Text dimColor>{`· @${workerBadge.name}`}</Text>\n          </>\n        )}\n      </Text>",
+      "replace": "      <Box flexDirection=\"row\">\n        <Text bold color={color}>\n          {title}\n        </Text>\n        {workerBadge && (\n          <>\n            <Text> </Text>\n            <Text dimColor>{`· @${workerBadge.name}`}</Text>\n          </>\n        )}\n      </Box>"
     },
     {
-      "name": "title: subtitle loses its end instead of its start",
+      "name": "title: the badge is not dim",
+      "source": "src/permissions/ui/PermissionRequestTitle.tsx",
+      "find": "<Text dimColor>{`· @",
+      "replace": "<Text>{`· @"
+    },
+    {
+      "name": "title: a string subtitle keeps its start instead of its end",
       "source": "src/permissions/ui/PermissionRequestTitle.tsx",
       "find": "wrap=\"truncate-start\"",
       "replace": "wrap=\"truncate-end\""
     },
     {
-      "name": "prompt: every answer becomes the first option",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "    onSelect(value_1, feedback);\n",
-      "replace": "    onSelect(options[0]!.value, feedback);\n"
+      "name": "title: an element subtitle is dropped",
+      "source": "src/permissions/ui/PermissionRequestTitle.tsx",
+      "find": "if (typeof subtitle !== 'string') return subtitle",
+      "replace": "if (typeof subtitle !== 'string') return null"
     },
     {
-      "name": "prompt: the yes note rides on a no",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "const rawFeedback = option_0.feedbackConfig.type === \"accept\" ? acceptFeedback : rejectFeedback;",
-      "replace": "const rawFeedback = acceptFeedback || rejectFeedback;"
-    },
-    {
-      "name": "prompt: note not trimmed",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "const trimmedFeedback = rawFeedback.trim();",
-      "replace": "const trimmedFeedback = rawFeedback;"
-    },
-    {
-      "name": "prompt: an empty note on no cancels",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "            allowEmptySubmitToCancel: true\n",
-      "replace": "            allowEmptySubmitToCancel: false\n"
-    },
-    {
-      "name": "prompt: Esc does not reach the caller",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "      onCancel?.();\n",
-      "replace": ""
-    },
-    {
-      "name": "prompt: Esc not counted",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "escapeCount: prev.attribution.escapeCount + 1",
-      "replace": "escapeCount: prev.attribution.escapeCount"
-    },
-    {
-      "name": "prompt: default question",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "const question = t1 === undefined ? \"Do you want to proceed?\" : t1;",
-      "replace": "const question = t1 === undefined ? \"Proceed?\" : t1;"
-    },
-    {
-      "name": "prompt: Tab hint gone",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "showTabHint && \" \\xB7 Tab to amend\"",
-      "replace": "showTabHint && \"\""
-    },
-    {
-      "name": "prompt: Tab does not close an open note",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "        if (acceptInputMode) {\n          setAcceptInputMode(false);",
-      "replace": "        if (acceptInputMode) {\n          setAcceptInputMode(true);"
-    },
-    {
-      "name": "prompt: an empty note stays open when focus leaves",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "if (newOption?.feedbackConfig?.type !== \"accept\" && acceptInputMode && !acceptFeedback.trim()) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "prompt: bound actions answer nothing",
-      "source": "src/permissions/ui/PermissionPrompt.tsx",
-      "find": "        handlers[opt_3.keybinding] = () => handleSelect(opt_3.value);\n",
-      "replace": ""
-    },
-    {
-      "name": "explanation: managed rules offer the /permissions hint",
-      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
-      "find": "reason.rule.source === 'policySettings' ? undefined",
-      "replace": "reason.rule.source === 'userSettings' ? undefined"
-    },
-    {
-      "name": "explanation: hook reason not on its own line",
-      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
-      "find": "const hookReasonString = reason.reason ? `:\\n${reason.reason}` : '.';",
-      "replace": "const hookReasonString = reason.reason ? `: ${reason.reason}` : '.';"
-    },
-    {
-      "name": "explanation: hooks in auto mode not in warning",
-      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
-      "find": "permissionMode === \"auto\" ? \"warning\" : undefined",
-      "replace": "permissionMode === \"default\" ? \"warning\" : undefined"
-    },
-    {
-      "name": "explanation: working-directory reasons lose the hint",
-      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
-      "find": "        configString: '/permissions to update rules'\n",
-      "replace": "        configString: undefined\n"
-    },
-    {
-      "name": "explanation: no blank line after it",
-      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
-      "find": "<Box marginBottom={1} flexDirection=\"column\">",
-      "replace": "<Box flexDirection=\"column\">"
-    },
-    {
-      "name": "explanation: auto-mode classifier not in error colour",
-      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
-      "find": "        themeColor: 'error'\n",
-      "replace": "        themeColor: 'warning'\n"
-    },
-    {
-      "name": "counter: counts every render",
-      "source": "src/permissions/ui/hooks.ts",
-      "find": "    if (loggedToolUseID.current === toolUseConfirm.toolUseID) {",
-      "replace": "    if (false) {"
-    },
-    {
-      "name": "counter: does not count",
-      "source": "src/permissions/ui/hooks.ts",
-      "find": "permissionPromptCount: prev.attribution.permissionPromptCount + 1,",
-      "replace": "permissionPromptCount: prev.attribution.permissionPromptCount,"
-    },
-    {
-      "name": "badge: raw colour name, not the agent colour",
+      "name": "badge: the name is not bold",
       "source": "src/permissions/ui/WorkerBadge.tsx",
-      "find": "    t1 = toInkColor(color);\n",
-      "replace": "    t1 = color as never;\n"
+      "find": "<Text bold>@{name}</Text>",
+      "replace": "<Text>@{name}</Text>"
     },
     {
-      "name": "pending: badge without a colour",
+      "name": "badge: the colour is ignored",
+      "source": "src/permissions/ui/WorkerBadge.tsx",
+      "find": "color={toInkColor(color)}",
+      "replace": "color={toInkColor('')}"
+    },
+    {
+      "name": "Finding 3: the action label and its value become columns",
       "source": "src/permissions/ui/WorkerPendingPermission.tsx",
-      "find": "t5 = agentName && agentColor && <Box",
-      "replace": "t5 = agentName && <Box"
+      "find": "      <Text wrap=\"wrap-trim\">\n        <Text dimColor>Action: </Text>\n        {description}\n      </Text>",
+      "replace": "      <Box>\n        <Text dimColor>Action:</Text>\n        <Text>{description}</Text>\n      </Box>"
     },
     {
-      "name": "pending: border colour",
+      "name": "worker card: a badge without a colour",
+      "source": "src/permissions/ui/WorkerPendingPermission.tsx",
+      "find": "name && color ?",
+      "replace": "name ?"
+    },
+    {
+      "name": "worker card: the team line is gone",
+      "source": "src/permissions/ui/WorkerPendingPermission.tsx",
+      "find": "team: getTeamName() || undefined",
+      "replace": "team: undefined"
+    },
+    {
+      "name": "worker card: border colour",
       "source": "src/permissions/ui/WorkerPendingPermission.tsx",
       "find": "borderColor=\"warning\"",
-      "replace": "borderColor=\"permission\""
+      "replace": "borderColor=\"error\""
+    },
+    {
+      "name": "explain: a managed rule offers /permissions",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "rule.source === 'policySettings' ? undefined : RULES_HINT",
+      "replace": "RULES_HINT"
+    },
+    {
+      "name": "explain: auto mode leaves the hook uncoloured",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "mode === 'auto' ? 'warning' : undefined",
+      "replace": "undefined"
+    },
+    {
+      "name": "explain: the hook reason joins the sentence line",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "`:\\n${reason}`",
+      "replace": "`: ${reason}`"
+    },
+    {
+      "name": "explain (Finding 7 kept): the hook source uses the theme dim",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "<BaseText dim>[{hookSource}]</BaseText>",
+      "replace": "<Text dimColor>[{hookSource}]</Text>"
+    },
+    {
+      "name": "explain: the auto-mode classifier is uncoloured",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": ", color: 'error' }",
+      "replace": " }"
+    },
+    {
+      "name": "explain: classifiers explained in a build without the flags",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "feature('TRANSCRIPT_CLASSIFIER') ? true : feature('BASH_CLASSIFIER') ? true : false",
+      "replace": "true"
+    },
+    {
+      "name": "explain: the classifier name is not bold",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "Classifier <Text bold>{classifier}</Text>",
+      "replace": "Classifier {classifier}"
+    },
+    {
+      "name": "explain: a safety check is silent",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "  safetyCheck: ({ reason }) => ({ sentence: reason }),\n",
+      "replace": ""
+    },
+    {
+      "name": "explain: the working-dir hint is gone",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "workingDir: ({ reason }) => ({ sentence: reason, hint: RULES_HINT }),",
+      "replace": "workingDir: ({ reason }) => ({ sentence: reason }),"
+    },
+    {
+      "name": "explain: no blank line after",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "marginBottom={1}",
+      "replace": "marginBottom={0}"
+    },
+    {
+      "name": "explain: the rule is not written by permissionRuleValueToString",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "permissionRuleValueToString(rule.ruleValue)",
+      "replace": "rule.ruleValue.toolName"
+    },
+    {
+      "name": "explain: a missing result crashes",
+      "source": "src/permissions/ui/PermissionRuleExplanation.tsx",
+      "find": "permissionResult?.decisionReason",
+      "replace": "permissionResult.decisionReason"
+    },
+    {
+      "name": "counter: a new request object for the same id counts again",
+      "source": "src/permissions/ui/hooks.ts",
+      "find": "[toolUseID, setAppState]",
+      "replace": "[toolUseConfirm, setAppState]"
+    },
+    {
+      "name": "counter: counts two",
+      "source": "src/permissions/ui/hooks.ts",
+      "find": "permissionPromptCount + 1",
+      "replace": "permissionPromptCount + 2"
+    },
+    {
+      "name": "Finding 6: the hook reads its event again",
+      "source": "src/permissions/ui/hooks.ts",
+      "find": "  const setAppState = useSetAppState()\n",
+      "replace": "  void _unaryEvent.completion_type\n  const setAppState = useSetAppState()\n"
     }
   ]
 }

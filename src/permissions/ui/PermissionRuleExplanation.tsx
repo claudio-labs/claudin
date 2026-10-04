@@ -1,120 +1,105 @@
-import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
-import chalk from 'chalk';
-import React from 'react';
-import { Ansi, Box, Text } from 'src/terminal/ink.js';
-import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
-import type { PermissionDecision, PermissionDecisionReason } from 'src/permissions/PermissionResult.js';
-import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js';
-import type { Theme } from 'src/terminal/theme/theme.js';
-import ThemedText from 'src/terminal/design-system/ThemedText.js';
+import { feature } from 'bun:bundle'
+import React from 'react'
+import type { PermissionDecision, PermissionDecisionReason } from 'src/permissions/PermissionResult.js'
+import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js'
+import { BaseText, Box, Text } from 'src/terminal/ink.js'
+import { useAppState } from 'src/terminal/state/AppState.js'
+import type { PermissionMode } from 'src/shared/types/permissions.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
+
 export type PermissionRuleExplanationProps = {
-  permissionResult: PermissionDecision;
-  toolType: 'tool' | 'command' | 'edit' | 'read';
-};
-type DecisionReasonStrings = {
-  reasonString: string;
-  configString?: string;
-  /** When set, reasonString is plain text rendered with this theme color instead of <Ansi>. */
-  themeColor?: keyof Theme;
-};
-function stringsForDecisionReason(reason: PermissionDecisionReason | undefined, toolType: 'tool' | 'command' | 'edit' | 'read'): DecisionReasonStrings | null {
-  if (!reason) {
-    return null;
-  }
-  if ((feature('BASH_CLASSIFIER') || feature('TRANSCRIPT_CLASSIFIER')) && reason.type === 'classifier') {
-    if (reason.classifier === 'auto-mode') {
-      return {
-        reasonString: `Auto mode classifier requires confirmation for this ${toolType}.\n${reason.reason}`,
-        configString: undefined,
-        themeColor: 'error'
-      };
+  permissionResult: PermissionDecision
+  toolType: 'tool' | 'command' | 'edit' | 'read'
+}
+
+type ToolKind = PermissionRuleExplanationProps['toolType']
+
+/** What the explanation shows: one sentence (it may hold line breaks), an optional hint, an optional colour. */
+type Explanation = {
+  sentence: React.ReactNode
+  hint?: string
+  color?: keyof Theme
+}
+
+type ExplainContext = { kind: ToolKind; mode: PermissionMode }
+
+type ReasonOf<K extends PermissionDecisionReason['type']> = Extract<PermissionDecisionReason, { type: K }>
+
+type Explainers = {
+  [K in PermissionDecisionReason['type']]?: (reason: ReasonOf<K>, context: ExplainContext) => Explanation | null
+}
+
+const RULES_HINT = '/permissions to update rules'
+const HOOKS_HINT = '/hooks to update'
+
+// A flag check must be the whole condition of a ternary for the build to fold it.
+const CLASSIFIER_EXPLAINED: boolean = feature('TRANSCRIPT_CLASSIFIER') ? true : feature('BASH_CLASSIFIER') ? true : false
+
+const EXPLAINERS: Explainers = {
+  rule: ({ rule }, { kind }) => ({
+    sentence: (
+      <>
+        Permission rule <Text bold>{permissionRuleValueToString(rule.ruleValue)}</Text> requires confirmation for this{' '}
+        {kind}.
+      </>
+    ),
+    // A managed rule cannot be changed from /permissions, so pointing there would mislead.
+    hint: rule.source === 'policySettings' ? undefined : RULES_HINT,
+  }),
+  hook: ({ hookName, reason, hookSource }, { kind, mode }) => ({
+    sentence: (
+      <>
+        Hook <Text bold>{hookName}</Text> requires confirmation for this {kind}
+        {reason ? `:\n${reason}` : '.'}
+        {hookSource && (
+          <>
+            {' '}
+            <BaseText dim>[{hookSource}]</BaseText>
+          </>
+        )}
+      </>
+    ),
+    hint: HOOKS_HINT,
+    color: mode === 'auto' ? 'warning' : undefined,
+  }),
+  classifier: ({ classifier, reason }, { kind }) => {
+    if (!CLASSIFIER_EXPLAINED) return null
+    if (classifier === 'auto-mode') {
+      return { sentence: `Auto mode classifier requires confirmation for this ${kind}.\n${reason}`, color: 'error' }
     }
     return {
-      reasonString: `Classifier ${chalk.bold(reason.classifier)} requires confirmation for this ${toolType}.\n${reason.reason}`,
-      configString: undefined
-    };
-  }
-  switch (reason.type) {
-    case 'rule':
-      return {
-        reasonString: `Permission rule ${chalk.bold(permissionRuleValueToString(reason.rule.ruleValue))} requires confirmation for this ${toolType}.`,
-        configString: reason.rule.source === 'policySettings' ? undefined : '/permissions to update rules'
-      };
-    case 'hook':
-      {
-        const hookReasonString = reason.reason ? `:\n${reason.reason}` : '.';
-        const sourceLabel = reason.hookSource ? ` ${chalk.dim(`[${reason.hookSource}]`)}` : '';
-        return {
-          reasonString: `Hook ${chalk.bold(reason.hookName)} requires confirmation for this ${toolType}${hookReasonString}${sourceLabel}`,
-          configString: '/hooks to update'
-        };
-      }
-    case 'safetyCheck':
-    case 'other':
-      return {
-        reasonString: reason.reason,
-        configString: undefined
-      };
-    case 'workingDir':
-      return {
-        reasonString: reason.reason,
-        configString: '/permissions to update rules'
-      };
-    default:
-      return null;
-  }
+      sentence: (
+        <>
+          Classifier <Text bold>{classifier}</Text> requires confirmation for this {kind}.{'\n'}
+          {reason}
+        </>
+      ),
+    }
+  },
+  safetyCheck: ({ reason }) => ({ sentence: reason }),
+  other: ({ reason }) => ({ sentence: reason }),
+  workingDir: ({ reason }) => ({ sentence: reason, hint: RULES_HINT }),
 }
-export function PermissionRuleExplanation(t0: PermissionRuleExplanationProps) {
-  const $ = _c(11);
-  const {
-    permissionResult,
-    toolType
-  } = t0;
-  const permissionMode = useAppState(_temp);
-  const t1 = permissionResult?.decisionReason;
-  let t2;
-  if ($[0] !== t1 || $[1] !== toolType) {
-    t2 = stringsForDecisionReason(t1, toolType);
-    $[0] = t1;
-    $[1] = toolType;
-    $[2] = t2;
-  } else {
-    t2 = $[2];
-  }
-  const strings = t2;
-  if (!strings) {
-    return null;
-  }
-  const themeColor = strings.themeColor ?? (permissionResult?.decisionReason?.type === "hook" && permissionMode === "auto" ? "warning" : undefined);
-  let t3;
-  if ($[3] !== strings.reasonString || $[4] !== themeColor) {
-    t3 = themeColor ? <ThemedText color={themeColor}>{strings.reasonString}</ThemedText> : <Text><Ansi>{strings.reasonString}</Ansi></Text>;
-    $[3] = strings.reasonString;
-    $[4] = themeColor;
-    $[5] = t3;
-  } else {
-    t3 = $[5];
-  }
-  let t4;
-  if ($[6] !== strings.configString) {
-    t4 = strings.configString && <Text dimColor={true}>{strings.configString}</Text>;
-    $[6] = strings.configString;
-    $[7] = t4;
-  } else {
-    t4 = $[7];
-  }
-  let t5;
-  if ($[8] !== t3 || $[9] !== t4) {
-    t5 = <Box marginBottom={1} flexDirection="column">{t3}{t4}</Box>;
-    $[8] = t3;
-    $[9] = t4;
-    $[10] = t5;
-  } else {
-    t5 = $[10];
-  }
-  return t5;
+
+function explain(reason: PermissionDecisionReason | undefined, context: ExplainContext): Explanation | null {
+  if (!reason) return null
+  const explainer = EXPLAINERS[reason.type] as ((reason: PermissionDecisionReason, context: ExplainContext) => Explanation | null) | undefined
+  return explainer ? explainer(reason, context) : null
 }
-function _temp(s: AppState) {
-  return s.toolPermissionContext.mode;
+
+function selectMode(state: { toolPermissionContext: { mode: PermissionMode } }): PermissionMode {
+  return state.toolPermissionContext.mode
+}
+
+/** Says which rule, hook or check asked for this prompt, then leaves a blank line. Reasons with nothing to say draw nothing. */
+export function PermissionRuleExplanation({ permissionResult, toolType }: PermissionRuleExplanationProps): React.ReactNode {
+  const mode = useAppState(selectMode)
+  const explanation = explain(permissionResult?.decisionReason, { kind: toolType, mode })
+  if (!explanation) return null
+  return (
+    <Box flexDirection="column" marginBottom={1}>
+      <Text color={explanation.color}>{explanation.sentence}</Text>
+      {explanation.hint && <Text dimColor>{explanation.hint}</Text>}
+    </Box>
+  )
 }

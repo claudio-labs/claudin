@@ -367,3 +367,26 @@ callbacks, and other modules build the model's message from them.
   - Unit tests for the answer reducer.
   - A narrow render of the title row and the worker card that asserts each
     line stays whole and in order.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**Rewrite.** All 8 files are now hand-written components and hooks, with no React Compiler output
+left. The note and answer state became a pure reducer, `prompt/answerModel.ts`, and the option key
+bindings moved to `prompt/useBoundOptions.ts`. The five characterization suites pass unchanged.
+
+**Fixes, each with a test:**
+- **1.** An option's key binding never answers through a key the list itself uses (Enter, Esc,
+  Tab, the arrows, the page keys, space, digits). It is also off while a note is being typed. Enter
+  on "No" can no longer allow.
+- **2 and 3.** The title and badge, and "Tool:" / "Action:", each keep one `<Text>`. They were
+  tested at three widths.
+- **6.** The dead log functions in `hooks.ts` are gone.
+
+Findings 4, 5 and 7 are kept as they were.
+
+**Probes.** `rewrite-permissions-promptFrame.json`, 84 probes, all proved in the checkout. Probes
+31–50 were proved a second time after a concurrent landing overlapped the first run.
+
+**Residue.** None in the eight files, apart from the props types that callers import.
