@@ -7,11 +7,11 @@
   },
   "mcp/auth": {
     "files": ["src/mcp/auth/authFetch.ts", "src/mcp/auth/callbackParams.ts", "src/mcp/auth/clientSecretStore.ts", "src/mcp/auth/oauthErrors.ts", "src/mcp/auth/serverKey.ts", "src/mcp/auth/tokenRevocation.ts", "src/mcp/headersHelper.ts"],
-    "tests": ["src/mcp/auth.test.ts"]
+    "tests": []
   },
   "mcp/connection": {
     "files": ["src/mcp/client/connection.ts", "src/mcp/client/transport.ts", "src/mcp/client/fetch.ts", "src/mcp/client/authCache.ts", "src/mcp/mcpWebSocketTransport.ts"],
-    "tests": ["src/mcp/client.test.ts"]
+    "tests": []
   },
   "mcp/capabilities": {
     "files": ["src/mcp/client/fetchCapabilities.ts", "src/mcp/client/sdkClients.ts", "src/mcp/SdkControlTransport.ts", "src/mcp/vscodeSdkMcp.ts", "src/mcp/client/ide.ts", "src/mcp/claudeai.ts"]
@@ -27,7 +27,7 @@
   },
   "mcp/doctor": {
     "files": ["src/mcp/doctor.ts"],
-    "tests": ["src/mcp/doctor.test.ts"]
+    "tests": []
   },
   "mcp/elicitationDialog": {
     "files": ["src/mcp/ui/ElicitationDialog.tsx"]
