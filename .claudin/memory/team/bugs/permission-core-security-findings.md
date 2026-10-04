@@ -41,7 +41,7 @@ behaviour.
   directories, labelled `cliArg`.
 - **Plan mode.** A tool's own allow rule (`Edit(src/**)`) gets past plan mode.
 - **First write check.** It creates `<start dir>/.claudin/plans`, as a side effect.
-- **Auto mode's dangerous-rule check is narrow.** It misses broader rules
+[clipped: ~424 tokens of new_string from Edit] It misses broader rules
   (`p*`, `* *`, `npm:*`, `python3.12:*`, `timeout:*`), and leaves dangerous
   rules from `flagSettings`, `policySettings` and `command` active (`shellRules` 4, 5).
 

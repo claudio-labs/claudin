@@ -1,0 +1,252 @@
+{
+  "test": [
+    "src/permissions/ui/BypassPermissionsModeDialog.characterization.test.tsx",
+    "src/permissions/ui/AutoModeOptInDialog.characterization.test.tsx",
+    "src/permissions/ui/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.shipped.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+  "probes": [
+    {
+      "name": "bypass accept: the skip is recorded as false",
+      "source": "src/permissions/ui/BypassPermissionsModeDialog.tsx",
+      "find": "skipDangerousModePermissionPrompt: true",
+      "replace": "skipDangerousModePermissionPrompt: false"
+    },
+    {
+      "name": "bypass accept: the skip goes to the checkout's local settings",
+      "source": "src/permissions/ui/BypassPermissionsModeDialog.tsx",
+      "find": "updateSettingsForSource(\"userSettings\"",
+      "replace": "updateSettingsForSource(\"localSettings\""
+    },
+    {
+      "name": "bypass decline: exits with success",
+      "source": "src/permissions/ui/BypassPermissionsModeDialog.tsx",
+      "find": "gracefulShutdownSync(1);",
+      "replace": "gracefulShutdownSync(0);"
+    },
+    {
+      "name": "bypass Esc: exits with failure",
+      "source": "src/permissions/ui/BypassPermissionsModeDialog.tsx",
+      "find": "gracefulShutdownSync(0);",
+      "replace": "gracefulShutdownSync(1);"
+    },
+    {
+      "name": "bypass: the focused \"No, exit\" accepts",
+      "source": "src/permissions/ui/BypassPermissionsModeDialog.tsx",
+      "find": "label: \"No, exit\",\n      value: \"decline\"",
+      "replace": "label: \"No, exit\",\n      value: \"accept\""
+    },
+    {
+      "name": "bypass Esc: accepts instead of exiting",
+      "source": "src/permissions/ui/BypassPermissionsModeDialog.tsx",
+      "find": "const handleEscape = _temp2;",
+      "replace": "const handleEscape = onAccept;"
+    },
+    {
+      "name": "bypass accept: the caller never hears it",
+      "source": "src/permissions/ui/BypassPermissionsModeDialog.tsx",
+      "find": "onAccept();\n            break bb3;",
+      "replace": "break bb3;"
+    },
+    {
+      "name": "auto opt-in accept: the skip is recorded as false",
+      "source": "src/permissions/ui/AutoModeOptInDialog.tsx",
+      "find": "skipAutoPermissionPrompt: true\n",
+      "replace": "skipAutoPermissionPrompt: false\n"
+    },
+    {
+      "name": "auto opt-in default: auto is not made the default mode",
+      "source": "src/permissions/ui/AutoModeOptInDialog.tsx",
+      "find": "defaultMode: \"auto\"",
+      "replace": "defaultMode: \"default\""
+    },
+    {
+      "name": "auto opt-in default: written to the checkout's settings",
+      "source": "src/permissions/ui/AutoModeOptInDialog.tsx",
+      "find": "updateSettingsForSource(\"userSettings\", {\n              skipAutoPermissionPrompt: true,",
+      "replace": "updateSettingsForSource(\"projectSettings\", {\n              skipAutoPermissionPrompt: true,"
+    },
+    {
+      "name": "auto opt-in decline: accepts",
+      "source": "src/permissions/ui/AutoModeOptInDialog.tsx",
+      "find": "onDecline();",
+      "replace": "onAccept();"
+    },
+    {
+      "name": "auto opt-in: the decline labels swap",
+      "source": "src/permissions/ui/AutoModeOptInDialog.tsx",
+      "find": "declineExits ? \"No, exit\" : \"No, go back\"",
+      "replace": "declineExits ? \"No, go back\" : \"No, exit\""
+    },
+    {
+      "name": "auto opt-in: \"make it my default\" is no longer first",
+      "source": "src/permissions/ui/AutoModeOptInDialog.tsx",
+      "find": "t7 = [...t4, t5, {",
+      "replace": "t7 = [t5, ...t4, {"
+    },
+    {
+      "name": "auto description: prompt injection is no longer named",
+      "source": "src/permissions/ui/AutoModeOptInDialog.tsx",
+      "find": "risky actions and prompt injection before",
+      "replace": "risky actions before"
+    },
+    {
+      "name": "enter plan yes: the session goes to default",
+      "source": "src/permissions/ui/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx",
+      "find": "mode: \"plan\",\n",
+      "replace": "mode: \"default\",\n"
+    },
+    {
+      "name": "enter plan yes: the mode is saved to local settings",
+      "source": "src/permissions/ui/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx",
+      "find": "destination: \"session\"",
+      "replace": "destination: \"localSettings\""
+    },
+    {
+      "name": "enter plan yes: a pending plan-exit notice is kept",
+      "source": "src/permissions/ui/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx",
+      "find": "handlePlanModeTransition(toolPermissionContextMode, \"plan\");",
+      "replace": ""
+    },
+    {
+      "name": "enter plan no: the request is allowed",
+      "source": "src/permissions/ui/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx",
+      "find": "        toolUseConfirm.onReject();\n",
+      "replace": "        toolUseConfirm.onAllow({}, []);\n"
+    },
+    {
+      "name": "enter plan Esc: enters plan mode",
+      "source": "src/permissions/ui/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx",
+      "find": "t7 = () => handleResponse(\"no\");",
+      "replace": "t7 = () => handleResponse(\"yes\");"
+    },
+    {
+      "name": "exit plan keep-context: bypass offered no longer means bypass",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "? 'bypassPermissions' : 'acceptEdits',",
+      "replace": "? 'acceptEdits' : 'acceptEdits',"
+    },
+    {
+      "name": "exit plan manual approval: lands in acceptEdits",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "'yes-default-keep-context': 'default',",
+      "replace": "'yes-default-keep-context': 'acceptEdits',"
+    },
+    {
+      "name": "exit plan clear+bypass: lands in acceptEdits",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "mode = 'bypassPermissions';",
+      "replace": "mode = 'acceptEdits';"
+    },
+    {
+      "name": "exit plan clear+edits: escalates to bypass",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "mode = 'acceptEdits';",
+      "replace": "mode = 'bypassPermissions';"
+    },
+    {
+      "name": "exit plan clear+auto: a closed gate is ignored",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "value === 'yes-auto-clear-context' && isAutoModeGateEnabled()) {",
+      "replace": "value === 'yes-auto-clear-context') {"
+    },
+    {
+      "name": "exit plan clear+auto: auto is not switched on",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "mode = 'auto';\n        autoModeStateModule?.setAutoModeActive(true);",
+      "replace": "mode = 'auto';"
+    },
+    {
+      "name": "exit plan resume auto: a closed gate is ignored",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "value === 'yes-resume-auto-mode' && isAutoModeGateEnabled()) {",
+      "replace": "value === 'yes-resume-auto-mode') {"
+    },
+    {
+      "name": "exit plan resume auto: risky rules are not set aside",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "toolPermissionContext: stripDangerousPermissionsForAutoMode({",
+      "replace": "toolPermissionContext: ({"
+    },
+    {
+      "name": "exit plan resume auto, gate closed: falls back to bypass",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "'yes-resume-auto-mode': 'default' as const",
+      "replace": "'yes-resume-auto-mode': 'bypassPermissions' as const"
+    },
+    {
+      "name": "exit plan: auto running during the plan is never stopped",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "if (value !== 'no' && !goingToAuto && autoWasUsedDuringPlan) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "exit plan: auto counts as kept even with the gate closed",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "(value === 'yes-resume-auto-mode' || value === 'yes-auto-clear-context') && isAutoModeGateEnabled();",
+      "replace": "(value === 'yes-resume-auto-mode' || value === 'yes-auto-clear-context');"
+    },
+    {
+      "name": "exit plan empty: auto during the plan is never stopped",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "if (autoWasUsedDuringPlan) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "exit plan empty yes: lands in bypass",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "type: 'setMode',\n          mode: 'default',",
+      "replace": "type: 'setMode',\n          mode: 'bypassPermissions',"
+    },
+    {
+      "name": "exit plan options: auto keep-context answer resumes edits instead",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "label: 'Yes, and use auto mode',\n      value: 'yes-resume-auto-mode'",
+      "replace": "label: 'Yes, and use auto mode',\n      value: 'yes-accept-edits-keep-context'"
+    },
+    {
+      "name": "exit plan shift+tab: approves manually",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "showClearContext ? 'yes-accept-edits' : 'yes-accept-edits-keep-context'",
+      "replace": "showClearContext ? 'yes-accept-edits' : 'yes-default-keep-context'"
+    },
+    {
+      "name": "exit plan Esc: does nothing",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "handleCancelRef.current = () => {\n    onDone();",
+      "replace": "handleCancelRef.current = () => {\n    return;"
+    },
+    {
+      "name": "exit plan keep-context: feedback is dropped",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "buildPermissionUpdates(keepContextMode, allowedPrompts), acceptFeedback);",
+      "replace": "buildPermissionUpdates(keepContextMode, allowedPrompts));"
+    },
+    {
+      "name": "exit plan feedback: not trimmed",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "const trimmedFeedback = planFeedback.trim();",
+      "replace": "const trimmedFeedback = planFeedback;"
+    },
+    {
+      "name": "buildPermissionUpdates: auto is reported as itself",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "mode: toExternalPermissionMode(mode),",
+      "replace": "mode,"
+    },
+    {
+      "name": "session naming: an existing title always stops it",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "if (!isClearContext && getCurrentSessionTitle(getSessionId())) return;",
+      "replace": "if (getCurrentSessionTitle(getSessionId())) return;"
+    },
+    {
+      "name": "exit plan: an edited plan is not sent back",
+      "source": "src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "find": "const updatedInput = isV2 && !planEditedLocally ? {} : {",
+      "replace": "const updatedInput = isV2 ? {} : {"
+    }
+  ]
+}
