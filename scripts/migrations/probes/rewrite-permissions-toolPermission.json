@@ -1,0 +1,242 @@
+{
+  "test": [
+    "src/permissions/useCanUseTool.characterization.test.tsx",
+    "src/permissions/toolPermission/PermissionContext.characterization.test.ts",
+    "src/permissions/toolPermission/handlers/interactiveHandler.characterization.test.ts",
+    "src/permissions/toolPermission/handlers/coordinatorHandler.characterization.test.ts",
+    "src/permissions/toolPermission/handlers/swarmWorkerHandler.characterization.test.ts",
+    "src/permissions/toolPermission/toolPermission.classifiers.characterization.test.tsx"
+  ],
+  "source": "src/permissions/useCanUseTool.tsx",
+  "probes": [
+    {
+      "name": "gate: an allow no longer checks for an abort",
+      "find": "if (result.behavior === \"allow\") {\n          if (ctx.resolveIfAborted(resolve)) {\n            return;\n          }",
+      "replace": "if (result.behavior === \"allow\") {"
+    },
+    {
+      "name": "gate: an already aborted turn is checked anyway",
+      "find": "      if (ctx.resolveIfAborted(resolve)) {\n        return;\n      }\n      const decisionPromise",
+      "replace": "      const decisionPromise"
+    },
+    {
+      "name": "gate: a forced decision is ignored",
+      "find": "forceDecision !== undefined ? Promise.resolve(forceDecision)",
+      "replace": "false ? Promise.resolve(forceDecision)"
+    },
+    {
+      "name": "gate: an auto-mode allow is not remembered",
+      "find": "            setYoloClassifierApproval(toolUseID, result.decisionReason.reason);\n",
+      "replace": "\n"
+    },
+    {
+      "name": "gate: the auto-mode denial notice changes key",
+      "find": "key: \"auto-mode-denied\",",
+      "replace": "key: \"denied\","
+    },
+    {
+      "name": "gate: the coordinator route runs for everyone",
+      "find": "if (appState.toolPermissionContext.awaitAutomatedChecksBeforeDialog) {\n                const coordinatorDecision",
+      "replace": "if (true) {\n                const coordinatorDecision"
+    },
+    {
+      "name": "gate: the swarm leader's answer is dropped",
+      "find": "if (swarmDecision) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "gate: a medium-confidence running check allows",
+      "find": "raceResult.result.confidence === \"high\" && feature(\"BASH_CLASSIFIER\")",
+      "replace": "raceResult.result.confidence !== \"low\" && feature(\"BASH_CLASSIFIER\")"
+    },
+    {
+      "name": "gate: the running check is waited for only briefly",
+      "find": "return setTimeout(res, 2000, {",
+      "replace": "return setTimeout(res, 100, {"
+    },
+    {
+      "name": "gate: the session's remote end is not told",
+      "find": "bridgeCallbacks: feature(\"BRIDGE_MODE\") ? appState.replBridgePermissionCallbacks : undefined",
+      "replace": "bridgeCallbacks: undefined"
+    },
+    {
+      "name": "gate: a failing check fails open",
+      "find": "          logError(error);\n          resolve(ctx.cancelAndAbort(undefined, true));",
+      "replace": "          logError(error);\n          resolve({ behavior: \"allow\", updatedInput: input } as never);"
+    },
+    {
+      "name": "context: blocks no longer keep the turn",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "if (isAbort || (!feedback && !contentBlocks?.length && !sub)) {",
+      "replace": "if (isAbort || (!feedback && !sub)) {"
+    },
+    {
+      "name": "context: any rule update may move the mode",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "{ preserveMode: !hasModeUpdate },",
+      "replace": "{ preserveMode: true },"
+    },
+    {
+      "name": "context: every update counts as saved",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "return updates.some(update => supportsPersistence(update.destination))",
+      "replace": "return updates.length > 0"
+    },
+    {
+      "name": "context: any tool goes to the Bash classifier",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "if (tool.name !== BASH_TOOL_NAME || !pendingClassifierCheck) {",
+      "replace": "if (!pendingClassifierCheck) {"
+    },
+    {
+      "name": "context: a hook's input loses to the rewritten one",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "const finalInput = decision.updatedInput ?? updatedInput ?? input",
+      "replace": "const finalInput = updatedInput ?? decision.updatedInput ?? input"
+    },
+    {
+      "name": "context: an interrupting hook deny keeps the turn",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "            if (decision.interrupt) {",
+      "replace": "            if (false) {"
+    },
+    {
+      "name": "context: user edits are read backwards",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "? !tool.inputsEquivalent(input, updatedInput)",
+      "replace": "? tool.inputsEquivalent(input, updatedInput)"
+    },
+    {
+      "name": "context: a claim can be taken twice",
+      "source": "src/permissions/toolPermission/PermissionContext.ts",
+      "find": "      if (claimed) return false\n",
+      "replace": "\n"
+    },
+    {
+      "name": "dialog: no grace period for keypresses",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "const GRACE_PERIOD_MS = 200",
+      "replace": "const GRACE_PERIOD_MS = 0"
+    },
+    {
+      "name": "dialog: a keypress no longer stops the classifier",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "shouldContinue: () => !isResolved() && !userInteracted,",
+      "replace": "shouldContinue: () => !isResolved(),"
+    },
+    {
+      "name": "dialog: the focused checkmark is short",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "const checkmarkMs = getTerminalFocused() ? 3000 : 1000",
+      "replace": "const checkmarkMs = getTerminalFocused() ? 1000 : 1000"
+    },
+    {
+      "name": "dialog: the classifier allows the rewritten input",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "resolveOnce(ctx.buildAllow(ctx.input, { decisionReason }))",
+      "replace": "resolveOnce(ctx.buildAllow(displayInput, { decisionReason }))"
+    },
+    {
+      "name": "dialog: hooks run twice for a coordinator",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "  if (!awaitAutomatedChecksBeforeDialog) {\n    // Execute PermissionRequest hooks",
+      "replace": "  if (true) {\n    // Execute PermissionRequest hooks"
+    },
+    {
+      "name": "dialog: a late remote answer still acts",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "        if (!claim()) return // Local user/hook/classifier already responded\n",
+      "replace": "\n"
+    },
+    {
+      "name": "dialog: a remote deny loses its message",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "resolveOnce(ctx.cancelAndAbort(response.message))",
+      "replace": "resolveOnce(ctx.cancelAndAbort(undefined))"
+    },
+    {
+      "name": "dialog: a re-check closes a dialog already answered",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "        if (!claim()) return\n        if (bridgeCallbacks && bridgeRequestId) {\n          bridgeCallbacks.cancelRequest(bridgeRequestId)\n        }\n        ctx.removeFromQueue()\n        ctx.logDecision({ decision: 'accept', source: 'config' })",
+      "replace": "        if (bridgeCallbacks && bridgeRequestId) {\n          bridgeCallbacks.cancelRequest(bridgeRequestId)\n        }\n        ctx.removeFromQueue()\n        ctx.logDecision({ decision: 'accept', source: 'config' })"
+    },
+    {
+      "name": "dialog: the indicator shows for awaited checks",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "!!result.pendingClassifierCheck &&\n            !awaitAutomatedChecksBeforeDialog,",
+      "replace": "!!result.pendingClassifierCheck,"
+    },
+    {
+      "name": "dialog: any tool is classified",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "ctx.tool.name === BASH_TOOL_NAME &&\n    !awaitAutomatedChecksBeforeDialog",
+      "replace": "true &&\n    !awaitAutomatedChecksBeforeDialog"
+    },
+    {
+      "name": "dialog: the remote end loses the reject feedback",
+      "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
+      "find": "message: feedback ?? 'User denied permission',",
+      "replace": "message: 'User denied permission',"
+    },
+    {
+      "name": "swarm: the route runs without agent teams",
+      "source": "src/permissions/toolPermission/handlers/swarmWorkerHandler.ts",
+      "find": "if (!isAgentSwarmsEnabled() || !isSwarmWorker()) {",
+      "replace": "if (!isSwarmWorker()) {"
+    },
+    {
+      "name": "swarm: an empty leader input replaces the call",
+      "source": "src/permissions/toolPermission/handlers/swarmWorkerHandler.ts",
+      "find": "allowedInput && Object.keys(allowedInput).length > 0",
+      "replace": "allowedInput"
+    },
+    {
+      "name": "swarm: an abort while waiting allows",
+      "source": "src/permissions/toolPermission/handlers/swarmWorkerHandler.ts",
+      "find": "          resolveOnce(ctx.cancelAndAbort(undefined, true))",
+      "replace": "          resolveOnce(ctx.buildAllow(ctx.input))"
+    },
+    {
+      "name": "swarm: a failed forward allows",
+      "source": "src/permissions/toolPermission/handlers/swarmWorkerHandler.ts",
+      "find": "    // Continue to local UI handling below\n    return null",
+      "replace": "    // Continue to local UI handling below\n    return { behavior: 'allow', updatedInput: ctx.input }"
+    },
+    {
+      "name": "swarm: the classifier is skipped",
+      "source": "src/permissions/toolPermission/handlers/swarmWorkerHandler.ts",
+      "find": "  if (classifierResult) {\n    return classifierResult\n  }",
+      "replace": "  if (false) {\n    return classifierResult\n  }"
+    },
+    {
+      "name": "coordinator: a hook decision is ignored",
+      "source": "src/permissions/toolPermission/handlers/coordinatorHandler.ts",
+      "find": "    if (hookResult) return hookResult",
+      "replace": "    if (false) return hookResult"
+    },
+    {
+      "name": "coordinator: the classifier is ignored",
+      "source": "src/permissions/toolPermission/handlers/coordinatorHandler.ts",
+      "find": "    if (classifierResult) {\n      return classifierResult\n    }",
+      "replace": "    if (false) {\n      return classifierResult\n    }"
+    },
+    {
+      "name": "coordinator: a failed check allows",
+      "source": "src/permissions/toolPermission/handlers/coordinatorHandler.ts",
+      "find": "      logError(new Error(`Automated permission check failed: ${String(error)}`))\n    }\n",
+      "replace": "      logError(new Error(`Automated permission check failed: ${String(error)}`))\n    }\n    return { behavior: 'allow', updatedInput: {} }\n"
+    },
+    {
+      "name": "record: permanent and temporary swapped",
+      "source": "src/permissions/toolPermission/permissionLogging.ts",
+      "find": "return source.permanent ? 'user_permanent' : 'user_temporary'",
+      "replace": "return source.permanent ? 'user_temporary' : 'user_permanent'"
+    },
+    {
+      "name": "record: a classifier is not named",
+      "source": "src/permissions/toolPermission/permissionLogging.ts",
+      "find": "    return 'classifier'\n",
+      "replace": "    return 'unknown'\n"
+    }
+  ]
+}

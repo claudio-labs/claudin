@@ -1,14 +1,17 @@
 /**
- * Pins the interactive (main-agent) permission flow, before the bridge cut
- * edits interactiveHandler.ts.
+ * Pins the interactive (main-agent) permission flow.
  *
  * The handler is driven the way useCanUseTool drives it: a real permission
  * context from createPermissionContext, backed by a queue held in a plain
- * array the way React state would hold it. The only stand-in is `runHooks`,
- * the seam that would spawn the user's PermissionRequest hook commands.
+ * array the way React state would hold it. The stand-ins are `runHooks`, the
+ * seam that would spawn the user's PermissionRequest hook commands (real
+ * hooks are driven in PermissionContext.characterization.test.ts and through
+ * useCanUseTool), and the bridge callbacks, the network boundary to the web
+ * app that answers the same request remotely.
  *
- * Not pinned: the bridge race (the cut removes it) and the async Bash
- * classifier, which sits behind a build flag that is off under `bun test`.
+ * Not pinned here: the async Bash classifier, which sits behind a build flag
+ * that is off under `bun test`; see
+ * src/permissions/toolPermission/toolPermission.classifiers.characterization.test.tsx.
  */
 import { afterEach, describe, expect, setSystemTime, test } from 'bun:test'
 import { z } from 'zod/v4'
@@ -25,6 +28,7 @@ import {
 import type { PermissionDecision, PermissionResult } from 'src/permissions/PermissionResult.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
+import type { BridgePermissionCallbacks, BridgePermissionResponse } from 'src/platform/bridge/bridgePermissionCallbacks.js'
 import {
   getEmptyToolPermissionContext,
   type Tool,
@@ -41,6 +45,39 @@ type Setup = {
   hook?: () => Promise<PermissionDecision | null>
   /** Inputs the tool calls equivalent; undefined leaves inputsEquivalent off. */
   equivalent?: (a: unknown, b: unknown) => boolean
+  /** Connects a remote end that can answer the same request. */
+  bridge?: boolean
+}
+
+/** The web app's side of the bridge: what it was sent, and a way to answer. */
+type Remote = {
+  callbacks: BridgePermissionCallbacks
+  calls: unknown[][]
+  answer(response: BridgePermissionResponse): void
+  unsubscribed(): number
+}
+
+function remoteEnd(): Remote {
+  const calls: unknown[][] = []
+  let handler: ((response: BridgePermissionResponse) => void) | undefined
+  let unsubscribed = 0
+  return {
+    calls,
+    callbacks: {
+      sendRequest: (...args) => void calls.push(['sendRequest', ...args]),
+      sendResponse: (...args) => void calls.push(['sendResponse', ...args]),
+      cancelRequest: (...args) => void calls.push(['cancelRequest', ...args]),
+      onResponse(requestId, next) {
+        calls.push(['onResponse', requestId])
+        handler = next
+        return () => {
+          unsubscribed++
+        }
+      },
+    },
+    answer: response => handler?.(response),
+    unsubscribed: () => unsubscribed,
+  }
 }
 
 const TOOL_USE_ID = 'toolu_char_interactive'
@@ -112,12 +149,14 @@ function open(setup: Setup = {}) {
   const result: AskResult = { behavior: 'ask', message: 'needs approval', ...setup.result } as AskResult
   const decisions: PermissionDecision[] = []
   const before = Date.now()
+  const remote = setup.bridge ? remoteEnd() : undefined
   handleInteractivePermission(
     {
       ctx: ctx as never,
       description: 'run the char tool',
       result,
       awaitAutomatedChecksBeforeDialog: setup.awaitAutomatedChecksBeforeDialog,
+      bridgeCallbacks: remote?.callbacks,
     },
     decision => decisions.push(decision),
   )
@@ -125,6 +164,7 @@ function open(setup: Setup = {}) {
   return {
     before,
     result,
+    remote,
     decisions,
     hookCalls,
     appliedContexts,
@@ -420,4 +460,133 @@ describe('user interaction with the dialog', () => {
       expect(run.queue()).toHaveLength(1)
     })
   }
+})
+
+describe('the remote end (the bridge)', () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+  const suggestions: PermissionUpdate[] = [{ type: 'addRules', rules: [{ toolName: 'CharTool' }], behavior: 'allow', destination: 'session' }]
+
+  /** The request id the remote end was given, and the calls after the opening two. */
+  const opened = (run: ReturnType<typeof open>) => {
+    const calls = run.remote?.calls ?? []
+    const id = calls[0]?.[1] as string
+    return { id, later: calls.slice(2) }
+  }
+
+  test('is sent the request as the dialog shows it, and listens for its answer under the same id', () => {
+    const run = open({ bridge: true, result: { updatedInput: { target: 'rewritten' }, suggestions, blockedPath: '/etc/passwd' } })
+    const [send, listen] = run.remote?.calls ?? []
+    expect(send).toEqual(['sendRequest', expect.stringMatching(UUID), 'CharTool', { target: 'rewritten' }, TOOL_USE_ID, 'run the char tool', suggestions, '/etc/passwd'])
+    expect(listen).toEqual(['onResponse', send?.[1]])
+    expect(run.queue()).toHaveLength(1)
+  })
+
+  test('each request gets its own id', () => {
+    const a = opened(open({ bridge: true })).id
+    const b = opened(open({ bridge: true })).id
+    expect(a).not.toBe(b)
+  })
+
+  test('a remote allow runs the call with its input, saves its rules and closes the dialog', async () => {
+    const run = open({ bridge: true, equivalent: () => false })
+    run.remote?.answer({ behavior: 'allow', updatedInput: { target: 'remote' }, updatedPermissions: suggestions })
+    await settle()
+    expect(run.decisions).toEqual([{ behavior: 'allow', updatedInput: { target: 'remote' }, userModified: false }])
+    expect(run.queue()).toEqual([])
+    expect(run.appliedContexts[0]?.context.alwaysAllowRules.session).toEqual(['CharTool'])
+    expect(run.recorded()).toMatchObject({ decision: 'accept', source: 'user_permanent' })
+    expect(opened(run).later).toEqual([])
+  })
+
+  test('a remote allow without input runs the input the dialog showed', async () => {
+    const run = open({ bridge: true, result: { updatedInput: { target: 'rewritten' } } })
+    run.remote?.answer({ behavior: 'allow' })
+    await settle()
+    expect(run.decisions).toEqual([{ behavior: 'allow', updatedInput: { target: 'rewritten' }, userModified: false }])
+    expect(run.appliedContexts).toEqual([])
+    expect(run.recorded()?.source).toBe('user_temporary')
+  })
+
+  const denials = [
+    { name: 'with a message hands it to the model and keeps the turn', message: 'not that file', expected: `${REJECT_MESSAGE_WITH_REASON_PREFIX}not that file`, aborted: false },
+    { name: 'without a message stops the turn', message: undefined, expected: REJECT_MESSAGE, aborted: true },
+  ]
+  for (const { name, message, expected, aborted } of denials) {
+    test(`a remote deny ${name}`, async () => {
+      const run = open({ bridge: true })
+      run.remote?.answer({ behavior: 'deny', message })
+      await settle()
+      expect(run.decisions).toEqual([{ behavior: 'ask', message: expected, contentBlocks: undefined }])
+      expect(run.queue()).toEqual([])
+      expect(run.toolUseContext.abortController.signal.aborted).toBe(aborted)
+      expect(run.recorded()).toMatchObject({ decision: 'reject', source: 'user_reject' })
+    })
+  }
+
+  const localAnswers = [
+    {
+      name: 'an allow',
+      act: (e: ToolUseConfirm) => e.onAllow({ target: 'edited' }, suggestions),
+      told: { behavior: 'allow', updatedInput: { target: 'edited' }, updatedPermissions: suggestions },
+    },
+    { name: 'a reject with feedback', act: (e: ToolUseConfirm) => e.onReject('nope'), told: { behavior: 'deny', message: 'nope' } },
+    { name: 'a bare reject', act: (e: ToolUseConfirm) => e.onReject(), told: { behavior: 'deny', message: 'User denied permission' } },
+    { name: 'an abort', act: (e: ToolUseConfirm) => e.onAbort(), told: { behavior: 'deny', message: 'User aborted' } },
+  ]
+  for (const { name, act, told } of localAnswers) {
+    test(`${name} in the terminal is reported to the remote end, then its prompt is withdrawn`, async () => {
+      const run = open({ bridge: true })
+      act(run.entry())
+      await settle()
+      const { id, later } = opened(run)
+      expect(later).toEqual([
+        ['sendResponse', id, told],
+        ['cancelRequest', id],
+      ])
+      // The remote end answering afterwards changes nothing.
+      run.remote?.answer({ behavior: told.behavior === 'allow' ? 'deny' : 'allow' })
+      await settle()
+      expect(run.decisions).toHaveLength(1)
+    })
+  }
+
+  test('a hook decision withdraws the remote prompt without answering it', async () => {
+    const run = open({ bridge: true, hook: async () => ({ behavior: 'allow', updatedInput: ORIGINAL_INPUT }) })
+    await settle()
+    const { id, later } = opened(run)
+    expect(later).toEqual([['cancelRequest', id]])
+  })
+
+  test('an allow found on re-check withdraws the remote prompt', async () => {
+    const run = open({ bridge: true })
+    run.answerFromTool({ behavior: 'allow' } as PermissionResult)
+    await run.entry().recheckPermission()
+    const { id, later } = opened(run)
+    expect(later).toEqual([['cancelRequest', id]])
+  })
+
+  test('a remote answer after the terminal answered is ignored', async () => {
+    const run = open({ bridge: true })
+    run.entry().onReject('local first')
+    run.remote?.answer({ behavior: 'allow', updatedInput: { target: 'remote' } })
+    await settle()
+    expect(run.decisions.map(d => d.behavior)).toEqual(['ask'])
+    // Nor does it touch the dialog or the record.
+    expect([run.queue().length, run.recorded()?.source]).toEqual([1, 'user_reject'])
+  })
+
+  test('an abort of the turn stops listening for the remote answer', () => {
+    const run = open({ bridge: true })
+    expect(run.remote?.unsubscribed()).toBe(0)
+    run.toolUseContext.abortController.abort()
+    expect(run.remote?.unsubscribed()).toBe(1)
+  })
+
+  test('with no remote end connected nothing is sent anywhere', async () => {
+    const run = open()
+    run.entry().onAllow(ORIGINAL_INPUT, [])
+    await settle()
+    expect(run.remote).toBeUndefined()
+    expect(run.decisions.map(d => d.behavior)).toEqual(['allow'])
+  })
 })
