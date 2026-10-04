@@ -5,152 +5,67 @@ import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
-import { clearMcpAuthCache } from 'src/mcp/client.js'
-import { normalizeNameForMCP } from 'src/mcp/normalization.js'
+import { clearMcpAuthCache } from 'src/mcp/client/authCache.js'
+import { listingEligibility } from 'src/mcp/claudeaiConnectors/eligibility.js'
+import { type ListedConnector, nameConnectors } from 'src/mcp/claudeaiConnectors/naming.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
 
-type ClaudeAIMcpServer = {
-  type: 'mcp_server'
-  id: string
-  display_name: string
-  url: string
-  created_at: string
+/** One page of `/v1/mcp_servers`; `has_more` is not followed (tracked). */
+type ConnectorPage = { data: ListedConnector[] }
+
+const LISTING_PATH = '/v1/mcp_servers?limit=1000'
+const LISTING_TIMEOUT_MS = 5_000
+const LISTING_HEADERS = {
+  'anthropic-beta': 'mcp-servers-2025-12-04',
+  'anthropic-version': '2023-06-01',
+  'Content-Type': 'application/json',
+} as const
+
+async function listConnectors(accessToken: string): Promise<ListedConnector[]> {
+  const response = await axios.get<ConnectorPage>(getOauthConfig().BASE_API_URL + LISTING_PATH, {
+    headers: { ...LISTING_HEADERS, Authorization: `Bearer ${accessToken}` },
+    timeout: LISTING_TIMEOUT_MS,
+  })
+  return response.data.data ?? []
 }
 
-type ClaudeAIMcpServersResponse = {
-  data: ClaudeAIMcpServer[]
-  has_more: boolean
-  next_page: string | null
-}
-
-const FETCH_TIMEOUT_MS = 5000
-const MCP_SERVERS_BETA_HEADER = 'mcp-servers-2025-12-04'
-
-/**
- * Fetches MCP server configurations from Claude.ai org configs.
- * These servers are managed by the organization via Claude.ai.
- *
- * Results are memoized for the session lifetime (fetch once per CLI session).
- */
 export const fetchClaudeAIMcpConfigsIfEligible = memoize(
   async (): Promise<Record<string, ScopedMcpServerConfig>> => {
+    const eligibility = listingEligibility({
+      provider: getAPIProvider(),
+      essentialTrafficOnly: isEssentialTrafficOnly(),
+      switchedOff: isEnvDefinedFalsy(process.env.ENABLE_CLAUDEAI_MCP_SERVERS),
+      readTokens: getClaudeAIOAuthTokens,
+    })
+    if (!eligibility.eligible) {
+      logForDebugging(`[claudeai-mcp] connector listing skipped: ${eligibility.reason}`)
+      return {}
+    }
     try {
-      if (getAPIProvider() !== 'firstParty') {
-        logForDebugging('[claudeai-mcp] Skipped: non-first-party provider')
-        return {}
-      }
-
-      if (isEssentialTrafficOnly()) {
-        logForDebugging('[claudeai-mcp] Skipped: essential traffic only')
-        return {}
-      }
-
-      if (isEnvDefinedFalsy(process.env.ENABLE_CLAUDEAI_MCP_SERVERS)) {
-        logForDebugging('[claudeai-mcp] Disabled via env var')
-        return {}
-      }
-
-      const tokens = getClaudeAIOAuthTokens()
-      if (!tokens?.accessToken) {
-        logForDebugging('[claudeai-mcp] No access token')
-        return {}
-      }
-
-      // Check for user:mcp_servers scope directly instead of isClaudeAISubscriber().
-      // In non-interactive mode, isClaudeAISubscriber() returns false when ANTHROPIC_API_KEY
-      // is set (even with valid OAuth tokens) because preferThirdPartyAuthentication() causes
-      // isAnthropicAuthEnabled() to return false. Checking the scope directly allows users
-      // with both API keys and OAuth tokens to access claude.ai MCPs in print mode.
-      if (!tokens.scopes?.includes('user:mcp_servers')) {
-        logForDebugging(
-          `[claudeai-mcp] Missing user:mcp_servers scope (scopes=${tokens.scopes?.join(',') || 'none'})`,
-        )
-        return {}
-      }
-
-      const baseUrl = getOauthConfig().BASE_API_URL
-      const url = `${baseUrl}/v1/mcp_servers?limit=1000`
-
-      logForDebugging(`[claudeai-mcp] Fetching from ${url}`)
-
-      const response = await axios.get<ClaudeAIMcpServersResponse>(url, {
-        headers: {
-          Authorization: `Bearer ${tokens.accessToken}`,
-          'Content-Type': 'application/json',
-          'anthropic-beta': MCP_SERVERS_BETA_HEADER,
-          'anthropic-version': '2023-06-01',
-        },
-        timeout: FETCH_TIMEOUT_MS,
-      })
-
-      const configs: Record<string, ScopedMcpServerConfig> = {}
-      // Track used normalized names to detect collisions and assign (2), (3), etc. suffixes.
-      // We check the final normalized name (including suffix) to handle edge cases where
-      // a suffixed name collides with another server's base name (e.g., "Example Server 2"
-      // colliding with "Example Server! (2)" which both normalize to claude_ai_Example_Server_2).
-      const usedNormalizedNames = new Set<string>()
-
-      for (const server of response.data.data) {
-        const baseName = `claude.ai ${server.display_name}`
-
-        // Try without suffix first, then increment until we find an unused normalized name
-        let finalName = baseName
-        let finalNormalized = normalizeNameForMCP(finalName)
-        let count = 1
-        while (usedNormalizedNames.has(finalNormalized)) {
-          count++
-          finalName = `${baseName} (${count})`
-          finalNormalized = normalizeNameForMCP(finalName)
-        }
-        usedNormalizedNames.add(finalNormalized)
-
-        configs[finalName] = {
-          type: 'claudeai-proxy',
-          url: server.url,
-          id: server.id,
-          scope: 'claudeai',
-        }
-      }
-
-      logForDebugging(
-        `[claudeai-mcp] Fetched ${Object.keys(configs).length} servers`,
-      )
-      return configs
-    } catch {
-      logForDebugging(`[claudeai-mcp] Fetch failed`)
+      return nameConnectors(await listConnectors(eligibility.accessToken))
+    } catch (error) {
+      logForDebugging(`[claudeai-mcp] connector listing failed: ${errorMessage(error)}`)
       return {}
     }
   },
 )
 
-/**
- * Clears the memoized cache for fetchClaudeAIMcpConfigsIfEligible.
- * Call this after login so the next fetch will use the new auth tokens.
- */
 export function clearClaudeAIMcpConfigsCache(): void {
   fetchClaudeAIMcpConfigsIfEligible.cache.clear?.()
-  // Also clear the auth cache so freshly-authorized servers get re-connected
   clearMcpAuthCache()
 }
 
-/**
- * Record that a claude.ai connector successfully connected. Idempotent.
- *
- * Gates the "N connectors unavailable/need auth" startup notifications: a
- * connector that was working yesterday and is now failed is a state change
- * worth surfacing; an org-configured connector that's been needs-auth since
- * it showed up is one the user has demonstrably ignored.
- */
 export function markClaudeAiMcpConnected(name: string): void {
-  saveGlobalConfig(current => {
-    const seen = current.claudeAiMcpEverConnected ?? []
-    if (seen.includes(name)) return current
-    return { ...current, claudeAiMcpEverConnected: [...seen, name] }
+  saveGlobalConfig(config => {
+    const known = config.claudeAiMcpEverConnected ?? []
+    if (known.includes(name)) return config
+    return { ...config, claudeAiMcpEverConnected: [...known, name] }
   })
 }
 
 export function hasClaudeAiMcpEverConnected(name: string): boolean {
-  return (getGlobalConfig().claudeAiMcpEverConnected ?? []).includes(name)
+  return getGlobalConfig().claudeAiMcpEverConnected?.includes(name) ?? false
 }

@@ -1,222 +1,621 @@
 {
   "test": [
-    "src/mcp/client.capabilities.characterization.test.ts"
+    "src/mcp/client.capabilities.characterization.test.ts",
+    "src/mcp/capabilities.fixes.test.ts"
   ],
   "source": "src/mcp/client/fetchCapabilities.ts",
   "probes": [
     {
-      "name": "tools: two tries instead of three",
-      "find": "for (let attempt = 0; attempt < 3; attempt++) {",
-      "replace": "for (let attempt = 0; attempt < 2; attempt++) {"
+      "name": "memo: lists cached under a key other than the server name",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "=> record.name\n",
+      "replace": "=> `${record.name}#${record.type}`\n"
     },
     {
-      "name": "tools: no back-off between tries",
-      "find": "await sleep(1000 * (attempt + 1))",
-      "replace": "await sleep(10)"
+      "name": "fetch: servers without the capability are asked anyway",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "record.type === 'connected' && record.capabilities?.[capability] ? record : null",
+      "replace": "record.type === 'connected' ? record : null"
     },
     {
-      "name": "tools: the no-prefix switch is ignored",
-      "find": "isEnvTruthy(process.env.CLAUDE_AGENT_SDK_MCP_NO_PREFIX)",
-      "replace": "false"
+      "name": "tools: bare names allowed for every server type",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "server.config.type === 'sdk' && isEnvTruthy(",
+      "replace": "isEnvTruthy("
     },
     {
-      "name": "tools: search hints keep newlines and tabs",
-      "find": ".replace(/\\s+/g, ' ')",
-      "replace": ".replace(/ +/g, ' ')"
-    },
-    {
-      "name": "tools: a blank search hint is kept as empty text",
-      "find": ".trim() || undefined",
-      "replace": ".trim()"
-    },
-    {
-      "name": "tools: alwaysLoad accepts any value",
-      "find": "alwaysLoad: tool._meta?.['anthropic/alwaysLoad'] === true,",
-      "replace": "alwaysLoad: tool._meta?.['anthropic/alwaysLoad'] !== undefined,"
-    },
-    {
-      "name": "tools: prompt cap drops the marker",
-      "find": "desc.slice(0, MAX_MCP_DESCRIPTION_LENGTH) + '… [truncated]'",
-      "replace": "desc.slice(0, MAX_MCP_DESCRIPTION_LENGTH)"
-    },
-    {
-      "name": "tools: a 2048-character description is cut",
-      "find": "desc.length > MAX_MCP_DESCRIPTION_LENGTH",
-      "replace": "desc.length >= MAX_MCP_DESCRIPTION_LENGTH"
-    },
-    {
-      "name": "tools: concurrency-safe by default",
-      "find": "isConcurrencySafe() {\n              return tool.annotations?.readOnlyHint ?? false",
-      "replace": "isConcurrencySafe() {\n              return tool.annotations?.readOnlyHint ?? true"
-    },
-    {
-      "name": "tools: destructive by default",
-      "find": "return tool.annotations?.destructiveHint ?? false",
-      "replace": "return tool.annotations?.destructiveHint ?? true"
-    },
-    {
-      "name": "tools: suggested rule goes to user settings",
-      "find": "destination: 'localSettings' as const,",
-      "replace": "destination: 'userSettings' as const,"
-    },
-    {
-      "name": "tools: tool_use id travels under another _meta key",
-      "find": "? { 'claudecode/toolUseId': toolUseId }",
-      "replace": "? { 'claudin/toolUseId': toolUseId }"
-    },
-    {
-      "name": "tools: completed progress renamed",
-      "find": "status: 'completed',",
-      "replace": "status: 'done',"
-    },
-    {
-      "name": "tools: failed progress renamed",
-      "find": "status: 'failed',",
-      "replace": "status: 'error',"
-    },
-    {
-      "name": "tools: no retry after an expired session",
-      "find": "const MAX_SESSION_RETRIES = 1",
-      "replace": "const MAX_SESSION_RETRIES = 0"
-    },
-    {
-      "name": "tools: structuredContent dropped from mcpMeta",
-      "find": "structuredContent: mcpResult.structuredContent,",
-      "replace": "structuredContent: undefined,"
-    },
-    {
-      "name": "tools: the ide filter is gone",
-      "find": "        .filter(isIncludedMcpTool)\n",
+      "name": "tools: the ide server keeps all its tools",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "    .filter(isIncludedMcpTool)\n",
       "replace": ""
     },
     {
-      "name": "resources: no longer tagged with the server",
-      "find": "        server: client.name,",
-      "replace": "        server: 'unknown',"
+      "name": "tools: listing no longer sanitized",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "recursivelySanitizeUnicode(answer.tools)",
+      "replace": "answer.tools"
     },
     {
-      "name": "commands: server name not normalized",
-      "find": "name: 'mcp__' + normalizeNameForMCP(client.name) + '__' + prompt.name,",
-      "replace": "name: 'mcp__' + client.name + '__' + prompt.name,"
+      "name": "tools: a list that fails for good throws",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "return await listTools(server)\n    } catch (error) {\n      logMCPError(record.name, error)\n      return []",
+      "replace": "return await listTools(server)\n    } catch (error) {\n      throw error"
     },
     {
-      "name": "commands: arguments split on commas",
-      "find": "const argsArray = args.split(' ')",
-      "replace": "const argsArray = args.split(',')"
+      "name": "resources: a failed list throws",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "resourceFromListing(server.name, resource))\n    } catch (error) {\n      logMCPError(record.name, error)\n      return []",
+      "replace": "resourceFromListing(server.name, resource))\n    } catch (error) {\n      throw error"
     },
     {
-      "name": "reconnect: resource tools never added",
-      "find": "      if (!hasResourceTools) {",
-      "replace": "      if (hasResourceTools) {"
+      "name": "commands: a failed list throws",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "commandFromPrompt(server, prompt))\n    } catch (error) {\n      logMCPError(record.name, error)\n      return []",
+      "replace": "commandFromPrompt(server, prompt))\n    } catch (error) {\n      throw error"
     },
     {
-      "name": "reconnect: a connector is not recorded as connected",
-      "find": "    if (config.type === 'claudeai-proxy') {\n      markClaudeAiMcpConnected(name)\n    }\n\n    const supportsResources",
-      "replace": "    const supportsResources"
+      "name": "connectors: a connector that connects is not recorded",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "  if (server.config.type === 'claudeai-proxy') markClaudeAiMcpConnected(server.name)\n",
+      "replace": ""
     },
     {
-      "name": "sweep: the needs-auth cache is ignored",
-      "find": "((await isMcpAuthCached(name)) ||",
-      "replace": "((false) ||"
+      "name": "outcome: resources never fetched",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "listsResources ? fetchResourcesForClient(server) : Promise.resolve([])",
+      "replace": "Promise.resolve([])"
     },
     {
-      "name": "sweep: probed-without-token servers are contacted",
-      "find": "hasMcpDiscoveryButNoToken(name, config)))",
-      "replace": "false))"
+      "name": "outcome: resource tools go to a server without resources",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "listsResources && claimResourceTools()",
+      "replace": "claimResourceTools()"
     },
     {
-      "name": "sweep: needs-auth from the connect gets no authenticate tool",
-      "find": "            client.type === 'needs-auth'\n",
-      "replace": "            client.type === 'failed'\n"
+      "name": "outcome: empty resources reported instead of left out",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "if (resources.length > 0) outcome.resources = resources",
+      "replace": "outcome.resources = resources"
     },
     {
-      "name": "sweep: resource tools added for every server",
-      "find": "if (supportsResources && !resourceToolsAdded) {",
-      "replace": "if (supportsResources) {"
+      "name": "reconnect: the cached connection is reused",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "    await clearServerCache(name, config)\n",
+      "replace": ""
     },
     {
-      "name": "sdk: connected servers scoped user",
+      "name": "sweep: resource tools given to every server",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "    if (resourceToolsGiven) return false\n",
+      "replace": ""
+    },
+    {
+      "name": "sweep: disabled servers are contacted",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "    if (plan === 'disabled') return disabledOutcome(name, config)\n",
+      "replace": ""
+    },
+    {
+      "name": "sweep: cached or probed needs-auth servers are contacted",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "    if (plan === 'needs-auth') return needsAuthOutcome({ name, type: 'needs-auth', config })\n",
+      "replace": ""
+    },
+    {
+      "name": "sweep: a 401 during connect gets no authenticate tool",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "    if (client.type === 'needs-auth') return needsAuthOutcome(client)\n",
+      "replace": ""
+    },
+    {
+      "name": "sweep: needs-auth cache ignored",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "needsAuthCached: await isMcpAuthCached(name),",
+      "replace": "needsAuthCached: false,"
+    },
+    {
+      "name": "sweep: probed-without-token ignored",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "probedWithoutToken: isOAuthProbed(config) && hasMcpDiscoveryButNoToken(name, config),",
+      "replace": "probedWithoutToken: false,"
+    },
+    {
+      "name": "sweep: remote servers never visited",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "pMap(remote, visit,",
+      "replace": "pMap([] as typeof remote, visit,"
+    },
+    {
+      "name": "sweep: local servers never visited",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "pMap(local, visit,",
+      "replace": "pMap([] as typeof local, visit,"
+    },
+    {
+      "name": "prefetch: tools not gathered",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "      gathered.tools.push(...tools)\n",
+      "replace": ""
+    },
+    {
+      "name": "prefetch: commands not gathered",
+      "source": "src/mcp/client/fetchCapabilities.ts",
+      "find": "      gathered.commands.push(...commands)\n",
+      "replace": ""
+    },
+    {
+      "name": "retry: two attempts instead of three",
+      "source": "src/mcp/client/capabilities/retry.ts",
+      "find": "export const TOOL_LIST_ATTEMPTS = 3",
+      "replace": "export const TOOL_LIST_ATTEMPTS = 2"
+    },
+    {
+      "name": "retry: second pause shortened",
+      "source": "src/mcp/client/capabilities/retry.ts",
+      "find": "[1_000, 2_000] as const",
+      "replace": "[1_000, 1_000] as const"
+    },
+    {
+      "name": "retry: always the first delay",
+      "source": "src/mcp/client/capabilities/retry.ts",
+      "find": "delaysMs[Math.min(attempt - 1, delaysMs.length - 1)]",
+      "replace": "delaysMs[0]"
+    },
+    {
+      "name": "fix 5: disabled no longer decided first",
+      "source": "src/mcp/client/capabilities/sweep.ts",
+      "find": "if (facts.disabled) return 'disabled'",
+      "replace": "if (facts.disabled && !facts.needsAuthCached) return 'disabled'"
+    },
+    {
+      "name": "classify: cached needs-auth ignored",
+      "source": "src/mcp/client/capabilities/sweep.ts",
+      "find": "  if (canAskForLogin(config) && facts.needsAuthCached) return 'needs-auth'\n",
+      "replace": ""
+    },
+    {
+      "name": "classify: claude.ai proxies cannot be cached as needs-auth",
+      "source": "src/mcp/client/capabilities/sweep.ts",
+      "find": "isOAuthProbed(config) || config.type === 'claudeai-proxy'",
+      "replace": "isOAuthProbed(config)"
+    },
+    {
+      "name": "classify: sse servers are not probed",
+      "source": "src/mcp/client/capabilities/sweep.ts",
+      "find": "return config.type === 'http' || config.type === 'sse'",
+      "replace": "return config.type === 'http'"
+    },
+    {
+      "name": "resource tools: duplicates of the server's own names kept",
+      "source": "src/mcp/client/capabilities/sweep.ts",
+      "find": "!tools.some(own => toolMatchesName(own, candidate.name))",
+      "replace": "true"
+    },
+    {
+      "name": "tool: always prefixed",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "name: options.bareName ? listed.name : qualifiedName,",
+      "replace": "name: qualifiedName,"
+    },
+    {
+      "name": "tool: mcpInfo carries the qualified name",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "mcpInfo: { serverName: server.name, toolName: listed.name },",
+      "replace": "mcpInfo: { serverName: server.name, toolName: qualifiedName },"
+    },
+    {
+      "name": "tool: search hint whitespace not collapsed",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "raw.split(/\\s+/).filter(Boolean).join(' ')",
+      "replace": "raw.trim()"
+    },
+    {
+      "name": "tool: blank search hint kept",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "return collapsed === '' ? undefined : collapsed",
+      "replace": "return collapsed"
+    },
+    {
+      "name": "tool: alwaysLoad accepts truthy values",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "return meta?.[ALWAYS_LOAD_KEY] === true",
+      "replace": "return Boolean(meta?.[ALWAYS_LOAD_KEY])"
+    },
+    {
+      "name": "tool: exactly 2048 characters truncated",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "if (text.length <= MAX_MCP_DESCRIPTION_LENGTH) return text",
+      "replace": "if (text.length < MAX_MCP_DESCRIPTION_LENGTH) return text"
+    },
+    {
+      "name": "tool: truncation marker changed",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "const TRUNCATION_MARKER = '… [truncated]'",
+      "replace": "const TRUNCATION_MARKER = '...'"
+    },
+    {
+      "name": "tool: description replaced",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "    async description() {\n      return description\n",
+      "replace": "    async description() {\n      return 'mcp'\n"
+    },
+    {
+      "name": "tool: concurrency safety ignores readOnlyHint",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "isConcurrencySafe: () => readOnly,",
+      "replace": "isConcurrencySafe: () => false,"
+    },
+    {
+      "name": "tool: destructiveHint ignored",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "isDestructive: () => hints.destructiveHint ?? false,",
+      "replace": "isDestructive: () => false,"
+    },
+    {
+      "name": "tool: openWorldHint ignored",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "isOpenWorld: () => hints.openWorldHint ?? false,",
+      "replace": "isOpenWorld: () => false,"
+    },
+    {
+      "name": "tool: title not shown",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "${hints.title || listed.name} (MCP)",
+      "replace": "${listed.name} (MCP)"
+    },
+    {
+      "name": "tool: input schema dropped",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "    inputJSONSchema: listed.inputSchema as Tool['inputJSONSchema'],\n",
+      "replace": ""
+    },
+    {
+      "name": "tool: collapse classifier not consulted",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "    isSearchOrReadCommand: () => classifyMcpToolForCollapse(server.name, listed.name),\n",
+      "replace": ""
+    },
+    {
+      "name": "classifier input: empty input gives empty text",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "return pairs.length > 0 ? pairs.join(' ') : toolName",
+      "replace": "return pairs.join(' ')"
+    },
+    {
+      "name": "classifier input: values JSON-encoded",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "`${key}=${String(value)}`",
+      "replace": "`${key}=${JSON.stringify(value)}`"
+    },
+    {
+      "name": "permission: suggestion uses the bare name",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "rules: [{ toolName: qualifiedName, ruleContent: undefined }],",
+      "replace": "rules: [{ toolName: options.bareName ? listed.name : qualifiedName, ruleContent: undefined }],"
+    },
+    {
+      "name": "permission: rule goes to user settings",
+      "source": "src/mcp/client/capabilities/toolFromListing.ts",
+      "find": "destination: 'localSettings',",
+      "replace": "destination: 'userSettings',"
+    },
+    {
+      "name": "call: tool_use id not sent",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "const meta = toolUseId ? { [TOOL_USE_ID_META_KEY]: toolUseId } : undefined",
+      "replace": "const meta = undefined"
+    },
+    {
+      "name": "call: tool_use id sent under another key",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "const TOOL_USE_ID_META_KEY = 'claudecode/toolUseId'",
+      "replace": "const TOOL_USE_ID_META_KEY = 'toolUseId'"
+    },
+    {
+      "name": "call: progress reported without a tool_use id",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "if (!toolUseID || !onProgress) return silentLifecycle",
+      "replace": "if (!onProgress) return silentLifecycle"
+    },
+    {
+      "name": "call: no started event",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "  lifecycle.started()\n",
+      "replace": ""
+    },
+    {
+      "name": "call: no completed event",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "    lifecycle.finished('completed')\n",
+      "replace": ""
+    },
+    {
+      "name": "call: no failed event",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "    lifecycle.finished('failed')\n",
+      "replace": ""
+    },
+    {
+      "name": "call: elapsed time not reported",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "emit({ ...base, status, elapsedTimeMs: Date.now() - startedAt })",
+      "replace": "emit({ ...base, status })"
+    },
+    {
+      "name": "call: server progress not relayed",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "onProgress: lifecycle.relay,",
+      "replace": "onProgress: undefined,"
+    },
+    {
+      "name": "call: an expired session is not retried",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "if (!(error instanceof McpSessionExpiredError)) throw error\n      outcome = await attempt()",
+      "replace": "throw error"
+    },
+    {
+      "name": "call: _meta not passed on",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "  if (outcome._meta) meta._meta = outcome._meta\n",
+      "replace": ""
+    },
+    {
+      "name": "call: structuredContent not passed on",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "  if (outcome.structuredContent) meta.structuredContent = outcome.structuredContent\n",
+      "replace": ""
+    },
+    {
+      "name": "errors: plain errors rethrown as they are",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "return new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(error.message, CALL_FAILED_TELEMETRY)",
+      "replace": "return error"
+    },
+    {
+      "name": "errors: telemetry-safe errors wrapped again",
+      "source": "src/mcp/client/capabilities/toolCall.ts",
+      "find": "  if (error instanceof TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS) return error\n",
+      "replace": ""
+    },
+    {
+      "name": "prompt: server name not normalized",
+      "source": "src/mcp/client/capabilities/promptCommand.ts",
+      "find": "name: `mcp__${normalizeNameForMCP(server.name)}__${prompt.name}`,",
+      "replace": "name: `mcp__${server.name}__${prompt.name}`,"
+    },
+    {
+      "name": "prompt: description always user-specified",
+      "source": "src/mcp/client/capabilities/promptCommand.ts",
+      "find": "hasUserSpecifiedDescription: prompt.description !== undefined && prompt.description !== '',",
+      "replace": "hasUserSpecifiedDescription: true,"
+    },
+    {
+      "name": "prompt: display name format",
+      "source": "src/mcp/client/capabilities/promptCommand.ts",
+      "find": "userFacingName: () => `${server.name}:${prompt.name} (MCP)`,",
+      "replace": "userFacingName: () => `${server.name}/${prompt.name} (MCP)`,"
+    },
+    {
+      "name": "prompt: progress message changed",
+      "source": "src/mcp/client/capabilities/promptCommand.ts",
+      "find": "progressMessage: 'running',",
+      "replace": "progressMessage: 'loading',"
+    },
+    {
+      "name": "prompt: arguments split on any whitespace",
+      "source": "src/mcp/client/capabilities/promptCommand.ts",
+      "find": "const words = typed.split(' ')",
+      "replace": "const words = typed.split(/\\s+/)"
+    },
+    {
+      "name": "prompt: blocks not flattened",
+      "source": "src/mcp/client/capabilities/promptCommand.ts",
+      "find": "      return blocks.flat()\n",
+      "replace": "      return blocks as never\n"
+    },
+    {
+      "name": "resources: not tagged with the server",
+      "source": "src/mcp/client/capabilities/promptCommand.ts",
+      "find": "return { ...resource, server }",
+      "replace": "return { ...resource }"
+    },
+    {
+      "name": "sdk: client declares capabilities",
       "source": "src/mcp/client/sdkClients.ts",
-      "find": "config: { ...config, scope: 'dynamic' as const },",
-      "replace": "config: { ...config, scope: 'user' as const },"
+      "find": "new Client(mcpClientIdentity(), { capabilities: {} })",
+      "replace": "new Client(mcpClientIdentity(), { capabilities: { roots: {} } })"
     },
     {
-      "name": "sdk: failed servers scoped dynamic",
+      "name": "sdk: connected servers not scoped dynamic",
       "source": "src/mcp/client/sdkClients.ts",
-      "find": "config: { ...config, scope: 'user' as const },",
-      "replace": "config: { ...config, scope: 'dynamic' as const },"
+      "find": "config: { ...config, scope: 'dynamic' },",
+      "replace": "config: { ...config, scope: 'user' },"
     },
     {
-      "name": "control transport: close fires onclose every time",
+      "name": "sdk: failed servers not scoped user",
+      "source": "src/mcp/client/sdkClients.ts",
+      "find": "config: { ...config, scope: 'user' } }, tools: []",
+      "replace": "config: { ...config, scope: 'dynamic' } }, tools: []"
+    },
+    {
+      "name": "sdk: tools not fetched",
+      "source": "src/mcp/client/sdkClients.ts",
+      "find": "return { client: connection, tools: await fetchToolsForClient(connection) }",
+      "replace": "return { client: connection, tools: [] }"
+    },
+    {
+      "name": "identity: introduces itself under another name",
+      "source": "src/mcp/client/clientIdentity.ts",
+      "find": "name: 'claude-code',",
+      "replace": "name: 'claudin',"
+    },
+    {
+      "name": "transport: sends after close",
       "source": "src/mcp/SdkControlTransport.ts",
-      "find": "    if (this.isClosed) {\n      return\n    }\n    this.isClosed = true",
-      "replace": "    this.isClosed = true"
+      "find": "    if (this.#closed) throw new Error('Transport is closed')\n",
+      "replace": ""
     },
     {
-      "name": "control transport: answers are not handed back",
+      "name": "transport: reply not handed back",
       "source": "src/mcp/SdkControlTransport.ts",
-      "find": "      this.onmessage(response)",
-      "replace": "      void response"
+      "find": "    this.onmessage?.(reply)\n",
+      "replace": ""
     },
     {
-      "name": "vscode: another server name is picked",
-      "source": "src/mcp/vscodeSdkMcp.ts",
-      "find": "client.name === 'claude-vscode'",
-      "replace": "client.name === 'vscode'"
+      "name": "transport: onclose fired on every close",
+      "source": "src/mcp/SdkControlTransport.ts",
+      "find": "    if (this.#closed) return\n",
+      "replace": ""
+    },
+    {
+      "name": "transport: wrong server name forwarded",
+      "source": "src/mcp/SdkControlTransport.ts",
+      "find": "this.#forward(this.#serverName, message)",
+      "replace": "this.#forward('server', message)"
+    },
+    {
+      "name": "vscode: another server name",
+      "source": "src/mcp/vscodeChannel.ts",
+      "find": "export const VSCODE_SERVER_NAME = 'claude-vscode'",
+      "replace": "export const VSCODE_SERVER_NAME = 'vscode'"
+    },
+    {
+      "name": "vscode: an update without the server forgets it",
+      "source": "src/mcp/vscodeChannel.ts",
+      "find": "if (found?.type === 'connected') server = found",
+      "replace": "server = found?.type === 'connected' ? found : null"
     },
     {
       "name": "vscode: notification method renamed",
-      "source": "src/mcp/vscodeSdkMcp.ts",
-      "find": "method: 'file_updated',",
-      "replace": "method: 'file_changed',"
+      "source": "src/mcp/vscodeChannel.ts",
+      "find": "method: 'file_updated'",
+      "replace": "method: 'file_changed'"
     },
     {
-      "name": "vscode: a failed record is accepted",
-      "source": "src/mcp/vscodeSdkMcp.ts",
-      "find": "if (client && client.type === 'connected') {",
-      "replace": "if (client) {"
+      "name": "vscode: send failures not reported",
+      "source": "src/mcp/vscodeChannel.ts",
+      "find": "        .catch(deps.onSendFailure)\n",
+      "replace": "        .catch(() => {})\n"
     },
     {
-      "name": "ide: the whole result is returned",
+      "name": "ide: meta sent",
       "source": "src/mcp/client/ide.ts",
-      "find": "  return result.content\n",
-      "replace": "  return result as never\n"
+      "find": "    args,\n    signal: createAbortController().signal,",
+      "replace": "    args,\n    meta: {},\n    signal: createAbortController().signal,"
     },
     {
-      "name": "claudeai: beta header changes",
-      "source": "src/mcp/claudeai.ts",
-      "find": "const MCP_SERVERS_BETA_HEADER = 'mcp-servers-2025-12-04'",
-      "replace": "const MCP_SERVERS_BETA_HEADER = 'mcp-servers'"
+      "name": "ide: content dropped",
+      "source": "src/mcp/client/ide.ts",
+      "find": "  return content\n}",
+      "replace": "  return undefined\n}"
     },
     {
-      "name": "claudeai: the scope check looks for another scope",
+      "name": "claudeai: listing reads 100",
       "source": "src/mcp/claudeai.ts",
-      "find": "if (!tokens.scopes?.includes('user:mcp_servers')) {",
-      "replace": "if (!tokens.scopes?.includes('user:mcp')) {"
+      "find": "const LISTING_PATH = '/v1/mcp_servers?limit=1000'",
+      "replace": "const LISTING_PATH = '/v1/mcp_servers?limit=100'"
     },
     {
-      "name": "claudeai: names lose the claude.ai prefix",
+      "name": "claudeai: beta header changed",
       "source": "src/mcp/claudeai.ts",
-      "find": "const baseName = `claude.ai ${server.display_name}`",
-      "replace": "const baseName = `${server.display_name}`"
+      "find": "'anthropic-beta': 'mcp-servers-2025-12-04',",
+      "replace": "'anthropic-beta': 'mcp-servers',"
     },
     {
-      "name": "claudeai: essential-traffic mode no longer blocks the fetch",
+      "name": "claudeai: version header dropped",
       "source": "src/mcp/claudeai.ts",
-      "find": "      if (isEssentialTrafficOnly()) {",
-      "replace": "      if (false) {"
+      "find": "  'anthropic-version': '2023-06-01',\n",
+      "replace": ""
+    },
+    {
+      "name": "claudeai: bearer prefix dropped",
+      "source": "src/mcp/claudeai.ts",
+      "find": "Authorization: `Bearer ${accessToken}`",
+      "replace": "Authorization: accessToken"
+    },
+    {
+      "name": "claudeai: a failed listing throws",
+      "source": "src/mcp/claudeai.ts",
+      "find": "      logForDebugging(`[claudeai-mcp] connector listing failed: ${errorMessage(error)}`)\n      return {}",
+      "replace": "      throw error"
     },
     {
       "name": "claudeai: clearing keeps the needs-auth cache",
       "source": "src/mcp/claudeai.ts",
-      "find": "  clearMcpAuthCache()\n}",
-      "replace": "}"
+      "find": "  clearMcpAuthCache()\n",
+      "replace": ""
     },
     {
-      "name": "claudeai: connected names recorded twice",
+      "name": "claudeai: clearing keeps the listing",
       "source": "src/mcp/claudeai.ts",
-      "find": "    if (seen.includes(name)) return current\n",
+      "find": "  fetchClaudeAIMcpConfigsIfEligible.cache.clear?.()\n",
       "replace": ""
+    },
+    {
+      "name": "claudeai: a connector recorded twice",
+      "source": "src/mcp/claudeai.ts",
+      "find": "    if (known.includes(name)) return config\n",
+      "replace": ""
+    },
+    {
+      "name": "claudeai: every connector counts as connected",
+      "source": "src/mcp/claudeai.ts",
+      "find": "return getGlobalConfig().claudeAiMcpEverConnected?.includes(name) ?? false",
+      "replace": "return true"
+    },
+    {
+      "name": "eligibility: provider gate dropped",
+      "source": "src/mcp/claudeaiConnectors/eligibility.ts",
+      "find": "  if (facts.provider !== 'firstParty') return { eligible: false, reason: 'not-first-party' }\n",
+      "replace": ""
+    },
+    {
+      "name": "eligibility: essential traffic allowed",
+      "source": "src/mcp/claudeaiConnectors/eligibility.ts",
+      "find": "  if (facts.essentialTrafficOnly) return { eligible: false, reason: 'essential-traffic' }\n",
+      "replace": ""
+    },
+    {
+      "name": "eligibility: switch ignored",
+      "source": "src/mcp/claudeaiConnectors/eligibility.ts",
+      "find": "  if (facts.switchedOff) return { eligible: false, reason: 'switched-off' }\n",
+      "replace": ""
+    },
+    {
+      "name": "eligibility: scope not required",
+      "source": "src/mcp/claudeaiConnectors/eligibility.ts",
+      "find": "  if (!tokens.scopes?.includes(MCP_SERVERS_SCOPE)) return { eligible: false, reason: 'missing-scope' }\n",
+      "replace": ""
+    },
+    {
+      "name": "eligibility: tokens read before the other gates",
+      "source": "src/mcp/claudeaiConnectors/eligibility.ts",
+      "find": "  if (facts.provider !== 'firstParty')",
+      "replace": "  facts.readTokens()\n  if (facts.provider !== 'firstParty')"
+    },
+    {
+      "name": "naming: numbering starts at 1",
+      "source": "src/mcp/claudeaiConnectors/naming.ts",
+      "find": "for (let n = 2;",
+      "replace": "for (let n = 1;"
+    },
+    {
+      "name": "naming: taken names not remembered",
+      "source": "src/mcp/claudeaiConnectors/naming.ts",
+      "find": "    taken.add(normalizeNameForMCP(name))\n",
+      "replace": ""
+    },
+    {
+      "name": "naming: prefix changed",
+      "source": "src/mcp/claudeaiConnectors/naming.ts",
+      "find": "const CONNECTOR_PREFIX = 'claude.ai '",
+      "replace": "const CONNECTOR_PREFIX = 'claude.ai: '"
+    },
+    {
+      "name": "naming: scope changed",
+      "source": "src/mcp/claudeaiConnectors/naming.ts",
+      "find": "scope: 'claudeai' }",
+      "replace": "scope: 'user' }"
     }
   ]
 }

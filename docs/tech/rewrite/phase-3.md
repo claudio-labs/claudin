@@ -48,7 +48,7 @@ which the sandbox tools read. The lists below are the same.
 | `mcp/config` | 2 | 1291 | — | done |
 | `mcp/auth` | 7 | 658 | `auth.test.ts` (50) | pending |
 | `mcp/connection` | 5 | 1305 | `client.test.ts` (34) | pending |
-| `mcp/capabilities` | 6 | 924 | — | pending |
+| `mcp/capabilities` | 6 | 924 | — | done |
 | `mcp/callTool` | 5 | 983 | — | done |
 | `mcp/connectionManager` | 3 | 726 | — | pending |
 | `mcp/elicitation` | 3 | 535 | — | done |

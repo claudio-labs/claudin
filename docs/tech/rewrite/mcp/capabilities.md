@@ -236,3 +236,34 @@ is never size-limited (`mcp/callTool`). Errors are rethrown.
 - **The SDK client identity** shared with `mcp/connection` as one constant.
 - **`claudeai`:** gates as a pure `eligibility()` returning the reason, then the request, then the naming as a pure function with its own table tests.
 - **The VS Code channel** as a small object the headless runtime owns, instead of process-wide state (Findings, 6).
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**The rewrite.**
+- All bodies were written anew.
+- `fetchCapabilities.ts` now sits on `client/capabilities/`: `toolFromListing`, `toolCall`,
+  `promptCommand`, `sweep` (a pure `classifyServer`) and `retry`.
+- `clientIdentity.ts` holds the client name and version. `connection.ts` adopts it in its own
+  rewrite.
+- `vscodeChannel.ts` makes the VS Code channel an object, still one per process.
+- The claude.ai connectors split into `claudeaiConnectors/eligibility` and `naming`.
+- The characterization suite passes unchanged.
+
+**Fix, with a test.** Finding 5: "disabled" is decided once, first, in `classifyServer`.
+
+**Kept as pinned.** Findings 1–4, 6 and 7:
+- SDK servers can take built-in names.
+- `structuredContent` is sent as JSON text.
+- Prompt arguments split on spaces.
+- The claude.ai listing reads one page.
+- The VS Code channel is process-wide.
+- `tools/list` failures stay silent.
+
+**Probes.** 102, in `rewrite-mcp-capabilities.json`.
+
+**Residue, reviewed.** 79 lines of Claude Code remain, all contract:
+- the exported fetch and reconnect signatures (memoized per server name);
+- `SdkControlClientTransport`'s method signatures;
+- the three short claude.ai exports, whose shape the `claudeAiMcpEverConnected` config field fixes.

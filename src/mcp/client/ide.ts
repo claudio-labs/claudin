@@ -3,23 +3,17 @@ import { createAbortController } from 'src/shared/abortController.js'
 import type { ConnectedMCPServer } from 'src/mcp/types.js'
 import { callMCPTool } from 'src/mcp/client/callTool.js'
 
-/**
- * Call an IDE tool directly as an RPC
- * @param toolName The name of the tool to call
- * @param args The arguments to pass to the tool
- * @param client The IDE client to use for the RPC call
- * @returns The result of the tool call
- */
+/** One RPC to the IDE's MCP server, for the diff and diagnostics features. */
 export async function callIdeRpc(
   toolName: string,
   args: Record<string, unknown>,
   client: ConnectedMCPServer,
 ): Promise<string | ContentBlockParam[] | undefined> {
-  const result = await callMCPTool({
+  const { content } = await callMCPTool({
     client,
     tool: toolName,
     args,
     signal: createAbortController().signal,
   })
-  return result.content
+  return content
 }
