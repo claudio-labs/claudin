@@ -1,0 +1,222 @@
+{
+  "test": [
+    "src/mcp/client.capabilities.characterization.test.ts"
+  ],
+  "source": "src/mcp/client/fetchCapabilities.ts",
+  "probes": [
+    {
+      "name": "tools: two tries instead of three",
+      "find": "for (let attempt = 0; attempt < 3; attempt++) {",
+      "replace": "for (let attempt = 0; attempt < 2; attempt++) {"
+    },
+    {
+      "name": "tools: no back-off between tries",
+      "find": "await sleep(1000 * (attempt + 1))",
+      "replace": "await sleep(10)"
+    },
+    {
+      "name": "tools: the no-prefix switch is ignored",
+      "find": "isEnvTruthy(process.env.CLAUDE_AGENT_SDK_MCP_NO_PREFIX)",
+      "replace": "false"
+    },
+    {
+      "name": "tools: search hints keep newlines and tabs",
+      "find": ".replace(/\\s+/g, ' ')",
+      "replace": ".replace(/ +/g, ' ')"
+    },
+    {
+      "name": "tools: a blank search hint is kept as empty text",
+      "find": ".trim() || undefined",
+      "replace": ".trim()"
+    },
+    {
+      "name": "tools: alwaysLoad accepts any value",
+      "find": "alwaysLoad: tool._meta?.['anthropic/alwaysLoad'] === true,",
+      "replace": "alwaysLoad: tool._meta?.['anthropic/alwaysLoad'] !== undefined,"
+    },
+    {
+      "name": "tools: prompt cap drops the marker",
+      "find": "desc.slice(0, MAX_MCP_DESCRIPTION_LENGTH) + '… [truncated]'",
+      "replace": "desc.slice(0, MAX_MCP_DESCRIPTION_LENGTH)"
+    },
+    {
+      "name": "tools: a 2048-character description is cut",
+      "find": "desc.length > MAX_MCP_DESCRIPTION_LENGTH",
+      "replace": "desc.length >= MAX_MCP_DESCRIPTION_LENGTH"
+    },
+    {
+      "name": "tools: concurrency-safe by default",
+      "find": "isConcurrencySafe() {\n              return tool.annotations?.readOnlyHint ?? false",
+      "replace": "isConcurrencySafe() {\n              return tool.annotations?.readOnlyHint ?? true"
+    },
+    {
+      "name": "tools: destructive by default",
+      "find": "return tool.annotations?.destructiveHint ?? false",
+      "replace": "return tool.annotations?.destructiveHint ?? true"
+    },
+    {
+      "name": "tools: suggested rule goes to user settings",
+      "find": "destination: 'localSettings' as const,",
+      "replace": "destination: 'userSettings' as const,"
+    },
+    {
+      "name": "tools: tool_use id travels under another _meta key",
+      "find": "? { 'claudecode/toolUseId': toolUseId }",
+      "replace": "? { 'claudin/toolUseId': toolUseId }"
+    },
+    {
+      "name": "tools: completed progress renamed",
+      "find": "status: 'completed',",
+      "replace": "status: 'done',"
+    },
+    {
+      "name": "tools: failed progress renamed",
+      "find": "status: 'failed',",
+      "replace": "status: 'error',"
+    },
+    {
+      "name": "tools: no retry after an expired session",
+      "find": "const MAX_SESSION_RETRIES = 1",
+      "replace": "const MAX_SESSION_RETRIES = 0"
+    },
+    {
+      "name": "tools: structuredContent dropped from mcpMeta",
+      "find": "structuredContent: mcpResult.structuredContent,",
+      "replace": "structuredContent: undefined,"
+    },
+    {
+      "name": "tools: the ide filter is gone",
+      "find": "        .filter(isIncludedMcpTool)\n",
+      "replace": ""
+    },
+    {
+      "name": "resources: no longer tagged with the server",
+      "find": "        server: client.name,",
+      "replace": "        server: 'unknown',"
+    },
+    {
+      "name": "commands: server name not normalized",
+      "find": "name: 'mcp__' + normalizeNameForMCP(client.name) + '__' + prompt.name,",
+      "replace": "name: 'mcp__' + client.name + '__' + prompt.name,"
+    },
+    {
+      "name": "commands: arguments split on commas",
+      "find": "const argsArray = args.split(' ')",
+      "replace": "const argsArray = args.split(',')"
+    },
+    {
+      "name": "reconnect: resource tools never added",
+      "find": "      if (!hasResourceTools) {",
+      "replace": "      if (hasResourceTools) {"
+    },
+    {
+      "name": "reconnect: a connector is not recorded as connected",
+      "find": "    if (config.type === 'claudeai-proxy') {\n      markClaudeAiMcpConnected(name)\n    }\n\n    const supportsResources",
+      "replace": "    const supportsResources"
+    },
+    {
+      "name": "sweep: the needs-auth cache is ignored",
+      "find": "((await isMcpAuthCached(name)) ||",
+      "replace": "((false) ||"
+    },
+    {
+      "name": "sweep: probed-without-token servers are contacted",
+      "find": "hasMcpDiscoveryButNoToken(name, config)))",
+      "replace": "false))"
+    },
+    {
+      "name": "sweep: needs-auth from the connect gets no authenticate tool",
+      "find": "            client.type === 'needs-auth'\n",
+      "replace": "            client.type === 'failed'\n"
+    },
+    {
+      "name": "sweep: resource tools added for every server",
+      "find": "if (supportsResources && !resourceToolsAdded) {",
+      "replace": "if (supportsResources) {"
+    },
+    {
+      "name": "sdk: connected servers scoped user",
+      "source": "src/mcp/client/sdkClients.ts",
+      "find": "config: { ...config, scope: 'dynamic' as const },",
+      "replace": "config: { ...config, scope: 'user' as const },"
+    },
+    {
+      "name": "sdk: failed servers scoped dynamic",
+      "source": "src/mcp/client/sdkClients.ts",
+      "find": "config: { ...config, scope: 'user' as const },",
+      "replace": "config: { ...config, scope: 'dynamic' as const },"
+    },
+    {
+      "name": "control transport: close fires onclose every time",
+      "source": "src/mcp/SdkControlTransport.ts",
+      "find": "    if (this.isClosed) {\n      return\n    }\n    this.isClosed = true",
+      "replace": "    this.isClosed = true"
+    },
+    {
+      "name": "control transport: answers are not handed back",
+      "source": "src/mcp/SdkControlTransport.ts",
+      "find": "      this.onmessage(response)",
+      "replace": "      void response"
+    },
+    {
+      "name": "vscode: another server name is picked",
+      "source": "src/mcp/vscodeSdkMcp.ts",
+      "find": "client.name === 'claude-vscode'",
+      "replace": "client.name === 'vscode'"
+    },
+    {
+      "name": "vscode: notification method renamed",
+      "source": "src/mcp/vscodeSdkMcp.ts",
+      "find": "method: 'file_updated',",
+      "replace": "method: 'file_changed',"
+    },
+    {
+      "name": "vscode: a failed record is accepted",
+      "source": "src/mcp/vscodeSdkMcp.ts",
+      "find": "if (client && client.type === 'connected') {",
+      "replace": "if (client) {"
+    },
+    {
+      "name": "ide: the whole result is returned",
+      "source": "src/mcp/client/ide.ts",
+      "find": "  return result.content\n",
+      "replace": "  return result as never\n"
+    },
+    {
+      "name": "claudeai: beta header changes",
+      "source": "src/mcp/claudeai.ts",
+      "find": "const MCP_SERVERS_BETA_HEADER = 'mcp-servers-2025-12-04'",
+      "replace": "const MCP_SERVERS_BETA_HEADER = 'mcp-servers'"
+    },
+    {
+      "name": "claudeai: the scope check looks for another scope",
+      "source": "src/mcp/claudeai.ts",
+      "find": "if (!tokens.scopes?.includes('user:mcp_servers')) {",
+      "replace": "if (!tokens.scopes?.includes('user:mcp')) {"
+    },
+    {
+      "name": "claudeai: names lose the claude.ai prefix",
+      "source": "src/mcp/claudeai.ts",
+      "find": "const baseName = `claude.ai ${server.display_name}`",
+      "replace": "const baseName = `${server.display_name}`"
+    },
+    {
+      "name": "claudeai: essential-traffic mode no longer blocks the fetch",
+      "source": "src/mcp/claudeai.ts",
+      "find": "      if (isEssentialTrafficOnly()) {",
+      "replace": "      if (false) {"
+    },
+    {
+      "name": "claudeai: clearing keeps the needs-auth cache",
+      "source": "src/mcp/claudeai.ts",
+      "find": "  clearMcpAuthCache()\n}",
+      "replace": "}"
+    },
+    {
+      "name": "claudeai: connected names recorded twice",
+      "source": "src/mcp/claudeai.ts",
+      "find": "    if (seen.includes(name)) return current\n",
+      "replace": ""
+    }
+  ]
+}

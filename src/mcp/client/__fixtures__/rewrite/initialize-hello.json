@@ -1,0 +1,12 @@
+{
+  "clientInfo": {
+    "name": "claude-code",
+    "title": "Claudin",
+    "description": "Anthropic's agentic coding tool",
+    "websiteUrl": "https://claude.com/claude-code"
+  },
+  "capabilities": {
+    "roots": {},
+    "elicitation": {}
+  }
+}

@@ -42,6 +42,12 @@ the gate deleted too — the test certified nothing. Fix: **seed the preconditio
 the gate, and **add a control arm** asserting the main thread still gets it. See
 [[attachment-producers-leak-parent-state]].
 
+**`replace` goes through `String.prototype.replace`** (seen 2026-10-03, twice), so `$&`, `$'`
+and `` $` `` in a replacement expand into the file's own text. Two rewrite agents wrote probes
+of `$`-refusal code that way; the garbled source hung the suite run, and the runner has no
+timeout — wrap runs in `timeout`, and keep `$` sequences out of `replace`. The runner also
+refuses to start on a red baseline.
+
 Related: [[characterization-net-before-deletion]],
 [[feedback-pin-the-surviving-surface]] (private),
 [[tier3-file-split-roadmap]] §5 — a break-probe pass also surfaces

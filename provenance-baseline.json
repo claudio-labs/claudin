@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-04",
-  "capturedFrom": "9bf128cd4e0746ca19ecc36e60f3adfb4ee6c464",
-  "totals": { "claudeCode": 279927, "openclaude": 41544 },
+  "capturedFrom": "eabea1ed1d47fb4dca8a0704cfaa8bf3e3fa1289",
+  "totals": { "claudeCode": 279927, "openclaude": 41510 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -673,7 +673,6 @@
     "src/mcp/auth/tokenRevocation.ts": [237, 1],
     "src/mcp/claudeai.ts": [99, 2],
     "src/mcp/client.regression.test.ts": [0, 7],
-    "src/mcp/client.test.ts": [0, 34],
     "src/mcp/client/authCache.ts": [49, 0],
     "src/mcp/client/callTool.ts": [397, 12],
     "src/mcp/client/connection.ts": [662, 14],

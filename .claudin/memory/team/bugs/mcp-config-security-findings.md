@@ -44,3 +44,18 @@ parent directory, and servers nobody approved.
 
 Both belong with the project-scope trust fix. Tracked in the auth and doctor
 specs.
+
+**mcp/connection, capabilities, callTool (2026-10-04).** Pinned and tracked:
+- **Session ingress token.** It is sent as a Bearer token to any `ws` server, and to any `http`
+  server that has no stored token, whatever the host.
+- **The `ide` server name skips the tool-output size limit.** Any configured server can take that
+  name.
+- **`CLAUDIN_SHELL_PREFIX` gets the command unquoted.** It is joined to its arguments with spaces.
+- **Oversized output can reach the model whole.** Truncation needs a token count, so on a provider
+  with no counting endpoint, or when the count fails, the output goes in uncut.
+- **Client identity.** The client identifies itself to every server as `claude-code`, with
+  Anthropic's description.
+
+Queued for the rewrite (fixes):
+- `persistBinaryContent` does not check the id it is given.
+- Two calls to the same tool in the same millisecond collide on the saved-output name.

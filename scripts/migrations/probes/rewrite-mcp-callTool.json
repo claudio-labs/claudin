@@ -1,0 +1,233 @@
+{
+  "test": [
+    "src/mcp/client.callTool.characterization.test.ts",
+    "src/mcp/client.toolResult.characterization.test.ts"
+  ],
+  "source": "src/mcp/client/callTool.ts",
+  "probes": [
+    {
+      "name": "call: timeout message in milliseconds",
+      "find": "timed out after ${Math.floor(timeoutMs / 1000)}s`,",
+      "replace": "timed out after ${timeoutMs}ms`,"
+    },
+    {
+      "name": "call: two elicitation rounds instead of three",
+      "find": "const MAX_URL_ELICITATION_RETRIES = 3",
+      "replace": "const MAX_URL_ELICITATION_RETRIES = 2"
+    },
+    {
+      "name": "call: form elicitations accepted as URL ones",
+      "find": "            obj.mode === 'url' &&\n",
+      "replace": ""
+    },
+    {
+      "name": "call: elicitations without an id accepted",
+      "find": "            typeof obj.elicitationId === 'string' &&\n",
+      "replace": ""
+    },
+    {
+      "name": "call: hook refusal message changes",
+      "find": "by a hook. The tool \"${tool}\" could not complete",
+      "replace": "by hook. The tool \"${tool}\" failed"
+    },
+    {
+      "name": "call: user decline wording changes",
+      "find": "${finalResult.action === 'decline' ? 'declined' : finalResult.action + 'ed'} by the user",
+      "replace": "${finalResult.action === 'decline' ? 'refused' : finalResult.action + 'ed'} by the user"
+    },
+    {
+      "name": "call: consenting alone retries",
+      "find": "                      if (result.action === 'accept') {\n                        return\n                      }\n",
+      "replace": ""
+    },
+    {
+      "name": "call: retry from the wait no longer retries",
+      "find": "if (action === 'retry') {",
+      "replace": "if (action === 'go') {"
+    },
+    {
+      "name": "call: server name kept for records that are not connected",
+      "find": "          : 'unknown'",
+      "replace": "          : clientConnection.name"
+    },
+    {
+      "name": "call: tool error loses the server text",
+      "find": "          errorDetails = firstContent.text\n",
+      "replace": ""
+    },
+    {
+      "name": "call: legacy error field ignored",
+      "find": "        errorDetails = String(result.error)\n",
+      "replace": ""
+    },
+    {
+      "name": "call: error _meta dropped",
+      "find": "'_meta' in result && result._meta ? { _meta: result._meta } : undefined,",
+      "replace": "undefined,"
+    },
+    {
+      "name": "call: 401 no longer means re-auth",
+      "find": "if (errorCode === 401 || e instanceof UnauthorizedError) {",
+      "replace": "if (errorCode === 403 || e instanceof UnauthorizedError) {"
+    },
+    {
+      "name": "call: claude.ai proxy closures are not expired sessions",
+      "find": "(config.type === 'http' || config.type === 'claudeai-proxy')",
+      "replace": "(config.type === 'http')"
+    },
+    {
+      "name": "call: progress loses its message",
+      "find": "                progressMessage: sdkProgress.message,\n",
+      "replace": ""
+    },
+    {
+      "name": "call: tool_use id read from any block",
+      "find": "if (message.message.content[0]?.type !== 'tool_use') {",
+      "replace": "if (!message.message.content.some(b => b.type === 'tool_use')) {"
+    },
+    {
+      "name": "errors: session expiry on 410",
+      "source": "src/mcp/client/errors.ts",
+      "find": "if (httpStatus !== 404) {",
+      "replace": "if (httpStatus !== 410) {"
+    },
+    {
+      "name": "errors: spaced -32001 not recognised",
+      "source": "src/mcp/client/errors.ts",
+      "find": "    error.message.includes('\"code\":-32001') ||\n    error.message.includes('\"code\": -32001')",
+      "replace": "    error.message.includes('\"code\":-32001')"
+    },
+    {
+      "name": "result: the ide server is size-checked",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (name === 'ide') {",
+      "replace": "if (name === 'ide-never') {"
+    },
+    {
+      "name": "result: content with images is saved instead of cut",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (contentContainsImages(content)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "result (security): saved-output file named from raw server and tool names",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "`mcp-${normalizeNameForMCP(name)}-${normalizeNameForMCP(tool)}-${timestamp}`",
+      "replace": "`mcp-${name}-${tool}-${timestamp}`"
+    },
+    {
+      "name": "result (security): blob file named from the raw server name",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "`mcp-${normalizeNameForMCP(serverName)}-blob-",
+      "replace": "`mcp-${serverName}-blob-"
+    },
+    {
+      "name": "result: save failure loses its reason line",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "Failed to save output to file: ${persistResult.error}.",
+      "replace": "Could not save output."
+    },
+    {
+      "name": "result: switching large-output files off is ignored",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (isEnvDefinedFalsy(process.env.ENABLE_MCP_LARGE_OUTPUT_FILES)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "result: blob save failure message changes",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "could not be saved to disk: ${result.error}",
+      "replace": "was dropped"
+    },
+    {
+      "name": "result: text no longer sanitized",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "          text: recursivelySanitizeUnicode(resultContent.text) as string,",
+      "replace": "          text: resultContent.text,"
+    },
+    {
+      "name": "result: png blobs no longer treated as images",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "  'image/png',\n",
+      "replace": ""
+    },
+    {
+      "name": "validation: counting threshold moves",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "export const MCP_TOKEN_COUNT_THRESHOLD_FACTOR = 0.5",
+      "replace": "export const MCP_TOKEN_COUNT_THRESHOLD_FACTOR = 0.6"
+    },
+    {
+      "name": "validation: exactly the cap counts as too big",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "tokenCount > getMaxMcpOutputTokens()",
+      "replace": "tokenCount >= getMaxMcpOutputTokens()"
+    },
+    {
+      "name": "validation: three characters per token when cutting",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "return getMaxMcpOutputTokens() * 4",
+      "replace": "return getMaxMcpOutputTokens() * 3"
+    },
+    {
+      "name": "validation: truncation notice changes",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "[OUTPUT TRUNCATED - exceeded ${getMaxMcpOutputTokens()} token limit]",
+      "replace": "[TRUNCATED]"
+    },
+    {
+      "name": "validation: a zero cap is accepted",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "if (Number.isFinite(parsed) && parsed > 0) {",
+      "replace": "if (Number.isFinite(parsed) && parsed >= 0) {"
+    },
+    {
+      "name": "validation: cut blocks lose the notice",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "    truncatedBlocks.push({ type: 'text', text: truncationMsg })\n",
+      "replace": ""
+    },
+    {
+      "name": "storage: mime parameters no longer stripped",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "const mt = (mimeType.split(';')[0] ?? '').trim().toLowerCase()",
+      "replace": "const mt = mimeType.trim().toLowerCase()"
+    },
+    {
+      "name": "storage: +json types count as binary",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "if (mt.endsWith('+json') || mt === 'application/json') return false",
+      "replace": "if (mt === 'application/json') return false"
+    },
+    {
+      "name": "storage (security): blobs written beside the tool-results dir",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "const filepath = join(getToolResultsDir(), `${persistId}.${ext}`)",
+      "replace": "const filepath = join(getToolResultsDir(), '..', `${persistId}.${ext}`)"
+    },
+    {
+      "name": "storage: a failed write throws",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "    return { error: err.message }",
+      "replace": "    throw err"
+    },
+    {
+      "name": "storage: the read-every-chunk rule changes",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "in sequential chunks until 100% of the content has been read.",
+      "replace": "in chunks."
+    },
+    {
+      "name": "storage: the Bash variant is never used",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "const truncationWarning = maxReadLength",
+      "replace": "const truncationWarning = false"
+    },
+    {
+      "name": "storage: sizes lose their separators",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "`Error: result (${contentLength.toLocaleString()} characters)",
+      "replace": "`Error: result (${contentLength} characters)"
+    }
+  ]
+}
