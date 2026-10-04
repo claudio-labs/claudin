@@ -476,8 +476,8 @@
     {
       "name": "vscode: another server name",
       "source": "src/mcp/vscodeChannel.ts",
-      "find": "export const VSCODE_SERVER_NAME = 'claude-vscode'",
-      "replace": "export const VSCODE_SERVER_NAME = 'vscode'"
+      "find": "const VSCODE_SERVER_NAME = 'claude-vscode'",
+      "replace": "const VSCODE_SERVER_NAME = 'vscode'"
     },
     {
       "name": "vscode: an update without the server forgets it",
