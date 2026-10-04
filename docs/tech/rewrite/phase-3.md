@@ -62,7 +62,7 @@ which the sandbox tools read. The lists below are the same.
 | `permissions/shellRules` | 5 | 711 | — | pending |
 | `permissions/filePaths` | 5 | 1002 | `filePermissions.test.ts` (24) | done |
 | `permissions/fileRules` | 2 | 641 | — | done |
-| `permissions/setup` | 10 | 702 | `autoModeGate.test.ts` (22) | pending |
+| `permissions/setup` | 10 | 702 | `autoModeGate.test.ts` (22) | done |
 | `permissions/autoModeClassifier` | 13 | 887 | `yoloClassifier.test.ts`, `bashClassifier.test.ts` (82) | pending |
 | `permissions/toolPermission` | 6 | 985 | — | pending |
 | `permissions/promptFrame` | 8 | 862 | — | pending |

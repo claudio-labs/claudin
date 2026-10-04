@@ -7,80 +7,43 @@
  */
 import { getToolsForDefaultPreset, parseToolPreset } from 'src/tools/tools.js'
 
+const ENTRY_SEPARATORS: ReadonlySet<string> = new Set([',', ' '])
+
 /**
- * Parse base tools specification from CLI
- * Handles both preset names (default, none) and custom tool lists
+ * Cuts one argv element into entries. Depth is counted, not flagged, so that
+ * `Bash(f(x) y)` stays one rule: only the `)` that closes the outermost `(`
+ * brings separators back into play. An unclosed `(` never returns to depth 0,
+ * which keeps the rest of the element together.
  */
-export function parseBaseToolsFromCLI(baseTools: string[]): string[] {
-  // Join all array elements and check if it's a single preset name
-  const joinedInput = baseTools.join(' ').trim()
-  const preset = parseToolPreset(joinedInput)
-
-  if (preset) {
-    return getToolsForDefaultPreset()
+function cutElement(element: string): string[] {
+  const pieces: string[] = []
+  let piece = ''
+  let depth = 0
+  for (const char of element) {
+    if (depth === 0 && ENTRY_SEPARATORS.has(char)) {
+      pieces.push(piece)
+      piece = ''
+      continue
+    }
+    if (char === '(') depth += 1
+    else if (char === ')' && depth > 0) depth -= 1
+    piece += char
   }
-
-  // Parse as a custom tool list using the same parsing logic as allowedTools/disallowedTools
-  const parsedTools = parseToolListFromCLI(baseTools)
-
-  return parsedTools
+  pieces.push(piece)
+  return pieces
 }
 
 export function parseToolListFromCLI(tools: string[]): string[] {
-  if (tools.length === 0) {
-    return []
+  return tools
+    .flatMap(cutElement)
+    .map(entry => entry.trim())
+    .filter(entry => entry !== '')
+}
+
+export function parseBaseToolsFromCLI(baseTools: string[]): string[] {
+  const asOneString = baseTools.join(' ').trim()
+  if (parseToolPreset(asOneString) === 'default') {
+    return getToolsForDefaultPreset()
   }
-
-  const result: string[] = []
-
-  // Process each string in the array
-  for (const toolString of tools) {
-    if (!toolString) continue
-
-    let current = ''
-    let isInParens = false
-
-    // Parse each character in the string
-    for (const char of toolString) {
-      switch (char) {
-        case '(':
-          isInParens = true
-          current += char
-          break
-        case ')':
-          isInParens = false
-          current += char
-          break
-        case ',':
-          if (isInParens) {
-            current += char
-          } else {
-            // Comma separator - push current tool and start new one
-            if (current.trim()) {
-              result.push(current.trim())
-            }
-            current = ''
-          }
-          break
-        case ' ':
-          if (isInParens) {
-            current += char
-          } else if (current.trim()) {
-            // Space separator - push current tool and start new one
-            result.push(current.trim())
-            current = ''
-          }
-          break
-        default:
-          current += char
-      }
-    }
-
-    // Push any remaining tool
-    if (current.trim()) {
-      result.push(current.trim())
-    }
-  }
-
-  return result
+  return parseToolListFromCLI(baseTools)
 }

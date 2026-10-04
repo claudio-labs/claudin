@@ -86,15 +86,15 @@
     },
     {
       "name": "nothing can refuse --dangerously-skip-permissions but settings",
-      "source": "src/permissions/permissionSetup/startupContext.ts",
-      "find": "    if (mode === 'bypassPermissions' && disableBypassPermissionsMode) {\n",
+      "source": "src/permissions/permissionSetup/startup/startMode.ts",
+      "find": "    if (mode === 'bypassPermissions' && inputs.bypassKilled) {\n",
       "replace": "    if (mode === 'bypassPermissions') {\n"
     },
     {
       "name": "auto mode is offered in the carousel without an opt-in",
       "source": "src/permissions/permissionSetup/autoModeGate.ts",
-      "find": "  const carouselAvailable = canEnterAuto\n",
-      "replace": "  const carouselAvailable =\n    canEnterAuto && (autoModeStateModule?.getAutoModeFlagCli() ?? false)\n"
+      "find": "  if (context.isAutoModeAvailable === true) return context\n  return { ...context, isAutoModeAvailable: true }",
+      "replace": "  const optedIn = autoModeStateModule?.getAutoModeFlagCli() ?? false\n  if (context.isAutoModeAvailable === optedIn) return context\n  return { ...context, isAutoModeAvailable: optedIn }"
     }
   ]
 }

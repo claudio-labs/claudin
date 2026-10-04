@@ -15,13 +15,16 @@ import { autoModeStateModule } from 'src/permissions/permissionSetup/autoModeSta
 // autoModeGate.ts, which imports the predicates below.
 import type { AutoModeUnavailableReason } from 'src/permissions/permissionSetup/autoModeGate.js'
 
+/**
+ * `disableAutoMode: "disable"` at the top level or under `permissions`, read
+ * from the merged settings, so any layer can set it (a repository's included:
+ * turning auto off only ever narrows what runs unasked).
+ */
 export function isAutoModeDisabledBySettings(): boolean {
-  const settings = getInitialSettings() || {}
+  const merged = getInitialSettings()
   return (
-    (settings as { disableAutoMode?: 'disable' }).disableAutoMode ===
-      'disable' ||
-    (settings.permissions as { disableAutoMode?: 'disable' } | undefined)
-      ?.disableAutoMode === 'disable'
+    merged.disableAutoMode === 'disable' ||
+    merged.permissions?.disableAutoMode === 'disable'
   )
 }
 
@@ -34,7 +37,7 @@ export function isAutoModeDisabledBySettings(): boolean {
  * session rather than degrade gracefully. The probe itself runs lazily in
  * verifyAutoModeGateAccess.
  */
-export function autoModeAllowedForModel(model: string): boolean {
+function autoModeAllowedForModel(model: string): boolean {
   if (modelSupportsAutoMode(model)) return true
   const provider = tryGetActiveProvider()
   if (!provider) return false
@@ -51,26 +54,36 @@ export function __autoModeAllowedForModelForTests(model: string): boolean {
   return autoModeAllowedForModel(model)
 }
 
-/**
- * Checks if auto mode can be entered: circuit breaker is not active and settings
- * have not disabled it. Synchronous.
- */
-export function isAutoModeGateEnabled(): boolean {
-  if (autoModeStateModule?.isAutoModeCircuitBroken() ?? false) return false
-  if (isAutoModeDisabledBySettings()) return false
-  if (!autoModeAllowedForModel(getMainLoopModel())) return false
-  return true
+/** The three facts the gate is decided on, read once per question. */
+type GateFacts = {
+  disabledBySettings: boolean
+  breakerLatched: boolean
+  modelCleared: boolean
 }
 
-/**
- * Returns the reason auto mode is currently unavailable, or null if available.
- * Synchronous — uses state populated by verifyAutoModeGateAccess.
- */
-export function getAutoModeUnavailableReason(): AutoModeUnavailableReason | null {
-  if (isAutoModeDisabledBySettings()) return 'settings'
-  if (autoModeStateModule?.isAutoModeCircuitBroken() ?? false) {
-    return 'circuit-breaker'
+function readGateFacts(): GateFacts {
+  const state = autoModeStateModule
+  return {
+    disabledBySettings: isAutoModeDisabledBySettings(),
+    breakerLatched: state ? state.isAutoModeCircuitBroken() : false,
+    // Without the classifier in the build no model is cleared, even one with a
+    // stored passing probe.
+    modelCleared: state ? autoModeAllowedForModel(getMainLoopModel()) : false,
   }
-  if (!autoModeAllowedForModel(getMainLoopModel())) return 'model'
+}
+
+/** The first fact that closes the gate, in precedence order, or null. */
+function firstClosingFact(facts: GateFacts): AutoModeUnavailableReason | null {
+  if (facts.disabledBySettings) return 'settings'
+  if (facts.breakerLatched) return 'circuit-breaker'
+  if (!facts.modelCleared) return 'model'
   return null
+}
+
+export function isAutoModeGateEnabled(): boolean {
+  return getAutoModeUnavailableReason() === null
+}
+
+export function getAutoModeUnavailableReason(): AutoModeUnavailableReason | null {
+  return firstClosingFact(readGateFacts())
 }

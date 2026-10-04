@@ -251,38 +251,38 @@
     },
     {
       "name": "a comma inside parentheses belongs to the rule content",
-      "find": "        case ',':\n          if (isInParens) {\n            current += char\n          } else {",
-      "replace": "        case ',':\n          if (false as boolean) {\n            current += char\n          } else {",
+      "find": "    if (depth === 0 && ENTRY_SEPARATORS.has(char)) {",
+      "replace": "    if ((depth === 0 || char === ',') && ENTRY_SEPARATORS.has(char)) {",
       "source": "src/permissions/permissionSetup/cliToolParsing.ts"
     },
     {
       "name": "a space inside parentheses belongs to the rule content",
-      "find": "        case ' ':\n          if (isInParens) {\n            current += char\n          } else if (current.trim()) {",
-      "replace": "        case ' ':\n          if (false as boolean) {\n            current += char\n          } else if (current.trim()) {",
+      "find": "    if (depth === 0 && ENTRY_SEPARATORS.has(char)) {",
+      "replace": "    if ((depth === 0 || char === ' ') && ENTRY_SEPARATORS.has(char)) {",
       "source": "src/permissions/permissionSetup/cliToolParsing.ts"
     },
     {
       "name": "an empty entry between two separators is dropped",
-      "find": "            if (current.trim()) {\n              result.push(current.trim())\n            }\n            current = ''",
-      "replace": "            result.push(current.trim())\n            current = ''",
+      "find": "    .filter(entry => entry !== '')",
+      "replace": "    .filter(() => true)",
       "source": "src/permissions/permissionSetup/cliToolParsing.ts"
     },
     {
       "name": "the last tool in a string is pushed",
-      "find": "    // Push any remaining tool\n    if (current.trim()) {\n      result.push(current.trim())\n    }",
-      "replace": "    // Push any remaining tool\n    if (false as boolean) {\n      result.push(current.trim())\n    }",
+      "find": "  pieces.push(piece)\n  return pieces",
+      "replace": "  return pieces",
       "source": "src/permissions/permissionSetup/cliToolParsing.ts"
     },
     {
       "name": "a base-tools preset expands to the default tool set",
-      "find": "  if (preset) {\n    return getToolsForDefaultPreset()\n  }",
-      "replace": "  if (false as boolean) {\n    return getToolsForDefaultPreset()\n  }",
+      "find": "  if (parseToolPreset(asOneString) === 'default') {",
+      "replace": "  if (false as boolean) {",
       "source": "src/permissions/permissionSetup/cliToolParsing.ts"
     },
     {
       "name": "base-tools elements are joined with a space before the preset check",
-      "find": "  const joinedInput = baseTools.join(' ').trim()",
-      "replace": "  const joinedInput = baseTools.join(',').trim()",
+      "find": "  const asOneString = baseTools.join(' ').trim()",
+      "replace": "  const asOneString = baseTools.join(',').trim()",
       "source": "src/permissions/permissionSetup/cliToolParsing.ts"
     },
     {
@@ -293,8 +293,8 @@
     },
     {
       "name": "a non-preset base-tools value is parsed as a tool list",
-      "find": "  const parsedTools = parseToolListFromCLI(baseTools)\n\n  return parsedTools",
-      "replace": "  return baseTools",
+      "find": "  return parseToolListFromCLI(baseTools)\n}",
+      "replace": "  return baseTools\n}",
       "source": "src/permissions/permissionSetup/cliToolParsing.ts"
     },
     {
@@ -305,50 +305,50 @@
     },
     {
       "name": "auto-mode bookkeeping runs on every mode transition",
-      "find": "  handleAutoModeTransition(fromMode, toMode)\n\n  if (fromMode === 'plan' && toMode !== 'plan') {\n    setHasExitedPlanMode(true)\n  }",
-      "replace": "  if (fromMode === 'plan' && toMode !== 'plan') {\n    setHasExitedPlanMode(true)\n  }",
+      "find": "  handleAutoModeTransition(fromMode, toMode)\n  const leavesPlan",
+      "replace": "  const leavesPlan",
       "source": "src/permissions/permissionSetup/modeTransition.ts"
     },
     {
       "name": "leaving plan mode is recorded for the session",
-      "find": "  if (fromMode === 'plan' && toMode !== 'plan') {\n    setHasExitedPlanMode(true)\n  }",
-      "replace": "  if (false as boolean) {\n    setHasExitedPlanMode(true)\n  }",
+      "find": "  if (leavesPlan) setHasExitedPlanMode(true)",
+      "replace": "  if (false as boolean) setHasExitedPlanMode(true)",
       "source": "src/permissions/permissionSetup/modeTransition.ts"
     },
     {
       "name": "leaving plan mode clears the stashed pre-plan mode",
-      "find": "  if (fromMode === 'plan' && toMode !== 'plan' && context.prePlanMode) {\n    return { ...context, prePlanMode: undefined }\n  }",
-      "replace": "  if (false as boolean) {\n    return { ...context, prePlanMode: undefined }\n  }",
+      "find": "  return leavesPlan ? forgetPrePlanMode(prepared) : prepared",
+      "replace": "  return prepared",
       "source": "src/permissions/permissionSetup/modeTransition.ts"
     },
     {
       "name": "a transition with nothing to change preserves reference equality",
-      "find": "    return { ...context, prePlanMode: undefined }\n  }\n\n  return context\n}",
-      "replace": "    return { ...context, prePlanMode: undefined }\n  }\n\n  return { ...context }\n}",
+      "find": "  return leavesPlan ? forgetPrePlanMode(prepared) : prepared",
+      "replace": "  return { ...(leavesPlan ? forgetPrePlanMode(prepared) : prepared) }",
       "source": "src/permissions/permissionSetup/modeTransition.ts"
     },
     {
       "name": "re-entering plan mode does not overwrite the stashed pre-plan mode",
-      "find": "  const currentMode = context.mode\n  if (currentMode === 'plan') return context",
-      "replace": "  const currentMode = context.mode\n  if (false as boolean) return context",
+      "find": "  if (context.mode === 'plan') return context",
+      "replace": "  if (false as boolean) return context",
       "source": "src/permissions/permissionSetup/planAutoMode.ts"
     },
     {
       "name": "plan entry stashes the mode it came from",
-      "find": "  return { ...context, prePlanMode: currentMode }\n}",
-      "replace": "  return { ...context, prePlanMode: 'default' as typeof currentMode }\n}",
+      "find": "  if (!autoModeBuiltIn() || entering === 'bypassPermissions') {\n    return { ...context, prePlanMode: entering }\n  }\n  const borrow = shouldPlanUseAutoMode()\n  if (entering === 'auto') {\n    // Already in auto: keep it on when plan may borrow it, end it otherwise.\n    const settled = borrow ? context : switchAutoOff(context)\n    return { ...settled, prePlanMode: entering }\n  }\n  const settled = borrow ? switchAutoOn(context) : context\n  return { ...settled, prePlanMode: entering }",
+      "replace": "  if (!autoModeBuiltIn() || entering === 'bypassPermissions') {\n    return { ...context, prePlanMode: 'default' as typeof entering }\n  }\n  const borrow = shouldPlanUseAutoMode()\n  if (entering === 'auto') {\n    // Already in auto: keep it on when plan may borrow it, end it otherwise.\n    const settled = borrow ? context : switchAutoOff(context)\n    return { ...settled, prePlanMode: 'default' as typeof entering }\n  }\n  const settled = borrow ? switchAutoOn(context) : context\n  return { ...settled, prePlanMode: 'default' as typeof entering }",
       "source": "src/permissions/permissionSetup/planAutoMode.ts"
     },
     {
       "name": "a session already in bypass mode is dropped out of it",
-      "find": "  if (currentContext.mode === 'bypassPermissions') {",
-      "replace": "  if (false as boolean) {",
+      "find": "  const wasBypassing = currentContext.mode === 'bypassPermissions'",
+      "replace": "  const wasBypassing = false as boolean",
       "source": "src/permissions/permissionSetup/bypassPermissions.ts"
     },
     {
       "name": "a session in another mode is not dropped to default",
-      "find": "  let updatedContext = currentContext\n  if (currentContext.mode === 'bypassPermissions') {",
-      "replace": "  let updatedContext = currentContext\n  if (true as boolean) {",
+      "find": "  const wasBypassing = currentContext.mode === 'bypassPermissions'",
+      "replace": "  const wasBypassing = true as boolean",
       "source": "src/permissions/permissionSetup/bypassPermissions.ts"
     },
     {
@@ -359,32 +359,32 @@
     },
     {
       "name": "the settings reason has its own message",
-      "find": "      base = 'auto mode disabled by settings'",
-      "replace": "      base = 'auto mode unavailable'",
+      "find": "  settings: 'auto mode disabled by settings',",
+      "replace": "  settings: 'auto mode unavailable',",
       "source": "src/permissions/permissionSetup/autoModeGate.ts"
     },
     {
       "name": "the circuit-breaker reason has its own message",
-      "find": "      base = 'auto mode is unavailable for your plan'",
-      "replace": "      base = 'auto mode unavailable'",
+      "find": "  'circuit-breaker': 'auto mode is unavailable for your plan',",
+      "replace": "  'circuit-breaker': 'auto mode unavailable',",
       "source": "src/permissions/permissionSetup/autoModeGate.ts"
     },
     {
       "name": "the model reason has its own message",
-      "find": "      base = 'auto mode unavailable for this model'",
-      "replace": "      base = 'auto mode unavailable'",
+      "find": "  model: 'auto mode unavailable for this model',",
+      "replace": "  model: 'auto mode unavailable',",
       "source": "src/permissions/permissionSetup/autoModeGate.ts"
     },
     {
       "name": "the gate consults the model check",
-      "find": "  if (!autoModeAllowedForModel(getMainLoopModel())) return false\n  return true",
-      "replace": "  return true",
+      "find": "  return getAutoModeUnavailableReason() === null",
+      "replace": "  return [null, 'model'].includes(getAutoModeUnavailableReason())",
       "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
     },
     {
       "name": "the unavailable reason consults the model check",
-      "find": "  if (!autoModeAllowedForModel(getMainLoopModel())) return 'model'\n  return null",
-      "replace": "  return null",
+      "find": "  if (!facts.modelCleared) return 'model'",
+      "replace": "  if (false as boolean) return 'model'",
       "source": "src/permissions/permissionSetup/autoModeAvailability.ts"
     },
     {

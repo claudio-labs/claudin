@@ -275,3 +275,31 @@ texts byte for byte, apart from the two older probe specs above.
 - **Keep the flag handle single.** Read auto-mode state only through `autoModeStateBridge.ts`. Do not add a second `feature()` site for the same flag (see that file's header).
 - **Types.** Name the layer set that is trusted to opt in or offer bypass (user, local, `--settings`, managed) once, and use it for both questions. Model the closed-gate reason as the union above. `teamContext` is unused, but stays in the signature until `TeamsDialog.tsx` and `PromptInput.tsx` are rewritten.
 - **Findings.** Apply finding 3. Leave findings 1 and 2 to the routed units.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **What changed.** All 29 inherited bodies were written anew.
+  - `trustedSettings.ts` names the trusted settings layers once. The bypass
+    offer and the plan opt-in both use it.
+  - `autoSession.ts` is now the only place auto mode is switched on or off.
+  - `startup/startMode.ts` (a pure function) and `startup/startContext.ts` hold
+    the start-up choice.
+
+  The three characterization suites pass unchanged, both plain and with
+  `TRANSCRIPT_CLASSIFIER`.
+- **Fix, tested.** Finding 3: parentheses are counted by depth, so
+  `Bash(f(x) y)` stays one rule.
+- **Cut.** The `getIsRemoteMode()` early return.
+- **Kept for parity.** Findings 1, 2 and 4–6, with findings 1 and 2 tracked in
+  `bugs/permission-core-security-findings.md`. A repository can still choose
+  bypass or auto as the start mode, and its `additionalDirectories` still join.
+- **Deviation.** A refused entry into auto throws before any notice changes.
+- **Probes.**
+  - `rewrite-permissions-setup.json` holds 111 probes.
+  - The older `permissionSetup.json` (20 probes) and `forkDefaults.json` (2)
+    were re-pointed at the new code with the same mutations. None were
+    deleted, and every one still goes red.
+- **Residue, reviewed.** 85 lines of Claude Code remain. They are signatures,
+  and the module-level auto-mode state in `autoModeState.ts`, whose
+  getter/setter pairs the contract dictates.

@@ -1,39 +1,50 @@
-// Auto mode state functions — lives in its own module so callers can
-// conditionally require() it on feature('TRANSCRIPT_CLASSIFIER').
+/**
+ * The three session-wide auto-mode switches. This module stays a leaf with no
+ * imports: callers load it through a `feature()`-gated require, and a build
+ * without the classifier drops it whole.
+ */
 
-let autoModeActive = false
-let autoModeFlagCli = false
-// Set by the async verifyAutoModeGateAccess check when settings disable
-// auto mode (`disableAutoMode: 'disable'`).
-// Used by isAutoModeGateEnabled() to block SDK/explicit re-entry after kick-out.
-let autoModeCircuitBroken = false
+type AutoModeSwitches = {
+  /** Auto-mode semantics are in force (auto itself, or plan borrowing it). */
+  active: boolean
+  /** Auto was asked for at startup (flag, `--permission-mode` or settings). */
+  askedAtStartup: boolean
+  /** Latched by the startup gate check while settings disable auto mode. */
+  circuitBroken: boolean
+}
+
+const ALL_OFF: Readonly<AutoModeSwitches> = Object.freeze({
+  active: false,
+  askedAtStartup: false,
+  circuitBroken: false,
+})
+
+const switches: AutoModeSwitches = { ...ALL_OFF }
 
 export function setAutoModeActive(active: boolean): void {
-  autoModeActive = active
+  switches.active = active
 }
 
 export function isAutoModeActive(): boolean {
-  return autoModeActive
+  return switches.active
 }
 
 export function setAutoModeFlagCli(passed: boolean): void {
-  autoModeFlagCli = passed
+  switches.askedAtStartup = passed
 }
 
 export function getAutoModeFlagCli(): boolean {
-  return autoModeFlagCli
+  return switches.askedAtStartup
 }
 
 export function setAutoModeCircuitBroken(broken: boolean): void {
-  autoModeCircuitBroken = broken
+  switches.circuitBroken = broken
 }
 
 export function isAutoModeCircuitBroken(): boolean {
-  return autoModeCircuitBroken
+  return switches.circuitBroken
 }
 
 export function _resetForTesting(): void {
-  autoModeActive = false
-  autoModeFlagCli = false
-  autoModeCircuitBroken = false
+  Object.assign(switches, ALL_OFF)
 }

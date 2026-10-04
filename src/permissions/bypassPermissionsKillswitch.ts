@@ -1,4 +1,7 @@
-import { feature } from 'bun:bundle'
+/**
+ * The startup auto-mode gate check, run against the app state: once per
+ * process, and again whenever the session's model changes.
+ */
 import { useEffect, useRef } from 'react'
 import {
   type AppState,
@@ -7,84 +10,60 @@ import {
   useSetAppState,
 } from 'src/terminal/state/AppState.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
-import { verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js'
+import { logError } from 'src/shared/log.js'
+import {
+  type AutoModeGateCheckResult,
+  verifyAutoModeGateAccess,
+} from 'src/permissions/permissionSetup.js'
+import { autoModeStateModule } from 'src/permissions/permissionSetup/autoModeStateBridge.js'
 
-let autoModeCheckRan = false
+const GATE_NOTICE_KEY = 'auto-mode-gate-notification'
+
+const gateCheck = { started: false }
+
+/** Applies the verdict to the state's current context, not to the checked snapshot. */
+function withGateVerdict(prev: AppState, verdict: AutoModeGateCheckResult): AppState {
+  const toolPermissionContext = verdict.updateContext(prev.toolPermissionContext)
+  const text = verdict.notification
+  if (toolPermissionContext === prev.toolPermissionContext && text === undefined) return prev
+  const queue =
+    text === undefined
+      ? prev.notifications.queue
+      : [
+          ...prev.notifications.queue,
+          { key: GATE_NOTICE_KEY, text, color: 'warning' as const, priority: 'high' as const },
+        ]
+  return { ...prev, toolPermissionContext, notifications: { ...prev.notifications, queue } }
+}
 
 export async function checkAndDisableAutoModeIfNeeded(
   toolPermissionContext: ToolPermissionContext,
   setAppState: (f: (prev: AppState) => AppState) => void,
 ): Promise<void> {
-  if (feature('TRANSCRIPT_CLASSIFIER')) {
-    if (autoModeCheckRan) {
-      return
-    }
-    autoModeCheckRan = true
-
-    const { updateContext, notification } = await verifyAutoModeGateAccess(
-      toolPermissionContext,
-    )
-    setAppState(prev => {
-      // Apply the transform to CURRENT context, not the stale snapshot we
-      // passed to verifyAutoModeGateAccess. The async probe await inside
-      // can be outrun by a mid-turn shift-tab; spreading a stale context here
-      // would revert the user's mode change.
-      const nextCtx = updateContext(prev.toolPermissionContext)
-      const newState =
-        nextCtx === prev.toolPermissionContext
-          ? prev
-          : { ...prev, toolPermissionContext: nextCtx }
-      if (!notification) return newState
-      return {
-        ...newState,
-        notifications: {
-          ...newState.notifications,
-          queue: [
-            ...newState.notifications.queue,
-            {
-              key: 'auto-mode-gate-notification',
-              text: notification,
-              color: 'warning' as const,
-              priority: 'high' as const,
-            },
-          ],
-        },
-      }
-    })
-  }
+  if (autoModeStateModule === null || gateCheck.started) return
+  gateCheck.started = true
+  const verdict = await verifyAutoModeGateAccess(toolPermissionContext)
+  setAppState(prev => withGateVerdict(prev, verdict))
 }
 
-/**
- * Reset the run-once flag for checkAndDisableAutoModeIfNeeded.
- * Call this after /login so the gate check re-runs with the new org.
- */
+/** Lets the next check run again (after `/login`, or a model change). */
 export function resetAutoModeGateCheck(): void {
-  autoModeCheckRan = false
+  gateCheck.started = false
 }
 
 export function useKickOffCheckAndDisableAutoModeIfNeeded(): void {
-  const mainLoopModel = useAppState(s => s.mainLoopModel)
-  const mainLoopModelForSession = useAppState(s => s.mainLoopModelForSession)
-  const setAppState = useSetAppState()
+  const mainLoopModel = useAppState(state => state.mainLoopModel)
+  const sessionModel = useAppState(state => state.mainLoopModelForSession)
   const store = useAppStateStore()
-  const isFirstRunRef = useRef(true)
+  const setAppState = useSetAppState()
+  const mounted = useRef(false)
 
-  // Runs on mount (startup check) AND whenever the model changes (kick-out /
-  // carousel-restore). Watching both model fields covers /model, Cmd+P
-  // picker, /config, and bridge onSetModel paths. The print.ts headless
-  // paths are covered by the sync isAutoModeGateEnabled() check.
   useEffect(() => {
-    if (getIsRemoteMode()) return
-    if (isFirstRunRef.current) {
-      isFirstRunRef.current = false
-    } else {
-      resetAutoModeGateCheck()
-    }
-    void checkAndDisableAutoModeIfNeeded(
-      store.getState().toolPermissionContext,
-      setAppState,
+    // The mount runs the check as is; a later model change re-arms it first.
+    if (mounted.current) resetAutoModeGateCheck()
+    mounted.current = true
+    checkAndDisableAutoModeIfNeeded(store.getState().toolPermissionContext, setAppState).catch(
+      (error: unknown) => logError(error),
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainLoopModel, mainLoopModelForSession])
+  }, [mainLoopModel, sessionModel, store, setAppState])
 }

@@ -5,7 +5,6 @@
  */
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
 
 /**
  * Checks if bypassPermissions mode is currently disabled by settings.
@@ -16,22 +15,17 @@ export function isBypassPermissionsModeDisabled(): boolean {
 }
 
 /**
- * Creates an updated context with bypassPermissions disabled
+ * Revokes bypass for a running session: a session sitting in it falls back to
+ * `default`, every other mode and every rule stays, and the input is left as
+ * it was.
  */
 export function createDisabledBypassPermissionsContext(
   currentContext: ToolPermissionContext,
 ): ToolPermissionContext {
-  let updatedContext = currentContext
-  if (currentContext.mode === 'bypassPermissions') {
-    updatedContext = applyPermissionUpdate(currentContext, {
-      type: 'setMode',
-      mode: 'default',
-      destination: 'session',
-    })
-  }
-
+  const wasBypassing = currentContext.mode === 'bypassPermissions'
   return {
-    ...updatedContext,
+    ...currentContext,
+    mode: wasBypassing ? 'default' : currentContext.mode,
     isBypassPermissionsModeAvailable: false,
   }
 }

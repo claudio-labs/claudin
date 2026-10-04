@@ -1,4 +1,6 @@
-import { feature } from 'bun:bundle'
+/**
+ * The order shift+tab walks the permission modes in.
+ */
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
@@ -7,74 +9,36 @@ import {
   isAutoModeGateEnabled,
   transitionPermissionMode,
 } from 'src/permissions/permissionSetup.js'
+import { autoModeStateModule } from 'src/permissions/permissionSetup/autoModeStateBridge.js'
 
-// Checks both the cached isAutoModeAvailable (set at startup by
-// verifyAutoModeGateAccess) and the live isAutoModeGateEnabled() — these can
-// diverge if the circuit breaker or settings change mid-session. The
-// live check prevents transitionPermissionMode from throwing
-// (permissionSetup.ts:~559), which would silently crash the shift+tab handler
-// and leave the user stuck at the current mode.
+/** Auto is a stop only when built in, offered by the context, and open right now. */
 function canCycleToAuto(ctx: ToolPermissionContext): boolean {
-  if (feature('TRANSCRIPT_CLASSIFIER')) {
-    const gateEnabled = isAutoModeGateEnabled()
-    const can = !!ctx.isAutoModeAvailable && gateEnabled
-    if (!can) {
-      logForDebugging(
-        `[auto-mode] canCycleToAuto=false: ctx.isAutoModeAvailable=${ctx.isAutoModeAvailable} isAutoModeGateEnabled=${gateEnabled} reason=${getAutoModeUnavailableReason()}`,
-      )
-    }
-    return can
-  }
+  if (autoModeStateModule === null || ctx.isAutoModeAvailable !== true) return false
+  if (isAutoModeGateEnabled()) return true
+  logForDebugging(`[auto-mode] shift+tab passes over auto: ${getAutoModeUnavailableReason()}`)
   return false
 }
 
-/**
- * Determines the next permission mode when cycling through modes with Shift+Tab.
- */
+function autoElseDefault(ctx: ToolPermissionContext): PermissionMode {
+  return canCycleToAuto(ctx) ? 'auto' : 'default'
+}
+
+/** The stop after each mode; a mode missing here goes back to `default`. */
+const STOP_AFTER: Partial<Record<PermissionMode, (ctx: ToolPermissionContext) => PermissionMode>> = {
+  default: () => 'acceptEdits',
+  acceptEdits: () => 'plan',
+  plan: ctx => (ctx.isBypassPermissionsModeAvailable ? 'bypassPermissions' : autoElseDefault(ctx)),
+  bypassPermissions: autoElseDefault,
+}
+
 export function getNextPermissionMode(
   toolPermissionContext: ToolPermissionContext,
   _teamContext?: { leadAgentId: string },
 ): PermissionMode {
-  switch (toolPermissionContext.mode) {
-    case 'default':
-      return 'acceptEdits'
-
-    case 'acceptEdits':
-      return 'plan'
-
-    case 'plan':
-      if (toolPermissionContext.isBypassPermissionsModeAvailable) {
-        return 'bypassPermissions'
-      }
-      if (canCycleToAuto(toolPermissionContext)) {
-        return 'auto'
-      }
-      return 'default'
-
-    case 'bypassPermissions':
-      if (canCycleToAuto(toolPermissionContext)) {
-        return 'auto'
-      }
-      return 'default'
-
-    case 'dontAsk':
-      // Not exposed in UI cycle yet, but return default if somehow reached
-      return 'default'
-
-
-    default:
-      // Covers auto (when TRANSCRIPT_CLASSIFIER is enabled) and any future modes — always fall back to default
-      return 'default'
-  }
+  const step = STOP_AFTER[toolPermissionContext.mode]
+  return step ? step(toolPermissionContext) : 'default'
 }
 
-/**
- * Computes the next permission mode and prepares the context for it.
- * Handles any context cleanup needed for the target mode (e.g., stripping
- * dangerous permissions when entering auto mode).
- *
- * @returns The next mode and the context to use (with dangerous permissions stripped if needed)
- */
 export function cyclePermissionMode(
   toolPermissionContext: ToolPermissionContext,
   teamContext?: { leadAgentId: string },
@@ -82,10 +46,6 @@ export function cyclePermissionMode(
   const nextMode = getNextPermissionMode(toolPermissionContext, teamContext)
   return {
     nextMode,
-    context: transitionPermissionMode(
-      toolPermissionContext.mode,
-      nextMode,
-      toolPermissionContext,
-    ),
+    context: transitionPermissionMode(toolPermissionContext.mode, nextMode, toolPermissionContext),
   }
 }

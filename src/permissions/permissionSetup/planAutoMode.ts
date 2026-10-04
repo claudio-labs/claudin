@@ -3,119 +3,76 @@
  * semantics, the centralized plan-mode entry, and the mid-plan reconciliation
  * that runs when settings change.
  */
-import { feature } from 'bun:bundle'
 import { setNeedsAutoModeExitAttachment } from 'src/platform/bootstrap/state.js'
-import {
-  getInitialSettings,
-  getUseAutoModeDuringPlan,
-  hasAutoModeOptIn,
-} from 'src/platform/settings/settings.js'
-import { logForDebugging } from 'src/shared/debug.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import { autoModeStateModule } from 'src/permissions/permissionSetup/autoModeStateBridge.js'
 import { isAutoModeGateEnabled } from 'src/permissions/permissionSetup/autoModeAvailability.js'
 import {
-  restoreDangerousPermissions,
-  stripDangerousPermissionsForAutoMode,
-} from 'src/permissions/permissionSetup/dangerousRuleStash.js'
+  autoModeBuiltIn,
+  autoSemanticsActive,
+  switchAutoOff,
+  switchAutoOn,
+} from 'src/permissions/permissionSetup/autoSession.js'
+import { stripDangerousPermissionsForAutoMode } from 'src/permissions/permissionSetup/dangerousRuleStash.js'
+import { anyTrustedLayer } from 'src/permissions/permissionSetup/trustedSettings.js'
 
 export function isDefaultPermissionModeAuto(): boolean {
-  if (feature('TRANSCRIPT_CLASSIFIER')) {
-    const settings = getInitialSettings() || {}
-    return settings.permissions?.defaultMode === 'auto'
-  }
-  return false
+  if (!autoModeBuiltIn()) return false
+  return getInitialSettings().permissions?.defaultMode === 'auto'
 }
 
 /**
- * Whether plan mode should use auto mode semantics (classifier runs during
- * plan). True when the user has opted in to auto mode and the gate is enabled.
- * Evaluated at permission-check time so it's reactive to config changes.
+ * Plan borrows auto only on an opt-in from a trusted layer, while no trusted
+ * layer opts plan out, and while the gate is open. The repository's own
+ * settings can do neither.
  */
 export function shouldPlanUseAutoMode(): boolean {
-  if (feature('TRANSCRIPT_CLASSIFIER')) {
-    return (
-      hasAutoModeOptIn() &&
-      isAutoModeGateEnabled() &&
-      getUseAutoModeDuringPlan()
-    )
-  }
-  return false
+  if (!autoModeBuiltIn()) return false
+  const optedIn = anyTrustedLayer(settings => settings.skipAutoPermissionPrompt === true)
+  if (!optedIn) return false
+  const optedOutForPlan = anyTrustedLayer(settings => settings.useAutoModeDuringPlan === false)
+  return !optedOutForPlan && isAutoModeGateEnabled()
 }
 
 /**
- * Centralized plan-mode entry. Stashes the current mode as prePlanMode so
- * ExitPlanMode can restore it. When the user has opted in to auto mode,
- * auto semantics stay active during plan mode.
+ * Remembers the mode plan was entered from, and settles whether plan runs
+ * with auto. The caller sets `mode`.
  */
 export function prepareContextForPlanMode(
   context: ToolPermissionContext,
 ): ToolPermissionContext {
-  const currentMode = context.mode
-  if (currentMode === 'plan') return context
-  if (feature('TRANSCRIPT_CLASSIFIER')) {
-    const planAutoMode = shouldPlanUseAutoMode()
-    if (currentMode === 'auto') {
-      if (planAutoMode) {
-        return { ...context, prePlanMode: 'auto' }
-      }
-      autoModeStateModule?.setAutoModeActive(false)
-      setNeedsAutoModeExitAttachment(true)
-      return {
-        ...restoreDangerousPermissions(context),
-        prePlanMode: 'auto',
-      }
-    }
-    if (planAutoMode && currentMode !== 'bypassPermissions') {
-      autoModeStateModule?.setAutoModeActive(true)
-      return {
-        ...stripDangerousPermissionsForAutoMode(context),
-        prePlanMode: currentMode,
-      }
-    }
+  if (context.mode === 'plan') return context
+  const entering = context.mode
+  if (!autoModeBuiltIn() || entering === 'bypassPermissions') {
+    return { ...context, prePlanMode: entering }
   }
-  logForDebugging(
-    `[prepareContextForPlanMode] plain plan entry, prePlanMode=${currentMode}`,
-    { level: 'info' },
-  )
-  return { ...context, prePlanMode: currentMode }
+  const borrow = shouldPlanUseAutoMode()
+  if (entering === 'auto') {
+    // Already in auto: keep it on when plan may borrow it, end it otherwise.
+    const settled = borrow ? context : switchAutoOff(context)
+    return { ...settled, prePlanMode: entering }
+  }
+  const settled = borrow ? switchAutoOn(context) : context
+  return { ...settled, prePlanMode: entering }
 }
 
-/**
- * Reconciles auto-mode state during plan mode after a settings change.
- * Compares desired state (shouldPlanUseAutoMode) against actual state
- * (isAutoModeActive) and activates/deactivates auto accordingly. No-op when
- * not in plan mode. Called from applySettingsChange so that toggling
- * useAutoModeDuringPlan mid-plan takes effect immediately.
- */
+/** Brings a context already in plan in line with a settings change. */
 export function transitionPlanAutoMode(
   context: ToolPermissionContext,
 ): ToolPermissionContext {
-  if (!feature('TRANSCRIPT_CLASSIFIER')) return context
-  if (context.mode !== 'plan') return context
-  // Mirror prepareContextForPlanMode's entry-time exclusion — never activate
-  // auto mid-plan when the user entered from a dangerous mode.
-  if (context.prePlanMode === 'bypassPermissions') {
+  if (!autoModeBuiltIn()) return context
+  if (context.mode !== 'plan' || context.prePlanMode === 'bypassPermissions') {
     return context
   }
-
-  const want = shouldPlanUseAutoMode()
-  const have = autoModeStateModule?.isAutoModeActive() ?? false
-
-  if (want && have) {
-    // syncPermissionRulesFromDisk (called before us in applySettingsChange)
-    // re-adds dangerous rules from disk without touching strippedDangerousRules.
-    // Re-strip so the classifier isn't bypassed by prefix-rule allow matches.
+  const wanted = shouldPlanUseAutoMode()
+  const running = autoSemanticsActive()
+  if (wanted && running) {
+    // The reload may have brought risky rules back from disk.
     return stripDangerousPermissionsForAutoMode(context)
   }
-  if (!want && !have) return context
-
-  if (want) {
-    autoModeStateModule?.setAutoModeActive(true)
+  if (wanted) {
     setNeedsAutoModeExitAttachment(false)
-    return stripDangerousPermissionsForAutoMode(context)
+    return switchAutoOn(context)
   }
-  autoModeStateModule?.setAutoModeActive(false)
-  setNeedsAutoModeExitAttachment(true)
-  return restoreDangerousPermissions(context)
+  return running ? switchAutoOff(context) : context
 }

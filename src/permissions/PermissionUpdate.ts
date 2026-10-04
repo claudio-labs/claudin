@@ -20,7 +20,7 @@ import {
   saveUpdate,
 } from 'src/permissions/ruleSettings/persistUpdate.js'
 
-export type { AdditionalWorkingDirectory, WorkingDirectorySource }
+export type { WorkingDirectorySource }
 
 /** The rules the `addRules` updates of a list grant, in order. */
 export function extractRules(
