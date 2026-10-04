@@ -87,8 +87,10 @@ beforeEach(() => {
 
 afterEach(async () => {
   for (const link of links.splice(0)) await link.close()
-  for (const close of closers.splice(0)) await close()
+  // Close the clients before their servers stop: an SSE client whose server
+  // goes first keeps redialling into whatever the next file binds.
   for (const { name, config } of opened.splice(0)) await clearServerCache(name, config).catch(() => {})
+  for (const close of closers.splice(0)) await close()
   for (const key of OWNED_ENV) {
     if (savedEnv[key] === undefined) delete process.env[key]
     else process.env[key] = savedEnv[key]

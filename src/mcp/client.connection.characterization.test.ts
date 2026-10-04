@@ -511,7 +511,10 @@ describe('SSE servers', () => {
   })
 
   test('an IDE SSE server gets no credentials and is told the CLI pid', async () => {
-    const bed = await sseBed()
+    // Not registered with `beds`: this connection is left open (see the end of
+    // the test), and a stopped server would leave its client redialling into
+    // whatever port a later file binds. The server lives until the process ends.
+    const bed = await serveSse({ tools: [{ name: 'ping' }] })
     process.env.CLAUDE_CODE_SESSION_ACCESS_TOKEN = 'never-on-ide'
     const config = { type: 'sse-ide', url: bed.url, ideName: 'Editor', scope: 'dynamic' } as ScopedMcpServerConfig
     connected(await connect(fresh('sse-ide'), config))

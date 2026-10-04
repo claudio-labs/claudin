@@ -45,6 +45,7 @@ import { setMdmSettingsCache } from 'src/platform/settings/mdm/settings.js'
 import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import { clearPluginCache } from 'src/plugins/pluginLoader.js'
 import { fetchClaudeAIMcpConfigsIfEligible } from 'src/mcp/claudeai.js'
+import { clearMcpAuthCache } from 'src/mcp/client/authCache.js'
 import { doesEnterpriseMcpConfigExist } from 'src/mcp/config.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
 
@@ -78,6 +79,9 @@ function dropCaches(): void {
   resetSettingsCache()
   doesEnterpriseMcpConfigExist.cache.clear?.()
   clearPluginCache()
+  // The needs-auth cache is read once per process from the config dir; a
+  // world switches config dirs, so the memo must go with it.
+  clearMcpAuthCache()
 }
 
 /** Builds a fresh world and points every path the unit reads at it. */
