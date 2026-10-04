@@ -6,18 +6,13 @@
  * module — auto mode can be entered and left many times in a session, and a
  * module-level copy would drift from the context the caller actually holds.
  */
-import type {
-  ToolPermissionContext,
-  ToolPermissionRulesBySource,
-} from 'src/tools/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type {
   PermissionRule,
   PermissionRuleSource,
   PermissionRuleValue,
 } from 'src/permissions/PermissionRule.js'
-import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
-import type { PermissionUpdateDestination } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   permissionRuleValueFromString,
   permissionRuleValueToString,
@@ -28,130 +23,142 @@ import {
 } from 'src/permissions/permissionSetup/dangerousRuleDetection.js'
 
 /**
- * Type guard to check if a PermissionRuleSource is a valid PermissionUpdateDestination.
- * Sources like 'flagSettings', 'policySettings', and 'command' are not valid destinations.
+ * Sources whose rules this session may take out and put back. Flag, policy
+ * and command rules stay in force in auto mode (kept for parity, spec
+ * finding 5). The removal and the stash both read this one set.
  */
-function isPermissionUpdateDestination(
-  source: PermissionRuleSource,
-): source is PermissionUpdateDestination {
-  return [
-    'userSettings',
-    'projectSettings',
-    'localSettings',
-    'session',
-    'cliArg',
-  ].includes(source)
-}
+const WRITABLE_SOURCES: ReadonlySet<PermissionRuleSource> = new Set<PermissionRuleSource>([
+  'userSettings',
+  'projectSettings',
+  'localSettings',
+  'session',
+  'cliArg',
+])
 
 /**
- * Removes dangerous permissions from the in-memory context, and optionally
- * persists the removal to settings files on disk.
+ * One spelling per rule: `Bash`, `Bash()` and `Bash(*)` share a key, and so
+ * do `Task(x)` and `Agent(x)`. Matching on it instead of the stored string is
+ * what removes a non-canonical `--allowed-tools` entry (spec finding 1).
  */
+const ruleKeyOfString = (stored: string): string =>
+  permissionRuleValueToString(permissionRuleValueFromString(stored))
+
+const ruleKeyOfValue = (value: PermissionRuleValue): string =>
+  ruleKeyOfString(permissionRuleValueToString(value))
+
+type KeysBySource = Map<PermissionRuleSource, Set<string>>
+
+function writableKeys(findings: DangerousPermissionInfo[]): KeysBySource {
+  const keys: KeysBySource = new Map()
+  for (const { source, ruleValue } of findings) {
+    if (!WRITABLE_SOURCES.has(source)) continue
+    const forSource = keys.get(source) ?? new Set<string>()
+    forSource.add(ruleKeyOfValue(ruleValue))
+    keys.set(source, forSource)
+  }
+  return keys
+}
+
+const distinct = (strings: string[]): string[] => [...new Set(strings)]
+
+/** Rule strings by source, as the context holds them (the context is deeply readonly). */
+type RuleLists = { readonly [S in PermissionRuleSource]?: readonly string[] }
+type RuleListsDraft = { [S in PermissionRuleSource]?: readonly string[] }
+
+type Removal = { allow: RuleListsDraft; removed: RuleListsDraft }
+
+/** Every copy of a matching string leaves its list; the rest keep their order. */
+function removeByKey(allow: RuleLists, keys: KeysBySource): Removal {
+  const next: RuleListsDraft = { ...allow }
+  const removed: RuleListsDraft = {}
+  for (const [source, sourceKeys] of keys) {
+    const list = allow[source]
+    if (!list) continue
+    const taken = list.filter(stored => sourceKeys.has(ruleKeyOfString(stored)))
+    if (taken.length === 0) continue
+    next[source] = list.filter(stored => !sourceKeys.has(ruleKeyOfString(stored)))
+    removed[source] = distinct(taken)
+  }
+  return { allow: next, removed }
+}
+
+const sourcesIn = (bySource: RuleLists): PermissionRuleSource[] =>
+  Object.keys(bySource) as PermissionRuleSource[]
+
+function allowRulesOf(context: ToolPermissionContext): PermissionRule[] {
+  return sourcesIn(context.alwaysAllowRules).flatMap(source =>
+    (context.alwaysAllowRules[source] ?? []).map(
+      (stored): PermissionRule => ({
+        source,
+        ruleBehavior: 'allow',
+        ruleValue: permissionRuleValueFromString(stored),
+      }),
+    ),
+  )
+}
+
+/** Adds strings not already listed, per source, after the ones that are. */
+function appendMissing(
+  target: RuleLists,
+  additions: RuleLists,
+): RuleListsDraft {
+  const merged: RuleListsDraft = { ...target }
+  for (const source of sourcesIn(additions)) {
+    const extra = additions[source] ?? []
+    if (extra.length === 0) continue
+    const list = [...(target[source] ?? [])]
+    const listed = new Set(list)
+    for (const stored of extra) {
+      if (listed.has(stored)) continue
+      list.push(stored)
+      listed.add(stored)
+    }
+    merged[source] = list
+  }
+  return merged
+}
+
 export function removeDangerousPermissions(
   context: ToolPermissionContext,
   dangerousPermissions: DangerousPermissionInfo[],
 ): ToolPermissionContext {
-  // Group dangerous rules by their source (destination for updates)
-  const rulesBySource = new Map<
-    PermissionUpdateDestination,
-    PermissionRuleValue[]
-  >()
-  for (const perm of dangerousPermissions) {
-    // Skip sources that can't be persisted (flagSettings, policySettings, command)
-    if (!isPermissionUpdateDestination(perm.source)) {
-      continue
-    }
-    const destination = perm.source
-    const existing = rulesBySource.get(destination) || []
-    existing.push(perm.ruleValue)
-    rulesBySource.set(destination, existing)
-  }
-
-  let updatedContext = context
-  for (const [destination, rules] of rulesBySource) {
-    updatedContext = applyPermissionUpdate(updatedContext, {
-      type: 'removeRules' as const,
-      rules,
-      behavior: 'allow' as const,
-      destination,
-    })
-  }
-
-  return updatedContext
+  const keys = writableKeys(dangerousPermissions)
+  if (keys.size === 0) return context
+  return { ...context, alwaysAllowRules: removeByKey(context.alwaysAllowRules, keys).allow }
 }
 
-/**
- * Prepares a ToolPermissionContext for auto mode by stripping
- * dangerous permissions that would bypass the classifier.
- * Returns the cleaned context (with mode unchanged — caller sets the mode).
- */
 export function stripDangerousPermissionsForAutoMode(
   context: ToolPermissionContext,
 ): ToolPermissionContext {
-  const rules: PermissionRule[] = []
-  for (const [source, ruleStrings] of Object.entries(
-    context.alwaysAllowRules,
-  )) {
-    if (!ruleStrings) {
-      continue
-    }
-    for (const ruleString of ruleStrings) {
-      const ruleValue = permissionRuleValueFromString(ruleString)
-      rules.push({
-        source: source as PermissionRuleSource,
-        ruleBehavior: 'allow',
-        ruleValue,
-      })
-    }
-  }
-  const dangerousPermissions = findDangerousClassifierPermissions(rules, [])
-  if (dangerousPermissions.length === 0) {
-    return {
-      ...context,
-      strippedDangerousRules: context.strippedDangerousRules ?? {},
-    }
-  }
-  for (const permission of dangerousPermissions) {
+  const findings = findDangerousClassifierPermissions(allowRulesOf(context), [])
+  for (const finding of findings) {
     logForDebugging(
-      `Ignoring dangerous permission ${permission.ruleDisplay} from ${permission.sourceDisplay} (bypasses classifier)`,
+      `auto mode: allow rule ${finding.ruleDisplay} (${finding.source}) would bypass the classifier`,
     )
   }
-  // Mirror removeDangerousPermissions' source filter so stash == what was actually removed.
-  const stripped: ToolPermissionRulesBySource = {}
-  for (const perm of dangerousPermissions) {
-    if (!isPermissionUpdateDestination(perm.source)) continue
-    ;(stripped[perm.source] ??= []).push(
-      permissionRuleValueToString(perm.ruleValue),
-    )
+  const { allow, removed } = removeByKey(context.alwaysAllowRules, writableKeys(findings))
+  const previous = context.strippedDangerousRules
+  if (sourcesIn(removed).length === 0) {
+    return { ...context, strippedDangerousRules: previous ?? {} }
   }
+  // A second strip adds to the stash: what the first one took is already out
+  // of the lists, so replacing it would lose those rules (spec finding 2).
   return {
-    ...removeDangerousPermissions(context, dangerousPermissions),
-    strippedDangerousRules: stripped,
+    ...context,
+    alwaysAllowRules: allow,
+    strippedDangerousRules: appendMissing(previous ?? {}, removed),
   }
 }
 
-/**
- * Restores dangerous allow rules previously stashed by
- * stripDangerousPermissionsForAutoMode. Called when leaving auto mode so that
- * the user's Bash(python:*), Agent(*), etc. rules work again in default mode.
- * Clears the stash so a second exit is a no-op.
- */
 export function restoreDangerousPermissions(
   context: ToolPermissionContext,
 ): ToolPermissionContext {
   const stash = context.strippedDangerousRules
-  if (!stash) {
-    return context
+  if (!stash) return context
+  // A rule re-added while in auto mode is not listed twice (spec finding 3).
+  return {
+    ...context,
+    alwaysAllowRules: appendMissing(context.alwaysAllowRules, stash),
+    strippedDangerousRules: undefined,
   }
-  let result = context
-  for (const [source, ruleStrings] of Object.entries(stash)) {
-    if (!ruleStrings || ruleStrings.length === 0) continue
-    result = applyPermissionUpdate(result, {
-      type: 'addRules',
-      rules: ruleStrings.map(permissionRuleValueFromString),
-      behavior: 'allow',
-      destination: source as PermissionUpdateDestination,
-    })
-  }
-  return { ...result, strippedDangerousRules: undefined }
 }

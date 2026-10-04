@@ -150,9 +150,6 @@ export type SetToolJSXFn = (
 // Import tool permission types from centralized location to break import cycles
 import type { ToolPermissionRulesBySource } from 'src/shared/types/permissions.js'
 
-// Re-export for backwards compatibility
-export type { ToolPermissionRulesBySource }
-
 // Apply DeepImmutable to the imported type
 export type ToolPermissionContext = DeepImmutable<{
   mode: PermissionMode

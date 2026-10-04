@@ -420,3 +420,25 @@ a finding decided "fix" is left unpinned so that the rewrite can apply it.
     stash, so the two can never disagree.
 - **Types.** Explicit throughout, with no `any`. The stash keeps the
   `ToolPermissionRulesBySource` shape, because callers spread it.
+
+## Outcome
+
+Rewritten per method on 2026-10-03.
+- **What was rewritten.** The 22 inherited bodies and the `dangerousPatterns.ts` tables. The four
+  characterization suites pass unchanged, and 5,937 caller tests stay green.
+- **Fixes, each with a test.**
+  1. The auto-mode strip removes every allow string whose parsed value matches a dangerous rule, so
+     `Bash(*)`, `Bash()`, `Task` and `Task(x)` go. The strings are stashed as typed.
+  2. A second strip adds to the stash instead of replacing it.
+  3. Leaving auto skips rules already present.
+  4. An `--allowed-tools` entry that is not plain `Name(body)` is read with the permission-check
+     parser.
+- **Kept.** Findings 4, 5, 7 and 8. The matcher stays shell-unaware. Its callers split compound
+  commands, and that requirement is recorded above. The narrow dangerous-rule check is tracked in
+  `bugs/permission-core-security-findings.md`.
+- **Probes.**
+  - `rewrite-permissions-shellRules.json`: 98 probes, one on every must-not-match case.
+  - The older `permissionSetup.json`: its probes on these files were re-pointed.
+- **Residue, reviewed.** 40 lines of Claude Code remain. They are the signatures of the detection and
+  stash functions, the dangerous-rule result fields, and one `ToolPermissionContext` literal in the
+  fixes test, whose fields the contract names.

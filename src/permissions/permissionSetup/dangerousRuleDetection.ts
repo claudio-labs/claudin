@@ -23,164 +23,101 @@ import type {
   PermissionRuleSource,
   PermissionRuleValue,
 } from 'src/permissions/PermissionRule.js'
-import { normalizeLegacyToolName } from 'src/permissions/permissionRuleParser.js'
+import {
+  normalizeLegacyToolName,
+  permissionRuleValueFromString,
+} from 'src/permissions/permissionRuleParser.js'
 
-/**
- * Checks if a Bash permission rule is dangerous for auto mode.
- * A rule is dangerous if it would auto-allow commands that execute arbitrary code,
- * bypassing the classifier's safety evaluation.
- *
- * Dangerous patterns:
- * 1. Tool-level allow (Bash with no ruleContent) - allows ALL commands
- * 2. Prefix rules for script interpreters (python:*, node:*, etc.)
- * 3. Wildcard rules matching interpreters (python*, node*, etc.)
- */
+/** PowerShell-only ways to start a process, evaluate a string, or reach another session. */
+const POWERSHELL_ONLY_LAUNCHERS = [
+  'pwsh',
+  'powershell',
+  'cmd',
+  'wsl',
+  'iex',
+  'invoke-expression',
+  'icm',
+  'invoke-command',
+  'start-process',
+  'saps',
+  'start',
+  'start-job',
+  'sajb',
+  'start-threadjob',
+  'register-objectevent',
+  'register-engineevent',
+  'register-wmievent',
+  'register-scheduledjob',
+  'new-pssession',
+  'nsn',
+  'enter-pssession',
+  'etsn',
+  'add-type',
+  'new-object',
+] as const
+
+/** `npm run` is invoked as `npm.exe run` on Windows: the suffix belongs to the executable word. */
+function withExeSuffix(name: string): string {
+  const [executable, ...args] = name.split(' ')
+  return [`${executable}.exe`, ...args].join(' ')
+}
+
+/** Each way a rule body can name a command so that any invocation of it is allowed. */
+const ALLOWING_SHAPES: ReadonlyArray<(body: string, name: string) => boolean> = [
+  (body, name) => body === name,
+  (body, name) => body === `${name}:*`,
+  (body, name) => body === `${name}*`,
+  (body, name) => body === `${name} *`,
+  (body, name) => body.startsWith(`${name} -`) && body.endsWith('*'),
+]
+
+type ShellDanger = { toolName: string; names: readonly string[] }
+
+const BASH_DANGER: ShellDanger = {
+  toolName: BASH_TOOL_NAME,
+  names: DANGEROUS_BASH_PATTERNS,
+}
+
+const POWERSHELL_DANGER: ShellDanger = {
+  toolName: POWERSHELL_TOOL_NAME,
+  names: [...CROSS_PLATFORM_CODE_EXEC, ...POWERSHELL_ONLY_LAUNCHERS].flatMap(name => [
+    name,
+    withExeSuffix(name),
+  ]),
+}
+
+function allowsWholeTool(ruleContent: string | undefined): boolean {
+  return ruleContent === undefined || ruleContent === '' || ruleContent.trim() === '*'
+}
+
+function isDangerousShellRule(
+  shell: ShellDanger,
+  toolName: string,
+  ruleContent: string | undefined,
+): boolean {
+  if (toolName !== shell.toolName) return false
+  if (allowsWholeTool(ruleContent)) return true
+  // Lowercased even for Bash, which is case-sensitive: over-flagging here
+  // only strips a rule in auto mode (kept for parity, spec finding 7).
+  const body = ruleContent!.trim().toLowerCase()
+  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))
+}
+
 export function isDangerousBashPermission(
   toolName: string,
   ruleContent: string | undefined,
 ): boolean {
-  // Only check Bash rules
-  if (toolName !== BASH_TOOL_NAME) {
-    return false
-  }
-
-  // Tool-level allow (Bash with no content, or Bash(*)) - allows ALL commands
-  if (ruleContent === undefined || ruleContent === '') {
-    return true
-  }
-
-  const content = ruleContent.trim().toLowerCase()
-
-  // Standalone wildcard (*) matches everything
-  if (content === '*') {
-    return true
-  }
-
-  // Check for dangerous patterns with prefix syntax (e.g., "python:*")
-  // or wildcard syntax (e.g., "python*")
-  for (const pattern of DANGEROUS_BASH_PATTERNS) {
-    const lowerPattern = pattern.toLowerCase()
-
-    // Exact match to the pattern itself (e.g., "python" as a rule)
-    if (content === lowerPattern) {
-      return true
-    }
-
-    // Prefix syntax: "python:*" allows any python command
-    if (content === `${lowerPattern}:*`) {
-      return true
-    }
-
-    // Wildcard at end: "python*" matches python, python3, etc.
-    if (content === `${lowerPattern}*`) {
-      return true
-    }
-
-    // Wildcard with space: "python *" would match "python script.py"
-    if (content === `${lowerPattern} *`) {
-      return true
-    }
-
-    // Check for patterns like "python -*" which would match "python -c 'code'"
-    if (content.startsWith(`${lowerPattern} -`) && content.endsWith('*')) {
-      return true
-    }
-  }
-
-  return false
+  return isDangerousShellRule(BASH_DANGER, toolName, ruleContent)
 }
 
-/**
- * Checks if a PowerShell permission rule is dangerous for auto mode.
- * A rule is dangerous if it would auto-allow commands that execute arbitrary
- * code (nested shells, Invoke-Expression, Start-Process, etc.), bypassing the
- * classifier's safety evaluation.
- *
- * PowerShell is case-insensitive, so rule content is lowercased before matching.
- */
 export function isDangerousPowerShellPermission(
   toolName: string,
   ruleContent: string | undefined,
 ): boolean {
-  if (toolName !== POWERSHELL_TOOL_NAME) {
-    return false
-  }
-
-  // Tool-level allow (PowerShell with no content, or PowerShell(*)) - allows ALL commands
-  if (ruleContent === undefined || ruleContent === '') {
-    return true
-  }
-
-  const content = ruleContent.trim().toLowerCase()
-
-  // Standalone wildcard (*) matches everything
-  if (content === '*') {
-    return true
-  }
-
-  // PS-specific cmdlet names. CROSS_PLATFORM_CODE_EXEC is shared with bash.
-  const patterns: readonly string[] = [
-    ...CROSS_PLATFORM_CODE_EXEC,
-    // Nested PS + shells launchable from PS
-    'pwsh',
-    'powershell',
-    'cmd',
-    'wsl',
-    // String/scriptblock evaluators
-    'iex',
-    'invoke-expression',
-    'icm',
-    'invoke-command',
-    // Process spawners
-    'start-process',
-    'saps',
-    'start',
-    'start-job',
-    'sajb',
-    'start-threadjob', // bundled PS 6.1+; takes -ScriptBlock like Start-Job
-    // Event/session code exec
-    'register-objectevent',
-    'register-engineevent',
-    'register-wmievent',
-    'register-scheduledjob',
-    'new-pssession',
-    'nsn', // alias
-    'enter-pssession',
-    'etsn', // alias
-    // .NET escape hatches
-    'add-type', // Add-Type -TypeDefinition '<C#>' → P/Invoke
-    'new-object', // New-Object -ComObject WScript.Shell → .Run()
-  ]
-
-  for (const pattern of patterns) {
-    // patterns stored lowercase; content lowercased above
-    if (content === pattern) return true
-    if (content === `${pattern}:*`) return true
-    if (content === `${pattern}*`) return true
-    if (content === `${pattern} *`) return true
-    if (content.startsWith(`${pattern} -`) && content.endsWith('*')) return true
-    // .exe — goes on the FIRST word. `python` → `python.exe`.
-    // `npm run` → `npm.exe run` (npm.exe is the real Windows binary name).
-    // A rule like `PowerShell(npm.exe run:*)` needs to match `npm run`.
-    const sp = pattern.indexOf(' ')
-    const exe =
-      sp === -1
-        ? `${pattern}.exe`
-        : `${pattern.slice(0, sp)}.exe${pattern.slice(sp)}`
-    if (content === exe) return true
-    if (content === `${exe}:*`) return true
-    if (content === `${exe}*`) return true
-    if (content === `${exe} *`) return true
-    if (content.startsWith(`${exe} -`) && content.endsWith('*')) return true
-  }
-  return false
+  return isDangerousShellRule(POWERSHELL_DANGER, toolName, ruleContent)
 }
 
-/**
- * Checks if an Agent (sub-agent) permission rule is dangerous for auto mode.
- * Any Agent allow rule would auto-approve sub-agent spawns before the auto mode classifier
- * can evaluate the sub-agent's prompt, defeating delegation attack prevention.
- */
+/** A sub-agent runs whatever it decides to, so any Agent allow rule skips the classifier. */
 export function isDangerousTaskPermission(
   toolName: string,
   _ruleContent: string | undefined,
@@ -188,95 +125,83 @@ export function isDangerousTaskPermission(
   return normalizeLegacyToolName(toolName) === AGENT_TOOL_NAME
 }
 
-function formatPermissionSource(source: PermissionRuleSource): string {
-  if ((SETTING_SOURCES as readonly string[]).includes(source)) {
-    const filePath = getSettingsFilePathForSource(source as SettingSource)
-    if (filePath) {
-      const relativePath = relative(getCwd(), filePath)
-      return relativePath.length < filePath.length ? relativePath : filePath
-    }
-  }
-  return source
+const DANGER_PREDICATES = [
+  isDangerousBashPermission,
+  isDangerousPowerShellPermission,
+  isDangerousTaskPermission,
+] as const
+
+function isDangerousRuleValue({ toolName, ruleContent }: PermissionRuleValue): boolean {
+  return DANGER_PREDICATES.some(isDangerous => isDangerous(toolName, ruleContent))
 }
 
 export type DangerousPermissionInfo = {
   ruleValue: PermissionRuleValue
   source: PermissionRuleSource
-  /** The permission rule formatted for display, e.g. "Bash(*)" or "Bash(python:*)" */
   ruleDisplay: string
-  /** The source formatted for display, e.g. a file path or "--allowed-tools" */
   sourceDisplay: string
 }
 
-/**
- * Checks if a permission rule is dangerous for auto mode.
- * A rule is dangerous if it would auto-allow actions before the auto mode classifier
- * can evaluate them, bypassing safety checks.
- */
-function isDangerousClassifierPermission(
-  toolName: string,
-  ruleContent: string | undefined,
-): boolean {
-  return (
-    isDangerousBashPermission(toolName, ruleContent) ||
-    isDangerousPowerShellPermission(toolName, ruleContent) ||
-    isDangerousTaskPermission(toolName, ruleContent)
-  )
+const isSettingSource = (source: PermissionRuleSource): source is SettingSource =>
+  (SETTING_SOURCES as readonly string[]).includes(source)
+
+/** A settings file is shown by path, whichever of relative or absolute is shorter. */
+function displayRuleSource(source: PermissionRuleSource): string {
+  const file = isSettingSource(source) ? getSettingsFilePathForSource(source) : undefined
+  if (!file) return source
+  const fromCwd = relative(getCwd(), file)
+  return fromCwd.length < file.length ? fromCwd : file
 }
 
+const wholeToolDisplay = (toolName: string): string => `${toolName}(*)`
+
+function loadedRuleFinding(rule: PermissionRule): DangerousPermissionInfo {
+  const { toolName, ruleContent } = rule.ruleValue
+  return {
+    ruleValue: rule.ruleValue,
+    source: rule.source,
+    ruleDisplay: ruleContent ? `${toolName}(${ruleContent})` : wholeToolDisplay(toolName),
+    sourceDisplay: displayRuleSource(rule.source),
+  }
+}
+
+const CLI_ALLOWED_TOOLS_DISPLAY = '--allowed-tools'
+
+/** `Name` or `Name(body)` with no `)` inside the body. Name and body are trimmed. */
+const SIMPLE_CLI_ENTRY = /^([^(]+)(?:\(([^)]*)\))?$/
+
 /**
- * Finds all dangerous permissions from rules loaded from disk and CLI arguments.
- * Returns structured info about each dangerous permission found.
- *
- * Checks Bash permissions (wildcard/interpreter patterns), PowerShell permissions
- * (wildcard/iex/Start-Process patterns), and Agent permissions (any allow rule
- * bypasses the classifier's sub-agent evaluation).
+ * Reads an entry the simple way when it has that shape. Anything else goes
+ * through the rule parser the permission check uses, so an entry such as
+ * `Agent(a(b))` is judged as the rule it becomes (spec finding 6).
  */
+function readCliEntry(entry: string): PermissionRuleValue {
+  const simple = SIMPLE_CLI_ENTRY.exec(entry)
+  if (!simple) return permissionRuleValueFromString(entry.trim())
+  const [, name, body] = simple
+  return { toolName: name!.trim(), ruleContent: body?.trim() }
+}
+
+function cliEntryFinding(entry: string): DangerousPermissionInfo | null {
+  const ruleValue = readCliEntry(entry)
+  if (!isDangerousRuleValue(ruleValue)) return null
+  return {
+    ruleValue,
+    source: 'cliArg',
+    ruleDisplay: ruleValue.ruleContent ? entry : wholeToolDisplay(ruleValue.toolName),
+    sourceDisplay: CLI_ALLOWED_TOOLS_DISPLAY,
+  }
+}
+
 export function findDangerousClassifierPermissions(
   rules: PermissionRule[],
   cliAllowedTools: string[],
 ): DangerousPermissionInfo[] {
-  const dangerous: DangerousPermissionInfo[] = []
-
-  // Check rules loaded from settings
-  for (const rule of rules) {
-    if (
-      rule.ruleBehavior === 'allow' &&
-      isDangerousClassifierPermission(
-        rule.ruleValue.toolName,
-        rule.ruleValue.ruleContent,
-      )
-    ) {
-      const ruleString = rule.ruleValue.ruleContent
-        ? `${rule.ruleValue.toolName}(${rule.ruleValue.ruleContent})`
-        : `${rule.ruleValue.toolName}(*)`
-      dangerous.push({
-        ruleValue: rule.ruleValue,
-        source: rule.source,
-        ruleDisplay: ruleString,
-        sourceDisplay: formatPermissionSource(rule.source),
-      })
-    }
-  }
-
-  // Check CLI --allowed-tools arguments
-  for (const toolSpec of cliAllowedTools) {
-    // Parse tool spec: "Bash" or "Bash(pattern)" or "Agent" or "Agent(subagent_type)"
-    const match = toolSpec.match(/^([^(]+)(?:\(([^)]*)\))?$/)
-    if (match) {
-      const toolName = match[1]!.trim()
-      const ruleContent = match[2]?.trim()
-
-      if (isDangerousClassifierPermission(toolName, ruleContent)) {
-        dangerous.push({
-          ruleValue: { toolName, ruleContent },
-          source: 'cliArg',
-          ruleDisplay: ruleContent ? toolSpec : `${toolName}(*)`,
-          sourceDisplay: '--allowed-tools',
-        })
-      }
-    }
-  }
-
-  return dangerous
+  const fromLoaded = rules
+    .filter(rule => rule.ruleBehavior === 'allow' && isDangerousRuleValue(rule.ruleValue))
+    .map(loadedRuleFinding)
+  const fromCli = cliAllowedTools
+    .map(cliEntryFinding)
+    .filter((found): found is DangerousPermissionInfo => found !== null)
+  return [...fromLoaded, ...fromCli]
 }

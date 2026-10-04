@@ -4,138 +4,138 @@
   "probes": [
     {
       "name": "a Bash rule for another tool is not judged as Bash",
-      "find": "  // Only check Bash rules\n  if (toolName !== BASH_TOOL_NAME) {\n    return false\n  }",
-      "replace": "  // Only check Bash rules\n  if (false as boolean) {\n    return false\n  }"
+      "find": "  if (toolName !== shell.toolName) return false",
+      "replace": "  if (shell !== BASH_DANGER && toolName !== shell.toolName) return false"
     },
     {
       "name": "a Bash tool-level allow with no content is dangerous",
-      "find": "  // Tool-level allow (Bash with no content, or Bash(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return true\n  }",
-      "replace": "  // Tool-level allow (Bash with no content, or Bash(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return false\n  }"
+      "find": "  if (allowsWholeTool(ruleContent)) return true",
+      "replace": "  if (allowsWholeTool(ruleContent)) return shell !== BASH_DANGER || ruleContent?.trim() === '*'"
     },
     {
       "name": "a standalone Bash wildcard is dangerous",
-      "find": "  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax (e.g., \"python:*\")",
-      "replace": "  // Standalone wildcard (*) matches everything\n  if (false as boolean) {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax (e.g., \"python:*\")"
+      "find": "  if (allowsWholeTool(ruleContent)) return true",
+      "replace": "  if (allowsWholeTool(ruleContent)) return shell !== BASH_DANGER || ruleContent === undefined || ruleContent === ''"
     },
     {
       "name": "Bash rule content is lowercased before matching",
-      "find": "  const content = ruleContent.trim().toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax",
-      "replace": "  const content = ruleContent.trim()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix syntax"
+      "find": "  const body = ruleContent!.trim().toLowerCase()",
+      "replace": "  const body = shell === BASH_DANGER ? ruleContent!.trim() : ruleContent!.trim().toLowerCase()"
     },
     {
       "name": "Bash rule content is trimmed before matching",
-      "find": "  const content = ruleContent.trim().toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix",
-      "replace": "  const content = ruleContent.toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns with prefix"
+      "find": "  const body = ruleContent!.trim().toLowerCase()",
+      "replace": "  const body = shell === BASH_DANGER ? ruleContent!.toLowerCase() : ruleContent!.trim().toLowerCase()"
     },
     {
       "name": "the bare interpreter name is a dangerous Bash rule",
-      "find": "    // Exact match to the pattern itself (e.g., \"python\" as a rule)\n    if (content === lowerPattern) {\n      return true\n    }",
-      "replace": "    // Exact match to the pattern itself (e.g., \"python\" as a rule)\n    if (false as boolean) {\n      return true\n    }"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === BASH_DANGER && i === 0) && shape(body, name)))"
     },
     {
       "name": "the `python:*` prefix shape is a dangerous Bash rule",
-      "find": "    // Prefix syntax: \"python:*\" allows any python command\n    if (content === `${lowerPattern}:*`) {\n      return true\n    }",
-      "replace": "    // Prefix syntax: \"python:*\" allows any python command\n    if (false as boolean) {\n      return true\n    }"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === BASH_DANGER && i === 1) && shape(body, name)))"
     },
     {
       "name": "the `python*` shape is a dangerous Bash rule",
-      "find": "    // Wildcard at end: \"python*\" matches python, python3, etc.\n    if (content === `${lowerPattern}*`) {\n      return true\n    }",
-      "replace": "    // Wildcard at end: \"python*\" matches python, python3, etc.\n    if (false as boolean) {\n      return true\n    }"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === BASH_DANGER && i === 2) && shape(body, name)))"
     },
     {
       "name": "the `python *` shape is a dangerous Bash rule",
-      "find": "    // Wildcard with space: \"python *\" would match \"python script.py\"\n    if (content === `${lowerPattern} *`) {\n      return true\n    }",
-      "replace": "    // Wildcard with space: \"python *\" would match \"python script.py\"\n    if (false as boolean) {\n      return true\n    }"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === BASH_DANGER && i === 3) && shape(body, name)))"
     },
     {
       "name": "the `python -*` flag shape is a dangerous Bash rule",
-      "find": "    // Check for patterns like \"python -*\" which would match \"python -c 'code'\"\n    if (content.startsWith(`${lowerPattern} -`) && content.endsWith('*')) {\n      return true\n    }",
-      "replace": "    // Check for patterns like \"python -*\" which would match \"python -c 'code'\"\n    if (false as boolean) {\n      return true\n    }"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === BASH_DANGER && i === 4) && shape(body, name)))"
     },
     {
       "name": "a PowerShell rule for another tool is not judged as PowerShell",
-      "find": "  if (toolName !== POWERSHELL_TOOL_NAME) {\n    return false\n  }",
-      "replace": "  if (false as boolean) {\n    return false\n  }"
+      "find": "  if (toolName !== shell.toolName) return false",
+      "replace": "  if (shell !== POWERSHELL_DANGER && toolName !== shell.toolName) return false"
     },
     {
       "name": "a PowerShell tool-level allow with no content is dangerous",
-      "find": "  // Tool-level allow (PowerShell with no content, or PowerShell(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return true\n  }",
-      "replace": "  // Tool-level allow (PowerShell with no content, or PowerShell(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return false\n  }"
+      "find": "  if (allowsWholeTool(ruleContent)) return true",
+      "replace": "  if (allowsWholeTool(ruleContent)) return shell !== POWERSHELL_DANGER || ruleContent?.trim() === '*'"
     },
     {
       "name": "a standalone PowerShell wildcard is dangerous",
-      "find": "  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // PS-specific cmdlet names.",
-      "replace": "  // Standalone wildcard (*) matches everything\n  if (false as boolean) {\n    return true\n  }\n\n  // PS-specific cmdlet names."
+      "find": "  if (allowsWholeTool(ruleContent)) return true",
+      "replace": "  if (allowsWholeTool(ruleContent)) return shell !== POWERSHELL_DANGER || ruleContent === undefined || ruleContent === ''"
     },
     {
       "name": "PowerShell rule content is lowercased before matching",
-      "find": "  const content = ruleContent.trim().toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // PS-specific cmdlet names.",
-      "replace": "  const content = ruleContent.trim()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // PS-specific cmdlet names."
+      "find": "  const body = ruleContent!.trim().toLowerCase()",
+      "replace": "  const body = shell === POWERSHELL_DANGER ? ruleContent!.trim() : ruleContent!.trim().toLowerCase()"
     },
     {
       "name": "the cross-platform interpreter list is shared with PowerShell",
-      "find": "    ...CROSS_PLATFORM_CODE_EXEC,\n    // Nested PS + shells launchable from PS",
-      "replace": "    // Nested PS + shells launchable from PS"
+      "find": "  names: [...CROSS_PLATFORM_CODE_EXEC, ...POWERSHELL_ONLY_LAUNCHERS].flatMap",
+      "replace": "  names: [...POWERSHELL_ONLY_LAUNCHERS].flatMap"
     },
     {
       "name": "`iex` is in the PowerShell code-exec list",
-      "find": "    'iex',\n    'invoke-expression',",
-      "replace": "    'invoke-expression',"
+      "find": "  'iex',\n  'invoke-expression',",
+      "replace": "  'invoke-expression',"
     },
     {
       "name": "`start-job` is in the PowerShell code-exec list",
-      "find": "    'start-job',\n    'sajb',",
-      "replace": "    'sajb',"
+      "find": "  'start-job',\n  'sajb',",
+      "replace": "  'sajb',"
     },
     {
       "name": "`register-objectevent` is in the PowerShell code-exec list",
-      "find": "    'register-objectevent',\n    'register-engineevent',",
-      "replace": "    'register-engineevent',"
+      "find": "  'register-objectevent',\n  'register-engineevent',",
+      "replace": "  'register-engineevent',"
     },
     {
       "name": "`enter-pssession` is in the PowerShell code-exec list",
-      "find": "    'enter-pssession',\n    'etsn', // alias",
-      "replace": "    'etsn', // alias"
+      "find": "  'enter-pssession',\n  'etsn',",
+      "replace": "  'etsn',"
     },
     {
       "name": "`add-type` is in the PowerShell code-exec list",
-      "find": "    'add-type', // Add-Type -TypeDefinition '<C#>' → P/Invoke\n",
+      "find": "  'add-type',\n",
       "replace": ""
     },
     {
       "name": "`new-object` is in the PowerShell code-exec list",
-      "find": "    'new-object', // New-Object -ComObject WScript.Shell → .Run()\n",
+      "find": "  'new-object',\n",
       "replace": ""
     },
     {
       "name": "the `iex:*` prefix shape is a dangerous PowerShell rule",
-      "find": "    if (content === `${pattern}:*`) return true\n    if (content === `${pattern}*`) return true",
-      "replace": "    if (content === `${pattern}*`) return true"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === POWERSHELL_DANGER && i === 1 && !name.includes('.exe')) && shape(body, name)))"
     },
     {
       "name": "the `iex*` shape is a dangerous PowerShell rule",
-      "find": "    if (content === `${pattern}*`) return true\n    if (content === `${pattern} *`) return true",
-      "replace": "    if (content === `${pattern} *`) return true"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === POWERSHELL_DANGER && i === 2 && !name.includes('.exe')) && shape(body, name)))"
     },
     {
       "name": ".exe goes on the FIRST word of a multi-word runner",
-      "find": "    const sp = pattern.indexOf(' ')\n    const exe =\n      sp === -1\n        ? `${pattern}.exe`\n        : `${pattern.slice(0, sp)}.exe${pattern.slice(sp)}`",
-      "replace": "    const exe = `${pattern}.exe`"
+      "find": "  const [executable, ...args] = name.split(' ')\n  return [`${executable}.exe`, ...args].join(' ')",
+      "replace": "  return `${name}.exe`"
     },
     {
       "name": "the bare .exe spelling is a dangerous PowerShell rule",
-      "find": "    if (content === exe) return true\n    if (content === `${exe}:*`) return true",
-      "replace": "    if (content === `${exe}:*`) return true"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === POWERSHELL_DANGER && i === 0 && name.includes('.exe')) && shape(body, name)))"
     },
     {
       "name": "the `python.exe:*` shape is a dangerous PowerShell rule",
-      "find": "    if (content === `${exe}:*`) return true\n    if (content === `${exe}*`) return true",
-      "replace": "    if (content === `${exe}*`) return true"
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === POWERSHELL_DANGER && i === 1 && name.includes('.exe')) && shape(body, name)))"
     },
     {
       "name": "the `python.exe -*` flag shape is a dangerous PowerShell rule",
-      "find": "    if (content.startsWith(`${exe} -`) && content.endsWith('*')) return true\n",
-      "replace": ""
+      "find": "  return shell.names.some(name => ALLOWING_SHAPES.some(shape => shape(body, name)))",
+      "replace": "  return shell.names.some(name => ALLOWING_SHAPES.some((shape, i) => !(shell === POWERSHELL_DANGER && i === 4 && name.includes('.exe')) && shape(body, name)))"
     },
     {
       "name": "the legacy Task spelling normalizes to Agent",
@@ -149,104 +149,104 @@
     },
     {
       "name": "only ALLOW rules are dangerous — deny and ask are not",
-      "find": "      rule.ruleBehavior === 'allow' &&\n      isDangerousClassifierPermission(",
-      "replace": "      isDangerousClassifierPermission("
+      "find": "    .filter(rule => rule.ruleBehavior === 'allow' && isDangerousRuleValue(rule.ruleValue))",
+      "replace": "    .filter(rule => isDangerousRuleValue(rule.ruleValue))"
     },
     {
       "name": "a rule with no content is displayed as Tool(*)",
-      "find": "        : `${rule.ruleValue.toolName}(*)`",
-      "replace": "        : rule.ruleValue.toolName"
+      "find": "const wholeToolDisplay = (toolName: string): string => `${toolName}(*)`",
+      "replace": "const wholeToolDisplay = (toolName: string): string => toolName"
     },
     {
       "name": "a CLI --allowed-tools entry is tagged with the cliArg source",
-      "find": "          source: 'cliArg',",
-      "replace": "          source: 'localSettings',"
+      "find": "    source: 'cliArg',",
+      "replace": "    source: 'localSettings',"
     },
     {
       "name": "a CLI entry's source is displayed as --allowed-tools",
-      "find": "          sourceDisplay: '--allowed-tools',",
-      "replace": "          sourceDisplay: 'cliArg',"
+      "find": "const CLI_ALLOWED_TOOLS_DISPLAY = '--allowed-tools'",
+      "replace": "const CLI_ALLOWED_TOOLS_DISPLAY = 'cliArg'"
     },
     {
       "name": "a CLI spec is trimmed on both the tool name and the content",
-      "find": "      const toolName = match[1]!.trim()\n      const ruleContent = match[2]?.trim()",
-      "replace": "      const toolName = match[1]!\n      const ruleContent = match[2]"
+      "find": "  return { toolName: name!.trim(), ruleContent: body?.trim() }",
+      "replace": "  return { toolName: name!, ruleContent: body }"
     },
     {
       "name": "a CLI spec must match end-to-end — trailing garbage is not honoured",
-      "find": "    const match = toolSpec.match(/^([^(]+)(?:\\(([^)]*)\\))?$/)",
-      "replace": "    const match = toolSpec.match(/^([^(]+)(?:\\(([^)]*)\\))?/)"
+      "find": "const SIMPLE_CLI_ENTRY = /^([^(]+)(?:\\(([^)]*)\\))?$/",
+      "replace": "const SIMPLE_CLI_ENTRY = /^([^(]+)(?:\\(([^)]*)\\))?/"
     },
     {
       "name": "an unwritable source is skipped by removeDangerousPermissions",
-      "find": "    if (!isPermissionUpdateDestination(perm.source)) {\n      continue\n    }",
-      "replace": "    if (false as boolean) {\n      continue\n    }",
+      "find": "    if (!WRITABLE_SOURCES.has(source)) continue",
+      "replace": "    if (false as boolean) continue",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "localSettings and session are valid update destinations",
-      "find": "  return [\n    'userSettings',\n    'projectSettings',\n    'localSettings',\n    'session',\n    'cliArg',\n  ].includes(source)",
-      "replace": "  return ['userSettings', 'projectSettings', 'cliArg'].includes(source)",
+      "find": "  'localSettings',\n  'session',\n",
+      "replace": "",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "removal is applied against the allow rules, not another behavior",
-      "find": "      type: 'removeRules' as const,\n      rules,\n      behavior: 'allow' as const,",
-      "replace": "      type: 'removeRules' as const,\n      rules,\n      behavior: 'deny' as const,",
+      "find": "  return { ...context, alwaysAllowRules: removeByKey(context.alwaysAllowRules, keys).allow }",
+      "replace": "  return { ...context, alwaysDenyRules: removeByKey(context.alwaysDenyRules, keys).allow }",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "a context with nothing dangerous still gets an empty stash",
-      "find": "      strippedDangerousRules: context.strippedDangerousRules ?? {},",
-      "replace": "      strippedDangerousRules: context.strippedDangerousRules,",
+      "find": "    return { ...context, strippedDangerousRules: previous ?? {} }",
+      "replace": "    return { ...context, strippedDangerousRules: previous }",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "the stash mirrors removeDangerousPermissions' source filter",
-      "find": "    if (!isPermissionUpdateDestination(perm.source)) continue",
+      "find": "    if (!WRITABLE_SOURCES.has(source)) continue",
       "replace": "    if (false as boolean) continue",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "the stash records the canonical rule string, not the display string",
-      "find": "    ;(stripped[perm.source] ??= []).push(\n      permissionRuleValueToString(perm.ruleValue),\n    )",
-      "replace": "    ;(stripped[perm.source] ??= []).push(perm.ruleDisplay)",
+      "find": "    removed[source] = distinct(taken)",
+      "replace": "    removed[source] = distinct(taken).map(stored => {\n      const v = permissionRuleValueFromString(stored)\n      return v.ruleContent ? `${v.toolName}(${v.ruleContent})` : `${v.toolName}(*)`\n    })",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "stripping actually removes the rule from the context",
-      "find": "  return {\n    ...removeDangerousPermissions(context, dangerousPermissions),\n    strippedDangerousRules: stripped,\n  }",
-      "replace": "  return {\n    ...context,\n    strippedDangerousRules: stripped,\n  }",
+      "find": "    alwaysAllowRules: allow,\n    strippedDangerousRules: appendMissing(previous ?? {}, removed),",
+      "replace": "    strippedDangerousRules: appendMissing(previous ?? {}, removed),",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "a context that was never stripped is returned by identity",
-      "find": "  const stash = context.strippedDangerousRules\n  if (!stash) {\n    return context\n  }",
-      "replace": "  const stash = context.strippedDangerousRules\n  if (!stash) {\n    return { ...context }\n  }",
+      "find": "  if (!stash) return context",
+      "replace": "  if (!stash) return { ...context }",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "an empty per-source stash list does not create a rule key",
-      "find": "    if (!ruleStrings || ruleStrings.length === 0) continue",
-      "replace": "    if (!ruleStrings) continue",
+      "find": "    if (extra.length === 0) continue\n",
+      "replace": "",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "a stashed rule is restored as an ALLOW rule",
-      "find": "      rules: ruleStrings.map(permissionRuleValueFromString),\n      behavior: 'allow',",
-      "replace": "      rules: ruleStrings.map(permissionRuleValueFromString),\n      behavior: 'deny',",
+      "find": "    alwaysAllowRules: appendMissing(context.alwaysAllowRules, stash),",
+      "replace": "    alwaysDenyRules: appendMissing(context.alwaysDenyRules, stash),",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "a stashed rule is restored to its own source, not to the session",
-      "find": "      destination: source as PermissionUpdateDestination,",
-      "replace": "      destination: 'session' as PermissionUpdateDestination,",
+      "find": "    alwaysAllowRules: appendMissing(context.alwaysAllowRules, stash),",
+      "replace": "    alwaysAllowRules: appendMissing(context.alwaysAllowRules, { session: Object.values(stash).flatMap(list => list ?? []) }),",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {
       "name": "restoring clears the stash so a second exit is a no-op",
-      "find": "  return { ...result, strippedDangerousRules: undefined }",
-      "replace": "  return result",
+      "find": "    strippedDangerousRules: undefined,\n",
+      "replace": "",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts"
     },
     {

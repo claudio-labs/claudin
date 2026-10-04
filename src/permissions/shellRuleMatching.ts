@@ -1,27 +1,12 @@
 /**
- * Shared permission rule matching utilities for shell tools.
+ * The grammar of a shell permission rule body: classify it, match a wildcard
+ * body against a command string, and build "always allow" suggestions.
  *
- * Extracts common logic for:
- * - Parsing permission rules (exact, prefix, wildcard)
- * - Matching commands against rules
- * - Generating permission suggestions
+ * Pure string work with no shell awareness. Splitting compound commands and
+ * stripping wrappers happen in the callers before they reach the matcher.
  */
-
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 
-// Null-byte sentinel placeholders for wildcard pattern escaping — module-level
-// so the RegExp objects are compiled once instead of per permission check.
-const ESCAPED_STAR_PLACEHOLDER = '\x00ESCAPED_STAR\x00'
-const ESCAPED_BACKSLASH_PLACEHOLDER = '\x00ESCAPED_BACKSLASH\x00'
-const ESCAPED_STAR_PLACEHOLDER_RE = new RegExp(ESCAPED_STAR_PLACEHOLDER, 'g')
-const ESCAPED_BACKSLASH_PLACEHOLDER_RE = new RegExp(
-  ESCAPED_BACKSLASH_PLACEHOLDER,
-  'g',
-)
-
-/**
- * Parsed permission rule discriminated union.
- */
 export type ShellPermissionRule =
   | {
       type: 'exact'
@@ -36,193 +21,143 @@ export type ShellPermissionRule =
       pattern: string
     }
 
-/**
- * Extract prefix from legacy :* syntax (e.g., "npm:*" -> "npm")
- * This is maintained for backwards compatibility.
- */
+const LEGACY_PREFIX_SUFFIX = ':*'
+const BACKSLASH = '\\'
+const STAR = '*'
+const REGEX_SPECIAL = /[\\^$.*+?()[\]{}|/-]/g
+
 export function permissionRuleExtractPrefix(
   permissionRule: string,
 ): string | null {
-  const match = permissionRule.match(/^(.+):\*$/)
-  return match?.[1] ?? null
+  const head = permissionRule.length - LEGACY_PREFIX_SUFFIX.length
+  if (head < 1 || !permissionRule.endsWith(LEGACY_PREFIX_SUFFIX)) return null
+  return permissionRule.slice(0, head)
 }
 
-/**
- * Check if a pattern contains unescaped wildcards (not legacy :* syntax).
- * Returns true if the pattern contains * that are not escaped with \ or part of :* at the end.
- */
+function backslashesBefore(text: string, index: number): number {
+  let count = 0
+  for (let at = index - 1; at >= 0 && text[at] === BACKSLASH; at--) count++
+  return count
+}
+
 export function hasWildcards(pattern: string): boolean {
-  // If it ends with :*, it's legacy prefix syntax, not wildcard
-  if (pattern.endsWith(':*')) {
-    return false
-  }
-  // Check for unescaped * anywhere in the pattern
-  // An asterisk is unescaped if it's not preceded by a backslash,
-  // or if it's preceded by an even number of backslashes (escaped backslashes)
-  for (let i = 0; i < pattern.length; i++) {
-    if (pattern[i] === '*') {
-      // Count backslashes before this asterisk
-      let backslashCount = 0
-      let j = i - 1
-      while (j >= 0 && pattern[j] === '\\') {
-        backslashCount++
-        j--
-      }
-      // If even number of backslashes (including 0), the asterisk is unescaped
-      if (backslashCount % 2 === 0) {
-        return true
-      }
-    }
+  if (pattern.endsWith(LEGACY_PREFIX_SUFFIX)) return false
+  for (let at = pattern.indexOf(STAR); at !== -1; at = pattern.indexOf(STAR, at + 1)) {
+    if (backslashesBefore(pattern, at) % 2 === 0) return true
   }
   return false
 }
 
+type PatternPiece = { kind: 'literal'; text: string } | { kind: 'any' }
+
+/** Reads `\*` as a literal star and `\\` as a literal backslash; every other character stands for itself. */
+function splitPattern(pattern: string): PatternPiece[] {
+  const pieces: PatternPiece[] = []
+  let literal = ''
+  const flushLiteral = (): void => {
+    if (literal) pieces.push({ kind: 'literal', text: literal })
+    literal = ''
+  }
+  for (let at = 0; at < pattern.length; at++) {
+    const char = pattern[at]!
+    const next = pattern[at + 1]
+    if (char === BACKSLASH && (next === STAR || next === BACKSLASH)) {
+      literal += next
+      at++
+    } else if (char === STAR) {
+      flushLiteral()
+      pieces.push({ kind: 'any' })
+    } else {
+      literal += char
+    }
+  }
+  flushLiteral()
+  return pieces
+}
+
+const toRegexLiteral = (text: string): string => text.replace(REGEX_SPECIAL, ch => BACKSLASH + ch)
+const ANY_RUN = '[\\s\\S]*'
+
 /**
- * Match a command against a wildcard pattern.
- * Wildcards (*) match any sequence of characters.
- * Use \* to match a literal asterisk character.
- * Use \\ to match a literal backslash.
- *
- * @param pattern - The permission rule pattern with wildcards
- * @param command - The command to match against
- * @returns true if the command matches the pattern
+ * `git *` also covers a bare `git`: with a single star sitting at the end
+ * behind a space, the space and the star become one optional group.
  */
+function optionalTailStart(pieces: PatternPiece[]): number | null {
+  const stars = pieces.filter(piece => piece.kind === 'any').length
+  const last = pieces[pieces.length - 1]
+  const beforeLast = pieces[pieces.length - 2]
+  if (stars !== 1 || last?.kind !== 'any' || beforeLast?.kind !== 'literal') return null
+  return beforeLast.text.endsWith(' ') ? pieces.length - 2 : null
+}
+
+function compileWildcard(pattern: string, caseInsensitive: boolean): RegExp {
+  const pieces = splitPattern(pattern.trim())
+  const tailAt = optionalTailStart(pieces)
+  let source = ''
+  pieces.forEach((piece, index) => {
+    if (index === tailAt && piece.kind === 'literal') {
+      source += `${toRegexLiteral(piece.text.slice(0, -1))}(?: ${ANY_RUN})?`
+    } else if (tailAt === null || index < tailAt) {
+      source += piece.kind === 'any' ? ANY_RUN : toRegexLiteral(piece.text)
+    }
+  })
+  return new RegExp(`^${source}$`, caseInsensitive ? 'i' : '')
+}
+
+// Rules are few and checked on every command, so the compiled forms are kept.
+// The bound only guards against a pathological rule set.
+const COMPILED_LIMIT = 512
+const compiled = new Map<string, RegExp>()
+
+function compiledWildcard(pattern: string, caseInsensitive: boolean): RegExp {
+  const key = `${caseInsensitive ? 'i' : 's'}:${pattern}`
+  let regex = compiled.get(key)
+  if (!regex) {
+    if (compiled.size >= COMPILED_LIMIT) compiled.clear()
+    regex = compileWildcard(pattern, caseInsensitive)
+    compiled.set(key, regex)
+  }
+  return regex
+}
+
 export function matchWildcardPattern(
   pattern: string,
   command: string,
   caseInsensitive = false,
 ): boolean {
-  // Trim leading/trailing whitespace from pattern
-  const trimmedPattern = pattern.trim()
-
-  // Process the pattern to handle escape sequences: \* and \\
-  let processed = ''
-  let i = 0
-
-  while (i < trimmedPattern.length) {
-    const char = trimmedPattern[i]
-
-    // Handle escape sequences
-    if (char === '\\' && i + 1 < trimmedPattern.length) {
-      const nextChar = trimmedPattern[i + 1]
-      if (nextChar === '*') {
-        // \* -> literal asterisk placeholder
-        processed += ESCAPED_STAR_PLACEHOLDER
-        i += 2
-        continue
-      } else if (nextChar === '\\') {
-        // \\ -> literal backslash placeholder
-        processed += ESCAPED_BACKSLASH_PLACEHOLDER
-        i += 2
-        continue
-      }
-    }
-
-    processed += char
-    i++
-  }
-
-  // Escape regex special characters except *
-  const escaped = processed.replace(/[.+?^${}()|[\]\\'"]/g, '\\$&')
-
-  // Convert unescaped * to .* for wildcard matching
-  const withWildcards = escaped.replace(/\*/g, '.*')
-
-  // Convert placeholders back to escaped regex literals
-  let regexPattern = withWildcards
-    .replace(ESCAPED_STAR_PLACEHOLDER_RE, '\\*')
-    .replace(ESCAPED_BACKSLASH_PLACEHOLDER_RE, '\\\\')
-
-  // When a pattern ends with ' *' (space + unescaped wildcard) AND the trailing
-  // wildcard is the ONLY unescaped wildcard, make the trailing space-and-args
-  // optional so 'git *' matches both 'git add' and bare 'git'.
-  // This aligns wildcard matching with prefix rule semantics (git:*).
-  // Multi-wildcard patterns like '* run *' are excluded — making the last
-  // wildcard optional would incorrectly match 'npm run' (no trailing arg).
-  const unescapedStarCount = (processed.match(/\*/g) || []).length
-  if (regexPattern.endsWith(' .*') && unescapedStarCount === 1) {
-    regexPattern = regexPattern.slice(0, -3) + '( .*)?'
-  }
-
-  // Create regex that matches the entire string.
-  // The 's' (dotAll) flag makes '.' match newlines, so wildcards match
-  // commands containing embedded newlines (e.g. heredoc content after splitCommand_DEPRECATED).
-  const flags = 's' + (caseInsensitive ? 'i' : '')
-  const regex = new RegExp(`^${regexPattern}$`, flags)
-
-  return regex.test(command)
+  return compiledWildcard(pattern, caseInsensitive).test(command)
 }
 
-/**
- * Parse a permission rule string into a structured rule object.
- */
 export function parsePermissionRule(
   permissionRule: string,
 ): ShellPermissionRule {
-  // Check for legacy :* prefix syntax first (backwards compatibility)
   const prefix = permissionRuleExtractPrefix(permissionRule)
-  if (prefix !== null) {
-    return {
-      type: 'prefix',
-      prefix,
-    }
-  }
-
-  // Check for new wildcard syntax (contains * but not :* at end)
-  if (hasWildcards(permissionRule)) {
-    return {
-      type: 'wildcard',
-      pattern: permissionRule,
-    }
-  }
-
-  // Otherwise, it's an exact match
-  return {
-    type: 'exact',
-    command: permissionRule,
-  }
+  if (prefix !== null) return { type: 'prefix', prefix }
+  if (hasWildcards(permissionRule)) return { type: 'wildcard', pattern: permissionRule }
+  return { type: 'exact', command: permissionRule }
 }
 
-/**
- * Generate permission update suggestion for an exact command match.
- */
+function localAllowRule(toolName: string, ruleContent: string): PermissionUpdate[] {
+  return [
+    {
+      type: 'addRules',
+      rules: [{ toolName, ruleContent }],
+      behavior: 'allow',
+      destination: 'localSettings',
+    },
+  ]
+}
+
 export function suggestionForExactCommand(
   toolName: string,
   command: string,
 ): PermissionUpdate[] {
-  return [
-    {
-      type: 'addRules',
-      rules: [
-        {
-          toolName,
-          ruleContent: command,
-        },
-      ],
-      behavior: 'allow',
-      destination: 'localSettings',
-    },
-  ]
+  return localAllowRule(toolName, command)
 }
 
-/**
- * Generate permission update suggestion for a prefix match.
- */
 export function suggestionForPrefix(
   toolName: string,
   prefix: string,
 ): PermissionUpdate[] {
-  return [
-    {
-      type: 'addRules',
-      rules: [
-        {
-          toolName,
-          ruleContent: `${prefix}:*`,
-        },
-      ],
-      behavior: 'allow',
-      destination: 'localSettings',
-    },
-  ]
+  return localAllowRule(toolName, prefix + LEGACY_PREFIX_SUFFIX)
 }

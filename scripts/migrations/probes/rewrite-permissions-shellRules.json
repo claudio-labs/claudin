@@ -3,249 +3,565 @@
     "src/permissions/shellRules.matching.characterization.test.ts",
     "src/permissions/shellRules.shadowed.characterization.test.ts",
     "src/permissions/shellRules.dangerous.characterization.test.ts",
-    "src/permissions/shellRules.stash.characterization.test.ts"
+    "src/permissions/shellRules.stash.characterization.test.ts",
+    "src/permissions/shellRules.fixes.test.ts"
   ],
   "source": "src/permissions/shellRuleMatching.ts",
   "probes": [
     {
-      "name": "matching: a body ending in :* counts as a wildcard",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "  if (pattern.endsWith(':*')) {",
-      "replace": "  if (pattern.endsWith(':**')) {"
+      "name": "prefix: needs at least one character before \":*\"",
+      "find": "if (head < 1 ||",
+      "replace": "if (head < 0 ||"
     },
     {
-      "name": "matching: an escaped star counts as a wildcard",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "      if (backslashCount % 2 === 0) {",
-      "replace": "      if (backslashCount % 2 === 0 || true) {"
+      "name": "prefix: \":*\" must be the final suffix",
+      "find": "!permissionRule.endsWith(LEGACY_PREFIX_SUFFIX)) return null",
+      "replace": "!permissionRule.includes(LEGACY_PREFIX_SUFFIX)) return null"
     },
     {
-      "name": "must not match: a dot becomes a regex wildcard",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "processed.replace(/[.+?^",
-      "replace": "processed.replace(/[+?^"
+      "name": "wildcards: a \":*\" body is never a wildcard",
+      "find": "if (pattern.endsWith(LEGACY_PREFIX_SUFFIX)) return false",
+      "replace": "if (pattern.length < 0) return false"
     },
     {
-      "name": "must not match: parens and bar become regex alternation",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "{}()|[\\]",
-      "replace": "{}[\\]"
+      "name": "wildcards: a star behind an odd run of backslashes is escaped",
+      "find": "% 2 === 0) return true",
+      "replace": "% 2 >= 0) return true"
     },
     {
-      "name": "must not match: the trailing star is optional with two stars",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "  if (regexPattern.endsWith(' .*') && unescapedStarCount === 1) {",
-      "replace": "  if (regexPattern.endsWith(' .*') && unescapedStarCount >= 1) {"
+      "name": "parse: the legacy suffix wins over stars (finding 8)",
+      "find": "if (prefix !== null) return { type: 'prefix', prefix }",
+      "replace": "if (prefix !== null && !hasWildcards(prefix)) return { type: 'prefix', prefix }"
     },
     {
-      "name": "must not match: git * covers gitx",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "    regexPattern = regexPattern.slice(0, -3) + '( .*)?'",
-      "replace": "    regexPattern = regexPattern.slice(0, -3) + '(.*)?'"
+      "name": "parse: a wildcard body is classified as wildcard",
+      "find": "if (hasWildcards(permissionRule)) return { type: 'wildcard', pattern: permissionRule }",
+      "replace": "if (hasWildcards(permissionRule)) return { type: 'exact', command: permissionRule }"
     },
     {
-      "name": "must not match: a tab separates the optional tail",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "    regexPattern = regexPattern.slice(0, -3) + '( .*)?'",
-      "replace": "    regexPattern = regexPattern.slice(0, -3) + '(\\\\s.*)?'"
+      "name": "must not match: an escaped star is not a wildcard",
+      "find": "      literal += next\n      at++",
+      "replace": "      if (next === STAR) { flushLiteral(); pieces.push({ kind: 'any' }) } else literal += next\n      at++"
     },
     {
-      "name": "must not match: case-insensitive by default",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "  const flags = 's' + (caseInsensitive ? 'i' : '')",
-      "replace": "  const flags = 's' + (caseInsensitive ? 'i' : 'i')"
+      "name": "must not match: an escaped backslash needs a real backslash",
+      "find": "      literal += next\n      at++",
+      "replace": "      if (next === STAR) literal += next\n      at++"
     },
     {
-      "name": "matching: the star no longer crosses newlines",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "  const flags = 's' + (caseInsensitive ? 'i' : '')",
-      "replace": "  const flags = '' + (caseInsensitive ? 'i' : '')"
+      "name": "a lone or letter-preceding backslash stays literal",
+      "find": "    } else {\n      literal += char\n    }",
+      "replace": "    } else if (char !== BACKSLASH) {\n      literal += char\n    }"
     },
     {
-      "name": "must not match: start not anchored (sudo git, env prefix)",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "new RegExp(`^${",
-      "replace": "new RegExp(`${"
+      "name": "the pattern is trimmed",
+      "find": "splitPattern(pattern.trim())",
+      "replace": "splitPattern(pattern)"
     },
     {
-      "name": "must not match: end not anchored (extra args, literal tail)",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "${regexPattern}$`, flags)",
-      "replace": "${regexPattern}`, flags)"
+      "name": "must not match: look-alike words (optional tail needs its space)",
+      "find": "(?: ${ANY_RUN})?",
+      "replace": "(?:${ANY_RUN})?"
     },
     {
-      "name": "must not match: an escaped star becomes a wildcard",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "    .replace(ESCAPED_STAR_PLACEHOLDER_RE, '\\\\*')",
-      "replace": "    .replace(ESCAPED_STAR_PLACEHOLDER_RE, '.*')"
+      "name": "must not match: a tab does not start the optional tail",
+      "find": "(?: ${ANY_RUN})?",
+      "replace": "(?:\\\\s${ANY_RUN})?"
     },
     {
-      "name": "must not match: the command is trimmed (leading whitespace)",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "  return regex.test(command)",
-      "replace": "  return regex.test(command.trim())"
+      "name": "must not match: with several stars the tail is required",
+      "find": "if (stars !== 1 ||",
+      "replace": "if (stars < 1 ||"
     },
     {
-      "name": "suggestion: prefix rule in the space-star form",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "          ruleContent: `${prefix}:*`,",
-      "replace": "          ruleContent: `${prefix} *`,"
+      "name": "the optional tail only follows a trailing space",
+      "find": "return beforeLast.text.endsWith(' ') ? pieces.length - 2 : null",
+      "replace": "return pieces.length - 2"
     },
     {
-      "name": "suggestion: exact command suggested as ask",
-      "source": "src/permissions/shellRuleMatching.ts",
-      "find": "          ruleContent: command,\n        },\n      ],\n      behavior: 'allow',",
-      "replace": "          ruleContent: command,\n        },\n      ],\n      behavior: 'ask',"
+      "name": "a star crosses newlines",
+      "find": "const ANY_RUN = '[\\\\s\\\\S]*'",
+      "replace": "const ANY_RUN = '.*'"
     },
     {
-      "name": "shadowed: project settings no longer shared",
+      "name": "must not match: env prefix, sudo, newline (start anchor)",
+      "find": "return new RegExp(`^",
+      "replace": "return new RegExp(`"
+    },
+    {
+      "name": "must not match: extra arguments, missing literal tail, closing quote (end anchor)",
+      "find": "new RegExp(`^${source}$`",
+      "replace": "new RegExp(`^${source}`"
+    },
+    {
+      "name": "must not match: a newline does not move the start anchor (no multiline)",
+      "find": "caseInsensitive ? 'i' : '')",
+      "replace": "caseInsensitive ? 'im' : 'm')"
+    },
+    {
+      "name": "must not match: case differs by default",
+      "find": "caseInsensitive ? 'i' : '')",
+      "replace": "'i')"
+    },
+    {
+      "name": "case-insensitive mode ignores case",
+      "find": "caseInsensitive ? 'i' : '')",
+      "replace": "'')"
+    },
+    {
+      "name": "must not match: the command is not trimmed",
+      "find": ".test(command)",
+      "replace": ".test(command.trimStart())"
+    },
+    {
+      "name": "must not match: dot is literal",
+      "find": "/[\\\\^$.*+?()[\\]{}|/-]/g",
+      "replace": "/[\\\\^$*+?()[\\]{}|/-]/g"
+    },
+    {
+      "name": "must not match: bar and parens are literal",
+      "find": "/[\\\\^$.*+?()[\\]{}|/-]/g",
+      "replace": "/[\\\\^$.*+?[\\]{}/-]/g"
+    },
+    {
+      "name": "must not match: plus is literal",
+      "find": "/[\\\\^$.*+?()[\\]{}|/-]/g",
+      "replace": "/[\\\\^$.*?()[\\]{}|/-]/g"
+    },
+    {
+      "name": "question mark is literal",
+      "find": "/[\\\\^$.*+?()[\\]{}|/-]/g",
+      "replace": "/[\\\\^$.*+()[\\]{}|/-]/g"
+    },
+    {
+      "name": "must not match: brackets are literal",
+      "find": "/[\\\\^$.*+?()[\\]{}|/-]/g",
+      "replace": "/[\\\\^$.*+?(){}|/-]/g"
+    },
+    {
+      "name": "must not match: dollar is literal",
+      "find": "/[\\\\^$.*+?()[\\]{}|/-]/g",
+      "replace": "/[\\\\^.*+?()[\\]{}|/-]/g"
+    },
+    {
+      "name": "must not match: caret is literal",
+      "find": "/[\\\\^$.*+?()[\\]{}|/-]/g",
+      "replace": "/[\\\\$.*+?()[\\]{}|/-]/g"
+    },
+    {
+      "name": "compiled patterns are keyed by case flag",
+      "find": "const key = `${caseInsensitive ? 'i' : 's'}:${pattern}`",
+      "replace": "const key = pattern"
+    },
+    {
+      "name": "suggestion: written to local settings",
+      "find": "destination: 'localSettings',",
+      "replace": "destination: 'userSettings',"
+    },
+    {
+      "name": "suggestion: prefix body ends in \":*\"",
+      "find": "return localAllowRule(toolName, prefix + LEGACY_PREFIX_SUFFIX)",
+      "replace": "return localAllowRule(toolName, prefix)"
+    },
+    {
+      "name": "suggestion: the exact command goes in unchanged",
+      "find": "return localAllowRule(toolName, command)",
+      "replace": "return localAllowRule(toolName, command.replace('(', '\\\\('))"
+    },
+    {
+      "name": "suggestion: each call returns a fresh array",
+      "find": "return localAllowRule(toolName, prefix + LEGACY_PREFIX_SUFFIX)",
+      "replace": "return (((globalThis as Record<string, any>).__probeCache ??= {})[toolName + prefix] ??= localAllowRule(toolName, prefix + LEGACY_PREFIX_SUFFIX))"
+    },
+    {
+      "name": "shared sources include command",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "    source === 'projectSettings' ||",
-      "replace": "    source === 'xprojectSettings' ||"
+      "find": "  'policySettings',\n  'command',\n])",
+      "replace": "  'policySettings',\n])"
     },
     {
-      "name": "must not report: a tool-wide allow under a tool-wide ask",
+      "name": "must not report: a tool-wide allow",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "  if (ruleContent === undefined) {\n    return { shadowed: false }\n  }\n\n  // Find any tool-wide ask rule",
-      "replace": "  if (false) {\n    return { shadowed: false }\n  }\n\n  // Find any tool-wide ask rule"
+      "find": "if (isToolWide(allow)) continue",
+      "replace": "if (allow.ruleValue.toolName === \"\") continue"
     },
     {
-      "name": "must not report: a specific ask shadows",
+      "name": "must not report: a specific deny or ask",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "      askRule.ruleValue.ruleContent === undefined,",
-      "replace": "      true,"
+      "find": "const isToolWide = (rule: PermissionRule): boolean => rule.ruleValue.ruleContent === undefined",
+      "replace": "const isToolWide = (rule: PermissionRule): boolean => rule.ruleValue.ruleContent !== \"\\u0000\""
     },
     {
-      "name": "must not report: a specific deny shadows",
+      "name": "must not report: another tool",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "      denyRule.ruleValue.ruleContent === undefined,",
-      "replace": "      true,"
+      "find": "isToolWide(rule) && rule.ruleValue.toolName === toolName",
+      "replace": "isToolWide(rule)"
     },
     {
-      "name": "must not report: another tool's deny shadows",
+      "name": "must not report: names differing only in case",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "      denyRule.ruleValue.toolName === toolName &&",
-      "replace": "      true &&"
+      "find": "isToolWide(rule) && rule.ruleValue.toolName === toolName",
+      "replace": "isToolWide(rule) && rule.ruleValue.toolName.toLowerCase() === toolName.toLowerCase()"
     },
     {
-      "name": "sandbox exception applies to every tool",
+      "name": "deny wins over ask",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "  if (toolName === BASH_TOOL_NAME && options.sandboxAutoAllowEnabled) {",
-      "replace": "  if (options.sandboxAutoAllowEnabled) {"
+      "find": "if (denying) return { by: denying, type: 'deny' }",
+      "replace": "if (denying && !firstToolWide(ask, toolName)) return { by: denying, type: 'deny' }"
     },
     {
-      "name": "sandbox exception covers shared sources too",
+      "name": "the sandbox exception never applies to deny",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "    if (!isSharedSettingSource(shadowingAskRule.source)) {",
-      "replace": "    if (true) {"
+      "find": "if (denying) return { by: denying, type: 'deny' }",
+      "replace": "if (denying && !askIsBypassedBySandbox(denying, options)) return { by: denying, type: 'deny' }"
     },
     {
-      "name": "deny-shadowed rule also reported as ask-shadowed",
+      "name": "sandbox exception: only while the sandbox auto-allows",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "      continue // Don't also report ask-shadowing if deny-shadowed",
-      "replace": "      // reported twice"
+      "find": "    options.sandboxAutoAllowEnabled &&",
+      "replace": "    true &&"
     },
     {
-      "name": "deny reason text changes",
+      "name": "sandbox exception: only Bash",
       "source": "src/permissions/shadowedRuleDetection.ts",
-      "find": "        reason: `Blocked by ",
-      "replace": "        reason: `Denied by "
+      "find": "    ask.ruleValue.toolName === BASH_TOOL_NAME &&",
+      "replace": "    true &&"
     },
     {
-      "name": "patterns: node dropped",
+      "name": "sandbox exception: only personal sources",
+      "source": "src/permissions/shadowedRuleDetection.ts",
+      "find": "    !isSharedSettingSource(ask.source)",
+      "replace": "    true"
+    },
+    {
+      "name": "the first tool-wide rule in source order decides",
+      "source": "src/permissions/shadowedRuleDetection.ts",
+      "find": "return rules.find(rule =>",
+      "replace": "return rules.findLast(rule =>"
+    },
+    {
+      "name": "results follow the allow rules in source order",
+      "source": "src/permissions/shadowedRuleDetection.ts",
+      "find": "for (const allow of getAllowRules(context))",
+      "replace": "for (const allow of getAllowRules(context).reverse())"
+    },
+    {
+      "name": "text: deny reason verb",
+      "source": "src/permissions/shadowedRuleDetection.ts",
+      "find": "deny: 'Blocked by',",
+      "replace": "deny: 'Denied by',"
+    },
+    {
+      "name": "text: ask reason verb",
+      "source": "src/permissions/shadowedRuleDetection.ts",
+      "find": "ask: 'Shadowed by',",
+      "replace": "ask: 'Hidden by',"
+    },
+    {
+      "name": "text: fix names the allow source",
+      "source": "src/permissions/shadowedRuleDetection.ts",
+      "find": "or remove the specific allow rule from ${allowFrom}",
+      "replace": "or remove the specific allow rule from ${shadowFrom}"
+    },
+    {
+      "name": "text: sources use their display names",
+      "source": "src/permissions/shadowedRuleDetection.ts",
+      "find": "const shadowFrom = permissionRuleSourceDisplayString(shadow.by.source)",
+      "replace": "const shadowFrom = shadow.by.source"
+    },
+    {
+      "name": "list: ssh is code execution",
       "source": "src/permissions/dangerousPatterns.ts",
-      "find": "  'node',\n",
-      "replace": "  'nodejs',\n"
+      "find": "const NESTED_OR_REMOTE_SHELLS = ['bash', 'sh', 'ssh'] as const",
+      "replace": "const NESTED_OR_REMOTE_SHELLS = ['bash', 'sh'] as const"
     },
     {
-      "name": "patterns: sudo dropped",
+      "name": "list: order is pinned",
       "source": "src/permissions/dangerousPatterns.ts",
-      "find": "  'sudo',\n",
-      "replace": "  'sudoer',\n"
+      "find": "  'python3',\n  'python2',",
+      "replace": "  'python2',\n  'python3',"
     },
     {
-      "name": "dangerous: tool-wide Bash allowed",
+      "name": "list: Bash adds the Unix launchers",
+      "source": "src/permissions/dangerousPatterns.ts",
+      "find": "'xargs', 'sudo'] as const",
+      "replace": "'xargs'] as const"
+    },
+    {
+      "name": "list: runners come after interpreters",
+      "source": "src/permissions/dangerousPatterns.ts",
+      "find": "  ...SCRIPT_INTERPRETERS,\n  ...PACKAGE_SCRIPT_RUNNERS,",
+      "replace": "  ...PACKAGE_SCRIPT_RUNNERS,\n  ...SCRIPT_INTERPRETERS,"
+    },
+    {
+      "name": "only the named shell tool is judged",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "  // Tool-level allow (Bash with no content, or Bash(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return true",
-      "replace": "  // Tool-level allow (Bash with no content, or Bash(*)) - allows ALL commands\n  if (ruleContent === undefined || ruleContent === '') {\n    return false"
+      "find": "if (toolName !== shell.toolName) return false",
+      "replace": "if (toolName.toLowerCase() !== shell.toolName.toLowerCase()) return false"
     },
     {
-      "name": "dangerous: Bash body not trimmed",
+      "name": "a lone star counts once trimmed",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "  const content = ruleContent.trim().toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns",
-      "replace": "  const content = ruleContent.toLowerCase()\n\n  // Standalone wildcard (*) matches everything\n  if (content === '*') {\n    return true\n  }\n\n  // Check for dangerous patterns"
+      "find": "ruleContent.trim() === '*'",
+      "replace": "ruleContent === '*'"
     },
     {
-      "name": "dangerous: Bash name:* not caught",
+      "name": "bodies are lowercased (finding 7)",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "    if (content === `${lowerPattern}:*`) {",
-      "replace": "    if (content === `${lowerPattern}::*`) {"
+      "find": "const body = ruleContent!.trim().toLowerCase()",
+      "replace": "const body = ruleContent!.trim()"
     },
     {
-      "name": "dangerous: Bash 'name -x*' not caught",
+      "name": "bodies are trimmed",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "    if (content.startsWith(`${lowerPattern} -`) && content.endsWith('*')) {",
-      "replace": "    if (content.startsWith(`${lowerPattern} -`) && content.endsWith('**')) {"
+      "find": "const body = ruleContent!.trim().toLowerCase()",
+      "replace": "const body = ruleContent!.toLowerCase()"
     },
     {
-      "name": "dangerous: PowerShell iex dropped",
+      "name": "shape: the bare name",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "    'iex',\n",
-      "replace": "    'iexx',\n"
+      "find": "  (body, name) => body === name,",
+      "replace": "  (body, name) => body === name + \"\\u0000\","
     },
     {
-      "name": "dangerous: PowerShell .exe goes after the last word",
+      "name": "shape: name:*",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "        : `${pattern.slice(0, sp)}.exe${pattern.slice(sp)}`",
-      "replace": "        : `${pattern}.exe`"
+      "find": "  (body, name) => body === `${name}:*`,",
+      "replace": "  (body, name) => body === `${name}:**`,"
     },
     {
-      "name": "dangerous: legacy Task name not caught",
+      "name": "shape: name*",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "  return normalizeLegacyToolName(toolName) === AGENT_TOOL_NAME",
-      "replace": "  return toolName === AGENT_TOOL_NAME"
+      "find": "  (body, name) => body === `${name}*`,",
+      "replace": "  (body, name) => body === `${name}**`,"
     },
     {
-      "name": "scan: ask and deny rules reported too",
+      "name": "shape: name *",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "      rule.ruleBehavior === 'allow' &&",
-      "replace": "      rule.ruleBehavior !== 'deny' &&"
+      "find": "  (body, name) => body === `${name} *`,",
+      "replace": "  (body, name) => body === `${name} **`,"
     },
     {
-      "name": "scan: source shown relative to the wrong directory",
+      "name": "shape: name -…*",
       "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
-      "find": "      const relativePath = relative(getCwd(), filePath)",
-      "replace": "      const relativePath = relative('/', filePath)"
+      "find": "  (body, name) => body.startsWith(`${name} -`) && body.endsWith('*'),",
+      "replace": "  (body, name) => body.startsWith(`${name} --`) && body.endsWith('*'),"
     },
     {
-      "name": "stash: session rules no longer stripped",
+      "name": "not dangerous: a dash argument without a trailing star",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  (body, name) => body.startsWith(`${name} -`) && body.endsWith('*'),",
+      "replace": "  (body, name) => body.startsWith(`${name} -`),"
+    },
+    {
+      "name": "not dangerous: versioned or path-qualified interpreters (finding 4)",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  (body, name) => body === `${name}:*`,",
+      "replace": "  (body, name) => body.endsWith(':*') && body.includes(name),"
+    },
+    {
+      "name": "not dangerous: wildcards broader than a name (finding 4)",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  (body, name) => body === name,",
+      "replace": "  (body, name) => body === name || (body.endsWith('*') && name.startsWith(body.slice(0, -1).trim())),"
+    },
+    {
+      "name": "PowerShell: the .exe spelling counts",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "    withExeSuffix(name),\n",
+      "replace": "    name,\n"
+    },
+    {
+      "name": "PowerShell: .exe goes on the first word",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  return [`${executable}.exe`, ...args].join(' ')",
+      "replace": "  return `${name}.exe`"
+    },
+    {
+      "name": "PowerShell: its own launchers are listed",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  'add-type',\n  'new-object',\n] as const",
+      "replace": "  'add-type',\n] as const"
+    },
+    {
+      "name": "PowerShell: Unix-only names do not count",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "[...CROSS_PLATFORM_CODE_EXEC, ...POWERSHELL_ONLY_LAUNCHERS]",
+      "replace": "[...DANGEROUS_BASH_PATTERNS, ...POWERSHELL_ONLY_LAUNCHERS]"
+    },
+    {
+      "name": "Bash: PowerShell-only names do not count",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  names: DANGEROUS_BASH_PATTERNS,",
+      "replace": "  names: [...DANGEROUS_BASH_PATTERNS, 'pwsh', 'iex'],"
+    },
+    {
+      "name": "Agent: the legacy Task name counts",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "return normalizeLegacyToolName(toolName) === AGENT_TOOL_NAME",
+      "replace": "return toolName === AGENT_TOOL_NAME"
+    },
+    {
+      "name": "Agent: names are case-sensitive",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "return normalizeLegacyToolName(toolName) === AGENT_TOOL_NAME",
+      "replace": "return normalizeLegacyToolName(toolName).toLowerCase() === 'agent'"
+    },
+    {
+      "name": "scan: only allow rules",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": ".filter(rule => rule.ruleBehavior === 'allow' && isDangerousRuleValue(rule.ruleValue))",
+      "replace": ".filter(rule => isDangerousRuleValue(rule.ruleValue))"
+    },
+    {
+      "name": "scan: loaded rules before --allowed-tools",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "return [...fromLoaded, ...fromCli]",
+      "replace": "return [...fromCli, ...fromLoaded]"
+    },
+    {
+      "name": "scan: a tool-wide rule is shown as Tool(*)",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "const wholeToolDisplay = (toolName: string): string => `${toolName}(*)`",
+      "replace": "const wholeToolDisplay = (toolName: string): string => toolName"
+    },
+    {
+      "name": "scan: settings file shown relative only when shorter",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "return fromCwd.length < file.length ? fromCwd : file",
+      "replace": "return fromCwd"
+    },
+    {
+      "name": "scan: relative to the current working directory",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "const fromCwd = relative(getCwd(), file)",
+      "replace": "const fromCwd = relative(process.cwd(), file)"
+    },
+    {
+      "name": "scan: a source with no file shows its name",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  if (!file) return source",
+      "replace": "  if (!file) return 'settings'"
+    },
+    {
+      "name": "scan: --allowed-tools source display",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "const CLI_ALLOWED_TOOLS_DISPLAY = '--allowed-tools'",
+      "replace": "const CLI_ALLOWED_TOOLS_DISPLAY = '--allowedTools'"
+    },
+    {
+      "name": "scan: --allowed-tools name and body are trimmed",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "return { toolName: name!.trim(), ruleContent: body?.trim() }",
+      "replace": "return { toolName: name!, ruleContent: body }"
+    },
+    {
+      "name": "scan: --allowed-tools display is the entry, or Name(*)",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "ruleDisplay: ruleValue.ruleContent ? entry : wholeToolDisplay(ruleValue.toolName),",
+      "replace": "ruleDisplay: entry,"
+    },
+    {
+      "name": "scan: an entry with trailing text is not read as a rule (end anchor)",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "const SIMPLE_CLI_ENTRY = /^([^(]+)(?:\\(([^)]*)\\))?$/",
+      "replace": "const SIMPLE_CLI_ENTRY = /^([^(]+)(?:\\(([^)]*)\\))?/"
+    },
+    {
+      "name": "fix 4 (finding 6): an entry with \")\" in its body goes through the rule parser",
+      "source": "src/permissions/permissionSetup/dangerousRuleDetection.ts",
+      "find": "  if (!simple) return permissionRuleValueFromString(entry.trim())",
+      "replace": "  if (!simple) return { toolName: '' }"
+    },
+    {
+      "name": "writable sources include session",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
-      "find": "    'session',\n",
-      "replace": "    'sessionx',\n"
+      "find": "  'session',\n  'cliArg',\n])",
+      "replace": "  'cliArg',\n])"
     },
     {
-      "name": "stash: flag/policy/command rules removed",
+      "name": "flag, policy and command rules stay in force (finding 5)",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
-      "find": "    if (!isPermissionUpdateDestination(perm.source)) {\n      continue\n    }",
-      "replace": "    if (false) {\n      continue\n    }"
+      "find": "  'session',\n  'cliArg',\n])",
+      "replace": "  'session',\n  'cliArg',\n  'policySettings',\n  'flagSettings',\n  'command',\n])"
     },
     {
-      "name": "stash: an existing stash is dropped when nothing is dangerous",
+      "name": "fix 1 (finding 1): removal matches the parsed rule, not the string",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
-      "find": "      strippedDangerousRules: context.strippedDangerousRules ?? {},",
-      "replace": "      strippedDangerousRules: {},"
+      "find": "const ruleKeyOfString = (stored: string): string =>\n  permissionRuleValueToString(permissionRuleValueFromString(stored))",
+      "replace": "const ruleKeyOfString = (stored: string): string => stored"
     },
     {
-      "name": "restore: stash not cleared",
+      "name": "fix 2 (finding 2): a second strip merges into the stash",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
-      "find": "  return { ...result, strippedDangerousRules: undefined }",
-      "replace": "  return result"
+      "find": "strippedDangerousRules: appendMissing(previous ?? {}, removed),",
+      "replace": "strippedDangerousRules: removed,"
     },
     {
-      "name": "restore: rules put back as ask rules",
+      "name": "fix 3 (finding 3): the restore skips strings already listed",
       "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
-      "find": "      behavior: 'allow',\n      destination: source as PermissionUpdateDestination,",
-      "replace": "      behavior: 'ask',\n      destination: source as PermissionUpdateDestination,"
+      "find": "      if (listed.has(stored)) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "every copy of a stripped string leaves the list",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "next[source] = list.filter(stored => !sourceKeys.has(ruleKeyOfString(stored)))",
+      "replace": "next[source] = list.filter((stored, at) => !sourceKeys.has(ruleKeyOfString(stored)) || list.indexOf(stored) !== at)"
+    },
+    {
+      "name": "the input context is not mutated",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "const next: RuleListsDraft = { ...allow }",
+      "replace": "const next = allow as RuleListsDraft"
+    },
+    {
+      "name": "nothing dangerous: the existing stash is kept",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "return { ...context, strippedDangerousRules: previous ?? {} }",
+      "replace": "return { ...context, strippedDangerousRules: {} }"
+    },
+    {
+      "name": "nothing dangerous: an empty stash is set",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "return { ...context, strippedDangerousRules: previous ?? {} }",
+      "replace": "return { ...context, strippedDangerousRules: previous }"
+    },
+    {
+      "name": "restore: no stash returns the same context",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "  if (!stash) return context",
+      "replace": "  if (!stash) return { ...context }"
+    },
+    {
+      "name": "restore: the stash is cleared",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "    strippedDangerousRules: undefined,",
+      "replace": "    strippedDangerousRules: stash,"
+    },
+    {
+      "name": "restore: empty lists add no key",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "    if (extra.length === 0) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "restore: stashed rules come after the kept ones",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "const list = [...(target[source] ?? [])]",
+      "replace": "const list: string[] = []"
+    },
+    {
+      "name": "removal: no findings returns the same context",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "  if (keys.size === 0) return context",
+      "replace": "  if (keys.size === 0) return { ...context }"
+    },
+    {
+      "name": "removal: the stash is not touched",
+      "source": "src/permissions/permissionSetup/dangerousRuleStash.ts",
+      "find": "return { ...context, alwaysAllowRules: removeByKey(context.alwaysAllowRules, keys).allow }",
+      "replace": "return { ...context, alwaysAllowRules: removeByKey(context.alwaysAllowRules, keys).allow, strippedDangerousRules: {} }"
     }
   ]
 }

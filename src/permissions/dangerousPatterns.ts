@@ -1,22 +1,10 @@
 /**
- * Pattern lists for dangerous shell-tool allow-rule prefixes.
- *
- * An allow rule like `Bash(python:*)` or `PowerShell(node:*)` lets the model
- * run arbitrary code via that interpreter, bypassing the auto-mode classifier.
- * These lists feed the isDangerous{Bash,PowerShell}Permission predicates in
- * permissionSetup.ts, which strip such rules at auto-mode entry.
- *
- * The matcher in each predicate handles the rule-shape variants (exact, `:*`,
- * trailing `*`, ` *`, ` -…*`). PS-specific cmdlet strings live in
- * isDangerousPowerShellPermission (permissionSetup.ts).
+ * Command names that hand the model arbitrary code execution. An allow rule
+ * for one of them would run before the auto-mode classifier sees the command.
+ * The order of both exports is part of their contract.
  */
 
-/**
- * Cross-platform code-execution entry points present on both Unix and Windows.
- * Shared to prevent the two lists drifting apart on interpreter additions.
- */
-export const CROSS_PLATFORM_CODE_EXEC = [
-  // Interpreters
+const SCRIPT_INTERPRETERS = [
   'python',
   'python3',
   'python2',
@@ -27,27 +15,29 @@ export const CROSS_PLATFORM_CODE_EXEC = [
   'perl',
   'php',
   'lua',
-  // Package runners
+] as const
+
+const PACKAGE_SCRIPT_RUNNERS = [
   'npx',
   'bunx',
   'npm run',
   'yarn run',
   'pnpm run',
   'bun run',
-  // Shells reachable from both (Git Bash / WSL on Windows, native on Unix)
-  'bash',
-  'sh',
-  // Remote arbitrary-command wrapper (native OpenSSH on Win10+)
-  'ssh',
+] as const
+
+const NESTED_OR_REMOTE_SHELLS = ['bash', 'sh', 'ssh'] as const
+
+/** Unix shells and command launchers that have no PowerShell counterpart. */
+const UNIX_COMMAND_LAUNCHERS = ['zsh', 'fish', 'eval', 'exec', 'env', 'xargs', 'sudo'] as const
+
+export const CROSS_PLATFORM_CODE_EXEC = [
+  ...SCRIPT_INTERPRETERS,
+  ...PACKAGE_SCRIPT_RUNNERS,
+  ...NESTED_OR_REMOTE_SHELLS,
 ] as const
 
 export const DANGEROUS_BASH_PATTERNS: readonly string[] = [
   ...CROSS_PLATFORM_CODE_EXEC,
-  'zsh',
-  'fish',
-  'eval',
-  'exec',
-  'env',
-  'xargs',
-  'sudo',
+  ...UNIX_COMMAND_LAUNCHERS,
 ]
