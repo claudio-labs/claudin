@@ -1,0 +1,251 @@
+{
+  "test": [
+    "src/permissions/permissionExplainer.characterization.test.ts",
+    "src/permissions/ui/PermissionExplanation.characterization.test.tsx",
+    "src/permissions/ui/PermissionDecisionDebugInfo.characterization.test.tsx",
+    "src/permissions/ui/PermissionDecisionDebugInfo.classifier.characterization.test.tsx"
+  ],
+  "source": "src/permissions/permissionExplainer.ts",
+  "probes": [
+    {
+      "name": "switch: unset config reads as off",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "permissionExplainerEnabled !== false",
+      "replace": "permissionExplainerEnabled === true"
+    },
+    {
+      "name": "switch: disabled still asks the model",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "if (!isPermissionExplainerEnabled()) {",
+      "replace": "if (!isPermissionExplainerEnabled() && Date.now() < 0) {"
+    },
+    {
+      "name": "input: strings get quoted",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "    return input\n  }",
+      "replace": "    return JSON.stringify(input)\n  }"
+    },
+    {
+      "name": "input: JSON loses its indent",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "jsonStringify(input, null, 2)",
+      "replace": "jsonStringify(input)"
+    },
+    {
+      "name": "context: newest first",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "contextParts.unshift(truncated)",
+      "replace": "contextParts.push(truncated)"
+    },
+    {
+      "name": "context: exact fit gets cut",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "textBlocks.length > remaining",
+      "replace": "textBlocks.length >= remaining"
+    },
+    {
+      "name": "context: budget never spent",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "totalChars += truncated.length",
+      "replace": "totalChars += 0"
+    },
+    {
+      "name": "prompt: tool line renamed",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "Tool: ${toolName}",
+      "replace": "Tool name: ${toolName}"
+    },
+    {
+      "name": "prompt: context header renamed",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "Recent conversation context:",
+      "replace": "Context:"
+    },
+    {
+      "name": "prompt: closing ask changed",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "Explain this command in context.",
+      "replace": "Explain it."
+    },
+    {
+      "name": "request: tool renamed",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "name: 'explain_command',\n",
+      "replace": "name: 'explain',\n"
+    },
+    {
+      "name": "request: tool choice no longer forced",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "tool_choice: { type: 'tool', name: 'explain_command' },",
+      "replace": "tool_choice: { type: 'auto' },"
+    },
+    {
+      "name": "request: signal dropped",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "      signal,\n    })",
+      "replace": "    })"
+    },
+    {
+      "name": "request: fixed small model",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "const model = getMainLoopModel()",
+      "replace": "const model = 'claude-haiku-4-5'"
+    },
+    {
+      "name": "answer: any risk level accepted",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "z.enum(['LOW', 'MEDIUM', 'HIGH'])",
+      "replace": "z.string()"
+    },
+    {
+      "name": "errors: failure not recorded",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "    logError(error)\n",
+      "replace": ""
+    },
+    {
+      "name": "errors: abort recorded as error",
+      "source": "src/permissions/permissionExplainer.ts",
+      "find": "if (signal.aborted) {",
+      "replace": "if (signal.aborted && Date.now() < 0) {"
+    },
+    {
+      "name": "loading text changed",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "const LOADING_MESSAGE = 'Loading explanation…';",
+      "replace": "const LOADING_MESSAGE = 'Loading…';"
+    },
+    {
+      "name": "LOW colour",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "case 'LOW':\n      return 'success';",
+      "replace": "case 'LOW':\n      return 'warning';"
+    },
+    {
+      "name": "HIGH label",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "return 'High risk';",
+      "replace": "return 'High';"
+    },
+    {
+      "name": "key bound to another action",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "\"confirm:toggleExplanation\"",
+      "replace": "\"confirm:toggleDebug\""
+    },
+    {
+      "name": "active while disabled",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "isActive: enabled",
+      "replace": "isActive: true"
+    },
+    {
+      "name": "toggle sticks open",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "setVisible(_temp)",
+      "replace": "setVisible(true)"
+    },
+    {
+      "name": "asks again on every open",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "if (!promise) {",
+      "replace": "if (promise !== undefined) {"
+    },
+    {
+      "name": "fallback dimming lost",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "<Text dimColor={true}>Explanation unavailable</Text>",
+      "replace": "<Text>Explanation unavailable</Text>"
+    },
+    {
+      "name": "panel ignores visibility",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "if (!visible || !promise) {",
+      "replace": "if (!promise) {"
+    },
+    {
+      "name": "conversation not passed",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "messages: props.messages,",
+      "replace": "messages: undefined,"
+    },
+    {
+      "name": "classifier needs both flags",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "(feature('BASH_CLASSIFIER') || feature('TRANSCRIPT_CLASSIFIER'))",
+      "replace": "(feature('BASH_CLASSIFIER') && feature('TRANSCRIPT_CLASSIFIER'))"
+    },
+    {
+      "name": "rule source wording",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "rule from ${getSettingSourceDisplayNameLowercase",
+      "replace": "from ${getSettingSourceDisplayNameLowercase"
+    },
+    {
+      "name": "hook name loses bold",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "`${chalk.bold(decisionReason.hookName)} hook`",
+      "replace": "`${decisionReason.hookName} hook`"
+    },
+    {
+      "name": "tick for asks",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "result.behavior === \"allow\" ? color(\"success\", theme)",
+      "replace": "result.behavior !== \"deny\" ? color(\"success\", theme)"
+    },
+    {
+      "name": "message row on deny dropped",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "permissionResult.behavior !== \"allow\" &&",
+      "replace": "permissionResult.behavior === \"ask\" &&"
+    },
+    {
+      "name": "last mode loses",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "updates.findLast(u => u.type === 'setMode')",
+      "replace": "updates.find(u => u.type === 'setMode')"
+    },
+    {
+      "name": "suggested-rule filter ignores content",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "suggested.ruleContent === u.rule.ruleValue.ruleContent",
+      "replace": "suggested.ruleContent !== null"
+    },
+    {
+      "name": "fix line unlabelled",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "Fix: {u_1.fix}",
+      "replace": "{u_1.fix}"
+    },
+    {
+      "name": "missing reason wording",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "<Text>undefined</Text>",
+      "replace": "<Text>none</Text>"
+    },
+    {
+      "name": "unreachable header wording",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "Unreachable Rules (",
+      "replace": "Unreachable ("
+    },
+    {
+      "name": "tool-name filter off",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "u_0.rule.ruleValue.toolName === toolName",
+      "replace": "u_0.rule.ruleValue.toolName !== null"
+    },
+    {
+      "name": "gutter widened",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "minWidth={10}><Text dimColor={true}>Behavior ",
+      "replace": "minWidth={12}><Text dimColor={true}>Behavior "
+    },
+    {
+      "name": "suggested rules joined without commas",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "rules.map(_temp).join(\", \")",
+      "replace": "rules.map(_temp).join(\" \")"
+    }
+  ]
+}
