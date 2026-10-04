@@ -521,7 +521,7 @@ export type GlobalConfig = {
   }
 
   // Permission explainer configuration
-  permissionExplainerEnabled?: boolean // Enable Haiku-generated explanations for permission requests (default: true)
+  permissionExplainerEnabled?: boolean // Enable ctrl+e explanations of shell permission requests, asked of the session's main-loop model (default: true)
 
   // Teammate spawn mode: 'auto' | 'tmux' | 'in-process'
   teammateMode?: 'auto' | 'tmux' | 'in-process' // How to spawn teammates (default: 'auto')

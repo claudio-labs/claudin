@@ -1,13 +1,17 @@
-import { z } from 'zod/v4'
-import type { AssistantMessage, Message } from 'src/shared/types/message.js'
+/**
+ * The ctrl+e explanation of a shell command in a permission dialog.
+ *
+ * The answer is advice for the reader only: nothing here feeds the permission
+ * decision, its suggested rules or the options the dialog offers.
+ */
+import type { Message } from 'src/shared/types/message.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { errorMessage } from 'src/shared/errors.js'
-import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { sideQuery } from 'src/agent/sideQuery.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
+import { buildExplainTool, EXPLAIN_TOOL_NAME, parseExplanationReply } from 'src/permissions/explainer/answer.js'
+import { buildExplainerPrompt } from 'src/permissions/explainer/prompt.js'
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 
@@ -26,109 +30,19 @@ type GenerateExplanationParams = {
   signal: AbortSignal
 }
 
-const SYSTEM_PROMPT = `Analyze shell commands and explain what they do, why you're running them, and potential risks.`
+const EXPLAINER_SYSTEM_PROMPT =
+  'You explain shell commands to the user: what they do, why you are running them, and the risk each one carries.'
 
-// Tool definition for forced structured output (no beta required)
-const EXPLAIN_COMMAND_TOOL = {
-  name: 'explain_command',
-  description: 'Provide an explanation of a shell command',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      explanation: {
-        type: 'string',
-        description: 'What this command does (1-2 sentences)',
-      },
-      reasoning: {
-        type: 'string',
-        description:
-          'Why YOU are running this command. Start with "I" - e.g. "I need to check the file contents"',
-      },
-      risk: {
-        type: 'string',
-        description: 'What could go wrong, under 15 words',
-      },
-      riskLevel: {
-        type: 'string',
-        enum: ['LOW', 'MEDIUM', 'HIGH'],
-        description:
-          'LOW (safe dev workflows), MEDIUM (recoverable changes), HIGH (dangerous/irreversible)',
-      },
-    },
-    required: ['explanation', 'reasoning', 'risk', 'riskLevel'],
-  },
-}
-
-// Zod schema for parsing and validating the response
-const RiskAssessmentSchema = lazySchema(() =>
-  z.object({
-    riskLevel: z.enum(['LOW', 'MEDIUM', 'HIGH']),
-    explanation: z.string(),
-    reasoning: z.string(),
-    risk: z.string(),
-  }),
-)
-
-function formatToolInput(input: unknown): string {
-  if (typeof input === 'string') {
-    return input
-  }
-  try {
-    return jsonStringify(input, null, 2)
-  } catch {
-    return String(input)
-  }
-}
-
-/**
- * Extract recent conversation context from messages for the explainer.
- * Returns a summary of recent assistant messages to provide context
- * for "why" this command is being run.
- */
-function extractConversationContext(
-  messages: Message[],
-  maxChars = 1000,
-): string {
-  // Get recent assistant messages (they contain Claude's reasoning)
-  const assistantMessages = messages
-    .filter((m): m is AssistantMessage => m.type === 'assistant')
-    .slice(-3) // Last 3 assistant messages
-
-  const contextParts: string[] = []
-  let totalChars = 0
-
-  for (const msg of assistantMessages.reverse()) {
-    // Extract text content from assistant message
-    const textBlocks = msg.message.content
-      .filter(c => c.type === 'text')
-      .map(c => ('text' in c ? c.text : ''))
-      .join(' ')
-
-    if (textBlocks && totalChars < maxChars) {
-      const remaining = maxChars - totalChars
-      const truncated =
-        textBlocks.length > remaining
-          ? textBlocks.slice(0, remaining) + '...'
-          : textBlocks
-      contextParts.unshift(truncated)
-      totalChars += truncated.length
-    }
-  }
-
-  return contextParts.join('\n\n')
-}
-
-/**
- * Check if the permission explainer feature is enabled.
- * Enabled by default; users can opt out via config.
- */
+/** On unless the user switched it off; an unset key counts as on. */
 export function isPermissionExplainerEnabled(): boolean {
   return getGlobalConfig().permissionExplainerEnabled !== false
 }
 
 /**
- * Generate a permission explanation using Haiku with structured output.
- * Returns null if the feature is disabled, request is aborted, or an error occurs.
+ * Asks the session's main-loop model, the one the user picked, so the question
+ * goes to no provider the session has not already used. Resolves to null when
+ * switched off, when the answer is unusable, or when the call fails; it never
+ * rejects.
  */
 export async function generatePermissionExplanation({
   toolName,
@@ -137,80 +51,27 @@ export async function generatePermissionExplanation({
   messages,
   signal,
 }: GenerateExplanationParams): Promise<PermissionExplanation | null> {
-  // Check if feature is enabled
-  if (!isPermissionExplainerEnabled()) {
-    return null
-  }
+  if (!isPermissionExplainerEnabled()) return null
 
-  const startTime = Date.now()
-
+  const tool = buildExplainTool()
+  const startedAt = Date.now()
   try {
-    const formattedInput = formatToolInput(toolInput)
-    const conversationContext = messages?.length
-      ? extractConversationContext(messages)
-      : ''
-
-    const userPrompt = `Tool: ${toolName}
-${toolDescription ? `Description: ${toolDescription}\n` : ''}
-Input:
-${formattedInput}
-${conversationContext ? `\nRecent conversation context:\n${conversationContext}` : ''}
-
-Explain this command in context.`
-
-    const model = getMainLoopModel()
-
-    // Use sideQuery with forced tool choice for guaranteed structured output
-    const response = await sideQuery({
-      model,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
-      tools: [EXPLAIN_COMMAND_TOOL],
-      tool_choice: { type: 'tool', name: 'explain_command' },
+    const reply = await sideQuery({
+      model: getMainLoopModel(),
+      system: EXPLAINER_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildExplainerPrompt({ toolName, toolInput, toolDescription, messages }) }],
+      tools: [tool],
+      tool_choice: { type: 'tool', name: EXPLAIN_TOOL_NAME },
       signal,
     })
-
-    const latencyMs = Date.now() - startTime
+    const explanation = parseExplanationReply(reply)
     logForDebugging(
-      `Permission explainer: API returned in ${latencyMs}ms, stop_reason=${response.stop_reason}`,
+      `permission explainer: ${Date.now() - startedAt}ms, stop=${reply.stop_reason}, ${explanation ? 'usable' : 'unusable'} answer`,
     )
-
-    // Extract structured data from tool use block
-    const toolUseBlock = response.content.find(c => c.type === 'tool_use')
-    if (toolUseBlock && toolUseBlock.type === 'tool_use') {
-      logForDebugging(
-        `Permission explainer: tool input: ${jsonStringify(toolUseBlock.input).slice(0, 500)}`,
-      )
-      const result = RiskAssessmentSchema().safeParse(toolUseBlock.input)
-
-      if (result.success) {
-        const explanation: PermissionExplanation = {
-          riskLevel: result.data.riskLevel,
-          explanation: result.data.explanation,
-          reasoning: result.data.reasoning,
-          risk: result.data.risk,
-        }
-
-        logForDebugging(
-          `Permission explainer: ${explanation.riskLevel} risk for ${toolName} (${latencyMs}ms)`,
-        )
-        return explanation
-      }
-    }
-
-    logForDebugging(`Permission explainer: no parsed output in response`)
-    return null
+    return explanation
   } catch (error) {
-    const latencyMs = Date.now() - startTime
-
-    // Don't log aborted requests as errors
-    if (signal.aborted) {
-      logForDebugging(`Permission explainer: request aborted for ${toolName}`)
-      return null
-    }
-
-    logForDebugging(`Permission explainer error: ${errorMessage(error)}`)
-    logError(error)
+    // A dialog that went away is not a failure worth recording.
+    if (!signal.aborted) logError(error)
     return null
   }
 }

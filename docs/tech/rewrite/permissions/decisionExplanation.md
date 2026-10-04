@@ -315,3 +315,26 @@ called. The prompt is pinned only by this unit's suites, by facts.
   unreachable-rule filter as a pure function `(rules, suggestions, toolName)`.
 - **Tests.** The characterization suites unchanged, plus unit tests for the
   prompt builder, the answer parser and the unreachable-rule filter.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**Code.**
+- `permissionExplainer.ts` holds the switch and the model call.
+- New `explainer/answer.ts` drives the tool definition and the answer parser from one field table, and new `explainer/prompt.ts` is a pure prompt builder.
+- Both panels are hand-written. Small rows live in `ui/decisionDebug/`, with a pure unreachable-rule filter.
+- The four characterization suites pass.
+
+**Fixes, each with a test.**
+- Finding 3, debug labels:
+  - "Suggestions None" replaces "Suggestion None".
+  - The directories label is `Dirs`, so it fits the 10-column gutter.
+  - The two pinned rows that expected `Directories` now expect `Dirs`.
+- Finding 1's comments now say the explanation comes from the main-loop model, including the comment on `permissionExplainerEnabled` in `platform/config/config/types.ts`.
+
+**Kept.** Finding 4 keeps the explanation advisory. A new test fails if any production module other than the panel imports the explainer. Findings 2 and 5 are tracked.
+
+**Probes.** 103 in `rewrite-permissions-decisionExplanation.json`.
+
+**Residue, reviewed.** 17 lines of Claude Code remain: the `RiskLevel` and `PermissionExplanation` types and the explainer's signature.

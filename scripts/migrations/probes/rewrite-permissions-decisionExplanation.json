@@ -3,249 +3,621 @@
     "src/permissions/permissionExplainer.characterization.test.ts",
     "src/permissions/ui/PermissionExplanation.characterization.test.tsx",
     "src/permissions/ui/PermissionDecisionDebugInfo.characterization.test.tsx",
-    "src/permissions/ui/PermissionDecisionDebugInfo.classifier.characterization.test.tsx"
+    "src/permissions/ui/PermissionDecisionDebugInfo.classifier.characterization.test.tsx",
+    "src/permissions/explainer/explainer.test.ts",
+    "src/permissions/ui/decisionDebug/unreachableRules.test.ts",
+    "src/permissions/ui/PermissionDecisionDebugInfo.fixes.test.tsx",
+    "src/permissions/ui/decisionExplanation.styling.test.tsx"
   ],
   "source": "src/permissions/permissionExplainer.ts",
   "probes": [
     {
-      "name": "switch: unset config reads as off",
-      "source": "src/permissions/permissionExplainer.ts",
+      "name": "switch: a false setting no longer turns it off (fail open)",
       "find": "permissionExplainerEnabled !== false",
-      "replace": "permissionExplainerEnabled === true"
+      "replace": "permissionExplainerEnabled !== 'off'"
     },
     {
-      "name": "switch: disabled still asks the model",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "if (!isPermissionExplainerEnabled()) {",
-      "replace": "if (!isPermissionExplainerEnabled() && Date.now() < 0) {"
+      "name": "switch: the call ignores the switch",
+      "find": "if (!isPermissionExplainerEnabled()) return null",
+      "replace": "void 0"
     },
     {
-      "name": "input: strings get quoted",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "    return input\n  }",
-      "replace": "    return JSON.stringify(input)\n  }"
+      "name": "request: a fixed small model instead of the main-loop model",
+      "find": "model: getMainLoopModel(),",
+      "replace": "model: 'claude-haiku-4-5',"
     },
     {
-      "name": "input: JSON loses its indent",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "jsonStringify(input, null, 2)",
-      "replace": "jsonStringify(input)"
+      "name": "request: the system text loses what the commands do",
+      "find": "what they do, why you are running them",
+      "replace": "why you are running them"
     },
     {
-      "name": "context: newest first",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "contextParts.unshift(truncated)",
-      "replace": "contextParts.push(truncated)"
-    },
-    {
-      "name": "context: exact fit gets cut",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "textBlocks.length > remaining",
-      "replace": "textBlocks.length >= remaining"
-    },
-    {
-      "name": "context: budget never spent",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "totalChars += truncated.length",
-      "replace": "totalChars += 0"
-    },
-    {
-      "name": "prompt: tool line renamed",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "Tool: ${toolName}",
-      "replace": "Tool name: ${toolName}"
-    },
-    {
-      "name": "prompt: context header renamed",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "Recent conversation context:",
-      "replace": "Context:"
-    },
-    {
-      "name": "prompt: closing ask changed",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "Explain this command in context.",
-      "replace": "Explain it."
-    },
-    {
-      "name": "request: tool renamed",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "name: 'explain_command',\n",
-      "replace": "name: 'explain',\n"
-    },
-    {
-      "name": "request: tool choice no longer forced",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "tool_choice: { type: 'tool', name: 'explain_command' },",
+      "name": "request: the tool is no longer forced",
+      "find": "tool_choice: { type: 'tool', name: EXPLAIN_TOOL_NAME },",
       "replace": "tool_choice: { type: 'auto' },"
     },
     {
-      "name": "request: signal dropped",
-      "source": "src/permissions/permissionExplainer.ts",
+      "name": "request: the caller's signal is replaced",
       "find": "      signal,\n    })",
-      "replace": "    })"
+      "replace": "      signal: new AbortController().signal,\n    })"
     },
     {
-      "name": "request: fixed small model",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "const model = getMainLoopModel()",
-      "replace": "const model = 'claude-haiku-4-5'"
+      "name": "request: an extra field travels",
+      "find": "      tools: [tool],",
+      "replace": "      tools: [tool],\n      max_tokens: 512,"
     },
     {
-      "name": "answer: any risk level accepted",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "z.enum(['LOW', 'MEDIUM', 'HIGH'])",
-      "replace": "z.string()"
+      "name": "failure: an aborted call is recorded as an error",
+      "find": "if (!signal.aborted) logError(error)",
+      "replace": "logError(error)"
     },
     {
-      "name": "errors: failure not recorded",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "    logError(error)\n",
-      "replace": ""
+      "name": "failure: a failed call is not recorded",
+      "find": "if (!signal.aborted) logError(error)",
+      "replace": "if (!signal.aborted) void error"
     },
     {
-      "name": "errors: abort recorded as error",
-      "source": "src/permissions/permissionExplainer.ts",
-      "find": "if (signal.aborted) {",
-      "replace": "if (signal.aborted && Date.now() < 0) {"
+      "name": "failure: the call rejects instead of resolving to null",
+      "find": "    return null\n  }\n}",
+      "replace": "    throw error\n  }\n}"
     },
     {
-      "name": "loading text changed",
-      "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "const LOADING_MESSAGE = 'Loading explanation…';",
-      "replace": "const LOADING_MESSAGE = 'Loading…';"
+      "name": "answer: any risk level is accepted (fail open)",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "return spec.oneOf === undefined || spec.oneOf.includes(value)",
+      "replace": "return true"
     },
     {
-      "name": "LOW colour",
-      "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "case 'LOW':\n      return 'success';",
-      "replace": "case 'LOW':\n      return 'warning';"
+      "name": "answer: a non-string field is accepted (fail open)",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "if (typeof value !== 'string') return false",
+      "replace": "if (value === undefined) return false"
     },
     {
-      "name": "HIGH label",
-      "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "return 'High risk';",
-      "replace": "return 'High';"
+      "name": "answer: a missing risk field is accepted (fail open)",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "  for (const name of FIELD_NAMES) {",
+      "replace": "  for (const name of FIELD_NAMES.filter(field => field !== 'risk')) {"
     },
     {
-      "name": "key bound to another action",
-      "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "\"confirm:toggleExplanation\"",
-      "replace": "\"confirm:toggleDebug\""
+      "name": "answer: a non-object input is accepted (fail open)",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "if (typeof input !== 'object' || input === null) return null",
+      "replace": "if (input === undefined) return null"
     },
     {
-      "name": "active while disabled",
+      "name": "answer: extra fields leak through",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "  return {\n    riskLevel: record.riskLevel as RiskLevel,",
+      "replace": "  return {\n    ...record,\n    riskLevel: record.riskLevel as RiskLevel,"
+    },
+    {
+      "name": "answer: the last tool call is read instead of the first",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "reply.content.find(block",
+      "replace": "reply.content.findLast(block"
+    },
+    {
+      "name": "answer: a text-only reply is read as a tool call (fail open)",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "block.type === 'tool_use'",
+      "replace": "block.type !== 'tool_use'"
+    },
+    {
+      "name": "tool: a fourth risk level",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "['LOW', 'MEDIUM', 'HIGH'] as const",
+      "replace": "['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const"
+    },
+    {
+      "name": "tool: a field is no longer required",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "required: [...FIELD_NAMES]",
+      "replace": "required: FIELD_NAMES.slice(1)"
+    },
+    {
+      "name": "tool: renamed",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "export const EXPLAIN_TOOL_NAME = 'explain_command'",
+      "replace": "export const EXPLAIN_TOOL_NAME = 'explain'"
+    },
+    {
+      "name": "tool: its description no longer names a shell command",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "'Explain a shell command to the user'",
+      "replace": "'Explain a command to the user'"
+    },
+    {
+      "name": "tool: the explanation length is dropped",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "in 1-2 sentences",
+      "replace": "briefly"
+    },
+    {
+      "name": "tool: the reasoning no longer starts with I",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "Start with \"I\", as in",
+      "replace": "For example"
+    },
+    {
+      "name": "tool: the risk word limit is dropped",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "in under 15 words",
+      "replace": "briefly"
+    },
+    {
+      "name": "tool: the MEDIUM level loses its meaning",
+      "source": "src/permissions/explainer/answer.ts",
+      "find": "MEDIUM (recoverable changes)",
+      "replace": "MEDIUM"
+    },
+    {
+      "name": "prompt: the tool line is renamed",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "const head = [`Tool: ",
+      "replace": "const head = [`Tool name: "
+    },
+    {
+      "name": "prompt: the description line is dropped",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "if (toolDescription) head.push(",
+      "replace": "if (toolDescription === undefined) head.push("
+    },
+    {
+      "name": "prompt: the input shares the header line",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "head.push('Input:', formatToolInput(toolInput))",
+      "replace": "head.push('Input: ' + formatToolInput(toolInput))"
+    },
+    {
+      "name": "prompt: a string input is quoted",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "if (typeof input === 'string') return input",
+      "replace": "if (typeof input === 'string') return JSON.stringify(input)"
+    },
+    {
+      "name": "prompt: JSON loses its indentation",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "JSON.stringify(input, null, 2)",
+      "replace": "JSON.stringify(input)"
+    },
+    {
+      "name": "prompt: an unencodable input is dropped",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "    return String(input)",
+      "replace": "    return ''"
+    },
+    {
+      "name": "prompt: the context section is always added",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "if (context) sections.push(",
+      "replace": "if (true) sections.push("
+    },
+    {
+      "name": "prompt: the closing ask changes",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "const CLOSING_ASK = 'Explain this command in context.'",
+      "replace": "const CLOSING_ASK = 'Explain this command.'"
+    },
+    {
+      "name": "prompt: sections are not a blank line apart",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "return sections.join('\\n\\n')",
+      "replace": "return sections.join('\\n')"
+    },
+    {
+      "name": "context: user turns travel",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": ".filter(isAssistantTurn)",
+      "replace": ".filter(message => message.type !== 'progress')"
+    },
+    {
+      "name": "context: four turns instead of three",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "const CONTEXT_TURNS = 3",
+      "replace": "const CONTEXT_TURNS = 4"
+    },
+    {
+      "name": "context: newest first instead of oldest first",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "      kept.unshift(text)\n",
+      "replace": "      kept.push(text)\n"
+    },
+    {
+      "name": "context: turns not a blank line apart",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "return kept.join('\\n\\n')",
+      "replace": "return kept.join('\\n')"
+    },
+    {
+      "name": "context: text blocks joined without a space",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "return texts.join(' ')",
+      "replace": "return texts.join('')"
+    },
+    {
+      "name": "context: non-text blocks travel",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "if (block.type === 'text') texts.push(block.text)",
+      "replace": "texts.push(block.type === 'text' ? block.text : block.type)"
+    },
+    {
+      "name": "context: an empty turn adds a paragraph",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "    .filter(text => text !== '')\n",
+      "replace": "\n"
+    },
+    {
+      "name": "context: a larger budget",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "export const CONTEXT_BUDGET = 1000",
+      "replace": "export const CONTEXT_BUDGET = 1200"
+    },
+    {
+      "name": "context: the cut is not marked",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "const CUT_MARK = '...'",
+      "replace": "const CUT_MARK = ''"
+    },
+    {
+      "name": "context: an exact fit is cut",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "if (text.length <= left) {",
+      "replace": "if (text.length < left) {"
+    },
+    {
+      "name": "context: whole turns do not spend the budget",
+      "source": "src/permissions/explainer/prompt.ts",
+      "find": "      left -= text.length\n",
+      "replace": "\n"
+    },
+    {
+      "name": "toggle: ctrl+e works with the switch off (fail open)",
       "source": "src/permissions/ui/PermissionExplanation.tsx",
       "find": "isActive: enabled",
       "replace": "isActive: true"
     },
     {
-      "name": "toggle sticks open",
+      "name": "toggle: the model is asked on every open",
       "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "setVisible(_temp)",
-      "replace": "setVisible(true)"
+      "find": "if (!request.current) {",
+      "replace": "if (true) {"
     },
     {
-      "name": "asks again on every open",
+      "name": "toggle: starts open",
       "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "if (!promise) {",
-      "replace": "if (promise !== undefined) {"
+      "find": "const [visible, setVisible] = useState(false);",
+      "replace": "const [visible, setVisible] = useState(true);"
     },
     {
-      "name": "fallback dimming lost",
+      "name": "toggle: ctrl+e never closes",
       "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "<Text dimColor={true}>Explanation unavailable</Text>",
+      "find": "setVisible(shown => !shown);",
+      "replace": "setVisible(true);"
+    },
+    {
+      "name": "toggle: the request is cancelled at once",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "const { signal } = new AbortController();",
+      "replace": "const controller = new AbortController(); controller.abort(); const { signal } = controller;"
+    },
+    {
+      "name": "panel: paints while hidden",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "if (!visible || !promise) return null;",
+      "replace": "if (!promise) return null;"
+    },
+    {
+      "name": "panel: no blank line above",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "<Box flexDirection=\"column\" marginTop={1}>",
+      "replace": "<Box flexDirection=\"column\">"
+    },
+    {
+      "name": "panel: the reasoning replaces the explanation",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "<Text>{explanation.explanation}</Text>",
+      "replace": "<Text>{explanation.reasoning}</Text>"
+    },
+    {
+      "name": "panel: LOW reads a different label",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "LOW: { text: 'Low risk', color: 'success' }",
+      "replace": "LOW: { text: 'Low', color: 'success' }"
+    },
+    {
+      "name": "panel: MEDIUM in the error colour",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "MEDIUM: { text: 'Med risk', color: 'warning' }",
+      "replace": "MEDIUM: { text: 'Med risk', color: 'error' }"
+    },
+    {
+      "name": "panel: HIGH in the warning colour",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "HIGH: { text: 'High risk', color: 'error' }",
+      "replace": "HIGH: { text: 'High risk', color: 'warning' }"
+    },
+    {
+      "name": "panel: the risk text is coloured too",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "<Text color={label.color}>{label.text}:</Text> {risk}",
+      "replace": "<Text color={label.color}>{label.text}: {risk}</Text>"
+    },
+    {
+      "name": "panel: the fallback is not dimmed",
+      "source": "src/permissions/ui/PermissionExplanation.tsx",
+      "find": "<Text dimColor>Explanation unavailable</Text>",
       "replace": "<Text>Explanation unavailable</Text>"
     },
     {
-      "name": "panel ignores visibility",
+      "name": "panel: the loading text changes",
       "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "if (!visible || !promise) {",
-      "replace": "if (!promise) {"
+      "find": "const LOADING_TEXT = 'Loading explanation…';",
+      "replace": "const LOADING_TEXT = 'Loading…';"
     },
     {
-      "name": "conversation not passed",
-      "source": "src/permissions/ui/PermissionExplanation.tsx",
-      "find": "messages: props.messages,",
-      "replace": "messages: undefined,"
+      "name": "debug rows: labels left-aligned",
+      "source": "src/permissions/ui/decisionDebug/Row.tsx",
+      "find": "justifyContent=\"flex-end\"",
+      "replace": "justifyContent=\"flex-start\""
     },
     {
-      "name": "classifier needs both flags",
+      "name": "debug rows: a wider gutter",
+      "source": "src/permissions/ui/decisionDebug/Row.tsx",
+      "find": "export const GUTTER_WIDTH = 10;",
+      "replace": "export const GUTTER_WIDTH = 12;"
+    },
+    {
+      "name": "debug rows: two spaces before the value",
+      "source": "src/permissions/ui/decisionDebug/Row.tsx",
+      "find": "<Box marginLeft={1} flexDirection=\"column\">",
+      "replace": "<Box marginLeft={2} flexDirection=\"column\">"
+    },
+    {
+      "name": "debug: allow shows a message row",
       "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "(feature('BASH_CLASSIFIER') || feature('TRANSCRIPT_CLASSIFIER'))",
-      "replace": "(feature('BASH_CLASSIFIER') && feature('TRANSCRIPT_CLASSIFIER'))"
+      "find": "{permissionResult.behavior !== 'allow' ? <Row label=\"Message\">",
+      "replace": "{true ? <Row label=\"Message\">"
     },
     {
-      "name": "rule source wording",
+      "name": "debug: a missing reason reads none",
       "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "rule from ${getSettingSourceDisplayNameLowercase",
-      "replace": "from ${getSettingSourceDisplayNameLowercase"
+      "find": "if (!reason) return <Text>undefined</Text>;",
+      "replace": "if (!reason) return <Text>none</Text>;"
     },
     {
-      "name": "hook name loses bold",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "`${chalk.bold(decisionReason.hookName)} hook`",
-      "replace": "`${decisionReason.hookName} hook`"
+      "name": "reason: the rule source is raw",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "getSettingSourceDisplayNameLowercase(rule.source)",
+      "replace": "String(rule.source)"
     },
     {
-      "name": "tick for asks",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "result.behavior === \"allow\" ? color(\"success\", theme)",
-      "replace": "result.behavior !== \"deny\" ? color(\"success\", theme)"
+      "name": "reason: the mode is raw",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "permissionModeTitle(mode)",
+      "replace": "String(mode)"
     },
     {
-      "name": "message row on deny dropped",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "permissionResult.behavior !== \"allow\" &&",
-      "replace": "permissionResult.behavior === \"ask\" &&"
+      "name": "reason: sandbox override wording",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "'Requires permission to bypass sandbox'",
+      "replace": "'Sandbox bypass'"
     },
     {
-      "name": "last mode loses",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "updates.findLast(u => u.type === 'setMode')",
-      "replace": "updates.find(u => u.type === 'setMode')"
+      "name": "reason: workingDir text dropped",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "workingDir: ({ reason }) => reason,",
+      "replace": "workingDir: () => 'workingDir',"
     },
     {
-      "name": "suggested-rule filter ignores content",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "suggested.ruleContent === u.rule.ruleValue.ruleContent",
-      "replace": "suggested.ruleContent !== null"
+      "name": "reason: safetyCheck text dropped",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "safetyCheck: ({ reason }) => reason,",
+      "replace": "safetyCheck: () => 'safetyCheck',"
     },
     {
-      "name": "fix line unlabelled",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "Fix: {u_1.fix}",
-      "replace": "{u_1.fix}"
+      "name": "reason: other text dropped",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "other: ({ reason }) => reason,",
+      "replace": "other: () => 'other',"
     },
     {
-      "name": "missing reason wording",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "<Text>undefined</Text>",
-      "replace": "<Text>none</Text>"
+      "name": "reason: asyncAgent text dropped",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "asyncAgent: ({ reason }) => reason,",
+      "replace": "asyncAgent: () => 'asyncAgent',"
     },
     {
-      "name": "unreachable header wording",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "Unreachable Rules (",
-      "replace": "Unreachable ("
+      "name": "reason: prompt tool wording",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "'permission prompt tool'",
+      "replace": "'prompt tool'"
     },
     {
-      "name": "tool-name filter off",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "u_0.rule.ruleValue.toolName === toolName",
-      "replace": "u_0.rule.ruleValue.toolName !== null"
+      "name": "reason: the hook reason is dropped",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "reason ? `hook: ",
+      "replace": "false ? `hook: "
     },
     {
-      "name": "gutter widened",
-      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "minWidth={10}><Text dimColor={true}>Behavior ",
-      "replace": "minWidth={12}><Text dimColor={true}>Behavior "
+      "name": "reason: a hook without reason gets a colon",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": ": 'hook'",
+      "replace": ": 'hook:'"
     },
     {
-      "name": "suggested rules joined without commas",
+      "name": "reason: names are not bold",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "<Text bold>{name}</Text> {rest}",
+      "replace": "<Text>{name}</Text> {rest}"
+    },
+    {
+      "name": "reason: the bold runs over the following words",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "<Text bold>{name}</Text> {rest}",
+      "replace": "<Text bold>{name} {rest}</Text>"
+    },
+    {
+      "name": "reason: classifier shown without the build flags",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "(classifierReasonsShown() ?",
+      "replace": "(true ?"
+    },
+    {
+      "name": "reason: BASH_CLASSIFIER hides the classifier",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "if (feature('BASH_CLASSIFIER')) return true;",
+      "replace": "if (feature('BASH_CLASSIFIER')) return false;"
+    },
+    {
+      "name": "reason: TRANSCRIPT_CLASSIFIER hides the classifier",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "if (feature('TRANSCRIPT_CLASSIFIER')) return true;",
+      "replace": "if (feature('TRANSCRIPT_CLASSIFIER')) return false;"
+    },
+    {
+      "name": "reason: classifier wording",
+      "source": "src/permissions/ui/decisionDebug/reasonLine.tsx",
+      "find": "`classifier: ",
+      "replace": "`classifier said: "
+    },
+    {
+      "name": "compound: an ask subcommand gets a tick (fail open)",
       "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
-      "find": "rules.map(_temp).join(\", \")",
-      "replace": "rules.map(_temp).join(\" \")"
+      "find": "const allowed = result.behavior === 'allow';",
+      "replace": "const allowed = result.behavior !== 'deny';"
+    },
+    {
+      "name": "compound: the cross in the warning colour",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "allowed ? 'success' : 'error'",
+      "replace": "allowed ? 'success' : 'warning'"
+    },
+    {
+      "name": "compound: the reason line loses its corner",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "{line ? <Text>{'⎿  '}{line}</Text> : null}",
+      "replace": "{line ? <Text>{line}</Text> : null}"
+    },
+    {
+      "name": "compound: a nested compound reason is drawn",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "reason && reason.type !== 'subcommandResults' ? reasonLine(reason) : null",
+      "replace": "reason ? String(reason.type) : null"
+    },
+    {
+      "name": "compound: a suggestion line with no rules",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "{suggested.length > 0 ? (",
+      "replace": "{true ? ("
+    },
+    {
+      "name": "compound: suggestion wording",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "'⎿  Suggested rules: '",
+      "replace": "'⎿  Rules: '"
+    },
+    {
+      "name": "compound: suggested rules not bold",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "<Text bold>{permissionRuleValueToString(rule)}</Text>",
+      "replace": "<Text>{permissionRuleValueToString(rule)}</Text>"
+    },
+    {
+      "name": "compound: suggested rules not comma separated",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "{index > 0 ? ', ' : ''}",
+      "replace": "{index > 0 ? ' ' : ''}"
+    },
+    {
+      "name": "suggestions: the singular label comes back (finding 3)",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "return <Text>Suggestions None</Text>;",
+      "replace": "return <Text>Suggestion None</Text>;"
+    },
+    {
+      "name": "suggestions: unlistable updates get an empty heading (finding 3)",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "if (rules.length === 0 && directories.length === 0 && mode === undefined)",
+      "replace": "if (updates.length === 0)"
+    },
+    {
+      "name": "suggestions: the overflowing directories label comes back (finding 3)",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "<Row label=\"Dirs\">",
+      "replace": "<Row label={'Directories' as 'Dirs'}>"
+    },
+    {
+      "name": "suggestions: removed directories are listed",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "update.type === 'addDirectories' ? update.directories : []",
+      "replace": "'directories' in update ? update.directories : []"
+    },
+    {
+      "name": "suggestions: the first mode wins",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "if (update.type === 'setMode') mode = update.mode;",
+      "replace": "if (update.type === 'setMode') mode ??= update.mode;"
+    },
+    {
+      "name": "suggestions: the mode is raw",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "<Row label=\"Mode\">{permissionModeTitle(mode)}</Row>",
+      "replace": "<Row label=\"Mode\">{String(mode)}</Row>"
+    },
+    {
+      "name": "suggestions: rules are not bulleted",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "      {figures.bullet} {item}\n",
+      "replace": "      {item}\n"
+    },
+    {
+      "name": "unreachable: an empty section is drawn",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "{unreachable.length > 0 ? <UnreachableRules",
+      "replace": "{unreachable.length >= 0 ? <UnreachableRules"
+    },
+    {
+      "name": "unreachable: header wording",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "Unreachable Rules ({rules.length})",
+      "replace": "Unreachable rules ({rules.length})"
+    },
+    {
+      "name": "unreachable: header in the error colour",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "      <Text color=\"warning\">\n        {figures.warning}",
+      "replace": "      <Text color=\"error\">\n        {figures.warning}"
+    },
+    {
+      "name": "unreachable: rules indented one column",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "<Box key={index} flexDirection=\"column\" marginLeft={2}>",
+      "replace": "<Box key={index} flexDirection=\"column\" marginLeft={1}>"
+    },
+    {
+      "name": "unreachable: the fix loses its prefix",
+      "source": "src/permissions/ui/PermissionDecisionDebugInfo.tsx",
+      "find": "<Text dimColor>Fix: {unreachable.fix}</Text>",
+      "replace": "<Text dimColor>{unreachable.fix}</Text>"
+    },
+    {
+      "name": "filter: suggested rules are ignored",
+      "source": "src/permissions/ui/decisionDebug/unreachableRules.ts",
+      "find": "if (suggested.length > 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "filter: rule content is not compared",
+      "source": "src/permissions/ui/decisionDebug/unreachableRules.ts",
+      "find": "a.toolName === b.toolName && a.ruleContent === b.ruleContent",
+      "replace": "a.toolName === b.toolName"
+    },
+    {
+      "name": "filter: the tool name is ignored",
+      "source": "src/permissions/ui/decisionDebug/unreachableRules.ts",
+      "find": "if (toolName) return rules.filter(",
+      "replace": "if (false) return rules.filter("
     }
   ]
 }

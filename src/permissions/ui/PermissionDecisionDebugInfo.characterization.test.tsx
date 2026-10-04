@@ -215,7 +215,7 @@ describe('the suggestions', () => {
     [
       'directories',
       [{ type: 'addDirectories', destination: 'session', directories: ['/srv/data', '/opt/tools'] }],
-      ['Suggestions', `Directories ${B} /srv/data`, `${B} /opt/tools`],
+      ['Suggestions', `Dirs ${B} /srv/data`, `${B} /opt/tools`],
     ],
     [
       'a mode, the last one winning',
@@ -228,7 +228,7 @@ describe('the suggestions', () => {
     [
       'all three, in the order rules, directories, mode',
       [{ type: 'setMode', destination: 'session', mode: 'plan' }, { type: 'addDirectories', destination: 'session', directories: ['/d'] }, addRules('Bash(make)')],
-      ['Suggestions', `Rules ${B} Bash(make)`, `Directories ${B} /d`, 'Mode Plan Mode'],
+      ['Suggestions', `Rules ${B} Bash(make)`, `Dirs ${B} /d`, 'Mode Plan Mode'],
     ],
   ]
   for (const [label, suggestions, expected] of suggestionRows) {

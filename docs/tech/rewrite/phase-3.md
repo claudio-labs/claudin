@@ -66,7 +66,7 @@ which the sandbox tools read. The lists below are the same.
 | `permissions/autoModeClassifier` | 13 | 887 | `yoloClassifier.test.ts`, `bashClassifier.test.ts` (82) | done |
 | `permissions/toolPermission` | 6 | 985 | — | done |
 | `permissions/promptFrame` | 8 | 862 | — | done |
-| `permissions/decisionExplanation` | 3 | 815 | — | pending |
+| `permissions/decisionExplanation` | 3 | 815 | — | done |
 | `permissions/shellDialogs` | 7 | 1102 | — | pending |
 | `permissions/fileDialogs` | 11 | 1269 | — | pending |
 | `permissions/toolDialogs` | 4 | 866 | — | pending |
