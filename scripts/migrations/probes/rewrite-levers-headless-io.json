@@ -37,12 +37,11 @@
       "find": "  configureGlobalAgents()\n",
       "replace": "\n"
     },
-
     {
       "name": "interactiveHandler: the dialog shows the raw input, not the rewritten one",
       "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
-      "find": "    input: displayInput,",
-      "replace": "    input: ctx.input,"
+      "find": "  const shownInput = result.updatedInput ?? ctx.input\n",
+      "replace": "  const shownInput = ctx.input\n"
     },
     {
       "name": "interactiveHandler: abort is recorded as a reject",
@@ -53,28 +52,27 @@
     {
       "name": "interactiveHandler: reject drops the content blocks",
       "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
-      "find": "resolveOnce(ctx.cancelAndAbort(feedback, undefined, contentBlocks))",
-      "replace": "resolveOnce(ctx.cancelAndAbort(feedback, undefined, undefined))"
+      "find": "      a.once.resolve(ctx.cancelAndAbort(feedback, false, contentBlocks))",
+      "replace": "      a.once.resolve(ctx.cancelAndAbort(feedback, false, undefined))"
     },
     {
       "name": "interactiveHandler: re-check resolves on deny instead of allow",
       "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
-      "find": "      if (freshResult.behavior === 'allow') {",
-      "replace": "      if (freshResult.behavior === 'deny') {"
+      "find": "  if (fresh.behavior !== 'allow' || !a.once.claim()) return",
+      "replace": "  if (fresh.behavior !== 'deny' || !a.once.claim()) return"
     },
     {
       "name": "interactiveHandler: a late hook no longer checks who answered first",
       "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
-      "find": "      if (!hookDecision || !claim()) return",
-      "replace": "      if (!hookDecision) return"
+      "find": "      if (!decision || !a.once.claim()) return",
+      "replace": "      if (!decision) return"
     },
     {
       "name": "interactiveHandler: hooks run even when the caller already awaited them",
       "source": "src/permissions/toolPermission/handlers/interactiveHandler.ts",
-      "find": "  if (!awaitAutomatedChecksBeforeDialog) {",
-      "replace": "  if (true) {"
+      "find": "  if (!checksDone) runHooksBehindDialog(a, result, openedAt)",
+      "replace": "  runHooksBehindDialog(a, result, openedAt)"
     },
-
     {
       "name": "remoteIO: the session token is sent with the wrong scheme",
       "source": "src/platform/headless/remoteIO.ts",
@@ -111,7 +109,6 @@
       "find": "      await this.transport.write(message)",
       "replace": "      void message"
     },
-
     {
       "name": "auth: logout with clearOnboarding leaves the notice count",
       "source": "src/platform/headless/handlers/auth.ts",

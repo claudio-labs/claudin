@@ -1,23 +1,16 @@
-import { feature } from 'bun:bundle'
-import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
-import { randomUUID } from 'crypto'
-import { logForDebugging } from 'src/shared/debug.js'
 import type { BridgePermissionCallbacks } from 'src/platform/bridge/bridgePermissionCallbacks.js'
-import { getTerminalFocused } from 'src/terminal/ink/terminal-focus-state.js'
-import { executeAsyncClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import {
-  clearClassifierChecking,
-  setClassifierApproval,
-  setClassifierChecking,
-  setYoloClassifierApproval,
-} from 'src/permissions/classifierApprovals.js'
-import { errorMessage } from 'src/shared/errors.js'
+import { toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
-import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import { hasPermissionsToUseTool } from 'src/permissions/permissions.js'
-import type { PermissionContext } from 'src/permissions/toolPermission/PermissionContext.js'
+import type { PermissionContext, ResolveOnce } from 'src/permissions/toolPermission/PermissionContext.js'
 import { createResolveOnce } from 'src/permissions/toolPermission/PermissionContext.js'
+import { routeCapabilities } from 'src/permissions/toolPermission/capabilities.js'
+import { writesSettingsFile } from 'src/permissions/toolPermission/context/ruleUpdates.js'
+import { startClassifierRace, type ClassifierRace } from 'src/permissions/toolPermission/dialog/classifierRace.js'
+import { openRemotePrompt, type RemotePrompt } from 'src/permissions/toolPermission/dialog/remotePrompt.js'
+import type { RemoteAnswer } from 'src/permissions/toolPermission/remoteAnswer.js'
 
 type InteractivePermissionParams = {
   ctx: PermissionContext
@@ -27,372 +20,149 @@ type InteractivePermissionParams = {
   bridgeCallbacks?: BridgePermissionCallbacks
 }
 
+/** Everything that can answer the open dialog, and how each is told it lost. */
+type Answerers = {
+  ctx: PermissionContext
+  once: ResolveOnce<PermissionDecision>
+  remote: RemotePrompt | undefined
+  race: ClassifierRace | undefined
+}
+
+/** Takes the dialog out of the race for whoever won and drops it from the queue. */
+function closeForAutomatedAnswer(a: Answerers): void {
+  a.race?.stop()
+  a.remote?.withdraw()
+  a.ctx.removeFromQueue()
+}
+
+function takeRemoteAnswer(a: Answerers, answer: RemoteAnswer, shownInput: Record<string, unknown>): void {
+  if (!a.once.claim()) return
+  const { ctx } = a
+  a.race?.stop()
+  a.remote?.close()
+  ctx.removeFromQueue()
+  if (answer.behavior === 'deny') {
+    ctx.logDecision({ decision: 'reject', source: { type: 'user_reject', hasFeedback: Boolean(answer.message) } })
+    a.once.resolve(ctx.cancelAndAbort(answer.message))
+    return
+  }
+  // The save is not awaited: the web app already showed its answer as given.
+  ctx.persistPermissions(answer.updatedPermissions).catch((error: unknown) => logError(toError(error)))
+  ctx.logDecision({ decision: 'accept', source: { type: 'user', permanent: writesSettingsFile(answer.updatedPermissions) } })
+  a.once.resolve(ctx.buildAllow(answer.updatedInput ?? shownInput))
+}
+
+function runHooksBehindDialog(a: Answerers, result: InteractivePermissionParams['result'], openedAt: number): void {
+  const mode = a.ctx.toolUseContext.getAppState().toolPermissionContext.mode
+  a.ctx.runHooks(mode, result.suggestions, result.updatedInput, openedAt).then(
+    decision => {
+      if (!decision || !a.once.claim()) return
+      closeForAutomatedAnswer(a)
+      a.once.resolve(decision)
+    },
+    (error: unknown) => logError(toError(error)),
+  )
+}
+
+async function recheck(a: Answerers): Promise<void> {
+  if (a.once.isResolved()) return
+  const { ctx } = a
+  const fresh = await hasPermissionsToUseTool(ctx.tool, ctx.input, ctx.toolUseContext, ctx.assistantMessage, ctx.toolUseID)
+  if (fresh.behavior !== 'allow' || !a.once.claim()) return
+  closeForAutomatedAnswer(a)
+  ctx.logDecision({ decision: 'accept', source: 'config' })
+  a.once.resolve(ctx.buildAllow(fresh.updatedInput ?? ctx.input))
+}
+
 /**
- * Handles the interactive (main-agent) permission flow.
- *
- * Pushes a ToolUseConfirm entry to the confirm queue with callbacks:
- * onAbort, onAllow, onReject, recheckPermission, onUserInteraction.
- *
- * Runs permission hooks and bash classifier checks asynchronously in the
- * background, racing them against user interaction. Uses a resolve-once
- * guard and `userInteracted` flag to prevent multiple resolutions.
- *
- * This function does NOT return a Promise -- it sets up callbacks that
- * eventually call `resolve()` to resolve the outer promise owned by
- * the caller.
+ * Opens the permission dialog and races everything else that can answer it:
+ * the PermissionRequest hooks, the web app, the Bash prompt-rule classifier
+ * and a re-check after the rules change. The first answer is the only one.
  */
 function handleInteractivePermission(
   params: InteractivePermissionParams,
   resolve: (decision: PermissionDecision) => void,
 ): void {
-  const {
-    ctx,
-    description,
-    result,
-    awaitAutomatedChecksBeforeDialog,
-    bridgeCallbacks,
-  } = params
+  const { ctx, description, result } = params
+  const built = routeCapabilities()
+  const checksDone = Boolean(params.awaitAutomatedChecksBeforeDialog)
+  const openedAt = Date.now()
+  const shownInput = result.updatedInput ?? ctx.input
+  const pending = result.pendingClassifierCheck
+  const classifies = built.bashClassifier && !checksDone && ctx.tool.name === BASH_TOOL_NAME && pending !== undefined
 
-  const { resolve: resolveOnce, isResolved, claim } = createResolveOnce(resolve)
-  let userInteracted = false
-  let checkmarkTransitionTimer: ReturnType<typeof setTimeout> | undefined
-  // Hoisted so onDismissCheckmark (Esc during checkmark window) can also
-  // remove the abort listener — not just the timer callback.
-  let checkmarkAbortHandler: (() => void) | undefined
-  const bridgeRequestId = bridgeCallbacks ? randomUUID() : undefined
-
-  const permissionPromptStartTimeMs = Date.now()
-  const displayInput = result.updatedInput ?? ctx.input
-
-  function clearClassifierIndicator(): void {
-    if (feature('BASH_CLASSIFIER')) {
-      ctx.updateQueueItem({ classifierCheckInProgress: false })
-    }
-  }
+  const a: Answerers = { ctx, once: createResolveOnce(resolve), remote: undefined, race: undefined }
+  const signal = ctx.toolUseContext.abortController.signal
 
   ctx.pushToQueue({
     assistantMessage: ctx.assistantMessage,
     tool: ctx.tool,
     description,
-    input: displayInput,
+    input: shownInput,
     toolUseContext: ctx.toolUseContext,
     toolUseID: ctx.toolUseID,
     permissionResult: result,
-    permissionPromptStartTimeMs,
-    ...(feature('BASH_CLASSIFIER')
-      ? {
-          classifierCheckInProgress:
-            !!result.pendingClassifierCheck &&
-            !awaitAutomatedChecksBeforeDialog,
-        }
-      : {}),
-    onUserInteraction() {
-      // Called when user starts interacting with the permission dialog
-      // (e.g., arrow keys, tab, typing feedback)
-      // Hide the classifier indicator since auto-approve is no longer possible
-      //
-      // Grace period: ignore interactions in the first 200ms to prevent
-      // accidental keypresses from canceling the classifier prematurely
-      const GRACE_PERIOD_MS = 200
-      if (Date.now() - permissionPromptStartTimeMs < GRACE_PERIOD_MS) {
-        return
-      }
-      userInteracted = true
-      clearClassifierChecking(ctx.toolUseID)
-      clearClassifierIndicator()
+    permissionPromptStartTimeMs: openedAt,
+    ...(built.bashClassifier ? { classifierCheckInProgress: classifies } : {}),
+    onUserInteraction: () => a.race?.userInteracted(),
+    onDismissCheckmark: () => a.race?.dismissCheckmark(),
+    onAllow(input, updates, feedback, contentBlocks) {
+      if (!a.once.claim()) return
+      a.race?.stop()
+      a.remote?.report({ behavior: 'allow', updatedInput: input, updatedPermissions: updates })
+      ctx
+        .handleUserAllow(input, updates, feedback, openedAt, contentBlocks, result.decisionReason)
+        .then(a.once.resolve, (error: unknown) => {
+          logError(toError(error))
+          a.once.resolve(ctx.cancelAndAbort(undefined, true))
+        })
     },
-    onDismissCheckmark() {
-      if (checkmarkTransitionTimer) {
-        clearTimeout(checkmarkTransitionTimer)
-        checkmarkTransitionTimer = undefined
-        if (checkmarkAbortHandler) {
-          ctx.toolUseContext.abortController.signal.removeEventListener(
-            'abort',
-            checkmarkAbortHandler,
-          )
-          checkmarkAbortHandler = undefined
-        }
-        ctx.removeFromQueue()
-      }
+    onReject(feedback, contentBlocks) {
+      if (!a.once.claim()) return
+      a.race?.stop()
+      a.remote?.report({ behavior: 'deny', message: feedback || 'User denied permission' })
+      ctx.logDecision({ decision: 'reject', source: { type: 'user_reject', hasFeedback: Boolean(feedback) } }, { permissionPromptStartTimeMs: openedAt })
+      a.once.resolve(ctx.cancelAndAbort(feedback, false, contentBlocks))
     },
     onAbort() {
-      if (!claim()) return
-      if (bridgeCallbacks && bridgeRequestId) {
-        bridgeCallbacks.sendResponse(bridgeRequestId, {
-          behavior: 'deny',
-          message: 'User aborted',
-        })
-        bridgeCallbacks.cancelRequest(bridgeRequestId)
-      }
-      ctx.logDecision(
-        { decision: 'reject', source: { type: 'user_abort' } },
-        { permissionPromptStartTimeMs },
-      )
-      resolveOnce(ctx.cancelAndAbort(undefined, true))
+      if (!a.once.claim()) return
+      a.race?.stop()
+      a.remote?.report({ behavior: 'deny', message: 'User aborted' })
+      ctx.logDecision({ decision: 'reject', source: { type: 'user_abort' } }, { permissionPromptStartTimeMs: openedAt })
+      a.once.resolve(ctx.cancelAndAbort(undefined, true))
     },
-    async onAllow(
-      updatedInput,
-      permissionUpdates: PermissionUpdate[],
-      feedback?: string,
-      contentBlocks?: ContentBlockParam[],
-    ) {
-      if (!claim()) return // atomic check-and-mark before await
-
-      if (bridgeCallbacks && bridgeRequestId) {
-        bridgeCallbacks.sendResponse(bridgeRequestId, {
-          behavior: 'allow',
-          updatedInput,
-          updatedPermissions: permissionUpdates,
-        })
-        bridgeCallbacks.cancelRequest(bridgeRequestId)
-      }
-
-      resolveOnce(
-        await ctx.handleUserAllow(
-          updatedInput,
-          permissionUpdates,
-          feedback,
-          permissionPromptStartTimeMs,
-          contentBlocks,
-          result.decisionReason,
-        ),
-      )
-    },
-    onReject(feedback?: string, contentBlocks?: ContentBlockParam[]) {
-      if (!claim()) return
-
-      if (bridgeCallbacks && bridgeRequestId) {
-        bridgeCallbacks.sendResponse(bridgeRequestId, {
-          behavior: 'deny',
-          message: feedback ?? 'User denied permission',
-        })
-        bridgeCallbacks.cancelRequest(bridgeRequestId)
-      }
-
-      ctx.logDecision(
-        {
-          decision: 'reject',
-          source: { type: 'user_reject', hasFeedback: !!feedback },
-        },
-        { permissionPromptStartTimeMs },
-      )
-      resolveOnce(ctx.cancelAndAbort(feedback, undefined, contentBlocks))
-    },
-    async recheckPermission() {
-      if (isResolved()) return
-      const freshResult = await hasPermissionsToUseTool(
-        ctx.tool,
-        ctx.input,
-        ctx.toolUseContext,
-        ctx.assistantMessage,
-        ctx.toolUseID,
-      )
-      if (freshResult.behavior === 'allow') {
-        // claim() (atomic check-and-mark), not isResolved() — the async
-        // hasPermissionsToUseTool call above opens a window where CCR
-        // could have responded in flight. Matches onAllow/onReject/hook
-        // paths. cancelRequest tells CCR to dismiss its prompt — without
-        // it, the web UI shows a stale prompt for a tool that's already
-        // executing (particularly visible when recheck is triggered by
-        // a CCR-initiated mode switch, the very case this callback exists
-        // for after useReplBridge started calling it).
-        if (!claim()) return
-        if (bridgeCallbacks && bridgeRequestId) {
-          bridgeCallbacks.cancelRequest(bridgeRequestId)
-        }
-        ctx.removeFromQueue()
-        ctx.logDecision({ decision: 'accept', source: 'config' })
-        resolveOnce(ctx.buildAllow(freshResult.updatedInput ?? ctx.input))
-      }
-    },
+    recheckPermission: () => recheck(a),
   })
 
-  // Race 4: Bridge permission response from CCR (claude.ai)
-  // When the bridge is connected, send the permission request to CCR and
-  // subscribe for a response. Whichever side (CLI or CCR) responds first
-  // wins via claim().
-  //
-  // All tools are forwarded — CCR's generic allow/deny modal handles any
-  // tool, and can return `updatedInput` when it has a dedicated renderer
-  // (e.g. plan edit). Tools whose local dialog injects fields (ReviewArtifact
-  // `selected`, AskUserQuestion `answers`) tolerate the field being missing
-  // so generic remote approval degrades gracefully instead of throwing.
-  if (bridgeCallbacks && bridgeRequestId) {
-    bridgeCallbacks.sendRequest(
-      bridgeRequestId,
-      ctx.tool.name,
-      displayInput,
-      ctx.toolUseID,
-      description,
-      result.suggestions,
-      result.blockedPath,
-    )
+  if (!checksDone) runHooksBehindDialog(a, result, openedAt)
 
-    const signal = ctx.toolUseContext.abortController.signal
-    const unsubscribe = bridgeCallbacks.onResponse(
-      bridgeRequestId,
-      response => {
-        if (!claim()) return // Local user/hook/classifier already responded
-        signal.removeEventListener('abort', unsubscribe)
-        clearClassifierChecking(ctx.toolUseID)
-        clearClassifierIndicator()
-        ctx.removeFromQueue()
-
-        if (response.behavior === 'allow') {
-          if (response.updatedPermissions?.length) {
-            void ctx.persistPermissions(response.updatedPermissions)
-          }
-          ctx.logDecision(
-            {
-              decision: 'accept',
-              source: {
-                type: 'user',
-                permanent: !!response.updatedPermissions?.length,
-              },
-            },
-            { permissionPromptStartTimeMs },
-          )
-          resolveOnce(ctx.buildAllow(response.updatedInput ?? displayInput))
-        } else {
-          ctx.logDecision(
-            {
-              decision: 'reject',
-              source: {
-                type: 'user_reject',
-                hasFeedback: !!response.message,
-              },
-            },
-            { permissionPromptStartTimeMs },
-          )
-          resolveOnce(ctx.cancelAndAbort(response.message))
-        }
-      },
-    )
-
-    signal.addEventListener('abort', unsubscribe, { once: true })
-  }
-
-  // Skip hooks if they were already awaited in the coordinator branch above
-  if (!awaitAutomatedChecksBeforeDialog) {
-    // Execute PermissionRequest hooks asynchronously
-    // If hook returns a decision before user responds, apply it
-    void (async () => {
-      if (isResolved()) return
-      const currentAppState = ctx.toolUseContext.getAppState()
-      const hookDecision = await ctx.runHooks(
-        currentAppState.toolPermissionContext.mode,
-        result.suggestions,
-        result.updatedInput,
-        permissionPromptStartTimeMs,
-      )
-      if (!hookDecision || !claim()) return
-      if (bridgeCallbacks && bridgeRequestId) {
-        bridgeCallbacks.cancelRequest(bridgeRequestId)
-      }
-      ctx.removeFromQueue()
-      resolveOnce(hookDecision)
-    })()
-  }
-
-  // Execute bash classifier check asynchronously (if applicable)
-  if (
-    feature('BASH_CLASSIFIER') &&
-    result.pendingClassifierCheck &&
-    ctx.tool.name === BASH_TOOL_NAME &&
-    !awaitAutomatedChecksBeforeDialog
-  ) {
-    // UI indicator for "classifier running" — set here (not in
-    // toolExecution.ts) so commands that auto-allow via prefix rules
-    // don't flash the indicator for a split second before allow returns.
-    setClassifierChecking(ctx.toolUseID)
-    void executeAsyncClassifierCheck(
-      result.pendingClassifierCheck,
-      ctx.toolUseContext.abortController.signal,
-      ctx.toolUseContext.options.isNonInteractiveSession,
+  if (params.bridgeCallbacks) {
+    a.remote = openRemotePrompt(
+      params.bridgeCallbacks,
+      signal,
       {
-        shouldContinue: () => !isResolved() && !userInteracted,
-        onComplete: () => {
-          clearClassifierChecking(ctx.toolUseID)
-          clearClassifierIndicator()
-        },
-        onAllow: decisionReason => {
-          if (!claim()) return
-          if (bridgeCallbacks && bridgeRequestId) {
-            bridgeCallbacks.cancelRequest(bridgeRequestId)
-          }
-          clearClassifierChecking(ctx.toolUseID)
-
-          const matchedRule =
-            decisionReason.type === 'classifier'
-              ? (decisionReason.reason.match(
-                  /^Allowed by prompt rule: "(.+)"$/,
-                )?.[1] ?? decisionReason.reason)
-              : undefined
-
-          // Show auto-approved transition with dimmed options
-          if (feature('TRANSCRIPT_CLASSIFIER')) {
-            ctx.updateQueueItem({
-              classifierCheckInProgress: false,
-              classifierAutoApproved: true,
-              classifierMatchedRule: matchedRule,
-            })
-          }
-
-          if (
-            feature('TRANSCRIPT_CLASSIFIER') &&
-            decisionReason.type === 'classifier'
-          ) {
-            if (decisionReason.classifier === 'auto-mode') {
-              setYoloClassifierApproval(ctx.toolUseID, decisionReason.reason)
-            } else if (matchedRule) {
-              setClassifierApproval(ctx.toolUseID, matchedRule)
-            }
-          }
-
-          ctx.logDecision(
-            { decision: 'accept', source: { type: 'classifier' } },
-            { permissionPromptStartTimeMs },
-          )
-          resolveOnce(ctx.buildAllow(ctx.input, { decisionReason }))
-
-          // Keep checkmark visible, then remove dialog.
-          // 3s if terminal is focused (user can see it), 1s if not.
-          // User can dismiss early with Esc via onDismissCheckmark.
-          const signal = ctx.toolUseContext.abortController.signal
-          checkmarkAbortHandler = () => {
-            if (checkmarkTransitionTimer) {
-              clearTimeout(checkmarkTransitionTimer)
-              checkmarkTransitionTimer = undefined
-              // An abort during the checkmark window must drop the
-              // cosmetic ✓ dialog or it blocks the next queued item.
-              ctx.removeFromQueue()
-            }
-          }
-          const checkmarkMs = getTerminalFocused() ? 3000 : 1000
-          checkmarkTransitionTimer = setTimeout(() => {
-            checkmarkTransitionTimer = undefined
-            if (checkmarkAbortHandler) {
-              signal.removeEventListener('abort', checkmarkAbortHandler)
-              checkmarkAbortHandler = undefined
-            }
-            ctx.removeFromQueue()
-          }, checkmarkMs)
-          signal.addEventListener('abort', checkmarkAbortHandler, {
-            once: true,
-          })
-        },
+        toolName: ctx.tool.name,
+        input: shownInput,
+        toolUseID: ctx.toolUseID,
+        description,
+        suggestions: result.suggestions,
+        blockedPath: result.blockedPath,
       },
-    ).catch(error => {
-      // Log classifier API errors for debugging but don't propagate them as interruptions
-      // These errors can be network failures, rate limits, or model issues - not user cancellations
-      logForDebugging(`Async classifier check failed: ${errorMessage(error)}`, {
-        level: 'error',
-      })
+      answer => takeRemoteAnswer(a, answer, shownInput),
+    )
+  }
+
+  if (classifies && pending) {
+    a.race = startClassifierRace({
+      ctx,
+      pending,
+      once: a.once,
+      openedAt,
+      showsCheckmark: built.autoMode,
+      onApproved: () => a.remote?.withdraw(),
     })
   }
 }
-
-// --
 
 export { handleInteractivePermission }
 export type { InteractivePermissionParams }

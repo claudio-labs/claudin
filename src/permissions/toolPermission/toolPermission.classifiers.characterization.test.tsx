@@ -333,11 +333,11 @@ if (!FLAGS_ON) {
       expect([queue.only().classifierCheckInProgress, asked.length, decisions]).toEqual([false, 0, []])
     })
 
-    test('another tool with a pending check shows the indicator, yet nothing is classified', async () => {
+    test('another tool with a pending check shows no indicator, and nothing is classified', async () => {
       reply = says(1, 'high')
       const { queue } = dialog({ tool: standIn({ name: 'Scribe' }) as unknown as Tool })
       await settle()
-      expect([queue.only().classifierCheckInProgress, asked.length]).toEqual([true, 0])
+      expect([queue.only().classifierCheckInProgress, asked.length]).toEqual([false, 0])
     })
 
     test('a match allows the call as made, shows the checkmark, and records the rule', async () => {

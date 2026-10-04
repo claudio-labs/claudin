@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import type { PendingClassifierCheck } from 'src/shared/types/permissions.js'
 import { logError } from 'src/shared/log.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
@@ -14,51 +13,22 @@ type CoordinatorPermissionParams = {
 }
 
 /**
- * Handles the coordinator worker permission flow.
- *
- * For coordinator workers, automated checks (hooks and classifier) are
- * awaited sequentially before falling through to the interactive dialog.
- *
- * Returns a PermissionDecision if the automated checks resolved the
- * permission, or null if the caller should fall through to the
- * interactive dialog.
+ * A coordinator worker settles what it can without a person: its
+ * PermissionRequest hooks, then the Bash prompt-rule classifier. Null hands
+ * the call on, and a failing check is no decision, so the user still decides.
  */
 async function handleCoordinatorPermission(
   params: CoordinatorPermissionParams,
 ): Promise<PermissionDecision | null> {
-  const { ctx, updatedInput, suggestions, permissionMode } = params
-
+  const { ctx } = params
   try {
-    // 1. Try permission hooks first (fast, local)
-    const hookResult = await ctx.runHooks(
-      permissionMode,
-      suggestions,
-      updatedInput,
-    )
-    if (hookResult) return hookResult
-
-    // 2. Try classifier (slow, inference -- bash only)
-    const classifierResult = feature('BASH_CLASSIFIER')
-      ? await ctx.tryClassifier?.(params.pendingClassifierCheck, updatedInput)
-      : null
-    if (classifierResult) {
-      return classifierResult
-    }
+    const fromHooks = await ctx.runHooks(params.permissionMode, params.suggestions, params.updatedInput)
+    if (fromHooks) return fromHooks
+    return (await ctx.tryClassifier?.(params.pendingClassifierCheck, params.updatedInput)) ?? null
   } catch (error) {
-    // If automated checks fail unexpectedly, fall through to show the dialog
-    // so the user can decide manually. Non-Error throws get a context prefix
-    // so the log is traceable — intentionally NOT toError(), which would drop
-    // the prefix.
-    if (error instanceof Error) {
-      logError(error)
-    } else {
-      logError(new Error(`Automated permission check failed: ${String(error)}`))
-    }
+    logError(error instanceof Error ? error : new Error(`Automated permission check failed: ${String(error)}`))
+    return null
   }
-
-  // 3. Neither resolved (or checks failed) -- fall through to dialog below.
-  // Hooks already ran, classifier already consumed.
-  return null
 }
 
 export { handleCoordinatorPermission }

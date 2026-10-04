@@ -210,13 +210,12 @@ describe('while waiting', () => {
     expect((await run.decision)?.behavior).toBe('ask')
   })
 
-  test('a team with no config file never gets the request, and the worker waits until aborted', async () => {
+  test('a team with no config file never gets the request, and the worker falls back to its own dialog', async () => {
     crew = joinCrew(world().configDir, { teamFile: false })
     const abort = new AbortController()
     const run = forward({ abort })
     await Bun.sleep(150)
-    expect([run.settled(), crew.leaderInbox()]).toEqual(['pending', []])
-    abort.abort()
-    expect((await run.decision)?.behavior).toBe('ask')
+    expect([run.settled(), crew.leaderInbox()]).toEqual([null, []])
+    expect(run.session.abortController.signal.aborted).toBe(false)
   })
 })

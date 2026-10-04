@@ -494,7 +494,8 @@ describe('the remote end (the bridge)', () => {
     expect(run.decisions).toEqual([{ behavior: 'allow', updatedInput: { target: 'remote' }, userModified: false }])
     expect(run.queue()).toEqual([])
     expect(run.appliedContexts[0]?.context.alwaysAllowRules.session).toEqual(['CharTool'])
-    expect(run.recorded()).toMatchObject({ decision: 'accept', source: 'user_permanent' })
+    // A session rule is not written to any file, so the allow stays temporary.
+    expect(run.recorded()).toMatchObject({ decision: 'accept', source: 'user_temporary' })
     expect(opened(run).later).toEqual([])
   })
 

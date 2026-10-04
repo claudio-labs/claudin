@@ -250,3 +250,43 @@ unit owns no format on disk and has no fixtures.
 - **Flag sites.** Keep one `feature()` read per flag at the edge (the router's set-up), and pass capabilities in, so the flag-off build loses the routes as a whole rather than branch by branch.
 - **Types.** Model the decision record label as a union. Give the remote end's and the leader's answers one shared shape. Keep the exported names and signatures above until their callers are rewritten.
 - **Findings.** Apply findings 2, 5 (label), 8 and 9.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**The rewrite.** Every inherited body was written anew. `useCanUseTool` is now a plain hook. Under
+`toolPermission/`:
+- `capabilities.ts` holds the only `feature()` reads.
+- `context/` holds the resolve-once, queue, decisions, rule updates, hook verdict and classifier
+  verdict.
+- `dialog/` holds the remote prompt and the classifier race.
+- `gate/` holds the router, the running classification and the auto-mode verdicts.
+
+The characterization suites pass, apart from the three assertions listed under Fixes below. 3,057
+caller tests stay green.
+
+**Fixes, each with a test.**
+- **Finding 2:** an undeliverable swarm request opens the worker's own dialog instead of hanging.
+- **Finding 5:** a remote allow is labelled by what it really persists. The save stays un-awaited.
+- **Finding 8:** the classifier indicator only shows for Bash.
+- **Finding 9:** an abort unregisters the leader listener.
+
+Findings 2, 5 and 8 had pinned assertions, and only those three changed. They now expect the fixed
+behaviour:
+- `swarmWorkerHandler.characterization.test.ts`, the missing-team-file row: it now expects `null`;
+- `interactiveHandler.characterization.test.ts`, the session-only remote allow: it now expects
+  `user_temporary`;
+- `toolPermission.classifiers.characterization.test.tsx`, the non-Bash indicator: it now expects
+  `false`.
+
+**Kept.** Findings 1, 3, 4, 6, 7 and 10. Finding 1 is the bridge race, which stays because the
+remote features stay.
+
+**Probes.**
+- `rewrite-permissions-toolPermission.json` has 130 probes.
+- The five stale `interactiveHandler` probes in `rewrite-levers-headless-io.json` were re-pointed
+  with the same mutations and re-proved.
+
+**Residue, reviewed.** 83 lines of Claude Code remain: the handler signatures, the permission-context
+fields that callers read, and the log event shapes.
