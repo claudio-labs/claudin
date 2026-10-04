@@ -46,11 +46,11 @@ which the sandbox tools read. The lists below are the same.
 |---|---|---|---|---|
 | `mcp/core` | 5 | 713 | — | done |
 | `mcp/config` | 2 | 1291 | — | done |
-| `mcp/auth` | 7 | 658 | `auth.test.ts` (50) | pending |
+| `mcp/auth` | 7 | 658 | `auth.test.ts` (50) | done |
 | `mcp/connection` | 5 | 1305 | `client.test.ts` (34) | pending |
 | `mcp/capabilities` | 6 | 924 | — | done |
 | `mcp/callTool` | 5 | 983 | — | done |
-| `mcp/connectionManager` | 3 | 726 | — | pending |
+| `mcp/connectionManager` | 3 | 726 | — | done |
 | `mcp/elicitation` | 3 | 535 | — | done |
 | `mcp/doctor` | 1 | 620 | `doctor.test.ts` (443) | done |
 | `mcp/elicitationDialog` | 1 | 1105 | — | pending |

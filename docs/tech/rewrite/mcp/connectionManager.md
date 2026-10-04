@@ -382,3 +382,27 @@ The unit sends no text to a model.
   object memoized on the three actions.
 - **`mergeClients`:** stays a pure function next to `useMergedClients`, with
   Finding 6 fixed.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**Code**
+- The three public files are plain hand-written code over `connectionManager/`: `types`, `poolUpdate`, `plan`, `batcher`, `redial`, `runtime`, `listRefresh`, `actions`, `startup`.
+- `resolveUpdatedTools` moved unchanged into `poolUpdate.ts` and is re-exported.
+- The six characterization suites pass unchanged.
+- The five source-text guards in `resolveUpdatedTools.test.ts` and `sessionDisconnects.test.ts` became assertions on the mounted manager.
+
+**Fixes, each with a test**
+1. A server's resources are removed when it goes away.
+2. The resource tools join the pool once.
+3. A server disabled on disk shows `disabled`.
+4. Plugin error keys include the server name.
+5. `mergeClients(undefined, …)` keeps the app-state list.
+6. Nothing starts or dials after unmount.
+
+**Kept as pinned:** findings 2, 7, 8, 10, 11 and 13. Finding 14 (a connector cannot be denied by name) is tracked in `bugs/mcp-config-security-findings.md`.
+
+**Probes:** 92 in `rewrite-mcp-connectionManager.json`, proved in the sandbox. One probe, "renders children", makes every test wait out a 12 s timeout, so a full run takes over an hour.
+
+**Residue, reviewed:** 16 lines of Claude Code remain. They are the hook's options type, `mergeClients`' signature, and the context value's fields.

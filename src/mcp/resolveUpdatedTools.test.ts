@@ -10,9 +10,17 @@
  * back. resolveUpdatedTools fixes both: positional replacement and
  * keep-on-failed.
  */
-import { describe, expect, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { enterWorld, leaveWorld, setUserServers, withEnv } from 'src/mcp/__testutils__/mcpConfigWorld.js'
+import {
+  mountManager,
+  socketConfig,
+  startSocketServer,
+  stopAllSocketServers,
+  unmountAll,
+  until,
+  type SocketServer,
+} from 'src/mcp/__testutils__/connectionRig.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { resolveUpdatedTools } from 'src/mcp/useManageMCPConnections.js'
 
@@ -136,15 +144,42 @@ describe('resolveUpdatedTools — failure handling', () => {
 })
 
 // ── Wiring guard ─────────────────────────────────────────────────────────
-// resolveUpdatedTools being correct is worthless if the connection hook
-// regresses to the old `reject(prefix) + append` rebuild — pin the call
-// site so reverting the wiring fails this suite, not just code review.
-describe('useManageMCPConnections wiring (source guard)', () => {
-  test('the client-update path builds the pool via resolveUpdatedTools', () => {
-    const hookSource = readFileSync(
-      join(import.meta.dir, 'useManageMCPConnections.ts'),
-      'utf8',
-    )
-    expect(hookSource).toContain('const updatedTools = resolveUpdatedTools(')
+// resolveUpdatedTools being correct is worthless if the connection manager
+// regresses to the old `reject(prefix) + append` rebuild. This used to pin the
+// call site's source text; it now drives the mounted manager: reconnecting
+// the server whose tools open the pool must leave them where they were.
+describe('useManageMCPConnections wiring', () => {
+  let restoreEnv: () => void
+  beforeEach(() => {
+    enterWorld()
+    restoreEnv = withEnv({ MCP_TIMEOUT: '45000' })
   })
+  afterEach(async () => {
+    await unmountAll()
+    stopAllSocketServers()
+    restoreEnv()
+    leaveWorld()
+  })
+
+  test('the client-update path builds the pool via resolveUpdatedTools', async () => {
+    const written = (server: SocketServer) => {
+      const { scope: _scope, ...rest } = socketConfig(server)
+      return rest
+    }
+    const one = startSocketServer({ tools: ['a', 'b'] })
+    const two = startSocketServer({ tools: ['c'] })
+    setUserServers({ one: written(one), two: written(two) })
+    const m = await mountManager()
+    await m.reaches('one', 'connected')
+    await m.reaches('two', 'connected')
+    await until('both servers in the pool', () => m.toolNames().length === 3)
+    const before = m.toolNames()
+    const leading = before[0]!.startsWith('mcp__one__') ? 'one' : 'two'
+    const previous = m.state().mcp.tools[0]
+
+    const result = await m.reconnect(leading)
+    await until('the fresh tools in the pool', () => m.state().mcp.tools[0] === result.tools[0])
+    expect(m.toolNames()).toEqual(before)
+    expect(m.state().mcp.tools[0]).not.toBe(previous)
+  }, 20_000)
 })
