@@ -1,0 +1,103 @@
+{
+  "generatedAt": "<generated-at>",
+  "configOnly": true,
+  "summary": {
+    "totalReports": 2,
+    "healthy": 0,
+    "warnings": 3,
+    "blocking": 1
+  },
+  "findings": [
+    {
+      "blocking": true,
+      "code": "config.invalid_json",
+      "message": "<text>",
+      "remediation": "<text>",
+      "scope": "enterprise",
+      "severity": "error",
+      "sourcePath": "<world>/admin/managed-mcp.json"
+    }
+  ],
+  "servers": [
+    {
+      "serverName": "repo",
+      "requestedByUser": false,
+      "definitions": [
+        {
+          "name": "repo",
+          "sourceType": "project",
+          "sourcePath": "<world>/repo/app/.mcp.json",
+          "transport": "stdio",
+          "runtimeVisible": false,
+          "runtimeActive": false,
+          "pendingApproval": true,
+          "disabled": false
+        }
+      ],
+      "liveCheck": {
+        "attempted": false,
+        "result": "skipped"
+      },
+      "findings": [
+        {
+          "blocking": false,
+          "code": "state.pending_project_approval",
+          "message": "<text>",
+          "remediation": "<text>",
+          "scope": "project",
+          "serverName": "repo",
+          "severity": "warn",
+          "sourcePath": "<world>/repo/app/.mcp.json"
+        }
+      ]
+    },
+    {
+      "serverName": "shared",
+      "requestedByUser": false,
+      "definitions": [
+        {
+          "name": "shared",
+          "sourceType": "local",
+          "sourcePath": "<user-config-file> [project: <world>/repo/app]",
+          "transport": "stdio",
+          "runtimeVisible": true,
+          "runtimeActive": true,
+          "pendingApproval": false,
+          "disabled": false
+        },
+        {
+          "name": "shared",
+          "sourceType": "user",
+          "sourcePath": "<user-config-file>",
+          "transport": "http",
+          "runtimeVisible": false,
+          "runtimeActive": false,
+          "pendingApproval": false,
+          "disabled": false
+        }
+      ],
+      "liveCheck": {
+        "attempted": false,
+        "result": "skipped"
+      },
+      "findings": [
+        {
+          "blocking": false,
+          "code": "duplicate.same_name_multiple_scopes",
+          "message": "<text>",
+          "remediation": "<text>",
+          "serverName": "shared",
+          "severity": "warn"
+        },
+        {
+          "blocking": false,
+          "code": "scope.shadowed",
+          "message": "<text>",
+          "remediation": "<text>",
+          "serverName": "shared",
+          "severity": "warn"
+        }
+      ]
+    }
+  ]
+}

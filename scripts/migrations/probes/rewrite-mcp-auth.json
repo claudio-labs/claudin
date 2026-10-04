@@ -1,0 +1,235 @@
+{
+  "test": [
+    "src/mcp/headersHelper.characterization.test.ts",
+    "src/mcp/auth/authFetch.characterization.test.ts",
+    "src/mcp/auth/clientSecretStore.characterization.test.ts",
+    "src/mcp/auth/tokenRevocation.characterization.test.ts",
+    "src/mcp/auth/serverKey.characterization.test.ts",
+    "src/mcp/auth/callbackParams.characterization.test.ts",
+    "src/mcp/auth/oauthErrors.characterization.test.ts",
+    "src/mcp/auth/barrel.characterization.test.ts"
+  ],
+  "source": "src/mcp/headersHelper.ts",
+  "probes": [
+    {
+      "name": "headersHelper: project scope no longer waits for trust",
+      "find": "  return config.scope === 'project' || config.scope === 'local'\n",
+      "replace": "  return config.scope === 'local'\n"
+    },
+    {
+      "name": "headersHelper: local scope no longer waits for trust",
+      "find": "  return config.scope === 'project' || config.scope === 'local'\n",
+      "replace": "  return config.scope === 'project'\n"
+    },
+    {
+      "name": "headersHelper: trust checked only when non-interactive",
+      "find": "    !getIsNonInteractiveSession()\n",
+      "replace": "    getIsNonInteractiveSession()\n"
+    },
+    {
+      "name": "headersHelper: an untrusted workspace runs the helper anyway",
+      "find": "    if (!hasTrust) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "headersHelper: timeout raised to a minute",
+      "find": "      timeout: 10000,\n",
+      "replace": "      timeout: 60000,\n"
+    },
+    {
+      "name": "headersHelper: timeout cut to one second",
+      "find": "      timeout: 10000,\n",
+      "replace": "      timeout: 1000,\n"
+    },
+    {
+      "name": "headersHelper: server name variable carries the URL",
+      "find": "        CLAUDIN_MCP_SERVER_NAME: serverName,\n",
+      "replace": "        CLAUDIN_MCP_SERVER_NAME: config.url,\n"
+    },
+    {
+      "name": "headersHelper: server URL variable dropped",
+      "find": "        CLAUDIN_MCP_SERVER_URL: config.url,\n",
+      "replace": ""
+    },
+    {
+      "name": "headersHelper: parent environment not inherited",
+      "find": "        ...process.env,\n",
+      "replace": "        PATH: process.env.PATH,\n"
+    },
+    {
+      "name": "headersHelper: a failing exit code is ignored",
+      "find": "    if (execResult.code !== 0 || !execResult.stdout) {\n",
+      "replace": "    if (!execResult.stdout) {\n"
+    },
+    {
+      "name": "headersHelper: a JSON array is accepted",
+      "find": "      Array.isArray(headers)\n",
+      "replace": "      false\n"
+    },
+    {
+      "name": "headersHelper: non-string header values accepted",
+      "find": "      if (typeof value !== 'string') {\n",
+      "replace": "      if (typeof value === 'symbol') {\n"
+    },
+    {
+      "name": "headersHelper: static headers win over the helper",
+      "find": "    ...staticHeaders,\n    ...dynamicHeaders,\n",
+      "replace": "    ...dynamicHeaders,\n    ...staticHeaders,\n"
+    },
+    {
+      "name": "headersHelper: a failure throws instead of yielding null",
+      "find": "    // Return null instead of throwing to avoid blocking the connection\n    return null\n",
+      "replace": "    throw error\n"
+    },
+    {
+      "name": "callbackParams: code no longer redacted",
+      "source": "src/mcp/auth/callbackParams.ts",
+      "find": "  'code',\n]",
+      "replace": "]"
+    },
+    {
+      "name": "callbackParams: state no longer redacted",
+      "source": "src/mcp/auth/callbackParams.ts",
+      "find": "  'state',\n  'nonce',\n",
+      "replace": "  'nonce',\n"
+    },
+    {
+      "name": "callbackParams: a repeated parameter takes its first value even when empty",
+      "source": "src/mcp/auth/callbackParams.ts",
+      "find": "    return value.find(item => item.length > 0)\n",
+      "replace": "    return value[0]\n"
+    },
+    {
+      "name": "callbackParams: an absent state is not a mismatch",
+      "source": "src/mcp/auth/callbackParams.ts",
+      "find": "  if (state !== oauthState) {\n",
+      "replace": "  if (state !== undefined && state !== oauthState) {\n"
+    },
+    {
+      "name": "callbackParams: a code beats an error",
+      "source": "src/mcp/auth/callbackParams.ts",
+      "find": "  if (error) {\n",
+      "replace": "  if (error && !code) {\n"
+    },
+    {
+      "name": "clientSecretStore: environment variable renamed",
+      "source": "src/mcp/auth/clientSecretStore.ts",
+      "find": "  const envSecret = process.env.MCP_CLIENT_SECRET\n",
+      "replace": "  const envSecret = process.env.MCP_OAUTH_CLIENT_SECRET\n"
+    },
+    {
+      "name": "clientSecretStore: backspace no longer edits",
+      "source": "src/mcp/auth/clientSecretStore.ts",
+      "find": "        secret = secret.slice(0, -1)\n",
+      "replace": "        secret += c\n"
+    },
+    {
+      "name": "clientSecretStore: saving drops other servers' secrets",
+      "source": "src/mcp/auth/clientSecretStore.ts",
+      "find": "      ...existingData.mcpOAuthClientConfig,\n",
+      "replace": ""
+    },
+    {
+      "name": "clientSecretStore: clearing leaves the secret",
+      "source": "src/mcp/auth/clientSecretStore.ts",
+      "find": "    delete existingData.mcpOAuthClientConfig[serverKey]\n",
+      "replace": ""
+    },
+    {
+      "name": "oauthErrors: token_expired no longer an invalid_grant alias",
+      "source": "src/mcp/auth/oauthErrors.ts",
+      "find": "  'token_expired',\n])",
+      "replace": "])"
+    },
+    {
+      "name": "oauthErrors: a token response with an error key is rewritten",
+      "source": "src/mcp/auth/oauthErrors.ts",
+      "find": "  if (OAuthTokensSchema.safeParse(parsed).success) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "oauthErrors: rewritten to 401 instead of 400",
+      "source": "src/mcp/auth/oauthErrors.ts",
+      "find": "    status: 400,\n",
+      "replace": "    status: 401,\n"
+    },
+    {
+      "name": "oauthErrors: only 5xx left alone",
+      "source": "src/mcp/auth/oauthErrors.ts",
+      "find": "  if (!response.ok) {\n",
+      "replace": "  if (response.status >= 500) {\n"
+    },
+    {
+      "name": "serverKey: digest shortened",
+      "source": "src/mcp/auth/serverKey.ts",
+      "find": "    .substring(0, 16)\n",
+      "replace": "    .substring(0, 12)\n"
+    },
+    {
+      "name": "serverKey: headers left out of the identity",
+      "source": "src/mcp/auth/serverKey.ts",
+      "find": "    headers: serverConfig.headers || {},\n",
+      "replace": ""
+    },
+    {
+      "name": "serverKey: a refresh token alone counts as no token",
+      "source": "src/mcp/auth/serverKey.ts",
+      "find": "  return entry !== undefined && !entry.accessToken && !entry.refreshToken\n",
+      "replace": "  return entry !== undefined && !entry.accessToken\n"
+    },
+    {
+      "name": "authFetch: every method's body is normalized",
+      "source": "src/mcp/auth/authFetch.ts",
+      "find": "    const isPost = init?.method?.toUpperCase() === 'POST'\n",
+      "replace": "    const isPost = true\n"
+    },
+    {
+      "name": "authFetch: a configured metadata URL may be http",
+      "source": "src/mcp/auth/authFetch.ts",
+      "find": "    if (!configuredMetadataUrl.startsWith('https://')) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "authFetch: caller abort ignored once in flight",
+      "source": "src/mcp/auth/authFetch.ts",
+      "find": "    init.signal.addEventListener('abort', abort)\n",
+      "replace": ""
+    },
+    {
+      "name": "tokenRevocation: refresh token never revoked",
+      "source": "src/mcp/auth/tokenRevocation.ts",
+      "find": "          if (tokenData.refreshToken) {\n",
+      "replace": "          if (false) {\n"
+    },
+    {
+      "name": "tokenRevocation: Bearer retry on 403 instead of 401",
+      "source": "src/mcp/auth/tokenRevocation.ts",
+      "find": "      error.response?.status === 401 &&\n",
+      "replace": "      error.response?.status === 403 &&\n"
+    },
+    {
+      "name": "tokenRevocation: Bearer retry keeps the client secret",
+      "source": "src/mcp/auth/tokenRevocation.ts",
+      "find": "      params.delete('client_secret')\n",
+      "replace": ""
+    },
+    {
+      "name": "tokenRevocation: post chosen even when basic is allowed",
+      "source": "src/mcp/auth/tokenRevocation.ts",
+      "find": "            !authMethods.includes('client_secret_basic') &&\n",
+      "replace": ""
+    },
+    {
+      "name": "tokenRevocation: Basic credentials not URL-encoded",
+      "source": "src/mcp/auth/tokenRevocation.ts",
+      "find": "        `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`,\n",
+      "replace": "        `${clientId}:${clientSecret}`,\n"
+    },
+    {
+      "name": "tokenRevocation: local tokens kept after revocation",
+      "source": "src/mcp/auth/tokenRevocation.ts",
+      "find": "  // Always clear local tokens, regardless of server-side revocation result.\n  clearServerTokensFromSecureStorage(serverName, serverConfig)\n",
+      "replace": ""
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+[
+  {
+    "name": "docs",
+    "config": {
+      "type": "http",
+      "url": "https://mcp.example.test/mcp"
+    },
+    "key": "docs|0085881ec584e508"
+  },
+  {
+    "name": "docs",
+    "config": {
+      "type": "sse",
+      "url": "https://mcp.example.test/mcp"
+    },
+    "key": "docs|6fd5070f262b7c6e"
+  },
+  {
+    "name": "docs",
+    "config": {
+      "type": "http",
+      "url": "https://mcp.example.test/mcp",
+      "headers": {
+        "X-Tenant": "acme"
+      }
+    },
+    "key": "docs|1bef321efc232607"
+  },
+  {
+    "name": "docs",
+    "config": {
+      "type": "http",
+      "url": "https://mcp.example.test/mcp",
+      "headers": {
+        "A": "1",
+        "B": "2"
+      }
+    },
+    "key": "docs|f03dc417df619394"
+  },
+  {
+    "name": "docs",
+    "config": {
+      "type": "http",
+      "url": "https://mcp.example.test/mcp",
+      "headers": {
+        "B": "2",
+        "A": "1"
+      }
+    },
+    "key": "docs|09b1febb7717904e"
+  },
+  {
+    "name": "team docs/ü",
+    "config": {
+      "type": "http",
+      "url": "https://mcp.example.test/mcp"
+    },
+    "key": "team docs/ü|0085881ec584e508"
+  }
+]

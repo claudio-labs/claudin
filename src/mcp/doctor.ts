@@ -123,7 +123,7 @@ function getFindingCode(error: ValidationError): string {
   if (error.message.startsWith('Missing environment variables:')) {
     return 'config.missing_env_vars'
   }
-  if (error.message.includes("Windows requires 'cmd /c' wrapper to execute npx")) {
+  if (error.message.includes('Windows cannot launch npx directly')) {
     return 'config.windows_npx_wrapper_required'
   }
   if (error.message === 'Does not adhere to MCP server configuration schema') {

@@ -31,3 +31,16 @@ of it is pinned in `src/mcp/config.*.characterization.test.ts`.
 **How to apply:** take the "keep and track" items together with
 [[mcp-server-name-folding-reaches-other-servers-rules]] when the approval units
 land. Failing closed on a broken managed file is the cheapest win.
+
+**mcp/auth (2026-10-03).** Pinned, not fixed:
+- `claudin -p` runs a project's MCP `headersHelper` command without the
+  workspace-trust check that interactive mode applies. A cloned repo's
+  `.mcp.json` can name the command.
+- Trust is granted to the whole workspace at once, not per helper command.
+
+**mcp/doctor.** Same pattern: piped runs (`--json | jq`, CI) start every
+`.mcp.json` server that has not been rejected. That includes servers from a
+parent directory, and servers nobody approved.
+
+Both belong with the project-scope trust fix. Tracked in the auth and doctor
+specs.

@@ -1,0 +1,214 @@
+{
+  "test": [
+    "src/mcp/doctor.config.characterization.test.ts",
+    "src/mcp/doctor.live.characterization.test.ts",
+    "src/mcp/doctor.contract.characterization.test.ts",
+    "src/mcp/doctor.cli.characterization.test.ts"
+  ],
+  "source": "src/mcp/doctor.ts",
+  "probes": [
+    {
+      "name": "validation: invalid JSON gets the generic code",
+      "find": "    return 'config.invalid_json'\n",
+      "replace": "    return 'config.validation_error'\n"
+    },
+    {
+      "name": "validation: Windows npx matched only at the start",
+      "find": "  if (error.message.includes('Windows cannot launch npx directly')) {\n",
+      "replace": "  if (error.message.startsWith('Windows cannot launch npx directly')) {\n"
+    },
+    {
+      "name": "validation: schema message matched anywhere",
+      "find": "  if (error.message === 'Does not adhere to MCP server configuration schema') {\n",
+      "replace": "  if (error.message.includes('Does not adhere to MCP server configuration schema')) {\n"
+    },
+    {
+      "name": "validation: fatal becomes a warning",
+      "find": "    return 'error'\n  }\n  if (severity === 'warning') {\n",
+      "replace": "    return 'warn'\n  }\n  if (severity === 'warning') {\n"
+    },
+    {
+      "name": "validation: no severity becomes an error",
+      "find": "  return 'warn'\n}\n\nexport function findingsFromValidationErrors(",
+      "replace": "  return 'error'\n}\n\nexport function findingsFromValidationErrors("
+    },
+    {
+      "name": "validation: nothing blocks",
+      "find": "      blocking: severity === 'error',\n",
+      "replace": "      blocking: false,\n"
+    },
+    {
+      "name": "validation: server findings stay global",
+      "find": "    if (!finding.serverName) {\n",
+      "replace": "    if (finding.serverName || !finding.serverName) {\n"
+    },
+    {
+      "name": "source: plugins read as dynamic",
+      "find": "    return config.pluginSource ? 'plugin' : 'dynamic'\n",
+      "replace": "    return 'dynamic'\n"
+    },
+    {
+      "name": "source: claude.ai reads as dynamic",
+      "find": "    return 'claudeai'\n",
+      "replace": "    return 'dynamic'\n"
+    },
+    {
+      "name": "definition: active without a running config",
+      "find": "    return false\n  }\n  return getSourceType(config) === getSourceType(activeConfig)",
+      "replace": "    return true\n  }\n  return getSourceType(config) === getSourceType(activeConfig)"
+    },
+    {
+      "name": "definition: signature ignored",
+      "find": " && getConfigSignature(config) === getConfigSignature(activeConfig)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "definition: approval asked for every scope",
+      "find": "    scope === 'project' ? deps.getProjectMcpServerStatus(name) === 'pending' : false\n",
+      "replace": "    deps.getProjectMcpServerStatus(name) === 'pending'\n"
+    },
+    {
+      "name": "scopes: enterprise left out by default",
+      "find": "    return scope === 'enterprise' || scope === 'local' || scope === 'project' || scope === 'user'\n",
+      "replace": "    return scope === 'local' || scope === 'project' || scope === 'user'\n"
+    },
+    {
+      "name": "scopes: the filter is inverted",
+      "find": "  return scope === scopeFilter\n",
+      "replace": "  return scope !== scopeFilter\n"
+    },
+    {
+      "name": "scopes: project errors ignore the filter",
+      "find": "    ...(shouldIncludeScope('project', scopeFilter) ? scopeResults.project.errors : []),\n",
+      "replace": "    ...scopeResults.project.errors,\n"
+    },
+    {
+      "name": "observed: plugin path loses the plugin",
+      "find": "        ? `plugin:${activeConfig.pluginSource ?? 'unknown'}`\n",
+      "replace": "        ? 'plugin'\n"
+    },
+    {
+      "name": "observed: transport not compared",
+      "find": "      definition.transport === getTransport(runtimeConfig),\n",
+      "replace": "      true,\n"
+    },
+    {
+      "name": "observed: not added when every declared one is idle",
+      "find": "      (definitions.length > 0 && definitions.every(definition => !definition.runtimeActive)))\n",
+      "replace": "      false)\n"
+    },
+    {
+      "name": "observed: added under a scope filter",
+      "find": "    ((definitions.length === 0 && !options.scopeFilter) ||\n",
+      "replace": "    ((definitions.length === 0) ||\n"
+    },
+    {
+      "name": "observed: disabled flag dropped",
+      "find": "        disabled: serverDisabled,\n",
+      "replace": "        disabled: false,\n"
+    },
+    {
+      "name": "shadowing: needs three scopes",
+      "find": "  if (userEditable.length <= 1) {\n",
+      "replace": "  if (userEditable.length <= 2) {\n"
+    },
+    {
+      "name": "shadowing: names the last definition",
+      "find": "  const active = userEditable.find(definition => definition.runtimeActive) ?? userEditable[0]\n",
+      "replace": "  const active = userEditable[userEditable.length - 1]\n"
+    },
+    {
+      "name": "state: pending approval not reported",
+      "find": "    if (definition.pendingApproval) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "state: disabled not reported",
+      "find": "    if (definition.disabled) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "summary: global findings not counted as blocking",
+      "find": "  const blocking = allFindings.filter(finding => finding.blocking).length\n",
+      "replace": "  const blocking = report.servers.flatMap(server => server.findings).filter(finding => finding.blocking).length\n"
+    },
+    {
+      "name": "summary: warnings do not cost health",
+      "find": "      server.findings.every(finding => !finding.blocking && finding.severity !== 'warn'),\n",
+      "replace": "      server.findings.every(finding => !finding.blocking),\n"
+    },
+    {
+      "name": "summary: healthy without connecting",
+      "find": "      server.liveCheck.result === 'connected' &&\n",
+      "replace": "      server.liveCheck.result !== 'failed' &&\n"
+    },
+    {
+      "name": "live: config-only still connects",
+      "find": "  if (configOnly) {\n",
+      "replace": "  if (configOnly && false) {\n"
+    },
+    {
+      "name": "live: pending reads as skipped",
+      "find": "      return { attempted: false, result: 'pending' }\n",
+      "replace": "      return { attempted: false, result: 'skipped' }\n"
+    },
+    {
+      "name": "live: needs-auth reads as failed",
+      "find": "        return { attempted: true, result: 'needs-auth', durationMs }\n",
+      "replace": "        return { attempted: true, result: 'failed', durationMs }\n"
+    },
+    {
+      "name": "live: the connection is never cleared",
+      "find": "    await deps.clearServerCache(name, activeConfig).catch(() => {\n",
+      "replace": "    await Promise.resolve().catch(() => {\n"
+    },
+    {
+      "name": "live: a cleanup failure escapes",
+      "find": "    await deps.clearServerCache(name, activeConfig).catch(() => {\n",
+      "replace": "    await deps.clearServerCache(name, activeConfig).then(() => {\n"
+    },
+    {
+      "name": "live: missing command on any transport",
+      "find": "      activeDefinition?.transport === 'stdio' &&\n",
+      "replace": "      true &&\n"
+    },
+    {
+      "name": "live: a disabled server is still checked",
+      "find": "  const activeConfig = serverDisabled ? undefined : runtimeConfig\n",
+      "replace": "  const activeConfig = runtimeConfig\n"
+    },
+    {
+      "name": "not found: never reported",
+      "find": "  if (definitions.length === 0 && !shouldAddObservedDefinition) {\n",
+      "replace": "  if (definitions.length === 0 && shouldAddObservedDefinition) {\n"
+    },
+    {
+      "name": "names: runtime-only servers listed under a filter",
+      "find": "    !options.scopeFilter,\n  )\n",
+      "replace": "    true,\n  )\n"
+    },
+    {
+      "name": "single server: global findings dropped",
+      "find": "  report.servers = [server]\n  report.findings = globalFindings\n",
+      "replace": "  report.servers = [server]\n  report.findings = []\n"
+    },
+    {
+      "name": "cli: exit 1 needs two blocking issues",
+      "source": "src/platform/headless/handlers/mcp.tsx",
+      "find": "    process.exit(report.summary.blocking > 0 ? 1 : 0)\n",
+      "replace": "    process.exit(report.summary.blocking > 1 ? 1 : 0)\n"
+    },
+    {
+      "name": "cli: the healthy count shows warnings",
+      "source": "src/platform/headless/handlers/mcp.tsx",
+      "find": "  lines.push(`- ${report.summary.healthy} healthy`)\n",
+      "replace": "  lines.push(`- ${report.summary.warnings} healthy`)\n"
+    },
+    {
+      "name": "cli: skipped shown as a live check",
+      "source": "src/platform/headless/handlers/mcp.tsx",
+      "find": "      const stateLikeResults = new Set(['disabled', 'pending', 'skipped'])\n",
+      "replace": "      const stateLikeResults = new Set(['disabled', 'pending'])\n"
+    }
+  ]
+}

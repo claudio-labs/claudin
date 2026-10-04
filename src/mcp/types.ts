@@ -175,14 +175,14 @@ export type ConnectedMCPServer = {
   cleanup: () => Promise<void>
 }
 
-export type FailedMCPServer = {
+type FailedMCPServer = {
   name: string
   type: 'failed'
   config: ScopedMcpServerConfig
   error?: string
 }
 
-export type NeedsAuthMCPServer = {
+type NeedsAuthMCPServer = {
   name: string
   type: 'needs-auth'
   config: ScopedMcpServerConfig

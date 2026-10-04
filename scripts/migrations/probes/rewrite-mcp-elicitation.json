@@ -1,0 +1,230 @@
+{
+  "test": [
+    "src/mcp/elicitation.validation.characterization.test.ts",
+    "src/mcp/elicitation.dateTime.characterization.test.ts",
+    "src/mcp/elicitation.handler.characterization.test.ts"
+  ],
+  "source": "src/mcp/elicitationHandler.ts",
+  "probes": [
+    {
+      "name": "handler: a URL request is treated as form",
+      "find": "return params.mode === 'url' ? 'url' : 'form'",
+      "replace": "return 'form'"
+    },
+    {
+      "name": "handler: URL waiting-state label changes",
+      "find": "elicitationId ? { actionLabel: 'Skip confirmation' } : undefined",
+      "replace": "elicitationId ? { actionLabel: 'Open link' } : undefined"
+    },
+    {
+      "name": "handler: requestId is no longer the JSON-RPC id",
+      "find": "requestId: extra.requestId,",
+      "replace": "requestId: String(extra.requestId),"
+    },
+    {
+      "name": "handler: earlier queue entries are dropped",
+      "find": "                ...prev.elicitation.queue,\n",
+      "replace": ""
+    },
+    {
+      "name": "handler: the user's answer is replaced by cancel",
+      "find": "                    resolve(result)\n",
+      "replace": "                    resolve({ action: 'cancel' })\n"
+    },
+    {
+      "name": "handler: a server cancel resolves decline",
+      "find": "resolve({ action: 'cancel' })",
+      "replace": "resolve({ action: 'decline' })"
+    },
+    {
+      "name": "handler: the server's cancel is not listened to",
+      "find": "extra.signal.addEventListener('abort', onAbort, { once: true })",
+      "replace": "void onAbort"
+    },
+    {
+      "name": "handler: a failure answers decline instead of cancel",
+      "find": "return { action: 'cancel' as const }",
+      "replace": "return { action: 'decline' as const }"
+    },
+    {
+      "name": "handler: result hooks no longer change the answer",
+      "find": "        return result\n      } catch (error) {",
+      "replace": "        return rawResult\n      } catch (error) {"
+    },
+    {
+      "name": "handler: result hooks lose the mode",
+      "find": "          mode,\n          elicitationId,\n        )",
+      "replace": "          undefined,\n          elicitationId,\n        )"
+    },
+    {
+      "name": "completion: the event is not marked completed",
+      "find": "queue[idx] = { ...queue[idx]!, completed: true }",
+      "replace": "queue[idx] = { ...queue[idx]!, completed: false }"
+    },
+    {
+      "name": "completion: any server's event matches",
+      "find": "      e.serverName === serverName &&\n",
+      "replace": ""
+    },
+    {
+      "name": "completion: a form event matches",
+      "find": "      e.params.mode === 'url' &&\n",
+      "replace": ""
+    },
+    {
+      "name": "completion: any id matches",
+      "find": "      e.params.elicitationId === elicitationId,",
+      "replace": "      true,"
+    },
+    {
+      "name": "completion: an unknown id still replaces the state",
+      "find": "if (idx === -1) return prev",
+      "replace": "if (idx === -1) return { ...prev }"
+    },
+    {
+      "name": "registration: a client without the capability throws",
+      "find": "  } catch {\n    // Client wasn't created with elicitation capability - nothing to register\n    return\n  }",
+      "replace": "  } catch (error) {\n    throw error\n  }"
+    },
+    {
+      "name": "hooks: a blocking Elicitation hook cancels instead of declining",
+      "find": "    if (blockingError) {\n      return { action: 'decline' }\n    }\n\n    if (elicitationResponse) {",
+      "replace": "    if (blockingError) {\n      return { action: 'cancel' }\n    }\n\n    if (elicitationResponse) {"
+    },
+    {
+      "name": "hooks: an Elicitation hook's content is dropped",
+      "find": "content: elicitationResponse.content,",
+      "replace": "content: undefined,"
+    },
+    {
+      "name": "hooks: a result hook without content drops the user's",
+      "find": "content: elicitationResultResponse.content ?? result.content,",
+      "replace": "content: elicitationResultResponse.content,"
+    },
+    {
+      "name": "hooks: a blocking result hook keeps the answer",
+      "find": "      return { action: 'decline' }\n    }\n\n    const finalResult",
+      "replace": "      return result\n    }\n\n    const finalResult"
+    },
+    {
+      "name": "kinds: oneOf is not a single choice",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "('enum' in schema || 'oneOf' in schema)",
+      "replace": "('enum' in schema)"
+    },
+    {
+      "name": "kinds: items.anyOf is not a multi choice",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "('enum' in schema.items || 'anyOf' in schema.items)",
+      "replace": "('enum' in schema.items)"
+    },
+    {
+      "name": "labels: legacy enumNames ignored",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "('enumNames' in schema ? schema.enumNames : undefined) ?? schema.enum",
+      "replace": "schema.enum"
+    },
+    {
+      "name": "text: maxLength message always plural",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "plural(schema.maxLength, 'character')",
+      "replace": "'characters'"
+    },
+    {
+      "name": "date-time: an offset is refused",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "offset: true,",
+      "replace": "offset: false,"
+    },
+    {
+      "name": "numbers: whole bounds lose the .0",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "Number.isInteger(n) && !isInteger ? `${n}.0` : String(n)",
+      "replace": "String(n)"
+    },
+    {
+      "name": "numbers: integer accepts fractions",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "numberSchema = numberSchema.int({ message: rangeMsg })",
+      "replace": "numberSchema = numberSchema"
+    },
+    {
+      "name": "malformed: the error no longer quotes the schema",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "throw new Error(`Unsupported schema: ${jsonStringify(schema)}`)",
+      "replace": "throw new Error('Unsupported schema')"
+    },
+    {
+      "name": "errors: joined with a comma",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": ".join('; ')",
+      "replace": ".join(', ')"
+    },
+    {
+      "name": "async: ISO-shaped input goes to the model",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "if (isDateTimeSchema(schema) && !looksLikeISO8601(stringValue)) {",
+      "replace": "if (isDateTimeSchema(schema)) {"
+    },
+    {
+      "name": "async: the model's value is not re-checked",
+      "source": "src/mcp/elicitationValidation.ts",
+      "find": "if (validatedParsed.isValid) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "prompt: a zero offset is signed minus",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "const tzSign = timezoneOffset >= 0 ? '+' : '-'",
+      "replace": "const tzSign = timezoneOffset > 0 ? '+' : '-'"
+    },
+    {
+      "name": "prompt: offset minutes not padded",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "String(tzMinutes).padStart(2, '0')",
+      "replace": "String(tzMinutes)"
+    },
+    {
+      "name": "prompt: weekday taken in UTC",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "now.toLocaleDateString('en-US', { weekday: 'long' })",
+      "replace": "now.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })"
+    },
+    {
+      "name": "prompt: date format loses its description",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "'YYYY-MM-DD (date only, no time)'",
+      "replace": "'YYYY-MM-DD'"
+    },
+    {
+      "name": "prompt: input no longer quoted",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "User input: \"${input}\"",
+      "replace": "User input: ${input}"
+    },
+    {
+      "name": "reply: two leading digits are enough",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "/^\\d{4}/.test(parsedText)",
+      "replace": "/^\\d{2}/.test(parsedText)"
+    },
+    {
+      "name": "reply: not trimmed",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "extractTextContent(result.message.content).trim()",
+      "replace": "extractTextContent(result.message.content)"
+    },
+    {
+      "name": "reply: model failure reads as unparsed",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "'Unable to parse date/time. Please enter in ISO 8601 format manually.'",
+      "replace": "'Unable to parse date/time from input'"
+    },
+    {
+      "name": "iso shape: surrounding spaces count",
+      "source": "src/mcp/dateTimeParser.ts",
+      "find": "return /^\\d{4}-\\d{2}-\\d{2}(T|$)/.test(input.trim())",
+      "replace": "return /^\\d{4}-\\d{2}-\\d{2}(T|$)/.test(input)"
+    }
+  ]
+}
