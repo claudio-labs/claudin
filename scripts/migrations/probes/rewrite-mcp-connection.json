@@ -1,228 +1,641 @@
 {
   "test": [
     "src/mcp/client.connection.characterization.test.ts",
-    "src/mcp/client.connectionParts.characterization.test.ts"
+    "src/mcp/client.connectionParts.characterization.test.ts",
+    "src/mcp/client/connection.fixes.test.ts",
+    "src/mcp/client/connectionModules.test.ts"
   ],
   "source": "src/mcp/client/connection.ts",
   "probes": [
     {
-      "name": "connection: capped instructions lose the truncation marker",
-      "find": "rawInstructions.slice(0, MAX_MCP_DESCRIPTION_LENGTH) + '… [truncated]'",
-      "replace": "rawInstructions.slice(0, MAX_MCP_DESCRIPTION_LENGTH)"
-    },
-    {
-      "name": "connection: sdk servers stop counting as local",
-      "find": "return !config.type || config.type === 'stdio' || config.type === 'sdk'",
-      "replace": "return !config.type || config.type === 'stdio'"
-    },
-    {
-      "name": "connection: getDiagnostics dropped from the kept IDE tools",
-      "find": "const ALLOWED_IDE_TOOLS = ['mcp__ide__executeCode', 'mcp__ide__getDiagnostics']",
-      "replace": "const ALLOWED_IDE_TOOLS = ['mcp__ide__executeCode']"
-    },
-    {
-      "name": "connection: needs-auth is no longer remembered on disk",
-      "find": "  setMcpAuthCacheEntry(name)\n",
-      "replace": ""
-    },
-    {
-      "name": "connection: client introduces itself under another name",
-      "find": "          name: 'claude-code',",
-      "replace": "          name: 'claudin',"
-    },
-    {
-      "name": "connection: elicitation capability no longer declared",
-      "find": "            elicitation: {},\n",
-      "replace": ""
-    },
-    {
-      "name": "connection: roots answer the current cwd, not the original one",
-      "find": "uri: `file://${getOriginalCwd()}`,",
-      "replace": "uri: `file://${process.cwd()}`,"
-    },
-    {
-      "name": "connection: timeout message loses the limit",
-      "find": "connection timed out after ${getConnectionTimeoutMs()}ms`,",
-      "replace": "connection timed out`,"
-    },
-    {
-      "name": "connection: early elicitations are declined instead of cancelled",
-      "find": "return { action: 'cancel' as const }",
-      "replace": "return { action: 'decline' as const }"
-    },
-    {
-      "name": "connection: HTTP 401 no longer yields needs-auth",
-      "find": "return handleRemoteAuthFailure(name, serverRef, 'http')",
-      "replace": "throw error"
-    },
-    {
-      "name": "connection: SSE 401 no longer yields needs-auth",
-      "find": "return handleRemoteAuthFailure(name, serverRef, 'sse')",
-      "replace": "throw error"
-    },
-    {
-      "name": "connection: claude.ai proxy needs-auth on 403 instead of 401",
-      "find": "if (errorCode === 401) {",
-      "replace": "if (errorCode === 403) {"
-    },
-    {
-      "name": "connection: an expired HTTP session no longer closes the connection",
-      "find": "          closeTransportAndRejectPending('session expired')\n",
-      "replace": ""
-    },
-    {
-      "name": "connection: onclose keeps the dead connection cached",
-      "find": "        connectToServer.cache.delete(key)\n",
-      "replace": ""
-    },
-    {
-      "name": "connection: clearServerCache keeps the connection cached",
-      "find": "  connectToServer.cache.delete(key)\n  fetchToolsForClient.cache.delete(name)",
-      "replace": "  fetchToolsForClient.cache.delete(name)"
-    },
-    {
-      "name": "connection: cleanup starts with SIGTERM",
-      "find": "process.kill(childPid, 'SIGINT')",
-      "replace": "process.kill(childPid, 'SIGTERM')"
-    },
-    {
-      "name": "connection: cleanup never escalates to SIGKILL",
-      "find": "process.kill(childPid, 'SIGKILL')",
-      "replace": "process.kill(childPid, 'SIGTERM')"
-    },
-    {
-      "name": "connection: ensureConnectedClient reconnects SDK servers too",
-      "find": "  if (client.config.type === 'sdk') {",
-      "replace": "  if (client.config.type === 'sdk-never') {"
-    },
-    {
-      "name": "connection: ws-ide servers are not told the pid",
-      "find": "if (serverRef.type === 'sse-ide' || serverRef.type === 'ws-ide') {",
-      "replace": "if (serverRef.type === 'sse-ide') {"
-    },
-    {
-      "name": "connection: failed cleanup closes the transport before the in-process server",
-      "find": "  if (inProcessServer) {\n    await inProcessServer.close().catch(() => {})\n  }\n\n  await transport.close().catch(() => {})",
-      "replace": "  await transport.close().catch(() => {})\n  if (inProcessServer) {\n    await inProcessServer.close().catch(() => {})\n  }"
-    },
-    {
-      "name": "connection: failed cleanup stops waiting for the transport",
-      "find": "  await transport.close().catch(() => {})\n}",
-      "replace": "  void transport.close().catch(() => {})\n}"
-    },
-    {
-      "name": "transport: ingress token overrides stored OAuth tokens on HTTP",
-      "source": "src/mcp/client/transport.ts",
-      "find": "            !hasOAuthTokens && {",
-      "replace": "            {"
-    },
-    {
-      "name": "transport: ws no longer sends the ingress token",
-      "source": "src/mcp/client/transport.ts",
-      "find": "      ...(sessionIngressToken && {\n        Authorization",
-      "replace": "      ...(false && {\n        Authorization"
-    },
-    {
-      "name": "transport: ws-ide token moves to Authorization",
-      "source": "src/mcp/client/transport.ts",
-      "find": "        'X-Claude-Code-Ide-Authorization': serverRef.authToken,",
-      "replace": "        Authorization: serverRef.authToken,"
-    },
-    {
-      "name": "transport: SSE stream loses the stored bearer",
-      "source": "src/mcp/client/transport.ts",
-      "find": "          authHeaders.Authorization = `Bearer ${tokens.access_token}`\n",
-      "replace": ""
-    },
-    {
-      "name": "transport: stdio drops the config's env",
-      "source": "src/mcp/client/transport.ts",
-      "find": "        ...serverRef.env,\n",
-      "replace": ""
-    },
-    {
-      "name": "transport: shell prefix gets separate arguments",
-      "source": "src/mcp/client/transport.ts",
-      "find": "? [[serverRef.command, ...serverRef.args].join(' ')]",
-      "replace": "? [serverRef.command, ...serverRef.args]"
-    },
-    {
-      "name": "transport: claude.ai proxy loses the session id header",
-      "source": "src/mcp/client/transport.ts",
-      "find": "          'X-Mcp-Client-Session-Id': getSessionId(),\n",
-      "replace": ""
-    },
-    {
-      "name": "fetch: POST Accept loses text/event-stream",
+      "name": "an env knob must be positive: zero means the default",
       "source": "src/mcp/client/fetch.ts",
-      "find": "const MCP_STREAMABLE_HTTP_ACCEPT = 'application/json, text/event-stream'",
-      "replace": "const MCP_STREAMABLE_HTTP_ACCEPT = 'application/json'"
+      "find": "return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback",
+      "replace": "return Number.isFinite(parsed) ? parsed : fallback"
     },
     {
-      "name": "fetch: GETs get the timeout wrapper too",
+      "name": "the connection timeout defaults to 30 s",
       "source": "src/mcp/client/fetch.ts",
-      "find": "if (method === 'GET') {",
-      "replace": "if (method === 'HEAD') {"
+      "find": "const DEFAULT_CONNECTION_TIMEOUT_MS = 30_000",
+      "replace": "const DEFAULT_CONNECTION_TIMEOUT_MS = 31_000"
     },
     {
-      "name": "fetch: the caller's abort no longer reaches the request",
+      "name": "the local batch size defaults to 3",
       "source": "src/mcp/client/fetch.ts",
-      "find": "    parentSignal?.addEventListener('abort', abort)\n",
-      "replace": ""
+      "find": "const DEFAULT_LOCAL_BATCH_SIZE = 3",
+      "replace": "const DEFAULT_LOCAL_BATCH_SIZE = 4"
     },
     {
-      "name": "fetch: proxy fetch retries on 403 instead of 401",
+      "name": "the remote batch size defaults to 20",
       "source": "src/mcp/client/fetch.ts",
-      "find": "if (response.status !== 401) {",
-      "replace": "if (response.status !== 403) {"
+      "find": "const DEFAULT_REMOTE_BATCH_SIZE = 20",
+      "replace": "const DEFAULT_REMOTE_BATCH_SIZE = 21"
     },
     {
-      "name": "fetch: proxy fetch retries even when the token did not change",
+      "name": "the request timeout is 60 s",
       "source": "src/mcp/client/fetch.ts",
-      "find": "if (!now || now === sentToken) {",
-      "replace": "if (!now) {"
+      "find": "export const MCP_REQUEST_TIMEOUT_MS = 60000",
+      "replace": "export const MCP_REQUEST_TIMEOUT_MS = 60001"
     },
     {
-      "name": "fetch: proxy fetch appends instead of replacing the caller's Authorization",
+      "name": "GETs pass through untouched",
       "source": "src/mcp/client/fetch.ts",
-      "find": "headers.set('Authorization', `Bearer ${currentTokens.accessToken}`)",
-      "replace": "headers.append('Authorization', `Bearer ${currentTokens.accessToken}`)"
+      "find": "if (method === 'GET') return baseFetch(url, init)",
+      "replace": "if (method === 'NONE') return baseFetch(url, init)"
     },
     {
-      "name": "authCache: TTL becomes 16 minutes",
+      "name": "the method is compared in upper case",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "const method = (init?.method ?? 'GET').toUpperCase()",
+      "replace": "const method = init?.method ?? 'GET'"
+    },
+    {
+      "name": "an Accept the caller set is kept",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "if (!headers.has('accept')) headers.set('accept', STREAMABLE_HTTP_ACCEPT)",
+      "replace": "headers.set('accept', STREAMABLE_HTTP_ACCEPT)"
+    },
+    {
+      "name": "the default Accept names JSON and event streams",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "const STREAMABLE_HTTP_ACCEPT = 'application/json, text/event-stream'",
+      "replace": "const STREAMABLE_HTTP_ACCEPT = 'application/json'"
+    },
+    {
+      "name": "a POST's signal follows the caller's",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "const signal = callerSignal ? AbortSignal.any([callerSignal, clock.signal]) : clock.signal",
+      "replace": "const signal = clock.signal"
+    },
+    {
+      "name": "the proxy bearer replaces the caller's Authorization",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "headers.set('Authorization', `Bearer ${token}`)",
+      "replace": "headers.append('Authorization', `Bearer ${token}`)"
+    },
+    {
+      "name": "no claude.ai login: nothing is sent",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "if (!sent) throw new Error('No claude.ai OAuth token available')",
+      "replace": "if (!sent) return new Response(null, { status: 401 })"
+    },
+    {
+      "name": "only a 401 is retried",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "if (refused.status !== 401) return refused",
+      "replace": "if (refused.status === 401) return refused"
+    },
+    {
+      "name": "the retry needs a different token",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "if (!next || next === sent) return refused",
+      "replace": "if (!next) return refused"
+    },
+    {
+      "name": "a retry that cannot be sent returns the first 401",
+      "source": "src/mcp/client/fetch.ts",
+      "find": "    } catch {\n      return refused\n    }",
+      "replace": "    } catch (retryError) {\n      throw retryError\n    }"
+    },
+    {
+      "name": "an entry counts for 15 minutes",
       "source": "src/mcp/client/authCache.ts",
-      "find": "const MCP_AUTH_CACHE_TTL_MS = 15 * 60 * 1000",
-      "replace": "const MCP_AUTH_CACHE_TTL_MS = 16 * 60 * 1000"
+      "find": "const NEEDS_AUTH_TTL_MS = 15 * 60 * 1000",
+      "replace": "const NEEDS_AUTH_TTL_MS = 16 * 60 * 1000"
     },
     {
-      "name": "authCache: clearing keeps the file",
+      "name": "the file is mcp-needs-auth-cache.json",
       "source": "src/mcp/client/authCache.ts",
-      "find": "  void unlink(getMcpAuthCachePath()).catch(() => {",
-      "replace": "  void Promise.resolve().catch(() => {"
+      "find": "const CACHE_FILE_NAME = 'mcp-needs-auth-cache.json'",
+      "replace": "const CACHE_FILE_NAME = 'mcp-needs-auth.json'"
     },
     {
-      "name": "authCache: an unreadable file counts as cached",
+      "name": "an entry counts in memory even when the write fails",
       "source": "src/mcp/client/authCache.ts",
-      "find": "      .catch(() => ({}))",
-      "replace": "      .catch(() => ({ anything: { timestamp: Date.now() } }))"
+      "find": "known = knownEntries().then(entries => ({ ...entries, [serverId]: entry }))",
+      "replace": "known = knownEntries()"
     },
     {
-      "name": "ws: frames are no longer validated as JSON-RPC",
-      "source": "src/mcp/mcpWebSocketTransport.ts",
-      "find": "      const messageObj = jsonParse(data)\n      const message = JSONRPCMessageSchema.parse(messageObj)",
-      "replace": "      const messageObj = jsonParse(data)\n      const message = messageObj as JSONRPCMessage"
+      "name": "a write queued before a clear is dropped",
+      "source": "src/mcp/client/authCache.ts",
+      "find": "      if (queuedIn !== generation) return\n",
+      "replace": "\n"
     },
     {
-      "name": "ws: close() leaves the socket open",
-      "source": "src/mcp/mcpWebSocketTransport.ts",
-      "find": "      this.ws.close()\n",
-      "replace": ""
+      "name": "a write keeps the entries already on disk",
+      "source": "src/mcp/client/authCache.ts",
+      "find": "await writeFile(path, jsonStringify({ ...onDisk, [serverId]: entry }))",
+      "replace": "await writeFile(path, jsonStringify({ [serverId]: entry }))"
     },
     {
-      "name": "ws: a server hang-up no longer fires onclose",
+      "name": "clearing forgets the in-memory entries",
+      "source": "src/mcp/client/authCache.ts",
+      "find": "  generation += 1\n  known = null\n",
+      "replace": "  generation += 1\n"
+    },
+    {
+      "name": "clearing deletes the file",
+      "source": "src/mcp/client/authCache.ts",
+      "find": "    unlinkSync(cacheFilePath())",
+      "replace": "    cacheFilePath()"
+    },
+    {
+      "name": "a malformed file counts as empty",
+      "source": "src/mcp/client/authCache.ts",
+      "find": "  if (typeof parsed !== 'object' || parsed === null) return {}\n",
+      "replace": "\n"
+    },
+    {
+      "name": "start can only be called once",
       "source": "src/mcp/mcpWebSocketTransport.ts",
-      "find": "  private onBunClose = () => {\n    this.handleCloseCleanup()",
-      "replace": "  private onBunClose = () => {\n    void 0"
+      "find": "if (this.#started) throw new Error('Start can only be called once per transport.')",
+      "replace": "if (false as boolean) throw new Error('Start can only be called once per transport.')"
+    },
+    {
+      "name": "an open socket starts at once",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "    if (state === READY_STATE.open) return\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a closed socket makes start reject",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "if (state !== READY_STATE.connecting) throw new Error('WebSocket is closed. Cannot start.')",
+      "replace": "if (false as boolean) throw new Error('WebSocket is closed. Cannot start.')"
+    },
+    {
+      "name": "send refuses a socket that is not open",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "if (this.#socket.readyState !== READY_STATE.open) {",
+      "replace": "if (false as boolean) {"
+    },
+    {
+      "name": "close() fires onclose itself",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "    this.#socket.close()\n    this.#finish()",
+      "replace": "    this.#socket.close()"
+    },
+    {
+      "name": "onclose fires once (Finding 9)",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "    if (this.#closed) return\n",
+      "replace": "\n"
+    },
+    {
+      "name": "frames that are not JSON-RPC go to onerror",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "message = JSONRPCMessageSchema.parse(jsonParse(frameText(data)))",
+      "replace": "message = jsonParse(frameText(data)) as JSONRPCMessage"
+    },
+    {
+      "name": "a socket error reaches onerror",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "    this.onerror?.(socketError(event))\n  }\n\n  readonly #onClose",
+      "replace": "  }\n\n  readonly #onClose"
+    },
+    {
+      "name": "a socket that fails to open rejects start",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "const onFailure = (event: unknown) => settle(() => reject(socketError(event)))",
+      "replace": "const onFailure = (_event: unknown) => settle(resolve)"
+    },
+    {
+      "name": "a server hang-up fires onclose",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "    ws.addEventListener('close', this.#onClose)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "binary frames are decoded as UTF-8",
+      "source": "src/mcp/mcpWebSocketTransport.ts",
+      "find": "if (data instanceof ArrayBuffer) return Buffer.from(data).toString('utf8')",
+      "replace": "if (data instanceof ArrayBuffer) return ''"
+    },
+    {
+      "name": "http: a stored OAuth token keeps the ingress token out",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "const ingressAllowed = !inputs.hasStoredToken && !hasHeader(configured, 'authorization')",
+      "replace": "const ingressAllowed = !hasHeader(configured, 'authorization')"
+    },
+    {
+      "name": "ws: the ingress token is sent (tracked, Finding 1)",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "      return { ...userAgent, ...bearer(ingressAllowed ? inputs.ingressToken : undefined), ...configured }\n    }\n    case 'sse':",
+      "replace": "      return { ...userAgent, ...configured }\n    }\n    case 'sse':"
+    },
+    {
+      "name": "sse: never the ingress token",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "    case 'sse':\n      return { ...userAgent, ...configured }",
+      "replace": "    case 'sse':\n      return { ...userAgent, ...bearer(inputs.ingressToken), ...configured }"
+    },
+    {
+      "name": "sse-ide: no headers at all",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "    case 'sse-ide':\n      return {}",
+      "replace": "    case 'sse-ide':\n      return { ...bearer(inputs.ingressToken) }"
+    },
+    {
+      "name": "ws-ide: the lockfile token has its own header",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "const IDE_AUTH_HEADER = 'X-Claude-Code-Ide-Authorization'",
+      "replace": "const IDE_AUTH_HEADER = 'Authorization'"
+    },
+    {
+      "name": "the proxy gets the session id header",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "const PROXY_SESSION_HEADER = 'X-Mcp-Client-Session-Id'",
+      "replace": "const PROXY_SESSION_HEADER = 'X-Session-Id'"
+    },
+    {
+      "name": "every remote request carries the MCP user agent",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "const userAgent = { 'User-Agent': inputs.userAgent }",
+      "replace": "const userAgent = {}"
+    },
+    {
+      "name": "a configured Authorization of any case keeps ingress out",
+      "source": "src/mcp/client/transport/credentials.ts",
+      "find": "return Object.keys(headers).some(key => key.toLowerCase() === wanted)",
+      "replace": "return Object.keys(headers).some(key => key === 'Authorization')"
+    },
+    {
+      "name": "the shell prefix gets one joined argument (tracked, Finding 2)",
+      "source": "src/mcp/client/transport.ts",
+      "find": "args: prefix ? [[config.command, ...args].join(' ')] : args,",
+      "replace": "args: prefix ? [config.command, ...args] : args,"
+    },
+    {
+      "name": "the config's env is laid over the parent's",
+      "source": "src/mcp/client/transport.ts",
+      "find": "for (const [key, value] of Object.entries({ ...subprocessEnv(), ...overrides })) {",
+      "replace": "for (const [key, value] of Object.entries({ ...overrides })) {"
+    },
+    {
+      "name": "stdio stderr is piped, not shown",
+      "source": "src/mcp/client/transport.ts",
+      "find": "    stderr: 'pipe',",
+      "replace": "    stderr: 'inherit',"
+    },
+    {
+      "name": "the proxy URL carries the server id",
+      "source": "src/mcp/client/transport.ts",
+      "find": "const path = MCP_PROXY_PATH.split(SERVER_ID_PLACEHOLDER).join(encodeURIComponent(config.id))",
+      "replace": "const path = MCP_PROXY_PATH"
+    },
+    {
+      "name": "a connector without a claude.ai login fails",
+      "source": "src/mcp/client/transport.ts",
+      "find": "if (!getClaudeAIOAuthTokens()?.accessToken) throw new Error('No claude.ai OAuth token found')",
+      "replace": "if (false as boolean) throw new Error('No claude.ai OAuth token found')"
+    },
+    {
+      "name": "sdk servers fail with their reason",
+      "source": "src/mcp/client/transport.ts",
+      "find": "throw new Error('SDK servers should be handled in print.ts')",
+      "replace": "throw new Error('SDK servers are handled elsewhere')"
+    },
+    {
+      "name": "an unknown type fails with its name",
+      "source": "src/mcp/client/transport.ts",
+      "find": "throw new Error(`Unsupported server type: ${String(unknownType)}`)",
+      "replace": "throw new Error('Unsupported server type')"
+    },
+    {
+      "name": "http: whether a token is stored is looked up",
+      "source": "src/mcp/client/transport.ts",
+      "find": "hasStoredToken: (await storedAccessToken(name, authProvider)) !== undefined,",
+      "replace": "hasStoredToken: false,"
+    },
+    {
+      "name": "an untyped entry is stdio",
+      "source": "src/mcp/client/transport.ts",
+      "find": "    case undefined:\n    case 'stdio':",
+      "replace": "    case 'stdio':"
+    },
+    {
+      "name": "sse carries the stored token through the auth provider",
+      "source": "src/mcp/client/transport.ts",
+      "find": "  return new SSEClientTransport(new URL(config.url), {\n    authProvider,",
+      "replace": "  return new SSEClientTransport(new URL(config.url), {"
+    },
+    {
+      "name": "ws: the config's headers go on the upgrade",
+      "source": "src/mcp/client/transport.ts",
+      "find": "    configured: await getMcpServerHeaders(name, config),\n    ingressToken: getSessionIngressAuthToken(),\n  })\n  return new WebSocketTransport",
+      "replace": "    ingressToken: getSessionIngressAuthToken(),\n  })\n  return new WebSocketTransport"
+    },
+    {
+      "name": "sockets offer the mcp subprotocol",
+      "source": "src/mcp/client/transport/webSocket.ts",
+      "find": "const MCP_SUBPROTOCOL = 'mcp'",
+      "replace": "const MCP_SUBPROTOCOL = 'mcp-x'"
+    },
+    {
+      "name": "socket headers go on the upgrade",
+      "source": "src/mcp/client/transport/webSocket.ts",
+      "find": "      headers: options.headers,\n      ...(proxy",
+      "replace": "      ...(proxy"
+    },
+    {
+      "name": "stdio, untyped and sdk servers are local",
+      "source": "src/mcp/client/connection.ts",
+      "find": "return config.type === undefined || config.type === 'stdio' || config.type === 'sdk'",
+      "replace": "return config.type === undefined || config.type === 'stdio'"
+    },
+    {
+      "name": "ensureConnectedClient passes sdk records through",
+      "source": "src/mcp/client/connection.ts",
+      "find": "if (client.config.type === 'sdk') return client",
+      "replace": "if (false as boolean) return client"
+    },
+    {
+      "name": "ensureConnectedClient throws when not connected",
+      "source": "src/mcp/client/connection.ts",
+      "find": "if (current.type !== 'connected') {",
+      "replace": "if (false as boolean) {"
+    },
+    {
+      "name": "only mcp__ide__ tools are filtered",
+      "source": "src/mcp/client/connection.ts",
+      "find": "return !tool.name.startsWith(IDE_TOOL_PREFIX) || KEPT_IDE_TOOLS.has(tool.name)",
+      "replace": "return KEPT_IDE_TOOLS.has(tool.name)"
+    },
+    {
+      "name": "getDiagnostics is a kept IDE tool",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  'mcp__ide__getDiagnostics',\n])",
+      "replace": "])"
+    },
+    {
+      "name": "the cache key is name, dash, config",
+      "source": "src/mcp/client/connection.ts",
+      "find": "return `${name}-${jsonStringify(serverRef)}`",
+      "replace": "return `${name}:${jsonStringify(serverRef)}`"
+    },
+    {
+      "name": "a cached record is handed back",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  if (known) return known\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a closed connection is forgotten",
+      "source": "src/mcp/client/connection.ts",
+      "find": "if (connections.get(key) === opening) connections.delete(key)",
+      "replace": "if (false as boolean) connections.delete(key)"
+    },
+    {
+      "name": "forgetting drops the tool list",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  fetchToolsForClient.cache.delete(name)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "forgetting drops the resource list",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  fetchResourcesForClient.cache.delete(name)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "forgetting drops the command list",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  fetchCommandsForClient.cache.delete(name)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "clearServerCache cleans up a live record",
+      "source": "src/mcp/client/connection.ts",
+      "find": "if (record.type === 'connected') await record.cleanup()",
+      "replace": "if (false as boolean) await record.cleanup()"
+    },
+    {
+      "name": "clearServerCache forgets the record",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  connections.delete(key)\n  forgetServerCapabilities(name)\n  if (!known) return",
+      "replace": "  forgetServerCapabilities(name)\n  if (!known) return"
+    },
+    {
+      "name": "clearServerCache never connects to close (Finding 6)",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  const known = connections.get(key)\n  connections.delete(key)\n  forgetServerCapabilities(name)",
+      "replace": "  const known = connections.get(key) ?? connectToServer(name, serverRef)\n  connections.delete(key)\n  forgetServerCapabilities(name)"
+    },
+    {
+      "name": "config equality ignores the scope",
+      "source": "src/mcp/client/connection.ts",
+      "find": "  const { scope: _scopeA, ...restA } = a",
+      "replace": "  const restA = a"
+    },
+    {
+      "name": "a login request is needs-auth",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "if (error instanceof UnauthorizedError) return true",
+      "replace": "if (false as boolean) return true"
+    },
+    {
+      "name": "a 401 from the claude.ai proxy is needs-auth",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "return config.type === 'claudeai-proxy' && error instanceof StreamableHTTPError && error.code === UNAUTHORIZED",
+      "replace": "return false"
+    },
+    {
+      "name": "needs-auth is remembered on disk",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "      setMcpAuthCacheEntry(name)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "a failed stdio child is signalled to stop",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "    if (pid) await deps.stopProcess(pid)\n    await closeQuietly",
+      "replace": "    await closeQuietly"
+    },
+    {
+      "name": "a failed connection closes its transport (Finding 4)",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "    await closeQuietly(transport, inProcessServer)\n    return failed(name, config, error)",
+      "replace": "    return failed(name, config, error)"
+    },
+    {
+      "name": "the in-process server closes before the transport",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "    ['in-process server', inProcessServer],\n    ['transport', transport],",
+      "replace": "    ['transport', transport],\n    ['in-process server', inProcessServer],"
+    },
+    {
+      "name": "closing a failed connection ignores errors",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "      await closable.close()\n    } catch (error) {\n",
+      "replace": "      await closable.close()\n    } catch (error) {\n      throw error\n"
+    },
+    {
+      "name": "the timeout message names server and ms",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "connection timed out after ${ms}ms`",
+      "replace": "timed out`"
+    },
+    {
+      "name": "the handshake races the deadline",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "await Promise.race([connecting, deadline])",
+      "replace": "await connecting"
+    },
+    {
+      "name": "IDE servers are told the pid",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "  if (isIdeServer(config)) {",
+      "replace": "  if (false as boolean) {"
+    },
+    {
+      "name": "serverInfo carries name and version",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "serverInfo: version ? { name: version.name, version: version.version } : undefined,",
+      "replace": "serverInfo: undefined,"
+    },
+    {
+      "name": "capabilities are the server's",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "capabilities: client.getServerCapabilities() ?? {},",
+      "replace": "capabilities: {},"
+    },
+    {
+      "name": "cleanup stops the stdio process",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "      if (pid) await deps.stopProcess(pid)\n    } finally {",
+      "replace": "    } finally {"
+    },
+    {
+      "name": "cleanup closes the client whatever stopping did (Finding 5)",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "    } finally {\n      await client.close().catch(",
+      "replace": "    } catch {\n      return\n    }\n    {\n      await client.close().catch("
+    },
+    {
+      "name": "remote connections watch for terminal errors",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "if (remoteType) closeOnTerminalErrors(client, name, remoteType)",
+      "replace": "if (false as boolean) closeOnTerminalErrors(client, name, remoteType)"
+    },
+    {
+      "name": "a closed connection reports itself",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "    logMCPDebug(name, 'Connection closed')\n    onClosed()\n",
+      "replace": "    logMCPDebug(name, 'Connection closed')\n"
+    },
+    {
+      "name": "a transport that cannot be built is a failed record",
+      "source": "src/mcp/client/connection/openConnection.ts",
+      "find": "    logMCPError(name, error)\n    return failed(name, config, error)\n  }\n  const { transport",
+      "replace": "    throw error\n  }\n  const { transport"
+    },
+    {
+      "name": "instructions of exactly 2048 characters are kept whole",
+      "source": "src/mcp/client/connection/handshake.ts",
+      "find": "if (instructions === undefined || instructions.length <= INSTRUCTIONS_CAP) return instructions",
+      "replace": "if (instructions === undefined || instructions.length < INSTRUCTIONS_CAP) return instructions"
+    },
+    {
+      "name": "the truncation marker",
+      "source": "src/mcp/client/connection/handshake.ts",
+      "find": "const TRUNCATION_MARKER = '… [truncated]'",
+      "replace": "const TRUNCATION_MARKER = '...'"
+    },
+    {
+      "name": "the instructions cap is 2048",
+      "source": "src/mcp/client/connection/handshake.ts",
+      "find": "export const INSTRUCTIONS_CAP = 2048",
+      "replace": "export const INSTRUCTIONS_CAP = 2047"
+    },
+    {
+      "name": "the client is named claude-code (tracked, Finding 3)",
+      "source": "src/mcp/client/clientIdentity.ts",
+      "find": "    name: 'claude-code',",
+      "replace": "    name: 'claudin',"
+    },
+    {
+      "name": "the client declares roots and an empty elicitation",
+      "source": "src/mcp/client/connection/handshake.ts",
+      "find": "const CLIENT_CAPABILITIES: ClientCapabilities = { roots: {}, elicitation: {} }",
+      "replace": "const CLIENT_CAPABILITIES: ClientCapabilities = { roots: {}, elicitation: { form: {} } }"
+    },
+    {
+      "name": "roots/list answers the original cwd",
+      "source": "src/mcp/client/connection/handshake.ts",
+      "find": "    roots: [{ uri: `file://${getOriginalCwd()}` }],",
+      "replace": "    roots: [],"
+    },
+    {
+      "name": "elicitation is cancelled by default",
+      "source": "src/mcp/client/connection/handshake.ts",
+      "find": "({ action: 'cancel' as const })",
+      "replace": "({ action: 'decline' as const })"
+    },
+    {
+      "name": "the build version is sent",
+      "source": "src/mcp/client/clientIdentity.ts",
+      "find": "    version: MACRO.VERSION ?? 'unknown',",
+      "replace": "    version: 'unknown',"
+    },
+    {
+      "name": "an expired session is not a reason to close sse",
+      "source": "src/mcp/client/connection/remoteErrors.ts",
+      "find": "if (type !== 'sse' && isMcpSessionExpiredError(error)) return 'close'",
+      "replace": "if (isMcpSessionExpiredError(error)) return 'close'"
+    },
+    {
+      "name": "three terminal errors in a row close",
+      "source": "src/mcp/client/connection/remoteErrors.ts",
+      "find": "export const MAX_CONSECUTIVE_TERMINAL_ERRORS = 3",
+      "replace": "export const MAX_CONSECUTIVE_TERMINAL_ERRORS = 2"
+    },
+    {
+      "name": "a different error resets the count",
+      "source": "src/mcp/client/connection/remoteErrors.ts",
+      "find": "consecutive = verdict === 'count' ? consecutive + 1 : 0",
+      "replace": "consecutive = verdict === 'count' ? consecutive + 1 : consecutive"
+    },
+    {
+      "name": "connection resets count as terminal",
+      "source": "src/mcp/client/connection/remoteErrors.ts",
+      "find": "/ECONNRESET|ETIMEDOUT",
+      "replace": "/ETIMEDOUT"
+    },
+    {
+      "name": "exhausted reconnection closes at once",
+      "source": "src/mcp/client/connection/remoteErrors.ts",
+      "find": "if (RECONNECTION_EXHAUSTED_PATTERN.test(message)) return 'close'",
+      "replace": "if (RECONNECTION_EXHAUSTED_PATTERN.test(message)) return 'count'"
+    },
+    {
+      "name": "ignored errors never close",
+      "source": "src/mcp/client/connection/remoteErrors.ts",
+      "find": "    if (verdict === 'ignore') return\n",
+      "replace": "\n"
+    },
+    {
+      "name": "SIGTERM follows after about 100 ms",
+      "source": "src/mcp/client/connection/processStopper.ts",
+      "find": "export const SIGTERM_AFTER_MS = 100",
+      "replace": "export const SIGTERM_AFTER_MS = 20"
+    },
+    {
+      "name": "SIGKILL follows SIGTERM after about 400 ms",
+      "source": "src/mcp/client/connection/processStopper.ts",
+      "find": "export const SIGKILL_AFTER_MS = 400",
+      "replace": "export const SIGKILL_AFTER_MS = 100"
+    },
+    {
+      "name": "SIGKILL ends a process that ignores both",
+      "source": "src/mcp/client/connection/processStopper.ts",
+      "find": "  deps.signal(pid, 'SIGKILL')\n}",
+      "replace": "}"
+    },
+    {
+      "name": "SIGTERM is only sent to a live process",
+      "source": "src/mcp/client/connection/processStopper.ts",
+      "find": "  if (await exitsWithin(pid, SIGTERM_AFTER_MS, deps)) return\n",
+      "replace": "\n"
     }
   ]
 }

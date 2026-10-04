@@ -265,3 +265,35 @@ positive number means the default.
   - a `RemoteTransportType` for the three that count terminal errors;
   - no casts between transport classes.
 - **The WebSocket transport** fires `onclose` exactly once (Findings, 9).
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**What changed.** Every body in the five contract files was rewritten. New modules:
+- `client/connection/` holds the handshake, `openConnection`, the process stopper and the
+  remote-error rules.
+- `client/transport/` holds the credentials table and the WebSocket opener.
+
+The handshake uses the shared `client/clientIdentity.ts` that the capabilities rewrite
+introduced. The duplicate identity it wrote was folded into that file at landing.
+`connectToServer` keeps a `.cache`, a Map with `delete`. The two characterization suites pass
+unchanged.
+
+**Fixes, each with a test.**
+- **4:** every failed connection closes its transport, and a timed-out stdio child is signalled.
+- **5:** cleanup always closes the client.
+- **6:** `clearServerCache` never connects just to close.
+- **9:** `onclose` fires once.
+
+**Kept, each with a probe.** Findings 1, 2, 3, 7, 8, 10 and 11. Three of them are tracked in
+`bugs/mcp-config-security-findings.md`:
+- the session ingress token sent to any `ws` server;
+- the unquoted `CLAUDIN_SHELL_PREFIX`;
+- the `claude-code` identity.
+
+**Probes.** 105, in `rewrite-mcp-connection.json`.
+
+**Residue, reviewed.** 39 lines of Claude Code and 3 of openclaude remain:
+- the exported connection, fetch and WebSocket-transport signatures;
+- the "is not connected" error text that callers pin.
