@@ -59,3 +59,11 @@ specs.
 Queued for the rewrite (fixes):
 - `persistBinaryContent` does not check the id it is given.
 - Two calls to the same tool in the same millisecond collide on the saved-output name.
+
+**mcp/connectionManager (2026-10-04).**
+- **Pinned and tracked: a claude.ai connector cannot be denied by name.** `claude.ai X`
+  is an invalid `serverName` in the settings schema. A managed policy that tries to
+  deny one fails validation, and that throws away the whole managed policy, every
+  other deny included. This belongs with mcp/config and settings.
+- **Fix in the rewrite: the tool pool grows on every reconnect.** The resource tools
+  are appended again each time, and resources are never removed from app state.

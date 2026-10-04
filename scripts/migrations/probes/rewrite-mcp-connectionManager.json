@@ -1,0 +1,220 @@
+{
+  "test": [
+    "src/mcp/MCPConnectionManager.characterization.test.tsx",
+    "src/mcp/hooks/useMergedClients.characterization.test.tsx",
+    "src/mcp/useManageMCPConnections.startup.characterization.test.tsx",
+    "src/mcp/useManageMCPConnections.reconnect.characterization.test.tsx",
+    "src/mcp/useManageMCPConnections.actions.characterization.test.tsx",
+    "src/mcp/useManageMCPConnections.connectors.characterization.test.tsx"
+  ],
+  "source": "src/mcp/useManageMCPConnections.ts",
+  "probes": [
+    {
+      "name": "no-start: strict mode no longer skips the config scopes when connecting",
+      "find": "      const { servers: claudeCodeConfigs, errors: mcpErrors } =\n        isStrictMcpConfig\n          ? { servers: {}, errors: [] }\n",
+      "replace": "      const { servers: claudeCodeConfigs, errors: mcpErrors } =\n        false\n          ? { servers: {}, errors: [] }\n"
+    },
+    {
+      "name": "no-start: a disabled server is first listed as pending",
+      "find": "        const newClients = Object.entries(configs)\n          .filter(([name]) => !existingServerNames.has(name))\n          .map(([name, config]) => ({\n            name,\n            type: isMcpServerDisabled(name)\n",
+      "replace": "        const newClients = Object.entries(configs)\n          .filter(([name]) => !existingServerNames.has(name))\n          .map(([name, config]) => ({\n            name,\n            type: false\n"
+    },
+    {
+      "name": "no-start: a --mcp-config entry no longer overrides the config scopes",
+      "find": "      const configs = { ...claudeCodeConfigs, ...dynamicMcpConfig }",
+      "replace": "      const configs = { ...dynamicMcpConfig, ...claudeCodeConfigs }"
+    },
+    {
+      "name": "no-start: connectors listed even with a managed-mcp.json",
+      "find": "if (isStrictMcpConfig || doesEnterpriseMcpConfigExist()) {",
+      "replace": "if (isStrictMcpConfig) {"
+    },
+    {
+      "name": "no-start: connectors listed even in strict mode",
+      "find": "        claudeaiPromise = Promise.resolve({})\n      } else {",
+      "replace": "        claudeaiPromise = Promise.resolve({})\n      } else if (false) {"
+    },
+    {
+      "name": "no-start: connectors skip the policy",
+      "find": "claudeaiConfigs = filterMcpServersByPolicy(\n          await claudeaiPromise,\n        ).allowed",
+      "replace": "claudeaiConfigs = await claudeaiPromise"
+    },
+    {
+      "name": "no-start: a connector duplicating a manual server is kept",
+      "find": "          claudeaiConfigs = dedupedClaudeAi",
+      "replace": "          void dedupedClaudeAi"
+    },
+    {
+      "name": "no-start: a connector not opted into is listed as pending",
+      "find": "              .map(([name, config]) => ({\n                name,\n                type: isMcpServerDisabled(name)\n",
+      "replace": "              .map(([name, config]) => ({\n                name,\n                type: false\n"
+    },
+    {
+      "name": "no-start: a server disabled on disk is redialled when it closes",
+      "find": "            if (\n              isMcpServerDisabled(client.name) ||\n              isSessionDisconnected(client.name)\n            ) {\n              logMCPDebug(\n                client.name,\n                `Server is disabled, skipping automatic reconnection`,",
+      "replace": "            if (\n              false ||\n              isSessionDisconnected(client.name)\n            ) {\n              logMCPDebug(\n                client.name,\n                `Server is disabled, skipping automatic reconnection`,"
+    },
+    {
+      "name": "no-start: a session-disconnected server is redialled when it closes",
+      "find": "      markSessionDisconnected(serverName)",
+      "replace": "      void serverName"
+    },
+    {
+      "name": "no-start: a server disabled during a wait is still redialled",
+      "find": "                  if (\n                    isMcpServerDisabled(client.name) ||\n                    isSessionDisconnected(client.name)\n                  ) {",
+      "replace": "                  if (\n                    false ||\n                    isSessionDisconnected(client.name)\n                  ) {"
+    },
+    {
+      "name": "no-start: a stdio server is redialled when it exits",
+      "find": "if (configType !== 'stdio' && configType !== 'sdk') {",
+      "replace": "if (configType !== 'sdk') {"
+    },
+    {
+      "name": "backoff: four attempts instead of five",
+      "find": "const MAX_RECONNECT_ATTEMPTS = 5",
+      "replace": "const MAX_RECONNECT_ATTEMPTS = 4"
+    },
+    {
+      "name": "backoff: first wait is not one second",
+      "find": "const INITIAL_BACKOFF_MS = 1000",
+      "replace": "const INITIAL_BACKOFF_MS = 500"
+    },
+    {
+      "name": "backoff: delays do not double from the first",
+      "find": "INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1)",
+      "replace": "INITIAL_BACKOFF_MS * Math.pow(2, attempt)"
+    },
+    {
+      "name": "backoff: give-up result never reaches app state",
+      "find": "                        `Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached, giving up`,\n                      )\n                      reconnectTimersRef.current.delete(client.name)\n                      onConnectionAttempt(result)",
+      "replace": "                        `Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached, giving up`,\n                      )\n                      reconnectTimersRef.current.delete(client.name)\n                      void result"
+    },
+    {
+      "name": "backoff: a manual reconnect does not cancel the wait",
+      "find": "      // Cancel any pending automatic reconnection attempt\n      const existingTimer = reconnectTimersRef.current.get(serverName)\n      if (existingTimer) {\n        clearTimeout(existingTimer)",
+      "replace": "      // Cancel any pending automatic reconnection attempt\n      const existingTimer = reconnectTimersRef.current.get(serverName)\n      if (existingTimer) {\n        void existingTimer"
+    },
+    {
+      "name": "backoff: unmount leaves the wait running",
+      "find": "      for (const timer of timers.values()) {\n        clearTimeout(timer)\n      }",
+      "replace": "      for (const timer of timers.values()) {\n        void timer\n      }"
+    },
+    {
+      "name": "toggle: switching off is not written to disk",
+      "find": "setMcpServerEnabled(serverName, false)",
+      "replace": "void serverName"
+    },
+    {
+      "name": "toggle: switching off leaves the connection open",
+      "find": "        if (client.type === 'connected') {\n          await clearServerCache(serverName, client.config)\n        }\n\n        // Update to disabled",
+      "replace": "        if (false) {\n          await clearServerCache(serverName, client.config)\n        }\n\n        // Update to disabled"
+    },
+    {
+      "name": "toggle: switching on does not take back a session disconnect",
+      "find": "        setMcpServerEnabled(serverName, true)\n        clearSessionDisconnected(serverName)",
+      "replace": "        setMcpServerEnabled(serverName, true)"
+    },
+    {
+      "name": "reconnect: does not take back a session disconnect",
+      "find": "    async (serverName: string) => {\n      const client = store\n        .getState()\n        .mcp.clients.find(c => c.name === serverName)\n      if (!client) {\n        throw new Error(`MCP server ${serverName} not found`)\n      }\n\n      // Cancel any pending automatic reconnection attempt\n      const existingTimer = reconnectTimersRef.current.get(serverName)\n      if (existingTimer) {\n        clearTimeout(existingTimer)\n        reconnectTimersRef.current.delete(serverName)\n      }\n\n      // Dialling on purpose takes back a session disconnect — otherwise the\n      // server comes up now and then never auto-reconnects again.\n      clearSessionDisconnected(serverName)",
+      "replace": "    async (serverName: string) => {\n      const client = store\n        .getState()\n        .mcp.clients.find(c => c.name === serverName)\n      if (!client) {\n        throw new Error(`MCP server ${serverName} not found`)\n      }\n\n      // Cancel any pending automatic reconnection attempt\n      const existingTimer = reconnectTimersRef.current.get(serverName)\n      if (existingTimer) {\n        clearTimeout(existingTimer)\n        reconnectTimersRef.current.delete(serverName)\n      }\n\n      // Dialling on purpose takes back a session disconnect — otherwise the\n      // server comes up now and then never auto-reconnects again."
+    },
+    {
+      "name": "state: a disabled server keeps its tools",
+      "find": "clientType === 'disabled' ? (rawTools ?? []) : rawTools",
+      "replace": "rawTools"
+    },
+    {
+      "name": "state: a failed server keeps its prompts",
+      "find": "        const commands =\n          client.type === 'disabled' || client.type === 'failed'\n            ? (rawCmds ?? [])",
+      "replace": "        const commands =\n          client.type === 'disabled'\n            ? (rawCmds ?? [])"
+    },
+    {
+      "name": "state: an update no longer replaces the server's prompts",
+      "find": "                ...reject(mcp.commands, c =>\n                  commandBelongsToServer(c, client.name),\n                ),",
+      "replace": "                ...mcp.commands,"
+    },
+    {
+      "name": "state: unmount drops updates waiting to be batched",
+      "find": "        flushTimerRef.current = null\n        flushPendingUpdates()\n      }",
+      "replace": "        flushTimerRef.current = null\n      }"
+    },
+    {
+      "name": "state: plugin errors are added twice",
+      "find": "      error => !existingKeys.has(getErrorKey(error)),",
+      "replace": "      error => true,"
+    },
+    {
+      "name": "state: a reload no longer stops a removed plugin's server",
+      "find": "            s.client.onclose = undefined\n            void clearServerCache(s.name, s.config).catch(() => {})",
+      "replace": "            s.client.onclose = undefined"
+    },
+    {
+      "name": "state: a plugin reload does not re-run the stale check",
+      "find": "    sessionId,\n    _pluginReconnectKey,\n  ])\n\n  // Load MCP configs",
+      "replace": "    sessionId,\n  ])\n\n  // Load MCP configs"
+    },
+    {
+      "name": "state: a login change does not list connectors again",
+      "find": "    _authVersion,\n",
+      "replace": ""
+    },
+    {
+      "name": "push: tool list changes are honoured without the capability",
+      "find": "if (client.capabilities?.tools?.listChanged) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "push: a tool list change serves the cached list",
+      "find": "                  fetchToolsForClient.cache.delete(client.name)\n",
+      "replace": ""
+    },
+    {
+      "name": "push: elicitation requests are not queued for the UI",
+      "find": "          registerElicitationHandler(client.client, client.name, setAppState)\n",
+      "replace": ""
+    },
+    {
+      "name": "manager: outside error no longer names the hook",
+      "find": "throw new Error(\"useMcpReconnect must be used within MCPConnectionManager\");",
+      "replace": "throw new Error(\"must be used within MCPConnectionManager\");",
+      "source": "src/mcp/MCPConnectionManager.tsx"
+    },
+    {
+      "name": "manager: useMcpToggleEnabled hands out reconnect",
+      "find": "  return context.toggleMcpServer;",
+      "replace": "  return context.reconnectMcpServer;",
+      "source": "src/mcp/MCPConnectionManager.tsx"
+    },
+    {
+      "name": "manager: useMcpDisconnect hands out the toggle",
+      "find": "  return context.disconnectMcpServer;",
+      "replace": "  return context.toggleMcpServer;",
+      "source": "src/mcp/MCPConnectionManager.tsx"
+    },
+    {
+      "name": "manager: children are not rendered",
+      "find": "value={value}>{children}</MCPConnectionContext.Provider>",
+      "replace": "value={value}>{null}</MCPConnectionContext.Provider>",
+      "source": "src/mcp/MCPConnectionManager.tsx"
+    },
+    {
+      "name": "merge: repeated names are kept",
+      "find": "uniqBy([...initialClients, ...mcpClients], 'name')",
+      "replace": "[...initialClients, ...mcpClients]",
+      "source": "src/mcp/hooks/useMergedClients.ts"
+    },
+    {
+      "name": "merge: app state with one client is ignored",
+      "find": "mcpClients.length > 0",
+      "replace": "mcpClients.length > 1",
+      "source": "src/mcp/hooks/useMergedClients.ts"
+    },
+    {
+      "name": "merge: the hook ignores a new app state",
+      "find": "[initialClients, mcpClients],",
+      "replace": "[initialClients],",
+      "source": "src/mcp/hooks/useMergedClients.ts"
+    }
+  ]
+}

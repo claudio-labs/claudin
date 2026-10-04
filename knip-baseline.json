@@ -3,7 +3,7 @@
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
   "capturedAt": "2026-10-04",
-  "capturedFrom": "eabea1ed1d47fb4dca8a0704cfaa8bf3e3fa1289",
+  "capturedFrom": "46f80119e65f73cb73a655dccef394d21ee4cb25",
   "count": 1062,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
