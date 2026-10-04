@@ -25,7 +25,7 @@ import {
 
 export { runElicitationHooks, runElicitationResultHooks }
 
-export type ElicitationWaitingState = {
+type ElicitationWaitingState = {
   actionLabel: string
   showCancel?: boolean
 }

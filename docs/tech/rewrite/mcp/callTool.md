@@ -243,3 +243,43 @@ the model. It must state:
   - always joins under the tool-results directory.
 - **Model-facing texts** live in one module of templates, each a function of the facts listed in 4, 5, 6 and 7, so the tests can pin facts per template.
 - **Types:** `MCPToolResult` and `TransformedMCPResult` stay. Add `CallOutcome` for the elicitation endings, and drop the casts on the SDK result.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**What was rewritten.** All bodies and private declarations of the five files. New modules:
+- `callErrors` (error classification);
+- `urlElicitation` (the bounded retry loop);
+- `modelTexts` (every text the model sees);
+- `resultFiles`, `resultContent` and `resultGate`.
+
+The two characterization suites pass unchanged.
+
+**Fixes, each with a test.**
+- **Finding 3.** Saved-output names carry six random characters, so two calls in the same
+  millisecond get two files.
+- **Finding 4.** `persistBinaryContent` refuses an id containing `/`, `\` or `..` (or an empty id)
+  and writes nothing.
+
+**Tracked, unchanged, each with a comment and a probe.** Findings 1 and 2: oversized output can
+reach the model when tokens cannot be counted, and a server named `ide` skips the size limit. Both
+are listed in `bugs/mcp-config-security-findings.md`.
+
+**Kept.** Findings 5–9.
+
+**Dead code, gone with it.** The old call path computed a code-indexing tool name for a telemetry
+event that no longer exists, and never used it. `detectCodeIndexingFromMcpServerName` and its
+pattern table in `shared/fs/codeIndexing.ts` lost their only caller, so they were removed. The Bash
+side does the same unused computation; that is BashTool's, in phase 6.
+
+**Probes.** 159, in `rewrite-mcp-callTool.json`.
+
+**Residue, reviewed.** 141 lines of Claude Code remain:
+- the `callMCPTool` signature and its options record;
+- the transport-session error class;
+- the `toolResult` content types;
+- the `mcpOutputStorage` result types;
+- the validation helpers' signatures.
+
+Callers import all of them.

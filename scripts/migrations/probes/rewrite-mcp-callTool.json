@@ -1,233 +1,964 @@
 {
   "test": [
     "src/mcp/client.callTool.characterization.test.ts",
-    "src/mcp/client.toolResult.characterization.test.ts"
+    "src/mcp/client.toolResult.characterization.test.ts",
+    "src/mcp/callTool.fixes.test.ts"
   ],
   "source": "src/mcp/client/callTool.ts",
   "probes": [
     {
-      "name": "call: timeout message in milliseconds",
-      "find": "timed out after ${Math.floor(timeoutMs / 1000)}s`,",
-      "replace": "timed out after ${timeoutMs}ms`,"
+      "name": "notice: the cap is not named",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "`[OUTPUT TRUNCATED - exceeded ${capTokens} token limit]`",
+      "replace": "`[OUTPUT TRUNCATED]`"
     },
     {
-      "name": "call: two elicitation rounds instead of three",
-      "find": "const MAX_URL_ELICITATION_RETRIES = 3",
-      "replace": "const MAX_URL_ELICITATION_RETRIES = 2"
+      "name": "notice/save failure: no pointer to pagination tools",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "'If this MCP server provides pagination or filtering tools, use them to request a smaller slice of the data.'",
+      "replace": "'Ask for less.'"
     },
     {
-      "name": "call: form elicitations accepted as URL ones",
-      "find": "            obj.mode === 'url' &&\n",
-      "replace": ""
+      "name": "notice: no word about telling the user",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "Otherwise, inform the user that you are working with truncated output.",
+      "replace": "Otherwise, carry on."
     },
     {
-      "name": "call: elicitations without an id accepted",
-      "find": "            typeof obj.elicitationId === 'string' &&\n",
-      "replace": ""
+      "name": "save failure: the reason is dropped",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "Failed to save output to file: ${reason}.",
+      "replace": "Failed to save output to file."
     },
     {
-      "name": "call: hook refusal message changes",
-      "find": "by a hook. The tool \"${tool}\" could not complete",
-      "replace": "by hook. The tool \"${tool}\" failed"
+      "name": "instructions: the path is not given up front",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "Output has been saved to ${path}.`",
+      "replace": "Output has been saved.`"
     },
     {
-      "name": "call: user decline wording changes",
-      "find": "${finalResult.action === 'decline' ? 'declined' : finalResult.action + 'ed'} by the user",
-      "replace": "${finalResult.action === 'decline' ? 'refused' : finalResult.action + 'ed'} by the user"
+      "name": "instructions: no Format line",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "`Format: ${format}`",
+      "replace": "`Kind: ${format}`"
     },
     {
-      "name": "call: consenting alone retries",
-      "find": "                      if (result.action === 'accept') {\n                        return\n                      }\n",
-      "replace": ""
+      "name": "instructions: no offset and limit",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "Read it in portions with offset and limit, or search it",
+      "replace": "Read it in portions, or search it"
     },
     {
-      "name": "call: retry from the wait no longer retries",
-      "find": "if (action === 'retry') {",
-      "replace": "if (action === 'go') {"
+      "name": "instructions: no jq",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "'- For structured queries, use jq.'",
+      "replace": "'- For structured queries, use a tool.'"
     },
     {
-      "name": "call: server name kept for records that are not connected",
-      "find": "          : 'unknown'",
-      "replace": "          : clientConnection.name"
-    },
-    {
-      "name": "call: tool error loses the server text",
-      "find": "          errorDetails = firstContent.text\n",
-      "replace": ""
-    },
-    {
-      "name": "call: legacy error field ignored",
-      "find": "        errorDetails = String(result.error)\n",
-      "replace": ""
-    },
-    {
-      "name": "call: error _meta dropped",
-      "find": "'_meta' in result && result._meta ? { _meta: result._meta } : undefined,",
-      "replace": "undefined,"
-    },
-    {
-      "name": "call: 401 no longer means re-auth",
-      "find": "if (errorCode === 401 || e instanceof UnauthorizedError) {",
-      "replace": "if (errorCode === 403 || e instanceof UnauthorizedError) {"
-    },
-    {
-      "name": "call: claude.ai proxy closures are not expired sessions",
-      "find": "(config.type === 'http' || config.type === 'claudeai-proxy')",
-      "replace": "(config.type === 'http')"
-    },
-    {
-      "name": "call: progress loses its message",
-      "find": "                progressMessage: sdkProgress.message,\n",
-      "replace": ""
-    },
-    {
-      "name": "call: tool_use id read from any block",
-      "find": "if (message.message.content[0]?.type !== 'tool_use') {",
-      "replace": "if (!message.message.content.some(b => b.type === 'tool_use')) {"
-    },
-    {
-      "name": "errors: session expiry on 410",
-      "source": "src/mcp/client/errors.ts",
-      "find": "if (httpStatus !== 404) {",
-      "replace": "if (httpStatus !== 410) {"
-    },
-    {
-      "name": "errors: spaced -32001 not recognised",
-      "source": "src/mcp/client/errors.ts",
-      "find": "    error.message.includes('\"code\":-32001') ||\n    error.message.includes('\"code\": -32001')",
-      "replace": "    error.message.includes('\"code\":-32001')"
-    },
-    {
-      "name": "result: the ide server is size-checked",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "if (name === 'ide') {",
-      "replace": "if (name === 'ide-never') {"
-    },
-    {
-      "name": "result: content with images is saved instead of cut",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "if (contentContainsImages(content)) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "result (security): saved-output file named from raw server and tool names",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "`mcp-${normalizeNameForMCP(name)}-${normalizeNameForMCP(tool)}-${timestamp}`",
-      "replace": "`mcp-${name}-${tool}-${timestamp}`"
-    },
-    {
-      "name": "result (security): blob file named from the raw server name",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "`mcp-${normalizeNameForMCP(serverName)}-blob-",
-      "replace": "`mcp-${serverName}-blob-"
-    },
-    {
-      "name": "result: save failure loses its reason line",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "Failed to save output to file: ${persistResult.error}.",
-      "replace": "Could not save output."
-    },
-    {
-      "name": "result: switching large-output files off is ignored",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "if (isEnvDefinedFalsy(process.env.ENABLE_MCP_LARGE_OUTPUT_FILES)) {",
-      "replace": "if (false) {"
-    },
-    {
-      "name": "result: blob save failure message changes",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "could not be saved to disk: ${result.error}",
-      "replace": "was dropped"
-    },
-    {
-      "name": "result: text no longer sanitized",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "          text: recursivelySanitizeUnicode(resultContent.text) as string,",
-      "replace": "          text: resultContent.text,"
-    },
-    {
-      "name": "result: png blobs no longer treated as images",
-      "source": "src/mcp/client/toolResult.ts",
-      "find": "  'image/png',\n",
-      "replace": ""
-    },
-    {
-      "name": "validation: counting threshold moves",
-      "source": "src/mcp/mcpValidation.ts",
-      "find": "export const MCP_TOKEN_COUNT_THRESHOLD_FACTOR = 0.5",
-      "replace": "export const MCP_TOKEN_COUNT_THRESHOLD_FACTOR = 0.6"
-    },
-    {
-      "name": "validation: exactly the cap counts as too big",
-      "source": "src/mcp/mcpValidation.ts",
-      "find": "tokenCount > getMaxMcpOutputTokens()",
-      "replace": "tokenCount >= getMaxMcpOutputTokens()"
-    },
-    {
-      "name": "validation: three characters per token when cutting",
-      "source": "src/mcp/mcpValidation.ts",
-      "find": "return getMaxMcpOutputTokens() * 4",
-      "replace": "return getMaxMcpOutputTokens() * 3"
-    },
-    {
-      "name": "validation: truncation notice changes",
-      "source": "src/mcp/mcpValidation.ts",
-      "find": "[OUTPUT TRUNCATED - exceeded ${getMaxMcpOutputTokens()} token limit]",
-      "replace": "[TRUNCATED]"
-    },
-    {
-      "name": "validation: a zero cap is accepted",
-      "source": "src/mcp/mcpValidation.ts",
-      "find": "if (Number.isFinite(parsed) && parsed > 0) {",
-      "replace": "if (Number.isFinite(parsed) && parsed >= 0) {"
-    },
-    {
-      "name": "validation: cut blocks lose the notice",
-      "source": "src/mcp/mcpValidation.ts",
-      "find": "    truncatedBlocks.push({ type: 'text', text: truncationMsg })\n",
-      "replace": ""
-    },
-    {
-      "name": "storage: mime parameters no longer stripped",
-      "source": "src/mcp/mcpOutputStorage.ts",
-      "find": "const mt = (mimeType.split(';')[0] ?? '').trim().toLowerCase()",
-      "replace": "const mt = mimeType.trim().toLowerCase()"
-    },
-    {
-      "name": "storage: +json types count as binary",
-      "source": "src/mcp/mcpOutputStorage.ts",
-      "find": "if (mt.endsWith('+json') || mt === 'application/json') return false",
-      "replace": "if (mt === 'application/json') return false"
-    },
-    {
-      "name": "storage (security): blobs written beside the tool-results dir",
-      "source": "src/mcp/mcpOutputStorage.ts",
-      "find": "const filepath = join(getToolResultsDir(), `${persistId}.${ext}`)",
-      "replace": "const filepath = join(getToolResultsDir(), '..', `${persistId}.${ext}`)"
-    },
-    {
-      "name": "storage: a failed write throws",
-      "source": "src/mcp/mcpOutputStorage.ts",
-      "find": "    return { error: err.message }",
-      "replace": "    throw err"
-    },
-    {
-      "name": "storage: the read-every-chunk rule changes",
-      "source": "src/mcp/mcpOutputStorage.ts",
+      "name": "instructions: reading 100% is not required",
+      "source": "src/mcp/client/modelTexts.ts",
       "find": "in sequential chunks until 100% of the content has been read.",
-      "replace": "in chunks."
+      "replace": "until you have what you need."
     },
     {
-      "name": "storage: the Bash variant is never used",
-      "source": "src/mcp/mcpOutputStorage.ts",
-      "find": "const truncationWarning = maxReadLength",
-      "replace": "const truncationWarning = false"
+      "name": "instructions: Bash limit without separators",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "Bash output is limited to ${maxReadLength.toLocaleString()} chars.",
+      "replace": "Bash output is limited to ${maxReadLength} chars."
     },
     {
-      "name": "storage: sizes lose their separators",
+      "name": "instructions: no insistence in the Bash form",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": " ***DO NOT PROCEED UNTIL YOU HAVE DONE THIS***",
+      "replace": ""
+    },
+    {
+      "name": "instructions: the [N lines truncated] warning is not named",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "If a read ends with a [N lines truncated] warning,",
+      "replace": "If a read is cut,"
+    },
+    {
+      "name": "instructions: plain form drops the chunk-size rule",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "'- If a read warns that its output was cut short, reduce the chunk size and read that part again.'",
+      "replace": "'- Keep reading.'"
+    },
+    {
+      "name": "instructions: no admission of partial reads",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": " If you did not read the entire content, you MUST explicitly state this.",
+      "replace": ""
+    },
+    {
+      "name": "instructions: no trailing newline",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "explicitly state this.',\n    '',\n",
+      "replace": "explicitly state this.',\n"
+    },
+    {
+      "name": "prefix: audio source not named",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "`[Audio from ${serverName}] `",
+      "replace": "`[Audio] `"
+    },
+    {
+      "name": "prefix: resource server not named",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "`[Resource from ${serverName} at ${uri}] `",
+      "replace": "`[Resource ${uri}] `"
+    },
+    {
+      "name": "link: description dropped",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "description ? ` (${description})` : ''",
+      "replace": "''"
+    },
+    {
+      "name": "link: name dropped",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "`[Resource link: ${name}] ${uri}${note}`",
+      "replace": "`${uri}${note}`"
+    },
+    {
+      "name": "blob: unknown mime unnamed",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "mimeType || 'unknown type'",
+      "replace": "mimeType || 'binary'"
+    },
+    {
+      "name": "blob: size not human-readable",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "${formatFileSize(size)}) saved to",
+      "replace": "${size} bytes) saved to"
+    },
+    {
+      "name": "blob: save failure reason dropped",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "could not be saved to disk: ${reason}`",
+      "replace": "could not be saved to disk: `"
+    },
+    {
+      "name": "elicitation: decline reads canceled",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "action === 'decline' ? 'declined' : 'canceled'",
+      "replace": "'canceled'"
+    },
+    {
+      "name": "elicitation: a hook is reported as the user",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "by === 'hook' ? 'a hook' : 'the user'",
+      "replace": "'the user'"
+    },
+    {
+      "name": "elicitation: the tool is not named",
+      "source": "src/mcp/client/modelTexts.ts",
+      "find": "The tool \"${tool}\" could not complete",
+      "replace": "The tool could not complete"
+    },
+    {
+      "name": "names: no random part (finding 3)",
+      "source": "src/mcp/client/resultFiles.ts",
+      "find": "return randomUUID().replaceAll('-', '').slice(0, RANDOM_LENGTH)",
+      "replace": "return 'abcdef'"
+    },
+    {
+      "name": "names: server not normalized",
+      "source": "src/mcp/client/resultFiles.ts",
+      "find": "mcp-${normalizeNameForMCP(parts.server)}-",
+      "replace": "mcp-${parts.server}-"
+    },
+    {
+      "name": "names: tool not normalized",
+      "source": "src/mcp/client/resultFiles.ts",
+      "find": "normalizeNameForMCP(parts.tool)",
+      "replace": "parts.tool"
+    },
+    {
+      "name": "names: blob marker changes",
+      "source": "src/mcp/client/resultFiles.ts",
+      "find": ") : 'blob'",
+      "replace": ") : 'blobs'"
+    },
+    {
+      "name": "names: no time",
+      "source": "src/mcp/client/resultFiles.ts",
+      "find": "-${subject}-${now}-${randomPart()}",
+      "replace": "-${subject}-${randomPart()}"
+    },
+    {
+      "name": "id check: separators allowed (finding 4)",
+      "source": "src/mcp/client/resultFiles.ts",
+      "find": " && !PATH_SEPARATOR_RE.test(id)",
+      "replace": ""
+    },
+    {
+      "name": "id check: parent steps allowed (finding 4)",
+      "source": "src/mcp/client/resultFiles.ts",
+      "find": " && !id.includes('..')",
+      "replace": ""
+    },
+    {
+      "name": "format: plain text renamed",
       "source": "src/mcp/mcpOutputStorage.ts",
-      "find": "`Error: result (${contentLength.toLocaleString()} characters)",
-      "replace": "`Error: result (${contentLength} characters)"
+      "find": "if (type === 'toolResult') return 'Plain text'",
+      "replace": "if (type === 'toolResult') return 'Text'"
+    },
+    {
+      "name": "format: arrays read as JSON",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "type === 'structuredContent' ? 'JSON' : 'JSON array'",
+      "replace": "'JSON'"
+    },
+    {
+      "name": "format: schema dropped",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "schema ? `${kind} with schema: ${String(schema)}` : kind",
+      "replace": "kind"
+    },
+    {
+      "name": "instructions: maxReadLength ignored",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "formatDescription, maxReadLength)",
+      "replace": "formatDescription)"
+    },
+    {
+      "name": "mime: case kept",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": ".trim().toLowerCase()",
+      "replace": ".trim()"
+    },
+    {
+      "name": "mime: parameters kept",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "split(';', 1)[0]!",
+      "replace": "split('#', 1)[0]!"
+    },
+    {
+      "name": "mime: jpeg extension changes",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "['image/jpeg', 'jpg'],",
+      "replace": "['image/jpeg', 'jpeg'],"
+    },
+    {
+      "name": "mime: fallback extension changes",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "const FALLBACK_EXTENSION = 'bin'",
+      "replace": "const FALLBACK_EXTENSION = 'dat'"
+    },
+    {
+      "name": "binary: empty type is binary",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "if (type === '') return false",
+      "replace": "if (type === '') return true"
+    },
+    {
+      "name": "binary: text/* is binary",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "type.startsWith('text/') || ",
+      "replace": ""
+    },
+    {
+      "name": "binary: javascript is binary",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": " || type.startsWith('application/javascript')",
+      "replace": ""
+    },
+    {
+      "name": "binary: form data is binary",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "  'application/x-www-form-urlencoded',\n",
+      "replace": ""
+    },
+    {
+      "name": "binary: +xml is binary",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "['+json', '+xml'] as const",
+      "replace": "['+json'] as const"
+    },
+    {
+      "name": "persist: unsafe ids accepted (finding 4)",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "if (!isSafeFileId(persistId)) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "persist: written above tool-results",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "join(getToolResultsDir(), `${persistId}.${ext}`)",
+      "replace": "join(getToolResultsDir(), '..', `${persistId}.${ext}`)"
+    },
+    {
+      "name": "persist: directory not created",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "    await ensureToolResultsDir()\n",
+      "replace": ""
+    },
+    {
+      "name": "persist: a failed write throws",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "return { error: error.message }",
+      "replace": "throw error"
+    },
+    {
+      "name": "persist: size misreported",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "return { filepath, size: bytes.length, ext }",
+      "replace": "return { filepath, size: 0, ext }"
+    },
+    {
+      "name": "blob message: prefix dropped",
+      "source": "src/mcp/mcpOutputStorage.ts",
+      "find": "blobSavedText(sourceDescription, filepath",
+      "replace": "blobSavedText('', filepath"
+    },
+    {
+      "name": "cap: zero accepted",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "configured > 0 ? configured : FALLBACK_OUTPUT_TOKEN_CAP",
+      "replace": "configured >= 0 ? configured : FALLBACK_OUTPUT_TOKEN_CAP"
+    },
+    {
+      "name": "cap: default changes",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "const FALLBACK_OUTPUT_TOKEN_CAP = 25_000",
+      "replace": "const FALLBACK_OUTPUT_TOKEN_CAP = 20_000"
+    },
+    {
+      "name": "estimate: images free",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "if (isImageBlock(block)) return IMAGE_TOKEN_ESTIMATE",
+      "replace": "if (isImageBlock(block)) return 0"
+    },
+    {
+      "name": "estimate: other blocks counted",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "  return 0\n}\n\nexport function getContentSizeEstimate",
+      "replace": "  return 100\n}\n\nexport function getContentSizeEstimate"
+    },
+    {
+      "name": "count: asked at exactly half the cap",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "<= cap * MCP_TOKEN_COUNT_THRESHOLD_FACTOR) return false",
+      "replace": "< cap * MCP_TOKEN_COUNT_THRESHOLD_FACTOR) return false"
+    },
+    {
+      "name": "count: the cap itself is too big",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "counted !== null && counted > cap",
+      "replace": "counted !== null && counted >= cap"
+    },
+    {
+      "name": "count: no answer means too big (finding 1)",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "return counted !== null && counted > cap",
+      "replace": "return counted === null || counted > cap"
+    },
+    {
+      "name": "count: a failed count means too big (finding 1)",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "    logError(error)\n    return false",
+      "replace": "    logError(error)\n    return true"
+    },
+    {
+      "name": "count: message role changes",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "[{ role: 'user', content }], []",
+      "replace": "[{ role: 'assistant', content }], []"
+    },
+    {
+      "name": "cut: string notice glued on",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "`${content.slice(0, budgetChars)}\\n\\n${notice}`",
+      "replace": "`${content.slice(0, budgetChars)}${notice}`"
+    },
+    {
+      "name": "cut: three characters per token",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "const CHARS_PER_TOKEN_WHEN_CUTTING = 4",
+      "replace": "const CHARS_PER_TOKEN_WHEN_CUTTING = 3"
+    },
+    {
+      "name": "cut: empty text blocks kept after the budget",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "      if (left <= 0) continue\n",
+      "replace": ""
+    },
+    {
+      "name": "cut: text not cut",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "const text = block.text.slice(0, left)",
+      "replace": "const text = block.text"
+    },
+    {
+      "name": "cut: fitting images dropped",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "        kept.push(block)\n        left -= cost",
+      "replace": "        left -= cost"
+    },
+    {
+      "name": "cut: squeeze gets no room",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "Math.floor(budgetChars * BYTES_PER_BASE64_CHAR)",
+      "replace": "0"
+    },
+    {
+      "name": "cut: a dropped image still spends the budget",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "      if (squeezed) {\n        kept.push(squeezed)\n        left = 0\n      }",
+      "replace": "      if (squeezed) kept.push(squeezed)\n      left = 0"
+    },
+    {
+      "name": "cut: other blocks dropped",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "    } else {\n      kept.push(block)\n    }",
+      "replace": "    } else {\n    }"
+    },
+    {
+      "name": "cut: notice not appended to blocks",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "  kept.push({ type: 'text', text: notice })\n",
+      "replace": ""
+    },
+    {
+      "name": "cut-if-needed: content always rebuilt",
+      "source": "src/mcp/mcpValidation.ts",
+      "find": "? truncateMcpContent(content) : content",
+      "replace": "? truncateMcpContent(content) : truncateMcpContent(content)"
+    },
+    {
+      "name": "content: text not sanitized",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "return { type: 'text', text: recursivelySanitizeUnicode(text) }",
+      "replace": "return { type: 'text', text }"
+    },
+    {
+      "name": "content: image media type fixed to jpeg",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "media_type: mediaTypeOfFormat(fitted.mediaType),",
+      "replace": "media_type: 'image/jpeg',"
+    },
+    {
+      "name": "content: image data not base64",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "data: fitted.buffer.toString('base64'),",
+      "replace": "data: fitted.buffer.toString('hex'),"
+    },
+    {
+      "name": "content: audio prefix dropped",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "serverName, audioPrefix(serverName))]",
+      "replace": "serverName, '')]"
+    },
+    {
+      "name": "content: blob named as output",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "toolResultFile({ kind: 'blob', server: serverName })",
+      "replace": "toolResultFile({ kind: 'output', server: serverName, tool: 'x' })"
+    },
+    {
+      "name": "content: blob failure text dropped",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "return textBlock(blobNotSavedText(prefix, mimeType, bytes.length, saved.error))",
+      "replace": "return textBlock(saved.error)"
+    },
+    {
+      "name": "content: resource text unprefixed",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "return [textBlock(prefix + resource.text)]",
+      "replace": "return [textBlock(resource.text)]"
+    },
+    {
+      "name": "content: image resource unprefixed",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "return [textBlock(prefix), await imageBlock(resource.blob, mimeType)]",
+      "replace": "return [await imageBlock(resource.blob, mimeType)]"
+    },
+    {
+      "name": "content: any image/* blob treated as an image",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "API_IMAGE_MEDIA_TYPES.has(mimeType)",
+      "replace": "mimeType.startsWith('image/')"
+    },
+    {
+      "name": "content: empty resource yields a block",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "typeof resource.blob !== 'string') return []",
+      "replace": "typeof resource.blob !== 'string') return [textBlock(prefix)]"
+    },
+    {
+      "name": "content: unknown types yield a block",
+      "source": "src/mcp/client/resultContent.ts",
+      "find": "    default:\n      return []",
+      "replace": "    default:\n      return [textBlock('?')]"
+    },
+    {
+      "name": "gate: images saved instead of cut",
+      "source": "src/mcp/client/resultGate.ts",
+      "find": "largeOutputFiles && !hasImage ? 'save' : 'cut'",
+      "replace": "largeOutputFiles ? 'save' : 'cut'"
+    },
+    {
+      "name": "gate: blocks saved unindented",
+      "source": "src/mcp/client/resultGate.ts",
+      "find": "jsonStringify(content, null, 2)",
+      "replace": "jsonStringify(content)"
+    },
+    {
+      "name": "gate: server and tool swapped in the name",
+      "source": "src/mcp/client/resultGate.ts",
+      "find": "toolResultFile({ kind: 'output', server, tool })",
+      "replace": "toolResultFile({ kind: 'output', server: tool, tool: server })"
+    },
+    {
+      "name": "gate: a failed save hands over the output",
+      "source": "src/mcp/client/resultGate.ts",
+      "find": "return saveFailedText(text.length, saved.error)",
+      "replace": "return text"
+    },
+    {
+      "name": "gate: saved length misreported",
+      "source": "src/mcp/client/resultGate.ts",
+      "find": "getLargeOutputInstructions(saved.filepath, saved.originalSize,",
+      "replace": "getLargeOutputInstructions(saved.filepath, 0,"
+    },
+    {
+      "name": "shape: toolResult ignored",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if ('toolResult' in result) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "shape: undefined structuredContent wins",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (result.structuredContent !== undefined) {",
+      "replace": "if ('structuredContent' in result) {"
+    },
+    {
+      "name": "shape: structuredContent not JSON",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "content: jsonStringify(structuredContent),",
+      "replace": "content: String(structuredContent),"
+    },
+    {
+      "name": "shape: content array has no schema",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "type: 'contentArray', schema: inferCompactSchema(blocks) }",
+      "replace": "type: 'contentArray' }"
+    },
+    {
+      "name": "shape: refusal does not name server and tool",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "`MCP server \"${name}\" tool \"${tool}\": unexpected response format`",
+      "replace": "`unexpected response format`"
+    },
+    {
+      "name": "shape: content items not required to have a type",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "value.every(item => isRecord(item) && typeof item.type === 'string')",
+      "replace": "true"
+    },
+    {
+      "name": "schema: null reads object",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (value === null) return 'null'",
+      "replace": "if (value === null) return 'object'"
+    },
+    {
+      "name": "schema: arrays spend no level (finding 9)",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "`[${inferCompactSchema(value[0], depth - 1)}]`",
+      "replace": "`[${inferCompactSchema(value[0], depth)}]`"
+    },
+    {
+      "name": "schema: empty array reads differently",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "value.length === 0 ? '[]'",
+      "replace": "value.length === 0 ? '[unknown]'"
+    },
+    {
+      "name": "schema: one level deeper",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (depth <= 0) return '{...}'",
+      "replace": "if (depth < 0) return '{...}'"
+    },
+    {
+      "name": "schema: twelve keys",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "const SCHEMA_MAX_KEYS = 10",
+      "replace": "const SCHEMA_MAX_KEYS = 12"
+    },
+    {
+      "name": "schema: no ellipsis for more keys",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "entries.length > SCHEMA_MAX_KEYS ? ', ...' : ''",
+      "replace": "''"
+    },
+    {
+      "name": "gate: the ide server is size-checked (finding 2)",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "  if (name === IDE_SERVER_NAME) return content\n",
+      "replace": ""
+    },
+    {
+      "name": "gate: never counted",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (content === undefined || !(await mcpContentNeedsTruncation(content))) return content",
+      "replace": "if (content === undefined) return content"
+    },
+    {
+      "name": "gate: large output files always on",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "!isEnvDefinedFalsy(process.env.ENABLE_MCP_LARGE_OUTPUT_FILES)",
+      "replace": "true"
+    },
+    {
+      "name": "gate: images not detected",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "content.some(block => block.type === 'image')",
+      "replace": "content.some(block => block.type === 'document')"
+    },
+    {
+      "name": "gate: cut returns the whole",
+      "source": "src/mcp/client/toolResult.ts",
+      "find": "if (action === 'cut') return truncateMcpContent(content)",
+      "replace": "if (action === 'cut') return content"
+    },
+    {
+      "name": "errors: auth name missing",
+      "source": "src/mcp/client/errors.ts",
+      "find": "    this.name = 'McpAuthError'\n",
+      "replace": ""
+    },
+    {
+      "name": "errors: auth server not kept",
+      "source": "src/mcp/client/errors.ts",
+      "find": "this.serverName = serverName",
+      "replace": "this.serverName = ''"
+    },
+    {
+      "name": "errors: expired message unnamed",
+      "source": "src/mcp/client/errors.ts",
+      "find": "super(`MCP server \"${serverName}\" session expired`)",
+      "replace": "super('session expired')"
+    },
+    {
+      "name": "errors: expired name missing",
+      "source": "src/mcp/client/errors.ts",
+      "find": "    this.name = 'McpSessionExpiredError'\n",
+      "replace": ""
+    },
+    {
+      "name": "errors: telemetry message dropped",
+      "source": "src/mcp/client/errors.ts",
+      "find": "super(message, telemetryMessage)",
+      "replace": "super(message)"
+    },
+    {
+      "name": "errors: tool error name missing",
+      "source": "src/mcp/client/errors.ts",
+      "find": "    this.name = 'McpToolCallError'\n",
+      "replace": ""
+    },
+    {
+      "name": "expired: any HTTP status",
+      "source": "src/mcp/client/errors.ts",
+      "find": "const HTTP_NOT_FOUND = 404",
+      "replace": "const HTTP_NOT_FOUND = 400"
+    },
+    {
+      "name": "expired: spaced spelling missed",
+      "source": "src/mcp/client/errors.ts",
+      "find": "['\"code\":-32001', '\"code\": -32001']",
+      "replace": "['\"code\":-32001']"
+    },
+    {
+      "name": "classify: 401 code missed (finding 6)",
+      "source": "src/mcp/client/callErrors.ts",
+      "find": "codeOf(error) === UNAUTHORIZED",
+      "replace": "codeOf(error) === 403"
+    },
+    {
+      "name": "classify: SDK unauthorized missed",
+      "source": "src/mcp/client/callErrors.ts",
+      "find": "error instanceof UnauthorizedError || ",
+      "replace": ""
+    },
+    {
+      "name": "classify: 404 session not expired",
+      "source": "src/mcp/client/callErrors.ts",
+      "find": "  if (error instanceof Error && isMcpSessionExpiredError(error)) return 'expired'\n",
+      "replace": ""
+    },
+    {
+      "name": "classify: proxy close passes through",
+      "source": "src/mcp/client/callErrors.ts",
+      "find": "new Set(['http', 'claudeai-proxy'])",
+      "replace": "new Set(['http'])"
+    },
+    {
+      "name": "classify: close message not matched",
+      "source": "src/mcp/client/callErrors.ts",
+      "find": "const CONNECTION_CLOSED_RE = /Connection closed/",
+      "replace": "const CONNECTION_CLOSED_RE = /Connection reset/"
+    },
+    {
+      "name": "classify: close code not matched",
+      "source": "src/mcp/client/callErrors.ts",
+      "find": "error.code === ErrorCode.ConnectionClosed &&",
+      "replace": "error.code === ErrorCode.RequestTimeout &&"
+    },
+    {
+      "name": "elicit: form mode accepted",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "    value.mode === 'url' &&\n",
+      "replace": ""
+    },
+    {
+      "name": "elicit: url not required",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "    typeof value.url === 'string' &&\n",
+      "replace": ""
+    },
+    {
+      "name": "elicit: id not required",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "    typeof value.elicitationId === 'string' &&\n",
+      "replace": ""
+    },
+    {
+      "name": "elicit: message not required",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "    typeof value.message === 'string'\n",
+      "replace": "    true\n"
+    },
+    {
+      "name": "elicit: any McpError code elicits",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "error.code !== ErrorCode.UrlElicitationRequired) return undefined",
+      "replace": "error.code === 0) return undefined"
+    },
+    {
+      "name": "queue: request id unprefixed",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "requestId: `error-elicit-${params.elicitationId}`,",
+      "replace": "requestId: params.elicitationId,"
+    },
+    {
+      "name": "queue: no cancel button",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "{ actionLabel: 'Retry now', showCancel: true }",
+      "replace": "{ actionLabel: 'Retry now' }"
+    },
+    {
+      "name": "queue: consent alone retries",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "if (result.action !== 'accept') settle(result)",
+      "replace": "settle(result)"
+    },
+    {
+      "name": "queue: dismissing retries",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "action === 'retry' ? 'accept' : 'cancel'",
+      "replace": "'accept'"
+    },
+    {
+      "name": "queue: abort not listened to",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "    signal.addEventListener('abort', onAbort, { once: true })\n",
+      "replace": ""
+    },
+    {
+      "name": "queue: an aborted signal still queues",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "    if (signal.aborted) {\n      onAbort()\n      return\n    }\n",
+      "replace": ""
+    },
+    {
+      "name": "hooks: a hook answer is ignored",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "  if (fromHook) return endingFor(fromHook.action, 'hook')\n",
+      "replace": ""
+    },
+    {
+      "name": "hooks: a hook ending blames the user",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "endingFor(fromHook.action, 'hook')",
+      "replace": "endingFor(fromHook.action, 'user')"
+    },
+    {
+      "name": "host: handler not asked",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "? await deps.handleElicitation(serverName, params, signal)",
+      "replace": "? { action: 'accept' as const }"
+    },
+    {
+      "name": "hooks: result hooks skipped",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "const settled = await runResultHooks(serverName, answer, signal, 'url', params.elicitationId)",
+      "replace": "const settled = answer"
+    },
+    {
+      "name": "loop: abort not checked",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "    if (signal.aborted) throw new Error('Tool call aborted during URL elicitation')\n",
+      "replace": ""
+    },
+    {
+      "name": "loop: two rounds",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "export const MAX_URL_ELICITATION_ROUNDS = 3",
+      "replace": "export const MAX_URL_ELICITATION_ROUNDS = 2"
+    },
+    {
+      "name": "loop: one round too many",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "round >= MAX_URL_ELICITATION_ROUNDS",
+      "replace": "round > MAX_URL_ELICITATION_ROUNDS"
+    },
+    {
+      "name": "loop: empty elicitation list retried",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "!elicitations?.length || ",
+      "replace": "!elicitations || "
+    },
+    {
+      "name": "loop: an ending does not end",
+      "source": "src/mcp/client/urlElicitation.ts",
+      "find": "        if (ending) return { kind: 'ended', ending }\n",
+      "replace": ""
+    },
+    {
+      "name": "call: server name always the record",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "clientConnection.type === 'connected' ? clientConnection.name : 'unknown'",
+      "replace": "connectedClient.name"
+    },
+    {
+      "name": "call: ending text dropped",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "return { content: elicitationEndedText(outcome.ending, tool) }",
+      "replace": "return { content: undefined }"
+    },
+    {
+      "name": "timeout: half the setting",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "configured > 0 ? configured : DEFAULT_MCP_TOOL_TIMEOUT_MS",
+      "replace": "configured > 0 ? configured / 2 : DEFAULT_MCP_TOOL_TIMEOUT_MS"
+    },
+    {
+      "name": "timeout: default changes",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "export const DEFAULT_MCP_TOOL_TIMEOUT_MS = 300_000",
+      "replace": "export const DEFAULT_MCP_TOOL_TIMEOUT_MS = 30_000"
+    },
+    {
+      "name": "timeout: message in milliseconds",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "timed out after ${Math.floor(timeoutMs / 1000)}s",
+      "replace": "timed out after ${timeoutMs}ms"
+    },
+    {
+      "name": "timeout: own deadline not raced",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "Promise.race([request, limit.expired])",
+      "replace": "request"
+    },
+    {
+      "name": "progress: wrong status",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "status: 'progress',",
+      "replace": "status: 'started',"
+    },
+    {
+      "name": "progress: message dropped",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "    progressMessage: progress.message,\n",
+      "replace": ""
+    },
+    {
+      "name": "progress: token always requested",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "...(onProgress && { onprogress: (progress: Progress) => onProgress(progressEvent(name, tool, progress)) }),",
+      "replace": "onprogress: (progress: Progress) => onProgress?.(progressEvent(name, tool, progress)),"
+    },
+    {
+      "name": "call: _meta not sent",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "{ name: tool, arguments: args, _meta: meta }",
+      "replace": "{ name: tool, arguments: args }"
+    },
+    {
+      "name": "tool error: first text ignored (finding 7)",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "  if (first?.type === 'text') return first.text\n",
+      "replace": ""
+    },
+    {
+      "name": "tool error: legacy field ignored",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "  if (first === undefined && typeof result.error === 'string') return result.error\n",
+      "replace": ""
+    },
+    {
+      "name": "tool error: fallback text changes",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "return 'Unknown error'",
+      "replace": "return 'Unknown'"
+    },
+    {
+      "name": "tool error: telemetry unprefixed",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "`MCP tool [${name}] ${tool}: ${message}`",
+      "replace": "message"
+    },
+    {
+      "name": "tool error: _meta dropped",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "result._meta ? { _meta: result._meta } : undefined",
+      "replace": "undefined"
+    },
+    {
+      "name": "auth: message changes",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "`MCP server \"${name}\" requires re-authorization (token expired)`",
+      "replace": "'reauth'"
+    },
+    {
+      "name": "expired: cache kept",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "        await clearServerCache(name, config)\n",
+      "replace": ""
+    },
+    {
+      "name": "expired: raw error surfaces",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "return new McpSessionExpiredError(name)",
+      "replace": "return error"
+    },
+    {
+      "name": "result: structuredContent dropped",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "structuredContent: result.structuredContent }",
+      "replace": "structuredContent: undefined }"
+    },
+    {
+      "name": "result: _meta dropped",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "return { content, _meta: result._meta,",
+      "replace": "return { content, _meta: undefined,"
+    },
+    {
+      "name": "result: size gate skipped",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "await processMCPResult(result, tool, name)",
+      "replace": "result.content"
+    },
+    {
+      "name": "extractToolUseId: any tool_use block",
+      "source": "src/mcp/client/callTool.ts",
+      "find": "return first?.type === 'tool_use' ? first.id : undefined",
+      "replace": "return content.find(block => block.type === 'tool_use')?.id"
     }
   ]
 }

@@ -1,68 +1,58 @@
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
 import {
+  type CallToolResult,
   CallToolResultSchema,
   type ElicitRequestURLParams,
   type ElicitResult,
-  ErrorCode,
-  McpError,
+  type Progress,
 } from '@modelcontextprotocol/sdk/types.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
-import { detectCodeIndexingFromMcpServerName } from 'src/shared/fs/codeIndexing.js'
 import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/shared/errors.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import type { MCPToolResult } from 'src/mcp/mcpValidation.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { MCPProgress } from 'src/tools/MCPTool/MCPTool.js'
-import {
-  type ElicitationWaitingState,
-  runElicitationHooks,
-  runElicitationResultHooks,
-} from 'src/mcp/elicitationHandler.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
 } from 'src/mcp/types.js'
 import { clearServerCache } from 'src/mcp/client/connection.js'
 import {
-  isMcpSessionExpiredError,
   McpAuthError,
   McpSessionExpiredError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/mcp/client/errors.js'
+import { classifyCallError } from 'src/mcp/client/callErrors.js'
+import { elicitationEndedText } from 'src/mcp/client/modelTexts.js'
 import { processMCPResult } from 'src/mcp/client/toolResult.js'
+import { callWithUrlElicitation, resolveUrlElicitation } from 'src/mcp/client/urlElicitation.js'
 
-/**
- * Default timeout for MCP tool calls (5 minutes — reasonable for most tools).
- * Use MCP_TOOL_TIMEOUT env var to override per-server.
- * The previous default of ~27.8 hours effectively meant no timeout, causing
- * tools to hang indefinitely on unresponsive servers.
- */
 export const DEFAULT_MCP_TOOL_TIMEOUT_MS = 300_000
 
-/**
- * Gets the timeout for MCP tool calls in milliseconds.
- * Uses MCP_TOOL_TIMEOUT environment variable if set, otherwise defaults to ~27.8 hours.
- */
+// setTimeout fires at once past this, so a larger setting is held to it.
+const LONGEST_TIMER_MS = 2 ** 31 - 1
+const STILL_RUNNING_LOG_EVERY_MS = 30_000
+
 function getMcpToolTimeoutMs(): number {
-  return (
-    parseInt(process.env.MCP_TOOL_TIMEOUT || '', 10) ||
-    DEFAULT_MCP_TOOL_TIMEOUT_MS
-  )
+  const configured = Number.parseInt(process.env.MCP_TOOL_TIMEOUT ?? '', 10)
+  const timeout = configured > 0 ? configured : DEFAULT_MCP_TOOL_TIMEOUT_MS
+  return Math.min(timeout, LONGEST_TIMER_MS)
 }
 
-/**
- * Call an MCP tool, handling UrlElicitationRequiredError (-32042) by
- * displaying the URL elicitation to the user, waiting for the completion
- * notification, and retrying the tool call.
- */
 type MCPToolCallResult = {
   content: MCPToolResult
   _meta?: Record<string, unknown>
   structuredContent?: Record<string, unknown>
 }
 
-/** @internal Exported for testing. */
+type CallToolOptions = {
+  client: ConnectedMCPServer
+  tool: string
+  args: Record<string, unknown>
+  meta?: Record<string, unknown>
+  signal: AbortSignal
+  onProgress?: (data: MCPProgress) => void
+}
+
 export async function callMCPToolWithUrlElicitationRetry({
   client: connectedClient,
   clientConnection,
@@ -92,200 +82,104 @@ export async function callMCPToolWithUrlElicitationRetry({
     signal: AbortSignal
     onProgress?: (data: MCPProgress) => void
   }) => Promise<MCPToolCallResult>
-  /** Handler for URL elicitations when no hook handles them.
-   * In print/SDK mode, delegates to structuredIO. In REPL, falls back to queue. */
+  /** Settles URL elicitations no hook answered (SDK and print mode). Without it, the REPL's dialog queue does. */
   handleElicitation?: (
     serverName: string,
     params: ElicitRequestURLParams,
     signal: AbortSignal,
   ) => Promise<ElicitResult>
 }): Promise<MCPToolCallResult> {
-  const MAX_URL_ELICITATION_RETRIES = 3
-  for (let attempt = 0; ; attempt++) {
-    // Check abort signal before each attempt — without this, a cancelled
-    // elicitation retry loop continues spinning until MAX retries
-    if (signal.aborted) {
-      throw new Error('Tool call aborted during URL elicitation')
-    }
-    try {
-      return await callToolFn({
-        client: connectedClient,
-        tool,
-        args,
-        meta,
-        signal,
-        onProgress,
-      })
-    } catch (error) {
-      // The MCP SDK's Protocol creates plain McpError (not UrlElicitationRequiredError)
-      // for error responses, so we check the error code instead of instanceof.
-      if (
-        !(error instanceof McpError) ||
-        error.code !== ErrorCode.UrlElicitationRequired
-      ) {
-        throw error
+  const serverName = clientConnection.type === 'connected' ? clientConnection.name : 'unknown'
+  const outcome = await callWithUrlElicitation(
+    () => callToolFn({ client: connectedClient, tool, args, meta, signal, onProgress }),
+    params => resolveUrlElicitation(params, { serverName, signal, setAppState, handleElicitation }),
+    signal,
+  )
+  if (outcome.kind === 'done') return outcome.result
+  return { content: elicitationEndedText(outcome.ending, tool) }
+}
+
+/** Rejects after `ms` with the error `onTimeout` builds; `cancel` clears the timer. */
+function deadline(ms: number, onTimeout: () => Error): { expired: Promise<never>; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const expired = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(onTimeout()), ms)
+  })
+  return { expired, cancel: () => clearTimeout(timer) }
+}
+
+function progressEvent(serverName: string, toolName: string, progress: Progress): MCPProgress {
+  return {
+    type: 'mcp_progress',
+    status: 'progress',
+    serverName,
+    toolName,
+    progress: progress.progress,
+    total: progress.total,
+    progressMessage: progress.message,
+  }
+}
+
+/** Spec, finding 7: only the first block counts, and it must be text. */
+function toolErrorMessage(result: CallToolResult): string {
+  const [first] = result.content
+  if (first?.type === 'text') return first.text
+  if (first === undefined && typeof result.error === 'string') return result.error
+  return 'Unknown error'
+}
+
+async function surfaceCallError(error: unknown, server: ConnectedMCPServer): Promise<unknown> {
+  const { name, config } = server
+  switch (classifyCallError(error, config.type)) {
+    case 'auth':
+      return new McpAuthError(name, `MCP server "${name}" requires re-authorization (token expired)`)
+    case 'expired':
+      try {
+        await clearServerCache(name, config)
+      } catch (clearError) {
+        logMCPError(name, clearError)
       }
+      return new McpSessionExpiredError(name)
+    case 'passthrough':
+      return error
+  }
+}
 
-      // Limit the number of URL elicitation retries
-      if (attempt >= MAX_URL_ELICITATION_RETRIES) {
-        throw error
-      }
-
-      const errorData = error.data
-      const rawElicitations =
-        errorData != null &&
-          typeof errorData === 'object' &&
-          'elicitations' in errorData &&
-          Array.isArray(errorData.elicitations)
-          ? (errorData.elicitations as unknown[])
-          : []
-
-      // Validate each element has the required fields for ElicitRequestURLParams
-      const elicitations = rawElicitations.filter(
-        (e): e is ElicitRequestURLParams => {
-          if (e == null || typeof e !== 'object') return false
-          const obj = e as Record<string, unknown>
-          return (
-            obj.mode === 'url' &&
-            typeof obj.url === 'string' &&
-            typeof obj.elicitationId === 'string' &&
-            typeof obj.message === 'string'
-          )
-        },
-      )
-
-      const serverName =
-        clientConnection.type === 'connected'
-          ? clientConnection.name
-          : 'unknown'
-
-      if (elicitations.length === 0) {
-        logMCPDebug(
-          serverName,
-          `Tool '${tool}' returned -32042 but no valid elicitations in error data`,
-        )
-        throw error
-      }
-
-      logMCPDebug(
-        serverName,
-        `Tool '${tool}' requires URL elicitation (error -32042, attempt ${attempt + 1}), processing ${elicitations.length} elicitation(s)`,
-      )
-
-      // Process each URL elicitation from the error.
-      // The completion notification handler (in registerElicitationHandler) sets
-      // `completed: true` on the matching queue event; the dialog reacts to this flag.
-      for (const elicitation of elicitations) {
-        const { elicitationId } = elicitation
-
-        // Run elicitation hooks — they can resolve URL elicitations programmatically
-        const hookResponse = await runElicitationHooks(
-          serverName,
-          elicitation,
-          signal,
-        )
-        if (hookResponse) {
-          logMCPDebug(
-            serverName,
-            `URL elicitation ${elicitationId} resolved by hook: ${jsonStringify(hookResponse)}`,
-          )
-          if (hookResponse.action !== 'accept') {
-            return {
-              content: `URL elicitation was ${hookResponse.action === 'decline' ? 'declined' : hookResponse.action + 'ed'} by a hook. The tool "${tool}" could not complete because it requires the user to open a URL.`,
-            }
-          }
-          // Hook accepted — skip the UI and proceed to retry
-          continue
-        }
-
-        // Resolve the URL elicitation via callback (print/SDK mode) or queue (REPL mode).
-        let userResult: ElicitResult
-        if (handleElicitation) {
-          // Print/SDK mode: delegate to structuredIO which sends a control request
-          userResult = await handleElicitation(serverName, elicitation, signal)
-        } else {
-          // REPL mode: queue for ElicitationDialog with two-phase consent/waiting flow
-          const waitingState: ElicitationWaitingState = {
-            actionLabel: 'Retry now',
-            showCancel: true,
-          }
-          userResult = await new Promise<ElicitResult>(resolve => {
-            const onAbort = () => {
-              void resolve({ action: 'cancel' })
-            }
-            if (signal.aborted) {
-              onAbort()
-              return
-            }
-            signal.addEventListener('abort', onAbort, { once: true })
-
-            setAppState(prev => ({
-              ...prev,
-              elicitation: {
-                queue: [
-                  ...prev.elicitation.queue,
-                  {
-                    serverName,
-                    requestId: `error-elicit-${elicitationId}`,
-                    params: elicitation,
-                    signal,
-                    waitingState,
-                    respond: result => {
-                      // Phase 1 consent: accept is a no-op (doesn't resolve retry Promise)
-                      if (result.action === 'accept') {
-                        return
-                      }
-                      // Decline or cancel: resolve the retry Promise
-                      signal.removeEventListener('abort', onAbort)
-                      void resolve(result)
-                    },
-                    onWaitingDismiss: action => {
-                      signal.removeEventListener('abort', onAbort)
-                      if (action === 'retry') {
-                        void resolve({ action: 'accept' })
-                      } else {
-                        void resolve({ action: 'cancel' })
-                      }
-                    },
-                  },
-                ],
-              },
-            }))
-          })
-        }
-
-        // Run ElicitationResult hooks — they can modify or block the response
-        const finalResult = await runElicitationResultHooks(
-          serverName,
-          userResult,
-          signal,
-          'url',
-          elicitationId,
-        )
-
-        if (finalResult.action !== 'accept') {
-          logMCPDebug(
-            serverName,
-            `User ${finalResult.action === 'decline' ? 'declined' : finalResult.action + 'ed'} URL elicitation ${elicitationId}`,
-          )
-          return {
-            content: `URL elicitation was ${finalResult.action === 'decline' ? 'declined' : finalResult.action + 'ed'} by the user. The tool "${tool}" could not complete because it requires the user to open a URL.`,
-          }
-        }
-
-        logMCPDebug(
-          serverName,
-          `Elicitation ${elicitationId} completed, retrying tool call`,
-        )
-      }
-
-      // Loop back to retry the tool call
-    }
+async function requestToolCall(
+  { client: server, tool, args, meta, signal, onProgress }: CallToolOptions,
+  timeoutMs: number,
+): Promise<CallToolResult> {
+  const { client, name } = server
+  // Started before the request, so it fires before the SDK's timer of the same length.
+  const limit = deadline(
+    timeoutMs,
+    () =>
+      new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
+        `MCP server "${name}" tool "${tool}" timed out after ${Math.floor(timeoutMs / 1000)}s`,
+        'MCP tool call timed out',
+      ),
+  )
+  const startedAt = Date.now()
+  const stillRunning = setInterval(
+    () => logMCPDebug(name, `Tool "${tool}" still running after ${Math.round((Date.now() - startedAt) / 1000)}s`),
+    STILL_RUNNING_LOG_EVERY_MS,
+  )
+  try {
+    const request = client.callTool({ name: tool, arguments: args, _meta: meta }, CallToolResultSchema, {
+      signal,
+      timeout: timeoutMs,
+      // Only when asked: a progress handler makes the SDK add a progressToken to _meta.
+      ...(onProgress && { onprogress: (progress: Progress) => onProgress(progressEvent(name, tool, progress)) }),
+    })
+    return CallToolResultSchema.parse(await Promise.race([request, limit.expired]))
+  } finally {
+    limit.cancel()
+    clearInterval(stillRunning)
   }
 }
 
 export async function callMCPTool({
-  client: { client, name, config },
+  client: server,
   tool,
   args,
   meta,
@@ -303,203 +197,32 @@ export async function callMCPTool({
   _meta?: Record<string, unknown>
   structuredContent?: Record<string, unknown>
 }> {
-  const toolStartTime = Date.now()
-  let progressInterval: NodeJS.Timeout | undefined
-
+  const { name } = server
+  logMCPDebug(name, `Calling tool "${tool}"`)
+  let result: CallToolResult
   try {
-    logMCPDebug(name, `Calling MCP tool: ${tool}`)
-
-    // Set up progress logging for long-running tools (every 30 seconds)
-    progressInterval = setInterval(
-      (startTime, name, tool) => {
-        const elapsed = Date.now() - startTime
-        const elapsedSeconds = Math.floor(elapsed / 1000)
-        const duration = `${elapsedSeconds}s`
-        logMCPDebug(name, `Tool '${tool}' still running (${duration} elapsed)`)
-      },
-      30000, // Log every 30 seconds
-      toolStartTime,
-      name,
-      tool,
-    )
-
-    // Use Promise.race with our own timeout to handle cases where SDK's
-    // internal timeout doesn't work (e.g., SSE stream breaks mid-request)
-    const timeoutMs = getMcpToolTimeoutMs()
-    let timeoutId: NodeJS.Timeout | undefined
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(
-        (reject, name, tool, timeoutMs) => {
-          reject(
-            new TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
-              `MCP server "${name}" tool "${tool}" timed out after ${Math.floor(timeoutMs / 1000)}s`,
-              'MCP tool timeout',
-            ),
-          )
-        },
-        timeoutMs,
-        reject,
-        name,
-        tool,
-        timeoutMs,
-      )
-    })
-
-    const result = await Promise.race([
-      client.callTool(
-        {
-          name: tool,
-          arguments: args,
-          _meta: meta,
-        },
-        CallToolResultSchema,
-        {
-          signal,
-          timeout: timeoutMs,
-          onprogress: onProgress
-            ? sdkProgress => {
-              onProgress({
-                type: 'mcp_progress',
-                status: 'progress',
-                serverName: name,
-                toolName: tool,
-                progress: sdkProgress.progress,
-                total: sdkProgress.total,
-                progressMessage: sdkProgress.message,
-              })
-            }
-            : undefined,
-        },
-      ),
-      timeoutPromise,
-    ]).finally(() => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-    })
-
-    if ('isError' in result && result.isError) {
-      let errorDetails = 'Unknown error'
-      if (
-        'content' in result &&
-        Array.isArray(result.content) &&
-        result.content.length > 0
-      ) {
-        const firstContent = result.content[0]
-        if (
-          firstContent &&
-          typeof firstContent === 'object' &&
-          'text' in firstContent
-        ) {
-          errorDetails = firstContent.text
-        }
-      } else if ('error' in result) {
-        // Fallback for legacy error format
-        errorDetails = String(result.error)
-      }
-      logMCPError(name, errorDetails)
-      // Include server and tool name in telemetry for debugging, but keep
-      // the human-readable message unchanged to avoid breaking error consumers
-      // that parse the message string.
-      throw new McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
-        errorDetails,
-        `MCP tool [${name}] ${tool}: ${errorDetails}`,
-        '_meta' in result && result._meta ? { _meta: result._meta } : undefined,
-      )
-    }
-    const elapsed = Date.now() - toolStartTime
-    const duration =
-      elapsed < 1000
-        ? `${elapsed}ms`
-        : elapsed < 60000
-          ? `${Math.floor(elapsed / 1000)}s`
-          : `${Math.floor(elapsed / 60000)}m ${Math.floor((elapsed % 60000) / 1000)}s`
-
-    logMCPDebug(name, `Tool '${tool}' completed successfully in ${duration}`)
-
-    // Log code indexing tool usage
-    const codeIndexingTool = detectCodeIndexingFromMcpServerName(name)
-
-    const content = await processMCPResult(result, tool, name)
-    return {
-      content,
-      _meta: result._meta as Record<string, unknown> | undefined,
-      structuredContent: result.structuredContent as
-        | Record<string, unknown>
-        | undefined,
-    }
-  } catch (e) {
-    // Clear intervals on error
-    if (progressInterval !== undefined) {
-      clearInterval(progressInterval)
-    }
-
-    const elapsed = Date.now() - toolStartTime
-
-    if (e instanceof Error && e.name !== 'AbortError') {
-      logMCPDebug(
-        name,
-        `Tool '${tool}' failed after ${Math.floor(elapsed / 1000)}s: ${e.message}`,
-      )
-    }
-
-    // Check for 401 errors indicating expired/invalid OAuth tokens
-    // The MCP SDK's StreamableHTTPError has a `code` property with the HTTP status
-    if (e instanceof Error) {
-      const errorCode = 'code' in e ? (e.code as number | undefined) : undefined
-      if (errorCode === 401 || e instanceof UnauthorizedError) {
-        logMCPDebug(
-          name,
-          `Tool call returned 401 Unauthorized - token may have expired`,
-        )
-        throw new McpAuthError(
-          name,
-          `MCP server "${name}" requires re-authorization (token expired)`,
-        )
-      }
-
-      // Check for session expiry — two error shapes can surface here:
-      // 1. Direct 404 + JSON-RPC -32001 from the server (StreamableHTTPError)
-      // 2. -32000 "Connection closed" (McpError) — the SDK closes the transport
-      //    after the onerror handler fires, so the pending callTool() rejects
-      //    with this derived error instead of the original 404.
-      // In both cases, clear the connection cache so the next tool call
-      // creates a fresh session.
-      const isSessionExpired = isMcpSessionExpiredError(e)
-      const isConnectionClosedOnHttp =
-        'code' in e &&
-        (e as Error & { code?: number }).code === -32000 &&
-        e.message.includes('Connection closed') &&
-        (config.type === 'http' || config.type === 'claudeai-proxy')
-      if (isSessionExpired || isConnectionClosedOnHttp) {
-        logMCPDebug(
-          name,
-          `MCP session expired during tool call (${isSessionExpired ? '404/-32001' : 'connection closed'}), clearing connection cache for re-initialization`,
-        )
-        await clearServerCache(name, config)
-        throw new McpSessionExpiredError(name)
-      }
-    }
-
-    // When the users hits esc, avoid logspew
-    if (!(e instanceof Error) || e.name !== 'AbortError') {
-      throw e
-    }
-    return { content: undefined }
-  } finally {
-    // Always clear intervals
-    if (progressInterval !== undefined) {
-      clearInterval(progressInterval)
-    }
+    result = await requestToolCall({ client: server, tool, args, meta, signal, onProgress }, getMcpToolTimeoutMs())
+  } catch (error) {
+    logMCPDebug(name, `Tool "${tool}" failed: ${String(error)}`)
+    throw await surfaceCallError(error, server)
   }
+  if (result.isError) {
+    const message = toolErrorMessage(result)
+    throw new McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS(
+      message,
+      `MCP tool [${name}] ${tool}: ${message}`,
+      result._meta ? { _meta: result._meta } : undefined,
+    )
+  }
+  const content = await processMCPResult(result, tool, name)
+  return { content, _meta: result._meta, structuredContent: result.structuredContent }
 }
 
 export function extractToolUseId(
   message: AssistantMessage,
 ): string | undefined {
-  if (message.message.content[0]?.type !== 'tool_use') {
-    return undefined
-  }
-  return message.message.content[0].id
+  const content = message.message.content
+  if (!Array.isArray(content)) return undefined
+  const [first] = content
+  return first?.type === 'tool_use' ? first.id : undefined
 }
