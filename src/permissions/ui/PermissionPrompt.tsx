@@ -27,7 +27,7 @@ export type PermissionPromptOption<T extends string> = {
   keybinding?: KeybindingAction
 }
 
-export type ToolAnalyticsContext = {
+type ToolAnalyticsContext = {
   toolName: string
   isMcp: boolean
 }

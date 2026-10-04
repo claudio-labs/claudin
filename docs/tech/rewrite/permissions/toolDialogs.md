@@ -246,3 +246,22 @@ Notes travel in the callbacks.
 - **One answer handler shared by the three `PermissionPrompt` dialogs**: Yes, allow-always, No and cancel are the same four calls with different rules. The fetch dialog keeps its plain list until Finding 5 is decided.
 - **Labels render one `<Text>` per line** (Finding 6), and the shell-delegate label names the Bash rule it saves (Finding 2, once decided).
 - **Tests**: the characterization suites, unchanged, plus unit tests for the rule functions and a narrow render asserting `N. ` stays whole.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+- **Code.** The four dialogs are now hand-written. Shared pieces live in `toolDialogs/`:
+  - `rules.ts`, with one pure rule function per dialog;
+  - `useToolPrompt.ts`, the options and answers shared by the three dialogs built on `PermissionPrompt`;
+  - `DontAskAgainLabel.tsx`.
+
+  The characterization suites pass unchanged, including the `MONITOR_TOOL` child run.
+- **Fixes, each with a test.**
+  - **1.** Input the skill schema rejects, or an empty skill name, gets no allow-always option, so it can never save the bare `Skill` rule.
+  - **4.** The fetch dialog never throws, and offers allow-always only for a schema-valid URL that has a host.
+  - **6.** Option numbers keep their space when a label wraps. This is a one-line wrapper box in `src/terminal/custom-select/select.tsx`, which the spec allows. Two other layouts in that widget have the same pattern and are untouched.
+  - **9.** No empty description box.
+- **Kept.** Findings 2, 3, 5, 7 and 8. Finding 2 (Monitor's allow-always saves a Bash prefix rule) is tracked in `bugs/permission-core-security-findings.md`.
+- **Probes.** 50 in `rewrite-permissions-toolDialogs.json`, proved in the checkout.
+- **Residue, reviewed.** 5 lines of Claude Code remain, all props destructuring.

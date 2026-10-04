@@ -1,136 +1,53 @@
-import React from 'react'
-import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import React, { useMemo } from 'react'
 import { Box, Text } from 'src/terminal/ink.js'
-import { shouldShowAlwaysAllowOptions } from 'src/permissions/permissionsLoader.js'
 import { usePermissionRequestLogging } from 'src/permissions/ui/hooks.js'
 import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js'
-import {
-  PermissionPrompt,
-  type PermissionPromptOption,
-} from 'src/permissions/ui/PermissionPrompt.js'
+import { PermissionPrompt } from 'src/permissions/ui/PermissionPrompt.js'
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
+import { DontAskAgainLabel } from 'src/permissions/ui/toolDialogs/DontAskAgainLabel.js'
+import { shellDelegateRule } from 'src/permissions/ui/toolDialogs/rules.js'
+import { type AlwaysOption, useToolPrompt } from 'src/permissions/ui/toolDialogs/useToolPrompt.js'
 
-type OptionValue = 'yes' | 'yes-dont-ask-again' | 'no'
+const LOGGED = { completion_type: 'tool_use_single', language_name: 'none' } as const
 
+const textField = (value: unknown): string => (typeof value === 'string' ? value : '')
+
+/**
+ * The dialog of the tools that run a shell command under the Bash rules
+ * (WaitFor, and Monitor in a build with it). Allow-always saves a Bash prefix
+ * rule on the command alone; WaitFor's `setup` is not part of it.
+ */
 export function MonitorPermissionRequest({
   toolUseConfirm,
   onDone,
   onReject,
   workerBadge,
-}: PermissionRequestProps) {
-  const { command, description } = toolUseConfirm.input as {
-    command?: string
-    description?: string
-  }
-  // Shared by Monitor and WaitFor — both delegate to the Bash rules — so the
-  // label comes from the tool rather than a literal.
-  const label = toolUseConfirm.tool.userFacingName(toolUseConfirm.input)
+}: PermissionRequestProps): React.ReactNode {
+  const { tool, input, permissionResult } = toolUseConfirm
+  usePermissionRequestLogging(toolUseConfirm, LOGGED)
 
-  usePermissionRequestLogging(toolUseConfirm, {
-    completion_type: 'tool_use_single',
-    language_name: 'none',
-  })
+  const label = tool.userFacingName(input)
+  const command = textField(input.command)
+  const description = textField(input.description)
 
-  const handleSelect = (
-    value: OptionValue,
-    feedback?: string,
-  ) => {
-    switch (value) {
-      case 'yes': {
-        toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback)
-        onDone()
-        break
-      }
-      case 'yes-dont-ask-again': {
-        // Save the rule under 'Bash' toolName because checkPermissions
-        // delegates to bashToolHasPermission which matches rules against
-        // BashTool. Using 'Monitor' here would create a rule that's never
-        // checked. Command-specific prefix (like BashTool's shellRuleMatching).
-        const cmdForRule = command?.trim() || ''
-        const prefix = cmdForRule.split(/\s+/).slice(0, 2).join(' ')
-        toolUseConfirm.onAllow(toolUseConfirm.input, prefix ? [
-          {
-            type: 'addRules',
-            rules: [{ toolName: 'Bash', ruleContent: `${prefix}:*` }],
-            behavior: 'allow',
-            destination: 'localSettings',
-          },
-        ] : [])
-        onDone()
-        break
-      }
-      case 'no': {
-        toolUseConfirm.onReject(feedback)
-        onReject()
-        onDone()
-        break
-      }
-    }
-  }
-
-  const handleCancel = () => {
-    toolUseConfirm.onReject()
-    onReject()
-    onDone()
-  }
-
-  const showAlwaysAllow = shouldShowAlwaysAllowOptions()
-  const originalCwd = getOriginalCwd()
-
-  const options: PermissionPromptOption<OptionValue>[] = [
-    {
-      label: 'Yes',
-      value: 'yes',
-      feedbackConfig: { type: 'accept' },
-    },
-  ]
-
-  if (showAlwaysAllow) {
-    options.push({
-      label: (
-        <Text>
-          Yes, and don&apos;t ask again for{' '}
-          <Text bold>{label}</Text> commands in{' '}
-          <Text bold>{originalCwd}</Text>
-        </Text>
-      ),
-      value: 'yes-dont-ask-again',
-    })
-  }
-
-  options.push({
-    label: 'No',
-    value: 'no',
-    feedbackConfig: { type: 'reject' },
-  })
-
-  const toolAnalyticsContext = {
-    toolName: toolUseConfirm.tool.name,
-    isMcp: toolUseConfirm.tool.isMcp ?? false,
-  }
+  const always = useMemo<AlwaysOption[]>(
+    () => [{ value: 'yes-prefix', label: <DontAskAgainLabel subject={label} noun="commands" />, rule: shellDelegateRule(command) }],
+    [label, command],
+  )
+  const prompt = useToolPrompt({ toolUseConfirm, onDone, onReject }, always)
 
   return (
     <PermissionDialog title={label} workerBadge={workerBadge}>
       <Box flexDirection="column" paddingX={2} paddingY={1}>
         <Text>
-          {label}({command ?? ''})
+          {label}({command})
         </Text>
-        {description ? (
-          <Text dimColor>{description}</Text>
-        ) : null}
+        {description !== '' && <Text dimColor>{description}</Text>}
       </Box>
       <Box flexDirection="column">
-        <PermissionRuleExplanation
-          permissionResult={toolUseConfirm.permissionResult}
-          toolType="tool"
-        />
-        <PermissionPrompt
-          options={options}
-          onSelect={handleSelect}
-          onCancel={handleCancel}
-          toolAnalyticsContext={toolAnalyticsContext}
-        />
+        <PermissionRuleExplanation permissionResult={permissionResult} toolType="tool" />
+        <PermissionPrompt options={prompt.options} onSelect={prompt.onSelect} onCancel={prompt.onCancel} />
       </Box>
     </PermissionDialog>
   )

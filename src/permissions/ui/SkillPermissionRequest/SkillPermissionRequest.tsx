@@ -1,320 +1,75 @@
-import { c as _c } from "react-compiler-runtime";
-import React, { useCallback, useMemo } from 'react';
-import { logError } from 'src/shared/log.js';
-import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
-import { Box, Text } from 'src/terminal/ink.js';
-import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js';
-import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';
-import { shouldShowAlwaysAllowOptions } from 'src/permissions/permissionsLoader.js';
-import { type UnaryEvent, usePermissionRequestLogging } from 'src/permissions/ui/hooks.js';
-import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
-import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContext } from 'src/permissions/ui/PermissionPrompt.js';
-import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js';
-import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js';
-type SkillOptionValue = 'yes' | 'yes-exact' | 'yes-prefix' | 'no';
-export function SkillPermissionRequest(props: PermissionRequestProps) {
-  const $ = _c(51);
-  const {
-    toolUseConfirm,
-    onDone,
-    onReject,
-    workerBadge
-  } = props;
-  const parseInput = _temp;
-  let t0;
-  if ($[0] !== toolUseConfirm.input) {
-    t0 = parseInput(toolUseConfirm.input);
-    $[0] = toolUseConfirm.input;
-    $[1] = t0;
-  } else {
-    t0 = $[1];
-  }
-  const skill = t0;
-  const commandObj = toolUseConfirm.permissionResult.behavior === "ask" && toolUseConfirm.permissionResult.metadata && "command" in toolUseConfirm.permissionResult.metadata ? toolUseConfirm.permissionResult.metadata.command : undefined;
-  let t1;
-  if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = {
-      completion_type: "tool_use_single",
-      language_name: "none"
-    };
-    $[2] = t1;
-  } else {
-    t1 = $[2];
-  }
-  const unaryEvent = t1;
-  usePermissionRequestLogging(toolUseConfirm, unaryEvent);
-  let t2;
-  if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = getOriginalCwd();
-    $[3] = t2;
-  } else {
-    t2 = $[3];
-  }
-  const originalCwd = t2;
-  let t3;
-  if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t3 = shouldShowAlwaysAllowOptions();
-    $[4] = t3;
-  } else {
-    t3 = $[4];
-  }
-  const showAlwaysAllowOptions = t3;
-  let t4;
-  if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = [{
-      label: "Yes",
-      value: "yes",
-      feedbackConfig: {
-        type: "accept"
-      }
-    }];
-    $[5] = t4;
-  } else {
-    t4 = $[5];
-  }
-  const baseOptions = t4;
-  let alwaysAllowOptions;
-  if ($[6] !== skill) {
-    alwaysAllowOptions = [] as PermissionPromptOption<SkillOptionValue>[];
-    if (showAlwaysAllowOptions) {
-      const t5 = <Text bold={true}>{skill}</Text>;
-      let t6;
-      if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
-        t6 = <Text bold={true}>{originalCwd}</Text>;
-        $[8] = t6;
-      } else {
-        t6 = $[8];
-      }
-      let t7;
-      if ($[9] !== t5) {
-        t7 = {
-          label: <Text>Yes, and don't ask again for {t5} in{" "}{t6}</Text>,
-          value: "yes-exact"
-        };
-        $[9] = t5;
-        $[10] = t7;
-      } else {
-        t7 = $[10];
-      }
-      alwaysAllowOptions.push(t7);
-      const spaceIndex = skill.indexOf(" ");
-      if (spaceIndex > 0) {
-        const commandPrefix = skill.substring(0, spaceIndex);
-        const t8 = commandPrefix + ":*";
-        let t9;
-        if ($[11] !== t8) {
-          t9 = <Text bold={true}>{t8}</Text>;
-          $[11] = t8;
-          $[12] = t9;
-        } else {
-          t9 = $[12];
-        }
-        let t10;
-        if ($[13] === Symbol.for("react.memo_cache_sentinel")) {
-          t10 = <Text bold={true}>{originalCwd}</Text>;
-          $[13] = t10;
-        } else {
-          t10 = $[13];
-        }
-        let t11;
-        if ($[14] !== t9) {
-          t11 = {
-            label: <Text>Yes, and don't ask again for{" "}{t9} commands in{" "}{t10}</Text>,
-            value: "yes-prefix"
-          };
-          $[14] = t9;
-          $[15] = t11;
-        } else {
-          t11 = $[15];
-        }
-        alwaysAllowOptions.push(t11);
-      }
-    }
-    $[6] = skill;
-    $[7] = alwaysAllowOptions;
-  } else {
-    alwaysAllowOptions = $[7];
-  }
-  let t5;
-  if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = {
-      label: "No",
-      value: "no",
-      feedbackConfig: {
-        type: "reject"
-      }
-    };
-    $[16] = t5;
-  } else {
-    t5 = $[16];
-  }
-  const noOption = t5;
-  let t6;
-  if ($[17] !== alwaysAllowOptions) {
-    t6 = [...baseOptions, ...alwaysAllowOptions, noOption];
-    $[17] = alwaysAllowOptions;
-    $[18] = t6;
-  } else {
-    t6 = $[18];
-  }
-  const options = t6;
-  let t7;
-  if ($[19] !== toolUseConfirm.tool.name) {
-    t7 = toolUseConfirm.tool.name;
-    $[19] = toolUseConfirm.tool.name;
-    $[20] = t7;
-  } else {
-    t7 = $[20];
-  }
-  const t8 = toolUseConfirm.tool.isMcp ?? false;
-  let t9;
-  if ($[21] !== t7 || $[22] !== t8) {
-    t9 = {
-      toolName: t7,
-      isMcp: t8
-    };
-    $[21] = t7;
-    $[22] = t8;
-    $[23] = t9;
-  } else {
-    t9 = $[23];
-  }
-  const toolAnalyticsContext = t9;
-  let t10;
-  if ($[24] !== onDone || $[25] !== onReject || $[26] !== skill || $[27] !== toolUseConfirm) {
-    t10 = (value: SkillOptionValue, feedback?: string) => {
-      bb33: switch (value) {
-        case "yes":
-          {
-            toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback);
-            onDone();
-            break bb33;
-          }
-        case "yes-exact":
-          {
-            toolUseConfirm.onAllow(toolUseConfirm.input, [{
-              type: "addRules",
-              rules: [{
-                toolName: SKILL_TOOL_NAME,
-                ruleContent: skill
-              }],
-              behavior: "allow",
-              destination: "localSettings"
-            }]);
-            onDone();
-            break bb33;
-          }
-        case "yes-prefix":
-          {
-            const spaceIndex_0 = skill.indexOf(" ");
-            const commandPrefix_0 = spaceIndex_0 > 0 ? skill.substring(0, spaceIndex_0) : skill;
-            toolUseConfirm.onAllow(toolUseConfirm.input, [{
-              type: "addRules",
-              rules: [{
-                toolName: SKILL_TOOL_NAME,
-                ruleContent: `${commandPrefix_0}:*`
-              }],
-              behavior: "allow",
-              destination: "localSettings"
-            }]);
-            onDone();
-            break bb33;
-          }
-        case "no":
-          {
-            toolUseConfirm.onReject(feedback);
-            onReject();
-            onDone();
-          }
-      }
-    };
-    $[24] = onDone;
-    $[25] = onReject;
-    $[26] = skill;
-    $[27] = toolUseConfirm;
-    $[28] = t10;
-  } else {
-    t10 = $[28];
-  }
-  const handleSelect = t10;
-  let t11;
-  if ($[29] !== onDone || $[30] !== onReject || $[31] !== toolUseConfirm) {
-    t11 = () => {
-      toolUseConfirm.onReject();
-      onReject();
-      onDone();
-    };
-    $[29] = onDone;
-    $[30] = onReject;
-    $[31] = toolUseConfirm;
-    $[32] = t11;
-  } else {
-    t11 = $[32];
-  }
-  const handleCancel = t11;
-  const t12 = `Use skill "${skill}"?`;
-  let t13;
-  if ($[33] === Symbol.for("react.memo_cache_sentinel")) {
-    t13 = <Text>Claude may use instructions, code, or files from this Skill.</Text>;
-    $[33] = t13;
-  } else {
-    t13 = $[33];
-  }
-  const t14 = commandObj?.description;
-  let t15;
-  if ($[34] !== t14) {
-    t15 = <Box flexDirection="column" paddingX={2} paddingY={1}><Text dimColor={true}>{t14}</Text></Box>;
-    $[34] = t14;
-    $[35] = t15;
-  } else {
-    t15 = $[35];
-  }
-  let t16;
-  if ($[36] !== toolUseConfirm.permissionResult) {
-    t16 = <PermissionRuleExplanation permissionResult={toolUseConfirm.permissionResult} toolType="tool" />;
-    $[36] = toolUseConfirm.permissionResult;
-    $[37] = t16;
-  } else {
-    t16 = $[37];
-  }
-  let t17;
-  if ($[38] !== handleCancel || $[39] !== handleSelect || $[40] !== options || $[41] !== toolAnalyticsContext) {
-    t17 = <PermissionPrompt options={options} onSelect={handleSelect} onCancel={handleCancel} toolAnalyticsContext={toolAnalyticsContext} />;
-    $[38] = handleCancel;
-    $[39] = handleSelect;
-    $[40] = options;
-    $[41] = toolAnalyticsContext;
-    $[42] = t17;
-  } else {
-    t17 = $[42];
-  }
-  let t18;
-  if ($[43] !== t16 || $[44] !== t17) {
-    t18 = <Box flexDirection="column">{t16}{t17}</Box>;
-    $[43] = t16;
-    $[44] = t17;
-    $[45] = t18;
-  } else {
-    t18 = $[45];
-  }
-  let t19;
-  if ($[46] !== t12 || $[47] !== t15 || $[48] !== t18 || $[49] !== workerBadge) {
-    t19 = <PermissionDialog title={t12} workerBadge={workerBadge}>{t13}{t15}{t18}</PermissionDialog>;
-    $[46] = t12;
-    $[47] = t15;
-    $[48] = t18;
-    $[49] = workerBadge;
-    $[50] = t19;
-  } else {
-    t19 = $[50];
-  }
-  return t19;
+import React, { useMemo } from 'react'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { logError } from 'src/shared/log.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
+import { usePermissionRequestLogging } from 'src/permissions/ui/hooks.js'
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js'
+import { PermissionPrompt } from 'src/permissions/ui/PermissionPrompt.js'
+import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
+import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
+import { DontAskAgainLabel } from 'src/permissions/ui/toolDialogs/DontAskAgainLabel.js'
+import { skillRule, skillRuleContents } from 'src/permissions/ui/toolDialogs/rules.js'
+import { type AlwaysOption, useToolPrompt } from 'src/permissions/ui/toolDialogs/useToolPrompt.js'
+
+const LOGGED = { completion_type: 'tool_use_single', language_name: 'none' } as const
+
+/** The skill the input names, as SkillTool reads it; empty when it cannot read the input. */
+function skillNameOf(input: unknown): string {
+  const parsed = SkillTool.inputSchema.safeParse(input)
+  if (parsed.success) return parsed.data.skill
+  logError(new Error(`SkillPermissionRequest: unreadable Skill input: ${parsed.error.message}`))
+  return ''
 }
-function _temp(input: unknown): string {
-  const result = SkillTool.inputSchema.safeParse(input);
-  if (!result.success) {
-    logError(new Error(`Failed to parse skill tool input: ${result.error.message}`));
-    return "";
+
+/** The command's description, only when the check asked and found the command. */
+function commandDescriptionOf(result: PermissionDecision): string | undefined {
+  if (result.behavior !== 'ask') return undefined
+  const metadata = (result as { metadata?: { command?: { description?: unknown } } }).metadata
+  const description = metadata?.command?.description
+  return typeof description === 'string' && description !== '' ? description : undefined
+}
+
+/** Unreadable input names no skill, so it is offered no allow-always option at all. */
+function alwaysOptionsFor(skill: string): AlwaysOption[] {
+  const contents = skillRuleContents(skill)
+  if (!contents) return []
+  const options: AlwaysOption[] = [
+    { value: 'yes-exact', label: <DontAskAgainLabel subject={contents.exact} />, rule: skillRule(contents.exact) },
+  ]
+  if (contents.prefix !== null) {
+    options.push({
+      value: 'yes-prefix',
+      label: <DontAskAgainLabel subject={contents.prefix} noun="commands" />,
+      rule: skillRule(contents.prefix),
+    })
   }
-  return result.data.skill;
+  return options
+}
+
+/** Asks before a skill runs; allow-always saves the exact skill or, for a name with a space, its first word as a prefix. */
+export function SkillPermissionRequest(props: PermissionRequestProps): React.ReactNode {
+  const { toolUseConfirm, workerBadge } = props
+  const { input, permissionResult } = toolUseConfirm
+  usePermissionRequestLogging(toolUseConfirm, LOGGED)
+
+  const skill = useMemo(() => skillNameOf(input), [input])
+  const always = useMemo(() => alwaysOptionsFor(skill), [skill])
+  const prompt = useToolPrompt(props, always)
+  const description = commandDescriptionOf(permissionResult)
+
+  return (
+    <PermissionDialog title={`Use skill "${skill}"?`} workerBadge={workerBadge}>
+      <Text>Claude may use instructions, code, or files from this Skill.</Text>
+      {description !== undefined && (
+        <Box paddingX={2}>
+          <Text dimColor>{description}</Text>
+        </Box>
+      )}
+      <Box flexDirection="column" marginTop={1}>
+        <PermissionRuleExplanation permissionResult={permissionResult} toolType="tool" />
+        <PermissionPrompt options={prompt.options} onSelect={prompt.onSelect} onCancel={prompt.onCancel} />
+      </Box>
+    </PermissionDialog>
+  )
 }

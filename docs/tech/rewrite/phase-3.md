@@ -69,7 +69,7 @@ which the sandbox tools read. The lists below are the same.
 | `permissions/decisionExplanation` | 3 | 815 | — | done |
 | `permissions/shellDialogs` | 7 | 1102 | — | pending |
 | `permissions/fileDialogs` | 11 | 1269 | — | pending |
-| `permissions/toolDialogs` | 4 | 866 | — | pending |
+| `permissions/toolDialogs` | 4 | 866 | — | done |
 | `permissions/modeDialogs` | 4 | 787 | — | pending |
 | `permissions/askUserQuestion` | 4 | 980 | — | pending |
 | `permissions/askUserQuestionViews` | 3 | 893 | — | pending |
