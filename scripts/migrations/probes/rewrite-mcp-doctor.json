@@ -3,212 +3,520 @@
     "src/mcp/doctor.config.characterization.test.ts",
     "src/mcp/doctor.live.characterization.test.ts",
     "src/mcp/doctor.contract.characterization.test.ts",
-    "src/mcp/doctor.cli.characterization.test.ts"
+    "src/mcp/doctor.cli.characterization.test.ts",
+    "src/mcp/doctor.fixes.test.ts"
   ],
   "source": "src/mcp/doctor.ts",
   "probes": [
     {
-      "name": "validation: invalid JSON gets the generic code",
-      "find": "    return 'config.invalid_json'\n",
-      "replace": "    return 'config.validation_error'\n"
+      "name": "envelope: generatedAt is the time of the call",
+      "find": "generatedAt: new Date().toISOString(),",
+      "replace": "generatedAt: new Date(0).toISOString(),"
     },
     {
-      "name": "validation: Windows npx matched only at the start",
-      "find": "  if (error.message.includes('Windows cannot launch npx directly')) {\n",
-      "replace": "  if (error.message.startsWith('Windows cannot launch npx directly')) {\n"
+      "name": "envelope: targetName is echoed",
+      "find": "targetName: options.targetName,",
+      "replace": "targetName: undefined,"
     },
     {
-      "name": "validation: schema message matched anywhere",
-      "find": "  if (error.message === 'Does not adhere to MCP server configuration schema') {\n",
-      "replace": "  if (error.message.includes('Does not adhere to MCP server configuration schema')) {\n"
+      "name": "envelope: scopeFilter is echoed",
+      "find": "scopeFilter: options.scopeFilter,",
+      "replace": "scopeFilter: undefined,"
     },
     {
-      "name": "validation: fatal becomes a warning",
-      "find": "    return 'error'\n  }\n  if (severity === 'warning') {\n",
-      "replace": "    return 'warn'\n  }\n  if (severity === 'warning') {\n"
+      "name": "envelope: global findings are reported",
+      "find": "findings: validation.global,",
+      "replace": "findings: [],"
     },
     {
-      "name": "validation: no severity becomes an error",
-      "find": "  return 'warn'\n}\n\nexport function findingsFromValidationErrors(",
-      "replace": "  return 'error'\n}\n\nexport function findingsFromValidationErrors("
+      "name": "names: doctorServer marks its server as requested",
+      "find": "requestedByUser: options.targetName !== undefined,",
+      "replace": "requestedByUser: false,"
     },
     {
-      "name": "validation: nothing blocks",
-      "find": "      blocking: severity === 'error',\n",
-      "replace": "      blocking: false,\n"
+      "name": "live: config-only skips every check",
+      "find": "const liveCheck = ctx.configOnly",
+      "replace": "const liveCheck = false"
     },
     {
-      "name": "validation: server findings stay global",
-      "find": "    if (!finding.serverName) {\n",
-      "replace": "    if (finding.serverName || !finding.serverName) {\n"
+      "name": "definitions: the runtime config is looked up by name",
+      "find": "runtimeConfig: readings.runtime[name]",
+      "replace": "runtimeConfig: undefined"
     },
     {
-      "name": "source: plugins read as dynamic",
-      "find": "    return config.pluginSource ? 'plugin' : 'dynamic'\n",
-      "replace": "    return 'dynamic'\n"
+      "name": "findings: a server's validation findings come first",
+      "find": "...(ctx.validation.byServer.get(name) ?? []),",
+      "replace": "...[],"
     },
     {
-      "name": "source: claude.ai reads as dynamic",
-      "find": "    return 'claudeai'\n",
-      "replace": "    return 'dynamic'\n"
+      "name": "findings: shadowing",
+      "find": "...shadowingFindings(name, definitions, running),",
+      "replace": "...[],"
     },
     {
-      "name": "definition: active without a running config",
-      "find": "    return false\n  }\n  return getSourceType(config) === getSourceType(activeConfig)",
-      "replace": "    return true\n  }\n  return getSourceType(config) === getSourceType(activeConfig)"
+      "name": "findings: state",
+      "find": "...stateFindings(name, definitions),",
+      "replace": "...[],"
     },
     {
-      "name": "definition: signature ignored",
-      "find": " && getConfigSignature(config) === getConfigSignature(activeConfig)\n",
+      "name": "findings: not found when there is no definition",
+      "find": "...(definitions.length === 0 ? [notFoundFinding(name)] : []),",
+      "replace": "...[],"
+    },
+    {
+      "name": "findings: the live finding",
+      "find": "...liveFindings(name, running, liveCheck),",
+      "replace": "...[],"
+    },
+    {
+      "name": "readings: a filter selects that scope only",
+      "source": "src/mcp/doctor/readings.ts",
+      "find": "const selected = scopeFilter ? [scopeFilter] : DOCTOR_SCOPES",
+      "replace": "const selected = DOCTOR_SCOPES"
+    },
+    {
+      "name": "readings: the filtered flag",
+      "source": "src/mcp/doctor/readings.ts",
+      "find": "filtered: scopeFilter !== undefined,",
+      "replace": "filtered: false,"
+    },
+    {
+      "name": "readings: validation errors of the selected scopes",
+      "source": "src/mcp/doctor/readings.ts",
+      "find": "validationErrors: reads.flatMap(({ read }) => read.errors),",
+      "replace": "validationErrors: [],"
+    },
+    {
+      "name": "names: runtime names only without a filter",
+      "source": "src/mcp/doctor/readings.ts",
+      "find": "if (!readings.filtered) for",
+      "replace": "if (true) for"
+    },
+    {
+      "name": "names: runtime names are included without a filter",
+      "source": "src/mcp/doctor/readings.ts",
+      "find": "if (!readings.filtered) for",
+      "replace": "if (false) for"
+    },
+    {
+      "name": "names: sorted by code unit",
+      "source": "src/mcp/doctor/readings.ts",
+      "find": "return [...names].sort()",
+      "replace": "return [...names]"
+    },
+    {
+      "name": "scopes: definitions are listed enterprise, local, project, user",
+      "source": "src/mcp/doctor/scopes.ts",
+      "find": "['enterprise', 'local', 'project', 'user']",
+      "replace": "['local', 'enterprise', 'project', 'user']"
+    },
+    {
+      "name": "fix 8: an unreadable scope is refused",
+      "source": "src/mcp/doctor/scopes.ts",
+      "find": "if (isDoctorScope(raw)) return raw",
+      "replace": "if (raw) return raw as McpDoctorScopeFilter"
+    },
+    {
+      "name": "definitions: the transport defaults to stdio",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "return config.type ?? 'stdio'",
+      "replace": "return config.type ?? 'unknown'"
+    },
+    {
+      "name": "definitions: plugin only with a non-empty source",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "config.scope === 'dynamic' && config.pluginSource ? 'plugin'",
+      "replace": "config.scope === 'dynamic' ? 'plugin'"
+    },
+    {
+      "name": "identity: the URL of a remote transport",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "'url' in config ? [config.url]",
+      "replace": "'url' in config ? []"
+    },
+    {
+      "name": "identity: the arguments of a stdio command",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "[config.command, config.args]",
+      "replace": "[config.command]"
+    },
+    {
+      "name": "identity: the stdio command",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "[config.command, config.args]",
+      "replace": "[config.args]"
+    },
+    {
+      "name": "identity: the source type",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "return JSON.stringify([sourceTypeOf(config), transportOf(config), ...target])",
+      "replace": "return JSON.stringify([transportOf(config), ...target])"
+    },
+    {
+      "name": "observed: plugin:<source>",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "if (sourceType === 'plugin') return `plugin:${config.pluginSource}`",
+      "replace": "if (sourceType === 'plugin') return config.scope"
+    },
+    {
+      "name": "observed: claude.ai",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "if (sourceType === 'claudeai') return 'claude.ai'",
+      "replace": "if (sourceType === 'claudeai') return config.scope"
+    },
+    {
+      "name": "fix 4: a file-backed observed definition names its file",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "return isFileBacked(sourceType) ? lookups.describeFile(config.scope) : config.scope",
+      "replace": "return config.scope"
+    },
+    {
+      "name": "observed: dynamic and managed keep the scope word",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "return isFileBacked(sourceType) ? lookups.describeFile(config.scope) : config.scope",
+      "replace": "return lookups.describeFile(config.scope)"
+    },
+    {
+      "name": "observed: not added when a listed definition has the same source",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "return a.sourceType === b.sourceType && a.sourcePath === b.sourcePath && a.transport === b.transport",
+      "replace": "return false"
+    },
+    {
+      "name": "observed: a different transport is a different source",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "return a.sourceType === b.sourceType && a.sourcePath === b.sourcePath && a.transport === b.transport",
+      "replace": "return a.sourceType === b.sourceType && a.sourcePath === b.sourcePath"
+    },
+    {
+      "name": "plan: connect only when a definition runs",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "if (runtimeConfig && definitions.some(d => d.runtimeActive)) return",
+      "replace": "if (runtimeConfig) return"
+    },
+    {
+      "name": "plan: pending",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "if (definitions.some(d => d.pendingApproval)) return { kind: 'idle', result: 'pending' }",
+      "replace": "if (definitions.some(d => d.pendingApproval)) return { kind: 'idle', result: 'skipped' }"
+    },
+    {
+      "name": "plan: disabled",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "if (definitions.some(d => d.disabled)) return { kind: 'idle', result: 'disabled' }",
+      "replace": "if (definitions.some(d => d.disabled)) return { kind: 'idle', result: 'skipped' }"
+    },
+    {
+      "name": "definitions: a disabled name never runs",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "runtimeConfig && !disabled ? identityOf(runtimeConfig) : undefined",
+      "replace": "runtimeConfig ? identityOf(runtimeConfig) : undefined"
+    },
+    {
+      "name": "definitions: a declared definition names its file",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "sourcePath: lookups.describeFile(scope),",
+      "replace": "sourcePath: scope,"
+    },
+    {
+      "name": "definitions: pending approval only for project",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "pendingApproval: scope === 'project' && lookups.projectStatus(name) === 'pending',",
+      "replace": "pendingApproval: lookups.projectStatus(name) === 'pending',"
+    },
+    {
+      "name": "definitions: pending means the pending status",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "lookups.projectStatus(name) === 'pending'",
+      "replace": "lookups.projectStatus(name) !== 'approved'"
+    },
+    {
+      "name": "observed: without a filter when nothing is declared",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "const mayObserve = definitions.length > 0 ? !definitions.some(d => d.runtimeActive) : !input.filtered",
+      "replace": "const mayObserve = definitions.length > 0 ? !definitions.some(d => d.runtimeActive) : true"
+    },
+    {
+      "name": "observed: when the declared ones do not run (finding 3)",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "const mayObserve = definitions.length > 0 ? !definitions.some(d => d.runtimeActive) : !input.filtered",
+      "replace": "const mayObserve = definitions.length > 0 ? false : !input.filtered"
+    },
+    {
+      "name": "observed: a disabled name is not active",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "      runtimeActive: !disabled,\n",
+      "replace": "      runtimeActive: true,\n"
+    },
+    {
+      "name": "the running definition is the active one",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "running: definitions.find(d => d.runtimeActive),",
+      "replace": "running: undefined,"
+    },
+    {
+      "name": "shadowing: only file-backed definitions count",
+      "source": "src/mcp/doctor/definitions.ts",
+      "find": "new Set(['enterprise', 'local', 'project', 'user'])",
+      "replace": "new Set(['enterprise', 'local', 'project', 'user', 'plugin', 'claudeai'])"
+    },
+    {
+      "name": "validation: invalid JSON is an exact message",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "matches: m => m === 'MCP config is not a valid JSON'",
+      "replace": "matches: m => m.startsWith('MCP config is not a valid JSON')"
+    },
+    {
+      "name": "validation: missing env vars is a case-sensitive prefix",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "matches: m => m.startsWith('Missing environment variables:')",
+      "replace": "matches: m => m.toLowerCase().startsWith('missing environment variables:')"
+    },
+    {
+      "name": "validation: the Windows npx wording anywhere in the message",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "matches: m => m.includes('Windows cannot launch npx directly')",
+      "replace": "matches: m => m.startsWith('Windows cannot launch npx directly')"
+    },
+    {
+      "name": "validation: invalid schema is an exact message",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "matches: m => m === 'Does not adhere to MCP server configuration schema'",
+      "replace": "matches: m => m.includes('Does not adhere to MCP server configuration schema')"
+    },
+    {
+      "name": "validation: the fallback code",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "?? 'config.validation_error'",
+      "replace": "?? 'config.invalid_schema'"
+    },
+    {
+      "name": "validation: only fatal is an error",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "error.mcpErrorMetadata?.severity === 'fatal' ? 'error' : 'warn'",
+      "replace": "error.mcpErrorMetadata?.severity !== 'warning' ? 'error' : 'warn'"
+    },
+    {
+      "name": "findings: errors block",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "blocking: severity === 'error',",
+      "replace": "blocking: false,"
+    },
+    {
+      "name": "validation: remediation is the suggestion",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "remediation: error.suggestion,",
+      "replace": "remediation: undefined,"
+    },
+    {
+      "name": "validation: scope from the metadata",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "scope: error.mcpErrorMetadata?.scope,",
+      "replace": "scope: undefined,"
+    },
+    {
+      "name": "validation: sourcePath is the file",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "sourcePath: error.file,",
+      "replace": "sourcePath: undefined,"
+    },
+    {
+      "name": "validation: a finding without a server is global",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "if (f.serverName === undefined) global.push(f)",
+      "replace": "if (true) global.push(f)"
+    },
+    {
+      "name": "validation: several findings for one server accumulate",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "[...(byServer.get(f.serverName) ?? []), f]",
+      "replace": "[f]"
+    },
+    {
+      "name": "shadowing: two file-backed definitions",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": ".length < 2) return []",
+      "replace": ".length < 3) return []"
+    },
+    {
+      "name": "fix 6: no active source named when nothing runs",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": ": 'none of its definitions is active'",
+      "replace": ": `the active source is ${definitions[0]?.sourceType}`"
+    },
+    {
+      "name": "state: pending approval",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "if (d.pendingApproval) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "state: the pending finding carries the project scope and file",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "          scope: 'project',\n          serverName,\n          sourcePath: d.sourcePath,",
+      "replace": "          serverName,"
+    },
+    {
+      "name": "state: disabled",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "if (d.disabled) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "state: the disabled finding names its definition's file",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "          remediation: 'Enable it from /mcp if it should run.',\n          serverName,\n          sourcePath: d.sourcePath,",
+      "replace": "          remediation: 'Enable it from /mcp if it should run.',\n          serverName,"
+    },
+    {
+      "name": "not found: a blocking error",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "return finding('error', {\n    code: 'state.not_found',",
+      "replace": "return finding('warn', {\n    code: 'state.not_found',"
+    },
+    {
+      "name": "live: needs-auth is a warning",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "if (check.result === 'needs-auth') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "live: only a failed check is an error",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "if (check.result !== 'failed') return []",
+      "replace": "if (check.result === 'connected') return []"
+    },
+    {
+      "name": "live: the error detail only when there is one",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "const detail = check.error ? `: ${check.error}` : ''",
+      "replace": "const detail = `: ${check.error}`"
+    },
+    {
+      "name": "live: command not found only for stdio",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "running?.transport === 'stdio' && check.error",
+      "replace": "check.error"
+    },
+    {
+      "name": "live: not found in any case",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "check.error.toLowerCase().includes(NOT_FOUND)",
+      "replace": "check.error.includes(NOT_FOUND)"
+    },
+    {
+      "name": "live: the missing-command remedy mentions PATH",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "so that it can be found on PATH.",
+      "replace": "so that it can be found."
+    },
+    {
+      "name": "live: findings name the running definition's file",
+      "source": "src/mcp/doctor/findings.ts",
+      "find": "const sourcePath = running?.sourcePath",
+      "replace": "const sourcePath = undefined"
+    },
+    {
+      "name": "live check: idle checks are not attempted",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "return { attempted: false, result }",
+      "replace": "return { attempted: true, result }"
+    },
+    {
+      "name": "live check: the connection error is carried",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "error: connection.error }",
+      "replace": "error: undefined }"
+    },
+    {
+      "name": "live check: other outcomes pass through",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "return { attempted: true, result: connection.type, durationMs }",
+      "replace": "return { attempted: true, result: 'connected', durationMs }"
+    },
+    {
+      "name": "live check: the duration is measured",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "await deps.connectToServer(name, config), Date.now() - startedAt)",
+      "replace": "await deps.connectToServer(name, config), 0)"
+    },
+    {
+      "name": "fix 10: a throwing connection fails only its server",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "check = { attempted: true, result: 'failed', durationMs: Date.now() - startedAt, error: errorMessage(error) }",
+      "replace": "throw error"
+    },
+    {
+      "name": "fix 10: the thrown message is the error",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "error: errorMessage(error) }",
+      "replace": "error: undefined }"
+    },
+    {
+      "name": "live check: the connection is always cleared",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "    await deps.clearServerCache(name, config)\n",
       "replace": "\n"
     },
     {
-      "name": "definition: approval asked for every scope",
-      "find": "    scope === 'project' ? deps.getProjectMcpServerStatus(name) === 'pending' : false\n",
-      "replace": "    deps.getProjectMcpServerStatus(name) === 'pending'\n"
+      "name": "live check: a failed clear is ignored",
+      "source": "src/mcp/doctor/liveCheck.ts",
+      "find": "    // The outcome is already known; a failed cleanup must not change it.\n",
+      "replace": "    throw error\n"
     },
     {
-      "name": "scopes: enterprise left out by default",
-      "find": "    return scope === 'enterprise' || scope === 'local' || scope === 'project' || scope === 'user'\n",
-      "replace": "    return scope === 'local' || scope === 'project' || scope === 'user'\n"
+      "name": "summary: healthy needs a connection",
+      "source": "src/mcp/doctor/summary.ts",
+      "find": "return server.liveCheck.result === 'connected' && ",
+      "replace": "return "
     },
     {
-      "name": "scopes: the filter is inverted",
-      "find": "  return scope === scopeFilter\n",
-      "replace": "  return scope !== scopeFilter\n"
+      "name": "summary: healthy needs no warning or error",
+      "source": "src/mcp/doctor/summary.ts",
+      "find": " && !server.findings.some(f => f.severity !== 'info')",
+      "replace": ""
     },
     {
-      "name": "scopes: project errors ignore the filter",
-      "find": "    ...(shouldIncludeScope('project', scopeFilter) ? scopeResults.project.errors : []),\n",
-      "replace": "    ...scopeResults.project.errors,\n"
+      "name": "summary: warnings count warn only",
+      "source": "src/mcp/doctor/summary.ts",
+      "find": "warnings: all.filter(f => f.severity === 'warn').length,",
+      "replace": "warnings: all.filter(f => f.severity !== 'info').length,"
     },
     {
-      "name": "observed: plugin path loses the plugin",
-      "find": "        ? `plugin:${activeConfig.pluginSource ?? 'unknown'}`\n",
-      "replace": "        ? 'plugin'\n"
+      "name": "summary: global findings count",
+      "source": "src/mcp/doctor/summary.ts",
+      "find": "const all = [...globalFindings, ...servers.flatMap(s => s.findings)]",
+      "replace": "const all = servers.flatMap(s => s.findings)"
     },
     {
-      "name": "observed: transport not compared",
-      "find": "      definition.transport === getTransport(runtimeConfig),\n",
-      "replace": "      true,\n"
+      "name": "summary: totalReports",
+      "source": "src/mcp/doctor/summary.ts",
+      "find": "totalReports: servers.length,",
+      "replace": "totalReports: servers.length + 1,"
     },
     {
-      "name": "observed: not added when every declared one is idle",
-      "find": "      (definitions.length > 0 && definitions.every(definition => !definition.runtimeActive)))\n",
-      "replace": "      false)\n"
-    },
-    {
-      "name": "observed: added under a scope filter",
-      "find": "    ((definitions.length === 0 && !options.scopeFilter) ||\n",
-      "replace": "    ((definitions.length === 0) ||\n"
-    },
-    {
-      "name": "observed: disabled flag dropped",
-      "find": "        disabled: serverDisabled,\n",
-      "replace": "        disabled: false,\n"
-    },
-    {
-      "name": "shadowing: needs three scopes",
-      "find": "  if (userEditable.length <= 1) {\n",
-      "replace": "  if (userEditable.length <= 2) {\n"
-    },
-    {
-      "name": "shadowing: names the last definition",
-      "find": "  const active = userEditable.find(definition => definition.runtimeActive) ?? userEditable[0]\n",
-      "replace": "  const active = userEditable[userEditable.length - 1]\n"
-    },
-    {
-      "name": "state: pending approval not reported",
-      "find": "    if (definition.pendingApproval) {\n",
-      "replace": "    if (false) {\n"
-    },
-    {
-      "name": "state: disabled not reported",
-      "find": "    if (definition.disabled) {\n",
-      "replace": "    if (false) {\n"
-    },
-    {
-      "name": "summary: global findings not counted as blocking",
-      "find": "  const blocking = allFindings.filter(finding => finding.blocking).length\n",
-      "replace": "  const blocking = report.servers.flatMap(server => server.findings).filter(finding => finding.blocking).length\n"
-    },
-    {
-      "name": "summary: warnings do not cost health",
-      "find": "      server.findings.every(finding => !finding.blocking && finding.severity !== 'warn'),\n",
-      "replace": "      server.findings.every(finding => !finding.blocking),\n"
-    },
-    {
-      "name": "summary: healthy without connecting",
-      "find": "      server.liveCheck.result === 'connected' &&\n",
-      "replace": "      server.liveCheck.result !== 'failed' &&\n"
-    },
-    {
-      "name": "live: config-only still connects",
-      "find": "  if (configOnly) {\n",
-      "replace": "  if (configOnly && false) {\n"
-    },
-    {
-      "name": "live: pending reads as skipped",
-      "find": "      return { attempted: false, result: 'pending' }\n",
-      "replace": "      return { attempted: false, result: 'skipped' }\n"
-    },
-    {
-      "name": "live: needs-auth reads as failed",
-      "find": "        return { attempted: true, result: 'needs-auth', durationMs }\n",
-      "replace": "        return { attempted: true, result: 'failed', durationMs }\n"
-    },
-    {
-      "name": "live: the connection is never cleared",
-      "find": "    await deps.clearServerCache(name, activeConfig).catch(() => {\n",
-      "replace": "    await Promise.resolve().catch(() => {\n"
-    },
-    {
-      "name": "live: a cleanup failure escapes",
-      "find": "    await deps.clearServerCache(name, activeConfig).catch(() => {\n",
-      "replace": "    await deps.clearServerCache(name, activeConfig).then(() => {\n"
-    },
-    {
-      "name": "live: missing command on any transport",
-      "find": "      activeDefinition?.transport === 'stdio' &&\n",
-      "replace": "      true &&\n"
-    },
-    {
-      "name": "live: a disabled server is still checked",
-      "find": "  const activeConfig = serverDisabled ? undefined : runtimeConfig\n",
-      "replace": "  const activeConfig = runtimeConfig\n"
-    },
-    {
-      "name": "not found: never reported",
-      "find": "  if (definitions.length === 0 && !shouldAddObservedDefinition) {\n",
-      "replace": "  if (definitions.length === 0 && shouldAddObservedDefinition) {\n"
-    },
-    {
-      "name": "names: runtime-only servers listed under a filter",
-      "find": "    !options.scopeFilter,\n  )\n",
-      "replace": "    true,\n  )\n"
-    },
-    {
-      "name": "single server: global findings dropped",
-      "find": "  report.servers = [server]\n  report.findings = globalFindings\n",
-      "replace": "  report.servers = [server]\n  report.findings = []\n"
-    },
-    {
-      "name": "cli: exit 1 needs two blocking issues",
+      "name": "handler: exit 1 on a blocking finding",
       "source": "src/platform/headless/handlers/mcp.tsx",
-      "find": "    process.exit(report.summary.blocking > 0 ? 1 : 0)\n",
-      "replace": "    process.exit(report.summary.blocking > 1 ? 1 : 0)\n"
+      "find": "process.exit(report.summary.blocking > 0 ? 1 : 0)",
+      "replace": "process.exit(0)"
     },
     {
-      "name": "cli: the healthy count shows warnings",
+      "name": "handler: the active source line",
       "source": "src/platform/headless/handlers/mcp.tsx",
-      "find": "  lines.push(`- ${report.summary.healthy} healthy`)\n",
-      "replace": "  lines.push(`- ${report.summary.warnings} healthy`)\n"
+      "find": "lines.push(`- Active source: ${activeDefinition.sourceType}`)",
+      "replace": "lines.push(`- Source: ${activeDefinition.sourceType}`)"
     },
     {
-      "name": "cli: skipped shown as a live check",
+      "name": "handler: --scope goes through the doctor's parser",
       "source": "src/platform/headless/handlers/mcp.tsx",
-      "find": "      const stateLikeResults = new Set(['disabled', 'pending', 'skipped'])\n",
-      "replace": "      const stateLikeResults = new Set(['disabled', 'pending'])\n"
+      "find": "const scopeFilter = options.scope ? parseDoctorScopeFilter(options.scope) : undefined",
+      "replace": "const scopeFilter = options.scope ? (options.scope as McpDoctorReport['scopeFilter']) : undefined"
+    },
+    {
+      "name": "fix 9: the singular for 1",
+      "source": "src/platform/headless/handlers/mcp.tsx",
+      "find": "return `${n} ${n === 1 ? singular : plural}`",
+      "replace": "return `${n} ${plural}`"
     }
   ]
 }

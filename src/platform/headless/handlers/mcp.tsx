@@ -16,7 +16,8 @@ import {
   readClientSecret,
   saveMcpClientSecret,
 } from 'src/mcp/auth.js'
-import { doctorAllServers, doctorServer, type McpDoctorReport, type McpDoctorScopeFilter } from 'src/mcp/doctor.js';
+import { doctorAllServers, doctorServer, type McpDoctorReport } from 'src/mcp/doctor.js';
+import { parseDoctorScopeFilter } from 'src/mcp/doctor/scopes.js';
 import { connectToServer, getMcpServerConnectionBatchSize } from 'src/mcp/client.js';
 import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScope, removeMcpConfig } from 'src/mcp/config.js';
 import type { ConfigScope, ScopedMcpServerConfig } from 'src/mcp/types.js';
@@ -29,15 +30,19 @@ import { safeParseJSON } from 'src/shared/data/json.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
 import { cliError, cliOk } from 'src/platform/headless/exit.js';
 
+function counted(n: number, singular: string, plural: string): string {
+  return `${n} ${n === 1 ? singular : plural}`
+}
+
 function formatDoctorReport(report: McpDoctorReport): string {
   const lines: string[] = []
   lines.push('MCP Doctor')
   lines.push('')
   lines.push('Summary')
-  lines.push(`- ${report.summary.totalReports} server reports generated`)
+  lines.push(`- ${counted(report.summary.totalReports, 'server report', 'server reports')} generated`)
   lines.push(`- ${report.summary.healthy} healthy`)
-  lines.push(`- ${report.summary.warnings} warnings`)
-  lines.push(`- ${report.summary.blocking} blocking issues`)
+  lines.push(`- ${counted(report.summary.warnings, 'warning', 'warnings')}`)
+  lines.push(`- ${counted(report.summary.blocking, 'blocking issue', 'blocking issues')}`)
 
   if (report.targetName) {
     lines.push(`- target: ${report.targetName}`)
@@ -102,7 +107,7 @@ export async function mcpDoctorHandler(name: string | undefined, options: {
   json?: boolean;
 }): Promise<void> {
   try {
-    const scopeFilter = options.scope ? ensureConfigScope(options.scope) as McpDoctorScopeFilter : undefined
+    const scopeFilter = options.scope ? parseDoctorScopeFilter(options.scope) : undefined
     const configOnly = !!options.configOnly
     const report = name
       ? await doctorServer(name, { configOnly, scopeFilter })

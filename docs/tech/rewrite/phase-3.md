@@ -52,7 +52,7 @@ which the sandbox tools read. The lists below are the same.
 | `mcp/callTool` | 5 | 983 | — | pending |
 | `mcp/connectionManager` | 3 | 726 | — | pending |
 | `mcp/elicitation` | 3 | 535 | — | pending |
-| `mcp/doctor` | 1 | 620 | `doctor.test.ts` (443) | pending |
+| `mcp/doctor` | 1 | 620 | `doctor.test.ts` (443) | done |
 | `mcp/elicitationDialog` | 1 | 1105 | — | pending |
 | `mcp/settingsUi` | 5 | 1258 | — | pending |
 | `mcp/serverMenus` | 6 | 1075 | — | pending |
@@ -65,7 +65,7 @@ which the sandbox tools read. The lists below are the same.
 | `permissions/setup` | 10 | 702 | `autoModeGate.test.ts` (22) | done |
 | `permissions/autoModeClassifier` | 13 | 887 | `yoloClassifier.test.ts`, `bashClassifier.test.ts` (82) | done |
 | `permissions/toolPermission` | 6 | 985 | — | done |
-| `permissions/promptFrame` | 8 | 862 | — | pending |
+| `permissions/promptFrame` | 8 | 862 | — | done |
 | `permissions/decisionExplanation` | 3 | 815 | — | pending |
 | `permissions/shellDialogs` | 7 | 1102 | — | pending |
 | `permissions/fileDialogs` | 11 | 1269 | — | pending |

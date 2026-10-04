@@ -339,3 +339,32 @@ warning is the only guard.
 - **Types.** Keep the exported shapes, and their key order, for `--json`. Internally, model "what to check" as a discriminated union: nothing (pending, disabled or skipped) or a config to connect.
 - **No `any`,** and no casts on the connection outcome.
 - **The text rendering** stays in the handler. When it is rewritten, it applies Findings 8 and 9.
+
+## Outcome
+
+Rewritten per method on 2026-10-04.
+
+**Code.** `doctor.ts` is now a facade over `doctor/`:
+- `readings`: one read of each scope per call;
+- `definitions`: pure, it builds the definitions and the check plan;
+- `findings`: one builder per finding code;
+- `liveCheck`: never throws, and always clears the connection;
+- `summary` and `scopes`.
+
+The four characterization suites pass unchanged. The handler in `platform/headless/handlers/mcp.tsx`
+gained the scope validation and the singular counts that fixes 8 and 9 need.
+
+**Fixes, each with a test:**
+- **4.** An observed definition shows its file path.
+- **6.** "None of its definitions is active" when nothing runs.
+- **8.** `--scope dynamic|claudeai|managed` errors and exits 1.
+- **9.** Singular counts.
+- **10.** A connection that throws fails only its own server.
+
+Findings 1, 2, 3, 5, 7 and 11 are kept as pinned. The project-scope trust items are tracked in team
+memory.
+
+**Probes.** 87 in `rewrite-mcp-doctor.json`.
+
+**Residue.** 102 lines of Claude Code remain: the nine exported report types, which are the
+`--json` output contract, and the four function signatures.
