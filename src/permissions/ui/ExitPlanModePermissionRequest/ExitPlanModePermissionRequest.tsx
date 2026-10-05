@@ -1,114 +1,195 @@
-import { feature } from 'bun:bundle';
-import type { UUID } from 'crypto';
-import figures from 'figures';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNotifications } from 'src/terminal/contexts/notifications.js';
-import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
-import { getSdkBetas, getSessionId, isSessionPersistenceDisabled, setHasExitedPlanMode, setNeedsAutoModeExitAttachment, setNeedsPlanModeExitAttachment } from 'src/platform/bootstrap/state.js';
-import { generateSessionName } from 'src/commands/rename/generateSessionName.js';
-import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
-import { Box, Text } from 'src/terminal/ink.js';
-import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js';
-import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js';
-import type { AllowedPrompt } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';
-import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js';
-import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
-import { calculateContextPercentages, getContextWindowForModel } from 'src/agent/context/context.js';
-import { getExternalEditor } from 'src/shared/editor.js';
-import { getDisplayPath } from 'src/shared/fs/file.js';
-import { toIDEDisplayName } from 'src/platform/ide/ide.js';
-import { logError } from 'src/shared/log.js';
-import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
-import { createUserMessage } from 'src/agent/messages/messages.js';
-import { getMainLoopModel, getRuntimeMainLoopModel } from 'src/providers/model/model.js';
-import { createPromptRuleContent, isClassifierPermissionsEnabled, PROMPT_PREFIX } from 'src/permissions/bashClassifier.js';
-import { type PermissionMode, toExternalPermissionMode } from 'src/permissions/PermissionMode.js';
-import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js';
-import { isAutoModeGateEnabled, restoreDangerousPermissions, stripDangerousPermissionsForAutoMode } from 'src/permissions/permissionSetup.js';
-import { isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
-import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js';
-import { editFileInEditor, editPromptInEditor } from 'src/terminal/input/promptEditor.js';
-import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/sessions/sessionStorage.js';
-import { getInitialSettings } from 'src/platform/settings/settings.js';
-import { type OptionWithDescription, Select } from 'src/terminal/custom-select/index.js';
-import { Markdown } from 'src/terminal/markdown/Markdown.js';
-import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
-import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js';
-import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js';
+import type { UUID } from 'crypto'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js'
+import {
+  getSdkBetas,
+  getSessionId,
+  isSessionPersistenceDisabled,
+  setHasExitedPlanMode,
+  setNeedsPlanModeExitAttachment,
+} from 'src/platform/bootstrap/state.js'
+import { generateSessionName } from 'src/commands/rename/generateSessionName.js'
+import { Box, Text, useInput } from 'src/terminal/ink.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
+import type { AllowedPrompt } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
+import { calculateContextPercentages, getContextWindowForModel } from 'src/agent/context/context.js'
+import { getExternalEditor } from 'src/shared/editor.js'
+import { getDisplayPath } from 'src/shared/fs/file.js'
+import { toIDEDisplayName } from 'src/platform/ide/ide.js'
+import { logError } from 'src/shared/log.js'
+import { createUserMessage } from 'src/agent/messages/messages.js'
+import { getMainLoopModel, getRuntimeMainLoopModel } from 'src/providers/model/model.js'
+import { createPromptRuleContent, isClassifierPermissionsEnabled } from 'src/permissions/bashClassifier.js'
+import { type PermissionMode, toExternalPermissionMode } from 'src/permissions/PermissionMode.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
+import { isAutoModeGateEnabled } from 'src/permissions/permissionSetup.js'
+import { autoModeStateModule } from 'src/permissions/permissionSetup/autoModeStateBridge.js'
+import {
+  autoModeBuiltIn,
+  autoSemanticsActive,
+  switchAutoOff,
+  switchAutoOn,
+} from 'src/permissions/permissionSetup/autoSession.js'
+import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js'
+import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/sessions/sessionStorage.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
+import { type OptionWithDescription, Select } from 'src/terminal/custom-select/index.js'
+import { Markdown } from 'src/terminal/markdown/Markdown.js'
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js'
+import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
+import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
+import {
+  answerFor,
+  type PlanAnswer,
+  type PlanOffer,
+  planApprovalChoices,
+  type ResponseValue,
+  shortcutAnswer,
+} from 'src/permissions/ui/modeDialogs/planExitChoices.js'
+import { type ApprovingAnswer, planExitOutcome } from 'src/permissions/ui/modeDialogs/planExitOutcome.js'
+import { clearContextPrompt } from 'src/permissions/ui/modeDialogs/clearContextPrompt.js'
+import { imageBlocksOf, usePastedImages } from 'src/permissions/ui/modeDialogs/usePastedImages.js'
+import { usePlanEditor } from 'src/permissions/ui/modeDialogs/usePlanEditor.js'
+import { PlanApprovalQuestion, PlanFooterFrame } from 'src/permissions/ui/modeDialogs/PlanApprovalQuestion.js'
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('src/permissions/autoModeState.js') as typeof import('src/permissions/autoModeState.js') : null;
-import type { Base64ImageSource, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
-/* eslint-enable @typescript-eslint/no-require-imports */
-import type { PastedContent } from 'src/platform/config/config.js';
-import type { ImageDimensions } from 'src/terminal/image/imageResizer.js';
-import { maybeResizeAndDownsampleImageBlock } from 'src/terminal/image/imageResizer.js';
-import { cacheImagePath, storeImage } from 'src/terminal/image/imageStore.js';
-import type { BorderTextOptions } from 'src/terminal/ink/render-border.js';
-import { useCwdBranchSegment } from 'src/vcs/hooks/useCwdBranchSegment.js';
-type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'no';
+/** The session is named from the head of the plan only. */
+const NAMING_SOURCE_CHARS = 1_000
 
-/**
- * Build permission updates for plan approval, including prompt-based rules if provided.
- * Prompt-based rules are only added when classifier permissions are enabled (Ant-only).
- */
+const IMAGE_ONLY_REASON = '(See attached image)'
+
 export function buildPermissionUpdates(mode: PermissionMode, allowedPrompts?: AllowedPrompt[]): PermissionUpdate[] {
-  const updates: PermissionUpdate[] = [{
-    type: 'setMode',
-    mode: toExternalPermissionMode(mode),
-    destination: 'session'
-  }];
-
-  // Add prompt-based permission rules if provided (Ant-only feature)
+  const updates: PermissionUpdate[] = [{ type: 'setMode', mode: toExternalPermissionMode(mode), destination: 'session' }]
   if (isClassifierPermissionsEnabled() && allowedPrompts && allowedPrompts.length > 0) {
     updates.push({
       type: 'addRules',
-      rules: allowedPrompts.map(p => ({
-        toolName: p.tool,
-        ruleContent: createPromptRuleContent(p.prompt)
-      })),
+      rules: allowedPrompts.map(({ tool, prompt }) => ({ toolName: tool, ruleContent: createPromptRuleContent(prompt) })),
       behavior: 'allow',
-      destination: 'session'
-    });
+      destination: 'session',
+    })
   }
-  return updates;
+  return updates
 }
 
-/**
- * Auto-name the session from the plan content when the user accepts a plan,
- * if they haven't already named it via /rename or --name. Fire-and-forget.
- * Mirrors /rename: kebab-case name, updates the prompt-border badge.
- */
-export function autoNameSessionFromPlan(plan: string, isClearContext: boolean): void {
-  if (isSessionPersistenceDisabled() || getInitialSettings()?.cleanupPeriodDays === 0) {
-    return;
-  }
-  // On clear-context, the current session is about to be abandoned — its
-  // title (which may have been set by a PRIOR auto-name) is irrelevant.
-  // Checking it would make the feature self-defeating after first use.
-  if (!isClearContext && getCurrentSessionTitle(getSessionId())) return;
-  void generateSessionName(
-  // generateSessionName tail-slices to the last 1000 chars (correct for
-  // conversations, where recency matters). Plans front-load the goal and
-  // end with testing steps — head-slice so Haiku sees the summary.
-  [createUserMessage({
-    content: plan.slice(0, 1000)
-  })], new AbortController().signal).then(async name => {
-    // On clear-context acceptance, regenerateSessionId() has run by now —
-    // this intentionally names the NEW execution session. Do not "fix" by
-    // capturing sessionId once; that would name the abandoned planning session.
-    if (!name || getCurrentSessionTitle(getSessionId())) return;
-    const sessionId = getSessionId() as UUID;
-    const fullPath = getTranscriptPath();
-    await saveCustomTitle(sessionId, name, fullPath, 'auto');
-    // Intentionally NOT calling saveAgentName / setting standaloneAgentContext.name:
-    // those would swap the prompt-input top border (cwd + branch chip) for a swarm
-    // banner showing the auto-generated slug, hiding cwd/branch info and persisting
-    // across restarts (session restore rebuilds standaloneAgentContext from the
-    // saved agent name). Title is enough for /resume.
-  }).catch(logError);
+function keepsNoTranscripts(): boolean {
+  return isSessionPersistenceDisabled() || getInitialSettings().cleanupPeriodDays === 0
 }
+
+export function autoNameSessionFromPlan(plan: string, isClearContext: boolean): void {
+  if (keepsNoTranscripts()) return
+  // Clearing context starts the session over, so an old title does not stop the request.
+  if (!isClearContext && getCurrentSessionTitle(getSessionId())) return
+  const head = createUserMessage({ content: plan.slice(0, NAMING_SOURCE_CHARS) })
+  generateSessionName([head], new AbortController().signal)
+    .then(async name => {
+      const sessionId = getSessionId()
+      // A title that arrived while the model was thinking is never overwritten.
+      if (!name || getCurrentSessionTitle(sessionId)) return
+      await saveCustomTitle(sessionId as UUID, name)
+    })
+    .catch(logError)
+}
+
+type AnswerFacts = {
+  plan: string
+  /** The approval input: `{}`, or the plan when it was edited in this dialog. */
+  input: Record<string, unknown>
+  /** Trimmed; empty when nothing was typed. */
+  feedback: string
+}
+
+type PlanExitActions = {
+  approve: (answer: ApprovingAnswer, facts: AnswerFacts) => void
+  refuse: (reason: string, images: Awaited<ReturnType<typeof imageBlocksOf>>) => void
+  cancel: () => void
+}
+
+/** How each answer reaches the request, the caller and the session. */
+function usePlanExitActions({
+  toolUseConfirm,
+  onDone,
+  onReject,
+}: Pick<PermissionRequestProps, 'toolUseConfirm' | 'onDone' | 'onReject'>): PlanExitActions {
+  const store = useAppStateStore()
+  const setAppState = useSetAppState()
+  const allowedPrompts = (toolUseConfirm.input as { allowedPrompts?: AllowedPrompt[] }).allowedPrompts
+
+  const setContext = (next: AppState['toolPermissionContext']) =>
+    setAppState(previous => ({ ...previous, toolPermissionContext: next }))
+
+  const approve = (answer: ApprovingAnswer, { plan, input, feedback }: AnswerFacts) => {
+    const builtIn = autoModeBuiltIn()
+    const outcome = planExitOutcome(answer, {
+      autoBuiltIn: builtIn,
+      gateOpen: builtIn && isAutoModeGateEnabled(),
+      autoActive: autoSemanticsActive(),
+    })
+    const context = store.getState().toolPermissionContext
+    switch (outcome.auto) {
+      case 'leave':
+        setContext({ ...switchAutoOff(context), prePlanMode: undefined })
+        break
+      case 'enterContext':
+        setContext({ ...switchAutoOn(context), mode: 'auto', prePlanMode: undefined })
+        break
+      case 'enterFlag':
+        autoModeStateModule?.setAutoModeActive(true)
+        break
+      case 'untouched':
+        break
+    }
+    setHasExitedPlanMode(true)
+    if (outcome.planExitNotice) setNeedsPlanModeExitAttachment(true)
+
+    const restart = outcome.route === 'restart'
+    if (restart) {
+      const content = clearContextPrompt({
+        plan,
+        transcriptPath: getTranscriptPath(),
+        teamsEnabled: isAgentSwarmsEnabled(),
+        feedback,
+      })
+      const message = Object.assign(createUserMessage({ content }), { planContent: plan })
+      setAppState(previous => ({
+        ...previous,
+        initialMessage: { message, clearContext: true, mode: outcome.mode, allowedPrompts },
+      }))
+      // The tool call is turned down to free the loop; the next turn starts from the message.
+      onDone()
+      onReject()
+      toolUseConfirm.onReject()
+    } else {
+      const updates = outcome.auto === 'enterContext' ? [] : buildPermissionUpdates(outcome.mode, allowedPrompts)
+      onDone()
+      toolUseConfirm.onAllow(input, updates, feedback || undefined)
+    }
+    if (outcome.nameSession) autoNameSessionFromPlan(plan, restart)
+  }
+
+  const refuse: PlanExitActions['refuse'] = (reason, images) => {
+    onDone()
+    onReject()
+    toolUseConfirm.onReject(reason, images)
+  }
+
+  const cancel = () => {
+    onDone()
+    onReject()
+    toolUseConfirm.onReject()
+  }
+
+  return { approve, refuse, cancel }
+}
+
+/** Keeps a callback's identity across renders while it always runs the latest closure. */
+function useStableCallback<Args extends unknown[], Result>(callback: (...args: Args) => Result): (...args: Args) => Result {
+  const latest = useRef(callback)
+  useLayoutEffect(() => {
+    latest.current = callback
+  })
+  return useCallback((...args: Args) => latest.current(...args), [])
+}
+
 export function ExitPlanModePermissionRequest({
   toolUseConfirm,
   onDone,
@@ -116,461 +197,158 @@ export function ExitPlanModePermissionRequest({
   workerBadge,
   setStickyFooter
 }: PermissionRequestProps): React.ReactNode {
-  const toolPermissionContext = useAppState((s: AppState) => s.toolPermissionContext);
-  const setAppState = useSetAppState();
-  const store = useAppStateStore();
-  const {
-    addNotification
-  } = useNotifications();
-  // Feedback text from the 'No' option's input. Threaded through onAllow as
-  // acceptFeedback when the user approves — lets users annotate the plan
-  // ("also update the README") without a reject+re-plan round-trip.
-  const [planFeedback, setPlanFeedback] = useState('');
-  const [pastedContents, setPastedContents] = useState<Record<number, PastedContent>>({});
-  const nextPasteIdRef = useRef(0);
-  const showClearContext = useAppState((s: AppState) => s.settings.showClearContextOnPlanAccept) ?? false;
-  const usage = toolUseConfirm.assistantMessage.message.usage;
-  const {
-    mode,
-    isAutoModeAvailable,
-    isBypassPermissionsModeAvailable
-  } = toolPermissionContext;
-  const options = useMemo(() => buildPlanApprovalOptions({
-    showClearContext,
-    usedPercent: showClearContext ? getContextUsedPercent(usage, mode) : null,
-    isAutoModeAvailable,
-    isBypassPermissionsModeAvailable,
-    onFeedbackChange: setPlanFeedback
-  }), [showClearContext, usage, mode, isAutoModeAvailable, isBypassPermissionsModeAvailable]);
-  function onImagePaste(base64Image: string, mediaType?: string, filename?: string, dimensions?: ImageDimensions, _sourcePath?: string) {
-    const pasteId = nextPasteIdRef.current++;
-    const newContent: PastedContent = {
-      id: pasteId,
-      type: 'image',
-      content: base64Image,
-      mediaType: mediaType || 'image/png',
-      filename: filename || 'Pasted image',
-      dimensions
-    };
-    cacheImagePath(newContent);
-    void storeImage(newContent);
-    setPastedContents(prev => ({
-      ...prev,
-      [pasteId]: newContent
-    }));
-  }
-  const onRemoveImage = useCallback((id: number) => {
-    setPastedContents(prev => {
-      const next = {
-        ...prev
-      };
-      delete next[id];
-      return next;
-    });
-  }, []);
-  const imageAttachments = Object.values(pastedContents).filter(c => c.type === 'image');
-  const hasImages = imageAttachments.length > 0;
-
-  // TODO: Delete the branch after moving to V2
-  // Use tool name to detect V2 instead of checking input.plan, because PR #10394
-  // injects plan content into input.plan for hooks/SDK, which broke the old detection
-  // (see issue #10878)
-  const isV2 = toolUseConfirm.tool.name === EXIT_PLAN_MODE_V2_TOOL_NAME;
-  const inputPlan = isV2 ? undefined : toolUseConfirm.input.plan as string | undefined;
-  const planFilePath = isV2 ? getPlanFilePath() : undefined;
-
-  // Extract allowed prompts requested by the plan (Ant-only feature)
-  const allowedPrompts = toolUseConfirm.input.allowedPrompts as AllowedPrompt[] | undefined;
-
-  // Get the raw plan to check if it's empty
-  const rawPlan = inputPlan ?? getPlan();
-  const isEmpty = !rawPlan || rawPlan.trim() === '';
-
-  const [currentPlan, setCurrentPlan] = useState(() => {
-    if (inputPlan) return inputPlan;
-    const plan = getPlan();
-    return plan ?? 'No plan found. Please write your plan to the plan file first.';
-  });
-  const [showSaveMessage, setShowSaveMessage] = useState(false);
-  // Track Ctrl+G local edits so updatedInput can include the plan (the tool
-  // only echoes the plan in tool_result when input.plan is set — otherwise
-  // the model already has it in context from writing the plan file).
-  const [planEditedLocally, setPlanEditedLocally] = useState(false);
-
-  // Auto-hide save message after 5 seconds
-  useEffect(() => {
-    if (showSaveMessage) {
-      const timer = setTimeout(setShowSaveMessage, 5000, false);
-      return () => clearTimeout(timer);
-    }
-  }, [showSaveMessage]);
-
-  // Handle Ctrl+G to edit plan in $EDITOR, Shift+Tab for auto-accept edits
-  const handleKeyDown = (e: KeyboardEvent): void => {
-    if (e.ctrl && e.key === 'g') {
-      e.preventDefault();
-      void (async () => {
-        if (isV2 && planFilePath) {
-          const result = await editFileInEditor(planFilePath);
-          if (result.error) {
-            addNotification({
-              key: 'external-editor-error',
-              text: result.error,
-              color: 'warning',
-              priority: 'high'
-            });
-          }
-          if (result.content !== null) {
-            if (result.content !== currentPlan) setPlanEditedLocally(true);
-            setCurrentPlan(result.content);
-            setShowSaveMessage(true);
-          }
-        } else {
-          const result = await editPromptInEditor(currentPlan);
-          if (result.error) {
-            addNotification({
-              key: 'external-editor-error',
-              text: result.error,
-              color: 'warning',
-              priority: 'high'
-            });
-          }
-          if (result.content !== null && result.content !== currentPlan) {
-            setCurrentPlan(result.content);
-            setShowSaveMessage(true);
-          }
-        }
-      })();
-      return;
-    }
-
-    // Shift+Tab immediately selects "auto-accept edits"
-    if (e.shift && e.key === 'tab') {
-      e.preventDefault();
-      void handleResponse(showClearContext ? 'yes-accept-edits' : 'yes-accept-edits-keep-context');
-      return;
-    }
-  };
-  async function handleResponse(value: ResponseValue): Promise<void> {
-    const trimmedFeedback = planFeedback.trim();
-    const acceptFeedback = trimmedFeedback || undefined;
-
-    // V1: pass plan in input. V2: plan is on disk, but if the user edited it
-    // via Ctrl+G we pass it through so the tool echoes the edit in tool_result
-    // (otherwise the model never sees the user's changes).
-    const updatedInput = isV2 && !planEditedLocally ? {} : {
-      plan: currentPlan
-    };
-
-    // If auto was active during plan (from auto mode or opt-in) and NOT going
-    // to auto, deactivate auto + restore permissions + fire exit attachment.
-    if (feature('TRANSCRIPT_CLASSIFIER')) {
-      const goingToAuto = (value === 'yes-resume-auto-mode' || value === 'yes-auto-clear-context') && isAutoModeGateEnabled();
-      // isAutoModeActive() is the authoritative signal — prePlanMode/
-      // strippedDangerousRules are stale after transitionPlanAutoMode
-      // deactivates mid-plan (would cause duplicate exit attachment).
-      const autoWasUsedDuringPlan = autoModeStateModule?.isAutoModeActive() ?? false;
-      if (value !== 'no' && !goingToAuto && autoWasUsedDuringPlan) {
-        autoModeStateModule?.setAutoModeActive(false);
-        setNeedsAutoModeExitAttachment(true);
-        setAppState(prev => ({
-          ...prev,
-          toolPermissionContext: {
-            ...restoreDangerousPermissions(prev.toolPermissionContext),
-            prePlanMode: undefined
-          }
-        }));
-      }
-    }
-
-    // Clear-context options: set pending plan implementation and reject the dialog
-    // The REPL will handle context clear and trigger a fresh query
-    // Keep-context options skip this block and go through the normal flow below
-    const isResumeAutoOption = feature('TRANSCRIPT_CLASSIFIER') ? value === 'yes-resume-auto-mode' : false;
-    const isKeepContextOption = value === 'yes-accept-edits-keep-context' || value === 'yes-default-keep-context' || isResumeAutoOption;
-    if (value !== 'no') {
-      autoNameSessionFromPlan(currentPlan, !isKeepContextOption);
-    }
-    if (value !== 'no' && !isKeepContextOption) {
-      // Determine the permission mode based on the selected option
-      let mode: PermissionMode = 'default';
-      if (value === 'yes-bypass-permissions') {
-        mode = 'bypassPermissions';
-      } else if (value === 'yes-accept-edits') {
-        mode = 'acceptEdits';
-      } else if (feature('TRANSCRIPT_CLASSIFIER') && value === 'yes-auto-clear-context' && isAutoModeGateEnabled()) {
-        // REPL's processInitialMessage handles stripDangerousPermissions + mode,
-        // but does NOT set autoModeActive. Gate-off falls through to 'default'.
-        mode = 'auto';
-        autoModeStateModule?.setAutoModeActive(true);
-      }
-
-
-      // Set initial message - REPL will handle context clear and fresh query
-      // Capture the transcript path before context is cleared (session ID will be regenerated)
-      const transcriptPath = getTranscriptPath();
-      const transcriptHint = `\n\nIf you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: ${transcriptPath}`;
-      const teamHint = isAgentSwarmsEnabled() ? `\n\nIf this plan can be broken down into multiple independent tasks, consider using the ${TEAM_CREATE_TOOL_NAME} tool to create a team and parallelize the work.` : '';
-      const feedbackSuffix = acceptFeedback ? `\n\nUser feedback on this plan: ${acceptFeedback}` : '';
-      setAppState(prev => ({
-        ...prev,
-        initialMessage: {
-          message: {
-            ...createUserMessage({
-              content: `Implement the following plan:\n\n${currentPlan}${transcriptHint}${teamHint}${feedbackSuffix}`
-            }),
-            planContent: currentPlan
-          },
-          clearContext: true,
-          mode,
-          allowedPrompts
-        }
-      }));
-      setHasExitedPlanMode(true);
-      onDone();
-      onReject();
-      // Reject the tool use to unblock the query loop
-      // The REPL will see pendingInitialQuery and trigger fresh query
-      toolUseConfirm.onReject();
-      return;
-    }
-
-    // Handle auto keep-context option — needs special handling because
-    // buildPermissionUpdates maps auto to 'default' via toExternalPermissionMode.
-    // We set the mode directly via setAppState and sync the bootstrap state.
-    if (feature('TRANSCRIPT_CLASSIFIER') && value === 'yes-resume-auto-mode' && isAutoModeGateEnabled()) {
-      setHasExitedPlanMode(true);
-      setNeedsPlanModeExitAttachment(true);
-      autoModeStateModule?.setAutoModeActive(true);
-      setAppState(prev => ({
-        ...prev,
-        toolPermissionContext: stripDangerousPermissionsForAutoMode({
-          ...prev.toolPermissionContext,
-          mode: 'auto',
-          prePlanMode: undefined
-        })
-      }));
-      onDone();
-      toolUseConfirm.onAllow(updatedInput, [], acceptFeedback);
-      return;
-    }
-
-    // Handle keep-context options (goes through normal onAllow flow)
-    // yes-resume-auto-mode falls through here when the auto mode gate is
-    // disabled (e.g. circuit breaker fired after the dialog rendered).
-    // Without this fallback the function would return without resolving the
-    // dialog, leaving the query loop blocked and safety state corrupted.
-    const keepContextModes: Record<string, PermissionMode> = {
-      'yes-accept-edits-keep-context': toolPermissionContext.isBypassPermissionsModeAvailable ? 'bypassPermissions' : 'acceptEdits',
-      'yes-default-keep-context': 'default',
-      ...(feature('TRANSCRIPT_CLASSIFIER') ? {
-        'yes-resume-auto-mode': 'default' as const
-      } : {})
-    };
-    const keepContextMode = keepContextModes[value];
-    if (keepContextMode) {
-      setHasExitedPlanMode(true);
-      setNeedsPlanModeExitAttachment(true);
-      onDone();
-      toolUseConfirm.onAllow(updatedInput, buildPermissionUpdates(keepContextMode, allowedPrompts), acceptFeedback);
-      return;
-    }
-
-    // Handle standard approval options
-    const standardModes: Record<string, PermissionMode> = {
-      'yes-bypass-permissions': 'bypassPermissions',
-      'yes-accept-edits': 'acceptEdits'
-    };
-    const standardMode = standardModes[value];
-    if (standardMode) {
-      setHasExitedPlanMode(true);
-      setNeedsPlanModeExitAttachment(true);
-      onDone();
-      toolUseConfirm.onAllow(updatedInput, buildPermissionUpdates(standardMode, allowedPrompts), acceptFeedback);
-      return;
-    }
-
-    // Handle 'no' - stay in plan mode
-    if (value === 'no') {
-      if (!trimmedFeedback && !hasImages) {
-        // No feedback yet - user is still on the input field
-        return;
-      }
-
-      // Convert pasted images to ImageBlockParam[] with resizing
-      let imageBlocks: ImageBlockParam[] | undefined;
-      if (hasImages) {
-        imageBlocks = await Promise.all(imageAttachments.map(async img => {
-          const block: ImageBlockParam = {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: (img.mediaType || 'image/png') as Base64ImageSource['media_type'],
-              data: img.content
-            }
-          };
-          const resized = await maybeResizeAndDownsampleImageBlock(block);
-          return resized.block;
-        }));
-      }
-      onDone();
-      onReject();
-      toolUseConfirm.onReject(trimmedFeedback || (hasImages ? '(See attached image)' : undefined), imageBlocks && imageBlocks.length > 0 ? imageBlocks : undefined);
-    }
-  }
-  const editor = getExternalEditor();
-  const editorName = editor ? toIDEDisplayName(editor) : null;
-
-  // Sticky footer: when setStickyFooter is provided (fullscreen mode), the
-  // Select options render in FullscreenLayout's `bottom` slot so they stay
-  // visible while the user scrolls through a long plan. handleResponse is
-  // wrapped in a ref so the JSX (set once per options/images change) can call
-  // the latest closure without re-registering on every keystroke. React
-  // reconciles the sticky-footer Select by type, preserving focus/input state.
-  const handleResponseRef = useRef(handleResponse);
-  handleResponseRef.current = handleResponse;
-  const handleCancelRef = useRef<() => void>(undefined);
-  handleCancelRef.current = () => {
-    onDone();
-    onReject();
-    toolUseConfirm.onReject();
-  };
-  // Show cwd/branch on the sticky footer border during plan mode, matching the
-  // PromptInput bottom-border display (same info, same format).
-  const useStickyFooter = !isEmpty && !!setStickyFooter;
-  const { combined: cwdBranchSegment } = useCwdBranchSegment({ enabled: useStickyFooter });
-  // Memoize to preserve object identity when the segment string is unchanged —
-  // the useLayoutEffect below has cwdBranchBorderText in its deps, so a fresh
-  // literal each render would re-run setStickyFooter on every parent render.
-  const cwdBranchBorderText = useMemo<BorderTextOptions | undefined>(
-    () =>
-      cwdBranchSegment
-        ? { content: cwdBranchSegment, position: 'bottom', align: 'start', offset: 0 }
-        : undefined,
-    [cwdBranchSegment],
-  );
-
-  useLayoutEffect(() => {
-    if (!useStickyFooter) return;
-    setStickyFooter(<Box flexDirection="column" borderStyle="round" borderColor="planMode" borderLeft={false} borderRight={false} borderTop={false} paddingX={1} borderText={cwdBranchBorderText}>
-        <Text dimColor>Would you like to proceed?</Text>
-        <Box marginTop={1}>
-          <Select options={options} onChange={v => void handleResponseRef.current(v)} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />
-        </Box>
-        {editorName && <Box flexDirection="row" gap={1} marginTop={1}>
-            <Text dimColor>ctrl-g to edit in </Text>
-            <Text bold dimColor>
-              {editorName}
-            </Text>
-            {isV2 && planFilePath && <Text dimColor> · {getDisplayPath(planFilePath)}</Text>}
-            {showSaveMessage && <>
-                <Text dimColor>{' · '}</Text>
-                <Text color="success">{figures.tick}Plan saved!</Text>
-              </>}
-          </Box>}
-      </Box>);
-    return () => setStickyFooter(null);
-    // onImagePaste/onRemoveImage are stable (useCallback/useRef-backed above)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useStickyFooter, setStickyFooter, options, pastedContents, editorName, isV2, planFilePath, showSaveMessage, cwdBranchBorderText]);
-
-  // Simplified UI for empty plans
-  if (isEmpty) {
-    function handleEmptyPlanResponse(value: 'yes' | 'no'): void {
-      if (value === 'yes') {
-        if (feature('TRANSCRIPT_CLASSIFIER')) {
-          const autoWasUsedDuringPlan = autoModeStateModule?.isAutoModeActive() ?? false;
-          if (autoWasUsedDuringPlan) {
-            autoModeStateModule?.setAutoModeActive(false);
-            setNeedsAutoModeExitAttachment(true);
-            setAppState(prev => ({
-              ...prev,
-              toolPermissionContext: {
-                ...restoreDangerousPermissions(prev.toolPermissionContext),
-                prePlanMode: undefined
-              }
-            }));
-          }
-        }
-        setHasExitedPlanMode(true);
-        setNeedsPlanModeExitAttachment(true);
-        onDone();
-        toolUseConfirm.onAllow({}, [{
-          type: 'setMode',
-          mode: 'default',
-          destination: 'session'
-        }]);
-      } else {
-        onDone();
-        onReject();
-        toolUseConfirm.onReject();
-      }
-    }
-    return <PermissionDialog color="planMode" title="Exit plan mode?" workerBadge={workerBadge}>
-        <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <Text>Claude wants to exit plan mode</Text>
-          <Box marginTop={1}>
-            <Select options={[{
-            label: 'Yes',
-            value: 'yes' as const
-          }, {
-            label: 'No',
-            value: 'no' as const
-          }]} onChange={handleEmptyPlanResponse} onCancel={() => {
-            onDone();
-            onReject();
-            toolUseConfirm.onReject();
-          }} />
-          </Box>
-        </Box>
-      </PermissionDialog>;
-  }
-  return <Box flexDirection="column" tabIndex={0} autoFocus onKeyDown={handleKeyDown}>
-      <PermissionDialog color="planMode" title="Ready to code?" innerPaddingX={0} workerBadge={workerBadge}>
-        <Box flexDirection="column" marginTop={1}>
-          <Box paddingX={1} flexDirection="column">
-            <Text>Here is Claude&apos;s plan:</Text>
-          </Box>
-          <Box borderColor="subtle" borderStyle="dashed" flexDirection="column" borderLeft={false} borderRight={false} paddingX={1} marginBottom={1}>
-            <Markdown>{currentPlan}</Markdown>
-          </Box>
-          <Box flexDirection="column" paddingX={1}>
-            <PermissionRuleExplanation permissionResult={toolUseConfirm.permissionResult} toolType="tool" />
-            {isClassifierPermissionsEnabled() && allowedPrompts && allowedPrompts.length > 0 && <Box flexDirection="column" marginBottom={1}>
-                  <Text bold>Requested permissions:</Text>
-                  {allowedPrompts.map((p, i) => <Text key={i} dimColor>
-                      {'  '}· {p.tool}({PROMPT_PREFIX} {p.prompt})
-                    </Text>)}
-                </Box>}
-            {!useStickyFooter && <>
-                <Text dimColor>
-                  Claude has written up a plan and is ready to execute. Would
-                  you like to proceed?
-                </Text>
-                <Box marginTop={1}>
-                  <Select options={options} onChange={handleResponse} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />
-                </Box>
-              </>}
-          </Box>
-        </Box>
-      </PermissionDialog>
-      {!useStickyFooter && editorName && <Box flexDirection="row" gap={1} paddingX={1} marginTop={1}>
-          <Box>
-            <Text dimColor>ctrl-g to edit in </Text>
-            <Text bold dimColor>
-              {editorName}
-            </Text>
-            {isV2 && planFilePath && <Text dimColor> · {getDisplayPath(planFilePath)}</Text>}
-          </Box>
-          {showSaveMessage && <Box>
-              <Text dimColor>{' · '}</Text>
-              <Text color="success">{figures.tick}Plan saved!</Text>
-            </Box>}
-        </Box>}
-    </Box>;
+  const [initialPlan] = useState(() => getPlan() ?? '')
+  const actions = usePlanExitActions({ toolUseConfirm, onDone, onReject })
+  if (initialPlan.trim() === '') return <EmptyPlanExit actions={actions} workerBadge={workerBadge} />
+  return (
+    <PlanApproval
+      initialPlan={initialPlan}
+      actions={actions}
+      toolUseConfirm={toolUseConfirm}
+      workerBadge={workerBadge}
+      setStickyFooter={setStickyFooter}
+    />
+  )
 }
 
-/** @internal Exported for testing. */
+/** No plan to show: a short yes/no that always leaves plan mode for the default mode (finding 6, kept). */
+function EmptyPlanExit({ actions, workerBadge }: { actions: PlanExitActions; workerBadge: PermissionRequestProps['workerBadge'] }) {
+  const answer = (value: 'yes' | 'no') =>
+    value === 'yes' ? actions.approve({ kind: 'plainExit' }, { plan: '', input: {}, feedback: '' }) : actions.cancel()
+  return (
+    <PermissionDialog color="planMode" title="Exit plan mode?" workerBadge={workerBadge}>
+      <Box flexDirection="column" marginTop={1}>
+        <Text>Claude wants to exit plan mode</Text>
+        <Box marginTop={1}>
+          <Select
+            options={[
+              { label: 'Yes', value: 'yes' as const },
+              { label: 'No', value: 'no' as const },
+            ]}
+            onChange={answer}
+            onCancel={actions.cancel}
+          />
+        </Box>
+      </Box>
+    </PermissionDialog>
+  )
+}
+
+type PlanApprovalProps = Pick<PermissionRequestProps, 'toolUseConfirm' | 'workerBadge' | 'setStickyFooter'> & {
+  initialPlan: string
+  actions: PlanExitActions
+}
+
+function PlanApproval({ initialPlan, actions, toolUseConfirm, workerBadge, setStickyFooter }: PlanApprovalProps) {
+  const context = useAppState(state => state.toolPermissionContext)
+  const showClearContext = useAppState(state => state.settings.showClearContextOnPlanAccept === true)
+  const [planPath] = useState(getPlanFilePath)
+  const editor = usePlanEditor(planPath, initialPlan)
+  const images = usePastedImages()
+  const [feedback, setFeedback] = useState('')
+  const answered = useRef(false)
+
+  const usage = toolUseConfirm.assistantMessage.message.usage
+  const usedPercent = useMemo(() => getContextUsedPercent(usage, context.mode), [usage, context.mode])
+  const offer: PlanOffer = {
+    showClearContext,
+    usedPercent,
+    autoOffered: autoModeBuiltIn() && context.isAutoModeAvailable === true,
+    bypassOffered: context.isBypassPermissionsModeAvailable === true,
+  }
+  const options = useMemo(
+    () =>
+      buildPlanApprovalOptions({
+        showClearContext,
+        usedPercent,
+        isAutoModeAvailable: context.isAutoModeAvailable,
+        isBypassPermissionsModeAvailable: context.isBypassPermissionsModeAvailable,
+        onFeedbackChange: setFeedback,
+      }),
+    [showClearContext, usedPercent, context.isAutoModeAvailable, context.isBypassPermissionsModeAvailable],
+  )
+
+  const answerOnce = (answer: PlanAnswer) => {
+    if (answered.current) return
+    answered.current = true
+    const typed = feedback.trim()
+    switch (answer.kind) {
+      case 'cancel':
+        actions.cancel()
+        return
+      case 'feedback':
+        void imageBlocksOf(images.pasted).then(blocks => actions.refuse(typed || IMAGE_ONLY_REASON, blocks))
+        return
+      default:
+        actions.approve(answer, { plan: editor.plan, input: editor.edited ? { plan: editor.plan } : {}, feedback: typed })
+    }
+  }
+
+  const onAnswer = useStableCallback((value: ResponseValue) => answerOnce(answerFor(value, offer)))
+  const onCancel = useStableCallback(() => answerOnce({ kind: 'cancel' }))
+
+  useInput((input, key) => {
+    if (key.tab && key.shift) answerOnce(shortcutAnswer(offer))
+    else if (key.ctrl && input === 'g') editor.openEditor()
+  })
+
+  const editorName = getExternalEditor()
+  const editorHint = editorName ? `ctrl-g to edit in ${toIDEDisplayName(editorName)} · ${getDisplayPath(planPath)}` : null
+  const inFooter = setStickyFooter !== undefined
+
+  const questionProps = {
+    options,
+    onAnswer,
+    onCancel,
+    pasted: images.pasted,
+    onImagePaste: images.addImage,
+    onRemoveImage: images.removeImage,
+    editorHint,
+    savedNoteVisible: editor.savedNoteVisible,
+  }
+
+  useLayoutEffect(() => {
+    setStickyFooter?.(
+      <PlanFooterFrame>
+        <PlanApprovalQuestion question="Would you like to proceed?" {...questionProps} />
+      </PlanFooterFrame>,
+    )
+    // questionProps is rebuilt every render; its parts are the real inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setStickyFooter, options, onAnswer, onCancel, images.pasted, images.addImage, images.removeImage, editorHint, editor.savedNoteVisible])
+  useEffect(() => () => setStickyFooter?.(null), [setStickyFooter])
+
+  const allowedPrompts = (toolUseConfirm.input as { allowedPrompts?: AllowedPrompt[] }).allowedPrompts ?? []
+
+  return (
+    <PermissionDialog color="planMode" title="Ready to code?" workerBadge={workerBadge}>
+      <Box flexDirection="column" marginTop={1}>
+        <Text>Here is Claude&apos;s plan:</Text>
+        <Box flexDirection="column" borderStyle="dashed" borderColor="subtle" borderLeft={false} borderRight={false} marginY={1}>
+          <Markdown>{editor.plan}</Markdown>
+        </Box>
+        {isClassifierPermissionsEnabled() && allowedPrompts.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text bold>Requested permissions:</Text>
+            {allowedPrompts.map(({ tool, prompt }) => (
+              <Text key={`${tool}:${prompt}`} dimColor>
+                {'  '}· {tool}(prompt: {prompt})
+              </Text>
+            ))}
+          </Box>
+        )}
+        <PermissionRuleExplanation permissionResult={toolUseConfirm.permissionResult} toolType="tool" />
+        {!inFooter && (
+          <PlanApprovalQuestion
+            question="Claude has written up a plan and is ready to execute. Would you like to proceed?"
+            {...questionProps}
+          />
+        )}
+      </Box>
+    </PermissionDialog>
+  )
+}
+
 export function buildPlanApprovalOptions({
   showClearContext,
   usedPercent,
@@ -584,76 +362,39 @@ export function buildPlanApprovalOptions({
   isBypassPermissionsModeAvailable: boolean | undefined;
   onFeedbackChange: (v: string) => void;
 }): OptionWithDescription<ResponseValue>[] {
-  const options: OptionWithDescription<ResponseValue>[] = [];
-  const usedLabel = usedPercent !== null ? ` (${usedPercent}% used)` : '';
-  if (showClearContext) {
-    if (feature('TRANSCRIPT_CLASSIFIER') && isAutoModeAvailable) {
-      options.push({
-        label: `Yes, clear context${usedLabel} and use auto mode`,
-        value: 'yes-auto-clear-context'
-      });
-    } else if (isBypassPermissionsModeAvailable) {
-      options.push({
-        label: `Yes, clear context${usedLabel} and bypass permissions`,
-        value: 'yes-bypass-permissions'
-      });
-    } else {
-      options.push({
-        label: `Yes, clear context${usedLabel} and auto-accept edits`,
-        value: 'yes-accept-edits'
-      });
-    }
-  }
-
-  // Slot 2: keep-context with elevated mode (same priority: auto > bypass > edits).
-  if (feature('TRANSCRIPT_CLASSIFIER') && isAutoModeAvailable) {
-    options.push({
-      label: 'Yes, and use auto mode',
-      value: 'yes-resume-auto-mode'
-    });
-  } else if (isBypassPermissionsModeAvailable) {
-    options.push({
-      label: 'Yes, and bypass permissions',
-      value: 'yes-accept-edits-keep-context'
-    });
-  } else {
-    options.push({
-      label: 'Yes, auto-accept edits',
-      value: 'yes-accept-edits-keep-context'
-    });
-  }
-  options.push({
-    label: 'Yes, manually approve edits',
-    value: 'yes-default-keep-context'
-  });
-  options.push({
-    type: 'input',
-    label: 'No, keep planning',
-    value: 'no',
-    placeholder: 'Tell Claudin what to change',
-    description: 'shift+tab to approve with this feedback',
-    onChange: onFeedbackChange
-  });
-  return options;
+  const approving = planApprovalChoices({
+    showClearContext,
+    usedPercent,
+    // Without the build flag auto mode does not exist, whatever the context says.
+    autoOffered: autoModeBuiltIn() && isAutoModeAvailable === true,
+    bypassOffered: isBypassPermissionsModeAvailable === true,
+  })
+  return [
+    ...approving,
+    {
+      type: 'input',
+      label: 'No, keep planning',
+      value: 'no',
+      placeholder: 'Tell Claudin what to change',
+      description: 'shift+tab to approve with this feedback',
+      onChange: onFeedbackChange,
+    },
+  ]
 }
 function getContextUsedPercent(usage: {
   input_tokens: number;
   cache_creation_input_tokens?: number | null;
   cache_read_input_tokens?: number | null;
 } | undefined, permissionMode: PermissionMode): number | null {
-  if (!usage) return null;
-  const runtimeModel = getRuntimeMainLoopModel({
-    permissionMode,
-    mainLoopModel: getMainLoopModel(),
-    exceeds200kTokens: false
-  });
-  const contextWindowSize = getContextWindowForModel(runtimeModel, getSdkBetas());
-  const {
-    used
-  } = calculateContextPercentages({
-    input_tokens: usage.input_tokens,
-    cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
-    cache_read_input_tokens: usage.cache_read_input_tokens ?? 0
-  }, contextWindowSize);
-  return used;
+  if (!usage) return null
+  const model = getRuntimeMainLoopModel({ permissionMode, mainLoopModel: getMainLoopModel() })
+  const { used } = calculateContextPercentages(
+    {
+      input_tokens: usage.input_tokens,
+      cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+      cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+    },
+    getContextWindowForModel(model, getSdkBetas()),
+  )
+  return used
 }

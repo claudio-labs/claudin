@@ -3,8 +3,8 @@
   "tool": "knip",
   "command": "knip --include files,dependencies,devDependencies,exports,types --reporter json --no-config-hints",
   "capturedAt": "2026-10-05",
-  "capturedFrom": "b706ea355793c1effb1d10028b226ad7562d20f8",
-  "count": 1052,
+  "capturedFrom": "26331fc2ac96826282224707244e143c4edb305c",
+  "count": 1051,
   "entries": [
     "exports src/agent/attachments/attachments.ts#hasToolResultContent",
     "exports src/agent/attachments/attachments.ts#isFileReadDenied",
@@ -771,7 +771,6 @@
     "types src/native-ts/yoga-layout/index.ts#Yoga",
     "types src/permissions/PermissionPromptToolResultSchema.ts#Input",
     "types src/permissions/PermissionResult.ts#PermissionMetadata",
-    "types src/permissions/PermissionUpdate.ts#WorkingDirectorySource",
     "types src/permissions/autoModeRules.ts#DroppedRule",
     "types src/permissions/shadowedRuleDetection.ts#ShadowType",
     "types src/permissions/toolPermission/handlers/coordinatorHandler.ts#CoordinatorPermissionParams",

@@ -1,116 +1,66 @@
-import { c as _c } from "react-compiler-runtime";
-import React from 'react';
-import { handlePlanModeTransition } from 'src/platform/bootstrap/state.js';
-import { Box, Text } from 'src/terminal/ink.js';
-import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
-import { isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
-import { Select } from 'src/terminal/custom-select/index.js';
-import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
-import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js';
-export function EnterPlanModePermissionRequest(t0: PermissionRequestProps) {
-  const $ = _c(18);
-  const {
-    toolUseConfirm,
-    onDone,
-    onReject,
-    workerBadge
-  } = t0;
-  const toolPermissionContextMode = useAppState(_temp);
-  let t1;
-  if ($[0] !== onDone || $[1] !== onReject || $[2] !== toolPermissionContextMode || $[3] !== toolUseConfirm) {
-    t1 = function handleResponse(value: 'yes' | 'no') {
-      if (value === "yes") {
-        handlePlanModeTransition(toolPermissionContextMode, "plan");
-        onDone();
-        toolUseConfirm.onAllow({}, [{
-          type: "setMode",
-          mode: "plan",
-          destination: "session"
-        }]);
-      } else {
-        onDone();
-        onReject();
-        toolUseConfirm.onReject();
-      }
-    };
-    $[0] = onDone;
-    $[1] = onReject;
-    $[2] = toolPermissionContextMode;
-    $[3] = toolUseConfirm;
-    $[4] = t1;
-  } else {
-    t1 = $[4];
+import React from 'react'
+import { handlePlanModeTransition } from 'src/platform/bootstrap/state.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { type AppState, useAppState } from 'src/terminal/state/AppState.js'
+import { Select } from 'src/terminal/custom-select/index.js'
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js'
+import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
+
+type Answer = 'enter' | 'stay'
+
+const ANSWERS: Array<{ label: string; value: Answer }> = [
+  { label: 'Yes, enter plan mode', value: 'enter' },
+  { label: 'No, start implementing now', value: 'stay' },
+]
+
+const PLAN_MODE_STEPS = [
+  'Explore the codebase thoroughly',
+  'Identify existing patterns',
+  'Design an implementation strategy',
+  'Present a plan for your approval',
+]
+
+/** Session-scoped: entering plan mode is never written to a settings file. */
+const ENTER_PLAN: PermissionUpdate[] = [{ type: 'setMode', mode: 'plan', destination: 'session' }]
+
+const currentMode = (state: AppState) => state.toolPermissionContext.mode
+
+export function EnterPlanModePermissionRequest({ toolUseConfirm, onDone, onReject, workerBadge }: PermissionRequestProps) {
+  const mode = useAppState(currentMode)
+
+  const enter = () => {
+    // Withdraws a plan-exit notice still waiting to be sent; the mode itself
+    // is changed by whoever applies the update.
+    handlePlanModeTransition(mode, 'plan')
+    onDone()
+    toolUseConfirm.onAllow({}, ENTER_PLAN)
   }
-  const handleResponse = t1;
-  let t2;
-  if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = <Text>Claude wants to enter plan mode to explore and design an implementation approach.</Text>;
-    $[5] = t2;
-  } else {
-    t2 = $[5];
+  const stay = () => {
+    onDone()
+    onReject()
+    toolUseConfirm.onReject()
   }
-  let t3;
-  if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-    t3 = <Box marginTop={1} flexDirection="column"><Text dimColor={true}>In plan mode, Claude will:</Text><Text dimColor={true}> · Explore the codebase thoroughly</Text><Text dimColor={true}> · Identify existing patterns</Text><Text dimColor={true}> · Design an implementation strategy</Text><Text dimColor={true}> · Present a plan for your approval</Text></Box>;
-    $[6] = t3;
-  } else {
-    t3 = $[6];
-  }
-  let t4;
-  if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = <Box marginTop={1}><Text dimColor={true}>No code changes will be made until you approve the plan.</Text></Box>;
-    $[7] = t4;
-  } else {
-    t4 = $[7];
-  }
-  let t5;
-  if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = {
-      label: "Yes, enter plan mode",
-      value: "yes" as const
-    };
-    $[8] = t5;
-  } else {
-    t5 = $[8];
-  }
-  let t6;
-  if ($[9] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = [t5, {
-      label: "No, start implementing now",
-      value: "no" as const
-    }];
-    $[9] = t6;
-  } else {
-    t6 = $[9];
-  }
-  let t7;
-  if ($[10] !== handleResponse) {
-    t7 = () => handleResponse("no");
-    $[10] = handleResponse;
-    $[11] = t7;
-  } else {
-    t7 = $[11];
-  }
-  let t8;
-  if ($[12] !== handleResponse || $[13] !== t7) {
-    t8 = <Box flexDirection="column" marginTop={1} paddingX={1}>{t2}{t3}{t4}<Box marginTop={1}><Select options={t6} onChange={handleResponse} onCancel={t7} /></Box></Box>;
-    $[12] = handleResponse;
-    $[13] = t7;
-    $[14] = t8;
-  } else {
-    t8 = $[14];
-  }
-  let t9;
-  if ($[15] !== t8 || $[16] !== workerBadge) {
-    t9 = <PermissionDialog color="planMode" title="Enter plan mode?" workerBadge={workerBadge}>{t8}</PermissionDialog>;
-    $[15] = t8;
-    $[16] = workerBadge;
-    $[17] = t9;
-  } else {
-    t9 = $[17];
-  }
-  return t9;
-}
-function _temp(s: AppState) {
-  return s.toolPermissionContext.mode;
+
+  return (
+    <PermissionDialog color="planMode" title="Enter plan mode?" workerBadge={workerBadge}>
+      <Box flexDirection="column" marginTop={1} paddingX={1}>
+        <Text>Claude wants to enter plan mode to explore and design an implementation approach.</Text>
+        <Box flexDirection="column" marginTop={1}>
+          <Text dimColor>In plan mode, Claude will:</Text>
+          {PLAN_MODE_STEPS.map(step => (
+            <Text key={step} dimColor>
+              {' '}· {step}
+            </Text>
+          ))}
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>No code changes will be made until you approve the plan.</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Select options={ANSWERS} onChange={value => (value === 'enter' ? enter() : stay())} onCancel={stay} />
+        </Box>
+      </Box>
+    </PermissionDialog>
+  )
 }

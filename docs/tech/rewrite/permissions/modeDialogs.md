@@ -278,3 +278,23 @@ The rewrite drops these: none of them can be reached, so none is behaviour.
 - **Process exit is injected.** The bypass warning takes its decline and cancel actions from its caller, as the auto consent already does. Startup passes the exit codes. Then the dialog no longer ends the process itself, and its tests need no child process.
 - **Settings writes go through one function per consent** (`recordBypassAccepted`, `recordAutoConsent({ asDefault })`), so the destination layer is stated once.
 - **Findings.** None is fixed in this unit. Findings 1 and 4 go to the trust-boundary work.
+
+## Outcome
+
+Rewritten per method on 2026-10-04, landed 2026-10-05.
+
+- **Code.** The four dialogs are hand-written. The plan-exit logic lives in `modeDialogs/`:
+  - `planExitChoices.ts`, the answers as data, and `planExitOutcome.ts`, what each answer changes; neither reads React or a build flag;
+  - `PlanApprovalQuestion.tsx`, the question shared by the dialog body and the sticky footer;
+  - `usePlanEditor.ts`, `usePastedImages.ts` and `clearContextPrompt.ts`;
+  - `consentSettings.ts`, with `recordBypassAccepted` and `recordAutoConsent({ asDefault })`.
+
+  The bypass warning takes its exit from its caller (`exitProcess`), defaulting to the graceful shutdown with the same codes. The characterization suites pass unchanged, including the `TRANSCRIPT_CLASSIFIER` child run, plus 248 lines of new tests in `modeDialogs/modeDialogs.test.tsx`.
+- **Findings.** All six are kept exactly as pinned; 1 and 4 stay with the trust-boundary work.
+- **Probes.** 90 in `rewrite-permissions-modeDialogs.json`, over the four dialogs and the seven new modules.
+- **For the legal review.** `AUTO_MODE_DESCRIPTION` states the same facts as the inherited sentence, and the census reads zero matching lines, but it stays close to the old wording. It is listed for the review before the final cut.
+- **Residue, reviewed.** 33 lines of Claude Code remain, all in `ExitPlanModePermissionRequest.tsx`; every other file reads zero:
+  - 11 are exported signatures: the component's props and `buildPlanApprovalOptions`, kept for the callers and tests that read them;
+  - 7 are the API's usage field names, in the context-percentage helper;
+  - 11 are the text and the blank rows the characterization pins (`Claude wants to exit plan mode`, `Here is Claude's plan:`, `Requested permissions:`, the Yes/No pair);
+  - 4 are calls into state modules not rewritten yet (`useAppStateStore`, `useSetAppState`, `setAutoModeActive`, `setHasExitedPlanMode`).
