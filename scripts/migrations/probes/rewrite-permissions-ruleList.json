@@ -1,0 +1,223 @@
+{
+  "test": [
+    "src/permissions/ui/rules/PermissionRuleList.characterization.test.tsx",
+    "src/permissions/ui/rules/PermissionRuleList.denials.characterization.test.tsx",
+    "src/permissions/ui/rules/PermissionRuleDescription.characterization.test.tsx",
+    "src/permissions/ui/rules/PermissionRuleInput.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/rules/PermissionRuleList.tsx",
+  "probes": [
+    {
+      "name": "read-only guard: a managed rule is offered for deletion",
+      "find": "if (rule.source === \"policySettings\") {",
+      "replace": "if (rule.source === \"policySettings_off\") {"
+    },
+    {
+      "name": "read-only guard: the managed notice no longer says it cannot be changed",
+      "find": "configured by managed settings and cannot be modified.",
+      "replace": "configured by managed settings."
+    },
+    {
+      "name": "delete: No deletes the rule (fail open on a deny rule)",
+      "find": "t11 = (_: string) => _ === \"yes\" ? onDelete() : onCancel();",
+      "replace": "t11 = (_: string) => _ === \"yes\" || _ === \"no\" ? onDelete() : onCancel();"
+    },
+    {
+      "name": "delete: Esc and n delete the rule",
+      "find": "useKeybinding(\"confirm:no\", onCancel, t1);",
+      "replace": "useKeybinding(\"confirm:no\", onDelete, t1);"
+    },
+    {
+      "name": "delete: the user settings copy is removed whatever the rule's source",
+      "find": "        rule: selectedRule,",
+      "replace": "        rule: { ...selectedRule, source: \"userSettings\" },"
+    },
+    {
+      "name": "delete: the session keeps the rule after it is deleted",
+      "find": "toolPermissionContext: toolPermissionContext_0",
+      "replace": "toolPermissionContext: prev_1.toolPermissionContext"
+    },
+    {
+      "name": "delete: the report drops the rule's kind",
+      "find": "`Deleted ${selectedRule.ruleBehavior} rule ${",
+      "replace": "`Deleted rule ${"
+    },
+    {
+      "name": "delete: the cursor stays on the deleted row instead of the next rule",
+      "find": "nextFocusKey = ruleKeys[currentIndex + 1];",
+      "replace": "nextFocusKey = ruleKeys[currentIndex];"
+    },
+    {
+      "name": "delete: the last rule hands the cursor to the first, not the one before",
+      "find": "nextFocusKey = ruleKeys[currentIndex - 1];",
+      "replace": "nextFocusKey = ruleKeys[0];"
+    },
+    {
+      "name": "tabs: the deny tab lists the allow rules",
+      "find": "return denyRulesByKey;",
+      "replace": "return allowRulesByKey;"
+    },
+    {
+      "name": "tabs: the ask tab lists the deny rules",
+      "find": "return askRulesByKey;",
+      "replace": "return denyRulesByKey;"
+    },
+    {
+      "name": "tabs: the deny subtitle changed",
+      "find": "deny: \"Claudin will always reject requests to use denied tools.\"",
+      "replace": "deny: \"Denied tools.\""
+    },
+    {
+      "name": "list: sorted with regard to case (neither side lowercased)",
+      "find": "const ruleAString = permissionRuleValueToString(ruleA.ruleValue).toLowerCase();\n          const ruleBString = permissionRuleValueToString(ruleB.ruleValue).toLowerCase();",
+      "replace": "const ruleAString = permissionRuleValueToString(ruleA.ruleValue);\n          const ruleBString = permissionRuleValueToString(ruleB.ruleValue);"
+    },
+    {
+      "name": "list: more than ten rows at a time",
+      "find": "const t6 = Math.min(10, options.length);",
+      "replace": "const t6 = Math.min(12, options.length);"
+    },
+    {
+      "name": "search: matching becomes case-sensitive",
+      "find": "if (query && !ruleString.toLowerCase().includes(lowerQuery)) {",
+      "replace": "if (query && !ruleString.includes(query)) {"
+    },
+    {
+      "name": "search: the add row stays while a query is typed",
+      "find": "if (tab !== \"workspace\" && tab !== \"recent\" && !query) {",
+      "replace": "if (tab !== \"workspace\" && tab !== \"recent\") {"
+    },
+    {
+      "name": "search: r starts a search",
+      "find": "e.key !== \"r\" &&",
+      "replace": "e.key !== \"\\u0000\" &&"
+    },
+    {
+      "name": "search: Ctrl-letters start a search",
+      "find": "if (e.ctrl || e.meta) {",
+      "replace": "if (e.meta) {"
+    },
+    {
+      "name": "add: the deny tab opens an allow rule input (fail open)",
+      "find": "ruleBehavior={addingRuleToTab} />",
+      "replace": "ruleBehavior={\"allow\"} />"
+    },
+    {
+      "name": "add: the rule is saved as an allow rule whatever was typed it for (fail open)",
+      "find": "ruleBehavior={validatedRule.ruleBehavior}",
+      "replace": "ruleBehavior=\"allow\""
+    },
+    {
+      "name": "add: blocked and shadowed swap in the warning",
+      "find": "u.shadowType === \"deny\" ? \"blocked\" : \"shadowed\"",
+      "replace": "u.shadowType === \"deny\" ? \"shadowed\" : \"blocked\""
+    },
+    {
+      "name": "exit: a dismissal is no longer a system note",
+      "find": "display: \"system\"",
+      "replace": "display: \"user\""
+    },
+    {
+      "name": "exit: changes run together on one line",
+      "find": "onExit([...approvedMsg, ...changes].join(\"\\n\"));",
+      "replace": "onExit([...approvedMsg, ...changes].join(\" \"));"
+    },
+    {
+      "name": "denials: the retry is not handed to the caller",
+      "find": "onRetryDenials?.(commands);",
+      "replace": "onRetryDenials?.([]);"
+    },
+    {
+      "name": "denials: a retry does not ask the model to go on",
+      "find": "shouldQuery: true,",
+      "replace": "shouldQuery: false,"
+    },
+    {
+      "name": "denials: an approval is treated as a retry",
+      "find": "const retryDenials = denialsFor(s_1.retry);",
+      "replace": "const retryDenials = denialsFor(s_1.approved);"
+    },
+    {
+      "name": "denials: the screen no longer opens on Recently denied",
+      "find": "(hasDenials ? \"recent\" : \"allow\")",
+      "replace": "(hasDenials ? \"allow\" : \"allow\")"
+    },
+    {
+      "name": "workspace: a directory added for the session is filed under local settings",
+      "find": "remember ? \"localSettings\" : \"session\"",
+      "replace": "\"localSettings\""
+    },
+    {
+      "name": "description: a wildcard without a colon reads as a prefix",
+      "source": "src/permissions/ui/rules/PermissionRuleDescription.tsx",
+      "find": "if (ruleValue.ruleContent.endsWith(\":*\")) {",
+      "replace": "if (ruleValue.ruleContent.endsWith(\"*\")) {"
+    },
+    {
+      "name": "description: the prefix keeps its colon",
+      "source": "src/permissions/ui/rules/PermissionRuleDescription.tsx",
+      "find": "t1 = ruleValue.ruleContent.slice(0, -2);",
+      "replace": "t1 = ruleValue.ruleContent.slice(0, -1);"
+    },
+    {
+      "name": "description: an exact Bash rule no longer says it is one command",
+      "source": "src/permissions/ui/rules/PermissionRuleDescription.tsx",
+      "find": "The Bash command <Text",
+      "replace": "A Bash command like <Text"
+    },
+    {
+      "name": "description: a whole-tool rule glossed as nothing, a scoped one as the whole tool",
+      "source": "src/permissions/ui/rules/PermissionRuleDescription.tsx",
+      "find": "if (!ruleValue.ruleContent) {",
+      "replace": "if (ruleValue.ruleContent) {"
+    },
+    {
+      "name": "description: Bash rules glossed as any other tool",
+      "source": "src/permissions/ui/rules/PermissionRuleDescription.tsx",
+      "find": "case BashTool.name:",
+      "replace": "case \"BashTool_off\":"
+    },
+    {
+      "name": "description: the whole-Bash gloss is no longer dim",
+      "source": "src/permissions/ui/rules/PermissionRuleDescription.tsx",
+      "find": "t1 = <Text dimColor={true}>Any Bash command</Text>;",
+      "replace": "t1 = <Text>Any Bash command</Text>;"
+    },
+    {
+      "name": "input: what was typed is not trimmed",
+      "source": "src/permissions/ui/rules/PermissionRuleInput.tsx",
+      "find": "const trimmedValue = value.trim();",
+      "replace": "const trimmedValue = value;"
+    },
+    {
+      "name": "input: an empty rule is handed up",
+      "source": "src/permissions/ui/rules/PermissionRuleInput.tsx",
+      "find": "if (trimmedValue.length === 0) {",
+      "replace": "if (trimmedValue.length < 0) {"
+    },
+    {
+      "name": "input: every rule is handed up as an allow rule (fail open)",
+      "source": "src/permissions/ui/rules/PermissionRuleInput.tsx",
+      "find": "onSubmit(ruleValue, ruleBehavior);",
+      "replace": "onSubmit(ruleValue, \"allow\");"
+    },
+    {
+      "name": "input: Esc does not cancel",
+      "source": "src/permissions/ui/rules/PermissionRuleInput.tsx",
+      "find": "useKeybinding(\"confirm:no\", onCancel, t1);",
+      "replace": "useKeybinding(\"confirm:no\", () => {}, t1);"
+    },
+    {
+      "name": "input: the title no longer names the kind",
+      "source": "src/permissions/ui/rules/PermissionRuleInput.tsx",
+      "find": "permission\">Add {ruleBehavior} permission rule</Text>",
+      "replace": "permission\">Add permission rule</Text>"
+    },
+    {
+      "name": "input: the Bash example loses its prefix",
+      "source": "src/permissions/ui/rules/PermissionRuleInput.tsx",
+      "find": "ruleContent: \"ls:*\"",
+      "replace": "ruleContent: \"ls\""
+    }
+  ]
+}
