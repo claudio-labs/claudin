@@ -34,15 +34,24 @@ export type Ask = {
   workerBadge?: WorkerBadgeProps
   verbose?: boolean
   columns?: number
+  /** The session runs with --debug (the context's `options.debug`). */
+  debug?: boolean
+  /** Extra fields on the request, such as the classifier's progress flags. */
+  confirm?: Record<string, unknown>
 }
 
-export type Asked = { screen: Screen; calls: Call[] }
+export type Asked = {
+  screen: Screen
+  calls: Call[]
+  /** Hands the dialog a new copy of its request with `over` applied, the way the queue does when a request changes. */
+  update: (over: Record<string, unknown>) => Promise<void>
+}
 
-function bareContext(): ToolUseContext {
+function bareContext(debug = false): ToolUseContext {
   let state = {} as ReturnType<ToolUseContext['getAppState']>
   return {
     abortController: new AbortController(),
-    options: { tools: [], commands: [], mcpClients: [], isNonInteractiveSession: false, verbose: false, debug: false, mainLoopModel: 'test-model' },
+    options: { tools: [], commands: [], mcpClients: [], isNonInteractiveSession: false, verbose: false, debug, mainLoopModel: 'test-model' },
     setInProgressToolUseIDs: () => {},
     getAppState: () => state,
     setAppState: (next: (prev: typeof state) => typeof state) => {
@@ -60,7 +69,7 @@ export async function ask(spec: Ask): Promise<Asked> {
     tool: spec.tool,
     description: spec.description ?? 'what the tool is about to do',
     input: spec.input,
-    toolUseContext: bareContext(),
+    toolUseContext: bareContext(spec.debug),
     toolUseID: 'toolu_dialogs_1',
     permissionResult: spec.permissionResult ?? { behavior: 'ask', message: 'confirm first' },
     permissionPromptStartTimeMs: Date.now(),
@@ -69,19 +78,24 @@ export async function ask(spec: Ask): Promise<Asked> {
     onAllow: (...args: unknown[]) => calls.push({ to: 'allow', args }),
     onReject: (...args: unknown[]) => calls.push({ to: 'reject', args }),
     recheckPermission: async () => {},
+    ...spec.confirm,
   } as unknown as ToolUseConfirm
-  const screen = await mount(
+  const dialog = (request: ToolUseConfirm) => (
     <PermissionRequest
-      toolUseConfirm={confirm}
-      toolUseContext={confirm.toolUseContext}
+      toolUseConfirm={request}
+      toolUseContext={request.toolUseContext}
       onDone={() => calls.push({ to: 'caller.done' })}
       onReject={() => calls.push({ to: 'caller.reject' })}
       verbose={spec.verbose ?? false}
       workerBadge={spec.workerBadge}
-    />,
-    { columns: spec.columns ?? 120, ready: frame => frame.includes('Esc') || frame.includes('No') },
+    />
   )
-  return { screen, calls }
+  const screen = await mount(dialog(confirm), {
+    columns: spec.columns ?? 120,
+    ready: frame => frame.includes('Esc') || frame.includes('No'),
+  })
+  const update = (over: Record<string, unknown>) => screen.replace(dialog({ ...confirm, ...over } as ToolUseConfirm))
+  return { screen, calls, update }
 }
 
 /** Presses the keys, then gives the last answer time to land. */

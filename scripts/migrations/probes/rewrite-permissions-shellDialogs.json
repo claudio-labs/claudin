@@ -1,0 +1,253 @@
+{
+  "test": [
+    "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.classifier.characterization.test.tsx",
+    "src/permissions/ui/BashPermissionRequest/bashToolUseOptions.characterization.test.tsx",
+    "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/SedEditPermissionRequest/SedEditPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/shellPermissionHelpers.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+  "probes": [
+    {
+      "name": "bash: allow-always saved to the user settings instead of the local ones",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "destination: 'localSettings'",
+      "replace": "destination: 'userSettings'"
+    },
+    {
+      "name": "bash: the saved prefix widened to the first word (rm build:* becomes rm:*)",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "ruleContent: trimmedPrefix",
+      "replace": "ruleContent: trimmedPrefix.split(' ')[0].replace(/:\\*$/, '') + ':*'"
+    },
+    {
+      "name": "bash: the two-word guess skipped, so the first word alone is offered",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "if (two) return `${two}:*`;",
+      "replace": "if (two && false) return `${two}:*`;"
+    },
+    {
+      "name": "bash: the parsed refinement of the field never applied",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "if (prefixes.length > 0) {\n        setEditablePrefix(`${prefixes[0]}:*`);",
+      "replace": "if (prefixes.length > 99) {\n        setEditablePrefix(`${prefixes[0]}:*`);"
+    },
+    {
+      "name": "bash: read-only parts of a compound command no longer skipped when guessing the rule",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "subcmd => BashTool.isReadOnly({",
+      "replace": "subcmd => !BashTool.isReadOnly({"
+    },
+    {
+      "name": "bash: a compound command's single backend rule no longer seeds the field",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "backendBashRules.length === 1 ?",
+      "replace": "backendBashRules.length === 2 ?"
+    },
+    {
+      "name": "bash: Yes fails open, saving the suggestions",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], trimmedFeedback_0 || undefined);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, toolUseConfirm.permissionResult.suggestions ?? [], trimmedFeedback_0 || undefined);"
+    },
+    {
+      "name": "bash: No fails open into an allow",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "handleReject(trimmedFeedback || undefined);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, []);\n          onDone();"
+    },
+    {
+      "name": "bash: Esc fails open into an allow",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "onCancel={() => handleReject()}",
+      "replace": "onCancel={() => { toolUseConfirm.onAllow(toolUseConfirm.input, []); onDone(); }}"
+    },
+    {
+      "name": "bash: an emptied field fails open, saving a whole-tool Bash rule",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "if (!trimmedPrefix) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "bash: the edited field is saved untrimmed",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "const trimmedPrefix = (editablePrefix ?? '').trim();",
+      "replace": "const trimmedPrefix = editablePrefix ?? '';"
+    },
+    {
+      "name": "bash: the label option fails open, saving a whole-tool Bash rule instead of the suggestions",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "const permissionUpdates_0 = 'suggestions' in toolUseConfirm.permissionResult ? toolUseConfirm.permissionResult.suggestions || [] : [];",
+      "replace": "const permissionUpdates_0 = [{ type: 'addRules', rules: [{ toolName: 'Bash' }], behavior: 'allow', destination: 'localSettings' }];"
+    },
+    {
+      "name": "bash: an unsandboxed command no longer says so in the title",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "sandboxingEnabled_0 && !isSandboxed_0 ?",
+      "replace": "sandboxingEnabled_0 && isSandboxed_0 ?"
+    },
+    {
+      "name": "bash (classifier build): Esc dismisses a checkmark that was never earned",
+      "source": "src/permissions/ui/BashPermissionRequest/BashPermissionRequest.tsx",
+      "find": "isActive: feature('BASH_CLASSIFIER') ? !!toolUseConfirm.classifierAutoApproved : false",
+      "replace": "isActive: feature('BASH_CLASSIFIER') ? true : false"
+    },
+    {
+      "name": "feedback: a plain No or Esc no longer counted as an escape",
+      "source": "src/permissions/ui/useShellPermissionFeedback.ts",
+      "find": "escapeCount: prev.attribution.escapeCount + 1,",
+      "replace": "escapeCount: prev.attribution.escapeCount,"
+    },
+    {
+      "name": "feedback: the No note dropped",
+      "source": "src/permissions/ui/useShellPermissionFeedback.ts",
+      "find": "toolUseConfirm.onReject(trimmedFeedback)",
+      "replace": "toolUseConfirm.onReject()"
+    },
+    {
+      "name": "feedback: a deny no longer tells the caller it was rejected",
+      "source": "src/permissions/ui/useShellPermissionFeedback.ts",
+      "find": "    onReject()\n    onDone()",
+      "replace": "    onDone()"
+    },
+    {
+      "name": "feedback: opening a note no longer counts as the user's interaction",
+      "source": "src/permissions/ui/useShellPermissionFeedback.ts",
+      "find": "    toolUseConfirm.onUserInteraction()\n\n    if (option === 'yes') {",
+      "replace": "    if (option === 'yes') {"
+    },
+    {
+      "name": "bash options: allow-always offered despite managed rules-only policy",
+      "source": "src/permissions/ui/BashPermissionRequest/bashToolUseOptions.tsx",
+      "find": "if (shouldShowAlwaysAllowOptions()) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "bash options: the field offered although a directory is among the suggestions",
+      "source": "src/permissions/ui/BashPermissionRequest/bashToolUseOptions.tsx",
+      "find": "&& !hasNonBashSuggestions &&",
+      "replace": "&&"
+    },
+    {
+      "name": "bash options: the field offered when the check suggested nothing",
+      "source": "src/permissions/ui/BashPermissionRequest/bashToolUseOptions.tsx",
+      "find": "!hasNonBashSuggestions && suggestions.length > 0) {",
+      "replace": "!hasNonBashSuggestions) {"
+    },
+    {
+      "name": "bash options: another shell's rule taken for a Bash one",
+      "source": "src/permissions/ui/BashPermissionRequest/bashToolUseOptions.tsx",
+      "find": "r.toolName !== BASH_TOOL_NAME",
+      "replace": "r.toolName === 'Read'"
+    },
+    {
+      "name": "powershell options: allow-always offered despite managed rules-only policy",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/powershellToolUseOptions.tsx",
+      "find": "if (shouldShowAlwaysAllowOptions() && suggestions.length > 0) {",
+      "replace": "if (suggestions.length > 0) {"
+    },
+    {
+      "name": "powershell options: the field offered when the check suggested nothing",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/powershellToolUseOptions.tsx",
+      "find": " && suggestions.length > 0) {",
+      "replace": ") {"
+    },
+    {
+      "name": "powershell options: the field offered although a directory is among the suggestions",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/powershellToolUseOptions.tsx",
+      "find": "onEditablePrefixChange && !hasNonPowerShellSuggestions) {",
+      "replace": "onEditablePrefixChange) {"
+    },
+    {
+      "name": "powershell options: another shell's rule taken for a PowerShell one",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/powershellToolUseOptions.tsx",
+      "find": "r.toolName !== POWERSHELL_TOOL_NAME",
+      "replace": "r.toolName === 'Read'"
+    },
+    {
+      "name": "powershell: allow-always saved to the user settings instead of the local ones",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx",
+      "find": "destination: 'localSettings'",
+      "replace": "destination: 'userSettings'"
+    },
+    {
+      "name": "powershell: Yes fails open, saving the suggestions",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], trimmedFeedback || undefined);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, toolUseConfirm.permissionResult.suggestions ?? [], trimmedFeedback || undefined);"
+    },
+    {
+      "name": "powershell: No fails open into an allow",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx",
+      "find": "handleReject(trimmedFeedback || undefined);",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, []);\n          onDone();"
+    },
+    {
+      "name": "powershell: Esc fails open into an allow",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx",
+      "find": "onCancel={() => handleReject()}",
+      "replace": "onCancel={() => { toolUseConfirm.onAllow(toolUseConfirm.input, []); onDone(); }}"
+    },
+    {
+      "name": "powershell: an emptied field fails open, saving a whole-tool PowerShell rule",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx",
+      "find": "if (!trimmedPrefix) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "powershell: a multi-line command gets a field that saves the whole script",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx",
+      "find": "command.includes('\\n') ? undefined : command",
+      "replace": "false ? undefined : command"
+    },
+    {
+      "name": "powershell: the label option fails open, saving a whole-tool PowerShell rule instead of the suggestions",
+      "source": "src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.tsx",
+      "find": "const permissionUpdates = 'suggestions' in toolUseConfirm.permissionResult ? toolUseConfirm.permissionResult.suggestions || [] : [];",
+      "replace": "const permissionUpdates = [{ type: 'addRules', rules: [{ toolName: 'PowerShell' }], behavior: 'allow', destination: 'localSettings' }];"
+    },
+    {
+      "name": "label: a long command list no longer collapses to \"similar\"",
+      "source": "src/permissions/ui/shellPermissionHelpers.tsx",
+      "find": "if (plainText.length > 50) {",
+      "replace": "if (plainText.length > 500) {"
+    },
+    {
+      "name": "label: another shell's rules named as this shell's commands",
+      "source": "src/permissions/ui/shellPermissionHelpers.tsx",
+      "find": "const shellRules = allRules.filter(r => r.toolName === shellToolName);",
+      "replace": "const shellRules = allRules.filter(r => r.toolName !== 'Read');"
+    },
+    {
+      "name": "label: a prefix rule shown with its :* instead of the command",
+      "source": "src/permissions/ui/shellPermissionHelpers.tsx",
+      "find": "const command = permissionRuleExtractPrefix(rule.ruleContent) ?? rule.ruleContent;",
+      "replace": "const command = rule.ruleContent;"
+    },
+    {
+      "name": "label: the same command named twice",
+      "source": "src/permissions/ui/shellPermissionHelpers.tsx",
+      "find": "const shellCommands = [...new Set(shellRules.flatMap(",
+      "replace": "const shellCommands = [...(shellRules.flatMap("
+    },
+    {
+      "name": "sed: an allow runs the real sed instead of handing on the previewed content",
+      "source": "src/permissions/ui/SedEditPermissionRequest/SedEditPermissionRequest.tsx",
+      "find": "_simulatedSedEdit: {",
+      "replace": "_previewedSedEdit: {"
+    },
+    {
+      "name": "sed: Windows line endings kept in the preview and the handed-on content",
+      "source": "src/permissions/ui/SedEditPermissionRequest/SedEditPermissionRequest.tsx",
+      "find": "raw.replaceAll(\"\\r\\n\", \"\\n\")",
+      "replace": "raw"
+    },
+    {
+      "name": "sed: the substitution never applied, so the approved content is the old one",
+      "source": "src/permissions/ui/SedEditPermissionRequest/SedEditPermissionRequest.tsx",
+      "find": "t1 = applySedSubstitution(oldContent, sedInfo);",
+      "replace": "t1 = oldContent;"
+    }
+  ]
+}
