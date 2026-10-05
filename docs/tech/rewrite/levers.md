@@ -81,6 +81,13 @@ its own phase:
 **Kept:** fast mode. It works with an Anthropic API key and runs through the
 request and cache path; it goes through phase 5 with the providers.
 
+**Cut on 2026-10-04: the Bash command sandbox.** `scripts/build/build.ts` stubs
+`@anthropic-ai/sandbox-runtime`, so `isSupportedPlatform()` is always falsy and
+no user can reach the sandbox: `/sandbox` is hidden and every sandbox branch is
+dead. The user chose to cut it rather than enable the Apache-2.0 package.
+About 2.1k inherited lines go. The cut map and its order are in
+[cuts/sandbox.md](cuts/sandbox.md).
+
 One phase 2 unit goes with the cuts: the remote session hooks
 (`sessions/hooks/useRemoteSession.ts`, `useSSHSession.ts`, `useTeleportResume.tsx`).
 
