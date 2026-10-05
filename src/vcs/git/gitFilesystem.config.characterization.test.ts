@@ -1,6 +1,7 @@
 /**
- * Characterization of src/vcs/git/gitConfigParser.ts, through
- * parseGitConfigValue, the export its callers use.
+ * Characterization of the git config syntax
+ * (src/vcs/git/gitConfigParser/configSyntax.ts), through findConfigValue
+ * over a config file's text, the way the origin lookup reads it.
  *
  * Every case writes a config file, asks the module, and asks
  * `git config -f <file> --get` the same question. The first table holds what
@@ -13,10 +14,10 @@
  */
 
 import { afterAll, describe, expect, test } from 'bun:test'
-import { copyFileSync, mkdirSync, writeFileSync } from 'fs'
+import { copyFileSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { ScratchGit } from 'src/vcs/git/__testutils__/scratchRepos.js'
-import { parseGitConfigValue } from 'src/vcs/git/gitConfigParser.js'
+import { findConfigValue } from 'src/vcs/git/gitConfigParser/configSyntax.js'
 
 const scratch = new ScratchGit()
 afterAll(() => scratch.cleanup())
@@ -56,8 +57,8 @@ function configDir(text: string): string {
   return dir
 }
 
-function readWithModule(dir: string, question: Question): Promise<string | null> {
-  return parseGitConfigValue(dir, question.section, question.subsection, question.key)
+async function readWithModule(dir: string, question: Question): Promise<string | null> {
+  return findConfigValue(readFileSync(join(dir, 'config'), 'utf8'), question)
 }
 
 type Agreement = {
@@ -138,7 +139,7 @@ const DEPARTURES: Departure[] = [
   { title: 'a header whose subsection quote is never closed matches nothing', text: '[remote "origin]\n\turl = a\n', question: ORIGIN_URL, expected: null, git: { kind: 'refused' } },
 ]
 
-describe('parseGitConfigValue: read the same way as git config', () => {
+describe('findConfigValue: read the same way as git config', () => {
   for (const agreement of AGREEMENTS) {
     test(agreement.title, async () => {
       const dir = configDir(agreement.text)
@@ -152,7 +153,7 @@ describe('parseGitConfigValue: read the same way as git config', () => {
   }
 })
 
-describe('parseGitConfigValue: where it parts from git, on purpose', () => {
+describe('findConfigValue: where it parts from git, on purpose', () => {
   for (const departure of DEPARTURES) {
     test(departure.title, async () => {
       const dir = configDir(departure.text)
@@ -162,22 +163,7 @@ describe('parseGitConfigValue: where it parts from git, on purpose', () => {
   }
 })
 
-describe('parseGitConfigValue: the file', () => {
-  test('a missing file, a missing directory, or a config that is a directory: null', async () => {
-    expect(await readWithModule(scratch.tempDir('no-config'), ORIGIN_URL)).toBeNull()
-    expect(await readWithModule(join(scratch.tempDir('gone'), 'nowhere'), ORIGIN_URL)).toBeNull()
-    const odd = scratch.tempDir('config-dir')
-    mkdirSync(join(odd, 'config'))
-    expect(await readWithModule(odd, ORIGIN_URL)).toBeNull()
-  })
-
-  test('the file is read again on every call', async () => {
-    const dir = configDir(underOrigin('url = https://before.example/r.git'))
-    expect(await readWithModule(dir, ORIGIN_URL)).toBe('https://before.example/r.git')
-    writeFileSync(join(dir, 'config'), underOrigin('url = https://after.example/r.git'))
-    expect(await readWithModule(dir, ORIGIN_URL)).toBe('https://after.example/r.git')
-  })
-
+describe('findConfigValue: a whole config', () => {
   test('a config written by git 2.55.0 (fixture): every key reads as git reads it', async () => {
     const dir = scratch.tempDir('fixture-config')
     copyFileSync(join(import.meta.dir, '__fixtures__', 'rewrite', 'config'), join(dir, 'config'))

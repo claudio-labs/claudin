@@ -556,12 +556,6 @@
       "source": "src/vcs/git/gitConfigParser/configSyntax.ts",
       "find": "  const cursor = new Cursor(body.replace(CRLF, '\\n'))\n",
       "replace": "  const cursor = new Cursor(body)\n"
-    },
-    {
-      "name": "parseGitConfigValue: another file read than <gitDir>/config",
-      "source": "src/vcs/git/gitConfigParser.ts",
-      "find": "  const text = await diskGitFiles.readText(join(gitDir, 'config'))\n",
-      "replace": "  const text = await diskGitFiles.readText(join(gitDir, 'config.worktree'))\n"
     }
   ]
 }

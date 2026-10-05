@@ -574,6 +574,11 @@ baseline did not flag them, and they were reviewed by hand. Every line left is
 contract:
 - **`src/vcs/git/gitConfigParser.ts`, 3 lines.** The signature of
   `parseGitConfigValue`, which `gitFilesystem.ts` and the suite call.
+  Deleted on 2026-10-05: once `postCreationSetup.ts` read `core.hooksPath`
+  through `git config --get` and the origin lookup called `findConfigValue`
+  directly, nothing in production imported it, and `deadcode:prod` failed.
+  The two config suites now read through `findConfigValue`; the two tests of
+  the wrapper's own file reading, and its one probe, went with it.
 - **`src/vcs/git/gitFilesystem.ts`, 6 lines.** The signatures of
   `getHeadForDir`, `getRemoteUrlForDir` and `getWorktreeCountFromFs`, each
   with the first line of its body, which resolves the git directory.

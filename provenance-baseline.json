@@ -1,8 +1,8 @@
 {
   "//": "Generated — do not hand-edit. Refresh with `bun run provenance:baseline`. Per file: [Claude Code, openclaude] inherited lines.",
   "capturedAt": "2026-10-05",
-  "capturedFrom": "26331fc2ac96826282224707244e143c4edb305c",
-  "totals": { "claudeCode": 271172, "openclaude": 40814 },
+  "capturedFrom": "a46eb0a04eacc425cc111ab3937e06121bd21d29",
+  "totals": { "claudeCode": 271169, "openclaude": 40814 },
   "files": {
     ".github/ISSUE_TEMPLATE/bug_report.md": [0, 3],
     ".github/ISSUE_TEMPLATE/feature_request.md": [0, 5],
@@ -2499,7 +2499,6 @@
     "src/vcs/git/commitAttribution.ts": [13, 0],
     "src/vcs/git/diff.ts": [6, 0],
     "src/vcs/git/ghPrStatus.ts": [14, 0],
-    "src/vcs/git/gitConfigParser.ts": [3, 0],
     "src/vcs/git/gitDiff/types.ts": [7, 0],
     "src/vcs/git/gitFilesystem.ts": [6, 0],
     "src/vcs/git/repository/globalIgnore.ts": [7, 0],

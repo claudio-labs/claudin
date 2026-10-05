@@ -1,18 +1,22 @@
 /**
  * The config syntax the rewrite now reads the way git does (findings F6 to
- * F10 of docs/tech/rewrite/vcs/gitFilesystem.md), through parseGitConfigValue.
+ * F10 of docs/tech/rewrite/vcs/gitFilesystem.md), through findConfigValue.
  * Each case is also asked of `git config -f <file> --get`, and values git
  * itself writes are read back.
  */
 
 import { afterAll, describe, expect, test } from 'bun:test'
-import { writeFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { ScratchGit } from 'src/vcs/git/__testutils__/scratchRepos.js'
-import { parseGitConfigValue } from 'src/vcs/git/gitConfigParser.js'
+import { findConfigValue } from 'src/vcs/git/gitConfigParser/configSyntax.js'
 
 const scratch = new ScratchGit()
 afterAll(() => scratch.cleanup())
+
+function moduleReads(dir: string, section: string, subsection: string | null, key: string): string | null {
+  return findConfigValue(readFileSync(join(dir, 'config'), 'utf8'), { section, subsection, key })
+}
 
 function configDir(text: string): string {
   const dir = scratch.tempDir('config-fix')
@@ -37,18 +41,18 @@ const CASES: Array<{ finding: string; title: string; text: string; expected: str
   { finding: 'F10', title: "a key on its section's header line", text: '[remote "origin"] url = inline\n', expected: 'inline' },
 ]
 
-describe('parseGitConfigValue reads these as git does', () => {
+describe('findConfigValue reads these as git does', () => {
   for (const { finding, title, text, expected } of CASES) {
     test(`${finding}: ${title}`, async () => {
       const dir = configDir(text)
-      expect(await parseGitConfigValue(dir, 'remote', 'origin', 'url')).toBe(expected)
+      expect(moduleReads(dir, 'remote', 'origin', 'url')).toBe(expected)
       expect(gitReads(dir, 'remote.origin.url')).toBe(expected)
     })
   }
 
   test('F10: a key on a plain section header line', async () => {
     const dir = configDir('[core] hooksPath = /x\n')
-    expect(await parseGitConfigValue(dir, 'core', null, 'hooksPath')).toBe('/x')
+    expect(moduleReads(dir, 'core', null, 'hooksPath')).toBe('/x')
     expect(gitReads(dir, 'core.hooksPath')).toBe('/x')
   })
 })
@@ -68,14 +72,14 @@ describe('values written by git read back unchanged', () => {
     writeFileSync(join(dir, 'config'), '')
     scratch.run(dir, 'config', '-f', join(dir, 'config'), 'remote.origin.url', value)
     expect(gitReads(dir, 'remote.origin.url')).toBe(value)
-    expect(await parseGitConfigValue(dir, 'remote', 'origin', 'url')).toBe(value)
+    expect(moduleReads(dir, 'remote', 'origin', 'url')).toBe(value)
   })
 })
 
 describe('F6, beyond git: an unknown escape outside quotes', () => {
   test('stands for its character, as inside quotes, where git refuses the file', async () => {
     const dir = configDir('[remote "origin"]\n\turl = a\\qb\n')
-    expect(await parseGitConfigValue(dir, 'remote', 'origin', 'url')).toBe('aqb')
+    expect(moduleReads(dir, 'remote', 'origin', 'url')).toBe('aqb')
     expect(scratch.attempt(dir, 'config', '-f', join(dir, 'config'), '--get', 'remote.origin.url').code).toBe(128)
   })
 })
