@@ -1,0 +1,210 @@
+{
+  "test": [
+    "src/mcp/ui/ElicitationDialog.form.characterization.test.tsx",
+    "src/mcp/ui/ElicitationDialog.url.characterization.test.tsx",
+    "src/mcp/ui/ElicitationDialog.boundaries.characterization.test.tsx"
+  ],
+  "source": "src/mcp/ui/ElicitationDialog.tsx",
+  "probes": [
+    {
+      "name": "form accept: the gate lets anything through (fail open)",
+      "find": "if (validateRequired() && Object.keys(validationErrors).length === 0) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "form accept: fields in error no longer hold it back (fail open)",
+      "find": "Object.keys(validationErrors).length === 0) {",
+      "replace": "Object.keys(validationErrors).length >= 0) {"
+    },
+    {
+      "name": "form accept: a required field holding the empty string counts as given (fail open)",
+      "find": "if (value_2 === undefined || value_2 === null || value_2 === '') {",
+      "replace": "if (value_2 === undefined || value_2 === null) {"
+    },
+    {
+      "name": "form accept: required fields are ignored (fail open)",
+      "find": "const requiredFields_1 = requestedSchema.required || [];",
+      "replace": "const requiredFields_1: string[] = [];"
+    },
+    {
+      "name": "form accept: the content is dropped",
+      "find": "onResponse('accept', formValues);",
+      "replace": "onResponse('accept', {});"
+    },
+    {
+      "name": "form decline answers accept (fail open)",
+      "find": "onResponse('decline');\n      return;",
+      "replace": "onResponse('accept', formValues);\n      return;"
+    },
+    {
+      "name": "form accept: missing fields are not marked required",
+      "find": "updateValidationError(fieldName_7, 'This field is required');",
+      "replace": "updateValidationError(fieldName_7);"
+    },
+    {
+      "name": "form accept: focus goes to the first field, not the first bad one",
+      "find": "setCurrentFieldIndex(firstBadIndex);",
+      "replace": "setCurrentFieldIndex(0);"
+    },
+    {
+      "name": "form: giving a value no longer clears the required message",
+      "find": "if (value !== undefined && validationErrors[fieldName_0] === 'This field is required') {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "form: the server's cancel answers accept (fail open)",
+      "find": "    const handleAbort = () => {\n      onResponse('cancel');",
+      "replace": "    const handleAbort = () => {\n      onResponse('accept', {});"
+    },
+    {
+      "name": "form: the server's later cancel is not listened for",
+      "find": "    signal.addEventListener('abort', handleAbort);\n    return () => {\n      signal.removeEventListener('abort', handleAbort);",
+      "replace": "    return () => {\n      signal.removeEventListener('abort', handleAbort);"
+    },
+    {
+      "name": "form: Esc on a field answers accept (fail open)",
+      "find": "onResponse('cancel');\n  }, {\n    context: 'Settings',",
+      "replace": "onResponse('accept', formValues);\n  }, {\n    context: 'Settings',"
+    },
+    {
+      "name": "form: Esc or n on a button answers accept (fail open)",
+      "find": "onCancel={() => onResponse('cancel')} isCancelActive={(!currentField",
+      "replace": "onCancel={() => onResponse('accept', formValues)} isCancelActive={(!currentField"
+    },
+    {
+      "name": "form: the dialog's cancel keys stay live inside an open list",
+      "find": "isCancelActive={(!currentField || !!focusedButton) && !expandedAccordion}",
+      "replace": "isCancelActive={!!focusedButton || !currentField || !!expandedAccordion}"
+    },
+    {
+      "name": "text: the checked value is replaced by the raw text",
+      "find": "setField(fieldName_3, validation_0.isValid ? validation_0.value : value_0);",
+      "replace": "setField(fieldName_3, value_0);"
+    },
+    {
+      "name": "text: a failed check leaves no error (fail open)",
+      "find": "updateValidationError(fieldName_3, validation_0.isValid ? undefined : validation_0.error);",
+      "replace": "updateValidationError(fieldName_3);"
+    },
+    {
+      "name": "text: an emptied formatted field is not unset",
+      "find": "if (trimmedValue === '' && (schema_1.type !== 'string' || 'format' in schema_1 && schema_1.format !== undefined)) {",
+      "replace": "if (trimmedValue === '' && schema_1.type !== 'string') {"
+    },
+    {
+      "name": "text: an emptied plain field is unset instead of empty",
+      "find": "setField(fieldName_3, '');",
+      "replace": "unsetField(fieldName_3);"
+    },
+    {
+      "name": "text: a bad default is not flagged at mount (fail open)",
+      "find": "initialErrors[propName_0] = validation.error;",
+      "replace": "void validation;"
+    },
+    {
+      "name": "defaults are not filled in",
+      "find": "initialValues[propName] = propSchema.default;",
+      "replace": "void propSchema;"
+    },
+    {
+      "name": "navigation: Decline drops out of the cycle",
+      "find": "const itemCount = schemaFields.length + 2;",
+      "replace": "const itemCount = schemaFields.length + 1;"
+    },
+    {
+      "name": "a form without fields starts with no button chosen",
+      "find": "useState<'accept' | 'decline' | null>(hasFields ? null : 'accept')",
+      "replace": "useState<'accept' | 'decline' | null>(null)"
+    },
+    {
+      "name": "yes/no: Space always sets yes",
+      "find": "setField(name_0, value_1 === undefined ? true : !value_1);",
+      "replace": "setField(name_0, true);"
+    },
+    {
+      "name": "typeahead: the prefix is kept for a minute",
+      "find": "ta_0.timer = setTimeout(resetTypeahead, 2000, ta_0);",
+      "replace": "ta_0.timer = setTimeout(resetTypeahead, 60000, ta_0);"
+    },
+    {
+      "name": "single choice: Enter takes the first option",
+      "find": "setField(currentField.name, optionValue_2);",
+      "replace": "setField(currentField.name, enumValues[0]!);"
+    },
+    {
+      "name": "single choice: reopening starts on the first option",
+      "find": "startIdx = Math.max(0, vals.indexOf(value_1 as string));",
+      "replace": "startIdx = 0;"
+    },
+    {
+      "name": "multi choice: Space only ticks, never unticks",
+      "find": "const newSelected = selected_0.includes(optionValue) ? selected_0.filter(v => v !== optionValue) : [...selected_0, optionValue];",
+      "replace": "const newSelected = [...selected_0, optionValue];"
+    },
+    {
+      "name": "multi choice: too few ticks raise no error (fail open)",
+      "find": "updateValidationError(currentField.name, `Select at least ${min_0} ${plural(min_0, 'item')}`);",
+      "replace": "updateValidationError(currentField.name);"
+    },
+    {
+      "name": "multi choice: too many ticks raise no error (fail open)",
+      "find": "} else if (max_0 !== undefined && newSelected.length > max_0) {",
+      "replace": "} else if (false) {"
+    },
+    {
+      "name": "multi choice: a required list closed empty is not asked for its minimum",
+      "find": "if (min !== undefined && selected.length < min && (selected.length > 0 || fieldRequired)) {",
+      "replace": "if (min !== undefined && selected.length < min && selected.length > 0) {"
+    },
+    {
+      "name": "multi choice: Enter ticks the focused option twice",
+      "find": "if (optionValue_0 !== undefined && !selected_0.includes(optionValue_0)) {",
+      "replace": "if (optionValue_0 !== undefined) {"
+    },
+    {
+      "name": "multi choice: unticking all keeps an empty list",
+      "find": "const newValue_1 = newSelected.length > 0 ? newSelected : undefined;",
+      "replace": "const newValue_1 = newSelected;"
+    },
+    {
+      "name": "dates: leaving a flagged date does not ask the model",
+      "find": "resolveFieldAsync(currentField.name, currentField.schema, textInputValue);",
+      "replace": "void textInputValue;"
+    },
+    {
+      "name": "dates: the idle wait is a fifth of a second",
+      "find": "}, 2000, dateDebounceRef,",
+      "replace": "}, 200, dateDebounceRef,"
+    },
+    {
+      "name": "url accept: the browser is not opened",
+      "find": "void openBrowser(url);\n    onResponse('accept');",
+      "replace": "onResponse('accept');"
+    },
+    {
+      "name": "url accept: the dialog never starts waiting",
+      "find": "    setPhase('waiting');\n    phaseRef.current = 'waiting';",
+      "replace": "    phaseRef.current = 'waiting';"
+    },
+    {
+      "name": "url decline answers accept (fail open)",
+      "find": "onResponse('decline');\n        }",
+      "replace": "onResponse('accept');\n        }"
+    },
+    {
+      "name": "url: Esc or n answers accept (fail open)",
+      "find": "onCancel={() => onResponse('cancel')} isCancelActive inputGuide={exitState_0",
+      "replace": "onCancel={() => onResponse('accept')} isCancelActive inputGuide={exitState_0"
+    },
+    {
+      "name": "url: the server's cancel answers accept (fail open)",
+      "find": "onResponse('cancel');\n      }\n    };",
+      "replace": "onResponse('accept');\n      }\n    };"
+    },
+    {
+      "name": "url: a completion notice ends the wait before Accept (fail open)",
+      "find": "if (phase === 'waiting' && event.completed) {",
+      "replace": "if (event.completed) {"
+    }
+  ]
+}
