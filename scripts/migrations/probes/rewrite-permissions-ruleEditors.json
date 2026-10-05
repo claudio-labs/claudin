@@ -1,0 +1,252 @@
+{
+  "test": [
+    "src/permissions/ui/rules/AddPermissionRules.characterization.test.tsx",
+    "src/permissions/ui/rules/AddWorkspaceDirectory.characterization.test.tsx",
+    "src/permissions/ui/rules/RemoveWorkspaceDirectory.characterization.test.tsx",
+    "src/permissions/ui/rules/WorkspaceTab.characterization.test.tsx",
+    "src/permissions/ui/rules/RecentDenialsTab.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+  "probes": [
+    {
+      "name": "save: the local destination says it is the project file",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "getRelativeSettingsFilePathForSource('localSettings')",
+      "replace": "getRelativeSettingsFilePathForSource('projectSettings')"
+    },
+    {
+      "name": "save: the user destination names another home",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "description: `Saved in ~/.claudin/settings.json`",
+      "replace": "description: `Saved in ~/.claude/settings.json`"
+    },
+    {
+      "name": "save: the destinations listed in another order",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "t1 = SOURCES.map(optionForPermissionSaveDestination);",
+      "replace": "t1 = [...SOURCES].reverse().map(optionForPermissionSaveDestination);"
+    },
+    {
+      "name": "fail open: every answer saves to the user settings",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "const destination = selectedValue as EditableSettingSource;",
+      "replace": "const destination = \"userSettings\" as EditableSettingSource;"
+    },
+    {
+      "name": "fail open: nothing reaches the settings file",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "persistPermissionUpdate({",
+      "replace": "void ({"
+    },
+    {
+      "name": "fail open: a deny or ask rule is saved to the file as an allow",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "persistPermissionUpdate({\n            type: \"addRules\",\n            rules: ruleValues,\n            behavior: ruleBehavior,",
+      "replace": "persistPermissionUpdate({\n            type: \"addRules\",\n            rules: ruleValues,\n            behavior: \"allow\","
+    },
+    {
+      "name": "fail open: a deny or ask rule enters the session as an allow",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "applyPermissionUpdate(initialContext, {\n            type: \"addRules\",\n            rules: ruleValues,\n            behavior: ruleBehavior,",
+      "replace": "applyPermissionUpdate(initialContext, {\n            type: \"addRules\",\n            rules: ruleValues,\n            behavior: \"allow\","
+    },
+    {
+      "name": "context: the new rules replace the slot instead of joining it",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "applyPermissionUpdate(initialContext, {\n            type: \"addRules\",",
+      "replace": "applyPermissionUpdate(initialContext, {\n            type: \"replaceRules\","
+    },
+    {
+      "name": "context: the caller gets the old context back",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "setToolPermissionContext(updatedContext);",
+      "replace": "setToolPermissionContext(initialContext);"
+    },
+    {
+      "name": "report: the rules are reported under the wrong source",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "            source: destination\n",
+      "replace": "            source: \"localSettings\" as EditableSettingSource\n"
+    },
+    {
+      "name": "unreachable: older unreachable rules are reported as new",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "const newUnreachable = allUnreachable.filter(u => ruleValues.some(rv => rv.toolName === u.rule.ruleValue.toolName && rv.ruleContent === u.rule.ruleValue.ruleContent));",
+      "replace": "const newUnreachable = allUnreachable;"
+    },
+    {
+      "name": "fail open: the sandbox is taken as auto-allowing Bash",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "const sandboxAutoAllowEnabled = SandboxManager.isSandboxingEnabled() && SandboxManager.isAutoAllowBashIfSandboxedEnabled();",
+      "replace": "const sandboxAutoAllowEnabled = true;"
+    },
+    {
+      "name": "show: the title drops the behaviour",
+      "source": "src/permissions/ui/rules/AddPermissionRules.tsx",
+      "find": "const title = `Add ${ruleBehavior} permission ${t3}`;",
+      "replace": "const title = `Add permission ${t3}`;"
+    },
+    {
+      "name": "fail open: a typed directory is remembered",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "onAddDirectory(result.absolutePath, false);",
+      "replace": "onAddDirectory(result.absolutePath, true);"
+    },
+    {
+      "name": "fail open: a missing or covered path is added",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "if (result.resultType === \"success\") {",
+      "replace": "if (result.resultType !== \"emptyPath\") {"
+    },
+    {
+      "name": "refusal: the message is not shown",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "setError(addDirHelpMessage(result));",
+      "replace": "setError(null);"
+    },
+    {
+      "name": "fail open: the session answer remembers the directory",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "onAddDirectory(directoryPath, false);",
+      "replace": "onAddDirectory(directoryPath, true);"
+    },
+    {
+      "name": "answer: remember adds for the session only",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "onAddDirectory(directoryPath, true);",
+      "replace": "onAddDirectory(directoryPath, false);"
+    },
+    {
+      "name": "fail open: No adds the directory",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "case \"no\":\n          {\n            onCancel();",
+      "replace": "case \"no\":\n          {\n            onAddDirectory(directoryPath, false);"
+    },
+    {
+      "name": "fail open: Esc on the answers adds the directory",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "onCancel={() => handleSelect(\"no\")}",
+      "replace": "onCancel={() => handleSelect(\"yes-session\")}"
+    },
+    {
+      "name": "cancel: Esc in the input does nothing",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "useKeybinding(\"confirm:no\", onCancel, t7);",
+      "replace": "useKeybinding(\"confirm:no\", () => {}, t7);"
+    },
+    {
+      "name": "complete: Tab drops the trailing slash",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "const newPath = suggestion.id + \"/\";",
+      "replace": "const newPath = suggestion.id;"
+    },
+    {
+      "name": "complete: a completion keeps the old message",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "      setDirectoryInput(newPath);\n      setError(null);",
+      "replace": "      setDirectoryInput(newPath);"
+    },
+    {
+      "name": "complete: up stops at the first completion",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "setSelectedSuggestion(prev => prev <= 0 ? suggestions.length - 1 : prev - 1);",
+      "replace": "setSelectedSuggestion(prev => prev <= 0 ? 0 : prev - 1);"
+    },
+    {
+      "name": "complete: Ctrl+N is not a move",
+      "source": "src/permissions/ui/rules/AddWorkspaceDirectory.tsx",
+      "find": "if (e.key === \"down\" || e.ctrl && e.key === \"n\") {",
+      "replace": "if (e.key === \"down\") {"
+    },
+    {
+      "name": "remove: no directory is taken out",
+      "source": "src/permissions/ui/rules/RemoveWorkspaceDirectory.tsx",
+      "find": "directories: [directoryPath],",
+      "replace": "directories: [],"
+    },
+    {
+      "name": "fail open: No removes the directory",
+      "source": "src/permissions/ui/rules/RemoveWorkspaceDirectory.tsx",
+      "find": "if (value === \"yes\") {",
+      "replace": "if (value !== \"\") {"
+    },
+    {
+      "name": "fail open: Esc removes the directory",
+      "source": "src/permissions/ui/rules/RemoveWorkspaceDirectory.tsx",
+      "find": "<Select onChange={handleSelect} onCancel={onCancel} options={t5} />",
+      "replace": "<Select onChange={handleSelect} onCancel={handleRemove} options={t5} />"
+    },
+    {
+      "name": "remove: reported before the context is handed over",
+      "source": "src/permissions/ui/rules/RemoveWorkspaceDirectory.tsx",
+      "find": "setPermissionContext(updatedContext);\n      onRemove();",
+      "replace": "onRemove();\n      setPermissionContext(updatedContext);"
+    },
+    {
+      "name": "choice: Add directory no longer asks to add",
+      "source": "src/permissions/ui/rules/WorkspaceTab.tsx",
+      "find": "if (selectedValue === \"add-directory\") {",
+      "replace": "if (selectedValue === \"add-dir\") {"
+    },
+    {
+      "name": "choice: an added directory cannot be removed",
+      "source": "src/permissions/ui/rules/WorkspaceTab.tsx",
+      "find": "if (directory && directory.isDeletable) {",
+      "replace": "if (directory && !directory.isDeletable) {"
+    },
+    {
+      "name": "exit: Esc leaves without the system note",
+      "source": "src/permissions/ui/rules/WorkspaceTab.tsx",
+      "find": "display: \"system\"",
+      "replace": "display: \"user\""
+    },
+    {
+      "name": "list: more than ten rows show",
+      "source": "src/permissions/ui/rules/WorkspaceTab.tsx",
+      "find": "const t7 = Math.min(10, options.length);",
+      "replace": "const t7 = Math.min(20, options.length);"
+    },
+    {
+      "name": "focus: the list answers while the header has the focus",
+      "source": "src/permissions/ui/rules/WorkspaceTab.tsx",
+      "find": "onUpFromFirstItem={focusHeader} isDisabled={headerFocused} />",
+      "replace": "onUpFromFirstItem={focusHeader} isDisabled={false} />"
+    },
+    {
+      "name": "retry: r is not the key",
+      "source": "src/permissions/ui/rules/RecentDenialsTab.tsx",
+      "find": "if (input === \"r\") {",
+      "replace": "if (input === \"t\") {"
+    },
+    {
+      "name": "retry: r on an approved denial withdraws the approval",
+      "source": "src/permissions/ui/rules/RecentDenialsTab.tsx",
+      "find": "if (prev_1.has(focusedIdx)) {\n            return prev_1;\n          }",
+      "replace": "if (prev_1.has(focusedIdx)) {\n            return new Set<number>();\n          }"
+    },
+    {
+      "name": "approve: Enter cannot take an approval back",
+      "source": "src/permissions/ui/rules/RecentDenialsTab.tsx",
+      "find": "if (next.has(idx)) {\n          next.delete(idx);",
+      "replace": "if (next.has(idx)) {\n          next.add(idx);"
+    },
+    {
+      "name": "show: the retry suffix is gone",
+      "source": "src/permissions/ui/rules/RecentDenialsTab.tsx",
+      "find": "const suffix = retry.has(idx_0) ? \" (retry)\" : \"\";",
+      "replace": "const suffix = \"\";"
+    },
+    {
+      "name": "input: the keys are live with nothing listed",
+      "source": "src/permissions/ui/rules/RecentDenialsTab.tsx",
+      "find": "isActive: t8",
+      "replace": "isActive: true"
+    },
+    {
+      "name": "retry: r always marks the first row",
+      "source": "src/permissions/ui/rules/RecentDenialsTab.tsx",
+      "find": "setFocusedIdx(Number(value_0));",
+      "replace": "setFocusedIdx(0);"
+    }
+  ]
+}
