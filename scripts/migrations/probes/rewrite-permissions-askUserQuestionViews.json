@@ -1,0 +1,250 @@
+{
+  "test": [
+    "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.characterization.test.tsx",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.characterization.test.tsx",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+  "probes": [
+    {
+      "name": "QuestionView: multiple choice with previews goes side by side",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "const hasAnyPreview = !question.multiSelect && question.options.some(_temp3);",
+      "replace": "const hasAnyPreview = question.options.some(_temp3);"
+    },
+    {
+      "name": "QuestionView: an empty preview counts as one",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "  return opt_0.preview;\n",
+      "replace": "  return opt_0.preview !== undefined;\n"
+    },
+    {
+      "name": "QuestionView (fail open): Enter on the chat line ends the interview",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        if (footerIndex === 0) {\n          onRespondToClaude();",
+      "replace": "        if (footerIndex !== 0) {\n          onRespondToClaude();"
+    },
+    {
+      "name": "QuestionView (fail open): the skip line reachable outside plan mode",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "if (isInPlanMode && footerIndex === 0) {",
+      "replace": "if (footerIndex === 0) {"
+    },
+    {
+      "name": "QuestionView (fail open): Esc on the footer answers in chat",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "        event.stopImmediatePropagation();\n        onCancel();",
+      "replace": "        event.stopImmediatePropagation();\n        onRespondToClaude();"
+    },
+    {
+      "name": "QuestionView: down past the last row does not reach the footer",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "      setFooterIndex(0);\n      setIsFooterFocused(true);",
+      "replace": "      setFooterIndex(0);\n      setIsFooterFocused(false);"
+    },
+    {
+      "name": "QuestionView (fail open): the list stays live while the footer has the focus",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "isDisabled={isFooterFocused} layout=\"compact-vertical\"",
+      "replace": "isDisabled={false} layout=\"compact-vertical\""
+    },
+    {
+      "name": "QuestionView: the Other text dropped from a single-choice answer",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "onAnswer(questionText, value_1, textInput_0);",
+      "replace": "onAnswer(questionText, value_1, undefined);"
+    },
+    {
+      "name": "QuestionView: the Other marker leaks into a multiple-choice answer",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "  return v !== \"__other__\";",
+      "replace": "  return v !== \"__none__\";"
+    },
+    {
+      "name": "QuestionView (fail open): a multiple-choice toggle moves on",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "onAnswer(questionText, finalValues, undefined, false);",
+      "replace": "onAnswer(questionText, finalValues, undefined, true);"
+    },
+    {
+      "name": "QuestionView: Submit and Next swapped",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "currentQuestionIndex === questions.length - 1 ? \"Submit\" : \"Next\"",
+      "replace": "currentQuestionIndex === questions.length - 1 ? \"Next\" : \"Submit\""
+    },
+    {
+      "name": "QuestionView: the chat line numbered as the Other row",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "const t16 = options.length + 1;",
+      "replace": "const t16 = options.length;"
+    },
+    {
+      "name": "QuestionView: the parent not told the Other row has the focus",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "const isOther = value === \"__other__\";",
+      "replace": "const isOther = value === \"__none__\";"
+    },
+    {
+      "name": "QuestionView: an unchanged editor result recorded anyway",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionView.tsx",
+      "find": "if (result.content !== null && result.content !== currentValue) {\n          setValue(result.content);",
+      "replace": "if (result.content !== null) {\n          setValue(result.content);"
+    },
+    {
+      "name": "PreviewQuestionView (fail open): Enter on the chat line ends the interview",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "        if (footerIndex === 0) {\n          onRespondToClaude();",
+      "replace": "        if (footerIndex !== 0) {\n          onRespondToClaude();"
+    },
+    {
+      "name": "PreviewQuestionView (fail open): the skip line reachable outside plan mode",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "if (isInPlanMode && footerIndex === 0) {",
+      "replace": "if (footerIndex === 0) {"
+    },
+    {
+      "name": "PreviewQuestionView (fail open): leaving the notes answers with nothing chosen",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "    if (selectedValue) {\n      onAnswer(questionText, selectedValue);",
+      "replace": "    if (true) {\n      onAnswer(questionText, selectedValue as string);"
+    },
+    {
+      "name": "PreviewQuestionView (fail open): a digit answers instead of moving the focus",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "        handleNavigate(idx_0);",
+      "replace": "        handleSelectOption(idx_0);"
+    },
+    {
+      "name": "PreviewQuestionView (fail open): Esc on the options answers in chat",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "    } else if (e.key === 'escape') {\n      e.preventDefault();\n      onCancel();",
+      "replace": "    } else if (e.key === 'escape') {\n      e.preventDefault();\n      onRespondToClaude();"
+    },
+    {
+      "name": "PreviewQuestionView: Enter takes the first option, not the focused one",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "      handleSelectOption(focusedIndex);",
+      "replace": "      handleSelectOption(0);"
+    },
+    {
+      "name": "PreviewQuestionView: down from the last option does not reach the footer",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "      if (focusedIndex === allOptions.length - 1) {",
+      "replace": "      if (focusedIndex === allOptions.length) {"
+    },
+    {
+      "name": "PreviewQuestionView: up moves down",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "newIndex = focusedIndex > 0 ? focusedIndex - 1 : focusedIndex;",
+      "replace": "newIndex = focusedIndex > 0 ? focusedIndex + 1 : focusedIndex;"
+    },
+    {
+      "name": "PreviewQuestionView: the parent not told the notes are open",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "      setIsInNotesInput(true);\n      onTextInputFocus(true);",
+      "replace": "      setIsInNotesInput(true);\n      onTextInputFocus(false);"
+    },
+    {
+      "name": "PreviewQuestionView (fail open): Tab switches questions from the footer",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "    isActive: !isInNotesInput && !isFooterFocused",
+      "replace": "    isActive: !isInNotesInput"
+    },
+    {
+      "name": "PreviewQuestionView: the editor opens outside the notes",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "    isActive: isInNotesInput && !!editor",
+      "replace": "    isActive: !!editor"
+    },
+    {
+      "name": "PreviewQuestionView: an unchanged editor result recorded anyway",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "if (result.content !== null && result.content !== currentValue) {",
+      "replace": "if (result.content !== null) {"
+    },
+    {
+      "name": "PreviewQuestionView: coming to a question ignores its recorded choice",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "setFocusedIndex(idx >= 0 ? idx : 0);",
+      "replace": "setFocusedIndex(0);"
+    },
+    {
+      "name": "PreviewQuestionView: the box no longer leaves the gap",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewQuestionView.tsx",
+      "find": "const previewMaxWidth = columns - LEFT_PANEL_WIDTH - GAP;",
+      "replace": "const previewMaxWidth = columns - LEFT_PANEL_WIDTH;"
+    },
+    {
+      "name": "PreviewBox: the minimum width shrunk",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const minWidth = t1 === undefined ? 40 : t1;",
+      "replace": "const minWidth = t1 === undefined ? 30 : t1;"
+    },
+    {
+      "name": "PreviewBox: the default line limit raised",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const effectiveMaxLines = maxLines ?? 20;",
+      "replace": "const effectiveMaxLines = maxLines ?? 25;"
+    },
+    {
+      "name": "PreviewBox: exactly maxLines lines counted as cut",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const isTruncated = contentLines.length > effectiveMaxLines;",
+      "replace": "const isTruncated = contentLines.length >= effectiveMaxLines;"
+    },
+    {
+      "name": "PreviewBox: minHeight not capped by maxLines",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const effectiveMinHeight = Math.min(minHeight ?? 0, effectiveMaxLines);",
+      "replace": "const effectiveMinHeight = minHeight ?? 0;"
+    },
+    {
+      "name": "PreviewBox: minHeight padding dropped",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const lines = paddingNeeded > 0 ? [...truncatedLines, ...Array(paddingNeeded).fill(\"\")] : truncatedLines;",
+      "replace": "const lines = truncatedLines;"
+    },
+    {
+      "name": "PreviewBox: the box no longer capped",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const boxWidth = Math.min(contentWidth + 4, effectiveMaxWidth);",
+      "replace": "const boxWidth = Math.max(contentWidth + 4, effectiveMaxWidth);"
+    },
+    {
+      "name": "PreviewBox: the hidden count off",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const hiddenCount = contentLines.length - effectiveMaxLines;",
+      "replace": "const hiddenCount = contentLines.length;"
+    },
+    {
+      "name": "PreviewBox: long lines not cut",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "const displayLine = lineWidth > innerWidth ? sliceAnsi(line_0, 0, innerWidth) : line_0;",
+      "replace": "const displayLine = line_0;"
+    },
+    {
+      "name": "PreviewBox: the cut bar in the error colour",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "t6 = truncationBar && <Text color=\"warning\">{truncationBar}</Text>;",
+      "replace": "t6 = truncationBar && <Text color=\"error\">{truncationBar}</Text>;"
+    },
+    {
+      "name": "PreviewBox: the settings switch ignored",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "if (settings.syntaxHighlightingDisabled) {",
+      "replace": "if (settings.syntaxHighlightingDisabled && false) {"
+    },
+    {
+      "name": "PreviewBox: markdown not rendered",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "t2 = applyMarkdown(content, theme, highlight);",
+      "replace": "t2 = content;"
+    },
+    {
+      "name": "PreviewBox: the frame no longer dim",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/PreviewBox.tsx",
+      "find": "t4 = <Text dimColor={true}>{topBorder}</Text>;",
+      "replace": "t4 = <Text>{topBorder}</Text>;"
+    }
+  ]
+}
