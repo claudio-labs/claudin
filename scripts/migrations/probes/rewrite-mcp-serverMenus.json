@@ -1,0 +1,228 @@
+{
+  "test": [
+    "src/mcp/ui/MCPRemoteServerMenu.characterization.test.tsx",
+    "src/mcp/ui/MCPRemoteServerMenu.oauth.characterization.test.tsx",
+    "src/mcp/ui/MCPRemoteServerMenu.claudeai.characterization.test.tsx",
+    "src/mcp/ui/MCPStdioServerMenu.characterization.test.tsx",
+    "src/mcp/ui/MCPAgentServerMenu.characterization.test.tsx",
+    "src/mcp/ui/MCPReconnect.characterization.test.tsx",
+    "src/mcp/ui/CapabilitiesSection.characterization.test.tsx",
+    "src/mcp/ui/reconnectHelpers.characterization.test.ts"
+  ],
+  "source": "src/mcp/ui/MCPRemoteServerMenu.tsx",
+  "probes": [
+    {
+      "name": "unmount: an in-flight sign-in is aborted (fail open: callback listener left bound)",
+      "find": "unmountedRef.current = true;\n    authAbortControllerRef.current?.abort();",
+      "replace": "unmountedRef.current = true;"
+    },
+    {
+      "name": "Esc during sign-in aborts it (fail open: listener left bound)",
+      "find": "() => {\n    authAbortControllerRef.current?.abort();\n    authAbortControllerRef.current = null;\n    setIsAuthenticating(false);",
+      "replace": "() => {\n    authAbortControllerRef.current = null;\n    setIsAuthenticating(false);"
+    },
+    {
+      "name": "a cancelled sign-in shows no error",
+      "find": "!(err_1 instanceof AuthenticationCancelledError)",
+      "replace": "true"
+    },
+    {
+      "name": "re-authenticate revokes the old tokens first (fail open: old tokens stay live)",
+      "find": "if (server.isAuthenticated && server.config) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "re-authenticate keeps the step-up state",
+      "find": "preserveStepUpState: true",
+      "replace": "preserveStepUpState: false"
+    },
+    {
+      "name": "clear authentication revokes at the server and drops local tokens (fail open)",
+      "find": "      await revokeServerTokens(server.name, server.config);\n",
+      "replace": ""
+    },
+    {
+      "name": "clear authentication drops the server's tools",
+      "find": "const newTools_0 = excludeToolsByServer(prev_0.mcp.tools, server.name);",
+      "replace": "const newTools_0 = prev_0.mcp.tools;"
+    },
+    {
+      "name": "clear authentication drops the server's prompts",
+      "find": "const newCommands_0 = excludeCommandsByServer(prev_0.mcp.commands, server.name);",
+      "replace": "const newCommands_0 = prev_0.mcp.commands;"
+    },
+    {
+      "name": "clear authentication drops the server's resources",
+      "find": "const newResources_0 = excludeResourcesByServer(prev_0.mcp.resources, server.name);",
+      "replace": "const newResources_0 = prev_0.mcp.resources;"
+    },
+    {
+      "name": "connected with tools counts as signed in",
+      "find": "server.isAuthenticated || server.client.type === 'connected' && serverToolsCount > 0",
+      "replace": "server.isAuthenticated"
+    },
+    {
+      "name": "the pasted callback URL completes the sign-in",
+      "find": "manualCallbackSubmit(value.trim());",
+      "replace": "void value;"
+    },
+    {
+      "name": "a first sign-in says Connected, a second Reconnected",
+      "find": "`Authentication successful. Reconnected to ${server.name}.` : `Authentication successful. Connected to ${server.name}.`",
+      "replace": "`Authentication successful. Connected to ${server.name}.` : `Authentication successful. Connected to ${server.name}.`"
+    },
+    {
+      "name": "after a sign-in, a server still refusing is reported",
+      "find": "} else if (result_0.client.type === 'needs-auth') {",
+      "replace": "} else if (false) {"
+    },
+    {
+      "name": "copy: one copy while the note shows",
+      "find": "if (input === 'c' && !urlCopied) {",
+      "replace": "if (input === 'c') {"
+    },
+    {
+      "name": "copy: the note goes after 2 s",
+      "find": "copyTimeoutRef.current = setTimeout(setUrlCopied, 2000, false);",
+      "replace": ""
+    },
+    {
+      "name": "claude.ai: mcprs ids become mcpsrv",
+      "find": "'mcpsrv' + server.config.id.slice(5)",
+      "replace": "server.config.id"
+    },
+    {
+      "name": "claude.ai: the surface is URL-encoded",
+      "find": "encodeURIComponent(process.env.CLAUDE_CODE_ENTRYPOINT || 'cli')",
+      "replace": "(process.env.CLAUDE_CODE_ENTRYPOINT || 'cli')"
+    },
+    {
+      "name": "claude.ai: the start-auth page needs an organization",
+      "find": "if (orgUuid && server.config.type === 'claudeai-proxy' && server.config.id) {",
+      "replace": "if (server.config.type === 'claudeai-proxy' && server.config.id) {"
+    },
+    {
+      "name": "claude.ai: sign-out opens the browser before clearing (fail open: clears on first Enter)",
+      "find": "if (claudeAIClearAuthBrowserOpened) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "claude.ai: sign-out leaves the connector needing auth",
+      "find": "type: 'needs-auth' as const",
+      "replace": "type: 'connected' as const"
+    },
+    {
+      "name": "claude.ai: sign-out drops the connector's tools",
+      "find": "const newTools = excludeToolsByServer(prev.mcp.tools, server.name);",
+      "replace": "const newTools = prev.mcp.tools;"
+    },
+    {
+      "name": "claude.ai: sign-in success message",
+      "find": "onComplete?.(`Authentication successful. Connected to ${server.name}.`);",
+      "replace": "onComplete?.(`Signed in to ${server.name}.`);"
+    },
+    {
+      "name": "claude.ai: a disabled connector offers no Authenticate",
+      "find": "} else if (server.client.type !== 'disabled') {\n      menuOptions.push({\n        label: 'Authenticate',\n        value: 'claudeai-auth'",
+      "replace": "} else {\n      menuOptions.push({\n        label: 'Authenticate',\n        value: 'claudeai-auth'"
+    },
+    {
+      "name": "remote: no Reconnect while it needs auth",
+      "find": "if (server.client.type !== 'needs-auth') {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "remote: no Auth line for claude.ai",
+      "find": "{server.transport !== 'claudeai-proxy' && <Box>",
+      "replace": "{true && <Box>"
+    },
+    {
+      "name": "remote: a failed switch names the direction",
+      "find": "const action = wasEnabled ? 'disable' : 'enable';",
+      "replace": "const action = 'disable';"
+    },
+    {
+      "name": "remote: reconnect spinner text",
+      "find": "Establishing connection to MCP server</Text>",
+      "replace": "Connecting</Text>"
+    },
+    {
+      "name": "stdio: a disabled server hides View tools",
+      "find": "if (server.client.type !== 'disabled' && serverToolsCount > 0) {",
+      "replace": "if (serverToolsCount > 0) {",
+      "source": "src/mcp/ui/MCPStdioServerMenu.tsx"
+    },
+    {
+      "name": "stdio: config location comes from the configured scope",
+      "find": "getMcpConfigByName(server.name)?.scope ?? 'dynamic'",
+      "replace": "'dynamic'",
+      "source": "src/mcp/ui/MCPStdioServerMenu.tsx"
+    },
+    {
+      "name": "stdio: a switch goes back to the list",
+      "find": "      onCancel();\n    } catch (err) {",
+      "replace": "    } catch (err) {",
+      "source": "src/mcp/ui/MCPStdioServerMenu.tsx"
+    },
+    {
+      "name": "stdio: no Args line for empty args",
+      "find": "server.config.args && server.config.args.length > 0 &&",
+      "replace": "server.config.args &&",
+      "source": "src/mcp/ui/MCPStdioServerMenu.tsx"
+    },
+    {
+      "name": "stdio: reconnect spinner text",
+      "find": "Restarting MCP server process",
+      "replace": "Restarting",
+      "source": "src/mcp/ui/MCPStdioServerMenu.tsx"
+    },
+    {
+      "name": "stdio: resources counted by server name",
+      "find": "mcp.resources[server.name]?.length || 0",
+      "replace": "0",
+      "source": "src/mcp/ui/MCPStdioServerMenu.tsx"
+    },
+    {
+      "name": "agent: unmount aborts the sign-in (fail open)",
+      "find": "useEffect(() => () => authAbortControllerRef.current?.abort(), []);",
+      "replace": "useEffect(() => () => {}, []);",
+      "source": "src/mcp/ui/MCPAgentServerMenu.tsx"
+    },
+    {
+      "name": "agent: Esc aborts the sign-in (fail open)",
+      "find": "      authAbortControllerRef.current?.abort();\n      authAbortControllerRef.current = null;\n      setIsAuthenticating(false);",
+      "replace": "      authAbortControllerRef.current = null;\n      setIsAuthenticating(false);",
+      "source": "src/mcp/ui/MCPAgentServerMenu.tsx"
+    },
+    {
+      "name": "agent: sign-in uses the server's own transport",
+      "find": "type: agentServer.transport as 'http' | 'sse',",
+      "replace": "type: 'http' as 'http' | 'sse',",
+      "source": "src/mcp/ui/MCPAgentServerMenu.tsx"
+    },
+    {
+      "name": "agent: Re-authenticate label when signed in",
+      "find": "agentServer.isAuthenticated ? 'Re-authenticate' : 'Authenticate'",
+      "replace": "'Authenticate'",
+      "source": "src/mcp/ui/MCPAgentServerMenu.tsx"
+    },
+    {
+      "name": "reconnect verdict: connected is a success",
+      "find": "        success: true",
+      "replace": "        success: false",
+      "source": "src/mcp/ui/reconnectHelpers.tsx"
+    },
+    {
+      "name": "reconnect screen: an unlisted server is reported, not dialled",
+      "find": "if (!server) {",
+      "replace": "if (false) {",
+      "source": "src/mcp/ui/MCPReconnect.tsx"
+    },
+    {
+      "name": "capabilities: resources before prompts",
+      "find": "capabilities.push(\"resources\");",
+      "replace": "capabilities.push(\"prompts\");",
+      "source": "src/mcp/ui/CapabilitiesSection.tsx"
+    }
+  ]
+}
