@@ -1,0 +1,242 @@
+{
+  "test": [
+    "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.characterization.test.tsx",
+    "src/permissions/ui/FileEditPermissionRequest/FileEditPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/FileWritePermissionRequest/FileWritePermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/FilesystemPermissionRequest/FilesystemPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/NotebookEditPermissionRequest/NotebookEditPermissionRequest.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/FilePermissionDialog/usePermissionHandler.ts",
+  "probes": [
+    {
+      "name": "handler: Yes fails open, granting bypass for the session",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], options?.feedback)",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [{ type: 'setMode', mode: 'bypassPermissions', destination: 'session' }], options?.feedback)"
+    },
+    {
+      "name": "handler: Yes drops the note",
+      "find": "toolUseConfirm.onAllow(toolUseConfirm.input, [], options?.feedback)",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [])"
+    },
+    {
+      "name": "handler: Yes fails open, answered as the session option",
+      "find": "'accept-once': handleAcceptOnce,",
+      "replace": "'accept-once': handleAcceptSession,"
+    },
+    {
+      "name": "handler: the own-settings grant is saved to the local settings, not the session",
+      "find": "destination: 'session',",
+      "replace": "destination: 'localSettings',"
+    },
+    {
+      "name": "handler: the own-settings grant fails open to every file",
+      "find": "ruleContent: pattern,",
+      "replace": "ruleContent: '/**',"
+    },
+    {
+      "name": "handler: a read's session option fails open to the write grant",
+      "find": "generateSuggestions(path, operationType, toolPermissionContext)",
+      "replace": "generateSuggestions(path, 'write', toolPermissionContext)"
+    },
+    {
+      "name": "handler: the session option fails open, adding bypass",
+      "find": "  // Pass permission updates directly to onAllow\n  toolUseConfirm.onAllow(toolUseConfirm.input, suggestions)",
+      "replace": "  toolUseConfirm.onAllow(toolUseConfirm.input, [...suggestions, { type: 'setMode', mode: 'bypassPermissions', destination: 'session' }])"
+    },
+    {
+      "name": "handler: No fails open",
+      "find": "toolUseConfirm.onReject(options?.feedback)",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [])"
+    },
+    {
+      "name": "handler: No drops the note",
+      "find": "toolUseConfirm.onReject(options?.feedback)",
+      "replace": "toolUseConfirm.onReject()"
+    },
+    {
+      "name": "handler: No skips the caller's reject",
+      "find": "  onDone()\n  onReject()\n",
+      "replace": "  onDone()\n"
+    },
+    {
+      "name": "hook: the allow reports the raw input, not the parsed one",
+      "source": "src/permissions/ui/FilePermissionDialog/useFilePermissionDialog.ts",
+      "find": "originalOnAllow(input, permissionUpdates, feedback)",
+      "replace": "originalOnAllow(_input, permissionUpdates, feedback)"
+    },
+    {
+      "name": "hook: the own-settings scope is dropped, failing open to accept-edits",
+      "source": "src/permissions/ui/FilePermissionDialog/useFilePermissionDialog.ts",
+      "find": "scope: option.type === 'accept-session' ? option.scope : undefined,",
+      "replace": "scope: undefined,"
+    },
+    {
+      "name": "hook: an empty Yes note stays open when moving away",
+      "source": "src/permissions/ui/FilePermissionDialog/useFilePermissionDialog.ts",
+      "find": "if (value !== 'yes' && yesInputMode && !acceptFeedback.trim()) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "options: a read in .claudin fails open to the own-settings grant",
+      "source": "src/permissions/ui/FilePermissionDialog/permissionOptions.tsx",
+      "find": "(inClaudeFolder || inGlobalClaudeFolder) && operationType !== 'read'",
+      "replace": "(inClaudeFolder || inGlobalClaudeFolder)"
+    },
+    {
+      "name": "options: the config-home scope becomes the project scope",
+      "source": "src/permissions/ui/FilePermissionDialog/permissionOptions.tsx",
+      "find": "scope: inGlobalClaudeFolder ? 'global-claude-folder' : 'claude-folder'",
+      "replace": "scope: 'claude-folder'"
+    },
+    {
+      "name": "options: a look-alike folder fails open to the own-settings grant",
+      "source": "src/permissions/ui/FilePermissionDialog/permissionOptions.tsx",
+      "find": "normalizedAbsolutePath.startsWith(normalizedClaudeFolderPath + sep.toLowerCase()) ||",
+      "replace": "normalizedAbsolutePath.startsWith(normalizedClaudeFolderPath) ||"
+    },
+    {
+      "name": "options: the config home is taken to be ~/.claudin",
+      "source": "src/permissions/ui/FilePermissionDialog/permissionOptions.tsx",
+      "find": "const globalClaudeFolderPath = getClaudinConfigHomeDir();",
+      "replace": "const globalClaudeFolderPath = expandPath('~/.claudin');"
+    },
+    {
+      "name": "options: every path counts as inside",
+      "source": "src/permissions/ui/FilePermissionDialog/permissionOptions.tsx",
+      "find": "if (inAllowedPath) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "dialog: Esc fails open",
+      "source": "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx",
+      "find": "onCancel={() => onChange({\n          type: 'reject'\n        })}",
+      "replace": "onCancel={() => onChange({\n          type: 'accept-once'\n        })}"
+    },
+    {
+      "name": "dialog: the No note is dropped",
+      "source": "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx",
+      "find": "const trimmedFeedback = rejectFeedback.trim();",
+      "replace": "const trimmedFeedback = '';"
+    },
+    {
+      "name": "dialog: a read through a link gets the symlink warning",
+      "source": "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx",
+      "find": "if (!path || operationType === 'read') {",
+      "replace": "if (!path) {"
+    },
+    {
+      "name": "dialog: the IDE diff is never offered",
+      "source": "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx",
+      "find": "if (showingDiffInIDE && ideDiffConfig && path) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "dialog: what was saved in the IDE is ignored",
+      "source": "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx",
+      "find": "ideDiffSupport!.applyChanges(parsedInput, input.edits)",
+      "replace": "parsedInput"
+    },
+    {
+      "name": "dialog: an IDE save fails open to the session option",
+      "source": "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx",
+      "find": "fileDialogResult.onChange(option, transformedInput);",
+      "replace": "fileDialogResult.onChange({ type: 'accept-session' }, transformedInput);"
+    },
+    {
+      "name": "dialog: a terminal answer leaves the IDE tab open",
+      "source": "src/permissions/ui/FilePermissionDialog/FilePermissionDialog.tsx",
+      "find": "closeTabInIDE?.();",
+      "replace": "void 0;"
+    },
+    {
+      "name": "edit: the IDE's text is replaced by the request's",
+      "source": "src/permissions/ui/FileEditPermissionRequest/FileEditPermissionRequest.tsx",
+      "find": "old_string: firstEdit.old_string,",
+      "replace": "old_string: input.old_string,"
+    },
+    {
+      "name": "edit: the IDE proposal always replaces every match",
+      "source": "src/permissions/ui/FileEditPermissionRequest/FileEditPermissionRequest.tsx",
+      "find": "input.new_string, input.replace_all)",
+      "replace": "input.new_string, true)"
+    },
+    {
+      "name": "edit: the grant fails open to the filesystem root",
+      "source": "src/permissions/ui/FileEditPermissionRequest/FileEditPermissionRequest.tsx",
+      "find": "path={file_path} completionType=\"str_replace_single\"",
+      "replace": "path={\"/\"} completionType=\"str_replace_single\""
+    },
+    {
+      "name": "write: create and overwrite swapped in the question",
+      "source": "src/permissions/ui/FileWritePermissionRequest/FileWritePermissionRequest.tsx",
+      "find": "const actionText = fileExists ? \"overwrite\" : \"create\";",
+      "replace": "const actionText = fileExists ? \"create\" : \"overwrite\";"
+    },
+    {
+      "name": "write: the IDE's text is replaced by the request's",
+      "source": "src/permissions/ui/FileWritePermissionRequest/FileWritePermissionRequest.tsx",
+      "find": "content: firstEdit.new_string",
+      "replace": "content: input.content"
+    },
+    {
+      "name": "write: the grant fails open to the filesystem root",
+      "source": "src/permissions/ui/FileWritePermissionRequest/FileWritePermissionRequest.tsx",
+      "find": "path={file_path} completionType=\"write_file_single\"",
+      "replace": "path={\"/\"} completionType=\"write_file_single\""
+    },
+    {
+      "name": "write diff: hunks run together",
+      "source": "src/permissions/ui/FileWritePermissionRequest/FileWriteToolDiff.tsx",
+      "find": "<Text dimColor={true}>...</Text>",
+      "replace": "<Text dimColor={true}>~~~</Text>"
+    },
+    {
+      "name": "write diff: a new file is shown as a diff",
+      "source": "src/permissions/ui/FileWritePermissionRequest/FileWriteToolDiff.tsx",
+      "find": "if (!fileExists) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "filesystem: a read fails open to the edit grant",
+      "source": "src/permissions/ui/FilesystemPermissionRequest/FilesystemPermissionRequest.tsx",
+      "find": "const t5 = isReadOnly ? \"read\" : \"write\";",
+      "replace": "const t5 = \"write\";"
+    },
+    {
+      "name": "filesystem: no fallback when the tool gives no path",
+      "source": "src/permissions/ui/FilesystemPermissionRequest/FilesystemPermissionRequest.tsx",
+      "find": "if (!path) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "notebook: insert is worded as an edit",
+      "source": "src/permissions/ui/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx",
+      "find": "\"insert this cell into\"",
+      "replace": "\"make this edit to\""
+    },
+    {
+      "name": "notebook: the grant fails open to the filesystem root",
+      "source": "src/permissions/ui/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx",
+      "find": "path={notebook_path} completionType=\"tool_use_single\"",
+      "replace": "path={\"/\"} completionType=\"tool_use_single\""
+    },
+    {
+      "name": "notebook diff: a delete shows the new source",
+      "source": "src/permissions/ui/NotebookEditPermissionRequest/NotebookEditToolDiff.tsx",
+      "find": "<HighlightedCode code={oldSource} filePath={notebook_path} />",
+      "replace": "<HighlightedCode code={new_source} filePath={notebook_path} />"
+    },
+    {
+      "name": "notebook diff: cell-N ids are not read as indexes",
+      "source": "src/permissions/ui/NotebookEditPermissionRequest/NotebookEditToolDiff.tsx",
+      "find": "const cellIndex = parseCellId(cell_id);",
+      "replace": "const cellIndex = undefined;"
+    },
+    {
+      "name": "IDE config: edits rebuilt region by region",
+      "source": "src/permissions/ui/FilePermissionDialog/ideDiffConfig.ts",
+      "find": "editMode: 'single',",
+      "replace": "editMode: 'multiple',"
+    }
+  ]
+}
