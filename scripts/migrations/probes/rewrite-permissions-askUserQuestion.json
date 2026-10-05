@@ -1,0 +1,222 @@
+{
+  "test": [
+    "src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.characterization.test.tsx",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.characterization.test.tsx",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.characterization.test.tsx",
+    "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx",
+  "probes": [
+    {
+      "name": "height: the minimum content height",
+      "find": "const MIN_CONTENT_HEIGHT = 12;",
+      "replace": "const MIN_CONTENT_HEIGHT = 14;"
+    },
+    {
+      "name": "width: the minimum preview width",
+      "find": "const MIN_CONTENT_WIDTH = 40;",
+      "replace": "const MIN_CONTENT_WIDTH = 30;"
+    },
+    {
+      "name": "height: a plain question's height",
+      "find": "maxHeight = Math.max(maxHeight, q.options.length + 3 + 7);",
+      "replace": "maxHeight = Math.max(maxHeight, q.options.length + 3 + 5);"
+    },
+    {
+      "name": "width: preview lines no longer widen the box",
+      "find": "maxWidth = Math.max(maxWidth, stringWidth(line));",
+      "replace": "maxWidth = Math.max(maxWidth, 0);"
+    },
+    {
+      "name": "cancel: the request is never told",
+      "find": "      onReject();\n      toolUseConfirm.onReject();\n",
+      "replace": "      onReject();\n"
+    },
+    {
+      "name": "cancel fails open: the request is allowed",
+      "find": "      toolUseConfirm.onReject();\n    };\n    $[25] = isInPlanMode;",
+      "replace": "      toolUseConfirm.onAllow(toolUseConfirm.input, []);\n    };\n    $[25] = isInPlanMode;"
+    },
+    {
+      "name": "submit: the user's answers are dropped",
+      "find": "answers: answersToSubmit,",
+      "replace": "answers: {},"
+    },
+    {
+      "name": "submit: the model's fields are dropped",
+      "find": "...toolUseConfirm.input,",
+      "replace": "questions: [],"
+    },
+    {
+      "name": "submit: the image blocks are dropped",
+      "find": "toolUseConfirm.onAllow(updatedInput, [], undefined, contentBlocks && contentBlocks.length > 0 ? contentBlocks : undefined);",
+      "replace": "toolUseConfirm.onAllow(updatedInput, [], undefined, undefined);"
+    },
+    {
+      "name": "submit: the caller is not told",
+      "find": "      const contentBlocks = await convertImagesToBlocks(allImageAttachments);\n      onDone();\n",
+      "replace": "      const contentBlocks = await convertImagesToBlocks(allImageAttachments);\n"
+    },
+    {
+      "name": "annotations: the preview is left out",
+      "find": "...(preview && {\n              preview\n            }),",
+      "replace": ""
+    },
+    {
+      "name": "annotations: notes are not trimmed",
+      "find": "notes: notes.trim()",
+      "replace": "notes: notes"
+    },
+    {
+      "name": "annotations: blank notes count",
+      "find": "if (preview || notes?.trim()) {",
+      "replace": "if (preview || notes !== undefined) {"
+    },
+    {
+      "name": "annotations: always sent, even empty",
+      "find": "Object.keys(annotations).length > 0",
+      "replace": "true"
+    },
+    {
+      "name": "multi-choice: labels joined without a space",
+      "find": "answer_2 = label.join(\", \");",
+      "replace": "answer_2 = label.join(\",\");"
+    },
+    {
+      "name": "Other: an image is not mentioned after the text",
+      "find": "`${textInput} (Image attached)`",
+      "replace": "textInput"
+    },
+    {
+      "name": "Other: an image alone sends the placeholder value",
+      "find": "? \"(Image attached)\" : label",
+      "replace": "? label : label"
+    },
+    {
+      "name": "one question: no longer answers at once",
+      "find": "if (!isMultiSelect && isSingleQuestion && shouldAdvance) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "review Cancel fails open: it submits",
+      "find": "if (value === \"cancel\") {\n        handleCancel();",
+      "replace": "if (value === \"cancel\") {\n        submitAnswers(answers).catch(logError);"
+    },
+    {
+      "name": "chat fails open: the request is allowed",
+      "find": "toolUseConfirm.onReject(feedback, ",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback, "
+    },
+    {
+      "name": "skip interview fails open: the request is allowed",
+      "find": "toolUseConfirm.onReject(feedback_0, ",
+      "replace": "toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback_0, "
+    },
+    {
+      "name": "chat message: answers lose their label",
+      "find": "  Answer: ${answer}`;",
+      "replace": "  ${answer}`;"
+    },
+    {
+      "name": "one single-choice question gets a Submit tab",
+      "find": "const hideSubmitTab = questions.length === 1 && !questions[0]?.multiSelect;",
+      "replace": "const hideSubmitTab = false;"
+    },
+    {
+      "name": "tabs: previous moves forward",
+      "find": "        prevQuestion();\n",
+      "replace": "        nextQuestion();\n"
+    },
+    {
+      "name": "tabs: next past the review",
+      "find": "if (currentQuestionIndex < maxIndex) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "tabs: a lone question can reach the review",
+      "find": "const maxIndex = hideSubmitTab ? (questions?.length || 1) - 1 : questions?.length || 0;",
+      "replace": "const maxIndex = questions?.length || 0;"
+    },
+    {
+      "name": "tabs: active while typing in Other",
+      "find": "const t21 = !(isInTextInput && !isInSubmitView);",
+      "replace": "const t21 = true;"
+    },
+    {
+      "name": "review: any answer counts as all answered",
+      "find": "questions?.every(",
+      "replace": "questions?.some("
+    },
+    {
+      "name": "images: only the first image is sent",
+      "find": "Object.values(pastedContentsByQuestion).flatMap(_temp2).filter(_temp3);",
+      "replace": "Object.values(pastedContentsByQuestion).flatMap(_temp2).filter(_temp3).slice(0, 1);"
+    },
+    {
+      "name": "state: previous goes below the first question",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts",
+      "find": "currentQuestionIndex: Math.max(0, state.currentQuestionIndex - 1),",
+      "replace": "currentQuestionIndex: state.currentQuestionIndex - 1,"
+    },
+    {
+      "name": "state: an update does not replace the text",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts",
+      "find": "action.updates.textInputValue ?? existing?.textInputValue ?? ''",
+      "replace": "existing?.textInputValue ?? action.updates.textInputValue ?? ''"
+    },
+    {
+      "name": "state: answers always move on",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/use-multiple-choice-state.ts",
+      "find": "if (action.shouldAdvance) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "tabs: the Submit tab takes no room",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx",
+      "find": "const submitText = hideSubmitTab ? \"\" : ` ${figures.tick} Submit `;",
+      "replace": "const submitText = \"\";"
+    },
+    {
+      "name": "tabs: the current tab is not capped at half",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx",
+      "find": "const currentTabWidth = Math.min(currentIdealWidth, availableForTabs / 2);",
+      "replace": "const currentTabWidth = currentIdealWidth;"
+    },
+    {
+      "name": "tabs: an unanswered question is ticked",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx",
+      "find": "const isAnswered = q_1?.question && !!answers[q_1.question];",
+      "replace": "const isAnswered = !!q_1?.question;"
+    },
+    {
+      "name": "tabs: the left arrow is dimmed on the second tab",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx",
+      "find": "<Text color={currentQuestionIndex === 0 ? \"inactive\" : undefined}>",
+      "replace": "<Text color={currentQuestionIndex === 1 ? \"inactive\" : undefined}>"
+    },
+    {
+      "name": "review: the warning shows when all are answered",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "t4 = !allQuestionsAnswered && <Box",
+      "replace": "t4 = allQuestionsAnswered && <Box"
+    },
+    {
+      "name": "review: unanswered questions are listed",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "questions.filter(q => q?.question && answers[q.question])",
+      "replace": "questions.filter(q => q?.question)"
+    },
+    {
+      "name": "review Cancel fails open: its value is submit",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "label: \"Cancel\",\n      value: \"cancel\"",
+      "replace": "label: \"Cancel\",\n      value: \"submit\""
+    },
+    {
+      "name": "review Esc fails open: it submits",
+      "source": "src/permissions/ui/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx",
+      "find": "onCancel={() => onFinalResponse(\"cancel\")}",
+      "replace": "onCancel={() => onFinalResponse(\"submit\")}"
+    }
+  ]
+}
