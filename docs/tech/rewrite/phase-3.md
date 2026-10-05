@@ -56,7 +56,7 @@ which the sandbox tools read. The lists below are the same.
 | `mcp/elicitationDialog` | 1 | 1105 | — | pending |
 | `mcp/settingsUi` | 5 | 1258 | — | pending |
 | `mcp/serverMenus` | 6 | 1075 | — | pending |
-| `mcp/approvalDialogs` | 5 | 412 | — | pending |
+| `mcp/approvalDialogs` | 5 | 412 | — | done |
 | `permissions/ruleModel` | 8 | 910 | — | done |
 | `permissions/decision` | 6 | 1026 | — | done |
 | `permissions/shellRules` | 5 | 711 | — | done |

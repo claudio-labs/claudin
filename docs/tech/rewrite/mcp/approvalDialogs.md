@@ -246,3 +246,23 @@ resources, and that all tool calls require approval, with a link labelled
 - **The import** is a pure planner (names, existing names, selection → `{ name, finalName }[]`) and an executor. The executor collects per-server failures, and the view prints one summary and ends the process once (Findings, 6). Clashing rows are deselected once the existing names arrive (Findings, 7).
 - **The copy** is one component with the project's own link.
 - **Types.** An explicit answer union, no `any`, and props types exported for the callers.
+
+## Outcome
+
+Rewritten per method on 2026-10-05.
+
+- **Code.** The five files are plain hand-written React over three modules in `src/mcp/approval/`:
+  - `answer.ts`, the one answer model and its writer over a `readLocalLists`/`writeLocalLists` port;
+  - `pending.ts`, `pendingProjectServers` with its dependencies injected;
+  - `desktopImport.ts`, the import planner and executor.
+
+  The four characterization suites pass unchanged.
+- **Fixes, each with a test** (`approval/approval.fixes.test.ts`, `ui/approvalDialogs.fixes.test.tsx`).
+  - **2.** An answer appends to the local file's own list only, so a repository's self-approval stops counting once a later commit removes it.
+  - **6.** A refused server is reported on stderr with its reason, the others are imported, the count is printed, and the process ends with code 1.
+  - **7.** Clashing rows are unticked once the clashes are known; the user's other ticks are kept.
+  - **8 (link).** The copy links to `https://www.claudiolabs.ai/docs/mcp`.
+- **Also.** Each dialog answers once: a second key after the answer does nothing (three tests). An import that repeats a name renames each repeat (`github_1`, then `github_1_1`).
+- **Kept.** Findings 1, 3, 4, 5, the wording of 8, and 9; 3 and 9 stay tracked.
+- **Probes.** 67 in `rewrite-mcp-approvalDialogs.json`, every reject, cancel and default path mutated to fail open; proved in a worktree of the branch.
+- **Residue, reviewed.** 4 lines of Claude Code remain: two settings field names in `answer.ts` (`enabledMcpjsonServers`, `disabledMcpjsonServers`), and two key-hint lines in the import dialog's byline.
