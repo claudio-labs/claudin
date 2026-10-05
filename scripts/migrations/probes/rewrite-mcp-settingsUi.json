@@ -1,0 +1,253 @@
+{
+  "test": [
+    "src/mcp/ui/MCPSettings.characterization.test.tsx",
+    "src/mcp/ui/MCPSettings.actions.characterization.test.tsx",
+    "src/mcp/ui/MCPListPanel.characterization.test.tsx",
+    "src/mcp/ui/McpParsingWarnings.characterization.test.tsx",
+    "src/mcp/ui/MCPToolListView.characterization.test.tsx",
+    "src/mcp/ui/MCPToolDetailView.characterization.test.tsx"
+  ],
+  "source": "src/mcp/ui/MCPSettings.tsx",
+  "probes": [
+    {
+      "name": "settings: the IDE client is listed (fail open)",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "return client.name !== \"ide\";",
+      "replace": "return true;"
+    },
+    {
+      "name": "settings: the empty message fires while clients are still being prepared",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "if (servers.length === 0 && filteredClients.length > 0) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "settings: agent-only servers no longer keep the panel open",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "if (servers.length === 0 && agentMcpServers.length === 0) {",
+      "replace": "if (servers.length === 0) {"
+    },
+    {
+      "name": "auth: every remote server counts as signed in (fail open)",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "isAuthenticated = Boolean(tokens) || hasSessionAuth || hasToolsAndConnected;",
+      "replace": "isAuthenticated = true;"
+    },
+    {
+      "name": "auth: a stored OAuth token is ignored",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "isAuthenticated = Boolean(tokens) || hasSessionAuth || hasToolsAndConnected;",
+      "replace": "isAuthenticated = hasSessionAuth || hasToolsAndConnected;"
+    },
+    {
+      "name": "auth: a session token counts even for a server that is not connected (fail open)",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "const hasSessionAuth = getSessionIngressAuthToken() !== null && client_0.type === \"connected\";",
+      "replace": "const hasSessionAuth = getSessionIngressAuthToken() !== null;"
+    },
+    {
+      "name": "transport: an SSE server is treated as stdio",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "const isSSE = client_0.config.type === \"sse\";",
+      "replace": "const isSSE = false;"
+    },
+    {
+      "name": "stdio menu: leaving it (Esc, or after a switch) no longer returns to the list",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "type: \"list\",\n              defaultTab\n            });\n            $[28] = defaultTab;",
+      "replace": "type: \"server-tools\",\n              server: viewState.server\n            });\n            $[28] = defaultTab;"
+    },
+    {
+      "name": "remote menu: leaving it (Esc, or after a switch) no longer returns to the list",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "type: \"list\",\n              defaultTab\n            });\n            $[38] = defaultTab;",
+      "replace": "type: \"server-tools\",\n              server: viewState.server\n            });\n            $[38] = defaultTab;"
+    },
+    {
+      "name": "stdio menu: the reconnect outcome never reaches the caller",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "onComplete={onComplete} />;\n            $[30] = onComplete;",
+      "replace": "onComplete={() => {}} />;\n            $[30] = onComplete;"
+    },
+    {
+      "name": "remote menu: the reconnect outcome never reaches the caller",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "onComplete={onComplete} />;\n            $[40] = onComplete;",
+      "replace": "onComplete={() => {}} />;\n            $[40] = onComplete;"
+    },
+    {
+      "name": "tools: the chosen tool index is dropped",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "toolIndex: index",
+      "replace": "toolIndex: 0"
+    },
+    {
+      "name": "tools: a tool that left the pool is replaced by the first one",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "const tool = serverTools[viewState.toolIndex];",
+      "replace": "const tool = serverTools[viewState.toolIndex] ?? serverTools[0];"
+    },
+    {
+      "name": "agent menu: leaving it does nothing",
+      "source": "src/mcp/ui/MCPSettings.tsx",
+      "find": "t9 = () => setViewState({\n            type: \"list\",\n            defaultTab: \"Agents\"\n          });",
+      "replace": "t9 = () => {};"
+    },
+    {
+      "name": "list: groups come in another order",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "const SCOPE_ORDER: ConfigScope[] = ['project', 'local', 'user', 'enterprise'];",
+      "replace": "const SCOPE_ORDER: ConfigScope[] = ['user', 'project', 'local', 'enterprise'];"
+    },
+    {
+      "name": "list: names are not sorted inside a group",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "groupServers.sort((a, b) => a.name.localeCompare(b.name));",
+      "replace": ""
+    },
+    {
+      "name": "keys: up stops at the first row",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "prev === 0 ? selectableItems.length - 1 : prev - 1",
+      "replace": "prev === 0 ? 0 : prev - 1"
+    },
+    {
+      "name": "keys: Enter always opens the first row",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "const item = selectableItems[selectedIndex];",
+      "replace": "const item = selectableItems[0];"
+    },
+    {
+      "name": "keys: an agent server is never opened",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "onSelectAgentServer(item.agentServer);",
+      "replace": ""
+    },
+    {
+      "name": "keys: dismissing is no longer a system message",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "display: \"system\"",
+      "replace": "display: \"user\""
+    },
+    {
+      "name": "state: the failure hint keys on another state",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "return s_1.client.type === \"failed\";",
+      "replace": "return s_1.client.type === \"needs-auth\";"
+    },
+    {
+      "name": "state: a server still connecting is drawn in the warning colour",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "\"pending\") {\n            statusIcon = color(\"inactive\", theme)(figures.radioOff);",
+      "replace": "\"pending\") {\n            statusIcon = color(\"warning\", theme)(figures.radioOff);"
+    },
+    {
+      "name": "frame: an empty panel is drawn",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "if (servers.length === 0 && agentServers.length === 0) {\n    return null;",
+      "replace": "if (false) {\n    return null;"
+    },
+    {
+      "name": "frame: the config diagnostics are left out",
+      "source": "src/mcp/ui/MCPListPanel.tsx",
+      "find": "t19 = <McpParsingWarnings />;",
+      "replace": "t19 = null;"
+    },
+    {
+      "name": "diagnostics: a failed scope is headed as warnings only",
+      "source": "src/mcp/ui/McpParsingWarnings.tsx",
+      "find": "\"Failed to parse\" : \"Contains warnings\"",
+      "replace": "\"Contains warnings\" : \"Contains warnings\""
+    },
+    {
+      "name": "diagnostics: severity is ignored, so warnings also show as errors",
+      "source": "src/mcp/ui/McpParsingWarnings.tsx",
+      "find": "return errors.filter(e => e.mcpErrorMetadata?.severity === severity);",
+      "replace": "return errors;"
+    },
+    {
+      "name": "diagnostics: a warning loses its server name",
+      "source": "src/mcp/ui/McpParsingWarnings.tsx",
+      "find": "{serverName_0 && `[${serverName_0}] `}",
+      "replace": "{\"\"}"
+    },
+    {
+      "name": "diagnostics: an error loses its path",
+      "source": "src/mcp/ui/McpParsingWarnings.tsx",
+      "find": "{error.path && error.path !== \"\" ? `${error.path}: ` : \"\"}",
+      "replace": "{\"\"}"
+    },
+    {
+      "name": "diagnostics: a scope with warnings only is not shown",
+      "source": "src/mcp/ui/McpParsingWarnings.tsx",
+      "find": "const hasWarnings = scopes.some(_temp4);",
+      "replace": "const hasWarnings = false;"
+    },
+    {
+      "name": "diagnostics: clean scopes get a section too",
+      "source": "src/mcp/ui/McpParsingWarnings.tsx",
+      "find": "if (!hasErrors && !hasWarnings) {\n    return null;\n  }",
+      "replace": ""
+    },
+    {
+      "name": "tool list: a server that is not connected still lists tools (fail open)",
+      "source": "src/mcp/ui/MCPToolListView.tsx",
+      "find": "if (server.client.type !== \"connected\") {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "tool list: the hints are joined without commas",
+      "source": "src/mcp/ui/MCPToolListView.tsx",
+      "find": "annotations.join(\", \")",
+      "replace": "annotations.join(\" \")"
+    },
+    {
+      "name": "tool list: the destructive hint is dropped",
+      "source": "src/mcp/ui/MCPToolListView.tsx",
+      "find": "annotations.push(\"destructive\");",
+      "replace": ""
+    },
+    {
+      "name": "tool list: the chosen position is not handed over",
+      "source": "src/mcp/ui/MCPToolListView.tsx",
+      "find": "onSelectTool(tool_0, index_0);",
+      "replace": "onSelectTool(tool_0, 0);"
+    },
+    {
+      "name": "tool list: a tool without a display name shows its full name",
+      "source": "src/mcp/ui/MCPToolListView.tsx",
+      "find": "const fullDisplayName = tool.userFacingName ? tool.userFacingName({}) : toolName;",
+      "replace": "const fullDisplayName = tool.userFacingName ? tool.userFacingName({}) : tool.name;"
+    },
+    {
+      "name": "detail: the read-only hint is dropped from the header",
+      "source": "src/mcp/ui/MCPToolDetailView.tsx",
+      "find": "<Text color=\"success\"> [read-only]</Text>",
+      "replace": "<Text color=\"success\"></Text>"
+    },
+    {
+      "name": "detail: a description that fails to load shows nothing",
+      "source": "src/mcp/ui/MCPToolDetailView.tsx",
+      "find": "setToolDescription(\"Failed to load description\");",
+      "replace": "setToolDescription(\"\");"
+    },
+    {
+      "name": "detail: the full name shows the short name",
+      "source": "src/mcp/ui/MCPToolDetailView.tsx",
+      "find": "<Text dimColor={true}>{tool.name}</Text>",
+      "replace": "<Text dimColor={true}>{toolName}</Text>"
+    },
+    {
+      "name": "detail: required parameters are not marked",
+      "source": "src/mcp/ui/MCPToolDetailView.tsx",
+      "find": "const isRequired = required?.includes(key);",
+      "replace": "const isRequired = false;"
+    },
+    {
+      "name": "detail: an untyped parameter claims a type",
+      "source": "src/mcp/ui/MCPToolDetailView.tsx",
+      "find": "String(value.type) : \"unknown\"",
+      "replace": "String(value.type) : \"string\""
+    }
+  ]
+}
