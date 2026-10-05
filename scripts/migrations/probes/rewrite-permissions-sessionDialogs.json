@@ -1,0 +1,237 @@
+{
+  "test": [
+    "src/permissions/ui/trust/TrustDialog.characterization.test.tsx",
+    "src/permissions/ui/trust/utils.characterization.test.ts",
+    "src/permissions/ui/WorktreeExitDialog.characterization.test.tsx",
+    "src/permissions/ui/CostThresholdDialog.characterization.test.tsx"
+  ],
+  "source": "src/permissions/ui/trust/TrustDialog.tsx",
+  "probes": [
+    {
+      "name": "trust accept: records the project as not trusted",
+      "find": "hasTrustDialogAccepted: true",
+      "replace": "hasTrustDialogAccepted: false"
+    },
+    {
+      "name": "fail open: the dialog never asks",
+      "find": "if (hasTrustDialogAccepted) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "home directory: trust is persisted instead of session-only",
+      "find": "const isHomeDir_0 = homedir() === getCwd();",
+      "replace": "const isHomeDir_0 = false;"
+    },
+    {
+      "name": "home directory: the session latch is not raised",
+      "find": "setSessionTrustAccepted(true);",
+      "replace": "setSessionTrustAccepted(false);"
+    },
+    {
+      "name": "decline: exits with success",
+      "find": "gracefulShutdownSync(1);\n        return;",
+      "replace": "gracefulShutdownSync(0);\n        return;"
+    },
+    {
+      "name": "fail open: declining trusts the folder",
+      "find": "if (value === \"exit\") {",
+      "replace": "if (value === \"never\") {"
+    },
+    {
+      "name": "fail open: Esc trusts the folder",
+      "find": "onCancel={() => onChange(\"exit\")}",
+      "replace": "onCancel={() => onChange(\"enable_all\")}"
+    },
+    {
+      "name": "fail open: \"No, exit\" carries the trust value",
+      "find": "label: \"No, exit\",\n      value: \"exit\"",
+      "replace": "label: \"No, exit\",\n      value: \"enable_all\""
+    },
+    {
+      "name": "the confirmation's no exits with failure",
+      "find": "function _temp7() {\n  gracefulShutdownSync(0);",
+      "replace": "function _temp7() {\n  gracefulShutdownSync(1);"
+    },
+    {
+      "name": "double Ctrl+C exits with success",
+      "find": "return gracefulShutdownSync(1);",
+      "replace": "return gracefulShutdownSync(0);"
+    },
+    {
+      "name": "trust accept: nothing is recorded",
+      "find": "saveCurrentProjectConfig(_temp5);",
+      "replace": "void _temp5;"
+    },
+    {
+      "name": "warning: the capability sentence loses execute",
+      "find": "read, edit, and execute files here.",
+      "replace": "read and edit files here."
+    },
+    {
+      "name": "warning: the security guide link changes",
+      "find": "https://code.claude.com/docs/en/security",
+      "replace": "https://code.claude.com/docs/en/overview"
+    },
+    {
+      "name": "already trusted: the caller is never told",
+      "find": "setTimeout(onDone);",
+      "replace": "setTimeout(() => {});"
+    },
+    {
+      "name": "hooks: disableAllHooks is ignored",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "if (settings === null || settings.disableAllHooks) {",
+      "replace": "if (settings === null) {"
+    },
+    {
+      "name": "hooks: a status line is not counted",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "if (settings.statusLine) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "hooks: a file suggestion is not counted",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "if (settings.fileSuggestion) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "hooks: an event needs two entries",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "if (hookConfig.length > 0) {",
+      "replace": "if (hookConfig.length > 1) {"
+    },
+    {
+      "name": "hooks: the local file is never read",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "if (hasHooks(localSettings)) {",
+      "replace": "if (hasHooks(null)) {"
+    },
+    {
+      "name": "bash: ask rules count as allows",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "rule.ruleBehavior === 'allow' &&",
+      "replace": "rule.ruleBehavior !== 'deny' &&"
+    },
+    {
+      "name": "bash: any tool starting with Bash counts",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "rule.ruleValue.toolName.startsWith(BASH_TOOL_NAME + '(')",
+      "replace": "rule.ruleValue.toolName.startsWith(BASH_TOOL_NAME)"
+    },
+    {
+      "name": "apiKeyHelper: an empty helper counts",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "return !!settings?.apiKeyHelper",
+      "replace": "return settings?.apiKeyHelper !== undefined"
+    },
+    {
+      "name": "aws: awsCredentialExport is not counted",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "settings?.awsAuthRefresh || settings?.awsCredentialExport",
+      "replace": "settings?.awsAuthRefresh"
+    },
+    {
+      "name": "env: the safe list becomes case-sensitive",
+      "source": "src/permissions/ui/trust/utils.ts",
+      "find": "!SAFE_ENV_VARS.has(key.toUpperCase())",
+      "replace": "!SAFE_ENV_VARS.has(key)"
+    },
+    {
+      "name": "fail open: commits alone no longer stop the silent removal",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "if (changeLines.length === 0 && count === 0) {",
+      "replace": "if (changeLines.length === 0) {"
+    },
+    {
+      "name": "commits are never counted",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "const count = parseInt(commitsStr.trim()) || 0;",
+      "replace": "const count = 0;"
+    },
+    {
+      "name": "keep without tmux does nothing",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "if (value === 'keep' || value === 'keep-with-tmux') {",
+      "replace": "if (value === 'keep-with-tmux') {"
+    },
+    {
+      "name": "removal message: one commit is plural",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "${commitCount === 1 ? 'was' : 'were'}",
+      "replace": "were"
+    },
+    {
+      "name": "fail open: Esc with a caller cancel removes the worktree",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "      onCancel();\n      return;",
+      "replace": "      void handleSelect('remove');\n      return;"
+    },
+    {
+      "name": "fail open: Esc without a cancel removes the worktree",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "void handleSelect('keep');",
+      "replace": "void handleSelect('remove');"
+    },
+    {
+      "name": "keep-kill: the tmux session is left running",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "await killTmuxSession(worktreeSession.tmuxSessionName);\n      }\n      await keepWorktree();",
+      "replace": "void 0;\n      }\n      await keepWorktree();"
+    },
+    {
+      "name": "fail open: Enter removes by default",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "const defaultValue = hasTmuxSession ? 'keep-with-tmux' : 'keep';",
+      "replace": "const defaultValue = hasTmuxSession ? 'remove-with-tmux' : 'remove';"
+    },
+    {
+      "name": "cached tool results survive the exit",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "invalidateToolResultCache();",
+      "replace": "void 0;"
+    },
+    {
+      "name": "keep: the session cwd stays in the worktree",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "        setCwd(worktreeSession.originalCwd);\n      } finally {\n        // keepWorktree",
+      "replace": "        void 0;\n      } finally {\n        // keepWorktree"
+    },
+    {
+      "name": "removal message: uncommitted changes are not mentioned",
+      "source": "src/permissions/ui/WorktreeExitDialog.tsx",
+      "find": "Worktree removed. Uncommitted changes were discarded.",
+      "replace": "Worktree removed."
+    },
+    {
+      "name": "cost: Bedrock loses its vendor",
+      "source": "src/permissions/ui/CostThresholdDialog.tsx",
+      "find": "return 'AWS Bedrock'",
+      "replace": "return 'Bedrock'"
+    },
+    {
+      "name": "cost: other providers get a name",
+      "source": "src/permissions/ui/CostThresholdDialog.tsx",
+      "find": "return 'API'",
+      "replace": "return 'Anthropic API'"
+    },
+    {
+      "name": "cost: Esc no longer dismisses",
+      "source": "src/permissions/ui/CostThresholdDialog.tsx",
+      "find": "onCancel={onDone}",
+      "replace": "onCancel={() => {}}"
+    },
+    {
+      "name": "cost: the threshold amount changes",
+      "source": "src/permissions/ui/CostThresholdDialog.tsx",
+      "find": "You've spent $5 on the",
+      "replace": "You've spent five dollars on the"
+    },
+    {
+      "name": "cost: the spending guide link changes",
+      "source": "src/permissions/ui/CostThresholdDialog.tsx",
+      "find": "https://code.claude.com/docs/en/costs",
+      "replace": "https://code.claude.com/docs/en/overview"
+    }
+  ]
+}
