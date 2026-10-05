@@ -1,0 +1,251 @@
+{
+  "test": [
+    "src/mcp/mcpServerApproval.characterization.test.tsx",
+    "src/mcp/ui/MCPServerApprovalDialog.characterization.test.tsx",
+    "src/mcp/ui/MCPServerMultiselectDialog.characterization.test.tsx",
+    "src/mcp/ui/MCPServerDesktopImportDialog.characterization.test.tsx"
+  ],
+  "source": "src/mcp/mcpServerApproval.tsx",
+  "probes": [
+    {
+      "name": "startup: reads the user scope instead of the project",
+      "source": "src/mcp/mcpServerApproval.tsx",
+      "find": "getMcpConfigsByScope('project')",
+      "replace": "getMcpConfigsByScope('user')"
+    },
+    {
+      "name": "startup: asks about approved servers too (fail open on the filter)",
+      "source": "src/mcp/mcpServerApproval.tsx",
+      "find": "getProjectMcpServerStatus(serverName) === 'pending'",
+      "replace": "getProjectMcpServerStatus(serverName) !== 'rejected'"
+    },
+    {
+      "name": "startup: never asks (fail open: pending servers start unasked)",
+      "source": "src/mcp/mcpServerApproval.tsx",
+      "find": "if (pendingServers.length === 0) {",
+      "replace": "if (pendingServers.length >= 0) {"
+    },
+    {
+      "name": "startup: one server gets the checklist",
+      "source": "src/mcp/mcpServerApproval.tsx",
+      "find": "pendingServers.length === 1 && pendingServers[0] !== undefined",
+      "replace": "pendingServers.length === 2 && pendingServers[0] !== undefined"
+    },
+    {
+      "name": "startup: returns before the answer",
+      "source": "src/mcp/mcpServerApproval.tsx",
+      "find": "const done = (): void => void resolve();",
+      "replace": "const done = (): void => void resolve(); resolve();"
+    },
+    {
+      "name": "startup: the checklist lists decided servers too",
+      "source": "src/mcp/mcpServerApproval.tsx",
+      "find": "<MCPServerMultiselectDialog serverNames={pendingServers}",
+      "replace": "<MCPServerMultiselectDialog serverNames={Object.keys(projectServers)}"
+    },
+    {
+      "name": "single: rejecting writes the approved list (fail open)",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "disabledMcpjsonServers: [...disabledServers, serverName]",
+      "replace": "enabledMcpjsonServers: [...disabledServers, serverName]"
+    },
+    {
+      "name": "single: rejecting writes nothing",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "if (!disabledServers.includes(serverName)) {",
+      "replace": "if (disabledServers.includes(serverName)) {"
+    },
+    {
+      "name": "single: \"all future\" does not set the switch",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "enableAllProjectMcpServers: true",
+      "replace": "enableAllProjectMcpServers: false"
+    },
+    {
+      "name": "single: \"this server\" also enables all future ones (fail open)",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "if (value === \"yes_all\") {",
+      "replace": "if (value !== \"no\") {"
+    },
+    {
+      "name": "single: approving repeats a listed name",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "if (!enabledServers.includes(serverName)) {",
+      "replace": "if (true) {"
+    },
+    {
+      "name": "single: approving forgets the existing list",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "const enabledServers = currentSettings_0.enabledMcpjsonServers || [];",
+      "replace": "const enabledServers: string[] = [];"
+    },
+    {
+      "name": "single: approving writes the user layer",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "updateSettingsForSource(\"localSettings\", {\n                enabledMcpjsonServers",
+      "replace": "updateSettingsForSource(\"userSettings\", {\n                enabledMcpjsonServers"
+    },
+    {
+      "name": "single: rejecting writes the user layer",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "updateSettingsForSource(\"localSettings\", {\n                disabledMcpjsonServers",
+      "replace": "updateSettingsForSource(\"userSettings\", {\n                disabledMcpjsonServers"
+    },
+    {
+      "name": "single: approving does not tell the caller",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "onDone();\n            break bb2;",
+      "replace": "break bb2;"
+    },
+    {
+      "name": "single: the frame cancel approves (fail open)",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "t3 = () => onChange(\"no\");",
+      "replace": "t3 = () => onChange(\"yes\");"
+    },
+    {
+      "name": "single: the list cancel approves (fail open)",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "onCancel={() => onChange(\"no\")} />",
+      "replace": "onCancel={() => onChange(\"yes\")} />"
+    },
+    {
+      "name": "single: the first option enables this server only",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "value: \"yes_all\"\n    }, {",
+      "replace": "value: \"yes\"\n    }, {"
+    },
+    {
+      "name": "single: the third option approves (fail open)",
+      "source": "src/mcp/ui/MCPServerApprovalDialog.tsx",
+      "find": "value: \"no\"\n    }];",
+      "replace": "value: \"yes\"\n    }];"
+    },
+    {
+      "name": "multi: ticks are inverted",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "partition(serverNames, server => selectedServers.includes(server))",
+      "replace": "partition(serverNames, server => !selectedServers.includes(server))"
+    },
+    {
+      "name": "multi: unticked servers are approved too (fail open)",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "server => selectedServers.includes(server))",
+      "replace": "server => serverNames.includes(server))"
+    },
+    {
+      "name": "multi: an empty approved list is written",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "if (approvedServers.length > 0) {",
+      "replace": "if (approvedServers.length >= 0) {"
+    },
+    {
+      "name": "multi: an empty rejected list is written",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "if (rejectedServers.length > 0) {",
+      "replace": "if (rejectedServers.length >= 0) {"
+    },
+    {
+      "name": "multi: approved names repeat",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "const newEnabledServers = [...new Set([...enabledServers, ...approvedServers])];",
+      "replace": "const newEnabledServers = [...enabledServers, ...approvedServers];"
+    },
+    {
+      "name": "multi: rejected servers go on the approved list (fail open)",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "disabledMcpjsonServers: newDisabledServers\n",
+      "replace": "enabledMcpjsonServers: newDisabledServers\n"
+    },
+    {
+      "name": "multi: Esc rejects nobody",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "const newDisabledServers_0 = [...new Set([...disabledServers_0, ...serverNames])];",
+      "replace": "const newDisabledServers_0 = [...disabledServers_0];"
+    },
+    {
+      "name": "multi: Esc approves everyone (fail open)",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "disabledMcpjsonServers: newDisabledServers_0",
+      "replace": "enabledMcpjsonServers: newDisabledServers_0"
+    },
+    {
+      "name": "multi: nothing starts ticked",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "defaultValue={serverNames}",
+      "replace": "defaultValue={[]}"
+    },
+    {
+      "name": "multi: the frame cancel just closes (fail open: servers stay pending)",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "onCancel={handleEscRejectAll} hideInputGuide",
+      "replace": "onCancel={onDone} hideInputGuide"
+    },
+    {
+      "name": "multi: the title count is dropped",
+      "source": "src/mcp/ui/MCPServerMultiselectDialog.tsx",
+      "find": "${serverNames.length} new MCP servers found in .mcp.json",
+      "replace": "New MCP servers found in .mcp.json"
+    },
+    {
+      "name": "copy: the code-execution warning is dropped",
+      "source": "src/mcp/ui/MCPServerDialogCopy.tsx",
+      "find": "MCP servers may execute code or access system resources.",
+      "replace": "MCP servers may be used."
+    },
+    {
+      "name": "copy: the approval sentence is dropped",
+      "source": "src/mcp/ui/MCPServerDialogCopy.tsx",
+      "find": "All tool calls require approval.",
+      "replace": "Tool calls run."
+    },
+    {
+      "name": "import: clashes are never detected",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "t5 = serverNames.filter(name => existingServers[name] !== undefined);",
+      "replace": "t5 = [] as string[];"
+    },
+    {
+      "name": "import: the clash label is dropped",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "collisions.includes(server) ? \" (already exists)\" : \"\"",
+      "replace": "collisions.includes(server) ? \"\" : \"\""
+    },
+    {
+      "name": "import: a clash overwrites the existing name",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "finalName = `${serverName}_${counter}`;",
+      "replace": "finalName = serverName;"
+    },
+    {
+      "name": "import: the suffix skips no taken number",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "counter++;",
+      "replace": "counter += 0; break;"
+    },
+    {
+      "name": "import: always imports into the user scope",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "await addMcpConfig(finalName, serverConfig, scope);",
+      "replace": "await addMcpConfig(finalName, serverConfig, \"user\");"
+    },
+    {
+      "name": "import: the count stays zero",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "importedCount++;",
+      "replace": "importedCount += 0;"
+    },
+    {
+      "name": "import: the process is not ended",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "onDone();\n      gracefulShutdown();",
+      "replace": "onDone();"
+    },
+    {
+      "name": "import: the singular is lost",
+      "source": "src/mcp/ui/MCPServerDesktopImportDialog.tsx",
+      "find": "t9 = plural(serverNames.length, \"server\");",
+      "replace": "t9 = \"servers\";"
+    }
+  ]
+}
