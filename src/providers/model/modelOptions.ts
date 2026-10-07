@@ -13,6 +13,7 @@ import {
   COST_TIER_10_50,
   COST_HAIKU_35,
   COST_HAIKU_45,
+  COST_HAIKU_55,
   formatModelPricing,
 } from 'src/providers/usage/modelCost.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
@@ -294,6 +295,21 @@ function getCustomHaikuOption(): ModelOption | undefined {
   }
 }
 
+// Haiku 5.5 — the default Haiku tier on 1P, where the 'haiku' alias resolves to
+// it. 1M context by default (single entry, no [1m] pair). On 3P the alias still
+// resolves to Haiku 4.5, so pin the explicit string: an opt-in there, like
+// Sonnet 5.5.
+function getHaiku55Option(): ModelOption {
+  const is3P = getAPIProvider() !== 'firstParty'
+  return {
+    value: is3P ? getModelStrings().haiku55 : 'haiku',
+    label: is3P ? 'Haiku 5.5' : 'Haiku',
+    description: `Haiku 5.5 · Fastest for quick answers · 1M context${is3P ? '' : ` · ${formatModelPricing(COST_HAIKU_55)}`}`,
+    descriptionForModel:
+      'Haiku 5.5 - fastest for quick answers. 1M context by default. Lower cost but less capable than Sonnet 5.5.',
+  }
+}
+
 function getHaiku45Option(): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
@@ -319,6 +335,9 @@ function getHaiku35Option(): ModelOption {
 function getHaikuOption(): ModelOption {
   // Return correct Haiku option based on provider
   const haikuModel = getDefaultHaikuModel()
+  if (haikuModel === getModelStrings().haiku55) {
+    return getHaiku55Option()
+  }
   return haikuModel === getModelStrings().haiku45
     ? getHaiku45Option()
     : getHaiku35Option()
@@ -398,10 +417,10 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
   return opts
 }
 
-const MaxHaiku45Option: ModelOption = {
+const MaxHaiku55Option: ModelOption = {
   value: 'haiku',
   label: 'Haiku',
-  description: 'Haiku 4.5 · Fastest for quick answers',
+  description: 'Haiku 5.5 · Fastest for quick answers · 1M context',
 }
 
 function getOpusPlanOption(): ModelOption {
@@ -507,7 +526,7 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
       return [
         getDefaultOptionForUser(fastMode),
         ...getClaudeDualContextOptions(fastMode),
-        MaxHaiku45Option,
+        MaxHaiku55Option,
       ]
     }
 
@@ -516,7 +535,7 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     return [
       getDefaultOptionForUser(fastMode),
       ...getClaudeDualContextOptions(fastMode),
-      MaxHaiku45Option,
+      MaxHaiku55Option,
     ]
   }
 
@@ -555,11 +574,11 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   }
 
   // PAYG 1P API: Default (Sonnet 5.5) + Sonnet 5.5 + Sonnet 5 + Fable 5.1 +
-  // Opus 5.5 + Opus 5 + Haiku. The 5.x entries are 1M-native (no [1m] variant).
+  // Opus 5.5 + Opus 5 + Haiku 5.5. The 5.x entries are 1M-native (no [1m] variant).
   // Sonnet 5 and Opus 5 are the legacy generations still listed — both are
   // current at Anthropic and only a generation old; the older ones (Opus
-  // 4.6/4.7/4.8, Sonnet 4.5/4.6) remain resolvable by explicit string but are
-  // hidden here.
+  // 4.6/4.7/4.8, Sonnet 4.5/4.6, Haiku 4.5) remain resolvable by explicit
+  // string but are hidden here.
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
     payg1POptions.push(getSonnet55Option())
@@ -567,7 +586,7 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     payg1POptions.push(getFable51Option())
     payg1POptions.push(getOpus55Option(fastMode))
     payg1POptions.push(getOpus5Option(fastMode))
-    payg1POptions.push(getHaiku45Option())
+    payg1POptions.push(getHaiku55Option())
     payg1POptions.push(...profileModelOptions)
     return payg1POptions
   }
@@ -618,6 +637,10 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   if (customHaiku !== undefined) {
     payg3pOptions.push(customHaiku)
   } else {
+    // Haiku 5.5 as an opt-in next to the 3P default (Haiku 4.5). Were the
+    // default 5.5, both entries would carry the same value and
+    // filterModelOptionsByAllowlist keeps one.
+    payg3pOptions.push(getHaiku55Option())
     payg3pOptions.push(getHaikuOption())
   }
   payg3pOptions.push(...profileModelOptions)

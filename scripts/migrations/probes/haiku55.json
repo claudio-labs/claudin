@@ -1,0 +1,162 @@
+{
+  "test": [
+    "src/providers/model/claudeCodeParity.test.ts",
+    "src/providers/model/haiku55.test.ts",
+    "src/providers/model/modelOptions.dualcontext.test.ts",
+    "src/providers/cache/promptCacheBreakDetection.test.ts",
+    "src/shared/tokenEstimation.test.ts"
+  ],
+  "source": "src/providers/model/model.ts",
+  "probes": [
+    {
+      "name": "canonical: haiku 5.5 branch removed",
+      "find": "if (name.includes('claude-haiku-5-5') || name.includes('claude-haiku-5.5')) {",
+      "replace": "if (false) {"
+    },
+    {
+      "name": "canonical: dotted haiku 5.5 dropped",
+      "find": "name.includes('claude-haiku-5-5') || name.includes('claude-haiku-5.5')",
+      "replace": "name.includes('claude-haiku-5-5')"
+    },
+    {
+      "name": "default haiku: 1P stays on 4.5",
+      "find": "  return getModelStrings().haiku55\n",
+      "replace": "  return getModelStrings().haiku45\n"
+    },
+    {
+      "name": "marketing name: haiku 5.5 branch removed",
+      "find": "  if (canonical.includes('claude-haiku-5-5')) {\n    return 'Haiku 5.5'\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "native 1M: haiku 5.5 dropped",
+      "find": "    canonical.includes('fable-5') ||\n    canonical.includes('haiku-5')\n  )",
+      "replace": "    canonical.includes('fable-5')\n  )"
+    },
+    {
+      "name": "sampling params: haiku 5.5 dropped",
+      "find": "    canonical.includes('sonnet-5') ||\n    // Measured 2026-10-07: `temperature: 0` and `top_p` are a 400 on Haiku 5.5.\n    canonical.includes('haiku-5')\n",
+      "replace": "    canonical.includes('sonnet-5')\n"
+    },
+    {
+      "source": "src/providers/usage/modelCost.ts",
+      "name": "billing: long-prompt tier ignored",
+      "find": "  const modelCosts = ratesForPrompt(costs, usage)\n",
+      "replace": "  const modelCosts = costs\n"
+    },
+    {
+      "source": "src/providers/usage/modelCost.ts",
+      "name": "billing: threshold is inclusive of 100K",
+      "find": "if (promptTokens <= long.abovePromptTokens) return costs",
+      "replace": "if (promptTokens < long.abovePromptTokens) return costs"
+    },
+    {
+      "source": "src/providers/usage/modelCost.ts",
+      "name": "billing: prompt size forgets cache reads",
+      "find": "    (usage.cache_read_input_tokens ?? 0) +\n    (usage.cache_creation_input_tokens ?? 0)\n",
+      "replace": "    (usage.cache_creation_input_tokens ?? 0)\n"
+    },
+    {
+      "source": "src/providers/usage/modelCost.ts",
+      "name": "pricing string: long tier not named",
+      "find": "  if (!long) return base\n",
+      "replace": "  return base\n"
+    },
+    {
+      "source": "src/providers/effort/effort.ts",
+      "name": "effort: haiku 5.5 unsupported",
+      "find": "m.includes('opus-5') || m.includes('haiku-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')",
+      "replace": "m.includes('opus-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')"
+    },
+    {
+      "source": "src/providers/effort/effort.ts",
+      "name": "effort: haiku 5.5 loses the medium default",
+      "find": "      lowerModel.includes('sonnet-5') ||\n      lowerModel.includes('haiku-5'))",
+      "replace": "      lowerModel.includes('sonnet-5'))"
+    },
+    {
+      "source": "src/agent/context/thinking.ts",
+      "name": "thinking: haiku 5.5 not adaptive-only",
+      "find": "    canonical.includes('opus-5') ||\n    canonical.includes('haiku-5')\n  )\n}",
+      "replace": "    canonical.includes('opus-5')\n  )\n}"
+    },
+    {
+      "source": "src/agent/context/context.ts",
+      "name": "max output: haiku 5.5 falls to 32K",
+      "find": "m.includes('sonnet-5-5') || m.includes('haiku-5-5')",
+      "replace": "m.includes('sonnet-5-5')"
+    },
+    {
+      "source": "src/agent/context/context.ts",
+      "name": "context window: haiku 5.5 at 200k",
+      "find": "      getCanonicalName(model).includes('opus-5') ||\n      getCanonicalName(model).includes('haiku-5'))",
+      "replace": "      getCanonicalName(model).includes('opus-5'))"
+    },
+    {
+      "source": "src/providers/transport/betas.ts",
+      "name": "betas: haiku 5.5 without thinking binding",
+      "find": "    canonical.includes('claude-sonnet-5-5') ||\n    canonical.includes('claude-haiku-5-5')\n",
+      "replace": "    canonical.includes('claude-sonnet-5-5')\n"
+    },
+    {
+      "source": "src/providers/transport/betas.ts",
+      "name": "betas: haiku 5.5 without structured outputs",
+      "find": "    // the small fast model, which is Haiku 5.5 on 1P.\n    canonical.includes('claude-haiku-5')\n",
+      "replace": "    // the small fast model, which is Haiku 5.5 on 1P.\n    false\n"
+    },
+    {
+      "source": "src/agent/tools/toolSearch.ts",
+      "name": "tool search: bare haiku excluded again",
+      "find": "  'claude-haiku-4',\n]",
+      "replace": "  'claude-haiku-4',\n  'haiku',\n]"
+    },
+    {
+      "source": "src/agent/prompts/prompts.ts",
+      "name": "cutoff: haiku 5.5 branch removed",
+      "find": "  } else if (canonical.includes('claude-haiku-5-5')) {\n    return 'June 2026'\n",
+      "replace": ""
+    },
+    {
+      "source": "src/vcs/git/commitAttribution.ts",
+      "name": "commit trailer: haiku 5.5 branch removed",
+      "find": "  if (shortName.includes('haiku-5-5')) return 'claude-haiku-5-5'\n",
+      "replace": ""
+    },
+    {
+      "source": "src/shared/envUtils.ts",
+      "name": "vertex region: haiku 5.5 variable removed",
+      "find": "  ['claude-haiku-5-5', 'VERTEX_REGION_CLAUDE_HAIKU_5_5'],\n",
+      "replace": ""
+    },
+    {
+      "source": "src/providers/model/modelOptions.ts",
+      "name": "picker: subscribers still offered Haiku 4.5",
+      "find": "  description: 'Haiku 5.5 · Fastest for quick answers · 1M context',",
+      "replace": "  description: 'Haiku 4.5 · Fastest for quick answers',"
+    },
+    {
+      "source": "src/providers/model/modelOptions.ts",
+      "name": "picker: a 3P Haiku 5.5 default reads as Haiku 3.5",
+      "find": "  if (haikuModel === getModelStrings().haiku55) {\n    return getHaiku55Option()\n  }\n",
+      "replace": ""
+    },
+    {
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "name": "cache breaks: every haiku excluded again",
+      "find": "  return model.includes('haiku') && !model.includes('haiku-5')\n",
+      "replace": "  return model.includes('haiku')\n"
+    },
+    {
+      "source": "src/shared/tokenEstimation.ts",
+      "name": "count_tokens: budget thinking for every model",
+      "find": "  return modelRequiresAdaptiveThinking(model)\n    ? { type: 'adaptive' }\n",
+      "replace": "  return false\n    ? { type: 'adaptive' }\n"
+    },
+    {
+      "source": "src/providers/transport/betas.ts",
+      "name": "vertex web search: haiku 5.5 dropped",
+      "find": "    canonical.includes('claude-haiku-5')\n  )\n}\n\n// Context management",
+      "replace": "    false\n  )\n}\n\n// Context management"
+    }
+  ]
+}

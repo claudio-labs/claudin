@@ -114,6 +114,7 @@ export function modelSupportsThinking(model: string): boolean {
   return (
     canonical.includes('sonnet-4') ||
     canonical.includes('sonnet-5') ||
+    canonical.includes('haiku-5') ||
     canonical.includes('opus-4') ||
     canonical.includes('opus-5')
   )
@@ -131,6 +132,8 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
     canonical.includes('fable-5') ||
     canonical.includes('sonnet-5') ||
     canonical.includes('opus-5') ||
+    // Before the generic haiku exclusion below.
+    canonical.includes('haiku-5') ||
     canonical.includes('opus-4-8') ||
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-6') ||
@@ -178,13 +181,19 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
  *   same as Fable here loses no functionality.
  * - Opus 5: native-1M flagship, thinking always on server-side — same profile as
  *   Fable/Sonnet 5 (budget_tokens 400s, non-default sampling params rejected).
+ * - Haiku 5.5: Claude Code 2.1.293's catalog marks it `rejects_disabled_thinking`
+ *   and adaptive-only. Replayed on the real API (2026-10-07): `temperature: 0`
+ *   and `top_p` 400 ("deprecated for this model"), like Sonnet 5.5. Disabled
+ *   and budget thinking returned 200 on an account created before 2026-08-31,
+ *   which says nothing about newer ones — the same caveat as preserved thinking.
  */
 export function modelRequiresAdaptiveThinking(model: string): boolean {
   const canonical = getCanonicalName(model)
   return (
     canonical.includes('fable-5') ||
     canonical.includes('sonnet-5') ||
-    canonical.includes('opus-5')
+    canonical.includes('opus-5') ||
+    canonical.includes('haiku-5')
   )
 }
 

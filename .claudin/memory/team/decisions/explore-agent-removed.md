@@ -1,6 +1,6 @@
 ---
 name: explore-agent-removed
-description: The built-in Explore agent was REMOVED on 2026-08-18 and came back ON BY DEFAULT on 2026-09-25 (CLAUDIN_EXPLORE_AGENT=0 turns it off; sonnet; verbatim path:start-end excerpts) — the A/B behind the flip, what it was worth in 2026-08, and the bench that reproduces both
+description: The built-in Explore agent was REMOVED on 2026-08-18 and came back ON BY DEFAULT on 2026-09-25 (CLAUDIN_EXPLORE_AGENT=0 turns it off; haiku since 2026-10-07; verbatim path:start-end excerpts) — the A/B behind the flip, what it was worth in 2026-08, and the bench that reproduces both
 type: project
 scope: tools/AgentTool
 impact: functional
@@ -14,9 +14,10 @@ impact: functional
 the default the same day, after the A/B below.
 - **Tools:** an allowlist of Read/Glob/Grep/Bash/WebFetch/WebSearch, not the old
   denylist.
-- **Model:** `sonnet` (user pick), which means the parent's model off a
-  Claude-native provider. The caller can pass `model` per call, `inherit`
-  included.
+- **Model:** `haiku` since 2026-10-07 (user pick, with Haiku 5.5 as the
+  Anthropic default; `sonnet` before), which means the parent's model off a
+  Claude-native provider. WebResearcher and claudin-guide moved with it. The
+  caller can pass `model` per call, `inherit` included. Not benched on Haiku 5.5.
 - **Runs:** one-shot, no plan dossier (`Explore: 0`).
 - **Report:** kept out of the head/tail summarizer
   (`UNSUMMARIZED_AGENT_TYPES`). Its contract: verbatim excerpts under a full
@@ -71,7 +72,8 @@ The bench's pre-registered gates all passed for explore and for the placebo.
   cost +6% on top of the batch Read ([[bash-read-passthrough-not-promoted]]). A
   Patch on a never-read file cost one refusal plus `*** Resubmit` until
   2026-09-29; now it applies when its hunks match exactly ([[patch-applies-what-matches]]).
-- **Haiku default:** the user chose Sonnet.
+- **Haiku default:** the user chose Sonnet on 2026-09-25 (Haiku 4.5 then), then
+  Haiku on 2026-10-07 once Haiku 5.5 was the Anthropic default.
 
 **Evidence:**
 - **Run dir:** above.

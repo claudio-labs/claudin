@@ -263,12 +263,12 @@ function assistant(text: string): BetaMessageParam {
   return { role: 'assistant', content: [{ type: 'text', text }] }
 }
 
-function prime(): void {
+function prime(model = 'claude-opus-5'): void {
   recordPromptState({
     system: [{ type: 'text', text: 'sys' }],
     toolSchemas: [],
     querySource: SOURCE,
-    model: 'claude-opus-5',
+    model,
   })
 }
 
@@ -390,6 +390,21 @@ describe('recordRenderedMessages', () => {
     recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
     await checkResponseForCacheBreak(SOURCE, 99_000, 1_000, [])
     expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+
+  // Haiku 5.5 runs the main thread and the Explore/WebResearcher children, so
+  // its breaks are reported; the older Haikus stay excluded.
+  test.each([
+    ['claude-haiku-5-5', 1],
+    ['claude-haiku-4-5-20251001', 0],
+  ] as const)('a break on %s is recorded %i time(s)', async (model, breaks) => {
+    prime(model)
+    recordRenderedMessages(SOURCE, undefined, [user('a'), toolResult('t1', 'x')])
+    await checkResponseForCacheBreak(SOURCE, 205_000, 0, [])
+    prime(model)
+    recordRenderedMessages(SOURCE, undefined, [user('a'), toolResult('t1', 'y'), user('b')])
+    await checkResponseForCacheBreak(SOURCE, 25_853, 182_825, [])
+    expect(getCurrentTurnCacheBreaks()).toHaveLength(breaks)
   })
 
   test("a sub-agent's mutation is named without keeping its JSON", () => {

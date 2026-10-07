@@ -106,7 +106,7 @@ const CLAUDE_LATEST_MODEL_IDS = {
   fable: 'claude-fable-5-1',
   opus: 'claude-opus-5-5',
   sonnet: 'claude-sonnet-5-5',
-  haiku: 'claude-haiku-4-5-20251001',
+  haiku: 'claude-haiku-5-5',
 }
 
 function resolveFamilyAddendum(model: string): string | null {
@@ -725,7 +725,7 @@ export async function computeSimpleEnvInfo(
     // references. Family resolution depends on provider — hence the
     // provider-qualified section cache key at the call site.
     isAnthropicFamily
-      ? `The most recent Claude models are the Claude 5 family and Haiku 4.5. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5.5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
+      ? `The most recent Claude models are the Claude 5 family. Model IDs — Fable 5.1: '${CLAUDE_LATEST_MODEL_IDS.fable}', Opus 5.5: '${CLAUDE_LATEST_MODEL_IDS.opus}', Sonnet 5.5: '${CLAUDE_LATEST_MODEL_IDS.sonnet}', Haiku 5.5: '${CLAUDE_LATEST_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`
       : null,
     // @[MODEL LAUNCH]: Keep the fast-mode model list in sync with
     // isFastModeSupportedByModel / FAST_MODE_MODEL_DISPLAY (src/providers/fastMode.ts).
@@ -770,6 +770,8 @@ export function getKnowledgeCutoff(modelId: string): string | null {
     return 'May 2025'
   } else if (canonical.includes('claude-opus-4-5')) {
     return 'May 2025'
+  } else if (canonical.includes('claude-haiku-5-5')) {
+    return 'June 2026'
   } else if (canonical.includes('claude-haiku-4')) {
     return 'February 2025'
   } else if (

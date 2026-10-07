@@ -16,7 +16,7 @@ Com o `WebResearcher`:
 
 - HTML cru fica no contexto do filho (descartado ao final).
 - Pai recebe só a síntese final (centenas de tokens, não dezenas de milhares).
-- Filho roda em `sonnet` (US$2/US$10 contra US$4/US$20 do Opus 5.5) num provider Claude-native, e no modelo do pai nos outros. Até 2026-09-25 a definição dizia `haiku`, mas todo sub-agente rodava no modelo do pai (`.claudin/memory/team/bugs/subagents-ran-on-parent-model.md`); quando o modelo passou a valer, a escolha foi `sonnet`.
+- Filho roda em `haiku` num provider Claude-native — Haiku 5.5 na Anthropic (US$0,10/US$0,50 até 100K tokens de prompt, contra US$4/US$20 do Opus 5.5), Haiku 4.5 em Bedrock/Vertex/Foundry — e no modelo do pai nos outros. Até 2026-09-25 a definição dizia `haiku`, mas todo sub-agente rodava no modelo do pai (`.claudin/memory/team/bugs/subagents-ran-on-parent-model.md`); quando o modelo passou a valer, a escolha foi `sonnet`, e com o Haiku 5.5 (2026-10-07) voltou a `haiku`.
 
 ## Quando o pai escolhe `WebResearcher` vs. as tools diretas
 
@@ -36,7 +36,7 @@ A escolha é do modelo pai — não há roteamento automático.
 | Decisão | Valor | Motivo |
 |---|---|---|
 | `tools` allowlist | `[WebSearch, WebFetch]` | Escopo puro web público; sem leitura local nem MCP. Allowlist não regride se novas write-tools forem adicionadas. |
-| `model` | `'sonnet'` | Escolha do usuário em 2026-09-25. Resolve em Anthropic/Bedrock/Vertex/Foundry; em providers OpenAI-shim (OpenRouter, Gemini, DeepSeek, Mistral, etc.) o alias cai no modelo do pai — ver "Override de modelo" abaixo. |
+| `model` | `'haiku'` | Escolha do usuário em 2026-10-07 (era `'sonnet'` desde 2026-09-25). Resolve em Anthropic/Bedrock/Vertex/Foundry; em providers OpenAI-shim (OpenRouter, Gemini, DeepSeek, Mistral, etc.) o alias cai no modelo do pai — ver "Override de modelo" abaixo. |
 | `omitClaudeMd` | `true` | Research na web não precisa de regras de commit/lint/typescript do projeto. |
 | `omitGitStatus` | `true` | Web research nunca toca o repo local; o blob de gitStatus (até 40KB) é puro desperdício. |
 | One-shot trailer | `ONE_SHOT_BUILTIN_AGENT_TYPES` | Parent não recebe `agentId`/SendMessage/usage trailer — economiza ~135 chars por chamada. |
@@ -44,7 +44,7 @@ A escolha é do modelo pai — não há roteamento automático.
 | Feature flag | — | Sem gate; sempre on. |
 | `SendMessage` (continuar subagent) | não incluído | Mantém pureza/isolamento. Pai lança um novo `WebResearcher` se precisar refinar. |
 
-### Por que um alias (`'sonnet'`) e não hardcode de Gemini Flash / DeepSeek?
+### Por que um alias (`'haiku'`) e não hardcode de Gemini Flash / DeepSeek?
 
 Hardcode de provider específico violaria a regra "no hardcoded provider logic" do `CLAUDE.md` e quebraria para quem não configurou esse provider. Um alias da família resolve em todo provider Claude-native e cai no modelo do pai nos demais.
 
@@ -96,9 +96,9 @@ Quando o build tem a flag `COORDINATOR_MODE` ligada **e** `CLAUDIN_COORDINATOR_M
 | Camada | Modelo | Papel |
 |---|---|---|
 | `WebResearcherManager` | `'sonnet'` | Decompor, delegar, **verificação adversarial**, síntese — o raciocínio caro |
-| `WebResearcher` (×N) | `'sonnet'` | Browsing por ângulo, em paralelo |
+| `WebResearcher` (×N) | `'haiku'` | Browsing por ângulo, em paralelo |
 
-O desenho original punha os workers em `haiku`, mas nenhum dos dois rodava no seu modelo até 2026-09-25 (ver acima). Uma assimetria de custo entre as camadas volta com um override do `WebResearcher` em `/agents`.
+O desenho original punha os workers em `haiku`, mas nenhum dos dois rodava no seu modelo até 2026-09-25 (ver acima). Os workers voltaram a `haiku` em 2026-10-07, então a assimetria de custo entre as camadas é de novo o padrão; um override do `WebResearcher` em `/agents` a desfaz.
 
 A verificação é **baseada em raciocínio**, não um tally determinístico de N-votos como o harness `Workflow` faria. O prompt é explícito em não apresentar palpites como verificados. Quando/se o `WorkflowTool` deixar de ser stub, vale migrar a orquestração para lá.
 

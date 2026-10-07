@@ -109,9 +109,11 @@ export const CLAUDE_CODE_GUIDE_AGENT: BuiltInAgentDefinition = {
       ],
   source: 'built-in',
   baseDir: 'built-in',
-  // Sonnet on a Claude-native provider, the parent's model elsewhere — see
-  // webResearcherAgent.ts for why it is no longer `haiku`.
-  model: 'sonnet',
+  // Haiku on a Claude-native provider (Haiku 5.5 on Anthropic, 4.5 on
+  // Bedrock/Vertex/Foundry), the parent's model elsewhere. It was `haiku` but
+  // ran on the parent's model until 2026-09-25 (see agent/query/turnModel.ts);
+  // Sonnet from then, back to Haiku on 2026-10-07 (user decision).
+  model: 'haiku',
   permissionMode: 'dontAsk',
   getSystemPrompt({ toolUseContext }) {
     const commands = toolUseContext.options.commands

@@ -38,3 +38,9 @@ describe('claudin-guide system prompt', () => {
     expect(prompt).toContain('https://github.com/claudio-labs/claudin/issues')
   })
 })
+
+describe('claudin-guide definition', () => {
+  test('runs on haiku (the parent model off a Claude-native provider)', () => {
+    expect(CLAUDE_CODE_GUIDE_AGENT.model).toBe('haiku')
+  })
+})

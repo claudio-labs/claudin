@@ -34,8 +34,8 @@ describe('WEB_RESEARCHER_AGENT', () => {
     expect(WEB_RESEARCHER_AGENT.disallowedTools).toBeUndefined()
   })
 
-  test('runs on sonnet (the parent model off a Claude-native provider)', () => {
-    expect(WEB_RESEARCHER_AGENT.model).toBe('sonnet')
+  test('runs on haiku (the parent model off a Claude-native provider)', () => {
+    expect(WEB_RESEARCHER_AGENT.model).toBe('haiku')
   })
 
   test('skips CLAUDE.md — research does not need commit/lint rules', () => {

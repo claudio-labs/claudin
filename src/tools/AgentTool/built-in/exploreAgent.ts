@@ -123,7 +123,10 @@ export const EXPLORE_AGENT: BuiltInAgentDefinition = {
   baseDir: 'built-in',
   // The caller picks per call (haiku cheaper, opus stronger, inherit its own);
   // resolution and the non-Claude fallback are in providers/model/agent.ts.
-  model: 'sonnet',
+  // Haiku by default since 2026-10-07 (user decision): Haiku 5.5 on the
+  // Anthropic provider, Haiku 4.5 on Bedrock/Vertex/Foundry, the parent's model
+  // off a Claude-native provider.
+  model: 'haiku',
   // The same context a `readOnly: true` brief gets (readOnlyAgent.ts): no
   // CLAUDE.md family, no git status, no commit/PR protocol. The parent holds
   // the conventions and interprets the report.

@@ -76,6 +76,32 @@ export const CLAUDE_HAIKU_4_5_CONFIG = {
   mistral: 'ministral-3b-latest',
 } as const satisfies ModelConfig
 
+// Claude Haiku 5.5 (2026-10-07) — the first-party default Haiku, replacing Haiku
+// 4.5. Despite the family name it is a 5.5-generation model, shaped like Sonnet
+// 5.5 and Opus 5.5 rather than like Haiku 4.5: native 1M context, 128K max
+// output, adaptive thinking always on ({type:'disabled'} is a 400), effort
+// ladder low→max with a medium default, June 2026 cutoff. The price is tiered on
+// prompt size: $0.10/$0.50 up to 100K prompt tokens, $0.50/$2.50 above
+// (COST_HAIKU_55). Claude Code 2.1.293's wire, captured in
+// src/providers/model/__fixtures__/claude-code-wire/, is the reference.
+//
+// The trap runs the other way from Sonnet 5.5's: the id does not contain Haiku
+// 4.5's, but every predicate that reads `haiku` as "small legacy model" matches
+// it. 3P defaults stay on Haiku 4.5, as in Claude Code's per-provider map.
+export const CLAUDE_HAIKU_5_5_CONFIG = {
+  firstParty: 'claude-haiku-5-5',
+  bedrock: 'anthropic.claude-haiku-5-5',
+  vertex: 'claude-haiku-5-5',
+  foundry: 'claude-haiku-5-5',
+  openai: 'gpt-4o-mini',
+  gemini: 'gemini-2.0-flash-lite',
+  github: 'github:copilot',
+  codex: 'gpt-5.5',
+  'nvidia-nim': 'nvidia/llama-3.1-nemotron-70b-instruct',
+  minimax: 'MiniMax-M2.5',
+  mistral: 'ministral-3b-latest',
+} as const satisfies ModelConfig
+
 export const CLAUDE_SONNET_4_CONFIG = {
   firstParty: 'claude-sonnet-4-20250514',
   bedrock: 'us.anthropic.claude-sonnet-4-20250514-v1:0',
@@ -328,6 +354,7 @@ export const CLAUDE_SONNET_5_5_CONFIG = {
 export const ALL_MODEL_CONFIGS = {
   haiku35: CLAUDE_3_5_HAIKU_CONFIG,
   haiku45: CLAUDE_HAIKU_4_5_CONFIG,
+  haiku55: CLAUDE_HAIKU_5_5_CONFIG,
   sonnet35: CLAUDE_3_5_V2_SONNET_CONFIG,
   sonnet37: CLAUDE_3_7_SONNET_CONFIG,
   sonnet40: CLAUDE_SONNET_4_CONFIG,

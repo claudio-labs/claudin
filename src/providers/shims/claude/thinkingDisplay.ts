@@ -167,7 +167,7 @@ export function progressUpdateHint(model: string | undefined): string | undefine
 
 /**
  * The models the API documents with `"omitted"` as their default display: the
- * Claude 5 family (Opus, Sonnet, Fable), every Mythos including the preview,
+ * Claude 5 family (Opus, Sonnet, Haiku 5.5, Fable), every Mythos including the preview,
  * and Opus 4.7 / 4.8. Everything older defaults to "summarized".
  */
 export function modelDefaultsToOmittedThinking(model: string): boolean {
@@ -175,6 +175,7 @@ export function modelDefaultsToOmittedThinking(model: string): boolean {
   return (
     canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
+    canonical.includes('claude-haiku-5') ||
     canonical.includes('claude-fable-5') ||
     canonical.includes('claude-mythos') ||
     canonical.includes('claude-opus-4-7') ||
