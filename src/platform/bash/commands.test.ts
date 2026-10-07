@@ -46,4 +46,22 @@ describe('splitCommand_DEPRECATED', () => {
   test('a bare digit subcommand is not erased by the FD strip', () => {
     expect(splitCommand_DEPRECATED('echo ; 2 > file')).toEqual(['echo', '2'])
   })
+
+  // shell-quote 1.11 decodes `$'…'` (dropping the `$` and expanding `\x27`
+  // into a quote). The validators run on the text returned here, so it must
+  // be what bash will read — the per-subcommand ANSI-C check looks for `$'`.
+  test("ANSI-C quoting comes back verbatim, not decoded", () => {
+    expect(
+      splitCommand_DEPRECATED(
+        "echo hi\ngit diff -G $'a\\x27b' --output=/tmp/out -G $'c\\x27d'",
+      ),
+    ).toEqual([
+      'echo hi',
+      "git diff -G $'a\\x27b' --output=/tmp/out -G $'c\\x27d'",
+    ])
+    expect(splitCommand_DEPRECATED("ls $'a;b' && pwd")).toEqual([
+      "ls $'a;b'",
+      'pwd',
+    ])
+  })
 })

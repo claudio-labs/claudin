@@ -164,6 +164,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
       return {
         client_id: storedInfo.clientId,
         client_secret: storedInfo.clientSecret,
+        issuer: storedInfo.clientIssuer,
       }
     }
 
@@ -175,6 +176,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
       return {
         client_id: configClientId,
         client_secret: clientConfig?.clientSecret,
+        issuer: storedInfo?.clientIssuer,
       }
     }
 
@@ -190,6 +192,13 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     const existingData = storage.read() || {}
     const serverKey = getServerKey(this.serverName, this.serverConfig)
 
+    // The SDK also saves back the client it was handed, to stamp it with its
+    // issuer. For the configured client that would copy oauth.clientId into
+    // the stored entry, which clientInformation() reads first, so a later
+    // change to the config would be ignored — keep only the stamp.
+    const isConfiguredClient =
+      clientInformation.client_id === this.serverConfig.oauth?.clientId
+
     const updatedData: SecureStorageData = {
       ...existingData,
       mcpOAuth: {
@@ -198,8 +207,11 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
           ...existingData.mcpOAuth?.[serverKey],
           serverName: this.serverName,
           serverUrl: this.serverConfig.url,
-          clientId: clientInformation.client_id,
-          clientSecret: clientInformation.client_secret,
+          ...(!isConfiguredClient && {
+            clientId: clientInformation.client_id,
+            clientSecret: clientInformation.client_secret,
+          }),
+          clientIssuer: clientInformation.issuer,
           // Provide default values for required fields if not present
           accessToken: existingData.mcpOAuth?.[serverKey]?.accessToken || '',
           expiresAt: existingData.mcpOAuth?.[serverKey]?.expiresAt || 0,
@@ -280,7 +292,8 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
         const refreshed = await this._refreshInProgress
         if (refreshed) {
           logMCPDebug(this.serverName, `Token refreshed successfully`)
-          return refreshed
+          // A refresh does not change which server issued the tokens.
+          return { ...refreshed, issuer: tokenData.tokenIssuer }
         }
         logMCPDebug(
           this.serverName,
@@ -301,6 +314,7 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
       expires_in: expiresIn,
       scope: tokenData.scope,
       token_type: 'Bearer',
+      issuer: tokenData.tokenIssuer,
     }
 
     logMCPDebug(this.serverName, `Returning tokens`)
@@ -333,6 +347,10 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
           refreshToken: tokens.refresh_token,
           expiresAt: Date.now() + (tokens.expires_in || 3600) * 1000,
           scope: tokens.scope,
+          // Our proactive refresh saves the SDK's unstamped refresh result;
+          // a refresh keeps the issuer the tokens were bound to.
+          tokenIssuer:
+            tokens.issuer ?? existingData.mcpOAuth?.[serverKey]?.tokenIssuer,
         },
       },
     }
@@ -466,11 +484,13 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
       case 'client':
         tokenData.clientId = undefined
         tokenData.clientSecret = undefined
+        tokenData.clientIssuer = undefined
         break
       case 'tokens':
         tokenData.accessToken = ''
         tokenData.refreshToken = undefined
         tokenData.expiresAt = 0
+        tokenData.tokenIssuer = undefined
         break
       case 'verifier':
         this._codeVerifier = undefined

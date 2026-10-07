@@ -53,6 +53,10 @@ export interface SecureStorageData {
       scope?: string
       clientId?: string
       clientSecret?: string
+      // The authorization server each was bound to — the `issuer` the MCP SDK
+      // stamps on what it saves and checks again on every read.
+      clientIssuer?: string
+      tokenIssuer?: string
       discoveryState?: {
         authorizationServerUrl: string
         resourceMetadataUrl?: string
@@ -85,6 +89,16 @@ const unavailableSecureStorage: SecureStorage = {
   delete: () => true,
 }
 
+let storageOverride: SecureStorage | null = null
+
+/**
+ * Test seam: getSecureStorage() returns `storage` until this is called again
+ * with null. The real implementations write into the OS credential vault.
+ */
+export function _setSecureStorageForTesting(storage: SecureStorage | null): void {
+  storageOverride = storage
+}
+
 /**
  * Get the appropriate secure storage implementation for the current platform.
  * Prefers native OS vaults (Keychain, libsecret, Credential Locker) with a plaintext fallback.
@@ -92,6 +106,7 @@ const unavailableSecureStorage: SecureStorage = {
 export function getSecureStorage(options?: {
   allowPlainTextFallback?: boolean
 }): SecureStorage {
+  if (storageOverride) return storageOverride
   const allowPlainTextFallback = options?.allowPlainTextFallback ?? true
 
   if (process.platform === 'darwin') {
