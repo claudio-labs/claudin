@@ -61,14 +61,27 @@ const DEPRECATED_MODELS: Record<string, DeprecationEntry> = {
       foundry: null,
     },
   },
+  // Anthropic's date covers the platforms it operates (Claude API, Foundry);
+  // Bedrock and Vertex are partner-operated and set their own schedules.
+  'claude-sonnet-4-5': {
+    modelName: 'Claude Sonnet 4.5',
+    retirementDates: {
+      firstParty: 'November 30, 2026',
+      bedrock: null,
+      vertex: null,
+      foundry: 'November 30, 2026',
+    },
+  },
 }
 
 /**
  * Check if a model is deprecated and get its deprecation info
  */
-function getDeprecatedModelInfo(modelId: string): DeprecationInfo {
+function getDeprecatedModelInfo(
+  modelId: string,
+  provider: APIProvider,
+): DeprecationInfo {
   const lowercaseModelId = modelId.toLowerCase()
-  const provider = getAPIProvider()
 
   for (const [key, value] of Object.entries(DEPRECATED_MODELS)) {
     const retirementDate = value.retirementDates[provider]
@@ -90,12 +103,13 @@ function getDeprecatedModelInfo(modelId: string): DeprecationInfo {
  */
 export function getModelDeprecationWarning(
   modelId: string | null,
+  provider: APIProvider = getAPIProvider(),
 ): string | null {
   if (!modelId) {
     return null
   }
 
-  const info = getDeprecatedModelInfo(modelId)
+  const info = getDeprecatedModelInfo(modelId, provider)
   if (!info.isDeprecated) {
     return null
   }
