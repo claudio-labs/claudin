@@ -239,6 +239,14 @@ describe('main validators', () => {
     )
   })
 
+  // A newline separates commands just like `;`, so a leading `echo` line must
+  // not exempt the rest of the command from the obfuscation checks.
+  test('a leading echo line does not exempt the next line from the ANSI-C check', () => {
+    expect(
+      askMessage(bashCommandIsSafe_DEPRECATED("echo hi\nls $'-la'")),
+    ).toContain('ANSI-C quoting')
+  })
+
   test('locale quoting ($"...") is asked about', () => {
     expect(askMessage(bashCommandIsSafe_DEPRECATED('ls $"-la"'))).toContain(
       'locale quoting',

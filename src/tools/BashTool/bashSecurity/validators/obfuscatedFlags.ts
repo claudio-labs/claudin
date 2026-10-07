@@ -14,9 +14,10 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   const { originalCommand, baseCommand } = context
 
   // Echo is safe for obfuscated flags, BUT only for simple echo commands.
-  // For compound commands (with |, &, ;), we need to check the whole command
-  // because the dangerous ANSI-C quoting might be after the operator.
-  const hasShellOperators = /[|&;]/.test(originalCommand)
+  // For compound commands (with |, &, ;, or a newline), we need to check the
+  // whole command because the dangerous ANSI-C quoting might be after the
+  // operator.
+  const hasShellOperators = /[|&;\n]/.test(originalCommand)
   if (baseCommand === 'echo' && !hasShellOperators) {
     return {
       behavior: 'passthrough',

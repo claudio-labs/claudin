@@ -359,4 +359,22 @@ describe('bashToolHasPermission', () => {
     expect(result.message).toContain('was blocked')
     expect(result.message).toContain('passwd')
   })
+
+  // shell-quote 1.11 decodes ANSI-C quoting, and the split used to rebuild
+  // each subcommand from those decoded tokens: `$'a\x27b'` came back as
+  // `'a'b'`, whose stray quote swallowed `--output=…` into one argument, so a
+  // file-writing `git diff` was judged read-only and auto-allowed. The leading
+  // `echo` line is what skipped the whole-command ANSI-C check.
+  test('ANSI-C quoting cannot hide a flag from the read-only check', async () => {
+    for (const command of [
+      "echo hi\ngit diff -G $'a\\x27b' --output=/tmp/out -G $'c\\x27d'",
+      "echo hi\nls $'a'",
+    ]) {
+      const result = await bashToolHasPermission(
+        { command },
+        makeToolUseContext(),
+      )
+      expect(result.behavior).not.toBe('allow')
+    }
+  })
 })

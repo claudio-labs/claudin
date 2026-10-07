@@ -1,0 +1,21 @@
+{
+  "test": [
+    "src/platform/bash/commands.test.ts",
+    "src/tools/BashTool/bashSecurity.test.ts",
+    "src/tools/BashTool/bashPermissions.test.ts"
+  ],
+  "source": "src/platform/bash/commands.ts",
+  "probes": [
+    {
+      "name": "shell-quote decodes ANSI-C quoting in the split",
+      "find": ".replaceAll(\"$'\", `${placeholders.ANSI_C_DOLLAR}'`)",
+      "replace": ""
+    },
+    {
+      "name": "a leading echo line exempts the rest from the ANSI-C check",
+      "source": "src/tools/BashTool/bashSecurity/validators/obfuscatedFlags.ts",
+      "find": "const hasShellOperators = /[|&;\\n]/.test(originalCommand)",
+      "replace": "const hasShellOperators = /[|&;]/.test(originalCommand)"
+    }
+  ]
+}

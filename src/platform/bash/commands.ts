@@ -20,6 +20,7 @@ import { quote, tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 function generatePlaceholders(): {
   SINGLE_QUOTE: string
   DOUBLE_QUOTE: string
+  ANSI_C_DOLLAR: string
   NEW_LINE: string
   ESCAPED_OPEN_PAREN: string
   ESCAPED_CLOSE_PAREN: string
@@ -29,6 +30,7 @@ function generatePlaceholders(): {
   return {
     SINGLE_QUOTE: `__SINGLE_QUOTE_${salt}__`,
     DOUBLE_QUOTE: `__DOUBLE_QUOTE_${salt}__`,
+    ANSI_C_DOLLAR: `__ANSI_C_DOLLAR_${salt}__`,
     NEW_LINE: `__NEW_LINE_${salt}__`,
     ESCAPED_OPEN_PAREN: `__ESCAPED_OPEN_PAREN_${salt}__`,
     ESCAPED_CLOSE_PAREN: `__ESCAPED_CLOSE_PAREN_${salt}__`,
@@ -141,6 +143,12 @@ export function splitCommandWithOperators(command: string): string[] {
   // Try to parse the command to detect malformed syntax
   const parseResult = tryParseShellCommand(
     commandWithContinuationsJoined
+      // SECURITY: shell-quote >= 1.11 decodes ANSI-C quoting, dropping the `$`
+      // and expanding escapes, so `$'a\x27b'` would come back as `'a'b'` —
+      // text bash never sees, whose stray quote can swallow a later flag into
+      // one argument. Hiding the `$` keeps the body a plain single-quoted
+      // string, restored verbatim below, where the ANSI-C validator sees it.
+      .replaceAll("$'", `${placeholders.ANSI_C_DOLLAR}'`)
       .replaceAll('"', `"${placeholders.DOUBLE_QUOTE}`) // parse() strips out quotes :P
       .replaceAll("'", `'${placeholders.SINGLE_QUOTE}`) // parse() strips out quotes :P
       .replaceAll('\n', `\n${placeholders.NEW_LINE}\n`) // parse() strips out new lines :P
@@ -233,6 +241,7 @@ export function splitCommandWithOperators(command: string): string[] {
       return part
         .replaceAll(`${placeholders.SINGLE_QUOTE}`, "'")
         .replaceAll(`${placeholders.DOUBLE_QUOTE}`, '"')
+        .replaceAll(placeholders.ANSI_C_DOLLAR, '$')
         .replaceAll(`\n${placeholders.NEW_LINE}\n`, '\n')
         .replaceAll(placeholders.ESCAPED_OPEN_PAREN, '\\(')
         .replaceAll(placeholders.ESCAPED_CLOSE_PAREN, '\\)')
