@@ -44,12 +44,13 @@ export const WEB_RESEARCHER_AGENT: BuiltInAgentDefinition = {
   tools: [WEB_SEARCH_TOOL_NAME, WEB_FETCH_TOOL_NAME],
   source: 'built-in',
   baseDir: 'built-in',
-  // Sonnet on a Claude-native provider; elsewhere the family alias inherits
-  // the parent's model (providers/model/agent.ts). It was `haiku` but ran on
-  // the parent's model until 2026-09-25 (agent/query/turnModel.ts), so Sonnet
-  // was the user's pick when the model started to apply. Overridable in
+  // Haiku on a Claude-native provider (Haiku 5.5 on Anthropic, 4.5 on
+  // Bedrock/Vertex/Foundry); elsewhere the family alias inherits the parent's
+  // model (providers/model/agent.ts). It was `haiku` but ran on the parent's
+  // model until 2026-09-25 (agent/query/turnModel.ts); Sonnet from then, and
+  // back to Haiku on 2026-10-07 with Haiku 5.5 (user decision). Overridable in
   // /agents (agentModelOverrides['built-in:WebResearcher'], config.json).
-  model: 'sonnet',
+  model: 'haiku',
   // Web research does not need commit/lint/typescript rules from CLAUDE.md,
   // nor the parent-session gitStatus blob — it never touches the local repo.
   omitClaudeMd: true,

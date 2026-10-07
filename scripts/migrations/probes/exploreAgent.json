@@ -122,10 +122,10 @@
       "replace": "        GLOB_TOOL_NAME,\n        GREP_TOOL_NAME,\n        FILE_READ_TOOL_NAME,\n        BASH_TOOL_NAME,\n        FILE_EDIT_TOOL_NAME,\n"
     },
     {
-      "name": "the default model is sonnet (user decision, 2026-09-24)",
+      "name": "the default model is haiku (user decision, 2026-10-07)",
       "source": "src/tools/AgentTool/built-in/exploreAgent.ts",
-      "find": "  model: 'sonnet',\n",
-      "replace": "  model: 'haiku',\n"
+      "find": "  model: 'haiku',\n",
+      "replace": "  model: 'sonnet',\n"
     },
     {
       "name": "the context matches a readOnly brief",
@@ -141,10 +141,10 @@
       "replace": ""
     },
     {
-      "name": "WebResearcher runs on sonnet (user decision, 2026-09-25)",
+      "name": "WebResearcher runs on haiku (user decision, 2026-10-07)",
       "source": "src/tools/AgentTool/built-in/webResearcherAgent.ts",
-      "find": "  model: 'sonnet',\n",
-      "replace": "  model: 'haiku',\n"
+      "find": "  model: 'haiku',\n",
+      "replace": "  model: 'sonnet',\n"
     },
     {
       "name": "the overflow list keeps each line verbatim",

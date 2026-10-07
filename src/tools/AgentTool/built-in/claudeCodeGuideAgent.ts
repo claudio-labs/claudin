@@ -109,8 +109,9 @@ export const CLAUDE_CODE_GUIDE_AGENT: BuiltInAgentDefinition = {
       ],
   source: 'built-in',
   baseDir: 'built-in',
-  // Sonnet on a Claude-native provider, the parent's model elsewhere — see
-  // webResearcherAgent.ts for why it is no longer `haiku`.
+  // Sonnet on a Claude-native provider, the parent's model elsewhere. It was
+  // `haiku` but ran on the parent's model until 2026-09-25 (see
+  // agent/query/turnModel.ts).
   model: 'sonnet',
   permissionMode: 'dontAsk',
   getSystemPrompt({ toolUseContext }) {

@@ -52,8 +52,8 @@ export const WEB_RESEARCHER_MANAGER_AGENT: BuiltInAgentDefinition = {
   source: 'built-in',
   baseDir: 'built-in',
   // Orchestration, claim extraction, adversarial verification and synthesis are
-  // the hard reasoning here. Sonnet like its WebResearcher leaves, and the
-  // parent's model off a Claude-native provider. Overridable in /agents
+  // the hard reasoning here, so Sonnet over its Haiku WebResearcher leaves, and
+  // the parent's model off a Claude-native provider. Overridable in /agents
   // (agentModelOverrides['built-in:WebResearcherManager'], config.json).
   model: 'sonnet',
   // Pure web research — no local repo, so skip CLAUDE.md rules and the gitStatus blob.

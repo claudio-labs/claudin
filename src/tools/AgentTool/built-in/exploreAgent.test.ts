@@ -94,8 +94,8 @@ describe('EXPLORE_AGENT definition', () => {
     )
   })
 
-  test('defaults to sonnet', () => {
-    expect(EXPLORE_AGENT.model).toBe('sonnet')
+  test('defaults to haiku', () => {
+    expect(EXPLORE_AGENT.model).toBe('haiku')
   })
 
   test('drops the context a read-only brief does not need', () => {
