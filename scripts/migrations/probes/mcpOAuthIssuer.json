@@ -1,0 +1,56 @@
+{
+  "test": ["src/mcp/auth/claudeAuthProvider.test.ts", "src/mcp/auth.test.ts"],
+  "source": "src/mcp/auth/claudeAuthProvider.ts",
+  "probes": [
+    {
+      "name": "stored client information drops its stamp",
+      "find": "        issuer: storedInfo.clientIssuer,\n",
+      "replace": ""
+    },
+    {
+      "name": "the configured client drops its stamp",
+      "find": "        issuer: storedInfo?.clientIssuer,\n",
+      "replace": ""
+    },
+    {
+      "name": "the configured client is copied over the config",
+      "find": "clientInformation.client_id === this.serverConfig.oauth?.clientId",
+      "replace": "false"
+    },
+    {
+      "name": "saveClientInformation drops the stamp",
+      "find": "          clientIssuer: clientInformation.issuer,\n",
+      "replace": ""
+    },
+    {
+      "name": "stored tokens drop their stamp",
+      "find": "      issuer: tokenData.tokenIssuer,\n",
+      "replace": ""
+    },
+    {
+      "name": "a proactive refresh drops the stamp",
+      "find": "return { ...refreshed, issuer: tokenData.tokenIssuer }",
+      "replace": "return refreshed"
+    },
+    {
+      "name": "saveTokens drops the stamp",
+      "find": "tokens.issuer ?? existingData.mcpOAuth?.[serverKey]?.tokenIssuer",
+      "replace": "undefined"
+    },
+    {
+      "name": "an unstamped save wipes the stored stamp",
+      "find": "tokens.issuer ?? existingData.mcpOAuth?.[serverKey]?.tokenIssuer",
+      "replace": "tokens.issuer"
+    },
+    {
+      "name": "invalidating tokens keeps their stamp",
+      "find": "        tokenData.tokenIssuer = undefined\n",
+      "replace": ""
+    },
+    {
+      "name": "invalidating the client keeps its stamp",
+      "find": "        tokenData.clientIssuer = undefined\n",
+      "replace": ""
+    }
+  ]
+}
