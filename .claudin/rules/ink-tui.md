@@ -259,9 +259,12 @@ fix the right one.
   transition/retry/deferred (`(lanes & 0x14000000) === lanes`, no
   `<ViewTransition>` needed). The rest need a ViewTransition fiber (tag 30) or a
   ref on a `<Fragment>` (React 19.3 Fragment Refs), and this tree has neither.
-- Nothing static catches a missing one: `@types/react-reconciler` stops at 0.33
-  and does not declare the ViewTransition surface, so `tsc` and `bun run build`
-  both pass and it ships as a runtime `TypeError: X is not a function` thrown
-  inside `completeRootWhenReady`. What caught it was `Stats.test.tsx` driving real
-  keypresses — a test that only renders never reaches a transition-lane commit,
+- Since `@types/react-reconciler` 0.33.1 the members 0.34 binds unconditionally
+  (`suspendOnActiveViewTransition`, `maySuspendCommitOnUpdate`, `bindToConsole`,
+  the devtools fields …) are declared **required**, so `tsc` catches those. The
+  ViewTransition / Fragment-ref surface (`applyViewTransitionName`,
+  `startViewTransition`, `createFragmentInstance` …) is still undeclared:
+  a missing one passes `tsc` and `bun run build` and ships as a runtime
+  `TypeError: X is not a function` thrown inside `completeRootWhenReady`. What
+  caught it was `Stats.test.tsx` driving real keypresses — a test that only renders never reaches a transition-lane commit,
   so scope the post-bump check to the suites that press keys.

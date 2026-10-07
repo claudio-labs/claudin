@@ -203,29 +203,13 @@ let _createCount = 0
 let _prepareAt = 0
 // --- END ---
 
-// react-reconciler 0.34 BINDS the ViewTransition half of the host config that
-// 0.33 only read and threw away, and calls this one from `completeRootWhenReady`
-// on every commit whose lanes are all transition/retry/deferred — no
-// `<ViewTransition>` element required. Omitting it is a runtime
-// `TypeError: suspendOnActiveViewTransition is not a function`. A terminal has no
-// running transition to wait on, so there is nothing to suspend. The other
-// methods 0.34 newly binds (applyViewTransitionName, startViewTransition,
-// measureInstance, createFragmentInstance, …) each sit behind a ViewTransition
-// fiber or a ref on a `<Fragment>`, and this tree has neither — see
-// ink-tui.md §11. It lives out here because `@types/react-reconciler` stops at
-// 0.33 and does not declare the property: in the literal below it is a TS2353,
-// while a spread is exempt from excess-property checking, which keeps every
-// other key checked.
-const viewTransitionConfig: { suspendOnActiveViewTransition(): void } = {
-  suspendOnActiveViewTransition() {},
-}
-
 const reconciler = createReconciler<
   ElementNames,
   Props,
   DOMElement,
   DOMElement,
   TextNode,
+  unknown,
   DOMElement,
   unknown,
   unknown,
@@ -234,7 +218,12 @@ const reconciler = createReconciler<
   UpdatePayload | null,
   NodeJS.Timeout,
   -1,
-  null
+  null,
+  unknown,
+  unknown,
+  unknown,
+  unknown,
+  unknown
 >({
   getRootHostContext: () => ({ isInsideText: false }),
   prepareForCommit: () => {
@@ -493,7 +482,30 @@ const reconciler = createReconciler<
   waitForCommitToBeReady(): null {
     return null
   },
-  ...viewTransitionConfig,
+  // react-reconciler 0.34 BINDS the ViewTransition half of the host config that
+  // 0.33 only read and threw away, and calls this one from `completeRootWhenReady`
+  // on every commit whose lanes are all transition/retry/deferred — no
+  // `<ViewTransition>` element required. Omitting it is a runtime
+  // `TypeError: suspendOnActiveViewTransition is not a function`. A terminal has no
+  // running transition to wait on, so there is nothing to suspend. The other
+  // methods 0.34 newly binds (applyViewTransitionName, startViewTransition,
+  // measureInstance, createFragmentInstance, …) each sit behind a ViewTransition
+  // fiber or a ref on a `<Fragment>`, and this tree has neither — see
+  // ink-tui.md §11.
+  suspendOnActiveViewTransition(): void {},
+  // Also bound by 0.34 but unreachable here: both are consulted only for a
+  // fiber that maySuspendCommit (always false) flagged or that sits inside a
+  // ViewTransition, and the reason is only asked for when
+  // waitForCommitToBeReady (always null) suspends the commit.
+  maySuspendCommitOnUpdate(): boolean {
+    return false
+  },
+  maySuspendCommitInSyncRender(): boolean {
+    return false
+  },
+  getSuspendedCommitReason(): null {
+    return null
+  },
   NotPendingTransition: null,
   HostTransitionContext: {
     $$typeof: Symbol.for('react.context'),
@@ -516,6 +528,16 @@ const reconciler = createReconciler<
   },
   resolveEventTimeStamp(): number {
     return dispatcher.currentEvent?.timeStamp ?? -1.1
+  },
+  // Read by `injectIntoDevTools()`, which since 0.34 takes no argument.
+  // Reporting React DOM's version, not Ink's
+  // See https://github.com/facebook/react/issues/16666#issuecomment-532639905
+  rendererVersion: '16.13.1',
+  rendererPackageName: 'ink',
+  extraDevToolsConfig: null,
+  // Only the default onCaughtError calls this, and ink.tsx passes its own.
+  bindToConsole(): () => void {
+    return () => {}
   },
 })
 

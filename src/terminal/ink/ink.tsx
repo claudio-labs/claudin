@@ -280,15 +280,11 @@ export default class Ink {
       },
       // onDefaultTransitionIndicator
       noop,
+      // transitionCallbacks
+      null,
     );
     if (process.env.NODE_ENV === 'development') {
-      reconciler.injectIntoDevTools({
-        bundleType: 0,
-        // Reporting React DOM's version, not Ink's
-        // See https://github.com/facebook/react/issues/16666#issuecomment-532639905
-        version: '16.13.1',
-        rendererPackageName: 'ink'
-      });
+      reconciler.injectIntoDevTools();
     }
   }
   private handleResume = () => {
