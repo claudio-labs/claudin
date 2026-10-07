@@ -1,6 +1,6 @@
 ---
 name: builtin-subagents-skip-529-retry
-description: A built-in sub-agent (Code, Explore, Plan, WebResearcher…) never retries a 529 overloaded error — FOREGROUND_529_RETRY_SOURCES lists 'agent:builtin' exactly while built-ins run as 'agent:builtin:<Type>'; found 2026-09-25, not fixed
+description: A built-in sub-agent (Code, Explore, Plan, WebResearcher…) never retries a 529 overloaded error — FOREGROUND_529_RETRY_SOURCES lists 'agent:builtin' exactly while built-ins run as 'agent:builtin:<Type>'; found 2026-09-25, seen live 10-05 (2 long Code runs lost), not fixed
 type: project
 paths:
   - "src/providers/transport/withRetry.ts"
@@ -22,6 +22,12 @@ blocking on, and an inline sub-agent's parent is. Since 2026-09-25 Explore is on
 by default ([[explore-agent-removed]]), so more delegations run through a
 built-in and a capacity spike fails more of them.
 
-**Status 2026-09-25:** left in place, out of the Explore PR's scope. The fix is a
-prefix match; mind the set's warning that every retry during a capacity cascade
-is 3-10× gateway amplification.
+**Observed 2026-10-05:** two of nine background `Code` agents, both on long
+rewrite tasks, ended with nothing but `API Error: 529 … Overloaded` as their
+result. One had made 61 tool calls; the other had run 2h14m and made 134. In
+both cases all of the work was lost. This fits the missing retry, but the
+transcript cannot tell "never retried" from "retries ran out".
+
+**Status 2026-10-06:** still unfixed (`withRetry.ts` still lists the exact
+string). The fix is a prefix match; mind the set's warning that every retry
+during a capacity cascade is 3-10× gateway amplification.
