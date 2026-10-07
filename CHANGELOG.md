@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.41 — 2026-10-07
+
+### 📦 Dependencies
+
+- fix(deps): close the shell-quote 1.11 bash bypass, keep the mcp issuer (#277) (13dbef9f)
+- chore(deps): bump the dev-dependencies group across 1 directory with 3 updates (#275) (2f648296)
+- chore(deps): bump the production-dependencies group with 12 updates (#276) (69d13cc6)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.40 — 2026-10-01
 
 ### 🐛 Bug Fixes
