@@ -34,7 +34,7 @@ export type SuggestionType =
 // Visible-row window for the suggestion menu: at least MIN, at most MAX,
 // otherwise tracks the terminal height (leaving 2 rows for the prompt).
 export const MIN_VISIBLE_ITEMS = 6
-export const MAX_VISIBLE_ITEMS = 6
+export const MAX_VISIBLE_ITEMS = 12
 
 // Command descriptions wrap onto this many rows instead of being cut to one
 // line — most of them are a full sentence, and a single ellipsized line hid the
