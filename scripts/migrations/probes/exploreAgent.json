@@ -1,6 +1,7 @@
 {
   "test": [
     "src/tools/AgentTool/built-in/exploreAgent.test.ts",
+    "src/tools/AgentTool/built-in/claudeCodeGuideAgent.test.ts",
     "src/tools/AgentTool/built-in/readOnlyAgents.test.ts",
     "src/tools/AgentTool/builtInAgents.test.ts",
     "src/tools/AgentTool/autoBackground.test.ts",
@@ -143,6 +144,12 @@
     {
       "name": "WebResearcher runs on haiku (user decision, 2026-10-07)",
       "source": "src/tools/AgentTool/built-in/webResearcherAgent.ts",
+      "find": "  model: 'haiku',\n",
+      "replace": "  model: 'sonnet',\n"
+    },
+    {
+      "name": "claudin-guide runs on haiku (user decision, 2026-10-07)",
+      "source": "src/tools/AgentTool/built-in/claudeCodeGuideAgent.ts",
       "find": "  model: 'haiku',\n",
       "replace": "  model: 'sonnet',\n"
     },

@@ -16,8 +16,8 @@ the default the same day, after the A/B below.
   denylist.
 - **Model:** `haiku` since 2026-10-07 (user pick, with Haiku 5.5 as the
   Anthropic default; `sonnet` before), which means the parent's model off a
-  Claude-native provider. WebResearcher moved with it. The caller can pass
-  `model` per call, `inherit` included. Not benched on Haiku 5.5.
+  Claude-native provider. WebResearcher and claudin-guide moved with it. The
+  caller can pass `model` per call, `inherit` included. Not benched on Haiku 5.5.
 - **Runs:** one-shot, no plan dossier (`Explore: 0`).
 - **Report:** kept out of the head/tail summarizer
   (`UNSUMMARIZED_AGENT_TYPES`). Its contract: verbatim excerpts under a full
