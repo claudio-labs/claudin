@@ -182,9 +182,11 @@ const BILLING_HEADER_PREFIX = 'x-anthropic-billing-header:'
 const CACHE_TTL_5MIN_MS = 5 * 60 * 1000
 export const CACHE_TTL_1HOUR_MS = 60 * 60 * 1000
 
-// Models to exclude from cache break detection (e.g., haiku has different caching behavior)
+// Models to exclude from cache break detection (e.g., haiku has different caching behavior).
+// Haiku 5.5 caches like the rest of the Claude 5 family, and runs the main
+// thread or an Explore/WebResearcher child, so it is tracked.
 function isExcludedModel(model: string): boolean {
-  return model.includes('haiku')
+  return model.includes('haiku') && !model.includes('haiku-5')
 }
 
 // The key is shared with the lagging marker so both agree on which requests

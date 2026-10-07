@@ -34,6 +34,7 @@ import {
 } from 'src/providers/transport/betas.js'
 import { THINKING_BINDING_CONTROLS_BETA_HEADER } from 'src/shared/constants/betas.js'
 import {
+  COST_HAIKU_55,
   COST_TIER_2_10,
   COST_TIER_4_20,
   MODEL_COSTS,
@@ -48,6 +49,7 @@ import {
 //
 // Written before Sonnet 5.5 was registered, so it went red on Sonnet 5.5 and
 // stayed green on Opus 5.5 — the control that shows the harness can pass.
+// Haiku 5.5 (Claude Code 2.1.293) took the same route.
 
 type Fixture = {
   model: string
@@ -73,12 +75,17 @@ const fixtures: Fixture[] = readdirSync(FIXTURE_ROOT).flatMap(version =>
 
 // Claude Code's tier names, as its catalog spells them.
 const TIERS: Record<string, ModelCosts> = {
+  haiku_55: COST_HAIKU_55,
   tier_2_10: COST_TIER_2_10,
   tier_4_20_cache_read_0_20: COST_TIER_4_20,
 }
 
 test('the capture is on disk (an empty fixture dir would pass every check below)', () => {
-  expect(fixtures.map(f => f.model).sort()).toEqual(['claude-opus-5-5', 'claude-sonnet-5-5'])
+  expect(fixtures.map(f => f.model).sort()).toEqual([
+    'claude-haiku-5-5',
+    'claude-opus-5-5',
+    'claude-sonnet-5-5',
+  ])
 })
 
 describe.each(fixtures.map(f => [f.model, f] as const))('%s matches Claude Code', (model, f) => {

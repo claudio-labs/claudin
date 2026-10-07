@@ -217,8 +217,14 @@ export function getToolSearchMode(): ToolSearchMode {
 /**
  * Default patterns for models that do NOT support tool_reference.
  * New models are assumed to support tool_reference unless explicitly listed here.
+ * The Haiku generations are named one by one: Haiku 5.5 supports it (Claude Code
+ * sends the tool search beta for it), and a bare 'haiku' would match it.
  */
-const DEFAULT_UNSUPPORTED_MODEL_PATTERNS = ['haiku']
+const DEFAULT_UNSUPPORTED_MODEL_PATTERNS = [
+  'claude-3-haiku',
+  'claude-3-5-haiku',
+  'claude-haiku-4',
+]
 
 /**
  * Check if a model supports tool_reference blocks (required for tool search).
@@ -227,7 +233,7 @@ const DEFAULT_UNSUPPORTED_MODEL_PATTERNS = ['haiku']
  * UNLESS they match a pattern in the unsupported list. This ensures new
  * models work by default without code changes.
  *
- * Currently, Haiku models do NOT support tool_reference.
+ * Haiku models before 5.5 do NOT support tool_reference.
  *
  * @param model The model name to check
  * @returns true if the model supports tool_reference, false otherwise

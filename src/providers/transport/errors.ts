@@ -1022,6 +1022,10 @@ function get3PModelFallbackSuggestion(model: string): string | undefined {
   if (m.includes('sonnet-4-5') || m.includes('sonnet_4_5')) {
     return getModelStrings().sonnet40
   }
+  // Haiku 5.5 falls back one generation, to Haiku 4.5.
+  if (m.includes('haiku-5-5') || m.includes('haiku_5_5')) {
+    return getModelStrings().haiku45
+  }
   return undefined
 }
 

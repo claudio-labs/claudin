@@ -111,7 +111,8 @@ export function isNative1mModel(model: ModelName): boolean {
   return (
     canonical.includes('opus-5') ||
     canonical.includes('sonnet-5') ||
-    canonical.includes('fable-5')
+    canonical.includes('fable-5') ||
+    canonical.includes('haiku-5')
   )
 }
 
@@ -322,8 +323,13 @@ export function getDefaultHaikuModel(): ModelName {
     return profileModel || 'MiniMax-M2.5-highspeed'
   }
 
-  // Haiku 4.5 is available on all platforms (first-party, Foundry, Bedrock, Vertex)
-  return getModelStrings().haiku45
+  // Haiku 4.5 for 3P (Foundry, Bedrock, Vertex) since they may not have Haiku
+  // 5.5 yet — Claude Code 2.1.293 keeps the same per-provider default and
+  // offers 5.5 there as an opt-in picker entry instead.
+  if (getAPIProvider() !== 'firstParty') {
+    return getModelStrings().haiku45
+  }
+  return getModelStrings().haiku55
 }
 
 /**
@@ -492,6 +498,12 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   }
   if (name.includes('claude-sonnet-4')) {
     return 'claude-sonnet-4'
+  }
+  // Dotted like the other 5.5 tiers on Copilot and OpenRouter. Without this
+  // branch the generic regex below cuts the id to 'claude-haiku', which misses
+  // MODEL_COSTS and every display path.
+  if (name.includes('claude-haiku-5-5') || name.includes('claude-haiku-5.5')) {
+    return 'claude-haiku-5-5'
   }
   if (name.includes('claude-haiku-4-5')) {
     return 'claude-haiku-4-5'
@@ -681,6 +693,9 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
       return 'Sonnet 3.7'
     case getModelStrings().sonnet35:
       return 'Sonnet 3.5'
+    case getModelStrings().haiku55:
+      // 1M context is the default on Haiku 5.5 — no [1m] variant needed.
+      return 'Haiku 5.5'
     case getModelStrings().haiku45:
       return 'Haiku 4.5'
     case getModelStrings().haiku35:
@@ -917,6 +932,9 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   if (canonical.includes('claude-3-5-sonnet')) {
     return 'Claude 3.5 Sonnet'
   }
+  if (canonical.includes('claude-haiku-5-5')) {
+    return 'Haiku 5.5'
+  }
   if (canonical.includes('claude-haiku-4-5')) {
     return 'Haiku 4.5'
   }
@@ -942,6 +960,8 @@ export function modelRejectsSamplingParams(model: string): boolean {
     canonical.includes('opus-4-8') ||
     canonical.includes('opus-5') ||
     canonical.includes('fable-5') ||
-    canonical.includes('sonnet-5')
+    canonical.includes('sonnet-5') ||
+    // Measured 2026-10-07: `temperature: 0` and `top_p` are a 400 on Haiku 5.5.
+    canonical.includes('haiku-5')
   )
 }

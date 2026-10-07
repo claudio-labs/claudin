@@ -274,6 +274,39 @@ describe('countTokensViaHaikuFallback — client without a counting endpoint', (
   })
 })
 
+// The fallback counts on the small fast model, which is Haiku 5.5 on 1P: an
+// adaptive-only model gets `adaptive`, never `budget_tokens`.
+describe('countTokensViaHaikuFallback — thinking param for a history with thinking', () => {
+  it.each([
+    ['claude-haiku-5-5', { type: 'adaptive' }],
+    ['claude-haiku-4-5-20251001', { type: 'enabled', budget_tokens: 1024 }],
+  ] as const)('%s', async (model, thinking) => {
+    invalidateClientCache()
+    const countTokensSpy = mock(async (_params: Record<string, unknown>) => ({ input_tokens: 7 }))
+    mock.module('src/providers/transport/client.js', () => ({
+      getAnthropicClient: async () => ({ beta: { messages: { countTokens: countTokensSpy } } }),
+    }))
+    mock.module('src/providers/presets/activeProvider.js', () => ({
+      ...realActiveProvider,
+      tryGetActiveProvider: () => ({ transport: 'anthropic' }),
+    }))
+    mock.module('src/providers/model/model.js', () => ({
+      ...realModel,
+      getSmallFastModel: () => model,
+    }))
+
+    await countTokensViaHaikuFallback(
+      [
+        { role: 'user', content: 'hello' },
+        { role: 'assistant', content: [{ type: 'thinking', thinking: 'hm', signature: 's' }] },
+      ],
+      [],
+    )
+
+    expect(countTokensSpy.mock.calls[0]![0].thinking).toEqual(thinking)
+  })
+})
+
 describe('roughTokenCountEstimationForCountRequest — local counting fallback', () => {
   it('estimates string message content with the active model ratio', () => {
     setActiveModel('claude-opus-4-8-high') // claude family → 3.5 bytes/token

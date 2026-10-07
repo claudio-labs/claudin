@@ -7,6 +7,7 @@ import {
   CLAUDE_3_7_SONNET_CONFIG,
   CLAUDE_FABLE_5_1_CONFIG,
   CLAUDE_HAIKU_4_5_CONFIG,
+  CLAUDE_HAIKU_5_5_CONFIG,
   CLAUDE_OPUS_4_1_CONFIG,
   CLAUDE_OPUS_4_5_CONFIG,
   CLAUDE_OPUS_4_6_CONFIG,
@@ -27,6 +28,7 @@ import {
   getDefaultMainLoopModelSetting,
   type ModelShortName,
 } from 'src/providers/model/model.js'
+import { formatTokens } from 'src/shared/text/format.js'
 
 // @see https://platform.claude.com/docs/en/about-claude/pricing
 export type ModelCosts = {
@@ -38,6 +40,13 @@ export type ModelCosts = {
   promptCacheWrite1hTokens?: number
   promptCacheReadTokens: number
   webSearchRequests: number
+  // The rates a request bills at once its prompt — input, cache reads and cache
+  // writes together — is over `abovePromptTokens`. Every rate switches, output
+  // included, as Claude Code's `long_prompt` does. Haiku 5.5 is the first model
+  // priced this way.
+  longPrompt?: Omit<ModelCosts, 'webSearchRequests' | 'longPrompt'> & {
+    abovePromptTokens: number
+  }
 }
 
 // Pricing tier for Sonnet 5: $2 input / $10 output per Mtok
@@ -166,6 +175,26 @@ export const COST_HAIKU_45 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
+// Pricing for Haiku 5.5: $0.10 input / $0.50 output per Mtok for prompts up to
+// 100K tokens, $0.50 / $2.50 above. The cache multipliers are the standard
+// 1.25x / 2x / 0.1x at both sizes.
+export const COST_HAIKU_55 = {
+  inputTokens: 0.1,
+  outputTokens: 0.5,
+  promptCacheWriteTokens: 0.125,
+  promptCacheWrite1hTokens: 0.2,
+  promptCacheReadTokens: 0.01,
+  webSearchRequests: 0.01,
+  longPrompt: {
+    abovePromptTokens: 100_000,
+    inputTokens: 0.5,
+    outputTokens: 2.5,
+    promptCacheWriteTokens: 0.625,
+    promptCacheWrite1hTokens: 1,
+    promptCacheReadTokens: 0.05,
+  },
+} as const satisfies ModelCosts
+
 const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25
 
 /**
@@ -273,6 +302,8 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
     COST_HAIKU_35,
   [firstPartyNameToCanonical(CLAUDE_HAIKU_4_5_CONFIG.firstParty)]:
     COST_HAIKU_45,
+  [firstPartyNameToCanonical(CLAUDE_HAIKU_5_5_CONFIG.firstParty)]:
+    COST_HAIKU_55,
   [firstPartyNameToCanonical(CLAUDE_3_5_V2_SONNET_CONFIG.firstParty)]:
     COST_TIER_3_15,
   [firstPartyNameToCanonical(CLAUDE_3_7_SONNET_CONFIG.firstParty)]:
@@ -347,7 +378,8 @@ export function getOpus55CostTier(fastMode: boolean): ModelCosts {
 /**
  * Calculates the USD cost based on token usage and model cost configuration
  */
-function tokensToUSDCost(modelCosts: ModelCosts, usage: Usage): number {
+function tokensToUSDCost(costs: ModelCosts, usage: Usage): number {
+  const modelCosts = ratesForPrompt(costs, usage)
   const cacheWrite1hPrice =
     modelCosts.promptCacheWrite1hTokens ?? modelCosts.promptCacheWriteTokens
 
@@ -372,6 +404,21 @@ function tokensToUSDCost(modelCosts: ModelCosts, usage: Usage): number {
     (usage.server_tool_use?.web_search_requests ?? 0) *
       modelCosts.webSearchRequests
   )
+}
+
+// The prompt size is per request, so a long session of short requests stays
+// on the base rates while one request over the threshold bills entirely at
+// the long ones.
+function ratesForPrompt(costs: ModelCosts, usage: Usage): ModelCosts {
+  const long = costs.longPrompt
+  if (!long) return costs
+  const promptTokens =
+    usage.input_tokens +
+    (usage.cache_read_input_tokens ?? 0) +
+    (usage.cache_creation_input_tokens ?? 0)
+  if (promptTokens <= long.abovePromptTokens) return costs
+  const { abovePromptTokens: _, ...rates } = long
+  return { ...rates, webSearchRequests: costs.webSearchRequests }
 }
 
 export function getModelCosts(model: string, usage: Usage): ModelCosts {
@@ -459,10 +506,14 @@ function formatPrice(price: number): string {
 
 /**
  * Format model costs as a pricing string for display
- * e.g., "$3/$15 per Mtok"
+ * e.g., "$3/$15 per Mtok", or with a long-prompt tier
+ * "$0.10/$0.50 per Mtok ($0.50/$2.50 for prompts over 100k)"
  */
 export function formatModelPricing(costs: ModelCosts): string {
-  return `${formatPrice(costs.inputTokens)}/${formatPrice(costs.outputTokens)} per Mtok`
+  const base = `${formatPrice(costs.inputTokens)}/${formatPrice(costs.outputTokens)} per Mtok`
+  const long = costs.longPrompt
+  if (!long) return base
+  return `${base} (${formatPrice(long.inputTokens)}/${formatPrice(long.outputTokens)} for prompts over ${formatTokens(long.abovePromptTokens)})`
 }
 
 /**

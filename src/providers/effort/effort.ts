@@ -104,7 +104,9 @@ export function modelSupportsEffort(model: string): boolean {
     return resolveActiveShimEffortValues(model) !== undefined
   }
   // Supported by a subset of Claude 4 models
-  if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
+  // Haiku 5.5 is a 5-generation model and must be listed before the generic
+  // haiku exclusion below.
+  if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('haiku-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
     return true
   }
   // Exclude any other known legacy models (haiku, older opus/sonnet variants)
@@ -124,7 +126,7 @@ export function modelSupportsEffort(model: string): boolean {
 
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports 'max' effort.
 // Per API docs, 'max' is available on Opus 4.6/4.7/4.8, Opus 5, Fable 5, and
-// Sonnet 5 for public models — other models return an error.
+// Sonnet 5 / Haiku 5.5 for public models — other models return an error.
 export function modelSupportsMaxEffort(model: string): boolean {
   const supported3P = get3PModelCapabilityOverride(model, 'max_effort')
   if (supported3P !== undefined) {
@@ -139,7 +141,7 @@ export function modelSupportsMaxEffort(model: string): boolean {
     return fromCatalog.includes('max')
   }
   const m = model.toLowerCase()
-  if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
+  if (m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('haiku-5') || m.includes('opus-4-8') || m.includes('opus-4-7') || m.includes('opus-4-6')) {
     return true
   }
   // Kimi Code K3 exposes Low/High/Max thinking effort.
@@ -151,7 +153,7 @@ export function modelSupportsMaxEffort(model: string): boolean {
 
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports 'xhigh' effort.
 // Per API docs, 'xhigh' is available on Opus 4.7/4.8, Opus 5, Fable 5, and
-// Sonnet 5 only.
+// Sonnet 5 / Haiku 5.5 only.
 export function modelSupportsXhighEffort(model: string): boolean {
   // See modelSupportsMaxEffort: the same pre-wire downgrade applies to xhigh.
   const fromCatalog = resolveActiveShimEffortValues(model)
@@ -159,7 +161,7 @@ export function modelSupportsXhighEffort(model: string): boolean {
     return fromCatalog.includes('xhigh')
   }
   const m = model.toLowerCase()
-  return m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('opus-4-8') || m.includes('opus-4-7')
+  return m.includes('fable-5') || m.includes('sonnet-5') || m.includes('opus-5') || m.includes('haiku-5') || m.includes('opus-4-8') || m.includes('opus-4-7')
 }
 
 export function isEffortLevel(value: string): value is EffortLevel {
@@ -717,8 +719,9 @@ export function getDefaultEffortForModel(
   // @[MODEL LAUNCH]: add a new non-flagship 1P effort model here to give it the
   // medium default (flagships get 'high' in the branch above instead).
   // Claudin default: on the first-party Anthropic provider, the named
-  // non-flagship effort models (Opus 4.6/4.7, Sonnet 4.6/5) default to medium,
-  // regardless of subscription tier. Opus 4.8 and Fable 5 keep high above.
+  // non-flagship effort models (Opus 4.6/4.7, Sonnet 4.6/5, Haiku 5.5) default
+  // to medium, regardless of subscription tier — Haiku 5.5's medium is Claude
+  // Code 2.1.293's catalog default. Opus 4.8 and Fable 5 keep high above.
   // Match by explicit name (not modelSupportsEffort, which is true for unknown
   // 1P strings) so a future/unrecognized first-party model keeps the upstream
   // undefined→high default instead of silently regressing to medium — see the
@@ -728,7 +731,8 @@ export function getDefaultEffortForModel(
     (lowerModel.includes('opus-4-7') ||
       lowerModel.includes('opus-4-6') ||
       lowerModel.includes('sonnet-4-6') ||
-      lowerModel.includes('sonnet-5'))
+      lowerModel.includes('sonnet-5') ||
+      lowerModel.includes('haiku-5'))
   ) {
     return 'medium'
   }

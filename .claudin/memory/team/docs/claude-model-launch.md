@@ -27,6 +27,13 @@ default Sonnet, 2026-09-29).
   preserved thinking goes in `modelSupportsThinkingBlockBinding`.
 - This account predates 2026-08-31, so the preserved-thinking 400 cannot be reproduced on it:
   a green `strip` replay proves nothing about enforcement.
+- Haiku 5.5 (2026-10-07, Claude Code 2.1.293) inverted the trap: its id contains no older id,
+  but every predicate reading `haiku` as "small legacy model" matched it (effort, adaptive
+  thinking, 1M, tool search, max output). It is also the 1P small fast model, so side
+  queries reach it: replayed `temperature: 0` / `top_p` are a 400, hence
+  `modelRejectsSamplingParams`. First tiered price: `ModelCosts.longPrompt` (>100K prompt).
+  To capture against a Claude Code newer than the installed one, `npm pack` its
+  `-linux-x64` package and put it first on PATH.
 
 **Start here when:** a new Claude model ships.
 

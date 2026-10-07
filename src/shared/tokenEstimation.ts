@@ -12,6 +12,7 @@ import { getVertexRegionForModel, isEnvTruthy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { logError } from 'src/shared/log.js'
 import { normalizeAttachmentForAPI } from 'src/agent/messages/messages.js'
+import { modelRequiresAdaptiveThinking } from 'src/agent/context/thinking.js'
 import {
   createBedrockRuntimeClient,
   getInferenceProfileBackingModel,
@@ -33,6 +34,21 @@ import { withTokenCountVCR } from 'src/providers/vcr.js'
 // API constraint: max_tokens must be greater than thinking.budget_tokens
 const TOKEN_COUNT_THINKING_BUDGET = 1024
 const TOKEN_COUNT_MAX_TOKENS = 2048
+
+/**
+ * The thinking param a count request carries once the history holds thinking
+ * blocks. Adaptive-only models (the Claude 5 family, Haiku 5.5 — the small
+ * fast model on 1P) get `adaptive`, never `budget_tokens`. count_tokens took
+ * both on Haiku 5.5 (2026-10-07) on an account created before 2026-08-31, which
+ * says nothing about newer ones.
+ */
+function countThinkingParam(
+  model: string,
+): Anthropic.Beta.Messages.BetaThinkingConfigParam {
+  return modelRequiresAdaptiveThinking(model)
+    ? { type: 'adaptive' }
+    : { type: 'enabled', budget_tokens: TOKEN_COUNT_THINKING_BUDGET }
+}
 
 /**
  * Check if messages contain thinking blocks
@@ -188,12 +204,7 @@ export async function countMessagesTokensWithAPI(
         tools,
         ...(filteredBetas.length > 0 && { betas: filteredBetas }),
         // Enable thinking if messages contain thinking blocks
-        ...(containsThinking && {
-          thinking: {
-            type: 'enabled',
-            budget_tokens: TOKEN_COUNT_THINKING_BUDGET,
-          },
-        }),
+        ...(containsThinking && { thinking: countThinkingParam(model) }),
       })
 
       if (typeof response.input_tokens !== 'number') {
@@ -468,12 +479,7 @@ export async function countTokensViaHaikuFallback(
     tools: tools.length > 0 ? tools : undefined,
     ...(filteredBetas.length > 0 && { betas: filteredBetas }),
     // Enable thinking if messages contain thinking blocks
-    ...(containsThinking && {
-      thinking: {
-        type: 'enabled',
-        budget_tokens: TOKEN_COUNT_THINKING_BUDGET,
-      },
-    }),
+    ...(containsThinking && { thinking: countThinkingParam(model) }),
   })
 
   if (typeof response.input_tokens !== 'number') {
@@ -649,12 +655,7 @@ async function countTokensWithBedrock({
       max_tokens: containsThinking ? TOKEN_COUNT_MAX_TOKENS : 1,
       ...(tools.length > 0 && { tools }),
       ...(betas.length > 0 && { anthropic_beta: betas }),
-      ...(containsThinking && {
-        thinking: {
-          type: 'enabled',
-          budget_tokens: TOKEN_COUNT_THINKING_BUDGET,
-        },
-      }),
+      ...(containsThinking && { thinking: countThinkingParam(model) }),
     }
 
     const { CountTokensCommand } = await import(

@@ -235,5 +235,9 @@ function get3PFallbackSuggestion(model: string): string | undefined {
   if (lowerModel.includes('sonnet-4-5') || lowerModel.includes('sonnet_4_5')) {
     return getModelStrings().sonnet40
   }
+  // One generation back is Haiku 4.5, Claude Code's fallback_3p for Haiku 5.5.
+  if (lowerModel.includes('haiku-5-5') || lowerModel.includes('haiku_5_5')) {
+    return getModelStrings().haiku45
+  }
   return undefined
 }

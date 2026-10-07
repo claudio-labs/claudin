@@ -119,6 +119,67 @@ test('Sonnet 5.5 is a single 1M-native entry (value "sonnet"), Sonnet 5 stays li
   expect(values).not.toContain('claude-opus-4-6')
 })
 
+// Haiku 5.5 replaced Haiku 4.5 as the 'haiku' alias on first party: one entry,
+// named for 5.5, and Haiku 4.5 is not listed beside it.
+test('the haiku entry is Haiku 5.5, and Haiku 4.5 is gone', async () => {
+  const { getModelOptions } = await importMaxPicker({
+    mergeEnabled: true,
+    opusAccess: true,
+    sonnetAccess: true,
+  })
+  const options = getModelOptions()
+  const values = options.map((o: { value: string | null }) => o.value)
+  const haiku = options.filter((o: { value: string | null }) => o.value === 'haiku')
+  expect(haiku).toHaveLength(1)
+  expect(haiku[0].description).toContain('Haiku 5.5')
+  expect(haiku[0].description).toContain('1M context')
+  expect(values).not.toContain('claude-haiku-4-5-20251001')
+  expect(options.some((o: { description: string }) => o.description.includes('Haiku 4.5'))).toBe(false)
+})
+
+// A Vertex PAYG picker: Haiku 4.5 stays the 'haiku' default there, with Haiku
+// 5.5 as an explicit opt-in. `haikuDefault` stands in for a future 3P default.
+async function import3PPicker(haikuDefault?: string) {
+  mock.module('./providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () => 'vertex',
+  }))
+  mock.module('src/providers/auth/auth.js', () => ({
+    ...realAuth,
+    isClaudeAISubscriber: () => false,
+  }))
+  mock.module('./check1mAccess.js', () => ({
+    ...realAccess,
+    checkOpus1mAccess: () => false,
+    checkSonnet1mAccess: () => false,
+  }))
+  mock.module('./model.js', () => ({
+    ...realModel,
+    ...(haikuDefault ? { getDefaultHaikuModel: () => haikuDefault } : {}),
+  }))
+  resetModelStringsForTestingOnly()
+  const nonce = `${Date.now()}-${Math.random()}`
+  return import(`./modelOptions.js?ts=${nonce}`)
+}
+
+const haikuEntries = (options: { value: string | null; description: string }[]) =>
+  options.filter(o => o.description.startsWith('Haiku') || o.description.includes(' Haiku '))
+
+test('3P lists Haiku 5.5 as an opt-in beside the Haiku 4.5 default', async () => {
+  const { getModelOptions } = await import3PPicker()
+  const haiku = haikuEntries(getModelOptions())
+  expect(haiku.map(o => o.value)).toEqual(['claude-haiku-5-5', 'haiku'])
+  expect(haiku[0]!.description).toContain('Haiku 5.5')
+  expect(haiku[1]!.description).toContain('Haiku 4.5')
+})
+
+test('a 3P Haiku default of 5.5 is listed once, as Haiku 5.5 — not as Haiku 3.5', async () => {
+  const { getModelOptions } = await import3PPicker('claude-haiku-5-5')
+  const haiku = haikuEntries(getModelOptions())
+  expect(haiku).toHaveLength(1)
+  expect(haiku[0]!.description).toContain('Haiku 5.5')
+})
+
 // Opus 5.5 is 1M by default (native), so unlike the old Opus 4.8 200k/[1m] pair
 // it is NOT gated by the 1M-access / merge checks — it always shows as the
 // single 'opus' entry, even when both access checks are false and merge is off.

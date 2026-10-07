@@ -109,11 +109,14 @@ export function modelSupportsISP(model: string): boolean {
     canonical.includes('claude-opus-4') ||
     canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
-    canonical.includes('claude-sonnet-4')
+    canonical.includes('claude-sonnet-4') ||
+    canonical.includes('claude-haiku-5')
   )
 }
 
-function vertexModelSupportsWebSearch(model: string): boolean {
+// Exported for WebSearchTool's Vertex enable check, which must agree with the
+// beta header this gates.
+export function vertexModelSupportsWebSearch(model: string): boolean {
   const canonical = getCanonicalName(model)
   // Web search only supported on Claude 4.0+ models on Vertex
   return (
@@ -121,7 +124,8 @@ function vertexModelSupportsWebSearch(model: string): boolean {
     canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4') ||
-    canonical.includes('claude-haiku-4')
+    canonical.includes('claude-haiku-4') ||
+    canonical.includes('claude-haiku-5')
   )
 }
 
@@ -140,7 +144,8 @@ export function modelSupportsContextManagement(model: string): boolean {
     canonical.includes('claude-opus-5') ||
     canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4') ||
-    canonical.includes('claude-haiku-4')
+    canonical.includes('claude-haiku-4') ||
+    canonical.includes('claude-haiku-5')
   )
 }
 
@@ -163,7 +168,10 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
     canonical.includes('claude-opus-4-6') ||
     canonical.includes('claude-opus-4-7') ||
     canonical.includes('claude-opus-4-8') ||
-    canonical.includes('claude-haiku-4-5')
+    canonical.includes('claude-haiku-4-5') ||
+    // The side queries that ask for JSON (session titles, prompt hooks) run on
+    // the small fast model, which is Haiku 5.5 on 1P.
+    canonical.includes('claude-haiku-5')
   )
 }
 
@@ -190,6 +198,11 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
  * The real API accepts the block_binding field on Sonnet 5.5 (200 with and
  * without a stripped prefix): scripts/bench/ab/model-launch-capture.ts replays
  * Claude Code's own request that way.
+ *
+ * Haiku 5.5 is listed on that replay alone (all four arms 200, Claude Code
+ * 2.1.293): whether it enforces preserved thinking is unmeasured, because the
+ * account the capture ran on predates 2026-08-31. The field is accepted, so
+ * sending it costs nothing where enforcement is absent.
  */
 export function modelSupportsThinkingBlockBinding(model: string): boolean {
   if (getAPIProvider() !== 'firstParty') {
@@ -202,7 +215,8 @@ export function modelSupportsThinkingBlockBinding(model: string): boolean {
   return (
     canonical.includes('claude-opus-5-5') ||
     canonical.includes('claude-fable-5-1') ||
-    canonical.includes('claude-sonnet-5-5')
+    canonical.includes('claude-sonnet-5-5') ||
+    canonical.includes('claude-haiku-5-5')
   )
 }
 

@@ -19,6 +19,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
+import { vertexModelSupportsWebSearch } from 'src/providers/transport/betas.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { isCompactToolPromptsEnabled } from 'src/agent/prompts/toolPromptTier.js'
@@ -660,14 +661,11 @@ export const WebSearchTool = buildTool({
       return true
     }
 
-    // Enable for Vertex AI with supported models (Claude 4.0+)
+    // Enable for Vertex AI with supported models (Claude 4.0+). The same list
+    // gates the web-search beta header; this one had fallen behind it and
+    // missed every Claude 5 model.
     if (provider === 'vertex') {
-      const supportsWebSearch =
-        model.includes('claude-opus-4') ||
-        model.includes('claude-sonnet-4') ||
-        model.includes('claude-haiku-4')
-
-      return supportsWebSearch
+      return vertexModelSupportsWebSearch(model)
     }
 
     // Foundry only ships models that already support Web Search

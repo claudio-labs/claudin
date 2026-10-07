@@ -51,6 +51,7 @@ export const CATALOG_MODEL_EFFORTS: Readonly<
   'azure': {
     'claude-fable-5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'claude-fable-5-1': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'claude-haiku-5-5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'claude-mythos-5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'claude-opus-4-5': ['low', 'medium', 'high'],
     'claude-opus-4-6': ['low', 'medium', 'high', 'max'],
@@ -94,6 +95,7 @@ export const CATALOG_MODEL_EFFORTS: Readonly<
     'alibaba/qwen3.8-max': ['low', 'medium', 'xhigh'],
     'anthropic/claude-fable-5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'anthropic/claude-fable-5.1': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'anthropic/claude-haiku-5.5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'anthropic/claude-opus-4.5': ['low', 'medium', 'high'],
     'anthropic/claude-opus-4.6': ['low', 'medium', 'high', 'max'],
     'anthropic/claude-opus-4.7': ['low', 'medium', 'high', 'xhigh', 'max'],
@@ -167,6 +169,7 @@ export const CATALOG_MODEL_EFFORTS: Readonly<
   'google-vertex': {
     'claude-fable-5-1@default': ['low', 'medium', 'high', 'xhigh', 'max'],
     'claude-fable-5@default': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'claude-haiku-5-5@default': ['low', 'medium', 'high', 'xhigh', 'max'],
     'claude-opus-4-5@20251101': ['low', 'medium', 'high'],
     'claude-opus-4-6@default': ['low', 'medium', 'high', 'max'],
     'claude-opus-4-7@default': ['low', 'medium', 'high', 'xhigh', 'max'],
@@ -260,6 +263,7 @@ export const CATALOG_MODEL_EFFORTS: Readonly<
   'opencode': {
     'claude-fable-5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'claude-fable-5-1': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'claude-haiku-5-5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'claude-opus-4-5': ['low', 'medium', 'high'],
     'claude-opus-4-6': ['low', 'medium', 'high', 'max'],
     'claude-opus-4-7': ['low', 'medium', 'high', 'xhigh', 'max'],
@@ -344,6 +348,7 @@ export const CATALOG_MODEL_EFFORTS: Readonly<
   'openrouter': {
     'anthropic/claude-fable-5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'anthropic/claude-fable-5.1': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'anthropic/claude-haiku-5.5': ['low', 'medium', 'high', 'xhigh', 'max'],
     'anthropic/claude-opus-4.6': ['low', 'medium', 'high', 'max'],
     'anthropic/claude-opus-4.7': ['low', 'medium', 'high', 'xhigh', 'max'],
     'anthropic/claude-opus-4.8': ['low', 'medium', 'high', 'xhigh', 'max'],

@@ -62,6 +62,7 @@ export function modelSupports1M(model: string): boolean {
   return (
     canonical.includes('claude-sonnet-5') ||
     canonical.includes('claude-sonnet-4') ||
+    canonical.includes('claude-haiku-5') ||
     canonical.includes('opus-4-6') ||
     canonical.includes('opus-4-7') ||
     canonical.includes('opus-4-8') ||
@@ -112,7 +113,7 @@ export function getContextWindowForModel(
     return cap.max_input_tokens
   }
 
-  // Fable 5, Sonnet 5 and Opus 5 run at 1M context by default — no [1m] suffix
+  // Fable 5, Sonnet 5, Opus 5 and Haiku 5.5 run at 1M context by default — no [1m] suffix
   // or beta header needed (has1mContext is false, so betas.ts never pushes the
   // context-1m header, and the beta path below never fires for them). Without
   // this branch they'd fall through to the 200k default and auto-compact at
@@ -124,7 +125,8 @@ export function getContextWindowForModel(
     !is1mContextDisabled() &&
     (getCanonicalName(model).includes('fable-5') ||
       getCanonicalName(model).includes('sonnet-5') ||
-      getCanonicalName(model).includes('opus-5'))
+      getCanonicalName(model).includes('opus-5') ||
+      getCanonicalName(model).includes('haiku-5'))
   ) {
     return 1_000_000
   }
@@ -206,9 +208,10 @@ export function getModelMaxOutputTokens(model: string): {
 
   // Before the opus-5/sonnet-5 branch: 'claude-opus-5-5' and 'claude-sonnet-5-5'
   // contain those ids and would otherwise inherit their 64K DEFAULT. Claude Code
-  // sends max_tokens: 128000 for both 5.5 models — docs/tech/opus-5-5/
+  // sends max_tokens: 128000 for all three 5.5 models — docs/tech/opus-5-5/
   // wire-capture.md and src/providers/model/__fixtures__/claude-code-wire/.
-  if (m.includes('opus-5-5') || m.includes('sonnet-5-5')) {
+  // Haiku 5.5 would otherwise fall to Haiku 4.5's 32K/64K below.
+  if (m.includes('opus-5-5') || m.includes('sonnet-5-5') || m.includes('haiku-5-5')) {
     defaultTokens = 128_000
     upperLimit = 128_000
   } else if (
