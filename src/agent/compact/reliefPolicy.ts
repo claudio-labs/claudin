@@ -135,7 +135,7 @@ const RELIEF_BAND_TRIGGER_FRACTION = 0.15
 // followed by a floor rewrite on the next turn. 4k remains the minimum for a
 // degenerate window whose band is smaller (a trigger under ~13k), where it
 // still stops the one-tiny-result-per-request clip (140 in one session).
-export const RELIEF_MIN_EVENT_TOKENS = 4_000
+const RELIEF_MIN_EVENT_TOKENS = 4_000
 
 /** The least a clip event must free: one band, never under 4k. */
 export function reliefEventFloor(decision: { trigger: number; target: number }): number {

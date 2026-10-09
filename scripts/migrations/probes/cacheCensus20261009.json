@@ -31,8 +31,8 @@
     {
       "name": "control: the 4k constant is only the floor under a degenerate band",
       "source": "src/agent/compact/reliefPolicy.ts",
-      "find": "export const RELIEF_MIN_EVENT_TOKENS = 4_000\n",
-      "replace": "export const RELIEF_MIN_EVENT_TOKENS = 3_000\n",
+      "find": "const RELIEF_MIN_EVENT_TOKENS = 4_000\n",
+      "replace": "const RELIEF_MIN_EVENT_TOKENS = 3_000\n",
       "expect": "green"
     },
     {
