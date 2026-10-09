@@ -463,6 +463,52 @@ describe('relief policy — window lane via microcompactMessages', () => {
     ])
   })
 
+  // The floor is one band, not a flat 4k: on a 1M window a ~4k clip rewrote
+  // a ~800k prefix to free 0.5% of it.
+  test('starved: a candidate over 4k but under one band adds no ids and reports the starvation', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const { getCurrentTurnPrefixRewrites, resetCurrentTurn } = await import('src/providers/cache/cacheStatsTracker.js')
+    resetCurrentTurn()
+    // 40k window: trigger 30k, band 9k. The one old result frees ~6k (over
+    // the old 4k floor), the protected tail keeps usage far over the trigger.
+    mockSizeState.effectiveWindow = 40_000
+    const messages: Message[] = [
+      assistantWithToolUse('Read', 'toolu_old'),
+      userWithToolResult('toolu_old', 'A'.repeat(24_000)),
+      assistantWithToolUse('Read', 'toolu_big1'),
+      userWithToolResult('toolu_big1', 'B'.repeat(80_000)),
+      assistantWithToolUse('Read', 'toolu_big2'),
+      userWithToolResult('toolu_big2', 'C'.repeat(80_000)),
+    ]
+    const result = await microcompactMessages(messages, undefined, MAIN)
+    expect(getClippedIds().size).toBe(0)
+    expect(result.reliefStarved).toBe(true)
+    expect(getCurrentTurnPrefixRewrites()).toEqual([
+      expect.stringMatching(/^relief starved \(~\d+k short, window lane\)$/),
+    ])
+  })
+
+  test('starved with nothing clearable at all still reports it; under the trigger it does not', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    // Two huge results, both inside the protected last 2 messages.
+    mockSizeState.effectiveWindow = 5_000
+    const over = await microcompactMessages(buildHeavyHistory(2, 20_000), undefined, MAIN)
+    expect(over.reliefStarved).toBe(true)
+    mockSizeState.effectiveWindow = 100_000
+    const under = await microcompactMessages(buildHeavyHistory(2, 100), undefined, MAIN)
+    expect(under.reliefStarved).toBeUndefined()
+  })
+
+  test('a clip that frees one band is not starved', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    mockSizeState.effectiveWindow = 40_000
+    const result = await microcompactMessages(buildHeavyHistory(24, 5_000), undefined, MAIN)
+    expect(getClippedIds().size).toBeGreaterThan(0)
+    expect(result.reliefStarved).toBeUndefined()
+  })
+
   test('CLAUDIN_SUBAGENT_RELIEF_TRIGGER caps a sub-agent lane, never the main thread', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')

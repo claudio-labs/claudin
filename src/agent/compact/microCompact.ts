@@ -42,9 +42,9 @@ import {
 } from 'src/agent/compact/stableStubState.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import {
-  RELIEF_MIN_EVENT_TOKENS,
   decideRelief,
   isReliefWindowLaneEnabled,
+  reliefEventFloor,
   selectReliefIds,
   subagentReliefTriggerCap,
   type ReliefCandidate,
@@ -196,6 +196,9 @@ export function estimateMessageTokens(messages: Message[]): number {
 
 export type MicrocompactResult = {
   messages: Message[]
+  /** The window lane is over its trigger and no clip can reach its floor:
+   * what is left to relieve is compaction's job (`shouldAutoCompact`). */
+  reliefStarved?: true
 }
 
 /**
@@ -286,7 +289,9 @@ export async function microcompactMessages(
   // for analysis only and must not mutate the clipped set (the previous
   // estimate-driven trigger did, so an analysis command could clip).
   if (querySource && ownsItsPrefix(querySource)) {
-    maybeReliefClip(messages, toolUseContext, querySource)
+    if (maybeReliefClip(messages, toolUseContext, querySource)) {
+      return { messages, reliefStarved: true }
+    }
   }
 
   // applyStableStubs is NOT called here. The native (claude.ts) and shim
@@ -299,11 +304,12 @@ export async function microcompactMessages(
   return { messages }
 }
 
+/** Returns true when the window lane is starved. */
 function maybeReliefClip(
   messages: Message[],
   toolUseContext: ToolUseContext | undefined,
   querySource: QuerySource,
-): void {
+): boolean {
   const profile = getCacheProfile()
   const { candidates, clearableTokens } = collectClearableCandidates(
     messages,
@@ -312,9 +318,6 @@ function maybeReliefClip(
     isCompactableTool,
     clearableInputFieldsFromPool(toolUseContext?.options?.tools),
   )
-  // Nothing clearable: the decision would be moot, and deciding anyway
-  // would only log a clip that frees nothing.
-  if (candidates.length === 0) return
 
   const model = getMainLoopModel()
   const view = applyStableInputStubs(applyStableStubs(messages))
@@ -337,7 +340,7 @@ function maybeReliefClip(
     windowLaneEnabled: isReliefWindowLaneEnabled(),
     triggerCap: toolUseContext?.agentId ? subagentReliefTriggerCap() : undefined,
   })
-  if (decision.kind === 'none') return
+  if (decision.kind === 'none') return false
 
   // Units. Once a response carried usage, the window lane asks for REAL
   // tokens, while each candidate's savings is a rough estimate at the family
@@ -372,15 +375,15 @@ function maybeReliefClip(
     // At least the first candidate: its clip is what drops the thinking.
     Math.max(1, decision.tokensToFree - thinkingDropped),
   )
-  if (ids.length === 0) return
   const freed = savings + thinkingDropped
 
-  // Starved: the candidates left cannot free enough to be worth a prefix
-  // rewrite — the session's floor (stub heads, protected turns, results
-  // under MIN_STUB_TOKENS) sits above the target and no clip changes that.
-  // Record it once per turn instead of clipping one tiny result per request;
-  // the `[Cache:]` line is where the next census sees it.
-  if (freed < RELIEF_MIN_EVENT_TOKENS) {
+  // Starved: over the trigger, and the candidates left — none at all, once
+  // every old result is a stub and the rest sit in the protected window —
+  // cannot free one band (`reliefEventFloor`). The session's floor sits
+  // above the target and no clip changes that. Record it once per turn
+  // instead of clipping (the `[Cache:]` line is where the next census sees
+  // it) and, on the window lane, hand the session to autocompact.
+  if (ids.length === 0 || freed < reliefEventFloor(decision)) {
     const short = Math.round((decision.tokensToFree - freed) / 1000)
     logForDebugging(
       `[RELIEF] starved: ${ids.length} candidates free ~${freed} tokens, ~${short}k short of target ${Math.round(decision.target)} (${decision.lane} lane)`,
@@ -389,7 +392,7 @@ function maybeReliefClip(
       starvedReportedThisTurn = true
       recordPrefixRewrite(`relief starved (~${short}k short, ${decision.lane} lane)`)
     }
-    return
+    return decision.lane === 'window'
   }
 
   // Result side: only ids with a clearable result enter the stub set — its
@@ -423,6 +426,7 @@ function maybeReliefClip(
   if (isMainThreadSource(querySource)) {
     recordPrefixRewrite(reason)
   }
+  return false
 }
 
 function isFirstPartyTransport(): boolean {
