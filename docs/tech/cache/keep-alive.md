@@ -7,8 +7,19 @@ polls on a backgrounded `break-probe.ts`, 600–3600 s test runs) and were
 rewritten whole — 94.8M tokens, $592 in a week, none of them preventable
 by a TTL rule. Only the 5m tier is pinged, so by default that means
 sub-agents; the main thread stays at 1h. The quota question below is still
-open and was accepted with the promotion. The sub-agent case is driven by
-`scripts/bench/ab/ttl-wait-probe.ts` (`claudindev-noka` is the control).
+open and was accepted with the promotion. Verified live on Opus 5.5
+(2026-10-09):
+- Main thread at 5m (`cache-keepalive-probe.ts`): with the keep-alive, one
+  ping at 4m30s read 58,082 tokens for $0.012, and the turn after the 6-min
+  pause read them back. That session cost $0.57. In the `=0` arm the turn
+  re-wrote everything (read 0) and the session cost $0.94.
+- A sub-agent whose foreground command ran 6 min (`--debug`, no proxy): the
+  ping read 33,899 tokens for $0.0068, and the next call read 33,899 and
+  created 137.
+
+`scripts/bench/ab/ttl-wait-probe.ts` is meant to cover the sub-agent case,
+but it cannot show this yet: its recording proxy never answers the
+non-streaming ping. Its header has the details.
 `src/agent/cache/anthropic/keepAlive.ts` is the module,
 `src/providers/shims/claude/streaming.ts` captures the body and arms it,
 `src/providers/shims/claude/cacheControl.ts` reads the companion

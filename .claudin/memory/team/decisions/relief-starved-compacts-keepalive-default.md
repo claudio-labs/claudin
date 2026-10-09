@@ -42,4 +42,12 @@ impact: functional
   control green.
 - `relief-ceiling-sim.ts --main --session=ed9c2e1c`: one compaction, net reads saved $24 → $66,
   an upper bound.
-- Live probes: see the PR.
+- Live on Opus 5.5 (2026-10-09):
+  - Main thread at 5m: with the keep-alive the prefix survived a 6-min pause; the session cost
+    $0.57, against $0.94 with `=0`.
+  - Sub-agent with a 6-min foreground wait (`--debug`): the ping read 33.9k for $0.007, and the
+    next call read the prefix back.
+  - Starved escalation with `CLAUDIN_AUTO_COMPACT_WINDOW=200000`: compacted at 147.8k, against
+    168.4k with `=0`.
+  - `ttl-wait-probe.ts`'s proxy drops the non-streaming ping. That is a gap in the probe, not
+    in the keep-alive; its header has the details.

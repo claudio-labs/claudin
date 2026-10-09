@@ -20,6 +20,17 @@
 // default since 2026-10-09), claudindev-noka (CLAUDIN_CACHE_KEEPALIVE=0, the
 // control: the sub-agent's prefix should expire there).
 //
+// KNOWN GAP (2026-10-09, Opus 5.5): through this proxy the keep-alive ping
+// does not keep the prefix. The claudindev arm sent its `stream: false`,
+// `max_tokens: 1` ping at 4m30s (its body is saved as a req file), but the proxy
+// never logged an answer for it, and the request after the wait was
+// REWRITTEN, the same as in claudindev-noka. Run directly with `--debug`, the
+// same task kept the prefix: `[cache keep-alive] <agentId>: read 33899
+// created 0 ($0.0068)`, then read 33,899 / created 137 after a 6-min wait.
+// Until the proxy carries a non-streaming request across a long idle
+// connection, the claudindev arm here measures the proxy and not the
+// keep-alive.
+//
 // Usage:
 //   bun run scripts/bench/ab/ttl-wait-probe.ts [--model=claude-opus-5-5] [--wait-s=390]
 
