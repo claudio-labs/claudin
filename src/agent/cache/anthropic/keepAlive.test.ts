@@ -83,7 +83,7 @@ describe('cache keep-alive', () => {
     expect(sent).toHaveLength(0)
   })
 
-  test('only the 5m tier is pinged, and only under the flag', async () => {
+  test('only the 5m tier is pinged; on by default, =0 turns it off', async () => {
     const { client, sent } = fakeClient()
     armKeepAlive(req('c', client, false))
     await _fireNowForTesting('c')
@@ -92,7 +92,12 @@ describe('cache keep-alive', () => {
     delete process.env.CLAUDIN_CACHE_KEEPALIVE
     armKeepAlive(req('d', client, true))
     await _fireNowForTesting('d')
-    expect(sent).toHaveLength(0)
+    expect(sent).toHaveLength(1)
+
+    process.env.CLAUDIN_CACHE_KEEPALIVE = '0'
+    armKeepAlive(req('e', client, true))
+    await _fireNowForTesting('e')
+    expect(sent).toHaveLength(1)
   })
 
   test('a failed ping stops the chain instead of looping', async () => {

@@ -1026,8 +1026,9 @@ export async function* queryModel(
   let responseHeaders: globalThis.Headers | undefined = undefined;
   let isFastModeRequest = isFastMode; // Keep separate state as it may change if falling back
   let isAdvisorInProgress = false;
-  // The last body sent, kept only under CLAUDIN_CACHE_KEEPALIVE so the
-  // finally block can arm a TTL-refreshing ping for it (keepAlive.ts).
+  // The last body sent, kept while the keep-alive is on (the default;
+  // CLAUDIN_CACHE_KEEPALIVE=0 turns it off) so the finally block can arm a
+  // TTL-refreshing ping for it (keepAlive.ts).
   let keepAliveCandidate: KeepAliveRequest | null = null;
 
   // Wrap external signal with a per-query combined signal so SDK abort listeners

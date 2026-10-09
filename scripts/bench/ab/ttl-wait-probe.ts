@@ -16,8 +16,9 @@
 //     5m/1h write, i.e. whether the prefix survived;
 //   - keep-alive pings sent during the wait.
 //
-// Arms: claude (the installed Claude Code), claudindev, claudindev+ka
-// (CLAUDIN_CACHE_KEEPALIVE=1).
+// Arms: claude (the installed Claude Code), claudindev (keep-alive on, the
+// default since 2026-10-09), claudindev-noka (CLAUDIN_CACHE_KEEPALIVE=0, the
+// control: the sub-agent's prefix should expire there).
 //
 // Usage:
 //   bun run scripts/bench/ab/ttl-wait-probe.ts [--model=claude-opus-5-5] [--wait-s=390]
@@ -34,7 +35,7 @@ type Arm = { label: string; bin: string; env: Record<string, string> }
 const ARMS: Arm[] = [
   { label: 'claude', bin: 'claude', env: {} },
   { label: 'claudindev', bin: join(REPO_ROOT, 'bin', 'claudin'), env: {} },
-  { label: 'claudindev-ka', bin: join(REPO_ROOT, 'bin', 'claudin'), env: { CLAUDIN_CACHE_KEEPALIVE: '1' } },
+  { label: 'claudindev-noka', bin: join(REPO_ROOT, 'bin', 'claudin'), env: { CLAUDIN_CACHE_KEEPALIVE: '0' } },
 ]
 // The host session's own variables must not reach the arms.
 const HOST_ENV_RE = /^(CLAUDECODE$|CLAUDE_CODE_|CLAUDIN_(?!CONFIG_DIR$))/

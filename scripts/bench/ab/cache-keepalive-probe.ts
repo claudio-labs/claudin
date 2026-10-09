@@ -11,9 +11,10 @@
 // one more Read. The third turn's usage is the verdict:
 //
 //   1h    default              the 1h tier survives the pause on its own
-//   5m    CLAUDIN_MAIN_CACHE_TTL=5m
+//   5m    CLAUDIN_MAIN_CACHE_TTL=5m + CLAUDIN_CACHE_KEEPALIVE=0
 //                              the control: the prefix expires and the third
-//                              turn REWRITES it (cache_creation ≈ the prefix)
+//                              turn REWRITES it (cache_creation ≈ the prefix);
+//                              the keep-alive is on by default since 2026-10-09
 //   5m+ka CLAUDIN_MAIN_CACHE_TTL=5m + CLAUDIN_CACHE_KEEPALIVE=1
 //                              the ping at 4m30s refreshes it; the third
 //                              turn READS it (cache_read ≥ turn 2's)
@@ -53,7 +54,7 @@ import { debugLogPath, parseArgs } from './headlessProbe.ts'
 type ArmLabel = '1h' | '5m' | '5m+ka'
 const ARMS: Record<ArmLabel, Record<string, string>> = {
   '1h': {},
-  '5m': { CLAUDIN_MAIN_CACHE_TTL: '5m' },
+  '5m': { CLAUDIN_MAIN_CACHE_TTL: '5m', CLAUDIN_CACHE_KEEPALIVE: '0' },
   '5m+ka': { CLAUDIN_MAIN_CACHE_TTL: '5m', CLAUDIN_CACHE_KEEPALIVE: '1' },
 }
 
