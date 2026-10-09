@@ -61,7 +61,7 @@ export type MemoryIndexSummary = {
   path: string
   /** Path relative to CWD (or ~) at creation time, for stable display */
   displayPath: string
-  kind: 'auto' | 'team'
+  kind: 'auto' | 'global' | 'team'
   entryCount: number
   totalEntryCount: number
 }

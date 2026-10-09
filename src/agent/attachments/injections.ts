@@ -48,7 +48,7 @@ import {
 } from 'src/memory/instructions/claudemd.js'
 import { countIndexEntries } from 'src/memory/memdir/memdir.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
-import type { MemoryType } from 'src/memory/memdir/types.js'
+import { isMemoryIndexType, type MemoryType } from 'src/memory/memdir/types.js'
 import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getEnvDelta, getPromptEnv } from 'src/agent/prompts/envDelta.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
@@ -253,13 +253,13 @@ export function getMcpInstructionsDeltaAttachment(
  * See src/memory/instructions/claudeMdDelta.ts for the diff logic.
  *
  * `omitMemoryIndexes` (a slim sub-agent, see AgentDefinition) announces the
- * family WITHOUT the two auto-memory index files. The filter is applied here
+ * family WITHOUT the auto-memory index files. The filter is applied here
  * rather than on `getUserContext()` because that one is memoized with no
  * arguments and shared with the main thread; `getMemoryFiles()` is memoized
  * too, so the re-concatenation is a string join per turn.
  */
 const notMemoryIndex = (type: MemoryType): boolean =>
-  type !== 'AutoMem' && type !== 'TeamMem'
+  !isMemoryIndexType(type)
 
 export async function getClaudeMdDeltaAttachment(
   messages: Message[] | undefined,
@@ -286,7 +286,7 @@ export async function getClaudeMdDeltaAttachment(
 }
 
 const isMemoryIndex = (file: MemoryFileInfo): boolean =>
-  file.type === 'AutoMem' || file.type === 'TeamMem'
+  isMemoryIndexType(file.type)
 
 /** Exported for tests: pure, so it needs no module mock. */
 export function toMemoryIndexSummary(file: MemoryFileInfo): MemoryIndexSummary {
@@ -300,7 +300,12 @@ export function toMemoryIndexSummary(file: MemoryFileInfo): MemoryIndexSummary {
   return {
     path: file.path,
     displayPath: getDisplayPath(file.path),
-    kind: file.type === 'TeamMem' ? 'team' : 'auto',
+    kind:
+      file.type === 'TeamMem'
+        ? 'team'
+        : file.type === 'GlobalMem'
+          ? 'global'
+          : 'auto',
     entryCount,
     totalEntryCount: Math.max(entryCount, totalEntryCount),
   }

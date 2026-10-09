@@ -11,7 +11,7 @@ import { feature } from 'bun:bundle'
 import { randomBytes } from 'crypto'
 import { join } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getAutoMemEntrypoint } from 'src/memory/memdir/paths.js'
+import { getAutoMemEntrypoint, getGlobalMemEntrypoint } from 'src/memory/memdir/paths.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import {
@@ -135,6 +135,8 @@ export function getMemoryPath(memoryType: MemoryType): string {
       return join(getManagedFilePath(), 'CLAUDE.md')
     case 'AutoMem':
       return getAutoMemEntrypoint()
+    case 'GlobalMem':
+      return getGlobalMemEntrypoint()
   }
   // TeamMem is only a valid MemoryType when feature('TEAMMEM') is true
   if (feature('TEAMMEM')) {

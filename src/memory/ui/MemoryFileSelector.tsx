@@ -443,5 +443,5 @@ function _temp2(f_2: MemoryFileInfo) {
   };
 }
 function _temp(f_1: MemoryFileInfo) {
-  return f_1.type !== "AutoMem" && f_1.type !== "TeamMem";
+  return f_1.type !== "AutoMem" && f_1.type !== "GlobalMem" && f_1.type !== "TeamMem";
 }

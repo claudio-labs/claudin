@@ -2,6 +2,7 @@ import { feature } from 'bun:bundle'
 import { join } from 'path'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { isMemoryIndexType } from 'src/memory/memdir/types.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
@@ -267,9 +268,9 @@ export function hasExistingMemories(memoryDir: string): boolean {
 }
 
 /**
- * True when neither MEMORY.md index put anything into context: both files are
+ * True when no MEMORY.md index put anything into context: every one is
  * absent, empty or whitespace only. `loaded` is getMemoryFiles(), the list the
- * two indexes reach context from (getUserContext → getClaudeMds), so this is
+ * indexes reach context from (getUserContext → getClaudeMds), so this is
  * decided on what the model was given, at no second read — an index
  * getClaudeMds skips as empty counts as empty here. The combined prompts say
  * so when it holds (teamMemPrompts.ts); the private-only path has its own
@@ -279,9 +280,7 @@ export function areMemoryIndexesEmpty(
   loaded: readonly Pick<MemoryFileInfo, 'type' | 'content'>[],
 ): boolean {
   return !loaded.some(
-    file =>
-      (file.type === 'AutoMem' || file.type === 'TeamMem') &&
-      file.content.trim() !== '',
+    file => isMemoryIndexType(file.type) && file.content.trim() !== '',
   )
 }
 

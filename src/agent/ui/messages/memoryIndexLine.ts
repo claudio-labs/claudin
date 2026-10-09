@@ -8,16 +8,22 @@ import type { MemoryIndexSummary } from 'src/agent/attachments/types.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 
 const KIND_ORDER: Record<MemoryIndexSummary['kind'], number> = {
-  auto: 0,
-  team: 1,
+  global: 0,
+  auto: 1,
+  team: 2,
+}
+
+// "global", "private" and "team" are what /memory calls the three
+// directories (MemoryFileSelector.tsx); "user memory" there already means
+// ~/.claudin/CLAUDE.md, so it is free for neither memdir.
+const KIND_LABEL: Record<MemoryIndexSummary['kind'], string> = {
+  global: 'global memories index',
+  auto: 'private memories index',
+  team: 'team memories index',
 }
 
 function clause(index: MemoryIndexSummary): string {
-  // "private" and "team" are what /memory calls the two directories
-  // (MemoryFileSelector.tsx); "user memory" there already means
-  // ~/.claudin/CLAUDE.md, so it is not free for the private memdir.
-  const label =
-    index.kind === 'team' ? 'team memories index' : 'private memories index'
+  const label = KIND_LABEL[index.kind]
   // A cut index reports both halves: what arrived, and what the file holds.
   // Otherwise the cap fires in silence — the warning truncateEntrypointContent
   // appends goes to the model, never to the screen.
@@ -29,14 +35,15 @@ function clause(index: MemoryIndexSummary): string {
 }
 
 /**
- * The index clause: "private memories index (16 entries), team memories
- * index (121 entries)", or "… team memories index (96 of 121 entries)" when
- * a cap cut one of them short. It names the INDEX on purpose: the two
+ * The index clause: "global memories index (4 entries), private memories
+ * index (16 entries), team memories index (121 entries)", or "… team
+ * memories index (96 of 121 entries)" when a cap cut one of them short. It
+ * names the INDEX on purpose: the
  * MEMORY.md files are what enter context every session, and "Loaded 16
  * memories" read as if the memory files themselves had — those load on
  * demand, when the model follows a pointer or a `paths:` match attaches one
  * (nested_memory).
- * Private always precedes team, whatever order getMemoryFiles returned.
+ * Global, private, team — general to specific, as getMemoryFiles loads them.
  */
 export function formatMemoryIndexCounts(
   indexes: readonly MemoryIndexSummary[],

@@ -1,0 +1,30 @@
+{
+  "test": [
+    "src/memory/instructions/claudemd.memoryIndexes.test.ts",
+    "src/agent/attachments/injections.memoryIndex.test.ts"
+  ],
+  "source": "src/memory/instructions/claudemd.ts",
+  "probes": [
+    {
+      "name": "the global index enters context",
+      "find": "    if (isGlobalMemoryEnabled()) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n",
+      "replace": "    if (false) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n"
+    },
+    {
+      "name": "the global index is gated on the killswitch",
+      "find": "    if (isGlobalMemoryEnabled()) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n",
+      "replace": "    if (true) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n"
+    },
+    {
+      "name": "the model is told which index is the global one",
+      "find": "                ? \" (user's global auto-memory, shared by every project)\"\n",
+      "replace": "                ? \" (user's auto-memory, persists across conversations)\"\n"
+    },
+    {
+      "name": "a global index counts as a memory index",
+      "source": "src/memory/memdir/types.ts",
+      "find": "  return type === 'AutoMem' || type === 'GlobalMem' || type === 'TeamMem'\n",
+      "replace": "  return type === 'AutoMem' || type === 'TeamMem'\n"
+    }
+  ]
+}

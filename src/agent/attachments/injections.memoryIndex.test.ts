@@ -29,7 +29,7 @@ describe('toMemoryIndexSummary', () => {
     expect(toMemoryIndexSummary(memoryFile({})).entryCount).toBe(2)
   })
 
-  test('tags the team index as team and everything else as auto', () => {
+  test('tags the team index as team, the global one as global, the private one as auto', () => {
     expect(toMemoryIndexSummary(memoryFile({})).kind).toBe('auto')
     expect(
       toMemoryIndexSummary(
@@ -39,6 +39,14 @@ describe('toMemoryIndexSummary', () => {
         }),
       ).kind,
     ).toBe('team')
+    expect(
+      toMemoryIndexSummary(
+        memoryFile({
+          type: 'GlobalMem',
+          path: '/home/u/.claudin/memory/MEMORY.md',
+        }),
+      ).kind,
+    ).toBe('global')
   })
 
   test('totalEntryCount comes from rawContent — that is the truncation signal', () => {

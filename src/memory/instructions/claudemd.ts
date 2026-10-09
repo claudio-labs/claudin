@@ -33,7 +33,12 @@ import {
   getAdditionalDirectoriesForClaudeMd,
   getOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
-import { getAutoMemEntrypoint, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import {
+  getAutoMemEntrypoint,
+  getGlobalMemEntrypoint,
+  isAutoMemoryEnabled,
+  isGlobalMemoryEnabled,
+} from 'src/memory/memdir/paths.js'
 import {
   getCurrentProjectConfig,
   getManagedClaudeRulesDir,
@@ -294,6 +299,23 @@ export const getMemoryFiles = memoize(
       }
     }
 
+    // Global memdir entrypoint — the user's, shared by every project. Before
+    // the project's own indexes, the way the user's CLAUDE.md precedes the
+    // project's: the more specific file comes later.
+    if (isGlobalMemoryEnabled()) {
+      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(
+        getGlobalMemEntrypoint(),
+        'GlobalMem',
+      )
+      if (globalMemEntry) {
+        const normalizedPath = normalizePathForComparison(globalMemEntry.path)
+        if (!processedPaths.has(normalizedPath)) {
+          processedPaths.add(normalizedPath)
+          result.push(globalMemEntry)
+        }
+      }
+    }
+
     // Memdir entrypoint (memory.md) - only if feature is on and file exists
     if (isAutoMemoryEnabled()) {
       const { info: memdirEntry } = await safelyReadMemoryFileAsync(
@@ -439,9 +461,11 @@ export const getClaudeMds = (
             ? " (user's private project instructions, not checked in)"
             : feature('TEAMMEM') && file.type === 'TeamMem'
               ? ' (shared team memory, git-tracked in the project)'
-              : file.type === 'AutoMem'
-                ? " (user's auto-memory, persists across conversations)"
-                : " (user's private global instructions for all projects)"
+              : file.type === 'GlobalMem'
+                ? " (user's global auto-memory, shared by every project)"
+                : file.type === 'AutoMem'
+                  ? " (user's auto-memory, persists across conversations)"
+                  : " (user's private global instructions for all projects)"
 
       const content = file.content.trim()
       if (feature('TEAMMEM') && file.type === 'TeamMem') {

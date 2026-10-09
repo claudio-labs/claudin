@@ -11,8 +11,19 @@
   "probes": [
     {
       "name": "the team index is labelled team, not folded into the private count",
-      "find": "    index.kind === 'team' ? 'team memories index' : 'private memories index'\n",
-      "replace": "    'private memories index'\n"
+      "find": "  team: 'team memories index',\n",
+      "replace": "  team: 'private memories index',\n"
+    },
+    {
+      "name": "the global index is labelled global, not folded into the private count",
+      "find": "  global: 'global memories index',\n",
+      "replace": "  global: 'private memories index',\n"
+    },
+    {
+      "name": "the global index is tagged global",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "        : file.type === 'GlobalMem'\n          ? 'global'\n          : 'auto',\n",
+      "replace": "        : 'auto',\n"
     },
     {
       "name": "private leads whatever order getMemoryFiles returned",
