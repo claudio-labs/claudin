@@ -1,7 +1,12 @@
 import { feature } from 'bun:bundle'
 import { join } from 'path'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import {
+  getAutoMemPath,
+  getGlobalMemPath,
+  isAutoMemoryEnabled,
+  isGlobalMemoryEnabled,
+} from 'src/memory/memdir/paths.js'
 import { isMemoryIndexType } from 'src/memory/memdir/types.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -146,6 +151,8 @@ export const DIR_EXISTS_GUIDANCE =
   'This directory already exists — write to it directly with the Write tool (do not run mkdir or check for its existence).'
 export const DIRS_EXIST_GUIDANCE =
   'Both directories already exist — write to them directly with the Write tool (do not run mkdir or check for their existence).'
+export const ALL_DIRS_EXIST_GUIDANCE =
+  'All three directories already exist — write to them directly with the Write tool (do not run mkdir or check for their existence).'
 
 /**
  * Ensure a memory directory exists. Idempotent — called from loadMemoryPrompt
@@ -154,11 +161,16 @@ export const DIRS_EXIST_GUIDANCE =
  * by default and already swallows EEXIST, so the full parent chain
  * (~/.claudin/projects/<slug>/memory/) is created in one call with no
  * try/catch needed for the happy path.
+ * `mode` applies to every directory the call creates (0o700 for the global
+ * dir, which holds what is about the user).
  */
-export async function ensureMemoryDirExists(memoryDir: string): Promise<void> {
+export async function ensureMemoryDirExists(
+  memoryDir: string,
+  mode?: number,
+): Promise<void> {
   const fs = getFsImplementation()
   try {
-    await fs.mkdir(memoryDir)
+    await fs.mkdir(memoryDir, mode === undefined ? undefined : { mode })
   } catch (e) {
     // fs.mkdir already handles EEXIST internally. Anything reaching here is
     // a real problem (EACCES/EPERM/EROFS) — log so --debug shows why. Prompt
@@ -366,10 +378,13 @@ export function buildMemoryPrompt(params: {
  * section is part of the system prompt, so the value must not change while
  * the process lives.
  * `lean` (the v2 prompt) says the same two steps in one line.
+ * `globalMemDir` adds the global memory dir to the first step; the team dir
+ * needs no line of its own, it sits inside `autoMemDir`.
  */
 export function buildSearchingPastContextSection(
   autoMemDir: string,
   lean = false,
+  globalMemDir: string | null = null,
 ): string[] {
   if (isEnvDefinedFalsy(process.env.CLAUDIN_MEMORY_PAST_CONTEXT)) {
     return []
@@ -381,27 +396,52 @@ export function buildSearchingPastContextSection(
   const memSearch = embedded
     ? `grep -rn "<search term>" ${autoMemDir} --include="*.md"`
     : `${GREP_TOOL_NAME} with pattern="<search term>" path="${autoMemDir}" glob="*.md"`
+  const globalSearch =
+    globalMemDir === null
+      ? null
+      : embedded
+        ? `grep -rn "<search term>" ${globalMemDir} --include="*.md"`
+        : `${GREP_TOOL_NAME} with pattern="<search term>" path="${globalMemDir}" glob="*.md"`
   const transcriptSearch = embedded
     ? `grep -rn "<search term>" ${projectDir}/ --include="*.jsonl"`
     : `${GREP_TOOL_NAME} with pattern="<search term>" path="${projectDir}/" glob="*.jsonl"`
   if (lean) {
+    const memory =
+      globalSearch === null
+        ? `\`${memSearch}\``
+        : `\`${memSearch}\`, and \`${globalSearch}\` for the global one`
     return [
-      `To search past context, use narrow terms (error messages, paths, function names): first your memory (\`${memSearch}\`), then, as a slow last resort, the session transcripts (\`${transcriptSearch}\`).`,
+      `To search past context, use narrow terms (error messages, paths, function names): first your memory (${memory}), then, as a slow last resort, the session transcripts (\`${transcriptSearch}\`).`,
     ]
   }
   return [
     '## Searching past context',
     '',
     'When looking for past context:',
-    '1. Search topic files in your memory directory:',
+    `1. Search topic files in your memory ${globalSearch === null ? 'directory' : 'directories'}:`,
     '```',
     memSearch,
+    ...(globalSearch === null ? [] : [globalSearch]),
     '```',
     '2. Session transcript logs (last resort — large files, slow):',
     '```',
     transcriptSearch,
     '```',
     'Use narrow search terms (error messages, file paths, function names) rather than broad keywords.',
+    '',
+  ]
+}
+
+/**
+ * The global memory paragraph for the private-only prompt (no team memory):
+ * buildMemoryLines and buildMemoryStubLines describe one directory, and
+ * agent memory reuses them, so the global dir is said here, after them.
+ */
+export function buildGlobalMemoryLines(globalMemDir: string): string[] {
+  return [
+    '## Global memory',
+    '',
+    `A second directory, \`${globalMemDir}\`, is yours and this user's in every project — it already exists. Who the user is (\`type: user\`) always goes there, and so does feedback that holds in any project (how they want answers, plans or reviews); feedback that names this project's files, commands or conventions stays in the directory above. Never put a \`project\` memory or a \`paths:\` key in it. It has its own \`${ENTRYPOINT_NAME}\` index, loaded every session like this one.`,
     '',
   ]
 }
@@ -442,6 +482,9 @@ export async function loadMemoryPrompt(lean = false): Promise<string | null> {
       // out from under the auto dir, add a second ensureMemoryDirExists call
       // for autoDir here.
       await ensureMemoryDirExists(teamDir)
+      if (isGlobalMemoryEnabled()) {
+        await ensureMemoryDirExists(getGlobalMemPath(), 0o700)
+      }
       // The same memoized load the context injects the indexes from, so the
       // prompt agrees with what the model was given and stays put when the
       // system-prompt sections are rebuilt mid-session without it (/add-dir).
@@ -473,7 +516,13 @@ export async function loadMemoryPrompt(lean = false): Promise<string | null> {
     const build = hasExistingMemories(autoDir)
       ? buildMemoryLines
       : buildMemoryStubLines
-    return build('auto memory', autoDir, extraGuidelines).join('\n')
+    const lines = build('auto memory', autoDir, extraGuidelines)
+    if (isGlobalMemoryEnabled()) {
+      const globalDir = getGlobalMemPath()
+      await ensureMemoryDirExists(globalDir, 0o700)
+      lines.push(...buildGlobalMemoryLines(globalDir))
+    }
+    return lines.join('\n')
   }
 
   return null

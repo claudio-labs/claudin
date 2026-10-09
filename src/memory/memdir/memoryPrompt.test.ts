@@ -1,13 +1,17 @@
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'fs'
 
 import { buildMemoryLines, buildMemoryStubLines } from 'src/memory/memdir/memdir.js'
 import {
+  GLOBAL_SCOPE_LINES,
   MEMORY_FRONTMATTER_EXAMPLE,
   MEMORY_TYPES,
   parseMemoryType,
   renderTeamCategoriesCompact,
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
+  TYPES_SECTION_COMBINED,
+  typesSectionCombined,
 } from 'src/memory/memdir/memoryTypes.js'
 import {
   buildCombinedMemoryPrompt,
@@ -15,6 +19,7 @@ import {
   buildMemoryWriteRules,
 } from 'src/memory/memdir/teamMemPrompts.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js'
 import {
   buildExtractAutoOnlyPrompt,
   buildExtractCombinedPrompt,
@@ -168,7 +173,8 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
 
   test('names all four types with their scope', () => {
     for (const type of MEMORY_TYPES) expect(text).toContain(`\`${type}\``)
-    expect(text).toContain('always private')
+    // Who the user is goes where every project reads it, while that dir is on.
+    expect(text).toContain(isGlobalMemoryEnabled() ? 'always global' : 'always private')
     expect(text).toContain('**Why:** and **How to apply:**')
   })
 
@@ -241,5 +247,43 @@ describe('extraction prompts', () => {
     expect(autoOnly).toContain('`paths:`')
     expect(autoOnly).not.toContain('## Team categories')
     expect(buildExtractCombinedPrompt(12, '')).toContain('`paths:`')
+  })
+
+  test('with the global dir the auto-only prompt says where each memory goes', () => {
+    const GLOBAL = '/home/u/.claudin/memory/'
+    const prompt = buildExtractAutoOnlyPrompt(12, '', undefined, GLOBAL)
+    expect(prompt).toContain('## Where each memory goes')
+    expect(prompt).toContain(`The global directory \`${GLOBAL}\` is shared by every project`)
+    expect(prompt).toContain('`user` memories always go there')
+    expect(prompt).toContain("add a pointer to that file in the same directory's `MEMORY.md`")
+    // Under `bun test` the combined builder is the auto-only one; it passes the dir on.
+    expect(buildExtractCombinedPrompt(12, '', undefined, GLOBAL)).toBe(prompt)
+    expect(buildExtractAutoOnlyPrompt(12, '')).not.toContain('global')
+  })
+
+  test('the combined prompt takes the global scopes, and the extraction hands it the dir', () => {
+    // Asserted on the SOURCE: the combined builder sits behind
+    // feature('TEAMMEM'), which reads false under `bun test`.
+    const prompts = readFileSync(new URL('../extract/prompts.ts', import.meta.url), 'utf8')
+    expect(prompts).toContain('    ...typesSectionCombined(globalDir !== null),\n')
+    const extract = readFileSync(new URL('../extract/extractMemories.ts', import.meta.url), 'utf8')
+    expect(extract).toContain('const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null')
+    expect(extract.match(/loopHint,\n\s+globalDir,\n/g)).toHaveLength(2)
+  })
+})
+
+describe('GLOBAL_SCOPE_LINES', () => {
+  test('every key is a line of TYPES_SECTION_COMBINED, so none is stranded', () => {
+    for (const key of GLOBAL_SCOPE_LINES.keys()) expect(TYPES_SECTION_COMBINED).toContain(key)
+  })
+
+  test('with the global dir, user is global, project never is, and terse-answers feedback moves', () => {
+    const text = typesSectionCombined(true).join('\n')
+    expect(text).toContain('<scope>always global — the user is the same person in every project</scope>')
+    expect(text).toContain('<scope>never global; private or team')
+    expect(text).toContain('[saves global feedback memory: this user wants terse responses')
+    expect(text).toContain('Private, not global: it is about this codebase')
+    expect(text).not.toContain('<scope>always private</scope>')
+    expect(typesSectionCombined(false)).toBe(TYPES_SECTION_COMBINED)
   })
 })

@@ -168,7 +168,7 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): st
  * refusal path only: teamMemPrompts.ts pulls in memdir.ts, which requires it
  * back under feature('TEAMMEM'), and the write tools import this module.
  */
-function memoryWriteRules(teamDir: string): string {
+function memoryWriteRules(teamDir: string, globalDir: string | null): string {
   // Typed via annotation rather than `as`, so knip sees the named require
   // (teamMemSecretGuard.ts has the same shape).
   /* eslint-disable @typescript-eslint/no-require-imports */
@@ -176,7 +176,7 @@ function memoryWriteRules(teamDir: string): string {
     buildMemoryWriteRules,
   }: typeof import('src/memory/memdir/teamMemPrompts.js') = require('src/memory/memdir/teamMemPrompts.js')
   /* eslint-enable @typescript-eslint/no-require-imports */
-  return buildMemoryWriteRules(teamDir)
+  return buildMemoryWriteRules(teamDir, globalDir)
 }
 
 /**
@@ -198,7 +198,7 @@ export function checkMemoryFileFormatIn(
   const refusal = `Memory file not written: ${file.abs} is ${what}, and ${problems.join('; ')}. Fix the frontmatter and write it again.`
   return dirs.teamDir === null
     ? refusal
-    : `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs.teamDir)}`
+    : `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs.teamDir, dirs.globalDir ?? null)}`
 }
 
 /** Markdown link targets: `](target)`, up to the first space or `)`. */

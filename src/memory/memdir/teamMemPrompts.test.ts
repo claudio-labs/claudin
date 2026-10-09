@@ -35,10 +35,15 @@ async function importFreshTeamMemPrompts(options: {
   teamDir: string
   gitRoot: string | null
   likelyIgnored: boolean
+  /** The global memory dir, or null for the prompts as they read with it off. */
+  globalDir?: string | null
 }) {
+  const globalDir = options.globalDir ?? null
   mock.module('./paths.js', () => ({
     ...realPaths,
     getAutoMemPath: () => options.autoDir,
+    isGlobalMemoryEnabled: () => globalDir !== null,
+    getGlobalMemPath: () => globalDir ?? '/unused/',
   }))
   mock.module('./teamMemPaths.js', () => ({
     ...realTeamMemPaths,
@@ -310,5 +315,84 @@ describe('the v2 memory section and its write rules', () => {
     expect(MEMORY_MARKERS.filter(marker => !has(received, marker))).toEqual([])
     // …and the rules are what carries the write-time ones.
     expect(['impact:', '[[name]]', '`paths:`'].filter(marker => has(prompt, marker))).toEqual([])
+  })
+})
+
+// The global memory dir (~/.claudin/memory/, shared by every project). Off,
+// every prompt above reads as it did before the dir existed; on, the three
+// directories and where each type goes are said in both prompts, and the
+// write rules carry what the format guard enforces about the global dir.
+describe('the global memory dir in the prompts', () => {
+  const GLOBAL = '/home/u/.claudin/memory/'
+  const DIRS = {
+    autoDir: '/repo/.claudin/memory/',
+    teamDir: '/repo/.claudin/memory/team/',
+    gitRoot: null,
+    likelyIgnored: false,
+    globalDir: GLOBAL,
+  }
+  const LEAN_INTRO =
+    "You have a persistent, file-based memory in three directories: a global one at `/home/u/.claudin/memory/`, yours and this user's in every project; a private one at `/repo/.claudin/memory/`, for this project; and a team one at `/repo/.claudin/memory/team/`, git-tracked, so what you write there shows up in `git status` and reaches teammates through commits. All three directories already exist — write to them directly with the Write tool (do not run mkdir or check for their existence). Save what future conversations need — who the user is, how they like to work, the context behind the work. When the user asks you to remember something, save it now; when they ask you to forget something, find and remove it."
+  const LEAN_TYPES =
+    "Types: `user` (always global — role, expertise, preferences), `feedback` (how to work, from corrections and confirmed approaches; global when it holds in any project, private when it names this project's files, commands or conventions, team only for a project-wide convention), `project` (bias toward team, never global — ongoing work, decisions, constraints; absolute dates), `reference` (usually team, global only for a personal resource outside any one project — pointers to external systems)."
+  const LEAN_INDEX =
+    'Only the three `MEMORY.md` indexes are in context. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.'
+
+  test('the v2 prompt names the three directories and where each type goes', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const lines = m.buildLeanCombinedMemoryPrompt().split('\n')
+
+    expect(lines).toContain(LEAN_INTRO)
+    expect(lines).toContain(LEAN_TYPES)
+    expect(lines).toContain(LEAN_INDEX)
+    expect(lines.join('\n')).toContain(`path="${GLOBAL}" glob="*.md"\` for the global one`)
+  })
+
+  test('the empty-index note counts three', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    expect(m.buildLeanCombinedMemoryPrompt(undefined, true)).toContain(
+      'Only the three `MEMORY.md` indexes are in context. All three are empty — nothing is saved yet.',
+    )
+    expect(m.buildCombinedMemoryPrompt(undefined, true)).toContain(
+      'a memory file is read when you follow its index line. All three are empty — nothing is saved yet.',
+    )
+  })
+
+  test('the full prompt says the same, with the paths: rule for the global dir', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const prompt = m.buildCombinedMemoryPrompt()
+    const lines = prompt.split('\n')
+
+    expect(prompt).toContain(
+      `with three directories: a global one at \`${GLOBAL}\` (just you and this user, shared by every project they work in), a private one at \`/repo/.claudin/memory/\` (just you and this user, for this project)`,
+    )
+    expect(lines).toContain(
+      '- `user` (always global) — who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.',
+    )
+    expect(prompt).toContain("- `feedback` (global when it holds in any project — how the user wants answers, plans or reviews; private when it names this project's files, commands or conventions;")
+    expect(prompt).toContain('- `project` (bias toward team; never global)')
+    expect(prompt).toContain('Only the three `MEMORY.md` indexes are in context;')
+    expect(prompt).toContain('give one to a bug or doc memory tied to specific files, never to a global memory.')
+    expect(prompt).toContain('in the global, private or team dir per its scope')
+    expect(prompt).toContain('Each dir has its own index and all three load every session')
+    expect(prompt).toContain('1. Search topic files in your memory directories:')
+    expect(prompt).toContain(`path="${GLOBAL}" glob="*.md"`)
+  })
+
+  test('the write rules carry what the global dir takes, only while it is on', async () => {
+    const m = await importFreshTeamMemPrompts(DIRS)
+    const line = `The global dir \`${GLOBAL}\` takes what holds in every project — \`user\`, \`feedback\`, \`reference\` — never \`project\`, and its memories carry no \`paths:\`.`
+
+    expect(m.buildMemoryWriteRules(DIRS.teamDir, GLOBAL).split('\n')).toContain(line)
+    expect(m.buildMemoryWriteRules(DIRS.teamDir)).not.toContain('The global dir')
+    expect(m.buildLeanCombinedMemoryPrompt()).not.toContain(line)
+  })
+
+  test('off, neither prompt mentions a global dir', async () => {
+    const m = await importFreshTeamMemPrompts({ ...DIRS, globalDir: null })
+    for (const prompt of [m.buildLeanCombinedMemoryPrompt(), m.buildCombinedMemoryPrompt()]) {
+      expect(prompt).not.toContain('global')
+      expect(prompt).not.toContain('three `MEMORY.md`')
+    }
   })
 })

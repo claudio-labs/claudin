@@ -174,6 +174,9 @@ describe('checkMemoryFileFormatIn — the global dir', () => {
     expect(refusal).toContain('`type: project` belongs to one project')
     expect(refusal).toContain(AUTO)
     expect(refusal).toContain(TEAM)
+    // The rules it carries say what the global dir takes.
+    expect(refusal).toEndWith(`\n\nThe rules for memory files:\n\n${buildMemoryWriteRules(TEAM, GLOBAL)}`)
+    expect(refusal).toContain(`The global dir \`${GLOBAL}\` takes what holds in every project`)
   })
 
   test('refuses `paths:` — a global memory is not tied to one project', () => {
