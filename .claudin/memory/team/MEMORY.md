@@ -4,7 +4,7 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
-- [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — user/anywhere-feedback; `CLAUDIN_GLOBAL_MEMORY=0`
+- [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — memoryDirs.ts registry + TYPE_SCOPES; `CLAUDIN_GLOBAL_MEMORY=0`
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed writes refused
 - [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — multi-session runtime rejected
