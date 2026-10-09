@@ -1,0 +1,21 @@
+{
+  "test": ["src/permissions/filePermissions/internalPaths.test.ts"],
+  "source": "src/permissions/filePermissions/internalPaths.ts",
+  "probes": [
+    {
+      "name": "a memory file is writable with no prompt",
+      "find": "  if (!hasAutoMemPathOverride() && isAutoMemPath(normalizedPath)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the Cowork override gets no write carve-out",
+      "find": "  if (!hasAutoMemPathOverride() && isAutoMemPath(normalizedPath)) {\n",
+      "replace": "  if (isAutoMemPath(normalizedPath)) {\n"
+    },
+    {
+      "name": "a memory file is readable with no prompt",
+      "find": "  if (isAutoMemPath(normalizedPath)) {\n",
+      "replace": "  if (false) {\n"
+    }
+  ]
+}

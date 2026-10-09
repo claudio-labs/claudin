@@ -1,0 +1,26 @@
+{
+  "test": ["src/memory/memdir/memoryFileDetection.test.ts"],
+  "source": "src/memory/memdir/memoryFileDetection.ts",
+  "probes": [
+    {
+      "name": "a private memory file is an auto-managed memory file",
+      "find": "    return isAutoMemPath(filePath)\n",
+      "replace": "    return false\n"
+    },
+    {
+      "name": "nothing is memory when auto memory is off",
+      "find": "export function isAutoMemFile(filePath: string): boolean {\n  if (isAutoMemoryEnabled()) {\n",
+      "replace": "export function isAutoMemFile(filePath: string): boolean {\n  if (true) {\n"
+    },
+    {
+      "name": "the private memory dir is a memory directory",
+      "find": "      normalizedCmp === autoMemDirCmp ||\n",
+      "replace": "      false ||\n"
+    },
+    {
+      "name": "a shell command over the private dir targets memory",
+      "find": "  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)\n",
+      "replace": "  const dirs = [configDir, memoryBase].filter(Boolean)\n"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "test": [
+    "src/permissions/filePermissions/internalPaths.test.ts",
+    "src/memory/memdir/memoryFileDetection.test.ts"
+  ],
+  "source": "src/memory/memdir/paths.ts",
+  "probes": [
+    {
+      "name": "a sibling directory sharing the prefix is not memory",
+      "find": "  return normalizedPath.startsWith(getAutoMemPath())\n",
+      "replace": "  return normalizedPath.startsWith(getAutoMemPath().slice(0, -1))\n"
+    },
+    {
+      "name": "a traversal out of the memory dir is not memory",
+      "find": "  const normalizedPath = normalize(absolutePath)\n  return normalizedPath.startsWith(getAutoMemPath())\n",
+      "replace": "  const normalizedPath = absolutePath\n  return normalizedPath.startsWith(getAutoMemPath())\n"
+    }
+  ]
+}
