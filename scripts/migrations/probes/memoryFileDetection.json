@@ -19,8 +19,23 @@
     },
     {
       "name": "a shell command over the private dir targets memory",
-      "find": "  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)\n",
-      "replace": "  const dirs = [configDir, memoryBase].filter(Boolean)\n"
+      "find": "  const dirs = [configDir, memoryBase, autoMemDir, globalMemDir].filter(Boolean)\n",
+      "replace": "  const dirs = [configDir, memoryBase, globalMemDir].filter(Boolean)\n"
+    },
+    {
+      "name": "a shell command over a moved global dir targets memory",
+      "find": "  const dirs = [configDir, memoryBase, autoMemDir, globalMemDir].filter(Boolean)\n",
+      "replace": "  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)\n"
+    },
+    {
+      "name": "a global memory file is an auto-managed memory file",
+      "find": "  if (isGlobalMemPath(filePath)) {\n    return true\n  }\n",
+      "replace": ""
+    },
+    {
+      "name": "a moved global dir is a memory directory",
+      "find": "      normalizedCmp === toComparable(globalMemPath.replace(TRAILING_SEP_RE, '')) ||\n      normalizedCmp.startsWith(toComparable(globalMemPath))\n",
+      "replace": "      false\n"
     }
   ]
 }

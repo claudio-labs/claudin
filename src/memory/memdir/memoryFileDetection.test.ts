@@ -3,7 +3,9 @@ import { mkdirSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { setFlagSettingsInline } from 'src/platform/bootstrap/state/sessionFlags.js'
+import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
+import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import {
   isAutoManagedMemoryFile,
   isAutoMemFile,
@@ -18,6 +20,7 @@ import {
 const ENV_KEYS = [
   'CLAUDIN_CONFIG_DIR',
   'CLAUDIN_DISABLE_AUTO_MEMORY',
+  'CLAUDIN_GLOBAL_MEMORY',
   'CLAUDIN_SIMPLE',
   'CLAUDE_COWORK_MEMORY_PATH_OVERRIDE',
 ] as const
@@ -90,5 +93,47 @@ describe('memory file detection', () => {
     } finally {
       delete process.env.CLAUDIN_DISABLE_AUTO_MEMORY
     }
+  })
+
+  test('a global memory file is an auto-managed memory file, though not a private one', () => {
+    const file = join(getGlobalMemPath(), 'user-language.md')
+    expect(isAutoMemFile(file)).toBe(false)
+    expect(isAutoManagedMemoryFile(file)).toBe(true)
+  })
+
+  test('a global memory file is nothing special with the global dir off', () => {
+    process.env.CLAUDIN_GLOBAL_MEMORY = '0'
+    try {
+      expect(isAutoManagedMemoryFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(false)
+    } finally {
+      delete process.env.CLAUDIN_GLOBAL_MEMORY
+    }
+  })
+
+  describe('with the global dir moved outside the config home', () => {
+    let customDir: string
+
+    beforeAll(() => {
+      customDir = join(root, 'dotfiles', 'claudin-memory')
+      setFlagSettingsInline({ autoMemoryGlobalDirectory: customDir })
+      resetSettingsCache()
+      getGlobalMemPath.cache.clear?.()
+    })
+
+    afterAll(() => {
+      setFlagSettingsInline(null)
+      resetSettingsCache()
+      getGlobalMemPath.cache.clear?.()
+    })
+
+    test('it is a memory directory', () => {
+      expect(getGlobalMemPath()).toBe(`${customDir}/`)
+      expect(isMemoryDirectory(customDir)).toBe(true)
+      expect(isMemoryDirectory(join(customDir, 'sub'))).toBe(true)
+    })
+
+    test('a shell command over it targets memory', () => {
+      expect(isShellCommandTargetingMemory(`grep -rn pt-BR ${customDir}`)).toBe(true)
+    })
   })
 })

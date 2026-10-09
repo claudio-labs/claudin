@@ -2,7 +2,11 @@ import { join, normalize, sep } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js'
 import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
-import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memory/memdir/paths.js'
+import {
+  hasAutoMemPathOverride,
+  isAutoMemPath,
+  isGlobalMemPath,
+} from 'src/memory/memdir/paths.js'
 import { getSessionMemoryDir } from 'src/memory/session/paths.js'
 import { pathInWorkingPath } from 'src/permissions/filePermissions/workingDirs.js'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
@@ -268,6 +272,20 @@ export function checkEditableInternalPath(
     }
   }
 
+  // Global memdir — the user's own, shared by every project. It sits under
+  // ~/.claudin/ as well, so it needs the same carve-out. isGlobalMemPath is
+  // false whenever the global dir is off (killswitch, Cowork override).
+  if (isGlobalMemPath(normalizedPath)) {
+    return {
+      behavior: 'allow',
+      updatedInput: input,
+      decisionReason: {
+        type: 'other',
+        reason: 'global memory files are allowed for writing',
+      },
+    }
+  }
+
   // .claudin/launch.json — desktop preview config (dev server command + port).
   // The desktop's preview_start MCP tool instructs Claude to create/update
   // this file as part of the preview workflow. Without this carve-out the
@@ -408,6 +426,18 @@ export function checkReadableInternalPath(
       decisionReason: {
         type: 'other',
         reason: 'auto memory files are allowed for reading',
+      },
+    }
+  }
+
+  // Global memdir (shared by every project)
+  if (isGlobalMemPath(normalizedPath)) {
+    return {
+      behavior: 'allow',
+      updatedInput: input,
+      decisionReason: {
+        type: 'other',
+        reason: 'global memory files are allowed for reading',
       },
     }
   }

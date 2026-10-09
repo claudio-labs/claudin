@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import {
   checkEditableInternalPath,
   checkReadableInternalPath,
@@ -16,6 +16,7 @@ import {
 const ENV_KEYS = [
   'CLAUDIN_CONFIG_DIR',
   'CLAUDIN_DISABLE_AUTO_MEMORY',
+  'CLAUDIN_GLOBAL_MEMORY',
   'CLAUDIN_SIMPLE',
   'CLAUDE_COWORK_MEMORY_PATH_OVERRIDE',
 ] as const
@@ -96,6 +97,30 @@ describe('auto-memory carve-outs', () => {
     } finally {
       delete process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
       getAutoMemPath.cache.clear?.()
+    }
+  })
+
+  test('a global memory file is writable and readable with no prompt', () => {
+    const file = join(getGlobalMemPath(), 'user-language.md')
+    expect(file.startsWith(join(root, 'config'))).toBe(true)
+    expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('allow')
+    expect(checkReadableInternalPath(file, { file_path: file }).behavior).toBe('allow')
+  })
+
+  test('a traversal out of the global dir is not memory', () => {
+    // Raw, not join()ed: join would resolve the `..` before the check sees it.
+    const file = `${getGlobalMemPath()}../settings.json`
+    expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
+  })
+
+  test('CLAUDIN_GLOBAL_MEMORY=0 takes the global carve-out with it', () => {
+    process.env.CLAUDIN_GLOBAL_MEMORY = '0'
+    try {
+      const file = join(getGlobalMemPath(), 'user-language.md')
+      expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
+      expect(checkReadableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
+    } finally {
+      delete process.env.CLAUDIN_GLOBAL_MEMORY
     }
   })
 })

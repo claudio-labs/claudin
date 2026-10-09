@@ -2,9 +2,12 @@ import { feature } from 'bun:bundle'
 import { normalize, posix, win32 } from 'path'
 import {
   getAutoMemPath,
+  getGlobalMemPath,
   getMemoryBaseDir,
   isAutoMemoryEnabled,
   isAutoMemPath,
+  isGlobalMemoryEnabled,
+  isGlobalMemPath,
 } from 'src/memory/memdir/paths.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
@@ -20,6 +23,7 @@ const teamMemPaths = feature('TEAMMEM')
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 const IS_WINDOWS = process.platform === 'win32'
+const TRAILING_SEP_RE = /[/\\]+$/
 
 // Normalize path separators to posix (/). Does NOT translate drive encoding.
 function toPosix(p: string): string {
@@ -104,13 +108,16 @@ function isAgentMemFile(filePath: string): boolean {
 
 /**
  * Check if a file is a Claude-managed memory file (NOT user-managed instruction files).
- * Includes: auto-memory (memdir), agent memory, session memory/transcripts.
+ * Includes: auto-memory (memdir, global memdir), agent memory, session memory/transcripts.
  * Excludes: CLAUDE.md, CLAUDE.local.md, .claudin/rules/*.md (user-managed).
  *
  * Use this for collapse/badge logic where user-managed files should show full diffs.
  */
 export function isAutoManagedMemoryFile(filePath: string): boolean {
   if (isAutoMemFile(filePath)) {
+    return true
+  }
+  if (isGlobalMemPath(filePath)) {
     return true
   }
   if (feature('TEAMMEM') && teamMemPaths!.isTeamMemFile(filePath)) {
@@ -164,6 +171,16 @@ export function isMemoryDirectory(dirPath: string): boolean {
       return true
     }
   }
+  // The global memory dir, which autoMemoryGlobalDirectory can put anywhere
+  if (isGlobalMemoryEnabled()) {
+    const globalMemPath = getGlobalMemPath()
+    if (
+      normalizedCmp === toComparable(globalMemPath.replace(TRAILING_SEP_RE, '')) ||
+      normalizedCmp.startsWith(toComparable(globalMemPath))
+    ) {
+      return true
+    }
+  }
 
   const configDirCmp = toComparable(getClaudinConfigHomeDir())
   const memoryBaseCmp = toComparable(getMemoryBaseDir())
@@ -197,16 +214,19 @@ export function isShellCommandTargetingMemory(command: string): boolean {
   const autoMemDir = isAutoMemoryEnabled()
     ? getAutoMemPath().replace(/[/\\]+$/, '')
     : ''
+  const globalMemDir = isGlobalMemoryEnabled()
+    ? getGlobalMemPath().replace(TRAILING_SEP_RE, '')
+    : ''
 
   // Quick check: does the command mention the config, memory base, or
-  // auto-mem directory? Compare in forward-slash form (PowerShell on Windows
+  // auto-mem or global memory directory? Compare in forward-slash form (PowerShell on Windows
   // may use either separator while configDir uses the platform-native one).
   // On Windows also check the MinGW form (/c/...) since BashTool runs under
   // Git Bash which emits that encoding. On Linux/Mac, configDir is already
   // posix so only one form to check — and crucially, windowsPathToPosixPath
   // is NOT called, so Linux paths like /m/foo aren't misinterpreted as MinGW.
   const commandCmp = toComparable(command)
-  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)
+  const dirs = [configDir, memoryBase, autoMemDir, globalMemDir].filter(Boolean)
   const matchesAnyDir = dirs.some(d => {
     if (commandCmp.includes(toComparable(d))) return true
     if (IS_WINDOWS) {

@@ -16,6 +16,22 @@
       "name": "a memory file is readable with no prompt",
       "find": "  if (isAutoMemPath(normalizedPath)) {\n",
       "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a global memory file is writable with no prompt",
+      "find": "  // false whenever the global dir is off (killswitch, Cowork override).\n  if (isGlobalMemPath(normalizedPath)) {\n",
+      "replace": "  // false whenever the global dir is off (killswitch, Cowork override).\n  if (false) {\n"
+    },
+    {
+      "name": "a global memory file is readable with no prompt",
+      "find": "  // Global memdir (shared by every project)\n  if (isGlobalMemPath(normalizedPath)) {\n",
+      "replace": "  // Global memdir (shared by every project)\n  if (false) {\n"
+    },
+    {
+      "name": "the global carve-out goes with the killswitch",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    isGlobalMemoryEnabled() &&\n    normalize(absolutePath).startsWith(getGlobalMemPath())\n",
+      "replace": "    normalize(absolutePath).startsWith(getGlobalMemPath())\n"
     }
   ]
 }
