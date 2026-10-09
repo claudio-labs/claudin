@@ -25,13 +25,18 @@ const KB = 1024
  * The prompt runs in the main conversation (local-jsx command with
  * shouldQuery), so deletions go through the normal Bash permission prompt —
  * that prompt is the human gate, keep the instructions deletion-via-`rm`.
+ *
+ * `globalRoot` (the global memory dir, while it is on) adds it as a third
+ * directory, tidied by the same rules and never merged across.
  */
 export function buildMemoryTidyPrompt(
   memoryRoot: string,
   teamRoot: string | null,
+  globalRoot: string | null = null,
 ): string {
   const root = normalizeRoot(memoryRoot)
   const team = teamRoot === null ? null : normalizeRoot(teamRoot)
+  const global = globalRoot === null ? null : normalizeRoot(globalRoot)
   const maxKb = Math.round(MAX_ENTRYPOINT_BYTES / KB)
 
   // Step 1 must only mention the team dir when this run actually covers it —
@@ -56,13 +61,26 @@ Also tidy the team memory directory: \`${team}\`
 `
       : ''
 
+  const globalSection =
+    global !== null
+      ? `
+## Global memory
+
+Also tidy the global memory directory: \`${global}\` — yours and this user's in every project.
+
+- Apply the exact same orient → identify → merge → update-index steps inside \`${global}\` (its index is \`${global}/${ENTRYPOINT_NAME}\`)
+- **Never merge across the boundary**: a global memory and a private or team one about the same fact stay separate. Moving a private memory to the global dir is \`/memory sort\`'s job, not tidy's.
+- Every project reads these files: a deletion here takes the memory away from all of them — another reason to stay strictly conservative.
+`
+      : ''
+
   return `# Memory Tidy: conservative duplicate merge
 
 You are tidying the memory directory — a **conservative** pass that merges duplicate memory files and updates the index. This is NOT a dream/consolidation: do not look at transcripts, do not create new memories, do not reorganize by topic, and do not rewrite the content of files that are not duplicates.
 
 Memory directory: \`${root}\`
 ${DIR_EXISTS_GUIDANCE}
-${teamSection}
+${teamSection}${globalSection}
 ---
 
 ## Step 1 — Orient
@@ -93,12 +111,12 @@ For each confirmed duplicate group:
 
 Hard rules:
 - Never merge across the private ↔ team boundary.
-- Never delete a file that is merely stale, ambiguous, or low-quality — only confirmed duplicates. Stale or wrong content is reported, not fixed.
+${global === null ? '' : '- Never merge across the global ↔ private/team boundary.\n'}- Never delete a file that is merely stale, ambiguous, or low-quality — only confirmed duplicates. Stale or wrong content is reported, not fixed.
 - Never create new memory files, and never touch files outside the memory directories.
 
 ## Step 4 — Update the index (minimal edits, NOT a rewrite)
 
-Edit \`${root}/${ENTRYPOINT_NAME}\` (and the team index if applicable) **in place, surgically**:
+Edit \`${root}/${ENTRYPOINT_NAME}\` (and the ${global === null ? 'team index' : 'team and global indexes'} if applicable) **in place, surgically**:
 
 - Remove only the lines pointing at files you deleted
 - Update the survivor's line only if its title/hook changed

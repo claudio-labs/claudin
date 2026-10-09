@@ -93,4 +93,22 @@ describe('buildMemoryTidyPrompt', () => {
     expect(prompt).toContain('Stale or broken observed')
     expect(prompt).toContain('a tidy run that changes nothing is a correct outcome')
   })
+
+  test('global-off: the prompt is the one that always shipped', () => {
+    expect(buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT, null)).toBe(
+      buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT),
+    )
+    expect(buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)).not.toContain('Global memory')
+  })
+
+  test('global-on: tidied by the same steps, never merged across, deletions reach every project', () => {
+    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT, '/home/u/.claudin/memory/')
+    expect(prompt).toContain('## Global memory')
+    expect(prompt).toContain('/home/u/.claudin/memory/MEMORY.md')
+    expect(prompt).not.toContain('//MEMORY.md')
+    expect(prompt).toContain("Moving a private memory to the global dir is `/memory sort`'s job, not tidy's.")
+    expect(prompt).toContain('a deletion here takes the memory away from all of them')
+    expect(prompt).toContain('- Never merge across the global ↔ private/team boundary.')
+    expect(prompt).toContain('(and the team and global indexes if applicable)')
+  })
 })

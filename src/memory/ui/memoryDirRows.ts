@@ -36,10 +36,14 @@ export type BrowseTarget = {
   dir: string
   title: string
   isTeamDir: boolean
+  /** The global dir — every project reads it, so its delete confirmation says so. */
+  isGlobalDir?: boolean
 }
 
+// The flag after the prefix: 0 private (or an agent's), 1 team, 2 global.
 export function encodeBrowseValue(target: BrowseTarget): string {
-  return `${BROWSE_DIR_PREFIX}${target.isTeamDir ? '1' : '0'}${BROWSE_FIELD_SEP}${target.title}${BROWSE_FIELD_SEP}${target.dir}`
+  const flag = target.isTeamDir ? '1' : target.isGlobalDir ? '2' : '0'
+  return `${BROWSE_DIR_PREFIX}${flag}${BROWSE_FIELD_SEP}${target.title}${BROWSE_FIELD_SEP}${target.dir}`
 }
 
 /** Returns null for any value that is not a browse row. */
@@ -52,8 +56,10 @@ export function parseBrowseValue(value: string): BrowseTarget | null {
   if (secondSep === -1) return null
   // The dir takes the whole tail, so a path holding the separator still round
   // trips instead of being silently truncated.
+  const flag = rest.slice(0, firstSep)
   return {
-    isTeamDir: rest.slice(0, firstSep) === '1',
+    isTeamDir: flag === '1',
+    ...(flag === '2' ? { isGlobalDir: true } : {}),
     title: rest.slice(firstSep + 1, secondSep),
     dir: rest.slice(secondSep + 1),
   }

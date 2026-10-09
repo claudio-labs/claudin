@@ -191,6 +191,18 @@ describe('browse row values', () => {
     expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
   })
 
+  test('the global dir round trips with its own flag', () => {
+    const target = {
+      dir: '/home/u/.claudin/memory/',
+      title: 'Global memory',
+      isTeamDir: false,
+      isGlobalDir: true,
+    }
+
+    expect(encodeBrowseValue(target).startsWith('__browse_dir__2')).toBe(true)
+    expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
+  })
+
   test('a path holding the field separator keeps its tail', () => {
     const dir = `/repo/od\u001fd/memory`
     const parsed = parseBrowseValue(

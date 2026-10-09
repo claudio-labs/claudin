@@ -25,8 +25,32 @@ const KB = 1024
  * Runs in the main conversation (local-jsx command with shouldQuery), so each
  * `git mv` goes through the normal Bash permission prompt — that prompt is the
  * human veto per file; keep the instructions on `git mv`, never `mv`.
+ *
+ * With `promote` (the private dir and the global one, while the global dir is
+ * on) it also promotes what is about the user from the first to the second —
+ * the migration for memories saved before the global dir existed. Without a
+ * team root, that promotion is the whole prompt.
  */
-export function buildMemorySortPrompt(teamRoot: string): string {
+export function buildMemorySortPrompt(
+  teamRoot: string | null,
+  promote: { privateRoot: string; globalRoot: string } | null = null,
+): string {
+  const promotion =
+    promote === null
+      ? null
+      : buildPromotionPart(promote.privateRoot, promote.globalRoot)
+  if (teamRoot === null) {
+    return promotion === null
+      ? ''
+      : `# Memory Sort: promote what is about the user to the global memory\n\n${promotion}`
+  }
+  const teamPart = buildTeamPart(teamRoot)
+  return promotion === null
+    ? teamPart
+    : `${teamPart}\n\n---\n\n# Part 2 — promote what is about the user to the global memory\n\nThe hard rules above are about the team dir; this part has its own.\n\n${promotion}`
+}
+
+function buildTeamPart(teamRoot: string): string {
   const team = teamRoot.replace(TRAILING_SEP_RE, '')
   const maxKb = Math.round(MAX_ENTRYPOINT_BYTES / KB)
   const dirs = TEAM_CATEGORIES.map(c => `\`${c.dir}/\``).join(', ')
@@ -82,4 +106,56 @@ Hard rules:
 - Only files directly at the team root move — never a private memory, never between subdirectories, never anything outside \`${team}\`.
 - Never create or delete a memory, never rewrite a body, never change a \`name:\` or \`type:\`.
 - A second run over a sorted directory moves nothing — say so; that is the correct outcome.`
+}
+
+/**
+ * The private → global pass. A move is a `mv` (the permission prompt is the
+ * veto); a split or a merge into an existing global memory is a write plus an
+ * `rm` of the private file. Conservative like the team pass: what is not
+ * clearly about the person stays private.
+ */
+function buildPromotionPart(privateRoot: string, globalRoot: string): string {
+  const own = privateRoot.replace(TRAILING_SEP_RE, '')
+  const global = globalRoot.replace(TRAILING_SEP_RE, '')
+  return `The private memory directory \`${own}\` was the only home for what is about the user until the global one existed: \`${global}\`, shared by every project this user works in. Move there what holds in any project, so the next project starts already knowing it — and nothing else.
+
+## Step 1 — Orient
+
+- Read \`${own}/${ENTRYPOINT_NAME}\` and \`${global}/${ENTRYPOINT_NAME}\`
+- \`ls ${own}\` — only the \`.md\` files directly in it are candidates; never \`team/\` or any other subdirectory
+- Read every candidate in full, and every file already in \`${global}\`, so you merge instead of duplicating — the user may already have said the same thing in another project
+
+## Step 2 — Classify, conservatively
+
+For each candidate decide: **move** (the whole file holds in any project), **split** (part of it does) or **stays**.
+
+- \`type: user\` always goes: who the user is — role, language, expertise, how they like answers — is the same in every project. When its body also says things about THIS project (what they work on here, this repo's tools), split it: the person goes global, the project part stays here.
+- \`feedback\` goes only when it holds in any project — how the user wants answers, plans, reviews or commits — and names none of this project's files, commands, tools or conventions. Feedback about this codebase stays.
+- \`reference\` goes only when it points at a personal resource outside any one project.
+- \`project\` never goes.
+
+Anything you are not sure about stays and goes in the report — the private dir is a valid home, not a failure.
+
+## Step 3 — Move, merge or split
+
+- **Move**: when no global memory records the same fact, \`mv ${own}/<file>.md ${global}/<file>.md\`. The user sees a permission prompt for each move; that is their veto. Then drop a \`paths:\` key from the moved file if it has one — a global memory is not tied to a project's files.
+- **Merge**: when a global memory already records the same fact, fold the private file into it — when the two differ, keep both facts and say so in the report — then delete the private file with \`rm\` (another permission prompt).
+- **Split**: write the part that holds anywhere as a new file in \`${global}\` with its own frontmatter (\`type: user\` or \`feedback\`), then edit the private file down to what stays, changing its \`type\` if the old one no longer fits.
+
+Never touch the team dir, never change what a memory says, never invent a fact.
+
+## Step 4 — Update both indexes (surgical)
+
+- In \`${own}/${ENTRYPOINT_NAME}\`, remove the pointer line of each file you moved or merged away, and update the line of each file you split if its hook changed.
+- In \`${global}/${ENTRYPOINT_NAME}\`, add \`- [Title](file.md) — one-line hook\` for each file it gains (create the index if it does not exist).
+- Everything else in both stays byte-for-byte. Each must stay under ${MAX_ENTRYPOINT_LINES} lines.
+
+## Step 5 — Report
+
+- **Moved to global**: \`file.md\` and the one-phrase reason
+- **Merged into a global memory**: which into which, and any difference you kept
+- **Split**: what went global, what stayed
+- **Left private (ambiguous)**: candidates you considered and why they stayed
+
+A second run over a sorted directory moves nothing — say so; that is the correct outcome.`
 }

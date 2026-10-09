@@ -58,12 +58,14 @@ type Preview = {
 type Props = {
   /** Absolute path of the directory to browse (may carry a trailing separator). */
   dir: string
-  /** "Private memory" / "Team memory" / "code-reviewer agent memory". */
+  /** "Global memory" / "Private memory" / "Team memory" / "code-reviewer agent memory". */
   title: string
   /** The directory's MEMORY.md, pinned as the first row when it exists. */
   indexPath: string
   /** Team memories are git-tracked, so their delete confirmation says so. */
   isTeamDir?: boolean
+  /** Every project reads a global memory, so its delete confirmation says so. */
+  isGlobalDir?: boolean
   onBack: () => void
 }
 
@@ -72,6 +74,7 @@ export function MemoryDirBrowser({
   title,
   indexPath,
   isTeamDir = false,
+  isGlobalDir = false,
   onBack,
 }: Props): React.ReactNode {
   const [headers, setHeaders] = useState<MemoryHeader[] | null>(null)
@@ -298,7 +301,9 @@ export function MemoryDirBrowser({
           <Text dimColor>
             {isTeamDir
               ? 'Shared memory — the deletion reaches the team on the next commit. Its line in MEMORY.md goes too.'
-              : 'Its line in MEMORY.md goes too.'}
+              : isGlobalDir
+                ? 'Global memory — every project loses it, not just this one. Its line in MEMORY.md goes too.'
+                : 'Its line in MEMORY.md goes too.'}
           </Text>
         </Box>
       ) : (

@@ -1,4 +1,9 @@
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import {
+  getAutoMemPath,
+  getGlobalMemPath,
+  isAutoMemoryEnabled,
+  isGlobalMemoryEnabled,
+} from 'src/memory/memdir/paths.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import { buildMemorySortPrompt } from 'src/commands/memory/sortPrompt.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
@@ -10,17 +15,18 @@ import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js'
  * src/terminal/ink.js, which cannot load under `bun test`.
  */
 
-export type MemorySubcommand = 'tidy' | 'sort' | 'private' | 'team'
+export type MemorySubcommand = 'tidy' | 'sort' | 'global' | 'private' | 'team'
 
 const SUBCOMMANDS: readonly MemorySubcommand[] = [
   'tidy',
   'sort',
+  'global',
   'private',
   'team',
 ]
 
 /**
- * `private` and `team` open the dialog straight into that directory's browser;
+ * `global`, `private` and `team` open the dialog straight into that directory's browser;
  * `tidy` and `sort` skip the dialog entirely. Anything else falls through to
  * the normal dialog rather than erroring — a typo should not cost the user
  * their `/memory`.
@@ -28,6 +34,11 @@ const SUBCOMMANDS: readonly MemorySubcommand[] = [
 export function parseMemorySubcommand(args: string): MemorySubcommand | null {
   const trimmed = args.trim()
   return SUBCOMMANDS.find(name => name === trimmed) ?? null
+}
+
+/** The global memory dir while it is on, else null. */
+function resolveGlobalRoot(): string | null {
+  return isGlobalMemoryEnabled() ? getGlobalMemPath() : null
 }
 
 /**
@@ -54,18 +65,23 @@ export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
     display: 'system',
     shouldQuery: true,
     metaMessages: [
-      buildMemoryTidyPrompt(getAutoMemPath(), resolveTidyTeamRoot()),
+      buildMemoryTidyPrompt(
+        getAutoMemPath(),
+        resolveTidyTeamRoot(),
+        resolveGlobalRoot(),
+      ),
     ],
   })
   return null
 }
 
 /**
- * Runs `/memory sort`: the same shape as tidy, over the team dir only — files
- * team memories into `decisions/`, `bugs/`, `docs/`. The Bash permission
- * prompt on each `git mv` is the human veto per file. Team memory off (or the
- * whole feature off) means there is nothing to sort, so it says so and does
- * not query.
+ * Runs `/memory sort`: the same shape as tidy. It files team memories into
+ * `decisions/`, `bugs/`, `docs/`, and — with the global dir on — promotes
+ * what is about the user from the private dir to the global one. The Bash
+ * permission prompt on each `git mv`/`mv`/`rm` is the human veto per file.
+ * With neither team memory nor the global dir there is nothing to sort, so it
+ * says so and does not query.
  */
 export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
   if (!isAutoMemoryEnabled()) {
@@ -76,7 +92,8 @@ export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
     return null
   }
   const teamRoot = resolveTidyTeamRoot()
-  if (teamRoot === null) {
+  const globalRoot = resolveGlobalRoot()
+  if (teamRoot === null && globalRoot === null) {
     onDone(
       'Memory sort unavailable: team memory is not active for this project.',
       { display: 'system' },
@@ -84,12 +101,23 @@ export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
     return null
   }
 
+  const what = [
+    ...(teamRoot === null ? [] : ['filing team memories into decisions/, bugs/ and docs/']),
+    ...(globalRoot === null ? [] : ['promoting what is about you to the global memory']),
+  ].join(', and ')
   onDone(
-    'Running memory sort — filing team memories into decisions/, bugs/ and docs/…',
+    `Running memory sort — ${what}…`,
     {
       display: 'system',
       shouldQuery: true,
-      metaMessages: [buildMemorySortPrompt(teamRoot)],
+      metaMessages: [
+        buildMemorySortPrompt(
+          teamRoot,
+          globalRoot === null
+            ? null
+            : { privateRoot: getAutoMemPath(), globalRoot },
+        ),
+      ],
     },
   )
   return null

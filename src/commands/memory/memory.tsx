@@ -11,7 +11,7 @@ import { Box, Link, Text } from 'src/terminal/ink.js';
 import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
 import { clearMemoryFileCaches, getMemoryFiles } from 'src/memory/instructions/claudemd.js';
 import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js';
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
+import { getAutoMemPath, getGlobalMemPath, isAutoMemoryEnabled, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js';
 import {
   countMemoryFiles,
   parseBrowseValue,
@@ -25,36 +25,47 @@ import { editFileInEditor } from 'src/terminal/input/promptEditor.js';
 import { parseMemorySubcommand, runMemorySort, runMemoryTidy } from 'src/commands/memory/tidy.js';
 import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js';
 type DirCounts = {
+  global: number;
   private: number;
   team: number;
 };
 
 /**
- * Scans both memory dirs for the `· N` on the browse rows. Cheap enough to
+ * Scans the memory dirs for the `· N` on the browse rows. Cheap enough to
  * await before the dialog renders — a readdir per dir, no file reads — and
  * re-run on the way back from a browser, where a delete may have changed it.
  */
 async function readDirCounts(): Promise<DirCounts> {
   if (!isAutoMemoryEnabled()) {
     return {
+      global: 0,
       private: 0,
       team: 0
     };
   }
   const teamRoot = resolveTidyTeamRoot();
-  const [privateCount, teamCount] = await Promise.all([countMemoryFiles(getAutoMemPath()), teamRoot === null ? Promise.resolve(0) : countMemoryFiles(teamRoot, {
+  const [globalCount, privateCount, teamCount] = await Promise.all([isGlobalMemoryEnabled() ? countMemoryFiles(getGlobalMemPath()) : Promise.resolve(0), countMemoryFiles(getAutoMemPath()), teamRoot === null ? Promise.resolve(0) : countMemoryFiles(teamRoot, {
     recursive: true
   })]);
   return {
+    global: globalCount,
     private: privateCount,
     team: teamCount
   };
 }
 
-/** The target `/memory private` and `/memory team` open directly. */
-function subcommandBrowseTarget(subcommand: 'private' | 'team'): BrowseTarget | null {
+/** The target `/memory global`, `/memory private` and `/memory team` open directly. */
+function subcommandBrowseTarget(subcommand: 'global' | 'private' | 'team'): BrowseTarget | null {
   if (!isAutoMemoryEnabled()) {
     return null;
+  }
+  if (subcommand === 'global') {
+    return isGlobalMemoryEnabled() ? {
+      dir: getGlobalMemPath(),
+      title: 'Global memory',
+      isTeamDir: false,
+      isGlobalDir: true
+    } : null;
   }
   if (subcommand === 'team') {
     const dir = resolveTidyTeamRoot();
@@ -155,7 +166,7 @@ function MemoryCommand({
   // mean "back" instead of "close" — and its guide is hidden with it, since the
   // browser prints its own and two conflicting hints is worse than none.
   return <Dialog title="Memory" onCancel={handleCancel} color="remember" isCancelActive={browsing === null} hideInputGuide={browsing !== null}>
-      {browsing !== null ? <MemoryDirBrowser dir={browsing.dir} title={browsing.title} indexPath={join(browsing.dir, ENTRYPOINT_NAME)} isTeamDir={browsing.isTeamDir} onBack={handleBack} /> : <Box flexDirection="column">
+      {browsing !== null ? <MemoryDirBrowser dir={browsing.dir} title={browsing.title} indexPath={join(browsing.dir, ENTRYPOINT_NAME)} isTeamDir={browsing.isTeamDir} isGlobalDir={browsing.isGlobalDir === true} onBack={handleBack} /> : <Box flexDirection="column">
           <React.Suspense fallback={null}>
             <MemoryFileSelector onSelect={handleSelect} onCancel={handleCancel} dirCounts={dirCounts} />
           </React.Suspense>

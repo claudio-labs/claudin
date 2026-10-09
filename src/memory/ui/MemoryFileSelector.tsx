@@ -8,7 +8,7 @@ import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
+import { getAutoMemPath, getGlobalMemPath, isAutoMemoryEnabled, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js';
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js';
 import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
@@ -40,8 +40,9 @@ let lastSelectedPath: string | undefined;
 type Props = {
   onSelect: (path: string) => void;
   onCancel: () => void;
-  /** Memory counts for the two browse rows, scanned before the dialog opens. */
+  /** Memory counts for the browse rows, scanned before the dialog opens. */
   dirCounts?: {
+    global: number;
     private: number;
     team: number;
   };
@@ -125,6 +126,19 @@ export function MemoryFileSelector(t0: Props) {
     // the counts are props, which a memo_cache_sentinel branch would freeze at
     // their first value. $[0] and $[1] are left unused on purpose; changing
     // _c(58) or reusing an index is what breaks this file (ink-tui.md §6).
+    if (isGlobalMemoryEnabled()) {
+      const globalMemPath = getGlobalMemPath();
+      folderOptions.push({
+        label: `Global memory${dirCounts ? ` · ${dirCounts.global}` : ""}`,
+        value: encodeBrowseValue({
+          dir: globalMemPath,
+          title: "Global memory",
+          isTeamDir: false,
+          isGlobalDir: true
+        }),
+        description: `Shared by every project, saved in ${getDisplayPath(globalMemPath)}`
+      });
+    }
     const autoMemPath = getAutoMemPath();
     folderOptions.push({
       label: `Private memory${dirCounts ? ` · ${dirCounts.private}` : ""}`,
