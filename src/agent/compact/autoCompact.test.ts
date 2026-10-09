@@ -147,12 +147,17 @@ describe('shouldAutoCompact — starved relief escalates', () => {
     }
   })
 
-  // query.ts is the only caller; the loop harness stubs autocompact, so the
-  // wiring is pinned on the source.
-  test('query.ts hands the microcompact verdict to autocompact', async () => {
+  // query.ts is the only caller; the loop harness stubs autocompact, and
+  // autoCompactIfNeeded compacts for real once it says yes, so both hops of
+  // the wiring are pinned on the source.
+  test('query.ts hands the microcompact verdict through autoCompactIfNeeded', async () => {
     const { readFileSync } = await import('fs')
-    const source = readFileSync(`${import.meta.dir}/../query.ts`, 'utf8')
-    expect(source).toContain('microcompactResult.reliefStarved,')
+    const query = readFileSync(`${import.meta.dir}/../query.ts`, 'utf8')
+    expect(query).toContain('microcompactResult.reliefStarved,')
+    const auto = readFileSync(`${import.meta.dir}/autoCompact.ts`, 'utf8')
+    expect(auto).toMatch(
+      /shouldAutoCompact\(\s*messages,\s*model,\s*querySource,\s*snipTokensFreed,\s*reliefStarved,\s*\)/,
+    )
   })
 })
 

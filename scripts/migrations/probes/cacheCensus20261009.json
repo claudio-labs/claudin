@@ -1,0 +1,102 @@
+{
+  "test": [
+    "src/agent/compact/microCompact.test.ts",
+    "src/agent/compact/autoCompact.test.ts",
+    "src/agent/cache/anthropic/keepAlive.test.ts",
+    "src/providers/cache/promptCacheBreakDetection.test.ts"
+  ],
+  "source": "src/agent/compact/microCompact.ts",
+  "probes": [
+    {
+      "name": "fork gate: a fork's relief never reaches the shared registry",
+      "find": "  if (querySource && ownsItsPrefix(querySource)) {\n",
+      "replace": "  if (querySource) {\n"
+    },
+    {
+      "name": "fork gate: an Agent fork is not a fresh sub-agent",
+      "find": "    (querySource.startsWith('agent:') && querySource !== 'agent:builtin:fork')\n",
+      "replace": "    querySource.startsWith('agent:')\n"
+    },
+    {
+      "name": "fork gate: a fresh sub-agent still clips",
+      "find": "    (querySource.startsWith('agent:') && querySource !== 'agent:builtin:fork')\n",
+      "replace": "    false\n"
+    },
+    {
+      "name": "band floor: an event must free one band, not a flat 4k",
+      "source": "src/agent/compact/reliefPolicy.ts",
+      "find": "  return Math.max(RELIEF_MIN_EVENT_TOKENS, decision.trigger - decision.target)\n",
+      "replace": "  return RELIEF_MIN_EVENT_TOKENS\n"
+    },
+    {
+      "name": "control: the 4k constant is only the floor under a degenerate band",
+      "source": "src/agent/compact/reliefPolicy.ts",
+      "find": "export const RELIEF_MIN_EVENT_TOKENS = 4_000\n",
+      "replace": "export const RELIEF_MIN_EVENT_TOKENS = 3_000\n",
+      "expect": "green"
+    },
+    {
+      "name": "starved: nothing clearable at all is starvation too",
+      "find": "  if (ids.length === 0 || freed < reliefEventFloor(decision)) {\n",
+      "replace": "  if (ids.length === 0) return false\n  if (freed < reliefEventFloor(decision)) {\n"
+    },
+    {
+      "name": "starved: the window lane reports it",
+      "find": "    return decision.lane === 'window'\n",
+      "replace": "    return false\n"
+    },
+    {
+      "name": "starved: microcompact hands the verdict back",
+      "find": "      return { messages, reliefStarved: true }\n",
+      "replace": "      return { messages }\n"
+    },
+    {
+      "name": "escalation: a starved lane compacts below the threshold",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "  if (reliefStarved && isReliefStarvedCompactEnabled()) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "escalation: the killswitch turns it off",
+      "source": "src/agent/compact/reliefPolicy.ts",
+      "find": "  return !(v === '0' || v === 'false')\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "escalation: autoCompactIfNeeded forwards the verdict",
+      "source": "src/agent/compact/autoCompact.ts",
+      "find": "    snipTokensFreed,\n    reliefStarved,\n  )\n",
+      "replace": "    snipTokensFreed,\n  )\n"
+    },
+    {
+      "name": "escalation: query.ts hands the verdict to autocompact",
+      "source": "src/agent/query.ts",
+      "find": "      microcompactResult.reliefStarved,\n",
+      "replace": "      undefined,\n"
+    },
+    {
+      "name": "keep-alive: on by default",
+      "source": "src/agent/cache/anthropic/keepAlive.ts",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_CACHE_KEEPALIVE)\n",
+      "replace": "  return process.env.CLAUDIN_CACHE_KEEPALIVE === '1'\n"
+    },
+    {
+      "name": "detector: the gap runs start to start, not from the last assistant message",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    const gapMs =\n      state.prevRequestStartedAt === null\n        ? null\n        : state.requestStartedAt - state.prevRequestStartedAt\n",
+      "replace": "    const lastAssistantMessage = messages.findLast(m => m.type === 'assistant')\n    const gapMs = lastAssistantMessage\n      ? Date.now() - new Date(lastAssistantMessage.timestamp).getTime()\n      : null\n"
+    },
+    {
+      "name": "detector: the previous request's tier decides the expiry",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "      state.prevRequestTtlMs,\n",
+      "replace": "      null,\n"
+    },
+    {
+      "name": "detector: a 1h breakpoint reads as the 1h tier",
+      "source": "src/providers/cache/promptCacheBreakDetection.ts",
+      "find": "    ? CACHE_TTL_1HOUR_MS\n    : CACHE_TTL_5MIN_MS\n",
+      "replace": "    ? CACHE_TTL_5MIN_MS\n    : CACHE_TTL_5MIN_MS\n"
+    }
+  ]
+}
