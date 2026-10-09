@@ -75,6 +75,32 @@ One decision, one source of truth, no message ever dropped from the API view:
   window|rss lane): trigger T → target …` in `--debug`, the same string as
   the `notifyCacheDeletion` reason (`[PROMPT CACHE] expected drop: …`) and
   on the `[Cache: … • prefix rewritten: …]` line (main thread only).
+- **A clip must free one band; less is starvation, and starvation compacts
+  (2026-10-09).** The 2026-10-02..09 census found a 1M main thread (ed9c2e1c,
+  1,315 calls, average 611k, peak 957k, zero compactions) whose floor sat
+  200–320k above the 625k target. The flat 4k event floor let 18 clips of
+  ~4–6k through, each a full rewrite of a ~800k prefix ($142, plus 9 floor
+  rewrites on the next human turn, $68), freeing 0.5% at a time. Now:
+  - `reliefEventFloor` = `max(4k, trigger − target)`: the band is the
+    spacing the cost model below calls optimal, and since `tokensToFree ≥
+    band` whenever a lane fires, an event that reaches its target always
+    passes. With nothing clearable at all the lane is starved too.
+  - A starved *window* lane returns `reliefStarved` from
+    `microcompactMessages`, and `shouldAutoCompact` compacts on the same
+    request instead of waiting for the threshold (967k on 1M, ~735k now).
+    Killswitch `CLAUDIN_RELIEF_STARVED_COMPACT=0`.
+  - Only a thread that owns its prefix runs relief (`ownsItsPrefix`: main
+    thread, `sdk`, fresh `agent:*`). A fork shares the parent's tool_use ids
+    and, through `currentKey()`, its clipped set: an `extract_memories`
+    fork's clip at 700k+ stubbed the main thread's next request three times
+    in that session, unannounced.
+
+  `relief-ceiling-sim.ts --main --session=ed9c2e1c --triggers=735000`
+  replays the arms (`--min-event=band`, `--starved-compact`); its recorded
+  context already includes the real clips, so it under-counts them and is
+  only good for comparing arms: one compaction near 735k, net reads saved
+  $24 → $66 (an upper bound: re-reads after the compaction are not
+  simulated).
 
 Tests: `reliefPolicy.test.ts` (the decision table), `microCompact.test.ts`
 (the shell: oldest-first band, no re-clip on the next request, analysis

@@ -78,7 +78,10 @@ import {
 // fork's post-compact transcript as authority for the shared key and deleting
 // the parent's LIVE pins as orphans — is closed at the caller instead:
 // postCompactCleanup only runs it for main-thread compacts (querySource),
-// which is exactly the context this registry cannot name.
+// which is exactly the context this registry cannot name. The relief clip is
+// closed the same way: a fork never runs it (microCompact.ts `ownsItsPrefix`),
+// because its clip registered the parent's ids in the shared clipped set and
+// the parent's next request rewrote its prefix from there (2026-10).
 //
 // Within a key, insertion order is the FIFO order; re-pinning refreshes it.
 const MAX_PINNED_TOOL_RESULTS = 16

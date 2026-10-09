@@ -399,10 +399,14 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   2026-09-10 census), and no TTL rule can help — the write that expires is
   chosen before the response that blocks exists. The answer is a read, not
   a write: `src/agent/cache/anthropic/keepAlive.ts` re-sends the last body
-  with `max_tokens: 1` at 4m30s while nothing else is in flight, EXPERIMENT
-  behind `CLAUDIN_CACHE_KEEPALIVE=1` (pair `CLAUDIN_MAIN_CACHE_TTL=5m` to
-  try the main thread at 5m). Not promoted: the subscription quota's
-  weighting of a ping is unmeasured — `docs/tech/cache/keep-alive.md`.
+  with `max_tokens: 1` at 4m30s while nothing else is in flight. ON by
+  default since 2026-10-09 (`CLAUDIN_CACHE_KEEPALIVE=0` turns it off):
+  400 sub-agent prefixes expired behind foreground `sleep` polls and long
+  test runs in one week, $592 of rewrites. Only the 5m tier is pinged, so
+  the 1h main thread is untouched unless `CLAUDIN_MAIN_CACHE_TTL=5m`. The
+  subscription quota's weighting of a ping is still unmeasured — accepted,
+  `docs/tech/cache/keep-alive.md`. The control arm of both probes
+  (`cache-keepalive-probe.ts`, `ttl-wait-probe.ts`) sets `=0`.
 - Slim-subagent: `omitClaudeMdAttachments`/`omitGitStatusAttachments` on
   ToolUseContext gate `claude_md_delta`/`nested_memory`/`git_status_delta` in
   `pipeline.ts`. New attachment producers read globals and
@@ -497,11 +501,24 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   cost model (`B* ≈ 60k` on a 200k window; the band grows to 15% of the
   trigger past ~400k because on 1M the fixed 60k spaced full-prefix
   rewrites one request apart; dropping content costs re-reads). An event
-  that would free under `RELIEF_MIN_EVENT_TOKENS` (4k) adds no ids and lands
-  as `relief starved (~Nk short, window lane)` on the `[Cache:]` line — a
-  session whose floor (stub heads + protected turns) sits above the target,
-  which is what compaction is for. `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns
-  off the window lane only.
+  must free one band (`reliefEventFloor`: `trigger − target`, never under
+  4k); less, or nothing clearable at all, adds no ids and lands as `relief
+  starved (~Nk short, window lane)` on the `[Cache:]` line — a session
+  whose floor (stub heads + protected turns) sits above the target. The
+  flat 4k floor it replaced let ~4k clips rewrite ~800k prefixes on 1M (19
+  in one session, 2026-10). A starved window lane then compacts on that same
+  request (`MicrocompactResult.reliefStarved` → `shouldAutoCompact`;
+  `CLAUDIN_RELIEF_STARVED_COMPACT=0` turns it off) instead of waiting for
+  967k. `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window lane only.
+- **Only the thread that owns a prefix may clip it.** `microcompactMessages`
+  runs relief for the main thread, `sdk` and fresh `agent:*` only
+  (`ownsItsPrefix`). A fork — `agent:builtin:fork` or any `runForkedAgent`
+  utility (`extract_memories`, `auto_dream`, `speculation` …) — replays the
+  parent's history to read its cache, and the clipped-id registry cannot
+  tell it from the parent (`currentKey()`, `pinRegistry.ts` caveat): its
+  clip landed in the main thread's set unannounced and main's next request
+  fell to the floor (three ~700k rewrites after `extract_memories`,
+  2026-10). A new fork source is excluded by default — keep it that way.
 - `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` (the default) silently turns off
   the retain profile's server-side `clear_tool_uses`. Since 2026-09-22 the
   `context-management` header still goes out on the real first-party
