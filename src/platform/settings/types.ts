@@ -883,6 +883,12 @@ export const SettingsSchema = lazySchema(() =>
         .describe(
           'When true (the default), auto-memory for a git project defaults to <project>/.claudin/memory/ instead of the global ~/.claudin/projects/<sanitized-cwd>/memory/. Set to false to force the legacy global-only location. Ignored if set in projectSettings for security, same as autoMemoryDirectory.',
         ),
+      autoMemoryGlobalDirectory: z
+        .string()
+        .optional()
+        .describe(
+          'Custom directory for the global memory, the one shared by every project (who the user is, feedback that applies anywhere). Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings for security, same as autoMemoryDirectory. When unset, defaults to ~/.claudin/memory/.',
+        ),
       autoDreamEnabled: z
         .boolean()
         .optional()

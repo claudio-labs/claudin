@@ -1,7 +1,8 @@
 {
   "test": [
     "src/permissions/filePermissions/internalPaths.test.ts",
-    "src/memory/memdir/memoryFileDetection.test.ts"
+    "src/memory/memdir/memoryFileDetection.test.ts",
+    "src/memory/memdir/paths.test.ts"
   ],
   "source": "src/memory/memdir/paths.ts",
   "probes": [
@@ -14,6 +15,41 @@
       "name": "a traversal out of the memory dir is not memory",
       "find": "  const normalizedPath = normalize(absolutePath)\n  return normalizedPath.startsWith(getAutoMemPath())\n",
       "replace": "  const normalizedPath = absolutePath\n  return normalizedPath.startsWith(getAutoMemPath())\n"
+    },
+    {
+      "name": "the global dir defaults to <configHome>/memory/",
+      "find": "    (join(getMemoryBaseDir(), AUTO_MEM_DIRNAME) + sep).normalize('NFC'),\n",
+      "replace": "    (join(getMemoryBaseDir(), 'global-memory') + sep).normalize('NFC'),\n"
+    },
+    {
+      "name": "the global dir setting is never read from project settings",
+      "find": "    getSettingsForSource('policySettings')?.autoMemoryGlobalDirectory ??\n",
+      "replace": "    getSettingsForSource('projectSettings')?.autoMemoryGlobalDirectory ??\n    getSettingsForSource('policySettings')?.autoMemoryGlobalDirectory ??\n"
+    },
+    {
+      "name": "CLAUDIN_GLOBAL_MEMORY=0 turns the global dir off",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a Cowork override turns the global dir off",
+      "find": "  if (!isAutoMemoryEnabled() || hasAutoMemPathOverride()) {\n",
+      "replace": "  if (!isAutoMemoryEnabled()) {\n"
+    },
+    {
+      "name": "nested global and private dirs turn the global dir off",
+      "find": "  return !globalDir.startsWith(autoDir) && !autoDir.startsWith(globalDir)\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "the global path test is off with the global dir",
+      "find": "    isGlobalMemoryEnabled() &&\n    normalize(absolutePath).startsWith(getGlobalMemPath())\n",
+      "replace": "    normalize(absolutePath).startsWith(getGlobalMemPath())\n"
+    },
+    {
+      "name": "a traversal out of the global dir is not global memory",
+      "find": "    normalize(absolutePath).startsWith(getGlobalMemPath())\n",
+      "replace": "    absolutePath.startsWith(getGlobalMemPath())\n"
     }
   ]
 }

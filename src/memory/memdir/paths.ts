@@ -378,3 +378,70 @@ export function isAutoMemPath(absolutePath: string): boolean {
   const normalizedPath = normalize(absolutePath)
   return normalizedPath.startsWith(getAutoMemPath())
 }
+
+/**
+ * Settings.json override for the global memory directory, with the same
+ * trust rules and ~/ expansion as autoMemoryDirectory: projectSettings is
+ * excluded, so a repo cannot point the no-prompt write carve-out anywhere.
+ */
+function getGlobalMemPathSetting(): string | undefined {
+  const dir =
+    getSettingsForSource('policySettings')?.autoMemoryGlobalDirectory ??
+    getSettingsForSource('flagSettings')?.autoMemoryGlobalDirectory ??
+    getSettingsForSource('localSettings')?.autoMemoryGlobalDirectory ??
+    getSettingsForSource('userSettings')?.autoMemoryGlobalDirectory
+  return validateMemoryPath(dir, true)
+}
+
+/**
+ * The global memory directory: `<memoryBase>/memory/`, or
+ * autoMemoryGlobalDirectory. One for the user, shared by every project — it
+ * holds what is about the person (`type: user`, feedback that applies in any
+ * project), so a new project starts knowing who the user is. Trailing
+ * separator, like getAutoMemPath(). Memoized for the same render-path reason,
+ * keyed on the two variables getMemoryBaseDir() reads.
+ */
+export const getGlobalMemPath = memoize(
+  (): string =>
+    getGlobalMemPathSetting() ??
+    (join(getMemoryBaseDir(), AUTO_MEM_DIRNAME) + sep).normalize('NFC'),
+  () =>
+    `${process.env.CLAUDIN_CONFIG_DIR ?? ''}\0${process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR ?? ''}`,
+)
+
+export function getGlobalMemEntrypoint(): string {
+  return join(getGlobalMemPath(), AUTO_MEM_ENTRYPOINT_NAME)
+}
+
+/**
+ * Whether the global memory directory is in use. On whenever auto memory is;
+ * CLAUDIN_GLOBAL_MEMORY=0 turns it off, and memory is the private and team
+ * directories only, as before it existed — a `type: user` memory is private
+ * again. Also off when a Cowork/SDK caller designated the memory directory
+ * (it gets exactly that directory), and when the global and private
+ * directories nest, which would make every file in the inner one belong to
+ * both.
+ */
+export function isGlobalMemoryEnabled(): boolean {
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) {
+    return false
+  }
+  if (!isAutoMemoryEnabled() || hasAutoMemPathOverride()) {
+    return false
+  }
+  const globalDir = getGlobalMemPath()
+  const autoDir = getAutoMemPath()
+  return !globalDir.startsWith(autoDir) && !autoDir.startsWith(globalDir)
+}
+
+/**
+ * Whether `absolutePath` is inside the global memory directory — always
+ * false while it is off, so the write carve-out goes with it.
+ */
+export function isGlobalMemPath(absolutePath: string): boolean {
+  // SECURITY: Normalize to prevent path traversal bypasses via .. segments
+  return (
+    isGlobalMemoryEnabled() &&
+    normalize(absolutePath).startsWith(getGlobalMemPath())
+  )
+}
