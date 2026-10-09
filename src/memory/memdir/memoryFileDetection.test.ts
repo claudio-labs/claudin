@@ -5,7 +5,7 @@ import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import { setFlagSettingsInline } from 'src/platform/bootstrap/state/sessionFlags.js'
 import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
-import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import { memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
 import {
   isAutoManagedMemoryFile,
@@ -46,14 +46,14 @@ describe('memory file detection', () => {
     process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
     previousProjectRoot = getProjectRoot()
     setProjectRoot(join(root, 'project'))
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
-    memDir = getAutoMemPath()
+    memDir = getPrivateMemPath()
   })
 
   afterAll(() => {
     setProjectRoot(previousProjectRoot)
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
     for (const key of ENV_KEYS) {
       const value = savedEnv.get(key)

@@ -1,0 +1,86 @@
+{
+  "comment": "The one shape-based helper for the paths a tool use writes (src/tools/shared/writtenPaths.ts): Write/Edit by file_path + content/new_string, Patch by its headers — Add, Update, Delete and both sides of a Move. Its users: the extraction's skip check and written-path list (extractMemories.ts), the transcript badge's memory-write classification (collapseReadSearch.ts), and the format guard's index scan (the regexes).",
+  "test": [
+    "src/tools/shared/writtenPaths.test.ts",
+    "src/memory/extract/extractMemories.global.test.ts",
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/memory/memdir/memoryFormatGuard.test.ts"
+  ],
+  "source": "src/tools/shared/writtenPaths.ts",
+  "probes": [
+    {
+      "name": "a Patch writes the paths its headers name",
+      "find": "      ? patchHeaderPaths(fields.patchText)\n",
+      "replace": "      ? []\n"
+    },
+    {
+      "name": "a Move destination is a written path",
+      "find": "    const path = PATCH_FILE_HEADER_RE.exec(line)?.[2] ?? PATCH_MOVE_RE.exec(line)?.[1]\n",
+      "replace": "    const path = PATCH_FILE_HEADER_RE.exec(line)?.[2]\n"
+    },
+    {
+      "name": "an Update header is a written path",
+      "find": "export const PATCH_FILE_HEADER_RE = /^\\*\\*\\* (Add|Update|Delete) File: (.+)$/\n",
+      "replace": "export const PATCH_FILE_HEADER_RE = /^\\*\\*\\* (Add|Delete) File: (.+)$/\n"
+    },
+    {
+      "name": "a Delete header is a written path",
+      "find": "export const PATCH_FILE_HEADER_RE = /^\\*\\*\\* (Add|Update|Delete) File: (.+)$/\n",
+      "replace": "export const PATCH_FILE_HEADER_RE = /^\\*\\*\\* (Add|Update) File: (.+)$/\n"
+    },
+    {
+      "name": "a header path is trimmed, an empty one dropped",
+      "find": "    if (path !== undefined && path.trim() !== '') paths.push(path.trim())\n",
+      "replace": "    if (path !== undefined) paths.push(path)\n"
+    },
+    {
+      "name": "a CRLF patch reads its headers",
+      "find": "const LINE_BREAK_RE = /\\r?\\n/\n",
+      "replace": "const LINE_BREAK_RE = /\\n/\n"
+    },
+    {
+      "name": "a file_path alone is a read, not a write",
+      "find": "          (typeof fields.content === 'string' || typeof fields.new_string === 'string')\n",
+      "replace": "          true\n"
+    },
+    {
+      "name": "an Edit's new_string makes its file_path a write",
+      "find": "          (typeof fields.content === 'string' || typeof fields.new_string === 'string')\n",
+      "replace": "          typeof fields.content === 'string'\n"
+    },
+    {
+      "name": "a relative path resolves against the cwd given",
+      "find": ".map(path => expandPath(path, cwd))\n",
+      "replace": ".map(path => expandPath(path))\n"
+    },
+    {
+      "name": "a path named twice is listed once",
+      "find": "  return [...new Set(paths)]\n",
+      "replace": "  return paths\n"
+    },
+    {
+      "name": "the extraction reads written paths through the helper, Patch included",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "  return block.type === 'tool_use' ? writtenPathsOf(block.input, getCwd()) : []\n",
+      "replace": "  const input = block.input as { file_path?: unknown } | undefined\n  return block.type === 'tool_use' && typeof input?.file_path === 'string' ? [input.file_path] : []\n"
+    },
+    {
+      "name": "the badge reads a memory write through the helper, Patch included",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "    paths = writtenPaths(toolInput, getCwd())\n",
+      "replace": "    paths = 'patchText' in toolInput ? [] : writtenPaths(toolInput, getCwd())\n"
+    },
+    {
+      "name": "a Patch is a memory write only when every path it writes is a memory file",
+      "source": "src/agent/tools/collapseReadSearch.ts",
+      "find": "  return paths.length > 0 && paths.every(isAutoManagedMemoryFile) ? paths : null\n",
+      "replace": "  return paths.length > 0 && paths.some(isAutoManagedMemoryFile) ? paths : null\n"
+    },
+    {
+      "name": "the guard's index scan reads Patch headers with the helper's regexes",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "        const move = PATCH_MOVE_RE.exec(line)\n",
+      "replace": "        const move = null as RegExpExecArray | null\n"
+    }
+  ]
+}

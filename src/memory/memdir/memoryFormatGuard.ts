@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import { basename, dirname, extname, join, relative, resolve } from 'path'
 import {
   MEMORY_TYPES,
+  type MemoryType,
   parseMemoryType,
   type TeamCategory,
   teamCategoryForPath,
@@ -12,10 +13,15 @@ import {
   getMemoryDirs,
   type MemoryDir,
 } from 'src/memory/memdir/memoryDirs.js'
-import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
+import {
+  ENTRYPOINT_NAME,
+  MEMORY_SCOPE_SPECS,
+  type MemoryScope,
+} from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
+import { PATCH_FILE_HEADER_RE, PATCH_MOVE_RE } from 'src/tools/shared/writtenPaths.js'
 
 /*
  * Since 2026-09-29 (team memory `claude-code-2.1.284-wire-diff`) the v2
@@ -26,11 +32,15 @@ import type { ToolAdvice } from 'src/tools/Tool.js'
  *
  *  - checkMemoryFileFormat refuses a memory file whose frontmatter misses what
  *    its place requires, and the refusal carries those rules. It sits beside
- *    checkTeamMemSecrets on the four write paths (FileWriteTool, FileEditTool
- *    when the edit creates the file, applyPatch, stagedWrite).
- *  - memoryIndexAdvice notes, after a Write or a Patch, a memory file its
- *    directory's `MEMORY.md` does not list yet — counting what the rest of
- *    the same response writes to that index (indexTextFromResponse).
+ *    checkTeamMemSecrets on the four write paths (FileWriteTool, FileEditTool,
+ *    applyPatch, stagedWrite), and every one of them hands it the whole file
+ *    as it will be — so one file gets one verdict, whichever tool writes it.
+ *    Where a type may live is judged only for a file that is new or changes
+ *    its type: a memory saved before a rule existed is updated in place.
+ *  - memoryIndexAdvice notes, after a Write, a Patch or an Edit that creates
+ *    the file, a memory file its directory's `MEMORY.md` does not list yet —
+ *    counting what the rest of the same response writes to that index
+ *    (indexTextFromResponse).
  *
  * Both apply to every family: another family's prompt states the same rules
  * in full, and the guard asks for nothing it does not.
@@ -98,11 +108,46 @@ function isFilled(value: unknown): boolean {
 
 const TYPE_CHOICES = MEMORY_TYPES.join(' | ')
 
+/** What a memory file already on disk says of itself; null for a file the write creates. */
+type Before = { type: MemoryType | undefined; hasPaths: boolean } | null
+
+function beforeOf(abs: string, text: string | null): Before {
+  if (text === null) return null
+  const { frontmatter } = parseFrontmatter(text, abs)
+  return { type: parseMemoryType(frontmatter.type), hasPaths: isFilled(frontmatter.paths) }
+}
+
+/**
+ * Why `type` may not live where `file` is, or null. Where a type may live is
+ * TYPE_SCOPES, quoted in the refusal; a team category takes its own type.
+ */
+function placementProblem(file: MemoryFile, type: MemoryType, dirs: MemoryDirs): string | null {
+  const globalDir = rootOf(dirs, 'global')
+  const privateDir = rootOf(dirs, 'private')
+  if (TYPE_SCOPES[type].global === 'only' && file.scope !== 'global' && globalDir) {
+    return `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${globalDir}\` instead; if this file was saved here before the global dir existed, move it there with \`mv\` and move its index line (\`/memory sort\` moves them all, if the user runs it)`
+  }
+  if (TYPE_SCOPES[type].global === 'only' && file.scope === 'team') {
+    return `\`type: ${type}\` is ${TYPE_SCOPES[type].withoutGlobal} — write it under \`${privateDir}\` instead`
+  }
+  if (file.scope === 'global' && TYPE_SCOPES[type].global === 'never') {
+    return `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${privateDir}\` or \`${rootOf(dirs, 'team')}\` instead`
+  }
+  if (file.category && type !== file.category.type) {
+    return `a team ${file.category.noun} memory is \`type: ${file.category.type}\`, not \`${type}\``
+  }
+  return null
+}
+
 /**
  * What the frontmatter of `file` misses, one phrase each; empty when it is
- * complete. Where a type may live is TYPE_SCOPES, quoted in the refusal.
+ * complete. Completeness is asked of every write. Placement — the type's
+ * directory, and `paths:` where the directory takes none — only of a file
+ * that is new or changes its type (`before`), and `paths:` also when the
+ * write adds it: a memory saved before a rule existed stays updatable in
+ * place, by every tool alike.
  */
-function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): string[] {
+function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs, before: Before): string[] {
   const { frontmatter } = parseFrontmatter(content, file.abs)
   if (Object.keys(frontmatter).length === 0) {
     return [
@@ -116,29 +161,24 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): st
     if (!isFilled(frontmatter[key])) problems.push(`it lacks \`${key}:\``)
   }
   const type = parseMemoryType(frontmatter.type)
-  const globalDir = rootOf(dirs, 'global')
-  const privateDir = rootOf(dirs, 'private')
+  // New, or retyped: where it lives is decided now
+  const placed = before === null || before.type !== type
   if (!type) {
     problems.push(
       isFilled(frontmatter.type)
         ? `\`type: ${String(frontmatter.type)}\` is not one of ${TYPE_CHOICES}`
         : `it lacks \`type:\` (${TYPE_CHOICES})`,
     )
-  } else if (TYPE_SCOPES[type].global === 'only' && file.scope !== 'global' && globalDir) {
-    problems.push(
-      `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${globalDir}\` instead; if this file was saved here before the global dir existed, move it there with \`mv\` and move its index line (\`/memory sort\` moves them all, if the user runs it)`,
-    )
-  } else if (TYPE_SCOPES[type].global === 'only' && file.scope === 'team') {
-    problems.push(`\`type: ${type}\` is ${TYPE_SCOPES[type].withoutGlobal} — write it under \`${privateDir}\` instead`)
-  } else if (file.scope === 'global' && TYPE_SCOPES[type].global === 'never') {
-    problems.push(
-      `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${privateDir}\` or \`${rootOf(dirs, 'team')}\` instead`,
-    )
-  } else if (file.category && type !== file.category.type) {
-    problems.push(`a team ${file.category.noun} memory is \`type: ${file.category.type}\`, not \`${type}\``)
+  } else if (placed) {
+    const misplaced = placementProblem(file, type, dirs)
+    if (misplaced) problems.push(misplaced)
   }
-  if (file.scope === 'global' && isFilled(frontmatter.paths)) {
-    problems.push('a global memory takes no `paths:` — it is not tied to the files of one project')
+  if (
+    !MEMORY_SCOPE_SPECS[file.scope].takesPaths &&
+    isFilled(frontmatter.paths) &&
+    (placed || !before?.hasPaths)
+  ) {
+    problems.push(`a ${file.scope} memory takes no \`paths:\` — it is not tied to the files of one project`)
   }
   for (const field of file.category ? CATEGORY_FIELDS[file.category.dir] : []) {
     const value = frontmatter[field.key]
@@ -172,15 +212,18 @@ function memoryWriteRules(dirs: MemoryDirs): string {
  * The refusal for writing `content` to `filePath`, or null when the file is
  * not a memory file or its frontmatter is complete. The refusal names what is
  * missing and hands back the write-time rules the system prompt leaves out.
+ * `existing` returns what the file holds now, or null when the write creates
+ * it — asked only of a memory file; the default judges every write as new.
  */
 export function checkMemoryFileFormatIn(
   dirs: MemoryDirs,
   filePath: string,
   content: string,
+  existing: (abs: string) => string | null = () => null,
 ): string | null {
   const file = memoryFileOf(filePath, dirs)
   if (!file) return null
-  const problems = formatProblems(file, content, dirs)
+  const problems = formatProblems(file, content, dirs, beforeOf(file.abs, existing(file.abs)))
   if (problems.length === 0) return null
   const what = file.category ? `a team ${file.category.noun} memory` : `a ${file.scope} memory`
   const refusal = `Memory file not written: ${file.abs} is ${what}, and ${problems.join('; ')}. Fix the frontmatter and write it again.`
@@ -189,9 +232,6 @@ export function checkMemoryFileFormatIn(
 
 /** Markdown link targets: `](target)`, up to the first space or `)`. */
 const LINK_TARGET_RE = /\]\(\s*<?([^)\s>]+)/g
-
-const PATCH_FILE_HEADER_RE = /^\*\*\* (Add|Update|Delete) File: (.+)$/
-const PATCH_MOVE_RE = /^\*\*\* Move to: (.+)$/
 
 /**
  * What the tool calls of one response write into a memory index, by the
@@ -273,15 +313,17 @@ export function memoryIndexAdviceIn(
 /**
  * Checks a write of `content` — the whole file as it will be — to a memory
  * file. Returns the refusal, or null when the write may go ahead; null for
- * any other file, so callers can call it unconditionally.
+ * any other file, so callers can call it unconditionally. Call it before the
+ * write lands: the file on disk is what says whether it is new or retyped.
  */
 export function checkMemoryFileFormat(filePath: string, content: string): string | null {
-  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content)
+  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content, readIfExists)
 }
 
-function readIndex(indexPath: string): string | null {
+/** A file's text, or null when it does not exist. */
+function readIfExists(path: string): string | null {
   try {
-    return readFileSync(indexPath, 'utf8')
+    return readFileSync(path, 'utf8')
   } catch (e) {
     if (isENOENT(e)) return null
     throw e
@@ -299,7 +341,7 @@ export function memoryIndexAdvice(
   pending?: ReadonlyMap<string, string>,
 ): ToolAdvice | null {
   return memoryIndexAdviceIn(getMemoryDirs(), filePath, indexPath => {
-    const onDisk = readIndex(indexPath)
+    const onDisk = readIfExists(indexPath)
     const added = pending?.get(indexPath)
     return added === undefined ? onDisk : `${onDisk ?? ''}\n${added}`
   })

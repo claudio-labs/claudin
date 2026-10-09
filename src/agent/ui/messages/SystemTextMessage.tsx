@@ -10,7 +10,7 @@ import { basename } from 'path';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { openPath } from 'src/shared/browser.js';
-import { teamMemSavedPart } from 'src/agent/ui/messages/teamMemSaved.js';
+import { memorySavedParts } from 'src/agent/ui/messages/memorySaved.js';
 import { TURN_COMPLETION_VERBS } from 'src/agent/prompts/turnCompletionVerbs.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemMemorySavedMessage } from 'src/shared/types/message.js';
@@ -612,26 +612,14 @@ function MemorySavedMessage(t0: { message: SystemMemorySavedMessage; addMargin: 
   } = message;
   let t1;
   if ($[0] !== message) {
-    t1 = teamMemSavedPart(message);
+    t1 = memorySavedParts(message);
     $[0] = message;
     $[1] = t1;
   } else {
     t1 = $[1];
   }
-  const team = t1;
-  const privateCount = writtenPaths.length - (team?.count ?? 0);
-  const t2 = privateCount > 0 ? `${privateCount} ${privateCount === 1 ? "memory" : "memories"}` : null;
-  const t3 = team?.segment;
-  let t4;
-  if ($[2] !== t2 || $[3] !== t3) {
-    t4 = [t2, t3].filter(Boolean);
-    $[2] = t2;
-    $[3] = t3;
-    $[4] = t4;
-  } else {
-    t4 = $[4];
-  }
-  const parts = t4;
+  // Slots 2-4 held the old private/team parts; kept unused so _c(16) stands.
+  const parts = t1;
   const t5 = addMargin ? 1 : 0;
   let t6;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
@@ -641,7 +629,7 @@ function MemorySavedMessage(t0: { message: SystemMemorySavedMessage; addMargin: 
     t6 = $[5];
   }
   const t7 = "Saved";
-  const t8 = parts.join(" \xB7 ");
+  const t8 = parts.join(", ");
   let t9;
   if ($[6] !== t7 || $[7] !== t8) {
     t9 = <Box flexDirection="row">{t6}<Text>{t7} {t8}</Text></Box>;

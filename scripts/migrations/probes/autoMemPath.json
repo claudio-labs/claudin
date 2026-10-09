@@ -47,18 +47,18 @@
     },
     {
       "name": "CLAUDIN_GLOBAL_MEMORY=0 turns the global dir off",
-      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) {\n",
-      "replace": "  if (false) {\n"
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) return { reason: 'env' }\n",
+      "replace": ""
     },
     {
       "name": "a Cowork override turns the global dir off",
-      "find": "  if (!isAutoMemoryEnabled() || hasAutoMemPathOverride()) {\n",
-      "replace": "  if (!isAutoMemoryEnabled()) {\n"
+      "find": "  if (hasMemoryPathOverride()) return { reason: 'cowork-override' }\n",
+      "replace": ""
     },
     {
       "name": "nested global and private dirs turn the global dir off",
-      "find": "  return !globalDir.startsWith(autoDir) && !autoDir.startsWith(globalDir)\n",
-      "replace": "  return true\n"
+      "find": "  if (nests(globalDir, privateDir)) {\n",
+      "replace": "  if (false) {\n"
     },
     {
       "name": "the session dirs drop the global one while it is off",

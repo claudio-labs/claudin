@@ -7,7 +7,7 @@ import {
   MEMORY_SCOPES,
   type MemoryScope,
 } from 'src/memory/memdir/memoryScopes.js'
-import { MEMORY_TYPES } from 'src/memory/memdir/memoryTypes.js'
+import { MEMORY_TYPES, TYPE_SCOPES } from 'src/memory/memdir/memoryTypes.js'
 import { formatRelativeTimeAgo } from 'src/shared/text/format.js'
 
 /**
@@ -183,4 +183,36 @@ export async function countMemoryFiles(
   } catch {
     return 0
   }
+}
+
+/**
+ * How many memories directly in a directory have a type that belongs only in
+ * the global dir (TYPE_SCOPES: `user`) — in the private dir, the ones saved
+ * before the global dir existed, which `/memory sort` promotes. Nested
+ * entries are skipped: a scan of the private dir also returns the team dir's.
+ */
+export function countGlobalOnlyMemories(headers: readonly MemoryHeader[]): number {
+  return headers.filter(
+    header =>
+      !isNestedEntry(header) &&
+      header.type !== undefined &&
+      TYPE_SCOPES[header.type].global === 'only',
+  ).length
+}
+
+/**
+ * A memory directory's row in /memory: "Private memory · 12", and, when it
+ * holds memories `/memory sort` would promote, the pointer that tells the
+ * user the command exists — the model learns it from the format guard's
+ * refusal, the user from nowhere else.
+ */
+export function memoryDirRowLabel(
+  title: string,
+  count: number | undefined,
+  promotable = 0,
+): string {
+  const counted = count === undefined ? title : `${title} · ${count}`
+  return promotable > 0
+    ? `${counted} · ${promotable} about you — /memory sort moves ${promotable === 1 ? 'it' : 'them'} to global`
+    : counted
 }

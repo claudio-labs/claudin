@@ -33,7 +33,10 @@ import {
   getIsRemoteMode,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
-import { createMemoryCanUseTool } from 'src/memory/extract/extractMemories.js'
+import {
+  createMemoryCanUseTool,
+  memoryCountsOf,
+} from 'src/memory/extract/extractMemories.js'
 import { buildConsolidationPrompt } from 'src/memory/autoDream/consolidationPrompt.js'
 import { collectDreamDigest } from 'src/memory/autoDream/dreamDigest.js'
 import {
@@ -224,9 +227,9 @@ ${digest}`
       ) {
         appendSystemMessage({
           ...createMemorySavedMessage(dreamState.filesTouched),
-          // SystemMemorySavedMessage doesn't declare `verb` (same gap as
-          // teamMemSaved.ts's `teamCount` extension) — not yet consumed by
-          // the renderer (SystemTextMessage.tsx hardcodes "Saved").
+          memoryCounts: memoryCountsOf(dreamState.filesTouched),
+          // SystemMemorySavedMessage doesn't declare `verb` — not yet
+          // consumed by the renderer (SystemTextMessage.tsx says "Saved").
           verb: 'Improved',
         } as ReturnType<typeof createMemorySavedMessage> & { verb?: string })
       }

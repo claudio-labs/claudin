@@ -89,8 +89,13 @@ export function buildExtractCombinedPrompt(
     '',
     `- ${globalDir === null ? 'Both' : 'All three'} \`MEMORY.md\` indexes are loaded into your system prompt — lines after 200 will be truncated, so keep them concise`,
     `- A memory whose frontmatter has \`paths:\` (same syntax as a rule in \`.claudin/rules/\`, relative to the project root) is attached automatically the first time a Read touches a matching file; give one to a bug or doc memory tied to specific files${globalDir === null ? '' : ', never to a global memory'}`,
+    ...(globalDir === null
+      ? []
+      : [
+          '- The global dir is shared by every project and this run sees one: add a memory there, or add to one, but never delete, shrink or rewrite one — a write that does is refused',
+        ]),
     '- Organize memory semantically by topic, not chronologically',
-    '- Update or remove memories that turn out to be wrong or outdated',
+    `- Update or remove memories that turn out to be wrong or outdated${globalDir === null ? '' : ' (in the private and team dirs)'}`,
     '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
   ]
 

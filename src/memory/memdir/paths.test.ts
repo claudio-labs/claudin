@@ -14,7 +14,7 @@ import { join, sep } from 'path'
 import { findMemoryDir, getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 
-// getAutoMemPath() reads settings via ../utils/settings/settings.js and the
+// getPrivateMemPath() reads settings via ../utils/settings/settings.js and the
 // current project root via ../bootstrap/state.js. Both are mocked at the
 // module boundary so each test can control them without touching real global
 // state. Everything else (mkdirSync/realpathSync/chmodSync, symlinks, and
@@ -48,7 +48,7 @@ afterAll(() => {
 
 /**
  * Re-imports paths.js with a cache-busting query so its top-level bindings
- * pick up whatever we've just mocked, and so getAutoMemPath's memoize cache
+ * pick up whatever we've just mocked, and so getPrivateMemPath's memoize cache
  * starts fresh per test (mirrors utils/plans.test.ts).
  */
 async function importFreshPathsModule(options: {
@@ -88,7 +88,7 @@ async function importFreshPathsModule(options: {
   return import(`./paths.js?t=${Date.now()}-${Math.random()}`)
 }
 
-describe('getAutoMemPath', () => {
+describe('getPrivateMemPath', () => {
   const tmpDirs: string[] = []
   let fakeHome: string
 
@@ -120,38 +120,38 @@ describe('getAutoMemPath', () => {
 
   test('defaults to <gitRoot>/.claudin/memory/, created 0700, for a git project', async () => {
     const projectDir = freshGitProjectDir()
-    const { getAutoMemPath } = await importFreshPathsModule({
+    const { getPrivateMemPath } = await importFreshPathsModule({
       projectRoot: projectDir,
     })
 
-    const result = getAutoMemPath()
+    const result = getPrivateMemPath()
 
     expect(result).toBe(join(projectDir, '.claudin', 'memory') + sep)
     expect(existsSync(result)).toBe(true)
     expect(statSync(result).mode & 0o777).toBe(0o700)
   })
 
-  test('falls back to the legacy global path for a non-git project', async () => {
+  test('falls back to the legacy per-project path for a non-git project', async () => {
     const projectDir = freshNonGitProjectDir()
-    const { getAutoMemPath } = await importFreshPathsModule({
+    const { getPrivateMemPath } = await importFreshPathsModule({
       projectRoot: projectDir,
     })
 
-    const result = getAutoMemPath()
+    const result = getPrivateMemPath()
 
     expect(
       result.startsWith(join(process.env.CLAUDIN_CONFIG_DIR!, 'projects')),
     ).toBe(true)
   })
 
-  test('autoMemoryProjectLocal: false forces the legacy global path even in a git project', async () => {
+  test('autoMemoryProjectLocal: false forces the legacy per-project path even in a git project', async () => {
     const projectDir = freshGitProjectDir()
-    const { getAutoMemPath } = await importFreshPathsModule({
+    const { getPrivateMemPath } = await importFreshPathsModule({
       projectRoot: projectDir,
       autoMemoryProjectLocal: false,
     })
 
-    const result = getAutoMemPath()
+    const result = getPrivateMemPath()
 
     expect(
       result.startsWith(join(process.env.CLAUDIN_CONFIG_DIR!, 'projects')),
@@ -162,12 +162,12 @@ describe('getAutoMemPath', () => {
     const projectDir = freshGitProjectDir()
     const customDir = mkdtempSync(join(tmpdir(), 'claudin-mem-custom-'))
     tmpDirs.push(customDir)
-    const { getAutoMemPath } = await importFreshPathsModule({
+    const { getPrivateMemPath } = await importFreshPathsModule({
       projectRoot: projectDir,
       autoMemoryDirectory: customDir,
     })
 
-    const result = getAutoMemPath()
+    const result = getPrivateMemPath()
 
     expect(result).toBe(customDir + sep)
   })
@@ -179,34 +179,34 @@ describe('getAutoMemPath', () => {
     const configHome = process.env.CLAUDIN_CONFIG_DIR!
     for (const dir of [configHome, `${configHome}/`, fakeHome]) {
       const projectDir = freshGitProjectDir()
-      const { getAutoMemPath } = await importFreshPathsModule({
+      const { getPrivateMemPath } = await importFreshPathsModule({
         projectRoot: projectDir,
         autoMemoryDirectory: dir,
       })
-      expect(getAutoMemPath()).toBe(join(projectDir, '.claudin', 'memory') + sep)
+      expect(getPrivateMemPath()).toBe(join(projectDir, '.claudin', 'memory') + sep)
     }
   })
 
   test('autoMemoryDirectory beside the config home, or inside it, is taken', async () => {
     const configHome = process.env.CLAUDIN_CONFIG_DIR!
     for (const dir of [join(fakeHome, '.claudin-notes'), join(configHome, 'my-memory')]) {
-      const { getAutoMemPath } = await importFreshPathsModule({
+      const { getPrivateMemPath } = await importFreshPathsModule({
         projectRoot: freshGitProjectDir(),
         autoMemoryDirectory: dir,
       })
-      expect(getAutoMemPath()).toBe(dir + sep)
+      expect(getPrivateMemPath()).toBe(dir + sep)
     }
   })
 
-  test('SECURITY: a .claudin symlink escaping the project root falls back to the legacy global path', async () => {
+  test('SECURITY: a .claudin symlink escaping the project root falls back to the legacy per-project path', async () => {
     const projectDir = freshGitProjectDir()
     const outsideDir = freshNonGitProjectDir()
     symlinkSync(outsideDir, join(projectDir, '.claudin'), 'dir')
-    const { getAutoMemPath } = await importFreshPathsModule({
+    const { getPrivateMemPath } = await importFreshPathsModule({
       projectRoot: projectDir,
     })
 
-    const result = getAutoMemPath()
+    const result = getPrivateMemPath()
 
     expect(
       result.startsWith(join(process.env.CLAUDIN_CONFIG_DIR!, 'projects')),
@@ -221,14 +221,14 @@ describe('getAutoMemPath', () => {
       projectRoot: projectDir,
       autoMemoryProjectLocal: false,
     })
-    const legacyPath = legacyModule.getAutoMemPath()
+    const legacyPath = legacyModule.getPrivateMemPath()
     mkdirSync(legacyPath, { recursive: true })
     writeFileSync(join(legacyPath, 'MEMORY.md'), '- old memory\n')
 
-    const { getAutoMemPath } = await importFreshPathsModule({
+    const { getPrivateMemPath } = await importFreshPathsModule({
       projectRoot: projectDir,
     })
-    const result = getAutoMemPath()
+    const result = getPrivateMemPath()
 
     expect(result).toBe(join(projectDir, '.claudin', 'memory') + sep)
     expect(readFileSync(join(result, 'MEMORY.md'), 'utf-8')).toBe(
@@ -245,7 +245,7 @@ describe('getAutoMemPath', () => {
       projectRoot: projectDir,
       autoMemoryProjectLocal: false,
     })
-    const legacyPath = legacyModule.getAutoMemPath()
+    const legacyPath = legacyModule.getPrivateMemPath()
     mkdirSync(legacyPath, { recursive: true })
     writeFileSync(join(legacyPath, 'MEMORY.md'), '- old memory\n')
 
@@ -253,10 +253,10 @@ describe('getAutoMemPath', () => {
     mkdirSync(projectLocalPath, { recursive: true })
     writeFileSync(join(projectLocalPath, 'MEMORY.md'), '- already here\n')
 
-    const { getAutoMemPath } = await importFreshPathsModule({
+    const { getPrivateMemPath } = await importFreshPathsModule({
       projectRoot: projectDir,
     })
-    const result = getAutoMemPath()
+    const result = getPrivateMemPath()
 
     expect(readFileSync(join(result, 'MEMORY.md'), 'utf-8')).toBe(
       '- already here\n',
@@ -304,7 +304,7 @@ describe('global memory directory', () => {
     const projectDir = freshGitProjectDir()
     const paths = await importFreshPathsModule({ projectRoot: projectDir })
     const globalDir = paths.getGlobalMemPath()
-    const autoDir = paths.getAutoMemPath()
+    const autoDir = paths.getPrivateMemPath()
     const dirs = testMemoryDirs({ global: globalDir, private: autoDir, team: join(autoDir, 'team') })
     const scopeOf = (path: string) => findMemoryDir(dirs, path)?.scope ?? null
 
@@ -382,7 +382,7 @@ describe('global memory directory', () => {
       autoMemoryGlobalDirectory: join(projectDir, '.claudin', 'memory', 'global'),
     })
 
-    expect(paths.getAutoMemPath()).not.toBe(join(projectDir, '.claudin', 'memory') + sep)
+    expect(paths.getPrivateMemPath()).not.toBe(join(projectDir, '.claudin', 'memory') + sep)
     expect(paths.isGlobalMemoryEnabled()).toBe(true)
   })
 
@@ -419,7 +419,7 @@ describe('global memory directory', () => {
       },
     })
 
-    expect(paths.getAutoMemPath()).toBe(join(projectDir, '.claudin', 'memory') + sep)
+    expect(paths.getPrivateMemPath()).toBe(join(projectDir, '.claudin', 'memory') + sep)
     expect(paths.getGlobalMemPath()).toBe(join(process.env.CLAUDIN_CONFIG_DIR!, 'memory') + sep)
   })
 
@@ -429,7 +429,7 @@ describe('global memory directory', () => {
     mkdirSync(join(home, '.git'), { recursive: true })
     const paths = await importFreshPathsModule({ projectRoot: home })
 
-    const privateDir = paths.getAutoMemPath()
+    const privateDir = paths.getPrivateMemPath()
     expect(privateDir).not.toBe(paths.getGlobalMemPath())
     expect(privateDir.startsWith(join(process.env.CLAUDIN_CONFIG_DIR!, 'projects') + sep)).toBe(true)
     expect(paths.isGlobalMemoryEnabled()).toBe(true)

@@ -8,7 +8,7 @@ import {
   setOriginalCwd,
   setProjectRoot,
 } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import { areMemoryIndexesEmpty } from 'src/memory/memdir/memdir.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 import {
@@ -47,8 +47,8 @@ describe('memory indexes in getMemoryFiles', () => {
     previousOriginalCwd = getOriginalCwd()
     setProjectRoot(project)
     setOriginalCwd(project)
-    getAutoMemPath.cache.clear?.()
-    privateDir = getAutoMemPath()
+    getPrivateMemPath.cache.clear?.()
+    privateDir = getPrivateMemPath()
     globalDir = getGlobalMemPath()
     mkdirSync(globalDir, { recursive: true })
     writeFileSync(join(globalDir, 'MEMORY.md'), '- [pt-BR](user-language.md) — answers in pt-BR\n')
@@ -63,7 +63,7 @@ describe('memory indexes in getMemoryFiles', () => {
   afterAll(() => {
     setProjectRoot(previousProjectRoot)
     setOriginalCwd(previousOriginalCwd)
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     for (const key of ENV_KEYS) {
       const value = savedEnv.get(key)
       if (value === undefined) delete process.env[key]

@@ -9,8 +9,8 @@
   "probes": [
     {
       "name": "the prompts follow the global dir switch",
-      "find": "  return getMemoryDir('global')?.root ?? null\n",
-      "replace": "  return null\n"
+      "find": "    globalDir: dirRoot(dirs, 'global'),\n",
+      "replace": "    globalDir: null,\n"
     },
     {
       "name": "the v2 prompt names the global dir",
@@ -24,8 +24,8 @@
     },
     {
       "name": "three indexes are in context, not two",
-      "find": "  return `Only the ${hasGlobal ? 'three' : 'two'} \\`${ENTRYPOINT_NAME}\\` indexes are in context`\n",
-      "replace": "  return `Only the two \\`${ENTRYPOINT_NAME}\\` indexes are in context`\n"
+      "find": "  return globalDir ? 'three' : 'two'\n",
+      "replace": "  return 'two'\n"
     },
     {
       "name": "the empty note counts three",
@@ -67,14 +67,19 @@
     },
     {
       "name": "the global dir is created 0700",
-      "source": "src/memory/memdir/memdir.ts",
-      "find": "    await ensureMemoryDirExists(dir.root, dir.scope === 'global' ? 0o700 : undefined)\n",
-      "replace": "    await ensureMemoryDirExists(dir.root)\n"
+      "source": "src/memory/memdir/memoryScopes.ts",
+      "find": "    dirMode: 0o700,\n",
+      "replace": ""
     },
     {
       "name": "the write rules quote TYPE_SCOPES for what the global dir takes",
       "find": "`\\`${type}\\` (${TYPE_SCOPES[type].withGlobal})`",
       "replace": "`\\`${type}\\` (${TYPE_SCOPES[type].withoutGlobal})`"
+    },
+    {
+      "name": "a team dir outside the project's git root is not called git-tracked",
+      "find": "    teamGitRoot: gitRoot && teamDir.startsWith(gitRoot + sep) ? gitRoot : null,\n",
+      "replace": "    teamGitRoot: gitRoot ?? '/',\n"
     }
   ]
 }

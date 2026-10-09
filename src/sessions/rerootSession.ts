@@ -2,7 +2,7 @@ import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { invalidateAll as invalidateToolResultCache } from 'src/agent/tools/toolResultCache.js'
 import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
 import { loadMarkdownFilesForSubdir } from 'src/memory/instructions/markdownConfigLoader.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import {
   getOriginalCwd,
   getSessionId,
@@ -98,7 +98,7 @@ function clearRerootedCaches(): void {
   // clearMemoryFileCaches() covers getMemoryFiles but not the subdir loader.
   loadMarkdownFilesForSubdir.cache?.clear?.()
   // Keyed on getProjectRoot(), which just moved.
-  getAutoMemPath.cache?.clear?.()
+  getPrivateMemPath.cache?.clear?.()
   // Memoized with no key at all: without this, moving between a repo and a
   // non-repo keeps the old answer for the rest of the process.
   getIsGit.cache?.clear?.()

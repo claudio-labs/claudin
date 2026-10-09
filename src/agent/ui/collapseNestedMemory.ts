@@ -4,6 +4,11 @@ import type {
 } from 'src/shared/types/message.js'
 import type { Attachment } from 'src/agent/attachments/attachments.js'
 import {
+  MEMORY_SCOPE_SPECS,
+  MEMORY_SCOPES,
+  scopeOfIndexType,
+} from 'src/memory/memdir/memoryScopes.js'
+import {
   TEAM_CATEGORIES,
   teamCategoryForPath,
 } from 'src/memory/memdir/memoryTypes.js'
@@ -33,28 +38,39 @@ function nestedMemoryFile(msg: RenderableMessage): NestedMemoryFile | null {
 
 type BatchGroup = { rank: number; one: string; many: string }
 
+// Rules, then nested instruction files, then one rank per memory scope, then
+// the team categories.
+const FIRST_SCOPE_RANK = 2
+const FIRST_CATEGORY_RANK = FIRST_SCOPE_RANK + MEMORY_SCOPES.length
+
 /**
  * Which clause of the count line a file belongs to. Rules and nested
  * CLAUDE.md/AGENTS.md files keep the nouns they had; a memory-directory file
- * — a `paths:` match from pathScopedMemories.ts — reads as what it is: a
- * memory, a team memory, or a team memory of one category, since the
- * directory IS the category (memoryTypes.ts). The rank fixes the order of
- * the clauses whatever order the loaders produced the files in: rules,
- * nested memory files, memories, team memories, then each category.
+ * — a `paths:` match from pathScopedMemories.ts — is named by its scope, the
+ * way a Read of one is ("2 private memories", countMemories in
+ * memoryScopes.ts): a private memory, a team memory, or, in a scope with
+ * subdirectories, a team memory of one category, since the directory IS the
+ * category (memoryTypes.ts). The rank fixes the order of the clauses whatever
+ * order the loaders produced the files in: rules, nested memory files, the
+ * scopes in MEMORY_SCOPES order, then each category.
  */
 function batchGroup(file: NestedMemoryFile): BatchGroup {
-  if (file.type === 'AutoMem') {
-    return { rank: 2, one: 'memory', many: 'memories' }
-  }
-  if (file.type === 'TeamMem') {
-    const category = teamCategoryForPath(file.path)
+  const scope = scopeOfIndexType(file.type)
+  if (scope !== null) {
+    const category = MEMORY_SCOPE_SPECS[scope].hasSubdirectories
+      ? teamCategoryForPath(file.path)
+      : undefined
     if (!category) {
-      return { rank: 3, one: 'team memory', many: 'team memories' }
+      return {
+        rank: FIRST_SCOPE_RANK + MEMORY_SCOPES.indexOf(scope),
+        one: `${scope} memory`,
+        many: `${scope} memories`,
+      }
     }
     return {
-      rank: 4 + TEAM_CATEGORIES.indexOf(category),
-      one: `team ${category.noun} memory`,
-      many: `team ${category.noun} memories`,
+      rank: FIRST_CATEGORY_RANK + TEAM_CATEGORIES.indexOf(category),
+      one: `${scope} ${category.noun} memory`,
+      many: `${scope} ${category.noun} memories`,
     }
   }
   if (RULES_PATH_RE.test(file.displayPath)) {

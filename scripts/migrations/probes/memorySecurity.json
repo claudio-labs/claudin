@@ -35,7 +35,7 @@
     {
       "name": "nested global and private dirs still turn the global off",
       "source": "src/memory/memdir/paths.ts",
-      "find": "  if (nests(globalDir, autoDir)) {\n",
+      "find": "  if (nests(globalDir, privateDir)) {\n",
       "replace": "  if (false) {\n"
     }
   ]

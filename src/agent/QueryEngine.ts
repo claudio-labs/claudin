@@ -37,7 +37,7 @@ import {
 } from 'src/agent/cost-tracker.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
-import { hasAutoMemPathOverride } from 'src/memory/memdir/paths.js'
+import { hasMemoryPathOverride } from 'src/memory/memdir/paths.js'
 import { query } from 'src/agent/query.js'
 import { categorizeRetryableAPIError } from 'src/providers/transport/errors.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
@@ -352,7 +352,7 @@ export class QueryEngine {
     // Write/Edit tools to call, MEMORY.md filename, loading semantics).
     // The caller can layer their own policy text via appendSystemPrompt.
     const memoryMechanicsPrompt =
-      customPrompt !== undefined && hasAutoMemPathOverride()
+      customPrompt !== undefined && hasMemoryPathOverride()
         ? await loadMemoryPrompt()
         : null
 

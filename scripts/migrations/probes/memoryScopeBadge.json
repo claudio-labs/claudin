@@ -9,8 +9,8 @@
   "probes": [
     {
       "name": "a memory write is counted for its own directory",
-      "find": "        currentGroup.memoryOps[scope].write += countToolUses(msg)\n",
-      "replace": "        currentGroup.memoryOps.private.write += countToolUses(msg)\n"
+      "find": "          currentGroup.memoryOps[memoryFileScope(path)].write += 1\n",
+      "replace": "          currentGroup.memoryOps.private.write += 1\n"
     },
     {
       "name": "a memory read is counted for its own directory",
@@ -137,6 +137,11 @@
       "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
       "find": "    const isFirst = !hasPrecedingNonMem && memParts.length === 0;\n",
       "replace": "    const isFirst = memParts.length === 0;\n"
+    },
+    {
+      "name": "a memory write counts one per file a Patch writes",
+      "find": "        for (const path of getMemoryWritePathsFromMessage(msg)) {\n",
+      "replace": "        for (const path of getMemoryWritePathsFromMessage(msg).slice(0, 1)) {\n"
     }
   ]
 }

@@ -31,13 +31,18 @@ const FRONTMATTER_MAX_LINES = 30
  * read-then-sort rather than stat-sort-read. For the common case (N ≤ 200)
  * this halves syscalls vs a separate stat round; for large N we read a few
  * extra small files but still avoid the double-stat on the surviving 200.
+ *
+ * `recursive: false` reads the directory's own files only — the private
+ * dir's, without the team dir nested in it, whose files would otherwise
+ * count against the cap.
  */
 export async function scanMemoryFiles(
   memoryDir: string,
   signal: AbortSignal,
+  { recursive = true }: { recursive?: boolean } = {},
 ): Promise<MemoryHeader[]> {
   try {
-    const entries = await readdir(memoryDir, { recursive: true })
+    const entries = await readdir(memoryDir, { recursive })
     // Limit depth to 3 levels to prevent DoS from deep/symlinked directory trees.
     // Relative paths from readdir use the OS separator, so count separators.
     const sep = require('path').sep as string

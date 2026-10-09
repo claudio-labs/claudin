@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import {
   checkEditableInternalPath,
   checkReadableInternalPath,
@@ -41,13 +41,13 @@ describe('auto-memory carve-outs', () => {
     process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
     previousProjectRoot = getProjectRoot()
     setProjectRoot(project)
-    getAutoMemPath.cache.clear?.()
-    memDir = getAutoMemPath()
+    getPrivateMemPath.cache.clear?.()
+    memDir = getPrivateMemPath()
   })
 
   afterAll(() => {
     setProjectRoot(previousProjectRoot)
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     if (priorMacro === undefined) delete (globalThis as Record<string, unknown>).MACRO
     else (globalThis as Record<string, unknown>).MACRO = priorMacro
     for (const key of ENV_KEYS) {
@@ -89,14 +89,14 @@ describe('auto-memory carve-outs', () => {
   test('the Cowork override is readable but gets no write carve-out', () => {
     const override = join(root, 'cowork-memory')
     process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE = override
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     try {
       const file = join(override, 'x.md')
       expect(checkReadableInternalPath(file, { file_path: file }).behavior).toBe('allow')
       expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
     } finally {
       delete process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
-      getAutoMemPath.cache.clear?.()
+      getPrivateMemPath.cache.clear?.()
     }
   })
 

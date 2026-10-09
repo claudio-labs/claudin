@@ -10,7 +10,7 @@ import { logError } from 'src/shared/log.js'
  * project-local default (<gitRoot>/.claudin/memory/).
  *
  * Idempotent by construction (no marker file): once newDir has any memory
- * content, this is a no-op, so it's safe to call on every getAutoMemPath()
+ * content, this is a no-op, so it's safe to call on every getPrivateMemPath()
  * resolution. Never deletes or moves oldDir — it's left untouched as a
  * backup in case something goes wrong with the new location.
  */

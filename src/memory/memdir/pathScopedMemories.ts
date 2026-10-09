@@ -14,7 +14,7 @@
  * (claudemd/nestedDirectories.ts): a project-local memdir
  * (`<root>/.claudin/memory/`) matches relative to the directory containing
  * `.claudin/`, exactly like the project's own rules; any other memdir location
- * (the legacy global path, a settings override) matches relative to the
+ * (the legacy per-project path, a settings override) matches relative to the
  * original cwd, like Managed/User rules.
  *
  * The `{path, globs}` index is memoized per process and re-read only when the
@@ -42,7 +42,11 @@ import { processMemoryFile } from 'src/memory/instructions/claudemd/processing.j
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import { getMemoryDir, memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
-import { ENTRYPOINT_NAME, withoutTrailingSep } from 'src/memory/memdir/memoryScopes.js'
+import {
+  ENTRYPOINT_NAME,
+  MEMORY_SCOPE_SPECS,
+  withoutTrailingSep,
+} from 'src/memory/memdir/memoryScopes.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 
 export type PathScopedEntry = {
@@ -230,7 +234,7 @@ export async function findPathScopedMemoryFiles(options: {
   const result: MemoryFileInfo[] = []
   for (const entry of entries) {
     if (!matchesPathScope(entry.globs, baseDir, targetPath)) continue
-    const type: MemoryType = memoryScopeOf(entry.path) === 'team' ? 'TeamMem' : 'AutoMem'
+    const type: MemoryType = MEMORY_SCOPE_SPECS[memoryScopeOf(entry.path) ?? 'private'].indexType
     result.push(
       ...(await processMemoryFile(entry.path, type, processedPaths, false)),
     )
@@ -240,7 +244,8 @@ export async function findPathScopedMemoryFiles(options: {
 
 /**
  * The production entry point: the session's private dir (the team dir in it
- * included) and original cwd. The global dir takes no `paths:`.
+ * included — one walk, one cache) and original cwd. A directory whose scope
+ * takes no `paths:` (MEMORY_SCOPE_SPECS: the global one) is not walked.
  */
 export async function getPathScopedMemoryFiles(
   targetPath: string,

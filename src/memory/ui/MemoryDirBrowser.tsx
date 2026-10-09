@@ -111,13 +111,14 @@ export function MemoryDirBrowser({
     () =>
       headers === null
         ? []
-        : // The team dir files memories under decisions/, bugs/ and docs/;
-          // the private dir's only subdirectory is team/, which has its own
-          // browser, so nested entries are shown for the former only.
+        : // A scope with subdirectories (the team dir's decisions/, bugs/,
+          // docs/) shows what is in them; the private dir's only subdirectory
+          // is team/, which has its own browser, so it shows its top level.
           buildMemoryDirRows(headers, {
             indexPath,
             indexExists,
-            includeNested: scope === 'team',
+            includeNested:
+              scope !== undefined && MEMORY_SCOPE_SPECS[scope].hasSubdirectories,
           }),
     [headers, indexPath, indexExists, scope],
   )

@@ -13,8 +13,8 @@
     },
     {
       "name": "a global write by the main agent makes the extraction skip",
-      "find": "      if (filePath !== undefined && memoryScopeOf(filePath) !== null) {\n",
-      "replace": "      if (filePath !== undefined && memoryScopeOf(filePath) === 'private') {\n"
+      "find": "      if (blockWrittenPaths(block).some(path => memoryScopeOf(path) !== null)) {\n",
+      "replace": "      if (blockWrittenPaths(block).some(path => memoryScopeOf(path) === 'private')) {\n"
     },
     {
       "name": "the manifest lists the global dir",
@@ -104,6 +104,16 @@
       "source": "src/memory/autoDream/consolidationPrompt.ts",
       "find": " in the global one, only add lines.",
       "replace": ""
+    },
+    {
+      "name": "the extraction's gate is append-only on the global dir",
+      "find": "  return createMemoryCanUseTool(['global'])\n",
+      "replace": "  return createMemoryCanUseTool()\n"
+    },
+    {
+      "name": "runExtraction runs under the extraction's gate",
+      "find": "    const canUseTool = createExtractionCanUseTool()\n",
+      "replace": "    const canUseTool = createMemoryCanUseTool()\n"
     }
   ]
 }

@@ -9,7 +9,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js';
-import { MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js';
+import { isMemoryIndexType, MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js';
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js';
 import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
@@ -24,8 +24,8 @@ import { projectIsInGitRepo } from 'src/memory/memdir/versions.js';
 import { updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { ListItem } from 'src/terminal/design-system/ListItem.js';
-import { getProjectMemoryPathForSelector } from 'src/memory/ui/memoryFileSelectorPaths.js';
-import { encodeBrowseValue, TIDY_VALUE } from 'src/memory/ui/memoryDirRows.js';
+import { getProjectMemoryPathForSelector, PROJECT_INSTRUCTIONS_LABEL, USER_INSTRUCTIONS_LABEL } from 'src/memory/ui/memoryFileSelectorPaths.js';
+import { encodeBrowseValue, memoryDirRowLabel, TIDY_VALUE } from 'src/memory/ui/memoryDirRows.js';
 
 interface ExtendedMemoryFileInfo extends MemoryFileInfo {
   isNested?: boolean;
@@ -39,13 +39,16 @@ type Props = {
   onCancel: () => void;
   /** Memory counts for the browse rows, scanned before the dialog opens. */
   dirCounts?: Record<MemoryScope, number>;
+  /** Per directory, the memories `/memory sort` would promote to the global one. */
+  promotable?: Partial<Record<MemoryScope, number>>;
 };
 export function MemoryFileSelector(t0: Props) {
   const $ = _c(58);
   const {
     onSelect,
     onCancel,
-    dirCounts
+    dirCounts,
+    promotable
   } = t0;
   const existingMemoryFiles = use(getMemoryFiles());
   const originalCwd = getOriginalCwd();
@@ -74,10 +77,10 @@ export function MemoryFileSelector(t0: Props) {
     const indent = depth > 0 ? "  ".repeat(depth - 1) : "";
     let label;
     if (file.type === "User" && !file.isNested && file.path === userMemoryPath) {
-      label = "User memory";
+      label = USER_INSTRUCTIONS_LABEL;
     } else {
       if (file.type === "Project" && !file.isNested && file.path === projectMemoryPath) {
-        label = "Project memory";
+        label = PROJECT_INSTRUCTIONS_LABEL;
       } else {
         if (depth > 0) {
           label = `${indent}L ${displayPath}${existsLabel}`;
@@ -122,7 +125,7 @@ export function MemoryFileSelector(t0: Props) {
     for (const memoryDir of getMemoryDirs()) {
       const spec = MEMORY_SCOPE_SPECS[memoryDir.scope];
       folderOptions.push({
-        label: `${spec.title}${dirCounts ? ` · ${dirCounts[memoryDir.scope]}` : ""}`,
+        label: memoryDirRowLabel(spec.title, dirCounts?.[memoryDir.scope], promotable?.[memoryDir.scope]),
         value: encodeBrowseValue({
           dir: memoryDir.root,
           title: spec.title,
@@ -426,5 +429,5 @@ function _temp2(f_2: MemoryFileInfo) {
   };
 }
 function _temp(f_1: MemoryFileInfo) {
-  return f_1.type !== "AutoMem" && f_1.type !== "GlobalMem" && f_1.type !== "TeamMem";
+  return !isMemoryIndexType(f_1.type);
 }

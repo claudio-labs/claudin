@@ -1,7 +1,11 @@
 import { join } from 'path'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
-import { ENTRYPOINT_NAME, isMemoryIndexType } from 'src/memory/memdir/memoryScopes.js'
+import {
+  ENTRYPOINT_NAME,
+  isMemoryIndexType,
+  MEMORY_SCOPE_SPECS,
+} from 'src/memory/memdir/memoryScopes.js'
 // teamMemPrompts.ts imports this module back; the cycle is safe because
 // neither side reads the other's bindings at module-evaluation time.
 import {
@@ -384,9 +388,10 @@ export async function loadMemoryPrompt(lean = false): Promise<string | null> {
 
   // Harness guarantees every directory exists so the model can write
   // without checking. The prompt text reflects this ("already exists").
-  // The global one is the user's alone, across projects: 0700.
+  // A scope with a dirMode (the global dir, the user's alone across
+  // projects: 0700) is created with it.
   for (const dir of dirs) {
-    await ensureMemoryDirExists(dir.root, dir.scope === 'global' ? 0o700 : undefined)
+    await ensureMemoryDirExists(dir.root, MEMORY_SCOPE_SPECS[dir.scope].dirMode)
   }
   // The same memoized load the context injects the indexes from, so the
   // prompt agrees with what the model was given and stays put when the
@@ -404,6 +409,6 @@ export async function loadMemoryPrompt(lean = false): Promise<string | null> {
     )
   }
   return lean
-    ? buildLeanCombinedMemoryPrompt(extraGuidelines, indexesEmpty)
-    : buildCombinedMemoryPrompt(extraGuidelines, indexesEmpty)
+    ? buildLeanCombinedMemoryPrompt(dirs, extraGuidelines, indexesEmpty)
+    : buildCombinedMemoryPrompt(dirs, extraGuidelines, indexesEmpty)
 }

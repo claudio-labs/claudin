@@ -45,6 +45,8 @@ import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { writtenPaths as writtenPathsOf } from 'src/tools/shared/writtenPaths.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import type {
   AssistantMessage,
   Message,
@@ -128,7 +130,8 @@ function countModelVisibleMessagesSince(
 
 /**
  * Returns true if any assistant message after the cursor UUID contains a
- * Write/Edit tool_use block targeting an auto-memory path.
+ * tool_use block that writes a memory path — a Write, an Edit or a Patch,
+ * by input shape (writtenPaths.ts).
  *
  * The main agent's prompt has full save instructions — when it writes
  * memories, the forked extraction is redundant. runExtraction skips the
@@ -155,8 +158,7 @@ export function hasMemoryWritesSince(
       continue
     }
     for (const block of content) {
-      const filePath = getWrittenFilePath(block)
-      if (filePath !== undefined && memoryScopeOf(filePath) !== null) {
+      if (blockWrittenPaths(block).some(path => memoryScopeOf(path) !== null)) {
         return true
       }
     }
@@ -168,7 +170,7 @@ export function hasMemoryWritesSince(
 // Tool Permissions
 // ============================================================================
 
-function denyAutoMemTool(tool: Tool, reason: string) {
+function denyMemoryTool(tool: Tool, reason: string) {
   logForDebugging(`[autoMem] denied ${tool.name}: ${reason}`)
   return {
     behavior: 'deny' as const,
@@ -203,8 +205,8 @@ function onlyAdds(toolName: string, input: Record<string, unknown>, filePath: st
  * read-only Bash commands, and Edit/Write only within the memory directories
  * (memoryDirs.ts). Shared by extractMemories and autoDream.
  *
- * `appendOnly` scopes take an Edit or Write only when it adds: the dream
- * passes the global dir, which it may add to but never prune — one project's
+ * `appendOnly` scopes take an Edit or Write only when it adds: both forks
+ * pass the global dir, which they may add to but never prune — one project's
  * run cannot tell that a memory every project reads is stale.
  */
 export function createMemoryCanUseTool(
@@ -227,7 +229,7 @@ export function createMemoryCanUseTool(
       if (parsed.success && tool.isReadOnly(parsed.data)) {
         return { behavior: 'allow' as const, updatedInput: input }
       }
-      return denyAutoMemTool(
+      return denyMemoryTool(
         tool,
         'Only read-only shell commands are permitted in this context (ls, find, grep, cat, stat, wc, head, tail, and similar)',
       )
@@ -246,7 +248,7 @@ export function createMemoryCanUseTool(
       if (scope !== null) {
         return onlyAdds(tool.name, input, filePath as string)
           ? { behavior: 'allow' as const, updatedInput: input }
-          : denyAutoMemTool(
+          : denyMemoryTool(
               tool,
               `the ${scope} memory dir is append-only in this run: add a memory or a line, never remove or rewrite one — leave a ${scope} memory this project contradicts as it is, and report it`,
             )
@@ -256,38 +258,33 @@ export function createMemoryCanUseTool(
     const where = getMemoryDirs()
       .map(dir => withoutTrailingSep(dir.root))
       .join(', ')
-    return denyAutoMemTool(
+    return denyMemoryTool(
       tool,
       `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${where} are allowed`,
     )
   }
 }
 
+/**
+ * The extraction fork's gate: append-only on the global dir, as the dream's
+ * is — a background run in one project never rewrites or removes a memory
+ * every project reads.
+ */
+export function createExtractionCanUseTool(): CanUseToolFn {
+  return createMemoryCanUseTool(['global'])
+}
+
 // ============================================================================
 // Extract file paths from agent output
 // ============================================================================
 
-/**
- * Extract file_path from a tool_use block's input, if present.
- * Returns undefined when the block is not an Edit/Write tool use or has no file_path.
- */
-function getWrittenFilePath(block: {
+/** The absolute paths a content block writes; empty for anything but a write tool_use. */
+function blockWrittenPaths(block: {
   type: string
   name?: string
   input?: unknown
-}): string | undefined {
-  if (
-    block.type !== 'tool_use' ||
-    (block.name !== FILE_EDIT_TOOL_NAME && block.name !== FILE_WRITE_TOOL_NAME)
-  ) {
-    return undefined
-  }
-  const input = block.input
-  if (typeof input === 'object' && input !== null && 'file_path' in input) {
-    const fp = (input as { file_path: unknown }).file_path
-    return typeof fp === 'string' ? fp : undefined
-  }
-  return undefined
+}): string[] {
+  return block.type === 'tool_use' ? writtenPathsOf(block.input, getCwd()) : []
 }
 
 function extractWrittenPaths(agentMessages: Message[]): string[] {
@@ -301,13 +298,20 @@ function extractWrittenPaths(agentMessages: Message[]): string[] {
       continue
     }
     for (const block of content) {
-      const filePath = getWrittenFilePath(block)
-      if (filePath !== undefined) {
-        paths.push(filePath)
-      }
+      paths.push(...blockWrittenPaths(block))
     }
   }
   return uniq(paths)
+}
+
+/** How many of `paths` each memory directory holds; a path in none counts as private, as it always did. */
+export function memoryCountsOf(paths: readonly string[]): Partial<Record<MemoryScope, number>> {
+  const counts: Partial<Record<MemoryScope, number>> = {}
+  for (const path of paths) {
+    const scope = memoryScopeOf(path) ?? 'private'
+    counts[scope] = (counts[scope] ?? 0) + 1
+  }
+  return counts
 }
 
 /**
@@ -448,7 +452,8 @@ export function initExtractMemories(): void {
       )
     }
 
-    const canUseTool = createMemoryCanUseTool()
+    // Append-only on the global dir, like the dream's
+    const canUseTool = createExtractionCanUseTool()
     const cacheSafeParams = createCacheSafeParams(context)
 
     // Only run extraction every N eligible turns (getExtractionTurnInterval).
@@ -540,18 +545,15 @@ export function initExtractMemories(): void {
       const memoryPaths = writtenPaths.filter(
         p => basename(p) !== ENTRYPOINT_NAME,
       )
-      const teamCount = count(memoryPaths, p => memoryScopeOf(p) === 'team')
 
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,
       )
       if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {
-        const msg = createMemorySavedMessage(memoryPaths)
-        // teamCount is set ad-hoc here and read back in teamMemSaved.ts;
-        // SystemMemorySavedMessage doesn't declare it — widen locally
-        // rather than editing the shared message type.
-        ;(msg as typeof msg & { teamCount?: number }).teamCount = teamCount
-        appendSystemMessage?.(msg)
+        appendSystemMessage?.({
+          ...createMemorySavedMessage(memoryPaths),
+          memoryCounts: memoryCountsOf(memoryPaths),
+        })
       }
     } catch (error) {
       // Extraction is best-effort — log but don't notify on error

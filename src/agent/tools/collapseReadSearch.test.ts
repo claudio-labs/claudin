@@ -16,7 +16,7 @@ import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js
 import { thinkingSignature } from 'src/providers/shims/claude/__testutils__/thinkingSignature.js'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
-  getAutoMemPath,
+  getPrivateMemPath,
   getGlobalMemPath,
   getMemoryBaseDir,
 } from 'src/memory/memdir/paths.js'
@@ -600,10 +600,10 @@ describe('memory counts per scope', () => {
     process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
     previousProjectRoot = getProjectRoot()
     setProjectRoot(join(root, 'project'))
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
     globalDir = getGlobalMemPath()
-    privateDir = getAutoMemPath()
+    privateDir = getPrivateMemPath()
     teamDir = getTeamMemPath()
   })
 
@@ -614,7 +614,7 @@ describe('memory counts per scope', () => {
       if (value === undefined) delete process.env[key]
       else process.env[key] = value
     }
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
     rmSync(root, { recursive: true, force: true })
   })
@@ -673,6 +673,46 @@ describe('memory counts per scope', () => {
       expect(group.writeFileStats).toBeUndefined()
     })
   }
+
+  const patchUse = (id: string, ...lines: string[]) =>
+    toolUse(id, 'Patch', { patchText: ['*** Begin Patch', ...lines, '*** End Patch'].join('\n') })
+
+  test('a Patch to memory files is a memory write, one per file, for the directory each lands in', () => {
+    const group = memGroup([
+      patchUse('p1', `*** Add File: ${join(globalDir, 'user-language.md')}`, '+---'),
+      toolResult('p1', {}),
+      patchUse(
+        'p2',
+        `*** Update File: ${join(privateDir, 'feedback-x.md')}`,
+        '@@',
+        '-a',
+        '+b',
+        `*** Update File: ${join(privateDir, 'MEMORY.md')}`,
+        '@@',
+        '+- [X](feedback-x.md) — hook',
+      ),
+      toolResult('p2', {}),
+      patchUse('p3', `*** Update File: ${join(privateDir, 'project-y.md')}`, `*** Move to: ${join(teamDir, 'project-y.md')}`),
+      toolResult('p3', {}),
+    ])
+    expect(group.memoryOps).toEqual({
+      global: { search: 0, read: 0, write: 1 },
+      private: { search: 0, read: 0, write: 3 },
+      team: { search: 0, read: 0, write: 1 },
+    })
+    // A memory write is not a file write: no ⎿ row for it.
+    expect(group.writeFileStats).toBeUndefined()
+  })
+
+  test('a Patch that also touches a source file stays a file write', () => {
+    const memoryFile = join(privateDir, 'feedback-x.md')
+    const group = memGroup([
+      patchUse('p1', `*** Add File: ${memoryFile}`, '+---', '*** Add File: /repo/a.ts', '+x'),
+      toolResult('p1', { files: [] }),
+    ])
+    expect(group.memoryOps).toBeUndefined()
+    expect(group.writeFileStats?.map(s => s.path).sort()).toEqual(['/repo/a.ts', memoryFile])
+  })
 
   test('a path under the team dir is team, not private, though it is inside both', () => {
     const file = join(teamDir, 'decisions', 'x.md')

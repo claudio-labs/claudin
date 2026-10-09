@@ -1,12 +1,17 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import {
+  explainScopeOff,
+  memoryScopeOffMessage,
   parseMemorySubcommand,
   runMemorySort,
   runMemoryTidy,
+  SUBCOMMANDS,
 } from 'src/commands/memory/tidy.js'
+import memoryCommand from 'src/commands/memory/index.js'
+import { MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js'
 
 // Team memory is on whenever auto memory is, so every run covers the team dir.
 const teamRoot = (): string => getTeamMemPath().replace(/[/\\]+$/, '')
@@ -79,6 +84,59 @@ describe('parseMemorySubcommand', () => {
     expect(parseMemorySubcommand('teams')).toBeNull()
     expect(parseMemorySubcommand('private memory')).toBeNull()
   })
+
+  test('every memory scope is a subcommand, after the two actions', () => {
+    expect(SUBCOMMANDS).toEqual(['tidy', 'sort', ...MEMORY_SCOPES])
+    for (const scope of MEMORY_SCOPES) {
+      expect(parseMemorySubcommand(scope)).toBe(scope)
+    }
+  })
+
+  test("the command's hint and description list exactly these subcommands", () => {
+    expect(memoryCommand.argumentHint).toBe(`[${SUBCOMMANDS.join('|')}]`)
+    expect(memoryCommand.description).toContain(`/memory ${MEMORY_SCOPES.join('|')} opens a memory directory`)
+    expect(memoryCommand.description).toContain('promotes what is about you to the global memory')
+  })
+})
+
+describe('/memory <scope> with the directory off', () => {
+  test('memory off is the reason for every scope', () => {
+    for (const scope of MEMORY_SCOPES) {
+      expect(explainScopeOff(scope, { reason: 'auto-memory-off' })).toContain('auto memory is disabled')
+    }
+  })
+
+  test('CLAUDIN_GLOBAL_MEMORY=0', () => {
+    expect(explainScopeOff('global', { reason: 'env' })).toBe(
+      'Global memory is off: CLAUDIN_GLOBAL_MEMORY=0 is set. Unset it to share memories about you across projects.',
+    )
+  })
+
+  test('a Cowork override', () => {
+    expect(explainScopeOff('global', { reason: 'cowork-override' })).toContain('CLAUDE_COWORK_MEMORY_PATH_OVERRIDE')
+  })
+
+  test('the global and private dirs nesting', () => {
+    const inside = explainScopeOff('global', {
+      reason: 'nested',
+      globalDir: '/home/u/.claudin/memory/',
+      privateDir: '/home/u/.claudin/memory/repo/',
+    })
+    expect(inside).toContain(
+      "the global dir /home/u/.claudin/memory and this project's private dir /home/u/.claudin/memory/repo are one inside the other",
+    )
+    expect(inside).toContain('autoMemoryGlobalDirectory')
+  })
+
+  // The reason is paths.ts globalMemoryOffReason's, so its order is the
+  // order isGlobalMemoryEnabled decides in — nothing here re-derives it.
+  test('the live message reads the reason paths.ts gives', () => {
+    process.env[DISABLE_ENV] = '0'
+    process.env[GLOBAL_ENV] = '0'
+    expect(memoryScopeOffMessage('global')).toContain('CLAUDIN_GLOBAL_MEMORY=0 is set')
+    process.env[DISABLE_ENV] = '1'
+    expect(memoryScopeOffMessage('global')).toContain('auto memory is disabled')
+  })
 })
 
 describe('runMemoryTidy', () => {
@@ -98,7 +156,7 @@ describe('runMemoryTidy', () => {
     expect(options?.metaMessages).toHaveLength(1)
     const prompt = options?.metaMessages?.[0] ?? ''
     expect(prompt).toContain('Memory Tidy')
-    expect(prompt).toContain(getAutoMemPath().replace(/[/\\]+$/, ''))
+    expect(prompt).toContain(getPrivateMemPath().replace(/[/\\]+$/, ''))
   })
 
   test('the team section is included in the prompt', () => {
@@ -180,7 +238,7 @@ describe('runMemorySort', () => {
     expect(result).toContain('filing team memories into decisions/, bugs/ and docs/, and promoting what is about you')
     const prompt = options?.metaMessages?.[0] ?? ''
     expect(prompt).toContain('# Part 2 — promote')
-    expect(prompt).toContain(getAutoMemPath().replace(/[/\\]+$/, ''))
+    expect(prompt).toContain(getPrivateMemPath().replace(/[/\\]+$/, ''))
   })
 
   test('auto memory disabled → system warning, no query', () => {

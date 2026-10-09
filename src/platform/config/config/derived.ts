@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto'
 import { join } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { memoryIndexPath } from 'src/memory/memdir/memoryDirs.js'
+import { scopeOfIndexType } from 'src/memory/memdir/memoryScopes.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import {
@@ -111,6 +112,8 @@ export function recordFirstStartTime(): void {
 
 export function getMemoryPath(memoryType: MemoryType): string {
   const cwd = getOriginalCwd()
+  const scope = scopeOfIndexType(memoryType)
+  if (scope !== null) return memoryIndexPath(scope)
 
   switch (memoryType) {
     case 'User':
@@ -120,13 +123,8 @@ export function getMemoryPath(memoryType: MemoryType): string {
     case 'Project':
       return join(cwd, PRIMARY_PROJECT_INSTRUCTION_FILE)
     case 'Managed':
+    default:
       return join(getManagedFilePath(), 'CLAUDE.md')
-    case 'AutoMem':
-      return memoryIndexPath('private')
-    case 'GlobalMem':
-      return memoryIndexPath('global')
-    case 'TeamMem':
-      return memoryIndexPath('team')
   }
 }
 

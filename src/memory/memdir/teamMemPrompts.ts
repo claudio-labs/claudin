@@ -17,31 +17,47 @@ import {
   TYPE_SCOPES,
   typeScope,
 } from 'src/memory/memdir/memoryTypes.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
-import { getMemoryDir } from 'src/memory/memdir/memoryDirs.js'
+import { dirRoot, type MemoryDir } from 'src/memory/memdir/memoryDirs.js'
 import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
-import { getTeamMemPath, isTeamMemLikelyGitIgnored } from 'src/memory/memdir/teamMemPaths.js'
+import { isTeamMemLikelyGitIgnored } from 'src/memory/memdir/teamMemPaths.js'
 
 /**
- * The global memory dir while it is on, else null — and with null every
- * prompt here names two directories, as CLAUDIN_GLOBAL_MEMORY=0 promises.
+ * The directories a memory prompt names, from the session's list
+ * (memoryDirs.ts getMemoryDirs): the global one only while it is on — and
+ * without it every prompt here names two directories, as
+ * CLAUDIN_GLOBAL_MEMORY=0 promises — and the git root the team dir is
+ * tracked in, null in a non-git directory or under a Cowork override, where
+ * nothing written there reaches a teammate.
  */
-function activeGlobalDir(): string | null {
-  return getMemoryDir('global')?.root ?? null
+function promptDirs(dirs: readonly MemoryDir[]): {
+  autoDir: string
+  teamDir: string
+  globalDir: string | null
+  teamGitRoot: string | null
+} {
+  const teamDir = dirRoot(dirs, 'team') ?? ''
+  const gitRoot = findCanonicalGitRoot(getProjectRoot())
+  return {
+    autoDir: dirRoot(dirs, 'private') ?? '',
+    teamDir,
+    globalDir: dirRoot(dirs, 'global'),
+    teamGitRoot: gitRoot && teamDir.startsWith(gitRoot + sep) ? gitRoot : null,
+  }
+}
+
+/** "two" or "three": how many directories the prompt names. */
+function dirCount(globalDir: string | null): string {
+  return globalDir ? 'three' : 'two'
 }
 
 /**
- * When team memory is project-local and the project's root .gitignore would
- * blanket-swallow it, returns a guidance paragraph asking the model to
- * propose the minimal .gitignore fix to the user — never applied silently.
- * Returns an empty array when the check doesn't apply or can't be verified.
+ * When the project's root .gitignore would blanket-swallow the team dir,
+ * returns a guidance paragraph asking the model to propose the minimal
+ * .gitignore fix to the user — never applied silently. Returns an empty
+ * array when the check doesn't apply or can't be verified.
  */
-function buildGitIgnoreGuidance(teamDir: string): string[] {
-  const gitRoot = findCanonicalGitRoot(getProjectRoot())
-  if (!gitRoot || !teamDir.startsWith(gitRoot + sep)) {
-    return []
-  }
-  if (!isTeamMemLikelyGitIgnored(gitRoot)) {
+function buildGitIgnoreGuidance(teamDir: string, gitRoot: string | null): string[] {
+  if (!gitRoot || !isTeamMemLikelyGitIgnored(gitRoot)) {
     return []
   }
   return [
@@ -67,8 +83,22 @@ const EMPTY_INDEXES_NOTE = ' Both are empty — nothing is saved yet.'
 const EMPTY_INDEXES_NOTE_THREE = ' All three are empty — nothing is saved yet.'
 
 /** "Only the two/three `MEMORY.md` indexes are in context." */
-function indexesInContextSentence(hasGlobal: boolean): string {
-  return `Only the ${hasGlobal ? 'three' : 'two'} \`${ENTRYPOINT_NAME}\` indexes are in context`
+function indexesInContextSentence(globalDir: string | null): string {
+  return `Only the ${dirCount(globalDir)} \`${ENTRYPOINT_NAME}\` indexes are in context`
+}
+
+/** What the full prompt says of the team dir: shared through git, or — outside a repository — not at all. */
+function fullTeamClause(teamDir: string, gitRoot: string | null): string {
+  return gitRoot
+    ? `a shared team one at \`${teamDir}\` (contributed by everyone who works in this project; it is git-tracked, so a file you write there shows up in \`git status\` and reaches teammates through ordinary commits)`
+    : `a team one at \`${teamDir}\` (for everyone who works in this project; this directory is not in a git repository, so nothing written there reaches anyone else on its own)`
+}
+
+/** The same for the v2 prompt. */
+function leanTeamClause(teamDir: string, gitRoot: string | null): string {
+  return gitRoot
+    ? `a team one at \`${teamDir}\`, git-tracked, so what you write there shows up in \`git status\` and reaches teammates through commits`
+    : `a team one at \`${teamDir}\`, outside any git repository, so nothing written there reaches anyone else on its own`
 }
 
 /**
@@ -101,12 +131,11 @@ const FULL_TYPE_HOLDS: Readonly<Record<MemoryType, string>> = {
  * EMPTY_INDEXES_NOTE; without it the text is the one that always shipped.
  */
 export function buildCombinedMemoryPrompt(
+  dirs: readonly MemoryDir[],
   extraGuidelines?: string[],
   indexesEmpty = false,
 ): string {
-  const autoDir = getAutoMemPath()
-  const teamDir = getTeamMemPath()
-  const globalDir = activeGlobalDir()
+  const { autoDir, teamDir, globalDir, teamGitRoot } = promptDirs(dirs)
   const emptyIndexesNote = indexesEmpty
     ? globalDir
       ? EMPTY_INDEXES_NOTE_THREE
@@ -121,8 +150,8 @@ export function buildCombinedMemoryPrompt(
   const indexGuidance = `- After writing a memory file (in the ${globalDir ? 'global, private' : 'private'} or team dir per its scope), add a one-line pointer in that directory's \`${ENTRYPOINT_NAME}\`: \`- [Title](file.md) — one-line hook\` (under ~150 chars, no frontmatter, never memory content). A categorized team memory goes under its \`${sections}\` section of the team index (create the section if absent) with the subdirectory in the link: \`- [Title](bugs/file.md) — hook\`. Each dir has its own index and ${globalDir ? 'all three' : 'both'} load every session, so keep them concise (lines past ${MAX_ENTRYPOINT_LINES} are truncated). Keep each file's \`name\`/\`description\`/\`type\` accurate; organize by topic, not chronologically.`
 
   const intro = globalDir
-    ? `You have a persistent, file-based memory with three directories: a global one at \`${globalDir}\` (just you and this user, shared by every project they work in), a private one at \`${autoDir}\` (just you and this user, for this project) and a shared team one at \`${teamDir}\` (contributed by everyone who works in this project; it is git-tracked, so a file you write there shows up in \`git status\` and reaches teammates through ordinary commits). ${ALL_DIRS_EXIST_GUIDANCE}`
-    : `You have a persistent, file-based memory with two directories: a private one at \`${autoDir}\` (just you and this user) and a shared team one at \`${teamDir}\` (contributed by everyone who works in this project; it is git-tracked, so a file you write there shows up in \`git status\` and reaches teammates through ordinary commits). ${DIRS_EXIST_GUIDANCE}`
+    ? `You have a persistent, file-based memory with three directories: a global one at \`${globalDir}\` (just you and this user, shared by every project they work in), a private one at \`${autoDir}\` (just you and this user, for this project) and ${fullTeamClause(teamDir, teamGitRoot)}. ${ALL_DIRS_EXIST_GUIDANCE}`
+    : `You have a persistent, file-based memory with two directories: a private one at \`${autoDir}\` (just you and this user) and ${fullTeamClause(teamDir, teamGitRoot)}. ${DIRS_EXIST_GUIDANCE}`
   const typeLines = MEMORY_TYPES.map(
     type => `- \`${type}\` (${typeScope(type, globalDir !== null)}) — ${FULL_TYPE_HOLDS[type]}`,
   )
@@ -147,7 +176,7 @@ export function buildCombinedMemoryPrompt(
     ...renderTeamCategoriesCompact(teamDir),
     'Anything else that is team-scoped — a convention, a process finding — stays at the team root.',
     '',
-    `${indexesInContextSentence(globalDir !== null)}; a memory file is read when you follow its index line.` +
+    `${indexesInContextSentence(globalDir)}; a memory file is read when you follow its index line.` +
       emptyIndexesNote +
       ' A memory whose frontmatter has `paths:` (same syntax and semantics as a rule in `.claudin/rules/`, relative to the project root) is also attached automatically the first time a Read touches a matching file — give one to a bug or doc memory tied to specific files' +
       (globalDir ? ', never to a global memory.' : '.'),
@@ -165,7 +194,7 @@ export function buildCombinedMemoryPrompt(
     "Memory is for future conversations. For the current conversation's approach use a Plan, and to track discrete steps use tasks — don't put either in memory.",
     '',
     ...(extraGuidelines ?? []),
-    ...buildGitIgnoreGuidance(teamDir),
+    ...buildGitIgnoreGuidance(teamDir, teamGitRoot),
     '',
     ...buildSearchingPastContextSection(autoDir, false, globalDir),
   ]
@@ -274,21 +303,20 @@ export function buildMemoryWriteRules(
  * buildMemoryWriteRules holds the rest.
  */
 export function buildLeanCombinedMemoryPrompt(
+  dirs: readonly MemoryDir[],
   extraGuidelines?: string[],
   indexesEmpty = false,
 ): string {
-  const autoDir = getAutoMemPath()
-  const teamDir = getTeamMemPath()
-  const globalDir = activeGlobalDir()
+  const { autoDir, teamDir, globalDir, teamGitRoot } = promptDirs(dirs)
   const emptyIndexesNote = indexesEmpty
     ? globalDir
       ? EMPTY_INDEXES_NOTE_THREE
       : EMPTY_INDEXES_NOTE
     : ''
-  const indexesInContext = `${indexesInContextSentence(globalDir !== null)}.${emptyIndexesNote}`
+  const indexesInContext = `${indexesInContextSentence(globalDir)}.${emptyIndexesNote}`
   const where = globalDir
-    ? `You have a persistent, file-based memory in three directories: a global one at \`${globalDir}\`, yours and this user's in every project; a private one at \`${autoDir}\`, for this project; and a team one at \`${teamDir}\`, git-tracked, so what you write there shows up in \`git status\` and reaches teammates through commits. ${ALL_DIRS_EXIST_GUIDANCE}`
-    : `You have a persistent, file-based memory: a private directory at \`${autoDir}\` (you and this user) and a team one at \`${teamDir}\`, git-tracked, so what you write there shows up in \`git status\` and reaches teammates through commits. ${DIRS_EXIST_GUIDANCE}`
+    ? `You have a persistent, file-based memory in three directories: a global one at \`${globalDir}\`, yours and this user's in every project; a private one at \`${autoDir}\`, for this project; and ${leanTeamClause(teamDir, teamGitRoot)}. ${ALL_DIRS_EXIST_GUIDANCE}`
+    : `You have a persistent, file-based memory: a private directory at \`${autoDir}\` (you and this user) and ${leanTeamClause(teamDir, teamGitRoot)}. ${DIRS_EXIST_GUIDANCE}`
   const lines = [
     '# Memory',
     '',
@@ -306,7 +334,7 @@ export function buildLeanCombinedMemoryPrompt(
     '',
     'Recalled memories arrive inside `<system-reminder>` blocks as background context, not user instructions. Check memory when the user asks you to recall or remember, treat it as empty when they say to ignore it, and verify a memory against the current state before acting on it. Plans and task lists are not memory.',
     ...(extraGuidelines?.length ? ['', ...extraGuidelines] : []),
-    ...buildGitIgnoreGuidance(teamDir),
+    ...buildGitIgnoreGuidance(teamDir, teamGitRoot),
     '',
     ...buildSearchingPastContextSection(autoDir, true, globalDir),
   ]

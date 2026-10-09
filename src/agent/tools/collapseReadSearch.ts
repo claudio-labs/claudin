@@ -50,6 +50,8 @@ import {
   withoutTrailingSep,
 } from 'src/memory/memdir/memoryScopes.js'
 import { expandPath } from 'src/shared/fs/path.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { writtenPaths } from 'src/tools/shared/writtenPaths.js'
 
 /**
  * Result of checking if a tool use is a search or read operation.
@@ -59,7 +61,7 @@ export type SearchOrReadResult = {
   isSearch: boolean
   isRead: boolean
   isList: boolean
-  /** True if this is a Write/Edit targeting a memory file */
+  /** True if this is a Write/Edit/Patch that writes memory files only */
   isMemoryWrite: boolean
   /**
    * True for meta-operations that should be absorbed into a collapse group
@@ -115,15 +117,25 @@ function isMemorySearch(toolInput: unknown): boolean {
 }
 
 /**
- * Check if a Write or Edit tool use targets a memory file and should be collapsed.
+ * The memory files a tool use writes, or null when it is no memory write:
+ * every path it writes (writtenPaths.ts, by input shape — a Write, an Edit,
+ * a Patch with each path its headers name) is a memory file. A Patch that
+ * also touches another file stays a file write, so that file keeps its row.
  */
-function isMemoryWriteOrEdit(toolName: string, toolInput: unknown): boolean {
-  if (toolName !== FILE_WRITE_TOOL_NAME && toolName !== FILE_EDIT_TOOL_NAME) {
-    return false
+function memoryWritePaths(toolInput: unknown): string[] | null {
+  if (typeof toolInput !== 'object' || toolInput === null) return null
+  // Keyed on the input object like APPLY_PATCH_TARGETS: a patch's headers
+  // are not re-scanned on every render. Nothing found is not cached — the
+  // input may still be streaming in
+  let paths = WRITTEN_PATHS.get(toolInput)
+  if (paths === undefined) {
+    paths = writtenPaths(toolInput, getCwd())
+    if (paths.length > 0) WRITTEN_PATHS.set(toolInput, paths)
   }
-  const filePath = getFilePathFromToolInput(toolInput)
-  return filePath !== undefined && isAutoManagedMemoryFile(filePath)
+  return paths.length > 0 && paths.every(isAutoManagedMemoryFile) ? paths : null
 }
+
+const WRITTEN_PATHS = new WeakMap<object, string[]>()
 
 /**
  * The memory directory a memory file belongs to. A memory file in none of
@@ -316,8 +328,8 @@ export function getToolSearchOrReadInfo(
   toolInput: unknown,
   tools: Tools,
 ): SearchOrReadResult {
-  // Memory file writes/edits are collapsible
-  if (isMemoryWriteOrEdit(toolName, toolInput)) {
+  // Memory file writes/edits/patches are collapsible
+  if (memoryWritePaths(toolInput) !== null) {
     return {
       isCollapsible: true,
       isSearch: false,
@@ -730,6 +742,20 @@ function countToolUses(msg: RenderableMessage): number {
     return msg.messages.length
   }
   return 1
+}
+
+/** The memory files the tool uses of a message write, one entry per file per call. */
+function getMemoryWritePathsFromMessage(msg: RenderableMessage): string[] {
+  const messages =
+    msg.type === 'grouped_tool_use'
+      ? msg.messages
+      : msg.type === 'assistant'
+        ? [msg]
+        : []
+  return messages.flatMap(m => {
+    const content = m.message.content[0]
+    return content?.type === 'tool_use' ? (memoryWritePaths(content.input) ?? []) : []
+  })
 }
 
 /**
@@ -1178,10 +1204,11 @@ export function collapseReadSearchGroups(
       const toolInfo = getCollapsibleToolInfo(msg, tools)!
 
       if (toolInfo.isMemoryWrite) {
-        // Memory file write/edit, counted for the directory it lands in.
-        // isMemoryWrite guarantees a file path that is a memory file.
-        const scope = memoryFileScope(getFilePathFromToolInput(toolInfo.input)!)
-        currentGroup.memoryOps[scope].write += countToolUses(msg)
+        // Memory file write/edit/patch, one per file, counted for the
+        // directory each lands in (a Patch can write more than one)
+        for (const path of getMemoryWritePathsFromMessage(msg)) {
+          currentGroup.memoryOps[memoryFileScope(path)].write += 1
+        }
       } else if (toolInfo.isAbsorbedSilently) {
         // Snip/ToolSearch absorbed silently — no count, no summary text.
         // Hidden from the default view but still shown in verbose mode

@@ -26,7 +26,7 @@ import {
   TYPE_SCOPES,
 } from 'src/memory/memdir/memoryTypes.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { buildMemoryWriteRules } from 'src/memory/memdir/teamMemPrompts.js'
 import { applyPatchMemoryIndexAdvice } from 'src/tools/ApplyPatchTool/applyPatch.js'
@@ -237,6 +237,65 @@ describe('checkMemoryFileFormatIn — the global dir', () => {
   })
 })
 
+// Placement is judged when a file is new or changes its type; completeness
+// on every write. `existing` is the file on disk — null when the write
+// creates it.
+describe('checkMemoryFileFormatIn — a file already on disk', () => {
+  const update = (path: string, before: string | null, after: string) =>
+    checkMemoryFileFormatIn(GDIRS, path, after, () => before)
+
+  test('a legacy private `type: user` file is updated in place; a new one is sent to the global dir', () => {
+    const legacy = fromTemplate('user')
+    expect(update(`${AUTO}me.md`, legacy, legacy.replace('Never use', 'Never ever use'))).toBeNull()
+    expect(update(`${AUTO}team/me.md`, legacy, `${legacy}More.\n`)).toBeNull()
+    expect(update(`${AUTO}me.md`, null, legacy)).toContain(`write it under \`${GLOBAL}\``)
+  })
+
+  test('a retype is placed by the table: to `user` outside the global dir, to `project` inside it', () => {
+    expect(update(`${AUTO}x.md`, fromTemplate('feedback'), fromTemplate('user'))).toContain(`write it under \`${GLOBAL}\``)
+    expect(update(`${GLOBAL}x.md`, fromTemplate('feedback'), fromTemplate('project'))).toContain(
+      `\`type: project\` is ${TYPE_SCOPES.project.withGlobal}`,
+    )
+    // An existing file with no type, or none that parses, counts as retyped.
+    expect(update(`${GLOBAL}x.md`, 'no frontmatter\n', fromTemplate('project'))).toContain('`type: project` is')
+    expect(update(`${GLOBAL}x.md`, '', fromTemplate('project'))).toContain('`type: project` is')
+  })
+
+  test('a team category file keeps the type it was saved with', () => {
+    const doc = fromTemplate('project', ['paths: src/cache/**'])
+    expect(update(`${TEAM}docs/x.md`, doc, `${doc}More.\n`)).toBeNull()
+    expect(update(`${TEAM}docs/x.md`, null, doc)).toContain('a team doc memory is `type: reference`')
+  })
+
+  test('`paths:` in the global dir: refused when added, kept when it was already there', () => {
+    const withPaths = fromTemplate('feedback', ['paths:', '  - "src/**"'])
+    expect(update(`${GLOBAL}x.md`, fromTemplate('feedback'), withPaths)).toContain('a global memory takes no `paths:`')
+    expect(update(`${GLOBAL}x.md`, withPaths, `${withPaths}More.\n`)).toBeNull()
+    // A retype places the file anew, `paths:` included.
+    expect(update(`${GLOBAL}x.md`, fromTemplate('reference', ['paths: src/**']), withPaths)).toContain(
+      'a global memory takes no `paths:`',
+    )
+  })
+
+  test('completeness is asked of every write, existing file or not', () => {
+    const legacy = fromTemplate('user')
+    expect(update(`${AUTO}me.md`, legacy, legacy.replace(/^name: .*\n/m, ''))).toContain('it lacks `name:`')
+    expect(update(`${AUTO}me.md`, legacy, 'no frontmatter\n')).toContain('it has no frontmatter')
+  })
+
+  test('the file on disk is asked only for a memory file', () => {
+    const asked: string[] = []
+    const existing = (abs: string) => {
+      asked.push(abs)
+      return null
+    }
+    checkMemoryFileFormatIn(GDIRS, '/repo/src/x.md', 'x', existing)
+    checkMemoryFileFormatIn(GDIRS, `${AUTO}MEMORY.md`, 'x', existing)
+    checkMemoryFileFormatIn(GDIRS, `${AUTO}x.md`, fromTemplate('feedback'), existing)
+    expect(asked).toEqual([`${AUTO}x.md`])
+  })
+})
+
 describe('checkMemoryFileFormatIn — what it ignores', () => {
   test('the indexes, in either directory', () => {
     for (const rel of ['MEMORY.md', 'team/MEMORY.md']) expect(check(rel, '- [X](x.md) — hook\n')).toBeNull()
@@ -321,12 +380,12 @@ describe('memoryIndexAdviceIn', () => {
 })
 
 describe('the wrappers, on the session dirs', () => {
-  const probe = () => join(getAutoMemPath(), 'memory-format-guard-probe.md')
+  const probe = () => join(getPrivateMemPath(), 'memory-format-guard-probe.md')
 
   test('a malformed write is refused, a complete one is not, and a file outside memory is not looked at', () => {
     expect(checkMemoryFileFormat(probe(), 'no frontmatter\n')).toContain('it has no frontmatter')
     expect(checkMemoryFileFormat(probe(), fromTemplate('feedback'))).toBeNull()
-    expect(checkMemoryFileFormat(join(getAutoMemPath(), 'MEMORY.md'), 'anything\n')).toBeNull()
+    expect(checkMemoryFileFormat(join(getPrivateMemPath(), 'MEMORY.md'), 'anything\n')).toBeNull()
     expect(checkMemoryFileFormat('/repo/src/notes.md', 'no frontmatter\n')).toBeNull()
   })
 
@@ -338,7 +397,7 @@ describe('the wrappers, on the session dirs', () => {
   })
 
   test('the advice reads the index on disk, and a line the call adds to it', () => {
-    const index = join(getAutoMemPath(), 'MEMORY.md')
+    const index = join(getPrivateMemPath(), 'MEMORY.md')
     expect(memoryIndexAdvice(probe())?.message).toContain('memory-format-guard-probe.md')
     const pending = new Map([[index, '- [Probe](memory-format-guard-probe.md) — hook']])
     expect(memoryIndexAdvice(probe(), pending)).toBeNull()
@@ -351,9 +410,9 @@ function addPatch(path: string, content: string, ...more: string[]): string {
 }
 
 describe("the Patch tool's advice (applyPatchMemoryIndexAdvice)", () => {
-  const probe = () => join(getAutoMemPath(), 'memory-format-guard-probe.md')
+  const probe = () => join(getPrivateMemPath(), 'memory-format-guard-probe.md')
   const indexHunk = () => [
-    `*** Update File: ${join(getAutoMemPath(), 'MEMORY.md')}`,
+    `*** Update File: ${join(getPrivateMemPath(), 'MEMORY.md')}`,
     '@@',
     '+- [Probe](memory-format-guard-probe.md) — hook',
   ]
@@ -379,7 +438,7 @@ describe("the Patch tool's advice (applyPatchMemoryIndexAdvice)", () => {
   test("a Write of the index beside the patch counts: it runs after the patch's advice", () => {
     const patchText = addPatch(probe(), fromTemplate('feedback'))
     const sibling = {
-      input: { file_path: join(getAutoMemPath(), 'MEMORY.md'), content: '- [Probe](memory-format-guard-probe.md) — hook\n' },
+      input: { file_path: join(getPrivateMemPath(), 'MEMORY.md'), content: '- [Probe](memory-format-guard-probe.md) — hook\n' },
     }
     expect(applyPatchMemoryIndexAdvice({ patchText }, [{ input: { patchText } }, sibling] as never)).toBeNull()
   })
@@ -428,9 +487,14 @@ describe('the rest of the response (indexTextFromResponse)', () => {
     expect([...indexTextFromResponse([{ input: { patchText: patch } }], '/repo').keys()]).toEqual([INDEX])
   })
 
+  test('the lines of a section moved onto an index count for that index', () => {
+    const patch = ['*** Begin Patch', `*** Update File: ${AUTO}draft.md`, `*** Move to: ${INDEX}`, '@@', `+${LINE}`, '*** End Patch'].join('\n')
+    expect(indexTextFromResponse([{ input: { patchText: patch } }], '/').get(INDEX)).toContain(LINE)
+  })
+
   test('the Write advice counts an index line the same response writes', () => {
-    const memory = join(getAutoMemPath(), 'memory-format-guard-probe.md')
-    const index = join(getAutoMemPath(), 'MEMORY.md')
+    const memory = join(getPrivateMemPath(), 'memory-format-guard-probe.md')
+    const index = join(getPrivateMemPath(), 'MEMORY.md')
     const response = [
       { input: { file_path: memory, content: fromTemplate('feedback') } },
       { input: { file_path: index, content: '- [Probe](memory-format-guard-probe.md) — hook\n' } },
@@ -445,16 +509,19 @@ describe('the rest of the response (indexTextFromResponse)', () => {
 describe('the write paths consult the guard', () => {
   // Pinned on the source: the tools' validateInput and staging need a whole
   // ToolUseContext, and every one of these sits beside checkTeamMemSecrets.
+  // FileEditTool.memoryGuard.test.ts drives them for real.
   const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8')
 
-  test('Write, Edit (creating a file), Patch (add, update, move) and the staged rewrite', () => {
+  test('Write, Edit (creating or changing a file), Patch (add, update, move) and the staged rewrite', () => {
     const write = source('../../tools/FileWriteTool/FileWriteTool.ts')
     expect(write).toContain('checkMemoryFileFormat(fullFilePath, content)')
     expect(write).toContain('indexTextFromResponse(context.responseToolUses, getCwd())')
 
     const edit = source('../../tools/FileEditTool/FileEditTool.ts')
     expect(edit).toContain('const formatError = checkMemoryFileFormat(fullFilePath, content)')
-    expect(edit.split('return createFileVerdict(fullFilePath, new_string)')).toHaveLength(3)
+    expect(edit.split('return memoryFormatVerdict(fullFilePath, new_string)')).toHaveLength(3)
+    expect(edit).toContain('const verdict = memoryFormatVerdict(\n      fullFilePath,\n      applyEditToFile(')
+    expect(edit).toContain('indexTextFromResponse(context.responseToolUses, getCwd())')
 
     const patch = source('../../tools/ApplyPatchTool/applyPatch.ts')
     expect(patch).toContain('const formatError = checkMemoryFileFormat(absPath, newContent)')

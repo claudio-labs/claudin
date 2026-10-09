@@ -6,7 +6,7 @@ import {
   withoutTrailingSep,
 } from 'src/memory/memdir/memoryScopes.js'
 import {
-  getAutoMemPath,
+  getPrivateMemPath,
   getGlobalMemPath,
   isAutoMemoryEnabled,
   isGlobalMemoryEnabled,
@@ -40,7 +40,7 @@ function rootOf(scope: MemoryScope): string {
     case 'global':
       return getGlobalMemPath()
     case 'private':
-      return getAutoMemPath()
+      return getPrivateMemPath()
     case 'team':
       return getTeamMemPath()
   }
@@ -141,8 +141,13 @@ export function promptRoots(dirs: readonly MemoryDir[]): {
   team: string
 } {
   const root = (scope: MemoryScope): string | null => {
-    const dir = dirs.find(d => d.scope === scope)
-    return dir ? withoutTrailingSep(dir.root) : null
+    const found = dirRoot(dirs, scope)
+    return found === null ? null : withoutTrailingSep(found)
   }
   return { global: root('global'), private: root('private') ?? '', team: root('team') ?? '' }
+}
+
+/** `scope`'s root in `dirs` (trailing separator), or null when it is not among them. */
+export function dirRoot(dirs: readonly MemoryDir[], scope: MemoryScope): string | null {
+  return dirs.find(dir => dir.scope === scope)?.root ?? null
 }

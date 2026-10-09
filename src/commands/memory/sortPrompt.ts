@@ -23,11 +23,16 @@ const KB = 1024
  *
  * Runs in the main conversation (local-jsx command with shouldQuery), so each
  * `git mv` goes through the normal Bash permission prompt — that prompt is the
- * human veto per file; keep the instructions on `git mv`, never `mv`.
+ * human veto per file; keep the instructions on `git mv`, never `mv`. What is
+ * NOT prompted: the frontmatter keys added to a moved file and the index
+ * edits, which go through the memory carve-out (internalPaths.ts) like any
+ * memory write. The prompt says so, and asks for them in the report.
  *
  * With the global dir on it also promotes what is about the user from the
  * private dir to the global one — the migration for memories saved before
- * the global dir existed.
+ * the global dir existed. There the prompted steps are `mv -n` (a move, never
+ * over a file another project saved) and `rm` (the private half of a merge);
+ * a split's new global file and a merge's edit are written without a prompt.
  */
 export function buildMemorySortPrompt(dirs: readonly MemoryDir[]): string {
   const roots = promptRoots(dirs)
@@ -74,6 +79,8 @@ For each file that moves:
 
 Do not rewrite the body. Do not rename the file. Do not merge, split or delete anything.
 
+The user approves each \`git mv\`; nothing else here asks them. The frontmatter keys of steps 3 and 4 and the index edit of Step 4 are written without a prompt, so the report lists every one of them.
+
 ## Step 4 — Update the index (surgical)
 
 Edit \`${team}/${ENTRYPOINT_NAME}\` in place:
@@ -85,6 +92,7 @@ Edit \`${team}/${ENTRYPOINT_NAME}\` in place:
 ## Step 5 — Report
 
 - **Moved**: \`file.md → category/file.md\`, the one-phrase reason, and any frontmatter you added
+- **Written without a prompt**: every frontmatter key you added, by file, and the index lines you changed
 - **Left at root (ambiguous)**: candidates you considered and why they stayed
 - **Frontmatter you could not fill**: files that looked like a fit but whose \`scope\`/\`impact\` you could not justify from the body
 
@@ -95,10 +103,15 @@ Hard rules:
 }
 
 /**
- * The private → global pass. A move is a `mv` (the permission prompt is the
- * veto); a split or a merge into an existing global memory is a write plus an
- * `rm` of the private file. What moves is what TYPE_SCOPES says goes global;
- * conservative like the team pass, so what is unclear stays private.
+ * The private → global pass. A move is a `mv -n` — the permission prompt is
+ * the veto, and `-n` keeps it from replacing a global memory of the same name
+ * that another project saved; a name collision is compared first, then merged
+ * or moved under a new name. A merge is an edit of the global file plus an
+ * `rm` of the private one; a split is a new global file plus an edit of the
+ * private one. The `mv` and `rm` are prompted; the new file and the edits are
+ * not (memory carve-out), so the prompt says that and asks to report them.
+ * What moves is what TYPE_SCOPES says goes global; conservative like the team
+ * pass, so what is unclear stays private.
  */
 function buildPromotionPart(own: string, global: string): string {
   const scopes = MEMORY_TYPES.map(type => `- \`${type}\`: ${TYPE_SCOPES[type].withGlobal}.`)
@@ -123,11 +136,14 @@ Anything you are not sure about stays and goes in the report — the private dir
 
 ## Step 3 — Move, merge or split
 
-- **Move**: when no global memory records the same fact, \`mv ${own}/<file>.md ${global}/<file>.md\`. The user sees a permission prompt for each move; that is their veto. Then drop a \`paths:\` key from the moved file if it has one — a global memory is not tied to a project's files.
+- **Move**: when no global memory records the same fact, \`mv -n ${own}/<file>.md ${global}/<file>.md\`. Always \`-n\`: the global dir is shared by every project, and a file of that name there is another project's memory, never something to replace. The user sees a permission prompt for each move; that is their veto. Then drop a \`paths:\` key from the moved file if it has one — a global memory is not tied to a project's files.
+- **Name collision**: when \`${global}/<file>.md\` already exists — check before the move, and check again if \`mv -n\` left the private file where it was — read both. If they hold the same fact, it is a merge (next item). If they do not, move the private file under a new name that says what sets it apart: \`mv -n ${own}/<file>.md ${global}/<new-name>.md\`, and point its index line at the new name.
 - **Merge**: when a global memory already records the same fact, fold the private file into it — when the two differ, keep both facts and say so in the report — then delete the private file with \`rm\` (another permission prompt).
-- **Split**: write the part that holds anywhere as a new file in \`${global}\` with its own frontmatter (\`type: user\` or \`feedback\`), then edit the private file down to what stays, changing its \`type\` if the old one no longer fits.
+- **Split**: write the part that holds anywhere as a new file in \`${global}\` with its own frontmatter (\`type: user\` or \`feedback\`) — under a name no global file has — then edit the private file down to what stays, changing its \`type\` if the old one no longer fits.
 
 Never touch the team dir, never change what a memory says, never invent a fact.
+
+**What the user approves, and what they do not.** Each \`mv\` and each \`rm\` goes through a Bash permission prompt — that is the user's veto, file by file. Writes into the memory directories do not: a split's new global file, the edit that folds a merge into a global memory, the edit that cuts a split's private file down, the dropped \`paths:\` key and the index edits of Step 4 are all written without a prompt. Keep them to exactly what this step describes, and list every one in the report so the user can review it afterwards.
 
 ## Step 4 — Update both indexes (surgical)
 
@@ -138,8 +154,10 @@ Never touch the team dir, never change what a memory says, never invent a fact.
 ## Step 5 — Report
 
 - **Moved to global**: \`file.md\` and the one-phrase reason
+- **Renamed on a collision**: \`file.md → new-name.md\`, and what sets it apart from the global file of the old name
 - **Merged into a global memory**: which into which, and any difference you kept
 - **Split**: what went global, what stayed
+- **Written without a prompt**: every file you created or edited in either directory, the indexes included
 - **Left private (ambiguous)**: candidates you considered and why they stayed
 
 A second run over a sorted directory moves nothing — say so; that is the correct outcome.`

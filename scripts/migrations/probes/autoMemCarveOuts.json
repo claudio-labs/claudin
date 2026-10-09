@@ -4,12 +4,12 @@
   "probes": [
     {
       "name": "a memory file is writable with no prompt",
-      "find": "  if (writeScope !== null && !hasAutoMemPathOverride()) {\n",
+      "find": "  if (writeScope !== null && !hasMemoryPathOverride()) {\n",
       "replace": "  if (false) {\n"
     },
     {
       "name": "the Cowork override gets no write carve-out",
-      "find": "  if (writeScope !== null && !hasAutoMemPathOverride()) {\n",
+      "find": "  if (writeScope !== null && !hasMemoryPathOverride()) {\n",
       "replace": "  if (writeScope !== null) {\n"
     },
     {

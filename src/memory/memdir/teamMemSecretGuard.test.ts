@@ -6,7 +6,7 @@
  */
 import { describe, expect, test } from 'bun:test'
 import { join, sep } from 'path'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { getTeamMemPath, isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
@@ -19,7 +19,7 @@ const GITHUB_PAT = ['ghp', 'x'.repeat(36)].join('_')
 
 describe('isTeamMemPath', () => {
   const teamDir = getTeamMemPath()
-  const memDir = getAutoMemPath()
+  const memDir = getPrivateMemPath()
 
   test('the team root and its category subdirectories are in', () => {
     expect(isTeamMemPath(join(teamDir, 'MEMORY.md'))).toBe(true)
@@ -87,6 +87,6 @@ describe('checkTeamMemSecrets', () => {
 
   test('lets clean team content through, and never scans outside the team dir', () => {
     expect(checkTeamMemSecrets(join(getTeamMemPath(), 'x.md'), 'Use pnpm.\n')).toBeNull()
-    expect(checkTeamMemSecrets(join(getAutoMemPath(), 'private.md'), `token: ${GITHUB_PAT}\n`)).toBeNull()
+    expect(checkTeamMemSecrets(join(getPrivateMemPath(), 'private.md'), `token: ${GITHUB_PAT}\n`)).toBeNull()
   })
 })

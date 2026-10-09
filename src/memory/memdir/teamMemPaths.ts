@@ -1,16 +1,16 @@
 import { readFileSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { join, resolve, sep } from 'path'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 
 /**
- * Returns the team memory path: <autoMemPath>/team/
- * Lives as a subdirectory of the auto-memory directory, scoped per-project.
- * autoMemPath itself may be project-local (<gitRoot>/.claudin/memory/) or
- * the legacy global path — see getAutoMemPath() in paths.ts.
+ * Returns the team memory path: <privateMemPath>/team/
+ * Lives as a subdirectory of the private memory directory, scoped per-project.
+ * That directory may be project-local (<gitRoot>/.claudin/memory/) or
+ * the legacy per-project one under the config home — see getPrivateMemPath().
  */
 export function getTeamMemPath(): string {
-  return (join(getAutoMemPath(), 'team') + sep).normalize('NFC')
+  return (join(getPrivateMemPath(), 'team') + sep).normalize('NFC')
 }
 
 const BLANKET_CLAUDIN_IGNORE_RE = /^\/?\.claudin\/?$/

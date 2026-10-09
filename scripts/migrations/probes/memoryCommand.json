@@ -1,0 +1,103 @@
+{
+  "test": [
+    "src/commands/memory/sortPrompt.test.ts",
+    "src/commands/memory/tidy.test.ts",
+    "src/memory/ui/memoryDirRows.test.ts",
+    "src/memory/ui/memoryFileSelectorPaths.test.ts"
+  ],
+  "source": "src/commands/memory/sortPrompt.ts",
+  "probes": [
+    {
+      "name": "sort moves into the global dir with mv -n, never over another project's file",
+      "find": "\\`mv -n ${own}/<file>.md ${global}/<file>.md\\`",
+      "replace": "\\`mv ${own}/<file>.md ${global}/<file>.md\\`"
+    },
+    {
+      "name": "a name collision has its own step",
+      "find": "- **Name collision**: when",
+      "replace": "- **Collision**: when"
+    },
+    {
+      "name": "the prompt says which writes go without a prompt",
+      "find": "are all written without a prompt",
+      "replace": "are all reviewed"
+    },
+    {
+      "name": "the team part says the same of its unprompted writes",
+      "find": "The user approves each \\`git mv\\`; nothing else here asks them.",
+      "replace": ""
+    },
+    {
+      "name": "the subcommands are derived from MEMORY_SCOPES",
+      "source": "src/commands/memory/tidy.ts",
+      "find": "export const SUBCOMMANDS = ['tidy', 'sort', ...MEMORY_SCOPES] as const",
+      "replace": "export const SUBCOMMANDS = ['tidy', 'sort', 'private', 'team'] as const"
+    },
+    {
+      "name": "the argument hint is the subcommand list",
+      "source": "src/commands/memory/index.ts",
+      "find": "  argumentHint: `[tidy|sort|${scopes}]`,",
+      "replace": "  argumentHint: '[tidy|sort|private|team]',"
+    },
+    {
+      "name": "the description says sort promotes to the global memory",
+      "source": "src/commands/memory/index.ts",
+      "find": " and promotes what is about you to the global memory`,",
+      "replace": "`,"
+    },
+    {
+      "name": "/memory global off names CLAUDIN_GLOBAL_MEMORY=0",
+      "source": "src/commands/memory/tidy.ts",
+      "find": "    case 'env':\n      return `${title} is off: CLAUDIN_GLOBAL_MEMORY=0 is set.",
+      "replace": "    case 'env':\n      return `${title} is off."
+    },
+    {
+      "name": "/memory global off names a Cowork override",
+      "source": "src/commands/memory/tidy.ts",
+      "find": "    case 'cowork-override':\n      return `${title} is off: a Cowork/SDK caller set CLAUDE_COWORK_MEMORY_PATH_OVERRIDE,",
+      "replace": "    case 'cowork-override':\n      return `${title} is off,"
+    },
+    {
+      "name": "/memory global off names the nesting",
+      "source": "src/commands/memory/tidy.ts",
+      "find": "are one inside the other, so a memory would belong to both.",
+      "replace": "are elsewhere."
+    },
+    {
+      "name": "the upgrade count skips the team dir inside the private one",
+      "source": "src/memory/ui/memoryDirRows.ts",
+      "find": "      !isNestedEntry(header) &&\n",
+      "replace": ""
+    },
+    {
+      "name": "the upgrade count is the types TYPE_SCOPES keeps global-only",
+      "source": "src/memory/ui/memoryDirRows.ts",
+      "find": "TYPE_SCOPES[header.type].global === 'only',",
+      "replace": "TYPE_SCOPES[header.type].global !== 'never',"
+    },
+    {
+      "name": "the private row points at /memory sort",
+      "source": "src/memory/ui/memoryDirRows.ts",
+      "find": "  return promotable > 0\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "the user row is labelled instructions",
+      "source": "src/memory/ui/MemoryFileSelector.tsx",
+      "find": "      label = USER_INSTRUCTIONS_LABEL;",
+      "replace": "      label = \"User memory\";"
+    },
+    {
+      "name": "the project row is labelled instructions",
+      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
+      "find": "export const PROJECT_INSTRUCTIONS_LABEL = 'Project instructions'",
+      "replace": "export const PROJECT_INSTRUCTIONS_LABEL = 'Project memory'"
+    },
+    {
+      "name": "the Opened line names the project instructions",
+      "source": "src/memory/ui/memoryFileSelectorPaths.ts",
+      "find": "  if (path === paths.project) return PROJECT_INSTRUCTIONS_LABEL.toLowerCase()\n",
+      "replace": ""
+    }
+  ]
+}

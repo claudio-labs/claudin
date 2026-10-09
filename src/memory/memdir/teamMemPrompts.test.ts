@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test, mock } from 'bun:test'
 import { readFileSync } from 'fs'
+import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
@@ -7,7 +8,7 @@ import {
   TYPE_SCOPES,
 } from 'src/memory/memdir/memoryTypes.js'
 
-// buildCombinedMemoryPrompt() composes getAutoMemPath()/getTeamMemPath()
+// buildCombinedMemoryPrompt() composes getPrivateMemPath()/getTeamMemPath()
 // (./paths.js, ./teamMemPaths.js), the project's git root (../utils/git.js,
 // ../bootstrap/state.js), and the .gitignore heuristic
 // (isTeamMemLikelyGitIgnored, already unit-tested in teamMemPaths.test.ts).
@@ -24,7 +25,7 @@ const realTeamMemPaths = { ...(await import('src/memory/memdir/teamMemPaths.js')
 // Bun's mock.module() is process-global and is NOT reverted by mock.restore().
 // importFreshTeamMemPrompts() leaves ./paths.js, ./teamMemPaths.js,
 // ../utils/git.js and ../bootstrap/state.js stubbed (findCanonicalGitRoot,
-// getProjectRoot, getAutoMemPath, isTeamMemLikelyGitIgnored → fakes), which
+// getProjectRoot, getPrivateMemPath, isTeamMemLikelyGitIgnored → fakes), which
 // otherwise bleed into sibling files (paths.test.ts, teamMemPaths.test.ts).
 // Re-install the real modules once the file finishes.
 afterAll(() => {
@@ -62,7 +63,7 @@ async function importFreshTeamMemPrompts(options: {
   const globalDir = options.globalDir ?? null
   mock.module('./paths.js', () => ({
     ...realPaths,
-    getAutoMemPath: () => options.autoDir,
+    getPrivateMemPath: () => options.autoDir,
     isGlobalMemoryEnabled: () => globalDir !== null,
     getGlobalMemPath: () => globalDir ?? '/unused/',
   }))
@@ -79,7 +80,22 @@ async function importFreshTeamMemPrompts(options: {
     ...realGit,
     findCanonicalGitRoot: () => options.gitRoot,
   }))
-  return import(`./teamMemPrompts.js?t=${Date.now()}-${Math.random()}`)
+  const m: typeof import('./teamMemPrompts.js') = await import(
+    `./teamMemPrompts.js?t=${Date.now()}-${Math.random()}`
+  )
+  // The prompts take the session's directories; these are the ones above.
+  const dirs = testMemoryDirs({
+    private: options.autoDir,
+    team: options.teamDir,
+    ...(globalDir === null ? {} : { global: globalDir }),
+  })
+  return {
+    ...m,
+    buildCombinedMemoryPrompt: (extra?: string[], indexesEmpty?: boolean) =>
+      m.buildCombinedMemoryPrompt(dirs, extra, indexesEmpty),
+    buildLeanCombinedMemoryPrompt: (extra?: string[], indexesEmpty?: boolean) =>
+      m.buildLeanCombinedMemoryPrompt(dirs, extra, indexesEmpty),
+  }
 }
 
 describe('buildCombinedMemoryPrompt — .gitignore guidance', () => {
@@ -110,7 +126,7 @@ describe('buildCombinedMemoryPrompt — .gitignore guidance', () => {
     expect(prompt).not.toContain('Heads up')
   })
 
-  test('omits the guidance when team memory is not project-local (legacy global path)', async () => {
+  test('omits the guidance when team memory is not project-local (legacy per-project path)', async () => {
     const { buildCombinedMemoryPrompt } = await importFreshTeamMemPrompts({
       autoDir: '/home/user/.claudin/projects/x/memory/',
       teamDir: '/home/user/.claudin/projects/x/memory/team/',
@@ -149,7 +165,7 @@ describe('the MEMORY.md index line', () => {
   const FIXED_DIRS = {
     autoDir: '/repo/.claudin/memory/',
     teamDir: '/repo/.claudin/memory/team/',
-    gitRoot: null,
+    gitRoot: '/repo',
     likelyIgnored: false,
   }
 
@@ -243,8 +259,8 @@ describe('the MEMORY.md index line', () => {
 
     expect(body).toContain("await import('src/memory/instructions/claudemd.js')")
     expect(body).toContain('areMemoryIndexesEmpty(await getMemoryFiles())')
-    expect(body).toContain('buildLeanCombinedMemoryPrompt(extraGuidelines, indexesEmpty)')
-    expect(body).toContain('buildCombinedMemoryPrompt(extraGuidelines, indexesEmpty)')
+    expect(body).toContain('buildLeanCombinedMemoryPrompt(dirs, extraGuidelines, indexesEmpty)')
+    expect(body).toContain('buildCombinedMemoryPrompt(dirs, extraGuidelines, indexesEmpty)')
   })
 })
 
@@ -257,7 +273,7 @@ describe('the v2 memory section and its write rules', () => {
   const DIRS = {
     autoDir: '/repo/.claudin/memory/',
     teamDir: '/repo/.claudin/memory/team/',
-    gitRoot: null,
+    gitRoot: '/repo',
     likelyIgnored: false,
   }
   const TYPES_LINE = leanTypesLine(false)
@@ -346,7 +362,7 @@ describe('the global memory dir in the prompts', () => {
   const DIRS = {
     autoDir: '/repo/.claudin/memory/',
     teamDir: '/repo/.claudin/memory/team/',
-    gitRoot: null,
+    gitRoot: '/repo',
     likelyIgnored: false,
     globalDir: GLOBAL,
   }
@@ -419,5 +435,30 @@ describe('the global memory dir in the prompts', () => {
       expect(prompt).not.toContain('global')
       expect(prompt).not.toContain('three `MEMORY.md`')
     }
+  })
+})
+
+// Outside a git repository (a non-git directory, a Cowork override) the team
+// dir reaches nobody through commits, so neither prompt may say it does.
+describe('the team dir outside git', () => {
+  const OUTSIDE = {
+    autoDir: '/home/u/.claudin/projects/-scratch/memory/',
+    teamDir: '/home/u/.claudin/projects/-scratch/memory/team/',
+    gitRoot: null,
+    likelyIgnored: false,
+  }
+
+  test('neither prompt calls it git-tracked; both say nothing reaches anyone on its own', async () => {
+    const m = await importFreshTeamMemPrompts(OUTSIDE)
+    for (const prompt of [m.buildCombinedMemoryPrompt(), m.buildLeanCombinedMemoryPrompt()]) {
+      expect(prompt).not.toContain('git-tracked')
+      expect(prompt).not.toContain('git status')
+      expect(prompt).toContain('nothing written there reaches anyone else on its own')
+    }
+  })
+
+  test('a team dir in a repo other than the project root is not taken for tracked', async () => {
+    const m = await importFreshTeamMemPrompts({ ...OUTSIDE, gitRoot: '/repo' })
+    expect(m.buildLeanCombinedMemoryPrompt()).not.toContain('git-tracked')
   })
 })

@@ -74,12 +74,36 @@ describe('buildMemorySortPrompt — promoting to the global dir', () => {
     expect(prompt).toContain("only the `.md` files directly in it are candidates; never `team/`")
   })
 
-  test('moves go through mv, merges through rm, both with the permission prompt as the veto', () => {
+  test('moves go through mv -n, merges through rm, both with the permission prompt as the veto', () => {
     const prompt = buildMemorySortPrompt(WITH_GLOBAL)
-    expect(prompt).toContain('`mv /repo/.claudin/memory/<file>.md /home/u/.claudin/memory/<file>.md`')
+    expect(prompt).toContain('`mv -n /repo/.claudin/memory/<file>.md /home/u/.claudin/memory/<file>.md`')
+    expect(prompt).not.toContain('`mv /repo/')
     expect(prompt).toContain('permission prompt for each move')
     expect(prompt).toContain('delete the private file with `rm`')
     expect(prompt).toContain('drop a `paths:` key from the moved file')
+  })
+
+  test('a name collision is compared, then merged or moved under a new name — never overwritten', () => {
+    const prompt = buildMemorySortPrompt(WITH_GLOBAL)
+    expect(prompt).toContain('**Name collision**: when `/home/u/.claudin/memory/<file>.md` already exists')
+    expect(prompt).toContain('If they hold the same fact, it is a merge')
+    expect(prompt).toContain('`mv -n /repo/.claudin/memory/<file>.md /home/u/.claudin/memory/<new-name>.md`')
+    expect(prompt).toContain('**Renamed on a collision**')
+  })
+
+  test('says which steps the user approves and which are written without a prompt', () => {
+    const prompt = buildMemorySortPrompt(WITH_GLOBAL)
+    expect(prompt).toContain('Each `mv` and each `rm` goes through a Bash permission prompt')
+    expect(prompt).toContain(
+      "a split's new global file, the edit that folds a merge into a global memory, the edit that cuts a split's private file down, the dropped `paths:` key and the index edits of Step 4 are all written without a prompt",
+    )
+    expect(prompt).toContain('**Written without a prompt**: every file you created or edited in either directory')
+  })
+
+  test('the team part says the same of its own unprompted writes', () => {
+    const prompt = buildMemorySortPrompt(TEAM)
+    expect(prompt).toContain('The user approves each `git mv`; nothing else here asks them.')
+    expect(prompt).toContain('**Written without a prompt**: every frontmatter key you added')
   })
 
   test('reads both indexes and edits them surgically', () => {

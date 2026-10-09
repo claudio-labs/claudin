@@ -1,0 +1,66 @@
+{
+  "comment": "The extraction's \"Saved N memories\" line, per memory directory: extractMemories.ts counts the paths into SystemMemorySavedMessage.memoryCounts (memoryCountsOf), memorySaved.ts memorySavedParts renders one part per scope with countMemories, and still reads a persisted message carrying only the old teamCount, or neither.",
+  "test": [
+    "src/agent/ui/messages/memorySaved.test.ts",
+    "src/agent/ui/messages/SystemTextMessage.memorySaved.test.tsx",
+    "src/memory/extract/extractMemories.global.test.ts"
+  ],
+  "source": "src/agent/ui/messages/memorySaved.ts",
+  "probes": [
+    {
+      "name": "each part names its directory",
+      "find": "      return count > 0 ? [countMemories(scope, count)] : []\n",
+      "replace": "      return count > 0 ? [unscoped(count)] : []\n"
+    },
+    {
+      "name": "a directory with nothing saved has no part",
+      "find": "      return count > 0 ? [countMemories(scope, count)] : []\n",
+      "replace": "      return [countMemories(scope, count)]\n"
+    },
+    {
+      "name": "paths the counts leave out are still said",
+      "find": "    return total > scoped ? [...parts, unscoped(total - scoped)] : parts\n",
+      "replace": "    return parts\n"
+    },
+    {
+      "name": "an old message's teamCount is read",
+      "find": "  const team = message.teamCount ?? 0\n",
+      "replace": "  const team = 0\n"
+    },
+    {
+      "name": "memoryCounts wins over an old teamCount",
+      "find": "  if (counts) {\n",
+      "replace": "  if (counts && message.teamCount === undefined) {\n"
+    },
+    {
+      "name": "the line renders the parts",
+      "source": "src/agent/ui/messages/SystemTextMessage.tsx",
+      "find": "    t1 = memorySavedParts(message);\n",
+      "replace": "    t1 = [`${message.writtenPaths.length} memories`];\n"
+    },
+    {
+      "name": "the parts are joined by a comma",
+      "source": "src/agent/ui/messages/SystemTextMessage.tsx",
+      "find": "  const t8 = parts.join(\", \");\n",
+      "replace": "  const t8 = parts.join(\" · \");\n"
+    },
+    {
+      "name": "a path in no directory counts as private",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "    const scope = memoryScopeOf(path) ?? 'private'\n",
+      "replace": "    const scope = memoryScopeOf(path)\n    if (scope === null) continue\n"
+    },
+    {
+      "name": "the counts go by directory",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "    const scope = memoryScopeOf(path) ?? 'private'\n",
+      "replace": "    const scope = 'private' as MemoryScope\n"
+    },
+    {
+      "name": "the extraction attaches the counts",
+      "source": "src/memory/extract/extractMemories.ts",
+      "find": "          memoryCounts: memoryCountsOf(memoryPaths),\n",
+      "replace": ""
+    }
+  ]
+}

@@ -165,7 +165,7 @@ function validateMemoryPath(
     candidate = join(homedir(), rest)
   }
   // normalize() may preserve a trailing separator; strip before adding
-  // exactly one to match the trailing-sep contract of getAutoMemPath()
+  // exactly one to match the trailing-sep contract of getPrivateMemPath()
   const normalized = normalize(candidate).replace(/[/\\]+$/, '')
   if (
     !isAbsolute(normalized) ||
@@ -221,14 +221,14 @@ function nests(a: string, b: string): boolean {
 
 /**
  * Direct override for the full auto-memory directory path via env var.
- * When set, getAutoMemPath() returns this path directly
+ * When set, getPrivateMemPath() returns this path directly
  * instead of computing `{base}/projects/{sanitized-cwd}/memory/`.
  *
  * Used by Cowork to redirect memory to a space-scoped mount where the
  * per-session cwd (which contains the VM process name) would otherwise
  * produce a different project-key for every session.
  */
-function getAutoMemPathOverride(): string | undefined {
+function getMemoryPathOverride(): string | undefined {
   return validateMemoryPath(
     process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE,
     false,
@@ -241,8 +241,8 @@ function getAutoMemPathOverride(): string | undefined {
  * the auto-memory mechanics — e.g. to decide whether to inject the
  * memory prompt when a custom system prompt replaces the default.
  */
-export function hasAutoMemPathOverride(): boolean {
-  return getAutoMemPathOverride() !== undefined
+export function hasMemoryPathOverride(): boolean {
+  return getMemoryPathOverride() !== undefined
 }
 
 /**
@@ -283,9 +283,9 @@ function getAutoMemBase(): string {
  * env vars / settings.json / CLAUDIN_CONFIG_DIR are session-stable in
  * production and covered by per-test cache.clear.
  */
-export const getAutoMemPath = memoize(
+export const getPrivateMemPath = memoize(
   (): string => {
-    const override = getAutoMemPathOverride() ?? memoryDirSetting('autoMemoryDirectory')
+    const override = getMemoryPathOverride() ?? memoryDirSetting('autoMemoryDirectory')
     if (override) {
       return override
     }
@@ -330,7 +330,7 @@ export const getAutoMemPath = memoize(
     // with no prompt — so a `.claudin` symlink planted in the repo could
     // otherwise turn auto-memory into an unprompted read/write primitive
     // against an arbitrary location. Verify the real path is still contained
-    // in the real git root; fall back to the legacy global dir if the check
+    // in the real git root; fall back to the legacy per-project dir if the check
     // fails OR can't be completed — an unverifiable path must be treated as
     // unsafe, not used as-is, since this value gets memoized for the process.
     // Mirrors getPlansDirectory() in src/agent/plans/plans.ts.
@@ -377,7 +377,7 @@ export const getAutoMemPath = memoize(
  * expansion, never the config home). One for the user, shared by every project — it
  * holds what is about the person (`type: user`, feedback that applies in any
  * project), so a new project starts knowing who the user is. Trailing
- * separator, like getAutoMemPath(). Memoized for the same render-path reason,
+ * separator, like getPrivateMemPath(). Memoized for the same render-path reason,
  * keyed on the two variables getMemoryBaseDir() reads.
  */
 export const getGlobalMemPath = memoize(
@@ -389,27 +389,35 @@ export const getGlobalMemPath = memoize(
 )
 
 /**
- * Whether the global memory directory is in use. On whenever auto memory is;
- * CLAUDIN_GLOBAL_MEMORY=0 turns it off, and memory is the private and team
- * directories only, as before it existed — a `type: user` memory is private
- * again. Also off when a Cowork/SDK caller designated the memory directory
- * (it gets exactly that directory), and when a setting makes the global and
- * private directories nest, which would make every file in the inner one
- * belong to both. (A repo rooted at $HOME never gets there: getAutoMemPath
- * moves its private dir instead.)
+ * Why the global memory directory is off, or null while it is on. On
+ * whenever auto memory is; CLAUDIN_GLOBAL_MEMORY=0 turns it off, and memory
+ * is the private and team directories only, as before it existed — a
+ * `type: user` memory is private again. Also off when a Cowork/SDK caller
+ * designated the memory directory (it gets exactly that directory), and when
+ * a setting makes the global and private directories nest, which would make
+ * every file in the inner one belong to both. (A repo rooted at $HOME never
+ * gets there: getPrivateMemPath moves its private dir instead.) `/memory global`
+ * reports the reason; everything else asks isGlobalMemoryEnabled.
  */
-export function isGlobalMemoryEnabled(): boolean {
-  if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) {
-    return false
-  }
-  if (!isAutoMemoryEnabled() || hasAutoMemPathOverride()) {
-    return false
-  }
+export type GlobalMemoryOff =
+  | { reason: 'auto-memory-off' }
+  | { reason: 'env' }
+  | { reason: 'cowork-override' }
+  | { reason: 'nested'; globalDir: string; privateDir: string }
+
+export function globalMemoryOffReason(): GlobalMemoryOff | null {
+  if (!isAutoMemoryEnabled()) return { reason: 'auto-memory-off' }
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) return { reason: 'env' }
+  if (hasMemoryPathOverride()) return { reason: 'cowork-override' }
   const globalDir = getGlobalMemPath()
-  const autoDir = getAutoMemPath()
-  if (nests(globalDir, autoDir)) {
-    logForDebugging(`[memory] global memory off: ${globalDir} and ${autoDir} nest`)
-    return false
+  const privateDir = getPrivateMemPath()
+  if (nests(globalDir, privateDir)) {
+    logForDebugging(`[memory] global memory off: ${globalDir} and ${privateDir} nest`)
+    return { reason: 'nested', globalDir, privateDir }
   }
-  return true
+  return null
+}
+
+export function isGlobalMemoryEnabled(): boolean {
+  return globalMemoryOffReason() === null
 }

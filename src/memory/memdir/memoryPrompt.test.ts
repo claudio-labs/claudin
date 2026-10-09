@@ -21,9 +21,10 @@ import {
   buildMemoryWriteRules,
 } from 'src/memory/memdir/teamMemPrompts.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
-import { getAutoMemPath, getGlobalMemPath, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath, getGlobalMemPath, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import { buildExtractCombinedPrompt } from 'src/memory/extract/prompts.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 
 const DIR = '/tmp/memdir-prompt-test/memory/'
 
@@ -94,7 +95,7 @@ describe('buildCombinedMemoryPrompt (private + team)', () => {
   // Resolves its own directories from paths.ts; this file only asserts on
   // wording, so the real paths are fine (teamMemPrompts.test.ts owns the
   // path-injection coverage).
-  const text = buildCombinedMemoryPrompt()
+  const text = buildCombinedMemoryPrompt(getMemoryDirs())
 
   test('explains the wikilink cue that the shared example shows', () => {
     // MEMORY_FRONTMATTER_EXAMPLE renders `[[their-name]]` in the body
@@ -145,10 +146,10 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
   // apply to it the same way. "Here" is what the model receives: the prompt
   // on every request, and the write rules with the refusal of a memory write
   // that breaks them (memoryFormatGuard.ts).
-  const text = buildLeanCombinedMemoryPrompt()
+  const text = buildLeanCombinedMemoryPrompt(getMemoryDirs())
   const rules = buildMemoryWriteRules(getTeamMemPath())
   const received = `${text}\n${rules}`
-  const full = buildCombinedMemoryPrompt()
+  const full = buildCombinedMemoryPrompt(getMemoryDirs())
 
   test('is shorter than the full prompt by at least a third', () => {
     expect(text.length).toBeLessThan(full.length * (2 / 3))
@@ -303,13 +304,13 @@ describe('the system prompts render typeScope(type, hasGlobal) for every type', 
     process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
     previousProjectRoot = getProjectRoot()
     setProjectRoot(join(root, 'project'))
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
   })
 
   afterAll(() => {
     setProjectRoot(previousProjectRoot)
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
     for (const key of ENV_KEYS) {
       const value = savedEnv.get(key)
@@ -325,8 +326,8 @@ describe('the system prompts render typeScope(type, hasGlobal) for every type', 
       else process.env.CLAUDIN_GLOBAL_MEMORY = '0'
       try {
         expect(isGlobalMemoryEnabled()).toBe(hasGlobal)
-        const lean = buildLeanCombinedMemoryPrompt()
-        const full = buildCombinedMemoryPrompt()
+        const lean = buildLeanCombinedMemoryPrompt(getMemoryDirs())
+        const full = buildCombinedMemoryPrompt(getMemoryDirs())
         for (const type of MEMORY_TYPES) {
           expect(lean).toContain(`\`${type}\` (${typeScope(type, hasGlobal)} — `)
           expect(full).toContain(`- \`${type}\` (${typeScope(type, hasGlobal)}) — `)
@@ -342,4 +343,18 @@ describe('the system prompts render typeScope(type, hasGlobal) for every type', 
       }
     })
   }
+})
+
+describe('the extraction prompt and the global dir', () => {
+  test('with it, says the global dir only takes additions — the gate refuses the rest', () => {
+    const prompt = buildExtractCombinedPrompt(12, '', undefined, '/home/u/.claudin/memory/')
+    expect(prompt).toContain('add a memory there, or add to one, but never delete, shrink or rewrite one — a write that does is refused')
+    expect(prompt).toContain('- Update or remove memories that turn out to be wrong or outdated (in the private and team dirs)')
+  })
+
+  test('without it, neither line', () => {
+    const prompt = buildExtractCombinedPrompt(12, '')
+    expect(prompt).not.toContain('never delete, shrink or rewrite')
+    expect(prompt).toContain('- Update or remove memories that turn out to be wrong or outdated\n')
+  })
 })

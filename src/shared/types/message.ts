@@ -286,6 +286,13 @@ export type SystemAwaySummaryMessage = SystemMessageBase & {
 export type SystemMemorySavedMessage = SystemMessageBase & {
   subtype: 'memory_saved'
   writtenPaths: string[]
+  /** How many of `writtenPaths` each memory directory holds; absent on a message that predates it. */
+  memoryCounts?: Partial<Record<MemoryScope, number>>
+  /**
+   * Read only: the team share a transcript saved before `memoryCounts`
+   * carries, the rest of its paths then unscoped. Nothing writes it now.
+   */
+  teamCount?: number
 }
 
 export type SystemAgentsKilledMessage = SystemMessageBase & {

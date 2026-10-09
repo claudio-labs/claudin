@@ -23,7 +23,7 @@ describe('argumentHint on commands that take arguments', () => {
     // commands/provider/provider.tsx: `migrate`, `doctor`, help aliases
     ['provider', provider, '[migrate [--force]|doctor|help]'],
     // commands/memory/tidy.ts SUBCOMMANDS
-    ['memory', memory, '[tidy|sort|private|team]'],
+    ['memory', memory, '[tidy|sort|global|private|team]'],
     // commands/copy/copy.tsx: `/copy N`
     ['copy', copy, '[N]'],
     // commands/autofix-pr/index.ts parseArgs: `--dry-run` + free text

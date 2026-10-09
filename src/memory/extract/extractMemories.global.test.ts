@@ -3,14 +3,16 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import { withoutTrailingSep } from 'src/memory/memdir/memoryScopes.js'
 import {
+  createExtractionCanUseTool,
   createMemoryCanUseTool,
   existingMemoryManifest,
   hasMemoryWritesSince,
+  memoryCountsOf,
 } from 'src/memory/extract/extractMemories.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
@@ -32,14 +34,22 @@ const ENV_KEYS = [
 const WRITE_TOOL = { name: FILE_WRITE_TOOL_NAME } as unknown as Tool
 const EDIT_TOOL = { name: FILE_EDIT_TOOL_NAME } as unknown as Tool
 
-function writeMessage(filePath: string): Message {
+function toolUseMessage(name: string, input: Record<string, unknown>): Message {
   return {
     type: 'assistant',
     uuid: 'a1',
     message: {
-      content: [{ type: 'tool_use', name: FILE_WRITE_TOOL_NAME, input: { file_path: filePath } }],
+      content: [{ type: 'tool_use', name, input }],
     },
   } as unknown as Message
+}
+
+function writeMessage(filePath: string): Message {
+  return toolUseMessage(FILE_WRITE_TOOL_NAME, { file_path: filePath, content: 'x' })
+}
+
+function patchMessage(...lines: string[]): Message {
+  return toolUseMessage('Patch', { patchText: ['*** Begin Patch', ...lines, '*** End Patch'].join('\n') })
 }
 
 describe('the forks and the global memory', () => {
@@ -58,9 +68,9 @@ describe('the forks and the global memory', () => {
     process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
     previousProjectRoot = getProjectRoot()
     setProjectRoot(join(root, 'project'))
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
-    memDir = getAutoMemPath()
+    memDir = getPrivateMemPath()
     globalDir = getGlobalMemPath()
     teamDir = getTeamMemPath()
     mkdirSync(globalDir, { recursive: true })
@@ -73,7 +83,7 @@ describe('the forks and the global memory', () => {
 
   afterAll(() => {
     setProjectRoot(previousProjectRoot)
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     getGlobalMemPath.cache.clear?.()
     for (const key of ENV_KEYS) {
       const value = savedEnv.get(key)
@@ -164,12 +174,60 @@ describe('the forks and the global memory', () => {
       const result = await gate(EDIT_TOOL, { file_path: existing, old_string: 'Answer in pt-BR.\n', new_string: '' })
       expect(result.behavior).toBe('allow')
     })
+
+    test("the extraction's gate is append-only on the global dir too", async () => {
+      const extraction = (input: Record<string, unknown>) =>
+        createExtractionCanUseTool()(EDIT_TOOL, input, null as never, null as never, 'toolu_1')
+      const removing = await extraction({ file_path: existing, old_string: 'Answer in pt-BR.\n', new_string: '' })
+      expect(removing.behavior).toBe('deny')
+      expect(messageOf(removing)).toContain('the global memory dir is append-only in this run')
+      const adding = await extraction({ file_path: existing, old_string: 'Answer in pt-BR.', new_string: 'Answer in pt-BR.\nAlso here.' })
+      expect(adding.behavior).toBe('allow')
+      // The private dir stays the extraction's to rewrite.
+      const privateFile = join(memDir, 'feedback-z.md')
+      writeFileSync(privateFile, BODY)
+      expect((await extraction({ file_path: privateFile, old_string: 'Answer in pt-BR.\n', new_string: '' })).behavior).toBe('allow')
+    })
   })
 
   test('a global memory the main agent wrote makes the extraction skip the range', () => {
     expect(hasMemoryWritesSince([writeMessage(join(globalDir, 'user-language.md'))], undefined)).toBe(true)
     expect(hasMemoryWritesSince([writeMessage(join(memDir, 'x.md'))], undefined)).toBe(true)
     expect(hasMemoryWritesSince([writeMessage(join(root, 'project', 'x.md'))], undefined)).toBe(false)
+  })
+
+  test('a memory the main agent wrote with Patch makes the extraction skip the range — Add, Update, Move', () => {
+    const skips = (message: Message) => hasMemoryWritesSince([message], undefined)
+    expect(skips(patchMessage(`*** Add File: ${join(globalDir, 'user-language.md')}`, '+---'))).toBe(true)
+    expect(skips(patchMessage(`*** Update File: ${join(memDir, 'x.md')}`, '@@', '-a', '+b'))).toBe(true)
+    // A move counts on either side: into memory, or out of it.
+    expect(skips(patchMessage(`*** Update File: ${join(root, 'project', 'draft.md')}`, `*** Move to: ${join(teamDir, 'x.md')}`))).toBe(true)
+    expect(skips(patchMessage(`*** Update File: ${join(memDir, 'x.md')}`, `*** Move to: ${join(root, 'project', 'x.md')}`))).toBe(true)
+    expect(skips(patchMessage(`*** Delete File: ${join(memDir, 'x.md')}`))).toBe(true)
+    // A patch, an Edit or a Read that writes no memory does not.
+    expect(skips(patchMessage(`*** Add File: ${join(root, 'project', 'a.ts')}`, '+x'))).toBe(false)
+    expect(skips(toolUseMessage(FILE_EDIT_TOOL_NAME, { file_path: join(memDir, 'x.md'), old_string: 'a', new_string: 'b' }))).toBe(true)
+    expect(skips(toolUseMessage('Read', { file_path: join(memDir, 'x.md') }))).toBe(false)
+  })
+
+  test('runExtraction runs under the append-only gate and notifies the counts per directory', () => {
+    // Pinned on the source: runExtraction needs a whole forked-agent context.
+    const source = readFileSync(new URL('./extractMemories.ts', import.meta.url), 'utf8')
+    expect(source).toContain('    const canUseTool = createExtractionCanUseTool()\n')
+    expect(source).toContain('          memoryCounts: memoryCountsOf(memoryPaths),\n')
+  })
+
+  test('the saved memories are counted per directory; a path in none counts as private', () => {
+    expect(
+      memoryCountsOf([
+        join(globalDir, 'a.md'),
+        join(globalDir, 'b.md'),
+        join(memDir, 'c.md'),
+        join(teamDir, 'decisions', 'd.md'),
+        join(root, 'elsewhere.md'),
+      ]),
+    ).toEqual({ global: 2, private: 2, team: 1 })
+    expect(memoryCountsOf([])).toEqual({})
   })
 
   test('the manifest lists each directory under its own name', async () => {

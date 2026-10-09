@@ -1,8 +1,11 @@
 # Project-Local, Git-Tracked Team Memory
 
 **Status:** Default ON for git projects. Set `autoMemoryProjectLocal: false`
-in settings.json (user/local/policy — never projectSettings, for security)
-to force the legacy global-only location.
+in settings.json (user, flag or policy — never projectSettings or settings.local.json, which live in the repo)
+to force the legacy per-project location under the config home
+(`~/.claudin/projects/<…>/memory/`). That is not the global memory
+(`~/.claudin/memory/`, [below](#global-memory)), which the setting does not
+affect.
 **Scope:** `src/memory/memdir/paths.ts`, `src/memory/memdir/memoryMigration.ts`,
 `src/memory/memdir/memoryScopes.ts` and `src/memory/memdir/memoryDirs.ts` (the
 directories, below),
@@ -33,12 +36,12 @@ bans the old endpoint (`api/claude_code/team_memory`) so it cannot come back.
 
 ## Fix
 
-`getAutoMemPath()` (`src/memory/memdir/paths.ts`) now defaults to
+`getPrivateMemPath()` (`src/memory/memdir/paths.ts`) now defaults to
 `<gitRoot>/.claudin/memory/` for any project inside a git repository — the
 same project-local pattern already used for `.claudin/plans/`
 (`src/agent/plans/plans.ts`), with the same symlink-escape containment check and
-fallback to the legacy global path if verification fails or the project
-isn't a git repo. `getTeamMemPath()` derives from `getAutoMemPath()`, so the
+fallback to the legacy per-project path under the config home if verification
+fails or the project isn't a git repo. `getTeamMemPath()` derives from `getPrivateMemPath()`, so the
 `team/` subfolder moves along with it automatically.
 
 Resolution order (first match wins):
@@ -47,7 +50,8 @@ Resolution order (first match wins):
 2. `autoMemoryDirectory` in settings.json (trusted sources only)
 3. `<gitRoot>/.claudin/memory/` when `autoMemoryProjectLocal` isn't `false`
    and the realpath-verified containment check passes
-4. `<memoryBase>/projects/<sanitized-git-root>/memory/` (legacy global path)
+4. `<memoryBase>/projects/<sanitized-git-root>/memory/` (the legacy
+   per-project path under the config home)
    — used for non-git projects and whenever step 3 can't be verified safe
 
 ### Migration
@@ -112,8 +116,15 @@ that knows them:
   transcript, `/context` and `/memory` name the directories from here.
 - `memoryDirs.ts` — which directories are in use and where:
   `getMemoryDirs()` (none while memory is off; global only while it is on),
-  `memoryDirOf(path)` / `memoryScopeOf(path)` (the deepest root wins, so a
-  file under `team/` is team, not private), `promptRoots(dirs)`.
+  `findMemoryDir(dirs, path)` / `memoryScopeOf(path)` (the deepest root wins,
+  so a file under `team/` is team, not private), `memoryScopeForPermission(path)`
+  (the same, with every symlink on the way required to stay in that
+  directory), `promptRoots(dirs)`.
+
+`MEMORY_SCOPE_SPECS` also carries what differs between the scopes as data —
+`dirMode`, `hasSubdirectories` (the team categories: `/memory` counts and
+browses them, the transcript names them), `takesPaths` — so a caller asks the
+spec rather than testing `scope === 'team'`.
 
 Everything that asks "is this memory, and whose?" asks there: the permission
 carve-outs, the format guard, the forks' tool gate, the extraction manifest,
@@ -141,52 +152,83 @@ decide it: of this repo's 21 private feedback memories when it shipped, about
 half were about the person and half about Claudin.
 
 - **Where:** `getGlobalMemPath()` (`src/memory/memdir/paths.ts`). The setting
-  `autoMemoryGlobalDirectory` moves it — from policy, flag, local or user
-  settings only, never projectSettings, like `autoMemoryDirectory` — which is
+  `autoMemoryGlobalDirectory` moves it — from policy, flag or user
+  settings only, like `autoMemoryDirectory` — which is
   also how the memory-write bench points it at its workspace. Created 0700 by
-  `loadMemoryPrompt`. The `user`-scope agent memory already lived beside it, at
+  `loadMemoryPrompt` (the scope's `dirMode`). The `user`-scope agent memory already lived beside it, at
   `<memoryBase>/agent-memory/`. Either setting is refused when it would hold
   the config home: a memory directory is read and written with no prompt, so
   `~/.claudin` itself would put `settings.json` under that carve-out.
-- **When:** `isGlobalMemoryEnabled()` — on with auto memory, off with
-  `CLAUDIN_GLOBAL_MEMORY=0`, off under a Cowork memory override (the caller
-  gets exactly the directory it designated), and off when the global and
-  private dirs nest. `getMemoryDirs()` leaves it out while it is off, so every
+  The three settings are read from policy, flag and user settings only:
+  `settings.local.json` lives in the repo too, so it moves no memory dir.
+  A repo rooted at `$HOME` would make its project-local private dir
+  `~/.claudin/memory/` itself; its private dir goes to the legacy per-project
+  location instead, so no project's memory reads as global.
+- **When:** `isGlobalMemoryEnabled()`, which is `globalMemoryOffReason() ===
+  null` — on with auto memory, off with `CLAUDIN_GLOBAL_MEMORY=0`, off under a
+  Cowork memory override (the caller gets exactly the directory it
+  designated), and off when settings make the global and private dirs nest.
+  `/memory global` reports that same reason. `getMemoryDirs()` leaves it out while it is off, so every
   check built on the registry — the carve-out included — goes with the switch,
   and the prompts name two directories.
 - **The guard** (`memoryFormatGuard.ts`): with the global dir on, a type whose
   `TYPE_SCOPES` entry is `only` (`user`) is refused outside it, quoting its
   scope and saying how to move a file saved before the global dir existed; a
-  `never` type (`project`) and a `paths:` key are refused in it. No secret
-  scan — it is never committed, like the private dir.
+  `never` type (`project`) and a `paths:` key (the scope's `takesPaths`) are
+  refused in it. Where a type may live is judged only for a file that is new
+  or changes its type, so a memory saved before a rule existed stays
+  updatable in place — by every tool alike. No secret scan — it is never
+  committed, like the private dir.
 - **Context:** its `MEMORY.md` loads as `'GlobalMem'`, before the private and
   team indexes — general to specific, the way the user's CLAUDE.md precedes
   the project's — under the same caps. `pathScopedMemories.ts` does not scan
   it: a global memory is index-only. The transcript says `Loaded global
   memories index (4 entries), private memories index (…)`, and a recall
   `Loaded 2 global memories, 1 private memory`.
+- **Framing:** the indexes do not ride under the instructions' preamble
+  ("These instructions OVERRIDE any default behavior…"). `getClaudeMds`
+  renders AGENTS.md, CLAUDE.md and the rules first, then the indexes under a
+  preamble of their own — background context, checked against the current
+  state, instructions taking precedence — because an index line is written by
+  a past conversation: a teammate's in the team index, any project's in the
+  global one.
 - **Permissions:** read and write with no prompt, the same carve-out as the
-  private dir (`internalPaths.ts`), for the main agent and both forks. The risk
+  private dir (`internalPaths.ts`), for the main agent and both forks. The
+  carve-out asks `memoryScopeForPermission`: the path, every symlink it
+  resolves through and its target must stay in that one directory, so a
+  symlink committed under `.claudin/memory/` leads nowhere silently. The risk
   accepted with it: a memory planted by a hostile repo now reaches every
-  project, not only that one. What contains it is what already contained a
-  private one — a recalled memory arrives as background context, not as an
-  instruction, and every write shows in the transcript.
-- **Forks:** the extraction may write it (`createMemoryCanUseTool`), skips a
-  range where the main agent already wrote a memory, and lists the global dir
-  in its manifest. The auto-dream's gate is `createMemoryCanUseTool(['global'])`:
-  there an Edit or Write passes only when it adds — an Edit whose new text
-  keeps the old, a new file, a Write that keeps the file's content — because a
-  run sees one project and what looks stale here may hold in another. Its
-  prompt says the same, and to name a global memory this project contradicts
-  in its summary instead of fixing it. A manual `/dream` runs in the
+  project, not only that one. What contains it is the framing above, and
+  every write showing in the transcript.
+- **Forks:** both forks run under `createMemoryCanUseTool(['global'])`
+  (`createExtractionCanUseTool` for the extraction): in the global dir an Edit
+  or Write passes only when it adds — an Edit whose new text keeps the old, a
+  new file, a Write that keeps the file's content — because a run sees one
+  project and what looks stale here may hold in another. Both prompts say so.
+  The extraction skips a range where the main agent already wrote a memory —
+  with Write, Edit or Patch (`writtenPaths.ts`) — and lists the global dir in
+  its manifest. The dream names a global memory this project contradicts in
+  its summary instead of fixing it. A manual `/dream` runs in the
   conversation with normal permissions, so there it is the prompt alone.
 - **/memory:** a `Global memory` row first, `/memory global` to open it (a
-  delete there warns that every project loses the memory); `/memory tidy`
-  covers it and never merges across directories; `/memory sort` is the
-  migration — it promotes what is about the user from the private dir (`mv`,
-  or a merge into an existing global memory, or a split of a file that mixes
-  the person with the project), each `mv` and `rm` behind the permission
-  prompt. The code moves nothing on its own.
+  delete there warns that every project loses the memory; with the global dir
+  off it says why — `CLAUDIN_GLOBAL_MEMORY=0`, a Cowork override, or the two
+  dirs nesting — instead of opening the dialog); `/memory tidy` covers it and
+  never merges across directories; `/memory sort` is the migration — it
+  promotes what is about the user from the private dir: a `mv -n` (never over
+  a global file of the same name, which another project saved — a name
+  collision is compared, then merged or moved under a new name), a merge into
+  an existing global memory, or a split of a file that mixes the person with
+  the project. Each `mv` and `rm` is behind the permission prompt; a split's
+  new global file, a merge's edit and the index edits are written without one
+  (the memory carve-out), so the prompt names them and has the model list
+  them in its report. The code moves nothing on its own. A user who upgrades
+  with `type: user` memories in a project's private dir sees it on the
+  `Private memory` row — `· 3 about you — /memory sort moves them to global`
+  (`countGlobalOnlyMemories` in `memoryDirRows.ts`). The two instruction files
+  above the directories are `User instructions` (`~/.claudin/CLAUDE.md`) and
+  `Project instructions` (`AGENTS.md`/`CLAUDE.md`) — instructions, as the
+  context calls them, not memory.
 - **/context:** each index is named as above, with its entry count and the
   `/memory` subcommand that manipulates it; `/context` itself stays read-only.
 
@@ -200,8 +242,8 @@ root. **The directory is the category; `type` keeps its four values**
 the permission carve-out and the secret guard needed no change —
 `isTeamMemPath` is a prefix test. The `/memory` browser did: it lists the
 team dir recursively (`includeNested` in `MemoryDirBrowser.tsx`,
-`countMemoryFiles` in `memoryDirRows.ts`), or a categorized file would be
-invisible there.
+`countMemoryFiles` in `memoryDirRows.ts`, both from the scope's
+`hasSubdirectories`), or a categorized file would be invisible there.
 
 | dir          | holds                                                                 | bar                                                                                                                                                                                                  |
 | ------------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -231,7 +273,9 @@ Existing team files are **not** moved by the code. `/memory sort`
 idempotent pass over the team root that `git mv`s a file into a category only
 when it unambiguously clears that category's bar, edits only that file's index
 line, and adds `paths:` only when the body names concrete files. Each move
-goes through the Bash permission prompt — that is the human veto.
+goes through the Bash permission prompt — that is the human veto; the
+frontmatter keys and the index edit are written without one, and the report
+lists them.
 `/memory tidy` is unchanged (duplicate merge only) and refuses to categorize.
 
 ## On-demand loading: `paths:` on a memory
@@ -251,9 +295,10 @@ lane a path-scoped rule uses:
   the directory containing `.claudin/`, like the project's rules; any other
   memdir location anchors at the original cwd, like Managed/User rules.
 
-When neither index exists yet, or both are empty, the memory section says so
-right after that sentence — "Both are empty — nothing is saved yet."
-(`teamMemPrompts.ts`). Without it a fresh project's model opened them to
+When no index exists yet, or every one is empty, the memory section says so
+right after that sentence — "Both are empty — nothing is saved yet.", or
+"All three are empty" with the global dir (`teamMemPrompts.ts`). Without it
+a fresh project's model opened them to
 check: 2 of 5 session-cache-ab runs on 2026-09-24 did. `loadMemoryPrompt`
 (`memdir.ts`) decides it on the memoized `getMemoryFiles()` load the indexes
 reach context through, so the prompt agrees with what the model was given and
@@ -265,21 +310,24 @@ normalizes to nothing — `**` alone, or a malformed value — leaves a memory
 index-only too, where it would make a rule always-on.
 
 What the transcript shows follows the same split. The line at session start
-names the indexes, not the memories — `Loaded private memories index (16
-entries), team memories index (122 of 129 entries) — index truncated`
+names the indexes, not the memories — `Loaded global memories index (3
+entries), private memories index (16 entries), team memories index (122 of
+129 entries) — index truncated`
 (`src/agent/ui/messages/memoryIndexLine.ts`; "Loaded 16 memories" read as if
-the files had entered context; "private"/"team" are the names `/memory` uses
-for the two directories) — and a `paths:` match renders as what it
-loaded: `Loaded 4 team bug memories`, or `2 rules, 3 team bug memories` when
-one Read pulled in both (`nestedMemoryBatchLabel` in
-`src/agent/ui/collapseNestedMemory.ts`, from the file's AutoMem/TeamMem type
-and its category directory; the paths stay under ctrl+o). A lone file shows
-its path, like a lone rule.
+the files had entered context; "global"/"private"/"team" are the names
+`/memory` uses for the directories) — and a `paths:` match renders as what
+it loaded, named by its scope like a Read of one: `Loaded 2 private
+memories`, `Loaded 4 team bug memories`, or `2 rules, 3 team bug memories`
+when one Read pulled in both (`nestedMemoryBatchLabel` in
+`src/agent/ui/collapseNestedMemory.ts`, from the scope of the file's type —
+`scopeOfIndexType` — and, in a scope with subdirectories, its category
+directory; the paths stay under ctrl+o). A lone file shows its path, like a
+lone rule.
 
 An explicit `Read` of a memory file is the third case, and it reads the same
 way. The count leaves the collapsed read/search badge — where it used to be
 a verb, `recalling 1 memory, recalling 2 team memories…` — for its own
-`⎿  Loaded 1 memory, 2 team memories` line under it (`formatMemoryRecallCounts`
+`⎿  Loaded 1 private memory, 2 team memories` line under it (`formatMemoryRecallCounts`
 in `src/agent/ui/messages/memoryRecallLine.ts`, private clause first, the
 same nouns `nestedMemoryBatchLabel` uses; no category breakdown, since the
 group carries counts rather than paths). What stays on the badge is what the
@@ -309,11 +357,11 @@ Since 2026-09-29 (team memory `claude-code-2.1.284-wire-diff`) the v2 memory
 section — `buildLeanCombinedMemoryPrompt`, the Anthropic family — carries only
 what every request needs; the full prompt of the other families is unchanged.
 
-- **What stays in the prompt** (what every request needs): where the two
-  directories live, remember/forget, the frontmatter template, the four
-  types, one line saying `decisions/`, `bugs/` and `docs/` exist with rules of
-  their own, "only the two `MEMORY.md` indexes are in context" (with the
-  empty-index note), what to save (update rather than duplicate, skip what
+- **What stays in the prompt** (what every request needs): where the
+  directories live (two, three with the global dir), remember/forget, the
+  frontmatter template, the four types, one line saying `decisions/`, `bugs/`
+  and `docs/` exist with rules of their own, "only the two (or three)
+  `MEMORY.md` indexes are in context" (with the empty-index note), what to save (update rather than duplicate, skip what
   the code and git history hold), the secrets rule, recall, and the
   past-context search.
 - **What moves out** (what only a write needs), into
@@ -322,9 +370,10 @@ what every request needs; the full prompt of the other families is unchanged.
   `TEAM_CATEGORIES` as before), and the index, `paths:`, update and skip
   rules. About 1.1k characters of ~3.6k.
 - **The guard** — `checkMemoryFileFormat` in `memoryFormatGuard.ts`, beside
-  `checkTeamMemSecrets` on the same four write paths (an Edit only when it
-  creates the file, since only then is `new_string` the whole file). A `.md`
-  under either memory dir, never a `MEMORY.md`, is refused when its
+  `checkTeamMemSecrets` on the same four write paths, each handing it the
+  whole file as it will be — an Edit builds it from the file on disk — so a
+  file gets one verdict whichever tool writes it. A `.md`
+  under any memory dir, never a `MEMORY.md`, is refused when its
   frontmatter lacks `name`, `description` or a valid `type`; when a team file
   is `type: user`; when a category file's `type` is not its category's
   (decisions and bugs `project`, docs `reference`); or when a decision lacks
@@ -351,8 +400,8 @@ N=3 × four requests): 12/12 sessions wrote each memory in its place with a
 complete frontmatter and its index line, as the full-rules baseline did. A
 decision's first write was refused once per session for its missing
 `scope:`/`impact:`, then written right; every new memory got the index note.
-A Patch or a staged rewrite of a memory file that was already malformed is
-refused until its frontmatter is fixed; an Edit inside it is not.
+A write of a memory file that is already malformed — by any tool — is refused
+until its frontmatter is fixed.
 
 ## What the dream reads
 
@@ -380,7 +429,7 @@ is left out.
 
 ## Verified unaffected
 
-- Permission carve-outs (`memoryScopeOf()` in
+- Permission carve-outs (`memoryScopeForPermission()`, called from
   `src/permissions/filePermissions/internalPaths.ts`) are computed dynamically
   from `getMemoryDirs()`, so reads/writes are still auto-approved with no
   prompt after relocation, including under the category subdirectories.

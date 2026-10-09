@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 
@@ -37,12 +37,12 @@ describe('the global memory in the loaded prompt', () => {
     // A fresh config home per test, so "was the dir created" is answerable.
     process.env.CLAUDIN_CONFIG_DIR = mkdtempSync(join(root, 'config-'))
     delete process.env.CLAUDIN_GLOBAL_MEMORY
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
   })
 
   afterAll(() => {
     setProjectRoot(previousProjectRoot)
-    getAutoMemPath.cache.clear?.()
+    getPrivateMemPath.cache.clear?.()
     for (const key of ENV_KEYS) {
       const value = savedEnv.get(key)
       if (value === undefined) delete process.env[key]
@@ -55,7 +55,7 @@ describe('the global memory in the loaded prompt', () => {
     const globalDir = getGlobalMemPath()
     const prompt = (await loadMemoryPrompt())!
 
-    expect(prompt).toContain(getAutoMemPath())
+    expect(prompt).toContain(getPrivateMemPath())
     expect(prompt).toContain(getTeamMemPath())
     expect(prompt).toContain(globalDir)
     expect(existsSync(globalDir)).toBe(true)
