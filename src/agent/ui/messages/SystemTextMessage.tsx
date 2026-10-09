@@ -1,7 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { Box, Text, type TextProps } from 'src/terminal/ink.js';
-import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useState } from 'react';
 import sample from 'lodash-es/sample.js';
@@ -11,9 +10,7 @@ import { basename } from 'path';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { openPath } from 'src/shared/browser.js';
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemSaved = feature('TEAMMEM') ? require('src/agent/ui/messages/teamMemSaved.js') as typeof import('src/agent/ui/messages/teamMemSaved.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
+import { teamMemSavedPart } from 'src/agent/ui/messages/teamMemSaved.js';
 import { TURN_COMPLETION_VERBS } from 'src/agent/prompts/turnCompletionVerbs.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemMemorySavedMessage } from 'src/shared/types/message.js';
@@ -615,7 +612,7 @@ function MemorySavedMessage(t0: { message: SystemMemorySavedMessage; addMargin: 
   } = message;
   let t1;
   if ($[0] !== message) {
-    t1 = feature("TEAMMEM") ? (teamMemSaved?.teamMemSavedPart(message) ?? null) : null;
+    t1 = teamMemSavedPart(message);
     $[0] = message;
     $[1] = t1;
   } else {

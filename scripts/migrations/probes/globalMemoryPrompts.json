@@ -66,16 +66,10 @@
       "replace": ""
     },
     {
-      "name": "the private-only prompt says the global dir",
-      "source": "src/memory/memdir/memdir.ts",
-      "find": "      lines.push(...buildGlobalMemoryLines(globalDir))\n",
-      "replace": ""
-    },
-    {
       "name": "the global dir is created 0700",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "      await ensureMemoryDirExists(globalDir, 0o700)\n",
-      "replace": "      await ensureMemoryDirExists(globalDir)\n"
+      "find": "    await ensureMemoryDirExists(getGlobalMemPath(), 0o700)\n",
+      "replace": "    await ensureMemoryDirExists(getGlobalMemPath())\n"
     }
   ]
 }

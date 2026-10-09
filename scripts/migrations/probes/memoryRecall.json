@@ -5,7 +5,7 @@
     "src/agent/ui/messages/teamMemCollapsed.test.tsx"
   ],
   "source": "src/agent/ui/messages/memoryRecallLine.ts",
-  "comment": "One thing here is NOT probe-able: CollapsedReadSearchContent reads teamMemoryReadCount through the feature('TEAMMEM') module, and feature() is false under the runner — so replacing that argument with 0 turns nothing red. Verified instead by hand-folding all four TEAMMEM gates in that file to `true` and rendering (2026-09-21): readCount 3 + memoryReadCount 1 + teamMemoryReadCount 2 gave 'Read 3 files (ctrl+o to expand)' on the badge and '⎿  Loaded 1 memory, 2 team memories' below it. The wording either side of that link is covered by memoryRecallLine.test.ts and teamMemCollapsed.test.tsx.",
+  "comment": "CollapsedReadSearchContent reads teamMemoryReadCount through teamMemCollapsed.tsx and hands it to formatMemoryRecallCounts; since team memory stopped being a build flag (2026-10-09) that link renders under the runner and is probed below. The wording either side of it is covered by memoryRecallLine.test.ts and teamMemCollapsed.test.tsx.",
   "probes": [
     {
       "name": "the team count is labelled team, not folded into the private wording",
@@ -33,6 +33,12 @@
       "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
       "find": "  const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0 || teamMemParts !== null;\n",
       "replace": "  const hasBadgeParts = true;\n"
+    },
+    {
+      "name": "the collapsed group hands the team recall count to the Loaded line",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "  const teamMemoryReadCount = getTeamMemoryReadCount(message);\n",
+      "replace": "  const teamMemoryReadCount = 0;\n"
     },
     {
       "name": "getTeamMemoryReadCount reads the group's own count",

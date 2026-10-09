@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import { normalize, posix, win32 } from 'path'
 import {
   getAutoMemPath,
@@ -9,18 +8,13 @@ import {
   isGlobalMemoryEnabled,
   isGlobalMemPath,
 } from 'src/memory/memdir/paths.js'
+import { isTeamMemFile, isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import {
   posixPathToWindowsPath,
   windowsPathToPosixPath,
 } from 'src/shared/fs/windowsPaths.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 const IS_WINDOWS = process.platform === 'win32'
 const TRAILING_SEP_RE = /[/\\]+$/
@@ -130,7 +124,7 @@ export function isAutoManagedMemoryFile(filePath: string): boolean {
   if (isGlobalMemPath(filePath)) {
     return true
   }
-  if (feature('TEAMMEM') && teamMemPaths!.isTeamMemFile(filePath)) {
+  if (isTeamMemFile(filePath)) {
     return true
   }
   if (detectSessionFileType(filePath) !== null) {
@@ -162,11 +156,7 @@ export function isMemoryDirectory(dirPath: string): boolean {
     return true
   }
   // Team memory directories live under <autoMemPath>/team/
-  if (
-    feature('TEAMMEM') &&
-    teamMemPaths!.isTeamMemoryEnabled() &&
-    teamMemPaths!.isTeamMemPath(normalizedPath)
-  ) {
+  if (isAutoMemoryEnabled() && isTeamMemPath(normalizedPath)) {
     return true
   }
   // Check the auto-memory path override (CLAUDE_COWORK_MEMORY_PATH_OVERRIDE)

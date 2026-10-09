@@ -4,11 +4,11 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
-import { buildGlobalMemoryLines, loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
+import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 
-// The private-only memory prompt — what loadMemoryPrompt builds without team
-// memory, which is every run under `bun test` (feature('TEAMMEM') reads
-// false). The global dir is said after the private one, and created 0700.
+// What loadMemoryPrompt does with the global dir: it names it in the combined
+// prompt and creates it 0700, and with CLAUDIN_GLOBAL_MEMORY=0 does neither.
 // Pinned against a fresh git project and config home, so the real ~/.claudin
 // is never created.
 const ENV_KEYS = [
@@ -19,7 +19,7 @@ const ENV_KEYS = [
   'CLAUDE_COWORK_MEMORY_PATH_OVERRIDE',
 ] as const
 
-describe('the global memory in the private-only prompt', () => {
+describe('the global memory in the loaded prompt', () => {
   const savedEnv = new Map<string, string | undefined>()
   let previousProjectRoot: string
   let root: string
@@ -51,31 +51,24 @@ describe('the global memory in the private-only prompt', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
-  test('says the global dir after the private one, and creates it 0700', async () => {
+  test('names the global dir beside the private and team ones, and creates it 0700', async () => {
     const globalDir = getGlobalMemPath()
     const prompt = (await loadMemoryPrompt())!
 
-    expect(prompt.split('\n')).toContain('## Global memory')
-    expect(prompt.indexOf(getAutoMemPath())).toBeLessThan(prompt.indexOf('## Global memory'))
-    expect(prompt).toContain(buildGlobalMemoryLines(globalDir).join('\n'))
+    expect(prompt).toContain(getAutoMemPath())
+    expect(prompt).toContain(getTeamMemPath())
+    expect(prompt).toContain(globalDir)
     expect(existsSync(globalDir)).toBe(true)
     expect(statSync(globalDir).mode & 0o777).toBe(0o700)
   })
 
   test('CLAUDIN_GLOBAL_MEMORY=0 leaves it out, and does not create it', async () => {
     process.env.CLAUDIN_GLOBAL_MEMORY = '0'
+    const globalDir = getGlobalMemPath()
     const prompt = (await loadMemoryPrompt())!
 
-    expect(prompt).not.toContain('## Global memory')
-    expect(existsSync(getGlobalMemPath())).toBe(false)
-  })
-
-  test('the paragraph sends user memories there and keeps project ones out', () => {
-    const text = buildGlobalMemoryLines('/home/u/.claudin/memory/').join('\n')
-
-    expect(text).toContain('`/home/u/.claudin/memory/`')
-    expect(text).toContain('Who the user is (`type: user`) always goes there')
-    expect(text).toContain("feedback that names this project's files, commands or conventions stays in the directory above")
-    expect(text).toContain('Never put a `project` memory or a `paths:` key in it.')
+    expect(prompt).toContain(getTeamMemPath())
+    expect(prompt).not.toContain(globalDir)
+    expect(existsSync(globalDir)).toBe(false)
   })
 })

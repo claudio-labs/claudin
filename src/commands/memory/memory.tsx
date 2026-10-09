@@ -12,6 +12,7 @@ import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
 import { clearMemoryFileCaches, getMemoryFiles } from 'src/memory/instructions/claudemd.js';
 import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js';
 import { getAutoMemPath, getGlobalMemPath, isAutoMemoryEnabled, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js';
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js';
 import {
   countMemoryFiles,
   parseBrowseValue,
@@ -23,7 +24,6 @@ import { getErrnoCode } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
 import { editFileInEditor } from 'src/terminal/input/promptEditor.js';
 import { parseMemorySubcommand, runMemorySort, runMemoryTidy } from 'src/commands/memory/tidy.js';
-import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js';
 type DirCounts = {
   global: number;
   private: number;
@@ -43,8 +43,7 @@ async function readDirCounts(): Promise<DirCounts> {
       team: 0
     };
   }
-  const teamRoot = resolveTidyTeamRoot();
-  const [globalCount, privateCount, teamCount] = await Promise.all([isGlobalMemoryEnabled() ? countMemoryFiles(getGlobalMemPath()) : Promise.resolve(0), countMemoryFiles(getAutoMemPath()), teamRoot === null ? Promise.resolve(0) : countMemoryFiles(teamRoot, {
+  const [globalCount, privateCount, teamCount] = await Promise.all([isGlobalMemoryEnabled() ? countMemoryFiles(getGlobalMemPath()) : Promise.resolve(0), countMemoryFiles(getAutoMemPath()), countMemoryFiles(getTeamMemPath(), {
     recursive: true
   })]);
   return {
@@ -68,9 +67,8 @@ function subcommandBrowseTarget(subcommand: 'global' | 'private' | 'team'): Brow
     } : null;
   }
   if (subcommand === 'team') {
-    const dir = resolveTidyTeamRoot();
-    return dir === null ? null : {
-      dir,
+    return {
+      dir: getTeamMemPath(),
       title: 'Team memory',
       isTeamDir: true
     };

@@ -3,10 +3,8 @@
  * the extraction and dream forks write included — and the index-line advice.
  *
  * The pure halves take the directories as arguments and carry most of it.
- * The wrappers are asserted on private paths only: they resolve the team dir
- * under feature('TEAMMEM'), which reads false under `bun test`, so a team
- * path through a wrapper is a private one here. The call sites are pinned on
- * the source, as teamMemSecretGuard's are reachable in the bundle only.
+ * The wrappers resolve the session's private and team dirs, and are asserted
+ * on both. The call sites are pinned on the source.
  */
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
@@ -26,6 +24,7 @@ import {
   TEAM_CATEGORIES,
 } from 'src/memory/memdir/memoryTypes.js'
 import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { buildMemoryWriteRules } from 'src/memory/memdir/teamMemPrompts.js'
 import { applyPatchMemoryIndexAdvice } from 'src/tools/ApplyPatchTool/applyPatch.js'
 
@@ -149,13 +148,6 @@ describe('checkMemoryFileFormatIn — what it refuses', () => {
     expect(refusal).toEndWith(`\n\nThe rules for memory files:\n\n${buildMemoryWriteRules(TEAM)}`)
     expect(refusal).toContain('impact: structural | functional | rejected')
   })
-
-  test('without a team dir the refusal names what is missing and nothing more', () => {
-    // The private-only system prompt states every rule itself.
-    const refusal = checkMemoryFileFormatIn({ autoDir: AUTO, teamDir: null }, `${AUTO}x.md`, 'body\n')
-    expect(refusal).toContain('it has no frontmatter')
-    expect(refusal).not.toContain('The rules for memory files')
-  })
 })
 
 describe('checkMemoryFileFormatIn — the global dir', () => {
@@ -222,10 +214,6 @@ describe('checkMemoryFileFormatIn — what it ignores', () => {
     expect(check('team/decisions/sub/x.md', fromTemplate('project'))).toBeNull()
     expect(check('team/notes/decisions/x.md', fromTemplate('project'))).toBeNull()
     expect(check('decisions/x.md', fromTemplate('project'))).toBeNull()
-    // Without a team dir, the team subtree is private memory.
-    expect(
-      checkMemoryFileFormatIn({ autoDir: AUTO, teamDir: null }, `${TEAM}decisions/x.md`, fromTemplate('user')),
-    ).toBeNull()
   })
 })
 
@@ -291,7 +279,7 @@ describe('memoryIndexAdviceIn', () => {
   })
 })
 
-describe('the wrappers, on the private dir', () => {
+describe('the wrappers, on the session dirs', () => {
   const probe = () => join(getAutoMemPath(), 'memory-format-guard-probe.md')
 
   test('a malformed write is refused, a complete one is not, and a file outside memory is not looked at', () => {
@@ -299,6 +287,13 @@ describe('the wrappers, on the private dir', () => {
     expect(checkMemoryFileFormat(probe(), fromTemplate('feedback'))).toBeNull()
     expect(checkMemoryFileFormat(join(getAutoMemPath(), 'MEMORY.md'), 'anything\n')).toBeNull()
     expect(checkMemoryFileFormat('/repo/src/notes.md', 'no frontmatter\n')).toBeNull()
+  })
+
+  test('a team path is judged as team memory, and the refusal carries the rules', () => {
+    const decision = join(getTeamMemPath(), 'decisions', 'memory-format-guard-probe.md')
+    const refusal = checkMemoryFileFormat(decision, fromTemplate('project', [], DECISION_BODY))
+    expect(refusal).toContain('is a team decision memory, and it lacks `scope:`')
+    expect(refusal).toContain('\n\nThe rules for memory files:\n\n')
   })
 
   test('the advice reads the index on disk, and a line the call adds to it', () => {

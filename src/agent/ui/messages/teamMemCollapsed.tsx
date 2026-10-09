@@ -5,8 +5,7 @@ import type { CollapsedReadSearchGroup } from 'src/shared/types/message.js';
 
 /**
  * Plain function (not a React component) so the React Compiler won't
- * hoist the teamMemory* property accesses for memoization. This module
- * is only loaded when feature('TEAMMEM') is true.
+ * hoist the teamMemory* property accesses for memoization.
  */
 export function checkHasTeamMemOps(message: CollapsedReadSearchGroup): boolean {
   return (message.teamMemorySearchCount ?? 0) > 0 || (message.teamMemoryReadCount ?? 0) > 0 || (message.teamMemoryWriteCount ?? 0) > 0;
@@ -15,7 +14,7 @@ export function checkHasTeamMemOps(message: CollapsedReadSearchGroup): boolean {
 /**
  * Team memories recalled into context. Read here rather than in
  * CollapsedReadSearchContent so the `teamMemoryReadCount` property access
- * stays inside the feature('TEAMMEM') module.
+ * stays out of that component's memoized body.
  */
 export function getTeamMemoryReadCount(message: CollapsedReadSearchGroup): number {
   return message.teamMemoryReadCount ?? 0;
@@ -25,8 +24,6 @@ export function getTeamMemoryReadCount(message: CollapsedReadSearchGroup): numbe
  * Renders team memory count parts for the collapsed read/search UI.
  * Reads are NOT here: a recalled memory is a context load, so it renders as
  * its own "Loaded …" line (memoryRecallLine.ts) instead of as a badge verb.
- * This module is only loaded when feature('TEAMMEM') is true,
- * so DCE removes it entirely from external builds.
  */
 export function TeamMemCountParts(t0: {
   message: CollapsedReadSearchGroup;

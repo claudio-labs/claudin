@@ -26,7 +26,6 @@
  * - Non-existent files are silently ignored
  */
 
-import { feature } from 'bun:bundle'
 import memoize from 'lodash-es/memoize.js'
 import { dirname, join, parse } from 'path'
 import {
@@ -39,6 +38,7 @@ import {
   isAutoMemoryEnabled,
   isGlobalMemoryEnabled,
 } from 'src/memory/memdir/paths.js'
+import { getTeamMemEntrypoint } from 'src/memory/memdir/teamMemPaths.js'
 import {
   getCurrentProjectConfig,
   getManagedClaudeRulesDir,
@@ -92,12 +92,6 @@ export {
   getMemoryFilesForNestedDirectory,
   processConditionedMdRules,
 } from 'src/memory/instructions/claudemd/nestedDirectories.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 let hasLoggedInitialLoad = false
 
@@ -331,10 +325,10 @@ export const getMemoryFiles = memoize(
       }
     }
 
-    // Team memory entrypoint - only if feature is on and file exists
-    if (feature('TEAMMEM') && teamMemPaths!.isTeamMemoryEnabled()) {
+    // Team memory entrypoint - on with auto memory, only if the file exists
+    if (isAutoMemoryEnabled()) {
       const { info: teamMemEntry } = await safelyReadMemoryFileAsync(
-        teamMemPaths!.getTeamMemEntrypoint(),
+        getTeamMemEntrypoint(),
         'TeamMem',
       )
       if (teamMemEntry) {
@@ -459,7 +453,7 @@ export const getClaudeMds = (
           ? ' (project instructions, checked into the codebase)'
           : file.type === 'Local'
             ? " (user's private project instructions, not checked in)"
-            : feature('TEAMMEM') && file.type === 'TeamMem'
+            : file.type === 'TeamMem'
               ? ' (shared team memory, git-tracked in the project)'
               : file.type === 'GlobalMem'
                 ? " (user's global auto-memory, shared by every project)"
@@ -468,7 +462,7 @@ export const getClaudeMds = (
                   : " (user's private global instructions for all projects)"
 
       const content = file.content.trim()
-      if (feature('TEAMMEM') && file.type === 'TeamMem') {
+      if (file.type === 'TeamMem') {
         memories.push(
           `Contents of ${file.path}${description}:\n\n<team-memory-content source="shared">\n${content}\n</team-memory-content>`,
         )

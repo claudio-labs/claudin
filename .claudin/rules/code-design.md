@@ -29,9 +29,11 @@ In this order, before the first edit:
    Four are deliberately NOT pure barrels, and each keeps what it keeps for a
    stated reason — do not "finish" them. `src/permissions/permissions.ts` keeps
    `hasPermissionsToUseTool` and the decision core, the security hot path.
-   `src/memory/instructions/claudemd.ts` keeps the memoized `getMemoryFiles` and
-   the `feature('TEAMMEM')` require, which has to exist in exactly one module
-   because the build folds `feature()` with a regex over source text.
+   `src/memory/instructions/claudemd.ts` keeps the memoized `getMemoryFiles`
+   beside the `clearMemoryFileCaches` / `resetGetMemoryFilesCache` that reset
+   its cache, and `getClaudeMds`, which renders what it loaded — the memory
+   indexes included, team memory being plain code since TEAMMEM stopped being
+   a build flag (2026-10-09).
    `src/terminal/theme/theme.ts` keeps `getTheme` and `themeColorToAnsi` over a
    `themes/` directory of palettes. `src/agent/compact/compact.ts` keeps both
    compaction paths, one of which a test reads as literal TEXT.

@@ -28,26 +28,16 @@ const KB = 1024
  *
  * With `promote` (the private dir and the global one, while the global dir is
  * on) it also promotes what is about the user from the first to the second —
- * the migration for memories saved before the global dir existed. Without a
- * team root, that promotion is the whole prompt.
+ * the migration for memories saved before the global dir existed.
  */
 export function buildMemorySortPrompt(
-  teamRoot: string | null,
+  teamRoot: string,
   promote: { privateRoot: string; globalRoot: string } | null = null,
 ): string {
-  const promotion =
-    promote === null
-      ? null
-      : buildPromotionPart(promote.privateRoot, promote.globalRoot)
-  if (teamRoot === null) {
-    return promotion === null
-      ? ''
-      : `# Memory Sort: promote what is about the user to the global memory\n\n${promotion}`
-  }
   const teamPart = buildTeamPart(teamRoot)
-  return promotion === null
+  return promote === null
     ? teamPart
-    : `${teamPart}\n\n---\n\n# Part 2 — promote what is about the user to the global memory\n\nThe hard rules above are about the team dir; this part has its own.\n\n${promotion}`
+    : `${teamPart}\n\n---\n\n# Part 2 — promote what is about the user to the global memory\n\nThe hard rules above are about the team dir; this part has its own.\n\n${buildPromotionPart(promote.privateRoot, promote.globalRoot)}`
 }
 
 function buildTeamPart(teamRoot: string): string {

@@ -9,11 +9,9 @@
  * overlap the system prompt's harmlessly.
  */
 
-import { feature } from 'bun:bundle'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   renderTeamCategoriesXml,
-  TYPES_SECTION_INDIVIDUAL,
   typesSectionCombined,
   WHAT_NOT_TO_SAVE_SECTION,
 } from 'src/memory/memdir/memoryTypes.js'
@@ -25,7 +23,7 @@ import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 
 /**
- * Shared opener for both extract-prompt variants.
+ * Opener of the extract prompt.
  *
  * `extraHint` (optional) is appended last — used by the repeated-error loop
  * trigger to steer the extractor toward a `feedback` memory.
@@ -66,61 +64,6 @@ export function buildLoopHint(toolName: string, repeatCount: number): string {
 }
 
 /**
- * Where a memory goes once the global dir exists, for the auto-only prompt,
- * whose type section has no <scope> tags to say it.
- */
-function globalPlacementSection(globalDir: string): string[] {
-  return [
-    '## Where each memory goes',
-    '',
-    `The global directory \`${globalDir}\` is shared by every project this user works in. \`user\` memories always go there, and so does feedback that holds in any project (how they want answers, plans or reviews). Everything about this project — and feedback that names its files, commands or conventions — goes in the project's memory directory. Never put a \`project\` memory or a \`paths:\` key in the global one. Each directory has its own \`MEMORY.md\` index.`,
-    '',
-  ]
-}
-
-/**
- * Build the extraction prompt for auto-only memory (no team memory).
- * Four-type taxonomy, no scope guidance (single directory) — unless
- * `globalDir` is set, which adds where each memory goes.
- */
-export function buildExtractAutoOnlyPrompt(
-  newMessageCount: number,
-  existingMemories: string,
-  extraHint?: string,
-  globalDir: string | null = null,
-): string {
-  const howToSave = [
-    '## How to save memories',
-    '',
-    'Saving a memory is a two-step process:',
-    '',
-    '**Step 1** — write the memory to its own file (e.g., `user_role.md`, `feedback_testing.md`) using this frontmatter format:',
-    '',
-    ...MEMORY_FRONTMATTER_EXAMPLE,
-    '',
-    `**Step 2** — add a pointer to that file in ${globalDir === null ? '' : 'the same directory\'s '}\`MEMORY.md\`. \`MEMORY.md\` is an index, not a memory — each entry should be one line, under ~150 characters: \`- [Title](file.md) — one-line hook\`. It has no frontmatter. Never write memory content directly into \`MEMORY.md\`.`,
-    '',
-    '- `MEMORY.md` is always loaded into your system prompt — lines after 200 will be truncated, so keep the index concise',
-    '- A memory whose frontmatter has `paths:` (same syntax as a rule in `.claudin/rules/`, relative to the project root) is attached automatically the first time a Read touches a matching file; use it when the fact is tied to specific files',
-    '- Organize memory semantically by topic, not chronologically',
-    '- Update or remove memories that turn out to be wrong or outdated',
-    '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
-  ]
-
-  return [
-    opener(newMessageCount, existingMemories, extraHint),
-    '',
-    'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',
-    '',
-    ...TYPES_SECTION_INDIVIDUAL,
-    ...(globalDir === null ? [] : globalPlacementSection(globalDir)),
-    ...WHAT_NOT_TO_SAVE_SECTION,
-    '',
-    ...howToSave,
-  ].join('\n')
-}
-
-/**
  * Build the extraction prompt for combined auto + team memory.
  * Four-type taxonomy with per-type <scope> guidance (directory choice
  * is baked into each type block), plus the team categories with their bar.
@@ -132,10 +75,6 @@ export function buildExtractCombinedPrompt(
   extraHint?: string,
   globalDir: string | null = null,
 ): string {
-  if (!feature('TEAMMEM')) {
-    return buildExtractAutoOnlyPrompt(newMessageCount, existingMemories, extraHint, globalDir)
-  }
-
   const dirs = globalDir === null ? 'private and team' : 'global, private and team'
   const howToSave = [
     '## How to save memories',

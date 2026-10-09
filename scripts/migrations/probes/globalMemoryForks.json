@@ -27,12 +27,6 @@
       "replace": "      const globalDir = null\n"
     },
     {
-      "name": "the auto-only extraction prompt says where each memory goes",
-      "source": "src/memory/extract/prompts.ts",
-      "find": "    ...(globalDir === null ? [] : globalPlacementSection(globalDir)),\n",
-      "replace": ""
-    },
-    {
       "name": "the combined extraction prompt takes the global scopes",
       "source": "src/memory/extract/prompts.ts",
       "find": "    ...typesSectionCombined(globalDir !== null),\n",

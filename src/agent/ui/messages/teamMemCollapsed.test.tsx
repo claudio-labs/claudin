@@ -1,8 +1,6 @@
 /**
- * The team-memory half of the collapsed badge. Reachable from `bun test` only
- * because this module calls no `feature()` itself — every CALLER of it sits
- * behind a feature('TEAMMEM') fold that is false under the runner
- * (src/stubs/test-preload.ts), so the wiring still needs a live run.
+ * The team-memory half of the collapsed badge. Its wiring into the collapsed
+ * group is covered by CollapsedReadSearchContent.test.tsx.
  */
 import { describe, expect, test } from 'bun:test'
 import React from 'react'

@@ -31,24 +31,15 @@ const KB = 1024
  */
 export function buildMemoryTidyPrompt(
   memoryRoot: string,
-  teamRoot: string | null,
+  teamRoot: string,
   globalRoot: string | null = null,
 ): string {
   const root = normalizeRoot(memoryRoot)
-  const team = teamRoot === null ? null : normalizeRoot(teamRoot)
+  const team = normalizeRoot(teamRoot)
   const global = globalRoot === null ? null : normalizeRoot(globalRoot)
   const maxKb = Math.round(MAX_ENTRYPOINT_BYTES / KB)
 
-  // Step 1 must only mention the team dir when this run actually covers it —
-  // otherwise the agent is invited into team/ without the boundary rules.
-  const subdirGuidance =
-    team !== null
-      ? 'skip subdirectories other than the team dir handled separately'
-      : 'skip all subdirectories'
-
-  const teamSection =
-    team !== null
-      ? `
+  const teamSection = `
 ## Team memory
 
 Also tidy the team memory directory: \`${team}\`
@@ -59,7 +50,6 @@ Also tidy the team memory directory: \`${team}\`
 - **Never move a file into \`decisions/\`, \`bugs/\` or \`docs/\`** — filing team memories by category is \`/memory sort\`'s job, not tidy's — and never descend into those subdirectories.
 - Files you change or delete here are git-tracked and reach the team on the next commit — another reason to stay strictly conservative.
 `
-      : ''
 
   const globalSection =
     global !== null
@@ -86,7 +76,7 @@ ${teamSection}${globalSection}
 ## Step 1 — Orient
 
 - Read \`${root}/${ENTRYPOINT_NAME}\` to see the current index
-- Read every \`.md\` file in the directory — full contents, not just frontmatter (there are at most a couple hundred; ${subdirGuidance})
+- Read every \`.md\` file in the directory — full contents, not just frontmatter (there are at most a couple hundred; skip subdirectories other than the team dir handled separately)
 
 ## Step 2 — Identify duplicates
 

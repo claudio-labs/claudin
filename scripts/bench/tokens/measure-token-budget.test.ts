@@ -47,15 +47,23 @@ describe('measureTokenBudget', () => {
     const claude = result.perModel.find(m => m.model === 'claude-sonnet-4-5')!
     const gpt = result.perModel.find(m => m.model === 'gpt-4o-2024-08-06')!
 
-    // Byte payloads diverge slightly because the system prompt + env_info embed
+    // Byte payloads diverge because the system prompt + env_info embed
     // model-family-specific lines (powered-by name, knowledge cutoff, the
     // "most recent Claude models" block, /fast availability) that GPT models do
-    // not receive — added by the #78 env_info enrichment. The tool bundle and
-    // shared sections are identical, so the difference stays small (~1.3%).
+    // not receive — added by the #78 env_info enrichment — and because the
+    // system prompt's memory section is the lean v2 text for the Anthropic
+    // family and the full one for the rest (memdir.ts loadMemoryPrompt). The
+    // tool bundle and the standalone memory section are identical, so the
+    // difference stays small (~4%).
     // What matters is the token delta: Claude (3.5) packs more tokens per same
     // bytes than GPT-4 (4.0), so claude.totalTokens > gpt.totalTokens.
+    for (const section of ['tool_schemas', 'memory'] as const) {
+      expect(claude.rows.find(r => r.section === section)!.bytes).toBe(
+        gpt.rows.find(r => r.section === section)!.bytes,
+      )
+    }
     const bytesDelta = Math.abs(claude.totalBytes - gpt.totalBytes)
-    expect(bytesDelta / claude.totalBytes).toBeLessThan(0.02)
+    expect(bytesDelta / claude.totalBytes).toBeLessThan(0.05)
     expect(claude.totalTokens).toBeGreaterThan(gpt.totalTokens)
     expect(claude.bytesPerToken).toBe(3.5)
     expect(gpt.bytesPerToken).toBe(4)

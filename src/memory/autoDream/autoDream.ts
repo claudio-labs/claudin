@@ -10,7 +10,6 @@
 // State is closure-scoped inside initAutoDream() rather than module-level
 // (tests call initAutoDream() in beforeEach for a fresh closure).
 
-import { feature } from 'bun:bundle'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
   createCacheSafeParams,
@@ -29,10 +28,7 @@ import {
   getGlobalMemPath,
   isGlobalMemoryEnabled,
 } from 'src/memory/memdir/paths.js'
-import {
-  getTeamMemPath,
-  isTeamMemoryEnabled,
-} from 'src/memory/memdir/teamMemPaths.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
@@ -193,8 +189,7 @@ export function initAutoDream(): void {
     try {
       const memoryRoot = getAutoMemPath()
       const transcriptDir = getProjectDir(getOriginalCwd())
-      const teamRoot =
-        feature('TEAMMEM') && isTeamMemoryEnabled() ? getTeamMemPath() : null
+      const teamRoot = getTeamMemPath()
       const globalRoot = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
       // The decision sources (plans, session prompts, impactful commits) are
       // read here, in the harness, so the fork judges with data instead of

@@ -241,10 +241,6 @@ describe('CollapsedReadSearchContent — write lane', () => {
 })
 
 describe('CollapsedReadSearchContent — recalled memories', () => {
-  // The team half of every case below is unreachable from here:
-  // teamMemoryReadCount is read through the feature('TEAMMEM') module, and
-  // `feature()` is false under `bun test` (src/stubs/test-preload.ts). Only
-  // formatMemoryRecallCounts and a live run cover the "team memories" wording.
   test('a recalled memory leaves the badge for its own Loaded line', async () => {
     const out = await render({ readCount: 3, memoryReadCount: 1 })
     const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
@@ -252,6 +248,15 @@ describe('CollapsedReadSearchContent — recalled memories', () => {
     expect(firstLine).toContain('Read 3 files')
     expect(firstLine).not.toContain('memor')
     expect(flatten(out)).toContain('⎿ Loaded 1 memory')
+  })
+
+  test('recalled team memories join the same Loaded line, labelled team', async () => {
+    const out = await render({ readCount: 3, memoryReadCount: 1, teamMemoryReadCount: 2 })
+    const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
+
+    expect(firstLine).toContain('Read 3 files')
+    expect(firstLine).not.toContain('memor')
+    expect(flatten(out)).toContain('⎿ Loaded 1 memory, 2 team memories')
   })
 
   test('a group of nothing but recalls is one standalone Loaded line', async () => {

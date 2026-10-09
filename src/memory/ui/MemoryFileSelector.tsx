@@ -1,5 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import { basename, join } from 'path';
 import * as React from 'react';
@@ -9,6 +8,7 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrl
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getAutoMemPath, getGlobalMemPath, isAutoMemoryEnabled, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js';
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js';
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js';
 import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
@@ -25,10 +25,6 @@ import { Select } from 'src/terminal/custom-select/index.js';
 import { ListItem } from 'src/terminal/design-system/ListItem.js';
 import { getProjectMemoryPathForSelector } from 'src/memory/ui/memoryFileSelectorPaths.js';
 import { encodeBrowseValue, TIDY_VALUE } from 'src/memory/ui/memoryDirRows.js';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM') ? require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 interface ExtendedMemoryFileInfo extends MemoryFileInfo {
   isNested?: boolean;
@@ -149,18 +145,16 @@ export function MemoryFileSelector(t0: Props) {
       }),
       description: `Saved in ${getDisplayPath(autoMemPath)}`
     });
-    if (feature("TEAMMEM") && teamMemPaths?.isTeamMemoryEnabled()) {
-      const teamMemPath = teamMemPaths.getTeamMemPath();
-      folderOptions.push({
-        label: `Team memory${dirCounts ? ` · ${dirCounts.team}` : ""}`,
-        value: encodeBrowseValue({
-          dir: teamMemPath,
-          title: "Team memory",
-          isTeamDir: true
-        }),
-        description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`
-      });
-    }
+    const teamMemPath = getTeamMemPath();
+    folderOptions.push({
+      label: `Team memory${dirCounts ? ` · ${dirCounts.team}` : ""}`,
+      value: encodeBrowseValue({
+        dir: teamMemPath,
+        title: "Team memory",
+        isTeamDir: true
+      }),
+      description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`
+    });
     folderOptions.push({
       label: "Tidy memories",
       value: TIDY_VALUE,

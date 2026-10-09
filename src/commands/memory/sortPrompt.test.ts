@@ -61,14 +61,8 @@ describe('buildMemorySortPrompt — promoting to the global dir', () => {
     expect(prompt).toContain('The hard rules above are about the team dir; this part has its own.')
   })
 
-  test('without a team root the promotion is the whole prompt', () => {
-    const prompt = buildMemorySortPrompt(null, PROMOTE)
-    expect(prompt).toStartWith('# Memory Sort: promote what is about the user to the global memory')
-    expect(prompt).not.toContain('Team categories')
-  })
-
   test('user memories go, project ones never do, and feedback only when it holds anywhere', () => {
-    const prompt = buildMemorySortPrompt(null, PROMOTE)
+    const prompt = buildMemorySortPrompt(TEAM, PROMOTE)
     expect(prompt).toContain('`type: user` always goes')
     expect(prompt).toContain('split it: the person goes global, the project part stays here')
     expect(prompt).toContain("names none of this project's files, commands, tools or conventions")
@@ -76,7 +70,7 @@ describe('buildMemorySortPrompt — promoting to the global dir', () => {
   })
 
   test('moves go through mv, merges through rm, both with the permission prompt as the veto', () => {
-    const prompt = buildMemorySortPrompt(null, PROMOTE)
+    const prompt = buildMemorySortPrompt(TEAM, PROMOTE)
     expect(prompt).toContain('`mv /repo/.claudin/memory/<file>.md /home/u/.claudin/memory/<file>.md`')
     expect(prompt).toContain('permission prompt for each move')
     expect(prompt).toContain('delete the private file with `rm`')
@@ -84,7 +78,7 @@ describe('buildMemorySortPrompt — promoting to the global dir', () => {
   })
 
   test('reads both indexes and edits them surgically', () => {
-    const prompt = buildMemorySortPrompt(null, PROMOTE)
+    const prompt = buildMemorySortPrompt(TEAM, PROMOTE)
     expect(prompt).toContain('Read `/repo/.claudin/memory/MEMORY.md` and `/home/u/.claudin/memory/MEMORY.md`')
     expect(prompt).not.toContain('//MEMORY.md')
     expect(prompt).toContain('Everything else in both stays byte-for-byte')

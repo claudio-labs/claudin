@@ -16,10 +16,9 @@ import {
 const TRAILING_SEP_RE = /[/\\]+$/
 
 /**
- * The dream prompt. `teamRoot` is the team memory dir when team memory is
- * active (the dream then files decisions, bugs and docs into its category
- * subdirectories — the git commit is the review gate) and null otherwise,
- * in which case the run is private-only as it always was. `extra` carries
+ * The dream prompt. `teamRoot` is the team memory dir: the dream files
+ * decisions, bugs and docs into its category subdirectories — the git commit
+ * is the review gate. `extra` carries
  * the run-specific tail: the decision-sources digest (dreamDigest.ts), the
  * session list, tool constraints.
  *
@@ -32,10 +31,10 @@ export function buildConsolidationPrompt(
   memoryRoot: string,
   transcriptDir: string,
   extra: string,
-  teamRoot: string | null = null,
+  teamRoot: string,
   globalRoot: string | null = null,
 ): string {
-  const team = teamRoot === null ? null : teamRoot.replace(TRAILING_SEP_RE, '')
+  const team = teamRoot.replace(TRAILING_SEP_RE, '')
   const global = globalRoot === null ? null : globalRoot.replace(TRAILING_SEP_RE, '')
   const sections = TEAM_CATEGORIES.map(c => `\`## ${c.section}\``).join(' / ')
 
@@ -55,12 +54,7 @@ export function buildConsolidationPrompt(
 
 The global dir is shared by every project, and this run sees only this one: add to it and update a memory there, but never delete a global memory, never shrink one, and never remove a line from its index — what looks stale here may still hold in another project. Never put a \`project\` memory or a \`paths:\` key in it.`
 
-  const whereToWrite =
-    team === null
-      ? global === null
-        ? `For each thing worth remembering, write or update a memory file at the top level of the memory directory.`
-        : `For each thing worth remembering, write or update a memory file. Who the user is (\`type: user\`) and feedback that holds in any project go in the global dir \`${global}\`; everything about this project goes at the top level of the memory directory.${globalRule}`
-      : `For each thing worth remembering, write or update a memory file. Where it goes:
+  const whereToWrite = `For each thing worth remembering, write or update a memory file. Where it goes:
 
 ${globalBullet}- ${privateFact} at the top level of \`${memoryRoot}\`
 - a team decision, a known defect or a documentation pointer — in the matching category subdirectory of the team dir \`${team}\` (see Team categories below; each has a bar to clear), with its index line under the ${sections} section of \`${team}/${ENTRYPOINT_NAME}\`, creating the section if absent, and the subdirectory in the link (\`(decisions/file.md)\`)
@@ -68,10 +62,9 @@ ${globalBullet}- ${privateFact} at the top level of \`${memoryRoot}\`
 
 The team dir is git-tracked: what you write there shows up in the user's \`git status\` and reaches teammates when they commit — that commit is the review, so write only what clears the bar, and never a secret.${globalRule}`
 
-  const teamSection =
-    team === null ? '' : `\n${renderTeamCategoriesXml().join('\n')}`
+  const teamSection = `\n${renderTeamCategoriesXml().join('\n')}`
   const indexesToRead = [
-    ...(team === null ? [] : [`\`${team}/${ENTRYPOINT_NAME}\``]),
+    `\`${team}/${ENTRYPOINT_NAME}\``,
     ...(global === null ? [] : [`\`${global}/${ENTRYPOINT_NAME}\``]),
   ]
 
@@ -89,7 +82,7 @@ Session transcripts: \`${transcriptDir}\` (large JSONL files — grep narrowly, 
 ## Phase 1 — Orient
 
 - \`ls\` the memory directory to see what already exists
-- Read \`${ENTRYPOINT_NAME}\` to understand the current index${indexesToRead.length === 0 ? '' : ` — the private one and ${indexesToRead.join(' and ')}`}
+- Read \`${ENTRYPOINT_NAME}\` to understand the current index — the private one and ${indexesToRead.join(' and ')}
 - Skim existing topic files so you improve them rather than creating duplicates
 - If \`logs/\` or \`sessions/\` subdirectories exist (assistant-mode layout), review recent entries there
 
@@ -118,7 +111,7 @@ Focus on:
 ${teamSection}
 ## Phase 4 — Prune and index
 
-Update \`${ENTRYPOINT_NAME}\`${indexesToRead.length === 0 ? '' : ' (each index you touched)'} so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, add and update lines, never remove one.'}
+Update \`${ENTRYPOINT_NAME}\` (each index you touched) so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, add and update lines, never remove one.'}
 
 - Remove pointers to memories that are now stale, wrong, or superseded
 - Demote verbose entries: if an index line is over ~200 chars, it's carrying content that belongs in the topic file — shorten the line, move the detail
@@ -127,5 +120,5 @@ Update \`${ENTRYPOINT_NAME}\`${indexesToRead.length === 0 ? '' : ' (each index y
 
 ---
 
-Return a brief summary of what you consolidated, updated, or pruned${team === null ? '' : ', naming any team file you created so the user knows what to review before committing'}. If nothing changed (memories are already tight), say so.${extra ? `\n\n## Additional context\n\n${extra}` : ''}`
+Return a brief summary of what you consolidated, updated, or pruned, naming any team file you created so the user knows what to review before committing. If nothing changed (memories are already tight), say so.${extra ? `\n\n## Additional context\n\n${extra}` : ''}`
 }

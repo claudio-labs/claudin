@@ -4,17 +4,6 @@ import { join, resolve, sep } from 'path'
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 
 /**
- * Whether team memory features are enabled.
- * Team memory is a subdirectory of auto memory, so it requires auto memory
- * to be enabled. This keeps all team-memory consumers (prompt, content
- * injection, file detection) consistent when auto memory is disabled via
- * env var or settings.
- */
-export function isTeamMemoryEnabled(): boolean {
-  return isAutoMemoryEnabled()
-}
-
-/**
  * Returns the team memory path: <autoMemPath>/team/
  * Lives as a subdirectory of the auto-memory directory, scoped per-project.
  * autoMemPath itself may be project-local (<gitRoot>/.claudin/memory/) or
@@ -84,8 +73,10 @@ export function isTeamMemPath(filePath: string): boolean {
 
 /**
  * Check if a file path is within the team memory directory
- * and team memory is enabled.
+ * and team memory is enabled — which it is whenever auto memory is: team
+ * memory is a subdirectory of auto memory, so every team-memory consumer
+ * (prompt, content injection, file detection) follows the auto-memory switch.
  */
 export function isTeamMemFile(filePath: string): boolean {
-  return isTeamMemoryEnabled() && isTeamMemPath(filePath)
+  return isAutoMemoryEnabled() && isTeamMemPath(filePath)
 }

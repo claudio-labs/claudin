@@ -835,8 +835,8 @@
     {
       "name": "memory: loadMemoryPrompt never asks areMemoryIndexesEmpty",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "        indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())\n",
-      "replace": "        indexesEmpty = false\n"
+      "find": "    indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())\n",
+      "replace": "    indexesEmpty = false\n"
     },
     {
       "name": "memory: EMPTY_INDEXES_NOTE says nothing",

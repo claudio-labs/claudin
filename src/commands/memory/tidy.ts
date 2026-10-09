@@ -4,10 +4,10 @@ import {
   isAutoMemoryEnabled,
   isGlobalMemoryEnabled,
 } from 'src/memory/memdir/paths.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import { buildMemorySortPrompt } from 'src/commands/memory/sortPrompt.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
-import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js'
 
 /**
  * Dispatch logic for `/memory` subcommands, kept in a pure module (no ink
@@ -67,7 +67,7 @@ export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
     metaMessages: [
       buildMemoryTidyPrompt(
         getAutoMemPath(),
-        resolveTidyTeamRoot(),
+        getTeamMemPath(),
         resolveGlobalRoot(),
       ),
     ],
@@ -80,8 +80,6 @@ export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
  * `decisions/`, `bugs/`, `docs/`, and — with the global dir on — promotes
  * what is about the user from the private dir to the global one. The Bash
  * permission prompt on each `git mv`/`mv`/`rm` is the human veto per file.
- * With neither team memory nor the global dir there is nothing to sort, so it
- * says so and does not query.
  */
 export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
   if (!isAutoMemoryEnabled()) {
@@ -91,18 +89,10 @@ export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
     )
     return null
   }
-  const teamRoot = resolveTidyTeamRoot()
   const globalRoot = resolveGlobalRoot()
-  if (teamRoot === null && globalRoot === null) {
-    onDone(
-      'Memory sort unavailable: team memory is not active for this project.',
-      { display: 'system' },
-    )
-    return null
-  }
 
   const what = [
-    ...(teamRoot === null ? [] : ['filing team memories into decisions/, bugs/ and docs/']),
+    'filing team memories into decisions/, bugs/ and docs/',
     ...(globalRoot === null ? [] : ['promoting what is about you to the global memory']),
   ].join(', and ')
   onDone(
@@ -112,7 +102,7 @@ export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
       shouldQuery: true,
       metaMessages: [
         buildMemorySortPrompt(
-          teamRoot,
+          getTeamMemPath(),
           globalRoot === null
             ? null
             : { privateRoot: getAutoMemPath(), globalRoot },

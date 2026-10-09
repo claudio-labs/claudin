@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import { readFileSync } from 'fs'
 import { basename, dirname, extname, join, relative, resolve } from 'path'
 import {
@@ -12,6 +11,7 @@ import {
   getGlobalMemPath,
   isGlobalMemoryEnabled,
 } from 'src/memory/memdir/paths.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
@@ -35,17 +35,16 @@ import type { ToolAdvice } from 'src/tools/Tool.js'
  * in full, and the guard asks for nothing it does not.
  *
  * The pure halves (`…In`) take the directories as arguments, so they are
- * tested without the path modules; the wrappers resolve them. The team dir is
- * resolved under feature('TEAMMEM') only, as the secret guard does.
+ * tested without the path modules; the wrappers resolve them.
  */
 
 /**
- * Where the memory directories are; `teamDir` is null when team memory is
- * compiled out, `globalDir` null or absent while the global dir is off.
+ * Where the memory directories are; `globalDir` is null or absent while the
+ * global dir is off.
  */
 export type MemoryDirs = {
   autoDir: string
-  teamDir: string | null
+  teamDir: string
   globalDir?: string | null
 }
 
@@ -95,7 +94,7 @@ function memoryFileOf(filePath: string, dirs: MemoryDirs): MemoryFile | null {
   if (dirs.globalDir && abs.startsWith(dirs.globalDir)) {
     return { abs, scope: 'global', root: dirs.globalDir, category: undefined }
   }
-  if (dirs.teamDir !== null && abs.startsWith(dirs.teamDir)) {
+  if (abs.startsWith(dirs.teamDir)) {
     const category = teamCategoryForPath(abs)
     return {
       abs,
@@ -144,7 +143,7 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): st
     problems.push(`\`type: user\` is always private — write it under \`${dirs.autoDir}\` instead`)
   } else if (file.scope === 'global' && type === 'project') {
     problems.push(
-      `\`type: project\` belongs to one project — write it under \`${dirs.autoDir}\`${dirs.teamDir === null ? '' : ` or \`${dirs.teamDir}\``} instead`,
+      `\`type: project\` belongs to one project — write it under \`${dirs.autoDir}\` or \`${dirs.teamDir}\` instead`,
     )
   } else if (file.category && type !== file.category.type) {
     problems.push(`a team ${file.category.noun} memory is \`type: ${file.category.type}\`, not \`${type}\``)
@@ -165,8 +164,9 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): st
 
 /**
  * The write-time rules, as teamMemPrompts.ts renders them. Required on the
- * refusal path only: teamMemPrompts.ts pulls in memdir.ts, which requires it
- * back under feature('TEAMMEM'), and the write tools import this module.
+ * refusal path only: teamMemPrompts.ts pulls in memdir.ts (and memdir.ts
+ * imports it back), and the write tools import this module — the lazy
+ * require keeps that graph out of theirs.
  */
 function memoryWriteRules(teamDir: string, globalDir: string | null): string {
   // Typed via annotation rather than `as`, so knip sees the named require
@@ -181,9 +181,8 @@ function memoryWriteRules(teamDir: string, globalDir: string | null): string {
 
 /**
  * The refusal for writing `content` to `filePath`, or null when the file is
- * not a memory file or its frontmatter is complete. Without a team dir the
- * system prompt is the private-only one, which states every rule itself, so
- * the refusal names what is missing and nothing more.
+ * not a memory file or its frontmatter is complete. The refusal names what is
+ * missing and hands back the write-time rules the system prompt leaves out.
  */
 export function checkMemoryFileFormatIn(
   dirs: MemoryDirs,
@@ -196,9 +195,7 @@ export function checkMemoryFileFormatIn(
   if (problems.length === 0) return null
   const what = file.category ? `a team ${file.category.noun} memory` : `a ${file.scope} memory`
   const refusal = `Memory file not written: ${file.abs} is ${what}, and ${problems.join('; ')}. Fix the frontmatter and write it again.`
-  return dirs.teamDir === null
-    ? refusal
-    : `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs.teamDir, dirs.globalDir ?? null)}`
+  return `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs.teamDir, dirs.globalDir ?? null)}`
 }
 
 /** Markdown link targets: `](target)`, up to the first space or `)`. */
@@ -285,21 +282,14 @@ export function memoryIndexAdviceIn(
 }
 
 /**
- * The memory directories of this session; the team one only when team
- * memory is compiled in, the global one only while it is on.
+ * The memory directories of this session; the global one only while it is on.
  */
 function currentMemoryDirs(): MemoryDirs {
-  const autoDir = getAutoMemPath()
-  const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
-  if (feature('TEAMMEM')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const {
-      getTeamMemPath,
-    }: typeof import('src/memory/memdir/teamMemPaths.js') = require('src/memory/memdir/teamMemPaths.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    return { autoDir, teamDir: getTeamMemPath(), globalDir }
+  return {
+    autoDir: getAutoMemPath(),
+    teamDir: getTeamMemPath(),
+    globalDir: isGlobalMemoryEnabled() ? getGlobalMemPath() : null,
   }
-  return { autoDir, teamDir: null, globalDir }
 }
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 
-import { buildMemoryLines, buildMemoryStubLines } from 'src/memory/memdir/memdir.js'
+import { buildMemoryLines } from 'src/memory/memdir/memdir.js'
 import {
   GLOBAL_SCOPE_LINES,
   MEMORY_FRONTMATTER_EXAMPLE,
@@ -20,10 +20,7 @@ import {
 } from 'src/memory/memdir/teamMemPrompts.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js'
-import {
-  buildExtractAutoOnlyPrompt,
-  buildExtractCombinedPrompt,
-} from 'src/memory/extract/prompts.js'
+import { buildExtractCombinedPrompt } from 'src/memory/extract/prompts.js'
 
 const DIR = '/tmp/memdir-prompt-test/memory/'
 
@@ -87,18 +84,6 @@ describe('buildMemoryLines (private path)', () => {
     expect(text).toContain('`paths:`')
     expect(text).toContain('same syntax and semantics as a rule')
     expect(text).toContain('attached automatically the first time a Read touches a matching file')
-  })
-})
-
-describe('buildMemoryStubLines (empty directory)', () => {
-  const text = buildMemoryStubLines('auto memory', DIR).join('\n')
-
-  test('asks for the same flat `type` key as the full prompt', () => {
-    // These two prompts serve the same directory at different times — the
-    // stub writes memory #1, buildMemoryLines writes #2 onward. They must
-    // agree on the frontmatter shape.
-    expect(text).toContain('and a `type` of one of')
-    expect(text).not.toContain('metadata.type')
   })
 })
 
@@ -240,35 +225,28 @@ describe('TEAM_CATEGORIES', () => {
 })
 
 describe('extraction prompts', () => {
-  test('the combined prompt ships the team categories; the auto-only one does not', () => {
-    // Under `bun test` feature('TEAMMEM') is false, so the combined builder
-    // falls back to auto-only — assert on the parts that do not depend on it.
-    const autoOnly = buildExtractAutoOnlyPrompt(12, '')
-    expect(autoOnly).toContain('`paths:`')
-    expect(autoOnly).not.toContain('## Team categories')
-    expect(buildExtractCombinedPrompt(12, '')).toContain('`paths:`')
+  test('the extraction prompt ships the team categories and `paths:`', () => {
+    const prompt = buildExtractCombinedPrompt(12, '')
+    expect(prompt).toContain('`paths:`')
+    expect(prompt).toContain('## Team categories')
+    expect(prompt).toContain(typesSectionCombined(false).join('\n'))
   })
 
-  test('with the global dir the auto-only prompt says where each memory goes', () => {
+  test('with the global dir it takes the global scopes and says where each memory goes', () => {
     const GLOBAL = '/home/u/.claudin/memory/'
-    const prompt = buildExtractAutoOnlyPrompt(12, '', undefined, GLOBAL)
-    expect(prompt).toContain('## Where each memory goes')
-    expect(prompt).toContain(`The global directory \`${GLOBAL}\` is shared by every project`)
-    expect(prompt).toContain('`user` memories always go there')
-    expect(prompt).toContain("add a pointer to that file in the same directory's `MEMORY.md`")
-    // Under `bun test` the combined builder is the auto-only one; it passes the dir on.
-    expect(buildExtractCombinedPrompt(12, '', undefined, GLOBAL)).toBe(prompt)
-    expect(buildExtractAutoOnlyPrompt(12, '')).not.toContain('global')
+    const prompt = buildExtractCombinedPrompt(12, '', undefined, GLOBAL)
+    expect(prompt).toContain(typesSectionCombined(true).join('\n'))
+    expect(prompt).toContain(`global — \`${GLOBAL}\` — private, team root`)
+    expect(prompt).toContain('Each directory (global, private and team) has its own `MEMORY.md` index')
+    expect(prompt).toContain('never to a global memory')
+    expect(buildExtractCombinedPrompt(12, '')).not.toContain('never to a global memory')
   })
 
-  test('the combined prompt takes the global scopes, and the extraction hands it the dir', () => {
-    // Asserted on the SOURCE: the combined builder sits behind
-    // feature('TEAMMEM'), which reads false under `bun test`.
-    const prompts = readFileSync(new URL('../extract/prompts.ts', import.meta.url), 'utf8')
-    expect(prompts).toContain('    ...typesSectionCombined(globalDir !== null),\n')
+  test('the extraction hands it the dir', () => {
+    // Asserted on the SOURCE: the extraction needs a forked agent.
     const extract = readFileSync(new URL('../extract/extractMemories.ts', import.meta.url), 'utf8')
     expect(extract).toContain('const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null')
-    expect(extract.match(/loopHint,\n\s+globalDir,\n/g)).toHaveLength(2)
+    expect(extract.match(/loopHint,\n\s+globalDir,\n/g)).toHaveLength(1)
   })
 })
 

@@ -1,5 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import React, { useRef } from 'react';
 import { useMinDisplayTime } from 'src/terminal/hooks/useMinDisplayTime.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
@@ -20,10 +19,7 @@ import { PrBadge } from 'src/platform/status/PrBadge.js';
 import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemCollapsed = feature('TEAMMEM') ? require('src/agent/ui/messages/teamMemCollapsed.js') as typeof import('src/agent/ui/messages/teamMemCollapsed.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
+import { checkHasTeamMemOps, getTeamMemoryReadCount, TeamMemCountParts } from 'src/agent/ui/messages/teamMemCollapsed.js';
 
 // Hold each ⤿ hint for a minimum duration so fast-completing tool calls
 // (bash commands, file reads, search patterns) are actually readable instead
@@ -191,16 +187,16 @@ export function CollapsedReadSearchContent({
   const [theme] = useTheme();
   const toolUseIds = getToolUseIdsFromCollapsedGroup(message);
   const anyError = toolUseIds.some(id => lookups.erroredToolUseIDs.has(id));
-  // Global memory (~/.claudin/memory/) is not feature-gated, unlike team.
+  // Global memory (~/.claudin/memory/).
   const globalMemorySearchCount = message.globalMemorySearchCount ?? 0;
   const globalMemoryReadCount = message.globalMemoryReadCount ?? 0;
   const globalMemoryWriteCount = message.globalMemoryWriteCount ?? 0;
   const hasMemoryOps = memorySearchCount > 0 || memoryReadCount > 0 || memoryWriteCount > 0 || globalMemorySearchCount > 0 || globalMemoryReadCount > 0 || globalMemoryWriteCount > 0;
-  const hasTeamMemoryOps = feature('TEAMMEM') ? teamMemCollapsed!.checkHasTeamMemOps(message) : false;
+  const hasTeamMemoryOps = checkHasTeamMemOps(message);
   // Memories recalled into context leave the badge for their own "Loaded …"
   // line below — the shape the rules batch and the MEMORY.md index line
   // already use for anything that entered context on its own.
-  const teamMemoryReadCount = feature('TEAMMEM') ? teamMemCollapsed!.getTeamMemoryReadCount(message) : 0;
+  const teamMemoryReadCount = getTeamMemoryReadCount(message);
   const recalledCounts = formatMemoryRecallCounts(memoryReadCount, teamMemoryReadCount, globalMemoryReadCount);
 
   // Track the max seen counts so they only ever increase. The debounce timer
@@ -526,11 +522,11 @@ export function CollapsedReadSearchContent({
   const shownWriteStats = writeStats.slice(0, MAX_WRITE_ROWS);
   const writePathWidth = shownWriteStats.reduce((max, stat) => Math.max(max, getDisplayPath(stat.path).length), 0);
   const hasWriteTotals = writeAdditions > 0 || writeDeletions > 0;
-  const teamMemParts = feature('TEAMMEM') ? teamMemCollapsed!.TeamMemCountParts({
+  const teamMemParts = TeamMemCountParts({
     message,
     isActiveGroup,
     hasPrecedingParts: hasPrecedingNonMem || memParts.length > 0
-  }) : null;
+  });
   // Every memory read is subtracted out of readCount (collapseReadSearch.ts),
   // so a group of nothing but recalls has no badge left to render. The
   // "Loaded …" line stands on its own then, exactly as a rules line does, and

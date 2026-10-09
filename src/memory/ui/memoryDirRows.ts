@@ -29,7 +29,7 @@ export const TIDY_VALUE = '__memory_tidy__'
 // A Select row's value is a string, so the browse row carries everything the
 // browser needs — the title the selector already knew, and whether the dir is
 // the shared one — rather than making the command re-derive them from a path
-// (which would mean repeating MemoryFileSelector's feature('TEAMMEM') dance).
+// (which would mean repeating MemoryFileSelector's path resolution).
 const BROWSE_FIELD_SEP = '\u001f'
 
 export type BrowseTarget = {

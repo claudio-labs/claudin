@@ -33,7 +33,6 @@
  * memdir.ts) as a bound on what one Read can pull in.
  */
 
-import { feature } from 'bun:bundle'
 import { readdir, stat } from 'fs/promises'
 import { basename, dirname, isAbsolute, join, relative } from 'path'
 import ignore from 'ignore'
@@ -233,8 +232,7 @@ export async function findPathScopedMemoryFiles(options: {
   const result: MemoryFileInfo[] = []
   for (const entry of entries) {
     if (!matchesPathScope(entry.globs, baseDir, targetPath)) continue
-    const type: MemoryType =
-      feature('TEAMMEM') && isTeamMemPath(entry.path) ? 'TeamMem' : 'AutoMem'
+    const type: MemoryType = isTeamMemPath(entry.path) ? 'TeamMem' : 'AutoMem'
     result.push(
       ...(await processMemoryFile(entry.path, type, processedPaths, false)),
     )

@@ -213,9 +213,8 @@ describe('the MEMORY.md index line', () => {
   }
 
   test('loadMemoryPrompt decides on the indexes the context loaded, for both prompts', () => {
-    // Asserted on the SOURCE: the combined prompts sit behind
-    // feature('TEAMMEM'), which reads false under `bun test`, so
-    // loadMemoryPrompt never reaches them here.
+    // Asserted on the SOURCE: what matters is which load the decision reads,
+    // and loadMemoryPrompt's output alone cannot tell the two apart.
     const src = readFileSync(new URL('./memdir.ts', import.meta.url), 'utf8')
     const start = src.indexOf('export async function loadMemoryPrompt(')
     expect(start).toBeGreaterThan(-1)

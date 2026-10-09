@@ -11,7 +11,7 @@ const MAX_KB = Math.round(MAX_ENTRYPOINT_BYTES / 1024)
 
 describe('buildMemoryTidyPrompt', () => {
   test('includes the private memory root and orient step', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, null)
+    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
     expect(prompt).toContain(PRIVATE_ROOT)
     expect(prompt).toContain(`${PRIVATE_ROOT}/MEMORY.md`)
     expect(prompt).toContain('full contents, not just frontmatter')
@@ -26,7 +26,7 @@ describe('buildMemoryTidyPrompt', () => {
   })
 
   test('states the conservative hard rules', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, null)
+    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
     // No cross-boundary merges
     expect(prompt).toContain('Never merge across the private ↔ team boundary')
     // Ambiguous pairs are left alone
@@ -47,7 +47,7 @@ describe('buildMemoryTidyPrompt', () => {
   })
 
   test('index update is surgical, not a rewrite, and cites caps from the constants', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, null)
+    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
     expect(prompt).toContain('NOT a rewrite')
     expect(prompt).toContain('Remove only the lines pointing at files you deleted')
     expect(prompt).toContain('byte-for-byte as it was')
@@ -57,19 +57,9 @@ describe('buildMemoryTidyPrompt', () => {
   })
 
   test('deletion goes through rm (human permission gate)', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, null)
+    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
     expect(prompt).toContain('`rm`')
     expect(prompt).toContain('permission prompt')
-  })
-
-  test('team-off: no team section and subdirectories are all skipped', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, null)
-    expect(prompt).not.toContain('Team memory')
-    expect(prompt).not.toContain(TEAM_ROOT)
-    // The static "team dir handled separately" clause must not leak into a
-    // team-off run — it would invite the agent into team/ without the rules.
-    expect(prompt).toContain('skip all subdirectories')
-    expect(prompt).not.toContain('team dir handled separately')
   })
 
   test('team-on: team instructions with structure preservation', () => {
@@ -87,7 +77,7 @@ describe('buildMemoryTidyPrompt', () => {
   })
 
   test('requires a final report including ambiguous, conflicts, and stale buckets', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, null)
+    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
     expect(prompt).toContain('Ambiguous pairs left alone')
     expect(prompt).toContain('Conflicts noted')
     expect(prompt).toContain('Stale or broken observed')

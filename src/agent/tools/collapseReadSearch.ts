@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import type { StructuredPatchHunk } from 'diff'
 import { isAbsolute } from 'path'
@@ -51,11 +50,12 @@ import {
 } from 'src/memory/memdir/globalMemoryOps.js'
 import { expandPath } from 'src/shared/fs/path.js'
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemOps = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemoryOps.js') as typeof import('src/memory/memdir/teamMemoryOps.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
+import {
+  appendTeamMemorySummaryParts,
+  isTeamMemFile,
+  isTeamMemoryWriteOrEdit,
+  isTeamMemorySearch,
+} from 'src/memory/memdir/teamMemoryOps.js'
 
 /**
  * Result of checking if a tool use is a search or read operation.
@@ -971,7 +971,7 @@ type GroupAccumulator = {
   memorySearchCount: number
   memoryReadFilePaths: Set<string>
   memoryWriteCount: number
-  // Global memory (~/.claudin/memory/) counts — not feature-gated, unlike team
+  // Global memory (~/.claudin/memory/) counts
   globalMemorySearchCount: number
   globalMemoryReadFilePaths: Set<string>
   globalMemoryWriteCount: number
@@ -1029,11 +1029,9 @@ function createEmptyGroup(): GroupAccumulator {
     hookInfos: [],
     writeFiles: new Map(),
     writeToolNames: new Map(),
-  }
-  if (feature('TEAMMEM')) {
-    group.teamMemorySearchCount = 0
-    group.teamMemoryReadFilePaths = new Set()
-    group.teamMemoryWriteCount = 0
+    teamMemorySearchCount: 0,
+    teamMemoryReadFilePaths: new Set(),
+    teamMemoryWriteCount: 0,
   }
   group.mcpCallCount = 0
   group.mcpServerNames = new Set()
@@ -1066,24 +1064,16 @@ function createCollapsedGroup(
   const memoryReadCount = group.memoryReadFilePaths.size
   const globalMemReadCount = group.globalMemoryReadFilePaths.size
   // Non-memory read file paths: exclude private, global and team memory paths
-  const teamMemReadPaths = feature('TEAMMEM')
-    ? group.teamMemoryReadFilePaths
-    : undefined
+  const teamMemReadPaths = group.teamMemoryReadFilePaths
   const nonMemReadFilePaths = [...group.readFilePaths].filter(
     p =>
       !group.memoryReadFilePaths.has(p) &&
       !group.globalMemoryReadFilePaths.has(p) &&
       !(teamMemReadPaths?.has(p) ?? false),
   )
-  const teamMemSearchCount = feature('TEAMMEM')
-    ? (group.teamMemorySearchCount ?? 0)
-    : 0
-  const teamMemReadCount = feature('TEAMMEM')
-    ? (group.teamMemoryReadFilePaths?.size ?? 0)
-    : 0
-  const teamMemWriteCount = feature('TEAMMEM')
-    ? (group.teamMemoryWriteCount ?? 0)
-    : 0
+  const teamMemSearchCount = group.teamMemorySearchCount ?? 0
+  const teamMemReadCount = group.teamMemoryReadFilePaths?.size ?? 0
+  const teamMemWriteCount = group.teamMemoryWriteCount ?? 0
   const result: CollapsedReadSearchGroup = {
     type: 'collapsed_read_search',
     // Subtract private + global + team memory counts so regular counts only reflect non-memory operations
@@ -1124,11 +1114,9 @@ function createCollapsedGroup(
   if (group.globalMemoryWriteCount > 0) {
     result.globalMemoryWriteCount = group.globalMemoryWriteCount
   }
-  if (feature('TEAMMEM')) {
-    result.teamMemorySearchCount = teamMemSearchCount
-    result.teamMemoryReadCount = teamMemReadCount
-    result.teamMemoryWriteCount = teamMemWriteCount
-  }
+  result.teamMemorySearchCount = teamMemSearchCount
+  result.teamMemoryReadCount = teamMemReadCount
+  result.teamMemoryWriteCount = teamMemWriteCount
   if ((group.mcpCallCount ?? 0) > 0) {
     result.mcpCallCount = group.mcpCallCount
     result.mcpServerNames = [...(group.mcpServerNames ?? [])]
@@ -1201,10 +1189,7 @@ export function collapseReadSearchGroups(
         const count = countToolUses(msg)
         if (isGlobalMemoryWriteOrEdit(toolInfo.name, toolInfo.input)) {
           currentGroup.globalMemoryWriteCount += count
-        } else if (
-          feature('TEAMMEM') &&
-          teamMemOps?.isTeamMemoryWriteOrEdit(toolInfo.name, toolInfo.input)
-        ) {
+        } else if (isTeamMemoryWriteOrEdit(toolInfo.name, toolInfo.input)) {
           currentGroup.teamMemoryWriteCount =
             (currentGroup.teamMemoryWriteCount ?? 0) + count
         } else {
@@ -1273,10 +1258,7 @@ export function collapseReadSearchGroups(
         // Check if the search targets memory files (via path or glob pattern)
         if (isGlobalMemorySearch(toolInfo.input)) {
           currentGroup.globalMemorySearchCount += count
-        } else if (
-          feature('TEAMMEM') &&
-          teamMemOps?.isTeamMemorySearch(toolInfo.input)
-        ) {
+        } else if (isTeamMemorySearch(toolInfo.input)) {
           currentGroup.teamMemorySearchCount =
             (currentGroup.teamMemorySearchCount ?? 0) + count
         } else if (isMemorySearch(toolInfo.input)) {
@@ -1296,7 +1278,7 @@ export function collapseReadSearchGroups(
           currentGroup.readFilePaths.add(filePath)
           if (isGlobalMemPath(filePath)) {
             currentGroup.globalMemoryReadFilePaths.add(filePath)
-          } else if (feature('TEAMMEM') && teamMemOps?.isTeamMemFile(filePath)) {
+          } else if (isTeamMemFile(filePath)) {
             currentGroup.teamMemoryReadFilePaths?.add(filePath)
           } else if (isAutoManagedMemoryFile(filePath)) {
             currentGroup.memoryReadFilePaths.add(filePath)
@@ -1442,9 +1424,7 @@ export function getSearchReadSummaryText(
       )
     }
     // Team memory operations
-    if (feature('TEAMMEM') && teamMemOps) {
-      teamMemOps.appendTeamMemorySummaryParts(memoryCounts, isActive, parts)
-    }
+    appendTeamMemorySummaryParts(memoryCounts, isActive, parts)
   }
 
   if (writeCount > 0) {

@@ -61,16 +61,10 @@ import {
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
 import {
-  buildExtractAutoOnlyPrompt,
   buildExtractCombinedPrompt,
   buildLoopHint,
 } from 'src/memory/extract/prompts.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
+import { isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 
 // ============================================================================
 // Helpers
@@ -418,10 +412,6 @@ export function initExtractMemories(): void {
       )
     }
 
-    const teamMemoryEnabled = feature('TEAMMEM')
-      ? teamMemPaths!.isTeamMemoryEnabled()
-      : false
-
     const canUseTool = createAutoMemCanUseTool(memoryDir)
     const cacheSafeParams = createCacheSafeParams(context)
 
@@ -454,20 +444,12 @@ export function initExtractMemories(): void {
       // The MEMORY.md index is always in the system prompt now that the
       // per-turn relevance recall is gone, so the extractor is always told to
       // keep it current.
-      const userPrompt =
-        feature('TEAMMEM') && teamMemoryEnabled
-          ? buildExtractCombinedPrompt(
-              newMessageCount,
-              existingMemories,
-              loopHint,
-              globalDir,
-            )
-          : buildExtractAutoOnlyPrompt(
-              newMessageCount,
-              existingMemories,
-              loopHint,
-              globalDir,
-            )
+      const userPrompt = buildExtractCombinedPrompt(
+        newMessageCount,
+        existingMemories,
+        loopHint,
+        globalDir,
+      )
 
       const result = await runForkedAgent({
         promptMessages: [createUserMessage({ content: userPrompt })],
@@ -522,22 +504,17 @@ export function initExtractMemories(): void {
       const memoryPaths = writtenPaths.filter(
         p => basename(p) !== ENTRYPOINT_NAME,
       )
-      const teamCount = feature('TEAMMEM')
-        ? count(memoryPaths, teamMemPaths!.isTeamMemPath)
-        : 0
-
+      const teamCount = count(memoryPaths, isTeamMemPath)
 
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,
       )
       if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {
         const msg = createMemorySavedMessage(memoryPaths)
-        if (feature('TEAMMEM')) {
-          // teamCount is set ad-hoc here and read back in teamMemSaved.ts;
-          // SystemMemorySavedMessage doesn't declare it — widen locally
-          // rather than editing the shared message type.
-          ;(msg as typeof msg & { teamCount?: number }).teamCount = teamCount
-        }
+        // teamCount is set ad-hoc here and read back in teamMemSaved.ts;
+        // SystemMemorySavedMessage doesn't declare it — widen locally
+        // rather than editing the shared message type.
+        ;(msg as typeof msg & { teamCount?: number }).teamCount = teamCount
         appendSystemMessage?.(msg)
       }
     } catch (error) {
