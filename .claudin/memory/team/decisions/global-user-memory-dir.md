@@ -29,18 +29,24 @@ your own; a new directory is a `MEMORY_SCOPES` entry plus a case in `memoryDirs.
 Scope wording is edited in `TYPE_SCOPES`, never in a prompt. Tests build dir lists with
 `src/memory/memdir/__testutils__/memoryDirs.ts` and must isolate `CLAUDIN_CONFIG_DIR`, or they
 touch the real `~/.claudin/memory/`. The transcript says "private" where it said bare "memory".
-`/memory sort` is the migration (private → global, each `mv`/`rm` prompted).
+`/memory sort` is the migration (private → global, each `mv -n`/`rm` prompted; the private row
+counts what it would move). A tool that writes memory goes through `writtenPaths.ts`, and the
+guard judges placement only for a new or retyped file. Memory dir settings are read from
+policy, flag and user sources only — `settings.local.json` lives in the repo.
 
 **Rejected:** migrating every `type: user` file automatically (mixed files like a user
 profile that also describes this project's work would carry the project part along);
 moving all feedback (Claudin rules would load in every repo); asking before every global write
 (the background forks cannot ask, so passive learning would stop); a dream that prunes the
 global dir (a run sees one project, so it would delete what holds elsewhere). Accepted risk: a
-memory planted by a hostile repo now reaches every project — contained only by the recall
-framing (background context, not instructions) and the transcript showing each write.
+memory planted by a hostile repo now reaches every project — contained by the indexes loading
+under their own preamble (background context, below the instructions, which win), the carve-out
+following symlinks, the forks being append-only on the global dir, and the transcript showing
+each write.
 
 **Evidence:** plan `.claudin/plans/dapper-tickling-meerkat.md`; design doc section "Global
 memory" in `docs/tech/memory/project-local-team-memory.md` ([[memory-subsystem-design-doc]]);
-memory-write A/B after the rewrite `/tmp/memory-write-ab/20261009-183837` (N=3, five requests):
-15/15 in the global, no-global and placebo arms, $0.104 vs $0.101 vs placebo $0.104 per session;
+memory-write A/B after the second review's fixes `/tmp/memory-write-ab/20261009-203121` (N=3,
+five requests): 15/15 in the global, no-global and placebo arms, $0.102 vs $0.102 vs placebo
+$0.104 per session (after the first rewrite: 15/15, $0.104 vs $0.101 vs $0.104);
 probes `scripts/migrations/probes/{global*,autoMem*,memory*}.json`, every probe red.
