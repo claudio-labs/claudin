@@ -22,29 +22,58 @@ const TRAILING_SEP_RE = /[/\\]+$/
  * in which case the run is private-only as it always was. `extra` carries
  * the run-specific tail: the decision-sources digest (dreamDigest.ts), the
  * session list, tool constraints.
+ *
+ * `globalRoot` is the global memory dir while it is on. The dream writes to
+ * it — who the user is, feedback that holds in any project — but never
+ * prunes it: a run sees one project, and what looks stale here may hold in
+ * another. Cleaning the global dir is `/memory tidy`'s job.
  */
 export function buildConsolidationPrompt(
   memoryRoot: string,
   transcriptDir: string,
   extra: string,
   teamRoot: string | null = null,
+  globalRoot: string | null = null,
 ): string {
   const team = teamRoot === null ? null : teamRoot.replace(TRAILING_SEP_RE, '')
+  const global = globalRoot === null ? null : globalRoot.replace(TRAILING_SEP_RE, '')
   const sections = TEAM_CATEGORIES.map(c => `\`## ${c.section}\``).join(' / ')
+
+  const globalBullet =
+    global === null
+      ? ''
+      : `- who the user is (\`type: user\`), or feedback that holds in any project (how they want answers, plans or reviews) — in the global dir \`${global}\`, shared by every project
+`
+  const privateFact =
+    global === null
+      ? 'a private fact — about this user, their feedback, private project context —'
+      : "a private fact about this project — feedback that names its files, commands or conventions, private project context —"
+  const globalRule =
+    global === null
+      ? ''
+      : `
+
+The global dir is shared by every project, and this run sees only this one: add to it and update a memory there, but never delete a global memory, never shrink one, and never remove a line from its index — what looks stale here may still hold in another project. Never put a \`project\` memory or a \`paths:\` key in it.`
 
   const whereToWrite =
     team === null
-      ? `For each thing worth remembering, write or update a memory file at the top level of the memory directory.`
+      ? global === null
+        ? `For each thing worth remembering, write or update a memory file at the top level of the memory directory.`
+        : `For each thing worth remembering, write or update a memory file. Who the user is (\`type: user\`) and feedback that holds in any project go in the global dir \`${global}\`; everything about this project goes at the top level of the memory directory.${globalRule}`
       : `For each thing worth remembering, write or update a memory file. Where it goes:
 
-- a private fact — about this user, their feedback, private project context — at the top level of \`${memoryRoot}\`
+${globalBullet}- ${privateFact} at the top level of \`${memoryRoot}\`
 - a team decision, a known defect or a documentation pointer — in the matching category subdirectory of the team dir \`${team}\` (see Team categories below; each has a bar to clear), with its index line under the ${sections} section of \`${team}/${ENTRYPOINT_NAME}\`, creating the section if absent, and the subdirectory in the link (\`(decisions/file.md)\`)
 - team-scoped context that is none of those — a convention, a process finding — at the team root
 
-The team dir is git-tracked: what you write there shows up in the user's \`git status\` and reaches teammates when they commit — that commit is the review, so write only what clears the bar, and never a secret.`
+The team dir is git-tracked: what you write there shows up in the user's \`git status\` and reaches teammates when they commit — that commit is the review, so write only what clears the bar, and never a secret.${globalRule}`
 
   const teamSection =
     team === null ? '' : `\n${renderTeamCategoriesXml().join('\n')}`
+  const indexesToRead = [
+    ...(team === null ? [] : [`\`${team}/${ENTRYPOINT_NAME}\``]),
+    ...(global === null ? [] : [`\`${global}/${ENTRYPOINT_NAME}\``]),
+  ]
 
   return `# Dream: Memory Consolidation
 
@@ -60,7 +89,7 @@ Session transcripts: \`${transcriptDir}\` (large JSONL files — grep narrowly, 
 ## Phase 1 — Orient
 
 - \`ls\` the memory directory to see what already exists
-- Read \`${ENTRYPOINT_NAME}\` to understand the current index${team === null ? '' : ` — both the private one and \`${team}/${ENTRYPOINT_NAME}\``}
+- Read \`${ENTRYPOINT_NAME}\` to understand the current index${indexesToRead.length === 0 ? '' : ` — the private one and ${indexesToRead.join(' and ')}`}
 - Skim existing topic files so you improve them rather than creating duplicates
 - If \`logs/\` or \`sessions/\` subdirectories exist (assistant-mode layout), review recent entries there
 
@@ -89,7 +118,7 @@ Focus on:
 ${teamSection}
 ## Phase 4 — Prune and index
 
-Update \`${ENTRYPOINT_NAME}\`${team === null ? '' : ' (each index you touched)'} so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.
+Update \`${ENTRYPOINT_NAME}\`${indexesToRead.length === 0 ? '' : ' (each index you touched)'} so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, add and update lines, never remove one.'}
 
 - Remove pointers to memories that are now stale, wrong, or superseded
 - Demote verbose entries: if an index line is over ~200 chars, it's carrying content that belongs in the topic file — shorten the line, move the detail

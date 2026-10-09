@@ -23,7 +23,12 @@ import {
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'
+import {
+  isAutoMemoryEnabled,
+  getAutoMemPath,
+  getGlobalMemPath,
+  isGlobalMemoryEnabled,
+} from 'src/memory/memdir/paths.js'
 import {
   getTeamMemPath,
   isTeamMemoryEnabled,
@@ -190,6 +195,7 @@ export function initAutoDream(): void {
       const transcriptDir = getProjectDir(getOriginalCwd())
       const teamRoot =
         feature('TEAMMEM') && isTeamMemoryEnabled() ? getTeamMemPath() : null
+      const globalRoot = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
       // The decision sources (plans, session prompts, impactful commits) are
       // read here, in the harness, so the fork judges with data instead of
       // grepping transcripts — and never runs git itself.
@@ -210,6 +216,7 @@ ${digest}`
         transcriptDir,
         extra,
         teamRoot,
+        globalRoot,
       )
 
       const result = await runForkedAgent({

@@ -13,8 +13,8 @@ import { feature } from 'bun:bundle'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   renderTeamCategoriesXml,
-  TYPES_SECTION_COMBINED,
   TYPES_SECTION_INDIVIDUAL,
+  typesSectionCombined,
   WHAT_NOT_TO_SAVE_SECTION,
 } from 'src/memory/memdir/memoryTypes.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -66,13 +66,28 @@ export function buildLoopHint(toolName: string, repeatCount: number): string {
 }
 
 /**
+ * Where a memory goes once the global dir exists, for the auto-only prompt,
+ * whose type section has no <scope> tags to say it.
+ */
+function globalPlacementSection(globalDir: string): string[] {
+  return [
+    '## Where each memory goes',
+    '',
+    `The global directory \`${globalDir}\` is shared by every project this user works in. \`user\` memories always go there, and so does feedback that holds in any project (how they want answers, plans or reviews). Everything about this project — and feedback that names its files, commands or conventions — goes in the project's memory directory. Never put a \`project\` memory or a \`paths:\` key in the global one. Each directory has its own \`MEMORY.md\` index.`,
+    '',
+  ]
+}
+
+/**
  * Build the extraction prompt for auto-only memory (no team memory).
- * Four-type taxonomy, no scope guidance (single directory).
+ * Four-type taxonomy, no scope guidance (single directory) — unless
+ * `globalDir` is set, which adds where each memory goes.
  */
 export function buildExtractAutoOnlyPrompt(
   newMessageCount: number,
   existingMemories: string,
   extraHint?: string,
+  globalDir: string | null = null,
 ): string {
   const howToSave = [
     '## How to save memories',
@@ -83,7 +98,7 @@ export function buildExtractAutoOnlyPrompt(
     '',
     ...MEMORY_FRONTMATTER_EXAMPLE,
     '',
-    '**Step 2** — add a pointer to that file in `MEMORY.md`. `MEMORY.md` is an index, not a memory — each entry should be one line, under ~150 characters: `- [Title](file.md) — one-line hook`. It has no frontmatter. Never write memory content directly into `MEMORY.md`.',
+    `**Step 2** — add a pointer to that file in ${globalDir === null ? '' : 'the same directory\'s '}\`MEMORY.md\`. \`MEMORY.md\` is an index, not a memory — each entry should be one line, under ~150 characters: \`- [Title](file.md) — one-line hook\`. It has no frontmatter. Never write memory content directly into \`MEMORY.md\`.`,
     '',
     '- `MEMORY.md` is always loaded into your system prompt — lines after 200 will be truncated, so keep the index concise',
     '- A memory whose frontmatter has `paths:` (same syntax as a rule in `.claudin/rules/`, relative to the project root) is attached automatically the first time a Read touches a matching file; use it when the fact is tied to specific files',
@@ -98,6 +113,7 @@ export function buildExtractAutoOnlyPrompt(
     'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',
     '',
     ...TYPES_SECTION_INDIVIDUAL,
+    ...(globalDir === null ? [] : globalPlacementSection(globalDir)),
     ...WHAT_NOT_TO_SAVE_SECTION,
     '',
     ...howToSave,
@@ -108,29 +124,32 @@ export function buildExtractAutoOnlyPrompt(
  * Build the extraction prompt for combined auto + team memory.
  * Four-type taxonomy with per-type <scope> guidance (directory choice
  * is baked into each type block), plus the team categories with their bar.
+ * `globalDir` (the global dir, while it is on) adds it as a third scope.
  */
 export function buildExtractCombinedPrompt(
   newMessageCount: number,
   existingMemories: string,
   extraHint?: string,
+  globalDir: string | null = null,
 ): string {
   if (!feature('TEAMMEM')) {
-    return buildExtractAutoOnlyPrompt(newMessageCount, existingMemories, extraHint)
+    return buildExtractAutoOnlyPrompt(newMessageCount, existingMemories, extraHint, globalDir)
   }
 
+  const dirs = globalDir === null ? 'private and team' : 'global, private and team'
   const howToSave = [
     '## How to save memories',
     '',
     'Saving a memory is a two-step process:',
     '',
-    "**Step 1** — write the memory to its own file in the chosen directory (private, team root, or a team category subdirectory per the type's scope guidance) using this frontmatter format:",
+    `**Step 1** — write the memory to its own file in the chosen directory (${globalDir === null ? '' : `global — \`${globalDir}\` — `}private, team root, or a team category subdirectory per the type's scope guidance) using this frontmatter format:`,
     '',
     ...MEMORY_FRONTMATTER_EXAMPLE,
     '',
-    "**Step 2** — add a pointer to that file in the same directory's `MEMORY.md`. Each directory (private and team) has its own `MEMORY.md` index — each entry should be one line, under ~150 characters: `- [Title](file.md) — one-line hook`. They have no frontmatter. Never write memory content directly into a `MEMORY.md`.",
+    `**Step 2** — add a pointer to that file in the same directory's \`MEMORY.md\`. Each directory (${dirs}) has its own \`MEMORY.md\` index — each entry should be one line, under ~150 characters: \`- [Title](file.md) — one-line hook\`. They have no frontmatter. Never write memory content directly into a \`MEMORY.md\`.`,
     '',
-    '- Both `MEMORY.md` indexes are loaded into your system prompt — lines after 200 will be truncated, so keep them concise',
-    '- A memory whose frontmatter has `paths:` (same syntax as a rule in `.claudin/rules/`, relative to the project root) is attached automatically the first time a Read touches a matching file; give one to a bug or doc memory tied to specific files',
+    `- ${globalDir === null ? 'Both' : 'All three'} \`MEMORY.md\` indexes are loaded into your system prompt — lines after 200 will be truncated, so keep them concise`,
+    `- A memory whose frontmatter has \`paths:\` (same syntax as a rule in \`.claudin/rules/\`, relative to the project root) is attached automatically the first time a Read touches a matching file; give one to a bug or doc memory tied to specific files${globalDir === null ? '' : ', never to a global memory'}`,
     '- Organize memory semantically by topic, not chronologically',
     '- Update or remove memories that turn out to be wrong or outdated',
     '- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.',
@@ -141,7 +160,7 @@ export function buildExtractCombinedPrompt(
     '',
     'If the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.',
     '',
-    ...TYPES_SECTION_COMBINED,
+    ...typesSectionCombined(globalDir !== null),
     ...renderTeamCategoriesXml(),
     ...WHAT_NOT_TO_SAVE_SECTION,
     '- You MUST avoid saving sensitive data within shared team memories. For example, never save API keys or user credentials.',

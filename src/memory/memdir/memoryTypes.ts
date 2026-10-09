@@ -269,6 +269,59 @@ export const TYPES_SECTION_COMBINED: readonly string[] = [
 ]
 
 /**
+ * The lines of TYPES_SECTION_COMBINED that change when the global dir is on
+ * (paths.ts isGlobalMemoryEnabled): each type's <scope>, and the examples
+ * whose directory moves. Keyed by the exact line it replaces, so the section
+ * above stays the one flat text; memoryPrompt.test.ts holds every key to a
+ * line of it, so an edit there cannot strand a replacement silently.
+ */
+export const GLOBAL_SCOPE_LINES: ReadonlyMap<string, string> = new Map([
+  [
+    'There are several discrete types of memory that you can store in your memory system. Each type below declares a <scope> of `private`, `team`, or guidance for choosing between the two.',
+    "There are several discrete types of memory that you can store in your memory system. Each type below declares a <scope> of `global` (yours and this user's in every project), `private` (this project), `team`, or guidance for choosing between them.",
+  ],
+  [
+    '    <scope>always private</scope>',
+    '    <scope>always global — the user is the same person in every project</scope>',
+  ],
+  [
+    '    assistant: [saves private user memory: user is a data scientist, currently focused on observability/logging]',
+    '    assistant: [saves global user memory: user is a data scientist, currently focused on observability/logging]',
+  ],
+  [
+    "    assistant: [saves private user memory: deep Go expertise, new to React and this project's frontend — frame frontend explanations in terms of backend analogues]",
+    '    assistant: [saves global user memory: deep Go expertise, new to React — frame frontend explanations in terms of backend analogues]',
+  ],
+  [
+    '    <scope>default to private. Save as team only when the guidance is clearly a project-wide convention that every contributor should follow (e.g., a testing policy, a build invariant), not a personal style preference. Team feedback lives at the team root, never in a category subdirectory.</scope>',
+    "    <scope>global when it holds in any project — how the user wants answers, plans or reviews; private when it names this project's files, commands or conventions; team only when the guidance is clearly a project-wide convention that every contributor should follow (e.g., a testing policy, a build invariant), not a personal style preference. Team feedback lives at the team root, never in a category subdirectory.</scope>",
+  ],
+  [
+    "    assistant: [saves private feedback memory: this user wants terse responses with no trailing summaries. Private because it's a communication preference, not a project convention]",
+    '    assistant: [saves global feedback memory: this user wants terse responses with no trailing summaries. Global because it is how they want answers in any project, not a project convention]',
+  ],
+  [
+    '    assistant: [saves private feedback memory: for refactors in this area, user prefers one bundled PR over many small ones. Confirmed after I chose this approach — a validated judgment call, not a correction]',
+    '    assistant: [saves private feedback memory: for refactors in this area, user prefers one bundled PR over many small ones. Confirmed after I chose this approach — a validated judgment call, not a correction. Private, not global: it is about this codebase]',
+  ],
+  [
+    '    <scope>private or team, but strongly bias toward team. In team, an impactful decision goes to `decisions/` and a known defect to `bugs/` (see Team categories — each has a bar to clear); other project context stays at the team root.</scope>',
+    '    <scope>never global; private or team, but strongly bias toward team. In team, an impactful decision goes to `decisions/` and a known defect to `bugs/` (see Team categories — each has a bar to clear); other project context stays at the team root.</scope>',
+  ],
+  [
+    '    <scope>usually team — in `docs/` when it points at the documentation for a subsystem (see Team categories), at the team root otherwise.</scope>',
+    '    <scope>usually team — in `docs/` when it points at the documentation for a subsystem (see Team categories), at the team root otherwise; global only for a personal resource outside any one project.</scope>',
+  ],
+])
+
+/** TYPES_SECTION_COMBINED as it reads with the global dir on, or as is. */
+export function typesSectionCombined(hasGlobal: boolean): readonly string[] {
+  return hasGlobal
+    ? TYPES_SECTION_COMBINED.map(line => GLOBAL_SCOPE_LINES.get(line) ?? line)
+    : TYPES_SECTION_COMBINED
+}
+
+/**
  * `## Types of memory` section for INDIVIDUAL-ONLY mode (single directory).
  * No <scope> tags. Examples use plain `[saves X memory: …]`. Prose that
  * only makes sense with a private/team split is reworded.

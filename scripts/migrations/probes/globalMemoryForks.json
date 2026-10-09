@@ -1,0 +1,66 @@
+{
+  "test": [
+    "src/memory/extract/extractMemories.global.test.ts",
+    "src/memory/memdir/memoryPrompt.test.ts",
+    "src/memory/autoDream/consolidationPrompt.test.ts"
+  ],
+  "source": "src/memory/extract/extractMemories.ts",
+  "probes": [
+    {
+      "name": "a fork may write the global dir",
+      "find": "        typeof filePath === 'string' &&\n        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))\n",
+      "replace": "        typeof filePath === 'string' &&\n        isAutoMemPath(filePath)\n"
+    },
+    {
+      "name": "a global write by the main agent makes the extraction skip",
+      "find": "        filePath !== undefined &&\n        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))\n",
+      "replace": "        filePath !== undefined &&\n        isAutoMemPath(filePath)\n"
+    },
+    {
+      "name": "the manifest lists the global dir",
+      "find": "  if (globalDir === null) return own\n",
+      "replace": "  if (true) return own\n"
+    },
+    {
+      "name": "the extraction hands the prompts the global dir",
+      "find": "      const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null\n",
+      "replace": "      const globalDir = null\n"
+    },
+    {
+      "name": "the auto-only extraction prompt says where each memory goes",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    ...(globalDir === null ? [] : globalPlacementSection(globalDir)),\n",
+      "replace": ""
+    },
+    {
+      "name": "the combined extraction prompt takes the global scopes",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    ...typesSectionCombined(globalDir !== null),\n",
+      "replace": "    ...typesSectionCombined(false),\n"
+    },
+    {
+      "name": "the global scope lines replace their originals",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "    ? TYPES_SECTION_COMBINED.map(line => GLOBAL_SCOPE_LINES.get(line) ?? line)\n",
+      "replace": "    ? TYPES_SECTION_COMBINED\n"
+    },
+    {
+      "name": "the dream never prunes the global dir",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": "The global dir is shared by every project, and this run sees only this one: add to it and update a memory there, but never delete a global memory, never shrink one, and never remove a line from its index — what looks stale here may still hold in another project.",
+      "replace": "The global dir is shared by every project."
+    },
+    {
+      "name": "the dream sends user memories to the global dir",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": "${globalBullet}- ${privateFact} at the top level",
+      "replace": "- ${privateFact} at the top level"
+    },
+    {
+      "name": "auto-dream hands the prompt the global dir",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "      const globalRoot = isGlobalMemoryEnabled() ? getGlobalMemPath() : null\n",
+      "replace": "      const globalRoot = null\n"
+    }
+  ]
+}

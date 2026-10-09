@@ -25,9 +25,12 @@ import {
 import {
   getAutoMemPath,
   getExtractionTurnInterval,
+  getGlobalMemPath,
   isAutoMemoryEnabled,
   isAutoMemPath,
   isExtractMemoriesEnabled,
+  isGlobalMemoryEnabled,
+  isGlobalMemPath,
 } from 'src/memory/memdir/paths.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -132,7 +135,7 @@ function countModelVisibleMessagesSince(
  * agent and advances the cursor past this range, making the main agent
  * and the background agent mutually exclusive per turn.
  */
-function hasMemoryWritesSince(
+export function hasMemoryWritesSince(
   messages: Message[],
   sinceUuid: string | undefined,
 ): boolean {
@@ -153,7 +156,10 @@ function hasMemoryWritesSince(
     }
     for (const block of content) {
       const filePath = getWrittenFilePath(block)
-      if (filePath !== undefined && isAutoMemPath(filePath)) {
+      if (
+        filePath !== undefined &&
+        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))
+      ) {
         return true
       }
     }
@@ -177,7 +183,8 @@ function denyAutoMemTool(tool: Tool, reason: string) {
 /**
  * Creates a canUseTool function that allows Read/Grep/Glob (unrestricted),
  * read-only Bash commands, and Edit/Write only for paths within the
- * auto-memory directory. Shared by extractMemories and autoDream.
+ * auto-memory directory or the global one (while it is on). Shared by
+ * extractMemories and autoDream.
  */
 export function createAutoMemCanUseTool(memoryDir: string): CanUseToolFn {
   return async (tool: Tool, input: Record<string, unknown>) => {
@@ -209,14 +216,20 @@ export function createAutoMemCanUseTool(memoryDir: string): CanUseToolFn {
       'file_path' in input
     ) {
       const filePath = input.file_path
-      if (typeof filePath === 'string' && isAutoMemPath(filePath)) {
+      if (
+        typeof filePath === 'string' &&
+        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))
+      ) {
         return { behavior: 'allow' as const, updatedInput: input }
       }
     }
 
+    const where = isGlobalMemoryEnabled()
+      ? `${memoryDir} or ${getGlobalMemPath()}`
+      : memoryDir
     return denyAutoMemTool(
       tool,
-      `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${memoryDir} are allowed`,
+      `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${where} are allowed`,
     )
   }
 }
@@ -266,6 +279,27 @@ function extractWrittenPaths(agentMessages: Message[]): string[] {
     }
   }
   return uniq(paths)
+}
+
+/**
+ * The manifest of what is already saved, so the agent updates a memory
+ * instead of duplicating it. The scan lists paths relative to the directory
+ * it walked, so with the global dir on each list says which directory it is.
+ */
+export async function existingMemoryManifest(
+  memoryDir: string,
+  globalDir: string | null,
+): Promise<string> {
+  const signal = createAbortController().signal
+  const own = formatMemoryManifest(await scanMemoryFiles(memoryDir, signal))
+  if (globalDir === null) return own
+  const global = formatMemoryManifest(await scanMemoryFiles(globalDir, signal))
+  if (global === '') return own
+  return [
+    ...(own === '' ? [] : [`In \`${memoryDir}\`:`, own, '']),
+    `In the global dir \`${globalDir}\`:`,
+    global,
+  ].join('\n')
 }
 
 // ============================================================================
@@ -414,9 +448,8 @@ export function initExtractMemories(): void {
       // Pre-inject the memory directory manifest so the agent doesn't spend
       // a turn on `ls` (memoryScan.ts, frontmatter only).
       // Placed after the throttle gate so skipped turns don't pay the scan cost.
-      const existingMemories = formatMemoryManifest(
-        await scanMemoryFiles(memoryDir, createAbortController().signal),
-      )
+      const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
+      const existingMemories = await existingMemoryManifest(memoryDir, globalDir)
 
       // The MEMORY.md index is always in the system prompt now that the
       // per-turn relevance recall is gone, so the extractor is always told to
@@ -427,11 +460,13 @@ export function initExtractMemories(): void {
               newMessageCount,
               existingMemories,
               loopHint,
+              globalDir,
             )
           : buildExtractAutoOnlyPrompt(
               newMessageCount,
               existingMemories,
               loopHint,
+              globalDir,
             )
 
       const result = await runForkedAgent({

@@ -1,7 +1,12 @@
 import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
 import type { Command } from 'src/commands/commands.js'
-import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'
+import {
+  isAutoMemoryEnabled,
+  getAutoMemPath,
+  getGlobalMemPath,
+  isGlobalMemoryEnabled,
+} from 'src/memory/memdir/paths.js'
 import {
   getTeamMemPath,
   isTeamMemoryEnabled,
@@ -57,6 +62,7 @@ const command = {
 
     const teamRoot =
       feature('TEAMMEM') && isTeamMemoryEnabled() ? getTeamMemPath() : null
+    const globalRoot = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
     const digest = await collectDreamDigest(lastAt, sessionIds)
     const extra = `
 **Manually triggered by user via /dream.**
@@ -71,6 +77,7 @@ ${digest}`
       transcriptDir,
       extra,
       teamRoot,
+      globalRoot,
     )
 
     // Record consolidation timestamp programmatically so auto-dream
