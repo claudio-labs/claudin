@@ -14,6 +14,7 @@ import {
 import { validateBoundedIntEnvVar } from 'src/shared/envValidation.js'
 import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { logError } from 'src/shared/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { sanitizePath } from 'src/shared/fs/path.js'
 import {
   getInitialSettings,
@@ -189,21 +190,33 @@ function containsConfigHome(dir: string): boolean {
 }
 
 /**
- * A memory directory from a trusted settings source (policy, flag, local,
- * user — never projectSettings: a repo must not point the no-prompt carve-out
- * anywhere), validated, and refused when it holds the config home.
+ * A memory setting from the sources a repo cannot write: policy, flag and
+ * user. SECURITY: never projectSettings, and never localSettings either —
+ * settings.local.json lives in the repo, gitignored by convention only
+ * (settings.ts AUTO_MODE_REPO_CONTROLLED_SOURCES), and these settings decide
+ * where the no-prompt memory carve-out (internalPaths.ts) applies.
  */
+function trustedMemorySetting<
+  K extends 'autoMemoryDirectory' | 'autoMemoryGlobalDirectory' | 'autoMemoryProjectLocal',
+>(key: K) {
+  return (
+    getSettingsForSource('policySettings')?.[key] ??
+    getSettingsForSource('flagSettings')?.[key] ??
+    getSettingsForSource('userSettings')?.[key]
+  )
+}
+
+/** A memory directory setting, validated, and refused when it holds the config home. */
 function memoryDirSetting(
   key: 'autoMemoryDirectory' | 'autoMemoryGlobalDirectory',
 ): string | undefined {
-  const dir = validateMemoryPath(
-    getSettingsForSource('policySettings')?.[key] ??
-      getSettingsForSource('flagSettings')?.[key] ??
-      getSettingsForSource('localSettings')?.[key] ??
-      getSettingsForSource('userSettings')?.[key],
-    true,
-  )
+  const dir = validateMemoryPath(trustedMemorySetting(key), true)
   return dir === undefined || containsConfigHome(dir) ? undefined : dir
+}
+
+/** Whether two directories (trailing separators) are one inside the other, or the same. */
+function nests(a: string, b: string): boolean {
+  return a.startsWith(b) || b.startsWith(a)
 }
 
 /**
@@ -223,21 +236,6 @@ function getAutoMemPathOverride(): string | undefined {
 }
 
 /**
- * Settings.json override for the full auto-memory directory path.
- * Supports ~/ expansion for user convenience.
- *
- * SECURITY: projectSettings (.claudin/settings.json committed to the repo) is
- * intentionally excluded — a malicious repo could otherwise set
- * autoMemoryDirectory: "~/.ssh" and gain silent write access to sensitive
- * directories via the filesystem.ts write carve-out (which fires when
- * the path is in the private memory dir and hasAutoMemPathOverride() is false). This follows
- * the same pattern as hasSkipDangerousModePermissionPrompt() etc.
- */
-function getAutoMemPathSetting(): string | undefined {
-  return memoryDirSetting('autoMemoryDirectory')
-}
-
-/**
  * Check if CLAUDE_COWORK_MEMORY_PATH_OVERRIDE is set to a valid override.
  * Use this as a signal that the SDK caller has explicitly opted into
  * the auto-memory mechanics — e.g. to decide whether to inject the
@@ -250,21 +248,11 @@ export function hasAutoMemPathOverride(): boolean {
 /**
  * Whether the project-local auto-memory default (<gitRoot>/.claudin/memory/)
  * is enabled. Defaults to true; set autoMemoryProjectLocal: false to force
- * the legacy global-only location without a rebuild.
- *
- * SECURITY: projectSettings is intentionally excluded, same rationale as
- * getAutoMemPathSetting() above — this setting only changes *where* memory
- * that's already trusted-local gets stored, not an arbitrary path, so the
- * blast radius of a malicious repo forcing it is low, but excluding
- * projectSettings keeps the trust model consistent with the sibling setting.
+ * the legacy per-project location under the config home. Read from the same
+ * sources as the directory settings, for one trust model.
  */
 function isAutoMemProjectLocalEnabled(): boolean {
-  const val =
-    getSettingsForSource('policySettings')?.autoMemoryProjectLocal ??
-    getSettingsForSource('flagSettings')?.autoMemoryProjectLocal ??
-    getSettingsForSource('localSettings')?.autoMemoryProjectLocal ??
-    getSettingsForSource('userSettings')?.autoMemoryProjectLocal
-  return val !== false
+  return trustedMemorySetting('autoMemoryProjectLocal') !== false
 }
 
 /**
@@ -297,7 +285,7 @@ function getAutoMemBase(): string {
  */
 export const getAutoMemPath = memoize(
   (): string => {
-    const override = getAutoMemPathOverride() ?? getAutoMemPathSetting()
+    const override = getAutoMemPathOverride() ?? memoryDirSetting('autoMemoryDirectory')
     if (override) {
       return override
     }
@@ -317,6 +305,16 @@ export const getAutoMemPath = memoize(
     const projectLocalPath = (
       join(gitRoot, '.claudin', AUTO_MEM_DIRNAME) + sep
     ).normalize('NFC')
+
+    // A repo rooted at $HOME would put its private dir at ~/.claudin/memory/
+    // — the global dir — and every other project would then load this
+    // project's private and team memories as global ones.
+    if (nests(projectLocalPath, getGlobalMemPath())) {
+      logForDebugging(
+        `[memory] ${projectLocalPath} is the global memory dir; using ${legacyPath} for this project`,
+      )
+      return legacyPath
+    }
 
     try {
       getFsImplementation().mkdirSync(projectLocalPath, { mode: 0o700 })
@@ -374,17 +372,9 @@ export const getAutoMemPath = memoize(
 )
 
 /**
- * Settings.json override for the global memory directory, with the same
- * trust rules and ~/ expansion as autoMemoryDirectory: projectSettings is
- * excluded, so a repo cannot point the no-prompt write carve-out anywhere.
- */
-function getGlobalMemPathSetting(): string | undefined {
-  return memoryDirSetting('autoMemoryGlobalDirectory')
-}
-
-/**
  * The global memory directory: `<memoryBase>/memory/`, or
- * autoMemoryGlobalDirectory. One for the user, shared by every project — it
+ * autoMemoryGlobalDirectory (memoryDirSetting: trusted sources, ~/
+ * expansion, never the config home). One for the user, shared by every project — it
  * holds what is about the person (`type: user`, feedback that applies in any
  * project), so a new project starts knowing who the user is. Trailing
  * separator, like getAutoMemPath(). Memoized for the same render-path reason,
@@ -392,7 +382,7 @@ function getGlobalMemPathSetting(): string | undefined {
  */
 export const getGlobalMemPath = memoize(
   (): string =>
-    getGlobalMemPathSetting() ??
+    memoryDirSetting('autoMemoryGlobalDirectory') ??
     (join(getMemoryBaseDir(), AUTO_MEM_DIRNAME) + sep).normalize('NFC'),
   () =>
     `${process.env.CLAUDIN_CONFIG_DIR ?? ''}\0${process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR ?? ''}`,
@@ -403,9 +393,10 @@ export const getGlobalMemPath = memoize(
  * CLAUDIN_GLOBAL_MEMORY=0 turns it off, and memory is the private and team
  * directories only, as before it existed — a `type: user` memory is private
  * again. Also off when a Cowork/SDK caller designated the memory directory
- * (it gets exactly that directory), and when the global and private
- * directories nest, which would make every file in the inner one belong to
- * both.
+ * (it gets exactly that directory), and when a setting makes the global and
+ * private directories nest, which would make every file in the inner one
+ * belong to both. (A repo rooted at $HOME never gets there: getAutoMemPath
+ * moves its private dir instead.)
  */
 export function isGlobalMemoryEnabled(): boolean {
   if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) {
@@ -416,5 +407,9 @@ export function isGlobalMemoryEnabled(): boolean {
   }
   const globalDir = getGlobalMemPath()
   const autoDir = getAutoMemPath()
-  return !globalDir.startsWith(autoDir) && !autoDir.startsWith(globalDir)
+  if (nests(globalDir, autoDir)) {
+    logForDebugging(`[memory] global memory off: ${globalDir} and ${autoDir} nest`)
+    return false
+  }
+  return true
 }

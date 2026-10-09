@@ -58,6 +58,12 @@ async function importFreshPathsModule(options: {
   autoMemoryGlobalDirectory?: string
   /** Set in the checked-in project settings, which must be ignored. */
   projectGlobalDirectory?: string
+  /** Set in settings.local.json — in the repo, so ignored too. */
+  localSettings?: {
+    autoMemoryDirectory?: string
+    autoMemoryGlobalDirectory?: string
+    autoMemoryProjectLocal?: boolean
+  }
 }) {
   mock.module('src/platform/settings/settings.js', () => ({
     ...realSettings,
@@ -71,7 +77,9 @@ async function importFreshPathsModule(options: {
           }
         : source === 'projectSettings'
           ? { autoMemoryGlobalDirectory: options.projectGlobalDirectory }
-          : undefined,
+          : source === 'localSettings'
+            ? options.localSettings
+            : undefined,
   }))
   mock.module('src/platform/bootstrap/state.js', () => ({
     ...realState,
@@ -367,11 +375,25 @@ describe('global memory directory', () => {
     )
   })
 
-  test('a global dir nested in the private one is off', async () => {
+  test('a global dir set inside the project-local private dir moves the private dir aside', async () => {
     const projectDir = freshGitProjectDir()
     const paths = await importFreshPathsModule({
       projectRoot: projectDir,
       autoMemoryGlobalDirectory: join(projectDir, '.claudin', 'memory', 'global'),
+    })
+
+    expect(paths.getAutoMemPath()).not.toBe(join(projectDir, '.claudin', 'memory') + sep)
+    expect(paths.isGlobalMemoryEnabled()).toBe(true)
+  })
+
+  test('a private dir set by autoMemoryDirectory that nests with the global one turns the global off', async () => {
+    const projectDir = freshGitProjectDir()
+    const custom = mkdtempSync(join(tmpdir(), 'claudin-gmem-nest-'))
+    tmpDirs.push(custom)
+    const paths = await importFreshPathsModule({
+      projectRoot: projectDir,
+      autoMemoryDirectory: custom,
+      autoMemoryGlobalDirectory: join(custom, 'global'),
     })
 
     expect(paths.isGlobalMemoryEnabled()).toBe(false)
@@ -383,5 +405,33 @@ describe('global memory directory', () => {
     const paths = await importFreshPathsModule({ projectRoot: projectDir })
 
     expect(paths.isGlobalMemoryEnabled()).toBe(false)
+  })
+
+  test('SECURITY: settings.local.json, which lives in the repo, cannot move a memory dir', async () => {
+    const projectDir = freshGitProjectDir()
+    const elsewhere = join(projectDir, '..', 'not-memory')
+    const paths = await importFreshPathsModule({
+      projectRoot: projectDir,
+      localSettings: {
+        autoMemoryDirectory: elsewhere,
+        autoMemoryGlobalDirectory: elsewhere,
+        autoMemoryProjectLocal: false,
+      },
+    })
+
+    expect(paths.getAutoMemPath()).toBe(join(projectDir, '.claudin', 'memory') + sep)
+    expect(paths.getGlobalMemPath()).toBe(join(process.env.CLAUDIN_CONFIG_DIR!, 'memory') + sep)
+  })
+
+  test('a repo rooted where the global dir would be its private one moves its private dir, not the global', async () => {
+    // A dotfiles repo at $HOME: <gitRoot>/.claudin/memory/ IS ~/.claudin/memory/.
+    const home = process.env.CLAUDIN_CONFIG_DIR!.replace(/[/\\]\.claudin$/, '')
+    mkdirSync(join(home, '.git'), { recursive: true })
+    const paths = await importFreshPathsModule({ projectRoot: home })
+
+    const privateDir = paths.getAutoMemPath()
+    expect(privateDir).not.toBe(paths.getGlobalMemPath())
+    expect(privateDir.startsWith(join(process.env.CLAUDIN_CONFIG_DIR!, 'projects') + sep)).toBe(true)
+    expect(paths.isGlobalMemoryEnabled()).toBe(true)
   })
 })

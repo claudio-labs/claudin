@@ -15,8 +15,17 @@ export const MEMORY_SCOPES = ['global', 'private', 'team'] as const
 export type MemoryScope = (typeof MEMORY_SCOPES)[number]
 
 type ScopeSpec = {
-  /** The getMemoryFiles type its index loads as. */
+  /**
+   * The getMemoryFiles type its files load as — its index, and a memory of it
+   * a `paths:` match attaches. Persisted in transcripts, so `'AutoMem'` stays.
+   */
   indexType: Extract<MemoryType, 'GlobalMem' | 'AutoMem' | 'TeamMem'>
+  /** The mode its directory is created with, when it is the user's alone across projects. */
+  dirMode?: number
+  /** Whether its memories may sit in subdirectories (the team categories). */
+  hasSubdirectories: boolean
+  /** Whether its memories may carry `paths:` — false for one not tied to a project's files. */
+  takesPaths: boolean
   /** Its row in /memory, and its browser's title. */
   title: string
   /** Its row's description in /memory, before the directory's path. */
@@ -30,6 +39,9 @@ type ScopeSpec = {
 export const MEMORY_SCOPE_SPECS: Readonly<Record<MemoryScope, ScopeSpec>> = {
   global: {
     indexType: 'GlobalMem',
+    dirMode: 0o700,
+    hasSubdirectories: false,
+    takesPaths: false,
     title: 'Global memory',
     description: 'What Claudin learned about you, for every project, in',
     deleteNote: 'Global memory — every project loses it, not just this one.',
@@ -37,12 +49,16 @@ export const MEMORY_SCOPE_SPECS: Readonly<Record<MemoryScope, ScopeSpec>> = {
   },
   private: {
     indexType: 'AutoMem',
+    hasSubdirectories: false,
+    takesPaths: true,
     title: 'Private memory',
     description: 'What Claudin learned in this project, for you only, in',
     subcommand: '/memory private',
   },
   team: {
     indexType: 'TeamMem',
+    hasSubdirectories: true,
+    takesPaths: true,
     title: 'Team memory',
     description: 'Shared with the team, git-tracked at',
     deleteNote: 'Shared memory — the deletion reaches the team on the next commit.',

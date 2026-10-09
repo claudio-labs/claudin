@@ -1,0 +1,42 @@
+{
+  "test": [
+    "src/permissions/filePermissions/internalPaths.test.ts",
+    "src/memory/memdir/paths.test.ts"
+  ],
+  "source": "src/memory/memdir/memoryDirs.ts",
+  "probes": [
+    {
+      "name": "the carve-out follows the symlink chain",
+      "find": "  return getPathsForPermissionCheck(path).every(inside) ? dir.scope : null\n",
+      "replace": "  return dir.scope\n"
+    },
+    {
+      "name": "a nested dir's real location must be inside its parent's",
+      "find": "  return parentReal !== null && real.startsWith(parentReal) ? real : null\n",
+      "replace": "  return real\n"
+    },
+    {
+      "name": "a memory dir's real location stands for it",
+      "find": "  const roots = [dir.root, trustedRealRoot(dir, dirs)].filter(\n",
+      "replace": "  const roots = [dir.root].filter(\n"
+    },
+    {
+      "name": "settings.local.json is not a trusted memory source",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    getSettingsForSource('flagSettings')?.[key] ??\n",
+      "replace": "    getSettingsForSource('flagSettings')?.[key] ??\n    getSettingsForSource('localSettings')?.[key] ??\n"
+    },
+    {
+      "name": "a project-local private dir never takes the global dir",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "    if (nests(projectLocalPath, getGlobalMemPath())) {\n",
+      "replace": "    if (false) {\n"
+    },
+    {
+      "name": "nested global and private dirs still turn the global off",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "  if (nests(globalDir, autoDir)) {\n",
+      "replace": "  if (false) {\n"
+    }
+  ]
+}

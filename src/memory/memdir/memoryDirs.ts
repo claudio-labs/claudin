@@ -1,4 +1,4 @@
-import { join, resolve } from 'path'
+import { join, resolve, sep } from 'path'
 import {
   ENTRYPOINT_NAME,
   MEMORY_SCOPES,
@@ -12,6 +12,10 @@ import {
   isGlobalMemoryEnabled,
 } from 'src/memory/memdir/paths.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import {
+  getFsImplementation,
+  getPathsForPermissionCheck,
+} from 'src/shared/fs/fsOperations.js'
 
 /**
  * The memory directories of this session, decided once: which are on, where
@@ -83,6 +87,48 @@ export function findMemoryDir(
 /** The scope of the session's directory that `path` is in, or null. */
 export function memoryScopeOf(path: string): MemoryScope | null {
   return findMemoryDir(getMemoryDirs(), path)?.scope ?? null
+}
+
+function realRoot(root: string): string | null {
+  try {
+    return (getFsImplementation().realpathSync(root) + sep).normalize('NFC')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Where `dir` really is, when that may stand for it: a directory nested in
+ * another (team in private) only if it really is inside its parent — a
+ * committed `.claudin/memory/team` symlink to elsewhere must not move it.
+ */
+function trustedRealRoot(dir: MemoryDir, dirs: readonly MemoryDir[]): string | null {
+  const real = realRoot(dir.root)
+  const parent = findMemoryDir(
+    dirs.filter(other => other !== dir),
+    dir.root,
+  )
+  if (real === null || parent === null) return real
+  const parentReal = realRoot(parent.root)
+  return parentReal !== null && real.startsWith(parentReal) ? real : null
+}
+
+/**
+ * The scope of `path` for a permission decision — the no-prompt carve-out
+ * (internalPaths.ts). SECURITY: the path, every symlink it resolves through
+ * and its final target (getPathsForPermissionCheck) must all lie in that one
+ * directory, as written or where it really is; a symlink inside a memory
+ * directory that leads out of it gets no carve-out.
+ */
+export function memoryScopeForPermission(path: string): MemoryScope | null {
+  const dirs = getMemoryDirs()
+  const dir = findMemoryDir(dirs, path)
+  if (dir === null) return null
+  const roots = [dir.root, trustedRealRoot(dir, dirs)].filter(
+    (root): root is string => root !== null,
+  )
+  const inside = (p: string) => roots.some(root => resolve(p).startsWith(root))
+  return getPathsForPermissionCheck(path).every(inside) ? dir.scope : null
 }
 
 /**

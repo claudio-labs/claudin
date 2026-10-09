@@ -2,7 +2,7 @@ import { join, normalize, sep } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js'
 import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
-import { memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
+import { memoryScopeForPermission } from 'src/memory/memdir/memoryDirs.js'
 import { hasAutoMemPathOverride } from 'src/memory/memdir/paths.js'
 import { getSessionMemoryDir } from 'src/memory/session/paths.js'
 import { pathInWorkingPath } from 'src/permissions/filePermissions/workingDirs.js'
@@ -259,7 +259,7 @@ export function checkEditableInternalPath(
   // so it gets NO special permission treatment here — writes go through normal
   // permission flow (step 5 → ask). SDK callers who want silent memory should
   // pass an allow rule for the override path. (The global dir is off under it.)
-  const writeScope = memoryScopeOf(normalizedPath)
+  const writeScope = memoryScopeForPermission(normalizedPath)
   if (writeScope !== null && !hasAutoMemPathOverride()) {
     return {
       behavior: 'allow',
@@ -404,7 +404,7 @@ export function checkReadableInternalPath(
   }
 
   // The memory directories (memoryDirs.ts), global, private and team
-  const readScope = memoryScopeOf(normalizedPath)
+  const readScope = memoryScopeForPermission(normalizedPath)
   if (readScope !== null) {
     return {
       behavior: 'allow',

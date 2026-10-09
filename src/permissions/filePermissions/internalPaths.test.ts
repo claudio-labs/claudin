@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync } from 'fs'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
@@ -156,5 +156,55 @@ describe('auto-memory carve-outs', () => {
     } finally {
       delete process.env.CLAUDIN_GLOBAL_MEMORY
     }
+  })
+
+  // SECURITY: the carve-out follows symlinks. A repo can commit a symlink
+  // under .claudin/memory/; what it leads to decides, not where it sits.
+  describe('symlinks inside a memory dir', () => {
+    let outside: string
+
+    beforeAll(() => {
+      outside = join(root, 'outside')
+      mkdirSync(outside, { recursive: true })
+      writeFileSync(join(outside, 'id_rsa'), 'secret')
+      mkdirSync(memDir, { recursive: true })
+    })
+
+    afterEach(() => {
+      rmSync(join(memDir, 'team'), { recursive: true, force: true })
+      rmSync(join(memDir, 'leak.md'), { force: true })
+    })
+
+    const verdicts = (file: string) => [
+      checkEditableInternalPath(file, { file_path: file }).behavior,
+      checkReadableInternalPath(file, { file_path: file }).behavior,
+    ]
+
+    test('a file symlink leading out of the memory dir gets no carve-out', () => {
+      symlinkSync(join(outside, 'id_rsa'), join(memDir, 'leak.md'))
+      expect(verdicts(join(memDir, 'leak.md'))).toEqual(['passthrough', 'passthrough'])
+    })
+
+    test('a team dir symlinked out of the project gets no carve-out, for a file there or a new one', () => {
+      symlinkSync(outside, join(memDir, 'team'), 'dir')
+      expect(verdicts(join(memDir, 'team', 'id_rsa'))).toEqual(['passthrough', 'passthrough'])
+      expect(verdicts(join(memDir, 'team', 'new.md'))).toEqual(['passthrough', 'passthrough'])
+    })
+
+    test('a global dir the user keeps elsewhere through a symlink keeps its carve-out', () => {
+      const real = join(root, 'dotfiles', 'claudin-memory')
+      mkdirSync(real, { recursive: true })
+      const globalDir = getGlobalMemPath()
+      rmSync(globalDir, { recursive: true, force: true })
+      mkdirSync(join(globalDir, '..'), { recursive: true })
+      symlinkSync(real, globalDir.replace(/\/$/, ''), 'dir')
+      try {
+        writeFileSync(join(real, 'user-language.md'), 'x')
+        expect(verdicts(join(globalDir, 'user-language.md'))).toEqual(['allow', 'allow'])
+        expect(verdicts(join(globalDir, 'new.md'))).toEqual(['allow', 'allow'])
+      } finally {
+        rmSync(globalDir.replace(/\/$/, ''), { force: true })
+      }
+    })
   })
 })
