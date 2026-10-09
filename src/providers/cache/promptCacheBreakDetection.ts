@@ -89,6 +89,16 @@ type PreviousState = {
    *  request (readThinkingDrops). It drops them again on every later request
    *  while their prefix stays changed, so only paths not in here are news. */
   thinkingDropPaths: Set<string>
+  /** When this key's last two requests started, and the TTL each one's
+   *  system cache_control asked for. A cache entry lives from the request
+   *  that wrote or read it, so an expiry is decided start to start, at the
+   *  previous request's tier. Measuring from the last assistant message (it
+   *  ends a whole stream later) read a 5.5-min-old 5m cache as a 4.1-min gap,
+   *  and the fixed 5-min rule called a 6-min pause on a 1h thread an expiry. */
+  requestStartedAt: number
+  prevRequestStartedAt: number | null
+  requestTtlMs: number
+  prevRequestTtlMs: number | null
 }
 
 /** The first message whose rendered bytes changed behind the previous
@@ -273,6 +283,15 @@ function getSystemCharCount(system: TextBlockParam[]): number {
   return total
 }
 
+/** The TTL the request's system breakpoints asked for: 1h when any says so. */
+function systemCacheTtlMs(system: readonly TextBlockParam[]): number {
+  return system.some(
+    b => (b.cache_control as { ttl?: string } | undefined | null)?.ttl === '1h',
+  )
+    ? CACHE_TTL_1HOUR_MS
+    : CACHE_TTL_5MIN_MS
+}
+
 function buildDiffableContent(
   system: TextBlockParam[],
   tools: BetaToolUnion[],
@@ -365,6 +384,8 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
     const effortStr = effortValue === undefined ? '' : String(effortValue)
     const extraBodyHash =
       extraBodyParams === undefined ? 0 : computeHash(extraBodyParams)
+    const now = Date.now()
+    const ttlMs = systemCacheTtlMs(cachedSystem)
 
     const prev = previousStateBySource.get(key)
 
@@ -401,6 +422,10 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         pendingMessageMutation: null,
         pendingMarkerAdvance: null,
         thinkingDropPaths: new Set(),
+        requestStartedAt: now,
+        prevRequestStartedAt: null,
+        requestTtlMs: ttlMs,
+        prevRequestTtlMs: null,
       })
       return
     }
@@ -410,6 +435,10 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
     previousStateBySource.delete(key)
     previousStateBySource.set(key, prev)
     prev.callCount++
+    prev.prevRequestStartedAt = prev.requestStartedAt
+    prev.requestStartedAt = now
+    prev.prevRequestTtlMs = prev.requestTtlMs
+    prev.requestTtlMs = ttlMs
 
     const systemPromptChanged = systemHash !== prev.systemHash
     const toolSchemasChanged = toolsHash !== prev.toolsHash
@@ -787,9 +816,11 @@ function describeThinkingDrops(paths: readonly string[]): string {
 export function buildCacheBreakReason(
   changes: PendingChanges | null,
   serverEdit: ReturnType<typeof summarizeAppliedContextEdits>,
-  timeSinceLastAssistantMsg: number | null,
+  gapMs: number | null,
   messageMutation: MessageMutation | null = null,
   markerAdvance: MarkerAdvance | null = null,
+  /** The TTL the previous request cached at; null guesses it from the gap. */
+  ttlMs: number | null = null,
 ): string {
   const parts: string[] = []
   if (changes) {
@@ -868,13 +899,6 @@ export function buildCacheBreakReason(
     }
   }
 
-  const lastAssistantMsgOver5minAgo =
-    timeSinceLastAssistantMsg !== null &&
-    timeSinceLastAssistantMsg > CACHE_TTL_5MIN_MS
-  const lastAssistantMsgOver1hAgo =
-    timeSinceLastAssistantMsg !== null &&
-    timeSinceLastAssistantMsg > CACHE_TTL_1HOUR_MS
-
   // A server-side context_management edit is the one server cause we CAN
   // see: the response says how much it cleared. Under the retain profile
   // that is the expected clear_tool_uses trigger, not a regression.
@@ -907,12 +931,12 @@ export function buildCacheBreakReason(
     )
   }
   if (parts.length > 0) return parts.join(', ')
-  if (lastAssistantMsgOver1hAgo) return 'possible 1h TTL expiry (prompt unchanged)'
-  if (lastAssistantMsgOver5minAgo) return 'possible 5min TTL expiry (prompt unchanged)'
-  if (timeSinceLastAssistantMsg !== null) {
-    return 'likely server-side (prompt unchanged, <5min gap)'
-  }
-  return 'unknown cause'
+  if (gapMs === null) return 'unknown cause'
+  const ttl =
+    ttlMs ?? (gapMs > CACHE_TTL_1HOUR_MS ? CACHE_TTL_1HOUR_MS : CACHE_TTL_5MIN_MS)
+  const ttlLabel = ttl >= CACHE_TTL_1HOUR_MS ? '1h' : '5min'
+  if (gapMs > ttl) return `possible ${ttlLabel} TTL expiry (prompt unchanged)`
+  return `likely server-side (prompt unchanged, <${ttlLabel} gap)`
 }
 
 /**
@@ -961,12 +985,11 @@ export async function checkResponseForCacheBreak(
     const prevCacheRead = state.prevCacheReadTokens
     state.prevCacheReadTokens = cacheReadTokens
 
-    // Calculate time since last call for TTL detection by finding the most recent
-    // assistant message timestamp in the messages array (before the current response)
-    const lastAssistantMessage = messages.findLast(m => m.type === 'assistant')
-    const timeSinceLastAssistantMsg = lastAssistantMessage
-      ? Date.now() - new Date(lastAssistantMessage.timestamp).getTime()
-      : null
+    // Start to start, at the tier the previous request cached at.
+    const gapMs =
+      state.prevRequestStartedAt === null
+        ? null
+        : state.requestStartedAt - state.prevRequestStartedAt
 
     // Skip the first call — no previous value to compare against
     if (prevCacheRead === null) return
@@ -1003,21 +1026,14 @@ export async function checkResponseForCacheBreak(
       return
     }
 
-    // Check if time gap suggests TTL expiration
-    const lastAssistantMsgOver5minAgo =
-      timeSinceLastAssistantMsg !== null &&
-      timeSinceLastAssistantMsg > CACHE_TTL_5MIN_MS
-    const lastAssistantMsgOver1hAgo =
-      timeSinceLastAssistantMsg !== null &&
-      timeSinceLastAssistantMsg > CACHE_TTL_1HOUR_MS
-
     const serverEdit = summarizeAppliedContextEdits(contextManagement)
     const clientReason = buildCacheBreakReason(
       changes,
       serverEdit,
-      timeSinceLastAssistantMsg,
+      gapMs,
       messageMutation,
       markerAdvance,
+      state.prevRequestTtlMs,
     )
     // The server's own account leads — its diagnosis when the request asked
     // for one, and the thinking it dropped: the causes here that are not an
@@ -1064,7 +1080,7 @@ export async function checkResponseForCacheBreak(
       prevCacheRead,
       cacheRead: cacheReadTokens,
       cacheCreation: cacheCreationTokens,
-      gapMs: timeSinceLastAssistantMsg,
+      gapMs,
     })
     const dumpSuffix = dumpStem ? `, bodies: ${dumpStem}.{prev,cur}.json.gz` : ''
     const summary = `[PROMPT CACHE BREAK] ${reason} [source=${querySource}, call #${state.callCount}, cache read: ${prevCacheRead} → ${cacheReadTokens}, creation: ${cacheCreationTokens}${diffSuffix}${dumpSuffix}]`
