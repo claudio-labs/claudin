@@ -36,7 +36,7 @@ peaked at 957k (avg 611k) with zero compactions, and "relief starved" never esca
 - The detector applies the 5-min rule on 1h threads (`promptCacheBreakDetection.ts:911`) and
   measures the gap from the last response instead of from the request start.
 
-**What landed (branch `fix/cache-census-2026-10-09`):** the fixes in
+**What landed (#280, merged 2026-10-09):** the fixes in
 [[relief-starved-compacts-keepalive-default]]. The 3 "mutations" turned out to be
 `extract_memories` fork clips, which landed in main's clipped set. Both census scripts were fixed
 the same day.
