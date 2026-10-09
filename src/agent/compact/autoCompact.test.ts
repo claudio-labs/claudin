@@ -10,7 +10,7 @@ import {
   ERROR_THRESHOLD_BUFFER_TOKENS,
 } from 'src/agent/compact/autoCompact.ts'
 import { getContextWindowForModel } from 'src/agent/context/context.ts'
-import { createUserMessage } from 'src/agent/messages/messages.ts'
+import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.ts'
 
 // Compaction starts on the model's context window and on nothing else. The
 // heap-pressure backstop used to fire at 0.7 of the V8 limit by default, which
@@ -75,6 +75,40 @@ describe('heap pressure is opt-in', () => {
     } finally {
       restore()
     }
+  })
+})
+
+describe('shouldAutoCompact — the window trigger', () => {
+  const model = 'claude-sonnet-4'
+
+  // tokenCountWithEstimation anchors on the last response's usage, which is
+  // what a live session hands it.
+  function historyAt(contextTokens: number) {
+    const assistant = createAssistantMessage({ content: 'ok' }) as ReturnType<
+      typeof createAssistantMessage
+    > & { message: Record<string, unknown> }
+    assistant.message.id = 'msg_usage'
+    assistant.message.model = model
+    assistant.message.usage = {
+      input_tokens: 2,
+      cache_read_input_tokens: contextTokens,
+      cache_creation_input_tokens: 0,
+      output_tokens: 0,
+    }
+    return [createUserMessage({ content: 'go' }), assistant]
+  }
+
+  test('fires at the threshold and not below it', async () => {
+    if (!isAutoCompactEnabled()) return
+    const threshold = getAutoCompactThreshold(model)
+    expect(await shouldAutoCompact(historyAt(threshold + 1_000), model)).toBe(true)
+    expect(await shouldAutoCompact(historyAt(threshold - 20_000), model)).toBe(false)
+  })
+
+  test('the compacting forks never compact themselves', async () => {
+    const over = historyAt(getAutoCompactThreshold(model) + 1_000)
+    expect(await shouldAutoCompact(over, model, 'compact' as never)).toBe(false)
+    expect(await shouldAutoCompact(over, model, 'session_memory' as never)).toBe(false)
   })
 })
 
