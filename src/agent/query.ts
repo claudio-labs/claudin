@@ -355,6 +355,8 @@ async function* queryLoop(
       },
       querySource,
       tracking,
+      undefined,
+      microcompactResult.reliefStarved,
     )
     queryCheckpoint('query_autocompact_end')
 

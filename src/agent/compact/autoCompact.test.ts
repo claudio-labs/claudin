@@ -112,6 +112,50 @@ describe('shouldAutoCompact — the window trigger', () => {
   })
 })
 
+// A starved relief lane (microCompact.ts) means no clip can get the session
+// under its target: compaction runs then, not at the threshold far above it.
+describe('shouldAutoCompact — starved relief escalates', () => {
+  const model = 'claude-sonnet-4'
+  const ENV = 'CLAUDIN_RELIEF_STARVED_COMPACT'
+  const saved = process.env[ENV]
+  const restore = () => {
+    if (saved === undefined) delete process.env[ENV]
+    else process.env[ENV] = saved
+  }
+  const below = [createUserMessage({ content: 'go' })]
+
+  test('compacts below the threshold when relief is starved, and only then', async () => {
+    if (!isAutoCompactEnabled()) return
+    delete process.env[ENV]
+    try {
+      expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, true)).toBe(true)
+      expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, false)).toBe(false)
+    } finally {
+      restore()
+    }
+  })
+
+  test('keeps the recursion guards and the killswitch', async () => {
+    delete process.env[ENV]
+    try {
+      expect(await shouldAutoCompact(below, model, 'compact' as never, 0, true)).toBe(false)
+      expect(await shouldAutoCompact(below, model, 'session_memory' as never, 0, true)).toBe(false)
+      process.env[ENV] = '0'
+      expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, true)).toBe(false)
+    } finally {
+      restore()
+    }
+  })
+
+  // query.ts is the only caller; the loop harness stubs autocompact, so the
+  // wiring is pinned on the source.
+  test('query.ts hands the microcompact verdict to autocompact', async () => {
+    const { readFileSync } = await import('fs')
+    const source = readFileSync(`${import.meta.dir}/../query.ts`, 'utf8')
+    expect(source).toContain('microcompactResult.reliefStarved,')
+  })
+})
+
 describe('getEffectiveContextWindowSize', () => {
   test('returns positive value for known models with large context windows', () => {
     // claude-sonnet-4 has 200k context

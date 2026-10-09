@@ -23,6 +23,7 @@ import {
   ERROR_MESSAGE_USER_ABORT,
 } from 'src/agent/compact/compact.js'
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
+import { isReliefStarvedCompactEnabled } from 'src/agent/compact/reliefPolicy.js'
 import { trySessionMemoryCompaction } from 'src/agent/compact/sessionMemoryCompact.js'
 
 // Reserve this many tokens for output during compaction
@@ -234,6 +235,8 @@ export async function shouldAutoCompact(
   // pre-snip context, so tokenCountWithEstimation can't see the savings.
   // Subtract the rough-delta that snip already computed.
   snipTokensFreed = 0,
+  // microCompact found the relief window lane starved on this request.
+  reliefStarved = false,
 ): Promise<boolean> {
   // Recursion guards. session_memory and compact are forked agents that
   // would deadlock.
@@ -269,10 +272,19 @@ export async function shouldAutoCompact(
 
   if (isAboveAutoCompactThreshold) return true
 
+  // The relief lane is over its trigger and no clip can free one band
+  // (reliefPolicy.ts): the floor it cannot get under is compaction's job, and
+  // waiting for the threshold above would carry that floor on every call —
+  // on a 1M window, from ~735k to 967k.
+  if (reliefStarved && isReliefStarvedCompactEnabled()) {
+    logForDebugging(`autocompact: relief starved at tokens=${tokenCount}`)
+    return true
+  }
+
   // Opt-in backstop: heap pressure while tokens are still under the model's
   // context cap. Off unless CLAUDIN_HEAP_PRESSURE_RATIO is set — see the note
-  // on it above. Unset, this is always false and the context window is the
-  // only thing that can start a compaction.
+  // on it above. Unset, this is always false and only the context window
+  // (its threshold, or a starved relief lane) can start a compaction.
   if (isAboveHeapPressureThreshold(messages.length)) {
     const stats = getHeapStatistics()
     const usedMB = Math.round(stats.used_heap_size / 1024 / 1024)
@@ -293,6 +305,7 @@ export async function autoCompactIfNeeded(
   querySource?: QuerySource,
   tracking?: AutoCompactTrackingState,
   snipTokensFreed?: number,
+  reliefStarved?: boolean,
 ): Promise<{
   wasCompacted: boolean
   compactionResult?: CompactionResult
@@ -318,6 +331,7 @@ export async function autoCompactIfNeeded(
     model,
     querySource,
     snipTokensFreed,
+    reliefStarved,
   )
 
   if (!shouldCompact) {

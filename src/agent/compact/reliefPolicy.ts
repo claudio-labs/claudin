@@ -32,6 +32,13 @@
  * spaces the events (`B* ≈ sqrt(2·w·R·g / r)` ≈ 60k at Anthropic prices; the
  * cost curve is flat around it, see the design doc).
  *
+ * Starvation escalates. Over the trigger with no clip able to free one band
+ * (`reliefEventFloor`), microcompact reports `reliefStarved` and
+ * `shouldAutoCompact` compacts on that same request instead of waiting for
+ * its own threshold: on a 1M window ~735k instead of 967k, where one session
+ * averaged 611k over 1,315 calls without ever compacting (2026-10).
+ * `CLAUDIN_RELIEF_STARVED_COMPACT=0` turns the escalation off.
+ *
  * Pure: everything here is a function of its input. The shell that reads
  * the profile, the model window and the messages lives in microCompact.ts.
  *
@@ -237,6 +244,11 @@ export function selectReliefIds(
 export function isReliefWindowLaneEnabled(): boolean {
   const v = process.env.CLAUDIN_DISABLE_RELIEF_POLICY
   return !(v === '1' || v === 'true')
+}
+
+export function isReliefStarvedCompactEnabled(): boolean {
+  const v = process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+  return !(v === '0' || v === 'false')
 }
 
 /** The sub-agent ceiling from CLAUDIN_SUBAGENT_RELIEF_TRIGGER, when set. */
