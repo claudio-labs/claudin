@@ -84,17 +84,17 @@ describe('shouldAutoCompact — the window trigger', () => {
   // tokenCountWithEstimation anchors on the last response's usage, which is
   // what a live session hands it.
   function historyAt(contextTokens: number) {
-    const assistant = createAssistantMessage({ content: 'ok' }) as ReturnType<
-      typeof createAssistantMessage
-    > & { message: Record<string, unknown> }
-    assistant.message.id = 'msg_usage'
-    assistant.message.model = model
-    assistant.message.usage = {
-      input_tokens: 2,
-      cache_read_input_tokens: contextTokens,
-      cache_creation_input_tokens: 0,
-      output_tokens: 0,
-    }
+    const assistant = createAssistantMessage({ content: 'ok' })
+    Object.assign(assistant.message as Record<string, unknown>, {
+      id: 'msg_usage',
+      model,
+      usage: {
+        input_tokens: 2,
+        cache_read_input_tokens: contextTokens,
+        cache_creation_input_tokens: 0,
+        output_tokens: 0,
+      },
+    })
     return [createUserMessage({ content: 'go' }), assistant]
   }
 
