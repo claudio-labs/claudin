@@ -1,3 +1,4 @@
+import { basename } from 'path'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 
@@ -69,17 +70,27 @@ export const MEMORY_SCOPE_SPECS: Readonly<Record<MemoryScope, ScopeSpec>> = {
 /** The index file of every memory directory. */
 export const ENTRYPOINT_NAME = 'MEMORY.md'
 
-/** The scope whose index a getMemoryFiles type is, or null for an instruction file. */
-export function scopeOfIndexType(type: MemoryType | string): MemoryScope | null {
+/**
+ * The scope a getMemoryFiles type belongs to, or null for an instruction
+ * file. A memory directory's files share its type — its index, and a memory
+ * a `paths:` match attaches (pathScopedMemories.ts).
+ */
+export function scopeOfMemoryType(type: MemoryType | string): MemoryScope | null {
   return MEMORY_SCOPES.find(scope => MEMORY_SCOPE_SPECS[scope].indexType === type) ?? null
 }
 
 /**
- * A memory index, as opposed to an instruction file (CLAUDE.md, AGENTS.md,
- * rules): truncated at the index caps, and announced as an index.
+ * A memory directory's file, as opposed to an instruction file (CLAUDE.md,
+ * AGENTS.md, rules): it goes under the memory preamble, never the
+ * instructions'. In getMemoryFiles the only ones are the indexes.
  */
-export function isMemoryIndexType(type: MemoryType | string): boolean {
-  return scopeOfIndexType(type) !== null
+export function isMemoryFileType(type: MemoryType | string): boolean {
+  return scopeOfMemoryType(type) !== null
+}
+
+/** A memory directory's index: its `MEMORY.md`, truncated at the index caps. */
+export function isMemoryIndex(file: { type: MemoryType | string; path: string }): boolean {
+  return isMemoryFileType(file.type) && basename(file.path) === ENTRYPOINT_NAME
 }
 
 /** "global memories index" — an index's name in the transcript and /context. */

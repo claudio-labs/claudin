@@ -3,7 +3,7 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import {
   ENTRYPOINT_NAME,
-  isMemoryIndexType,
+  isMemoryFileType,
   MEMORY_SCOPE_SPECS,
 } from 'src/memory/memdir/memoryScopes.js'
 // teamMemPrompts.ts imports this module back; the cycle is safe because
@@ -256,7 +256,7 @@ export function areMemoryIndexesEmpty(
   loaded: readonly Pick<MemoryFileInfo, 'type' | 'content'>[],
 ): boolean {
   return !loaded.some(
-    file => isMemoryIndexType(file.type) && file.content.trim() !== '',
+    file => isMemoryFileType(file.type) && file.content.trim() !== '',
   )
 }
 

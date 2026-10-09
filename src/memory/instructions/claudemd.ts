@@ -33,7 +33,7 @@ import {
   getOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
-import { isMemoryIndexType, MEMORY_SCOPE_SPECS } from 'src/memory/memdir/memoryScopes.js'
+import { isMemoryFileType, MEMORY_SCOPE_SPECS } from 'src/memory/memdir/memoryScopes.js'
 import {
   getCurrentProjectConfig,
   getManagedClaudeRulesDir,
@@ -440,7 +440,7 @@ export const getClaudeMds = (
         file.type === 'TeamMem'
           ? `<team-memory-content source="shared">\n${content}\n</team-memory-content>`
           : content
-      ;(isMemoryIndexType(file.type) ? indexes : instructions).push(
+      ;(isMemoryFileType(file.type) ? indexes : instructions).push(
         `Contents of ${file.path}${description}:\n\n${body}`,
       )
     }

@@ -2,7 +2,7 @@ import type { ContextData } from 'src/agent/context/analyzeContext.js'
 import {
   MEMORY_SCOPE_SPECS,
   memoryIndexLabel,
-  scopeOfIndexType,
+  scopeOfMemoryType,
 } from 'src/memory/memdir/memoryScopes.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
 import { formatTokens } from 'src/shared/text/format.js'
@@ -27,7 +27,7 @@ export function describeContextMemoryFile(file: ContextMemoryFile): {
   typeColumn: string
 } {
   const tokens = `${formatTokens(file.tokens)} tokens`
-  const scope = scopeOfIndexType(file.type)
+  const scope = scopeOfMemoryType(file.type)
   if (scope === null) {
     return { name: getDisplayPath(file.path), detail: tokens, typeColumn: file.type }
   }

@@ -6,7 +6,7 @@ import type { Attachment } from 'src/agent/attachments/attachments.js'
 import {
   MEMORY_SCOPE_SPECS,
   MEMORY_SCOPES,
-  scopeOfIndexType,
+  scopeOfMemoryType,
 } from 'src/memory/memdir/memoryScopes.js'
 import {
   TEAM_CATEGORIES,
@@ -55,7 +55,7 @@ const FIRST_CATEGORY_RANK = FIRST_SCOPE_RANK + MEMORY_SCOPES.length
  * scopes in MEMORY_SCOPES order, then each category.
  */
 function batchGroup(file: NestedMemoryFile): BatchGroup {
-  const scope = scopeOfIndexType(file.type)
+  const scope = scopeOfMemoryType(file.type)
   if (scope !== null) {
     const category = MEMORY_SCOPE_SPECS[scope].hasSubdirectories
       ? teamCategoryForPath(file.path)

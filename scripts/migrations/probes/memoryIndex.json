@@ -33,14 +33,14 @@
     {
       "name": "the global index is tagged global",
       "source": "src/agent/attachments/injections.ts",
-      "find": "    kind: scopeOfIndexType(file.type) ?? 'private',\n",
-      "replace": "    kind: scopeOfIndexType(file.type) === 'global' ? 'private' : (scopeOfIndexType(file.type) ?? 'private'),\n"
+      "find": "    kind: scopeOfMemoryType(file.type) ?? 'private',\n",
+      "replace": "    kind: scopeOfMemoryType(file.type) === 'global' ? 'private' : (scopeOfMemoryType(file.type) ?? 'private'),\n"
     },
     {
       "name": "a new private index is tagged private, not the legacy 'auto'",
       "source": "src/agent/attachments/injections.ts",
-      "find": "    kind: scopeOfIndexType(file.type) ?? 'private',\n",
-      "replace": "    kind: scopeOfIndexType(file.type) === 'private' ? 'auto' : (scopeOfIndexType(file.type) ?? 'auto'),\n"
+      "find": "    kind: scopeOfMemoryType(file.type) ?? 'private',\n",
+      "replace": "    kind: scopeOfMemoryType(file.type) === 'private' ? 'auto' : (scopeOfMemoryType(file.type) ?? 'auto'),\n"
     },
     {
       "name": "global, private, team: the order holds whatever getMemoryFiles returned",

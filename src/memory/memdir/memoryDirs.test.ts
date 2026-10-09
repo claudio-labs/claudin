@@ -1,3 +1,4 @@
+import { isMemoryFileType, isMemoryIndex } from 'src/memory/memdir/memoryScopes.js'
 import { describe, expect, test } from 'bun:test'
 import { findMemoryDir, promptRoots } from 'src/memory/memdir/memoryDirs.js'
 import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
@@ -59,5 +60,14 @@ describe('promptRoots', () => {
   test('global is null while it is off', () => {
     const off = testMemoryDirs({ private: '/repo/.claudin/memory', team: '/repo/.claudin/memory/team' })
     expect(promptRoots(off).global).toBeNull()
+  })
+})
+
+describe('isMemoryIndex — the index, not every file of the directory', () => {
+  test('a MEMORY.md of a memory type is an index; a path-scoped memory of the same type is not', () => {
+    expect(isMemoryIndex({ type: 'TeamMem', path: '/repo/.claudin/memory/team/MEMORY.md' })).toBe(true)
+    expect(isMemoryIndex({ type: 'TeamMem', path: '/repo/.claudin/memory/team/bugs/x.md' })).toBe(false)
+    expect(isMemoryIndex({ type: 'Project', path: '/repo/MEMORY.md' })).toBe(false)
+    expect(isMemoryFileType('TeamMem')).toBe(true)
   })
 })

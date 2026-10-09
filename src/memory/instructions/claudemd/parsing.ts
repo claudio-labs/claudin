@@ -5,7 +5,7 @@ import { truncateEntrypointContent } from 'src/memory/memdir/memdir.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { isMemoryIndexType } from 'src/memory/memdir/memoryScopes.js'
+import { isMemoryIndex } from 'src/memory/memdir/memoryScopes.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import { pathInWorkingPath } from 'src/permissions/filePermissions.js'
 import { inspectRuleFrontmatter } from 'src/memory/instructions/ruleFrontmatter.js'
@@ -108,9 +108,10 @@ function parseMemoryFileContent(
       ? extractIncludePathsFromTokens(tokens, includeBasePath)
       : []
 
-  // Truncate MEMORY.md entrypoints to the line AND byte caps
+  // Truncate MEMORY.md entrypoints to the line AND byte caps — the index
+  // only: a memory a `paths:` match attaches shares its type, not its caps
   let finalContent = strippedContent
-  if (isMemoryIndexType(type)) {
+  if (isMemoryIndex({ type, path: filePath })) {
     finalContent = truncateEntrypointContent(strippedContent).content
   }
 

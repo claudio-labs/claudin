@@ -46,12 +46,12 @@
     {
       "name": "a global index counts as a memory index",
       "source": "src/memory/memdir/memoryScopes.ts",
-      "find": "  return scopeOfIndexType(type) !== null\n",
-      "replace": "  return scopeOfIndexType(type) !== null && type !== 'GlobalMem'\n"
+      "find": "  return scopeOfMemoryType(type) !== null\n",
+      "replace": "  return scopeOfMemoryType(type) !== null && type !== 'GlobalMem'\n"
     },
     {
       "name": "the indexes ride under their own preamble, not the instructions'",
-      "find": "      ;(isMemoryIndexType(file.type) ? indexes : instructions).push(\n",
+      "find": "      ;(isMemoryFileType(file.type) ? indexes : instructions).push(\n",
       "replace": "      ;(false ? indexes : instructions).push(\n"
     },
     {

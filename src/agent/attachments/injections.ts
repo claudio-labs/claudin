@@ -48,8 +48,9 @@ import {
 } from 'src/memory/instructions/claudemd.js'
 import { countIndexEntries } from 'src/memory/memdir/memdir.js'
 import {
-  isMemoryIndexType,
-  scopeOfIndexType,
+  isMemoryFileType,
+  isMemoryIndex,
+  scopeOfMemoryType,
 } from 'src/memory/memdir/memoryScopes.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
@@ -263,7 +264,7 @@ export function getMcpInstructionsDeltaAttachment(
  * too, so the re-concatenation is a string join per turn.
  */
 const notMemoryIndex = (type: MemoryType): boolean =>
-  !isMemoryIndexType(type)
+  !isMemoryFileType(type)
 
 export async function getClaudeMdDeltaAttachment(
   messages: Message[] | undefined,
@@ -289,8 +290,6 @@ export async function getClaudeMdDeltaAttachment(
   ]
 }
 
-const isMemoryIndex = (file: MemoryFileInfo): boolean =>
-  isMemoryIndexType(file.type)
 
 /** Exported for tests: pure, so it needs no module mock. */
 export function toMemoryIndexSummary(file: MemoryFileInfo): MemoryIndexSummary {
@@ -305,7 +304,7 @@ export function toMemoryIndexSummary(file: MemoryFileInfo): MemoryIndexSummary {
     path: file.path,
     displayPath: getDisplayPath(file.path),
     // isMemoryIndex let only an index through
-    kind: scopeOfIndexType(file.type) ?? 'private',
+    kind: scopeOfMemoryType(file.type) ?? 'private',
     entryCount,
     totalEntryCount: Math.max(entryCount, totalEntryCount),
   }

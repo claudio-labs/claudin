@@ -320,7 +320,7 @@ it loaded, named by its scope like a Read of one: `Loaded 2 private
 memories`, `Loaded 4 team bug memories`, or `2 rules, 3 team bug memories`
 when one Read pulled in both (`nestedMemoryBatchLabel` in
 `src/agent/ui/collapseNestedMemory.ts`, from the scope of the file's type —
-`scopeOfIndexType` — and, in a scope with subdirectories, its category
+`scopeOfMemoryType` — and, in a scope with subdirectories, its category
 directory; the paths stay under ctrl+o). A lone file shows its path, like a
 lone rule.
 

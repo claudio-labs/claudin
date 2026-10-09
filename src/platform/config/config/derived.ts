@@ -7,7 +7,7 @@ import { randomBytes } from 'crypto'
 import { join } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { memoryIndexPath } from 'src/memory/memdir/memoryDirs.js'
-import { scopeOfIndexType } from 'src/memory/memdir/memoryScopes.js'
+import { scopeOfMemoryType } from 'src/memory/memdir/memoryScopes.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import {
@@ -112,7 +112,7 @@ export function recordFirstStartTime(): void {
 
 export function getMemoryPath(memoryType: MemoryType): string {
   const cwd = getOriginalCwd()
-  const scope = scopeOfIndexType(memoryType)
+  const scope = scopeOfMemoryType(memoryType)
   if (scope !== null) return memoryIndexPath(scope)
 
   switch (memoryType) {

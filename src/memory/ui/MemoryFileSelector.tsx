@@ -9,7 +9,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
 import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js';
-import { isMemoryIndexType, MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js';
+import { isMemoryFileType, MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js';
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js';
 import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
@@ -429,5 +429,5 @@ function _temp2(f_2: MemoryFileInfo) {
   };
 }
 function _temp(f_1: MemoryFileInfo) {
-  return !isMemoryIndexType(f_1.type);
+  return !isMemoryFileType(f_1.type);
 }

@@ -823,13 +823,13 @@
     {
       "name": "memory: areMemoryIndexesEmpty counts a whitespace-only index as saved",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "isMemoryIndexType(file.type) && file.content.trim() !== ''",
-      "replace": "isMemoryIndexType(file.type) && file.content !== ''"
+      "find": "isMemoryFileType(file.type) && file.content.trim() !== ''",
+      "replace": "isMemoryFileType(file.type) && file.content !== ''"
     },
     {
       "name": "memory: areMemoryIndexesEmpty counts the project's own instructions",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "    file => isMemoryIndexType(file.type) && file.content.trim() !== '',\n",
+      "find": "    file => isMemoryFileType(file.type) && file.content.trim() !== '',\n",
       "replace": "    file => file.content.trim() !== '',\n"
     },
     {
