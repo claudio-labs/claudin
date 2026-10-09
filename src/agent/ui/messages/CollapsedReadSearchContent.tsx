@@ -191,13 +191,17 @@ export function CollapsedReadSearchContent({
   const [theme] = useTheme();
   const toolUseIds = getToolUseIdsFromCollapsedGroup(message);
   const anyError = toolUseIds.some(id => lookups.erroredToolUseIDs.has(id));
-  const hasMemoryOps = memorySearchCount > 0 || memoryReadCount > 0 || memoryWriteCount > 0;
+  // Global memory (~/.claudin/memory/) is not feature-gated, unlike team.
+  const globalMemorySearchCount = message.globalMemorySearchCount ?? 0;
+  const globalMemoryReadCount = message.globalMemoryReadCount ?? 0;
+  const globalMemoryWriteCount = message.globalMemoryWriteCount ?? 0;
+  const hasMemoryOps = memorySearchCount > 0 || memoryReadCount > 0 || memoryWriteCount > 0 || globalMemorySearchCount > 0 || globalMemoryReadCount > 0 || globalMemoryWriteCount > 0;
   const hasTeamMemoryOps = feature('TEAMMEM') ? teamMemCollapsed!.checkHasTeamMemOps(message) : false;
   // Memories recalled into context leave the badge for their own "Loaded …"
   // line below — the shape the rules batch and the MEMORY.md index line
   // already use for anything that entered context on its own.
   const teamMemoryReadCount = feature('TEAMMEM') ? teamMemCollapsed!.getTeamMemoryReadCount(message) : 0;
-  const recalledCounts = formatMemoryRecallCounts(memoryReadCount, teamMemoryReadCount);
+  const recalledCounts = formatMemoryRecallCounts(memoryReadCount, teamMemoryReadCount, globalMemoryReadCount);
 
   // Track the max seen counts so they only ever increase. The debounce timer
   // causes extra re-renders at arbitrary times; during a brief "invisible window"
@@ -475,11 +479,30 @@ export function CollapsedReadSearchContent({
       </Text>);
   }
 
-  // Build memory parts (auto-memory) — rendered after nonMemParts
+  // Build memory parts (global, then private) — rendered after nonMemParts
   // Reads are not among them: a recalled memory is a context load, so it gets
   // its own "Loaded …" line below instead of a verb on this line.
   const hasPrecedingNonMem = nonMemParts.length > 0;
   const memParts: React.ReactNode[] = [];
+  if (globalMemorySearchCount > 0) {
+    const isFirst_g = !hasPrecedingNonMem && memParts.length === 0;
+    const verb_g = isActiveGroup ? isFirst_g ? 'Searching' : 'searching' : isFirst_g ? 'Searched' : 'searched';
+    if (!isFirst_g) {
+      memParts.push(<Text key="comma-gms">, </Text>);
+    }
+    memParts.push(<Text key="global-mem-search">{`${verb_g} global memories`}</Text>);
+  }
+  if (globalMemoryWriteCount > 0) {
+    const isFirst_gw = !hasPrecedingNonMem && memParts.length === 0;
+    const verb_gw = isActiveGroup ? isFirst_gw ? 'Writing' : 'writing' : isFirst_gw ? 'Wrote' : 'wrote';
+    if (!isFirst_gw) {
+      memParts.push(<Text key="comma-gmw">, </Text>);
+    }
+    memParts.push(<Text key="global-mem-write">
+        {verb_gw} <Text bold>{globalMemoryWriteCount}</Text> global{' '}
+        {globalMemoryWriteCount === 1 ? 'memory' : 'memories'}
+      </Text>);
+  }
   if (memorySearchCount > 0) {
     const isFirst_6 = !hasPrecedingNonMem && memParts.length === 0;
     const verb_3 = isActiveGroup ? isFirst_6 ? 'Searching' : 'searching' : isFirst_6 ? 'Searched' : 'searched';

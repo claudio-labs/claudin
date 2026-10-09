@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import type { Tools } from 'src/tools/Tool.js'
 import type {
   CollapsedReadSearchGroup,
@@ -6,10 +9,15 @@ import type {
 } from 'src/shared/types/message.js'
 import {
   collapseReadSearchGroups,
+  getSearchReadSummaryText,
   summarizeRecentActivities,
 } from 'src/agent/tools/collapseReadSearch.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { thinkingSignature } from 'src/providers/shims/claude/__testutils__/thinkingSignature.js'
+import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
+import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
 
 let counter = 0
 const uid = (): string => `uuid-${counter++}`
@@ -542,5 +550,159 @@ describe('batch Read', () => {
         batch,
       ]),
     ).toBe('Reading 4 files…')
+  })
+})
+
+// The global memory dir (~/.claudin/memory/) gets its own counts, the way team
+// does — but ungated, so these run for real under `bun test`. Pinned against a
+// fresh git project and config home: the real ~/.claudin is never resolved.
+describe('global memory counts', () => {
+  const ENV_KEYS = [
+    'CLAUDIN_CONFIG_DIR',
+    'CLAUDIN_DISABLE_AUTO_MEMORY',
+    'CLAUDIN_GLOBAL_MEMORY',
+    'CLAUDIN_SIMPLE',
+    'CLAUDE_COWORK_MEMORY_PATH_OVERRIDE',
+  ] as const
+  const savedEnv = new Map<string, string | undefined>()
+  let previousProjectRoot: string
+  let root: string
+  let globalDir: string
+  let privateDir: string
+
+  const GREP_TOOL = {
+    name: 'Grep',
+    isSearchOrReadCommand: () => ({ isSearch: true, isRead: false }),
+  }
+  const memTools = [READ_TOOL, GREP_TOOL] as unknown as Tools
+
+  function memGroup(messages: RenderableMessage[]): CollapsedReadSearchGroup {
+    const collapsed = collapseReadSearchGroups(messages, memTools)
+    expect(collapsed).toHaveLength(1)
+    return collapsed[0] as CollapsedReadSearchGroup
+  }
+
+  beforeAll(() => {
+    for (const key of ENV_KEYS) savedEnv.set(key, process.env[key])
+    for (const key of ENV_KEYS) delete process.env[key]
+    root = mkdtempSync(join(tmpdir(), 'collapse-global-mem-'))
+    mkdirSync(join(root, 'project', '.git'), { recursive: true })
+    process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
+    previousProjectRoot = getProjectRoot()
+    setProjectRoot(join(root, 'project'))
+    getAutoMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+    globalDir = getGlobalMemPath()
+    privateDir = getAutoMemPath()
+  })
+
+  afterAll(() => {
+    setProjectRoot(previousProjectRoot)
+    for (const key of ENV_KEYS) {
+      const value = savedEnv.get(key)
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    getAutoMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  test('the fixture keeps the two dirs apart', () => {
+    expect(globalDir.startsWith(join(root, 'config'))).toBe(true)
+    expect(privateDir.startsWith(join(root, 'project'))).toBe(true)
+  })
+
+  test('a global memory read is a global recall, not a private one nor a file', () => {
+    const file = join(globalDir, 'user-language.md')
+    const group = memGroup([
+      toolUse('g1', 'Read', { file_path: file }),
+      toolResult('g1', { file: {} }),
+    ])
+    expect(group.globalMemoryReadCount).toBe(1)
+    expect(group.memoryReadCount).toBe(0)
+    expect(group.readCount).toBe(0)
+    expect(group.readFilePaths).toEqual([])
+  })
+
+  test('a private memory read still counts as private', () => {
+    const group = memGroup([
+      toolUse('p1', 'Read', { file_path: join(privateDir, 'feedback-x.md') }),
+      toolResult('p1', { file: {} }),
+    ])
+    expect(group.memoryReadCount).toBe(1)
+    expect(group.globalMemoryReadCount).toBeUndefined()
+    expect(group.readCount).toBe(0)
+  })
+
+  test('a search over the global dir is a global memory search', () => {
+    const group = memGroup([
+      toolUse('s1', 'Grep', { pattern: 'pt-BR', path: globalDir.replace(/\/$/, '') }),
+      toolResult('s1', {}),
+      toolUse('s2', 'Grep', { pattern: 'pnpm', path: privateDir }),
+      toolResult('s2', {}),
+    ])
+    expect(group.globalMemorySearchCount).toBe(1)
+    expect(group.memorySearchCount).toBe(1)
+    expect(group.searchCount).toBe(0)
+  })
+
+  test('a write or edit of a global memory is a global memory write', () => {
+    const group = memGroup([
+      toolUse('w1', FILE_WRITE_TOOL_NAME, {
+        file_path: join(globalDir, 'user-language.md'),
+        content: 'x',
+      }),
+      toolResult('w1', {}),
+      toolUse('w2', FILE_EDIT_TOOL_NAME, {
+        file_path: join(globalDir, 'MEMORY.md'),
+        old_string: 'a',
+        new_string: 'b',
+      }),
+      toolResult('w2', {}),
+      toolUse('w3', FILE_WRITE_TOOL_NAME, {
+        file_path: join(privateDir, 'project-x.md'),
+        content: 'x',
+      }),
+      toolResult('w3', {}),
+    ])
+    expect(group.globalMemoryWriteCount).toBe(2)
+    expect(group.memoryWriteCount).toBe(1)
+  })
+
+  test('with the global dir off, its files are nothing special', () => {
+    process.env.CLAUDIN_GLOBAL_MEMORY = '0'
+    try {
+      const group = memGroup([
+        toolUse('o1', 'Read', { file_path: join(globalDir, 'user-language.md') }),
+        toolResult('o1', { file: {} }),
+      ])
+      expect(group.globalMemoryReadCount).toBeUndefined()
+      expect(group.readCount).toBe(1)
+    } finally {
+      delete process.env.CLAUDIN_GLOBAL_MEMORY
+    }
+  })
+
+  test('the summary text names global memory, ahead of private', () => {
+    const counts = {
+      memorySearchCount: 1,
+      memoryReadCount: 1,
+      memoryWriteCount: 1,
+      globalMemorySearchCount: 1,
+      globalMemoryReadCount: 1,
+      globalMemoryWriteCount: 2,
+    }
+    expect(getSearchReadSummaryText(0, 0, false, 0, counts)).toBe(
+      'Recalled 1 global memory, searched global memories, wrote 2 global memories, recalled 1 memory, searched memories, wrote 1 memory',
+    )
+    expect(
+      getSearchReadSummaryText(0, 0, true, 0, {
+        memorySearchCount: 0,
+        memoryReadCount: 0,
+        memoryWriteCount: 0,
+        globalMemoryReadCount: 2,
+      }),
+    ).toBe('Recalling 2 global memories…')
   })
 })

@@ -436,6 +436,10 @@ export type CollapsedReadSearchGroup = {
   displayMessage: CollapsibleMessage
   uuid: UUID
   timestamp: string
+  /** Global memory (~/.claudin/memory/) ops; absent when zero. */
+  globalMemorySearchCount?: number
+  globalMemoryReadCount?: number
+  globalMemoryWriteCount?: number
   teamMemorySearchCount?: number
   teamMemoryReadCount?: number
   teamMemoryWriteCount?: number

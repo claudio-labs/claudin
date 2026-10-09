@@ -298,4 +298,44 @@ describe('CollapsedReadSearchContent — recalled memories', () => {
       expectInOrder(flat, ['Loaded 3 memories'])
     }
   })
+
+  test('a recalled global memory is named global, ahead of the private ones', async () => {
+    const out = await render({ readCount: 1, memoryReadCount: 1, globalMemoryReadCount: 2 })
+    const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
+
+    expect(firstLine).toContain('Read 1 file')
+    expect(firstLine).not.toContain('memor')
+    expect(flatten(out)).toContain('⎿ Loaded 2 global memories, 1 memory')
+  })
+
+  test('a group of nothing but global recalls is one standalone Loaded line', async () => {
+    const lines = (await render({ globalMemoryReadCount: 1 }))
+      .split('\n')
+      .filter(l => l.trim().length > 0)
+
+    expect(lines).toHaveLength(1)
+    expect(flatten(lines[0]!)).toContain('⎿ Loaded 1 global memory')
+  })
+
+  test('global memory writes and searches get their own verbs, ahead of private', async () => {
+    const flat = flatten(
+      await render({
+        globalMemorySearchCount: 1,
+        globalMemoryWriteCount: 2,
+        memoryWriteCount: 1,
+      }),
+    )
+
+    expectInOrder(flat, [
+      'Searched global memories',
+      ', wrote 2 global memories',
+      ', wrote 1 memory',
+    ])
+    expect(flat).not.toContain('Loaded')
+  })
+
+  test('a running global write reads in the present tense', async () => {
+    const flat = flatten(await render({ globalMemoryWriteCount: 1 }, true))
+    expect(flat).toContain('Writing 1 global memory')
+  })
 })

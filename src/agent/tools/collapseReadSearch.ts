@@ -43,6 +43,12 @@ import {
   isMemoryDirectory,
   isShellCommandTargetingMemory,
 } from 'src/memory/memdir/memoryFileDetection.js'
+import { isGlobalMemPath } from 'src/memory/memdir/paths.js'
+import {
+  appendGlobalMemorySummaryParts,
+  isGlobalMemorySearch,
+  isGlobalMemoryWriteOrEdit,
+} from 'src/memory/memdir/globalMemoryOps.js'
 import { expandPath } from 'src/shared/fs/path.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -965,6 +971,10 @@ type GroupAccumulator = {
   memorySearchCount: number
   memoryReadFilePaths: Set<string>
   memoryWriteCount: number
+  // Global memory (~/.claudin/memory/) counts — not feature-gated, unlike team
+  globalMemorySearchCount: number
+  globalMemoryReadFilePaths: Set<string>
+  globalMemoryWriteCount: number
   // Team memory file operation counts (tracked separately)
   teamMemorySearchCount?: number
   teamMemoryReadFilePaths?: Set<string>
@@ -1009,6 +1019,9 @@ function createEmptyGroup(): GroupAccumulator {
     memorySearchCount: 0,
     memoryReadFilePaths: new Set(),
     memoryWriteCount: 0,
+    globalMemorySearchCount: 0,
+    globalMemoryReadFilePaths: new Set(),
+    globalMemoryWriteCount: 0,
     nonMemSearchArgs: [],
     latestDisplayHint: undefined,
     hookTotalMs: 0,
@@ -1051,13 +1064,16 @@ function createCollapsedGroup(
   // memoryReadFilePaths ⊆ readFilePaths (both populated from Read tool calls),
   // so this count is safe to subtract from totalReadCount at readCount below.
   const memoryReadCount = group.memoryReadFilePaths.size
-  // Non-memory read file paths: exclude memory and team memory paths
+  const globalMemReadCount = group.globalMemoryReadFilePaths.size
+  // Non-memory read file paths: exclude private, global and team memory paths
   const teamMemReadPaths = feature('TEAMMEM')
     ? group.teamMemoryReadFilePaths
     : undefined
   const nonMemReadFilePaths = [...group.readFilePaths].filter(
     p =>
-      !group.memoryReadFilePaths.has(p) && !(teamMemReadPaths?.has(p) ?? false),
+      !group.memoryReadFilePaths.has(p) &&
+      !group.globalMemoryReadFilePaths.has(p) &&
+      !(teamMemReadPaths?.has(p) ?? false),
   )
   const teamMemSearchCount = feature('TEAMMEM')
     ? (group.teamMemorySearchCount ?? 0)
@@ -1070,14 +1086,17 @@ function createCollapsedGroup(
     : 0
   const result: CollapsedReadSearchGroup = {
     type: 'collapsed_read_search',
-    // Subtract memory + team memory counts so regular counts only reflect non-memory operations
+    // Subtract private + global + team memory counts so regular counts only reflect non-memory operations
     searchCount: Math.max(
       0,
-      group.searchCount - group.memorySearchCount - teamMemSearchCount,
+      group.searchCount -
+        group.memorySearchCount -
+        group.globalMemorySearchCount -
+        teamMemSearchCount,
     ),
     readCount: Math.max(
       0,
-      totalReadCount - memoryReadCount - teamMemReadCount,
+      totalReadCount - memoryReadCount - globalMemReadCount - teamMemReadCount,
     ),
     listCount: group.listCount,
     // REPL operations are intentionally not collapsed (see isCollapsible: false at line 32),
@@ -1094,6 +1113,16 @@ function createCollapsedGroup(
     displayMessage: firstMsg,
     uuid: `collapsed-${firstMsg.uuid}` as UUID,
     timestamp: firstMsg.timestamp,
+  }
+  // Set only when non-zero, so a group without global memory keeps its shape.
+  if (group.globalMemorySearchCount > 0) {
+    result.globalMemorySearchCount = group.globalMemorySearchCount
+  }
+  if (globalMemReadCount > 0) {
+    result.globalMemoryReadCount = globalMemReadCount
+  }
+  if (group.globalMemoryWriteCount > 0) {
+    result.globalMemoryWriteCount = group.globalMemoryWriteCount
   }
   if (feature('TEAMMEM')) {
     result.teamMemorySearchCount = teamMemSearchCount
@@ -1168,9 +1197,11 @@ export function collapseReadSearchGroups(
       const toolInfo = getCollapsibleToolInfo(msg, tools)!
 
       if (toolInfo.isMemoryWrite) {
-        // Memory file write/edit — check if it's team memory
+        // Memory file write/edit — global, team or private
         const count = countToolUses(msg)
-        if (
+        if (isGlobalMemoryWriteOrEdit(toolInfo.name, toolInfo.input)) {
+          currentGroup.globalMemoryWriteCount += count
+        } else if (
           feature('TEAMMEM') &&
           teamMemOps?.isTeamMemoryWriteOrEdit(toolInfo.name, toolInfo.input)
         ) {
@@ -1240,7 +1271,9 @@ export function collapseReadSearchGroups(
         const count = countToolUses(msg)
         currentGroup.searchCount += count
         // Check if the search targets memory files (via path or glob pattern)
-        if (
+        if (isGlobalMemorySearch(toolInfo.input)) {
+          currentGroup.globalMemorySearchCount += count
+        } else if (
           feature('TEAMMEM') &&
           teamMemOps?.isTeamMemorySearch(toolInfo.input)
         ) {
@@ -1261,7 +1294,9 @@ export function collapseReadSearchGroups(
         const filePaths = getFilePathsFromReadMessage(msg)
         for (const filePath of filePaths) {
           currentGroup.readFilePaths.add(filePath)
-          if (feature('TEAMMEM') && teamMemOps?.isTeamMemFile(filePath)) {
+          if (isGlobalMemPath(filePath)) {
+            currentGroup.globalMemoryReadFilePaths.add(filePath)
+          } else if (feature('TEAMMEM') && teamMemOps?.isTeamMemFile(filePath)) {
             currentGroup.teamMemoryReadFilePaths?.add(filePath)
           } else if (isAutoManagedMemoryFile(filePath)) {
             currentGroup.memoryReadFilePaths.add(filePath)
@@ -1355,6 +1390,9 @@ export function getSearchReadSummaryText(
     memorySearchCount: number
     memoryReadCount: number
     memoryWriteCount: number
+    globalMemorySearchCount?: number
+    globalMemoryReadCount?: number
+    globalMemoryWriteCount?: number
     teamMemorySearchCount?: number
     teamMemoryReadCount?: number
     teamMemoryWriteCount?: number
@@ -1364,8 +1402,9 @@ export function getSearchReadSummaryText(
 ): string {
   const parts: string[] = []
 
-  // Memory operations first
+  // Memory operations first: global, private, team — general to specific
   if (memoryCounts) {
+    appendGlobalMemorySummaryParts(memoryCounts, isActive, parts)
     const { memorySearchCount, memoryReadCount, memoryWriteCount } =
       memoryCounts
     if (memoryReadCount > 0) {

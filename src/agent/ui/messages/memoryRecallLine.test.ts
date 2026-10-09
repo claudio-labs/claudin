@@ -15,5 +15,18 @@ describe('formatMemoryRecallCounts', () => {
 
   test('nothing recalled means no line at all', () => {
     expect(formatMemoryRecallCounts(0, 0)).toBeUndefined()
+    expect(formatMemoryRecallCounts(0, 0, 0)).toBeUndefined()
+  })
+
+  test('global memories are named global, singular and plural', () => {
+    expect(formatMemoryRecallCounts(0, 0, 1)).toBe('1 global memory')
+    expect(formatMemoryRecallCounts(0, 0, 2)).toBe('2 global memories')
+  })
+
+  test('global, private, team — general to specific', () => {
+    expect(formatMemoryRecallCounts(1, 3, 2)).toBe(
+      '2 global memories, 1 memory, 3 team memories',
+    )
+    expect(formatMemoryRecallCounts(1, 0, 1)).toBe('1 global memory, 1 memory')
   })
 })
