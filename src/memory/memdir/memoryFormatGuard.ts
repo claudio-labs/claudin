@@ -7,7 +7,11 @@ import {
   type TeamCategory,
   teamCategoryForPath,
 } from 'src/memory/memdir/memoryTypes.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import {
+  getAutoMemPath,
+  getGlobalMemPath,
+  isGlobalMemoryEnabled,
+} from 'src/memory/memdir/paths.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
@@ -35,8 +39,15 @@ import type { ToolAdvice } from 'src/tools/Tool.js'
  * resolved under feature('TEAMMEM') only, as the secret guard does.
  */
 
-/** Where the memory directories are; `teamDir` is null when team memory is compiled out. */
-export type MemoryDirs = { autoDir: string; teamDir: string | null }
+/**
+ * Where the memory directories are; `teamDir` is null when team memory is
+ * compiled out, `globalDir` null or absent while the global dir is off.
+ */
+export type MemoryDirs = {
+  autoDir: string
+  teamDir: string | null
+  globalDir?: string | null
+}
 
 /**
  * memdir.ts ENTRYPOINT_NAME. The literal keeps memdir.ts, and what it
@@ -64,7 +75,7 @@ export const CATEGORY_FIELDS: Readonly<Record<TeamCategory['dir'], readonly Cate
 /** A file the guard applies to: which memory directory it belongs to, and its category when it is a team one. */
 type MemoryFile = {
   abs: string
-  scope: 'private' | 'team'
+  scope: 'private' | 'team' | 'global'
   /** The directory whose `MEMORY.md` indexes it. */
   root: string
   category: TeamCategory | undefined
@@ -72,14 +83,18 @@ type MemoryFile = {
 
 /**
  * The memory file at `filePath`, or null for anything else: a non-`.md`
- * file, an index, a path outside both directories. The same prefix tests as
- * isTeamMemPath / isAutoMemPath, team first — the team dir sits inside the
- * private one. A category applies only to a file directly in its
+ * file, an index, a path outside the directories. The same prefix tests as
+ * isGlobalMemPath / isTeamMemPath / isAutoMemPath, team before private — the
+ * team dir sits inside the private one, while the global dir never nests with
+ * either (isGlobalMemoryEnabled). A category applies only to a file directly in its
  * subdirectory of the team dir.
  */
 function memoryFileOf(filePath: string, dirs: MemoryDirs): MemoryFile | null {
   const abs = resolve(filePath)
   if (extname(abs) !== '.md' || basename(abs) === INDEX_NAME) return null
+  if (dirs.globalDir && abs.startsWith(dirs.globalDir)) {
+    return { abs, scope: 'global', root: dirs.globalDir, category: undefined }
+  }
   if (dirs.teamDir !== null && abs.startsWith(dirs.teamDir)) {
     const category = teamCategoryForPath(abs)
     return {
@@ -102,7 +117,7 @@ function isFilled(value: unknown): boolean {
 const TYPE_CHOICES = MEMORY_TYPES.join(' | ')
 
 /** What the frontmatter of `file` misses, one phrase each; empty when it is complete. */
-function formatProblems(file: MemoryFile, content: string, autoDir: string): string[] {
+function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): string[] {
   const { frontmatter } = parseFrontmatter(content, file.abs)
   if (Object.keys(frontmatter).length === 0) {
     return [
@@ -122,10 +137,20 @@ function formatProblems(file: MemoryFile, content: string, autoDir: string): str
         ? `\`type: ${String(frontmatter.type)}\` is not one of ${TYPE_CHOICES}`
         : `it lacks \`type:\` (${TYPE_CHOICES})`,
     )
+  } else if (type === 'user' && file.scope !== 'global' && dirs.globalDir) {
+    // Who the user is holds in every project, so it lives where every project reads it.
+    problems.push(`\`type: user\` is global — write it under \`${dirs.globalDir}\` instead`)
   } else if (file.scope === 'team' && type === 'user') {
-    problems.push(`\`type: user\` is always private — write it under \`${autoDir}\` instead`)
+    problems.push(`\`type: user\` is always private — write it under \`${dirs.autoDir}\` instead`)
+  } else if (file.scope === 'global' && type === 'project') {
+    problems.push(
+      `\`type: project\` belongs to one project — write it under \`${dirs.autoDir}\`${dirs.teamDir === null ? '' : ` or \`${dirs.teamDir}\``} instead`,
+    )
   } else if (file.category && type !== file.category.type) {
     problems.push(`a team ${file.category.noun} memory is \`type: ${file.category.type}\`, not \`${type}\``)
+  }
+  if (file.scope === 'global' && isFilled(frontmatter.paths)) {
+    problems.push('a global memory takes no `paths:` — it is not tied to the files of one project')
   }
   for (const field of file.category ? CATEGORY_FIELDS[file.category.dir] : []) {
     const value = frontmatter[field.key]
@@ -167,7 +192,7 @@ export function checkMemoryFileFormatIn(
 ): string | null {
   const file = memoryFileOf(filePath, dirs)
   if (!file) return null
-  const problems = formatProblems(file, content, dirs.autoDir)
+  const problems = formatProblems(file, content, dirs)
   if (problems.length === 0) return null
   const what = file.category ? `a team ${file.category.noun} memory` : `a ${file.scope} memory`
   const refusal = `Memory file not written: ${file.abs} is ${what}, and ${problems.join('; ')}. Fix the frontmatter and write it again.`
@@ -259,18 +284,22 @@ export function memoryIndexAdviceIn(
   }
 }
 
-/** The memory directories of this session; the team one only when team memory is compiled in. */
+/**
+ * The memory directories of this session; the team one only when team
+ * memory is compiled in, the global one only while it is on.
+ */
 function currentMemoryDirs(): MemoryDirs {
   const autoDir = getAutoMemPath()
+  const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
   if (feature('TEAMMEM')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const {
       getTeamMemPath,
     }: typeof import('src/memory/memdir/teamMemPaths.js') = require('src/memory/memdir/teamMemPaths.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
-    return { autoDir, teamDir: getTeamMemPath() }
+    return { autoDir, teamDir: getTeamMemPath(), globalDir }
   }
-  return { autoDir, teamDir: null }
+  return { autoDir, teamDir: null, globalDir }
 }
 
 /**

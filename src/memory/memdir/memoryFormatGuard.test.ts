@@ -32,6 +32,8 @@ import { applyPatchMemoryIndexAdvice } from 'src/tools/ApplyPatchTool/applyPatch
 const AUTO = '/repo/.claudin/memory/'
 const TEAM = '/repo/.claudin/memory/team/'
 const DIRS: MemoryDirs = { autoDir: AUTO, teamDir: TEAM }
+const GLOBAL = '/home/u/.claudin/memory/'
+const GDIRS: MemoryDirs = { autoDir: AUTO, teamDir: TEAM, globalDir: GLOBAL }
 
 const PLACEHOLDER_RE = /\{\{[^}]*\}\}/
 const FEEDBACK_BODY =
@@ -153,6 +155,49 @@ describe('checkMemoryFileFormatIn — what it refuses', () => {
     const refusal = checkMemoryFileFormatIn({ autoDir: AUTO, teamDir: null }, `${AUTO}x.md`, 'body\n')
     expect(refusal).toContain('it has no frontmatter')
     expect(refusal).not.toContain('The rules for memory files')
+  })
+})
+
+describe('checkMemoryFileFormatIn — the global dir', () => {
+  const inGlobal = (rel: string, content: string) => checkMemoryFileFormatIn(GDIRS, `${GLOBAL}${rel}`, content)
+  const inPrivate = (rel: string, content: string) => checkMemoryFileFormatIn(GDIRS, `${AUTO}${rel}`, content)
+
+  test('takes who the user is, feedback and a reference, as the template writes them', () => {
+    for (const type of ['user', 'feedback', 'reference'] as const) {
+      expect(inGlobal(`${type}-x.md`, fromTemplate(type))).toBeNull()
+    }
+  })
+
+  test('refuses a project memory, naming where it goes instead', () => {
+    const refusal = inGlobal('project-x.md', fromTemplate('project'))!
+    expect(refusal).toStartWith(`Memory file not written: ${GLOBAL}project-x.md is a global memory, and`)
+    expect(refusal).toContain('`type: project` belongs to one project')
+    expect(refusal).toContain(AUTO)
+    expect(refusal).toContain(TEAM)
+  })
+
+  test('refuses `paths:` — a global memory is not tied to one project', () => {
+    expect(inGlobal('feedback-x.md', fromTemplate('feedback', ['paths:', '  - "src/**"']))).toContain(
+      'a global memory takes no `paths:`',
+    )
+  })
+
+  test('a user memory written to the private or team dir is sent to the global one', () => {
+    for (const rel of ['me.md', 'team/me.md']) {
+      const refusal = inPrivate(rel, fromTemplate('user'))!
+      expect(refusal).toContain('`type: user` is global')
+      expect(refusal).toContain(GLOBAL)
+    }
+  })
+
+  test('without a global dir a user memory is private, as before', () => {
+    expect(checkMemoryFileFormatIn(DIRS, `${AUTO}me.md`, fromTemplate('user'))).toBeNull()
+  })
+
+  test('the index advice points at the global index', () => {
+    const note = memoryIndexAdviceIn(GDIRS, `${GLOBAL}user-language.md`, () => null)?.message
+    expect(note).toContain('`user-language.md` is not in the global memory index yet')
+    expect(note).toContain(`to \`${GLOBAL}MEMORY.md\``)
   })
 })
 

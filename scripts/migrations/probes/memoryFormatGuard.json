@@ -117,6 +117,26 @@
       "source": "src/memory/memdir/teamMemPrompts.ts",
       "find": "`feedback` (how to work, from corrections and confirmed approaches; team only for a project-wide convention)",
       "replace": "`feedback` (how to work, from corrections and confirmed approaches; lead with the rule, then **Why:** and **How to apply:**; team only for a project-wide convention)"
+    },
+    {
+      "name": "a file in the global dir is a global memory",
+      "find": "  if (dirs.globalDir && abs.startsWith(dirs.globalDir)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a user memory outside the global dir is sent there",
+      "find": "  } else if (type === 'user' && file.scope !== 'global' && dirs.globalDir) {\n",
+      "replace": "  } else if (false) {\n"
+    },
+    {
+      "name": "a project memory in the global dir is refused",
+      "find": "  } else if (file.scope === 'global' && type === 'project') {\n",
+      "replace": "  } else if (false) {\n"
+    },
+    {
+      "name": "a global memory with paths: is refused",
+      "find": "  if (file.scope === 'global' && isFilled(frontmatter.paths)) {\n",
+      "replace": "  if (false) {\n"
     }
   ]
 }
