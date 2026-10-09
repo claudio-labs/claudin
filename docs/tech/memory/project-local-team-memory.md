@@ -8,7 +8,9 @@ to force the legacy global-only location.
 `src/memory/memdir/memoryTypes.ts` (the team categories),
 `src/memory/memdir/pathScopedMemories.ts` (on-demand loading),
 `src/memory/autoDream/dreamDigest.ts` (what the dream reads),
-`src/commands/memory/sortPrompt.ts` (`/memory sort`).
+`src/commands/memory/sortPrompt.ts` (`/memory sort`),
+`src/memory/memdir/memoryFormatGuard.ts` and
+`src/memory/memdir/memoryIndexNames.ts` (the global memory, below).
 
 ## Problem
 
@@ -88,6 +90,67 @@ gitleaks-derived rules in `secretScanner.ts`) and is **blocked**, not warned,
 when it matches — the team dir is committed, so a leaked key would be in the
 history. The private dir is not scanned.
 
+## Global memory
+
+The two directories above both belong to a project, so what is about the
+**person** — their language, how much detail they want in an answer, a taste
+for clean architecture — stayed in whichever repo it was learned in, and every
+new project started knowing nothing about the user. Since 2026-10-09 a third
+directory holds that: the **global** memory, `<memoryBase>/memory/`
+(`~/.claudin/memory/` by default), read by every project.
+
+- **Where:** `getGlobalMemPath()` (`src/memory/memdir/paths.ts`). The setting
+  `autoMemoryGlobalDirectory` moves it — from policy, flag, local or user
+  settings only, never projectSettings, like `autoMemoryDirectory` — which is
+  also how the memory-write bench points it at its workspace. Created 0700 by
+  `loadMemoryPrompt`. The `user`-scope agent memory already lived beside it, at
+  `<memoryBase>/agent-memory/`.
+- **When:** `isGlobalMemoryEnabled()` — on with auto memory, off with
+  `CLAUDIN_GLOBAL_MEMORY=0`, off under a Cowork memory override (the caller
+  gets exactly the directory it designated), and off when the global and
+  private dirs nest. `isGlobalMemPath()` is false while it is off, so every
+  check built on it — the carve-out included — goes with the switch. Off, every
+  prompt reads exactly as it did before the directory existed.
+- **What goes there** — the model decides, by the type's scope: `user` always;
+  `feedback` when it holds in any project (how the user wants answers, plans,
+  reviews) and names none of this project's files, commands or conventions;
+  `reference` only for a personal resource outside any one project; `project`
+  never. The type alone does not decide it: of this repo's 21 private feedback
+  memories when it shipped, about half were about the person and half about
+  Claudin.
+- **The guard** (`memoryFormatGuard.ts`, scope `'global'`): with the global dir
+  on, `type: user` in the private or team dir is refused with "write it under
+  `<globalDir>`"; `type: project` and a `paths:` key in the global dir are
+  refused. The rules the refusal carries (`buildMemoryWriteRules`) say what the
+  global dir takes. No secret scan — it is never committed, like the private
+  dir.
+- **Context:** its `MEMORY.md` loads as `'GlobalMem'`, before the private and
+  team indexes — general to specific, the way the user's CLAUDE.md precedes
+  the project's — under the same caps. `pathScopedMemories.ts` does not scan
+  it: a global memory is index-only. The transcript says `Loaded global
+  memories index (4 entries), private memories index (…)`; the names live
+  once, in `memoryIndexNames.ts`, which `/context` reads too.
+- **Permissions:** read and write with no prompt, the same carve-out as the
+  private dir (`internalPaths.ts`), for the main agent and both forks. The risk
+  accepted with it: a memory planted by a hostile repo now reaches every
+  project, not only that one. What contains it is what already contained a
+  private one — a recalled memory arrives as background context, not as an
+  instruction, and every write shows in the transcript.
+- **Forks:** the extraction may write it (`createAutoMemCanUseTool`), skips a
+  range where the main agent already wrote a global memory, and lists the
+  global dir in its manifest. The dream writes and updates it but never
+  deletes, shrinks or prunes the index there: a run sees one project, and what
+  looks stale here may hold in another.
+- **/memory:** a `Global memory` row first, `/memory global` to open it (a
+  delete there warns that every project loses the memory); `/memory tidy`
+  covers it and never merges across directories; `/memory sort` is the
+  migration — it promotes what is about the user from the private dir (`mv`,
+  or a merge into an existing global memory, or a split of a file that mixes
+  the person with the project), each `mv` and `rm` behind the permission
+  prompt. The code moves nothing on its own.
+- **/context:** each index is named as above, with its entry count and the
+  `/memory` subcommand that manipulates it; `/context` itself stays read-only.
+
 ## Team categories
 
 Team memory is organized by what a teammate needs to find. Three
@@ -134,7 +197,8 @@ goes through the Bash permission prompt — that is the human veto.
 
 ## On-demand loading: `paths:` on a memory
 
-Only the two `MEMORY.md` indexes are in context every session. A memory file
+Only the `MEMORY.md` indexes are in context every session — two, or three
+with the global dir. A memory file
 is read when the model follows its index line — and, since 2026-09-21, a
 memory whose frontmatter carries `paths:` is **attached automatically the
 first time a Read touches a matching file**, through the same `nested_memory`
