@@ -1,0 +1,50 @@
+{
+  "test": ["src/memory/memdir/memoryFileDetection.test.ts"],
+  "source": "src/memory/memdir/memoryFileDetection.ts",
+  "probes": [
+    {
+      "name": "a file in a memory dir is an auto-managed memory file",
+      "find": "    memoryScopeOf(filePath) !== null ||\n",
+      "replace": "    false ||\n"
+    },
+    {
+      "name": "nothing is memory when auto memory is off",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "  if (!isAutoMemoryEnabled()) return []\n",
+      "replace": ""
+    },
+    {
+      "name": "a memory dir named without its separator is a memory directory",
+      "find": "        normalizedCmp === toComparable(withoutTrailingSep(dir.root)) ||\n",
+      "replace": "        false ||\n"
+    },
+    {
+      "name": "anything in a moved global dir is a memory directory",
+      "find": "        normalizedCmp.startsWith(toComparable(dir.root)),\n",
+      "replace": "        false,\n"
+    },
+    {
+      "name": "a shell command over a memory dir (the private one, a moved global one) targets memory",
+      "find": "    ...getMemoryDirs().map(dir => withoutTrailingSep(dir.root)),\n",
+      "replace": ""
+    },
+    {
+      "name": "a global memory file is a memory file while the global dir is on",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => scope !== 'global',\n"
+    },
+    {
+      "name": "a global memory file is nothing special with the global dir off",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => true,\n"
+    },
+    {
+      "name": "FileReadTool notes the freshness of a memory of any directory",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "  if (memoryScopeOf(fullFilePath) !== null) {\n",
+      "replace": "  if (false) {\n"
+    }
+  ]
+}

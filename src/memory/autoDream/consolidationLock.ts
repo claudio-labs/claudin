@@ -1,13 +1,13 @@
 // Lock file whose mtime IS lastConsolidatedAt. Body is the holder's PID.
 //
-// Lives inside the memory dir (getAutoMemPath) so it keys on git-root
+// Lives inside the memory dir (getPrivateMemPath) so it keys on git-root
 // like memory does, and so it's writable even when the memory path comes
 // from an env/settings override whose parent may not be.
 
 import { mkdir, readFile, stat, unlink, utimes, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isProcessRunning } from 'src/shared/proc/genericProcessUtils.js'
 import { listCandidates } from 'src/sessions/sessionCandidates.js'
@@ -19,7 +19,7 @@ const LOCK_FILE = '.consolidate-lock'
 const HOLDER_STALE_MS = 60 * 60 * 1000
 
 function lockPath(): string {
-  return join(getAutoMemPath(), LOCK_FILE)
+  return join(getPrivateMemPath(), LOCK_FILE)
 }
 
 /**
@@ -68,7 +68,7 @@ export async function tryAcquireConsolidationLock(): Promise<number | null> {
   }
 
   // Memory dir may not exist yet.
-  await mkdir(getAutoMemPath(), { recursive: true })
+  await mkdir(getPrivateMemPath(), { recursive: true })
   await writeFile(path, String(process.pid))
 
   // Two reclaimers both write → last wins the PID. Loser bails on re-read.
@@ -130,7 +130,7 @@ export async function listSessionsTouchedSince(
 export async function recordConsolidation(): Promise<void> {
   try {
     // Memory dir may not exist yet (manual /dream before any auto-trigger).
-    await mkdir(getAutoMemPath(), { recursive: true })
+    await mkdir(getPrivateMemPath(), { recursive: true })
     await writeFile(lockPath(), String(process.pid))
   } catch (e: unknown) {
     logForDebugging(

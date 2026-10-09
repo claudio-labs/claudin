@@ -1,18 +1,14 @@
 /**
- * The two pure halves of the team-memory secret guard: the prefix test that
- * decides whether a write lands in the git-tracked team dir, and the scanner
- * that decides whether the content may go there.
- *
- * The wrapper, checkTeamMemSecrets, is a `feature('TEAMMEM')` fold: under
- * `bun test` it returns null whatever the input, so it is deliberately not
- * asserted on — a test that stays green with the guard deleted is false
- * coverage (testing.md). The four call sites (FileWriteTool, FileEditTool,
- * applyPatch, stagedWrite) are reachable in the bundle only.
+ * The team-memory secret guard: the prefix test that decides whether a write
+ * lands in the git-tracked team dir, the scanner that decides whether the
+ * content may go there, and the wrapper, checkTeamMemSecrets, that the four
+ * write paths (FileWriteTool, FileEditTool, applyPatch, stagedWrite) call.
  */
 import { describe, expect, test } from 'bun:test'
 import { join, sep } from 'path'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
+import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import { getTeamMemPath, isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 
 // Fixture credentials, assembled at runtime so no scanner — this one,
@@ -23,7 +19,7 @@ const GITHUB_PAT = ['ghp', 'x'.repeat(36)].join('_')
 
 describe('isTeamMemPath', () => {
   const teamDir = getTeamMemPath()
-  const memDir = getAutoMemPath()
+  const memDir = getPrivateMemPath()
 
   test('the team root and its category subdirectories are in', () => {
     expect(isTeamMemPath(join(teamDir, 'MEMORY.md'))).toBe(true)
@@ -78,5 +74,19 @@ describe('scanForSecrets', () => {
         '**Symptom:** the sync required first-party OAuth. **Where:** src/memory/teamSync/. Rotate the key with `gh auth token`.',
       ),
     ).toEqual([])
+  })
+})
+
+describe('checkTeamMemSecrets', () => {
+  test('refuses a secret written into the team dir, naming the rule but not the secret', () => {
+    const refusal = checkTeamMemSecrets(join(getTeamMemPath(), 'bugs', 'x.md'), `token: ${GITHUB_PAT}\n`)
+    expect(refusal).toContain('Content contains potential secrets (GitHub PAT)')
+    expect(refusal).toContain('cannot be written to team memory')
+    expect(refusal).not.toContain(GITHUB_PAT)
+  })
+
+  test('lets clean team content through, and never scans outside the team dir', () => {
+    expect(checkTeamMemSecrets(join(getTeamMemPath(), 'x.md'), 'Use pnpm.\n')).toBeNull()
+    expect(checkTeamMemSecrets(join(getPrivateMemPath(), 'private.md'), `token: ${GITHUB_PAT}\n`)).toBeNull()
   })
 })

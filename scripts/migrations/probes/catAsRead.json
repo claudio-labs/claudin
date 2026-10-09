@@ -823,20 +823,20 @@
     {
       "name": "memory: areMemoryIndexesEmpty counts a whitespace-only index as saved",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "      file.content.trim() !== '',\n",
-      "replace": "      file.content !== '',\n"
+      "find": "isMemoryFileType(file.type) && file.content.trim() !== ''",
+      "replace": "isMemoryFileType(file.type) && file.content !== ''"
     },
     {
       "name": "memory: areMemoryIndexesEmpty counts the project's own instructions",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "      (file.type === 'AutoMem' || file.type === 'TeamMem') &&\n",
-      "replace": ""
+      "find": "    file => isMemoryFileType(file.type) && file.content.trim() !== '',\n",
+      "replace": "    file => file.content.trim() !== '',\n"
     },
     {
       "name": "memory: loadMemoryPrompt never asks areMemoryIndexesEmpty",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "        indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())\n",
-      "replace": "        indexesEmpty = false\n"
+      "find": "    indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())\n",
+      "replace": "    indexesEmpty = false\n"
     },
     {
       "name": "memory: EMPTY_INDEXES_NOTE says nothing",
@@ -853,20 +853,20 @@
     {
       "name": "memory: the lean prompt drops the note",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "indexes are in context.${emptyIndexesNote}`\n",
-      "replace": "indexes are in context.`\n"
+      "find": "(globalDir !== null)}.${emptyIndexesNote}`\n",
+      "replace": "(globalDir !== null)}.`\n"
     },
     {
       "name": "memory: the full prompt says the note with an index present",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n\n  // Compact",
-      "replace": "  const emptyIndexesNote = EMPTY_INDEXES_NOTE\n\n  // Compact"
+      "find": "    : ''\n\n  // Compact",
+      "replace": "    : EMPTY_INDEXES_NOTE\n\n  // Compact"
     },
     {
       "name": "memory: the lean prompt says the note with an index present",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "  const emptyIndexesNote = indexesEmpty ? EMPTY_INDEXES_NOTE : ''\n  const indexesInContext",
-      "replace": "  const emptyIndexesNote = EMPTY_INDEXES_NOTE\n  const indexesInContext"
+      "find": "    : ''\n  const indexesInContext",
+      "replace": "    : EMPTY_INDEXES_NOTE\n  const indexesInContext"
     },
     {
       "name": "bench: a cat the pass-through wrapped whole counts as a miss",

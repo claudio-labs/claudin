@@ -1,0 +1,27 @@
+{
+  "test": ["src/agent/context/memoryFileLabel.test.ts"],
+  "source": "src/agent/context/memoryFileLabel.ts",
+  "probes": [
+    {
+      "name": "an index is named for what it is",
+      "find": "  if (scope === null) {\n",
+      "replace": "  if (true) {\n"
+    },
+    {
+      "name": "the row carries the /memory subcommand that manipulates it",
+      "find": "    detail: `${entries} · ${tokens} · ${MEMORY_SCOPE_SPECS[scope].subcommand}`,\n",
+      "replace": "    detail: `${entries} · ${tokens}`,\n"
+    },
+    {
+      "name": "the table's Type column names the index with its entries",
+      "find": "    typeColumn: `${label} (${entries})`,\n",
+      "replace": "    typeColumn: file.type,\n"
+    },
+    {
+      "name": "the global index opens with /memory global",
+      "source": "src/memory/memdir/memoryScopes.ts",
+      "find": "    subcommand: '/memory global',\n",
+      "replace": "    subcommand: '/memory',\n"
+    }
+  ]
+}

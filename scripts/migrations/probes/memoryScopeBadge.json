@@ -1,0 +1,147 @@
+{
+  "test": [
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
+    "src/agent/ui/messages/memoryRecallLine.test.ts"
+  ],
+  "source": "src/agent/tools/collapseReadSearch.ts",
+  "comment": "Memory in a collapsed read/search group is counted per memory directory (memoryScopes.ts: global, private, team) into CollapsedReadSearchGroup.memoryOps. These probes cover the classification (memoryScopeOf), the subtraction from the regular counts, the summary text and the badge. The Loaded line is memoryRecall.json. Replaces globalMemoryBadge.json, whose global-only probes became per-scope ones.",
+  "probes": [
+    {
+      "name": "a memory write is counted for its own directory",
+      "find": "          currentGroup.memoryOps[memoryFileScope(path)].write += 1\n",
+      "replace": "          currentGroup.memoryOps.private.write += 1\n"
+    },
+    {
+      "name": "a memory read is counted for its own directory",
+      "find": "            currentGroup.memoryOps[memoryFileScope(filePath)].readFilePaths.add(filePath)\n",
+      "replace": "            currentGroup.memoryOps.private.readFilePaths.add(filePath)\n"
+    },
+    {
+      "name": "a memory search is counted for its own directory",
+      "find": "          currentGroup.memoryOps[searchScope].search += count\n",
+      "replace": "          currentGroup.memoryOps.private.search += count\n"
+    },
+    {
+      "name": "a memory file's directory comes from memoryScopeOf",
+      "find": "  return memoryScopeOf(filePath) ?? 'private'\n",
+      "replace": "  return 'private'\n"
+    },
+    {
+      "name": "a memory file in no directory (agent memory) counts as private",
+      "find": "  return memoryScopeOf(filePath) ?? 'private'\n",
+      "replace": "  return memoryScopeOf(filePath) ?? 'team'\n"
+    },
+    {
+      "name": "a search inside a directory is that directory's",
+      "find": "    const scope = exact?.scope ?? memoryScopeOf(abs)\n",
+      "replace": "    const scope = exact?.scope\n"
+    },
+    {
+      "name": "a search over a bare directory (no trailing slash) is that directory's",
+      "find": "    const exact = getMemoryDirs().find(dir => withoutTrailingSep(dir.root) === abs)\n",
+      "replace": "    const exact = getMemoryDirs().find(dir => dir.root === abs)\n"
+    },
+    {
+      "name": "the exact match wins over the enclosing dir: the bare team dir is team, not private",
+      "find": "    const scope = exact?.scope ?? memoryScopeOf(abs)\n",
+      "replace": "    const scope = memoryScopeOf(abs) ?? exact?.scope\n"
+    },
+    {
+      "name": "memory reads leave the file count",
+      "find": "    readCount: Math.max(0, totalReadCount - memoryReadCount),\n",
+      "replace": "    readCount: totalReadCount,\n"
+    },
+    {
+      "name": "memory searches leave the pattern count",
+      "find": "    searchCount: Math.max(0, group.searchCount - memorySearchCount),\n",
+      "replace": "    searchCount: group.searchCount,\n"
+    },
+    {
+      "name": "memory reads leave the file list",
+      "find": "    p => !MEMORY_SCOPES.some(scope => group.memoryOps[scope].readFilePaths.has(p)),\n",
+      "replace": "    p => p.length > 0,\n"
+    },
+    {
+      "name": "only a scope with activity is present",
+      "find": "    if (ops.search > 0 || read > 0 || ops.write > 0) {\n",
+      "replace": "    if (ops.search >= 0) {\n"
+    },
+    {
+      "name": "the group carries memoryOps",
+      "find": "    result.memoryOps = memoryOps\n",
+      "replace": ""
+    },
+    {
+      "name": "a group without memory carries no memoryOps",
+      "find": "  if (Object.keys(memoryOps).length > 0) {\n",
+      "replace": "  if (Object.keys(memoryOps).length >= 0) {\n"
+    },
+    {
+      "name": "the summary text goes global, private, team",
+      "find": "  for (const scope of MEMORY_SCOPES) {\n    const ops = memoryOps?.[scope]\n",
+      "replace": "  for (const scope of [...MEMORY_SCOPES].reverse()) {\n    const ops = memoryOps?.[scope]\n"
+    },
+    {
+      "name": "the summary text names a recall's scope",
+      "find": "      parts.push(`${verb} ${countMemories(scope, ops.read)}`)\n",
+      "replace": "      parts.push(`${verb} ${ops.read} memories`)\n"
+    },
+    {
+      "name": "the summary text names a search's scope",
+      "find": "      parts.push(`${verb} ${scope} memories`)\n",
+      "replace": "      parts.push(`${verb} memories`)\n"
+    },
+    {
+      "name": "the summary text names a write's scope",
+      "find": "      parts.push(`${verb} ${countMemories(scope, ops.write)}`)\n",
+      "replace": "      parts.push(`${verb} ${ops.write} memories`)\n"
+    },
+    {
+      "name": "the summary text capitalizes only the first verb",
+      "find": "  return isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb\n",
+      "replace": "  return verb\n"
+    },
+    {
+      "name": "a group of only memory ops is not treated as empty",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "    return ops !== undefined && (ops.search > 0 || ops.read > 0 || ops.write > 0);\n",
+      "replace": "    return false;\n"
+    },
+    {
+      "name": "the badge goes global, private, team",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "  for (const scope of MEMORY_SCOPES) {\n    const ops = memoryOps?.[scope];\n",
+      "replace": "  for (const scope of [...MEMORY_SCOPES].reverse()) {\n    const ops = memoryOps?.[scope];\n"
+    },
+    {
+      "name": "the badge names a search's scope",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "'searched', `${scope} memories`);",
+      "replace": "'searched', 'memories');"
+    },
+    {
+      "name": "the badge names a write's scope",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "<Text bold>{ops.write}</Text> {scope} {plural(",
+      "replace": "<Text bold>{ops.write}</Text> {plural("
+    },
+    {
+      "name": "the badge pluralizes a write",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "plural(ops.write, 'memory', 'memories')",
+      "replace": "'memory'"
+    },
+    {
+      "name": "a preceding part lowercases the first memory verb and adds the comma",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "    const isFirst = !hasPrecedingNonMem && memParts.length === 0;\n",
+      "replace": "    const isFirst = memParts.length === 0;\n"
+    },
+    {
+      "name": "a memory write counts one per file a Patch writes",
+      "find": "        for (const path of getMemoryWritePathsFromMessage(msg)) {\n",
+      "replace": "        for (const path of getMemoryWritePathsFromMessage(msg).slice(0, 1)) {\n"
+    }
+  ]
+}

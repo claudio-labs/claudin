@@ -4,7 +4,7 @@
  * only once per session — the same contract a path-scoped rule has.
  *
  * The memdir is redirected with CLAUDE_COWORK_MEMORY_PATH_OVERRIDE (the first
- * step of getAutoMemPath's resolution order) so no module is mocked; the
+ * step of getPrivateMemPath's resolution order) so no module is mocked; the
  * override dir is not under a `.claudin/`, so the globs anchor at the original
  * cwd — this repository — and the trigger path is a real file in it.
  */
@@ -15,7 +15,7 @@ import { join, sep } from 'path'
 import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 import { resetPathScopedMemoryCache } from 'src/memory/memdir/pathScopedMemories.js'
 import { getNestedMemoryAttachmentsForFile } from 'src/agent/attachments/memory.js'
 
@@ -53,16 +53,16 @@ beforeAll(async () => {
   delete process.env.CLAUDIN_SIMPLE
   delete process.env.CLAUDIN_DISABLE_AUTO_MEMORY
   process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE = memoryDir
-  getAutoMemPath.cache.clear?.()
+  getPrivateMemPath.cache.clear?.()
   resetPathScopedMemoryCache()
-  expect(getAutoMemPath()).toBe(memoryDir)
+  expect(getPrivateMemPath()).toBe(memoryDir)
 })
 
 afterAll(async () => {
   restoreEnv('CLAUDE_COWORK_MEMORY_PATH_OVERRIDE', savedEnv.override)
   restoreEnv('CLAUDIN_SIMPLE', savedEnv.simple)
   restoreEnv('CLAUDIN_DISABLE_AUTO_MEMORY', savedEnv.disabled)
-  getAutoMemPath.cache.clear?.()
+  getPrivateMemPath.cache.clear?.()
   resetPathScopedMemoryCache()
   await rm(join(memoryDir, '..'), { recursive: true, force: true })
 })

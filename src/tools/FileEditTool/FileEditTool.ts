@@ -7,7 +7,11 @@ import {
 import { forgetDiagnosticsForEditedFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
-import { checkMemoryFileFormat } from 'src/memory/memdir/memoryFormatGuard.js'
+import {
+  checkMemoryFileFormat,
+  indexTextFromResponse,
+  memoryIndexAdvice,
+} from 'src/memory/memdir/memoryFormatGuard.js'
 import { checkTeamMemSecrets } from 'src/memory/memdir/teamMemSecretGuard.js'
 import {
   activateConditionalSkillsForPaths,
@@ -91,6 +95,7 @@ import {
   userFacingName,
 } from 'src/tools/FileEditTool/UI.js'
 import {
+  applyEditToFile,
   areFileEditsInputsEquivalent,
   findActualString,
   getPatchForEdit,
@@ -136,12 +141,12 @@ function withServedRegion(message: string, served: string | null): string {
 }
 
 /**
- * The verdict on an Edit that creates a file (an empty `old_string` on a file
- * that is missing or empty): `new_string` is then the whole file, so a memory
- * file is checked the way a Write of it is. An edit inside an existing file
- * is not — it holds a fragment (memoryFormatGuard.ts).
+ * The format guard's verdict (memoryFormatGuard.ts) on the whole file as the
+ * Edit leaves it — `new_string` when it creates the file, the file with the
+ * replacement applied otherwise — so a memory file gets the verdict a Write
+ * or a Patch of the same content gets.
  */
-function createFileVerdict(fullFilePath: string, content: string): ValidationResult {
+function memoryFormatVerdict(fullFilePath: string, content: string): ValidationResult {
   const formatError = checkMemoryFileFormat(fullFilePath, content)
   return formatError ? { result: false, message: formatError, errorCode: 0 } : { result: true }
 }
@@ -291,7 +296,7 @@ export const FileEditTool = buildTool({
     if (fileContent === null) {
       // Empty old_string on nonexistent file means new file creation — valid
       if (old_string === '') {
-        return createFileVerdict(fullFilePath, new_string)
+        return memoryFormatVerdict(fullFilePath, new_string)
       }
       // Try to find a similar file with a different extension
       const similarFilename = findSimilarFile(fullFilePath)
@@ -325,7 +330,7 @@ export const FileEditTool = buildTool({
       }
 
       // Empty file with empty old_string is valid - we're replacing empty with content
-      return createFileVerdict(fullFilePath, new_string)
+      return memoryFormatVerdict(fullFilePath, new_string)
     }
 
     if (fullFilePath.endsWith('.ipynb')) {
@@ -419,6 +424,7 @@ export const FileEditTool = buildTool({
     // The effective replacement string; re-indented when the match is fuzzy so
     // the settings simulation below validates what will actually be written.
     let effectiveNewString = new_string
+    let fuzzyMatched = false
     if (!actualOldString && !replace_all) {
       const fuzzy = resolveFuzzyEdit(file, old_string, new_string)
       if (fuzzy.kind === 'ambiguous') {
@@ -435,6 +441,7 @@ export const FileEditTool = buildTool({
       if (fuzzy.kind === 'match') {
         actualOldString = fuzzy.matchedOldString
         effectiveNewString = fuzzy.adjustedNewString
+        fuzzyMatched = true
       }
     }
     if (!actualOldString) {
@@ -481,7 +488,33 @@ export const FileEditTool = buildTool({
       return settingsValidationResult
     }
 
+    // The file as call() will write it: the same replacement, the quote style
+    // call() preserves, the trailing newline a deletion takes along
+    const verdict = memoryFormatVerdict(
+      fullFilePath,
+      applyEditToFile(
+        file,
+        actualOldString,
+        fuzzyMatched
+          ? effectiveNewString
+          : preserveQuoteStyle(old_string, actualOldString, new_string),
+        replace_all,
+      ),
+    )
+    if (!verdict.result) {
+      return verdict
+    }
+
     return { result: true, meta: { actualOldString } }
+  },
+  advise(input, context) {
+    // An Edit that creates a memory file gets the index-line note a Write
+    // gets (memoryFormatGuard.ts); one that changes a file does not
+    if (input.old_string !== '') return null
+    return memoryIndexAdvice(
+      expandPath(input.file_path),
+      indexTextFromResponse(context.responseToolUses, getCwd()),
+    )
   },
   inputsEquivalent(input1, input2) {
     return areFileEditsInputsEquivalent(

@@ -175,7 +175,7 @@ src/
 │                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md
 │                                  over claudemd/ (parsing, includes, exclusions, processing,
 │                                  predicates, nestedDirectories, externalIncludes); the memoized
-│                                  getMemoryFiles and the TEAMMEM-gated require stay in the root,
+│                                  getMemoryFiles and getClaudeMds stay in the root,
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at session start
 ├── skills/ (28)                 ← user-invocable skills (/<name>); bundled/ + /create authoring

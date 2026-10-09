@@ -23,6 +23,7 @@ import { Box, Text } from 'src/terminal/ink.js'
 import { editFileInEditor } from 'src/terminal/input/promptEditor.js'
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
 import { Markdown } from 'src/terminal/markdown/Markdown.js'
+import { MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 
 /**
  * Browses one memory directory — the private dir, the team dir, or an agent's
@@ -58,12 +59,12 @@ type Preview = {
 type Props = {
   /** Absolute path of the directory to browse (may carry a trailing separator). */
   dir: string
-  /** "Private memory" / "Team memory" / "code-reviewer agent memory". */
+  /** "Global memory" / "Private memory" / "Team memory" / "code-reviewer agent memory". */
   title: string
   /** The directory's MEMORY.md, pinned as the first row when it exists. */
   indexPath: string
-  /** Team memories are git-tracked, so their delete confirmation says so. */
-  isTeamDir?: boolean
+  /** Which memory directory; absent for an agent's memory. */
+  scope?: MemoryScope
   onBack: () => void
 }
 
@@ -71,7 +72,7 @@ export function MemoryDirBrowser({
   dir,
   title,
   indexPath,
-  isTeamDir = false,
+  scope,
   onBack,
 }: Props): React.ReactNode {
   const [headers, setHeaders] = useState<MemoryHeader[] | null>(null)
@@ -110,15 +111,16 @@ export function MemoryDirBrowser({
     () =>
       headers === null
         ? []
-        : // The team dir files memories under decisions/, bugs/ and docs/;
-          // the private dir's only subdirectory is team/, which has its own
-          // browser, so nested entries are shown for the former only.
+        : // A scope with subdirectories (the team dir's decisions/, bugs/,
+          // docs/) shows what is in them; the private dir's only subdirectory
+          // is team/, which has its own browser, so it shows its top level.
           buildMemoryDirRows(headers, {
             indexPath,
             indexExists,
-            includeNested: isTeamDir,
+            includeNested:
+              scope !== undefined && MEMORY_SCOPE_SPECS[scope].hasSubdirectories,
           }),
-    [headers, indexPath, indexExists, isTeamDir],
+    [headers, indexPath, indexExists, scope],
   )
 
   const options = useMemo(
@@ -296,9 +298,9 @@ export function MemoryDirBrowser({
             Delete {basename(pendingDelete.value)}?
           </Text>
           <Text dimColor>
-            {isTeamDir
-              ? 'Shared memory — the deletion reaches the team on the next commit. Its line in MEMORY.md goes too.'
-              : 'Its line in MEMORY.md goes too.'}
+            {[scope === undefined ? undefined : MEMORY_SCOPE_SPECS[scope].deleteNote, 'Its line in MEMORY.md goes too.']
+              .filter(Boolean)
+              .join(' ')}
           </Text>
         </Box>
       ) : (

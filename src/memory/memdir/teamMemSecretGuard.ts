@@ -1,4 +1,5 @@
-import { feature } from 'bun:bundle'
+import { isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { scanForSecrets } from 'src/memory/memdir/secretScanner.js'
 
 /**
  * Check if a file write/edit to a team memory path contains secrets.
@@ -9,42 +10,27 @@ import { feature } from 'bun:bundle'
  * dir is git-tracked, so anything written there reaches every collaborator
  * on the next commit.
  *
- * Callers can import and call this unconditionally — the internal
- * feature('TEAMMEM') guard keeps it inert when the build flag is off.
+ * Callers can import and call this unconditionally — a path outside the team
+ * dir returns null before anything is scanned.
  * secretScanner assembles sensitive prefixes at runtime (ANT_KEY_PFX).
  */
 export function checkTeamMemSecrets(
   filePath: string,
   content: string,
 ): string | null {
-  if (feature('TEAMMEM')) {
-    // Typed via annotation rather than `as`: knip only recognises a named
-    // require when the call is the declaration's direct initializer, and the
-    // HTTP sync that used to import scanForSecrets statically is gone.
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const {
-      isTeamMemPath,
-    }: typeof import('src/memory/memdir/teamMemPaths.js') = require('src/memory/memdir/teamMemPaths.js')
-    const {
-      scanForSecrets,
-    }: typeof import('src/memory/memdir/secretScanner.js') = require('src/memory/memdir/secretScanner.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-
-    if (!isTeamMemPath(filePath)) {
-      return null
-    }
-
-    const matches = scanForSecrets(content)
-    if (matches.length === 0) {
-      return null
-    }
-
-    const labels = matches.map(m => m.label).join(', ')
-    return (
-      `Content contains potential secrets (${labels}) and cannot be written to team memory. ` +
-      'Team memory is shared with all repository collaborators. ' +
-      'Remove the sensitive content and try again.'
-    )
+  if (!isTeamMemPath(filePath)) {
+    return null
   }
-  return null
+
+  const matches = scanForSecrets(content)
+  if (matches.length === 0) {
+    return null
+  }
+
+  const labels = matches.map(m => m.label).join(', ')
+  return (
+    `Content contains potential secrets (${labels}) and cannot be written to team memory. ` +
+    'Team memory is shared with all repository collaborators. ' +
+    'Remove the sensitive content and try again.'
+  )
 }

@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import type { Tools } from 'src/tools/Tool.js'
 import type {
   CollapsedReadSearchGroup,
@@ -6,10 +9,20 @@ import type {
 } from 'src/shared/types/message.js'
 import {
   collapseReadSearchGroups,
+  getSearchReadSummaryText,
   summarizeRecentActivities,
 } from 'src/agent/tools/collapseReadSearch.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { thinkingSignature } from 'src/providers/shims/claude/__testutils__/thinkingSignature.js'
+import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
+import {
+  getPrivateMemPath,
+  getGlobalMemPath,
+  getMemoryBaseDir,
+} from 'src/memory/memdir/paths.js'
+import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
+import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
 
 let counter = 0
 const uid = (): string => `uuid-${counter++}`
@@ -542,5 +555,287 @@ describe('batch Read', () => {
         batch,
       ]),
     ).toBe('Reading 4 files…')
+  })
+})
+
+// Memory is counted per directory (memoryScopes.ts): global (~/.claudin/memory/),
+// private (<repo>/.claudin/memory/) and team (its team/ subdirectory). Pinned
+// against a fresh git project and config home: the real ~/.claudin is never
+// resolved.
+describe('memory counts per scope', () => {
+  const ENV_KEYS = [
+    'CLAUDIN_CONFIG_DIR',
+    'CLAUDIN_DISABLE_AUTO_MEMORY',
+    'CLAUDIN_GLOBAL_MEMORY',
+    'CLAUDIN_SIMPLE',
+    'CLAUDE_COWORK_MEMORY_PATH_OVERRIDE',
+  ] as const
+  const savedEnv = new Map<string, string | undefined>()
+  let previousProjectRoot: string
+  let root: string
+  let globalDir: string
+  let privateDir: string
+  let teamDir: string
+  const dirOf = (scope: 'global' | 'private' | 'team'): string =>
+    ({ global: globalDir, private: privateDir, team: teamDir })[scope]
+  const SCOPES = ['global', 'private', 'team'] as const
+
+  const GREP_TOOL = {
+    name: 'Grep',
+    isSearchOrReadCommand: () => ({ isSearch: true, isRead: false }),
+  }
+  const memTools = [READ_TOOL, GREP_TOOL] as unknown as Tools
+
+  function memGroup(messages: RenderableMessage[]): CollapsedReadSearchGroup {
+    const collapsed = collapseReadSearchGroups(messages, memTools)
+    expect(collapsed).toHaveLength(1)
+    return collapsed[0] as CollapsedReadSearchGroup
+  }
+
+  beforeAll(() => {
+    for (const key of ENV_KEYS) savedEnv.set(key, process.env[key])
+    for (const key of ENV_KEYS) delete process.env[key]
+    root = mkdtempSync(join(tmpdir(), 'collapse-mem-scopes-'))
+    mkdirSync(join(root, 'project', '.git'), { recursive: true })
+    process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
+    previousProjectRoot = getProjectRoot()
+    setProjectRoot(join(root, 'project'))
+    getPrivateMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+    globalDir = getGlobalMemPath()
+    privateDir = getPrivateMemPath()
+    teamDir = getTeamMemPath()
+  })
+
+  afterAll(() => {
+    setProjectRoot(previousProjectRoot)
+    for (const key of ENV_KEYS) {
+      const value = savedEnv.get(key)
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    getPrivateMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  test('the fixture keeps the dirs apart, team nested in private', () => {
+    expect(globalDir.startsWith(join(root, 'config'))).toBe(true)
+    expect(privateDir.startsWith(join(root, 'project'))).toBe(true)
+    expect(teamDir.startsWith(privateDir)).toBe(true)
+  })
+
+  for (const scope of SCOPES) {
+    test(`a ${scope} memory read is a ${scope} recall, not a file`, () => {
+      const group = memGroup([
+        toolUse('r1', 'Read', { file_path: join(dirOf(scope), 'some-memory.md') }),
+        toolResult('r1', { file: {} }),
+      ])
+      expect(group.memoryOps).toEqual({ [scope]: { search: 0, read: 1, write: 0 } })
+      expect(group.readCount).toBe(0)
+      expect(group.readFilePaths).toEqual([])
+    })
+
+    test(`a search inside the ${scope} dir is a ${scope} memory search`, () => {
+      const group = memGroup([
+        toolUse('s1', 'Grep', { pattern: 'x', path: join(dirOf(scope), 'sub') }),
+        toolResult('s1', {}),
+      ])
+      expect(group.memoryOps).toEqual({ [scope]: { search: 1, read: 0, write: 0 } })
+      expect(group.searchCount).toBe(0)
+    })
+
+    test(`a search over the bare ${scope} dir (no trailing slash) is a ${scope} memory search`, () => {
+      const group = memGroup([
+        toolUse('s1', 'Grep', { pattern: 'x', path: dirOf(scope).replace(/\/$/, '') }),
+        toolResult('s1', {}),
+      ])
+      expect(group.memoryOps).toEqual({ [scope]: { search: 1, read: 0, write: 0 } })
+      expect(group.searchCount).toBe(0)
+    })
+
+    test(`a write or edit of a ${scope} memory is a ${scope} memory write`, () => {
+      const group = memGroup([
+        toolUse('w1', FILE_WRITE_TOOL_NAME, {
+          file_path: join(dirOf(scope), 'some-memory.md'),
+          content: 'x',
+        }),
+        toolResult('w1', {}),
+        toolUse('w2', FILE_EDIT_TOOL_NAME, {
+          file_path: join(dirOf(scope), 'MEMORY.md'),
+          old_string: 'a',
+          new_string: 'b',
+        }),
+        toolResult('w2', {}),
+      ])
+      expect(group.memoryOps).toEqual({ [scope]: { search: 0, read: 0, write: 2 } })
+      // A memory write is not a file write: no ⎿ row for it.
+      expect(group.writeFileStats).toBeUndefined()
+    })
+  }
+
+  const patchUse = (id: string, ...lines: string[]) =>
+    toolUse(id, 'Patch', { patchText: ['*** Begin Patch', ...lines, '*** End Patch'].join('\n') })
+
+  test('a Patch to memory files is a memory write, one per file, for the directory each lands in', () => {
+    const group = memGroup([
+      patchUse('p1', `*** Add File: ${join(globalDir, 'user-language.md')}`, '+---'),
+      toolResult('p1', {}),
+      patchUse(
+        'p2',
+        `*** Update File: ${join(privateDir, 'feedback-x.md')}`,
+        '@@',
+        '-a',
+        '+b',
+        `*** Update File: ${join(privateDir, 'MEMORY.md')}`,
+        '@@',
+        '+- [X](feedback-x.md) — hook',
+      ),
+      toolResult('p2', {}),
+      patchUse('p3', `*** Update File: ${join(privateDir, 'project-y.md')}`, `*** Move to: ${join(teamDir, 'project-y.md')}`),
+      toolResult('p3', {}),
+    ])
+    expect(group.memoryOps).toEqual({
+      global: { search: 0, read: 0, write: 1 },
+      private: { search: 0, read: 0, write: 3 },
+      team: { search: 0, read: 0, write: 1 },
+    })
+    // A memory write is not a file write: no ⎿ row for it.
+    expect(group.writeFileStats).toBeUndefined()
+  })
+
+  test('a Patch that also touches a source file stays a file write', () => {
+    const memoryFile = join(privateDir, 'feedback-x.md')
+    const group = memGroup([
+      patchUse('p1', `*** Add File: ${memoryFile}`, '+---', '*** Add File: /repo/a.ts', '+x'),
+      toolResult('p1', { files: [] }),
+    ])
+    expect(group.memoryOps).toBeUndefined()
+    expect(group.writeFileStats?.map(s => s.path).sort()).toEqual(['/repo/a.ts', memoryFile])
+  })
+
+  test('a path under the team dir is team, not private, though it is inside both', () => {
+    const file = join(teamDir, 'decisions', 'x.md')
+    const group = memGroup([
+      toolUse('r1', 'Read', { file_path: file }),
+      toolResult('r1', { file: {} }),
+      toolUse('s1', 'Grep', { pattern: 'x', path: join(teamDir, 'bugs') }),
+      toolResult('s1', {}),
+      toolUse('w1', FILE_WRITE_TOOL_NAME, { file_path: file, content: 'x' }),
+      toolResult('w1', {}),
+    ])
+    expect(group.memoryOps).toEqual({ team: { search: 1, read: 1, write: 1 } })
+    expect(group.memoryOps?.private).toBeUndefined()
+  })
+
+  test('scopes are counted apart in one group', () => {
+    const group = memGroup([
+      toolUse('g1', 'Read', { file_path: join(globalDir, 'user-language.md') }),
+      toolResult('g1', { file: {} }),
+      toolUse('p1', 'Read', { file_path: join(privateDir, 'feedback-x.md') }),
+      toolResult('p1', { file: {} }),
+      toolUse('f1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('f1', { file: {} }),
+      toolUse('s1', 'Grep', { pattern: 'pt-BR', path: globalDir.replace(/\/$/, '') }),
+      toolResult('s1', {}),
+      toolUse('s2', 'Grep', { pattern: 'pnpm', path: privateDir }),
+      toolResult('s2', {}),
+      toolUse('s3', 'Grep', { pattern: 'plain', path: '/repo' }),
+      toolResult('s3', {}),
+    ])
+    expect(group.memoryOps).toEqual({
+      global: { search: 1, read: 1, write: 0 },
+      private: { search: 1, read: 1, write: 0 },
+    })
+    // Only the non-memory operations are left in the regular counts and lists.
+    expect(group.readCount).toBe(1)
+    expect(group.readFilePaths).toEqual(['/repo/a.ts'])
+    expect(group.searchCount).toBe(1)
+    expect(group.searchArgs).toEqual(['plain'])
+  })
+
+  test('a memory file in no directory (agent memory) is counted as private', () => {
+    const file = join(getMemoryBaseDir(), 'agent-memory', 'reviewer', 'notes.md')
+    const group = memGroup([
+      toolUse('a1', 'Read', { file_path: file }),
+      toolResult('a1', { file: {} }),
+    ])
+    expect(group.memoryOps).toEqual({ private: { search: 0, read: 1, write: 0 } })
+    expect(group.readCount).toBe(0)
+  })
+
+  test('a group without memory carries no memoryOps', () => {
+    const group = memGroup([
+      toolUse('f1', 'Read', { file_path: '/repo/a.ts' }),
+      toolResult('f1', { file: {} }),
+    ])
+    expect(group.memoryOps).toBeUndefined()
+  })
+
+  test('with CLAUDIN_GLOBAL_MEMORY=0, a file in the global dir is no memory', () => {
+    process.env.CLAUDIN_GLOBAL_MEMORY = '0'
+    try {
+      const file = join(globalDir, 'user-language.md')
+      const group = memGroup([
+        toolUse('o1', 'Read', { file_path: file }),
+        toolResult('o1', { file: {} }),
+        toolUse('o2', FILE_WRITE_TOOL_NAME, { file_path: file, content: 'x' }),
+        toolResult('o2', { type: 'update', filePath: file, structuredPatch: [] }),
+      ])
+      expect(group.memoryOps).toBeUndefined()
+      expect(group.readCount).toBe(1)
+      expect(group.readFilePaths).toEqual([file])
+      // The write is an ordinary file write, with its own ⎿ row.
+      expect(group.writeFileStats?.map(s => s.path)).toEqual([file])
+    } finally {
+      delete process.env.CLAUDIN_GLOBAL_MEMORY
+    }
+  })
+})
+
+describe('getSearchReadSummaryText — memory', () => {
+  const ops = (counts: Partial<{ search: number; read: number; write: number }>) => ({
+    search: 0,
+    read: 0,
+    write: 0,
+    ...counts,
+  })
+
+  test('each scope names its recall, search and write', () => {
+    for (const scope of ['global', 'private', 'team'] as const) {
+      expect(
+        getSearchReadSummaryText(0, 0, false, 0, {
+          [scope]: ops({ read: 1, search: 1, write: 2 }),
+        }),
+      ).toBe(
+        `Recalled 1 ${scope} memory, searched ${scope} memories, wrote 2 ${scope} memories`,
+      )
+    }
+  })
+
+  test('global, private, team — general to specific, whatever the key order', () => {
+    expect(
+      getSearchReadSummaryText(0, 0, false, 0, {
+        team: ops({ write: 1 }),
+        private: ops({ search: 1, read: 1, write: 1 }),
+        global: ops({ search: 1, read: 1, write: 2 }),
+      }),
+    ).toBe(
+      'Recalled 1 global memory, searched global memories, wrote 2 global memories, recalled 1 private memory, searched private memories, wrote 1 private memory, wrote 1 team memory',
+    )
+  })
+
+  test('the active tense, and memory ahead of the file parts', () => {
+    expect(
+      getSearchReadSummaryText(0, 0, true, 0, { global: ops({ read: 2 }) }),
+    ).toBe('Recalling 2 global memories…')
+    expect(
+      getSearchReadSummaryText(1, 3, false, 0, { team: ops({ search: 1 }) }),
+    ).toBe('Searched team memories, searched for 1 pattern, read 3 files')
+  })
+
+  test('no memoryOps, no memory parts', () => {
+    expect(getSearchReadSummaryText(0, 2, false, 0, undefined)).toBe('Read 2 files')
+    expect(getSearchReadSummaryText(0, 2, false, 0, {})).toBe('Read 2 files')
   })
 })

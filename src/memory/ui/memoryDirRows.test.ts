@@ -4,10 +4,13 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
+import { MEMORY_SCOPE_SPECS, MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js'
 import {
   buildMemoryDirRows,
+  countGlobalOnlyMemories,
   countMemoryFiles,
   encodeBrowseValue,
+  memoryDirRowLabel,
   parseBrowseValue,
   removeIndexPointer,
   TIDY_VALUE,
@@ -171,30 +174,35 @@ describe('buildMemoryDirRows', () => {
 })
 
 describe('browse row values', () => {
-  test('round trips the title and the team flag', () => {
+  test('round trips the title and the team scope', () => {
     const target = {
       dir: '/repo/.claudin/memory/team/',
       title: 'Team memory',
-      isTeamDir: true,
+      scope: 'team' as const,
     }
 
     expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
   })
 
-  test('a private dir round trips with the flag off', () => {
-    const target = {
-      dir: PRIVATE_DIR,
-      title: 'Private memory',
-      isTeamDir: false,
+  test('every scope round trips as itself', () => {
+    for (const scope of MEMORY_SCOPES) {
+      const target = { dir: `/x/${scope}/`, title: MEMORY_SCOPE_SPECS[scope].title, scope }
+      expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
     }
+  })
 
-    expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
+  test('a dir with no scope (an agent memory) round trips without one', () => {
+    const target = { dir: PRIVATE_DIR, title: 'code-reviewer agent memory' }
+
+    const parsed = parseBrowseValue(encodeBrowseValue(target))
+    expect(parsed).toEqual(target)
+    expect(parsed && 'scope' in parsed).toBe(false)
   })
 
   test('a path holding the field separator keeps its tail', () => {
     const dir = `/repo/od\u001fd/memory`
     const parsed = parseBrowseValue(
-      encodeBrowseValue({ dir, title: 'Odd', isTeamDir: false }),
+      encodeBrowseValue({ dir, title: 'Odd', scope: 'private' }),
     )
 
     expect(parsed?.dir).toBe(dir)
@@ -289,5 +297,40 @@ describe('countMemoryFiles', () => {
 
   test('a missing directory counts as empty', async () => {
     expect(await countMemoryFiles(join(root, 'nope'), { recursive: true })).toBe(0)
+  })
+})
+
+describe('the upgrade pointer on the private row', () => {
+  test('counts the top-level memories only the global dir should hold', () => {
+    expect(
+      countGlobalOnlyMemories([
+        header({ filename: 'profile.md', type: 'user' }),
+        header({ filename: 'role.md', type: 'user' }),
+        header({ filename: 'tests.md', type: 'feedback' }),
+        header({ filename: 'roadmap.md', type: 'project' }),
+        header({ filename: 'legacy.md', type: undefined }),
+      ]),
+    ).toBe(2)
+  })
+
+  test('skips the team dir the private scan walks into', () => {
+    expect(
+      countGlobalOnlyMemories([header({ filename: join('team', 'someone.md'), type: 'user' })]),
+    ).toBe(0)
+  })
+
+  test('the row says how many are about you and which command moves them', () => {
+    expect(memoryDirRowLabel('Private memory', 12, 3)).toBe(
+      'Private memory · 12 · 3 about you — /memory sort moves them to global',
+    )
+    expect(memoryDirRowLabel('Private memory', 1, 1)).toBe(
+      'Private memory · 1 · 1 about you — /memory sort moves it to global',
+    )
+  })
+
+  test('without any, the row is the title and its count, as before', () => {
+    expect(memoryDirRowLabel('Private memory', 12, 0)).toBe('Private memory · 12')
+    expect(memoryDirRowLabel('Team memory', 4)).toBe('Team memory · 4')
+    expect(memoryDirRowLabel('Global memory', undefined)).toBe('Global memory')
   })
 })

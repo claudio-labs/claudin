@@ -2,8 +2,12 @@ import { readdir } from 'fs/promises'
 import { basename, sep } from 'path'
 
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
-import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js'
-import { MEMORY_TYPES } from 'src/memory/memdir/memoryTypes.js'
+import {
+  ENTRYPOINT_NAME,
+  MEMORY_SCOPES,
+  type MemoryScope,
+} from 'src/memory/memdir/memoryScopes.js'
+import { MEMORY_TYPES, TYPE_SCOPES } from 'src/memory/memdir/memoryTypes.js'
 import { formatRelativeTimeAgo } from 'src/shared/text/format.js'
 
 /**
@@ -27,19 +31,20 @@ const BROWSE_DIR_PREFIX = '__browse_dir__'
 export const TIDY_VALUE = '__memory_tidy__'
 
 // A Select row's value is a string, so the browse row carries everything the
-// browser needs — the title the selector already knew, and whether the dir is
-// the shared one — rather than making the command re-derive them from a path
-// (which would mean repeating MemoryFileSelector's feature('TEAMMEM') dance).
+// browser needs — the title the selector already knew, and which memory
+// directory it is — rather than making the command re-derive them from a path
+// (which would mean repeating MemoryFileSelector's path resolution).
 const BROWSE_FIELD_SEP = '\u001f'
 
 export type BrowseTarget = {
   dir: string
   title: string
-  isTeamDir: boolean
+  /** Which memory directory; absent for an agent's memory. */
+  scope?: MemoryScope
 }
 
 export function encodeBrowseValue(target: BrowseTarget): string {
-  return `${BROWSE_DIR_PREFIX}${target.isTeamDir ? '1' : '0'}${BROWSE_FIELD_SEP}${target.title}${BROWSE_FIELD_SEP}${target.dir}`
+  return `${BROWSE_DIR_PREFIX}${target.scope ?? ''}${BROWSE_FIELD_SEP}${target.title}${BROWSE_FIELD_SEP}${target.dir}`
 }
 
 /** Returns null for any value that is not a browse row. */
@@ -52,8 +57,9 @@ export function parseBrowseValue(value: string): BrowseTarget | null {
   if (secondSep === -1) return null
   // The dir takes the whole tail, so a path holding the separator still round
   // trips instead of being silently truncated.
+  const scope = MEMORY_SCOPES.find(s => s === rest.slice(0, firstSep))
   return {
-    isTeamDir: rest.slice(0, firstSep) === '1',
+    ...(scope === undefined ? {} : { scope }),
     title: rest.slice(firstSep + 1, secondSep),
     dir: rest.slice(secondSep + 1),
   }
@@ -177,4 +183,36 @@ export async function countMemoryFiles(
   } catch {
     return 0
   }
+}
+
+/**
+ * How many memories directly in a directory have a type that belongs only in
+ * the global dir (TYPE_SCOPES: `user`) — in the private dir, the ones saved
+ * before the global dir existed, which `/memory sort` promotes. Nested
+ * entries are skipped: a scan of the private dir also returns the team dir's.
+ */
+export function countGlobalOnlyMemories(headers: readonly MemoryHeader[]): number {
+  return headers.filter(
+    header =>
+      !isNestedEntry(header) &&
+      header.type !== undefined &&
+      TYPE_SCOPES[header.type].global === 'only',
+  ).length
+}
+
+/**
+ * A memory directory's row in /memory: "Private memory · 12", and, when it
+ * holds memories `/memory sort` would promote, the pointer that tells the
+ * user the command exists — the model learns it from the format guard's
+ * refusal, the user from nowhere else.
+ */
+export function memoryDirRowLabel(
+  title: string,
+  count: number | undefined,
+  promotable = 0,
+): string {
+  const counted = count === undefined ? title : `${title} · ${count}`
+  return promotable > 0
+    ? `${counted} · ${promotable} about you — /memory sort moves ${promotable === 1 ? 'it' : 'them'} to global`
+    : counted
 }

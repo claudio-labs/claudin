@@ -1,50 +1,53 @@
 // Extracted from dream.ts so auto-dream ships independently of KAIROS
 // feature flags (dream.ts is behind a feature()-gated require).
 
-import {
-  DIR_EXISTS_GUIDANCE,
-  ENTRYPOINT_NAME,
-  MAX_ENTRYPOINT_LINES,
-} from 'src/memory/memdir/memdir.js'
+import { DIR_EXISTS_GUIDANCE, MAX_ENTRYPOINT_LINES } from 'src/memory/memdir/memdir.js'
+import { type MemoryDir, promptRoots } from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 import {
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
 } from 'src/memory/memdir/memoryTypes.js'
 
-// getTeamMemPath() returns a path with a trailing separator (teamMemPaths.ts)
-// — strip it before interpolating so the prompt doesn't render `…/team//x`.
-const TRAILING_SEP_RE = /[/\\]+$/
-
 /**
- * The dream prompt. `teamRoot` is the team memory dir when team memory is
- * active (the dream then files decisions, bugs and docs into its category
- * subdirectories — the git commit is the review gate) and null otherwise,
- * in which case the run is private-only as it always was. `extra` carries
- * the run-specific tail: the decision-sources digest (dreamDigest.ts), the
- * session list, tool constraints.
+ * The dream prompt, over the session's memory directories (memoryDirs.ts
+ * getMemoryDirs). Which directory a memory goes to is its type's scope, as
+ * the system prompt's `# Memory` section states it — the dream forks share
+ * that prompt, and /dream runs in the conversation that has it — so this
+ * only says where the directories are and what is particular to a dream:
+ * the team categories (the git commit is their review gate) and the global
+ * dir, which a run may add to but never prune, because it sees one project
+ * and what looks stale here may hold in another. autoDream.ts enforces that
+ * in the fork's tool gate. `extra` carries the run-specific tail: the
+ * decision-sources digest (dreamDigest.ts), the session list, tool constraints.
  */
 export function buildConsolidationPrompt(
-  memoryRoot: string,
+  dirs: readonly MemoryDir[],
   transcriptDir: string,
   extra: string,
-  teamRoot: string | null = null,
 ): string {
-  const team = teamRoot === null ? null : teamRoot.replace(TRAILING_SEP_RE, '')
+  const { private: memoryRoot, team, global } = promptRoots(dirs)
   const sections = TEAM_CATEGORIES.map(c => `\`## ${c.section}\``).join(' / ')
+  const notGlobal = global === null ? '' : ' (outside the global dir)'
 
-  const whereToWrite =
-    team === null
-      ? `For each thing worth remembering, write or update a memory file at the top level of the memory directory.`
-      : `For each thing worth remembering, write or update a memory file. Where it goes:
+  const whereToWrite = `For each thing worth remembering, write or update a memory file in the directory its type's scope names — the \`# Memory\` section of your system prompt is the source of truth for that:
 
-- a private fact — about this user, their feedback, private project context — at the top level of \`${memoryRoot}\`
-- a team decision, a known defect or a documentation pointer — in the matching category subdirectory of the team dir \`${team}\` (see Team categories below; each has a bar to clear), with its index line under the ${sections} section of \`${team}/${ENTRYPOINT_NAME}\`, creating the section if absent, and the subdirectory in the link (\`(decisions/file.md)\`)
-- team-scoped context that is none of those — a convention, a process finding — at the team root
+${global === null ? '' : `- the global dir \`${global}\`, shared by every project — add to it only (below)\n`}- the private dir \`${memoryRoot}\`, at its top level
+- the team dir \`${team}\`: a team decision, a known defect or a documentation pointer goes in the matching category subdirectory (see Team categories below; each has a bar to clear), with its index line under the ${sections} section of \`${team}/${ENTRYPOINT_NAME}\`, creating the section if absent, and the subdirectory in the link (\`(decisions/file.md)\`); other team-scoped context — a convention, a process finding — at the team root
 
-The team dir is git-tracked: what you write there shows up in the user's \`git status\` and reaches teammates when they commit — that commit is the review, so write only what clears the bar, and never a secret.`
+The team dir is git-tracked: what you write there shows up in the user's \`git status\` and reaches teammates when they commit — that commit is the review, so write only what clears the bar, and never a secret.${
+    global === null
+      ? ''
+      : `
 
-  const teamSection =
-    team === null ? '' : `\n${renderTeamCategoriesXml().join('\n')}`
+The global dir is shared by every project, and this run sees only this one: add memories and add to them there, but never delete, shrink or rewrite one, nor remove a line from its index. A global memory this project contradicts stays as it is — name it in your summary instead.`
+  }`
+
+  const teamSection = `\n${renderTeamCategoriesXml().join('\n')}`
+  const indexesToRead = [
+    `\`${team}/${ENTRYPOINT_NAME}\``,
+    ...(global === null ? [] : [`\`${global}/${ENTRYPOINT_NAME}\``]),
+  ]
 
   return `# Dream: Memory Consolidation
 
@@ -60,7 +63,7 @@ Session transcripts: \`${transcriptDir}\` (large JSONL files — grep narrowly, 
 ## Phase 1 — Orient
 
 - \`ls\` the memory directory to see what already exists
-- Read \`${ENTRYPOINT_NAME}\` to understand the current index${team === null ? '' : ` — both the private one and \`${team}/${ENTRYPOINT_NAME}\``}
+- Read \`${ENTRYPOINT_NAME}\` to understand the current index — the private one and ${indexesToRead.join(' and ')}
 - Skim existing topic files so you improve them rather than creating duplicates
 - If \`logs/\` or \`sessions/\` subdirectories exist (assistant-mode layout), review recent entries there
 
@@ -80,23 +83,23 @@ Don't exhaustively read transcripts. Look only for things you already suspect ma
 
 ${whereToWrite}
 
-Use the memory file format and type conventions from your system prompt's auto-memory section — it's the source of truth for what to save, how to structure it, and what NOT to save.
+Use the memory file format and type conventions from your system prompt's \`# Memory\` section — it's the source of truth for what to save, how to structure it, and what NOT to save.
 
 Focus on:
 - Merging new signal into existing topic files rather than creating near-duplicates
 - Converting relative dates ("yesterday", "last week") to absolute dates so they remain interpretable after time passes
-- Deleting contradicted facts — if today's investigation disproves an old memory, fix it at the source
+- Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source
 ${teamSection}
 ## Phase 4 — Prune and index
 
-Update \`${ENTRYPOINT_NAME}\`${team === null ? '' : ' (each index you touched)'} so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.
+Update \`${ENTRYPOINT_NAME}\` (each index you touched) so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, only add lines.'}
 
 - Remove pointers to memories that are now stale, wrong, or superseded
 - Demote verbose entries: if an index line is over ~200 chars, it's carrying content that belongs in the topic file — shorten the line, move the detail
 - Add pointers to newly important memories
-- Resolve contradictions — if two files disagree, fix the wrong one
+- Resolve contradictions — if two files disagree, fix the wrong one${global === null ? '' : ', unless it is a global memory: name that one in your summary'}
 
 ---
 
-Return a brief summary of what you consolidated, updated, or pruned${team === null ? '' : ', naming any team file you created so the user knows what to review before committing'}. If nothing changed (memories are already tight), say so.${extra ? `\n\n## Additional context\n\n${extra}` : ''}`
+Return a brief summary of what you consolidated, updated, or pruned, naming any team file you created so the user knows what to review before committing. If nothing changed (memories are already tight), say so.${extra ? `\n\n## Additional context\n\n${extra}` : ''}`
 }

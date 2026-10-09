@@ -1,35 +1,16 @@
 import { readFileSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { join, resolve, sep } from 'path'
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { getPrivateMemPath } from 'src/memory/memdir/paths.js'
 
 /**
- * Whether team memory features are enabled.
- * Team memory is a subdirectory of auto memory, so it requires auto memory
- * to be enabled. This keeps all team-memory consumers (prompt, content
- * injection, file detection) consistent when auto memory is disabled via
- * env var or settings.
- */
-export function isTeamMemoryEnabled(): boolean {
-  return isAutoMemoryEnabled()
-}
-
-/**
- * Returns the team memory path: <autoMemPath>/team/
- * Lives as a subdirectory of the auto-memory directory, scoped per-project.
- * autoMemPath itself may be project-local (<gitRoot>/.claudin/memory/) or
- * the legacy global path — see getAutoMemPath() in paths.ts.
+ * Returns the team memory path: <privateMemPath>/team/
+ * Lives as a subdirectory of the private memory directory, scoped per-project.
+ * That directory may be project-local (<gitRoot>/.claudin/memory/) or
+ * the legacy per-project one under the config home — see getPrivateMemPath().
  */
 export function getTeamMemPath(): string {
-  return (join(getAutoMemPath(), 'team') + sep).normalize('NFC')
-}
-
-/**
- * Returns the team memory entrypoint: <autoMemPath>/team/MEMORY.md
- * Lives as a subdirectory of the auto-memory directory, scoped per-project.
- */
-export function getTeamMemEntrypoint(): string {
-  return join(getAutoMemPath(), 'team', 'MEMORY.md')
+  return (join(getPrivateMemPath(), 'team') + sep).normalize('NFC')
 }
 
 const BLANKET_CLAUDIN_IGNORE_RE = /^\/?\.claudin\/?$/
@@ -70,9 +51,11 @@ export const isTeamMemLikelyGitIgnored = memoize((gitRoot: string): boolean => {
  * Check if a resolved absolute path is within the team memory directory.
  * Uses path.resolve() to convert relative paths and eliminate traversal segments.
  * Does NOT resolve symlinks: a prefix check on the symbolic path is what the
- * secret guard, the permission auto-allow and the memory prompts need. The
- * symlink-resolving validators left with the HTTP sync — nothing writes
- * server-supplied keys into this directory anymore.
+ * secret guard needs. The symlink-resolving validators left with the HTTP
+ * sync — nothing writes server-supplied keys into this directory anymore.
+ *
+ * Unlike memoryDirs.ts memoryScopeOf, it holds whether or not memory is on:
+ * the team dir is git-tracked, so the secret guard scans a write to it either way.
  */
 export function isTeamMemPath(filePath: string): boolean {
   // SECURITY: resolve() converts to absolute and eliminates .. segments,
@@ -80,12 +63,4 @@ export function isTeamMemPath(filePath: string): boolean {
   const resolvedPath = resolve(filePath)
   const teamDir = getTeamMemPath()
   return resolvedPath.startsWith(teamDir)
-}
-
-/**
- * Check if a file path is within the team memory directory
- * and team memory is enabled.
- */
-export function isTeamMemFile(filePath: string): boolean {
-  return isTeamMemoryEnabled() && isTeamMemPath(filePath)
 }

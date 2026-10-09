@@ -4,6 +4,7 @@ import type { Output as FileReadToolOutput } from 'src/tools/FileReadTool/FileRe
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { Task } from 'src/agent/tasks/tasks.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd.js'
+import type { MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
 import type { MessageOrigin } from 'src/shared/types/message.js'
 import type { UUID } from 'crypto'
@@ -61,7 +62,8 @@ export type MemoryIndexSummary = {
   path: string
   /** Path relative to CWD (or ~) at creation time, for stable display */
   displayPath: string
-  kind: 'auto' | 'team'
+  /** Which directory's index. Transcripts written before 2026-10-09 say `'auto'` for private. */
+  kind: MemoryScope | 'auto'
   entryCount: number
   totalEntryCount: number
 }

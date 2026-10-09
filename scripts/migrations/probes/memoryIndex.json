@@ -11,12 +11,40 @@
   "probes": [
     {
       "name": "the team index is labelled team, not folded into the private count",
-      "find": "    index.kind === 'team' ? 'team memories index' : 'private memories index'\n",
-      "replace": "    'private memories index'\n"
+      "find": "  return index.kind === 'auto' ? 'private' : index.kind\n",
+      "replace": "  return index.kind === 'global' ? 'global' : 'private'\n"
     },
     {
-      "name": "private leads whatever order getMemoryFiles returned",
-      "find": "    .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind])\n",
+      "name": "the global index is labelled global, not folded into the private count",
+      "find": "  return index.kind === 'auto' ? 'private' : index.kind\n",
+      "replace": "  return index.kind === 'team' ? 'team' : 'private'\n"
+    },
+    {
+      "name": "a resumed transcript's 'auto' reads as the private index",
+      "find": "  return index.kind === 'auto' ? 'private' : index.kind\n",
+      "replace": "  return index.kind === 'auto' ? 'team' : index.kind\n"
+    },
+    {
+      "name": "an index is named '<scope> memories index'",
+      "source": "src/memory/memdir/memoryScopes.ts",
+      "find": "  return `${scope} memories index`\n",
+      "replace": "  return `${scope} memories`\n"
+    },
+    {
+      "name": "the global index is tagged global",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "    kind: scopeOfMemoryType(file.type) ?? 'private',\n",
+      "replace": "    kind: scopeOfMemoryType(file.type) === 'global' ? 'private' : (scopeOfMemoryType(file.type) ?? 'private'),\n"
+    },
+    {
+      "name": "a new private index is tagged private, not the legacy 'auto'",
+      "source": "src/agent/attachments/injections.ts",
+      "find": "    kind: scopeOfMemoryType(file.type) ?? 'private',\n",
+      "replace": "    kind: scopeOfMemoryType(file.type) === 'private' ? 'auto' : (scopeOfMemoryType(file.type) ?? 'auto'),\n"
+    },
+    {
+      "name": "global, private, team: the order holds whatever getMemoryFiles returned",
+      "find": "    .sort((a, b) => MEMORY_SCOPES.indexOf(scopeOf(a)) - MEMORY_SCOPES.indexOf(scopeOf(b)))\n",
       "replace": ""
     },
     {

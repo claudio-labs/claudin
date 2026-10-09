@@ -1,0 +1,70 @@
+{
+  "test": [
+    "src/permissions/filePermissions/internalPaths.test.ts",
+    "src/memory/memdir/memoryFileDetection.test.ts",
+    "src/memory/memdir/memoryDirs.test.ts",
+    "src/memory/memdir/paths.test.ts"
+  ],
+  "source": "src/memory/memdir/paths.ts",
+  "probes": [
+    {
+      "name": "a sibling directory sharing the prefix is not memory",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    if (abs.startsWith(dir.root) && ",
+      "replace": "    if (abs.startsWith(withoutTrailingSep(dir.root)) && "
+    },
+    {
+      "name": "a traversal out of the memory dir is not memory",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "  const abs = resolve(path)\n",
+      "replace": "  const abs = path\n"
+    },
+    {
+      "name": "team beats private: the deepest root wins",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "(found === null || dir.root.length > found.root.length)",
+      "replace": "(found === null)"
+    },
+    {
+      "name": "the global dir defaults to <configHome>/memory/",
+      "find": "    (join(getMemoryBaseDir(), AUTO_MEM_DIRNAME) + sep).normalize('NFC'),\n",
+      "replace": "    (join(getMemoryBaseDir(), 'global-memory') + sep).normalize('NFC'),\n"
+    },
+    {
+      "name": "the memory dir settings are never read from project settings",
+      "find": "    getSettingsForSource('policySettings')?.[key] ??\n",
+      "replace": "    getSettingsForSource('projectSettings')?.[key] ??\n    getSettingsForSource('policySettings')?.[key] ??\n"
+    },
+    {
+      "name": "a memory dir setting holding the config home is refused",
+      "find": "  return dir === undefined || containsConfigHome(dir) ? undefined : dir\n",
+      "replace": "  return dir\n"
+    },
+    {
+      "name": "the config-home refusal looks up the tree, not down it",
+      "find": "  return (getClaudinConfigHomeDir() + sep).normalize('NFC').startsWith(dir)\n",
+      "replace": "  return dir.startsWith((getClaudinConfigHomeDir() + sep).normalize('NFC'))\n"
+    },
+    {
+      "name": "CLAUDIN_GLOBAL_MEMORY=0 turns the global dir off",
+      "find": "  if (isEnvDefinedFalsy(process.env.CLAUDIN_GLOBAL_MEMORY)) return { reason: 'env' }\n",
+      "replace": ""
+    },
+    {
+      "name": "a Cowork override turns the global dir off",
+      "find": "  if (hasMemoryPathOverride()) return { reason: 'cowork-override' }\n",
+      "replace": ""
+    },
+    {
+      "name": "nested global and private dirs turn the global dir off",
+      "find": "  if (nests(globalDir, privateDir)) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the session dirs drop the global one while it is off",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => true,\n"
+    }
+  ]
+}

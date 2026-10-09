@@ -1,20 +1,20 @@
 import { cpSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
+import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 import { logError } from 'src/shared/log.js'
-
-const ENTRYPOINT_NAME = 'MEMORY.md'
 
 /**
  * One-time, copy-only migration of a project's auto-memory from the legacy
- * global location (~/.claudin/projects/<slug>/memory/) into the new
+ * per-project location under the config home
+ * (~/.claudin/projects/<slug>/memory/) into the
  * project-local default (<gitRoot>/.claudin/memory/).
  *
  * Idempotent by construction (no marker file): once newDir has any memory
- * content, this is a no-op, so it's safe to call on every getAutoMemPath()
+ * content, this is a no-op, so it's safe to call on every getPrivateMemPath()
  * resolution. Never deletes or moves oldDir — it's left untouched as a
  * backup in case something goes wrong with the new location.
  */
-export function migrateGlobalMemoryIfNeeded(
+export function migrateLegacyMemoryIfNeeded(
   oldDir: string,
   newDir: string,
 ): void {

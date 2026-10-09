@@ -6,19 +6,24 @@
   "source": "src/agent/ui/collapseNestedMemory.ts",
   "probes": [
     {
-      "name": "a private memory-dir file counts as a memory, not a memory file",
-      "find": "  if (file.type === 'AutoMem') {\n    return { rank: 2, one: 'memory', many: 'memories' }\n  }\n",
-      "replace": ""
+      "name": "a memory-dir file is named by its scope, the way a Read of one is",
+      "find": "        one: `${scope} memory`,\n        many: `${scope} memories`,\n",
+      "replace": "        one: 'memory',\n        many: 'memories',\n"
     },
     {
-      "name": "a team-root file is a team memory, distinct from a private one",
-      "find": "      return { rank: 3, one: 'team memory', many: 'team memories' }\n",
-      "replace": "      return { rank: 2, one: 'memory', many: 'memories' }\n"
+      "name": "the scopes come out in MEMORY_SCOPES order, not arrival order",
+      "find": "        rank: FIRST_SCOPE_RANK + MEMORY_SCOPES.indexOf(scope),\n",
+      "replace": "        rank: FIRST_SCOPE_RANK,\n"
     },
     {
       "name": "a category subdirectory names the category on the line",
-      "find": "      one: `team ${category.noun} memory`,\n      many: `team ${category.noun} memories`,\n",
-      "replace": "      one: 'team memory',\n      many: 'team memories',\n"
+      "find": "      one: `${scope} ${category.noun} memory`,\n      many: `${scope} ${category.noun} memories`,\n",
+      "replace": "      one: `${scope} memory`,\n      many: `${scope} memories`,\n"
+    },
+    {
+      "name": "only a scope with subdirectories has categories",
+      "find": "    const category = MEMORY_SCOPE_SPECS[scope].hasSubdirectories\n",
+      "replace": "    const category = true\n"
     },
     {
       "name": "the category is the file's PARENT directory, nothing higher",

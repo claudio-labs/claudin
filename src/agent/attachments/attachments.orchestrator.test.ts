@@ -205,7 +205,7 @@ describe('getAttachments — subagent context-omission gates', () => {
     expect(
       attachment.indexes.map(i => [i.kind, i.entryCount]),
     ).toEqual([
-      ['auto', 1],
+      ['private', 1],
       ['team', 2],
     ])
   })
