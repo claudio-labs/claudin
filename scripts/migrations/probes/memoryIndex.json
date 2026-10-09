@@ -11,19 +11,21 @@
   "probes": [
     {
       "name": "the team index is labelled team, not folded into the private count",
-      "find": "  team: 'team memories index',\n",
-      "replace": "  team: 'private memories index',\n"
+      "source": "src/memory/memdir/memoryIndexNames.ts",
+      "find": "  team: { label: 'team memories index', subcommand: '/memory team' },\n",
+      "replace": "  team: { label: 'private memories index', subcommand: '/memory team' },\n"
     },
     {
       "name": "the global index is labelled global, not folded into the private count",
-      "find": "  global: 'global memories index',\n",
-      "replace": "  global: 'private memories index',\n"
+      "source": "src/memory/memdir/memoryIndexNames.ts",
+      "find": "  global: { label: 'global memories index', subcommand: '/memory global' },\n",
+      "replace": "  global: { label: 'private memories index', subcommand: '/memory global' },\n"
     },
     {
       "name": "the global index is tagged global",
-      "source": "src/agent/attachments/injections.ts",
-      "find": "        : file.type === 'GlobalMem'\n          ? 'global'\n          : 'auto',\n",
-      "replace": "        : 'auto',\n"
+      "source": "src/memory/memdir/memoryIndexNames.ts",
+      "find": "    case 'GlobalMem':\n      return 'global'\n",
+      "replace": "    case 'GlobalMem':\n      return 'auto'\n"
     },
     {
       "name": "private leads whatever order getMemoryFiles returned",

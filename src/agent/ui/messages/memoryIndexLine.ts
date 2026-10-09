@@ -5,6 +5,7 @@
  * the part worth pinning.
  */
 import type { MemoryIndexSummary } from 'src/agent/attachments/types.js'
+import { MEMORY_INDEX_NAMES } from 'src/memory/memdir/memoryIndexNames.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 
 const KIND_ORDER: Record<MemoryIndexSummary['kind'], number> = {
@@ -13,17 +14,8 @@ const KIND_ORDER: Record<MemoryIndexSummary['kind'], number> = {
   team: 2,
 }
 
-// "global", "private" and "team" are what /memory calls the three
-// directories (MemoryFileSelector.tsx); "user memory" there already means
-// ~/.claudin/CLAUDE.md, so it is free for neither memdir.
-const KIND_LABEL: Record<MemoryIndexSummary['kind'], string> = {
-  global: 'global memories index',
-  auto: 'private memories index',
-  team: 'team memories index',
-}
-
 function clause(index: MemoryIndexSummary): string {
-  const label = KIND_LABEL[index.kind]
+  const label = MEMORY_INDEX_NAMES[index.kind].label
   // A cut index reports both halves: what arrived, and what the file holds.
   // Otherwise the cap fires in silence — the warning truncateEntrypointContent
   // appends goes to the model, never to the screen.
