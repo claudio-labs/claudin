@@ -483,6 +483,29 @@ describe('relief policy — window lane via microcompactMessages', () => {
     }
   })
 
+  // A fork replays the parent's history — same tool_use ids, same registry
+  // key — so its clip would stub the PARENT's next request, unannounced.
+  test('a fork never clips; the main thread and a fresh sub-agent still do', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds, resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    mockSizeState.effectiveWindow = 40_000
+    const messages = buildHeavyHistory(24, 5_000)
+    const fork = { agentId: 'f-1', options: { tools: [] } } as unknown as ToolUseContext
+    for (const source of ['extract_memories', 'auto_dream', 'speculation', 'agent:builtin:fork']) {
+      resetClippedIds()
+      await microcompactMessages(messages, fork, source as never)
+      expect({ source, clipped: getClippedIds().size }).toEqual({ source, clipped: 0 })
+    }
+    resetClippedIds()
+    await microcompactMessages(messages, undefined, MAIN)
+    expect(getClippedIds().size).toBeGreaterThan(0)
+    for (const source of ['sdk', 'agent:builtin:Code']) {
+      resetClippedIds()
+      await microcompactMessages(messages, fork, source as never)
+      expect({ source, clipped: getClippedIds().size > 0 }).toEqual({ source, clipped: true })
+    }
+  })
+
   // feature() reads false under bun test, so the notify behind it never runs
   // here; the wiring is pinned on the source. A sub-agent's detector state
   // lives under its agentId, so the announcement has to carry it.

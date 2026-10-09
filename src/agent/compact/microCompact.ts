@@ -226,6 +226,24 @@ function isMainThreadSource(querySource: QuerySource | undefined): boolean {
   return !querySource || querySource.startsWith('repl_main_thread')
 }
 
+// A relief clip rewrites the prefix of the thread that runs it, so only the
+// thread that owns its prefix may clip: the main thread, a headless SDK
+// session, a fresh sub-agent. A fork — an Agent fork or a runForkedAgent
+// utility (extract_memories, auto_dream, speculation …) — replays the
+// parent's history to READ its cached prefix byte for byte, and its tool_use
+// ids are the parent's. The clipped-id registry cannot tell a fork from its
+// parent (currentKey(), the caveat in pinRegistry.ts), so a fork's clip landed
+// in the main thread's set unannounced: main's next request stubbed those ids
+// and fell to the floor — three ~700k rewrites in one 2026-10 session, each
+// right after extract_memories ran at the end of a turn.
+function ownsItsPrefix(querySource: QuerySource): boolean {
+  return (
+    isMainThreadSource(querySource) ||
+    querySource === 'sdk' ||
+    (querySource.startsWith('agent:') && querySource !== 'agent:builtin:fork')
+  )
+}
+
 // The relief candidate walk protects the last N user-role messages (turn
 // boundaries). In a tool loop each tool_result is its own user-role message,
 // so 2 keeps the most recent two results untouched — the tail the
@@ -267,7 +285,7 @@ export async function microcompactMessages(
   // Gated on a querySource: /context, /compact and analyzeContext call this
   // for analysis only and must not mutate the clipped set (the previous
   // estimate-driven trigger did, so an analysis command could clip).
-  if (querySource) {
+  if (querySource && ownsItsPrefix(querySource)) {
     maybeReliefClip(messages, toolUseContext, querySource)
   }
 
