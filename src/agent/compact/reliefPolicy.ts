@@ -32,6 +32,13 @@
  * spaces the events (`B* ≈ sqrt(2·w·R·g / r)` ≈ 60k at Anthropic prices; the
  * cost curve is flat around it, see the design doc).
  *
+ * Starvation escalates. Over the trigger with no clip able to free one band
+ * (`reliefEventFloor`), microcompact reports `reliefStarved` and
+ * `shouldAutoCompact` compacts on that same request instead of waiting for
+ * its own threshold: on a 1M window ~735k instead of 967k, where one session
+ * averaged 611k over 1,315 calls without ever compacting (2026-10).
+ * `CLAUDIN_RELIEF_STARVED_COMPACT=0` turns the escalation off.
+ *
  * Pure: everything here is a function of its input. The shell that reads
  * the profile, the model window and the messages lives in microCompact.ts.
  *
@@ -116,13 +123,24 @@ const RELIEF_BAND_MAX_FRACTION = 0.3
 // 1M window a 112k band.
 const RELIEF_BAND_TRIGGER_FRACTION = 0.15
 
-// An event that can free less than this is not worth a prefix rewrite. When
-// the clearable candidates are exhausted (every old result already a stub,
-// the rest inside the protected window) the policy would otherwise clip one
-// tiny result per request for ~0k each — 140 such events in one session —
-// and report each as a rewrite. Below the floor the caller records the
-// session as starved instead of clipping.
-export const RELIEF_MIN_EVENT_TOKENS = 4_000
+// An event that frees less than one band is not worth its prefix rewrite
+// (`reliefEventFloor`). The band is the spacing the cost model calls optimal
+// (docs/tech/cache/context-relief-policy.md), and candidates that cannot free
+// it mean the session's floor — stub heads, protected turns, results under
+// MIN_STUB_TOKENS — sits above the target: no clip changes that, compaction
+// does. The caller records the session as starved instead of clipping, and
+// the window lane's starvation escalates to autocompact (`shouldAutoCompact`).
+// The floor was this flat 4k until 2026-10, which on a 1M window let through
+// ~4k clips that each rewrote a ~800k prefix: 19 in one session, $142, most
+// followed by a floor rewrite on the next turn. 4k remains the minimum for a
+// degenerate window whose band is smaller (a trigger under ~13k), where it
+// still stops the one-tiny-result-per-request clip (140 in one session).
+const RELIEF_MIN_EVENT_TOKENS = 4_000
+
+/** The least a clip event must free: one band, never under 4k. */
+export function reliefEventFloor(decision: { trigger: number; target: number }): number {
+  return Math.max(RELIEF_MIN_EVENT_TOKENS, decision.trigger - decision.target)
+}
 
 export function reliefMargin(effectiveWindow: number): number {
   return Math.min(
@@ -226,6 +244,11 @@ export function selectReliefIds(
 export function isReliefWindowLaneEnabled(): boolean {
   const v = process.env.CLAUDIN_DISABLE_RELIEF_POLICY
   return !(v === '1' || v === 'true')
+}
+
+export function isReliefStarvedCompactEnabled(): boolean {
+  const v = process.env.CLAUDIN_RELIEF_STARVED_COMPACT
+  return !(v === '0' || v === 'false')
 }
 
 /** The sub-agent ceiling from CLAUDIN_SUBAGENT_RELIEF_TRIGGER, when set. */

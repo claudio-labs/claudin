@@ -10,7 +10,7 @@ import {
   ERROR_THRESHOLD_BUFFER_TOKENS,
 } from 'src/agent/compact/autoCompact.ts'
 import { getContextWindowForModel } from 'src/agent/context/context.ts'
-import { createUserMessage } from 'src/agent/messages/messages.ts'
+import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.ts'
 
 // Compaction starts on the model's context window and on nothing else. The
 // heap-pressure backstop used to fire at 0.7 of the V8 limit by default, which
@@ -75,6 +75,89 @@ describe('heap pressure is opt-in', () => {
     } finally {
       restore()
     }
+  })
+})
+
+describe('shouldAutoCompact — the window trigger', () => {
+  const model = 'claude-sonnet-4'
+
+  // tokenCountWithEstimation anchors on the last response's usage, which is
+  // what a live session hands it.
+  function historyAt(contextTokens: number) {
+    const assistant = createAssistantMessage({ content: 'ok' })
+    Object.assign(assistant.message as Record<string, unknown>, {
+      id: 'msg_usage',
+      model,
+      usage: {
+        input_tokens: 2,
+        cache_read_input_tokens: contextTokens,
+        cache_creation_input_tokens: 0,
+        output_tokens: 0,
+      },
+    })
+    return [createUserMessage({ content: 'go' }), assistant]
+  }
+
+  test('fires at the threshold and not below it', async () => {
+    if (!isAutoCompactEnabled()) return
+    const threshold = getAutoCompactThreshold(model)
+    expect(await shouldAutoCompact(historyAt(threshold + 1_000), model)).toBe(true)
+    expect(await shouldAutoCompact(historyAt(threshold - 20_000), model)).toBe(false)
+  })
+
+  test('the compacting forks never compact themselves', async () => {
+    const over = historyAt(getAutoCompactThreshold(model) + 1_000)
+    expect(await shouldAutoCompact(over, model, 'compact' as never)).toBe(false)
+    expect(await shouldAutoCompact(over, model, 'session_memory' as never)).toBe(false)
+  })
+})
+
+// A starved relief lane (microCompact.ts) means no clip can get the session
+// under its target: compaction runs then, not at the threshold far above it.
+describe('shouldAutoCompact — starved relief escalates', () => {
+  const model = 'claude-sonnet-4'
+  const ENV = 'CLAUDIN_RELIEF_STARVED_COMPACT'
+  const saved = process.env[ENV]
+  const restore = () => {
+    if (saved === undefined) delete process.env[ENV]
+    else process.env[ENV] = saved
+  }
+  const below = [createUserMessage({ content: 'go' })]
+
+  test('compacts below the threshold when relief is starved, and only then', async () => {
+    if (!isAutoCompactEnabled()) return
+    delete process.env[ENV]
+    try {
+      expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, true)).toBe(true)
+      expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, false)).toBe(false)
+    } finally {
+      restore()
+    }
+  })
+
+  test('keeps the recursion guards and the killswitch', async () => {
+    delete process.env[ENV]
+    try {
+      expect(await shouldAutoCompact(below, model, 'compact' as never, 0, true)).toBe(false)
+      expect(await shouldAutoCompact(below, model, 'session_memory' as never, 0, true)).toBe(false)
+      process.env[ENV] = '0'
+      expect(await shouldAutoCompact(below, model, 'repl_main_thread' as never, 0, true)).toBe(false)
+    } finally {
+      restore()
+    }
+  })
+
+  // query.ts is the only caller; the loop harness stubs autocompact, and
+  // autoCompactIfNeeded compacts for real once it says yes, so both hops of
+  // the wiring are pinned on the source.
+  test('query.ts hands the microcompact verdict through autoCompactIfNeeded', async () => {
+    const { readFileSync } = await import('fs')
+    const query = readFileSync(`${import.meta.dir}/../query.ts`, 'utf8')
+    expect(query).toContain('microcompactResult.reliefStarved,')
+    const auto = readFileSync(`${import.meta.dir}/autoCompact.ts`, 'utf8')
+    expect(auto).toMatch(
+      /shouldAutoCompact\(\s*messages,\s*model,\s*querySource,\s*snipTokensFreed,\s*reliefStarved,\s*\)/,
+    )
   })
 })
 

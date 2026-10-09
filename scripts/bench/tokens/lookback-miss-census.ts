@@ -2,10 +2,12 @@
 // Full-history cache rewrites across recorded sessions: how many, how big, and
 // what the `[Cache: …]` line said about each.
 //
-// A "full rewrite" here is one API call whose cache_read fell from the
-// previous call's by ≥ 2k (the detector's own threshold) while it wrote
-// ≥ --min-rewrite tokens (default 20k). Each event is tagged with what the
-// transcript can tell about it:
+// A "full rewrite" here is one API call that read back ≥ 2k less (the
+// detector's own threshold) than the previous call left cached — its read
+// plus its write, so a session already on its floor that rewrites again
+// counts too — while it wrote ≥ --min-rewrite tokens (default 20k). A
+// `<synthetic>` or zero-usage record is not a call. Each event is tagged with
+// what the transcript can tell about it:
 //   floor        cache_read landed on the session's floor — the system+tools
 //                breakpoint — i.e. NOTHING of the message history was found
 //   marker-jump  input_tokens collapsed on the same call (the deferred marker
@@ -16,7 +18,13 @@
 //   compact      a compaction summary landed between the two calls (expected)
 //   idle>1h      more than an hour since the previous call — the 1h TTL
 //                expired, the rewrite is expected (idle>5m likewise for 5m)
-//   reason=…     the `[Cache: …]` line whose "rewrote N" matches this call
+//   reason=…     from the `[Cache: …]` line of the call's own turn: the
+//                `cache break:` segment whose "rewrote N" matches this call
+//                (one line carries the turn's sub-agent breaks too), else
+//                `relief clip` when the turn's line names one — a clip is
+//                announced, so it never appears as a break
+//
+// Times are UTC (MM-DDTHH:MM:SSZ).
 //
 // Baseline the fix was measured against (2026-09-13):
 //   ab1e69e8  calls=879  events=7  rewritten=3.06M  (81% of 3.80M cache writes)
@@ -75,12 +83,25 @@ type SessionReport = {
 }
 
 const REWROTE_RE = /rewrote ([\d.]+)([km]?)/i
+// `<reason> — read A→B, rewrote C`, repeated with `; ` after `cache break: `.
+const BREAK_SEGMENT_RE = /(.*?) — read [\d.]+[km]?→[\d.]+[km]?, rewrote ([\d.]+[km]?)(?:; |\]|$)/gi
+const CACHE_BREAK_PREFIX = 'cache break: '
 
-function parseRewrote(line: string): number | undefined {
-  const m = REWROTE_RE.exec(line)
-  if (!m) return undefined
+function parseTokens(value: string): number {
+  const m = REWROTE_RE.exec(`rewrote ${value}`)
+  if (!m) return Number.NaN
   const n = Number(m[1])
   return m[2]?.toLowerCase() === 'k' ? n * 1000 : m[2]?.toLowerCase() === 'm' ? n * 1_000_000 : n
+}
+
+/** Every break segment of a `[Cache:]` line, with what it rewrote. */
+export function breakSegments(line: string): { reason: string; rewrote: number }[] {
+  const at = line.indexOf(CACHE_BREAK_PREFIX)
+  if (at < 0) return []
+  return [...line.slice(at + CACHE_BREAK_PREFIX.length).matchAll(BREAK_SEGMENT_RE)].map(m => ({
+    reason: m[1]!,
+    rewrote: parseTokens(m[2]!),
+  }))
 }
 
 function fmt(n: number): string {
@@ -93,7 +114,7 @@ export function censusSession(file: string): SessionReport | null {
   const lines = readFileSync(file, 'utf8').split('\n')
   const seen = new Set<string>()
   const calls: Call[] = []
-  const cacheLines: string[] = []
+  const cacheLines: { line: number; text: string }[] = []
   let pendingNewTurn = false
   let pendingCompact = false
   let cacheWrite = 0
@@ -118,17 +139,21 @@ export function censusSession(file: string): SessionReport | null {
     }
     if (o.type === 'system' && o.subtype === 'informational') {
       const c = String(o.content ?? '')
-      if (c.includes('[Cache:')) cacheLines.push(c)
+      if (c.includes('[Cache:')) cacheLines.push({ line: i, text: c })
       continue
     }
     if (o.type !== 'assistant' || !message) continue
     const id = String(message.id ?? '')
     const usage = message.usage as Record<string, number> | undefined
     if (!id || !usage || seen.has(id)) continue
+    // An API error or an interrupted call: no request was billed, and taking
+    // it as the previous call hides the next real call's rewrite.
+    if (message.model === '<synthetic>') continue
+    if (!usage.input_tokens && !usage.cache_creation_input_tokens && !usage.cache_read_input_tokens) continue
     seen.add(id)
     const call: Call = {
       line: i,
-      t: String(o.timestamp ?? '').slice(11, 19),
+      t: `${String(o.timestamp ?? '').slice(5, 19)}Z`,
       ms: Date.parse(String(o.timestamp ?? '')) || 0,
       in: usage.input_tokens ?? 0,
       cw: usage.cache_creation_input_tokens ?? 0,
@@ -149,7 +174,7 @@ export function censusSession(file: string): SessionReport | null {
   for (let i = 1; i < calls.length; i += 1) {
     const prev = calls[i - 1]!
     const c = calls[i]!
-    if (prev.cr - c.cr < MIN_CACHE_MISS_TOKENS) continue
+    if (prev.cr + prev.cw - c.cr < MIN_CACHE_MISS_TOKENS) continue
     if (c.cw < ARGS.minRewrite) continue
     const tags: string[] = []
     if (c.cr <= floor + FLOOR_SLACK_TOKENS) tags.push('floor')
@@ -159,11 +184,12 @@ export function censusSession(file: string): SessionReport | null {
     const gapMs = prev.ms && c.ms ? c.ms - prev.ms : 0
     if (gapMs > 3_600_000) tags.push('idle>1h')
     else if (gapMs > 300_000) tags.push('idle>5m')
-    const reasonLine = cacheLines.find(l => {
-      const rewrote = parseRewrote(l)
-      return rewrote !== undefined && Math.abs(rewrote - c.cw) <= Math.max(100, c.cw * 0.002)
-    })
-    const reason = reasonLine?.match(/cache break: (.*?) — read/)?.[1] ?? reasonLine?.match(/cache break: (.*)\]$/)?.[1]
+    // The line lands at the end of the call's turn: the first one after it.
+    const turnLine = cacheLines.find(l => l.line > c.line)?.text
+    const segment = turnLine
+      ? breakSegments(turnLine).find(s => Math.abs(s.rewrote - c.cw) <= Math.max(100, c.cw * 0.002))
+      : undefined
+    const reason = segment?.reason ?? (turnLine?.includes('relief clip') ? 'relief clip' : undefined)
     events.push({ ...c, prev, tags, reason })
   }
   const id = file.split('/').pop()!.replace('.jsonl', '')

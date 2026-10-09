@@ -1,5 +1,5 @@
 /**
- * Prompt-cache keep-alive — EXPERIMENT, off by default.
+ * Prompt-cache keep-alive — on by default since 2026-10-09.
  *
  * Anthropic's cache TTL is refreshed every time the cached prefix is READ,
  * so a request that re-sends the last body with `max_tokens` at the floor
@@ -14,6 +14,12 @@
  *    survive user pauses: $14.64 of premium in two days against $3.33 of
  *    pings that would have covered the same 23 gaps at the 5m tier.
  *
+ * Promoted on the 2026-10-02..09 census: 400 sub-agent prefixes expired
+ * behind foreground waits (`sleep` polls on a backgrounded break-probe, long
+ * test runs) and were rewritten whole — 94.8M tokens, $592 in a week. Only
+ * the 5m tier is pinged, so by default that is sub-agents; the main thread
+ * stays at 1h unless `CLAUDIN_MAIN_CACHE_TTL=5m` moves it.
+ *
  * Mechanism: `noteRequestStarted(key)` cancels any pending ping for that
  * agent; `armKeepAlive(req)` is called when a response completes and, if the
  * request's tier is 5m, schedules a ping `PING_AFTER_MS` later. The ping
@@ -26,13 +32,13 @@
  *
  * What this holds: one serialized request body per agent key, for the life
  * of the chain. `streaming.ts` deliberately frees its own copies after each
- * request; this keeps the last one on purpose, and only while the flag is
- * on. Not measured against the subscription quota: a ping is a request, and
- * whether the plan counts cache reads at full weight is the open question
- * the bench cannot answer — see docs/tech/cache/keep-alive.md.
+ * request; this keeps the last one on purpose, and only while a chain runs.
+ * Still not measured against the subscription quota: a ping is a request,
+ * and whether the plan counts cache reads at full weight is the open
+ * question the bench cannot answer — see docs/tech/cache/keep-alive.md.
  *
  * Env:
- *   CLAUDIN_CACHE_KEEPALIVE=1            turn on
+ *   CLAUDIN_CACHE_KEEPALIVE=0            turn off
  *   CLAUDIN_CACHE_KEEPALIVE_MAX_MIN=30   how long a chain may run
  *   CLAUDIN_CACHE_KEEPALIVE_MAX_TOKENS=1 the ping's max_tokens
  *   CLAUDIN_MAIN_CACHE_TTL=5m            (cacheControl.ts) main thread at 5m,
@@ -41,7 +47,7 @@
 import { addToTotalSessionCost } from 'src/agent/cost-tracker.js'
 import { calculateUSDCost } from 'src/providers/usage/modelCost.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { logError } from 'src/shared/log.js'
 
 /** Below the 5-minute TTL with margin for a slow request. */
@@ -50,7 +56,7 @@ const DEFAULT_MAX_MIN = 30
 const DEFAULT_MAX_TOKENS = 1
 
 export function isCacheKeepAliveEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_CACHE_KEEPALIVE)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_CACHE_KEEPALIVE)
 }
 
 function maxChainMs(): number {

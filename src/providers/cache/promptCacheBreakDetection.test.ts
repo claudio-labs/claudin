@@ -1,5 +1,5 @@
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bun:test'
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -660,8 +660,75 @@ describe('the server cache-miss diagnosis', () => {
       cacheMissedInputTokens: 182_825,
     })
     expect(getCurrentTurnCacheBreaks()).toEqual([
-      'server: system changed (182.8k missed); unknown cause — read 205k→25.9k, rewrote 182.8k',
+      'server: system changed (182.8k missed); likely server-side (prompt unchanged, <5min gap) — read 205k→25.9k, rewrote 182.8k',
     ])
+  })
+})
+
+// A cache entry lives from the request that wrote or read it, at the TTL that
+// request asked for. The census found a 6-min pause on the 1h main thread
+// labeled a 5-min expiry, and a 5.5-min-old 5m sub-agent cache read as a
+// 4.1-min gap because the clock started at the end of a 90 s stream.
+describe('TTL expiry is judged start to start, at the thread’s own tier', () => {
+  const T0 = Date.parse('2026-10-09T12:00:00Z')
+
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+  afterEach(() => {
+    setSystemTime()
+  })
+
+  function primeAt(at: number, ttl?: '1h'): void {
+    setSystemTime(new Date(at))
+    recordPromptState({
+      system: [
+        { type: 'text', text: 'sys', cache_control: { type: 'ephemeral', ...(ttl ? { ttl } : {}) } as never },
+      ],
+      toolSchemas: [],
+      querySource: SOURCE,
+      model: 'claude-opus-5',
+    })
+  }
+
+  test('a 6-minute pause expires a 5m thread, not a 1h one', async () => {
+    for (const [ttl, label] of [
+      [undefined, 'possible 5min TTL expiry (prompt unchanged)'],
+      ['1h', 'likely server-side (prompt unchanged, <1h gap)'],
+    ] as const) {
+      resetPromptCacheBreakDetection()
+      resetSessionCacheStats()
+      primeAt(T0, ttl)
+      await checkResponseForCacheBreak(SOURCE, 200_000, 0, [])
+      primeAt(T0 + 6 * 60_000, ttl)
+      await checkResponseForCacheBreak(SOURCE, 9_000, 191_000, [])
+      expect(getCurrentTurnCacheBreaks()).toEqual([expect.stringContaining(label)])
+    }
+  })
+
+  test('the gap runs from the previous request’s start, not from the last assistant message', async () => {
+    primeAt(T0)
+    await checkResponseForCacheBreak(SOURCE, 200_000, 0, [])
+    primeAt(T0 + 5.5 * 60_000)
+    // The previous response streamed for 84 s: its message is 4.1 min old.
+    const lastAssistant = {
+      type: 'assistant',
+      timestamp: new Date(T0 + 1.4 * 60_000).toISOString(),
+    } as never
+    await checkResponseForCacheBreak(SOURCE, 9_000, 191_000, [lastAssistant])
+    expect(getCurrentTurnCacheBreaks()).toEqual([
+      expect.stringContaining('possible 5min TTL expiry (prompt unchanged)'),
+    ])
+  })
+
+  test('a known tier labels by itself; an unknown one is guessed from the gap', () => {
+    expect(buildCacheBreakReason(null, undefined, 61 * 60_000, null, null, 5 * 60_000)).toBe(
+      'possible 5min TTL expiry (prompt unchanged)',
+    )
+    expect(buildCacheBreakReason(null, undefined, 6 * 60_000, null, null, 60 * 60_000)).toBe(
+      'likely server-side (prompt unchanged, <1h gap)',
+    )
   })
 })
 

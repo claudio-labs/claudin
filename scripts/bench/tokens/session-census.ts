@@ -424,8 +424,13 @@ function buildReport(w: Walk) {
       if (i === 0) continue
       const prev = cs[i - 1]!
       const prevRead = prev.usage.cache_read_input_tokens ?? 0
-      if (created > 8_000 && read < prevRead) {
-        drops.push({ session, ts: c.ts, prev: prevRead, now: read, created })
+      // A drop is prefix the previous call left cached that this one did not
+      // read back. `read < prevRead` alone missed the floor→floor case: a 5m
+      // sub-agent already at its floor rewrites the whole prefix on each later
+      // expiry with read 9k → 9k (221 events, $331 in 2026-10-02..09).
+      const prevCached = prevRead + (prev.usage.cache_creation_input_tokens ?? 0)
+      if (created > 8_000 && prevCached - read > 8_000) {
+        drops.push({ session, ts: c.ts, prev: prevCached, now: read, created })
       }
       const gapMin = (c.ts - prev.ts) / 60_000
       if (gapMin < 5) gapsUnder5++
@@ -556,9 +561,9 @@ function print(r: Report): void {
   console.log(`\n--- context per call --- n=${c.n} p10=${fmt(c.p10)} p50=${fmt(c.p50)} p90=${fmt(c.p90)} max=${fmt(c.max)} | >150k: ${c.over150k}  >250k: ${c.over250k}`)
   console.log(`sidechain: ${r.totals.side.calls} calls, cache reads ${usd(r.totals.side.read)} of ${usd(r.totals.side.total)}`)
 
-  console.log(`\n--- cache drops (cache_read fell, created > 8k) --- n=${r.drops.length} re-written=${fmt(r.drops.reduce((s, d) => s + d.created, 0))} tok`)
+  console.log(`\n--- cache drops (the previous call's prefix not read back, created > 8k) --- n=${r.drops.length} re-written=${fmt(r.drops.reduce((s, d) => s + d.created, 0))} tok`)
   for (const d of r.drops.slice(0, 15)) {
-    console.log(`  ${pad(d.session.replace(SESSION_HEAD_RE, '$1'), 13)} ${iso(d.ts)} read ${fmt(d.prev)} → ${fmt(d.now)}  created=${fmt(d.created)}`)
+    console.log(`  ${pad(d.session.replace(SESSION_HEAD_RE, '$1'), 13)} ${iso(d.ts)} cached ${fmt(d.prev)} → read ${fmt(d.now)}  created=${fmt(d.created)}`)
   }
   const wiped = r.flats.filter(f => f.wiped)
   console.log(`--- flat no-write stretches (≥4 calls) --- n=${r.flats.length}, ${wiped.length} ended in a drop`)

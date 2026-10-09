@@ -4,10 +4,11 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
-- [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed memory writes are refused with the rules
-- [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — output lands in the task transcript; multi-session runtime rejected
+- [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches
+- [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed writes refused
+- [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — multi-session runtime rejected
 - [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`
-- [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — max→xhigh, xhigh→high −24%; `CLAUDIN_SUBAGENT_EFFORT_STEP_DOWN=0`
+- [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — xhigh→high −24%
 - [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined; 6 `CLAUDIN_*` killswitches
 - [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `then` arms the response guard
@@ -23,7 +24,7 @@
 - [Tool-prompt tone rewrite — DROPPED 2026-09-13](decisions/prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls
 - [Seven catch-all dirs retired — 15 slices + 3 non-slices](decisions/reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts; `src/shared/` upward imports ≤131
 - [memory_delta deleted 2026-08-07](decisions/memory-delta-removed-double-send.md) — a second full copy, not a delta (~57 KB/session)
-- Repo map / code index — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
+- Repo map — REJECTED twice: [flat 08-07](decisions/repo-map-rejected-orientation-measured.md) · [graph 08-17](decisions/repo-map-graph-topology-degenerate.md) — loses to one `ls`
 - [LSPTool back since 2026-06-17, plugin-only](decisions/lsp-tool-reintroduced-plugin-only.md) — read-only 9 ops, cache-safe; built-in servers removed
 - [Explore agent: removed 08-18, back ON by default 09-25](decisions/explore-agent-removed.md) — calls −29%, wall +30%; `CLAUDIN_EXPLORE_AGENT=0`
 - [Fork-subagent by default](decisions/fork-subagent-by-default.md) — no subagent_type forks, a named agent stays fresh; auto-background opt-in
@@ -41,7 +42,7 @@
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
 
 ## Bugs
-- FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; Skill, SendMessage, worktree causes fixed; guards in cache.md §1
+- FIXED: [Turn-opening full-prefix rewrites (10-01)](bugs/turn-opening-full-prefix-rewrites.md) — server thinking drops; guards in cache.md §1
 - [Frontmatter values are cut at " #"](bugs/frontmatter-hash-truncates-values.md) — YAML comment; 18 memory descriptions citing PRs truncated
 - [Resume restores a REFUSED Write as read](bugs/resume-restores-refused-write.md) — extractReadFilesFromMessages skips is_error
 - [Built-in sub-agents never retry a 529](bugs/builtin-subagents-skip-529-retry.md) — the set matches `'agent:builtin'` exactly; 2 long runs lost 10-05; not fixed
@@ -69,7 +70,7 @@
 - [Coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — memory holds state/decisions/refs; procedures → skills
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the refusal message instead
 - [Steering Read shape from the prompt is cost-neutral](read-shape-steering-is-cost-neutral.md) — shape moves, cache_read differs 0.15%
-- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all 5 diffs decided; total_tokens parked
+- Claude Code prompt: [2.1.270 prose, 09-14](claude-code-2.1.270-prompt-diff.md) · [2.1.284 wire, 09-29](claude-code-2.1.284-wire-diff.md) — all decided
 - [ANTI_NARRATION removed from every prompt (#242)](anti-narration-never-benched-on-claude-5.md) — the narr arm moved neither thinking nor cost
 - [AGENTS.md documents the repo, never Claudin-only behavior](agents-md-excludes-claudin-only-behavior.md) — killswitches go in module headers
 - [Keep repo steering out of always-on context](dogfood-without-repo-steering.md) — it hides bugs users hit elsewhere; verify from a throwaway cwd
@@ -97,7 +98,7 @@
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — nothing imports it; `bun run build` is the gate
 - [Token census 09-26..28 — rewrite fan-out 77%](token-census-2026-09-28.md) — thinking stays resident; 5m-TTL waits $65
 - [Token census 09-09..10 — transcripts miss rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context
-- Weekly token censuses: [09-04..08](weekly-token-census-2026-09-08.md) · [09-14..20](weekly-token-census-2026-09-20.md) — no compaction on 1M = $355-580/wk
+- Weekly censuses: [09-08](weekly-token-census-2026-09-08.md) · [09-20](weekly-token-census-2026-09-20.md) · [10-09](weekly-token-census-2026-10-09.md) — rewrites 39% of cost
 - [Feature-usage validation 09-14..16](feature-usage-census-2026-09-16.md) — its "79 symbol= calls" is WRONG (25) · [09-14..15](feature-usage-census-2026-09-15.md)
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — scanMemoryFiles off per turn; worktree exit leaks rule caches
 - [Tool error census 09-14..20 + fixes](tool-error-census-2026-09-20.md) — read-gate 219 refusals/$70; 3 harness bugs fixed
@@ -105,7 +106,7 @@
 
 ## Roadmap & major features
 - [Dead-code + codename cleanup — #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines, analytics gone; the gates followed 09-25
-- Dead-code rounds (09-18/19): [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) · [r4](dead-code-round-4-2026-09-18.md) · [r5 #214](dead-code-round-5-2026-09-19.md)
+- Dead-code rounds: [r2](dead-code-round-2-2026-09-18.md) · [r3](dead-code-round-3-2026-09-18.md) · [r4](dead-code-round-4-2026-09-18.md) · [r5 #214](dead-code-round-5-2026-09-19.md)
 - Dead-code seeds (SPENT): [inventory](unreachable-clusters-inventory-2026-09-18.md) · [r3](dead-code-round-3-plan-seed.md) · [r4](dead-code-round-4-seed.md) · [bash](bash-parser-unreachable-behind-tree-sitter-flag.md)
 - [The three dead-code gates and what none sees](deadcode-gate-include-allowlist-hole.md) — knip answers "imported?", never "reachable?"
 - [Tier-3 giant-file split roadmap](tier3-file-split-roadmap.md) — round 2 done 09-20; md5 split gate, back-edge trap
@@ -129,7 +130,7 @@
 - [RunTests language coverage](runtests-tool-language-coverage.md) — 23 runners; JUnit/JSON vs heuristic tier
 - Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable, sync scanSymbols blocks
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
-- Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md) — 09-22 supersedes the cost gap
+- Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md)
 - [Session cache A/B vs Claude Code (09-23/24)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; run arms simultaneously
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal; relief 250k +7%, over-clips 3×
 - [Session cost round 3 (09-23)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't
@@ -163,8 +164,8 @@
 - [claudin-bin on the AUR + Omarchy](aur-omarchy-packaging.md) — PR #134, NOT live; the /usr/lib layout keeps rg+sharp resolving
 - [Node engine floor 22.12.0](node-engine-floor-22.md) — commander 15 is ESM-only; breaks Node 20
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — "No matching export": `bun install --force`
-- Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md)
-- Dependabot audits: [08-31](dependabot-bumps-2026-08-31-audited.md) · [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28, undici fix](dependabot-bumps-2026-09-28-audited.md)
+- Dependabot audits: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md) · [08-31](dependabot-bumps-2026-08-31-audited.md)
+- Dependabot audits: [09-07](dependabot-bumps-2026-09-07-audited.md) · [09-28, undici](dependabot-bumps-2026-09-28-audited.md)
 - [Dependabot audit 10-06 — shell-quote 1.11 Bash bypass](dependabot-bumps-2026-10-06-audited.md) — fixed + MCP issuer; Foundry default retires 11-30
 - [v8cache GC blocked process exit — fixed](startup-v8cache-gc-blocked-exit.md) — detached child + daily stamp; checkpoint deltas mislead
 - [Launcher jemalloc LD_PRELOAD leak — fixed 06-11](launcher-jemalloc-ld-preload-leak.md) — it reached children and broke the OAuth browser

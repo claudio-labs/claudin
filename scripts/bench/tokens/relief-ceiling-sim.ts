@@ -20,9 +20,19 @@
  * the relief clip cannot touch, stays resident either way. Tokens are chars/3
  * for tool content.
  *
+ * Two policy switches replay the 2026-10 changes, and `--main` replays main
+ * threads instead (1h write price; their recorded context already reflects
+ * the real clips, so the absolute numbers understate usage — compare arms):
+ *   --min-event=band   an event must free one band, not a flat 4k
+ *   --starved-compact  a starved event compacts: the summary call reads the
+ *                      prompt and writes ~15k of output, the thread restarts
+ *                      at --post-compact tokens (default 40k) and grows by the
+ *                      recorded deltas from there; nothing older is clippable
+ *
  * Run:
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26
  *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-09-26 --session=501d7261 --triggers=250000,300000,400000
+ *   bun scripts/bench/tokens/relief-ceiling-sim.ts --since=2026-10-02 --main --session=ed9c2e1c --triggers=735000 --min-event=band --starved-compact
  *
  * Transcripts are DATA: only aggregates are printed.
  */
@@ -40,6 +50,9 @@ const MIN_EVENT_TOKENS = 4_000
 // Opus 5.x, $/Mtok (mirror of modelCost.ts).
 const READ = 0.5
 const WRITE_5M = 6.25
+const WRITE_1H = 10
+const OUTPUT = 25
+const SUMMARY_OUTPUT_TOKENS = 15_000
 
 // Mirrors the tools' own declarations: `clearableResult: true` and
 // `clearableInputFields` (grep src/tools for either).
@@ -55,20 +68,36 @@ const CLEARABLE_INPUT: Record<string, readonly string[]> = {
   Agent: ['prompt'],
 }
 
-type Args = { since: number; session: string | null; triggers: number[] }
+type Args = {
+  since: number
+  session: string | null
+  triggers: number[]
+  main: boolean
+  bandFloor: boolean
+  starvedCompact: boolean
+  postCompact: number
+}
 
 function parseArgs(argv: readonly string[]): Args {
   const get = (k: string) => argv.find(a => a.startsWith(`--${k}=`))?.slice(k.length + 3)
   const since = Date.parse(`${get('since') ?? '2026-09-26'}T00:00:00`)
   if (Number.isNaN(since)) throw new Error('--since=YYYY-MM-DD')
   const triggers = (get('triggers') ?? '200000,250000,300000,400000,500000').split(',').map(Number)
-  return { since, session: get('session') ?? null, triggers }
+  return {
+    since,
+    session: get('session') ?? null,
+    triggers,
+    main: argv.includes('--main'),
+    bandFloor: get('min-event') === 'band',
+    starvedCompact: argv.includes('--starved-compact'),
+    postCompact: Number(get('post-compact') ?? 40_000),
+  }
 }
 
 type Block = { call: number; tokens: number }
 type Thread = { name: string; ctx: number[]; blocks: Block[] }
 
-function loadThread(path: string): Thread | null {
+function loadThread(path: string, main: boolean): Thread | null {
   const order: string[] = []
   const ctxById = new Map<string, number>()
   const callOfTool = new Map<string, { call: number; name: string }>()
@@ -110,44 +139,68 @@ function loadThread(path: string): Thread | null {
     }
   }
   if (order.length < 3) return null
-  const session = basename(dirname(dirname(path))).slice(0, 8)
-  return { name: `${session}/${basename(path, '.jsonl')}`, ctx: order.map(id => ctxById.get(id) ?? 0), blocks }
+  const name = main
+    ? basename(path, '.jsonl').slice(0, 8)
+    : `${basename(dirname(dirname(path))).slice(0, 8)}/${basename(path, '.jsonl')}`
+  return { name, ctx: order.map(id => ctxById.get(id) ?? 0), blocks }
 }
 
-type Outcome = { events: number; starved: number; rewrite: number; saved: number; reads: number }
+type Outcome = {
+  events: number
+  starved: number
+  compactions: number
+  rewrite: number
+  compact: number
+  saved: number
+  reads: number
+}
 
-function simulate(t: Thread, trigger: number): Outcome {
+function simulate(t: Thread, trigger: number, args: Args): Outcome {
   const band = Math.min(Math.max(BAND_MIN, trigger * BAND_TRIGGER_FRACTION), trigger * BAND_MAX_FRACTION)
   const target = trigger - band
+  const minEvent = args.bandFloor ? Math.max(MIN_EVENT_TOKENS, band) : MIN_EVENT_TOKENS
+  const write = args.main ? WRITE_1H : WRITE_5M
   const clipped = new Set<number>()
   let freed = 0
-  const out: Outcome = { events: 0, starved: 0, rewrite: 0, saved: 0, reads: 0 }
+  // What compactions removed, and the last call they swallowed.
+  let compactedAway = 0
+  let compactedThrough = -1
+  const out: Outcome = { events: 0, starved: 0, compactions: 0, rewrite: 0, compact: 0, saved: 0, reads: 0 }
   t.ctx.forEach((ctx, k) => {
     out.reads += (ctx * READ) / 1e6
-    let used = ctx - freed
+    let used = ctx - compactedAway - freed
     if (used > trigger) {
       let got = 0
       const picked: number[] = []
       t.blocks.forEach((b, i) => {
-        if (got >= used - target || clipped.has(i) || b.call >= k - KEEP_RECENT_CALLS) return
+        if (got >= used - target || clipped.has(i) || b.call <= compactedThrough || b.call >= k - KEEP_RECENT_CALLS) return
         picked.push(i)
         got += b.tokens
       })
-      if (got < MIN_EVENT_TOKENS) out.starved++
-      else {
+      if (got < minEvent) {
+        out.starved++
+        if (args.starvedCompact) {
+          out.compactions++
+          out.compact += (used * READ + SUMMARY_OUTPUT_TOKENS * OUTPUT + args.postCompact * write) / 1e6
+          compactedAway = ctx - args.postCompact
+          compactedThrough = k
+          freed = 0
+          used = args.postCompact
+        }
+      } else {
         // The prefix up to the oldest newly clipped block still reads from
         // cache: clips go oldest-first, so everything freed before now sits
         // behind it. Only the rest of the prompt is written again.
         const firstCall = t.blocks[picked[0]!]!.call
-        const cachedPrefix = Math.max(0, (t.ctx[firstCall] ?? 0) - freed)
+        const cachedPrefix = Math.max(0, (t.ctx[firstCall] ?? 0) - compactedAway - freed)
         for (const i of picked) clipped.add(i)
         freed += got
         used -= got
         out.events++
-        out.rewrite += (Math.max(0, used - cachedPrefix) * (WRITE_5M - READ)) / 1e6
+        out.rewrite += (Math.max(0, used - cachedPrefix) * (write - READ)) / 1e6
       }
     }
-    out.saved += (freed * READ) / 1e6
+    out.saved += ((compactedAway + freed) * READ) / 1e6
   })
   return out
 }
@@ -155,9 +208,9 @@ function simulate(t: Thread, trigger: number): Outcome {
 function main(): void {
   const args = parseArgs(process.argv.slice(2))
   const threads = transcriptFiles(projectDirs(null))
-    .filter(t => t.isSubagent && t.mtimeMs >= args.since)
+    .filter(t => t.isSubagent !== args.main && t.mtimeMs >= args.since)
     .filter(t => !args.session || t.path.includes(`/${args.session}`))
-    .map(t => loadThread(t.path))
+    .map(t => loadThread(t.path, args.main))
     .filter((t): t is Thread => t !== null)
   const reach = (t: Thread) => Math.max(...t.ctx)
   const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0
@@ -169,23 +222,28 @@ function main(): void {
     const clearable = t.blocks.filter(b => b.call < last - KEEP_RECENT_CALLS).reduce((s, b) => s + b.tokens, 0)
     return clearable / Math.max(1, t.ctx[last] ?? 1)
   })
-  console.log(`sub-agent threads=${threads.length}  max ctx p50=${Math.round(median(threads.map(reach)) / 1000)}k  clearable share of the final context p50=${(100 * median(share)).toFixed(0)}%`)
-  console.log('trigger  threads-reached  events  starved  rewrite$   saved$    net$   net/reads')
+  console.log(
+    `${args.main ? 'main' : 'sub-agent'} threads=${threads.length}  max ctx p50=${Math.round(median(threads.map(reach)) / 1000)}k  clearable share of the final context p50=${(100 * median(share)).toFixed(0)}%` +
+      `  min-event=${args.bandFloor ? 'band' : '4k'}${args.starvedCompact ? ` starved→compact@${args.postCompact / 1000}k` : ''}`,
+  )
+  console.log('trigger  threads-reached  events  starved  compactions  rewrite$  compact$   saved$    net$   net/reads')
   for (const trigger of args.triggers) {
-    const sum: Outcome = { events: 0, starved: 0, rewrite: 0, saved: 0, reads: 0 }
+    const sum: Outcome = { events: 0, starved: 0, compactions: 0, rewrite: 0, compact: 0, saved: 0, reads: 0 }
     let reached = 0
     for (const t of threads) {
-      const o = simulate(t, trigger)
+      const o = simulate(t, trigger, args)
       if (reach(t) > trigger) reached++
       sum.events += o.events
       sum.starved += o.starved
+      sum.compactions += o.compactions
       sum.rewrite += o.rewrite
+      sum.compact += o.compact
       sum.saved += o.saved
       sum.reads += o.reads
     }
-    const net = sum.saved - sum.rewrite
+    const net = sum.saved - sum.rewrite - sum.compact
     console.log(
-      `${String(trigger / 1000).padStart(5)}k  ${String(reached).padStart(15)}  ${String(sum.events).padStart(6)}  ${String(sum.starved).padStart(7)}  ${sum.rewrite.toFixed(2).padStart(8)}  ${sum.saved.toFixed(2).padStart(8)}  ${net.toFixed(2).padStart(7)}  ${((100 * net) / sum.reads).toFixed(1).padStart(8)}%`,
+      `${String(trigger / 1000).padStart(5)}k  ${String(reached).padStart(15)}  ${String(sum.events).padStart(6)}  ${String(sum.starved).padStart(7)}  ${String(sum.compactions).padStart(11)}  ${sum.rewrite.toFixed(2).padStart(8)}  ${sum.compact.toFixed(2).padStart(8)}  ${sum.saved.toFixed(2).padStart(8)}  ${net.toFixed(2).padStart(7)}  ${((100 * net) / sum.reads).toFixed(1).padStart(8)}%`,
     )
   }
 }

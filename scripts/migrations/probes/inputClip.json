@@ -38,8 +38,8 @@
     {
       "name": "relief: the starved floor adds no ids",
       "source": "src/agent/compact/microCompact.ts",
-      "find": "  if (savings < RELIEF_MIN_EVENT_TOKENS) {\n",
-      "replace": "  if (savings < 0) {\n"
+      "find": "  if (ids.length === 0 || freed < reliefEventFloor(decision)) {\n",
+      "replace": "  if (ids.length === 0) {\n"
     },
     {
       "name": "relief: the band grows with the trigger",

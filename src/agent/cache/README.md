@@ -97,14 +97,20 @@ audit; integrated regression:
   target a band below — the profile's 60k, growing to 15% of the trigger on
   windows past ~400k; rss lane: retained full results > the profile's high
   water) and `selectReliefIds` (oldest-first until the request is covered).
-  An event whose selectable savings fall under `RELIEF_MIN_EVENT_TOKENS`
-  (4k) adds no ids: `microCompact.ts` logs `[RELIEF] starved` and puts one
-  `relief starved (~Nk short, window lane)` on the turn's `[Cache:]` line.
+  An event that frees less than one band (`reliefEventFloor`: `trigger −
+  target`, never under 4k) — or finds nothing clearable — adds no ids:
+  `microCompact.ts` logs `[RELIEF] starved` and puts one `relief starved
+  (~Nk short, window lane)` on the turn's `[Cache:]` line, and a starved
+  window lane compacts on that request (`reliefStarved` →
+  `shouldAutoCompact`, killswitch `CLAUDIN_RELIEF_STARVED_COMPACT=0`).
   On a 1M window the retain profile's floor — 2000-char result heads plus
   the tool_use INPUTS nothing used to clip — sat above the 690k target
   (session 88f03ef5, 2026-09-15: 149 clip events, 140 of them one result
   for ~0k, the 4 real ones each a 600-700k rewrite); the band, the floor and
-  the input side below are the answer.
+  the input side below were the first answer. The flat 4k floor still let
+  18 ~4k clips rewrite ~800k each in ed9c2e1c (2026-10); compaction is the
+  rest of it. Forks never run relief (`ownsItsPrefix`): they share the
+  parent's ids and clipped set.
   `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window lane only.
 - `src/agent/compact/stableStubState.ts` — stable stubs (`clippedIds`),
   first-write-wins stub byte registry (`perKeyStubText`), age prune

@@ -86,8 +86,8 @@ export function should1hCacheTTL(querySource?: QuerySource): boolean {
   // EXPERIMENT (2026-09-10): the main thread at the 5m tier, paired with the
   // keep-alive pings in src/agent/cache/anthropic/keepAlive.ts. On its own
   // this only re-creates the pre-1h behaviour — every >5min pause rewrites
-  // the prefix — so it is meant to be set together with
-  // CLAUDIN_CACHE_KEEPALIVE=1. The bench that decides it:
+  // the prefix — so it relies on the keep-alive, on by default since
+  // 2026-10-09 (`CLAUDIN_CACHE_KEEPALIVE=0` turns it off). The bench that decides it:
   // scripts/bench/ab/cache-keepalive-probe.ts.
   if (process.env.CLAUDIN_MAIN_CACHE_TTL === "5m") {
     return false;
