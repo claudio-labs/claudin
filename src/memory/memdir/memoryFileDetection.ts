@@ -95,6 +95,16 @@ export function isAutoMemFile(filePath: string): boolean {
   return false
 }
 
+/**
+ * Whether a Read of `filePath` gets the memory freshness note (memoryAge.ts,
+ * via FileReadTool's markMemoryFileMtime): a file of the auto-memory dir —
+ * its team subdirectory included — or of the global one. A global memory is
+ * the longest-lived of them, so it is the last to go without the note.
+ */
+export function isFreshnessNotedMemoryFile(filePath: string): boolean {
+  return isAutoMemFile(filePath) || isGlobalMemPath(filePath)
+}
+
 
 /**
  * Check if a file path is within an agent memory directory.

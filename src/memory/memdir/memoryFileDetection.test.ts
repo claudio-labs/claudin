@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
@@ -9,6 +9,7 @@ import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
 import {
   isAutoManagedMemoryFile,
   isAutoMemFile,
+  isFreshnessNotedMemoryFile,
   isMemoryDirectory,
   isShellCommandTargetingMemory,
 } from 'src/memory/memdir/memoryFileDetection.js'
@@ -105,9 +106,20 @@ describe('memory file detection', () => {
     process.env.CLAUDIN_GLOBAL_MEMORY = '0'
     try {
       expect(isAutoManagedMemoryFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(false)
+      expect(isFreshnessNotedMemoryFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(false)
     } finally {
       delete process.env.CLAUDIN_GLOBAL_MEMORY
     }
+  })
+
+  test('a Read of a private, team or global memory carries the freshness note; a source file does not', () => {
+    expect(isFreshnessNotedMemoryFile(join(memDir, 'feedback-x.md'))).toBe(true)
+    expect(isFreshnessNotedMemoryFile(join(memDir, 'team', 'bugs', 'x.md'))).toBe(true)
+    expect(isFreshnessNotedMemoryFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(true)
+    expect(isFreshnessNotedMemoryFile(join(root, 'project', 'src', 'index.ts'))).toBe(false)
+    // FileReadTool records the mtime the note is computed from through it.
+    const dispatch = readFileSync(new URL('../../tools/FileReadTool/readDispatch.ts', import.meta.url), 'utf8')
+    expect(dispatch).toContain('if (isFreshnessNotedMemoryFile(fullFilePath)) {\n    markMemoryFileMtime(data, mtimeMs)')
   })
 
   describe('with the global dir moved outside the config home', () => {

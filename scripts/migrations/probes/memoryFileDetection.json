@@ -36,6 +36,17 @@
       "name": "a moved global dir is a memory directory",
       "find": "      normalizedCmp === toComparable(globalMemPath.replace(TRAILING_SEP_RE, '')) ||\n      normalizedCmp.startsWith(toComparable(globalMemPath))\n",
       "replace": "      false\n"
+    },
+    {
+      "name": "a Read of a global memory carries the freshness note",
+      "find": "  return isAutoMemFile(filePath) || isGlobalMemPath(filePath)\n",
+      "replace": "  return isAutoMemFile(filePath)\n"
+    },
+    {
+      "name": "FileReadTool asks the freshness predicate",
+      "source": "src/tools/FileReadTool/readDispatch.ts",
+      "find": "  if (isFreshnessNotedMemoryFile(fullFilePath)) {\n",
+      "replace": "  if (false) {\n"
     }
   ]
 }
