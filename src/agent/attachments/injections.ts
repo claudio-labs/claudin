@@ -47,9 +47,12 @@ import {
   type MemoryFileInfo,
 } from 'src/memory/instructions/claudemd.js'
 import { countIndexEntries } from 'src/memory/memdir/memdir.js'
-import { memoryIndexKind } from 'src/memory/memdir/memoryIndexNames.js'
+import {
+  isMemoryIndexType,
+  scopeOfIndexType,
+} from 'src/memory/memdir/memoryScopes.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
-import { isMemoryIndexType, type MemoryType } from 'src/memory/memdir/types.js'
+import type { MemoryType } from 'src/memory/memdir/types.js'
 import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getEnvDelta, getPromptEnv } from 'src/agent/prompts/envDelta.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
@@ -302,7 +305,7 @@ export function toMemoryIndexSummary(file: MemoryFileInfo): MemoryIndexSummary {
     path: file.path,
     displayPath: getDisplayPath(file.path),
     // isMemoryIndex let only an index through
-    kind: memoryIndexKind(file.type) ?? 'auto',
+    kind: scopeOfIndexType(file.type) ?? 'private',
     entryCount,
     totalEntryCount: Math.max(entryCount, totalEntryCount),
   }

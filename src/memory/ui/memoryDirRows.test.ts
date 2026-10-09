@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
+import { MEMORY_SCOPE_SPECS, MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js'
 import {
   buildMemoryDirRows,
   countMemoryFiles,
@@ -171,42 +172,35 @@ describe('buildMemoryDirRows', () => {
 })
 
 describe('browse row values', () => {
-  test('round trips the title and the team flag', () => {
+  test('round trips the title and the team scope', () => {
     const target = {
       dir: '/repo/.claudin/memory/team/',
       title: 'Team memory',
-      isTeamDir: true,
+      scope: 'team' as const,
     }
 
     expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
   })
 
-  test('a private dir round trips with the flag off', () => {
-    const target = {
-      dir: PRIVATE_DIR,
-      title: 'Private memory',
-      isTeamDir: false,
+  test('every scope round trips as itself', () => {
+    for (const scope of MEMORY_SCOPES) {
+      const target = { dir: `/x/${scope}/`, title: MEMORY_SCOPE_SPECS[scope].title, scope }
+      expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
     }
-
-    expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
   })
 
-  test('the global dir round trips with its own flag', () => {
-    const target = {
-      dir: '/home/u/.claudin/memory/',
-      title: 'Global memory',
-      isTeamDir: false,
-      isGlobalDir: true,
-    }
+  test('a dir with no scope (an agent memory) round trips without one', () => {
+    const target = { dir: PRIVATE_DIR, title: 'code-reviewer agent memory' }
 
-    expect(encodeBrowseValue(target).startsWith('__browse_dir__2')).toBe(true)
-    expect(parseBrowseValue(encodeBrowseValue(target))).toEqual(target)
+    const parsed = parseBrowseValue(encodeBrowseValue(target))
+    expect(parsed).toEqual(target)
+    expect(parsed && 'scope' in parsed).toBe(false)
   })
 
   test('a path holding the field separator keeps its tail', () => {
     const dir = `/repo/od\u001fd/memory`
     const parsed = parseBrowseValue(
-      encodeBrowseValue({ dir, title: 'Odd', isTeamDir: false }),
+      encodeBrowseValue({ dir, title: 'Odd', scope: 'private' }),
     )
 
     expect(parsed?.dir).toBe(dir)

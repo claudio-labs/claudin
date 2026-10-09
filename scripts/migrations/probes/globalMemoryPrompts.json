@@ -9,7 +9,7 @@
   "probes": [
     {
       "name": "the prompts follow the global dir switch",
-      "find": "  return isGlobalMemoryEnabled() ? getGlobalMemPath() : null\n",
+      "find": "  return getMemoryDir('global')?.root ?? null\n",
       "replace": "  return null\n"
     },
     {
@@ -19,8 +19,8 @@
     },
     {
       "name": "the v2 types line sends user memories to the global dir",
-      "find": "\"Types: `user` (always global — role, expertise, preferences)",
-      "replace": "\"Types: `user` (always private — role, expertise, preferences)"
+      "find": "(${typeScope(type, hasGlobal)} — ${LEAN_TYPE_HOLDS[type]})",
+      "replace": "(${typeScope(type, false)} — ${LEAN_TYPE_HOLDS[type]})"
     },
     {
       "name": "three indexes are in context, not two",
@@ -39,19 +39,19 @@
     },
     {
       "name": "the full prompt sends user memories to the global dir",
-      "find": "        '- `user` (always global) — who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.',\n",
-      "replace": "        '- `user` (always private) — who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.',\n"
+      "find": "(${typeScope(type, globalDir !== null)}) — ${FULL_TYPE_HOLDS[type]}",
+      "replace": "(${typeScope(type, false)}) — ${FULL_TYPE_HOLDS[type]}"
     },
     {
       "name": "the write rules say what the global dir takes",
-      "find": "          `The global dir \\`${globalDir}\\` takes what holds in every project — \\`user\\`, \\`feedback\\`, \\`reference\\` — never \\`project\\`, and its memories carry no \\`paths:\\`.`,\n",
-      "replace": "          '',\n"
+      "find": "    ...(globalDir === null ? [] : ['', globalDirRule(globalDir)]),\n",
+      "replace": ""
     },
     {
       "name": "the guard's refusal carries the global rule",
       "source": "src/memory/memdir/memoryFormatGuard.ts",
-      "find": "  return buildMemoryWriteRules(teamDir, globalDir)\n",
-      "replace": "  return buildMemoryWriteRules(teamDir)\n"
+      "find": "  return buildMemoryWriteRules(rootOf(dirs, 'team') ?? '', rootOf(dirs, 'global'))\n",
+      "replace": "  return buildMemoryWriteRules(rootOf(dirs, 'team') ?? '')\n"
     },
     {
       "name": "the v2 search line covers the global dir",
@@ -68,8 +68,13 @@
     {
       "name": "the global dir is created 0700",
       "source": "src/memory/memdir/memdir.ts",
-      "find": "    await ensureMemoryDirExists(getGlobalMemPath(), 0o700)\n",
-      "replace": "    await ensureMemoryDirExists(getGlobalMemPath())\n"
+      "find": "    await ensureMemoryDirExists(dir.root, dir.scope === 'global' ? 0o700 : undefined)\n",
+      "replace": "    await ensureMemoryDirExists(dir.root)\n"
+    },
+    {
+      "name": "the write rules quote TYPE_SCOPES for what the global dir takes",
+      "find": "`\\`${type}\\` (${TYPE_SCOPES[type].withGlobal})`",
+      "replace": "`\\`${type}\\` (${TYPE_SCOPES[type].withoutGlobal})`"
     }
   ]
 }

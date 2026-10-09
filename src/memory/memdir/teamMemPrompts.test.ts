@@ -1,7 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test, mock } from 'bun:test'
 import { readFileSync } from 'fs'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
-import { MEMORY_FRONTMATTER_EXAMPLE } from 'src/memory/memdir/memoryTypes.js'
+import {
+  MEMORY_FRONTMATTER_EXAMPLE,
+  type MemoryType,
+  TYPE_SCOPES,
+} from 'src/memory/memdir/memoryTypes.js'
 
 // buildCombinedMemoryPrompt() composes getAutoMemPath()/getTeamMemPath()
 // (./paths.js, ./teamMemPaths.js), the project's git root (../utils/git.js,
@@ -29,6 +33,23 @@ afterAll(() => {
   mock.module('./paths.js', () => realPaths)
   mock.module('./teamMemPaths.js', () => realTeamMemPaths)
 })
+
+/**
+ * The v2 types line as it must read: each type's scope from TYPE_SCOPES (the
+ * one statement of where a type goes), then what the type holds.
+ */
+function leanTypesLine(hasGlobal: boolean): string {
+  const holds: Record<MemoryType, string> = {
+    user: 'role, expertise, preferences',
+    feedback: 'how to work, from corrections and confirmed approaches',
+    project: 'ongoing work, decisions, constraints; absolute dates',
+    reference: 'pointers to external systems',
+  }
+  const scope = (type: MemoryType) =>
+    hasGlobal ? TYPE_SCOPES[type].withGlobal : TYPE_SCOPES[type].withoutGlobal
+  const types = (Object.keys(holds) as MemoryType[]).map(type => `\`${type}\` (${scope(type)} — ${holds[type]})`)
+  return `Types: ${types.join(', ')}.`
+}
 
 async function importFreshTeamMemPrompts(options: {
   autoDir: string
@@ -239,8 +260,7 @@ describe('the v2 memory section and its write rules', () => {
     gitRoot: null,
     likelyIgnored: false,
   }
-  const TYPES_LINE =
-    'Types: `user` (always private — role, expertise, preferences), `feedback` (how to work, from corrections and confirmed approaches; team only for a project-wide convention), `project` (bias toward team — ongoing work, decisions, constraints; absolute dates), `reference` (usually team — pointers to external systems).'
+  const TYPES_LINE = leanTypesLine(false)
   const ON_DEMAND_LINE =
     'Team memory also has `decisions/`, `bugs/` and `docs/` subdirectories with rules of their own; a memory write that breaks the rules for its place is refused with them.'
   const KEPT_INDEX_LINE =
@@ -332,8 +352,7 @@ describe('the global memory dir in the prompts', () => {
   }
   const LEAN_INTRO =
     "You have a persistent, file-based memory in three directories: a global one at `/home/u/.claudin/memory/`, yours and this user's in every project; a private one at `/repo/.claudin/memory/`, for this project; and a team one at `/repo/.claudin/memory/team/`, git-tracked, so what you write there shows up in `git status` and reaches teammates through commits. All three directories already exist — write to them directly with the Write tool (do not run mkdir or check for their existence). Save what future conversations need — who the user is, how they like to work, the context behind the work. When the user asks you to remember something, save it now; when they ask you to forget something, find and remove it."
-  const LEAN_TYPES =
-    "Types: `user` (always global — role, expertise, preferences), `feedback` (how to work, from corrections and confirmed approaches; global when it holds in any project, private when it names this project's files, commands or conventions, team only for a project-wide convention), `project` (bias toward team, never global — ongoing work, decisions, constraints; absolute dates), `reference` (usually team, global only for a personal resource outside any one project — pointers to external systems)."
+  const LEAN_TYPES = leanTypesLine(true)
   const LEAN_INDEX =
     'Only the three `MEMORY.md` indexes are in context. Update a memory rather than duplicating it, skip what the code, git history or this conversation already hold, and NEVER put secrets in team memory.'
 
@@ -366,10 +385,12 @@ describe('the global memory dir in the prompts', () => {
       `with three directories: a global one at \`${GLOBAL}\` (just you and this user, shared by every project they work in), a private one at \`/repo/.claudin/memory/\` (just you and this user, for this project)`,
     )
     expect(lines).toContain(
-      '- `user` (always global) — who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.',
+      `- \`user\` (${TYPE_SCOPES.user.withGlobal}) — who the user is: role, expertise, goals, preferences. Tailor how you work with them; no negative judgments.`,
     )
-    expect(prompt).toContain("- `feedback` (global when it holds in any project — how the user wants answers, plans or reviews; private when it names this project's files, commands or conventions;")
-    expect(prompt).toContain('- `project` (bias toward team; never global)')
+    expect(prompt).toContain(`- \`feedback\` (${TYPE_SCOPES.feedback.withGlobal}) — guidance on how to work`)
+    expect(prompt).toContain(`- \`project\` (${TYPE_SCOPES.project.withGlobal}) — ongoing work`)
+    expect(prompt).toContain(`- \`reference\` (${TYPE_SCOPES.reference.withGlobal}) — pointers to external systems`)
+    expect(prompt).not.toContain('(private or team)')
     expect(prompt).toContain('Only the three `MEMORY.md` indexes are in context;')
     expect(prompt).toContain('give one to a bug or doc memory tied to specific files, never to a global memory.')
     expect(prompt).toContain('in the global, private or team dir per its scope')
@@ -380,7 +401,12 @@ describe('the global memory dir in the prompts', () => {
 
   test('the write rules carry what the global dir takes, only while it is on', async () => {
     const m = await importFreshTeamMemPrompts(DIRS)
-    const line = `The global dir \`${GLOBAL}\` takes what holds in every project — \`user\`, \`feedback\`, \`reference\` — never \`project\`, and its memories carry no \`paths:\`.`
+    // What it takes and what it never takes, as TYPE_SCOPES marks them.
+    const takes = (['user', 'feedback', 'reference'] as const).map(
+      type => `\`${type}\` (${TYPE_SCOPES[type].withGlobal})`,
+    )
+    expect(TYPE_SCOPES.project.global).toBe('never')
+    const line = `The global dir \`${GLOBAL}\` takes ${takes.join(', ')}; never \`project\`, and its memories carry no \`paths:\`.`
 
     expect(m.buildMemoryWriteRules(DIRS.teamDir, GLOBAL).split('\n')).toContain(line)
     expect(m.buildMemoryWriteRules(DIRS.teamDir)).not.toContain('The global dir')

@@ -83,7 +83,7 @@ describe('memory indexes in getMemoryFiles', () => {
   test('the model is told which index is the global one', async () => {
     const text = getClaudeMds(await getMemoryFiles())
     expect(text).toContain(
-      `Contents of ${join(globalDir, 'MEMORY.md')} (user's global auto-memory, shared by every project):`,
+      `Contents of ${join(globalDir, 'MEMORY.md')} (user's global memory, shared by every project):`,
     )
     expect(text).toContain('answers in pt-BR')
   })

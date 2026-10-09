@@ -2,19 +2,28 @@
   "test": [
     "src/permissions/filePermissions/internalPaths.test.ts",
     "src/memory/memdir/memoryFileDetection.test.ts",
+    "src/memory/memdir/memoryDirs.test.ts",
     "src/memory/memdir/paths.test.ts"
   ],
   "source": "src/memory/memdir/paths.ts",
   "probes": [
     {
       "name": "a sibling directory sharing the prefix is not memory",
-      "find": "  return normalizedPath.startsWith(getAutoMemPath())\n",
-      "replace": "  return normalizedPath.startsWith(getAutoMemPath().slice(0, -1))\n"
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    if (abs.startsWith(dir.root) && ",
+      "replace": "    if (abs.startsWith(withoutTrailingSep(dir.root)) && "
     },
     {
       "name": "a traversal out of the memory dir is not memory",
-      "find": "  const normalizedPath = normalize(absolutePath)\n  return normalizedPath.startsWith(getAutoMemPath())\n",
-      "replace": "  const normalizedPath = absolutePath\n  return normalizedPath.startsWith(getAutoMemPath())\n"
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "  const abs = resolve(path)\n",
+      "replace": "  const abs = path\n"
+    },
+    {
+      "name": "team beats private: the deepest root wins",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "(found === null || dir.root.length > found.root.length)",
+      "replace": "(found === null)"
     },
     {
       "name": "the global dir defaults to <configHome>/memory/",
@@ -22,9 +31,19 @@
       "replace": "    (join(getMemoryBaseDir(), 'global-memory') + sep).normalize('NFC'),\n"
     },
     {
-      "name": "the global dir setting is never read from project settings",
-      "find": "    getSettingsForSource('policySettings')?.autoMemoryGlobalDirectory ??\n",
-      "replace": "    getSettingsForSource('projectSettings')?.autoMemoryGlobalDirectory ??\n    getSettingsForSource('policySettings')?.autoMemoryGlobalDirectory ??\n"
+      "name": "the memory dir settings are never read from project settings",
+      "find": "    getSettingsForSource('policySettings')?.[key] ??\n",
+      "replace": "    getSettingsForSource('projectSettings')?.[key] ??\n    getSettingsForSource('policySettings')?.[key] ??\n"
+    },
+    {
+      "name": "a memory dir setting holding the config home is refused",
+      "find": "  return dir === undefined || containsConfigHome(dir) ? undefined : dir\n",
+      "replace": "  return dir\n"
+    },
+    {
+      "name": "the config-home refusal looks up the tree, not down it",
+      "find": "  return (getClaudinConfigHomeDir() + sep).normalize('NFC').startsWith(dir)\n",
+      "replace": "  return dir.startsWith((getClaudinConfigHomeDir() + sep).normalize('NFC'))\n"
     },
     {
       "name": "CLAUDIN_GLOBAL_MEMORY=0 turns the global dir off",
@@ -42,14 +61,10 @@
       "replace": "  return true\n"
     },
     {
-      "name": "the global path test is off with the global dir",
-      "find": "    isGlobalMemoryEnabled() &&\n    normalize(absolutePath).startsWith(getGlobalMemPath())\n",
-      "replace": "    normalize(absolutePath).startsWith(getGlobalMemPath())\n"
-    },
-    {
-      "name": "a traversal out of the global dir is not global memory",
-      "find": "    normalize(absolutePath).startsWith(getGlobalMemPath())\n",
-      "replace": "    absolutePath.startsWith(getGlobalMemPath())\n"
+      "name": "the session dirs drop the global one while it is off",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => true,\n"
     }
   ]
 }

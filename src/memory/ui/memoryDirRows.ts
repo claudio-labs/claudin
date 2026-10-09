@@ -2,7 +2,11 @@ import { readdir } from 'fs/promises'
 import { basename, sep } from 'path'
 
 import type { MemoryHeader } from 'src/memory/memdir/memoryScan.js'
-import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js'
+import {
+  ENTRYPOINT_NAME,
+  MEMORY_SCOPES,
+  type MemoryScope,
+} from 'src/memory/memdir/memoryScopes.js'
 import { MEMORY_TYPES } from 'src/memory/memdir/memoryTypes.js'
 import { formatRelativeTimeAgo } from 'src/shared/text/format.js'
 
@@ -27,23 +31,20 @@ const BROWSE_DIR_PREFIX = '__browse_dir__'
 export const TIDY_VALUE = '__memory_tidy__'
 
 // A Select row's value is a string, so the browse row carries everything the
-// browser needs — the title the selector already knew, and whether the dir is
-// the shared one — rather than making the command re-derive them from a path
+// browser needs — the title the selector already knew, and which memory
+// directory it is — rather than making the command re-derive them from a path
 // (which would mean repeating MemoryFileSelector's path resolution).
 const BROWSE_FIELD_SEP = '\u001f'
 
 export type BrowseTarget = {
   dir: string
   title: string
-  isTeamDir: boolean
-  /** The global dir — every project reads it, so its delete confirmation says so. */
-  isGlobalDir?: boolean
+  /** Which memory directory; absent for an agent's memory. */
+  scope?: MemoryScope
 }
 
-// The flag after the prefix: 0 private (or an agent's), 1 team, 2 global.
 export function encodeBrowseValue(target: BrowseTarget): string {
-  const flag = target.isTeamDir ? '1' : target.isGlobalDir ? '2' : '0'
-  return `${BROWSE_DIR_PREFIX}${flag}${BROWSE_FIELD_SEP}${target.title}${BROWSE_FIELD_SEP}${target.dir}`
+  return `${BROWSE_DIR_PREFIX}${target.scope ?? ''}${BROWSE_FIELD_SEP}${target.title}${BROWSE_FIELD_SEP}${target.dir}`
 }
 
 /** Returns null for any value that is not a browse row. */
@@ -56,10 +57,9 @@ export function parseBrowseValue(value: string): BrowseTarget | null {
   if (secondSep === -1) return null
   // The dir takes the whole tail, so a path holding the separator still round
   // trips instead of being silently truncated.
-  const flag = rest.slice(0, firstSep)
+  const scope = MEMORY_SCOPES.find(s => s === rest.slice(0, firstSep))
   return {
-    isTeamDir: flag === '1',
-    ...(flag === '2' ? { isGlobalDir: true } : {}),
+    ...(scope === undefined ? {} : { scope }),
     title: rest.slice(firstSep + 1, secondSep),
     dir: rest.slice(secondSep + 1),
   }

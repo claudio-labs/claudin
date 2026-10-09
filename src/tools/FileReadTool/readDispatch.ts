@@ -5,7 +5,7 @@ import {
   PDF_AT_MENTION_INLINE_THRESHOLD,
   PDF_MAX_PAGES_PER_READ,
 } from 'src/shared/constants/apiLimits.js'
-import { isFreshnessNotedMemoryFile } from 'src/memory/memdir/memoryFileDetection.js'
+import { memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -494,7 +494,8 @@ export async function callInner(
       totalLines,
     },
   }
-  if (isFreshnessNotedMemoryFile(fullFilePath)) {
+  // A memory file of any directory gets the freshness note (memoryAge.ts).
+  if (memoryScopeOf(fullFilePath) !== null) {
     markMemoryFileMtime(data, mtimeMs)
   }
 

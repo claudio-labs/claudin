@@ -1,6 +1,6 @@
 import type { UUID } from 'crypto'
 import type { StructuredPatchHunk } from 'diff'
-import { isAbsolute } from 'path'
+import { isAbsolute, resolve } from 'path'
 import { findToolByName, type Tools } from 'src/tools/Tool.js'
 import { isResubmitSentinel, parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
@@ -42,20 +42,14 @@ import {
   isMemoryDirectory,
   isShellCommandTargetingMemory,
 } from 'src/memory/memdir/memoryFileDetection.js'
-import { isGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { getMemoryDirs, memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
 import {
-  appendGlobalMemorySummaryParts,
-  isGlobalMemorySearch,
-  isGlobalMemoryWriteOrEdit,
-} from 'src/memory/memdir/globalMemoryOps.js'
+  countMemories,
+  MEMORY_SCOPES,
+  type MemoryScope,
+  withoutTrailingSep,
+} from 'src/memory/memdir/memoryScopes.js'
 import { expandPath } from 'src/shared/fs/path.js'
-
-import {
-  appendTeamMemorySummaryParts,
-  isTeamMemFile,
-  isTeamMemoryWriteOrEdit,
-  isTeamMemorySearch,
-} from 'src/memory/memdir/teamMemoryOps.js'
 
 /**
  * Result of checking if a tool use is a search or read operation.
@@ -129,6 +123,41 @@ function isMemoryWriteOrEdit(toolName: string, toolInput: unknown): boolean {
   }
   const filePath = getFilePathFromToolInput(toolInput)
   return filePath !== undefined && isAutoManagedMemoryFile(filePath)
+}
+
+/**
+ * The memory directory a memory file belongs to. A memory file in none of
+ * them (agent memory, session files) is counted with the private ones, as it
+ * always was.
+ */
+function memoryFileScope(filePath: string): MemoryScope {
+  return memoryScopeOf(filePath) ?? 'private'
+}
+
+/**
+ * The memory directory a Grep/Glob searches, or null for a search that is not
+ * about memory. Its `path` can be inside a directory or the directory itself,
+ * named without its trailing separator; the exact match goes first, because
+ * the bare team directory (`…/memory/team`) is inside the private one.
+ */
+function memorySearchScope(toolInput: unknown): MemoryScope | null {
+  const path = (toolInput as { path?: string } | undefined)?.path
+  if (path) {
+    const abs = resolve(path)
+    const exact = getMemoryDirs().find(dir => withoutTrailingSep(dir.root) === abs)
+    const scope = exact?.scope ?? memoryScopeOf(abs)
+    if (scope) return scope
+  }
+  return isMemorySearch(toolInput) ? 'private' : null
+}
+
+/** What a group accumulates for one memory directory. */
+type MemoryScopeOps = { search: number; readFilePaths: Set<string>; write: number }
+
+function emptyMemoryOps(): Record<MemoryScope, MemoryScopeOps> {
+  return Object.fromEntries(
+    MEMORY_SCOPES.map(scope => [scope, { search: 0, readFilePaths: new Set(), write: 0 }]),
+  ) as Record<MemoryScope, MemoryScopeOps>
 }
 
 /** A file a write tool is about to touch, known from its input alone. */
@@ -316,7 +345,7 @@ export function getToolSearchOrReadInfo(
   }
 
   // Writes outside the memory dir. Checked after the memory arm so a memory
-  // write keeps saying "Wrote 1 memory", and before the search/read fallback
+  // write keeps saying "Wrote 1 private memory", and before the search/read fallback
   // because none of these tools implements isSearchOrReadCommand.
   if (isWriteCollapseEnabled() && getWriteTargets(toolName, toolInput)) {
     return {
@@ -967,18 +996,9 @@ type GroupAccumulator = {
   // Count of directory-listing operations (ls, tree, du)
   listCount: number
   toolUseIds: Set<string>
-  // Memory file operation counts (tracked separately from regular counts)
-  memorySearchCount: number
-  memoryReadFilePaths: Set<string>
-  memoryWriteCount: number
-  // Global memory (~/.claudin/memory/) counts
-  globalMemorySearchCount: number
-  globalMemoryReadFilePaths: Set<string>
-  globalMemoryWriteCount: number
-  // Team memory file operation counts (tracked separately)
-  teamMemorySearchCount?: number
-  teamMemoryReadFilePaths?: Set<string>
-  teamMemoryWriteCount?: number
+  // Memory operations per memory directory, tracked apart from the regular
+  // counts. Each scope's readFilePaths ⊆ readFilePaths above.
+  memoryOps: Record<MemoryScope, MemoryScopeOps>
   // Non-memory search patterns for display beneath the collapsed summary
   nonMemSearchArgs: string[]
   /** Most recently added non-memory operation, pre-formatted for display */
@@ -1016,12 +1036,7 @@ function createEmptyGroup(): GroupAccumulator {
     readOperationCount: 0,
     listCount: 0,
     toolUseIds: new Set(),
-    memorySearchCount: 0,
-    memoryReadFilePaths: new Set(),
-    memoryWriteCount: 0,
-    globalMemorySearchCount: 0,
-    globalMemoryReadFilePaths: new Set(),
-    globalMemoryWriteCount: 0,
+    memoryOps: emptyMemoryOps(),
     nonMemSearchArgs: [],
     latestDisplayHint: undefined,
     hookTotalMs: 0,
@@ -1029,9 +1044,6 @@ function createEmptyGroup(): GroupAccumulator {
     hookInfos: [],
     writeFiles: new Map(),
     writeToolNames: new Map(),
-    teamMemorySearchCount: 0,
-    teamMemoryReadFilePaths: new Set(),
-    teamMemoryWriteCount: 0,
   }
   group.mcpCallCount = 0
   group.mcpServerNames = new Set()
@@ -1059,43 +1071,33 @@ function createCollapsedGroup(
     group.readFilePaths.size > 0
       ? group.readFilePaths.size
       : group.readOperationCount
-  // memoryReadFilePaths ⊆ readFilePaths (both populated from Read tool calls),
-  // so this count is safe to subtract from totalReadCount at readCount below.
-  const memoryReadCount = group.memoryReadFilePaths.size
-  const globalMemReadCount = group.globalMemoryReadFilePaths.size
-  // Non-memory read file paths: exclude private, global and team memory paths
-  const teamMemReadPaths = group.teamMemoryReadFilePaths
+  // Every scope's read paths ⊆ readFilePaths (both populated from Read tool
+  // calls), so their sizes are safe to subtract from totalReadCount below.
+  const memoryOps: NonNullable<CollapsedReadSearchGroup['memoryOps']> = {}
+  let memorySearchCount = 0
+  let memoryReadCount = 0
+  for (const scope of MEMORY_SCOPES) {
+    const ops = group.memoryOps[scope]
+    const read = ops.readFilePaths.size
+    memorySearchCount += ops.search
+    memoryReadCount += read
+    if (ops.search > 0 || read > 0 || ops.write > 0) {
+      memoryOps[scope] = { search: ops.search, read, write: ops.write }
+    }
+  }
   const nonMemReadFilePaths = [...group.readFilePaths].filter(
-    p =>
-      !group.memoryReadFilePaths.has(p) &&
-      !group.globalMemoryReadFilePaths.has(p) &&
-      !(teamMemReadPaths?.has(p) ?? false),
+    p => !MEMORY_SCOPES.some(scope => group.memoryOps[scope].readFilePaths.has(p)),
   )
-  const teamMemSearchCount = group.teamMemorySearchCount ?? 0
-  const teamMemReadCount = group.teamMemoryReadFilePaths?.size ?? 0
-  const teamMemWriteCount = group.teamMemoryWriteCount ?? 0
   const result: CollapsedReadSearchGroup = {
     type: 'collapsed_read_search',
-    // Subtract private + global + team memory counts so regular counts only reflect non-memory operations
-    searchCount: Math.max(
-      0,
-      group.searchCount -
-        group.memorySearchCount -
-        group.globalMemorySearchCount -
-        teamMemSearchCount,
-    ),
-    readCount: Math.max(
-      0,
-      totalReadCount - memoryReadCount - globalMemReadCount - teamMemReadCount,
-    ),
+    // Subtract the memory counts so regular counts only reflect non-memory operations
+    searchCount: Math.max(0, group.searchCount - memorySearchCount),
+    readCount: Math.max(0, totalReadCount - memoryReadCount),
     listCount: group.listCount,
     // REPL operations are intentionally not collapsed (see isCollapsible: false at line 32),
     // so replCount in collapsed groups is always 0. The replCount field is kept for
     // sub-agent progress display in AgentTool/UI.tsx which has a separate code path.
     replCount: 0,
-    memorySearchCount: group.memorySearchCount,
-    memoryReadCount,
-    memoryWriteCount: group.memoryWriteCount,
     readFilePaths: nonMemReadFilePaths,
     searchArgs: group.nonMemSearchArgs,
     latestDisplayHint: group.latestDisplayHint,
@@ -1104,19 +1106,10 @@ function createCollapsedGroup(
     uuid: `collapsed-${firstMsg.uuid}` as UUID,
     timestamp: firstMsg.timestamp,
   }
-  // Set only when non-zero, so a group without global memory keeps its shape.
-  if (group.globalMemorySearchCount > 0) {
-    result.globalMemorySearchCount = group.globalMemorySearchCount
+  // Set only when a scope saw activity, so a group without memory keeps its shape.
+  if (Object.keys(memoryOps).length > 0) {
+    result.memoryOps = memoryOps
   }
-  if (globalMemReadCount > 0) {
-    result.globalMemoryReadCount = globalMemReadCount
-  }
-  if (group.globalMemoryWriteCount > 0) {
-    result.globalMemoryWriteCount = group.globalMemoryWriteCount
-  }
-  result.teamMemorySearchCount = teamMemSearchCount
-  result.teamMemoryReadCount = teamMemReadCount
-  result.teamMemoryWriteCount = teamMemWriteCount
   if ((group.mcpCallCount ?? 0) > 0) {
     result.mcpCallCount = group.mcpCallCount
     result.mcpServerNames = [...(group.mcpServerNames ?? [])]
@@ -1185,16 +1178,10 @@ export function collapseReadSearchGroups(
       const toolInfo = getCollapsibleToolInfo(msg, tools)!
 
       if (toolInfo.isMemoryWrite) {
-        // Memory file write/edit — global, team or private
-        const count = countToolUses(msg)
-        if (isGlobalMemoryWriteOrEdit(toolInfo.name, toolInfo.input)) {
-          currentGroup.globalMemoryWriteCount += count
-        } else if (isTeamMemoryWriteOrEdit(toolInfo.name, toolInfo.input)) {
-          currentGroup.teamMemoryWriteCount =
-            (currentGroup.teamMemoryWriteCount ?? 0) + count
-        } else {
-          currentGroup.memoryWriteCount += count
-        }
+        // Memory file write/edit, counted for the directory it lands in.
+        // isMemoryWrite guarantees a file path that is a memory file.
+        const scope = memoryFileScope(getFilePathFromToolInput(toolInfo.input)!)
+        currentGroup.memoryOps[scope].write += countToolUses(msg)
       } else if (toolInfo.isAbsorbedSilently) {
         // Snip/ToolSearch absorbed silently — no count, no summary text.
         // Hidden from the default view but still shown in verbose mode
@@ -1255,14 +1242,10 @@ export function collapseReadSearchGroups(
         // Use the isSearch flag from the tool to properly categorize bash search commands
         const count = countToolUses(msg)
         currentGroup.searchCount += count
-        // Check if the search targets memory files (via path or glob pattern)
-        if (isGlobalMemorySearch(toolInfo.input)) {
-          currentGroup.globalMemorySearchCount += count
-        } else if (isTeamMemorySearch(toolInfo.input)) {
-          currentGroup.teamMemorySearchCount =
-            (currentGroup.teamMemorySearchCount ?? 0) + count
-        } else if (isMemorySearch(toolInfo.input)) {
-          currentGroup.memorySearchCount += count
+        // Check if the search targets memory (via path, glob pattern or command)
+        const searchScope = memorySearchScope(toolInfo.input)
+        if (searchScope) {
+          currentGroup.memoryOps[searchScope].search += count
         } else {
           // Regular (non-memory) search — collect pattern for display
           const input = toolInfo.input as { pattern?: string } | undefined
@@ -1276,12 +1259,8 @@ export function collapseReadSearchGroups(
         const filePaths = getFilePathsFromReadMessage(msg)
         for (const filePath of filePaths) {
           currentGroup.readFilePaths.add(filePath)
-          if (isGlobalMemPath(filePath)) {
-            currentGroup.globalMemoryReadFilePaths.add(filePath)
-          } else if (isTeamMemFile(filePath)) {
-            currentGroup.teamMemoryReadFilePaths?.add(filePath)
-          } else if (isAutoManagedMemoryFile(filePath)) {
-            currentGroup.memoryReadFilePaths.add(filePath)
+          if (isAutoManagedMemoryFile(filePath)) {
+            currentGroup.memoryOps[memoryFileScope(filePath)].readFilePaths.add(filePath)
           } else {
             // Non-memory file read — update display hint
             currentGroup.latestDisplayHint = getDisplayPath(filePath)
@@ -1354,13 +1333,24 @@ export function collapseReadSearchGroups(
   return result
 }
 
+/** `active`/`done` by tense, capitalized when it opens the line. */
+function tenseVerb(
+  isActive: boolean,
+  isFirst: boolean,
+  active: string,
+  done: string,
+): string {
+  const verb = isActive ? active : done
+  return isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb
+}
+
 /**
  * Generate a summary text for search/read/REPL counts.
  * @param searchCount Number of search operations
  * @param readCount Number of read operations
  * @param isActive Whether the group is still in progress (use present tense) or completed (use past tense)
  * @param replCount Number of REPL executions (optional)
- * @param memoryCounts Optional memory file operation counts
+ * @param memoryOps Optional memory operation counts, per memory directory
  * @returns Summary text like "Searching for 3 patterns, reading 2 files, REPL'd 5 times…"
  */
 export function getSearchReadSummaryText(
@@ -1368,63 +1358,29 @@ export function getSearchReadSummaryText(
   readCount: number,
   isActive: boolean,
   replCount: number = 0,
-  memoryCounts?: {
-    memorySearchCount: number
-    memoryReadCount: number
-    memoryWriteCount: number
-    globalMemorySearchCount?: number
-    globalMemoryReadCount?: number
-    globalMemoryWriteCount?: number
-    teamMemorySearchCount?: number
-    teamMemoryReadCount?: number
-    teamMemoryWriteCount?: number
-  },
+  memoryOps?: CollapsedReadSearchGroup['memoryOps'],
   listCount: number = 0,
   writeCount: number = 0,
 ): string {
   const parts: string[] = []
 
-  // Memory operations first: global, private, team — general to specific
-  if (memoryCounts) {
-    appendGlobalMemorySummaryParts(memoryCounts, isActive, parts)
-    const { memorySearchCount, memoryReadCount, memoryWriteCount } =
-      memoryCounts
-    if (memoryReadCount > 0) {
-      const verb = isActive
-        ? parts.length === 0
-          ? 'Recalling'
-          : 'recalling'
-        : parts.length === 0
-          ? 'Recalled'
-          : 'recalled'
-      parts.push(
-        `${verb} ${memoryReadCount} ${memoryReadCount === 1 ? 'memory' : 'memories'}`,
-      )
+  // Memory operations first, one scope at a time in MEMORY_SCOPES order
+  // (global, private, team — general to specific).
+  for (const scope of MEMORY_SCOPES) {
+    const ops = memoryOps?.[scope]
+    if (!ops) continue
+    if (ops.read > 0) {
+      const verb = tenseVerb(isActive, parts.length === 0, 'recalling', 'recalled')
+      parts.push(`${verb} ${countMemories(scope, ops.read)}`)
     }
-    if (memorySearchCount > 0) {
-      const verb = isActive
-        ? parts.length === 0
-          ? 'Searching'
-          : 'searching'
-        : parts.length === 0
-          ? 'Searched'
-          : 'searched'
-      parts.push(`${verb} memories`)
+    if (ops.search > 0) {
+      const verb = tenseVerb(isActive, parts.length === 0, 'searching', 'searched')
+      parts.push(`${verb} ${scope} memories`)
     }
-    if (memoryWriteCount > 0) {
-      const verb = isActive
-        ? parts.length === 0
-          ? 'Writing'
-          : 'writing'
-        : parts.length === 0
-          ? 'Wrote'
-          : 'wrote'
-      parts.push(
-        `${verb} ${memoryWriteCount} ${memoryWriteCount === 1 ? 'memory' : 'memories'}`,
-      )
+    if (ops.write > 0) {
+      const verb = tenseVerb(isActive, parts.length === 0, 'writing', 'wrote')
+      parts.push(`${verb} ${countMemories(scope, ops.write)}`)
     }
-    // Team memory operations
-    appendTeamMemorySummaryParts(memoryCounts, isActive, parts)
   }
 
   if (writeCount > 0) {

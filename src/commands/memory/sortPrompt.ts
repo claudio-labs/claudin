@@ -1,16 +1,15 @@
 import {
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
-  ENTRYPOINT_NAME,
 } from 'src/memory/memdir/memdir.js'
+import { type MemoryDir, promptRoots } from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 import {
+  MEMORY_TYPES,
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
+  TYPE_SCOPES,
 } from 'src/memory/memdir/memoryTypes.js'
-
-// getTeamMemPath() returns a path with a trailing separator (teamMemPaths.ts)
-// — strip it before interpolating so the prompt doesn't render `…/team//x`.
-const TRAILING_SEP_RE = /[/\\]+$/
 
 const KB = 1024
 
@@ -26,22 +25,19 @@ const KB = 1024
  * `git mv` goes through the normal Bash permission prompt — that prompt is the
  * human veto per file; keep the instructions on `git mv`, never `mv`.
  *
- * With `promote` (the private dir and the global one, while the global dir is
- * on) it also promotes what is about the user from the first to the second —
- * the migration for memories saved before the global dir existed.
+ * With the global dir on it also promotes what is about the user from the
+ * private dir to the global one — the migration for memories saved before
+ * the global dir existed.
  */
-export function buildMemorySortPrompt(
-  teamRoot: string,
-  promote: { privateRoot: string; globalRoot: string } | null = null,
-): string {
-  const teamPart = buildTeamPart(teamRoot)
-  return promote === null
+export function buildMemorySortPrompt(dirs: readonly MemoryDir[]): string {
+  const roots = promptRoots(dirs)
+  const teamPart = buildTeamPart(roots.team)
+  return roots.global === null
     ? teamPart
-    : `${teamPart}\n\n---\n\n# Part 2 — promote what is about the user to the global memory\n\nThe hard rules above are about the team dir; this part has its own.\n\n${buildPromotionPart(promote.privateRoot, promote.globalRoot)}`
+    : `${teamPart}\n\n---\n\n# Part 2 — promote what is about the user to the global memory\n\nThe hard rules above are about the team dir; this part has its own.\n\n${buildPromotionPart(roots.private, roots.global)}`
 }
 
-function buildTeamPart(teamRoot: string): string {
-  const team = teamRoot.replace(TRAILING_SEP_RE, '')
+function buildTeamPart(team: string): string {
   const maxKb = Math.round(MAX_ENTRYPOINT_BYTES / KB)
   const dirs = TEAM_CATEGORIES.map(c => `\`${c.dir}/\``).join(', ')
   const sections = TEAM_CATEGORIES.map(c => `\`## ${c.section}\``).join(' / ')
@@ -101,12 +97,11 @@ Hard rules:
 /**
  * The private → global pass. A move is a `mv` (the permission prompt is the
  * veto); a split or a merge into an existing global memory is a write plus an
- * `rm` of the private file. Conservative like the team pass: what is not
- * clearly about the person stays private.
+ * `rm` of the private file. What moves is what TYPE_SCOPES says goes global;
+ * conservative like the team pass, so what is unclear stays private.
  */
-function buildPromotionPart(privateRoot: string, globalRoot: string): string {
-  const own = privateRoot.replace(TRAILING_SEP_RE, '')
-  const global = globalRoot.replace(TRAILING_SEP_RE, '')
+function buildPromotionPart(own: string, global: string): string {
+  const scopes = MEMORY_TYPES.map(type => `- \`${type}\`: ${TYPE_SCOPES[type].withGlobal}.`)
   return `The private memory directory \`${own}\` was the only home for what is about the user until the global one existed: \`${global}\`, shared by every project this user works in. Move there what holds in any project, so the next project starts already knowing it — and nothing else.
 
 ## Step 1 — Orient
@@ -119,10 +114,10 @@ function buildPromotionPart(privateRoot: string, globalRoot: string): string {
 
 For each candidate decide: **move** (the whole file holds in any project), **split** (part of it does) or **stays**.
 
-- \`type: user\` always goes: who the user is — role, language, expertise, how they like answers — is the same in every project. When its body also says things about THIS project (what they work on here, this repo's tools), split it: the person goes global, the project part stays here.
-- \`feedback\` goes only when it holds in any project — how the user wants answers, plans, reviews or commits — and names none of this project's files, commands, tools or conventions. Feedback about this codebase stays.
-- \`reference\` goes only when it points at a personal resource outside any one project.
-- \`project\` never goes.
+Each type goes where its scope says — the same scopes as your system prompt's:
+${scopes.join('\n')}
+
+A file whose body mixes the two — a \`user\` memory that also says what they work on here — is a split: what holds anywhere goes global, the rest stays.
 
 Anything you are not sure about stays and goes in the report — the private dir is a valid home, not a failure.
 

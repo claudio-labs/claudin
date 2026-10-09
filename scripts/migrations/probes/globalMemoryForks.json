@@ -8,22 +8,27 @@
   "probes": [
     {
       "name": "a fork may write the global dir",
-      "find": "        typeof filePath === 'string' &&\n        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))\n",
-      "replace": "        typeof filePath === 'string' &&\n        isAutoMemPath(filePath)\n"
+      "find": "      const scope = typeof filePath === 'string' ? memoryScopeOf(filePath) : null\n",
+      "replace": "      const scope = typeof filePath === 'string' && memoryScopeOf(filePath) !== 'global' ? memoryScopeOf(filePath) : null\n"
     },
     {
       "name": "a global write by the main agent makes the extraction skip",
-      "find": "        filePath !== undefined &&\n        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))\n",
-      "replace": "        filePath !== undefined &&\n        isAutoMemPath(filePath)\n"
+      "find": "      if (filePath !== undefined && memoryScopeOf(filePath) !== null) {\n",
+      "replace": "      if (filePath !== undefined && memoryScopeOf(filePath) === 'private') {\n"
     },
     {
       "name": "the manifest lists the global dir",
-      "find": "  if (globalDir === null) return own\n",
-      "replace": "  if (true) return own\n"
+      "find": "  const tops = dirs.filter(dir => !dirs.some(other => other !== dir && dir.root.startsWith(other.root)))\n",
+      "replace": "  const tops = dirs.filter(dir => dir.scope === 'private')\n"
+    },
+    {
+      "name": "the manifest scans the team dir with the private one, not twice",
+      "find": "  const tops = dirs.filter(dir => !dirs.some(other => other !== dir && dir.root.startsWith(other.root)))\n",
+      "replace": "  const tops = dirs\n"
     },
     {
       "name": "the extraction hands the prompts the global dir",
-      "find": "      const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null\n",
+      "find": "      const globalDir = getMemoryDir('global')?.root ?? null\n",
       "replace": "      const globalDir = null\n"
     },
     {
@@ -33,28 +38,72 @@
       "replace": "    ...typesSectionCombined(false),\n"
     },
     {
-      "name": "the global scope lines replace their originals",
+      "name": "the extraction types section renders each scope from TYPE_SCOPES",
       "source": "src/memory/memdir/memoryTypes.ts",
-      "find": "    ? TYPES_SECTION_COMBINED.map(line => GLOBAL_SCOPE_LINES.get(line) ?? line)\n",
-      "replace": "    ? TYPES_SECTION_COMBINED\n"
+      "find": "<scope>${typeScope(type, hasGlobal)}.",
+      "replace": "<scope>${typeScope(type, false)}."
     },
     {
-      "name": "the dream never prunes the global dir",
-      "source": "src/memory/autoDream/consolidationPrompt.ts",
-      "find": "The global dir is shared by every project, and this run sees only this one: add to it and update a memory there, but never delete a global memory, never shrink one, and never remove a line from its index — what looks stale here may still hold in another project.",
-      "replace": "The global dir is shared by every project."
+      "name": "append-only: a global write is gated only for the listed scopes",
+      "find": "      if (scope !== null && !appendOnly.includes(scope)) {\n",
+      "replace": "      if (scope !== null) {\n"
     },
     {
-      "name": "the dream sends user memories to the global dir",
-      "source": "src/memory/autoDream/consolidationPrompt.ts",
-      "find": "${globalBullet}- ${privateFact} at the top level",
-      "replace": "- ${privateFact} at the top level"
+      "name": "append-only: an Edit must keep its old_string",
+      "find": "      input.new_string.includes(input.old_string)\n",
+      "replace": "      true\n"
     },
     {
-      "name": "auto-dream hands the prompt the global dir",
+      "name": "append-only: a Write must keep the existing content",
+      "find": "  return typeof input.content === 'string' && input.content.includes(existing.trimEnd())\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "append-only: a Write of a new file is allowed",
+      "find": "    return isENOENT(e)\n",
+      "replace": "    return false\n"
+    },
+    {
+      "name": "auto-dream's gate is append-only on the global dir",
       "source": "src/memory/autoDream/autoDream.ts",
-      "find": "      const globalRoot = isGlobalMemoryEnabled() ? getGlobalMemPath() : null\n",
-      "replace": "      const globalRoot = null\n"
+      "find": "        canUseTool: createMemoryCanUseTool(['global']),\n",
+      "replace": "        canUseTool: createMemoryCanUseTool(),\n"
+    },
+    {
+      "name": "auto-dream hands the prompt the session dirs",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "buildConsolidationPrompt(getMemoryDirs(), transcriptDir, extra)",
+      "replace": "buildConsolidationPrompt(getMemoryDirs().filter(d => d.scope !== 'global'), transcriptDir, extra)"
+    },
+    {
+      "name": "the dream prompt says the global dir is append-only",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": ": add memories and add to them there, but never delete, shrink or rewrite one, nor remove a line from its index.",
+      "replace": "."
+    },
+    {
+      "name": "the dream prompt lists the global dir as add-only",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": " — add to it only (below)",
+      "replace": ""
+    },
+    {
+      "name": "deleting contradicted facts exempts the global dir",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": "  const notGlobal = global === null ? '' : ' (outside the global dir)'\n",
+      "replace": "  const notGlobal = ''\n"
+    },
+    {
+      "name": "resolving contradictions exempts the global dir",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": ", unless it is a global memory: name that one in your summary",
+      "replace": ""
+    },
+    {
+      "name": "the global index only gains lines",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": " in the global one, only add lines.",
+      "replace": ""
     }
   ]
 }

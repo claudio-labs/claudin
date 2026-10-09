@@ -1,8 +1,14 @@
 import { describe, expect, test } from 'bun:test'
-import { TEAM_CATEGORIES } from 'src/memory/memdir/memoryTypes.js'
+import { MEMORY_TYPES, TEAM_CATEGORIES, TYPE_SCOPES } from 'src/memory/memdir/memoryTypes.js'
 import { buildMemorySortPrompt } from 'src/commands/memory/sortPrompt.js'
+import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 
-const TEAM = '/repo/.claudin/memory/team/'
+const TEAM = testMemoryDirs({ private: '/repo/.claudin/memory/', team: '/repo/.claudin/memory/team/' })
+const WITH_GLOBAL = testMemoryDirs({
+  private: '/repo/.claudin/memory/',
+  team: '/repo/.claudin/memory/team/',
+  global: '/home/u/.claudin/memory/',
+})
 
 describe('buildMemorySortPrompt', () => {
   const prompt = buildMemorySortPrompt(TEAM)
@@ -47,30 +53,29 @@ describe('buildMemorySortPrompt', () => {
 })
 
 describe('buildMemorySortPrompt — promoting to the global dir', () => {
-  const PROMOTE = { privateRoot: '/repo/.claudin/memory/', globalRoot: '/home/u/.claudin/memory/' }
-
   test('without it the team prompt is the one that always shipped', () => {
-    expect(buildMemorySortPrompt(TEAM, null)).toBe(buildMemorySortPrompt(TEAM))
     expect(buildMemorySortPrompt(TEAM)).not.toContain('global')
+    expect(buildMemorySortPrompt(TEAM)).not.toContain('Part 2')
   })
 
-  test('with a team root it is a second part, with rules of its own', () => {
-    const prompt = buildMemorySortPrompt(TEAM, PROMOTE)
+  test('with a global dir it is a second part, with rules of its own', () => {
+    const prompt = buildMemorySortPrompt(WITH_GLOBAL)
     expect(prompt).toStartWith(buildMemorySortPrompt(TEAM))
     expect(prompt).toContain('# Part 2 — promote what is about the user to the global memory')
     expect(prompt).toContain('The hard rules above are about the team dir; this part has its own.')
   })
 
-  test('user memories go, project ones never do, and feedback only when it holds anywhere', () => {
-    const prompt = buildMemorySortPrompt(TEAM, PROMOTE)
-    expect(prompt).toContain('`type: user` always goes')
-    expect(prompt).toContain('split it: the person goes global, the project part stays here')
-    expect(prompt).toContain("names none of this project's files, commands, tools or conventions")
-    expect(prompt).toContain('`project` never goes.')
+  test('renders where each type goes from TYPE_SCOPES, and mixed files split', () => {
+    const prompt = buildMemorySortPrompt(WITH_GLOBAL)
+    for (const type of MEMORY_TYPES) {
+      expect(prompt).toContain(`- \`${type}\`: ${TYPE_SCOPES[type].withGlobal}.`)
+    }
+    expect(prompt).toContain('is a split: what holds anywhere goes global, the rest stays')
+    expect(prompt).toContain("only the `.md` files directly in it are candidates; never `team/`")
   })
 
   test('moves go through mv, merges through rm, both with the permission prompt as the veto', () => {
-    const prompt = buildMemorySortPrompt(TEAM, PROMOTE)
+    const prompt = buildMemorySortPrompt(WITH_GLOBAL)
     expect(prompt).toContain('`mv /repo/.claudin/memory/<file>.md /home/u/.claudin/memory/<file>.md`')
     expect(prompt).toContain('permission prompt for each move')
     expect(prompt).toContain('delete the private file with `rm`')
@@ -78,7 +83,7 @@ describe('buildMemorySortPrompt — promoting to the global dir', () => {
   })
 
   test('reads both indexes and edits them surgically', () => {
-    const prompt = buildMemorySortPrompt(TEAM, PROMOTE)
+    const prompt = buildMemorySortPrompt(WITH_GLOBAL)
     expect(prompt).toContain('Read `/repo/.claudin/memory/MEMORY.md` and `/home/u/.claudin/memory/MEMORY.md`')
     expect(prompt).not.toContain('//MEMORY.md')
     expect(prompt).toContain('Everything else in both stays byte-for-byte')

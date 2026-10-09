@@ -22,13 +22,8 @@ import {
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import {
-  isAutoMemoryEnabled,
-  getAutoMemPath,
-  getGlobalMemPath,
-  isGlobalMemoryEnabled,
-} from 'src/memory/memdir/paths.js'
-import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
@@ -38,7 +33,7 @@ import {
   getIsRemoteMode,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
-import { createAutoMemCanUseTool } from 'src/memory/extract/extractMemories.js'
+import { createMemoryCanUseTool } from 'src/memory/extract/extractMemories.js'
 import { buildConsolidationPrompt } from 'src/memory/autoDream/consolidationPrompt.js'
 import { collectDreamDigest } from 'src/memory/autoDream/dreamDigest.js'
 import {
@@ -187,10 +182,7 @@ export function initAutoDream(): void {
     })
 
     try {
-      const memoryRoot = getAutoMemPath()
       const transcriptDir = getProjectDir(getOriginalCwd())
-      const teamRoot = getTeamMemPath()
-      const globalRoot = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
       // The decision sources (plans, session prompts, impactful commits) are
       // read here, in the harness, so the fork judges with data instead of
       // grepping transcripts — and never runs git itself.
@@ -206,18 +198,13 @@ Sessions since last consolidation (${sessionIds.length}):
 ${sessionIds.map(id => `- ${id}`).join('\n')}
 
 ${digest}`
-      const prompt = buildConsolidationPrompt(
-        memoryRoot,
-        transcriptDir,
-        extra,
-        teamRoot,
-        globalRoot,
-      )
+      const prompt = buildConsolidationPrompt(getMemoryDirs(), transcriptDir, extra)
 
       const result = await runForkedAgent({
         promptMessages: [createUserMessage({ content: prompt })],
         cacheSafeParams: createCacheSafeParams(context),
-        canUseTool: createAutoMemCanUseTool(memoryRoot),
+        // One project's run cannot judge the global dir stale: it may only add to it.
+        canUseTool: createMemoryCanUseTool(['global']),
         querySource: 'auto_dream',
         forkLabel: 'auto_dream',
         skipTranscript: true,

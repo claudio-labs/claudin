@@ -1,18 +1,10 @@
 import {
   DIR_EXISTS_GUIDANCE,
-  ENTRYPOINT_NAME,
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
 } from 'src/memory/memdir/memdir.js'
-
-// getAutoMemPath()/getTeamMemPath() return paths with a trailing separator
-// (paths.ts, teamMemPaths.ts) — strip it before interpolating so the prompt
-// doesn't render `…/memory//MEMORY.md`.
-const TRAILING_SEP_RE = /[/\\]+$/
-
-function normalizeRoot(root: string): string {
-  return root.replace(TRAILING_SEP_RE, '')
-}
+import { type MemoryDir, promptRoots } from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 
 const KB = 1024
 
@@ -26,17 +18,11 @@ const KB = 1024
  * shouldQuery), so deletions go through the normal Bash permission prompt —
  * that prompt is the human gate, keep the instructions deletion-via-`rm`.
  *
- * `globalRoot` (the global memory dir, while it is on) adds it as a third
- * directory, tidied by the same rules and never merged across.
+ * `dirs` is the session's memory directories (memoryDirs.ts); the global one,
+ * while it is on, is tidied by the same rules and never merged across.
  */
-export function buildMemoryTidyPrompt(
-  memoryRoot: string,
-  teamRoot: string,
-  globalRoot: string | null = null,
-): string {
-  const root = normalizeRoot(memoryRoot)
-  const team = normalizeRoot(teamRoot)
-  const global = globalRoot === null ? null : normalizeRoot(globalRoot)
+export function buildMemoryTidyPrompt(dirs: readonly MemoryDir[]): string {
+  const { private: root, team, global } = promptRoots(dirs)
   const maxKb = Math.round(MAX_ENTRYPOINT_BYTES / KB)
 
   const teamSection = `

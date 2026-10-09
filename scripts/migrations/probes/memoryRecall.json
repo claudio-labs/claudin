@@ -1,26 +1,31 @@
 {
   "test": [
-    "src/agent/ui/messages/memoryRecallLine.test.ts",
+    "src/agent/tools/collapseReadSearch.test.ts",
     "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
-    "src/agent/ui/messages/teamMemCollapsed.test.tsx"
+    "src/agent/ui/messages/memoryRecallLine.test.ts"
   ],
   "source": "src/agent/ui/messages/memoryRecallLine.ts",
-  "comment": "CollapsedReadSearchContent reads teamMemoryReadCount through teamMemCollapsed.tsx and hands it to formatMemoryRecallCounts; since team memory stopped being a build flag (2026-10-09) that link renders under the runner and is probed below. The wording either side of it is covered by memoryRecallLine.test.ts and teamMemCollapsed.test.tsx.",
+  "comment": "The \"Loaded …\" line of a collapsed read/search group: formatMemoryRecallCounts turns CollapsedReadSearchGroup.memoryOps into one part per scope, and CollapsedReadSearchContent renders it. The count phrase itself (\"2 team memories\") is countMemories in memoryScopes.ts, outside this spec's sources. The badge is memoryScopeBadge.json.",
   "probes": [
-    {
-      "name": "the team count is labelled team, not folded into the private wording",
-      "find": "    parts.push(`${teamCount} team ${plural(teamCount, 'memory', 'memories')}`)\n",
-      "replace": "    parts.push(`${teamCount} ${plural(teamCount, 'memory', 'memories')}`)\n"
-    },
     {
       "name": "nothing recalled returns undefined, so no empty Loaded line renders",
       "find": "  return parts.length > 0 ? parts.join(', ') : undefined\n",
       "replace": "  return parts.join(', ')\n"
     },
     {
-      "name": "the private count is pluralized",
-      "find": "    parts.push(`${privateCount} ${plural(privateCount, 'memory', 'memories')}`)\n",
-      "replace": "    parts.push(`${privateCount} memory`)\n"
+      "name": "a scope with no recall adds no part",
+      "find": "    if (read > 0) {\n",
+      "replace": "    if (read >= 0) {\n"
+    },
+    {
+      "name": "the recall line goes global, private, team",
+      "find": "  for (const scope of MEMORY_SCOPES) {\n",
+      "replace": "  for (const scope of [...MEMORY_SCOPES].reverse()) {\n"
+    },
+    {
+      "name": "each recall is labelled with its own scope",
+      "find": "      parts.push(countMemories(scope, read))\n",
+      "replace": "      parts.push(countMemories('private', read))\n"
     },
     {
       "name": "the collapsed group renders the Loaded line at all",
@@ -31,20 +36,20 @@
     {
       "name": "a recall-only group drops the empty badge row instead of printing it",
       "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
-      "find": "  const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0 || teamMemParts !== null;\n",
+      "find": "  const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0;\n",
       "replace": "  const hasBadgeParts = true;\n"
     },
     {
-      "name": "the collapsed group hands the team recall count to the Loaded line",
+      "name": "the collapsed group hands its memoryOps to the Loaded line",
       "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
-      "find": "  const teamMemoryReadCount = getTeamMemoryReadCount(message);\n",
-      "replace": "  const teamMemoryReadCount = 0;\n"
+      "find": "  const recalledCounts = formatMemoryRecallCounts(memoryOps);\n",
+      "replace": "  const recalledCounts = formatMemoryRecallCounts(undefined);\n"
     },
     {
-      "name": "getTeamMemoryReadCount reads the group's own count",
-      "source": "src/agent/ui/messages/teamMemCollapsed.tsx",
-      "find": "  return message.teamMemoryReadCount ?? 0;\n}\n",
-      "replace": "  return 0;\n}\n"
+      "name": "the render gate counts recalls, so a recall-only group is not dropped",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "(ops.search > 0 || ops.read > 0 || ops.write > 0);\n",
+      "replace": "(ops.search > 0 || ops.write > 0);\n"
     }
   ]
 }

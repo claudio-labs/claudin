@@ -1,10 +1,4 @@
-import {
-  getAutoMemPath,
-  getGlobalMemPath,
-  isAutoMemoryEnabled,
-  isGlobalMemoryEnabled,
-} from 'src/memory/memdir/paths.js'
-import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import { buildMemorySortPrompt } from 'src/commands/memory/sortPrompt.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
@@ -36,11 +30,6 @@ export function parseMemorySubcommand(args: string): MemorySubcommand | null {
   return SUBCOMMANDS.find(name => name === trimmed) ?? null
 }
 
-/** The global memory dir while it is on, else null. */
-function resolveGlobalRoot(): string | null {
-  return isGlobalMemoryEnabled() ? getGlobalMemPath() : null
-}
-
 /**
  * Runs `/memory tidy`: hands the model a conservative duplicate-merge prompt
  * via metaMessages and lets the main conversation do the work (the Bash
@@ -53,7 +42,8 @@ function resolveGlobalRoot(): string | null {
  * ever changes, tidy would print "Running memory tidy…" and silently no-op.
  */
 export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
-  if (!isAutoMemoryEnabled()) {
+  const dirs = getMemoryDirs()
+  if (dirs.length === 0) {
     onDone(
       'Memory tidy unavailable: auto memory is disabled (autoMemoryEnabled is false, or CLAUDIN_DISABLE_AUTO_MEMORY is set).',
       { display: 'system' },
@@ -64,13 +54,7 @@ export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
   onDone('Running memory tidy — merging duplicate memories…', {
     display: 'system',
     shouldQuery: true,
-    metaMessages: [
-      buildMemoryTidyPrompt(
-        getAutoMemPath(),
-        getTeamMemPath(),
-        resolveGlobalRoot(),
-      ),
-    ],
+    metaMessages: [buildMemoryTidyPrompt(dirs)],
   })
   return null
 }
@@ -82,32 +66,26 @@ export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
  * permission prompt on each `git mv`/`mv`/`rm` is the human veto per file.
  */
 export function runMemorySort(onDone: LocalJSXCommandOnDone): null {
-  if (!isAutoMemoryEnabled()) {
+  const dirs = getMemoryDirs()
+  if (dirs.length === 0) {
     onDone(
       'Memory sort unavailable: auto memory is disabled (autoMemoryEnabled is false, or CLAUDIN_DISABLE_AUTO_MEMORY is set).',
       { display: 'system' },
     )
     return null
   }
-  const globalRoot = resolveGlobalRoot()
-
   const what = [
     'filing team memories into decisions/, bugs/ and docs/',
-    ...(globalRoot === null ? [] : ['promoting what is about you to the global memory']),
+    ...(dirs.some(dir => dir.scope === 'global')
+      ? ['promoting what is about you to the global memory']
+      : []),
   ].join(', and ')
   onDone(
     `Running memory sort — ${what}…`,
     {
       display: 'system',
       shouldQuery: true,
-      metaMessages: [
-        buildMemorySortPrompt(
-          getTeamMemPath(),
-          globalRoot === null
-            ? null
-            : { privateRoot: getAutoMemPath(), globalRoot },
-        ),
-      ],
+      metaMessages: [buildMemorySortPrompt(dirs)],
     },
   )
   return null

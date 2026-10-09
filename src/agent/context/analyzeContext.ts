@@ -49,7 +49,7 @@ import type {
 import { toolToAPISchema } from 'src/providers/transport/api.js'
 import { getMemoryFiles } from 'src/memory/instructions/claudemd.js'
 import { countIndexEntries } from 'src/memory/memdir/memdir.js'
-import { memoryIndexKind } from 'src/memory/memdir/memoryIndexNames.js'
+import { isMemoryIndexType } from 'src/memory/memdir/memoryScopes.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -362,9 +362,9 @@ async function countMemoryFileTokens(): Promise<{
       path: file.path,
       type: file.type,
       tokens,
-      ...(memoryIndexKind(file.type) === null
-        ? {}
-        : { entryCount: countIndexEntries(file.content) }),
+      ...(isMemoryIndexType(file.type)
+        ? { entryCount: countIndexEntries(file.content) }
+        : {}),
     })
   }
 

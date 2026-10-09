@@ -33,7 +33,7 @@ type: {{user | feedback | project | reference}}
 {{the fact; for feedback/project, follow with **Why:** and **How to apply:** lines. Link related memories with [[their-name]].}}
 ```
 
-Types: `user` (always global — role, expertise, preferences), `feedback` (how to work, from corrections and confirmed approaches; global when it holds in any project, private when it names this project's files, commands or conventions, team only for a project-wide convention), `project` (bias toward team, never global — ongoing work, decisions, constraints; absolute dates), `reference` (usually team, global only for a personal resource outside any one project — pointers to external systems).
+Types: `user` (always global, the same person in every project; what holds of them only in this project is a private `project` memory — role, expertise, preferences), `feedback` (global when it would still hold in an unrelated repo, private when it would not or you are unsure, team only for a convention every contributor of the project follows, such as a testing policy — how to work, from corrections and confirmed approaches), `project` (bias toward team, never global — ongoing work, decisions, constraints; absolute dates), `reference` (usually team; global only for a personal resource outside any one project — pointers to external systems).
 
 Team memory also has `decisions/`, `bugs/` and `docs/` subdirectories with rules of their own; a memory write that breaks the rules for its place is refused with them.
 

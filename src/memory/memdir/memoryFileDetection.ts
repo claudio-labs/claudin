@@ -1,14 +1,7 @@
 import { normalize, posix, win32 } from 'path'
-import {
-  getAutoMemPath,
-  getGlobalMemPath,
-  getMemoryBaseDir,
-  isAutoMemoryEnabled,
-  isAutoMemPath,
-  isGlobalMemoryEnabled,
-  isGlobalMemPath,
-} from 'src/memory/memdir/paths.js'
-import { isTeamMemFile, isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { getMemoryDirs, memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
+import { withoutTrailingSep } from 'src/memory/memdir/memoryScopes.js'
+import { getMemoryBaseDir, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import {
@@ -17,7 +10,6 @@ import {
 } from 'src/shared/fs/windowsPaths.js'
 
 const IS_WINDOWS = process.platform === 'win32'
-const TRAILING_SEP_RE = /[/\\]+$/
 
 // Normalize path separators to posix (/). Does NOT translate drive encoding.
 function toPosix(p: string): string {
@@ -80,27 +72,6 @@ function detectSessionPatternType(
 }
 
 /**
- * Check if a file path is within the memdir directory.
- */
-export function isAutoMemFile(filePath: string): boolean {
-  if (isAutoMemoryEnabled()) {
-    return isAutoMemPath(filePath)
-  }
-  return false
-}
-
-/**
- * Whether a Read of `filePath` gets the memory freshness note (memoryAge.ts,
- * via FileReadTool's markMemoryFileMtime): a file of the auto-memory dir —
- * its team subdirectory included — or of the global one. A global memory is
- * the longest-lived of them, so it is the last to go without the note.
- */
-export function isFreshnessNotedMemoryFile(filePath: string): boolean {
-  return isAutoMemFile(filePath) || isGlobalMemPath(filePath)
-}
-
-
-/**
  * Check if a file path is within an agent memory directory.
  */
 function isAgentMemFile(filePath: string): boolean {
@@ -112,28 +83,17 @@ function isAgentMemFile(filePath: string): boolean {
 
 /**
  * Check if a file is a Claude-managed memory file (NOT user-managed instruction files).
- * Includes: auto-memory (memdir, global memdir), agent memory, session memory/transcripts.
+ * Includes: the memory directories (global, private, team), agent memory, session memory/transcripts.
  * Excludes: CLAUDE.md, CLAUDE.local.md, .claudin/rules/*.md (user-managed).
  *
  * Use this for collapse/badge logic where user-managed files should show full diffs.
  */
 export function isAutoManagedMemoryFile(filePath: string): boolean {
-  if (isAutoMemFile(filePath)) {
-    return true
-  }
-  if (isGlobalMemPath(filePath)) {
-    return true
-  }
-  if (isTeamMemFile(filePath)) {
-    return true
-  }
-  if (detectSessionFileType(filePath) !== null) {
-    return true
-  }
-  if (isAgentMemFile(filePath)) {
-    return true
-  }
-  return false
+  return (
+    memoryScopeOf(filePath) !== null ||
+    detectSessionFileType(filePath) !== null ||
+    isAgentMemFile(filePath)
+  )
 }
 
 // Check if a directory path is a memory-related directory.
@@ -155,31 +115,16 @@ export function isMemoryDirectory(dirPath: string): boolean {
   ) {
     return true
   }
-  // Team memory directories live under <autoMemPath>/team/
-  if (isAutoMemoryEnabled() && isTeamMemPath(normalizedPath)) {
+  // A memory directory itself, or anything in it — wherever its setting or
+  // the Cowork override put it
+  if (
+    getMemoryDirs().some(
+      dir =>
+        normalizedCmp === toComparable(withoutTrailingSep(dir.root)) ||
+        normalizedCmp.startsWith(toComparable(dir.root)),
+    )
+  ) {
     return true
-  }
-  // Check the auto-memory path override (CLAUDE_COWORK_MEMORY_PATH_OVERRIDE)
-  if (isAutoMemoryEnabled()) {
-    const autoMemPath = getAutoMemPath()
-    const autoMemDirCmp = toComparable(autoMemPath.replace(/[/\\]+$/, ''))
-    const autoMemPathCmp = toComparable(autoMemPath)
-    if (
-      normalizedCmp === autoMemDirCmp ||
-      normalizedCmp.startsWith(autoMemPathCmp)
-    ) {
-      return true
-    }
-  }
-  // The global memory dir, which autoMemoryGlobalDirectory can put anywhere
-  if (isGlobalMemoryEnabled()) {
-    const globalMemPath = getGlobalMemPath()
-    if (
-      normalizedCmp === toComparable(globalMemPath.replace(TRAILING_SEP_RE, '')) ||
-      normalizedCmp.startsWith(toComparable(globalMemPath))
-    ) {
-      return true
-    }
   }
 
   const configDirCmp = toComparable(getClaudinConfigHomeDir())
@@ -211,22 +156,20 @@ export function isMemoryDirectory(dirPath: string): boolean {
 export function isShellCommandTargetingMemory(command: string): boolean {
   const configDir = getClaudinConfigHomeDir()
   const memoryBase = getMemoryBaseDir()
-  const autoMemDir = isAutoMemoryEnabled()
-    ? getAutoMemPath().replace(/[/\\]+$/, '')
-    : ''
-  const globalMemDir = isGlobalMemoryEnabled()
-    ? getGlobalMemPath().replace(TRAILING_SEP_RE, '')
-    : ''
 
   // Quick check: does the command mention the config, memory base, or
-  // auto-mem or global memory directory? Compare in forward-slash form (PowerShell on Windows
+  // a memory directory? Compare in forward-slash form (PowerShell on Windows
   // may use either separator while configDir uses the platform-native one).
   // On Windows also check the MinGW form (/c/...) since BashTool runs under
   // Git Bash which emits that encoding. On Linux/Mac, configDir is already
   // posix so only one form to check — and crucially, windowsPathToPosixPath
   // is NOT called, so Linux paths like /m/foo aren't misinterpreted as MinGW.
   const commandCmp = toComparable(command)
-  const dirs = [configDir, memoryBase, autoMemDir, globalMemDir].filter(Boolean)
+  const dirs = [
+    configDir,
+    memoryBase,
+    ...getMemoryDirs().map(dir => withoutTrailingSep(dir.root)),
+  ]
   const matchesAnyDir = dirs.some(d => {
     if (commandCmp.includes(toComparable(d))) return true
     if (IS_WINDOWS) {
@@ -255,7 +198,7 @@ export function isShellCommandTargetingMemory(command: string): boolean {
     const cleanPath = match.replace(/[,;|&>]+$/, '')
     // On Windows, convert MinGW /c/... → native C:\... at this single
     // point. Downstream predicates (isAutoManagedMemoryFile, isMemoryDirectory,
-    // isAutoMemPath, isAgentMemoryPath) then receive native paths and only
+    // memoryScopeOf, isAgentMemoryPath) then receive native paths and only
     // need toComparable() for matching. On other platforms, paths are already
     // native — no conversion, so /m/foo etc. pass through unmodified.
     const nativePath = IS_WINDOWS

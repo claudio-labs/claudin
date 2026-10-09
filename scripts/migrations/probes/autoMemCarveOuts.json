@@ -4,34 +4,46 @@
   "probes": [
     {
       "name": "a memory file is writable with no prompt",
-      "find": "  if (!hasAutoMemPathOverride() && isAutoMemPath(normalizedPath)) {\n",
+      "find": "  if (writeScope !== null && !hasAutoMemPathOverride()) {\n",
       "replace": "  if (false) {\n"
     },
     {
       "name": "the Cowork override gets no write carve-out",
-      "find": "  if (!hasAutoMemPathOverride() && isAutoMemPath(normalizedPath)) {\n",
-      "replace": "  if (isAutoMemPath(normalizedPath)) {\n"
+      "find": "  if (writeScope !== null && !hasAutoMemPathOverride()) {\n",
+      "replace": "  if (writeScope !== null) {\n"
     },
     {
       "name": "a memory file is readable with no prompt",
-      "find": "  if (isAutoMemPath(normalizedPath)) {\n",
+      "find": "  if (readScope !== null) {\n",
       "replace": "  if (false) {\n"
     },
     {
-      "name": "a global memory file is writable with no prompt",
-      "find": "  // false whenever the global dir is off (killswitch, Cowork override).\n  if (isGlobalMemPath(normalizedPath)) {\n",
-      "replace": "  // false whenever the global dir is off (killswitch, Cowork override).\n  if (false) {\n"
+      "name": "the write reason names the directory",
+      "find": "        reason: `${writeScope} memory files are allowed for writing`,\n",
+      "replace": "        reason: 'memory files are allowed for writing',\n"
     },
     {
-      "name": "a global memory file is readable with no prompt",
-      "find": "  // Global memdir (shared by every project)\n  if (isGlobalMemPath(normalizedPath)) {\n",
-      "replace": "  // Global memdir (shared by every project)\n  if (false) {\n"
+      "name": "the read reason names the directory",
+      "find": "        reason: `${readScope} memory files are allowed for reading`,\n",
+      "replace": "        reason: 'memory files are allowed for reading',\n"
     },
     {
       "name": "the global carve-out goes with the killswitch",
-      "source": "src/memory/memdir/paths.ts",
-      "find": "    isGlobalMemoryEnabled() &&\n    normalize(absolutePath).startsWith(getGlobalMemPath())\n",
-      "replace": "    normalize(absolutePath).startsWith(getGlobalMemPath())\n"
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => true,\n"
+    },
+    {
+      "name": "the carve-outs are off while auto memory is off",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "  if (!isAutoMemoryEnabled()) return []\n",
+      "replace": ""
+    },
+    {
+      "name": "a team file is team memory, not the private dir it sits in",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "(found === null || dir.root.length > found.root.length)",
+      "replace": "(found === null || dir.root.length < found.root.length)"
     }
   ]
 }

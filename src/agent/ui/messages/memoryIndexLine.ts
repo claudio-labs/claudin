@@ -5,17 +5,20 @@
  * the part worth pinning.
  */
 import type { MemoryIndexSummary } from 'src/agent/attachments/types.js'
-import { MEMORY_INDEX_NAMES } from 'src/memory/memdir/memoryIndexNames.js'
+import {
+  MEMORY_SCOPES,
+  memoryIndexLabel,
+  type MemoryScope,
+} from 'src/memory/memdir/memoryScopes.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 
-const KIND_ORDER: Record<MemoryIndexSummary['kind'], number> = {
-  global: 0,
-  auto: 1,
-  team: 2,
+/** A resumed transcript's `'auto'` is the private index. */
+function scopeOf(index: MemoryIndexSummary): MemoryScope {
+  return index.kind === 'auto' ? 'private' : index.kind
 }
 
 function clause(index: MemoryIndexSummary): string {
-  const label = MEMORY_INDEX_NAMES[index.kind].label
+  const label = memoryIndexLabel(scopeOf(index))
   // A cut index reports both halves: what arrived, and what the file holds.
   // Otherwise the cap fires in silence — the warning truncateEntrypointContent
   // appends goes to the model, never to the screen.
@@ -41,7 +44,7 @@ export function formatMemoryIndexCounts(
   indexes: readonly MemoryIndexSummary[],
 ): string {
   return [...indexes]
-    .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind])
+    .sort((a, b) => MEMORY_SCOPES.indexOf(scopeOf(a)) - MEMORY_SCOPES.indexOf(scopeOf(b)))
     .map(clause)
     .join(', ')
 }

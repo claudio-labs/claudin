@@ -23,6 +23,7 @@ import { Box, Text } from 'src/terminal/ink.js'
 import { editFileInEditor } from 'src/terminal/input/promptEditor.js'
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
 import { Markdown } from 'src/terminal/markdown/Markdown.js'
+import { MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 
 /**
  * Browses one memory directory — the private dir, the team dir, or an agent's
@@ -62,10 +63,8 @@ type Props = {
   title: string
   /** The directory's MEMORY.md, pinned as the first row when it exists. */
   indexPath: string
-  /** Team memories are git-tracked, so their delete confirmation says so. */
-  isTeamDir?: boolean
-  /** Every project reads a global memory, so its delete confirmation says so. */
-  isGlobalDir?: boolean
+  /** Which memory directory; absent for an agent's memory. */
+  scope?: MemoryScope
   onBack: () => void
 }
 
@@ -73,8 +72,7 @@ export function MemoryDirBrowser({
   dir,
   title,
   indexPath,
-  isTeamDir = false,
-  isGlobalDir = false,
+  scope,
   onBack,
 }: Props): React.ReactNode {
   const [headers, setHeaders] = useState<MemoryHeader[] | null>(null)
@@ -119,9 +117,9 @@ export function MemoryDirBrowser({
           buildMemoryDirRows(headers, {
             indexPath,
             indexExists,
-            includeNested: isTeamDir,
+            includeNested: scope === 'team',
           }),
-    [headers, indexPath, indexExists, isTeamDir],
+    [headers, indexPath, indexExists, scope],
   )
 
   const options = useMemo(
@@ -299,11 +297,9 @@ export function MemoryDirBrowser({
             Delete {basename(pendingDelete.value)}?
           </Text>
           <Text dimColor>
-            {isTeamDir
-              ? 'Shared memory — the deletion reaches the team on the next commit. Its line in MEMORY.md goes too.'
-              : isGlobalDir
-                ? 'Global memory — every project loses it, not just this one. Its line in MEMORY.md goes too.'
-                : 'Its line in MEMORY.md goes too.'}
+            {[scope === undefined ? undefined : MEMORY_SCOPE_SPECS[scope].deleteNote, 'Its line in MEMORY.md goes too.']
+              .filter(Boolean)
+              .join(' ')}
           </Text>
         </Box>
       ) : (

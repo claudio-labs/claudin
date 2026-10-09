@@ -3,49 +3,47 @@
   "source": "src/memory/memdir/memoryFileDetection.ts",
   "probes": [
     {
-      "name": "a private memory file is an auto-managed memory file",
-      "find": "    return isAutoMemPath(filePath)\n",
-      "replace": "    return false\n"
+      "name": "a file in a memory dir is an auto-managed memory file",
+      "find": "    memoryScopeOf(filePath) !== null ||\n",
+      "replace": "    false ||\n"
     },
     {
       "name": "nothing is memory when auto memory is off",
-      "find": "export function isAutoMemFile(filePath: string): boolean {\n  if (isAutoMemoryEnabled()) {\n",
-      "replace": "export function isAutoMemFile(filePath: string): boolean {\n  if (true) {\n"
-    },
-    {
-      "name": "the private memory dir is a memory directory",
-      "find": "      normalizedCmp === autoMemDirCmp ||\n",
-      "replace": "      false ||\n"
-    },
-    {
-      "name": "a shell command over the private dir targets memory",
-      "find": "  const dirs = [configDir, memoryBase, autoMemDir, globalMemDir].filter(Boolean)\n",
-      "replace": "  const dirs = [configDir, memoryBase, globalMemDir].filter(Boolean)\n"
-    },
-    {
-      "name": "a shell command over a moved global dir targets memory",
-      "find": "  const dirs = [configDir, memoryBase, autoMemDir, globalMemDir].filter(Boolean)\n",
-      "replace": "  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)\n"
-    },
-    {
-      "name": "a global memory file is an auto-managed memory file",
-      "find": "  if (isGlobalMemPath(filePath)) {\n    return true\n  }\n",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "  if (!isAutoMemoryEnabled()) return []\n",
       "replace": ""
     },
     {
-      "name": "a moved global dir is a memory directory",
-      "find": "      normalizedCmp === toComparable(globalMemPath.replace(TRAILING_SEP_RE, '')) ||\n      normalizedCmp.startsWith(toComparable(globalMemPath))\n",
-      "replace": "      false\n"
+      "name": "a memory dir named without its separator is a memory directory",
+      "find": "        normalizedCmp === toComparable(withoutTrailingSep(dir.root)) ||\n",
+      "replace": "        false ||\n"
     },
     {
-      "name": "a Read of a global memory carries the freshness note",
-      "find": "  return isAutoMemFile(filePath) || isGlobalMemPath(filePath)\n",
-      "replace": "  return isAutoMemFile(filePath)\n"
+      "name": "anything in a moved global dir is a memory directory",
+      "find": "        normalizedCmp.startsWith(toComparable(dir.root)),\n",
+      "replace": "        false,\n"
     },
     {
-      "name": "FileReadTool asks the freshness predicate",
+      "name": "a shell command over a memory dir (the private one, a moved global one) targets memory",
+      "find": "    ...getMemoryDirs().map(dir => withoutTrailingSep(dir.root)),\n",
+      "replace": ""
+    },
+    {
+      "name": "a global memory file is a memory file while the global dir is on",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => scope !== 'global',\n"
+    },
+    {
+      "name": "a global memory file is nothing special with the global dir off",
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => true,\n"
+    },
+    {
+      "name": "FileReadTool notes the freshness of a memory of any directory",
       "source": "src/tools/FileReadTool/readDispatch.ts",
-      "find": "  if (isFreshnessNotedMemoryFile(fullFilePath)) {\n",
+      "find": "  if (memoryScopeOf(fullFilePath) !== null) {\n",
       "replace": "  if (false) {\n"
     }
   ]

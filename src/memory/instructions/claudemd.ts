@@ -32,13 +32,8 @@ import {
   getAdditionalDirectoriesForClaudeMd,
   getOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
-import {
-  getAutoMemEntrypoint,
-  getGlobalMemEntrypoint,
-  isAutoMemoryEnabled,
-  isGlobalMemoryEnabled,
-} from 'src/memory/memdir/paths.js'
-import { getTeamMemEntrypoint } from 'src/memory/memdir/teamMemPaths.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import { MEMORY_SCOPE_SPECS } from 'src/memory/memdir/memoryScopes.js'
 import {
   getCurrentProjectConfig,
   getManagedClaudeRulesDir,
@@ -97,6 +92,17 @@ let hasLoggedInitialLoad = false
 
 const MEMORY_INSTRUCTION_PROMPT =
   'Codebase and user instructions are shown below. Be sure to adhere to these instructions. IMPORTANT: These instructions OVERRIDE any default behavior and you MUST follow them exactly as written.'
+
+/** What getClaudeMds says each file is, after its path. */
+const CONTEXT_DESCRIPTIONS: Readonly<Record<MemoryType, string>> = {
+  Managed: " (user's private instructions for all projects)",
+  User: " (user's private instructions for all projects)",
+  Project: ' (project instructions, checked into the codebase)',
+  Local: " (user's private project instructions, not checked in)",
+  GlobalMem: " (user's global memory, shared by every project)",
+  AutoMem: " (user's private memory for this project, persists across conversations)",
+  TeamMem: ' (shared team memory, git-tracked in the project)',
+}
 
 export const getMemoryFiles = memoize(
   async (forceIncludeExternal: boolean = false): Promise<MemoryFileInfo[]> => {
@@ -293,49 +299,19 @@ export const getMemoryFiles = memoize(
       }
     }
 
-    // Global memdir entrypoint — the user's, shared by every project. Before
-    // the project's own indexes, the way the user's CLAUDE.md precedes the
-    // project's: the more specific file comes later.
-    if (isGlobalMemoryEnabled()) {
-      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(
-        getGlobalMemEntrypoint(),
-        'GlobalMem',
+    // The memory indexes, global → private → team: after the instruction
+    // files, and the more specific index later, the way the user's CLAUDE.md
+    // precedes the project's. Each only if its file exists.
+    for (const dir of getMemoryDirs()) {
+      const { info } = await safelyReadMemoryFileAsync(
+        dir.index,
+        MEMORY_SCOPE_SPECS[dir.scope].indexType,
       )
-      if (globalMemEntry) {
-        const normalizedPath = normalizePathForComparison(globalMemEntry.path)
+      if (info) {
+        const normalizedPath = normalizePathForComparison(info.path)
         if (!processedPaths.has(normalizedPath)) {
           processedPaths.add(normalizedPath)
-          result.push(globalMemEntry)
-        }
-      }
-    }
-
-    // Memdir entrypoint (memory.md) - only if feature is on and file exists
-    if (isAutoMemoryEnabled()) {
-      const { info: memdirEntry } = await safelyReadMemoryFileAsync(
-        getAutoMemEntrypoint(),
-        'AutoMem',
-      )
-      if (memdirEntry) {
-        const normalizedPath = normalizePathForComparison(memdirEntry.path)
-        if (!processedPaths.has(normalizedPath)) {
-          processedPaths.add(normalizedPath)
-          result.push(memdirEntry)
-        }
-      }
-    }
-
-    // Team memory entrypoint - on with auto memory, only if the file exists
-    if (isAutoMemoryEnabled()) {
-      const { info: teamMemEntry } = await safelyReadMemoryFileAsync(
-        getTeamMemEntrypoint(),
-        'TeamMem',
-      )
-      if (teamMemEntry) {
-        const normalizedPath = normalizePathForComparison(teamMemEntry.path)
-        if (!processedPaths.has(normalizedPath)) {
-          processedPaths.add(normalizedPath)
-          result.push(teamMemEntry)
+          result.push(info)
         }
       }
     }
@@ -448,19 +424,7 @@ export const getClaudeMds = (
   for (const file of memoryFiles) {
     if (filter && !filter(file.type)) continue
     if (file.content) {
-      const description =
-        file.type === 'Project'
-          ? ' (project instructions, checked into the codebase)'
-          : file.type === 'Local'
-            ? " (user's private project instructions, not checked in)"
-            : file.type === 'TeamMem'
-              ? ' (shared team memory, git-tracked in the project)'
-              : file.type === 'GlobalMem'
-                ? " (user's global auto-memory, shared by every project)"
-                : file.type === 'AutoMem'
-                  ? " (user's auto-memory, persists across conversations)"
-                  : " (user's private global instructions for all projects)"
-
+      const description = CONTEXT_DESCRIPTIONS[file.type]
       const content = file.content.trim()
       if (file.type === 'TeamMem') {
         memories.push(

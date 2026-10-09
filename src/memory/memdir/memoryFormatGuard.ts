@@ -5,13 +5,14 @@ import {
   parseMemoryType,
   type TeamCategory,
   teamCategoryForPath,
+  TYPE_SCOPES,
 } from 'src/memory/memdir/memoryTypes.js'
 import {
-  getAutoMemPath,
-  getGlobalMemPath,
-  isGlobalMemoryEnabled,
-} from 'src/memory/memdir/paths.js'
-import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+  findMemoryDir,
+  getMemoryDirs,
+  type MemoryDir,
+} from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME, type MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
@@ -38,21 +39,12 @@ import type { ToolAdvice } from 'src/tools/Tool.js'
  * tested without the path modules; the wrappers resolve them.
  */
 
-/**
- * Where the memory directories are; `globalDir` is null or absent while the
- * global dir is off.
- */
-export type MemoryDirs = {
-  autoDir: string
-  teamDir: string
-  globalDir?: string | null
-}
+/** The memory directories the guard judges by (memoryDirs.ts getMemoryDirs). */
+export type MemoryDirs = readonly MemoryDir[]
 
-/**
- * memdir.ts ENTRYPOINT_NAME. The literal keeps memdir.ts, and what it
- * imports, out of the write tools' import graph (memoryScan.ts does the same).
- */
-const INDEX_NAME = 'MEMORY.md'
+function rootOf(dirs: MemoryDirs, scope: MemoryScope): string | null {
+  return dirs.find(dir => dir.scope === scope)?.root ?? null
+}
 
 /** Extra frontmatter a category requires beyond its `type`, as its TEAM_CATEGORIES text states it. */
 type CategoryField = { key: string; what: string; values?: readonly string[] }
@@ -74,7 +66,7 @@ export const CATEGORY_FIELDS: Readonly<Record<TeamCategory['dir'], readonly Cate
 /** A file the guard applies to: which memory directory it belongs to, and its category when it is a team one. */
 type MemoryFile = {
   abs: string
-  scope: 'private' | 'team' | 'global'
+  scope: MemoryScope
   /** The directory whose `MEMORY.md` indexes it. */
   root: string
   category: TeamCategory | undefined
@@ -82,31 +74,22 @@ type MemoryFile = {
 
 /**
  * The memory file at `filePath`, or null for anything else: a non-`.md`
- * file, an index, a path outside the directories. The same prefix tests as
- * isGlobalMemPath / isTeamMemPath / isAutoMemPath, team before private — the
- * team dir sits inside the private one, while the global dir never nests with
- * either (isGlobalMemoryEnabled). A category applies only to a file directly in its
+ * file, an index, a path outside the directories. Its directory is the one
+ * findMemoryDir picks. A category applies only to a file directly in its
  * subdirectory of the team dir.
  */
 function memoryFileOf(filePath: string, dirs: MemoryDirs): MemoryFile | null {
   const abs = resolve(filePath)
-  if (extname(abs) !== '.md' || basename(abs) === INDEX_NAME) return null
-  if (dirs.globalDir && abs.startsWith(dirs.globalDir)) {
-    return { abs, scope: 'global', root: dirs.globalDir, category: undefined }
+  if (extname(abs) !== '.md' || basename(abs) === ENTRYPOINT_NAME) return null
+  const dir = findMemoryDir(dirs, abs)
+  if (dir === null) return null
+  const category = dir.scope === 'team' ? teamCategoryForPath(abs) : undefined
+  return {
+    abs,
+    scope: dir.scope,
+    root: dir.root,
+    category: category && dirname(abs) === join(dir.root, category.dir) ? category : undefined,
   }
-  if (abs.startsWith(dirs.teamDir)) {
-    const category = teamCategoryForPath(abs)
-    return {
-      abs,
-      scope: 'team',
-      root: dirs.teamDir,
-      category: category && dirname(abs) === join(dirs.teamDir, category.dir) ? category : undefined,
-    }
-  }
-  if (abs.startsWith(dirs.autoDir)) {
-    return { abs, scope: 'private', root: dirs.autoDir, category: undefined }
-  }
-  return null
 }
 
 function isFilled(value: unknown): boolean {
@@ -115,7 +98,10 @@ function isFilled(value: unknown): boolean {
 
 const TYPE_CHOICES = MEMORY_TYPES.join(' | ')
 
-/** What the frontmatter of `file` misses, one phrase each; empty when it is complete. */
+/**
+ * What the frontmatter of `file` misses, one phrase each; empty when it is
+ * complete. Where a type may live is TYPE_SCOPES, quoted in the refusal.
+ */
 function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): string[] {
   const { frontmatter } = parseFrontmatter(content, file.abs)
   if (Object.keys(frontmatter).length === 0) {
@@ -130,20 +116,23 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): st
     if (!isFilled(frontmatter[key])) problems.push(`it lacks \`${key}:\``)
   }
   const type = parseMemoryType(frontmatter.type)
+  const globalDir = rootOf(dirs, 'global')
+  const privateDir = rootOf(dirs, 'private')
   if (!type) {
     problems.push(
       isFilled(frontmatter.type)
         ? `\`type: ${String(frontmatter.type)}\` is not one of ${TYPE_CHOICES}`
         : `it lacks \`type:\` (${TYPE_CHOICES})`,
     )
-  } else if (type === 'user' && file.scope !== 'global' && dirs.globalDir) {
-    // Who the user is holds in every project, so it lives where every project reads it.
-    problems.push(`\`type: user\` is global — write it under \`${dirs.globalDir}\` instead`)
-  } else if (file.scope === 'team' && type === 'user') {
-    problems.push(`\`type: user\` is always private — write it under \`${dirs.autoDir}\` instead`)
-  } else if (file.scope === 'global' && type === 'project') {
+  } else if (TYPE_SCOPES[type].global === 'only' && file.scope !== 'global' && globalDir) {
     problems.push(
-      `\`type: project\` belongs to one project — write it under \`${dirs.autoDir}\` or \`${dirs.teamDir}\` instead`,
+      `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${globalDir}\` instead; if this file was saved here before the global dir existed, move it there with \`mv\` and move its index line (\`/memory sort\` moves them all, if the user runs it)`,
+    )
+  } else if (TYPE_SCOPES[type].global === 'only' && file.scope === 'team') {
+    problems.push(`\`type: ${type}\` is ${TYPE_SCOPES[type].withoutGlobal} — write it under \`${privateDir}\` instead`)
+  } else if (file.scope === 'global' && TYPE_SCOPES[type].global === 'never') {
+    problems.push(
+      `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${privateDir}\` or \`${rootOf(dirs, 'team')}\` instead`,
     )
   } else if (file.category && type !== file.category.type) {
     problems.push(`a team ${file.category.noun} memory is \`type: ${file.category.type}\`, not \`${type}\``)
@@ -168,7 +157,7 @@ function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs): st
  * imports it back), and the write tools import this module — the lazy
  * require keeps that graph out of theirs.
  */
-function memoryWriteRules(teamDir: string, globalDir: string | null): string {
+function memoryWriteRules(dirs: MemoryDirs): string {
   // Typed via annotation rather than `as`, so knip sees the named require
   // (teamMemSecretGuard.ts has the same shape).
   /* eslint-disable @typescript-eslint/no-require-imports */
@@ -176,7 +165,7 @@ function memoryWriteRules(teamDir: string, globalDir: string | null): string {
     buildMemoryWriteRules,
   }: typeof import('src/memory/memdir/teamMemPrompts.js') = require('src/memory/memdir/teamMemPrompts.js')
   /* eslint-enable @typescript-eslint/no-require-imports */
-  return buildMemoryWriteRules(teamDir, globalDir)
+  return buildMemoryWriteRules(rootOf(dirs, 'team') ?? '', rootOf(dirs, 'global'))
 }
 
 /**
@@ -195,7 +184,7 @@ export function checkMemoryFileFormatIn(
   if (problems.length === 0) return null
   const what = file.category ? `a team ${file.category.noun} memory` : `a ${file.scope} memory`
   const refusal = `Memory file not written: ${file.abs} is ${what}, and ${problems.join('; ')}. Fix the frontmatter and write it again.`
-  return `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs.teamDir, dirs.globalDir ?? null)}`
+  return `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs)}`
 }
 
 /** Markdown link targets: `](target)`, up to the first space or `)`. */
@@ -220,7 +209,7 @@ export function indexTextFromResponse(
   const pending = new Map<string, string>()
   const add = (path: string, text: string): void => {
     const abs = resolve(cwd, path)
-    if (basename(abs) !== INDEX_NAME) return
+    if (basename(abs) !== ENTRYPOINT_NAME) return
     pending.set(abs, `${pending.get(abs) ?? ''}\n${text}`)
   }
   for (const { input } of toolUses ?? []) {
@@ -270,7 +259,7 @@ export function memoryIndexAdviceIn(
 ): ToolAdvice | null {
   const file = memoryFileOf(filePath, dirs)
   if (!file) return null
-  const indexPath = join(file.root, INDEX_NAME)
+  const indexPath = join(file.root, ENTRYPOINT_NAME)
   if (indexLinks(indexText(indexPath) ?? '', file.root, file.abs)) return null
   const link = relative(file.root, file.abs)
   const where = file.category
@@ -282,23 +271,12 @@ export function memoryIndexAdviceIn(
 }
 
 /**
- * The memory directories of this session; the global one only while it is on.
- */
-function currentMemoryDirs(): MemoryDirs {
-  return {
-    autoDir: getAutoMemPath(),
-    teamDir: getTeamMemPath(),
-    globalDir: isGlobalMemoryEnabled() ? getGlobalMemPath() : null,
-  }
-}
-
-/**
  * Checks a write of `content` — the whole file as it will be — to a memory
  * file. Returns the refusal, or null when the write may go ahead; null for
  * any other file, so callers can call it unconditionally.
  */
 export function checkMemoryFileFormat(filePath: string, content: string): string | null {
-  return checkMemoryFileFormatIn(currentMemoryDirs(), filePath, content)
+  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content)
 }
 
 function readIndex(indexPath: string): string | null {
@@ -320,7 +298,7 @@ export function memoryIndexAdvice(
   filePath: string,
   pending?: ReadonlyMap<string, string>,
 ): ToolAdvice | null {
-  return memoryIndexAdviceIn(currentMemoryDirs(), filePath, indexPath => {
+  return memoryIndexAdviceIn(getMemoryDirs(), filePath, indexPath => {
     const onDisk = readIndex(indexPath)
     const added = pending?.get(indexPath)
     return added === undefined ? onDisk : `${onDisk ?? ''}\n${added}`

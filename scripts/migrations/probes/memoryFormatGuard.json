@@ -14,18 +14,18 @@
     },
     {
       "name": "a user memory in the team dir is refused",
-      "find": "  } else if (file.scope === 'team' && type === 'user') {\n",
-      "replace": "  } else if (file.scope === 'team' && type === ('user' as string) && false) {\n"
+      "find": "  } else if (TYPE_SCOPES[type].global === 'only' && file.scope === 'team') {\n",
+      "replace": "  } else if (false) {\n"
     },
     {
       "name": "an index is never checked as a memory",
-      "find": "  if (extname(abs) !== '.md' || basename(abs) === INDEX_NAME) return null\n",
+      "find": "  if (extname(abs) !== '.md' || basename(abs) === ENTRYPOINT_NAME) return null\n",
       "replace": "  if (extname(abs) !== '.md') return null\n"
     },
     {
       "name": "a category applies only directly inside its subdirectory",
-      "find": "      category: category && dirname(abs) === join(dirs.teamDir, category.dir) ? category : undefined,\n",
-      "replace": "      category,\n"
+      "find": "    category: category && dirname(abs) === join(dir.root, category.dir) ? category : undefined,\n",
+      "replace": "    category,\n"
     },
     {
       "name": "the advice reads the index before it advises",
@@ -34,13 +34,13 @@
     },
     {
       "name": "the guard stops refusing",
-      "find": "  return checkMemoryFileFormatIn(currentMemoryDirs(), filePath, content)\n",
+      "find": "  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content)\n",
       "replace": "  return null\n"
     },
     {
       "name": "a refusal stops carrying the rules",
-      "find": "    : `${refusal}\\n\\nThe rules for memory files:\\n\\n${memoryWriteRules(dirs.teamDir)}`\n",
-      "replace": "    : refusal\n"
+      "find": "  return `${refusal}\\n\\nThe rules for memory files:\\n\\n${memoryWriteRules(dirs)}`\n",
+      "replace": "  return refusal\n"
     },
     {
       "name": "a Patch's own index line counts",
@@ -91,8 +91,8 @@
     {
       "name": "the prompt takes the links line back from the rules",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    leanTypesLine(),\n",
-      "replace": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    LEAN_LINKS_LINE,\n    '',\n    leanTypesLine(),\n"
+      "find": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    leanTypesLine(globalDir !== null),\n",
+      "replace": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    LEAN_LINKS_LINE,\n    '',\n    leanTypesLine(globalDir !== null),\n"
     },
     {
       "name": "the prompt drops the secrets rule",
@@ -115,28 +115,38 @@
     {
       "name": "the types line takes the feedback Why/How clause back",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "`feedback` (how to work, from corrections and confirmed approaches; team only for a project-wide convention)",
-      "replace": "`feedback` (how to work, from corrections and confirmed approaches; lead with the rule, then **Why:** and **How to apply:**; team only for a project-wide convention)"
+      "find": "  feedback: 'how to work, from corrections and confirmed approaches',\n",
+      "replace": "  feedback: 'how to work, from corrections and confirmed approaches; lead with the rule, then **Why:** and **How to apply:**',\n"
     },
     {
       "name": "a file in the global dir is a global memory",
-      "find": "  if (dirs.globalDir && abs.startsWith(dirs.globalDir)) {\n",
-      "replace": "  if (false) {\n"
+      "find": "  const dir = findMemoryDir(dirs, abs)\n",
+      "replace": "  const dir = findMemoryDir(dirs.filter(d => d.scope !== 'global'), abs)\n"
     },
     {
       "name": "a user memory outside the global dir is sent there",
-      "find": "  } else if (type === 'user' && file.scope !== 'global' && dirs.globalDir) {\n",
+      "find": "  } else if (TYPE_SCOPES[type].global === 'only' && file.scope !== 'global' && globalDir) {\n",
       "replace": "  } else if (false) {\n"
     },
     {
       "name": "a project memory in the global dir is refused",
-      "find": "  } else if (file.scope === 'global' && type === 'project') {\n",
+      "find": "  } else if (file.scope === 'global' && TYPE_SCOPES[type].global === 'never') {\n",
       "replace": "  } else if (false) {\n"
     },
     {
       "name": "a global memory with paths: is refused",
       "find": "  if (file.scope === 'global' && isFilled(frontmatter.paths)) {\n",
       "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a misplaced-type refusal quotes TYPE_SCOPES' withGlobal",
+      "find": "is ${TYPE_SCOPES[type].withGlobal} — write it under \\`${globalDir}\\` instead",
+      "replace": "is ${TYPE_SCOPES[type].withoutGlobal} — write it under \\`${globalDir}\\` instead"
+    },
+    {
+      "name": "a misplaced user memory is told to mv an old file, or /memory sort",
+      "find": "; if this file was saved here before the global dir existed, move it there with \\`mv\\` and move its index line (\\`/memory sort\\` moves them all, if the user runs it)",
+      "replace": ""
     }
   ]
 }

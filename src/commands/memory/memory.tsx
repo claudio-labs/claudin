@@ -10,9 +10,8 @@ import { getRelativeMemoryPath } from 'src/memory/ui/MemoryUpdateNotification.js
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
 import { clearMemoryFileCaches, getMemoryFiles } from 'src/memory/instructions/claudemd.js';
-import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js';
-import { getAutoMemPath, getGlobalMemPath, isAutoMemoryEnabled, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js';
-import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js';
+import { getMemoryDir, getMemoryDirs } from 'src/memory/memdir/memoryDirs.js';
+import { ENTRYPOINT_NAME, MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js';
 import {
   countMemoryFiles,
   parseBrowseValue,
@@ -24,11 +23,7 @@ import { getErrnoCode } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
 import { editFileInEditor } from 'src/terminal/input/promptEditor.js';
 import { parseMemorySubcommand, runMemorySort, runMemoryTidy } from 'src/commands/memory/tidy.js';
-type DirCounts = {
-  global: number;
-  private: number;
-  team: number;
-};
+type DirCounts = Record<MemoryScope, number>;
 
 /**
  * Scans the memory dirs for the `· N` on the browse rows. Cheap enough to
@@ -36,47 +31,28 @@ type DirCounts = {
  * re-run on the way back from a browser, where a delete may have changed it.
  */
 async function readDirCounts(): Promise<DirCounts> {
-  if (!isAutoMemoryEnabled()) {
-    return {
-      global: 0,
-      private: 0,
-      team: 0
-    };
-  }
-  const [globalCount, privateCount, teamCount] = await Promise.all([isGlobalMemoryEnabled() ? countMemoryFiles(getGlobalMemPath()) : Promise.resolve(0), countMemoryFiles(getAutoMemPath()), countMemoryFiles(getTeamMemPath(), {
-    recursive: true
-  })]);
-  return {
-    global: globalCount,
-    private: privateCount,
-    team: teamCount
+  const counts: DirCounts = {
+    global: 0,
+    private: 0,
+    team: 0
   };
+  // The team dir files memories in its category subdirectories; the private
+  // dir's only subdirectory is the team one, counted on its own row.
+  await Promise.all(getMemoryDirs().map(async dir => {
+    counts[dir.scope] = await countMemoryFiles(dir.root, {
+      recursive: dir.scope === 'team'
+    });
+  }));
+  return counts;
 }
 
 /** The target `/memory global`, `/memory private` and `/memory team` open directly. */
-function subcommandBrowseTarget(subcommand: 'global' | 'private' | 'team'): BrowseTarget | null {
-  if (!isAutoMemoryEnabled()) {
-    return null;
-  }
-  if (subcommand === 'global') {
-    return isGlobalMemoryEnabled() ? {
-      dir: getGlobalMemPath(),
-      title: 'Global memory',
-      isTeamDir: false,
-      isGlobalDir: true
-    } : null;
-  }
-  if (subcommand === 'team') {
-    return {
-      dir: getTeamMemPath(),
-      title: 'Team memory',
-      isTeamDir: true
-    };
-  }
-  return {
-    dir: getAutoMemPath(),
-    title: 'Private memory',
-    isTeamDir: false
+function subcommandBrowseTarget(scope: MemoryScope): BrowseTarget | null {
+  const dir = getMemoryDir(scope);
+  return dir === null ? null : {
+    dir: dir.root,
+    title: MEMORY_SCOPE_SPECS[scope].title,
+    scope
   };
 }
 function MemoryCommand({
@@ -164,7 +140,7 @@ function MemoryCommand({
   // mean "back" instead of "close" — and its guide is hidden with it, since the
   // browser prints its own and two conflicting hints is worse than none.
   return <Dialog title="Memory" onCancel={handleCancel} color="remember" isCancelActive={browsing === null} hideInputGuide={browsing !== null}>
-      {browsing !== null ? <MemoryDirBrowser dir={browsing.dir} title={browsing.title} indexPath={join(browsing.dir, ENTRYPOINT_NAME)} isTeamDir={browsing.isTeamDir} isGlobalDir={browsing.isGlobalDir === true} onBack={handleBack} /> : <Box flexDirection="column">
+      {browsing !== null ? <MemoryDirBrowser dir={browsing.dir} title={browsing.title} indexPath={join(browsing.dir, ENTRYPOINT_NAME)} scope={browsing.scope} onBack={handleBack} /> : <Box flexDirection="column">
           <React.Suspense fallback={null}>
             <MemoryFileSelector onSelect={handleSelect} onCancel={handleCancel} dirCounts={dirCounts} />
           </React.Suspense>

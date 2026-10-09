@@ -6,8 +6,7 @@
 import { randomBytes } from 'crypto'
 import { join } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getAutoMemEntrypoint, getGlobalMemEntrypoint } from 'src/memory/memdir/paths.js'
-import { getTeamMemEntrypoint } from 'src/memory/memdir/teamMemPaths.js'
+import { memoryIndexPath } from 'src/memory/memdir/memoryDirs.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import {
@@ -123,11 +122,11 @@ export function getMemoryPath(memoryType: MemoryType): string {
     case 'Managed':
       return join(getManagedFilePath(), 'CLAUDE.md')
     case 'AutoMem':
-      return getAutoMemEntrypoint()
+      return memoryIndexPath('private')
     case 'GlobalMem':
-      return getGlobalMemEntrypoint()
+      return memoryIndexPath('global')
     case 'TeamMem':
-      return getTeamMemEntrypoint()
+      return memoryIndexPath('team')
   }
 }
 

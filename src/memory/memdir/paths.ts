@@ -20,7 +20,7 @@ import {
   getSettingsForSource,
 } from 'src/platform/settings/settings.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { migrateGlobalMemoryIfNeeded } from 'src/memory/memdir/memoryMigration.js'
+import { migrateLegacyMemoryIfNeeded } from 'src/memory/memdir/memoryMigration.js'
 
 /**
  * Whether auto-memory features are enabled (memdir, agent memory, past session search).
@@ -121,7 +121,6 @@ export function getMemoryBaseDir(): string {
 }
 
 const AUTO_MEM_DIRNAME = 'memory'
-const AUTO_MEM_ENTRYPOINT_NAME = 'MEMORY.md'
 
 /**
  * Normalize and validate a candidate auto-memory directory path.
@@ -148,7 +147,7 @@ function validateMemoryPath(
   // Settings.json paths support ~/ expansion (user-friendly). The env var
   // override does not (it's set programmatically by Cowork/SDK, which should
   // always pass absolute paths). Bare "~", "~/", "~/.", "~/..", etc. are NOT
-  // expanded — they would make isAutoMemPath() match all of $HOME or its
+  // expanded — they would make the memory carve-out match all of $HOME or its
   // parent (same class of danger as "/" or "C:\").
   if (
     expandTilde &&
@@ -181,8 +180,35 @@ function validateMemoryPath(
 }
 
 /**
+ * SECURITY: whether `dir` holds the config home. A memory directory's files
+ * are read and written with no prompt (internalPaths.ts), so one that held
+ * ~/.claudin would put settings.json under that carve-out.
+ */
+function containsConfigHome(dir: string): boolean {
+  return (getClaudinConfigHomeDir() + sep).normalize('NFC').startsWith(dir)
+}
+
+/**
+ * A memory directory from a trusted settings source (policy, flag, local,
+ * user — never projectSettings: a repo must not point the no-prompt carve-out
+ * anywhere), validated, and refused when it holds the config home.
+ */
+function memoryDirSetting(
+  key: 'autoMemoryDirectory' | 'autoMemoryGlobalDirectory',
+): string | undefined {
+  const dir = validateMemoryPath(
+    getSettingsForSource('policySettings')?.[key] ??
+      getSettingsForSource('flagSettings')?.[key] ??
+      getSettingsForSource('localSettings')?.[key] ??
+      getSettingsForSource('userSettings')?.[key],
+    true,
+  )
+  return dir === undefined || containsConfigHome(dir) ? undefined : dir
+}
+
+/**
  * Direct override for the full auto-memory directory path via env var.
- * When set, getAutoMemPath()/getAutoMemEntrypoint() return this path directly
+ * When set, getAutoMemPath() returns this path directly
  * instead of computing `{base}/projects/{sanitized-cwd}/memory/`.
  *
  * Used by Cowork to redirect memory to a space-scoped mount where the
@@ -204,16 +230,11 @@ function getAutoMemPathOverride(): string | undefined {
  * intentionally excluded — a malicious repo could otherwise set
  * autoMemoryDirectory: "~/.ssh" and gain silent write access to sensitive
  * directories via the filesystem.ts write carve-out (which fires when
- * isAutoMemPath() matches and hasAutoMemPathOverride() is false). This follows
+ * the path is in the private memory dir and hasAutoMemPathOverride() is false). This follows
  * the same pattern as hasSkipDangerousModePermissionPrompt() etc.
  */
 function getAutoMemPathSetting(): string | undefined {
-  const dir =
-    getSettingsForSource('policySettings')?.autoMemoryDirectory ??
-    getSettingsForSource('flagSettings')?.autoMemoryDirectory ??
-    getSettingsForSource('localSettings')?.autoMemoryDirectory ??
-    getSettingsForSource('userSettings')?.autoMemoryDirectory
-  return validateMemoryPath(dir, true)
+  return memoryDirSetting('autoMemoryDirectory')
 }
 
 /**
@@ -307,7 +328,7 @@ export const getAutoMemPath = memoize(
     // SECURITY: the memory directory now lives inside the project tree,
     // whose contents an attacker controls if the user opens/clones a hostile
     // repo. mkdirSync above follows existing symlink components lexically,
-    // and isAutoMemPath() (below) auto-approves reads/writes under this path
+    // and the memory carve-out (internalPaths.ts) auto-approves reads/writes under this path
     // with no prompt — so a `.claudin` symlink planted in the repo could
     // otherwise turn auto-memory into an unprompted read/write primitive
     // against an arbitrary location. Verify the real path is still contained
@@ -345,7 +366,7 @@ export const getAutoMemPath = memoize(
       // best-effort; not all platforms/filesystems honor unix permission bits
     }
 
-    migrateGlobalMemoryIfNeeded(legacyPath, projectLocalPath)
+    migrateLegacyMemoryIfNeeded(legacyPath, projectLocalPath)
 
     return projectLocalPath
   },
@@ -353,44 +374,12 @@ export const getAutoMemPath = memoize(
 )
 
 /**
- * Returns the auto-memory entrypoint (MEMORY.md inside the auto-memory dir).
- * Follows the same resolution order as getAutoMemPath().
- */
-export function getAutoMemEntrypoint(): string {
-  return join(getAutoMemPath(), AUTO_MEM_ENTRYPOINT_NAME)
-}
-
-/**
- * Check if an absolute path is within the auto-memory directory.
- *
- * When CLAUDE_COWORK_MEMORY_PATH_OVERRIDE is set, this matches against the
- * env-var override directory. Note that a true return here does NOT imply
- * write permission in that case — the filesystem.ts write carve-out is gated
- * on !hasAutoMemPathOverride() (it exists to bypass DANGEROUS_DIRECTORIES).
- *
- * The settings.json autoMemoryDirectory DOES get the write carve-out: it's the
- * user's explicit choice from a trusted settings source (projectSettings is
- * excluded — see getAutoMemPathSetting), and hasAutoMemPathOverride() remains
- * false for it.
- */
-export function isAutoMemPath(absolutePath: string): boolean {
-  // SECURITY: Normalize to prevent path traversal bypasses via .. segments
-  const normalizedPath = normalize(absolutePath)
-  return normalizedPath.startsWith(getAutoMemPath())
-}
-
-/**
  * Settings.json override for the global memory directory, with the same
  * trust rules and ~/ expansion as autoMemoryDirectory: projectSettings is
  * excluded, so a repo cannot point the no-prompt write carve-out anywhere.
  */
 function getGlobalMemPathSetting(): string | undefined {
-  const dir =
-    getSettingsForSource('policySettings')?.autoMemoryGlobalDirectory ??
-    getSettingsForSource('flagSettings')?.autoMemoryGlobalDirectory ??
-    getSettingsForSource('localSettings')?.autoMemoryGlobalDirectory ??
-    getSettingsForSource('userSettings')?.autoMemoryGlobalDirectory
-  return validateMemoryPath(dir, true)
+  return memoryDirSetting('autoMemoryGlobalDirectory')
 }
 
 /**
@@ -408,10 +397,6 @@ export const getGlobalMemPath = memoize(
   () =>
     `${process.env.CLAUDIN_CONFIG_DIR ?? ''}\0${process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR ?? ''}`,
 )
-
-export function getGlobalMemEntrypoint(): string {
-  return join(getGlobalMemPath(), AUTO_MEM_ENTRYPOINT_NAME)
-}
 
 /**
  * Whether the global memory directory is in use. On whenever auto memory is;
@@ -432,16 +417,4 @@ export function isGlobalMemoryEnabled(): boolean {
   const globalDir = getGlobalMemPath()
   const autoDir = getAutoMemPath()
   return !globalDir.startsWith(autoDir) && !autoDir.startsWith(globalDir)
-}
-
-/**
- * Whether `absolutePath` is inside the global memory directory — always
- * false while it is off, so the write carve-out goes with it.
- */
-export function isGlobalMemPath(absolutePath: string): boolean {
-  // SECURITY: Normalize to prevent path traversal bypasses via .. segments
-  return (
-    isGlobalMemoryEnabled() &&
-    normalize(absolutePath).startsWith(getGlobalMemPath())
-  )
 }

@@ -1,16 +1,18 @@
-import { describe, expect, test } from 'bun:test'
-import { readFileSync } from 'fs'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 import { buildMemoryLines } from 'src/memory/memdir/memdir.js'
 import {
-  GLOBAL_SCOPE_LINES,
   MEMORY_FRONTMATTER_EXAMPLE,
   MEMORY_TYPES,
   parseMemoryType,
   renderTeamCategoriesCompact,
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
-  TYPES_SECTION_COMBINED,
+  TYPE_SCOPES,
+  typeScope,
   typesSectionCombined,
 } from 'src/memory/memdir/memoryTypes.js'
 import {
@@ -19,7 +21,8 @@ import {
   buildMemoryWriteRules,
 } from 'src/memory/memdir/teamMemPrompts.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
-import { isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { getAutoMemPath, getGlobalMemPath, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import { buildExtractCombinedPrompt } from 'src/memory/extract/prompts.js'
 
 const DIR = '/tmp/memdir-prompt-test/memory/'
@@ -245,23 +248,98 @@ describe('extraction prompts', () => {
   test('the extraction hands it the dir', () => {
     // Asserted on the SOURCE: the extraction needs a forked agent.
     const extract = readFileSync(new URL('../extract/extractMemories.ts', import.meta.url), 'utf8')
-    expect(extract).toContain('const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null')
+    expect(extract).toContain("const globalDir = getMemoryDir('global')?.root ?? null")
     expect(extract.match(/loopHint,\n\s+globalDir,\n/g)).toHaveLength(1)
   })
 })
 
-describe('GLOBAL_SCOPE_LINES', () => {
-  test('every key is a line of TYPES_SECTION_COMBINED, so none is stranded', () => {
-    for (const key of GLOBAL_SCOPE_LINES.keys()) expect(TYPES_SECTION_COMBINED).toContain(key)
+// GLOBAL_SCOPE_LINES (a map of line replacements over TYPES_SECTION_COMBINED)
+// is gone: typesSectionCombined renders each type's <scope> from TYPE_SCOPES.
+describe('typesSectionCombined — the scopes come from TYPE_SCOPES', () => {
+  for (const hasGlobal of [true, false]) {
+    test(`renders typeScope(type, ${hasGlobal}) as every type's <scope>`, () => {
+      const text = typesSectionCombined(hasGlobal).join('\n')
+      for (const type of MEMORY_TYPES) {
+        expect(text).toContain(`<scope>${typeScope(type, hasGlobal)}.`)
+      }
+    })
+  }
+
+  test('with the global dir, the examples save who the user is and terse-answers feedback there', () => {
+    const text = typesSectionCombined(true).join('\n')
+    expect(text).toContain('[saves global user memory: user is a data scientist')
+    expect(text).toContain('[saves global feedback memory: this user wants terse responses')
+    expect(text).toContain('Private, not global: it would not hold in an unrelated repo')
+    expect(text).not.toContain(`<scope>${TYPE_SCOPES.user.withoutGlobal}.`)
   })
 
-  test('with the global dir, user is global, project never is, and terse-answers feedback moves', () => {
-    const text = typesSectionCombined(true).join('\n')
-    expect(text).toContain('<scope>always global — the user is the same person in every project</scope>')
-    expect(text).toContain('<scope>never global; private or team')
-    expect(text).toContain('[saves global feedback memory: this user wants terse responses')
-    expect(text).toContain('Private, not global: it is about this codebase')
-    expect(text).not.toContain('<scope>always private</scope>')
-    expect(typesSectionCombined(false)).toBe(TYPES_SECTION_COMBINED)
+  test('without it, nothing says "global"', () => {
+    const text = typesSectionCombined(false).join('\n')
+    expect(text).not.toContain('global')
+    expect(text).toContain('[saves private user memory:')
   })
+})
+
+describe('the system prompts render typeScope(type, hasGlobal) for every type', () => {
+  // Both builders resolve the session's directories, so they run against a
+  // fresh git project and config home, and CLAUDIN_GLOBAL_MEMORY flips the
+  // global dir on and off.
+  const ENV_KEYS = [
+    'CLAUDIN_CONFIG_DIR',
+    'CLAUDIN_DISABLE_AUTO_MEMORY',
+    'CLAUDIN_GLOBAL_MEMORY',
+    'CLAUDIN_SIMPLE',
+    'CLAUDE_COWORK_MEMORY_PATH_OVERRIDE',
+  ] as const
+  const savedEnv = new Map<string, string | undefined>()
+  let previousProjectRoot: string
+  let root: string
+
+  beforeAll(() => {
+    for (const key of ENV_KEYS) savedEnv.set(key, process.env[key])
+    for (const key of ENV_KEYS) delete process.env[key]
+    root = mkdtempSync(join(tmpdir(), 'mem-prompt-scopes-'))
+    mkdirSync(join(root, 'project', '.git'), { recursive: true })
+    process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
+    previousProjectRoot = getProjectRoot()
+    setProjectRoot(join(root, 'project'))
+    getAutoMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+  })
+
+  afterAll(() => {
+    setProjectRoot(previousProjectRoot)
+    getAutoMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+    for (const key of ENV_KEYS) {
+      const value = savedEnv.get(key)
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  for (const hasGlobal of [true, false]) {
+    test(`global ${hasGlobal ? 'on' : 'off'}: the lean and the full prompt`, () => {
+      if (hasGlobal) delete process.env.CLAUDIN_GLOBAL_MEMORY
+      else process.env.CLAUDIN_GLOBAL_MEMORY = '0'
+      try {
+        expect(isGlobalMemoryEnabled()).toBe(hasGlobal)
+        const lean = buildLeanCombinedMemoryPrompt()
+        const full = buildCombinedMemoryPrompt()
+        for (const type of MEMORY_TYPES) {
+          expect(lean).toContain(`\`${type}\` (${typeScope(type, hasGlobal)} — `)
+          expect(full).toContain(`- \`${type}\` (${typeScope(type, hasGlobal)}) — `)
+        }
+        // The full prompt no longer adds a "(private or team)" of its own.
+        expect(full).not.toContain('(private or team)')
+        if (!hasGlobal) {
+          expect(lean).not.toContain('global')
+          expect(full).not.toContain('global')
+        }
+      } finally {
+        delete process.env.CLAUDIN_GLOBAL_MEMORY
+      }
+    })
+  }
 })

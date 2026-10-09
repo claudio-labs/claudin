@@ -1,12 +1,7 @@
 import { join } from 'path'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import {
-  getGlobalMemPath,
-  isAutoMemoryEnabled,
-  isGlobalMemoryEnabled,
-} from 'src/memory/memdir/paths.js'
-import { isMemoryIndexType } from 'src/memory/memdir/types.js'
-import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME, isMemoryIndexType } from 'src/memory/memdir/memoryScopes.js'
 // teamMemPrompts.ts imports this module back; the cycle is safe because
 // neither side reads the other's bindings at module-evaluation time.
 import {
@@ -27,7 +22,6 @@ import {
 } from 'src/memory/memdir/memoryTypes.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 
-export const ENTRYPOINT_NAME = 'MEMORY.md'
 export const MAX_ENTRYPOINT_LINES = 200
 // ~125 chars/line at 200 lines. At p97 today; catches long-line indexes that
 // slip past the line cap (p100 observed: 197KB under 200 lines).
@@ -197,7 +191,7 @@ export function buildMemoryLines(
   extraGuidelines?: string[],
 ): string[] {
   // Compact, dense prose (upstream shape). The verbose XML taxonomy in
-  // memoryTypes.ts (TYPES_SECTION_COMBINED etc.) is ~3.7K tokens and ships
+  // memoryTypes.ts (typesSectionCombined) is ~3.7K tokens and ships
   // in the main system prompt every turn; this conveys the same four types and
   // the eval-tuned cues (explicit-save, feedback Why/How, absolute dates,
   // verify-before-recommend) in ~400 tokens. Those verbose constants are kept
@@ -375,7 +369,8 @@ export function buildSearchingPastContextSection(
  * Returns null when auto memory is disabled.
  */
 export async function loadMemoryPrompt(lean = false): Promise<string | null> {
-  if (!isAutoMemoryEnabled()) {
+  const dirs = getMemoryDirs()
+  if (dirs.length === 0) {
     return null
   }
 
@@ -387,16 +382,11 @@ export async function loadMemoryPrompt(lean = false): Promise<string | null> {
       ? [coworkExtraGuidelines]
       : undefined
 
-  // Harness guarantees these directories exist so the model can write
+  // Harness guarantees every directory exists so the model can write
   // without checking. The prompt text reflects this ("already exists").
-  // Only creating teamDir is sufficient: getTeamMemPath() is defined as
-  // join(getAutoMemPath(), 'team'), so recursive mkdir of the team dir
-  // creates the auto dir as a side effect. If the team dir ever moves
-  // out from under the auto dir, add a second ensureMemoryDirExists call
-  // for autoDir here.
-  await ensureMemoryDirExists(getTeamMemPath())
-  if (isGlobalMemoryEnabled()) {
-    await ensureMemoryDirExists(getGlobalMemPath(), 0o700)
+  // The global one is the user's alone, across projects: 0700.
+  for (const dir of dirs) {
+    await ensureMemoryDirExists(dir.root, dir.scope === 'global' ? 0o700 : undefined)
   }
   // The same memoized load the context injects the indexes from, so the
   // prompt agrees with what the model was given and stays put when the

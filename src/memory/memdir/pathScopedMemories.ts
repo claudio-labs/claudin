@@ -41,8 +41,8 @@ import { inspectRuleFrontmatter } from 'src/memory/instructions/ruleFrontmatter.
 import { processMemoryFile } from 'src/memory/instructions/claudemd/processing.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
-import { isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
+import { getMemoryDir, memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME, withoutTrailingSep } from 'src/memory/memdir/memoryScopes.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 
 export type PathScopedEntry = {
@@ -64,9 +64,7 @@ export type PathScopedScanFs = {
 // first lines, and three levels covers `team/<category>/`.
 const FRONTMATTER_MAX_LINES = 30
 const MAX_DEPTH = 3
-const ENTRYPOINT_NAME = 'MEMORY.md'
 const CLAUDIN_DIR_NAME = '.claudin'
-const TRAILING_SEP_RE = /[/\\]+$/
 
 export const defaultPathScopedScanFs: PathScopedScanFs = {
   readdir: dir => readdir(dir, { withFileTypes: true }),
@@ -97,7 +95,7 @@ export function resolveGlobBaseDir(
   memoryDir: string,
   originalCwd: string,
 ): string {
-  const root = memoryDir.replace(TRAILING_SEP_RE, '')
+  const root = withoutTrailingSep(memoryDir)
   const parent = dirname(root)
   return basename(parent) === CLAUDIN_DIR_NAME ? dirname(parent) : originalCwd
 }
@@ -203,7 +201,7 @@ export async function getPathScopedIndex(
   }
   const dirMtimes = new Map<string, number>()
   const entries: PathScopedEntry[] = []
-  await walk(memoryDir.replace(TRAILING_SEP_RE, ''), 0, fs, dirMtimes, entries)
+  await walk(withoutTrailingSep(memoryDir), 0, fs, dirMtimes, entries)
   // A root that could not be stat'ed leaves the map empty, and an empty map
   // is vacuously fresh — caching it would pin "no memories" for the rest of
   // the process. Left uncached, the next Read re-stats the root (one stat)
@@ -232,7 +230,7 @@ export async function findPathScopedMemoryFiles(options: {
   const result: MemoryFileInfo[] = []
   for (const entry of entries) {
     if (!matchesPathScope(entry.globs, baseDir, targetPath)) continue
-    const type: MemoryType = isTeamMemPath(entry.path) ? 'TeamMem' : 'AutoMem'
+    const type: MemoryType = memoryScopeOf(entry.path) === 'team' ? 'TeamMem' : 'AutoMem'
     result.push(
       ...(await processMemoryFile(entry.path, type, processedPaths, false)),
     )
@@ -240,15 +238,19 @@ export async function findPathScopedMemoryFiles(options: {
   return result
 }
 
-/** The production entry point: the session's memdir and original cwd. */
+/**
+ * The production entry point: the session's private dir (the team dir in it
+ * included) and original cwd. The global dir takes no `paths:`.
+ */
 export async function getPathScopedMemoryFiles(
   targetPath: string,
   processedPaths: Set<string>,
 ): Promise<MemoryFileInfo[]> {
-  if (!isAutoMemoryEnabled()) return []
+  const dir = getMemoryDir('private')
+  if (dir === null) return []
   return findPathScopedMemoryFiles({
     targetPath,
-    memoryDir: getAutoMemPath(),
+    memoryDir: dir.root,
     originalCwd: getOriginalCwd(),
     processedPaths,
   })

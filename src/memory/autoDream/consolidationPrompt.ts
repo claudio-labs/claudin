@@ -1,66 +1,47 @@
 // Extracted from dream.ts so auto-dream ships independently of KAIROS
 // feature flags (dream.ts is behind a feature()-gated require).
 
-import {
-  DIR_EXISTS_GUIDANCE,
-  ENTRYPOINT_NAME,
-  MAX_ENTRYPOINT_LINES,
-} from 'src/memory/memdir/memdir.js'
+import { DIR_EXISTS_GUIDANCE, MAX_ENTRYPOINT_LINES } from 'src/memory/memdir/memdir.js'
+import { type MemoryDir, promptRoots } from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 import {
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
 } from 'src/memory/memdir/memoryTypes.js'
 
-// getTeamMemPath() returns a path with a trailing separator (teamMemPaths.ts)
-// — strip it before interpolating so the prompt doesn't render `…/team//x`.
-const TRAILING_SEP_RE = /[/\\]+$/
-
 /**
- * The dream prompt. `teamRoot` is the team memory dir: the dream files
- * decisions, bugs and docs into its category subdirectories — the git commit
- * is the review gate. `extra` carries
- * the run-specific tail: the decision-sources digest (dreamDigest.ts), the
- * session list, tool constraints.
- *
- * `globalRoot` is the global memory dir while it is on. The dream writes to
- * it — who the user is, feedback that holds in any project — but never
- * prunes it: a run sees one project, and what looks stale here may hold in
- * another. Cleaning the global dir is `/memory tidy`'s job.
+ * The dream prompt, over the session's memory directories (memoryDirs.ts
+ * getMemoryDirs). Which directory a memory goes to is its type's scope, as
+ * the system prompt's `# Memory` section states it — the dream forks share
+ * that prompt, and /dream runs in the conversation that has it — so this
+ * only says where the directories are and what is particular to a dream:
+ * the team categories (the git commit is their review gate) and the global
+ * dir, which a run may add to but never prune, because it sees one project
+ * and what looks stale here may hold in another. autoDream.ts enforces that
+ * in the fork's tool gate. `extra` carries the run-specific tail: the
+ * decision-sources digest (dreamDigest.ts), the session list, tool constraints.
  */
 export function buildConsolidationPrompt(
-  memoryRoot: string,
+  dirs: readonly MemoryDir[],
   transcriptDir: string,
   extra: string,
-  teamRoot: string,
-  globalRoot: string | null = null,
 ): string {
-  const team = teamRoot.replace(TRAILING_SEP_RE, '')
-  const global = globalRoot === null ? null : globalRoot.replace(TRAILING_SEP_RE, '')
+  const { private: memoryRoot, team, global } = promptRoots(dirs)
   const sections = TEAM_CATEGORIES.map(c => `\`## ${c.section}\``).join(' / ')
+  const notGlobal = global === null ? '' : ' (outside the global dir)'
 
-  const globalBullet =
-    global === null
-      ? ''
-      : `- who the user is (\`type: user\`), or feedback that holds in any project (how they want answers, plans or reviews) — in the global dir \`${global}\`, shared by every project
-`
-  const privateFact =
-    global === null
-      ? 'a private fact — about this user, their feedback, private project context —'
-      : "a private fact about this project — feedback that names its files, commands or conventions, private project context —"
-  const globalRule =
+  const whereToWrite = `For each thing worth remembering, write or update a memory file in the directory its type's scope names — the \`# Memory\` section of your system prompt is the source of truth for that:
+
+${global === null ? '' : `- the global dir \`${global}\`, shared by every project — add to it only (below)\n`}- the private dir \`${memoryRoot}\`, at its top level
+- the team dir \`${team}\`: a team decision, a known defect or a documentation pointer goes in the matching category subdirectory (see Team categories below; each has a bar to clear), with its index line under the ${sections} section of \`${team}/${ENTRYPOINT_NAME}\`, creating the section if absent, and the subdirectory in the link (\`(decisions/file.md)\`); other team-scoped context — a convention, a process finding — at the team root
+
+The team dir is git-tracked: what you write there shows up in the user's \`git status\` and reaches teammates when they commit — that commit is the review, so write only what clears the bar, and never a secret.${
     global === null
       ? ''
       : `
 
-The global dir is shared by every project, and this run sees only this one: add to it and update a memory there, but never delete a global memory, never shrink one, and never remove a line from its index — what looks stale here may still hold in another project. Never put a \`project\` memory or a \`paths:\` key in it.`
-
-  const whereToWrite = `For each thing worth remembering, write or update a memory file. Where it goes:
-
-${globalBullet}- ${privateFact} at the top level of \`${memoryRoot}\`
-- a team decision, a known defect or a documentation pointer — in the matching category subdirectory of the team dir \`${team}\` (see Team categories below; each has a bar to clear), with its index line under the ${sections} section of \`${team}/${ENTRYPOINT_NAME}\`, creating the section if absent, and the subdirectory in the link (\`(decisions/file.md)\`)
-- team-scoped context that is none of those — a convention, a process finding — at the team root
-
-The team dir is git-tracked: what you write there shows up in the user's \`git status\` and reaches teammates when they commit — that commit is the review, so write only what clears the bar, and never a secret.${globalRule}`
+The global dir is shared by every project, and this run sees only this one: add memories and add to them there, but never delete, shrink or rewrite one, nor remove a line from its index. A global memory this project contradicts stays as it is — name it in your summary instead.`
+  }`
 
   const teamSection = `\n${renderTeamCategoriesXml().join('\n')}`
   const indexesToRead = [
@@ -102,21 +83,21 @@ Don't exhaustively read transcripts. Look only for things you already suspect ma
 
 ${whereToWrite}
 
-Use the memory file format and type conventions from your system prompt's auto-memory section — it's the source of truth for what to save, how to structure it, and what NOT to save.
+Use the memory file format and type conventions from your system prompt's \`# Memory\` section — it's the source of truth for what to save, how to structure it, and what NOT to save.
 
 Focus on:
 - Merging new signal into existing topic files rather than creating near-duplicates
 - Converting relative dates ("yesterday", "last week") to absolute dates so they remain interpretable after time passes
-- Deleting contradicted facts — if today's investigation disproves an old memory, fix it at the source
+- Deleting contradicted facts${notGlobal} — if today's investigation disproves an old memory, fix it at the source
 ${teamSection}
 ## Phase 4 — Prune and index
 
-Update \`${ENTRYPOINT_NAME}\` (each index you touched) so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, add and update lines, never remove one.'}
+Update \`${ENTRYPOINT_NAME}\` (each index you touched) so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry should be one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.${global === null ? '' : ' The pruning below applies to this project\'s indexes only: in the global one, only add lines.'}
 
 - Remove pointers to memories that are now stale, wrong, or superseded
 - Demote verbose entries: if an index line is over ~200 chars, it's carrying content that belongs in the topic file — shorten the line, move the detail
 - Add pointers to newly important memories
-- Resolve contradictions — if two files disagree, fix the wrong one
+- Resolve contradictions — if two files disagree, fix the wrong one${global === null ? '' : ', unless it is a global memory: name that one in your summary'}
 
 ---
 

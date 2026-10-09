@@ -367,6 +367,21 @@ describe('getClaudeMds — the team index', () => {
   })
 })
 
+describe('getClaudeMds — what each file is said to be', () => {
+  // The description is how the model tells the three memory indexes, and the
+  // user's own instructions, apart: global vs this project's private memory.
+  test.each([
+    ['GlobalMem', "/home/u/.claudin/memory/MEMORY.md (user's global memory, shared by every project):"],
+    ['AutoMem', "/repo/.claudin/memory/MEMORY.md (user's private memory for this project, persists across conversations):"],
+    ['User', "/home/u/.claudin/CLAUDE.md (user's private instructions for all projects):"],
+    ['Managed', "/etc/claudin/CLAUDE.md (user's private instructions for all projects):"],
+  ] as const)('%s', (type, header) => {
+    const path = header.slice(0, header.indexOf(' ('))
+    const out = getClaudeMds([{ path, type, content: 'body\n' } as MemoryFileInfo])
+    expect(out).toContain(`Contents of ${header}\n\nbody`)
+  })
+})
+
 describe('clearMemoryFileCaches', () => {
   test('empties the getMemoryFiles memoize cache', () => {
     // Seeded directly so the suite never triggers a real directory walk (which

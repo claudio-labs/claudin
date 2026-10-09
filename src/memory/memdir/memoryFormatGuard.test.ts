@@ -20,9 +20,12 @@ import {
 } from 'src/memory/memdir/memoryFormatGuard.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
+  MEMORY_TYPES,
   type MemoryType,
   TEAM_CATEGORIES,
+  TYPE_SCOPES,
 } from 'src/memory/memdir/memoryTypes.js'
+import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 import { getAutoMemPath } from 'src/memory/memdir/paths.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 import { buildMemoryWriteRules } from 'src/memory/memdir/teamMemPrompts.js'
@@ -30,9 +33,9 @@ import { applyPatchMemoryIndexAdvice } from 'src/tools/ApplyPatchTool/applyPatch
 
 const AUTO = '/repo/.claudin/memory/'
 const TEAM = '/repo/.claudin/memory/team/'
-const DIRS: MemoryDirs = { autoDir: AUTO, teamDir: TEAM }
+const DIRS: MemoryDirs = testMemoryDirs({ private: AUTO, team: TEAM })
 const GLOBAL = '/home/u/.claudin/memory/'
-const GDIRS: MemoryDirs = { autoDir: AUTO, teamDir: TEAM, globalDir: GLOBAL }
+const GDIRS: MemoryDirs = testMemoryDirs({ private: AUTO, team: TEAM, global: GLOBAL })
 
 const PLACEHOLDER_RE = /\{\{[^}]*\}\}/
 const FEEDBACK_BODY =
@@ -115,8 +118,7 @@ describe('checkMemoryFileFormatIn — what it refuses', () => {
   test('a user memory in the team dir, at the root or in a category', () => {
     for (const rel of ['team/me.md', 'team/decisions/me.md']) {
       const refusal = check(rel, fromTemplate('user', ['scope: x', 'impact: functional']))
-      expect(refusal).toContain('`type: user` is always private')
-      expect(refusal).toContain(AUTO)
+      expect(refusal).toContain(`\`type: user\` is ${TYPE_SCOPES.user.withoutGlobal} — write it under \`${AUTO}\` instead`)
     }
   })
 
@@ -163,12 +165,14 @@ describe('checkMemoryFileFormatIn — the global dir', () => {
   test('refuses a project memory, naming where it goes instead', () => {
     const refusal = inGlobal('project-x.md', fromTemplate('project'))!
     expect(refusal).toStartWith(`Memory file not written: ${GLOBAL}project-x.md is a global memory, and`)
-    expect(refusal).toContain('`type: project` belongs to one project')
-    expect(refusal).toContain(AUTO)
-    expect(refusal).toContain(TEAM)
-    // The rules it carries say what the global dir takes.
+    expect(refusal).toContain(`\`type: project\` is ${TYPE_SCOPES.project.withGlobal} — write it under \`${AUTO}\` or \`${TEAM}\` instead`)
+    // The rules it carries say what the global dir takes, in TYPE_SCOPES' words.
     expect(refusal).toEndWith(`\n\nThe rules for memory files:\n\n${buildMemoryWriteRules(TEAM, GLOBAL)}`)
-    expect(refusal).toContain(`The global dir \`${GLOBAL}\` takes what holds in every project`)
+    expect(refusal).toContain(`The global dir \`${GLOBAL}\` takes \`user\` (${TYPE_SCOPES.user.withGlobal})`)
+    for (const type of MEMORY_TYPES.filter(t => TYPE_SCOPES[t].global !== 'never')) {
+      expect(refusal).toContain(`\`${type}\` (${TYPE_SCOPES[type].withGlobal})`)
+    }
+    expect(refusal).toContain('; never `project`, and its memories carry no `paths:`.')
   })
 
   test('refuses `paths:` — a global memory is not tied to one project', () => {
@@ -180,8 +184,45 @@ describe('checkMemoryFileFormatIn — the global dir', () => {
   test('a user memory written to the private or team dir is sent to the global one', () => {
     for (const rel of ['me.md', 'team/me.md']) {
       const refusal = inPrivate(rel, fromTemplate('user'))!
-      expect(refusal).toContain('`type: user` is global')
-      expect(refusal).toContain(GLOBAL)
+      expect(refusal).toContain(`\`type: user\` is ${TYPE_SCOPES.user.withGlobal} — write it under \`${GLOBAL}\` instead`)
+      // A file saved here before the global dir existed: move it, or let /memory sort.
+      expect(refusal).toContain('move it there with `mv` and move its index line')
+      expect(refusal).toContain('`/memory sort` moves them all')
+    }
+  })
+
+  // Generic over TYPE_SCOPES: whatever type the table marks `never` for the
+  // global dir is refused there, whatever it marks `only` is refused outside
+  // it — so a new type, or a type that changes its scope, is covered here
+  // without a new test.
+  test("a type whose TYPE_SCOPES.global is 'never' is refused in the global dir", () => {
+    const never = MEMORY_TYPES.filter(type => TYPE_SCOPES[type].global === 'never')
+    expect(never.length).toBeGreaterThan(0)
+    for (const type of never) {
+      const refusal = inGlobal(`${type}-x.md`, fromTemplate(type))
+      expect(refusal).toContain(`\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal}`)
+      expect(inPrivate(`${type}-x.md`, fromTemplate(type))).toBeNull()
+    }
+  })
+
+  test("a type whose TYPE_SCOPES.global is 'only' is refused outside the global dir, quoting withGlobal", () => {
+    const only = MEMORY_TYPES.filter(type => TYPE_SCOPES[type].global === 'only')
+    expect(only.length).toBeGreaterThan(0)
+    for (const type of only) {
+      for (const rel of [`${type}-x.md`, `team/${type}-x.md`]) {
+        const refusal = inPrivate(rel, fromTemplate(type))
+        expect(refusal).toContain(`\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${GLOBAL}\``)
+      }
+      expect(inGlobal(`${type}-x.md`, fromTemplate(type))).toBeNull()
+      // While the global dir is off, the private dir takes it.
+      expect(checkMemoryFileFormatIn(DIRS, `${AUTO}${type}-x.md`, fromTemplate(type))).toBeNull()
+    }
+  })
+
+  test("a type whose TYPE_SCOPES.global is 'allowed' goes in the global or the private dir", () => {
+    for (const type of MEMORY_TYPES.filter(t => TYPE_SCOPES[t].global === 'allowed')) {
+      expect(inGlobal(`${type}-x.md`, fromTemplate(type))).toBeNull()
+      expect(inPrivate(`${type}-x.md`, fromTemplate(type))).toBeNull()
     }
   })
 

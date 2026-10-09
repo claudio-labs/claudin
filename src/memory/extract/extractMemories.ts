@@ -15,23 +15,29 @@
 
 import { feature } from 'bun:bundle'
 import { basename } from 'path'
+import { readFileSync } from 'fs'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js'
 import {
   formatMemoryManifest,
   scanMemoryFiles,
 } from 'src/memory/memdir/memoryScan.js'
 import {
-  getAutoMemPath,
   getExtractionTurnInterval,
-  getGlobalMemPath,
   isAutoMemoryEnabled,
-  isAutoMemPath,
   isExtractMemoriesEnabled,
-  isGlobalMemoryEnabled,
-  isGlobalMemPath,
 } from 'src/memory/memdir/paths.js'
+import {
+  getMemoryDir,
+  getMemoryDirs,
+  type MemoryDir,
+  memoryScopeOf,
+} from 'src/memory/memdir/memoryDirs.js'
+import {
+  ENTRYPOINT_NAME,
+  type MemoryScope,
+  withoutTrailingSep,
+} from 'src/memory/memdir/memoryScopes.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
@@ -59,12 +65,12 @@ import {
   createUserMessage,
 } from 'src/agent/messages/messages.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
 import {
   buildExtractCombinedPrompt,
   buildLoopHint,
 } from 'src/memory/extract/prompts.js'
-import { isTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
 
 // ============================================================================
 // Helpers
@@ -150,10 +156,7 @@ export function hasMemoryWritesSince(
     }
     for (const block of content) {
       const filePath = getWrittenFilePath(block)
-      if (
-        filePath !== undefined &&
-        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))
-      ) {
+      if (filePath !== undefined && memoryScopeOf(filePath) !== null) {
         return true
       }
     }
@@ -175,12 +178,38 @@ function denyAutoMemTool(tool: Tool, reason: string) {
 }
 
 /**
- * Creates a canUseTool function that allows Read/Grep/Glob (unrestricted),
- * read-only Bash commands, and Edit/Write only for paths within the
- * auto-memory directory or the global one (while it is on). Shared by
- * extractMemories and autoDream.
+ * Whether an Edit or Write only adds to `filePath`: an Edit whose new text
+ * keeps the old, a Write of a new file or of content that keeps the file's.
  */
-export function createAutoMemCanUseTool(memoryDir: string): CanUseToolFn {
+function onlyAdds(toolName: string, input: Record<string, unknown>, filePath: string): boolean {
+  if (toolName === FILE_EDIT_TOOL_NAME) {
+    return (
+      typeof input.old_string === 'string' &&
+      typeof input.new_string === 'string' &&
+      input.new_string.includes(input.old_string)
+    )
+  }
+  let existing: string
+  try {
+    existing = readFileSync(filePath, 'utf-8')
+  } catch (e) {
+    return isENOENT(e)
+  }
+  return typeof input.content === 'string' && input.content.includes(existing.trimEnd())
+}
+
+/**
+ * Creates a canUseTool function that allows Read/Grep/Glob (unrestricted),
+ * read-only Bash commands, and Edit/Write only within the memory directories
+ * (memoryDirs.ts). Shared by extractMemories and autoDream.
+ *
+ * `appendOnly` scopes take an Edit or Write only when it adds: the dream
+ * passes the global dir, which it may add to but never prune — one project's
+ * run cannot tell that a memory every project reads is stale.
+ */
+export function createMemoryCanUseTool(
+  appendOnly: readonly MemoryScope[] = [],
+): CanUseToolFn {
   return async (tool: Tool, input: Record<string, unknown>) => {
     // Allow Read/Grep/Glob unrestricted — all inherently read-only
     if (
@@ -210,17 +239,23 @@ export function createAutoMemCanUseTool(memoryDir: string): CanUseToolFn {
       'file_path' in input
     ) {
       const filePath = input.file_path
-      if (
-        typeof filePath === 'string' &&
-        (isAutoMemPath(filePath) || isGlobalMemPath(filePath))
-      ) {
+      const scope = typeof filePath === 'string' ? memoryScopeOf(filePath) : null
+      if (scope !== null && !appendOnly.includes(scope)) {
         return { behavior: 'allow' as const, updatedInput: input }
+      }
+      if (scope !== null) {
+        return onlyAdds(tool.name, input, filePath as string)
+          ? { behavior: 'allow' as const, updatedInput: input }
+          : denyAutoMemTool(
+              tool,
+              `the ${scope} memory dir is append-only in this run: add a memory or a line, never remove or rewrite one — leave a ${scope} memory this project contradicts as it is, and report it`,
+            )
       }
     }
 
-    const where = isGlobalMemoryEnabled()
-      ? `${memoryDir} or ${getGlobalMemPath()}`
-      : memoryDir
+    const where = getMemoryDirs()
+      .map(dir => withoutTrailingSep(dir.root))
+      .join(', ')
     return denyAutoMemTool(
       tool,
       `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${where} are allowed`,
@@ -277,23 +312,25 @@ function extractWrittenPaths(agentMessages: Message[]): string[] {
 
 /**
  * The manifest of what is already saved, so the agent updates a memory
- * instead of duplicating it. The scan lists paths relative to the directory
- * it walked, so with the global dir on each list says which directory it is.
+ * instead of duplicating it. One scan per directory that is not inside
+ * another (the private scan covers the team dir in it); the scan lists paths
+ * relative to the directory it walked, so each list but a lone private one
+ * says which directory it is.
  */
 export async function existingMemoryManifest(
-  memoryDir: string,
-  globalDir: string | null,
+  dirs: readonly MemoryDir[],
 ): Promise<string> {
   const signal = createAbortController().signal
-  const own = formatMemoryManifest(await scanMemoryFiles(memoryDir, signal))
-  if (globalDir === null) return own
-  const global = formatMemoryManifest(await scanMemoryFiles(globalDir, signal))
-  if (global === '') return own
-  return [
-    ...(own === '' ? [] : [`In \`${memoryDir}\`:`, own, '']),
-    `In the global dir \`${globalDir}\`:`,
-    global,
-  ].join('\n')
+  const tops = dirs.filter(dir => !dirs.some(other => other !== dir && dir.root.startsWith(other.root)))
+  const lists: { dir: MemoryDir; manifest: string }[] = []
+  for (const dir of tops) {
+    const manifest = formatMemoryManifest(await scanMemoryFiles(dir.root, signal))
+    if (manifest !== '') lists.push({ dir, manifest })
+  }
+  if (lists.length === 1 && lists[0]!.dir.scope === 'private') return lists[0]!.manifest
+  return lists
+    .map(({ dir, manifest }) => `In the ${dir.scope} dir \`${dir.root}\`:\n${manifest}`)
+    .join('\n\n')
 }
 
 // ============================================================================
@@ -367,7 +404,6 @@ export function initExtractMemories(): void {
     isTrailingRun?: boolean
   }): Promise<void> {
     const { messages } = context
-    const memoryDir = getAutoMemPath()
     const newMessageCount = countModelVisibleMessagesSince(
       messages,
       lastMemoryMessageUuid,
@@ -412,7 +448,7 @@ export function initExtractMemories(): void {
       )
     }
 
-    const canUseTool = createAutoMemCanUseTool(memoryDir)
+    const canUseTool = createMemoryCanUseTool()
     const cacheSafeParams = createCacheSafeParams(context)
 
     // Only run extraction every N eligible turns (getExtractionTurnInterval).
@@ -432,14 +468,14 @@ export function initExtractMemories(): void {
     const startTime = Date.now()
     try {
       logForDebugging(
-        `[extractMemories] starting — ${newMessageCount} new messages, memoryDir=${memoryDir}`,
+        `[extractMemories] starting — ${newMessageCount} new messages`,
       )
 
       // Pre-inject the memory directory manifest so the agent doesn't spend
       // a turn on `ls` (memoryScan.ts, frontmatter only).
       // Placed after the throttle gate so skipped turns don't pay the scan cost.
-      const globalDir = isGlobalMemoryEnabled() ? getGlobalMemPath() : null
-      const existingMemories = await existingMemoryManifest(memoryDir, globalDir)
+      const existingMemories = await existingMemoryManifest(getMemoryDirs())
+      const globalDir = getMemoryDir('global')?.root ?? null
 
       // The MEMORY.md index is always in the system prompt now that the
       // per-turn relevance recall is gone, so the extractor is always told to
@@ -504,7 +540,7 @@ export function initExtractMemories(): void {
       const memoryPaths = writtenPaths.filter(
         p => basename(p) !== ENTRYPOINT_NAME,
       )
-      const teamCount = count(memoryPaths, isTeamMemPath)
+      const teamCount = count(memoryPaths, p => memoryScopeOf(p) === 'team')
 
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,

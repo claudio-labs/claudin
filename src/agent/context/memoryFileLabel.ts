@@ -1,8 +1,9 @@
 import type { ContextData } from 'src/agent/context/analyzeContext.js'
 import {
-  MEMORY_INDEX_NAMES,
-  memoryIndexKind,
-} from 'src/memory/memdir/memoryIndexNames.js'
+  MEMORY_SCOPE_SPECS,
+  memoryIndexLabel,
+  scopeOfIndexType,
+} from 'src/memory/memdir/memoryScopes.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
 import { formatTokens } from 'src/shared/text/format.js'
 import { plural } from 'src/shared/text/stringUtils.js'
@@ -26,16 +27,16 @@ export function describeContextMemoryFile(file: ContextMemoryFile): {
   typeColumn: string
 } {
   const tokens = `${formatTokens(file.tokens)} tokens`
-  const kind = memoryIndexKind(file.type)
-  if (kind === null) {
+  const scope = scopeOfIndexType(file.type)
+  if (scope === null) {
     return { name: getDisplayPath(file.path), detail: tokens, typeColumn: file.type }
   }
-  const { label, subcommand } = MEMORY_INDEX_NAMES[kind]
+  const label = memoryIndexLabel(scope)
   const count = file.entryCount ?? 0
   const entries = `${count} ${plural(count, 'entry', 'entries')}`
   return {
     name: label,
-    detail: `${entries} · ${tokens} · ${subcommand}`,
+    detail: `${entries} · ${tokens} · ${MEMORY_SCOPE_SPECS[scope].subcommand}`,
     typeColumn: `${label} (${entries})`,
   }
 }

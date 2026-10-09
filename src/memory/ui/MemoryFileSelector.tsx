@@ -7,8 +7,9 @@ import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getAutoMemPath, getGlobalMemPath, isAutoMemoryEnabled, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js';
-import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js';
+import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js';
+import { MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js';
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js';
 import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
@@ -37,11 +38,7 @@ type Props = {
   onSelect: (path: string) => void;
   onCancel: () => void;
   /** Memory counts for the browse rows, scanned before the dialog opens. */
-  dirCounts?: {
-    global: number;
-    private: number;
-    team: number;
-  };
+  dirCounts?: Record<MemoryScope, number>;
 };
 export function MemoryFileSelector(t0: Props) {
   const $ = _c(58);
@@ -92,7 +89,7 @@ export function MemoryFileSelector(t0: Props) {
     let description;
     const isGit = projectIsInGitRepo(originalCwd);
     if (file.type === "User" && !file.isNested) {
-      description = "Saved in ~/.claudin/CLAUDE.md";
+      description = "Your instructions for every project, in ~/.claudin/CLAUDE.md";
     } else {
       if (file.type === "Project" && !file.isNested && file.path === projectMemoryPath) {
         description = `${isGit ? "Checked in at" : "Saved in"} ./${projectMemoryFileName}`;
@@ -122,39 +119,18 @@ export function MemoryFileSelector(t0: Props) {
     // the counts are props, which a memo_cache_sentinel branch would freeze at
     // their first value. $[0] and $[1] are left unused on purpose; changing
     // _c(58) or reusing an index is what breaks this file (ink-tui.md §6).
-    if (isGlobalMemoryEnabled()) {
-      const globalMemPath = getGlobalMemPath();
+    for (const memoryDir of getMemoryDirs()) {
+      const spec = MEMORY_SCOPE_SPECS[memoryDir.scope];
       folderOptions.push({
-        label: `Global memory${dirCounts ? ` · ${dirCounts.global}` : ""}`,
+        label: `${spec.title}${dirCounts ? ` · ${dirCounts[memoryDir.scope]}` : ""}`,
         value: encodeBrowseValue({
-          dir: globalMemPath,
-          title: "Global memory",
-          isTeamDir: false,
-          isGlobalDir: true
+          dir: memoryDir.root,
+          title: spec.title,
+          scope: memoryDir.scope
         }),
-        description: `Shared by every project, saved in ${getDisplayPath(globalMemPath)}`
+        description: `${spec.description} ${getDisplayPath(memoryDir.root)}`
       });
     }
-    const autoMemPath = getAutoMemPath();
-    folderOptions.push({
-      label: `Private memory${dirCounts ? ` · ${dirCounts.private}` : ""}`,
-      value: encodeBrowseValue({
-        dir: autoMemPath,
-        title: "Private memory",
-        isTeamDir: false
-      }),
-      description: `Saved in ${getDisplayPath(autoMemPath)}`
-    });
-    const teamMemPath = getTeamMemPath();
-    folderOptions.push({
-      label: `Team memory${dirCounts ? ` · ${dirCounts.team}` : ""}`,
-      value: encodeBrowseValue({
-        dir: teamMemPath,
-        title: "Team memory",
-        isTeamDir: true
-      }),
-      description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`
-    });
     folderOptions.push({
       label: "Tidy memories",
       value: TIDY_VALUE,
@@ -167,8 +143,7 @@ export function MemoryFileSelector(t0: Props) {
           label: `${chalk.bold(agent.agentType)} agent memory`,
           value: encodeBrowseValue({
             dir: agentDir,
-            title: `${agent.agentType} agent memory`,
-            isTeamDir: false
+            title: `${agent.agentType} agent memory`
           }),
           description: `${agent.memory} scope`
         });

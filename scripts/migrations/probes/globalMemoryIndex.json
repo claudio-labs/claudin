@@ -1,30 +1,53 @@
 {
   "test": [
     "src/memory/instructions/claudemd.memoryIndexes.test.ts",
+    "src/memory/instructions/claudemd.test.ts",
     "src/agent/attachments/injections.memoryIndex.test.ts"
   ],
   "source": "src/memory/instructions/claudemd.ts",
   "probes": [
     {
       "name": "the global index enters context",
-      "find": "    if (isGlobalMemoryEnabled()) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n",
-      "replace": "    if (false) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n"
+      "find": "    for (const dir of getMemoryDirs()) {\n      const { info } = await safelyReadMemoryFileAsync(\n",
+      "replace": "    for (const dir of getMemoryDirs().filter(d => d.scope !== 'global')) {\n      const { info } = await safelyReadMemoryFileAsync(\n"
     },
     {
       "name": "the global index is gated on the killswitch",
-      "find": "    if (isGlobalMemoryEnabled()) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n",
-      "replace": "    if (true) {\n      const { info: globalMemEntry } = await safelyReadMemoryFileAsync(\n"
+      "source": "src/memory/memdir/memoryDirs.ts",
+      "find": "    scope => scope !== 'global' || isGlobalMemoryEnabled(),\n",
+      "replace": "    scope => true,\n"
+    },
+    {
+      "name": "the indexes load general to specific",
+      "source": "src/memory/memdir/memoryScopes.ts",
+      "find": "export const MEMORY_SCOPES = ['global', 'private', 'team'] as const\n",
+      "replace": "export const MEMORY_SCOPES = ['private', 'global', 'team'] as const\n"
+    },
+    {
+      "name": "each index loads as its scope's type",
+      "find": "        MEMORY_SCOPE_SPECS[dir.scope].indexType,\n",
+      "replace": "        'AutoMem',\n"
     },
     {
       "name": "the model is told which index is the global one",
-      "find": "                ? \" (user's global auto-memory, shared by every project)\"\n",
-      "replace": "                ? \" (user's auto-memory, persists across conversations)\"\n"
+      "find": "  GlobalMem: \" (user's global memory, shared by every project)\",\n",
+      "replace": "  GlobalMem: \" (user's private memory for this project, persists across conversations)\",\n"
+    },
+    {
+      "name": "the private index says it is this project's",
+      "find": "  AutoMem: \" (user's private memory for this project, persists across conversations)\",\n",
+      "replace": "  AutoMem: \" (user's auto-memory, persists across conversations)\",\n"
+    },
+    {
+      "name": "the user's own CLAUDE.md is instructions, not memory",
+      "find": "  User: \" (user's private instructions for all projects)\",\n",
+      "replace": "  User: \" (user's private global instructions for all projects)\",\n"
     },
     {
       "name": "a global index counts as a memory index",
-      "source": "src/memory/memdir/types.ts",
-      "find": "  return type === 'AutoMem' || type === 'GlobalMem' || type === 'TeamMem'\n",
-      "replace": "  return type === 'AutoMem' || type === 'TeamMem'\n"
+      "source": "src/memory/memdir/memoryScopes.ts",
+      "find": "  return scopeOfIndexType(type) !== null\n",
+      "replace": "  return scopeOfIndexType(type) !== null && type !== 'GlobalMem'\n"
     }
   ]
 }

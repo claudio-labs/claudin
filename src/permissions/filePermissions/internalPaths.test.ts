@@ -113,6 +113,40 @@ describe('auto-memory carve-outs', () => {
     expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
   })
 
+  test('the reason names the directory, team beating the private dir it sits in', () => {
+    const reason = (result: { decisionReason?: unknown }) =>
+      (result.decisionReason as { reason?: string } | undefined)?.reason
+    const cases = [
+      ['global', join(getGlobalMemPath(), 'user-language.md')],
+      ['private', join(memDir, 'feedback-x.md')],
+      ['team', join(memDir, 'team', 'bugs', 'x.md')],
+    ] as const
+    for (const [scope, file] of cases) {
+      expect(reason(checkEditableInternalPath(file, { file_path: file }))).toBe(
+        `${scope} memory files are allowed for writing`,
+      )
+      expect(reason(checkReadableInternalPath(file, { file_path: file }))).toBe(
+        `${scope} memory files are allowed for reading`,
+      )
+    }
+  })
+
+  test('with auto memory off, no memory dir is carved out', () => {
+    process.env.CLAUDIN_DISABLE_AUTO_MEMORY = '1'
+    try {
+      for (const file of [
+        join(memDir, 'feedback-x.md'),
+        join(memDir, 'team', 'bugs', 'x.md'),
+        join(getGlobalMemPath(), 'user-language.md'),
+      ]) {
+        expect(checkEditableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
+        expect(checkReadableInternalPath(file, { file_path: file }).behavior).toBe('passthrough')
+      }
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_AUTO_MEMORY
+    }
+  })
+
   test('CLAUDIN_GLOBAL_MEMORY=0 takes the global carve-out with it', () => {
     process.env.CLAUDIN_GLOBAL_MEMORY = '0'
     try {

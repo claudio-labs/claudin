@@ -4,29 +4,33 @@ import {
   MAX_ENTRYPOINT_LINES,
 } from 'src/memory/memdir/memdir.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
+import { testMemoryDirs } from 'src/memory/memdir/__testutils__/memoryDirs.js'
 
 const PRIVATE_ROOT = '/repo/.claudin/memory'
 const TEAM_ROOT = '/repo/.claudin/memory/team'
+const GLOBAL_ROOT = '/home/u/.claudin/memory'
 const MAX_KB = Math.round(MAX_ENTRYPOINT_BYTES / 1024)
+const DIRS = testMemoryDirs({ private: PRIVATE_ROOT, team: TEAM_ROOT })
 
 describe('buildMemoryTidyPrompt', () => {
   test('includes the private memory root and orient step', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
+    const prompt = buildMemoryTidyPrompt(DIRS)
     expect(prompt).toContain(PRIVATE_ROOT)
     expect(prompt).toContain(`${PRIVATE_ROOT}/MEMORY.md`)
     expect(prompt).toContain('full contents, not just frontmatter')
   })
 
   test('normalizes a trailing separator instead of rendering double slashes', () => {
-    // getAutoMemPath()/getTeamMemPath() return paths with trailing sep
-    const prompt = buildMemoryTidyPrompt(`${PRIVATE_ROOT}/`, `${TEAM_ROOT}/`)
+    // MemoryDir roots carry a trailing sep (the fixture adds it, as getMemoryDirs() does)
+    expect(DIRS[0]!.root).toBe(`${PRIVATE_ROOT}/`)
+    const prompt = buildMemoryTidyPrompt(DIRS)
     expect(prompt).toContain(`${PRIVATE_ROOT}/MEMORY.md`)
     expect(prompt).toContain(`${TEAM_ROOT}/MEMORY.md`)
     expect(prompt).not.toContain('//MEMORY.md')
   })
 
   test('states the conservative hard rules', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
+    const prompt = buildMemoryTidyPrompt(DIRS)
     // No cross-boundary merges
     expect(prompt).toContain('Never merge across the private ↔ team boundary')
     // Ambiguous pairs are left alone
@@ -47,7 +51,7 @@ describe('buildMemoryTidyPrompt', () => {
   })
 
   test('index update is surgical, not a rewrite, and cites caps from the constants', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
+    const prompt = buildMemoryTidyPrompt(DIRS)
     expect(prompt).toContain('NOT a rewrite')
     expect(prompt).toContain('Remove only the lines pointing at files you deleted')
     expect(prompt).toContain('byte-for-byte as it was')
@@ -57,13 +61,13 @@ describe('buildMemoryTidyPrompt', () => {
   })
 
   test('deletion goes through rm (human permission gate)', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
+    const prompt = buildMemoryTidyPrompt(DIRS)
     expect(prompt).toContain('`rm`')
     expect(prompt).toContain('permission prompt')
   })
 
   test('team-on: team instructions with structure preservation', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
+    const prompt = buildMemoryTidyPrompt(DIRS)
     expect(prompt).toContain('## Team memory')
     expect(prompt).toContain(TEAM_ROOT)
     expect(prompt).toContain(`${TEAM_ROOT}/MEMORY.md`)
@@ -77,22 +81,24 @@ describe('buildMemoryTidyPrompt', () => {
   })
 
   test('requires a final report including ambiguous, conflicts, and stale buckets', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)
+    const prompt = buildMemoryTidyPrompt(DIRS)
     expect(prompt).toContain('Ambiguous pairs left alone')
     expect(prompt).toContain('Conflicts noted')
     expect(prompt).toContain('Stale or broken observed')
     expect(prompt).toContain('a tidy run that changes nothing is a correct outcome')
   })
 
-  test('global-off: the prompt is the one that always shipped', () => {
-    expect(buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT, null)).toBe(
-      buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT),
-    )
-    expect(buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT)).not.toContain('Global memory')
+  test('global-off: the prompt never mentions a global dir', () => {
+    const prompt = buildMemoryTidyPrompt(DIRS)
+    expect(prompt).not.toContain('Global memory')
+    expect(prompt).not.toContain('global')
+    expect(prompt).toContain('(and the team index if applicable)')
   })
 
   test('global-on: tidied by the same steps, never merged across, deletions reach every project', () => {
-    const prompt = buildMemoryTidyPrompt(PRIVATE_ROOT, TEAM_ROOT, '/home/u/.claudin/memory/')
+    const prompt = buildMemoryTidyPrompt(
+      testMemoryDirs({ private: PRIVATE_ROOT, team: TEAM_ROOT, global: GLOBAL_ROOT }),
+    )
     expect(prompt).toContain('## Global memory')
     expect(prompt).toContain('/home/u/.claudin/memory/MEMORY.md')
     expect(prompt).not.toContain('//MEMORY.md')

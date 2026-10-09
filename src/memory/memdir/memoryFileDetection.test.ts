@@ -6,13 +6,19 @@ import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
 import { setFlagSettingsInline } from 'src/platform/bootstrap/state/sessionFlags.js'
 import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import { getAutoMemPath, getGlobalMemPath } from 'src/memory/memdir/paths.js'
+import { memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
 import {
   isAutoManagedMemoryFile,
-  isAutoMemFile,
-  isFreshnessNotedMemoryFile,
   isMemoryDirectory,
   isShellCommandTargetingMemory,
 } from 'src/memory/memdir/memoryFileDetection.js'
+
+// The private-dir predicate and the freshness-note predicate were folded into
+// the scope registry (memoryDirs.ts): "a private memory file" is
+// memoryScopeOf(path) === 'private', "a memory file of any directory" is
+// memoryScopeOf(path) !== null.
+const isPrivateMemFile = (path: string): boolean => memoryScopeOf(path) === 'private'
+const isAnyMemFile = (path: string): boolean => memoryScopeOf(path) !== null
 
 // What the transcript counts as a memory operation: the collapsed read/search
 // badge and the extraction fork's "the main agent already wrote" check both
@@ -41,12 +47,14 @@ describe('memory file detection', () => {
     previousProjectRoot = getProjectRoot()
     setProjectRoot(join(root, 'project'))
     getAutoMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
     memDir = getAutoMemPath()
   })
 
   afterAll(() => {
     setProjectRoot(previousProjectRoot)
     getAutoMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
     for (const key of ENV_KEYS) {
       const value = savedEnv.get(key)
       if (value === undefined) delete process.env[key]
@@ -57,19 +65,19 @@ describe('memory file detection', () => {
 
   test('a private memory file is an auto-managed memory file', () => {
     const file = join(memDir, 'feedback-x.md')
-    expect(isAutoMemFile(file)).toBe(true)
+    expect(isPrivateMemFile(file)).toBe(true)
     expect(isAutoManagedMemoryFile(file)).toBe(true)
   })
 
   test('a source file of the project is not', () => {
     const file = join(root, 'project', 'src', 'index.ts')
-    expect(isAutoMemFile(file)).toBe(false)
+    expect(isPrivateMemFile(file)).toBe(false)
     expect(isAutoManagedMemoryFile(file)).toBe(false)
   })
 
   test('a traversal out of the memory dir is not a memory file', () => {
     // Raw, not join()ed: join would resolve the `..` before the check sees it.
-    expect(isAutoMemFile(`${memDir}../../src/index.ts`)).toBe(false)
+    expect(isPrivateMemFile(`${memDir}../../src/index.ts`)).toBe(false)
   })
 
   test('the private memory dir is a memory directory, the project root is not', () => {
@@ -90,7 +98,7 @@ describe('memory file detection', () => {
   test('nothing is memory when auto memory is off', () => {
     process.env.CLAUDIN_DISABLE_AUTO_MEMORY = '1'
     try {
-      expect(isAutoMemFile(join(memDir, 'feedback-x.md'))).toBe(false)
+      expect(isPrivateMemFile(join(memDir, 'feedback-x.md'))).toBe(false)
     } finally {
       delete process.env.CLAUDIN_DISABLE_AUTO_MEMORY
     }
@@ -98,7 +106,8 @@ describe('memory file detection', () => {
 
   test('a global memory file is an auto-managed memory file, though not a private one', () => {
     const file = join(getGlobalMemPath(), 'user-language.md')
-    expect(isAutoMemFile(file)).toBe(false)
+    expect(isPrivateMemFile(file)).toBe(false)
+    expect(memoryScopeOf(file)).toBe('global')
     expect(isAutoManagedMemoryFile(file)).toBe(true)
   })
 
@@ -106,20 +115,21 @@ describe('memory file detection', () => {
     process.env.CLAUDIN_GLOBAL_MEMORY = '0'
     try {
       expect(isAutoManagedMemoryFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(false)
-      expect(isFreshnessNotedMemoryFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(false)
+      expect(isAnyMemFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(false)
     } finally {
       delete process.env.CLAUDIN_GLOBAL_MEMORY
     }
   })
 
   test('a Read of a private, team or global memory carries the freshness note; a source file does not', () => {
-    expect(isFreshnessNotedMemoryFile(join(memDir, 'feedback-x.md'))).toBe(true)
-    expect(isFreshnessNotedMemoryFile(join(memDir, 'team', 'bugs', 'x.md'))).toBe(true)
-    expect(isFreshnessNotedMemoryFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(true)
-    expect(isFreshnessNotedMemoryFile(join(root, 'project', 'src', 'index.ts'))).toBe(false)
+    expect(isAnyMemFile(join(memDir, 'feedback-x.md'))).toBe(true)
+    expect(isAnyMemFile(join(memDir, 'team', 'bugs', 'x.md'))).toBe(true)
+    expect(memoryScopeOf(join(memDir, 'team', 'bugs', 'x.md'))).toBe('team')
+    expect(isAnyMemFile(join(getGlobalMemPath(), 'user-language.md'))).toBe(true)
+    expect(isAnyMemFile(join(root, 'project', 'src', 'index.ts'))).toBe(false)
     // FileReadTool records the mtime the note is computed from through it.
     const dispatch = readFileSync(new URL('../../tools/FileReadTool/readDispatch.ts', import.meta.url), 'utf8')
-    expect(dispatch).toContain('if (isFreshnessNotedMemoryFile(fullFilePath)) {\n    markMemoryFileMtime(data, mtimeMs)')
+    expect(dispatch).toContain('if (memoryScopeOf(fullFilePath) !== null) {\n    markMemoryFileMtime(data, mtimeMs)')
   })
 
   describe('with the global dir moved outside the config home', () => {
