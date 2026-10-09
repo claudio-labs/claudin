@@ -4,13 +4,14 @@
 in settings.json (user/local/policy — never projectSettings, for security)
 to force the legacy global-only location.
 **Scope:** `src/memory/memdir/paths.ts`, `src/memory/memdir/memoryMigration.ts`,
+`src/memory/memdir/memoryScopes.ts` and `src/memory/memdir/memoryDirs.ts` (the
+directories, below),
 `src/memory/memdir/teamMemPaths.ts`, `src/memory/memdir/teamMemPrompts.ts`,
-`src/memory/memdir/memoryTypes.ts` (the team categories),
+`src/memory/memdir/memoryTypes.ts` (the team categories and `TYPE_SCOPES`),
 `src/memory/memdir/pathScopedMemories.ts` (on-demand loading),
 `src/memory/autoDream/dreamDigest.ts` (what the dream reads),
-`src/commands/memory/sortPrompt.ts` (`/memory sort`),
-`src/memory/memdir/memoryFormatGuard.ts` and
-`src/memory/memdir/memoryIndexNames.ts` (the global memory, below).
+`src/commands/memory/sortPrompt.ts` (`/memory sort`) and
+`src/memory/memdir/memoryFormatGuard.ts`.
 
 ## Problem
 
@@ -52,7 +53,7 @@ Resolution order (first match wins):
 ### Migration
 
 The first time the project-local path resolves for a project whose legacy
-global directory already has memory content, `migrateGlobalMemoryIfNeeded()`
+per-project directory already has memory content, `migrateLegacyMemoryIfNeeded()`
 (`src/memory/memdir/memoryMigration.ts`) **copies** that content into the new
 location — it never deletes or moves the original, so the old
 `~/.claudin/projects/.../memory/` directory remains as a backup. The copy is
@@ -99,48 +100,86 @@ new project started knowing nothing about the user. Since 2026-10-09 a third
 directory holds that: the **global** memory, `<memoryBase>/memory/`
 (`~/.claudin/memory/` by default), read by every project.
 
+### One registry for the three directories
+
+Global, private and team are **scopes**, and two modules are the only place
+that knows them:
+
+- `memoryScopes.ts` — pure: `MEMORY_SCOPES` (general to specific, the order
+  the indexes load and every surface lists them in) and `MEMORY_SCOPE_SPECS`,
+  what each one is called (its getMemoryFiles type, its `/memory` row, title,
+  description, delete note and subcommand), plus `ENTRYPOINT_NAME`. The
+  transcript, `/context` and `/memory` name the directories from here.
+- `memoryDirs.ts` — which directories are in use and where:
+  `getMemoryDirs()` (none while memory is off; global only while it is on),
+  `memoryDirOf(path)` / `memoryScopeOf(path)` (the deepest root wins, so a
+  file under `team/` is team, not private), `promptRoots(dirs)`.
+
+Everything that asks "is this memory, and whose?" asks there: the permission
+carve-outs, the format guard, the forks' tool gate, the extraction manifest,
+getMemoryFiles, the transcript's badges, the freshness note, `/memory`'s rows
+and the prompts of the dream, tidy and sort. The one exception is the team
+secret guard, which keeps `isTeamMemPath`: the team dir is git-tracked, so a
+write there is scanned whether memory is on or not.
+
+### Where each type goes: `TYPE_SCOPES`
+
+`memoryTypes.ts` `TYPE_SCOPES` states each type's scope once, global dir on
+and off, and what the guard enforces in the global dir (`only`, `allowed`,
+`never`). Both system prompts, the extraction's verbose taxonomy, the sort's
+promotion part, the write rules and the guard's refusals all render that text,
+so none of them can drift from another. The dream and tidy prompts do not
+restate it: they point at the system prompt's `# Memory` section, which their
+forks share.
+
+With the global dir on: `user` always global (what holds of the user only in
+this project is a private `project` memory); `feedback` global when it would
+still hold in an unrelated repo, private when it would not or when unsure,
+team only for a project-wide convention; `project` never global; `reference`
+usually team, global only for a personal resource. The type alone does not
+decide it: of this repo's 21 private feedback memories when it shipped, about
+half were about the person and half about Claudin.
+
 - **Where:** `getGlobalMemPath()` (`src/memory/memdir/paths.ts`). The setting
   `autoMemoryGlobalDirectory` moves it — from policy, flag, local or user
   settings only, never projectSettings, like `autoMemoryDirectory` — which is
   also how the memory-write bench points it at its workspace. Created 0700 by
   `loadMemoryPrompt`. The `user`-scope agent memory already lived beside it, at
-  `<memoryBase>/agent-memory/`.
+  `<memoryBase>/agent-memory/`. Either setting is refused when it would hold
+  the config home: a memory directory is read and written with no prompt, so
+  `~/.claudin` itself would put `settings.json` under that carve-out.
 - **When:** `isGlobalMemoryEnabled()` — on with auto memory, off with
   `CLAUDIN_GLOBAL_MEMORY=0`, off under a Cowork memory override (the caller
   gets exactly the directory it designated), and off when the global and
-  private dirs nest. `isGlobalMemPath()` is false while it is off, so every
-  check built on it — the carve-out included — goes with the switch. Off, every
-  prompt reads exactly as it did before the directory existed.
-- **What goes there** — the model decides, by the type's scope: `user` always;
-  `feedback` when it holds in any project (how the user wants answers, plans,
-  reviews) and names none of this project's files, commands or conventions;
-  `reference` only for a personal resource outside any one project; `project`
-  never. The type alone does not decide it: of this repo's 21 private feedback
-  memories when it shipped, about half were about the person and half about
-  Claudin.
-- **The guard** (`memoryFormatGuard.ts`, scope `'global'`): with the global dir
-  on, `type: user` in the private or team dir is refused with "write it under
-  `<globalDir>`"; `type: project` and a `paths:` key in the global dir are
-  refused. The rules the refusal carries (`buildMemoryWriteRules`) say what the
-  global dir takes. No secret scan — it is never committed, like the private
-  dir.
+  private dirs nest. `getMemoryDirs()` leaves it out while it is off, so every
+  check built on the registry — the carve-out included — goes with the switch,
+  and the prompts name two directories.
+- **The guard** (`memoryFormatGuard.ts`): with the global dir on, a type whose
+  `TYPE_SCOPES` entry is `only` (`user`) is refused outside it, quoting its
+  scope and saying how to move a file saved before the global dir existed; a
+  `never` type (`project`) and a `paths:` key are refused in it. No secret
+  scan — it is never committed, like the private dir.
 - **Context:** its `MEMORY.md` loads as `'GlobalMem'`, before the private and
   team indexes — general to specific, the way the user's CLAUDE.md precedes
   the project's — under the same caps. `pathScopedMemories.ts` does not scan
   it: a global memory is index-only. The transcript says `Loaded global
-  memories index (4 entries), private memories index (…)`; the names live
-  once, in `memoryIndexNames.ts`, which `/context` reads too.
+  memories index (4 entries), private memories index (…)`, and a recall
+  `Loaded 2 global memories, 1 private memory`.
 - **Permissions:** read and write with no prompt, the same carve-out as the
   private dir (`internalPaths.ts`), for the main agent and both forks. The risk
   accepted with it: a memory planted by a hostile repo now reaches every
   project, not only that one. What contains it is what already contained a
   private one — a recalled memory arrives as background context, not as an
   instruction, and every write shows in the transcript.
-- **Forks:** the extraction may write it (`createAutoMemCanUseTool`), skips a
-  range where the main agent already wrote a global memory, and lists the
-  global dir in its manifest. The dream writes and updates it but never
-  deletes, shrinks or prunes the index there: a run sees one project, and what
-  looks stale here may hold in another.
+- **Forks:** the extraction may write it (`createMemoryCanUseTool`), skips a
+  range where the main agent already wrote a memory, and lists the global dir
+  in its manifest. The auto-dream's gate is `createMemoryCanUseTool(['global'])`:
+  there an Edit or Write passes only when it adds — an Edit whose new text
+  keeps the old, a new file, a Write that keeps the file's content — because a
+  run sees one project and what looks stale here may hold in another. Its
+  prompt says the same, and to name a global memory this project contradicts
+  in its summary instead of fixing it. A manual `/dream` runs in the
+  conversation with normal permissions, so there it is the prompt alone.
 - **/memory:** a `Global memory` row first, `/memory global` to open it (a
   delete there warns that every project loses the memory); `/memory tidy`
   covers it and never merges across directories; `/memory sort` is the
@@ -341,9 +380,9 @@ is left out.
 
 ## Verified unaffected
 
-- Permission carve-outs (`isAutoMemPath()` in
+- Permission carve-outs (`memoryScopeOf()` in
   `src/permissions/filePermissions/internalPaths.ts`) are computed dynamically
-  from `getAutoMemPath()`, so reads/writes are still auto-approved with no
+  from `getMemoryDirs()`, so reads/writes are still auto-approved with no
   prompt after relocation, including under the category subdirectories.
   `.claudin` was already in `DANGEROUS_DIRECTORIES`
   (`src/permissions/filePermissions/dangerousPaths.ts`) regardless of whether it's global
