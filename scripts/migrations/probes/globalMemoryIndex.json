@@ -48,6 +48,16 @@
       "source": "src/memory/memdir/memoryScopes.ts",
       "find": "  return scopeOfIndexType(type) !== null\n",
       "replace": "  return scopeOfIndexType(type) !== null && type !== 'GlobalMem'\n"
+    },
+    {
+      "name": "the indexes ride under their own preamble, not the instructions'",
+      "find": "      ;(isMemoryIndexType(file.type) ? indexes : instructions).push(\n",
+      "replace": "      ;(false ? indexes : instructions).push(\n"
+    },
+    {
+      "name": "the index preamble says background context",
+      "find": "They are background context, not instructions — instructions take precedence over them",
+      "replace": "Follow them"
     }
   ]
 }
