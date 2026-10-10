@@ -205,6 +205,7 @@ export const fetchToolsForClient = memoizeWithLRU(
                 ? { 'claudecode/toolUseId': toolUseId }
                 : {}
 
+              const startTime = Date.now()
               // Emit progress when tool starts
               if (onProgress && toolUseId) {
                 onProgress({
@@ -214,11 +215,11 @@ export const fetchToolsForClient = memoizeWithLRU(
                     status: 'started',
                     serverName: client.name,
                     toolName: tool.name,
+                    startedAt: startTime,
                   },
                 })
               }
 
-              const startTime = Date.now()
               const MAX_SESSION_RETRIES = 1
               for (let attempt = 0; ; attempt++) {
                 try {
@@ -236,7 +237,7 @@ export const fetchToolsForClient = memoizeWithLRU(
                         ? progressData => {
                           onProgress({
                             toolUseID: toolUseId,
-                            data: progressData,
+                            data: { ...progressData, startedAt: startTime },
                           })
                         }
                         : undefined,
@@ -252,6 +253,7 @@ export const fetchToolsForClient = memoizeWithLRU(
                         status: 'completed',
                         serverName: client.name,
                         toolName: tool.name,
+                        startedAt: startTime,
                         elapsedTimeMs: Date.now() - startTime,
                       },
                     })
@@ -293,6 +295,7 @@ export const fetchToolsForClient = memoizeWithLRU(
                         status: 'failed',
                         serverName: client.name,
                         toolName: tool.name,
+                        startedAt: startTime,
                         elapsedTimeMs: Date.now() - startTime,
                       },
                     })

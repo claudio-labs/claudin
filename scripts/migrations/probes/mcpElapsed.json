@@ -1,0 +1,68 @@
+{
+  "test": [
+    "src/agent/tools/collapseReadSearch.test.ts",
+    "src/agent/ui/messages/CollapsedReadSearchContent.test.tsx",
+    "src/tools/MCPTool/McpElapsedTime.test.tsx"
+  ],
+  "source": "src/agent/tools/collapseReadSearch.ts",
+  "probes": [
+    {
+      "name": "every MCP call is collapsible",
+      "find": "      tool.isMcp === true ||\n",
+      "replace": ""
+    },
+    {
+      "name": "an errored MCP call breaks out of the group",
+      "find": "if (!info?.isWrite && !info?.mcpServerName) {",
+      "replace": "if (!info?.isWrite) {"
+    },
+    {
+      "name": "the badge says Calling/Called",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "isActiveGroup ? isFirst_3 ? 'Calling' : 'calling' : isFirst_3 ? 'Called' : 'called'",
+      "replace": "isActiveGroup ? isFirst_3 ? 'Querying' : 'querying' : isFirst_3 ? 'Queried' : 'queried'"
+    },
+    {
+      "name": "a running call keeps the span open",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "running: isActiveGroup === true && inProgressToolUseIDs.has(id_2)",
+      "replace": "running: false"
+    },
+    {
+      "name": "the clock renders inside the MCP part",
+      "source": "src/agent/ui/messages/CollapsedReadSearchContent.tsx",
+      "find": "        {mcpSpan && <McpGroupElapsedTime startedAt={mcpSpan.startedAt} endedAt={mcpSpan.endedAt} />}\n",
+      "replace": ""
+    },
+    {
+      "name": "the span starts at the earliest call",
+      "source": "src/tools/MCPTool/McpElapsedTime.tsx",
+      "find": "startedAt = Math.min(startedAt ?? tick.startedAt, tick.startedAt)",
+      "replace": "startedAt = tick.startedAt"
+    },
+    {
+      "name": "the span ends at the latest call",
+      "source": "src/tools/MCPTool/McpElapsedTime.tsx",
+      "find": "endedAt = Math.max(endedAt, tick.startedAt + tick.elapsedTimeMs)",
+      "replace": "endedAt = tick.startedAt + tick.elapsedTimeMs"
+    },
+    {
+      "name": "an unfinished call leaves no span",
+      "source": "src/tools/MCPTool/McpElapsedTime.tsx",
+      "find": "if (tick.startedAt === undefined || tick.elapsedTimeMs === undefined) {",
+      "replace": "if (tick.startedAt === undefined) {"
+    },
+    {
+      "name": "the frozen total ignores the live clock",
+      "source": "src/tools/MCPTool/McpElapsedTime.tsx",
+      "find": "      : Math.floor((endedAt - startedAt) / 1000)",
+      "replace": "      : liveSeconds"
+    },
+    {
+      "name": "short batches show no time",
+      "source": "src/tools/MCPTool/McpElapsedTime.tsx",
+      "find": "if (seconds < MCP_ELAPSED_MIN_SECONDS) {",
+      "replace": "if (seconds < 0) {"
+    }
+  ]
+}

@@ -443,6 +443,58 @@ describe('write collapse', () => {
   })
 })
 
+describe('MCP collapse', () => {
+  // What fetchCapabilities builds for a tool outside the search/read
+  // whitelist (context7's query-docs): classified as neither.
+  const MCP_TOOL = {
+    name: 'mcp__context7__query-docs',
+    isMcp: true,
+    mcpInfo: { serverName: 'context7', toolName: 'query-docs' },
+    isSearchOrReadCommand: () => ({ isSearch: false, isRead: false }),
+  }
+  const mcpTools = [READ_TOOL, MCP_TOOL] as unknown as Tools
+
+  test('an MCP call outside the search/read whitelist joins the group', () => {
+    const collapsed = collapseReadSearchGroups(
+      [
+        toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+        toolResult('r1', { file: {} }),
+        toolUse('m1', MCP_TOOL.name, { query: 'stacks' }),
+        toolResult('m1', 'docs'),
+        toolUse('m2', MCP_TOOL.name, { query: 'webhooks' }),
+        toolResult('m2', 'docs'),
+      ],
+      mcpTools,
+    )
+
+    expect(collapsed.map(m => m.type)).toEqual(['collapsed_read_search'])
+    const group = collapsed[0] as CollapsedReadSearchGroup
+    expect(group.readCount).toBe(1)
+    expect(group.mcpCallCount).toBe(2)
+    expect(group.mcpServerNames).toEqual(['context7'])
+    expect(group.latestDisplayHint).toBe('"webhooks"')
+  })
+
+  test('a failed MCP call breaks the group instead of hiding the error', () => {
+    const collapsed = collapseReadSearchGroups(
+      [
+        toolUse('r1', 'Read', { file_path: '/repo/a.ts' }),
+        toolResult('r1', { file: {} }),
+        toolUse('m1', MCP_TOOL.name, { query: 'stacks' }),
+        toolResult('m1', undefined, true),
+      ],
+      mcpTools,
+    )
+
+    expect(collapsed.map(m => m.type)).toEqual([
+      'collapsed_read_search',
+      'assistant',
+      'user',
+    ])
+    expect((collapsed[0] as CollapsedReadSearchGroup).mcpCallCount).toBeUndefined()
+  })
+})
+
 /**
  * The sub-agent progress line. It is built from tool_uses alone (no results),
  * but it has to describe the same work as the badge above, so it counts FILES.

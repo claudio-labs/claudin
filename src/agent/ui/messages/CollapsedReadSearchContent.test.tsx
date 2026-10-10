@@ -7,6 +7,7 @@ import type {
   CollapsedReadSearchGroup,
   WriteFileStat,
 } from 'src/shared/types/message.js'
+import type { MCPProgress } from 'src/shared/types/tools.js'
 import { renderToString } from 'src/terminal/render/staticRender.js'
 import { CollapsedReadSearchContent } from 'src/agent/ui/messages/CollapsedReadSearchContent.js'
 
@@ -401,5 +402,114 @@ describe('CollapsedReadSearchContent — memory badge, per scope', () => {
       ', searched private memories',
       ', searched team memories',
     ])
+  })
+})
+
+describe('CollapsedReadSearchContent — MCP clock', () => {
+  const SERVER = 'plugin:context7:context7'
+
+  function mcpToolUse(id: string) {
+    return {
+      type: 'assistant',
+      uuid: `msg-${id}`,
+      timestamp: '2026-08-12T00:00:00.000Z',
+      message: {
+        role: 'assistant',
+        id: `api-${id}`,
+        content: [{ type: 'tool_use', id, name: 'mcp__context7__query-docs', input: {} }],
+      },
+    }
+  }
+
+  function mcpTick(id: string, fields: Partial<MCPProgress>) {
+    return {
+      type: 'progress',
+      toolUseID: `p-${id}`,
+      parentToolUseID: id,
+      data: {
+        type: 'mcp_progress',
+        status: 'started',
+        serverName: SERVER,
+        toolName: 'query-docs',
+        ...fields,
+      },
+    }
+  }
+
+  function renderMcp(opts: {
+    ticks: ReturnType<typeof mcpTick>[]
+    running?: string[]
+    overrides?: Partial<CollapsedReadSearchGroup>
+  }): Promise<string> {
+    const progress = new Map<string, unknown[]>()
+    for (const tick of opts.ticks) {
+      progress.set(tick.parentToolUseID, [...(progress.get(tick.parentToolUseID) ?? []), tick])
+    }
+    const isActiveGroup = (opts.running?.length ?? 0) > 0
+    return renderToString(
+      <AppStateProvider>
+        <CollapsedReadSearchContent
+          message={{
+            ...EMPTY_GROUP,
+            mcpCallCount: 2,
+            mcpServerNames: [SERVER],
+            messages: [mcpToolUse('m1'), mcpToolUse('m2')],
+            ...opts.overrides,
+          } as unknown as CollapsedReadSearchGroup}
+          inProgressToolUseIDs={new Set(opts.running ?? [])}
+          shouldAnimate={false}
+          verbose={false}
+          tools={[] as unknown as Tools}
+          lookups={{ ...lookups, progressMessagesByToolUseID: progress } as typeof lookups}
+          isActiveGroup={isActiveGroup}
+        />
+      </AppStateProvider>,
+    ).then(stripAnsi)
+  }
+
+  test('a running batch ticks from the first call that started', async () => {
+    const now = Date.now()
+    const flat = flatten(
+      await renderMcp({
+        ticks: [
+          mcpTick('m1', { status: 'completed', startedAt: now - 12_000, elapsedTimeMs: 3_000 }),
+          // Its `started` tick was replaced by a progress one; the start survives on it.
+          mcpTick('m2', { status: 'progress', startedAt: now - 8_000, progress: 1 }),
+        ],
+        running: ['m2'],
+      }),
+    )
+    expectInOrder(flat, [`Calling ${SERVER} 2 times · 12s`, '…'])
+  })
+
+  test('a finished batch keeps its total', async () => {
+    const flat = flatten(
+      await renderMcp({
+        ticks: [
+          mcpTick('m1', { status: 'completed', startedAt: 1_000, elapsedTimeMs: 6_000 }),
+          mcpTick('m2', { status: 'completed', startedAt: 7_000, elapsedTimeMs: 8_400 }),
+        ],
+      }),
+    )
+    expectInOrder(flat, [`Called ${SERVER} 2 times · 14s`, '(ctrl+o'])
+  })
+
+  test('the clock stays with the MCP part, not at the end of the line', async () => {
+    const flat = flatten(
+      await renderMcp({
+        ticks: [
+          mcpTick('m1', { status: 'completed', startedAt: 1_000, elapsedTimeMs: 6_000 }),
+          mcpTick('m2', { status: 'completed', startedAt: 7_000, elapsedTimeMs: 8_400 }),
+        ],
+        overrides: { memoryOps: { private: ops({ write: 1 }) } },
+      }),
+    )
+    expectInOrder(flat, [`Called ${SERVER} 2 times · 14s`, ', wrote 1 private memory'])
+  })
+
+  test('a resumed group, with no ticks left, shows no time', async () => {
+    const flat = flatten(await renderMcp({ ticks: [] }))
+    expectInOrder(flat, [`Called ${SERVER} 2 times (ctrl+o`])
+    expect(flat).not.toContain('·')
   })
 })

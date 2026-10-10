@@ -107,6 +107,12 @@ export type MCPProgress = {
   status: 'started' | 'progress' | 'completed' | 'failed'
   serverName: string
   toolName: string
+  /**
+   * When the call started (epoch ms). Stamped on every status, because
+   * `mcp_progress` is ephemeral — each tick replaces the last, so the
+   * `started` one is gone as soon as the server reports progress.
+   */
+  startedAt?: number
   /** Set on `completed` and `failed`. */
   elapsedTimeMs?: number
   /** Set on `progress`; the UI shows a spinner until it arrives. */

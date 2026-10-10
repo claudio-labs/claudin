@@ -17,6 +17,7 @@ import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import { PrBadge } from 'src/platform/status/PrBadge.js';
 import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js';
+import { McpGroupElapsedTime, mcpBatchSpan, type McpCallTiming } from 'src/tools/MCPTool/McpElapsedTime.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
 import { MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js';
@@ -337,6 +338,22 @@ export function CollapsedReadSearchContent({
   // The header owns the clock now, so the hint only adds what it doesn't say.
   const shellProgressSuffix = slowestShellSeconds !== undefined && slowestShellSeconds >= SHELL_PROGRESS_MIN_SECONDS && slowestShellLines > 0 ? ` (${slowestShellLines} ${slowestShellLines === 1 ? 'line' : 'lines'})` : '';
 
+  // The MCP calls keep their own clock. Each call's last mcp_progress tick
+  // carries when it started and, once it is done, how long it took — the
+  // ticks replace each other, so only the last one is guaranteed to be there.
+  const mcpCalls: McpCallTiming[] = [];
+  if (mcpCallCount > 0) {
+    for (const id_2 of toolUseIds) {
+      const tick = lookups.progressMessagesByToolUseID.get(id_2)?.findLast(p => p.data.type === 'mcp_progress')?.data;
+      if (tick?.type !== 'mcp_progress') continue;
+      mcpCalls.push({
+        tick,
+        running: isActiveGroup === true && inProgressToolUseIDs.has(id_2)
+      });
+    }
+  }
+  const mcpSpan = mcpBatchSpan(mcpCalls);
+
   // Build non-memory parts first (search, read, repl, mcp, bash) — these render
   // before memory so the line reads "Ran 3 shell commands, recalled 1 memory".
   const nonMemParts: React.ReactNode[] = [];
@@ -447,16 +464,19 @@ export function CollapsedReadSearchContent({
   if (mcpCallCount > 0) {
     const serverLabel = message.mcpServerNames?.map(n => n.replace(/^claude\.ai /, '')).join(', ') || 'MCP';
     const isFirst_3 = nonMemParts.length === 0;
-    const verb_0 = isActiveGroup ? isFirst_3 ? 'Querying' : 'querying' : isFirst_3 ? 'Queried' : 'queried';
+    const verb_0 = isActiveGroup ? isFirst_3 ? 'Calling' : 'calling' : isFirst_3 ? 'Called' : 'called';
     if (!isFirst_3) {
       nonMemParts.push(<Text key="comma-mcp">, </Text>);
     }
+    // The clock sits inside this part, not at the end of the line, so it
+    // can't be read as the shell commands' or the memories' time.
     nonMemParts.push(<Text key="mcp">
         {verb_0} {serverLabel}
         {mcpCallCount > 1 && <>
             {' '}
             <Text bold>{mcpCallCount}</Text> times
           </>}
+        {mcpSpan && <McpGroupElapsedTime startedAt={mcpSpan.startedAt} endedAt={mcpSpan.endedAt} />}
       </Text>);
   }
   if (isFullscreenEnvEnabled() && bashCount > 0) {
