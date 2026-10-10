@@ -44,7 +44,6 @@ import { compactGlobOutput, summarizeGlobOutput } from 'src/agent/tools/toolResu
 export { TOOL_RESULT_SUMMARY_TAG, TOOL_RESULT_SUMMARY_CLOSING_TAG, isSummarizedContent } from 'src/agent/tools/toolResultSummarizer/markers.js'
 export { isLosslessSummarizerEnabled, isToolResultJsonCompressionEnabled, isToolResultCodeOutlineEnabled } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
 export { getLastSummaryDecision, resetLastSummaryDecision } from 'src/agent/tools/toolResultSummarizer/decisionRecord.js'
-export { collapseIdenticalRuns, collapseDigitTemplates } from 'src/agent/tools/toolResultSummarizer/bash.js'
 export { summarizeGrepOutput } from 'src/agent/tools/toolResultSummarizer/grep.js'
 export type { SummaryDecision } from 'src/agent/tools/toolResultSummarizer/types.js'
 

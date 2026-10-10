@@ -18,8 +18,6 @@ test('the barrel re-exports the whole public surface', () => {
   expect(Object.keys(summarizer).sort()).toEqual([
     'TOOL_RESULT_SUMMARY_CLOSING_TAG',
     'TOOL_RESULT_SUMMARY_TAG',
-    'collapseDigitTemplates',
-    'collapseIdenticalRuns',
     'getLastSummaryDecision',
     'isLosslessSummarizerEnabled',
     'isSummarizedContent',
@@ -37,8 +35,6 @@ test('every re-exported name is callable through the barrel', () => {
   expect(typeof summarizer.maybeCompactToolResult).toBe('function')
   expect(typeof summarizer.isLosslessSummarizerEnabled).toBe('function')
   expect(typeof summarizer.summarizeGrepOutput).toBe('function')
-  expect(typeof summarizer.collapseIdenticalRuns).toBe('function')
-  expect(typeof summarizer.collapseDigitTemplates).toBe('function')
   expect(typeof summarizer.isSummarizedContent).toBe('function')
   expect(typeof summarizer.getLastSummaryDecision).toBe('function')
   expect(typeof summarizer.resetLastSummaryDecision).toBe('function')
