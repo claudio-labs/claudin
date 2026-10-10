@@ -397,11 +397,13 @@ export function getToolSearchOrReadInfo(
   )
   const isList = result.isList ?? false
   const isCollapsible = result.isSearch || result.isRead || isList
-  // Under fullscreen mode, non-search/read Bash commands are also collapsible
-  // as their own category — "Ran N bash commands" instead of breaking the group.
+  // Every MCP call is collapsible, search/read or not — it lands in its own
+  // "Called <server> N times" category. Under fullscreen mode, non-search/read
+  // Bash commands are too, as "Ran N bash commands", instead of breaking the group.
   return {
     isCollapsible:
       isCollapsible ||
+      tool.isMcp === true ||
       (isFullscreenEnvEnabled() ? toolName === BASH_TOOL_NAME : false),
     isSearch: result.isSearch,
     isRead: result.isRead,
@@ -679,8 +681,12 @@ function collectErroredToolUseIds(messages: RenderableMessage[]): Set<string> {
   return ids
 }
 
-/** A write whose result errored — breaks the group instead of joining it. */
-function isErroredWriteToolUse(
+/**
+ * A write or MCP call whose result errored — breaks the group instead of
+ * joining it. A finished badge has no error marker, so inside the group the
+ * failure would be invisible.
+ */
+function isErroredBreakoutToolUse(
   msg: RenderableMessage,
   tools: Tools,
   erroredToolUseIds: Set<string>,
@@ -688,7 +694,8 @@ function isErroredWriteToolUse(
   if (erroredToolUseIds.size === 0) {
     return false
   }
-  if (!getCollapsibleToolInfo(msg, tools)?.isWrite) {
+  const info = getCollapsibleToolInfo(msg, tools)
+  if (!info?.isWrite && !info?.mcpServerName) {
     return false
   }
   return getToolUseIdsFromMessage(msg).some(id => erroredToolUseIds.has(id))
@@ -1029,7 +1036,7 @@ type GroupAccumulator = {
   nonMemSearchArgs: string[]
   /** Most recently added non-memory operation, pre-formatted for display */
   latestDisplayHint: string | undefined
-  // MCP tool calls (tracked separately so display says "Queried slack" not "Read N files")
+  // MCP tool calls (tracked separately so display says "Called slack" not "Read N files")
   mcpCallCount?: number
   mcpServerNames?: Set<string>
   // Bash commands that aren't search/read (tracked separately for "Ran N bash commands")
@@ -1194,7 +1201,7 @@ export function collapseReadSearchGroups(
   }
 
   for (const msg of messages) {
-    if (isErroredWriteToolUse(msg, tools, erroredToolUseIds)) {
+    if (isErroredBreakoutToolUse(msg, tools, erroredToolUseIds)) {
       // Its result lands on the next message, which no longer matches any id in
       // the group and therefore breaks it too — error and diff stay together.
       flushGroup()
@@ -1230,8 +1237,8 @@ export function collapseReadSearchGroups(
           }
         }
       } else if (toolInfo.mcpServerName) {
-        // MCP search/read — counted separately so the summary says
-        // "Queried slack N times" instead of "Read N files".
+        // Any MCP call — counted separately so the summary says
+        // "Called slack N times" instead of "Read N files".
         const count = countToolUses(msg)
         currentGroup.mcpCallCount = (currentGroup.mcpCallCount ?? 0) + count
         currentGroup.mcpServerNames?.add(toolInfo.mcpServerName)
