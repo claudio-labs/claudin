@@ -10,9 +10,9 @@ import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
  *
  * The gate here is a pure function on the shape of the result; the decision to
  * honour it lives in GrepTool.call(), which owns the map building. Splitting
- * them keeps the policy testable and lets the replay bench
- * (scripts/bench/perf/grep-summarizer-replay.ts --pivot) evaluate candidate
- * thresholds over recorded results without booting the tool.
+ * them keeps the policy testable and let a replay bench (grep-summarizer-replay,
+ * retired 2026-10-10) evaluate candidate thresholds over recorded results
+ * without booting the tool.
  *
  * Measured over every recorded session transcript in
  * ~/.claudin/projects/-home-viudes-projects-claudin (5,109 content-mode Grep
@@ -23,7 +23,7 @@ import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
  *   cluster at 10-60, well under the 250 default.
  * - the shipping policy pivots 64 results, replacing 620,647 chars of lines
  *   with 139,016 chars of map: **6.6% of all content-mode Grep chars saved
- *   outright, 3.7% on top of what the summarizer already saves losslessly** —
+ *   outright, 3.7% on top of what the summarizer then saved losslessly** —
  *   the second number is the one that justifies a lossy mode change.
  * - loosening to `files ≥ 3` would reach 8.6% / 4.3% and `files ≥ 8` drops to
  *   4.1% / 2.7%. Five is the deliberate middle: a search that landed in three
@@ -33,15 +33,15 @@ import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
  * - {@link pivotWins} is load-bearing, not belt-and-braces: it blocked 5 of 69
  *   admitted results whose map was not materially smaller.
  *
- * Re-measure with `NODE_ENV=test bun --preload ./src/stubs/test-preload.ts
- * scripts/bench/perf/grep-summarizer-replay.ts --pivot`.
+ * Measured with `scripts/bench/tokens/grep-summarizer-replay.ts --pivot`,
+ * retired with the summarizer's cut on 2026-10-10.
  */
 
 /**
  * Emitted-content size at which a wide search stops being readable as lines.
- * Sits above GREP_SUMMARIZE_THRESHOLD (6,000 in toolResultSummarizer.ts) on
- * purpose: below it the summarizer still compacts the result WITHOUT dropping a
- * match line, and a lossless win must always beat a lossy one.
+ * Sits above the 3,000 chars where the lossless Grep regroup starts
+ * (toolResultCompaction.ts) on purpose: a lossless win must always beat a
+ * lossy one.
  */
 export const GREP_PIVOT_THRESHOLD_CHARS = 6_000
 
@@ -63,7 +63,8 @@ export const GREP_PIVOT_MIN_FILES = 5
 /**
  * The map has to be meaningfully smaller than the lines it replaces, not just
  * smaller — trading match text for a same-sized symbol table is a loss. Mirrors
- * the no-win guard the Grep summarizer applies (toolResultSummarizer.ts).
+ * the no-win guard of the Grep regroup (toolResultCompaction.ts), which ships
+ * nothing that is not smaller.
  */
 export const GREP_PIVOT_WIN_RATIO = 0.7
 

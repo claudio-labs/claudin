@@ -1,0 +1,100 @@
+{
+  "test": [
+    "src/agent/tools/toolResultCompaction.test.ts",
+    "src/agent/tools/toolResultStorage.test.ts",
+    "src/agent/context/tokensSaved.test.ts",
+    "src/tools/GrepTool/grepBodies.test.ts",
+    "src/tools/GrepTool/autoPivot.test.ts"
+  ],
+  "source": "src/agent/tools/toolResultStorage.ts",
+  "probes": [
+    {
+      "name": "storage: the regroup is skipped, so a Grep ships raw",
+      "find": "  const compacted = maybeCompactToolResult(toolResultBlock, toolName)\n",
+      "replace": "  const compacted = toolResultBlock\n"
+    },
+    {
+      "name": "storage: a regrouped result past the line ships whole",
+      "find": "  return maybePersistLargeToolResult(compacted, toolName, getPersistenceThreshold(maxResultSizeChars))\n",
+      "replace": "  return compacted\n"
+    },
+    {
+      "name": "compaction: a small result is regrouped too",
+      "source": "src/agent/tools/toolResultCompaction.ts",
+      "find": "content.length < COMPACT_MIN_CHARS || ",
+      "replace": ""
+    },
+    {
+      "name": "regroup: the summarizer kill switch is ignored",
+      "source": "src/agent/tools/toolResultCompaction.ts",
+      "find": "    if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER)) return block\n",
+      "replace": "\n"
+    },
+    {
+      "name": "regroup: a compacted envelope is regrouped again",
+      "source": "src/agent/tools/toolResultCompaction/markers.ts",
+      "find": "  return text.startsWith(TOOL_RESULT_COMPACTED_TAG)\n",
+      "replace": "  return false\n"
+    },
+    {
+      "name": "glob regroup: an indented path is grouped anyway",
+      "source": "src/agent/tools/toolResultCompaction/glob.ts",
+      "find": "  if (lines.some(l => l.startsWith(' '))) return null\n",
+      "replace": "\n"
+    },
+    {
+      "name": "glob regroup: a run the header does not pay for is grouped",
+      "source": "src/agent/tools/toolResultCompaction/glob.ts",
+      "find": "    if (dir !== '' && (end - i) * (dir.length - GLOB_INDENT.length) > dir.length + 1) {\n",
+      "replace": "    if (dir !== '') {\n"
+    },
+    {
+      "name": "glob regroup: the path count goes",
+      "source": "src/agent/tools/toolResultCompaction/glob.ts",
+      "find": ", envelopeAttrs: { paths: String(paths) }",
+      "replace": ""
+    },
+    {
+      "name": "grep regroup: a file with no match line of its own gets a header",
+      "source": "src/agent/tools/toolResultCompaction/grep.ts",
+      "find": "    if (split?.isMatch && split.file !== GREP_NO_PATH) matched.add(split.file)\n",
+      "replace": "    if (split && split.file !== GREP_NO_PATH) matched.add(split.file)\n"
+    },
+    {
+      "name": "grep regroup: a run its header does not pay for is grouped",
+      "source": "src/agent/tools/toolResultCompaction/grep.ts",
+      "find": "    if (count * (file.length + 1) > file.length + GREP_HEADER_OVERHEAD) {\n",
+      "replace": "    if (count > 0) {\n"
+    },
+    {
+      "name": "grep regroup: a line naming no file does not end the run",
+      "source": "src/agent/tools/toolResultCompaction/grep.ts",
+      "find": "      if (fileOf(j) !== file) break\n",
+      "replace": "      if (fileOf(j) !== file) continue\n"
+    },
+    {
+      "name": "grep regroup: the -- between blocks is dropped",
+      "source": "src/agent/tools/toolResultCompaction/grep.ts",
+      "find": "        if (lines[k] === GREP_BLOCK_SEPARATOR || !split) out.push(lines[k]!)\n",
+      "replace": "        if (lines[k] === GREP_BLOCK_SEPARATOR || !split) continue\n"
+    },
+    {
+      "name": "grep regroup: the path stays on every line",
+      "source": "src/agent/tools/toolResultCompaction/grep.ts",
+      "find": "        else out.push(`${split.raw}${split.isMatch ? ':' : '-'}${split.body}`)\n",
+      "replace": "        else out.push(`${split.file}${split.isMatch ? ':' : '-'}${split.raw}${split.isMatch ? ':' : '-'}${split.body}`)\n"
+    },
+    {
+      "name": "grep regroup: an ambiguous leftover line is shipped anyway",
+      "source": "src/agent/tools/toolResultCompaction/grep.ts",
+      "find": "      if (line !== GREP_BLOCK_SEPARATOR && (GREP_HEADER_RE.test(line) || GREP_NUMBERED_RE.test(line))) return null\n",
+      "replace": "\n"
+    },
+    {
+      "name": "grep regroup: an inline line that reads as numbered is shipped anyway",
+      "source": "src/agent/tools/toolResultCompaction/grep.ts",
+      "find": "        if (line !== GREP_BLOCK_SEPARATOR && GREP_NUMBERED_RE.test(line)) return null\n",
+      "replace": "\n"
+    }
+  ]
+}

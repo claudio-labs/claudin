@@ -39,8 +39,9 @@
  *
  * - `alreadyFiltered` — the Bash filter ran, so the text is its OUTPUT. Replaying
  *   over it measures only the stages that did not fire the first time.
- * - `truncatedUpstream` — `toolResultStorage`/`toolResultSummarizer` replaced the
- *   body before it was recorded. The raw text is not in the transcript at all.
+ * - `truncatedUpstream` — `toolResultStorage` (or, before 2026-10-10, the
+ *   summarizer's cut) replaced the body before it was recorded. The raw text is
+ *   not in the transcript at all.
  * - `hardCapped` — `formatOutput` (`BashTool/utils.ts`) cut it at
  *   `getMaxOutputLength()`, so the tail is missing.
  */

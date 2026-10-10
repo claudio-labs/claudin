@@ -1,6 +1,5 @@
 import { feature } from 'bun:bundle';
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
-import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promises';
 import * as React from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
@@ -28,18 +27,18 @@ import { getCachedPowerShellPath } from 'src/platform/shell/powershellDetection.
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
-import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
-import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam, pageFailedShellRun, saveSpilledRun } from 'src/tools/shellToolResultMappers.js';
 import { interpretCommandResult } from 'src/tools/PowerShellTool/commandSemantics.js';
 import { powershellToolHasPermission } from 'src/tools/PowerShellTool/powershellPermissions.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from 'src/tools/PowerShellTool/prompt.js';
 import { hasSyncSecurityConcerns, isReadOnlyCommand, resolveToCanonical } from 'src/tools/PowerShellTool/readOnlyValidation.js';
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js';
 import { renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/PowerShellTool/UI.js';
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js';
 
 // Never use os.EOL for terminal output — \r\n on Windows breaks Ink rendering
 const EOL = '\n';
@@ -255,6 +254,8 @@ const outputSchema = lazySchema(() => z.object({
   isImage: z.boolean().optional().describe('Flag to indicate if stdout contains image data'),
   persistedOutputPath: z.string().optional().describe('Path to persisted full output when too large for inline'),
   persistedOutputSize: z.number().optional().describe('Total output size in bytes when persisted'),
+  persistedOutputSavedBytes: z.number().optional().describe('Bytes of the output kept on disk, fewer than its size past 64 MB'),
+  persistedOutputLines: z.number().optional().describe('Line count of the persisted output, for its page'),
   backgroundTaskId: z.string().optional().describe('ID of the background task if command is running in background'),
   backgroundedByUser: z.boolean().optional().describe('True if the user manually backgrounded the command with Ctrl+B'),
   assistantAutoBackgrounded: z.boolean().optional().describe('True if the command was auto-backgrounded by the assistant-mode blocking budget')
@@ -267,7 +268,7 @@ export const PowerShellTool = buildTool({
   name: POWERSHELL_TOOL_NAME,
   searchHint: 'execute Windows PowerShell commands',
   clearableResult: true,
-  maxResultSizeChars: 30_000,
+  maxResultSizeChars: SHELL_RESULT_MAX_CHARS,
   async description({
     description
   }: Partial<PowerShellToolInput>): Promise<string> {
@@ -521,41 +522,20 @@ export const PowerShellTool = buildTool({
         throw new Error(result.preSpawnError);
       }
       if (interpretation.isError && !isInterrupt) {
-        throw new ShellError(stdout, result.stderr || '', result.code, result.interrupted);
+        // A failing run that spilled keeps only its first chunk in stdout:
+        // page the whole saved output instead, as a passing run does.
+        const saved = await saveSpilledRun(result);
+        const errorStdout = saved
+          ? pageFailedShellRun(saved, { code: result.code, interrupted: result.interrupted, others: result.stderr || '' })
+          : stdout;
+        throw new ShellError(errorStdout, result.stderr || '', result.code, result.interrupted);
       }
 
-      // Large output: file on disk has more than getMaxOutputLength() bytes.
-      // stdout already contains the first chunk. Copy the output file to the
-      // tool-results dir so the model can read it via FileRead. If > 64 MB,
-      // truncate after copying. Matches BashTool's MAX_PERSISTED_SIZE block in
-      // `execute`.
-      //
-      // Placed AFTER the preSpawnError/ShellError throws (matches BashTool's
-      // ordering, where persistence is post-try/finally): a failing command
-      // that also produced >maxOutputLength bytes would otherwise do 3-4 disk
-      // syscalls, store to tool-results/, then throw — orphaning the file.
-      const MAX_PERSISTED_SIZE = 64 * 1024 * 1024;
-      let persistedOutputPath: string | undefined;
-      let persistedOutputSize: number | undefined;
-      if (result.outputFilePath && result.outputTaskId) {
-        try {
-          const fileStat = await fsStat(result.outputFilePath);
-          persistedOutputSize = fileStat.size;
-          await ensureToolResultsDir();
-          const dest = getToolResultPath(result.outputTaskId, false);
-          if (fileStat.size > MAX_PERSISTED_SIZE) {
-            await fsTruncate(result.outputFilePath, MAX_PERSISTED_SIZE);
-          }
-          try {
-            await link(result.outputFilePath, dest);
-          } catch {
-            await copyFile(result.outputFilePath, dest);
-          }
-          persistedOutputPath = dest;
-        } catch {
-          // File may already be gone — stdout preview is sufficient
-        }
-      }
+      // Large output: the file on disk has more than getMaxOutputLength()
+      // bytes and stdout only its first chunk. Save the file where the page points.
+      const saved = await saveSpilledRun(result);
+      const persistedOutputPath = saved?.filepath;
+      const persistedOutputSize = saved?.originalSize;
 
       // Cap image dimensions + size if present (CC-304 — see
       // resizeShellImageOutput). Scope the decoded buffer so it can be
@@ -583,7 +563,9 @@ export const PowerShellTool = buildTool({
           returnCodeInterpretation: interpretation.message,
           isImage,
           persistedOutputPath,
-          persistedOutputSize
+          persistedOutputSize,
+          persistedOutputSavedBytes: saved?.savedBytes,
+          persistedOutputLines: saved?.lines
         }
       };
     } finally {

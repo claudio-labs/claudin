@@ -642,9 +642,12 @@ describe('a file listing piped into a selector', () => {
   })
 
   test('| head above what the model receives does NOT fold', () => {
-    // summarizeGlobOutput keeps the first 50 paths, so folding a larger head
-    // would promise a listing that is then trimmed.
-    expect(analyze('find src -name "*.ts" | head -80')).toBeNull()
+    // One Glob call returns 100 paths, so folding a larger head would promise
+    // a listing the model then has to page.
+    expect(calls('find src -name "*.ts" | head -80')).toEqual([
+      { tool: 'Glob', pattern: '**/*.ts', path: 'src', head_limit: 80 },
+    ])
+    expect(analyze('find src -name "*.ts" | head -120')).toBeNull()
   })
 
   test('a sed range over the listing becomes offset + head_limit', () => {

@@ -1,9 +1,6 @@
 import { logForDebugging } from "src/shared/debug.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
-import {
-  collapseDigitTemplates,
-  collapseIdenticalRuns,
-} from "src/agent/tools/toolResultSummarizer.js";
+import { collapseDigitTemplates, collapseIdenticalRuns } from "src/tools/shared/outputFilter/Bash/collapse.js";
 import type { RewriteContext } from "src/tools/shared/outputFilter/types.js";
 import type { DroppedReducer, FilterSpec, KeepLines, PipelineResult } from "src/tools/shared/outputFilter/Bash/types.js";
 import { errorWindowMask } from "src/tools/shared/outputFilter/Bash/cutShape.js";

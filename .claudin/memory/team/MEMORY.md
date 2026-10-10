@@ -4,7 +4,7 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
-- [Bash read lane + one cut ON (10-09)](decisions/bash-read-lane.md) — Sonnet −28%; `=0` killswitches
+- [Bash read lane + one cut (10-09)](decisions/bash-read-lane.md) · [tool results compacted, never cut; paged past the line (10-10)](decisions/summarizer-lossless.md)
 - [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — memoryDirs.ts registry + TYPE_SCOPES; `CLAUDIN_GLOBAL_MEMORY=0`
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed writes refused

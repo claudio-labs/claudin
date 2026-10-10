@@ -19,7 +19,7 @@
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { execFileSync, spawnSync } from 'child_process'
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
@@ -33,6 +33,7 @@ import {
 } from 'src/tools/BashTool/runShellCommand.js'
 import type { BashToolInput } from 'src/tools/BashTool/bashSchemas.js'
 import { getBytesSaved, resetBytesSaved } from 'src/agent/context/tokensSaved.js'
+import { shellErrorPrefix } from 'src/agent/tools/toolErrors.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -414,16 +415,14 @@ describe('bash output filter — integration smoke', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Suite 5 — filter + summarizer interaction (double-processing guard)
+// Suite 5 — the double-processing guard
 // ---------------------------------------------------------------------------
 //
 // Verifies that bash output already wrapped in <bash-output-filtered> markers
 // is NOT re-processed by the bash filter pipeline. The filter pipeline must
-// short-circuit on already-filtered input to prevent double-wrapping and to
-// guarantee that the summarizer sees the filtered (reduced) content — not the
-// original — when both features are enabled simultaneously.
+// short-circuit on already-filtered input to prevent double-wrapping.
 
-describe('bash output filter — filter+summarizer interaction', () => {
+describe('bash output filter — the double-processing guard', () => {
   test('already-filtered output is not re-wrapped when passed through the pipeline again', () => {
     enableFilter()
 
@@ -444,11 +443,10 @@ describe('bash output filter — filter+summarizer interaction', () => {
     expect(markerCount).toBe(1)
   })
 
-  test('filter reduces output before it could reach the summarizer threshold', () => {
+  test('the filter reduces a long listing and says so', () => {
     enableFilter()
 
-    // Build ls-like output large enough that the raw form could be summarized,
-    // but small enough after filtering that summarization is skipped.
+    // ls-like output long enough for its spec to reduce.
     const lines = Array.from(
       { length: 300 },
       (_, i) => `-rw-r--r--  1 user group ${1000 + i} Jan  1 00:00 file-${i.toString().padStart(4, '0')}.ts`,
@@ -564,7 +562,7 @@ async function loadFilter(passthrough: boolean): Promise<BashFilter> {
 
 describe('a pure read too long to show whole — fitOverBudgetRead', () => {
   // Twenty modules, ~59k printed: the dump session-cache-ab 20260924-170553 r1
-  // got as a saved file with a 2 KB preview, and read back whole.
+  // got as a saved file with a preview, and read back whole.
   const LOOP = 'for f in dump/*.ts; do echo "=== $f"; cat $f; done'
   let dir: string
   let on: BashFilter
@@ -727,6 +725,7 @@ describe('call() with both flags on — what reaches the result', () => {
   let failed: CallResult
   let afterCd: CallResult
   let overBudgetAfterCd: CallResult
+  let failedSpill: CallResult
 
   beforeAll(() => {
     dir = realpathSync(mkdtempSync(join(tmpdir(), 'bash-call-')))
@@ -767,6 +766,8 @@ describe('call() with both flags on — what reaches the result', () => {
         `${LOOP}; cat missing.ts`,
         'cd sub && cat a.ts one.txt',
         'cd dump && for f in *.ts; do echo "=== $f"; cat $f; done',
+        // ~70k: past the 30k a run keeps in memory, then a failure.
+        `seq -f 'test %g ok' 1 6000; echo 'SUMMARY: 3 failed'; exit 1`,
       ]),
     }
     // The limits these results are read against, whatever the shell exports.
@@ -781,12 +782,30 @@ describe('call() with both flags on — what reaches the result', () => {
     if (child.status !== 0) {
       throw new Error(`call() probe failed (exit ${child.status})\nstdout: ${child.stdout}\nstderr: ${child.stderr}`)
     }
-    ;[fits, overBudget, failed, afterCd, overBudgetAfterCd] = JSON.parse(child.stdout) as CallResult[]
+    ;[fits, overBudget, failed, afterCd, overBudgetAfterCd, failedSpill] = JSON.parse(child.stdout) as CallResult[]
   })
 
   afterAll(() => {
     rmSync(dir, { recursive: true, force: true })
     rmSync(configDir, { recursive: true, force: true })
+  })
+
+  // A failing run that spilled kept only its first 30k in stdout; its error
+  // is the page of the whole saved output, so its end — the summary — is on
+  // disk, at the line count the pointer gives.
+  test('a failing run past 30k: the error is a page of the saved file, which holds the summary', () => {
+    const output = failedSpill.failed!.output
+    expect(failedSpill.failed!.code).toBe(1)
+    expect(output).toStartWith('<persisted-output>')
+    // The page leaves room for exactly what formatError puts in front of it,
+    // so the error still fits Bash's line and the tool loop never pages it again.
+    expect(`${shellErrorPrefix(1, false)}${output}`.length).toBeLessThanOrEqual(30_000)
+    const shown = Number(/^Lines 1-(\d+) of \d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(output)![1])
+    const file = readFileSync(/Full output saved to: (\S+)\n/.exec(output)![1]!, 'utf8').trimEnd().split('\n')
+    expect(file.at(-1)).toBe('SUMMARY: 3 failed')
+    expect(file).toHaveLength(6001)
+    const page = output.slice(output.indexOf('\n\n') + 2, output.indexOf('\n</persisted-output>'))
+    expect(page).toBe(file.slice(0, shown).join('\n'))
   })
 
   test('a read that fits: its bytes in the read wrapper, its files counted as read, and the result says so', () => {
@@ -816,14 +835,19 @@ describe('call() with both flags on — what reaches the result', () => {
   })
 
   // Errors are sacred: output the exit code calls a failure skips the filter,
-  // and the fit with it.
-  test('a failed read is not fitted: its error carries the output as the shell kept it', () => {
+  // and the fit with it. Past the 30k the run keeps in memory its error is the
+  // page of the saved output, from its first line, in whole lines.
+  test('a failed read is not fitted: its error is a page of everything the shell printed', () => {
     expect(failed.data).toBeUndefined()
     expect(failed.failed?.code).toBe(1)
     const output = failed.failed?.output ?? ''
-    expect(output).toStartWith('=== dump/f00.ts\n')
-    // The spill's first 30k, cut mid-file — not the whole files within 28k.
-    expect(output.length).toBeGreaterThan(28_000)
+    expect(output).toStartWith('<persisted-output>')
+    const page = output.slice(output.indexOf('\n\n') + 2, output.indexOf('\n</persisted-output>'))
+    expect(page).toStartWith('=== dump/f00.ts\n')
+    // Not the whole files within 28k: lines up to the page's budget.
+    expect(page.length).toBeGreaterThan(28_000)
+    const file = readFileSync(/Full output saved to: (\S+)\n/.exec(output)![1]!, 'utf8')
+    expect(file).toContain('missing.ts')
   })
 
   // The `cd` moves the shell's cwd, and getCwd() is sub/ once the command has
@@ -852,48 +876,5 @@ describe('call() with both flags on — what reaches the result', () => {
       `Not shown — over the 28k a Bash result shows whole: ${notShown.join(', ')}. cat them in another call, or Read them.`,
       `(${shown} ${COUNT_AS_READ}`,
     ])
-  })
-})
-
-// CLAUDIN_BASH_ONE_CUT: the filter's cut is the only one, so the summarizer
-// stands aside for every result the filter ran on (toolResultStorage.ts reads
-// this hook with the raw tool output).
-describe('skipsResultSummarizer — the summarizer stands aside under the one cut', () => {
-  const FLAG = 'CLAUDIN_BASH_ONE_CUT'
-  let saved: string | undefined
-  const out = (stdout: string, extra: Record<string, unknown> = {}) =>
-    ({ stdout, stderr: '', interrupted: false, ...extra }) as Parameters<NonNullable<typeof BashTool.skipsResultSummarizer>>[0]
-
-  beforeEach(() => {
-    saved = process.env[FLAG]
-  })
-  afterEach(() => {
-    if (saved === undefined) delete process.env[FLAG]
-    else process.env[FLAG] = saved
-  })
-
-  test('on: a result the filter ran on', () => {
-    process.env[FLAG] = '1'
-    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(20_000)))).toBe(true)
-  })
-
-  test('off: never', () => {
-    process.env[FLAG] = '0'
-    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(20_000)))).toBe(false)
-  })
-
-  test('unset: on by default', () => {
-    delete process.env[FLAG]
-    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(20_000)))).toBe(true)
-  })
-
-  test('on, but backgrounded: the filter did not run', () => {
-    process.env[FLAG] = '1'
-    expect(BashTool.skipsResultSummarizer!(out('x', { backgroundTaskId: 'b1' }))).toBe(false)
-  })
-
-  test('on, but past the persist line: the summarizer may still keep it off disk', () => {
-    process.env[FLAG] = '1'
-    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(30_000)))).toBe(false)
   })
 })

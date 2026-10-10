@@ -1,6 +1,85 @@
-import { expect, test } from 'bun:test'
+import { afterAll, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js'
+import { pageFailedShellRun } from 'src/tools/shellToolResultMappers.js'
+import { adoptOutputFile, MIN_PAGE_CHARS, pageSavedFile } from 'src/agent/tools/toolResultStorage.js'
+import { formatFileSize } from 'src/shared/text/format.js'
+
+const spillDir = mkdtempSync(join(tmpdir(), 'shell-spill-'))
+afterAll(() => rmSync(spillDir, { recursive: true, force: true }))
+
+/** A saved run's file, and the page a result built from it shows. */
+function spill(name: string, text: string): string {
+  const path = join(spillDir, name)
+  writeFileSync(path, text)
+  return path
+}
+const pageOf = (content: string) => content.slice(content.indexOf('\n\n') + 2, content.indexOf('\n</persisted-output>'))
+const shownOf = (content: string) =>
+  Number(/^Lines 1-(\d+) of \d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m.exec(content)![1])
+
+// The page of a run that spilled is cut from the saved file itself: stdout has
+// been through the output filter, the blank-line strip and a byte cap that
+// can end mid-line, and any of them would shift the pointer's line numbers.
+test('a shell run that spilled is paged from its saved file, whatever its stdout went through', () => {
+  const raw = `\n\n${Array.from({ length: 3_000 }, (_, i) => `out ${i + 1} ${'q'.repeat(30)}`).join('\n')}\n`
+  const path = spill('filtered.txt', raw)
+  const result = BashTool.mapToolResultToToolResultBlockParam(
+    {
+      // What the filter left of it: a head, a cut, a tail.
+      stdout: 'out 1\n…2990 lines omitted…\nout 3000',
+      stderr: '',
+      interrupted: false,
+      persistedOutputPath: path,
+      persistedOutputSize: raw.length,
+      persistedOutputLines: 3_002,
+    },
+    'tool-paged',
+  )
+  const content = String(result.content)
+  expect(content.length).toBeLessThanOrEqual(30_000)
+  expect(content).toMatch(/^Lines 1-\d+ of 3002 are below/m)
+  const shown = shownOf(content)
+  expect(shown).toBeGreaterThan(100)
+  // Lines 1-2 of the file are the blank ones trimShellStdout would drop.
+  expect(pageOf(content)).toBe(raw.split('\n').slice(0, shown).join('\n'))
+  expect(content).not.toContain('lines omitted')
+})
+
+test('a line the head cut short is not counted as shown', () => {
+  // Lines of mixed width, so the head ends inside one.
+  const raw = Array.from({ length: 4_000 }, (_, i) => `l${i + 1} ${'✓'.repeat(i % 7)}${'w'.repeat(23)}`).join('\n')
+  const path = spill('multibyte.txt', raw)
+  const content = String(
+    BashTool.mapToolResultToToolResultBlockParam({ stdout: '', stderr: '', interrupted: false, persistedOutputPath: path, persistedOutputSize: raw.length, persistedOutputLines: 4_000 }, 't').content,
+  )
+  const shown = shownOf(content)
+  expect(pageOf(content)).toBe(raw.split('\n').slice(0, shown).join('\n'))
+})
+
+test('the page leaves room for the lines after it: the whole result stays under 30k', () => {
+  const raw = `${Array.from({ length: 3_000 }, (_, i) => `row ${i + 1} ${'z'.repeat(30)}`).join('\n')}\n`
+  const path = spill('notes.txt', raw)
+  const content = String(
+    BashTool.mapToolResultToToolResultBlockParam(
+      {
+        stdout: '',
+        stderr: `${'stderr line\n'.repeat(200)}`,
+        interrupted: false,
+        persistedOutputPath: path,
+        persistedOutputSize: raw.length,
+        backgroundTaskId: 'bg1',
+        readNote: `(${'note '.repeat(300)})`,
+      },
+      't',
+    ).content,
+  )
+  expect(content.length).toBeLessThanOrEqual(30_000)
+  expect(content).toContain('note note')
+})
 
 test('BashTool result mapper tolerates null stderr', () => {
   const result = BashTool.mapToolResultToToolResultBlockParam(
@@ -99,4 +178,29 @@ test('PowerShellTool result mapper tolerates null stdout', () => {
     tool_use_id: 'tool-4',
     content: 'problem',
   })
+})
+
+test('a run past the saved-output cap says only its head is saved, never "full output"', async () => {
+  const raw = Array.from({ length: 2_000 }, (_, i) => `line ${i + 1} ${'c'.repeat(30)}`).join('\n')
+  const source = spill('capped.txt', raw)
+  const saved = (await adoptOutputFile(source, 'capped', 10_000))!
+  expect(saved.originalSize).toBe(raw.length)
+  expect(saved.savedBytes).toBe(10_000)
+  const message = pageSavedFile(saved, 30_000, '')
+  expect(message).toContain(`only its first ${formatFileSize(10_000)} is saved, to: `)
+  expect(message).not.toContain('Full output saved')
+})
+
+test('a failing run with stderr past the line keeps a real page, never a page of 0 chars', async () => {
+  const raw = Array.from({ length: 4_000 }, (_, i) => `out ${i + 1} ${'d'.repeat(30)}`).join('\n')
+  const source = spill('failed.txt', raw)
+  const saved = (await adoptOutputFile(source, 'failed-run'))!
+  const stderr = 'stderr noise\n'.repeat(3_500)
+  const page = pageFailedShellRun(saved, { code: 1, interrupted: false, others: stderr })
+  expect(page).not.toContain('Line 1 alone')
+  // The page takes its minimum room; the error around it is paged in turn.
+  expect(page.length).toBeLessThanOrEqual(MIN_PAGE_CHARS)
+  const shown = shownOf(page)
+  expect(shown).toBeGreaterThan(0)
+  expect(pageOf(page)).toBe(raw.split('\n').slice(0, shown).join('\n'))
 })

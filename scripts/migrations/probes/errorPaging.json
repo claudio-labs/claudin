@@ -1,0 +1,37 @@
+{
+  "test": [
+    "src/agent/tools/toolExecution.errorPaging.test.ts",
+    "src/tools/BashTool/BashTool.outputFilter.test.ts"
+  ],
+  "source": "src/agent/tools/toolResultStorage.ts",
+  "probes": [
+    {
+      "name": "error: formatError cuts again",
+      "source": "src/agent/tools/toolErrors.ts",
+      "find": "  return parts.filter(Boolean).join('\\n').trim() || 'Command failed with no output'\n",
+      "replace": "  return (parts.filter(Boolean).join('\\n').trim() || 'Command failed with no output').slice(0, 10000)\n"
+    },
+    {
+      "name": "error: the tool loop ships an error past its line unpaged",
+      "source": "src/agent/tools/toolExecution.ts",
+      "find": "    const content = await pageErrorText(formatError(error), getPersistenceThreshold(tool.maxResultSizeChars))\n",
+      "replace": "    const content = formatError(error)\n"
+    },
+    {
+      "name": "error: an error under its line is paged anyway",
+      "find": "  if (text.length <= threshold) return text\n",
+      "replace": "  if (text.length < 0) return text\n"
+    },
+    {
+      "name": "error: a repeated failure names a new file every time",
+      "find": "  const saved = await persistToolResult(text, 'error')\n",
+      "replace": "  const saved = await persistToolResult(text, `error-${Math.random()}`)\n"
+    },
+    {
+      "name": "error: a failing Bash run that spilled is not saved, its tail lost",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "        const saved = await saveSpilledRun(result);\n        const errorOutput = saved\n",
+      "replace": "        const saved = undefined;\n        const errorOutput = saved\n"
+    }
+  ]
+}

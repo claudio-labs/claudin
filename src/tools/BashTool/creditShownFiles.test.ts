@@ -610,22 +610,22 @@ describe('the line the result ends with', () => {
   })
 
   // The line joins the result after the gates have measured it. A result it
-  // would take past the summarizer's 8k must credit nothing: the model would
-  // get a cut of it.
-  test('an unwrapped result the line would take past 8k credits nothing', async () => {
-    writeFixture(at('src/near8k.ts'), `// near 8k\n${'x'.repeat(7_950)}\n`)
+  // would take past the 30k Bash pages at must credit nothing: the model would
+  // get only a page of it.
+  test('a result the line would take past 30k credits nothing', async () => {
+    writeFixture(at('src/near30k.ts'), `// near 30k\n${'x'.repeat(29_950)}\n`)
+    writeFixture(at('src/fits30k.ts'), `// near 30k\n${'x'.repeat(29_850)}\n`)
     try {
-      const shown = ran('cat src/near8k.ts')
-      expect(shown.stdout.length).toBeLessThan(8_000)
-      expect(shown.stdout.length + 120).toBeGreaterThanOrEqual(8_000)
+      const shown = ran('cat src/near30k.ts')
+      expect(shown.stdout.length).toBeLessThan(30_000)
+      expect(shown.stdout.length + 120).toBeGreaterThanOrEqual(30_000)
       expect(await creditWithNote(shown)).toEqual({ credited: [], note: null })
       expect(cache.size).toBe(0)
-      // Wrapped, the summarizer stands aside and the same read credits.
-      expect(await credit({ ...shown, stdout: readWrapped(shown.stdout) })).toEqual([
-        at('src/near8k.ts'),
-      ])
+      // A hundred chars shorter, the line fits and the same read credits.
+      expect(await credit(ran('cat src/fits30k.ts'))).toEqual([at('src/fits30k.ts')])
     } finally {
-      rmSync(at('src/near8k.ts'))
+      rmSync(at('src/near30k.ts'))
+      rmSync(at('src/fits30k.ts'))
     }
   })
 
@@ -652,9 +652,8 @@ describe('what the model did not receive is never credited', () => {
     ).toEqual([])
   })
 
-  // Over the 30k BashTool's result is persisted at, the model gets a 2 KB
-  // preview of a saved file, whatever wrapper the output wears — the wrapper
-  // only answers the summarizer's 8k.
+  // Over the 30k BashTool's result is persisted at, the model gets a page of a
+  // saved file, whatever wrapper the output wears.
   test('a wrapped result over the 30k the harness persists at', async () => {
     const files = Array.from({ length: 11 }, (_, i) => dumpName(i))
     const shown = ran(DUMP_LOOP.replace('dump/*.ts', files.join(' ')))
@@ -664,9 +663,9 @@ describe('what the model did not receive is never credited', () => {
     expect(cache.size).toBe(0)
   })
 
-  // The tool-result summarizer cuts unwrapped Bash output from 8k chars up,
-  // and stands aside for anything wearing the filter's wrapper.
-  test('unwrapped output of 8k chars or more, and the same output wrapped', async () => {
+  // Nothing under Bash's 30k line is cut any more — the summarizer once cut
+  // unwrapped output from 8k up — so a read there credits, wrapped or not.
+  test('output of 8k chars or more credits, unwrapped and wrapped alike', async () => {
     const big = Array.from(
       { length: 200 },
       (_, i) => `export const entry${i} = '${'x'.repeat(40)}'`,
@@ -675,7 +674,9 @@ describe('what the model did not receive is never credited', () => {
     try {
       const shown = ran('cat src/big.ts')
       expect(shown.stdout.length).toBeGreaterThanOrEqual(8_000)
-      expect(await credit(shown)).toEqual([])
+      expect(await credit(shown)).toEqual([at('src/big.ts')])
+      // A file already counted as read is not credited twice: start over.
+      cache = createFileStateCacheWithSizeLimit(READ_FILE_STATE_CACHE_SIZE)
       expect(await credit({ ...shown, stdout: wrappedWhole(shown.stdout) })).toEqual([
         at('src/big.ts'),
       ])
@@ -806,18 +807,18 @@ describe('the run is judged by the tool result the model receives', () => {
 
   // A run a new message backgrounded keeps its partial output, and the note
   // naming the task joins it in the same tool result.
-  test('stdout under 8k that the background note takes past 8k credits nothing', async () => {
-    // 7,900 chars: room for the credit's own line (~90 chars), which joins the
-    // same result; the background note is what takes it past 8k.
-    writeFixture(at('src/near8k.ts'), `// near 8k\n${'x'.repeat(7_888)}\n`)
+  test('stdout under 30k that the background note takes past 30k credits nothing', async () => {
+    // 29,900 chars: room for the credit's own line (~90 chars), which joins the
+    // same result; the background note is what takes it past 30k.
+    writeFixture(at('src/near30k.ts'), `// near 30k\n${'x'.repeat(29_887)}\n`)
     try {
-      const shown = ran('cat src/near8k.ts')
-      expect(shown.stdout.length).toBeLessThan(8_000)
-      expect(await credit({ ...shown, backgroundTaskId: 'bnear8k' })).toEqual([])
+      const shown = ran('cat src/near30k.ts')
+      expect(shown.stdout.length).toBeLessThan(30_000)
+      expect(await credit({ ...shown, backgroundTaskId: 'bnear30k' })).toEqual([])
       // Without the note the same stdout credits: the note is what counted.
-      expect(await credit(shown)).toEqual([at('src/near8k.ts')])
+      expect(await credit(shown)).toEqual([at('src/near30k.ts')])
     } finally {
-      rmSync(at('src/near8k.ts'))
+      rmSync(at('src/near30k.ts'))
     }
   })
 })

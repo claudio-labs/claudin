@@ -3,35 +3,40 @@
  */
 
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { mkdir, rm, writeFile } from 'fs/promises'
+import { closeSync, createReadStream, fstatSync, openSync, readSync } from 'fs'
+import { copyFile, link, mkdir, rm, stat, truncate } from 'fs/promises'
 import { join } from 'path'
-import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import {
   BYTES_PER_TOKEN,
   DEFAULT_MAX_RESULT_SIZE_CHARS,
-  MAX_TOOL_RESULT_BYTES,
 } from 'src/tools/constants/toolLimits.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getErrnoCode, toError } from 'src/shared/errors.js'
+import { toError } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
-import {
-  isSummarizedContent,
-  isToolResultCodeOutlineEnabled,
-  isToolResultJsonCompressionEnabled,
-  maybeSummarizeToolResult,
-} from 'src/agent/tools/toolResultSummarizer.js'
-import { compressJsonArray } from 'src/agent/tools/jsonArrayCompress.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultCompaction.js'
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js'
+import {
+  getToolResultsDir,
+  PERSISTED_OUTPUT_CLOSING_TAG,
+  PERSISTED_OUTPUT_TAG,
+  resultDirs,
+  resultFileName,
+  resultText,
+  SAVE_WHOLE_FROM_CHARS,
+  TOOL_RESULTS_SUBDIR,
+  writeResultFile,
+} from 'src/agent/tools/toolResultFiles.js'
 
-// Subdirectory name for tool results within a session
-export const TOOL_RESULTS_SUBDIR = 'tool-results'
-
-// XML tag used to wrap persisted output messages
-export const PERSISTED_OUTPUT_TAG = '<persisted-output>'
-export const PERSISTED_OUTPUT_CLOSING_TAG = '</persisted-output>'
+export {
+  getToolResultPath,
+  getToolResultsDir,
+  PERSISTED_OUTPUT_CLOSING_TAG,
+  PERSISTED_OUTPUT_TAG,
+  TOOL_RESULTS_SUBDIR,
+} from 'src/agent/tools/toolResultFiles.js'
 
 // Message used when tool result content was cleared without persisting to file
 export const TOOL_RESULT_CLEARED_MESSAGE = '[Old tool result content cleared]'
@@ -55,39 +60,24 @@ export function getPersistenceThreshold(
 export type PersistedToolResult = {
   filepath: string
   originalSize: number
-  isJson: boolean
-  preview: string
-  hasMore: boolean
+  /** What was saved, as text: a result's text blocks joined by newlines. */
+  text: string
+}
+
+/** A saved result, as its page describes it. */
+export type SavedOutput = {
+  filepath: string
+  /** The result's size; fewer bytes may have been kept (`savedBytes`). */
+  originalSize: number
+  /** Set when only part of it could be kept: a shell run past MAX_SAVED_OUTPUT_BYTES. */
+  savedBytes?: number
+  /** The saved file's line count, for the pointer. Unknown on an old transcript. */
+  lines?: number
 }
 
 // Error result when persistence fails
 export type PersistToolResultError = {
   error: string
-}
-
-/**
- * Get the session directory (projectDir/sessionId)
- */
-function getSessionDir(): string {
-  return join(getProjectDir(getOriginalCwd()), getSessionId())
-}
-
-/**
- * Get the tool results directory for this session (projectDir/sessionId/tool-results)
- */
-export function getToolResultsDir(): string {
-  return join(getSessionDir(), TOOL_RESULTS_SUBDIR)
-}
-
-// Preview size in bytes for the reference message
-export const PREVIEW_SIZE_BYTES = 2000
-
-/**
- * Get the filepath where a tool result would be persisted.
- */
-export function getToolResultPath(id: string, isJson: boolean): string {
-  const ext = isJson ? 'json' : 'txt'
-  return join(getToolResultsDir(), `${id}.${ext}`)
 }
 
 /**
@@ -141,77 +131,280 @@ export async function unlinkSessionSpillDir(sessionId: string): Promise<void> {
 /**
  * Persist a tool result to disk and return information about the persisted file
  *
+ * Saved as text, a result's text blocks joined by newlines, so `Read` offsets
+ * address the lines the page names (`buildLargeToolResultMessage`), in the
+ * session's results directory or, when that cannot be written, a fallback
+ * under the OS temp dir (`writeResultFile`).
+ *
  * @param content - The tool result content to persist (string or array of content blocks)
  * @param toolUseId - The ID of the tool use that produced the result
- * @returns Information about the persisted file including filepath and preview
+ * @returns The saved file's path and size, and the text it holds
  */
 export async function persistToolResult(
   content: NonNullable<ToolResultBlockParam['content']>,
   toolUseId: string,
 ): Promise<PersistedToolResult | PersistToolResultError> {
-  const isJson = Array.isArray(content)
-
-  // Check for non-text content - we can only persist text blocks
-  if (isJson) {
-    const hasNonTextContent = content.some(block => block.type !== 'text')
-    if (hasNonTextContent) {
-      return {
-        error: 'Cannot persist tool results containing non-text content',
-      }
+  // Only text can be saved and paged.
+  const text = resultText(content)
+  if (text === undefined) {
+    return {
+      error: 'Cannot persist tool results containing non-text content',
     }
   }
+  const written = await writeResultFile(resultFileName(toolUseId, text), text)
+  if ('error' in written) {
+    const error = toError(written.error)
+    logError(error)
+    return { error: getFileSystemErrorMessage(error) }
+  }
+  logForDebugging(`Persisted tool result to ${written.path} (${formatFileSize(text.length)})`)
+  return { filepath: written.path, originalSize: text.length, text }
+}
 
-  await ensureToolResultsDir()
-  const filepath = getToolResultPath(toolUseId, isJson)
-  const contentStr = isJson ? jsonStringify(content, null, 2) : content
+/**
+ * A result too large for one tool_result: where it is saved, then its first
+ * page — whole lines, as many as fit in `maxChars` with this message around
+ * them — and the Read call for the next page, with the file's line count so
+ * the model can go straight to its end, where a failing run says what failed.
+ * Nothing is summarized: the page is the result's first lines exactly, and the
+ * file holds every line (or, past MAX_SAVED_OUTPUT_BYTES, says how much).
+ *
+ * `text` is what the page is cut from, and its line numbers are the file's:
+ * the whole saved text (`complete`), or the file's own head, whose last line
+ * may be cut short and is then not shown. The pointer comes first, so a
+ * context-relief stub that keeps the head keeps it too.
+ */
+export function buildLargeToolResultMessage(
+  saved: SavedOutput,
+  text: string,
+  maxChars: number,
+  { complete = true }: { complete?: boolean } = {},
+): string {
+  const size = formatFileSize(saved.originalSize)
+  const where =
+    saved.savedBytes !== undefined && saved.savedBytes < saved.originalSize
+      ? `Output too large (${size}); only its first ${formatFileSize(saved.savedBytes)} is saved, to: ${saved.filepath}`
+      : `Output too large (${size}). Full output saved to: ${saved.filepath}`
+  const frame = (pointer: string, page: string) =>
+    `${PERSISTED_OUTPUT_TAG}\n${where}\n${pointer}\n\n${page}\n${PERSISTED_OUTPUT_CLOSING_TAG}`
+  const total = complete ? lineCount(text) : saved.lines
+  // The longest pointer of either form, so the page budget holds whatever the count turns out to be.
+  const most = Number.MAX_SAFE_INTEGER
+  const longest = Math.max(
+    pointerFor(most, most, 0, 0, saved.filepath).length,
+    pointerFor(0, most, most, most, saved.filepath).length,
+  )
+  const budget = maxChars - frame('', '').length - longest
+  const { page, shownLines } = pageForModel(text, Math.max(budget, 0), complete)
+  return frame(pointerFor(shownLines, total, page.length, Buffer.byteLength(page), saved.filepath), page)
+}
 
-  // tool_use_id is unique per invocation and content is deterministic for a
-  // given id, so skip if the file already exists. This prevents re-writing
-  // the same content on every API turn when microcompact replays the
-  // original messages. Use 'wx' instead of a stat-then-write race.
+/**
+ * What the page says about the rest. A line longer than the page is fetched
+ * by byte offset, the unit `tail -c` counts in.
+ */
+function pointerFor(
+  shownLines: number,
+  totalLines: number | undefined,
+  pageChars: number,
+  pageBytes: number,
+  filepath: string,
+): string {
+  if (shownLines === 0) {
+    return `Line 1 alone is longer than this page: its first ${pageChars} chars (${pageBytes} bytes) are below. Read cannot split a line; fetch the rest with Bash: tail -c +${pageBytes + 1} '${filepath.replaceAll("'", `'\\''`)}' | head -c 100000`
+  }
+  if (totalLines !== undefined && shownLines >= totalLines) return `All ${totalLines} lines are below.`
+  const of = totalLines === undefined ? '' : ` of ${totalLines}`
+  return `Lines 1-${shownLines}${of} are below; Read the file with offset=${shownLines + 1} and limit=${shownLines} for the next page.`
+}
+
+/** The number of lines in `text` as Read numbers them: a final newline opens no line. */
+export function lineCount(text: string): number {
+  return text === '' ? 0 : text.replace(/\n$/, '').split('\n').length
+}
+
+/**
+ * The first whole lines of `text` that fit in `maxChars`, and how many they
+ * are. Unless `complete`, `text` is the head of something longer, so its last
+ * line may be cut short and is never shown. When the first line alone is
+ * longer than `maxChars`, the page is its head and `shownLines` is 0.
+ */
+export function pageForModel(
+  text: string,
+  maxChars: number,
+  complete = true,
+): { page: string; shownLines: number } {
+  if (complete && text.length <= maxChars) {
+    const page = text.replace(/\n$/, '')
+    return { page, shownLines: page.split('\n').length }
+  }
+  // The newline that ends the last whole line within the budget.
+  const cut = text.lastIndexOf('\n', Math.min(maxChars, text.length))
+  if (cut < 0) {
+    // Never end on half of a surrogate pair, nor on a byte decoded short.
+    let end = Math.min(maxChars, text.length)
+    if (end > 0 && /[\uD800-\uDBFF]/.test(text[end - 1]!)) end--
+    return { page: text.slice(0, end).replace(/\uFFFD+$/, ''), shownLines: 0 }
+  }
+  const page = text.slice(0, cut)
+  return { page, shownLines: page.split('\n').length }
+}
+
+/**
+ * The first `maxBytes` of a saved file as text, whether that was all of it,
+ * and the file's size. Null when the file cannot be read.
+ */
+function readSavedHead(
+  filepath: string,
+  maxBytes: number,
+): { text: string; whole: boolean; fileBytes: number } | null {
+  let fd: number | undefined
   try {
-    await writeFile(filepath, contentStr, { encoding: 'utf-8', flag: 'wx' })
-    logForDebugging(
-      `Persisted tool result to ${filepath} (${formatFileSize(contentStr.length)})`,
-    )
-  } catch (error) {
-    if (getErrnoCode(error) !== 'EEXIST') {
-      logError(toError(error))
-      return { error: getFileSystemErrorMessage(toError(error)) }
-    }
-    // EEXIST: already persisted on a prior turn, fall through to preview
-  }
-
-  // Generate a preview
-  const { preview, hasMore } = generatePreview(contentStr, PREVIEW_SIZE_BYTES)
-
-  return {
-    filepath,
-    originalSize: contentStr.length,
-    isJson,
-    preview,
-    hasMore,
+    fd = openSync(filepath, 'r')
+    const fileBytes = fstatSync(fd).size
+    const buffer = Buffer.alloc(Math.min(maxBytes, fileBytes))
+    const read = readSync(fd, buffer, 0, buffer.length, 0)
+    return { text: new TextDecoder().decode(buffer.subarray(0, read)), whole: read >= fileBytes, fileBytes }
+  } catch {
+    return null
+  } finally {
+    if (fd !== undefined) closeSync(fd)
   }
 }
 
 /**
- * Build a message for large tool results with preview
+ * The smallest page a saved file is given. When what goes around it leaves
+ * less room, the whole result passes its line and is paged in turn by storage
+ * — nothing is cut, where a page of 0 chars would name a line it never shows.
  */
-export function buildLargeToolResultMessage(
-  result: PersistedToolResult,
+export const MIN_PAGE_CHARS = 4_000
+
+/**
+ * The page of a file already saved — a shell run's spilled output — cut from
+ * the file's own head, so its line numbers are the file's whatever the
+ * in-memory text went through (the output filter, a blank-line strip, a byte
+ * cap ending mid-line). `fallback` stands in when the file cannot be read.
+ */
+export function pageSavedFile(
+  saved: Omit<SavedOutput, 'originalSize'> & { originalSize?: number },
+  maxChars: number,
+  fallback: string,
 ): string {
-  let message = `${PERSISTED_OUTPUT_TAG}\n`
-  message += `Output too large (${formatFileSize(result.originalSize)}). Full output saved to: ${result.filepath}\n\n`
-  message += `Preview (first ${formatFileSize(PREVIEW_SIZE_BYTES)}):\n`
-  message += result.preview
-  message += result.hasMore ? '\n...\n' : '\n'
-  message += PERSISTED_OUTPUT_CLOSING_TAG
-  return message
+  const budget = Math.max(maxChars, MIN_PAGE_CHARS)
+  const head = readSavedHead(saved.filepath, budget)
+  const originalSize = saved.originalSize ?? head?.fileBytes ?? fallback.length
+  return buildLargeToolResultMessage({ ...saved, originalSize }, head?.text ?? fallback, budget, {
+    complete: head?.whole ?? false,
+  })
+}
+
+/** The most of an output file kept for the model to page through. */
+export const MAX_SAVED_OUTPUT_BYTES = 64 * 1024 * 1024
+
+/**
+ * Save an output file its producer already wrote — a shell run past what it
+ * keeps in memory — where its page will point: linked into the results
+ * directory, copied when a link cannot be made, and left where it is when
+ * neither can, since it is on disk all the same. Past `maxBytes` it is
+ * truncated first, and `savedBytes` lets the page say so. Undefined when the
+ * file is gone.
+ */
+export async function adoptOutputFile(
+  sourcePath: string,
+  id: string,
+  maxBytes = MAX_SAVED_OUTPUT_BYTES,
+): Promise<SavedOutput | undefined> {
+  let originalSize: number
+  try {
+    originalSize = (await stat(sourcePath)).size
+  } catch {
+    return undefined
+  }
+  if (originalSize > maxBytes) {
+    try {
+      await truncate(sourcePath, maxBytes)
+    } catch {
+      // Kept whole, then; the size read below says so.
+    }
+  }
+  const filepath = (await linkIntoResults(sourcePath, `${id}.txt`)) ?? sourcePath
+  let savedBytes = originalSize
+  try {
+    savedBytes = (await stat(filepath)).size
+  } catch {
+    // The file was there a moment ago; its size stays the one read first.
+  }
+  return { filepath, originalSize, savedBytes, lines: await countLines(filepath) }
+}
+
+async function linkIntoResults(sourcePath: string, name: string): Promise<string | undefined> {
+  for (const dir of resultDirs()) {
+    const dest = join(dir, name)
+    try {
+      await mkdir(dir, { recursive: true })
+      try {
+        await link(sourcePath, dest)
+      } catch {
+        await copyFile(sourcePath, dest)
+      }
+      return dest
+    } catch {
+      // The next directory, then.
+    }
+  }
+  return undefined
+}
+
+/** The lines in a file, as `lineCount` numbers them. Undefined when it cannot be read. */
+async function countLines(filepath: string): Promise<number | undefined> {
+  try {
+    let newlines = 0
+    let last: number | undefined
+    for await (const chunk of createReadStream(filepath)) {
+      const buf = chunk as Buffer
+      for (let i = buf.indexOf(0x0a); i !== -1; i = buf.indexOf(0x0a, i + 1)) newlines++
+      if (buf.length > 0) last = buf[buf.length - 1]
+    }
+    return last === undefined || last === 0x0a ? newlines : newlines + 1
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * A result past its line that could be saved nowhere: its first page, and
+ * how to see the rest. The one place something is left out, and it says so —
+ * the whole result could fill the context window.
+ */
+export function pageUnsaved(text: string, maxChars: number, reason: string): string {
+  const total = lineCount(text)
+  const pointer = (shown: number) =>
+    shown === 0
+      ? 'Line 1 alone is longer than this page; only its head is below.'
+      : `Lines 1-${shown} of ${total} are below.`
+  const frame = (p: string, page: string) =>
+    `${PERSISTED_OUTPUT_TAG}\nOutput too large (${formatFileSize(text.length)}), and it could not be saved (${reason}).\n${p} The rest could not be kept: narrow the call (a range, a filter, a smaller limit) to see it.\n\n${page}\n${PERSISTED_OUTPUT_CLOSING_TAG}`
+  const longest = Math.max(pointer(0).length, pointer(Number.MAX_SAFE_INTEGER).length)
+  const budget = maxChars - frame('', '').length - longest
+  const { page, shownLines } = pageForModel(text, Math.max(budget, 0))
+  return frame(pointer(shownLines), page)
+}
+
+/**
+ * A tool's error text: whole while it fits under the tool's line, and paged
+ * past it like any result — nothing in it is cut. Saved by its content alone,
+ * so a failure repeated word for word names the same file and reads the same.
+ */
+export async function pageErrorText(text: string, threshold: number): Promise<string> {
+  if (text.length <= threshold) return text
+  const saved = await persistToolResult(text, 'error')
+  if (isPersistError(saved)) return pageUnsaved(text, threshold, saved.error)
+  return buildLargeToolResultMessage(saved, saved.text, threshold)
 }
 
 /**
  * Process a tool result for inclusion in a message.
- * Maps the result to the API format and persists large results to disk.
+ * Maps the result to the API format, compacts it, and pages it past the line.
  */
 export async function processToolResultBlock<T>(
   tool: {
@@ -221,7 +414,6 @@ export async function processToolResultBlock<T>(
       result: T,
       toolUseID: string,
     ) => ToolResultBlockParam
-    skipsResultSummarizer?: (result: T) => boolean
   },
   toolUseResult: T,
   toolUseID: string,
@@ -230,137 +422,22 @@ export async function processToolResultBlock<T>(
     toolUseResult,
     toolUseID,
   )
-  return processPreMappedToolResultBlock(toolResultBlock, tool, toolUseResult)
+  return processPreMappedToolResultBlock(toolResultBlock, tool)
 }
 
 /**
- * Process a pre-mapped tool result block. Applies persistence for large results
- * without re-calling mapToolResultToToolResultBlockParam.
- * `toolUseResult` is the output the block was mapped from, for the tool's
- * skipsResultSummarizer.
+ * Process a pre-mapped tool result block. Nothing is cut: a Grep or Glob
+ * result is regrouped without losing a line, and a result still past its
+ * tool's persistence line is saved whole and paged — its first lines and the
+ * line to Read from for the rest (`buildLargeToolResultMessage`).
  */
-export async function processPreMappedToolResultBlock<T>(
+export async function processPreMappedToolResultBlock(
   toolResultBlock: ToolResultBlockParam,
-  tool: {
-    name: string
-    maxResultSizeChars: number
-    skipsResultSummarizer?: (result: T) => boolean
-  },
-  toolUseResult: T,
+  tool: { name: string; maxResultSizeChars: number },
 ): Promise<ToolResultBlockParam> {
   const { name: toolName, maxResultSizeChars } = tool
-  const summarized = tool.skipsResultSummarizer?.(toolUseResult)
-    ? toolResultBlock
-    : maybeSummarizeToolResult(toolResultBlock, toolName)
-  const reversible = await makeReversibleIfElided(toolResultBlock, summarized)
-  return maybePersistLargeToolResult(
-    reversible,
-    toolName,
-    getPersistenceThreshold(maxResultSizeChars),
-  )
-}
-
-// --- Reversibility for summarizer elisions (TOOL_RESULT_JSON_COMPRESSION) ---
-//
-// When the summarizer drops bytes, persist the full original to disk and add a
-// quiet `source="<path>"` attribute to the marker so the model can Read/Grep it
-// for omitted data — reusing the same persistence mechanism as the >50KB path,
-// no new tool. The attribute is deliberately NOT prose: prose elision
-// affordances triggered a re-read thrashing loop (see toolResultSummarizer.ts
-// design notes + AUTO_OUTLINE_ON_ELISION).
-
-// "Something was dropped" signal. Text strategies are always lossy; the
-// json-structural strategy is lossy only when it windowed rows or truncated a
-// cell, so a fully-shown schema-factor (lossless) skips the disk write.
-const ELISION_DROP_RE = /<omitted|…\[\d+b\]/
-
-async function makeReversibleIfElided(
-  originalBlock: ToolResultBlockParam,
-  summarized: ToolResultBlockParam,
-): Promise<ToolResultBlockParam> {
-  if (!isToolResultJsonCompressionEnabled() && !isToolResultCodeOutlineEnabled())
-    return summarized
-  if (summarized === originalBlock) return summarized // no elision happened
-  const content = summarized.content
-  if (typeof content !== 'string' || !isSummarizedContent(content)) {
-    return summarized
-  }
-  if (!wasLossy(content)) return summarized
-
-  const jsonEnabled = isToolResultJsonCompressionEnabled()
-  const isCodeOutline = content.includes('strategy="code-outline"')
-  // Scope guard. The JSON-compression flag is the master switch for summarizer
-  // reversibility: when on, it backs every lossy strategy (incl. blind bash/
-  // grep/glob/webfetch/agent/mcp head-tail). The code-outline flag, on its own,
-  // must back ONLY the code-outline strategy — enabling it must not silently
-  // start persisting raw backing for unrelated head/tail strategies that were
-  // never reversible before.
-  if (!jsonEnabled && !isCodeOutline) return summarized
-
-  const originalStr = toOriginalString(originalBlock.content)
-  if (originalStr === null) return summarized
-
-  // Code-outline persists the raw source verbatim: the outline's line ranges
-  // equal the original line numbers, so Read offset/limit + Grep on the source=
-  // path recover any dropped body. For JSON, persist the JSON-lines canonical
-  // form (one element per line, aligned to the marker's #N) so Read offset/limit
-  // and Grep address elements. Any other lossy text strategy keeps the raw form.
-  let body: string
-  if (isCodeOutline) {
-    body = originalStr
-  } else {
-    const jc = compressJsonArray(originalStr)
-    body = jc ? jc.jsonl : originalStr
-  }
-
-  const result = await persistToolResult(body, summarized.tool_use_id)
-  if (isPersistError(result)) return summarized
-
-  return {
-    ...summarized,
-    content: injectEnvelopeAttr(content, 'source', result.filepath),
-  }
-}
-
-function wasLossy(content: string): boolean {
-  if (content.includes('strategy="json-structural"')) {
-    return ELISION_DROP_RE.test(content)
-  }
-  return true
-}
-
-function toOriginalString(
-  content: ToolResultBlockParam['content'],
-): string | null {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return null
-  return content
-    .filter(
-      (b): b is { type: 'text'; text: string } =>
-        typeof b === 'object' &&
-        b !== null &&
-        'type' in b &&
-        b.type === 'text' &&
-        'text' in b &&
-        typeof (b as { text?: unknown }).text === 'string',
-    )
-    .map(b => b.text)
-    .join('\n')
-}
-
-/** Splice ` key="value"` into the marker's opening tag, before the first `>`. */
-export function injectEnvelopeAttr(
-  marker: string,
-  key: string,
-  value: string,
-): string {
-  const gt = marker.indexOf('>')
-  if (gt === -1) return marker
-  const escaped = value
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-  return `${marker.slice(0, gt)} ${key}="${escaped}"${marker.slice(gt)}`
+  const compacted = maybeCompactToolResult(toolResultBlock, toolName)
+  return maybePersistLargeToolResult(compacted, toolName, getPersistenceThreshold(maxResultSizeChars))
 }
 
 /**
@@ -394,7 +471,7 @@ export function isToolResultContentEmpty(
 async function maybePersistLargeToolResult(
   toolResultBlock: ToolResultBlockParam,
   toolName: string,
-  persistenceThreshold?: number,
+  threshold: number,
 ): Promise<ToolResultBlockParam> {
   // Check size first before doing any async work - most tool results are small
   const content = toolResultBlock.content
@@ -423,48 +500,32 @@ async function maybePersistLargeToolResult(
   }
 
   const size = contentSize(content)
-
-  // Use tool-specific threshold if provided, otherwise fall back to global limit
-  const threshold = persistenceThreshold ?? MAX_TOOL_RESULT_BYTES
   if (size <= threshold) {
+    // Saved all the same from SAVE_WHOLE_FROM_CHARS, so a context-relief clip
+    // of it can name the copy (`savedCopyOf`) instead of the model running
+    // the call again. Read is never saved: it bounds itself (Infinity), and
+    // its file is right where it read it.
+    if (size >= SAVE_WHOLE_FROM_CHARS && Number.isFinite(threshold)) {
+      await persistToolResult(content, toolResultBlock.tool_use_id)
+    }
     return toolResultBlock
   }
 
   // Persist the entire content as a unit
   const result = await persistToolResult(content, toolResultBlock.tool_use_id)
   if (isPersistError(result)) {
-    // If persistence failed, return the original block unchanged
-    return toolResultBlock
+    // Saved nowhere. Text is paged all the same, without its file; blocks
+    // that are not text cannot be paged and ship as they came.
+    const text = resultText(content)
+    return text === undefined
+      ? toolResultBlock
+      : { ...toolResultBlock, content: pageUnsaved(text, threshold, result.error) }
   }
 
-  const message = buildLargeToolResultMessage(result)
+  const message = buildLargeToolResultMessage(result, result.text, threshold)
 
   recordBytesSaved(result.originalSize, message.length)
-
-
   return { ...toolResultBlock, content: message }
-}
-
-/**
- * Generate a preview of content, truncating at a newline boundary when possible.
- */
-export function generatePreview(
-  content: string,
-  maxBytes: number,
-): { preview: string; hasMore: boolean } {
-  if (content.length <= maxBytes) {
-    return { preview: content, hasMore: false }
-  }
-
-  // Find the last newline within the limit to avoid cutting mid-line
-  const truncated = content.slice(0, maxBytes)
-  const lastNewline = truncated.lastIndexOf('\n')
-
-  // If we found a newline reasonably close to the limit, use it
-  // Otherwise fall back to the exact limit
-  const cutPoint = lastNewline > maxBytes * 0.5 ? lastNewline : maxBytes
-
-  return { preview: content.slice(0, cutPoint), hasMore: true }
 }
 
 /**

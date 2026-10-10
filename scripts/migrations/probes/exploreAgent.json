@@ -5,7 +5,6 @@
     "src/tools/AgentTool/built-in/readOnlyAgents.test.ts",
     "src/tools/AgentTool/builtInAgents.test.ts",
     "src/tools/AgentTool/autoBackground.test.ts",
-    "src/tools/AgentTool/skipsResultSummarizer.test.ts",
     "src/tools/AgentTool/prompt.test.ts",
     "src/tools/EnterPlanModeTool/prompt.test.ts",
     "src/agent/planDossier.test.ts",
@@ -43,24 +42,6 @@
       "source": "src/tools/AgentTool/constants.ts",
       "find": "  'Explore',\n  'Plan',\n",
       "replace": "  'Plan',\n"
-    },
-    {
-      "name": "Explore's report is in the unsummarized set",
-      "source": "src/tools/AgentTool/constants.ts",
-      "find": "export const UNSUMMARIZED_AGENT_TYPES: ReadonlySet<string> = new Set([\n  'Explore',\n])\n",
-      "replace": "export const UNSUMMARIZED_AGENT_TYPES: ReadonlySet<string> = new Set([])\n"
-    },
-    {
-      "name": "AgentTool answers skipsResultSummarizer from the set",
-      "source": "src/tools/AgentTool/AgentTool.tsx",
-      "find": "    return data.status === 'completed' && data.agentType !== undefined && UNSUMMARIZED_AGENT_TYPES.has(data.agentType);\n",
-      "replace": "    return false;\n"
-    },
-    {
-      "name": "the storage path honors the tool's answer",
-      "source": "src/agent/tools/toolResultStorage.ts",
-      "find": "  const summarized = tool.skipsResultSummarizer?.(toolUseResult)\n    ? toolResultBlock\n    : maybeSummarizeToolResult(toolResultBlock, toolName)\n",
-      "replace": "  const summarized = maybeSummarizeToolResult(toolResultBlock, toolName)\n"
     },
     {
       "name": "Explore takes a zero plan-dossier budget",

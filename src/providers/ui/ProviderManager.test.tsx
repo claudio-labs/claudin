@@ -1785,7 +1785,7 @@ test('the provider manager menu leaves importing to /import', async () => {
   // An unmigrated ~/.claude/ used to add an "Import from Claude Code" row here.
   // Override only legacyClaudeDirExists; do NOT replace migrateLegacyClaudeDir
   // (binding leaks to commands/provider/migrate.test.tsx) and do NOT mock
-  // config.js (that mock leaks into toolResultSummarizer.test.ts).
+  // config.js (that mock leaks into the other config-reading suites).
   mock.module('src/platform/config/claudinMigration.js', () => ({
     ...realClaudinMigrationForPm,
     legacyClaudeDirExists: () => true,

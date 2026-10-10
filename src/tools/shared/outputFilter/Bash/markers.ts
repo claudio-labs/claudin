@@ -4,14 +4,14 @@ import type { PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/
 const MAX_ATTR_LEN = 200;
 
 /** Matches the opening tag of any previously-wrapped output — used to prevent double-wrapping.
- * `persisted-output` and `tool-result-summary` come from the upstream toolResultStorage layer,
- * which may already have wrapped large output before this filter runs.
+ * `persisted-output`, `tool-result-summary` and `tool-result-compacted` come from the upstream
+ * toolResultStorage layer, which may already have wrapped large output before this filter runs.
  *
  * `bash-output-read` ({@link wrapFileRead}) is left out on purpose: raw output
  * that opens with it is a file that holds it, a saved tool result the model
  * cats, and that read is wrapped like any other. */
 export const ALREADY_WRAPPED_RE =
-  /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered)/;
+  /^<(?:persisted-output|tool-result-summary|tool-result-compacted|bash-output-rewritten|bash-output-filtered)/;
 
 /** Display-only inverse of {@link wrapStdoutWithMarkers}: strips the outer
  * `<bash-output-filtered …>` / `<bash-output-rewritten …>` wrapper, or the

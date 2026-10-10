@@ -31,7 +31,7 @@
  * defaults to 14 days back; `/tmp` projects (the A/B benches) are left out.
  *
  * `--lane` replays the read lane (`readLane.ts`, CLAUDIN_BASH_READ_LANE) over
- * every capped or summarized Bash result: which of them it would have left
+ * every capped (or, before 2026-10-10, summarized) Bash result: which of them it would have left
  * whole — the command passes `isModelDirectedRead` and the output was at most
  * FILE_READ_PASSTHROUGH_MAX_CHARS before the cut — and whether the pure
  * recoveries fell after those or after the cuts it would still make. The size
@@ -367,13 +367,13 @@ if (BOUND) {
 }
 
 // ---------------------------------------------------------------------------
-// --lane: replay the read lane over every capped or summarized Bash result
+// --lane: replay the read lane over every capped (or, before 2026-10-10, summarized) Bash result
 // ---------------------------------------------------------------------------
 
 if (LANE) {
   const keeps = (c: Laned): boolean => c.chars <= FILE_READ_PASSTHROUGH_MAX_CHARS && isModelDirectedRead(c.command)
   const cell = (cs: readonly Laned[]): string => `${cs.length} | ${pct(cs.filter(c => c.recovered).length, cs.length)} (${cs.filter(c => c.recovered).length})`
-  console.log(`\n## --lane: what the read lane keeps whole of the ${laned.length} capped or summarized Bash results`)
+  console.log(`\n## --lane: what the read lane keeps whole of the ${laned.length} capped (or, before 2026-10-10, summarized) Bash results`)
   console.log(`| cut | thread | n | lane keeps whole | recovered after those | lane still cuts | recovered after those |`)
   console.log('|---|---|---|---|---|---|---|')
   const groups: [string, string, (c: Laned) => boolean][] = [

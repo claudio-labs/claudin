@@ -38,10 +38,8 @@
  * Never credited:
  *  - a result the model got a preview of — BashTool spilled it to disk, or it
  *    is over the size the harness persists at;
- *  - an unwrapped result of 8k chars or more, which the tool-result summarizer
- *    cuts before the model sees it (it stands aside for the filter's
- *    wrappers). Both sizes are the tool result's, which carries any note after
- *    stdout, this one's line included;
+ *    that size is the tool result's, which carries any note after stdout,
+ *    this one's line included;
  *  - a run that was interrupted or carries stderr (the cwd-reset note);
  *  - a file shown only in part, which is every file the floor cap cut through,
  *    and every one a `head` or `tail` printed part of;
@@ -67,8 +65,6 @@
 import { readdir, stat } from 'fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'path'
 import picomatch from 'picomatch'
-import { isAlreadyCompacted } from 'src/agent/tools/toolResultSummarizer/markers.js'
-import { BASH_SUMMARIZE_THRESHOLD } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
 import { pathInAllowedWorkingPath } from 'src/permissions/filePermissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -89,14 +85,15 @@ import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.j
 import { isWholeFileView } from 'src/tools/shared/readBeforeEditMessages.js'
 import { fileLinesOf } from 'src/tools/shared/servedRegion.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js'
 
 const READ_CREDIT = isEnvTruthy(process.env.CLAUDIN_BASH_READ_CREDIT)
 
 /**
  * BashTool's `maxResultSizeChars`: over it the harness saves the result to a
- * file and the model gets a 2 KB preview.
+ * file and the model gets its first page.
  */
-const PERSISTED_ABOVE_CHARS = 30_000
+const PERSISTED_ABOVE_CHARS = SHELL_RESULT_MAX_CHARS
 
 /** Files checked per command, however wide its globs. */
 const MAX_CANDIDATES = 32
@@ -192,7 +189,7 @@ export async function creditShownFiles(
     // result an `<error>` part — the abort marker, the cwd-reset note.
     if (shown.interrupted || shown.stderr?.trim()) return NO_CREDIT
     const received = receivedText(shown)
-    if (received === undefined || !reachesModelWhole(received, received.length)) {
+    if (received === undefined || !reachesModelWhole(received.length)) {
       return NO_CREDIT
     }
     const reads = catReadsOf(shown.command)
@@ -210,7 +207,7 @@ export async function creditShownFiles(
     const note = renderCreditNote(judged, cwd, shown.notShown ?? [])
     if (
       note === null ||
-      !reachesModelWhole(received, received.length + 1 + note.length)
+      !reachesModelWhole(received.length + 1 + note.length)
     ) {
       return NO_CREDIT
     }
@@ -234,7 +231,7 @@ export async function creditShownFiles(
 /**
  * The text the model receives for the run: the tool_result BashTool maps it
  * to — stdout trimmed, then any note, stderr part and background note — which
- * is what the summarizer and result persistence measure. The id only labels
+ * is what result persistence measures. The id only labels
  * the block.
  */
 function receivedText(shown: ShownBashOutput): string | undefined {
@@ -243,13 +240,11 @@ function receivedText(shown: ShownBashOutput): string | undefined {
 }
 
 /**
- * Whether a tool result that opens like `received` and is `length` chars long
- * reaches the model as it is: not persisted behind a preview, and not cut by
- * the tool-result summarizer, which stands aside only for a wrapped one.
+ * Whether a tool result `length` chars long reaches the model as it is: under
+ * the line where Bash pages it. Nothing below that line is cut.
  */
-function reachesModelWhole(received: string, length: number): boolean {
-  if (length > PERSISTED_ABOVE_CHARS) return false
-  return isAlreadyCompacted(received) || length < BASH_SUMMARIZE_THRESHOLD
+function reachesModelWhole(length: number): boolean {
+  return length <= PERSISTED_ABOVE_CHARS
 }
 
 /**
@@ -509,7 +504,7 @@ export type FittedRead = {
  * `stdout` cut back to the whole files that fit in `budget` chars, and the
  * files it leaves out by name: the pass-through's answer to a pure read too
  * long for one result (`overBudgetFileRead`, outputFilter/Bash/index.ts),
- * where the cap would keep 30 lines of it and a spill a 2 KB preview.
+ * where the cap would keep 30 lines of it and a spill its first page.
  *
  * The files are taken in the order the command names them, each found after
  * the one before it — its bytes or its `cat -n` rendering, from the start of a

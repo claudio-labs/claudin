@@ -1,5 +1,4 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
-import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promises';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
@@ -16,7 +15,6 @@ import { exec } from 'src/shared/proc/Shell.js';
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
-import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { userFacingName as fileEditUserFacingName } from 'src/tools/FileEditTool/UI.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
@@ -30,7 +28,6 @@ import {
   planBashFilter,
   type PreExecPlan,
 } from 'src/tools/shared/outputFilter/Bash/index.js';
-import { isOneCutEnabled } from 'src/tools/shared/outputFilter/Bash/floor.js';
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
 import { creditShownFiles, fitWholeFiles, renderNotShownNote, type FittedRead } from 'src/tools/BashTool/creditShownFiles.js';
 import { refreshOwnWrites } from 'src/tools/BashTool/ownWrites.js';
@@ -45,7 +42,7 @@ import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
-import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam, pageFailedShellRun, saveSpilledRun } from 'src/tools/shellToolResultMappers.js';
 import { applyBashOutputFilter, planBashFilterForExecution, runShellCommand, shouldFilterOutput } from 'src/tools/BashTool/runShellCommand.js';
 const EOL = '\n';
 // Progress display constants
@@ -56,9 +53,7 @@ const EOL = '\n';
 // Re-export BashProgress from centralized types to break import cycles
 export type { BashProgress } from 'src/shared/types/tools.js';
 import type { BashProgress } from 'src/shared/types/tools.js';
-
-/** Past this a result is saved to disk behind a preview (toolResultStorage.ts). */
-const BASH_RESULT_PERSIST_CHARS = 30_000;
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js';
 
 /**
  * CLAUDIN_BASH_READ_LANE: a pure read too long for one result —
@@ -112,7 +107,7 @@ export const BashTool = buildTool({
   searchHint: 'execute shell commands',
   clearableResult: true,
   // 30K chars - tool result persistence threshold
-  maxResultSizeChars: BASH_RESULT_PERSIST_CHARS,
+  maxResultSizeChars: SHELL_RESULT_MAX_CHARS,
   async description({
     description
   }) {
@@ -387,16 +382,26 @@ export const BashTool = buildTool({
         }
       }
 
-      // Annotate output with sandbox violations if any (stderr is in stdout).
-      const outputWithSbFailures = safeAnnotateStderrWithSandboxFailures(input.command, result.stdout || '');
       if (result.preSpawnError) {
         throw new Error(result.preSpawnError);
       }
       if (interpretationResult.isError && !isInterrupt) {
-        // stderr is merged into stdout (merged fd); outputWithSbFailures
-        // already has the full output. Pass '' for stdout to avoid
-        // duplication in getErrorParts() and processBashCommand.
-        throw new ShellError('', outputWithSbFailures, result.code, result.interrupted);
+        // stderr is merged into stdout (merged fd), so the whole output goes
+        // in stderr, annotated with any sandbox violations; '' for stdout
+        // avoids duplication in getErrorParts() and processBashCommand.
+        // A failing run that spilled kept only its first chunk in stdout: its
+        // error is the page of the whole saved output instead, whose pointer
+        // names the file's line count, so the end of a long failing run —
+        // where the failure usually is — is one Read away.
+        const saved = await saveSpilledRun(result);
+        const errorOutput = saved
+          ? safeAnnotateStderrWithSandboxFailures(input.command, pageFailedShellRun(saved, {
+              code: result.code,
+              interrupted: result.interrupted,
+              others: safeAnnotateStderrWithSandboxFailures(input.command, '')
+            }))
+          : safeAnnotateStderrWithSandboxFailures(input.command, result.stdout || '');
+        throw new ShellError('', errorOutput, result.code, result.interrupted);
       }
       wasInterrupted = result.interrupted;
     } finally {
@@ -406,32 +411,11 @@ export const BashTool = buildTool({
     // Get final string from accumulator
     const stdout = stdoutAccumulator.toString();
 
-    // Large output: the file on disk has more than getMaxOutputLength() bytes.
-    // stdout already contains the first chunk (from getStdout()). Copy the
-    // output file to the tool-results dir so the model can read it via
-    // FileRead. If > 64 MB, truncate after copying.
-    const MAX_PERSISTED_SIZE = 64 * 1024 * 1024;
-    let persistedOutputPath: string | undefined;
-    let persistedOutputSize: number | undefined;
-    if (result.outputFilePath && result.outputTaskId) {
-      try {
-        const fileStat = await fsStat(result.outputFilePath);
-        persistedOutputSize = fileStat.size;
-        await ensureToolResultsDir();
-        const dest = getToolResultPath(result.outputTaskId, false);
-        if (fileStat.size > MAX_PERSISTED_SIZE) {
-          await fsTruncate(result.outputFilePath, MAX_PERSISTED_SIZE);
-        }
-        try {
-          await link(result.outputFilePath, dest);
-        } catch {
-          await copyFile(result.outputFilePath, dest);
-        }
-        persistedOutputPath = dest;
-      } catch {
-        // File may already be gone — stdout preview is sufficient
-      }
-    }
+    // Large output: the file on disk has more than getMaxOutputLength() bytes
+    // and stdout only its first chunk. Save the file where the page points.
+    const saved = await saveSpilledRun(result);
+    const persistedOutputPath = saved?.filepath;
+    const persistedOutputSize = saved?.originalSize;
     const commandType = input.command.split(' ')[0];
 
     // Log code indexing tool usage
@@ -476,6 +460,8 @@ export const BashTool = buildTool({
       dangerouslyDisableSandbox: 'dangerouslyDisableSandbox' in input ? input.dangerouslyDisableSandbox as boolean | undefined : undefined,
       persistedOutputPath,
       persistedOutputSize,
+      persistedOutputSavedBytes: saved?.savedBytes,
+      persistedOutputLines: saved?.lines,
       ...(reducedExitCode !== undefined && {
         reducedExitCode
       }),
@@ -515,13 +501,6 @@ export const BashTool = buildTool({
     };
   },
   renderToolUseErrorMessage,
-  // CLAUDIN_BASH_ONE_CUT: the filter's cut is the only one (floor.ts). The
-  // summarizer stays the backstop where the filter did not run, and past the
-  // persist line, where its line truncation can still keep a result of long
-  // lines out of a file on disk.
-  skipsResultSummarizer(output: Out): boolean {
-    return isOneCutEnabled() && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput(getGlobalConfig().bashOutputFilterEnabled, isBashOutputFilterDisabled, output.backgroundTaskId);
-  },
   isResultTruncated(output: Out): boolean {
     return isOutputLineTruncated(output.stdout) || isOutputLineTruncated(output.stderr);
   }

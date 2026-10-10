@@ -17,7 +17,7 @@
 //
 //   MEASURED   search      real ripGrep() over this repo's own src/
 //              outline     real buildSymbolsOutput() + scanSymbols/renderOutline
-//              summarize   real maybeSummarizeToolResult()
+//              summarize   real maybeCompactToolResult() (the Grep regroup)
 //              render      real applyMarkdown()
 //
 //   NOT COVERED  model stream parse, and the QueryEngine shell around it
@@ -85,8 +85,8 @@ const { ripGrep } = await import('../../../src/shared/fs/ripgrep.js')
 const { buildSymbolsOutput } = await import(
   '../../../src/tools/GrepTool/symbolsOutput.js'
 )
-const { maybeSummarizeToolResult } = await import(
-  '../../../src/agent/tools/toolResultSummarizer.js'
+const { maybeCompactToolResult } = await import(
+  '../../../src/agent/tools/toolResultCompaction.js'
 )
 const { applyMarkdown, configureMarked } = await import(
   '../../../src/shared/text/markdown.js'
@@ -256,7 +256,7 @@ async function runTurn(turn: number, args: Args, root: string): Promise<TurnReco
   // summarizer, so this is the real reduction path, not a synthetic string.
   const rawPayload = rgLines.join('\n')
   const [summarized, summarizeSample] = await timed(() =>
-    maybeSummarizeToolResult(
+    maybeCompactToolResult(
       { type: 'tool_result', tool_use_id: `toolu_${turn}`, content: rawPayload },
       'Grep',
     ),

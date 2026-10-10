@@ -150,16 +150,12 @@ export type RedirectAnalysis = {
 
 /**
  * How large a `| head -N` over a file listing may be and still fold into
- * `head_limit`. Above it the fold would promise more paths than the model
- * receives: `summarizeGlobOutput` keeps the first GLOB_MAX_PATHS (50) of a Glob
- * result. Kept as its own constant rather than imported, for the same reason
- * VCS_DIRECTORIES_GREP_EXCLUDES is: the summarizer drags the whole tool result
- * pipeline in behind it.
+ * `head_limit`: every path one Glob call returns. Above it the fold would
+ * promise more paths than the model receives without paging.
  */
-const GLOB_FOLDABLE_PATHS = 50
-
 /** What one Glob call returns before the model has to page (GlobTool's cap). */
 const GLOB_PATHS_PER_CALL = 100
+const GLOB_FOLDABLE_PATHS = GLOB_PATHS_PER_CALL
 
 // ---------------------------------------------------------------------------
 // Segment → argv
@@ -1206,8 +1202,8 @@ function classifyPipeline(
   }
 
   // A `| head -N` over a listing only maps while the model would actually
-  // receive N paths: the result summarizer keeps the first GLOB_MAX_PATHS of a
-  // Glob result, so folding a larger head promises a listing it then trims.
+  // receive N paths in one call: folding a larger head promises a listing the
+  // model would have to page.
   if (
     windowable?.tool === 'Glob' &&
     window.limit !== undefined &&

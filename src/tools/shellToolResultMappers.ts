@@ -1,10 +1,8 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
-import {
-  buildLargeToolResultMessage,
-  generatePreview,
-  PREVIEW_SIZE_BYTES,
-} from 'src/agent/tools/toolResultStorage.js'
+import { shellErrorPrefix } from 'src/agent/tools/toolErrors.js'
+import { adoptOutputFile, pageSavedFile, type SavedOutput } from 'src/agent/tools/toolResultStorage.js'
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js'
 import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
 /**
@@ -18,7 +16,9 @@ import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
  *
  * What deliberately stays at the call sites: BashTool's `structuredContent`
  * early return (only Bash produces it) and everything about the backgrounding
- * lifecycle itself. This module only formats what the run already produced.
+ * lifecycle itself. This module formats what the run produced; a run too
+ * large for its result is saved and paged by storage (`adoptOutputFile`,
+ * `pageSavedFile`), and this module only says how much room the page gets.
  */
 
 const EOL = '\n'
@@ -43,6 +43,10 @@ export type ShellToolResultData = {
   assistantAutoBackgrounded?: boolean
   persistedOutputPath?: string | null
   persistedOutputSize?: number
+  /** Set when only part of the output could be kept (`adoptOutputFile`). */
+  persistedOutputSavedBytes?: number
+  /** The saved output's line count, for its page. */
+  persistedOutputLines?: number
   /**
    * A note on a file read, after stdout: the files a read too long to show
    * whole left out, and the ones that count as read (BashTool's
@@ -98,6 +102,33 @@ export function buildShellBackgroundInfo({
 }
 
 /**
+ * A run whose output passed what it keeps in memory wrote all of it to a task
+ * file: storage saves it where its page will point. Called for a failing run
+ * too, whose error is paged from the same file. Undefined when nothing
+ * spilled, or the file is gone.
+ */
+export function saveSpilledRun(result: { outputFilePath?: string; outputTaskId?: string }): Promise<SavedOutput | undefined> {
+  if (!result.outputFilePath || !result.outputTaskId) return Promise.resolve(undefined)
+  return adoptOutputFile(result.outputFilePath, result.outputTaskId)
+}
+
+/**
+ * What a failing run that spilled carries as its output in its ShellError:
+ * the page of its saved output, sized to leave room for exactly what
+ * `formatError` puts around it — `others` is the rest of the error's own text
+ * (Bash's sandbox note, PowerShell's stderr) — so the error stays under the
+ * shells' line and the tool loop never pages it again. Every consumer of a
+ * ShellError reads the page and its pointer, not a first chunk.
+ */
+export function pageFailedShellRun(
+  saved: SavedOutput,
+  around: { code: number; interrupted: boolean; others: string },
+): string {
+  const room = shellErrorPrefix(around.code, around.interrupted).length + around.others.length + 1
+  return pageSavedFile(saved, SHELL_RESULT_MAX_CHARS - room, '')
+}
+
+/**
  * Fold a shell run into the model-facing `tool_result` block.
  *
  * `stdout`/`stderr` are typed optional-and-nullable on purpose: the shell layer
@@ -119,27 +150,30 @@ export function mapShellResultToToolResultBlockParam(
   }
 
   const trimmed = trimShellStdout(normalizedStdout)
-  let processedStdout = trimmed
-  if (data.persistedOutputPath) {
-    const preview = generatePreview(trimmed, PREVIEW_SIZE_BYTES)
-    processedStdout = buildLargeToolResultMessage({
-      filepath: data.persistedOutputPath,
-      originalSize: data.persistedOutputSize ?? 0,
-      isJson: false,
-      preview: preview.preview,
-      hasMore: preview.hasMore,
-    })
-  }
-
   const errorMessage = buildShellErrorMessage(normalizedStderr, data.interrupted)
   const backgroundInfo = buildShellBackgroundInfo(data)
+  const after = [data.readNote, errorMessage, backgroundInfo].filter(Boolean)
+
+  let processedStdout = trimmed
+  if (data.persistedOutputPath) {
+    // A run too large for its result saved its output whole: page it, leaving
+    // room for the lines after the page.
+    processedStdout = pageSavedFile(
+      {
+        filepath: data.persistedOutputPath,
+        originalSize: data.persistedOutputSize,
+        savedBytes: data.persistedOutputSavedBytes,
+        lines: data.persistedOutputLines,
+      },
+      SHELL_RESULT_MAX_CHARS - after.reduce((n, part) => n + part!.length + 1, 0),
+      normalizedStdout,
+    )
+  }
 
   return {
     tool_use_id: toolUseID,
     type: 'tool_result' as const,
-    content: [processedStdout, data.readNote, errorMessage, backgroundInfo]
-      .filter(Boolean)
-      .join('\n'),
+    content: [processedStdout, ...after].filter(Boolean).join('\n'),
     is_error: data.interrupted,
   }
 }

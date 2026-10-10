@@ -3,7 +3,6 @@
     "src/tools/shared/outputFilter/Bash/floor.test.ts",
     "src/tools/shared/outputFilter/Bash/fileReadShape.test.ts",
     "src/tools/shared/outputFilter/Bash/markers.test.ts",
-    "src/agent/tools/toolResultSummarizer.test.ts",
     "src/tools/BashTool/creditShownFiles.test.ts",
     "src/tools/BashTool/BashTool.outputFilter.test.ts",
     "src/tools/shellToolResultMappers.test.ts",
@@ -95,14 +94,8 @@
     {
       "name": "markers: raw output opening with the read tag counts as already wrapped",
       "source": "src/tools/shared/outputFilter/Bash/markers.ts",
-      "find": "  /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered)/;",
-      "replace": "  /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered|bash-output-read)/;"
-    },
-    {
-      "name": "summarizer: cuts a <bash-output-read> result",
-      "source": "src/agent/tools/toolResultSummarizer/markers.ts",
-      "find": "    text.startsWith('<bash-output-filtered') ||\n    text.startsWith('<bash-output-read>')\n",
-      "replace": "    text.startsWith('<bash-output-filtered')\n"
+      "find": "  /^<(?:persisted-output|tool-result-summary|tool-result-compacted|bash-output-rewritten|bash-output-filtered)/;",
+      "replace": "  /^<(?:persisted-output|tool-result-summary|tool-result-compacted|bash-output-rewritten|bash-output-filtered|bash-output-read)/;"
     },
     {
       "name": "grammar: git ls-files is not a listing",
@@ -431,26 +424,14 @@
     {
       "name": "credit: a result over the 30k persist line credits",
       "source": "src/tools/BashTool/creditShownFiles.ts",
-      "find": "  if (length > PERSISTED_ABOVE_CHARS) return false\n",
-      "replace": "\n"
-    },
-    {
-      "name": "credit: a wrapped result over 8k is treated as cut",
-      "source": "src/tools/BashTool/creditShownFiles.ts",
-      "find": "  return isAlreadyCompacted(received) || length < BASH_SUMMARIZE_THRESHOLD",
-      "replace": "  return length < BASH_SUMMARIZE_THRESHOLD"
-    },
-    {
-      "name": "credit: an unwrapped result over 8k (summarizer cuts it) credits",
-      "source": "src/tools/BashTool/creditShownFiles.ts",
-      "find": "  return isAlreadyCompacted(received) || length < BASH_SUMMARIZE_THRESHOLD",
-      "replace": "  return true"
+      "find": "  return length <= PERSISTED_ABOVE_CHARS\n",
+      "replace": "  return true\n"
     },
     {
       "name": "credit: the note's own length is left out of the size gates",
       "source": "src/tools/BashTool/creditShownFiles.ts",
-      "find": "      !reachesModelWhole(received, received.length + 1 + note.length)",
-      "replace": "      !reachesModelWhole(received, received.length)"
+      "find": "      !reachesModelWhole(received.length + 1 + note.length)\n",
+      "replace": "      !reachesModelWhole(received.length)\n"
     },
     {
       "name": "credit: a file outside the working dirs credits",
@@ -713,8 +694,8 @@
     {
       "name": "mapper: readNote is left out of the tool_result content",
       "source": "src/tools/shellToolResultMappers.ts",
-      "find": "    content: [processedStdout, data.readNote, errorMessage, backgroundInfo]",
-      "replace": "    content: [processedStdout, errorMessage, backgroundInfo]"
+      "find": "  const after = [data.readNote, errorMessage, backgroundInfo].filter(Boolean)\n",
+      "replace": "  const after = [errorMessage, backgroundInfo].filter(Boolean)\n"
     },
     {
       "name": "resume: a credited file written after the result is restored",

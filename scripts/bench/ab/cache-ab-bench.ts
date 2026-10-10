@@ -160,12 +160,13 @@ type Args = {
   // to clip and the stand-down can never fire (the outline marks the
   // readFileState entry isPartialView, which disqualifies dedup outright).
   fileList: string[]
-  // Per-side extra env (e.g. CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1) so the
+  // Per-side extra env (e.g. CLAUDIN_BASH_ONE_CUT=0) so the
   // SAME binary can be A/B'd with a feature flag toggled. KEY=VAL form.
   aEnv: Record<string, string>
   bEnv: Record<string, string>
   // 'files' = the file-reading workload; 'json' = run the big-json fixture each
-  // turn (exercises TOOL_RESULT_JSON_COMPRESSION) with a few source Read-backs;
+  // turn (a large JSON tool result, paged past its line since the
+  // TOOL_RESULT_JSON_COMPRESSION cut was retired on 2026-10-10) with a few source Read-backs;
   // 'prose' = repo-grounded explanation questions that elicit paragraphs
   // (exercises VERBOSITY_STEERING — the lever is OUTPUT tokens, not cache).
   workload: 'files' | 'json' | 'prose'
@@ -691,11 +692,11 @@ async function main() {
     console.log('                        drives the clip → re-read loop, which needs the SAME range re-Read)')
     console.log('  --file-list=a.ts,b.ts (override the pool; keep every file under the auto-outline')
     console.log('                        threshold — 250 lines / 10k chars — or Reads return outlines, not bodies)')
-    console.log('  --workload=files|json|prose (json: big-json fixture each turn — TOOL_RESULT_JSON_COMPRESSION;')
+    console.log('  --workload=files|json|prose (json: big-json fixture each turn, paged past its line;')
     console.log('                               prose: repo-grounded explanation Qs — VERBOSITY_STEERING, measures OUTPUT tokens + dumps answers)')
     console.log('  --a-env=KEY=VAL --b-env=KEY=VAL (per-side env so the SAME binary can be A/B\'d with a flag toggled)')
     console.log('  e.g. --a=claudindev --b=claudindev --workload=json --turns=20 --runs=3 \\')
-    console.log('         --a-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=0 --b-env=CLAUDIN_TOOL_RESULT_JSON_COMPRESSION=1')
+    console.log('         --a-env=CLAUDIN_BASH_ONE_CUT=0 --b-env=CLAUDIN_BASH_ONE_CUT=1')
     console.log('  e.g. --a=claudindev --b=claudindev --workload=prose --runs=3 \\')
     console.log('         --a-env=CLAUDIN_VERBOSITY_STEERING=0 --b-env=CLAUDIN_VERBOSITY_STEERING=1')
     return

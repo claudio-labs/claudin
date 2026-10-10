@@ -15,13 +15,13 @@
  * default:
  *
  * - `CLAUDIN_BASH_READ_LANE=1` — the filter hands such a read back
- *   byte for byte up to 28k chars, inside a `<bash-output-read>` wrapper the
- *   tool-result summarizer stands aside for (`index.ts`, `markers.ts`); the
+ *   byte for byte up to 28k chars, inside a `<bash-output-read>` wrapper
+ *   (`index.ts`, `markers.ts`); the
  *   lane takes the reads that mix these prints with bounded slices too
  *   (`readLane.ts`). A
  *   longer one that only prints files keeps the whole files that fit and names
  *   the rest (`fitWholeFiles`, `BashTool/creditShownFiles.ts`), where the cap
- *   would cut it or Bash would save it to disk behind a 2 KB preview.
+ *   would cut it or Bash would save it to disk and page it.
  * - `CLAUDIN_BASH_READ_CREDIT=1` — each file a `cat` printed whole counts as a
  *   Read for the read-before-edit gate (`BashTool/creditShownFiles.ts`). That
  *   one reaches past this grammar: `catReadsOf` below finds the `cat`

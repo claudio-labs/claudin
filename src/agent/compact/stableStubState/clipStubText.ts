@@ -15,6 +15,7 @@ import {
   recordStubText,
 } from 'src/agent/compact/stableStubState/clippedIdRegistry.js'
 import { pinShieldsBlock } from 'src/agent/compact/stableStubState/pinRegistry.js'
+import { savedCopyOf } from 'src/agent/tools/toolResultFiles.js'
 
 /** Minimum token count for a tool_result to be immediately stubbed on display. */
 const IMMEDIATE_STUB_TOKEN_THRESHOLD = 2000
@@ -27,7 +28,9 @@ export const MIN_STUB_TOKENS = 100
 /**
  * Build the deterministic stub string for a clipped tool_result.
  *
- * Format: `[clipped: ~N tokens from <toolName>]`
+ * Format: `[clipped: ~N tokens from <toolName>]`, and when the result has a
+ * saved copy, `[clipped: ~N tokens from <toolName>; the full result is saved
+ * at <path>]` — so the model can read it back rather than run the call again.
  *
  * CRITICAL: This must be byte-stable across turns for the same (id, content)
  * pair. Do NOT include timestamps, random values, or anything dynamic.
@@ -36,8 +39,12 @@ export const MIN_STUB_TOKENS = 100
  * applyStableStubs ensures we never recompute tokens for an already-stubbed
  * block, so estimator drift between turns is moot. The exact integer is fine.
  */
-export function buildClipStub(toolName: string, originalTokens: number): string {
-  return `[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens from ${toolName}]`
+export function buildClipStub(toolName: string, originalTokens: number, savedPath?: string): string {
+  return `[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens from ${toolName}${savedAt(savedPath)}]`
+}
+
+function savedAt(savedPath: string | undefined): string {
+  return savedPath ? `; the full result is saved at ${savedPath}` : ''
 }
 
 /**
@@ -125,12 +132,11 @@ export function stubToolResultForDisplay<T extends AnyMessage>(
     // Look up the tool name from the preceding assistant message's tool_use block
     const toolName = findToolNameById(allMessages, toolUseId)
     anyStubbed = true
-    // Same head-preserving rule as stubOneBlock: the display array seeds the
-    // next turn's API view, so keeping the head here is what lets the model
-    // keep referencing large outputs cross-turn without a re-read.
-    const stubbedContent = headStubApplies(existing, stubKeepHeadChars)
-      ? buildClipStubWithHead(toolName, tokens, existing.slice(0, stubKeepHeadChars))
-      : buildClipStub(toolName, tokens)
+    // Same stub as stubOneBlock builds: the display array seeds the next
+    // turn's API view, so keeping the head (and naming the saved copy) here
+    // is what lets the model keep referencing large outputs cross-turn
+    // without a re-read.
+    const stubbedContent = clipStubFor(toolName, tokens, existing, toolUseId, stubKeepHeadChars)
     return {
       ...block,
       content: stubbedContent,
@@ -178,7 +184,7 @@ const CLIP_STUB_PATTERN = /^\[clipped: ~\d+ tokens from .+\]$/
 // Head-preserving variant (a mid-tier stub, in single-mutation form):
 // the first N chars of the original output survive above a marker line. Same
 // byte-stability contract as the pure stub — built once, never recomputed.
-const CLIP_STUB_HEAD_PATTERN = /\n\[clipped: ~\d+ tokens from .+ — head preserved\]$/
+const CLIP_STUB_HEAD_PATTERN = /\n\[clipped: ~\d+ tokens from .+ — head preserved(?:; the full result is saved at \S+)?\]$/
 
 // Head-stubbing is only worth the mutation when it actually truncates a
 // meaningful amount; below this margin the pure stub is used instead.
@@ -225,8 +231,29 @@ export function buildClipStubWithHead(
   toolName: string,
   originalTokens: number,
   head: string,
+  savedPath?: string,
 ): string {
-  return `${head}\n[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens from ${toolName} — head preserved]`
+  return `${head}\n[clipped: ~${Math.max(0, Math.round(originalTokens))} tokens from ${toolName} — head preserved${savedAt(savedPath)}]`
+}
+
+/**
+ * The stub for one clipped result — head-preserving when that meaningfully
+ * truncates, pure otherwise — naming the result's saved copy when it has one
+ * (`savedCopyOf`: the file a paged result names, or the copy storage keeps of
+ * a large result shipped whole). The one builder every rewriter uses, so the
+ * same content renders the same bytes on every path.
+ */
+function clipStubFor(
+  toolName: string,
+  tokens: number,
+  content: unknown,
+  toolUseId: string,
+  headChars: number,
+): string {
+  const saved = savedCopyOf(toolUseId, content)
+  return headStubApplies(content, headChars)
+    ? buildClipStubWithHead(toolName, tokens, content.slice(0, headChars), saved)
+    : buildClipStub(toolName, tokens, saved)
 }
 
 export function arrayContainsImage(content: unknown): boolean {
@@ -312,13 +339,7 @@ export function stubOneBlock(
   // Head-preserving form: one mutation, same break cost as the pure stub,
   // but the model keeps the useful head of the output (file headers, top
   // grep hits) — fewer re-reads. Only when it meaningfully truncates.
-  const stub = headStubApplies(existing, stubKeepHeadChars)
-    ? buildClipStubWithHead(
-        toolName,
-        tokens,
-        existing.slice(0, stubKeepHeadChars),
-      )
-    : buildClipStub(toolName, tokens)
+  const stub = clipStubFor(toolName, tokens, existing, toolUseId, stubKeepHeadChars)
   if (toolUseId) {
     recordStubText(toolUseId, stub)
   }

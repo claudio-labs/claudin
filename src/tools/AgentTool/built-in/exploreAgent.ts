@@ -7,9 +7,9 @@
 // excerpt it quotes becomes the context lines of a Patch hunk or the
 // old_string of an Edit, so the contract below asks for whole lines copied
 // verbatim with their line range — a paraphrase or an elided line sends the
-// parent back to the file. AgentTool keeps the report out of the head/tail
-// summarizer (UNSUMMARIZED_AGENT_TYPES) because the excerpts in its middle are
-// the payload; the budget in the prompt is what bounds it instead.
+// parent back to the file. No agent report is cut on its way to the parent
+// (toolResultStorage.ts pages one past its line); the budget in the prompt is
+// what keeps it under that line.
 
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'

@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { maybeSummarizeToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultCompaction.js'
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
 import {
   BODIES_BUDGET_CHARS,
@@ -127,14 +127,15 @@ describe('the flag and the result shape', () => {
     expect(isGrepBodiesResult('Found 2 matched symbols across 1 file\n\nsrc/a.ts')).toBe(false)
   })
 
-  // The summarizer would cut a large Grep result; the bodies in it were
-  // registered as read, so it has to reach the model whole.
-  test('the tool-result summarizer passes a bodies result through, and still summarizes the same text without the suffix', () => {
-    const hits = Array.from({ length: 400 }, (_, i) => `src/file${i % 9}.ts:${i + 1}:const NEEDLE_${i} = ${i}`).join('\n')
+  // The bodies in a bodies result were registered as read, so it reaches the
+  // model exactly as printed: the Grep regroup leaves it alone.
+  test('the tool-result compaction passes a bodies result through, and still regroups the same text without the suffix', () => {
+    // Each file's hits together, as rg prints them, so the regroup has runs to group.
+    const hits = Array.from({ length: 400 }, (_, i) => `src/file${Math.floor(i / 45)}.ts:${i + 1}:const NEEDLE_${i} = ${i}`).join('\n')
     const block = (header: string) => ({ type: 'tool_result' as const, tool_use_id: 'toolu_x', content: `${header}\n\n${hits}` })
     const withBodies = block(`Found 400 matched symbols across 9 files${BODIES_HEADER_SUFFIX}`)
     const withoutBodies = block('Found 400 matched symbols across 9 files')
-    expect(maybeSummarizeToolResult(withBodies, 'Grep')).toBe(withBodies)
-    expect(maybeSummarizeToolResult(withoutBodies, 'Grep').content).not.toBe(withoutBodies.content)
+    expect(maybeCompactToolResult(withBodies, 'Grep')).toBe(withBodies)
+    expect(maybeCompactToolResult(withoutBodies, 'Grep').content).not.toBe(withoutBodies.content)
   })
 })

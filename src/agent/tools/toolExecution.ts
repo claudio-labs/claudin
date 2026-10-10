@@ -85,6 +85,8 @@ import {
   formatZodValidationError,
 } from 'src/agent/tools/toolErrors.js'
 import {
+  getPersistenceThreshold,
+  pageErrorText,
   processPreMappedToolResultBlock,
   processToolResultBlock,
 } from 'src/agent/tools/toolResultStorage.js'
@@ -1169,7 +1171,7 @@ async function checkPermissionsAndCallTool(
       // Use the pre-mapped block when available (non-MCP tools where hooks
       // don't modify the output), otherwise map from scratch.
       const toolResultBlock = preMappedBlock
-        ? await processPreMappedToolResultBlock(preMappedBlock, tool, toolUseResult)
+        ? await processPreMappedToolResultBlock(preMappedBlock, tool)
         : await processToolResultBlock(tool, toolUseResult, toolUseID)
 
       // Build content blocks - tool result first, then optional feedback
@@ -1390,7 +1392,7 @@ async function checkPermissionsAndCallTool(
         logError(error)
       }
     }
-    const content = formatError(error)
+    const content = await pageErrorText(formatError(error), getPersistenceThreshold(tool.maxResultSizeChars))
 
     // Determine if this was a user interrupt
     const isInterrupt = error instanceof AbortError

@@ -29,16 +29,16 @@
  * worse than sending it whole.
  *
  * **What one cut should look like** (second test, plan `perf/bash-read-lane`).
- * Today two cutters take turns on Bash output — the floor cap past 60 lines,
- * and the tool-result summarizer on what the floor left unwrapped past 8k
- * chars — and the read lane (`readLane.ts`) exempts the model's own reads from
- * both. That test prices today's pair against a single floor cut across
- * triggers and head/tail pairs, and what the lane gives back.
+ * Until 2026-10-09 two cutters took turns on Bash output — the floor cap past
+ * 60 lines, and the tool-result summarizer on what the floor left unwrapped
+ * past 8k chars — and the read lane (`readLane.ts`) exempts the model's own
+ * reads from both. That test prices the old pair, "TODAY" in its table,
+ * against a single floor cut across triggers and head/tail pairs, and what the
+ * lane gives back. The summarizer no longer cuts (2026-10-10); its Bash arm is
+ * modeled here with the same cut shape so the table stays reproducible.
  */
 import { test } from 'bun:test'
 import { existsSync } from 'fs'
-import { summarizeBashOutput } from 'src/agent/tools/toolResultSummarizer/bash.js'
-import { BASH_SUMMARIZE_THRESHOLD } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { applyPipeline } from 'src/tools/shared/outputFilter/Bash/pipeline.js'
 import { findFilterForCommand } from 'src/tools/shared/outputFilter/Bash/registry.js'
@@ -287,6 +287,9 @@ const ONE_CUT_KEEPS = [
 ] as const
 
 /** A `<bash-output-read>` body was left whole on purpose; its inside is the raw output. */
+/** The char threshold the summarizer's Bash arm cut from, until 2026-10-10. */
+const BASH_SUMMARIZE_THRESHOLD = 8_000
+
 const READ_WRAPPER_RE = /^<bash-output-read>\n?([\s\S]*?)\n?<\/bash-output-read>\s*$/
 
 function unwrapRead(text: string): string {
@@ -321,17 +324,19 @@ function isBoundedRead(command: string, text: string): boolean {
 }
 
 /**
- * Today's summarizer arm on a result the floor left unwrapped: past 8k chars,
- * 40 head + 60 tail + error windows (`summarizeBashOutput`), dropped when it
- * saves nothing. The code-outline and JSON strategies that run ahead of it in
- * the bundle are left out — the plan replaces the head/tail arm only.
+ * The summarizer's Bash arm as it was, on a result the floor left unwrapped:
+ * past 8k chars, 40 head + 60 tail + error windows, dropped when it saves
+ * nothing. Modeled with `cutLines`, the shape the one cut kept from it; the
+ * code-outline and JSON strategies that ran ahead of it are left out.
  */
 function summarized(text: string): Outcome {
   const uncut: Outcome = { by: null, before: text.length, after: text.length, keptLines: lineCount(text) }
   if (text.length < BASH_SUMMARIZE_THRESHOLD) return uncut
-  const s = summarizeBashOutput(text)
-  if (s === null || s.body.length >= text.length) return uncut
-  return { by: 'summarizer', before: text.length, after: s.body.length, keptLines: lineCount(s.body) }
+  const lines = text.split('\n')
+  if (lines.length <= 40 + 60 + 1) return uncut
+  const body = cutLines(lines, 40, 60).join('\n')
+  if (body.length >= text.length) return uncut
+  return { by: 'summarizer', before: text.length, after: body.length, keptLines: lineCount(body) }
 }
 
 /**

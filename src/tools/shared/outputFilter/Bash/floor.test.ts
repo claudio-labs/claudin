@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ToolResultBlockParam } from "@anthropic-ai/sdk/resources/index.mjs";
 import { getGlobalConfig, saveGlobalConfig } from "src/platform/config/config.js";
-import { maybeSummarizeToolResult } from "src/agent/tools/toolResultSummarizer.js";
+import { processPreMappedToolResultBlock } from "src/agent/tools/toolResultStorage.js";
 import { BASH_TOOL_NAME } from "src/tools/BashTool/toolName.js";
 import {
   applyBashFilterToStdout,
@@ -566,8 +566,8 @@ describe("CLAUDIN_BASH_READ_LANE — a pure file read keeps every line", () => {
     );
   });
 
-  // Above it the whole read would cross Bash's 30k result cap and be saved to a
-  // file with a 2 KB preview, which is worse than the cut.
+  // Above it the whole read would cross Bash's 30k line and be paged behind a
+  // pointer, the floor's cut being the smaller result.
   test("over 28k chars it is still cut to 30 lines", () => {
     const out = on.applyBashFilterToStdout(OVER, false, planFor(on, LOOP));
     expect(out).toStartWith('<bash-output-filtered original="" lines="30/665"');
@@ -772,11 +772,11 @@ describe("CLAUDIN_BASH_READ_LANE — a pure file read keeps every line", () => {
     );
   });
 
-  // The reason the wrapper stays when nothing was cut. Uncapping these reads
-  // WITHOUT it measured +79% tool-result chars and +19% cost in the same bench:
-  // a 11-28 KB loop crossed the 8k Bash threshold, came back as a
-  // `<tool-result-summary>` with a saved file, and the model read that again.
-  describe("the wrapper keeps the tool-result summarizer away", () => {
+  // Uncapping these reads once measured +79% tool-result chars and +19% cost:
+  // a 11-28 KB loop crossed the summarizer's 8k Bash threshold, came back as a
+  // summary with a saved file, and the model read that again. The summarizer
+  // no longer cuts, so a read under Bash's line reaches the model whole.
+  describe("a read under Bash's line reaches the model whole", () => {
     let savedEnabled: boolean;
     let savedKillSwitch: string | undefined;
 
@@ -793,7 +793,7 @@ describe("CLAUDIN_BASH_READ_LANE — a pure file read keeps every line", () => {
       else process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = savedKillSwitch;
     });
 
-    test("a wrapped 20k read passes through untouched", () => {
+    test("a wrapped 20k read passes through untouched", async () => {
       const raw = loopOutput(15, 34, 3);
       expect(raw.length).toBeGreaterThan(20_000);
       const content = on.applyBashFilterToStdout(raw, false, planFor(on, LOOP));
@@ -804,14 +804,11 @@ describe("CLAUDIN_BASH_READ_LANE — a pure file read keeps every line", () => {
         tool_use_id: "toolu_passthrough",
         content,
       };
-      expect(maybeSummarizeToolResult(block, BASH_TOOL_NAME)).toBe(block);
-
-      // The control that keeps this from being a tautology: the same body
-      // without the wrapper is over the threshold, and it IS summarized.
+      const bash = { name: BASH_TOOL_NAME, maxResultSizeChars: 30_000 };
+      expect(await processPreMappedToolResultBlock(block, bash)).toBe(block);
+      // And without the wrapper too: nothing under the line is cut any more.
       const bare: ToolResultBlockParam = { ...block, content: raw.trimEnd() };
-      expect(String(maybeSummarizeToolResult(bare, BASH_TOOL_NAME).content)).toStartWith(
-        "<tool-result-summary",
-      );
+      expect(await processPreMappedToolResultBlock(bare, bash)).toBe(bare);
     });
   });
 });
@@ -935,7 +932,7 @@ describe("the read lane — a read the command bounded keeps every line", () => 
     expect(applyBashFilterToStdout(BODY, true, plan)).not.toContain("<bash-output-read>");
   });
 
-  describe("the wrapper keeps the tool-result summarizer away", () => {
+  describe("a range under Bash's line reaches the model whole", () => {
     let savedEnabled: boolean;
     let savedKillSwitch: string | undefined;
 
@@ -952,17 +949,16 @@ describe("the read lane — a read the command bounded keeps every line", () => 
       else process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = savedKillSwitch;
     });
 
-    test("a 140-line range past the 8k threshold reaches the model whole", () => {
+    test("a 140-line range past the old 8k threshold reaches the model whole", async () => {
       const raw = sourceLines(140);
       expect(raw.length).toBeGreaterThan(8_000);
       const content = filter(raw, "sed -n 1,140p src/a.ts");
       const block: ToolResultBlockParam = { type: "tool_result", tool_use_id: "toolu_bounded", content };
-      expect(maybeSummarizeToolResult(block, BASH_TOOL_NAME)).toBe(block);
+      const bash = { name: BASH_TOOL_NAME, maxResultSizeChars: 30_000 };
+      expect(await processPreMappedToolResultBlock(block, bash)).toBe(block);
       expect(stripOutputMarkers(content)).toBe(raw);
-
-      // Not a tautology: the same body without the wrapper IS summarized.
       const bare: ToolResultBlockParam = { ...block, content: raw.trimEnd() };
-      expect(String(maybeSummarizeToolResult(bare, BASH_TOOL_NAME).content)).toStartWith("<tool-result-summary");
+      expect(await processPreMappedToolResultBlock(bare, bash)).toBe(bare);
     });
   });
 });

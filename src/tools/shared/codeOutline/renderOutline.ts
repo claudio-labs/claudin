@@ -179,9 +179,7 @@ function fitToBudget(entries: SymbolEntry[]): SymbolEntry[] {
 
 /**
  * Renders just the symbol-table body (no file header) for callers that supply
- * their own envelope — e.g. the tool-result summarizer's `code-outline`
- * strategy, where there is no source file path to drill into (retrieval is via
- * the marker's `source=` backing, not `Read(file_path, symbol=)`). Shares the
+ * their own envelope (FileReadTool's outline view). Shares the
  * `OUTLINE_MAX_TOKENS` cap and range-column alignment with {@link renderOutline}.
  *
  * @param entries  Symbol table from {@link scanSymbols} (must be non-empty).

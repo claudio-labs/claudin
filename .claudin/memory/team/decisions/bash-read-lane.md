@@ -47,3 +47,5 @@ paths:
 **Rejected:** the sizing rule pre-registered for the cut picked no candidate. No keep covers the median capped read while removing ≥70% of the cap's chars (plan `foamy-twirling-turtle.md`, "Sizing result"). The summarizer's shape was kept, and the A/B priced it.
 
 **Evidence:** `readLane.test.ts`, `floor.test.ts` (10-09 corpus, one cut), `cutShape.test.ts`, `ownWrites.test.ts` (incl. `call()` in a child), `queryHelpers.extractReadFiles.test.ts`. Break-probe specs `readLane.json`, `oneCut.json`, `ownWrites.json`, `ownWritesCall.json`, `catAsRead.json`, all red. `read-credit-e2e.ts` scenarios 11-18 on the bundle.
+
+**Superseded in part (2026-10-10):** the summarizer no longer cuts anything ([[summarizer-lossless]]), so `BashTool.skipsResultSummarizer` is gone and `CLAUDIN_BASH_ONE_CUT=0` brings back only the 15+15 cap. The one cut is the only cut Bash output gets; past the 30k line a result is paged.

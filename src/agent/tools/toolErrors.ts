@@ -1,6 +1,6 @@
 import type { ZodError } from 'zod/v4'
 import { AbortError, ShellError } from 'src/shared/errors.js'
-import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/agent/messages/messages.js'
+import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/agent/messages/constants.js'
 
 export function formatError(error: unknown): string {
   if (error instanceof AbortError) {
@@ -10,25 +10,15 @@ export function formatError(error: unknown): string {
     return String(error)
   }
   const parts = getErrorParts(error)
-  const fullMessage =
-    parts.filter(Boolean).join('\n').trim() || 'Command failed with no output'
-  if (fullMessage.length <= 10000) {
-    return fullMessage
-  }
-  const halfLength = 5000
-  const start = fullMessage.slice(0, halfLength)
-  const end = fullMessage.slice(-halfLength)
-  return `${start}\n\n... [${fullMessage.length - 10000} characters truncated] ...\n\n${end}`
+  // Whole: an error past its tool's line is paged by the caller like any
+  // result (`pageErrorText`), never cut in the middle, where a failing run
+  // keeps what failed.
+  return parts.filter(Boolean).join('\n').trim() || 'Command failed with no output'
 }
 
 export function getErrorParts(error: Error): string[] {
   if (error instanceof ShellError) {
-    return [
-      `Exit code ${error.code}`,
-      error.interrupted ? INTERRUPT_MESSAGE_FOR_TOOL_USE : '',
-      error.stderr,
-      error.stdout,
-    ]
+    return [...shellErrorHead(error.code, error.interrupted), error.stderr, error.stdout]
   }
   const parts = [error.message]
   if ('stderr' in error && typeof error.stderr === 'string') {
@@ -38,6 +28,20 @@ export function getErrorParts(error: Error): string[] {
     parts.push(error.stdout)
   }
   return parts
+}
+
+/** The parts `formatError` puts before a ShellError's own output. */
+function shellErrorHead(code: number, interrupted: boolean): string[] {
+  return [`Exit code ${code}`, interrupted ? INTERRUPT_MESSAGE_FOR_TOOL_USE : '']
+}
+
+/**
+ * The text `formatError` puts before a failing shell run's output, newline
+ * included — what a page of that output has to leave room for so the error
+ * stays under the shell's line.
+ */
+export function shellErrorPrefix(code: number, interrupted: boolean): string {
+  return `${shellErrorHead(code, interrupted).filter(Boolean).join('\n')}\n`
 }
 
 /**
