@@ -1,6 +1,6 @@
 ---
 name: Live-verifying TUI mouse click/hover under tmux
-description: How to drive and confirm clickable/hover tool-result UI (Box onClick) in claudindev under tmux — fullscreen env + SGR mouse injection
+description: How to drive and confirm TUI behavior in claudindev under tmux — fullscreen env + SGR mouse injection, plus a scratchpad CLAUDIN_CONFIG_DIR for seeded state (tasks) with no ~/.claudin writes and no rule-map rewrite
 type: reference
 ---
 
@@ -91,3 +91,28 @@ memories index (2 entries)` then `Loaded 1 memory, 2 team bug memories`, with
 the three paths under ctrl+o — the producer → `TeamMem` → category → label
 path, which no unit test can drive. The whole round trip is ~20 s and costs
 one short model turn.
+
+## Isolated config dir for state-seeded TUI checks (2026-10-10)
+
+When a check needs seeded app state (e.g. a task checklist beside the `/diff`
+panel), do not write into `~/.claudin/`. The auto-mode classifier refused
+seeding `~/.claudin/tasks/` because it is outside the tree and the user never
+named that path. Point the whole config at the scratchpad instead:
+
+1. `<scratch>/cfg/config.json` =
+   `{"hasCompletedOnboarding": true, "projects": {"<repo>": {"hasTrustDialogAccepted": true}}}`;
+   tasks go in `<scratch>/cfg/tasks/<listId>/<n>.json` (TaskSchema: id, subject,
+   description, status, blocks, blockedBy, optional activeForm).
+2. `tmux new-session -d -s x -x 184 -y 46 -c <repo> "env CLAUDIN_CONFIG_DIR=<scratch>/cfg
+   CLAUDIN_TASK_LIST_ID=<listId> CLAUDIN_NO_FLICKER=1 CLAUDIN_DISABLE_RULE_MAP_SYNC=1
+   <repo>/bin/claudin"`. 184x46 is the user's terminal; the `/diff` split needs ≥120 cols.
+3. Two prompts still appear on a fresh config dir: "Copy the Claude Code sign-in"
+   → `Down Enter` (skip), then "Set up provider" → `Escape`. The REPL then runs
+   "Not logged in", which is enough for any UI that needs no model turn.
+   `ctrl+t` shows the checklist; `/diff` opens the panel. Zero tokens spent.
+
+Launching from the repo cwd without `CLAUDIN_DISABLE_RULE_MAP_SYNC=1` (the
+killswitch named in the startup message) rewrites the counts in
+`.claudin/rules/search-strategy.md` at startup ("Navigation map updated"). That
+leaves a tracked-file change in the branch diff, and it shows up in `/diff`'s own
+file list during the check.
