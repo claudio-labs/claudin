@@ -1,0 +1,40 @@
+{
+  "test": [
+    "src/agent/tools/toolResultStorage.test.ts",
+    "src/tools/shellToolResultMappers.test.ts"
+  ],
+  "source": "src/agent/tools/toolResultStorage.ts",
+  "probes": [
+    {
+      "name": "page: cut mid-line instead of at a line boundary",
+      "find": "  const cut = text.length <= maxChars ? text.length : text.lastIndexOf('\\n', maxChars)\n",
+      "replace": "  const cut = Math.min(text.length, maxChars)\n"
+    },
+    {
+      "name": "page: the pointer names the last shown line instead of the next",
+      "find": "Read the file from line ${shownLines + 1} for the rest.",
+      "replace": "Read the file from line ${shownLines} for the rest."
+    },
+    {
+      "name": "page: the budget forgets the envelope, so the message passes the line",
+      "find": "  const budget = maxChars - frame(pointerFor(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER), '').length\n",
+      "replace": "  const budget = maxChars\n"
+    },
+    {
+      "name": "page: an already-built page is paged again",
+      "find": "  if (typeof content === 'string' && content.startsWith(PERSISTED_OUTPUT_TAG)) {\n    return toolResultBlock\n  }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "page: text blocks are saved as JSON again",
+      "find": "      : content.map(block => (block.type === 'text' ? block.text : '')).join('\\n')\n",
+      "replace": "      : JSON.stringify(content, null, 2)\n"
+    },
+    {
+      "name": "shell: the page is cut from the trimmed stdout, shifting line numbers",
+      "source": "src/tools/shellToolResultMappers.ts",
+      "find": "      normalizedStdout,\n      BASH_MAX_OUTPUT_DEFAULT,\n",
+      "replace": "      trimmed,\n      BASH_MAX_OUTPUT_DEFAULT,\n"
+    }
+  ]
+}

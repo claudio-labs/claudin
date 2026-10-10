@@ -2,6 +2,27 @@ import { expect, test } from 'bun:test'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js'
 
+test('a shell run saved to disk is paged from its untrimmed stdout, so line numbers are the file\'s', () => {
+  const stdout = `\n\n${Array.from({ length: 2_000 }, (_, i) => `out ${i + 1} ${'q'.repeat(30)}`).join('\n')}`
+  const result = BashTool.mapToolResultToToolResultBlockParam(
+    {
+      stdout,
+      stderr: '',
+      interrupted: false,
+      persistedOutputPath: '/tmp/bash-out.txt',
+      persistedOutputSize: 2_000_000,
+    },
+    'tool-paged',
+  )
+  const content = String(result.content)
+  expect(content.length).toBeLessThanOrEqual(30_000)
+  const shown = Number(/^Lines 1-(\d+) are below; Read the file from line \d+ for the rest\.$/m.exec(content)![1])
+  // Lines 1-2 of the file are the blank ones trimShellStdout would drop.
+  const page = content.slice(content.indexOf('\n\n') + 2, content.lastIndexOf('\n</persisted-output>'))
+  expect(page).toBe(stdout.split('\n').slice(0, shown).join('\n'))
+  expect(content).toContain('Output too large (1.9MB). Full output saved to: /tmp/bash-out.txt')
+})
+
 test('BashTool result mapper tolerates null stderr', () => {
   const result = BashTool.mapToolResultToToolResultBlockParam(
     {

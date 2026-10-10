@@ -1,10 +1,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
-import {
-  buildLargeToolResultMessage,
-  generatePreview,
-  PREVIEW_SIZE_BYTES,
-} from 'src/agent/tools/toolResultStorage.js'
+import { buildLargeToolResultMessage } from 'src/agent/tools/toolResultStorage.js'
+import { BASH_MAX_OUTPUT_DEFAULT } from 'src/platform/shell/outputLimits.js'
 import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
 /**
@@ -121,14 +118,14 @@ export function mapShellResultToToolResultBlockParam(
   const trimmed = trimShellStdout(normalizedStdout)
   let processedStdout = trimmed
   if (data.persistedOutputPath) {
-    const preview = generatePreview(trimmed, PREVIEW_SIZE_BYTES)
-    processedStdout = buildLargeToolResultMessage({
-      filepath: data.persistedOutputPath,
-      originalSize: data.persistedOutputSize ?? 0,
-      isJson: false,
-      preview: preview.preview,
-      hasMore: preview.hasMore,
-    })
+    // Paged from the untrimmed stdout: its line numbers are the saved file's.
+    // The page is the shells' persistence line (both declare 30k), not the
+    // env-raisable stdout cap, so storage never pages it a second time.
+    processedStdout = buildLargeToolResultMessage(
+      { filepath: data.persistedOutputPath, originalSize: data.persistedOutputSize ?? 0 },
+      normalizedStdout,
+      BASH_MAX_OUTPUT_DEFAULT,
+    )
   }
 
   const errorMessage = buildShellErrorMessage(normalizedStderr, data.interrupted)

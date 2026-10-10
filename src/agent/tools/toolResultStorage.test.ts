@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 
 import {
+  buildLargeToolResultMessage,
   getSessionSpillDir,
+  pageForModel,
   processPreMappedToolResultBlock,
   processToolResultBlock,
   unlinkSessionSpillDir,
@@ -161,5 +163,85 @@ describe('skipping the tool-result summarizer', () => {
     const cut = await processToolResultBlock(tool, { keep: false }, 'toolu_b')
     expect(kept.content).toEqual([{ type: 'text', text: report }])
     expect((cut.content as string).startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
+  })
+})
+
+// Past its tool's line a result is paged, never summarized: the pointer, then
+// lines 1–K exactly; the saved file holds every line after them.
+describe('paging past the persistence line', () => {
+  const prevConfigDir = process.env.CLAUDIN_CONFIG_DIR
+  const testConfigDir = join(tmpdir(), `claudin-test-page-${process.pid}-${Date.now()}`)
+  beforeAll(() => {
+    process.env.CLAUDIN_CONFIG_DIR = testConfigDir
+    mkdirSync(testConfigDir, { recursive: true })
+  })
+  afterAll(() => {
+    if (prevConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
+    else process.env.CLAUDIN_CONFIG_DIR = prevConfigDir
+    rmSync(testConfigDir, { recursive: true, force: true })
+  })
+
+  const lines = (n: number) => Array.from({ length: n }, (_, i) => `row ${i + 1}: ${'p'.repeat(40)}`).join('\n')
+
+  /** The pointer's line count, the page, and the saved file, from a paged message. */
+  function readPage(message: string): { shown: number; page: string; file: string } {
+    const pointer = /^Lines 1-(\d+) are below; Read the file from line (\d+) for the rest\.$/m.exec(message)!
+    expect(Number(pointer[2])).toBe(Number(pointer[1]) + 1)
+    const path = /Full output saved to: (\S+)\n/.exec(message)![1]!
+    const page = message.slice(message.indexOf('\n\n') + 2, message.lastIndexOf('\n</persisted-output>'))
+    return { shown: Number(pointer[1]), page, file: readFileSync(path, 'utf8') }
+  }
+
+  test('pageForModel cuts at a line boundary, or gives the head of a line longer than the page', () => {
+    expect(pageForModel('a\nb\nc', 100)).toEqual({ page: 'a\nb\nc', shownLines: 3 })
+    expect(pageForModel('aaa\nbbb\nccc', 9)).toEqual({ page: 'aaa\nbbb', shownLines: 2 })
+    expect(pageForModel('x'.repeat(50), 10)).toEqual({ page: 'x'.repeat(10), shownLines: 0 })
+  })
+
+  test('the message fits the line, puts the pointer first, and the page is the first lines exactly', () => {
+    const text = lines(2_000)
+    const message = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: text.length }, text, 20_000)
+    expect(message.length).toBeLessThanOrEqual(20_000)
+    expect(message.split('\n')[1]).toStartWith('Output too large (')
+    expect(message.split('\n')[2]).toMatch(/^Lines 1-\d+ are below; Read the file from line \d+ for the rest\.$/)
+    const shown = Number(/Lines 1-(\d+)/.exec(message)![1])
+    expect(message).toContain(`\n\n${text.split('\n').slice(0, shown).join('\n')}\n</persisted-output>`)
+  })
+
+  test('a result past its line is saved whole and paged: page + the file from the pointer = the original', async () => {
+    const text = lines(3_000)
+    const out = await processPreMappedToolResultBlock(
+      { type: 'tool_result', tool_use_id: 'toolu_page_string', content: text },
+      { name: 'SomeTool', maxResultSizeChars: 10_000 },
+      {},
+    )
+    const message = String(out.content)
+    expect(message.length).toBeLessThanOrEqual(10_000)
+    const { shown, page, file } = readPage(message)
+    expect(file).toBe(text)
+    const fileLines = file.split('\n')
+    expect([...page.split('\n'), ...fileLines.slice(shown)]).toEqual(fileLines)
+  })
+
+  test('a text-block result is saved as joined text, so Read offsets are its lines', async () => {
+    const blocks = [
+      { type: 'text' as const, text: lines(1_500) },
+      { type: 'text' as const, text: lines(1_500) },
+    ]
+    const out = await processPreMappedToolResultBlock(
+      { type: 'tool_result', tool_use_id: 'toolu_page_blocks', content: blocks },
+      { name: 'SomeTool', maxResultSizeChars: 10_000 },
+      {},
+    )
+    const { file } = readPage(String(out.content))
+    expect(file).toBe(`${blocks[0]!.text}\n${blocks[1]!.text}`)
+  })
+
+  test('a page already built (a shell run saved its own output) is not paged again', async () => {
+    const text = lines(3_000)
+    const paged = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: text.length }, text, 30_000)
+    const block: ToolResultBlockParam = { type: 'tool_result', tool_use_id: 'toolu_page_again', content: `${paged}\nnote` }
+    const out = await processPreMappedToolResultBlock(block, { name: 'SomeTool', maxResultSizeChars: 10_000 }, {})
+    expect(out).toBe(block)
   })
 })

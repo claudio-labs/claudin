@@ -38,15 +38,13 @@ const FULL_CONTENT = Array.from(
   (_, i) => `line ${i}: ${'output-payload-'.repeat(3)}${i * 7919}`,
 ).join('\n')
 
-// A preview of the same result (built with the real production builder) —
-// the content one view carries while another still holds the full body.
-const PREVIEW = buildLargeToolResultMessage({
-  filepath: '/tmp/claudin-s3-test/tool-output.txt',
-  originalSize: FULL_CONTENT.length,
-  isJson: false,
-  preview: FULL_CONTENT.slice(0, 2000),
-  hasMore: true,
-})
+// A page of the same result (built with the real production builder) — the
+// content one view carries while another still holds the full body.
+const PREVIEW = buildLargeToolResultMessage(
+  { filepath: '/tmp/claudin-s3-test/tool-output.txt', originalSize: FULL_CONTENT.length },
+  FULL_CONTENT,
+  2_000,
+)
 
 const STUB_FORM = /\[clipped: ~\d+ tokens from Bash( — head preserved)?\]$/
 

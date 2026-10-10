@@ -16,7 +16,6 @@ import { getErrnoCode, toError } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   isLosslessSummarizerEnabled,
   isSummarizedContent,
@@ -57,9 +56,8 @@ export function getPersistenceThreshold(
 export type PersistedToolResult = {
   filepath: string
   originalSize: number
-  isJson: boolean
-  preview: string
-  hasMore: boolean
+  /** What was saved, as text: a result's text blocks joined by newlines. */
+  text: string
 }
 
 // Error result when persistence fails
@@ -80,9 +78,6 @@ function getSessionDir(): string {
 export function getToolResultsDir(): string {
   return join(getSessionDir(), TOOL_RESULTS_SUBDIR)
 }
-
-// Preview size in bytes for the reference message
-export const PREVIEW_SIZE_BYTES = 2000
 
 /**
  * Get the filepath where a tool result would be persisted.
@@ -143,29 +138,30 @@ export async function unlinkSessionSpillDir(sessionId: string): Promise<void> {
 /**
  * Persist a tool result to disk and return information about the persisted file
  *
+ * Saved as text, a result's text blocks joined by newlines, so `Read` offsets
+ * address the lines the page names (`buildLargeToolResultMessage`).
+ *
  * @param content - The tool result content to persist (string or array of content blocks)
  * @param toolUseId - The ID of the tool use that produced the result
- * @returns Information about the persisted file including filepath and preview
+ * @returns The saved file's path and size, and the text it holds
  */
 export async function persistToolResult(
   content: NonNullable<ToolResultBlockParam['content']>,
   toolUseId: string,
 ): Promise<PersistedToolResult | PersistToolResultError> {
-  const isJson = Array.isArray(content)
-
   // Check for non-text content - we can only persist text blocks
-  if (isJson) {
-    const hasNonTextContent = content.some(block => block.type !== 'text')
-    if (hasNonTextContent) {
-      return {
-        error: 'Cannot persist tool results containing non-text content',
-      }
+  if (Array.isArray(content) && content.some(block => block.type !== 'text')) {
+    return {
+      error: 'Cannot persist tool results containing non-text content',
     }
   }
 
   await ensureToolResultsDir()
-  const filepath = getToolResultPath(toolUseId, isJson)
-  const contentStr = isJson ? jsonStringify(content, null, 2) : content
+  const filepath = getToolResultPath(toolUseId, false)
+  const contentStr =
+    typeof content === 'string'
+      ? content
+      : content.map(block => (block.type === 'text' ? block.text : '')).join('\n')
 
   // tool_use_id is unique per invocation and content is deterministic for a
   // given id, so skip if the file already exists. This prevents re-writing
@@ -181,34 +177,52 @@ export async function persistToolResult(
       logError(toError(error))
       return { error: getFileSystemErrorMessage(toError(error)) }
     }
-    // EEXIST: already persisted on a prior turn, fall through to preview
+    // EEXIST: already persisted on a prior turn; the page is built from it all the same
   }
 
-  // Generate a preview
-  const { preview, hasMore } = generatePreview(contentStr, PREVIEW_SIZE_BYTES)
-
-  return {
-    filepath,
-    originalSize: contentStr.length,
-    isJson,
-    preview,
-    hasMore,
-  }
+  return { filepath, originalSize: contentStr.length, text: contentStr }
 }
 
 /**
- * Build a message for large tool results with preview
+ * A result too large for one tool_result: where it is saved, then its first
+ * page — whole lines, as many as fit in `maxChars` with this message around
+ * them — and the line to Read from for the rest. Nothing is summarized: the
+ * page is the result's first lines exactly, and the file holds every line.
+ *
+ * `text` is what the page is cut from, and its line numbers must be the
+ * file's: the whole saved text, or the start of it (a shell run keeps only its
+ * first chars in stdout while the file holds all of them). The pointer comes
+ * first, so a context-relief stub that keeps the head keeps it too.
  */
 export function buildLargeToolResultMessage(
-  result: PersistedToolResult,
+  saved: { filepath: string; originalSize: number },
+  text: string,
+  maxChars: number,
 ): string {
-  let message = `${PERSISTED_OUTPUT_TAG}\n`
-  message += `Output too large (${formatFileSize(result.originalSize)}). Full output saved to: ${result.filepath}\n\n`
-  message += `Preview (first ${formatFileSize(PREVIEW_SIZE_BYTES)}):\n`
-  message += result.preview
-  message += result.hasMore ? '\n...\n' : '\n'
-  message += PERSISTED_OUTPUT_CLOSING_TAG
-  return message
+  const frame = (pointer: string, page: string) =>
+    `${PERSISTED_OUTPUT_TAG}\nOutput too large (${formatFileSize(saved.originalSize)}). Full output saved to: ${saved.filepath}\n${pointer}\n\n${page}\n${PERSISTED_OUTPUT_CLOSING_TAG}`
+  // The longest pointer, so the page budget holds whatever the count turns out to be.
+  const budget = maxChars - frame(pointerFor(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER), '').length
+  const { page, shownLines } = pageForModel(text, Math.max(budget, 0))
+  return frame(pointerFor(shownLines, page.length), page)
+}
+
+function pointerFor(shownLines: number, pageChars: number): string {
+  return shownLines === 0
+    ? `Line 1 alone is longer than this page: its first ${pageChars} chars are below; Read the file for the rest.`
+    : `Lines 1-${shownLines} are below; Read the file from line ${shownLines + 1} for the rest.`
+}
+
+/**
+ * The first lines of `text` that fit in `maxChars`, cut at a line boundary,
+ * and how many they are. When the first line alone is longer, the page is its
+ * head and `shownLines` is 0.
+ */
+export function pageForModel(text: string, maxChars: number): { page: string; shownLines: number } {
+  const cut = text.length <= maxChars ? text.length : text.lastIndexOf('\n', maxChars)
+  if (cut <= 0) return { page: text.slice(0, maxChars), shownLines: 0 }
+  const page = text.slice(0, cut).replace(/\n$/, '')
+  return { page, shownLines: page === '' ? 0 : page.split('\n').length }
 }
 
 /**
@@ -445,6 +459,10 @@ async function maybePersistLargeToolResult(
   if (hasImageBlock(content)) {
     return toolResultBlock
   }
+  // Already a page with its pointer: a shell run saved its own output.
+  if (typeof content === 'string' && content.startsWith(PERSISTED_OUTPUT_TAG)) {
+    return toolResultBlock
+  }
 
   const size = contentSize(content)
 
@@ -461,34 +479,12 @@ async function maybePersistLargeToolResult(
     return toolResultBlock
   }
 
-  const message = buildLargeToolResultMessage(result)
+  const message = buildLargeToolResultMessage(result, result.text, threshold)
 
   recordBytesSaved(result.originalSize, message.length)
 
 
   return { ...toolResultBlock, content: message }
-}
-
-/**
- * Generate a preview of content, truncating at a newline boundary when possible.
- */
-export function generatePreview(
-  content: string,
-  maxBytes: number,
-): { preview: string; hasMore: boolean } {
-  if (content.length <= maxBytes) {
-    return { preview: content, hasMore: false }
-  }
-
-  // Find the last newline within the limit to avoid cutting mid-line
-  const truncated = content.slice(0, maxBytes)
-  const lastNewline = truncated.lastIndexOf('\n')
-
-  // If we found a newline reasonably close to the limit, use it
-  // Otherwise fall back to the exact limit
-  const cutPoint = lastNewline > maxBytes * 0.5 ? lastNewline : maxBytes
-
-  return { preview: content.slice(0, cutPoint), hasMore: true }
 }
 
 /**
