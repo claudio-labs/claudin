@@ -1,5 +1,4 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
-import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promises';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
@@ -16,7 +15,6 @@ import { exec } from 'src/shared/proc/Shell.js';
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
-import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { userFacingName as fileEditUserFacingName } from 'src/tools/FileEditTool/UI.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
@@ -44,7 +42,7 @@ import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
-import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam, pageSpilledShellRun, saveShellSpill, SHELL_ERROR_PREFIX_ROOM } from 'src/tools/shellToolResultMappers.js';
 import { applyBashOutputFilter, planBashFilterForExecution, runShellCommand, shouldFilterOutput } from 'src/tools/BashTool/runShellCommand.js';
 const EOL = '\n';
 // Progress display constants
@@ -393,7 +391,13 @@ export const BashTool = buildTool({
         // stderr is merged into stdout (merged fd); outputWithSbFailures
         // already has the full output. Pass '' for stdout to avoid
         // duplication in getErrorParts() and processBashCommand.
-        throw new ShellError('', outputWithSbFailures, result.code, result.interrupted);
+        // A failing run that spilled keeps only its first chunk in stdout:
+        // its error is the page of the whole saved output instead, so the
+        // end of a long failing run — where the failure usually is — is
+        // never lost.
+        const spill = await saveShellSpill(result);
+        const errorOutput = spill ? safeAnnotateStderrWithSandboxFailures(input.command, pageSpilledShellRun(spill, SHELL_ERROR_PREFIX_ROOM + safeAnnotateStderrWithSandboxFailures(input.command, '').length, result.stdout || '')) : outputWithSbFailures;
+        throw new ShellError('', errorOutput, result.code, result.interrupted);
       }
       wasInterrupted = result.interrupted;
     } finally {
@@ -403,32 +407,11 @@ export const BashTool = buildTool({
     // Get final string from accumulator
     const stdout = stdoutAccumulator.toString();
 
-    // Large output: the file on disk has more than getMaxOutputLength() bytes.
-    // stdout already contains the first chunk (from getStdout()). Copy the
-    // output file to the tool-results dir so the model can read it via
-    // FileRead. If > 64 MB, truncate after copying.
-    const MAX_PERSISTED_SIZE = 64 * 1024 * 1024;
-    let persistedOutputPath: string | undefined;
-    let persistedOutputSize: number | undefined;
-    if (result.outputFilePath && result.outputTaskId) {
-      try {
-        const fileStat = await fsStat(result.outputFilePath);
-        persistedOutputSize = fileStat.size;
-        await ensureToolResultsDir();
-        const dest = getToolResultPath(result.outputTaskId);
-        if (fileStat.size > MAX_PERSISTED_SIZE) {
-          await fsTruncate(result.outputFilePath, MAX_PERSISTED_SIZE);
-        }
-        try {
-          await link(result.outputFilePath, dest);
-        } catch {
-          await copyFile(result.outputFilePath, dest);
-        }
-        persistedOutputPath = dest;
-      } catch {
-        // File may already be gone — stdout preview is sufficient
-      }
-    }
+    // Large output: the file on disk has more than getMaxOutputLength() bytes
+    // and stdout only its first chunk. Save the file where the page points.
+    const spill = await saveShellSpill(result);
+    const persistedOutputPath = spill?.path;
+    const persistedOutputSize = spill?.size;
     const commandType = input.command.split(' ')[0];
 
     // Log code indexing tool usage

@@ -55,6 +55,8 @@ paths:
 - Chars +19% on those results: Glob −46%, Grep +15.5%, WebFetch +170% (paged at its 50k line). Median +0.9k chars per session.
 - Audit round-trip over 4,103 transcripts: 0 lost, 0 reordered, 0 fake headers.
 
+**Errors too (10-10, same branch).** `formatError` (toolErrors.ts) no longer keeps 5k + 5k: a tool's error text ships whole under its line and is paged past it (`pageErrorText`, toolResultStorage.ts), the file named by a hash of the text so a retry of the same failure writes nothing new. A failing shell run that spilled (`saveShellSpill`, shellToolResultMappers.ts) is paged from its saved file before it throws, leaving `SHELL_ERROR_PREFIX_ROOM` for `Exit code N`, so the last lines of a failing suite — its summary — are always in the file. Probes: `errorPaging.json`. E2E 22 (failing run under the line, whole) and 23 (120k failing run, paged, summary in the file).
+
 **What still bounds a result.** Each tool's own limits are unchanged and out of scope: Grep `head_limit` 250 + offset, Glob 100 + offset, WebFetch 100k → model summary, MCP 25k tokens → its own spill. Old results are bounded by relief/microcompact. The Bash filter's one cut (#282) is a separate decision.
 
 **Re-audit fixes (three agents, 10-10).**

@@ -257,6 +257,19 @@ export function readSavedHead(filepath: string, maxBytes: number): string | null
 }
 
 /**
+ * A tool's error text: whole while it fits under the tool's line, and paged
+ * past it like any result — nothing in it is cut. Saved by its content alone,
+ * so a failure repeated word for word names the same file and reads the same.
+ * When it cannot be saved it ships whole.
+ */
+export async function pageErrorText(text: string, threshold: number): Promise<string> {
+  if (text.length <= threshold) return text
+  const saved = await persistToolResult(text, 'error')
+  if (isPersistError(saved)) return text
+  return buildLargeToolResultMessage(saved, saved.text, threshold)
+}
+
+/**
  * Process a tool result for inclusion in a message.
  * Maps the result to the API format, compacts it, and pages it past the line.
  */

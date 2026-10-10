@@ -43,14 +43,14 @@
     {
       "name": "shell: the page is cut from stdout, not the saved file",
       "source": "src/tools/shellToolResultMappers.ts",
-      "find": "      head ?? normalizedStdout,\n",
-      "replace": "      normalizedStdout,\n"
+      "find": "  return buildLargeToolResultMessage({ filepath: spill.path, originalSize: spill.size }, head ?? fallback, budget, false)\n",
+      "replace": "  return buildLargeToolResultMessage({ filepath: spill.path, originalSize: spill.size }, fallback, budget, false)\n"
     },
     {
       "name": "shell: the page forgets the lines after it",
       "source": "src/tools/shellToolResultMappers.ts",
-      "find": "    const budget = SHELL_RESULT_MAX_CHARS - after.reduce((n, part) => n + part!.length + 1, 0)\n",
-      "replace": "    const budget = SHELL_RESULT_MAX_CHARS\n"
+      "find": "      after.reduce((n, part) => n + part!.length + 1, 0),\n",
+      "replace": "      0,\n"
     }
   ]
 }

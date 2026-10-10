@@ -1,6 +1,12 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
+import { copyFile, link, stat, truncate } from 'fs/promises'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
-import { buildLargeToolResultMessage, readSavedHead } from 'src/agent/tools/toolResultStorage.js'
+import {
+  buildLargeToolResultMessage,
+  ensureToolResultsDir,
+  getToolResultPath,
+  readSavedHead,
+} from 'src/agent/tools/toolResultStorage.js'
 import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js'
 import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
@@ -94,6 +100,56 @@ export function buildShellBackgroundInfo({
   return `Command running in background with ID: ${backgroundTaskId}. Output is being written to: ${outputPath}`
 }
 
+/** The most of a run's output kept on disk for the model to page through. */
+const MAX_SPILL_BYTES = 64 * 1024 * 1024
+
+/**
+ * Room a failing run's page leaves for what `formatError` puts in front of it
+ * (`Exit code N`) — the rest of the error text is measured by the caller.
+ */
+export const SHELL_ERROR_PREFIX_ROOM = 64
+
+export type ShellSpill = { path: string; size: number }
+
+/**
+ * A run whose output passed what it keeps in memory wrote all of it to a task
+ * file: link that file into the session's tool results, where its page points.
+ * Past 64 MB the file is truncated first. Called for a failing run too — its
+ * error is paged from the same file. Undefined when nothing spilled, or the
+ * file is gone.
+ */
+export async function saveShellSpill(result: { outputFilePath?: string; outputTaskId?: string }): Promise<ShellSpill | undefined> {
+  if (!result.outputFilePath || !result.outputTaskId) return undefined
+  try {
+    const { size } = await stat(result.outputFilePath)
+    await ensureToolResultsDir()
+    const dest = getToolResultPath(result.outputTaskId)
+    if (size > MAX_SPILL_BYTES) await truncate(result.outputFilePath, MAX_SPILL_BYTES)
+    try {
+      await link(result.outputFilePath, dest)
+    } catch {
+      await copyFile(result.outputFilePath, dest)
+    }
+    return { path: dest, size }
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The page of a run that spilled, cut from the saved file's own head rather
+ * than from stdout — the output filter, the blank-line strip and a byte cap
+ * ending mid-line all reshape stdout — so its line numbers are the file's.
+ * `room` is what the rest of the result needs, so the whole of it stays under
+ * the shells' line and storage never pages it again. `fallback` is used when
+ * the file cannot be read.
+ */
+export function pageSpilledShellRun(spill: ShellSpill, room: number, fallback: string): string {
+  const budget = SHELL_RESULT_MAX_CHARS - room
+  const head = readSavedHead(spill.path, Math.max(budget, 0))
+  return buildLargeToolResultMessage({ filepath: spill.path, originalSize: spill.size }, head ?? fallback, budget, false)
+}
+
 /**
  * Fold a shell run into the model-facing `tool_result` block.
  *
@@ -122,19 +178,12 @@ export function mapShellResultToToolResultBlockParam(
 
   let processedStdout = trimmed
   if (data.persistedOutputPath) {
-    // A run too large for its result saved its output whole. The page is cut
-    // from that file's own head, not from stdout — the filter, the blank-line
-    // strip and a byte cap ending mid-line all reshape stdout — so its line
-    // numbers are the file's. Its budget leaves room for the lines after it,
-    // so the whole result stays under the shells' line and storage never
-    // pages it again.
-    const budget = SHELL_RESULT_MAX_CHARS - after.reduce((n, part) => n + part!.length + 1, 0)
-    const head = readSavedHead(data.persistedOutputPath, Math.max(budget, 0))
-    processedStdout = buildLargeToolResultMessage(
-      { filepath: data.persistedOutputPath, originalSize: data.persistedOutputSize ?? 0 },
-      head ?? normalizedStdout,
-      budget,
-      false,
+    // A run too large for its result saved its output whole: page it, leaving
+    // room for the lines after the page.
+    processedStdout = pageSpilledShellRun(
+      { path: data.persistedOutputPath, size: data.persistedOutputSize ?? 0 },
+      after.reduce((n, part) => n + part!.length + 1, 0),
+      normalizedStdout,
     )
   }
 

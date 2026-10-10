@@ -694,8 +694,8 @@
     {
       "name": "mapper: readNote is left out of the tool_result content",
       "source": "src/tools/shellToolResultMappers.ts",
-      "find": "    content: [processedStdout, data.readNote, errorMessage, backgroundInfo]",
-      "replace": "    content: [processedStdout, errorMessage, backgroundInfo]"
+      "find": "  const after = [data.readNote, errorMessage, backgroundInfo].filter(Boolean)\n",
+      "replace": "  const after = [errorMessage, backgroundInfo].filter(Boolean)\n"
     },
     {
       "name": "resume: a credited file written after the result is restored",

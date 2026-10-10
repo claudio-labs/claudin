@@ -85,6 +85,8 @@ import {
   formatZodValidationError,
 } from 'src/agent/tools/toolErrors.js'
 import {
+  getPersistenceThreshold,
+  pageErrorText,
   processPreMappedToolResultBlock,
   processToolResultBlock,
 } from 'src/agent/tools/toolResultStorage.js'
@@ -1390,7 +1392,7 @@ async function checkPermissionsAndCallTool(
         logError(error)
       }
     }
-    const content = formatError(error)
+    const content = await pageErrorText(formatError(error), getPersistenceThreshold(tool.maxResultSizeChars))
 
     // Determine if this was a user interrupt
     const isInterrupt = error instanceof AbortError

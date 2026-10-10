@@ -10,15 +10,10 @@ export function formatError(error: unknown): string {
     return String(error)
   }
   const parts = getErrorParts(error)
-  const fullMessage =
-    parts.filter(Boolean).join('\n').trim() || 'Command failed with no output'
-  if (fullMessage.length <= 10000) {
-    return fullMessage
-  }
-  const halfLength = 5000
-  const start = fullMessage.slice(0, halfLength)
-  const end = fullMessage.slice(-halfLength)
-  return `${start}\n\n... [${fullMessage.length - 10000} characters truncated] ...\n\n${end}`
+  // Whole: an error past its tool's line is paged by the caller like any
+  // result (`pageErrorText`), never cut in the middle, where a failing run
+  // keeps what failed.
+  return parts.filter(Boolean).join('\n').trim() || 'Command failed with no output'
 }
 
 export function getErrorParts(error: Error): string[] {

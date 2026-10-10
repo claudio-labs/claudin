@@ -79,6 +79,10 @@
  *  21. paging a run the output filter would cut: 6,000 distinct log lines,
  *      which the floor cuts to a head and a tail under the line. Past it the
  *      page is the saved file's first lines all the same, not the filter's cut
+ *  22. a failing run under the line (26k, past the old 5k + 5k error cut)
+ *      reaches the model whole: the failure in its middle and its last line
+ *  23. a failing run past the line (~70k, spilled) is paged from its saved
+ *      file like a passing one: the file holds its last line, the summary
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -231,6 +235,11 @@ const JSON_DUMP_LINES = ['[', ...Array.from({ length: 7000 }, (_, i) => ` ${i}${
 /** ~150k chars of distinct log lines: no JSON, so the floor would cut them. */
 const LONG_LOG = bash(`seq -f 'log line %g of a long build' 1 6000`)
 const LONG_LOG_LINES = Array.from({ length: 6000 }, (_, i) => `log line ${i + 1} of a long build`)
+/** 1,200 distinct lines (~26k chars), a failure on line 600 and a summary last, then exit 1. */
+const FAILING_RUN = bash(`seq -f 'test %g passed fine' 1 1200 | sed '600s/.*/FAIL money.test.ts: expected 634, received 641/'; echo 'SUMMARY: 1 failed'; exit 1`)
+/** ~70k chars, past the 30k Bash keeps in memory, the summary last, then exit 1. */
+const FAILING_SPILL = bash(`seq -f 'test %g ok' 1 6000; echo 'SUMMARY: 3 failed'; exit 1`)
+const FAILING_SPILL_LINES = [...Array.from({ length: 6000 }, (_, i) => `test ${i + 1} ok`), 'SUMMARY: 3 failed']
 /** The page's pointer, the page itself and the saved file, or null when the result is no page. */
 function readPage(text: string): { shown: number; page: string[]; file: string[] } | null {
   const pointer = /^Lines 1-(\d+) are below; Read the file with offset=(\d+) and limit=\d+ for the next page\.$/m.exec(text)
@@ -702,6 +711,40 @@ const SCENARIOS: Scenario[] = [
         )
       }),
       onResult(run, 0, 0, 'p1 the saved file holds all 6,000 lines', r => readPage(r.text)?.file.join('\n') === LONG_LOG_LINES.join('\n')),
+    ],
+  },
+  {
+    key: '22',
+    title: 'a failing run under the line reaches the model whole',
+    env: {},
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Run the tests.', steps: [FAILING_RUN, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 an error with the middle failure and the summary, nothing cut', r =>
+        r.isError && r.text.includes('FAIL money.test.ts: expected 634, received 641') &&
+        r.text.includes('test 1200 passed fine') && r.text.includes('SUMMARY: 1 failed') &&
+        !r.text.includes('characters truncated'),
+      ),
+    ],
+  },
+  {
+    key: '23',
+    title: 'a failing run past the line is paged from its saved file',
+    env: {},
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Run the tests.', steps: [FAILING_SPILL, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 an error whose page is the file\'s first lines exactly, under the line', r => {
+        const paged = readPage(r.text)
+        return (
+          r.isError && r.text.length <= 31_000 && paged !== null && paged.shown > 100 &&
+          paged.page.join('\n') === FAILING_SPILL_LINES.slice(0, paged.shown).join('\n') &&
+          !r.text.includes('characters truncated')
+        )
+      }),
+      onResult(run, 0, 0, 'p1 the saved file holds every line, the summary last', r =>
+        readPage(r.text)?.file.join('\n') === FAILING_SPILL_LINES.join('\n'),
+      ),
     ],
   },
 ]

@@ -1,6 +1,5 @@
 import { feature } from 'bun:bundle';
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
-import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promises';
 import * as React from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
@@ -28,12 +27,11 @@ import { getCachedPowerShellPath } from 'src/platform/shell/powershellDetection.
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { TaskOutput } from 'src/agent/tasks/TaskOutput.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
-import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
-import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam, pageSpilledShellRun, saveShellSpill, SHELL_ERROR_PREFIX_ROOM } from 'src/tools/shellToolResultMappers.js';
 import { interpretCommandResult } from 'src/tools/PowerShellTool/commandSemantics.js';
 import { powershellToolHasPermission } from 'src/tools/PowerShellTool/powershellPermissions.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from 'src/tools/PowerShellTool/prompt.js';
@@ -522,41 +520,18 @@ export const PowerShellTool = buildTool({
         throw new Error(result.preSpawnError);
       }
       if (interpretation.isError && !isInterrupt) {
-        throw new ShellError(stdout, result.stderr || '', result.code, result.interrupted);
+        // A failing run that spilled keeps only its first chunk in stdout:
+        // page the whole saved output instead, as a passing run does.
+        const spill = await saveShellSpill(result);
+        const errorStdout = spill ? pageSpilledShellRun(spill, SHELL_ERROR_PREFIX_ROOM + (result.stderr || '').length, stdout) : stdout;
+        throw new ShellError(errorStdout, result.stderr || '', result.code, result.interrupted);
       }
 
-      // Large output: file on disk has more than getMaxOutputLength() bytes.
-      // stdout already contains the first chunk. Copy the output file to the
-      // tool-results dir so the model can read it via FileRead. If > 64 MB,
-      // truncate after copying. Matches BashTool's MAX_PERSISTED_SIZE block in
-      // `execute`.
-      //
-      // Placed AFTER the preSpawnError/ShellError throws (matches BashTool's
-      // ordering, where persistence is post-try/finally): a failing command
-      // that also produced >maxOutputLength bytes would otherwise do 3-4 disk
-      // syscalls, store to tool-results/, then throw — orphaning the file.
-      const MAX_PERSISTED_SIZE = 64 * 1024 * 1024;
-      let persistedOutputPath: string | undefined;
-      let persistedOutputSize: number | undefined;
-      if (result.outputFilePath && result.outputTaskId) {
-        try {
-          const fileStat = await fsStat(result.outputFilePath);
-          persistedOutputSize = fileStat.size;
-          await ensureToolResultsDir();
-          const dest = getToolResultPath(result.outputTaskId);
-          if (fileStat.size > MAX_PERSISTED_SIZE) {
-            await fsTruncate(result.outputFilePath, MAX_PERSISTED_SIZE);
-          }
-          try {
-            await link(result.outputFilePath, dest);
-          } catch {
-            await copyFile(result.outputFilePath, dest);
-          }
-          persistedOutputPath = dest;
-        } catch {
-          // File may already be gone — stdout preview is sufficient
-        }
-      }
+      // Large output: the file on disk has more than getMaxOutputLength()
+      // bytes and stdout only its first chunk. Save the file where the page points.
+      const spill = await saveShellSpill(result);
+      const persistedOutputPath = spill?.path;
+      const persistedOutputSize = spill?.size;
 
       // Cap image dimensions + size if present (CC-304 — see
       // resizeShellImageOutput). Scope the decoded buffer so it can be
