@@ -2760,6 +2760,13 @@ export function REPL({
   // the sprite visible so arrow-right can navigate to it.
   const companionVisible = !toolJSX?.shouldHidePromptInput && !panelTakeover && !focusedInputDialog && !showBashesDialog;
 
+  // The idle checklist normally leads the bottom slot. Beside a split panel
+  // that slot spans both columns, which put the list under the panel; there it
+  // joins the end of the transcript instead, where the working spinner already
+  // shows it, so it stays in the chat column.
+  const showIdleTodos = !showSpinner && !toolJSX?.isLocalJSXCommand && showExpandedTodos && !!tasksV2 && tasksV2.length > 0;
+  const idleTodosBesideChat = showIdleTodos && sidePanelCtx !== null;
+
   // In fullscreen, ALL local-jsx slash commands float in the modal slot —
   // FullscreenLayout wraps them in an absolute-positioned bottom-anchored
   // pane (▔ divider, ModalContext). Pane/Dialog inside detect the context
@@ -2828,6 +2835,9 @@ export function REPL({
           {toolJSX.jsx}
         </Box>}
         <REPLStatus showSpinner={showSpinner} streamMode={streamMode} spinnerTip={spinnerTip} responseLengthRef={responseLengthRef} apiMetricsRef={apiMetricsRef} spinnerMessage={spinnerMessage} stopHookSpinnerSuffix={stopHookSpinnerSuffix} verbose={verbose} loadingStartTimeRef={loadingStartTimeRef} totalPausedMsRef={totalPausedMsRef} pauseStartTimeRef={pauseStartTimeRef} spinnerColor={spinnerColor} spinnerShimmerColor={spinnerShimmerColor} hasActiveTools={inProgressToolUseIDs.size > 0} leaderIsIdle={!isLoading} isLoading={isLoading} userInputOnProcessing={userInputOnProcessing} hasRunningTeammates={hasRunningTeammates} isBriefOnly={isBriefOnly} viewedAgentTask={viewedAgentTask} />
+        {idleTodosBesideChat && <Box width="100%" flexDirection="column">
+          <TaskListV2 tasks={tasksV2!} isStandalone={true} />
+        </Box>}
       </>} bottom={<Box flexDirection={isBuddyEnabled() && companionNarrow ? 'column' : 'row'} width="100%" alignItems={isBuddyEnabled() && companionNarrow ? undefined : 'flex-end'}>
         {isBuddyEnabled() && companionNarrow && isFullscreenEnvEnabled() && companionVisible ? <CompanionSprite /> : null}
         <Box flexDirection="column" flexGrow={1}>
@@ -2844,8 +2854,8 @@ export function REPL({
           {toolJSX?.isLocalJSXCommand && toolJSX.isImmediate && !toolJsxCentered && <Box flexDirection="column" width="100%">
             {toolJSX.jsx}
           </Box>}
-          {!showSpinner && !toolJSX?.isLocalJSXCommand && showExpandedTodos && tasksV2 && tasksV2.length > 0 && <Box width="100%" flexDirection="column">
-            <TaskListV2 tasks={tasksV2} isStandalone={true} />
+          {showIdleTodos && !idleTodosBesideChat && <Box width="100%" flexDirection="column">
+            <TaskListV2 tasks={tasksV2!} isStandalone={true} />
           </Box>}
           {renderREPLDialogs({
             focusedInputDialog,
