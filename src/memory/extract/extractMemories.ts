@@ -7,6 +7,8 @@
  *
  * Uses the forked agent pattern (runForkedAgent) — a perfect fork of the main
  * conversation that shares the parent's prompt cache.
+ * CLAUDIN_EXTRACT_MEMORIES_MODEL swaps the fork for a fresh agent on another
+ * model (freshAgentParams).
  *
  * State is closure-scoped inside initExtractMemories() rather than module-level,
  * following the same pattern as confidenceRating.ts. Tests call
@@ -57,8 +59,10 @@ import { createAbortController } from 'src/shared/abortController.js'
 import { count, uniq } from 'src/shared/data/array.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
+  type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
+  type SubagentContextOverrides,
 } from 'src/agent/coordinator/forkedAgent.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
@@ -66,6 +70,9 @@ import {
   createMemorySavedMessage,
   createUserMessage,
 } from 'src/agent/messages/messages.js'
+import { isHumanTurn } from 'src/agent/messages/messagePredicates.js'
+import { parseUserSpecifiedModel } from 'src/providers/model/model.js'
+import { type EffortValue, parseEffortValue } from 'src/providers/effort/effort.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
@@ -272,6 +279,84 @@ export function createMemoryCanUseTool(
  */
 export function createExtractionCanUseTool(): CanUseToolFn {
   return createMemoryCanUseTool(['global'])
+}
+
+// ============================================================================
+// Fresh agent on another model
+// ============================================================================
+
+type FreshAgent = { model: string; effortValue: EffortValue }
+
+/**
+ * CLAUDIN_EXTRACT_MEMORIES_MODEL — an alias such as `haiku`, or a model id —
+ * runs the extraction as a fresh agent on that model, at
+ * CLAUDIN_EXTRACT_MEMORIES_EFFORT (default high), instead of a fork of the
+ * main loop on the session's model. Unset, the default, keeps the fork. An
+ * experiment, measured by scripts/bench/ab/extract-memories-ab.ts: Haiku 5.5
+ * at high cost 94% less per extraction there, but skipped the user-profile
+ * memory in 2 of 15 runs (the fork: 0 of 35); at xhigh, 92% less and 15 of
+ * 15, at twice the fork's time per request. Rejected as a default on
+ * 2026-10-10 (team memory decisions/extract-memories-haiku-rejected).
+ */
+function freshAgentFromEnv(): FreshAgent | null {
+  const spec = process.env.CLAUDIN_EXTRACT_MEMORIES_MODEL?.trim()
+  if (!spec) return null
+  return {
+    model: parseUserSpecifiedModel(spec),
+    effortValue:
+      parseEffortValue(process.env.CLAUDIN_EXTRACT_MEMORIES_EFFORT) ?? 'high',
+  }
+}
+
+/**
+ * The messages a fresh extraction agent reads: those after the cursor, from
+ * the first human turn on, so no tool_result arrives without its tool_use.
+ * The whole conversation when the cursor is unset or gone (compaction).
+ */
+export function messagesSinceCursor(
+  messages: Message[],
+  sinceUuid: string | undefined,
+): Message[] {
+  const cursor =
+    sinceUuid === undefined ? -1 : messages.findIndex(m => m.uuid === sinceUuid)
+  const start = messages.findIndex((m, i) => i > cursor && isHumanTurn(m))
+  return start < 0 ? [] : messages.slice(start)
+}
+
+/**
+ * The runForkedAgent params of a fresh agent: the main loop's system prompt
+ * and tools, but a different model shares none of its prompt cache, so it
+ * reads only the messages since the last extraction.
+ */
+export function freshAgentParams(
+  params: CacheSafeParams,
+  sinceUuid: string | undefined,
+  { model, effortValue }: FreshAgent,
+): { cacheSafeParams: CacheSafeParams; overrides: SubagentContextOverrides } {
+  const parent = params.toolUseContext
+  return {
+    cacheSafeParams: {
+      ...params,
+      forkContextMessages: messagesSinceCursor(params.forkContextMessages, sinceUuid),
+    },
+    overrides: {
+      // With an agentType, a turn calls options.mainLoopModel instead of the
+      // session's model (turnModel.ts).
+      agentType: 'extract_memories',
+      options: { ...parent.options, mainLoopModel: model },
+      getAppState: () => {
+        const state = parent.getAppState()
+        return {
+          ...state,
+          effortValue,
+          toolPermissionContext: {
+            ...state.toolPermissionContext,
+            shouldAvoidPermissionPrompts: true,
+          },
+        }
+      },
+    },
+  }
 }
 
 // ============================================================================
@@ -492,9 +577,12 @@ export function initExtractMemories(): void {
         globalDir,
       )
 
+      const freshAgent = freshAgentFromEnv()
       const result = await runForkedAgent({
         promptMessages: [createUserMessage({ content: userPrompt })],
-        cacheSafeParams,
+        ...(freshAgent
+          ? freshAgentParams(cacheSafeParams, lastMemoryMessageUuid, freshAgent)
+          : { cacheSafeParams }),
         canUseTool,
         querySource: 'extract_memories',
         forkLabel: 'extract_memories',
@@ -629,7 +717,10 @@ export function initExtractMemories(): void {
     }
   }
 
-  drainer = async (timeoutMs = 60_000) => {
+  // A `-p` run extracts only under CLAUDIN_EXTRACT_MEMORIES_HEADLESS, which
+  // asks to see the extraction through: an interactive one never cuts it, and
+  // a fresh agent at xhigh has spent 56s on a single request.
+  drainer = async (timeoutMs = 5 * 60_000) => {
     if (inFlightExtractions.size === 0) return
     await Promise.race([
       Promise.all(inFlightExtractions).catch(() => {}),

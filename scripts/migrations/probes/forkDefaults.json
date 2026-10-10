@@ -32,8 +32,14 @@
     {
       "name": "extraction stays off in a non-interactive session",
       "source": "src/memory/memdir/paths.ts",
-      "find": "  return isExtractMemoriesEnabled() && !getIsNonInteractiveSession()\n",
-      "replace": "  return isExtractMemoriesEnabled()\n"
+      "find": "    (!getIsNonInteractiveSession() ||\n",
+      "replace": "    (true ||\n"
+    },
+    {
+      "name": "CLAUDIN_EXTRACT_MEMORIES_HEADLESS=1 lets a non-interactive session extract",
+      "source": "src/memory/memdir/paths.ts",
+      "find": "      isEnvTruthy(process.env.CLAUDIN_EXTRACT_MEMORIES_HEADLESS))\n",
+      "replace": "      false)\n"
     },
     {
       "name": "extraction fires every 15 eligible turns",

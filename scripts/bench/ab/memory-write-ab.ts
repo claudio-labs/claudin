@@ -63,14 +63,14 @@ import { parseJsonl } from './cliUsage'
 import { git, spawnCollect, stamp, table, version } from './session-cache-ab'
 
 const BENCH_ROOT = '/tmp/memory-write-ab'
-const MEMORY_REL = join('.claudin', 'memory')
+export const MEMORY_REL = join('.claudin', 'memory')
 const INDEX = 'MEMORY.md'
-const MEMORY_TYPES = ['user', 'feedback', 'project', 'reference'] as const
+export const MEMORY_TYPES = ['user', 'feedback', 'project', 'reference'] as const
 const IMPACTS = ['structural', 'functional', 'rejected'] as const
 /** A category directory of the team dir and the `type` its memories carry. */
 const CATEGORY_TYPES: Record<string, string> = { decisions: 'project', bugs: 'project', docs: 'reference' }
 /** The global memory dir, as a prefix of a memory's path relative to the memory root. */
-const GLOBAL = '@global/'
+export const GLOBAL = '@global/'
 
 // ---------------------------------------------------------------------------
 // Requests
@@ -181,7 +181,7 @@ const LINK_RE = /\]\(\s*<?([^)\s>]+)/g
 const CATEGORY_PATH_RE = /^team\/(decisions|bugs|docs)\/[^/]+\.md$/
 
 /** Top-level `key: value` pairs of the frontmatter, or null when there is none. */
-function frontmatterOf(text: string): Record<string, string> | null {
+export function frontmatterOf(text: string): Record<string, string> | null {
   const m = FRONTMATTER_RE.exec(text)
   if (!m) return null
   const out: Record<string, string> = {}
@@ -196,17 +196,17 @@ function frontmatterOf(text: string): Record<string, string> | null {
  * Where a session's memory lives: the project-local memory root, and the
  * global dir when the session has one on (null in an arm that turns it off).
  */
-type MemoryRoots = { root: string; globalRoot: string | null }
+export type MemoryRoots = { root: string; globalRoot: string | null }
 
 const isGlobalRel = (rel: string): boolean => rel.startsWith(GLOBAL)
 
 /** The file at `rel` — relative to the memory root, or GLOBAL-prefixed. */
-function absOf(roots: MemoryRoots, rel: string): string {
+export function absOf(roots: MemoryRoots, rel: string): string {
   return isGlobalRel(rel) ? join(roots.globalRoot!, rel.slice(GLOBAL.length)) : join(roots.root, rel)
 }
 
 /** What the frontmatter of the memory at `rel` (relative to the memory root) misses. */
-function frontmatterProblems(rel: string, text: string, globalOn: boolean): string[] {
+export function frontmatterProblems(rel: string, text: string, globalOn: boolean): string[] {
   const fm = frontmatterOf(text)
   if (!fm) return ['no frontmatter']
   const problems: string[] = []
@@ -244,7 +244,7 @@ function memoryFiles(root: string, sub = ''): string[] {
 }
 
 /** Every memory file of the session: the memory root's, then the global dir's under GLOBAL. */
-function allMemoryFiles(roots: MemoryRoots): string[] {
+export function allMemoryFiles(roots: MemoryRoots): string[] {
   return [
     ...memoryFiles(roots.root),
     ...(roots.globalRoot === null ? [] : memoryFiles(roots.globalRoot).map(rel => `${GLOBAL}${rel}`)),
@@ -252,7 +252,7 @@ function allMemoryFiles(roots: MemoryRoots): string[] {
 }
 
 /** Whether the index of the directory holding `rel` links to it. */
-function isIndexed(roots: MemoryRoots, rel: string): boolean {
+export function isIndexed(roots: MemoryRoots, rel: string): boolean {
   const indexDir = isGlobalRel(rel)
     ? roots.globalRoot!
     : rel.startsWith('team/')
@@ -268,7 +268,7 @@ function isIndexed(roots: MemoryRoots, rel: string): boolean {
   return false
 }
 
-const dirOf = (rel: string): string =>
+export const dirOf = (rel: string): string =>
   isGlobalRel(rel) ? GLOBAL : rel.includes('/') ? `${dirname(rel)}/` : ''
 
 type Grade = {
@@ -478,7 +478,7 @@ function report(sessions: Session[], arms: Arm[]): string {
 
 type Fixture = Record<string, string>
 
-const fm = (lines: string[], body: string) => `---\n${lines.join('\n')}\n---\n\n${body}\n`
+export const fm = (lines: string[], body: string) => `---\n${lines.join('\n')}\n---\n\n${body}\n`
 
 /** One memory tree per request that must pass. */
 const GOOD: Record<RequestId, Fixture> = {
