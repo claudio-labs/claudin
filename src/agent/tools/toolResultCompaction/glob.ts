@@ -1,4 +1,4 @@
-import type { StrategyResult } from 'src/agent/tools/toolResultSummarizer/types.js'
+import type { StrategyResult } from 'src/agent/tools/toolResultCompaction/types.js'
 
 // ============================================================
 // Glob

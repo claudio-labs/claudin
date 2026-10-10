@@ -1,4 +1,4 @@
-import type { StrategyName } from 'src/agent/tools/toolResultSummarizer/types.js'
+import type { StrategyName } from 'src/agent/tools/toolResultCompaction/types.js'
 
 /**
  * The envelope of a result regrouped without losing a line (`compactGrepOutput`,

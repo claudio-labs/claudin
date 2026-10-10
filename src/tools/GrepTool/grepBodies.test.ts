@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultCompaction.js'
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
 import {
   BODIES_BUDGET_CHARS,

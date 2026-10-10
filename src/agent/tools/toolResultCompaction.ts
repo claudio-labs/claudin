@@ -17,10 +17,10 @@ import { isGrepBodiesResult } from 'src/tools/GrepTool/grepBodies.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import type { StrategyResult } from 'src/agent/tools/toolResultSummarizer/types.js'
-import { isAlreadyCompacted, wrapCompacted } from 'src/agent/tools/toolResultSummarizer/markers.js'
-import { compactGrepOutput } from 'src/agent/tools/toolResultSummarizer/grep.js'
-import { compactGlobOutput } from 'src/agent/tools/toolResultSummarizer/glob.js'
+import type { StrategyResult } from 'src/agent/tools/toolResultCompaction/types.js'
+import { isAlreadyCompacted, wrapCompacted } from 'src/agent/tools/toolResultCompaction/markers.js'
+import { compactGrepOutput } from 'src/agent/tools/toolResultCompaction/grep.js'
+import { compactGlobOutput } from 'src/agent/tools/toolResultCompaction/glob.js'
 
 /**
  * Below this a result ships as it came: a regroup pays only on output long

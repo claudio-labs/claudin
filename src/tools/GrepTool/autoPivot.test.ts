@@ -17,7 +17,7 @@ import {
   shouldAutoPivot,
 } from 'src/tools/GrepTool/autoPivot.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultCompaction.js'
 
 /** Defaults for the non-shape half of the decision: nothing suppressing. */
 function decide(

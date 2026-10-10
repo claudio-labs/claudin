@@ -6,7 +6,7 @@ import {
   recordBytesSaved,
   resetBytesSaved,
 } from 'src/agent/context/tokensSaved.js'
-import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultCompaction.js'
 import {
   processPreMappedToolResultBlock,
   unlinkSessionSpillDir,

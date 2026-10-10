@@ -16,7 +16,7 @@ import { getErrnoCode, toError } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
-import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultCompaction.js'
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js'
 
 // Subdirectory name for tool results within a session

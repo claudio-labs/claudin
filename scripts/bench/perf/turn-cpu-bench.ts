@@ -86,7 +86,7 @@ const { buildSymbolsOutput } = await import(
   '../../../src/tools/GrepTool/symbolsOutput.js'
 )
 const { maybeCompactToolResult } = await import(
-  '../../../src/agent/tools/toolResultSummarizer.js'
+  '../../../src/agent/tools/toolResultCompaction.js'
 )
 const { applyMarkdown, configureMarked } = await import(
   '../../../src/shared/text/markdown.js'

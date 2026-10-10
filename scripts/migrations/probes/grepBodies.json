@@ -25,7 +25,7 @@
     },
     {
       "name": "grep-bodies: the regroup takes a bodies result like any Grep",
-      "source": "src/agent/tools/toolResultSummarizer.ts",
+      "source": "src/agent/tools/toolResultCompaction.ts",
       "find": "      return isGrepBodiesResult(text) ? null : compactGrepOutput(text)\n",
       "replace": "      return compactGrepOutput(text)\n"
     },

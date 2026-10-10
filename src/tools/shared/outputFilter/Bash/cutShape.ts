@@ -1,12 +1,12 @@
 /**
  * What a cut of Bash output keeps besides its head and tail: the lines around
- * the errors in it. One definition for both cutters — the tool-result
- * summarizer's Bash arm (`agent/tools/toolResultSummarizer/bash.ts`) and the
- * floor's one cut (`floor.ts`, `CLAUDIN_BASH_ONE_CUT`) — so a failure in the
- * middle of a long log survives either of them the same way.
+ * the errors in it — the floor's one cut (`floor.ts`, `CLAUDIN_BASH_ONE_CUT`),
+ * the only cut Bash output gets, so a failure in the middle of a long log
+ * survives it. The windows are the ones the tool-result summarizer kept before
+ * it stopped cutting (2026-10-10).
  */
 
-/** Lines kept before and after each error line, as the summarizer always has. */
+/** Lines kept before and after each error line, as the summarizer did. */
 export const ERROR_WINDOW_BEFORE = 5;
 export const ERROR_WINDOW_AFTER = 10;
 

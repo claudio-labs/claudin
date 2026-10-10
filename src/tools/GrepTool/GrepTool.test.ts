@@ -792,8 +792,8 @@ describe('GrepTool relativizeRgLine', () => {
       makeContext(),
     )
     const content = (data as GrepData).content ?? ''
-    // GREP_HEADER_OVERHEAD lives in the summarizer's grep sibling, not in the barrel.
-    expect(content).toContain('toolResultSummarizer/grep.ts-')
+    // GREP_HEADER_OVERHEAD lives in the compaction's grep sibling, not in the barrel.
+    expect(content).toContain('toolResultCompaction/grep.ts-')
     expect(content).not.toContain(root)
   })
 })
