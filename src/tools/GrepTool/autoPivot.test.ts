@@ -17,7 +17,7 @@ import {
   shouldAutoPivot,
 } from 'src/tools/GrepTool/autoPivot.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import { maybeSummarizeToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
 
 /** Defaults for the non-shape half of the decision: nothing suppressing. */
 function decide(
@@ -176,13 +176,12 @@ describe('grepAutoPivotEnabled', () => {
 })
 
 /**
- * The pivot happens inside the tool, so its body reaches the Grep summarizer
- * afterwards. A symbol map is not `path:NN:text`, so the strategy must leave it
- * alone — if a future map format starts parsing as ripgrep output, the
- * summarizer would regroup and clamp a body that has no context lines to clamp,
- * and this test is what catches it.
+ * The pivot happens inside the tool, so its body reaches the Grep regroup
+ * afterwards. A symbol map is not `path:NN:text`, so the regroup must leave it
+ * alone — if a future map format starts parsing as ripgrep output, it would be
+ * regrouped as though it were, and this test is what catches it.
  */
-describe('a pivoted body survives the summarizer', () => {
+describe('a pivoted body survives the tool-result compaction', () => {
   test('is returned byte-identical', () => {
     const blocks: string[] = []
     for (let i = 0; i < 40; i++) {
@@ -197,11 +196,11 @@ describe('a pivoted body survives the summarizer', () => {
       `The search matched 812 lines in 96 files; the first 250 are mapped below.\n\n` +
       `${blocks.join('\n\n')}${GREP_AUTO_PIVOT_FOOTER}`
 
-    // Guard the guard: below the dispatch floor the summarizer never runs and
-    // this test would pass without asserting anything.
-    expect(body.length).toBeGreaterThan(6_000)
+    // Guard the guard: below the compaction floor nothing runs and this test
+    // would pass without asserting anything.
+    expect(body.length).toBeGreaterThan(3_000)
 
-    const out = maybeSummarizeToolResult(
+    const out = maybeCompactToolResult(
       { type: 'tool_result', tool_use_id: 'pivot', content: body },
       GREP_TOOL_NAME,
     )

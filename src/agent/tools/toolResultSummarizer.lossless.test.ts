@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { mkdirSync, rmSync } from 'fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
@@ -9,39 +9,37 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
-import { isSummarizedContent, maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
 import { compactGlobOutput } from 'src/agent/tools/toolResultSummarizer/glob.js'
 import { compactGrepOutput } from 'src/agent/tools/toolResultSummarizer/grep.js'
 import { isAlreadyCompacted } from 'src/agent/tools/toolResultSummarizer/markers.js'
-import { keepWholeUnderLine, processPreMappedToolResultBlock } from 'src/agent/tools/toolResultStorage.js'
+import { processPreMappedToolResultBlock } from 'src/agent/tools/toolResultStorage.js'
 
-// CLAUDIN_TOOL_RESULT_LOSSLESS: a result ships whole while it fits under its
-// tool's persistence line — a Grep or Glob regrouped without losing a line —
-// and is cut only past it. Every regroup is pinned by decoding what it printed
-// back into what it was given, in order, byte for byte.
+// Tool results are compacted, never cut: a Grep or Glob result is regrouped
+// without losing a line, and one past its tool's persistence line is paged.
+// Every regroup is pinned by decoding what it printed back into what it was
+// given, in order, byte for byte.
 
-const FLAG = 'CLAUDIN_TOOL_RESULT_LOSSLESS'
-const savedFlag = process.env[FLAG]
 const savedKillSwitch = process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
 
 beforeAll(() => {
   saveGlobalConfig(c => ({ ...c, toolResultSummarizerEnabled: true }))
 })
 beforeEach(() => {
-  delete process.env[FLAG]
   delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
 })
 afterAll(() => {
   resetGlobalConfigForTests()
-  if (savedFlag === undefined) delete process.env[FLAG]
-  else process.env[FLAG] = savedFlag
   if (savedKillSwitch === undefined) delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
   else process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = savedKillSwitch
 })
 
+// A distinct id per block: persistence never rewrites a file it already saved
+// under an id (real ids are unique), so a shared one would read another test's.
+let nextId = 0
 const block = (content: ToolResultBlockParam['content']): ToolResultBlockParam => ({
   type: 'tool_result',
-  tool_use_id: 'toolu_lossless',
+  tool_use_id: `toolu_lossless_${nextId++}`,
   content,
 })
 
@@ -214,6 +212,39 @@ describe('compactGrepOutput', () => {
   })
 })
 
+describe('compactGrepOutput — real rg output and odd line shapes', () => {
+  const FIXTURES = join(import.meta.dir, '__fixtures__', 'grepSamples')
+  /** Decodes back exactly when it regroups; ships nothing when it does not. */
+  const holds = (raw: string) => {
+    const result = compactGrepOutput(raw)
+    if (result !== null) expect(decodeGrep(result.body)).toEqual(raw.split('\n'))
+    return result
+  }
+
+  test.each(readdirSync(FIXTURES).filter(f => f.endsWith('.txt')))('%s comes back byte for byte', name => {
+    holds(readFileSync(join(FIXTURES, name), 'utf8'))
+  })
+
+  test('the recorded multi-file and context samples do regroup', () => {
+    for (const name of ['multi-file', 'context-12', 'context-30', 'unscoped-wide']) {
+      expect(holds(readFileSync(join(FIXTURES, `${name}.txt`), 'utf8'))).not.toBeNull()
+    }
+  })
+
+  const pad = ' '.repeat(50)
+  test.each([
+    ['a Windows drive letter', [String.raw`C:\proj\src\a.ts:10:const x = 1${pad}`, String.raw`C:\proj\src\a.ts-11-const y = 2${pad}`, String.raw`C:\proj\src\a.ts:12:const z = 3${pad}`]],
+    ['a path that contains :N:', [`src/a:1:b.ts:10:one${pad}`, `src/a:1:b.ts:11:two${pad}`, `src/a:1:b.ts:12:three${pad}`]],
+    ['a match whose text is --', ['src/a.ts:10:--', '--', 'src/a.ts:11:real', 'src/a.ts:12:more']],
+    ['empty match bodies', ['src/agent/a.ts:1:', 'src/agent/a.ts:2:', 'src/agent/a.ts:3:', 'src/agent/a.ts:4:']],
+    ['carriage returns and control bytes', [`src/agent/a.ts:1:one\r`, `src/agent/a.ts:2:two\u0007${pad}`, `src/agent/a.ts:3:\tthree${pad}`]],
+    ['line numbers as rg wrote them', [`src/agent/a.ts:007:x${pad}`, `src/agent/a.ts:08:y${pad}`, `src/agent/a.ts:9:z${pad}`]],
+    ['a filename that mimics a header', [`src/--- fake (9 matches) ---.ts:10:one${pad}`, `src/--- fake (9 matches) ---.ts:11:two${pad}`, `src/--- fake (9 matches) ---.ts:12:three${pad}`]],
+  ])('%s comes back byte for byte', (_, lines) => {
+    holds(lines.join('\n'))
+  })
+})
+
 // ---------------------------------------------------------------------------
 // compactGlobOutput
 // ---------------------------------------------------------------------------
@@ -255,7 +286,6 @@ describe('maybeCompactToolResult', () => {
     expect(content).toStartWith('<tool-result-compacted tool="Grep" strategy="compact-grep">\n')
     expect(content).not.toContain('kept=')
     expect(decodeGrep(bodyOf(content))).toEqual(raw.split('\n'))
-    expect(isSummarizedContent(content)).toBe(false)
     expect(isAlreadyCompacted(content)).toBe(true)
   })
 
@@ -280,6 +310,14 @@ describe('maybeCompactToolResult', () => {
     expect(maybeCompactToolResult(once, GREP_TOOL_NAME)).toBe(once)
   })
 
+  test('a small result ships as it came, even one the regroup would shrink', () => {
+    const raw = Array.from({ length: 20 }, (_, i) => `src/agent/tools/small.ts:${i + 1}:hit ${i}`).join('\n')
+    expect(raw.length).toBeLessThan(3_000)
+    expect(compactGrepOutput(raw)).not.toBeNull()
+    const b = block(raw)
+    expect(maybeCompactToolResult(b, GREP_TOOL_NAME)).toBe(b)
+  })
+
   test('the summarizer kill switch stops the regroup too', () => {
     process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = '1'
     const b = block(grepOutput(2, 14, 3))
@@ -288,40 +326,12 @@ describe('maybeCompactToolResult', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The line
+// The storage layer: compacted under the line, paged past it, never cut
 // ---------------------------------------------------------------------------
 
-describe('keepWholeUnderLine — whole under the persistence line, cut past it', () => {
-  test('a regrouped Grep ships at exactly the line, and one char past it is cut', () => {
-    const raw = grepOutput(2, 14, 3)
-    const size = String(maybeCompactToolResult(block(raw), GREP_TOOL_NAME).content).length
-    expect(String(keepWholeUnderLine(block(raw), GREP_TOOL_NAME, size)?.content)).toStartWith('<tool-result-compacted')
-    expect(keepWholeUnderLine(block(raw), GREP_TOOL_NAME, size - 1)).toBeNull()
-  })
-
-  test('a result nothing regroups ships as it came at the line, and is cut past it', () => {
-    const raw = Array.from({ length: 300 }, (_, i) => `step ${i}: ${'z'.repeat(40)}`).join('\n')
-    const b = block(raw)
-    expect(keepWholeUnderLine(b, BASH_TOOL_NAME, raw.length)).toBe(b)
-    expect(keepWholeUnderLine(b, BASH_TOOL_NAME, raw.length - 1)).toBeNull()
-  })
-
-  test('an array result is measured the way persistence measures it: its text blocks summed', () => {
-    const parts = [{ type: 'text' as const, text: 'a'.repeat(5_000) }, { type: 'text' as const, text: 'b'.repeat(5_000) }]
-    const b = block(parts)
-    expect(keepWholeUnderLine(b, AGENT_TOOL_NAME, 10_000)).toBe(b)
-    expect(keepWholeUnderLine(b, AGENT_TOOL_NAME, 9_999)).toBeNull()
-  })
-
-  test('=0 turns the rule off: nothing ships whole on its account', () => {
-    process.env[FLAG] = '0'
-    expect(keepWholeUnderLine(block('short'), BASH_TOOL_NAME, 30_000)).toBeNull()
-  })
-})
-
-describe('processPreMappedToolResultBlock — the rule in the storage layer', () => {
+describe('processPreMappedToolResultBlock — compact, then page past the line', () => {
   const grep = { name: GREP_TOOL_NAME, maxResultSizeChars: 20_000 }
-  // A broken line would persist the result: keep it out of the real config dir.
+  // A result past its line is saved: keep it out of the real config dir.
   const prevConfigDir = process.env.CLAUDIN_CONFIG_DIR
   const testConfigDir = join(tmpdir(), `claudin-lossless-spill-${process.pid}-${Date.now()}`)
   beforeAll(() => {
@@ -336,36 +346,41 @@ describe('processPreMappedToolResultBlock — the rule in the storage layer', ()
 
   test('a Grep result that regroups under 20k ships whole', async () => {
     const raw = grepOutput(2, 14, 3)
-    const out = await processPreMappedToolResultBlock(block(raw), grep, {})
+    const out = await processPreMappedToolResultBlock(block(raw), grep)
     expect(decodeGrep(bodyOf(out.content))).toEqual(raw.split('\n'))
   })
 
-  test('one that does not is cut, not saved behind a preview', async () => {
-    // Many matches in few files: whole it is past 20k, cut it fits — so nothing
-    // here ever reaches the disk.
+  test('a regrouped Grep ships at exactly the line, and one char past it is paged', async () => {
+    const raw = grepOutput(2, 14, 3)
+    const size = String(maybeCompactToolResult(block(raw), GREP_TOOL_NAME).content).length
+    const at = await processPreMappedToolResultBlock(block(raw), { name: GREP_TOOL_NAME, maxResultSizeChars: size })
+    expect(String(at.content)).toStartWith('<tool-result-compacted')
+    const past = await processPreMappedToolResultBlock(block(raw), { name: GREP_TOOL_NAME, maxResultSizeChars: size - 1 })
+    expect(String(past.content)).toStartWith('<persisted-output>')
+  })
+
+  test('one too big even regrouped is paged, never summarized: the file holds it whole', async () => {
     const raw = grepOutput(4, 80, 1)
     expect(compactGrepOutput(raw)!.body.length).toBeGreaterThan(20_000)
-    const out = await processPreMappedToolResultBlock(block(raw), grep, {})
-    expect(String(out.content)).toStartWith('<tool-result-summary tool="Grep"')
+    const out = String((await processPreMappedToolResultBlock(block(raw), grep)).content)
+    expect(out.length).toBeLessThanOrEqual(20_000)
+    expect(out).toStartWith('<persisted-output>')
+    expect(out).toMatch(/^Lines 1-\d+ are below; Read the file from line \d+ for the rest\.$/m)
+    const saved = readFileSync(/Full output saved to: (\S+)\n/.exec(out)![1]!, 'utf8')
+    expect(decodeGrep(bodyOf(saved))).toEqual(raw.split('\n'))
   })
 
   test('an agent report under its line ships untouched, blocks and all', async () => {
     const report = Array.from({ length: 300 }, (_, i) => `Finding ${i}: ${'v'.repeat(40)}`).join('\n')
     const b = block([{ type: 'text', text: report }])
-    const out = await processPreMappedToolResultBlock(b, { name: AGENT_TOOL_NAME, maxResultSizeChars: 100_000 }, {})
+    const out = await processPreMappedToolResultBlock(b, { name: AGENT_TOOL_NAME, maxResultSizeChars: 100_000 })
     expect(out.content).toEqual([{ type: 'text', text: report }])
   })
 
   test('a Glob listing under its line keeps every path', async () => {
     const raw = globOutput(5, 40)
-    const out = await processPreMappedToolResultBlock(block(raw), { name: GLOB_TOOL_NAME, maxResultSizeChars: 100_000 }, {})
+    const out = await processPreMappedToolResultBlock(block(raw), { name: GLOB_TOOL_NAME, maxResultSizeChars: 100_000 })
     expect(String(out.content)).toStartWith('<tool-result-compacted tool="Glob"')
     expect(decodeGlob(bodyOf(out.content))).toEqual(raw.split('\n'))
-  })
-
-  test('=0 brings the cut back under the line too', async () => {
-    process.env[FLAG] = '0'
-    const out = await processPreMappedToolResultBlock(block(grepOutput(2, 14, 3)), grep, {})
-    expect(String(out.content)).toStartWith('<tool-result-summary tool="Grep"')
   })
 })

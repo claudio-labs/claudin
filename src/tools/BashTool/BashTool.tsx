@@ -30,7 +30,6 @@ import {
   planBashFilter,
   type PreExecPlan,
 } from 'src/tools/shared/outputFilter/Bash/index.js';
-import { isOneCutEnabled } from 'src/tools/shared/outputFilter/Bash/floor.js';
 import { applySedEdit } from 'src/tools/BashTool/applySedEdit.js';
 import { creditShownFiles, fitWholeFiles, renderNotShownNote, type FittedRead } from 'src/tools/BashTool/creditShownFiles.js';
 import { refreshOwnWrites } from 'src/tools/BashTool/ownWrites.js';
@@ -57,7 +56,7 @@ const EOL = '\n';
 export type { BashProgress } from 'src/shared/types/tools.js';
 import type { BashProgress } from 'src/shared/types/tools.js';
 
-/** Past this a result is saved to disk behind a preview (toolResultStorage.ts). */
+/** Past this a result is saved to disk and paged (toolResultStorage.ts). */
 const BASH_RESULT_PERSIST_CHARS = 30_000;
 
 /**
@@ -515,15 +514,6 @@ export const BashTool = buildTool({
     };
   },
   renderToolUseErrorMessage,
-  // CLAUDIN_BASH_ONE_CUT: the filter's cut is the only one (floor.ts). The
-  // summarizer stays the backstop where the filter did not run, and past the
-  // persist line, where its line truncation can still keep a result of long
-  // lines out of a file on disk. Under CLAUDIN_TOOL_RESULT_LOSSLESS (the
-  // default) a result under that line ships whole anyway (toolResultStorage.ts,
-  // keepWholeUnderLine); this answer decides it only under `=0`.
-  skipsResultSummarizer(output: Out): boolean {
-    return isOneCutEnabled() && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput(getGlobalConfig().bashOutputFilterEnabled, isBashOutputFilterDisabled, output.backgroundTaskId);
-  },
   isResultTruncated(output: Out): boolean {
     return isOutputLineTruncated(output.stdout) || isOutputLineTruncated(output.stderr);
   }

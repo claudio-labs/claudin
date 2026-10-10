@@ -42,24 +42,6 @@
       "source": "src/tools/shared/outputFilter/Bash/index.ts",
       "find": "  const cuttable = !diagnostics || (isOneCutEnabled() && rawStdout.length >= ONE_CUT_DIAGNOSTICS_CHARS);\n",
       "replace": "  const cuttable = !diagnostics || isOneCutEnabled();\n"
-    },
-    {
-      "name": "one cut: the summarizer never stands aside",
-      "source": "src/tools/BashTool/BashTool.tsx",
-      "find": "    return isOneCutEnabled() && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput(",
-      "replace": "    return false && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput("
-    },
-    {
-      "name": "one cut: the summarizer stands aside past the persist line too",
-      "source": "src/tools/BashTool/BashTool.tsx",
-      "find": "    return isOneCutEnabled() && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput(",
-      "replace": "    return isOneCutEnabled() && shouldFilterOutput("
-    },
-    {
-      "name": "one cut: the summarizer stands aside for a backgrounded run",
-      "source": "src/tools/BashTool/BashTool.tsx",
-      "find": "isBashOutputFilterDisabled, output.backgroundTaskId);\n  },\n",
-      "replace": "isBashOutputFilterDisabled, undefined);\n  },\n"
     }
   ]
 }

@@ -180,7 +180,7 @@ const KEEP_PATH_LINES: KeepLines = { test: isPathLine, max: MAX_KEPT_PATH_LINES 
 
 /**
  * One cut for Bash output in place of two, on by default since 2026-10-09;
- * `CLAUDIN_BASH_ONE_CUT=0` brings back the cap and the summarizer as they were.
+ * `CLAUDIN_BASH_ONE_CUT=0` brings back the cap as it was.
  *
  * Two cutters reached the same result: this floor's cap (past 60 lines, 15
  * head + 15 tail) and the tool-result summarizer (past 8k chars, 40 head + 60
@@ -188,10 +188,9 @@ const KEEP_PATH_LINES: KeepLines = { test: isPathLine, max: MAX_KEPT_PATH_LINES 
  * had cut. The harsher one ran first, on less: a 61-line result of 2k chars
  * lost half its lines, and a read that slipped past the cap was cut again
  * downstream. Now the cap is the only cut — later, gentler, with
- * the summarizer's error windows — and BashTool keeps the summarizer away from
- * every result the filter ran on (`skipsResultSummarizer`). Diagnostics, which
- * the cap never touched, take it past ONE_CUT_DIAGNOSTICS_CHARS, where the
- * summarizer used to cut them.
+ * the summarizer's error windows; the summarizer itself no longer cuts at all
+ * (2026-10-10). Diagnostics, which the cap never touched, take it past
+ * ONE_CUT_DIAGNOSTICS_CHARS, where the summarizer used to cut them.
  *
  * The cut keeps the summarizer's 40 head and 60 tail lines and takes only what
  * lies between, so there is no trigger of its own. Sized on the recorded

@@ -24,10 +24,10 @@
       "replace": "const BODIES_HEADER_RE = /^Found \\d+ matched symbols across \\d+ files, with their bodies/"
     },
     {
-      "name": "grep-bodies: the summarizer cuts a bodies result like any Grep",
+      "name": "grep-bodies: the regroup takes a bodies result like any Grep",
       "source": "src/agent/tools/toolResultSummarizer.ts",
-      "find": "      if (isGrepBodiesResult(text)) return null\n",
-      "replace": ""
+      "find": "      return isGrepBodiesResult(text) ? null : compactGrepOutput(text)\n",
+      "replace": "      return compactGrepOutput(text)\n"
     },
     {
       "name": "symbols-output: bodies are never rendered",

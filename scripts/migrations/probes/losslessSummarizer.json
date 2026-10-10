@@ -1,44 +1,28 @@
 {
   "test": [
     "src/agent/tools/toolResultSummarizer.lossless.test.ts",
-    "src/agent/tools/toolResultSummarizer.test.ts",
-    "src/agent/tools/toolResultSummarizer.integration.test.ts",
     "src/agent/tools/toolResultStorage.test.ts",
-    "src/agent/context/tokensSaved.test.ts"
+    "src/agent/context/tokensSaved.test.ts",
+    "src/tools/GrepTool/grepBodies.test.ts",
+    "src/tools/GrepTool/autoPivot.test.ts"
   ],
   "source": "src/agent/tools/toolResultStorage.ts",
   "probes": [
     {
-      "name": "lossless: =0 no longer brings the cut back",
-      "source": "src/agent/tools/toolResultSummarizer/thresholds.ts",
-      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_TOOL_RESULT_LOSSLESS)\n",
-      "replace": "  return true\n"
+      "name": "storage: the regroup is skipped, so a Grep ships raw",
+      "find": "  const compacted = maybeCompactToolResult(toolResultBlock, toolName)\n",
+      "replace": "  const compacted = toolResultBlock\n"
     },
     {
-      "name": "lossless: off by default",
-      "source": "src/agent/tools/toolResultSummarizer/thresholds.ts",
-      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_TOOL_RESULT_LOSSLESS)\n",
-      "replace": "  return false\n"
-    },
-    {
-      "name": "line: a result past it ships whole anyway",
-      "find": "  return content == null || contentSize(content) <= persistenceThreshold ? compacted : null\n",
+      "name": "storage: a regrouped result past the line ships whole",
+      "find": "  return maybePersistLargeToolResult(compacted, toolName, getPersistenceThreshold(maxResultSizeChars))\n",
       "replace": "  return compacted\n"
     },
     {
-      "name": "line: a result exactly at it is cut",
-      "find": "  return content == null || contentSize(content) <= persistenceThreshold ? compacted : null\n",
-      "replace": "  return content == null || contentSize(content) < persistenceThreshold ? compacted : null\n"
-    },
-    {
-      "name": "line: storage never asks, so everything is cut",
-      "find": "    : keepWholeUnderLine(toolResultBlock, toolName, persistenceThreshold)\n",
-      "replace": "    : null\n"
-    },
-    {
-      "name": "line: the regroup is skipped, so a Grep ships raw",
-      "find": "  const compacted = maybeCompactToolResult(toolResultBlock, toolName)\n",
-      "replace": "  const compacted = toolResultBlock\n"
+      "name": "compaction: a small result is regrouped too",
+      "source": "src/agent/tools/toolResultSummarizer.ts",
+      "find": "content.length < COMPACT_MIN_CHARS || ",
+      "replace": ""
     },
     {
       "name": "regroup: the summarizer kill switch is ignored",
@@ -49,8 +33,8 @@
     {
       "name": "regroup: a compacted envelope is regrouped again",
       "source": "src/agent/tools/toolResultSummarizer/markers.ts",
-      "find": "    text.startsWith(TOOL_RESULT_COMPACTED_TAG) ||\n",
-      "replace": "\n"
+      "find": "  return text.startsWith(TOOL_RESULT_COMPACTED_TAG)\n",
+      "replace": "  return false\n"
     },
     {
       "name": "glob regroup: an indented path is grouped anyway",

@@ -67,8 +67,6 @@
 import { readdir, stat } from 'fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'path'
 import picomatch from 'picomatch'
-import { isAlreadyCompacted } from 'src/agent/tools/toolResultSummarizer/markers.js'
-import { BASH_SUMMARIZE_THRESHOLD } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
 import { pathInAllowedWorkingPath } from 'src/permissions/filePermissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -192,7 +190,7 @@ export async function creditShownFiles(
     // result an `<error>` part — the abort marker, the cwd-reset note.
     if (shown.interrupted || shown.stderr?.trim()) return NO_CREDIT
     const received = receivedText(shown)
-    if (received === undefined || !reachesModelWhole(received, received.length)) {
+    if (received === undefined || !reachesModelWhole(received.length)) {
       return NO_CREDIT
     }
     const reads = catReadsOf(shown.command)
@@ -210,7 +208,7 @@ export async function creditShownFiles(
     const note = renderCreditNote(judged, cwd, shown.notShown ?? [])
     if (
       note === null ||
-      !reachesModelWhole(received, received.length + 1 + note.length)
+      !reachesModelWhole(received.length + 1 + note.length)
     ) {
       return NO_CREDIT
     }
@@ -234,7 +232,7 @@ export async function creditShownFiles(
 /**
  * The text the model receives for the run: the tool_result BashTool maps it
  * to — stdout trimmed, then any note, stderr part and background note — which
- * is what the summarizer and result persistence measure. The id only labels
+ * is what result persistence measures. The id only labels
  * the block.
  */
 function receivedText(shown: ShownBashOutput): string | undefined {
@@ -243,13 +241,11 @@ function receivedText(shown: ShownBashOutput): string | undefined {
 }
 
 /**
- * Whether a tool result that opens like `received` and is `length` chars long
- * reaches the model as it is: not persisted behind a preview, and not cut by
- * the tool-result summarizer, which stands aside only for a wrapped one.
+ * Whether a tool result `length` chars long reaches the model as it is: under
+ * the line where Bash pages it. Nothing below that line is cut.
  */
-function reachesModelWhole(received: string, length: number): boolean {
-  if (length > PERSISTED_ABOVE_CHARS) return false
-  return isAlreadyCompacted(received) || length < BASH_SUMMARIZE_THRESHOLD
+function reachesModelWhole(length: number): boolean {
+  return length <= PERSISTED_ABOVE_CHARS
 }
 
 /**

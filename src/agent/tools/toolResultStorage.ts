@@ -16,15 +16,7 @@ import { getErrnoCode, toError } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
-import {
-  isLosslessSummarizerEnabled,
-  isSummarizedContent,
-  isToolResultCodeOutlineEnabled,
-  isToolResultJsonCompressionEnabled,
-  maybeCompactToolResult,
-  maybeSummarizeToolResult,
-} from 'src/agent/tools/toolResultSummarizer.js'
-import { compressJsonArray } from 'src/agent/tools/jsonArrayCompress.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js'
 
 // Subdirectory name for tool results within a session
@@ -227,7 +219,7 @@ export function pageForModel(text: string, maxChars: number): { page: string; sh
 
 /**
  * Process a tool result for inclusion in a message.
- * Maps the result to the API format and persists large results to disk.
+ * Maps the result to the API format, compacts it, and pages it past the line.
  */
 export async function processToolResultBlock<T>(
   tool: {
@@ -237,7 +229,6 @@ export async function processToolResultBlock<T>(
       result: T,
       toolUseID: string,
     ) => ToolResultBlockParam
-    skipsResultSummarizer?: (result: T) => boolean
   },
   toolUseResult: T,
   toolUseID: string,
@@ -246,159 +237,22 @@ export async function processToolResultBlock<T>(
     toolUseResult,
     toolUseID,
   )
-  return processPreMappedToolResultBlock(toolResultBlock, tool, toolUseResult)
+  return processPreMappedToolResultBlock(toolResultBlock, tool)
 }
 
 /**
- * Process a pre-mapped tool result block. Applies persistence for large results
- * without re-calling mapToolResultToToolResultBlockParam.
- * `toolUseResult` is the output the block was mapped from, for the tool's
- * skipsResultSummarizer.
+ * Process a pre-mapped tool result block. Nothing is cut: a Grep or Glob
+ * result is regrouped without losing a line, and a result still past its
+ * tool's persistence line is saved whole and paged — its first lines and the
+ * line to Read from for the rest (`buildLargeToolResultMessage`).
  */
-export async function processPreMappedToolResultBlock<T>(
+export async function processPreMappedToolResultBlock(
   toolResultBlock: ToolResultBlockParam,
-  tool: {
-    name: string
-    maxResultSizeChars: number
-    skipsResultSummarizer?: (result: T) => boolean
-  },
-  toolUseResult: T,
+  tool: { name: string; maxResultSizeChars: number },
 ): Promise<ToolResultBlockParam> {
   const { name: toolName, maxResultSizeChars } = tool
-  const persistenceThreshold = getPersistenceThreshold(maxResultSizeChars)
-  const whole = tool.skipsResultSummarizer?.(toolUseResult)
-    ? toolResultBlock
-    : keepWholeUnderLine(toolResultBlock, toolName, persistenceThreshold)
-  if (whole !== null) {
-    return maybePersistLargeToolResult(whole, toolName, persistenceThreshold)
-  }
-  const summarized = maybeSummarizeToolResult(toolResultBlock, toolName)
-  const reversible = await makeReversibleIfElided(toolResultBlock, summarized)
-  return maybePersistLargeToolResult(reversible, toolName, persistenceThreshold)
-}
-
-/**
- * CLAUDIN_TOOL_RESULT_LOSSLESS (on by default; `=0` brings the cuts back): the
- * result regrouped without losing a line, or as it came, when that fits under
- * the persistence line — measured the way persistence measures it. Null past
- * the line, where the summarizer cuts: a summary shows more than the 2 KB
- * preview persistence would leave, and with TOOL_RESULT_JSON_COMPRESSION on
- * (the build's default) its original is saved under `source=`. Exported for
- * the replay census (scripts/bench/tokens/summarizer-lossless-replay.ts).
- */
-export function keepWholeUnderLine(
-  toolResultBlock: ToolResultBlockParam,
-  toolName: string,
-  persistenceThreshold: number,
-): ToolResultBlockParam | null {
-  if (!isLosslessSummarizerEnabled()) return null
   const compacted = maybeCompactToolResult(toolResultBlock, toolName)
-  const content = compacted.content
-  return content == null || contentSize(content) <= persistenceThreshold ? compacted : null
-}
-
-// --- Reversibility for summarizer elisions (TOOL_RESULT_JSON_COMPRESSION) ---
-//
-// When the summarizer drops bytes, persist the full original to disk and add a
-// quiet `source="<path>"` attribute to the marker so the model can Read/Grep it
-// for omitted data — reusing the same persistence mechanism as the >50KB path,
-// no new tool. The attribute is deliberately NOT prose: prose elision
-// affordances triggered a re-read thrashing loop (see toolResultSummarizer.ts
-// design notes + AUTO_OUTLINE_ON_ELISION).
-
-// "Something was dropped" signal. Every cut text strategy is lossy; the
-// json-structural strategy is lossy only when it windowed rows or truncated a
-// cell, so a fully-shown schema-factor (lossless) skips the disk write. A
-// `<tool-result-compacted>` never reaches here: it is no summary.
-const ELISION_DROP_RE = /<omitted|…\[\d+b\]/
-
-async function makeReversibleIfElided(
-  originalBlock: ToolResultBlockParam,
-  summarized: ToolResultBlockParam,
-): Promise<ToolResultBlockParam> {
-  if (!isToolResultJsonCompressionEnabled() && !isToolResultCodeOutlineEnabled())
-    return summarized
-  if (summarized === originalBlock) return summarized // no elision happened
-  const content = summarized.content
-  if (typeof content !== 'string' || !isSummarizedContent(content)) {
-    return summarized
-  }
-  if (!wasLossy(content)) return summarized
-
-  const jsonEnabled = isToolResultJsonCompressionEnabled()
-  const isCodeOutline = content.includes('strategy="code-outline"')
-  // Scope guard. The JSON-compression flag is the master switch for summarizer
-  // reversibility: when on, it backs every lossy strategy (incl. blind bash/
-  // grep/glob/webfetch/agent/mcp head-tail). The code-outline flag, on its own,
-  // must back ONLY the code-outline strategy — enabling it must not silently
-  // start persisting raw backing for unrelated head/tail strategies that were
-  // never reversible before.
-  if (!jsonEnabled && !isCodeOutline) return summarized
-
-  const originalStr = toOriginalString(originalBlock.content)
-  if (originalStr === null) return summarized
-
-  // Code-outline persists the raw source verbatim: the outline's line ranges
-  // equal the original line numbers, so Read offset/limit + Grep on the source=
-  // path recover any dropped body. For JSON, persist the JSON-lines canonical
-  // form (one element per line, aligned to the marker's #N) so Read offset/limit
-  // and Grep address elements. Any other lossy text strategy keeps the raw form.
-  let body: string
-  if (isCodeOutline) {
-    body = originalStr
-  } else {
-    const jc = compressJsonArray(originalStr)
-    body = jc ? jc.jsonl : originalStr
-  }
-
-  const result = await persistToolResult(body, summarized.tool_use_id)
-  if (isPersistError(result)) return summarized
-
-  return {
-    ...summarized,
-    content: injectEnvelopeAttr(content, 'source', result.filepath),
-  }
-}
-
-function wasLossy(content: string): boolean {
-  if (content.includes('strategy="json-structural"')) {
-    return ELISION_DROP_RE.test(content)
-  }
-  return true
-}
-
-function toOriginalString(
-  content: ToolResultBlockParam['content'],
-): string | null {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return null
-  return content
-    .filter(
-      (b): b is { type: 'text'; text: string } =>
-        typeof b === 'object' &&
-        b !== null &&
-        'type' in b &&
-        b.type === 'text' &&
-        'text' in b &&
-        typeof (b as { text?: unknown }).text === 'string',
-    )
-    .map(b => b.text)
-    .join('\n')
-}
-
-/** Splice ` key="value"` into the marker's opening tag, before the first `>`. */
-export function injectEnvelopeAttr(
-  marker: string,
-  key: string,
-  value: string,
-): string {
-  const gt = marker.indexOf('>')
-  if (gt === -1) return marker
-  const escaped = value
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-  return `${marker.slice(0, gt)} ${key}="${escaped}"${marker.slice(gt)}`
+  return maybePersistLargeToolResult(compacted, toolName, getPersistenceThreshold(maxResultSizeChars))
 }
 
 /**

@@ -941,7 +941,7 @@ const SUMMARIZE_TOOL_RESULTS_SECTION = `When working with tool results, write do
 export const VERBOSITY_STEERING_SECTION = `Default to the shortest response that fully answers the question. Prefer a few sentences over multiple paragraphs, and a short list over a long one, unless the user asks for depth or the task genuinely needs it. Don't pad answers with restated context, caveats, or summaries of what the user can already see.`
 
 // Default-ON at runtime, opt-out via CLAUDIN_VERBOSITY_STEERING=0 (also
-// false/no/off) — mirrors the TOOL_RESULT_JSON_COMPRESSION precedent. The
+// false/no/off). The
 // VERBOSITY_STEERING build flag compiles the section path in; this env check
 // gates it at runtime (and lets the same binary be A/B'd per-side, e.g.
 // scripts/bench/perf/cache-ab-bench.ts --workload=prose). Pure env read, no

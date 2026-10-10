@@ -784,7 +784,7 @@ describe('GrepTool relativizeRgLine', () => {
     // toRelativePath deliberately keeps paths outside cwd absolute.
     const { data } = await GrepTool.call(
       {
-        pattern: 'GREP_MAX_FILES',
+        pattern: 'GREP_HEADER_OVERHEAD',
         path: `${root}/src/agent/tools`,
         output_mode: 'content',
         '-C': 1,
@@ -792,7 +792,7 @@ describe('GrepTool relativizeRgLine', () => {
       makeContext(),
     )
     const content = (data as GrepData).content ?? ''
-    // GREP_MAX_FILES lives in the summarizer's grep sibling, not in the barrel.
+    // GREP_HEADER_OVERHEAD lives in the summarizer's grep sibling, not in the barrel.
     expect(content).toContain('toolResultSummarizer/grep.ts-')
     expect(content).not.toContain(root)
   })

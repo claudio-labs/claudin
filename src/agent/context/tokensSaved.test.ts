@@ -6,7 +6,7 @@ import {
   recordBytesSaved,
   resetBytesSaved,
 } from 'src/agent/context/tokensSaved.js'
-import { maybeCompactToolResult, maybeSummarizeToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult } from 'src/agent/tools/toolResultSummarizer.js'
 import {
   processPreMappedToolResultBlock,
   unlinkSessionSpillDir,
@@ -73,21 +73,6 @@ describe('tokensSaved chokepoints', () => {
     }))
   })
 
-  test('summarizer string path records the reduction', () => {
-    const big =
-      Array.from({ length: 500 }, (_, i) => `output line ${i} padding padding`).join('\n') +
-      '\n'
-    const block = {
-      type: 'tool_result' as const,
-      tool_use_id: 'probe-str',
-      content: big,
-      is_error: false,
-    }
-    const out = maybeSummarizeToolResult(block, BASH_TOOL_NAME)
-    expect(out.content).not.toBe(big) // it actually summarized
-    expect(getBytesSaved()).toBeGreaterThan(0)
-  })
-
   test('the lossless regroup records the reduction', () => {
     const listing = Array.from({ length: 200 }, (_, i) => `src/tools/shared/outputFilter/Bash/file${i}.ts`).join('\n')
     const block = {
@@ -101,21 +86,6 @@ describe('tokensSaved chokepoints', () => {
     expect(getBytesSaved()).toBeGreaterThan(0)
   })
 
-  test('summarizer array path records the reduction', () => {
-    const bigText =
-      Array.from({ length: 500 }, (_, i) => `agent step ${i} padding padding`).join('\n') +
-      '\n'
-    const block = {
-      type: 'tool_result' as const,
-      tool_use_id: 'probe-arr',
-      content: [{ type: 'text' as const, text: bigText }],
-      is_error: false,
-    }
-    const out = maybeSummarizeToolResult(block, AGENT_TOOL_NAME)
-    expect(out.content).not.toBe(block.content) // summarized to a string marker
-    expect(getBytesSaved()).toBeGreaterThan(0)
-  })
-
   test('large-output persistence records the reduction', async () => {
     const big = 'X'.repeat(60_000)
     const block = {
@@ -125,12 +95,10 @@ describe('tokensSaved chokepoints', () => {
       is_error: false,
     }
     try {
-      // Tool name absent from the summarizer dispatch → goes straight to the
-      // >50KB persistence path.
+      // A tool nothing compacts goes straight to the page past its line.
       const out = await processPreMappedToolResultBlock(
         block,
         { name: 'PersistProbeTool', maxResultSizeChars: 50_000 },
-        undefined,
       )
       expect(String(out.content)).toContain('<persisted-output>')
       expect(getBytesSaved()).toBeGreaterThan(0)

@@ -48,7 +48,7 @@ import { spawnTeammate } from 'src/tools/AgentTool/spawnMultiAgent.js';
 import { setAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js';
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';
-import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES, UNSUMMARIZED_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
+import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
 import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js';
 import { agentNameProblem } from 'src/tools/AgentTool/agentName.js';
 import type { SetAppState } from 'src/agent/Task.js';
@@ -1327,9 +1327,6 @@ export const AgentTool = buildTool({
       behavior: 'allow',
       updatedInput: input
     };
-  },
-  skipsResultSummarizer(data) {
-    return data.status === 'completed' && data.agentType !== undefined && UNSUMMARIZED_AGENT_TYPES.has(data.agentType);
   },
   mapToolResultToToolResultBlockParam(data, toolUseID) {
     // Multi-agent spawn result

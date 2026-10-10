@@ -12,8 +12,6 @@ import {
   processToolResultBlock,
   unlinkSessionSpillDir,
 } from 'src/agent/tools/toolResultStorage.ts'
-import { TOOL_RESULT_SUMMARY_TAG } from 'src/agent/tools/toolResultSummarizer.js'
-import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 
 describe('unlinkSessionSpillDir', () => {
@@ -102,67 +100,29 @@ describe('unlinkSessionSpillDir', () => {
   })
 })
 
-// A tool can keep a result away from the summarizer (Tool.skipsResultSummarizer).
-// toolExecution passes the answer to processPreMappedToolResultBlock — the path
-// most built-in results take — and processToolResultBlock asks the tool itself.
-describe('skipping the tool-result summarizer', () => {
-  const savedKillSwitch = process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
-  // The report fits under the 50k line, where the lossless rule keeps it
-  // whole; the hook is what these pin, so the cut stands in for "summarized".
-  const savedLossless = process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
-
-  beforeAll(() => {
-    saveGlobalConfig(c => ({ ...c, toolResultSummarizerEnabled: true }))
-    process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = '0'
-  })
-  beforeEach(() => {
-    delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
-  })
-  afterAll(() => {
-    resetGlobalConfigForTests()
-    if (savedKillSwitch === undefined) delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
-    else process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = savedKillSwitch
-    if (savedLossless === undefined) delete process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
-    else process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = savedLossless
-  })
-
-  // Past both head/tail triggers (8k chars AND 100 lines), under the 50k spill.
+// Nothing is cut under the line: an agent report ships as it came, blocks and
+// all, whatever its middle holds (Explore quotes the lines a caller edits from).
+describe('an agent report under its line', () => {
   const report = Array.from({ length: 300 }, (_, i) => `Line ${i}: ${'x'.repeat(40)}`).join('\n')
-  const block = (): ToolResultBlockParam => ({
+  const block = (id: string): ToolResultBlockParam => ({
     type: 'tool_result',
-    tool_use_id: 'toolu_skip',
+    tool_use_id: id,
     content: [{ type: 'text', text: report }],
   })
-
   const tool = {
     name: AGENT_TOOL_NAME,
     maxResultSizeChars: 100_000,
-    mapToolResultToToolResultBlockParam: (_: { keep: boolean }, id: string) => ({
-      ...block(),
-      tool_use_id: id,
-    }),
-    skipsResultSummarizer: (r: { keep: boolean }) => r.keep,
+    mapToolResultToToolResultBlockParam: (_: unknown, id: string) => block(id),
   }
 
-  test('a tool without the hook has its report cut', async () => {
-    const plain = { name: AGENT_TOOL_NAME, maxResultSizeChars: 100_000 }
-    const out = await processPreMappedToolResultBlock(block(), plain, { keep: true })
-    expect(typeof out.content).toBe('string')
-    expect((out.content as string).startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
+  test('ships untouched through the pre-mapped path', async () => {
+    const out = await processPreMappedToolResultBlock(block('toolu_a'), tool)
+    expect(out.content).toEqual([{ type: 'text', text: report }])
   })
 
-  test('the pre-mapped path asks the tool about the result it was mapped from', async () => {
-    const kept = await processPreMappedToolResultBlock(block(), tool, { keep: true })
-    const cut = await processPreMappedToolResultBlock(block(), tool, { keep: false })
-    expect(kept.content).toEqual([{ type: 'text', text: report }])
-    expect((cut.content as string).startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
-  })
-
-  test('processToolResultBlock asks the tool per result', async () => {
-    const kept = await processToolResultBlock(tool, { keep: true }, 'toolu_a')
-    const cut = await processToolResultBlock(tool, { keep: false }, 'toolu_b')
-    expect(kept.content).toEqual([{ type: 'text', text: report }])
-    expect((cut.content as string).startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
+  test('ships untouched through processToolResultBlock', async () => {
+    const out = await processToolResultBlock(tool, {}, 'toolu_b')
+    expect(out.content).toEqual([{ type: 'text', text: report }])
   })
 })
 
@@ -213,7 +173,6 @@ describe('paging past the persistence line', () => {
     const out = await processPreMappedToolResultBlock(
       { type: 'tool_result', tool_use_id: 'toolu_page_string', content: text },
       { name: 'SomeTool', maxResultSizeChars: 10_000 },
-      {},
     )
     const message = String(out.content)
     expect(message.length).toBeLessThanOrEqual(10_000)
@@ -231,7 +190,6 @@ describe('paging past the persistence line', () => {
     const out = await processPreMappedToolResultBlock(
       { type: 'tool_result', tool_use_id: 'toolu_page_blocks', content: blocks },
       { name: 'SomeTool', maxResultSizeChars: 10_000 },
-      {},
     )
     const { file } = readPage(String(out.content))
     expect(file).toBe(`${blocks[0]!.text}\n${blocks[1]!.text}`)
@@ -241,7 +199,7 @@ describe('paging past the persistence line', () => {
     const text = lines(3_000)
     const paged = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: text.length }, text, 30_000)
     const block: ToolResultBlockParam = { type: 'tool_result', tool_use_id: 'toolu_page_again', content: `${paged}\nnote` }
-    const out = await processPreMappedToolResultBlock(block, { name: 'SomeTool', maxResultSizeChars: 10_000 }, {})
+    const out = await processPreMappedToolResultBlock(block, { name: 'SomeTool', maxResultSizeChars: 10_000 })
     expect(out).toBe(block)
   })
 })
