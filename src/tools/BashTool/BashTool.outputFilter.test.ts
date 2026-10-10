@@ -541,7 +541,7 @@ describe('bash output filter — catch path (fail-open)', () => {
 
 type BashFilter = typeof import('src/tools/shared/outputFilter/Bash/index.js')
 
-const PASSTHROUGH_FLAG = 'CLAUDIN_BASH_FILE_READ_PASSTHROUGH'
+const PASSTHROUGH_FLAG = 'CLAUDIN_BASH_READ_LANE'
 
 /**
  * The pass-through's flag is read once at module load, so each arm gets its
@@ -550,8 +550,8 @@ const PASSTHROUGH_FLAG = 'CLAUDIN_BASH_FILE_READ_PASSTHROUGH'
  */
 async function loadFilter(passthrough: boolean): Promise<BashFilter> {
   const prior = process.env[PASSTHROUGH_FLAG]
-  if (passthrough) process.env[PASSTHROUGH_FLAG] = '1'
-  else delete process.env[PASSTHROUGH_FLAG]
+  // On by default: the off arm has to say `=0`.
+  process.env[PASSTHROUGH_FLAG] = passthrough ? '1' : '0'
   try {
     return await import(
       `src/tools/shared/outputFilter/Bash/index.js?fit=${passthrough}-${Date.now()}`
@@ -758,7 +758,7 @@ describe('call() with both flags on — what reaches the result', () => {
       NODE_ENV: 'test',
       NODE_NO_WARNINGS: '1',
       CLAUDIN_CONFIG_DIR: configDir,
-      CLAUDIN_BASH_FILE_READ_PASSTHROUGH: '1',
+      CLAUDIN_BASH_READ_LANE: '1',
       CLAUDIN_BASH_READ_CREDIT: '1',
       PROBE_DIR: dir,
       PROBE_COMMANDS: JSON.stringify([
@@ -852,5 +852,48 @@ describe('call() with both flags on — what reaches the result', () => {
       `Not shown — over the 28k a Bash result shows whole: ${notShown.join(', ')}. cat them in another call, or Read them.`,
       `(${shown} ${COUNT_AS_READ}`,
     ])
+  })
+})
+
+// CLAUDIN_BASH_ONE_CUT: the filter's cut is the only one, so the summarizer
+// stands aside for every result the filter ran on (toolResultStorage.ts reads
+// this hook with the raw tool output).
+describe('skipsResultSummarizer — the summarizer stands aside under the one cut', () => {
+  const FLAG = 'CLAUDIN_BASH_ONE_CUT'
+  let saved: string | undefined
+  const out = (stdout: string, extra: Record<string, unknown> = {}) =>
+    ({ stdout, stderr: '', interrupted: false, ...extra }) as Parameters<NonNullable<typeof BashTool.skipsResultSummarizer>>[0]
+
+  beforeEach(() => {
+    saved = process.env[FLAG]
+  })
+  afterEach(() => {
+    if (saved === undefined) delete process.env[FLAG]
+    else process.env[FLAG] = saved
+  })
+
+  test('on: a result the filter ran on', () => {
+    process.env[FLAG] = '1'
+    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(20_000)))).toBe(true)
+  })
+
+  test('off: never', () => {
+    process.env[FLAG] = '0'
+    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(20_000)))).toBe(false)
+  })
+
+  test('unset: on by default', () => {
+    delete process.env[FLAG]
+    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(20_000)))).toBe(true)
+  })
+
+  test('on, but backgrounded: the filter did not run', () => {
+    process.env[FLAG] = '1'
+    expect(BashTool.skipsResultSummarizer!(out('x', { backgroundTaskId: 'b1' }))).toBe(false)
+  })
+
+  test('on, but past the persist line: the summarizer may still keep it off disk', () => {
+    process.env[FLAG] = '1'
+    expect(BashTool.skipsResultSummarizer!(out('x'.repeat(30_000)))).toBe(false)
   })
 })

@@ -1,5 +1,5 @@
 import { ClaudeError } from "src/shared/errors.js";
-import { isEnvTruthy } from "src/shared/envUtils.js";
+import { isEnvDefinedFalsy } from "src/shared/envUtils.js";
 import { logError } from "src/shared/log.js";
 import {
   ALREADY_WRAPPED_RE,
@@ -14,22 +14,20 @@ import {
   splitTrailingReducerPipe,
 } from "src/tools/shared/outputFilter/Bash/pipeline.js";
 import {
-  BOUNDED_READ_MAX_LINES,
   ERROR_FLOOR,
-  FLOOR_CAP_LINES,
-  isCapKeepBoundedEnabled,
   isCappableBody,
   isFloorCapEnabled,
+  isOneCutEnabled,
   looksLikeDiagnostics,
   looksLikeLocationList,
+  ONE_CUT_DIAGNOSTICS_CHARS,
   withGenericFloor,
 } from "src/tools/shared/outputFilter/Bash/floor.js";
 import {
-  isPureFileRead,
   parsePureFileRead,
   type ReadWord,
 } from "src/tools/shared/outputFilter/Bash/fileReadShape.js";
-import { commandLineBound } from "src/tools/shared/outputFilter/Bash/lineBound.js";
+import { isModelDirectedRead } from "src/tools/shared/outputFilter/Bash/readLane.js";
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 import type { PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/Bash/types.js";
 
@@ -59,15 +57,27 @@ function keepLastLines(body: string, n: number): string {
 }
 
 /**
- * `CLAUDIN_BASH_FILE_READ_PASSTHROUGH=1`: a pure file read (fileReadShape.ts)
- * comes back whole, byte for byte, instead of capped; one too long for that
- * keeps the whole files that fit (`overBudgetFileRead`). Off by default. Read
- * once at module load, like the cap's own kill-switch in floor.ts.
+ * The read lane, on by default since 2026-10-09; `CLAUDIN_BASH_READ_LANE=0`
+ * turns it off, and every read takes the cut again. A read the model directed
+ * (readLane.ts) — whole files, slices it bounded, matches in files it named —
+ * comes back whole, byte for byte, instead of capped or summarized; a pure
+ * print of files too long for that keeps the whole files that fit
+ * (`overBudgetFileRead`). Read once at module load, like the cap's own
+ * kill-switch in floor.ts.
+ *
+ * It replaced two rules that each refused the other's reads: the pass-through
+ * of pure prints (`CLAUDIN_BASH_FILE_READ_PASSTHROUGH`, never on by default)
+ * and the keep of command-bounded reads (`CLAUDIN_CAP_KEEP_BOUNDED`, #252).
+ * Measured in the session A/B on Sonnet 5.5 (2026-10-09, N=5, simultaneous
+ * arms, every session graded 18/18): $0.316 against $0.441 (−28%, ranges
+ * separated; placebo $0.476), the first edit at call 2 instead of 5, no Read
+ * after a cut. On Opus 5.5, which reads with Read, every arm sat inside the
+ * placebo's noise, with no read-gate refusal.
  */
-const FILE_READ_PASSTHROUGH = isEnvTruthy(process.env.CLAUDIN_BASH_FILE_READ_PASSTHROUGH);
+const READ_LANE = !isEnvDefinedFalsy(process.env.CLAUDIN_BASH_READ_LANE);
 
 /**
- * The largest pure file read the pass-through leaves whole. Bash persists a
+ * The largest read the read lane leaves whole. Bash persists a
  * result over 30k chars (`maxResultSizeChars`, BashTool.tsx) and hands the
  * model a 2 KB preview, which is worse than the cut; the margin keeps the
  * wrapper and the notes after it under that line. Above it a read that only
@@ -77,18 +87,22 @@ const FILE_READ_PASSTHROUGH = isEnvTruthy(process.env.CLAUDIN_BASH_FILE_READ_PAS
 export const FILE_READ_PASSTHROUGH_MAX_CHARS = 28_000;
 
 /**
- * Whether this result is a pure file read the pass-through leaves whole.
+ * Whether this result is a read the read lane leaves whole.
  *
  * Never after a rewrite: its marker names the command that actually ran, which
  * the model cannot infer from the output, and the read's own wrapper would
- * replace it.
+ * replace it. Nor for a caller that budgets the result itself (`GitTool`).
  */
 function isUncutFileRead(rawStdout: string, plan: PreExecPlan): boolean {
   return (
-    FILE_READ_PASSTHROUGH &&
+    READ_LANE &&
     rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&
     plan.rewrite === null &&
-    isPureFileRead(plan.effectiveCommand)
+    plan.callerBudgets !== true &&
+    isModelDirectedRead(plan.effectiveCommand) &&
+    // A matched spec keeps its say over a mixed read, as it had over a
+    // bounded one; a pure print of files was never a spec's to cut.
+    (plan.filter === null || parsePureFileRead(plan.effectiveCommand) !== null)
   );
 }
 
@@ -113,7 +127,7 @@ export function overBudgetFileRead(
   return safeApply(
     "overBudgetFileRead",
     () => {
-      if (!FILE_READ_PASSTHROUGH || plan.rewrite !== null) return null;
+      if (!READ_LANE || plan.rewrite !== null) return null;
       if (!spilled && rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS) return null;
       const read = parsePureFileRead(plan.effectiveCommand);
       return read && !read.lists ? read.reads : null;
@@ -162,36 +176,14 @@ function floorOptionsFor(
     return { groupMatches: false, collapseTemplates: false, cap: false };
   }
   const diagnostics = looksLikeDiagnostics(rawStdout);
+  // Under the one cut a long page of diagnostics is cut too, where the
+  // summarizer cut it before; below that every line still names a failure.
+  const cuttable = !diagnostics || (isOneCutEnabled() && rawStdout.length >= ONE_CUT_DIAGNOSTICS_CHARS);
   return {
     groupMatches: true,
     collapseTemplates: !diagnostics && !looksLikeLocationList(rawStdout),
-    cap: !diagnostics && isFloorCapEnabled(),
+    cap: cuttable && isFloorCapEnabled(),
   };
-}
-
-/**
- * Whether this result is a read whose command declared how many lines it
- * prints (`lineBound.ts`) and which the floor cap would otherwise cut. The
- * model sized it, so it goes back whole and as printed, inside the wrapper of a
- * pass-through read: the tool-result summarizer stands aside for that one,
- * where it would head-tail an untagged result past 8k chars instead, and a
- * range the model edits from must not come back a byte off.
- *
- * Only where the cap would have cut: no spec matched (a spec decides its own
- * cut, and a rewrite needs one), the floor offers the cap for this body
- * (`floorOptionsFor`), and it is longer than the cap. And only up to
- * BOUNDED_READ_MAX_LINES, declared and printed, and the pass-through's 28k
- * chars, past which Bash would persist the result behind a preview.
- */
-function isWithinCommandBound(rawStdout: string, plan: PreExecPlan): boolean {
-  if (!isCapKeepBoundedEnabled() || plan.filter !== null) return false;
-  if (rawStdout.length > FILE_READ_PASSTHROUGH_MAX_CHARS) return false;
-  if (!floorOptionsFor(rawStdout, plan).cap) return false;
-  // The cap's own measure (pipeline.ts, maxLines) below, the printed lines above.
-  if (rawStdout.split("\n").length <= FLOOR_CAP_LINES) return false;
-  if (rawStdout.trimEnd().split("\n").length > BOUNDED_READ_MAX_LINES) return false;
-  const bound = commandLineBound(plan.effectiveCommand);
-  return bound !== null && bound <= BOUNDED_READ_MAX_LINES;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,15 +326,13 @@ export function applyBashFilterToStdout(
       if (ALREADY_WRAPPED_RE.test(rawStdout)) {
         return rawStdout;
       }
-      // A pure file read left whole goes back as the command printed it. No
+      // A read the lane leaves whole goes back as the command printed it. No
       // floor stage may touch it — not only the cap: `collapseRuns` folds a
       // run of blank lines and repeats an identical line as `line (×N)`, the
       // digit collapse folds five data rows into one, `stripAnsi` edits bytes —
       // and a file shown one byte off is a file the model edits from a copy
       // that is not the file, and one the read credit cannot find.
       if (isUncutFileRead(rawStdout, plan)) return wrapFileRead(rawStdout);
-      // A read the model already bounded keeps every line it asked for.
-      if (isWithinCommandBound(rawStdout, plan)) return wrapFileRead(rawStdout);
 
       const pipelineResult: PipelineResult = applyPipeline(
         withGenericFloor(plan.filter, floorOptionsFor(rawStdout, plan)),

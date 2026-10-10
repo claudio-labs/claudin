@@ -1,6 +1,6 @@
 ---
 name: session-cache-ab-bench-2026-09-23
-description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume) — +53% → +7% after fix/session-cache (resume 40%→100%); round 2 found the N=5 noise floor (a placebo arm moved cost −6%) and a time-of-day drift (main +12% by afternoon), so compare only simultaneous arms; 09-24 main at effort medium: +14% (overlap), first turn 17.3k vs 21.0k, gap = thinking + tool results
+description: Session cache A/B (claudindev vs Claude Code 2.1.280, Opus 5.5, two-prompt session with a --resume) — +53% → +7% after fix/session-cache (resume 40%→100%); round 2 found the N=5 noise floor (a placebo arm moved cost −6%) and a time-of-day drift (main +12% by afternoon), so compare only simultaneous arms; 09-24 main at effort medium: +14% (overlap), first turn 17.3k vs 21.0k, gap = thinking + tool results; 10-09 Sonnet 5.5 baseline +17%, 0 breaks
 type: project
 ---
 
@@ -195,3 +195,49 @@ Estimating it as output minus visible chars / 2.22 overshoots both arms by
   reads 10.4k cross-session (cold 17.3k write in rep 1 only), Claude Code's 9.8k.
 - Claude Code added an AI trailer 5/5, claudin 0/5; claudin's tree keeps
   `?? .claudin/` (by design, above).
+
+**Sonnet 5.5 baseline (2026-10-09, run `-210710`: v1.1.41 @ 39e5cfa3 vs Claude
+Code 2.1.296, `--model=claude-sonnet-5-5 --effort=medium --reps=3 --proxy`; all 6
+sessions 18/18 + one commit, ~3 min per rep):**
+
+| median [min–max] | claude | claudindev |
+|---|---|---|
+| first-turn context | 23.1k | 15.8k (−31%, SEPARATED) |
+| turns before the first edit | 2 | 5 (SEPARATED) |
+| cache write | 41.9k | 57.7k (+38%, SEPARATED) |
+| resume-turn cache write | 855 | 7.2k [7.2k–8.3k] (SEPARATED) |
+| cache breaks / resume read-back | 0 / 100% | 0 / 100% |
+| cost (one price table) | $0.380 [0.373–0.412] | $0.444 [0.443–0.479] (+17%, SEPARATED) |
+
+- Neither arm calls Edit/Patch on Sonnet 5.5: both edit through `python3` heredocs
+  in Bash. claudindev reads with Read (batch), so the first user prompt after
+  those edits — here the resumed one — carries six "X was modified" reminders
+  (~15k chars), the whole resume-turn write. Claude Code only `cat`s, never gets them.
+- The gap matches Opus 5.5's +14% of 09-24; the prefix is cheaper (−23%), the
+  extra sits in "tool results and reminders" ($0.20 vs $0.08).
+
+**Why claudindev reads more on Sonnet 5.5 (same day, runs `-213843` with a
+placebo and `-214707`, N=5 each, every session 18/18):** two cutters in a row.
+The Bash floor cap (60 lines → 15+15) cuts the opening `cat README.md` and the
+11-file `cat src/*.ts` (614–668 lines → 30). With the cap off, the tool-result
+summarizer (`BASH_SUMMARIZE_THRESHOLD` 8 KB, head-tail-errors) cuts the same cat
+(18.6 KB → 4.5 KB). The model then fetches the files again with batch Read and
+smaller cats. `turn-taxonomy.ts`'s refetch-after-filter counts the first cut
+only (3 a session) and misses the summarizer's.
+
+| median, `-214707` | claude | claudindev | nocap | nocut (cap + summarizer off) |
+|---|---|---|---|---|
+| first edit at call | 3 | 5 | 4 | 2 |
+| Read calls | 0 | 3 | 2 | 0 |
+| cache write | 41.3k | 53.9k | 40.4k | 31.4k |
+| resume-turn write | 913 | 7.5k | 837 | 721 |
+| cost | $0.382 | $0.438 | $0.377 | $0.294 (−33% vs claudindev, SEPARATED) |
+
+- nocap alone is noise-sized: −3% in `-213843` (where placebo was +4%) and
+  −14% here.
+- The Reads are also what puts the "modified" reminders on the resume turn. A
+  file that only came from `cat` is not tracked, so it gets no reminder.
+- Not a default flip as it stands. The summarizer guards big logs and test
+  output, and on Opus nocap hit the read gate ([[request-count-levers-2026-09-24]]
+  round 3). The lever it points at is to exempt pure file-read cats, up to a
+  budget, from both cutters.

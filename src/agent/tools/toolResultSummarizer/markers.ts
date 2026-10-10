@@ -54,7 +54,7 @@ export function isAlreadyCompacted(text: string): boolean {
   // <bash-output-rewritten> or <bash-output-filtered> — markers from the
   // bash-output-filter pipeline (Phase 0+ of roadmap 6.1)
   // <bash-output-read> — a file read the filter left whole on purpose
-  // (CLAUDIN_BASH_FILE_READ_PASSTHROUGH): cutting it would undo that
+  // (CLAUDIN_BASH_READ_LANE): cutting it would undo that
   return (
     text.startsWith('<persisted-output>') ||
     text.startsWith(TOOL_RESULT_SUMMARY_TAG) ||

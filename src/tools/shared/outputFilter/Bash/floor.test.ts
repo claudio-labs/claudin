@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ToolResultBlockParam } from "@anthropic-ai/sdk/resources/index.mjs";
@@ -15,20 +15,38 @@ import {
   ERROR_FLOOR,
   FLOOR_CAP_LINES,
   GENERIC_FLOOR,
-  isCapKeepBoundedEnabled,
   isCappableBody,
   isFloorCapEnabled,
+  isOneCutEnabled,
   isPathLine,
   looksLikeDiagnostics,
   looksLikeLocationList,
   MAX_KEPT_PATH_LINES,
+  ONE_CUT_DIAGNOSTICS_CHARS,
+  ONE_CUT_HEAD_LINES,
+  ONE_CUT_TAIL_LINES,
   withGenericFloor,
 } from "src/tools/shared/outputFilter/Bash/floor.js";
+import { ERROR_WINDOW_BEFORE } from "src/tools/shared/outputFilter/Bash/cutShape.js";
 import { builtInFilters } from "src/tools/shared/outputFilter/Bash/filters/index.js";
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 import type { FilterSpec } from "src/tools/shared/outputFilter/Bash/types.js";
+import { MIXED_READS_2026_10_09, PURE_READS_2026_10_09 } from "src/tools/shared/outputFilter/Bash/__fixtures__/reads20261009.js";
 
 const BARE: FilterSpec = { name: "bare", matchCommand: /^bare\b/ };
+
+// The one cut is on by default (floor.ts). Most suites here pin the cap it
+// replaced, which `CLAUDIN_BASH_ONE_CUT=0` brings back; the one-cut suite at
+// the end sets it on for itself.
+let savedOneCut: string | undefined;
+beforeAll(() => {
+  savedOneCut = process.env.CLAUDIN_BASH_ONE_CUT;
+  process.env.CLAUDIN_BASH_ONE_CUT = "0";
+});
+afterAll(() => {
+  if (savedOneCut === undefined) delete process.env.CLAUDIN_BASH_ONE_CUT;
+  else process.env.CLAUDIN_BASH_ONE_CUT = savedOneCut;
+});
 
 describe("withGenericFloor", () => {
   test("with no spec, returns the floor itself", () => {
@@ -465,12 +483,12 @@ describe("CLAUDIN_CAP_KEEP_PATHS — the cut keeps the listing", () => {
 });
 
 // ---------------------------------------------------------------------------
-// CLAUDIN_BASH_FILE_READ_PASSTHROUGH — see fileReadShape.ts
+// CLAUDIN_BASH_READ_LANE — see fileReadShape.ts
 // ---------------------------------------------------------------------------
 
 type BashFilter = typeof import("src/tools/shared/outputFilter/Bash/index.js");
 
-const PASSTHROUGH_FLAG = "CLAUDIN_BASH_FILE_READ_PASSTHROUGH";
+const PASSTHROUGH_FLAG = "CLAUDIN_BASH_READ_LANE";
 
 /**
  * The flag is read once at module load, like the cap's kill-switch, so setting
@@ -480,8 +498,8 @@ const PASSTHROUGH_FLAG = "CLAUDIN_BASH_FILE_READ_PASSTHROUGH";
  */
 async function loadFilter(passthrough: boolean): Promise<BashFilter> {
   const prior = process.env[PASSTHROUGH_FLAG];
-  if (passthrough) process.env[PASSTHROUGH_FLAG] = "1";
-  else delete process.env[PASSTHROUGH_FLAG];
+  // On by default: the off arm has to say `=0`.
+  process.env[PASSTHROUGH_FLAG] = passthrough ? "1" : "0";
   try {
     return await import(
       `src/tools/shared/outputFilter/Bash/index.js?passthrough=${passthrough}-${Date.now()}`
@@ -512,7 +530,7 @@ function loopOutput(files: number, linesPerFile: number, padding: number): strin
   return `${out.join("\n")}\n`;
 }
 
-describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every line", () => {
+describe("CLAUDIN_BASH_READ_LANE — a pure file read keeps every line", () => {
   // 20260923-062408 claudindev r3, verbatim: 665 lines and 27,651 chars, of
   // which the model received 30 lines.
   const LOOP =
@@ -799,7 +817,8 @@ describe("CLAUDIN_BASH_FILE_READ_PASSTHROUGH — a pure file read keeps every li
 });
 
 // ---------------------------------------------------------------------------
-// CLAUDIN_CAP_KEEP_BOUNDED — see lineBound.ts
+// A read the command bounded — the read lane's (readLane.ts, lineBound.ts).
+// It was CLAUDIN_CAP_KEEP_BOUNDED's (#252) until the lane took both rules.
 // ---------------------------------------------------------------------------
 
 /**
@@ -814,33 +833,31 @@ function sourceLines(count: number, width = 40, prefix = ""): string {
   }).join("\n")}\n`;
 }
 
-describe("CLAUDIN_CAP_KEEP_BOUNDED — a read the command bounded keeps every line", () => {
-  const FLAG = "CLAUDIN_CAP_KEEP_BOUNDED";
+describe("the read lane — a read the command bounded keeps every line", () => {
   // 90 lines: inside the band where the corpus saw the re-reads (61-100).
   const RANGE = "sed -n 40,129p src/permissions/permissions.ts";
   const BODY = sourceLines(90);
-  let savedFlag: string | undefined;
   let savedCap: boolean | undefined;
+  let off: BashFilter;
+
+  beforeAll(async () => {
+    off = await loadFilter(false);
+  });
 
   const filter = (body: string, command: string): string =>
     applyBashFilterToStdout(body, false, planBashFilter(command, { allowRewrite: false }));
 
   beforeEach(() => {
-    savedFlag = process.env[FLAG];
-    delete process.env[FLAG];
     savedCap = getGlobalConfig().bashOutputFilterCapEnabled;
     saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: true }));
   });
 
   afterEach(() => {
-    if (savedFlag === undefined) delete process.env[FLAG];
-    else process.env[FLAG] = savedFlag;
     saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: savedCap }));
   });
 
-  test("the fixture is the size it claims, and on by default", () => {
+  test("the fixture is the size it claims", () => {
     expect(BODY.trimEnd().split("\n")).toHaveLength(90);
-    expect(isCapKeepBoundedEnabled()).toBe(true);
   });
 
   test("a range read comes back whole, byte for byte, in the read wrapper", () => {
@@ -853,36 +870,37 @@ describe("CLAUDIN_CAP_KEEP_BOUNDED — a read the command bounded keeps every li
     expect(filter(hits, command)).toBe(`<bash-output-read>${hits}</bash-output-read>`);
   });
 
-  // The surviving surface: the rule must not become "90 lines of anything".
+  // What the lane took from the pure-read rule: a whole file beside the slice.
   test.each([
     ["a whole file", "cat src/permissions/permissions.ts"],
-    ["any other producer into a bound", "bun test | head -100"],
     ["a listing and a file", "git ls-files && cat README.md"],
-    ["a range read beside an unbounded one", `${RANGE}; cat src/a.ts`],
-  ])("the same 90 lines from %s are still cut", (_, command) => {
-    const out = filter(BODY, command);
-    expect(out).toContain("lines omitted");
-    expect(out).not.toStartWith("<bash-output-read>");
+    ["a range read beside a whole file", `${RANGE}; cat src/a.ts`],
+  ])("the same 90 lines from %s come back whole too", (_, command) => {
+    expect(filter(BODY, command)).toBe(`<bash-output-read>${BODY}</bash-output-read>`);
   });
 
-  test("=0: the plain cut", () => {
-    process.env[FLAG] = "0";
-    expect(isCapKeepBoundedEnabled()).toBe(false);
-    expect(filter(BODY, RANGE)).toContain("lines omitted");
+  // The surviving surface: the lane must not become "90 lines of anything".
+  test.each([
+    ["any other producer into a bound", "bun test | head -100"],
+    ["a recursive search with no bound", 'grep -rn "export" src'],
+    ["a find", "find src -name '*.ts'"],
+    ["a range read beside a test run", `${RANGE}; bun test`],
+  ])("the same 90 lines from %s are no read: the floor or their spec decides", (_, command) => {
+    expect(filter(BODY, command)).not.toStartWith("<bash-output-read>");
   });
 
-  test("a bound past the ceiling takes the cut, however little it printed", () => {
-    expect(filter(BODY, `sed -n 40,${40 + BOUNDED_READ_MAX_LINES}p src/permissions/permissions.ts`)).toContain(
+  test("CLAUDIN_BASH_READ_LANE=0: the plain cut", () => {
+    expect(off.applyBashFilterToStdout(BODY, false, off.planBashFilter(RANGE, { allowRewrite: false }))).toContain(
       "lines omitted",
     );
-    expect(filter(BODY, `sed -n 40,${39 + BOUNDED_READ_MAX_LINES}p src/permissions/permissions.ts`)).toStartWith(
-      "<bash-output-read>",
-    );
   });
 
-  test("the printed lines are held to the ceiling too, not only the declaration", () => {
-    const over = sourceLines(BOUNDED_READ_MAX_LINES + 1);
-    expect(filter(over, "sed -n 1,100p src/a.ts; echo done")).toContain("lines omitted");
+  // The lane bounds a read by chars, where the keep it replaced held it to
+  // BOUNDED_READ_MAX_LINES as well.
+  test("a bound past the old 150-line ceiling comes back whole while it stays under 28k chars", () => {
+    const long = sourceLines(BOUNDED_READ_MAX_LINES + 30);
+    expect(long.length).toBeLessThan(28_000);
+    expect(filter(long, `sed -n 1,${BOUNDED_READ_MAX_LINES + 30}p src/a.ts`)).toStartWith("<bash-output-read>");
   });
 
   test("past the pass-through's 28k chars, the cut — Bash would persist it", () => {
@@ -891,24 +909,15 @@ describe("CLAUDIN_CAP_KEEP_BOUNDED — a read the command bounded keeps every li
     expect(filter(wide, "sed -n 1,120p src/a.ts")).toContain("lines omitted");
   });
 
-  test("where the cap would not cut, nothing changes", () => {
+  // A read is the file's bytes whatever the cap would have done: short, with
+  // the cap off, or structured, it comes back as printed and says it is a read.
+  test("a short read, the cap off, a structured body: whole, in the read wrapper", () => {
     const short = sourceLines(FLOOR_CAP_LINES - 10);
-    const on = filter(short, RANGE);
-    process.env[FLAG] = "0";
-    expect(on).toBe(filter(short, RANGE));
-    expect(on).not.toStartWith("<bash-output-read>");
-  });
-
-  test("with the cap off, there is no cut to spare it from", () => {
-    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: false }));
-    const out = filter(BODY, RANGE);
-    expect(out).not.toStartWith("<bash-output-read>");
-    expect(out).not.toContain("lines omitted");
-  });
-
-  test("a structured body is not the cap's, so not this rule's", () => {
+    expect(filter(short, RANGE)).toBe(`<bash-output-read>${short}</bash-output-read>`);
     const json = `[\n${sourceLines(90).trimEnd().split("\n").map((l) => `  ${JSON.stringify(l)},`).join("\n")}\n]\n`;
-    expect(filter(json, "sed -n 1,92p data.json")).not.toStartWith("<bash-output-read>");
+    expect(filter(json, "sed -n 1,92p data.json")).toBe(`<bash-output-read>${json}</bash-output-read>`);
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: false }));
+    expect(filter(BODY, RANGE)).toBe(`<bash-output-read>${BODY}</bash-output-read>`);
   });
 
   test("a matched spec keeps its own say", () => {
@@ -960,36 +969,12 @@ describe("CLAUDIN_CAP_KEEP_BOUNDED — a read the command bounded keeps every li
 
 // ---------------------------------------------------------------------------
 // The reads of the 2026-10-09 session A/B on Sonnet 5.5, verbatim
-// (/tmp/session-cache-ab/20261009-{210710,213843,214707}): what the floor does
-// to them today. claudindev's 41 caps fell on 39 commands with a `cat`, and
-// after each the model fetched the files again with Read.
+// (/tmp/session-cache-ab/20261009-{210710,213843,214707}). claudindev's 41
+// caps fell on 39 commands with a `cat`, and after each the model fetched the
+// files again with Read. The read lane (readLane.ts) takes them all.
 // ---------------------------------------------------------------------------
 
-/** Pure reads (fileReadShape.ts): whole under the parked pass-through, capped without it. */
-const PURE_READS_2026_10_09 = [
-  "git ls-files && cat README.md && wc -l src/* test/* 2>/dev/null",
-  "cd src && cat catalog.ts cli.ts quote.ts receipt.ts shipping.ts types.ts money.ts discounts.ts regions.ts",
-];
-
-/** Reads that mix whole files with bounded ones: no predicate accepts them today. */
-const MIXED_READS_2026_10_09 = [
-  "cat README.md; cd src; cat cart.ts catalog.ts cli.ts discounts.ts errors.ts money.ts quote.ts receipt.ts shipping.ts tax.ts types.ts; cat regions.ts | head -60",
-  "cat README.md; cd src; cat cart.ts catalog.ts cli.ts discounts.ts errors.ts money.ts quote.ts receipt.ts shipping.ts tax.ts types.ts; grep -n \"\" regions.ts | head -60",
-  "cd /tmp/session-cache-ab/20261009-210710/claudindev-r2; cat test/helpers.ts test/cli.test.ts; head -30 test/quote.test.ts test/catalog.test.ts test/receipt.test.ts; cat data/catalog.json | head -12",
-  "cd /tmp/session-cache-ab/20261009-210710/claudindev-r2; sed -n 14,40p test/helpers.ts; cat test/cli.test.ts; sed -n 1,25p test/quote.test.ts; sed -n 1,20p test/catalog.test.ts; sed -n 1,25p test/receipt.test.ts",
-  "cd /tmp/session-cache-ab/20261009-210710/claudindev-r1; cat test/helpers.ts; sed -n 1,30p test/quote.test.ts; sed -n 1,30p test/cli.test.ts; sed -n 1,25p test/catalog.test.ts; sed -n 1,20p test/receipt.test.ts; head -c 600 data/catalog.json",
-  "cd /tmp/session-cache-ab/20261009-213843/placebo-r5; cat src/money.ts src/shipping.ts test/helpers.ts; head -30 test/quote.test.ts; head -30 test/cli.test.ts; tail -20 test/catalog.test.ts; head -30 test/receipt.test.ts; grep -n \"WELCOME\\|TEA-001\" -r data | head",
-  "cd /tmp/session-cache-ab/20261009-213843/placebo-r2 && cat src/shipping.ts src/money.ts && cat test/quote.test.ts | head -50 && cat test/cli.test.ts | head -40 && grep -n \"describe\\|^import\" test/catalog.test.ts test/receipt.test.ts | head -30",
-  "cat src/money.ts; sed -n 1,30p test/quote.test.ts; sed -n 1,12p test/catalog.test.ts; sed -n 1,30p test/receipt.test.ts; grep -n \"run(\" test/cli.test.ts | head -5; sed -n 40,75p test/cli.test.ts",
-  "cd /tmp/session-cache-ab/20261009-214707/claudindev-r5; sed -n 27,80p README.md; echo ----; cat test/helpers.ts; echo ----; sed -n 1,30p test/quote.test.ts; echo ---; sed -n 1,25p test/cli.test.ts",
-  "cd /tmp/session-cache-ab/20261009-214707/claudindev-r5; grep -n -i -B2 -A4 \"shipping\\|free\" README.md | head -60; cat test/helpers.ts; head -30 test/quote.test.ts; head -20 test/cli.test.ts test/catalog.test.ts test/receipt.test.ts; head -c 600 data/catalog.json",
-  "cd test && cat helpers.ts && head -30 quote.test.ts catalog.test.ts && grep -n \"run(\\|Io\\|out\" cli.test.ts | head -20; grep -n \"TEA-001\\|WEL\\|sku\" ../data/catalog.json | head -20",
-  "cd /tmp/session-cache-ab/20261009-214707/claudindev-r3; sed -n 15,200p README.md; cat test/helpers.ts; sed -n 1,40p test/quote.test.ts; sed -n 1,30p test/cli.test.ts; sed -n 1,25p test/catalog.test.ts; head -c 600 data/catalog.json",
-  "cd /tmp/session-cache-ab/20261009-213843/placebo-r3; cat src/money.ts test/helpers.ts; sed -n 1,40p test/quote.test.ts; grep -n \"Tiers\\|tiers\" -r README.md data | head; grep -n \"TEA-001\" data/catalog.json",
-  "cd /tmp/session-cache-ab/20261009-213843/placebo-r3; cat test/helpers.ts; sed -n 1,20p test/quote.test.ts; sed -n 1,14p test/catalog.test.ts; tail -15 test/quote.test.ts; tail -12 test/receipt.test.ts; sed -n 1,12p test/receipt.test.ts",
-];
-
-describe("the 2026-10-09 reads, as the floor treats them today", () => {
+describe("the 2026-10-09 reads: capped with the lane off, whole in it", () => {
   // 140 lines, ~8.5k chars: past the cap and past the summarizer's 8k.
   const BODY = sourceLines(140);
   let on: BashFilter;
@@ -1008,16 +993,109 @@ describe("the 2026-10-09 reads, as the floor treats them today", () => {
     expect(BODY.length).toBeGreaterThan(8_000);
   });
 
-  test.each(PURE_READS_2026_10_09)("pure read, capped by default: %s", (command) => {
+  test.each(PURE_READS_2026_10_09)("pure read, capped with the lane off: %s", (command) => {
     expect(run(off, command)).toStartWith('<bash-output-filtered original="" lines="30/140"');
   });
 
-  test.each(PURE_READS_2026_10_09)("pure read, whole under the parked pass-through: %s", (command) => {
+  test.each(PURE_READS_2026_10_09)("pure read, whole in the read lane: %s", (command) => {
     expect(run(on, command)).toBe(`<bash-output-read>${BODY}</bash-output-read>`);
   });
 
-  test.each(MIXED_READS_2026_10_09)("mixed read, capped even under the pass-through: %s", (command) => {
+  test.each(MIXED_READS_2026_10_09)("mixed read, capped with the lane off: %s", (command) => {
     expect(run(off, command)).toStartWith('<bash-output-filtered original="" lines="30/140"');
-    expect(run(on, command)).toStartWith('<bash-output-filtered original="" lines="30/140"');
+  });
+
+  // What the pass-through of pure reads alone fell through: the model mixes
+  // whole files with slices it sized.
+  test.each(MIXED_READS_2026_10_09)("mixed read, whole in the read lane: %s", (command) => {
+    expect(run(on, command)).toBe(`<bash-output-read>${BODY}</bash-output-read>`);
+  });
+
+  // GitTool budgets its own result and keeps a delta lane over what it sent.
+  test("a caller that budgets the result itself gets no lane", () => {
+    const plan = on.planBashFilter(MIXED_READS_2026_10_09[0]!, { allowRewrite: false, callerBudgets: true });
+    expect(on.applyBashFilterToStdout(BODY, false, plan)).not.toStartWith("<bash-output-read>");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CLAUDIN_BASH_ONE_CUT — one cut in place of the cap and the summarizer
+// ---------------------------------------------------------------------------
+
+describe("CLAUDIN_BASH_ONE_CUT — one cut, later and gentler, that keeps the errors", () => {
+  const FLAG = "CLAUDIN_BASH_ONE_CUT";
+  const COMMAND = "some-unregistered-command";
+  /** The head and the tail it keeps — and the length past which it cuts at all. */
+  const ONE_CUT_KEPT_LINES = ONE_CUT_HEAD_LINES + ONE_CUT_TAIL_LINES;
+  let savedFlag: string | undefined;
+  let savedCap: boolean | undefined;
+
+  const filter = (body: string): string =>
+    applyBashFilterToStdout(body, false, planBashFilter(COMMAND, { allowRewrite: false }));
+  /** `count` log lines, adjacent ones differing by a word, with the given ones replaced. */
+  const log = (count: number, at: Record<number, string> = {}): string =>
+    `${Array.from({ length: count }, (_, i) => at[i] ?? `step ${WORDS[i % WORDS.length]} ${"·".repeat(20)} ${i}`).join("\n")}\n`;
+
+  beforeEach(() => {
+    savedFlag = process.env[FLAG];
+    process.env[FLAG] = "1";
+    savedCap = getGlobalConfig().bashOutputFilterCapEnabled;
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: true }));
+  });
+
+  afterEach(() => {
+    if (savedFlag === undefined) delete process.env[FLAG];
+    else process.env[FLAG] = savedFlag;
+    saveGlobalConfig((c) => ({ ...c, bashOutputFilterCapEnabled: savedCap }));
+  });
+
+  test("past its head and tail, it keeps them and cuts the middle", () => {
+    const out = filter(log(ONE_CUT_KEPT_LINES + 50));
+    expect(out).toStartWith(`<bash-output-filtered original="" lines="${ONE_CUT_KEPT_LINES}/${ONE_CUT_KEPT_LINES + 50}"`);
+    // The trailing newline's empty line is counted among the cut, as the cap always has.
+    expect(out).toContain("…51 lines omitted…");
+  });
+
+  test("on by default; =0 brings the cap back", () => {
+    delete process.env[FLAG];
+    expect(isOneCutEnabled()).toBe(true);
+    process.env[FLAG] = "0";
+    expect(isOneCutEnabled()).toBe(false);
+  });
+
+  test("up to its head and tail, nothing is cut — the cap would have cut at 60", () => {
+    // The trailing newline's empty line counts, as it does for the cap.
+    const body = log(ONE_CUT_KEPT_LINES - 1);
+    expect(filter(body)).not.toContain("lines omitted");
+    process.env[FLAG] = "0";
+    expect(filter(body)).toContain("lines omitted");
+  });
+
+  test("an error in the middle survives the cut, with its window", () => {
+    const total = ONE_CUT_KEPT_LINES + 100;
+    const at = ONE_CUT_HEAD_LINES + 50;
+    const out = filter(log(total, { [at]: "error: expected 634, received 641" }));
+    expect(out).toContain("error: expected 634, received 641");
+    expect(out).toContain(`step ${WORDS[(at - ERROR_WINDOW_BEFORE) % WORDS.length]}`);
+    // The rest of the middle is still cut, around the window.
+    expect(out.match(/lines omitted…/g)).toHaveLength(2);
+    // The plain cut, flag off, loses it.
+    process.env[FLAG] = "0";
+    expect(filter(log(total, { [at]: "error: expected 634, received 641" }))).not.toContain("expected 634");
+  });
+
+  test("a short page of diagnostics keeps every line; a long one takes the cut the summarizer gave it", () => {
+    const diagnostic = (i: number, text: string) => `src/f${i}.ts(${i},5): error TS2322: ${text}`;
+    const page = (count: number, text = "Type 'string' is not assignable to type 'number'.") =>
+      `${Array.from({ length: count }, (_, i) => diagnostic(i, text)).join("\n")}\n`;
+    // Past the trigger in lines, under the summarizer's threshold in chars.
+    const short = page(ONE_CUT_KEPT_LINES + 50, "x");
+    expect(short.length).toBeLessThan(ONE_CUT_DIAGNOSTICS_CHARS);
+    expect(filter(short)).not.toContain("lines omitted");
+    const long = page(400);
+    expect(long.length).toBeGreaterThan(ONE_CUT_DIAGNOSTICS_CHARS);
+    expect(filter(long)).toContain("lines omitted");
+    process.env[FLAG] = "0";
+    expect(filter(long)).not.toContain("lines omitted");
   });
 });

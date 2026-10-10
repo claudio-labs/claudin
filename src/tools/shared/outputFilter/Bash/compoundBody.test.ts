@@ -150,7 +150,8 @@ describe("a long chain is capped, head and tail kept", () => {
     expect(body).toContain("PID");
     expect(body).toMatch(OMIT_MARKER_RE);
     expect(body).not.toContain(MIDDLE_ROW);
-    expect(body.split("\n").length).toBeLessThan(raw.split("\n").length / 10);
+    // The one cut keeps 40 head and 60 tail lines of the 442 (floor.ts).
+    expect(body.split("\n").length).toBeLessThan(raw.split("\n").length / 4);
   });
 });
 

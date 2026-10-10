@@ -1,0 +1,65 @@
+{
+  "test": [
+    "src/tools/shared/outputFilter/Bash/floor.test.ts",
+    "src/tools/BashTool/BashTool.outputFilter.test.ts"
+  ],
+  "source": "src/tools/shared/outputFilter/Bash/floor.ts",
+  "probes": [
+    {
+      "name": "one cut: =0 no longer brings the cap back",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_BASH_ONE_CUT);\n",
+      "replace": "  return true;\n"
+    },
+    {
+      "name": "one cut: off by default again",
+      "find": "  return !isEnvDefinedFalsy(process.env.CLAUDIN_BASH_ONE_CUT);\n",
+      "replace": "  return isEnvTruthy(process.env.CLAUDIN_BASH_ONE_CUT);\n"
+    },
+    {
+      "name": "one cut: the cap's head stays",
+      "find": "                headLines: ONE_CUT_HEAD_LINES,\n",
+      "replace": "\n"
+    },
+    {
+      "name": "one cut: the error windows go",
+      "find": "                spareErrors: true,\n",
+      "replace": "\n"
+    },
+    {
+      "name": "one cut: the error windows go, in the pipeline",
+      "source": "src/tools/shared/outputFilter/Bash/pipeline.ts",
+      "find": "        const errors = filter.spareErrors ? errorWindowMask(lines).slice(head, lines.length - tail) : null;\n",
+      "replace": "        const errors = null;\n"
+    },
+    {
+      "name": "one cut: diagnostics are never cut",
+      "source": "src/tools/shared/outputFilter/Bash/index.ts",
+      "find": "  const cuttable = !diagnostics || (isOneCutEnabled() && rawStdout.length >= ONE_CUT_DIAGNOSTICS_CHARS);\n",
+      "replace": "  const cuttable = !diagnostics;\n"
+    },
+    {
+      "name": "one cut: diagnostics are cut at any length",
+      "source": "src/tools/shared/outputFilter/Bash/index.ts",
+      "find": "  const cuttable = !diagnostics || (isOneCutEnabled() && rawStdout.length >= ONE_CUT_DIAGNOSTICS_CHARS);\n",
+      "replace": "  const cuttable = !diagnostics || isOneCutEnabled();\n"
+    },
+    {
+      "name": "one cut: the summarizer never stands aside",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    return isOneCutEnabled() && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput(",
+      "replace": "    return false && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput("
+    },
+    {
+      "name": "one cut: the summarizer stands aside past the persist line too",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "    return isOneCutEnabled() && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput(",
+      "replace": "    return isOneCutEnabled() && shouldFilterOutput("
+    },
+    {
+      "name": "one cut: the summarizer stands aside for a backgrounded run",
+      "source": "src/tools/BashTool/BashTool.tsx",
+      "find": "isBashOutputFilterDisabled, output.backgroundTaskId);\n  },\n",
+      "replace": "isBashOutputFilterDisabled, undefined);\n  },\n"
+    }
+  ]
+}

@@ -80,9 +80,8 @@
  * characters at 60 lines, against 1.8% for the whole floor — and it is fenced
  * accordingly: only where NO spec matched, never on a body that looks
  * structured, never when the caller does its own budgeting, never on a read
- * whose command already bounds its output within `BOUNDED_READ_MAX_LINES`
- * (`isCapKeepBoundedEnabled`), and off entirely under either of its two
- * switches — `CLAUDIN_DISABLE_BASH_FILTER_CAP` or
+ * the model directed (`readLane.ts`, `index.ts`), and off entirely under
+ * either of its two switches — `CLAUDIN_DISABLE_BASH_FILTER_CAP` or
  * `bashOutputFilterCapEnabled: false`. It gets its own switch rather than
  * riding the filter's master toggle because the two answer different questions:
  * turning the filter off gives up the lossless stages too, and someone who
@@ -180,32 +179,45 @@ export function isPathLine(line: string): boolean {
 const KEEP_PATH_LINES: KeepLines = { test: isPathLine, max: MAX_KEPT_PATH_LINES };
 
 /**
- * On by default since 2026-09-25, `CLAUDIN_CAP_KEEP_BOUNDED=0` turns it off: a
- * read whose command already says how many lines it prints — `sed -n
- * 95,135p a.ts`, `grep -n X -A 60 f | head -90` (`lineBound.ts`) — comes back
- * whole instead of cut, when that bound and the output both stay within
- * BOUNDED_READ_MAX_LINES (`index.ts`, `isWithinCommandBound`).
+ * One cut for Bash output in place of two, on by default since 2026-10-09;
+ * `CLAUDIN_BASH_ONE_CUT=0` brings back the cap and the summarizer as they were.
  *
- * The 15+15 cut removes exactly the middle the model asked for. Over the real
- * corpus of 2026-09-14..25 a sub-agent re-read or re-ran within three requests
- * after 48% of the capped range reads and 41% of the capped searches into a
- * bound, against 15% after an uncut result of the same size, and the Read it
- * sent pulled the whole file back (team memory
- * `cut-results-request-cost-2026-09-25`). It is the principle the pipeline
- * already applies to a stripped `| tail -N`, whose count it keeps
- * (`capLines`): what the model sized is what it gets.
+ * Two cutters reached the same result: this floor's cap (past 60 lines, 15
+ * head + 15 tail) and the tool-result summarizer (past 8k chars, 40 head + 60
+ * tail and the lines around the errors), each standing aside once the other
+ * had cut. The harsher one ran first, on less: a 61-line result of 2k chars
+ * lost half its lines, and a read that slipped past the cap was cut again
+ * downstream. Now the cap is the only cut — later, gentler, with
+ * the summarizer's error windows — and BashTool keeps the summarizer away from
+ * every result the filter ran on (`skipsResultSummarizer`). Diagnostics, which
+ * the cap never touched, take it past ONE_CUT_DIAGNOSTICS_CHARS, where the
+ * summarizer used to cut them.
  *
- * Read per call, like CLAUDIN_CAP_KEEP_PATHS, so a test can set it.
+ * The cut keeps the summarizer's 40 head and 60 tail lines and takes only what
+ * lies between, so there is no trigger of its own. Sized on the recorded
+ * corpus (`scripts/bench/tokens/measure-bash-cap-sizing.test.ts`, "one cut",
+ * 2026-10-09): over 60 days it cuts 60 non-read results where the cap cut 180,
+ * and removes 0.6% of their chars where the cap removed 2.9% — a fifth of the
+ * cap's saving, on output the model re-read or re-ran after 20% of the cuts
+ * (`cut-refetch-census.ts`). In the session A/B on top of the read lane
+ * (2026-10-09, N=5) it cost −4% on Sonnet 5.5 and +1% on Opus 5.5, both
+ * inside the noise, with tool-result chars +5%. Read per call, so a test can
+ * set it.
  */
-export function isCapKeepBoundedEnabled(): boolean {
-  return !isEnvDefinedFalsy(process.env.CLAUDIN_CAP_KEEP_BOUNDED);
+export function isOneCutEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_BASH_ONE_CUT);
 }
 
+export const ONE_CUT_HEAD_LINES = 40;
+export const ONE_CUT_TAIL_LINES = 60;
+/** The summarizer's Bash threshold, which diagnostics were cut at before the one cut took its place. */
+export const ONE_CUT_DIAGNOSTICS_CHARS = 8_000;
+
 /**
- * The most lines a bounded read may declare, and print, and still come back
- * whole. In the corpus 61-100 lines held 70% of the capped bounded reads and
- * nearly all of the excess re-reads, 101-150 another 22%; a read past this is
- * closer to a dump than to a range, and takes the cut.
+ * The most lines a bounded read could declare, and print, and still come back
+ * whole under the keep the read lane replaced (`CLAUDIN_CAP_KEEP_BOUNDED`,
+ * #252). The lane bounds a read by chars instead; the census and the sizing
+ * report still replay the old rule against this.
  */
 export const BOUNDED_READ_MAX_LINES = 150;
 
@@ -365,7 +377,14 @@ export function withGenericFloor(
     ...(groupMatches ? { renderBody: groupMatchLines } : {}),
     ...(cap
       ? {
-          maxLines: FLOOR_CAP_LINES,
+          ...(isOneCutEnabled()
+            ? {
+                maxLines: ONE_CUT_HEAD_LINES + ONE_CUT_TAIL_LINES,
+                headLines: ONE_CUT_HEAD_LINES,
+                tailLines: ONE_CUT_TAIL_LINES,
+                spareErrors: true,
+              }
+            : { maxLines: FLOOR_CAP_LINES }),
           ...(isCapKeepPathsEnabled() ? { keepLines: KEEP_PATH_LINES } : {}),
         }
       : {}),

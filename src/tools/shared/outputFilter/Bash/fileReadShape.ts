@@ -14,9 +14,11 @@
  * with parallel Read calls. Two behaviours key on this shape, both OFF by
  * default:
  *
- * - `CLAUDIN_BASH_FILE_READ_PASSTHROUGH=1` — the filter hands such a read back
+ * - `CLAUDIN_BASH_READ_LANE=1` — the filter hands such a read back
  *   byte for byte up to 28k chars, inside a `<bash-output-read>` wrapper the
- *   tool-result summarizer stands aside for (`index.ts`, `markers.ts`). A
+ *   tool-result summarizer stands aside for (`index.ts`, `markers.ts`); the
+ *   lane takes the reads that mix these prints with bounded slices too
+ *   (`readLane.ts`). A
  *   longer one that only prints files keeps the whole files that fit and names
  *   the rest (`fitWholeFiles`, `BashTool/creditShownFiles.ts`), where the cap
  *   would cut it or Bash would save it to disk behind a 2 KB preview.
@@ -171,10 +173,10 @@ export function wordsOf(segment: string): ReadWord[] | null {
   return words.length > 0 ? words : null;
 }
 
-type Loop = { readonly variable: string; readonly words: readonly ReadWord[] };
+export type Loop = { readonly variable: string; readonly words: readonly ReadWord[] };
 
 /** `V in w1 w2 …` after the `for`. */
-function parseLoopHeader(args: readonly ReadWord[]): Loop | null {
+export function parseLoopHeader(args: readonly ReadWord[]): Loop | null {
   const [variable, keyword, ...words] = args;
   if (!variable || !LOOP_VARIABLE_RE.test(variable.text)) return null;
   if (keyword?.text !== "in") return null;
@@ -251,7 +253,7 @@ function parsePartialPrint(
 }
 
 /** What a `cat`, `head` or `tail` segment prints from; null for any other, or one that is not a plain print. */
-function printedBy(
+export function printedBy(
   program: string,
   args: readonly ReadWord[],
   loops: readonly Loop[],
@@ -289,7 +291,7 @@ function inDir(words: readonly ReadWord[], dir: string | undefined): readonly Re
  * A segment that lists files — `ls`, `git ls-files`, `wc -l` — with flags and
  * literal paths or globs. Its output names files; none of it is a file's bytes.
  */
-function isListing(head: string, args: readonly ReadWord[]): boolean {
+export function isListing(head: string, args: readonly ReadWord[]): boolean {
   if (args.some((arg) => EXPANDED_WORD_RE.test(arg.text))) return false;
   switch (head) {
     case "ls":

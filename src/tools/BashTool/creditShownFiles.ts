@@ -57,7 +57,7 @@
  * ## A read too long to show whole
  *
  * `fitWholeFiles` belongs to the pass-through
- * (`CLAUDIN_BASH_FILE_READ_PASSTHROUGH`, outputFilter/Bash/index.ts): a pure
+ * (`CLAUDIN_BASH_READ_LANE`, outputFilter/Bash/index.ts): a pure
  * read over the 28k it shows whole keeps the whole files that fit — found in
  * the output by the same verbatim match — and names the rest. It lives here
  * because it finds files the way the credit does.
@@ -492,7 +492,7 @@ function wholeLinesEnd(body: string, text: string, from = 0): number {
 }
 
 // ---------------------------------------------------------------------------
-// A pure read too long to show whole (CLAUDIN_BASH_FILE_READ_PASSTHROUGH)
+// A pure read too long to show whole (CLAUDIN_BASH_READ_LANE)
 // ---------------------------------------------------------------------------
 
 /** A pure read cut back to the whole files that fit. */

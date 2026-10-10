@@ -1,0 +1,18 @@
+{
+  "test": [
+    "src/tools/BashTool/ownWrites.test.ts"
+  ],
+  "source": "src/tools/BashTool/BashTool.tsx",
+  "probes": [
+    {
+      "name": "own-writes call(): the refresh never runs",
+      "find": "      const own = await refreshOwnWrites(toolUseContext.readFileState, commandStartedAt, commandStartCwd);\n      if (own.changed.length > 0) data.refreshedFiles = [...own.changed];\n      if (own.note !== null) data.readNote = data.readNote ? `${data.readNote}\\n${own.note}` : own.note;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "own-writes call(): the refresh runs but the result says nothing",
+      "find": "      if (own.note !== null) data.readNote = data.readNote ? `${data.readNote}\\n${own.note}` : own.note;\n",
+      "replace": "\n"
+    }
+  ]
+}

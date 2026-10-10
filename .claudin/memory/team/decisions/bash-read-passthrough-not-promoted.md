@@ -79,3 +79,5 @@ with a pre-registered gate and a placebo arm: +13% cost and +14% calls against
 claudindev, placebo +17%/+29%, all overlapping; the credit counted 0 files in
 4 of 5 runs. The refusal it was meant to remove came from files seen in a Grep
 `content` result, which it does not cover ([[read-files-ab-2026-09-29]]).
+
+**Superseded in part (2026-10-09):** the pass-through became the read lane, on by default and wider (mixed reads, bounded slices) — `CLAUDIN_BASH_FILE_READ_PASSTHROUGH` is gone, `CLAUDIN_BASH_READ_LANE=0` is its killswitch ([[bash-read-lane]]). The read credit stays off.

@@ -1,0 +1,83 @@
+{
+  "test": [
+    "src/tools/BashTool/ownWrites.test.ts",
+    "src/agent/queryHelpers.extractReadFiles.test.ts"
+  ],
+  "source": "src/tools/BashTool/ownWrites.ts",
+  "probes": [
+    {
+      "name": "own-writes: on whatever the flag says",
+      "find": "  if (!isOwnWritesEnabled()) return NONE\n",
+      "replace": "\n"
+    },
+    {
+      "name": "own-writes: a change from before the command is taken as its own",
+      "find": "        if (mtime < startedAt || mtime <= state.timestamp) return\n",
+      "replace": "        if (mtime <= state.timestamp) return\n"
+    },
+    {
+      "name": "own-writes: an untouched file is refreshed anyway",
+      "find": "        if (mtime < startedAt || mtime <= state.timestamp) return\n",
+      "replace": "        if (mtime < startedAt) return\n"
+    },
+    {
+      "name": "own-writes: an outline entry is taken for a read",
+      "find": "      if (state.isPartialView || state.refreshFailed) return\n",
+      "replace": "      if (state.refreshFailed) return\n"
+    },
+    {
+      "name": "own-writes: the entry keeps the old bytes",
+      "find": "            content,\n            timestamp: mtime,\n",
+      "replace": "            content: state.content,\n            timestamp: mtime,\n"
+    },
+    {
+      "name": "own-writes: the entry keeps the old mtime",
+      "find": "            content,\n            timestamp: mtime,\n",
+      "replace": "            content,\n            timestamp: state.timestamp,\n"
+    },
+    {
+      "name": "own-writes: the entry may stand for a Read's dedup",
+      "find": "            limit: undefined,\n            dedupExempt: true,\n",
+      "replace": "            limit: undefined,\n"
+    },
+    {
+      "name": "own-writes: a range entry is left stale",
+      "find": "          await refreshRangeEntry(cacheKey, path, state, mtime, readFileState)\n",
+      "replace": "\n"
+    },
+    {
+      "name": "own-writes: the result says nothing",
+      "find": "  if (changed.length === 0) return NONE\n",
+      "replace": "  return NONE\n"
+    },
+    {
+      "name": "own-writes: the files are named in no order",
+      "find": "  changed.sort()\n",
+      "replace": "\n"
+    },
+    {
+      "name": "own-writes resume: the paths are never read back",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "            for (const filePath of pathsOf(message.toolUseResult, 'refreshedFiles')) {\n              cacheOwnWriteFromDisk(filePath, answeredAt)\n            }\n",
+      "replace": "\n"
+    },
+    {
+      "name": "own-writes resume: a change after the result is taken as the command's",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "      if (timestamp > answeredAt) return\n      const { content: diskContent } = readFileSyncWithMetadata(filePath)\n      cache.set(filePath, {\n        content: diskContent,\n        timestamp,\n        offset: undefined,\n",
+      "replace": "      const { content: diskContent } = readFileSyncWithMetadata(filePath)\n      cache.set(filePath, {\n        content: diskContent,\n        timestamp,\n        offset: undefined,\n"
+    },
+    {
+      "name": "own-writes resume: a slice takes the whole file",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "    if (!entry || entry.isPartialView || (entry.offset !== undefined && entry.offset !== 1) || entry.limit !== undefined) return\n",
+      "replace": "    if (!entry) return\n"
+    },
+    {
+      "name": "own-writes resume: a file never Read is taken as read",
+      "source": "src/agent/queryHelpers.ts",
+      "find": "    if (!entry || entry.isPartialView || (entry.offset !== undefined && entry.offset !== 1) || entry.limit !== undefined) return\n",
+      "replace": "    if (entry && (entry.isPartialView || (entry.offset !== undefined && entry.offset !== 1) || entry.limit !== undefined)) return\n"
+    }
+  ]
+}

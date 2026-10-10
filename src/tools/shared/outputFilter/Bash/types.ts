@@ -44,6 +44,10 @@ export interface FilterSpec {
    * Only the generic floor sets it (`CLAUDIN_CAP_KEEP_PATHS`, floor.ts), and
    * being a function it is not expressible in the user-filter JSON. */
   keepLines?: KeepLines;
+  /** A `maxLines` cut also leaves the lines around the first and last error
+   * where they stand (`cutShape.ts`). Only the generic floor's one cut sets it
+   * (`CLAUDIN_BASH_ONE_CUT`, floor.ts). */
+  spareErrors?: boolean;
   onEmpty?: string;
 }
 

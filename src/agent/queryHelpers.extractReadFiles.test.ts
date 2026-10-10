@@ -405,6 +405,55 @@ describe('extractReadFilesFromMessages — a Bash read credit', () => {
     const cache = extractReadFilesFromMessages([...failed, use!, notBash, result!], dir)
     expect(cache.get(p)).toBeUndefined()
   })
+
+  // CLAUDIN_BASH_OWN_WRITES: a read file the command changed was brought up
+  // to date in the process (ownWrites.ts). Without this the resumed prompt
+  // reported the model's own edit as the user's — the 2026-10-09 A/B's whole
+  // resume write.
+  test('a read file the command changed takes the disk bytes, so the resume reports nothing', () => {
+    const p = join(dir, 'own.ts')
+    const now = Date.now()
+    writeBefore(p, 'new1\nnew2\n', now)
+    const cache = extractReadFilesFromMessages(
+      [...read(p, {}, 'old1\nold2'), ...bash(`python3 edit.py`, '', now, { refreshedFiles: [p] })],
+      dir,
+    )
+    expect(cache.get(p)).toEqual({
+      content: 'new1\nnew2\n',
+      timestamp: getFileModificationTime(p),
+      offset: undefined,
+      limit: undefined,
+      dedupExempt: true,
+    })
+  })
+
+  test('changed again after the result, it keeps what the Read showed', () => {
+    const p = join(dir, 'own-later.ts')
+    const answeredAt = Date.now() - 120_000
+    writeFileSync(p, 'user edit\nafter\n')
+    const cache = extractReadFilesFromMessages(
+      [...read(p, {}, 'old1\nold2'), ...bash(`python3 edit.py`, '', answeredAt, { refreshedFiles: [p] })],
+      dir,
+    )
+    expect(cache.get(p)).toMatchObject({ content: 'old1\nold2' })
+  })
+
+  test('a slice, or a file never Read, is left as it was', () => {
+    const sliced = join(dir, 'own-slice.ts')
+    const unread = join(dir, 'own-unread.ts')
+    const now = Date.now()
+    writeBefore(sliced, 'l1\nl2\n', now)
+    writeBefore(unread, 'u1\nu2\n', now)
+    const cache = extractReadFilesFromMessages(
+      [
+        ...read(sliced, { offset: 1, limit: 1 }, 'l1'),
+        ...bash(`python3 edit.py`, '', now, { refreshedFiles: [sliced, unread] }),
+      ],
+      dir,
+    )
+    expect(cache.get(sliced)).toMatchObject({ content: 'l1', offset: 1, limit: 1 })
+    expect(cache.get(unread)).toBeUndefined()
+  })
 })
 
 // CLAUDIN_READ_MULTI: one Read of several files, or of several symbols of one

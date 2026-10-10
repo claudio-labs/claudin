@@ -292,7 +292,7 @@ function withoutFinalNewline(content: string): string {
 }
 
 /** A Read-written slice. A full Read (`offset === 1`, no limit) is a whole-file view and takes the lane above. */
-function isRangeEntry(state: FileState): boolean {
+export function isRangeEntry(state: FileState): boolean {
   if (state.isPartialView) return false
   return (
     (state.offset !== undefined && state.offset !== 1) ||
@@ -314,7 +314,7 @@ function sameTrimmed(a: readonly string[], b: readonly string[]): boolean {
   return true
 }
 
-async function refreshRangeEntry(
+export async function refreshRangeEntry(
   cacheKey: string,
   normalizedPath: string,
   fileState: FileState,

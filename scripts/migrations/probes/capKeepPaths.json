@@ -48,14 +48,14 @@
     {
       "name": "spare-middle: the middle is cut plainly even when keepLines spares lines",
       "source": "src/tools/shared/outputFilter/Bash/pipeline.ts",
-      "find": "        const spared = filter.keepLines\n          ? spareMiddle(lines.slice(head, lines.length - tail), filter.keepLines)\n          : null;",
+      "find": "        const spared =\n          filter.keepLines || errors\n            ? spareMiddle(lines.slice(head, lines.length - tail), filter.keepLines ?? null, errors)\n            : null;",
       "replace": "        const spared = null as { lines: string[]; cut: number } | null;"
     },
     {
       "name": "spare-middle: past its max it still spares",
       "source": "src/tools/shared/outputFilter/Bash/pipeline.ts",
-      "find": "if (count === 0 || count > keep.max) return null;",
-      "replace": "if (count === 0) return null;"
+      "find": "  const keepFits = keep !== null && kept <= keep.max;\n",
+      "replace": "  const keepFits = keep !== null;\n"
     },
     {
       "name": "spare-middle: a run of one line becomes a marker",
