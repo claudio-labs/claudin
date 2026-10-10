@@ -38,10 +38,8 @@
  * Never credited:
  *  - a result the model got a preview of — BashTool spilled it to disk, or it
  *    is over the size the harness persists at;
- *  - an unwrapped result of 8k chars or more, which the tool-result summarizer
- *    cuts before the model sees it (it stands aside for the filter's
- *    wrappers). Both sizes are the tool result's, which carries any note after
- *    stdout, this one's line included;
+ *    that size is the tool result's, which carries any note after stdout,
+ *    this one's line included;
  *  - a run that was interrupted or carries stderr (the cwd-reset note);
  *  - a file shown only in part, which is every file the floor cap cut through,
  *    and every one a `head` or `tail` printed part of;

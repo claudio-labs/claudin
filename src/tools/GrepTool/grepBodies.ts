@@ -12,7 +12,7 @@
  *
  * The result must reach the model whole, since what it registers as read is
  * what the model was shown: the budget keeps it under Grep's 20k persistence
- * threshold, and the tool-result summarizer passes a bodies result through
+ * threshold, and the Grep regroup passes a bodies result through
  * (`isGrepBodiesResult`).
  *
  * PARKED 2026-09-25: never engaged. `bodies` was sent in 0 of 8 sessions of
@@ -59,7 +59,7 @@ export const BODIES_HEADER_SUFFIX = ', with their bodies'
 
 const BODIES_HEADER_RE = /^Found \d+ matched symbols? across \d+ files?, with their bodies/
 
-/** A Grep result that carries bodies, which the summarizer must pass through whole. */
+/** A Grep result that carries bodies, which the Grep regroup must pass through as printed. */
 export function isGrepBodiesResult(text: string): boolean {
   return BODIES_HEADER_RE.test(text)
 }

@@ -50,16 +50,28 @@ paths:
 - A header on every run: misread paths produced fake file names in 303 corpus results.
 - Keeping the cut past the line, and the 2 KB preview: the model re-fetched after 33–100% of previews.
 
-**Measured (free).** `summarizer-lossless-replay.ts`, 14 days, 520 real cuts replayed through the live pipeline.
+**Measured (free).** `former-cuts-replay.ts`, 14 days, 520 real cuts replayed through the live pipeline.
 - 459 regrouped, 56 whole, 5 paged (1 Grep, 4 WebFetch). 0 cut. 0 broken pages: page plus file gives back the original every time.
 - Chars +19% on those results: Glob −46%, Grep +15.5%, WebFetch +170% (paged at its 50k line). Median +0.9k chars per session.
 - Audit round-trip over 4,103 transcripts: 0 lost, 0 reordered, 0 fake headers.
 
 **What still bounds a result.** Each tool's own limits are unchanged and out of scope: Grep `head_limit` 250 + offset, Glob 100 + offset, WebFetch 100k → model summary, MCP 25k tokens → its own spill. Old results are bounded by relief/microcompact. The Bash filter's one cut (#282) is a separate decision.
 
+**Re-audit fixes (three agents, 10-10).**
+- A shell run that spilled is paged from its **saved file's own head** (`readSavedHead`), not from stdout. The output filter, the blank-line strip and the 30k byte cap all reshape stdout, and a page cut from it claimed lines the model never saw. Its budget leaves room for the notes after it, so storage's old "already paged" guard is gone.
+- A head's cut-short last line is never counted as shown (`pageForModel(…, complete=false)`). Pages never end on half a surrogate pair.
+- The pointer gives a call that works at any file size: `Read the file with offset=K+1 and limit=K`. Offset alone is refused past 256 KB. A first line longer than the page points to Bash, since Read cannot split a line, and the budget sizes both pointer forms.
+- The saved file's name carries a hash of its content, so a repeated tool_use_id (XML providers across a resume, MCP timestamp ids) never pages against another result's file.
+- Glob redirect folds `| head -N` up to 100, the paths one Glob call returns; it stopped at 50 for the old cut.
+- **Live check** (Sonnet 5.5, `bin/claudin -p` from a throwaway cwd, ~$0.70): 4 of 4 runs whose answer lay past the page recovered it by searching the saved file, with no re-run. The target was Bash row 5500 behind a page of 741 lines, and a Grep line at 2298 behind a page of 562.
+
+**Not covered, separate decisions:**
+- `toolErrors.formatError` keeps 5k + 5k of a failing command's output, with no saved file.
+- The Bash floor's one cut (#282), WebFetch's 100k + model summary, MCP image truncation and relief clips.
+
 **Evidence.**
 - `toolResultCompaction.test.ts`: in-order decoders, 11 real rg fixtures and the line boundary.
 - `toolResultStorage.test.ts`: page + file = original.
 - `shellToolResultMappers.test.ts`: the Bash offset.
-- Break-probe: `losslessSummarizer.json` and `paging.json`, every probe red.
+- Break-probe: `toolResultCompaction.json` and `paging.json`, every probe red.
 - `read-credit-e2e.ts` scenarios 19 (compaction) and 20 (paging) on the bundle.

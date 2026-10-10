@@ -1,7 +1,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
-import { buildLargeToolResultMessage } from 'src/agent/tools/toolResultStorage.js'
-import { BASH_MAX_OUTPUT_DEFAULT } from 'src/platform/shell/outputLimits.js'
+import { buildLargeToolResultMessage, readSavedHead } from 'src/agent/tools/toolResultStorage.js'
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js'
 import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
 /**
@@ -116,27 +116,32 @@ export function mapShellResultToToolResultBlockParam(
   }
 
   const trimmed = trimShellStdout(normalizedStdout)
-  let processedStdout = trimmed
-  if (data.persistedOutputPath) {
-    // Paged from the untrimmed stdout: its line numbers are the saved file's.
-    // The page is the shells' persistence line (both declare 30k), not the
-    // env-raisable stdout cap, so storage never pages it a second time.
-    processedStdout = buildLargeToolResultMessage(
-      { filepath: data.persistedOutputPath, originalSize: data.persistedOutputSize ?? 0 },
-      normalizedStdout,
-      BASH_MAX_OUTPUT_DEFAULT,
-    )
-  }
-
   const errorMessage = buildShellErrorMessage(normalizedStderr, data.interrupted)
   const backgroundInfo = buildShellBackgroundInfo(data)
+  const after = [data.readNote, errorMessage, backgroundInfo].filter(Boolean)
+
+  let processedStdout = trimmed
+  if (data.persistedOutputPath) {
+    // A run too large for its result saved its output whole. The page is cut
+    // from that file's own head, not from stdout — the filter, the blank-line
+    // strip and a byte cap ending mid-line all reshape stdout — so its line
+    // numbers are the file's. Its budget leaves room for the lines after it,
+    // so the whole result stays under the shells' line and storage never
+    // pages it again.
+    const budget = SHELL_RESULT_MAX_CHARS - after.reduce((n, part) => n + part!.length + 1, 0)
+    const head = readSavedHead(data.persistedOutputPath, Math.max(budget, 0))
+    processedStdout = buildLargeToolResultMessage(
+      { filepath: data.persistedOutputPath, originalSize: data.persistedOutputSize ?? 0 },
+      head ?? normalizedStdout,
+      budget,
+      false,
+    )
+  }
 
   return {
     tool_use_id: toolUseID,
     type: 'tool_result' as const,
-    content: [processedStdout, data.readNote, errorMessage, backgroundInfo]
-      .filter(Boolean)
-      .join('\n'),
+    content: [processedStdout, ...after].filter(Boolean).join('\n'),
     is_error: data.interrupted,
   }
 }

@@ -145,8 +145,9 @@ describe('paging past the persistence line', () => {
 
   /** The pointer's line count, the page, and the saved file, from a paged message. */
   function readPage(message: string): { shown: number; page: string; file: string } {
-    const pointer = /^Lines 1-(\d+) are below; Read the file from line (\d+) for the rest\.$/m.exec(message)!
+    const pointer = /^Lines 1-(\d+) are below; Read the file with offset=(\d+) and limit=(\d+) for the next page\.$/m.exec(message)!
     expect(Number(pointer[2])).toBe(Number(pointer[1]) + 1)
+    expect(Number(pointer[3])).toBe(Number(pointer[1]))
     const path = /Full output saved to: (\S+)\n/.exec(message)![1]!
     const page = message.slice(message.indexOf('\n\n') + 2, message.lastIndexOf('\n</persisted-output>'))
     return { shown: Number(pointer[1]), page, file: readFileSync(path, 'utf8') }
@@ -156,6 +157,19 @@ describe('paging past the persistence line', () => {
     expect(pageForModel('a\nb\nc', 100)).toEqual({ page: 'a\nb\nc', shownLines: 3 })
     expect(pageForModel('aaa\nbbb\nccc', 9)).toEqual({ page: 'aaa\nbbb', shownLines: 2 })
     expect(pageForModel('x'.repeat(50), 10)).toEqual({ page: 'x'.repeat(10), shownLines: 0 })
+    // Leading empty lines are lines: they are counted and shown.
+    expect(pageForModel(`\n${'x'.repeat(50)}`, 10)).toEqual({ page: '', shownLines: 1 })
+    expect(pageForModel(`\n\n${'x'.repeat(50)}`, 10)).toEqual({ page: '\n', shownLines: 2 })
+    // Never half of a surrogate pair.
+    expect(pageForModel('😀'.repeat(20), 11).page).toBe('😀'.repeat(5))
+  })
+
+  test('a head is not the whole: its last line may be cut short and is never shown', () => {
+    expect(pageForModel('a\nb\nhalf of c', 100, false)).toEqual({ page: 'a\nb', shownLines: 2 })
+    expect(pageForModel('a\nb\n', 100, false)).toEqual({ page: 'a\nb', shownLines: 2 })
+    // A byte cap that split a character leaves a replacement char; a head with no
+    // line end at all is line 1's start, without it.
+    expect(pageForModel('abc\uFFFD', 100, false)).toEqual({ page: 'abc', shownLines: 0 })
   })
 
   test('the message fits the line, puts the pointer first, and the page is the first lines exactly', () => {
@@ -163,9 +177,15 @@ describe('paging past the persistence line', () => {
     const message = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: text.length }, text, 20_000)
     expect(message.length).toBeLessThanOrEqual(20_000)
     expect(message.split('\n')[1]).toStartWith('Output too large (')
-    expect(message.split('\n')[2]).toMatch(/^Lines 1-\d+ are below; Read the file from line \d+ for the rest\.$/)
+    expect(message.split('\n')[2]).toMatch(/^Lines 1-\d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/)
     const shown = Number(/Lines 1-(\d+)/.exec(message)![1])
     expect(message).toContain(`\n\n${text.split('\n').slice(0, shown).join('\n')}\n</persisted-output>`)
+  })
+
+  test('a first line longer than the page still fits the line, and says how to go on', () => {
+    const message = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: 40_000 }, 'y'.repeat(40_000), 30_000)
+    expect(message.length).toBeLessThanOrEqual(30_000)
+    expect(message).toMatch(/^Line 1 alone is longer than this page: its first (\d+) chars are below\. Read cannot split a line; fetch the rest with Bash, from character \d+\.$/m)
   })
 
   test('a result past its line is saved whole and paged: page + the file from the pointer = the original', async () => {
@@ -195,11 +215,22 @@ describe('paging past the persistence line', () => {
     expect(file).toBe(`${blocks[0]!.text}\n${blocks[1]!.text}`)
   })
 
-  test('a page already built (a shell run saved its own output) is not paged again', async () => {
-    const text = lines(3_000)
-    const paged = buildLargeToolResultMessage({ filepath: '/tmp/x.txt', originalSize: text.length }, text, 30_000)
-    const block: ToolResultBlockParam = { type: 'tool_result', tool_use_id: 'toolu_page_again', content: `${paged}\nnote` }
+  test('an id seen again with other bytes gets its own file, so each page matches its file', async () => {
+    const tool = { name: 'SomeTool', maxResultSizeChars: 10_000 }
+    const first = lines(3_000)
+    const second = first.replaceAll('row', 'ROW')
+    const a = readPage(String((await processPreMappedToolResultBlock({ type: 'tool_result', tool_use_id: 'xml_tc_1', content: first }, tool)).content))
+    const b = readPage(String((await processPreMappedToolResultBlock({ type: 'tool_result', tool_use_id: 'xml_tc_1', content: second }, tool)).content))
+    expect(a.file).toBe(first)
+    expect(b.file).toBe(second)
+    // And the same bytes again reuse the first file.
+    const again = readPage(String((await processPreMappedToolResultBlock({ type: 'tool_result', tool_use_id: 'xml_tc_1', content: first }, tool)).content))
+    expect(again.file).toBe(first)
+  })
+
+  test('nothing is let through unsized: a result that merely opens like a page is paged too', async () => {
+    const block: ToolResultBlockParam = { type: 'tool_result', tool_use_id: 'toolu_lookalike', content: `<persisted-output>\n${lines(3_000)}` }
     const out = await processPreMappedToolResultBlock(block, { name: 'SomeTool', maxResultSizeChars: 10_000 })
-    expect(out).toBe(block)
+    expect(String(out.content).length).toBeLessThanOrEqual(10_000)
   })
 })

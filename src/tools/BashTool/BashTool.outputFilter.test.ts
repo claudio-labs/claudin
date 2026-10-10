@@ -414,16 +414,14 @@ describe('bash output filter — integration smoke', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Suite 5 — filter + summarizer interaction (double-processing guard)
+// Suite 5 — the double-processing guard
 // ---------------------------------------------------------------------------
 //
 // Verifies that bash output already wrapped in <bash-output-filtered> markers
 // is NOT re-processed by the bash filter pipeline. The filter pipeline must
-// short-circuit on already-filtered input to prevent double-wrapping and to
-// guarantee that the summarizer sees the filtered (reduced) content — not the
-// original — when both features are enabled simultaneously.
+// short-circuit on already-filtered input to prevent double-wrapping.
 
-describe('bash output filter — filter+summarizer interaction', () => {
+describe('bash output filter — the double-processing guard', () => {
   test('already-filtered output is not re-wrapped when passed through the pipeline again', () => {
     enableFilter()
 
@@ -444,11 +442,10 @@ describe('bash output filter — filter+summarizer interaction', () => {
     expect(markerCount).toBe(1)
   })
 
-  test('filter reduces output before it could reach the summarizer threshold', () => {
+  test('the filter reduces a long listing and says so', () => {
     enableFilter()
 
-    // Build ls-like output large enough that the raw form could be summarized,
-    // but small enough after filtering that summarization is skipped.
+    // ls-like output long enough for its spec to reduce.
     const lines = Array.from(
       { length: 300 },
       (_, i) => `-rw-r--r--  1 user group ${1000 + i} Jan  1 00:00 file-${i.toString().padStart(4, '0')}.ts`,

@@ -76,6 +76,9 @@
  *      cut's 10 per file, reaches the model whole
  *  20. paging: a Bash result past its 30k line comes back as its first lines
  *      exactly and a pointer; the saved file holds the whole output
+ *  21. paging a run the output filter would cut: 6,000 distinct log lines,
+ *      which the floor cuts to a head and a tail under the line. Past it the
+ *      page is the saved file's first lines all the same, not the filter's cut
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -225,9 +228,12 @@ const ALPHA_LINES = Array.from({ length: 42 }, (_, i) => bigLine(7 * (i + 1)))
 /** ~47k chars of JSON, which the Bash filter never cuts: past Bash's 30k line. */
 const JSON_DUMP = bash(`python3 -c "import json; print(json.dumps(list(range(7000)), indent=1))"`)
 const JSON_DUMP_LINES = ['[', ...Array.from({ length: 7000 }, (_, i) => ` ${i}${i < 6999 ? ',' : ''}`), ']']
+/** ~150k chars of distinct log lines: no JSON, so the floor would cut them. */
+const LONG_LOG = bash(`seq -f 'log line %g of a long build' 1 6000`)
+const LONG_LOG_LINES = Array.from({ length: 6000 }, (_, i) => `log line ${i + 1} of a long build`)
 /** The page's pointer, the page itself and the saved file, or null when the result is no page. */
 function readPage(text: string): { shown: number; page: string[]; file: string[] } | null {
-  const pointer = /^Lines 1-(\d+) are below; Read the file from line (\d+) for the rest\.$/m.exec(text)
+  const pointer = /^Lines 1-(\d+) are below; Read the file with offset=(\d+) and limit=\d+ for the next page\.$/m.exec(text)
   const path = /Full output saved to: (\S+)\n/.exec(text)?.[1]
   if (!pointer || Number(pointer[2]) !== Number(pointer[1]) + 1 || !path || !existsSync(path)) return null
   const page = text.slice(text.indexOf('\n\n') + 2, text.indexOf('\n</persisted-output>'))
@@ -679,6 +685,23 @@ const SCENARIOS: Scenario[] = [
       onResult(run, 0, 0, 'p1 the saved file holds every line, the pointer\'s included', r =>
         readPage(r.text)?.file.join('\n') === JSON_DUMP_LINES.join('\n'),
       ),
+    ],
+  },
+  {
+    key: '21',
+    title: 'paging a run the filter would cut: the page is the file\'s, not the cut',
+    env: {},
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Run the long log.', steps: [LONG_LOG, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 lines 1-K of the file exactly, no omission marker, under the line', r => {
+        const paged = readPage(r.text)
+        return (
+          !r.isError && r.text.length <= 30_000 && paged !== null && paged.shown > 100 &&
+          paged.page.join('\n') === LONG_LOG_LINES.slice(0, paged.shown).join('\n') && !r.text.includes(CUT_TEXT)
+        )
+      }),
+      onResult(run, 0, 0, 'p1 the saved file holds all 6,000 lines', r => readPage(r.text)?.file.join('\n') === LONG_LOG_LINES.join('\n')),
     ],
   },
 ]

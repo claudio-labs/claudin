@@ -1,7 +1,7 @@
 /**
  * Session-live accumulator for bytes removed from tool results before they
- * enter the model context (bash output filter, tool-result summarizer / JSON
- * compression, and large-output persistence). Surfaced as the "Context tokens
+ * enter the model context (bash output filter, the lossless Grep/Glob regroup,
+ * and large-output paging). Surfaced as the "Context tokens
  * saved" line in the `/usage` Session tab.
  *
  * The token-saving features already compute these deltas, but the numbers were

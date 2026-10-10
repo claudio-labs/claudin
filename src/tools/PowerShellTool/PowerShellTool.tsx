@@ -40,6 +40,7 @@ import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from 'src/tools/Power
 import { hasSyncSecurityConcerns, isReadOnlyCommand, resolveToCanonical } from 'src/tools/PowerShellTool/readOnlyValidation.js';
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js';
 import { renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/PowerShellTool/UI.js';
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js';
 
 // Never use os.EOL for terminal output — \r\n on Windows breaks Ink rendering
 const EOL = '\n';
@@ -267,7 +268,7 @@ export const PowerShellTool = buildTool({
   name: POWERSHELL_TOOL_NAME,
   searchHint: 'execute Windows PowerShell commands',
   clearableResult: true,
-  maxResultSizeChars: 30_000,
+  maxResultSizeChars: SHELL_RESULT_MAX_CHARS,
   async description({
     description
   }: Partial<PowerShellToolInput>): Promise<string> {
@@ -542,7 +543,7 @@ export const PowerShellTool = buildTool({
           const fileStat = await fsStat(result.outputFilePath);
           persistedOutputSize = fileStat.size;
           await ensureToolResultsDir();
-          const dest = getToolResultPath(result.outputTaskId, false);
+          const dest = getToolResultPath(result.outputTaskId);
           if (fileStat.size > MAX_PERSISTED_SIZE) {
             await fsTruncate(result.outputFilePath, MAX_PERSISTED_SIZE);
           }

@@ -112,7 +112,7 @@ afterEach(() => {
 // Re-pin every mocked module to its captured real namespace. Bun's
 // `mock.module` is process-global and `mock.restore()` does not undo it, so
 // without this every later test file inherits this file's stubs (notably the
-// `./config.js` partial that breaks `toolResultSummarizer.*.test.ts`).
+// `./config.js` partial that breaks any later test reading the real config).
 afterAll(() => {
   mock.module('src/platform/config/config.js', () => realConfigForFastMode)
   mock.module('src/shared/envUtils.js', () => realEnvUtilsForFastMode)

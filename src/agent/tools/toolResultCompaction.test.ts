@@ -365,7 +365,7 @@ describe('processPreMappedToolResultBlock — compact, then page past the line',
     const out = String((await processPreMappedToolResultBlock(block(raw), grep)).content)
     expect(out.length).toBeLessThanOrEqual(20_000)
     expect(out).toStartWith('<persisted-output>')
-    expect(out).toMatch(/^Lines 1-\d+ are below; Read the file from line \d+ for the rest\.$/m)
+    expect(out).toMatch(/^Lines 1-\d+ are below; Read the file with offset=\d+ and limit=\d+ for the next page\.$/m)
     const saved = readFileSync(/Full output saved to: (\S+)\n/.exec(out)![1]!, 'utf8')
     expect(decodeGrep(bodyOf(saved))).toEqual(raw.split('\n'))
   })

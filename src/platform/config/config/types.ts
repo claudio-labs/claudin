@@ -278,7 +278,7 @@ export type GlobalConfig = {
   summarizeSubagentResult: boolean // Summarize a foreground subagent's final result before returning it to the parent (opt-in, lossy)
   thinkingHistoryRedactionEnabled: boolean // Strip old thinking blocks before API call
   narrationHistoryRedactionEnabled: boolean // Strip old inter-tool-call narration text before API call
-  toolResultSummarizerEnabled: boolean // Summarize oversized Bash/Grep/WebFetch outputs as they enter history
+  toolResultSummarizerEnabled: boolean // Regroup large Grep/Glob results losslessly as they enter history (name kept for existing settings)
   showTurnDuration: boolean // Controls whether to show turn duration message (e.g., "Cooked for 1m 6s")
   // Controls whether to show per-query cache hit/miss stats at the end of each turn.
   // 'off'     — no display

@@ -307,8 +307,8 @@ export const GlobTool = buildTool({
         ].join('\n'),
       }
     }
-    // Keep the "(Results are truncated" prefix: summarizeGlobOutput matches on
-    // it to tell the notice apart from a path.
+    // Keep the "(Results are truncated" prefix: the Glob regroup
+    // (compactGlobOutput) matches on it to tell the notice apart from a path.
     const truncationNote =
       output.nextOffset !== undefined
         ? `(Results are truncated. Pass offset=${output.nextOffset} for the next page, or use a more specific path or pattern.)`

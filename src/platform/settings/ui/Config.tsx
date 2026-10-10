@@ -323,7 +323,7 @@ export function Config({
     }
   }, {
     id: 'toolResultSummarizerEnabled',
-    label: 'Tool result summarizer',
+    label: 'Tool result compaction (Grep/Glob)',
     value: globalConfig.toolResultSummarizerEnabled,
     type: 'boolean' as const,
     onChange(toolResultSummarizerEnabled: boolean) {

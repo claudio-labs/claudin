@@ -55,9 +55,7 @@ const EOL = '\n';
 // Re-export BashProgress from centralized types to break import cycles
 export type { BashProgress } from 'src/shared/types/tools.js';
 import type { BashProgress } from 'src/shared/types/tools.js';
-
-/** Past this a result is saved to disk and paged (toolResultStorage.ts). */
-const BASH_RESULT_PERSIST_CHARS = 30_000;
+import { SHELL_RESULT_MAX_CHARS } from 'src/platform/shell/outputLimits.js';
 
 /**
  * CLAUDIN_BASH_READ_LANE: a pure read too long for one result —
@@ -111,7 +109,7 @@ export const BashTool = buildTool({
   searchHint: 'execute shell commands',
   clearableResult: true,
   // 30K chars - tool result persistence threshold
-  maxResultSizeChars: BASH_RESULT_PERSIST_CHARS,
+  maxResultSizeChars: SHELL_RESULT_MAX_CHARS,
   async description({
     description
   }) {
@@ -417,7 +415,7 @@ export const BashTool = buildTool({
         const fileStat = await fsStat(result.outputFilePath);
         persistedOutputSize = fileStat.size;
         await ensureToolResultsDir();
-        const dest = getToolResultPath(result.outputTaskId, false);
+        const dest = getToolResultPath(result.outputTaskId);
         if (fileStat.size > MAX_PERSISTED_SIZE) {
           await fsTruncate(result.outputFilePath, MAX_PERSISTED_SIZE);
         }

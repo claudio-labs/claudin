@@ -66,9 +66,10 @@ let tmpDir: string
 
 beforeEach(async () => {
   // Unwind any mock.module aliases left behind by upstream tests in the same
-  // worker (toolResultSummarizer.integration.test.ts replaces analytics
-  // modules via relative-path mock.module — the side effect persists for
-  // the rest of the worker and can fork our project singleton instance).
+  // worker (toolResultSummarizer.integration.test.ts, deleted 2026-10-10,
+  // replaced analytics modules via relative-path mock.module — the side
+  // effect persists for the rest of the worker and can fork our project
+  // singleton instance; any test file can still do the same).
   mock.restore()
   process.env.NODE_ENV = 'test'
   process.env.TEST_ENABLE_SESSION_PERSISTENCE = '1'
@@ -90,8 +91,7 @@ beforeEach(async () => {
     getProjectDir as unknown as { cache: { clear: () => void } }
   ).cache.clear()
   // Force originalCwd to our tmpDir so upstream tests that called
-  // setOriginalCwd() (e.g. toolResultSummarizer.integration.test.ts) can't
-  // leak their tempRoot.
+  // setOriginalCwd() can't leak their tempRoot.
   setOriginalCwd(tmpDir)
   switchSession(asSessionId(randomUUID()))
 })
@@ -456,7 +456,8 @@ test('saveTag + getCurrentSessionTag: writes tag entry and updates cache', async
 })
 
 // TODO(11c): full-suite pollution — passes in isolation, fails when
-// toolResultSummarizer.integration.test.ts runs earlier in the same worker.
+// toolResultSummarizer.integration.test.ts ran earlier in the same worker
+// (that file was deleted 2026-10-10; the skip has not been re-checked).
 // That file re-aliases ../services/analytics/* AND src/platform/analytics/*
 // via mock.module (relative + absolute paths), which forks the Project
 // singleton instance for the remainder of the worker. mock.restore() does
@@ -547,7 +548,7 @@ test('materializeSessionFile: hook-only entries stay buffered until first user/a
 })
 
 // TODO(11c): see the test.skip above — same Bun mock.module pollution from
-// toolResultSummarizer.integration.test.ts forks the Project singleton.
+// toolResultSummarizer.integration.test.ts (deleted 2026-10-10) forked the Project singleton.
 test.skip('adoptResumedSessionFile + resetSessionFilePointer: takes over an existing file in place', async () => {
   // Establish a "previous" session on disk
   const u1 = mkUser(dUuid(310), null, 'old')

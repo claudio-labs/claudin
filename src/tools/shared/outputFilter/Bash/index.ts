@@ -176,8 +176,8 @@ function floorOptionsFor(
     return { groupMatches: false, collapseTemplates: false, cap: false };
   }
   const diagnostics = looksLikeDiagnostics(rawStdout);
-  // Under the one cut a long page of diagnostics is cut too, where the
-  // summarizer cut it before; below that every line still names a failure.
+  // Under the one cut a long page of diagnostics is cut too, as the old
+  // summarizer did past 8k; below that every line still names a failure.
   const cuttable = !diagnostics || (isOneCutEnabled() && rawStdout.length >= ONE_CUT_DIAGNOSTICS_CHARS);
   return {
     groupMatches: true,

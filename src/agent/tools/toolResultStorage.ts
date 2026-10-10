@@ -3,13 +3,14 @@
  */
 
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
+import { createHash } from 'crypto'
+import { closeSync, openSync, readSync } from 'fs'
 import { mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   BYTES_PER_TOKEN,
   DEFAULT_MAX_RESULT_SIZE_CHARS,
-  MAX_TOOL_RESULT_BYTES,
 } from 'src/tools/constants/toolLimits.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode, toError } from 'src/shared/errors.js'
@@ -74,9 +75,8 @@ export function getToolResultsDir(): string {
 /**
  * Get the filepath where a tool result would be persisted.
  */
-export function getToolResultPath(id: string, isJson: boolean): string {
-  const ext = isJson ? 'json' : 'txt'
-  return join(getToolResultsDir(), `${id}.${ext}`)
+export function getToolResultPath(id: string): string {
+  return join(getToolResultsDir(), `${id}.txt`)
 }
 
 /**
@@ -149,16 +149,19 @@ export async function persistToolResult(
   }
 
   await ensureToolResultsDir()
-  const filepath = getToolResultPath(toolUseId, false)
   const contentStr =
     typeof content === 'string'
       ? content
       : content.map(block => (block.type === 'text' ? block.text : '')).join('\n')
+  // The content's hash is in the name: a tool_use_id can repeat (a provider's
+  // per-process `xml_tc_N` counter across a resume, an MCP timestamp id), and a
+  // reused file would hold another result than the page cut from this one.
+  const hash = createHash('sha256').update(contentStr).digest('hex').slice(0, 12)
+  const filepath = getToolResultPath(`${toolUseId}-${hash}`)
 
-  // tool_use_id is unique per invocation and content is deterministic for a
-  // given id, so skip if the file already exists. This prevents re-writing
-  // the same content on every API turn when microcompact replays the
-  // original messages. Use 'wx' instead of a stat-then-write race.
+  // The same id and bytes name the same file, so skip a file that exists: it
+  // keeps a replay from rewriting it every turn. 'wx' rather than a
+  // stat-then-write race.
   try {
     await writeFile(filepath, contentStr, { encoding: 'utf-8', flag: 'wx' })
     logForDebugging(
@@ -169,7 +172,7 @@ export async function persistToolResult(
       logError(toError(error))
       return { error: getFileSystemErrorMessage(toError(error)) }
     }
-    // EEXIST: already persisted on a prior turn; the page is built from it all the same
+    // EEXIST: these very bytes, saved on a prior turn.
   }
 
   return { filepath, originalSize: contentStr.length, text: contentStr }
@@ -181,40 +184,76 @@ export async function persistToolResult(
  * them — and the line to Read from for the rest. Nothing is summarized: the
  * page is the result's first lines exactly, and the file holds every line.
  *
- * `text` is what the page is cut from, and its line numbers must be the
- * file's: the whole saved text, or the start of it (a shell run keeps only its
- * first chars in stdout while the file holds all of them). The pointer comes
- * first, so a context-relief stub that keeps the head keeps it too.
+ * `text` is what the page is cut from, and its line numbers are the file's:
+ * the whole saved text (`complete`), or the file's own head, whose last line
+ * may be cut short and is then not shown. The pointer comes first, so a
+ * context-relief stub that keeps the head keeps it too.
  */
 export function buildLargeToolResultMessage(
   saved: { filepath: string; originalSize: number },
   text: string,
   maxChars: number,
+  complete = true,
 ): string {
   const frame = (pointer: string, page: string) =>
     `${PERSISTED_OUTPUT_TAG}\nOutput too large (${formatFileSize(saved.originalSize)}). Full output saved to: ${saved.filepath}\n${pointer}\n\n${page}\n${PERSISTED_OUTPUT_CLOSING_TAG}`
-  // The longest pointer, so the page budget holds whatever the count turns out to be.
-  const budget = maxChars - frame(pointerFor(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER), '').length
-  const { page, shownLines } = pageForModel(text, Math.max(budget, 0))
+  // The longest pointer of either form, so the page budget holds whatever the count turns out to be.
+  const longest = Math.max(pointerFor(Number.MAX_SAFE_INTEGER, 0).length, pointerFor(0, Number.MAX_SAFE_INTEGER).length)
+  const budget = maxChars - frame('', '').length - longest
+  const { page, shownLines } = pageForModel(text, Math.max(budget, 0), complete)
   return frame(pointerFor(shownLines, page.length), page)
 }
 
 function pointerFor(shownLines: number, pageChars: number): string {
   return shownLines === 0
-    ? `Line 1 alone is longer than this page: its first ${pageChars} chars are below; Read the file for the rest.`
-    : `Lines 1-${shownLines} are below; Read the file from line ${shownLines + 1} for the rest.`
+    ? `Line 1 alone is longer than this page: its first ${pageChars} chars are below. Read cannot split a line; fetch the rest with Bash, from character ${pageChars + 1}.`
+    : `Lines 1-${shownLines} are below; Read the file with offset=${shownLines + 1} and limit=${shownLines} for the next page.`
 }
 
 /**
- * The first lines of `text` that fit in `maxChars`, cut at a line boundary,
- * and how many they are. When the first line alone is longer, the page is its
- * head and `shownLines` is 0.
+ * The first whole lines of `text` that fit in `maxChars`, and how many they
+ * are. Unless `complete`, `text` is the head of something longer, so its last
+ * line may be cut short and is never shown. When the first line alone is
+ * longer than `maxChars`, the page is its head and `shownLines` is 0.
  */
-export function pageForModel(text: string, maxChars: number): { page: string; shownLines: number } {
-  const cut = text.length <= maxChars ? text.length : text.lastIndexOf('\n', maxChars)
-  if (cut <= 0) return { page: text.slice(0, maxChars), shownLines: 0 }
-  const page = text.slice(0, cut).replace(/\n$/, '')
-  return { page, shownLines: page === '' ? 0 : page.split('\n').length }
+export function pageForModel(
+  text: string,
+  maxChars: number,
+  complete = true,
+): { page: string; shownLines: number } {
+  if (complete && text.length <= maxChars) {
+    const page = text.replace(/\n$/, '')
+    return { page, shownLines: page.split('\n').length }
+  }
+  // The newline that ends the last whole line within the budget.
+  const cut = text.lastIndexOf('\n', Math.min(maxChars, text.length))
+  if (cut < 0) {
+    // Never end on half of a surrogate pair, nor on a byte decoded short.
+    let end = Math.min(maxChars, text.length)
+    if (end > 0 && /[\uD800-\uDBFF]/.test(text[end - 1]!)) end--
+    return { page: text.slice(0, end).replace(/\uFFFD+$/, ''), shownLines: 0 }
+  }
+  const page = text.slice(0, cut)
+  return { page, shownLines: page.split('\n').length }
+}
+
+/**
+ * The first `maxBytes` of a saved file as text: what a shell run that spilled
+ * pages from, so its line numbers are the file's whatever its stdout went
+ * through. Null when the file cannot be read.
+ */
+export function readSavedHead(filepath: string, maxBytes: number): string | null {
+  let fd: number | undefined
+  try {
+    fd = openSync(filepath, 'r')
+    const buffer = Buffer.alloc(maxBytes)
+    const read = readSync(fd, buffer, 0, maxBytes, 0)
+    return new TextDecoder().decode(buffer.subarray(0, read))
+  } catch {
+    return null
+  } finally {
+    if (fd !== undefined) closeSync(fd)
+  }
 }
 
 /**
@@ -286,7 +325,7 @@ export function isToolResultContentEmpty(
 async function maybePersistLargeToolResult(
   toolResultBlock: ToolResultBlockParam,
   toolName: string,
-  persistenceThreshold?: number,
+  threshold: number,
 ): Promise<ToolResultBlockParam> {
   // Check size first before doing any async work - most tool results are small
   const content = toolResultBlock.content
@@ -313,15 +352,8 @@ async function maybePersistLargeToolResult(
   if (hasImageBlock(content)) {
     return toolResultBlock
   }
-  // Already a page with its pointer: a shell run saved its own output.
-  if (typeof content === 'string' && content.startsWith(PERSISTED_OUTPUT_TAG)) {
-    return toolResultBlock
-  }
 
   const size = contentSize(content)
-
-  // Use tool-specific threshold if provided, otherwise fall back to global limit
-  const threshold = persistenceThreshold ?? MAX_TOOL_RESULT_BYTES
   if (size <= threshold) {
     return toolResultBlock
   }

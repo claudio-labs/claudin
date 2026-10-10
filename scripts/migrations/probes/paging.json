@@ -7,23 +7,33 @@
   "probes": [
     {
       "name": "page: cut mid-line instead of at a line boundary",
-      "find": "  const cut = text.length <= maxChars ? text.length : text.lastIndexOf('\\n', maxChars)\n",
-      "replace": "  const cut = Math.min(text.length, maxChars)\n"
+      "find": "  const cut = text.lastIndexOf('\\n', Math.min(maxChars, text.length))\n",
+      "replace": "  const cut = Math.min(maxChars, text.length)\n"
     },
     {
       "name": "page: the pointer names the last shown line instead of the next",
-      "find": "Read the file from line ${shownLines + 1} for the rest.",
-      "replace": "Read the file from line ${shownLines} for the rest."
+      "find": "Read the file with offset=${shownLines + 1} and limit=",
+      "replace": "Read the file with offset=${shownLines} and limit="
     },
     {
       "name": "page: the budget forgets the envelope, so the message passes the line",
-      "find": "  const budget = maxChars - frame(pointerFor(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER), '').length\n",
+      "find": "  const budget = maxChars - frame('', '').length - longest\n",
       "replace": "  const budget = maxChars\n"
     },
     {
-      "name": "page: an already-built page is paged again",
-      "find": "  if (typeof content === 'string' && content.startsWith(PERSISTED_OUTPUT_TAG)) {\n    return toolResultBlock\n  }\n",
-      "replace": "\n"
+      "name": "page: the budget sizes only the line-number pointer, so a long first line passes the line",
+      "find": "  const longest = Math.max(pointerFor(Number.MAX_SAFE_INTEGER, 0).length, pointerFor(0, Number.MAX_SAFE_INTEGER).length)\n",
+      "replace": "  const longest = pointerFor(Number.MAX_SAFE_INTEGER, 0).length\n"
+    },
+    {
+      "name": "page: a head's cut-short last line is counted as shown",
+      "find": "  if (complete && text.length <= maxChars) {\n",
+      "replace": "  if (text.length <= maxChars) {\n"
+    },
+    {
+      "name": "page: a repeated id reuses whatever file it named",
+      "find": "  const filepath = getToolResultPath(`${toolUseId}-${hash}`)\n",
+      "replace": "  const filepath = getToolResultPath(toolUseId)\n"
     },
     {
       "name": "page: text blocks are saved as JSON again",
@@ -31,10 +41,16 @@
       "replace": "      : JSON.stringify(content, null, 2)\n"
     },
     {
-      "name": "shell: the page is cut from the trimmed stdout, shifting line numbers",
+      "name": "shell: the page is cut from stdout, not the saved file",
       "source": "src/tools/shellToolResultMappers.ts",
-      "find": "      normalizedStdout,\n      BASH_MAX_OUTPUT_DEFAULT,\n",
-      "replace": "      trimmed,\n      BASH_MAX_OUTPUT_DEFAULT,\n"
+      "find": "      head ?? normalizedStdout,\n",
+      "replace": "      normalizedStdout,\n"
+    },
+    {
+      "name": "shell: the page forgets the lines after it",
+      "source": "src/tools/shellToolResultMappers.ts",
+      "find": "    const budget = SHELL_RESULT_MAX_CHARS - after.reduce((n, part) => n + part!.length + 1, 0)\n",
+      "replace": "    const budget = SHELL_RESULT_MAX_CHARS\n"
     }
   ]
 }
