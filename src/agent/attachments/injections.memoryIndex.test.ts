@@ -29,8 +29,10 @@ describe('toMemoryIndexSummary', () => {
     expect(toMemoryIndexSummary(memoryFile({})).entryCount).toBe(2)
   })
 
-  test('tags the team index as team and everything else as auto', () => {
-    expect(toMemoryIndexSummary(memoryFile({})).kind).toBe('auto')
+  test('tags each index with its scope: team, global, private', () => {
+    // A new summary says 'private'; 'auto' survives only in transcripts
+    // written before 2026-10-09 (MemoryIndexSummary.kind).
+    expect(toMemoryIndexSummary(memoryFile({})).kind).toBe('private')
     expect(
       toMemoryIndexSummary(
         memoryFile({
@@ -39,6 +41,14 @@ describe('toMemoryIndexSummary', () => {
         }),
       ).kind,
     ).toBe('team')
+    expect(
+      toMemoryIndexSummary(
+        memoryFile({
+          type: 'GlobalMem',
+          path: '/home/u/.claudin/memory/MEMORY.md',
+        }),
+      ).kind,
+    ).toBe('global')
   })
 
   test('totalEntryCount comes from rawContent — that is the truncation signal', () => {

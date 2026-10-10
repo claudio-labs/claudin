@@ -12,6 +12,7 @@ import { formatTokens } from 'src/shared/text/format.js'
 import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js'
 import { getSourceDisplayName } from 'src/platform/settings/constants.js'
 import { plural } from 'src/shared/text/stringUtils.js'
+import { describeContextMemoryFile } from 'src/agent/context/memoryFileLabel.js'
 
 /**
  * Shared data-collection path for `/context` (slash command) and the SDK
@@ -194,7 +195,7 @@ function formatContextAsMarkdownTable(data: ContextData): string {
     output += `| Type | Path | Tokens |\n`
     output += `|------|------|--------|\n`
     for (const file of memoryFiles) {
-      output += `| ${file.type} | ${file.path} | ${formatTokens(file.tokens)} |\n`
+      output += `| ${describeContextMemoryFile(file).typeColumn} | ${file.path} | ${formatTokens(file.tokens)} |\n`
     }
     output += `\n`
   }

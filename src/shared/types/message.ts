@@ -43,6 +43,7 @@ import type { z } from 'zod/v4'
 import type { Progress } from 'src/tools/Tool.js'
 import type { PermissionMode } from 'src/shared/types/permissions.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
+import type { MemoryScope } from 'src/memory/memdir/memoryScopes.js'
 import type {
   BranchAction,
   CommitKind,
@@ -285,6 +286,13 @@ export type SystemAwaySummaryMessage = SystemMessageBase & {
 export type SystemMemorySavedMessage = SystemMessageBase & {
   subtype: 'memory_saved'
   writtenPaths: string[]
+  /** How many of `writtenPaths` each memory directory holds; absent on a message that predates it. */
+  memoryCounts?: Partial<Record<MemoryScope, number>>
+  /**
+   * Read only: the team share a transcript saved before `memoryCounts`
+   * carries, the rest of its paths then unscoped. Nothing writes it now.
+   */
+  teamCount?: number
 }
 
 export type SystemAgentsKilledMessage = SystemMessageBase & {
@@ -426,9 +434,6 @@ export type CollapsedReadSearchGroup = {
   readCount: number
   listCount: number
   replCount: number
-  memorySearchCount: number
-  memoryReadCount: number
-  memoryWriteCount: number
   readFilePaths: string[]
   searchArgs: string[]
   latestDisplayHint: string | undefined
@@ -436,9 +441,12 @@ export type CollapsedReadSearchGroup = {
   displayMessage: CollapsibleMessage
   uuid: UUID
   timestamp: string
-  teamMemorySearchCount?: number
-  teamMemoryReadCount?: number
-  teamMemoryWriteCount?: number
+  /**
+   * Memory operations, per memory directory (memoryScopes.ts). A scope is
+   * present only when it saw activity, and the field only when one did. They
+   * are subtracted out of searchCount/readCount: a memory is not a file.
+   */
+  memoryOps?: Partial<Record<MemoryScope, { search: number; read: number; write: number }>>
   mcpCallCount?: number
   mcpServerNames?: string[]
   bashCount?: number

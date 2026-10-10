@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
-import { buildMemoryLines, buildMemoryStubLines } from 'src/memory/memdir/memdir.js'
+import { buildMemoryLines } from 'src/memory/memdir/memdir.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   MEMORY_TYPES,
@@ -8,6 +11,9 @@ import {
   renderTeamCategoriesCompact,
   renderTeamCategoriesXml,
   TEAM_CATEGORIES,
+  TYPE_SCOPES,
+  typeScope,
+  typesSectionCombined,
 } from 'src/memory/memdir/memoryTypes.js'
 import {
   buildCombinedMemoryPrompt,
@@ -15,10 +21,10 @@ import {
   buildMemoryWriteRules,
 } from 'src/memory/memdir/teamMemPrompts.js'
 import { getTeamMemPath } from 'src/memory/memdir/teamMemPaths.js'
-import {
-  buildExtractAutoOnlyPrompt,
-  buildExtractCombinedPrompt,
-} from 'src/memory/extract/prompts.js'
+import { getPrivateMemPath, getGlobalMemPath, isGlobalMemoryEnabled } from 'src/memory/memdir/paths.js'
+import { getProjectRoot, setProjectRoot } from 'src/platform/bootstrap/state.js'
+import { buildExtractCombinedPrompt } from 'src/memory/extract/prompts.js'
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
 
 const DIR = '/tmp/memdir-prompt-test/memory/'
 
@@ -85,23 +91,11 @@ describe('buildMemoryLines (private path)', () => {
   })
 })
 
-describe('buildMemoryStubLines (empty directory)', () => {
-  const text = buildMemoryStubLines('auto memory', DIR).join('\n')
-
-  test('asks for the same flat `type` key as the full prompt', () => {
-    // These two prompts serve the same directory at different times — the
-    // stub writes memory #1, buildMemoryLines writes #2 onward. They must
-    // agree on the frontmatter shape.
-    expect(text).toContain('and a `type` of one of')
-    expect(text).not.toContain('metadata.type')
-  })
-})
-
 describe('buildCombinedMemoryPrompt (private + team)', () => {
   // Resolves its own directories from paths.ts; this file only asserts on
   // wording, so the real paths are fine (teamMemPrompts.test.ts owns the
   // path-injection coverage).
-  const text = buildCombinedMemoryPrompt()
+  const text = buildCombinedMemoryPrompt(getMemoryDirs())
 
   test('explains the wikilink cue that the shared example shows', () => {
     // MEMORY_FRONTMATTER_EXAMPLE renders `[[their-name]]` in the body
@@ -152,10 +146,10 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
   // apply to it the same way. "Here" is what the model receives: the prompt
   // on every request, and the write rules with the refusal of a memory write
   // that breaks them (memoryFormatGuard.ts).
-  const text = buildLeanCombinedMemoryPrompt()
+  const text = buildLeanCombinedMemoryPrompt(getMemoryDirs())
   const rules = buildMemoryWriteRules(getTeamMemPath())
   const received = `${text}\n${rules}`
-  const full = buildCombinedMemoryPrompt()
+  const full = buildCombinedMemoryPrompt(getMemoryDirs())
 
   test('is shorter than the full prompt by at least a third', () => {
     expect(text.length).toBeLessThan(full.length * (2 / 3))
@@ -168,7 +162,8 @@ describe('buildLeanCombinedMemoryPrompt (the v2 text)', () => {
 
   test('names all four types with their scope', () => {
     for (const type of MEMORY_TYPES) expect(text).toContain(`\`${type}\``)
-    expect(text).toContain('always private')
+    // Who the user is goes where every project reads it, while that dir is on.
+    expect(text).toContain(isGlobalMemoryEnabled() ? 'always global' : 'always private')
     expect(text).toContain('**Why:** and **How to apply:**')
   })
 
@@ -234,12 +229,132 @@ describe('TEAM_CATEGORIES', () => {
 })
 
 describe('extraction prompts', () => {
-  test('the combined prompt ships the team categories; the auto-only one does not', () => {
-    // Under `bun test` feature('TEAMMEM') is false, so the combined builder
-    // falls back to auto-only — assert on the parts that do not depend on it.
-    const autoOnly = buildExtractAutoOnlyPrompt(12, '')
-    expect(autoOnly).toContain('`paths:`')
-    expect(autoOnly).not.toContain('## Team categories')
-    expect(buildExtractCombinedPrompt(12, '')).toContain('`paths:`')
+  test('the extraction prompt ships the team categories and `paths:`', () => {
+    const prompt = buildExtractCombinedPrompt(12, '')
+    expect(prompt).toContain('`paths:`')
+    expect(prompt).toContain('## Team categories')
+    expect(prompt).toContain(typesSectionCombined(false).join('\n'))
+  })
+
+  test('with the global dir it takes the global scopes and says where each memory goes', () => {
+    const GLOBAL = '/home/u/.claudin/memory/'
+    const prompt = buildExtractCombinedPrompt(12, '', undefined, GLOBAL)
+    expect(prompt).toContain(typesSectionCombined(true).join('\n'))
+    expect(prompt).toContain(`global — \`${GLOBAL}\` — private, team root`)
+    expect(prompt).toContain('Each directory (global, private and team) has its own `MEMORY.md` index')
+    expect(prompt).toContain('never to a global memory')
+    expect(buildExtractCombinedPrompt(12, '')).not.toContain('never to a global memory')
+  })
+
+  test('the extraction hands it the dir', () => {
+    // Asserted on the SOURCE: the extraction needs a forked agent.
+    const extract = readFileSync(new URL('../extract/extractMemories.ts', import.meta.url), 'utf8')
+    expect(extract).toContain("const globalDir = getMemoryDir('global')?.root ?? null")
+    expect(extract.match(/loopHint,\n\s+globalDir,\n/g)).toHaveLength(1)
+  })
+})
+
+// GLOBAL_SCOPE_LINES (a map of line replacements over TYPES_SECTION_COMBINED)
+// is gone: typesSectionCombined renders each type's <scope> from TYPE_SCOPES.
+describe('typesSectionCombined — the scopes come from TYPE_SCOPES', () => {
+  for (const hasGlobal of [true, false]) {
+    test(`renders typeScope(type, ${hasGlobal}) as every type's <scope>`, () => {
+      const text = typesSectionCombined(hasGlobal).join('\n')
+      for (const type of MEMORY_TYPES) {
+        expect(text).toContain(`<scope>${typeScope(type, hasGlobal)}.`)
+      }
+    })
+  }
+
+  test('with the global dir, the examples save who the user is and terse-answers feedback there', () => {
+    const text = typesSectionCombined(true).join('\n')
+    expect(text).toContain('[saves global user memory: user is a data scientist')
+    expect(text).toContain('[saves global feedback memory: this user wants terse responses')
+    expect(text).toContain('Private, not global: it would not hold in an unrelated repo')
+    expect(text).not.toContain(`<scope>${TYPE_SCOPES.user.withoutGlobal}.`)
+  })
+
+  test('without it, nothing says "global"', () => {
+    const text = typesSectionCombined(false).join('\n')
+    expect(text).not.toContain('global')
+    expect(text).toContain('[saves private user memory:')
+  })
+})
+
+describe('the system prompts render typeScope(type, hasGlobal) for every type', () => {
+  // Both builders resolve the session's directories, so they run against a
+  // fresh git project and config home, and CLAUDIN_GLOBAL_MEMORY flips the
+  // global dir on and off.
+  const ENV_KEYS = [
+    'CLAUDIN_CONFIG_DIR',
+    'CLAUDIN_DISABLE_AUTO_MEMORY',
+    'CLAUDIN_GLOBAL_MEMORY',
+    'CLAUDIN_SIMPLE',
+    'CLAUDE_COWORK_MEMORY_PATH_OVERRIDE',
+  ] as const
+  const savedEnv = new Map<string, string | undefined>()
+  let previousProjectRoot: string
+  let root: string
+
+  beforeAll(() => {
+    for (const key of ENV_KEYS) savedEnv.set(key, process.env[key])
+    for (const key of ENV_KEYS) delete process.env[key]
+    root = mkdtempSync(join(tmpdir(), 'mem-prompt-scopes-'))
+    mkdirSync(join(root, 'project', '.git'), { recursive: true })
+    process.env.CLAUDIN_CONFIG_DIR = join(root, 'config')
+    previousProjectRoot = getProjectRoot()
+    setProjectRoot(join(root, 'project'))
+    getPrivateMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+  })
+
+  afterAll(() => {
+    setProjectRoot(previousProjectRoot)
+    getPrivateMemPath.cache.clear?.()
+    getGlobalMemPath.cache.clear?.()
+    for (const key of ENV_KEYS) {
+      const value = savedEnv.get(key)
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  for (const hasGlobal of [true, false]) {
+    test(`global ${hasGlobal ? 'on' : 'off'}: the lean and the full prompt`, () => {
+      if (hasGlobal) delete process.env.CLAUDIN_GLOBAL_MEMORY
+      else process.env.CLAUDIN_GLOBAL_MEMORY = '0'
+      try {
+        expect(isGlobalMemoryEnabled()).toBe(hasGlobal)
+        const lean = buildLeanCombinedMemoryPrompt(getMemoryDirs())
+        const full = buildCombinedMemoryPrompt(getMemoryDirs())
+        for (const type of MEMORY_TYPES) {
+          expect(lean).toContain(`\`${type}\` (${typeScope(type, hasGlobal)} — `)
+          expect(full).toContain(`- \`${type}\` (${typeScope(type, hasGlobal)}) — `)
+        }
+        // The full prompt no longer adds a "(private or team)" of its own.
+        expect(full).not.toContain('(private or team)')
+        if (!hasGlobal) {
+          expect(lean).not.toContain('global')
+          expect(full).not.toContain('global')
+        }
+      } finally {
+        delete process.env.CLAUDIN_GLOBAL_MEMORY
+      }
+    })
+  }
+})
+
+describe('the extraction prompt and the global dir', () => {
+  test('with it, says the global dir only takes additions — the gate refuses the rest', () => {
+    const prompt = buildExtractCombinedPrompt(12, '', undefined, '/home/u/.claudin/memory/')
+    expect(prompt).toContain('add a memory there, or add to one, but never delete, shrink or rewrite one — a write that does is refused')
+    expect(prompt).toContain('- Update or remove memories that turn out to be wrong or outdated (in the private and team dirs)')
+  })
+
+  test('without it, neither line', () => {
+    const prompt = buildExtractCombinedPrompt(12, '')
+    expect(prompt).not.toContain('never delete, shrink or rewrite')
+    expect(prompt).toContain('- Update or remove memories that turn out to be wrong or outdated\n')
   })
 })

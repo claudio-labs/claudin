@@ -1,5 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import React, { useRef } from 'react';
 import { useMinDisplayTime } from 'src/terminal/hooks/useMinDisplayTime.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
@@ -20,10 +19,8 @@ import { PrBadge } from 'src/platform/status/PrBadge.js';
 import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import { formatMemoryRecallCounts } from 'src/agent/ui/messages/memoryRecallLine.js';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemCollapsed = feature('TEAMMEM') ? require('src/agent/ui/messages/teamMemCollapsed.js') as typeof import('src/agent/ui/messages/teamMemCollapsed.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
+import { MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 
 // Hold each ⤿ hint for a minimum duration so fast-completing tool calls
 // (bash commands, file reads, search patterns) are actually readable instead
@@ -183,21 +180,20 @@ export function CollapsedReadSearchContent({
     readCount: rawReadCount,
     listCount: rawListCount,
     replCount,
-    memorySearchCount,
-    memoryReadCount,
-    memoryWriteCount,
     messages: groupMessages
   } = message;
   const [theme] = useTheme();
   const toolUseIds = getToolUseIdsFromCollapsedGroup(message);
   const anyError = toolUseIds.some(id => lookups.erroredToolUseIDs.has(id));
-  const hasMemoryOps = memorySearchCount > 0 || memoryReadCount > 0 || memoryWriteCount > 0;
-  const hasTeamMemoryOps = feature('TEAMMEM') ? teamMemCollapsed!.checkHasTeamMemOps(message) : false;
+  const memoryOps = message.memoryOps;
+  const hasMemoryOps = MEMORY_SCOPES.some(scope => {
+    const ops = memoryOps?.[scope];
+    return ops !== undefined && (ops.search > 0 || ops.read > 0 || ops.write > 0);
+  });
   // Memories recalled into context leave the badge for their own "Loaded …"
   // line below — the shape the rules batch and the MEMORY.md index line
   // already use for anything that entered context on its own.
-  const teamMemoryReadCount = feature('TEAMMEM') ? teamMemCollapsed!.getTeamMemoryReadCount(message) : 0;
-  const recalledCounts = formatMemoryRecallCounts(memoryReadCount, teamMemoryReadCount);
+  const recalledCounts = formatMemoryRecallCounts(memoryOps);
 
   // Track the max seen counts so they only ever increase. The debounce timer
   // causes extra re-renders at arbitrary times; during a brief "invisible window"
@@ -314,7 +310,7 @@ export function CollapsedReadSearchContent({
 
   // Defensive: If all counts are 0, don't render the collapsed group
   // This shouldn't happen in normal operation, but handles edge cases
-  if (!hasMemoryOps && !hasTeamMemoryOps && !hasNonMemoryOps) {
+  if (!hasMemoryOps && !hasNonMemoryOps) {
     return null;
   }
 
@@ -475,51 +471,47 @@ export function CollapsedReadSearchContent({
       </Text>);
   }
 
-  // Build memory parts (auto-memory) — rendered after nonMemParts
-  // Reads are not among them: a recalled memory is a context load, so it gets
-  // its own "Loaded …" line below instead of a verb on this line.
+  // Build memory parts, one scope at a time in MEMORY_SCOPES order (global,
+  // private, team) — rendered after nonMemParts. Reads are not among them: a
+  // recalled memory is a context load, so it gets its own "Loaded …" line
+  // below instead of a verb on this line.
   const hasPrecedingNonMem = nonMemParts.length > 0;
   const memParts: React.ReactNode[] = [];
-  if (memorySearchCount > 0) {
-    const isFirst_6 = !hasPrecedingNonMem && memParts.length === 0;
-    const verb_3 = isActiveGroup ? isFirst_6 ? 'Searching' : 'searching' : isFirst_6 ? 'Searched' : 'searched';
-    if (!isFirst_6) {
-      memParts.push(<Text key="comma-ms">, </Text>);
-    }
-    memParts.push(<Text key="mem-search">{`${verb_3} memories`}</Text>);
-  }
-  if (memoryWriteCount > 0) {
-    const isFirst_7 = !hasPrecedingNonMem && memParts.length === 0;
-    const verb_4 = isActiveGroup ? isFirst_7 ? 'Writing' : 'writing' : isFirst_7 ? 'Wrote' : 'wrote';
-    if (!isFirst_7) {
-      memParts.push(<Text key="comma-mw">, </Text>);
-    }
-    memParts.push(<Text key="mem-write">
-        {verb_4} <Text bold>{memoryWriteCount}</Text>{' '}
-        {memoryWriteCount === 1 ? 'memory' : 'memories'}
+  function pushMemPart(key: string, active: string, done: string, body: React.ReactNode): void {
+    const isFirst = !hasPrecedingNonMem && memParts.length === 0;
+    const verb = isActiveGroup ? active : done;
+    if (!isFirst) memParts.push(<Text key={`comma-${key}`}>, </Text>);
+    memParts.push(<Text key={key}>
+        {isFirst ? verb[0]!.toUpperCase() + verb.slice(1) : verb} {body}
       </Text>);
+  }
+  for (const scope of MEMORY_SCOPES) {
+    const ops = memoryOps?.[scope];
+    if (!ops) continue;
+    if (ops.search > 0) {
+      pushMemPart(`${scope}-mem-search`, 'searching', 'searched', `${scope} memories`);
+    }
+    if (ops.write > 0) {
+      pushMemPart(`${scope}-mem-write`, 'writing', 'wrote', <>
+          <Text bold>{ops.write}</Text> {scope} {plural(ops.write, 'memory', 'memories')}
+        </>);
+    }
   }
   // The visible write rows and the column the +/− numbers line up in.
   const shownWriteStats = writeStats.slice(0, MAX_WRITE_ROWS);
   const writePathWidth = shownWriteStats.reduce((max, stat) => Math.max(max, getDisplayPath(stat.path).length), 0);
   const hasWriteTotals = writeAdditions > 0 || writeDeletions > 0;
-  const teamMemParts = feature('TEAMMEM') ? teamMemCollapsed!.TeamMemCountParts({
-    message,
-    isActiveGroup,
-    hasPrecedingParts: hasPrecedingNonMem || memParts.length > 0
-  }) : null;
   // Every memory read is subtracted out of readCount (collapseReadSearch.ts),
   // so a group of nothing but recalls has no badge left to render. The
   // "Loaded …" line stands on its own then, exactly as a rules line does, and
   // takes over the expand hint the badge would have carried.
-  const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0 || teamMemParts !== null;
+  const hasBadgeParts = nonMemParts.length > 0 || memParts.length > 0;
   return <Box flexDirection="column" marginTop={1} backgroundColor={bg}>
       {hasBadgeParts && <Box flexDirection="row">
         {isActiveGroup ? <ToolUseLoader shouldAnimate isUnresolved isError={anyError} /> : <Box minWidth={2} />}
         <Text dimColor={!isActiveGroup}>
           {nonMemParts}
           {memParts}
-          {teamMemParts}
           {slowestShellSeconds !== undefined && <ShellGroupElapsedTime elapsedTimeSeconds={slowestShellSeconds} />}
           {isActiveGroup && <Text key="ellipsis">…</Text>}
           {/* Kept inside this Text, not as a sibling: a row Box gives each Text

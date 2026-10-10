@@ -57,3 +57,15 @@ test('scanMemoryFiles does not return .md files nested beyond max depth', async 
   // The deeply nested file must not appear
   expect(filenames.some(f => f.includes('deep.md'))).toBe(false)
 })
+
+test('recursive: false reads only the directory own files, not a nested team dir', async () => {
+  tempDir = await mkdtemp(join(tmpdir(), 'memoryScan-'))
+  await mkdir(join(tempDir, 'team'), { recursive: true })
+  await writeFile(join(tempDir, 'mine.md'), '---\ntype: user\n---\n')
+  await writeFile(join(tempDir, 'team', 'theirs.md'), '---\ntype: project\n---\n')
+
+  const own = await scanMemoryFiles(tempDir, new AbortController().signal, { recursive: false })
+  expect(own.map(r => r.filename)).toEqual(['mine.md'])
+  const all = await scanMemoryFiles(tempDir, new AbortController().signal)
+  expect(all.map(r => r.filename).sort()).toEqual(['mine.md', join('team', 'theirs.md')])
+})

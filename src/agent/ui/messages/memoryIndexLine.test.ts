@@ -32,12 +32,33 @@ describe('formatMemoryIndexCounts', () => {
     )
   })
 
+  test('the global index is named global and leads: general to specific', () => {
+    expect(
+      formatMemoryIndexCounts([index('team', 121), index('auto', 16), index('global', 4)]),
+    ).toBe(
+      'global memories index (4 entries), private memories index (16 entries), team memories index (121 entries)',
+    )
+  })
+
+  // A summary written since 2026-10-09 says 'private'; 'auto' is what a
+  // resumed older transcript carries. Both read as the private index.
+  test("'private' and a resumed transcript's 'auto' name the same index, in the same place", () => {
+    const fresh = formatMemoryIndexCounts([index('team', 121), index('private', 16), index('global', 4)])
+    expect(fresh).toBe(
+      'global memories index (4 entries), private memories index (16 entries), team memories index (121 entries)',
+    )
+    expect(formatMemoryIndexCounts([index('team', 121), index('auto', 16), index('global', 4)])).toBe(fresh)
+  })
+
   test('one index alone is the whole clause', () => {
     expect(formatMemoryIndexCounts([index('auto', 4)])).toBe(
       'private memories index (4 entries)',
     )
     expect(formatMemoryIndexCounts([index('team', 9)])).toBe(
       'team memories index (9 entries)',
+    )
+    expect(formatMemoryIndexCounts([index('global', 2)])).toBe(
+      'global memories index (2 entries)',
     )
   })
 

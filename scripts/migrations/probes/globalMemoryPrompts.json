@@ -1,0 +1,85 @@
+{
+  "test": [
+    "src/memory/memdir/teamMemPrompts.test.ts",
+    "src/memory/memdir/memoryPrompt.test.ts",
+    "src/memory/memdir/loadMemoryPrompt.global.test.ts",
+    "src/memory/memdir/memoryFormatGuard.test.ts"
+  ],
+  "source": "src/memory/memdir/teamMemPrompts.ts",
+  "probes": [
+    {
+      "name": "the prompts follow the global dir switch",
+      "find": "    globalDir: dirRoot(dirs, 'global'),\n",
+      "replace": "    globalDir: null,\n"
+    },
+    {
+      "name": "the v2 prompt names the global dir",
+      "find": "a global one at \\`${globalDir}\\`, yours and this user's in every project; ",
+      "replace": ""
+    },
+    {
+      "name": "the v2 types line sends user memories to the global dir",
+      "find": "(${typeScope(type, hasGlobal)} — ${LEAN_TYPE_HOLDS[type]})",
+      "replace": "(${typeScope(type, false)} — ${LEAN_TYPE_HOLDS[type]})"
+    },
+    {
+      "name": "three indexes are in context, not two",
+      "find": "  return globalDir ? 'three' : 'two'\n",
+      "replace": "  return 'two'\n"
+    },
+    {
+      "name": "the empty note counts three",
+      "find": "const EMPTY_INDEXES_NOTE_THREE = ' All three are empty — nothing is saved yet.'\n",
+      "replace": "const EMPTY_INDEXES_NOTE_THREE = ' Both are empty — nothing is saved yet.'\n"
+    },
+    {
+      "name": "the full prompt keeps paths: off global memories",
+      "find": "      (globalDir ? ', never to a global memory.' : '.'),\n",
+      "replace": "      '.',\n"
+    },
+    {
+      "name": "the full prompt sends user memories to the global dir",
+      "find": "(${typeScope(type, globalDir !== null)}) — ${FULL_TYPE_HOLDS[type]}",
+      "replace": "(${typeScope(type, false)}) — ${FULL_TYPE_HOLDS[type]}"
+    },
+    {
+      "name": "the write rules say what the global dir takes",
+      "find": "    ...(globalDir === null ? [] : ['', globalDirRule(globalDir)]),\n",
+      "replace": ""
+    },
+    {
+      "name": "the guard's refusal carries the global rule",
+      "source": "src/memory/memdir/memoryFormatGuard.ts",
+      "find": "  return buildMemoryWriteRules(rootOf(dirs, 'team') ?? '', rootOf(dirs, 'global'))\n",
+      "replace": "  return buildMemoryWriteRules(rootOf(dirs, 'team') ?? '')\n"
+    },
+    {
+      "name": "the v2 search line covers the global dir",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "        : `\\`${memSearch}\\`, and \\`${globalSearch}\\` for the global one`\n",
+      "replace": "        : `\\`${memSearch}\\``\n"
+    },
+    {
+      "name": "the full search section covers the global dir",
+      "source": "src/memory/memdir/memdir.ts",
+      "find": "    ...(globalSearch === null ? [] : [globalSearch]),\n",
+      "replace": ""
+    },
+    {
+      "name": "the global dir is created 0700",
+      "source": "src/memory/memdir/memoryScopes.ts",
+      "find": "    dirMode: 0o700,\n",
+      "replace": ""
+    },
+    {
+      "name": "the write rules quote TYPE_SCOPES for what the global dir takes",
+      "find": "`\\`${type}\\` (${TYPE_SCOPES[type].withGlobal})`",
+      "replace": "`\\`${type}\\` (${TYPE_SCOPES[type].withoutGlobal})`"
+    },
+    {
+      "name": "a team dir outside the project's git root is not called git-tracked",
+      "find": "    teamGitRoot: gitRoot && teamDir.startsWith(gitRoot + sep) ? gitRoot : null,\n",
+      "replace": "    teamGitRoot: gitRoot ?? '/',\n"
+    }
+  ]
+}

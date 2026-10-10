@@ -3,7 +3,8 @@
     "src/memory/memdir/memoryFormatGuard.test.ts",
     "src/memory/memdir/teamMemPrompts.test.ts",
     "src/memory/memdir/memoryPrompt.test.ts",
-    "src/agent/tools/toolOrchestration.test.ts"
+    "src/agent/tools/toolOrchestration.test.ts",
+    "src/tools/FileEditTool/FileEditTool.memoryGuard.test.ts"
   ],
   "source": "src/memory/memdir/memoryFormatGuard.ts",
   "probes": [
@@ -14,18 +15,18 @@
     },
     {
       "name": "a user memory in the team dir is refused",
-      "find": "  } else if (file.scope === 'team' && type === 'user') {\n",
-      "replace": "  } else if (file.scope === 'team' && type === ('user' as string) && false) {\n"
+      "find": "  if (TYPE_SCOPES[type].global === 'only' && file.scope === 'team') {\n",
+      "replace": "  if (false) {\n"
     },
     {
       "name": "an index is never checked as a memory",
-      "find": "  if (extname(abs) !== '.md' || basename(abs) === INDEX_NAME) return null\n",
+      "find": "  if (extname(abs) !== '.md' || basename(abs) === ENTRYPOINT_NAME) return null\n",
       "replace": "  if (extname(abs) !== '.md') return null\n"
     },
     {
       "name": "a category applies only directly inside its subdirectory",
-      "find": "      category: category && dirname(abs) === join(dirs.teamDir, category.dir) ? category : undefined,\n",
-      "replace": "      category,\n"
+      "find": "    category: category && dirname(abs) === join(dir.root, category.dir) ? category : undefined,\n",
+      "replace": "    category,\n"
     },
     {
       "name": "the advice reads the index before it advises",
@@ -34,13 +35,13 @@
     },
     {
       "name": "the guard stops refusing",
-      "find": "  return checkMemoryFileFormatIn(currentMemoryDirs(), filePath, content)\n",
+      "find": "  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content, readIfExists)\n",
       "replace": "  return null\n"
     },
     {
       "name": "a refusal stops carrying the rules",
-      "find": "    : `${refusal}\\n\\nThe rules for memory files:\\n\\n${memoryWriteRules(dirs.teamDir)}`\n",
-      "replace": "    : refusal\n"
+      "find": "  return `${refusal}\\n\\nThe rules for memory files:\\n\\n${memoryWriteRules(dirs)}`\n",
+      "replace": "  return refusal\n"
     },
     {
       "name": "a Patch's own index line counts",
@@ -91,8 +92,8 @@
     {
       "name": "the prompt takes the links line back from the rules",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    leanTypesLine(),\n",
-      "replace": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    LEAN_LINKS_LINE,\n    '',\n    leanTypesLine(),\n"
+      "find": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    leanTypesLine(globalDir !== null),\n",
+      "replace": "    ...MEMORY_FRONTMATTER_EXAMPLE,\n    '',\n    LEAN_LINKS_LINE,\n    '',\n    leanTypesLine(globalDir !== null),\n"
     },
     {
       "name": "the prompt drops the secrets rule",
@@ -115,8 +116,103 @@
     {
       "name": "the types line takes the feedback Why/How clause back",
       "source": "src/memory/memdir/teamMemPrompts.ts",
-      "find": "`feedback` (how to work, from corrections and confirmed approaches; team only for a project-wide convention)",
-      "replace": "`feedback` (how to work, from corrections and confirmed approaches; lead with the rule, then **Why:** and **How to apply:**; team only for a project-wide convention)"
+      "find": "  feedback: 'how to work, from corrections and confirmed approaches',\n",
+      "replace": "  feedback: 'how to work, from corrections and confirmed approaches; lead with the rule, then **Why:** and **How to apply:**',\n"
+    },
+    {
+      "name": "a file in the global dir is a global memory",
+      "find": "  const dir = findMemoryDir(dirs, abs)\n",
+      "replace": "  const dir = findMemoryDir(dirs.filter(d => d.scope !== 'global'), abs)\n"
+    },
+    {
+      "name": "a user memory outside the global dir is sent there",
+      "find": "  if (TYPE_SCOPES[type].global === 'only' && file.scope !== 'global' && globalDir) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a project memory in the global dir is refused",
+      "find": "  if (file.scope === 'global' && TYPE_SCOPES[type].global === 'never') {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "a global memory with paths: is refused",
+      "find": "    !MEMORY_SCOPE_SPECS[file.scope].takesPaths &&\n",
+      "replace": "    false &&\n"
+    },
+    {
+      "name": "a misplaced-type refusal quotes TYPE_SCOPES' withGlobal",
+      "find": "is ${TYPE_SCOPES[type].withGlobal} — write it under \\`${globalDir}\\` instead",
+      "replace": "is ${TYPE_SCOPES[type].withoutGlobal} — write it under \\`${globalDir}\\` instead"
+    },
+    {
+      "name": "a misplaced user memory is told to mv an old file, or /memory sort",
+      "find": "; if this file was saved here before the global dir existed, move it there with \\`mv\\` and move its index line (\\`/memory sort\\` moves them all, if the user runs it)",
+      "replace": ""
+    },
+    {
+      "name": "placement is judged only for a new or retyped file: a legacy file stays updatable",
+      "find": "  const placed = before === null || before.type !== type\n",
+      "replace": "  const placed = true\n"
+    },
+    {
+      "name": "a retype is placed anew",
+      "find": "  const placed = before === null || before.type !== type\n",
+      "replace": "  const placed = before === null\n"
+    },
+    {
+      "name": "the wrapper reads the file on disk for its previous type",
+      "find": "  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content, readIfExists)\n",
+      "replace": "  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content)\n"
+    },
+    {
+      "name": "`paths:` added to an existing memory is refused where the dir takes none",
+      "find": "    (placed || !before?.hasPaths)\n",
+      "replace": "    placed\n"
+    },
+    {
+      "name": "`paths:` already on an existing memory is kept",
+      "find": "    (placed || !before?.hasPaths)\n",
+      "replace": "    true\n"
+    },
+    {
+      "name": "a team category file keeps the type it was saved with",
+      "find": "  if (file.category && type !== file.category.type) {\n",
+      "replace": "  if (false) {\n"
+    },
+    {
+      "name": "the guard asks for the file on disk only of a memory file",
+      "find": "  const file = memoryFileOf(filePath, dirs)\n  if (!file) return null\n  const problems = formatProblems(file, content, dirs, beforeOf(file.abs, existing(file.abs)))\n",
+      "replace": "  const disk = existing(resolve(filePath))\n  const file = memoryFileOf(filePath, dirs)\n  if (!file) return null\n  const problems = formatProblems(file, content, dirs, beforeOf(file.abs, disk))\n"
+    },
+    {
+      "name": "an Edit of an existing memory file is checked as the file it leaves",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "    if (!verdict.result) {\n      return verdict\n    }\n",
+      "replace": ""
+    },
+    {
+      "name": "an Edit is checked with the replacement it makes, not the file before it",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "          : preserveQuoteStyle(old_string, actualOldString, new_string),\n",
+      "replace": "          : new_string.toUpperCase(),\n"
+    },
+    {
+      "name": "an Edit that creates a memory file gets the index advice",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "    if (input.old_string !== '') return null\n",
+      "replace": "    return null\n"
+    },
+    {
+      "name": "an Edit that changes a file gets no index advice",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "    if (input.old_string !== '') return null\n",
+      "replace": ""
+    },
+    {
+      "name": "the Edit advice counts the rest of the response",
+      "source": "src/tools/FileEditTool/FileEditTool.ts",
+      "find": "      expandPath(input.file_path),\n      indexTextFromResponse(context.responseToolUses, getCwd()),\n",
+      "replace": "      expandPath(input.file_path),\n      new Map(),\n"
     }
   ]
 }

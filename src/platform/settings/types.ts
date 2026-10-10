@@ -875,13 +875,19 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe(
-          'Custom directory path for auto-memory storage. Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings (checked-in .claude/settings.json) for security. When unset, defaults to ~/.claude/projects/<sanitized-cwd>/memory/.',
+          "Custom directory for this project's private auto-memory (what Claudin learned in this project, for you only). Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings or settings.local.json, which live in the repo, for security. When unset, defaults to <project>/.claudin/memory/ in a git project (see autoMemoryProjectLocal), otherwise to the legacy per-project location under the config home, ~/.claudin/projects/<sanitized-project-root>/memory/. The global memory shared by every project is autoMemoryGlobalDirectory.",
         ),
       autoMemoryProjectLocal: z
         .boolean()
         .optional()
         .describe(
-          'When true (the default), auto-memory for a git project defaults to <project>/.claudin/memory/ instead of the global ~/.claudin/projects/<sanitized-cwd>/memory/. Set to false to force the legacy global-only location. Ignored if set in projectSettings for security, same as autoMemoryDirectory.',
+          "When true (the default), a git project's private auto-memory defaults to <project>/.claudin/memory/ instead of the legacy per-project location under the config home, ~/.claudin/projects/<sanitized-project-root>/memory/. Set to false to force that legacy location. Does not affect the global memory (~/.claudin/memory/, see autoMemoryGlobalDirectory). Ignored if set in projectSettings or settings.local.json for security, same as autoMemoryDirectory.",
+        ),
+      autoMemoryGlobalDirectory: z
+        .string()
+        .optional()
+        .describe(
+          'Custom directory for the global memory, the one shared by every project (who the user is, feedback that applies anywhere). Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings or settings.local.json for security, same as autoMemoryDirectory. When unset, defaults to ~/.claudin/memory/ — not the legacy per-project location under the config home (~/.claudin/projects/<…>/memory/), which holds one project\'s private memory. Must not contain or sit inside the private memory directory, or the global memory turns off. CLAUDIN_GLOBAL_MEMORY=0 turns it off as well.',
         ),
       autoDreamEnabled: z
         .boolean()

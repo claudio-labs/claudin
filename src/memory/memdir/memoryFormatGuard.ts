@@ -1,16 +1,27 @@
-import { feature } from 'bun:bundle'
 import { readFileSync } from 'fs'
 import { basename, dirname, extname, join, relative, resolve } from 'path'
 import {
   MEMORY_TYPES,
+  type MemoryType,
   parseMemoryType,
   type TeamCategory,
   teamCategoryForPath,
+  TYPE_SCOPES,
 } from 'src/memory/memdir/memoryTypes.js'
-import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import {
+  findMemoryDir,
+  getMemoryDirs,
+  type MemoryDir,
+} from 'src/memory/memdir/memoryDirs.js'
+import {
+  ENTRYPOINT_NAME,
+  MEMORY_SCOPE_SPECS,
+  type MemoryScope,
+} from 'src/memory/memdir/memoryScopes.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { FRONTMATTER_REGEX, parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import type { ToolAdvice } from 'src/tools/Tool.js'
+import { PATCH_FILE_HEADER_RE, PATCH_MOVE_RE } from 'src/tools/shared/writtenPaths.js'
 
 /*
  * Since 2026-09-29 (team memory `claude-code-2.1.284-wire-diff`) the v2
@@ -21,28 +32,29 @@ import type { ToolAdvice } from 'src/tools/Tool.js'
  *
  *  - checkMemoryFileFormat refuses a memory file whose frontmatter misses what
  *    its place requires, and the refusal carries those rules. It sits beside
- *    checkTeamMemSecrets on the four write paths (FileWriteTool, FileEditTool
- *    when the edit creates the file, applyPatch, stagedWrite).
- *  - memoryIndexAdvice notes, after a Write or a Patch, a memory file its
- *    directory's `MEMORY.md` does not list yet — counting what the rest of
- *    the same response writes to that index (indexTextFromResponse).
+ *    checkTeamMemSecrets on the four write paths (FileWriteTool, FileEditTool,
+ *    applyPatch, stagedWrite), and every one of them hands it the whole file
+ *    as it will be — so one file gets one verdict, whichever tool writes it.
+ *    Where a type may live is judged only for a file that is new or changes
+ *    its type: a memory saved before a rule existed is updated in place.
+ *  - memoryIndexAdvice notes, after a Write, a Patch or an Edit that creates
+ *    the file, a memory file its directory's `MEMORY.md` does not list yet —
+ *    counting what the rest of the same response writes to that index
+ *    (indexTextFromResponse).
  *
  * Both apply to every family: another family's prompt states the same rules
  * in full, and the guard asks for nothing it does not.
  *
  * The pure halves (`…In`) take the directories as arguments, so they are
- * tested without the path modules; the wrappers resolve them. The team dir is
- * resolved under feature('TEAMMEM') only, as the secret guard does.
+ * tested without the path modules; the wrappers resolve them.
  */
 
-/** Where the memory directories are; `teamDir` is null when team memory is compiled out. */
-export type MemoryDirs = { autoDir: string; teamDir: string | null }
+/** The memory directories the guard judges by (memoryDirs.ts getMemoryDirs). */
+export type MemoryDirs = readonly MemoryDir[]
 
-/**
- * memdir.ts ENTRYPOINT_NAME. The literal keeps memdir.ts, and what it
- * imports, out of the write tools' import graph (memoryScan.ts does the same).
- */
-const INDEX_NAME = 'MEMORY.md'
+function rootOf(dirs: MemoryDirs, scope: MemoryScope): string | null {
+  return dirs.find(dir => dir.scope === scope)?.root ?? null
+}
 
 /** Extra frontmatter a category requires beyond its `type`, as its TEAM_CATEGORIES text states it. */
 type CategoryField = { key: string; what: string; values?: readonly string[] }
@@ -64,7 +76,7 @@ export const CATEGORY_FIELDS: Readonly<Record<TeamCategory['dir'], readonly Cate
 /** A file the guard applies to: which memory directory it belongs to, and its category when it is a team one. */
 type MemoryFile = {
   abs: string
-  scope: 'private' | 'team'
+  scope: MemoryScope
   /** The directory whose `MEMORY.md` indexes it. */
   root: string
   category: TeamCategory | undefined
@@ -72,27 +84,22 @@ type MemoryFile = {
 
 /**
  * The memory file at `filePath`, or null for anything else: a non-`.md`
- * file, an index, a path outside both directories. The same prefix tests as
- * isTeamMemPath / isAutoMemPath, team first — the team dir sits inside the
- * private one. A category applies only to a file directly in its
+ * file, an index, a path outside the directories. Its directory is the one
+ * findMemoryDir picks. A category applies only to a file directly in its
  * subdirectory of the team dir.
  */
 function memoryFileOf(filePath: string, dirs: MemoryDirs): MemoryFile | null {
   const abs = resolve(filePath)
-  if (extname(abs) !== '.md' || basename(abs) === INDEX_NAME) return null
-  if (dirs.teamDir !== null && abs.startsWith(dirs.teamDir)) {
-    const category = teamCategoryForPath(abs)
-    return {
-      abs,
-      scope: 'team',
-      root: dirs.teamDir,
-      category: category && dirname(abs) === join(dirs.teamDir, category.dir) ? category : undefined,
-    }
+  if (extname(abs) !== '.md' || basename(abs) === ENTRYPOINT_NAME) return null
+  const dir = findMemoryDir(dirs, abs)
+  if (dir === null) return null
+  const category = dir.scope === 'team' ? teamCategoryForPath(abs) : undefined
+  return {
+    abs,
+    scope: dir.scope,
+    root: dir.root,
+    category: category && dirname(abs) === join(dir.root, category.dir) ? category : undefined,
   }
-  if (abs.startsWith(dirs.autoDir)) {
-    return { abs, scope: 'private', root: dirs.autoDir, category: undefined }
-  }
-  return null
 }
 
 function isFilled(value: unknown): boolean {
@@ -101,8 +108,46 @@ function isFilled(value: unknown): boolean {
 
 const TYPE_CHOICES = MEMORY_TYPES.join(' | ')
 
-/** What the frontmatter of `file` misses, one phrase each; empty when it is complete. */
-function formatProblems(file: MemoryFile, content: string, autoDir: string): string[] {
+/** What a memory file already on disk says of itself; null for a file the write creates. */
+type Before = { type: MemoryType | undefined; hasPaths: boolean } | null
+
+function beforeOf(abs: string, text: string | null): Before {
+  if (text === null) return null
+  const { frontmatter } = parseFrontmatter(text, abs)
+  return { type: parseMemoryType(frontmatter.type), hasPaths: isFilled(frontmatter.paths) }
+}
+
+/**
+ * Why `type` may not live where `file` is, or null. Where a type may live is
+ * TYPE_SCOPES, quoted in the refusal; a team category takes its own type.
+ */
+function placementProblem(file: MemoryFile, type: MemoryType, dirs: MemoryDirs): string | null {
+  const globalDir = rootOf(dirs, 'global')
+  const privateDir = rootOf(dirs, 'private')
+  if (TYPE_SCOPES[type].global === 'only' && file.scope !== 'global' && globalDir) {
+    return `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${globalDir}\` instead; if this file was saved here before the global dir existed, move it there with \`mv\` and move its index line (\`/memory sort\` moves them all, if the user runs it)`
+  }
+  if (TYPE_SCOPES[type].global === 'only' && file.scope === 'team') {
+    return `\`type: ${type}\` is ${TYPE_SCOPES[type].withoutGlobal} — write it under \`${privateDir}\` instead`
+  }
+  if (file.scope === 'global' && TYPE_SCOPES[type].global === 'never') {
+    return `\`type: ${type}\` is ${TYPE_SCOPES[type].withGlobal} — write it under \`${privateDir}\` or \`${rootOf(dirs, 'team')}\` instead`
+  }
+  if (file.category && type !== file.category.type) {
+    return `a team ${file.category.noun} memory is \`type: ${file.category.type}\`, not \`${type}\``
+  }
+  return null
+}
+
+/**
+ * What the frontmatter of `file` misses, one phrase each; empty when it is
+ * complete. Completeness is asked of every write. Placement — the type's
+ * directory, and `paths:` where the directory takes none — only of a file
+ * that is new or changes its type (`before`), and `paths:` also when the
+ * write adds it: a memory saved before a rule existed stays updatable in
+ * place, by every tool alike.
+ */
+function formatProblems(file: MemoryFile, content: string, dirs: MemoryDirs, before: Before): string[] {
   const { frontmatter } = parseFrontmatter(content, file.abs)
   if (Object.keys(frontmatter).length === 0) {
     return [
@@ -116,16 +161,24 @@ function formatProblems(file: MemoryFile, content: string, autoDir: string): str
     if (!isFilled(frontmatter[key])) problems.push(`it lacks \`${key}:\``)
   }
   const type = parseMemoryType(frontmatter.type)
+  // New, or retyped: where it lives is decided now
+  const placed = before === null || before.type !== type
   if (!type) {
     problems.push(
       isFilled(frontmatter.type)
         ? `\`type: ${String(frontmatter.type)}\` is not one of ${TYPE_CHOICES}`
         : `it lacks \`type:\` (${TYPE_CHOICES})`,
     )
-  } else if (file.scope === 'team' && type === 'user') {
-    problems.push(`\`type: user\` is always private — write it under \`${autoDir}\` instead`)
-  } else if (file.category && type !== file.category.type) {
-    problems.push(`a team ${file.category.noun} memory is \`type: ${file.category.type}\`, not \`${type}\``)
+  } else if (placed) {
+    const misplaced = placementProblem(file, type, dirs)
+    if (misplaced) problems.push(misplaced)
+  }
+  if (
+    !MEMORY_SCOPE_SPECS[file.scope].takesPaths &&
+    isFilled(frontmatter.paths) &&
+    (placed || !before?.hasPaths)
+  ) {
+    problems.push(`a ${file.scope} memory takes no \`paths:\` — it is not tied to the files of one project`)
   }
   for (const field of file.category ? CATEGORY_FIELDS[file.category.dir] : []) {
     const value = frontmatter[field.key]
@@ -140,10 +193,11 @@ function formatProblems(file: MemoryFile, content: string, autoDir: string): str
 
 /**
  * The write-time rules, as teamMemPrompts.ts renders them. Required on the
- * refusal path only: teamMemPrompts.ts pulls in memdir.ts, which requires it
- * back under feature('TEAMMEM'), and the write tools import this module.
+ * refusal path only: teamMemPrompts.ts pulls in memdir.ts (and memdir.ts
+ * imports it back), and the write tools import this module — the lazy
+ * require keeps that graph out of theirs.
  */
-function memoryWriteRules(teamDir: string): string {
+function memoryWriteRules(dirs: MemoryDirs): string {
   // Typed via annotation rather than `as`, so knip sees the named require
   // (teamMemSecretGuard.ts has the same shape).
   /* eslint-disable @typescript-eslint/no-require-imports */
@@ -151,36 +205,33 @@ function memoryWriteRules(teamDir: string): string {
     buildMemoryWriteRules,
   }: typeof import('src/memory/memdir/teamMemPrompts.js') = require('src/memory/memdir/teamMemPrompts.js')
   /* eslint-enable @typescript-eslint/no-require-imports */
-  return buildMemoryWriteRules(teamDir)
+  return buildMemoryWriteRules(rootOf(dirs, 'team') ?? '', rootOf(dirs, 'global'))
 }
 
 /**
  * The refusal for writing `content` to `filePath`, or null when the file is
- * not a memory file or its frontmatter is complete. Without a team dir the
- * system prompt is the private-only one, which states every rule itself, so
- * the refusal names what is missing and nothing more.
+ * not a memory file or its frontmatter is complete. The refusal names what is
+ * missing and hands back the write-time rules the system prompt leaves out.
+ * `existing` returns what the file holds now, or null when the write creates
+ * it — asked only of a memory file; the default judges every write as new.
  */
 export function checkMemoryFileFormatIn(
   dirs: MemoryDirs,
   filePath: string,
   content: string,
+  existing: (abs: string) => string | null = () => null,
 ): string | null {
   const file = memoryFileOf(filePath, dirs)
   if (!file) return null
-  const problems = formatProblems(file, content, dirs.autoDir)
+  const problems = formatProblems(file, content, dirs, beforeOf(file.abs, existing(file.abs)))
   if (problems.length === 0) return null
   const what = file.category ? `a team ${file.category.noun} memory` : `a ${file.scope} memory`
   const refusal = `Memory file not written: ${file.abs} is ${what}, and ${problems.join('; ')}. Fix the frontmatter and write it again.`
-  return dirs.teamDir === null
-    ? refusal
-    : `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs.teamDir)}`
+  return `${refusal}\n\nThe rules for memory files:\n\n${memoryWriteRules(dirs)}`
 }
 
 /** Markdown link targets: `](target)`, up to the first space or `)`. */
 const LINK_TARGET_RE = /\]\(\s*<?([^)\s>]+)/g
-
-const PATCH_FILE_HEADER_RE = /^\*\*\* (Add|Update|Delete) File: (.+)$/
-const PATCH_MOVE_RE = /^\*\*\* Move to: (.+)$/
 
 /**
  * What the tool calls of one response write into a memory index, by the
@@ -198,7 +249,7 @@ export function indexTextFromResponse(
   const pending = new Map<string, string>()
   const add = (path: string, text: string): void => {
     const abs = resolve(cwd, path)
-    if (basename(abs) !== INDEX_NAME) return
+    if (basename(abs) !== ENTRYPOINT_NAME) return
     pending.set(abs, `${pending.get(abs) ?? ''}\n${text}`)
   }
   for (const { input } of toolUses ?? []) {
@@ -248,7 +299,7 @@ export function memoryIndexAdviceIn(
 ): ToolAdvice | null {
   const file = memoryFileOf(filePath, dirs)
   if (!file) return null
-  const indexPath = join(file.root, INDEX_NAME)
+  const indexPath = join(file.root, ENTRYPOINT_NAME)
   if (indexLinks(indexText(indexPath) ?? '', file.root, file.abs)) return null
   const link = relative(file.root, file.abs)
   const where = file.category
@@ -259,32 +310,20 @@ export function memoryIndexAdviceIn(
   }
 }
 
-/** The memory directories of this session; the team one only when team memory is compiled in. */
-function currentMemoryDirs(): MemoryDirs {
-  const autoDir = getAutoMemPath()
-  if (feature('TEAMMEM')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const {
-      getTeamMemPath,
-    }: typeof import('src/memory/memdir/teamMemPaths.js') = require('src/memory/memdir/teamMemPaths.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    return { autoDir, teamDir: getTeamMemPath() }
-  }
-  return { autoDir, teamDir: null }
-}
-
 /**
  * Checks a write of `content` — the whole file as it will be — to a memory
  * file. Returns the refusal, or null when the write may go ahead; null for
- * any other file, so callers can call it unconditionally.
+ * any other file, so callers can call it unconditionally. Call it before the
+ * write lands: the file on disk is what says whether it is new or retyped.
  */
 export function checkMemoryFileFormat(filePath: string, content: string): string | null {
-  return checkMemoryFileFormatIn(currentMemoryDirs(), filePath, content)
+  return checkMemoryFileFormatIn(getMemoryDirs(), filePath, content, readIfExists)
 }
 
-function readIndex(indexPath: string): string | null {
+/** A file's text, or null when it does not exist. */
+function readIfExists(path: string): string | null {
   try {
-    return readFileSync(indexPath, 'utf8')
+    return readFileSync(path, 'utf8')
   } catch (e) {
     if (isENOENT(e)) return null
     throw e
@@ -301,8 +340,8 @@ export function memoryIndexAdvice(
   filePath: string,
   pending?: ReadonlyMap<string, string>,
 ): ToolAdvice | null {
-  return memoryIndexAdviceIn(currentMemoryDirs(), filePath, indexPath => {
-    const onDisk = readIndex(indexPath)
+  return memoryIndexAdviceIn(getMemoryDirs(), filePath, indexPath => {
+    const onDisk = readIfExists(indexPath)
     const added = pending?.get(indexPath)
     return added === undefined ? onDisk : `${onDisk ?? ''}\n${added}`
   })

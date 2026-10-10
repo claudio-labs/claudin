@@ -42,7 +42,6 @@ const featureFlags: Record<string, boolean> = {
   COORDINATOR_MODE: true,             // Multi-agent coordinator with worker delegation
   BUILTIN_PLAN_AGENT: true,           // Built-in Plan specialized subagent
   MONITOR_TOOL: true,                 // MCP server monitoring/streaming tool
-  TEAMMEM: true,                      // Team memory management
   MESSAGE_ACTIONS: true,              // Message action buttons in the UI
 
   // ── Enabled: new activations ────────────────────────────────────────

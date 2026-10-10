@@ -15,20 +15,29 @@
 
 import { feature } from 'bun:bundle'
 import { basename } from 'path'
+import { readFileSync } from 'fs'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js'
 import {
   formatMemoryManifest,
   scanMemoryFiles,
 } from 'src/memory/memdir/memoryScan.js'
 import {
-  getAutoMemPath,
   getExtractionTurnInterval,
   isAutoMemoryEnabled,
-  isAutoMemPath,
   isExtractMemoriesEnabled,
 } from 'src/memory/memdir/paths.js'
+import {
+  getMemoryDir,
+  getMemoryDirs,
+  type MemoryDir,
+  memoryScopeOf,
+} from 'src/memory/memdir/memoryDirs.js'
+import {
+  ENTRYPOINT_NAME,
+  type MemoryScope,
+  withoutTrailingSep,
+} from 'src/memory/memdir/memoryScopes.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
@@ -36,6 +45,8 @@ import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { writtenPaths as writtenPathsOf } from 'src/tools/shared/writtenPaths.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import type {
   AssistantMessage,
   Message,
@@ -56,18 +67,12 @@ import {
   createUserMessage,
 } from 'src/agent/messages/messages.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
 import {
-  buildExtractAutoOnlyPrompt,
   buildExtractCombinedPrompt,
   buildLoopHint,
 } from 'src/memory/extract/prompts.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 // ============================================================================
 // Helpers
@@ -125,14 +130,15 @@ function countModelVisibleMessagesSince(
 
 /**
  * Returns true if any assistant message after the cursor UUID contains a
- * Write/Edit tool_use block targeting an auto-memory path.
+ * tool_use block that writes a memory path — a Write, an Edit or a Patch,
+ * by input shape (writtenPaths.ts).
  *
  * The main agent's prompt has full save instructions — when it writes
  * memories, the forked extraction is redundant. runExtraction skips the
  * agent and advances the cursor past this range, making the main agent
  * and the background agent mutually exclusive per turn.
  */
-function hasMemoryWritesSince(
+export function hasMemoryWritesSince(
   messages: Message[],
   sinceUuid: string | undefined,
 ): boolean {
@@ -152,8 +158,7 @@ function hasMemoryWritesSince(
       continue
     }
     for (const block of content) {
-      const filePath = getWrittenFilePath(block)
-      if (filePath !== undefined && isAutoMemPath(filePath)) {
+      if (blockWrittenPaths(block).some(path => memoryScopeOf(path) !== null)) {
         return true
       }
     }
@@ -165,7 +170,7 @@ function hasMemoryWritesSince(
 // Tool Permissions
 // ============================================================================
 
-function denyAutoMemTool(tool: Tool, reason: string) {
+function denyMemoryTool(tool: Tool, reason: string) {
   logForDebugging(`[autoMem] denied ${tool.name}: ${reason}`)
   return {
     behavior: 'deny' as const,
@@ -175,11 +180,38 @@ function denyAutoMemTool(tool: Tool, reason: string) {
 }
 
 /**
- * Creates a canUseTool function that allows Read/Grep/Glob (unrestricted),
- * read-only Bash commands, and Edit/Write only for paths within the
- * auto-memory directory. Shared by extractMemories and autoDream.
+ * Whether an Edit or Write only adds to `filePath`: an Edit whose new text
+ * keeps the old, a Write of a new file or of content that keeps the file's.
  */
-export function createAutoMemCanUseTool(memoryDir: string): CanUseToolFn {
+function onlyAdds(toolName: string, input: Record<string, unknown>, filePath: string): boolean {
+  if (toolName === FILE_EDIT_TOOL_NAME) {
+    return (
+      typeof input.old_string === 'string' &&
+      typeof input.new_string === 'string' &&
+      input.new_string.includes(input.old_string)
+    )
+  }
+  let existing: string
+  try {
+    existing = readFileSync(filePath, 'utf-8')
+  } catch (e) {
+    return isENOENT(e)
+  }
+  return typeof input.content === 'string' && input.content.includes(existing.trimEnd())
+}
+
+/**
+ * Creates a canUseTool function that allows Read/Grep/Glob (unrestricted),
+ * read-only Bash commands, and Edit/Write only within the memory directories
+ * (memoryDirs.ts). Shared by extractMemories and autoDream.
+ *
+ * `appendOnly` scopes take an Edit or Write only when it adds: both forks
+ * pass the global dir, which they may add to but never prune — one project's
+ * run cannot tell that a memory every project reads is stale.
+ */
+export function createMemoryCanUseTool(
+  appendOnly: readonly MemoryScope[] = [],
+): CanUseToolFn {
   return async (tool: Tool, input: Record<string, unknown>) => {
     // Allow Read/Grep/Glob unrestricted — all inherently read-only
     if (
@@ -197,7 +229,7 @@ export function createAutoMemCanUseTool(memoryDir: string): CanUseToolFn {
       if (parsed.success && tool.isReadOnly(parsed.data)) {
         return { behavior: 'allow' as const, updatedInput: input }
       }
-      return denyAutoMemTool(
+      return denyMemoryTool(
         tool,
         'Only read-only shell commands are permitted in this context (ls, find, grep, cat, stat, wc, head, tail, and similar)',
       )
@@ -209,43 +241,50 @@ export function createAutoMemCanUseTool(memoryDir: string): CanUseToolFn {
       'file_path' in input
     ) {
       const filePath = input.file_path
-      if (typeof filePath === 'string' && isAutoMemPath(filePath)) {
+      const scope = typeof filePath === 'string' ? memoryScopeOf(filePath) : null
+      if (scope !== null && !appendOnly.includes(scope)) {
         return { behavior: 'allow' as const, updatedInput: input }
+      }
+      if (scope !== null) {
+        return onlyAdds(tool.name, input, filePath as string)
+          ? { behavior: 'allow' as const, updatedInput: input }
+          : denyMemoryTool(
+              tool,
+              `the ${scope} memory dir is append-only in this run: add a memory or a line, never remove or rewrite one — leave a ${scope} memory this project contradicts as it is, and report it`,
+            )
       }
     }
 
-    return denyAutoMemTool(
+    const where = getMemoryDirs()
+      .map(dir => withoutTrailingSep(dir.root))
+      .join(', ')
+    return denyMemoryTool(
       tool,
-      `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${memoryDir} are allowed`,
+      `only ${FILE_READ_TOOL_NAME}, ${GREP_TOOL_NAME}, ${GLOB_TOOL_NAME}, read-only ${BASH_TOOL_NAME}, and ${FILE_EDIT_TOOL_NAME}/${FILE_WRITE_TOOL_NAME} within ${where} are allowed`,
     )
   }
+}
+
+/**
+ * The extraction fork's gate: append-only on the global dir, as the dream's
+ * is — a background run in one project never rewrites or removes a memory
+ * every project reads.
+ */
+export function createExtractionCanUseTool(): CanUseToolFn {
+  return createMemoryCanUseTool(['global'])
 }
 
 // ============================================================================
 // Extract file paths from agent output
 // ============================================================================
 
-/**
- * Extract file_path from a tool_use block's input, if present.
- * Returns undefined when the block is not an Edit/Write tool use or has no file_path.
- */
-function getWrittenFilePath(block: {
+/** The absolute paths a content block writes; empty for anything but a write tool_use. */
+function blockWrittenPaths(block: {
   type: string
   name?: string
   input?: unknown
-}): string | undefined {
-  if (
-    block.type !== 'tool_use' ||
-    (block.name !== FILE_EDIT_TOOL_NAME && block.name !== FILE_WRITE_TOOL_NAME)
-  ) {
-    return undefined
-  }
-  const input = block.input
-  if (typeof input === 'object' && input !== null && 'file_path' in input) {
-    const fp = (input as { file_path: unknown }).file_path
-    return typeof fp === 'string' ? fp : undefined
-  }
-  return undefined
+}): string[] {
+  return block.type === 'tool_use' ? writtenPathsOf(block.input, getCwd()) : []
 }
 
 function extractWrittenPaths(agentMessages: Message[]): string[] {
@@ -259,13 +298,43 @@ function extractWrittenPaths(agentMessages: Message[]): string[] {
       continue
     }
     for (const block of content) {
-      const filePath = getWrittenFilePath(block)
-      if (filePath !== undefined) {
-        paths.push(filePath)
-      }
+      paths.push(...blockWrittenPaths(block))
     }
   }
   return uniq(paths)
+}
+
+/** How many of `paths` each memory directory holds; a path in none counts as private, as it always did. */
+export function memoryCountsOf(paths: readonly string[]): Partial<Record<MemoryScope, number>> {
+  const counts: Partial<Record<MemoryScope, number>> = {}
+  for (const path of paths) {
+    const scope = memoryScopeOf(path) ?? 'private'
+    counts[scope] = (counts[scope] ?? 0) + 1
+  }
+  return counts
+}
+
+/**
+ * The manifest of what is already saved, so the agent updates a memory
+ * instead of duplicating it. One scan per directory that is not inside
+ * another (the private scan covers the team dir in it); the scan lists paths
+ * relative to the directory it walked, so each list but a lone private one
+ * says which directory it is.
+ */
+export async function existingMemoryManifest(
+  dirs: readonly MemoryDir[],
+): Promise<string> {
+  const signal = createAbortController().signal
+  const tops = dirs.filter(dir => !dirs.some(other => other !== dir && dir.root.startsWith(other.root)))
+  const lists: { dir: MemoryDir; manifest: string }[] = []
+  for (const dir of tops) {
+    const manifest = formatMemoryManifest(await scanMemoryFiles(dir.root, signal))
+    if (manifest !== '') lists.push({ dir, manifest })
+  }
+  if (lists.length === 1 && lists[0]!.dir.scope === 'private') return lists[0]!.manifest
+  return lists
+    .map(({ dir, manifest }) => `In the ${dir.scope} dir \`${dir.root}\`:\n${manifest}`)
+    .join('\n\n')
 }
 
 // ============================================================================
@@ -339,7 +408,6 @@ export function initExtractMemories(): void {
     isTrailingRun?: boolean
   }): Promise<void> {
     const { messages } = context
-    const memoryDir = getAutoMemPath()
     const newMessageCount = countModelVisibleMessagesSince(
       messages,
       lastMemoryMessageUuid,
@@ -384,11 +452,8 @@ export function initExtractMemories(): void {
       )
     }
 
-    const teamMemoryEnabled = feature('TEAMMEM')
-      ? teamMemPaths!.isTeamMemoryEnabled()
-      : false
-
-    const canUseTool = createAutoMemCanUseTool(memoryDir)
+    // Append-only on the global dir, like the dream's
+    const canUseTool = createExtractionCanUseTool()
     const cacheSafeParams = createCacheSafeParams(context)
 
     // Only run extraction every N eligible turns (getExtractionTurnInterval).
@@ -408,31 +473,24 @@ export function initExtractMemories(): void {
     const startTime = Date.now()
     try {
       logForDebugging(
-        `[extractMemories] starting — ${newMessageCount} new messages, memoryDir=${memoryDir}`,
+        `[extractMemories] starting — ${newMessageCount} new messages`,
       )
 
       // Pre-inject the memory directory manifest so the agent doesn't spend
       // a turn on `ls` (memoryScan.ts, frontmatter only).
       // Placed after the throttle gate so skipped turns don't pay the scan cost.
-      const existingMemories = formatMemoryManifest(
-        await scanMemoryFiles(memoryDir, createAbortController().signal),
-      )
+      const existingMemories = await existingMemoryManifest(getMemoryDirs())
+      const globalDir = getMemoryDir('global')?.root ?? null
 
       // The MEMORY.md index is always in the system prompt now that the
       // per-turn relevance recall is gone, so the extractor is always told to
       // keep it current.
-      const userPrompt =
-        feature('TEAMMEM') && teamMemoryEnabled
-          ? buildExtractCombinedPrompt(
-              newMessageCount,
-              existingMemories,
-              loopHint,
-            )
-          : buildExtractAutoOnlyPrompt(
-              newMessageCount,
-              existingMemories,
-              loopHint,
-            )
+      const userPrompt = buildExtractCombinedPrompt(
+        newMessageCount,
+        existingMemories,
+        loopHint,
+        globalDir,
+      )
 
       const result = await runForkedAgent({
         promptMessages: [createUserMessage({ content: userPrompt })],
@@ -487,23 +545,15 @@ export function initExtractMemories(): void {
       const memoryPaths = writtenPaths.filter(
         p => basename(p) !== ENTRYPOINT_NAME,
       )
-      const teamCount = feature('TEAMMEM')
-        ? count(memoryPaths, teamMemPaths!.isTeamMemPath)
-        : 0
-
 
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,
       )
       if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {
-        const msg = createMemorySavedMessage(memoryPaths)
-        if (feature('TEAMMEM')) {
-          // teamCount is set ad-hoc here and read back in teamMemSaved.ts;
-          // SystemMemorySavedMessage doesn't declare it — widen locally
-          // rather than editing the shared message type.
-          ;(msg as typeof msg & { teamCount?: number }).teamCount = teamCount
-        }
-        appendSystemMessage?.(msg)
+        appendSystemMessage?.({
+          ...createMemorySavedMessage(memoryPaths),
+          memoryCounts: memoryCountsOf(memoryPaths),
+        })
       }
     } catch (error) {
       // Extraction is best-effort — log but don't notify on error

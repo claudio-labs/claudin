@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
+import { MEMORY_SCOPE_SPECS, MEMORY_SCOPES } from 'src/memory/memdir/memoryScopes.js'
 import { MemoryDirBrowser } from 'src/memory/ui/MemoryDirBrowser.js'
 import { createRoot } from 'src/terminal/ink.js'
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
@@ -37,7 +38,11 @@ async function render(
   dir: string,
   columns: number,
   props: Partial<React.ComponentProps<typeof MemoryDirBrowser>> = {},
-): Promise<{ frame: string; dispose: () => Promise<void> }> {
+): Promise<{
+  frame: string
+  press: (keys: string) => Promise<string>
+  dispose: () => Promise<void>
+}> {
   let output = ''
   const stdout = new PassThrough()
   const stdin = new PassThrough() as PassThrough & {
@@ -80,6 +85,11 @@ async function render(
 
   return {
     frame: extractLastFrame(output),
+    press: async (keys: string) => {
+      stdin.write(keys)
+      await Bun.sleep(80)
+      return extractLastFrame(output)
+    },
     dispose: async () => {
       root.unmount()
       stdin.end()
@@ -181,7 +191,7 @@ describe('MemoryDirBrowser', () => {
       'utf8',
     )
 
-    const team = await render(dir, 100, { isTeamDir: true })
+    const team = await render(dir, 100, { scope: 'team' })
     try {
       expectInOrder(team.frame, ['[project]', 'bugs/sleep-gap'])
     } finally {
@@ -190,13 +200,41 @@ describe('MemoryDirBrowser', () => {
 
     // The private browser keeps hiding nested entries: its only subdirectory
     // is team/, which has a browser of its own.
-    const priv = await render(dir, 100, { isTeamDir: false })
+    const priv = await render(dir, 100, { scope: 'private' })
     try {
       expect(priv.frame).not.toContain('sleep-gap')
     } finally {
       await priv.dispose()
     }
   })
+
+  // The confirmation says what deleting costs beyond this project, from
+  // MEMORY_SCOPE_SPECS — a global memory leaves every project, a team one
+  // reaches the team on the next commit.
+  for (const scope of [...MEMORY_SCOPES, undefined]) {
+    test(`the delete confirmation of a ${scope ?? 'scope-less'} dir carries its delete note`, async () => {
+      await writeMemory('doomed.md', { name: 'doomed', description: 'x', type: 'feedback' }, 'body')
+
+      const ui = await render(dir, 100, scope === undefined ? {} : { scope })
+      try {
+        const frame = await ui.press('d')
+        expect(frame).toContain('Delete doomed.md?')
+        const flat = frame.replace(/\s+/g, ' ')
+        const note = scope === undefined ? undefined : MEMORY_SCOPE_SPECS[scope].deleteNote
+        if (note !== undefined) {
+          expect(flat).toContain(`${note} Its line in MEMORY.md goes too.`)
+        } else {
+          for (const s of MEMORY_SCOPES) {
+            const other = MEMORY_SCOPE_SPECS[s].deleteNote
+            if (other !== undefined) expect(flat).not.toContain(other)
+          }
+          expect(flat).toContain('Its line in MEMORY.md goes too.')
+        }
+      } finally {
+        await ui.dispose()
+      }
+    })
+  }
 
   test('the focused memory is previewed with its type and body', async () => {
     await writeMemory(

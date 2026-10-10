@@ -2,7 +2,8 @@ import { join, normalize, sep } from 'path'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getScratchpadDir, isScratchpadEnabled } from 'src/agent/scratchpad.js'
 import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
-import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memory/memdir/paths.js'
+import { memoryScopeForPermission } from 'src/memory/memdir/memoryDirs.js'
+import { hasMemoryPathOverride } from 'src/memory/memdir/paths.js'
 import { getSessionMemoryDir } from 'src/memory/session/paths.js'
 import { pathInWorkingPath } from 'src/permissions/filePermissions/workingDirs.js'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
@@ -250,20 +251,22 @@ export function checkEditableInternalPath(
     }
   }
 
-  // Memdir directory (persistent memory for cross-session learning)
-  // This pre-safety-check carve-out exists because the default path is under
-  // ~/.claude/, which is in DANGEROUS_DIRECTORIES. The CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
+  // The memory directories (memoryDirs.ts), global, private and team.
+  // This pre-safety-check carve-out exists because the global dir and the
+  // legacy private dir are under ~/.claudin/, which is in DANGEROUS_DIRECTORIES,
+  // and the project-local one under .claudin/. The CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
   // override is an arbitrary caller-designated directory with no such conflict,
   // so it gets NO special permission treatment here — writes go through normal
   // permission flow (step 5 → ask). SDK callers who want silent memory should
-  // pass an allow rule for the override path.
-  if (!hasAutoMemPathOverride() && isAutoMemPath(normalizedPath)) {
+  // pass an allow rule for the override path. (The global dir is off under it.)
+  const writeScope = memoryScopeForPermission(normalizedPath)
+  if (writeScope !== null && !hasMemoryPathOverride()) {
     return {
       behavior: 'allow',
       updatedInput: input,
       decisionReason: {
         type: 'other',
-        reason: 'auto memory files are allowed for writing',
+        reason: `${writeScope} memory files are allowed for writing`,
       },
     }
   }
@@ -400,14 +403,15 @@ export function checkReadableInternalPath(
     }
   }
 
-  // Memdir directory (persistent memory for cross-session learning)
-  if (isAutoMemPath(normalizedPath)) {
+  // The memory directories (memoryDirs.ts), global, private and team
+  const readScope = memoryScopeForPermission(normalizedPath)
+  if (readScope !== null) {
     return {
       behavior: 'allow',
       updatedInput: input,
       decisionReason: {
         type: 'other',
-        reason: 'auto memory files are allowed for reading',
+        reason: `${readScope} memory files are allowed for reading`,
       },
     }
   }

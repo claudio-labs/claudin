@@ -1,15 +1,18 @@
-import { feature } from 'bun:bundle'
 import { join } from 'path'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
-  : null
-
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js'
+import {
+  ENTRYPOINT_NAME,
+  isMemoryFileType,
+  MEMORY_SCOPE_SPECS,
+} from 'src/memory/memdir/memoryScopes.js'
+// teamMemPrompts.ts imports this module back; the cycle is safe because
+// neither side reads the other's bindings at module-evaluation time.
+import {
+  buildCombinedMemoryPrompt,
+  buildLeanCombinedMemoryPrompt,
+} from 'src/memory/memdir/teamMemPrompts.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-/* eslint-enable @typescript-eslint/no-require-imports */
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
@@ -23,7 +26,6 @@ import {
 } from 'src/memory/memdir/memoryTypes.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd/types.js'
 
-export const ENTRYPOINT_NAME = 'MEMORY.md'
 export const MAX_ENTRYPOINT_LINES = 200
 // ~125 chars/line at 200 lines. At p97 today; catches long-line indexes that
 // slip past the line cap (p100 observed: 197KB under 200 lines).
@@ -130,12 +132,6 @@ export function truncateEntrypointContent(raw: string): EntrypointTruncation {
   }
 }
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPrompts = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPrompts.js') as typeof import('src/memory/memdir/teamMemPrompts.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 /**
  * Shared guidance text appended to each memory directory prompt line.
  * Shipped because Claude was burning turns on `ls`/`mkdir -p` before writing.
@@ -145,6 +141,8 @@ export const DIR_EXISTS_GUIDANCE =
   'This directory already exists — write to it directly with the Write tool (do not run mkdir or check for its existence).'
 export const DIRS_EXIST_GUIDANCE =
   'Both directories already exist — write to them directly with the Write tool (do not run mkdir or check for their existence).'
+export const ALL_DIRS_EXIST_GUIDANCE =
+  'All three directories already exist — write to them directly with the Write tool (do not run mkdir or check for their existence).'
 
 /**
  * Ensure a memory directory exists. Idempotent — called from loadMemoryPrompt
@@ -153,11 +151,16 @@ export const DIRS_EXIST_GUIDANCE =
  * by default and already swallows EEXIST, so the full parent chain
  * (~/.claudin/projects/<slug>/memory/) is created in one call with no
  * try/catch needed for the happy path.
+ * `mode` applies to every directory the call creates (0o700 for the global
+ * dir, which holds what is about the user).
  */
-export async function ensureMemoryDirExists(memoryDir: string): Promise<void> {
+export async function ensureMemoryDirExists(
+  memoryDir: string,
+  mode?: number,
+): Promise<void> {
   const fs = getFsImplementation()
   try {
-    await fs.mkdir(memoryDir)
+    await fs.mkdir(memoryDir, mode === undefined ? undefined : { mode })
   } catch (e) {
     // fs.mkdir already handles EEXIST internally. Anything reaching here is
     // a real problem (EACCES/EPERM/EROFS) — log so --debug shows why. Prompt
@@ -183,8 +186,8 @@ export async function ensureMemoryDirExists(memoryDir: string): Promise<void> {
  * Individual-only variant: no `## Memory scope` section, no <scope> tags
  * in type blocks, and team/private qualifiers stripped from examples.
  *
- * Used by both buildMemoryPrompt (agent memory, includes content) and
- * loadMemoryPrompt (system prompt, content injected via user context instead).
+ * Used by buildMemoryPrompt (agent memory, includes content); the system
+ * prompt's memory section is teamMemPrompts.ts's combined prompt instead.
  */
 export function buildMemoryLines(
   displayName: string,
@@ -192,7 +195,7 @@ export function buildMemoryLines(
   extraGuidelines?: string[],
 ): string[] {
   // Compact, dense prose (upstream shape). The verbose XML taxonomy in
-  // memoryTypes.ts (TYPES_SECTION_INDIVIDUAL etc.) is ~3.7K tokens and ships
+  // memoryTypes.ts (typesSectionCombined) is ~3.7K tokens and ships
   // in the main system prompt every turn; this conveys the same four types and
   // the eval-tuned cues (explicit-save, feedback Why/How, absolute dates,
   // verify-before-recommend) in ~400 tokens. Those verbose constants are kept
@@ -242,82 +245,19 @@ export function buildMemoryLines(
 }
 
 /**
- * True if this memory dir already holds memories — a non-empty MEMORY.md index
- * or any other `.md` file besides the index. Used to decide whether to ship the
- * full taxonomy or the compact stub (see buildMemoryStubLines).
- */
-export function hasExistingMemories(memoryDir: string): boolean {
-  const fs = getFsImplementation()
-  try {
-    // eslint-disable-next-line custom-rules/no-sync-fs
-    if (fs.readFileSync(memoryDir + ENTRYPOINT_NAME, { encoding: 'utf-8' }).trim()) {
-      return true
-    }
-  } catch {
-    // No index yet.
-  }
-  try {
-    // eslint-disable-next-line custom-rules/no-sync-fs
-    return fs
-      .readdirSync(memoryDir)
-      .some(d => d.isFile() && d.name.endsWith('.md') && d.name !== ENTRYPOINT_NAME)
-  } catch {
-    return false
-  }
-}
-
-/**
- * True when neither MEMORY.md index put anything into context: both files are
+ * True when no MEMORY.md index put anything into context: every one is
  * absent, empty or whitespace only. `loaded` is getMemoryFiles(), the list the
- * two indexes reach context from (getUserContext → getClaudeMds), so this is
+ * indexes reach context from (getUserContext → getClaudeMds), so this is
  * decided on what the model was given, at no second read — an index
  * getClaudeMds skips as empty counts as empty here. The combined prompts say
- * so when it holds (teamMemPrompts.ts); the private-only path has its own
- * empty-state text in buildMemoryStubLines, and the two never meet.
+ * so when it holds (teamMemPrompts.ts).
  */
 export function areMemoryIndexesEmpty(
   loaded: readonly Pick<MemoryFileInfo, 'type' | 'content'>[],
 ): boolean {
   return !loaded.some(
-    file =>
-      (file.type === 'AutoMem' || file.type === 'TeamMem') &&
-      file.content.trim() !== '',
+    file => isMemoryFileType(file.type) && file.content.trim() !== '',
   )
-}
-
-/**
- * Compact memory instructions for a dir with no memories yet. The full
- * ~3.7K-token taxonomy (worked examples, what-not-to-save, recall guidance) is
- * write/recall reference that's inert until memories exist — and it ships in
- * the system prompt every turn. When memory is empty we drop it for a ~400-tok
- * stub that still tells the model the system exists and how to start one, so
- * the full block (buildMemoryLines) loads once the first memory is written.
- * Recall sections are intentionally omitted: there is nothing to recall yet.
- */
-export function buildMemoryStubLines(
-  displayName: string,
-  memoryDir: string,
-  extraGuidelines?: string[],
-): string[] {
-  const indexStep = ` Then add a one-line pointer in \`${ENTRYPOINT_NAME}\` (the index: \`- [Title](file.md) — hook\`, no frontmatter, never memory content).`
-  return [
-    `# ${displayName}`,
-    '',
-    `You have a persistent, file-based memory system at \`${memoryDir}\`. ${DIR_EXISTS_GUIDANCE}`,
-    '',
-    'It is currently empty. Build it up over time so future conversations know who the user is, how they like to work, and the context behind their tasks.',
-    '',
-    // `type`, not `metadata.type`: the stub used to name a nested key that
-    // memoryScan.ts does not read, so the very first memory in a fresh
-    // directory was written in a shape the parser silently ignored while
-    // every later one (buildMemoryLines) used the flat form.
-    'If the user explicitly asks you to remember something, save it now. Save a memory as its own `.md` file with `name`, `description`, and a `type` of one of: `user` (who they are), `feedback` (how you should work — include the why), `project` (ongoing work/constraints not in the code), or `reference` (links to external resources). Skip anything derivable from the code, git history, or this conversation alone.' +
-      indexStep,
-    '',
-    ...(extraGuidelines ?? []),
-    '',
-    ...buildSearchingPastContextSection(memoryDir),
-  ]
 }
 
 /**
@@ -367,10 +307,13 @@ export function buildMemoryPrompt(params: {
  * section is part of the system prompt, so the value must not change while
  * the process lives.
  * `lean` (the v2 prompt) says the same two steps in one line.
+ * `globalMemDir` adds the global memory dir to the first step; the team dir
+ * needs no line of its own, it sits inside `autoMemDir`.
  */
 export function buildSearchingPastContextSection(
   autoMemDir: string,
   lean = false,
+  globalMemDir: string | null = null,
 ): string[] {
   if (isEnvDefinedFalsy(process.env.CLAUDIN_MEMORY_PAST_CONTEXT)) {
     return []
@@ -382,21 +325,32 @@ export function buildSearchingPastContextSection(
   const memSearch = embedded
     ? `grep -rn "<search term>" ${autoMemDir} --include="*.md"`
     : `${GREP_TOOL_NAME} with pattern="<search term>" path="${autoMemDir}" glob="*.md"`
+  const globalSearch =
+    globalMemDir === null
+      ? null
+      : embedded
+        ? `grep -rn "<search term>" ${globalMemDir} --include="*.md"`
+        : `${GREP_TOOL_NAME} with pattern="<search term>" path="${globalMemDir}" glob="*.md"`
   const transcriptSearch = embedded
     ? `grep -rn "<search term>" ${projectDir}/ --include="*.jsonl"`
     : `${GREP_TOOL_NAME} with pattern="<search term>" path="${projectDir}/" glob="*.jsonl"`
   if (lean) {
+    const memory =
+      globalSearch === null
+        ? `\`${memSearch}\``
+        : `\`${memSearch}\`, and \`${globalSearch}\` for the global one`
     return [
-      `To search past context, use narrow terms (error messages, paths, function names): first your memory (\`${memSearch}\`), then, as a slow last resort, the session transcripts (\`${transcriptSearch}\`).`,
+      `To search past context, use narrow terms (error messages, paths, function names): first your memory (${memory}), then, as a slow last resort, the session transcripts (\`${transcriptSearch}\`).`,
     ]
   }
   return [
     '## Searching past context',
     '',
     'When looking for past context:',
-    '1. Search topic files in your memory directory:',
+    `1. Search topic files in your memory ${globalSearch === null ? 'directory' : 'directories'}:`,
     '```',
     memSearch,
+    ...(globalSearch === null ? [] : [globalSearch]),
     '```',
     '2. Session transcript logs (last resort — large files, slow):',
     '```',
@@ -409,11 +363,8 @@ export function buildSearchingPastContextSection(
 
 /**
  * Load the unified memory prompt for inclusion in the system prompt.
- * Dispatches based on which memory systems are enabled:
- *   - auto + team: combined prompt (both directories)
- *   - auto only: memory lines (single directory)
- * Team memory requires auto memory (enforced by isTeamMemoryEnabled), so
- * there is no team-only branch.
+ * Team memory is on whenever auto memory is, so this is always the combined
+ * prompt (private + team directories, plus the global one while it is on).
  *
  * `lean` selects the v2 text of the combined prompt
  * (teamMemPrompts.ts `buildLeanCombinedMemoryPrompt`), which getSystemPrompt
@@ -422,7 +373,10 @@ export function buildSearchingPastContextSection(
  * Returns null when auto memory is disabled.
  */
 export async function loadMemoryPrompt(lean = false): Promise<string | null> {
-  const autoEnabled = isAutoMemoryEnabled()
+  const dirs = getMemoryDirs()
+  if (dirs.length === 0) {
+    return null
+  }
 
   // Cowork injects memory-policy text via env var; thread into all builders.
   const coworkExtraGuidelines =
@@ -432,50 +386,29 @@ export async function loadMemoryPrompt(lean = false): Promise<string | null> {
       ? [coworkExtraGuidelines]
       : undefined
 
-  if (feature('TEAMMEM')) {
-    if (teamMemPaths!.isTeamMemoryEnabled()) {
-      const teamDir = teamMemPaths!.getTeamMemPath()
-      // Harness guarantees these directories exist so the model can write
-      // without checking. The prompt text reflects this ("already exists").
-      // Only creating teamDir is sufficient: getTeamMemPath() is defined as
-      // join(getAutoMemPath(), 'team'), so recursive mkdir of the team dir
-      // creates the auto dir as a side effect. If the team dir ever moves
-      // out from under the auto dir, add a second ensureMemoryDirExists call
-      // for autoDir here.
-      await ensureMemoryDirExists(teamDir)
-      // The same memoized load the context injects the indexes from, so the
-      // prompt agrees with what the model was given and stays put when the
-      // system-prompt sections are rebuilt mid-session without it (/add-dir).
-      // Imported here, not at the top: claudemd/parsing.ts imports this
-      // module. A failure costs the note, never the memory section.
-      let indexesEmpty = false
-      try {
-        const { getMemoryFiles } = await import('src/memory/instructions/claudemd.js')
-        indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())
-      } catch (e) {
-        logForDebugging(
-          `memory index check failed, keeping the index line as shipped: ${String(e)}`,
-          { level: 'warn' },
-        )
-      }
-      return lean
-        ? teamMemPrompts!.buildLeanCombinedMemoryPrompt(extraGuidelines, indexesEmpty)
-        : teamMemPrompts!.buildCombinedMemoryPrompt(extraGuidelines, indexesEmpty)
-    }
+  // Harness guarantees every directory exists so the model can write
+  // without checking. The prompt text reflects this ("already exists").
+  // A scope with a dirMode (the global dir, the user's alone across
+  // projects: 0700) is created with it.
+  for (const dir of dirs) {
+    await ensureMemoryDirExists(dir.root, MEMORY_SCOPE_SPECS[dir.scope].dirMode)
   }
-
-  if (autoEnabled) {
-    const autoDir = getAutoMemPath()
-    // Harness guarantees the directory exists so the model can write without
-    // checking. The prompt text reflects this ("already exists").
-    await ensureMemoryDirExists(autoDir)
-    // Empty memory → compact stub (~400 tok) instead of the full taxonomy
-    // (~3.7K). The full block loads automatically once the first memory exists.
-    const build = hasExistingMemories(autoDir)
-      ? buildMemoryLines
-      : buildMemoryStubLines
-    return build('auto memory', autoDir, extraGuidelines).join('\n')
+  // The same memoized load the context injects the indexes from, so the
+  // prompt agrees with what the model was given and stays put when the
+  // system-prompt sections are rebuilt mid-session without it (/add-dir).
+  // Imported here, not at the top: claudemd/parsing.ts imports this
+  // module. A failure costs the note, never the memory section.
+  let indexesEmpty = false
+  try {
+    const { getMemoryFiles } = await import('src/memory/instructions/claudemd.js')
+    indexesEmpty = areMemoryIndexesEmpty(await getMemoryFiles())
+  } catch (e) {
+    logForDebugging(
+      `memory index check failed, keeping the index line as shipped: ${String(e)}`,
+      { level: 'warn' },
+    )
   }
-
-  return null
+  return lean
+    ? buildLeanCombinedMemoryPrompt(dirs, extraGuidelines, indexesEmpty)
+    : buildCombinedMemoryPrompt(dirs, extraGuidelines, indexesEmpty)
 }

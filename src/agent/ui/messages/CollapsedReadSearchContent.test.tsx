@@ -16,9 +16,6 @@ const EMPTY_GROUP = {
   readCount: 0,
   listCount: 0,
   replCount: 0,
-  memorySearchCount: 0,
-  memoryReadCount: 0,
-  memoryWriteCount: 0,
   readFilePaths: [],
   searchArgs: [],
   latestDisplayHint: undefined,
@@ -240,53 +237,82 @@ describe('CollapsedReadSearchContent — write lane', () => {
   })
 })
 
+/** A scope's ops, zero unless given. */
+function ops(counts: Partial<{ search: number; read: number; write: number }>) {
+  return { search: 0, read: 0, write: 0, ...counts }
+}
+
 describe('CollapsedReadSearchContent — recalled memories', () => {
-  // The team half of every case below is unreachable from here:
-  // teamMemoryReadCount is read through the feature('TEAMMEM') module, and
-  // `feature()` is false under `bun test` (src/stubs/test-preload.ts). Only
-  // formatMemoryRecallCounts and a live run cover the "team memories" wording.
   test('a recalled memory leaves the badge for its own Loaded line', async () => {
-    const out = await render({ readCount: 3, memoryReadCount: 1 })
+    const out = await render({ readCount: 3, memoryOps: { private: ops({ read: 1 }) } })
     const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
 
     expect(firstLine).toContain('Read 3 files')
     expect(firstLine).not.toContain('memor')
-    expect(flatten(out)).toContain('⎿ Loaded 1 memory')
+    expect(flatten(out)).toContain('⎿ Loaded 1 private memory')
+  })
+
+  test('recalled team memories join the same Loaded line, labelled team', async () => {
+    const out = await render({
+      readCount: 3,
+      memoryOps: { private: ops({ read: 1 }), team: ops({ read: 2 }) },
+    })
+    const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
+
+    expect(firstLine).toContain('Read 3 files')
+    expect(firstLine).not.toContain('memor')
+    expect(flatten(out)).toContain('⎿ Loaded 1 private memory, 2 team memories')
   })
 
   test('a group of nothing but recalls is one standalone Loaded line', async () => {
     // Every memory read is subtracted out of readCount (collapseReadSearch.ts),
     // so this group has no badge parts left at all. The line has to survive
     // that and carry the expand hint the badge would otherwise have held.
-    const out = await render({ memoryReadCount: 2 })
+    const out = await render({ memoryOps: { private: ops({ read: 2 }) } })
     const lines = out.split('\n').filter(l => l.trim().length > 0)
 
     // Exactly one line: an empty badge row would still print "(ctrl+o to
     // expand)" of its own, so a `toContain` alone passes on that shape.
     expect(lines).toHaveLength(1)
-    expect(flatten(lines[0]!)).toContain('⎿ Loaded 2 memories')
+    expect(flatten(lines[0]!)).toContain('⎿ Loaded 2 private memories')
     expect(flatten(lines[0]!)).toContain('ctrl+o to expand')
     expect(out).not.toContain('Recalled')
   })
 
+  test('a group of nothing but recalls renders in every scope', async () => {
+    // The render gate counts reads too: a recall-only group has no badge part,
+    // and must not be dropped as empty.
+    for (const [scope, line] of [
+      ['global', '⎿ Loaded 1 global memory'],
+      ['private', '⎿ Loaded 1 private memory'],
+      ['team', '⎿ Loaded 1 team memory'],
+    ] as const) {
+      const lines = (await render({ memoryOps: { [scope]: ops({ read: 1 }) } }))
+        .split('\n')
+        .filter(l => l.trim().length > 0)
+      expect(lines).toHaveLength(1)
+      expect(flatten(lines[0]!)).toContain(line)
+    }
+  })
+
   test('the Loaded line sits below the badge, and only one expand hint shows', async () => {
-    const lines = (await render({ readCount: 2, memoryReadCount: 1 }))
+    const lines = (await render({ readCount: 2, memoryOps: { private: ops({ read: 1 }) } }))
       .split('\n')
       .filter(l => l.trim().length > 0)
 
     expect(lines[0]).toContain('Read 2 files')
-    expect(lines[1]).toContain('Loaded 1 memory')
+    expect(lines[1]).toContain('Loaded 1 private memory')
     expect(flatten(lines.join(' ')).match(/ctrl\+o/g)).toHaveLength(1)
   })
 
   test('memory writes and searches keep their verbs on the badge', async () => {
     // Only a recall is a context load; writing or searching memory is
     // something the group did, so it stays a badge verb.
-    const out = await render({ memoryWriteCount: 1, memorySearchCount: 1 })
+    const out = await render({ memoryOps: { private: ops({ write: 1, search: 1 }) } })
     const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
 
-    expect(firstLine).toContain('Searched memories')
-    expect(firstLine).toContain('wrote 1 memory')
+    expect(firstLine).toContain('Searched private memories')
+    expect(firstLine).toContain('wrote 1 private memory')
     expect(out).not.toContain('Loaded')
   })
 
@@ -294,8 +320,86 @@ describe('CollapsedReadSearchContent — recalled memories', () => {
     // A width that forces a wrap is the only thing that tells one <Text> from
     // sibling <Text>s laid out as independently-wrapping columns (ink-tui.md §10).
     for (const columns of [80, 40, 24]) {
-      const flat = flatten(await render({ memoryReadCount: 3 }, false, columns))
-      expectInOrder(flat, ['Loaded 3 memories'])
+      const flat = flatten(
+        await render({ memoryOps: { private: ops({ read: 3 }) } }, false, columns),
+      )
+      expectInOrder(flat, ['Loaded 3 private memories'])
     }
+  })
+
+  test('a recalled global memory is named global, ahead of the private ones', async () => {
+    const out = await render({
+      readCount: 1,
+      memoryOps: { private: ops({ read: 1 }), global: ops({ read: 2 }) },
+    })
+    const firstLine = out.split('\n').find(l => l.trim().length > 0) ?? ''
+
+    expect(firstLine).toContain('Read 1 file')
+    expect(firstLine).not.toContain('memor')
+    expect(flatten(out)).toContain('⎿ Loaded 2 global memories, 1 private memory')
+  })
+
+  test('global memory writes and searches get their own verbs, ahead of private', async () => {
+    const flat = flatten(
+      await render({
+        memoryOps: { private: ops({ write: 1 }), global: ops({ search: 1, write: 2 }) },
+      }),
+    )
+
+    expectInOrder(flat, [
+      'Searched global memories',
+      ', wrote 2 global memories',
+      ', wrote 1 private memory',
+    ])
+    expect(flat).not.toContain('Loaded')
+  })
+
+  test('a running global write reads in the present tense', async () => {
+    const flat = flatten(await render({ memoryOps: { global: ops({ write: 1 }) } }, true))
+    expect(flat).toContain('Writing 1 global memory')
+  })
+})
+
+describe('CollapsedReadSearchContent — memory badge, per scope', () => {
+  test('each scope names its search and its write', async () => {
+    for (const scope of ['global', 'private', 'team'] as const) {
+      expect(flatten(await render({ memoryOps: { [scope]: ops({ search: 1 }) } }))).toContain(
+        `Searched ${scope} memories`,
+      )
+      expect(flatten(await render({ memoryOps: { [scope]: ops({ write: 1 }) } }))).toContain(
+        `Wrote 1 ${scope} memory`,
+      )
+      expect(flatten(await render({ memoryOps: { [scope]: ops({ write: 3 }) } }))).toContain(
+        `Wrote 3 ${scope} memories`,
+      )
+    }
+  })
+
+  test('team searches and writes share one part list, search first', async () => {
+    expect(
+      flatten(await render({ memoryOps: { team: ops({ search: 1, write: 2 }) } })),
+    ).toContain('Searched team memories, wrote 2 team memories')
+  })
+
+  test('a preceding part lowercases the first memory verb and adds the comma', async () => {
+    const flat = flatten(await render({ readCount: 1, memoryOps: { team: ops({ write: 1 }) } }))
+    expectInOrder(flat, ['Read 1 file', ', wrote 1 team memory'])
+  })
+
+  test('scopes render global, private, team — whatever the key order', async () => {
+    const flat = flatten(
+      await render({
+        memoryOps: {
+          team: ops({ search: 1 }),
+          private: ops({ search: 1 }),
+          global: ops({ search: 1 }),
+        },
+      }),
+    )
+    expectInOrder(flat, [
+      'Searched global memories',
+      ', searched private memories',
+      ', searched team memories',
+    ])
   })
 })

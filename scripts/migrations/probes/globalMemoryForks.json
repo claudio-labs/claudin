@@ -1,0 +1,119 @@
+{
+  "test": [
+    "src/memory/extract/extractMemories.global.test.ts",
+    "src/memory/memdir/memoryPrompt.test.ts",
+    "src/memory/autoDream/consolidationPrompt.test.ts"
+  ],
+  "source": "src/memory/extract/extractMemories.ts",
+  "probes": [
+    {
+      "name": "a fork may write the global dir",
+      "find": "      const scope = typeof filePath === 'string' ? memoryScopeOf(filePath) : null\n",
+      "replace": "      const scope = typeof filePath === 'string' && memoryScopeOf(filePath) !== 'global' ? memoryScopeOf(filePath) : null\n"
+    },
+    {
+      "name": "a global write by the main agent makes the extraction skip",
+      "find": "      if (blockWrittenPaths(block).some(path => memoryScopeOf(path) !== null)) {\n",
+      "replace": "      if (blockWrittenPaths(block).some(path => memoryScopeOf(path) === 'private')) {\n"
+    },
+    {
+      "name": "the manifest lists the global dir",
+      "find": "  const tops = dirs.filter(dir => !dirs.some(other => other !== dir && dir.root.startsWith(other.root)))\n",
+      "replace": "  const tops = dirs.filter(dir => dir.scope === 'private')\n"
+    },
+    {
+      "name": "the manifest scans the team dir with the private one, not twice",
+      "find": "  const tops = dirs.filter(dir => !dirs.some(other => other !== dir && dir.root.startsWith(other.root)))\n",
+      "replace": "  const tops = dirs\n"
+    },
+    {
+      "name": "the extraction hands the prompts the global dir",
+      "find": "      const globalDir = getMemoryDir('global')?.root ?? null\n",
+      "replace": "      const globalDir = null\n"
+    },
+    {
+      "name": "the combined extraction prompt takes the global scopes",
+      "source": "src/memory/extract/prompts.ts",
+      "find": "    ...typesSectionCombined(globalDir !== null),\n",
+      "replace": "    ...typesSectionCombined(false),\n"
+    },
+    {
+      "name": "the extraction types section renders each scope from TYPE_SCOPES",
+      "source": "src/memory/memdir/memoryTypes.ts",
+      "find": "<scope>${typeScope(type, hasGlobal)}.",
+      "replace": "<scope>${typeScope(type, false)}."
+    },
+    {
+      "name": "append-only: a global write is gated only for the listed scopes",
+      "find": "      if (scope !== null && !appendOnly.includes(scope)) {\n",
+      "replace": "      if (scope !== null) {\n"
+    },
+    {
+      "name": "append-only: an Edit must keep its old_string",
+      "find": "      input.new_string.includes(input.old_string)\n",
+      "replace": "      true\n"
+    },
+    {
+      "name": "append-only: a Write must keep the existing content",
+      "find": "  return typeof input.content === 'string' && input.content.includes(existing.trimEnd())\n",
+      "replace": "  return true\n"
+    },
+    {
+      "name": "append-only: a Write of a new file is allowed",
+      "find": "    return isENOENT(e)\n",
+      "replace": "    return false\n"
+    },
+    {
+      "name": "auto-dream's gate is append-only on the global dir",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "        canUseTool: createMemoryCanUseTool(['global']),\n",
+      "replace": "        canUseTool: createMemoryCanUseTool(),\n"
+    },
+    {
+      "name": "auto-dream hands the prompt the session dirs",
+      "source": "src/memory/autoDream/autoDream.ts",
+      "find": "buildConsolidationPrompt(getMemoryDirs(), transcriptDir, extra)",
+      "replace": "buildConsolidationPrompt(getMemoryDirs().filter(d => d.scope !== 'global'), transcriptDir, extra)"
+    },
+    {
+      "name": "the dream prompt says the global dir is append-only",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": ": add memories and add to them there, but never delete, shrink or rewrite one, nor remove a line from its index.",
+      "replace": "."
+    },
+    {
+      "name": "the dream prompt lists the global dir as add-only",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": " — add to it only (below)",
+      "replace": ""
+    },
+    {
+      "name": "deleting contradicted facts exempts the global dir",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": "  const notGlobal = global === null ? '' : ' (outside the global dir)'\n",
+      "replace": "  const notGlobal = ''\n"
+    },
+    {
+      "name": "resolving contradictions exempts the global dir",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": ", unless it is a global memory: name that one in your summary",
+      "replace": ""
+    },
+    {
+      "name": "the global index only gains lines",
+      "source": "src/memory/autoDream/consolidationPrompt.ts",
+      "find": " in the global one, only add lines.",
+      "replace": ""
+    },
+    {
+      "name": "the extraction's gate is append-only on the global dir",
+      "find": "  return createMemoryCanUseTool(['global'])\n",
+      "replace": "  return createMemoryCanUseTool()\n"
+    },
+    {
+      "name": "runExtraction runs under the extraction's gate",
+      "find": "    const canUseTool = createExtractionCanUseTool()\n",
+      "replace": "    const canUseTool = createMemoryCanUseTool()\n"
+    }
+  ]
+}

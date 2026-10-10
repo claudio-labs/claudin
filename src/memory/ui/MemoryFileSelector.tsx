@@ -1,5 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import { basename, join } from 'path';
 import * as React from 'react';
@@ -8,7 +7,9 @@ import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
+import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
+import { getMemoryDirs } from 'src/memory/memdir/memoryDirs.js';
+import { isMemoryFileType, MEMORY_SCOPE_SPECS, type MemoryScope } from 'src/memory/memdir/memoryScopes.js';
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js';
 import { readLastConsolidatedAt } from 'src/memory/autoDream/consolidationLock.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
@@ -23,12 +24,8 @@ import { projectIsInGitRepo } from 'src/memory/memdir/versions.js';
 import { updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { ListItem } from 'src/terminal/design-system/ListItem.js';
-import { getProjectMemoryPathForSelector } from 'src/memory/ui/memoryFileSelectorPaths.js';
-import { encodeBrowseValue, TIDY_VALUE } from 'src/memory/ui/memoryDirRows.js';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM') ? require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
+import { getProjectMemoryPathForSelector, PROJECT_INSTRUCTIONS_LABEL, USER_INSTRUCTIONS_LABEL } from 'src/memory/ui/memoryFileSelectorPaths.js';
+import { encodeBrowseValue, memoryDirRowLabel, TIDY_VALUE } from 'src/memory/ui/memoryDirRows.js';
 
 interface ExtendedMemoryFileInfo extends MemoryFileInfo {
   isNested?: boolean;
@@ -40,18 +37,18 @@ let lastSelectedPath: string | undefined;
 type Props = {
   onSelect: (path: string) => void;
   onCancel: () => void;
-  /** Memory counts for the two browse rows, scanned before the dialog opens. */
-  dirCounts?: {
-    private: number;
-    team: number;
-  };
+  /** Memory counts for the browse rows, scanned before the dialog opens. */
+  dirCounts?: Record<MemoryScope, number>;
+  /** Per directory, the memories `/memory sort` would promote to the global one. */
+  promotable?: Partial<Record<MemoryScope, number>>;
 };
 export function MemoryFileSelector(t0: Props) {
   const $ = _c(58);
   const {
     onSelect,
     onCancel,
-    dirCounts
+    dirCounts,
+    promotable
   } = t0;
   const existingMemoryFiles = use(getMemoryFiles());
   const originalCwd = getOriginalCwd();
@@ -80,10 +77,10 @@ export function MemoryFileSelector(t0: Props) {
     const indent = depth > 0 ? "  ".repeat(depth - 1) : "";
     let label;
     if (file.type === "User" && !file.isNested && file.path === userMemoryPath) {
-      label = "User memory";
+      label = USER_INSTRUCTIONS_LABEL;
     } else {
       if (file.type === "Project" && !file.isNested && file.path === projectMemoryPath) {
-        label = "Project memory";
+        label = PROJECT_INSTRUCTIONS_LABEL;
       } else {
         if (depth > 0) {
           label = `${indent}L ${displayPath}${existsLabel}`;
@@ -95,7 +92,7 @@ export function MemoryFileSelector(t0: Props) {
     let description;
     const isGit = projectIsInGitRepo(originalCwd);
     if (file.type === "User" && !file.isNested) {
-      description = "Saved in ~/.claudin/CLAUDE.md";
+      description = "Your instructions for every project, in ~/.claudin/CLAUDE.md";
     } else {
       if (file.type === "Project" && !file.isNested && file.path === projectMemoryPath) {
         description = `${isGit ? "Checked in at" : "Saved in"} ./${projectMemoryFileName}`;
@@ -125,26 +122,16 @@ export function MemoryFileSelector(t0: Props) {
     // the counts are props, which a memo_cache_sentinel branch would freeze at
     // their first value. $[0] and $[1] are left unused on purpose; changing
     // _c(58) or reusing an index is what breaks this file (ink-tui.md §6).
-    const autoMemPath = getAutoMemPath();
-    folderOptions.push({
-      label: `Private memory${dirCounts ? ` · ${dirCounts.private}` : ""}`,
-      value: encodeBrowseValue({
-        dir: autoMemPath,
-        title: "Private memory",
-        isTeamDir: false
-      }),
-      description: `Saved in ${getDisplayPath(autoMemPath)}`
-    });
-    if (feature("TEAMMEM") && teamMemPaths?.isTeamMemoryEnabled()) {
-      const teamMemPath = teamMemPaths.getTeamMemPath();
+    for (const memoryDir of getMemoryDirs()) {
+      const spec = MEMORY_SCOPE_SPECS[memoryDir.scope];
       folderOptions.push({
-        label: `Team memory${dirCounts ? ` · ${dirCounts.team}` : ""}`,
+        label: memoryDirRowLabel(spec.title, dirCounts?.[memoryDir.scope], promotable?.[memoryDir.scope]),
         value: encodeBrowseValue({
-          dir: teamMemPath,
-          title: "Team memory",
-          isTeamDir: true
+          dir: memoryDir.root,
+          title: spec.title,
+          scope: memoryDir.scope
         }),
-        description: `Shared with the team, git-tracked at ${getDisplayPath(teamMemPath)}`
+        description: `${spec.description} ${getDisplayPath(memoryDir.root)}`
       });
     }
     folderOptions.push({
@@ -159,8 +146,7 @@ export function MemoryFileSelector(t0: Props) {
           label: `${chalk.bold(agent.agentType)} agent memory`,
           value: encodeBrowseValue({
             dir: agentDir,
-            title: `${agent.agentType} agent memory`,
-            isTeamDir: false
+            title: `${agent.agentType} agent memory`
           }),
           description: `${agent.memory} scope`
         });
@@ -443,5 +429,5 @@ function _temp2(f_2: MemoryFileInfo) {
   };
 }
 function _temp(f_1: MemoryFileInfo) {
-  return f_1.type !== "AutoMem" && f_1.type !== "TeamMem";
+  return !isMemoryFileType(f_1.type);
 }

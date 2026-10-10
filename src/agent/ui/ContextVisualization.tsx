@@ -4,11 +4,11 @@ import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { ContextData } from 'src/agent/context/analyzeContext.js';
 import { generateContextSuggestions } from 'src/agent/context/contextSuggestions.js';
-import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatTokens } from 'src/shared/text/format.js';
 import { getSourceDisplayName, type SettingSource } from 'src/platform/settings/constants.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { ContextSuggestions } from 'src/agent/ui/ContextSuggestions.js';
+import { describeContextMemoryFile } from 'src/agent/context/memoryFileLabel.js';
 
 // The element types behind ContextData's collections are not exported from
 // analyzeContext.ts, so they are recovered here by indexed access. They exist
@@ -401,7 +401,10 @@ function _temp24(
   return <Box key={i_8}><Text>{branchPrefix(i_8, arr)} {skill.name}: </Text><Text dimColor={true}>{formatTokens(skill.tokens)} tokens</Text></Box>;
 }
 function _temp23(file: MemoryFileInfo, i_7: number, arr: readonly unknown[]) {
-  return <Box key={i_7}><Text>{branchPrefix(i_7, arr)} {getDisplayPath(file.path)}: </Text><Text dimColor={true}>{formatTokens(file.tokens)} tokens</Text></Box>;
+  // An auto-memory index is named for what it is, with the /memory
+  // subcommand that manipulates it; any other file by its path.
+  const { name, detail } = describeContextMemoryFile(file);
+  return <Box key={i_7}><Text>{branchPrefix(i_7, arr)} {name}: <Text dimColor={true}>{detail}</Text></Text></Box>;
 }
 function _temp22(t0: [string, AgentInfo[]]) {
   const [sourceDisplay, sourceAgents] = t0;

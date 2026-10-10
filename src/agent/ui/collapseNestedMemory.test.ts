@@ -4,6 +4,7 @@ import {
   nestedMemoryBatchLabel,
 } from 'src/agent/ui/collapseNestedMemory.js'
 import type { Attachment } from 'src/agent/attachments/attachments.js'
+import { countMemories } from 'src/memory/memdir/memoryScopes.js'
 import type { RenderableMessage } from 'src/shared/types/message.js'
 
 type BatchFile = Extract<
@@ -135,18 +136,28 @@ describe('nestedMemoryBatchLabel', () => {
     expect(nestedMemoryBatchLabel([file('pkg/CLAUDE.md')])).toBe('1 memory file')
   })
 
-  test('a private memory is a "memory", by its type rather than its path', () => {
+  test('a private memory is a "private memory", by its type rather than its path', () => {
     expect(
       nestedMemoryBatchLabel([
         file('.claudin/memory/a.md', 'AutoMem'),
         file('.claudin/memory/b.md', 'AutoMem'),
         file('.claudin/memory/c.md', 'AutoMem'),
       ]),
-    ).toBe('3 memories')
+    ).toBe('3 private memories')
     // A `bugs/` under the PRIVATE dir is not a team category.
     expect(nestedMemoryBatchLabel([file('.claudin/memory/bugs/x.md', 'AutoMem')])).toBe(
-      '1 memory',
+      '1 private memory',
     )
+  })
+
+  test('names the scope the way a Read of one does', () => {
+    // countMemories (memoryScopes.ts) is the Read line's noun.
+    expect(nestedMemoryBatchLabel([file('.claudin/memory/a.md', 'AutoMem')])).toBe(
+      countMemories('private', 1),
+    )
+    expect(
+      nestedMemoryBatchLabel([file('a.md', 'GlobalMem'), file('b.md', 'GlobalMem')]),
+    ).toBe(countMemories('global', 2))
   })
 
   test('a team file at the team root is a "team memory"', () => {
@@ -191,6 +202,6 @@ describe('nestedMemoryBatchLabel', () => {
         file('.claudin/rules/b.md'),
         file('.claudin/memory/team/docs/d.md', 'TeamMem'),
       ]),
-    ).toBe('2 rules, 1 memory, 1 team memory, 1 team bug memory, 1 team doc memory')
+    ).toBe('2 rules, 1 private memory, 1 team memory, 1 team bug memory, 1 team doc memory')
   })
 })

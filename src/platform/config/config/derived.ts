@@ -2,16 +2,12 @@
  * Values derived from the global config rather than stored in it: whether the
  * auto-updater is disabled and why, the lazily-minted user id and first-start
  * stamp, and the memory/rules paths.
- *
- * teamMemPaths moves here with getMemoryPath, its only caller, and keeps the
- * ternary form feature() requires — any other shape throws under bun test
- * while the build folds it silently.
  */
-import { feature } from 'bun:bundle'
 import { randomBytes } from 'crypto'
 import { join } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { getAutoMemEntrypoint } from 'src/memory/memdir/paths.js'
+import { memoryIndexPath } from 'src/memory/memdir/memoryDirs.js'
+import { scopeOfMemoryType } from 'src/memory/memdir/memoryScopes.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import {
@@ -25,13 +21,6 @@ import {
 import type { AutoUpdaterDisabledReason } from 'src/platform/config/config/types.js'
 import { getManagedFilePath } from 'src/platform/settings/managedPath.js'
 import { PRIMARY_PROJECT_INSTRUCTION_FILE } from 'src/memory/instructions/projectInstructions.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
-  : null
-
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 export function isAutoUpdaterDisabled(): boolean {
   return getAutoUpdaterDisabledReason() !== null
@@ -123,6 +112,8 @@ export function recordFirstStartTime(): void {
 
 export function getMemoryPath(memoryType: MemoryType): string {
   const cwd = getOriginalCwd()
+  const scope = scopeOfMemoryType(memoryType)
+  if (scope !== null) return memoryIndexPath(scope)
 
   switch (memoryType) {
     case 'User':
@@ -132,15 +123,9 @@ export function getMemoryPath(memoryType: MemoryType): string {
     case 'Project':
       return join(cwd, PRIMARY_PROJECT_INSTRUCTION_FILE)
     case 'Managed':
+    default:
       return join(getManagedFilePath(), 'CLAUDE.md')
-    case 'AutoMem':
-      return getAutoMemEntrypoint()
   }
-  // TeamMem is only a valid MemoryType when feature('TEAMMEM') is true
-  if (feature('TEAMMEM')) {
-    return teamMemPaths!.getTeamMemEntrypoint()
-  }
-  return '' // unreachable in external builds where TeamMem is not in MemoryType
 }
 
 export function getManagedClaudeRulesDir(): string {

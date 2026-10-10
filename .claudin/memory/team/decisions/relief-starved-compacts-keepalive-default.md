@@ -1,6 +1,6 @@
 ---
 name: relief-starved-compacts-keepalive-default
-description: Since 2026-10-09 (branch fix/cache-census-2026-10-09) a relief clip must free one band, a starved window lane compacts on the same request, forks never run relief, and the 5m-tier keep-alive is on by default — the census fixes for $592 of sub-agent expiries, $142+$68 of ~4k clips and 3 fork-clip floors
+description: Since 2026-10-09 (PR 280, merged to main) a relief clip must free one band, a starved window lane compacts on the same request, forks never run relief, and the 5m-tier keep-alive is on by default — the census fixes for $592 of sub-agent expiries, $142+$68 of ~4k clips and 3 fork-clip floors
 type: project
 scope: src/agent/compact/microCompact.ts, src/agent/compact/reliefPolicy.ts, src/agent/compact/autoCompact.ts, src/agent/cache/anthropic/keepAlive.ts
 impact: functional

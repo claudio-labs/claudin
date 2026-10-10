@@ -14,9 +14,9 @@
  *   `pathInOriginalCwd` therefore reports every fixture as *external*, so the
  *   `@include` tests pass `includeExternal: true` and one test pins what
  *   `false` does instead. That is the observed behaviour, not a workaround.
- * - `feature('TEAMMEM')` reads false under `bun test` (every build flag does),
- *   so the `TeamMem` branches of this module are unreachable here and are
- *   deliberately not asserted on.
+ * - `getMemoryFiles` reads the real memory dirs of this checkout, so the
+ *   `TeamMem` handling is asserted where it does not depend on them: on how
+ *   `getClaudeMds` renders a team index it is handed.
  *
  * No env var and no cwd is set by this file, so there is no process-global
  * state to hand back; the only shared thing it touches is the `getMemoryFiles`
@@ -30,6 +30,7 @@ import * as claudemdModule from 'src/memory/instructions/claudemd.js'
 import {
   MAX_MEMORY_CHARACTER_COUNT,
   clearMemoryFileCaches,
+  getClaudeMds,
   getExternalClaudeMdIncludes,
   getLargeMemoryFiles,
   getMemoryFiles,
@@ -348,6 +349,36 @@ describe('getExternalClaudeMdIncludes', () => {
       false,
     )
     expect(hasExternalClaudeMdIncludes([])).toBe(false)
+  })
+})
+
+describe('getClaudeMds — the team index', () => {
+  test('is described as shared team memory and fenced as shared content', () => {
+    const team: MemoryFileInfo = {
+      path: '/repo/.claudin/memory/team/MEMORY.md',
+      type: 'TeamMem',
+      content: '- [Uses pnpm](uses-pnpm.md) — never npm\n',
+    }
+    const out = getClaudeMds([team])
+
+    expect(out).toContain(
+      'Contents of /repo/.claudin/memory/team/MEMORY.md (shared team memory, git-tracked in the project):\n\n<team-memory-content source="shared">\n- [Uses pnpm](uses-pnpm.md) — never npm\n</team-memory-content>',
+    )
+  })
+})
+
+describe('getClaudeMds — what each file is said to be', () => {
+  // The description is how the model tells the three memory indexes, and the
+  // user's own instructions, apart: global vs this project's private memory.
+  test.each([
+    ['GlobalMem', "/home/u/.claudin/memory/MEMORY.md (user's global memory, shared by every project):"],
+    ['AutoMem', "/repo/.claudin/memory/MEMORY.md (user's private memory for this project, persists across conversations):"],
+    ['User', "/home/u/.claudin/CLAUDE.md (user's private instructions for all projects):"],
+    ['Managed', "/etc/claudin/CLAUDE.md (user's private instructions for all projects):"],
+  ] as const)('%s', (type, header) => {
+    const path = header.slice(0, header.indexOf(' ('))
+    const out = getClaudeMds([{ path, type, content: 'body\n' } as MemoryFileInfo])
+    expect(out).toContain(`Contents of ${header}\n\nbody`)
   })
 })
 

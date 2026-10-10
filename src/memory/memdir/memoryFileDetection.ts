@@ -1,23 +1,13 @@
-import { feature } from 'bun:bundle'
 import { normalize, posix, win32 } from 'path'
-import {
-  getAutoMemPath,
-  getMemoryBaseDir,
-  isAutoMemoryEnabled,
-  isAutoMemPath,
-} from 'src/memory/memdir/paths.js'
+import { getMemoryDirs, memoryScopeOf } from 'src/memory/memdir/memoryDirs.js'
+import { withoutTrailingSep } from 'src/memory/memdir/memoryScopes.js'
+import { getMemoryBaseDir, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import {
   posixPathToWindowsPath,
   windowsPathToPosixPath,
 } from 'src/shared/fs/windowsPaths.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 const IS_WINDOWS = process.platform === 'win32'
 
@@ -82,17 +72,6 @@ function detectSessionPatternType(
 }
 
 /**
- * Check if a file path is within the memdir directory.
- */
-export function isAutoMemFile(filePath: string): boolean {
-  if (isAutoMemoryEnabled()) {
-    return isAutoMemPath(filePath)
-  }
-  return false
-}
-
-
-/**
  * Check if a file path is within an agent memory directory.
  */
 function isAgentMemFile(filePath: string): boolean {
@@ -104,25 +83,17 @@ function isAgentMemFile(filePath: string): boolean {
 
 /**
  * Check if a file is a Claude-managed memory file (NOT user-managed instruction files).
- * Includes: auto-memory (memdir), agent memory, session memory/transcripts.
+ * Includes: the memory directories (global, private, team), agent memory, session memory/transcripts.
  * Excludes: CLAUDE.md, CLAUDE.local.md, .claudin/rules/*.md (user-managed).
  *
  * Use this for collapse/badge logic where user-managed files should show full diffs.
  */
 export function isAutoManagedMemoryFile(filePath: string): boolean {
-  if (isAutoMemFile(filePath)) {
-    return true
-  }
-  if (feature('TEAMMEM') && teamMemPaths!.isTeamMemFile(filePath)) {
-    return true
-  }
-  if (detectSessionFileType(filePath) !== null) {
-    return true
-  }
-  if (isAgentMemFile(filePath)) {
-    return true
-  }
-  return false
+  return (
+    memoryScopeOf(filePath) !== null ||
+    detectSessionFileType(filePath) !== null ||
+    isAgentMemFile(filePath)
+  )
 }
 
 // Check if a directory path is a memory-related directory.
@@ -144,25 +115,16 @@ export function isMemoryDirectory(dirPath: string): boolean {
   ) {
     return true
   }
-  // Team memory directories live under <autoMemPath>/team/
+  // A memory directory itself, or anything in it — wherever its setting or
+  // the Cowork override put it
   if (
-    feature('TEAMMEM') &&
-    teamMemPaths!.isTeamMemoryEnabled() &&
-    teamMemPaths!.isTeamMemPath(normalizedPath)
+    getMemoryDirs().some(
+      dir =>
+        normalizedCmp === toComparable(withoutTrailingSep(dir.root)) ||
+        normalizedCmp.startsWith(toComparable(dir.root)),
+    )
   ) {
     return true
-  }
-  // Check the auto-memory path override (CLAUDE_COWORK_MEMORY_PATH_OVERRIDE)
-  if (isAutoMemoryEnabled()) {
-    const autoMemPath = getAutoMemPath()
-    const autoMemDirCmp = toComparable(autoMemPath.replace(/[/\\]+$/, ''))
-    const autoMemPathCmp = toComparable(autoMemPath)
-    if (
-      normalizedCmp === autoMemDirCmp ||
-      normalizedCmp.startsWith(autoMemPathCmp)
-    ) {
-      return true
-    }
   }
 
   const configDirCmp = toComparable(getClaudinConfigHomeDir())
@@ -194,19 +156,20 @@ export function isMemoryDirectory(dirPath: string): boolean {
 export function isShellCommandTargetingMemory(command: string): boolean {
   const configDir = getClaudinConfigHomeDir()
   const memoryBase = getMemoryBaseDir()
-  const autoMemDir = isAutoMemoryEnabled()
-    ? getAutoMemPath().replace(/[/\\]+$/, '')
-    : ''
 
   // Quick check: does the command mention the config, memory base, or
-  // auto-mem directory? Compare in forward-slash form (PowerShell on Windows
+  // a memory directory? Compare in forward-slash form (PowerShell on Windows
   // may use either separator while configDir uses the platform-native one).
   // On Windows also check the MinGW form (/c/...) since BashTool runs under
   // Git Bash which emits that encoding. On Linux/Mac, configDir is already
   // posix so only one form to check — and crucially, windowsPathToPosixPath
   // is NOT called, so Linux paths like /m/foo aren't misinterpreted as MinGW.
   const commandCmp = toComparable(command)
-  const dirs = [configDir, memoryBase, autoMemDir].filter(Boolean)
+  const dirs = [
+    configDir,
+    memoryBase,
+    ...getMemoryDirs().map(dir => withoutTrailingSep(dir.root)),
+  ]
   const matchesAnyDir = dirs.some(d => {
     if (commandCmp.includes(toComparable(d))) return true
     if (IS_WINDOWS) {
@@ -235,7 +198,7 @@ export function isShellCommandTargetingMemory(command: string): boolean {
     const cleanPath = match.replace(/[,;|&>]+$/, '')
     // On Windows, convert MinGW /c/... → native C:\... at this single
     // point. Downstream predicates (isAutoManagedMemoryFile, isMemoryDirectory,
-    // isAutoMemPath, isAgentMemoryPath) then receive native paths and only
+    // memoryScopeOf, isAgentMemoryPath) then receive native paths and only
     // need toComparable() for matching. On other platforms, paths are already
     // native — no conversion, so /m/foo etc. pass through unmodified.
     const nativePath = IS_WINDOWS

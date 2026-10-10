@@ -1,18 +1,10 @@
 import {
   DIR_EXISTS_GUIDANCE,
-  ENTRYPOINT_NAME,
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
 } from 'src/memory/memdir/memdir.js'
-
-// getAutoMemPath()/getTeamMemPath() return paths with a trailing separator
-// (paths.ts, teamMemPaths.ts) — strip it before interpolating so the prompt
-// doesn't render `…/memory//MEMORY.md`.
-const TRAILING_SEP_RE = /[/\\]+$/
-
-function normalizeRoot(root: string): string {
-  return root.replace(TRAILING_SEP_RE, '')
-}
+import { type MemoryDir, promptRoots } from 'src/memory/memdir/memoryDirs.js'
+import { ENTRYPOINT_NAME } from 'src/memory/memdir/memoryScopes.js'
 
 const KB = 1024
 
@@ -25,25 +17,15 @@ const KB = 1024
  * The prompt runs in the main conversation (local-jsx command with
  * shouldQuery), so deletions go through the normal Bash permission prompt —
  * that prompt is the human gate, keep the instructions deletion-via-`rm`.
+ *
+ * `dirs` is the session's memory directories (memoryDirs.ts); the global one,
+ * while it is on, is tidied by the same rules and never merged across.
  */
-export function buildMemoryTidyPrompt(
-  memoryRoot: string,
-  teamRoot: string | null,
-): string {
-  const root = normalizeRoot(memoryRoot)
-  const team = teamRoot === null ? null : normalizeRoot(teamRoot)
+export function buildMemoryTidyPrompt(dirs: readonly MemoryDir[]): string {
+  const { private: root, team, global } = promptRoots(dirs)
   const maxKb = Math.round(MAX_ENTRYPOINT_BYTES / KB)
 
-  // Step 1 must only mention the team dir when this run actually covers it —
-  // otherwise the agent is invited into team/ without the boundary rules.
-  const subdirGuidance =
-    team !== null
-      ? 'skip subdirectories other than the team dir handled separately'
-      : 'skip all subdirectories'
-
-  const teamSection =
-    team !== null
-      ? `
+  const teamSection = `
 ## Team memory
 
 Also tidy the team memory directory: \`${team}\`
@@ -54,6 +36,18 @@ Also tidy the team memory directory: \`${team}\`
 - **Never move a file into \`decisions/\`, \`bugs/\` or \`docs/\`** — filing team memories by category is \`/memory sort\`'s job, not tidy's — and never descend into those subdirectories.
 - Files you change or delete here are git-tracked and reach the team on the next commit — another reason to stay strictly conservative.
 `
+
+  const globalSection =
+    global !== null
+      ? `
+## Global memory
+
+Also tidy the global memory directory: \`${global}\` — yours and this user's in every project.
+
+- Apply the exact same orient → identify → merge → update-index steps inside \`${global}\` (its index is \`${global}/${ENTRYPOINT_NAME}\`)
+- **Never merge across the boundary**: a global memory and a private or team one about the same fact stay separate. Moving a private memory to the global dir is \`/memory sort\`'s job, not tidy's.
+- Every project reads these files: a deletion here takes the memory away from all of them — another reason to stay strictly conservative.
+`
       : ''
 
   return `# Memory Tidy: conservative duplicate merge
@@ -62,13 +56,13 @@ You are tidying the memory directory — a **conservative** pass that merges dup
 
 Memory directory: \`${root}\`
 ${DIR_EXISTS_GUIDANCE}
-${teamSection}
+${teamSection}${globalSection}
 ---
 
 ## Step 1 — Orient
 
 - Read \`${root}/${ENTRYPOINT_NAME}\` to see the current index
-- Read every \`.md\` file in the directory — full contents, not just frontmatter (there are at most a couple hundred; ${subdirGuidance})
+- Read every \`.md\` file in the directory — full contents, not just frontmatter (there are at most a couple hundred; skip subdirectories other than the team dir handled separately)
 
 ## Step 2 — Identify duplicates
 
@@ -93,12 +87,12 @@ For each confirmed duplicate group:
 
 Hard rules:
 - Never merge across the private ↔ team boundary.
-- Never delete a file that is merely stale, ambiguous, or low-quality — only confirmed duplicates. Stale or wrong content is reported, not fixed.
+${global === null ? '' : '- Never merge across the global ↔ private/team boundary.\n'}- Never delete a file that is merely stale, ambiguous, or low-quality — only confirmed duplicates. Stale or wrong content is reported, not fixed.
 - Never create new memory files, and never touch files outside the memory directories.
 
 ## Step 4 — Update the index (minimal edits, NOT a rewrite)
 
-Edit \`${root}/${ENTRYPOINT_NAME}\` (and the team index if applicable) **in place, surgically**:
+Edit \`${root}/${ENTRYPOINT_NAME}\` (and the ${global === null ? 'team index' : 'team and global indexes'} if applicable) **in place, surgically**:
 
 - Remove only the lines pointing at files you deleted
 - Update the survivor's line only if its title/hook changed
