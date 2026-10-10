@@ -1,7 +1,7 @@
 // The symbol table shape produced by the outline scanners.
 //
-// Kept dependency-free on purpose: `src/shared/fs/detectCodeLang.ts` imports
-// `OutlineLang` from here as a type, and a leaf module keeps that free.
+// Kept dependency-free on purpose: a leaf module can be imported as a type
+// from anywhere without dragging the scanners in.
 
 export type SymbolKind =
   | 'function'
