@@ -137,7 +137,7 @@ export function wrapStdoutWithMarkers(
 }
 
 /** The wrapper for a pure file read the pass-through left whole
- * (`CLAUDIN_BASH_FILE_READ_PASSTHROUGH`, fileReadShape.ts), around its bytes
+ * (`CLAUDIN_BASH_READ_LANE`, fileReadShape.ts), around its bytes
  * exactly as the command printed them.
  *
  * It has two readers. The tool-result summarizer stands aside for output that

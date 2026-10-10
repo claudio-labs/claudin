@@ -47,3 +47,5 @@ capped range reads and 41% of capped searches into a bound, baseline 15%.
 `read-credit-e2e.ts` scenarios 11-12 (52/52 on the bundle), 43/43 probes red.
 Real-use effect not yet measured: re-run the census a week after the merge;
 bounded-read recoveries in sub-agents should fall from ~30% toward 15%.
+
+**Superseded (2026-10-09):** the read lane keeps these reads, and pure prints beside them, up to 28k chars rather than 150 lines; `CLAUDIN_CAP_KEEP_BOUNDED` is gone ([[bash-read-lane]]). `lineBound.ts` lives on as the lane's bound for piped slices.

@@ -13,8 +13,8 @@
  * three requests after 48% of the capped range reads and 41% of the capped
  * searches into a bound, against 15% after an uncut result of the same size.
  * After `cmd | head -N` of any other command it was 14%, the baseline, so that
- * shape is not here: the floor honors the bound of these shapes and no other
- * (`index.ts`, `isWithinCommandBound`).
+ * shape is not here: the read lane honors the bound of these shapes and no
+ * other (`readLane.ts`, `pipelineBound`).
  *
  * ## What counts
  *
@@ -111,7 +111,7 @@ const LINE_FILTERS: ReadonlySet<string> = new Set(["cut", "tr", "sort", "uniq", 
 /** What one stage bounds its output to, and the files it reads rather than stdin. */
 type StageBound = { readonly lines: number; readonly files: readonly ReadWord[] };
 /** The variables of the `for` loops a segment sits in: each stands for one word per pass. */
-type Scope = { readonly loopVariables: ReadonlySet<string> };
+export type Scope = { readonly loopVariables: ReadonlySet<string> };
 
 /** How many paths `words` name, or null when a glob or an expansion hides the count. */
 function pathCount(words: readonly ReadWord[], scope: Scope): number | null {
@@ -332,7 +332,7 @@ function isLineFilter(words: readonly ReadWord[]): boolean {
  * past the head, over stdin, fed only by what `isBoundedFeed` accepts. Every
  * stage after it must be a line filter.
  */
-function pipelineBound(stages: readonly (readonly ReadWord[])[], scope: Scope): { lines: number; read: boolean } | null {
+export function pipelineBound(stages: readonly (readonly ReadWord[])[], scope: Scope): { lines: number; read: boolean } | null {
   let at = -1;
   let bound: StageBound | null = null;
   for (let i = stages.length - 1; i >= 0 && !bound; i--) {

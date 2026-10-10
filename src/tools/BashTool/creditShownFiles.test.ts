@@ -993,7 +993,7 @@ describe('a head or tail credits a file it printed whole', () => {
   })
 })
 
-// CLAUDIN_BASH_FILE_READ_PASSTHROUGH past the 28k it shows whole: the whole
+// CLAUDIN_BASH_READ_LANE past the 28k it shows whole: the whole
 // files that fit, and the rest by name. The flag is the filter's
 // (`overBudgetFileRead`, floor.test.ts); this is the half that reads files.
 describe('fitWholeFiles — a read too long to show whole', () => {

@@ -4,13 +4,14 @@
 > typescript-patterns, code-design); git-conventions.md is always-on. This index holds state, decisions, refs.
 
 ## Decisions
+- [Bash read lane + one cut ON (10-09)](decisions/bash-read-lane.md) — Sonnet −28%; `=0` killswitches
 - [Global user memory dir ~/.claudin/memory/ (10-09)](decisions/global-user-memory-dir.md) — memoryDirs.ts registry + TYPE_SCOPES; `CLAUDIN_GLOBAL_MEMORY=0`
 - [Starved relief compacts, keep-alive on, forks don't clip (10-09)](decisions/relief-starved-compacts-keepalive-default.md) — `=0` killswitches
 - [Each first-request rule said once; memory rules on demand (09-29)](decisions/first-request-dedup-memory-rules-on-demand.md) — malformed writes refused
 - [/new and /resume keep a running turn via Ctrl+B (#268)](decisions/keep-running-turn-across-new-resume.md) — multi-session runtime rejected
 - [Patch applies what matches, reports the rest (09-29)](decisions/patch-applies-what-matches.md) — Resubmit gone; `CLAUDIN_PATCH_ALL_OR_NOTHING=1`
 - [Sub-agents run one effort level below a raised parent (09-29)](decisions/subagent-effort-cap-high-default.md) — xhigh→high −24%
-- [Bash cap keeps reads the command bounded (#252)](decisions/cap-keeps-model-bounded-reads.md) — sed -n / head -N / grep|head ≤150 lines whole; `CLAUDIN_CAP_KEEP_BOUNDED=0`
+- Superseded by the lane: [bounded keep #252](decisions/cap-keeps-model-bounded-reads.md) · [cat credit, off](decisions/bash-read-passthrough-not-promoted.md)
 - [All 94 upstream flag gates removed (09-25)](decisions/upstream-flag-gates-removed-claudin-killswitches.md) — inlined; 6 `CLAUDIN_*` killswitches
 - [Patch/Edit `then` + path-keeping Bash cap ON (09-25)](decisions/edit-then-and-cap-keep-paths-default-on.md) — calls −14%; `then` arms the response guard
 - [Path globs in read commands count as read-only (09-25)](decisions/readonly-path-globs-default-on.md) — classifier 20→11; `CLAUDIN_READONLY_GLOBS=0`
@@ -38,7 +39,6 @@
 - [code-review-graph — REJECTED 2026-08-08](decisions/code-review-graph-evaluated-rejected.md) — 284 MB db, loses to reading the diff; 4 ideas kept
 - [Cache TTL: agent:* 5m, fork keeps 1h](decisions/cache-ttl-tiering-subagents.md) — new one-shot querySources go in SHORT_LIVED_QUERY_SOURCES
 - [Defer-cache-marker default REVERSED to 0 (2026-09-23)](decisions/defer-cache-marker-shipped.md) — 2048 cost 4–17% more; opt-in only
-- [Bash cat-as-read credit — PARKED off (09-23/24)](decisions/bash-read-passthrough-not-promoted.md) — engages since round 2, +6% on top of the batch Read
 - [Devin provider port halted 2026-06-06](decisions/devin-provider-port-halted.md) — f31 attestation is a hard blocker; needs a Ghidra/IDA budget
 - [OpenTelemetry stays devDep-only + stubbed](decisions/opentelemetry-devdep-stubbed.md) — removal REJECTED 07-08: the deps only satisfy tsc type refs
 
@@ -132,7 +132,7 @@
 - Search: [stack measured 08-12](search-stack-measured.md) · [symbol-parser options](symbol-parser-options-researched.md) — tree-sitter shippable, sync scanSymbols blocks
 - [Outline-scanner phantoms that DELETE declarations (#141)](outline-blind-to-nested-members.md) — 6 traps; witness-based gate
 - Cross-CLI A/B: [2-arm 08-12](cli-search-edit-ab-bench.md) · [3-arm 09-22](three-cli-ab-bench-2026-09-22.md) · [Go build 09-29](build-project-ab-bench-2026-09-29.md)
-- [Session cache A/B vs Claude Code (09-23/24)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; run arms simultaneously
+- [Session cache A/B vs Claude Code (09-23..10-09)](session-cache-ab-bench-2026-09-23.md) — +53% → +7% after #239; Sonnet 5.5 +17%
 - [Sub-agent real-unit A/B (09-29)](subagent-unit-ab-2026-09-29.md) — effort cap `high` −24%, quality equal; relief 250k +7%, over-clips 3×
 - [Session cost round 3 (09-23)](session-cost-round-3-2026-09-23.md) — effort medium closes it; display/narration/tools don't
 - [Prompts v2 — default since #242, killswitches gone 09-29](prompts-v2-2026-09.md) — 1st request 27.2k→19.9k (CC 20.2k); family gate stays

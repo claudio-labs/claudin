@@ -1310,7 +1310,7 @@ test('bash-output: <bash-output-filtered> marker is not re-summarized', () => {
   expect(out).toBe(block)
 })
 
-// A file read the filter left whole on purpose (CLAUDIN_BASH_FILE_READ_PASSTHROUGH).
+// A file read the filter left whole on purpose (CLAUDIN_BASH_READ_LANE).
 // Cutting it to a head and a tail is what the pass-through exists to stop.
 test('bash-output: a <bash-output-read> file read is not summarized', () => {
   const file = Array.from({ length: 600 }, (_, i) => `export const v${i} = '${bigText(30)}'`).join('\n')

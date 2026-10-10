@@ -14,7 +14,7 @@
  * CLI sent back in those tool_results — text and is_error, what a model would see —
  * and the files on disk after each phase.
  *
- *   1. credit on  — CLAUDIN_BASH_FILE_READ_PASSTHROUGH=1 CLAUDIN_BASH_READ_CREDIT=1
+ *   1. credit on  — CLAUDIN_BASH_READ_LANE=1 CLAUDIN_BASH_READ_CREDIT=1
  *      p1: Bash `cat a.ts b.ts` → Patch a.ts → text; p2 (--resume): Patch b.ts → text
  *   2. credit off — p1 as in 1; the Patch is refused as never read (and not resent);
  *      p2 (--resume): Patch b.ts is refused too — the control that makes 1's p2 mean
@@ -45,15 +45,33 @@
  *  10. globs off      — the flag unset: Read ["src/*.ts"] → the strict schema's min(2)
  *      refuses it, the control that makes 6 mean the flag
  *
- * Scenarios 11-12 are the floor cap honoring a read the command already bounded
- * (CLAUDIN_CAP_KEEP_BOUNDED, on by default; lineBound.ts, plan
- * .claudin/plans/foamy-crafting-elephant.md). big.ts has 300 distinct lines.
+ * Scenarios 11-12 are the read lane honoring a read the command bounded (on by
+ * default since 2026-10-09; readLane.ts, lineBound.ts — it took over
+ * CLAUDIN_CAP_KEEP_BOUNDED of plan .claudin/plans/foamy-crafting-elephant.md).
+ * big.ts has 300 distinct lines.
  *
- *  11. bounded on  — the default: `sed -n 1,140p` (past the summarizer's 8k) and
- *      `grep -n … | head -90` come back whole in <bash-output-read>; `sed -n 1,200p`
- *      (past the 150-line ceiling) and `cat big.ts` are still cut; a Patch after the
- *      sed read is still refused as never read — the rule is no read credit
- *  12. bounded off — CLAUDIN_CAP_KEEP_BOUNDED=0: the same `sed -n 1,140p` is cut
+ *  11. lane on  — the default: `sed -n 1,140p` (past the summarizer's 8k),
+ *      `grep -n … | head -90`, `sed -n 1,200p` and `cat big.ts` all come back whole
+ *      in <bash-output-read> (the lane bounds a read by chars, not lines); a Patch
+ *      after the sed read applies only because every hunk matches — the lane is no
+ *      read credit
+ *  12. lane off — CLAUDIN_BASH_READ_LANE=0: the same `sed -n 1,140p` is cut
+ *
+ * Scenarios 13-18 are the three levers of perf/bash-read-lane (plan
+ * .claudin/plans/foamy-twirling-turtle.md), each against its control:
+ *
+ *  13. read lane on  — the default: a read that mixes `cat`, `sed -n`,
+ *      `echo` and `head -c` comes back whole in <bash-output-read>, not summarized
+ *  14. read lane off — CLAUDIN_BASH_READ_LANE=0: the same read is cut
+ *  15. one cut on    — the default: 300 lines of non-read output keep
+ *      their first 40 and last 60 lines and the window around an error in the
+ *      middle, and are not summarized on top
+ *  16. one cut off   — CLAUDIN_BASH_ONE_CUT=0: the same output is cut to 15+15 and
+ *      loses the error
+ *  17. own writes on — CLAUDIN_BASH_OWN_WRITES=1: p1 Read a.ts, then a python
+ *      edit of it in Bash, whose result names the file; p2 (--resume) carries no
+ *      "was modified" note for it
+ *  18. own writes off — the default: p2 carries the note
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -168,7 +186,7 @@ const MANY_FILES: Readonly<Record<string, string>> = Object.fromEntries(
 )
 const GLOBS_ON: Record<string, string> = { CLAUDIN_READ_GLOBS: '1' }
 
-// Scenarios 11-12: the cap and a read the command bounded (CLAUDIN_CAP_KEEP_BOUNDED).
+// Scenarios 11-12: the read lane and a read the command bounded.
 const BIG_WORDS = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf']
 /** Line n of big.ts, 1-based: distinct words, so no floor collapse can shorten a print of it. */
 const bigLine = (n: number): string => `export const ${BIG_WORDS[n % BIG_WORDS.length]}${n} = '${'x'.repeat(40)}-${n}'`
@@ -186,6 +204,25 @@ const READ_WRAPPER = '<bash-output-read>'
 /** Every line from..to of big.ts is in the text, in order. */
 const holdsLines = (text: string, from: number, to: number): boolean =>
   text.includes(Array.from({ length: to - from + 1 }, (_, i) => bigLine(from + i)).join('\n'))
+
+// Scenarios 13-18: the read lane, the one cut, own writes.
+const MIXED_READ = bash('cat a.ts b.ts; sed -n 1,140p big.ts; echo ----; head -c 200 big.ts')
+/** 300 lines that are no read (sed without -n), with an error on line 150. */
+const ERROR_LOG = bash("sed '150s/$/ error: boom/' big.ts")
+const ERROR_TEXT = 'error: boom'
+const READ_A = (ws: string): Step => ({ tool: 'Read', input: { file_path: join(ws, 'a.ts') } })
+const PYTHON_EDIT_A: Step = {
+  tool: 'Bash',
+  input: {
+    command: `python3 -c "import pathlib; p = pathlib.Path('a.ts'); p.write_text(p.read_text().replace('alpha', 'alpha-2'))"`,
+    description: 'Rename alpha in a.ts',
+  },
+}
+const OWN_WRITE_LINE = '(1 file you had read changed under this command — your read now matches the disk: a.ts)'
+const MODIFIED_NOTE = 'a.ts was modified, either by the user or by a linter'
+/** Whether a main-loop request the CLI sent in `phase` carries `text` anywhere. */
+const sentInPhase = (run: ScenarioRun, phase: number, text: string): boolean =>
+  run.captures.some(c => c.phase === phase && c.route !== 'side' && JSON.stringify(c.body).includes(text))
 
 /** A batch Read of `paths` as written: relative ones resolve against the workspace. */
 const globRead = (...paths: string[]): Step => ({ tool: 'Read', input: { file_paths: paths } })
@@ -274,7 +311,7 @@ const SCENARIOS: Scenario[] = [
   {
     key: '1',
     title: 'credit on',
-    env: { CLAUDIN_BASH_FILE_READ_PASSTHROUGH: '1', CLAUDIN_BASH_READ_CREDIT: '1' },
+    env: { CLAUDIN_BASH_READ_LANE: '1', CLAUDIN_BASH_READ_CREDIT: '1' },
     script: () => [
       { prompt: 'Show a.ts and b.ts, then rename NAME in a.ts.', steps: [CAT, PATCH_A, DONE] },
       { prompt: 'Now rename NAME in b.ts.', steps: [PATCH_B, DONE] },
@@ -470,7 +507,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     key: '11',
-    title: 'bounded reads keep every line (the default)',
+    title: 'bounded reads keep every line (the read lane, the default)',
     // Unset on purpose: the rule is what a session gets without asking.
     env: {},
     files: BIG_FILES,
@@ -487,28 +524,105 @@ const SCENARIOS: Scenario[] = [
       onResult(run, 0, 1, 'p1 `grep -n … | head -90` comes back whole, in <bash-output-read>', r =>
         !r.isError && r.text.includes(READ_WRAPPER) && r.text.includes(`90:${bigLine(90)}`) && r.text.includes(`45:${bigLine(45)}`) && !r.text.includes(CUT_TEXT),
       ),
-      onResult(run, 0, 2, 'p1 `sed -n 1,200p`, past the 150-line ceiling, is cut', r =>
-        r.text.includes(CUT_TEXT) && !r.text.includes(READ_WRAPPER) && !r.text.includes(bigLine(100)),
+      onResult(run, 0, 2, 'p1 `sed -n 1,200p` comes back whole: the lane bounds a read by chars', r =>
+        r.text.includes(READ_WRAPPER) && holdsLines(r.text, 1, 200) && !r.text.includes(CUT_TEXT),
       ),
-      onResult(run, 0, 3, 'p1 `cat big.ts`, no bound, is cut', r =>
-        r.text.includes(CUT_TEXT) && !r.text.includes(READ_WRAPPER) && !r.text.includes(bigLine(150)),
+      onResult(run, 0, 3, 'p1 `cat big.ts`, a whole file, comes back whole', r =>
+        r.text.includes(READ_WRAPPER) && holdsLines(r.text, 1, 300) && !r.text.includes(CUT_TEXT),
       ),
-      onResult(run, 0, 4, 'p1 Patch big.ts after the sed read is refused with "has not been read yet"', r =>
-        r.isError && r.text.includes(NOT_READ),
+      onResult(run, 0, 4, 'p1 Patch big.ts applies only because every hunk matched — no read credit', r =>
+        !r.isError && r.text.includes('had not been read — patched because every hunk matched it exactly'),
       ),
-      onDisk(run, 0, 'big.ts', 'p1 big.ts is unchanged on disk', c => c === BIG_FILES['big.ts']),
     ],
   },
   {
     key: '12',
-    title: 'bounded reads off (the control for 11)',
-    env: { CLAUDIN_CAP_KEEP_BOUNDED: '0' },
+    title: 'read lane off (the control for 11)',
+    env: { CLAUDIN_BASH_READ_LANE: '0' },
     files: BIG_FILES,
     script: () => [{ prompt: 'Show the first 140 lines of big.ts.', steps: [BOUNDED_SED, DONE] }],
     expect: run => [
       onResult(run, 0, 0, 'p1 `sed -n 1,140p` is cut, as before the rule', r =>
         r.text.includes(CUT_TEXT) && !r.text.includes(READ_WRAPPER) && !r.text.includes(bigLine(70)),
       ),
+    ],
+  },
+  {
+    key: '13',
+    title: 'read lane on: a mixed read comes back whole',
+    // Unset on purpose: on by default.
+    env: {},
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Show a.ts, b.ts and the start of big.ts.', steps: [MIXED_READ, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 the mixed read comes back whole, in <bash-output-read>, not summarized', r =>
+        !r.isError && r.text.includes(READ_WRAPPER) && r.text.includes(A_BEFORE) && holdsLines(r.text, 1, 140) &&
+        !r.text.includes(CUT_TEXT) && !r.text.includes('<tool-result-summary'),
+      ),
+    ],
+  },
+  {
+    key: '14',
+    title: 'read lane off (the control for 13)',
+    env: { CLAUDIN_BASH_READ_LANE: '0' },
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Show a.ts, b.ts and the start of big.ts.', steps: [MIXED_READ, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 the same read is cut', r => r.text.includes(CUT_TEXT) && !r.text.includes(READ_WRAPPER) && !r.text.includes(bigLine(70))),
+    ],
+  },
+  {
+    key: '15',
+    title: 'one cut on: 40+60 and the error window, cut once',
+    // Unset on purpose: on by default.
+    env: {},
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Run the log.', steps: [ERROR_LOG, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 the head, the tail and the error survive; the rest of the middle is cut; no summary on top', r =>
+        // The tail's 60 lines count the trailing newline's empty one, as the cap always has.
+        holdsLines(r.text, 1, 40) && holdsLines(r.text, 242, 300) && r.text.includes(ERROR_TEXT) &&
+        r.text.includes(CUT_TEXT) && !r.text.includes(bigLine(100)) && !r.text.includes('<tool-result-summary'),
+      ),
+    ],
+  },
+  {
+    key: '16',
+    title: 'one cut off (the control for 15)',
+    env: { CLAUDIN_BASH_ONE_CUT: '0' },
+    files: BIG_FILES,
+    script: () => [{ prompt: 'Run the log.', steps: [ERROR_LOG, DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 the cap keeps 15+15 and loses the error', r =>
+        holdsLines(r.text, 1, 15) && !r.text.includes(bigLine(16)) && !r.text.includes(ERROR_TEXT),
+      ),
+    ],
+  },
+  {
+    key: '17',
+    title: 'own writes on: the resumed prompt does not call the edit the user\'s',
+    env: { CLAUDIN_BASH_OWN_WRITES: '1' },
+    script: ws => [
+      { prompt: 'Rename alpha in a.ts.', steps: [READ_A(ws), PYTHON_EDIT_A, DONE] },
+      { prompt: 'Anything else?', steps: [DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 1, 'p1 the python edit names the file it brought up to date', r => !r.isError && r.text.includes(OWN_WRITE_LINE)),
+      onDisk(run, 0, 'a.ts', 'p1 a.ts was edited on disk', c => c.includes(A_AFTER)),
+      { label: 'p2 (--resume) carries no "was modified" note for a.ts', ok: run.phases.length === 2 && !sentInPhase(run, 1, MODIFIED_NOTE) },
+    ],
+  },
+  {
+    key: '18',
+    title: 'own writes off (the control for 17)',
+    env: {},
+    script: ws => [
+      { prompt: 'Rename alpha in a.ts.', steps: [READ_A(ws), PYTHON_EDIT_A, DONE] },
+      { prompt: 'Anything else?', steps: [DONE] },
+    ],
+    expect: run => [
+      onResult(run, 0, 1, 'p1 the python edit names nothing', r => !r.isError && !r.text.includes(OWN_WRITE_LINE)),
+      { label: 'p2 (--resume) carries the "was modified" note for a.ts', ok: sentInPhase(run, 1, MODIFIED_NOTE) },
     ],
   },
 ]

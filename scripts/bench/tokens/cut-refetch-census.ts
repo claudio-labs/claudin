@@ -6,7 +6,7 @@
  * command or re-read what it had read, against the same rate after an UNCUT
  * result of the same tool and size. Reads transcripts only; spends nothing.
  *
- *   bun scripts/bench/tokens/cut-refetch-census.ts [--since=YYYY-MM-DD] [--bound]
+ *   bun scripts/bench/tokens/cut-refetch-census.ts [--since=YYYY-MM-DD] [--bound] [--lane]
  *
  * A "pure recovery" request comes within three requests of the cut, with no
  * edit in between, and every tool call in it re-runs the cut command (the same
@@ -30,6 +30,15 @@
  * followed those shapes. The date
  * defaults to 14 days back; `/tmp` projects (the A/B benches) are left out.
  *
+ * `--lane` replays the read lane (`readLane.ts`, CLAUDIN_BASH_READ_LANE) over
+ * every capped or summarized Bash result: which of them it would have left
+ * whole — the command passes `isModelDirectedRead` and the output was at most
+ * FILE_READ_PASSTHROUGH_MAX_CHARS before the cut — and whether the pure
+ * recoveries fell after those or after the cuts it would still make. The size
+ * before the cut is read off the marker: the summarizer's `original="18.6KB"`,
+ * or for the cap its body over `1 - reduction`, an estimate the marker's
+ * rounded percentage limits.
+ *
  * Run it with the test preload, which stubs what the imports reach outside
  * the bundle, and NODE_ENV=test, which lets getGlobalConfig() run outside the
  * app's boot:
@@ -40,7 +49,9 @@
 import { readFileSync } from 'fs'
 import { isAbsolute, join, normalize } from 'path'
 import { BOUNDED_READ_MAX_LINES } from 'src/tools/shared/outputFilter/Bash/floor.js'
+import { FILE_READ_PASSTHROUGH_MAX_CHARS } from 'src/tools/shared/outputFilter/Bash/index.js'
 import { commandLineBound } from 'src/tools/shared/outputFilter/Bash/lineBound.js'
+import { isModelDirectedRead } from 'src/tools/shared/outputFilter/Bash/readLane.js'
 import { configDir, contentText, pct, transcriptFiles, type Block } from './transcriptCorpus'
 
 type Use = { id: string; name: string; input: Block; result: string; hasResult: boolean }
@@ -49,10 +60,12 @@ type Thread = { cwd: string; requests: Use[][]; isSubagent: boolean }
 const argv = process.argv.slice(2)
 const SINCE_ARG = argv.find(a => a.startsWith('--since='))?.slice('--since='.length)
 const BOUND = argv.includes('--bound')
+const LANE = argv.includes('--lane')
+const FLAGS = new Set(['--bound', '--lane'])
 const DAY_MS = 24 * 60 * 60 * 1000
 const since = SINCE_ARG ? Date.parse(SINCE_ARG) : Date.now() - 14 * DAY_MS
-if (Number.isNaN(since) || argv.some(a => a !== '--bound' && !a.startsWith('--since='))) {
-  console.error('usage: cut-refetch-census.ts [--since=YYYY-MM-DD] [--bound]')
+if (Number.isNaN(since) || argv.some(a => !FLAGS.has(a) && !a.startsWith('--since='))) {
+  console.error('usage: cut-refetch-census.ts [--since=YYYY-MM-DD] [--bound] [--lane]')
   process.exit(2)
 }
 /** How many requests after a cut may still be answering it. */
@@ -114,6 +127,20 @@ const CAP_RE = /lines omitted…/
 const READ_HEAD_TAIL_RE = /… [\d,]+ lines omitted …/
 const TRUNCATED_RE = /characters truncated|lines truncated/
 const LINES_ATTR_RE = /lines="(\d+)\/(\d+)"/
+const SUMMARY_ORIGINAL_RE = /^<tool-result-summary[^>]*\boriginal="([\d.]+)\s*(bytes|KB|MB|GB)"/
+const CAP_REDUCTION_RE = /reduction="(\d+)%"/
+const CAP_BODY_RE = /^<bash-output-filtered[^>]*>([\s\S]*?)<\/bash-output-filtered>/
+const SIZE_UNITS: Record<string, number> = { bytes: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 }
+
+/** The chars a cut Bash result had before the cut, off its marker; Infinity when it does not say. */
+function originalChars(r: string): number {
+  const summary = SUMMARY_ORIGINAL_RE.exec(r)
+  if (summary) return Number(summary[1]) * SIZE_UNITS[summary[2]!]!
+  const reduction = Number(CAP_REDUCTION_RE.exec(r)?.[1] ?? NaN)
+  const body = CAP_BODY_RE.exec(r)?.[1]
+  if (body === undefined || Number.isNaN(reduction) || reduction >= 100) return Infinity
+  return body.length / (1 - reduction / 100)
+}
 
 function cutOf(u: Use): string | null {
   if (!u.hasResult) return null
@@ -249,10 +276,12 @@ function recoveredBy(t: Thread, k: number, u: Use): boolean {
 
 type Tally = { n: number; recovered: number }
 type Capped = { command: string; originalLines: number; recovered: boolean; isSubagent: boolean }
+type Laned = { cutter: 'cap' | 'summarizer'; command: string; chars: number; originalLines: number; recovered: boolean; isSubagent: boolean }
 
 const tallies = { main: new Map<string, Tally>(), sub: new Map<string, Tally>() }
 const requests = { main: 0, sub: 0 }
 const capped: Capped[] = []
+const laned: Laned[] = []
 
 const root = join(configDir(), 'projects')
 const files = transcriptFiles([root]).filter(f => f.mtimeMs >= since && !f.path.slice(root.length + 1).startsWith('-tmp'))
@@ -273,6 +302,16 @@ for (const file of files) {
       if (cut === 'cap:Bash') {
         const originalLines = Number(LINES_ATTR_RE.exec(u.result)?.[2] ?? 0)
         capped.push({ command: String(u.input.command ?? ''), originalLines, recovered, isSubagent: t.isSubagent })
+      }
+      if (cut === 'cap:Bash' || cut?.startsWith('summarizer:Bash:')) {
+        laned.push({
+          cutter: cut === 'cap:Bash' ? 'cap' : 'summarizer',
+          command: String(u.input.command ?? ''),
+          chars: originalChars(u.result),
+          originalLines: Number(LINES_ATTR_RE.exec(u.result)?.[2] ?? 0),
+          recovered,
+          isSubagent: t.isSubagent,
+        })
       }
     }
   })
@@ -325,4 +364,38 @@ if (BOUND) {
   console.log(`the results behind ${pct(sum(TARGET, 'recoveredKept'), sum(TARGET, 'recovered'))} of the recoveries after them are now kept whole`)
   console.log(`${leaked === 0 ? 'PASS' : 'FAIL'}  keeps none of the whole-file dumps, listings and other pipes into a bound: ${leaked}`)
   if (leaked > 0) process.exitCode = 1
+}
+
+// ---------------------------------------------------------------------------
+// --lane: replay the read lane over every capped or summarized Bash result
+// ---------------------------------------------------------------------------
+
+if (LANE) {
+  const keeps = (c: Laned): boolean => c.chars <= FILE_READ_PASSTHROUGH_MAX_CHARS && isModelDirectedRead(c.command)
+  const cell = (cs: readonly Laned[]): string => `${cs.length} | ${pct(cs.filter(c => c.recovered).length, cs.length)} (${cs.filter(c => c.recovered).length})`
+  console.log(`\n## --lane: what the read lane keeps whole of the ${laned.length} capped or summarized Bash results`)
+  console.log(`| cut | thread | n | lane keeps whole | recovered after those | lane still cuts | recovered after those |`)
+  console.log('|---|---|---|---|---|---|---|')
+  const groups: [string, string, (c: Laned) => boolean][] = [
+    ['cap', 'main', c => c.cutter === 'cap' && !c.isSubagent],
+    ['cap', 'sub', c => c.cutter === 'cap' && c.isSubagent],
+    ['summarizer', 'main', c => c.cutter === 'summarizer' && !c.isSubagent],
+    ['summarizer', 'sub', c => c.cutter === 'summarizer' && c.isSubagent],
+    ['all', 'all', () => true],
+  ]
+  for (const [cutter, thread, inGroup] of groups) {
+    const group = laned.filter(inGroup)
+    console.log(`| ${cutter} | ${thread} | ${group.length} | ${cell(group.filter(keeps))} | ${cell(group.filter(c => !keeps(c)))} |`)
+  }
+  // Why the lane refuses the rest: its grammar, or the size ceiling.
+  const grammar = laned.filter(c => isModelDirectedRead(c.command))
+  const tooBig = grammar.filter(c => c.chars > FILE_READ_PASSTHROUGH_MAX_CHARS)
+  console.log('')
+  console.log(`grammar accepts ${grammar.length} of ${laned.length}; ${tooBig.length} of those were over ${FILE_READ_PASSTHROUGH_MAX_CHARS} chars before the cut`)
+  const lines = laned
+    .filter(c => c.cutter === 'cap' && isModelDirectedRead(c.command) && c.originalLines > 0)
+    .map(c => c.originalLines)
+    .sort((a, b) => a - b)
+  const at = (q: number) => lines[Math.min(lines.length - 1, Math.floor(q * lines.length))] ?? 0
+  console.log(`capped reads (lane grammar, any size): ${lines.length}, original lines median ${at(0.5)}, p90 ${at(0.9)}`)
 }

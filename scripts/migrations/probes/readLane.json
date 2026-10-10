@@ -1,0 +1,74 @@
+{
+  "test": [
+    "src/tools/shared/outputFilter/Bash/readLane.test.ts",
+    "src/tools/shared/outputFilter/Bash/floor.test.ts"
+  ],
+  "source": "src/tools/shared/outputFilter/Bash/readLane.ts",
+  "probes": [
+    {
+      "name": "lane: a slice the command bounds is no read",
+      "find": "  if (bound) return bound.read ? \"print\" : \"glue\";\n",
+      "replace": "  if (bound && !bound.read) return \"glue\";\n"
+    },
+    {
+      "name": "lane: any program is glue",
+      "find": "  if (bound) return bound.read ? \"print\" : \"glue\";\n  return null;\n",
+      "replace": "  if (bound) return bound.read ? \"print\" : \"glue\";\n  return \"glue\";\n"
+    },
+    {
+      "name": "lane: a pipe into anything is a read",
+      "find": "      if (!bound?.read) return false;\n",
+      "replace": "      if (false) return false;\n"
+    },
+    {
+      "name": "lane: a recursive grep is a file search",
+      "find": "  if (flags.some((flag) => RECURSIVE_SHORT_FLAGS_RE.test(flag.text) || RECURSIVE_LONG_FLAGS_RE.test(flag.text))) {\n",
+      "replace": "  if (flags.some((flag) => RECURSIVE_LONG_FLAGS_RE.test(flag.text))) {\n"
+    },
+    {
+      "name": "lane: grep --recursive is a file search",
+      "find": "  if (flags.some((flag) => RECURSIVE_SHORT_FLAGS_RE.test(flag.text) || RECURSIVE_LONG_FLAGS_RE.test(flag.text))) {\n",
+      "replace": "  if (flags.some((flag) => RECURSIVE_SHORT_FLAGS_RE.test(flag.text))) {\n"
+    },
+    {
+      "name": "lane: rg is a file search",
+      "find": "const FILE_SEARCHERS: ReadonlySet<string> = new Set([\"grep\", \"egrep\", \"fgrep\"]);",
+      "replace": "const FILE_SEARCHERS: ReadonlySet<string> = new Set([\"grep\", \"egrep\", \"fgrep\", \"rg\"]);"
+    },
+    {
+      "name": "lane: a grep of stdin is a file search",
+      "find": "  if (paths.length === 0) return false;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "lane: echo alone is a read",
+      "find": "  return !awaitingDo && loops.length === 0 && printed;\n",
+      "replace": "  return !awaitingDo && loops.length === 0;\n"
+    },
+    {
+      "name": "lane: a cd in a loop body is glue",
+      "find": "      return loops.length === 0 && cdTarget(args) !== null ? \"glue\" : null;\n",
+      "replace": "      return cdTarget(args) !== null ? \"glue\" : null;\n"
+    },
+    {
+      "name": "lane: wc over globs is no listing",
+      "find": "    case \"git\":\n    case \"wc\":\n",
+      "replace": "    case \"git\":\n"
+    },
+    {
+      "name": "lane: a substitution is a read",
+      "find": "  if (SUBSTITUTION_RE.test(command)) return false;\n",
+      "replace": "\n"
+    },
+    {
+      "name": "lane: an output redirect is a read",
+      "find": "  if (!walked || walked.hasOutputRedirection) return false;\n",
+      "replace": "  if (!walked) return false;\n"
+    },
+    {
+      "name": "lane: a file print is no print",
+      "find": "      return printedBy(head.text, args, loops) ? \"print\" : null;\n",
+      "replace": "      return printedBy(head.text, args, loops) ? \"glue\" : null;\n"
+    }
+  ]
+}

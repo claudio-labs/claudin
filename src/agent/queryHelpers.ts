@@ -657,6 +657,36 @@ export function extractReadFilesFromMessages(
   }
 
   /**
+   * A read file a Bash command changed and brought up to date
+   * (`BashTool/ownWrites.ts`): the whole-file entry the Read left takes the
+   * disk's bytes, so the resumed prompt does not report the model's own edit
+   * as the user's. Only while the file is unchanged since the result came
+   * back, and only over a whole-file Read — a slice is left for the watcher,
+   * which re-verifies it.
+   */
+  function cacheOwnWriteFromDisk(filePath: string, answeredAt: number): void {
+    const entry = cache.get(filePath)
+    if (!entry || entry.isPartialView || (entry.offset !== undefined && entry.offset !== 1) || entry.limit !== undefined) return
+    try {
+      const timestamp = getFileModificationTime(filePath)
+      if (timestamp > answeredAt) return
+      const { content: diskContent } = readFileSyncWithMetadata(filePath)
+      cache.set(filePath, {
+        content: diskContent,
+        timestamp,
+        offset: undefined,
+        limit: undefined,
+        dedupExempt: true,
+      })
+    } catch (e: unknown) {
+      if (!isFsInaccessible(e)) {
+        throw e
+      }
+      // File deleted or inaccessible since the command — skip
+    }
+  }
+
+  /**
    * What a Read showed of `filePath`, as its entry: the slice `run` for a
    * ranged Read, the whole file otherwise. `shown` is the Read's text with
    * its system-reminder blocks removed; `run` is a numbered run of it.
@@ -820,6 +850,9 @@ export function extractReadFilesFromMessages(
             for (const filePath of creditedFilesOf(message.toolUseResult)) {
               cacheCreditFromDisk(filePath, answeredAt)
             }
+            for (const filePath of pathsOf(message.toolUseResult, 'refreshedFiles')) {
+              cacheOwnWriteFromDisk(filePath, answeredAt)
+            }
           }
         }
       }
@@ -831,10 +864,15 @@ export function extractReadFilesFromMessages(
 
 /** The paths a Bash result's Out names as credited reads; none when it has no such field. */
 function creditedFilesOf(toolUseResult: unknown): string[] {
+  return pathsOf(toolUseResult, 'creditedFiles')
+}
+
+/** The paths a Bash result's Out names under `field`; none when it has no such field. */
+function pathsOf(toolUseResult: unknown, field: 'creditedFiles' | 'refreshedFiles'): string[] {
   if (typeof toolUseResult !== 'object' || toolUseResult === null) return []
-  const { creditedFiles } = toolUseResult as { creditedFiles?: unknown }
-  if (!Array.isArray(creditedFiles)) return []
-  return creditedFiles.filter((path): path is string => typeof path === 'string')
+  const paths = (toolUseResult as Record<string, unknown>)[field]
+  if (!Array.isArray(paths)) return []
+  return paths.filter((path): path is string => typeof path === 'string')
 }
 
 /**

@@ -31,19 +31,29 @@
       "replace": "      if (isUncutFileRead(rawStdout, plan)) return rawStdout;\n"
     },
     {
+      "name": "filter: the read lane takes pure reads only",
+      "find": "    isModelDirectedRead(plan.effectiveCommand) &&\n",
+      "replace": "    parsePureFileRead(plan.effectiveCommand) !== null &&\n"
+    },
+    {
+      "name": "filter: a caller that budgets its result gets a lane read",
+      "find": "    plan.callerBudgets !== true &&\n    isModelDirectedRead(plan.effectiveCommand) &&\n",
+      "replace": "    isModelDirectedRead(plan.effectiveCommand) &&\n"
+    },
+    {
       "name": "filter: the pass-through ignores its flag",
-      "find": "    FILE_READ_PASSTHROUGH &&\n    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n",
+      "find": "    READ_LANE &&\n    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n",
       "replace": "    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n"
     },
     {
       "name": "filter: a pure read over 28k passes through whole",
-      "find": "    FILE_READ_PASSTHROUGH &&\n    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n",
-      "replace": "    FILE_READ_PASSTHROUGH &&\n"
+      "find": "    READ_LANE &&\n    rawStdout.length <= FILE_READ_PASSTHROUGH_MAX_CHARS &&\n",
+      "replace": "    READ_LANE &&\n"
     },
     {
-      "name": "filter: the flag reads on at module load",
-      "find": "const FILE_READ_PASSTHROUGH = isEnvTruthy(process.env.CLAUDIN_BASH_FILE_READ_PASSTHROUGH);",
-      "replace": "const FILE_READ_PASSTHROUGH = true;"
+      "name": "filter: the lane reads off at module load",
+      "find": "const READ_LANE = !isEnvDefinedFalsy(process.env.CLAUDIN_BASH_READ_LANE);",
+      "replace": "const READ_LANE = false;"
     },
     {
       "name": "filter: the pass-through ceiling moves to the persist line",
@@ -52,7 +62,7 @@
     },
     {
       "name": "filter: overBudgetFileRead ignores its flag",
-      "find": "      if (!FILE_READ_PASSTHROUGH || plan.rewrite !== null) return null;\n",
+      "find": "      if (!READ_LANE || plan.rewrite !== null) return null;\n",
       "replace": "      if (plan.rewrite !== null) return null;\n"
     },
     {
@@ -709,8 +719,8 @@
     {
       "name": "resume: a credited file written after the result is restored",
       "source": "src/agent/queryHelpers.ts",
-      "find": "      if (timestamp > answeredAt) return\n",
-      "replace": "\n"
+      "find": "      if (timestamp > answeredAt) return\n      const { content: diskContent } = readFileSyncWithMetadata(filePath)\n      cache.set(filePath, {\n        content: diskContent,\n        timestamp,\n        offset: 1,\n",
+      "replace": "      const { content: diskContent } = readFileSyncWithMetadata(filePath)\n      cache.set(filePath, {\n        content: diskContent,\n        timestamp,\n        offset: 1,\n"
     },
     {
       "name": "resume: a failed Bash result restores its credit",
@@ -727,8 +737,8 @@
     {
       "name": "resume: creditedFilesOf names nothing",
       "source": "src/agent/queryHelpers.ts",
-      "find": "  return creditedFiles.filter((path): path is string => typeof path === 'string')\n}",
-      "replace": "  return []\n}"
+      "find": "  return pathsOf(toolUseResult, 'creditedFiles')\n",
+      "replace": "  return []\n"
     },
     {
       "name": "resume: the restored credit is not dedup-exempt",
@@ -915,6 +925,16 @@
       "source": "scripts/bench/ab/session-cache-ab.ts",
       "find": "const CAT_COMMAND_RE = /(?:(?:^|[;&({\\n]|\\|\\|)\\s*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/",
       "replace": "const CAT_COMMAND_RE = /(?:(?:^|[;&({]|\\|\\|)[ \\t]*|\\b(?:do|then|else)\\s+)cat(?=\\s|$)/"
+    },
+    {
+      "name": "filter: a matched spec is overruled by a mixed read",
+      "find": "    (plan.filter === null || parsePureFileRead(plan.effectiveCommand) !== null)\n",
+      "replace": "    true\n"
+    },
+    {
+      "name": "filter: =0 no longer turns the lane off",
+      "find": "const READ_LANE = !isEnvDefinedFalsy(process.env.CLAUDIN_BASH_READ_LANE);",
+      "replace": "const READ_LANE = true;"
     }
   ]
 }

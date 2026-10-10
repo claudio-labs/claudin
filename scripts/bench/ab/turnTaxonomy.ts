@@ -1265,9 +1265,10 @@ function knownPattern(pat: string, corpus: string): boolean {
 
 const RETRY_HEAD_RE = /^(bun (test|run|x)|tsc|bunx|npx|git (add|commit|stash|checkout))$/
 const TSC_RETRY_HEAD_RE = /^(tsc|bunx|npx|bun x)$/
-const CUT_OUTPUT_RE = /bash-output-filtered|characters truncated/
+const CUT_OUTPUT_RE = /bash-output-filtered|tool-result-summary|characters truncated/
 const NOW_READ_RE = /now count as read/
-const FILTERED_RE = /<bash-output-filtered/
+/** A Bash result cut by the floor cap or by the tool-result summarizer. */
+const FILTERED_RE = /<bash-output-filtered|<tool-result-summary/
 
 /**
  * Every request of a session with its label, levers and notes. `fixtureDir`

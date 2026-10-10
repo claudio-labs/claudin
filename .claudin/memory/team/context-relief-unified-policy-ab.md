@@ -53,3 +53,15 @@ On a native 1M window 30 turns never reach a trigger — pass `--window` or the
 two arms are indistinguishable. Full measurements and the cost model:
 `docs/tech/cache/context-relief-policy.md`. Related: [[clip-pin-cache-ab-2026-07-25]],
 [[token-bench-measurement-traps]].
+
+**vs Claude Code, Sonnet 5.5 (2026-10-09, v1.1.41 @ 39e5cfa3 vs 2.1.296,
+`--window=140000 --reps=3`, 10/10 edits in all 6):** run it as
+`env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT CLAUDE_CODE_AUTO_COMPACT_WINDOW=140000 bun …`
+— the bench spreads `process.env` into both arms, and Claude Code reads its own
+window variable. Claude Code auto-compacts (peak 106k → end 32k, 14.6k
+rewritten); claudindev clips once (peak 90.5k → 68k, 50.3k rewritten, 0 uncached
+tails). Edit-turn lookups 5 vs 9, re-reads 2 vs 1. Priced from the transcripts
+(both 1h TTL, session-cache-ab's table): $1.290 vs $1.123 [1.12–1.23], +15%,
+SEPARATED — cache write +25%, cache read +9%. The bench's `est` uses
+cliUsage's old $3/$15 table, and Claude Code's CLI cost ($0.88) under-prices its
+own 1h writes; neither is the number to compare.

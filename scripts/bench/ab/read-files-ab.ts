@@ -5,7 +5,7 @@
  * The question behind it: the read-before-edit gate counts only the Read tool,
  * so a file the model saw through Bash is "never read" when it edits it, and
  * the refusal costs a round trip. `CLAUDIN_BASH_READ_CREDIT` (count what a
- * `cat` printed whole as read) with `CLAUDIN_BASH_FILE_READ_PASSTHROUGH` (print
+ * `cat` printed whole as read) with `CLAUDIN_BASH_READ_LANE` (print
  * a pure read whole instead of capped) turns that off — at the price of longer
  * Bash results. Both flags are off by default (team memory
  * `bash-read-passthrough-not-promoted`).
@@ -318,7 +318,7 @@ async function main(): Promise<void> {
   if (args.dryRun) return dryRun()
   if (args.replay) return replayBench(BENCH, args)
   if (!args.variants.length) {
-    addVariant(args, 'catread', { CLAUDIN_BASH_READ_CREDIT: '1', CLAUDIN_BASH_FILE_READ_PASSTHROUGH: '1' })
+    addVariant(args, 'catread', { CLAUDIN_BASH_READ_CREDIT: '1', CLAUDIN_BASH_READ_LANE: '1' })
     addVariant(args, 'placebo', { CLAUDIN_BENCH_PLACEBO: '1' })
   }
   await runBench(BENCH, args)

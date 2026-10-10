@@ -90,6 +90,7 @@ export const outputSchema = lazySchema(() => z.object({
   persistedOutputSize: z.number().optional().describe('Total size of the output in bytes (set when output is too large for inline)'),
   readNote: z.string().optional().describe('Model-facing note after stdout on a file read: the files it did not show, and the ones that count as read'),
   creditedFiles: z.array(z.string()).optional().describe('Absolute paths the read credit counted as read (CLAUDIN_BASH_READ_CREDIT); /resume rebuilds them from disk'),
+  refreshedFiles: z.array(z.string()).optional().describe('Absolute paths of read files this command changed, whose read state it brought up to date (CLAUDIN_BASH_OWN_WRITES); /resume rebuilds them from disk'),
   reducedExitCode: z.number().optional().describe('The command\'s non-zero exit code when a stripped trailing reducer (`| tail -N`) made the verdict 0, as the pipeline would have; read by the response-chain guard')
 }));
 export type OutputSchema = ReturnType<typeof outputSchema>;

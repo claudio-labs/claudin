@@ -991,7 +991,7 @@ function proxyCensus(logDir: string, label: string): RequestCensus {
 // Bash: markers, and the replay corpus
 // ---------------------------------------------------------------------------
 
-/** `read` wraps a pure file read the pass-through left whole (CLAUDIN_BASH_FILE_READ_PASSTHROUGH). */
+/** `read` wraps a pure file read the pass-through left whole (CLAUDIN_BASH_READ_LANE). */
 const BASH_MARKER_OPEN_RE = /^<bash-output-(filtered|rewritten|read)\b([^>]*)>/
 const LINES_ATTR_RE = /\blines="(\d+)\/(\d+)"/
 const REDUCTION_ATTR_RE = /\breduction="(\d+)%"/
@@ -1055,7 +1055,7 @@ const CAT_COMMAND_RE = /(?:(?:^|[;&({\n]|\|\|)\s*|\b(?:do|then|else)\s+)cat(?=\s
  * (fileReadShape.ts) — the misses a grammar change goes after. It cannot run
  * the grammar itself (its import chain reaches a module only the build
  * stubs), so it reads the verdict off the result, and means that only in an
- * arm with CLAUDIN_BASH_FILE_READ_PASSTHROUGH on; elsewhere nothing wears the
+ * arm with CLAUDIN_BASH_READ_LANE on; elsewhere nothing wears the
  * wrapper and it counts every such call. A pure read over 28k with a listing,
  * a `head` or a `tail` keeps the cap, and counts here too.
  */
@@ -1605,7 +1605,7 @@ export function costSplit(r: Pick<RunResult, 'turns' | 'calls'>): CostSplit {
 
 // ---------------------------------------------------------------------------
 // Mechanism rows: whether a Bash `cat` stood in for a Read
-// (CLAUDIN_BASH_FILE_READ_PASSTHROUGH + CLAUDIN_BASH_READ_CREDIT), whether the
+// (CLAUDIN_BASH_READ_LANE + CLAUDIN_BASH_READ_CREDIT), whether the
 // batch Read was used (CLAUDIN_READ_MULTI), and the calls that went into the
 // project's `.claudin/` rather than the task.
 // ---------------------------------------------------------------------------

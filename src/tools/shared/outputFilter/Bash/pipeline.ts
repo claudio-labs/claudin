@@ -6,6 +6,7 @@ import {
 } from "src/agent/tools/toolResultSummarizer.js";
 import type { RewriteContext } from "src/tools/shared/outputFilter/types.js";
 import type { DroppedReducer, FilterSpec, KeepLines, PipelineResult } from "src/tools/shared/outputFilter/Bash/types.js";
+import { errorWindowMask } from "src/tools/shared/outputFilter/Bash/cutShape.js";
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -671,18 +672,22 @@ const DEFAULT_HEAD_LINES = 15;
 const DEFAULT_TAIL_LINES = 15;
 
 /**
- * The middle of a head/tail cut with the lines `keep` spares left in place.
- * Each run of cut lines becomes one marker, and a run of one line stays as it
- * was, since the marker would be no shorter. Null when `keep` spares nothing,
- * or more than its `max`, which leaves the plain cut.
+ * The middle of a head/tail cut with the lines `keep` spares, and the error
+ * windows `errors` marks, left in place. Each run of cut lines becomes one
+ * marker, and a run of one line stays as it was, since the marker would be no
+ * shorter. `keep` spares nothing when it would spare more than its `max`; null
+ * when nothing is spared at all, which leaves the plain cut.
  */
 function spareMiddle(
   middle: readonly string[],
-  keep: KeepLines,
+  keep: KeepLines | null,
+  errors: readonly boolean[] | null,
 ): { lines: string[]; cut: number } | null {
-  const spared = middle.map((line) => keep.test(line));
-  const count = spared.filter(Boolean).length;
-  if (count === 0 || count > keep.max) return null;
+  const byKeep = keep ? middle.map((line) => keep.test(line)) : [];
+  const kept = byKeep.filter(Boolean).length;
+  const keepFits = keep !== null && kept <= keep.max;
+  const spared = middle.map((_, i) => (keepFits && byKeep[i] === true) || errors?.[i] === true);
+  if (!spared.some(Boolean)) return null;
   const out: string[] = [];
   let run: string[] = [];
   let cut = 0;
@@ -911,9 +916,11 @@ export function applyPipeline(
       if (omitted > 0) {
         const headPart = head > 0 ? lines.slice(0, head) : [];
         const tailPart = tail > 0 ? lines.slice(-tail) : [];
-        const spared = filter.keepLines
-          ? spareMiddle(lines.slice(head, lines.length - tail), filter.keepLines)
-          : null;
+        const errors = filter.spareErrors ? errorWindowMask(lines).slice(head, lines.length - tail) : null;
+        const spared =
+          filter.keepLines || errors
+            ? spareMiddle(lines.slice(head, lines.length - tail), filter.keepLines ?? null, errors)
+            : null;
         if (spared === null) {
           lines = [
             ...headPart,

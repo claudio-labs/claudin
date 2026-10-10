@@ -350,6 +350,20 @@ describe('mechanism metrics', () => {
     expect(analyzeSession(session(true), fixture).row.hiddenPathReads).toBe(1)
     expect(analyzeSession(session(false), fixture).row.hiddenPathReads).toBe(0)
   })
+
+  // 20261009-213843 nocap r1: with the cap off, the summarizer cut the same
+  // `cat` and the model fetched the files again. Counted only for the cap's
+  // marker, those refetches were invisible.
+  test('refetch-after-filter: a Bash read the summarizer cut counts like one the cap cut', () => {
+    const dump = (result: string): Step => ({ name: 'Bash', input: { command: 'cat src/a.ts src/b.ts' }, result })
+    const notesAfter = (result: string) =>
+      classify(prompt('go'), ...response('r1', [dump(result)]), ...response('r2', [read('src/a.ts')]), text('r3', 'Done.'))[1]!.notes
+    const capped = '<bash-output-filtered original="" lines="30/400" reduction="92%">// src/a.ts\n…370 lines omitted…\n// end</bash-output-filtered>'
+    const summarized = '<tool-result-summary tool="Bash" original="18.6KB" kept="4.5KB" strategy="head-tail-errors">// src/a.ts\n<omitted lines="97" bytes="3.1KB"/>\n// end</tool-result-summary>'
+    expect(notesAfter(capped)).toContain('refetch-after-filter')
+    expect(notesAfter(summarized)).toContain('refetch-after-filter')
+    expect(notesAfter('// src/a.ts\n// src/b.ts')).not.toContain('refetch-after-filter')
+  })
 })
 
 describe('parseShell', () => {
