@@ -20,6 +20,7 @@
 import {
   afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   expect,
   test,
@@ -28,6 +29,18 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+// Every case here goes through toolResultStorage, which cuts only past the
+// persistence line by default (CLAUDIN_TOOL_RESULT_LOSSLESS). These pin the
+// cut itself; toolResultSummarizer.lossless.test.ts pins the line.
+const savedLossless = process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
+beforeAll(() => {
+  process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = '0'
+})
+afterAll(() => {
+  if (savedLossless === undefined) delete process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
+  else process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = savedLossless
+})
 
 const { processToolResultBlock, processPreMappedToolResultBlock } =
   await import('src/agent/tools/toolResultStorage.js')

@@ -105,9 +105,13 @@ describe('unlinkSessionSpillDir', () => {
 // most built-in results take — and processToolResultBlock asks the tool itself.
 describe('skipping the tool-result summarizer', () => {
   const savedKillSwitch = process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
+  // The report fits under the 50k line, where the lossless rule keeps it
+  // whole; the hook is what these pin, so the cut stands in for "summarized".
+  const savedLossless = process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
 
   beforeAll(() => {
     saveGlobalConfig(c => ({ ...c, toolResultSummarizerEnabled: true }))
+    process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = '0'
   })
   beforeEach(() => {
     delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
@@ -116,6 +120,8 @@ describe('skipping the tool-result summarizer', () => {
     resetGlobalConfigForTests()
     if (savedKillSwitch === undefined) delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
     else process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = savedKillSwitch
+    if (savedLossless === undefined) delete process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
+    else process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = savedLossless
   })
 
   // Past both head/tail triggers (8k chars AND 100 lines), under the 50k spill.

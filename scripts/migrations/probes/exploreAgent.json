@@ -59,8 +59,8 @@
     {
       "name": "the storage path honors the tool's answer",
       "source": "src/agent/tools/toolResultStorage.ts",
-      "find": "  const summarized = tool.skipsResultSummarizer?.(toolUseResult)\n    ? toolResultBlock\n    : maybeSummarizeToolResult(toolResultBlock, toolName)\n",
-      "replace": "  const summarized = maybeSummarizeToolResult(toolResultBlock, toolName)\n"
+      "find": "  const whole = tool.skipsResultSummarizer?.(toolUseResult)\n    ? toolResultBlock\n    : keepWholeUnderLine(toolResultBlock, toolName, persistenceThreshold)\n",
+      "replace": "  const whole = keepWholeUnderLine(toolResultBlock, toolName, persistenceThreshold)\n"
     },
     {
       "name": "Explore takes a zero plan-dossier budget",

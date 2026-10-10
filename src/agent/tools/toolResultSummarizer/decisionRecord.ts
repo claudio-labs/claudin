@@ -12,6 +12,8 @@ export const STRATEGY_ID: Record<StrategyName, number> = {
   'mcp-head-tail': 8,
   'json-structural': 9,
   'code-outline': 10,
+  'compact-grep': 11,
+  'compact-glob': 12,
 }
 
 let lastDecision: SummaryDecision | null = null

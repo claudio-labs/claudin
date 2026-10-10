@@ -72,6 +72,10 @@
  *      edit of it in Bash, whose result names the file; p2 (--resume) carries no
  *      "was modified" note for it
  *  18. own writes off — the default: p2 carries the note
+ *  19. lossless summarizer on — the default: a Grep with 42 matches and their
+ *      context, past the cut's 10 per file, reaches the model whole
+ *  20. lossless summarizer off — CLAUDIN_TOOL_RESULT_LOSSLESS=0: the same Grep is
+ *      cut to 10 matches and a "+32 more" count
  *
  * a.ts carries two blank lines in a row: the pass-through has to hand the file back
  * byte for byte for the credit to find it (a floor stage folds such a run).
@@ -210,6 +214,14 @@ const MIXED_READ = bash('cat a.ts b.ts; sed -n 1,140p big.ts; echo ----; head -c
 /** 300 lines that are no read (sed without -n), with an error on line 150. */
 const ERROR_LOG = bash("sed '150s/$/ error: boom/' big.ts")
 const ERROR_TEXT = 'error: boom'
+
+// Scenarios 19-20: the lossless summarizer (CLAUDIN_TOOL_RESULT_LOSSLESS).
+/** Every seventh line of big.ts says alpha: 42 matches, past the cut's 10 per file, ±2 lines of context each. */
+const GREP_ALPHA = (ws: string): Step => ({
+  tool: 'Grep',
+  input: { pattern: 'alpha', path: join(ws, 'big.ts'), output_mode: 'content', '-n': true, '-C': 2 },
+})
+const ALPHA_LINES = Array.from({ length: 42 }, (_, i) => bigLine(7 * (i + 1)))
 const READ_A = (ws: string): Step => ({ tool: 'Read', input: { file_path: join(ws, 'a.ts') } })
 const PYTHON_EDIT_A: Step = {
   tool: 'Bash',
@@ -623,6 +635,32 @@ const SCENARIOS: Scenario[] = [
     expect: run => [
       onResult(run, 0, 1, 'p1 the python edit names nothing', r => !r.isError && !r.text.includes(OWN_WRITE_LINE)),
       { label: 'p2 (--resume) carries the "was modified" note for a.ts', ok: sentInPhase(run, 1, MODIFIED_NOTE) },
+    ],
+  },
+  {
+    key: '19',
+    title: 'lossless summarizer on: a Grep past the cut keeps every match',
+    // Unset on purpose: on by default.
+    env: {},
+    files: BIG_FILES,
+    script: ws => [{ prompt: 'Find alpha in big.ts.', steps: [GREP_ALPHA(ws), DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 all 42 matches reach the model, uncut', r =>
+        !r.isError && ALPHA_LINES.every(line => r.text.includes(line)) &&
+        !r.text.includes('more match') && !r.text.includes('<tool-result-summary'),
+      ),
+    ],
+  },
+  {
+    key: '20',
+    title: 'lossless summarizer off (the control for 19)',
+    env: { CLAUDIN_TOOL_RESULT_LOSSLESS: '0' },
+    files: BIG_FILES,
+    script: ws => [{ prompt: 'Find alpha in big.ts.', steps: [GREP_ALPHA(ws), DONE] }],
+    expect: run => [
+      onResult(run, 0, 0, 'p1 the cut keeps 10 matches and counts the rest', r =>
+        r.text.includes('<tool-result-summary') && r.text.includes('+32 more matches') && !r.text.includes(ALPHA_LINES[41]!),
+      ),
     ],
   },
 ]

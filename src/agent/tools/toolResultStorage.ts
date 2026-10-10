@@ -18,9 +18,11 @@ import { logError } from 'src/shared/log.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
+  isLosslessSummarizerEnabled,
   isSummarizedContent,
   isToolResultCodeOutlineEnabled,
   isToolResultJsonCompressionEnabled,
+  maybeCompactToolResult,
   maybeSummarizeToolResult,
 } from 'src/agent/tools/toolResultSummarizer.js'
 import { compressJsonArray } from 'src/agent/tools/jsonArrayCompress.js'
@@ -249,15 +251,36 @@ export async function processPreMappedToolResultBlock<T>(
   toolUseResult: T,
 ): Promise<ToolResultBlockParam> {
   const { name: toolName, maxResultSizeChars } = tool
-  const summarized = tool.skipsResultSummarizer?.(toolUseResult)
+  const persistenceThreshold = getPersistenceThreshold(maxResultSizeChars)
+  const whole = tool.skipsResultSummarizer?.(toolUseResult)
     ? toolResultBlock
-    : maybeSummarizeToolResult(toolResultBlock, toolName)
+    : keepWholeUnderLine(toolResultBlock, toolName, persistenceThreshold)
+  if (whole !== null) {
+    return maybePersistLargeToolResult(whole, toolName, persistenceThreshold)
+  }
+  const summarized = maybeSummarizeToolResult(toolResultBlock, toolName)
   const reversible = await makeReversibleIfElided(toolResultBlock, summarized)
-  return maybePersistLargeToolResult(
-    reversible,
-    toolName,
-    getPersistenceThreshold(maxResultSizeChars),
-  )
+  return maybePersistLargeToolResult(reversible, toolName, persistenceThreshold)
+}
+
+/**
+ * CLAUDIN_TOOL_RESULT_LOSSLESS (on by default; `=0` brings the cuts back): the
+ * result regrouped without losing a line, or as it came, when that fits under
+ * the persistence line — measured the way persistence measures it. Null past
+ * the line, where the summarizer cuts: a summary shows more than the 2 KB
+ * preview persistence would leave, and with TOOL_RESULT_JSON_COMPRESSION on
+ * (the build's default) its original is saved under `source=`. Exported for
+ * the replay census (scripts/bench/tokens/summarizer-lossless-replay.ts).
+ */
+export function keepWholeUnderLine(
+  toolResultBlock: ToolResultBlockParam,
+  toolName: string,
+  persistenceThreshold: number,
+): ToolResultBlockParam | null {
+  if (!isLosslessSummarizerEnabled()) return null
+  const compacted = maybeCompactToolResult(toolResultBlock, toolName)
+  const content = compacted.content
+  return content == null || contentSize(content) <= persistenceThreshold ? compacted : null
 }
 
 // --- Reversibility for summarizer elisions (TOOL_RESULT_JSON_COMPRESSION) ---
@@ -269,9 +292,10 @@ export async function processPreMappedToolResultBlock<T>(
 // affordances triggered a re-read thrashing loop (see toolResultSummarizer.ts
 // design notes + AUTO_OUTLINE_ON_ELISION).
 
-// "Something was dropped" signal. Text strategies are always lossy; the
+// "Something was dropped" signal. Every cut text strategy is lossy; the
 // json-structural strategy is lossy only when it windowed rows or truncated a
-// cell, so a fully-shown schema-factor (lossless) skips the disk write.
+// cell, so a fully-shown schema-factor (lossless) skips the disk write. A
+// `<tool-result-compacted>` never reaches here: it is no summary.
 const ELISION_DROP_RE = /<omitted|…\[\d+b\]/
 
 async function makeReversibleIfElided(

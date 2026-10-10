@@ -42,6 +42,8 @@ export type StrategyName =
   | 'mcp-head-tail'
   | 'json-structural'
   | 'code-outline'
+  | 'compact-grep'
+  | 'compact-glob'
 
 export type StrategyResult = {
   body: string
@@ -63,8 +65,9 @@ export type StrategyResult = {
   salientPinned?: number
   /**
    * Optional envelope-level metadata describing the elision. Placed as
-   * attributes on the opening `<tool-result-summary>` tag so the model sees
-   * structured key/value pairs rather than narratable prose.
+   * attributes on the opening `<tool-result-summary>` tag (or, for a lossless
+   * regroup, `<tool-result-compacted>`) so the model sees structured key/value
+   * pairs rather than narratable prose.
    *
    * DESIGN: Elision is communicated via envelope attributes and self-closing
    * metadata tags (e.g. `<omitted lines="361"/>`) rather than inline prose

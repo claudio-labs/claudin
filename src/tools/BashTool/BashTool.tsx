@@ -518,7 +518,9 @@ export const BashTool = buildTool({
   // CLAUDIN_BASH_ONE_CUT: the filter's cut is the only one (floor.ts). The
   // summarizer stays the backstop where the filter did not run, and past the
   // persist line, where its line truncation can still keep a result of long
-  // lines out of a file on disk.
+  // lines out of a file on disk. Under CLAUDIN_TOOL_RESULT_LOSSLESS (the
+  // default) a result under that line ships whole anyway (toolResultStorage.ts,
+  // keepWholeUnderLine); this answer decides it only under `=0`.
   skipsResultSummarizer(output: Out): boolean {
     return isOneCutEnabled() && output.stdout.length < BASH_RESULT_PERSIST_CHARS && shouldFilterOutput(getGlobalConfig().bashOutputFilterEnabled, isBashOutputFilterDisabled, output.backgroundTaskId);
   },

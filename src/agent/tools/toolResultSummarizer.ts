@@ -1,12 +1,20 @@
 /**
- * Tool result summarizer — opportunistic per-tool compression of oversized
- * Bash/Grep/WebFetch outputs as they enter conversation history.
+ * Tool result summarizer — what becomes of an oversized tool result as it
+ * enters conversation history. Two passes, both pure, deterministic and zero
+ * I/O, which toolResultStorage.ts chains:
  *
- * Pure, deterministic, zero I/O. Runs once per tool_result, upstream of
- * persistence. All strategies preserve the exact totals the model would
- * need to reason about the raw output (error windows for Bash, match
- * counts for Grep, head+tail for WebFetch). On ANY unexpected error the
- * original block is returned — this module must never break a turn.
+ *  - `maybeCompactToolResult` regroups a Grep or Glob result without losing a
+ *    line (`compactGrepOutput`, `compactGlobOutput`) into a
+ *    `<tool-result-compacted>` envelope. Storage ships it, or the result as it
+ *    came, whenever that fits under the tool's persistence line
+ *    (`CLAUDIN_TOOL_RESULT_LOSSLESS`, on by default).
+ *  - `maybeSummarizeToolResult` CUTS, into a `<tool-result-summary>`, keeping
+ *    what the model needs to reason about the rest: error windows for Bash,
+ *    match counts for Grep, head+tail for WebFetch. Storage calls it only past
+ *    that line, where the other choice is a file on disk behind a 2 KB preview.
+ *
+ * On ANY unexpected error the original block is returned — this module must
+ * never break a turn.
  */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { BYTES_PER_TOKEN } from 'src/tools/constants/toolLimits.js'
@@ -24,27 +32,29 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { StrategyResult } from 'src/agent/tools/toolResultSummarizer/types.js'
 import { AGENT_SUMMARIZE_THRESHOLD, BASH_SUMMARIZE_THRESHOLD, GLOB_SUMMARIZE_THRESHOLD, GREP_SUMMARIZE_FLOOR, GREP_SUMMARIZE_THRESHOLD, MCP_SUMMARIZE_THRESHOLD, WEBFETCH_SUMMARIZE_THRESHOLD, isToolResultJsonCompressionEnabled, jsonSavesEnough } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
 import { STRATEGY_ID, recordDecision } from 'src/agent/tools/toolResultSummarizer/decisionRecord.js'
-import { isAlreadyCompacted, wrapMarker } from 'src/agent/tools/toolResultSummarizer/markers.js'
+import { isAlreadyCompacted, wrapCompacted, wrapMarker } from 'src/agent/tools/toolResultSummarizer/markers.js'
 import { hasImageContentBlock, isToolResultContentEmpty } from 'src/agent/tools/toolResultSummarizer/contentShape.js'
 import { maybeCodeOutline, maybeJsonStructural } from 'src/agent/tools/toolResultSummarizer/structural.js'
 import { MCP_HEAD_LINES, MCP_TAIL_LINES, applyHeadTail, joinTextBlocks, summarizeAgentOutput, summarizeMcpOutput } from 'src/agent/tools/toolResultSummarizer/headTail.js'
 import { summarizeBashOutput } from 'src/agent/tools/toolResultSummarizer/bash.js'
-import { summarizeGrepOutput } from 'src/agent/tools/toolResultSummarizer/grep.js'
+import { compactGrepOutput, summarizeGrepOutput } from 'src/agent/tools/toolResultSummarizer/grep.js'
 import { summarizeWebFetchOutput } from 'src/agent/tools/toolResultSummarizer/webFetch.js'
-import { summarizeGlobOutput } from 'src/agent/tools/toolResultSummarizer/glob.js'
+import { compactGlobOutput, summarizeGlobOutput } from 'src/agent/tools/toolResultSummarizer/glob.js'
 
 export { TOOL_RESULT_SUMMARY_TAG, TOOL_RESULT_SUMMARY_CLOSING_TAG, isSummarizedContent } from 'src/agent/tools/toolResultSummarizer/markers.js'
-export { isToolResultJsonCompressionEnabled, isToolResultCodeOutlineEnabled } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
+export { isLosslessSummarizerEnabled, isToolResultJsonCompressionEnabled, isToolResultCodeOutlineEnabled } from 'src/agent/tools/toolResultSummarizer/thresholds.js'
 export { getLastSummaryDecision, resetLastSummaryDecision } from 'src/agent/tools/toolResultSummarizer/decisionRecord.js'
 export { collapseIdenticalRuns, collapseDigitTemplates } from 'src/agent/tools/toolResultSummarizer/bash.js'
 export { summarizeGrepOutput } from 'src/agent/tools/toolResultSummarizer/grep.js'
 export type { SummaryDecision } from 'src/agent/tools/toolResultSummarizer/types.js'
 
 /**
- * Entry point. Returns the input block unchanged for all passthrough cases
- * (disabled, unknown tool, below threshold, non-string, image, already
- * summarized, etc.). On any thrown error inside a strategy, logs and
- * returns the original block — never breaks a turn.
+ * The cut. Storage calls it past the persistence line (`keepWholeUnderLine`),
+ * or for every result under `CLAUDIN_TOOL_RESULT_LOSSLESS=0`. Returns the
+ * input block unchanged for all passthrough cases (disabled, unknown tool,
+ * below threshold, non-string, image, already summarized, etc.). On any
+ * thrown error inside a strategy, logs and returns the original block —
+ * never breaks a turn.
  */
 export function maybeSummarizeToolResult(
   block: ToolResultBlockParam,
@@ -90,40 +100,7 @@ export function maybeSummarizeToolResult(
     // Guard 8 + 9: dispatch by tool name and per-tool threshold.
     const strategyResult = dispatch(toolName, content)
     if (strategyResult === null) return block
-
-    const originalSizeBytes = content.length
-    const wrapped = wrapMarker(
-      toolName,
-      originalSizeBytes,
-      strategyResult.body.length,
-      strategyResult.strategy,
-      strategyResult.body,
-      strategyResult.envelopeAttrs,
-    )
-
-    // No-win guard: if wrapping didn't actually save bytes (tiny inputs,
-    // pathological cases), bail rather than mislead the cache.
-    if (wrapped.length >= originalSizeBytes) return block
-
-    const summarizedSizeBytes = wrapped.length
-    recordBytesSaved(originalSizeBytes, summarizedSizeBytes)
-    recordDecision({
-      toolName,
-      originalSizeBytes,
-      summarizedSizeBytes,
-      estimatedOriginalTokens: Math.ceil(originalSizeBytes / BYTES_PER_TOKEN),
-      estimatedSummarizedTokens: Math.ceil(
-        summarizedSizeBytes / BYTES_PER_TOKEN,
-      ),
-      strategyId: STRATEGY_ID[strategyResult.strategy],
-      errorWindowPreserved: strategyResult.errorWindowPreserved,
-      salientPinned: strategyResult.salientPinned,
-      reductionPct: Math.floor(
-        100 * (1 - summarizedSizeBytes / originalSizeBytes),
-      ),
-    })
-
-    return { ...block, content: wrapped }
+    return ship(block, toolName, content.length, strategyResult, 'summary') ?? block
   } catch (error) {
     logForDebugging(
       `maybeSummarizeToolResult: error for tool ${toolName}: ${(error as Error)?.message ?? String(error)}`,
@@ -131,6 +108,65 @@ export function maybeSummarizeToolResult(
     )
     return block
   }
+}
+
+/**
+ * The lossless pass: a Grep or Glob result past its threshold regrouped
+ * without losing a line, or the block unchanged — for every other tool, and
+ * whenever the regroup would save nothing. The cut's kill switches apply.
+ */
+export function maybeCompactToolResult(
+  block: ToolResultBlockParam,
+  toolName: string,
+): ToolResultBlockParam {
+  try {
+    if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER)) return block
+    if (!getGlobalConfig().toolResultSummarizerEnabled) return block
+    const content = block.content
+    if (typeof content !== 'string' || isAlreadyCompacted(content)) return block
+    const compacted = dispatchCompact(toolName, content)
+    if (compacted === null) return block
+    return ship(block, toolName, content.length, compacted, 'compacted') ?? block
+  } catch (error) {
+    logForDebugging(
+      `maybeCompactToolResult: error for tool ${toolName}: ${(error as Error)?.message ?? String(error)}`,
+      { level: 'warn' },
+    )
+    return block
+  }
+}
+
+/**
+ * `block` carrying `result` in its envelope — a cut summary or a lossless
+ * compaction — with the saving recorded. Null when the envelope would be no
+ * smaller than what it replaces (tiny inputs, pathological cases): the
+ * original ships rather than a marker that misleads the cache.
+ */
+function ship(
+  block: ToolResultBlockParam,
+  toolName: string,
+  originalSizeBytes: number,
+  result: StrategyResult,
+  envelope: 'summary' | 'compacted',
+): ToolResultBlockParam | null {
+  const wrapped =
+    envelope === 'summary'
+      ? wrapMarker(toolName, originalSizeBytes, result.body.length, result.strategy, result.body, result.envelopeAttrs)
+      : wrapCompacted(toolName, result.strategy, result.body, result.envelopeAttrs)
+  if (wrapped.length >= originalSizeBytes) return null
+  recordBytesSaved(originalSizeBytes, wrapped.length)
+  recordDecision({
+    toolName,
+    originalSizeBytes,
+    summarizedSizeBytes: wrapped.length,
+    estimatedOriginalTokens: Math.ceil(originalSizeBytes / BYTES_PER_TOKEN),
+    estimatedSummarizedTokens: Math.ceil(wrapped.length / BYTES_PER_TOKEN),
+    strategyId: STRATEGY_ID[result.strategy],
+    ...(result.errorWindowPreserved !== undefined && { errorWindowPreserved: result.errorWindowPreserved }),
+    ...(result.salientPinned !== undefined && { salientPinned: result.salientPinned }),
+    reductionPct: Math.floor(100 * (1 - wrapped.length / originalSizeBytes)),
+  })
+  return { ...block, content: wrapped }
 }
 
 // ---------- dispatch ----------
@@ -196,6 +232,23 @@ function dispatch(toolName: string, text: string): StrategyResult | null {
   }
 }
 
+/**
+ * The lossless pass's tools. Grep gates on its floor rather than its
+ * threshold: what the regroup ships keeps every line, which is what the floor
+ * already admitted. Every other tool has nothing to regroup and ships whole.
+ */
+function dispatchCompact(toolName: string, text: string): StrategyResult | null {
+  switch (toolName) {
+    case GREP_TOOL_NAME:
+      if (text.length < GREP_SUMMARIZE_FLOOR || isGrepBodiesResult(text)) return null
+      return compactGrepOutput(text)
+    case GLOB_TOOL_NAME:
+      return text.length < GLOB_SUMMARIZE_THRESHOLD ? null : compactGlobOutput(text)
+    default:
+      return null
+  }
+}
+
 // ---------- array-content dispatch ----------
 
 function maybeSummarizeArrayContent(
@@ -206,32 +259,7 @@ function maybeSummarizeArrayContent(
 
   const strategyResult = dispatchArray(toolName, blocks)
   if (strategyResult === null) return block
-
-  const originalSizeBytes = joinTextBlocks(blocks).length
-  const wrapped = wrapMarker(
-    toolName,
-    originalSizeBytes,
-    strategyResult.body.length,
-    strategyResult.strategy,
-    strategyResult.body,
-    strategyResult.envelopeAttrs,
-  )
-
-  if (wrapped.length >= originalSizeBytes) return block
-
-  recordBytesSaved(originalSizeBytes, wrapped.length)
-  recordDecision({
-    toolName,
-    originalSizeBytes,
-    summarizedSizeBytes: wrapped.length,
-    estimatedOriginalTokens: Math.ceil(originalSizeBytes / BYTES_PER_TOKEN),
-    estimatedSummarizedTokens: Math.ceil(wrapped.length / BYTES_PER_TOKEN),
-    strategyId: STRATEGY_ID[strategyResult.strategy],
-    salientPinned: strategyResult.salientPinned,
-    reductionPct: Math.floor(100 * (1 - wrapped.length / originalSizeBytes)),
-  })
-
-  return { ...block, content: wrapped }
+  return ship(block, toolName, joinTextBlocks(blocks).length, strategyResult, 'summary') ?? block
 }
 
 function dispatchArray(

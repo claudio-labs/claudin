@@ -1,4 +1,5 @@
 import { feature } from 'bun:bundle'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 // json-structural only earns a strategy slot when it meaningfully shrinks the
 // payload. Without this floor a wrapper-dominated object (a giant non-array
@@ -37,12 +38,30 @@ export const GREP_SUMMARIZE_THRESHOLD = 6_000
  * every line is a distinct hit — so the naive cut buys its extra bytes with
  * exactly the information a search is for. Restricted to the lossless ones it
  * is 404,528 chars over 277 results and nothing a match line said is lost.
+ *
+ * The lossless regroup (`compactGrepOutput`) gates on this floor too. Under
+ * CLAUDIN_TOOL_RESULT_LOSSLESS the cut runs only past Grep's 20k persistence
+ * line, always above the threshold, so the two-tier gate above matters only
+ * under `=0` — retire it with the flag.
  */
 export const GREP_SUMMARIZE_FLOOR = 3_000
 export const WEBFETCH_SUMMARIZE_THRESHOLD = 12_000
 export const GLOB_SUMMARIZE_THRESHOLD = 3_000
 export const AGENT_SUMMARIZE_THRESHOLD = 8_000
 export const MCP_SUMMARIZE_THRESHOLD = 8_000
+
+/**
+ * On by default; `CLAUDIN_TOOL_RESULT_LOSSLESS=0` brings the cuts back.
+ *
+ * On, a result ships whole for as long as it fits under its tool's
+ * persistence line — a Grep or Glob regrouped without losing a line, any
+ * other result as it came — and the cut strategies run only past that line
+ * (`keepWholeUnderLine`, toolResultStorage.ts). Read per call, so a test can
+ * set it.
+ */
+export function isLosslessSummarizerEnabled(): boolean {
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_TOOL_RESULT_LOSSLESS)
+}
 
 /**
  * Gate for the JSON/array structural-compression strategy (roadmap #1/#2).

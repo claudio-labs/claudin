@@ -5,7 +5,11 @@ import { truncateLine } from 'src/agent/tools/toolResultSummarizer/bash.js'
 // Strategy 2: Grep
 // ============================================================
 //
-// Regroups a content-mode ripgrep body by file: per-file header, up to
+// Two of them. `compactGrepOutput` is the lossless regroup the summarizer
+// ships whenever the result fits (CLAUDIN_TOOL_RESULT_LOSSLESS); everything
+// below up to it is the cut, which runs past the persistence line.
+//
+// The cut regroups a content-mode ripgrep body by file: per-file header, up to
 // GREP_MAX_MATCHES_PER_FILE matches with a `+N more` tail, up to GREP_MAX_FILES
 // files with an `<omitted>` tail, context clamped to GREP_CONTEXT_RADIUS lines
 // around each surviving match, and verbatim repeats collapsed to a
@@ -52,8 +56,8 @@ const GREP_PREFIX_RE = /([:-])(\d+)\1/g
 // scoped to one file): a leading line number and ONE separator, not two.
 const GREP_PATHLESS_RE = /^(\d+)([:-])/
 const GREP_BLANK_RE = /^\s*$/
-// rg prints this between non-contiguous context blocks; the per-file grouping
-// below replaces what it conveyed.
+// rg prints this between non-contiguous context blocks. The cut's per-file
+// grouping replaces what it conveyed; the lossless regroup keeps it.
 const GREP_BLOCK_SEPARATOR = '--'
 // `path:count` — the shape of `output_mode: "count"`, which is already small.
 const GREP_COUNT_LINE_RE = /^[^:]+:\d+$/
@@ -394,4 +398,81 @@ export function summarizeGrepOutput(text: string): StrategyResult | null {
   }
 
   return { body: body.join('\n'), strategy: 'grep-grouped', matchesElided }
+}
+
+/** A line the lossless regroup leaves alone that a reader could take for a header or a numbered line under one. */
+const GREP_HEADER_RE = /^--- .* ---$/
+const GREP_NUMBERED_RE = /^\d+[:-]/
+/** What a header line costs beyond the path it names: `--- `, ` ---` and its newline. */
+const GREP_HEADER_OVERHEAD = 9
+
+/**
+ * The lossless regroup: rg's output in rg's order, every line kept, each run
+ * of lines from one file under a `--- path ---` header that replaces the path
+ * on them (`NN:text` a match, `NN-text` context). The `--` between blocks
+ * stays inside the run; every other line ships as rg printed it, and ends the
+ * run.
+ *
+ * Two rules keep a header from saying anything false. A file earns one only
+ * with a match line of its own: a path the parser misread shows up as context
+ * alone (`phase-0-plan.md:31:x` read as file `phase`, line 0), the invariant
+ * the cut keeps too. And a run earns one only when it pays for itself, as in
+ * the Glob regroup, so a single hit keeps its path inline.
+ *
+ * Null when no line names a file, when rg printed no filenames (a search
+ * scoped to one file), when no run pays, or when a line printed as rg printed
+ * it would read as a header or a numbered line, which would make the output
+ * ambiguous.
+ */
+export function compactGrepOutput(text: string): StrategyResult | null {
+  const lines = text.split('\n')
+  const splits = chooseGrepSplits(lines)
+  const matched = new Set<string>()
+  for (const split of splits) {
+    if (split?.isMatch && split.file !== GREP_NO_PATH) matched.add(split.file)
+  }
+  /** The file line `i` would be grouped under, or null when it ships as printed. */
+  const fileOf = (i: number): string | null => {
+    const split = splits[i]
+    return split && matched.has(split.file) ? split.file : null
+  }
+  const out: string[] = []
+  let grouped = false
+  for (let i = 0; i < lines.length; ) {
+    const file = fileOf(i)
+    if (file === null) {
+      const line = lines[i]!
+      if (line !== GREP_BLOCK_SEPARATOR && (GREP_HEADER_RE.test(line) || GREP_NUMBERED_RE.test(line))) return null
+      out.push(line)
+      i++
+      continue
+    }
+    // The run: this file's lines and the `--` between them; a trailing `--` stays outside.
+    let last = i
+    let count = 1
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j] === GREP_BLOCK_SEPARATOR) continue
+      if (fileOf(j) !== file) break
+      last = j
+      count++
+    }
+    // Each line under the header drops the path and one separator.
+    if (count * (file.length + 1) > file.length + GREP_HEADER_OVERHEAD) {
+      out.push(`--- ${file} ---`)
+      for (let k = i; k <= last; k++) {
+        const split = splits[k]
+        if (lines[k] === GREP_BLOCK_SEPARATOR || !split) out.push(lines[k]!)
+        else out.push(`${split.raw}${split.isMatch ? ':' : '-'}${split.body}`)
+      }
+      grouped = true
+    } else {
+      for (let k = i; k <= last; k++) {
+        const line = lines[k]!
+        if (line !== GREP_BLOCK_SEPARATOR && GREP_NUMBERED_RE.test(line)) return null
+        out.push(line)
+      }
+    }
+    i = last + 1
+  }
+  return grouped ? { body: out.join('\n'), strategy: 'compact-grep' } : null
 }

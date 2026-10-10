@@ -95,8 +95,8 @@
     {
       "name": "markers: raw output opening with the read tag counts as already wrapped",
       "source": "src/tools/shared/outputFilter/Bash/markers.ts",
-      "find": "  /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered)/;",
-      "replace": "  /^<(?:persisted-output|tool-result-summary|bash-output-rewritten|bash-output-filtered|bash-output-read)/;"
+      "find": "  /^<(?:persisted-output|tool-result-summary|tool-result-compacted|bash-output-rewritten|bash-output-filtered)/;",
+      "replace": "  /^<(?:persisted-output|tool-result-summary|tool-result-compacted|bash-output-rewritten|bash-output-filtered|bash-output-read)/;"
     },
     {
       "name": "summarizer: cuts a <bash-output-read> result",

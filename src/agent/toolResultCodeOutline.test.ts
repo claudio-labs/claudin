@@ -6,8 +6,16 @@ import { join } from 'node:path'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/sessions/pure/paths.js'
 
+// The round-trips below go through toolResultStorage, which cuts only past the
+// persistence line by default (CLAUDIN_TOOL_RESULT_LOSSLESS); they pin the cut.
+const savedLossless = process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
+beforeAll(() => {
+  process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = '0'
+})
 afterAll(() => {
   resetGlobalConfigForTests()
+  if (savedLossless === undefined) delete process.env.CLAUDIN_TOOL_RESULT_LOSSLESS
+  else process.env.CLAUDIN_TOOL_RESULT_LOSSLESS = savedLossless
 })
 
 const { maybeSummarizeToolResult, isSummarizedContent } = await import(

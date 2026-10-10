@@ -6,7 +6,7 @@ import {
   recordBytesSaved,
   resetBytesSaved,
 } from 'src/agent/context/tokensSaved.js'
-import { maybeSummarizeToolResult } from 'src/agent/tools/toolResultSummarizer.js'
+import { maybeCompactToolResult, maybeSummarizeToolResult } from 'src/agent/tools/toolResultSummarizer.js'
 import {
   processPreMappedToolResultBlock,
   unlinkSessionSpillDir,
@@ -14,6 +14,7 @@ import {
 import { resetCostState } from 'src/agent/cost-tracker.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 
 // ---------------------------------------------------------------------------
 // Unit — the accumulator itself
@@ -84,6 +85,19 @@ describe('tokensSaved chokepoints', () => {
     }
     const out = maybeSummarizeToolResult(block, BASH_TOOL_NAME)
     expect(out.content).not.toBe(big) // it actually summarized
+    expect(getBytesSaved()).toBeGreaterThan(0)
+  })
+
+  test('the lossless regroup records the reduction', () => {
+    const listing = Array.from({ length: 200 }, (_, i) => `src/tools/shared/outputFilter/Bash/file${i}.ts`).join('\n')
+    const block = {
+      type: 'tool_result' as const,
+      tool_use_id: 'probe-compact',
+      content: listing,
+      is_error: false,
+    }
+    const out = maybeCompactToolResult(block, GLOB_TOOL_NAME)
+    expect(String(out.content)).toStartWith('<tool-result-compacted')
     expect(getBytesSaved()).toBeGreaterThan(0)
   })
 
